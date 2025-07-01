@@ -1,6 +1,6 @@
 {
   "name": "@ragdoll/runner",
-  "version": "0.1.13",
+  "version": "0.1.14",
   "bin": "src/cli.ts",
   "exports": {
     ".": "./src/index.ts",

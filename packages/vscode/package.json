@@ -1,6 +1,6 @@
 {
   "name": "pochi",
-  "version": "0.2.104",
+  "version": "0.2.105",
   "description": "Pochi is your AI powered team mate. Now available in research preview.",
   "displayName": "Pochi (Research Preview)",
   "publisher": "TabbyML",
@@ -25,7 +25,9 @@
   ],
   "icon": "assets/icons/logo128.png",
   "main": "./dist/extension.js",
-  "activationEvents": ["onStartupFinished"],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
   "contributes": {
     "authentication": [
       {
