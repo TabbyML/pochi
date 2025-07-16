@@ -219,6 +219,10 @@ describe("formatters individual ops", () => {
               type: "text",
               text: "<system-reminder>Remember this</system-reminder>",
             },
+            {
+              // @ts-expect-error
+              type: "checkpoint"
+            }
           ],
         },
         {

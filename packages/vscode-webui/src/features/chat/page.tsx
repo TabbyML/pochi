@@ -532,7 +532,7 @@ function ErrorMessageView({ error }: { error: TaskError | undefined }) {
           return (
             <span>
               You've used all your free credits. To continue, please subscribe
-              to Pochi's usage-based plan.{" "}
+              to Pochi.{" "}
               <a
                 href="https://app.getpochi.com/profile"
                 target="_blank"
@@ -550,7 +550,7 @@ function ErrorMessageView({ error }: { error: TaskError | undefined }) {
           return (
             <span>
               Your team does not have a subscription yet. To continue, please
-              subscribe to pochi's usage-based plan.{" "}
+              subscribe to Pochi.{" "}
               <a
                 href="https://app.getpochi.com/team"
                 target="_blank"

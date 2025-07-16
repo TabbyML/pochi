@@ -80,11 +80,11 @@ export function removeSystemReminder(messages: UIMessage[]): UIMessage[] {
       if (part.type !== "text") return true;
       return !prompts.isSystemReminder(part.text);
     });
-    if (parts.length === 0) {
-      return false;
-    }
     message.parts = parts;
-    return true;
+    if (parts.some((x) => x.type === "text" || x.type === "tool-invocation")) {
+      return true;
+    }
+    return false;
   });
 }
 
