@@ -59,9 +59,6 @@ export const ToolBadgeList: React.FC<{
   return (
     <TooltipProvider>
       <div className="flex flex-wrap items-center gap-2">
-        {/* <span className="font-semibold text-foreground/60 text-sm">
-          BUILT-IN:{" "}
-        </span> */}
         {tools.map((tool) => (
           <ToolBadge
             key={tool.id}

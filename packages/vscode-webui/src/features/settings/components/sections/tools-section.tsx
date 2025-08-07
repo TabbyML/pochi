@@ -102,7 +102,7 @@ export const ToolsSection: React.FC = () => {
           </SubSection>
         )}
 
-        <SubSection title="BUILT-IN tools">{renderToolsContent()}</SubSection>
+        <SubSection title="BUILT-IN">{renderToolsContent()}</SubSection>
       </div>
     </Section>
   );

@@ -2,7 +2,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { vscodeHost } from "@/lib/vscode";
 import { useQuery } from "@tanstack/react-query";
 import { Edit, Workflow } from "lucide-react";
-import { ScetionItem, Section } from "../ui/section";
+import { EmptySectionPlaceholder, ScetionItem, Section } from "../ui/section";
 
 export const WorkflowsSection: React.FC = () => {
   const { data: workflows, isLoading } = useQuery({
@@ -45,9 +45,7 @@ export const WorkflowsSection: React.FC = () => {
           )}
         </>
       ) : (
-        <div className="ml-1 text-muted-foreground text-sm">
-          No workflows found in this workspace.
-        </div>
+        <EmptySectionPlaceholder content="No workflows found in workspace." />
       )}
     </Section>
   );

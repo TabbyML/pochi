@@ -5,7 +5,7 @@ import { useRules } from "@/lib/hooks/use-rules";
 import { useThirdPartyRules } from "@/lib/hooks/use-third-party-rules";
 import { vscodeHost } from "@/lib/vscode";
 import { Download, Edit, FileIcon, Loader2 } from "lucide-react";
-import { ScetionItem, Section } from "../ui/section";
+import { EmptySectionPlaceholder, ScetionItem, Section } from "../ui/section";
 
 export const WorkspaceRulesSection: React.FC = () => {
   const { rulePaths, importThirdPartyRules, isImporting, workspaceRuleExists } =
@@ -99,9 +99,7 @@ export const WorkspaceRulesSection: React.FC = () => {
           );
         })
       ) : (
-        <div className="ml-1 text-muted-foreground text-sm">
-          No rules found in this workspace.
-        </div>
+        <EmptySectionPlaceholder content="No rules found in workspace." />
       )}
       {thirdPartyRulesImportPanel}
     </Section>

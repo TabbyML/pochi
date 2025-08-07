@@ -22,7 +22,7 @@ import {
   RotateCw,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { SubSection } from "../ui/section";
+import { EmptySectionPlaceholder, SubSection } from "../ui/section";
 import { ToolBadge } from "../ui/tool-badge";
 
 interface RecommendedMcpServer {
@@ -199,7 +199,7 @@ export const McpSection: React.FC = () => {
   const title = (
     <TooltipProvider>
       <div className="flex items-center">
-        MCP servers
+        MCP
         <Tooltip>
           <TooltipTrigger asChild>
             <a
@@ -246,13 +246,16 @@ export const McpSection: React.FC = () => {
               />
             ))
           ) : hasAvailableConfigs ? (
-            <ImportMcp
-              availableConfigs={availableConfigs}
-              onImportAll={importFromAllConfigs || (() => Promise.resolve())}
-              onImportSingle={importFromConfig || (() => Promise.resolve())}
-            />
+            <>
+              <EmptySectionPlaceholder content="No MCP servers added yet." />
+              <ImportMcp
+                availableConfigs={availableConfigs}
+                onImportAll={importFromAllConfigs || (() => Promise.resolve())}
+                onImportSingle={importFromConfig || (() => Promise.resolve())}
+              />
+            </>
           ) : (
-            <EmptyPlaceholder />
+            <RecommandedMcpServers />
           )}
         </div>
       </div>
@@ -260,17 +263,12 @@ export const McpSection: React.FC = () => {
   );
 };
 
-const EmptyPlaceholder: React.FC = () => {
+const RecommandedMcpServers: React.FC = () => {
   return (
     <div className="space-y-4">
-      <div className="flex justify-center rounded-md border px-2 py-2">
-        <span className="flex items-center font-semibold">
-          No MCP servers added yet.
-        </span>
-      </div>
       {recommendedMcpServers.length > 0 && (
         <div>
-          <h4 className="mb-2 font-medium text-muted-foreground text-sm">
+          <h4 className="mb-2 ml-1 font-medium text-muted-foreground text-sm">
             Recommended MCP Servers
           </h4>
           <div className="space-y-2">
