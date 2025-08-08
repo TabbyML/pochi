@@ -22,7 +22,7 @@ import { trimSpace } from "./trimSpace";
 import "../utils/array"; // for mapAsync
 
 export interface ItemsWithContext {
-  items: CompletionResultItem[];
+  items: readonly CompletionResultItem[];
   context: CompletionContext;
   extraContext: CompletionExtraContexts;
 }
@@ -34,9 +34,11 @@ function createListFilter(
 ): ItemsFilter {
   const filter: PostprocessFilter = filterFactory(config);
   return async (params: ItemsWithContext): Promise<ItemsWithContext> => {
-    const processed = await params.items.mapAsync(async (item) => {
-      return await filter(item, params.context, params.extraContext);
-    });
+    const processed = await params.items.mapAsync(
+      async (item: CompletionResultItem) => {
+        return await filter(item, params.context, params.extraContext);
+      },
+    );
     return {
       items: processed,
       context: params.context,
@@ -46,11 +48,11 @@ function createListFilter(
 }
 
 export async function preCacheProcess(
-  items: CompletionResultItem[],
+  items: readonly CompletionResultItem[],
   context: CompletionContext,
   extraContext: CompletionExtraContexts,
   config: PostprocessConfig,
-): Promise<CompletionResultItem[]> {
+): Promise<readonly CompletionResultItem[]> {
   const applyFilter = (
     filterFactory: PostprocessFilterFactory,
   ): ItemsFilter => {
@@ -66,11 +68,11 @@ export async function preCacheProcess(
 }
 
 export async function postCacheProcess(
-  items: CompletionResultItem[],
+  items: readonly CompletionResultItem[],
   context: CompletionContext,
   extraContext: CompletionExtraContexts,
   config: PostprocessConfig,
-): Promise<CompletionResultItem[]> {
+): Promise<readonly CompletionResultItem[]> {
   const applyFilter = (
     filterFactory: PostprocessFilterFactory,
   ): ItemsFilter => {

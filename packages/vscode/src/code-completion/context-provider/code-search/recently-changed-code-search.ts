@@ -5,6 +5,7 @@ import deepEqual from "fast-deep-equal";
 import { injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
 import { CodeCompletionConfig } from "../../configuration";
+import { DocumentSelector } from "../../constants";
 import { CodeSearchEngine, type CodeSearchResult } from "./engine";
 import type { DocumentRange } from "./types";
 
@@ -26,14 +27,6 @@ function getLanguageFilter(languageId: string): string[] {
   }
   return [languageId];
 }
-
-const IndexedFileSchema = [
-  "file",
-  "vscode-vfs",
-  "untitled",
-  "vscode-notebook-cell",
-  "vscode-userdata",
-];
 
 @injectable()
 @singleton()
@@ -67,7 +60,7 @@ export class RecentlyChangedCodeSearch implements vscode.Disposable {
     this.disposables.push(
       vscode.workspace.onDidChangeTextDocument(async (event) => {
         const { document } = event;
-        if (IndexedFileSchema.includes(document.uri.scheme)) {
+        if (vscode.languages.match(DocumentSelector, document)) {
           this.handleDidChangeTextDocument(event);
         }
       }),

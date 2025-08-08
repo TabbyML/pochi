@@ -8,6 +8,15 @@ declare global {
       thisArg?: any,
     ): Promise<U[]>;
   }
+  interface ReadonlyArray<T> {
+    // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+    distinct(identity?: (x: T) => any): Array<T>;
+    mapAsync<U>(
+      callbackfn: (value: T, index: number, array: T[]) => U | Promise<U>,
+      // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+      thisArg?: any,
+    ): Promise<U[]>;
+  }
 }
 
 if (!Array.prototype.distinct) {

@@ -3,6 +3,7 @@
 import { LRUCache } from "lru-cache";
 import hashObject from "object-hash";
 import * as vscode from "vscode";
+import { DocumentSelector } from "./constants";
 import {
   type CompletionContext,
   buildCompletionContextWithAppend,
@@ -25,14 +26,15 @@ export function calculateCompletionContextHash(
 ): string {
   return hashObject({
     document: {
-      uri: context.document.uri,
+      uri: context.document.uri.toString(),
       prefix: context.prefix,
       suffix: context.suffix,
     },
     otherDocuments: vscode.workspace.textDocuments
       .filter((doc) => doc.uri.toString() !== context.document.uri.toString())
+      .filter((doc) => vscode.languages.match(DocumentSelector, doc))
       .map((doc) => ({
-        uri: doc.uri,
+        uri: doc.uri.toString(),
         version: doc.version,
       })),
   });

@@ -46,6 +46,7 @@ import { extractNonReservedWordList, isBlank } from "./utils/strings";
 import "./utils/array"; // for mapAsync
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { PochiConfiguration } from "@/integrations/configuration";
+import { DocumentSelector } from "./constants";
 
 const logger = getLogger("CodeCompletion.Provider");
 
@@ -94,13 +95,7 @@ export class CompletionProvider
 
     this.disposables.push(
       vscode.languages.registerInlineCompletionItemProvider(
-        [
-          { scheme: "file" },
-          { scheme: "vscode-vfs" },
-          { scheme: "untitled" },
-          { scheme: "vscode-notebook-cell" },
-          { scheme: "vscode-userdata" },
-        ],
+        DocumentSelector,
         this,
       ),
     );
@@ -506,7 +501,7 @@ export class CompletionProvider
             solution.extraContext,
             config.postprocess,
           );
-          solution.items.push(...postprocessed);
+          solution.addItems(postprocessed);
         } catch (error) {
           if (isCanceledError(error)) {
             logger.debug("Fetching completion canceled.");
@@ -583,7 +578,7 @@ export class CompletionProvider
               solution.extraContext,
               config.postprocess,
             );
-            solution.items.push(...postprocessed);
+            solution.addItems(postprocessed);
             if (cancellationToken.isCancellationRequested) {
               throw new AbortError();
             }
@@ -616,18 +611,20 @@ export class CompletionProvider
             entry.context,
           );
           const forwardingSolution = new CompletionSolution();
-          forwardingSolution.extraContext = solution?.extraContext ?? {};
-          forwardingSolution.isCompleted = solution?.isCompleted ?? false;
-          forwardingSolution.items = entry.items;
+          forwardingSolution.extraContext = solution.extraContext ?? {};
+          forwardingSolution.isCompleted = solution.isCompleted ?? false;
+          forwardingSolution.setItems(entry.items);
           this.cache.set(forwardingContextHash, forwardingSolution);
         }
 
         // postprocess: postCache
-        solution.items = await postCacheProcess(
-          solution.items,
-          context,
-          solution.extraContext,
-          config.postprocess,
+        solution.setItems(
+          await postCacheProcess(
+            solution.items,
+            context,
+            solution.extraContext,
+            config.postprocess,
+          ),
         );
         if (cancellationToken.isCancellationRequested) {
           throw new AbortError();

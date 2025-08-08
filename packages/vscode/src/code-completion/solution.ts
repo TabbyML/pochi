@@ -30,46 +30,6 @@ export class CompletionResultItem {
     return new CompletionResultItem(text, this.eventId);
   }
 
-  toCompletionItem(
-    context: CompletionContext,
-  ): vscode.CompletionItem | undefined {
-    if (isBlank(this.text)) {
-      return undefined;
-    }
-
-    const document = context.document;
-    const position = context.position;
-    const linePrefix = document.getText(
-      new vscode.Range(new vscode.Position(position.line, 0), position),
-    );
-    const wordPrefix = linePrefix.match(/(\w+)$/)?.[0] ?? "";
-    const insertText = context.selectedCompletionInsertion + this.text;
-
-    const insertLines = splitLines(insertText);
-    const firstLine = insertLines[0] || "";
-    const secondLine = insertLines[1] || "";
-    return {
-      label: {
-        label: wordPrefix + firstLine,
-        detail: secondLine,
-        description: "Tabby",
-      },
-      kind: vscode.CompletionItemKind.Text,
-      documentation: new vscode.MarkdownString(
-        `\`\`\`\n${linePrefix + insertText}\n\`\`\`\n ---\nSuggested by Tabby.`,
-      ),
-      textEdit: {
-        newText: wordPrefix + insertText,
-        range: new vscode.Range(
-          position.line,
-          position.character - wordPrefix.length,
-          position.line,
-          position.character + context.lineEndReplaceLength,
-        ),
-      },
-    };
-  }
-
   toInlineCompletionItem(
     context: CompletionContext,
   ): vscode.InlineCompletionItem | undefined {
@@ -90,20 +50,33 @@ export class CompletionResultItem {
       ),
     };
   }
+
+  isSameWith(other: CompletionResultItem): boolean {
+    return this.text === other.text;
+  }
 }
 
 export class CompletionSolution {
-  extraContext: CompletionExtraContexts = {};
-  isCompleted = false;
-  items: CompletionResultItem[] = [];
+  private resultItems: CompletionResultItem[] = [];
 
-  toCompletionList(context: CompletionContext): vscode.CompletionList {
-    return {
-      isIncomplete: !this.isCompleted,
-      items: this.items
-        .map((item) => item.toCompletionItem(context))
-        .filter((item): item is vscode.CompletionItem => item !== undefined),
-    };
+  public extraContext: CompletionExtraContexts = {};
+  public isCompleted = false;
+
+  get items(): readonly CompletionResultItem[] {
+    return this.resultItems;
+  }
+
+  addItems(items: readonly CompletionResultItem[]): void {
+    for (const item of items) {
+      if (!this.resultItems.some((i) => i.isSameWith(item))) {
+        this.resultItems.push(item);
+      }
+    }
+  }
+
+  setItems(items: readonly CompletionResultItem[]): void {
+    this.resultItems = [];
+    this.addItems(items);
   }
 
   toInlineCompletionList(

@@ -5,6 +5,7 @@ import { LRUCache } from "lru-cache";
 import { injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
 import { CodeCompletionConfig } from "../configuration";
+import { DocumentSelector } from "../constants";
 
 function pickConfig(config: (typeof CodeCompletionConfig)["value"]) {
   return config.prompt.collectSnippetsFromRecentOpenedFiles;
@@ -35,7 +36,12 @@ export class EditorVisibleRangesTracker implements vscode.Disposable {
 
     this.disposables.push(
       vscode.window.onDidChangeActiveTextEditor((editor) => {
-        this.handleDidChangeActiveTextEditor(editor);
+        if (
+          editor &&
+          vscode.languages.match(DocumentSelector, editor.document)
+        ) {
+          this.handleDidChangeActiveTextEditor(editor);
+        }
       }),
     );
   }
@@ -53,10 +59,8 @@ export class EditorVisibleRangesTracker implements vscode.Disposable {
     this.history = undefined;
   }
 
-  private handleDidChangeActiveTextEditor(
-    editor: vscode.TextEditor | undefined,
-  ) {
-    if (this.history && editor) {
+  private handleDidChangeActiveTextEditor(editor: vscode.TextEditor) {
+    if (this.history) {
       const visibleRange = editor.visibleRanges[0];
       if (visibleRange) {
         this.version++;
