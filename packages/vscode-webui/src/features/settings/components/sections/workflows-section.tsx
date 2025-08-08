@@ -34,6 +34,7 @@ export const WorkflowsSection: React.FC = () => {
                 key={workflow.id}
                 title={workflow.id}
                 icon={<Workflow className="size-4 text-muted-foreground" />}
+                onClick={() => handleEditWorkflow(workflow.id)}
                 actions={[
                   {
                     icon: <Edit className="size-3.5" />,

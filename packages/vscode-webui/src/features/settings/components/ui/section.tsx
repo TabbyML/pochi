@@ -73,10 +73,16 @@ export const SubSection: React.FC<SectionProps> = (props) => {
 export const ScetionItem: React.FC<{
   title: string;
   icon: React.ReactNode;
+  onClick?: () => void;
   actions?: { icon: React.ReactNode; onClick: () => void }[];
-}> = ({ title, icon, actions }) => {
+}> = ({ title, icon, onClick, actions }) => {
   return (
-    <div className="group rounded-md border p-2">
+    <div
+      className={cn("group rounded-md border p-2", {
+        "cursor-pointer": !!onClick,
+      })}
+      onClick={onClick}
+    >
       <div className="flex items-center justify-between">
         <div className="flex flex-1 items-center overflow-x-hidden">
           <div className="flex size-6 shrink-0 items-center justify-center">

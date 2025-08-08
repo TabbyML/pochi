@@ -115,7 +115,7 @@ export function ModelSelect({
                     target="_blank"
                     rel="noopener noreferrer"
                   >
-                    <span className="ml-3 text-primary text-xs">
+                    <span className="ml-3 text-[var(--vscode-textLink-foreground)] text-xs">
                       Manage custom models...
                     </span>
                   </a>

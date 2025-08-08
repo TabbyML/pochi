@@ -87,6 +87,7 @@ export const WorkspaceRulesSection: React.FC = () => {
               title={rule.label ?? rule.relativeFilepath ?? rule.filepath}
               key={rule.filepath}
               icon={<FileIcon className="size-4 text-muted-foreground" />}
+              onClick={() => vscodeHost.openFile(rule.filepath)}
               actions={[
                 {
                   icon: <Edit className="size-3.5" />,
