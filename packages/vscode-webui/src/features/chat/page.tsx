@@ -33,7 +33,6 @@ import { useMinionId } from "@/lib/hooks/use-minion-id";
 import { vscodeHost } from "@/lib/vscode";
 
 import { usePochiModelSettings } from "@/lib/hooks/use-pochi-model-settings";
-import type { GitDiff } from "@ragdoll/vscode-webui-bridge";
 import { ChatArea } from "./components/chat-area";
 import { ChatInputForm } from "./components/chat-input-form";
 import { ErrorMessageView } from "./components/error-message-view";
@@ -218,19 +217,11 @@ function Chat({ auth, task, isTaskLoading }: ChatProps) {
   const buildEnvironment = useCallback(async () => {
     const environment = await vscodeHost.readEnvironment();
 
-    let userEdits: GitDiff[] | undefined;
-    const lastCheckpointHash = findLastCheckpointFromMessages(messages);
-    if (lastCheckpointHash && autoApproveGuard.current) {
-      userEdits =
-        (await vscodeHost.diffWithCheckpoint(lastCheckpointHash)) ?? undefined;
-    }
-
     return {
       todos: todosRef.current,
       ...environment,
-      userEdits,
     } satisfies Environment;
-  }, [messages, autoApproveGuard.current]);
+  }, []);
 
   const { todos } = useTodos({
     initialTodos: task?.todos,
@@ -542,6 +533,7 @@ function useUid(task: Task | null) {
   };
 }
 
+// @ts-ignore
 function findLastCheckpointFromMessages(
   messages: ExtendedUIMessage[],
 ): string | undefined {
