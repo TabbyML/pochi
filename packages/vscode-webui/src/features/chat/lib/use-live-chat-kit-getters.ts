@@ -79,6 +79,18 @@ function useLLM(): React.RefObject<LLMRequestData> {
       };
     }
 
+    if (selectedModel.type === "vscode") {
+      return {
+        type: "vscode" as const,
+        modelId: `${selectedModel.vscodeModel.vendor}:${selectedModel.vscodeModel.family}:${selectedModel.vscodeModel.id}:${selectedModel.vscodeModel.version}`,
+        vendor: selectedModel.vscodeModel.vendor,
+        family: selectedModel.vscodeModel.family,
+        version: selectedModel.vscodeModel.version,
+        id: selectedModel.vscodeModel.id,
+        vscodeLmRequestApi: vscodeHost.vscodeLmRequest,
+      };
+    }
+
     const { provider } = selectedModel;
     if (provider.kind === "google-vertex-tuning") {
       return {

@@ -12,8 +12,10 @@ import type {
   SessionState,
   TaskIdParams,
   UserEditsDiff,
+  VSCodeModel,
   WorkspaceState,
 } from "./index";
+import type { VSCodeLmRequest } from "./types/models";
 
 export interface VSCodeHostApi {
   readResourceURI(): Promise<ResourceURI>;
@@ -254,6 +256,10 @@ export interface VSCodeHostApi {
   readCustomModelSetting(): Promise<
     ThreadSignalSerialization<CustomModelSetting[] | undefined>
   >;
+
+  readVSCodeModels(): Promise<ThreadSignalSerialization<VSCodeModel[]>>;
+
+  vscodeLmRequest: VSCodeLmRequest;
 }
 
 export interface WebviewHostApi {

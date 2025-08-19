@@ -44,6 +44,8 @@ import type {
   SaveCheckpointOptions,
   SessionState,
   VSCodeHostApi,
+  VSCodeLmRequestOptions,
+  VSCodeModel,
   WorkspaceState,
 } from "@getpochi/common/vscode-webui-bridge";
 import type {
@@ -83,6 +85,8 @@ import {
 } from "../terminal-link-provider/url-utils";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { TerminalState } from "../terminal/terminal-state";
+// biome-ignore lint/style/useImportType: needed for dependency injection
+import { VSCodeLmProvider } from "../vscode-lm-provider";
 
 const logger = getLogger("VSCodeHostImpl");
 
@@ -105,6 +109,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     private readonly thirdMcpImporter: ThirdMcpImporter,
     private readonly checkpointService: CheckpointService,
     private readonly pochiConfiguration: PochiConfiguration,
+    private readonly vscodeLmProvider: VSCodeLmProvider,
   ) {}
 
   listRuleFiles = async (): Promise<RuleFile[]> => {
@@ -652,6 +657,15 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   > => {
     return ThreadSignal.serialize(this.pochiConfiguration.customModelSettings);
   };
+
+  readVSCodeModels = async (): Promise<
+    ThreadSignalSerialization<VSCodeModel[]>
+  > => {
+    return ThreadSignal.serialize(this.vscodeLmProvider.models);
+  };
+
+  vscodeLmRequest = (params: VSCodeLmRequestOptions) =>
+    this.vscodeLmProvider.request(params);
 
   dispose() {
     for (const disposable of this.disposables) {

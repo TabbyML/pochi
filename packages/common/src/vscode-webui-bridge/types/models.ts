@@ -1,3 +1,5 @@
+import type { LanguageModelV2Prompt } from "@ai-sdk/provider";
+import type { ThreadSignalSerialization } from "@quilted/threads/signals";
 import z from "zod";
 
 const BaseModelSettings = z.object({
@@ -55,3 +57,21 @@ export const CustomModelSetting = z.discriminatedUnion("kind", [
  * Custom model setting
  */
 export type CustomModelSetting = z.infer<typeof CustomModelSetting>;
+
+export interface VSCodeModel {
+  vendor?: string;
+  family?: string;
+  version?: string;
+  id?: string;
+  contextWindow: number;
+}
+
+export interface VSCodeLmRequestOptions {
+  model: Omit<VSCodeModel, "contextWindow">;
+  messages: LanguageModelV2Prompt;
+  abortSignal?: AbortSignal;
+}
+
+export type VSCodeLmRequest = (
+  options: VSCodeLmRequestOptions,
+) => Promise<ThreadSignalSerialization<{ text: string; finished: boolean }>>;

@@ -11,6 +11,7 @@
     "tsc": "tsc"
   },
   "dependencies": {
+    "@quilted/threads": "catalog:",
     "@livestore/livestore": "catalog:",
     "@livestore/react": "catalog:",
     "@getpochi/common": "workspace:*",

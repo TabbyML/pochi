@@ -410,6 +410,7 @@
     "tsyringe": "^4.10.0"
   },
   "devDependencies": {
+    "@ai-sdk/provider": "catalog:",
     "@getpochi/tools": "workspace:*",
     "@types/diff": "^7.0.2",
     "@types/object-hash": "^3.0.6",

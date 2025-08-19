@@ -1,6 +1,8 @@
 import { apiClient, authHooks } from "@/lib/auth-client";
 import { useCustomModelSetting } from "@/lib/hooks/use-custom-model-setting";
+import { useVSCodeModels } from "@/lib/hooks/use-vscode-model";
 import type { CustomModelSetting } from "@getpochi/common/vscode-webui-bridge";
+import type { VSCodeModel } from "@getpochi/common/vscode-webui-bridge";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { useSettingsStore } from "../store";
@@ -16,15 +18,23 @@ export type DisplayModel =
     }
   | {
       type: "byok";
-      id: string;
-      modelId: string;
-      name: string;
+      id: string; // identifier for select
+      modelId: string; // identifier for request
+      name: string; // display name
       contextWindow: number;
       maxTokens: number;
       useToolCallMiddleware?: boolean;
       costType: "basic";
       // https://github.com/microsoft/TypeScript/issues/31501#issuecomment-1079728677
       provider: RemoveModelsField<CustomModelSetting>;
+    }
+  | {
+      type: "vscode";
+      id: string;
+      modelId: string;
+      name: string;
+      contextWindow: number;
+      vscodeModel: VSCodeModel;
     };
 
 type RemoveModelsField<Type> = {
@@ -54,6 +64,8 @@ export function useModels() {
   const { customModelSettings, isLoading: isLoadingCustomModelSettings } =
     useCustomModelSetting();
 
+  const vscodeModels = useVSCodeModels();
+
   const customModels = useMemo(() => {
     return customModelSettings?.flatMap((modelSetting) => {
       const { models, ...provider } = modelSetting;
@@ -74,35 +86,60 @@ export function useModels() {
     });
   }, [customModelSettings]);
 
+  const vscModels = useMemo(() => {
+    return vscodeModels.map<Extract<DisplayModel, { type: "vscode" }>>(
+      (model) => ({
+        type: "vscode" as const,
+        id: `${model.id}`,
+        name: `${model.id} (${model.vendor})`,
+        modelId: `${model.vendor}/${model.family}/${model.id}/${model.version}`,
+        contextWindow: model.contextWindow,
+        vscodeModel: model,
+      }),
+    );
+  }, [vscodeModels]);
+
   const hasUser = !!user;
   const models = useMemo(() => {
     if (isLoading || !hasUser || !data) {
       return customModels || [];
     }
 
-    let defaultModels = data.map<DisplayModel>((model) => ({
-      type: "hosted" as const,
-      ...model,
-      name: model.id,
-      modelId: model.id,
-    }));
-    if (!enablePochiModels) {
+    const allModels: DisplayModel[] = [];
+
+    let defaultModels = data?.map<Extract<DisplayModel, { type: "hosted" }>>(
+      (model) => ({
+        type: "hosted" as const,
+        ...model,
+        name: model.id,
+        modelId: model.id,
+      }),
+    );
+    if (!enablePochiModels && defaultModels) {
       defaultModels = defaultModels.filter(
         (model) => !model.id.startsWith("pochi/"),
       );
     }
 
-    // Add custom models from OpenAI compatible models if available
-    if (customModels && customModels.length > 0) {
-      return [...defaultModels, ...customModels];
+    if (defaultModels && defaultModels.length > 0) {
+      allModels.push(...defaultModels);
     }
 
-    return defaultModels;
-  }, [data, enablePochiModels, customModels, hasUser, isLoading]);
+    // Add custom models from OpenAI compatible models if available
+    if (customModels && customModels.length > 0) {
+      allModels.push(...customModels);
+    }
+
+    if (vscModels && vscModels.length > 0) {
+      allModels.push(...vscModels);
+    }
+
+    return allModels;
+  }, [data, enablePochiModels, customModels, vscModels, isLoading, hasUser]);
 
   return {
     models,
-    isLoading: !(!isLoading && !isLoadingCustomModelSettings), // make sure hosted model and custom model are all loaded
+    isLoading: !(!isLoading && !isLoadingCustomModelSettings), // make sure models are all loaded
   };
 }
 
@@ -124,6 +161,12 @@ export function useSelectedModels() {
     if (basicModels.length > 0) {
       groups.push({ title: "Swift", models: basicModels });
     }
+
+    const vscodeModels = models.filter((m) => m.type === "vscode");
+    if (vscodeModels.length > 0) {
+      groups.push({ title: "VSCode", models: vscodeModels });
+    }
+
     const customModels = models.filter((m) => m.type === "byok");
     if (customModels.length > 0) {
       groups.push({

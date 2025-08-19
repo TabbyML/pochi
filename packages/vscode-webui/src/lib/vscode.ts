@@ -75,6 +75,8 @@ function createVSCodeHost(): VSCodeHostApi {
         "diffWithCheckpoint",
         "showInformationMessage",
         "readCustomModelSetting",
+        "readVSCodeModels",
+        "vscodeLmRequest",
       ],
       exports: {
         openTask(params) {
