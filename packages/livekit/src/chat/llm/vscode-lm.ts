@@ -1,4 +1,7 @@
-import type { LanguageModelV2 } from "@ai-sdk/provider";
+import type {
+  LanguageModelV2,
+  LanguageModelV2StreamPart,
+} from "@ai-sdk/provider";
 import type { Store } from "@livestore/livestore";
 import {
   type ThreadSignalSerialization,
@@ -20,40 +23,37 @@ export function createVSCodeModel(
     supportedUrls: {},
     doGenerate: async () => Promise.reject("Not implemented"),
     doStream: async ({ prompt }) => {
-      let response: ThreadSignalSerialization<{
-        text: string;
-        finished: boolean;
-      }>;
-      try {
-        response = await llm.vscodeLmRequestApi({
-          messages: prompt,
-          model: {
-            vendor: llm.vendor,
-            family: llm.family,
-            id: llm.id,
-            version: llm.version,
-          },
-        });
-      } catch (error) {
-        console.log("VSCode LM request error", error);
-      }
-
-      const stream = new ReadableStream({
+      const stream = new ReadableStream<LanguageModelV2StreamPart>({
         async start(controller) {
-          try {
-            const signal = threadSignal(response);
-            signal.subscribe((chunk) => {
+          controller.enqueue({
+            type: "text-start",
+            id: "0",
+          });
+          await llm.vscodeLmRequestApi(
+            {
+              messages: prompt,
+              model: {
+                vendor: llm.vendor,
+                family: llm.family,
+                id: llm.id,
+                version: llm.version,
+              },
+            },
+            async (chunk) => {
               console.log("chunk", chunk);
-              // Process each chunk of the response
-              if (chunk.finished) {
-                controller.close();
-              } else {
-                controller.enqueue(chunk.text);
-              }
-            });
-          } catch (error) {
-            controller.error(error);
-          }
+              controller.enqueue({
+                id: "0",
+                type: "text-delta",
+                delta: chunk,
+              });
+            },
+          );
+          controller.enqueue({
+            type: "text-end",
+            id: "0",
+          });
+          console.log("done");
+          controller.close();
         },
       });
 

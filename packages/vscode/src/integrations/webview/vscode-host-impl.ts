@@ -44,6 +44,7 @@ import type {
   SaveCheckpointOptions,
   SessionState,
   VSCodeHostApi,
+  VSCodeLmRequest,
   VSCodeLmRequestOptions,
   VSCodeModel,
   WorkspaceState,
@@ -664,8 +665,8 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     return ThreadSignal.serialize(this.vscodeLmProvider.models);
   };
 
-  vscodeLmRequest = (params: VSCodeLmRequestOptions) =>
-    this.vscodeLmProvider.request(params);
+  vscodeLmRequest: VSCodeLmRequest = (params, onChunk) =>
+    this.vscodeLmProvider.request(params, onChunk);
 
   dispose() {
     for (const disposable of this.disposables) {

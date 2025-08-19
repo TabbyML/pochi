@@ -74,4 +74,5 @@ export interface VSCodeLmRequestOptions {
 
 export type VSCodeLmRequest = (
   options: VSCodeLmRequestOptions,
-) => Promise<ThreadSignalSerialization<{ text: string; finished: boolean }>>;
+  onChunk: (chunk: string) => Promise<void>,
+) => Promise<void>;

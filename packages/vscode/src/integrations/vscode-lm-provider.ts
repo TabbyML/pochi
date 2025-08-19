@@ -42,7 +42,7 @@ export class VSCodeLmProvider implements vscode.Disposable {
     }
   }
 
-  request: VSCodeLmRequest = async ({ model, messages }) => {
+  request: VSCodeLmRequest = async ({ model, messages }, onChunk) => {
     logger.info("vscode lm request");
     const vscodeModels = await vscode.lm.selectChatModels(model);
     if (vscodeModels.length === 0) {
@@ -52,11 +52,16 @@ export class VSCodeLmProvider implements vscode.Disposable {
       throw new Error("Multiple suitable VSCode models found");
     }
     const [vscodeModel] = vscodeModels;
-    logger.info(`vscode lm request ${vscodeModel.id}`);
+    const vscodeMessages = toVSCodeMessage(messages);
+    logger.info(`vscode lm request ${vscodeModel.id}`, vscodeMessages);
 
     let response: vscode.LanguageModelChatResponse | undefined = undefined;
     try {
-      response = await vscodeModel.sendRequest(toVSCodeMessage(messages));
+      response = await vscodeModel.sendRequest([
+        vscode.LanguageModelChatMessage.User(
+          "Please share something about python",
+        ),
+      ]);
     } catch (error) {
       if (error instanceof vscode.LanguageModelError) {
         logger.error(
@@ -67,23 +72,11 @@ export class VSCodeLmProvider implements vscode.Disposable {
       }
     }
 
-    const result = signal({ text: "", finished: false });
-
     for await (const chunk of response?.text ?? []) {
-      result.value = {
-        text: chunk,
-        finished: false,
-      };
+      await onChunk(chunk);
     }
 
     logger.info("vscode lm request success");
-
-    result.value = {
-      text: result.value.text,
-      finished: true,
-    };
-
-    return ThreadSignal.serialize(result);
   };
 
   dispose() {
