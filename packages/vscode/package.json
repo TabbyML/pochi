@@ -408,7 +408,7 @@
     "simple-git": "^3.28.0",
     "stats-logscale": "^1.0.9",
     "tsyringe": "^4.10.0",
-    "zod": "^4.0.17"
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@getpochi/tools": "workspace:*",
