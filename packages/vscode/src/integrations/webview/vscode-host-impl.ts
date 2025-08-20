@@ -670,8 +670,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     };
   };
 
-  chatVSCodeLm: VSCodeLmRequest = (params, onChunk) =>
-    this.vscodeLm.request(params, onChunk);
+  chatVSCodeLm: VSCodeLmRequest = (...args) => this.vscodeLm.chat(...args);
 
   dispose() {
     for (const disposable of this.disposables) {

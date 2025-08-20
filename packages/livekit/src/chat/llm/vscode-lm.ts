@@ -2,28 +2,25 @@ import type {
   LanguageModelV2,
   LanguageModelV2StreamPart,
 } from "@ai-sdk/provider";
-import type { Store } from "@livestore/livestore";
 import type { RequestData } from "../../types";
-import type { LLMRequest } from "./types";
 
 export function createVSCodeLmModel(
-  _store: Store | undefined,
   llm: Extract<RequestData["llm"], { type: "vscode" }>,
-  _payload: LLMRequest,
 ) {
   const model: LanguageModelV2 = {
     specificationVersion: "v2",
-    provider: "VSCode",
+    provider: "vscode",
     modelId: llm.modelId || "<default>",
     // FIXME(zhuquan): add supported URLs by model capabilities
     supportedUrls: {},
     doGenerate: async () => Promise.reject("Not implemented"),
-    doStream: async ({ prompt }) => {
+    doStream: async ({ prompt, abortSignal, stopSequences }) => {
+      const textId = "txt-0";
       const stream = new ReadableStream<LanguageModelV2StreamPart>({
         async start(controller) {
           controller.enqueue({
             type: "text-start",
-            id: "0",
+            id: textId,
           });
           llm
             .chatVSCodeLm(
@@ -35,19 +32,30 @@ export function createVSCodeLmModel(
                   id: llm.id,
                   version: llm.version,
                 },
+                stopSequences,
+                abortSignal,
               },
               async (chunk) => {
                 controller.enqueue({
-                  id: "0",
+                  id: textId,
                   type: "text-delta",
                   delta: chunk,
                 });
               },
             )
-            .finally(() => {
+            .then(() => {
               controller.enqueue({
                 type: "text-end",
-                id: "0",
+                id: textId,
+              });
+              controller.enqueue({
+                type: "finish",
+                usage: {
+                  inputTokens: undefined,
+                  outputTokens: undefined,
+                  totalTokens: undefined,
+                },
+                finishReason: "stop",
               });
               controller.close();
             });

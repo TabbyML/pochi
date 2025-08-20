@@ -21,6 +21,7 @@ export type { TaskIdParams, NewTaskParams } from "./types/task-params";
 export {
   CustomModelSetting,
   type VSCodeLmModel,
+  type VSCodeLmRequestOptions,
   type VSCodeLmRequest,
 } from "./types/models";
 export type { RuleFile } from "./types/rules";

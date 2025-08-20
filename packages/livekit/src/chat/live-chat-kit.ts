@@ -105,6 +105,7 @@ export class LiveChatKit<
         });
       }
       if (onBeforeMakeRequest) {
+        chat.setStatus({ status: "submitted" });
         await onBeforeMakeRequest({ messages });
       }
       return originMakeRequest.apply(chat, args);

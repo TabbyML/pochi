@@ -5,6 +5,7 @@ import type {
   VSCodeLmRequest,
 } from "@getpochi/common/vscode-webui-bridge";
 import { signal } from "@preact/signals-core";
+import { ThreadAbortSignal } from "@quilted/threads";
 import { injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
 // biome-ignore lint/style/useImportType: needed for dependency injection
@@ -73,8 +74,10 @@ export class VSCodeLm implements vscode.Disposable {
     }
   }
 
-  request: VSCodeLmRequest = async ({ model, prompt: messages }, onChunk) => {
-    logger.info("vscode lm request");
+  chat: VSCodeLmRequest = async (
+    { model, prompt, abortSignal, stopSequences },
+    onChunk,
+  ) => {
     const vscodeModels = await vscode.lm.selectChatModels(model);
     if (vscodeModels.length === 0) {
       throw new Error("No suitable VSCode model found");
@@ -83,12 +86,51 @@ export class VSCodeLm implements vscode.Disposable {
       throw new Error("Multiple suitable VSCode models found");
     }
     const [vscodeModel] = vscodeModels;
-    logger.info(`vscode lm request ${vscodeModel.id}`);
 
-    let response: vscode.LanguageModelChatResponse | undefined = undefined;
+    // Only first stop words is used.
+    const stop = stopSequences?.[0];
+
+    const signal = new ThreadAbortSignal(abortSignal);
+    const cancel = cancellationSourceFromAbortSignal(signal);
     try {
-      const vscodeMessages = toVSCodeMessage(messages);
-      response = await vscodeModel.sendRequest(vscodeMessages);
+      const vscodeMessages = toVSCodeMessage(prompt);
+      logger.debug("Sending VSCode LM request");
+      const response = await vscodeModel.sendRequest(
+        vscodeMessages,
+        undefined,
+        cancel.token,
+      );
+
+      let buffer = "";
+      for await (const chunk of response.text) {
+        if (signal.aborted) {
+          logger.info("VSCode LM request aborted");
+          break;
+        }
+
+        buffer += chunk;
+        if (stop) {
+          const index = buffer.indexOf(stop);
+          if (index > 0) {
+            logger.debug("VSCode LM request stopped by stop word");
+            // Stop words found.
+            onChunk(buffer.slice(0, index));
+            break;
+          }
+
+          if (index < 0) {
+            const endIndex = getPotentialStartIndex(buffer, stop);
+            if (endIndex === null) {
+              onChunk(buffer);
+              buffer = "";
+              continue;
+            }
+
+            onChunk(buffer.slice(0, endIndex));
+            buffer = buffer.slice(endIndex);
+          }
+        }
+      }
     } catch (error) {
       if (error instanceof vscode.LanguageModelError) {
         logger.error(
@@ -97,13 +139,10 @@ export class VSCodeLm implements vscode.Disposable {
       } else {
         logger.error("Failed to send VSCode LM request", error);
       }
+    } finally {
+      cancel.dispose();
     }
-
-    for await (const chunk of response?.text ?? []) {
-      await onChunk(chunk);
-    }
-
-    logger.info("vscode lm request success");
+    logger.debug("Finish VSCode LM request");
   };
 
   dispose() {
@@ -136,13 +175,6 @@ function toVSCodeMessage(
               if (part.type === "text") {
                 return new vscode.LanguageModelTextPart(part.text);
               }
-              if (part.type === "tool-call") {
-                return new vscode.LanguageModelToolCallPart(
-                  part.toolCallId,
-                  part.toolName,
-                  part.input as object,
-                );
-              }
               return undefined;
             })
             .filter((x) => !!x),
@@ -150,17 +182,44 @@ function toVSCodeMessage(
       }
       // VSCode don't support system message
       if (message.role === "system") {
-        return vscode.LanguageModelChatMessage.Assistant(message.content);
-      }
-      if (message.role === "tool") {
-        const content = message.content.map((part) => {
-          return new vscode.LanguageModelToolResultPart(part.toolCallId, [
-            part.output.value,
-          ]);
-        });
-        return vscode.LanguageModelChatMessage.User(content);
+        return vscode.LanguageModelChatMessage.User(message.content);
       }
       return undefined;
     })
     .filter((x) => x !== undefined);
+}
+
+function cancellationSourceFromAbortSignal(abortSignal: AbortSignal) {
+  const cancellationTokenSource = new vscode.CancellationTokenSource();
+  abortSignal.addEventListener("abort", () => {
+    cancellationTokenSource.cancel();
+  });
+  return cancellationTokenSource;
+}
+
+function getPotentialStartIndex(
+  text: string,
+  searchedText: string,
+): number | null {
+  // Return null immediately if searchedText is empty.
+  if (searchedText.length === 0) {
+    return null;
+  }
+
+  // Check if the searchedText exists as a direct substring of text.
+  const directIndex = text.indexOf(searchedText);
+  if (directIndex !== -1) {
+    return directIndex;
+  }
+
+  // Otherwise, look for the largest suffix of "text" that matches
+  // a prefix of "searchedText". We go from the end of text inward.
+  for (let i = text.length - 1; i >= 0; i--) {
+    const suffix = text.substring(i);
+    if (searchedText.startsWith(suffix)) {
+      return i;
+    }
+  }
+
+  return null;
 }

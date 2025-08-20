@@ -1,4 +1,5 @@
 import type { LanguageModelV2Prompt } from "@ai-sdk/provider";
+import type { ThreadAbortSignalSerialization } from "@quilted/threads";
 import z from "zod";
 
 const BaseModelSettings = z.object({
@@ -68,7 +69,8 @@ export interface VSCodeLmModel {
 export interface VSCodeLmRequestOptions {
   model: Omit<VSCodeLmModel, "contextWindow">;
   prompt: LanguageModelV2Prompt;
-  abortSignal?: AbortSignal;
+  stopSequences?: string[];
+  abortSignal?: ThreadAbortSignalSerialization;
 }
 
 export type VSCodeLmRequest = (

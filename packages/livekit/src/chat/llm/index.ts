@@ -29,12 +29,12 @@ function createModel(
     return createGoogleVertexTuningModel(llm);
   }
 
-  if (llm.type === "pochi") {
-    return createPochiModel(store, llm, payload);
+  if (llm.type === "vscode") {
+    return createVSCodeLmModel(llm);
   }
 
-  if (llm.type === "vscode") {
-    return createVSCodeLmModel(store, llm, payload);
+  if (llm.type === "pochi") {
+    return createPochiModel(store, llm, payload);
   }
 
   throw new Error(`Unknown LLM type: ${llm}`);
