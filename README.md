@@ -1,7 +1,7 @@
 # Pochi
 
 <p align="center">
-  <img src="packages/vscode/assets/icons/logo128.png" alt="Pochi Logo" width="128"/>
+  <img src="https://github.com/TabbyML/pochi/blob/main/packages/vscode/assets/icons/logo128.png?raw=true" alt="Pochi Logo" width="128"/>
 </p>
 
 <p align="center">
