@@ -260,8 +260,7 @@ export interface VSCodeHostApi {
   readVSCodeLm(): Promise<{
     models: ThreadSignalSerialization<VSCodeLmModel[]>;
     enabled: ThreadSignalSerialization<boolean>;
-    enable: () => void;
-    disable: () => void;
+    toggle: () => void;
   }>;
 
   vscodeLmRequest: VSCodeLmRequest;

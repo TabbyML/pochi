@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/tooltip";
 import { type User, apiClient } from "@/lib/auth-client";
 import { useCustomModelSetting } from "@/lib/hooks/use-custom-model-setting";
-import { useVSCodeLmModels } from "@/lib/hooks/use-vscode-model";
+import { useVSCodeLmModels } from "@/lib/hooks/use-vscode-lm-models";
 import { useQuery } from "@tanstack/react-query";
 import { DotIcon, PencilIcon } from "lucide-react";
 import { useMemo } from "react";
@@ -66,8 +66,7 @@ export const ModelSection: React.FC<ModelSectionProps> = ({ user }) => {
   const {
     models: vscodeLmModels,
     isLoading: isLoadingVscodeLmModels,
-    enable,
-    disable,
+    toggle,
     enabled,
   } = useVSCodeLmModels();
 
@@ -145,7 +144,7 @@ export const ModelSection: React.FC<ModelSectionProps> = ({ user }) => {
                     checked={enabled}
                     onClick={(e) => {
                       e.stopPropagation();
-                      enabled ? disable?.() : enable?.();
+                      toggle?.();
                     }}
                   />
                 </div>
@@ -176,12 +175,13 @@ export const ModelSection: React.FC<ModelSectionProps> = ({ user }) => {
                     ))
                   ) : (
                     <div className="text-muted-foreground text-xs">
-                      No Models Found
+                      No copilot models found
                     </div>
                   )
                 ) : (
                   <div className="text-muted-foreground text-xs">
-                    Not Available
+                    Copilot models are disabled. Turn on the switch to enable
+                    them.
                   </div>
                 )}
               </div>

@@ -1,6 +1,6 @@
 import { apiClient, authHooks } from "@/lib/auth-client";
 import { useCustomModelSetting } from "@/lib/hooks/use-custom-model-setting";
-import { useVSCodeLmModels } from "@/lib/hooks/use-vscode-model";
+import { useVSCodeLmModels } from "@/lib/hooks/use-vscode-lm-models";
 import type { CustomModelSetting } from "@getpochi/common/vscode-webui-bridge";
 import type { VSCodeLmModel } from "@getpochi/common/vscode-webui-bridge";
 import { useQuery } from "@tanstack/react-query";

@@ -661,14 +661,12 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   readVSCodeLm = async (): Promise<{
     models: ThreadSignalSerialization<VSCodeLmModel[]>;
     enabled: ThreadSignalSerialization<boolean>;
-    enable: () => void;
-    disable: () => void;
+    toggle: () => void;
   }> => {
     return {
       models: ThreadSignal.serialize(this.vscodeLm.models),
       enabled: ThreadSignal.serialize(this.pochiConfiguration.vscodeLmEnabled),
-      enable: this.vscodeLm.enable.bind(this.vscodeLm),
-      disable: this.vscodeLm.disable.bind(this.vscodeLm),
+      toggle: this.vscodeLm.toggle.bind(this.vscodeLm),
     };
   };
 

@@ -37,18 +37,17 @@ export class VSCodeLm implements vscode.Disposable {
     this.updateModels();
   }
 
-  enable() {
+  toggle() {
     if (!isVSCodeIDE()) {
       return;
     }
-    updateVscodeLmEnabled(true).then(() => {
-      this.updateModels();
-    });
-  }
-
-  disable() {
-    updateVscodeLmEnabled(false).then(() => {
-      this.models.value = [];
+    const enabled = !this.config.vscodeLmEnabled.value;
+    updateVscodeLmEnabled(enabled).then(() => {
+      if (enabled) {
+        this.initModels();
+      } else {
+        this.models.value = [];
+      }
     });
   }
 
