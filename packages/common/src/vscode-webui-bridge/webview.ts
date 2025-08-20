@@ -35,7 +35,7 @@ export interface VSCodeHostApi {
     value: WorkspaceState[K],
   ): Promise<void>;
 
-  readEnvironment(): Promise<Environment>;
+  readEnvironment(isSubTask?: boolean): Promise<Environment>;
 
   previewToolCall(
     toolName: string,
