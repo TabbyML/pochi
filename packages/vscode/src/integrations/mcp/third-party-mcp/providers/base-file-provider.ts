@@ -1,10 +1,9 @@
-import { homedir } from "node:os";
-import * as path from "node:path";
 import { isFileExists, readFileContent } from "@/lib/fs";
 import { getLogger } from "@/lib/logger";
 import * as vscode from "vscode";
 import type { McpServerConfig } from "../../types";
 import type { McpConfigProvider } from "../provider";
+import { expandPathSegments, normalizePath } from "./path-utils";
 
 const logger = getLogger("BaseFileMcpProvider");
 
@@ -19,6 +18,8 @@ export abstract class BaseFileMcpProvider implements McpConfigProvider {
   abstract readonly name: string;
   abstract readonly description: string;
   protected abstract readonly pathSegments: PathSegments;
+
+  protected readonly configFieldName: string = "mcpServers";
 
   private _configPath: string | undefined;
   private _pathResolved = false;
@@ -47,7 +48,9 @@ export abstract class BaseFileMcpProvider implements McpConfigProvider {
         return {};
       }
       const config = JSON.parse(content) as ConfigFile;
-      return (config.mcpServers as Record<string, McpServerConfig>) || {};
+      const servers =
+        (config[this.configFieldName] as Record<string, McpServerConfig>) || {};
+      return servers;
     } catch (error) {
       logger.debug(
         `Failed to get MCP servers from ${this.name}: ${
@@ -72,30 +75,4 @@ export abstract class BaseFileMcpProvider implements McpConfigProvider {
       );
     }
   }
-}
-
-function expandPathSegments(pathSegments: string[]): string {
-  const homeDir = homedir() || process.env.HOME || "";
-  const expandedSegments = pathSegments.map((segment) => {
-    if (segment === "~") {
-      return homeDir;
-    }
-    if (process.platform === "win32") {
-      return segment.replace(/%([^%]+)%/g, (match, varName) => {
-        return process.env[varName] || match;
-      });
-    }
-    return segment.replace(/\$([A-Z_][A-Z0-9_]*)/g, (match, varName) => {
-      return process.env[varName] || match;
-    });
-  });
-  return path.join(...expandedSegments);
-}
-
-function normalizePath(filePath: string): string {
-  const homeDir = homedir();
-  if (filePath.startsWith(homeDir)) {
-    return filePath.replace(homeDir, "~");
-  }
-  return filePath;
 }

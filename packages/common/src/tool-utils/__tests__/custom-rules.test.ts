@@ -32,6 +32,9 @@ describe("collectCustomRules", () => {
       if (filePath === `${cwd}/README.pochi.md`) {
         return "workspace rule";
       }
+      if (filePath === `${cwd}/AGENTS.md`) {
+        return "agents rule";
+      }
       if (filePath === `${cwd}/custom.md`) {
         return "custom rule";
       }
@@ -42,6 +45,7 @@ describe("collectCustomRules", () => {
 
     expect(rules).toContain("# Rules from ~/.pochi/README.pochi.md\nsystem rule");
     expect(rules).toContain("# Rules from README.pochi.md\nworkspace rule");
+    expect(rules).toContain("# Rules from AGENTS.md\nagents rule");
     expect(rules).toContain("# Rules from custom.md\ncustom rule");
   });
 
