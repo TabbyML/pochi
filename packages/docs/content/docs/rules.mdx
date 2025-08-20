@@ -1,0 +1,331 @@
+---
+title: Rules
+description: Define coding standards and development guidelines
+icon: "Ruler"
+---
+
+# **Rules**
+
+**Rules** tell Pochi about your project's preferences, coding standards, and constraints. It's like giving Pochi a style guide for your codebase.
+You can edit your Rule in Pochi Extension Settings page.
+
+<div style={{ display: 'flex', justifyContent: 'center' }}>
+  <img src="/images/core-features/rule/rule-edit.png" alt="alt_text" title="image_tooltip" width="70%" />
+</div>
+
+### Setting up Workspace Rules
+
+Create `README.pochi.md` in your project root:
+
+``````markdown
+# Tabby Project Rules
+
+Tabby is a self-hosted AI coding assistant built with Rust backend and Next.js frontend. Follow these guidelines when contributing to the project.
+
+## Tech Stack
+
+### Backend (Rust)
+
+- **Core**: Rust with Cargo workspace structure
+- **Web Framework**: Axum for HTTP APIs
+- **Database**: SQLx with PostgreSQL/SQLite
+- **AI/ML**: Custom inference engine with CUDA/ROCm/Metal support
+- **Search**: Tantivy for code indexing
+- **Authentication**: JWT-based auth system
+- **Background Jobs**: Tokio-based async job system
+
+### Frontend (Next.js)
+
+- **Framework**: Next.js 13+ with App Router
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS with Radix UI components
+- **State Management**: Zustand + SWR for server state
+- **GraphQL**: URQL client with GraphQL Code Generator
+- **Forms**: React Hook Form with Zod validation
+- **Code Editor**: CodeMirror 6
+- **Rich Text**: TipTap editor
+
+### Development Tools
+
+- **Package Manager**: pnpm (required >=9)
+- **Build System**: Turbo for monorepo builds
+- **Testing**: Vitest for frontend, Rust built-in tests for backend
+- **Linting**: ESLint + Prettier for frontend, Clippy for Rust
+- **CI/CD**: GitHub Actions
+
+## Coding Standards
+
+### Rust Backend
+
+- Use `snake_case` for variables, functions, and modules
+- Use `PascalCase` for structs, enums, and traits
+- Prefer `async/await` over manual Future implementations
+- Use `anyhow::Result` for error handling in applications
+- Use `thiserror` for library error types
+- Always add proper error context with `.context()`
+- Use `tracing` for logging, not `println!` or `eprintln!`
+- Prefer `tokio::spawn` for background tasks
+- Use `serde` for serialization with proper derives
+
+### Frontend (TypeScript/React)
+
+- Use `camelCase` for variables and functions
+- Use `PascalCase` for components, interfaces, and types
+- Prefer functional components with hooks
+- Use TypeScript strict mode - always add proper types
+- Use `const` over `let` when possible
+- Prefer named exports over default exports
+- Use Tailwind CSS classes, frontavoid custom CSS when possible
+- Use Radix UI components for consistent design
+- Always handle loading and error states in components
+
+### File Organization
+
+- **Rust crates**: `/crates/` for open source, `/ee/` for enterprise features
+- **Frontend pages**: `/ee/tabby-ui/app/` (Next.js App Router)
+- **Frontend components**: `/ee/tabby-ui/components/`
+- **Shared utilities**: `/ee/tabby-ui/lib/`
+- **GraphQL schemas**: `/ee/tabby-schema/`
+- **Database**: `/ee/tabby-db/`
+
+## Testing Guidelines
+
+### Rust Testing
+
+- Write unit tests in the same file using `#[cfg(test)]`
+- Use `#[tokio::test]` for async tests
+- Use `serial_test` for tests that can't run in parallel
+- Skip golden tests during development: `cargo test -- --skip golden`
+- Use `temp_testdir` for filesystem tests
+- Mock external dependencies appropriately
+
+### Frontend Testing
+
+- Use Vitest for unit and integration tests
+- Test files should end with `.test.ts` or `.test.tsx`
+- Focus on testing user interactions and business logic
+- Use React Testing Library patterns
+- Mock GraphQL queries with URQL test utilities
+
+## Development Commands
+
+### Backend Development
+
+```bash
+# Build the project
+cargo build
+
+# Run with GPU support (choose one)
+cargo run --features cuda serve --model TabbyML/StarCoder-1B --device cuda
+cargo run --features rocm serve --model TabbyML/StarCoder-1B --device rocm
+cargo run serve --model TabbyML/StarCoder-1B --device metal
+
+# Run tests (skip slow golden tests)
+cargo test -- --skip golden
+
+# Run specific crate tests
+cargo test -p tabby-inference
+```
+
+### Frontend Development
+
+```bash
+# Install dependencies
+pnpm install
+
+# Start development server
+pnpm dev
+
+# Build for production
+pnpm build
+
+# Run tests
+pnpm test
+
+# Lint and format
+pnpm lint
+pnpm lint:fix
+
+# Generate GraphQL types
+pnpm codegen
+```
+
+### Monorepo Commands
+
+```bash
+# Build all packages
+pnpm build
+
+# Run all tests
+pnpm test
+
+# Lint all packages
+pnpm lint
+```
+
+## API & GraphQL Guidelines
+
+### GraphQL Schema
+
+- Use descriptive field names and types
+- Add proper documentation to all fields
+- Use proper GraphQL scalars (DateTime, URL, etc.)
+- Implement proper error handling
+- Use DataLoader pattern for N+1 query prevention
+
+### REST API
+
+- Follow OpenAPI 3.0 specification
+- Use proper HTTP status codes
+- Implement proper error responses
+- Add request/response validation
+- Use consistent naming conventions
+
+## Database Guidelines
+
+### Migrations
+
+- Always create reversible migrations
+- Use descriptive migration names with timestamps
+- Test migrations on sample data
+- Add proper indexes for query performance
+- Use transactions for multi-step migrations
+
+### Queries
+
+- Use prepared statements via SQLx
+- Add proper error handling for database operations
+- Use connection pooling appropriately
+- Implement proper pagination for large datasets
+
+## Security Guidelines
+
+### Authentication & Authorization
+
+- Always validate JWT tokens properly
+- Implement proper RBAC (Role-Based Access Control)
+- Use secure session management
+- Validate all user inputs
+- Implement rate limiting for APIs
+
+### Data Protection
+
+- Never log sensitive information
+- Use proper encryption for sensitive data
+- Implement proper CORS policies
+- Validate file uploads thoroughly
+- Use HTTPS in production
+
+## Performance Guidelines
+
+### Backend Performance
+
+- Use async/await for I/O operations
+- Implement proper connection pooling
+- Use background jobs for heavy operations
+- Cache frequently accessed data
+- Monitor memory usage in long-running processes
+
+### Frontend Performance
+
+- Use React.memo for expensive components
+- Implement proper code splitting
+- Optimize bundle size with tree shaking
+- Use SWR for efficient data fetching
+- Implement virtual scrolling for large lists
+
+## AI/ML Specific Guidelines
+
+### Model Integration
+
+- Support multiple inference backends (CUDA, ROCm, Metal, CPU)
+- Implement proper model loading and unloading
+- Handle model inference errors gracefully
+- Use proper tokenization for different models
+- Implement model switching without restart
+
+### Code Completion
+
+- Respect user privacy - no data collection without consent
+- Implement proper context window management
+- Use efficient caching for completions
+- Handle streaming responses properly
+- Implement proper fallback mechanisms
+
+## Documentation
+
+### Code Documentation
+
+- Add rustdoc comments for all public APIs
+- Use TSDoc comments for TypeScript functions
+- Include examples in documentation
+- Document complex algorithms and business logic
+- Keep README files up to date
+
+### API Documentation
+
+- Maintain OpenAPI specifications
+- Document GraphQL schema thoroughly
+- Provide integration examples
+- Keep changelog updated
+- Document breaking changes clearly
+
+## Don't Do
+
+### General
+
+- Don't commit secrets or API keys
+- Don't use `unwrap()` in production Rust code
+- Don't use `any` type in TypeScript
+- Don't skip error handling
+- Don't commit without running tests
+- Don't use `console.log` in production frontend code
+
+### Performance
+
+- Don't block the main thread with heavy computations
+- Don't make unnecessary database queries
+- Don't load entire datasets without pagination
+- Don't use synchronous I/O in async contexts
+
+### Security
+
+- Don't trust user input without validation
+- Don't expose internal error details to users
+- Don't use weak authentication mechanisms
+- Don't store passwords in plain text
+- Don't ignore security warnings from dependencies
+
+## Deployment
+
+### Production Requirements
+
+- Use proper environment variables for configuration
+- Implement health checks for all services
+- Use proper logging and monitoring
+- Implement graceful shutdown handling
+- Use container orchestration for scaling
+
+### Docker
+
+- Use multi-stage builds for smaller images
+- Run as non-root user in containers
+- Use proper resource limits
+- Implement proper signal handling
+- Use official base images when possible
+``````
+
+### Import Existing Rules
+
+Pochi can import rules from other tools by automatically detecting `.cursorrules` files and importing rules from `.cursor/rules/` directories.
+These rules are then converted and merged with your Pochi rules.
+For team standards, you can share a `README.pochi.md` file across team repositories to version control your rules and workflows, ensuring consistent coding standards across projects.
+
+### How Pochi uses your rules
+
+On every request, Pochi reads your rules before starting work, automatically following your coding standards and respecting your file organization preferences.
+This ensures that all generated code, tests, and documentation adhere to your standards for consistent output.
+
+<Callout title="Getting Started">
+  Try a simple `README.pochi.md` file listing your main technologies and basic preferences. You can always add more rules as you discover what works best.
+</Callout>

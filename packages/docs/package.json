@@ -1,0 +1,41 @@
+{
+  "name": "pochi-docs",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "build": "next build",
+    "build:tina": "tinacms build && next build",
+    "dev": "next dev",
+    "dev:tina": "TINA_PUBLIC_IS_LOCAL=true tinacms dev -c \"next dev --turbo\"",
+    "start": "next start",
+    "postinstall": "fumadocs-mdx",
+    "prepare": "husky install"
+  },
+  "dependencies": {
+    "fumadocs-core": "15.5.4",
+    "fumadocs-mdx": "11.6.9",
+    "fumadocs-ui": "15.5.4",
+    "lucide-react": "^0.525.0",
+    "next": "15.3.4",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "remark": "^15.0.1",
+    "remark-gfm": "^4.0.1",
+    "remark-mdx": "^3.1.0",
+    "tinacms": "^2.7.9"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.10",
+    "@tinacms/cli": "^1.9.9",
+    "@types/mdx": "^2.0.13",
+    "@types/node": "^24.0.3",
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6",
+    "eslint": "^8",
+    "eslint-config-next": "15.3.4",
+    "husky": "^8.0.0",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.10",
+    "typescript": "^5.8.3"
+  }
+}
