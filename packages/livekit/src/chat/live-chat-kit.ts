@@ -13,6 +13,10 @@ import {
   FlexibleChatTransport,
   type OnStartCallback,
 } from "./flexible-chat-transport";
+import {
+  checkAndGenerateTaskTitle,
+  getTitleFromMessages,
+} from "./generate-task-title";
 
 export type LiveChatKitOptions<T> = {
   taskId: string;
@@ -187,7 +191,12 @@ export class LiveChatKit<
     return countTask > 0;
   }
 
-  private readonly onStart: OnStartCallback = ({ messages, environment }) => {
+  private readonly onStart: OnStartCallback = async ({
+    messages,
+    environment,
+    abortSignal,
+    getters,
+  }) => {
     const { store } = this;
     const lastMessage = messages.at(-1);
     if (lastMessage) {
@@ -198,6 +207,21 @@ export class LiveChatKit<
             createdAt: new Date(),
           }),
         );
+      }
+
+      let title = store.query(
+        tables.tasks.where("id", "=", this.taskId).first(),
+      ).title;
+
+      if (title === null) {
+        title = getTitleFromMessages(messages);
+      } else {
+        title = await checkAndGenerateTaskTitle({
+          taskTitle: title,
+          messages,
+          abortSignal,
+          getLLM: getters.getLLM,
+        });
       }
 
       const { gitStatus } = environment?.workspace || {};
@@ -213,6 +237,7 @@ export class LiveChatKit<
                 branch: gitStatus.currentBranch,
               }
             : undefined,
+          title: title || undefined,
           updatedAt: new Date(),
         }),
       );
