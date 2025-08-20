@@ -192,12 +192,8 @@ const VSCodeHostStub = {
   > => {
     return Promise.resolve({} as ThreadSignalSerialization<VSCodeModel[]>);
   },
-  vscodeLmRequest: async (): Promise<
-    ThreadSignalSerialization<{ text: string; finished: boolean }>
-  > => {
-    return Promise.resolve(
-      {} as ThreadSignalSerialization<{ text: string; finished: boolean }>,
-    );
+  vscodeLmRequest: async (): Promise<void> => {
+    return Promise.resolve();
   },
 } satisfies VSCodeHostApi;
 

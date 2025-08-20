@@ -1,5 +1,4 @@
 import type { LanguageModelV2Prompt } from "@ai-sdk/provider";
-import type { ThreadSignalSerialization } from "@quilted/threads/signals";
 import z from "zod";
 
 const BaseModelSettings = z.object({

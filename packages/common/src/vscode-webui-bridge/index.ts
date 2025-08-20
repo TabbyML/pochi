@@ -22,7 +22,6 @@ export {
   CustomModelSetting,
   type VSCodeModel,
   type VSCodeLmRequest,
-  type VSCodeLmRequestOptions,
 } from "./types/models";
 export type { RuleFile } from "./types/rules";
 export type { CaptureEvent } from "./types/capture-event";

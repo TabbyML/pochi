@@ -3,10 +3,6 @@ import type {
   LanguageModelV2StreamPart,
 } from "@ai-sdk/provider";
 import type { Store } from "@livestore/livestore";
-import {
-  type ThreadSignalSerialization,
-  threadSignal,
-} from "@quilted/threads/signals";
 import type { RequestData } from "../../types";
 import type { LLMRequest } from "./types";
 
@@ -29,31 +25,32 @@ export function createVSCodeModel(
             type: "text-start",
             id: "0",
           });
-          await llm.vscodeLmRequestApi(
-            {
-              messages: prompt,
-              model: {
-                vendor: llm.vendor,
-                family: llm.family,
-                id: llm.id,
-                version: llm.version,
+          llm
+            .vscodeLmRequestApi(
+              {
+                messages: prompt,
+                model: {
+                  vendor: llm.vendor,
+                  family: llm.family,
+                  id: llm.id,
+                  version: llm.version,
+                },
               },
-            },
-            async (chunk) => {
-              console.log("chunk", chunk);
+              async (chunk) => {
+                controller.enqueue({
+                  id: "0",
+                  type: "text-delta",
+                  delta: chunk,
+                });
+              },
+            )
+            .finally(() => {
               controller.enqueue({
+                type: "text-end",
                 id: "0",
-                type: "text-delta",
-                delta: chunk,
               });
-            },
-          );
-          controller.enqueue({
-            type: "text-end",
-            id: "0",
-          });
-          console.log("done");
-          controller.close();
+              controller.close();
+            });
         },
       });
 

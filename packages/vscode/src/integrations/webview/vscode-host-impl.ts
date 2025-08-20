@@ -45,7 +45,6 @@ import type {
   SessionState,
   VSCodeHostApi,
   VSCodeLmRequest,
-  VSCodeLmRequestOptions,
   VSCodeModel,
   WorkspaceState,
 } from "@getpochi/common/vscode-webui-bridge";
