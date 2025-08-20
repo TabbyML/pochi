@@ -133,7 +133,6 @@ export const ModelSection: React.FC<ModelSectionProps> = ({ user }) => {
             </div>
           )}
           {/* Copilot Models Section */}
-
           <div className="ml-1">
             <AccordionSection
               title={
