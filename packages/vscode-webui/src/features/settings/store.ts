@@ -20,7 +20,7 @@ export interface SettingsState {
 
   enablePochiModels: boolean;
 
-  enableVSCodeModels: boolean;
+  enableCopilotModels: boolean;
 
   updateAutoApproveSettings: (data: Partial<AutoApprove>) => void;
   updateSelectedModelId: (selectedModelId: string | undefined) => void;
@@ -29,7 +29,7 @@ export interface SettingsState {
 
   updateEnablePochiModels: (value: boolean) => void;
 
-  updateEnableVSCodeModels: (value: boolean) => void;
+  updateEnableCopilotModels: (value: boolean) => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -49,7 +49,7 @@ export const useSettingsStore = create<SettingsState>()(
 
       enablePochiModels: false,
 
-      enableVSCodeModels: false,
+      enableCopilotModels: false,
 
       updateSelectedModelId: (selectedModelId: string | undefined) =>
         set({ selectedModelId }),
@@ -67,8 +67,8 @@ export const useSettingsStore = create<SettingsState>()(
       updateEnablePochiModels: (value: boolean) =>
         set(() => ({ enablePochiModels: value })),
 
-      updateEnableVSCodeModels: (value: boolean) =>
-        set(() => ({ enableVSCodeModels: value })),
+      updateEnableCopilotModels: (value: boolean) =>
+        set(() => ({ enableCopilotModels: value })),
     }),
     {
       name: "ragdoll-settings-storage",

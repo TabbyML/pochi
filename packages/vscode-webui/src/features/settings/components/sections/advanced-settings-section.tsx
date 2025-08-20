@@ -11,8 +11,8 @@ export const AdvancedSettingsSection: React.FC = () => {
     enablePochiModels,
     updateEnablePochiModels,
 
-    enableVSCodeModels,
-    updateEnableVSCodeModels,
+    enableCopilotModels,
+    updateEnableCopilotModels,
   } = useSettingsStore();
 
   return (
@@ -39,11 +39,11 @@ export const AdvancedSettingsSection: React.FC = () => {
               }}
             />
             <SettingsCheckboxOption
-              id="enable-vscode-models"
-              label="Enable VSCode Models"
-              checked={enableVSCodeModels}
+              id="enable-copilot-models"
+              label="Enable Copilot Models"
+              checked={enableCopilotModels}
               onCheckedChange={(checked) => {
-                updateEnableVSCodeModels(!!checked);
+                updateEnableCopilotModels(!!checked);
               }}
             />
             <div>

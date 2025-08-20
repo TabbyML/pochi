@@ -37,6 +37,8 @@ export function ModelSelect({
     onChange(v);
   };
 
+  const hostedModels = models?.filter((x) => !x.isCustom);
+  const customModels = models?.filter((x) => x.isCustom);
   return (
     <LoadingWrapper
       loading={isLoading}
@@ -84,7 +86,7 @@ export function ModelSelect({
                 value={value?.id}
                 onValueChange={onChange}
               >
-                {models?.map((group) => (
+                {hostedModels?.map((group) => (
                   <div key={group.title}>
                     <div className="px-2 py-1.5 font-semibold text-muted-foreground text-sm">
                       {group.title}
@@ -119,6 +121,40 @@ export function ModelSelect({
                     })}
                   </div>
                 ))}
+                {!!hostedModels?.length && <DropdownMenuSeparator />}
+                {customModels?.map((group) => (
+                  <div key={group.title}>
+                    {group.models.map((model: DisplayModel) => {
+                      const isSelected = model.id === value?.id;
+                      return (
+                        <DropdownMenuRadioItem
+                          onClick={(e) => {
+                            onSelectModel(model.id);
+                            e.stopPropagation();
+                          }}
+                          value={model.id}
+                          key={model.id}
+                          className="cursor-pointer py-2 pl-2"
+                        >
+                          <CheckIcon
+                            className={cn(
+                              "mr-1 shrink-0",
+                              isSelected ? "opacity-100" : "opacity-0",
+                            )}
+                          />
+                          <span
+                            className={cn({
+                              "font-semibold": isSelected,
+                            })}
+                          >
+                            {model.name}
+                          </span>
+                        </DropdownMenuRadioItem>
+                      );
+                    })}
+                  </div>
+                ))}
+
                 {!!models?.length && <DropdownMenuSeparator />}
                 <DropdownMenuItem asChild>
                   <a

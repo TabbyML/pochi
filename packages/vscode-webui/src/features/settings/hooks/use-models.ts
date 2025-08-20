@@ -179,7 +179,7 @@ export function useSelectedModels() {
     if (customModels.length + vscodeModels.length > 0) {
       groups.push({
         title: "Custom",
-        models: [...customModels, ...vscodeModels],
+        models: [...vscodeModels, ...customModels],
         isCustom: true,
       });
     }
