@@ -1,6 +1,9 @@
-name: autofix.ci
+name: check
 
 on:
+  push:
+    branches: ["main"]
+
   pull_request:
     branches: ["main"]
 
@@ -11,12 +14,11 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  autofix:
+  check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
       - run: bun install
-      - run: bun fix
-      - uses: autofix-ci/action@8bc06253bec489732e5f9c52884c7cace15c0160
+      - run: bun pre-push
