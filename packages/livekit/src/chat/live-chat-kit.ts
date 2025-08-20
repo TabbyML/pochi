@@ -231,7 +231,7 @@ export class LiveChatKit<
                 branch: gitStatus.currentBranch,
               }
             : undefined,
-          title: title || undefined,
+          title,
           updatedAt: new Date(),
         }),
       );
