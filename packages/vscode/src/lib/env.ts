@@ -55,7 +55,6 @@ function getWorkspaceUri(...pathSegments: string[]): vscode.Uri {
   return vscode.Uri.file(pathSegments.join("/"));
 }
 
-
 // Deprecated: use getWorkspaceRulesFileUris
 export function getWorkspaceRulesFileUri() {
   return getWorkspaceRulesFileUris()[0];
