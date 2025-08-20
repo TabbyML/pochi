@@ -16,15 +16,18 @@ const logger = getLogger("VSCodeLm");
 const isVSCodeIDE = () => {
   return ["vscode", "vscode-insider"].includes(vscode.env.uriScheme);
 };
+
 @injectable()
 @singleton()
 export class VSCodeLm implements vscode.Disposable {
+  featureAvailable = isVSCodeIDE();
+
   private disposables: vscode.Disposable[] = [];
 
   readonly models = signal<VSCodeLmModel[]>([]);
 
   constructor(private readonly config: PochiConfiguration) {
-    if (this.config.vscodeLmEnabled.value && isVSCodeIDE()) {
+    if (this.config.vscodeLmEnabled.value && this.featureAvailable) {
       this.initModels();
     }
   }
@@ -39,7 +42,7 @@ export class VSCodeLm implements vscode.Disposable {
   }
 
   toggle() {
-    if (!isVSCodeIDE()) {
+    if (!this.featureAvailable) {
       return;
     }
     const enabled = !this.config.vscodeLmEnabled.value;
@@ -53,7 +56,7 @@ export class VSCodeLm implements vscode.Disposable {
   }
 
   private async updateModels() {
-    if (!this.config.vscodeLmEnabled.value) {
+    if (!this.config.vscodeLmEnabled.value || !this.featureAvailable) {
       return;
     }
     try {

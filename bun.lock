@@ -68,7 +68,7 @@
     },
     "packages/vscode": {
       "name": "pochi",
-      "version": "0.8.0",
+      "version": "0.8.1",
       "dependencies": {
         "@getpochi/common": "workspace:*",
         "@modelcontextprotocol/sdk": "^1.12.0",

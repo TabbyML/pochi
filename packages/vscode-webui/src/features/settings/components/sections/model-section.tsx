@@ -68,6 +68,7 @@ export const ModelSection: React.FC<ModelSectionProps> = ({ user }) => {
     isLoading: isLoadingVscodeLmModels,
     toggle,
     enabled,
+    featureAvailable,
   } = useVSCodeLmModels();
 
   const hasModels =
@@ -133,59 +134,61 @@ export const ModelSection: React.FC<ModelSectionProps> = ({ user }) => {
             </div>
           )}
           {/* Copilot Models Section */}
-          <div className="ml-1">
-            <AccordionSection
-              title={
-                <div className="flex items-center gap-2 py-1">
-                  Copilot
-                  <Switch
-                    className="scale-75 cursor-pointer transition-all hover:bg-accent/20 hover:shadow-md "
-                    checked={enabled}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggle?.();
-                    }}
-                  />
-                </div>
-              }
-              variant="compact"
-              className="py-0"
-              defaultOpen
-            >
-              <div className="space-y-2">
-                {enabled ? (
-                  vscodeLmModels.length > 0 ? (
-                    vscodeLmModels.map((model) => (
-                      <div
-                        key={model.id}
-                        className="group rounded-md border p-2"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex flex-1 items-center gap-2 overflow-x-hidden">
-                            <div className="flex size-6 shrink-0 items-center justify-center">
-                              <DotIcon className="size-6 text-muted-foreground" />
+          {featureAvailable && (
+            <div className="ml-1">
+              <AccordionSection
+                title={
+                  <div className="flex items-center gap-2 py-1">
+                    Copilot
+                    <Switch
+                      className="scale-75 cursor-pointer transition-all hover:bg-accent/20 hover:shadow-md "
+                      checked={enabled}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggle?.();
+                      }}
+                    />
+                  </div>
+                }
+                variant="compact"
+                className="py-0"
+                defaultOpen
+              >
+                <div className="space-y-2">
+                  {enabled ? (
+                    vscodeLmModels.length > 0 ? (
+                      vscodeLmModels.map((model) => (
+                        <div
+                          key={model.id}
+                          className="group rounded-md border p-2"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex flex-1 items-center gap-2 overflow-x-hidden">
+                              <div className="flex size-6 shrink-0 items-center justify-center">
+                                <DotIcon className="size-6 text-muted-foreground" />
+                              </div>
+                              <span className="truncate font-semibold">
+                                {model.vendor}/{model.id}
+                              </span>
                             </div>
-                            <span className="truncate font-semibold">
-                              {model.vendor}/{model.id}
-                            </span>
                           </div>
                         </div>
+                      ))
+                    ) : (
+                      <div className="text-muted-foreground text-xs">
+                        No copilot models found
                       </div>
-                    ))
+                    )
                   ) : (
                     <div className="text-muted-foreground text-xs">
-                      No copilot models found
+                      Copilot models are disabled. Turn on the switch to enable
+                      them.
                     </div>
-                  )
-                ) : (
-                  <div className="text-muted-foreground text-xs">
-                    Copilot models are disabled. Turn on the switch to enable
-                    them.
-                  </div>
-                )}
-              </div>
-            </AccordionSection>
-          </div>
+                  )}
+                </div>
+              </AccordionSection>
+            </div>
+          )}
 
           {/* Custom Models Section */}
           {customModelSettings?.map(
