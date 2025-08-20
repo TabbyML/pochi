@@ -20,16 +20,12 @@ export interface SettingsState {
 
   enablePochiModels: boolean;
 
-  enableCopilotModels: boolean;
-
   updateAutoApproveSettings: (data: Partial<AutoApprove>) => void;
   updateSelectedModelId: (selectedModelId: string | undefined) => void;
   updateAutoApproveActive: (value: boolean) => void;
   updateIsDevMode: (value: boolean) => void;
 
   updateEnablePochiModels: (value: boolean) => void;
-
-  updateEnableCopilotModels: (value: boolean) => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -49,8 +45,6 @@ export const useSettingsStore = create<SettingsState>()(
 
       enablePochiModels: false,
 
-      enableCopilotModels: false,
-
       updateSelectedModelId: (selectedModelId: string | undefined) =>
         set({ selectedModelId }),
 
@@ -66,9 +60,6 @@ export const useSettingsStore = create<SettingsState>()(
 
       updateEnablePochiModels: (value: boolean) =>
         set(() => ({ enablePochiModels: value })),
-
-      updateEnableCopilotModels: (value: boolean) =>
-        set(() => ({ enableCopilotModels: value })),
     }),
     {
       name: "ragdoll-settings-storage",

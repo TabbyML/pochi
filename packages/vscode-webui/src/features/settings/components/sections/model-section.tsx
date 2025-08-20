@@ -63,8 +63,6 @@ export const ModelSection: React.FC<ModelSectionProps> = ({ user }) => {
     return costType === "premium" ? "default" : "secondary";
   };
 
-  const { enableCopilotModels } = useSettingsStore();
-
   const {
     models: vscodeLmModels,
     isLoading: isLoadingVscodeLmModels,
@@ -136,60 +134,60 @@ export const ModelSection: React.FC<ModelSectionProps> = ({ user }) => {
             </div>
           )}
           {/* Copilot Models Section */}
-          {enableCopilotModels && (
-            <div className="ml-1">
-              <AccordionSection
-                title={
-                  <div className="flex items-center gap-2 py-1">
-                    Copilot
-                    <Switch
-                      className="scale-75 cursor-pointer transition-all hover:bg-accent/20 hover:shadow-md "
-                      checked={enabled}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        enabled ? disable?.() : enable?.();
-                      }}
-                    />
-                  </div>
-                }
-                variant="compact"
-                className="py-0"
-                defaultOpen
-              >
-                <div className="space-y-2">
-                  {enabled ? (
-                    vscodeLmModels.length > 0 ? (
-                      vscodeLmModels.map((model) => (
-                        <div
-                          key={model.id}
-                          className="group rounded-md border p-2"
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="flex flex-1 items-center gap-2 overflow-x-hidden">
-                              <div className="flex size-6 shrink-0 items-center justify-center">
-                                <DotIcon className="size-6 text-muted-foreground" />
-                              </div>
-                              <span className="truncate font-semibold">
-                                {model.vendor}/{model.id}
-                              </span>
+
+          <div className="ml-1">
+            <AccordionSection
+              title={
+                <div className="flex items-center gap-2 py-1">
+                  Copilot
+                  <Switch
+                    className="scale-75 cursor-pointer transition-all hover:bg-accent/20 hover:shadow-md "
+                    checked={enabled}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      enabled ? disable?.() : enable?.();
+                    }}
+                  />
+                </div>
+              }
+              variant="compact"
+              className="py-0"
+              defaultOpen
+            >
+              <div className="space-y-2">
+                {enabled ? (
+                  vscodeLmModels.length > 0 ? (
+                    vscodeLmModels.map((model) => (
+                      <div
+                        key={model.id}
+                        className="group rounded-md border p-2"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex flex-1 items-center gap-2 overflow-x-hidden">
+                            <div className="flex size-6 shrink-0 items-center justify-center">
+                              <DotIcon className="size-6 text-muted-foreground" />
                             </div>
+                            <span className="truncate font-semibold">
+                              {model.vendor}/{model.id}
+                            </span>
                           </div>
                         </div>
-                      ))
-                    ) : (
-                      <div className="text-muted-foreground text-xs">
-                        No Models Found
                       </div>
-                    )
+                    ))
                   ) : (
                     <div className="text-muted-foreground text-xs">
-                      Not Available
+                      No Models Found
                     </div>
-                  )}
-                </div>
-              </AccordionSection>
-            </div>
-          )}
+                  )
+                ) : (
+                  <div className="text-muted-foreground text-xs">
+                    Not Available
+                  </div>
+                )}
+              </div>
+            </AccordionSection>
+          </div>
+
           {/* Custom Models Section */}
           {customModelSettings?.map(
             (provider) =>

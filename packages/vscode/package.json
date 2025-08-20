@@ -215,11 +215,6 @@
                 "type": "string",
                 "default": "",
                 "description": "Pochi webview UI log level"
-              },
-              "enableCopilotModels": {
-                "type": "boolean",
-                "default": false,
-                "description": "Enable VSCode language models in Pochi."
               }
             }
           },

@@ -12,6 +12,9 @@ import { PochiConfiguration, updateVscodeLmEnabled } from "./configuration";
 
 const logger = getLogger("VSCodeLm");
 
+const isVSCodeIDE = () => {
+  return ["vscode", "vscode-insider"].includes(vscode.env.uriScheme);
+};
 @injectable()
 @singleton()
 export class VSCodeLm implements vscode.Disposable {
@@ -20,7 +23,7 @@ export class VSCodeLm implements vscode.Disposable {
   readonly models = signal<VSCodeLmModel[]>([]);
 
   constructor(private readonly config: PochiConfiguration) {
-    if (this.config.vscodeLmEnabled.value) {
+    if (this.config.vscodeLmEnabled.value && isVSCodeIDE()) {
       this.initModels();
     }
   }
@@ -35,6 +38,9 @@ export class VSCodeLm implements vscode.Disposable {
   }
 
   enable() {
+    if (!isVSCodeIDE()) {
+      return;
+    }
     updateVscodeLmEnabled(true).then(() => {
       this.updateModels();
     });

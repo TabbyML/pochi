@@ -67,7 +67,7 @@ const RequestData = z.object({
       family: z.string().optional(),
       version: z.string().optional(),
       id: z.string().optional(),
-      vscodeLmRequestApi: z.custom<VSCodeLmRequest>(),
+      vscodeLmRequest: z.custom<VSCodeLmRequest>(),
       useToolCallMiddleware: z
         .boolean()
         .optional()
