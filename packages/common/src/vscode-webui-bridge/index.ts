@@ -18,7 +18,12 @@ export type {
 export type { ResourceURI } from "./types/common";
 export type { SessionState, WorkspaceState } from "./types/session";
 export type { TaskIdParams, NewTaskParams } from "./types/task-params";
-export { CustomModelSetting } from "./types/models";
+export {
+  CustomModelSetting,
+  type VSCodeLmModel,
+  type VSCodeLmRequestOptions,
+  type VSCodeLmRequest,
+} from "./types/models";
 export type { RuleFile } from "./types/rules";
 export type { CaptureEvent } from "./types/capture-event";
 

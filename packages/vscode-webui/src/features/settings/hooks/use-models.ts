@@ -1,6 +1,8 @@
 import { apiClient, authHooks } from "@/lib/auth-client";
 import { useCustomModelSetting } from "@/lib/hooks/use-custom-model-setting";
+import { useVSCodeLmModels } from "@/lib/hooks/use-vscode-lm-models";
 import type { CustomModelSetting } from "@getpochi/common/vscode-webui-bridge";
+import type { VSCodeLmModel } from "@getpochi/common/vscode-webui-bridge";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { useSettingsStore } from "../store";
@@ -16,15 +18,23 @@ export type DisplayModel =
     }
   | {
       type: "byok";
-      id: string;
-      modelId: string;
-      name: string;
+      id: string; // identifier for select
+      modelId: string; // identifier for request
+      name: string; // display name
       contextWindow: number;
       maxTokens: number;
       useToolCallMiddleware?: boolean;
       costType: "basic";
       // https://github.com/microsoft/TypeScript/issues/31501#issuecomment-1079728677
       provider: RemoveModelsField<CustomModelSetting>;
+    }
+  | {
+      type: "vscode";
+      id: string;
+      modelId: string;
+      name: string;
+      contextWindow: number;
+      vscodeModel: VSCodeLmModel;
     };
 
 type RemoveModelsField<Type> = {
@@ -54,6 +64,9 @@ export function useModels() {
   const { customModelSettings, isLoading: isLoadingCustomModelSettings } =
     useCustomModelSetting();
 
+  const { models: vscodeLmModels, isLoading: isLoadingVscodeLmModels } =
+    useVSCodeLmModels();
+
   const customModels = useMemo(() => {
     return customModelSettings?.flatMap((modelSetting) => {
       const { models, ...provider } = modelSetting;
@@ -74,35 +87,71 @@ export function useModels() {
     });
   }, [customModelSettings]);
 
+  const vscodeLmDisplayModels = useMemo(() => {
+    return vscodeLmModels.map<Extract<DisplayModel, { type: "vscode" }>>(
+      (model) => ({
+        type: "vscode" as const,
+        id: `${model.id}`,
+        name: `${model.vendor}/${model.id}`,
+        modelId: `${model.vendor}/${model.family}/${model.id}/${model.version}`,
+        contextWindow: model.contextWindow,
+        vscodeModel: model,
+      }),
+    );
+  }, [vscodeLmModels]);
+
   const hasUser = !!user;
   const models = useMemo(() => {
     if (isLoading || !hasUser || !data) {
       return customModels || [];
     }
 
-    let defaultModels = data.map<DisplayModel>((model) => ({
-      type: "hosted" as const,
-      ...model,
-      name: model.id,
-      modelId: model.id,
-    }));
-    if (!enablePochiModels) {
+    const allModels: DisplayModel[] = [];
+
+    let defaultModels = data?.map<Extract<DisplayModel, { type: "hosted" }>>(
+      (model) => ({
+        type: "hosted" as const,
+        ...model,
+        name: model.id,
+        modelId: model.id,
+      }),
+    );
+    if (!enablePochiModels && defaultModels) {
       defaultModels = defaultModels.filter(
         (model) => !model.id.startsWith("pochi/"),
       );
     }
 
-    // Add custom models from OpenAI compatible models if available
-    if (customModels && customModels.length > 0) {
-      return [...defaultModels, ...customModels];
+    if (defaultModels && defaultModels.length > 0) {
+      allModels.push(...defaultModels);
     }
 
-    return defaultModels;
-  }, [data, enablePochiModels, customModels, hasUser, isLoading]);
+    // Add custom models from OpenAI compatible models if available
+    if (customModels && customModels.length > 0) {
+      allModels.push(...customModels);
+    }
+
+    if (vscodeLmDisplayModels && vscodeLmDisplayModels.length > 0) {
+      allModels.push(...vscodeLmDisplayModels);
+    }
+
+    return allModels;
+  }, [
+    data,
+    enablePochiModels,
+    customModels,
+    vscodeLmDisplayModels,
+    isLoading,
+    hasUser,
+  ]);
 
   return {
     models,
-    isLoading: !(!isLoading && !isLoadingCustomModelSettings), // make sure hosted model and custom model are all loaded
+    isLoading: !(
+      !isLoading &&
+      !isLoadingCustomModelSettings &&
+      !isLoadingVscodeLmModels
+    ), // make sure models are all loaded
   };
 }
 
@@ -124,11 +173,13 @@ export function useSelectedModels() {
     if (basicModels.length > 0) {
       groups.push({ title: "Swift", models: basicModels });
     }
+
+    const vscodeModels = models.filter((m) => m.type === "vscode");
     const customModels = models.filter((m) => m.type === "byok");
-    if (customModels.length > 0) {
+    if (customModels.length + vscodeModels.length > 0) {
       groups.push({
         title: "Custom",
-        models: customModels,
+        models: [...vscodeModels, ...customModels],
         isCustom: true,
       });
     }

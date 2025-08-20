@@ -1,6 +1,6 @@
 {
   "name": "pochi",
-  "version": "0.6.16",
+  "version": "0.8.1",
   "description": "Pochi is your AI powered team mate. Now available in research preview.",
   "displayName": "Pochi (Research Preview)",
   "publisher": "TabbyML",
@@ -351,6 +351,10 @@
                 }
               ]
             }
+          },
+          "pochi.vscodeLmEnabled": {
+            "type": "boolean",
+            "default": false
           }
         }
       }
@@ -411,6 +415,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@ai-sdk/provider": "catalog:",
     "@getpochi/tools": "workspace:*",
     "@types/diff": "^7.0.2",
     "@types/object-hash": "^3.0.6",

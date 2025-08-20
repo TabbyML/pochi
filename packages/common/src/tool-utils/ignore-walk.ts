@@ -48,6 +48,7 @@ export interface IgnoreWalkOptions {
   dir: string;
   recursive?: boolean;
   abortSignal?: AbortSignal;
+  useGitignore?: boolean;
 }
 
 async function processDirectoryEntry(
@@ -95,6 +96,7 @@ export async function ignoreWalk({
   dir,
   recursive = true,
   abortSignal,
+  useGitignore = true,
 }: IgnoreWalkOptions): Promise<FileResult[]> {
   const scannedFileResults: FileResult[] = [];
   const processedDirs = new Set<string>();
@@ -127,7 +129,9 @@ export async function ignoreWalk({
     processedDirs.add(currentFsPath);
 
     try {
-      const newRules = await attemptLoadIgnoreFromPath(currentFsPath);
+      const newRules = useGitignore
+        ? await attemptLoadIgnoreFromPath(currentFsPath)
+        : [];
       const directoryIg =
         newRules.length > 0 ? ignore().add(currentIg).add(newRules) : currentIg;
 

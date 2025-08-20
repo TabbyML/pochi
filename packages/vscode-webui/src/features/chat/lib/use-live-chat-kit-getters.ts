@@ -7,6 +7,7 @@ import type { Environment } from "@getpochi/common";
 import type { UserEditsDiff } from "@getpochi/common/vscode-webui-bridge";
 import type { LLMRequestData, Message } from "@getpochi/livekit";
 import type { Todo } from "@getpochi/tools";
+import { ThreadAbortSignal } from "@quilted/threads";
 import { useCallback } from "react";
 
 export function useLiveChatKitGetters({
@@ -76,6 +77,27 @@ function useLLM(): React.RefObject<LLMRequestData> {
         type: "pochi" as const,
         modelId: selectedModel.modelId,
         apiClient,
+      };
+    }
+
+    if (selectedModel.type === "vscode") {
+      return {
+        type: "vscode" as const,
+        modelId: `${selectedModel.vscodeModel.vendor}:${selectedModel.vscodeModel.family}:${selectedModel.vscodeModel.id}:${selectedModel.vscodeModel.version}`,
+        vendor: selectedModel.vscodeModel.vendor,
+        family: selectedModel.vscodeModel.family,
+        version: selectedModel.vscodeModel.version,
+        id: selectedModel.vscodeModel.id,
+        chatVSCodeLm: (options, onChunk) =>
+          vscodeHost.chatVSCodeLm(
+            {
+              ...options,
+              abortSignal: options.abortSignal
+                ? ThreadAbortSignal.serialize(options.abortSignal)
+                : undefined,
+            },
+            onChunk,
+          ),
       };
     }
 
