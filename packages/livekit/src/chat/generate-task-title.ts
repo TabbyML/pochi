@@ -1,6 +1,8 @@
-import { formatters, prompts } from "@getpochi/common";
+import { formatters, getLogger, prompts } from "@getpochi/common";
 import type { Message, RequestData } from "../types";
 import { requestLLM } from "./llm";
+
+const logger = getLogger("generateTaskTitle");
 
 export async function checkAndGenerateTaskTitle({
   taskTitle,
@@ -39,7 +41,7 @@ export async function checkAndGenerateTaskTitle({
         result = title;
       }
     } catch (err) {
-      console.warn("Failed to generate title", err);
+      logger.warn("Failed to generate title", err);
     }
   }
 
