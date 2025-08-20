@@ -128,6 +128,7 @@ export const events = {
       id: Schema.String,
       data: DBMessage,
       todos: Todos,
+      title: Schema.optional(Schema.String),
       git: Schema.optional(Git),
       updatedAt: Schema.Date,
     }),
@@ -185,26 +186,10 @@ const materializers = State.SQLite.materializers(events, {
         ]
       : []),
   ],
-  "v1.ChatStreamStarted": ({ id, data, todos, git, updatedAt }, ctx) => {
+  "v1.ChatStreamStarted": ({ id, data, todos, git, title, updatedAt }, ctx) => {
     const task = ctx.query(tables.tasks.where("id", "=", id)).at(0);
     if (!task) {
       throw new Error(`Task ${id} not found`);
-    }
-
-    let newTitle = undefined;
-    const message = data;
-    const lastTextPart = message.parts.findLast(
-      (x) => typeof x === "object" && x && "type" in x && x.type === "text",
-    );
-    if (
-      task.title === null &&
-      data.role === "user" &&
-      typeof lastTextPart === "object" &&
-      lastTextPart &&
-      "text" in lastTextPart &&
-      typeof lastTextPart.text === "string"
-    ) {
-      newTitle = lastTextPart.text.split("\n")[0].trim() || "(empty)";
     }
 
     return [
@@ -212,8 +197,8 @@ const materializers = State.SQLite.materializers(events, {
         .update({
           status: "pending-model",
           todos,
-          title: newTitle,
           git,
+          title,
           updatedAt,
         })
         .where({ id }),

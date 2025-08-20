@@ -1,6 +1,6 @@
 {
   "name": "pochi",
-  "version": "0.6.15",
+  "version": "0.8.2",
   "description": "Pochi is your AI powered team mate. Now available in research preview.",
   "displayName": "Pochi (Research Preview)",
   "publisher": "TabbyML",
@@ -351,6 +351,10 @@
                 }
               ]
             }
+          },
+          "pochi.vscodeLmEnabled": {
+            "type": "boolean",
+            "default": false
           }
         }
       }
@@ -383,11 +387,11 @@
     "release": "bunx bumpp --tag=vscode@%s"
   },
   "dependencies": {
+    "@getpochi/common": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.12.0",
     "@orama/orama": "^3.1.11",
     "@preact/signals-core": "catalog:",
     "@quilted/threads": "catalog:",
-    "@getpochi/common": "workspace:*",
     "@vscode-logging/logger": "^2.0.0",
     "@xstate/fsm": "^2.1.0",
     "ai": "catalog:",
@@ -407,9 +411,11 @@
     "run-exclusive": "^2.2.19",
     "simple-git": "^3.28.0",
     "stats-logscale": "^1.0.9",
-    "tsyringe": "^4.10.0"
+    "tsyringe": "^4.10.0",
+    "zod": "catalog:"
   },
   "devDependencies": {
+    "@ai-sdk/provider": "catalog:",
     "@getpochi/tools": "workspace:*",
     "@types/diff": "^7.0.2",
     "@types/object-hash": "^3.0.6",

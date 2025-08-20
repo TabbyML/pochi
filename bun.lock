@@ -68,7 +68,7 @@
     },
     "packages/vscode": {
       "name": "pochi",
-      "version": "0.6.14",
+      "version": "0.8.2",
       "dependencies": {
         "@getpochi/common": "workspace:*",
         "@modelcontextprotocol/sdk": "^1.12.0",
@@ -95,8 +95,10 @@
         "simple-git": "^3.28.0",
         "stats-logscale": "^1.0.9",
         "tsyringe": "^4.10.0",
+        "zod": "catalog:",
       },
       "devDependencies": {
+        "@ai-sdk/provider": "catalog:",
         "@getpochi/tools": "workspace:*",
         "@types/diff": "^7.0.2",
         "@types/object-hash": "^3.0.6",
@@ -1017,7 +1019,7 @@
 
     "@types/uuid": ["@types/uuid@9.0.8", "", {}, "sha512-jg+97EGIcY9AGHJJRaaPVgetKDsrTgbRjQ5Msgjh/DQKEFl0DtyRr/VCOyD1T2R1MNeWPK/u7JoGhlDZnKBAfA=="],
 
-    "@types/vscode": ["@types/vscode@1.101.0", "", {}, "sha512-ZWf0IWa+NGegdW3iU42AcDTFHWW7fApLdkdnBqwYEtHVIBGbTu0ZNQKP/kX3Ds/uMJXIMQNAojHR4vexCEEz5Q=="],
+    "@types/vscode": ["@types/vscode@1.103.0", "https://registry.npmmirror.com/@types/vscode/-/vscode-1.103.0.tgz", {}, "sha512-o4hanZAQdNfsKecexq9L3eHICd0AAvdbLk6hA60UzGXbGH/q8b/9xv2RgR7vV3ZcHuyKVq7b37IGd/+gM4Tu+Q=="],
 
     "@types/vscode-webview": ["@types/vscode-webview@1.57.5", "", {}, "sha512-iBAUYNYkz+uk1kdsq05fEcoh8gJmwT3lqqFPN7MGyjQ3HVloViMdo7ZJ8DFIP8WOK74PjOEilosqAyxV2iUFUw=="],
 

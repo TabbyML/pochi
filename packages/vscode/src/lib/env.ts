@@ -1,7 +1,7 @@
 import path from "node:path";
 import { getLogger } from "@getpochi/common";
 import {
-  DefaultWorkspaceRulesFilePath,
+  DefaultWorkspaceRulesFilePaths,
   SystemRulesFileDisplayPath,
   SystemRulesFilepath,
   collectCustomRules as collectCustomRulesImpl,
@@ -17,7 +17,7 @@ import {
 } from "./fs";
 
 // Path constants - using arrays for consistency
-const WorkspaceRulesFilePath = [DefaultWorkspaceRulesFilePath];
+const WorkspaceRulesFilePaths = DefaultWorkspaceRulesFilePaths;
 const WorkflowsDirPath = [".pochi", "workflows"];
 const logger = getLogger("env");
 
@@ -55,8 +55,13 @@ function getWorkspaceUri(...pathSegments: string[]): vscode.Uri {
   return vscode.Uri.file(pathSegments.join("/"));
 }
 
+// Deprecated: use getWorkspaceRulesFileUris
 export function getWorkspaceRulesFileUri() {
-  return getWorkspaceUri(...WorkspaceRulesFilePath);
+  return getWorkspaceRulesFileUris()[0];
+}
+
+export function getWorkspaceRulesFileUris() {
+  return WorkspaceRulesFilePaths.map((fileName) => getWorkspaceUri(fileName));
 }
 
 function getWorkflowsDirectoryUri() {
@@ -65,21 +70,20 @@ function getWorkflowsDirectoryUri() {
 
 export async function collectRuleFiles(): Promise<RuleFile[]> {
   const ruleFiles: RuleFile[] = [];
-  const workspaceRuleFile = getWorkspaceRulesFileUri();
   if (await isFileExists(vscode.Uri.file(SystemRulesFilepath))) {
     ruleFiles.push({
       filepath: SystemRulesFilepath,
       label: SystemRulesFileDisplayPath,
     });
   }
-
-  if (await isFileExists(workspaceRuleFile)) {
-    ruleFiles.push({
-      filepath: workspaceRuleFile.fsPath,
-      relativeFilepath: vscode.workspace.asRelativePath(workspaceRuleFile),
-    });
+  for (const uri of getWorkspaceRulesFileUris()) {
+    if (await isFileExists(uri)) {
+      ruleFiles.push({
+        filepath: uri.fsPath,
+        relativeFilepath: vscode.workspace.asRelativePath(uri),
+      });
+    }
   }
-
   return ruleFiles;
 }
 
@@ -236,7 +240,7 @@ export async function detectThirdPartyRules(): Promise<string[]> {
  */
 export async function copyThirdPartyRules(
   cursorRulePaths: string[] = [],
-  targetFileName = DefaultWorkspaceRulesFilePath,
+  targetFileName = DefaultWorkspaceRulesFilePaths[0],
 ): Promise<void> {
   const workspaceFolder = getWorkspaceFolder();
 

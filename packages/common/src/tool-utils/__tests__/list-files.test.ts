@@ -59,12 +59,12 @@ describe("listFiles", () => {
   });
 
   it("should truncate results when exceeding max limit", async () => {
-    ignoreWalkMock.mockResolvedValue(createMockFiles(501));
+    ignoreWalkMock.mockResolvedValue(createMockFiles(1501));
     const result = await listFiles({
       cwd: fakedCwd,
       path: ".",
     });
-    expect(result.files).toHaveLength(500);
+    expect(result.files).toHaveLength(1500);
     expect(result.isTruncated).toBe(true);
   });
 

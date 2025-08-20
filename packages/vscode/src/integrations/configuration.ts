@@ -1,9 +1,9 @@
-import type { CustomModelSetting } from "@getpochi/common/vscode-webui-bridge";
+import { CustomModelSetting } from "@getpochi/common/vscode-webui-bridge";
 import { signal } from "@preact/signals-core";
 import deepEqual from "fast-deep-equal";
 import { injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
-import type { McpServerConfig } from "./mcp/types";
+import { McpServerConfig } from "./mcp/types";
 
 @injectable()
 @singleton()
@@ -14,6 +14,7 @@ export class PochiConfiguration implements vscode.Disposable {
   readonly mcpServers = signal(getPochiMcpServersSettings());
   readonly autoSaveDisabled = signal(getAutoSaveDisabled());
   readonly customModelSettings = signal(getCustomModelSetting());
+  readonly vscodeLmEnabled = signal(getVscodeLmEnabled());
 
   constructor() {
     this.disposables.push(
@@ -34,6 +35,11 @@ export class PochiConfiguration implements vscode.Disposable {
         if (e.affectsConfiguration("pochi.customModelSettings")) {
           const settings = getCustomModelSetting();
           this.customModelSettings.value = settings;
+        }
+
+        if (e.affectsConfiguration("pochi.vscodeLmEnabled")) {
+          const enabled = getVscodeLmEnabled();
+          this.vscodeLmEnabled.value = enabled;
         }
       }),
     );
@@ -83,10 +89,21 @@ async function updatePochiAdvanceSettings(value: PochiAdvanceSettings) {
 
 export type PochiMcpServersSettings = Record<string, McpServerConfig>;
 
-function getPochiMcpServersSettings() {
-  return vscode.workspace
+function getPochiMcpServersSettings(): PochiMcpServersSettings {
+  const settings = vscode.workspace
     .getConfiguration("pochi")
-    .get("mcpServers", {}) as PochiMcpServersSettings;
+    .get("mcpServers", {}) as Record<string, unknown>;
+
+  const result: PochiMcpServersSettings = {};
+  for (const key in settings) {
+    if (Object.prototype.hasOwnProperty.call(settings, key)) {
+      const parsed = McpServerConfig.safeParse(settings[key]);
+      if (parsed.success) {
+        result[key] = parsed.data;
+      }
+    }
+  }
+  return result;
 }
 
 async function updatePochiMcpServersSettings(value: PochiMcpServersSettings) {
@@ -103,8 +120,26 @@ function getAutoSaveDisabled() {
   return autoSave === "off";
 }
 
-function getCustomModelSetting() {
+function getCustomModelSetting(): CustomModelSetting[] | undefined {
+  const customModelSettings = vscode.workspace
+    .getConfiguration("pochi")
+    .get("customModelSettings") as unknown[] | undefined;
+  if (customModelSettings === undefined) return undefined;
+
+  return customModelSettings
+    .map((x) => CustomModelSetting.safeParse(x))
+    .filter((x) => x.success)
+    .map((x) => x.data);
+}
+
+function getVscodeLmEnabled() {
   return vscode.workspace
     .getConfiguration("pochi")
-    .get("customModelSettings") as CustomModelSetting[] | undefined;
+    .get("vscodeLmEnabled", false);
+}
+
+export function updateVscodeLmEnabled(value: boolean) {
+  return vscode.workspace
+    .getConfiguration("pochi")
+    .update("vscodeLmEnabled", value, true);
 }

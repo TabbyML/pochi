@@ -1,6 +1,7 @@
 import type { LanguageModelV2FinishReason } from "@ai-sdk/provider";
 import { Environment } from "@getpochi/common";
 import type { PochiApiClient } from "@getpochi/common/pochi-api";
+import type { VSCodeLmRequestOptions } from "@getpochi/common/vscode-webui-bridge";
 import { type ClientTools, McpTool } from "@getpochi/tools";
 import type { InferUITools, UIMessage } from "ai";
 import z from "zod";
@@ -58,6 +59,27 @@ const RequestData = z.object({
       type: z.literal("pochi"),
       modelId: z.string().optional(),
       apiClient: z.custom<PochiApiClient>(),
+    }),
+    z.object({
+      type: z.literal("vscode"),
+      modelId: z.string(),
+      vendor: z.string().optional(),
+      family: z.string().optional(),
+      version: z.string().optional(),
+      id: z.string().optional(),
+      chatVSCodeLm:
+        z.custom<
+          (
+            options: Omit<VSCodeLmRequestOptions, "abortSignal"> & {
+              abortSignal?: AbortSignal;
+            },
+            onChunk: (chunk: string) => Promise<void>,
+          ) => Promise<void>
+        >(),
+      useToolCallMiddleware: z
+        .boolean()
+        .optional()
+        .describe("Whether to use tool call middleware"),
     }),
   ]),
   mcpToolSet: z

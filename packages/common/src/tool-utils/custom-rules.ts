@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import path from "node:path";
 
-export const DefaultWorkspaceRulesFilePath = "README.pochi.md";
+export const DefaultWorkspaceRulesFilePaths = ["README.pochi.md", "AGENTS.md"];
 
 export const SystemRulesFilepath = path.join(
   homedir(),
@@ -39,13 +39,15 @@ export async function collectCustomRules(
     });
   }
 
-  // Add workspace rules file if requested
+  // Add workspace rules files if requested
   if (includeDefaultRules) {
-    const defaultRulesPath = path.join(cwd, DefaultWorkspaceRulesFilePath);
-    allRules.push({
-      filePath: defaultRulesPath,
-      label: DefaultWorkspaceRulesFilePath,
-    });
+    for (const fileName of DefaultWorkspaceRulesFilePaths) {
+      const defaultRulesPath = path.join(cwd, fileName);
+      allRules.push({
+        filePath: defaultRulesPath,
+        label: fileName,
+      });
+    }
   }
 
   allRules.push(

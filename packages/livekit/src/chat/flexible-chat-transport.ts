@@ -15,6 +15,8 @@ import {
 export type OnStartCallback = (options: {
   messages: Message[];
   environment?: Environment;
+  abortSignal?: AbortSignal;
+  getters: PrepareRequestGetters;
 }) => void;
 
 export type PrepareRequestGetters = {
@@ -60,9 +62,11 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
     const environment = await this.getters.getEnvironment?.({ messages });
     const mcpToolSet = this.getters.getMcpToolSet?.();
 
-    this.onStart?.({
+    await this.onStart?.({
       messages,
       environment,
+      abortSignal,
+      getters: this.getters,
     });
 
     const middlewares = [];
@@ -82,7 +86,8 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
         // Turn on ToolCallMiddleware only for gemini backed models for now
         (llm.modelId?.startsWith("google/") ||
           llm.modelId?.startsWith("pochi/"))) ||
-      (llm.type !== "pochi" && llm.useToolCallMiddleware)
+      (llm.type !== "pochi" && llm.useToolCallMiddleware) ||
+      llm.type === "vscode"
     ) {
       middlewares.push(createToolCallMiddleware());
     }

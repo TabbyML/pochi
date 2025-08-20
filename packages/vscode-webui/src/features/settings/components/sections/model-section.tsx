@@ -1,5 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
 import {
   Tooltip,
   TooltipContent,
@@ -8,6 +9,7 @@ import {
 } from "@/components/ui/tooltip";
 import { type User, apiClient } from "@/lib/auth-client";
 import { useCustomModelSetting } from "@/lib/hooks/use-custom-model-setting";
+import { useVSCodeLmModels } from "@/lib/hooks/use-vscode-lm-models";
 import { useQuery } from "@tanstack/react-query";
 import { DotIcon, PencilIcon } from "lucide-react";
 import { useMemo } from "react";
@@ -61,11 +63,24 @@ export const ModelSection: React.FC<ModelSectionProps> = ({ user }) => {
     return costType === "premium" ? "default" : "secondary";
   };
 
-  const hasModels = !!pochiModels?.length || !!customModelSettings?.length;
+  const {
+    models: vscodeLmModels,
+    isLoading: isLoadingVscodeLmModels,
+    toggle,
+    enabled,
+    featureAvailable,
+  } = useVSCodeLmModels();
+
+  const hasModels =
+    !!pochiModels?.length ||
+    !!customModelSettings?.length ||
+    !!vscodeLmModels?.length;
 
   return (
     <Section title={<div className="flex items-center">Models</div>}>
-      {isPochiModelLoading || isCustomModelLoading ? (
+      {isPochiModelLoading ||
+      isCustomModelLoading ||
+      isLoadingVscodeLmModels ? (
         <div className="space-y-2">
           {Array.from({ length: 2 }).map((_, i) => (
             <Skeleton key={i} className="h-10 w-full bg-secondary" />
@@ -118,6 +133,63 @@ export const ModelSection: React.FC<ModelSectionProps> = ({ user }) => {
               </AccordionSection>
             </div>
           )}
+          {/* Copilot Models Section */}
+          {featureAvailable && (
+            <div className="ml-1">
+              <AccordionSection
+                title={
+                  <div className="flex items-center gap-2 py-1">
+                    Copilot
+                    <Switch
+                      className="scale-75 cursor-pointer transition-all hover:bg-accent/20 hover:shadow-md "
+                      checked={enabled}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggle?.();
+                      }}
+                    />
+                  </div>
+                }
+                variant="compact"
+                className="py-0"
+                defaultOpen
+              >
+                <div className="space-y-2">
+                  {enabled ? (
+                    vscodeLmModels.length > 0 ? (
+                      vscodeLmModels.map((model) => (
+                        <div
+                          key={model.id}
+                          className="group rounded-md border p-2"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex flex-1 items-center gap-2 overflow-x-hidden">
+                              <div className="flex size-6 shrink-0 items-center justify-center">
+                                <DotIcon className="size-6 text-muted-foreground" />
+                              </div>
+                              <span className="truncate font-semibold">
+                                {model.vendor}/{model.id}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-muted-foreground text-xs">
+                        No copilot models found
+                      </div>
+                    )
+                  ) : (
+                    <div className="text-muted-foreground text-xs">
+                      Copilot models are disabled. Turn on the switch to enable
+                      them.
+                    </div>
+                  )}
+                </div>
+              </AccordionSection>
+            </div>
+          )}
+
           {/* Custom Models Section */}
           {customModelSettings?.map(
             (provider) =>
@@ -135,7 +207,7 @@ export const ModelSection: React.FC<ModelSectionProps> = ({ user }) => {
                                 href="command:pochi.openCustomModelSettings"
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="relative z-10 ml-1 rounded-md p-1 py-3 transition-colors hover:bg-muted"
+                                className="relative z-10 ml-1 rounded-md p-2 transition-colors hover:bg-secondary/50 hover:text-secondary-foreground dark:hover:bg-secondary"
                               >
                                 <PencilIcon className="size-3" />
                               </a>

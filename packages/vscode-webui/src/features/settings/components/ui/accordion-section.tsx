@@ -23,12 +23,11 @@ export const AccordionSection: React.FC<AccordionSectionProps> = ({
 
   return (
     <div className={cn(isCompact ? "py-2" : "py-6", className)}>
-      <button
-        type="button"
+      <div
         className={cn(
-          "group flex w-full items-center justify-between text-left focus:outline-none",
+          "group flex w-full cursor-pointer items-center justify-between text-left focus:outline-none",
         )}
-        onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
+        onClick={(e: React.MouseEvent<HTMLDivElement>) => {
           if ((e.target as HTMLElement).closest("a")) {
             return;
           }
@@ -52,7 +51,7 @@ export const AccordionSection: React.FC<AccordionSectionProps> = ({
             isOpen ? "-rotate-90" : "",
           )}
         />
-      </button>
+      </div>
       <div
         className={cn(
           "origin-top overflow-hidden transition-all duration-100 ease-in-out",

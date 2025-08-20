@@ -5,6 +5,7 @@ import { createOpenAIModel } from "./openai";
 import { createPochiModel } from "./pochi";
 import { request } from "./request";
 import type { LLMRequest } from "./types";
+import { createVSCodeLmModel } from "./vscode-lm";
 
 export function requestLLM(
   store: Store | undefined,
@@ -26,6 +27,10 @@ function createModel(
 
   if (llm.type === "google-vertex-tuning") {
     return createGoogleVertexTuningModel(llm);
+  }
+
+  if (llm.type === "vscode") {
+    return createVSCodeLmModel(llm);
   }
 
   if (llm.type === "pochi") {

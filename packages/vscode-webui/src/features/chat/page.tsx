@@ -18,6 +18,7 @@ import { ChevronLeft } from "lucide-react";
 import type React from "react";
 import { useEffect, useMemo, useRef } from "react";
 import { useApprovalAndRetry } from "../approval";
+import { useSelectedModels } from "../settings";
 import { ChatArea } from "./components/chat-area";
 import { ChatToolbar } from "./components/chat-toolbar";
 import { ErrorMessageView } from "./components/error-message-view";
@@ -95,12 +96,12 @@ function Chat({ user, uid, prompt }: ChatProps) {
 
   const { messages, sendMessage, status } = chat;
   const renderMessages = useMemo(() => formatters.ui(messages), [messages]);
-
+  const { isLoading: isModelsLoading } = useSelectedModels();
   const isLoading = status === "streaming" || status === "submitted";
 
   const approvalAndRetry = useApprovalAndRetry({
     ...chat,
-    showApproval: !isLoading,
+    showApproval: !isLoading && !isModelsLoading,
   });
 
   const { pendingApproval, retry } = approvalAndRetry;
@@ -112,7 +113,11 @@ function Chat({ user, uid, prompt }: ChatProps) {
   }, [prompt, chatKit]);
 
   usePendingModelAutoStart({
-    enabled: status === "ready" && messages.length === 1 && !isReadOnly,
+    enabled:
+      status === "ready" &&
+      messages.length === 1 &&
+      !isReadOnly &&
+      !isModelsLoading,
     task,
     retry,
   });
@@ -130,7 +135,9 @@ function Chat({ user, uid, prompt }: ChatProps) {
       fromTaskError(task) ||
       (pendingApproval?.name === "retry" ? pendingApproval.error : undefined);
 
-  useHandleChatEvents(isLoading || isReadOnly ? undefined : sendMessage);
+  useHandleChatEvents(
+    isLoading || isModelsLoading || isReadOnly ? undefined : sendMessage,
+  );
 
   return (
     <div className="flex h-screen flex-col">

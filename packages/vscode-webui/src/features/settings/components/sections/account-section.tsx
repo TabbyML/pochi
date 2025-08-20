@@ -51,7 +51,7 @@ export const AccountSection: React.FC<AccountSectionProps> = ({ user }) => {
     <Section title="" className="pt-0">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <div className="flex flex-grow cursor-pointer items-center justify-between gap-3 rounded-md p-2 hover:bg-secondary">
+          <div className="flex flex-grow cursor-pointer items-center justify-between gap-3 rounded-md p-2 hover:bg-secondary/50 dark:hover:bg-secondary">
             <div className="flex items-center gap-3">
               <Avatar className="size-10">
                 <AvatarImage src={user.image ?? undefined} />

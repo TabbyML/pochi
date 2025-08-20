@@ -11,6 +11,7 @@ import type {
   SessionState,
   UserEditsDiff,
   VSCodeHostApi,
+  VSCodeLmModel,
   WorkspaceState,
 } from "./index";
 
@@ -185,6 +186,22 @@ const VSCodeHostStub = {
     return Promise.resolve(
       {} as ThreadSignalSerialization<CustomModelSetting[] | undefined>,
     );
+  },
+  readVSCodeLm: async (): Promise<{
+    featureAvailable: boolean;
+    models: ThreadSignalSerialization<VSCodeLmModel[]>;
+    enabled: ThreadSignalSerialization<boolean>;
+    toggle: () => void;
+  }> => {
+    return Promise.resolve({
+      featureAvailable: false,
+      models: {} as ThreadSignalSerialization<VSCodeLmModel[]>,
+      enabled: {} as ThreadSignalSerialization<boolean>,
+      toggle: () => {},
+    });
+  },
+  chatVSCodeLm: async (): Promise<void> => {
+    return Promise.resolve();
   },
 } satisfies VSCodeHostApi;
 
