@@ -1,6 +1,8 @@
 // Export the main context and provider
 export {
   ChatContextProvider,
+  FixedStateChatContextProvider,
+  ToolCallStatusRegistry,
   useAutoApproveGuard,
   useToolCallLifeCycle,
 } from "./lib/chat-state";
