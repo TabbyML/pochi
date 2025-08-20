@@ -1,4 +1,4 @@
-# Pochi: Your AI-Powered Teammate for VS Code
+# Pochi
 
 <p align="center">
   <img src="packages/vscode/assets/icons/logo128.png" alt="Pochi Logo" width="128"/>
