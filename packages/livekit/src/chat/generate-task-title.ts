@@ -49,22 +49,12 @@ export async function generateTaskTitle({
 }
 
 function getTitleFromMessages(messages: Message[]) {
-  if (!messages.length) return;
-
-  const firstMessage = messages[0];
-  const lastTextPart = firstMessage.parts.findLast(
-    (x) => typeof x === "object" && x && "type" in x && x.type === "text",
-  );
-  if (
-    firstMessage.role === "user" &&
-    typeof lastTextPart === "object" &&
-    lastTextPart &&
-    "text" in lastTextPart &&
-    typeof lastTextPart.text === "string"
-  ) {
+  const firstMessage = messages.at(0);
+  if (!firstMessage) return;
+  const lastTextPart = firstMessage.parts.findLast((x) => x.type === "text");
+  if (lastTextPart) {
     return lastTextPart.text.split("\n")[0].trim();
   }
-  return;
 }
 
 function isTitleGeneratedByLlm(
@@ -121,5 +111,5 @@ async function generateTitle(
     reader.releaseLock();
   }
 
-  return text;
+  return text.trim();
 }
