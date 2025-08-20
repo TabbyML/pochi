@@ -20,7 +20,7 @@ export type { SessionState, WorkspaceState } from "./types/session";
 export type { TaskIdParams, NewTaskParams } from "./types/task-params";
 export {
   CustomModelSetting,
-  type VSCodeModel,
+  type VSCodeLmModel,
   type VSCodeLmRequest,
 } from "./types/models";
 export type { RuleFile } from "./types/rules";

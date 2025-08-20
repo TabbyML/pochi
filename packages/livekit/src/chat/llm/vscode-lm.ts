@@ -6,7 +6,7 @@ import type { Store } from "@livestore/livestore";
 import type { RequestData } from "../../types";
 import type { LLMRequest } from "./types";
 
-export function createVSCodeModel(
+export function createVSCodeLmModel(
   _store: Store | undefined,
   llm: Extract<RequestData["llm"], { type: "vscode" }>,
   _payload: LLMRequest,

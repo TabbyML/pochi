@@ -1,8 +1,8 @@
 import type { LanguageModelV2Prompt } from "@ai-sdk/provider";
 import { getLogger } from "@getpochi/common";
 import type {
+  VSCodeLmModel,
   VSCodeLmRequest,
-  VSCodeModel,
 } from "@getpochi/common/vscode-webui-bridge";
 import { signal } from "@preact/signals-core";
 import { injectable, singleton } from "tsyringe";
@@ -17,7 +17,7 @@ const logger = getLogger("VSCodeLm");
 export class VSCodeLm implements vscode.Disposable {
   private disposables: vscode.Disposable[] = [];
 
-  readonly models = signal<VSCodeModel[]>([]);
+  readonly models = signal<VSCodeLmModel[]>([]);
 
   constructor(private readonly config: PochiConfiguration) {
     if (this.config.vscodeLmEnabled.value) {
@@ -56,7 +56,7 @@ export class VSCodeLm implements vscode.Disposable {
         .filter((item) =>
           ["claude-sonnet-4", "gemini-2.5-pro"].includes(item.id),
         )
-        .map<VSCodeModel>((item) => ({
+        .map<VSCodeLmModel>((item) => ({
           vendor: item.vendor,
           family: item.family,
           version: item.version,

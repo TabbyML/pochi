@@ -57,7 +57,7 @@ export const CustomModelSetting = z.discriminatedUnion("kind", [
  */
 export type CustomModelSetting = z.infer<typeof CustomModelSetting>;
 
-export interface VSCodeModel {
+export interface VSCodeLmModel {
   vendor?: string;
   family?: string;
   version?: string;
@@ -66,7 +66,7 @@ export interface VSCodeModel {
 }
 
 export interface VSCodeLmRequestOptions {
-  model: Omit<VSCodeModel, "contextWindow">;
+  model: Omit<VSCodeLmModel, "contextWindow">;
   messages: LanguageModelV2Prompt;
   abortSignal?: AbortSignal;
 }

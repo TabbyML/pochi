@@ -5,7 +5,7 @@ import { createOpenAIModel } from "./openai";
 import { createPochiModel } from "./pochi";
 import { request } from "./request";
 import type { LLMRequest } from "./types";
-import { createVSCodeModel } from "./vscode-lm";
+import { createVSCodeLmModel } from "./vscode-lm";
 
 export function requestLLM(
   store: Store | undefined,
@@ -34,7 +34,7 @@ function createModel(
   }
 
   if (llm.type === "vscode") {
-    return createVSCodeModel(store, llm, payload);
+    return createVSCodeLmModel(store, llm, payload);
   }
 
   throw new Error(`Unknown LLM type: ${llm}`);

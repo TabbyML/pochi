@@ -12,7 +12,7 @@ import type {
   SessionState,
   TaskIdParams,
   UserEditsDiff,
-  VSCodeModel,
+  VSCodeLmModel,
   WorkspaceState,
 } from "./index";
 import type { VSCodeLmRequest } from "./types/models";
@@ -258,7 +258,7 @@ export interface VSCodeHostApi {
   >;
 
   readVSCodeLm(): Promise<{
-    models: ThreadSignalSerialization<VSCodeModel[]>;
+    models: ThreadSignalSerialization<VSCodeLmModel[]>;
     enabled: ThreadSignalSerialization<boolean>;
     enable: () => void;
     disable: () => void;

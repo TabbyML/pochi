@@ -44,8 +44,8 @@ import type {
   SaveCheckpointOptions,
   SessionState,
   VSCodeHostApi,
+  VSCodeLmModel,
   VSCodeLmRequest,
-  VSCodeModel,
   WorkspaceState,
 } from "@getpochi/common/vscode-webui-bridge";
 import type {
@@ -659,7 +659,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   };
 
   readVSCodeLm = async (): Promise<{
-    models: ThreadSignalSerialization<VSCodeModel[]>;
+    models: ThreadSignalSerialization<VSCodeLmModel[]>;
     enabled: ThreadSignalSerialization<boolean>;
     enable: () => void;
     disable: () => void;

@@ -11,7 +11,7 @@ import type {
   SessionState,
   UserEditsDiff,
   VSCodeHostApi,
-  VSCodeModel,
+  VSCodeLmModel,
   WorkspaceState,
 } from "./index";
 
@@ -188,13 +188,13 @@ const VSCodeHostStub = {
     );
   },
   readVSCodeLm: async (): Promise<{
-    models: ThreadSignalSerialization<VSCodeModel[]>;
+    models: ThreadSignalSerialization<VSCodeLmModel[]>;
     enabled: ThreadSignalSerialization<boolean>;
     enable: () => void;
     disable: () => void;
   }> => {
     return Promise.resolve({
-      models: {} as ThreadSignalSerialization<VSCodeModel[]>,
+      models: {} as ThreadSignalSerialization<VSCodeLmModel[]>,
       enabled: {} as ThreadSignalSerialization<boolean>,
       enable: () => {},
       disable: () => {},
