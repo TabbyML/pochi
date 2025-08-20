@@ -19,8 +19,14 @@ const isVSCodeEnvironment = () => {
   return false;
 };
 
+const isConsoleLogDisabled = () => {
+  return (
+    typeof process !== "undefined" && !!process.env.POCHI_LOG_DISABLE_CONSOLE
+  );
+};
+
 const mainLogger = new Logger({
-  type: isVSCodeEnvironment() ? "hidden" : "pretty",
+  type: isVSCodeEnvironment() || isConsoleLogDisabled() ? "hidden" : "pretty",
 });
 
 function stringToLogLevel(level: string) {
