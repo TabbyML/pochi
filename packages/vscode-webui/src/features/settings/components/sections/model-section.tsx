@@ -1,5 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
 import {
   Tooltip,
   TooltipContent,
@@ -8,6 +9,7 @@ import {
 } from "@/components/ui/tooltip";
 import { type User, apiClient } from "@/lib/auth-client";
 import { useCustomModelSetting } from "@/lib/hooks/use-custom-model-setting";
+import { useVSCodeLmModels } from "@/lib/hooks/use-vscode-model";
 import { useQuery } from "@tanstack/react-query";
 import { DotIcon, PencilIcon } from "lucide-react";
 import { useMemo } from "react";
@@ -61,11 +63,26 @@ export const ModelSection: React.FC<ModelSectionProps> = ({ user }) => {
     return costType === "premium" ? "default" : "secondary";
   };
 
-  const hasModels = !!pochiModels?.length || !!customModelSettings?.length;
+  const { enableVSCodeModels } = useSettingsStore();
+
+  const {
+    models: vscodeLmModels,
+    isLoading: isLoadingVscodeLmModels,
+    enable,
+    disable,
+    enabled,
+  } = useVSCodeLmModels();
+
+  const hasModels =
+    !!pochiModels?.length ||
+    !!customModelSettings?.length ||
+    !!vscodeLmModels?.length;
 
   return (
     <Section title={<div className="flex items-center">Models</div>}>
-      {isPochiModelLoading || isCustomModelLoading ? (
+      {isPochiModelLoading ||
+      isCustomModelLoading ||
+      isLoadingVscodeLmModels ? (
         <div className="space-y-2">
           {Array.from({ length: 2 }).map((_, i) => (
             <Skeleton key={i} className="h-10 w-full bg-secondary" />
@@ -173,6 +190,61 @@ export const ModelSection: React.FC<ModelSectionProps> = ({ user }) => {
                   </AccordionSection>
                 </div>
               ),
+          )}
+          {/* VSCode Models Section */}
+          {enableVSCodeModels && (
+            <div className="ml-1">
+              <AccordionSection
+                title={
+                  <div className="flex items-center gap-2 py-1">
+                    VSCode
+                    <Switch
+                      className="scale-75 cursor-pointer transition-all hover:bg-accent/20 hover:shadow-md "
+                      checked={enabled}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        enabled ? disable?.() : enable?.();
+                      }}
+                    />
+                  </div>
+                }
+                variant="compact"
+                className="py-0"
+                defaultOpen
+              >
+                <div className="space-y-2">
+                  {enabled ? (
+                    vscodeLmModels.length > 0 ? (
+                      vscodeLmModels.map((model) => (
+                        <div
+                          key={model.id}
+                          className="group rounded-md border p-2"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex flex-1 items-center gap-2 overflow-x-hidden">
+                              <div className="flex size-6 shrink-0 items-center justify-center">
+                                <DotIcon className="size-6 text-muted-foreground" />
+                              </div>
+                              <span className="truncate font-semibold">
+                                {model.vendor}/{model.id}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-muted-foreground text-xs">
+                        No Models Found
+                      </div>
+                    )
+                  ) : (
+                    <div className="text-muted-foreground text-xs">
+                      Not Available
+                    </div>
+                  )}
+                </div>
+              </AccordionSection>
+            </div>
           )}
         </div>
       ) : (

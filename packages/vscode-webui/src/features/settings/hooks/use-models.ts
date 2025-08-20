@@ -1,6 +1,6 @@
 import { apiClient, authHooks } from "@/lib/auth-client";
 import { useCustomModelSetting } from "@/lib/hooks/use-custom-model-setting";
-import { useVSCodeModels } from "@/lib/hooks/use-vscode-model";
+import { useVSCodeLmModels } from "@/lib/hooks/use-vscode-model";
 import type { CustomModelSetting } from "@getpochi/common/vscode-webui-bridge";
 import type { VSCodeModel } from "@getpochi/common/vscode-webui-bridge";
 import { useQuery } from "@tanstack/react-query";
@@ -64,7 +64,8 @@ export function useModels() {
   const { customModelSettings, isLoading: isLoadingCustomModelSettings } =
     useCustomModelSetting();
 
-  const vscodeModels = useVSCodeModels();
+  const { models: vscodeLmModels, isLoading: isLoadingVscodeLmModels } =
+    useVSCodeLmModels();
 
   const customModels = useMemo(() => {
     return customModelSettings?.flatMap((modelSetting) => {
@@ -86,18 +87,18 @@ export function useModels() {
     });
   }, [customModelSettings]);
 
-  const vscModels = useMemo(() => {
-    return vscodeModels.map<Extract<DisplayModel, { type: "vscode" }>>(
+  const vscodeLmDisplayModels = useMemo(() => {
+    return vscodeLmModels.map<Extract<DisplayModel, { type: "vscode" }>>(
       (model) => ({
         type: "vscode" as const,
         id: `${model.id}`,
-        name: `${model.id} (${model.vendor})`,
+        name: `${model.vendor}/${model.id}`,
         modelId: `${model.vendor}/${model.family}/${model.id}/${model.version}`,
         contextWindow: model.contextWindow,
         vscodeModel: model,
       }),
     );
-  }, [vscodeModels]);
+  }, [vscodeLmModels]);
 
   const hasUser = !!user;
   const models = useMemo(() => {
@@ -130,16 +131,27 @@ export function useModels() {
       allModels.push(...customModels);
     }
 
-    if (vscModels && vscModels.length > 0) {
-      allModels.push(...vscModels);
+    if (vscodeLmDisplayModels && vscodeLmDisplayModels.length > 0) {
+      allModels.push(...vscodeLmDisplayModels);
     }
 
     return allModels;
-  }, [data, enablePochiModels, customModels, vscModels, isLoading, hasUser]);
+  }, [
+    data,
+    enablePochiModels,
+    customModels,
+    vscodeLmDisplayModels,
+    isLoading,
+    hasUser,
+  ]);
 
   return {
     models,
-    isLoading: !(!isLoading && !isLoadingCustomModelSettings), // make sure models are all loaded
+    isLoading: !(
+      !isLoading &&
+      !isLoadingCustomModelSettings &&
+      !isLoadingVscodeLmModels
+    ), // make sure models are all loaded
   };
 }
 
@@ -163,15 +175,11 @@ export function useSelectedModels() {
     }
 
     const vscodeModels = models.filter((m) => m.type === "vscode");
-    if (vscodeModels.length > 0) {
-      groups.push({ title: "VSCode", models: vscodeModels });
-    }
-
     const customModels = models.filter((m) => m.type === "byok");
-    if (customModels.length > 0) {
+    if (customModels.length + vscodeModels.length > 0) {
       groups.push({
         title: "Custom",
-        models: customModels,
+        models: [...customModels, ...vscodeModels],
         isCustom: true,
       });
     }

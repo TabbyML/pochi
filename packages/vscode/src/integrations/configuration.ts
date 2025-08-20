@@ -14,6 +14,7 @@ export class PochiConfiguration implements vscode.Disposable {
   readonly mcpServers = signal(getPochiMcpServersSettings());
   readonly autoSaveDisabled = signal(getAutoSaveDisabled());
   readonly customModelSettings = signal(getCustomModelSetting());
+  readonly vscodeLmEnabled = signal(getVscodeLmEnabled());
 
   constructor() {
     this.disposables.push(
@@ -34,6 +35,11 @@ export class PochiConfiguration implements vscode.Disposable {
         if (e.affectsConfiguration("pochi.customModelSettings")) {
           const settings = getCustomModelSetting();
           this.customModelSettings.value = settings;
+        }
+
+        if (e.affectsConfiguration("pochi.vscodeLmEnabled")) {
+          const enabled = getVscodeLmEnabled();
+          this.vscodeLmEnabled.value = enabled;
         }
       }),
     );
@@ -107,4 +113,16 @@ function getCustomModelSetting() {
   return vscode.workspace
     .getConfiguration("pochi")
     .get("customModelSettings") as CustomModelSetting[] | undefined;
+}
+
+function getVscodeLmEnabled() {
+  return vscode.workspace
+    .getConfiguration("pochi")
+    .get("vscodeLmEnabled", false);
+}
+
+export function updateVscodeLmEnabled(value: boolean) {
+  return vscode.workspace
+    .getConfiguration("pochi")
+    .update("vscodeLmEnabled", value, true);
 }

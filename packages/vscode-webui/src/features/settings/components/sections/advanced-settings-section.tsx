@@ -10,6 +10,9 @@ export const AdvancedSettingsSection: React.FC = () => {
 
     enablePochiModels,
     updateEnablePochiModels,
+
+    enableVSCodeModels,
+    updateEnableVSCodeModels,
   } = useSettingsStore();
 
   return (
@@ -33,6 +36,14 @@ export const AdvancedSettingsSection: React.FC = () => {
               checked={enablePochiModels}
               onCheckedChange={(checked) => {
                 updateEnablePochiModels(!!checked);
+              }}
+            />
+            <SettingsCheckboxOption
+              id="enable-vscode-models"
+              label="Enable VSCode Models"
+              checked={enableVSCodeModels}
+              onCheckedChange={(checked) => {
+                updateEnableVSCodeModels(!!checked);
               }}
             />
             <div>

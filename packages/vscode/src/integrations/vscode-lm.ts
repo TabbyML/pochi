@@ -7,17 +7,25 @@ import type {
 import { signal } from "@preact/signals-core";
 import { injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
+// biome-ignore lint/style/useImportType: needed for dependency injection
+import { PochiConfiguration, updateVscodeLmEnabled } from "./configuration";
 
-const logger = getLogger("VSCodeLmProvider");
+const logger = getLogger("VSCodeLm");
 
 @injectable()
 @singleton()
-export class VSCodeLmProvider implements vscode.Disposable {
+export class VSCodeLm implements vscode.Disposable {
   private disposables: vscode.Disposable[] = [];
 
   readonly models = signal<VSCodeModel[]>([]);
 
-  constructor() {
+  constructor(private readonly config: PochiConfiguration) {
+    if (this.config.vscodeLmEnabled.value) {
+      this.initModels();
+    }
+  }
+
+  private initModels() {
     this.disposables.push(
       vscode.lm.onDidChangeChatModels(() => {
         this.updateModels();
@@ -26,16 +34,35 @@ export class VSCodeLmProvider implements vscode.Disposable {
     this.updateModels();
   }
 
+  enable() {
+    updateVscodeLmEnabled(true).then(() => {
+      this.updateModels();
+    });
+  }
+
+  disable() {
+    updateVscodeLmEnabled(false).then(() => {
+      this.models.value = [];
+    });
+  }
+
   private async updateModels() {
+    if (!this.config.vscodeLmEnabled.value) {
+      return;
+    }
     try {
       const vscodeModels = await vscode.lm.selectChatModels({});
-      this.models.value = vscodeModels.map<VSCodeModel>((item) => ({
-        vendor: item.vendor,
-        family: item.family,
-        version: item.version,
-        id: item.id,
-        contextWindow: item.maxInputTokens,
-      }));
+      this.models.value = vscodeModels
+        .filter((item) =>
+          ["claude-sonnet-4", "gemini-2.5-pro"].includes(item.id),
+        )
+        .map<VSCodeModel>((item) => ({
+          vendor: item.vendor,
+          family: item.family,
+          version: item.version,
+          id: item.id,
+          contextWindow: item.maxInputTokens,
+        }));
     } catch (error) {
       logger.error("Failed to update VSCode models", error);
     }

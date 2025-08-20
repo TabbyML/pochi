@@ -187,10 +187,18 @@ const VSCodeHostStub = {
       {} as ThreadSignalSerialization<CustomModelSetting[] | undefined>,
     );
   },
-  readVSCodeModels: async (): Promise<
-    ThreadSignalSerialization<VSCodeModel[]>
-  > => {
-    return Promise.resolve({} as ThreadSignalSerialization<VSCodeModel[]>);
+  readVSCodeLm: async (): Promise<{
+    models: ThreadSignalSerialization<VSCodeModel[]>;
+    enabled: ThreadSignalSerialization<boolean>;
+    enable: () => void;
+    disable: () => void;
+  }> => {
+    return Promise.resolve({
+      models: {} as ThreadSignalSerialization<VSCodeModel[]>,
+      enabled: {} as ThreadSignalSerialization<boolean>,
+      enable: () => {},
+      disable: () => {},
+    });
   },
   vscodeLmRequest: async (): Promise<void> => {
     return Promise.resolve();

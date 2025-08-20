@@ -215,6 +215,11 @@
                 "type": "string",
                 "default": "",
                 "description": "Pochi webview UI log level"
+              },
+              "enableVSCodeModels": {
+                "type": "boolean",
+                "default": false,
+                "description": "Enable VSCode language models in Pochi."
               }
             }
           },
@@ -351,6 +356,10 @@
                 }
               ]
             }
+          },
+          "pochi.vscodeLmEnabled": {
+            "type": "boolean",
+            "default": false
           }
         }
       }

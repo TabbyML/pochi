@@ -14,7 +14,7 @@ import { DiffOriginContentProvider } from "./integrations/editor/diff-origin-con
 import { McpHub } from "./integrations/mcp/mcp-hub";
 import { StatusBarItem } from "./integrations/status-bar-item";
 import { TerminalLinkProvider } from "./integrations/terminal-link-provider";
-import { VSCodeLmProvider } from "./integrations/vscode-lm-provider";
+import { VSCodeLm } from "./integrations/vscode-lm";
 import {
   type ApiClient,
   type AuthClient,
@@ -56,7 +56,7 @@ export async function activate(context: vscode.ExtensionContext) {
   container.resolve(FileLogger);
   container.resolve(TerminalLinkProvider);
   container.resolve(DiffChangesContentProvider);
-  container.resolve(VSCodeLmProvider);
+  container.resolve(VSCodeLm);
 }
 
 // This method is called when your extension is deactivated

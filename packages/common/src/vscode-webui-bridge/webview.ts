@@ -257,7 +257,12 @@ export interface VSCodeHostApi {
     ThreadSignalSerialization<CustomModelSetting[] | undefined>
   >;
 
-  readVSCodeModels(): Promise<ThreadSignalSerialization<VSCodeModel[]>>;
+  readVSCodeLm(): Promise<{
+    models: ThreadSignalSerialization<VSCodeModel[]>;
+    enabled: ThreadSignalSerialization<boolean>;
+    enable: () => void;
+    disable: () => void;
+  }>;
 
   vscodeLmRequest: VSCodeLmRequest;
 }

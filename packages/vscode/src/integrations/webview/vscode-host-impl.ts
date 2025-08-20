@@ -86,7 +86,7 @@ import {
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { TerminalState } from "../terminal/terminal-state";
 // biome-ignore lint/style/useImportType: needed for dependency injection
-import { VSCodeLmProvider } from "../vscode-lm-provider";
+import { VSCodeLm } from "../vscode-lm";
 
 const logger = getLogger("VSCodeHostImpl");
 
@@ -109,7 +109,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     private readonly thirdMcpImporter: ThirdMcpImporter,
     private readonly checkpointService: CheckpointService,
     private readonly pochiConfiguration: PochiConfiguration,
-    private readonly vscodeLmProvider: VSCodeLmProvider,
+    private readonly vscodeLm: VSCodeLm,
   ) {}
 
   listRuleFiles = async (): Promise<RuleFile[]> => {
@@ -658,14 +658,22 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     return ThreadSignal.serialize(this.pochiConfiguration.customModelSettings);
   };
 
-  readVSCodeModels = async (): Promise<
-    ThreadSignalSerialization<VSCodeModel[]>
-  > => {
-    return ThreadSignal.serialize(this.vscodeLmProvider.models);
+  readVSCodeLm = async (): Promise<{
+    models: ThreadSignalSerialization<VSCodeModel[]>;
+    enabled: ThreadSignalSerialization<boolean>;
+    enable: () => void;
+    disable: () => void;
+  }> => {
+    return {
+      models: ThreadSignal.serialize(this.vscodeLm.models),
+      enabled: ThreadSignal.serialize(this.pochiConfiguration.vscodeLmEnabled),
+      enable: this.vscodeLm.enable.bind(this.vscodeLm),
+      disable: this.vscodeLm.disable.bind(this.vscodeLm),
+    };
   };
 
   vscodeLmRequest: VSCodeLmRequest = (params, onChunk) =>
-    this.vscodeLmProvider.request(params, onChunk);
+    this.vscodeLm.request(params, onChunk);
 
   dispose() {
     for (const disposable of this.disposables) {
