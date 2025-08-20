@@ -263,7 +263,7 @@ export interface VSCodeHostApi {
     toggle: () => void;
   }>;
 
-  vscodeLmRequest: VSCodeLmRequest;
+  chatVSCodeLm: VSCodeLmRequest;
 }
 
 export interface WebviewHostApi {

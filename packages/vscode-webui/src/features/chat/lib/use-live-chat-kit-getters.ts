@@ -87,7 +87,7 @@ function useLLM(): React.RefObject<LLMRequestData> {
         family: selectedModel.vscodeModel.family,
         version: selectedModel.vscodeModel.version,
         id: selectedModel.vscodeModel.id,
-        vscodeLmRequest: vscodeHost.vscodeLmRequest,
+        chatVSCodeLm: vscodeHost.chatVSCodeLm,
       };
     }
 

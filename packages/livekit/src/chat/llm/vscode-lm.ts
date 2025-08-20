@@ -26,7 +26,7 @@ export function createVSCodeLmModel(
             id: "0",
           });
           llm
-            .vscodeLmRequest(
+            .chatVSCodeLm(
               {
                 messages: prompt,
                 model: {

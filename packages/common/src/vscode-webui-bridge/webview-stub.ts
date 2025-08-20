@@ -198,7 +198,7 @@ const VSCodeHostStub = {
       toggle: () => {},
     });
   },
-  vscodeLmRequest: async (): Promise<void> => {
+  chatVSCodeLm: async (): Promise<void> => {
     return Promise.resolve();
   },
 } satisfies VSCodeHostApi;
