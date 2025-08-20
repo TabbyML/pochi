@@ -146,7 +146,7 @@ export function useSelectedModels() {
       if (validModelId !== selectedModelId) {
         updateSelectedModelId(validModelId);
       }
-      setIsModelReady(true);
+      setIsModelReady(!!validModelId);
     }
   }, [isLoading, models, selectedModelId, updateSelectedModelId]);
 
