@@ -233,13 +233,7 @@ const PackageIgnoreList: Record<string, string[]> = {
   ],
   runner: ["@types/bun"],
   livekit: ["@ai-sdk/provider-utils", "@ai-sdk/provider"],
-  docs: [
-    "@tailwindcss/postcss",
-    "postcss",
-    "tailwindcss",
-    "typescript",
-    "@types/node",
-  ],
+  docs: ["@tailwindcss/postcss", "postcss", "tailwindcss", "typescript"],
 };
 
 // Run the script
