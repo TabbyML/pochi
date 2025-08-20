@@ -4,22 +4,20 @@ import { requestLLM } from "./llm";
 
 const logger = getLogger("generateTaskTitle");
 
-export async function checkAndGenerateTaskTitle({
-  taskTitle,
+export async function generateTaskTitle({
+  title,
   messages,
   getLLM,
   abortSignal,
 }: {
-  taskTitle: string;
+  title: string | null;
   messages: Message[];
   getLLM: () => RequestData["llm"];
   abortSignal?: AbortSignal;
-}): Promise<string> {
-  let result = taskTitle;
-
+}): Promise<string | undefined> {
   const lastMessage = messages.at(-1);
   if (!lastMessage) {
-    return result;
+    return undefined;
   }
 
   let partCount = 0;
@@ -28,28 +26,30 @@ export async function checkAndGenerateTaskTitle({
   }
 
   const titleFromMessages = getTitleFromMessages(messages);
+
   // prevent title generation when parts are too short or to long
   if (
     partCount >= 5 &&
     partCount < 20 &&
-    !isTitleGeneratedByLlm(taskTitle, titleFromMessages)
+    !isTitleGeneratedByLlm(title, titleFromMessages)
   ) {
     try {
       const llm = getLLM();
-      const title = await generateTitle(llm, messages, abortSignal);
-      if (title) {
-        result = title;
-      }
+      return await generateTitle(llm, messages, abortSignal);
     } catch (err) {
       logger.warn("Failed to generate title", err);
     }
   }
 
-  return result;
+  if (title === null) {
+    return titleFromMessages;
+  }
+
+  return undefined;
 }
 
-export function getTitleFromMessages(messages: Message[]) {
-  if (!messages.length) return null;
+function getTitleFromMessages(messages: Message[]) {
+  if (!messages.length) return;
 
   const firstMessage = messages[0];
   const lastTextPart = firstMessage.parts.findLast(
@@ -64,15 +64,14 @@ export function getTitleFromMessages(messages: Message[]) {
   ) {
     return lastTextPart.text.split("\n")[0].trim();
   }
-  return null;
+  return;
 }
 
 function isTitleGeneratedByLlm(
-  taskTitle: string,
-  titleFromMessages: string | null,
+  title: string | null,
+  titleFromMessages: string | undefined,
 ) {
-  if (taskTitle === "(empty)") return false;
-  return taskTitle !== titleFromMessages;
+  return title !== titleFromMessages;
 }
 
 async function generateTitle(

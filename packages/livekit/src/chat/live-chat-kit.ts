@@ -13,10 +13,7 @@ import {
   FlexibleChatTransport,
   type OnStartCallback,
 } from "./flexible-chat-transport";
-import {
-  checkAndGenerateTaskTitle,
-  getTitleFromMessages,
-} from "./generate-task-title";
+import { generateTaskTitle } from "./generate-task-title";
 
 export type LiveChatKitOptions<T> = {
   taskId: string;
@@ -209,20 +206,17 @@ export class LiveChatKit<
         );
       }
 
-      let title = store.query(
-        tables.tasks.where("id", "=", this.taskId).first(),
-      ).title;
-
-      if (title === null) {
-        title = getTitleFromMessages(messages);
-      } else {
-        title = await checkAndGenerateTaskTitle({
-          taskTitle: title,
-          messages,
-          abortSignal,
-          getLLM: getters.getLLM,
-        });
+      const { task } = this;
+      if (!task) {
+        throw new Error("Task not found");
       }
+
+      const title = await generateTaskTitle({
+        title: task.title,
+        messages,
+        abortSignal,
+        getLLM: getters.getLLM,
+      });
 
       const { gitStatus } = environment?.workspace || {};
 
