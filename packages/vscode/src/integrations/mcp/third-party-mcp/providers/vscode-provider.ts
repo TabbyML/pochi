@@ -1,46 +1,51 @@
-import { getLogger } from "@/lib/logger";
 import * as vscode from "vscode";
 import type { McpServerConfig } from "../../types";
-import type { McpConfigProvider } from "../provider";
+import { BaseFileMcpProvider } from "./base-file-provider";
 
-const logger = getLogger("VscodeMcpProvider");
-
-export class VscodeMcpProvider implements McpConfigProvider {
+export class VscodeMcpProvider extends BaseFileMcpProvider {
   readonly name = "VSCode";
-  readonly description = "VSCode User Settings MCP configuration";
+  readonly description = "VSCode MCP configuration";
+  protected readonly pathSegments = {
+    darwin: ["~", "Library", "Application Support", "Code", "User", "mcp.json"],
+    linux: ["~", ".config", "Code", "User", "mcp.json"],
+    win32: ["%APPDATA%", "Code", "User", "mcp.json"],
+  };
+
+  protected readonly configFieldName = "servers";
 
   async getServers(): Promise<Record<string, McpServerConfig>> {
+    // Try to get servers from mcp.json first
+    const servers = await super.getServers();
+    if (Object.keys(servers).length > 0) {
+      return servers;
+    }
+    return this.getServersFromSettings();
+  }
+
+  /**
+   * This method is used to get the servers from the VSCode settings.
+   * Used for mcp config in VSCode v1.101
+   * @returns The servers from the VSCode settings
+   */
+  private async getServersFromSettings(): Promise<
+    Record<string, McpServerConfig>
+  > {
     try {
       const workspaceConfig = vscode.workspace.getConfiguration();
       const mcpSection = workspaceConfig.get<{
         servers?: Record<string, McpServerConfig>;
       }>("mcp");
-      const mcpServers = mcpSection?.servers;
-
-      // remove unnecessary vscode built-in mcp-server-time mcp
-      if (mcpServers && "mcp-server-time" in mcpServers) {
-        const { "mcp-server-time": _, ...filteredServers } = mcpServers;
-        return filteredServers;
-      }
-
-      return mcpServers || {};
-    } catch (error) {
-      logger.debug(
-        `Failed to get MCP servers from vscode config: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`,
-      );
+      return mcpSection?.servers || {};
+    } catch {
       return {};
     }
   }
 
-  getDisplayPath(): string {
-    return "VS Code Settings.json";
-  }
-
   async openConfig(): Promise<void> {
-    await vscode.commands.executeCommand("workbench.action.openSettingsJson", {
-      revealSetting: { key: "mcp" },
-    });
+    try {
+      await vscode.commands.executeCommand("mcp.openUserConfiguration");
+    } catch {
+      await super.openConfig();
+    }
   }
 }
