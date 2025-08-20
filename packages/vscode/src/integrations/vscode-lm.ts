@@ -73,7 +73,7 @@ export class VSCodeLm implements vscode.Disposable {
     }
   }
 
-  request: VSCodeLmRequest = async ({ model, messages }, onChunk) => {
+  request: VSCodeLmRequest = async ({ model, prompt: messages }, onChunk) => {
     logger.info("vscode lm request");
     const vscodeModels = await vscode.lm.selectChatModels(model);
     if (vscodeModels.length === 0) {

@@ -28,7 +28,7 @@ export function createVSCodeLmModel(
           llm
             .chatVSCodeLm(
               {
-                messages: prompt,
+                prompt: prompt,
                 model: {
                   vendor: llm.vendor,
                   family: llm.family,

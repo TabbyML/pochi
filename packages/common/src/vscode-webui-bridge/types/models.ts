@@ -67,7 +67,7 @@ export interface VSCodeLmModel {
 
 export interface VSCodeLmRequestOptions {
   model: Omit<VSCodeLmModel, "contextWindow">;
-  messages: LanguageModelV2Prompt;
+  prompt: LanguageModelV2Prompt;
   abortSignal?: AbortSignal;
 }
 
