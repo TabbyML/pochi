@@ -101,7 +101,7 @@ function Chat({ user, uid, prompt }: ChatProps) {
 
   const approvalAndRetry = useApprovalAndRetry({
     ...chat,
-    showApproval: !isLoading,
+    showApproval: !isLoading && !isModelsLoading,
   });
 
   const { pendingApproval, retry } = approvalAndRetry;
