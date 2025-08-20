@@ -28,3 +28,7 @@ export function useToolCallLifeCycle() {
 }
 
 export { ChatContextProvider } from "./chat";
+export {
+  ToolCallStatusRegistry,
+  FixedStateChatContextProvider,
+} from "./fixed-state";

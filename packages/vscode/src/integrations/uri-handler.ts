@@ -104,9 +104,13 @@ class RagdollUriHandler implements vscode.UriHandler, vscode.Disposable {
       `Pushed openTask job for existing workspace: ${existingProject} with task ID: ${uid}`,
     );
 
-    // Open the workspace
+    // Open the workspace, only open in newWindow when there is a existed workspace
+    // In Remote Pochi, There is no opened workspace, opening new window would cause a new tab.
+    const forceNewWindow =
+      vscode.workspace.workspaceFolders &&
+      vscode.workspace.workspaceFolders.length > 0;
     await vscode.commands.executeCommand("vscode.openFolder", existingProject, {
-      forceNewWindow: true,
+      forceNewWindow,
     });
     logger.info("Successfully opened existing project folder");
 
