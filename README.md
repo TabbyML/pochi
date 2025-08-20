@@ -30,35 +30,6 @@ Pochi's workflow is built on these principles:
 2.  **Open the Pochi Sidebar**: Click on the Pochi icon in the activity bar to open the chat interface.
 3.  **Start Chatting**: Start a conversation with Pochi to ask questions, get code suggestions, or give it a task to work on.
 
-### Quick Start Demo
-
-Watch this demo video showcasing the end-to-end experience with Pochi - from extension installation and registration to starting a task and seeing the results:
-
-<div
-  style={{
-    position: "relative",
-    paddingBottom: "53.7%",
-    height: 0,
-    overflow: "hidden",
-    maxWidth: "100%",
-  }}
->
-  <iframe
-    src="https://drive.google.com/file/d/1CDxAcO9WGFFC45x5a5HDFdT4u6rtdJrB/preview"
-    style={{
-      position: "absolute",
-      top: 0,
-      left: 0,
-      width: "100%",
-      height: "100%",
-      border: "none",
-      borderRadius: "8px",
-    }}
-    allowFullScreen
-    title="Pochi Demo - End-to-End Experience"
-  />
-</div>
-
 ## 💬 Community & Support
 
 Interested in contributing or just engaging with the team? We welcome your input through our [Discord Community](https://discord.com/invite/tWF66yr8NQ)! Feel free to share feedback, report bugs, and suggest features there!
