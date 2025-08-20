@@ -1,4 +1,4 @@
-name: check
+name: ci
 
 on:
   push:
@@ -17,8 +17,16 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Cache turbo build setup
+        uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: ${{ runner.os }}-turbo-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-turbo-
       - uses: oven-sh/setup-bun@v2
       - run: bun install
       - run: POCHI_REMOTE_ENV=1 bun pre-push
