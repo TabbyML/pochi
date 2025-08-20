@@ -211,9 +211,9 @@ export const McpSection: React.FC = () => {
               href={commandForMcp("openServerSettings")}
               target="_blank"
               rel="noopener noreferrer"
-              className="rounded-md p-1 hover:bg-muted"
+              className="ml-1 rounded-md p-2 hover:bg-secondary/50 hover:text-secondary-foreground dark:hover:bg-secondary"
             >
-              <PencilIcon className="ml-1 size-3" />
+              <PencilIcon className="size-3" />
             </a>
           </TooltipTrigger>
           <TooltipContent>

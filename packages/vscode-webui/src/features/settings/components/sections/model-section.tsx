@@ -207,7 +207,7 @@ export const ModelSection: React.FC<ModelSectionProps> = ({ user }) => {
                                 href="command:pochi.openCustomModelSettings"
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="relative z-10 ml-1 rounded-md p-1 py-3 transition-colors hover:bg-muted"
+                                className="relative z-10 ml-1 rounded-md p-2 transition-colors hover:bg-secondary/50 hover:text-secondary-foreground dark:hover:bg-secondary"
                               >
                                 <PencilIcon className="size-3" />
                               </a>
