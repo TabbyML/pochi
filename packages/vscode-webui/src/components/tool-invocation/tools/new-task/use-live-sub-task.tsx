@@ -1,10 +1,10 @@
 import type { TaskThreadSource } from "@/components/task-thread";
 import {
   type ToolCallLifeCycle,
+  type ToolCallStatusRegistry,
   useLiveChatKitGetters,
   useToolCallLifeCycle,
 } from "@/features/chat";
-
 import {
   ReadyForRetryError,
   useMixinReadyForRetryError,
@@ -23,10 +23,10 @@ import { getToolName, lastAssistantMessageIsCompleteWithToolCalls } from "ai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ToolProps } from "../../types";
 
-export function useLiveSubTask({
-  tool,
-  isExecuting,
-}: Pick<ToolProps<"newTask">, "tool" | "isExecuting">): TaskThreadSource {
+export function useLiveSubTask(
+  { tool, isExecuting }: Pick<ToolProps<"newTask">, "tool" | "isExecuting">,
+  toolCallStatusRegistry: ToolCallStatusRegistry,
+): TaskThreadSource {
   const lifecycle = useToolCallLifeCycle().getToolCallLifeCycle({
     toolName: getToolName(tool),
     toolCallId: tool.toolCallId,
@@ -98,6 +98,9 @@ export function useLiveSubTask({
         return;
       }
 
+      toolCallStatusRegistry.set(toolCall, {
+        isExecuting: true,
+      });
       const output = await vscodeHost.executeToolCall(
         toolCall.toolName,
         toolCall.input,
@@ -109,6 +112,9 @@ export function useLiveSubTask({
           nonInteractive: true,
         },
       );
+      toolCallStatusRegistry.set(toolCall, {
+        isExecuting: false,
+      });
 
       addToolResult({
         // @ts-expect-error
@@ -248,16 +254,26 @@ export function useLiveSubTask({
     todosRef,
   });
 
-  const isLoading = useMemo(() => {
-    const streamingResult = ensureNewTaskStreamingResult(
-      lifecycle.streamingResult,
-    );
-    return (
-      streamingResult &&
-      !abortController.current.signal.aborted &&
-      (status === "submitted" || status === "streaming")
-    );
-  }, [lifecycle.streamingResult, status]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    const updateIsLoading = () => {
+      setIsLoading(
+        !!(
+          ensureNewTaskStreamingResult(lifecycle.streamingResult) &&
+          !abortController.current.signal.aborted &&
+          (status === "submitted" || status === "streaming") &&
+          [...toolCallStatusRegistry.entries()].every(
+            ([_, value]) => !value.isExecuting,
+          )
+        ),
+      );
+    };
+    updateIsLoading();
+
+    const unsubscribe = toolCallStatusRegistry.on("updated", updateIsLoading);
+    return () => unsubscribe();
+  }, [toolCallStatusRegistry, lifecycle.streamingResult, status]);
 
   return {
     messages,
