@@ -1,26 +1,37 @@
 import type { McpToolStatus } from "@getpochi/common/vscode-webui-bridge";
 import type { ToolCallOptions } from "ai";
+import z from "zod";
 
-interface McpServerTransportStdio {
-  command: string;
-  args: string[];
-  cwd?: string;
-  env?: Record<string, string>;
-}
+const McpServerTransportStdio = z.object({
+  command: z.string(),
+  args: z.array(z.string()),
+  cwd: z.string().optional(),
+  env: z.record(z.string(), z.string()).optional(),
+});
+type McpServerTransportStdio = z.infer<typeof McpServerTransportStdio>;
 
-interface McpServerTransportHttp {
-  url: string;
-  headers?: Record<string, string>;
-}
+const McpServerTransportHttp = z.object({
+  url: z.string(),
+  headers: z.record(z.string(), z.string()).optional(),
+});
+type McpServerTransportHttp = z.infer<typeof McpServerTransportHttp>;
 
-type McpServerTransport = McpServerTransportStdio | McpServerTransportHttp;
+const McpServerTransport = z.union([
+  McpServerTransportStdio,
+  McpServerTransportHttp,
+]);
+type McpServerTransport = z.infer<typeof McpServerTransport>;
 
-interface McpServerCustomization {
-  disabled?: boolean;
-  disabledTools?: string[];
-}
+const McpServerCustomization = z.object({
+  disabled: z.boolean().optional(),
+  disabledTools: z.array(z.string()).optional(),
+});
 
-export type McpServerConfig = McpServerTransport & McpServerCustomization;
+export const McpServerConfig = z.intersection(
+  McpServerTransport,
+  McpServerCustomization,
+);
+export type McpServerConfig = z.infer<typeof McpServerConfig>;
 
 export function isStdioTransport(
   config: McpServerTransport,
