@@ -12,6 +12,7 @@ export const prompts = {
   compact: createCompactPrompt,
   inlineCompact,
   parseInlineCompact,
+  generateTitle,
 };
 
 function createSystemReminder(content: string) {
@@ -48,4 +49,8 @@ function parseInlineCompact(text: string) {
   return {
     summary: match[1],
   };
+}
+
+function generateTitle() {
+  return "Based on the conversation above, create a concise and descriptive title for the task. The title should be a short sentence that summarizes the user's request and should NOT end with any punctuation marks (e.g., periods, question marks). Do NOT use markdown formatting, bullet points, or numbered lists. Avoid creating complex structured templates. Return only the title itself, without any explanations, comments, headings, or special formatting.";
 }

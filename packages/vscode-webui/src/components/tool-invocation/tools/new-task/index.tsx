@@ -2,8 +2,12 @@ import { TaskThread, type TaskThreadSource } from "@/components/task-thread";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
+import {
+  FixedStateChatContextProvider,
+  ToolCallStatusRegistry,
+} from "@/features/chat";
 import { Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { StatusIcon } from "../../status-icon";
 import { ExpandIcon, ToolTitle } from "../../tool-container";
 import type { ToolProps } from "../../types";
@@ -26,11 +30,15 @@ export const newTaskTool: React.FC<NewTaskToolProps> = ({
   let isLiveTaskSource = false;
   let taskSource = taskThreadSource;
 
+  const subTaskToolCallStatusRegistry = useRef(new ToolCallStatusRegistry());
   const inlinedTaskSource = useInlinedSubTask(tool);
   if (inlinedTaskSource) {
     taskSource = inlinedTaskSource;
   } else if (uid) {
-    taskSource = useLiveSubTask({ tool, isExecuting });
+    taskSource = useLiveSubTask(
+      { tool, isExecuting },
+      subTaskToolCallStatusRegistry.current,
+    );
     isLiveTaskSource = true;
   }
 
@@ -62,7 +70,11 @@ export const newTaskTool: React.FC<NewTaskToolProps> = ({
         )}
       </ToolTitle>
       {taskSource && (
-        <TaskThread source={taskSource} showMessageList={showMessageList} />
+        <FixedStateChatContextProvider
+          toolCallStatusRegistry={subTaskToolCallStatusRegistry.current}
+        >
+          <TaskThread source={taskSource} showMessageList={showMessageList} />
+        </FixedStateChatContextProvider>
       )}
     </div>
   );

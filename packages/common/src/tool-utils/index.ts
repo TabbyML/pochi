@@ -15,7 +15,7 @@ export {
   collectCustomRules,
   SystemRulesFilepath,
   SystemRulesFileDisplayPath,
-  DefaultWorkspaceRulesFilePath,
+  DefaultWorkspaceRulesFilePaths,
 } from "./custom-rules";
 export { MaxTerminalOutputSize } from "./limits";
 export { CredentialStorage } from "./credential-storage";

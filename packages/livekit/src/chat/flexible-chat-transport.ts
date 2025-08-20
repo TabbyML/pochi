@@ -15,6 +15,8 @@ import {
 export type OnStartCallback = (options: {
   messages: Message[];
   environment?: Environment;
+  abortSignal?: AbortSignal;
+  getters: PrepareRequestGetters;
 }) => void;
 
 export type PrepareRequestGetters = {
@@ -60,9 +62,11 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
     const environment = await this.getters.getEnvironment?.({ messages });
     const mcpToolSet = this.getters.getMcpToolSet?.();
 
-    this.onStart?.({
+    await this.onStart?.({
       messages,
       environment,
+      abortSignal,
+      getters: this.getters,
     });
 
     const middlewares = [];
