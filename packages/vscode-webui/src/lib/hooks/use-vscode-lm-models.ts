@@ -7,12 +7,14 @@ export const useVSCodeLmModels = () => {
   const { data, isLoading } = useQuery({
     queryKey: ["vscode-lm-models"],
     queryFn: async () => {
-      const { models, enabled, toggle } = await vscodeHost.readVSCodeLm();
+      const { models, enabled, toggle, featureAvailable } =
+        await vscodeHost.readVSCodeLm();
 
       return {
         models: threadSignal(models),
         enabled: threadSignal(enabled),
         toggle: toggle,
+        featureAvailable,
       };
     },
     staleTime: Number.POSITIVE_INFINITY,
@@ -24,6 +26,7 @@ export const useVSCodeLmModels = () => {
       isLoading: false,
       toggle: () => {},
       enabled: false,
+      featureAvailable: false,
     };
   }
 
@@ -32,5 +35,6 @@ export const useVSCodeLmModels = () => {
     isLoading,
     toggle: data.toggle,
     enabled: data.enabled.value,
+    featureAvailable: data.featureAvailable,
   };
 };

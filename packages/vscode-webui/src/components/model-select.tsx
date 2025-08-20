@@ -155,7 +155,7 @@ export function ModelSelect({
                   </div>
                 ))}
 
-                {!!models?.length && <DropdownMenuSeparator />}
+                {!!customModels?.flat().length && <DropdownMenuSeparator />}
                 <DropdownMenuItem asChild>
                   <a
                     href="command:pochi.openCustomModelSettings"
