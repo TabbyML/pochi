@@ -28,5 +28,5 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-turbo-
       - uses: oven-sh/setup-bun@v2
-      - run: bun install
+      - run: bun install --frozen-lockfile
       - run: POCHI_REMOTE_ENV=1 bun pre-push
