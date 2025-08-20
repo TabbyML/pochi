@@ -68,7 +68,7 @@
     },
     "packages/vscode": {
       "name": "pochi",
-      "version": "0.6.14",
+      "version": "0.6.15",
       "dependencies": {
         "@getpochi/common": "workspace:*",
         "@modelcontextprotocol/sdk": "^1.12.0",
@@ -95,6 +95,7 @@
         "simple-git": "^3.28.0",
         "stats-logscale": "^1.0.9",
         "tsyringe": "^4.10.0",
+        "zod": "catalog:",
       },
       "devDependencies": {
         "@getpochi/tools": "workspace:*",
