@@ -5,7 +5,7 @@ import type { Message } from "../../types";
 
 export type LLMRequest = {
   id?: string;
-  system: string;
+  system?: string;
   abortSignal?: AbortSignal;
   messages: Message[];
   tools?: Record<string, Tool>;

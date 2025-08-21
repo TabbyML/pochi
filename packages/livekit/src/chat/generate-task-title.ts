@@ -99,8 +99,6 @@ async function generateTitle(
 
   const stream = await requestLLM(undefined, llm, {
     messages,
-    // FIXME(jueliang)
-    system: "",
     abortSignal,
   });
 
