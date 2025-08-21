@@ -95,7 +95,6 @@ export const ModelSection: React.FC<ModelSectionProps> = ({ user }) => {
                 title={<div className="py-1">Pochi</div>}
                 variant="compact"
                 className="py-0"
-                defaultOpen
               >
                 <div className="space-y-2">
                   {pochiModels?.map((model) => (
