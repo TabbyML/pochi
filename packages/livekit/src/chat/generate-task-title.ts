@@ -4,17 +4,28 @@ import { requestLLM } from "./llm";
 
 const logger = getLogger("generateTaskTitle");
 
-export async function generateTaskTitle({
-  title,
-  messages,
-  getLLM,
-  abortSignal,
-}: {
+interface GenerateTaskTitleOptions {
   title: string | null;
   messages: Message[];
   getLLM: () => RequestData["llm"];
   abortSignal?: AbortSignal;
-}): Promise<string | undefined> {
+}
+
+export async function generateTaskTitle(options: GenerateTaskTitleOptions) {
+  const { title } = options;
+  const newTitle = await generateTaskTitleImpl(options);
+  if (newTitle !== undefined) {
+    logger.info(`Generating task title, old: ${title}, new: ${newTitle}`);
+  }
+  return newTitle;
+}
+
+async function generateTaskTitleImpl({
+  title,
+  messages,
+  getLLM,
+  abortSignal,
+}: GenerateTaskTitleOptions): Promise<string | undefined> {
   const lastMessage = messages.at(-1);
   if (!lastMessage) {
     return undefined;
@@ -35,7 +46,10 @@ export async function generateTaskTitle({
   ) {
     try {
       const llm = getLLM();
-      return await generateTitle(llm, messages, abortSignal);
+      const title = await generateTitle(llm, messages, abortSignal);
+      if (title.length > 0) {
+        return title;
+      }
     } catch (err) {
       logger.warn("Failed to generate title", err);
     }
