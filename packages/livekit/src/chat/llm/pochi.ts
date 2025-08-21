@@ -26,6 +26,7 @@ export function createPochiModel(
           json: {
             id: taskId,
             model: llm.modelId,
+            modelEndpointId: llm.modelEndpointId,
             callOptions: {
               prompt,
               stopSequences,
