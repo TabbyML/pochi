@@ -109,7 +109,7 @@ ${environmentInfo}
           type="button"
           variant="ghost"
           size="icon"
-          className="h-6 w-6 rounded-md p-0 transition-opacity"
+          className="button-focus h-6 w-6 p-0"
           disabled={!shareId || disabled}
         >
           <Share2Icon className="size-4" />

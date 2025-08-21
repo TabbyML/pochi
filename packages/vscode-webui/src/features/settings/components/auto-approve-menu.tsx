@@ -105,7 +105,7 @@ export function AutoApproveMenu() {
           <div className="flex w-full overflow-x-hidden">
             <label
               htmlFor="auto-approve-main-checkbox-trigger-dialog"
-              className="flex shrink-0 cursor-pointer items-center pr-3"
+              className="flex shrink-0 cursor-pointer items-center pr-3 pl-1"
               onClick={(e) => e.stopPropagation()}
             >
               <Checkbox
@@ -142,7 +142,7 @@ export function AutoApproveMenu() {
             <label
               htmlFor={`core-action-dialog-${setting.id}`}
               className={
-                "flex flex-1 cursor-pointer select-none items-center text-foreground text-sm"
+                "flex flex-1 cursor-pointer select-none items-center pl-1 text-foreground text-sm"
               }
             >
               <Checkbox
@@ -162,7 +162,7 @@ export function AutoApproveMenu() {
 
         {/* Max Attempts Section - Always visible */}
         <div className="mt-1 border-gray-200/30 border-t pt-2 [@media(min-width:400px)]:col-span-2">
-          <div className="flex h-7 items-center gap-3">
+          <div className="flex h-7 items-center gap-3 pl-1">
             <Checkbox
               checked={autoApproveSettings.retry}
               onCheckedChange={(checked) =>
