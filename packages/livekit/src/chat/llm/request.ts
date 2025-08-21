@@ -18,9 +18,15 @@ export async function request(
   onFinish?: OnFinishCallback,
 ) {
   const tools = payload.tools;
-  const messages = convertToModelMessages(formatters.llm(payload.messages), {
-    tools,
-  });
+  const messages = convertToModelMessages(
+    formatters.llm(payload.messages, {
+      keepReasoningPart:
+        model.provider === "pochi" && model.modelId.includes("claude"),
+    }),
+    {
+      tools,
+    },
+  );
 
   const result = streamText({
     model: wrapLanguageModel({

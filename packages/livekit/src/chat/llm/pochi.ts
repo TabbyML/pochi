@@ -15,7 +15,7 @@ export function createPochiModel(
 ) {
   const model: LanguageModelV2 = {
     specificationVersion: "v2",
-    provider: "Pochi",
+    provider: "pochi",
     modelId: llm.modelId || "<default>",
     // FIXME(meng): fill supported urls based on modelId.
     supportedUrls: {},
