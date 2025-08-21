@@ -55,6 +55,7 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Build preview
+        if: github.event_name == 'pull_request'
         run: |
           export NEXT_PUBLIC_BASE_PATH="/pochi/pr-preview/pr-${{ github.event.pull_request.number }}"
           echo "NEXT_PUBLIC_BASE_PATH=$NEXT_PUBLIC_BASE_PATH" >> $GITHUB_ENV
