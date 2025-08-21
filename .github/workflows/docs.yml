@@ -1,7 +1,17 @@
-name: docs
+name: Deploy page on main and Preview on PRs
 
 on:
   push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/docs.yml"
+      - "packages/docs/**"
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - closed
     branches: ["main"]
     paths:
       - ".github/workflows/docs.yml"
@@ -13,6 +23,7 @@ on:
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
   contents: write
+  pull-requests: write
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
@@ -47,8 +58,15 @@ jobs:
         run: bun turbo build --filter=@getpochi/docs
 
       - name: Deploy
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: JamesIves/github-pages-deploy-action@v4
         with:
           clean-exclude: pr-preview/
           force: false
           folder: ./packages/docs/out
+
+      - name: Deploy preview
+        if: github.event_name == 'pull_request'
+        uses: rossjrw/pr-preview-action@v1
+        with:
+          source-dir: './packages/docs/out'
