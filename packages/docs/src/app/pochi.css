@@ -1,0 +1,56 @@
+@theme {
+  --color-fd-background: hsl(45, 15%, 96%);
+  --color-fd-foreground: hsl(30, 10%, 25%);
+  --color-fd-muted: hsl(45, 20%, 92%);
+  --color-fd-muted-foreground: hsl(30, 8%, 45%);
+  --color-fd-popover: hsl(45, 25%, 98%);
+  --color-fd-popover-foreground: hsl(30, 12%, 20%);
+  --color-fd-card: hsl(45, 18%, 94%);
+  --color-fd-card-foreground: hsl(30, 10%, 15%);
+  --color-fd-border: hsl(40, 15%, 85%);
+  --color-fd-primary: hsl(44, 85%, 20%);
+  --color-fd-primary-foreground: hsl(0, 0%, 98%);
+  --color-fd-secondary: hsl(45, 20%, 88%);
+  --color-fd-secondary-foreground: hsl(30, 12%, 35%);
+  --color-fd-accent: hsl(50, 25%, 90%);
+  --color-fd-accent-foreground: hsl(30, 15%, 25%);
+  --color-fd-ring: hsl(44, 68%, 59%);
+}
+
+.dark {
+  --color-fd-background: hsl(30, 8%, 12%);
+  --color-fd-foreground: hsl(45, 15%, 85%);
+  --color-fd-muted: hsl(30, 10%, 18%);
+  --color-fd-muted-foreground: hsl(45, 12%, 70%);
+  --color-fd-popover: hsl(30, 12%, 15%);
+  --color-fd-popover-foreground: hsl(45, 15%, 90%);
+  --color-fd-card: hsl(30, 8%, 12%);
+  --color-fd-card-foreground: hsl(45, 15%, 95%);
+  --color-fd-border: hsl(30, 10%, 25%);
+  --color-fd-primary: hsl(44, 68%, 65%);
+  --color-fd-primary-foreground: hsl(30, 8%, 8%);
+  --color-fd-secondary: hsl(30, 15%, 20%);
+  --color-fd-secondary-foreground: hsl(45, 15%, 85%);
+  --color-fd-accent: hsl(30, 12%, 22%);
+  --color-fd-accent-foreground: hsl(45, 20%, 88%);
+  --color-fd-ring: hsl(44, 68%, 70%);
+}
+
+.dark #nd-sidebar {
+  --color-fd-muted: hsl(30, 12%, 20%);
+  --color-fd-secondary: hsl(30, 15%, 18%);
+  --color-fd-muted-foreground: hsl(45, 15%, 85%);
+}
+
+:root {
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
+    "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
+    sans-serif;
+  --font-serif: Adamina, ui-serif, serif;
+  --font-mono: source-code-pro, Menlo, Monaco, Consolas, "Courier New",
+    monospace;
+}
+
+body {
+  font-family: var(--font-sans);
+}

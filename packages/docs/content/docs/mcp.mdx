@@ -1,0 +1,194 @@
+---
+title: MCP
+description: Model Context Protocol integration and configuration
+icon: "Spline"
+---
+
+# **MCP (Model Context Protocol)**
+
+The **Model Context Protocol (MCP)** revolutionizes how Pochi interacts with external services, databases, and APIs. Think of MCP as a universal adapter that connects Pochi to virtually any data source or tool, dramatically expanding what your AI assistant can accomplish.
+
+## **What is MCP?**
+
+Model Context Protocol is an open standard that allows AI applications to securely connect with external resources. It's like having a universal translator that lets Pochi communicate with databases, APIs, cloud services, and custom tools using a common language.
+
+### **Key Concepts**
+
+- **MCP Servers**: Small programs that expose specific functionality to Pochi
+- **Tools**: Functions that Pochi can execute through MCP servers
+- **Resources**: Read-only data sources like files or database queries
+- **Transport**: Communication method (local processes or remote HTTP endpoints)
+
+### **How It Works**
+
+1. You configure MCP servers in Pochi's settings
+2. Pochi discovers available tools from each connected server
+3. When you chat with Pochi, it can use these tools to accomplish tasks
+4. All tool executions require your explicit approval for security
+
+## **Real-World User Stories**
+
+### **🔍 Automated PR Review Workflow**
+
+_"Streamline code review process with intelligent GitHub integration"_
+
+**Setup**: Connect GitHub MCP server with repository access
+
+**Result**: Pochi can automatically review PRs, check code quality, suggest improvements, and manage PR lifecycle
+**Value**: Faster code review cycles with consistent quality standards
+
+### **🎭 Component Validation with Playwright**
+
+_"Automatically test and validate UI components across different scenarios"_
+
+**Setup**: Connect Playwright MCP server for automated browser testing
+
+**Result**: Pochi generates components and automatically validates styling, interactions, and responsive behavior through Playwright tests
+**Value**: Consistent component quality with automated visual regression testing
+
+### **📊 Database-Driven Development**
+
+_"Query, analyze, and deploy with integrated database operations"_
+
+**Setup**: Connect PostgreSQL and AWS MCP servers
+**Result**: Pochi can query your database, analyze performance, and deploy directly to AWS
+**Value**: Streamlined development workflow with AI assistance
+
+## **Step-by-Step Setup Guide**
+
+### **Manual VSCode Settings Configuration**
+
+For advanced users who prefer direct configuration:
+
+#### **Step 1: Open VSCode Settings**
+
+1. Open VS Code
+2. Press `Cmd/Ctrl + ,` to open Settings
+3. Search for "pochi mcp" or navigate to Extensions → Pochi
+
+#### **Step 2: Edit settings.json**
+
+Add to your VS Code `settings.json`:
+
+```json
+{
+  "pochi.mcpServers": {
+    "playwright": {
+      "command": "npx",
+      "args": ["playwright-mcp-server"]
+    },
+    "context7": {
+      "command": "npx",
+      "args": ["@upstash/context7-mcp"]
+    },
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "your-github-token"
+      }
+    }
+  }
+}
+```
+
+#### **Step 3: Restart VSCode**
+
+Restart VSCode for the changes to take effect.
+
+## **Configuration Examples**
+
+### **Local MCP Servers (Stdio Transport)**
+
+#### **Filesystem Access**
+
+```json
+{
+  "filesystem": {
+    "command": "npx",
+    "args": [
+      "-y",
+      "@modelcontextprotocol/server-filesystem",
+      "/path/to/allowed/files"
+    ],
+    "env": {
+      "HOME": "/Users/yourname"
+    }
+  }
+}
+```
+
+#### **Database Connection**
+
+```json
+{
+  "postgres": {
+    "command": "python",
+    "args": ["-m", "mcp_postgres", "--connection-string"],
+    "env": {
+      "DATABASE_URL": "postgresql://user:pass@localhost:5432/db"
+    }
+  }
+}
+```
+
+#### **Web Search**
+
+```json
+{
+  "brave-search": {
+    "command": "npx",
+    "args": ["-y", "@modelcontextprotocol/server-brave-search"],
+    "env": {
+      "BRAVE_API_KEY": "your-brave-api-key"
+    }
+  }
+}
+```
+
+### **Remote MCP Servers (HTTP Transport)**
+
+#### **Custom API Server**
+
+```json
+{
+  "my-api": {
+    "url": "https://api.mycompany.com/mcp",
+    "headers": {
+      "Authorization": "Bearer your-api-token",
+      "X-API-Version": "v1"
+    }
+  }
+}
+```
+
+#### **SSE (Server-Sent Events) Server**
+
+```json
+{
+  "realtime-data": {
+    "url": "https://data.example.com/mcp/sse",
+    "headers": {
+      "Authorization": "Bearer your-token"
+    }
+  }
+}
+```
+
+## **Advanced Configuration**
+
+### **Server Control Options**
+
+```json
+{
+  "my-server": {
+    "command": "node",
+    "args": ["server.js"],
+    "disabled": false, // Enable/disable entire server
+    "disabledTools": ["dangerous_tool"], // Disable specific tools
+    "env": {
+      "NODE_ENV": "production"
+    }
+  }
+}
+```

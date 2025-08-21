@@ -1,0 +1,100 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "Pochi Docs",
+  "colors": {
+    "primary": "#16A34A",
+    "light": "#07C983",
+    "dark": "#15803D"
+  },
+  "favicon": "/favicon.ico",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Introduction",
+            "pages": [
+              "index",
+              "quick-start"
+            ]
+          },
+          {
+            "group": "Core Features",
+            "pages": [
+              "tasks",
+              "tab-completion",
+              "auto-approve",
+              "advanced-settings",
+              "todo-list",
+              "rules",
+              "workflows",
+              "tools-integrations",
+              "mcp"
+            ]
+          },
+          {
+            "group": "Account & Support",
+            "pages": [
+              "usage",
+              "privacy",
+              "community-support"
+            ]
+          }
+        ]
+      }
+    ],
+    "global": {
+      "anchors": [
+        {
+          "anchor": "Discord Community",
+          "href": "https://discord.com/invite/tWF66yr8NQ",
+          "icon": "discord"
+        },
+        {
+          "anchor": "GitHub",
+          "href": "https://github.com/pochi-ai",
+          "icon": "github"
+        },
+        {
+          "anchor": "Support",
+          "href": "https://discord.com/invite/tWF66yr8NQ",
+          "icon": "life-ring"
+        }
+      ]
+    }
+  },
+  "logo": {
+    "light": "/logo192.png",
+    "dark": "/logo192.png"
+  },
+  "navbar": {
+    "links": [
+      {
+        "label": "Community",
+        "href": "https://discord.com/invite/tWF66yr8NQ"
+      }
+    ],
+    "primary": {
+      "type": "button",
+      "label": "Get Started",
+      "href": "https://docs.getpochi.com/quick-start"
+    }
+  },
+  "footer": {
+    "socials": {
+      "discord": "https://discord.com/invite/tWF66yr8NQ",
+      "github": "https://github.com/pochi-ai"
+    }
+  },
+  "seo": {
+    "indexHiddenPages": false
+  },
+  "redirects": [
+    {
+      "source": "/docs",
+      "destination": "/index"
+    }
+  ]
+}

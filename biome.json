@@ -22,6 +22,8 @@
       "packages/vscode/.vscode-test",
       "packages/vscode/out",
 
+      "packages/docs/**",
+
       "**/.wrangler",
       "**/node_modules/**"
     ]

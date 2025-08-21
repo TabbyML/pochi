@@ -1,0 +1,54 @@
+---
+title: "Installation"
+description: "Get started with Pochi quickly"
+icon: "Axe"
+---
+
+# **Installation**
+
+You can get started with Pochi by installing Pochi's VSCode extension.
+
+### **1. Install the VSCode Extension**
+
+Install the Pochi extension from the [VSCode Marketplace](https://marketplace.visualstudio.com/items?itemName=TabbyML.pochi).
+
+1. Open the Extensions view (`Ctrl+Shift+X` or `Cmd+Shift+X`).
+2. Search for `Pochi` and click **Install**.
+
+Once installed, the Pochi icon will appear in your Activity Bar.
+
+<Callout title="Getting Started">
+ ✅ You should see the Pochi chat window appear in your VSCode editor!
+</Callout>
+
+### **2. Configure an LLM Endpoint (BYOK)**
+
+Pochi operates as an AI agent and requires a connection to a Large Language Model (LLM). The primary way to configure this is through the **Bring Your Own Key (BYOK)** model. This approach gives you full control over model choice, costs, and data privacy.
+
+To connect your LLM provider:
+
+1. Navigate to VSCode Settings (`Ctrl+,` or `Cmd+,`).
+2. Go to `Extensions > Pochi`.
+3. Enter your API key and select your model provider.
+
+No account is necessary to use Pochi with BYOK.
+
+
+### **3. Assign a Task**
+
+Once the extension is configured, you can assign tasks to the agent. Open the Pochi chat window and describe the task in detail.
+
+For example:
+```
+Refactor the `ApiService` class in `src/lib/api.ts` to use `axios` instead of `fetch`. Ensure all existing method signatures are preserved and update error handling to use axios-specific error objects.
+```
+
+### **Account-Based Features (Optional)**
+
+For teams needing collaborative tools or centralized billing, we offer optional cloud-based services. Creating a Pochi account gives you access to:
+
+- Pochi's managed LLM models.
+- Shared task histories and team management.
+- Integrations with GitHub and Slack for a collaborative workflow.
+
+To use these features, sign up at [app.getpochi.com](http://app.getpochi.com) and connect your GitHub account in your profile settings.
