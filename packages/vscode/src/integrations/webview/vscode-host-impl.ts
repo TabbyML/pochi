@@ -170,7 +170,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     return this.context.workspaceState.update(key, value);
   };
 
-  readEnvironment = async (): Promise<Environment> => {
+  readEnvironment = async (isSubTask = false): Promise<Environment> => {
     const workspaceFolders = vscode.workspace.workspaceFolders;
 
     const { files, isTruncated } = workspaceFolders?.length
@@ -181,7 +181,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         })
       : { files: [], isTruncated: false };
 
-    const customRules = await collectCustomRules();
+    const customRules = isSubTask ? undefined : await collectCustomRules();
 
     const systemInfo = getSystemInfo();
 

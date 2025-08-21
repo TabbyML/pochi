@@ -12,8 +12,10 @@ import { useCallback } from "react";
 
 export function useLiveChatKitGetters({
   todos,
+  isSubTask = false,
 }: {
   todos: React.RefObject<Todo[] | undefined>;
+  isSubTask?: boolean;
 }) {
   const { toolset } = useMcp();
   const mcpToolSet = useLatest(toolset);
@@ -22,7 +24,7 @@ export function useLiveChatKitGetters({
 
   const getEnvironment = useCallback(
     async ({ messages }: { messages: readonly Message[] }) => {
-      const environment = await vscodeHost.readEnvironment();
+      const environment = await vscodeHost.readEnvironment(isSubTask);
 
       let userEdits: UserEditsDiff[] | undefined;
       const lastCheckpointHash = findLastCheckpointFromMessages(messages);
@@ -38,7 +40,7 @@ export function useLiveChatKitGetters({
         userEdits,
       } satisfies Environment;
     },
-    [todos],
+    [todos, isSubTask],
   );
 
   return {

@@ -44,7 +44,7 @@ const VSCodeHostStub = {
   ): Promise<void> => {
     return Promise.resolve();
   },
-  readEnvironment: (): Promise<Environment> => {
+  readEnvironment: (_isSubTask?: boolean): Promise<Environment> => {
     return Promise.resolve({} as Environment);
   },
   previewToolCall: (
