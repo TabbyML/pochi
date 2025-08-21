@@ -63,7 +63,7 @@ jobs:
         with:
           clean-exclude: pr-preview/
           force: false
-          folder: ./packages/docs/out
+          folder: packages/docs/out
 
       - name: Deploy preview
         if: github.event_name == 'pull_request'
