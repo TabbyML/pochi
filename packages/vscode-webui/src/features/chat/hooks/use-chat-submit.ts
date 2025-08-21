@@ -17,7 +17,7 @@ interface UseChatSubmitProps {
   imageUpload: UseImageUploadReturn;
   isSubmitDisabled: boolean;
   isLoading: boolean;
-  isCompacting: boolean;
+  newCompactTaskPending: boolean;
   pendingApproval: PendingApproval | undefined;
 }
 
@@ -28,7 +28,7 @@ export function useChatSubmit({
   imageUpload,
   isSubmitDisabled,
   isLoading,
-  isCompacting,
+  newCompactTaskPending,
   pendingApproval,
 }: UseChatSubmitProps) {
   const autoApproveGuard = useAutoApproveGuard();
@@ -51,7 +51,7 @@ export function useChatSubmit({
 
   const handleStop = useCallback(() => {
     // Compacting is not allowed to be stopped.
-    if (isCompacting) return;
+    if (newCompactTaskPending) return;
 
     if (isExecuting) {
       abortToolCalls();
@@ -64,7 +64,7 @@ export function useChatSubmit({
       pendingApproval.stopCountdown();
     }
   }, [
-    isCompacting,
+    newCompactTaskPending,
     isExecuting,
     isUploading,
     isLoading,
@@ -79,7 +79,7 @@ export function useChatSubmit({
       e?.preventDefault();
 
       // Compacting is not allowed to be stopped.
-      if (isCompacting) return;
+      if (newCompactTaskPending) return;
 
       const content = input.trim();
       if (isSubmitDisabled) {
@@ -124,7 +124,7 @@ export function useChatSubmit({
       sendMessage,
       setInput,
       clearUploadImageError,
-      isCompacting,
+      newCompactTaskPending,
     ],
   );
 

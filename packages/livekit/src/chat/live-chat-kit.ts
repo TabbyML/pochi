@@ -15,6 +15,8 @@ import {
 } from "./flexible-chat-transport";
 import { generateTaskTitle } from "./generate-task-title";
 
+const logger = getLogger("LiveChatKit");
+
 export type LiveChatKitOptions<T> = {
   taskId: string;
   abortSignal?: AbortSignal;
@@ -36,7 +38,7 @@ export type LiveChatKitOptions<T> = {
 
   chatClass: new (options: ChatInit<Message>) => T;
 
-  onBeforeMakeRequest?: (options: {
+  onOverrideMessages?: (options: {
     messages: Message[];
   }) => void | Promise<void>;
 } & Omit<
@@ -52,12 +54,14 @@ export class LiveChatKit<
   readonly chat: T;
   private readonly transport: FlexibleChatTransport;
 
+  readonly spawn: () => Promise<string>;
+
   constructor({
     taskId,
     abortSignal,
     store,
     chatClass,
-    onBeforeMakeRequest,
+    onOverrideMessages,
     getters,
     isSubTask,
     ...chatInit
@@ -87,28 +91,36 @@ export class LiveChatKit<
 
     // @ts-expect-error: monkey patch
     const chat = this.chat as {
-      makeRequest: (...args: unknown[]) => Promise<unknown>;
-      setStatus: (status: { status: string; error?: unknown }) => void;
+      onBeforeSnapshotInMakeRequest: (options: {
+        abortSignal: AbortSignal;
+        lastMessage: Message;
+      }) => Promise<void>;
     };
 
-    const originMakeRequest = chat.makeRequest;
-    chat.makeRequest = async (...args) => {
+    chat.onBeforeSnapshotInMakeRequest = async ({ abortSignal }) => {
       // Mark status to make async behaivor blocked based on status (e.g isLoading )
       const { messages } = this.chat;
       const lastMessage = messages.at(-1);
-      if (lastMessage?.role === "user") {
-        await compactTask({
-          messages,
-          getLLM: getters.getLLM,
-          abortSignal,
-          overwrite: true,
-        });
+      if (
+        lastMessage?.role === "user" &&
+        lastMessage.metadata?.kind === "user" &&
+        lastMessage.metadata.compact
+      ) {
+        try {
+          await compactTask({
+            messages,
+            getLLM: getters.getLLM,
+            abortSignal,
+            overwrite: true,
+          });
+        } catch (err) {
+          logger.error("Failed to compact task", err);
+          throw err;
+        }
       }
-      if (onBeforeMakeRequest) {
-        chat.setStatus({ status: "submitted" });
-        await onBeforeMakeRequest({ messages });
+      if (onOverrideMessages) {
+        await onOverrideMessages({ messages });
       }
-      return originMakeRequest.apply(chat, args);
     };
 
     this.spawn = async () => {
@@ -178,9 +190,6 @@ export class LiveChatKit<
       .query(makeMessagesQuery(this.taskId))
       .map((x) => x.data as Message);
   }
-
-  // Create a new task by compacting from current task, returns new taskId.
-  readonly spawn: () => Promise<string>;
 
   get inited() {
     const countTask = this.store.query(
@@ -271,5 +280,3 @@ export class LiveChatKit<
     );
   };
 }
-
-const logger = getLogger("LiveChatKit");

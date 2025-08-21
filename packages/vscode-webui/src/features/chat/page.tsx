@@ -24,7 +24,7 @@ import { ChatToolbar } from "./components/chat-toolbar";
 import { ErrorMessageView } from "./components/error-message-view";
 import { useScrollToBottom } from "./hooks/use-scroll-to-bottom";
 import { useChatAbortController } from "./lib/chat-state";
-import { onBeforeMakeRequest } from "./lib/on-before-make-request";
+import { onOverrideMessages } from "./lib/on-override-messages";
 import { useLiveChatKitGetters } from "./lib/use-live-chat-kit-getters";
 
 export function ChatPage({
@@ -74,7 +74,7 @@ function Chat({ user, uid, prompt }: ChatProps) {
       }
       return lastAssistantMessageIsCompleteWithToolCalls(x);
     },
-    onBeforeMakeRequest,
+    onOverrideMessages,
   });
   const task = store.useQuery(catalog.queries.makeTaskQuery(uid));
   const isSubTask = !!task?.parentId;

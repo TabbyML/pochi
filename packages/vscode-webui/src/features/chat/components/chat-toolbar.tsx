@@ -105,8 +105,6 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     compact,
   });
 
-  const isCompacting = inlineCompactTaskPending || newCompactTaskPending;
-
   const { isExecuting, isSubmitDisabled, showStopButton, showPreview } =
     useChatStatus({
       isReadOnly,
@@ -115,7 +113,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
       isInputEmpty: !input.trim(),
       isFilesEmpty: files.length === 0,
       isUploadingImages,
-      isCompacting,
+      newCompactTaskPending,
     });
 
   const compactEnabled = !(
@@ -133,11 +131,15 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     isSubmitDisabled,
     isLoading,
     pendingApproval,
-    isCompacting,
+    newCompactTaskPending,
   });
 
   // Only allow adding tool results when not loading
-  const allowAddToolResult = !(isLoading || isReadOnly || isCompacting);
+  const allowAddToolResult = !(
+    isLoading ||
+    isReadOnly ||
+    newCompactTaskPending
+  );
   useAddCompleteToolCalls({
     messages,
     enable: allowAddToolResult,
@@ -148,7 +150,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     enabled:
       compactEnabled && !inlineCompactTaskPending && !newCompactTaskPending,
     inlineCompactTask,
-    inlineCompactTaskPending: inlineCompactTaskPending && !isLoading,
+    inlineCompactTaskPending,
     newCompactTask,
     newCompactTaskPending,
   };

@@ -17,15 +17,7 @@ export async function compactTask({
 }): Promise<string | undefined> {
   const lastMessage = messages.at(-1);
   if (!lastMessage) {
-    return;
-  }
-
-  if (lastMessage.role === "user") {
-    if (lastMessage.metadata?.kind === "user" && lastMessage.metadata.compact) {
-      // DO Nothing.
-    } else {
-      return;
-    }
+    throw new Error("No messages to compact");
   }
 
   const llm = getLLM();
