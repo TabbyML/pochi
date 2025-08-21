@@ -96,7 +96,7 @@ export const TaskThread: React.FC<{
       )}
       {showMessageList && (
         <ScrollArea
-          viewportClassname="max-h-[300px] my-1 rounded-xs border border-[var(--vscode-borderColor)]"
+          viewportClassname="max-h-[300px] my-1 rounded-sm border"
           ref={newTaskContainer}
         >
           <MessageList
