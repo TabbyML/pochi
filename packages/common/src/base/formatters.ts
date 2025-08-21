@@ -250,12 +250,12 @@ export const formatters = {
   llm: <T extends UIMessage>(
     messages: T[],
     options?: {
-      isClaude: boolean;
+      keepReasoningPart?: boolean;
       removeSystemReminder?: boolean;
     },
   ) => {
     const llmFormatOps = [
-      ...(options?.isClaude ? [] : [removeReasoningParts]),
+      ...(options?.keepReasoningPart ? [] : [removeReasoningParts]),
       ...(options?.removeSystemReminder ? [removeSystemReminder] : []),
       ...LLMFormatOps,
     ];
