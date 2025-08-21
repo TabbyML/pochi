@@ -228,7 +228,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
             variant="ghost"
             size="icon"
             onClick={() => fileInputRef.current?.click()}
-            className="h-6 w-6 rounded-md p-0"
+            className="button-focus h-6 w-6 p-0"
           >
             <ImageIcon className="size-4" />
           </Button>
@@ -267,7 +267,7 @@ const SubmitStopButton: React.FC<SubmitStopButtonProps> = ({
       variant="ghost"
       size="icon"
       disabled={isSubmitDisabled}
-      className="h-6 w-6 rounded-md p-0 transition-opacity"
+      className="button-focus h-6 w-6 p-0"
       onClick={() => {
         if (showStopButton) {
           autoApproveGuard.current = false;
