@@ -177,7 +177,7 @@ export function injectEnvironment(
     messageToInject.parts.filter(
       (x) => x.type !== "text" || !prompts.isSystemReminder(x.text),
     ) || [];
-  const lastTextPartIndex = messageToInject.parts.findLastIndex(
+  const lastTextPartIndex = parts.findLastIndex(
     (parts) => parts.type === "text",
   );
   // Insert remainderPart before lastTextPartIndex

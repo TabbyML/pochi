@@ -83,19 +83,24 @@ async function generateTitle(
   inputMessages: Message[],
   abortSignal: AbortSignal | undefined,
 ) {
-  const messages: Message[] = formatters.llm([
-    ...inputMessages,
+  const messages: Message[] = formatters.llm(
+    [
+      ...inputMessages,
+      {
+        id: crypto.randomUUID(),
+        role: "user",
+        parts: [
+          {
+            type: "text",
+            text: prompts.generateTitle(),
+          },
+        ],
+      },
+    ],
     {
-      id: crypto.randomUUID(),
-      role: "user",
-      parts: [
-        {
-          type: "text",
-          text: prompts.generateTitle(),
-        },
-      ],
+      removeSystemReminder: true,
     },
-  ]);
+  );
 
   const stream = await requestLLM(undefined, llm, {
     messages,
