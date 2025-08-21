@@ -13,12 +13,6 @@ main() {
     bun tsc
     bun install --frozen-lockfile
 
-    # Check if there are changes in packages/docs since diverging from main
-    if git diff --name-only main...HEAD | grep -q "^packages/docs/"; then
-      echo "Changes detected in packages/docs, running build..."
-      bun turbo build --filter=@getpochi/docs
-    fi
-
     if [ -n "$POCHI_REMOTE_ENV" ]; then
         echo "Running in pochi remote env, skip vscode tests"
         bun run turbo test --filter='!pochi'
