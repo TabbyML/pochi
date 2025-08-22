@@ -8,12 +8,12 @@ import { makeMessagesQuery, makeTaskQuery } from "../livestore/queries";
 import { events, tables } from "../livestore/schema";
 import { toTaskError, toTaskStatus } from "../task";
 import type { Message } from "../types";
-import { compactTask } from "./compact-task";
 import {
   FlexibleChatTransport,
   type OnStartCallback,
 } from "./flexible-chat-transport";
-import { generateTaskTitle } from "./generate-task-title";
+import { compactTask, generateTaskTitle } from "./llm";
+import { createModel } from "./models";
 
 const logger = getLogger("LiveChatKit");
 
@@ -107,11 +107,12 @@ export class LiveChatKit<
         lastMessage.metadata.compact
       ) {
         try {
+          const model = createModel({ llm: getters.getLLM() });
           await compactTask({
+            model,
             messages,
-            getLLM: getters.getLLM,
             abortSignal,
-            overwrite: true,
+            inline: true,
           });
         } catch (err) {
           logger.error("Failed to compact task", err);
@@ -125,11 +126,11 @@ export class LiveChatKit<
 
     this.spawn = async () => {
       const { messages } = this.chat;
+      const model = createModel({ llm: getters.getLLM() });
       const summary = await compactTask({
+        model,
         messages,
-        getLLM: getters.getLLM,
         abortSignal,
-        overwrite: false,
       });
       if (!summary) {
         throw new Error("Failed to compact task");
@@ -221,11 +222,12 @@ export class LiveChatKit<
         throw new Error("Task not found");
       }
 
+      const getModel = () => createModel({ llm: getters.getLLM() });
       const title = await generateTaskTitle({
         title: task.title,
         messages,
         abortSignal,
-        getLLM: getters.getLLM,
+        getModel,
       });
 
       const { gitStatus } = environment?.workspace || {};

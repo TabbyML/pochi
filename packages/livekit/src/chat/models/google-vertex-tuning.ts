@@ -18,7 +18,7 @@ export function createGoogleVertexTuningModel(
     },
     fetch: patchedFetchForFinetune as unknown as typeof globalThis.fetch,
   });
-  const model = wrapLanguageModel({
+  return wrapLanguageModel({
     model: vertexFineTuning(llm.modelId),
     middleware: {
       middlewareVersion: "v2",
@@ -28,10 +28,6 @@ export function createGoogleVertexTuningModel(
       },
     },
   });
-  return {
-    model,
-    onFinish: undefined,
-  };
 }
 
 function patchedFetchForFinetune(

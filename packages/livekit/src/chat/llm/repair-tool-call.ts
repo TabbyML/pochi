@@ -53,10 +53,5 @@ export const makeRepairToolCall: (
       maxRetries: 0,
     });
 
-    let text = "";
-    for await (const chunk of result.textStream) {
-      text += chunk;
-    }
-
-    return { ...toolCall, input: text };
+    return { ...toolCall, input: await result.text };
   };

@@ -7,7 +7,7 @@ import type { RequestData } from "../../types";
 export function createVSCodeLmModel(
   llm: Extract<RequestData["llm"], { type: "vscode" }>,
 ) {
-  const model: LanguageModelV2 = {
+  return {
     specificationVersion: "v2",
     provider: "vscode",
     modelId: llm.modelId || "<default>",
@@ -64,10 +64,5 @@ export function createVSCodeLmModel(
 
       return { stream };
     },
-  };
-
-  return {
-    model,
-    onFinish: undefined,
-  };
+  } satisfies LanguageModelV2;
 }

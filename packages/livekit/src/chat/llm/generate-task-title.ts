@@ -1,13 +1,14 @@
-import { getLogger, prompts } from "@getpochi/common";
-import type { Message, RequestData } from "../types";
-import { requestLLM } from "./llm";
+import type { LanguageModelV2 } from "@ai-sdk/provider";
+import { formatters, getLogger, prompts } from "@getpochi/common";
+import { convertToModelMessages, streamText } from "ai";
+import type { Message } from "../../types";
 
 const logger = getLogger("generateTaskTitle");
 
 interface GenerateTaskTitleOptions {
   title: string | null;
   messages: Message[];
-  getLLM: () => RequestData["llm"];
+  getModel: () => LanguageModelV2;
   abortSignal?: AbortSignal;
 }
 
@@ -23,7 +24,7 @@ export async function generateTaskTitle(options: GenerateTaskTitleOptions) {
 async function generateTaskTitleImpl({
   title,
   messages,
-  getLLM,
+  getModel,
   abortSignal,
 }: GenerateTaskTitleOptions): Promise<string | undefined> {
   const lastMessage = messages.at(-1);
@@ -45,8 +46,8 @@ async function generateTaskTitleImpl({
     !isTitleGeneratedByLlm(title, titleFromMessages)
   ) {
     try {
-      const llm = getLLM();
-      const title = await generateTitle(llm, messages, abortSignal);
+      const model = getModel();
+      const title = await generateTitle(model, messages, abortSignal);
       if (title.length > 0) {
         return title;
       }
@@ -79,7 +80,7 @@ function isTitleGeneratedByLlm(
 }
 
 async function generateTitle(
-  llm: RequestData["llm"],
+  model: LanguageModelV2,
   inputMessages: Message[],
   abortSignal: AbortSignal | undefined,
 ) {
@@ -97,37 +98,15 @@ async function generateTitle(
     },
   ];
 
-  const stream = await requestLLM({
-    llm,
-    payload: {
-      messages,
-      abortSignal,
-    },
-    formatterOptions: {
-      removeSystemReminder: true,
-    },
+  const stream = streamText({
+    model,
+    prompt: convertToModelMessages(
+      formatters.llm(messages, { removeSystemReminder: true }),
+    ),
+    abortSignal,
+    maxOutputTokens: 50,
+    maxRetries: 0,
   });
 
-  const reader = stream.getReader();
-  let text = "";
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-
-      // If 'done' is true, the stream has finished.
-      if (done) {
-        break;
-      }
-
-      if (value.type === "text-delta") {
-        text += value.delta;
-      }
-    }
-  } finally {
-    // It's important to release the lock on the reader
-    // so the stream can be used elsewhere if needed.
-    reader.releaseLock();
-  }
-
-  return text.trim();
+  return (await stream.text).trim();
 }

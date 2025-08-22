@@ -1,88 +1,11 @@
-import type { LanguageModelV2 } from "@ai-sdk/provider";
-import { EventSourceParserStream } from "@ai-sdk/provider-utils";
 import { type Environment, getLogger } from "@getpochi/common";
 import type { Store } from "@livestore/livestore";
-import { makeTaskQuery } from "../../livestore/queries";
-import { events, tables } from "../../livestore/schema";
-import { toTaskStatus } from "../../task";
-import type { Message, RequestData } from "../../types";
-import type { LLMRequest, OnFinishCallback } from "./types";
+import { makeTaskQuery } from "../livestore/queries";
+import { events, tables } from "../livestore/schema";
+import { toTaskStatus } from "../task";
+import type { Message, RequestData } from "../types";
 
-const logger = getLogger("PochiModel");
-
-export function createPochiModel(
-  store: Store | undefined,
-  llm: Extract<RequestData["llm"], { type: "pochi" }>,
-  payload: LLMRequest,
-) {
-  const model: LanguageModelV2 = {
-    specificationVersion: "v2",
-    provider: "pochi",
-    modelId: llm.modelId || "<default>",
-    // FIXME(meng): fill supported urls based on modelId.
-    supportedUrls: {},
-    doGenerate: async () => Promise.reject("Not implemented"),
-    doStream: async ({ prompt, abortSignal, stopSequences, tools }) => {
-      const resp = await llm.apiClient.api.chat.stream.$post(
-        {
-          json: {
-            id: taskId,
-            model: llm.modelId,
-            callOptions: {
-              prompt,
-              stopSequences,
-              tools,
-            },
-          },
-        },
-        {
-          init: {
-            signal: abortSignal,
-          },
-        },
-      );
-
-      if (!resp.ok || !resp.body) {
-        throw new Error(`Failed to fetch: ${resp.status} ${resp.statusText}`);
-      }
-
-      const stream = resp.body
-        .pipeThrough(new TextDecoderStream())
-        .pipeThrough(new EventSourceParserStream())
-        .pipeThrough(
-          new TransformStream({
-            async transform({ data }, controller) {
-              if (data === "[DONE]") {
-                return;
-              }
-              controller.enqueue(JSON.parse(data));
-            },
-          }),
-        );
-      return { stream };
-    },
-  };
-
-  const taskId = payload.id;
-
-  const onFinish: OnFinishCallback = async ({ messages }) => {
-    const taskId = payload.id;
-    if (!store || !taskId) return;
-
-    persistManager.push({
-      taskId,
-      environment: payload.environment,
-      store,
-      messages,
-      llm,
-    });
-  };
-
-  return {
-    model,
-    onFinish,
-  };
-}
+const logger = getLogger("PersistManager");
 
 interface PersistJob {
   taskId: string;
@@ -211,8 +134,8 @@ class PersistManager {
   }
 }
 
-const persistManager = new PersistManager();
-
 function isNodeEnvironment() {
   return typeof process === "object" && process.on;
 }
+
+export const persistManager = new PersistManager();

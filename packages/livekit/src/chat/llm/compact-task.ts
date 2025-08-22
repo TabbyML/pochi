@@ -1,36 +1,37 @@
-import { getLogger, prompts } from "@getpochi/common";
-import type { Message, RequestData } from "../types";
-import { requestLLM } from "./llm";
+import type { LanguageModelV2 } from "@ai-sdk/provider";
+import { formatters, getLogger, prompts } from "@getpochi/common";
+import { convertToModelMessages, streamText } from "ai";
+import type { Message } from "../../types";
 
 const logger = getLogger("compactTask");
 
 export async function compactTask({
-  getLLM,
+  model,
   messages,
   abortSignal,
-  overwrite,
+  inline,
 }: {
-  getLLM: () => RequestData["llm"];
+  model: LanguageModelV2;
   messages: Message[];
   abortSignal?: AbortSignal;
-  overwrite: boolean;
+  inline?: boolean;
 }): Promise<string | undefined> {
   const lastMessage = messages.at(-1);
   if (!lastMessage) {
     throw new Error("No messages to compact");
   }
 
-  const llm = getLLM();
   try {
     const text = prompts.inlineCompact(
-      await createSummary(llm, abortSignal, messages.slice(0, -1)),
+      await createSummary(model, abortSignal, messages.slice(0, -1)),
       messages.length - 1,
     );
-    if (overwrite) {
+    if (inline) {
       lastMessage.parts.unshift({
         type: "text",
         text,
       });
+      return;
     }
     return text;
   } catch (err) {
@@ -39,7 +40,7 @@ export async function compactTask({
 }
 
 async function createSummary(
-  llm: RequestData["llm"],
+  model: LanguageModelV2,
   abortSignal: AbortSignal | undefined,
   inputMessages: Message[],
 ) {
@@ -57,38 +58,15 @@ async function createSummary(
     },
   ];
 
-  const stream = await requestLLM({
-    llm,
-    payload: {
-      messages,
-      system: prompts.compact(),
-      abortSignal,
-    },
-    formatterOptions: {
-      removeSystemReminder: true,
-    },
+  const stream = streamText({
+    model,
+    prompt: convertToModelMessages(
+      formatters.llm(messages, { removeSystemReminder: true }),
+    ),
+    abortSignal,
+    maxOutputTokens: 3_000,
+    maxRetries: 0,
   });
 
-  const reader = stream.getReader();
-  let text = "";
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-
-      // If 'done' is true, the stream has finished.
-      if (done) {
-        break;
-      }
-
-      if (value.type === "text-delta") {
-        text += value.delta;
-      }
-    }
-  } finally {
-    // It's important to release the lock on the reader
-    // so the stream can be used elsewhere if needed.
-    reader.releaseLock();
-  }
-
-  return text;
+  return stream.text;
 }
