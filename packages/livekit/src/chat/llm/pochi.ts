@@ -96,7 +96,7 @@ class PersistManager {
   constructor() {
     this.loop();
 
-    if (typeof process !== "undefined") {
+    if (isNodeEnvironment()) {
       const handleShutdown = async (
         reason: "SIGTERM" | "SIGINT" | "beforeExit",
         code: number,
@@ -212,3 +212,7 @@ class PersistManager {
 }
 
 const persistManager = new PersistManager();
+
+function isNodeEnvironment() {
+  return typeof process === "object" && process.on;
+}
