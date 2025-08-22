@@ -98,7 +98,7 @@ export function DevModeButton({
         <Button
           variant="ghost"
           size="icon"
-          className="h-6 w-6 rounded-md p-0"
+          className="button-focus h-6 w-6 p-0"
           title="Dev mode"
         >
           <Gavel className="size-4" />

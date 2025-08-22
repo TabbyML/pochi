@@ -210,6 +210,13 @@ code {
   @apply text-red-500 dark:text-red-400;
 }
 
+/* common button focus style */
+.button-focus {
+  @apply border border-transparent rounded-sm transition-all duration-200;
+  @apply hover:bg-accent/60 hover:text-accent-foreground;
+  @apply focus-visible:border-[var(--vscode-focusBorder)] focus-visible:ring-0 focus-visible:ring-transparent;
+}
+
 /* revert vscode default styles for anchor tags */
 html {
   a,

@@ -9,15 +9,16 @@
     "postinstall": "fumadocs-mdx"
   },
   "dependencies": {
+    "@orama/orama": "^3.1.11",
     "fumadocs-core": "15.5.4",
-    "fumadocs-mdx": "11.6.9", 
+    "fumadocs-mdx": "11.6.9",
     "fumadocs-ui": "15.5.4",
     "lucide-react": "^0.525.0",
     "mdx": "^0.3.1",
     "next": "15.3.4",
     "react": "catalog:",
     "remark": "^15.0.1",
-    "remark-gfm": "^4.0.1", 
+    "remark-gfm": "^4.0.1",
     "remark-mdx": "^3.1.0"
   },
   "devDependencies": {

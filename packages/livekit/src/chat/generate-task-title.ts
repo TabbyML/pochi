@@ -1,4 +1,4 @@
-import { formatters, getLogger, prompts } from "@getpochi/common";
+import { getLogger, prompts } from "@getpochi/common";
 import type { Message, RequestData } from "../types";
 import { requestLLM } from "./llm";
 
@@ -83,7 +83,7 @@ async function generateTitle(
   inputMessages: Message[],
   abortSignal: AbortSignal | undefined,
 ) {
-  const messages: Message[] = formatters.llm([
+  const messages: Message[] = [
     ...inputMessages,
     {
       id: crypto.randomUUID(),
@@ -95,11 +95,17 @@ async function generateTitle(
         },
       ],
     },
-  ]);
+  ];
 
-  const stream = await requestLLM(undefined, llm, {
-    messages,
-    abortSignal,
+  const stream = await requestLLM({
+    llm,
+    payload: {
+      messages,
+      abortSignal,
+    },
+    formatterOptions: {
+      removeSystemReminder: true,
+    },
   });
 
   const reader = stream.getReader();

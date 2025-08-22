@@ -105,8 +105,6 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     compact,
   });
 
-  const isCompacting = inlineCompactTaskPending || newCompactTaskPending;
-
   const { isExecuting, isSubmitDisabled, showStopButton, showPreview } =
     useChatStatus({
       isReadOnly,
@@ -115,7 +113,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
       isInputEmpty: !input.trim(),
       isFilesEmpty: files.length === 0,
       isUploadingImages,
-      isCompacting,
+      newCompactTaskPending,
     });
 
   const compactEnabled = !(
@@ -133,11 +131,15 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     isSubmitDisabled,
     isLoading,
     pendingApproval,
-    isCompacting,
+    newCompactTaskPending,
   });
 
   // Only allow adding tool results when not loading
-  const allowAddToolResult = !(isLoading || isReadOnly || isCompacting);
+  const allowAddToolResult = !(
+    isLoading ||
+    isReadOnly ||
+    newCompactTaskPending
+  );
   useAddCompleteToolCalls({
     messages,
     enable: allowAddToolResult,
@@ -148,7 +150,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     enabled:
       compactEnabled && !inlineCompactTaskPending && !newCompactTaskPending,
     inlineCompactTask,
-    inlineCompactTaskPending: inlineCompactTaskPending && !isLoading,
+    inlineCompactTaskPending,
     newCompactTask,
     newCompactTaskPending,
   };
@@ -228,7 +230,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
             variant="ghost"
             size="icon"
             onClick={() => fileInputRef.current?.click()}
-            className="h-6 w-6 rounded-md p-0"
+            className="button-focus h-6 w-6 p-0"
           >
             <ImageIcon className="size-4" />
           </Button>
@@ -267,7 +269,7 @@ const SubmitStopButton: React.FC<SubmitStopButtonProps> = ({
       variant="ghost"
       size="icon"
       disabled={isSubmitDisabled}
-      className="h-6 w-6 rounded-md p-0 transition-opacity"
+      className="button-focus h-6 w-6 p-0"
       onClick={() => {
         if (showStopButton) {
           autoApproveGuard.current = false;

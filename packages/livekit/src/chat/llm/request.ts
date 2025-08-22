@@ -7,7 +7,7 @@ import {
 } from "ai";
 
 import type { LanguageModelV2 } from "@ai-sdk/provider";
-import { formatters } from "@getpochi/common";
+import { type LLMFormatterOptions, formatters } from "@getpochi/common";
 import type { Message, Metadata } from "../../types";
 import { makeRepairToolCall } from "./repair-tool-call";
 import type { LLMRequest, OnFinishCallback } from "./types";
@@ -15,12 +15,16 @@ import type { LLMRequest, OnFinishCallback } from "./types";
 export async function request(
   model: LanguageModelV2,
   payload: LLMRequest,
+  formatterOptions?: LLMFormatterOptions,
   onFinish?: OnFinishCallback,
 ) {
   const tools = payload.tools;
-  const messages = convertToModelMessages(formatters.llm(payload.messages), {
-    tools,
-  });
+  const messages = convertToModelMessages(
+    formatters.llm(payload.messages, formatterOptions),
+    {
+      tools,
+    },
+  );
 
   const result = streamText({
     model: wrapLanguageModel({

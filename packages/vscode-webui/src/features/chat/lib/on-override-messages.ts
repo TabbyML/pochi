@@ -2,10 +2,10 @@ import { vscodeHost } from "@/lib/vscode";
 import type { Message } from "@getpochi/livekit";
 
 /**
- * Handles the onBeforeMakeRequest event by appending a checkpoint to the last message.
+ * Handles the onOverrideMessages event by appending a checkpoint to the last message.
  * This ensures that each request has a checkpoint for potential rollbacks.
  */
-export async function onBeforeMakeRequest({
+export async function onOverrideMessages({
   messages,
 }: { messages: Message[] }) {
   const lastMessage = messages.at(-1);

@@ -1,3 +1,4 @@
+import type { LLMFormatterOptions } from "@getpochi/common";
 import type { Store } from "@livestore/livestore";
 import type { RequestData } from "../../types";
 import { createGoogleVertexTuningModel } from "./google-vertex-tuning";
@@ -7,13 +8,17 @@ import { request } from "./request";
 import type { LLMRequest } from "./types";
 import { createVSCodeLmModel } from "./vscode-lm";
 
-export function requestLLM(
-  store: Store | undefined,
-  llm: RequestData["llm"],
-  payload: LLMRequest,
-) {
+export interface RequestLLMOptions {
+  store?: Store;
+  llm: RequestData["llm"];
+  payload: LLMRequest;
+  formatterOptions?: LLMFormatterOptions;
+}
+
+export function requestLLM(options: RequestLLMOptions) {
+  const { store, llm, payload, formatterOptions } = options;
   const { model, onFinish } = createModel(store, llm, payload);
-  return request(model, payload, onFinish);
+  return request(model, payload, formatterOptions, onFinish);
 }
 
 function createModel(

@@ -241,21 +241,20 @@ function formatMessages(messages: UIMessage[], ops: FormatOp[]): UIMessage[] {
   return ops.reduce((acc, op) => op(acc), clone(messages));
 }
 
+export interface LLMFormatterOptions {
+  keepReasoningPart?: boolean;
+  removeSystemReminder?: boolean;
+}
+
 export const formatters = {
   // Format messages for the Front-end UI rendering.
   ui: <T extends UIMessage>(messages: T[]) =>
     formatMessages(messages, UIFormatOps) as T[],
 
   // Format messages before sending them to the LLM.
-  llm: <T extends UIMessage>(
-    messages: T[],
-    options?: {
-      isClaude: boolean;
-      removeSystemReminder?: boolean;
-    },
-  ) => {
+  llm: <T extends UIMessage>(messages: T[], options?: LLMFormatterOptions) => {
     const llmFormatOps = [
-      ...(options?.isClaude ? [] : [removeReasoningParts]),
+      ...(options?.keepReasoningPart ? [] : [removeReasoningParts]),
       ...(options?.removeSystemReminder ? [removeSystemReminder] : []),
       ...LLMFormatOps,
     ];

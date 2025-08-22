@@ -1,4 +1,4 @@
-import { formatters, getLogger, prompts } from "@getpochi/common";
+import { getLogger, prompts } from "@getpochi/common";
 import type { Message, RequestData } from "../types";
 import { requestLLM } from "./llm";
 
@@ -17,15 +17,7 @@ export async function compactTask({
 }): Promise<string | undefined> {
   const lastMessage = messages.at(-1);
   if (!lastMessage) {
-    return;
-  }
-
-  if (lastMessage.role === "user") {
-    if (lastMessage.metadata?.kind === "user" && lastMessage.metadata.compact) {
-      // DO Nothing.
-    } else {
-      return;
-    }
+    throw new Error("No messages to compact");
   }
 
   const llm = getLLM();
@@ -51,7 +43,7 @@ async function createSummary(
   abortSignal: AbortSignal | undefined,
   inputMessages: Message[],
 ) {
-  const messages: Message[] = formatters.llm([
+  const messages: Message[] = [
     ...inputMessages,
     {
       id: crypto.randomUUID(),
@@ -63,12 +55,18 @@ async function createSummary(
         },
       ],
     },
-  ]);
+  ];
 
-  const stream = await requestLLM(undefined, llm, {
-    messages,
-    system: prompts.compact(),
-    abortSignal,
+  const stream = await requestLLM({
+    llm,
+    payload: {
+      messages,
+      system: prompts.compact(),
+      abortSignal,
+    },
+    formatterOptions: {
+      removeSystemReminder: true,
+    },
   });
 
   const reader = stream.getReader();

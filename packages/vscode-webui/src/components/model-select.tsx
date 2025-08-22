@@ -54,13 +54,13 @@ export function ModelSelect({
             <Button
               variant="ghost"
               className={cn(
-                "!gap-0.5 !px-1 h-6 max-w-full py-0 font-normal focus-visible:ring-1",
+                "!gap-0.5 !px-1 button-focus h-6 max-w-full py-0 font-normal",
                 triggerClassName,
               )}
             >
               <span
                 className={cn(
-                  "truncate whitespace-nowrap",
+                  "truncate whitespace-nowrap transition-colors duration-200",
                   !value && "text-muted-foreground",
                 )}
               >
@@ -68,7 +68,7 @@ export function ModelSelect({
               </span>
               <ChevronDownIcon
                 className={cn(
-                  "size-4 shrink-0",
+                  "size-4 shrink-0 transition-colors duration-200",
                   !value && "text-muted-foreground",
                 )}
               />
