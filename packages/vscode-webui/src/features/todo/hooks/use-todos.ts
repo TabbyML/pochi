@@ -11,22 +11,17 @@ export function useTodos({
 }: {
   initialTodos?: Readonly<Todo[]>;
   messages: Message[];
-  todosRef: React.MutableRefObject<Todo[] | undefined>;
+  todosRef: React.RefObject<Todo[] | undefined>;
 }) {
-  const [todos, setTodosImpl] = useState<Todo[]>([]);
+  const [todos, setTodosImpl] = useState<Todo[]>(
+    JSON.parse(JSON.stringify(initialTodos ?? [])),
+  );
 
   // biome-ignore lint/correctness/useExhaustiveDependencies(todosRef): todosRef is a ref
   const setTodos = useCallback((newTodos: Todo[]) => {
     todosRef.current = newTodos;
     setTodosImpl(newTodos);
   }, []);
-
-  useEffect(() => {
-    if (initialTodos) {
-      // readonly -> mutable with json re-serialize
-      setTodos(JSON.parse(JSON.stringify(initialTodos)));
-    }
-  }, [initialTodos, setTodos]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies(todosRef.current): todosRef is a ref
   const updateTodos = useCallback(
