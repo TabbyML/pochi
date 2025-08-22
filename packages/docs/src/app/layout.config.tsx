@@ -18,7 +18,7 @@ export const baseOptions: BaseLayoutProps = {
     ),
 
   },
-  githubUrl: 'https://github.com/tabbyml/pochi',
+  githubUrl: 'https://github.com/TabbyML/pochi',
 };
 
 export function formatTitle(title: string) {
