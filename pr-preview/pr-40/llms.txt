@@ -385,7 +385,7 @@ icon: "Ruler"
 You can edit your Rule in Pochi Extension Settings page.
 
 <div style={{ display: 'flex', justifyContent: 'center' }}>
-  <img src="/images/core-features/rule/rule-edit.png" alt="alt_text" title="image_tooltip" width="70%" />
+  <Image src="/images/core-features/rule/rule-edit.png" alt="alt_text" title="image_tooltip" width="70%" />
 </div>
 
 ### Setting up Workspace Rules
@@ -725,7 +725,7 @@ drawing on recent edits, diagnostics, and surrounding context to generate helpfu
 relevant completions right in your editor.
 
 <div style={{ display: "flex", justifyContent: "center" }}>
-  <img src="/images/core-features/tab-completion/completion.png" alt="Tab completion showing inline suggestions" title="Inline code completion in action" width="80%" />
+  <Image src="/images/core-features/tab-completion/completion.png" alt="Tab completion showing inline suggestions" title="Inline code completion in action" width="80%" />
 </div>
 
 ### **Multi-Language Support**
@@ -783,7 +783,7 @@ Tasks differ from simple prompts by maintaining persistent context, enabling col
 Pochi also keeps persistent state of your tasks, and allows sharing a task if you'd like.
 
 <div style={{ display: "flex", justifyContent: "center" }}>
-  <img src="/images/core-features/tasks/task-sharing.png" alt="alt_text" title="image_tooltip" width="40%" />
+  <Image src="/images/core-features/tasks/task-sharing.png" alt="alt_text" title="image_tooltip" width="40%" />
 </div>
 
 ### **Interruptions (Rejection, Editing)**
@@ -806,7 +806,7 @@ Changes are immediately reflected in the task thread with updated plans. All thr
 **Auto-approve** allows Pochi to execute certain actions autonomously without requiring manual confirmation for each step, streamlining your development workflow.
 
 <div style={{ display: "flex", justifyContent: "center" }}>
-  <img src="/images/core-features/tasks/auto-approve.png" alt="alt_text" title="image_tooltip" width="30%" />
+  <Image src="/images/core-features/tasks/auto-approve.png" alt="alt_text" title="image_tooltip" width="30%" />
 </div>
 
 By default, Pochi asks for your permission (manuel confirming) before taking any action, including reading or writing files.
@@ -861,7 +861,7 @@ icon: "Book"
 Pochi automatically creates and manages ***TODO lists*** to help you track progress on complex tasks.
 
 <div style={{ display: 'flex', justifyContent: 'center' }}>
-  <img src="/images/core-features/todo-list/todo.png" alt="alt_text" title="image_tooltip" width="60%" />
+  <Image src="/images/core-features/todo-list/todo.png" alt="alt_text" title="image_tooltip" width="60%" />
 </div>
 
 You can think of it as a shared workspace between you and Pochi. Pochi will clearly show you the step-by-step progress it plans to deliver your tasks, and the real-time progress it's making.
@@ -894,7 +894,7 @@ Key tools include:
 These tools enable the agent to perform complex, multi-step tasks like refactoring code, adding features, and fixing bugs autonomously. You can review the full list of available tools in the Pochi extension settings.
 
 <div style={{ display: 'flex', justifyContent: 'center' }}>
-  <img src="/images/core-features/tools/built-in-tools.png" alt="Pochi's Built-in Tools" width="50%" />
+  <Image src="/images/core-features/tools/built-in-tools.png" alt="Pochi's Built-in Tools" width="50%" />
 </div>
 
 ## **Cloud Integrations**
@@ -961,7 +961,7 @@ For users who prefer a simplified setup or want access to our curated model offe
 **Switching Models**: You can change models mid-task based on complexity requirements without losing context.
 
 <div style={{ display: "flex", justifyContent: "center" }}>
-  <img src="/images/account-support/select-model-06-08.png" alt="Select Model" width="70%" />
+  <Image src="/images/account-support/select-model-06-08.png" alt="Select Model" width="70%" />
 </div>
 
 
