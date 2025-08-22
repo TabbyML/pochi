@@ -134,7 +134,11 @@ class PersistManager {
     }
 
     this.isShutdownInProgress = true;
-    await Promise.all(this.queue.map((x) => this.process(x)));
+    try {
+      await Promise.all(this.queue.map((x) => this.process(x)));
+    } catch (err) {
+      logger.error("Error during shutdown", err);
+    }
   }
 
   private async loop() {
