@@ -98,14 +98,22 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
       ...selectClientTools(!!this.isSubTask),
       ...(mcpTools || {}),
     };
-    return requestLLM(this.store, llm, {
-      system,
-      messages: prepareMessages(messages, environment),
-      abortSignal,
-      id: chatId,
-      tools,
-      middlewares,
-      environment,
+    return requestLLM({
+      store: this.store,
+      llm,
+      payload: {
+        system,
+        messages: prepareMessages(messages, environment),
+        abortSignal,
+        id: chatId,
+        tools,
+        middlewares,
+        environment,
+      },
+      formatterOptions: {
+        keepReasoningPart:
+          llm.type === "pochi" && llm.modelId?.includes("claude"),
+      },
     });
   };
 

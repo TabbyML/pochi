@@ -1,4 +1,4 @@
-import { formatters, getLogger, prompts } from "@getpochi/common";
+import { getLogger, prompts } from "@getpochi/common";
 import type { Message, RequestData } from "../types";
 import { requestLLM } from "./llm";
 
@@ -43,29 +43,30 @@ async function createSummary(
   abortSignal: AbortSignal | undefined,
   inputMessages: Message[],
 ) {
-  const messages: Message[] = formatters.llm(
-    [
-      ...inputMessages,
-      {
-        id: crypto.randomUUID(),
-        role: "user",
-        parts: [
-          {
-            type: "text",
-            text: "Please provide a concise summary of the conversation above, focusing on key topics, decisions, and important context that should be preserved. It shall contains no more than 2000 words",
-          },
-        ],
-      },
-    ],
+  const messages: Message[] = [
+    ...inputMessages,
     {
+      id: crypto.randomUUID(),
+      role: "user",
+      parts: [
+        {
+          type: "text",
+          text: "Please provide a concise summary of the conversation above, focusing on key topics, decisions, and important context that should be preserved. It shall contains no more than 2000 words",
+        },
+      ],
+    },
+  ];
+
+  const stream = await requestLLM({
+    llm,
+    payload: {
+      messages,
+      system: prompts.compact(),
+      abortSignal,
+    },
+    formatterOptions: {
       removeSystemReminder: true,
     },
-  );
-
-  const stream = await requestLLM(undefined, llm, {
-    messages,
-    system: prompts.compact(),
-    abortSignal,
   });
 
   const reader = stream.getReader();

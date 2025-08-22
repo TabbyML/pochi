@@ -1,6 +1,6 @@
 export { attachTransport, getLogger } from "./logger";
 
-export { formatters } from "./formatters";
+export { formatters, type LLMFormatterOptions } from "./formatters";
 export { prompts } from "./prompts";
 
 export { SocialLinks } from "./social";
