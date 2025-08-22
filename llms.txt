@@ -117,15 +117,24 @@ Once installed, the Pochi icon will appear in your Activity Bar.
 
 ### **2. Configure an LLM Endpoint (BYOK)**
 
-Pochi operates as an AI agent and requires a connection to a Large Language Model (LLM). The primary way to configure this is through the **Bring Your Own Key (BYOK)** model. This approach gives you full control over model choice, costs, and data privacy.
+Pochi operates as an AI agent and requires a connection to a Large Language Model (LLM). The primary way to configure this is through the **Bring Your Own Key (BYOK)** model. This approach gives you full control over model choice, costs, and data privacy. No account is necessary to use Pochi with BYOK.
 
 To connect your LLM provider:
 
-1. Navigate to VSCode Settings (`Ctrl+,` or `Cmd+,`).
-2. Go to `Extensions > Pochi`.
-3. Enter your API key and select your model provider.
+1. In VSCode, open Pochi's model selection menu.
+2. Click **Manage custom models** from the dropdown — this will open VSCode settings with Pochi's configuration highlighted.
 
-No account is necessary to use Pochi with BYOK.
+<div style={{ display: 'flex' }}>
+  <img style={{ margin: '0px 25px' }} src="/images/introduction/manage-custom-model.png" alt="Pochi's Built-in Tools" width="50%" />
+</div>
+
+3. Add your API key and configure your model in `pochi.customModelSettings`.
+
+<Callout title="Max tokens & Context window">
+  You can configure `maxTokens` and `contextWindow` for each model in custom model settings.
+
+  `maxTokens` is the length of responses and `contextWindow` is how much conversation history the model considers. These values depend on your provider and chosen model — check your provider's documentation for the supported limits. As a rule of thumb: smaller values are faster and cheaper, larger values give Pochi more room to reason and remember.
+</Callout>
 
 ### **3. Assign a Task**
 
