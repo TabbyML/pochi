@@ -1,8 +1,7 @@
 import { createAuthHooks } from "@daveyplate/better-auth-tanstack";
-import type { PochiApi } from "@getpochi/common/pochi-api";
+import type { PochiApi, PochiApiClient } from "@getpochi/common/pochi-api";
 import { getServerBaseUrl } from "@getpochi/common/vscode-webui-bridge";
 import { type ThreadSignal, threadSignal } from "@quilted/threads/signals";
-import { useQuery } from "@tanstack/react-query";
 import {
   type ResponseContext,
   createAuthClient as createAuthClientImpl,
@@ -10,14 +9,18 @@ import {
 import { hc } from "hono/client";
 import { vscodeHost } from "./vscode";
 
-let TokenPromise: Promise<ThreadSignal<string | undefined>> | null = null;
+let TokenSignal: ThreadSignal<string | undefined> | null = null;
 let ExtensionVersionPromise: Promise<string> | null = null;
 
-const getToken = () => {
-  if (!TokenPromise) {
-    TokenPromise = vscodeHost.readToken().then(threadSignal);
+const getToken = async () => {
+  if (!TokenSignal) {
+    const signal = threadSignal(await vscodeHost.readToken());
+    signal.subscribe(async (token) => {
+      apiClient.authenticated = !!token;
+    });
+    TokenSignal = signal;
   }
-  return TokenPromise;
+  return TokenSignal;
 };
 
 const getExtensionVersion = () => {
@@ -34,7 +37,9 @@ const customFetchImpl = async (
   const token = await getToken();
   const extensionVersion = await getExtensionVersion();
   const headers = new Headers(requestInit?.headers);
-  headers.append("Authorization", `Bearer ${token.value}`);
+  if (token) {
+    headers.append("Authorization", `Bearer ${token.value}`);
+  }
   headers.set("X-Pochi-Extension-Version", extensionVersion);
   return fetch(input, {
     ...requestInit,
@@ -67,20 +72,15 @@ export type User = (typeof authClient.$Infer.Session)["user"];
 
 export const authHooks = createAuthHooks(authClient);
 
-function createApiClient() {
+function createApiClient(): PochiApiClient {
   const app = hc<PochiApi>(getServerBaseUrl(), {
     fetch: customFetchImpl,
   });
+
+  // Initialize authentication status.
+  getToken();
+
   return app;
-}
-
-export function useToken(): string | undefined {
-  const { data } = useQuery({
-    queryKey: ["token"],
-    queryFn: getToken,
-  });
-
-  return data?.value;
 }
 
 export const apiClient = createApiClient();

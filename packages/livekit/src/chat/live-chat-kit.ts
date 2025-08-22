@@ -34,7 +34,7 @@ export type LiveChatKitOptions<T> = {
 
   store: Store;
 
-  apiClient?: PochiApiClient;
+  apiClient: PochiApiClient;
 
   chatClass: new (options: ChatInit<Message>) => T;
 
@@ -64,6 +64,7 @@ export class LiveChatKit<
     onOverrideMessages,
     getters,
     isSubTask,
+    apiClient,
     ...chatInit
   }: LiveChatKitOptions<T>) {
     this.taskId = taskId;
@@ -73,6 +74,7 @@ export class LiveChatKit<
       onStart: this.onStart,
       getters,
       isSubTask,
+      apiClient,
     });
 
     this.chat = new chatClass({

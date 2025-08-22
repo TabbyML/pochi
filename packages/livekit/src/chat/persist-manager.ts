@@ -1,9 +1,10 @@
 import { type Environment, getLogger } from "@getpochi/common";
+import type { PochiApiClient } from "@getpochi/common/pochi-api";
 import type { Store } from "@livestore/livestore";
 import { makeTaskQuery } from "../livestore/queries";
 import { events, tables } from "../livestore/schema";
 import { toTaskStatus } from "../task";
-import type { Message, RequestData } from "../types";
+import type { Message } from "../types";
 
 const logger = getLogger("PersistManager");
 
@@ -11,7 +12,7 @@ interface PersistJob {
   taskId: string;
   store: Store;
   messages: Message[];
-  llm: Extract<RequestData["llm"], { type: "pochi" }>;
+  apiClient: PochiApiClient;
   environment?: Environment;
 }
 
@@ -89,7 +90,7 @@ class PersistManager {
     taskId,
     store,
     messages,
-    llm,
+    apiClient,
     environment,
   }: PersistJob) {
     const lastMessage = messages.at(-1);
@@ -101,7 +102,7 @@ class PersistManager {
       lastMessage.metadata?.kind === "assistant"
         ? lastMessage.metadata.finishReason
         : undefined;
-    const resp = await llm.apiClient.api.chat.persist.$post({
+    const resp = await apiClient.api.chat.persist.$post({
       json: {
         id: taskId,
         messages,

@@ -2,7 +2,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { WorkspaceRequiredPlaceholder } from "@/components/workspace-required-placeholder";
 import { ChatContextProvider, useHandleChatEvents } from "@/features/chat";
 import { usePendingModelAutoStart } from "@/features/retry";
-import type { User } from "@/lib/auth-client";
+import { type User, apiClient } from "@/lib/auth-client";
 import { useCurrentWorkspace } from "@/lib/hooks/use-current-workspace";
 import { useImageUpload } from "@/lib/hooks/use-image-upload";
 import { cn } from "@/lib/utils";
@@ -62,6 +62,7 @@ function Chat({ user, uid, prompt }: ChatProps) {
 
   const chatKit = useLiveChatKit({
     taskId: uid,
+    apiClient,
     getters,
     abortSignal: chatAbortController.current.signal,
     sendAutomaticallyWhen: (x) => {

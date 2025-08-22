@@ -1,5 +1,6 @@
 import type { Environment } from "@getpochi/common";
 import { formatters, prompts } from "@getpochi/common";
+import type { PochiApiClient } from "@getpochi/common/pochi-api";
 import { type McpTool, selectClientTools } from "@getpochi/tools";
 import type { Store } from "@livestore/livestore";
 import {
@@ -42,17 +43,20 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
   private readonly getters: PrepareRequestGetters;
   private readonly isSubTask?: boolean;
   private readonly store: Store;
+  private readonly apiClient: PochiApiClient;
 
   constructor(options: {
     onStart?: OnStartCallback;
     getters: PrepareRequestGetters;
     isSubTask?: boolean;
     store: Store;
+    apiClient: PochiApiClient;
   }) {
     this.onStart = options.onStart;
     this.getters = options.getters;
     this.isSubTask = options.isSubTask;
     this.store = options.store;
+    this.apiClient = options.apiClient;
   }
 
   sendMessages: (
@@ -138,12 +142,12 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
         }
       },
       onFinish: async ({ messages }) => {
-        if (llm.type === "pochi") {
+        if (this.apiClient.authenticated) {
           persistManager.push({
             taskId: chatId,
             store: this.store,
             messages,
-            llm,
+            apiClient: this.apiClient,
             environment,
           });
         }
