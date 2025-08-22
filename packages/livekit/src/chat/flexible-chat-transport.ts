@@ -8,9 +8,11 @@ import {
   type UIMessageChunk,
   convertToModelMessages,
   isToolUIPart,
+  streamText,
+  wrapLanguageModel,
 } from "ai";
 import type { Message, Metadata, RequestData } from "../types";
-import { invokeAgent } from "./llm/invoke-agent";
+import { makeRepairToolCall } from "./llm";
 import { parseMcpToolSet } from "./mcp-utils";
 import {
   createNewTaskMiddleware,
@@ -100,7 +102,8 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
 
     const mcpTools = mcpToolSet && parseMcpToolSet(mcpToolSet);
     const preparedMessages = await prepareMessages(messages, environment);
-    const data = {
+    const model = createModel({ id: chatId, llm });
+    const stream = streamText({
       system: prompts.system(environment?.info?.customRules),
       messages: convertToModelMessages(
         formatters.llm(preparedMessages, {
@@ -108,19 +111,21 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
             llm.type === "pochi" && llm.modelId?.includes("claude"),
         }),
       ),
+      model: wrapLanguageModel({
+        model,
+        middleware: middlewares,
+      }),
       abortSignal,
-      id: chatId,
       tools: {
         ...selectClientTools(!!this.isSubTask),
         ...(mcpTools || {}),
       },
-      middlewares,
-      environment,
-    };
-    return invokeAgent(
-      createModel({ id: chatId, llm }),
-      data,
-    ).toUIMessageStream({
+      maxRetries: 0,
+      // error log is handled in live chat kit.
+      onError: () => {},
+      experimental_repairToolCall: makeRepairToolCall(model),
+    });
+    return stream.toUIMessageStream({
       originalMessages: preparedMessages,
       messageMetadata: ({ part }) => {
         if (part.type === "finish") {

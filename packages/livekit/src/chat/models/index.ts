@@ -7,7 +7,7 @@ import { createVSCodeLmModel } from "./vscode-lm";
 export function createModel({
   id,
   llm,
-}: { id?: string; llm: RequestData["llm"] }) {
+}: { id: string; llm: RequestData["llm"] }) {
   if (llm.type === "openai") {
     return createOpenAIModel(llm);
   }

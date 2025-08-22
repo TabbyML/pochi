@@ -3,7 +3,7 @@ import { EventSourceParserStream } from "@ai-sdk/provider-utils";
 import type { RequestData } from "../../types";
 
 export function createPochiModel(
-  id: string | undefined,
+  id: string,
   llm: Extract<RequestData["llm"], { type: "pochi" }>,
 ) {
   return {
