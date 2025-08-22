@@ -57,12 +57,7 @@ jobs:
       - name: Set preview base uri
         if: github.event_name == 'pull_request'
         run: |
-          echo "NEXT_PUBLIC_BASE_PATH=/pochi/pr-preview/pr-${{ github.event.pull_request.number }}" >> $GITHUB_ENV
-
-      - name: Set base uri
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: |
-          echo "NEXT_PUBLIC_BASE_PATH=/pochi" >> $GITHUB_ENV
+          echo "NEXT_PUBLIC_BASE_PATH=/pr-preview/pr-${{ github.event.pull_request.number }}" >> $GITHUB_ENV
 
       - name: Build docs
         run: bun turbo build --filter=@getpochi/docs
