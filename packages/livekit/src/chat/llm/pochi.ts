@@ -98,16 +98,17 @@ class PersistManager {
 
     if (typeof process !== "undefined") {
       const handleShutdown = async (
-        signal: "SIGTERM" | "SIGINT",
+        reason: "SIGTERM" | "SIGINT" | "beforeExit",
         code: number,
       ) => {
-        logger.debug(`Received ${signal}, shutting down gracefully...`);
+        logger.debug(`Received ${reason}, shutting down gracefully...`);
         await this.shutdown();
         process.exit(code);
       };
 
       process.on("SIGTERM", () => handleShutdown("SIGTERM", 143));
       process.on("SIGINT", () => handleShutdown("SIGINT", 130));
+      process.on("beforeExit", () => handleShutdown("beforeExit", 0));
     }
   }
 
