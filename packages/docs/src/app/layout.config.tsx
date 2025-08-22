@@ -1,5 +1,4 @@
 import type { BaseLayoutProps } from "fumadocs-ui/layouts/shared";
-import { Webhook } from "lucide-react";
 import Image from "next/image";
 import logo from "../../public/logo512.png";
 /**
@@ -17,7 +16,9 @@ export const baseOptions: BaseLayoutProps = {
         Pochi Docs
       </>
     ),
+
   },
+  githubUrl: 'https://github.com/tabbyml/pochi',
 };
 
 export function formatTitle(title: string) {
