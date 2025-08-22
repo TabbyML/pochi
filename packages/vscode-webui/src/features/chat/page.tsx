@@ -23,7 +23,7 @@ import { ChatArea } from "./components/chat-area";
 import { ChatToolbar } from "./components/chat-toolbar";
 import { ErrorMessageView } from "./components/error-message-view";
 import { useScrollToBottom } from "./hooks/use-scroll-to-bottom";
-import { useChatAbortController } from "./lib/chat-state";
+import { useAutoApproveGuard, useChatAbortController } from "./lib/chat-state";
 import { onOverrideMessages } from "./lib/on-override-messages";
 import { useLiveChatKitGetters } from "./lib/use-live-chat-kit-getters";
 
@@ -60,6 +60,7 @@ function Chat({ user, uid, prompt }: ChatProps) {
   const chatAbortController = useChatAbortController();
   useAbortBeforeNavigation(chatAbortController.current);
 
+  const autoApproveGuard = useAutoApproveGuard();
   const chatKit = useLiveChatKit({
     taskId: uid,
     getters,
@@ -68,6 +69,11 @@ function Chat({ user, uid, prompt }: ChatProps) {
       if (chatAbortController.current.signal.aborted) {
         return false;
       }
+
+      if (!autoApproveGuard.current) {
+        return false;
+      }
+
       // AI SDK v5 will retry regardless of the status if sendAutomaticallyWhen is set.
       if (chatKit.chat.status === "error") {
         return false;

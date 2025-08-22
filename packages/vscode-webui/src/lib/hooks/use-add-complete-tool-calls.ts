@@ -72,8 +72,7 @@ function overrideResult(complete: ToolCallLifeCycle["complete"]) {
   // Use an switch clause so new reason will be caught by type checker.
   switch (reason) {
     case "user-abort":
-      output.error =
-        "User aborted the tool call, please use askFollowupQuestion to clarify next step with user.";
+      output.error = "User aborted the tool call";
       break;
     case "user-reject":
       output.error =
@@ -82,7 +81,7 @@ function overrideResult(complete: ToolCallLifeCycle["complete"]) {
     case "user-detach":
       // We use info instead of error to avoid the tool call being marked as failed.
       output.info =
-        "User has detached the terminal, the job will continue running in the background, please use askFollowupQuestion to clarify next step with user.";
+        "User has detached the terminal, the job will continue running in the background.";
       break;
     case "preview-reject":
     case "execute-finish":
