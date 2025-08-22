@@ -154,7 +154,11 @@ class PersistManager {
         continue;
       }
 
-      await this.process(job);
+      try {
+        await this.process(job);
+      } catch (err) {
+        logger.error("Failed to persist chat", err);
+      }
     }
   }
 
