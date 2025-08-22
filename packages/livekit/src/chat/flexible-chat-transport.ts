@@ -10,7 +10,7 @@ import {
   isToolUIPart,
 } from "ai";
 import type { Message, Metadata, RequestData } from "../types";
-import { stepAgent } from "./llm";
+import { invokeAgent } from "./llm/invoke-agent";
 import { parseMcpToolSet } from "./mcp-utils";
 import {
   createNewTaskMiddleware,
@@ -117,7 +117,10 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
       middlewares,
       environment,
     };
-    return stepAgent(createModel({ id: chatId, llm }), data).toUIMessageStream({
+    return invokeAgent(
+      createModel({ id: chatId, llm }),
+      data,
+    ).toUIMessageStream({
       originalMessages: preparedMessages,
       messageMetadata: ({ part }) => {
         if (part.type === "finish") {
