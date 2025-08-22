@@ -193,6 +193,7 @@
             "order": 2,
             "default": {},
             "properties": {
+              "additionalProperties": false,
               "inlineCompletion": {
                 "default": {},
                 "properties": {
