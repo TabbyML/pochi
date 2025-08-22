@@ -22,7 +22,8 @@ interface ModelSectionProps {
 }
 
 export const ModelSection: React.FC<ModelSectionProps> = ({ user }) => {
-  const { enablePochiModels } = useSettingsStore();
+  const { enablePochiModels, enableVSCodeLm, updateEnableVSCodeLm } =
+    useSettingsStore();
   const { data: pochiModelsData, isLoading: isPochiModelLoading } = useQuery({
     queryKey: ["models", user?.id],
     queryFn: async () => {
@@ -66,8 +67,6 @@ export const ModelSection: React.FC<ModelSectionProps> = ({ user }) => {
   const {
     models: vscodeLmModels,
     isLoading: isLoadingVscodeLmModels,
-    toggle,
-    enabled,
     featureAvailable,
   } = useVSCodeLmModels();
 
@@ -141,10 +140,10 @@ export const ModelSection: React.FC<ModelSectionProps> = ({ user }) => {
                     Copilot
                     <Switch
                       className="scale-75 cursor-pointer transition-all hover:bg-accent/20 hover:shadow-md "
-                      checked={enabled}
+                      checked={enableVSCodeLm}
                       onClick={(e) => {
                         e.stopPropagation();
-                        toggle?.();
+                        updateEnableVSCodeLm(!enableVSCodeLm);
                       }}
                     />
                   </div>
@@ -154,7 +153,7 @@ export const ModelSection: React.FC<ModelSectionProps> = ({ user }) => {
                 defaultOpen
               >
                 <div className="space-y-2">
-                  {enabled ? (
+                  {enableVSCodeLm ? (
                     vscodeLmModels.length > 0 ? (
                       vscodeLmModels.map((model) => (
                         <div

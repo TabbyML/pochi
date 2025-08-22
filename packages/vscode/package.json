@@ -352,10 +352,6 @@
                 }
               ]
             }
-          },
-          "pochi.vscodeLmEnabled": {
-            "type": "boolean",
-            "default": false
           }
         }
       }

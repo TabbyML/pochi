@@ -8,8 +8,6 @@ import { signal } from "@preact/signals-core";
 import { ThreadAbortSignal } from "@quilted/threads";
 import { injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
-// biome-ignore lint/style/useImportType: needed for dependency injection
-import { PochiConfiguration, updateVscodeLmEnabled } from "./configuration";
 
 const logger = getLogger("VSCodeLm");
 
@@ -26,8 +24,8 @@ export class VSCodeLm implements vscode.Disposable {
 
   readonly models = signal<VSCodeLmModel[]>([]);
 
-  constructor(private readonly config: PochiConfiguration) {
-    if (this.config.vscodeLmEnabled.value && this.featureAvailable) {
+  constructor() {
+    if (this.featureAvailable) {
       this.initModels();
     }
   }
@@ -41,22 +39,8 @@ export class VSCodeLm implements vscode.Disposable {
     this.updateModels();
   }
 
-  toggle() {
-    if (!this.featureAvailable) {
-      return;
-    }
-    const enabled = !this.config.vscodeLmEnabled.value;
-    updateVscodeLmEnabled(enabled).then(() => {
-      if (enabled) {
-        this.initModels();
-      } else {
-        this.models.value = [];
-      }
-    });
-  }
-
   private async updateModels() {
-    if (!this.config.vscodeLmEnabled.value || !this.featureAvailable) {
+    if (!this.featureAvailable) {
       return;
     }
     try {

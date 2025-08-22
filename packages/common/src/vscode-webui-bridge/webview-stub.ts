@@ -190,14 +190,10 @@ const VSCodeHostStub = {
   readVSCodeLm: async (): Promise<{
     featureAvailable: boolean;
     models: ThreadSignalSerialization<VSCodeLmModel[]>;
-    enabled: ThreadSignalSerialization<boolean>;
-    toggle: () => void;
   }> => {
     return Promise.resolve({
       featureAvailable: false,
       models: {} as ThreadSignalSerialization<VSCodeLmModel[]>,
-      enabled: {} as ThreadSignalSerialization<boolean>,
-      toggle: () => {},
     });
   },
   chatVSCodeLm: async (): Promise<void> => {
