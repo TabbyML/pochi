@@ -19,14 +19,14 @@ export const executeCommandTool: React.FC<ToolProps<"executeCommand">> = ({
     lifecycle.abort();
   }, [lifecycle.abort]);
 
-  const { cwd, command, isDevServer } = tool.input || {};
+  const { cwd, command, isBackground } = tool.input || {};
   const cwdNode = cwd ? (
     <span>
       {" "}
       in <HighlightedText>{cwd}</HighlightedText>
     </span>
   ) : null;
-  const text = isDevServer
+  const text = isBackground
     ? "I will start a dev server"
     : "I will execute the following command";
   const title = (
@@ -53,7 +53,7 @@ export const executeCommandTool: React.FC<ToolProps<"executeCommand">> = ({
     tool.output !== null &&
     "output" in tool.output
   ) {
-    output = tool.output.output;
+    output = tool.output.output ?? "";
     completed = true;
   }
 
@@ -76,7 +76,7 @@ export const executeCommandTool: React.FC<ToolProps<"executeCommand">> = ({
           onDetach={onDetach}
           completed={completed}
           isExecuting={isExecuting}
-          isDevServer={isDevServer}
+          isBackground={isBackground}
         />
       }
     />

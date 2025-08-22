@@ -20,7 +20,7 @@ const logger = getLogger("ExecuteCommand");
 export const executeCommand: ToolFunctionType<
   ClientTools["executeCommand"]
 > = async (
-  { command, cwd = ".", isDevServer, timeout },
+  { command, cwd = ".", isBackground, timeout },
   { abortSignal, nonInteractive },
 ) => {
   const defaultTimeout = 120;
@@ -38,13 +38,13 @@ export const executeCommand: ToolFunctionType<
   let output: Signal<ExecuteCommandResult>;
   let detach: () => void = () => {};
 
-  if (isDevServer) {
+  if (isBackground) {
     const job = TerminalJob.create({
       name: command,
       command,
       cwd,
       abortSignal: abortSignal,
-      background: isDevServer,
+      background: isBackground,
       timeout: timeout ?? defaultTimeout,
     });
 
