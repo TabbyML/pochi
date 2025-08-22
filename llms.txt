@@ -117,7 +117,7 @@ Once installed, the Pochi icon will appear in your Activity Bar.
 
 ### **2. Configure an LLM Endpoint (BYOK)**
 
-Pochi operates as an AI agent and requires a connection to a Large Language Model (LLM). The primary way to configure this is through the **Bring Your Own Key (BYOK)** model. This approach gives you full control over model choice, costs, and data privacy. No account is necessary to use Pochi with BYOK.
+Pochi operates as an AI agent and requires a connection to a Large Language Model (LLM). The primary way to configure this is through the **Bring Your Own Key (BYOK)** model. This approach gives you full control over model choice, costs, and data privacy. Pochi account registration is optional with BYOK.
 
 To connect your LLM provider:
 
