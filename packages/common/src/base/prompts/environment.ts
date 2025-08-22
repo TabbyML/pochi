@@ -24,9 +24,10 @@ export function createEnvironmentPrompt(
   return sections.trim();
 }
 
-export function getLiteReadEnvironmentResult(environment: Environment) {
+export function createLiteEnvironmentPrompt(environment: Environment) {
   const sections = [
     getCurrentOpenedFiles(environment.workspace),
+    getVisibleTerminals(environment.workspace),
     getCurrentWorkingFile(environment.workspace),
     getGitStatus(environment.workspace.gitStatus),
     getUserEdits(environment.userEdits),
@@ -165,7 +166,7 @@ export function injectEnvironment(
   const environmentDetails =
     messages.length === 1
       ? createEnvironmentPrompt(environment, user)
-      : getLiteReadEnvironmentResult(environment);
+      : createLiteEnvironmentPrompt(environment);
 
   const reminderPart = {
     type: "text",
