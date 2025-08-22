@@ -25,7 +25,7 @@ export default async function Page(props: {
       tableOfContent={{
         header: (
           <a
-            href={`https://github.com/TabbyML/pochi/blob/main/packages/docs/content/docs/${filePath ? `${filePath}` : 'index'}.mdx`}
+            href={`https://github.com/TabbyML/pochi/edit/main/packages/docs/content/docs/${filePath ? `${filePath}` : 'index'}.mdx`}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1.5 text-sm text-fd-muted-foreground hover:text-fd-foreground transition-colors mb-10"
