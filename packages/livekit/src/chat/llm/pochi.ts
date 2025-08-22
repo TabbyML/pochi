@@ -108,7 +108,7 @@ class PersistManager {
 
       process.on("SIGTERM", () => handleShutdown("SIGTERM", 143));
       process.on("SIGINT", () => handleShutdown("SIGINT", 130));
-      process.on("beforeExit", () => handleShutdown("beforeExit", 0));
+      process.on("beforeExit", (code) => handleShutdown("beforeExit", code));
     }
   }
 
