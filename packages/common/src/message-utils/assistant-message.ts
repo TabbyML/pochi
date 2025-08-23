@@ -23,6 +23,15 @@ export function isAssistantMessageWithEmptyParts(message: UIMessage): boolean {
   return message.role === "assistant" && message.parts.length === 0;
 }
 
+export function isAssistantMessageWithOutputError(message: UIMessage): boolean {
+  return (
+    message.role === "assistant" &&
+    message.parts.some(
+      (part) => isToolUIPart(part) && part.state === "output-error",
+    )
+  );
+}
+
 export function isAssistantMessageWithPartialToolCalls(lastMessage: UIMessage) {
   return (
     lastMessage.role === "assistant" &&

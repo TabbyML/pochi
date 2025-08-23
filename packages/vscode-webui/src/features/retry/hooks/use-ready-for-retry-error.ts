@@ -1,6 +1,7 @@
 import {
   isAssistantMessageWithEmptyParts,
   isAssistantMessageWithNoToolCalls,
+  isAssistantMessageWithOutputError,
   isAssistantMessageWithPartialToolCalls,
 } from "@getpochi/common/message-utils";
 import type { Message } from "@getpochi/livekit";
@@ -30,7 +31,10 @@ export function useMixinReadyForRetryError(
       return new ReadyForRetryError();
     }
 
-    if (isAssistantMessageWithPartialToolCalls(lastMessage)) {
+    if (
+      isAssistantMessageWithPartialToolCalls(lastMessage) ||
+      isAssistantMessageWithOutputError(lastMessage)
+    ) {
       return new ReadyForRetryError();
     }
 
