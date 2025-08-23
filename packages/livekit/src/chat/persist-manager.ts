@@ -1,4 +1,4 @@
-import { type Environment, getLogger } from "@getpochi/common";
+import { type Environment, formatters, getLogger } from "@getpochi/common";
 import type { PochiApiClient } from "@getpochi/common/pochi-api";
 import type { Store } from "@livestore/livestore";
 import { makeTaskQuery } from "../livestore/queries";
@@ -105,7 +105,7 @@ class PersistManager {
     const resp = await apiClient.api.chat.persist.$post({
       json: {
         id: taskId,
-        messages,
+        messages: formatters.storage(messages),
         environment,
         status: toTaskStatus(lastMessage, finishReason),
         parentClientTaskId: parentId ?? undefined,
