@@ -3,6 +3,7 @@ import { signal } from "@preact/signals-core";
 import deepEqual from "fast-deep-equal";
 import { injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
+import z from "zod";
 import { McpServerConfig } from "./mcp/types";
 
 @injectable()
@@ -61,18 +62,27 @@ export class PochiConfiguration implements vscode.Disposable {
   }
 }
 
-export type PochiAdvanceSettings = {
-  inlineCompletion?: {
-    disabled?: boolean;
-    disabledLanguages?: string[];
-  };
-  webviewLogLevel?: string;
-};
+const PochiAdvanceSettings = z.object({
+  inlineCompletion: z
+    .object({
+      disabled: z.boolean().optional(),
+      disabledLanguages: z.array(z.string()).optional(),
+    })
+    .optional(),
+  webviewLogLevel: z.string().optional(),
+});
+
+export type PochiAdvanceSettings = z.infer<typeof PochiAdvanceSettings>;
 
 function getPochiAdvanceSettings() {
-  return vscode.workspace
-    .getConfiguration("pochi")
-    .get("advanced", {}) as PochiAdvanceSettings;
+  const config = vscode.workspace.getConfiguration("pochi").get("advanced", {});
+
+  const parsed = PochiAdvanceSettings.safeParse(config);
+  if (parsed.success) {
+    return parsed.data;
+  }
+
+  return {};
 }
 
 async function updatePochiAdvanceSettings(value: PochiAdvanceSettings) {
