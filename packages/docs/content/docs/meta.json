@@ -6,17 +6,14 @@
     "---Introduction---",
     "index",
     "installation",
-    "---Core Features---",
-    "tasks",
-    "todo-list",
-    "tab-completion",
+    "troubleshooting",
+    "---Usage---",
+    "toolbar",
     "rules",
+    "tasks",
+    "tab-completion",
     "workflows",
     "tools-integrations",
-    "mcp",
-    "---Account & Support---",
-    "usage",
-    "privacy",
-    "community-support"
+    "mcp"
   ]
 }

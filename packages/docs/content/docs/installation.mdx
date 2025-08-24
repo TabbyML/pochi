@@ -4,11 +4,11 @@ description: "Get started with Pochi quickly"
 icon: "Axe"
 ---
 
-# **Installation**
+# Installation
 
 You can get started with Pochi by installing Pochi's VSCode extension.
 
-### **1. Install the VSCode Extension**
+### 1. Install the VSCode Extension
 
 Install the Pochi extension from the [VSCode Marketplace](https://marketplace.visualstudio.com/items?itemName=TabbyML.pochi).
 
@@ -21,7 +21,7 @@ Once installed, the Pochi icon will appear in your Activity Bar.
  ✅ You should see the Pochi chat window appear in your VSCode editor!
 </Callout>
 
-### **2. Configure an LLM Endpoint (BYOK)**
+### 2. Configure an LLM Endpoint (BYOK)
 
 Pochi operates as an AI agent and requires a connection to a Large Language Model (LLM). The primary way to configure this is through the **Bring Your Own Key (BYOK)** model. This approach gives you full control over model choice, costs, and data privacy. Pochi account registration is optional with BYOK.
 
@@ -40,16 +40,16 @@ To connect your LLM provider:
   `maxTokens` is the length of responses and `contextWindow` is how much conversation history the model considers. These values depend on your provider and chosen model — check your provider's documentation for the supported limits. As a rule of thumb: smaller values are faster and cheaper, larger values give Pochi more room to reason and remember.
 </Callout>
 
-### **3. Assign a Task**
+### 3. Assign a Task
 
-Once the extension is configured, you can assign tasks to the agent. Open the Pochi chat window and describe the task in detail.
+Once the extension is configured, you can assign tasks to the Pochi. Open the Pochi chat window and describe the task in detail.
 
 For example:
 ```
 Refactor the `ApiService` class in `src/lib/api.ts` to use `axios` instead of `fetch`. Ensure all existing method signatures are preserved and update error handling to use axios-specific error objects.
 ```
 
-### **Account-Based Features (Optional)**
+## Cloud-based Features
 
 For teams needing collaborative tools or centralized billing, we offer optional cloud-based services. Creating a Pochi account gives you access to:
 

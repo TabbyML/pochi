@@ -4,31 +4,31 @@ description: Model Context Protocol integration and configuration
 icon: "Spline"
 ---
 
-# **MCP (Model Context Protocol)**
+# MCP (Model Context Protocol)
 
 The **Model Context Protocol (MCP)** revolutionizes how Pochi interacts with external services, databases, and APIs. Think of MCP as a universal adapter that connects Pochi to virtually any data source or tool, dramatically expanding what your AI assistant can accomplish.
 
-## **What is MCP?**
+## What is MCP?
 
 Model Context Protocol is an open standard that allows AI applications to securely connect with external resources. It's like having a universal translator that lets Pochi communicate with databases, APIs, cloud services, and custom tools using a common language.
 
-### **Key Concepts**
+### Key Concepts
 
 - **MCP Servers**: Small programs that expose specific functionality to Pochi
 - **Tools**: Functions that Pochi can execute through MCP servers
 - **Resources**: Read-only data sources like files or database queries
 - **Transport**: Communication method (local processes or remote HTTP endpoints)
 
-### **How It Works**
+### How It Works
 
 1. You configure MCP servers in Pochi's settings
 2. Pochi discovers available tools from each connected server
 3. When you chat with Pochi, it can use these tools to accomplish tasks
 4. All tool executions require your explicit approval for security
 
-## **Real-World User Stories**
+## Real-World User Stories
 
-### **🔍 Automated PR Review Workflow**
+### 🔍 Automated PR Review Workflow
 
 _"Streamline code review process with intelligent GitHub integration"_
 
@@ -37,7 +37,7 @@ _"Streamline code review process with intelligent GitHub integration"_
 **Result**: Pochi can automatically review PRs, check code quality, suggest improvements, and manage PR lifecycle
 **Value**: Faster code review cycles with consistent quality standards
 
-### **🎭 Component Validation with Playwright**
+### 🎭 Component Validation with Playwright
 
 _"Automatically test and validate UI components across different scenarios"_
 
@@ -46,7 +46,7 @@ _"Automatically test and validate UI components across different scenarios"_
 **Result**: Pochi generates components and automatically validates styling, interactions, and responsive behavior through Playwright tests
 **Value**: Consistent component quality with automated visual regression testing
 
-### **📊 Database-Driven Development**
+### 📊 Database-Driven Development
 
 _"Query, analyze, and deploy with integrated database operations"_
 
@@ -54,19 +54,19 @@ _"Query, analyze, and deploy with integrated database operations"_
 **Result**: Pochi can query your database, analyze performance, and deploy directly to AWS
 **Value**: Streamlined development workflow with AI assistance
 
-## **Step-by-Step Setup Guide**
+## Step-by-Step Setup Guide
 
-### **Manual VSCode Settings Configuration**
+### Manual VSCode Settings Configuration
 
 For advanced users who prefer direct configuration:
 
-#### **Step 1: Open VSCode Settings**
+#### Step 1: Open VSCode Settings
 
 1. Open VS Code
 2. Press `Cmd/Ctrl + ,` to open Settings
 3. Search for "pochi mcp" or navigate to Extensions → Pochi
 
-#### **Step 2: Edit settings.json**
+#### Step 2: Edit settings.json
 
 Add to your VS Code `settings.json`:
 
@@ -92,15 +92,15 @@ Add to your VS Code `settings.json`:
 }
 ```
 
-#### **Step 3: Restart VSCode**
+#### Step 3: Restart VSCode
 
 Restart VSCode for the changes to take effect.
 
-## **Configuration Examples**
+## Configuration Examples
 
-### **Local MCP Servers (Stdio Transport)**
+### Local MCP Servers (Stdio Transport)
 
-#### **Filesystem Access**
+#### Filesystem Access
 
 ```json
 {
@@ -118,7 +118,7 @@ Restart VSCode for the changes to take effect.
 }
 ```
 
-#### **Database Connection**
+#### Database Connection
 
 ```json
 {
@@ -132,7 +132,7 @@ Restart VSCode for the changes to take effect.
 }
 ```
 
-#### **Web Search**
+#### Web Search
 
 ```json
 {
@@ -146,9 +146,9 @@ Restart VSCode for the changes to take effect.
 }
 ```
 
-### **Remote MCP Servers (HTTP Transport)**
+### Remote MCP Servers (HTTP Transport)
 
-#### **Custom API Server**
+#### Custom API Server
 
 ```json
 {
@@ -162,7 +162,7 @@ Restart VSCode for the changes to take effect.
 }
 ```
 
-#### **SSE (Server-Sent Events) Server**
+#### SSE (Server-Sent Events) Server
 
 ```json
 {
@@ -175,9 +175,9 @@ Restart VSCode for the changes to take effect.
 }
 ```
 
-## **Advanced Configuration**
+## Advanced Configuration
 
-### **Server Control Options**
+### Server Control Options
 
 ```json
 {

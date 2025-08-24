@@ -1,0 +1,43 @@
+---
+title: "Troubleshooting"
+icon: "CircleQuestionMark"
+description: "Common issues and how to resolve them"
+---
+
+# Troubleshooting
+
+To debug any issues with Pochi, you can check the logs from webview console or vscode output console.
+
+### Webview Console
+
+1. Open `Developer: Use Webview Developer Tools` command in VSCode
+2. Go to the Console tab
+3. Look for error messages related to Pochi
+
+You can configure the log level in VSCode Settings with following snippet
+
+```json
+{
+  "pochi.advanced": {
+      "webviewLogLevel": "DEBUG" // Set to "DEBUG" to see more detailed logs
+  },
+}
+```
+
+### VSCode Output Console
+
+1. Use `Output: Show Output Channels` command in VSCode
+2. Select "Pochi" from the dropdown
+3. Look for error messages or warnings
+
+# Getting help
+
+If you’re experiencing issues with Pochi:
+
+1. Report issues on Github
+
+    The best way to report bugs or request features is through our GitHub repository: github.com/TabbyML/pochi/issues
+
+2. Join our Discord
+
+    For real-time help and community discussion, join our Discord server: https://getpochi.com/discord
