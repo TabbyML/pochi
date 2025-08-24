@@ -46,7 +46,7 @@ We recommend dragging Pochi to the right side of your VSCode window to get the b
 
 ![Drag to right sidebar](../assets/images/vscode-right-sidebar.png)
 
-With Pochi, you can use any LLM provider by configuring their API keys. Use the VS Code command `Pochi: Open Custom Model Settings` to open the settings file and configure it. Alternatively, Pochi offers cloud-based services. Creating a Pochi account gives you access to:
+With Pochi, you can use any LLM provider by configuring their API keys. Use the VS Code command `Pochi: Open Custom Model Settings` to open the settings file and [configure it](./models). Alternatively, Pochi offers cloud-based services. Creating a Pochi account gives you access to:
 
 * Pochi's managed LLM models
 * Shared task histories and team management
@@ -142,6 +142,54 @@ You can use the toggle switch to enable or disable the MCP server entirely. You 
   }
 }
 ```
+
+
+# Models
+URL: /models
+Manage Pochi's model settings
+***
+
+title: Models
+description: Manage Pochi's model settings
+icon: "Zap"
+-----------
+
+# Models
+
+Pochi leverages the AI SDK to support various LLM providers and can run local models.
+
+## Pochi Models
+
+After signing in, you gain access to the Pochi models shown below. Pochi uses a usage-based pricing strategy with no additional charges. For detailed pricing information, visit [https://app.getpochi.com/pricing](https://app.getpochi.com/pricing).
+
+![Pochi Models](../assets/images/pochi-models.png)
+
+## GitHub Copilot Models
+
+For Microsoft VS Code distributions, you can utilize your enabled Copilot models within Pochi.
+
+![Copilot Models](../assets/images/copilot-models.png)
+
+## OpenAI Compatible Models
+
+Pochi allows you to configure any LLM provider that offers an OpenAI-compatible API by setting up the appropriate API keys. To configure custom models, use the VS Code command `Pochi: Open Custom Model Settings` to open the settings configuration file.
+
+```json
+{
+  "id": "groq",
+  "apiKey": "your_api_key",
+  "baseUrl": "https://api.groq.com/openai/v1",
+  "models": [
+    {
+      "id": "moonshotai/kimi-k2-instruct",
+      "contextWindow": 131072,
+      "maxTokens": 8000
+    }
+  ]
+}
+```
+
+After saving the configuration, the model will be available in the toolbar's model selector.
 
 
 # Permissions
