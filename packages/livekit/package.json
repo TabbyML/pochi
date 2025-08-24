@@ -21,6 +21,7 @@
     "@ai-sdk/openai-compatible": "catalog:",
     "@ai-sdk/provider-utils": "catalog:",
     "@ai-sdk/provider": "catalog:",
+    "@ai-sdk/gateway": "catalog:",
     "zod": "catalog:",
     "react": "catalog:",
     "base58-js": "^3.0.3"
