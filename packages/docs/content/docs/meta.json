@@ -5,15 +5,15 @@
   "pages": [
     "---Introduction---",
     "index",
-    "installation",
     "troubleshooting",
     "---Usage---",
-    "toolbar",
-    "rules",
-    "tasks",
     "tab-completion",
+    "permissions",
+    "share",
+    "slack",
+    "---Customize---",
+    "rules",
     "workflows",
-    "tools-integrations",
     "mcp"
   ]
 }
