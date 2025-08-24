@@ -1,31 +1,3 @@
-# Support & Community
-URL: /community-support
-Get help and connect with the Pochi community
-***
-
-title: Support & Community
-description: Get help and connect with the Pochi community
-icon: "Users"
--------------
-
-# **Support & Community**
-
-Our community is a space for Pochi users to connect, learn, and collaborate. We invite you to join us on [Discord](http://discord.gg/tWF66yr8NQ) to engage with fellow developers and the Pochi team.
-
-### **What You'll Find in Our Community**
-
-* **Support and Troubleshooting:** Get help with any issues you encounter and find solutions from experienced users.
-* **Feedback and Suggestions:** Share your ideas for new features and help us shape the future of Pochi.
-* **Show and Tell:** Showcase the amazing things you're building with Pochi and get inspired by others.
-* **Best Practices:** Exchange tips, tricks, and best practices to get the most out of Pochi.
-
-### **Reporting Bugs**
-
-If you encounter a bug or a technical issue, please report it in the relevant channel on our [Discord](http://discord.gg/tWF66yr8NQ). This allows our team to quickly address the problem and provide real-time support. When reporting a bug, please include as much detail as possible, such as screenshots, error messages, and steps to reproduce the issue.
-
-For any other inquiries, you can also reach out to us at [support@getpochi.com](mailto:support@getpochi.com).
-
-
 # Getting Started
 URL: /
 Welcome to Pochi - Full-Stack AI Teammate Guide
@@ -36,11 +8,11 @@ description: "Welcome to Pochi - Full-Stack AI Teammate Guide"
 icon: "Album"
 -------------
 
-# **Welcome**
+# Welcome
 
 Welcome to the ***Pochi docs*** - your comprehensive guide to using your Full-Stack AI Teammate. Here you'll find resources to help you get started, maximize productivity, and build amazing applications with state-of-the-art AI capabilities.
 
-# **What is Pochi?**
+# What is Pochi?
 
 Pochi is an AI agent designed for software development. It operates within your IDE, using a toolkit of commands to execute complex tasks, from code generation to project-wide refactoring.
 
@@ -50,13 +22,13 @@ Pochi's workflow is built on these principles:
 * **Flexible & Extensible**: Pochi's functionality is centered around a **Bring Your Own Key (BYOK)** model. This allows you to connect any supported LLM provider, giving you full control over the agent's "brain," your data privacy, and operational costs. No account is required to use the BYOK model.
 * **Cloud Services**: For teams that need collaborative features, we offer account-based services like shared task list, group billing. These services are optional and build upon the core functionality.
 
-## **Community & Support**
+## Community & Support
 
 **Interested in contributing or just engaging with the team?** We welcome your input through our [Discord Community](https://discord.com/invite/tWF66yr8NQ)! Feel free to share feedback, report bugs, and suggest features there!
 
 We're always looking to improve this documentation as well. If you have suggestions or find areas that could be enhanced, please let us know in our Discord channel. Your feedback helps make Pochi better for everyone!
 
-## **Quick Start**
+## Quick Start
 
 Watch this demo video showcasing the end-to-end experience with Pochi - from extension installation and registration to starting a task and seeing the results:
 
@@ -98,11 +70,11 @@ description: "Get started with Pochi quickly"
 icon: "Axe"
 -----------
 
-# **Installation**
+# Installation
 
 You can get started with Pochi by installing Pochi's VSCode extension.
 
-### **1. Install the VSCode Extension**
+### 1. Install the VSCode Extension
 
 Install the Pochi extension from the [VSCode Marketplace](https://marketplace.visualstudio.com/items?itemName=TabbyML.pochi).
 
@@ -115,7 +87,7 @@ Once installed, the Pochi icon will appear in your Activity Bar.
   ✅ You should see the Pochi chat window appear in your VSCode editor!
 </Callout>
 
-### **2. Configure an LLM Endpoint (BYOK)**
+### 2. Configure an LLM Endpoint (BYOK)
 
 Pochi operates as an AI agent and requires a connection to a Large Language Model (LLM). The primary way to configure this is through the **Bring Your Own Key (BYOK)** model. This approach gives you full control over model choice, costs, and data privacy. Pochi account registration is optional with BYOK.
 
@@ -136,9 +108,9 @@ To connect your LLM provider:
   `maxTokens` is the length of responses and `contextWindow` is how much conversation history the model considers. These values depend on your provider and chosen model — check your provider's documentation for the supported limits. As a rule of thumb: smaller values are faster and cheaper, larger values give Pochi more room to reason and remember.
 </Callout>
 
-### **3. Assign a Task**
+### 3. Assign a Task
 
-Once the extension is configured, you can assign tasks to the agent. Open the Pochi chat window and describe the task in detail.
+Once the extension is configured, you can assign tasks to the Pochi. Open the Pochi chat window and describe the task in detail.
 
 For example:
 
@@ -146,7 +118,7 @@ For example:
 Refactor the `ApiService` class in `src/lib/api.ts` to use `axios` instead of `fetch`. Ensure all existing method signatures are preserved and update error handling to use axios-specific error objects.
 ```
 
-### **Account-Based Features (Optional)**
+## Cloud-based Features
 
 For teams needing collaborative tools or centralized billing, we offer optional cloud-based services. Creating a Pochi account gives you access to:
 
@@ -167,31 +139,31 @@ description: Model Context Protocol integration and configuration
 icon: "Spline"
 --------------
 
-# **MCP (Model Context Protocol)**
+# MCP (Model Context Protocol)
 
 The **Model Context Protocol (MCP)** revolutionizes how Pochi interacts with external services, databases, and APIs. Think of MCP as a universal adapter that connects Pochi to virtually any data source or tool, dramatically expanding what your AI assistant can accomplish.
 
-## **What is MCP?**
+## What is MCP?
 
 Model Context Protocol is an open standard that allows AI applications to securely connect with external resources. It's like having a universal translator that lets Pochi communicate with databases, APIs, cloud services, and custom tools using a common language.
 
-### **Key Concepts**
+### Key Concepts
 
 * **MCP Servers**: Small programs that expose specific functionality to Pochi
 * **Tools**: Functions that Pochi can execute through MCP servers
 * **Resources**: Read-only data sources like files or database queries
 * **Transport**: Communication method (local processes or remote HTTP endpoints)
 
-### **How It Works**
+### How It Works
 
 1. You configure MCP servers in Pochi's settings
 2. Pochi discovers available tools from each connected server
 3. When you chat with Pochi, it can use these tools to accomplish tasks
 4. All tool executions require your explicit approval for security
 
-## **Real-World User Stories**
+## Real-World User Stories
 
-### **🔍 Automated PR Review Workflow**
+### 🔍 Automated PR Review Workflow
 
 *"Streamline code review process with intelligent GitHub integration"*
 
@@ -200,7 +172,7 @@ Model Context Protocol is an open standard that allows AI applications to secure
 **Result**: Pochi can automatically review PRs, check code quality, suggest improvements, and manage PR lifecycle
 **Value**: Faster code review cycles with consistent quality standards
 
-### **🎭 Component Validation with Playwright**
+### 🎭 Component Validation with Playwright
 
 *"Automatically test and validate UI components across different scenarios"*
 
@@ -209,7 +181,7 @@ Model Context Protocol is an open standard that allows AI applications to secure
 **Result**: Pochi generates components and automatically validates styling, interactions, and responsive behavior through Playwright tests
 **Value**: Consistent component quality with automated visual regression testing
 
-### **📊 Database-Driven Development**
+### 📊 Database-Driven Development
 
 *"Query, analyze, and deploy with integrated database operations"*
 
@@ -217,19 +189,19 @@ Model Context Protocol is an open standard that allows AI applications to secure
 **Result**: Pochi can query your database, analyze performance, and deploy directly to AWS
 **Value**: Streamlined development workflow with AI assistance
 
-## **Step-by-Step Setup Guide**
+## Step-by-Step Setup Guide
 
-### **Manual VSCode Settings Configuration**
+### Manual VSCode Settings Configuration
 
 For advanced users who prefer direct configuration:
 
-#### **Step 1: Open VSCode Settings**
+#### Step 1: Open VSCode Settings
 
 1. Open VS Code
 2. Press `Cmd/Ctrl + ,` to open Settings
 3. Search for "pochi mcp" or navigate to Extensions → Pochi
 
-#### **Step 2: Edit settings.json**
+#### Step 2: Edit settings.json
 
 Add to your VS Code `settings.json`:
 
@@ -255,15 +227,15 @@ Add to your VS Code `settings.json`:
 }
 ```
 
-#### **Step 3: Restart VSCode**
+#### Step 3: Restart VSCode
 
 Restart VSCode for the changes to take effect.
 
-## **Configuration Examples**
+## Configuration Examples
 
-### **Local MCP Servers (Stdio Transport)**
+### Local MCP Servers (Stdio Transport)
 
-#### **Filesystem Access**
+#### Filesystem Access
 
 ```json
 {
@@ -281,7 +253,7 @@ Restart VSCode for the changes to take effect.
 }
 ```
 
-#### **Database Connection**
+#### Database Connection
 
 ```json
 {
@@ -295,7 +267,7 @@ Restart VSCode for the changes to take effect.
 }
 ```
 
-#### **Web Search**
+#### Web Search
 
 ```json
 {
@@ -309,9 +281,9 @@ Restart VSCode for the changes to take effect.
 }
 ```
 
-### **Remote MCP Servers (HTTP Transport)**
+### Remote MCP Servers (HTTP Transport)
 
-#### **Custom API Server**
+#### Custom API Server
 
 ```json
 {
@@ -325,7 +297,7 @@ Restart VSCode for the changes to take effect.
 }
 ```
 
-#### **SSE (Server-Sent Events) Server**
+#### SSE (Server-Sent Events) Server
 
 ```json
 {
@@ -338,9 +310,9 @@ Restart VSCode for the changes to take effect.
 }
 ```
 
-## **Advanced Configuration**
+## Advanced Configuration
 
-### **Server Control Options**
+### Server Control Options
 
 ```json
 {
@@ -357,27 +329,6 @@ Restart VSCode for the changes to take effect.
 ```
 
 
-# Privacy
-URL: /privacy
-Information about data handling and privacy policy
-***
-
-title: Privacy
-description: Information about data handling and privacy policy
-icon: "Shield"
---------------
-
-# **Privacy**
-
-For comprehensive information about how Pochi handles your data, code, and personal information, please refer to our [Privacy Policy](https://app.getpochi.com/privacy-policy).
-
-Below is a summary of our key privacy principles:
-
-* **Minimal Data Collection:** We only collect the data necessary to provide and improve our service. This includes usage analytics and task-related data, which helps us enhance Pochi's functionality and user experience.
-* **Data Security:** We implement industry-standard security measures to protect your data from unauthorized access, alteration, or disclosure.
-* **Third-Party Services:** We use trusted third-party services like Stripe for payment processing. We ensure that our partners adhere to strict data protection and privacy standards.
-
-
 # Rules
 URL: /rules
 Define coding standards and development guidelines
@@ -388,331 +339,65 @@ description: Define coding standards and development guidelines
 icon: "Ruler"
 -------------
 
-# **Rules**
+# Rules
 
-**Rules** tell Pochi about your project's preferences, coding standards, and constraints. It's like giving Pochi a style guide for your codebase.
-You can edit your Rule in Pochi Extension Settings page.
+You can provide custom instructions to Pochi by creating an `README.pochi.md` file. This is similar to CLAUDE.md or Cursor’s rules.
 
-<div style={{ display: 'flex', justifyContent: 'center' }}>
-  <Image src="/images/core-features/rule/rule-edit.png" alt="alt_text" title="image_tooltip" width="70%" />
-</div>
-
-### Setting up Workspace Rules
-
-Create `README.pochi.md` in your project root:
-
-````markdown
-# Tabby Project Rules
-
-Tabby is a self-hosted AI coding assistant built with Rust backend and Next.js frontend. Follow these guidelines when contributing to the project.
-
-## Tech Stack
-
-### Backend (Rust)
-
-- **Core**: Rust with Cargo workspace structure
-- **Web Framework**: Axum for HTTP APIs
-- **Database**: SQLx with PostgreSQL/SQLite
-- **AI/ML**: Custom inference engine with CUDA/ROCm/Metal support
-- **Search**: Tantivy for code indexing
-- **Authentication**: JWT-based auth system
-- **Background Jobs**: Tokio-based async job system
-
-### Frontend (Next.js)
-
-- **Framework**: Next.js 13+ with App Router
-- **Language**: TypeScript
-- **Styling**: Tailwind CSS with Radix UI components
-- **State Management**: Zustand + SWR for server state
-- **GraphQL**: URQL client with GraphQL Code Generator
-- **Forms**: React Hook Form with Zod validation
-- **Code Editor**: CodeMirror 6
-- **Rich Text**: TipTap editor
-
-### Development Tools
-
-- **Package Manager**: pnpm (required >=9)
-- **Build System**: Turbo for monorepo builds
-- **Testing**: Vitest for frontend, Rust built-in tests for backend
-- **Linting**: ESLint + Prettier for frontend, Clippy for Rust
-- **CI/CD**: GitHub Actions
-
-## Coding Standards
-
-### Rust Backend
-
-- Use `snake_case` for variables, functions, and modules
-- Use `PascalCase` for structs, enums, and traits
-- Prefer `async/await` over manual Future implementations
-- Use `anyhow::Result` for error handling in applications
-- Use `thiserror` for library error types
-- Always add proper error context with `.context()`
-- Use `tracing` for logging, not `println!` or `eprintln!`
-- Prefer `tokio::spawn` for background tasks
-- Use `serde` for serialization with proper derives
-
-### Frontend (TypeScript/React)
-
-- Use `camelCase` for variables and functions
-- Use `PascalCase` for components, interfaces, and types
-- Prefer functional components with hooks
-- Use TypeScript strict mode - always add proper types
-- Use `const` over `let` when possible
-- Prefer named exports over default exports
-- Use Tailwind CSS classes, frontavoid custom CSS when possible
-- Use Radix UI components for consistent design
-- Always handle loading and error states in components
-
-### File Organization
-
-- **Rust crates**: `/crates/` for open source, `/ee/` for enterprise features
-- **Frontend pages**: `/ee/tabby-ui/app/` (Next.js App Router)
-- **Frontend components**: `/ee/tabby-ui/components/`
-- **Shared utilities**: `/ee/tabby-ui/lib/`
-- **GraphQL schemas**: `/ee/tabby-schema/`
-- **Database**: `/ee/tabby-db/`
-
-## Testing Guidelines
-
-### Rust Testing
-
-- Write unit tests in the same file using `#[cfg(test)]`
-- Use `#[tokio::test]` for async tests
-- Use `serial_test` for tests that can't run in parallel
-- Skip golden tests during development: `cargo test -- --skip golden`
-- Use `temp_testdir` for filesystem tests
-- Mock external dependencies appropriately
-
-### Frontend Testing
-
-- Use Vitest for unit and integration tests
-- Test files should end with `.test.ts` or `.test.tsx`
-- Focus on testing user interactions and business logic
-- Use React Testing Library patterns
-- Mock GraphQL queries with URQL test utilities
-
-## Development Commands
-
-### Backend Development
-
-```bash
-# Build the project
-cargo build
-
-# Run with GPU support (choose one)
-cargo run --features cuda serve --model TabbyML/StarCoder-1B --device cuda
-cargo run --features rocm serve --model TabbyML/StarCoder-1B --device rocm
-cargo run serve --model TabbyML/StarCoder-1B --device metal
-
-# Run tests (skip slow golden tests)
-cargo test -- --skip golden
-
-# Run specific crate tests
-cargo test -p tabby-inference
-```
-
-### Frontend Development
-
-```bash
-# Install dependencies
-pnpm install
-
-# Start development server
-pnpm dev
-
-# Build for production
-pnpm build
-
-# Run tests
-pnpm test
-
-# Lint and format
-pnpm lint
-pnpm lint:fix
-
-# Generate GraphQL types
-pnpm codegen
-```
-
-### Monorepo Commands
-
-```bash
-# Build all packages
-pnpm build
-
-# Run all tests
-pnpm test
-
-# Lint all packages
-pnpm lint
-```
-
-## API & GraphQL Guidelines
-
-### GraphQL Schema
-
-- Use descriptive field names and types
-- Add proper documentation to all fields
-- Use proper GraphQL scalars (DateTime, URL, etc.)
-- Implement proper error handling
-- Use DataLoader pattern for N+1 query prevention
-
-### REST API
-
-- Follow OpenAPI 3.0 specification
-- Use proper HTTP status codes
-- Implement proper error responses
-- Add request/response validation
-- Use consistent naming conventions
-
-## Database Guidelines
-
-### Migrations
-
-- Always create reversible migrations
-- Use descriptive migration names with timestamps
-- Test migrations on sample data
-- Add proper indexes for query performance
-- Use transactions for multi-step migrations
-
-### Queries
-
-- Use prepared statements via SQLx
-- Add proper error handling for database operations
-- Use connection pooling appropriately
-- Implement proper pagination for large datasets
-
-## Security Guidelines
-
-### Authentication & Authorization
-
-- Always validate JWT tokens properly
-- Implement proper RBAC (Role-Based Access Control)
-- Use secure session management
-- Validate all user inputs
-- Implement rate limiting for APIs
-
-### Data Protection
-
-- Never log sensitive information
-- Use proper encryption for sensitive data
-- Implement proper CORS policies
-- Validate file uploads thoroughly
-- Use HTTPS in production
-
-## Performance Guidelines
-
-### Backend Performance
-
-- Use async/await for I/O operations
-- Implement proper connection pooling
-- Use background jobs for heavy operations
-- Cache frequently accessed data
-- Monitor memory usage in long-running processes
-
-### Frontend Performance
-
-- Use React.memo for expensive components
-- Implement proper code splitting
-- Optimize bundle size with tree shaking
-- Use SWR for efficient data fetching
-- Implement virtual scrolling for large lists
-
-## AI/ML Specific Guidelines
-
-### Model Integration
-
-- Support multiple inference backends (CUDA, ROCm, Metal, CPU)
-- Implement proper model loading and unloading
-- Handle model inference errors gracefully
-- Use proper tokenization for different models
-- Implement model switching without restart
-
-### Code Completion
-
-- Respect user privacy - no data collection without consent
-- Implement proper context window management
-- Use efficient caching for completions
-- Handle streaming responses properly
-- Implement proper fallback mechanisms
-
-## Documentation
-
-### Code Documentation
-
-- Add rustdoc comments for all public APIs
-- Use TSDoc comments for TypeScript functions
-- Include examples in documentation
-- Document complex algorithms and business logic
-- Keep README files up to date
-
-### API Documentation
-
-- Maintain OpenAPI specifications
-- Document GraphQL schema thoroughly
-- Provide integration examples
-- Keep changelog updated
-- Document breaking changes clearly
-
-## Don't Do
-
-### General
-
-- Don't commit secrets or API keys
-- Don't use `unwrap()` in production Rust code
-- Don't use `any` type in TypeScript
-- Don't skip error handling
-- Don't commit without running tests
-- Don't use `console.log` in production frontend code
-
-### Performance
-
-- Don't block the main thread with heavy computations
-- Don't make unnecessary database queries
-- Don't load entire datasets without pagination
-- Don't use synchronous I/O in async contexts
-
-### Security
-
-- Don't trust user input without validation
-- Don't expose internal error details to users
-- Don't use weak authentication mechanisms
-- Don't store passwords in plain text
-- Don't ignore security warnings from dependencies
-
-## Deployment
-
-### Production Requirements
-
-- Use proper environment variables for configuration
-- Implement health checks for all services
-- Use proper logging and monitoring
-- Implement graceful shutdown handling
-- Use container orchestration for scaling
-
-### Docker
-
-- Use multi-stage builds for smaller images
-- Run as non-root user in containers
-- Use proper resource limits
-- Implement proper signal handling
-- Use official base images when possible
-````
-
-### Import Existing Rules
-
-Pochi can import rules from other tools by automatically detecting `.cursorrules` files and importing rules from `.cursor/rules/` directories.
-These rules are then converted and merged with your Pochi rules.
-For team standards, you can share a `README.pochi.md` file across team repositories to version control your rules and workflows, ensuring consistent coding standards across projects.
-
-### How Pochi uses your rules
-
-On every request, Pochi reads your rules before starting work, automatically following your coding standards and respecting your file organization preferences.
-This ensures that all generated code, tests, and documentation adhere to your standards for consistent output.
-
-<Callout title="Getting Started">
-  Try a simple `README.pochi.md` file listing your main technologies and basic preferences. You can always add more rules as you discover what works best.
+<Callout title="AGENTS.md support">
+  Pochi also supports [AGENTS.md](https://agents.md) as an alternative to `README.pochi.md`. Both files serve the same purpose and are treated identically by Pochi.
 </Callout>
+
+### Example
+
+Below example is the `README.pochi.md` file for Pochi itself.
+
+```markdown
+Pochi is an project developed using following technologies:
+1. always use kebab-case for filenames.
+2. always use camelCase for variables, functions.
+3. use PascalCase for classes, interfaces, types.
+
+# Testing for non packages/vscode
+We use vitest framework.
+our test use vitest framework.
+test command: `bun run test`
+coverage test command: `bun run test -- --coverage`
+
+## Testing for packages/vscode
+We use mocha framework, when creating test, do not use mocks for filesystem, just use vscode.workspace.fs to create files and folders, and only use mocha primitives for testing. use sinon for mocks.
+
+(assuming cwd is packages/vscode)
+test command: `bun run test`
+coverage test command: `bun run test:coverage`
+
+When encountering issues like `TypeError: Descriptor for property readFile is non-configurable and non-writable`, please use `proxyquire` to mock the module.
+
+# Misc
+1. use `bun check` to format / linting the code, use `bun fix` to automatically apply the fix.
+2. use `bun tsc` to check the types.
+3. For packages/code it uses `ink` for react terminal ui.
+4. Prefer `@/lib` over `../lib` for imports.
+5. For global variable in typescript, prefer using PascalCase, e.g `GlobalVariableName`, instead of `GLOBAL_VARIABLE_NAME`.
+6. For biome related warning / errors, prefer using `bun fix` in the root directory to fix the issues.
+```
+
+## Locations
+
+Pochi looks for rules in two locations:
+
+### Workspace
+
+Pochi first checks for a `README.pochi.md` (or `AGENTS.md`) file in your current workspace root directory. This is where you define project-specific rules that apply only to your current project.
+
+### Global
+
+Pochi also reads global rules defined in `~/.pochi/README.pochi.md`. These rules apply to all projects and are suitable for any personal rules that Pochi should follow.
+
+You can view current active rules in toolbar's token usage popover
+
+<p align="center">
+  ![Token Usage](../assets/images/usage-token-popover.png)
+</p>
 
 
 # Tab Completion
@@ -725,7 +410,7 @@ description: Inline code completion
 icon: "Code"
 ------------
 
-# **Tab Completion**
+# Tab Completion
 
 **Tab Completion** is Pochi's in-editor inline code completion feature that provides AI-powered suggestions as you type, helping you write code faster and more efficiently.
 
@@ -733,11 +418,11 @@ Pochi uses a state-of-the-art model that adapts to your coding patterns in real 
 drawing on recent edits, diagnostics, and surrounding context to generate helpful,
 relevant completions right in your editor.
 
-<div style={{ display: "flex", justifyContent: "center" }}>
-  <Image src="/images/core-features/tab-completion/completion.png" alt="Tab completion showing inline suggestions" title="Inline code completion in action" width="80%" />
-</div>
+<p align="center">
+  ![Tab completion showing inline suggestions](../assets/images/completion.png)
+</p>
 
-### **Multi-Language Support**
+### Multi-Language Support
 
 Works across popular programming languages including:
 
@@ -751,14 +436,14 @@ Works across popular programming languages including:
 
 ## Using Tab Completion
 
-### **Basic Usage**
+### Basic Usage
 
 1. Start typing your code
 2. Pochi will show inline suggestions in gray text
 3. Press `Tab` to accept the suggestion
 4. Press `Escape` to dismiss the suggestion
 
-### **Keyboard Shortcuts**
+### Keyboard Shortcuts
 
 | Key            | Action                                      |
 | -------------- | ------------------------------------------- |
@@ -773,107 +458,43 @@ Works across popular programming languages including:
 **Need help?** Visit our [Community Support](/community-support) page or join our [Discord](https://discord.com/invite/tWF66yr8NQ) for assistance with Tab Completion features.
 
 
-# Tasks
-URL: /tasks
-Task management and collaboration features in Pochi
+# Toolbar
+URL: /toolbar
+Functions provided in Pochi's input toolbar
 ***
 
-title: Tasks
-description: Task management and collaboration features in Pochi
+title: Toolbar
+description: Functions provided in Pochi's input toolbar
 icon: "Waypoints"
 -----------------
 
-# **Tasks**
+# Toolbar
 
-**Tasks** represent discrete development objectives Pochi manages from conception to completion. Each task maintains its own context, progress tracking, and collaboration thread within your team's workspace.
+### Share
 
-Tasks differ from simple prompts by maintaining persistent context, enabling collaborative development, and chain of conversations.
+The **Share** feature in Pochi's toolbar allows you to share your current development context with team members.
 
-Pochi also keeps persistent state of your tasks, and allows sharing a task if you'd like.
+<Callout type="info" title="Public Access">
+  Shared conversations are publicly accessible to anyone with the link. Do not share sensitive information or private code.
+</Callout>
 
-<div style={{ display: "flex", justifyContent: "center" }}>
-  <Image src="/images/core-features/tasks/task-sharing.png" alt="alt_text" title="image_tooltip" width="40%" />
-</div>
+<p align="center">
+  ![Task Sharing](../assets/images/task-sharing.png)
+</p>
 
-### **Interruptions (Rejection, Editing)**
+### Auto-Approve
 
-During Pochi's execution of a task, just like how you work with real engineers, you can also interrupt Pochi's execution any time to modify requirements, reject approaches, adjust priorities, or incorporate team feedback. Interruptions
-come naturally just like how you'd talk with a fellow engineer - simply send a message to indicate your intension, then Pochi would pause and reconsiders task planning based on your message. Some
-interruption messages could look like
+By default, all permissions in Pochi are enabled. You can customize these permissions at any time using the Auto-Approve settings.
 
-```js
-"Change the database from SQLite to PostgreSQL";
-"This layout won't work on mobile. Use a card-based design instead";
-"Don't use inline styles - let's go with CSS modules";
-"Skip the styling for now - let's focus on the API integration first";
-```
+<p align="center">
+  ![Auto Approve](../assets/images/auto-approve.png)
+</p>
 
-Changes are immediately reflected in the task thread with updated plans. All thread participants are notified of modifications, while previous work remains accessible in the thread history. Development resumes seamlessly with new requirements while maintaining consistency.
-
-### **Auto-Approve**
-
-**Auto-approve** allows Pochi to execute certain actions autonomously without requiring manual confirmation for each step, streamlining your development workflow.
-
-<div style={{ display: "flex", justifyContent: "center" }}>
-  <Image src="/images/core-features/tasks/auto-approve.png" alt="alt_text" title="image_tooltip" width="30%" />
-</div>
-
-By default, Pochi asks for your permission (manuel confirming) before taking any action, including reading or writing files.
-If you want to allow Pochi to directly take actions, you can set the **Auto Approve** permission for that action.
-
-|     Category    | Operations                                                                                              |
-| :-------------: | :------------------------------------------------------------------------------------------------------ |
-|     **Read**    | Read the file content Pochi decides to look up for analyzing or completing tasks.                       |
-|    **Write**    | Creates new files, edits existing code, generates boilerplate, and writes documentation.                |
-|   **Execute**   | Manages dependencies, runs builds, tests, and perform system operations.                                |
-|   **Use MCP**   | Interacts with databases, APIs, and other external services to expand its capabilities with MCP server. |
-| **Retry Logic** | Automatically retries failed commands, code changes, and installations.                                 |
-
-### **Best Practices**
-
-For most serious development workflows, we recommend starting with:
-
-* Auto-approving **read** access to project files
-* Setting a reasonable maximum request limit (suggest to start with at least 3)
-
-This gives Pochi enough freedom to explore your codebase without constant interruptions, while still requiring permission for edits or potentially destructive actions.
-
-As you build more trust in Pochi's capabilities with your specific projects, you can gradually increase the permissions to match your comfort level.
-
-Remember that you can always adjust these settings as your needs change - tighten permissions for critical production work, or loosen them when prototyping and exploring.
-
-### **Advanced Settings - Developer Only, Use at Your Own Risk**
-
-Advanced Settings include Developer Mode that allows you to configure Pochi's behavior with advanced options to customize your development workflow and debugging experience. These settings are experimental and may affect stability.
-
-* **Enable Gemini Custom Tool Calls**: Pochi allows you to integrate custom tools by defining them in a dedicated `tools.ts` file.
-  When this feature is enabled, Pochi will automatically detect and utilize the tools you've defined, making them available for use in your development workflow.
-  This enables you to extend Pochi's capabilities with your own custom functionalities.
-
-* **Enable Tool: newTask**: The `newTask` tool is a powerful feature that allows Pochi to create new tasks programmatically.
-  When this tool is enabled, Pochi can autonomously generate and manage tasks based on your instructions or as part of a larger workflow.
-  This is particularly useful for automating repetitive processes or for creating complex, multi-step operations that involve multiple tasks.
-
-
-# TODO List
-URL: /todo-list
-Step-by-step execution and task management
-***
-
-title: TODO List
-description: Step-by-step execution and task management
-icon: "Book"
-------------
-
-# **TODO List**
-
-Pochi automatically creates and manages ***TODO lists*** to help you track progress on complex tasks.
-
-<div style={{ display: 'flex', justifyContent: 'center' }}>
-  <Image src="/images/core-features/todo-list/todo.png" alt="alt_text" title="image_tooltip" width="60%" />
-</div>
-
-You can think of it as a shared workspace between you and Pochi. Pochi will clearly show you the step-by-step progress it plans to deliver your tasks, and the real-time progress it's making.
+* **Read**: Read the file content Pochi decides to look up for analyzing or completing tasks.
+* **Write**: Creates new files, edits existing code, generates boilerplate, and writes documentation.
+* **Execute**: Manages dependencies, runs builds, tests, and perform system operations.
+* **Use MCP**: Interacts with databases, APIs, and other external services to expand its capabilities with MCP server.
+* **Retry**: Automatically retries failed commands, code changes, and installations.
 
 
 # Tools & Integrations
@@ -886,11 +507,11 @@ description: Connect Pochi with your existing development tools
 icon: "Wrench"
 --------------
 
-# **Agent Toolset & Cloud Integrations**
+# Agent Toolset & Cloud Integrations
 
 Pochi's capabilities are divided into its core agent toolset and optional cloud integrations.
 
-## **Core Agent Toolset**
+## Core Agent Toolset
 
 The Pochi agent comes equipped with a set of built-in tools that allow it to interact with your local development environment. These tools are fundamental to its operation and are available by default, regardless of whether you have an account.
 
@@ -902,15 +523,15 @@ Key tools include:
 
 These tools enable the agent to perform complex, multi-step tasks like refactoring code, adding features, and fixing bugs autonomously. You can review the full list of available tools in the Pochi extension settings.
 
-<div style={{ display: 'flex', justifyContent: 'center' }}>
-  <Image src="/images/core-features/tools/built-in-tools.png" alt="Pochi's Built-in Tools" width="50%" />
-</div>
+<p align="center">
+  ![Pochi's Built-in Tools](../assets/images/built-in-tools.png)
+</p>
 
-## **Cloud Integrations**
+## Cloud Integrations
 
 For teams and developers who need collaborative features, we offer optional cloud-based integrations. These require a Pochi account and connect the agent to external services.
 
-### **GitHub**
+### GitHub
 
 Connecting your GitHub account allows the agent to:
 
@@ -919,7 +540,7 @@ Connecting your GitHub account allows the agent to:
 * Track and manage issues.
 * Handle branch management and resolve merge conflicts.
 
-### **Slack**
+### Slack
 
 Our Slack integration is currently experimental. The goal is to enable seamless collaboration by allowing you to:
 
@@ -927,51 +548,53 @@ Our Slack integration is currently experimental. The goal is to enable seamless 
 * Receive real-time progress updates in conversation threads.
 
 
-# Usage
-URL: /usage
-Model support and credit system information
+# Troubleshooting
+URL: /troubleshooting
+Common issues and how to resolve them
 ***
 
-title: Usage
-description: Model support and credit system information
-icon: "Amphora"
----------------
+title: "Troubleshooting"
+icon: "CircleQuestionMark"
+description: "Common issues and how to resolve them"
+----------------------------------------------------
 
-# **Usage**
+# Troubleshooting
 
-Pochi's architecture is designed for flexibility, giving you two primary ways to manage your LLM usage and costs: the **Bring Your Own Key (BYOK)** model and our **Managed Service**.
+To debug any issues with Pochi, you can check the logs from webview console or vscode output console.
 
-## **Bring Your Own Key (BYOK)**
+### Webview Console
 
-This is the default and recommended model for most developers. It provides maximum control and transparency.
+1. Open `Developer: Use Webview Developer Tools` command in VSCode
+2. Go to the Console tab
+3. Look for error messages related to Pochi
 
-* **Cost**: Pochi itself is free to use with this model. You are only responsible for the token costs charged by your selected LLM provider (e.g., OpenAI, Anthropic, etc.).
-* **Providers**: You can connect any supported LLM by providing your API key in the extension settings.
-* **Billing**: Your LLM provider will bill you directly. Pochi does not add any fees.
-* **Benefits**: Full control over model selection, spending, and data privacy. Ideal for developers with existing API subscriptions or those who want to manage their own stack.
+You can configure the log level in VSCode Settings with following snippet
 
-## **Managed Service (Optional)**
+```json
+{
+  "pochi.advanced": {
+      "webviewLogLevel": "DEBUG" // Set to "DEBUG" to see more detailed logs
+  },
+}
+```
 
-For users who prefer a simplified setup or want access to our curated model offerings, we provide an optional managed service. This requires a Pochi account.
+### VSCode Output Console
 
-* **Cost**: Usage is billed through Pochi on a pay-as-you-go basis. We pass through the direct token costs from the LLM providers, plus a small service fee to cover operational expenses.
-* **Models**: The managed service includes access to a range of models, categorized by performance and cost.
-* **Billing**: We use Stripe for secure payment processing. Upon signing up, you receive a monthly allocation of free credits. After the credits are used, billing occurs based on your token consumption. You can set a monthly spending limit in your profile to control costs.
+1. Use `Output: Show Output Channels` command in VSCode
+2. Select "Pochi" from the dropdown
+3. Look for error messages or warnings
 
-| Model                | Category | Best For                                                                                          |
-| :------------------- | :------- | :------------------------------------------------------------------------------------------------ |
-| **Gemini 2.5 Pro**   | Super    | Web development, API integration, adhering to coding standards, and complex component generation. |
-| **Claude 4**         | Super    | Code generation, complex reasoning, visual understanding, and full-stack development.             |
-| **Kimi-K2**          | Swift    | Balanced performance for most development tasks while maintaining excellent value for money.      |
-| **Gemini 2.5 Flash** | Swift    | Rapid prototyping, simpler development tasks, and budget-friendly projects.                       |
-| **Qwen3-Coder**      | Swift    | Daily software development with a goal of automation at lower budget.                             |
-| **GLM-4.5**          | Swift    | Code automation, basic function calling, and development workflows at budget rates.               |
+# Getting help
 
-**Switching Models**: You can change models mid-task based on complexity requirements without losing context.
+If you’re experiencing issues with Pochi:
 
-<div style={{ display: "flex", justifyContent: "center" }}>
-  <Image src="/images/account-support/select-model-06-08.png" alt="Select Model" width="70%" />
-</div>
+1. Report issues on Github
+
+   The best way to report bugs or request features is through our GitHub repository: github.com/TabbyML/pochi/issues
+
+2. Join our Discord
+
+   For real-time help and community discussion, join our Discord server: [https://getpochi.com/discord](https://getpochi.com/discord)
 
 
 # Workflows
@@ -984,7 +607,7 @@ description: Automate common development sequences
 icon: "Workflow"
 ----------------
 
-# **Workflows**
+# Workflows
 
 ## What are Workflows?
 
