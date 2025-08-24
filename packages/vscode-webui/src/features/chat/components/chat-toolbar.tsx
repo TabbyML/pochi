@@ -95,6 +95,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     removeFile: handleRemoveImage,
     handleFileSelect,
     handlePaste: handlePasteImage,
+    validateAndAddFiles,
   } = imageUpload;
 
   const { inlineCompactTask, inlineCompactTaskPending } = useInlineCompactTask({
@@ -133,6 +134,15 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     pendingApproval,
     newCompactTaskPending,
   });
+
+  // Handle drag and drop image uploads
+  const handleImageUpload = useCallback(
+    (files: File[]): boolean => {
+      console.log('[ChatToolbar] Drag and drop image upload:', files.length, 'files');
+      return validateAndAddFiles(files, false);
+    },
+    [validateAndAddFiles],
+  );
 
   // Only allow adding tool results when not loading
   const allowAddToolResult = !(
@@ -184,6 +194,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
         onPaste={handlePasteImage}
         pendingApproval={pendingApproval}
         status={status}
+        onImageUpload={handleImageUpload}
       />
 
       {/* Hidden file input for image uploads */}

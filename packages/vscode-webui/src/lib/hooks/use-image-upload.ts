@@ -179,6 +179,7 @@ export function useImageUpload(options?: UseImageUploadOptions) {
     clearError,
     upload,
     cancelUpload,
+    validateAndAddFiles,
 
     // Event handlers
     handleFileSelect,
