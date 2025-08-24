@@ -349,6 +349,59 @@
                     "credentials"
                   ],
                   "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "description": "Model provider identifier, e.g., \"ai-gateway\"",
+                      "type": "string"
+                    },
+                    "name": {
+                      "description": "Model provider name, e.g., \"AI Gateway\"",
+                      "type": "string"
+                    },
+                    "models": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "name": {
+                            "description": "Display name of the model, e.g., \"Qwen Coder\"",
+                            "type": "string"
+                          },
+                          "id": {
+                            "description": "Identifier for the model, e.g., \"alibaba/qwen2-coder\"",
+                            "type": "string"
+                          },
+                          "maxTokens": {
+                            "description": "Maximum number of generated tokens for the model",
+                            "type": "number"
+                          },
+                          "contextWindow": {
+                            "description": "Context window size for the model",
+                            "type": "number"
+                          },
+                          "useToolCallMiddleware": {
+                            "description": "Turn on tool call middleware for xml-based tool call",
+                            "type": "boolean"
+                          }
+                        },
+                        "required": ["id", "maxTokens", "contextWindow"],
+                        "additionalProperties": false
+                      }
+                    },
+                    "kind": {
+                      "type": "string",
+                      "const": "ai-gateway"
+                    },
+                    "apiKey": {
+                      "description": "API key for the AI Gateway provider, if required.",
+                      "type": "string"
+                    }
+                  },
+                  "required": ["id", "models"],
+                  "additionalProperties": false
                 }
               ]
             }
