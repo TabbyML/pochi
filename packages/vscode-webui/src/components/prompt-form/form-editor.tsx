@@ -3,6 +3,7 @@ import { fuzzySearchFiles, fuzzySearchWorkflows } from "@/lib/fuzzy-search";
 import { useActiveTabs } from "@/lib/hooks/use-active-tabs";
 import { vscodeHost } from "@/lib/vscode";
 import Document from "@tiptap/extension-document";
+import FileHandler from "@tiptap/extension-file-handler";
 import History from "@tiptap/extension-history";
 import Paragraph from "@tiptap/extension-paragraph";
 import Placeholder from "@tiptap/extension-placeholder";
@@ -14,7 +15,7 @@ import {
   ReactRenderer,
   useEditor,
 } from "@tiptap/react";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import tippy from "tippy.js";
 import {
   PromptFormMentionExtension,
@@ -83,6 +84,7 @@ interface FormEditorProps {
   onError?: (e: Error) => void;
   onPaste?: (e: ClipboardEvent) => void;
   enableSubmitHistory?: boolean;
+  onImageUpload?: (files: File[]) => boolean;
 }
 
 export function FormEditor({
@@ -96,6 +98,7 @@ export function FormEditor({
   autoFocus = true,
   onPaste,
   enableSubmitHistory = true,
+  onImageUpload,
 }: FormEditorProps) {
   const internalFormRef = useRef<HTMLFormElement>(null);
   const formRef = externalFormRef || internalFormRef;
@@ -107,6 +110,177 @@ export function FormEditor({
   }, [activeTabs]);
   const isFileMentionComposingRef = useRef(false);
   const isCommandMentionComposingRef = useRef(false);
+
+  // Handle file drops and pastes for image upload
+  const handleFileHandler = useCallback(
+    (files: File[], source: 'drop' | 'paste') => {
+      console.log(`[FormEditor] File ${source} detected:`, {
+        fileCount: files.length,
+        files: files.map(f => ({ name: f.name, type: f.type, size: f.size })),
+        source
+      });
+
+      // Filter for image files only
+      const imageFiles = files.filter(file => file.type.startsWith('image/'));
+      
+      if (imageFiles.length === 0) {
+        console.log('[FormEditor] No image files found in dropped/pasted files');
+        return false;
+      }
+
+      console.log(`[FormEditor] Processing ${imageFiles.length} image files`);
+      
+      if (onImageUpload) {
+        const success = onImageUpload(imageFiles);
+        console.log(`[FormEditor] Image upload ${success ? 'successful' : 'failed'}`);
+        return success;
+      }
+      
+      console.warn('[FormEditor] No onImageUpload handler provided');
+      return false;
+    },
+    [onImageUpload]
+  );
+
+  const handleDrop = useCallback(
+    (editor: Editor, files: File[], pos: number) => {
+      console.log('[FormEditor] Drop event:', { fileCount: files.length, position: pos });
+      return handleFileHandler(files, 'drop');
+    },
+    [handleFileHandler]
+  );
+
+  const handleFilePaste = useCallback(
+    (editor: Editor, files: File[], htmlContent?: string) => {
+      console.log('[FormEditor] Paste event:', { 
+        fileCount: files.length, 
+        hasHtmlContent: !!htmlContent 
+      });
+      return handleFileHandler(files, 'paste');
+    },
+    [handleFileHandler]
+  );
+
+  // Add window-level drag and drop event listeners for better coverage
+  const editorContainerRef = useRef<HTMLFormElement>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [isGlobalDrag, setIsGlobalDrag] = useState(false);
+  
+  useEffect(() => {
+    let dragCounter = 0;
+    let globalDragCounter = 0;
+
+    // Check if dragged items contain files
+    const hasFiles = (dataTransfer: DataTransfer | null) => {
+      if (!dataTransfer) return false;
+      return Array.from(dataTransfer.types).includes('Files');
+    };
+
+    // Window-level drag detection for global drag state
+    const handleWindowDragEnter = (e: DragEvent) => {
+      if (!hasFiles(e.dataTransfer)) return;
+      console.log('[FormEditor] Window dragenter - files detected');
+      e.preventDefault();
+      globalDragCounter++;
+      setIsGlobalDrag(true);
+    };
+
+    const handleWindowDragLeave = (e: DragEvent) => {
+      if (!hasFiles(e.dataTransfer)) return;
+      console.log('[FormEditor] Window dragleave');
+      globalDragCounter--;
+      if (globalDragCounter <= 0) {
+        globalDragCounter = 0;
+        setIsGlobalDrag(false);
+        setIsDragOver(false);
+        dragCounter = 0;
+      }
+    };
+
+    const handleWindowDragOver = (e: DragEvent) => {
+      if (!hasFiles(e.dataTransfer)) return;
+      e.preventDefault();
+      e.dataTransfer!.dropEffect = 'copy';
+    };
+
+    // Container-specific drag detection for visual feedback
+    const handleContainerDragEnter = (e: DragEvent) => {
+      if (!hasFiles(e.dataTransfer)) return;
+      console.log('[FormEditor] Container dragenter');
+      e.preventDefault();
+      e.stopPropagation();
+      dragCounter++;
+      setIsDragOver(true);
+    };
+
+    const handleContainerDragLeave = (e: DragEvent) => {
+      if (!hasFiles(e.dataTransfer)) return;
+      console.log('[FormEditor] Container dragleave');
+      e.preventDefault();
+      e.stopPropagation();
+      dragCounter--;
+      if (dragCounter <= 0) {
+        dragCounter = 0;
+        setIsDragOver(false);
+      }
+    };
+
+    const handleContainerDragOver = (e: DragEvent) => {
+      if (!hasFiles(e.dataTransfer)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      e.dataTransfer!.dropEffect = 'copy';
+    };
+
+    // Drop handler - works anywhere in the window when files are being dragged
+    const handleWindowDrop = (e: DragEvent) => {
+      if (!hasFiles(e.dataTransfer)) return;
+      console.log('[FormEditor] Window drop event:', e.dataTransfer?.files.length, 'files');
+      e.preventDefault();
+      e.stopPropagation();
+      
+      // Reset all counters
+      dragCounter = 0;
+      globalDragCounter = 0;
+      setIsDragOver(false);
+      setIsGlobalDrag(false);
+      
+      if (e.dataTransfer?.files) {
+        const files = Array.from(e.dataTransfer.files);
+        console.log('[FormEditor] Files dropped:', files.map(f => ({ name: f.name, type: f.type, size: f.size })));
+        handleFileHandler(files, 'drop');
+      }
+    };
+
+    // Add window-level listeners for global drag detection
+    window.addEventListener('dragenter', handleWindowDragEnter);
+    window.addEventListener('dragleave', handleWindowDragLeave);
+    window.addEventListener('dragover', handleWindowDragOver);
+    window.addEventListener('drop', handleWindowDrop);
+
+    // Add container-specific listeners for visual feedback
+    const container = editorContainerRef.current;
+    if (container) {
+      container.addEventListener('dragenter', handleContainerDragEnter);
+      container.addEventListener('dragleave', handleContainerDragLeave);
+      container.addEventListener('dragover', handleContainerDragOver);
+    }
+
+    return () => {
+      // Remove window listeners
+      window.removeEventListener('dragenter', handleWindowDragEnter);
+      window.removeEventListener('dragleave', handleWindowDragLeave);
+      window.removeEventListener('dragover', handleWindowDragOver);
+      window.removeEventListener('drop', handleWindowDrop);
+      
+      // Remove container listeners
+      if (container) {
+        container.removeEventListener('dragenter', handleContainerDragEnter);
+        container.removeEventListener('dragleave', handleContainerDragLeave);
+        container.removeEventListener('dragover', handleContainerDragOver);
+      }
+    };
+  }, [handleFileHandler]);
 
   const editor = useEditor(
     {
@@ -331,6 +505,11 @@ export function FormEditor({
         History.configure({
           depth: 20,
         }),
+        FileHandler.configure({
+          allowedMimeTypes: ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'],
+          onDrop: handleDrop,
+          onPaste: handleFilePaste,
+        }),
         ...(enableSubmitHistory ? [SubmitHistoryExtension] : []),
       ],
       editorProps: {
@@ -472,12 +651,18 @@ export function FormEditor({
 
   return (
     <form
-      ref={formRef}
+      ref={(node) => {
+        if (formRef && 'current' in formRef) {
+          formRef.current = node;
+        }
+        editorContainerRef.current = node;
+      }}
       onSubmit={handleSubmit}
       className={cn(
         "relative rounded-sm border border-[var(--input-border)] bg-input p-1 transition-color duration-300 focus-within:border-ring",
         {
           "form-editor-loading": isLoading,
+          "border-blue-500 bg-blue-50 dark:bg-blue-950": isDragOver,
         },
       )}
       onClick={(e) => {
@@ -495,6 +680,28 @@ export function FormEditor({
           className="prose !border-none min-h-20 w-full max-w-none overflow-hidden break-words text-[var(--vscode-input-foreground)] focus:outline-none"
         />
       </ScrollArea>
+      
+      {/* Drop zone overlay - shows when dragging over the container */}
+        {isDragOver && (
+          <div className="absolute inset-0 z-50 flex items-center justify-center bg-blue-500/30 border-2 border-dashed border-blue-500 rounded-sm">
+            <div className="bg-white dark:bg-gray-800 px-4 py-2 rounded-md shadow-lg border">
+              <p className="text-sm font-medium text-blue-600 dark:text-blue-400">
+                Drop images here to upload
+              </p>
+            </div>
+          </div>
+        )}
+        
+        {/* Global drag overlay - shows when files are being dragged anywhere in the window */}
+        {isGlobalDrag && !isDragOver && (
+          <div className="absolute inset-0 z-40 flex items-center justify-center bg-gray-500/10 border-2 border-dashed border-gray-400 rounded-sm">
+            <div className="bg-white dark:bg-gray-800 px-4 py-2 rounded-md shadow-lg border">
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                Drag files here to upload
+              </p>
+            </div>
+          </div>
+        )}
     </form>
   );
 }
