@@ -97,7 +97,7 @@
       },
       {
         "command": "pochi.mcp.openServerSettings",
-        "title": "Open MCP Server Settings (JSON)",
+        "title": "Open MCP Server Settings",
         "category": "Pochi"
       },
       {

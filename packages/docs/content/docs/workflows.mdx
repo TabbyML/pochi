@@ -6,26 +6,15 @@ icon: "Workflow"
 
 # Workflows
 
-## What are Workflows?
 Workflows are step-by-step automation templates that guide Pochi through complex, multi-step processes. Think of them as detailed recipes that Pochi can follow to complete common development tasks consistently and efficiently.
 
-Key Benefits:
-- Consistency - Same process every time, reducing human error
-- Efficiency - Automate repetitive multi-step tasks
-- Knowledge Sharing - Capture team expertise in reusable templates
+### Configure
 
-## Prerequisites
-Before using workflows, you will need:
-- VS Code with Pochi extension installed
-- Local repository setup: Clone the repository locally to access workflows
-- Workflows stored in the `.pochi/workflows/` directory
+Workflows shall be put inside `.pochi/workflows/` directory in your workspace root. Each workflow is a markdown file with a specific name.
 
-## Creating Workflows
-Reusable patterns in `.pochi/workflows/`:
+`.pochi/workflows/create-pr.md` is an example we used in Pochi's own development.
 
-Example: `.pochi/workflows/create-pr.md`
-
-```
+```markdown
 Please help create a PR for the current staging changes, following these guidelines:
 - If there are no staging changes but there are uncommitted changes, please stage them first.
 - Create a branch name based on the current git diff status.
@@ -36,32 +25,14 @@ Please help create a PR for the current staging changes, following these guideli
 - Always push the branch to the remote repository before creating the PR.
 
 When creating PR with markdown description, pay attention to escape backticks, otherwise it will be executed as command substitution in the shell.
-
 ```
 
-Example: `.pochi/workflows/review-pr.md`
+### Usage
 
-```
-Please help review a PR using the gh CLI:
-- Ask user which PR to review (by number, URL, or from list)
-- Use `gh pr view` and `gh pr diff` to examine changes
-- Analyze code quality, security, tests, and documentation
-- Check adherence to project coding standards
-- Use askFollowupQuestion to let user choose:
-  - "Approve" - Submit approving review
-  - "Request Changes" - Submit review with change requests
-  - "Comment Only" - Add comments without approval/rejection
-  - "More Details" - Get additional information
-- Submit review using `gh pr review` with appropriate feedback
-
-```
-## How to Use Workflows in VS Code
 Once your workflows are set up, using them is straightforward:
 1. **Type `/` in VS Code** to trigger the Pochi workflow selector
-2. **Select a workflow** from the dropdown menu
-3. Pochi executes the workflow automatically
-
-For best efficiency and accuracy, always use the `/` command rather than manually describing the workflow steps to Pochi.
+2. **Select a workflow** from the dropdown menu and press `Enter`.
+3. You can attached additional context when running the workflow, e.g `/create-pr assign Meng for review after creation`.
 
 <div
   style={{
