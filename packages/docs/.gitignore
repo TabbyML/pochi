@@ -28,3 +28,7 @@ yarn-error.log*
 next-env.d.ts
 node_modules
 .env
+
+# Next export
+public/images
+public/nextImageExportOptimizer

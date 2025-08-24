@@ -12,7 +12,18 @@ const config = {
   reactStrictMode: true,
   trailingSlash: true, // generate index.html
   images: {
-    unoptimized: true,
+    loader: "custom",
+    imageSizes: [320, 640, 1200],
+  },
+  transpilePackages: ["next-image-export-optimizer"],
+  env: {
+    nextImageExportOptimizer_imageFolderPath: "public/images",
+    nextImageExportOptimizer_exportFolderPath: "out",
+    nextImageExportOptimizer_quality: "75",
+    nextImageExportOptimizer_storePicturesInWEBP: "true",
+    nextImageExportOptimizer_exportFolderName: "nextImageExportOptimizer",
+    nextImageExportOptimizer_generateAndUseBlurImages: "true",
+    nextImageExportOptimizer_remoteImageCacheTTL: "604800",
   },
 };
 

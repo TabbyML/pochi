@@ -1,6 +1,6 @@
 import type { BaseLayoutProps } from "fumadocs-ui/layouts/shared";
-import Image from "next/image";
 import logo from "../../public/logo512.png";
+import ExportedImage from "next-image-export-optimizer";
 /**
  * Shared layout configurations
  *
@@ -12,7 +12,7 @@ export const baseOptions: BaseLayoutProps = {
   nav: {
     title: (
       <>
-        <Image src={logo} alt="Pochi Logo" width={24} height={24} />
+        <ExportedImage src={logo} alt="Pochi Logo" width={24} height={24} />
         Pochi Docs
       </>
     ),
