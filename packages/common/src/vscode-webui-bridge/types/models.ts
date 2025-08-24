@@ -48,9 +48,18 @@ const GoogleVertexTuningModelSettings = BaseModelSettings.extend({
   credentials: z.string().describe("Credentials for the vertex model."),
 });
 
+const AiGatewayModelSettings = BaseModelSettings.extend({
+  kind: z.literal("ai-gateway"),
+  apiKey: z
+    .string()
+    .optional()
+    .describe("API key for the model provider, if required."),
+});
+
 export const CustomModelSetting = z.discriminatedUnion("kind", [
   OpenAIModelSettings,
   GoogleVertexTuningModelSettings,
+  AiGatewayModelSettings,
 ]);
 
 /**

@@ -1,4 +1,5 @@
 import type { RequestData } from "../../types";
+import { createAiGatewayModel } from "./ai-gateway";
 import { createGoogleVertexTuningModel } from "./google-vertex-tuning";
 import { createOpenAIModel } from "./openai";
 import { createPochiModel } from "./pochi";
@@ -22,6 +23,10 @@ export function createModel({
 
   if (llm.type === "pochi") {
     return createPochiModel(id, llm);
+  }
+
+  if (llm.type === "ai-gateway") {
+    return createAiGatewayModel(llm);
   }
 
   throw new Error(`Unknown LLM type: ${llm}`);

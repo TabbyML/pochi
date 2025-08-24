@@ -116,6 +116,17 @@ function useLLM(): React.RefObject<LLMRequestData> {
       };
     }
 
+    if (provider.kind === "ai-gateway") {
+      return {
+        type: "ai-gateway" as const,
+        modelId: selectedModel.modelId,
+        apiKey: provider.apiKey,
+        maxOutputTokens: selectedModel.maxTokens,
+        contextWindow: selectedModel.contextWindow,
+        useToolCallMiddleware: selectedModel.useToolCallMiddleware,
+      };
+    }
+
     return {
       type: "openai" as const,
       modelId: selectedModel.modelId,

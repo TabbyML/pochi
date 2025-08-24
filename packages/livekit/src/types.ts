@@ -81,6 +81,17 @@ const RequestData = z.object({
         .optional()
         .describe("Whether to use tool call middleware"),
     }),
+    z.object({
+      type: z.literal("ai-gateway"),
+      modelId: z.string(),
+      apiKey: z.string().optional(),
+      contextWindow: z.number().describe("Context window of the model."),
+      maxOutputTokens: z.number().describe("Max output tokens of the model."),
+      useToolCallMiddleware: z
+        .boolean()
+        .optional()
+        .describe("Whether to use tool call middleware"),
+    }),
   ]),
   mcpToolSet: z
     .record(
