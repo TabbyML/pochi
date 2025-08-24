@@ -1,15 +1,14 @@
 'use client';
 
-import NextImage, { type ImageProps } from 'next/image';
+import React from 'react';
 
-const CustomImage = (props: ImageProps) => {
+const CustomImage = (props: React.ComponentProps<"img">) => {
   const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
   const src = basePath && typeof props.src === 'string' && props.src.startsWith('/')
     ? `${basePath}${props.src}`
     : props.src;
 
-  return <NextImage {...props} src={src} unoptimized />;
+  return <img {...props} src={src} />;
 };
 
 export default CustomImage;
-
