@@ -111,21 +111,6 @@ export function FormEditor({
   const isFileMentionComposingRef = useRef(false);
   const isCommandMentionComposingRef = useRef(false);
 
-  // Handle file drops and pastes for image upload
-  const handleFileHandler = useCallback(
-    (files: File[]) => {
-      // Filter for image files only
-      const imageFiles = files.filter((file) => file.type.startsWith("image/"));
-
-      if (imageFiles.length === 0) {
-        return false;
-      }
-
-      return onImageUpload ? onImageUpload(imageFiles) : false;
-    },
-    [onImageUpload],
-  );
-
   // State for drag overlay UI
   const [isDragOver, setIsDragOver] = useState(false);
 
@@ -362,10 +347,10 @@ export function FormEditor({
           ],
           onDrop: (_editor, files, _pos) => {
             setIsDragOver(false);
-            return handleFileHandler(files);
+            return onImageUpload ? onImageUpload(files) : false;
           },
           onPaste: (_editor, files, _htmlContent) => {
-            return handleFileHandler(files);
+            return onImageUpload ? onImageUpload(files) : false;
           },
         }),
         ...(enableSubmitHistory ? [SubmitHistoryExtension] : []),
