@@ -37,12 +37,8 @@ const parsePositiveInt = (input: string): number => {
 
 const program = new Command()
   .name("pochi")
-  .description(`${chalk.bold("Pochi Cli")} v${packageJson.version}`)
+  .description(`${chalk.bold("Pochi")} v${packageJson.version}`)
   .optionsGroup("Specify Task:")
-  .option(
-    "--task <uid>",
-    "The UID of the task to execute. Can also be provided via the POCHI_TASK_ID environment variable.",
-  )
   .option(
     "-p, --prompt <prompt>",
     "Create a new task with the given prompt. You can also pipe input to use as a prompt, for example: `cat .pochi/workflows/create-pr.md | pochi`",
@@ -99,10 +95,7 @@ const program = new Command()
     100_000, // 100K
   )
   .action(async (options) => {
-    const { uid = crypto.randomUUID(), prompt } = await parseTaskInput(
-      options,
-      program,
-    );
+    const { uid, prompt } = await parseTaskInput(options, program);
 
     const apiClient = await createApiClient(options);
 
@@ -165,7 +158,7 @@ type Program = typeof program;
 type ProgramOpts = ReturnType<(typeof program)["opts"]>;
 
 async function parseTaskInput(options: ProgramOpts, program: Program) {
-  const uid = options.task ?? process.env.POCHI_TASK_ID;
+  const uid = process.env.POCHI_TASK_ID || crypto.randomUUID();
 
   let prompt = options.prompt?.trim();
   if (!prompt && !process.stdin.isTTY) {
@@ -179,7 +172,7 @@ async function parseTaskInput(options: ProgramOpts, program: Program) {
     }
   }
 
-  if (!uid && !prompt) {
+  if (!prompt) {
     return program.error(
       "error: Either a task uid or a prompt must be provided",
     );
