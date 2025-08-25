@@ -109,7 +109,6 @@ const program = new Command()
     const store = await createStore(process.cwd());
 
     const llm = createLLMConfig({ options, apiClient, program });
-    console.log("llm", llm);
 
     const runner = new TaskRunner({
       uid,
