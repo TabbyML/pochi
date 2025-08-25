@@ -47,6 +47,7 @@
     "@tanstack/react-router-devtools": "^1.119.0",
     "@tanstack/router-plugin": "^1.119.0",
     "@tiptap/extension-document": "^2.11.7",
+    "@tiptap/extension-file-handler": "^2.11.7",
     "@tiptap/extension-history": "^2.12.0",
     "@tiptap/extension-mention": "^2.11.7",
     "@tiptap/extension-paragraph": "^2.11.7",
