@@ -346,11 +346,11 @@ export function FormEditor({
             "image/svg+xml",
           ],
           onDrop: (_editor, files, _pos) => {
+            console.log('[FormEditor] FileHandler onDrop called with', files.length, 'files');
             setIsDragOver(false);
-            return onImageUpload ? onImageUpload(files) : false;
-          },
-          onPaste: (_editor, files, _htmlContent) => {
-            return onImageUpload ? onImageUpload(files) : false;
+            const result = onImageUpload ? onImageUpload(files) : false;
+            console.log('[FormEditor] onImageUpload returned:', result);
+            return result;
           },
         }),
         ...(enableSubmitHistory ? [SubmitHistoryExtension] : []),
