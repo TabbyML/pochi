@@ -80,17 +80,17 @@ const program = new Command()
   )
   .option(
     "--model-api-key <modelApiKey>",
-    "The API key to use for authentication. Only meant to be set for `openai` models.",
+    "The API key to use for authentication. Used for all non-pochi models (e.g., `openai`).",
   )
   .option(
     "--model-max-output-tokens <number>",
-    "The maximum number of output tokens to use. Only meant to be set for `openai` models.",
+    "The maximum number of output tokens to use. Used for all non-pochi models (e.g., `openai`).",
     parsePositiveInt,
     4096,
   )
   .option(
     "--model-context-window <number>",
-    "The maximum context window size in tokens. Only meant to be set for `openai` models.",
+    "The maximum context window size in tokens. Used for all non-pochi models (e.g., `openai`).",
     parsePositiveInt,
     100_000, // 100K
   )
@@ -173,9 +173,7 @@ async function parseTaskInput(options: ProgramOpts, program: Program) {
   }
 
   if (!prompt) {
-    return program.error(
-      "error: Either a task uid or a prompt must be provided",
-    );
+    return program.error("error: A prompt must be provided");
   }
 
   return { uid, prompt };
