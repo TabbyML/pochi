@@ -71,5 +71,8 @@
     "@better-auth/stripe@1.2.9": "patches/@better-auth%2Fstripe@1.2.9.patch",
     "@daveyplate/better-auth-ui@2.0.12": "patches/@daveyplate%2Fbetter-auth-ui@2.0.12.patch",
     "ai@5.0.15": "patches/ai@5.0.15.patch"
+  },
+  "dependencies": {
+    "@tiptap/extension-file-handler": "^3.3.0"
   }
 }
