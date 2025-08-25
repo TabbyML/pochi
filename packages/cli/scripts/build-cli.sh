@@ -3,7 +3,7 @@ set -ex
 
 build_js() {
         bun build src/cli.ts --banner='import * as undici from "undici";' \
-                --external vite \
+                --external lightningcss \
                 --target bun \
                 --outdir ./dist
 }
@@ -11,7 +11,7 @@ build_js() {
 build_exe() {
         bun build src/cli.ts --banner='import * as undici from "undici";' \
                 --asset-naming="[name].[ext]" \
-                --external vite \
+                --external lightningcss \
                 --compile \
                 --outfile ./dist/pochi \
                 "$@"
