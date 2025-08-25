@@ -115,15 +115,15 @@ export function FormEditor({
   const handleFileHandler = useCallback(
     (files: File[]) => {
       // Filter for image files only
-      const imageFiles = files.filter(file => file.type.startsWith('image/'));
-      
+      const imageFiles = files.filter((file) => file.type.startsWith("image/"));
+
       if (imageFiles.length === 0) {
         return false;
       }
-      
+
       return onImageUpload ? onImageUpload(imageFiles) : false;
     },
-    [onImageUpload]
+    [onImageUpload],
   );
 
   // State for drag overlay UI
@@ -353,7 +353,13 @@ export function FormEditor({
           depth: 20,
         }),
         FileHandler.configure({
-          allowedMimeTypes: ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'],
+          allowedMimeTypes: [
+            "image/jpeg",
+            "image/png",
+            "image/gif",
+            "image/webp",
+            "image/svg+xml",
+          ],
           onDrop: (_editor, files, _pos) => {
             setIsDragOver(false);
             return handleFileHandler(files);
@@ -372,14 +378,18 @@ export function FormEditor({
         handleDOMEvents: {
           dragenter: (_view, event) => {
             const dataTransfer = (event as DragEvent).dataTransfer;
-            if (dataTransfer && Array.from(dataTransfer.types).includes('Files')) {
+            if (
+              dataTransfer &&
+              Array.from(dataTransfer.types).includes("Files")
+            ) {
               setIsDragOver(true);
               event.preventDefault();
             }
             return false;
           },
           dragleave: (view, event) => {
-            const relatedTarget = (event as DragEvent).relatedTarget as HTMLElement | null;
+            const relatedTarget = (event as DragEvent)
+              .relatedTarget as HTMLElement | null;
             // Only trigger dragleave if we're actually leaving the editor area
             if (!relatedTarget || !view.dom.contains(relatedTarget)) {
               setIsDragOver(false);
@@ -388,9 +398,12 @@ export function FormEditor({
           },
           dragover: (_view, event) => {
             const dataTransfer = (event as DragEvent).dataTransfer;
-            if (dataTransfer && Array.from(dataTransfer.types).includes('Files')) {
+            if (
+              dataTransfer &&
+              Array.from(dataTransfer.types).includes("Files")
+            ) {
               event.preventDefault();
-              (event as DragEvent).dataTransfer!.dropEffect = 'copy';
+              dataTransfer.dropEffect = "copy";
             }
             return false;
           },
@@ -553,12 +566,12 @@ export function FormEditor({
           className="prose !border-none min-h-20 w-full max-w-none overflow-hidden break-words text-[var(--vscode-input-foreground)] focus:outline-none"
         />
       </ScrollArea>
-      
+
       {/* Drop zone overlay - shows when dragging over the editor */}
       {isDragOver && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-blue-500/30 border-2 border-dashed border-blue-500 rounded-sm pointer-events-none">
-          <div className="bg-white dark:bg-gray-800 px-4 py-2 rounded-md shadow-lg border">
-            <p className="text-sm font-medium text-blue-600 dark:text-blue-400">
+        <div className="pointer-events-none absolute inset-0 z-50 flex items-center justify-center rounded-sm border-2 border-blue-500 border-dashed bg-blue-500/30">
+          <div className="rounded-md border bg-white px-4 py-2 shadow-lg dark:bg-gray-800">
+            <p className="font-medium text-blue-600 text-sm dark:text-blue-400">
               Drop images here to upload
             </p>
           </div>

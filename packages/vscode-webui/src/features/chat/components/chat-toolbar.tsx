@@ -138,7 +138,11 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   // Handle drag and drop image uploads
   const handleImageUpload = useCallback(
     (files: File[]): boolean => {
-      console.log('[ChatToolbar] Drag and drop image upload:', files.length, 'files');
+      console.log(
+        "[ChatToolbar] Drag and drop image upload:",
+        files.length,
+        "files",
+      );
       return validateAndAddFiles(files, false);
     },
     [validateAndAddFiles],
