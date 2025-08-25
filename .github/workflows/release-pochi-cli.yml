@@ -41,4 +41,4 @@ jobs:
           allowUpdates: true
           prerelease: ${{ steps.release_info.outputs.is_prerelease }}
           artifacts: "packages/cli/dist/*"
-          name: Cli@${{ steps.release_info.outputs.version_number }}
+          name: pochi-cli@${{ steps.release_info.outputs.version_number }}
