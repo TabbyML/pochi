@@ -113,52 +113,17 @@ export function FormEditor({
 
   // Handle file drops and pastes for image upload
   const handleFileHandler = useCallback(
-    (files: File[], source: 'drop' | 'paste') => {
-      console.log(`[FormEditor] File ${source} detected:`, {
-        fileCount: files.length,
-        files: files.map(f => ({ name: f.name, type: f.type, size: f.size })),
-        source
-      });
-
+    (files: File[]) => {
       // Filter for image files only
       const imageFiles = files.filter(file => file.type.startsWith('image/'));
       
       if (imageFiles.length === 0) {
-        console.log('[FormEditor] No image files found in dropped/pasted files');
         return false;
       }
-
-      console.log(`[FormEditor] Processing ${imageFiles.length} image files`);
       
-      if (onImageUpload) {
-        const success = onImageUpload(imageFiles);
-        console.log(`[FormEditor] Image upload ${success ? 'successful' : 'failed'}`);
-        return success;
-      }
-      
-      console.warn('[FormEditor] No onImageUpload handler provided');
-      return false;
+      return onImageUpload ? onImageUpload(imageFiles) : false;
     },
     [onImageUpload]
-  );
-
-  const handleDrop = useCallback(
-    (_editor: Editor, files: File[], pos: number) => {
-      console.log('[FormEditor] Drop event:', { fileCount: files.length, position: pos });
-      return handleFileHandler(files, 'drop');
-    },
-    [handleFileHandler]
-  );
-
-  const handleFilePaste = useCallback(
-    (_editor: Editor, files: File[], htmlContent?: string) => {
-      console.log('[FormEditor] Paste event:', { 
-        fileCount: files.length, 
-        hasHtmlContent: !!htmlContent 
-      });
-      return handleFileHandler(files, 'paste');
-    },
-    [handleFileHandler]
   );
 
   // State for drag overlay UI
@@ -389,12 +354,13 @@ export function FormEditor({
         }),
         FileHandler.configure({
           allowedMimeTypes: ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'],
-          onDrop: (currentEditor, files, pos) => {
-            console.log('[FormEditor] Tiptap drop event:', { fileCount: files.length, position: pos });
+          onDrop: (_editor, files, _pos) => {
             setIsDragOver(false);
-            return handleDrop(currentEditor, files, pos);
+            return handleFileHandler(files);
           },
-          onPaste: handleFilePaste,
+          onPaste: (_editor, files, _htmlContent) => {
+            return handleFileHandler(files);
+          },
         }),
         ...(enableSubmitHistory ? [SubmitHistoryExtension] : []),
       ],
@@ -407,7 +373,6 @@ export function FormEditor({
           dragenter: (_view, event) => {
             const dataTransfer = (event as DragEvent).dataTransfer;
             if (dataTransfer && Array.from(dataTransfer.types).includes('Files')) {
-              console.log('[FormEditor] Editor dragenter');
               setIsDragOver(true);
               event.preventDefault();
             }
@@ -415,10 +380,8 @@ export function FormEditor({
           },
           dragleave: (view, event) => {
             const relatedTarget = (event as DragEvent).relatedTarget as HTMLElement | null;
-            
             // Only trigger dragleave if we're actually leaving the editor area
             if (!relatedTarget || !view.dom.contains(relatedTarget)) {
-              console.log('[FormEditor] Editor dragleave');
               setIsDragOver(false);
             }
             return false;
