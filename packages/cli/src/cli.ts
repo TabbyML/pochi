@@ -24,13 +24,13 @@ const prodServerUrl = "https://app.getpochi.com";
 
 const userAgent = `Pochi/${packageJson.version} ${`Node/${process.version}`} (${process.platform}; ${process.arch})`;
 
-const parsePositiveInt = (input: string) => {
+const parsePositiveInt = (input: string): number => {
   if (!input) {
-    program.error("error: Option must be a positive integer");
+    return program.error("error: Option must be a positive integer");
   }
   const result = Number.parseInt(input);
   if (Number.isNaN(result) || result <= 0) {
-    program.error("error: Option must be a positive integer");
+    return program.error("error: Option must be a positive integer");
   }
   return result;
 };
@@ -74,7 +74,7 @@ const program = new Command()
   )
   .requiredOption(
     "--model-type <modelType>",
-    "The type of model to use for the task. Available options: `pochi`, `openai`",
+    "The type of model to use for the task. Available options: `pochi`, `openai`, `google-vertex-tuning`, `ai-gateway` ",
     "pochi",
   )
   .option(
@@ -109,6 +109,7 @@ const program = new Command()
     const store = await createStore(process.cwd());
 
     const llm = createLLMConfig({ options, apiClient, program });
+    console.log("llm", llm);
 
     const runner = new TaskRunner({
       uid,
@@ -224,38 +225,48 @@ function createLLMConfig({
   program: Program;
   options: ProgramOpts;
 }): LLMRequestData {
-  let openai:
-    | {
-        apiKey?: string;
-        baseURL: string;
-        maxOutputTokens: number;
-        contextWindow: number;
-      }
-    | undefined;
-
-  if (options.model === "openai") {
-    openai = {
-      apiKey: options.modelApiKey,
+  if (options.modelType === "openai") {
+    return {
+      type: "openai",
+      modelId: options.model || "<default>",
       baseURL: options.modelBaseUrl,
+      apiKey: options.modelApiKey,
+      contextWindow: options.modelContextWindow,
       maxOutputTokens: options.modelMaxOutputTokens,
-      contextWindow: options.modelMaxOutputTokens,
     };
   }
 
-  return (
-    openai
-      ? {
-          type: "openai",
-          modelId: options.model || "<default>",
-          baseURL: openai.baseURL,
-          apiKey: openai.apiKey,
-          contextWindow: openai.contextWindow,
-          maxOutputTokens: openai.maxOutputTokens,
-        }
-      : {
-          type: "pochi",
-          modelId: options.model,
-          apiClient,
-        }
-  ) satisfies LLMRequestData;
+  if (options.modelType === "ai-gateway") {
+    return {
+      type: "ai-gateway",
+      modelId: options.model || "<default>",
+      apiKey: options.modelApiKey,
+      contextWindow: options.modelContextWindow,
+      maxOutputTokens: options.modelMaxOutputTokens,
+    };
+  }
+
+  if (options.modelType === "google-vertex-tuning") {
+    if (!options.modelApiKey) {
+      return program.error(
+        "--model-api-key is required for google-vertex-tuning",
+      );
+    }
+
+    return {
+      type: "google-vertex-tuning",
+      modelId: options.model || "<default>",
+      credentials: options.modelApiKey,
+      contextWindow: options.modelContextWindow,
+      maxOutputTokens: options.modelMaxOutputTokens,
+      // FIXME: hardcoded for now
+      location: "us-central1",
+    };
+  }
+
+  return {
+    type: "pochi",
+    modelId: options.model,
+    apiClient,
+  } satisfies LLMRequestData;
 }
