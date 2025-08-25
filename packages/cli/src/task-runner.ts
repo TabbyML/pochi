@@ -55,12 +55,12 @@ export interface RunnerOptions {
    * Force stop the runner after max rounds reached.
    * If a task cannot be completed in max rounds, it is likely stuck in an infinite loop.
    */
-  maxRounds?: number;
+  maxRounds: number;
 
   /**
    * Force stop the runner after max retries reached in a single round.
    */
-  maxRetries?: number;
+  maxRetries: number;
 
   waitUntil?: (promise: Promise<unknown>) => void;
 }

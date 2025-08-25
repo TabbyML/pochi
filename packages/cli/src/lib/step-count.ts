@@ -16,9 +16,6 @@ export function stepToString(stepInfo: StepInfo): string {
   return `Round ${stepInfo.round}`;
 }
 
-const DefaultMaxRounds = 24;
-const DefaultMaxRetries = 3;
-
 /**
  * A step of the runner loop.
  * The runner loads the task, processes messages, then sends results to the server.
@@ -28,8 +25,8 @@ export class StepCount implements StepInfo {
   retry = 0;
 
   constructor(
-    readonly maxRounds = DefaultMaxRounds,
-    readonly maxRetries = DefaultMaxRetries,
+    readonly maxRounds: number,
+    readonly maxRetries: number,
   ) {}
 
   reset() {

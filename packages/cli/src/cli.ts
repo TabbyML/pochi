@@ -2,7 +2,7 @@
 // Workaround for https://github.com/oven-sh/bun/issues/18145
 import "@livestore/wa-sqlite/dist/wa-sqlite.node.wasm" with { type: "file" };
 
-import { Command } from "@commander-js/extra-typings";
+import { Command, Option } from "@commander-js/extra-typings";
 import { getLogger } from "@getpochi/common";
 import type { PochiApi, PochiApiClient } from "@getpochi/common/pochi-api";
 import { CredentialStorage } from "@getpochi/common/tool-utils";
@@ -22,11 +22,11 @@ logger.debug(`pochi v${packageJson.version}`);
 
 const prodServerUrl = "https://app.getpochi.com";
 
-const userAgent = `PochiCli/${packageJson.version} ${`Node/${process.version}`} (${process.platform}; ${process.arch})`;
+const userAgent = `Pochi/${packageJson.version} ${`Node/${process.version}`} (${process.platform}; ${process.arch})`;
 
 const parsePositiveInt = (input: string) => {
   if (!input) {
-    return undefined;
+    program.error("error: Option must be a positive integer");
   }
   const result = Number.parseInt(input);
   if (Number.isNaN(result) || result <= 0) {
@@ -41,55 +41,62 @@ const program = new Command()
   .optionsGroup("Specify Task:")
   .option(
     "--task <uid>",
-    "The uid of the task to execute. Can also be provided via the POCHI_TASK_ID environment variable.",
+    "The UID of the task to execute. Can also be provided via the POCHI_TASK_ID environment variable.",
   )
   .option(
     "-p, --prompt <prompt>",
     "Create a new task with the given prompt. You can also pipe input to use as a prompt, for example: `cat .pochi/workflows/create-pr.md | pochi`",
   )
   .optionsGroup("Options:")
-  .requiredOption(
-    "--cwd <cwd>",
-    "The current working directory.",
-    process.cwd(),
+  .addOption(
+    new Option("--rg <path>", "The path to the ripgrep binary.")
+      .default(findRipgrep() || undefined)
+      .makeOptionMandatory()
+      .hideHelp(),
   )
-  .requiredOption(
-    "--rg <path>",
-    "The path to the ripgrep binary.",
-    findRipgrep() || undefined,
-  )
-  .requiredOption("--url <url>", "The Pochi server URL.", prodServerUrl)
-  .option(
-    "--token <token>",
-    "The Pochi session token. Can also be provided via the POCHI_SESSION_TOKEN environment variable or from the shared credentials file (`~/.pochi/credentials.json`).",
-  )
-  .option(
-    "--model <model>",
-    "The model to use for the task. Options: `google/gemini-2.5-pro`, `google/gemini-2.5-flash`, `anthropic/claude-4-sonnet`",
-  )
-  .option("--model-endpoint-id <modelEndpointId>")
   .option(
     "--max-rounds <number>",
     "Force the runner to stop if the number of rounds exceeds this value.",
     parsePositiveInt,
+    24,
   )
   .option(
     "--max-retries <number>",
     "Force the runner to stop if the number of retries in a single round exceeds this value.",
     parsePositiveInt,
+    3,
   )
   .optionsGroup("Model:")
-  .option("--base-url <baseURL>", "The base URL to use for BYOK requests.")
-  .option("--api-key <apikey>", "The API key to use for BYOK requests.")
   .option(
-    "--max-output-tokens <number>",
-    "The max output tokens to use for BYOK model.",
-    parsePositiveInt,
+    "--model <model>",
+    "The model to use for the task. Available options: `google/gemini-2.5-pro`, `google/gemini-2.5-flash`, `anthropic/claude-4-sonnet`",
+    "qwen/qwen3-coder",
+  )
+  .requiredOption(
+    "--model-type <modelType>",
+    "The type of model to use for the task. Available options: `pochi`, `openai`",
+    "pochi",
   )
   .option(
-    "--context-window <number>",
-    "The context window limit for BYOK model.",
+    "--model-base-url <baseURL>",
+    "The base URL to use for the model API.",
+    prodServerUrl,
+  )
+  .option(
+    "--model-api-key <modelApiKey>",
+    "The API key to use for authentication. Only meant to be set for `openai` models.",
+  )
+  .option(
+    "--model-max-output-tokens <number>",
+    "The maximum number of output tokens to use. Only meant to be set for `openai` models.",
     parsePositiveInt,
+    4096,
+  )
+  .option(
+    "--model-context-window <number>",
+    "The maximum context window size in tokens. Only meant to be set for `openai` models.",
+    parsePositiveInt,
+    100_000, // 100K
   )
   .action(async (options) => {
     const { uid = crypto.randomUUID(), prompt } = await parseTaskInput(
@@ -97,9 +104,9 @@ const program = new Command()
       program,
     );
 
-    const apiClient = await createApiClient(options, program);
+    const apiClient = await createApiClient(options);
 
-    const store = await createStore(options.cwd);
+    const store = await createStore(process.cwd());
 
     const llm = createLLMConfig({ options, apiClient, program });
 
@@ -109,7 +116,7 @@ const program = new Command()
       store,
       llm,
       prompt,
-      cwd: options.cwd,
+      cwd: process.cwd(),
       rg: options.rg,
       maxRounds: options.maxRounds,
       maxRetries: options.maxRetries,
@@ -181,28 +188,22 @@ async function parseTaskInput(options: ProgramOpts, program: Program) {
   return { uid, prompt };
 }
 
-async function createApiClient(
-  options: ProgramOpts,
-  program: Program,
-): Promise<PochiApiClient> {
-  let token = options.token ?? process.env.POCHI_SESSION_TOKEN;
+async function createApiClient(options: ProgramOpts): Promise<PochiApiClient> {
+  let token = process.env.POCHI_SESSION_TOKEN;
   if (!token) {
     const credentialStorage = new CredentialStorage({
-      isDev: options.url !== prodServerUrl,
+      isDev:
+        options.modelType === "pochi" && options.modelBaseUrl !== prodServerUrl,
     });
     token = await credentialStorage.read();
   }
 
-  if (!token) {
-    program.error(
-      "error: No token provided. Please use the --token option, set POCHI_SESSION_TOKEN, or confirm `~/.pochi/credentials.json` exists (login with the Pochi VSCode extension to obtain it).",
-    );
-  }
-
-  return hc<PochiApi>(options.url, {
+  const authClient: PochiApiClient = hc<PochiApi>(options.modelBaseUrl, {
     fetch(input: string | URL | Request, init?: RequestInit) {
       const headers = new Headers(init?.headers);
-      headers.append("Authorization", `Bearer ${token}`);
+      if (token) {
+        headers.append("Authorization", `Bearer ${token}`);
+      }
       headers.set("User-Agent", userAgent);
       return fetch(input, {
         ...init,
@@ -210,11 +211,13 @@ async function createApiClient(
       });
     },
   });
+
+  authClient.authenticated = !!token;
+  return authClient;
 }
 
 function createLLMConfig({
   apiClient,
-  program,
   options,
 }: {
   apiClient: PochiApiClient;
@@ -230,19 +233,13 @@ function createLLMConfig({
       }
     | undefined;
 
-  if (options.baseUrl) {
-    if (options.maxOutputTokens && options.model && options.contextWindow) {
-      openai = {
-        apiKey: options.apiKey,
-        baseURL: options.baseUrl,
-        maxOutputTokens: options.maxOutputTokens,
-        contextWindow: options.contextWindow,
-      };
-    } else {
-      return program.error(
-        "error: --base-url requires --max-output-tokens, --model and --context-window to be set.",
-      );
-    }
+  if (options.model === "openai") {
+    openai = {
+      apiKey: options.modelApiKey,
+      baseURL: options.modelBaseUrl,
+      maxOutputTokens: options.modelMaxOutputTokens,
+      contextWindow: options.modelMaxOutputTokens,
+    };
   }
 
   return (
