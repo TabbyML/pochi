@@ -69,7 +69,7 @@ const program = new Command()
   .optionsGroup("Model:")
   .option(
     "--model <model>",
-    "The model to use for the task. Available options: `google/gemini-2.5-pro`, `google/gemini-2.5-flash`, `anthropic/claude-4-sonnet`",
+    "The model to use for the task.",
     "qwen/qwen3-coder",
   )
   .requiredOption(
