@@ -42,7 +42,7 @@ export const multiApplyDiffTool: React.FC<ToolProps<"multiApplyDiff">> = ({
           path={path}
           onClick={tool.state !== "output-available" ? handleClick : undefined}
           editSummary={result?._meta?.editSummary}
-          changes={changes}
+          changes={result?.success ? changes : undefined}
         />
       )}
     </>

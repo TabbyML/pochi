@@ -89,6 +89,16 @@ export class DiffView implements vscode.Disposable {
     }
   }
 
+  private revertAndClose = async () => {
+    logger.info("revert and close");
+    const updatedDocument = this.activeDiffEditor.document;
+    await discardChangesWithWorkspaceEdit(
+      updatedDocument,
+      this.originalContent,
+    );
+    closeAllNonDirtyDiffViews();
+  };
+
   async update(content: string, isFinal: boolean, abortSignal?: AbortSignal) {
     if (this.isFinalized) {
       return;
@@ -97,27 +107,15 @@ export class DiffView implements vscode.Disposable {
     if (isFinal) {
       logger.debug("Finalizing file", this.fileUri.fsPath);
       this.isFinalized = true;
+    }
 
-      if (abortSignal) {
-        const revertAndClose = async () => {
-          logger.debug(
-            "Abort signal received, reverting and closing diff view",
-          );
-          const updatedDocument = this.activeDiffEditor.document;
-          await discardChangesWithWorkspaceEdit(
-            updatedDocument,
-            this.originalContent,
-          );
-          closeAllNonDirtyDiffViews();
-        };
-
-        abortSignal.addEventListener("abort", revertAndClose);
-        this.disposables.push({
-          dispose: () => {
-            abortSignal.removeEventListener("abort", revertAndClose);
-          },
-        });
-      }
+    if (abortSignal) {
+      abortSignal.addEventListener("abort", this.revertAndClose);
+      this.disposables.push({
+        dispose: () => {
+          abortSignal.removeEventListener("abort", this.revertAndClose);
+        },
+      });
     }
 
     let accumulatedContent = content;
@@ -391,6 +389,13 @@ export class DiffView implements vscode.Disposable {
       return diffView;
     },
   );
+
+  static readonly revertAndClose = async (id: string) => {
+    const diffView = DiffViewMap.get(id);
+    if (diffView) {
+      diffView.revertAndClose();
+    }
+  };
 }
 
 const DiffViewMap = new Map<string, DiffView>();

@@ -4,7 +4,7 @@ import type { ToolCallLifeCycleKey } from "./chat-state/types";
 import { ManagedToolCallLifeCycle } from "./tool-call-life-cycle";
 
 // Hook to manage tool call states
-export function useToolCallLifeCycles(abortSignal: AbortSignal) {
+export function useToolCallLifeCycles(abortController: AbortController) {
   const { store } = useStore();
 
   const [toolCallLifeCycles, setToolCallLifeCycles] = useState<
@@ -35,6 +35,16 @@ export function useToolCallLifeCycles(abortSignal: AbortSignal) {
     return executing;
   }, [toolCallLifeCycles]);
 
+  const previewingToolCalls = useMemo(() => {
+    const previewing = [];
+    for (const lifecycle of toolCallLifeCycles.values()) {
+      if (lifecycle.status === "init" || lifecycle.status === "pending") {
+        previewing.push(lifecycle);
+      }
+    }
+    return previewing;
+  }, [toolCallLifeCycles]);
+
   const reloadToolCallLifeCycles = useCallback(() => {
     setToolCallLifeCycles(new Map(toolCallLifeCyclesRef.current));
   }, []);
@@ -47,7 +57,11 @@ export function useToolCallLifeCycles(abortSignal: AbortSignal) {
   const getToolCallLifeCycle = useCallback(
     (key: ToolCallLifeCycleKey) => {
       if (!toolCallLifeCyclesRef.current.has(key.toolCallId)) {
-        const lifecycle = new ManagedToolCallLifeCycle(store, key, abortSignal);
+        const lifecycle = new ManagedToolCallLifeCycle(
+          store,
+          key,
+          abortController,
+        );
         toolCallLifeCyclesRef.current.set(key.toolCallId, lifecycle);
         const unsubscribe = lifecycle.onAny((name) => {
           reloadToolCallLifeCycles();
@@ -64,12 +78,13 @@ export function useToolCallLifeCycles(abortSignal: AbortSignal) {
         // Guaranteed to exist because we just set it above
       ) as ManagedToolCallLifeCycle;
     },
-    [store, abortSignal, reloadToolCallLifeCycles],
+    [store, abortController, reloadToolCallLifeCycles],
   );
 
   return {
     getToolCallLifeCycle,
     executingToolCalls,
+    previewingToolCalls,
     completeToolCalls,
   };
 }

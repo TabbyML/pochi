@@ -30,23 +30,32 @@ export const previewApplyDiff: PreviewToolFunctionType<
     return;
   }
 
-  const workspaceFolder = getWorkspaceFolder();
-  const fileUri = vscode.Uri.joinPath(workspaceFolder.uri, path);
+  try {
+    const workspaceFolder = getWorkspaceFolder();
+    const fileUri = vscode.Uri.joinPath(workspaceFolder.uri, path);
 
-  const fileBuffer = await vscode.workspace.fs.readFile(fileUri);
-  validateTextFile(fileBuffer);
+    const fileBuffer = await vscode.workspace.fs.readFile(fileUri);
+    validateTextFile(fileBuffer);
 
-  const fileContent = fileBuffer.toString();
+    const fileContent = fileBuffer.toString();
 
-  const updatedContent = await parseDiffAndApply(
-    fileContent,
-    searchContent,
-    replaceContent,
-    expectedReplacements,
-  );
+    const updatedContent = await parseDiffAndApply(
+      fileContent,
+      searchContent,
+      replaceContent,
+      expectedReplacements,
+    );
 
-  const diffView = await DiffView.getOrCreate(toolCallId, path);
-  await diffView.update(updatedContent, state !== "partial-call", abortSignal);
+    const diffView = await DiffView.getOrCreate(toolCallId, path);
+    await diffView.update(
+      updatedContent,
+      state !== "partial-call",
+      abortSignal,
+    );
+  } catch (error) {
+    DiffView.revertAndClose(toolCallId);
+    throw error;
+  }
 };
 
 /**
@@ -56,32 +65,39 @@ export const applyDiff: ToolFunctionType<ClientTools["applyDiff"]> = async (
   { path, searchContent, replaceContent, expectedReplacements },
   { toolCallId, abortSignal, nonInteractive },
 ) => {
-  const workspaceFolder = getWorkspaceFolder();
-  const fileUri = vscode.Uri.joinPath(workspaceFolder.uri, path);
-  await ensureFileDirectoryExists(fileUri);
+  try {
+    const workspaceFolder = getWorkspaceFolder();
+    const fileUri = vscode.Uri.joinPath(workspaceFolder.uri, path);
+    await ensureFileDirectoryExists(fileUri);
 
-  const fileBuffer = await vscode.workspace.fs.readFile(fileUri);
-  validateTextFile(fileBuffer);
+    const fileBuffer = await vscode.workspace.fs.readFile(fileUri);
+    validateTextFile(fileBuffer);
 
-  const fileContent = fileBuffer.toString();
+    const fileContent = fileBuffer.toString();
 
-  const updatedContent = await parseDiffAndApply(
-    fileContent,
-    searchContent,
-    replaceContent,
-    expectedReplacements,
-  );
+    const updatedContent = await parseDiffAndApply(
+      fileContent,
+      searchContent,
+      replaceContent,
+      expectedReplacements,
+    );
 
-  if (nonInteractive) {
-    const edits = await writeTextDocument(path, updatedContent, abortSignal);
-    logger.info(`Successfully applied diff to ${path} in non-interactive mode`);
+    if (nonInteractive) {
+      const edits = await writeTextDocument(path, updatedContent, abortSignal);
+      logger.info(
+        `Successfully applied diff to ${path} in non-interactive mode`,
+      );
+      return { success: true, ...edits };
+    }
+
+    const diffView = await DiffView.getOrCreate(toolCallId, path);
+    await diffView.update(updatedContent, true);
+    const edits = await diffView.saveChanges(path, updatedContent);
+
+    logger.info(`Successfully applied diff to ${path}`);
     return { success: true, ...edits };
+  } catch (error) {
+    DiffView.revertAndClose(toolCallId);
+    throw error;
   }
-
-  const diffView = await DiffView.getOrCreate(toolCallId, path);
-  await diffView.update(updatedContent, true);
-  const edits = await diffView.saveChanges(path, updatedContent);
-
-  logger.info(`Successfully applied diff to ${path}`);
-  return { success: true, ...edits };
 };
