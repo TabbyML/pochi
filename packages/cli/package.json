@@ -1,0 +1,32 @@
+{
+  "name": "@getpochi/cli",
+  "version": "0.3.1",
+  "bin": {
+    "pochi": "src/cli.ts"
+  },
+  "scripts": {
+    "start": "bun run src/cli.ts",
+    "tsc": "tsc",
+    "test": "bun vitest --run",
+    "build": "./scripts/build-cli.sh",
+    "build:all": "./scripts/build-platform-binary.sh",
+    "release": "bunx bumpp --tag=cli@%s"
+  },
+  "dependencies": {
+    "@commander-js/extra-typings": "^14.0.0",
+    "@getpochi/common": "workspace:*",
+    "@getpochi/livekit": "workspace:*",
+    "@livestore/adapter-node": "catalog:",
+    "@livestore/livestore": "catalog:",
+    "@livestore/wa-sqlite": "catalog:",
+    "@preact/signals-core": "^1.6.2",
+    "ai": "catalog:",
+    "chalk": "^5.3.0",
+    "commander": "^14.0.0",
+    "hono": "catalog:",
+    "ora": "^8.2.0"
+  },
+  "devDependencies": {
+    "@getpochi/tools": "workspace:*"
+  }
+}

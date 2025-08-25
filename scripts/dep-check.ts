@@ -231,7 +231,7 @@ const PackageIgnoreList: Record<string, string[]> = {
     // Releasing
     "ovsx",
   ],
-  runner: ["@types/bun"],
+  cli: ["@types/bun"],
   livekit: ["@ai-sdk/provider-utils", "@ai-sdk/provider"],
   docs: ["@tailwindcss/postcss", "postcss", "tailwindcss", "typescript"],
 };

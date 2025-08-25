@@ -11,5 +11,4 @@ files:
   - "packages/livekit/src/**/*.ts"
   - "packages/vscode-webui/src/**/*.ts"
   - "packages/vscode/src/**/*.ts"
-  - "private/packages/runner/src/**/*.ts"
   - "private/packages/server/src/**/*.ts"
