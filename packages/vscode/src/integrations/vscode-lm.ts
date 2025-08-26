@@ -79,9 +79,9 @@ export class VSCodeLm implements vscode.Disposable {
 
     const signal = new ThreadAbortSignal(abortSignal);
     const cancel = cancellationSourceFromAbortSignal(signal);
+    const abortPromise = promiseFromAbortSignal(signal);
     try {
       const vscodeMessages = toVSCodeMessage(prompt);
-      logger.debug("Sending VSCode LM request");
       const response = await vscodeModel.sendRequest(
         vscodeMessages,
         undefined,
@@ -89,13 +89,26 @@ export class VSCodeLm implements vscode.Disposable {
       );
 
       let buffer = "";
-      for await (const chunk of response.text) {
+      const textIterator = response.text[Symbol.asyncIterator]();
+
+      while (true) {
         if (signal.aborted) {
           logger.info("VSCode LM request aborted");
           break;
         }
 
+        // Wait for either the next chunk or the abort signal
+        const nextChunkPromise = textIterator.next();
+
+        const result = await Promise.race([
+          nextChunkPromise,
+          abortPromise as Promise<never>,
+        ]);
+
+        // If we get here from abortPromise, it will throw, so we only handle the chunk case
+        const chunk = result.value;
         buffer += chunk;
+
         if (stop) {
           const index = buffer.indexOf(stop);
           if (index > 0) {
@@ -117,6 +130,10 @@ export class VSCodeLm implements vscode.Disposable {
             buffer = buffer.slice(endIndex);
           }
         }
+
+        if (result.done) {
+          break;
+        }
       }
     } catch (error) {
       if (error instanceof vscode.LanguageModelError) {
@@ -124,7 +141,7 @@ export class VSCodeLm implements vscode.Disposable {
           `VSCode LM request failed: ${error.message} ${error.code} ${error.cause}`,
         );
       } else {
-        logger.error("Failed to send VSCode LM request", error);
+        logger.error("Failed to send VSCode LM request");
       }
     } finally {
       cancel.dispose();
@@ -182,6 +199,15 @@ function cancellationSourceFromAbortSignal(abortSignal: AbortSignal) {
     cancellationTokenSource.cancel();
   });
   return cancellationTokenSource;
+}
+
+function promiseFromAbortSignal(abortSignal: AbortSignal) {
+  return new Promise<null>((_, reject) => {
+    abortSignal.addEventListener("abort", () => {
+      logger.debug("aborted from promise");
+      reject(new Error("Aborted"));
+    });
+  });
 }
 
 function getPotentialStartIndex(
