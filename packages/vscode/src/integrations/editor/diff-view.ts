@@ -90,7 +90,7 @@ export class DiffView implements vscode.Disposable {
   }
 
   private revertAndClose = async () => {
-    logger.info("revert and close");
+    logger.debug("revert and close diff view");
     const updatedDocument = this.activeDiffEditor.document;
     await discardChangesWithWorkspaceEdit(
       updatedDocument,

@@ -36,7 +36,12 @@ export const applyDiffTool: React.FC<ToolProps<"applyDiff">> = ({
         <FileBadge
           className="ml-1"
           path={path}
-          onClick={tool.state !== "output-available" ? handleClick : undefined}
+          onClick={
+            tool.state !== "output-available" &&
+            (lifecycle.status === "init" || lifecycle.status === "pending")
+              ? handleClick
+              : undefined
+          }
           editSummary={result?._meta?.editSummary}
           changes={result?.success ? changes : undefined}
         />
