@@ -121,13 +121,7 @@ export function useImageUpload(options?: UseImageUploadOptions) {
   const handleImageDrop = (files: File[]): boolean => {
     if (!files || files.length === 0) return false;
 
-    const imageFiles = files.filter((file) => file.type.startsWith("image/"));
-
-    if (imageFiles.length > 0) {
-      return validateAndAddFiles(imageFiles);
-    }
-
-    return false;
+    return validateAndAddFiles(files);
   };
 
   const upload = async (): Promise<FileUIPart[]> => {
