@@ -5,6 +5,7 @@ import { PreviewTool } from "@/components/preview-tool";
 import { PublicShareButton } from "@/components/public-share-button";
 import { TokenUsage } from "@/components/token-usage";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ApprovalButton, type useApprovalAndRetry } from "@/features/approval";
 import { useAutoApproveGuard } from "@/features/chat";
 import { useSelectedModels } from "@/features/settings";
@@ -241,14 +242,28 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
             modelId={selectedModel?.id}
             displayError={displayError?.message}
           />
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => fileInputRef.current?.click()}
-            className="button-focus h-6 w-6 p-0"
-          >
-            <ImageIcon className="size-4" />
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => fileInputRef.current?.click()}
+                className="button-focus h-6 w-6 p-0"
+              >
+                <ImageIcon className="size-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-sm">
+               <div className="text-sm">
+                 <p className="font-medium mb-1">Upload Images</p>
+                 <div className="space-y-1">
+                   <p>• Click to browse and upload files</p>
+                   <p>• Hold Shift while dragging to drop images</p>
+                   <p>• Use copy, paste to paste images</p>
+                 </div>
+               </div>
+             </TooltipContent>
+          </Tooltip>
           <SubmitStopButton
             isSubmitDisabled={isSubmitDisabled}
             showStopButton={showStopButton}
