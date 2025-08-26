@@ -3,7 +3,7 @@ import uFuzzy from "@leeoniya/ufuzzy";
 const MaxResult = 500;
 
 // Create a single uFuzzy instance to reuse
-const ufInstance = new uFuzzy({
+export const ufInstance = new uFuzzy({
   // Allow @ symbols and basic path characters
   intraChars: "[a-z\\d'@\\-_./]",
   // Don't split on forward slashes - treat them as regular characters
