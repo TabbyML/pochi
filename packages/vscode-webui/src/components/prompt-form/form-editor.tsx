@@ -3,7 +3,6 @@ import { fuzzySearchFiles, fuzzySearchWorkflows } from "@/lib/fuzzy-search";
 import { useActiveTabs } from "@/lib/hooks/use-active-tabs";
 import { vscodeHost } from "@/lib/vscode";
 import Document from "@tiptap/extension-document";
-import FileHandler from "@tiptap/extension-file-handler";
 import History from "@tiptap/extension-history";
 import Paragraph from "@tiptap/extension-paragraph";
 import Placeholder from "@tiptap/extension-placeholder";
@@ -337,22 +336,6 @@ export function FormEditor({
         History.configure({
           depth: 20,
         }),
-        FileHandler.configure({
-          allowedMimeTypes: [
-            "image/jpeg",
-            "image/png",
-            "image/gif",
-            "image/webp",
-            "image/svg+xml",
-          ],
-          onDrop: (_editor, files, _pos) => {
-            console.log('[FormEditor] FileHandler onDrop called with', files.length, 'files');
-            setIsDragOver(false);
-            const result = onImageUpload ? onImageUpload(files) : false;
-            console.log('[FormEditor] onImageUpload returned:', result);
-            return result;
-          },
-        }),
         ...(enableSubmitHistory ? [SubmitHistoryExtension] : []),
       ],
       editorProps: {
@@ -391,6 +374,21 @@ export function FormEditor({
               dataTransfer.dropEffect = "copy";
             }
             return false;
+          },
+          drop: (_view, event) => {
+            const dataTransfer = (event as DragEvent).dataTransfer;
+            if (!dataTransfer?.files.length || !onImageUpload) {
+              return false;
+            }
+
+            const filesArray = Array.from(dataTransfer.files);
+
+            event.preventDefault();
+            event.stopPropagation();
+            setIsDragOver(false);
+
+            onImageUpload(filesArray);
+            return true;
           },
         },
       },
