@@ -27,7 +27,7 @@ export interface ExecutionPanelProps {
   completed: boolean;
   isExecuting: boolean;
   className?: string;
-  isDevServer?: boolean;
+  isBackground?: boolean;
 }
 
 export const CommandExecutionPanel: FC<ExecutionPanelProps> = ({
@@ -38,7 +38,7 @@ export const CommandExecutionPanel: FC<ExecutionPanelProps> = ({
   onDetach,
   isExecuting,
   completed,
-  isDevServer,
+  isBackground,
 }) => {
   const [expanded, setExpanded, setExpandedImmediately] =
     useExpanded(completed);
@@ -111,7 +111,7 @@ export const CommandExecutionPanel: FC<ExecutionPanelProps> = ({
               STOP
             </Button>
           )}
-          {isDevServer && showButton && handleDetach !== undefined && (
+          {isBackground && showButton && handleDetach !== undefined && (
             <Button size="xs" variant="ghost" onClick={handleDetach}>
               DETACH
             </Button>
