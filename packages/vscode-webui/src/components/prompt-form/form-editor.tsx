@@ -83,7 +83,7 @@ interface FormEditorProps {
   onError?: (e: Error) => void;
   onPaste?: (e: ClipboardEvent) => void;
   enableSubmitHistory?: boolean;
-  onImageUpload?: (files: File[]) => boolean;
+  onImageDrop?: (files: File[]) => boolean;
 }
 
 export function FormEditor({
@@ -97,7 +97,7 @@ export function FormEditor({
   autoFocus = true,
   onPaste,
   enableSubmitHistory = true,
-  onImageUpload,
+  onImageDrop,
 }: FormEditorProps) {
   const internalFormRef = useRef<HTMLFormElement>(null);
   const formRef = externalFormRef || internalFormRef;
@@ -377,7 +377,7 @@ export function FormEditor({
           },
           drop: (_view, event) => {
             const dataTransfer = (event as DragEvent).dataTransfer;
-            if (!dataTransfer?.files.length || !onImageUpload) {
+            if (!dataTransfer?.files.length || !onImageDrop) {
               return false;
             }
 
@@ -387,7 +387,7 @@ export function FormEditor({
             event.stopPropagation();
             setIsDragOver(false);
 
-            onImageUpload(filesArray);
+            onImageDrop(filesArray);
             return true;
           },
         },

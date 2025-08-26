@@ -203,7 +203,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
         onPaste={handlePasteImage}
         pendingApproval={pendingApproval}
         status={status}
-        onImageUpload={handleImageUpload}
+        onImageDrop={handleImageUpload}
       />
 
       {/* Hidden file input for image uploads */}
