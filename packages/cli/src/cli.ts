@@ -2,7 +2,7 @@
 // Workaround for https://github.com/oven-sh/bun/issues/18145
 import "@livestore/wa-sqlite/dist/wa-sqlite.node.wasm" with { type: "file" };
 
-import { Command, Option } from "@commander-js/extra-typings";
+import { Command } from "@commander-js/extra-typings";
 import { getLogger } from "@getpochi/common";
 import type { PochiApi, PochiApiClient } from "@getpochi/common/pochi-api";
 import { CredentialStorage } from "@getpochi/common/tool-utils";
@@ -38,27 +38,21 @@ const parsePositiveInt = (input: string): number => {
 const program = new Command()
   .name("pochi")
   .description(`${chalk.bold("Pochi")} v${packageJson.version}`)
-  .optionsGroup("Specify Task:")
+  .optionsGroup("Prompt:")
   .option(
     "-p, --prompt <prompt>",
     "Create a new task with the given prompt. You can also pipe input to use as a prompt, for example: `cat .pochi/workflows/create-pr.md | pochi`",
   )
   .optionsGroup("Options:")
-  .addOption(
-    new Option("--rg <path>", "The path to the ripgrep binary.")
-      .default(findRipgrep() || undefined)
-      .makeOptionMandatory()
-      .hideHelp(),
-  )
   .option(
-    "--max-rounds <number>",
-    "Force the runner to stop if the number of rounds exceeds this value.",
+    "--max-steps <number>",
+    "Maximum number of stepsto run the task. If the task cannot be completed in this number of rounds, the runner will stop.",
     parsePositiveInt,
     24,
   )
   .option(
     "--max-retries <number>",
-    "Force the runner to stop if the number of retries in a single round exceeds this value.",
+    "Maximum number of retries to run the task in a single step.",
     parsePositiveInt,
     3,
   )
@@ -103,6 +97,13 @@ const program = new Command()
 
     const llm = createLLMConfig({ options, apiClient, program });
 
+    const rg = findRipgrep();
+    if (!rg) {
+      return program.error(
+        "ripgrep is required to run the task. Please install it first and make sure it is available in your $PATH.",
+      );
+    }
+
     const runner = new TaskRunner({
       uid,
       apiClient,
@@ -110,8 +111,8 @@ const program = new Command()
       llm,
       prompt,
       cwd: process.cwd(),
-      rg: options.rg,
-      maxRounds: options.maxRounds,
+      rg,
+      maxSteps: options.maxSteps,
       maxRetries: options.maxRetries,
       waitUntil,
     });

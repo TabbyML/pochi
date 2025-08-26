@@ -36,7 +36,7 @@ export interface RunnerOptions {
   store: Store;
 
   // The prompt to use for creating the task
-  prompt?: string;
+  prompt: string;
 
   /**
    * The current working directory for the task runner.
@@ -55,7 +55,7 @@ export interface RunnerOptions {
    * Force stop the runner after max rounds reached.
    * If a task cannot be completed in max rounds, it is likely stuck in an infinite loop.
    */
-  maxRounds: number;
+  maxSteps: number;
 
   /**
    * Force stop the runner after max retries reached in a single round.
@@ -87,7 +87,7 @@ export class TaskRunner {
       cwd: options.cwd,
       rg: options.rg,
     };
-    this.stepCount = new StepCount(options.maxRounds, options.maxRetries);
+    this.stepCount = new StepCount(options.maxSteps, options.maxRetries);
     this.chatKit = new LiveChatKit<Chat>({
       taskId: options.uid,
       apiClient: options.apiClient,
@@ -161,7 +161,7 @@ export class TaskRunner {
       return "finished";
     }
     if (result === "next") {
-      this.stepCount.throwIfReachedMaxRounds();
+      this.stepCount.throwIfReachedMaxSteps();
     }
     if (result === "retry") {
       this.stepCount.throwIfReachedMaxRetries();

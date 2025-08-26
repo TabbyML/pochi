@@ -2,7 +2,7 @@ export interface StepInfo {
   /**
    * A round means runner sends a new message or tool call result to the server.
    */
-  round: number;
+  step: number;
   /**
    * A retry means runner sends the last message again to resume the task, without appending a new message or tool call result.
    */
@@ -11,9 +11,9 @@ export interface StepInfo {
 
 export function stepToString(stepInfo: StepInfo): string {
   if (stepInfo.retry > 0) {
-    return `Round ${stepInfo.round} (Retry ${stepInfo.retry})`;
+    return `Round ${stepInfo.step} (Retry ${stepInfo.retry})`;
   }
-  return `Round ${stepInfo.round}`;
+  return `Round ${stepInfo.step}`;
 }
 
 /**
@@ -21,32 +21,32 @@ export function stepToString(stepInfo: StepInfo): string {
  * The runner loads the task, processes messages, then sends results to the server.
  */
 export class StepCount implements StepInfo {
-  round = 1;
+  step = 1;
   retry = 0;
 
   constructor(
-    readonly maxRounds: number,
+    readonly maxSteps: number,
     readonly maxRetries: number,
   ) {}
 
   reset() {
-    this.round = 1;
+    this.step = 1;
     this.retry = 0;
   }
 
-  willReachMaxRounds() {
-    return this.round >= this.maxRounds - 1;
+  willReachMaxSteps() {
+    return this.step >= this.maxSteps - 1;
   }
 
-  throwIfReachedMaxRounds() {
-    if (this.round >= this.maxRounds) {
-      throw new Error(`Reached max rounds (${this.maxRounds}).`);
+  throwIfReachedMaxSteps() {
+    if (this.step >= this.maxSteps) {
+      throw new Error(`Reached max rounds (${this.maxSteps}).`);
     }
   }
 
   nextRound() {
-    this.throwIfReachedMaxRounds();
-    this.round++;
+    this.throwIfReachedMaxSteps();
+    this.step++;
     this.retry = 0;
   }
 
