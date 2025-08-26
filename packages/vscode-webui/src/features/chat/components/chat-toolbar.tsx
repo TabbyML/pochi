@@ -140,8 +140,6 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     newCompactTaskPending,
   });
 
-
-
   // Only allow adding tool results when not loading
   const allowAddToolResult = !(
     isLoading ||
