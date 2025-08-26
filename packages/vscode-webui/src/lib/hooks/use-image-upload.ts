@@ -118,6 +118,18 @@ export function useImageUpload(options?: UseImageUploadOptions) {
     return false;
   };
 
+  const handleImageDrop = (files: File[]): boolean => {
+    if (!files || files.length === 0) return false;
+    
+    const imageFiles = files.filter((file) => file.type.startsWith("image/"));
+    
+    if (imageFiles.length > 0) {
+      return validateAndAddFiles(imageFiles);
+    }
+    
+    return false;
+  };
+
   const upload = async (): Promise<FileUIPart[]> => {
     if (!files.length) {
       return [];
@@ -179,11 +191,11 @@ export function useImageUpload(options?: UseImageUploadOptions) {
     clearError,
     upload,
     cancelUpload,
-    validateAndAddFiles,
 
     // Event handlers
     handleFileSelect,
     handlePaste,
+    handleImageDrop,
   };
 }
 
