@@ -16,8 +16,8 @@ export type {
   ToolFunctionType,
   PreviewToolFunctionType,
 } from "./types";
-import { getShellOutput } from "./get-shell-output";
-import { killShell } from "./kill-shell";
+import { killBackgroundCommand } from "./kill-background-command";
+import { readCommandOutput } from "./read-command-output";
 import { writeToFile } from "./write-to-file";
 export type { SubTask } from "./new-task";
 
@@ -48,8 +48,8 @@ export const ToolsByPermission = {
   ] satisfies ToolName[] as string[],
   execute: [
     "executeCommand",
-    "getShellOutput",
-    "killShell",
+    "readCommandOutput",
+    "killBackgroundCommand",
     "newTask",
   ] satisfies ToolName[] as string[],
   default: ["todoWrite"] satisfies ToolName[] as string[],
@@ -62,8 +62,8 @@ export const ClientTools = {
   askFollowupQuestion,
   attemptCompletion,
   executeCommand,
-  getShellOutput,
-  killShell,
+  readCommandOutput,
+  killBackgroundCommand,
   globFiles,
   listFiles,
   multiApplyDiff,

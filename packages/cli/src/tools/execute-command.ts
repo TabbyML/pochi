@@ -14,16 +14,16 @@ const execCommand = promisify(exec);
 export const executeCommand =
   (context: ToolCallOptions): ToolFunctionType<ClientTools["executeCommand"]> =>
   async (
-    { command, cwd = ".", isDevServer, timeout = 120 },
+    { command, cwd = ".", isBackground, timeout = 120 },
     { abortSignal },
   ) => {
     if (!command) {
       throw new Error("Command is required to execute.");
     }
 
-    if (isDevServer) {
+    if (isBackground) {
       throw new Error(
-        "CRITICAL: Dev server commands block task execution indefinitely and must not be run in automated tasks. Use non-blocking alternatives instead.",
+        "CRITICAL: Background commands block task execution indefinitely and must not be run in automated tasks. Use non-blocking alternatives instead.",
       );
     }
 

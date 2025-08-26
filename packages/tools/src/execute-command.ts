@@ -19,7 +19,7 @@ Usage notes:
 - The command argument is required.
 - You can specify an optional timeout in seconds (up to 300s / 5 minutes). If not specified, commands will timeout after 60s (1 minute).
 - If the output exceeds 30000 characters, output will be truncated before being returned to you.
-- You can use the \`isBackground\` parameter to run the command in the background, which allows you to continue working while the command runs. You can monitor the output using the getShellOutput tool as it becomes available. Never use \`isBackground\` to run 'sleep' as it will return immediately. You do not need to use '&' at the end of the command when using this parameter.
+- You can use the \`isBackground\` parameter to run the command in the background, which allows you to continue working while the command runs. You can monitor the output using the readCommandOutput tool as it becomes available. Never use \`isBackground\` to run 'sleep' as it will return immediately. You do not need to use '&' at the end of the command when using this parameter.
 - When issuing multiple commands, use the ';' or '&&' operator to separate them. DO NOT use newlines (newlines are ok in quoted strings).
 - You shall avoid use the markdown code black syntax (backtick, '\`') in your command, as it will be interpreted as a command substitution.
 
@@ -128,7 +128,7 @@ Important:
       .boolean()
       .optional()
       .describe(
-        "Set to true to run this command in the background. Use getShellOutput to read the output later.",
+        "Set to true to run this command in the background. Use readCommandOutput to read the output later.",
       ),
     timeout: z
       .number()
@@ -148,12 +148,10 @@ Important:
       .boolean()
       .optional()
       .describe("Whether the output was truncated"),
-    shellId: z
+    backgroundCommandId: z
       .string()
       .optional()
-      .describe(
-        "The ID of the shell to execute the command if isBackground is true",
-      ),
+      .describe("The ID of the background command if isBackground is true"),
   }),
 };
 

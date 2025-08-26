@@ -3,13 +3,15 @@ import { defineClientTool } from "./types";
 
 const toolDef = {
   description: `- Retrieves output from a running or completed background shell
-- Takes a shellId parameter identifying the shell
+- Takes a backgroundCommandId parameter identifying the shell
 - Always returns only new output since the last check
 - Returns stdout and stderr output along with shell status
 - Supports optional regex filtering to show only lines matching a pattern
 - Use this tool when you need to monitor or check the output of a long-running shell`.trim(),
   inputSchema: z.object({
-    shellId: z.string().describe("The ID of the shell to get output from"),
+    backgroundCommandId: z
+      .string()
+      .describe("The ID of the background command to get output from"),
     regex: z
       .string()
       .optional()
@@ -21,7 +23,7 @@ const toolDef = {
     output: z
       .string()
       .describe(
-        "The output of the shell since last check (including stdout and stderr).",
+        "The output of the background command since last check (including stdout and stderr).",
       ),
     isTruncated: z
       .boolean()
@@ -30,4 +32,4 @@ const toolDef = {
   }),
 };
 
-export const getShellOutput = defineClientTool(toolDef);
+export const readCommandOutput = defineClientTool(toolDef);

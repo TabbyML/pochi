@@ -3,11 +3,13 @@ import { defineClientTool } from "./types";
 
 const toolDef = {
   description: `- Kills a running background shell by its ID
-- Takes a shellId parameter identifying the shell to kill
+- Takes a backgroundCommandId parameter identifying the shell to kill
 - Returns a success or failure status 
 - Use this tool when you need to terminate a long-running shell`.trim(),
   inputSchema: z.object({
-    shellId: z.string().describe("The ID of the shell to kill."),
+    backgroundCommandId: z
+      .string()
+      .describe("The ID of the background command to kill."),
   }),
   outputSchema: z.object({
     success: z.boolean().describe("Whether the shell was successfully killed."),
@@ -18,4 +20,4 @@ const toolDef = {
   }),
 };
 
-export const killShell = defineClientTool(toolDef);
+export const killBackgroundCommand = defineClientTool(toolDef);
