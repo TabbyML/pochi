@@ -16,14 +16,19 @@ export const previewWriteToFile: PreviewToolFunctionType<
   const { path, content } = args || {};
   if (path === undefined || content === undefined) return;
 
-  const processedContent = fixCodeGenerationOutput(content);
+  try {
+    const processedContent = fixCodeGenerationOutput(content);
 
-  const diffView = await DiffView.getOrCreate(toolCallId, path);
-  await diffView.update(
-    processedContent,
-    state !== "partial-call",
-    abortSignal,
-  );
+    const diffView = await DiffView.getOrCreate(toolCallId, path);
+    await diffView.update(
+      processedContent,
+      state !== "partial-call",
+      abortSignal,
+    );
+  } catch (error) {
+    DiffView.revertAndClose(toolCallId);
+    throw error;
+  }
 };
 
 /**
@@ -34,18 +39,27 @@ export const writeToFile: ToolFunctionType<ClientTools["writeToFile"]> = async (
   { path, content },
   { toolCallId, abortSignal, nonInteractive },
 ) => {
-  const processedContent = fixCodeGenerationOutput(content);
+  try {
+    const processedContent = fixCodeGenerationOutput(content);
 
-  if (nonInteractive) {
-    const edits = await writeTextDocument(path, processedContent, abortSignal);
-    logger.debug(
-      `Successfully wrote content to ${path} in non-interactive mode`,
-    );
+    if (nonInteractive) {
+      const edits = await writeTextDocument(
+        path,
+        processedContent,
+        abortSignal,
+      );
+      logger.debug(
+        `Successfully wrote content to ${path} in non-interactive mode`,
+      );
+      return { success: true, ...edits };
+    }
+
+    const diffView = await DiffView.getOrCreate(toolCallId, path);
+    await diffView.update(processedContent, true);
+    const edits = await diffView.saveChanges(path, processedContent);
     return { success: true, ...edits };
+  } catch (error) {
+    DiffView.revertAndClose(toolCallId);
+    throw error;
   }
-
-  const diffView = await DiffView.getOrCreate(toolCallId, path);
-  await diffView.update(processedContent, true);
-  const edits = await diffView.saveChanges(path, processedContent);
-  return { success: true, ...edits };
 };

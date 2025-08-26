@@ -38,7 +38,7 @@ export const applyDiffTool: React.FC<ToolProps<"applyDiff">> = ({
           path={path}
           onClick={tool.state !== "output-available" ? handleClick : undefined}
           editSummary={result?._meta?.editSummary}
-          changes={changes}
+          changes={result?.success ? changes : undefined}
         />
       )}
     </>

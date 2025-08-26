@@ -32,13 +32,20 @@ export function useChatSubmit({
   pendingApproval,
 }: UseChatSubmitProps) {
   const autoApproveGuard = useAutoApproveGuard();
-  const { executingToolCalls } = useToolCallLifeCycle();
+  const { executingToolCalls, previewingToolCalls } = useToolCallLifeCycle();
   const isExecuting = executingToolCalls.length > 0;
-  const abortToolCalls = useCallback(() => {
+  const isPreviewing = (previewingToolCalls?.length ?? 0) > 0;
+  const abortExecutingToolCalls = useCallback(() => {
     for (const toolCall of executingToolCalls) {
       toolCall.abort();
     }
   }, [executingToolCalls]);
+
+  const abortPreviewingToolCalls = useCallback(() => {
+    for (const toolCall of previewingToolCalls || []) {
+      toolCall.abort();
+    }
+  }, [previewingToolCalls]);
 
   const { sendMessage, stop: stopChat } = chat;
   const {
@@ -54,7 +61,9 @@ export function useChatSubmit({
     if (newCompactTaskPending) return;
 
     if (isExecuting) {
-      abortToolCalls();
+      abortExecutingToolCalls();
+    } else if (isPreviewing) {
+      abortPreviewingToolCalls();
     } else if (isUploading) {
       cancelUpload();
     } else if (isLoading) {
@@ -66,10 +75,12 @@ export function useChatSubmit({
   }, [
     newCompactTaskPending,
     isExecuting,
+    isPreviewing,
     isUploading,
     isLoading,
     pendingApproval,
-    abortToolCalls,
+    abortExecutingToolCalls,
+    abortPreviewingToolCalls,
     cancelUpload,
     stopChat,
   ]);

@@ -39,7 +39,7 @@ export const writeToFileTool: React.FC<ToolProps<"writeToFile">> = ({
           path={path}
           onClick={tool.state !== "output-available" ? handleClick : undefined}
           editSummary={result?._meta?.editSummary}
-          changes={changes}
+          changes={result?.success ? changes : undefined}
         />
       )}
     </>

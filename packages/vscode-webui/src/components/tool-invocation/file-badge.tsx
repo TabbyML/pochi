@@ -42,7 +42,7 @@ export const FileBadge: React.FC<FileBadgeProps> = ({
     : "";
 
   const defaultOnClick = async () => {
-    if (changes?.origin) {
+    if (changes?.origin && changes?.modified) {
       await vscodeHost.showCheckpointDiff(
         `${path} (Modified by Pochi)`,
         {
