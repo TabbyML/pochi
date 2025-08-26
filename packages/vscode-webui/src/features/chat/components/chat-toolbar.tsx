@@ -5,7 +5,11 @@ import { PreviewTool } from "@/components/preview-tool";
 import { PublicShareButton } from "@/components/public-share-button";
 import { TokenUsage } from "@/components/token-usage";
 import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { ApprovalButton, type useApprovalAndRetry } from "@/features/approval";
 import { useAutoApproveGuard } from "@/features/chat";
 import { useSelectedModels } from "@/features/settings";
@@ -254,15 +258,15 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
               </Button>
             </TooltipTrigger>
             <TooltipContent className="max-w-sm">
-               <div className="text-sm">
-                 <p className="font-medium mb-1">Upload Images</p>
-                 <div className="space-y-1">
-                   <p>• Click to browse and upload files</p>
-                   <p>• Hold Shift while dragging to drop images</p>
-                   <p>• Use copy, paste to paste images</p>
-                 </div>
-               </div>
-             </TooltipContent>
+              <div className="text-sm">
+                <p className="mb-1 font-medium">Upload Images</p>
+                <div className="space-y-1">
+                  <p>• Click to browse and upload files</p>
+                  <p>• Hold Shift while dragging to drop images</p>
+                  <p>• Use copy, paste to paste images</p>
+                </div>
+              </div>
+            </TooltipContent>
           </Tooltip>
           <SubmitStopButton
             isSubmitDisabled={isSubmitDisabled}
