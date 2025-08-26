@@ -244,7 +244,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
                 <ImageIcon className="size-4" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent className="max-w-sm">
+            <TooltipContent>
               Attach images to chat. You can also drag and drop images or paste
               them into the chat input box.
             </TooltipContent>
