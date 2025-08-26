@@ -245,14 +245,8 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
               </Button>
             </TooltipTrigger>
             <TooltipContent className="max-w-sm">
-              <div className="text-sm">
-                <p className="mb-1 font-medium">Upload Images</p>
-                <div className="space-y-1">
-                  <p>• Click to browse and upload files</p>
-                  <p>• Hold Shift while dragging to drop images</p>
-                  <p>• Use copy, paste to paste images</p>
-                </div>
-              </div>
+              Attach images to chat. You can also drag and drop images or paste
+              them into the chat input box.
             </TooltipContent>
           </Tooltip>
           <SubmitStopButton

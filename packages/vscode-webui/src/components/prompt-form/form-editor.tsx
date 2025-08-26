@@ -531,7 +531,7 @@ export function FormEditor({
         "relative rounded-sm border border-[var(--input-border)] bg-input p-1 transition-color duration-300 focus-within:border-ring",
         {
           "form-editor-loading": isLoading,
-          "border-blue-500 bg-blue-50 dark:bg-blue-950": isDragOver,
+          "bg-zinc-50 dark:bg-zinc-950": isDragOver,
         },
       )}
       onClick={(e) => {
@@ -552,10 +552,10 @@ export function FormEditor({
 
       {/* Drop zone overlay - shows when dragging over the editor */}
       {isDragOver && (
-        <div className="pointer-events-none absolute inset-0 z-50 flex items-center justify-center rounded-sm border-2 border-blue-500 border-dashed bg-blue-500/30">
+        <div className="pointer-events-none absolute inset-0 z-50 flex items-center justify-center rounded-sm border-2 border-zinc-500 border-dashed dark:bg-zinc-500/30">
           <div className="rounded-md border bg-white px-4 py-2 shadow-lg dark:bg-gray-800">
-            <p className="font-medium text-blue-600 text-sm dark:text-blue-400">
-              Drop images here to upload
+            <p className="font-medium text-sm">
+              Drop images here to attach them to your message
             </p>
           </div>
         </div>
