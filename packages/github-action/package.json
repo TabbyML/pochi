@@ -18,12 +18,10 @@
   "dependencies": {
     "@actions/core": "^1.11.1",
     "@actions/github": "^6.0.1",
-    "@octokit/graphql": "^9.0.1",
     "@octokit/rest": "^22.0.0",
     "@octokit/webhooks-types": "^7.6.1"
   },
   "devDependencies": {
-    "@types/bun": "latest",
     "@types/node": "^20.0.0",
     "typescript": "^5.7.2"
   }
