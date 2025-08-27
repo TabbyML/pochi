@@ -11,7 +11,7 @@ import { type User, apiClient } from "@/lib/auth-client";
 import { useCustomModelSetting } from "@/lib/hooks/use-custom-model-setting";
 import { useVSCodeLmModels } from "@/lib/hooks/use-vscode-lm-models";
 import { useQuery } from "@tanstack/react-query";
-import { DotIcon, PencilIcon, CircleQuestionMarkIcon } from "lucide-react";
+import { CircleQuestionMarkIcon, DotIcon, PencilIcon } from "lucide-react";
 import { useMemo } from "react";
 import { useSettingsStore } from "../../store";
 import { AccordionSection } from "../ui/accordion-section";
