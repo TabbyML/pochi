@@ -32,19 +32,25 @@ export interface TerminalJobConfig {
  */
 export class TerminalJob implements vscode.Disposable {
   private static readonly jobs = new Map<string, TerminalJob>();
+  private static readonly onDidDisposeEmitter =
+    new vscode.EventEmitter<TerminalJob>();
+  static readonly onDidDispose = TerminalJob.onDidDisposeEmitter.event;
 
   private readonly terminal: vscode.Terminal;
   private disposables: vscode.Disposable[] = [];
   private shellIntegration: vscode.TerminalShellIntegration | undefined;
   private execution: vscode.TerminalShellExecution | undefined;
-  private outputManager = new OutputManager();
+  private outputManager: OutputManager;
   private detached = false;
 
   readonly id: string;
-  private lastReadLength = 0;
 
   get output() {
     return this.outputManager.output;
+  }
+
+  get command() {
+    return this.config.command;
   }
 
   detach = () => {
@@ -53,6 +59,10 @@ export class TerminalJob implements vscode.Disposable {
 
   private constructor(private readonly config: TerminalJobConfig) {
     this.id = randomUUID();
+    this.outputManager = OutputManager.create({
+      id: this.id,
+      command: config.command,
+    });
     TerminalJob.jobs.set(this.id, this);
 
     // For background jobs, detach by default
@@ -210,30 +220,6 @@ export class TerminalJob implements vscode.Disposable {
   }
 
   /**
-   * Reads new output from the job since the last read.
-   * @param regex - An optional regex to filter the output.
-   */
-  async readOutput(
-    regex?: RegExp,
-  ): Promise<{ output: string; isTruncated: boolean }> {
-    const currentOutput = this.output.value.content;
-    let newOutput = currentOutput.slice(this.lastReadLength);
-    this.lastReadLength = currentOutput.length;
-
-    if (regex) {
-      newOutput = newOutput
-        .split("\n")
-        .filter((line) => regex.test(line))
-        .join("\n");
-    }
-
-    return {
-      output: newOutput,
-      isTruncated: this.output.value.isTruncated ?? false,
-    };
-  }
-
-  /**
    * Kills the terminal job.
    */
   kill(): void {
@@ -245,6 +231,7 @@ export class TerminalJob implements vscode.Disposable {
    */
   dispose(): void {
     TerminalJob.jobs.delete(this.id);
+    TerminalJob.onDidDisposeEmitter.fire(this);
     for (const d of this.disposables) {
       d.dispose();
     }
@@ -306,6 +293,17 @@ export class TerminalJob implements vscode.Disposable {
       vscode.window.onDidEndTerminalShellExecution((event) => {
         if (event.execution === this.execution) {
           logger.debug("Terminal shell execution ended", event.exitCode);
+          if (event.exitCode !== 0) {
+            this.outputManager.finalize(
+              this.detached,
+              ExecutionError.create(
+                `Command exited with code ${event.exitCode}`,
+              ),
+            );
+          } else {
+            this.outputManager.finalize(this.detached, undefined);
+          }
+          this.dispose();
         }
       }),
     );

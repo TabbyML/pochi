@@ -15,10 +15,9 @@ const toolDef = {
     success: z
       .boolean()
       .describe("Whether the background command was successfully killed."),
-    error: z
-      .string()
-      .optional()
-      .describe("An error message if the kill failed."),
+    _meta: z.object({
+      command: z.string().describe("The command that was killed."),
+    }),
   }),
 };
 

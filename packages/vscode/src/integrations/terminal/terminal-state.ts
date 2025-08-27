@@ -34,6 +34,7 @@ export class TerminalState implements vscode.Disposable {
     this.disposables.push(
       vscode.window.onDidCloseTerminal(this.onTerminalChanged),
     );
+    this.disposables.push(TerminalJob.onDidDispose(this.onTerminalChanged));
   }
 
   /**

@@ -45,12 +45,7 @@ export const executeCommand: ToolFunctionType<
       timeout: timeout ?? defaultTimeout,
     });
 
-    // need wait some time to get init output?
-    const outputResult = await job.readOutput();
-
     return {
-      output: outputResult.output,
-      isTruncated: outputResult.isTruncated,
       backgroundCommandId: job.id,
     };
   }

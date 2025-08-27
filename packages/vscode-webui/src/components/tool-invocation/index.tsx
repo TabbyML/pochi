@@ -10,9 +10,11 @@ import { AskFollowupQuestionTool } from "./tools/ask-followup-question";
 import { AttemptCompletionTool } from "./tools/attempt-completion";
 import { executeCommandTool } from "./tools/execute-command";
 import { globFilesTool } from "./tools/glob-files";
+import { KillBackgroundCommandTool } from "./tools/kill-background-command";
 import { listFilesTool } from "./tools/list-files";
 import { multiApplyDiffTool } from "./tools/multi-apply-diff";
 import { newTaskTool } from "./tools/new-task";
+import { ReadCommandOutputTool } from "./tools/read-command-output";
 import { readFileTool } from "./tools/read-file";
 import { searchFilesTool } from "./tools/search-files";
 import { todoWriteTool } from "./tools/todo-write";
@@ -72,6 +74,8 @@ const Tools: Record<string, React.FC<ToolProps<any>>> = {
   multiApplyDiff: multiApplyDiffTool,
   askFollowupQuestion: AskFollowupQuestionTool,
   executeCommand: executeCommandTool,
+  readCommandOutput: ReadCommandOutputTool,
+  killBackgroundCommand: KillBackgroundCommandTool,
   searchFiles: searchFilesTool,
   listFiles: listFilesTool,
   globFiles: globFilesTool,

@@ -26,10 +26,20 @@ const toolDef = {
       .describe(
         "The output of the background command since last check (including stdout and stderr).",
       ),
+    status: z
+      .enum(["idle", "running", "completed"])
+      .describe("The current status of the command"),
+    error: z
+      .string()
+      .optional()
+      .describe("Error message if the command failed"),
     isTruncated: z
       .boolean()
       .optional()
       .describe("Whether the output was truncated"),
+    _meta: z.object({
+      command: z.string().describe("The command that was executed"),
+    }),
   }),
 };
 

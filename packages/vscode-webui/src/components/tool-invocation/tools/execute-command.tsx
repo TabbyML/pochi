@@ -27,7 +27,7 @@ export const executeCommandTool: React.FC<ToolProps<"executeCommand">> = ({
     </span>
   ) : null;
   const text = isBackground
-    ? "I will start a dev server"
+    ? "I will execute the following command in background"
     : "I will execute the following command";
   const title = (
     <>

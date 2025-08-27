@@ -60,6 +60,17 @@ export class OutputTruncator {
   }
 }
 
+interface OutputManagerOptions {
+  /**
+   * terminalJob id
+   */
+  id: string;
+  /**
+   * for UI display
+   */
+  command: string;
+}
+
 /**
  * Truncates a single text chunk to fit within the specified byte limit
  * Uses binary search to find the maximum length that fits within the limit
@@ -96,17 +107,72 @@ function calculateContentBytes(chunks: string[]): number {
 }
 
 export class OutputManager {
+  private static readonly managers = new Map<string, OutputManager>();
+
   public readonly output = signal<ExecuteCommandResult>({
     content: "",
     status: "idle",
     isTruncated: false,
   });
 
+  public id: string;
+
+  public command: string;
+
   /**
    * output text chunks, a chunk may contain multiple lines
    */
   private chunks: string[] = [];
   private truncator = new OutputTruncator();
+  private lastReadLength = 0;
+
+  private constructor(options: OutputManagerOptions) {
+    this.id = options.id;
+    this.command = options.command;
+  }
+
+  static create(options: OutputManagerOptions): OutputManager {
+    const manager = new OutputManager(options);
+    OutputManager.managers.set(options.id, manager);
+    return manager;
+  }
+
+  static get(id: string): OutputManager | undefined {
+    return OutputManager.managers.get(id);
+  }
+
+  static delete(id: string): void {
+    OutputManager.managers.delete(id);
+  }
+
+  /**
+   * Reads new output from the job since the last read.
+   * @param regex - An optional regex to filter the output.
+   */
+  readOutput(regex?: RegExp): {
+    output: string;
+    isTruncated: boolean;
+    status: ExecuteCommandResult["status"];
+    error?: string;
+  } {
+    const currentOutput = this.output.value.content;
+    let newOutput = currentOutput.slice(this.lastReadLength);
+    this.lastReadLength = currentOutput.length;
+
+    if (regex) {
+      newOutput = newOutput
+        .split("\n")
+        .filter((line) => regex.test(line))
+        .join("\n");
+    }
+
+    return {
+      output: newOutput,
+      isTruncated: this.output.value.isTruncated ?? false,
+      status: this.output.value.status,
+      error: this.output.value.error,
+    };
+  }
 
   /**
    * Adds a new line to the output and updates the signal
