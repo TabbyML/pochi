@@ -12,39 +12,6 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Create initial comment
-      shell: bash
-      env:
-        GITHUB_TOKEN: ${{ github.token }}
-      run: |
-        echo "🚀 Creating initial comment..."
-        echo "Repository: ${{ github.repository }}"
-        echo "Event: ${{ github.event_name }}"
-        
-        RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-        COMMENT_BODY="[Pochi is preparing...]($RUN_URL)"
-        
-        # Get the issue/PR number
-        ISSUE_NUMBER="${{ github.event.issue.number || github.event.pull_request.number }}"
-        echo "Issue/PR number: $ISSUE_NUMBER"
-        
-        COMMENT_RESPONSE=$(curl -s -X POST \
-          -H "Authorization: Bearer $GITHUB_TOKEN" \
-          -H "Accept: application/vnd.github.v3+json" \
-          -H "Content-Type: application/json" \
-          "https://api.github.com/repos/${{ github.repository }}/issues/$ISSUE_NUMBER/comments" \
-          -d "{\"body\":\"$COMMENT_BODY\"}")
-        
-        # Extract comment ID
-        if command -v jq >/dev/null 2>&1; then
-          COMMENT_ID=$(echo "$COMMENT_RESPONSE" | jq -r '.id')
-        else
-          COMMENT_ID=$(echo "$COMMENT_RESPONSE" | grep -o '"id":[0-9]*' | head -1 | cut -d':' -f2)
-        fi
-        
-        echo "Created comment ID: $COMMENT_ID"
-        echo "POCHI_COMMENT_ID=$COMMENT_ID" >> $GITHUB_ENV
-
     - name: Install pochi CLI
       shell: bash
       run: |
@@ -62,7 +29,7 @@ runs:
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '20'
+        node-version: "20"
 
     - name: Install bun
       shell: bash
@@ -82,5 +49,4 @@ runs:
         fi
         bun ${GITHUB_ACTION_PATH}/src/index.ts
       env:
-        POCHI_COMMENT_ID: ${{ env.POCHI_COMMENT_ID }}
         GITHUB_TOKEN: ${{ github.token }}

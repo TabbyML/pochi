@@ -1,45 +1,23 @@
 /**
  * GitHub operations manager
  */
-import path from "node:path";
 import { getGitHubToken } from "@/environment";
 import type * as github from "@actions/github";
 import { Octokit } from "@octokit/rest";
 import type { IssueCommentEvent } from "@octokit/webhooks-types";
-import type { PromptFile } from "./types";
+
 interface GitHubRepository {
   owner: string;
   repo: string;
 }
 
-interface UserPromptData {
-  userPrompt: string;
-  promptFiles: PromptFile[];
-}
-
 export class GitHubManager {
   private octoRest: Octokit;
   private context: typeof github.context;
-  private commentId?: number;
-  private accessToken: string;
 
   constructor(accessToken: string, context: typeof github.context) {
-    this.accessToken = accessToken;
     this.context = context;
     this.octoRest = new Octokit({ auth: accessToken });
-
-    const existingCommentId = process.env.POCHI_COMMENT_ID;
-
-    if (
-      existingCommentId &&
-      existingCommentId !== "null" &&
-      existingCommentId !== ""
-    ) {
-      const commentIdNum = Number.parseInt(existingCommentId);
-      if (!Number.isNaN(commentIdNum)) {
-        this.commentId = commentIdNum;
-      }
-    }
   }
 
   static async create(context: typeof github.context): Promise<GitHubManager> {
@@ -62,28 +40,34 @@ export class GitHubManager {
     return Boolean(payload.issue.pull_request);
   }
 
-  async updateComment(body: string): Promise<void> {
-    if (!this.commentId) return;
+  async postErrorComment(errorMessage: string): Promise<void> {
+    try {
+      const repo = this.getRepository();
+      const payload = this.context.payload as IssueCommentEvent;
+      const issueNumber = payload.issue.number;
 
-    const repo = this.getRepository();
+      await this.octoRest.rest.issues.createComment({
+        owner: repo.owner,
+        repo: repo.repo,
+        issue_number: issueNumber,
+        body: `❌ **Pochi Task Failed**
 
-    await this.octoRest.rest.issues.updateComment({
-      owner: repo.owner,
-      repo: repo.repo,
-      comment_id: this.commentId,
-      body,
-    });
+${errorMessage}
+
+🤖 Generated with [Pochi](https://getpochi.com)`,
+      });
+    } catch (error) {
+      console.error("Failed to post error comment:", error);
+    }
   }
 
   // Permission and user operations
   async checkPermissions(): Promise<void> {
     const actor = this.context.actor;
     const repo = this.getRepository();
-
     if (this.context.payload.sender?.type === "Bot") {
       return;
     }
-
     let permission: string;
     try {
       const response = await this.octoRest.repos.getCollaboratorPermissionLevel(
@@ -116,65 +100,11 @@ export class GitHubManager {
     }
   }
 
-  async parseUserPrompt(): Promise<UserPromptData> {
-    let prompt = (() => {
-      const payload = this.context.payload as IssueCommentEvent;
-      const body = payload.comment.body.trim();
-      if (body === "/pochi") return "Summarize this thread";
-      if (body.includes("/pochi")) return body;
-      throw new Error("Comments must mention `/pochi`");
-    })();
-
-    const imgData: PromptFile[] = [];
-
-    const mdMatches = prompt.matchAll(
-      /!?\[.*?\]\((https:\/\/github\.com\/user-attachments\/[^)]+)\)/gi,
-    );
-    const tagMatches = prompt.matchAll(
-      /<img .*?src="(https:\/\/github\.com\/user-attachments\/[^"]+)" \/>/gi,
-    );
-    const matches = [...mdMatches, ...tagMatches].sort(
-      (a, b) => (a.index || 0) - (b.index || 0),
-    );
-
-    let offset = 0;
-    for (const m of matches) {
-      const tag = m[0];
-      const url = m[1];
-      const start = m.index || 0;
-
-      if (!url) continue;
-      const filename = path.basename(url);
-
-      const res = await fetch(url, {
-        headers: {
-          Authorization: `Bearer ${this.accessToken}`,
-          Accept: "application/vnd.github.v3+json",
-        },
-      });
-      if (!res.ok) {
-        console.error(`Failed to download image: ${url}`);
-        continue;
-      }
-
-      const replacement = `@${filename}`;
-      prompt =
-        prompt.slice(0, start + offset) +
-        replacement +
-        prompt.slice(start + offset + tag.length);
-      offset += replacement.length - tag.length;
-
-      const contentType = res.headers.get("content-type");
-      imgData.push({
-        filename,
-        mime: contentType?.startsWith("image/") ? contentType : "text/plain",
-        content: Buffer.from(await res.arrayBuffer()).toString("base64"),
-        start,
-        end: start + replacement.length,
-        replacement,
-      });
-    }
-
-    return { userPrompt: prompt, promptFiles: imgData };
+  parseUserPrompt(): string {
+    const payload = this.context.payload as IssueCommentEvent;
+    const body = payload.comment.body.trim();
+    if (body === "/pochi") return "Summarize this thread";
+    if (body.includes("/pochi")) return body;
+    throw new Error("Comments must mention `/pochi`");
   }
 }

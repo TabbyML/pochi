@@ -6,48 +6,46 @@
 import * as core from "@actions/core";
 import * as github from "@actions/github";
 import { GitHubManager } from "./github-manager";
-import { PochiRunner } from "./runner";
+import { runPochiTask } from "./runner";
 
 async function main(): Promise<void> {
+  let githubManager: GitHubManager | null = null;
+
   try {
     // Basic setup
     if (github.context.eventName !== "issue_comment") {
       throw new Error(`Unsupported event type: ${github.context.eventName}`);
     }
 
-    const githubManager = await GitHubManager.create(github.context);
+    githubManager = await GitHubManager.create(github.context);
     await githubManager.checkPermissions();
 
     if (!githubManager.isPullRequest()) {
-      const commentId = process.env.POCHI_COMMENT_ID
-        ? Number.parseInt(process.env.POCHI_COMMENT_ID)
-        : undefined;
-      if (commentId) {
-        await githubManager.updateComment(
-          "❌ This action only responds to PR comments. Please use this in a Pull Request.\n\n🤖 Generated with [Pochi](https://getpochi.com)",
-        );
-      }
+      console.log("❌ This action only responds to PR comments.");
       process.exit(0);
     }
 
     // Parse user prompt - pass only original query to runner
-    const { userPrompt, promptFiles } = await githubManager.parseUserPrompt();
+    const userPrompt = githubManager.parseUserPrompt();
 
     // Let runner handle everything with original user prompt only
-    const runner = new PochiRunner();
-
-    const response = await runner.runTask({
-      prompt: userPrompt,
-      files: promptFiles,
-    });
+    const response = await runPochiTask(userPrompt);
 
     if (!response.success) {
-      throw new Error(response.error || "pochi task failed");
+      const errorMessage = response.error || "pochi task failed";
+
+      // Post error comment to PR
+      await githubManager.postErrorComment(errorMessage);
+
+      throw new Error(errorMessage);
     }
 
-    // Task completed - CLI should have updated the comment
+    // Task completed successfully
   } catch (error) {
     console.error("Error:", error);
+    if (githubManager && error instanceof Error) {
+      await githubManager.postErrorComment(error.message);
+    }
     core.setFailed(error instanceof Error ? error.message : String(error));
     process.exit(1);
   }
