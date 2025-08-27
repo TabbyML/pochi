@@ -23,11 +23,9 @@ export interface ExecutionPanelProps {
   command: string;
   output: string;
   onStop: () => void;
-  onDetach?: () => void;
   completed: boolean;
   isExecuting: boolean;
   className?: string;
-  isBackground?: boolean;
 }
 
 export const CommandExecutionPanel: FC<ExecutionPanelProps> = ({
@@ -35,10 +33,8 @@ export const CommandExecutionPanel: FC<ExecutionPanelProps> = ({
   output,
   className,
   onStop,
-  onDetach,
   isExecuting,
   completed,
-  isBackground,
 }) => {
   const [expanded, setExpanded, setExpandedImmediately] =
     useExpanded(completed);
@@ -59,13 +55,6 @@ export const CommandExecutionPanel: FC<ExecutionPanelProps> = ({
     setIsStopping(true);
     onStop();
   };
-
-  const handleDetach = onDetach
-    ? () => {
-        setIsStopping(true);
-        onDetach();
-      }
-    : undefined;
 
   // Collapse when execution completes
   useEffect(() => {
@@ -109,11 +98,6 @@ export const CommandExecutionPanel: FC<ExecutionPanelProps> = ({
           {false && showButton && (
             <Button size="xs" variant="ghost" onClick={handleStop}>
               STOP
-            </Button>
-          )}
-          {isBackground && showButton && handleDetach !== undefined && (
-            <Button size="xs" variant="ghost" onClick={handleDetach}>
-              DETACH
             </Button>
           )}
           {output && (

@@ -81,7 +81,18 @@ export const Environment = z.object({
         .optional()
         .describe("Git information for the current workspace."),
       terminals: z
-        .array(z.object({ name: z.string(), isActive: z.boolean() }))
+        .array(
+          z.object({
+            name: z.string().describe("The name of the terminal."),
+            isActive: z.boolean().describe("Whether the terminal is active."),
+            backgroundCommandId: z
+              .string()
+              .optional()
+              .describe(
+                "The ID of the background command associated with the terminal.",
+              ),
+          }),
+        )
         .optional()
         .describe("Visible terminals in the VS Code workspace."),
     })

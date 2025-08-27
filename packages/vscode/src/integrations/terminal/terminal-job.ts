@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { getLogger } from "@/lib/logger";
 import { getShellPath } from "@getpochi/common/tool-utils";
 import * as vscode from "vscode";
@@ -30,12 +31,17 @@ export interface TerminalJobConfig {
  * for running commands and managing terminal lifecycle
  */
 export class TerminalJob implements vscode.Disposable {
+  private static readonly jobs = new Map<string, TerminalJob>();
+
   private readonly terminal: vscode.Terminal;
   private disposables: vscode.Disposable[] = [];
   private shellIntegration: vscode.TerminalShellIntegration | undefined;
   private execution: vscode.TerminalShellExecution | undefined;
   private outputManager = new OutputManager();
   private detached = false;
+
+  readonly id: string;
+  private lastReadLength = 0;
 
   get output() {
     return this.outputManager.output;
@@ -46,6 +52,9 @@ export class TerminalJob implements vscode.Disposable {
   };
 
   private constructor(private readonly config: TerminalJobConfig) {
+    this.id = randomUUID();
+    TerminalJob.jobs.set(this.id, this);
+
     // For background jobs, detach by default
     if (config.background) {
       this.detached = true;
@@ -62,7 +71,7 @@ export class TerminalJob implements vscode.Disposable {
         GIT_COMMITTER_EMAIL: "noreply@getpochi.com",
       },
       iconPath: new vscode.ThemeIcon("piano"),
-      hideFromUser: true,
+      hideFromUser: !this.detached,
       isTransient: false,
     });
 
@@ -103,7 +112,9 @@ export class TerminalJob implements vscode.Disposable {
         this.terminal.show();
       }
 
-      this.dispose();
+      if (!this.config.background) {
+        this.dispose();
+      }
     }
   }
 
@@ -199,9 +210,41 @@ export class TerminalJob implements vscode.Disposable {
   }
 
   /**
+   * Reads new output from the job since the last read.
+   * @param regex - An optional regex to filter the output.
+   */
+  async readOutput(
+    regex?: RegExp,
+  ): Promise<{ output: string; isTruncated: boolean }> {
+    const currentOutput = this.output.value.content;
+    let newOutput = currentOutput.slice(this.lastReadLength);
+    this.lastReadLength = currentOutput.length;
+
+    if (regex) {
+      newOutput = newOutput
+        .split("\n")
+        .filter((line) => regex.test(line))
+        .join("\n");
+    }
+
+    return {
+      output: newOutput,
+      isTruncated: this.output.value.isTruncated ?? false,
+    };
+  }
+
+  /**
+   * Kills the terminal job.
+   */
+  kill(): void {
+    this.terminal.dispose();
+  }
+
+  /**
    * Dispose of the terminal and clean up resources
    */
   dispose(): void {
+    TerminalJob.jobs.delete(this.id);
     for (const d of this.disposables) {
       d.dispose();
     }
@@ -273,5 +316,19 @@ export class TerminalJob implements vscode.Disposable {
    */
   static create(config: TerminalJobConfig): TerminalJob {
     return new TerminalJob(config);
+  }
+
+  /**
+   * Retrieves a `TerminalJob` instance by its ID.
+   *
+   * @param id - The ID of the job or the terminal instance.
+   * @returns The `TerminalJob` instance, or `undefined` if not found.
+   */
+  static get(id: string | vscode.Terminal): TerminalJob | undefined {
+    return typeof id === "string"
+      ? TerminalJob.jobs.get(id)
+      : Array.from(TerminalJob.jobs.values()).find(
+          (job) => job.terminal === id,
+        );
   }
 }

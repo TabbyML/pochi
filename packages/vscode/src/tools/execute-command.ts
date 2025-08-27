@@ -7,7 +7,7 @@ import { getLogger } from "@getpochi/common";
 import { getShellPath } from "@getpochi/common/tool-utils";
 import type { ExecuteCommandResult } from "@getpochi/common/vscode-webui-bridge";
 import type { ClientTools, ToolFunctionType } from "@getpochi/tools";
-import { type Signal, signal } from "@preact/signals-core";
+import { signal } from "@preact/signals-core";
 import { ThreadSignal } from "@quilted/threads/signals";
 import { executeCommandWithNode } from "../integrations/terminal/execute-command-with-node";
 import {
@@ -35,9 +35,6 @@ export const executeCommand: ToolFunctionType<
     cwd = path.normalize(path.join(workspaceRootUri.fsPath, cwd));
   }
 
-  let output: Signal<ExecuteCommandResult>;
-  let detach: () => void = () => {};
-
   if (isBackground) {
     const job = TerminalJob.create({
       name: command,
@@ -48,45 +45,50 @@ export const executeCommand: ToolFunctionType<
       timeout: timeout ?? defaultTimeout,
     });
 
-    output = job.output;
-    detach = job.detach;
-  } else {
-    output = signal<ExecuteCommandResult>({
-      content: "",
-      status: "idle",
-      isTruncated: false,
-    });
+    // need wait some time to get init output?
+    const outputResult = await job.readOutput();
 
-    waitForWebviewSubscription().then(() => {
-      executeCommandImpl({
-        command,
-        cwd,
-        timeout: timeout ?? defaultTimeout,
-        abortSignal,
-        onData: (data) => {
-          output.value = {
-            content: data.output,
-            status: "running",
-            isTruncated: data.isTruncated,
-          };
-        },
-      })
-        .then(({ output: commandOutput, isTruncated }) => {
-          output.value = {
-            content: commandOutput,
-            status: "completed",
-            isTruncated,
-          };
-        })
-        .catch((error) => {
-          output.value = {
-            ...output.value,
-            status: "completed",
-            error: error.message,
-          };
-        });
-    });
+    return {
+      output: outputResult.output,
+      isTruncated: outputResult.isTruncated,
+      backgroundCommandId: job.id,
+    };
   }
+  const output = signal<ExecuteCommandResult>({
+    content: "",
+    status: "idle",
+    isTruncated: false,
+  });
+
+  waitForWebviewSubscription().then(() => {
+    executeCommandImpl({
+      command,
+      cwd,
+      timeout: timeout ?? defaultTimeout,
+      abortSignal,
+      onData: (data) => {
+        output.value = {
+          content: data.output,
+          status: "running",
+          isTruncated: data.isTruncated,
+        };
+      },
+    })
+      .then(({ output: commandOutput, isTruncated }) => {
+        output.value = {
+          content: commandOutput,
+          status: "completed",
+          isTruncated,
+        };
+      })
+      .catch((error) => {
+        output.value = {
+          ...output.value,
+          status: "completed",
+          error: error.message,
+        };
+      });
+  });
 
   if (nonInteractive) {
     return new Promise((resolve) => {
@@ -116,7 +118,7 @@ export const executeCommand: ToolFunctionType<
   }
 
   // biome-ignore lint/suspicious/noExplicitAny: pass thread signal
-  return { output: ThreadSignal.serialize(output) as any, detach };
+  return { output: ThreadSignal.serialize(output) as any };
 };
 
 async function executeCommandImpl({

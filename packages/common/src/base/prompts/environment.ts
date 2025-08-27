@@ -105,7 +105,10 @@ function getVisibleTerminals(workspace: Environment["workspace"]) {
     return "";
   }
   return `# Active Terminals in Editor\n${terminals
-    .map((t) => (t.isActive ? `* ${t.name} (active)` : `  ${t.name}`))
+    .map(
+      (t) =>
+        `${t.isActive ? "* " : "  "}${t.name}${t.isActive ? " (active)" : ""}${t.backgroundCommandId ? ` (background command: ${t.backgroundCommandId})` : ""}`,
+    )
     .join("\n")}`;
 }
 

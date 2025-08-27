@@ -1,4 +1,4 @@
-import { useAutoApproveGuard, useToolCallLifeCycle } from "@/features/chat";
+import { useToolCallLifeCycle } from "@/features/chat";
 import { getToolName } from "ai";
 import { useCallback } from "react";
 import { CommandExecutionPanel } from "../command-execution-panel";
@@ -57,14 +57,6 @@ export const executeCommandTool: React.FC<ToolProps<"executeCommand">> = ({
     completed = true;
   }
 
-  const autoApproveGuard = useAutoApproveGuard();
-  const onDetach = streamingResult
-    ? () => {
-        autoApproveGuard.current = false;
-        streamingResult.detach();
-      }
-    : undefined;
-
   return (
     <ExpandableToolContainer
       title={title}
@@ -73,10 +65,8 @@ export const executeCommandTool: React.FC<ToolProps<"executeCommand">> = ({
           command={command ?? ""}
           output={output}
           onStop={abortTool}
-          onDetach={onDetach}
           completed={completed}
           isExecuting={isExecuting}
-          isBackground={isBackground}
         />
       }
     />

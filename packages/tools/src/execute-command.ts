@@ -142,7 +142,6 @@ Important:
   outputSchema: z.object({
     output: z
       .string()
-      .optional()
       .describe("The output of the command (including stdout and stderr)."),
     isTruncated: z
       .boolean()
