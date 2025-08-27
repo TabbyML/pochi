@@ -1,9 +1,9 @@
 import { spawn } from "node:child_process";
-import type { PromptFile } from "./types";
 /**
  * Pochi runner manager
  */
-import { getPochiConfig } from "./utils";
+import { getPochiConfig } from "./environment";
+import type { PromptFile } from "./types";
 
 export interface PochiTaskOptions {
   prompt: string;

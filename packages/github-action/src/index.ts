@@ -5,7 +5,7 @@
 
 import * as core from "@actions/core";
 import * as github from "@actions/github";
-import { GitHubManager } from "./github";
+import { GitHubManager } from "./github-manager";
 import { PochiRunner } from "./runner";
 
 async function main(): Promise<void> {
@@ -30,20 +30,14 @@ async function main(): Promise<void> {
       process.exit(0);
     }
 
-    // Parse user prompt and build PR prompt
-    const { userPrompt, promptFiles } = await githubManager.parseUserPrompt(
-      github.context,
-    );
-    const prData = await githubManager.fetchPR();
-    const fullPrompt = `${userPrompt}
+    // Parse user prompt - pass only original query to runner
+    const { userPrompt, promptFiles } = await githubManager.parseUserPrompt();
 
-${githubManager.buildPromptDataForPR(prData, github.context, process.env.POCHI_COMMENT_ID)}`;
-
-    // Let runner handle everything
+    // Let runner handle everything with original user prompt only
     const runner = new PochiRunner();
 
     const response = await runner.runTask({
-      prompt: fullPrompt,
+      prompt: userPrompt,
       files: promptFiles,
     });
 
