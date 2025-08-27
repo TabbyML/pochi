@@ -103,8 +103,16 @@ ${errorMessage}
   parseUserPrompt(): string {
     const payload = this.context.payload as IssueCommentEvent;
     const body = payload.comment.body.trim();
-    if (body === "/pochi") return "Summarize this thread";
-    if (body.includes("/pochi")) return body;
+
+    if (body === "/pochi") {
+      return "Summarize this thread";
+    }
+
+    if (body.includes("/pochi")) {
+      const userQuery = body.replace(/^\/pochi\s*/, "").trim();
+      return userQuery || "Summarize this thread";
+    }
+
     throw new Error("Comments must mention `/pochi`");
   }
 }
