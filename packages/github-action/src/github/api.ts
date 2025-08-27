@@ -5,7 +5,11 @@ import { graphql } from "@octokit/graphql";
  */
 import { Octokit } from "@octokit/rest";
 import type { IssueCommentEvent } from "@octokit/webhooks-types";
-import type { GitHubPullRequest, GitHubRepository, PullRequestQueryResponse } from "../types";
+import type {
+  GitHubPullRequest,
+  GitHubRepository,
+  PullRequestQueryResponse,
+} from "../types";
 import { generateRunUrl } from "../utils";
 
 export class GitHubAPI {
@@ -179,7 +183,12 @@ export class GitHubAPI {
     return pr;
   }
 
-  async createPR(base: string, branch: string, title: string, body: string): Promise<number> {
+  async createPR(
+    base: string,
+    branch: string,
+    title: string,
+    body: string,
+  ): Promise<number> {
     console.log("Creating pull request...");
     const repo = this.getRepository();
 
@@ -216,17 +225,21 @@ export class GitHubAPI {
 
     let permission: string;
     try {
-      const response = await this.octoRest.repos.getCollaboratorPermissionLevel({
-        owner: repo.owner,
-        repo: repo.repo,
-        username: actor,
-      });
+      const response = await this.octoRest.repos.getCollaboratorPermissionLevel(
+        {
+          owner: repo.owner,
+          repo: repo.repo,
+          username: actor,
+        },
+      );
 
       permission = response.data.permission;
       console.log(`  permission: ${permission}`);
     } catch (error) {
       console.error(`Failed to check permissions: ${error}`);
-      throw new Error(`Failed to check permissions for user ${actor}: ${error}`);
+      throw new Error(
+        `Failed to check permissions for user ${actor}: ${error}`,
+      );
     }
 
     if (!["admin", "write"].includes(permission)) {

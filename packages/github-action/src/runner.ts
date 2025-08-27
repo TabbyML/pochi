@@ -1,9 +1,9 @@
 import { spawn } from "node:child_process";
+import type { PromptFile } from "./types";
 /**
  * Pochi runner manager
  */
 import { getPochiConfig } from "./utils";
-import type { PromptFile } from "./types";
 
 export interface PochiTaskOptions {
   prompt: string;
@@ -17,7 +17,6 @@ export interface PochiTaskResult {
   error?: string;
 }
 
-
 export class PochiRunner {
   private config;
 
@@ -28,50 +27,54 @@ export class PochiRunner {
   private extractFinalOutput(rawOutput: string): string {
     // Remove ANSI color codes
     // biome-ignore lint/suspicious/noControlCharactersInRegex: <explanation>
-    const cleanOutput = rawOutput.replace(/\x1b\[[0-9;]*m/g, '');
-    
+    const cleanOutput = rawOutput.replace(/\x1b\[[0-9;]*m/g, "");
+
     // Split into lines and remove [stderr] prefix
-    const lines = cleanOutput.split('\n').map(line => {
+    const lines = cleanOutput.split("\n").map((line) => {
       const trimmed = line.trim();
-      return trimmed.replace(/^\[stderr\]\s*/, '');
+      return trimmed.replace(/^\[stderr\]\s*/, "");
     });
-    
+
     // Find task completion and extract the completion message
     let taskCompletedIndex = -1;
-    let completionContent = '';
-    
+    let completionContent = "";
+
     for (let i = lines.length - 1; i >= 0; i--) {
-      if (lines[i].includes('Task Completed') || lines[i].includes('🎉')) {
+      if (lines[i].includes("Task Completed") || lines[i].includes("🎉")) {
         taskCompletedIndex = i;
         break;
       }
     }
-    
+
     if (taskCompletedIndex >= 0) {
       // Look for the completion content after the task completed marker
       for (let i = taskCompletedIndex; i < lines.length; i++) {
         const line = lines[i];
-        if (line && 
-            !line.startsWith('💭 Thinking') &&
-            !line.includes('DEBUG') &&
-            !line.includes('storeId') &&
-            !line.includes('debugInstanceId') &&
-            !line.includes('Task link:')) {
-          
+        if (
+          line &&
+          !line.startsWith("💭 Thinking") &&
+          !line.includes("DEBUG") &&
+          !line.includes("storeId") &&
+          !line.includes("debugInstanceId") &&
+          !line.includes("Task link:")
+        ) {
           // Extract the actual completion message from the "└─" format
-          if (line.includes('└─')) {
-            completionContent = line.replace(/.*└─\s*/, '').trim();
-          } else if (!line.includes('🎉 Task Completed') && (completionContent || line.trim().length > 10)) {
+          if (line.includes("└─")) {
+            completionContent = line.replace(/.*└─\s*/, "").trim();
+          } else if (
+            !line.includes("🎉 Task Completed") &&
+            (completionContent || line.trim().length > 10)
+          ) {
             completionContent = line.trim();
           }
         }
       }
-      
+
       if (completionContent) {
         return `${completionContent}`;
       }
     }
-    
+
     return "Task completed successfully.";
   }
 
@@ -87,16 +90,15 @@ export class PochiRunner {
           if (file.mime.startsWith("image/")) {
             fullPrompt += `[Image: ${file.filename}]\n`;
           } else {
-            const content = Buffer.from(file.content, "base64").toString("utf8");
+            const content = Buffer.from(file.content, "base64").toString(
+              "utf8",
+            );
             fullPrompt += `\`\`\`\n${content}\n\`\`\`\n`;
           }
         }
       }
 
-      const args = [
-        "--prompt",
-        fullPrompt,
-      ];
+      const args = ["--prompt", fullPrompt];
 
       // Only add model if specified
       if (this.config.model) {
@@ -113,7 +115,7 @@ export class PochiRunner {
         const child = spawn(pochiRunner, args, {
           stdio: ["pipe", "pipe", "pipe"],
           cwd: process.cwd(),
-          env: { 
+          env: {
             ...process.env,
             POCHI_SESSION_TOKEN: this.config.token,
           },
@@ -140,12 +142,12 @@ export class PochiRunner {
             const rawOutput = stderr || stdout;
             console.log("Raw stderr length:", stderr.length);
             console.log("Raw stdout length:", stdout.length);
-            
+
             // Extract the meaningful output from the raw output
             const output = this.extractFinalOutput(rawOutput);
             console.log("Extracted output length:", output.length);
             console.log("Extracted output preview:", output.substring(0, 200));
-            
+
             resolve({
               output: output || "Task completed successfully.",
               success: true,

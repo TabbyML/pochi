@@ -9,7 +9,10 @@ export function generateRunUrl(repo: GitHubRepository): string {
   return `https://github.com/${repo.owner}/${repo.repo}/actions/runs/${githubRunId}`;
 }
 
-export function generateBranchName(type: "issue" | "pr", issueId: number): string {
+export function generateBranchName(
+  type: "issue" | "pr",
+  issueId: number,
+): string {
   const timestamp = new Date()
     .toISOString()
     .replace(/[:-]/g, "")

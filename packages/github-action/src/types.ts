@@ -109,4 +109,3 @@ export interface UserPromptData {
   userPrompt: string;
   promptFiles: PromptFile[];
 }
-

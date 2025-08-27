@@ -2,10 +2,17 @@
  * GitHub operations manager
  */
 import type * as github from "@actions/github";
-import type { /* GitHubIssue, */ GitHubPullRequest, UserPromptData } from "../types";
-import { GitHubAPI } from "./api";
+import type {
+  /* GitHubIssue, */ GitHubPullRequest,
+  UserPromptData,
+} from "../types";
 import { getEnvironmentConfig } from "../utils/environment";
-import { checkPayloadKeyword, buildPromptDataForPR, parseUserPrompt } from "./parser";
+import { GitHubAPI } from "./api";
+import {
+  buildPromptDataForPR,
+  checkPayloadKeyword,
+  parseUserPrompt,
+} from "./parser";
 
 export class GitHubManager {
   private api: GitHubAPI;
@@ -14,28 +21,42 @@ export class GitHubManager {
   constructor(accessToken: string, context: typeof github.context) {
     this.accessToken = accessToken;
     this.api = new GitHubAPI(accessToken, context);
-    
+
     // Check if comment ID is provided via environment variable
     const existingCommentId = process.env.POCHI_COMMENT_ID;
-    console.log(`🚀 [POCHI DEBUG] Environment POCHI_COMMENT_ID: "${existingCommentId}"`);
-    console.log("🚀 [POCHI DEBUG] All environment variables starting with POCHI_:");
+    console.log(
+      `🚀 [POCHI DEBUG] Environment POCHI_COMMENT_ID: "${existingCommentId}"`,
+    );
+    console.log(
+      "🚀 [POCHI DEBUG] All environment variables starting with POCHI_:",
+    );
     for (const [key, value] of Object.entries(process.env)) {
-      if (key.startsWith('POCHI_')) {
+      if (key.startsWith("POCHI_")) {
         console.log(`🚀 [POCHI DEBUG]   ${key} = "${value}"`);
       }
     }
-    
-    if (existingCommentId && existingCommentId !== 'null' && existingCommentId !== '') {
+
+    if (
+      existingCommentId &&
+      existingCommentId !== "null" &&
+      existingCommentId !== ""
+    ) {
       const commentIdNum = Number.parseInt(existingCommentId);
       console.log(`🚀 [POCHI DEBUG] Parsed comment ID: ${commentIdNum}`);
       if (!Number.isNaN(commentIdNum)) {
         this.api.setCommentId(commentIdNum);
-        console.log(`🚀 [POCHI DEBUG] ✅ Using existing comment ID: ${this.api.getCommentId()}`);
+        console.log(
+          `🚀 [POCHI DEBUG] ✅ Using existing comment ID: ${this.api.getCommentId()}`,
+        );
       } else {
-        console.log(`🚀 [POCHI DEBUG] ❌ Invalid comment ID: ${existingCommentId}`);
+        console.log(
+          `🚀 [POCHI DEBUG] ❌ Invalid comment ID: ${existingCommentId}`,
+        );
       }
     } else {
-      console.log('🚀 [POCHI DEBUG] ❌ No existing comment ID found, will create new comment');
+      console.log(
+        "🚀 [POCHI DEBUG] ❌ No existing comment ID found, will create new comment",
+      );
     }
   }
 
@@ -70,7 +91,9 @@ export class GitHubManager {
     return this.api.updateComment(body);
   }
 
-  async parseUserPrompt(context: typeof github.context): Promise<UserPromptData> {
+  async parseUserPrompt(
+    context: typeof github.context,
+  ): Promise<UserPromptData> {
     return parseUserPrompt(context, this.accessToken);
   }
 
@@ -78,11 +101,20 @@ export class GitHubManager {
     return this.api.fetchPR();
   }
 
-  buildPromptDataForPR(pr: GitHubPullRequest, context: typeof github.context, commentId?: string): string {
-    return buildPromptDataForPR(pr, context,  Number(commentId));
+  buildPromptDataForPR(
+    pr: GitHubPullRequest,
+    context: typeof github.context,
+    commentId?: string,
+  ): string {
+    return buildPromptDataForPR(pr, context, Number(commentId));
   }
 
-  async createPR(base: string, branch: string, title: string, body: string): Promise<number> {
+  async createPR(
+    base: string,
+    branch: string,
+    title: string,
+    body: string,
+  ): Promise<number> {
     return this.api.createPR(base, branch, title, body);
   }
 
@@ -104,4 +136,5 @@ export class GitHubManager {
 
   async cleanup(): Promise<void> {
     // No cleanup needed for the token
-  }}
+  }
+}

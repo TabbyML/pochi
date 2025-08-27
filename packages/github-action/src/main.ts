@@ -11,7 +11,7 @@ import { PochiRunner } from "./runner";
 async function main(): Promise<void> {
   try {
     console.log("🚀 Starting simplified pochi GitHub Action...");
-    
+
     // Basic setup
     if (github.context.eventName !== "issue_comment") {
       throw new Error(`Unsupported event type: ${github.context.eventName}`);
@@ -21,17 +21,21 @@ async function main(): Promise<void> {
     await githubManager.checkPermissions();
 
     if (!githubManager.isPullRequest()) {
-      const commentId = process.env.POCHI_COMMENT_ID ? Number.parseInt(process.env.POCHI_COMMENT_ID) : undefined;
+      const commentId = process.env.POCHI_COMMENT_ID
+        ? Number.parseInt(process.env.POCHI_COMMENT_ID)
+        : undefined;
       if (commentId) {
         await githubManager.updateComment(
-          "❌ This action only responds to PR comments. Please use this in a Pull Request.\n\n🤖 Generated with [Pochi](https://getpochi.com)"
+          "❌ This action only responds to PR comments. Please use this in a Pull Request.\n\n🤖 Generated with [Pochi](https://getpochi.com)",
         );
       }
       process.exit(0);
     }
 
     // Parse user prompt and build PR prompt
-    const { userPrompt, promptFiles } = await githubManager.parseUserPrompt(github.context);
+    const { userPrompt, promptFiles } = await githubManager.parseUserPrompt(
+      github.context,
+    );
     const prData = await githubManager.fetchPR();
     const fullPrompt = `${userPrompt}
 
@@ -50,7 +54,6 @@ ${githubManager.buildPromptDataForPR(prData, github.context, process.env.POCHI_C
     }
 
     console.log("✅ Task completed - CLI should have updated the comment");
-
   } catch (error) {
     console.error("Error:", error);
     core.setFailed(error instanceof Error ? error.message : String(error));

@@ -23,7 +23,10 @@ export class GitManager {
       this.gitConfigBackup = "";
     }
 
-    const newCredentials = Buffer.from(`x-access-token:${appToken}`, "utf8").toString("base64");
+    const newCredentials = Buffer.from(
+      `x-access-token:${appToken}`,
+      "utf8",
+    ).toString("base64");
 
     await $`git config --local --unset-all ${config}`.catch(() => {});
     await $`git config --local ${config} "AUTHORIZATION: basic ${newCredentials}"`;
@@ -37,12 +40,14 @@ export class GitManager {
     if (!this.isConfigured) return;
 
     console.log("Restoring git config...");
-    
+
     try {
       if (this.gitConfigBackup) {
         await $`git config --local "http.https://github.com/.extraheader" ${this.gitConfigBackup}`;
       } else {
-        await $`git config --local --unset-all "http.https://github.com/.extraheader"`.catch(() => {});
+        await $`git config --local --unset-all "http.https://github.com/.extraheader"`.catch(
+          () => {},
+        );
       }
     } catch (error) {
       console.error("Error restoring git config:", error);

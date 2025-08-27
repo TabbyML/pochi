@@ -1,6 +1,20 @@
-# pochi GitHub Action
+# Pochi GitHub Action
 
 AI-powered GitHub Action that responds to PR comments with intelligent code analysis and suggestions.
+
+## 🚀 One-Line Installation
+
+Install Pochi GitHub Action to your repository instantly:
+
+```bash
+# Run this command in your repository root directory
+curl -sSL https://raw.githubusercontent.com/tabbyml/pochi/main/packages/github-action/scripts/install | bash
+```
+
+This command will:
+- Auto-detect your repository owner and name
+- Create `.github/workflows/pochi.yml` workflow file
+- Provide setup instructions for required secrets
 
 ## Usage
 
@@ -28,7 +42,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Run pochi
-        uses: ./packages/github-action # Replace with your action path
+        uses: tabbyml/pochi/packages/github-action@action@latest
         with:
           pochi_token: ${{ secrets.POCHI_TOKEN }}
 ```
@@ -100,7 +114,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: pochi AI Assistant
-        uses: ./packages/github-action
+        uses: tabbyml/pochi/packages/github-action@action@latest
         with:
           pochi_token: ${{ secrets.POCHI_TOKEN }}
 ```
@@ -111,7 +125,7 @@ If you need to use a custom GitHub token (for cross-repo operations):
 
 ```yaml
 - name: pochi AI Assistant
-  uses: ./packages/github-action
+  uses: tabbyml/pochi/packages/github-action@action@latest
   with:
     pochi_token: ${{ secrets.POCHI_TOKEN }}
     token: ${{ secrets.CUSTOM_GITHUB_TOKEN }}

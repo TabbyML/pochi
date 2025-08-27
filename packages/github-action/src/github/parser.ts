@@ -34,7 +34,9 @@ export async function parseUserPrompt(
   const tagMatches = prompt.matchAll(
     /<img .*?src="(https:\/\/github\.com\/user-attachments\/[^"]+)" \/>/gi,
   );
-  const matches = [...mdMatches, ...tagMatches].sort((a, b) => (a.index || 0) - (b.index || 0));
+  const matches = [...mdMatches, ...tagMatches].sort(
+    (a, b) => (a.index || 0) - (b.index || 0),
+  );
 
   let offset = 0;
   for (const m of matches) {
@@ -58,7 +60,9 @@ export async function parseUserPrompt(
 
     const replacement = `@${filename}`;
     prompt =
-      prompt.slice(0, start + offset) + replacement + prompt.slice(start + offset + tag.length);
+      prompt.slice(0, start + offset) +
+      replacement +
+      prompt.slice(start + offset + tag.length);
     offset += replacement.length - tag.length;
 
     const contentType = res.headers.get("content-type");
@@ -87,7 +91,10 @@ export function buildPromptDataForPR(
       const id = Number.parseInt(c.databaseId);
       return id !== commentId && id !== payload.comment.id;
     })
-    .map((c) => `- **@${c.author.login}** (${new Date(c.createdAt).toLocaleString()}): ${c.body}`);
+    .map(
+      (c) =>
+        `- **@${c.author.login}** (${new Date(c.createdAt).toLocaleString()}): ${c.body}`,
+    );
 
   const files = (pr.files.nodes || []).map(
     (f) => `- ${f.path} (${f.changeType}) +${f.additions}/-${f.deletions}`,
@@ -100,7 +107,9 @@ export function buildPromptDataForPR(
       `- **@${r.author.login}** reviewed on ${new Date(r.submittedAt).toLocaleString()}:`,
       `  - **Status**: ${r.state}`,
       ...(r.body ? [`  - **Review comment**: ${r.body}`] : []),
-      ...(comments.length > 0 ? ["  - **Inline code comments:**", ...comments] : []),
+      ...(comments.length > 0
+        ? ["  - **Inline code comments:**", ...comments]
+        : []),
     ];
   });
 
@@ -114,45 +123,45 @@ export function buildPromptDataForPR(
     `**Changes:** +${pr.additions}/-${pr.deletions} across ${pr.files.nodes.length} files`,
     "",
     ...(pr.body ? ["**Description:**", pr.body, ""] : []),
-    ...(files.length > 0
-      ? ["**Modified Files:**", ...files, ""]
-      : []),
+    ...(files.length > 0 ? ["**Modified Files:**", ...files, ""] : []),
     ...(comments.length > 0
       ? [
-        "**Previous Discussion Comments:**",
-        "*Note: These are historical PR discussion comments (not including the current /pochi command)*",
-        ...comments,
-        ""
-      ]
+          "**Previous Discussion Comments:**",
+          "*Note: These are historical PR discussion comments (not including the current /pochi command)*",
+          ...comments,
+          "",
+        ]
       : []),
     ...(reviewData.length > 0
       ? [
-        "**Code Reviews:**",
-        "*Note: These are formal PR reviews with status (APPROVED/CHANGES_REQUESTED/COMMENTED)*",
-        ...reviewData.flat(),
-        ""
-      ]
+          "**Code Reviews:**",
+          "*Note: These are formal PR reviews with status (APPROVED/CHANGES_REQUESTED/COMMENTED)*",
+          ...reviewData.flat(),
+          "",
+        ]
       : []),
     "---",
     "",
     "**IMPORTANT INSTRUCTIONS:**",
-    "1. You MUST use the `attemptCompletion` tool when finished - this is required", 
+    "1. You MUST use the `attemptCompletion` tool when finished - this is required",
     "2. Focus on the ACTUAL CODE CHANGES and their impact, not just PR title/metadata",
     "3. DO NOT create additional GitHub comments using gh pr comment or similar commands - this response will be posted automatically",
-    ...(commentId ? [
-      `4. **CRITICAL**: You MUST update GitHub comment ID ${commentId} with your response. This is the ONLY way users will see your work.`,
-      "5. The user has NO other way to see your response - you must update the comment yourself using GITHUB_TOKEN.",
-      "6. Use this exact command to update the comment:",
-      `   gh api "repos/$(gh repo view --json owner,name -q '.owner.login + "/" + .name')/issues/comments/${commentId}" -X PATCH -f body="your response content here"`,
-      "7. Always append this footer to your response:",
-      "   ",
-      "   🤖 Generated with [Pochi](https://getpochi.com)",
-      "8. Make sure to escape quotes properly in your response content.",
-      "9. If you don't update the comment, the user will never see your work!"
-    ] : []),
+    ...(commentId
+      ? [
+          `4. **CRITICAL**: You MUST update GitHub comment ID ${commentId} with your response. This is the ONLY way users will see your work.`,
+          "5. The user has NO other way to see your response - you must update the comment yourself using GITHUB_TOKEN.",
+          "6. Use this exact command to update the comment:",
+          `   gh api "repos/$(gh repo view --json owner,name -q '.owner.login + "/" + .name')/issues/comments/${commentId}" -X PATCH -f body="your response content here"`,
+          "7. Always append this footer to your response:",
+          "   ",
+          "   🤖 Generated with [Pochi](https://getpochi.com)",
+          "8. Make sure to escape quotes properly in your response content.",
+          "9. If you don't update the comment, the user will never see your work!",
+        ]
+      : []),
     "",
     "**SUMMARY EXAMPLE:**",
     "❌ Bad: \"This pull request titled 'Fix login bug' by UserName updates the authentication system...\"",
-    "✅ Good: \"This change fixes the login timeout issue by increasing the session duration from 30 to 60 minutes in the authentication middleware. The modification prevents users from being logged out too quickly during active sessions.\"",
+    '✅ Good: "This change fixes the login timeout issue by increasing the session duration from 30 to 60 minutes in the authentication middleware. The modification prevents users from being logged out too quickly during active sessions."',
   ].join("\n");
 }
