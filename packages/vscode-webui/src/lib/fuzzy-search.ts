@@ -3,7 +3,7 @@ import uFuzzy from "@leeoniya/ufuzzy";
 const MaxResult = 500;
 
 // Create a single uFuzzy instance to reuse
-const ufInstance = new uFuzzy({
+const uf = new uFuzzy({
   // Allow @ symbols and basic path characters
   intraChars: "[a-z\\d'@\\-_./]",
   // Don't split on forward slashes - treat them as regular characters
@@ -20,30 +20,20 @@ export interface FuzzySearchOptions {
  * Generic fuzzy search function that works with any string array
  */
 export function fuzzySearchStrings(
-  needle: string | undefined,
+  needle: string,
   haystack: string[],
-  options: FuzzySearchOptions = {},
-): string[] {
-  if (!haystack || !Array.isArray(haystack)) {
+): number[] {
+  const [idxs, info, order] = uf.search(haystack, needle);
+
+  if (!order) {
+    if (idxs !== null) {
+      return idxs;
+    }
+
     return [];
   }
 
-  if (!needle) {
-    const maxResults = options.maxResults ?? MaxResult;
-    return haystack.slice(0, maxResults);
-  }
-
-  const [_, info, order] = ufInstance.search(haystack, needle);
-
-  if (!order) return [];
-
-  const results: string[] = [];
-  for (const i of order) {
-    const name = haystack[info.idx[i]];
-    results.push(name);
-  }
-
-  return results;
+  return info.idx || [];
 }
 
 /**
@@ -65,7 +55,7 @@ export function fuzzySearchWorkflows<T extends { id: string }>(
 
   // Create a haystack of workflow names for searching
   const haystack = workflows.map((w) => w.id);
-  const [_, info, order] = ufInstance.search(haystack, needle);
+  const [_, info, order] = uf.search(haystack, needle);
 
   if (!order) return [];
 
@@ -78,90 +68,54 @@ export function fuzzySearchWorkflows<T extends { id: string }>(
   return results;
 }
 
+type FileItem = { filepath: string; isDir: boolean };
+
 /**
  * Enhanced fuzzy search for files with active tabs prioritization
  */
 export function fuzzySearchFiles(
   needle: string | undefined,
   data: {
-    haystack: string[];
-    files: { filepath: string; isDir: boolean }[];
-    activeTabs?: { filepath: string; isDir: boolean }[];
+    files: FileItem[];
+    activeTabs: FileItem[];
   },
   options: FuzzySearchOptions = {},
 ): { filepath: string; isDir: boolean }[] {
-  const activeTabsSet = new Set(data.activeTabs?.map((d) => d.filepath) || []);
-
-  const uniqueFilesMap = new Map<
-    string,
-    { filepath: string; isDir: boolean }
-  >();
-
-  for (const file of data.files) {
-    uniqueFilesMap.set(file.filepath, file);
-  }
-
-  if (data.activeTabs) {
-    for (const tab of data.activeTabs) {
-      uniqueFilesMap.set(tab.filepath, tab);
-    }
-  }
-
+  const maxResults = options.maxResults || MaxResult;
   if (!needle) {
-    const maxResults = options.maxResults ?? MaxResult;
-    const allResults = Array.from(uniqueFilesMap.values());
-    return sortResultsByActiveTabs(allResults, activeTabsSet).slice(
+    return mergeUniqueFileItems(data.files, data.activeTabs).slice(
       0,
       maxResults,
     );
   }
 
-  const allFilepaths = new Set(data.haystack);
-
-  if (data.activeTabs) {
-    for (const tab of data.activeTabs) {
-      allFilepaths.add(tab.filepath);
-    }
-  }
-
-  const searchResults = fuzzySearchStrings(
+  const activeTabSearchResult = fuzzySearchStrings(
     needle,
-    Array.from(allFilepaths),
-    options,
+    data.activeTabs.map((x) => x.filepath) || [],
   );
 
-  const searchResultsMap = new Map<
-    string,
-    { filepath: string; isDir: boolean }
-  >();
-
-  for (const filepath of searchResults) {
-    const file = uniqueFilesMap.get(filepath);
-    if (file) {
-      searchResultsMap.set(filepath, file);
-    }
-  }
-
-  return sortResultsByActiveTabs(
-    Array.from(searchResultsMap.values()),
-    activeTabsSet,
+  const fileSearchResult = fuzzySearchStrings(
+    needle,
+    data.files.map((x) => x.filepath),
   );
+
+  return mergeUniqueFileItems(
+    activeTabSearchResult.map((i) => data.activeTabs[i]),
+    fileSearchResult.map((i) => data.files[i]),
+  ).slice(0, maxResults);
 }
 
-function sortResultsByActiveTabs<T extends { filepath: string }>(
-  results: T[],
-  activeTabsSet: Set<string>,
-): T[] {
-  const activeResults: T[] = [];
-  const normalResults: T[] = [];
-
-  for (const result of results) {
-    if (activeTabsSet.has(result.filepath)) {
-      activeResults.push(result);
-    } else {
-      normalResults.push(result);
+function mergeUniqueFileItems(...items: FileItem[][]): FileItem[] {
+  const result: FileItem[] = [];
+  const processedFilepath = new Set<string>();
+  for (const x of items) {
+    for (const y of x) {
+      if (!processedFilepath.has(y.filepath)) {
+        result.push(y);
+        processedFilepath.add(y.filepath);
+      }
     }
   }
 
-  return [...activeResults, ...normalResults];
+  return result;
 }
