@@ -47,7 +47,6 @@ export class GitHubAPI {
     const repo = this.getRepository();
     const runUrl = generateRunUrl(repo);
 
-    console.log("Creating comment...");
     const response = await this.octoRest.rest.issues.createComment({
       owner: repo.owner,
       repo: repo.repo,
@@ -62,7 +61,6 @@ export class GitHubAPI {
   async updateComment(body: string): Promise<void> {
     if (!this.commentId) return;
 
-    console.log("Updating comment...");
     const repo = this.getRepository();
 
     await this.octoRest.rest.issues.updateComment({
@@ -82,7 +80,6 @@ export class GitHubAPI {
   }
 
   async fetchPR(): Promise<GitHubPullRequest> {
-    console.log("Fetching prompt data for PR...");
     const repo = this.getRepository();
 
     const prResult = await this.octoGraph<PullRequestQueryResponse>(
@@ -189,7 +186,6 @@ export class GitHubAPI {
     title: string,
     body: string,
   ): Promise<number> {
-    console.log("Creating pull request...");
     const repo = this.getRepository();
 
     const pr = await this.octoRest.rest.pulls.create({
@@ -216,10 +212,7 @@ export class GitHubAPI {
     const actor = this.context.actor;
     const repo = this.getRepository();
 
-    console.log(`Asserting permissions for user ${actor}...`);
-
     if (this.context.payload.sender?.type === "Bot") {
-      console.log("  skipped (bot user)");
       return;
     }
 
@@ -234,7 +227,6 @@ export class GitHubAPI {
       );
 
       permission = response.data.permission;
-      console.log(`  permission: ${permission}`);
     } catch (error) {
       console.error(`Failed to check permissions: ${error}`);
       throw new Error(

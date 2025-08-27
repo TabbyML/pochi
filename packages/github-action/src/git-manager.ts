@@ -13,7 +13,6 @@ export class GitManager {
   async configure(appToken: string): Promise<void> {
     if (this.isConfigured) return;
 
-    console.log("Configuring git...");
     const config = "http.https://github.com/.extraheader";
 
     try {
@@ -39,8 +38,6 @@ export class GitManager {
   async restore(): Promise<void> {
     if (!this.isConfigured) return;
 
-    console.log("Restoring git config...");
-
     try {
       if (this.gitConfigBackup) {
         await $`git config --local "http.https://github.com/.extraheader" ${this.gitConfigBackup}`;
@@ -57,15 +54,12 @@ export class GitManager {
   }
 
   async checkoutLocalBranch(prData: GitHubPullRequest): Promise<void> {
-    console.log(`Checking out local branch: ${prData.headRefName}`);
     await $`git fetch origin ${prData.headRefName}`;
     await $`git checkout ${prData.headRefName}`;
   }
 
   async checkoutForkBranch(issueNumber: number): Promise<void> {
     const branch = generateBranchName("pr", issueNumber);
-    console.log(`Creating branch for fork PR: ${branch}`);
-
     await $`git fetch origin pull/${issueNumber}/head:${branch}`;
     await $`git checkout ${branch}`;
   }
@@ -80,8 +74,6 @@ export class GitManager {
   }
 
   async commitAndPushLocalBranch(message: string): Promise<void> {
-    console.log("Committing and pushing to local branch...");
-
     await $`git add -A`;
     await $`git commit -m ${message}`;
     await $`git push`;
@@ -91,7 +83,6 @@ export class GitManager {
     message: string,
     context: typeof github.context,
   ): Promise<void> {
-    console.log("Committing and pushing fork branch...");
     const branch = generateBranchName("pr", context.issue?.number || 0);
 
     await $`git add -A`;

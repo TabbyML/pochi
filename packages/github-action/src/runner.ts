@@ -79,8 +79,6 @@ export class PochiRunner {
   }
 
   async runTask(options: PochiTaskOptions): Promise<PochiTaskResult> {
-    console.log("Running pochi task...");
-
     try {
       let fullPrompt = options.prompt;
       if (options.files && options.files.length > 0) {
@@ -108,8 +106,7 @@ export class PochiRunner {
       // Use pochi CLI from PATH (installed by action.yml) or POCHI_RUNNER env var
       const pochiRunner = process.env.POCHI_RUNNER || "pochi";
 
-      // Avoid logging the full prompt which can be very long
-      console.log(`Executing: ${pochiRunner} --prompt ...`);
+      // Execute pochi CLI
 
       const result = await new Promise<PochiTaskResult>((resolve) => {
         const child = spawn(pochiRunner, args, {
@@ -127,26 +124,19 @@ export class PochiRunner {
         child.stdout?.on("data", (data) => {
           const text = data.toString();
           stdout += text;
-          console.log("[stdout]", text);
         });
 
         child.stderr?.on("data", (data) => {
           const text = data.toString();
           stderr += text;
-          console.log("[stderr]", text);
         });
 
         child.on("close", (code) => {
           if (code === 0) {
             // Pochi CLI outputs to stderr, so prioritize stderr over stdout
             const rawOutput = stderr || stdout;
-            console.log("Raw stderr length:", stderr.length);
-            console.log("Raw stdout length:", stdout.length);
-
             // Extract the meaningful output from the raw output
             const output = this.extractFinalOutput(rawOutput);
-            console.log("Extracted output length:", output.length);
-            console.log("Extracted output preview:", output.substring(0, 200));
 
             resolve({
               output: output || "Task completed successfully.",

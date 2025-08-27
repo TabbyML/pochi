@@ -80,7 +80,7 @@ runs:
         if [ -n "${{ inputs.model }}" ]; then
           export POCHI_MODEL="${{ inputs.model }}"
         fi
-        bun ${GITHUB_ACTION_PATH}/src/main.ts
+        bun ${GITHUB_ACTION_PATH}/src/index.ts
       env:
         POCHI_COMMENT_ID: ${{ env.POCHI_COMMENT_ID }}
         GITHUB_TOKEN: ${{ github.token }}

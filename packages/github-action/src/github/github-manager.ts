@@ -24,17 +24,6 @@ export class GitHubManager {
 
     // Check if comment ID is provided via environment variable
     const existingCommentId = process.env.POCHI_COMMENT_ID;
-    console.log(
-      `🚀 [POCHI DEBUG] Environment POCHI_COMMENT_ID: "${existingCommentId}"`,
-    );
-    console.log(
-      "🚀 [POCHI DEBUG] All environment variables starting with POCHI_:",
-    );
-    for (const [key, value] of Object.entries(process.env)) {
-      if (key.startsWith("POCHI_")) {
-        console.log(`🚀 [POCHI DEBUG]   ${key} = "${value}"`);
-      }
-    }
 
     if (
       existingCommentId &&
@@ -42,21 +31,9 @@ export class GitHubManager {
       existingCommentId !== ""
     ) {
       const commentIdNum = Number.parseInt(existingCommentId);
-      console.log(`🚀 [POCHI DEBUG] Parsed comment ID: ${commentIdNum}`);
       if (!Number.isNaN(commentIdNum)) {
         this.api.setCommentId(commentIdNum);
-        console.log(
-          `🚀 [POCHI DEBUG] ✅ Using existing comment ID: ${this.api.getCommentId()}`,
-        );
-      } else {
-        console.log(
-          `🚀 [POCHI DEBUG] ❌ Invalid comment ID: ${existingCommentId}`,
-        );
       }
-    } else {
-      console.log(
-        "🚀 [POCHI DEBUG] ❌ No existing comment ID found, will create new comment",
-      );
     }
   }
 

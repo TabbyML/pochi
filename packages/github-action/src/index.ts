@@ -10,8 +10,6 @@ import { PochiRunner } from "./runner";
 
 async function main(): Promise<void> {
   try {
-    console.log("🚀 Starting simplified pochi GitHub Action...");
-
     // Basic setup
     if (github.context.eventName !== "issue_comment") {
       throw new Error(`Unsupported event type: ${github.context.eventName}`);
@@ -53,7 +51,7 @@ ${githubManager.buildPromptDataForPR(prData, github.context, process.env.POCHI_C
       throw new Error(response.error || "pochi task failed");
     }
 
-    console.log("✅ Task completed - CLI should have updated the comment");
+    // Task completed - CLI should have updated the comment
   } catch (error) {
     console.error("Error:", error);
     core.setFailed(error instanceof Error ? error.message : String(error));
