@@ -41,24 +41,20 @@ export class GitHubManager {
   }
 
   async postErrorComment(errorMessage: string): Promise<void> {
-    try {
-      const repo = this.getRepository();
-      const payload = this.context.payload as IssueCommentEvent;
-      const issueNumber = payload.issue.number;
+    const repo = this.getRepository();
+    const payload = this.context.payload as IssueCommentEvent;
+    const issueNumber = payload.issue.number;
 
-      await this.octoRest.rest.issues.createComment({
-        owner: repo.owner,
-        repo: repo.repo,
-        issue_number: issueNumber,
-        body: `❌ **Pochi Task Failed**
+    await this.octoRest.rest.issues.createComment({
+      owner: repo.owner,
+      repo: repo.repo,
+      issue_number: issueNumber,
+      body: `❌ **Pochi Task Failed**
 
 ${errorMessage}
 
 🤖 Generated with [Pochi](https://getpochi.com)`,
-      });
-    } catch (error) {
-      console.error("Failed to post error comment:", error);
-    }
+    });
   }
 
   // Permission and user operations

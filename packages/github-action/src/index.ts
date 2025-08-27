@@ -29,16 +29,7 @@ async function main(): Promise<void> {
     const userPrompt = githubManager.parseUserPrompt();
 
     // Let runner handle everything with original user prompt only
-    const response = await runPochiTask(userPrompt);
-
-    if (!response.success) {
-      const errorMessage = response.error || "pochi task failed";
-
-      // Post error comment to PR
-      await githubManager.postErrorComment(errorMessage);
-
-      throw new Error(errorMessage);
-    }
+    await runPochiTask(userPrompt);
 
     // Task completed successfully
   } catch (error) {
