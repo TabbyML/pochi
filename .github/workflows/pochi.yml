@@ -1,0 +1,24 @@
+name: pochi
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  pochi:
+    if: contains(github.event.comment.body, '/pochi')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Run pochi
+        uses: tabbyml/pochi/packages/github-action@action@latest
+        env:
+          POCHI_SESSION_TOKEN: ${{ secrets.POCHI_SESSION_TOKEN }}

@@ -1,0 +1,30 @@
+{
+  "name": "@pochi/github-action",
+  "version": "0.1.0",
+  "description": "GitHub Action for pochi AI assistant",
+  "main": "src/main.ts",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "bun build src/main.ts --outdir dist --target bun",
+    "dev": "bun --watch src/main.ts",
+    "test": "bun test",
+    "lint": "biome check src/",
+    "lint:fix": "biome check --apply src/",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": ["github-action", "ai", "assistant", "pochi"],
+  "license": "MIT",
+  "dependencies": {
+    "@actions/core": "^1.11.1",
+    "@actions/github": "^6.0.1",
+    "@octokit/graphql": "^9.0.1",
+    "@octokit/rest": "^22.0.0",
+    "@octokit/webhooks-types": "^7.6.1"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  }
+}
