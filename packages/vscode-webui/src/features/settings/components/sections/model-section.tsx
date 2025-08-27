@@ -11,9 +11,8 @@ import { type User, apiClient } from "@/lib/auth-client";
 import { useCustomModelSetting } from "@/lib/hooks/use-custom-model-setting";
 import { useVSCodeLmModels } from "@/lib/hooks/use-vscode-lm-models";
 import { useQuery } from "@tanstack/react-query";
-import { DotIcon, PencilIcon } from "lucide-react";
+import { DotIcon, PencilIcon, CircleQuestionMarkIcon } from "lucide-react";
 import { useMemo } from "react";
-import { TbCreditCardPay } from "react-icons/tb";
 import { useSettingsStore } from "../../store";
 import { AccordionSection } from "../ui/accordion-section";
 import { EmptySectionPlaceholder, Section } from "../ui/section";
@@ -93,7 +92,7 @@ export const ModelSection: React.FC<ModelSectionProps> = ({ user }) => {
             <div className="ml-1">
               <AccordionSection
                 title={
-                  <div className="flex items-center gap-1 py-1">
+                  <div className="flex items-center gap-0.5 py-1">
                     Pochi
                     <a
                       href="https://app.getpochi.com/pricing"
@@ -101,7 +100,7 @@ export const ModelSection: React.FC<ModelSectionProps> = ({ user }) => {
                       rel="noopener noreferrer"
                       className="relative z-10 ml-1 rounded-md p-1.5 transition-colors hover:bg-secondary/50 hover:text-secondary-foreground dark:hover:bg-secondary"
                     >
-                      <TbCreditCardPay className="size-4" />
+                      <CircleQuestionMarkIcon className="size-4" />
                     </a>
                   </div>
                 }
