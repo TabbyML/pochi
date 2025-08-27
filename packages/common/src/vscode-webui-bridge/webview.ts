@@ -16,6 +16,7 @@ import type {
   WorkspaceState,
 } from "./index";
 import type { VSCodeLmRequest } from "./types/models";
+import type { ListSymbolItem } from "./types/symbol";
 
 export interface VSCodeHostApi {
   readResourceURI(): Promise<ResourceURI>;
@@ -81,6 +82,11 @@ export interface VSCodeHostApi {
   >;
 
   openSymbol(symbol: string): Promise<void>;
+
+  listSymbolsInWorkspace(params?: {
+    query?: string;
+    limit?: number;
+  }): Promise<ListSymbolItem[]>;
 
   /**
    * List all rule files in the workspace and home directory.

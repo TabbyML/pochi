@@ -144,13 +144,16 @@ const MentionItemView = memo(function MentionItemView({
       <span className="mr-2 ml-1 flex items-center gap-1 truncate whitespace-nowrap font-medium">
         <MentionItemIcon type={data.value.type} />
         <span>{highlightedText()}</span>
+        {data.value.type === "mcp" && (
+          <span className="ml-1 text-muted-foreground">{"(mcp)"}</span>
+        )}
       </span>
     </div>
   );
 });
 
 const MentionItemIcon = ({ type }: { type: string }) => {
-  if (type === "tool") {
+  if (type === "tool" || type === "mcp") {
     return <Wrench className="size-3.5" />;
   }
   if (type === "symbol") {

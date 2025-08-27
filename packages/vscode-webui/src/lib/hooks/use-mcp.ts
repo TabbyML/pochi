@@ -36,7 +36,7 @@ export const useMcp = () => {
   };
 };
 
-async function fetchMcpStatus() {
+export async function fetchMcpStatus() {
   return threadSignal(await vscodeHost.readMcpStatus());
 }
 

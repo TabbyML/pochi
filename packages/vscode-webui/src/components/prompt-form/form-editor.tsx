@@ -29,12 +29,15 @@ import {
   type MentionListProps,
 } from "./context-mention/mention-list";
 import "./prompt-form.css";
+import { fetchMcpStatus } from "@/lib/hooks/use-mcp";
 import { cn } from "@/lib/utils";
+import { ClientTools } from "@getpochi/tools";
 import {
   type SuggestionMatch,
   type Trigger,
   findSuggestionMatch,
 } from "@tiptap/suggestion";
+import { filter, map, pipe, unique } from "remeda";
 import { ScrollArea } from "../ui/scroll-area";
 import {
   AutoCompleteExtension,
@@ -56,6 +59,10 @@ import {
 } from "./workflow-mention/mention-list";
 
 const newLineCharacter = "\n";
+
+const AllTools = Object.entries({ ...ClientTools }).map(([id]) => ({
+  label: id,
+}));
 
 // Custom keyboard shortcuts extension that handles Enter key behavior
 function CustomEnterKeyHandler(
@@ -351,41 +358,8 @@ export function FormEditor({
             char: "",
             pluginKey: autoCompletePluginKey,
             items: async ({ query }: { query: string }) => {
-              // FIXME(juelaing) mock items
-              const allItems = [
-                {
-                  type: "tool",
-                  label: "hello",
-                },
-                {
-                  type: "symbol",
-                  label: "help",
-                },
-                {
-                  type: "tool",
-                  label: "world",
-                },
-                {
-                  type: "tool",
-                  label: "foo",
-                },
-                {
-                  type: "tool",
-                  label: "bar",
-                },
-              ];
-              const [_, info, order] = ufInstance.search(
-                allItems.map((x) => x.label),
-                query,
-              );
-              if (!order) return [];
-              const results = [];
-              for (const i of order) {
-                const item = allItems[info.idx[i]];
-                const ranges = info.ranges[i];
-                results.push({ value: item, ranges });
-              }
-              return results;
+              const result = await fuzzySearchAutoCompleteItems(query);
+              return result;
             },
             command: ({ editor, range, props }) => {
               // @ts-ignore
@@ -409,6 +383,11 @@ export function FormEditor({
               >;
               let popup: Array<{ destroy: () => void; hide: () => void }>;
 
+              const fetchItems = async (query?: string) => {
+                if (!query) return [];
+                return fuzzySearchAutoCompleteItems(query);
+              };
+
               const destroyMention = () => {
                 if (popup?.[0]) {
                   popup[0].destroy();
@@ -420,6 +399,7 @@ export function FormEditor({
 
               return {
                 onStart: (props) => {
+                  console.log("call start", props.query);
                   hasSelectAutoCompleteRef.current = false;
                   if (!props.items.length) {
                     return false;
@@ -431,7 +411,10 @@ export function FormEditor({
                   };
 
                   component = new ReactRenderer(AutoCompleteMentionList, {
-                    props,
+                    props: {
+                      ...props,
+                      fetchItems,
+                    },
                     editor: props.editor,
                   });
 
@@ -759,3 +742,84 @@ export const debouncedListWorkflows = debounceWithCachedValue(
     leading: true,
   },
 );
+
+const debouncedListMcpConnections = debounceWithCachedValue(
+  async () => {
+    try {
+      const data = await fetchMcpStatus().then((x) => x.toJSON());
+      if (!data?.connections) return [];
+
+      return pipe(
+        data.connections,
+        (obj) => Object.entries(obj),
+        filter(([_k, v]) => v.status === "ready"),
+        map(([key]) => key),
+      );
+    } catch {
+      return [];
+    }
+  },
+  1000 * 60, // 1 minute
+  {
+    leading: true,
+  },
+);
+
+const debouncedListSymbols = debounceWithCachedValue(
+  async (query: string) => {
+    const symbols = await vscodeHost.listSymbolsInWorkspace({
+      query,
+      limit: 20,
+    });
+    return {
+      symbols,
+    };
+  },
+  300,
+  {
+    leading: true,
+  },
+);
+
+const fuzzySearchAutoCompleteItems = async (query: string) => {
+  if (!query) return [];
+
+  const [symbolsData, mcpsData] = await Promise.all([
+    debouncedListSymbols(query),
+    debouncedListMcpConnections(),
+  ]);
+
+  const buildInTools = AllTools.map((x) => x.label);
+  const symbols = symbolsData?.symbols?.length
+    ? pipe(
+        symbolsData.symbols,
+        map((x) => x.label),
+        unique(),
+      )
+    : [];
+  const mcps = mcpsData || [];
+
+  return [
+    ...fuzzySearch("tool", buildInTools, query),
+    ...fuzzySearch("mcp", mcps, query),
+    ...fuzzySearch("symbol", symbols, query),
+  ];
+};
+
+function fuzzySearch(type: string, items: string[], query: string) {
+  const [_, info, order] = ufInstance.search(items, query);
+  if (!order) return [];
+  const results = [];
+  for (const i of order) {
+    const item = items[info.idx[i]];
+    const ranges = info.ranges[i];
+    results.push({
+      value: {
+        label: item,
+        type,
+      },
+      ranges,
+    });
+  }
+  return results;
+}
