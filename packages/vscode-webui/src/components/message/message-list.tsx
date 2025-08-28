@@ -207,6 +207,7 @@ function Part({
         tool={part}
         isLoading={isLoading}
         changes={getToolCallCheckpoint(part, messages)}
+        messages={messages}
       />
     );
   }

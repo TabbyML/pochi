@@ -28,7 +28,6 @@ type StreamingResult =
   | {
       toolName: "executeCommand";
       output: ExecuteCommandResult;
-      detach: () => void;
     }
   | {
       // Not actually a task streaming result, but we provide context here for the live-sub-task.
@@ -41,7 +40,6 @@ type CompleteReason =
   | "execute-finish"
   | "user-reject"
   | "preview-reject"
-  | "user-detach"
   | "user-abort";
 
 type AbortFunctionType = AbortController["abort"];
@@ -349,20 +347,11 @@ export class ManagedToolCallLifeCycle
     const signal = threadSignal(result.output);
     const { abort, abortSignal } = this.checkState("Streaming", "execute");
 
-    let isUserDetached = false;
-
-    const detach = () => {
-      isUserDetached = true;
-      result.detach();
-      abort();
-    };
-
     this.transitTo("execute", {
       type: "execute:streaming",
       streamingResult: {
         toolName: "executeCommand",
         output: signal.value,
-        detach,
       },
       abort,
       abortSignal,
@@ -381,11 +370,7 @@ export class ManagedToolCallLifeCycle
         this.transitTo("execute:streaming", {
           type: "complete",
           result,
-          reason: isUserDetached
-            ? "user-detach"
-            : abortSignal.aborted
-              ? "user-abort"
-              : "execute-finish",
+          reason: abortSignal.aborted ? "user-abort" : "execute-finish",
         });
         unsubscribe();
       } else {
@@ -394,7 +379,6 @@ export class ManagedToolCallLifeCycle
           streamingResult: {
             toolName: "executeCommand",
             output,
-            detach,
           },
           abort,
           abortSignal,

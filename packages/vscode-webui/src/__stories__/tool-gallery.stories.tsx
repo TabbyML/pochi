@@ -15,6 +15,7 @@ const ToolsGallery: React.FC<{
           // @ts-expect-error
           tool={tool}
           isLoading={false}
+          messages={[]}
         />
       ))}
     </div>
@@ -111,7 +112,6 @@ const executeCommandProps: ExecuteCommandProp["tool"] = {
   input: {
     command: "npm run dev --port 3001",
     cwd: "/Users/annoy/github.com/TabbyML/ragdoll/packages/website",
-    isDevServer: true,
   },
   output: {
     output: "Development server started on port 3001",
