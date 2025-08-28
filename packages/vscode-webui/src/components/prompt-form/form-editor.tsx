@@ -324,11 +324,11 @@ export function FormEditor({
             },
           },
         }),
-        AutoCompleteExtension,
         History.configure({
           depth: 20,
         }),
         ...(enableSubmitHistory ? [SubmitHistoryExtension] : []),
+        AutoCompleteExtension,
       ],
       editorProps: {
         attributes: {
