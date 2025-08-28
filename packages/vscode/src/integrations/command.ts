@@ -29,6 +29,7 @@ import type {
 import { getServerBaseUrl } from "@getpochi/common/vscode-webui-bridge";
 import { inject, injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
+import { GeminiOAuthHandler } from "./auth/gemini-oauth";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { type PochiAdvanceSettings, PochiConfiguration } from "./configuration";
 import { DiffChangesContentProvider } from "./editor/diff-changes-content-provider";
@@ -84,6 +85,29 @@ export class CommandManager implements vscode.Disposable {
             `${getServerBaseUrl()}/auth/vscode-link?uriScheme=${vscode.env.uriScheme}`,
           ),
         );
+      }),
+
+      vscode.commands.registerCommand("pochi.gemini.oauth", async () => {
+        try {
+          const geminiOAuth = new GeminiOAuthHandler();
+          const oauthResult = await geminiOAuth.startOAuthFlow();
+
+          vscode.window.showInformationMessage(
+            `Gemini OAuth opened in browser. Waiting for authentication on localhost:${oauthResult.port}...`,
+          );
+
+          // Open OAuth URL
+          vscode.env.openExternal(vscode.Uri.parse(oauthResult.authUrl));
+
+          // Wait for OAuth completion
+          await oauthResult.loginCompletePromise;
+        } catch (error) {
+          const errorMessage =
+            error instanceof Error ? error.message : "Unknown error";
+          vscode.window.showErrorMessage(
+            `Pochi: Gemini OAuth failed. ${errorMessage}`,
+          );
+        }
       }),
 
       vscode.commands.registerCommand(
