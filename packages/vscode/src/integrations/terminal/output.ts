@@ -12,6 +12,7 @@ const logger = getLogger("TerminalOutput");
 interface TruncationResult {
   chunks: string[];
   isTruncated: boolean;
+  truncatedBytes: number;
 }
 
 /**
@@ -25,12 +26,15 @@ export class OutputTruncator {
    */
   truncateChunks(chunks: string[]): TruncationResult {
     const currentChunks = [...chunks];
-
-    // Calculate initial content size using the same separator as joinContent
-    let contentBytes = calculateContentBytes(currentChunks);
+    const initialContentBytes = calculateContentBytes(currentChunks);
+    let contentBytes = initialContentBytes;
 
     if (contentBytes <= MaxTerminalOutputSize) {
-      return { chunks: currentChunks, isTruncated: this.isTruncated };
+      return {
+        chunks: currentChunks,
+        isTruncated: this.isTruncated,
+        truncatedBytes: 0,
+      };
     }
 
     // Remove chunks from the beginning until we're under the limit
@@ -45,10 +49,12 @@ export class OutputTruncator {
 
     // If only one chunk left but still exceeds limit, truncate its content
     if (contentBytes > MaxTerminalOutputSize && currentChunks.length === 1) {
+      const originalChunk = currentChunks[0];
       currentChunks[0] = truncateTextByLimit(
-        currentChunks[0],
+        originalChunk,
         MaxTerminalOutputSize,
       );
+      contentBytes = calculateContentBytes(currentChunks);
     }
 
     if (!this.isTruncated) {
@@ -56,7 +62,8 @@ export class OutputTruncator {
       logger.warn(`Shell output truncated at ${MaxTerminalOutputSize} bytes`);
     }
 
-    return { chunks: currentChunks, isTruncated: true };
+    const truncatedBytes = initialContentBytes - contentBytes;
+    return { chunks: currentChunks, isTruncated: true, truncatedBytes };
   }
 }
 
@@ -124,7 +131,7 @@ export class OutputManager {
    */
   private chunks: string[] = [];
   private truncator = new OutputTruncator();
-  private lastReadLength = 0;
+  private lastReadLength = 0; // tracks byte length, not character length
 
   private constructor(options: OutputManagerOptions) {
     this.id = options.id;
@@ -156,16 +163,39 @@ export class OutputManager {
     error?: string;
   } {
     const currentOutput = this.output.value.content;
-    let newOutput = currentOutput.slice(this.lastReadLength);
-    this.lastReadLength = currentOutput.length;
+    const currentOutputBytes = Buffer.byteLength(currentOutput, "utf8");
 
-    if (regex) {
-      newOutput = newOutput
-        .split("\n")
-        .filter((line) => regex.test(line))
-        .join("\n");
+    // Get the substring based on byte position
+    let newOutput = "";
+    if (this.lastReadLength < currentOutputBytes) {
+      // Find the character position that corresponds to lastReadLength bytes
+      const buffer = Buffer.from(currentOutput, "utf8");
+      const slicedBuffer = buffer.subarray(this.lastReadLength);
+      newOutput = slicedBuffer.toString("utf8");
     }
 
+    this.lastReadLength = currentOutputBytes;
+
+    if (regex) {
+      /**
+       * The splitting with a capturing group creates an array where:
+       * Even indices (0, 2, 4, ...) contain the actual line content
+       * Odd indices (1, 3, 5, ...) contain the line separators (\r\n or \n)
+       */
+      const lines = newOutput.split(/(\r\n|\n)/);
+      const filteredParts: string[] = [];
+
+      for (let i = 0; i < lines.length; i += 2) {
+        const lineContent = lines[i] || "";
+        const lineSeparator = lines[i + 1] || "";
+
+        if (regex.test(lineContent)) {
+          filteredParts.push(lineContent + lineSeparator);
+        }
+      }
+
+      newOutput = filteredParts.join("");
+    }
     return {
       output: newOutput,
       isTruncated: this.output.value.isTruncated ?? false,
@@ -187,9 +217,11 @@ export class OutputManager {
    */
   finalize(detached: boolean, error?: ExecutionError): void {
     // Final truncation check
-    const { chunks: finalChunks, isTruncated } = this.truncator.truncateChunks(
-      this.chunks,
-    );
+    const {
+      chunks: finalChunks,
+      isTruncated,
+      truncatedBytes,
+    } = this.truncator.truncateChunks(this.chunks);
     this.chunks = finalChunks;
     let errorText: string | undefined;
 
@@ -203,8 +235,13 @@ export class OutputManager {
       errorText = error?.message;
     }
 
+    const finalContent = joinContent(this.chunks);
+    const finalContentBytes = Buffer.byteLength(finalContent, "utf8");
+
+    this.adjustLastReadLength(truncatedBytes, finalContentBytes);
+
     this.output.value = {
-      content: joinContent(this.chunks),
+      content: finalContent,
       status: "completed",
       isTruncated,
       error: errorText,
@@ -212,15 +249,38 @@ export class OutputManager {
   }
 
   /**
+   * Adjusts lastReadLength based on truncation to maintain correct read position
+   */
+  private adjustLastReadLength(
+    truncatedBytes: number,
+    contentBytes: number,
+  ): void {
+    if (truncatedBytes > 0) {
+      // Adjust lastReadLength based on how much content was truncated
+      this.lastReadLength = Math.max(0, this.lastReadLength - truncatedBytes);
+      // Ensure lastReadLength doesn't exceed the new content size
+      this.lastReadLength = Math.min(this.lastReadLength, contentBytes);
+    }
+  }
+
+  /**
    * Updates the output signal with current content and status
    */
   private updateOutput(status: ExecuteCommandResult["status"]): void {
-    const { chunks: truncatedChunks, isTruncated } =
-      this.truncator.truncateChunks(this.chunks);
+    const {
+      chunks: truncatedChunks,
+      isTruncated,
+      truncatedBytes,
+    } = this.truncator.truncateChunks(this.chunks);
     this.chunks = truncatedChunks;
 
+    const newContent = joinContent(this.chunks);
+    const newContentBytes = Buffer.byteLength(newContent, "utf8");
+
+    this.adjustLastReadLength(truncatedBytes, newContentBytes);
+
     this.output.value = {
-      content: joinContent(this.chunks),
+      content: newContent,
       status,
       isTruncated,
     };

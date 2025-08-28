@@ -1,4 +1,5 @@
 import { CommandExecutionPanel } from "../command-execution-panel";
+import { HighlightedText } from "../highlight-text";
 import { StatusIcon } from "../status-icon";
 import { ExpandableToolContainer } from "../tool-container";
 import type { ToolProps } from "../types";
@@ -6,11 +7,17 @@ import type { ToolProps } from "../types";
 export const ReadCommandOutputTool: React.FC<
   ToolProps<"readCommandOutput">
 > = ({ tool, isExecuting }) => {
-  const { backgroundCommandId } = tool.input || {};
+  const { backgroundCommandId, regex } = tool.input || {};
   const title = (
     <>
       <StatusIcon isExecuting={isExecuting} tool={tool} />
       <span className="ml-2">Reading background command output</span>
+      {regex && (
+        <>
+          {" "}
+          with regex filter: <HighlightedText>{regex}</HighlightedText>
+        </>
+      )}
     </>
   );
 
