@@ -1,8 +1,7 @@
 import { ClientTools } from "@getpochi/tools";
 import uFuzzy from "@leeoniya/ufuzzy";
-import { Extension } from "@tiptap/core";
 import { PluginKey } from "@tiptap/pm/state";
-import { ReactRenderer } from "@tiptap/react";
+import { Extension, ReactRenderer } from "@tiptap/react";
 import {
   Suggestion,
   type SuggestionKeyDownProps,
