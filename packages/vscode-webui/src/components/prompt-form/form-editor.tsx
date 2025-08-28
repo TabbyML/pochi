@@ -1,9 +1,5 @@
 import { debounceWithCachedValue } from "@/lib/debounce";
-import {
-  fuzzySearchFiles,
-  fuzzySearchWorkflows,
-  ufInstance,
-} from "@/lib/fuzzy-search";
+import { fuzzySearchFiles, fuzzySearchWorkflows } from "@/lib/fuzzy-search";
 import { useActiveTabs } from "@/lib/hooks/use-active-tabs";
 import { vscodeHost } from "@/lib/vscode";
 import Document from "@tiptap/extension-document";
@@ -20,6 +16,12 @@ import {
 } from "@tiptap/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import tippy from "tippy.js";
+
+import { cn } from "@/lib/utils";
+import { findSuggestionMatch } from "@tiptap/suggestion";
+import type { SuggestionMatch, Trigger } from "@tiptap/suggestion";
+import { ScrollArea } from "../ui/scroll-area";
+import { AutoCompleteExtension } from "./auto-completion/extension";
 import {
   PromptFormMentionExtension,
   fileMentionPluginKey,
@@ -29,24 +31,6 @@ import {
   type MentionListProps,
 } from "./context-mention/mention-list";
 import "./prompt-form.css";
-import { fetchMcpStatus } from "@/lib/hooks/use-mcp";
-import { cn } from "@/lib/utils";
-import { ClientTools } from "@getpochi/tools";
-import {
-  type SuggestionMatch,
-  type Trigger,
-  findSuggestionMatch,
-} from "@tiptap/suggestion";
-import { filter, map, pipe, unique } from "remeda";
-import { ScrollArea } from "../ui/scroll-area";
-import {
-  AutoCompleteExtension,
-  autoCompletePluginKey,
-} from "./auto-completion/extension";
-import {
-  type AutoCompleteListProps,
-  AutoCompleteMentionList,
-} from "./auto-completion/mention-list";
 import type { MentionListActions } from "./shared";
 import { SubmitHistoryExtension } from "./submit-history-extension";
 import {
@@ -59,10 +43,6 @@ import {
 } from "./workflow-mention/mention-list";
 
 const newLineCharacter = "\n";
-
-const AllTools = Object.entries({ ...ClientTools }).map(([id]) => ({
-  label: id,
-}));
 
 // Custom keyboard shortcuts extension that handles Enter key behavior
 function CustomEnterKeyHandler(
@@ -128,7 +108,6 @@ export function FormEditor({
   }, [activeTabs]);
   const isFileMentionComposingRef = useRef(false);
   const isCommandMentionComposingRef = useRef(false);
-  const hasSelectAutoCompleteRef = useRef(false);
 
   // State for drag overlay UI
   const [isDragOver, setIsDragOver] = useState(false);
@@ -205,14 +184,6 @@ export function FormEditor({
                   if (!tiptapProps.clientRect) {
                     return;
                   }
-
-                  // @ts-ignore - accessing extensionManager and methods
-                  const customExtension =
-                    props.editor.extensionManager?.extensions.find(
-                      // @ts-ignore - extension type
-                      (extension) =>
-                        extension.name === "custom-enter-key-handler",
-                    );
 
                   popup = tippy("body", {
                     getReferenceClientRect: tiptapProps.clientRect,
@@ -353,138 +324,7 @@ export function FormEditor({
             },
           },
         }),
-        AutoCompleteExtension.configure({
-          suggestion: {
-            char: "",
-            pluginKey: autoCompletePluginKey,
-            items: async ({ query }: { query: string }) => {
-              const result = await fuzzySearchAutoCompleteItems(query);
-              return result;
-            },
-            command: ({ editor, range, props }) => {
-              // @ts-ignore
-              const label = props.value.label;
-              editor.chain().focus().insertContentAt(range, label).run();
-              hasSelectAutoCompleteRef.current = true;
-            },
-            allow: ({ editor }) => {
-              const fileMentionState = fileMentionPluginKey.getState(
-                editor.state,
-              );
-              const workflowMentionState = workflowMentionPluginKey.getState(
-                editor.state,
-              );
-              return !fileMentionState?.active && !workflowMentionState?.active;
-            },
-            render: () => {
-              let component: ReactRenderer<
-                MentionListActions,
-                AutoCompleteListProps
-              >;
-              let popup: Array<{ destroy: () => void; hide: () => void }>;
-
-              const fetchItems = async (query?: string) => {
-                if (!query) return [];
-                return fuzzySearchAutoCompleteItems(query);
-              };
-
-              const destroyMention = () => {
-                if (popup?.[0]) {
-                  popup[0].destroy();
-                }
-                if (component) {
-                  component.destroy();
-                }
-              };
-
-              return {
-                onStart: (props) => {
-                  console.log("call start", props.query);
-                  hasSelectAutoCompleteRef.current = false;
-                  if (!props.items.length) {
-                    return false;
-                  }
-
-                  const tiptapProps = props as {
-                    editor: unknown;
-                    clientRect?: () => DOMRect;
-                  };
-
-                  component = new ReactRenderer(AutoCompleteMentionList, {
-                    props: {
-                      ...props,
-                      fetchItems,
-                    },
-                    editor: props.editor,
-                  });
-
-                  if (!tiptapProps.clientRect) {
-                    return;
-                  }
-
-                  popup = tippy("body", {
-                    getReferenceClientRect: tiptapProps.clientRect,
-                    appendTo: () => document.body,
-                    content: component.element,
-                    showOnCreate: true,
-                    interactive: true,
-                    trigger: "manual",
-                    placement: "top-start",
-                    offset: [0, 6],
-                    maxWidth: "none",
-                  });
-                },
-                onUpdate: (props) => {
-                  if (!props.items.length || hasSelectAutoCompleteRef.current) {
-                    destroyMention();
-                    return;
-                  }
-                  hasSelectAutoCompleteRef.current = false;
-                  component.updateProps(props);
-                },
-                onExit: () => {
-                  destroyMention();
-                },
-                onKeyDown: (props) => {
-                  if (props.event.key === "Escape") {
-                    destroyMention();
-                    return true;
-                  }
-                  return component.ref?.onKeyDown(props) ?? false;
-                },
-              };
-            },
-            findSuggestionMatch: (config: Trigger): SuggestionMatch | null => {
-              // auto-complete: trigger on any word character that is not prefixed with '/' or '@'
-              const { $position } = config;
-              const text =
-                $position.nodeBefore?.isText && $position.nodeBefore.text;
-              if (!text) return null;
-
-              // Get the text before the cursor
-              const cursorPos = $position.pos;
-              // Find the most recent continuous word as the query
-              const match = text.match(/(\w+)$/);
-              if (!match) return null;
-              const word = match[1];
-              // Do not trigger if it starts with '/' or '@'
-              if (word.startsWith("/") || word.startsWith("@")) return null;
-              // Only allow word characters
-              if (!/^\w+$/.test(word)) return null;
-
-              // Calculate the range
-              const from = cursorPos - word.length;
-              const to = cursorPos;
-
-              // Return the suggestion match
-              return {
-                range: { from, to },
-                query: word,
-                text: word,
-              };
-            },
-          },
-        }),
+        AutoCompleteExtension,
         History.configure({
           depth: 20,
         }),
@@ -510,7 +350,6 @@ export function FormEditor({
           dragleave: (view, event) => {
             const relatedTarget = (event as DragEvent)
               .relatedTarget as HTMLElement | null;
-            // Only trigger dragleave if we're actually leaving the editor area
             if (!relatedTarget || !view.dom.contains(relatedTarget)) {
               setIsDragOver(false);
             }
@@ -552,7 +391,6 @@ export function FormEditor({
           setInput(text);
         }
 
-        // Update current draft if we have submit history enabled
         if (
           enableSubmitHistory &&
           props.editor.extensionManager.extensions.find(
@@ -579,11 +417,9 @@ export function FormEditor({
           );
         }
 
-        // Save content when changes
         debouncedSaveEditorState();
       },
       onDestroy() {
-        // Save content when editor is destroyed
         saveEdtiorState();
       },
       onPaste: (e) => {
@@ -599,7 +435,6 @@ export function FormEditor({
     }
   }, [editor, editorRef]);
 
-  // For saving the editor content to the session state
   const saveEdtiorState = useCallback(async () => {
     if (editor && !editor.isDestroyed) {
       await vscodeHost.setSessionState({
@@ -614,7 +449,6 @@ export function FormEditor({
     [],
   );
 
-  // Load session state when the editor is initialized
   useEffect(() => {
     if (!editor) {
       return;
@@ -633,7 +467,6 @@ export function FormEditor({
     loadSessionState();
   }, [editor]);
 
-  // Update editor content when input changes
   useEffect(() => {
     if (
       editor &&
@@ -643,7 +476,6 @@ export function FormEditor({
     }
   }, [editor, input]);
 
-  // Auto focus the editor when the component is mounted
   useEffect(() => {
     if (autoFocus && editor) {
       editor.commands.focus();
@@ -656,7 +488,6 @@ export function FormEditor({
     }
   }, [editor]);
 
-  // Auto focus when document is focused.
   useEffect(() => {
     window.addEventListener("focus", focusEditor);
     return () => {
@@ -664,7 +495,6 @@ export function FormEditor({
     };
   }, [focusEditor]);
 
-  // Handle form submission to record submit history
   const handleSubmit = useCallback(
     (e: React.FormEvent<HTMLFormElement>) => {
       if (enableSubmitHistory && editor && !editor.isDestroyed) {
@@ -702,7 +532,6 @@ export function FormEditor({
         />
       </ScrollArea>
 
-      {/* Drop zone overlay - shows when dragging over the editor */}
       {isDragOver && (
         <div className="pointer-events-none absolute inset-0 z-50 flex items-center justify-center rounded-sm border-2 border-zinc-500 border-dashed dark:bg-zinc-500/30">
           <div className="rounded-md border bg-white px-4 py-2 shadow-lg dark:bg-gray-800">
@@ -742,84 +571,3 @@ export const debouncedListWorkflows = debounceWithCachedValue(
     leading: true,
   },
 );
-
-const debouncedListMcpConnections = debounceWithCachedValue(
-  async () => {
-    try {
-      const data = await fetchMcpStatus().then((x) => x.toJSON());
-      if (!data?.connections) return [];
-
-      return pipe(
-        data.connections,
-        (obj) => Object.entries(obj),
-        filter(([_k, v]) => v.status === "ready"),
-        map(([key]) => key),
-      );
-    } catch {
-      return [];
-    }
-  },
-  1000 * 60, // 1 minute
-  {
-    leading: true,
-  },
-);
-
-const debouncedListSymbols = debounceWithCachedValue(
-  async (query: string) => {
-    const symbols = await vscodeHost.listSymbolsInWorkspace({
-      query,
-      limit: 20,
-    });
-    return {
-      symbols,
-    };
-  },
-  300,
-  {
-    leading: true,
-  },
-);
-
-const fuzzySearchAutoCompleteItems = async (query: string) => {
-  if (!query) return [];
-
-  const [symbolsData, mcpsData] = await Promise.all([
-    debouncedListSymbols(query),
-    debouncedListMcpConnections(),
-  ]);
-
-  const buildInTools = AllTools.map((x) => x.label);
-  const symbols = symbolsData?.symbols?.length
-    ? pipe(
-        symbolsData.symbols,
-        map((x) => x.label),
-        unique(),
-      )
-    : [];
-  const mcps = mcpsData || [];
-
-  return [
-    ...fuzzySearch("tool", buildInTools, query),
-    ...fuzzySearch("mcp", mcps, query),
-    ...fuzzySearch("symbol", symbols, query),
-  ];
-};
-
-function fuzzySearch(type: string, items: string[], query: string) {
-  const [_, info, order] = ufInstance.search(items, query);
-  if (!order) return [];
-  const results = [];
-  for (const i of order) {
-    const item = items[info.idx[i]];
-    const ranges = info.ranges[i];
-    results.push({
-      value: {
-        label: item,
-        type,
-      },
-      ranges,
-    });
-  }
-  return results;
-}
