@@ -14,7 +14,6 @@ export const KillBackgroundCommandTool: React.FC<
     </>
   );
 
-  let command: string | undefined;
   let detail: React.ReactNode;
   if (
     tool.state === "output-available" &&
@@ -23,7 +22,7 @@ export const KillBackgroundCommandTool: React.FC<
     "success" in tool.output &&
     tool.output.success === true
   ) {
-    command =
+    const command =
       tool.output?._meta.command ?? `Command id: ${backgroundCommandId}`;
     detail = (
       <CommandExecutionPanel

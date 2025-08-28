@@ -21,8 +21,6 @@ export const ReadCommandOutputTool: React.FC<
     </>
   );
 
-  let output: string | undefined;
-  let command: string | undefined;
   let detail: React.ReactNode;
   if (
     tool.state === "output-available" &&
@@ -31,9 +29,8 @@ export const ReadCommandOutputTool: React.FC<
     "output" in tool.output &&
     typeof tool.output.output === "string"
   ) {
-    output = tool.output.output;
-    command =
-      tool.output?._meta.command ?? `Command id: ${backgroundCommandId}`;
+    const { output, _meta } = tool.output;
+    const command = _meta.command ?? `Command id: ${backgroundCommandId}`;
     detail = (
       <CommandExecutionPanel
         command={command}

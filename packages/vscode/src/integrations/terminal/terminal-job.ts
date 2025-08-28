@@ -3,8 +3,7 @@ import { getLogger } from "@/lib/logger";
 import { getShellPath } from "@getpochi/common/tool-utils";
 import * as vscode from "vscode";
 import { OutputManager } from "./output";
-import { ExecutionError, createBackgroundOutputStream } from "./utils";
-import { waitForWebviewSubscription } from "./utils";
+import { ExecutionError } from "./utils";
 
 const logger = getLogger("TerminalJob");
 
@@ -99,8 +98,6 @@ export class TerminalJob implements vscode.Disposable {
    * Execute the configured command in the terminal
    */
   async execute(): Promise<void> {
-    await waitForWebviewSubscription();
-
     let executeError: ExecutionError | undefined = undefined;
 
     try {
@@ -211,10 +208,7 @@ export class TerminalJob implements vscode.Disposable {
   private async processOutputStream(
     outputStream: AsyncIterable<string>,
   ): Promise<void> {
-    const stream = this.config.background
-      ? createBackgroundOutputStream(outputStream)
-      : outputStream;
-    for await (const chunk of stream) {
+    for await (const chunk of outputStream) {
       this.outputManager.addChunk(chunk);
     }
   }
