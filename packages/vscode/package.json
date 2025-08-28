@@ -120,6 +120,11 @@
         "command": "pochi.openCustomModelSettings",
         "title": "Open Custom Model Settings",
         "category": "Pochi"
+      },
+      {
+        "command": "pochi.anthropic.oauth",
+        "title": "Anthropic OAuth Login",
+        "category": "Pochi"
       }
     ],
     "menus": {
