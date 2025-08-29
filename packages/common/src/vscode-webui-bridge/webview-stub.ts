@@ -72,9 +72,7 @@ const VSCodeHostStub = {
   },
   listAutoCompleteCandidates(
     _query?: string,
-    _options?: {
-      symbolLimit?: number;
-    },
+    _limit?: number,
   ): Promise<Array<{ type: "symbol" | "tool" | "mcp"; label: string }>> {
     return Promise.resolve([]);
   },
