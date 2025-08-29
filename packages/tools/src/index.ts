@@ -41,6 +41,7 @@ export const ToolsByPermission = {
     "listFiles",
     "globFiles",
     "searchFiles",
+    "readBackgroundJobOutput",
   ] satisfies ToolName[] as string[],
   write: [
     "writeToFile",
@@ -50,7 +51,6 @@ export const ToolsByPermission = {
   execute: [
     "executeCommand",
     "startBackgroundJob",
-    "readBackgroundJobOutput",
     "killBackgroundJob",
     "newTask",
   ] satisfies ToolName[] as string[],
