@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Section } from "../ui/section";
+import { LanguageMenuItem } from "../ui/language-menu-item";
 
 interface AccountSectionProps {
   user?: User;
@@ -87,6 +88,7 @@ export const AccountSection: React.FC<AccountSectionProps> = ({ user }) => {
               {t("common.account")}
             </a>
           </DropdownMenuItem>
+          <LanguageMenuItem />
           <DropdownMenuItem asChild className="cursor-pointer">
             <a
               href="https://docs.getpochi.com"
