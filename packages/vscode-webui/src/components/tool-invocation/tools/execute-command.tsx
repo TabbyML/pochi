@@ -1,4 +1,4 @@
-import { useAutoApproveGuard, useToolCallLifeCycle } from "@/features/chat";
+import { useToolCallLifeCycle } from "@/features/chat";
 import { getToolName } from "ai";
 import { useCallback } from "react";
 import { CommandExecutionPanel } from "../command-execution-panel";
@@ -19,16 +19,14 @@ export const executeCommandTool: React.FC<ToolProps<"executeCommand">> = ({
     lifecycle.abort();
   }, [lifecycle.abort]);
 
-  const { cwd, command, isDevServer } = tool.input || {};
+  const { cwd, command } = tool.input || {};
   const cwdNode = cwd ? (
     <span>
       {" "}
       in <HighlightedText>{cwd}</HighlightedText>
     </span>
   ) : null;
-  const text = isDevServer
-    ? "I will start a dev server"
-    : "I will execute the following command";
+  const text = "I will execute the following command";
   const title = (
     <>
       <StatusIcon isExecuting={isExecuting} tool={tool} />
@@ -53,17 +51,9 @@ export const executeCommandTool: React.FC<ToolProps<"executeCommand">> = ({
     tool.output !== null &&
     "output" in tool.output
   ) {
-    output = tool.output.output;
+    output = tool.output.output ?? "";
     completed = true;
   }
-
-  const autoApproveGuard = useAutoApproveGuard();
-  const onDetach = streamingResult
-    ? () => {
-        autoApproveGuard.current = false;
-        streamingResult.detach();
-      }
-    : undefined;
 
   return (
     <ExpandableToolContainer
@@ -73,10 +63,8 @@ export const executeCommandTool: React.FC<ToolProps<"executeCommand">> = ({
           command={command ?? ""}
           output={output}
           onStop={abortTool}
-          onDetach={onDetach}
           completed={completed}
           isExecuting={isExecuting}
-          isDevServer={isDevServer}
         />
       }
     />

@@ -75,13 +75,14 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
   }, [tools, lifecycles, selectedModel?.id, autoApproveGuard]);
 
   const onReject = useCallback(() => {
+    autoApproveGuard.current = false;
     for (const lifecycle of lifecycles) {
       if (lifecycle.status !== "ready") {
         continue;
       }
       lifecycle.reject();
     }
-  }, [lifecycles]);
+  }, [lifecycles, autoApproveGuard]);
 
   const isReady = lifecycles.every((x) => x.status === "ready");
   const isAutoApproved = useToolAutoApproval(

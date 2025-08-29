@@ -16,6 +16,9 @@ export type {
   ToolFunctionType,
   PreviewToolFunctionType,
 } from "./types";
+import { killBackgroundJob } from "./kill-background-job";
+import { readBackgroundJobOutput } from "./read-background-job-output";
+import { startBackgroundJob } from "./start-background-job";
 import { writeToFile } from "./write-to-file";
 export type { SubTask } from "./new-task";
 
@@ -38,19 +41,25 @@ export const ToolsByPermission = {
     "listFiles",
     "globFiles",
     "searchFiles",
+    "readBackgroundJobOutput",
   ] satisfies ToolName[] as string[],
   write: [
     "writeToFile",
     "applyDiff",
     "multiApplyDiff",
   ] satisfies ToolName[] as string[],
-  execute: ["executeCommand", "newTask"] satisfies ToolName[] as string[],
+  execute: [
+    "executeCommand",
+    "startBackgroundJob",
+    "killBackgroundJob",
+    "newTask",
+  ] satisfies ToolName[] as string[],
   default: ["todoWrite"] satisfies ToolName[] as string[],
 };
 
 export const ServerToolApproved = "<server-tool-approved>";
 
-export const ClientTools = {
+const CliTools = {
   applyDiff,
   askFollowupQuestion,
   attemptCompletion,
@@ -58,22 +67,34 @@ export const ClientTools = {
   globFiles,
   listFiles,
   multiApplyDiff,
-  newTask,
   readFile,
   searchFiles,
   todoWrite,
   writeToFile,
 };
 
+export const ClientTools = {
+  ...CliTools,
+  newTask,
+  startBackgroundJob,
+  readBackgroundJobOutput,
+  killBackgroundJob,
+};
+
 export type ClientTools = typeof ClientTools;
 
-export const selectClientTools = (isSubTask: boolean) => {
-  if (!isSubTask) {
-    return {
-      ...ClientTools,
-    };
+export const selectClientTools = (options: {
+  isSubTask: boolean;
+  isCli: boolean;
+}) => {
+  if (options.isCli) {
+    return CliTools;
   }
 
-  const { newTask, ...rest } = ClientTools;
-  return rest;
+  if (options?.isSubTask) {
+    const { newTask, ...rest } = ClientTools;
+    return rest;
+  }
+
+  return ClientTools;
 };

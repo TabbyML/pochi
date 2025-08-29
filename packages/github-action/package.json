@@ -1,0 +1,24 @@
+{
+  "name": "@pochi/github-action",
+  "version": "0.0.1",
+  "description": "Pochi GitHub Action - One-line installation for AI-powered GitHub automation",
+  "main": "src/index.ts",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "bun build src/index.ts --outdir dist --target bun",
+    "dev": "bun --watch src/index.ts",
+    "test": "echo 'No tests for github-action package - this is expected'",
+    "lint": "biome check src/",
+    "lint:fix": "biome check --apply src/",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": ["github-action", "ai", "assistant", "pochi"],
+  "license": "MIT",
+  "dependencies": {
+    "@actions/core": "^1.11.1",
+    "@actions/github": "^6.0.1",
+    "@octokit/rest": "^22.0.0",
+    "@octokit/webhooks-types": "^7.6.1"
+  }
+}

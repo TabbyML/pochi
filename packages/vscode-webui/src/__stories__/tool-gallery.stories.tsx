@@ -15,6 +15,7 @@ const ToolsGallery: React.FC<{
           // @ts-expect-error
           tool={tool}
           isLoading={false}
+          messages={[]}
         />
       ))}
     </div>
@@ -38,6 +39,9 @@ type WriteToFileProp = ToolProps<"writeToFile">;
 type AskFollowupQuestionProp = ToolProps<"askFollowupQuestion">;
 type AttemptCompletionProp = ToolProps<"attemptCompletion">;
 type NewTaskProp = ToolProps<"newTask">;
+type StartBackgroundJobProp = ToolProps<"startBackgroundJob">;
+type ReadBackgroundJobOutputProp = ToolProps<"readBackgroundJobOutput">;
+type KillBackgroundJobProp = ToolProps<"killBackgroundJob">;
 
 const searchProps: SearchFilesProp["tool"] = {
   type: "tool-searchFiles",
@@ -111,7 +115,6 @@ const executeCommandProps: ExecuteCommandProp["tool"] = {
   input: {
     command: "npm run dev --port 3001",
     cwd: "/Users/annoy/github.com/TabbyML/ragdoll/packages/website",
-    isDevServer: true,
   },
   output: {
     output: "Development server started on port 3001",
@@ -275,6 +278,83 @@ const newTaskProps: NewTaskProp["tool"] = {
   },
 };
 
+const startBackgroundJobProps: StartBackgroundJobProp["tool"] = {
+  state: "output-available",
+  toolCallId: "tool_start_bg_job_1",
+  type: "tool-startBackgroundJob",
+  input: {
+    command: "npm run dev",
+  },
+  output: {
+    backgroundJobId: "job-1",
+  },
+};
+
+const readBackgroundJobOutputProps: ReadBackgroundJobOutputProp["tool"] = {
+  state: "output-available",
+  toolCallId: "tool_read_bg_job_output_1",
+  type: "tool-readBackgroundJobOutput",
+  input: {
+    backgroundJobId: "job-1",
+  },
+  output: {
+    status: "running",
+    output: "Starting development server...",
+  },
+};
+
+const killBackgroundJobProps: KillBackgroundJobProp["tool"] = {
+  state: "output-available",
+  toolCallId: "tool_kill_bg_job_1",
+  type: "tool-killBackgroundJob",
+  input: {
+    backgroundJobId: "job-1",
+  },
+  output: {
+    success: true,
+  },
+};
+
+const startBackgroundJobPropsError: StartBackgroundJobProp["tool"] = {
+  state: "output-available",
+  toolCallId: "tool_start_bg_job_2",
+  type: "tool-startBackgroundJob",
+  input: {
+    command: "npm run start",
+  },
+  output: {
+    // @ts-expect-error
+    error: "Command not found: npm",
+  },
+};
+
+const readBackgroundJobOutputPropsError: ReadBackgroundJobOutputProp["tool"] = {
+  state: "output-available",
+  toolCallId: "tool_read_bg_job_output_2",
+  type: "tool-readBackgroundJobOutput",
+  input: {
+    backgroundJobId: "job-2",
+  },
+  output: {
+    // @ts-expect-error
+    error: "Background job with ID 'job-2' not found.",
+  },
+};
+
+const killBackgroundJobPropsError: KillBackgroundJobProp["tool"] = {
+  state: "output-available",
+  toolCallId: "tool_kill_bg_job_2",
+  type: "tool-killBackgroundJob",
+  input: {
+    backgroundJobId: "job-2",
+  },
+  output: {
+    // @ts-expect-error
+    error:
+      "Failed to kill background job with ID 'job-2'. It may have already been terminated.",
+  },
+};
+
 export const Tools: Story = {
   args: {
     tools: [
@@ -292,6 +372,12 @@ export const Tools: Story = {
       askFollowupQuestionProps,
       askFollowupQuestionProps2,
       attemptCompletionProps,
+      startBackgroundJobProps,
+      readBackgroundJobOutputProps,
+      killBackgroundJobProps,
+      startBackgroundJobPropsError,
+      readBackgroundJobOutputPropsError,
+      killBackgroundJobPropsError,
     ],
   },
   parameters: {

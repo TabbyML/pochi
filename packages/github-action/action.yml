@@ -1,0 +1,52 @@
+name: "pochi GitHub Action"
+description: "Run pochi AI assistant in GitHub Actions workflows"
+branding:
+  icon: "code"
+  color: "blue"
+
+inputs:
+  model:
+    description: "The AI model to use for pochi tasks"
+    required: false
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install pochi CLI
+      shell: bash
+      run: |
+        echo "Installing pochi CLI..."
+        curl -fsSL https://app.getpochi.com/install.sh | bash
+        echo "$HOME/.pochi/bin" >> $GITHUB_PATH
+
+    - name: Install ripgrep
+      shell: bash
+      run: |
+        echo "Installing ripgrep..."
+        sudo apt-get update && sudo apt-get install -y ripgrep
+        echo "Ripgrep installed at: $(which rg)"
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: "20"
+
+    - name: Install bun
+      shell: bash
+      run: npm install -g bun
+
+    - name: Install dependencies
+      shell: bash
+      run: |
+        cd ${GITHUB_ACTION_PATH}
+        bun install --frozen-lockfile
+
+    - name: Run pochi GitHub Action
+      shell: bash
+      run: |
+        if [ -n "${{ inputs.model }}" ]; then
+          export POCHI_MODEL="${{ inputs.model }}"
+        fi
+        bun ${GITHUB_ACTION_PATH}/src/index.ts
+      env:
+        GITHUB_TOKEN: ${{ github.token }}

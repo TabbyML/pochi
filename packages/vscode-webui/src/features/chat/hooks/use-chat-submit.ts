@@ -96,6 +96,7 @@ export function useChatSubmit({
       if (isSubmitDisabled) {
         return;
       }
+
       if (handleStop()) {
         // break isLoading, we need to wait for some time to avoid racing between stop and submit.
         await new Promise((resolve) => setTimeout(resolve, 25));

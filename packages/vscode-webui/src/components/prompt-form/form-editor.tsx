@@ -133,7 +133,6 @@ export function FormEditor({
 
               return fuzzySearchFiles(query, {
                 files: data.files,
-                haystack: data.haystack,
                 activeTabs: activeTabsRef.current,
               });
             },
@@ -151,7 +150,6 @@ export function FormEditor({
 
                 return fuzzySearchFiles(query, {
                   files: data.files,
-                  haystack: data.haystack,
                   activeTabs: activeTabsRef.current,
                 });
               };
@@ -569,7 +567,6 @@ const debouncedListWorkspaceFiles = debounceWithCachedValue(
     const files = await vscodeHost.listFilesInWorkspace();
     return {
       files,
-      haystack: files.map((f) => f.filepath),
     };
   },
   1000 * 60, // 1 minute

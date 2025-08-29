@@ -1,10 +1,12 @@
 import { signal } from "@preact/signals-core";
 import { injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
+import { TerminalJob } from "./terminal-job";
 
 export interface TerminalInfo {
   name: string;
   isActive: boolean;
+  backgroundJobId?: string;
 }
 
 @injectable()
@@ -32,6 +34,7 @@ export class TerminalState implements vscode.Disposable {
     this.disposables.push(
       vscode.window.onDidCloseTerminal(this.onTerminalChanged),
     );
+    this.disposables.push(TerminalJob.onDidDispose(this.onTerminalChanged));
   }
 
   /**
@@ -63,5 +66,6 @@ function listVisibleTerminals(): TerminalInfo[] {
     .map((t) => ({
       name: t.name || "Unnamed Terminal",
       isActive: t === vscode.window.activeTerminal,
+      backgroundJobId: TerminalJob.get(t)?.id,
     }));
 }
