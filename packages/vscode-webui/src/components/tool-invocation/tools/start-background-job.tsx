@@ -1,3 +1,4 @@
+import { useBackgroundJobDisplayId } from "@/lib/hooks/use-background-job-command";
 import { BackgroundJobPanel } from "../command-execution-panel";
 import { HighlightedText } from "../highlight-text";
 import { StatusIcon } from "../status-icon";
@@ -8,6 +9,9 @@ export const StartBackgroundJobTool: React.FC<
   ToolProps<"startBackgroundJob">
 > = ({ tool, isExecuting }) => {
   const { cwd, command } = tool.input || {};
+  const displayId = useBackgroundJobDisplayId(
+    tool.state === "output-available" ? tool.output.backgroundJobId : undefined,
+  );
   const cwdNode = cwd ? (
     <span>
       {" "}
@@ -25,10 +29,10 @@ export const StartBackgroundJobTool: React.FC<
     </>
   );
 
-  return (
-    <ExpandableToolContainer
-      title={title}
-      detail={<BackgroundJobPanel command={command ?? ""} />}
-    />
-  );
+  const detail =
+    command && displayId ? (
+      <BackgroundJobPanel command={command} displayId={displayId} />
+    ) : null;
+
+  return <ExpandableToolContainer title={title} detail={detail} />;
 };
