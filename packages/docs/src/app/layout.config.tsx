@@ -1,6 +1,7 @@
 import type { BaseLayoutProps } from "fumadocs-ui/layouts/shared";
 import logo from "../../public/logo512.png";
 import ExportedImage from "next-image-export-optimizer";
+import { GithubInfo } from "fumadocs-ui/components/github-info";
 
 const basePath = process.env.__NEXT_ROUTER_BASEPATH
 
@@ -19,9 +20,14 @@ export const baseOptions: BaseLayoutProps = {
         Pochi Docs
       </>
     ),
-
   },
   githubUrl: 'https://github.com/TabbyML/pochi',
+  links: [
+    {
+      type:"custom",
+      children: <GithubInfo owner="tabbyml" repo="pochi"/>
+    }
+  ]
 };
 
 export function formatTitle(title: string) {
