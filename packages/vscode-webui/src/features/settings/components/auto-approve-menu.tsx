@@ -184,7 +184,7 @@ export function AutoApproveMenu() {
               <RotateCcw className="size-4 shrink-0" />
               <span className="whitespace-nowrap text-foreground text-sm">
                 {autoApproveSettings.retry
-                  ? t("settings.autoApprove.maxAttempts") + ":"
+                  ? `${t("settings.autoApprove.maxAttempts")}:`
                   : t("settings.autoApprove.retryActions")}
               </span>
             </span>
