@@ -265,28 +265,12 @@ export class GeminiOAuthHandler {
     });
   }
 
-  /**
-   * Get OAuth client ID from environment or configuration
-   */
   private getClientId(): string {
-    // For development/testing purposes, we would use environment variables
-    // In production, this would come from secure configuration
-    return (
-      process.env.GEMINI_OAUTH_CLIENT_ID ||
-      "681255809395-oo8ft2oprdrnp9e3aqf6av3hmdib135j.apps.googleusercontent.com"
-    );
+    return "681255809395-oo8ft2oprdrnp9e3aqf6av3hmdib135j.apps.googleusercontent.com";
   }
 
-  /**
-   * Get OAuth client secret from environment or configuration
-   */
   private getClientSecret(): string {
-    // For development/testing purposes, we would use environment variables
-    // In production, this would come from secure configuration
-    return (
-      process.env.GEMINI_OAUTH_CLIENT_SECRET ||
-      "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"
-    );
+    return "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";
   }
 
   /**
