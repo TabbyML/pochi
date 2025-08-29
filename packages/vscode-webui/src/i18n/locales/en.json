@@ -126,12 +126,12 @@
       "noToolsAvailable": "No tools available from this MCP server"
     }
   },
-  "share": {
+  "shareSupport": {
     "copyLink": "Copy link",
-    "shareWithSupport": "Share with Support",
+    "shareSupportTitle": "Share with Support",
     "shareFirst": "(Share first)",
     "taskSharedMessage": "Task shared with the Pochi team",
-    "taskSharedDetail": "This task and relevant debug information have been sent. For support, please join our Discord server and reference this issue with the ID: {{shareId}}.",
+    "shareSupportDetails": "This task and relevant debug information have been sent. For support, please join our Discord server and reference this issue with the ID: {{shareId}}.",
     "joinDiscord": "Join Discord",
     "ok": "OK"
   }
