@@ -16,6 +16,9 @@ export type {
   ToolFunctionType,
   PreviewToolFunctionType,
 } from "./types";
+import { killBackgroundJob } from "./kill-background-job";
+import { readBackgroundJobOutput } from "./read-background-job-output";
+import { startBackgroundJob } from "./start-background-job";
 import { writeToFile } from "./write-to-file";
 export type { SubTask } from "./new-task";
 
@@ -38,13 +41,19 @@ export const ToolsByPermission = {
     "listFiles",
     "globFiles",
     "searchFiles",
+    "readBackgroundJobOutput",
   ] satisfies ToolName[] as string[],
   write: [
     "writeToFile",
     "applyDiff",
     "multiApplyDiff",
   ] satisfies ToolName[] as string[],
-  execute: ["executeCommand", "newTask"] satisfies ToolName[] as string[],
+  execute: [
+    "executeCommand",
+    "startBackgroundJob",
+    "killBackgroundJob",
+    "newTask",
+  ] satisfies ToolName[] as string[],
   default: ["todoWrite"] satisfies ToolName[] as string[],
 };
 
@@ -55,6 +64,9 @@ export const ClientTools = {
   askFollowupQuestion,
   attemptCompletion,
   executeCommand,
+  startBackgroundJob,
+  readBackgroundJobOutput,
+  killBackgroundJob,
   globFiles,
   listFiles,
   multiApplyDiff,

@@ -74,6 +74,9 @@ import { type FileSelection, TabState } from "../editor/tab-state";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { McpHub } from "../mcp/mcp-hub";
 
+import { killBackgroundJob } from "@/tools/kill-background-job";
+import { readBackgroundJobOutput } from "@/tools/read-background-job-output";
+import { startBackgroundJob } from "@/tools/start-background-job";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { ThirdMcpImporter } from "../mcp/third-party-mcp";
 import { isExecutable } from "../mcp/types";
@@ -693,6 +696,9 @@ const ToolMap: Record<
 > = {
   readFile,
   executeCommand,
+  startBackgroundJob,
+  readBackgroundJobOutput,
+  killBackgroundJob,
   searchFiles,
   listFiles: listFilesTool,
   globFiles,

@@ -20,7 +20,7 @@ Usage notes:
 - You can specify an optional timeout in seconds (up to 300s / 5 minutes). If not specified, commands will timeout after 60s (1 minute).
 - If the output exceeds 30000 characters, output will be truncated before being returned to you.
 - When issuing multiple commands, use the ';' or '&&' operator to separate them. DO NOT use newlines (newlines are ok in quoted strings).
-- You shall avoid use the markdown code black syntax (backtick, '\`') in your command, as it will be interpreted as a command substitution.
+- You shall avoid use the markdown code block syntax (backtick, '\`') in your command, as it will be interpreted as a command substitution.
 
 # Committing changes with git
 
@@ -123,12 +123,6 @@ Important:
       .string()
       .optional()
       .describe("The working directory to execute the command in."),
-    isDevServer: z
-      .boolean()
-      .optional()
-      .describe(
-        "Whether the command is being run as a development server, e.g. `npm run dev`.",
-      ),
     timeout: z
       .number()
       .min(1)
@@ -141,6 +135,7 @@ Important:
   outputSchema: z.object({
     output: z
       .string()
+      .optional()
       .describe("The output of the command (including stdout and stderr)."),
     isTruncated: z
       .boolean()

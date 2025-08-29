@@ -1,5 +1,4 @@
 import * as path from "node:path";
-import { TerminalJob } from "@/integrations/terminal/terminal-job";
 import type { ExecuteCommandOptions } from "@/integrations/terminal/types";
 import { waitForWebviewSubscription } from "@/integrations/terminal/utils";
 import { getWorkspaceFolder } from "@/lib/fs";
@@ -7,7 +6,7 @@ import { getLogger } from "@getpochi/common";
 import { getShellPath } from "@getpochi/common/tool-utils";
 import type { ExecuteCommandResult } from "@getpochi/common/vscode-webui-bridge";
 import type { ClientTools, ToolFunctionType } from "@getpochi/tools";
-import { type Signal, signal } from "@preact/signals-core";
+import { signal } from "@preact/signals-core";
 import { ThreadSignal } from "@quilted/threads/signals";
 import { executeCommandWithNode } from "../integrations/terminal/execute-command-with-node";
 import {
@@ -20,7 +19,7 @@ const logger = getLogger("ExecuteCommand");
 export const executeCommand: ToolFunctionType<
   ClientTools["executeCommand"]
 > = async (
-  { command, cwd = ".", isDevServer, timeout },
+  { command, cwd = ".", timeout },
   { abortSignal, nonInteractive },
 ) => {
   const defaultTimeout = 120;
@@ -35,58 +34,41 @@ export const executeCommand: ToolFunctionType<
     cwd = path.normalize(path.join(workspaceRootUri.fsPath, cwd));
   }
 
-  let output: Signal<ExecuteCommandResult>;
-  let detach: () => void = () => {};
+  const output = signal<ExecuteCommandResult>({
+    content: "",
+    status: "idle",
+    isTruncated: false,
+  });
 
-  if (isDevServer) {
-    const job = TerminalJob.create({
-      name: command,
+  waitForWebviewSubscription().then(() => {
+    executeCommandImpl({
       command,
       cwd,
-      abortSignal: abortSignal,
-      background: isDevServer,
       timeout: timeout ?? defaultTimeout,
-    });
-
-    output = job.output;
-    detach = job.detach;
-  } else {
-    output = signal<ExecuteCommandResult>({
-      content: "",
-      status: "idle",
-      isTruncated: false,
-    });
-
-    waitForWebviewSubscription().then(() => {
-      executeCommandImpl({
-        command,
-        cwd,
-        timeout: timeout ?? defaultTimeout,
-        abortSignal,
-        onData: (data) => {
-          output.value = {
-            content: data.output,
-            status: "running",
-            isTruncated: data.isTruncated,
-          };
-        },
+      abortSignal,
+      onData: (data) => {
+        output.value = {
+          content: data.output,
+          status: "running",
+          isTruncated: data.isTruncated,
+        };
+      },
+    })
+      .then(({ output: commandOutput, isTruncated }) => {
+        output.value = {
+          content: commandOutput,
+          status: "completed",
+          isTruncated,
+        };
       })
-        .then(({ output: commandOutput, isTruncated }) => {
-          output.value = {
-            content: commandOutput,
-            status: "completed",
-            isTruncated,
-          };
-        })
-        .catch((error) => {
-          output.value = {
-            ...output.value,
-            status: "completed",
-            error: error.message,
-          };
-        });
-    });
-  }
+      .catch((error) => {
+        output.value = {
+          ...output.value,
+          status: "completed",
+          error: error.message,
+        };
+      });
+  });
 
   if (nonInteractive) {
     return new Promise((resolve) => {
@@ -116,7 +98,7 @@ export const executeCommand: ToolFunctionType<
   }
 
   // biome-ignore lint/suspicious/noExplicitAny: pass thread signal
-  return { output: ThreadSignal.serialize(output) as any, detach };
+  return { output: ThreadSignal.serialize(output) as any };
 };
 
 async function executeCommandImpl({

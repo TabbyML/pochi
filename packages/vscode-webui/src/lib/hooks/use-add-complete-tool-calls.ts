@@ -78,11 +78,6 @@ function overrideResult(complete: ToolCallLifeCycle["complete"]) {
       output.error =
         "User rejected the tool call, please use askFollowupQuestion to clarify next step with user.";
       break;
-    case "user-detach":
-      // We use info instead of error to avoid the tool call being marked as failed.
-      output.info =
-        "User has detached the terminal, the job will continue running in the background.";
-      break;
     case "preview-reject":
     case "execute-finish":
       break;

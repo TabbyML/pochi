@@ -25,9 +25,10 @@ README.md
 tsconfig.json
 package.json
 
-# Active Terminals in Editor
-* Terminal 1 (active)
+# Opened Terminals in Editor
+* Terminal 1 (selected)
   Terminal 2
+  Terminal 3 (background job: job-id-1)
 
 # Active Selection (README.md:3-5)
 

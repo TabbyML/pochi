@@ -12,6 +12,7 @@ export const AskFollowupQuestionTool: React.FC<
     <div className="flex flex-col gap-2">
       <p className="items-center font-medium italic">{question}</p>
       {followUp &&
+        Array.isArray(followUp) &&
         followUp.length > 0 && ( // Check if followUp exists and has items
           <ol className="list-decimal space-y-1 pl-8">
             {followUp.map((followUpText, index) => (
