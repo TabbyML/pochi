@@ -14,8 +14,8 @@ import {
   UserIcon,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { Section } from "../ui/section";
 import { LanguageMenuItem } from "../ui/language-menu-item";
+import { Section } from "../ui/section";
 
 interface AccountSectionProps {
   user?: User;
