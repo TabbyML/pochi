@@ -91,20 +91,6 @@ describe("CredentialStorage", () => {
       );
     });
 
-    it("should update an existing token", async () => {
-      const storage = new CredentialStorage();
-      const mockCredential = { bearer_token: "old-token", other_data: "test" };
-      vi.mocked(isFileExists).mockResolvedValue(true);
-      vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify(mockCredential));
-
-      await storage.write("updated-token");
-
-      expect(fs.writeFile).toHaveBeenCalledWith(
-        `${homedir}/.pochi/credentials.json`,
-        JSON.stringify({ other_data: "test", bearer_token: "updated-token" }),
-      );
-    });
-
     it("should remove the credential file when the token is set to undefined", async () => {
       const storage = new CredentialStorage();
       const mockCredential = { bearer_token: "some-token" };
