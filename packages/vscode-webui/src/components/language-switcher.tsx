@@ -1,23 +1,19 @@
-import { useTranslation } from 'react-i18next';
-import { Button } from './ui/button';
+import { GlobeIcon } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import { Button } from "./ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from './ui/dropdown-menu';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from './ui/tooltip';
-import { GlobeIcon } from 'lucide-react';
+} from "./ui/dropdown-menu";
+import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 
 const languages = [
-  { code: 'en', name: 'English' },
-  { code: 'zh', name: '中文' },
-  { code: 'jp', name: '日本語' },
-  { code: 'ko', name: '한국어' },
+  { code: "en", name: "English" },
+  { code: "zh", name: "中文" },
+  { code: "jp", name: "日本語" },
+  { code: "ko", name: "한국어" },
 ];
 
 export function LanguageSwitcher() {
@@ -41,16 +37,14 @@ export function LanguageSwitcher() {
             </Button>
           </DropdownMenuTrigger>
         </TooltipTrigger>
-        <TooltipContent>
-          {t('language.switcherTooltip')}
-        </TooltipContent>
+        <TooltipContent>{t("language.switcherTooltip")}</TooltipContent>
       </Tooltip>
       <DropdownMenuContent align="end">
         {languages.map((lang) => (
           <DropdownMenuItem
             key={lang.code}
             onClick={() => handleLanguageChange(lang.code)}
-            className={lang.code === i18n.language ? 'bg-accent' : ''}
+            className={lang.code === i18n.language ? "bg-accent" : ""}
           >
             {lang.name}
           </DropdownMenuItem>

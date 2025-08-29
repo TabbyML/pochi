@@ -248,9 +248,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
                 <ImageIcon className="size-4" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>
-              {t('chat.imageTooltip')}
-            </TooltipContent>
+            <TooltipContent>{t("chat.imageTooltip")}</TooltipContent>
           </Tooltip>
           <SubmitStopButton
             isSubmitDisabled={isSubmitDisabled}

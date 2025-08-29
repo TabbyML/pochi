@@ -167,20 +167,20 @@ export function useSelectedModels() {
       (m) => m.type === "hosted" && m.costType === "premium",
     );
     if (premiumModels.length > 0) {
-      groups.push({ title: t('modelSelect.premium'), models: premiumModels });
+      groups.push({ title: t("modelSelect.premium"), models: premiumModels });
     }
     const basicModels = models.filter(
       (m) => m.type === "hosted" && m.costType === "basic",
     );
     if (basicModels.length > 0) {
-      groups.push({ title: t('modelSelect.basic'), models: basicModels });
+      groups.push({ title: t("modelSelect.basic"), models: basicModels });
     }
 
     const vscodeModels = models.filter((m) => m.type === "vscode");
     const customModels = models.filter((m) => m.type === "byok");
     if (customModels.length + vscodeModels.length > 0) {
       groups.push({
-        title: t('modelSelect.custom'),
+        title: t("modelSelect.custom"),
         models: [...vscodeModels, ...customModels],
         isCustom: true,
       });

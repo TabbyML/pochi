@@ -45,27 +45,27 @@ export function AutoApproveMenu() {
   const coreActionSettings: CoreActionSetting[] = [
     {
       id: "read",
-      summary: t('settings.autoApprove.read'),
-      label: t('settings.autoApprove.readFiles'),
+      summary: t("settings.autoApprove.read"),
+      label: t("settings.autoApprove.readFiles"),
       iconClass: Eye,
     },
     {
       id: "write",
-      summary: t('settings.autoApprove.write'),
-      label: t('settings.autoApprove.writeFiles'),
+      summary: t("settings.autoApprove.write"),
+      label: t("settings.autoApprove.writeFiles"),
       iconClass: FileEdit,
     },
     {
       id: "execute",
-      summary: t('settings.autoApprove.execute'),
-      label: t('settings.autoApprove.executeCommands'),
+      summary: t("settings.autoApprove.execute"),
+      label: t("settings.autoApprove.executeCommands"),
       iconClass: Terminal,
     },
-    { 
-      id: "mcp", 
-      summary: t('settings.autoApprove.mcp'), 
-      label: t('settings.autoApprove.useMcpServers'), 
-      iconClass: Blocks 
+    {
+      id: "mcp",
+      summary: t("settings.autoApprove.mcp"),
+      label: t("settings.autoApprove.useMcpServers"),
+      iconClass: Blocks,
     },
   ];
 
@@ -98,7 +98,7 @@ export function AutoApproveMenu() {
     ...coreActionSettings
       .filter((setting) => getCoreActionCheckedState(setting.id))
       .map((setting) => setting.summary),
-    ...(autoApproveSettings.retry ? [t('settings.autoApprove.retry')] : []),
+    ...(autoApproveSettings.retry ? [t("settings.autoApprove.retry")] : []),
   ];
 
   return (
@@ -125,14 +125,18 @@ export function AutoApproveMenu() {
             </label>
             <div className="flex flex-1 flex-nowrap items-center gap-1 overflow-hidden font-medium hover:text-foreground/80">
               <div className="flex-1 truncate">
-                <span className="whitespace-nowrap">{t('settings.autoApprove.title')}:</span>
+                <span className="whitespace-nowrap">
+                  {t("settings.autoApprove.title")}:
+                </span>
                 {autoApproveActive && enabledOptionsSummary.length > 0 ? (
                   <span className="ml-1">
                     {enabledOptionsSummary.join(", ")}
                   </span>
                 ) : (
                   <span className="ml-1 text-[var(--vscode-descriptionForeground)]">
-                    {autoApproveActive ? t('settings.autoApprove.noActionsSelected') : t('settings.autoApprove.disabled')}
+                    {autoApproveActive
+                      ? t("settings.autoApprove.noActionsSelected")
+                      : t("settings.autoApprove.disabled")}
                   </span>
                 )}
               </div>
@@ -179,7 +183,9 @@ export function AutoApproveMenu() {
             <span className="ml-1.5 flex items-center gap-2 font-semibold">
               <RotateCcw className="size-4 shrink-0" />
               <span className="whitespace-nowrap text-foreground text-sm">
-                {autoApproveSettings.retry ? t('settings.autoApprove.maxAttempts') + ':' : t('settings.autoApprove.retryActions')}
+                {autoApproveSettings.retry
+                  ? t("settings.autoApprove.maxAttempts") + ":"
+                  : t("settings.autoApprove.retryActions")}
               </span>
             </span>
             {autoApproveSettings.retry && (

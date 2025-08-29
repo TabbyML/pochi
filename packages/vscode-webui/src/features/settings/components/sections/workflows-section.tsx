@@ -21,7 +21,7 @@ export const WorkflowsSection: React.FC = () => {
   };
 
   return (
-    <Section title={t('settings.workflows.title')}>
+    <Section title={t("settings.workflows.title")}>
       {isLoading ? (
         <div className="space-y-2">
           {Array.from({ length: 3 }).map((_, i) => (
@@ -48,7 +48,9 @@ export const WorkflowsSection: React.FC = () => {
           )}
         </>
       ) : (
-        <EmptySectionPlaceholder content={t('settings.workflows.noWorkflows')} />
+        <EmptySectionPlaceholder
+          content={t("settings.workflows.noWorkflows")}
+        />
       )}
     </Section>
   );

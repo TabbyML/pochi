@@ -14,7 +14,7 @@ import { unstable_batchedUpdates as batchUpdates } from "react-dom";
 import { ThemeProvider } from "./components/theme-provider";
 import { useCurrentWorkspace } from "./lib/hooks/use-current-workspace";
 import LiveStoreWorker from "./livestore.worker.ts?worker&inline";
-import './i18n/config';
+import "./i18n/config";
 
 const adapter = makePersistedAdapter({
   storage: { type: "opfs" },

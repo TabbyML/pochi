@@ -82,7 +82,9 @@ export function TokenUsage({
     totalTokens < constants.CompactTaskMinTokens ? (
       <TooltipContent>
         <p>
-          {t('tokenUsage.minTokensRequired', { minTokens: constants.CompactTaskMinTokens })}
+          {t("tokenUsage.minTokensRequired", {
+            minTokens: constants.CompactTaskMinTokens,
+          })}
         </p>
       </TooltipContent>
     ) : null;
@@ -106,10 +108,10 @@ export function TokenUsage({
             compact?.inlineCompactTaskPending ? (
               <>
                 <Loader2 className="h-3 w-3 animate-spin" />
-                {t('tokenUsage.compacting')}
+                {t("tokenUsage.compacting")}
               </>
             ) : (
-              `${percentage}${t('tokenUsage.ofTokens', { tokens: formatTokens(contextWindow) })}`
+              `${percentage}${t("tokenUsage.ofTokens", { tokens: formatTokens(contextWindow) })}`
             )}
           </span>
         </div>
@@ -124,7 +126,9 @@ export function TokenUsage({
         <div className="flex flex-col gap-y-4 text-xs">
           {rules?.length > 0 && (
             <div className="flex flex-col gap-y-1">
-              <div className="mb-1 text-muted-foreground">{t('tokenUsage.rules')}</div>
+              <div className="mb-1 text-muted-foreground">
+                {t("tokenUsage.rules")}
+              </div>
               <div>
                 <FileList
                   matches={rules.map((item) => ({
@@ -137,10 +141,15 @@ export function TokenUsage({
             </div>
           )}
           <div className="flex flex-col gap-y-1">
-            <div className="mb-1 text-muted-foreground">{t('tokenUsage.contextWindow')}</div>
+            <div className="mb-1 text-muted-foreground">
+              {t("tokenUsage.contextWindow")}
+            </div>
             <div>
               <Progress value={percentage} className="mb-1" />
-              {t('tokenUsage.ofUsed', { used: formatTokens(totalTokens), total: formatTokens(contextWindow) })}
+              {t("tokenUsage.ofUsed", {
+                used: formatTokens(totalTokens),
+                total: formatTokens(contextWindow),
+              })}
             </div>
           </div>
           <div className="mt-2 flex items-center gap-x-2">
@@ -159,8 +168,8 @@ export function TokenUsage({
                       disabled={!compact?.enabled}
                     >
                       {compact?.newCompactTaskPending
-                        ? t('tokenUsage.compacting')
-                        : t('tokenUsage.newTaskWithSummary')}
+                        ? t("tokenUsage.compacting")
+                        : t("tokenUsage.newTaskWithSummary")}
                     </Button>
                   </div>
                 </TooltipTrigger>
@@ -182,8 +191,8 @@ export function TokenUsage({
                       disabled={!compact?.enabled}
                     >
                       {compact?.inlineCompactTaskPending
-                        ? t('tokenUsage.compacting')
-                        : t('tokenUsage.compactTask')}
+                        ? t("tokenUsage.compacting")
+                        : t("tokenUsage.compactTask")}
                     </Button>
                   </div>
                 </TooltipTrigger>

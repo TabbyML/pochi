@@ -1,7 +1,7 @@
 import { MessageMarkdown } from "@/components/message";
 import { Check } from "lucide-react";
-import type { ToolProps } from "../types";
 import { useTranslation } from "react-i18next";
+import type { ToolProps } from "../types";
 
 export const AttemptCompletionTool: React.FC<
   ToolProps<"attemptCompletion">
@@ -18,7 +18,7 @@ export const AttemptCompletionTool: React.FC<
     <div className="flex flex-col">
       <span className="flex items-center gap-2 font-bold text-emerald-700 text-sm dark:text-emerald-300">
         <Check className="size-4" />
-        {t('task.completed')}
+        {t("task.completed")}
       </span>
       <MessageMarkdown>{result}</MessageMarkdown>
       {command && (

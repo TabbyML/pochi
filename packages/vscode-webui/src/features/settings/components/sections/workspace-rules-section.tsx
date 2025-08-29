@@ -34,13 +34,15 @@ export const WorkspaceRulesSection: React.FC = () => {
     !workspaceRuleExists && hasThirdPartyRules ? (
       <div className="rounded-md border p-3">
         <div className="mb-2 flex items-center gap-2">
-          <span className="font-medium text-sm">{t('settings.rules.importRules')}</span>
+          <span className="font-medium text-sm">
+            {t("settings.rules.importRules")}
+          </span>
         </div>
 
         <div className="space-y-2">
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">
-              {t('settings.rules.foundRules', { count: rulePaths.length })}
+              {t("settings.rules.foundRules", { count: rulePaths.length })}
             </span>
             <Button
               onClick={importRules}
@@ -54,7 +56,7 @@ export const WorkspaceRulesSection: React.FC = () => {
                   return (
                     <>
                       <Loader2 className="size-3 animate-spin" />
-                      {t('settings.rules.importing')}
+                      {t("settings.rules.importing")}
                     </>
                   );
                 }
@@ -62,7 +64,7 @@ export const WorkspaceRulesSection: React.FC = () => {
                 return (
                   <>
                     <Download className="mr-1 size-3" />
-                    {t('settings.rules.import')}
+                    {t("settings.rules.import")}
                   </>
                 );
               })()}
@@ -74,7 +76,7 @@ export const WorkspaceRulesSection: React.FC = () => {
     ) : null;
 
   return (
-    <Section title={t('settings.rules.title')}>
+    <Section title={t("settings.rules.title")}>
       {isLoading ? (
         <div className="space-y-2">
           {Array.from({ length: 3 }).map((_, i) => (
@@ -101,7 +103,7 @@ export const WorkspaceRulesSection: React.FC = () => {
           );
         })
       ) : (
-        <EmptySectionPlaceholder content={t('settings.rules.noRules')} />
+        <EmptySectionPlaceholder content={t("settings.rules.noRules")} />
       )}
       {thirdPartyRulesImportPanel}
     </Section>

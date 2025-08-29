@@ -59,7 +59,9 @@ export const ModelSection: React.FC<ModelSectionProps> = ({ user }) => {
     useCustomModelSetting();
 
   const getCostTypeBadgeText = (costType: "basic" | "premium") => {
-    return costType === "premium" ? t('modelSelect.premium') : t('modelSelect.basic');
+    return costType === "premium"
+      ? t("modelSelect.premium")
+      : t("modelSelect.basic");
   };
 
   const getCostTypeBadgeVariant = (costType: "basic" | "premium") => {
@@ -78,7 +80,11 @@ export const ModelSection: React.FC<ModelSectionProps> = ({ user }) => {
     !!vscodeLmModels?.length;
 
   return (
-    <Section title={<div className="flex items-center">{t('settings.models.title')}</div>}>
+    <Section
+      title={
+        <div className="flex items-center">{t("settings.models.title")}</div>
+      }
+    >
       {isPochiModelLoading ||
       isCustomModelLoading ||
       isLoadingVscodeLmModels ? (
@@ -188,12 +194,12 @@ export const ModelSection: React.FC<ModelSectionProps> = ({ user }) => {
                       ))
                     ) : (
                       <div className="text-muted-foreground text-xs">
-                        {t('settings.models.noCopilotModels')}
+                        {t("settings.models.noCopilotModels")}
                       </div>
                     )
                   ) : (
                     <div className="text-muted-foreground text-xs">
-                      {t('settings.models.copilotDisabled')}
+                      {t("settings.models.copilotDisabled")}
                     </div>
                   )}
                 </div>
@@ -224,7 +230,7 @@ export const ModelSection: React.FC<ModelSectionProps> = ({ user }) => {
                               </a>
                             </TooltipTrigger>
                             <TooltipContent>
-                              <p>{t('settings.models.customModelsTooltip')}</p>
+                              <p>{t("settings.models.customModelsTooltip")}</p>
                             </TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
@@ -259,7 +265,7 @@ export const ModelSection: React.FC<ModelSectionProps> = ({ user }) => {
           )}
         </div>
       ) : (
-        <EmptySectionPlaceholder content={t('settings.models.noModelsFound')} />
+        <EmptySectionPlaceholder content={t("settings.models.noModelsFound")} />
       )}
     </Section>
   );

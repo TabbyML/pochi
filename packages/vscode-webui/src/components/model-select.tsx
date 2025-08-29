@@ -66,7 +66,7 @@ export function ModelSelect({
                   !value && "text-muted-foreground",
                 )}
               >
-                {value?.name ?? t('modelSelect.selectModel')}
+                {value?.name ?? t("modelSelect.selectModel")}
               </span>
               <ChevronDownIcon
                 className={cn(
@@ -166,7 +166,7 @@ export function ModelSelect({
                     className="flex cursor-pointer items-center gap-2 px-3 py-1"
                   >
                     <span className="text-[var(--vscode-textLink-foreground)] text-xs">
-                      {t('modelSelect.manageCustomModels')}
+                      {t("modelSelect.manageCustomModels")}
                     </span>
                   </a>
                 </DropdownMenuItem>

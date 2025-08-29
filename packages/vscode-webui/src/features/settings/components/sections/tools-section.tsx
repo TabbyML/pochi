@@ -12,11 +12,13 @@ export const ToolsSection: React.FC = () => {
   };
 
   return (
-    <Section title={t('settings.tools.title')}>
+    <Section title={t("settings.tools.title")}>
       <div className="flex flex-col gap-6">
         <McpSection />
 
-        <SubSection title={t('settings.tools.builtIn')}>{renderToolsContent()}</SubSection>
+        <SubSection title={t("settings.tools.builtIn")}>
+          {renderToolsContent()}
+        </SubSection>
       </div>
     </Section>
   );

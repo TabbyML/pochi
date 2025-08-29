@@ -22,7 +22,7 @@ interface AccountSectionProps {
 
 export const AccountSection: React.FC<AccountSectionProps> = ({ user }) => {
   const { t } = useTranslation();
-  
+
   if (!user) {
     return (
       <Section title="" className="pt-0">
@@ -38,10 +38,10 @@ export const AccountSection: React.FC<AccountSectionProps> = ({ user }) => {
             </div>
             <div className="flex flex-col gap-0.5">
               <span className="font-semibold text-[var(--vscode-textLink-foreground)] text-sm">
-                {t('settings.account.signIn')}
+                {t("settings.account.signIn")}
               </span>
               <span className="text-muted-foreground text-xs leading-tight">
-                {t('settings.account.signInDescription')}
+                {t("settings.account.signInDescription")}
               </span>
             </div>
           </a>
@@ -84,7 +84,7 @@ export const AccountSection: React.FC<AccountSectionProps> = ({ user }) => {
               rel="noopener noreferrer"
             >
               <UserIcon className="size-4" />
-              {t('common.account')}
+              {t("common.account")}
             </a>
           </DropdownMenuItem>
           <DropdownMenuItem asChild className="cursor-pointer">
@@ -94,7 +94,7 @@ export const AccountSection: React.FC<AccountSectionProps> = ({ user }) => {
               rel="noopener noreferrer"
             >
               <HelpCircle className="size-4" />
-              {t('common.help')}
+              {t("common.help")}
             </a>
           </DropdownMenuItem>
           <DropdownMenuItem asChild className="cursor-pointer">
@@ -104,7 +104,7 @@ export const AccountSection: React.FC<AccountSectionProps> = ({ user }) => {
               rel="noopener noreferrer"
             >
               <LogOut className="size-4" />
-              {t('settings.account.signOut')}
+              {t("settings.account.signOut")}
             </a>
           </DropdownMenuItem>
         </DropdownMenuContent>

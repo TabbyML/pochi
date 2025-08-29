@@ -1,7 +1,7 @@
 import { useAutoSaveDisabled } from "@/lib/hooks/use-auto-save";
 import { AlertTriangleIcon, ImageIcon, TerminalIcon } from "lucide-react";
-import { Button } from "./ui/button";
 import { useTranslation } from "react-i18next";
+import { Button } from "./ui/button";
 
 export function EmptyChatPlaceholder() {
   const autoSaveDisabled = useAutoSaveDisabled();

@@ -89,15 +89,15 @@ ${environmentInfo}
       },
     });
     doCopy(supportInfo);
-    const openDiscordButtonText = t('share.joinDiscord');
+    const openDiscordButtonText = t("share.joinDiscord");
     const result = await vscodeHost.showInformationMessage(
-      t('share.taskSharedMessage'),
+      t("share.taskSharedMessage"),
       {
         modal: true,
-        detail: t('share.taskSharedDetail', { shareId }),
+        detail: t("share.taskSharedDetail", { shareId }),
       },
       openDiscordButtonText,
-      t('share.ok'),
+      t("share.ok"),
     );
 
     if (result === openDiscordButtonText) {
@@ -128,10 +128,10 @@ ${environmentInfo}
           ) : (
             <CopyIcon className="mr-2 size-4" />
           )}
-          {t('share.copyLink')}
+          {t("share.copyLink")}
           {!shareId && (
             <span className="ml-2 text-muted-foreground text-xs">
-              {t('share.shareFirst')}
+              {t("share.shareFirst")}
             </span>
           )}
         </DropdownMenuItem>
@@ -145,10 +145,10 @@ ${environmentInfo}
           ) : (
             <MessageSquareShare className="mr-2 size-4" />
           )}
-          {t('share.shareWithSupport')}
+          {t("share.shareWithSupport")}
           {!shareId && (
             <span className="ml-2 text-muted-foreground text-xs">
-              {t('share.shareFirst')}
+              {t("share.shareFirst")}
             </span>
           )}
         </DropdownMenuItem>
