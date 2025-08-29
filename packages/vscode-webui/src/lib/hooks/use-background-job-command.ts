@@ -22,7 +22,7 @@ export const useBackgroundJobCommand = (
 ): string | undefined => {
   if (!backgroundJobId) return;
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
+  // biome-ignore lint/correctness/useExhaustiveDependencies: only recompute on backgroundJobId changes, as command should be in messages(startBackgroundJob should happen before readBackgroundJobOutput and killBackgroundJob)
   return useMemo(() => {
     return (
       getBackgroundJobCommandFromMessages(messages, backgroundJobId) ??
