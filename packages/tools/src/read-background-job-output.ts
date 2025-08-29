@@ -28,10 +28,6 @@ const toolDef = {
     status: z
       .enum(["idle", "running", "completed"])
       .describe("The current status of the command"),
-    error: z
-      .string()
-      .optional()
-      .describe("Error message if the command failed"),
     isTruncated: z
       .boolean()
       .optional()

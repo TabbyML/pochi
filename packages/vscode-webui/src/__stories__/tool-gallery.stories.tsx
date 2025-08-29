@@ -336,8 +336,7 @@ const readBackgroundJobOutputPropsError: ReadBackgroundJobOutputProp["tool"] = {
     backgroundJobId: "job-2",
   },
   output: {
-    status: "running",
-    output: "",
+    // @ts-expect-error
     error: "Background job with ID 'job-2' not found.",
   },
 };
