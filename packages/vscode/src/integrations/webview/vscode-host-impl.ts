@@ -259,9 +259,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
 
   listAutoCompleteCandidates = async (
     _query?: string,
-    _options?: {
-      symbolLimit?: number;
-    },
+    _limit?: number,
   ): Promise<
     Array<{
       type: "symbol" | "tool" | "mcp";

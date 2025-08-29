@@ -82,9 +82,7 @@ export interface VSCodeHostApi {
 
   listAutoCompleteCandidates(
     query?: string,
-    options?: {
-      symbolLimit?: number;
-    },
+    limit?: number,
   ): Promise<
     {
       type: "symbol" | "tool" | "mcp";
