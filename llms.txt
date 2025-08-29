@@ -330,7 +330,61 @@ icon: "Slack"
 
 # Slack
 
-TODO
+Pochi's Slack integration allows you to use Pochi directly within your Slack workspace, bringing AI-powered development assistance to your team conversations.
+Start tasks in Slack and seamlessly switch to the Cloud IDE when you need the full development experience.
+
+<Callout type="info" title="Cloud IDE">
+  When you send messages to Pochi in Slack, tasks are executed in remote environment running in the cloud. You can switch to the Cloud IDE to continue working on the task.
+</Callout>
+
+## Getting Started
+
+### Adding Pochi to Your Workspace
+
+1. **Install the Integration**: Add Pochi to your Slack workspace through the `Add to Slack` button on the [homepage](https://app.getpochi.com/home)
+   ![Slack Installation](../assets/images/slack-install-home.png)
+2. **Authorize Access**: Grant the necessary permissions for Pochi to interact with your Slack channels
+   ![Slack Authorization](../assets/images/slack-authorize.png)
+3. **Start Collaborating**: Begin using Pochi in any channel or direct message where it's been added. If using channels, please make sure to invite Pochi to the channel before creating a task.
+
+### Basic Usage
+
+Once Pochi is added to your workspace:
+
+1. \[Optional] **Invite Pochi to Channels**: If you want to interact with Pochi in channels, simply send `@Pochi` in the channel, and you will be prompted to invite Pochi to the channel.
+2. \[Optional] **Default Github Repository**: Set the repository in the Channel Topic, so Pochi knows which repository to work on by default.
+   * Format: `[repo:OWNER/REPO]`, for example, `[repo:TabbyML/pochi]`
+3. **Start Task**: Send a task prompt to Pochi in Direct Messages or channels using the following format:
+   * If a default repository is set: `/newtask PROMPT`, for example, `/newtask What are recent commits`
+   * If no default repository is set or you want to run Pochi with another repository : `/newtask [OWNER/REPO] PROMPT`, for example, `/newtask [TabbyML/tabby] What are recent commits`
+4. **Real-time Updates**: Watch as Pochi executes tasks and provides updates directly in Slack.
+5. **Follow-up**: After the task is completed, Pochi might ask some follow-up questions, or you can provide responses clicking the option buttons or the Reply button.
+
+![Slack Task](../assets/images/slack-task.png)
+
+### Continue in Cloud IDE
+
+When you need the full IDE experience:
+
+1. **Access Task Page**: Click on the `See Details` button to navigate to the task in Pochi's web interface.
+2. **Click Remote Icon**: Look for the remote/external link icon in the task interface.
+   ![Slack Remote Button](../assets/images/slack-remote-button.png)
+3. **Continue Development**: Pick up exactly where you left off.
+   ![Slack VSCode Web](../assets/images/slack-vscode-web.png)
+
+## Troubleshooting
+
+### Common Issues
+
+**`not_in_channel` error when creating task in channel**
+
+* Verify that Pochi has been properly added to the channel.
+* Mention @Pochi in the channel if Pochi is not invited to the channel.
+
+**Cannot access Cloud IDE**
+
+* Only the Task Owner has permission to access the Cloud IDE.
+* Make sure you are the Task Owner and logged in to Pochi with the same account in your browser.
 
 
 # Tab Completion
