@@ -126,11 +126,10 @@
       "noToolsAvailable": "이 MCP 서버에서 사용할 수 있는 도구가 없습니다"
     }
   },
-  "shareSupport": {
+  "share": {
     "copyLink": "링크 복사",
-    "shareSupportTitle": "지원팀과 공유",
-    "shareFirst": "(먼저 공유)",
-    "taskSharedMessage": "Pochi 팀과 작업이 공유되었습니다",
+    "shareSupport": "지원팀과 공유",
+    "shareSupportTitle": "Pochi 팀과 작업이 공유되었습니다",
     "shareSupportDetails": "이 작업과 관련 디버그 정보가 전송되었습니다. 지원이 필요하시면 Discord 서버에 참여하시고 이 ID를 참조해 주세요: {{shareId}}.",
     "joinDiscord": "Discord 참여",
     "ok": "확인"

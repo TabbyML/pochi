@@ -124,11 +124,10 @@
       "noToolsAvailable": "此 MCP 服务器没有可用的工具"
     }
   },
-  "shareSupport": {
+  "share": {
     "copyLink": "复制链接",
-    "shareSupportTitle": "与支持团队分享",
-    "shareFirst": "(请先分享)",
-    "taskSharedMessage": "任务已与 Pochi 团队分享",
+    "shareSupport": "与支持团队分享",
+    "shareSupportTitle": "任务已与 Pochi 团队分享",
     "shareSupportDetails": "此任务和相关调试信息已发送。如需支持，请加入我们的 Discord 服务器并引用此问题 ID：{{shareId}}。",
     "joinDiscord": "加入 Discord",
     "ok": "确定"
