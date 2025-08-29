@@ -57,7 +57,7 @@ export class TerminalJob implements vscode.Disposable {
   };
 
   private constructor(private readonly config: TerminalJobConfig) {
-    this.id = randomUUID();
+    this.id = `bgjob-${randomUUID()}`;
     this.outputManager = OutputManager.create({
       id: this.id,
       command: config.command,
