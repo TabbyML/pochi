@@ -315,10 +315,7 @@ export class ManagedToolCallLifeCycle
     abort();
     this.transitTo("ready", {
       type: "complete",
-      result: {
-        error:
-          "User rejected the tool call, please use askFollowupQuestion to clarify next step with user.",
-      },
+      result: {},
       reason: "user-reject",
     });
   }

@@ -75,8 +75,7 @@ function overrideResult(complete: ToolCallLifeCycle["complete"]) {
       output.error = "User aborted the tool call";
       break;
     case "user-reject":
-      output.error =
-        "User rejected the tool call, please use askFollowupQuestion to clarify next step with user.";
+      output.error = "User rejected the tool call";
       break;
     case "preview-reject":
     case "execute-finish":
