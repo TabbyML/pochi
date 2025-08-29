@@ -22,7 +22,7 @@ const getDisplayId = (jobId: string) => {
   if (!displayIds.has(jobId)) {
     displayIds.set(jobId, currentDisplayId++);
   }
-  return `#${displayIds.get(jobId)}`;
+  return `%${displayIds.get(jobId)}`;
 };
 
 /**

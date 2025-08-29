@@ -88,9 +88,11 @@ const BackgroundJobIdButton: FC<{ displayId: string }> = ({ displayId }) => {
           <div className="font-bold font-mono text-[10px]">{displayId}</div>
         </Button>
       </TooltipTrigger>
-      <TooltipContent>
-        <span>Background job {displayId}</span>
-      </TooltipContent>
+      {false && (
+        <TooltipContent>
+          <span>Show {displayId}</span>
+        </TooltipContent>
+      )}
     </Tooltip>
   );
 };
