@@ -32,7 +32,7 @@ const getDisplayId = (jobId: string) => {
 export const processBackgroundJobId = (content: string): string => {
   let newContent = content;
   for (const [jobId, displayId] of displayIds) {
-    newContent = newContent.replace(new RegExp(jobId, "g"), `#${displayId}`);
+    newContent = newContent.replace(new RegExp(jobId, "g"), `%${displayId}`);
   }
   return newContent;
 };
