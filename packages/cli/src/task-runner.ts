@@ -94,6 +94,7 @@ export class TaskRunner {
       store: options.store,
       chatClass: Chat,
       waitUntil: options.waitUntil,
+      isCli: true,
       getters: {
         getLLM: () => options.llm,
         getEnvironment: async () => ({

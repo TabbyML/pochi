@@ -42,6 +42,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
   private readonly onStart?: OnStartCallback;
   private readonly getters: PrepareRequestGetters;
   private readonly isSubTask?: boolean;
+  private readonly isCli?: boolean;
   private readonly store: Store;
   private readonly apiClient: PochiApiClient;
   private readonly waitUntil?: (promise: Promise<unknown>) => void;
@@ -50,6 +51,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
     onStart?: OnStartCallback;
     getters: PrepareRequestGetters;
     isSubTask?: boolean;
+    isCli?: boolean;
     store: Store;
     apiClient: PochiApiClient;
     waitUntil?: (promise: Promise<unknown>) => void;
@@ -57,6 +59,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
     this.onStart = options.onStart;
     this.getters = options.getters;
     this.isSubTask = options.isSubTask;
+    this.isCli = options.isCli;
     this.store = options.store;
     this.apiClient = options.apiClient;
     this.waitUntil = this.waitUntil;
@@ -124,7 +127,10 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
       }),
       abortSignal,
       tools: {
-        ...selectClientTools(!!this.isSubTask),
+        ...selectClientTools({
+          isSubTask: !!this.isSubTask,
+          isCli: !!this.isCli,
+        }),
         ...(mcpTools || {}),
       },
       maxRetries: 0,
