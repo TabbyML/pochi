@@ -1,4 +1,4 @@
-import { CommandExecutionPanel } from "../command-execution-panel";
+import { BackgroundJobPanel } from "../command-execution-panel";
 import { HighlightedText } from "../highlight-text";
 import { StatusIcon } from "../status-icon";
 import { ExpandableToolContainer } from "../tool-container";
@@ -35,15 +35,7 @@ export const ReadBackgroundJobOutputTool: React.FC<
     const command =
       getBackgroundJobCommandFromMessages(messages, backgroundJobId) ??
       `Job id: ${backgroundJobId}`;
-    detail = (
-      <CommandExecutionPanel
-        command={command}
-        output={output}
-        completed={true}
-        isExecuting={isExecuting}
-        onStop={() => {}}
-      />
-    );
+    detail = <BackgroundJobPanel command={command} output={output} />;
   }
 
   return <ExpandableToolContainer title={title} detail={detail} />;

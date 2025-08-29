@@ -19,6 +19,142 @@ import { type FC, useEffect, useRef, useState } from "react";
 import { ScrollArea } from "../ui/scroll-area";
 import { XTerm } from "./xterm";
 
+const CopyCommandButton: FC<{ command: string }> = ({ command }) => {
+  const { isCopied, copyToClipboard } = useCopyToClipboard({
+    timeout: 2000,
+  });
+
+  const onCopy = () => {
+    if (isCopied) return;
+    copyToClipboard(command);
+  };
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          size="xs"
+          variant="ghost"
+          onClick={onCopy}
+          className={cn({ "opacity-50": isCopied })}
+        >
+          {isCopied ? (
+            <CheckIcon className="size-4" />
+          ) : (
+            <CopyIcon className="size-4" />
+          )}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>
+        <span>{isCopied ? "Copied!" : "Copy command"}</span>
+      </TooltipContent>
+    </Tooltip>
+  );
+};
+
+const ToggleExpandButton: FC<{ expanded: boolean; onToggle: () => void }> = ({
+  expanded,
+  onToggle,
+}) => {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-6 p-0 text-xs focus-visible:ring-1 focus-visible:ring-slate-700 focus-visible:ring-offset-0"
+          onClick={onToggle}
+        >
+          {expanded ? <ChevronsDownUpIcon /> : <ChevronsUpDownIcon />}
+          <span className="sr-only">{expanded ? "Collapse" : "Expand"}</span>
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>
+        <p className="m-0">{expanded ? "Collapse" : "Expand"}</p>
+      </TooltipContent>
+    </Tooltip>
+  );
+};
+
+const CommandPanelContainer: FC<{
+  command: string;
+  expanded?: boolean;
+  actions?: React.ReactNode;
+  className?: string;
+  output?: string;
+}> = ({ command, expanded, actions, className, output }) => {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
+  return (
+    <div
+      className={cn(
+        "code-block relative w-full overflow-hidden rounded-sm border bg-[var(--vscode-editor-background)] font-sans",
+        className,
+      )}
+    >
+      <div
+        className={cn(
+          "flex w-full items-center justify-between rounded-t-sm bg-[var(--vscode-editor-background)] px-3 py-1.5 text-[var(--vscode-editor-foreground)]",
+          {
+            "border-b": expanded,
+          },
+        )}
+      >
+        <div className="flex min-w-0 flex-1 space-x-3">
+          <TerminalIcon className="mt-[2px] size-4 flex-shrink-0" />
+          <ScrollArea className="max-h-[80px] min-w-0 flex-1 overflow-y-auto">
+            <span className="whitespace-pre-wrap text-balance break-all">
+              {command}
+            </span>
+          </ScrollArea>
+        </div>
+        <div className="ml-2 flex space-x-3 self-start">{actions}</div>
+      </div>
+      {expanded && output && (
+        <div
+          ref={containerRef}
+          className={cn(
+            "w-full overflow-hidden pl-3 transition-all duration-500 ease-in-out",
+            expanded
+              ? "h-[42px] max-h-[500px] opacity-100"
+              : "h-0 max-h-0 opacity-0",
+          )}
+        >
+          <XTerm
+            className="h-full w-full pt-2"
+            content={output}
+            containerRef={containerRef}
+          />
+        </div>
+      )}
+    </div>
+  );
+};
+
+export const BackgroundJobPanel: FC<{ command: string; output?: string }> = ({
+  command,
+  output,
+}) => {
+  const [expanded, setExpanded] = useState(false);
+  const toggleExpanded = () => setExpanded((prev) => !prev);
+
+  return (
+    <CommandPanelContainer
+      command={command}
+      expanded={output !== undefined && expanded}
+      actions={
+        <>
+          {output && (
+            <ToggleExpandButton expanded={expanded} onToggle={toggleExpanded} />
+          )}
+          <CopyCommandButton command={command} />
+        </>
+      }
+      output={output}
+    />
+  );
+};
+
 export interface ExecutionPanelProps {
   command: string;
   output: string;
@@ -40,16 +176,6 @@ export const CommandExecutionPanel: FC<ExecutionPanelProps> = ({
     useExpanded(completed);
   const [isStopping, setIsStopping] = useState<boolean>(false);
   const toggleExpanded = () => setExpandedImmediately((prev) => !prev);
-  const { isCopied, copyToClipboard } = useCopyToClipboard({
-    timeout: 2000,
-  });
-
-  const containerRef = useRef<HTMLDivElement | null>(null);
-
-  const onCopy = () => {
-    if (isCopied) return;
-    copyToClipboard(command);
-  };
 
   const handleStop = () => {
     setIsStopping(true);
@@ -72,90 +198,25 @@ export const CommandExecutionPanel: FC<ExecutionPanelProps> = ({
 
   const showButton = !completed && isExecuting && !isStopping;
   return (
-    <div
-      className={cn(
-        "code-block relative w-full overflow-hidden rounded-sm border bg-[var(--vscode-editor-background)] font-sans",
-        className,
-      )}
-    >
-      <div
-        className={cn(
-          "flex w-full items-center justify-between rounded-t-sm bg-[var(--vscode-editor-background)] px-3 py-1.5 text-[var(--vscode-editor-foreground)]",
-          {
-            "border-b": output && expanded,
-          },
-        )}
-      >
-        <div className="flex min-w-0 flex-1 space-x-3">
-          <TerminalIcon className="mt-[2px] size-4 flex-shrink-0" />
-          <ScrollArea className="max-h-[80px] min-w-0 flex-1 overflow-y-auto">
-            <span className="whitespace-pre-wrap text-balance break-all">
-              {command}
-            </span>
-          </ScrollArea>
-        </div>
-        <div className="ml-2 flex space-x-3 self-start">
+    <CommandPanelContainer
+      command={command}
+      expanded={output !== undefined && expanded}
+      className={className}
+      actions={
+        <>
           {false && showButton && (
             <Button size="xs" variant="ghost" onClick={handleStop}>
               STOP
             </Button>
           )}
           {output && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="size-6 p-0 text-xs focus-visible:ring-1 focus-visible:ring-slate-700 focus-visible:ring-offset-0"
-                  onClick={toggleExpanded}
-                >
-                  {expanded ? <ChevronsDownUpIcon /> : <ChevronsUpDownIcon />}
-                  <span className="sr-only">
-                    {expanded ? "Collapse" : "Expand"}
-                  </span>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p className="m-0">{expanded ? "Collapse" : "Expand"}</p>
-              </TooltipContent>
-            </Tooltip>
+            <ToggleExpandButton expanded={expanded} onToggle={toggleExpanded} />
           )}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-6 p-0 text-xs focus-visible:ring-1 focus-visible:ring-slate-700 focus-visible:ring-offset-0"
-                onClick={onCopy}
-              >
-                {isCopied ? <CheckIcon /> : <CopyIcon />}
-                <span className="sr-only">Copy</span>
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p className="m-0">Copy</p>
-            </TooltipContent>
-          </Tooltip>
-        </div>
-      </div>
-      {output && expanded && (
-        <div
-          ref={containerRef}
-          className={cn(
-            "w-full overflow-hidden pl-3 transition-all duration-500 ease-in-out",
-            expanded
-              ? "h-[42px] max-h-[500px] opacity-100"
-              : "h-0 max-h-0 opacity-0",
-          )}
-        >
-          <XTerm
-            className="h-full w-full pt-2"
-            content={output}
-            containerRef={containerRef}
-          />
-        </div>
-      )}
-    </div>
+          <CopyCommandButton command={command} />
+        </>
+      }
+      output={output}
+    />
   );
 };
 

@@ -1,4 +1,4 @@
-import { CommandExecutionPanel } from "../command-execution-panel";
+import { BackgroundJobPanel } from "../command-execution-panel";
 import { StatusIcon } from "../status-icon";
 import { ExpandableToolContainer } from "../tool-container";
 import type { ToolProps } from "../types";
@@ -21,15 +21,7 @@ export const KillBackgroundJobTool: React.FC<
     const command =
       getBackgroundJobCommandFromMessages(messages, backgroundJobId) ??
       `Job id: ${backgroundJobId}`;
-    detail = (
-      <CommandExecutionPanel
-        command={command}
-        output=""
-        completed={true}
-        isExecuting={isExecuting}
-        onStop={() => {}}
-      />
-    );
+    detail = <BackgroundJobPanel command={command} />;
   }
 
   return <ExpandableToolContainer title={title} detail={detail} />;

@@ -282,6 +282,10 @@ export class TerminalJob implements vscode.Disposable {
     this.disposables.push(
       vscode.window.onDidCloseTerminal((terminal) => {
         if (terminal === this.terminal) {
+          this.outputManager.finalize(
+            this.detached,
+            ExecutionError.create("Terminal closed by user"),
+          );
           this.dispose();
         }
       }),
