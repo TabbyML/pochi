@@ -1,6 +1,5 @@
 import { DevModeButton } from "@/components/dev-mode-button";
 import { ImagePreviewList } from "@/components/image-preview-list";
-import { LanguageSwitcher } from "@/components/language-switcher";
 import { ModelSelect } from "@/components/model-select";
 import { PreviewTool } from "@/components/preview-tool";
 import { PublicShareButton } from "@/components/public-share-button";
@@ -225,7 +224,6 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
               compact={compactOptions}
             />
           )}
-          <LanguageSwitcher />
           <DevModeButton
             messages={messages}
             buildEnvironment={buildEnvironment}

@@ -70,11 +70,16 @@
       "title": "Tools",
       "builtIn": "BUILT-IN TOOLS"
     },
+    "general": {
+      "title": "General"
+    },
     "advanced": {
       "title": "Advanced Settings",
       "developerMode": "Developer Mode",
       "enablePochiModels": "Enable Pochi Models",
-      "clearStorage": "Clear Storage"
+      "clearStorage": "Clear Storage",
+      "language": "Language",
+      "languageDescription": "Choose your preferred language"
     },
     "workflows": {
       "title": "Workflows",

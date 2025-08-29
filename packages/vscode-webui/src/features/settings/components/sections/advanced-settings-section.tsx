@@ -52,7 +52,6 @@ export const AdvancedSettingsSection: React.FC = () => {
               >
                 {t("settings.advanced.clearStorage")}
               </Button>
-              div{" "}
             </div>
           </>
         )}

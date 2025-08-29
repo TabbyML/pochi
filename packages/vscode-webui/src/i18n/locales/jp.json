@@ -70,11 +70,16 @@
       "title": "ツール",
       "builtIn": "内蔵ツール"
     },
+    "general": {
+      "title": "一般設定"
+    },
     "advanced": {
       "title": "詳細設定",
       "developerMode": "開発者モード",
       "enablePochiModels": "Pochi モデルを有効化",
-      "clearStorage": "ストレージをクリア"
+      "clearStorage": "ストレージをクリア",
+      "language": "言語",
+      "languageDescription": "希望の言語を選択してください"
     },
     "workflows": {
       "title": "ワークフロー",
