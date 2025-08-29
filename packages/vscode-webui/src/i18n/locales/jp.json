@@ -38,7 +38,7 @@
   },
   "tokenUsage": {
     "compacting": "圧縮中...",
-    "ofTokens": "{{tokens}} トークンの % ",
+    "ofTokens": "% of {{tokens}} tokens",
     "rules": "ルール",
     "contextWindow": "コンテキストウィンドウ",
     "ofUsed": "{{total}} のうち {{used}} 使用済み",
