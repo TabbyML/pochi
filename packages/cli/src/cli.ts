@@ -22,7 +22,7 @@ logger.debug(`pochi v${packageJson.version}`);
 
 const prodServerUrl = "https://app.getpochi.com";
 
-const userAgent = `pochi-cli ${packageJson.version} Node/${process.version} (${process.platform}; ${process.arch})`;
+const userAgent = `PochiCli/${packageJson.version} Node/${process.version} (${process.platform}; ${process.arch})`;
 
 const parsePositiveInt = (input: string): number => {
   if (!input) {
