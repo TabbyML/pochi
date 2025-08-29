@@ -14,6 +14,7 @@ import type {
   VSCodeLmModel,
   WorkspaceState,
 } from "./index";
+import type { ListSymbolItem } from "./types/symbol";
 
 const VSCodeHostStub = {
   readCurrentWorkspace: async () => {
@@ -72,6 +73,9 @@ const VSCodeHostStub = {
   },
   openSymbol: (_symbol: string): Promise<void> => {
     return Promise.resolve();
+  },
+  listSymbolsInWorkspace: (): Promise<ListSymbolItem[]> => {
+    return Promise.resolve([]);
   },
   listRuleFiles: (): Promise<RuleFile[]> => {
     return Promise.resolve([]);

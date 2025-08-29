@@ -80,7 +80,7 @@ import { startBackgroundJob } from "@/tools/start-background-job";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { ThirdMcpImporter } from "../mcp/third-party-mcp";
 import { isExecutable } from "../mcp/types";
-import { listSymbols } from "../symbol";
+import { type ListSymbolsParams, listSymbols } from "../symbol";
 import {
   convertUrl,
   isLocalUrl,
@@ -274,6 +274,10 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         ),
       });
     }
+  };
+
+  listSymbolsInWorkspace = async (params?: ListSymbolsParams) => {
+    return listSymbols(params);
   };
 
   executeToolCall = runExclusive.build(

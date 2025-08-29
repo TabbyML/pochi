@@ -16,6 +16,12 @@ import {
 } from "@tiptap/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import tippy from "tippy.js";
+
+import { cn } from "@/lib/utils";
+import { findSuggestionMatch } from "@tiptap/suggestion";
+import type { SuggestionMatch, Trigger } from "@tiptap/suggestion";
+import { ScrollArea } from "../ui/scroll-area";
+import { AutoCompleteExtension } from "./auto-completion/extension";
 import {
   PromptFormMentionExtension,
   fileMentionPluginKey,
@@ -25,13 +31,6 @@ import {
   type MentionListProps,
 } from "./context-mention/mention-list";
 import "./prompt-form.css";
-import { cn } from "@/lib/utils";
-import {
-  type SuggestionMatch,
-  type Trigger,
-  findSuggestionMatch,
-} from "@tiptap/suggestion";
-import { ScrollArea } from "../ui/scroll-area";
 import type { MentionListActions } from "./shared";
 import { SubmitHistoryExtension } from "./submit-history-extension";
 import {
@@ -184,14 +183,6 @@ export function FormEditor({
                     return;
                   }
 
-                  // @ts-ignore - accessing extensionManager and methods
-                  const customExtension =
-                    props.editor.extensionManager?.extensions.find(
-                      // @ts-ignore - extension type
-                      (extension) =>
-                        extension.name === "custom-enter-key-handler",
-                    );
-
                   popup = tippy("body", {
                     getReferenceClientRect: tiptapProps.clientRect,
                     appendTo: () => document.body,
@@ -335,6 +326,7 @@ export function FormEditor({
           depth: 20,
         }),
         ...(enableSubmitHistory ? [SubmitHistoryExtension] : []),
+        AutoCompleteExtension,
       ],
       editorProps: {
         attributes: {
@@ -356,7 +348,6 @@ export function FormEditor({
           dragleave: (view, event) => {
             const relatedTarget = (event as DragEvent)
               .relatedTarget as HTMLElement | null;
-            // Only trigger dragleave if we're actually leaving the editor area
             if (!relatedTarget || !view.dom.contains(relatedTarget)) {
               setIsDragOver(false);
             }
@@ -398,7 +389,6 @@ export function FormEditor({
           setInput(text);
         }
 
-        // Update current draft if we have submit history enabled
         if (
           enableSubmitHistory &&
           props.editor.extensionManager.extensions.find(
@@ -425,11 +415,9 @@ export function FormEditor({
           );
         }
 
-        // Save content when changes
         debouncedSaveEditorState();
       },
       onDestroy() {
-        // Save content when editor is destroyed
         saveEdtiorState();
       },
       onPaste: (e) => {
@@ -445,7 +433,6 @@ export function FormEditor({
     }
   }, [editor, editorRef]);
 
-  // For saving the editor content to the session state
   const saveEdtiorState = useCallback(async () => {
     if (editor && !editor.isDestroyed) {
       await vscodeHost.setSessionState({
@@ -460,7 +447,6 @@ export function FormEditor({
     [],
   );
 
-  // Load session state when the editor is initialized
   useEffect(() => {
     if (!editor) {
       return;
@@ -479,7 +465,6 @@ export function FormEditor({
     loadSessionState();
   }, [editor]);
 
-  // Update editor content when input changes
   useEffect(() => {
     if (
       editor &&
@@ -489,7 +474,6 @@ export function FormEditor({
     }
   }, [editor, input]);
 
-  // Auto focus the editor when the component is mounted
   useEffect(() => {
     if (autoFocus && editor) {
       editor.commands.focus();
@@ -502,7 +486,6 @@ export function FormEditor({
     }
   }, [editor]);
 
-  // Auto focus when document is focused.
   useEffect(() => {
     window.addEventListener("focus", focusEditor);
     return () => {
@@ -510,7 +493,6 @@ export function FormEditor({
     };
   }, [focusEditor]);
 
-  // Handle form submission to record submit history
   const handleSubmit = useCallback(
     (e: React.FormEvent<HTMLFormElement>) => {
       if (enableSubmitHistory && editor && !editor.isDestroyed) {
@@ -548,7 +530,6 @@ export function FormEditor({
         />
       </ScrollArea>
 
-      {/* Drop zone overlay - shows when dragging over the editor */}
       {isDragOver && (
         <div className="pointer-events-none absolute inset-0 z-50 flex items-center justify-center rounded-sm border-2 border-zinc-500 border-dashed dark:bg-zinc-500/30">
           <div className="rounded-md border bg-white px-4 py-2 shadow-lg dark:bg-gray-800">
