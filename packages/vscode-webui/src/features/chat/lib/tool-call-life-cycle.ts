@@ -298,15 +298,19 @@ export class ManagedToolCallLifeCycle
     if (
       this.state.type === "init" ||
       this.state.type === "pending" ||
+      this.state.type === "ready" ||
       this.state.type === "execute" ||
       this.state.type === "execute:streaming"
     ) {
       this.state.abort("user-abort");
-      this.transitTo(["init", "pending", "execute", "execute:streaming"], {
-        type: "complete",
-        result: { error: "Tool call aborted by user." },
-        reason: "user-abort",
-      });
+      this.transitTo(
+        ["init", "pending", "ready", "execute", "execute:streaming"],
+        {
+          type: "complete",
+          result: { error: "Tool call aborted by user." },
+          reason: "user-abort",
+        },
+      );
     }
   }
 

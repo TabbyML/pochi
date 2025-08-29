@@ -38,7 +38,11 @@ export function useToolCallLifeCycles(abortController: AbortController) {
   const previewingToolCalls = useMemo(() => {
     const previewing = [];
     for (const lifecycle of toolCallLifeCycles.values()) {
-      if (lifecycle.status === "init" || lifecycle.status === "pending") {
+      if (
+        lifecycle.status === "init" ||
+        lifecycle.status === "pending" ||
+        lifecycle.status === "ready"
+      ) {
         previewing.push(lifecycle);
       }
     }

@@ -33,7 +33,6 @@ describe("ignoreWalk", () => {
   };
 
   beforeEach(() => {
-    // @ts-expect-error - Mock implementation doesn't match all overloads
     vi.mocked(fs.readdir).mockImplementation(async (path) => {
       return mockFs[path as keyof typeof mockFs] || [];
     });
