@@ -7,7 +7,7 @@
     "account": "账户",
     "help": "帮助"
   },
-  "emptyChat": {
+  "placeholder": {
     "title": "我能帮您实现什么？",
     "subtitle": "Pochi 由 AI 驱动，可能会出现错误。",
     "disclaimer": "使用前请仔细检查输出内容。",

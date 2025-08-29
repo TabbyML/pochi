@@ -12,24 +12,24 @@ export function EmptyChatPlaceholder() {
       <div className="mb-4">{/* Adjusted icon color for visibility */}</div>
       <h2 className="mb-2 flex items-center gap-3 font-semibold text-2xl text-gray-700 dark:text-gray-100">
         <TerminalIcon className="animate-[spin_6s_linear_infinite]" />
-        {t("emptyChat.title")}
+        {t("placeholder.title")}
       </h2>
       <p className="mb-4 leading-relaxed">
-        {t("emptyChat.subtitle")}
+        {t("placeholder.subtitle")}
         <br />
-        {t("emptyChat.disclaimer")}
+        {t("placeholder.disclaimer")}
       </p>
       <ul className="m-0 list-none p-0">
         <li className="mb-2 flex items-center">
-          <ImageIcon className="mr-2 size-4" /> {t("emptyChat.tips.images")}
+          <ImageIcon className="mr-2 size-4" /> {t("placeholder.tips.images")}
         </li>
         <li className="mb-2 flex items-center">
           <span className="mr-2 text-base">@</span>{" "}
-          {t("emptyChat.tips.context")}
+          {t("placeholder.tips.context")}
         </li>
         <li className="mb-2 flex items-center">
           <span className="mr-3 ml-1 text-base">/</span>{" "}
-          {t("emptyChat.tips.workflow")}
+          {t("placeholder.tips.workflow")}
         </li>
       </ul>
       {!autoSaveDisabled && (
@@ -38,12 +38,12 @@ export function EmptyChatPlaceholder() {
             <div className="flex items-center gap-2">
               <h3 className="items-center font-medium text-sm ">
                 <AlertTriangleIcon className="mr-1 mb-[1px] inline size-4" />
-                {t("emptyChat.autoSave.title")}
+                {t("placeholder.autoSave.title")}
               </h3>
             </div>
             <div>
               <p className="text-muted-foreground text-sm">
-                {t("emptyChat.autoSave.description")}
+                {t("placeholder.autoSave.description")}
               </p>
               <div className="mt-3">
                 <a
