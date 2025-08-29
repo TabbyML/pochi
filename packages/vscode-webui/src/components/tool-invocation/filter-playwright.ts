@@ -1,13 +1,16 @@
 /**
  * Filter markdown code blocks from text content
- * Removes ```language\ncontent\n``` or ```\ncontent\n``` blocks
+ * Replaces ```language\ncontent\n``` or ```\ncontent\n``` blocks with omission ellipses
  */
 function filterMarkdownFromText(text: string): string {
   if (typeof text !== "string") {
     return text;
   }
   const markdownBlockPattern = /```[\w]*\n[\s\S]*?\n```/g;
-  let filtered = text.replace(markdownBlockPattern, "");
+  let filtered = text.replace(
+    markdownBlockPattern,
+    "\n\n[...page content omitted...]\n\n",
+  );
   filtered = filtered.replace(/\n\s*\n\s*\n/g, "\n\n");
   filtered = filtered.trim();
   return filtered;
