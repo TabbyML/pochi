@@ -47,7 +47,10 @@ export const LanguageSelectOption: React.FC<LanguageSelectOptionProps> = ({
       </div>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" className="w-[180px] justify-between focus:ring-0 focus-visible:ring-0 focus:outline-none">
+          <Button
+            variant="outline"
+            className="w-[180px] justify-between focus:outline-none focus:ring-0 focus-visible:ring-0"
+          >
             {currentLanguage?.name || i18n.language}
             <ChevronDown className="ml-2 h-4 w-4" />
           </Button>
