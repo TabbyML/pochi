@@ -216,6 +216,10 @@ export class OutputManager {
    * Finalizes the output with completion status and optional error
    */
   finalize(detached: boolean, error?: ExecutionError): void {
+    if (this.output.value.status === "completed") {
+      // Ignore finalization if already completed
+      return;
+    }
     // Final truncation check
     const {
       chunks: finalChunks,

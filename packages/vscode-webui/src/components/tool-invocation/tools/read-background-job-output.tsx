@@ -1,13 +1,17 @@
+import { useBackgroundJobCommand } from "@/lib/hooks/use-background-job-command";
 import { BackgroundJobPanel } from "../command-execution-panel";
 import { HighlightedText } from "../highlight-text";
 import { StatusIcon } from "../status-icon";
 import { ExpandableToolContainer } from "../tool-container";
 import type { ToolProps } from "../types";
-import { getBackgroundJobCommandFromMessages } from "../util";
 
 export const ReadBackgroundJobOutputTool: React.FC<
   ToolProps<"readBackgroundJobOutput">
 > = ({ tool, isExecuting, messages }) => {
+  const command = useBackgroundJobCommand(
+    messages,
+    tool.input?.backgroundJobId,
+  );
   const { regex } = tool.input || {};
   const title = (
     <>
@@ -22,21 +26,9 @@ export const ReadBackgroundJobOutputTool: React.FC<
     </>
   );
 
-  let detail: React.ReactNode;
-  if (
-    tool.state === "output-available" &&
-    typeof tool.output === "object" &&
-    tool.output !== null &&
-    "output" in tool.output &&
-    typeof tool.output.output === "string"
-  ) {
-    const { output } = tool.output;
-    const { backgroundJobId } = tool.input;
-    const command =
-      getBackgroundJobCommandFromMessages(messages, backgroundJobId) ??
-      `Job id: ${backgroundJobId}`;
-    detail = <BackgroundJobPanel command={command} output={output} />;
-  }
+  const detail: React.ReactNode = command ? (
+    <BackgroundJobPanel command={command} output={tool.output?.output} />
+  ) : null;
 
   return <ExpandableToolContainer title={title} detail={detail} />;
 };
