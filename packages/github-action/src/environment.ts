@@ -2,7 +2,7 @@
  * Environment variable utilities
  */
 
-export function getGitHubToken(): string {
+export function readGithubToken(): string {
   const githubToken = process.env.GITHUB_TOKEN;
   if (!githubToken) {
     throw new Error(
@@ -12,7 +12,7 @@ export function getGitHubToken(): string {
   return githubToken;
 }
 
-export function getPochiConfig() {
+export function readPochiConfig() {
   const pochiToken = process.env.POCHI_TOKEN;
   if (!pochiToken) {
     throw new Error(

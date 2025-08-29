@@ -2,10 +2,10 @@ import { spawn } from "node:child_process";
 /**
  * Pochi runner utilities
  */
-import { getPochiConfig } from "./environment";
+import { readPochiConfig } from "./environment";
 
 export async function runPochiTask(prompt: string): Promise<void> {
-  const config = getPochiConfig();
+  const config = readPochiConfig();
 
   const args = ["--prompt", prompt];
 

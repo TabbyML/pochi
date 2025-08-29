@@ -20,11 +20,6 @@ async function main(): Promise<void> {
     githubManager = await GitHubManager.create(github.context);
     await githubManager.checkPermissions();
 
-    if (!githubManager.isPullRequest()) {
-      console.log("❌ This action only responds to PR comments.");
-      process.exit(0);
-    }
-
     // Parse user prompt - pass only original query to runner
     const userPrompt = githubManager.parseUserPrompt();
 

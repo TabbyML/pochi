@@ -1,7 +1,7 @@
 /**
  * GitHub operations manager
  */
-import { getGitHubToken } from "@/environment";
+import { readGithubToken } from "@/environment";
 import type * as github from "@actions/github";
 import { Octokit } from "@octokit/rest";
 import type { IssueCommentEvent } from "@octokit/webhooks-types";
@@ -21,9 +21,9 @@ export class GitHubManager {
   }
 
   static async create(context: typeof github.context): Promise<GitHubManager> {
-    GitHubManager.checkPayloadKeyword(context);
+    GitHubManager.checkPochiKeyword(context);
 
-    const githubToken = getGitHubToken();
+    const githubToken = readGithubToken();
     return new GitHubManager(githubToken, context);
   }
 
@@ -33,11 +33,6 @@ export class GitHubManager {
       owner: this.context.repo.owner,
       repo: this.context.repo.repo,
     };
-  }
-
-  isPullRequest(): boolean {
-    const payload = this.context.payload as IssueCommentEvent;
-    return Boolean(payload.issue.pull_request);
   }
 
   async postErrorComment(errorMessage: string): Promise<void> {
@@ -88,7 +83,7 @@ ${errorMessage}
   }
 
   // Validation and parsing operations
-  private static checkPayloadKeyword(context: typeof github.context): void {
+  private static checkPochiKeyword(context: typeof github.context): void {
     const payload = context.payload as IssueCommentEvent;
     const body = payload.comment.body.trim();
     if (!body.match(/(?:^|\s)\/pochi(?=$|\s)/)) {
