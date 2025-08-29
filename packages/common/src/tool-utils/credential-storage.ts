@@ -1,16 +1,19 @@
 import * as fs from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
+import { z } from "zod";
 import { getLogger } from "../base";
 import { isFileExists } from "./fs";
 
-export interface PochiCredential {
-  bearer_token?: string;
-}
+const PochiCredential = z.object({
+  bearer_token: z.string().optional(),
+});
+
+export type PochiCredential = z.infer<typeof PochiCredential>;
 
 const logger = getLogger("PochiCredentialStorage");
 
-class CredentialStorage<T extends PochiCredential> {
+class CredentialStorage {
   private isDev: boolean;
 
   constructor(options?: {
@@ -27,13 +30,14 @@ class CredentialStorage<T extends PochiCredential> {
     );
   }
 
-  private async readCredentials(): Promise<T | undefined> {
+  private async readCredentials() {
     try {
       if (!(await isFileExists(this.credentialFilePath))) {
         return undefined;
       }
       const data = await fs.readFile(this.credentialFilePath, "utf-8");
-      return JSON.parse(data) as T;
+      const parsed = JSON.parse(data);
+      return PochiCredential.parse(parsed);
     } catch (error) {
       logger.error(
         `Failed to read credential store file at ${this.credentialFilePath}:`,
@@ -45,15 +49,17 @@ class CredentialStorage<T extends PochiCredential> {
 
   async read(): Promise<string | undefined> {
     const credential = await this.readCredentials();
-    return credential ? credential.bearer_token : undefined;
+    return credential?.bearer_token;
   }
 
   async write(value: string | undefined): Promise<void> {
     try {
-      const credential = (await this.readCredentials()) ?? ({} as T);
+      const credential = (await this.readCredentials()) || {};
       const { bearer_token, ...rest } = credential;
       const updatedCredential =
         value !== undefined ? { ...rest, bearer_token: value } : rest;
+      // Validate the updated credential structure
+      PochiCredential.parse(updatedCredential);
 
       if (Object.keys(updatedCredential).length === 0) {
         // if credential becomes empty, remove the file
