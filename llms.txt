@@ -1,3 +1,31 @@
+# CLI
+URL: /cli
+
+***
+
+title: CLI
+icon: "SquareTerminal"
+----------------------
+
+# CLI
+
+TBD
+
+
+# GitHub
+URL: /github
+
+***
+
+title: GitHub
+icon: "Github"
+--------------
+
+# GitHub
+
+TBD
+
+
 # Getting Started
 URL: /
 Welcome to Pochi - Full-Stack AI Teammate Guide
@@ -492,6 +520,20 @@ If you’re experiencing issues with Pochi:
 2. Join our Discord
 
    For real-time help and community discussion, join our Discord server: [https://getpochi.com/discord](https://getpochi.com/discord)
+
+
+# VSCode
+URL: /vscode
+
+***
+
+title: VSCode
+icon: "LayoutPanelLeft"
+-----------------------
+
+# VSCode
+
+TBD
 
 
 # Workflows
