@@ -257,6 +257,20 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     }));
   };
 
+  listAutoCompleteCandidates = async (
+    _query?: string,
+    _options?: {
+      symbolLimit?: number;
+    },
+  ): Promise<
+    Array<{
+      type: "symbol" | "tool" | "mcp";
+      label: string;
+    }>
+  > => {
+    return Promise.reject(new Error("Not implemented"));
+  };
+
   openSymbol = async (symbol: string) => {
     const symbolInfos = await listSymbols({ query: symbol, limit: 1 });
     if (symbolInfos.length > 0) {
