@@ -120,6 +120,11 @@
         "command": "pochi.openCustomModelSettings",
         "title": "Open Custom Model Settings",
         "category": "Pochi"
+      },
+      {
+        "command": "pochi.anthropic.oauth",
+        "title": "Anthropic OAuth Login",
+        "category": "Pochi"
       }
     ],
     "menus": {
@@ -223,6 +228,25 @@
             "order": 1,
             "default": {},
             "description": "MCP servers configuration for Pochi"
+          },
+          "pochi.geminiTokens": {
+            "type": "object",
+            "default": null,
+            "description": "Stored Gemini OAuth tokens for authentication",
+            "properties": {
+              "refresh": {
+                "type": "string",
+                "description": "Refresh token for Gemini OAuth"
+              },
+              "access": {
+                "type": "string",
+                "description": "Access token for Gemini OAuth"
+              },
+              "expires": {
+                "type": "number",
+                "description": "Token expiration timestamp"
+              }
+            }
           },
           "pochi.customModelSettings": {
             "description": "Model settings for Pochi",
