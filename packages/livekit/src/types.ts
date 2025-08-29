@@ -92,6 +92,13 @@ const RequestData = z.object({
         .optional()
         .describe("Whether to use tool call middleware"),
     }),
+    z.object({
+      type: z.literal("gemini-cli"),
+      modelId: z.string(),
+      apiKey: z.string().optional(),
+      contextWindow: z.number().describe("Context window of the model."),
+      maxOutputTokens: z.number().describe("Max output tokens of the model."),
+    }),
   ]),
   mcpToolSet: z
     .record(
