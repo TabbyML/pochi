@@ -304,7 +304,7 @@ export class ManagedToolCallLifeCycle
       this.state.type === "execute:streaming"
     ) {
       this.state.abort("user-abort");
-      this.transitTo(["init", "pending"], {
+      this.transitTo(["init", "pending", "execute", "execute:streaming"], {
         type: "complete",
         result: { error: "Tool call aborted by user." },
         reason: "user-abort",
