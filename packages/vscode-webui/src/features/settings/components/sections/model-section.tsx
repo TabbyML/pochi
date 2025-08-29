@@ -60,8 +60,8 @@ export const ModelSection: React.FC<ModelSectionProps> = ({ user }) => {
 
   const getCostTypeBadgeText = (costType: "basic" | "premium") => {
     return costType === "premium"
-      ? t("modelSelect.premium")
-      : t("modelSelect.basic");
+      ? t("modelSelect.super")
+      : t("modelSelect.swift");
   };
 
   const getCostTypeBadgeVariant = (costType: "basic" | "premium") => {

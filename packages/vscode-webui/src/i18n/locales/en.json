@@ -50,8 +50,8 @@
     "selectModel": "Select Model",
     "manageCustomModels": "Manage custom models...",
     "custom": "Custom",
-    "premium": "Super",
-    "basic": "Swift"
+    "super": "Super",
+    "swift": "Swift"
   },
   "settings": {
     "account": {

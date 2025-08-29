@@ -167,13 +167,13 @@ export function useSelectedModels() {
       (m) => m.type === "hosted" && m.costType === "premium",
     );
     if (premiumModels.length > 0) {
-      groups.push({ title: t("modelSelect.premium"), models: premiumModels });
+      groups.push({ title: t("modelSelect.super"), models: premiumModels });
     }
     const basicModels = models.filter(
       (m) => m.type === "hosted" && m.costType === "basic",
     );
     if (basicModels.length > 0) {
-      groups.push({ title: t("modelSelect.basic"), models: basicModels });
+      groups.push({ title: t("modelSelect.swift"), models: basicModels });
     }
 
     const vscodeModels = models.filter((m) => m.type === "vscode");
