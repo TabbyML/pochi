@@ -13,10 +13,10 @@ export function getGitHubToken(): string {
 }
 
 export function getPochiConfig() {
-  const pochiToken = process.env.POCHI_SESSION_TOKEN;
+  const pochiToken = process.env.POCHI_TOKEN;
   if (!pochiToken) {
     throw new Error(
-      "POCHI_SESSION_TOKEN environment variable is required. Please add your pochi session token to GitHub Secrets as POCHI_SESSION_TOKEN.",
+      "POCHI_TOKEN environment variable is required. Please add your pochi session token to GitHub Secrets as POCHI_TOKEN.",
     );
   }
 

@@ -72,7 +72,7 @@ jobs:
       - name: Run pochi
         uses: tabbyml/pochi/packages/github-action@action@latest
         env:
-          POCHI_SESSION_TOKEN: ${{ secrets.POCHI_SESSION_TOKEN }}
+          POCHI_TOKEN: ${{ secrets.POCHI_TOKEN }}
 EOF
 
 echo "✅ Workflow file created: $WORKFLOW_FILE"
@@ -81,7 +81,7 @@ echo ""
 # Instructions for required configuration
 echo "🔧 Required setup:"
 echo "1. Go to https://github.com/$REPO_OWNER/$REPO_NAME/settings/secrets/actions"
-echo "2. Add POCHI_SESSION_TOKEN with your Pochi session token from https://app.getpochi.com"
+echo "2. Add POCHI_TOKEN with your Pochi session token from https://app.getpochi.com"
 echo ""
 
 # Instructions for optional configuration

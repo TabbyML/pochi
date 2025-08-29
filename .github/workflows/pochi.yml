@@ -21,4 +21,4 @@ jobs:
       - name: Run pochi
         uses: tabbyml/pochi/packages/github-action@action@latest
         env:
-          POCHI_SESSION_TOKEN: ${{ secrets.POCHI_SESSION_TOKEN }}
+          POCHI_TOKEN: ${{ secrets.POCHI_TOKEN }}

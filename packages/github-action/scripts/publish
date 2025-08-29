@@ -109,7 +109,7 @@ if [ -n "$NEW_VERSION" ]; then
     echo "📝 Example workflow:"
     echo "- uses: tabbyml/pochi/packages/github-action@action@latest"
     echo "  env:"
-    echo "    POCHI_SESSION_TOKEN: \${{ secrets.POCHI_SESSION_TOKEN }}"
+    echo "    POCHI_TOKEN: \${{ secrets.POCHI_TOKEN }}"
 fi
 
 # Get repository information for releases link
