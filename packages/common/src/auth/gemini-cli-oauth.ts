@@ -1,0 +1,431 @@
+import * as crypto from "node:crypto";
+import * as http from "node:http";
+import * as os from "node:os";
+import * as path from "node:path";
+import * as fs from "node:fs/promises";
+import { getLogger } from "../base";
+
+const logger = getLogger("GeminiCliOAuth");
+
+export interface GeminiOAuthResult {
+  authUrl: string;
+  port: number;
+  loginCompletePromise: Promise<void>;
+}
+
+export interface GeminiTokens {
+  refresh: string;
+  access: string;
+  expires: number;
+}
+
+export class GeminiCliOAuthHandler {
+  private readonly configDir: string;
+  private readonly tokenPath: string;
+
+  constructor() {
+    this.configDir = path.join(os.homedir(), ".pochi");
+    this.tokenPath = path.join(this.configDir, "gemini-tokens.json");
+  }
+
+  /**
+   * Start the Gemini OAuth flow
+   */
+  async startOAuthFlow(): Promise<GeminiOAuthResult> {
+    // Generate PKCE parameters
+    const pkce = this.generatePKCEParams();
+
+    // Find an available port
+    const port = await this.findAvailablePort();
+    const redirectUri = `http://localhost:${port}/oauth/callback`;
+
+    // Create authorization URL
+    const authParams = new URLSearchParams({
+      client_id: this.getClientId(),
+      redirect_uri: redirectUri,
+      response_type: "code",
+      scope: [
+        "https://www.googleapis.com/auth/cloud-platform",
+        "https://www.googleapis.com/auth/userinfo.email",
+        "https://www.googleapis.com/auth/userinfo.profile",
+      ].join(" "),
+      code_challenge: pkce.challenge,
+      code_challenge_method: "S256",
+      state: crypto.randomBytes(16).toString("hex"),
+    });
+
+    const url = new URL("https://accounts.google.com/o/oauth2/v2/auth");
+    url.search = authParams.toString();
+
+    // Create HTTP server to handle the callback
+    const server = http.createServer();
+    const loginCompletePromise = new Promise<void>((resolve, reject) => {
+      server.listen(port, "localhost", () => {
+        logger.info(`OAuth callback server listening on port ${port}`);
+      });
+
+      server.on("request", async (req, res) => {
+        try {
+          if (!req.url) {
+            res.writeHead(400);
+            res.end("Invalid request");
+            return;
+          }
+
+          const reqUrl = new URL(req.url, `http://localhost:${port}`);
+
+          if (reqUrl.pathname !== "/oauth/callback") {
+            res.writeHead(404);
+            res.end("Not found");
+            return;
+          }
+
+          const code = reqUrl.searchParams.get("code");
+          const returnedState = reqUrl.searchParams.get("state");
+          const error = reqUrl.searchParams.get("error");
+
+          if (error) {
+            res.writeHead(400);
+            res.end(`OAuth error: ${error}`);
+            reject(new Error(`OAuth error: ${error}`));
+            return;
+          }
+
+          if (returnedState !== authParams.get("state")) {
+            res.writeHead(400);
+            res.end("State mismatch. Possible CSRF attack");
+            reject(new Error("State mismatch"));
+            return;
+          }
+
+          if (!code) {
+            res.writeHead(400);
+            res.end("No authorization code received");
+            reject(new Error("No authorization code"));
+            return;
+          }
+
+          try {
+            await this.exchangeCodeForTokens(code, pkce.verifier, redirectUri);
+
+            res.writeHead(200, { "Content-Type": "text/html" });
+            res.end(this.getSuccessPage());
+            resolve();
+          } catch (exchangeError) {
+            logger.error("Gemini CLI token exchange error:", exchangeError);
+            res.writeHead(500);
+            res.end(
+              `Token exchange failed: ${exchangeError instanceof Error ? exchangeError.message : String(exchangeError)}`,
+            );
+            reject(exchangeError);
+          }
+        } catch (e) {
+          reject(e);
+        } finally {
+          server.close();
+        }
+      });
+    });
+
+    return {
+      authUrl: url.toString(),
+      port,
+      loginCompletePromise,
+    };
+  }
+
+  /**
+   * Exchange authorization code for access tokens
+   */
+  private async exchangeCodeForTokens(
+    code: string,
+    verifier: string,
+    redirectUri: string,
+  ): Promise<void> {
+    const response = await fetch("https://oauth2.googleapis.com/token", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: new URLSearchParams({
+        code: code,
+        client_id: this.getClientId(),
+        client_secret: this.getClientSecret(),
+        redirect_uri: redirectUri,
+        grant_type: "authorization_code",
+        code_verifier: verifier,
+      }),
+    });
+
+    logger.info("Token exchange response status:", response.ok);
+
+    if (!response.ok) {
+      throw new Error(
+        `Token exchange failed: ${response.status} ${response.statusText}`,
+      );
+    }
+
+    const tokenData = (await response.json()) as {
+      refresh_token: string;
+      access_token: string;
+      expires_in: number;
+    };
+
+    console.log("Token data received", tokenData);
+
+    // Store the tokens securely in the file system
+    try {
+      const tokens: GeminiTokens = {
+        refresh: tokenData.refresh_token,
+        access: tokenData.access_token,
+        expires: Date.now() + tokenData.expires_in * 1000,
+      };
+
+      await this.saveTokens(tokens);
+
+      logger.info("Gemini tokens saved successfully");
+
+      // Fetch user info after saving tokens
+      await this.fetchUserInfo(tokenData.access_token);
+    } catch (configError) {
+      logger.error(
+        "Failed to save Gemini tokens to configuration:",
+        configError,
+      );
+      throw new Error(`Failed to save authentication tokens: ${configError}`);
+    }
+  }
+
+  private async refreshAccessToken(
+    refreshToken: string,
+    tokenUrl: string,
+    mcpServerUrl?: string,
+  ): Promise<OAuthTokenResponse> {
+    const params = new URLSearchParams({
+      grant_type: "refresh_token",
+      refresh_token: refreshToken,
+      client_id: this.getClientId(),
+    });
+
+    if (config.clientSecret) {
+      params.append("client_secret", config.clientSecret);
+    }
+
+    if (config.scopes && config.scopes.length > 0) {
+      params.append("scope", config.scopes.join(" "));
+    }
+
+    // Add resource parameter for MCP OAuth spec compliance
+    // Use the MCP server URL if provided, otherwise fall back to token URL
+    const resourceUrl = mcpServerUrl || tokenUrl;
+    try {
+      params.append("resource", OAuthUtils.buildResourceParameter(resourceUrl));
+    } catch (error) {
+      throw new Error(
+        `Invalid resource URL: "${resourceUrl}". ${getErrorMessage(error)}`,
+      );
+    }
+
+    const response = await fetch(tokenUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: params.toString(),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(
+        `Token refresh failed: ${response.status} - ${errorText}`,
+      );
+    }
+
+    return (await response.json()) as OAuthTokenResponse;
+  }
+
+  /**
+   * Save tokens to file system
+   */
+  private async saveTokens(tokens: GeminiTokens): Promise<void> {
+    try {
+      // Ensure config directory exists
+      await fs.mkdir(this.configDir, { recursive: true });
+
+      // Write tokens to file with restricted permissions
+      await fs.writeFile(this.tokenPath, JSON.stringify(tokens, null, 2), {
+        mode: 0o600, // Read/write for owner only
+      });
+    } catch (error) {
+      throw new Error(`Failed to save tokens: ${error}`);
+    }
+  }
+
+  /**
+   * Load tokens from file system
+   */
+  async loadTokens(): Promise<GeminiTokens | null> {
+    try {
+      const data = await fs.readFile(this.tokenPath, "utf-8");
+      return JSON.parse(data) as GeminiTokens;
+    } catch (error) {
+      // File doesn't exist or can't be read
+      return null;
+    }
+  }
+
+  /**
+   * Check if tokens exist and are valid
+   */
+  async isAuthenticated(): Promise<boolean> {
+    const tokens = await this.loadTokens();
+    if (!tokens) {
+      return false;
+    }
+
+    // Check if tokens are not expired (with 5 minute buffer)
+    return tokens.expires > Date.now() + 5 * 60 * 1000;
+  }
+
+  /**
+   * Get current user info if authenticated
+   */
+  async getCurrentUser(): Promise<{ email: string; name: string } | null> {
+    const tokens = await this.loadTokens();
+    if (!tokens) {
+      return null;
+    }
+
+    try {
+      return await this.fetchUserInfo(tokens.access);
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Clear stored tokens
+   */
+  async logout(): Promise<void> {
+    try {
+      await fs.unlink(this.tokenPath);
+    } catch (error) {
+      // File might not exist, which is fine
+      logger.debug("Token file not found during logout:", error);
+    }
+  }
+
+  /**
+   * Fetch user information using the access token
+   */
+  private async fetchUserInfo(
+    accessToken: string,
+  ): Promise<{ email: string; name: string }> {
+    const response = await fetch(
+      "https://www.googleapis.com/oauth2/v2/userinfo",
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      },
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch user info: ${response.status}`);
+    }
+
+    const userInfo = (await response.json()) as {
+      email: string;
+      name: string;
+      picture?: string;
+    };
+
+    logger.info("User info fetched successfully:", {
+      email: userInfo.email,
+      name: userInfo.name,
+    });
+
+    return { email: userInfo.email, name: userInfo.name };
+  }
+
+  /**
+   * Generate PKCE parameters for OAuth2 security
+   */
+  private generatePKCEParams(): { verifier: string; challenge: string } {
+    const verifier = crypto.randomBytes(32).toString("base64url");
+    const challenge = crypto
+      .createHash("sha256")
+      .update(verifier)
+      .digest("base64url");
+
+    return { verifier, challenge };
+  }
+
+  /**
+   * Find an available port for the OAuth callback server
+   */
+  private findAvailablePort(): Promise<number> {
+    return new Promise((resolve, reject) => {
+      const server = http.createServer();
+      server.listen(0, () => {
+        const address = server.address();
+        if (address && typeof address === "object") {
+          const port = address.port;
+          server.close(() => resolve(port));
+        } else {
+          server.close(() => reject(new Error("Unable to determine port")));
+        }
+      });
+
+      server.on("error", (err) => {
+        server.close(() => reject(err));
+      });
+    });
+  }
+
+  private getClientId(): string {
+    return "681255809395-oo8ft2oprdrnp9e3aqf6av3hmdib135j.apps.googleusercontent.com";
+  }
+
+  private getClientSecret(): string {
+    return "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";
+  }
+
+  /**
+   * Get the HTML content for the success page
+   */
+  private getSuccessPage(): string {
+    return `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Authentication Successful</title>
+        </head>
+        <body>
+          <h1>Authentication Successful!</h1>
+          <p>You can now close this window and return to your terminal.</p>
+          <script>
+            // Try multiple methods to close the window
+            function closeWindow() {
+              try {
+                window.close();
+              } catch (e) {}
+              
+              try {
+                window.opener = null;
+                window.close();
+              } catch (e) {}
+              
+              try {
+                self.close();
+              } catch (e) {}
+            }
+            
+            // Close after a short delay
+            setTimeout(closeWindow, 2000);
+          </script>
+        </body>
+      </html>
+    `;
+  }
+}
