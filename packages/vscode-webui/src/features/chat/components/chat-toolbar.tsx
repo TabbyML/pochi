@@ -218,7 +218,6 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
         <div className="flex shrink-0 items-center gap-1">
           {!!selectedModel && (
             <TokenUsage
-              contextWindow={selectedModel.contextWindow}
               totalTokens={totalTokens}
               className="mr-5"
               compact={compactOptions}
