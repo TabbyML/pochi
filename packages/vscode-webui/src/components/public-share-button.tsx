@@ -16,6 +16,7 @@ import {
   Share2Icon,
 } from "lucide-react";
 import { useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 interface PublicShareButtonProps {
   disabled?: boolean;
@@ -31,6 +32,7 @@ export function PublicShareButton({
   modelId,
   displayError,
 }: PublicShareButtonProps) {
+  const { t } = useTranslation();
   const menuItemRef = useRef<"share" | "support">(null);
   const [open, setOpen] = useState(false);
   const { isCopied, copyToClipboard } = useCopyToClipboard({ timeout: 2000 });
@@ -87,15 +89,15 @@ ${environmentInfo}
       },
     });
     doCopy(supportInfo);
-    const openDiscordButtonText = "Join Discord";
+    const openDiscordButtonText = t('share.joinDiscord');
     const result = await vscodeHost.showInformationMessage(
-      "Task shared with the Pochi team",
+      t('share.taskSharedMessage'),
       {
         modal: true,
-        detail: `This task and relevant debug information have been sent. For support, please join our Discord server and reference this issue with the ID: ${shareId}.`,
+        detail: t('share.taskSharedDetail', { shareId }),
       },
       openDiscordButtonText,
-      "OK",
+      t('share.ok'),
     );
 
     if (result === openDiscordButtonText) {
@@ -126,10 +128,10 @@ ${environmentInfo}
           ) : (
             <CopyIcon className="mr-2 size-4" />
           )}
-          Copy link
+          {t('share.copyLink')}
           {!shareId && (
             <span className="ml-2 text-muted-foreground text-xs">
-              (Share first)
+              {t('share.shareFirst')}
             </span>
           )}
         </DropdownMenuItem>
@@ -143,10 +145,10 @@ ${environmentInfo}
           ) : (
             <MessageSquareShare className="mr-2 size-4" />
           )}
-          Share with Support
+          {t('share.shareWithSupport')}
           {!shareId && (
             <span className="ml-2 text-muted-foreground text-xs">
-              (Share first)
+              {t('share.shareFirst')}
             </span>
           )}
         </DropdownMenuItem>

@@ -13,6 +13,7 @@ import {
   LogOut,
   UserIcon,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Section } from "../ui/section";
 
 interface AccountSectionProps {
@@ -20,6 +21,8 @@ interface AccountSectionProps {
 }
 
 export const AccountSection: React.FC<AccountSectionProps> = ({ user }) => {
+  const { t } = useTranslation();
+  
   if (!user) {
     return (
       <Section title="" className="pt-0">
@@ -35,10 +38,10 @@ export const AccountSection: React.FC<AccountSectionProps> = ({ user }) => {
             </div>
             <div className="flex flex-col gap-0.5">
               <span className="font-semibold text-[var(--vscode-textLink-foreground)] text-sm">
-                Sign-In for Pochi models
+                {t('settings.account.signIn')}
               </span>
               <span className="text-muted-foreground text-xs leading-tight">
-                Access premium AI models and features
+                {t('settings.account.signInDescription')}
               </span>
             </div>
           </a>
@@ -81,7 +84,7 @@ export const AccountSection: React.FC<AccountSectionProps> = ({ user }) => {
               rel="noopener noreferrer"
             >
               <UserIcon className="size-4" />
-              Account
+              {t('common.account')}
             </a>
           </DropdownMenuItem>
           <DropdownMenuItem asChild className="cursor-pointer">
@@ -91,7 +94,7 @@ export const AccountSection: React.FC<AccountSectionProps> = ({ user }) => {
               rel="noopener noreferrer"
             >
               <HelpCircle className="size-4" />
-              Help
+              {t('common.help')}
             </a>
           </DropdownMenuItem>
           <DropdownMenuItem asChild className="cursor-pointer">
@@ -101,7 +104,7 @@ export const AccountSection: React.FC<AccountSectionProps> = ({ user }) => {
               rel="noopener noreferrer"
             >
               <LogOut className="size-4" />
-              Sign Out
+              {t('settings.account.signOut')}
             </a>
           </DropdownMenuItem>
         </DropdownMenuContent>

@@ -13,6 +13,7 @@ import { useVSCodeLmModels } from "@/lib/hooks/use-vscode-lm-models";
 import { useQuery } from "@tanstack/react-query";
 import { CircleQuestionMarkIcon, DotIcon, PencilIcon } from "lucide-react";
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { useSettingsStore } from "../../store";
 import { AccordionSection } from "../ui/accordion-section";
 import { EmptySectionPlaceholder, Section } from "../ui/section";
@@ -22,6 +23,7 @@ interface ModelSectionProps {
 }
 
 export const ModelSection: React.FC<ModelSectionProps> = ({ user }) => {
+  const { t } = useTranslation();
   const { enablePochiModels, enableVSCodeLm, updateEnableVSCodeLm } =
     useSettingsStore();
   const { data: pochiModelsData, isLoading: isPochiModelLoading } = useQuery({
@@ -57,7 +59,7 @@ export const ModelSection: React.FC<ModelSectionProps> = ({ user }) => {
     useCustomModelSetting();
 
   const getCostTypeBadgeText = (costType: "basic" | "premium") => {
-    return costType === "premium" ? "Super" : "Swift";
+    return costType === "premium" ? t('modelSelect.premium') : t('modelSelect.basic');
   };
 
   const getCostTypeBadgeVariant = (costType: "basic" | "premium") => {
@@ -76,7 +78,7 @@ export const ModelSection: React.FC<ModelSectionProps> = ({ user }) => {
     !!vscodeLmModels?.length;
 
   return (
-    <Section title={<div className="flex items-center">Models</div>}>
+    <Section title={<div className="flex items-center">{t('settings.models.title')}</div>}>
       {isPochiModelLoading ||
       isCustomModelLoading ||
       isLoadingVscodeLmModels ? (
@@ -186,13 +188,12 @@ export const ModelSection: React.FC<ModelSectionProps> = ({ user }) => {
                       ))
                     ) : (
                       <div className="text-muted-foreground text-xs">
-                        No copilot models found
+                        {t('settings.models.noCopilotModels')}
                       </div>
                     )
                   ) : (
                     <div className="text-muted-foreground text-xs">
-                      Copilot models are disabled. Turn on the switch to enable
-                      them.
+                      {t('settings.models.copilotDisabled')}
                     </div>
                   )}
                 </div>
@@ -223,7 +224,7 @@ export const ModelSection: React.FC<ModelSectionProps> = ({ user }) => {
                               </a>
                             </TooltipTrigger>
                             <TooltipContent>
-                              <p>Manage your custom models.</p>
+                              <p>{t('settings.models.customModelsTooltip')}</p>
                             </TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
@@ -258,7 +259,7 @@ export const ModelSection: React.FC<ModelSectionProps> = ({ user }) => {
           )}
         </div>
       ) : (
-        <EmptySectionPlaceholder content="No models found" />
+        <EmptySectionPlaceholder content={t('settings.models.noModelsFound')} />
       )}
     </Section>
   );

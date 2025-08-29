@@ -18,6 +18,7 @@ export const Route = createFileRoute("/")({
   component: RouteComponent,
 });
 
+/** @useSignals */
 function RouteComponent() {
   const { uid: uidFromRoute, prompt, ts = Date.now() } = Route.useSearch();
   const key = uidFromRoute !== undefined ? `task-${uidFromRoute}` : `new-${ts}`;

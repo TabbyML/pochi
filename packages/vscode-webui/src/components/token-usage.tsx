@@ -16,6 +16,7 @@ import { useRules } from "@/lib/hooks/use-rules";
 import { constants } from "@getpochi/common";
 import { Loader2 } from "lucide-react";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "./ui/button";
 import { Progress } from "./ui/progress";
 
@@ -38,6 +39,7 @@ export function TokenUsage({
   className,
   compact,
 }: Props) {
+  const { t } = useTranslation();
   const percentage = Math.ceil((totalTokens / contextWindow) * 100);
   const [isOpen, setIsOpen] = useState(false);
   const [isPinned, setIsPinned] = useState(false);
@@ -80,8 +82,7 @@ export function TokenUsage({
     totalTokens < constants.CompactTaskMinTokens ? (
       <TooltipContent>
         <p>
-          At least {constants.CompactTaskMinTokens} tokens are required to
-          compact the conversation
+          {t('tokenUsage.minTokensRequired', { minTokens: constants.CompactTaskMinTokens })}
         </p>
       </TooltipContent>
     ) : null;
@@ -105,10 +106,10 @@ export function TokenUsage({
             compact?.inlineCompactTaskPending ? (
               <>
                 <Loader2 className="h-3 w-3 animate-spin" />
-                Compacting...
+                {t('tokenUsage.compacting')}
               </>
             ) : (
-              `${percentage}% of ${formatTokens(contextWindow)} tokens`
+              `${percentage}${t('tokenUsage.ofTokens', { tokens: formatTokens(contextWindow) })}`
             )}
           </span>
         </div>
@@ -123,7 +124,7 @@ export function TokenUsage({
         <div className="flex flex-col gap-y-4 text-xs">
           {rules?.length > 0 && (
             <div className="flex flex-col gap-y-1">
-              <div className="mb-1 text-muted-foreground">Rules</div>
+              <div className="mb-1 text-muted-foreground">{t('tokenUsage.rules')}</div>
               <div>
                 <FileList
                   matches={rules.map((item) => ({
@@ -136,10 +137,10 @@ export function TokenUsage({
             </div>
           )}
           <div className="flex flex-col gap-y-1">
-            <div className="mb-1 text-muted-foreground">Context Window</div>
+            <div className="mb-1 text-muted-foreground">{t('tokenUsage.contextWindow')}</div>
             <div>
               <Progress value={percentage} className="mb-1" />
-              {formatTokens(totalTokens)} of {formatTokens(contextWindow)} used
+              {t('tokenUsage.ofUsed', { used: formatTokens(totalTokens), total: formatTokens(contextWindow) })}
             </div>
           </div>
           <div className="mt-2 flex items-center gap-x-2">
@@ -158,8 +159,8 @@ export function TokenUsage({
                       disabled={!compact?.enabled}
                     >
                       {compact?.newCompactTaskPending
-                        ? "Compacting..."
-                        : "New Task with Summary"}
+                        ? t('tokenUsage.compacting')
+                        : t('tokenUsage.newTaskWithSummary')}
                     </Button>
                   </div>
                 </TooltipTrigger>
@@ -181,8 +182,8 @@ export function TokenUsage({
                       disabled={!compact?.enabled}
                     >
                       {compact?.inlineCompactTaskPending
-                        ? "Compacting..."
-                        : "Compact Task"}
+                        ? t('tokenUsage.compacting')
+                        : t('tokenUsage.compactTask')}
                     </Button>
                   </div>
                 </TooltipTrigger>

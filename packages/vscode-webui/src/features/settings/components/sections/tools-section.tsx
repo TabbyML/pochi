@@ -1,8 +1,10 @@
 import { ClientTools } from "@getpochi/tools";
+import { useTranslation } from "react-i18next";
 import { Section, SubSection } from "../ui/section";
 import { ToolBadgeList } from "../ui/tool-badge";
 import { McpSection } from "./mcp-section";
 export const ToolsSection: React.FC = () => {
+  const { t } = useTranslation();
   const toolsData = AllTools;
 
   const renderToolsContent = () => {
@@ -10,11 +12,11 @@ export const ToolsSection: React.FC = () => {
   };
 
   return (
-    <Section title="Tools">
+    <Section title={t('settings.tools.title')}>
       <div className="flex flex-col gap-6">
         <McpSection />
 
-        <SubSection title="BUILT-IN">{renderToolsContent()}</SubSection>
+        <SubSection title={t('settings.tools.builtIn')}>{renderToolsContent()}</SubSection>
       </div>
     </Section>
   );
