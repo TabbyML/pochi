@@ -55,7 +55,7 @@ export const executeCommand =
       return {
         output,
         isTruncated,
-        error: code === 0 ? undefined : `Command failed with exit code ${code}`,
+        error: code === 0 ? undefined : `Command exited with code ${code}`,
       };
     } catch (error) {
       if (error instanceof Error) {
