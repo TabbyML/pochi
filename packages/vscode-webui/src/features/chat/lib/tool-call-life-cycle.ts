@@ -49,7 +49,6 @@ type ToolCallState =
       // Represents preview runs at toolCall.state === "partial-call"
       type: "init";
       previewJob: Promise<PreviewReturnType>;
-      abort: AbortFunctionType;
     }
   | {
       // Represents the preview runs at toolCall.state === "call"
@@ -143,23 +142,20 @@ export class ManagedToolCallLifeCycle
   implements ToolCallLifeCycle
 {
   private state: ToolCallState;
-  private readonly outerAbortController: AbortController;
   readonly toolName: string;
   readonly toolCallId: string;
 
   constructor(
     private readonly store: Store,
     key: ToolCallLifeCycleKey,
-    abortController: AbortController,
+    private readonly outerAbortSignal: AbortSignal,
   ) {
     super();
     this.toolName = key.toolName;
     this.toolCallId = key.toolCallId;
-    this.outerAbortController = abortController;
     this.state = {
       type: "init",
       previewJob: Promise.resolve(undefined),
-      abort: () => this.outerAbortController.abort(),
     };
   }
 
@@ -213,18 +209,17 @@ export class ManagedToolCallLifeCycle
 
     if (state === "input-streaming") {
       previewJob = previewJob.then(() =>
-        previewToolCall(this.outerAbortController.signal),
+        previewToolCall(this.outerAbortSignal),
       );
       this.transitTo("init", {
         type: "init",
         previewJob,
-        abort: () => this.outerAbortController.abort(),
       });
     } else if (state === "input-available") {
       const abortController = new AbortController();
       const abortSignal = AbortSignal.any([
         abortController.signal,
-        this.outerAbortController.signal,
+        this.outerAbortSignal,
       ]);
       previewJob = previewJob.then(() => previewToolCall(abortSignal));
       previewJob.then((result) => {
@@ -256,7 +251,7 @@ export class ManagedToolCallLifeCycle
     const abortController = new AbortController();
     const abortSignal = AbortSignal.any([
       abortController.signal,
-      this.outerAbortController.signal,
+      this.outerAbortSignal,
     ]);
     let executePromise: Promise<unknown>;
 
@@ -296,21 +291,16 @@ export class ManagedToolCallLifeCycle
 
   abort() {
     if (
-      this.state.type === "init" ||
       this.state.type === "pending" ||
       this.state.type === "ready" ||
       this.state.type === "execute" ||
       this.state.type === "execute:streaming"
     ) {
-      this.state.abort("user-abort");
-      this.transitTo(
-        ["init", "pending", "ready", "execute", "execute:streaming"],
-        {
-          type: "complete",
-          result: { error: "Tool call aborted by user." },
-          reason: "user-abort",
-        },
-      );
+      this.transitTo(["pending", "ready", "execute", "execute:streaming"], {
+        type: "complete",
+        result: {},
+        reason: "user-abort",
+      });
     }
   }
 
