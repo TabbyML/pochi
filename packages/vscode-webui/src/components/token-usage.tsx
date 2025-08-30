@@ -12,7 +12,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import type { DisplayModel } from "@/features/settings/hooks/use-models";
+import type { DisplayModel } from "@/features/settings";
 import { useRules } from "@/lib/hooks/use-rules";
 import { constants } from "@getpochi/common";
 import { CircleAlert, Loader2 } from "lucide-react";
