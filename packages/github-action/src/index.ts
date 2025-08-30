@@ -6,7 +6,7 @@
 import * as core from "@actions/core";
 import * as github from "@actions/github";
 import { GitHubManager } from "./github-manager";
-import { runPochiTask } from "./runner";
+import { runPochi } from "./run-pochi";
 
 async function main(): Promise<void> {
   let githubManager: GitHubManager | null = null;
@@ -18,19 +18,19 @@ async function main(): Promise<void> {
     }
 
     githubManager = await GitHubManager.create(github.context);
-    await githubManager.checkPermissions();
+    await githubManager.check();
 
     // Parse user prompt - pass only original query to runner
-    const userPrompt = githubManager.parseUserPrompt();
+    const userPrompt = githubManager.parseRequest();
 
     // Let runner handle everything with original user prompt only
-    await runPochiTask(userPrompt);
+    await runPochi(userPrompt);
 
     // Task completed successfully
   } catch (error) {
     console.error("Error:", error);
     if (githubManager && error instanceof Error) {
-      await githubManager.postErrorComment(error.message);
+      await githubManager.reportError(error.message);
     }
     core.setFailed(error instanceof Error ? error.message : String(error));
     process.exit(1);
