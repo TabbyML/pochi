@@ -4,6 +4,7 @@ import { type ToolUIPart, getToolName, isToolUIPart } from "ai";
 import chalk from "chalk";
 import ora, { type Ora } from "ora";
 import type { NodeChatState } from "./livekit/chat.node";
+import { parseMarkdown } from "@getpochi/common/message-utils";
 
 export class OutputRenderer {
   constructor(state: NodeChatState) {
@@ -56,7 +57,7 @@ export class OutputRenderer {
       if (part.type === "reasoning") {
         this.spinner.prefixText = `💭 Thinking for ${part.text.length} characters`;
       } else if (part.type === "text") {
-        this.spinner.prefixText = `${part.text.trim()}`;
+        this.spinner.prefixText = parseMarkdown(part.text.trim());
       } else {
         const { text, stop, error } = renderToolPart(part);
         this.spinner.prefixText = text;
