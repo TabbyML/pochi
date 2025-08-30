@@ -1,4 +1,8 @@
-import { type ExecException, exec } from "node:child_process";
+import {
+  type ExecException,
+  type ExecOptionsWithStringEncoding,
+  exec,
+} from "node:child_process";
 import * as path from "node:path";
 import { promisify } from "node:util";
 import {
@@ -8,8 +12,6 @@ import {
 } from "@getpochi/common/tool-utils";
 import type { ClientTools, ToolFunctionType } from "@getpochi/tools";
 import type { ToolCallOptions } from "../types";
-
-const execCommand = promisify(exec);
 
 export const executeCommand =
   (context: ToolCallOptions): ToolFunctionType<ClientTools["executeCommand"]> =>
@@ -26,7 +28,12 @@ export const executeCommand =
     }
 
     try {
-      const { stdout, stderr } = await execCommand(command, {
+      console.log("Executing command:", command, "in", resolvedCwd);
+      const {
+        code,
+        stdout = "",
+        stderr = "",
+      } = await execWithExitCode(command, {
         shell: getShellPath(),
         timeout: timeout * 1000, // Convert to milliseconds
         cwd: resolvedCwd,
@@ -38,13 +45,18 @@ export const executeCommand =
           GIT_COMMITTER_EMAIL: "noreply@getpochi.com",
         },
       });
+
       const fullOutput = fixExecuteCommandOutput(stdout + stderr);
       const isTruncated = fullOutput.length > MaxTerminalOutputSize;
       const output = isTruncated
         ? fullOutput.slice(-MaxTerminalOutputSize)
         : fullOutput;
 
-      return { output, isTruncated };
+      return {
+        output,
+        isTruncated,
+        error: code === 0 ? undefined : `Command failed with exit code ${code}`,
+      };
     } catch (error) {
       if (error instanceof Error) {
         // Handle abort signal
@@ -64,6 +76,41 @@ export const executeCommand =
       // Handle other execution errors
       const errorMessage =
         error instanceof Error ? error.message : String(error);
-      throw new Error(`Command execution failed: ${errorMessage}`);
+      throw new Error(errorMessage);
     }
   };
+
+function isExecException(error: unknown): error is ExecException {
+  return (
+    error instanceof Error &&
+    "cmd" in error &&
+    "killed" in error &&
+    "code" in error &&
+    "signal" in error
+  );
+}
+
+async function execWithExitCode(
+  command: string,
+  options: ExecOptionsWithStringEncoding,
+): Promise<{ stdout: string; stderr: string; code: number }> {
+  const execCommand = promisify(exec);
+  try {
+    const { stdout, stderr } = await execCommand(command, options);
+    return {
+      stdout,
+      stderr,
+      code: 0,
+    };
+  } catch (err) {
+    if (isExecException(err)) {
+      return {
+        stdout: err.stdout || "",
+        stderr: err.stderr || "",
+        code: err.code || 1,
+      };
+    }
+
+    throw err;
+  }
+}
