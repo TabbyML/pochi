@@ -19,16 +19,17 @@ runs:
         curl -fsSL https://app.getpochi.com/install.sh | bash
         echo "$HOME/.pochi/bin" >> $GITHUB_PATH
 
+    - name: Install bun
+      shell: bash
+      run: curl -fsSL https://bun.com/install | bash
+
     - name: Install ripgrep
       shell: bash
       run: |
         echo "Installing ripgrep..."
-        sudo apt-get update && sudo apt-get install -y ripgrep
+        sudo apt-get update &>/dev/null
+        sudo apt-get install -y ripgrep &>/dev/null
         echo "Ripgrep installed at: $(which rg)"
-
-    - name: Install bun
-      shell: bash
-      run: curl -fsSL https://bun.com/install | bash
 
     - name: Install dependencies
       shell: bash
