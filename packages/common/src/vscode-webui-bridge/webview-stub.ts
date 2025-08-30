@@ -70,6 +70,12 @@ const VSCodeHostStub = {
   listFilesInWorkspace: (): Promise<{ filepath: string; isDir: boolean }[]> => {
     return Promise.resolve([{ filepath: "test", isDir: false }]);
   },
+  listAutoCompleteCandidates(
+    _query?: string,
+    _limit?: number,
+  ): Promise<Array<{ type: "symbol" | "tool" | "mcp"; label: string }>> {
+    return Promise.resolve([]);
+  },
   openSymbol: (_symbol: string): Promise<void> => {
     return Promise.resolve();
   },
