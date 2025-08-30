@@ -1,13 +1,5 @@
 # Pochi
 
-<p align="center">
-  <img src="https://github.com/TabbyML/pochi/blob/main/packages/vscode/assets/icons/logo128.png?raw=true" alt="Pochi Logo" width="128"/>
-</p>
-
-<p align="center">
-  Install from <a href="https://marketplace.visualstudio.com/items?itemName=TabbyML.pochi"><strong>VS Code Marketplace</strong></a> or <a href="https://open-vsx.org/extension/TabbyML/pochi"><strong>Open VSX Registry</strong></a>
-</p>
-
 **Pochi** is an AI agent designed for software development. It operates within your IDE, using a toolkit of commands to execute complex tasks, from code generation to project-wide refactoring.
 
 ## 📖 What is Pochi?
