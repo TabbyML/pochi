@@ -1,9 +1,8 @@
 import path from "node:path";
 import { getLogger } from "@getpochi/common";
 import {
-  DefaultWorkspaceRulesFilePaths,
-  SystemRulesFileDisplayPath,
-  SystemRulesFilepath,
+  GlobalRules,
+  WorkspaceRulesFilePaths,
   collectCustomRules as collectCustomRulesImpl,
   getSystemInfo as getSystemInfoImpl,
 } from "@getpochi/common/tool-utils";
@@ -17,7 +16,6 @@ import {
 } from "./fs";
 
 // Path constants - using arrays for consistency
-const WorkspaceRulesFilePaths = DefaultWorkspaceRulesFilePaths;
 const WorkflowsDirPath = [".pochi", "workflows"];
 const logger = getLogger("env");
 
@@ -70,11 +68,14 @@ function getWorkflowsDirectoryUri() {
 
 export async function collectRuleFiles(): Promise<RuleFile[]> {
   const ruleFiles: RuleFile[] = [];
-  if (await isFileExists(vscode.Uri.file(SystemRulesFilepath))) {
-    ruleFiles.push({
-      filepath: SystemRulesFilepath,
-      label: SystemRulesFileDisplayPath,
-    });
+  // Add global rules
+  for (const rule of GlobalRules) {
+    if (await isFileExists(vscode.Uri.file(rule.filePath))) {
+      ruleFiles.push({
+        filepath: rule.filePath,
+        label: rule.label,
+      });
+    }
   }
   for (const uri of getWorkspaceRulesFileUris()) {
     if (await isFileExists(uri)) {
@@ -240,7 +241,7 @@ export async function detectThirdPartyRules(): Promise<string[]> {
  */
 export async function copyThirdPartyRules(
   cursorRulePaths: string[] = [],
-  targetFileName = DefaultWorkspaceRulesFilePaths[0],
+  targetFileName = WorkspaceRulesFilePaths[0],
 ): Promise<void> {
   const workspaceFolder = getWorkspaceFolder();
 
