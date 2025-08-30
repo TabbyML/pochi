@@ -26,14 +26,9 @@ runs:
         sudo apt-get update && sudo apt-get install -y ripgrep
         echo "Ripgrep installed at: $(which rg)"
 
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: "20"
-
     - name: Install bun
       shell: bash
-      run: npm install -g bun
+      run: curl -fsSL https://bun.com/install | bash
 
     - name: Install dependencies
       shell: bash
