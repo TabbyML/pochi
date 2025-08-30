@@ -330,7 +330,8 @@ export class DiffView implements vscode.Disposable {
   }
 
   private scrollEditorToLine(line: number) {
-    const scrollLine = line + 4;
+    const lineCount = this.activeDiffEditor.document.lineCount;
+    const scrollLine = Math.min(line + 4, lineCount - 1); // Scroll a few lines ahead for context
     this.activeDiffEditor.revealRange(
       new vscode.Range(scrollLine, 0, scrollLine, 0),
       vscode.TextEditorRevealType.InCenter,
