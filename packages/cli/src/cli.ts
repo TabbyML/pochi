@@ -13,9 +13,8 @@ import { hc } from "hono/client";
 import packageJson from "../package.json";
 import { findRipgrep } from "./lib/find-ripgrep";
 import {
-  extractWorkflowName,
-  isWorkflowReference,
-  loadWorkflow,
+  containsWorkflowReference,
+  replaceWorkflowReferences,
 } from "./lib/workflow-loader";
 import { createStore } from "./livekit/store";
 import { OutputRenderer } from "./output-renderer";
@@ -46,7 +45,7 @@ const program = new Command()
   .optionsGroup("Prompt:")
   .option(
     "-p, --prompt <prompt>",
-    "Create a new task with the given prompt. You can also pipe input to use as a prompt, for example: `cat .pochi/workflows/create-pr.md | pochi`. To use a workflow, use /workflow-name, for example: `pochi -p /create-pr`",
+    'Create a new task with the given prompt. You can also pipe input to use as a prompt, for example: `cat .pochi/workflows/create-pr.md | pochi`. To use a workflow, use /workflow-name, for example: `pochi -p /create-pr`. Workflows can be embedded in larger prompts, for example: `pochi -p "please /create-pr with feat semantic convention"`',
   )
   .optionsGroup("Options:")
   .option(
@@ -182,18 +181,18 @@ async function parseTaskInput(options: ProgramOpts, program: Program) {
     return program.error("error: A prompt must be provided");
   }
 
-  // Check if the prompt is a workflow reference
-  if (isWorkflowReference(prompt)) {
-    const workflowName = extractWorkflowName(prompt);
-    const workflowContent = await loadWorkflow(workflowName, process.cwd());
+  // Check if the prompt contains workflow references
+  if (containsWorkflowReference(prompt)) {
+    const { prompt: updatedPrompt, missingWorkflows } =
+      await replaceWorkflowReferences(prompt, process.cwd());
+    prompt = updatedPrompt;
 
-    if (workflowContent === null) {
+    // Handle missing workflows
+    if (missingWorkflows.length > 0) {
       return program.error(
-        `error: Workflow '${workflowName}' not found in .pochi/workflows/`,
+        `error: Workflow(s) '${missingWorkflows.join(", ")}' not found in .pochi/workflows/`,
       );
     }
-
-    prompt = workflowContent;
   }
 
   return { uid, prompt };

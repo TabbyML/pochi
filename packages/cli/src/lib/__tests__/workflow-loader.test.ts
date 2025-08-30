@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import * as os from "node:os";
-import { loadWorkflow, isWorkflowReference, extractWorkflowName } from "../workflow-loader";
+import { containsWorkflowReference, extractWorkflowNames, replaceWorkflowReferences } from "../workflow-loader";
 
 describe("workflow-loader", () => {
   let tempDir: string;
@@ -21,50 +21,79 @@ describe("workflow-loader", () => {
     await fs.rm(tempDir, { recursive: true, force: true });
   });
 
-  describe("loadWorkflow", () => {
-    it("should load workflow content when workflow exists", async () => {
-      const workflowName = "test-workflow";
-      const workflowContent = "This is a test workflow";
-      const workflowPath = path.join(tempDir, ".pochi", "workflows", `${workflowName}.md`);
-      
-      await fs.writeFile(workflowPath, workflowContent);
-      
-      const result = await loadWorkflow(workflowName, tempDir);
-      expect(result).toBe(workflowContent);
-    });
-
-    it("should return null when workflow does not exist", async () => {
-      const result = await loadWorkflow("non-existent", tempDir);
-      expect(result).toBeNull();
-    });
-
-    it("should return null when workflow file cannot be read", async () => {
-      // Create a directory with the same name as a workflow file would have
-      const workflowPath = path.join(tempDir, ".pochi", "workflows", "test-workflow.md");
-      await fs.mkdir(workflowPath, { recursive: true });
-      
-      const result = await loadWorkflow("test-workflow", tempDir);
-      expect(result).toBeNull();
-    });
-  });
-
-  describe("isWorkflowReference", () => {
-    it("should return true for workflow references", () => {
-      expect(isWorkflowReference("/create-pr")).toBe(true);
-      expect(isWorkflowReference("/workflow-name")).toBe(true);
+  describe("containsWorkflowReference", () => {
+    it("should return true for prompts containing workflow references", () => {
+      expect(containsWorkflowReference("/create-pr")).toBe(true);
+      expect(containsWorkflowReference("/workflow-name")).toBe(true);
+      expect(containsWorkflowReference("please /create-pr")).toBe(true);
+      expect(containsWorkflowReference("/create-pr use feat semantic convention")).toBe(true);
     });
 
     it("should return false for regular prompts", () => {
-      expect(isWorkflowReference("Create a PR")).toBe(false);
-      expect(isWorkflowReference("This is a prompt")).toBe(false);
-      expect(isWorkflowReference("")).toBe(false);
+      expect(containsWorkflowReference("Create a PR")).toBe(false);
+      expect(containsWorkflowReference("This is a prompt")).toBe(false);
+      expect(containsWorkflowReference("")).toBe(false);
     });
   });
 
-  describe("extractWorkflowName", () => {
-    it("should extract workflow name from reference", () => {
-      expect(extractWorkflowName("/create-pr")).toBe("create-pr");
-      expect(extractWorkflowName("/workflow-name")).toBe("workflow-name");
+  describe("extractWorkflowNames", () => {
+    it("should extract workflow names from references", () => {
+      expect(extractWorkflowNames("/create-pr")).toEqual(["create-pr"]);
+      expect(extractWorkflowNames("/workflow-name")).toEqual(["workflow-name"]);
+      expect(extractWorkflowNames("please /create-pr")).toEqual(["create-pr"]);
+      expect(extractWorkflowNames("/create-pr use /test-workflow convention")).toEqual(["create-pr", "test-workflow"]);
+    });
+
+    it("should return empty array for prompts without workflow references", () => {
+      expect(extractWorkflowNames("Create a PR")).toEqual([]);
+      expect(extractWorkflowNames("")).toEqual([]);
+    });
+  });
+
+  describe("replaceWorkflowReferences", () => {
+    it("should replace workflow references with content", async () => {
+      const workflowContent = "This is a test workflow";
+      const workflowPath = path.join(tempDir, ".pochi", "workflows", "test-workflow.md");
+      await fs.writeFile(workflowPath, workflowContent);
+
+      const prompt = "Please use /test-workflow for this task";
+      const { prompt: result, missingWorkflows } = await replaceWorkflowReferences(prompt, tempDir);
+      
+      expect(result).toBe(`Please use <workflow id="test-workflow" path="${workflowPath}">This is a test workflow</workflow> for this task`);
+      expect(missingWorkflows).toEqual([]);
+    });
+
+    it("should handle multiple workflow references", async () => {
+      const workflowContent1 = "Workflow 1 content";
+      const workflowContent2 = "Workflow 2 content";
+      
+      const workflowPath1 = path.join(tempDir, ".pochi", "workflows", "workflow1.md");
+      const workflowPath2 = path.join(tempDir, ".pochi", "workflows", "workflow2.md");
+      
+      await fs.writeFile(workflowPath1, workflowContent1);
+      await fs.writeFile(workflowPath2, workflowContent2);
+
+      const prompt = "Use /workflow1 and then /workflow2";
+      const { prompt: result, missingWorkflows } = await replaceWorkflowReferences(prompt, tempDir);
+      
+      expect(result).toBe(`Use <workflow id="workflow1" path="${workflowPath1}">Workflow 1 content</workflow> and then <workflow id="workflow2" path="${workflowPath2}">Workflow 2 content</workflow>`);
+      expect(missingWorkflows).toEqual([]);
+    });
+
+    it("should track missing workflows", async () => {
+      const prompt = "Please use /non-1-existent for this task";
+      const { prompt: result, missingWorkflows } = await replaceWorkflowReferences(prompt, tempDir);
+      
+      expect(result).toBe(prompt); // Should remain unchanged
+      expect(missingWorkflows).toEqual(["non-1-existent"]);
+    });
+
+    it("should handle prompts without workflow references", async () => {
+      const prompt = "This is a regular prompt without workflows";
+      const { prompt: result, missingWorkflows } = await replaceWorkflowReferences(prompt, tempDir);
+      
+      expect(result).toBe(prompt);
+      expect(missingWorkflows).toEqual([]);
     });
   });
 });
