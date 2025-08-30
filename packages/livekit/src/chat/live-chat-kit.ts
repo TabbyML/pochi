@@ -279,8 +279,6 @@ export class LiveChatKit<
 
   private readonly onError: ChatOnErrorCallback = (error) => {
     logger.error("onError", error);
-    logger.error("messages", this.chat.messages);
-    process.exit(1);
     const lastMessage = this.chat.messages.at(-1) || null;
     this.store.commit(
       events.chatStreamFailed({
