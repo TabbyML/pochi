@@ -1,10 +1,10 @@
 import { formatters } from "@getpochi/common";
+import { parseMarkdown } from "@getpochi/common/message-utils";
 import type { Message, UITools } from "@getpochi/livekit";
 import { type ToolUIPart, getToolName, isToolUIPart } from "ai";
 import chalk from "chalk";
 import ora, { type Ora } from "ora";
 import type { NodeChatState } from "./livekit/chat.node";
-import { parseMarkdown } from "@getpochi/common/message-utils";
 
 export class OutputRenderer {
   constructor(state: NodeChatState) {

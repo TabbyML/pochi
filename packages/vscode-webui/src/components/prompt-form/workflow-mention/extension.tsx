@@ -1,3 +1,4 @@
+import { prompts } from "@getpochi/common";
 import Mention from "@tiptap/extension-mention";
 import { PluginKey } from "@tiptap/pm/state";
 import {
@@ -5,7 +6,6 @@ import {
   NodeViewWrapper,
   ReactNodeViewRenderer,
 } from "@tiptap/react";
-import { prompts } from "@getpochi/common";
 
 /**
  * A React component to render a workflow node in the editor.
