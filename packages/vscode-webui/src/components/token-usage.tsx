@@ -12,16 +12,16 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import type { DisplayModel } from "@/features/settings/hooks/use-models";
 import { useRules } from "@/lib/hooks/use-rules";
 import { constants } from "@getpochi/common";
-import { Loader2 } from "lucide-react";
+import { CircleAlert, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "./ui/button";
 import { Progress } from "./ui/progress";
 
 interface Props {
-  contextWindow: number;
   totalTokens: number;
   className?: string;
   compact?: {
@@ -31,15 +31,17 @@ interface Props {
     newCompactTask: () => void;
     enabled: boolean;
   };
+  selectedModel?: DisplayModel;
 }
 
 export function TokenUsage({
   totalTokens,
-  contextWindow,
   className,
   compact,
+  selectedModel,
 }: Props) {
   const { t } = useTranslation();
+  const contextWindow = selectedModel?.contextWindow || 0;
   const percentage = Math.ceil((totalTokens / contextWindow) * 100);
   const [isOpen, setIsOpen] = useState(false);
   const [isPinned, setIsPinned] = useState(false);
@@ -141,8 +143,25 @@ export function TokenUsage({
             </div>
           )}
           <div className="flex flex-col gap-y-1">
-            <div className="mb-1 text-muted-foreground">
-              {t("tokenUsage.contextWindow")}
+            <div className="mb-1 flex items-center gap-1 text-muted-foreground">
+              <span>{t("tokenUsage.contextWindow")}</span>
+              {selectedModel?.type === "byok" && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <CircleAlert className="size-3.5" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className="max-w-xs">
+                        The context window value is a default and may not be
+                        accurate for your custom model. For precise token
+                        management, please adjust it in the settings according
+                        to your model provider's documentation.
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
             </div>
             <div>
               <Progress value={percentage} className="mb-1" />

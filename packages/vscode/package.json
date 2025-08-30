@@ -267,7 +267,7 @@
                             "type": "boolean"
                           }
                         },
-                        "required": ["id", "maxTokens", "contextWindow"],
+                        "required": ["id"],
                         "additionalProperties": false
                       }
                     },
@@ -324,7 +324,7 @@
                             "type": "number"
                           }
                         },
-                        "required": ["id", "maxTokens", "contextWindow"],
+                        "required": ["id"],
                         "additionalProperties": false
                       }
                     },
@@ -387,7 +387,7 @@
                             "type": "boolean"
                           }
                         },
-                        "required": ["id", "maxTokens", "contextWindow"],
+                        "required": ["id"],
                         "additionalProperties": false
                       }
                     },

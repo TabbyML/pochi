@@ -222,6 +222,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
               totalTokens={totalTokens}
               className="mr-5"
               compact={compactOptions}
+              selectedModel={selectedModel}
             />
           )}
           <DevModeButton
