@@ -2,12 +2,9 @@ import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { constants, prompts } from "@getpochi/common";
 
-function getWorkflowPath(id: string, cwd: string) {
+function getWorkflowPath(id: string) {
   // Construct the workflow file path
-  const workflowsDir = path.join(
-    cwd,
-    ...constants.WorkspaceWorkflowPathSegments,
-  );
+  const workflowsDir = path.join(...constants.WorkspaceWorkflowPathSegments);
   return path.join(workflowsDir, `${id}.md`);
 }
 
@@ -20,7 +17,10 @@ function getWorkflowPath(id: string, cwd: string) {
 async function loadWorkflow(id: string, cwd: string): Promise<string | null> {
   try {
     // Check if the file exists and read its content
-    const content = await fs.readFile(getWorkflowPath(id, cwd), "utf-8");
+    const content = await fs.readFile(
+      path.join(cwd, getWorkflowPath(id)),
+      "utf-8",
+    );
     return content;
   } catch (error) {
     // File doesn't exist or cannot be read
@@ -76,7 +76,7 @@ export async function replaceWorkflowReferences(
       // Replace only the workflow reference, preserving surrounding text
       result = result.replace(
         `/${id}`,
-        prompts.workflow(id, getWorkflowPath(id, cwd), content),
+        prompts.workflow(id, getWorkflowPath(id), content),
       );
     } else {
       missingWorkflows.push(id);
