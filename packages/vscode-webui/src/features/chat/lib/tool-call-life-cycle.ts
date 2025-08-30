@@ -49,6 +49,8 @@ type ToolCallState =
       // Represents preview runs at toolCall.state === "partial-call"
       type: "init";
       previewJob: Promise<PreviewReturnType>;
+      abort: AbortFunctionType;
+      abortSignal: AbortSignal;
     }
   | {
       // Represents the preview runs at toolCall.state === "call"
@@ -153,9 +155,16 @@ export class ManagedToolCallLifeCycle
     super();
     this.toolName = key.toolName;
     this.toolCallId = key.toolCallId;
+    const abortController = new AbortController();
+    const abortSignal = AbortSignal.any([
+      abortController.signal,
+      this.outerAbortSignal,
+    ]);
     this.state = {
       type: "init",
       previewJob: Promise.resolve(undefined),
+      abort: (reason) => abortController.abort(reason),
+      abortSignal: abortSignal,
     };
   }
 
@@ -199,7 +208,7 @@ export class ManagedToolCallLifeCycle
   }
 
   private previewInit(args: unknown, state: ToolUIPart["state"]) {
-    let { previewJob } = this.checkState("Preview", "init");
+    let { previewJob, abortSignal, abort } = this.checkState("Preview", "init");
     const previewToolCall = (abortSignal: AbortSignal) =>
       vscodeHost.previewToolCall(this.toolName, args, {
         state: convertState(state),
@@ -208,19 +217,14 @@ export class ManagedToolCallLifeCycle
       });
 
     if (state === "input-streaming") {
-      previewJob = previewJob.then(() =>
-        previewToolCall(this.outerAbortSignal),
-      );
+      previewJob = previewJob.then(() => previewToolCall(abortSignal));
       this.transitTo("init", {
         type: "init",
         previewJob,
+        abortSignal,
+        abort,
       });
     } else if (state === "input-available") {
-      const abortController = new AbortController();
-      const abortSignal = AbortSignal.any([
-        abortController.signal,
-        this.outerAbortSignal,
-      ]);
       previewJob = previewJob.then(() => previewToolCall(abortSignal));
       previewJob.then((result) => {
         if (result?.error) {
@@ -233,7 +237,7 @@ export class ManagedToolCallLifeCycle
         } else {
           this.transitTo("pending", {
             type: "ready",
-            abort: (reason) => abortController.abort(reason),
+            abort,
             abortSignal,
           });
         }
@@ -241,7 +245,7 @@ export class ManagedToolCallLifeCycle
       this.transitTo("init", {
         type: "pending",
         previewJob,
-        abort: (reason) => abortController.abort(reason),
+        abort,
         abortSignal,
       });
     }
@@ -291,16 +295,21 @@ export class ManagedToolCallLifeCycle
 
   abort() {
     if (
+      this.state.type === "init" ||
       this.state.type === "pending" ||
       this.state.type === "ready" ||
       this.state.type === "execute" ||
       this.state.type === "execute:streaming"
     ) {
-      this.transitTo(["pending", "ready", "execute", "execute:streaming"], {
-        type: "complete",
-        result: {},
-        reason: "user-abort",
-      });
+      this.state.abort();
+      this.transitTo(
+        ["init", "pending", "ready", "execute", "execute:streaming"],
+        {
+          type: "complete",
+          result: {},
+          reason: "user-abort",
+        },
+      );
     }
   }
 
