@@ -1,4 +1,4 @@
-name: Deploy page on main and Preview on PRs
+name: Deploy Docs
 
 on:
   push:
@@ -75,4 +75,3 @@ jobs:
           clean-exclude: pr-preview/
           force: false
           folder: packages/docs/out
-

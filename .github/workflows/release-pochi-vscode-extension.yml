@@ -11,8 +11,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  publish-vscode:
+  build-and-release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -25,8 +27,40 @@ jobs:
       - name: Bun Install
         run: bun install --frozen-lockfile
 
-      - name: Publish
+      - name: Extract version and determine release type
+        id: release_info
+        run: |
+          # Extract version number from tag (remove 'vscode@' prefix)
+          version=$(echo ${{ github.ref_name }} | sed 's/vscode@//')
+          echo "version_number=$version" >> $GITHUB_OUTPUT
+
+          # Check if this is a pre-release (contains -alpha, -beta, or -rc)
+          if echo "$version" | grep -q -e '-alpha\.' -e '-beta\.' -e '-rc\.' ; then
+            echo "is_prerelease=true" >> $GITHUB_OUTPUT
+            echo "This is a pre-release version: $version"
+          else
+            echo "is_prerelease=false" >> $GITHUB_OUTPUT
+            echo "This is a stable release version: $version"
+          fi
+
+      - name: Build VSIX
+        run: |
+          cd packages/vscode
+          bun run vscode:prepublish
+          bun run vscode:package
+
+      - name: Publish to Marketplaces
+        if: github.repository_owner == 'TabbyML'
         run: cd packages/vscode && bun run $(bun scripts/publish.cjs)
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
           OVSX_PAT: ${{ secrets.OVSX_PAT }}
+
+      - name: Create GitHub Release
+        uses: ncipollo/release-action@v1
+        if: startsWith(github.ref, 'refs/tags/vscode@')
+        with:
+          allowUpdates: true
+          prerelease: ${{ steps.release_info.outputs.is_prerelease }}
+          artifacts: "packages/vscode/*.vsix"
+          name: pochi-vscode@${{ steps.release_info.outputs.version_number }}

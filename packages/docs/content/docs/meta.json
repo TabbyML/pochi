@@ -7,14 +7,20 @@
     "index",
     "troubleshooting",
     "---Usage---",
+    "vscode",
+    "cli",
+    "slack",
+    "github",
+    "---Features---",
     "tab-completion",
     "permissions",
     "share",
-    "slack",
     "---Customize---",
     "models",
     "rules",
     "workflows",
-    "mcp"
+    "mcp",
+    "---Resources---",
+    "developer-updates"
   ]
 }

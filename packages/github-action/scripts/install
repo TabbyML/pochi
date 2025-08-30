@@ -1,0 +1,122 @@
+#!/bin/bash
+set -euo pipefail
+
+# pochi GitHub Action installer
+# This script helps set up the pochi GitHub Action in your repository
+
+echo "🤖 pochi GitHub Action installer"
+echo "================================="
+
+# Check if we're in a git repository
+if ! git rev-parse --git-dir > /dev/null 2>&1; then
+    echo "❌ Error: Not in a git repository"
+    echo "Please run this script from the root of your GitHub repository"
+    exit 1
+fi
+
+# Get repository information
+REPO_OWNER=$(git remote get-url origin | sed -n 's#.*github\.com[:/]\([^/]*\)/.*#\1#p')
+REPO_NAME=$(git remote get-url origin | sed -n 's#.*github\.com[:/][^/]*/\([^/]*\).*#\1#p' | sed 's/\.git$//')
+
+if [ -z "$REPO_OWNER" ] || [ -z "$REPO_NAME" ]; then
+    echo "❌ Error: Could not determine repository owner and name"
+    echo "Please make sure you have a GitHub remote configured"
+    exit 1
+fi
+
+echo "📁 Repository: $REPO_OWNER/$REPO_NAME"
+echo ""
+
+# Check if .github/workflows directory exists
+if [ ! -d ".github/workflows" ]; then
+    echo "📂 Creating .github/workflows directory..."
+    mkdir -p .github/workflows
+fi
+
+# Create the workflow file
+WORKFLOW_FILE=".github/workflows/pochi.yml"
+
+if [ -f "$WORKFLOW_FILE" ]; then
+    echo "⚠️  Warning: $WORKFLOW_FILE already exists"
+    read -p "Do you want to overwrite it? (y/N): " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        echo "❌ Installation cancelled"
+        exit 1
+    fi
+fi
+
+echo "📝 Creating workflow file..."
+
+cat > "$WORKFLOW_FILE" << 'EOF'
+name: pochi
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  pochi:
+    if: contains(github.event.comment.body, '/pochi')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Run pochi
+        uses: tabbyml/pochi/packages/github-action@action@latest
+        env:
+          POCHI_TOKEN: ${{ secrets.POCHI_TOKEN }}
+EOF
+
+echo "✅ Workflow file created: $WORKFLOW_FILE"
+echo ""
+
+# Instructions for required configuration
+echo "🔧 Required setup:"
+echo "1. Go to https://github.com/$REPO_OWNER/$REPO_NAME/settings/secrets/actions"
+echo "2. Add POCHI_TOKEN with your Pochi session token from https://app.getpochi.com"
+echo ""
+
+# Instructions for optional configuration
+echo "🔧 Optional configuration:"
+echo "You can customize the AI model by adding 'with:' to your workflow:"
+echo "  - model: 'google/gemini-2.5-pro' (recommended)"
+echo "  - model: 'google/gemini-2.5-flash' (faster)"
+echo "  - model: 'qwen/qwen3-coder' (coding specialist)"
+echo ""
+
+# Usage instructions
+echo "🚀 Usage:"
+echo "Comment '/pochi' on any GitHub issue or PR to activate pochi"
+echo "Examples:"
+echo "  - '/pochi explain this issue'"
+echo "  - '/pochi fix the bug described above'"
+echo "  - '/pochi review this PR and suggest improvements'"
+echo ""
+
+# Commit and push
+read -p "Do you want to commit and push the workflow file? (y/N): " -n 1 -r
+echo
+if [[ $REPLY =~ ^[Yy]$ ]]; then
+    echo "📤 Committing and pushing workflow..."
+    git add "$WORKFLOW_FILE"
+    git commit -m "Add pochi GitHub Action workflow"
+    git push
+    echo "✅ Workflow pushed to repository"
+else
+    echo "📋 Don't forget to commit and push the workflow file:"
+    echo "git add $WORKFLOW_FILE"
+    echo "git commit -m 'Add pochi GitHub Action workflow'"
+    echo "git push"
+fi
+
+echo ""
+echo "🎉 pochi GitHub Action installation complete!"
+echo "You can now use '/pochi' in issue and PR comments to activate the AI assistant."

@@ -22,6 +22,7 @@ import {
   RotateCw,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { EmptySectionPlaceholder, SubSection } from "../ui/section";
 import { ToolBadge } from "../ui/tool-badge";
 
@@ -107,17 +108,20 @@ const ImportMcp: React.FC<{
   onImportSingle: (config: McpConfigPath) => Promise<void>;
   onOpenConfig: (config: McpConfigPath) => Promise<void>;
 }> = ({ availableConfigs, onImportAll, onImportSingle, onOpenConfig }) => {
+  const { t } = useTranslation();
+
   return (
     <div className="rounded-md border p-3">
       <div className="mb-2 flex items-center gap-2">
-        <span className="font-medium text-sm">Import MCP Servers</span>
+        <span className="font-medium text-sm">
+          {t("settings.mcp.importServers")}
+        </span>
       </div>
 
       <div className="space-y-2">
         <div className="flex items-center justify-between text-sm">
           <span className="text-muted-foreground">
-            Found {availableConfigs.length} source
-            {availableConfigs.length > 1 ? "s" : ""}
+            {t("settings.mcp.foundSources", { count: availableConfigs.length })}
           </span>
           <Button
             onClick={() => onImportAll()}
@@ -126,7 +130,7 @@ const ImportMcp: React.FC<{
             className="h-7 px-2 text-xs"
           >
             <Download className="mr-1 size-3" />
-            Import All
+            {t("settings.mcp.importAll")}
           </Button>
         </div>
         <McpConfigList
@@ -144,6 +148,8 @@ const McpConfigList: React.FC<{
   onImportSingle: (config: McpConfigPath) => Promise<void>;
   onOpenConfig: (config: McpConfigPath) => Promise<void>;
 }> = ({ configs, onImportSingle, onOpenConfig }) => {
+  const { t } = useTranslation();
+
   if (configs.length === 0) {
     return null;
   }
@@ -182,7 +188,7 @@ const McpConfigList: React.FC<{
               className="ml-2 h-6 shrink-0 px-2 text-xs opacity-0 transition-opacity duration-200 group-hover:opacity-100"
             >
               <Download className="mr-1 size-3" />
-              Import
+              {t("settings.mcp.import")}
             </Button>
           </div>
         );
@@ -192,6 +198,7 @@ const McpConfigList: React.FC<{
 };
 
 export const McpSection: React.FC = () => {
+  const { t } = useTranslation();
   const { connections, isLoading: isLoadingConnections } = useMcp();
   const {
     isLoading: isLoadingThirdParty,
@@ -204,7 +211,7 @@ export const McpSection: React.FC = () => {
   const title = (
     <TooltipProvider>
       <div className="flex items-center">
-        MCP
+        {t("settings.mcp.title")}
         <Tooltip>
           <TooltipTrigger asChild>
             <a
@@ -217,7 +224,7 @@ export const McpSection: React.FC = () => {
             </a>
           </TooltipTrigger>
           <TooltipContent>
-            <p>Configuration MCP for Pochi globally.</p>
+            <p>{t("settings.mcp.tooltip")}</p>
           </TooltipContent>
         </Tooltip>
       </div>
@@ -252,7 +259,9 @@ export const McpSection: React.FC = () => {
             ))
           ) : hasAvailableConfigs ? (
             <>
-              <EmptySectionPlaceholder content="No MCP servers added yet." />
+              <EmptySectionPlaceholder
+                content={t("settings.mcp.noServersYet")}
+              />
               <ImportMcp
                 availableConfigs={availableConfigs}
                 onImportAll={importFromAllConfigs || (() => Promise.resolve())}
@@ -270,12 +279,14 @@ export const McpSection: React.FC = () => {
 };
 
 const RecommandedMcpServers: React.FC = () => {
+  const { t } = useTranslation();
+
   return (
     <div className="space-y-4">
       {recommendedMcpServers.length > 0 && (
         <div>
           <h4 className="mb-2 ml-1 font-medium text-muted-foreground text-sm">
-            Recommended MCP Servers
+            {t("settings.mcp.recommendedServers")}
           </h4>
           <div className="space-y-2">
             {recommendedMcpServers.map((server) => (
@@ -388,6 +399,7 @@ const McpToolBadgeList: React.FC<{
   serverStatus: "stopped" | "starting" | "ready" | "error";
   tools: McpConnection["tools"];
 }> = ({ serverName, serverStatus, tools }) => {
+  const { t } = useTranslation();
   const keys = Object.keys(tools);
   return (
     <TooltipProvider>
@@ -409,7 +421,7 @@ const McpToolBadgeList: React.FC<{
           ))
         ) : (
           <div className="flex w-full justify-center font-semibold">
-            No tools available from this MCP server
+            {t("settings.mcp.noToolsAvailable")}
           </div>
         )}
       </div>
@@ -470,6 +482,8 @@ function RecommendedMcpCard({
   command,
   args,
 }: RecommendedMcpCardProps) {
+  const { t } = useTranslation();
+
   return (
     <div className="rounded-lg border bg-card/70 p-4 text-card-foreground shadow-sm">
       <div className="flex items-center justify-between">
@@ -480,7 +494,7 @@ function RecommendedMcpCard({
             args,
           })}
         >
-          <Button size="sm">Add</Button>
+          <Button size="sm">{t("settings.mcp.add")}</Button>
         </a>
       </div>
       <a
@@ -490,14 +504,16 @@ function RecommendedMcpCard({
         className="mt-1 inline-flex items-center text-muted-foreground text-sm hover:text-foreground"
       >
         <Github className="mr-1 h-4 w-4" />
-        View on GitHub
+        {t("settings.mcp.viewOnGitHub")}
       </a>
       <p className="mt-4 text-muted-foreground text-sm">{description}</p>
       <div className="mt-4 flex items-center justify-between">
         <code className="rounded bg-muted px-2 py-1 font-mono text-sm">
           {command} {args.join(" ")}
         </code>
-        <span className="text-muted-foreground text-xs">Requires: npm</span>
+        <span className="text-muted-foreground text-xs">
+          {t("settings.mcp.requires", { requirement: "npm" })}
+        </span>
       </div>
     </div>
   );

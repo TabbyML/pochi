@@ -19,69 +19,94 @@ import { type FC, useEffect, useRef, useState } from "react";
 import { ScrollArea } from "../ui/scroll-area";
 import { XTerm } from "./xterm";
 
-export interface ExecutionPanelProps {
-  command: string;
-  output: string;
-  onStop: () => void;
-  onDetach?: () => void;
-  completed: boolean;
-  isExecuting: boolean;
-  className?: string;
-  isDevServer?: boolean;
-}
-
-export const CommandExecutionPanel: FC<ExecutionPanelProps> = ({
-  command,
-  output,
-  className,
-  onStop,
-  onDetach,
-  isExecuting,
-  completed,
-  isDevServer,
-}) => {
-  const [expanded, setExpanded, setExpandedImmediately] =
-    useExpanded(completed);
-  const [isStopping, setIsStopping] = useState<boolean>(false);
-  const toggleExpanded = () => setExpandedImmediately((prev) => !prev);
+const CopyCommandButton: FC<{ command: string }> = ({ command }) => {
   const { isCopied, copyToClipboard } = useCopyToClipboard({
     timeout: 2000,
   });
-
-  const containerRef = useRef<HTMLDivElement | null>(null);
 
   const onCopy = () => {
     if (isCopied) return;
     copyToClipboard(command);
   };
 
-  const handleStop = () => {
-    setIsStopping(true);
-    onStop();
-  };
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          size="xs"
+          variant="ghost"
+          onClick={onCopy}
+          className={cn({ "opacity-50": isCopied })}
+        >
+          {isCopied ? (
+            <CheckIcon className="size-4" />
+          ) : (
+            <CopyIcon className="size-4" />
+          )}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>
+        <span>{isCopied ? "Copied!" : "Copy command"}</span>
+      </TooltipContent>
+    </Tooltip>
+  );
+};
 
-  const handleDetach = onDetach
-    ? () => {
-        setIsStopping(true);
-        onDetach();
-      }
-    : undefined;
+const ToggleExpandButton: FC<{ expanded: boolean; onToggle: () => void }> = ({
+  expanded,
+  onToggle,
+}) => {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-6 p-0 text-xs focus-visible:ring-1 focus-visible:ring-slate-700 focus-visible:ring-offset-0"
+          onClick={onToggle}
+        >
+          {expanded ? <ChevronsDownUpIcon /> : <ChevronsUpDownIcon />}
+          <span className="sr-only">{expanded ? "Collapse" : "Expand"}</span>
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>
+        <p className="m-0">{expanded ? "Collapse" : "Expand"}</p>
+      </TooltipContent>
+    </Tooltip>
+  );
+};
 
-  // Collapse when execution completes
-  useEffect(() => {
-    if (!isExecuting && completed) {
-      setExpanded(false);
-    }
-  }, [isExecuting, completed, setExpanded]);
+const BackgroundJobIdButton: FC<{ displayId: string }> = ({ displayId }) => {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          size="sm"
+          className="size-[16px] rounded-sm"
+          variant="secondary"
+        >
+          <div className="font-bold font-mono text-[10px]">{displayId}</div>
+        </Button>
+      </TooltipTrigger>
+      {false && (
+        <TooltipContent>
+          <span>Show {displayId}</span>
+        </TooltipContent>
+      )}
+    </Tooltip>
+  );
+};
 
-  // Reset stopping state when execution completes
-  useEffect(() => {
-    if (!isExecuting) {
-      setIsStopping(false);
-    }
-  }, [isExecuting]);
+const CommandPanelContainer: FC<{
+  icon: React.ReactNode;
+  title: React.ReactNode;
+  expanded?: boolean;
+  actions?: React.ReactNode;
+  className?: string;
+  output?: string;
+}> = ({ icon, title, expanded, actions, className, output }) => {
+  const containerRef = useRef<HTMLDivElement | null>(null);
 
-  const showButton = !completed && isExecuting && !isStopping;
   return (
     <div
       className={cn(
@@ -93,68 +118,21 @@ export const CommandExecutionPanel: FC<ExecutionPanelProps> = ({
         className={cn(
           "flex w-full items-center justify-between rounded-t-sm bg-[var(--vscode-editor-background)] px-3 py-1.5 text-[var(--vscode-editor-foreground)]",
           {
-            "border-b": output && expanded,
+            "border-b": expanded,
           },
         )}
       >
         <div className="flex min-w-0 flex-1 space-x-3">
-          <TerminalIcon className="mt-[2px] size-4 flex-shrink-0" />
+          {icon}
           <ScrollArea className="max-h-[80px] min-w-0 flex-1 overflow-y-auto">
             <span className="whitespace-pre-wrap text-balance break-all">
-              {command}
+              {title}
             </span>
           </ScrollArea>
         </div>
-        <div className="ml-2 flex space-x-3 self-start">
-          {false && showButton && (
-            <Button size="xs" variant="ghost" onClick={handleStop}>
-              STOP
-            </Button>
-          )}
-          {isDevServer && showButton && handleDetach !== undefined && (
-            <Button size="xs" variant="ghost" onClick={handleDetach}>
-              DETACH
-            </Button>
-          )}
-          {output && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="size-6 p-0 text-xs focus-visible:ring-1 focus-visible:ring-slate-700 focus-visible:ring-offset-0"
-                  onClick={toggleExpanded}
-                >
-                  {expanded ? <ChevronsDownUpIcon /> : <ChevronsUpDownIcon />}
-                  <span className="sr-only">
-                    {expanded ? "Collapse" : "Expand"}
-                  </span>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p className="m-0">{expanded ? "Collapse" : "Expand"}</p>
-              </TooltipContent>
-            </Tooltip>
-          )}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-6 p-0 text-xs focus-visible:ring-1 focus-visible:ring-slate-700 focus-visible:ring-offset-0"
-                onClick={onCopy}
-              >
-                {isCopied ? <CheckIcon /> : <CopyIcon />}
-                <span className="sr-only">Copy</span>
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p className="m-0">Copy</p>
-            </TooltipContent>
-          </Tooltip>
-        </div>
+        <div className="ml-2 flex space-x-3 self-start">{actions}</div>
       </div>
-      {output && expanded && (
+      {expanded && output && (
         <div
           ref={containerRef}
           className={cn(
@@ -172,6 +150,98 @@ export const CommandExecutionPanel: FC<ExecutionPanelProps> = ({
         </div>
       )}
     </div>
+  );
+};
+
+export const BackgroundJobPanel: FC<{
+  command: string;
+  displayId?: string;
+  output?: string;
+}> = ({ command, displayId, output }) => {
+  const [expanded, setExpanded] = useState(false);
+  const toggleExpanded = () => setExpanded((prev) => !prev);
+
+  return (
+    <CommandPanelContainer
+      icon={displayId && <BackgroundJobIdButton displayId={displayId} />}
+      title={command}
+      expanded={output !== undefined && expanded}
+      actions={
+        <>
+          {output && (
+            <ToggleExpandButton expanded={expanded} onToggle={toggleExpanded} />
+          )}
+          <CopyCommandButton command={command} />
+        </>
+      }
+      output={output}
+    />
+  );
+};
+
+export interface ExecutionPanelProps {
+  command: string;
+  output: string;
+  onStop: () => void;
+  completed: boolean;
+  isExecuting: boolean;
+  className?: string;
+}
+
+export const CommandExecutionPanel: FC<ExecutionPanelProps> = ({
+  command,
+  output,
+  className,
+  onStop,
+  isExecuting,
+  completed,
+}) => {
+  const [expanded, setExpanded, setExpandedImmediately] =
+    useExpanded(completed);
+  const [isStopping, setIsStopping] = useState<boolean>(false);
+  const toggleExpanded = () => setExpandedImmediately((prev) => !prev);
+
+  const handleStop = () => {
+    setIsStopping(true);
+    onStop();
+  };
+
+  // Collapse when execution completes
+  useEffect(() => {
+    if (!isExecuting && completed) {
+      setExpanded(false);
+    }
+  }, [isExecuting, completed, setExpanded]);
+
+  // Reset stopping state when execution completes
+  useEffect(() => {
+    if (!isExecuting) {
+      setIsStopping(false);
+    }
+  }, [isExecuting]);
+
+  const showButton = !completed && isExecuting && !isStopping;
+  return (
+    <CommandPanelContainer
+      icon={<TerminalIcon className="mt-[2px] size-4 flex-shrink-0" />}
+      title={command}
+      expanded={output !== undefined && expanded}
+      className={className}
+      actions={
+        <>
+          {false && showButton && (
+            <Button size="xs" variant="ghost" onClick={handleStop}>
+              STOP
+            </Button>
+          )}
+          {output && (
+            <ToggleExpandButton expanded={expanded} onToggle={toggleExpanded} />
+          )}
+          <CopyCommandButton command={command} />
+        </>
+      }
+      output={output}
+    />
   );
 };
 

@@ -5,6 +5,7 @@ import type { CustomModelSetting } from "@getpochi/common/vscode-webui-bridge";
 import type { VSCodeLmModel } from "@getpochi/common/vscode-webui-bridge";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useSettingsStore } from "../store";
 
 export type DisplayModel =
@@ -156,6 +157,7 @@ export function useModels() {
 }
 
 export function useSelectedModels() {
+  const { t } = useTranslation();
   const { selectedModelId, updateSelectedModelId } = useSettingsStore();
   const { models, isLoading } = useModels();
   const groupedModels = useMemo<ModelGroups | undefined>(() => {
@@ -165,26 +167,26 @@ export function useSelectedModels() {
       (m) => m.type === "hosted" && m.costType === "premium",
     );
     if (premiumModels.length > 0) {
-      groups.push({ title: "Super", models: premiumModels });
+      groups.push({ title: t("modelSelect.super"), models: premiumModels });
     }
     const basicModels = models.filter(
       (m) => m.type === "hosted" && m.costType === "basic",
     );
     if (basicModels.length > 0) {
-      groups.push({ title: "Swift", models: basicModels });
+      groups.push({ title: t("modelSelect.swift"), models: basicModels });
     }
 
     const vscodeModels = models.filter((m) => m.type === "vscode");
     const customModels = models.filter((m) => m.type === "byok");
     if (customModels.length + vscodeModels.length > 0) {
       groups.push({
-        title: "Custom",
+        title: t("modelSelect.custom"),
         models: [...vscodeModels, ...customModels],
         isCustom: true,
       });
     }
     return groups;
-  }, [models]);
+  }, [models, t]);
   const [isModelReady, setIsModelReady] = useState(
     !!selectedModelId &&
       getModelIdFromModelInfo(selectedModelId, models) === selectedModelId,

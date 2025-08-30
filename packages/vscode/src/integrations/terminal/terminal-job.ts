@@ -1,9 +1,9 @@
+import { randomUUID } from "node:crypto";
 import { getLogger } from "@/lib/logger";
 import { getShellPath } from "@getpochi/common/tool-utils";
 import * as vscode from "vscode";
 import { OutputManager } from "./output";
-import { ExecutionError, createBackgroundOutputStream } from "./utils";
-import { waitForWebviewSubscription } from "./utils";
+import { ExecutionError } from "./utils";
 
 const logger = getLogger("TerminalJob");
 
@@ -22,7 +22,7 @@ export interface TerminalJobConfig {
   /** Background job configuration - detached by default and auto-completes after 5s of no output */
   background?: boolean;
   /** timeout in seconds for the command execution */
-  timeout: number;
+  timeout?: number;
 }
 
 /**
@@ -30,15 +30,26 @@ export interface TerminalJobConfig {
  * for running commands and managing terminal lifecycle
  */
 export class TerminalJob implements vscode.Disposable {
+  private static readonly jobs = new Map<string, TerminalJob>();
+  private static readonly onDidDisposeEmitter =
+    new vscode.EventEmitter<TerminalJob>();
+  static readonly onDidDispose = TerminalJob.onDidDisposeEmitter.event;
+
   private readonly terminal: vscode.Terminal;
   private disposables: vscode.Disposable[] = [];
   private shellIntegration: vscode.TerminalShellIntegration | undefined;
   private execution: vscode.TerminalShellExecution | undefined;
-  private outputManager = new OutputManager();
+  private outputManager: OutputManager;
   private detached = false;
+
+  readonly id: string;
 
   get output() {
     return this.outputManager.output;
+  }
+
+  get command() {
+    return this.config.command;
   }
 
   detach = () => {
@@ -46,6 +57,13 @@ export class TerminalJob implements vscode.Disposable {
   };
 
   private constructor(private readonly config: TerminalJobConfig) {
+    this.id = `bgjob-${randomUUID()}`;
+    this.outputManager = OutputManager.create({
+      id: this.id,
+      command: config.command,
+    });
+    TerminalJob.jobs.set(this.id, this);
+
     // For background jobs, detach by default
     if (config.background) {
       this.detached = true;
@@ -62,9 +80,13 @@ export class TerminalJob implements vscode.Disposable {
         GIT_COMMITTER_EMAIL: "noreply@getpochi.com",
       },
       iconPath: new vscode.ThemeIcon("piano"),
-      hideFromUser: true,
+      hideFromUser: !this.detached,
       isTransient: false,
     });
+
+    if (this.detached) {
+      this.terminal.show();
+    }
 
     // Set up event listeners
     this.setupEventListeners();
@@ -80,8 +102,6 @@ export class TerminalJob implements vscode.Disposable {
    * Execute the configured command in the terminal
    */
   async execute(): Promise<void> {
-    await waitForWebviewSubscription();
-
     let executeError: ExecutionError | undefined = undefined;
 
     try {
@@ -103,7 +123,9 @@ export class TerminalJob implements vscode.Disposable {
         this.terminal.show();
       }
 
-      this.dispose();
+      if (!this.config.background) {
+        this.dispose();
+      }
     }
   }
 
@@ -141,10 +163,6 @@ export class TerminalJob implements vscode.Disposable {
     return new Promise<never>((_, reject) => {
       const abortError = ExecutionError.createAbortError();
 
-      const timeoutError = ExecutionError.createTimeoutError(
-        this.config.timeout,
-      );
-
       // Check if already aborted
       if (this.config.abortSignal?.aborted) {
         reject(abortError);
@@ -152,12 +170,17 @@ export class TerminalJob implements vscode.Disposable {
       }
 
       // Set up timeout
-      const timeoutId = setTimeout(() => {
-        logger.info(
-          `Command execution timed out after ${this.config.timeout}s: ${this.config.command}`,
-        );
-        reject(timeoutError);
-      }, this.config.timeout * 1000);
+      const timeoutId = this.config.timeout
+        ? setTimeout(() => {
+            logger.info(
+              `Command execution timed out after ${this.config.timeout}s: ${this.config.command}`,
+            );
+            const timeoutError = ExecutionError.createTimeoutError(
+              this.config.timeout ?? 0,
+            );
+            reject(timeoutError);
+          }, this.config.timeout * 1000)
+        : undefined;
 
       // Set up abort listener
       const abortListener = () => {
@@ -190,18 +213,24 @@ export class TerminalJob implements vscode.Disposable {
   private async processOutputStream(
     outputStream: AsyncIterable<string>,
   ): Promise<void> {
-    const stream = this.config.background
-      ? createBackgroundOutputStream(outputStream)
-      : outputStream;
-    for await (const chunk of stream) {
+    for await (const chunk of outputStream) {
       this.outputManager.addChunk(chunk);
     }
+  }
+
+  /**
+   * Kills the terminal job.
+   */
+  kill(): void {
+    this.terminal.dispose();
   }
 
   /**
    * Dispose of the terminal and clean up resources
    */
   dispose(): void {
+    TerminalJob.jobs.delete(this.id);
+    TerminalJob.onDidDisposeEmitter.fire(this);
     for (const d of this.disposables) {
       d.dispose();
     }
@@ -253,6 +282,10 @@ export class TerminalJob implements vscode.Disposable {
     this.disposables.push(
       vscode.window.onDidCloseTerminal((terminal) => {
         if (terminal === this.terminal) {
+          this.outputManager.finalize(
+            this.detached,
+            ExecutionError.create("Terminal closed by user"),
+          );
           this.dispose();
         }
       }),
@@ -263,6 +296,17 @@ export class TerminalJob implements vscode.Disposable {
       vscode.window.onDidEndTerminalShellExecution((event) => {
         if (event.execution === this.execution) {
           logger.debug("Terminal shell execution ended", event.exitCode);
+          if (event.exitCode !== 0) {
+            this.outputManager.finalize(
+              this.detached,
+              ExecutionError.create(
+                `Command exited with code ${event.exitCode}`,
+              ),
+            );
+          } else {
+            this.outputManager.finalize(this.detached, undefined);
+          }
+          this.dispose();
         }
       }),
     );
@@ -273,5 +317,19 @@ export class TerminalJob implements vscode.Disposable {
    */
   static create(config: TerminalJobConfig): TerminalJob {
     return new TerminalJob(config);
+  }
+
+  /**
+   * Retrieves a `TerminalJob` instance by its ID.
+   *
+   * @param id - The ID of the job or the terminal instance.
+   * @returns The `TerminalJob` instance, or `undefined` if not found.
+   */
+  static get(id: string | vscode.Terminal): TerminalJob | undefined {
+    return typeof id === "string"
+      ? TerminalJob.jobs.get(id)
+      : Array.from(TerminalJob.jobs.values()).find(
+          (job) => job.terminal === id,
+        );
   }
 }

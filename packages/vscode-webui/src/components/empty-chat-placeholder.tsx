@@ -1,30 +1,35 @@
 import { useAutoSaveDisabled } from "@/lib/hooks/use-auto-save";
 import { AlertTriangleIcon, ImageIcon, TerminalIcon } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Button } from "./ui/button";
 
 export function EmptyChatPlaceholder() {
   const autoSaveDisabled = useAutoSaveDisabled();
+  const { t } = useTranslation();
+
   return (
     <div className="flex h-[80vh] select-none flex-col items-center justify-center p-5 text-center text-gray-500 dark:text-gray-300">
       <div className="mb-4">{/* Adjusted icon color for visibility */}</div>
       <h2 className="mb-2 flex items-center gap-3 font-semibold text-2xl text-gray-700 dark:text-gray-100">
         <TerminalIcon className="animate-[spin_6s_linear_infinite]" />
-        What can I help you ship?
+        {t("placeholder.title")}
       </h2>
       <p className="mb-4 leading-relaxed">
-        Pochi is powered by AI, so errors may occur.
+        {t("placeholder.subtitle")}
         <br />
-        Carefully review the output before using it.
+        {t("placeholder.disclaimer")}
       </p>
       <ul className="m-0 list-none p-0">
         <li className="mb-2 flex items-center">
-          <ImageIcon className="mr-2 size-4" /> to chat with images
+          <ImageIcon className="mr-2 size-4" /> {t("placeholder.tips.images")}
         </li>
         <li className="mb-2 flex items-center">
-          <span className="mr-2 text-base">@</span> to attach context
+          <span className="mr-2 text-base">@</span>{" "}
+          {t("placeholder.tips.context")}
         </li>
         <li className="mb-2 flex items-center">
-          <span className="mr-3 ml-1 text-base">/</span> to trigger workflow
+          <span className="mr-3 ml-1 text-base">/</span>{" "}
+          {t("placeholder.tips.workflow")}
         </li>
       </ul>
       {!autoSaveDisabled && (
@@ -33,13 +38,12 @@ export function EmptyChatPlaceholder() {
             <div className="flex items-center gap-2">
               <h3 className="items-center font-medium text-sm ">
                 <AlertTriangleIcon className="mr-1 mb-[1px] inline size-4" />
-                Pochi doesn't work well with auto-save enabled.
+                {t("placeholder.autoSave.title")}
               </h3>
             </div>
             <div>
               <p className="text-muted-foreground text-sm">
-                Pochi relies on pending file changes to display diffs of its
-                edits, which requires auto-save to be disabled.
+                {t("placeholder.autoSave.description")}
               </p>
               <div className="mt-3">
                 <a
@@ -48,7 +52,7 @@ export function EmptyChatPlaceholder() {
                   rel="noopener noreferrer"
                 >
                   <Button size="sm" variant="default">
-                    Disable
+                    {t("common.disable")}
                   </Button>
                 </a>
               </div>

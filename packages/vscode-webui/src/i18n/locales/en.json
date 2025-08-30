@@ -1,0 +1,137 @@
+{
+  "common": {
+    "continue": "Continue",
+    "cancel": "Cancel",
+    "disable": "Disable",
+    "openFolder": "Open Folder",
+    "account": "Account",
+    "help": "Help"
+  },
+  "placeholder": {
+    "title": "What can I help you ship?",
+    "subtitle": "Pochi is powered by AI, so errors may occur.",
+    "disclaimer": "Carefully review the output before using it.",
+    "tips": {
+      "images": "to chat with images",
+      "context": "to attach context",
+      "workflow": "to trigger workflow"
+    },
+    "autoSave": {
+      "title": "Pochi doesn't work well with auto-save enabled.",
+      "description": "Pochi relies on pending file changes to display diffs of its edits, which requires auto-save to be disabled."
+    }
+  },
+  "workspace": {
+    "required": "To use Pochi, please open a folder or workspace."
+  },
+  "task": {
+    "completed": "Task Completed"
+  },
+  "approval": {
+    "continueIn": "Continue in {{seconds}}s"
+  },
+  "chat": {
+    "imageTooltip": "Attach images to chat. You can also drag and drop images or paste them into the chat input box."
+  },
+  "language": {
+    "switcherTooltip": "Choose your preferred language with Pochi"
+  },
+  "tokenUsage": {
+    "compacting": "Compacting...",
+    "ofTokens": "% of {{tokens}} tokens",
+    "rules": "Rules",
+    "contextWindow": "Context Window",
+    "ofUsed": "{{used}} of {{total}} used",
+    "newTaskWithSummary": "New Task with Summary",
+    "compactTask": "Compact Task",
+    "minTokensRequired": "At least {{minTokens}} tokens are required to compact the conversation"
+  },
+  "modelSelect": {
+    "selectModel": "Select Model",
+    "manageCustomModels": "Manage custom models...",
+    "custom": "Custom",
+    "super": "Super",
+    "swift": "Swift"
+  },
+  "settings": {
+    "account": {
+      "signIn": "Sign-In for Pochi models",
+      "signInDescription": "Access premium AI models and features",
+      "signOut": "Sign Out"
+    },
+    "models": {
+      "title": "Models",
+      "noCopilotModels": "No copilot models found",
+      "copilotDisabled": "Copilot models are disabled. Turn on the switch to enable them.",
+      "noModelsFound": "No models found",
+      "customModelsTooltip": "Manage your custom models."
+    },
+    "tools": {
+      "title": "Tools",
+      "builtIn": "BUILT-IN TOOLS"
+    },
+    "general": {
+      "title": "General"
+    },
+    "advanced": {
+      "title": "Advanced Settings",
+      "developerMode": "Developer Mode",
+      "enablePochiModels": "Enable Pochi Models",
+      "clearStorage": "Clear Storage",
+      "language": "Language",
+      "languageDescription": "Choose your preferred language"
+    },
+    "workflows": {
+      "title": "Workflows",
+      "noWorkflows": "No workflows found in workspace."
+    },
+    "rules": {
+      "title": "Rules",
+      "noRules": "No rules found in workspace.",
+      "importRules": "Import Rules",
+      "foundRules": "Found {{count}} rule",
+      "foundRules_other": "Found {{count}} rules",
+      "import": "Import",
+      "importing": "Importing..."
+    },
+    "autoApprove": {
+      "title": "Auto-approve",
+      "disabled": "Disabled",
+      "noActionsSelected": "No actions selected",
+      "readFiles": "Read files",
+      "writeFiles": "Write files",
+      "executeCommands": "Execute commands",
+      "useMcpServers": "Use MCP servers",
+      "retryActions": "Retry actions",
+      "maxAttempts": "Max attempts",
+      "read": "Read",
+      "write": "Write",
+      "execute": "Execute",
+      "mcp": "MCP",
+      "retry": "Retry"
+    },
+    "mcp": {
+      "title": "MCP",
+      "tooltip": "Configuration MCP for Pochi globally.",
+      "noServersYet": "No MCP servers added yet.",
+      "importServers": "Import MCP Servers",
+      "foundSources": "Found {{count}} source",
+      "foundSources_other": "Found {{count}} sources",
+      "import": "Import",
+      "importAll": "Import All",
+      "recommendedServers": "Recommended MCP Servers",
+      "viewOnGitHub": "View on GitHub",
+      "add": "Add",
+      "requires": "Requires: {{requirement}}",
+      "noToolsAvailable": "No tools available from this MCP server"
+    }
+  },
+  "share": {
+    "copyLink": "Copy link",
+    "shareSupport": "Share with Support",
+    "shareSupportTitle": "Task shared with the Pochi team",
+    "shareSupportDetails": "This task and relevant debug information have been sent. For support, please join our Discord server and reference this issue with the ID: {{shareId}}.",
+    "joinDiscord": "Join Discord",
+    "ok": "OK"
+  }
+}

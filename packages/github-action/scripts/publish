@@ -1,0 +1,120 @@
+#!/bin/bash
+set -euo pipefail
+
+# pochi GitHub Action publisher
+# This script helps publish a new version of the GitHub Action
+
+echo "📦 pochi GitHub Action publisher"
+echo "==============================="
+
+# Check if we're in the right directory
+if [ ! -f "action.yml" ] || [ ! -f "package.json" ]; then
+    echo "❌ Error: Not in the GitHub Action directory"
+    echo "Please run this script from packages/github-action/"
+    exit 1
+fi
+
+# Get current version
+CURRENT_VERSION=$(node -p "require('./package.json').version")
+echo "📋 Current version: $CURRENT_VERSION"
+
+# Ask for new version
+read -p "Enter new version (or press Enter to skip versioning): " NEW_VERSION
+
+if [ -n "$NEW_VERSION" ]; then
+    echo "🔄 Updating version to $NEW_VERSION..."
+    
+    # Update package.json
+    node -e "
+    const pkg = require('./package.json');
+    pkg.version = '$NEW_VERSION';
+    require('fs').writeFileSync('./package.json', JSON.stringify(pkg, null, 2) + '\n');
+    "
+    
+    echo "✅ Version updated in package.json"
+fi
+
+# Build the action (if needed)
+echo "🔨 Building action..."
+if command -v bun &> /dev/null; then
+    bun install
+    # bun build index.ts --outfile dist/index.js --target node
+else
+    npm install
+    # npm run build
+fi
+
+# Check if git is clean
+if ! git diff-index --quiet HEAD --; then
+    echo "⚠️  Warning: Working directory is not clean"
+    echo "The following files have changes:"
+    git diff-index --name-only HEAD
+    echo ""
+    
+    read -p "Do you want to commit these changes? (y/N): " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        git add .
+        COMMIT_MSG="Release pochi GitHub Action"
+        if [ -n "$NEW_VERSION" ]; then
+            COMMIT_MSG="$COMMIT_MSG v$NEW_VERSION"
+        fi
+        git commit -m "$COMMIT_MSG"
+        echo "✅ Changes committed"
+    else
+        echo "❌ Please commit or stash your changes before publishing"
+        exit 1
+    fi
+fi
+
+# Create/update tags with action prefix
+if [ -n "$NEW_VERSION" ]; then
+    echo "🏷️  Creating tag action@$NEW_VERSION..."
+    git tag -a "action@$NEW_VERSION" -m "Release action@$NEW_VERSION"
+    
+    # Also update major version tag (e.g., action@0)
+    MAJOR_VERSION=$(echo "$NEW_VERSION" | cut -d. -f1)
+    echo "🏷️  Updating major version tag action@$MAJOR_VERSION..."
+    git tag -f "action@$MAJOR_VERSION"
+    
+    echo "📤 Pushing tags..."
+    git push origin "action@$NEW_VERSION"
+    git push -f origin "action@$MAJOR_VERSION"
+    
+    echo "✅ Tags created and pushed"
+fi
+
+# Push to current branch
+CURRENT_BRANCH=$(git branch --show-current)
+read -p "Do you want to push to the current branch ($CURRENT_BRANCH)? (y/N): " -n 1 -r
+echo
+if [[ $REPLY =~ ^[Yy]$ ]]; then
+    echo "📤 Pushing to $CURRENT_BRANCH branch..."
+    git push origin "$CURRENT_BRANCH"
+    echo "✅ Pushed to $CURRENT_BRANCH branch"
+fi
+
+echo ""
+echo "🎉 pochi GitHub Action published successfully!"
+
+if [ -n "$NEW_VERSION" ]; then
+    echo ""
+    echo "📋 Users can now use this action with:"
+    echo "uses: tabbyml/pochi/packages/github-action@$NEW_VERSION"
+    echo "or"
+    echo "uses: tabbyml/pochi/packages/github-action@$MAJOR_VERSION"
+    echo "or"  
+    echo "uses: tabbyml/pochi/packages/github-action@latest"
+    echo ""
+    echo "📝 Example workflow:"
+    echo "- uses: tabbyml/pochi/packages/github-action@latest"
+    echo "  env:"
+    echo "    POCHI_TOKEN: \${{ secrets.POCHI_TOKEN }}"
+fi
+
+# Get repository information for releases link
+REPO_OWNER=$(git remote get-url origin | sed -n 's#.*github\.com[:/]\([^/]*\)/.*#\1#p')
+REPO_NAME=$(git remote get-url origin | sed -n 's#.*github\.com[:/][^/]*/\([^/]*\).*#\1#p' | sed 's/\.git$//')
+
+echo ""
+echo "🔗 GitHub releases: https://github.com/$REPO_OWNER/$REPO_NAME/releases"

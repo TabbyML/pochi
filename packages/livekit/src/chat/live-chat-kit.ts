@@ -31,6 +31,7 @@ export type LiveChatKitOptions<T> = {
   };
 
   isSubTask?: boolean;
+  isCli?: boolean;
 
   store: Store;
 
@@ -66,6 +67,7 @@ export class LiveChatKit<
     onOverrideMessages,
     getters,
     isSubTask,
+    isCli,
     apiClient,
     ...chatInit
   }: LiveChatKitOptions<T>) {
@@ -76,6 +78,7 @@ export class LiveChatKit<
       onStart: this.onStart,
       getters,
       isSubTask,
+      isCli,
       apiClient,
     });
 

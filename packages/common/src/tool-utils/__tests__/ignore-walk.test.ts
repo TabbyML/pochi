@@ -33,6 +33,7 @@ describe("ignoreWalk", () => {
   };
 
   beforeEach(() => {
+    // @ts-ignore
     vi.mocked(fs.readdir).mockImplementation(async (path) => {
       return mockFs[path as keyof typeof mockFs] || [];
     });
