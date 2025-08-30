@@ -31,7 +31,7 @@ interface Props {
     newCompactTask: () => void;
     enabled: boolean;
   };
-  selectedModel?: DisplayModel;
+  selectedModel: DisplayModel;
 }
 
 export function TokenUsage({
@@ -41,8 +41,9 @@ export function TokenUsage({
   selectedModel,
 }: Props) {
   const { t } = useTranslation();
-  const contextWindow = selectedModel?.contextWindow || 0;
-  const percentage = Math.ceil((totalTokens / contextWindow) * 100);
+  const percentage = Math.ceil(
+    (totalTokens / selectedModel?.contextWindow) * 100,
+  );
   const [isOpen, setIsOpen] = useState(false);
   const [isPinned, setIsPinned] = useState(false);
 
@@ -113,7 +114,7 @@ export function TokenUsage({
                 {t("tokenUsage.compacting")}
               </>
             ) : (
-              `${percentage}${t("tokenUsage.ofTokens", { tokens: formatTokens(contextWindow) })}`
+              `${percentage}% of ${formatTokens(selectedModel.contextWindow)} tokens`
             )}
           </span>
         </div>
@@ -165,10 +166,8 @@ export function TokenUsage({
             </div>
             <div>
               <Progress value={percentage} className="mb-1" />
-              {t("tokenUsage.ofUsed", {
-                used: formatTokens(totalTokens),
-                total: formatTokens(contextWindow),
-              })}
+              {formatTokens(totalTokens)} of{" "}
+              {formatTokens(selectedModel.contextWindow)} used
             </div>
           </div>
           <div className="mt-2 flex items-center gap-x-2">
