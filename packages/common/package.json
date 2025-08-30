@@ -5,6 +5,8 @@
   "exports": {
     ".": "./src/base/index.ts",
 
+    "./configuration": "./src/configuration/index.ts",
+
     "./pochi-api": "./src/pochi-api.ts",
 
     "./device-link": "./src/device-link/index.ts",

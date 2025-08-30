@@ -1,4 +1,7 @@
-import { CustomModelSetting } from "@getpochi/common/vscode-webui-bridge";
+import {
+  CustomModelSetting,
+  pochiConfig,
+} from "@getpochi/common/configuration";
 import { signal } from "@preact/signals-core";
 import deepEqual from "fast-deep-equal";
 import { injectable, singleton } from "tsyringe";
@@ -39,20 +42,27 @@ export class PochiConfiguration implements vscode.Disposable {
       }),
     );
 
-    this.disposables.push({
-      dispose: this.mcpServers.subscribe((value) => {
-        if (!deepEqual(value, getPochiMcpServersSettings())) {
-          updatePochiMcpServersSettings(value);
-        }
-      }),
-    });
-    this.disposables.push({
-      dispose: this.advancedSettings.subscribe((value) => {
-        if (!deepEqual(value, getPochiAdvanceSettings())) {
-          updatePochiAdvanceSettings(value);
-        }
-      }),
-    });
+    this.disposables.push(
+      {
+        dispose: this.mcpServers.subscribe((value) => {
+          if (!deepEqual(value, getPochiMcpServersSettings())) {
+            updatePochiMcpServersSettings(value);
+          }
+        }),
+      },
+      {
+        dispose: this.advancedSettings.subscribe((value) => {
+          if (!deepEqual(value, getPochiAdvanceSettings())) {
+            updatePochiAdvanceSettings(value);
+          }
+        }),
+      },
+      {
+        dispose: this.customModelSettings.subscribe((value) => {
+          pochiConfig.customModelSettings = value;
+        }),
+      },
+    );
   }
 
   dispose() {
@@ -128,7 +138,7 @@ function getCustomModelSetting(): CustomModelSetting[] | undefined {
   const customModelSettings = vscode.workspace
     .getConfiguration("pochi")
     .get("customModelSettings") as unknown[] | undefined;
-  if (customModelSettings === undefined) return undefined;
+  if (customModelSettings === undefined) return pochiConfig.customModelSettings;
 
   return customModelSettings
     .map((x) => CustomModelSetting.safeParse(x))
