@@ -13,7 +13,7 @@
     "fumadocs-core": "15.5.4",
     "fumadocs-mdx": "11.6.9",
     "fumadocs-ui": "15.5.4",
-    "lucide-react": "^0.525.0",
+    "lucide-react": "catalog:",
     "mdx": "^0.3.1",
     "next": "15.3.4",
     "next-image-export-optimizer": "^1.19.0",
@@ -27,7 +27,6 @@
     "@types/mdx": "^2.0.13",
     "@types/react": "^19.1.8",
     "postcss": "^8.5.6",
-    "tailwindcss": "catalog:",
-    "typescript": "^5.8.3"
+    "tailwindcss": "catalog:"
   }
 }

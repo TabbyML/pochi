@@ -1,5 +1,10 @@
 import { CustomHtmlTags } from "@/lib/constants";
+import { processBackgroundJobId } from "@/lib/hooks/use-background-job-command";
 import { cn } from "@/lib/utils";
+import { addLineBreak } from "@/lib/utils/file";
+import { isKnownProgrammingLanguage } from "@/lib/utils/languages";
+import { isVSCodeEnvironment, vscodeHost } from "@/lib/vscode";
+import { CodeXmlIcon } from "lucide-react";
 import { type ElementType, type FC, memo, useCallback, useMemo } from "react";
 import ReactMarkdown, { type Components, type Options } from "react-markdown";
 import rehypeRaw from "rehype-raw";
@@ -10,11 +15,148 @@ import { FileBadge } from "../tool-invocation/file-badge";
 import { CodeBlock } from "./code-block";
 import { customStripTagsPlugin } from "./custom-strip-tags-plugin";
 import "./markdown.css";
-import { processBackgroundJobId } from "@/lib/hooks/use-background-job-command";
-import { addLineBreak } from "@/lib/utils/file";
-import { isKnownProgrammingLanguage } from "@/lib/utils/languages";
-import { isVSCodeEnvironment, vscodeHost } from "@/lib/vscode";
-import { CodeXmlIcon } from "lucide-react";
+
+interface CodeComponentProps {
+  className?: string;
+  children?: React.ReactNode;
+  node?: {
+    position?: {
+      start: { line: number };
+      end: { line: number };
+    };
+  };
+  isMinimalView?: boolean;
+}
+
+interface InlineCodeComponentProps {
+  className?: string;
+  children?: React.ReactNode;
+}
+
+interface BlockCodeComponentProps {
+  className?: string;
+  children?: React.ReactNode;
+  language?: string;
+  isMinimalView?: boolean;
+}
+
+function InlineCodeComponent({
+  className,
+  children,
+}: InlineCodeComponentProps) {
+  if (typeof children === "string") {
+    // have file extension like `file.txt`
+    const isFilePath = (text: string): boolean => {
+      return (
+        !text.includes("://") &&
+        // file name should not be empty, e.g. .ts is not a valid file path
+        /.+\.[a-z0-9]+$/i.test(text) &&
+        isKnownProgrammingLanguage(text)
+      );
+    };
+
+    // have folder path like `folder/` or `folder/subfolder`
+    const isFolderPath = (text: string): boolean => {
+      return (
+        !text.startsWith("@") &&
+        !text.includes("://") &&
+        !/\s/.test(text) &&
+        (text.includes("/") || text.includes("\\")) &&
+        !text.startsWith("\\")
+      );
+    };
+
+    const isSymbol = (text: string): boolean => {
+      if (SymbolBlacklist.has(text)) {
+        return false; // Skip blacklisted symbols
+      }
+      // A symbol is typically a single word or a sequence of characters without spaces
+      return /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(text);
+    };
+
+    // children may be file path, folder path, symbol or normal text, we need to handle each case
+    if (isFilePath(children)) {
+      const pathSeparatorCount = (children.match(/[\/\\]/g) || []).length;
+      return (
+        <FileBadge
+          path={children}
+          fallbackGlobPattern={
+            // glob pattern use `/` as path separator even on windows; when applied, glob pattern will match paths with both `/` and `\`
+            pathSeparatorCount >= 2 ? `**/${children}` : undefined
+          }
+        />
+      );
+    }
+    if (isFolderPath(children)) {
+      return <FileBadge path={children} isDirectory={true} />;
+    }
+    if (isSymbol(children)) {
+      // FIXME(meng): turn off symbol detection for now.
+      // return <SymbolBadge label={children} />;
+    }
+  }
+
+  return <code className={cn("inline-code", className)}>{children}</code>;
+}
+
+function BlockCodeComponent({
+  className,
+  children,
+  language = "",
+  isMinimalView,
+}: BlockCodeComponentProps) {
+  let value = String(children).replace(/\n$/, "");
+  if (isMinimalView && value.length > 512) {
+    value = `... ${language} code omitted ( ${value.length} bytes ) ...`;
+  }
+  return (
+    <CodeBlock
+      language={language}
+      value={value}
+      canWrapLongLines={true}
+      className={cn("max-h-none", className)}
+      isMinimalView={isMinimalView}
+    />
+  );
+}
+
+function CodeComponent({
+  className,
+  children,
+  node,
+  isMinimalView,
+}: CodeComponentProps) {
+  if (children && Array.isArray(children) && children.length) {
+    if (children[0] === "▍") {
+      return <span className="mt-1 animate-pulse cursor-default">▍</span>;
+    }
+
+    children[0] = (children[0] as string).replace("`▍`", "▍");
+  }
+
+  const match = /language-(\w+)/.exec(className || "");
+
+  const isInline =
+    node?.position && node.position.start.line === node.position.end.line;
+
+  if (isInline) {
+    return (
+      <InlineCodeComponent className={className}>
+        {children}
+      </InlineCodeComponent>
+    );
+  }
+
+  return (
+    <BlockCodeComponent
+      className={className}
+      language={match?.[1]}
+      isMinimalView={isMinimalView}
+    >
+      {children}
+    </BlockCodeComponent>
+  );
+}
 
 type CustomTag = (typeof CustomHtmlTags)[number];
 
@@ -99,92 +241,9 @@ export function MessageMarkdown({
           <FileBadge label={id.replaceAll("user-content-", "/")} path={path} />
         );
       },
-      code({ className, children, ...props }) {
-        if (children && Array.isArray(children) && children.length) {
-          if (children[0] === "▍") {
-            return <span className="mt-1 animate-pulse cursor-default">▍</span>;
-          }
-
-          children[0] = (children[0] as string).replace("`▍`", "▍");
-        }
-
-        const match = /language-(\w+)/.exec(className || "");
-
-        const isInline =
-          props.node?.position &&
-          props.node.position.start.line === props.node.position.end.line;
-
-        if (isInline) {
-          if (typeof children === "string") {
-            // have file extension like `file.txt`
-            const isFilePath = (text: string): boolean => {
-              return (
-                !text.includes("://") &&
-                // file name should not be empty, e.g. .ts is not a valid file path
-                /.+\.[a-z0-9]+$/i.test(text) &&
-                isKnownProgrammingLanguage(text)
-              );
-            };
-
-            // have folder path like `folder/` or `folder/subfolder`
-            const isFolderPath = (text: string): boolean => {
-              return (
-                !text.startsWith("@") &&
-                !text.includes("://") &&
-                !/\s/.test(text) &&
-                (text.includes("/") || text.includes("\\")) &&
-                !text.startsWith("\\")
-              );
-            };
-
-            const isSymbol = (text: string): boolean => {
-              if (SymbolBlacklist.has(text)) {
-                return false; // Skip blacklisted symbols
-              }
-              // A symbol is typically a single word or a sequence of characters without spaces
-              return /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(text);
-            };
-
-            // children may be file path, folder path, symbol or normal text, we need to handle each case
-            if (isFilePath(children)) {
-              const pathSeparatorCount = (children.match(/[\/\\]/g) || [])
-                .length;
-              return (
-                <FileBadge
-                  path={children}
-                  fallbackGlobPattern={
-                    // glob pattern use `/` as path separator even on windows; when applied, glob pattern will match paths with both `/` and `\`
-                    pathSeparatorCount >= 2 ? `**/${children}` : undefined
-                  }
-                />
-              );
-            }
-            if (isFolderPath(children)) {
-              return <FileBadge path={children} isDirectory={true} />;
-            }
-            if (isSymbol(children)) {
-              // FIXME(meng): turn off symbol detection for now.
-              // return <SymbolBadge label={children} />;
-            }
-          }
-
-          return (
-            <code className={cn("inline-code", className)} {...props}>
-              {children}
-            </code>
-          );
-        }
-
-        return (
-          <CodeBlock
-            language={match?.[1] || ""}
-            value={String(children).replace(/\n$/, "")}
-            canWrapLongLines={true}
-            className="max-h-none"
-            isMinimalView={isMinimalView}
-          />
-        );
-      },
+      code: (props) => (
+        <CodeComponent {...props} isMinimalView={isMinimalView} />
+      ),
       a({ href, children, ...props }) {
         const openLink = useCallback(() => {
           href && isVSCodeEnvironment()
