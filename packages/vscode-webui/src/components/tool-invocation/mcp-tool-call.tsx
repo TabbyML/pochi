@@ -3,7 +3,6 @@ import { Switch } from "@/components/ui/switch";
 import { vscodeHost } from "@/lib/vscode";
 import { getToolName } from "ai";
 import { useState } from "react";
-import { filterPlayrightMarkdown } from "./filter-playwright";
 import { HighlightedText } from "./highlight-text";
 import { StatusIcon } from "./status-icon";
 import { ExpandableToolContainer } from "./tool-container";
@@ -104,11 +103,7 @@ export const McpToolCall: React.FC<ToolProps<any>> = ({
                   />
                 )}
               </div>
-              <Result
-                result={result}
-                toolName={toolName}
-                previewImageLink={previewImageLink}
-              />
+              <Result result={result} previewImageLink={previewImageLink} />
             </>
           ) : (
             <div className="p-0">
@@ -129,11 +124,9 @@ export const McpToolCall: React.FC<ToolProps<any>> = ({
 
 function Result({
   result,
-  toolName,
   previewImageLink,
 }: {
   result: MCPToolCallResult;
-  toolName: string;
   previewImageLink: boolean;
 }) {
   const renderContentItem = (item: ContentBlock, index: number) => {
@@ -150,9 +143,7 @@ function Result({
         );
 
       case "text": {
-        const textContent = toolName.toLowerCase().startsWith("browser_")
-          ? filterPlayrightMarkdown(item.text)
-          : item.text;
+        const textContent = item.text;
 
         return (
           <div key={key}>

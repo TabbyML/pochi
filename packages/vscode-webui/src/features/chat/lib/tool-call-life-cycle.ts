@@ -50,6 +50,7 @@ type ToolCallState =
       type: "init";
       previewJob: Promise<PreviewReturnType>;
       abort: AbortFunctionType;
+      abortSignal: AbortSignal;
     }
   | {
       // Represents the preview runs at toolCall.state === "call"
@@ -143,23 +144,27 @@ export class ManagedToolCallLifeCycle
   implements ToolCallLifeCycle
 {
   private state: ToolCallState;
-  private readonly outerAbortController: AbortController;
   readonly toolName: string;
   readonly toolCallId: string;
 
   constructor(
     private readonly store: Store,
     key: ToolCallLifeCycleKey,
-    abortController: AbortController,
+    private readonly outerAbortSignal: AbortSignal,
   ) {
     super();
     this.toolName = key.toolName;
     this.toolCallId = key.toolCallId;
-    this.outerAbortController = abortController;
+    const abortController = new AbortController();
+    const abortSignal = AbortSignal.any([
+      abortController.signal,
+      this.outerAbortSignal,
+    ]);
     this.state = {
       type: "init",
       previewJob: Promise.resolve(undefined),
-      abort: () => this.outerAbortController.abort(),
+      abort: (reason) => abortController.abort(reason),
+      abortSignal: abortSignal,
     };
   }
 
@@ -203,7 +208,7 @@ export class ManagedToolCallLifeCycle
   }
 
   private previewInit(args: unknown, state: ToolUIPart["state"]) {
-    let { previewJob } = this.checkState("Preview", "init");
+    let { previewJob, abortSignal, abort } = this.checkState("Preview", "init");
     const previewToolCall = (abortSignal: AbortSignal) =>
       vscodeHost.previewToolCall(this.toolName, args, {
         state: convertState(state),
@@ -212,20 +217,14 @@ export class ManagedToolCallLifeCycle
       });
 
     if (state === "input-streaming") {
-      previewJob = previewJob.then(() =>
-        previewToolCall(this.outerAbortController.signal),
-      );
+      previewJob = previewJob.then(() => previewToolCall(abortSignal));
       this.transitTo("init", {
         type: "init",
         previewJob,
-        abort: () => this.outerAbortController.abort(),
+        abortSignal,
+        abort,
       });
     } else if (state === "input-available") {
-      const abortController = new AbortController();
-      const abortSignal = AbortSignal.any([
-        abortController.signal,
-        this.outerAbortController.signal,
-      ]);
       previewJob = previewJob.then(() => previewToolCall(abortSignal));
       previewJob.then((result) => {
         if (result?.error) {
@@ -238,7 +237,7 @@ export class ManagedToolCallLifeCycle
         } else {
           this.transitTo("pending", {
             type: "ready",
-            abort: (reason) => abortController.abort(reason),
+            abort,
             abortSignal,
           });
         }
@@ -246,7 +245,7 @@ export class ManagedToolCallLifeCycle
       this.transitTo("init", {
         type: "pending",
         previewJob,
-        abort: (reason) => abortController.abort(reason),
+        abort,
         abortSignal,
       });
     }
@@ -256,7 +255,7 @@ export class ManagedToolCallLifeCycle
     const abortController = new AbortController();
     const abortSignal = AbortSignal.any([
       abortController.signal,
-      this.outerAbortController.signal,
+      this.outerAbortSignal,
     ]);
     let executePromise: Promise<unknown>;
 
@@ -298,15 +297,19 @@ export class ManagedToolCallLifeCycle
     if (
       this.state.type === "init" ||
       this.state.type === "pending" ||
+      this.state.type === "ready" ||
       this.state.type === "execute" ||
       this.state.type === "execute:streaming"
     ) {
-      this.state.abort("user-abort");
-      this.transitTo(["init", "pending", "execute", "execute:streaming"], {
-        type: "complete",
-        result: { error: "Tool call aborted by user." },
-        reason: "user-abort",
-      });
+      this.state.abort();
+      this.transitTo(
+        ["init", "pending", "ready", "execute", "execute:streaming"],
+        {
+          type: "complete",
+          result: {},
+          reason: "user-abort",
+        },
+      );
     }
   }
 
@@ -315,10 +318,7 @@ export class ManagedToolCallLifeCycle
     abort();
     this.transitTo("ready", {
       type: "complete",
-      result: {
-        error:
-          "User rejected the tool call, please use askFollowupQuestion to clarify next step with user.",
-      },
+      result: {},
       reason: "user-reject",
     });
   }

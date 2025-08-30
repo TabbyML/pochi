@@ -13,9 +13,8 @@ export { getSystemInfo } from "./system-info";
 export { GitStatusReader, type GitStatusReaderOptions } from "./git-status";
 export {
   collectCustomRules,
-  SystemRulesFilepath,
-  SystemRulesFileDisplayPath,
-  DefaultWorkspaceRulesFilePaths,
+  WorkspaceRulesFilePaths,
+  GlobalRules,
 } from "./custom-rules";
 export { MaxTerminalOutputSize } from "./limits";
 export { CredentialStorage } from "./credential-storage";

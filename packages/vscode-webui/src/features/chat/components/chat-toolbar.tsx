@@ -27,6 +27,7 @@ import type { Todo } from "@getpochi/tools";
 import { ImageIcon, SendHorizonal, StopCircleIcon } from "lucide-react";
 import type React from "react";
 import { useCallback, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useChatStatus } from "../hooks/use-chat-status";
 import { useChatSubmit } from "../hooks/use-chat-submit";
 import { useInlineCompactTask } from "../hooks/use-inline-compact-task";
@@ -54,6 +55,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   displayError,
   todosRef,
 }) => {
+  const { t } = useTranslation();
   const { messages, sendMessage, addToolResult, status } = chat;
   const isLoading = status === "streaming" || status === "submitted";
   const totalTokens = task?.totalTokens || 0;
@@ -244,10 +246,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
                 <ImageIcon className="size-4" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>
-              Attach images to chat. You can also drag and drop images or paste
-              them into the chat input box.
-            </TooltipContent>
+            <TooltipContent>{t("chat.imageTooltip")}</TooltipContent>
           </Tooltip>
           <SubmitStopButton
             isSubmitDisabled={isSubmitDisabled}

@@ -4,7 +4,7 @@ import type { ToolCallLifeCycleKey } from "./chat-state/types";
 import { ManagedToolCallLifeCycle } from "./tool-call-life-cycle";
 
 // Hook to manage tool call states
-export function useToolCallLifeCycles(abortController: AbortController) {
+export function useToolCallLifeCycles(abortSignal: AbortSignal) {
   const { store } = useStore();
 
   const [toolCallLifeCycles, setToolCallLifeCycles] = useState<
@@ -38,7 +38,11 @@ export function useToolCallLifeCycles(abortController: AbortController) {
   const previewingToolCalls = useMemo(() => {
     const previewing = [];
     for (const lifecycle of toolCallLifeCycles.values()) {
-      if (lifecycle.status === "init" || lifecycle.status === "pending") {
+      if (
+        lifecycle.status === "init" ||
+        lifecycle.status === "pending" ||
+        lifecycle.status === "ready"
+      ) {
         previewing.push(lifecycle);
       }
     }
@@ -57,11 +61,7 @@ export function useToolCallLifeCycles(abortController: AbortController) {
   const getToolCallLifeCycle = useCallback(
     (key: ToolCallLifeCycleKey) => {
       if (!toolCallLifeCyclesRef.current.has(key.toolCallId)) {
-        const lifecycle = new ManagedToolCallLifeCycle(
-          store,
-          key,
-          abortController,
-        );
+        const lifecycle = new ManagedToolCallLifeCycle(store, key, abortSignal);
         toolCallLifeCyclesRef.current.set(key.toolCallId, lifecycle);
         const unsubscribe = lifecycle.onAny((name) => {
           reloadToolCallLifeCycles();
@@ -78,7 +78,7 @@ export function useToolCallLifeCycles(abortController: AbortController) {
         // Guaranteed to exist because we just set it above
       ) as ManagedToolCallLifeCycle;
     },
-    [store, abortController, reloadToolCallLifeCycles],
+    [store, abortSignal, reloadToolCallLifeCycles],
   );
 
   return {

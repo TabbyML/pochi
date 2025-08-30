@@ -15,10 +15,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
 
       - name: Run pochi
-        uses: tabbyml/pochi/packages/github-action@96eb914f1075d5313af98fdf07bf9949d53b453c
+        uses: tabbyml/pochi/packages/github-action@main
         env:
           POCHI_TOKEN: ${{ secrets.POCHI_TOKEN }}

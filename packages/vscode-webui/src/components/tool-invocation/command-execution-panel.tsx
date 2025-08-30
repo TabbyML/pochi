@@ -76,13 +76,35 @@ const ToggleExpandButton: FC<{ expanded: boolean; onToggle: () => void }> = ({
   );
 };
 
+const BackgroundJobIdButton: FC<{ displayId: string }> = ({ displayId }) => {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          size="sm"
+          className="size-[16px] rounded-sm"
+          variant="secondary"
+        >
+          <div className="font-bold font-mono text-[10px]">{displayId}</div>
+        </Button>
+      </TooltipTrigger>
+      {false && (
+        <TooltipContent>
+          <span>Show {displayId}</span>
+        </TooltipContent>
+      )}
+    </Tooltip>
+  );
+};
+
 const CommandPanelContainer: FC<{
-  command: string;
+  icon: React.ReactNode;
+  title: React.ReactNode;
   expanded?: boolean;
   actions?: React.ReactNode;
   className?: string;
   output?: string;
-}> = ({ command, expanded, actions, className, output }) => {
+}> = ({ icon, title, expanded, actions, className, output }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   return (
@@ -101,10 +123,10 @@ const CommandPanelContainer: FC<{
         )}
       >
         <div className="flex min-w-0 flex-1 space-x-3">
-          <TerminalIcon className="mt-[2px] size-4 flex-shrink-0" />
+          {icon}
           <ScrollArea className="max-h-[80px] min-w-0 flex-1 overflow-y-auto">
             <span className="whitespace-pre-wrap text-balance break-all">
-              {command}
+              {title}
             </span>
           </ScrollArea>
         </div>
@@ -131,16 +153,18 @@ const CommandPanelContainer: FC<{
   );
 };
 
-export const BackgroundJobPanel: FC<{ command: string; output?: string }> = ({
-  command,
-  output,
-}) => {
+export const BackgroundJobPanel: FC<{
+  command: string;
+  displayId?: string;
+  output?: string;
+}> = ({ command, displayId, output }) => {
   const [expanded, setExpanded] = useState(false);
   const toggleExpanded = () => setExpanded((prev) => !prev);
 
   return (
     <CommandPanelContainer
-      command={command}
+      icon={displayId && <BackgroundJobIdButton displayId={displayId} />}
+      title={command}
       expanded={output !== undefined && expanded}
       actions={
         <>
@@ -199,7 +223,8 @@ export const CommandExecutionPanel: FC<ExecutionPanelProps> = ({
   const showButton = !completed && isExecuting && !isStopping;
   return (
     <CommandPanelContainer
-      command={command}
+      icon={<TerminalIcon className="mt-[2px] size-4 flex-shrink-0" />}
+      title={command}
       expanded={output !== undefined && expanded}
       className={className}
       actions={

@@ -13,6 +13,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { CheckIcon, ChevronDownIcon } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import LoadingWrapper from "@/components/loading-wrapper";
 import type { DisplayModel, ModelGroups } from "@/features/settings";
@@ -33,6 +34,7 @@ export function ModelSelect({
   isLoading,
   triggerClassName,
 }: ModelSelectProps) {
+  const { t } = useTranslation();
   const onSelectModel = (v: string) => {
     onChange(v);
   };
@@ -64,7 +66,7 @@ export function ModelSelect({
                   !value && "text-muted-foreground",
                 )}
               >
-                {value?.name ?? "Select Model"}
+                {value?.name ?? t("modelSelect.selectModel")}
               </span>
               <ChevronDownIcon
                 className={cn(
@@ -164,7 +166,7 @@ export function ModelSelect({
                     className="flex cursor-pointer items-center gap-2 px-3 py-1"
                   >
                     <span className="text-[var(--vscode-textLink-foreground)] text-xs">
-                      Manage custom models...
+                      {t("modelSelect.manageCustomModels")}
                     </span>
                   </a>
                 </DropdownMenuItem>

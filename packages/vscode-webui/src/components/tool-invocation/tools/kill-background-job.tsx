@@ -1,4 +1,4 @@
-import { useBackgroundJobCommand } from "@/lib/hooks/use-background-job-command";
+import { useBackgroundJobInfo } from "@/lib/hooks/use-background-job-command";
 import { BackgroundJobPanel } from "../command-execution-panel";
 import { StatusIcon } from "../status-icon";
 import { ExpandableToolContainer } from "../tool-container";
@@ -7,9 +7,9 @@ import type { ToolProps } from "../types";
 export const KillBackgroundJobTool: React.FC<
   ToolProps<"killBackgroundJob">
 > = ({ tool, isExecuting, messages }) => {
-  const command = useBackgroundJobCommand(
+  const info = useBackgroundJobInfo(
     messages,
-    tool.input?.backgroundJobId,
+    tool.state !== "input-streaming" ? tool.input?.backgroundJobId : undefined,
   );
 
   const title = (
@@ -19,7 +19,9 @@ export const KillBackgroundJobTool: React.FC<
     </>
   );
 
-  const detail = command ? <BackgroundJobPanel command={command} /> : null;
+  const detail = info ? (
+    <BackgroundJobPanel command={info.command} displayId={info.displayId} />
+  ) : null;
 
   return <ExpandableToolContainer title={title} detail={detail} />;
 };

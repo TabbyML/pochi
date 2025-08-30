@@ -59,33 +59,42 @@ export const ToolsByPermission = {
 
 export const ServerToolApproved = "<server-tool-approved>";
 
-export const ClientTools = {
+const CliTools = {
   applyDiff,
   askFollowupQuestion,
   attemptCompletion,
   executeCommand,
-  startBackgroundJob,
-  readBackgroundJobOutput,
-  killBackgroundJob,
   globFiles,
   listFiles,
   multiApplyDiff,
-  newTask,
   readFile,
   searchFiles,
   todoWrite,
   writeToFile,
 };
 
+export const ClientTools = {
+  ...CliTools,
+  newTask,
+  startBackgroundJob,
+  readBackgroundJobOutput,
+  killBackgroundJob,
+};
+
 export type ClientTools = typeof ClientTools;
 
-export const selectClientTools = (isSubTask: boolean) => {
-  if (!isSubTask) {
-    return {
-      ...ClientTools,
-    };
+export const selectClientTools = (options: {
+  isSubTask: boolean;
+  isCli: boolean;
+}) => {
+  if (options.isCli) {
+    return CliTools;
   }
 
-  const { newTask, ...rest } = ClientTools;
-  return rest;
+  if (options?.isSubTask) {
+    const { newTask, ...rest } = ClientTools;
+    return rest;
+  }
+
+  return ClientTools;
 };

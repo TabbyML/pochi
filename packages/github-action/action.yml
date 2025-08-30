@@ -17,23 +17,26 @@ runs:
       run: |
         echo "Installing pochi CLI..."
         curl -fsSL https://app.getpochi.com/install.sh | bash
+
+        echo "Installing ripgrep..."
+        curl -LO 'https://github.com/BurntSushi/ripgrep/releases/download/14.1.1/ripgrep-14.1.1-x86_64-unknown-linux-musl.tar.gz'
+        tar -xzf ripgrep-14.1.1-x86_64-unknown-linux-musl.tar.gz
+        mv ripgrep-14.1.1-x86_64-unknown-linux-musl/rg "$HOME/.pochi/bin/"
+        rm -rf ripgrep-14.1.1-x86_64-unknown-linux-musl*
+
         echo "$HOME/.pochi/bin" >> $GITHUB_PATH
 
-    - name: Install ripgrep
+    - name: Config Git
       shell: bash
       run: |
-        echo "Installing ripgrep..."
-        sudo apt-get update && sudo apt-get install -y ripgrep
-        echo "Ripgrep installed at: $(which rg)"
-
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: "20"
+        git config --global user.email "noreply@getpochi.com"
+        git config --global user.name "Pochi"
 
     - name: Install bun
       shell: bash
-      run: npm install -g bun
+      run: |
+        curl -fsSL https://bun.com/install | bash
+        echo "$HOME/.bun/bin" >> $GITHUB_PATH
 
     - name: Install dependencies
       shell: bash
@@ -50,3 +53,4 @@ runs:
         bun ${GITHUB_ACTION_PATH}/src/index.ts
       env:
         GITHUB_TOKEN: ${{ github.token }}
+        POCHI_REMOTE_ENV: 1

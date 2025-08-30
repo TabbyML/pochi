@@ -15,6 +15,7 @@ import {
   Terminal,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { type AutoApprove, useSettingsStore } from "../store";
 
 interface CoreActionSetting {
@@ -25,6 +26,7 @@ interface CoreActionSetting {
 }
 
 export function AutoApproveMenu() {
+  const { t } = useTranslation();
   const {
     autoApproveActive,
     updateAutoApproveActive,
@@ -43,23 +45,28 @@ export function AutoApproveMenu() {
   const coreActionSettings: CoreActionSetting[] = [
     {
       id: "read",
-      summary: "Read",
-      label: "Read files",
+      summary: t("settings.autoApprove.read"),
+      label: t("settings.autoApprove.readFiles"),
       iconClass: Eye,
     },
     {
       id: "write",
-      summary: "Write",
-      label: "Write files",
+      summary: t("settings.autoApprove.write"),
+      label: t("settings.autoApprove.writeFiles"),
       iconClass: FileEdit,
     },
     {
       id: "execute",
-      summary: "Execute",
-      label: "Execute commands",
+      summary: t("settings.autoApprove.execute"),
+      label: t("settings.autoApprove.executeCommands"),
       iconClass: Terminal,
     },
-    { id: "mcp", summary: "MCP", label: "Use MCP servers", iconClass: Blocks },
+    {
+      id: "mcp",
+      summary: t("settings.autoApprove.mcp"),
+      label: t("settings.autoApprove.useMcpServers"),
+      iconClass: Blocks,
+    },
   ];
 
   const handleCoreActionToggle = (
@@ -91,7 +98,7 @@ export function AutoApproveMenu() {
     ...coreActionSettings
       .filter((setting) => getCoreActionCheckedState(setting.id))
       .map((setting) => setting.summary),
-    ...(autoApproveSettings.retry ? ["Retry"] : []),
+    ...(autoApproveSettings.retry ? [t("settings.autoApprove.retry")] : []),
   ];
 
   return (
@@ -118,14 +125,18 @@ export function AutoApproveMenu() {
             </label>
             <div className="flex flex-1 flex-nowrap items-center gap-1 overflow-hidden font-medium hover:text-foreground/80">
               <div className="flex-1 truncate">
-                <span className="whitespace-nowrap">Auto-approve:</span>
+                <span className="whitespace-nowrap">
+                  {t("settings.autoApprove.title")}:
+                </span>
                 {autoApproveActive && enabledOptionsSummary.length > 0 ? (
                   <span className="ml-1">
                     {enabledOptionsSummary.join(", ")}
                   </span>
                 ) : (
                   <span className="ml-1 text-[var(--vscode-descriptionForeground)]">
-                    {autoApproveActive ? "No actions selected" : "Disabled"}
+                    {autoApproveActive
+                      ? t("settings.autoApprove.noActionsSelected")
+                      : t("settings.autoApprove.disabled")}
                   </span>
                 )}
               </div>
@@ -172,7 +183,9 @@ export function AutoApproveMenu() {
             <span className="ml-1.5 flex items-center gap-2 font-semibold">
               <RotateCcw className="size-4 shrink-0" />
               <span className="whitespace-nowrap text-foreground text-sm">
-                {autoApproveSettings.retry ? "Max attempts:" : "Retry actions"}
+                {autoApproveSettings.retry
+                  ? `${t("settings.autoApprove.maxAttempts")}:`
+                  : t("settings.autoApprove.retryActions")}
               </span>
             </span>
             {autoApproveSettings.retry && (

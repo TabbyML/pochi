@@ -14,14 +14,9 @@ export function readGithubToken(): string {
 
 export function readPochiConfig() {
   const pochiToken = process.env.POCHI_TOKEN;
-  if (!pochiToken) {
-    throw new Error(
-      "POCHI_TOKEN environment variable is required. Please add your pochi session token to GitHub Secrets as POCHI_TOKEN.",
-    );
-  }
 
   return {
     token: pochiToken,
-    model: process.env.POCHI_MODEL || "",
+    model: process.env.POCHI_MODEL,
   };
 }

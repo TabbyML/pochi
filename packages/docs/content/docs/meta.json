@@ -19,6 +19,8 @@
     "models",
     "rules",
     "workflows",
-    "mcp"
+    "mcp",
+    "---Resources---",
+    "developer-updates"
   ]
 }

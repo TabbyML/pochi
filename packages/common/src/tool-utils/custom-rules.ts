@@ -2,18 +2,18 @@ import { readFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import path from "node:path";
 
-export const DefaultWorkspaceRulesFilePaths = ["README.pochi.md", "AGENTS.md"];
+export const WorkspaceRulesFilePaths = ["README.pochi.md", "AGENTS.md"];
 
-export const SystemRulesFilepath = path.join(
-  homedir(),
-  ".pochi",
-  "README.pochi.md",
-);
+function makeGlobalRule(filePath: string) {
+  return {
+    filePath,
+    label: filePath.replace(homedir(), "~"),
+  };
+}
 
-export const SystemRulesFileDisplayPath = SystemRulesFilepath.replace(
-  homedir(),
-  "~",
-);
+export const GlobalRules = [
+  makeGlobalRule(path.join(homedir(), ".pochi", "README.pochi.md")),
+];
 
 /**
  * Collects custom rules from README.pochi.md and specified custom rule files.
@@ -27,21 +27,18 @@ export async function collectCustomRules(
   cwd: string,
   customRuleFiles: string[] = [],
   includeDefaultRules = true,
-  includeSystemRules = true,
+  includeGlobalRules = true,
 ): Promise<string> {
   let rules = "";
 
   const allRules: { filePath: string; label: string }[] = [];
-  if (includeSystemRules) {
-    allRules.push({
-      filePath: SystemRulesFilepath,
-      label: SystemRulesFileDisplayPath,
-    });
+  if (includeGlobalRules) {
+    allRules.push(...GlobalRules);
   }
 
   // Add workspace rules files if requested
   if (includeDefaultRules) {
-    for (const fileName of DefaultWorkspaceRulesFilePaths) {
+    for (const fileName of WorkspaceRulesFilePaths) {
       const defaultRulesPath = path.join(cwd, fileName);
       allRules.push({
         filePath: defaultRulesPath,
@@ -70,6 +67,12 @@ export async function collectCustomRules(
     } catch {
       // Ignore files that can't be read
     }
+  }
+
+  // Add custom rules from POCHI_CUSTOM_RULES environment variable
+  const envCustomInstructions = process.env.POCHI_CUSTOM_INSTRUCTIONS;
+  if (envCustomInstructions && envCustomInstructions.trim().length > 0) {
+    rules += `# Rules from POCHI_CUSTOM_INSTRUCTIONS environment variable\n${envCustomInstructions}\n`;
   }
 
   return rules;
