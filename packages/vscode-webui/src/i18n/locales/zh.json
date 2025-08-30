@@ -1,0 +1,135 @@
+{
+  "common": {
+    "continue": "继续",
+    "cancel": "取消",
+    "disable": "禁用",
+    "openFolder": "打开文件夹",
+    "account": "账户",
+    "help": "帮助"
+  },
+  "placeholder": {
+    "title": "我能帮您实现什么？",
+    "subtitle": "Pochi 由 AI 驱动，可能会出现错误。",
+    "disclaimer": "使用前请仔细检查输出内容。",
+    "tips": {
+      "images": "发送图片",
+      "context": "附加上下文",
+      "workflow": "触发工作流"
+    },
+    "autoSave": {
+      "title": "启用自动保存时 Pochi 无法正常工作。",
+      "description": "Pochi 依赖待定的文件更改来显示编辑的差异，这需要禁用自动保存功能。"
+    }
+  },
+  "workspace": {
+    "required": "要使用 Pochi，请打开一个文件夹或工作区。"
+  },
+  "task": {
+    "completed": "任务已完成"
+  },
+  "approval": {
+    "continueIn": "{{seconds}}秒后继续"
+  },
+  "chat": {
+    "imageTooltip": "附加图片到对话。您也可以拖放图片或将其粘贴到聊天输入框中。"
+  },
+  "language": {
+    "switcherTooltip": "选择您在 Pochi 中的首选语言"
+  },
+  "tokenUsage": {
+    "compacting": "正在压缩...",
+    "ofTokens": "% of {{tokens}} tokens",
+    "rules": "规则",
+    "contextWindow": "上下文窗口",
+    "ofUsed": "已使用 {{used}} / {{total}}",
+    "newTaskWithSummary": "新建任务并生成摘要",
+    "compactTask": "压缩任务",
+    "minTokensRequired": "至少需要 {{minTokens}} 个 token 才能压缩对话"
+  },
+  "modelSelect": {
+    "selectModel": "选择模型",
+    "manageCustomModels": "管理自定义模型...",
+    "custom": "自定义",
+    "super": "加强",
+    "swift": "极速"
+  },
+  "settings": {
+    "account": {
+      "signIn": "登录获取 Pochi 模型",
+      "signInDescription": "使用高级 AI 模型和功能",
+      "signOut": "登出"
+    },
+    "models": {
+      "title": "模型",
+      "noCopilotModels": "未找到 Copilot 模型",
+      "copilotDisabled": "Copilot 模型已禁用。请打开开关以启用它们。",
+      "noModelsFound": "未找到模型",
+      "customModelsTooltip": "管理您的自定义模型。"
+    },
+    "tools": {
+      "title": "工具",
+      "builtIn": "内置工具"
+    },
+    "general": {
+      "title": "常规设置"
+    },
+    "advanced": {
+      "title": "高级设置",
+      "developerMode": "开发者模式",
+      "enablePochiModels": "启用 Pochi 模型",
+      "clearStorage": "清除存储",
+      "language": "语言",
+      "languageDescription": "选择您的首选语言"
+    },
+    "workflows": {
+      "title": "工作流",
+      "noWorkflows": "工作区中未找到工作流。"
+    },
+    "rules": {
+      "title": "规则",
+      "noRules": "工作区中未找到规则。",
+      "importRules": "导入规则",
+      "foundRules": "找到 {{count}} 条规则",
+      "import": "导入",
+      "importing": "正在导入..."
+    },
+    "autoApprove": {
+      "title": "自动批准",
+      "disabled": "已禁用",
+      "noActionsSelected": "未选择任何操作",
+      "readFiles": "读取文件",
+      "writeFiles": "写入文件",
+      "executeCommands": "执行命令",
+      "useMcpServers": "使用 MCP 服务器",
+      "retryActions": "重试操作",
+      "maxAttempts": "最大尝试次数",
+      "read": "读取",
+      "write": "写入",
+      "execute": "执行",
+      "mcp": "MCP",
+      "retry": "重试"
+    },
+    "mcp": {
+      "title": "MCP",
+      "tooltip": "全局配置 Pochi 的 MCP。",
+      "noServersYet": "尚未添加 MCP 服务器。",
+      "importServers": "导入 MCP 服务器",
+      "foundSources": "找到 {{count}} 个源",
+      "import": "导入",
+      "importAll": "全部导入",
+      "recommendedServers": "推荐的 MCP 服务器",
+      "viewOnGitHub": "在 GitHub 上查看",
+      "add": "添加",
+      "requires": "需要：{{requirement}}",
+      "noToolsAvailable": "此 MCP 服务器没有可用的工具"
+    }
+  },
+  "share": {
+    "copyLink": "复制链接",
+    "shareSupport": "与支持团队分享",
+    "shareSupportTitle": "任务已与 Pochi 团队分享",
+    "shareSupportDetails": "此任务和相关调试信息已发送。如需支持，请加入我们的 Discord 服务器并引用此问题 ID：{{shareId}}。",
+    "joinDiscord": "加入 Discord",
+    "ok": "确定"
+  }
+}

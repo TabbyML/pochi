@@ -1,9 +1,11 @@
 import { Button } from "@/components/ui/button";
+import { useTranslation } from "react-i18next";
 import { useSettingsStore } from "../../store";
 import { AccordionSection } from "../ui/accordion-section";
 import { SettingsCheckboxOption } from "../ui/settings-checkbox-option";
 
 export const AdvancedSettingsSection: React.FC = () => {
+  const { t } = useTranslation();
   const {
     isDevMode,
     updateIsDevMode,
@@ -13,12 +15,12 @@ export const AdvancedSettingsSection: React.FC = () => {
   } = useSettingsStore();
 
   return (
-    <AccordionSection title="Advanced Settings">
+    <AccordionSection title={t("settings.advanced.title")}>
       <div className="flex flex-col gap-4 px-6">
         {isDevMode !== undefined && (
           <SettingsCheckboxOption
             id="dev-mode"
-            label="Developer Mode"
+            label={t("settings.advanced.developerMode")}
             checked={isDevMode}
             onCheckedChange={(checked) => {
               updateIsDevMode(!!checked);
@@ -29,7 +31,7 @@ export const AdvancedSettingsSection: React.FC = () => {
           <>
             <SettingsCheckboxOption
               id="enable-pochi-models"
-              label="Enable Pochi Models"
+              label={t("settings.advanced.enablePochiModels")}
               checked={enablePochiModels}
               onCheckedChange={(checked) => {
                 updateEnablePochiModels(!!checked);
@@ -48,7 +50,7 @@ export const AdvancedSettingsSection: React.FC = () => {
                   }
                 }}
               >
-                Clear Storage
+                {t("settings.advanced.clearStorage")}
               </Button>
             </div>
           </>

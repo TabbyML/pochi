@@ -1,0 +1,137 @@
+{
+  "common": {
+    "continue": "계속",
+    "cancel": "취소",
+    "disable": "비활성화",
+    "openFolder": "폴더 열기",
+    "account": "계정",
+    "help": "도움말"
+  },
+  "placeholder": {
+    "title": "무엇을 도와드릴까요?",
+    "subtitle": "Pochi는 AI로 구동되므로 오류가 발생할 수 있습니다.",
+    "disclaimer": "사용하기 전에 출력을 주의 깊게 검토하세요.",
+    "tips": {
+      "images": "이미지 전송",
+      "context": "컨텍스트 첨부",
+      "workflow": "워크플로우 실행"
+    },
+    "autoSave": {
+      "title": "자동 저장이 활성화된 경우 Pochi는 제대로 작동하지 않습니다.",
+      "description": "Pochi는 보류 중인 파일 변경을 기반으로 편집 차이를 표시하므로 자동 저장을 비활성화해야 합니다."
+    }
+  },
+  "workspace": {
+    "required": "Pochi를 사용하려면 폴더 또는 워크스페이스를 여십시오."
+  },
+  "task": {
+    "completed": "작업 완료"
+  },
+  "approval": {
+    "continueIn": "{{seconds}}초 후 계속"
+  },
+  "chat": {
+    "imageTooltip": "채팅에 이미지를 첨부합니다. 이미지를 드래그 앤 드롭하거나 채팅 입력란에 붙여넣을 수도 있습니다."
+  },
+  "language": {
+    "switcherTooltip": "Pochi에서 사용할 기본 언어를 선택하세요"
+  },
+  "tokenUsage": {
+    "compacting": "압축 중...",
+    "ofTokens": "% of {{tokens}} tokens",
+    "rules": "규칙",
+    "contextWindow": "컨텍스트 창",
+    "ofUsed": "{{total}} 중 {{used}} 사용됨",
+    "newTaskWithSummary": "새 작업 및 요약",
+    "compactTask": "작업 압축",
+    "minTokensRequired": "대화를 압축하려면 최소 {{minTokens}} 토큰이 필요합니다"
+  },
+  "modelSelect": {
+    "selectModel": "모델 선택",
+    "manageCustomModels": "사용자 정의 모델 관리...",
+    "custom": "사용자 정의",
+    "super": "가강",
+    "swift": "극속"
+  },
+  "settings": {
+    "account": {
+      "signIn": "Pochi 모델 로그인",
+      "signInDescription": "프리미엄 AI 모델 및 기능에 액세스",
+      "signOut": "로그아웃"
+    },
+    "models": {
+      "title": "모델",
+      "noCopilotModels": "Copilot 모델을 찾을 수 없습니다",
+      "copilotDisabled": "Copilot 모델이 비활성화되었습니다. 활성화하려면 스위치를 켜세요.",
+      "noModelsFound": "모델을 찾을 수 없습니다",
+      "customModelsTooltip": "사용자 정의 모델을 관리하세요."
+    },
+    "tools": {
+      "title": "도구",
+      "builtIn": "내장 도구"
+    },
+    "general": {
+      "title": "일반 설정"
+    },
+    "advanced": {
+      "title": "고급 설정",
+      "developerMode": "개발자 모드",
+      "enablePochiModels": "Pochi 모델 활성화",
+      "clearStorage": "저장소 지우기",
+      "language": "언어",
+      "languageDescription": "선호하는 언어를 선택하세요"
+    },
+    "workflows": {
+      "title": "워크플로우",
+      "noWorkflows": "워크스페이스에서 워크플로우를 찾을 수 없습니다."
+    },
+    "rules": {
+      "title": "규칙",
+      "noRules": "워크스페이스에서 규칙을 찾을 수 없습니다.",
+      "importRules": "규칙 가져오기",
+      "foundRules": "{{count}}개의 규칙을 찾았습니다",
+      "foundRules_other": "{{count}}개의 규칙을 찾았습니다",
+      "import": "가져오기",
+      "importing": "가져오는 중..."
+    },
+    "autoApprove": {
+      "title": "자동 승인",
+      "disabled": "비활성화됨",
+      "noActionsSelected": "선택된 작업 없음",
+      "readFiles": "파일 읽기",
+      "writeFiles": "파일 쓰기",
+      "executeCommands": "명령 실행",
+      "useMcpServers": "MCP 서버 사용",
+      "retryActions": "작업 재시도",
+      "maxAttempts": "최대 시도 횟수",
+      "read": "읽기",
+      "write": "쓰기",
+      "execute": "실행",
+      "mcp": "MCP",
+      "retry": "재시도"
+    },
+    "mcp": {
+      "title": "MCP",
+      "tooltip": "Pochi 전역 MCP 구성.",
+      "noServersYet": "아직 MCP 서버가 추가되지 않았습니다.",
+      "importServers": "MCP 서버 가져오기",
+      "foundSources": "{{count}}개의 소스를 찾았습니다",
+      "foundSources_other": "{{count}}개의 소스를 찾았습니다",
+      "import": "가져오기",
+      "importAll": "모두 가져오기",
+      "recommendedServers": "추천 MCP 서버",
+      "viewOnGitHub": "GitHub에서 보기",
+      "add": "추가",
+      "requires": "필요: {{requirement}}",
+      "noToolsAvailable": "이 MCP 서버에서 사용할 수 있는 도구가 없습니다"
+    }
+  },
+  "share": {
+    "copyLink": "링크 복사",
+    "shareSupport": "지원팀과 공유",
+    "shareSupportTitle": "Pochi 팀과 작업이 공유되었습니다",
+    "shareSupportDetails": "이 작업과 관련 디버그 정보가 전송되었습니다. 지원이 필요하시면 Discord 서버에 참여하시고 이 ID를 참조해 주세요: {{shareId}}.",
+    "joinDiscord": "Discord 참여",
+    "ok": "확인"
+  }
+}

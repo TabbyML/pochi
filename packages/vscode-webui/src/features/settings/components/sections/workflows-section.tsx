@@ -2,9 +2,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { vscodeHost } from "@/lib/vscode";
 import { useQuery } from "@tanstack/react-query";
 import { Edit, Workflow } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { EmptySectionPlaceholder, ScetionItem, Section } from "../ui/section";
 
 export const WorkflowsSection: React.FC = () => {
+  const { t } = useTranslation();
   const { data: workflows, isLoading } = useQuery({
     queryKey: ["workflows"],
     queryFn: async () => {
@@ -19,7 +21,7 @@ export const WorkflowsSection: React.FC = () => {
   };
 
   return (
-    <Section title="Workflows">
+    <Section title={t("settings.workflows.title")}>
       {isLoading ? (
         <div className="space-y-2">
           {Array.from({ length: 3 }).map((_, i) => (
@@ -46,7 +48,9 @@ export const WorkflowsSection: React.FC = () => {
           )}
         </>
       ) : (
-        <EmptySectionPlaceholder content="No workflows found in workspace." />
+        <EmptySectionPlaceholder
+          content={t("settings.workflows.noWorkflows")}
+        />
       )}
     </Section>
   );
