@@ -8,6 +8,7 @@ import { loadConfigSync } from "zod-config";
 import { jsonAdapter } from "zod-config/json-adapter";
 import z from "zod/v4";
 import { getLogger } from "../base";
+import { McpServerConfig } from "./mcp";
 import { CustomModelSetting } from "./model";
 
 const PochiConfigFilePath = path.join(os.homedir(), ".pochi", "config.json");
@@ -23,6 +24,7 @@ export const PochiConfig = z.object({
     })
     .optional(),
   providers: z.array(CustomModelSetting).optional(),
+  mcp: z.record(z.string(), McpServerConfig).optional(),
 });
 
 type PochiConfig = z.infer<typeof PochiConfig>;
@@ -80,8 +82,8 @@ class PochiConfigManager {
         this.events.dispatchEvent(new Event("change"));
       },
       {
-        minGapMs: process.platform === "win32" ? 100 : 1000,
-        triggerAt: "both",
+        minQuietPeriodMs: process.platform === "win32" ? 100 : 1000,
+        triggerAt: "end",
       },
     );
     fs.watch(PochiConfigFilePath, { persistent: false }, () =>
@@ -112,12 +114,12 @@ class PochiConfigManager {
     }
   }
 
-  updateConfig(newConfig: Partial<PochiConfig>) {
-    const config: PochiConfig = {};
-    mergeDeep(config, this.value.value);
-    mergeDeep(config, newConfig);
+  updateConfig = (newConfig: Partial<PochiConfig>) => {
+    let config: PochiConfig = {};
+    config = mergeDeep(config, this.value.value);
+    config = mergeDeep(config, newConfig);
     this.value.value = config;
-  }
+  };
 
   get config(): ReadonlySignal<PochiConfig> {
     return this.value;

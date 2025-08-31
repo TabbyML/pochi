@@ -9,8 +9,8 @@ import { type Signal, signal } from "@preact/signals-core";
 import { createMachine, interpret } from "@xstate/fsm";
 import { type ToolSet, experimental_createMCPClient as createClient } from "ai";
 import type * as vscode from "vscode";
+import type { McpServerConfig } from "@getpochi/common/configuration";
 import {
-  type McpServerConfig,
   type McpToolExecutable,
   isHttpTransport,
   isStdioTransport,

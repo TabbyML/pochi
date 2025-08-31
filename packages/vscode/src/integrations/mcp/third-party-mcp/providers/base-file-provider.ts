@@ -1,7 +1,7 @@
 import { isFileExists, readFileContent } from "@/lib/fs";
 import { getLogger } from "@/lib/logger";
 import * as vscode from "vscode";
-import type { McpServerConfig } from "../../types";
+import type { McpServerConfig } from "@getpochi/common/configuration";
 import type { McpConfigProvider } from "../provider";
 import { expandPathSegments, normalizePath } from "./path-utils";
 

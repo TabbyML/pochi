@@ -33,7 +33,7 @@ import { type PochiAdvanceSettings, PochiConfiguration } from "./configuration";
 import { DiffChangesContentProvider } from "./editor/diff-changes-content-provider";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { McpHub } from "./mcp/mcp-hub";
-import type { McpServerConfig } from "./mcp/types";
+import type { McpServerConfig } from "@getpochi/common/configuration";
 
 const logger = getLogger("CommandManager");
 
@@ -232,18 +232,20 @@ export class CommandManager implements vscode.Disposable {
         "pochi.mcp.addServer",
         async (name?: string, recommendedServer?: McpServerConfig) => {
           this.mcpHub.addServer(name, recommendedServer);
-          vscode.commands.executeCommand("workbench.action.openSettingsJson", {
-            revealSetting: { key: "pochi.mcpServers" },
-          });
+          await vscode.commands.executeCommand(
+            "vscode.open",
+            vscode.Uri.file(PochiConfigFilePath),
+          );
         },
       ),
 
       vscode.commands.registerCommand(
         "pochi.mcp.openServerSettings",
         async () => {
-          vscode.commands.executeCommand("workbench.action.openSettingsJson", {
-            revealSetting: { key: "pochi.mcpServers" },
-          });
+          await vscode.commands.executeCommand(
+            "vscode.open",
+            vscode.Uri.file(PochiConfigFilePath),
+          );
         },
       ),
 

@@ -1,6 +1,6 @@
 import * as fs from "node:fs";
 import * as z from "zod/v4";
-import { PochiConfig } from "./manager";
+import { PochiConfig } from "./config-manager";
 
 const content = JSON.stringify(z.toJSONSchema(PochiConfig), null, 2);
 

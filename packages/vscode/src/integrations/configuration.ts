@@ -1,5 +1,6 @@
 import {
   type CustomModelSetting,
+  type McpServerConfig,
   pochiConfig,
   updatePochiConfig,
 } from "@getpochi/common/configuration";
@@ -8,7 +9,6 @@ import deepEqual from "fast-deep-equal";
 import { injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
 import z from "zod";
-import { McpServerConfig } from "./mcp/types";
 
 @injectable()
 @singleton()
@@ -16,7 +16,7 @@ export class PochiConfiguration implements vscode.Disposable {
   private disposables: vscode.Disposable[] = [];
 
   readonly advancedSettings = signal(getPochiAdvanceSettings());
-  readonly mcpServers = signal(getPochiMcpServersSettings());
+  readonly mcpServers = computed(() => pochiConfig.value.mcp || {});
   readonly autoSaveDisabled = signal(getAutoSaveDisabled());
   readonly customModelSettings = computed(() => pochiConfig.value.providers);
 
@@ -27,10 +27,6 @@ export class PochiConfiguration implements vscode.Disposable {
           const settings = getPochiAdvanceSettings();
           this.advancedSettings.value = settings;
         }
-        if (e.affectsConfiguration("pochi.mcpServers")) {
-          const settings = getPochiMcpServersSettings();
-          this.mcpServers.value = settings;
-        }
 
         if (e.affectsConfiguration("files.autoSave")) {
           this.autoSaveDisabled.value = getAutoSaveDisabled();
@@ -38,27 +34,24 @@ export class PochiConfiguration implements vscode.Disposable {
       }),
     );
 
-    this.disposables.push(
-      {
-        dispose: this.mcpServers.subscribe((value) => {
-          if (!deepEqual(value, getPochiMcpServersSettings())) {
-            updatePochiMcpServersSettings(value);
-          }
-        }),
-      },
-      {
-        dispose: this.advancedSettings.subscribe((value) => {
-          if (!deepEqual(value, getPochiAdvanceSettings())) {
-            updatePochiAdvanceSettings(value);
-          }
-        }),
-      },
-    );
+    this.disposables.push({
+      dispose: this.advancedSettings.subscribe((value) => {
+        if (!deepEqual(value, getPochiAdvanceSettings())) {
+          updatePochiAdvanceSettings(value);
+        }
+      }),
+    });
   }
 
   updateCustomModelSettings(providers: CustomModelSetting[]) {
     updatePochiConfig({
       providers,
+    });
+  }
+
+  updateMcpServers(mcp: Record<string, McpServerConfig>) {
+    updatePochiConfig({
+      mcp,
     });
   }
 
@@ -96,31 +89,6 @@ async function updatePochiAdvanceSettings(value: PochiAdvanceSettings) {
   return vscode.workspace
     .getConfiguration("pochi")
     .update("advanced", value, true);
-}
-
-export type PochiMcpServersSettings = Record<string, McpServerConfig>;
-
-function getPochiMcpServersSettings(): PochiMcpServersSettings {
-  const settings = vscode.workspace
-    .getConfiguration("pochi")
-    .get("mcpServers", {}) as Record<string, unknown>;
-
-  const result: PochiMcpServersSettings = {};
-  for (const key in settings) {
-    if (Object.prototype.hasOwnProperty.call(settings, key)) {
-      const parsed = McpServerConfig.safeParse(settings[key]);
-      if (parsed.success) {
-        result[key] = parsed.data;
-      }
-    }
-  }
-  return result;
-}
-
-async function updatePochiMcpServersSettings(value: PochiMcpServersSettings) {
-  return vscode.workspace
-    .getConfiguration("pochi")
-    .update("mcpServers", value, true);
 }
 
 function getAutoSaveDisabled() {

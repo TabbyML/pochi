@@ -4,13 +4,11 @@ import { type Signal, signal } from "@preact/signals-core";
 import { inject, injectable, singleton } from "tsyringe";
 import type * as vscode from "vscode";
 // biome-ignore lint/style/useImportType: needed for dependency injection
-import {
-  PochiConfiguration,
-  type PochiMcpServersSettings,
-} from "../configuration";
+import { PochiConfiguration } from "../configuration";
 import { McpConnection } from "./mcp-connection";
-import type { McpServerConfig, McpToolExecutable } from "./types";
+import type { McpToolExecutable } from "./types";
 import { omitDisabled } from "./types";
+import type { McpServerConfig } from "@getpochi/common/configuration";
 
 const logger = getLogger("MCPHub");
 
@@ -28,7 +26,7 @@ type McpConnectionMap = Map<
 export class McpHub implements vscode.Disposable {
   private connections: McpConnectionMap = new Map();
   private listeners: vscode.Disposable[] = [];
-  private config: PochiMcpServersSettings | undefined = undefined;
+  private config: Record<string, McpServerConfig> | undefined = undefined;
 
   readonly status: Signal<ReturnType<typeof this.buildStatus>>;
 
@@ -109,13 +107,13 @@ export class McpHub implements vscode.Disposable {
       addedNames.push(uniqueName);
     }
 
-    this.configuration.mcpServers.value = updatedConfig;
+    this.configuration.updateMcpServers(updatedConfig);
     logger.debug(`Batch added ${addedNames.length} MCP servers`);
 
     return addedNames;
   }
 
-  getCurrentConfig(): PochiMcpServersSettings {
+  getCurrentConfig(): Record<string, McpServerConfig> {
     return this.config || {};
   }
   toggleToolEnabled(serverName: string, toolName: string) {
@@ -146,7 +144,7 @@ export class McpHub implements vscode.Disposable {
 
   private generateUniqueName(
     baseName: string,
-    currentServers?: PochiMcpServersSettings,
+    currentServers?: Record<string, McpServerConfig>,
   ): string {
     let serverName = baseName;
     let counter = 1;
@@ -160,26 +158,9 @@ export class McpHub implements vscode.Disposable {
   }
 
   private updateServerConfig(name: string, newConfig: McpServerConfig) {
-    if (!this.config) return;
-
-    // Check if the configuration actually changed to avoid unnecessary updates
-    const currentConfig = this.config[name];
-    if (
-      currentConfig &&
-      JSON.stringify(currentConfig) === JSON.stringify(newConfig)
-    ) {
-      logger.trace(
-        `No configuration change detected for server ${name}, skipping update`,
-      );
-      return;
-    }
-
-    const updatedConfig = {
-      ...this.config,
+    this.configuration.updateMcpServers({
       [name]: newConfig,
-    };
-
-    this.configuration.mcpServers.value = updatedConfig;
+    });
     logger.debug(`Updated configuration for server ${name}:`, newConfig);
   }
 
