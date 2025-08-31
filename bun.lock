@@ -45,6 +45,7 @@
         "@ai-sdk/provider": "catalog:",
         "@getpochi/tools": "workspace:*",
         "@hono/zod-validator": "catalog:",
+        "@preact/signals-core": "catalog:",
         "@quilted/threads": "catalog:",
         "ai": "catalog:",
         "better-auth": "catalog:",
