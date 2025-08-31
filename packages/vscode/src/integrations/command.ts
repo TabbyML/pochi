@@ -17,7 +17,10 @@ import { PostHog } from "@/lib/posthog";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { TokenStorage } from "@/lib/token-storage";
 import type { WebsiteTaskCreateEvent } from "@getpochi/common";
-import type { CustomModelSetting } from "@getpochi/common/configuration";
+import {
+  type CustomModelSetting,
+  PochiConfigFilePath,
+} from "@getpochi/common/configuration";
 import type {
   NewTaskParams,
   TaskIdParams,
@@ -383,10 +386,8 @@ export class CommandManager implements vscode.Disposable {
         async () => {
           await this.ensureDefaultCustomModelSettings();
           await vscode.commands.executeCommand(
-            "workbench.action.openSettingsJson",
-            {
-              revealSetting: { key: "pochi.customModelSettings" },
-            },
+            "vscode.open",
+            vscode.Uri.file(PochiConfigFilePath),
           );
         },
       ),
@@ -422,16 +423,7 @@ export class CommandManager implements vscode.Disposable {
       },
     ] satisfies CustomModelSetting[];
 
-    try {
-      // Update the settings with defaults
-      await vscode.workspace
-        .getConfiguration("pochi")
-        .update("customModelSettings", defaultSettings, true);
-
-      logger.debug("Default custom model settings inserted");
-    } catch (error) {
-      logger.error("Failed to insert default custom model settings:", error);
-    }
+    this.pochiConfiguration.updateCustomModelSettings(defaultSettings);
   }
 
   dispose() {

@@ -1,4 +1,7 @@
-import { pochiConfig } from "@getpochi/common/configuration";
+import {
+  type CustomModelSetting,
+  pochiConfig,
+} from "@getpochi/common/configuration";
 import { computed, signal } from "@preact/signals-core";
 import deepEqual from "fast-deep-equal";
 import { injectable, singleton } from "tsyringe";
@@ -14,9 +17,7 @@ export class PochiConfiguration implements vscode.Disposable {
   readonly advancedSettings = signal(getPochiAdvanceSettings());
   readonly mcpServers = signal(getPochiMcpServersSettings());
   readonly autoSaveDisabled = signal(getAutoSaveDisabled());
-  readonly customModelSettings = computed(
-    () => pochiConfig.value.customModelSettings,
-  );
+  readonly customModelSettings = computed(() => pochiConfig.value.providers);
 
   constructor() {
     this.disposables.push(
@@ -52,6 +53,13 @@ export class PochiConfiguration implements vscode.Disposable {
         }),
       },
     );
+  }
+
+  updateCustomModelSettings(providers: CustomModelSetting[]) {
+    pochiConfig.value = {
+      ...pochiConfig.value,
+      providers,
+    };
   }
 
   dispose() {

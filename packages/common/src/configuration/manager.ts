@@ -10,15 +10,19 @@ import z from "zod/v4";
 import { getLogger } from "../base";
 import { CustomModelSetting } from "./model";
 
-const ConfigFilePath = path.join(os.homedir(), ".pochi", "config.json");
+const PochiConfigFilePath = path.join(os.homedir(), ".pochi", "config.json");
 
 export const PochiConfig = z.object({
+  $schema: z
+    .string()
+    .default("https://getpochi.com/config.schema.json")
+    .optional(),
   credentials: z
     .object({
       pochiToken: z.string().optional(),
     })
     .optional(),
-  customModelSettings: z.array(CustomModelSetting).optional(),
+  providers: z.array(CustomModelSetting).optional(),
 });
 
 type PochiConfig = z.infer<typeof PochiConfig>;
@@ -39,7 +43,7 @@ class PochiConfigManager {
   private load() {
     return loadConfigSync({
       schema: PochiConfig,
-      adapters: [jsonAdapter({ path: ConfigFilePath })],
+      adapters: [jsonAdapter({ path: PochiConfigFilePath })],
       logger,
     });
   }
@@ -69,16 +73,18 @@ class PochiConfigManager {
         triggerAt: "both",
       },
     );
-    fs.watch(ConfigFilePath, { persistent: false }, () => debouncer.call());
+    fs.watch(PochiConfigFilePath, { persistent: false }, () =>
+      debouncer.call(),
+    );
   }
 
   private async ensureFileExists() {
     const fileExist = await fsPromise
-      .access(ConfigFilePath)
+      .access(PochiConfigFilePath)
       .then(() => true)
       .catch(() => false);
     if (!fileExist) {
-      const dirPath = path.dirname(ConfigFilePath);
+      const dirPath = path.dirname(PochiConfigFilePath);
       await fsPromise.mkdir(dirPath, { recursive: true });
       await this.save();
     }
@@ -87,7 +93,7 @@ class PochiConfigManager {
   private async save() {
     try {
       await fsPromise.writeFile(
-        ConfigFilePath,
+        PochiConfigFilePath,
         JSON.stringify(this.config, null, 2),
       );
     } catch (err) {
@@ -97,4 +103,4 @@ class PochiConfigManager {
 }
 
 const { config } = new PochiConfigManager();
-export { config as pochiConfig };
+export { config as pochiConfig, PochiConfigFilePath };

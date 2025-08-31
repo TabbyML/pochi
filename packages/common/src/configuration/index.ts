@@ -1,2 +1,2 @@
-export { pochiConfig } from "./manager";
+export { pochiConfig, PochiConfigFilePath } from "./manager";
 export { CustomModelSetting } from "./model";
