@@ -46,16 +46,15 @@ export const executeCommand =
         },
       });
 
-      const fullOutput = fixExecuteCommandOutput(stdout + stderr);
-      const isTruncated = fullOutput.length > MaxTerminalOutputSize;
-      const output = isTruncated
-        ? fullOutput.slice(-MaxTerminalOutputSize)
-        : fullOutput;
+      const { output, isTruncated } = processCommandOutput(
+        stdout,
+        stderr,
+        code,
+      );
 
       return {
         output,
         isTruncated,
-        error: code === 0 ? undefined : `Command exited with code ${code}`,
       };
     } catch (error) {
       if (error instanceof Error) {
@@ -112,4 +111,21 @@ async function execWithExitCode(
 
     throw err;
   }
+}
+
+function processCommandOutput(
+  stdout: string,
+  stderr: string,
+  code: number,
+): { output: string; isTruncated: boolean } {
+  let fullOutput = fixExecuteCommandOutput(stdout + stderr);
+  if (code !== 0) {
+    fullOutput += `\nCommand exited with code ${code}`;
+  }
+  const isTruncated = fullOutput.length > MaxTerminalOutputSize;
+  const output = isTruncated
+    ? fullOutput.slice(-MaxTerminalOutputSize)
+    : fullOutput;
+
+  return { output, isTruncated };
 }

@@ -5,9 +5,9 @@ import {
   isHttpTransport,
   isExecutable,
   omitDisabled,
-  type McpServerConfig,
   type McpToolExecutable,
 } from "../types";
+import type { McpServerConfig } from "@getpochi/common/configuration";
 import type { McpToolStatus } from "@getpochi/common/vscode-webui-bridge";
 
 describe("MCP Types", () => {

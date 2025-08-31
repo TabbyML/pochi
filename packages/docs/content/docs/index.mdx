@@ -53,4 +53,14 @@ To use these features, sign up at [app.getpochi.com](http://app.getpochi.com) an
 
 ## Customize
 
-And that's it! You're ready to start using Pochi now!
+You can tailor Pochi to your needs by editing its configuration file, located at `~/.pochi/config.jsonc`. The file uses the JSONC (JSON with Comments) format, so you can add notes to explain your settings.
+
+```jsonc
+{
+  // The schema enables autocompletion and validation in your code editor.
+  "$schema": "https://getpochi.com/config.schema.json",
+
+  // For details on available options, see the "Models," "Rules," pages in the sidebar
+  // ...
+}
+```

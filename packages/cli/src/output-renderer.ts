@@ -1,4 +1,5 @@
 import { formatters } from "@getpochi/common";
+import { parseMarkdown } from "@getpochi/common/message-utils";
 import type { Message, UITools } from "@getpochi/livekit";
 import { type ToolUIPart, getToolName, isToolUIPart } from "ai";
 import chalk from "chalk";
@@ -56,7 +57,7 @@ export class OutputRenderer {
       if (part.type === "reasoning") {
         this.spinner.prefixText = `💭 Thinking for ${part.text.length} characters`;
       } else if (part.type === "text") {
-        this.spinner.prefixText = `${part.text.trim()}`;
+        this.spinner.prefixText = parseMarkdown(part.text.trim());
       } else {
         const { text, stop, error } = renderToolPart(part);
         this.spinner.prefixText = text;
