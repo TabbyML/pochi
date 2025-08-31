@@ -7,7 +7,7 @@ const McpServerTransportStdioFields = {
   env: z.record(z.string(), z.string()).optional(),
 };
 
-export const McpServerTransportStdio = z.object();
+export const McpServerTransportStdio = z.object(McpServerTransportStdioFields);
 export type McpServerTransportStdio = z.infer<typeof McpServerTransportStdio>;
 
 const McpServerTransportHttpFields = {
