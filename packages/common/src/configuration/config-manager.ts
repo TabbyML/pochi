@@ -3,10 +3,9 @@ import * as fsPromise from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
 import { type ReadonlySignal, type Signal, signal } from "@preact/signals-core";
+import * as JSONC from "jsonc-parser";
 import { funnel, isDeepEqual, mergeDeep } from "remeda";
 import * as fleece from "silver-fleece";
-import { loadConfigSync } from "zod-config";
-import { json5Adapter } from "zod-config/json5-adapter";
 import { getLogger } from "../base";
 import { PochiConfig } from "./types";
 
@@ -20,7 +19,6 @@ class PochiConfigManager {
 
   constructor() {
     this.cfg.value = this.load();
-    this.cfg.subscribe(this.onSignalChange);
     this.watch();
 
     if (process.env.POCHI_SESSION_TOKEN) {
@@ -36,15 +34,12 @@ class PochiConfigManager {
 
   private load() {
     try {
-      return loadConfigSync({
-        schema: PochiConfig,
-        adapters: [json5Adapter({ path: PochiConfigFilePath })],
-        logger,
-        silent: true,
-      });
+      const content = fs.readFileSync(PochiConfigFilePath, "utf-8");
+      return PochiConfig.parse(JSONC.parse(content));
     } catch (err) {
-      return {} as PochiConfig;
+      logger.debug("Failed to load config file", err);
     }
+    return {};
   }
 
   private onChange = () => {
@@ -52,13 +47,6 @@ class PochiConfigManager {
     const newValue = this.load();
     if (isDeepEqual(oldValue, newValue)) return;
     this.cfg.value = newValue;
-  };
-
-  private onSignalChange = async () => {
-    const oldValue = this.load();
-    const newValue = this.cfg.value;
-    if (isDeepEqual(oldValue, newValue)) return;
-    await this.save();
   };
 
   private async watch() {
@@ -92,23 +80,39 @@ class PochiConfigManager {
 
   private async save() {
     try {
-      const fileContent = await fsPromise
-        .readFile(PochiConfigFilePath, "utf8")
-        .catch(() => "{}");
-      await fsPromise.writeFile(
-        PochiConfigFilePath,
-        fleece.patch(fileContent, this.cfg.value),
-      );
+      let content =
+        (
+          await fsPromise
+            .readFile(PochiConfigFilePath, "utf8")
+            .catch(() => undefined)
+        )?.trim() || "{}";
+
+      // Apply changes.
+      content = fleece.patch(content, this.cfg.value);
+
+      // Formatting.
+      const edits = JSONC.format(content, undefined, {
+        tabSize: 2,
+        insertFinalNewline: true,
+        insertSpaces: true,
+      });
+      content = JSONC.applyEdits(content, edits);
+
+      await fsPromise.writeFile(PochiConfigFilePath, content);
     } catch (err) {
       logger.debug("Failed to save config file", err);
     }
   }
 
-  updateConfig = (newConfig: Partial<PochiConfig>) => {
+  updateConfig = async (newConfig: Partial<PochiConfig>) => {
     let config: PochiConfig = {};
     config = mergeDeep(config, this.cfg.value);
     config = mergeDeep(config, newConfig);
+    if (isDeepEqual(config, this.cfg.value)) return;
     this.cfg.value = config;
+
+    // Save to file without await.
+    this.save();
   };
 
   get config(): ReadonlySignal<PochiConfig> {

@@ -425,7 +425,7 @@ export class CommandManager implements vscode.Disposable {
       },
     ] satisfies CustomModelSetting[];
 
-    this.pochiConfiguration.updateCustomModelSettings(defaultSettings);
+    await this.pochiConfiguration.updateCustomModelSettings(defaultSettings);
   }
 
   dispose() {
