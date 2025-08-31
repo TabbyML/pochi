@@ -37,6 +37,16 @@ class PochiConfigManager {
     this.config.value = this.load();
     this.config.subscribe(this.onSignalChange);
     this.watch();
+
+    if (process.env.POCHI_SESSION_TOKEN) {
+      this.config.value = {
+        ...this.config.value,
+        credentials: {
+          ...this.config.value.credentials,
+          pochiToken: process.env.POCHI_SESSION_TOKEN,
+        },
+      };
+    }
   }
 
   private load() {
