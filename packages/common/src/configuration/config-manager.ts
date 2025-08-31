@@ -3,7 +3,7 @@ import * as fsPromise from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
 import { type ReadonlySignal, type Signal, signal } from "@preact/signals-core";
-import * as JSONC from "jsonc-parser";
+import * as JSONC from "jsonc-parser/esm";
 import { funnel, isDeepEqual, mergeDeep } from "remeda";
 import * as fleece from "silver-fleece";
 import { getLogger } from "../base";

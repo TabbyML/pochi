@@ -301,5 +301,8 @@
     "semver": "^7.7.1",
     "sinon": "^20.0.0",
     "tsconfig-paths": "^4.2.0"
+  },
+  "vsce": {
+    "dependencies": false
   }
 }
