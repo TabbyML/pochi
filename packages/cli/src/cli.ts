@@ -62,36 +62,10 @@ const program = new Command()
     "The model to use for the task.",
     "qwen/qwen3-coder",
   )
-  .requiredOption(
-    "--model-type <modelType>",
-    "The type of model to use for the task. Available options: `pochi`, `openai`, `google-vertex-tuning`, `ai-gateway` ",
-    "pochi",
-  )
-  .option(
-    "--model-base-url <baseURL>",
-    "The base URL to use for the model API.",
-    prodServerUrl,
-  )
-  .option(
-    "--model-api-key <modelApiKey>",
-    "The API key to use for authentication. Used for all non-pochi models (e.g., `openai`).",
-  )
-  .option(
-    "--model-max-output-tokens <number>",
-    "The maximum number of output tokens to use. Used for all non-pochi models (e.g., `openai`).",
-    parsePositiveInt,
-    4096,
-  )
-  .option(
-    "--model-context-window <number>",
-    "The maximum context window size in tokens. Used for all non-pochi models (e.g., `openai`).",
-    parsePositiveInt,
-    100_000, // 100K
-  )
   .action(async (options) => {
     const { uid, prompt } = await parseTaskInput(options, program);
 
-    const apiClient = await createApiClient(options);
+    const apiClient = await createApiClient();
 
     const store = await createStore(process.cwd());
 
@@ -180,10 +154,10 @@ async function parseTaskInput(options: ProgramOpts, program: Program) {
   return { uid, prompt };
 }
 
-async function createApiClient(options: ProgramOpts): Promise<PochiApiClient> {
+async function createApiClient(): Promise<PochiApiClient> {
   const token = process.env.POCHI_SESSION_TOKEN || pochiConfig.pochiToken;
 
-  const authClient: PochiApiClient = hc<PochiApi>(options.modelBaseUrl, {
+  const authClient: PochiApiClient = hc<PochiApi>(prodServerUrl, {
     fetch(input: string | URL | Request, init?: RequestInit) {
       const headers = new Headers(init?.headers);
       if (token) {
@@ -209,42 +183,56 @@ function createLLMConfig({
   program: Program;
   options: ProgramOpts;
 }): LLMRequestData {
-  if (options.modelType === "openai") {
+  const sep = options.model.indexOf("/");
+  const modelProviderId = options.model.slice(0, sep);
+  const modelId = options.model.slice(sep + 1);
+
+  const modelProvider = pochiConfig.customModelSettings?.find(
+    (x) => x.id === modelProviderId,
+  );
+  const modelSetting = modelProvider?.models.find((x) => x.id === modelId);
+
+  if (!modelProvider) {
+    return {
+      type: "pochi",
+      modelId: options.model,
+      apiClient,
+    } satisfies LLMRequestData;
+  }
+
+  if (!modelSetting) {
+    return program.error(`Model ${options.model} not found in configuration`);
+  }
+
+  if (modelProvider.kind === undefined || modelProvider.kind === "openai") {
     return {
       type: "openai",
-      modelId: options.model || "<default>",
-      baseURL: options.modelBaseUrl,
-      apiKey: options.modelApiKey,
-      contextWindow: options.modelContextWindow,
-      maxOutputTokens: options.modelMaxOutputTokens,
+      modelId,
+      baseURL: modelProvider.baseURL,
+      apiKey: modelProvider.apiKey,
+      contextWindow: modelSetting.contextWindow,
+      maxOutputTokens: modelSetting.maxTokens,
     };
   }
 
-  if (options.modelType === "ai-gateway") {
+  if (modelProvider.kind === "ai-gateway") {
     return {
       type: "ai-gateway",
-      modelId: options.model || "<default>",
-      apiKey: options.modelApiKey,
-      contextWindow: options.modelContextWindow,
-      maxOutputTokens: options.modelMaxOutputTokens,
+      modelId,
+      apiKey: modelProvider.apiKey,
+      contextWindow: modelSetting.contextWindow,
+      maxOutputTokens: modelSetting.maxTokens,
     };
   }
 
-  if (options.modelType === "google-vertex-tuning") {
-    if (!options.modelApiKey) {
-      return program.error(
-        "--model-api-key is required for google-vertex-tuning",
-      );
-    }
-
+  if (modelProvider.kind === "google-vertex-tuning") {
     return {
       type: "google-vertex-tuning",
-      modelId: options.model || "<default>",
-      credentials: options.modelApiKey,
-      contextWindow: options.modelContextWindow,
-      maxOutputTokens: options.modelMaxOutputTokens,
-      // FIXME: hardcoded for now
-      location: "us-central1",
+      modelId,
+      credentials: modelProvider.credentials,
+      contextWindow: modelSetting.contextWindow,
+      maxOutputTokens: modelSetting.maxTokens,
+      location: modelProvider.location,
     };
   }
 
