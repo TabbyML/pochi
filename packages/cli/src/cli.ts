@@ -4,8 +4,8 @@ import "@livestore/wa-sqlite/dist/wa-sqlite.node.wasm" with { type: "file" };
 
 import { Command } from "@commander-js/extra-typings";
 import { getLogger } from "@getpochi/common";
+import { pochiConfig } from "@getpochi/common/configuration";
 import type { PochiApi, PochiApiClient } from "@getpochi/common/pochi-api";
-import { CredentialStorage } from "@getpochi/common/tool-utils";
 import type { LLMRequestData } from "@getpochi/livekit";
 import chalk from "chalk";
 import * as commander from "commander";
@@ -181,14 +181,7 @@ async function parseTaskInput(options: ProgramOpts, program: Program) {
 }
 
 async function createApiClient(options: ProgramOpts): Promise<PochiApiClient> {
-  let token = process.env.POCHI_SESSION_TOKEN;
-  if (!token) {
-    const credentialStorage = new CredentialStorage({
-      isDev:
-        options.modelType === "pochi" && options.modelBaseUrl !== prodServerUrl,
-    });
-    token = await credentialStorage.read();
-  }
+  const token = process.env.POCHI_SESSION_TOKEN || pochiConfig.pochiToken;
 
   const authClient: PochiApiClient = hc<PochiApi>(options.modelBaseUrl, {
     fetch(input: string | URL | Request, init?: RequestInit) {

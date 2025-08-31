@@ -1,5 +1,4 @@
-import { CredentialStorage } from "@getpochi/common/tool-utils";
-import { isDev } from "@getpochi/common/vscode-webui-bridge";
+import { pochiConfig } from "@getpochi/common/configuration";
 import { type Signal, signal } from "@preact/signals-core";
 import { injectable, singleton } from "tsyringe";
 import type * as vscode from "vscode";
@@ -14,12 +13,9 @@ export class TokenStorage implements vscode.Disposable {
     if (process.env.POCHI_SESSION_TOKEN) {
       return;
     }
-    const credentialStorage = new CredentialStorage({
-      isDev,
-    });
-    this.token.value = await credentialStorage.read();
+    this.token.value = pochiConfig.pochiToken;
     this.dispose = this.token.subscribe(async (token) => {
-      await credentialStorage.write(token);
+      pochiConfig.pochiToken = token;
     });
   }
 }

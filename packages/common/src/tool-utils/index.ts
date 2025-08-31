@@ -17,7 +17,6 @@ export {
   GlobalRules,
 } from "./custom-rules";
 export { MaxTerminalOutputSize } from "./limits";
-export { CredentialStorage } from "./credential-storage";
 export {
   getShellPath,
   fixExecuteCommandOutput,
