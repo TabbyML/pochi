@@ -36,7 +36,7 @@ export interface RunnerOptions {
   store: Store;
 
   // The prompt to use for creating the task
-  prompt: string;
+  prompt?: string;
 
   /**
    * The current working directory for the task runner.
@@ -62,7 +62,15 @@ export interface RunnerOptions {
    */
   maxRetries: number;
 
+  /**
+   * Whether this is a sub-task. Sub-tasks don't apply certain middlewares
+   * like the newTask middleware to prevent infinite recursion.
+   */
+  isSubTask?: boolean;
+
   waitUntil?: (promise: Promise<unknown>) => void;
+
+  onSubTaskCreated?: (runner: TaskRunner) => void;
 }
 
 const logger = getLogger("TaskRunner");
@@ -73,6 +81,8 @@ export class TaskRunner {
 
   private todos: Todo[] = [];
   private chatKit: LiveChatKit<Chat>;
+
+  readonly taskId: string;
 
   private get chat() {
     return this.chatKit.chat;
@@ -86,6 +96,18 @@ export class TaskRunner {
     this.toolCallOptions = {
       cwd: options.cwd,
       rg: options.rg,
+      createSubTaskRunner: (taskId: string) => {
+        // create sub task
+        const runner = new TaskRunner({
+          ...options,
+          prompt: undefined, // should not use prompt
+          uid: taskId,
+          isSubTask: true,
+        });
+
+        options.onSubTaskCreated?.(runner);
+        return runner;
+      },
     };
     this.stepCount = new StepCount(options.maxSteps, options.maxRetries);
     this.chatKit = new LiveChatKit<Chat>({
@@ -95,6 +117,7 @@ export class TaskRunner {
       chatClass: Chat,
       waitUntil: options.waitUntil,
       isCli: true,
+      isSubTask: options.isSubTask,
       getters: {
         getLLM: () => options.llm,
         getEnvironment: async () => ({
@@ -114,6 +137,8 @@ export class TaskRunner {
         this.chatKit.init(options.prompt);
       }
     }
+
+    this.taskId = options.uid;
   }
 
   get shareId() {

@@ -78,12 +78,12 @@ const CliTools = {
   searchFiles,
   todoWrite,
   writeToFile,
+  newTask,
 };
 
 export const createClientTools = (customAgents?: CustomAgent[]) => {
   return {
     ...CliTools,
-    newTask,
     startBackgroundJob,
     readBackgroundJobOutput,
     killBackgroundJob,
@@ -99,6 +99,12 @@ export const selectClientTools = (options: {
   customAgents?: CustomAgent[];
 }) => {
   if (options.isCli) {
+    if (options.isSubTask) {
+      const { newTask, ...rest } = CliTools;
+      return rest;
+    }
+
+    // CLI support new task
     return CliTools;
   }
 

@@ -95,6 +95,10 @@ const program = new Command()
       );
     }
 
+    const onSubTaskCreated = (runner: TaskRunner) => {
+      renderer.renderSubTask(runner);
+    };
+
     const runner = new TaskRunner({
       uid,
       apiClient,
@@ -106,6 +110,7 @@ const program = new Command()
       maxSteps: options.maxSteps,
       maxRetries: options.maxRetries,
       waitUntil,
+      onSubTaskCreated,
     });
 
     const renderer = new OutputRenderer(runner.state);
@@ -174,16 +179,11 @@ async function parseTaskInput(options: ProgramOpts, program: Program) {
 
   // Check if the prompt contains workflow references
   if (containsWorkflowReference(prompt)) {
-    const { prompt: updatedPrompt, missingWorkflows } =
-      await replaceWorkflowReferences(prompt, process.cwd());
+    const { prompt: updatedPrompt } = await replaceWorkflowReferences(
+      prompt,
+      process.cwd(),
+    );
     prompt = updatedPrompt;
-
-    // Handle missing workflows
-    if (missingWorkflows.length > 0) {
-      console.warn(
-        `${chalk.yellow("warning:")} Workflow(s) '${missingWorkflows.join(", ")}' not found in .pochi/workflows/`,
-      );
-    }
   }
 
   return { uid, prompt };
