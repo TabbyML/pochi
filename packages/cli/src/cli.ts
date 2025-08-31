@@ -189,8 +189,8 @@ async function parseTaskInput(options: ProgramOpts, program: Program) {
 
     // Handle missing workflows
     if (missingWorkflows.length > 0) {
-      return program.error(
-        `error: Workflow(s) '${missingWorkflows.join(", ")}' not found in .pochi/workflows/`,
+      console.warn(
+        `${chalk.yellow("warning:")} Workflow(s) '${missingWorkflows.join(", ")}' not found in .pochi/workflows/`,
       );
     }
   }
