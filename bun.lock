@@ -154,6 +154,7 @@
         "posthog-node": "^4.17.2",
         "project-name-generator": "^2.1.9",
         "reflect-metadata": "^0.2.2",
+        "remeda": "catalog:",
         "run-exclusive": "^2.2.19",
         "simple-git": "^3.28.0",
         "stats-logscale": "^1.0.9",

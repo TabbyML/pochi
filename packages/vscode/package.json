@@ -275,7 +275,8 @@
     "simple-git": "^3.28.0",
     "stats-logscale": "^1.0.9",
     "tsyringe": "^4.10.0",
-    "zod": "catalog:"
+    "zod": "catalog:",
+    "remeda": "catalog:"
   },
   "devDependencies": {
     "@ai-sdk/provider": "catalog:",
