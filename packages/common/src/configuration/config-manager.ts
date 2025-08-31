@@ -32,19 +32,19 @@ type PochiConfig = z.infer<typeof PochiConfig>;
 const logger = getLogger("PochiConfigManager");
 
 class PochiConfigManager {
-  private readonly value: Signal<PochiConfig> = signal({});
+  private readonly cfg: Signal<PochiConfig> = signal({});
   private events = new EventTarget();
 
   constructor() {
-    this.value.value = this.load();
-    this.value.subscribe(this.onSignalChange);
+    this.cfg.value = this.load();
+    this.cfg.subscribe(this.onSignalChange);
     this.watch();
 
     if (process.env.POCHI_SESSION_TOKEN) {
-      this.value.value = {
-        ...this.value.value,
+      this.cfg.value = {
+        ...this.cfg.value,
         credentials: {
-          ...this.value.value.credentials,
+          ...this.cfg.value.credentials,
           pochiToken: process.env.POCHI_SESSION_TOKEN,
         },
       };
@@ -61,15 +61,15 @@ class PochiConfigManager {
   }
 
   private onChange = () => {
-    const oldValue = this.value.value;
+    const oldValue = this.cfg.value;
     const newValue = this.load();
     if (isDeepEqual(oldValue, newValue)) return;
-    this.value.value = newValue;
+    this.cfg.value = newValue;
   };
 
   private onSignalChange = async () => {
     const oldValue = this.load();
-    const newValue = this.value.value;
+    const newValue = this.cfg.value;
     if (isDeepEqual(oldValue, newValue)) return;
     await this.save();
   };
@@ -107,7 +107,7 @@ class PochiConfigManager {
     try {
       await fsPromise.writeFile(
         PochiConfigFilePath,
-        JSON.stringify(this.value, null, 2),
+        JSON.stringify(this.cfg, null, 2),
       );
     } catch (err) {
       logger.debug("Failed to save config file", err);
@@ -116,13 +116,13 @@ class PochiConfigManager {
 
   updateConfig = (newConfig: Partial<PochiConfig>) => {
     let config: PochiConfig = {};
-    config = mergeDeep(config, this.value.value);
+    config = mergeDeep(config, this.cfg.value);
     config = mergeDeep(config, newConfig);
-    this.value.value = config;
+    this.cfg.value = config;
   };
 
   get config(): ReadonlySignal<PochiConfig> {
-    return this.value;
+    return this.cfg;
   }
 }
 
