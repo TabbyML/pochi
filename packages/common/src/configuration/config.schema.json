@@ -3,6 +3,7 @@
   "type": "object",
   "properties": {
     "$schema": {
+      "default": "https://getpochi.com/config.schema.json",
       "type": "string"
     },
     "credentials": {
@@ -14,7 +15,7 @@
       },
       "additionalProperties": false
     },
-    "customModelSettings": {
+    "providers": {
       "type": "array",
       "items": {
         "anyOf": [
@@ -55,7 +56,11 @@
                       "type": "boolean"
                     }
                   },
-                  "required": ["id", "maxTokens", "contextWindow"],
+                  "required": [
+                    "id",
+                    "maxTokens",
+                    "contextWindow"
+                  ],
                   "additionalProperties": false
                 }
               },
@@ -72,7 +77,11 @@
                 "type": "string"
               }
             },
-            "required": ["id", "models", "baseURL"],
+            "required": [
+              "id",
+              "models",
+              "baseURL"
+            ],
             "additionalProperties": false
           },
           {
@@ -112,7 +121,11 @@
                       "type": "boolean"
                     }
                   },
-                  "required": ["id", "maxTokens", "contextWindow"],
+                  "required": [
+                    "id",
+                    "maxTokens",
+                    "contextWindow"
+                  ],
                   "additionalProperties": false
                 }
               },
@@ -129,7 +142,13 @@
                 "type": "string"
               }
             },
-            "required": ["id", "models", "kind", "location", "credentials"],
+            "required": [
+              "id",
+              "models",
+              "kind",
+              "location",
+              "credentials"
+            ],
             "additionalProperties": false
           },
           {
@@ -169,7 +188,11 @@
                       "type": "boolean"
                     }
                   },
-                  "required": ["id", "maxTokens", "contextWindow"],
+                  "required": [
+                    "id",
+                    "maxTokens",
+                    "contextWindow"
+                  ],
                   "additionalProperties": false
                 }
               },
@@ -182,7 +205,11 @@
                 "type": "string"
               }
             },
-            "required": ["id", "models", "kind"],
+            "required": [
+              "id",
+              "models",
+              "kind"
+            ],
             "additionalProperties": false
           }
         ]
