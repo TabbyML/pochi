@@ -16,7 +16,10 @@ function escapeUnknownXMLTags(message: string): string {
 
 export function parseTitle(title: string | null) {
   if (!title?.trim()) return "(empty)";
+  return parseMarkdown(title).slice(0, 256) || "(empty)";
+}
 
+export function parseMarkdown(content: string) {
   const formatXMLTags = (ast: Root) => {
     function processNode(node: Parent) {
       if (node.children) {
@@ -41,7 +44,7 @@ export function parseTitle(title: string | null) {
     processNode(ast);
   };
 
-  const hast = rehype().parse(escapeUnknownXMLTags(title));
+  const hast = rehype().parse(escapeUnknownXMLTags(content));
   formatXMLTags(hast);
-  return toText(hast).slice(0, 256) || "(empty)";
+  return toText(hast);
 }

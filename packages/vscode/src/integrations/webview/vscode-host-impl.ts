@@ -37,7 +37,6 @@ import {
 } from "@getpochi/common/tool-utils";
 import type {
   CaptureEvent,
-  CustomModelSetting,
   McpStatus,
   ResourceURI,
   RuleFile,
@@ -77,6 +76,7 @@ import { McpHub } from "../mcp/mcp-hub";
 import { killBackgroundJob } from "@/tools/kill-background-job";
 import { readBackgroundJobOutput } from "@/tools/read-background-job-output";
 import { startBackgroundJob } from "@/tools/start-background-job";
+import type { CustomModelSetting } from "@getpochi/common/configuration";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { ThirdMcpImporter } from "../mcp/third-party-mcp";
 import { isExecutable } from "../mcp/types";

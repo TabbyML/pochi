@@ -1,5 +1,5 @@
+import type { McpServerConfig } from "@getpochi/common/configuration";
 import * as vscode from "vscode";
-import type { McpServerConfig } from "../../types";
 import { BaseFileMcpProvider } from "./base-file-provider";
 
 export class VscodeMcpProvider extends BaseFileMcpProvider {

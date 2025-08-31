@@ -1,4 +1,5 @@
 import { getLogger } from "@/lib/logger";
+import type { McpServerConfig } from "@getpochi/common/configuration";
 import type { McpToolStatus } from "@getpochi/common/vscode-webui-bridge";
 import {
   StdioClientTransport,
@@ -10,7 +11,6 @@ import { createMachine, interpret } from "@xstate/fsm";
 import { type ToolSet, experimental_createMCPClient as createClient } from "ai";
 import type * as vscode from "vscode";
 import {
-  type McpServerConfig,
   type McpToolExecutable,
   isHttpTransport,
   isStdioTransport,

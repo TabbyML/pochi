@@ -37,7 +37,7 @@ export function createAuthClient(container: DependencyContainer) {
       onResponse: (ctx) => {
         const authToken = ctx.response.headers.get("set-auth-token"); // get the token from the response headers
         if (authToken) {
-          tokenStorage.token.value = authToken;
+          tokenStorage.setToken(authToken);
         }
       },
     },

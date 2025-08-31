@@ -13,7 +13,7 @@ export const writeToFile =
   (context: ToolCallOptions): ToolFunctionType<ClientTools["writeToFile"]> =>
   async ({ path, content }) => {
     const filePath = resolvePath(path, context.cwd);
-    if (!isFileExists(filePath)) {
+    if (!(await isFileExists(filePath))) {
       const dirPath = nodePath.dirname(filePath);
       await fs.mkdir(dirPath, { recursive: true });
     }

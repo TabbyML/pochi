@@ -1,3 +1,4 @@
+import { prompts } from "@getpochi/common";
 import Mention from "@tiptap/extension-mention";
 import { PluginKey } from "@tiptap/pm/state";
 import {
@@ -38,17 +39,9 @@ export const PromptFormWorkflowExtension = Mention.extend({
   },
 
   renderText({ node }) {
-    const { id, path } = node.attrs;
-    const workflowTagRegex = /<\/?workflow\b[^>]*>/g;
-
-    let content: string = node.attrs.content || "error loading workflow";
-    // remove extra newlines from the content
-    content = content.replace(/\n+/g, "\n");
-    // escape '<' to avoid </workflow> being interpreted as a closing tag
-    content = content.replace(workflowTagRegex, (match) => {
-      return match.replace("<", "&lt;");
-    });
-    return `<workflow id="${id}" path="${path}">${content}</workflow>`;
+    const { id, path, content } = node.attrs;
+    const workflowContent: string = content || "error loading workflow";
+    return prompts.workflow(id, path, workflowContent);
   },
 
   addAttributes() {

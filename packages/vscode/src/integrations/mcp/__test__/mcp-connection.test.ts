@@ -3,7 +3,7 @@ import { describe, it, beforeEach, afterEach } from "mocha";
 import * as sinon from "sinon";
 import * as vscode from "vscode";
 
-import type { McpServerConfig } from "../types";
+import type { McpServerConfig } from "@getpochi/common/configuration";
 import proxyquire from "proxyquire";
 
 describe("McpConnection", () => {
