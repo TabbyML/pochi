@@ -1,4 +1,5 @@
 import { getLogger } from "@/lib/logger";
+import type { McpServerConfig } from "@getpochi/common/configuration";
 import type { McpTool } from "@getpochi/tools";
 import { type Signal, signal } from "@preact/signals-core";
 import { inject, injectable, singleton } from "tsyringe";
@@ -8,7 +9,6 @@ import { PochiConfiguration } from "../configuration";
 import { McpConnection } from "./mcp-connection";
 import type { McpToolExecutable } from "./types";
 import { omitDisabled } from "./types";
-import type { McpServerConfig } from "@getpochi/common/configuration";
 
 const logger = getLogger("MCPHub");
 

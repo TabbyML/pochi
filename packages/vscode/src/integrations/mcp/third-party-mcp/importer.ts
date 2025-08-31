@@ -1,8 +1,8 @@
 import { getLogger } from "@/lib/logger";
+import type { McpServerConfig } from "@getpochi/common/configuration";
 import { injectable, singleton } from "tsyringe";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { McpHub } from "../mcp-hub";
-import type { McpServerConfig } from "@getpochi/common/configuration";
 import type { McpConfigProvider } from "./provider";
 import { ClaudeDesktopMcpProvider } from "./providers/claude-desktop-provider";
 import { ClineMcpProvider } from "./providers/cline-provider";

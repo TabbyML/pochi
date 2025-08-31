@@ -21,6 +21,7 @@ import {
   type CustomModelSetting,
   PochiConfigFilePath,
 } from "@getpochi/common/configuration";
+import type { McpServerConfig } from "@getpochi/common/configuration";
 import type {
   NewTaskParams,
   TaskIdParams,
@@ -33,7 +34,6 @@ import { type PochiAdvanceSettings, PochiConfiguration } from "./configuration";
 import { DiffChangesContentProvider } from "./editor/diff-changes-content-provider";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { McpHub } from "./mcp/mcp-hub";
-import type { McpServerConfig } from "@getpochi/common/configuration";
 
 const logger = getLogger("CommandManager");
 
