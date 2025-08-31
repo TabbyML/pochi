@@ -1,4 +1,4 @@
-import { pochiConfig } from "@getpochi/common/configuration";
+import { pochiConfig, updatePochiConfig } from "@getpochi/common/configuration";
 import { computed } from "@preact/signals-core";
 import { injectable, singleton } from "tsyringe";
 import type * as vscode from "vscode";
@@ -10,12 +10,10 @@ export class TokenStorage implements vscode.Disposable {
   dispose: () => void = () => {};
 
   setToken(token: string | undefined) {
-    pochiConfig.value = {
-      ...pochiConfig.value,
+    updatePochiConfig({
       credentials: {
-        ...pochiConfig.value.credentials,
         pochiToken: token,
       },
-    };
+    });
   }
 }

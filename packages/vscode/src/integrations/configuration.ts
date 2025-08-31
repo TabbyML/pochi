@@ -1,6 +1,7 @@
 import {
   type CustomModelSetting,
   pochiConfig,
+  updatePochiConfig,
 } from "@getpochi/common/configuration";
 import { computed, signal } from "@preact/signals-core";
 import deepEqual from "fast-deep-equal";
@@ -56,10 +57,9 @@ export class PochiConfiguration implements vscode.Disposable {
   }
 
   updateCustomModelSettings(providers: CustomModelSetting[]) {
-    pochiConfig.value = {
-      ...pochiConfig.value,
+    updatePochiConfig({
       providers,
-    };
+    });
   }
 
   dispose() {
