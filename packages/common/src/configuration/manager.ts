@@ -34,7 +34,6 @@ class PochiConfigManager {
   private events = new EventTarget();
 
   constructor() {
-    this.ensureFileExists();
     this.config.value = this.load();
     this.config.subscribe(this.onSignalChange);
     this.watch();
@@ -63,6 +62,7 @@ class PochiConfigManager {
   };
 
   private async watch() {
+    await this.ensureFileExists();
     this.events.addEventListener("change", this.onChange);
     const debouncer = funnel(
       () => {
