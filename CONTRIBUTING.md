@@ -30,3 +30,163 @@ We also welcome contributions to our documentation, which is located in the [`pa
 ## Agreement
 
 By submitting a pull request, you agree that your contributions will be licensed under the Apache License 2.0. a copy of which is available in the `LICENSE` file in the root of the repository.
+on an issue, please comment on it to let others know you're interested in working on it. This helps avoid duplicate efforts.
+
+We also welcome contributions to our documentation, which is located in the [`packages/docs/content/docs`](https://github.com/TabbyML/pochi/tree/main/packages/docs/content/docs) directory.
+
+### Development Workflow
+
+1.  **Install dependencies:**
+    ```bash
+    bun install
+    ```
+2.  **Launch the development environment:**
+    Open the `Run and Debug` panel in VS Code and run the `Run VSCode Extension` task. This will open a new VS Code window with the extension loaded and ready for development.
+
+## Agreement
+
+By submitting a pull request, you agree that your contributions will be licensed under the Apache License 2.0. a copy of which is available in the `LICENSE` file in the root of the repository.
+on an issue, please comment on it to let others know you're interested in working on it. This helps avoid duplicate efforts.
+
+We also welcome contributions to our documentation, which is located in the [`packages/docs/content/docs`](https://github.com/TabbyML/pochi/tree/main/packages/docs/content/docs) directory.
+
+### Development Workflow
+
+1.  **Install dependencies:**
+    ```bash
+    bun install
+    ```
+2.  **Launch the development environment:**
+    Open the `Run and Debug` panel in VS Code and run the `Run VSCode Extension` task. This will open a new VS Code window with the extension loaded and ready for development.
+
+## Agreement
+
+By submitting a pull request, you agree that your contributions will be licensed under the Apache License 2.0. a copy of which is available in the `LICENSE` file in the root of the repository.
+on an issue, please comment on it to let others know you're interested in working on it. This helps avoid duplicate efforts.
+
+We also welcome contributions to our documentation, which is located in the [`packages/docs/content/docs`](https://github.com/TabbyML/pochi/tree/main/packages/docs/content/docs) directory.
+
+### Development Workflow
+
+1.  **Install dependencies:**
+    ```bash
+    bun install
+    ```
+2.  **Launch the development environment:**
+    Open the `Run and Debug` panel in VS Code and run the `Run VSCode Extension` task. This will open a new VS Code window with the extension loaded and ready for development.
+
+## Agreement
+
+By submitting a pull request, you agree that your contributions will be licensed under the Apache License 2.0. a copy of which is available in the `LICENSE` file in the root of the repository.
+on an issue, please comment on it to let others know you're interested in working on it. This helps avoid duplicate efforts.
+
+We also welcome contributions to our documentation, which is located in the [`packages/docs/content/docs`](https://github.com/TabbyML/pochi/tree/main/packages/docs/content/docs) directory.
+
+### Development Workflow
+
+1.  **Install dependencies:**
+    ```bash
+    bun install
+    ```
+2.  **Launch the development environment:**
+    Open the `Run and Debug` panel in VS Code and run the `Run VSCode Extension` task. This will open a new VS Code window with the extension loaded and ready for development.
+
+## Agreement
+
+By submitting a pull request, you agree that your contributions will be licensed under the Apache License 2.0. a copy of which is available in the `LICENSE` file in the root of the repository.
+on an issue, please comment on it to let others know you're interested in working on it. This helps avoid duplicate efforts.
+
+We also welcome contributions to our documentation, which is located in the [`packages/docs/content/docs`](https://github.com/TabbyML/pochi/tree/main/packages/docs/content/docs) directory.
+
+### Development Workflow
+
+1.  **Install dependencies:**
+    ```bash
+    bun install
+    ```
+2.  **Launch the development environment:**
+    Open the `Run and Debug` panel in VS Code and run the `Run VSCode Extension` task. This will open a new VS Code window with the extension loaded and ready for development.
+
+## Agreement
+
+By submitting a pull request, you agree that your contributions will be licensed under the Apache License 2.0. a copy of which is available in the `LICENSE` file in the root of the repository.
+on an issue, please comment on it to let others know you're interested in working on it. This helps avoid duplicate efforts.
+
+We also welcome contributions to our documentation, which is located in the [`packages/docs/content/docs`](https://github.com/TabbyML/pochi/tree/main/packages/docs/content/docs) directory.
+
+### Development Workflow
+
+1.  **Install dependencies:**
+    ```bash
+    bun install
+    ```
+2.  **Launch the development environment:**
+    Open the `Run and Debug` panel in VS Code and run the `Run VSCode Extension` task. This will open a new VS Code window with the extension loaded and ready for development.
+
+## Agreement
+
+By submitting a pull request, you agree that your contributions will be licensed under the Apache License 2.0. a copy of which is available in the `LICENSE` file in the root of the repository.
+on an issue, please comment on it to let others know you're interested in working on it. This helps avoid duplicate efforts.
+
+We also welcome contributions to our documentation, which is located in the [`packages/docs/content/docs`](https://github.com/TabbyML/pochi/tree/main/packages/docs/content/docs) directory.
+
+### Development Workflow
+
+1.  **Install dependencies:**
+    ```bash
+    bun install
+    ```
+2.  **Launch the development environment:**
+    Open the `Run and Debug` panel in VS Code and run the `Run VSCode Extension` task. This will open a new VS Code window with the extension loaded and ready for development.
+
+## Agreement
+
+By submitting a pull request, you agree that your contributions will be licensed under the Apache License 2.0. a copy of which is available in the `LICENSE` file in the root of the repository.
+on an issue, please comment on it to let others know you're interested in working on it. This helps avoid duplicate efforts.
+
+We also welcome contributions to our documentation, which is located in the [`packages/docs/content/docs`](https://github.com/TabbyML/pochi/tree/main/packages/docs/content/docs) directory.
+
+### Development Workflow
+
+1.  **Install dependencies:**
+    ```bash
+    bun install
+    ```
+2.  **Launch the development environment:**
+    Open the `Run and Debug` panel in VS Code and run the `Run VSCode Extension` task. This will open a new VS Code window with the extension loaded and ready for development.
+
+## Agreement
+
+By submitting a pull request, you agree that your contributions will be licensed under the Apache License 2.0. a copy of which is available in the `LICENSE` file in the root of the repository.
+on an issue, please comment on it to let others know you're interested in working on it. This helps avoid duplicate efforts.
+
+We also welcome contributions to our documentation, which is located in the [`packages/docs/content/docs`](https://github.com/TabbyML/pochi/tree/main/packages/docs/content/docs) directory.
+
+### Development Workflow
+
+1.  **Install dependencies:**
+    ```bash
+    bun install
+    ```
+2.  **Launch the development environment:**
+    Open the `Run and Debug` panel in VS Code and run the `Run VSCode Extension` task. This will open a new VS Code window with the extension loaded and ready for development.
+
+## Agreement
+
+By submitting a pull request, you agree that your contributions will be licensed under the Apache License 2.0. a copy of which is available in the `LICENSE` file in the root of the repository.
+on an issue, please comment on it to let others know you're interested in working on it. This helps avoid duplicate efforts.
+
+We also welcome contributions to our documentation, which is located in the [`packages/docs/content/docs`](https://github.com/TabbyML/pochi/tree/main/packages/docs/content/docs) directory.
+
+### Development Workflow
+
+1.  **Install dependencies:**
+    ```bash
+    bun install
+    ```
+2.  **Launch the development environment:**
+    Open the `Run and Debug` panel in VS Code and run the `Run VSCode Extension` task. This will open a new VS Code window with the extension loaded and ready for development.
+
+## Agreement
+
+By submitting a pull request, you agree that your contributions will be licensed under the Apache License 2.0. a copy of which is available in the `LICENSE` file in the root of the repository.
