@@ -15,14 +15,14 @@ Pochi offers a command-line interface (CLI) that allows you to run an AI agent d
 ## Oneliner Install
 
 ```bash
-curl -fsSL https://app.getpochi.com/install.sh | bash
+curl -fsSL https://getpochi.com/install.sh | bash
 ```
 
 ## Authentication
 
 The Pochi CLI uses the same authentication credentials as the VS Code extension for Pochi's cloud services. When you sign in through the VS Code extension, the CLI automatically reuses these credentials.
 
-Credentials are stored in `~/.pochi/credentials.json`. To authenticate:
+Credentials are stored in `~/.pochi/config.jsonc`. To authenticate:
 
 1. Install and open the [Pochi VS Code extension](https://marketplace.visualstudio.com/items?itemName=TabbyML.pochi)
 2. Follow the sign-in prompts in the extension
@@ -182,7 +182,17 @@ To use these features, sign up at [app.getpochi.com](http://app.getpochi.com) an
 
 ## Customize
 
-And that's it! You're ready to start using Pochi now!
+You can tailor Pochi to your needs by editing its configuration file, located at `~/.pochi/config.jsonc`. The file uses the JSONC (JSON with Comments) format, so you can add notes to explain your settings.
+
+```jsonc
+{
+  // The schema enables autocompletion and validation in your code editor.
+  "$schema": "https://getpochi.com/config.schema.json",
+
+  // For details on available options, see the "Models," "Rules," pages in the sidebar
+  // ...
+}
+```
 
 
 # MCP
