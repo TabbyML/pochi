@@ -44,6 +44,7 @@ class PochiConfigManager {
       schema: PochiConfig,
       adapters: [jsonAdapter({ path: PochiConfigFilePath })],
       logger,
+      silent: true,
     });
   }
 
