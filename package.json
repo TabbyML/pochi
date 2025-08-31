@@ -11,6 +11,7 @@
     "tsc": "turbo tsc",
     "dep-check": "bun scripts/dep-check.ts",
     "prepare": "husky",
+    "gen:config-schema": "cd packages/common/src/configuration && bun gen-schema.ts",
     "pre-push": "bash ./.husky/pre-push"
   },
   "workspaces": {

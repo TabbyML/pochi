@@ -4,17 +4,15 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { type Signal, signal } from "@preact/signals-core";
 import { funnel, isDeepEqual } from "remeda";
-import z from "zod";
 import { loadConfigSync } from "zod-config";
 import { jsonAdapter } from "zod-config/json-adapter";
+import z from "zod/v4";
 import { getLogger } from "../base";
 import { CustomModelSetting } from "./model";
 
 const ConfigFilePath = path.join(os.homedir(), ".pochi", "config.json");
-const SchemaUrl = "https://app.getpochi.com/config.json";
 
-const PochiConfig = z.object({
-  $schema: z.literal(SchemaUrl).default(SchemaUrl).optional(),
+export const PochiConfig = z.object({
   credentials: z
     .object({
       pochiToken: z.string().optional(),
@@ -28,7 +26,7 @@ type PochiConfig = z.infer<typeof PochiConfig>;
 const logger = getLogger("PochiConfigManager");
 
 class PochiConfigManager {
-  readonly config: Signal<PochiConfig> = signal({ $schema: SchemaUrl });
+  readonly config: Signal<PochiConfig> = signal({});
   private events = new EventTarget();
 
   constructor() {
