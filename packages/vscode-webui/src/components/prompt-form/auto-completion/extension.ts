@@ -1,0 +1,253 @@
+import uFuzzy from "@leeoniya/ufuzzy";
+import { PluginKey } from "@tiptap/pm/state";
+import { Extension, ReactRenderer } from "@tiptap/react";
+import {
+  Suggestion,
+  type SuggestionKeyDownProps,
+  type SuggestionOptions,
+  type SuggestionProps,
+  type Trigger,
+} from "@tiptap/suggestion";
+import tippy, { type Instance as TippyInstance } from "tippy.js";
+
+import { debounceWithCachedValue } from "@/lib/debounce";
+import { vscodeHost } from "@/lib/vscode";
+
+import { fileMentionPluginKey } from "../context-mention/extension";
+import type { MentionListActions } from "../shared";
+import { workflowMentionPluginKey } from "../workflow-mention/extension";
+import {
+  type AutoCompleteListProps,
+  AutoCompleteMentionList,
+} from "./mention-list";
+
+export const autoCompletePluginKey = new PluginKey("autoCompletion");
+
+const debouncedListAutoCompleteCandidates = debounceWithCachedValue(
+  async (query: string) => {
+    const data = await vscodeHost.listAutoCompleteCandidates(query, 40);
+    return data;
+  },
+  300,
+  {
+    leading: true,
+  },
+);
+
+interface AutoCompleteSuggestionItem {
+  value: {
+    label: string;
+    type: string;
+  };
+  ranges: number[];
+}
+
+const fuzzySearchAutoCompleteItems = async (
+  query: string,
+): Promise<AutoCompleteSuggestionItem[]> => {
+  if (!query) return [];
+
+  const candidates = await debouncedListAutoCompleteCandidates(query);
+
+  if (!candidates?.length) return [];
+
+  return fuzzySearch(candidates, query);
+};
+
+const ufInstance = new uFuzzy({
+  intraChars: "[a-z\\d'\\-_./]",
+  interSplit: "[^a-zA-Z\\d'\\-_./]+",
+});
+function fuzzySearch(
+  items: Awaited<ReturnType<typeof vscodeHost.listAutoCompleteCandidates>>,
+  query: string,
+): AutoCompleteSuggestionItem[] {
+  const labels = items.map((x) => x.label);
+  const [_, info, order] = ufInstance.search(labels, query);
+  if (!order) return [];
+  const results: AutoCompleteSuggestionItem[] = [];
+  for (const i of order) {
+    const item = items[info.idx[i]];
+    const ranges = info.ranges[i];
+    results.push({
+      value: item,
+      ranges,
+    });
+  }
+  return results;
+}
+
+function findSuggestionMatch(config: Trigger) {
+  const { $position } = config;
+  const text = $position.nodeBefore?.isText && $position.nodeBefore.text;
+  if (!text) return null;
+
+  const cursorPos = $position.pos;
+  const match = text.match(/(\w+)$/);
+  if (!match) return null;
+  const word = match[1];
+  if (word.startsWith("/") || word.startsWith("@")) return null;
+  if (!/^\w+$/.test(word)) return null;
+
+  const from = cursorPos - word.length;
+  const to = cursorPos;
+
+  return {
+    range: { from, to },
+    query: word,
+    text: word,
+  };
+}
+
+interface AutoCompleteExtensionOptions {
+  suggestion: Omit<
+    SuggestionOptions<AutoCompleteSuggestionItem>,
+    "editor" | "items" | "render"
+  >;
+}
+
+export const AutoCompleteExtension = Extension.create<
+  AutoCompleteExtensionOptions,
+  {
+    component: ReactRenderer<MentionListActions, AutoCompleteListProps> | null;
+    popup: TippyInstance | null;
+  }
+>({
+  name: "autoCompletion",
+
+  addStorage() {
+    return {
+      component: null,
+      popup: null,
+    };
+  },
+
+  destroy() {
+    if (this.storage.popup) {
+      this.storage.popup.destroy();
+    }
+    if (this.storage.component) {
+      this.storage.component.destroy();
+    }
+  },
+
+  addProseMirrorPlugins() {
+    const storage = this.storage;
+    const { allow: userAllow, ...suggestionOptions } =
+      this.options.suggestion || {};
+
+    const allow: SuggestionOptions<AutoCompleteSuggestionItem>["allow"] = (
+      props,
+    ) => {
+      const suggestionState = autoCompletePluginKey.getState(
+        props.editor.state,
+      );
+      if (suggestionState?.composing) {
+        return false;
+      }
+
+      const fileMentionState = fileMentionPluginKey.getState(
+        props.editor.state,
+      );
+      const workflowMentionState = workflowMentionPluginKey.getState(
+        props.editor.state,
+      );
+      const isMentionActive =
+        fileMentionState?.active || workflowMentionState?.active;
+
+      if (isMentionActive) {
+        return false;
+      }
+
+      if (userAllow) {
+        return userAllow(props);
+      }
+
+      return true;
+    };
+
+    return [
+      Suggestion<AutoCompleteSuggestionItem>({
+        ...suggestionOptions,
+        editor: this.editor,
+        char: "",
+        pluginKey: autoCompletePluginKey,
+        items: ({ query }) => fuzzySearchAutoCompleteItems(query),
+        command: ({ editor, range, props }) => {
+          const label = props.value.label;
+          editor.chain().focus().insertContentAt(range, label).run();
+
+          storage.popup?.destroy();
+          storage.component?.destroy();
+        },
+        allow,
+        render: () => {
+          const fetchItems = async (query?: string) => {
+            if (!query) return [];
+            return fuzzySearchAutoCompleteItems(query);
+          };
+
+          const destroyMention = () => {
+            if (storage.popup) {
+              storage.popup.destroy();
+              storage.popup = null;
+            }
+            if (storage.component) {
+              storage.component.destroy();
+              storage.component = null;
+            }
+          };
+
+          return {
+            onStart: (props: SuggestionProps<AutoCompleteSuggestionItem>) => {
+              if (!props.items.length) return;
+
+              storage.component = new ReactRenderer(AutoCompleteMentionList, {
+                props: { ...props, fetchItems },
+                editor: props.editor,
+              });
+
+              const clientRect = props.clientRect?.();
+              if (!clientRect) return;
+
+              storage.popup = tippy(document.body, {
+                getReferenceClientRect: () => clientRect,
+                appendTo: () => document.body,
+                content: storage.component.element,
+                showOnCreate: true,
+                interactive: true,
+                trigger: "manual",
+                placement: "top-start",
+                offset: [0, 6],
+                maxWidth: "none",
+              });
+            },
+            onUpdate: (props: SuggestionProps<AutoCompleteSuggestionItem>) => {
+              if (!props.items?.length) {
+                destroyMention();
+                return;
+              }
+              if (storage.popup && !storage.popup.state.isDestroyed) {
+                storage.popup?.show();
+              }
+              storage.component?.updateProps(props);
+            },
+            onExit: () => {
+              destroyMention();
+            },
+            onKeyDown: (props: SuggestionKeyDownProps): boolean => {
+              if (props.event.key === "Escape") {
+                if (storage.popup && !storage.popup.state.isDestroyed) {
+                  storage.popup?.hide();
+                }
+                return true;
+              }
+              return storage.component?.ref?.onKeyDown(props) ?? false;
+            },
+          };
+        },
+        findSuggestionMatch,
+      }),
+    ];
+  },
+});

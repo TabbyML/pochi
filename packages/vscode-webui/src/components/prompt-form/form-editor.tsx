@@ -32,6 +32,7 @@ import {
   findSuggestionMatch,
 } from "@tiptap/suggestion";
 import { ScrollArea } from "../ui/scroll-area";
+import { AutoCompleteExtension } from "./auto-completion/extension";
 import type { MentionListActions } from "./shared";
 import { SubmitHistoryExtension } from "./submit-history-extension";
 import {
@@ -335,6 +336,7 @@ export function FormEditor({
           depth: 20,
         }),
         ...(enableSubmitHistory ? [SubmitHistoryExtension] : []),
+        AutoCompleteExtension,
       ],
       editorProps: {
         attributes: {

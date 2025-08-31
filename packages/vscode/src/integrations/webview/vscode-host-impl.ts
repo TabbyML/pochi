@@ -9,6 +9,7 @@ import {
   getWorkspaceRulesFileUri,
 } from "@/lib/env";
 import { getWorkspaceFolder, isFileExists } from "@/lib/fs";
+import { map, pipe, uniqueBy } from "remeda";
 
 import path from "node:path";
 import { getLogger } from "@/lib/logger";
@@ -51,6 +52,7 @@ import type {
   PreviewToolFunctionType,
   ToolFunctionType,
 } from "@getpochi/tools";
+import { ClientTools } from "@getpochi/tools";
 import {
   ThreadAbortSignal,
   type ThreadAbortSignalSerialization,
@@ -258,15 +260,38 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   };
 
   listAutoCompleteCandidates = async (
-    _query?: string,
-    _limit?: number,
+    query?: string,
+    limit?: number,
   ): Promise<
     Array<{
       type: "symbol" | "tool" | "mcp";
       label: string;
     }>
   > => {
-    return Promise.reject(new Error("Not implemented"));
+    const clientTools = Object.entries({ ...ClientTools }).map(([id]) => ({
+      type: "tool" as const,
+      label: id,
+    }));
+    const mcps = Object.entries(this.mcpHub.status.value.connections)
+      .filter(([_, v]) => v.status === "ready")
+      .map(([key]) => ({
+        type: "mcp" as const,
+        label: key,
+      }));
+
+    const symbolLimit = limit
+      ? Math.max(limit - clientTools.length - mcps.length, 0)
+      : 10;
+    const symbolsData = await listSymbols({ query, limit: symbolLimit });
+    const symbols = pipe(
+      symbolsData,
+      map((x: { label: string }) => ({
+        type: "symbol" as const,
+        label: x.label,
+      })),
+      uniqueBy((x) => x.label),
+    );
+    return [...clientTools, ...mcps, ...symbols];
   };
 
   openSymbol = async (symbol: string) => {
