@@ -1,12 +1,20 @@
-import { readFileSync } from "node:fs";
-import * as fs from "node:fs/promises";
+import * as fs from "node:fs";
+import * as fsPromise from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
+import { type Signal, signal } from "@preact/signals-core";
+import { funnel, isDeepEqual } from "remeda";
 import z from "zod";
+import { loadConfigSync } from "zod-config";
+import { jsonAdapter } from "zod-config/json-adapter";
 import { getLogger } from "../base";
 import { CustomModelSetting } from "./model";
 
+const ConfigFilePath = path.join(os.homedir(), ".pochi", "config.json");
+const SchemaUrl = "https://app.getpochi.com/config.json";
+
 const PochiConfig = z.object({
+  $schema: z.literal(SchemaUrl).default(SchemaUrl).optional(),
   credentials: z
     .object({
       pochiToken: z.string().optional(),
@@ -17,54 +25,78 @@ const PochiConfig = z.object({
 
 type PochiConfig = z.infer<typeof PochiConfig>;
 
-const ConfigFilePath = path.join(os.homedir(), ".pochi", "config.json");
-
 const logger = getLogger("PochiConfigManager");
 
 class PochiConfigManager {
-  private config: PochiConfig;
+  readonly config: Signal<PochiConfig> = signal({ $schema: SchemaUrl });
+  private events = new EventTarget();
 
   constructor() {
-    this.config = this.load() || {};
+    this.ensureFileExists();
+    this.config.value = this.load();
+    this.config.subscribe(this.onSignalChange);
+    this.watch();
   }
 
   private load() {
-    try {
-      const file = readFileSync(ConfigFilePath, "utf-8");
-      return PochiConfig.parse(JSON.parse(file));
-    } catch (err) {
-      logger.debug("Failed to load config file", err);
+    return loadConfigSync({
+      schema: PochiConfig,
+      adapters: [jsonAdapter({ path: ConfigFilePath })],
+      logger,
+    });
+  }
+
+  private onChange = () => {
+    const oldValue = this.config.value;
+    const newValue = this.load();
+    if (isDeepEqual(oldValue, newValue)) return;
+    this.config.value = newValue;
+  };
+
+  private onSignalChange = async () => {
+    const oldValue = this.load();
+    const newValue = this.config.value;
+    if (isDeepEqual(oldValue, newValue)) return;
+    await this.save();
+  };
+
+  private async watch() {
+    this.events.addEventListener("change", this.onChange);
+    const debouncer = funnel(
+      () => {
+        this.events.dispatchEvent(new Event("change"));
+      },
+      {
+        minGapMs: process.platform === "win32" ? 100 : 1000,
+        triggerAt: "both",
+      },
+    );
+    fs.watch(ConfigFilePath, { persistent: false }, () => debouncer.call());
+  }
+
+  private async ensureFileExists() {
+    const fileExist = await fsPromise
+      .access(ConfigFilePath)
+      .then(() => true)
+      .catch(() => false);
+    if (!fileExist) {
+      const dirPath = path.dirname(ConfigFilePath);
+      await fsPromise.mkdir(dirPath, { recursive: true });
+      await this.save();
     }
   }
 
   private async save() {
     try {
-      await fs.writeFile(ConfigFilePath, JSON.stringify(this.config, null, 2));
+      await fsPromise.writeFile(
+        ConfigFilePath,
+        JSON.stringify(this.config, null, 2),
+      );
     } catch (err) {
       logger.debug("Failed to save config file", err);
     }
   }
-
-  get customModelSettings() {
-    return this.config.customModelSettings ?? [];
-  }
-
-  set customModelSettings(settings: CustomModelSetting[] | undefined) {
-    this.config.customModelSettings = settings;
-    this.save();
-  }
-
-  get pochiToken() {
-    return this.config.credentials?.pochiToken;
-  }
-
-  set pochiToken(token: string | undefined) {
-    this.config.credentials = {
-      ...this.config.credentials,
-      pochiToken: token,
-    };
-    this.save();
-  }
 }
 
-export const pochiConfig = new PochiConfigManager();
+const { config } = new PochiConfigManager();
+export { config as pochiConfig };

@@ -155,7 +155,7 @@ async function parseTaskInput(options: ProgramOpts, program: Program) {
 }
 
 async function createApiClient(): Promise<PochiApiClient> {
-  const token = process.env.POCHI_SESSION_TOKEN || pochiConfig.pochiToken;
+  const token = pochiConfig.value.credentials?.pochiToken;
 
   const authClient: PochiApiClient = hc<PochiApi>(prodServerUrl, {
     fetch(input: string | URL | Request, init?: RequestInit) {
@@ -187,7 +187,7 @@ function createLLMConfig({
   const modelProviderId = options.model.slice(0, sep);
   const modelId = options.model.slice(sep + 1);
 
-  const modelProvider = pochiConfig.customModelSettings?.find(
+  const modelProvider = pochiConfig.value.customModelSettings?.find(
     (x) => x.id === modelProviderId,
   );
   const modelSetting = modelProvider?.models.find((x) => x.id === modelId);
