@@ -205,7 +205,7 @@ Use the VSCode command `Pochi: Open MCP Server Settings` to open the settings.
 
 ```json
 {
-  "pochi.mcpServers": {
+  "mcp": {
     "context7": {
       "command": "npx",
       "args": ["@upstash/context7-mcp"]
