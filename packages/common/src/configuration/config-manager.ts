@@ -4,30 +4,13 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { type ReadonlySignal, type Signal, signal } from "@preact/signals-core";
 import { funnel, isDeepEqual, mergeDeep } from "remeda";
+import * as fleece from "silver-fleece";
 import { loadConfigSync } from "zod-config";
-import { jsonAdapter } from "zod-config/json-adapter";
-import z from "zod/v4";
+import { json5Adapter } from "zod-config/json5-adapter";
 import { getLogger } from "../base";
-import { McpServerConfig } from "./mcp";
-import { CustomModelSetting } from "./model";
+import { PochiConfig } from "./types";
 
-const PochiConfigFilePath = path.join(os.homedir(), ".pochi", "config.json");
-
-export const PochiConfig = z.object({
-  $schema: z
-    .string()
-    .default("https://getpochi.com/config.schema.json")
-    .optional(),
-  credentials: z
-    .object({
-      pochiToken: z.string().optional(),
-    })
-    .optional(),
-  providers: z.array(CustomModelSetting).optional(),
-  mcp: z.record(z.string(), McpServerConfig).optional(),
-});
-
-type PochiConfig = z.infer<typeof PochiConfig>;
+const PochiConfigFilePath = path.join(os.homedir(), ".pochi", "config.jsonc");
 
 const logger = getLogger("PochiConfigManager");
 
@@ -52,12 +35,16 @@ class PochiConfigManager {
   }
 
   private load() {
-    return loadConfigSync({
-      schema: PochiConfig,
-      adapters: [jsonAdapter({ path: PochiConfigFilePath })],
-      logger,
-      silent: true,
-    });
+    try {
+      return loadConfigSync({
+        schema: PochiConfig,
+        adapters: [json5Adapter({ path: PochiConfigFilePath })],
+        logger,
+        silent: true,
+      });
+    } catch (err) {
+      return {} as PochiConfig;
+    }
   }
 
   private onChange = () => {
@@ -105,9 +92,12 @@ class PochiConfigManager {
 
   private async save() {
     try {
+      const fileContent = await fsPromise
+        .readFile(PochiConfigFilePath, "utf8")
+        .catch(() => "{}");
       await fsPromise.writeFile(
         PochiConfigFilePath,
-        JSON.stringify(this.cfg, null, 2),
+        fleece.patch(fileContent, this.cfg.value),
       );
     } catch (err) {
       logger.debug("Failed to save config file", err);

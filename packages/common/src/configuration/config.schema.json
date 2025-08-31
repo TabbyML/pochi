@@ -195,57 +195,34 @@
         "type": "string"
       },
       "additionalProperties": {
-        "allOf": [
+        "anyOf": [
           {
-            "anyOf": [
-              {
-                "type": "object",
-                "properties": {
-                  "command": {
-                    "type": "string"
-                  },
-                  "args": {
-                    "type": "array",
-                    "items": {
-                      "type": "string"
-                    }
-                  },
-                  "cwd": {
-                    "type": "string"
-                  },
-                  "env": {
-                    "type": "object",
-                    "propertyNames": {
-                      "type": "string"
-                    },
-                    "additionalProperties": {
-                      "type": "string"
-                    }
-                  }
-                },
-                "required": ["command", "args"],
-                "additionalProperties": false
+            "type": "object",
+            "properties": {
+              "disabled": {
+                "type": "boolean"
               },
-              {
+              "disabledTools": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "url": {
+                "type": "string"
+              },
+              "headers": {
                 "type": "object",
-                "properties": {
-                  "url": {
-                    "type": "string"
-                  },
-                  "headers": {
-                    "type": "object",
-                    "propertyNames": {
-                      "type": "string"
-                    },
-                    "additionalProperties": {
-                      "type": "string"
-                    }
-                  }
+                "propertyNames": {
+                  "type": "string"
                 },
-                "required": ["url"],
-                "additionalProperties": false
+                "additionalProperties": {
+                  "type": "string"
+                }
               }
-            ]
+            },
+            "required": ["url"],
+            "additionalProperties": false
           },
           {
             "type": "object",
@@ -258,8 +235,30 @@
                 "items": {
                   "type": "string"
                 }
+              },
+              "command": {
+                "type": "string"
+              },
+              "args": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "cwd": {
+                "type": "string"
+              },
+              "env": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "type": "string"
+                }
               }
             },
+            "required": ["command", "args"],
             "additionalProperties": false
           }
         ]

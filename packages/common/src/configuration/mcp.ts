@@ -1,17 +1,20 @@
 import z from "zod/v4";
 
-export const McpServerTransportStdio = z.object({
+const McpServerTransportStdioFields = {
   command: z.string(),
   args: z.array(z.string()),
   cwd: z.string().optional(),
   env: z.record(z.string(), z.string()).optional(),
-});
+};
+
+export const McpServerTransportStdio = z.object();
 export type McpServerTransportStdio = z.infer<typeof McpServerTransportStdio>;
 
-export const McpServerTransportHttp = z.object({
+const McpServerTransportHttpFields = {
   url: z.string(),
   headers: z.record(z.string(), z.string()).optional(),
-});
+};
+export const McpServerTransportHttp = z.object(McpServerTransportHttpFields);
 export type McpServerTransportHttp = z.infer<typeof McpServerTransportHttp>;
 
 export const McpServerTransport = z.union([
@@ -20,13 +23,14 @@ export const McpServerTransport = z.union([
 ]);
 export type McpServerTransport = z.infer<typeof McpServerTransport>;
 
-const McpServerCustomization = z.object({
+const BaseMcpServerCustomization = z.object({
   disabled: z.boolean().optional(),
   disabledTools: z.array(z.string()).optional(),
 });
 
-export const McpServerConfig = z.intersection(
-  McpServerTransport,
-  McpServerCustomization,
-);
+export const McpServerConfig = z.union([
+  BaseMcpServerCustomization.extend(McpServerTransportHttpFields),
+  BaseMcpServerCustomization.extend(McpServerTransportStdioFields),
+]);
+
 export type McpServerConfig = z.infer<typeof McpServerConfig>;
