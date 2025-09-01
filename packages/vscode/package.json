@@ -218,11 +218,6 @@
                 "description": "Pochi webview UI log level"
               }
             }
-          },
-          "pochi.mcpServers": {
-            "order": 1,
-            "default": {},
-            "description": "MCP servers configuration for Pochi"
           }
         }
       }
@@ -301,5 +296,8 @@
     "semver": "^7.7.1",
     "sinon": "^20.0.0",
     "tsconfig-paths": "^4.2.0"
+  },
+  "vsce": {
+    "dependencies": false
   }
 }

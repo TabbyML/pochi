@@ -181,10 +181,12 @@ const VSCodeHostStub = {
     return Promise.resolve(undefined);
   },
   readCustomModelSetting: async (): Promise<
-    ThreadSignalSerialization<CustomModelSetting[] | undefined>
+    ThreadSignalSerialization<Record<string, CustomModelSetting> | undefined>
   > => {
     return Promise.resolve(
-      {} as ThreadSignalSerialization<CustomModelSetting[] | undefined>,
+      {} as ThreadSignalSerialization<
+        Record<string, CustomModelSetting> | undefined
+      >,
     );
   },
   readVSCodeLm: async (): Promise<{

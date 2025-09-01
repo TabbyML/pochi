@@ -12,7 +12,7 @@ export const PochiConfig = z.object({
       pochiToken: z.string().optional(),
     })
     .optional(),
-  providers: z.array(CustomModelSetting).optional(),
+  providers: z.record(z.string(), CustomModelSetting).optional(),
   mcp: z.record(z.string(), McpServerConfig).optional(),
 });
 
