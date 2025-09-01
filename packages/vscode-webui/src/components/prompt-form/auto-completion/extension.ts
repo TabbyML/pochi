@@ -24,8 +24,8 @@ import {
 export const autoCompletePluginKey = new PluginKey("autoCompletion");
 
 const debouncedListAutoCompleteCandidates = debounceWithCachedValue(
-  async (query: string) => {
-    const data = await vscodeHost.listAutoCompleteCandidates(query, 40);
+  async () => {
+    const data = await vscodeHost.listAutoCompleteCandidates();
     return data;
   },
   300,
@@ -47,7 +47,7 @@ const fuzzySearchAutoCompleteItems = async (
 ): Promise<AutoCompleteSuggestionItem[]> => {
   if (!query) return [];
 
-  const candidates = await debouncedListAutoCompleteCandidates(query);
+  const candidates = await debouncedListAutoCompleteCandidates();
 
   if (!candidates?.length) return [];
 

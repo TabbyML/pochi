@@ -9,7 +9,6 @@ import {
   getWorkspaceRulesFileUri,
 } from "@/lib/env";
 import { getWorkspaceFolder, isFileExists } from "@/lib/fs";
-import { filter, map, pipe, uniqueBy } from "remeda";
 
 import path from "node:path";
 import { getLogger } from "@/lib/logger";
@@ -79,6 +78,7 @@ import { killBackgroundJob } from "@/tools/kill-background-job";
 import { readBackgroundJobOutput } from "@/tools/read-background-job-output";
 import { startBackgroundJob } from "@/tools/start-background-job";
 import type { CustomModelSetting } from "@getpochi/common/configuration";
+import { listDocumentCompletion } from "../completion";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { ThirdMcpImporter } from "../mcp/third-party-mcp";
 import { isExecutable } from "../mcp/types";
@@ -259,10 +259,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     }));
   };
 
-  listAutoCompleteCandidates = async (
-    query?: string,
-    limit?: number,
-  ): Promise<
+  listAutoCompleteCandidates = async (): Promise<
     Array<{
       type: "symbol" | "tool" | "mcp";
       label: string;
@@ -279,20 +276,11 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         label: key,
       }));
 
-    const symbolLimit = limit
-      ? Math.max(limit - clientTools.length - mcps.length, 0)
-      : 0;
-    const symbolsData = await listSymbols({ query, limit: symbolLimit });
-    const symbols = pipe(
-      symbolsData,
-      filter((x) => /^[a-zA-Z0-9-_]+$/.test(x.label)),
-      map((x) => ({
-        type: "symbol" as const,
-        label: x.label,
-      })),
-      uniqueBy((x) => x.label),
-    );
-    return [...clientTools, ...mcps, ...symbols];
+    const candidates = (await listDocumentCompletion()).map((label) => ({
+      label,
+      type: "symbol" as const,
+    }));
+    return [...clientTools, ...mcps, ...candidates];
   };
 
   openSymbol = async (symbol: string) => {
