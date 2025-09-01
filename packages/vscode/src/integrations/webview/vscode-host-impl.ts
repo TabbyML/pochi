@@ -78,7 +78,6 @@ import { killBackgroundJob } from "@/tools/kill-background-job";
 import { readBackgroundJobOutput } from "@/tools/read-background-job-output";
 import { startBackgroundJob } from "@/tools/start-background-job";
 import type { CustomModelSetting } from "@getpochi/common/configuration";
-import { listDocumentCompletion } from "../completion";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { ThirdMcpImporter } from "../mcp/third-party-mcp";
 import { isExecutable } from "../mcp/types";
@@ -265,8 +264,23 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       .filter(([_, v]) => v.status === "ready")
       .map(([id]) => id);
 
-    const candidates = listDocumentCompletion();
-    return [...clientTools, ...mcps, ...candidates];
+    // Inline listDocumentCompletion function
+    const candidates: string[] = [];
+    for (const x of vscode.window.visibleTextEditors) {
+      // Inline getUniqueTokens function
+      // 1. Define the regular expression to find all "words".
+      //    - [\w_]+ : Matches one or more word characters (a-z, A-Z, 0-9) or underscores.
+      //    - g       : The global flag, to find all matches in the string, not just the first.
+      const wordRegex = /[\w_]+/g;
+
+      // 2. Extract all matching tokens.
+      //    - String.prototype.match() returns an array of all matches or `null` if no matches are found.
+      //    - We use `|| []` to gracefully handle the `null` case by providing an empty array.
+      const tokens = x.document.getText().match(wordRegex) || [];
+      candidates.push(...tokens);
+    }
+
+    return [...new Set([...clientTools, ...mcps, ...candidates])];
   };
 
   openSymbol = async (symbol: string) => {
