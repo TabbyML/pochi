@@ -67,7 +67,6 @@ const CliTools = {
   globFiles,
   listFiles,
   multiApplyDiff,
-  newTask,
   readFile,
   searchFiles,
   todoWrite,
@@ -89,7 +88,16 @@ export const selectClientTools = (options: {
   isCli: boolean;
 }) => {
   if (options.isCli) {
-    return CliTools;
+    if (options.isSubTask) {
+      const { newTask, startBackgroundJob, readBackgroundJobOutput, killBackgroundJob, ...rest } = ClientTools;
+      return rest;
+    }
+
+    // CLI support new task
+    return {
+      ...CliTools,
+      newTask,
+    };
   }
 
   if (options?.isSubTask) {
