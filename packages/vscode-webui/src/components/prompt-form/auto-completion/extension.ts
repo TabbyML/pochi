@@ -23,17 +23,6 @@ import {
 
 export const autoCompletePluginKey = new PluginKey("autoCompletion");
 
-const debouncedListAutoCompleteCandidates = debounceWithCachedValue(
-  async () => {
-    const data = await vscodeHost.listAutoCompleteCandidates();
-    return data;
-  },
-  300,
-  {
-    leading: true,
-  },
-);
-
 interface AutoCompleteSuggestionItem {
   value: {
     label: string;
@@ -42,17 +31,35 @@ interface AutoCompleteSuggestionItem {
   range: number[] | null;
 }
 
-const fuzzySearchAutoCompleteItems = async (
-  query: string,
-): Promise<AutoCompleteSuggestionItem[]> => {
-  if (!query) return [];
+const createFuzzySearcher = () => {
+  let lastQuery = "";
+  let lastCandidates: AutoCompleteSuggestionItem[] = [];
+  const debouncedListAutoCompleteCandidates = debounceWithCachedValue(
+    async () => {
+      lastQuery = "";
+      const data = await vscodeHost.listAutoCompleteCandidates();
+      return data;
+    },
+    10_000,
+    {
+      leading: true,
+    },
+  );
 
-  const candidates = await debouncedListAutoCompleteCandidates();
+  return async (query: string): Promise<AutoCompleteSuggestionItem[]> => {
+    if (!query) return [];
 
-  if (!candidates?.length) return [];
-
-  return fuzzySearch(candidates, query);
+    if (query === lastQuery) return lastCandidates;
+    const candidates = await debouncedListAutoCompleteCandidates();
+    if (!candidates?.length) return [];
+    lastQuery = query;
+    // LIMIT to 2500 candidates
+    lastCandidates = fuzzySearch(candidates.slice(0, 2500), query);
+    return lastCandidates;
+  };
 };
+
+const fuzzySearchAutoCompleteItems = createFuzzySearcher();
 
 function fuzzySearch(
   items: Awaited<ReturnType<typeof vscodeHost.listAutoCompleteCandidates>>,
