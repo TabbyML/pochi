@@ -45,10 +45,12 @@
                     },
                     "maxTokens": {
                       "description": "Maximum number of generated tokens for the model",
+                      "default": 4096,
                       "type": "number"
                     },
                     "contextWindow": {
                       "description": "Context window size for the model",
+                      "default": 100000,
                       "type": "number"
                     },
                     "useToolCallMiddleware": {
@@ -102,10 +104,12 @@
                     },
                     "maxTokens": {
                       "description": "Maximum number of generated tokens for the model",
+                      "default": 4096,
                       "type": "number"
                     },
                     "contextWindow": {
                       "description": "Context window size for the model",
+                      "default": 100000,
                       "type": "number"
                     },
                     "useToolCallMiddleware": {
@@ -159,10 +163,12 @@
                     },
                     "maxTokens": {
                       "description": "Maximum number of generated tokens for the model",
+                      "default": 4096,
                       "type": "number"
                     },
                     "contextWindow": {
                       "description": "Context window size for the model",
+                      "default": 100000,
                       "type": "number"
                     },
                     "useToolCallMiddleware": {
