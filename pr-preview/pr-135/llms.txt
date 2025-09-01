@@ -1,0 +1,727 @@
+# CLI
+URL: /cli
+Pochi CLI allows you to run an AI agent directly from the command line.
+***
+
+title: CLI
+description: Pochi CLI allows you to run an AI agent directly from the command line.
+icon: "SquareTerminal"
+----------------------
+
+# CLI
+
+Pochi offers a command-line interface (CLI) that allows you to run an AI agent directly from the command line.
+
+## Oneliner Install
+
+```bash
+curl -fsSL https://getpochi.com/install.sh | bash
+```
+
+## Authentication
+
+The Pochi CLI uses the same authentication credentials as the VS Code extension for Pochi's cloud services. When you sign in through the VS Code extension, the CLI automatically reuses these credentials.
+
+Credentials are stored in `~/.pochi/config.jsonc`. To authenticate:
+
+1. Install and open the [Pochi VS Code extension](https://marketplace.visualstudio.com/items?itemName=TabbyML.pochi)
+2. Follow the sign-in prompts in the extension
+3. The CLI will automatically use the same credentials
+
+For non-Pochi models (OpenAI, Google, etc.), you can provide API keys directly through the command line options rather than using account authentication.
+
+## Usage
+
+You can pass a prompt to run a task:
+
+```bash
+pochi -p "What is the time now?"
+```
+
+Or pipe input as a prompt:
+
+```bash
+echo "What is the time now?" | pochi
+```
+
+For detailed usage instructions, run `pochi -h`, below is the output fom version 0.5.3
+
+```
+Usage: pochi [options]
+
+Pochi v0.5.5
+
+Prompt:
+  -p, --prompt <prompt>   Create a new task with the given prompt. You can also
+                          pipe input to use as a prompt, for example: `cat
+                          .pochi/workflows/create-pr.md | pochi`. To use a
+                          workflow, use /workflow-name, for example: `pochi -p
+                          /create-pr`. Workflows can be embedded in larger
+                          prompts, for example: `pochi -p "please /create-pr
+                          with feat semantic convention"`
+
+Options:
+  --max-steps <number>    Maximum number of stepsto run the task. If the task
+                          cannot be completed in this number of rounds, the
+                          runner will stop. (default: 24)
+  --max-retries <number>  Maximum number of retries to run the task in a single
+                          step. (default: 3)
+
+Model:
+  --model <model>         The model to use for the task. (default:
+                          "qwen/qwen3-coder")
+
+Others:
+  -V, --version           Print the version string.
+  -h, --help              Print this help message.
+```
+
+## Debugging
+
+To enable debug logging for the CLI, you can set the `POCHI_LOG` environment variable:
+
+```bash
+POCHI_LOG=debug pochi -p "What is the time now?"
+```
+
+This will output detailed logs about the CLI's operation, which can be helpful for troubleshooting issues.
+
+For more granular control, you can specify log levels for specific components:
+
+```bash
+POCHI_LOG=Pochi=debug,TaskRunner=trace pochi -p "What is the time now?"
+```
+
+
+# Developer Updates
+URL: /developer-updates
+Weekly update notes from Pochi developers
+***
+
+title: "Developer Updates"
+icon: "FileTerminal"
+description: "Weekly update notes from Pochi developers"
+--------------------------------------------------------
+
+# Developer Updates
+
+Welcome to the Pochi Developer Updates — a **weekly digest** of what's new in the codebase.
+
+Here you will find highlights on features, enhancements, and bug fixes, plus insights into how we're improving the developer experience. Come back often! 👋
+
+***
+
+## Aug 29, 2025
+
+### TL;DR
+
+This week we polished the VS Code extension with some **UX upgrades**, open-sourced the **Pochi CLI**, and did a few rounds of **codebase cleanup** to make contributing easier and friendlier for newcomers. We look forward to your first visit to the repo!
+
+### Enhancements ✨
+
+* **Drag & drop images:** Share visuals with Pochi in the VS Code chat just by dragging them in. [#64](https://github.com/TabbyML/pochi/pull/64)
+* **Improved docs:** Updated structure and added guidance on model settings for easier use. [#60](https://github.com/TabbyML/pochi/pull/60), [#63](https://github.com/TabbyML/pochi/pull/63) , [900d162](https://github.com/TabbyML/pochi/commit/900d1629c4e97833e24a4450c438a585dca583d4)
+* **Model pricing at your fingertips:** Check model costs directly in settings before choosing one. [#74](https://github.com/TabbyML/pochi/pull/74)
+
+### Bug Fixes 🐛
+
+* **File search now correctly surfaces matching files:** Queries that used to return empty results will now behave as expected. [#79](https://github.com/TabbyML/pochi/pull/79)
+
+
+# GitHub
+URL: /github
+
+***
+
+title: GitHub
+icon: "Github"
+--------------
+
+# GitHub
+
+TBD
+
+
+# Getting Started
+URL: /
+Welcome to Pochi - Full-Stack AI Teammate Guide
+***
+
+title: "Getting Started"
+description: "Welcome to Pochi - Full-Stack AI Teammate Guide"
+icon: "Album"
+-------------
+
+# Getting Started
+
+[Pochi](https://getpochi.com) is an open-source AI coding agent built as a VS Code extension, checkout the video below to see it in action.
+
+<div
+  style={{
+  position: "relative",
+  paddingBottom: "53.7%",
+  marginBottom: 20,
+  height: 0,
+  overflow: "hidden",
+  maxWidth: "100%",
+}}
+>
+  <iframe
+    src="https://drive.google.com/file/d/1CDxAcO9WGFFC45x5a5HDFdT4u6rtdJrB/preview"
+    style={{
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: "100%",
+    height: "100%",
+    border: "none",
+    borderRadius: "8px",
+  }}
+    allowFullScreen
+    title="Pochi Demo - End-to-End Experience"
+  />
+</div>
+
+## Installation
+
+Install the Pochi extension from the [VSCode Marketplace](https://marketplace.visualstudio.com/items?itemName=TabbyML.pochi) or [OpenVSX](https://open-vsx.org/extension/TabbyML/pochi).
+
+We recommend dragging Pochi to the right side of your VSCode window to get the best experience.
+
+![Drag to right sidebar](../assets/images/vscode-right-sidebar.png)
+
+With Pochi, you can use any LLM provider by configuring their API keys. Use the VS Code command `Pochi: Open Custom Model Settings` to open the settings file and [configure it](./models). Alternatively, Pochi offers cloud-based services. Creating a Pochi account gives you access to:
+
+* Pochi's managed LLM models
+* Shared task histories and team management
+* Integrations with GitHub and Slack for a collaborative workflow
+
+To use these features, sign up at [app.getpochi.com](http://app.getpochi.com) and log in to your VS Code extension.
+
+## Customize
+
+You can tailor Pochi to your needs by editing its configuration file, located at `~/.pochi/config.jsonc`. The file uses the JSONC (JSON with Comments) format, so you can add notes to explain your settings.
+
+```jsonc
+{
+  // The schema enables autocompletion and validation in your code editor.
+  "$schema": "https://getpochi.com/config.schema.json",
+
+  // For details on available options, see the "Models," "Rules," pages in the sidebar
+  // ...
+}
+```
+
+
+# MCP
+URL: /mcp
+Model Context Protocol integration and configuration
+***
+
+title: MCP
+description: Model Context Protocol integration and configuration
+icon: "Spline"
+--------------
+
+# MCP (Model Context Protocol)
+
+The **Model Context Protocol (MCP)** revolutionizes how Pochi interacts with external services, databases, and APIs. Think of MCP as a universal adapter that connects Pochi to virtually any data source or tool, dramatically expanding what your AI assistant can accomplish.
+
+## Configure
+
+Use the VSCode command `Pochi: Open MCP Server Settings` to open the settings.
+
+```json
+{
+  "mcp": {
+    "context7": {
+      "command": "npx",
+      "args": ["@upstash/context7-mcp"]
+    }
+  }
+}
+```
+
+After saving the configuration, you will see the MCP server appear in the **Tools** section of Pochi's settings page.
+
+![MCP Server Context7](../assets/images/mcp-context7.png)
+
+You can use the toggle switch to enable or disable the MCP server entirely. You can also click on the tool badge to toggle individual tools within the MCP server.
+
+## Examples
+
+### Local MCP Servers (Stdio Transport)
+
+```json
+{
+  "filesystem": {
+    "command": "npx",
+    "args": [
+      "-y",
+      "@modelcontextprotocol/server-filesystem",
+      "/path/to/allowed/files"
+    ],
+    "env": {
+      "HOME": "/Users/yourname"
+    }
+  }
+}
+```
+
+### Remote MCP Servers (HTTP Transport)
+
+#### Custom API Server
+
+```json
+{
+  "my-api": {
+    "url": "https://api.mycompany.com/mcp",
+    "headers": {
+      "Authorization": "Bearer your-api-token",
+      "X-API-Version": "v1"
+    }
+  }
+}
+```
+
+#### SSE (Server-Sent Events) Server
+
+```json
+{
+  "realtime-data": {
+    "url": "https://data.example.com/mcp/sse",
+    "headers": {
+      "Authorization": "Bearer your-token"
+    }
+  }
+}
+```
+
+
+# Models
+URL: /models
+Manage Pochi's model settings
+***
+
+title: Models
+description: Manage Pochi's model settings
+icon: "Zap"
+-----------
+
+# Models
+
+Pochi leverages the AI SDK to support various LLM providers and can run local models.
+
+## Pochi Models
+
+After signing in, you gain access to the Pochi models shown below. Pochi uses a usage-based pricing strategy with no additional charges. For detailed pricing information, visit [https://app.getpochi.com/pricing](https://app.getpochi.com/pricing).
+
+![Pochi Models](../assets/images/pochi-models.png)
+
+## GitHub Copilot Models
+
+For Microsoft VS Code distributions, you can utilize your enabled Copilot models within Pochi.
+
+![Copilot Models](../assets/images/copilot-models.png)
+
+## OpenAI Compatible Models
+
+Pochi allows you to configure any LLM provider that offers an OpenAI-compatible API by setting up the appropriate API keys. To configure custom models, use the VS Code command `Pochi: Open Custom Model Settings` to open the settings configuration file.
+
+```json
+{
+  "id": "groq",
+  "apiKey": "your_api_key",
+  "baseUrl": "https://api.groq.com/openai/v1",
+  "models": [
+    {
+      "id": "moonshotai/kimi-k2-instruct",
+      "contextWindow": 131072,
+      "maxTokens": 8000
+    }
+  ]
+}
+```
+
+After saving the configuration, the model will be available in the toolbar's model selector.
+
+
+# Permissions
+URL: /permissions
+Manage Pochi's auto-approval settings
+***
+
+title: Permissions
+description: Manage Pochi's auto-approval settings
+icon: "Shield"
+--------------
+
+# Permissions
+
+By default, all permissions in Pochi are enabled. You can customize these permissions at any time using the Auto-Approve settings.
+
+<p align="center">
+  ![Auto Approve](../assets/images/auto-approve.png)
+</p>
+
+* **Read**: Read the file content Pochi decides to look up for analyzing or completing tasks.
+* **Write**: Creates new files, edits existing code, generates boilerplate, and writes documentation.
+* **Execute**: Manages dependencies, runs builds, tests, and perform system operations.
+* **Use MCP**: Interacts with databases, APIs, and other external services to expand its capabilities with MCP server.
+* **Retry**: Automatically retries failed commands, code changes, and installations.
+
+
+# Rules
+URL: /rules
+Define coding standards and development guidelines
+***
+
+title: Rules
+description: Define coding standards and development guidelines
+icon: "Ruler"
+-------------
+
+# Rules
+
+You can provide custom instructions to Pochi by creating an `README.pochi.md` file. This is similar to CLAUDE.md or Cursor’s rules.
+
+<Callout title="AGENTS.md support">
+  Pochi also supports [AGENTS.md](https://agents.md) as an alternative to `README.pochi.md`. Both files serve the same purpose and are treated identically by Pochi.
+</Callout>
+
+### Example
+
+Below example is the `README.pochi.md` file for Pochi itself.
+
+```markdown
+Pochi is an project developed using following technologies:
+1. always use kebab-case for filenames.
+2. always use camelCase for variables, functions.
+3. use PascalCase for classes, interfaces, types.
+
+# Testing for non packages/vscode
+We use vitest framework.
+our test use vitest framework.
+test command: `bun run test`
+coverage test command: `bun run test -- --coverage`
+
+## Testing for packages/vscode
+We use mocha framework, when creating test, do not use mocks for filesystem, just use vscode.workspace.fs to create files and folders, and only use mocha primitives for testing. use sinon for mocks.
+
+(assuming cwd is packages/vscode)
+test command: `bun run test`
+coverage test command: `bun run test:coverage`
+
+When encountering issues like `TypeError: Descriptor for property readFile is non-configurable and non-writable`, please use `proxyquire` to mock the module.
+
+# Misc
+1. use `bun check` to format / linting the code, use `bun fix` to automatically apply the fix.
+2. use `bun tsc` to check the types.
+3. For packages/code it uses `ink` for react terminal ui.
+4. Prefer `@/lib` over `../lib` for imports.
+5. For global variable in typescript, prefer using PascalCase, e.g `GlobalVariableName`, instead of `GLOBAL_VARIABLE_NAME`.
+6. For biome related warning / errors, prefer using `bun fix` in the root directory to fix the issues.
+```
+
+## Locations
+
+Pochi looks for rules in two locations:
+
+### Workspace
+
+Pochi first checks for a `README.pochi.md` (or `AGENTS.md`) file in your current workspace root directory. This is where you define project-specific rules that apply only to your current project.
+
+### Global
+
+Pochi also reads global rules defined in `~/.pochi/README.pochi.md`. These rules apply to all projects and are suitable for any personal rules that Pochi should follow.
+
+You can view current active rules in toolbar's token usage popover
+
+<p align="center">
+  ![Token Usage](../assets/images/usage-token-popover.png)
+</p>
+
+
+# Share
+URL: /share
+Share your development context with team members
+***
+
+title: Share
+description: Share your development context with team members
+icon: "Share2"
+--------------
+
+# Share
+
+The **Share** feature in Pochi's toolbar allows you to share your current development context with others.
+
+<Callout type="info" title="Public Access">
+  Shared conversations are publicly accessible to anyone with the link. Do not share sensitive information or private code.
+</Callout>
+
+<p align="center">
+  ![Task Sharing](../assets/images/task-sharing.png)
+</p>
+
+### How it works
+
+When you share a conversation, Pochi:
+
+1. Persist your task to our servers, and create a unique public URL for the task..
+2. Makes task accessible via a link - `app.getpochi.com/share/<shareId>`
+
+
+# Slack
+URL: /slack
+Pochi's integration with Slack
+***
+
+title: Slack
+description: Pochi's integration with Slack
+icon: "Slack"
+-------------
+
+# Slack
+
+Pochi's Slack integration allows you to use Pochi directly within your Slack workspace, bringing AI-powered development assistance to your team conversations.
+Start tasks in Slack and seamlessly switch to the Cloud IDE when you need the full development experience.
+
+<Callout type="info" title="Cloud IDE">
+  When you send messages to Pochi in Slack, tasks are executed in remote environment running in the cloud. You can switch to the Cloud IDE to continue working on the task.
+</Callout>
+
+## Getting Started
+
+### Adding Pochi to Your Workspace
+
+1. **Install the Integration**: Add Pochi to your Slack workspace through the `Add to Slack` button on the [homepage](https://app.getpochi.com/home)
+   ![Slack Installation](../assets/images/slack-install-home.png)
+2. **Authorize Access**: Grant the necessary permissions for Pochi to interact with your Slack channels
+   ![Slack Authorization](../assets/images/slack-authorize.png)
+3. **Start Collaborating**: Begin using Pochi in any channel or direct message where it's been added. If using channels, please make sure to invite Pochi to the channel before creating a task.
+
+### Basic Usage
+
+Once Pochi is added to your workspace:
+
+1. \[Optional] **Invite Pochi to Channels**: If you want to interact with Pochi in channels, simply send `@Pochi` in the channel, and you will be prompted to invite Pochi to the channel.
+2. \[Optional] **Default Github Repository**: Set the repository in the Channel Topic, so Pochi knows which repository to work on by default.
+   * Format: `[repo:OWNER/REPO]`, for example, `[repo:TabbyML/pochi]`
+3. **Start Task**: Send a task prompt to Pochi in Direct Messages or channels using the following format:
+   * If a default repository is set: `/newtask PROMPT`, for example, `/newtask What are recent commits`
+   * If no default repository is set or you want to run Pochi with another repository : `/newtask [OWNER/REPO] PROMPT`, for example, `/newtask [TabbyML/tabby] What are recent commits`
+4. **Real-time Updates**: Watch as Pochi executes tasks and provides updates directly in Slack.
+5. **Follow-up**: After the task is completed, Pochi might ask some follow-up questions, or you can provide responses clicking the option buttons or the Reply button.
+
+![Slack Task](../assets/images/slack-task.png)
+
+### Continue in Cloud IDE
+
+When you need the full IDE experience:
+
+1. **Access Task Page**: Click on the `See Details` button to navigate to the task in Pochi's web interface.
+2. **Click Remote Icon**: Look for the remote/external link icon in the task interface.
+   ![Slack Remote Button](../assets/images/slack-remote-button.png)
+3. **Continue Development**: Pick up exactly where you left off.
+   ![Slack VSCode Web](../assets/images/slack-vscode-web.png)
+
+## Frequently Asked Questions
+
+### Why do I get a `not_in_channel` error when creating a task in a channel?
+
+Verify that Pochi has been properly added to the channel. If Pochi is not invited to the channel, mention @Pochi in the channel to invite it.
+
+### Why can't I access the Cloud IDE?
+
+Only the Task Owner has permission to access the Cloud IDE. Make sure you are the Task Owner and logged in to Pochi with the same account in your browser.
+
+
+# Tab Completion
+URL: /tab-completion
+Inline code completion
+***
+
+title: Tab Completion
+description: Inline code completion
+icon: "Code"
+------------
+
+# Tab Completion
+
+**Tab Completion** is Pochi's in-editor inline code completion feature that provides AI-powered suggestions as you type, helping you write code faster and more efficiently.
+
+Pochi uses a state-of-the-art model that adapts to your coding patterns in real time,
+drawing on recent edits, diagnostics, and surrounding context to generate helpful,
+relevant completions right in your editor.
+
+<p align="center">
+  ![Tab completion showing inline suggestions](../assets/images/completion.png)
+</p>
+
+### Multi-Language Support
+
+Works across popular programming languages including:
+
+* JavaScript/TypeScript
+* Python
+* Java
+* C/C++
+* Go
+* Rust
+* And many more
+
+## Using Tab Completion
+
+### Basic Usage
+
+1. Start typing your code
+2. Pochi will show inline suggestions in gray text
+3. Press `Tab` to accept the suggestion
+4. Press `Escape` to dismiss the suggestion
+
+### Keyboard Shortcuts
+
+| Key            | Action                                      |
+| -------------- | ------------------------------------------- |
+| `Tab`          | Accept the current suggestion               |
+| `Escape`       | Dismiss the suggestion                      |
+| `Ctrl/Cmd + →` | Accept word by word                         |
+| `Alt + ]`      | Next suggestion (if multiple available)     |
+| `Alt + [`      | Previous suggestion (if multiple available) |
+
+***
+
+**Need help?** Visit our [Community Support](/community-support) page or join our [Discord](https://discord.com/invite/tWF66yr8NQ) for assistance with Tab Completion features.
+
+
+# Troubleshooting
+URL: /troubleshooting
+Common issues and how to resolve them
+***
+
+title: "Troubleshooting"
+icon: "CircleQuestionMark"
+description: "Common issues and how to resolve them"
+----------------------------------------------------
+
+# Troubleshooting
+
+To debug any issues with Pochi, you can check the logs from webview console or vscode output console.
+
+### Webview Console
+
+1. Open `Developer: Use Webview Developer Tools` command in VSCode
+2. Go to the Console tab
+3. Look for error messages related to Pochi
+
+You can configure the log level in VSCode Settings with following snippet
+
+```json
+{
+  "pochi.advanced": {
+      "webviewLogLevel": "DEBUG" // Set to "DEBUG" to see more detailed logs
+  },
+}
+```
+
+### VSCode Output Console
+
+1. Use `Output: Show Output Channels` command in VSCode
+2. Select "Pochi" from the dropdown
+3. Look for error messages or warnings
+
+# Getting help
+
+If you’re experiencing issues with Pochi:
+
+1. Report issues on Github
+
+   The best way to report bugs or request features is through our GitHub repository: github.com/TabbyML/pochi/issues
+
+2. Join our Discord
+
+   For real-time help and community discussion, join our Discord server: [https://getpochi.com/discord](https://getpochi.com/discord)
+
+
+# VSCode
+URL: /vscode
+
+***
+
+title: VSCode
+icon: "LayoutPanelLeft"
+-----------------------
+
+# VSCode
+
+TBD
+
+
+# Workflows
+URL: /workflows
+Automate common development sequences
+***
+
+title: Workflows
+description: Automate common development sequences
+icon: "Workflow"
+----------------
+
+# Workflows
+
+Workflows are step-by-step automation templates that guide Pochi through complex, multi-step processes. Think of them as detailed recipes that Pochi can follow to complete common development tasks consistently and efficiently.
+
+### Configure
+
+Workflows shall be put inside `.pochi/workflows/` directory in your workspace root. Each workflow is a markdown file with a specific name.
+
+`.pochi/workflows/create-pr.md` is an example we used in Pochi's own development.
+
+```markdown
+Please help create a PR for the current staging changes, following these guidelines:
+- If there are no staging changes but there are uncommitted changes, please stage them first.
+- Create a branch name based on the current git diff status.
+- Write a meaningful commit message/PR title.
+- Use the gh CLI to create a PR.
+- When running the push operation, it might be aborted due to a husky pre-push hook. For formatting issues, amend the files and try again. For other issues, try to resolve them as much as possible.
+- The base branch for the PR should always be `main`.
+- Always push the branch to the remote repository before creating the PR.
+
+When creating PR with markdown description, pay attention to escape backticks, otherwise it will be executed as command substitution in the shell.
+```
+
+### Usage
+
+Once your workflows are set up, using them is straightforward:
+
+1. **Type `/` in VS Code** to trigger the Pochi workflow selector
+2. **Select a workflow** from the dropdown menu and press `Enter`.
+3. You can attached additional context when running the workflow, e.g `/create-pr assign Meng for review after creation`.
+
+<div
+  style={{
+  position: "relative",
+  paddingBottom: "53.7%",
+  height: 0,
+  overflow: "hidden",
+  maxWidth: "100%",
+}}
+>
+  <iframe
+    src="https://drive.google.com/file/d/1p9UeAfkLEOlXBABF4CGub_aqAlAnmbVe/preview"
+    style={{
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: "100%",
+    height: "100%",
+    border: "none",
+    borderRadius: "8px",
+  }}
+    allowFullScreen
+    title="Pochi Demo - Workflows"
+  />
+</div>
+
+*This video demonstrates how to use workflows in VS Code*
