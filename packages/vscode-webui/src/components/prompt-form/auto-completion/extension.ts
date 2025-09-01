@@ -60,7 +60,6 @@ function fuzzySearch(
 ): AutoCompleteSuggestionItem[] {
   const labels = items.map((x) => x.label);
   const fuzzyResult = fuzzySearchStrings(query, labels);
-
   const result: AutoCompleteSuggestionItem[] = [];
   for (const i of fuzzyResult) {
     const item = items[i.idx];
@@ -78,11 +77,9 @@ function findSuggestionMatch(config: Trigger) {
   if (!text) return null;
 
   const cursorPos = $position.pos;
-  const match = text.match(/(\w+)$/);
+  const match = text.match(/([a-zA-Z0-9-_$]+)$/);
   if (!match) return null;
   const word = match[1];
-  if (word.startsWith("/") || word.startsWith("@")) return null;
-  if (!/^\w+$/.test(word)) return null;
 
   const from = cursorPos - word.length;
   const to = cursorPos;
@@ -162,7 +159,6 @@ export const AutoCompleteExtension = Extension.create<
       if (userAllow) {
         return userAllow(props);
       }
-
       return true;
     };
 
@@ -187,6 +183,30 @@ export const AutoCompleteExtension = Extension.create<
             return fuzzySearchAutoCompleteItems(query);
           };
 
+          const createMention = (
+            props: SuggestionProps<AutoCompleteSuggestionItem>,
+          ) => {
+            storage.component = new ReactRenderer(AutoCompleteMentionList, {
+              props: { ...props, fetchItems },
+              editor: props.editor,
+            });
+
+            const clientRect = props.clientRect?.();
+            if (!clientRect) return;
+
+            storage.popup = tippy(document.body, {
+              getReferenceClientRect: () => clientRect,
+              appendTo: () => document.body,
+              content: storage.component.element,
+              showOnCreate: false,
+              interactive: true,
+              trigger: "manual",
+              placement: "top-start",
+              offset: [0, 6],
+              maxWidth: "none",
+            });
+          };
+
           const destroyMention = () => {
             if (storage.showTimeout) {
               clearTimeout(storage.showTimeout);
@@ -208,25 +228,9 @@ export const AutoCompleteExtension = Extension.create<
             onStart: (props: SuggestionProps<AutoCompleteSuggestionItem>) => {
               if (!props.items.length) return;
 
-              storage.component = new ReactRenderer(AutoCompleteMentionList, {
-                props: { ...props, fetchItems },
-                editor: props.editor,
-              });
+              createMention(props);
 
-              const clientRect = props.clientRect?.();
-              if (!clientRect) return;
-
-              storage.popup = tippy(document.body, {
-                getReferenceClientRect: () => clientRect,
-                appendTo: () => document.body,
-                content: storage.component.element,
-                showOnCreate: false,
-                interactive: true,
-                trigger: "manual",
-                placement: "top-start",
-                offset: [0, 6],
-                maxWidth: "none",
-              });
+              if (!storage.popup) return;
 
               storage.showTimeout = window.setTimeout(() => {
                 if (storage.popup && !storage.popup.state.isDestroyed) {
@@ -240,6 +244,15 @@ export const AutoCompleteExtension = Extension.create<
                 destroyMention();
                 return;
               }
+
+              if (!storage.popup) {
+                createMention(props);
+              }
+
+              if (!storage.popup) {
+                return;
+              }
+
               if (storage.popup && !storage.popup.state.isDestroyed) {
                 if (
                   !storage.popup.state.isShown &&

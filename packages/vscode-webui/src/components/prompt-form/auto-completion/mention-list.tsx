@@ -20,7 +20,7 @@ export interface MentionItem {
     type: string;
     label: string;
   };
-  range: number[];
+  range: number[] | null;
 }
 
 export interface AutoCompleteListProps {
@@ -63,6 +63,8 @@ export const AutoCompleteMentionList = forwardRef<
   );
 
   useImperativeHandle(ref, () => keyboardNavigation);
+
+  console.log("item in list", items);
 
   return (
     <div className="relative flex w-[80vw] flex-col overflow-hidden py-1 sm:w-[600px]">
@@ -110,6 +112,9 @@ const MentionItemView = memo(function MentionItemView({
     const { value, range } = data;
     const parts = [];
     let lastIndex = 0;
+    if (!range) {
+      return <span>{value.label}</span>;
+    }
     for (let i = 0; i < range.length; i += 2) {
       const start = range[i];
       const end = range[i + 1];

@@ -9,7 +9,7 @@ import {
   getWorkspaceRulesFileUri,
 } from "@/lib/env";
 import { getWorkspaceFolder, isFileExists } from "@/lib/fs";
-import { map, pipe, uniqueBy } from "remeda";
+import { filter, map, pipe, uniqueBy } from "remeda";
 
 import path from "node:path";
 import { getLogger } from "@/lib/logger";
@@ -281,11 +281,12 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
 
     const symbolLimit = limit
       ? Math.max(limit - clientTools.length - mcps.length, 0)
-      : 10;
+      : 0;
     const symbolsData = await listSymbols({ query, limit: symbolLimit });
     const symbols = pipe(
       symbolsData,
-      map((x: { label: string }) => ({
+      filter((x) => /^[a-zA-Z0-9-_$]+$/.test(x.label)),
+      map((x) => ({
         type: "symbol" as const,
         label: x.label,
       })),
