@@ -1,7 +1,7 @@
 import { getLogger } from "@getpochi/common";
 import type { ClientTools, ToolFunctionType } from "@getpochi/tools";
 import type { ToolUIPart } from "ai";
-import { Listr } from "listr2";
+import { catalog } from "@getpochi/livekit";
 import { TaskRunner } from "../task-runner";
 import type { RunnerOptions } from "../task-runner";
 import type { ToolCallOptions } from "../types";
@@ -47,96 +47,71 @@ export const newTask =
 
     const taskId = _meta?.uid || crypto.randomUUID();
 
-    logger.debug(`Creating new sub-task: ${description}`);
-
-    // Create a listr task to show progress
-    const tasks = new Listr(
-      [
-        {
-          title: `Executing: ${description}`,
-          task: async (_, task) => {
-            try {
-              if (!options.apiClient || !options.store) {
-                throw new Error(
-                  "API client and store are required for sub-task execution",
-                );
-              }
-
-              // Create sub-task runner with the same configuration as parent
-              const subTaskOptions: RunnerOptions = {
-                uid: taskId,
-                llm: options.llm || {
-                  type: "pochi",
-                  modelId: "anthropic/claude-4-sonnet",
-                  apiClient: options.apiClient,
-                },
-                apiClient: options.apiClient,
-                store: options.store,
-                prompt,
-                cwd: options.cwd,
-                rg: options.rg,
-                maxSteps: 10, // Limit sub-task steps
-                maxRetries: 3,
-                waitUntil: options.waitUntil,
-              };
-
-              const subTaskRunner = new TaskRunner(subTaskOptions);
-
-              // Execute the sub-task
-              await subTaskRunner.run();
-
-              // Get the final state and extract result
-              const finalState = subTaskRunner.state;
-              const lastMessage = finalState.messages.at(-1);
-
-              let result = "Sub-task completed";
-              if (lastMessage?.role === "assistant") {
-                const completionPart = lastMessage.parts?.find(
-                  (part) => part.type === "tool-attemptCompletion",
-                ) as ToolUIPart | undefined;
-                if (
-                  completionPart?.input &&
-                  typeof completionPart.input === "object" &&
-                  "result" in completionPart.input
-                ) {
-                  result = (completionPart.input as { result: string }).result;
-                }
-              } else {
-                logger.debug("No assistant message found in sub-task result");
-              }
-
-              task.output = `Completed: ${result}`;
-              return result;
-            } catch (error) {
-              const errorMessage =
-                error instanceof Error ? error.message : String(error);
-              task.output = `Failed: ${errorMessage}`;
-              logger.error(`Sub-task execution failed: ${errorMessage}`);
-              throw new Error(`Sub-task failed: ${errorMessage}`);
-            }
-          },
-        },
-      ],
-      {
-        concurrent: false,
-        exitOnError: false,
-        rendererOptions: {
-          showSubtasks: true,
-        },
-      },
-    );
+    // Check if task already exists in store (created by middleware)
+    // if (_meta?.uid && options.store) {
+    //   const existingTask = options.store.query(catalog.queries.makeTaskQuery(_meta.uid));
+    //   if (existingTask) {
+    //     // Return a placeholder result since the task is already being handled
+    //     return {
+    //       result: "Sub-task completed successfully",
+    //     };
+    //   }
+    // }
 
     try {
-      const results = await tasks.run();
-      const result = results[0] || "Sub-task completed successfully";
+      if (!options.apiClient || !options.store) {
+        throw new Error(
+          "API client and store are required for sub-task execution",
+        );
+      }
+
+      // Create sub-task runner with the same configuration as parent
+      const subTaskOptions: RunnerOptions = {
+        uid: taskId,
+        llm: options.llm || {
+          type: "pochi",
+          modelId: "anthropic/claude-4-sonnet",
+          apiClient: options.apiClient,
+        },
+        apiClient: options.apiClient,
+        store: options.store,
+        prompt,
+        cwd: options.cwd,
+        rg: options.rg,
+        maxSteps: 10, // Limit sub-task steps
+        maxRetries: 3,
+        waitUntil: options.waitUntil,
+      };
+
+      const subTaskRunner = new TaskRunner(subTaskOptions);
+
+      // Execute the sub-task
+      await subTaskRunner.run();
+
+      // Get the final state and extract result
+      const finalState = subTaskRunner.state;
+      const lastMessage = finalState.messages.at(-1);
+
+      let result = "Sub-task completed";
+      if (lastMessage?.role === "assistant") {
+        const completionPart = lastMessage.parts?.find(
+          (part) => part.type === "tool-attemptCompletion",
+        ) as ToolUIPart | undefined;
+        if (
+          completionPart?.input &&
+          typeof completionPart.input === "object" &&
+          "result" in completionPart.input
+        ) {
+          result = (completionPart.input as { result: string }).result;
+        }
+      } else {
+        logger.debug("No assistant message found in sub-task result");
+      }
 
       logger.debug(`Sub-task completed with result: ${result}`);
 
       return {
-        result:
-          typeof result === "string"
-            ? result
-            : "Sub-task completed successfully",
+        result: typeof result === "string" ? result : "Sub-task completed successfully",
       };
     } catch (error) {
       const errorMessage =

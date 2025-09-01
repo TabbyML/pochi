@@ -204,11 +204,27 @@ function renderToolPart(part: ToolUIPart<UITools>): {
 
   if (part.type === "tool-newTask") {
     const { description = "creating subtask" } = part.input || {};
-    return {
-      text: `🚀 Creating subtask: ${chalk.bold(description)}`,
-      stop: hasError ? "fail" : "succeed",
-      error: errorText,
-    };
+    
+    if (part.state === "output-available" && part.output && typeof part.output === "object" && "result" in part.output) {
+      const result = part.output.result as string;
+      return {
+        text: `🚀 Subtask completed: ${chalk.bold(description)}\n${chalk.dim("└─")} ${result}`,
+        stop: hasError ? "fail" : "succeed",
+        error: errorText,
+      };
+    } else if (part.state === "input-streaming" || part.state === "input-available") {
+      return {
+        text: `🚀 Executing subtask: ${chalk.bold(description)}`,
+        stop: "stopAndPersist",
+        error: errorText,
+      };
+    } else {
+      return {
+        text: `🚀 Creating subtask: ${chalk.bold(description)}`,
+        stop: hasError ? "fail" : "succeed",
+        error: errorText,
+      };
+    }
   }
 
   if (part.type === "tool-todoWrite") {
