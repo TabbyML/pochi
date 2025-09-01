@@ -44,7 +44,8 @@
     "ofUsed": "已使用 {{used}} / {{total}}",
     "newTaskWithSummary": "新建任务并生成摘要",
     "compactTask": "压缩任务",
-    "minTokensRequired": "至少需要 {{minTokens}} 个 token 才能压缩对话"
+    "minTokensRequired": "至少需要 {{minTokens}} 个 token 才能压缩对话",
+    "contextWindowWarning": "上下文窗口值是默认值，对于您的自定义模型可能不准确。为了精确的令牌管理，请根据您的模型提供商的文档在设置中进行调整。"
   },
   "modelSelect": {
     "selectModel": "选择模型",

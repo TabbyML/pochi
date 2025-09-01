@@ -154,10 +154,7 @@ export function TokenUsage({
                     </TooltipTrigger>
                     <TooltipContent>
                       <p className="max-w-xs">
-                        The context window value is a default and may not be
-                        accurate for your custom model. For precise token
-                        management, please adjust it in the settings according
-                        to your model provider's documentation.
+                        {t("tokenUsage.contextWindowWarning")}
                       </p>
                     </TooltipContent>
                   </Tooltip>
