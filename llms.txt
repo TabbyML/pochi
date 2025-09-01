@@ -76,6 +76,22 @@ Others:
   -h, --help              Print this help message.
 ```
 
+## Debugging
+
+To enable debug logging for the CLI, you can set the `POCHI_LOG` environment variable:
+
+```bash
+POCHI_LOG=debug pochi -p "What is the time now?"
+```
+
+This will output detailed logs about the CLI's operation, which can be helpful for troubleshooting issues.
+
+For more granular control, you can specify log levels for specific components:
+
+```bash
+POCHI_LOG=Pochi=debug,TaskRunner=trace pochi -p "What is the time now?"
+```
+
 
 # Developer Updates
 URL: /developer-updates
@@ -510,19 +526,15 @@ When you need the full IDE experience:
 3. **Continue Development**: Pick up exactly where you left off.
    ![Slack VSCode Web](../assets/images/slack-vscode-web.png)
 
-## Troubleshooting
+## Frequently Asked Questions
 
-### Common Issues
+### Why do I get a `not_in_channel` error when creating a task in a channel?
 
-**`not_in_channel` error when creating task in channel**
+Verify that Pochi has been properly added to the channel. If Pochi is not invited to the channel, mention @Pochi in the channel to invite it.
 
-* Verify that Pochi has been properly added to the channel.
-* Mention @Pochi in the channel if Pochi is not invited to the channel.
+### Why can't I access the Cloud IDE?
 
-**Cannot access Cloud IDE**
-
-* Only the Task Owner has permission to access the Cloud IDE.
-* Make sure you are the Task Owner and logged in to Pochi with the same account in your browser.
+Only the Task Owner has permission to access the Cloud IDE. Make sure you are the Task Owner and logged in to Pochi with the same account in your browser.
 
 
 # Tab Completion
