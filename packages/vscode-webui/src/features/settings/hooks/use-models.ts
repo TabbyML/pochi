@@ -1,7 +1,7 @@
 import { apiClient, authHooks } from "@/lib/auth-client";
 import { useCustomModelSetting } from "@/lib/hooks/use-custom-model-setting";
 import { useVSCodeLmModels } from "@/lib/hooks/use-vscode-lm-models";
-import type { CustomModelSetting } from "@getpochi/common/vscode-webui-bridge";
+import type { CustomModelSetting } from "@getpochi/common/configuration";
 import type { VSCodeLmModel } from "@getpochi/common/vscode-webui-bridge";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
@@ -69,23 +69,30 @@ export function useModels() {
     useVSCodeLmModels();
 
   const customModels = useMemo(() => {
-    return customModelSettings?.flatMap((modelSetting) => {
-      const { models, ...provider } = modelSetting;
-      return models.map<DisplayModel>((model) => {
-        return {
-          ...model,
-          type: "byok" as const,
-          name: `${provider.name ?? provider.id}/${model.name ?? model.id}`,
-          id: `${provider.id}/${model.id}`,
-          modelId: model.id,
-          contextWindow: model.contextWindow,
-          maxTokens: model.maxTokens,
-          useToolCallMiddleware: model.useToolCallMiddleware,
-          costType: "basic",
-          provider,
-        };
-      });
-    });
+    return customModelSettings
+      ? Object.entries(customModelSettings).flatMap(
+          ([providerId, modelSetting]) => {
+            const { models, ...providerWithoutId } = modelSetting;
+            const provider = { ...providerWithoutId, id: providerId };
+            return Object.entries(models).map<DisplayModel>(
+              ([modelId, model]) => {
+                return {
+                  ...model,
+                  type: "byok" as const,
+                  name: `${provider.name ?? provider.id}/${model.name ?? modelId}`,
+                  id: `${provider.id}/${modelId}`,
+                  modelId: modelId,
+                  contextWindow: model.contextWindow,
+                  maxTokens: model.maxTokens,
+                  useToolCallMiddleware: model.useToolCallMiddleware,
+                  costType: "basic",
+                  provider,
+                };
+              },
+            );
+          },
+        )
+      : undefined;
   }, [customModelSettings]);
 
   const vscodeLmDisplayModels = useMemo(() => {

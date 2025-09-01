@@ -45,6 +45,7 @@
         "@ai-sdk/provider": "catalog:",
         "@getpochi/tools": "workspace:*",
         "@hono/zod-validator": "catalog:",
+        "@preact/signals-core": "catalog:",
         "@quilted/threads": "catalog:",
         "ai": "catalog:",
         "better-auth": "catalog:",
@@ -52,9 +53,11 @@
         "hast-util-to-text": "^4.0.2",
         "hono": "catalog:",
         "ignore": "^7.0.5",
+        "jsonc-parser": "^3.3.1",
         "minimatch": "^10.0.1",
         "rehype": "^13.0.2",
         "remeda": "catalog:",
+        "silver-fleece": "^1.2.1",
         "tslog": "catalog:",
         "zod": "catalog:",
       },
@@ -290,6 +293,8 @@
     "@ast-grep/cli",
   ],
   "patchedDependencies": {
+    "jsonc-parser@3.3.1": "patches/jsonc-parser@3.3.1.patch",
+    "@ai-sdk/google-vertex@3.0.8": "patches/@ai-sdk%2Fgoogle-vertex@3.0.8.patch",
     "ai@5.0.15": "patches/ai@5.0.15.patch",
     "better-auth@1.2.9": "patches/better-auth@1.2.9.patch",
   },
@@ -2909,6 +2914,8 @@
     "siginfo": ["siginfo@2.0.0", "", {}, "sha512-ybx0WO1/8bSBLEWXZvEd7gMW3Sn3JFlW3TvX1nREbDLRNQNaeNN8WK0meBwPdAaOI7TtRRRJn/Es1zhrrCHu7g=="],
 
     "signal-exit": ["signal-exit@4.1.0", "", {}, "sha512-bzyZ1e88w9O1iNJbKnOlvYTrWPDl46O1bG0D3XInv+9tkPrxrN8jUUTiFlDkkmKWgn1M6CfIA13SuGqOa9Korw=="],
+
+    "silver-fleece": ["silver-fleece@1.2.1", "", {}, "sha512-GwiBh7LzX4aKWb3LH1tPu8et2zZqe1cwXn+/uwIUK+H1Y2k119qpvPelVdRKG/6+RQvtUdRep4mBOOVf80VYDA=="],
 
     "simple-concat": ["simple-concat@1.0.1", "", {}, "sha512-cSFtAPtRhljv69IK0hTVZQ+OfE9nePi/rtJmw5UjHeVyVroEqJXP1sFztKUy1qU+xvz3u/sfYJLa947b7nAN2Q=="],
 

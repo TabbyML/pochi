@@ -11,6 +11,7 @@
     "tsc": "turbo tsc",
     "dep-check": "bun scripts/dep-check.ts",
     "prepare": "husky",
+    "gen:config-schema": "bun packages/common/src/configuration/gen-schema.ts",
     "pre-push": "bash ./.husky/pre-push"
   },
   "workspaces": {
@@ -71,6 +72,8 @@
     "better-auth@1.2.9": "patches/better-auth@1.2.9.patch",
     "@better-auth/stripe@1.2.9": "patches/@better-auth%2Fstripe@1.2.9.patch",
     "@daveyplate/better-auth-ui@2.0.12": "patches/@daveyplate%2Fbetter-auth-ui@2.0.12.patch",
-    "ai@5.0.15": "patches/ai@5.0.15.patch"
+    "ai@5.0.15": "patches/ai@5.0.15.patch",
+    "jsonc-parser@3.3.1": "patches/jsonc-parser@3.3.1.patch",
+    "@ai-sdk/google-vertex@3.0.8": "patches/@ai-sdk%2Fgoogle-vertex@3.0.8.patch"
   }
 }

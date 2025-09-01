@@ -1,7 +1,7 @@
 import * as assert from "assert";
 import { describe, it, beforeEach, afterEach } from "mocha";
 import * as sinon from "sinon";
-import type { McpServerConfig } from "../types";
+import type { McpServerConfig } from "@getpochi/common/configuration";
 import proxyquire from "proxyquire";
 
 describe("MCP Utils", () => {
@@ -508,21 +508,3 @@ describe("MCP Utils", () => {
     });
   });
 });
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

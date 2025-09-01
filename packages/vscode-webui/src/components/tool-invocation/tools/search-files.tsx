@@ -42,7 +42,6 @@ export const searchFilesTool: React.FC<ToolProps<"searchFiles">> = ({
       ) : (
         <span>
           Searching for {searchCondition}, {matches.length} matched
-          {matches.length > 1 ? "es" : ""}
           {isTruncated && ", results truncated"}
         </span>
       )}

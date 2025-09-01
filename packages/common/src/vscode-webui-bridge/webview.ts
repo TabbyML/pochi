@@ -1,9 +1,9 @@
 import type { ThreadAbortSignalSerialization } from "@quilted/threads";
 import type { ThreadSignalSerialization } from "@quilted/threads/signals";
 import type { Environment } from "../base";
+import type { CustomModelSetting } from "../configuration";
 import type {
   CaptureEvent,
-  CustomModelSetting,
   McpStatus,
   NewTaskParams,
   ResourceURI,
@@ -79,6 +79,8 @@ export interface VSCodeHostApi {
       isDir: boolean;
     }[]
   >;
+
+  listAutoCompleteCandidates(): Promise<string[]>;
 
   openSymbol(symbol: string): Promise<void>;
 
@@ -254,7 +256,7 @@ export interface VSCodeHostApi {
    * @returns The OpenAI model override configuration or undefined if not set.
    */
   readCustomModelSetting(): Promise<
-    ThreadSignalSerialization<CustomModelSetting[] | undefined>
+    ThreadSignalSerialization<Record<string, CustomModelSetting> | undefined>
   >;
 
   readVSCodeLm(): Promise<{

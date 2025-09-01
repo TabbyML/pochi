@@ -35,7 +35,7 @@ export interface ListSymbolsParams {
 }
 
 /**
- * The item returned by {@link ClientApi.listSymbols}.
+ * The item returned by {@link listSymbols}.
  */
 export interface ListSymbolItem {
   /**

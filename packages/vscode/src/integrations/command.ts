@@ -17,8 +17,12 @@ import { PostHog } from "@/lib/posthog";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { TokenStorage } from "@/lib/token-storage";
 import type { WebsiteTaskCreateEvent } from "@getpochi/common";
+import {
+  type CustomModelSetting,
+  PochiConfigFilePath,
+} from "@getpochi/common/configuration";
+import type { McpServerConfig } from "@getpochi/common/configuration";
 import type {
-  CustomModelSetting,
   NewTaskParams,
   TaskIdParams,
 } from "@getpochi/common/vscode-webui-bridge";
@@ -30,7 +34,6 @@ import { type PochiAdvanceSettings, PochiConfiguration } from "./configuration";
 import { DiffChangesContentProvider } from "./editor/diff-changes-content-provider";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { McpHub } from "./mcp/mcp-hub";
-import type { McpServerConfig } from "./mcp/types";
 
 const logger = getLogger("CommandManager");
 
@@ -98,7 +101,7 @@ export class CommandManager implements vscode.Disposable {
         );
         if (selection === "Logout") {
           this.authClient.signOut();
-          this.tokenStorage.token.value = undefined;
+          this.tokenStorage.setToken(undefined);
           this.authEvents.logoutEvent.fire();
         }
       }),
@@ -229,18 +232,20 @@ export class CommandManager implements vscode.Disposable {
         "pochi.mcp.addServer",
         async (name?: string, recommendedServer?: McpServerConfig) => {
           this.mcpHub.addServer(name, recommendedServer);
-          vscode.commands.executeCommand("workbench.action.openSettingsJson", {
-            revealSetting: { key: "pochi.mcpServers" },
-          });
+          await vscode.commands.executeCommand(
+            "vscode.open",
+            vscode.Uri.file(PochiConfigFilePath),
+          );
         },
       ),
 
       vscode.commands.registerCommand(
         "pochi.mcp.openServerSettings",
         async () => {
-          vscode.commands.executeCommand("workbench.action.openSettingsJson", {
-            revealSetting: { key: "pochi.mcpServers" },
-          });
+          await vscode.commands.executeCommand(
+            "vscode.open",
+            vscode.Uri.file(PochiConfigFilePath),
+          );
         },
       ),
 
@@ -383,10 +388,8 @@ export class CommandManager implements vscode.Disposable {
         async () => {
           await this.ensureDefaultCustomModelSettings();
           await vscode.commands.executeCommand(
-            "workbench.action.openSettingsJson",
-            {
-              revealSetting: { key: "pochi.customModelSettings" },
-            },
+            "vscode.open",
+            vscode.Uri.file(PochiConfigFilePath),
           );
         },
       ),
@@ -397,41 +400,30 @@ export class CommandManager implements vscode.Disposable {
     const currentSettings = this.pochiConfiguration.customModelSettings.value;
 
     // If there are already settings, don't add defaults
-    if (currentSettings && currentSettings.length > 0) {
+    if (currentSettings && Object.keys(currentSettings).length > 0) {
       return;
     }
 
     // Define default custom model settings
-    const defaultSettings = [
-      {
-        id: "openai",
+    const defaultSettings = {
+      openai: {
+        kind: "openai",
         baseURL: "https://api.openai.com/v1",
         apiKey: "your api key here",
-        models: [
-          {
-            id: "gpt-4.1",
+        models: {
+          "gpt-4.1": {
             contextWindow: 1047576,
             maxTokens: 32768,
           },
-          {
-            id: "o4-mini",
+          "o4-mini": {
             contextWindow: 200000,
             maxTokens: 100000,
           },
-        ],
+        },
       },
-    ] satisfies CustomModelSetting[];
+    } satisfies Record<string, CustomModelSetting>;
 
-    try {
-      // Update the settings with defaults
-      await vscode.workspace
-        .getConfiguration("pochi")
-        .update("customModelSettings", defaultSettings, true);
-
-      logger.debug("Default custom model settings inserted");
-    } catch (error) {
-      logger.error("Failed to insert default custom model settings:", error);
-    }
+    await this.pochiConfiguration.updateCustomModelSettings(defaultSettings);
   }
 
   dispose() {

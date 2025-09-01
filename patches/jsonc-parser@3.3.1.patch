@@ -1,0 +1,15 @@
+diff --git a/package.json b/package.json
+index 6536a20b66c000f3991c470e6f24539e3a822d9e..c2778bec76864d5803f514d4d7234c406975bd23 100644
+--- a/package.json
++++ b/package.json
+@@ -6,6 +6,10 @@
+   "typings": "./lib/umd/main.d.ts",
+   "module": "./lib/esm/main.js",
+   "author": "Microsoft Corporation",
++  "exports": {
++    ".": "./lib/umd/main.js",
++    "./esm": "./lib/esm/main.js"
++  },
+   "repository": {
+     "type": "git",
+     "url": "https://github.com/microsoft/node-jsonc-parser"

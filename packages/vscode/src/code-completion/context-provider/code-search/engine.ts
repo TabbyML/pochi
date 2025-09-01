@@ -157,15 +157,19 @@ export class CodeSearchEngine {
     const indexToUpdate = this.indexedDocumentRanges.findIndex(
       (item) => item.document.uri.toString() === documentUriString,
     );
-    const documentRangeToUpdate = this.indexedDocumentRanges[indexToUpdate];
+    const documentRangeToUpdate =
+      indexToUpdate >= 0
+        ? this.indexedDocumentRanges[indexToUpdate]
+        : undefined;
+
+    // FIXME(zhiming): if the ranges are not overlapping, keep separate ranges instead of union
     if (documentRangeToUpdate) {
-      // FIXME: union is not perfect for merging two ranges have large distance between them
       targetRange = targetRange.union(documentRangeToUpdate.range);
     }
     const chunks = await this.chunk({ document, range: targetRange });
     if (documentRangeToUpdate) {
       await this.remove(documentRangeToUpdate.indexIds);
-      this.indexedDocumentRanges.splice(indexToUpdate);
+      this.indexedDocumentRanges.splice(indexToUpdate, 1);
     }
     const indexIds = await this.insert(chunks);
     this.indexedDocumentRanges.push({
