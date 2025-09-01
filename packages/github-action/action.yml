@@ -12,28 +12,6 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Resolve target SHA for reactions
-      shell: bash
-      run: |
-        TARGET_SHA="${{ github.sha }}"
-        # For pull_request events, prefer the head SHA
-        if [ "${{ github.event_name }}" = "pull_request" ] && [ -n "${{ github.event.pull_request.head.sha }}" ]; then
-          TARGET_SHA="${{ github.event.pull_request.head.sha }}"
-        fi
-        echo "TARGET_SHA=$TARGET_SHA" >> $GITHUB_ENV
-
-    - name: Add :eyes: reaction (job started)
-      shell: bash
-      env:
-        GH_REPO: ${{ github.repository }}
-        GH_TOKEN: ${{ github.token }}
-      run: |
-        curl -s -X POST \
-          -H "Authorization: Bearer $GH_TOKEN" \
-          -H "Accept: application/vnd.github+json" \
-          "https://api.github.com/repos/${GH_REPO}/commits/${TARGET_SHA}/reactions" \
-          -d '{"content":"eyes"}' || true
-
     - name: Install pochi CLI
       shell: bash
       run: |
@@ -92,30 +70,3 @@ runs:
           export POCHI_MODEL="${{ inputs.model }}"
         fi
         bun ${GITHUB_ACTION_PATH}/src/index.ts
-
-    # Success reaction
-    - name: Add +1 reaction (job succeeded)
-      if: success()
-      shell: bash
-      env:
-        GH_REPO: ${{ github.repository }}
-        GH_TOKEN: ${{ github.token }}
-      run: |
-        curl -s -X POST \
-          -H "Authorization: Bearer $GH_TOKEN" \
-          -H "Accept: application/vnd.github+json" \
-          "https://api.github.com/repos/${GH_REPO}/commits/${TARGET_SHA}/reactions" \
-          -d '{"content":"+1"}' || true
-
-    - name: Add confused reaction (job failed)
-      if: failure()
-      shell: bash
-      env:
-        GH_REPO: ${{ github.repository }}
-        GH_TOKEN: ${{ github.token }}
-      run: |
-        curl -s -X POST \
-          -H "Authorization: Bearer $GH_TOKEN" \
-          -H "Accept: application/vnd.github+json" \
-          "https://api.github.com/repos/${GH_REPO}/commits/${TARGET_SHA}/reactions" \
-          -d '{"content":"confused"}' || true
