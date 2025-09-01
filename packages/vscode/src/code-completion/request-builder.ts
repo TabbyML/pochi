@@ -51,6 +51,7 @@ export function buildSegments(params: {
   const filepath = convertToRelativePath(context.document.uri);
 
   // snippets location for deduplication
+  // FIXME(zhiming): need improve for range overlapping
   const snippetsLocations: { uri: vscode.Uri; range?: vscode.Range }[] = [];
   const isExists = (item: {
     uri: vscode.Uri;

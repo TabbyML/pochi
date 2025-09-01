@@ -16,16 +16,15 @@
       "additionalProperties": false
     },
     "providers": {
-      "type": "array",
-      "items": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string"
+      },
+      "additionalProperties": {
         "anyOf": [
           {
             "type": "object",
             "properties": {
-              "id": {
-                "description": "Model provider identifier, e.g., \"openai\", \"anthropic\", etc.",
-                "type": "string"
-              },
               "name": {
                 "description": "Model provider name, e.g., \"OpenAI\", \"Anthropic\", etc.",
                 "type": "string"
@@ -73,16 +72,12 @@
                 "type": "string"
               }
             },
-            "required": ["id", "models", "baseURL"],
+            "required": ["models", "baseURL"],
             "additionalProperties": false
           },
           {
             "type": "object",
             "properties": {
-              "id": {
-                "description": "Model provider identifier, e.g., \"openai\", \"anthropic\", etc.",
-                "type": "string"
-              },
               "name": {
                 "description": "Model provider name, e.g., \"OpenAI\", \"Anthropic\", etc.",
                 "type": "string"
@@ -130,16 +125,12 @@
                 "type": "string"
               }
             },
-            "required": ["id", "models", "kind", "location", "credentials"],
+            "required": ["models", "kind", "location", "credentials"],
             "additionalProperties": false
           },
           {
             "type": "object",
             "properties": {
-              "id": {
-                "description": "Model provider identifier, e.g., \"openai\", \"anthropic\", etc.",
-                "type": "string"
-              },
               "name": {
                 "description": "Model provider name, e.g., \"OpenAI\", \"Anthropic\", etc.",
                 "type": "string"
@@ -183,7 +174,7 @@
                 "type": "string"
               }
             },
-            "required": ["id", "models", "kind"],
+            "required": ["models", "kind"],
             "additionalProperties": false
           }
         ]

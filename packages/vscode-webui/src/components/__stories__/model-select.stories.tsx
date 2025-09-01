@@ -58,7 +58,6 @@ const mockModels: ModelGroups = [
         maxTokens: 4000,
         costType: "basic",
         provider: {
-          id: "custom-provider",
           name: "Custom Provider",
           baseURL: "http://localhost:8080",
         },
@@ -72,7 +71,6 @@ const mockModels: ModelGroups = [
         maxTokens: 8000,
         costType: "basic",
         provider: {
-          id: "custom-provider",
           name: "Custom Provider",
           baseURL: "http://localhost:8080",
         },

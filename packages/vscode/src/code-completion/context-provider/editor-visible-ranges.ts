@@ -19,6 +19,13 @@ export class EditorVisibleRangesTracker implements vscode.Disposable {
   private currentConfig = pickConfig(CodeCompletionConfig.value);
   private history: LRUCache<number, vscode.Location> | undefined = undefined;
   private version = 0;
+  private didChangeEditorVisibleRangesEventDebounceMap = new Map<
+    vscode.TextEditor,
+    {
+      timer: ReturnType<typeof setTimeout>;
+    }
+  >();
+  private didChangeEditorVisibleRangesEventDebounceInterval = 100;
 
   initialize() {
     this.start();
@@ -40,7 +47,15 @@ export class EditorVisibleRangesTracker implements vscode.Disposable {
           editor &&
           vscode.languages.match(DocumentSelector, editor.document)
         ) {
-          this.handleDidChangeActiveTextEditor(editor);
+          this.handleDidChangeEditorVisibleRanges(editor);
+        }
+      }),
+      vscode.window.onDidChangeTextEditorVisibleRanges((event) => {
+        if (
+          event.textEditor &&
+          vscode.languages.match(DocumentSelector, event.textEditor.document)
+        ) {
+          this.handleDidChangeEditorVisibleRanges(event.textEditor);
         }
       }),
     );
@@ -49,7 +64,7 @@ export class EditorVisibleRangesTracker implements vscode.Disposable {
   private start() {
     if (this.currentConfig.enabled) {
       this.history = new LRUCache<number, vscode.Location>({
-        max: 1000,
+        max: 100,
         ttl: 5 * 60 * 1000, // 5 minutes
       });
     }
@@ -59,10 +74,23 @@ export class EditorVisibleRangesTracker implements vscode.Disposable {
     this.history = undefined;
   }
 
-  private handleDidChangeActiveTextEditor(editor: vscode.TextEditor) {
+  private handleDidChangeEditorVisibleRanges(editor: vscode.TextEditor) {
+    const pendingEvent =
+      this.didChangeEditorVisibleRangesEventDebounceMap.get(editor);
+    if (pendingEvent) {
+      clearTimeout(pendingEvent.timer);
+    }
+    this.didChangeEditorVisibleRangesEventDebounceMap.set(editor, {
+      timer: setTimeout(() => {
+        this.didChangeEditorVisibleRangesEventDebounceMap.delete(editor);
+        this.updateEditorVisibleRangesHistory(editor);
+      }, this.didChangeEditorVisibleRangesEventDebounceInterval),
+    });
+  }
+
+  private updateEditorVisibleRangesHistory(editor: vscode.TextEditor) {
     if (this.history) {
-      const visibleRange = editor.visibleRanges[0];
-      if (visibleRange) {
+      for (const visibleRange of editor.visibleRanges) {
         this.version++;
         this.history.set(
           this.version,

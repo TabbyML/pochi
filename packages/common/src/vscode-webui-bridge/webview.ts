@@ -254,7 +254,7 @@ export interface VSCodeHostApi {
    * @returns The OpenAI model override configuration or undefined if not set.
    */
   readCustomModelSetting(): Promise<
-    ThreadSignalSerialization<CustomModelSetting[] | undefined>
+    ThreadSignalSerialization<Record<string, CustomModelSetting> | undefined>
   >;
 
   readVSCodeLm(): Promise<{
