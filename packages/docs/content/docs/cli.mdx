@@ -72,3 +72,19 @@ Others:
   -V, --version           Print the version string.
   -h, --help              Print this help message.
 ```
+
+## Debugging
+
+To enable debug logging for the CLI, you can set the `POCHI_LOG` environment variable:
+
+```bash
+POCHI_LOG=debug pochi -p "What is the time now?"
+```
+
+This will output detailed logs about the CLI's operation, which can be helpful for troubleshooting issues.
+
+For more granular control, you can specify log levels for specific components:
+
+```bash
+POCHI_LOG=Pochi=debug,TaskRunner=trace pochi -p "What is the time now?"
+```
