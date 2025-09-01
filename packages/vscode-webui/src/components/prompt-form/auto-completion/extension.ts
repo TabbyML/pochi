@@ -75,9 +75,8 @@ function findSuggestionMatch(config: Trigger) {
   const { $position } = config;
   const text = $position.nodeBefore?.isText && $position.nodeBefore.text;
   if (!text) return null;
-
   const cursorPos = $position.pos;
-  const match = text.match(/([a-zA-Z0-9-_$]+)$/);
+  const match = text.match(/([a-zA-Z0-9-_]+)$/);
   if (!match) return null;
   const word = match[1];
 
@@ -242,14 +241,6 @@ export const AutoCompleteExtension = Extension.create<
             onUpdate: (props: SuggestionProps<AutoCompleteSuggestionItem>) => {
               if (!props.items?.length) {
                 destroyMention();
-                return;
-              }
-
-              if (!storage.popup) {
-                createMention(props);
-              }
-
-              if (!storage.popup) {
                 return;
               }
 

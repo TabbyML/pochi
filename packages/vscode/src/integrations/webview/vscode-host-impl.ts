@@ -285,7 +285,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     const symbolsData = await listSymbols({ query, limit: symbolLimit });
     const symbols = pipe(
       symbolsData,
-      filter((x) => /^[a-zA-Z0-9-_$]+$/.test(x.label)),
+      filter((x) => /^[a-zA-Z0-9-_]+$/.test(x.label)),
       map((x) => ({
         type: "symbol" as const,
         label: x.label,

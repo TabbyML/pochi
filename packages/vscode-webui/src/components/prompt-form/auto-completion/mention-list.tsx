@@ -64,8 +64,6 @@ export const AutoCompleteMentionList = forwardRef<
 
   useImperativeHandle(ref, () => keyboardNavigation);
 
-  console.log("item in list", items);
-
   return (
     <div className="relative flex w-[80vw] flex-col overflow-hidden py-1 sm:w-[600px]">
       <ScrollArea viewportClassname="max-h-[300px] px-2">
