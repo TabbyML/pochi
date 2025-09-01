@@ -67,7 +67,6 @@ const CliTools = {
   globFiles,
   listFiles,
   multiApplyDiff,
-  newTask,
   readFile,
   searchFiles,
   todoWrite,
