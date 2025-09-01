@@ -46,17 +46,6 @@ export const newTask =
 
     const taskId = _meta?.uid || crypto.randomUUID();
 
-    // Check if task already exists in store (created by middleware)
-    // if (_meta?.uid && options.store) {
-    //   const existingTask = options.store.query(catalog.queries.makeTaskQuery(_meta.uid));
-    //   if (existingTask) {
-    //     // Return a placeholder result since the task is already being handled
-    //     return {
-    //       result: "Sub-task completed successfully",
-    //     };
-    //   }
-    // }
-
     try {
       if (!options.apiClient || !options.store) {
         throw new Error(
