@@ -114,7 +114,7 @@ export function TokenUsage({
                 {t("tokenUsage.compacting")}
               </>
             ) : (
-              `${percentage}% of ${formatTokens(selectedModel.contextWindow)} tokens`
+              `${percentage}${t("tokenUsage.ofTokens", { tokens: formatTokens(selectedModel.contextWindow) })}`
             )}
           </span>
         </div>
@@ -154,7 +154,7 @@ export function TokenUsage({
                     </TooltipTrigger>
                     <TooltipContent>
                       <p className="max-w-xs">
-                        {t("tokenUsage.contextWindowWarning")}
+                        {t("tokenUsage.defaultContextWindowWarning")}
                       </p>
                     </TooltipContent>
                   </Tooltip>
@@ -163,8 +163,10 @@ export function TokenUsage({
             </div>
             <div>
               <Progress value={percentage} className="mb-1" />
-              {formatTokens(totalTokens)} of{" "}
-              {formatTokens(selectedModel.contextWindow)} used
+              {t("tokenUsage.ofUsed", {
+                used: formatTokens(totalTokens),
+                total: formatTokens(selectedModel.contextWindow),
+              })}
             </div>
           </div>
           <div className="mt-2 flex items-center gap-x-2">
