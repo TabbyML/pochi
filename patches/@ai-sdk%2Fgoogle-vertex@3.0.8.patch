@@ -1,0 +1,58 @@
+diff --git a/dist/edge/index.d.mts b/dist/edge/index.d.mts
+index eb20a2cea785f8c34a2e8dfc0aae04caaafe48ff..9efcd462ed67c663a465e3fc3cfc5d68f1c7f19b 100644
+--- a/dist/edge/index.d.mts
++++ b/dist/edge/index.d.mts
+@@ -76,9 +76,10 @@ interface GoogleVertexProviderSettings extends GoogleVertexProviderSettings$1 {
+     googleCredentials?: GoogleCredentials;
+ }
+ declare function createVertex(options?: GoogleVertexProviderSettings): GoogleVertexProvider;
++declare function createVertexWithoutCredentials(options?: GoogleVertexProviderSettings$1): GoogleVertexProvider;
+ /**
+ Default Google Vertex AI provider instance.
+  */
+ declare const vertex: GoogleVertexProvider;
+ 
+-export { type GoogleVertexProvider, type GoogleVertexProviderSettings, createVertex, vertex };
++export { type GoogleVertexProvider, type GoogleVertexProviderSettings, createVertex, createVertexWithoutCredentials, vertex };
+diff --git a/dist/edge/index.d.ts b/dist/edge/index.d.ts
+index eb20a2cea785f8c34a2e8dfc0aae04caaafe48ff..9efcd462ed67c663a465e3fc3cfc5d68f1c7f19b 100644
+--- a/dist/edge/index.d.ts
++++ b/dist/edge/index.d.ts
+@@ -76,9 +76,10 @@ interface GoogleVertexProviderSettings extends GoogleVertexProviderSettings$1 {
+     googleCredentials?: GoogleCredentials;
+ }
+ declare function createVertex(options?: GoogleVertexProviderSettings): GoogleVertexProvider;
++declare function createVertexWithoutCredentials(options?: GoogleVertexProviderSettings$1): GoogleVertexProvider;
+ /**
+ Default Google Vertex AI provider instance.
+  */
+ declare const vertex: GoogleVertexProvider;
+ 
+-export { type GoogleVertexProvider, type GoogleVertexProviderSettings, createVertex, vertex };
++export { type GoogleVertexProvider, type GoogleVertexProviderSettings, createVertex, createVertexWithoutCredentials, vertex };
+diff --git a/dist/edge/index.js b/dist/edge/index.js
+index c7e1dff34b999c6ff291b3653524e6bd35f8ef45..cb33708d6caf8fe76287762837d0b30158368440 100644
+--- a/dist/edge/index.js
++++ b/dist/edge/index.js
+@@ -464,6 +464,7 @@ var vertex = createVertex2();
+ // Annotate the CommonJS export names for ESM import in node:
+ 0 && (module.exports = {
+   createVertex,
++  createVertexWithoutCredentials: createVertex,
+   vertex
+ });
+ //# sourceMappingURL=index.js.map
+\ No newline at end of file
+diff --git a/dist/edge/index.mjs b/dist/edge/index.mjs
+index 0e7db3e9581a8465a383bd01e849e04170de4590..a6538714ac4a79331502a2226b13e94b79dd3023 100644
+--- a/dist/edge/index.mjs
++++ b/dist/edge/index.mjs
+@@ -454,6 +454,7 @@ function createVertex2(options = {}) {
+ var vertex = createVertex2();
+ export {
+   createVertex2 as createVertex,
++  createVertex as createVertexWithoutCredentials,
+   vertex
+ };
+ //# sourceMappingURL=index.mjs.map
+\ No newline at end of file

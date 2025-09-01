@@ -109,6 +109,8 @@ function useLLM(): React.RefObject<LLMRequestData> {
         type: "google-vertex-tuning" as const,
         location: provider.location,
         credentials: provider.credentials,
+        projectId: provider.projectId,
+        accessToken: provider.accessToken,
         modelId: selectedModel.modelId,
         maxOutputTokens: selectedModel.maxTokens,
         contextWindow: selectedModel.contextWindow,

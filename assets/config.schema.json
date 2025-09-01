@@ -121,9 +121,17 @@
               "credentials": {
                 "description": "Credentials for the vertex model.",
                 "type": "string"
+              },
+              "projectId": {
+                "description": "Project ID for the vertex model.",
+                "type": "string"
+              },
+              "accessToken": {
+                "description": "Access token for the vertex model.",
+                "type": "string"
               }
             },
-            "required": ["models", "kind", "location", "credentials"],
+            "required": ["models", "kind", "location"],
             "additionalProperties": false
           },
           {
