@@ -74,20 +74,22 @@ export function useModels() {
           ([providerId, modelSetting]) => {
             const { models, ...providerWithoutId } = modelSetting;
             const provider = { ...providerWithoutId, id: providerId };
-            return models.map<DisplayModel>((model) => {
-              return {
-                ...model,
-                type: "byok" as const,
-                name: `${provider.name ?? provider.id}/${model.name ?? model.id}`,
-                id: `${provider.id}/${model.id}`,
-                modelId: model.id,
-                contextWindow: model.contextWindow,
-                maxTokens: model.maxTokens,
-                useToolCallMiddleware: model.useToolCallMiddleware,
-                costType: "basic",
-                provider,
-              };
-            });
+            return Object.entries(models).map<DisplayModel>(
+              ([modelId, model]) => {
+                return {
+                  ...model,
+                  type: "byok" as const,
+                  name: `${provider.name ?? provider.id}/${model.name ?? modelId}`,
+                  id: `${provider.id}/${modelId}`,
+                  modelId: modelId,
+                  contextWindow: model.contextWindow,
+                  maxTokens: model.maxTokens,
+                  useToolCallMiddleware: model.useToolCallMiddleware,
+                  costType: "basic",
+                  provider,
+                };
+              },
+            );
           },
         )
       : undefined;
