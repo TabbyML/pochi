@@ -9,7 +9,7 @@ const uf = new uFuzzy({
   // Don't split on forward slashes - treat them as regular characters
   interSplit: "[^a-zA-Z\\d'@\\-_./]+",
   // Allow more insertions for path matching (like amp -> amp-07-08-2025)
-  intraIns: 1,
+  intraIns: 5,
 });
 
 /**

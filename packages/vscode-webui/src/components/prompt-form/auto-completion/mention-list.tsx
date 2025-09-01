@@ -1,5 +1,4 @@
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Box, Wrench } from "lucide-react";
 import {
   forwardRef,
   memo,
@@ -16,10 +15,7 @@ import {
 } from "../shared";
 
 export interface MentionItem {
-  value: {
-    type: string;
-    label: string;
-  };
+  value: string;
   range: number[] | null;
 }
 
@@ -75,7 +71,7 @@ export const AutoCompleteMentionList = forwardRef<
           <div className="grid gap-0.5">
             {items.map((item, index) => (
               <MentionItemView
-                key={`${item.value.type}_${item.value.label}`}
+                key={item.value}
                 onClick={() => handleSelect(item)}
                 isSelected={index === selectedIndex}
                 data={item}
@@ -111,13 +107,13 @@ const MentionItemView = memo(function MentionItemView({
     const parts = [];
     let lastIndex = 0;
     if (!range) {
-      return <span>{value.label}</span>;
+      return <span>{value}</span>;
     }
     for (let i = 0; i < range.length; i += 2) {
       const start = range[i];
       const end = range[i + 1];
       if (start > lastIndex) {
-        parts.push(value.label.substring(lastIndex, start));
+        parts.push(value.substring(lastIndex, start));
       }
       parts.push(
         <span
@@ -125,13 +121,13 @@ const MentionItemView = memo(function MentionItemView({
           className="font-bold"
           style={{ color: "var(--vscode-list-highlightForeground)" }}
         >
-          {value.label.substring(start, end)}
+          {value.substring(start, end)}
         </span>,
       );
       lastIndex = end;
     }
-    if (lastIndex < value.label.length) {
-      parts.push(value.label.substring(lastIndex));
+    if (lastIndex < value.length) {
+      parts.push(value.substring(lastIndex));
     }
     return parts;
   };
@@ -144,20 +140,9 @@ const MentionItemView = memo(function MentionItemView({
       {...rest}
       ref={ref}
     >
-      <span className="mr-2 ml-1 flex items-center gap-1 truncate whitespace-nowrap font-medium">
-        <MentionItemIcon type={data.value.type} />
-        <span className="ml-1">{highlightedText()}</span>
+      <span className="mr-2 flex items-center gap-1 truncate whitespace-nowrap font-medium">
+        <span>{highlightedText()}</span>
       </span>
     </div>
   );
 });
-
-const MentionItemIcon = ({ type }: { type: string }) => {
-  if (type === "tool" || type === "mcp") {
-    return <Wrench className="size-3.5" />;
-  }
-  if (type === "symbol") {
-    return <Box className="size-3.5" />;
-  }
-  return null;
-};

@@ -259,27 +259,13 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     }));
   };
 
-  listAutoCompleteCandidates = async (): Promise<
-    Array<{
-      type: "symbol" | "tool" | "mcp";
-      label: string;
-    }>
-  > => {
-    const clientTools = Object.entries({ ...ClientTools }).map(([id]) => ({
-      type: "tool" as const,
-      label: id,
-    }));
+  listAutoCompleteCandidates = async (): Promise<string[]> => {
+    const clientTools = Object.entries({ ...ClientTools }).map(([id]) => id);
     const mcps = Object.entries(this.mcpHub.status.value.connections)
       .filter(([_, v]) => v.status === "ready")
-      .map(([key]) => ({
-        type: "mcp" as const,
-        label: key,
-      }));
+      .map(([id]) => id);
 
-    const candidates = (await listDocumentCompletion()).map((label) => ({
-      label,
-      type: "symbol" as const,
-    }));
+    const candidates = listDocumentCompletion();
     return [...clientTools, ...mcps, ...candidates];
   };
 

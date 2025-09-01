@@ -85,6 +85,7 @@ interface FormEditorProps {
   onPaste?: (e: ClipboardEvent) => void;
   enableSubmitHistory?: boolean;
   onImageDrop?: (files: File[]) => boolean;
+  messageContent?: string;
 }
 
 export function FormEditor({
@@ -99,6 +100,7 @@ export function FormEditor({
   onPaste,
   enableSubmitHistory = true,
   onImageDrop,
+  messageContent = "",
 }: FormEditorProps) {
   const internalFormRef = useRef<HTMLFormElement>(null);
   const formRef = externalFormRef || internalFormRef;
@@ -336,7 +338,9 @@ export function FormEditor({
           depth: 20,
         }),
         ...(enableSubmitHistory ? [SubmitHistoryExtension] : []),
-        AutoCompleteExtension,
+        AutoCompleteExtension.configure({
+          messageContent: messageContent,
+        }),
       ],
       editorProps: {
         attributes: {
