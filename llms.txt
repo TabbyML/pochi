@@ -28,7 +28,13 @@ Credentials are stored in `~/.pochi/config.jsonc`. To authenticate:
 2. Follow the sign-in prompts in the extension
 3. The CLI will automatically use the same credentials
 
-For non-Pochi models (OpenAI, Google, etc.), you can provide API keys directly through the command line options rather than using account authentication.
+For non-Pochi models, first configure it in your Pochi configuration file (`~/.pochi/config.jsonc`). See [Models documentation](./models.mdx) for details on how to configure custom providers.
+
+Then you can use the model by specifying the provider and model ID separated by a slash:
+
+```bash
+pochi --model groq/llama3-8b-8192 -p "What is the time now?"
+```
 
 ## Usage
 
@@ -330,16 +336,19 @@ Pochi allows you to configure any LLM provider that offers an OpenAI-compatible 
 
 ```json
 {
-  "id": "groq",
-  "apiKey": "your_api_key",
-  "baseUrl": "https://api.groq.com/openai/v1",
-  "models": [
-    {
-      "id": "moonshotai/kimi-k2-instruct",
-      "contextWindow": 131072,
-      "maxTokens": 8000
+  "providers": {
+    "groq": {
+      "apiKey": "your_api_key",
+      "baseUrl": "https://api.groq.com/openai/v1",
+      "models": [
+        {
+          "id": "moonshotai/kimi-k2-instruct",
+          "contextWindow": 131072,
+          "maxTokens": 8000
+        }
+      ]
     }
-  ]
+  }
 }
 ```
 
