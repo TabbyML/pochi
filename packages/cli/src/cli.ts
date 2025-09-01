@@ -206,7 +206,7 @@ function createLLMConfig({
   const modelId = options.model.slice(sep + 1);
 
   const modelProvider = pochiConfig.value.providers?.[modelProviderId];
-  const modelSetting = modelProvider?.models.find((x) => x.id === modelId);
+  const modelSetting = modelProvider?.models?.[modelId];
 
   if (!modelProvider) {
     return {

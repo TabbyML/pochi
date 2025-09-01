@@ -5,13 +5,13 @@ const BaseModelSettings = z.object({
     .string()
     .optional()
     .describe('Model provider name, e.g., "OpenAI", "Anthropic", etc.'),
-  models: z.array(
+  models: z.record(
+    z.string(),
     z.object({
       name: z
         .string()
         .optional()
         .describe('Display name of the model, e.g., "GPT-4o"'),
-      id: z.string().describe('Identifier for the model, e.g., "gpt-4o"'),
       maxTokens: z
         .number()
         .describe("Maximum number of generated tokens for the model"),
