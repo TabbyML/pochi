@@ -89,7 +89,13 @@ export const selectClientTools = (options: {
 }) => {
   if (options.isCli) {
     if (options.isSubTask) {
-      const { newTask, startBackgroundJob, readBackgroundJobOutput, killBackgroundJob, ...rest } = ClientTools;
+      const {
+        newTask,
+        startBackgroundJob,
+        readBackgroundJobOutput,
+        killBackgroundJob,
+        ...rest
+      } = ClientTools;
       return rest;
     }
 
