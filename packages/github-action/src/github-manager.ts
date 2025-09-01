@@ -48,10 +48,10 @@ export class GitHubManager {
   async createReaction(
     commentId: number,
     content: RestEndpointMethodTypes["reactions"]["createForIssueComment"]["parameters"]["content"],
-  ): Promise<void> {
+  ): Promise<number | undefined> {
     const repo = this.getRepository();
     try {
-      await this.octokit.rest.reactions.createForIssueComment({
+      const response = await this.octokit.rest.reactions.createForIssueComment({
         owner: repo.owner,
         repo: repo.repo,
         comment_id: commentId,
@@ -65,8 +65,24 @@ export class GitHubManager {
           | "rocket"
           | "eyes",
       });
+      return response.data.id;
     } catch (error) {
       console.warn(`Failed to add reaction ${content}: ${error}`);
+      return undefined;
+    }
+  }
+
+  async deleteReaction(commentId: number, reactionId: number): Promise<void> {
+    const repo = this.getRepository();
+    try {
+      await this.octokit.rest.reactions.deleteForIssueComment({
+        owner: repo.owner,
+        repo: repo.repo,
+        comment_id: commentId,
+        reaction_id: reactionId,
+      });
+    } catch (error) {
+      console.warn(`Failed to delete reaction ${reactionId}: ${error}`);
     }
   }
 

@@ -16,7 +16,10 @@ export async function runPochi(
   const config = readPochiConfig();
 
   // Add eye reaction to indicate starting
-  await githubManager.createReaction(request.commentId, "eyes");
+  const eyesReactionId = await githubManager.createReaction(
+    request.commentId,
+    "eyes",
+  );
 
   const args = ["--prompt", request.prompt, "--max-steps", "128"];
 
@@ -50,6 +53,9 @@ export async function runPochi(
       if (handled) return;
       handled = true;
       await githubManager.createReaction(request.commentId, "-1");
+      if (eyesReactionId) {
+        await githubManager.deleteReaction(request.commentId, eyesReactionId);
+      }
       reject(error);
     };
 
@@ -57,8 +63,11 @@ export async function runPochi(
       if (handled) return;
       if (code === 0) {
         handled = true;
-        // Add check mark reaction to indicate completion
-        await githubManager.createReaction(request.commentId, "+1");
+        // Add rocket reaction to indicate completion
+        await githubManager.createReaction(request.commentId, "rocket");
+        if (eyesReactionId) {
+          await githubManager.deleteReaction(request.commentId, eyesReactionId);
+        }
         resolve();
       } else {
         handleFailure(new Error(`pochi CLI failed with code ${code}`));
