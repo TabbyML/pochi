@@ -19,21 +19,19 @@ export interface FuzzySearchOptions {
 /**
  * Generic fuzzy search function that works with any string array
  */
-export function fuzzySearchStrings(
-  needle: string,
-  haystack: string[],
-): number[] {
+export function fuzzySearchStrings(needle: string, haystack: string[]) {
   const [idxs, info, order] = uf.search(haystack, needle);
-
   if (!order) {
     if (idxs !== null) {
-      return idxs;
+      return idxs.map((idx) => ({ idx, range: null }));
     }
-
     return [];
   }
 
-  return info.idx || [];
+  return order.map((i) => ({
+    idx: idxs[i],
+    range: info.ranges[i],
+  }));
 }
 
 /**
@@ -83,7 +81,7 @@ export function fuzzySearchFiles(
 ): { filepath: string; isDir: boolean }[] {
   const maxResults = options.maxResults || MaxResult;
   if (!needle) {
-    return mergeUniqueFileItems(data.files, data.activeTabs).slice(
+    return mergeUniqueFileItems(data.activeTabs, data.files).slice(
       0,
       maxResults,
     );
@@ -100,8 +98,8 @@ export function fuzzySearchFiles(
   );
 
   return mergeUniqueFileItems(
-    activeTabSearchResult.map((i) => data.activeTabs[i]),
-    fileSearchResult.map((i) => data.files[i]),
+    activeTabSearchResult.map(({ idx }) => data.activeTabs[idx]),
+    fileSearchResult.map(({ idx }) => data.files[idx]),
   ).slice(0, maxResults);
 }
 
