@@ -62,6 +62,12 @@ export interface RunnerOptions {
    */
   maxRetries: number;
 
+  /**
+   * Whether this is a sub-task. Sub-tasks don't apply certain middlewares
+   * like the newTask middleware to prevent infinite recursion.
+   */
+  isSubTask?: boolean;
+
   waitUntil?: (promise: Promise<unknown>) => void;
 }
 
@@ -99,6 +105,7 @@ export class TaskRunner {
       chatClass: Chat,
       waitUntil: options.waitUntil,
       isCli: true,
+      isSubTask: options.isSubTask,
       getters: {
         getLLM: () => options.llm,
         getEnvironment: async () => ({

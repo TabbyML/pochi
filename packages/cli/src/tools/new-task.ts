@@ -80,6 +80,7 @@ export const newTask =
         rg: options.rg,
         maxSteps: 10, // Limit sub-task steps
         maxRetries: 3,
+        isSubTask: true, // Mark this as a sub-task to prevent middleware duplication
         waitUntil: options.waitUntil,
       };
 
