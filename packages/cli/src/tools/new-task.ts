@@ -68,10 +68,10 @@ export const newTask =
                 llm: options.llm || {
                   type: "pochi",
                   modelId: "anthropic/claude-4-sonnet",
-                  apiClient: options.apiClient!,
+                  apiClient: options.apiClient,
                 },
-                apiClient: options.apiClient!,
-                store: options.store!,
+                apiClient: options.apiClient,
+                store: options.store,
                 prompt,
                 cwd: options.cwd,
                 rg: options.rg,

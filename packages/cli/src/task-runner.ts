@@ -89,7 +89,7 @@ export class TaskRunner {
       llm: options.llm,
       apiClient: options.apiClient,
       store: options.store,
-      waitUntil: options.waitUntil,   
+      waitUntil: options.waitUntil,
     };
     this.stepCount = new StepCount(options.maxSteps, options.maxRetries);
     this.chatKit = new LiveChatKit<Chat>({
