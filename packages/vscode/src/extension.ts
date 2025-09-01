@@ -9,7 +9,6 @@ import type * as vscode from "vscode";
 import { CompletionProvider } from "./code-completion";
 import { PochiAuthenticationProvider } from "./integrations/auth-provider";
 import { CommandManager } from "./integrations/command";
-import { ContentProvider } from "./integrations/editor/content-provider";
 import { DiffChangesContentProvider } from "./integrations/editor/diff-changes-content-provider";
 import { DiffOriginContentProvider } from "./integrations/editor/diff-origin-content-provider";
 import { McpHub } from "./integrations/mcp/mcp-hub";
@@ -49,7 +48,6 @@ export async function activate(context: vscode.ExtensionContext) {
   container.resolve(RagdollUriHandler);
   container.resolve(CommandManager);
   container.resolve(DiffOriginContentProvider);
-  container.resolve(ContentProvider);
   container.resolve(McpHub);
   container.resolve(PostInstallActions);
   container.resolve(FileLogger);
