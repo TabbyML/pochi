@@ -46,27 +46,29 @@ For detailed usage instructions, run `pochi -h`, below is the output fom version
 ```
 Usage: pochi [options]
 
-Pochi v0.5.3
+Pochi v0.5.5
 
 Prompt:
-  -p, --prompt <prompt>               Create a new task with the given prompt. You can also pipe input to use as a prompt, for example: `cat
-                                      .pochi/workflows/create-pr.md | pochi`
+  -p, --prompt <prompt>   Create a new task with the given prompt. You can also
+                          pipe input to use as a prompt, for example: `cat
+                          .pochi/workflows/create-pr.md | pochi`. To use a
+                          workflow, use /workflow-name, for example: `pochi -p
+                          /create-pr`. Workflows can be embedded in larger
+                          prompts, for example: `pochi -p "please /create-pr
+                          with feat semantic convention"`
 
 Options:
-  --max-steps <number>                Maximum number of stepsto run the task. If the task cannot be completed in this number of rounds, the runner
-                                      will stop. (default: 24)
-  --max-retries <number>              Maximum number of retries to run the task in a single step. (default: 3)
+  --max-steps <number>    Maximum number of stepsto run the task. If the task
+                          cannot be completed in this number of rounds, the
+                          runner will stop. (default: 24)
+  --max-retries <number>  Maximum number of retries to run the task in a single
+                          step. (default: 3)
 
 Model:
-  --model <model>                     The model to use for the task. (default: "qwen/qwen3-coder")
-  --model-type <modelType>            The type of model to use for the task. Available options: `pochi`, `openai`, `google-vertex-tuning`,
-                                      `ai-gateway`  (default: "pochi")
-  --model-base-url <baseURL>          The base URL to use for the model API. (default: "https://app.getpochi.com")
-  --model-api-key <modelApiKey>       The API key to use for authentication. Used for all non-pochi models (e.g., `openai`).
-  --model-max-output-tokens <number>  The maximum number of output tokens to use. Used for all non-pochi models (e.g., `openai`). (default: 4096)
-  --model-context-window <number>     The maximum context window size in tokens. Used for all non-pochi models (e.g., `openai`). (default: 100000)
+  --model <model>         The model to use for the task. (default:
+                          "qwen/qwen3-coder")
 
 Others:
-  -V, --version                       Print the version string.
-  -h, --help                          Print this help message.
+  -V, --version           Print the version string.
+  -h, --help              Print this help message.
 ```
