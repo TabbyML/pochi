@@ -1,4 +1,3 @@
-import uFuzzy from "@leeoniya/ufuzzy";
 import { PluginKey } from "@tiptap/pm/state";
 import { Extension, ReactRenderer } from "@tiptap/react";
 import {
@@ -13,6 +12,7 @@ import tippy, { type Instance as TippyInstance } from "tippy.js";
 import { debounceWithCachedValue } from "@/lib/debounce";
 import { vscodeHost } from "@/lib/vscode";
 
+import { fuzzySearchStrings } from "@/lib/fuzzy-search";
 import { fileMentionPluginKey } from "../context-mention/extension";
 import type { MentionListActions } from "../shared";
 import { workflowMentionPluginKey } from "../workflow-mention/extension";
@@ -39,7 +39,7 @@ interface AutoCompleteSuggestionItem {
     label: string;
     type: string;
   };
-  ranges: number[];
+  range: number[] | null;
 }
 
 const fuzzySearchAutoCompleteItems = async (
@@ -54,27 +54,22 @@ const fuzzySearchAutoCompleteItems = async (
   return fuzzySearch(candidates, query);
 };
 
-const ufInstance = new uFuzzy({
-  intraChars: "[a-z\\d'\\-_./]",
-  interSplit: "[^a-zA-Z\\d'\\-_./]+",
-});
 function fuzzySearch(
   items: Awaited<ReturnType<typeof vscodeHost.listAutoCompleteCandidates>>,
   query: string,
 ): AutoCompleteSuggestionItem[] {
   const labels = items.map((x) => x.label);
-  const [_, info, order] = ufInstance.search(labels, query);
-  if (!order) return [];
-  const results: AutoCompleteSuggestionItem[] = [];
-  for (const i of order) {
-    const item = items[info.idx[i]];
-    const ranges = info.ranges[i];
-    results.push({
+  const fuzzyResult = fuzzySearchStrings(query, labels);
+
+  const result: AutoCompleteSuggestionItem[] = [];
+  for (const i of fuzzyResult) {
+    const item = items[i.idx];
+    result.push({
       value: item,
-      ranges,
+      range: i.range,
     });
   }
-  return results;
+  return result;
 }
 
 function findSuggestionMatch(config: Trigger) {

@@ -20,7 +20,7 @@ export interface MentionItem {
     type: string;
     label: string;
   };
-  ranges: number[];
+  range: number[];
 }
 
 export interface AutoCompleteListProps {
@@ -107,12 +107,12 @@ const MentionItemView = memo(function MentionItemView({
   const ref = useScrollIntoView(isSelected);
 
   const highlightedText = () => {
-    const { value, ranges } = data;
+    const { value, range } = data;
     const parts = [];
     let lastIndex = 0;
-    for (let i = 0; i < ranges.length; i += 2) {
-      const start = ranges[i];
-      const end = ranges[i + 1];
+    for (let i = 0; i < range.length; i += 2) {
+      const start = range[i];
+      const end = range[i + 1];
       if (start > lastIndex) {
         parts.push(value.label.substring(lastIndex, start));
       }
