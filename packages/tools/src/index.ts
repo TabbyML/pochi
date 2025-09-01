@@ -88,7 +88,7 @@ export const selectClientTools = (options: {
   isCli: boolean;
 }) => {
   if (options.isCli) {
-    if (options.isSubTask) {
+    if (options?.isSubTask) {
       const {
         newTask,
         startBackgroundJob,
