@@ -1,4 +1,4 @@
-export { parseTitle } from "./title";
+export { parseTitle, parseMarkdown } from "./markdown";
 export {
   isAssistantMessageWithNoToolCalls,
   isAssistantMessageWithEmptyParts,

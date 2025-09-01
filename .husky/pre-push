@@ -5,6 +5,7 @@ check_git_clean() {
 
 main() {
     bun dep-check
+    bun gen:config-schema
     bun check:ast-grep
 
     bun turbo boundaries

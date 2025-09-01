@@ -11,6 +11,7 @@
     "tsc": "turbo tsc",
     "dep-check": "bun scripts/dep-check.ts",
     "prepare": "husky",
+    "gen:config-schema": "bun packages/common/src/configuration/gen-schema.ts",
     "pre-push": "bash ./.husky/pre-push"
   },
   "workspaces": {
@@ -20,9 +21,9 @@
       "@quilted/threads": "^3.1.3",
       "@google/genai": "^1.13.0",
       "@slack/bolt": "^4.2.1",
-      "better-auth": "^1.2.9",
+      "better-auth": "1.2.9",
       "@daveyplate/better-auth-tanstack": "^1.3.6",
-      "@better-auth/stripe": "^1.2.9",
+      "@better-auth/stripe": "1.2.9",
       "hono": "^4.7.5",
       "kysely": "^0.27.6",
       "moment": "^2.30.1",
@@ -36,8 +37,8 @@
       "@tailwindcss/vite": "^4.0.6",
       "emittery": "^1.1.0",
       "ai": "^5.0.15",
-      "@ai-sdk/google-vertex": "^3",
-      "@ai-sdk/provider-utils": "^3.0.3",
+      "@ai-sdk/google-vertex": "3.0.8",
+      "@ai-sdk/provider-utils": "3.0.3",
       "@ai-sdk/openai-compatible": "^1.0.7",
       "@ai-sdk/react": "^2.0.15",
       "@ai-sdk/provider": "^2",
@@ -71,6 +72,7 @@
     "better-auth@1.2.9": "patches/better-auth@1.2.9.patch",
     "@better-auth/stripe@1.2.9": "patches/@better-auth%2Fstripe@1.2.9.patch",
     "@daveyplate/better-auth-ui@2.0.12": "patches/@daveyplate%2Fbetter-auth-ui@2.0.12.patch",
-    "ai@5.0.15": "patches/ai@5.0.15.patch"
+    "ai@5.0.15": "patches/ai@5.0.15.patch",
+    "jsonc-parser@3.3.1": "patches/jsonc-parser@3.3.1.patch"
   }
 }

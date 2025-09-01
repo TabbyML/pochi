@@ -22,14 +22,12 @@ import {
 } from "./lib/auth-client";
 import { FileLogger } from "./lib/file-logger";
 import { PostInstallActions } from "./lib/post-install-actions";
-import { TokenStorage } from "./lib/token-storage";
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
 export async function activate(context: vscode.ExtensionContext) {
   // Container will dispose all the registered instances when itself is disposed
   context.subscriptions.push(container);
-  await container.resolve(TokenStorage).init();
 
   container.register<vscode.ExtensionContext>("vscode.ExtensionContext", {
     useValue: context,

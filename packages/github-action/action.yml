@@ -26,6 +26,12 @@ runs:
 
         echo "$HOME/.pochi/bin" >> $GITHUB_PATH
 
+    - name: Config Git
+      shell: bash
+      run: |
+        git config --global user.email "noreply@getpochi.com"
+        git config --global user.name "Pochi"
+
     - name: Install bun
       shell: bash
       run: |
@@ -47,3 +53,4 @@ runs:
         bun ${GITHUB_ACTION_PATH}/src/index.ts
       env:
         GITHUB_TOKEN: ${{ github.token }}
+        POCHI_REMOTE_ENV: 1

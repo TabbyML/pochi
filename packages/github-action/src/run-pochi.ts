@@ -54,10 +54,16 @@ export async function runPochi(request: RunPochiRequest): Promise<void> {
 function formatCustomInstruction(event: RunPochiRequest["event"]) {
   return `## Instruction
 
-This task is triggered in an automated Github Action workflow. Please follow user's prompt, perform the task.
+This task is triggered in an Github Action Workflow. Please follow user's prompt, perform the task.
 In the end, please always use "gh" command to reply the comment that triggered this task, and explain what you have done.
 
 ## Event triggering this task
 
-${JSON.stringify(event, null, 2)}`.trim();
+${JSON.stringify(event, null, 2)}
+
+
+## Additional Notes
+* If this event has a corresponding PR, always checkout the PR branch first (use gh)
+
+`.trim();
 }

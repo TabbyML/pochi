@@ -1,0 +1,269 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "default": "https://getpochi.com/config.schema.json",
+      "type": "string"
+    },
+    "credentials": {
+      "type": "object",
+      "properties": {
+        "pochiToken": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "providers": {
+      "type": "array",
+      "items": {
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "description": "Model provider identifier, e.g., \"openai\", \"anthropic\", etc.",
+                "type": "string"
+              },
+              "name": {
+                "description": "Model provider name, e.g., \"OpenAI\", \"Anthropic\", etc.",
+                "type": "string"
+              },
+              "models": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "description": "Display name of the model, e.g., \"GPT-4o\"",
+                      "type": "string"
+                    },
+                    "id": {
+                      "description": "Identifier for the model, e.g., \"gpt-4o\"",
+                      "type": "string"
+                    },
+                    "maxTokens": {
+                      "description": "Maximum number of generated tokens for the model",
+                      "type": "number"
+                    },
+                    "contextWindow": {
+                      "description": "Context window size for the model",
+                      "type": "number"
+                    },
+                    "useToolCallMiddleware": {
+                      "description": "Whether to use tool call middleware",
+                      "type": "boolean"
+                    }
+                  },
+                  "required": ["id", "maxTokens", "contextWindow"],
+                  "additionalProperties": false
+                }
+              },
+              "kind": {
+                "type": "string",
+                "const": "openai"
+              },
+              "baseURL": {
+                "description": "Base URL for the model provider's API, e.g., \"https://api.openai.com/v1\"",
+                "type": "string"
+              },
+              "apiKey": {
+                "description": "API key for the model provider, if required.",
+                "type": "string"
+              }
+            },
+            "required": ["id", "models", "baseURL"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "description": "Model provider identifier, e.g., \"openai\", \"anthropic\", etc.",
+                "type": "string"
+              },
+              "name": {
+                "description": "Model provider name, e.g., \"OpenAI\", \"Anthropic\", etc.",
+                "type": "string"
+              },
+              "models": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "description": "Display name of the model, e.g., \"GPT-4o\"",
+                      "type": "string"
+                    },
+                    "id": {
+                      "description": "Identifier for the model, e.g., \"gpt-4o\"",
+                      "type": "string"
+                    },
+                    "maxTokens": {
+                      "description": "Maximum number of generated tokens for the model",
+                      "type": "number"
+                    },
+                    "contextWindow": {
+                      "description": "Context window size for the model",
+                      "type": "number"
+                    },
+                    "useToolCallMiddleware": {
+                      "description": "Whether to use tool call middleware",
+                      "type": "boolean"
+                    }
+                  },
+                  "required": ["id", "maxTokens", "contextWindow"],
+                  "additionalProperties": false
+                }
+              },
+              "kind": {
+                "type": "string",
+                "const": "google-vertex-tuning"
+              },
+              "location": {
+                "description": "Location of the model, e.g., us-central1",
+                "type": "string"
+              },
+              "credentials": {
+                "description": "Credentials for the vertex model.",
+                "type": "string"
+              }
+            },
+            "required": ["id", "models", "kind", "location", "credentials"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "description": "Model provider identifier, e.g., \"openai\", \"anthropic\", etc.",
+                "type": "string"
+              },
+              "name": {
+                "description": "Model provider name, e.g., \"OpenAI\", \"Anthropic\", etc.",
+                "type": "string"
+              },
+              "models": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "description": "Display name of the model, e.g., \"GPT-4o\"",
+                      "type": "string"
+                    },
+                    "id": {
+                      "description": "Identifier for the model, e.g., \"gpt-4o\"",
+                      "type": "string"
+                    },
+                    "maxTokens": {
+                      "description": "Maximum number of generated tokens for the model",
+                      "type": "number"
+                    },
+                    "contextWindow": {
+                      "description": "Context window size for the model",
+                      "type": "number"
+                    },
+                    "useToolCallMiddleware": {
+                      "description": "Whether to use tool call middleware",
+                      "type": "boolean"
+                    }
+                  },
+                  "required": ["id", "maxTokens", "contextWindow"],
+                  "additionalProperties": false
+                }
+              },
+              "kind": {
+                "type": "string",
+                "const": "ai-gateway"
+              },
+              "apiKey": {
+                "description": "API key for the model provider, if required.",
+                "type": "string"
+              }
+            },
+            "required": ["id", "models", "kind"],
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
+    "mcp": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string"
+      },
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "disabled": {
+                "type": "boolean"
+              },
+              "disabledTools": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "url": {
+                "type": "string"
+              },
+              "headers": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": ["url"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "disabled": {
+                "type": "boolean"
+              },
+              "disabledTools": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "command": {
+                "type": "string"
+              },
+              "args": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "cwd": {
+                "type": "string"
+              },
+              "env": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": ["command", "args"],
+            "additionalProperties": false
+          }
+        ]
+      }
+    }
+  },
+  "additionalProperties": false
+}

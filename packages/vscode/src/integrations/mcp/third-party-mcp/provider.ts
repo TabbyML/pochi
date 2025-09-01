@@ -1,4 +1,4 @@
-import type { McpServerConfig } from "../types";
+import type { McpServerConfig } from "@getpochi/common/configuration";
 
 export interface McpConfigProvider {
   // A unique name for the provider

@@ -15,7 +15,7 @@ export function ChatContextProvider({ children }: ChatContextProviderProps) {
     previewingToolCalls,
     getToolCallLifeCycle,
     completeToolCalls,
-  } = useToolCallLifeCycles(abortController.current);
+  } = useToolCallLifeCycles(abortController.current.signal);
 
   const value: ChatState = {
     abortController,

@@ -4,14 +4,18 @@ import "@livestore/wa-sqlite/dist/wa-sqlite.node.wasm" with { type: "file" };
 
 import { Command } from "@commander-js/extra-typings";
 import { getLogger } from "@getpochi/common";
+import { pochiConfig } from "@getpochi/common/configuration";
 import type { PochiApi, PochiApiClient } from "@getpochi/common/pochi-api";
-import { CredentialStorage } from "@getpochi/common/tool-utils";
 import type { LLMRequestData } from "@getpochi/livekit";
 import chalk from "chalk";
 import * as commander from "commander";
 import { hc } from "hono/client";
 import packageJson from "../package.json";
 import { findRipgrep } from "./lib/find-ripgrep";
+import {
+  containsWorkflowReference,
+  replaceWorkflowReferences,
+} from "./lib/workflow-loader";
 import { createStore } from "./livekit/store";
 import { OutputRenderer } from "./output-renderer";
 import { TaskRunner } from "./task-runner";
@@ -41,7 +45,7 @@ const program = new Command()
   .optionsGroup("Prompt:")
   .option(
     "-p, --prompt <prompt>",
-    "Create a new task with the given prompt. You can also pipe input to use as a prompt, for example: `cat .pochi/workflows/create-pr.md | pochi`",
+    'Create a new task with the given prompt. You can also pipe input to use as a prompt, for example: `cat .pochi/workflows/create-pr.md | pochi`. To use a workflow, use /workflow-name, for example: `pochi -p /create-pr`. Workflows can be embedded in larger prompts, for example: `pochi -p "please /create-pr with feat semantic convention"`',
   )
   .optionsGroup("Options:")
   .option(
@@ -62,36 +66,10 @@ const program = new Command()
     "The model to use for the task.",
     "qwen/qwen3-coder",
   )
-  .requiredOption(
-    "--model-type <modelType>",
-    "The type of model to use for the task. Available options: `pochi`, `openai`, `google-vertex-tuning`, `ai-gateway` ",
-    "pochi",
-  )
-  .option(
-    "--model-base-url <baseURL>",
-    "The base URL to use for the model API.",
-    prodServerUrl,
-  )
-  .option(
-    "--model-api-key <modelApiKey>",
-    "The API key to use for authentication. Used for all non-pochi models (e.g., `openai`).",
-  )
-  .option(
-    "--model-max-output-tokens <number>",
-    "The maximum number of output tokens to use. Used for all non-pochi models (e.g., `openai`).",
-    parsePositiveInt,
-    4096,
-  )
-  .option(
-    "--model-context-window <number>",
-    "The maximum context window size in tokens. Used for all non-pochi models (e.g., `openai`).",
-    parsePositiveInt,
-    100_000, // 100K
-  )
   .action(async (options) => {
     const { uid, prompt } = await parseTaskInput(options, program);
 
-    const apiClient = await createApiClient(options);
+    const apiClient = await createApiClient();
 
     const store = await createStore(process.cwd());
 
@@ -177,20 +155,27 @@ async function parseTaskInput(options: ProgramOpts, program: Program) {
     return program.error("error: A prompt must be provided");
   }
 
+  // Check if the prompt contains workflow references
+  if (containsWorkflowReference(prompt)) {
+    const { prompt: updatedPrompt, missingWorkflows } =
+      await replaceWorkflowReferences(prompt, process.cwd());
+    prompt = updatedPrompt;
+
+    // Handle missing workflows
+    if (missingWorkflows.length > 0) {
+      console.warn(
+        `${chalk.yellow("warning:")} Workflow(s) '${missingWorkflows.join(", ")}' not found in .pochi/workflows/`,
+      );
+    }
+  }
+
   return { uid, prompt };
 }
 
-async function createApiClient(options: ProgramOpts): Promise<PochiApiClient> {
-  let token = process.env.POCHI_SESSION_TOKEN;
-  if (!token) {
-    const credentialStorage = new CredentialStorage({
-      isDev:
-        options.modelType === "pochi" && options.modelBaseUrl !== prodServerUrl,
-    });
-    token = await credentialStorage.read();
-  }
+async function createApiClient(): Promise<PochiApiClient> {
+  const token = pochiConfig.value.credentials?.pochiToken;
 
-  const authClient: PochiApiClient = hc<PochiApi>(options.modelBaseUrl, {
+  const authClient: PochiApiClient = hc<PochiApi>(prodServerUrl, {
     fetch(input: string | URL | Request, init?: RequestInit) {
       const headers = new Headers(init?.headers);
       if (token) {
@@ -216,42 +201,56 @@ function createLLMConfig({
   program: Program;
   options: ProgramOpts;
 }): LLMRequestData {
-  if (options.modelType === "openai") {
+  const sep = options.model.indexOf("/");
+  const modelProviderId = options.model.slice(0, sep);
+  const modelId = options.model.slice(sep + 1);
+
+  const modelProvider = pochiConfig.value.providers?.find(
+    (x) => x.id === modelProviderId,
+  );
+  const modelSetting = modelProvider?.models.find((x) => x.id === modelId);
+
+  if (!modelProvider) {
+    return {
+      type: "pochi",
+      modelId: options.model,
+      apiClient,
+    } satisfies LLMRequestData;
+  }
+
+  if (!modelSetting) {
+    return program.error(`Model ${options.model} not found in configuration`);
+  }
+
+  if (modelProvider.kind === undefined || modelProvider.kind === "openai") {
     return {
       type: "openai",
-      modelId: options.model || "<default>",
-      baseURL: options.modelBaseUrl,
-      apiKey: options.modelApiKey,
-      contextWindow: options.modelContextWindow,
-      maxOutputTokens: options.modelMaxOutputTokens,
+      modelId,
+      baseURL: modelProvider.baseURL,
+      apiKey: modelProvider.apiKey,
+      contextWindow: modelSetting.contextWindow,
+      maxOutputTokens: modelSetting.maxTokens,
     };
   }
 
-  if (options.modelType === "ai-gateway") {
+  if (modelProvider.kind === "ai-gateway") {
     return {
       type: "ai-gateway",
-      modelId: options.model || "<default>",
-      apiKey: options.modelApiKey,
-      contextWindow: options.modelContextWindow,
-      maxOutputTokens: options.modelMaxOutputTokens,
+      modelId,
+      apiKey: modelProvider.apiKey,
+      contextWindow: modelSetting.contextWindow,
+      maxOutputTokens: modelSetting.maxTokens,
     };
   }
 
-  if (options.modelType === "google-vertex-tuning") {
-    if (!options.modelApiKey) {
-      return program.error(
-        "--model-api-key is required for google-vertex-tuning",
-      );
-    }
-
+  if (modelProvider.kind === "google-vertex-tuning") {
     return {
       type: "google-vertex-tuning",
-      modelId: options.model || "<default>",
-      credentials: options.modelApiKey,
-      contextWindow: options.modelContextWindow,
-      maxOutputTokens: options.modelMaxOutputTokens,
-      // FIXME: hardcoded for now
-      location: "us-central1",
+      modelId,
+      credentials: modelProvider.credentials,
+      contextWindow: modelSetting.contextWindow,
+      maxOutputTokens: modelSetting.maxTokens,
+      location: modelProvider.location,
     };
   }
 
