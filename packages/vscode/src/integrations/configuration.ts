@@ -43,7 +43,7 @@ export class PochiConfiguration implements vscode.Disposable {
     });
   }
 
-  updateCustomModelSettings(providers: CustomModelSetting[]) {
+  updateCustomModelSettings(providers: Record<string, CustomModelSetting>) {
     updatePochiConfig({
       providers,
     });

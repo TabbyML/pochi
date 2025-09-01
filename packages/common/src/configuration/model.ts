@@ -1,9 +1,6 @@
 import z from "zod/v4";
 
 const BaseModelSettings = z.object({
-  id: z
-    .string()
-    .describe('Model provider identifier, e.g., "openai", "anthropic", etc.'),
   name: z
     .string()
     .optional()

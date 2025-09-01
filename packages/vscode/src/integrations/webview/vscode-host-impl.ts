@@ -656,7 +656,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   };
 
   readCustomModelSetting = async (): Promise<
-    ThreadSignalSerialization<CustomModelSetting[] | undefined>
+    ThreadSignalSerialization<Record<string, CustomModelSetting> | undefined>
   > => {
     return ThreadSignal.serialize(this.pochiConfiguration.customModelSettings);
   };
