@@ -1,7 +1,6 @@
 import { getLogger } from "@getpochi/common";
 import type { ClientTools, ToolFunctionType } from "@getpochi/tools";
 import type { ToolUIPart } from "ai";
-import { catalog } from "@getpochi/livekit";
 import { TaskRunner } from "../task-runner";
 import type { RunnerOptions } from "../task-runner";
 import type { ToolCallOptions } from "../types";
@@ -112,7 +111,10 @@ export const newTask =
       logger.debug(`Sub-task completed with result: ${result}`);
 
       return {
-        result: typeof result === "string" ? result : "Sub-task completed successfully",
+        result:
+          typeof result === "string"
+            ? result
+            : "Sub-task completed successfully",
       };
     } catch (error) {
       const errorMessage =
