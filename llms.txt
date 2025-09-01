@@ -340,13 +340,12 @@ Pochi allows you to configure any LLM provider that offers an OpenAI-compatible 
     "groq": {
       "apiKey": "your_api_key",
       "baseUrl": "https://api.groq.com/openai/v1",
-      "models": [
-        {
-          "id": "moonshotai/kimi-k2-instruct",
+      "models": {
+        "moonshotai/kimi-k2-instruct": {
           "contextWindow": 131072,
           "maxTokens": 8000
         }
-      ]
+      }
     }
   }
 }
