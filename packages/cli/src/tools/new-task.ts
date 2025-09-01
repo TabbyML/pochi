@@ -9,7 +9,7 @@ const logger = getLogger("NewTaskTool");
 
 /**
  * Implements the newTask tool for CLI runner.
- * Creates and executes sub-tasks autonomously using listr2 for progress display.
+ * Creates and executes sub-tasks autonomously.
  */
 export const newTask =
   (options: ToolCallOptions): ToolFunctionType<ClientTools["newTask"]> =>

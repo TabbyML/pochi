@@ -220,7 +220,7 @@ function renderToolPart(part: ToolUIPart<UITools>): {
     }
     if (part.state === "input-streaming" || part.state === "input-available") {
       return {
-        text: `🚀 Executing subtask: ${chalk.bold(description)}`,
+        text: `🚀 Executing subtask: ${chalk.bold(description)}\n${chalk.dim("└─")} Running...`,
         stop: "stopAndPersist",
         error: errorText,
       };
