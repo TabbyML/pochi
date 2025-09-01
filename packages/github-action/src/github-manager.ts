@@ -1,5 +1,5 @@
 import type * as github from "@actions/github";
-import { Octokit } from "@octokit/rest";
+import { Octokit, type RestEndpointMethodTypes } from "@octokit/rest";
 import type {
   IssueCommentCreatedEvent,
   IssueCommentEvent,
@@ -43,6 +43,31 @@ export class GitHubManager {
       issue_number: issueNumber,
       body: `❌ **Pochi Failed**\n${errorMessage}`,
     });
+  }
+
+  async createReaction(
+    commentId: number,
+    content: RestEndpointMethodTypes["reactions"]["createForIssueComment"]["parameters"]["content"],
+  ): Promise<void> {
+    const repo = this.getRepository();
+    try {
+      await this.octokit.rest.reactions.createForIssueComment({
+        owner: repo.owner,
+        repo: repo.repo,
+        comment_id: commentId,
+        content: content as
+          | "+1"
+          | "-1"
+          | "laugh"
+          | "confused"
+          | "heart"
+          | "hooray"
+          | "rocket"
+          | "eyes",
+      });
+    } catch (error) {
+      console.warn(`Failed to add reaction ${content}: ${error}`);
+    }
   }
 
   // Repository operations
@@ -98,6 +123,7 @@ export class GitHubManager {
     return {
       prompt,
       event,
+      commentId: this.payload.comment.id,
     };
   }
 

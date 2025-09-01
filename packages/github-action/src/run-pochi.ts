@@ -1,14 +1,22 @@
 import { spawn } from "node:child_process";
 import type { IssueCommentCreatedEvent } from "@octokit/webhooks-types";
 import { readPochiConfig } from "./env";
+import type { GitHubManager } from "./github-manager";
 
 export type RunPochiRequest = {
   prompt: string;
   event: Omit<IssueCommentCreatedEvent, "comment">;
+  commentId: number;
 };
 
-export async function runPochi(request: RunPochiRequest): Promise<void> {
+export async function runPochi(
+  request: RunPochiRequest,
+  githubManager: GitHubManager,
+): Promise<void> {
   const config = readPochiConfig();
+
+  // Add eye reaction to indicate starting
+  await githubManager.createReaction(request.commentId, "eyes");
 
   const args = ["--prompt", request.prompt, "--max-steps", "128"];
 
@@ -37,16 +45,28 @@ export async function runPochi(request: RunPochiRequest): Promise<void> {
       },
     });
 
-    child.on("close", (code) => {
+    let handled = false;
+    const handleFailure = async (error: Error) => {
+      if (handled) return;
+      handled = true;
+      await githubManager.createReaction(request.commentId, "-1");
+      reject(error);
+    };
+
+    child.on("close", async (code) => {
+      if (handled) return;
       if (code === 0) {
+        handled = true;
+        // Add check mark reaction to indicate completion
+        await githubManager.createReaction(request.commentId, "+1");
         resolve();
       } else {
-        reject(new Error(`pochi CLI failed with code ${code}`));
+        handleFailure(new Error(`pochi CLI failed with code ${code}`));
       }
     });
 
     child.on("error", (error) => {
-      reject(new Error(`Failed to spawn pochi CLI: ${error.message}`));
+      handleFailure(new Error(`Failed to spawn pochi CLI: ${error.message}`));
     });
   });
 }
