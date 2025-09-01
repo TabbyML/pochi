@@ -111,6 +111,7 @@ export const AutoCompleteExtension = Extension.create<
   {
     component: ReactRenderer<MentionListActions, AutoCompleteListProps> | null;
     popup: TippyInstance | null;
+    showTimeout: number | null;
   }
 >({
   name: "autoCompletion",
@@ -119,10 +120,14 @@ export const AutoCompleteExtension = Extension.create<
     return {
       component: null,
       popup: null,
+      showTimeout: null,
     };
   },
 
   destroy() {
+    if (this.storage.showTimeout) {
+      clearTimeout(this.storage.showTimeout);
+    }
     if (this.storage.popup) {
       this.storage.popup.destroy();
     }
@@ -188,8 +193,14 @@ export const AutoCompleteExtension = Extension.create<
           };
 
           const destroyMention = () => {
+            if (storage.showTimeout) {
+              clearTimeout(storage.showTimeout);
+              storage.showTimeout = null;
+            }
             if (storage.popup) {
-              storage.popup.destroy();
+              if (!storage.popup.state.isDestroyed) {
+                storage.popup.destroy();
+              }
               storage.popup = null;
             }
             if (storage.component) {
@@ -214,13 +225,20 @@ export const AutoCompleteExtension = Extension.create<
                 getReferenceClientRect: () => clientRect,
                 appendTo: () => document.body,
                 content: storage.component.element,
-                showOnCreate: true,
+                showOnCreate: false,
                 interactive: true,
                 trigger: "manual",
                 placement: "top-start",
                 offset: [0, 6],
                 maxWidth: "none",
               });
+
+              storage.showTimeout = window.setTimeout(() => {
+                if (storage.popup && !storage.popup.state.isDestroyed) {
+                  storage.popup.show();
+                }
+                storage.showTimeout = null;
+              }, 200);
             },
             onUpdate: (props: SuggestionProps<AutoCompleteSuggestionItem>) => {
               if (!props.items?.length) {
@@ -228,7 +246,12 @@ export const AutoCompleteExtension = Extension.create<
                 return;
               }
               if (storage.popup && !storage.popup.state.isDestroyed) {
-                storage.popup?.show();
+                if (
+                  !storage.popup.state.isShown &&
+                  storage.showTimeout === null
+                ) {
+                  storage.popup.show();
+                }
               }
               storage.component?.updateProps(props);
             },
@@ -238,7 +261,11 @@ export const AutoCompleteExtension = Extension.create<
             onKeyDown: (props: SuggestionKeyDownProps): boolean => {
               if (props.event.key === "Escape") {
                 if (storage.popup && !storage.popup.state.isDestroyed) {
-                  storage.popup?.hide();
+                  storage.popup.hide();
+                }
+                if (storage.showTimeout) {
+                  clearTimeout(storage.showTimeout);
+                  storage.showTimeout = null;
                 }
                 return true;
               }
