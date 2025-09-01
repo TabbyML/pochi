@@ -22,6 +22,7 @@ import { Button } from "./ui/button";
 import { Progress } from "./ui/progress";
 
 interface Props {
+  selectedModel: DisplayModel;
   totalTokens: number;
   className?: string;
   compact?: {
@@ -31,7 +32,6 @@ interface Props {
     newCompactTask: () => void;
     enabled: boolean;
   };
-  selectedModel: DisplayModel;
 }
 
 export function TokenUsage({
@@ -42,7 +42,7 @@ export function TokenUsage({
 }: Props) {
   const { t } = useTranslation();
   const percentage = Math.ceil(
-    (totalTokens / selectedModel?.contextWindow) * 100,
+    (totalTokens / selectedModel.contextWindow) * 100,
   );
   const [isOpen, setIsOpen] = useState(false);
   const [isPinned, setIsPinned] = useState(false);
@@ -146,7 +146,7 @@ export function TokenUsage({
           <div className="flex flex-col gap-y-1">
             <div className="mb-1 flex items-center gap-1 text-muted-foreground">
               <span>{t("tokenUsage.contextWindow")}</span>
-              {selectedModel?.type === "byok" && (
+              {selectedModel.type === "byok" && (
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger>
