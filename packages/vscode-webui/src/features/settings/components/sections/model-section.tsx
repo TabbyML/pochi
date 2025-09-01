@@ -212,7 +212,7 @@ export const ModelSection: React.FC<ModelSectionProps> = ({ user }) => {
             Object.entries(customModelSettings).map(
               ([providerId, provider]) =>
                 provider.models &&
-                provider.models.length > 0 && (
+                Object.keys(provider.models).length > 0 && (
                   <div key={providerId} className="ml-1">
                     <AccordionSection
                       title={
@@ -244,23 +244,25 @@ export const ModelSection: React.FC<ModelSectionProps> = ({ user }) => {
                       defaultOpen
                     >
                       <div className="space-y-2">
-                        {provider.models.map((model) => (
-                          <div
-                            key={model.id}
-                            className="group rounded-md border p-2"
-                          >
-                            <div className="flex items-center justify-between">
-                              <div className="flex flex-1 items-center gap-2 overflow-x-hidden">
-                                <div className="flex size-6 shrink-0 items-center justify-center">
-                                  <DotIcon className="size-6 text-muted-foreground" />
+                        {Object.entries(provider.models).map(
+                          ([modelId, model]) => (
+                            <div
+                              key={modelId}
+                              className="group rounded-md border p-2"
+                            >
+                              <div className="flex items-center justify-between">
+                                <div className="flex flex-1 items-center gap-2 overflow-x-hidden">
+                                  <div className="flex size-6 shrink-0 items-center justify-center">
+                                    <DotIcon className="size-6 text-muted-foreground" />
+                                  </div>
+                                  <span className="truncate font-semibold">
+                                    {model.name ?? modelId}
+                                  </span>
                                 </div>
-                                <span className="truncate font-semibold">
-                                  {model.name ?? model.id}
-                                </span>
                               </div>
                             </div>
-                          </div>
-                        ))}
+                          ),
+                        )}
                       </div>
                     </AccordionSection>
                   </div>

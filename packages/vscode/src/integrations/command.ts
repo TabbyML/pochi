@@ -410,18 +410,16 @@ export class CommandManager implements vscode.Disposable {
         kind: "openai",
         baseURL: "https://api.openai.com/v1",
         apiKey: "your api key here",
-        models: [
-          {
-            id: "gpt-4.1",
+        models: {
+          "gpt-4.1": {
             contextWindow: 1047576,
             maxTokens: 32768,
           },
-          {
-            id: "o4-mini",
+          "o4-mini": {
             contextWindow: 200000,
             maxTokens: 100000,
           },
-        ],
+        },
       },
     } satisfies Record<string, CustomModelSetting>;
 
