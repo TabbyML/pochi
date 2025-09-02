@@ -26,7 +26,7 @@
             "type": "object",
             "properties": {
               "name": {
-                "description": "Model provider name, e.g., \"OpenAI\", \"Anthropic\", etc.",
+                "description": "Display name of the provider, e.g., \"OpenAI\", \"Anthropic\", etc.",
                 "type": "string"
               },
               "models": {
@@ -80,7 +80,7 @@
             "type": "object",
             "properties": {
               "name": {
-                "description": "Model provider name, e.g., \"OpenAI\", \"Anthropic\", etc.",
+                "description": "Display name of the provider, e.g., \"OpenAI\", \"Anthropic\", etc.",
                 "type": "string"
               },
               "models": {
@@ -142,7 +142,7 @@
             "type": "object",
             "properties": {
               "name": {
-                "description": "Model provider name, e.g., \"OpenAI\", \"Anthropic\", etc.",
+                "description": "Display name of the provider, e.g., \"OpenAI\", \"Anthropic\", etc.",
                 "type": "string"
               },
               "models": {
