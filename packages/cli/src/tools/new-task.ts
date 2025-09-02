@@ -64,8 +64,6 @@ export const newTask =
         logger.debug("No assistant message found in sub-task result");
       }
 
-      logger.debug(`Sub-task completed with result: ${result}`);
-
       return {
         result:
           typeof result === "string"
