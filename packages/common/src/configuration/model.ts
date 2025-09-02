@@ -4,7 +4,9 @@ const BaseModelSettings = z.object({
   name: z
     .string()
     .optional()
-    .describe('Model provider name, e.g., "OpenAI", "Anthropic", etc.'),
+    .describe(
+      'Display name of the provider, e.g., "OpenAI", "Anthropic", etc.',
+    ),
   models: z.record(
     z.string(),
     z.object({
