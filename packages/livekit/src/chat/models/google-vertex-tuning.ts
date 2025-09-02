@@ -8,32 +8,10 @@ import type { RequestData } from "../../types";
 export function createGoogleVertexTuningModel(
   llm: Extract<RequestData["llm"], { type: "google-vertex-tuning" }>,
 ) {
-  const location = llm.location;
-  const credentials = llm.credentials ? JSON.parse(llm.credentials) : undefined;
-  const projectId = llm.projectId || credentials?.project_id;
-  const accessToken = llm.accessToken;
-  const baseURL = `https://aiplatform.googleapis.com/v1/projects/${projectId}/locations/${location}/publishers/google`;
+  const vertexModel = createVertexModel(llm.vertex);
 
-  const vertexFineTuning = accessToken
-    ? createVertexWithoutCredentials({
-        project: projectId,
-        location,
-        baseURL,
-        fetch: createPatchedFetchForFinetune(accessToken),
-      })
-    : createVertex({
-        project: projectId,
-        location,
-        baseURL,
-        googleCredentials: {
-          clientEmail: credentials.client_email,
-          privateKeyId: credentials.private_key_id,
-          privateKey: credentials.private_key,
-        },
-        fetch: createPatchedFetchForFinetune(),
-      });
   return wrapLanguageModel({
-    model: vertexFineTuning(llm.modelId),
+    model: vertexModel,
     middleware: {
       middlewareVersion: "v2",
       async transformParams({ params }) {
@@ -76,4 +54,43 @@ function createPatchedFetchForFinetune(accessToken?: string | undefined) {
     // Should never happen
     throw new Error(`Unexpected requestInfo type: ${typeof requestInfo}`);
   };
+}
+
+function createVertexModel(
+  vertex: Extract<
+    RequestData["llm"],
+    { type: "google-vertex-tuning" }
+  >["vertex"],
+) {
+  const getBaseURL = (location: string, projectId: string) =>
+    `https://aiplatform.googleapis.com/v1/projects/${projectId}/locations/${location}/publishers/google`;
+
+  if (vertex.type === "service-account") {
+    const service_account_key = JSON.parse(vertex.serviceAccountKey);
+    const location = vertex.location;
+    const project = service_account_key.project_id;
+    return createVertex({
+      project,
+      location,
+      baseURL: getBaseURL(location, project),
+      googleCredentials: {
+        clientEmail: service_account_key.client_email,
+        privateKeyId: service_account_key.private_key_id,
+        privateKey: service_account_key.private_key,
+      },
+      fetch: createPatchedFetchForFinetune(),
+    })(vertex.modelId);
+  }
+
+  if (vertex.type === "access-token") {
+    const { location, projectId, accessToken } = vertex;
+    return createVertexWithoutCredentials({
+      project: projectId,
+      location,
+      baseURL: getBaseURL(location, projectId),
+      fetch: createPatchedFetchForFinetune(accessToken),
+    })(vertex.modelId);
+  }
+
+  return undefined as never;
 }

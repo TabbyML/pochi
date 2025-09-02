@@ -107,11 +107,7 @@ function useLLM(): React.RefObject<LLMRequestData> {
     if (provider.kind === "google-vertex-tuning") {
       return {
         type: "google-vertex-tuning" as const,
-        location: provider.location,
-        credentials: provider.credentials,
-        projectId: provider.projectId,
-        accessToken: provider.accessToken,
-        modelId: selectedModel.modelId,
+        vertex: provider.vertex,
         maxOutputTokens: selectedModel.maxTokens,
         contextWindow: selectedModel.contextWindow,
         useToolCallMiddleware: selectedModel.useToolCallMiddleware,
