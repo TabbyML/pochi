@@ -65,7 +65,7 @@ function createVertexModel(
   const getBaseURL = (location: string, projectId: string) =>
     `https://aiplatform.googleapis.com/v1/projects/${projectId}/locations/${location}/publishers/google`;
 
-  if (vertex.type === "service-account") {
+  if ("serviceAccountKey" in vertex) {
     const service_account_key = JSON.parse(vertex.serviceAccountKey);
     const location = vertex.location;
     const project = service_account_key.project_id;
@@ -82,7 +82,7 @@ function createVertexModel(
     })(vertex.modelId);
   }
 
-  if (vertex.type === "access-token") {
+  if ("accessToken" in vertex) {
     const { location, projectId, accessToken } = vertex;
     return createVertexWithoutCredentials({
       project: projectId,

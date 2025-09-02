@@ -45,15 +45,13 @@ const OpenAIModelSettings = BaseModelSettings.extend({
     .describe("API key for the model provider, if required."),
 });
 
-export const GoogleVertexModel = z.discriminatedUnion("type", [
+export const GoogleVertexModel = z.union([
   z.object({
-    type: z.literal("service-account"),
     modelId: z.string(),
     serviceAccountKey: z.string(),
     location: z.string(),
   }),
   z.object({
-    type: z.literal("access-token"),
     modelId: z.string(),
     accessToken: z.string(),
     projectId: z.string(),
