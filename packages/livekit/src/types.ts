@@ -95,9 +95,11 @@ const RequestData = z.object({
     z.object({
       type: z.literal("gemini-cli"),
       modelId: z.string(),
-      apiKey: z.string().optional(),
+      accessToken: z.string().optional(),
       contextWindow: z.number().describe("Context window of the model."),
       maxOutputTokens: z.number().describe("Max output tokens of the model."),
+      projectId: z.string(),
+      location: z.string(),
     }),
   ]),
   mcpToolSet: z

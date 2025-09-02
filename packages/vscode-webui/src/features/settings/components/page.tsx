@@ -13,15 +13,6 @@ export function SettingsPage({ user }: { user?: User }) {
       <ScrollArea className="h-full p-4">
         <div className="space-y-1">
           <AccountSection user={user} />
-          <div>
-            <a
-              href="command:pochi.gemini.oauth"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Sign in with gemini
-            </a>
-          </div>
           <WorkspaceRulesSection />
           <WorkflowsSection />
           <ToolsSection />
