@@ -1,13 +1,21 @@
 import { ErrorMessage } from "@/components/error-message";
+import { useDebounceState } from "@/lib/hooks/use-debounce-state";
 import { PochiApiErrors } from "@getpochi/common/pochi-api";
 import { ExternalLinkIcon } from "lucide-react";
+import { useEffect } from "react";
 
 export function ErrorMessageView({
   error,
 }: { error: { message: string } | undefined }) {
+  const [debouncedError, setDebouncedError] = useDebounceState(error, 300);
+
+  useEffect(() => {
+    setDebouncedError(error);
+  }, [error, setDebouncedError]);
+
   return (
     <ErrorMessage
-      error={error}
+      error={debouncedError}
       formatter={(e) => {
         if (e.message === PochiApiErrors.ReachedCreditLimit) {
           return (

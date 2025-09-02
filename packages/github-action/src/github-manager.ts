@@ -1,5 +1,5 @@
 import type * as github from "@actions/github";
-import { Octokit } from "@octokit/rest";
+import { Octokit, type RestEndpointMethodTypes } from "@octokit/rest";
 import type {
   IssueCommentCreatedEvent,
   IssueCommentEvent,
@@ -43,6 +43,86 @@ export class GitHubManager {
       issue_number: issueNumber,
       body: `❌ **Pochi Failed**\n${errorMessage}`,
     });
+  }
+
+  async createComment(initialContent: string): Promise<number> {
+    const repo = this.getRepository();
+    const payload = this.context.payload as IssueCommentEvent;
+    const issueNumber = payload.issue.number;
+
+    const response = await this.octokit.rest.issues.createComment({
+      owner: repo.owner,
+      repo: repo.repo,
+      issue_number: issueNumber,
+      body: `🔄 **Pochi Running...**\n\n${initialContent}`,
+    });
+    return response.data.id;
+  }
+
+  async updateComment(commentId: number, content: string): Promise<void> {
+    const repo = this.getRepository();
+    await this.octokit.rest.issues.updateComment({
+      owner: repo.owner,
+      repo: repo.repo,
+      comment_id: commentId,
+      body: `🔄 **Pochi Running...**\n\n\`\`\`\n${content}\n\`\`\``,
+    });
+  }
+
+  async finalizeComment(
+    commentId: number,
+    content: string,
+    success: boolean,
+  ): Promise<void> {
+    const repo = this.getRepository();
+    const status = success ? "✅ **Pochi Completed**" : "❌ **Pochi Failed**";
+
+    await this.octokit.rest.issues.updateComment({
+      owner: repo.owner,
+      repo: repo.repo,
+      comment_id: commentId,
+      body: `${status}\n\n${content}`,
+    });
+  }
+  async createReaction(
+    commentId: number,
+    content: RestEndpointMethodTypes["reactions"]["createForIssueComment"]["parameters"]["content"],
+  ): Promise<number | undefined> {
+    const repo = this.getRepository();
+    try {
+      const response = await this.octokit.rest.reactions.createForIssueComment({
+        owner: repo.owner,
+        repo: repo.repo,
+        comment_id: commentId,
+        content: content as
+          | "+1"
+          | "-1"
+          | "laugh"
+          | "confused"
+          | "heart"
+          | "hooray"
+          | "rocket"
+          | "eyes",
+      });
+      return response.data.id;
+    } catch (error) {
+      console.warn(`Failed to add reaction ${content}: ${error}`);
+      return undefined;
+    }
+  }
+
+  async deleteReaction(commentId: number, reactionId: number): Promise<void> {
+    const repo = this.getRepository();
+    try {
+      await this.octokit.rest.reactions.deleteForIssueComment({
+        owner: repo.owner,
+        repo: repo.repo,
+        comment_id: commentId,
+        reaction_id: reactionId,
+      });
+    } catch (error) {
+      console.warn(`Failed to delete reaction ${reactionId}: ${error}`);
+    }
   }
 
   // Repository operations
@@ -98,6 +178,7 @@ export class GitHubManager {
     return {
       prompt,
       event,
+      commentId: this.payload.comment.id,
     };
   }
 

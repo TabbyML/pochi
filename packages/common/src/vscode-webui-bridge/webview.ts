@@ -80,6 +80,8 @@ export interface VSCodeHostApi {
     }[]
   >;
 
+  listAutoCompleteCandidates(): Promise<string[]>;
+
   openSymbol(symbol: string): Promise<void>;
 
   /**
@@ -254,7 +256,7 @@ export interface VSCodeHostApi {
    * @returns The OpenAI model override configuration or undefined if not set.
    */
   readCustomModelSetting(): Promise<
-    ThreadSignalSerialization<CustomModelSetting[] | undefined>
+    ThreadSignalSerialization<Record<string, CustomModelSetting> | undefined>
   >;
 
   readVSCodeLm(): Promise<{

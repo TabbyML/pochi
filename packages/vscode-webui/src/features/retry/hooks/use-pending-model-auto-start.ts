@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 
+import { useAutoApproveGuard } from "@/features/chat";
 import type { Task } from "@getpochi/livekit";
 import { ReadyForRetryError } from "./use-ready-for-retry-error";
 
@@ -15,12 +16,14 @@ export const usePendingModelAutoStart = ({
   enabled,
 }: UseEventAutoStartOptions) => {
   const init = task?.status === "pending-model";
+  const autoApproveGuard = useAutoApproveGuard();
 
   const initStarted = useRef(false);
   useEffect(() => {
     if (enabled && init && !initStarted.current) {
       initStarted.current = true;
+      autoApproveGuard.current = true;
       retry(new ReadyForRetryError("ready"));
     }
-  }, [init, retry, enabled]);
+  }, [init, retry, enabled, autoApproveGuard]);
 };

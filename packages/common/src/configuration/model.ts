@@ -1,20 +1,17 @@
 import z from "zod/v4";
 
 const BaseModelSettings = z.object({
-  id: z
-    .string()
-    .describe('Model provider identifier, e.g., "openai", "anthropic", etc.'),
   name: z
     .string()
     .optional()
     .describe('Model provider name, e.g., "OpenAI", "Anthropic", etc.'),
-  models: z.array(
+  models: z.record(
+    z.string(),
     z.object({
       name: z
         .string()
         .optional()
         .describe('Display name of the model, e.g., "GPT-4o"'),
-      id: z.string().describe('Identifier for the model, e.g., "gpt-4o"'),
       maxTokens: z
         .number()
         .optional()
@@ -49,7 +46,18 @@ const OpenAIModelSettings = BaseModelSettings.extend({
 const GoogleVertexTuningModelSettings = BaseModelSettings.extend({
   kind: z.literal("google-vertex-tuning"),
   location: z.string().describe("Location of the model, e.g., us-central1"),
-  credentials: z.string().describe("Credentials for the vertex model."),
+  credentials: z
+    .string()
+    .optional()
+    .describe("Credentials for the vertex model."),
+  projectId: z.string().optional().describe("Project ID for the vertex model."),
+  accessToken: z
+    .string()
+    .optional()
+    .describe("Access token for the vertex model."),
+}).refine((data) => data.credentials || (data.projectId && data.accessToken), {
+  message:
+    "Either credentials or both projectId and accessToken must be provided.",
 });
 
 const AiGatewayModelSettings = BaseModelSettings.extend({

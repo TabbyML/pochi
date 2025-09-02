@@ -70,6 +70,9 @@ const VSCodeHostStub = {
   listFilesInWorkspace: (): Promise<{ filepath: string; isDir: boolean }[]> => {
     return Promise.resolve([{ filepath: "test", isDir: false }]);
   },
+  listAutoCompleteCandidates(): Promise<string[]> {
+    return Promise.resolve([]);
+  },
   openSymbol: (_symbol: string): Promise<void> => {
     return Promise.resolve();
   },
@@ -181,10 +184,12 @@ const VSCodeHostStub = {
     return Promise.resolve(undefined);
   },
   readCustomModelSetting: async (): Promise<
-    ThreadSignalSerialization<CustomModelSetting[] | undefined>
+    ThreadSignalSerialization<Record<string, CustomModelSetting> | undefined>
   > => {
     return Promise.resolve(
-      {} as ThreadSignalSerialization<CustomModelSetting[] | undefined>,
+      {} as ThreadSignalSerialization<
+        Record<string, CustomModelSetting> | undefined
+      >,
     );
   },
   readVSCodeLm: async (): Promise<{

@@ -38,7 +38,7 @@ export class RecentlyChangedCodeSearch implements vscode.Disposable {
   private indexingWorker: ReturnType<typeof setInterval> | undefined =
     undefined;
   private pendingDocumentRanges: DocumentRange[] = [];
-  private didChangeEventDebouncingCache = new Map<
+  private didChangeTextDocumentEventDebounceMap = new Map<
     string,
     { documentRange: DocumentRange; timer: ReturnType<typeof setTimeout> }
   >();
@@ -106,31 +106,18 @@ export class RecentlyChangedCodeSearch implements vscode.Disposable {
 
     const config = this.currentConfig;
     const uriString = document.uri.toString();
-    let ranges: vscode.Range[] = [];
-    if (this.didChangeEventDebouncingCache.has(uriString)) {
-      const cached = this.didChangeEventDebouncingCache.get(uriString);
-      if (cached) {
-        ranges.push(cached.documentRange.range);
-        clearTimeout(cached.timer);
-      }
-    }
-    ranges = ranges.concat(
-      contentChanges
-        .map((change) =>
-          "range" in change
-            ? new vscode.Range(
-                change.range.start,
-                document.positionAt(
-                  document.offsetAt(change.range.start) + change.text.length,
-                ),
-              )
-            : null,
-        )
-        .filter((range): range is vscode.Range => range !== null),
+    const editedRanges = contentChanges.map(
+      (change) =>
+        new vscode.Range(
+          change.range.start,
+          document.positionAt(
+            document.offsetAt(change.range.start) + change.text.length,
+          ),
+        ),
     );
-    const mergedEditedRange = ranges.reduce((a, b) => a.union(b));
+    const mergedEditedRange = editedRanges.reduce((a, b) => a.union(b));
     // Expand the range to cropping window
-    const expand = new vscode.Range(
+    const expandEditedRange = new vscode.Range(
       Math.max(0, mergedEditedRange.start.line - config.indexing.prefixLines),
       0,
       Math.min(
@@ -139,18 +126,29 @@ export class RecentlyChangedCodeSearch implements vscode.Disposable {
       ),
       0,
     );
-    const targetRange = document.validateRange(expand);
+
+    let targetRange = document.validateRange(expandEditedRange);
     if (targetRange.isEmpty) {
       return;
     }
 
+    if (this.didChangeTextDocumentEventDebounceMap.has(uriString)) {
+      const cached = this.didChangeTextDocumentEventDebounceMap.get(uriString);
+      if (cached) {
+        targetRange = document.validateRange(
+          targetRange.union(cached.documentRange.range),
+        );
+        clearTimeout(cached.timer);
+      }
+    }
+
     const documentRange = { document, range: targetRange };
     // A debouncing to avoid indexing the same document multiple times in a short time
-    this.didChangeEventDebouncingCache.set(uriString, {
+    this.didChangeTextDocumentEventDebounceMap.set(uriString, {
       documentRange,
       timer: setTimeout(() => {
         this.pendingDocumentRanges.push(documentRange);
-        this.didChangeEventDebouncingCache.delete(uriString);
+        this.didChangeTextDocumentEventDebounceMap.delete(uriString);
         logger.trace("Created indexing task:", {
           document: documentRange.document.uri,
           range: documentRange.range,

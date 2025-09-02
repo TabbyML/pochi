@@ -400,30 +400,28 @@ export class CommandManager implements vscode.Disposable {
     const currentSettings = this.pochiConfiguration.customModelSettings.value;
 
     // If there are already settings, don't add defaults
-    if (currentSettings && currentSettings.length > 0) {
+    if (currentSettings && Object.keys(currentSettings).length > 0) {
       return;
     }
 
     // Define default custom model settings
-    const defaultSettings = [
-      {
-        id: "openai",
+    const defaultSettings = {
+      openai: {
+        kind: "openai",
         baseURL: "https://api.openai.com/v1",
         apiKey: "your api key here",
-        models: [
-          {
-            id: "gpt-4.1",
+        models: {
+          "gpt-4.1": {
             contextWindow: 1047576,
             maxTokens: 32768,
           },
-          {
-            id: "o4-mini",
+          "o4-mini": {
             contextWindow: 200000,
             maxTokens: 100000,
           },
-        ],
+        },
       },
-    ] satisfies CustomModelSetting[];
+    } satisfies Record<string, CustomModelSetting>;
 
     await this.pochiConfiguration.updateCustomModelSettings(defaultSettings);
   }

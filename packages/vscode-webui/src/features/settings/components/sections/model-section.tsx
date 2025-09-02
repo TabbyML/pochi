@@ -208,61 +208,66 @@ export const ModelSection: React.FC<ModelSectionProps> = ({ user }) => {
           )}
 
           {/* Custom Models Section */}
-          {customModelSettings?.map(
-            (provider) =>
-              provider.models &&
-              provider.models.length > 0 && (
-                <div key={provider.id} className="ml-1">
-                  <AccordionSection
-                    title={
-                      <div className="flex items-center gap-0.5 py-1">
-                        {provider.name || provider.id}
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <a
-                                href="command:pochi.openCustomModelSettings"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="relative z-10 ml-1 rounded-md p-2 transition-colors hover:bg-secondary/50 hover:text-secondary-foreground dark:hover:bg-secondary"
-                              >
-                                <PencilIcon className="size-3" />
-                              </a>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>{t("settings.models.customModelsTooltip")}</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      </div>
-                    }
-                    variant="compact"
-                    className="py-0"
-                    defaultOpen
-                  >
-                    <div className="space-y-2">
-                      {provider.models.map((model) => (
-                        <div
-                          key={model.id}
-                          className="group rounded-md border p-2"
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="flex flex-1 items-center gap-2 overflow-x-hidden">
-                              <div className="flex size-6 shrink-0 items-center justify-center">
-                                <DotIcon className="size-6 text-muted-foreground" />
-                              </div>
-                              <span className="truncate font-semibold">
-                                {model.name ?? model.id}
-                              </span>
-                            </div>
-                          </div>
+          {customModelSettings &&
+            Object.entries(customModelSettings).map(
+              ([providerId, provider]) =>
+                provider.models &&
+                Object.keys(provider.models).length > 0 && (
+                  <div key={providerId} className="ml-1">
+                    <AccordionSection
+                      title={
+                        <div className="flex items-center gap-0.5 py-1">
+                          {provider.name || providerId}
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <a
+                                  href="command:pochi.openCustomModelSettings"
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="relative z-10 ml-1 rounded-md p-2 transition-colors hover:bg-secondary/50 hover:text-secondary-foreground dark:hover:bg-secondary"
+                                >
+                                  <PencilIcon className="size-3" />
+                                </a>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>
+                                  {t("settings.models.customModelsTooltip")}
+                                </p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                         </div>
-                      ))}
-                    </div>
-                  </AccordionSection>
-                </div>
-              ),
-          )}
+                      }
+                      variant="compact"
+                      className="py-0"
+                      defaultOpen
+                    >
+                      <div className="space-y-2">
+                        {Object.entries(provider.models).map(
+                          ([modelId, model]) => (
+                            <div
+                              key={modelId}
+                              className="group rounded-md border p-2"
+                            >
+                              <div className="flex items-center justify-between">
+                                <div className="flex flex-1 items-center gap-2 overflow-x-hidden">
+                                  <div className="flex size-6 shrink-0 items-center justify-center">
+                                    <DotIcon className="size-6 text-muted-foreground" />
+                                  </div>
+                                  <span className="truncate font-semibold">
+                                    {model.name ?? modelId}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          ),
+                        )}
+                      </div>
+                    </AccordionSection>
+                  </div>
+                ),
+            )}
         </div>
       ) : (
         <EmptySectionPlaceholder content={t("settings.models.noModelsFound")} />

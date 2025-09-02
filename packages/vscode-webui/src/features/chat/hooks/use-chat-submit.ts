@@ -60,10 +60,12 @@ export function useChatSubmit({
     // Compacting is not allowed to be stopped.
     if (newCompactTaskPending) return;
 
+    if (isPreviewing) {
+      abortPreviewingToolCalls();
+    }
+
     if (isExecuting) {
       abortExecutingToolCalls();
-    } else if (isPreviewing) {
-      abortPreviewingToolCalls();
     } else if (isUploading) {
       cancelUpload();
     } else if (isLoading) {

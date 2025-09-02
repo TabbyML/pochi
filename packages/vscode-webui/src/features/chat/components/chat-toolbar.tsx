@@ -26,7 +26,7 @@ import type { Message, Task } from "@getpochi/livekit";
 import type { Todo } from "@getpochi/tools";
 import { ImageIcon, SendHorizonal, StopCircleIcon } from "lucide-react";
 import type React from "react";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useChatStatus } from "../hooks/use-chat-status";
 import { useChatSubmit } from "../hooks/use-chat-submit";
@@ -163,6 +163,10 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     newCompactTaskPending,
   };
 
+  const messageContent = useMemo(
+    () => JSON.stringify(messages, null, 2),
+    [messages],
+  );
   return (
     <>
       <ApprovalButton
@@ -193,6 +197,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
         pendingApproval={pendingApproval}
         status={status}
         onImageDrop={handleImageDrop}
+        messageContent={messageContent}
       />
 
       {/* Hidden file input for image uploads */}

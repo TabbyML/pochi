@@ -16,31 +16,29 @@
       "additionalProperties": false
     },
     "providers": {
-      "type": "array",
-      "items": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string"
+      },
+      "additionalProperties": {
         "anyOf": [
           {
             "type": "object",
             "properties": {
-              "id": {
-                "description": "Model provider identifier, e.g., \"openai\", \"anthropic\", etc.",
-                "type": "string"
-              },
               "name": {
                 "description": "Model provider name, e.g., \"OpenAI\", \"Anthropic\", etc.",
                 "type": "string"
               },
               "models": {
-                "type": "array",
-                "items": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
                   "type": "object",
                   "properties": {
                     "name": {
                       "description": "Display name of the model, e.g., \"GPT-4o\"",
-                      "type": "string"
-                    },
-                    "id": {
-                      "description": "Identifier for the model, e.g., \"gpt-4o\"",
                       "type": "string"
                     },
                     "maxTokens": {
@@ -58,7 +56,7 @@
                       "type": "boolean"
                     }
                   },
-                  "required": ["id", "maxTokens", "contextWindow"],
+                  "required": ["maxTokens", "contextWindow"],
                   "additionalProperties": false
                 }
               },
@@ -75,31 +73,26 @@
                 "type": "string"
               }
             },
-            "required": ["id", "models", "baseURL"],
+            "required": ["models", "baseURL"],
             "additionalProperties": false
           },
           {
             "type": "object",
             "properties": {
-              "id": {
-                "description": "Model provider identifier, e.g., \"openai\", \"anthropic\", etc.",
-                "type": "string"
-              },
               "name": {
                 "description": "Model provider name, e.g., \"OpenAI\", \"Anthropic\", etc.",
                 "type": "string"
               },
               "models": {
-                "type": "array",
-                "items": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
                   "type": "object",
                   "properties": {
                     "name": {
                       "description": "Display name of the model, e.g., \"GPT-4o\"",
-                      "type": "string"
-                    },
-                    "id": {
-                      "description": "Identifier for the model, e.g., \"gpt-4o\"",
                       "type": "string"
                     },
                     "maxTokens": {
@@ -117,7 +110,7 @@
                       "type": "boolean"
                     }
                   },
-                  "required": ["id", "maxTokens", "contextWindow"],
+                  "required": ["maxTokens", "contextWindow"],
                   "additionalProperties": false
                 }
               },
@@ -132,33 +125,36 @@
               "credentials": {
                 "description": "Credentials for the vertex model.",
                 "type": "string"
+              },
+              "projectId": {
+                "description": "Project ID for the vertex model.",
+                "type": "string"
+              },
+              "accessToken": {
+                "description": "Access token for the vertex model.",
+                "type": "string"
               }
             },
-            "required": ["id", "models", "kind", "location", "credentials"],
+            "required": ["models", "kind", "location"],
             "additionalProperties": false
           },
           {
             "type": "object",
             "properties": {
-              "id": {
-                "description": "Model provider identifier, e.g., \"openai\", \"anthropic\", etc.",
-                "type": "string"
-              },
               "name": {
                 "description": "Model provider name, e.g., \"OpenAI\", \"Anthropic\", etc.",
                 "type": "string"
               },
               "models": {
-                "type": "array",
-                "items": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
                   "type": "object",
                   "properties": {
                     "name": {
                       "description": "Display name of the model, e.g., \"GPT-4o\"",
-                      "type": "string"
-                    },
-                    "id": {
-                      "description": "Identifier for the model, e.g., \"gpt-4o\"",
                       "type": "string"
                     },
                     "maxTokens": {
@@ -176,7 +172,7 @@
                       "type": "boolean"
                     }
                   },
-                  "required": ["id", "maxTokens", "contextWindow"],
+                  "required": ["maxTokens", "contextWindow"],
                   "additionalProperties": false
                 }
               },
@@ -189,7 +185,7 @@
                 "type": "string"
               }
             },
-            "required": ["id", "models", "kind"],
+            "required": ["models", "kind"],
             "additionalProperties": false
           }
         ]

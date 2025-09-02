@@ -17,6 +17,7 @@ interface ChatInputFormProps {
   pendingApproval: ReturnType<typeof useApprovalAndRetry>["pendingApproval"];
   status: UseChatHelpers<Message>["status"];
   onImageDrop?: (files: File[]) => boolean;
+  messageContent?: string;
 }
 
 export function ChatInputForm({
@@ -28,6 +29,7 @@ export function ChatInputForm({
   pendingApproval,
   status,
   onImageDrop,
+  messageContent,
 }: ChatInputFormProps) {
   const editorRef = useRef<Editor | null>(null);
 
@@ -41,6 +43,7 @@ export function ChatInputForm({
       onPaste={onPaste}
       enableSubmitHistory={true}
       onImageDrop={onImageDrop}
+      messageContent={messageContent}
     >
       <ActiveSelectionBadge
         onClick={() => {
