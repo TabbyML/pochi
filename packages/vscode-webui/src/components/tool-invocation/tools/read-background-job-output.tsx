@@ -1,4 +1,4 @@
-import { useBackgroundJobInfo } from "@/lib/hooks/use-background-job-command";
+import { useBackgroundJobInfo } from "@/features/chat";
 import { BackgroundJobPanel } from "../command-execution-panel";
 import { HighlightedText } from "../highlight-text";
 import { StatusIcon } from "../status-icon";

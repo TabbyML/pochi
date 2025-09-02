@@ -80,6 +80,8 @@ export interface VSCodeHostApi {
     }[]
   >;
 
+  listAutoCompleteCandidates(): Promise<string[]>;
+
   openSymbol(symbol: string): Promise<void>;
 
   /**

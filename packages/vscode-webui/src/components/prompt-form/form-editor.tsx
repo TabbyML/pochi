@@ -32,6 +32,7 @@ import {
   findSuggestionMatch,
 } from "@tiptap/suggestion";
 import { ScrollArea } from "../ui/scroll-area";
+import { AutoCompleteExtension } from "./auto-completion/extension";
 import type { MentionListActions } from "./shared";
 import { SubmitHistoryExtension } from "./submit-history-extension";
 import {
@@ -84,6 +85,7 @@ interface FormEditorProps {
   onPaste?: (e: ClipboardEvent) => void;
   enableSubmitHistory?: boolean;
   onImageDrop?: (files: File[]) => boolean;
+  messageContent?: string;
 }
 
 export function FormEditor({
@@ -98,6 +100,7 @@ export function FormEditor({
   onPaste,
   enableSubmitHistory = true,
   onImageDrop,
+  messageContent = "",
 }: FormEditorProps) {
   const internalFormRef = useRef<HTMLFormElement>(null);
   const formRef = externalFormRef || internalFormRef;
@@ -335,6 +338,9 @@ export function FormEditor({
           depth: 20,
         }),
         ...(enableSubmitHistory ? [SubmitHistoryExtension] : []),
+        AutoCompleteExtension.configure({
+          messageContent: messageContent,
+        }),
       ],
       editorProps: {
         attributes: {

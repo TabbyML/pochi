@@ -1,4 +1,4 @@
-import { useBackgroundJobDisplayId } from "@/lib/hooks/use-background-job-command";
+import { useMapJobIdToDisplayId } from "@/features/chat";
 import { BackgroundJobPanel } from "../command-execution-panel";
 import { HighlightedText } from "../highlight-text";
 import { StatusIcon } from "../status-icon";
@@ -9,7 +9,7 @@ export const StartBackgroundJobTool: React.FC<
   ToolProps<"startBackgroundJob">
 > = ({ tool, isExecuting }) => {
   const { cwd, command } = tool.input || {};
-  const displayId = useBackgroundJobDisplayId(
+  const displayId = useMapJobIdToDisplayId(
     tool.state === "output-available" ? tool.output.backgroundJobId : undefined,
   );
   const cwdNode = cwd ? (
