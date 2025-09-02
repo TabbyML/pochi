@@ -21,7 +21,7 @@ import { readEnvironment } from "./lib/read-environment";
 import { StepCount } from "./lib/step-count";
 import { Chat } from "./livekit";
 import { executeToolCall } from "./tools";
-import type { ToolCallOptions } from "./types";
+import type { SubTaskOptions, ToolCallOptions } from "./types";
 
 export interface RunnerOptions {
   /**
@@ -89,6 +89,14 @@ export class TaskRunner {
   }
 
   constructor(options: RunnerOptions) {
+    // Create the sub-task runner factory function
+    const createSubTaskRunner = (): SubTaskOptions => ({
+      llm: options.llm,
+      apiClient: options.apiClient,
+      store: options.store,
+      waitUntil: options.waitUntil || (() => {}),
+    });
+
     this.toolCallOptions = {
       cwd: options.cwd,
       rg: options.rg,
