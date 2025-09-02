@@ -95,7 +95,7 @@ function createVertexModel(
 
   if ("issueUrl" in vertex) {
     const { issueUrl, modelUrl } = vertex;
-    return createVertex({
+    return createVertexWithoutCredentials({
       project: "placeholder",
       location: "placeholder",
       baseURL: "placeholder",
