@@ -22,10 +22,10 @@ export const newTask =
     const subTaskRunner = options.createSubTaskRunner(taskId);
 
     // Execute the sub-task
-    await newSubTaskRunner.run();
+    await subTaskRunner.run();
 
     // Get the final state and extract result
-    const finalState = newSubTaskRunner.state;
+    const finalState = subTaskRunner.state;
     const lastMessage = finalState.messages.at(-1);
 
     let result = "Sub-task completed";
