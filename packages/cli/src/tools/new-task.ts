@@ -26,23 +26,26 @@ export const newTask =
 
     // Create sub-task runner with the same configuration as parent
     const subTaskOptions: RunnerOptions = {
-      ...subTaskDeps,
       uid: taskId,
+      llm: subTaskDeps.llm,
+      apiClient: subTaskDeps.apiClient,
+      store: subTaskDeps.store,
       prompt,
       cwd: options.cwd,
       rg: options.rg,
       maxSteps: 10, // Limit sub-task steps
       maxRetries: 3,
-      isSubTask: true,
+      isSubTask: true, // Mark this as a sub-task to prevent middleware duplication
+      waitUntil: subTaskDeps.waitUntil,
     };
 
-    const newSubTaskRunner = new TaskRunner(subTaskOptions);
+    const subTaskRunner = new TaskRunner(subTaskOptions);
 
     // Execute the sub-task
-    await newSubTaskRunner.run();
+    await subTaskRunner.run();
 
     // Get the final state and extract result
-    const finalState = newSubTaskRunner.state;
+    const finalState = subTaskRunner.state;
     const lastMessage = finalState.messages.at(-1);
 
     let result = "Sub-task completed";
