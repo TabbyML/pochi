@@ -188,54 +188,6 @@ export class GeminiCliOAuthHandler {
     }
   }
 
-  // private async refreshAccessToken(
-  //   refreshToken: string,
-  //   tokenUrl: string,
-  //   mcpServerUrl?: string,
-  // ): Promise<OAuthTokenResponse> {
-  //   const params = new URLSearchParams({
-  //     grant_type: "refresh_token",
-  //     refresh_token: refreshToken,
-  //     client_id: this.getClientId(),
-  //   });
-  //
-  //   if (config.clientSecret) {
-  //     params.append("client_secret", config.clientSecret);
-  //   }
-  //
-  //   if (config.scopes && config.scopes.length > 0) {
-  //     params.append("scope", config.scopes.join(" "));
-  //   }
-  //
-  //   // Add resource parameter for MCP OAuth spec compliance
-  //   // Use the MCP server URL if provided, otherwise fall back to token URL
-  //   const resourceUrl = mcpServerUrl || tokenUrl;
-  //   try {
-  //     params.append("resource", OAuthUtils.buildResourceParameter(resourceUrl));
-  //   } catch (error) {
-  //     throw new Error(
-  //       `Invalid resource URL: "${resourceUrl}". ${getErrorMessage(error)}`,
-  //     );
-  //   }
-  //
-  //   const response = await fetch(tokenUrl, {
-  //     method: "POST",
-  //     headers: {
-  //       "Content-Type": "application/x-www-form-urlencoded",
-  //     },
-  //     body: params.toString(),
-  //   });
-  //
-  //   if (!response.ok) {
-  //     const errorText = await response.text();
-  //     throw new Error(
-  //       `Token refresh failed: ${response.status} - ${errorText}`,
-  //     );
-  //   }
-  //
-  //   return (await response.json()) as OAuthTokenResponse;
-  // }
-
   /**
    * Check if tokens exist and are valid
    */
@@ -271,7 +223,7 @@ export class GeminiCliOAuthHandler {
   async logout(): Promise<void> {
     await updatePochiConfig({
       credentials: {
-        geminiCliCredentials: null,
+        geminiCliCredentials: undefined,
       },
     });
   }

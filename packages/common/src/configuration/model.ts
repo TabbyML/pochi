@@ -89,3 +89,4 @@ export const CustomModelSetting = z.discriminatedUnion("kind", [
 /**
  * Custom model setting
  */
+export type CustomModelSetting = z.infer<typeof CustomModelSetting>;

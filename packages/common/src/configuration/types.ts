@@ -39,6 +39,13 @@ export function makePochiConfig(strict = false) {
     credentials: z
       .object({
         pochiToken: z.string().optional(),
+        geminiCliCredentials: z
+          .object({
+            accessToken: z.string(),
+            refreshToken: z.string(),
+            expiresAt: z.number(),
+          })
+          .optional(),
       })
       .optional(),
     providers: looseRecord(CustomModelSetting, strict).optional(),

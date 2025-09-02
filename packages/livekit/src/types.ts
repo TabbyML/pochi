@@ -100,6 +100,10 @@ const RequestData = z.object({
       maxOutputTokens: z.number().describe("Max output tokens of the model."),
       projectId: z.string(),
       location: z.string(),
+      useToolCallMiddleware: z
+        .boolean()
+        .optional()
+        .describe("Whether to use tool call middleware"),
     }),
   ]),
   mcpToolSet: z
