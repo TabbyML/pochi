@@ -203,6 +203,7 @@ function renderToolPart(part: ToolUIPart<UITools>): {
   }
 
   if (part.type === "tool-newTask") {
+    console.log("Debug info for tool-newTask part:", part);
     const { description = "creating subtask" } = part.input || {};
 
     if (part.state === "output-available" && part.output?.result) {
@@ -214,8 +215,27 @@ function renderToolPart(part: ToolUIPart<UITools>): {
       };
     }
     if (part.state === "input-streaming" || part.state === "input-available") {
+      const subParts = (part as any).parts;
+      let subTaskOutput = "Running...";
+      if (Array.isArray(subParts) && subParts.length > 0) {
+        const lastSubPart = subParts[subParts.length - 1];
+        if (lastSubPart) {
+          if (lastSubPart.type === "text" && typeof lastSubPart.text === "string") {
+            subTaskOutput = parseMarkdown(lastSubPart.text.trim());
+          } else if (
+            lastSubPart.type === "reasoning" &&
+            typeof lastSubPart.text === "string"
+          ) {
+            subTaskOutput = `💭 Thinking for ${lastSubPart.text.length} characters`;
+          } else if (isToolUIPart(lastSubPart)) {
+            subTaskOutput = renderToolPart(lastSubPart as ToolUIPart<UITools>).text;
+          }
+        }
+      }
       return {
-        text: `🚀 Executing subtask: ${chalk.bold(description)}\n${chalk.dim("└─")} Running...`,
+        text: `🚀 Executing subtask: ${chalk.bold(description)}\n${chalk.dim(
+          "└─",
+        )} ${subTaskOutput}`,
         stop: "stopAndPersist",
         error: errorText,
       };
