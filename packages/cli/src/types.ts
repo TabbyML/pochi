@@ -17,22 +17,12 @@ export interface ToolCallOptions {
   rg: string;
 
   /**
-   * LLM configuration for sub-tasks (optional, used by newTask tool)
+   * Function to create a sub-task runner (optional, used by newTask tool)
    */
-  llm?: LLMRequestData;
-
-  /**
-   * API client for sub-tasks (optional, used by newTask tool)
-   */
-  apiClient?: PochiApiClient;
-
-  /**
-   * Store for sub-tasks (optional, used by newTask tool)
-   */
-  store?: Store;
-
-  /**
-   * Wait until function for sub-tasks (optional, used by newTask tool)
-   */
-  waitUntil?: (promise: Promise<unknown>) => void;
+  createSubTaskRunner?: () => {
+    llm: LLMRequestData;
+    apiClient: PochiApiClient;
+    store: Store;
+    waitUntil: (promise: Promise<unknown>) => void;
+  };
 }

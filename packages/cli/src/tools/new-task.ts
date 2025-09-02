@@ -47,29 +47,28 @@ export const newTask =
     const taskId = _meta?.uid || crypto.randomUUID();
 
     try {
-      if (!options.apiClient || !options.store) {
+      if (!options.createSubTaskRunner) {
         throw new Error(
-          "API client and store are required for sub-task execution",
+          "createSubTaskRunner function is required for sub-task execution",
         );
       }
+
+      // Get sub-task dependencies from the factory function
+      const subTaskDeps = options.createSubTaskRunner();
 
       // Create sub-task runner with the same configuration as parent
       const subTaskOptions: RunnerOptions = {
         uid: taskId,
-        llm: options.llm || {
-          type: "pochi",
-          modelId: "anthropic/claude-4-sonnet",
-          apiClient: options.apiClient,
-        },
-        apiClient: options.apiClient,
-        store: options.store,
+        llm: subTaskDeps.llm,
+        apiClient: subTaskDeps.apiClient,
+        store: subTaskDeps.store,
         prompt,
         cwd: options.cwd,
         rg: options.rg,
         maxSteps: 10, // Limit sub-task steps
         maxRetries: 3,
         isSubTask: true, // Mark this as a sub-task to prevent middleware duplication
-        waitUntil: options.waitUntil,
+        waitUntil: subTaskDeps.waitUntil,
       };
 
       const subTaskRunner = new TaskRunner(subTaskOptions);
