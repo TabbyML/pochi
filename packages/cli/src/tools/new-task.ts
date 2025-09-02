@@ -13,35 +13,11 @@ const logger = getLogger("NewTaskTool");
  */
 export const newTask =
   (options: ToolCallOptions): ToolFunctionType<ClientTools["newTask"]> =>
-  async ({ description, prompt, _meta, _transient }) => {
+  async ({ description, prompt, _meta }) => {
     if (!description || !prompt) {
       throw new Error(
         "Description and prompt are required for creating a new task.",
       );
-    }
-
-    // If this is a transient task (already executed), return the cached result
-    if (_transient?.task) {
-      logger.debug("Returning cached sub-task result");
-      return {
-        result: (() => {
-          const message = _transient.task.messages.find(
-            (msg) =>
-              msg.role === "assistant" &&
-              msg.parts?.some((part) => part.type === "tool-attemptCompletion"),
-          );
-          if (!message) {
-            return "Task completed with no completion message";
-          }
-          const completionPart = message.parts?.find(
-            (part) => part.type === "tool-attemptCompletion",
-          ) as ToolUIPart | undefined;
-          return (
-            (completionPart?.input as { result?: string })?.result ||
-            "Task completed"
-          );
-        })(),
-      };
     }
 
     const taskId = _meta?.uid || crypto.randomUUID();
