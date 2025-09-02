@@ -22,10 +22,3 @@ export interface ToolCallOptions {
    */
   createSubTaskRunner?: (prompt: string, taskId: string) => TaskRunner;
 }
-
-export type SubTaskOptions = {
-  llm: LLMRequestData;
-  apiClient: PochiApiClient;
-  store: Store;
-  waitUntil: (promise: Promise<unknown>) => void;
-};
