@@ -56,7 +56,10 @@
                       "type": "boolean"
                     }
                   },
-                  "required": ["maxTokens", "contextWindow"],
+                  "required": [
+                    "maxTokens",
+                    "contextWindow"
+                  ],
                   "additionalProperties": false
                 }
               },
@@ -73,7 +76,10 @@
                 "type": "string"
               }
             },
-            "required": ["models", "baseURL"],
+            "required": [
+              "models",
+              "baseURL"
+            ],
             "additionalProperties": false
           },
           {
@@ -110,7 +116,10 @@
                       "type": "boolean"
                     }
                   },
-                  "required": ["maxTokens", "contextWindow"],
+                  "required": [
+                    "maxTokens",
+                    "contextWindow"
+                  ],
                   "additionalProperties": false
                 }
               },
@@ -123,10 +132,6 @@
                   {
                     "type": "object",
                     "properties": {
-                      "type": {
-                        "type": "string",
-                        "const": "service-account"
-                      },
                       "modelId": {
                         "type": "string"
                       },
@@ -138,7 +143,6 @@
                       }
                     },
                     "required": [
-                      "type",
                       "modelId",
                       "serviceAccountKey",
                       "location"
@@ -148,10 +152,6 @@
                   {
                     "type": "object",
                     "properties": {
-                      "type": {
-                        "type": "string",
-                        "const": "access-token"
-                      },
                       "modelId": {
                         "type": "string"
                       },
@@ -166,7 +166,6 @@
                       }
                     },
                     "required": [
-                      "type",
                       "modelId",
                       "accessToken",
                       "projectId",
@@ -177,7 +176,11 @@
                 ]
               }
             },
-            "required": ["models", "kind", "vertex"],
+            "required": [
+              "models",
+              "kind",
+              "vertex"
+            ],
             "additionalProperties": false
           },
           {
@@ -214,7 +217,10 @@
                       "type": "boolean"
                     }
                   },
-                  "required": ["maxTokens", "contextWindow"],
+                  "required": [
+                    "maxTokens",
+                    "contextWindow"
+                  ],
                   "additionalProperties": false
                 }
               },
@@ -227,7 +233,10 @@
                 "type": "string"
               }
             },
-            "required": ["models", "kind"],
+            "required": [
+              "models",
+              "kind"
+            ],
             "additionalProperties": false
           }
         ]
@@ -265,7 +274,9 @@
                 }
               }
             },
-            "required": ["url"],
+            "required": [
+              "url"
+            ],
             "additionalProperties": false
           },
           {
@@ -302,7 +313,10 @@
                 }
               }
             },
-            "required": ["command", "args"],
+            "required": [
+              "command",
+              "args"
+            ],
             "additionalProperties": false
           }
         ]
