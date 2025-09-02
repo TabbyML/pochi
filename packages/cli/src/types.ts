@@ -1,6 +1,4 @@
-import type { PochiApiClient } from "@getpochi/common/pochi-api";
-import type { LLMRequestData } from "@getpochi/livekit";
-import type { Store } from "@livestore/livestore";
+import type { RunnerOptions } from "./task-runner";
 
 export interface ToolCallOptions {
   /**
@@ -19,12 +17,8 @@ export interface ToolCallOptions {
   /**
    * Function to create a sub-task runner (optional, used by newTask tool)
    */
-  createSubTaskRunner?: () => SubTaskOptions;
+  createSubTaskRunner?: () => Omit<
+    RunnerOptions,
+    "uid" | "prompt" | "maxSteps" | "maxRetries" | "isSubTask"
+  >;
 }
-
-export type SubTaskOptions = {
-  llm: LLMRequestData;
-  apiClient: PochiApiClient;
-  store: Store;
-  waitUntil: (promise: Promise<unknown>) => void;
-};
