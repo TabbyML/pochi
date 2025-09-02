@@ -123,9 +123,6 @@
                   {
                     "type": "object",
                     "properties": {
-                      "modelId": {
-                        "type": "string"
-                      },
                       "serviceAccountKey": {
                         "type": "string"
                       },
@@ -133,15 +130,12 @@
                         "type": "string"
                       }
                     },
-                    "required": ["modelId", "serviceAccountKey", "location"],
+                    "required": ["serviceAccountKey", "location"],
                     "additionalProperties": false
                   },
                   {
                     "type": "object",
                     "properties": {
-                      "modelId": {
-                        "type": "string"
-                      },
                       "accessToken": {
                         "type": "string"
                       },
@@ -152,12 +146,7 @@
                         "type": "string"
                       }
                     },
-                    "required": [
-                      "modelId",
-                      "accessToken",
-                      "projectId",
-                      "location"
-                    ],
+                    "required": ["accessToken", "projectId", "location"],
                     "additionalProperties": false
                   }
                 ]
