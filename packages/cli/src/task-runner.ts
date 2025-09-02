@@ -89,14 +89,6 @@ export class TaskRunner {
   }
 
   constructor(options: RunnerOptions) {
-    // Create the sub-task runner factory function
-    const createSubTaskRunner = (): SubTaskOptions => ({
-      llm: options.llm,
-      apiClient: options.apiClient,
-      store: options.store,
-      waitUntil: options.waitUntil || (() => {}),
-    });
-
     this.toolCallOptions = {
       cwd: options.cwd,
       rg: options.rg,
