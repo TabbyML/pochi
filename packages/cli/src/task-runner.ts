@@ -21,7 +21,7 @@ import { readEnvironment } from "./lib/read-environment";
 import { StepCount } from "./lib/step-count";
 import { Chat } from "./livekit";
 import { executeToolCall } from "./tools";
-import type { SubTaskOptions, ToolCallOptions } from "./types";
+import type { ToolCallOptions } from "./types";
 
 export interface RunnerOptions {
   /**
