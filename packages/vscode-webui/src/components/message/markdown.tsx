@@ -1,5 +1,4 @@
 import { CustomHtmlTags } from "@/lib/constants";
-import { processBackgroundJobId } from "@/lib/hooks/use-background-job-command";
 import { cn } from "@/lib/utils";
 import { addLineBreak } from "@/lib/utils/file";
 import { isKnownProgrammingLanguage } from "@/lib/utils/languages";
@@ -15,6 +14,7 @@ import { FileBadge } from "../tool-invocation/file-badge";
 import { CodeBlock } from "./code-block";
 import { customStripTagsPlugin } from "./custom-strip-tags-plugin";
 import "./markdown.css";
+import { useReplaceJobIdsInContent } from "@/features/chat";
 
 interface CodeComponentProps {
   className?: string;
@@ -218,6 +218,7 @@ export function MessageMarkdown({
   isMinimalView,
   previewImageLink,
 }: MessageMarkdownProps) {
+  const replaceJobIdsInContent = useReplaceJobIdsInContent();
   const processedChildren = useMemo(() => {
     let result = children;
     for (const tag of CustomHtmlTags) {
@@ -225,8 +226,8 @@ export function MessageMarkdown({
       result = escapeTagContent(result);
     }
 
-    return processBackgroundJobId(result);
-  }, [children]);
+    return replaceJobIdsInContent(result);
+  }, [children, replaceJobIdsInContent]);
 
   const components: Components = useMemo(() => {
     return {
