@@ -13,72 +13,57 @@ const logger = getLogger("NewTaskTool");
 export const newTask =
   (options: ToolCallOptions): ToolFunctionType<ClientTools["newTask"]> =>
   async ({ prompt, _meta }) => {
-
     const taskId = _meta?.uid || crypto.randomUUID();
 
-    try {
-      if (!options.createSubTaskRunner) {
-        throw new Error(
-          "createSubTaskRunner function is required for sub-task execution",
-        );
-      }
-
-      // Get sub-task dependencies from the factory function
-      const subTaskDeps = options.createSubTaskRunner();
-
-      // Create sub-task runner with the same configuration as parent
-      const subTaskOptions: RunnerOptions = {
-        uid: taskId,
-        llm: subTaskDeps.llm,
-        apiClient: subTaskDeps.apiClient,
-        store: subTaskDeps.store,
-        prompt,
-        cwd: options.cwd,
-        rg: options.rg,
-        maxSteps: 10, // Limit sub-task steps
-        maxRetries: 3,
-        isSubTask: true, // Mark this as a sub-task to prevent middleware duplication
-        waitUntil: subTaskDeps.waitUntil,
-      };
-
-      const subTaskRunner = new TaskRunner(subTaskOptions);
-
-      // Execute the sub-task
-      await subTaskRunner.run();
-
-      // Get the final state and extract result
-      const finalState = subTaskRunner.state;
-      const lastMessage = finalState.messages.at(-1);
-
-      let result = "Sub-task completed";
-      if (lastMessage?.role === "assistant") {
-        for (const part of lastMessage.parts || []) {
-          if (part.type === "tool-attemptCompletion") {
-            if (part.input) {
-              result = (part.input as { result: string }).result;
-            }
-            break;
-          }
-        }
-      } else {
-        logger.debug("No assistant message found in sub-task result");
-      }
-
-      return {
-        result:
-          typeof result === "string"
-            ? result
-            : "Sub-task completed successfully",
-      };
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-      logger.error(`Sub-task execution failed: ${errorMessage}`);
-
-      // Return a successful response with error information rather than throwing
-      // This prevents the parent task from failing when a sub-task fails
-      return {
-        result: `Sub-task failed: ${errorMessage}`,
-      };
+    if (!options.createSubTaskRunner) {
+      throw new Error(
+        "createSubTaskRunner function is required for sub-task execution",
+      );
     }
+
+    // Get sub-task dependencies from the factory function
+    const subTaskDeps = options.createSubTaskRunner();
+
+    // Create sub-task runner with the same configuration as parent
+    const subTaskOptions: RunnerOptions = {
+      uid: taskId,
+      llm: subTaskDeps.llm,
+      apiClient: subTaskDeps.apiClient,
+      store: subTaskDeps.store,
+      prompt,
+      cwd: options.cwd,
+      rg: options.rg,
+      maxSteps: 10, // Limit sub-task steps
+      maxRetries: 3,
+      isSubTask: true, // Mark this as a sub-task to prevent middleware duplication
+      waitUntil: subTaskDeps.waitUntil,
+    };
+
+    const subTaskRunner = new TaskRunner(subTaskOptions);
+
+    // Execute the sub-task
+    await subTaskRunner.run();
+
+    // Get the final state and extract result
+    const finalState = subTaskRunner.state;
+    const lastMessage = finalState.messages.at(-1);
+
+    let result = "Sub-task completed";
+    if (lastMessage?.role === "assistant") {
+      for (const part of lastMessage.parts || []) {
+        if (part.type === "tool-attemptCompletion") {
+          if (part.input) {
+            result = (part.input as { result: string }).result;
+          }
+          break;
+        }
+      }
+    } else {
+      logger.debug("No assistant message found in sub-task result");
+    }
+
+    return {
+      result:
+        typeof result === "string" ? result : "Sub-task completed successfully",
+    };
   };
