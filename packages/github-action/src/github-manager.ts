@@ -45,6 +45,47 @@ export class GitHubManager {
     });
   }
 
+  async createComment(initialContent: string): Promise<number> {
+    const repo = this.getRepository();
+    const payload = this.context.payload as IssueCommentEvent;
+    const issueNumber = payload.issue.number;
+
+    const response = await this.octokit.rest.issues.createComment({
+      owner: repo.owner,
+      repo: repo.repo,
+      issue_number: issueNumber,
+      body: `🔄 **Pochi Running...**\n\n\`\`\`\n${initialContent}\n\`\`\``,
+    });
+
+    return response.data.id;
+  }
+
+  async updateComment(commentId: number, content: string): Promise<void> {
+    const repo = this.getRepository();
+    await this.octokit.rest.issues.updateComment({
+      owner: repo.owner,
+      repo: repo.repo,
+      comment_id: commentId,
+      body: `🔄 **Pochi Running...**\n\n\`\`\`\n${content}\n\`\`\``,
+    });
+  }
+
+  async finalizeComment(
+    commentId: number,
+    content: string,
+    success: boolean,
+  ): Promise<void> {
+    const repo = this.getRepository();
+    const status = success ? "✅ **Pochi Completed**" : "❌ **Pochi Failed**";
+
+    await this.octokit.rest.issues.updateComment({
+      owner: repo.owner,
+      repo: repo.repo,
+      comment_id: commentId,
+      body: `${status}\n\n\`\`\`\n${content}\n\`\`\``,
+    });
+  }
+
   async createReaction(
     commentId: number,
     content: RestEndpointMethodTypes["reactions"]["createForIssueComment"]["parameters"]["content"],
