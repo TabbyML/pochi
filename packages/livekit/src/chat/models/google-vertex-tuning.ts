@@ -8,7 +8,7 @@ import type { RequestData } from "../../types";
 export function createGoogleVertexTuningModel(
   llm: Extract<RequestData["llm"], { type: "google-vertex-tuning" }>,
 ) {
-  const vertexModel = createVertexModel(llm.vertex);
+  const vertexModel = createVertexModel(llm.vertex, llm.modelId);
 
   return wrapLanguageModel({
     model: vertexModel,
@@ -61,6 +61,7 @@ function createVertexModel(
     RequestData["llm"],
     { type: "google-vertex-tuning" }
   >["vertex"],
+  modelId: string,
 ) {
   const getBaseURL = (location: string, projectId: string) =>
     `https://aiplatform.googleapis.com/v1/projects/${projectId}/locations/${location}/publishers/google`;
@@ -79,7 +80,7 @@ function createVertexModel(
         privateKey: service_account_key.private_key,
       },
       fetch: createPatchedFetchForFinetune(),
-    })(vertex.modelId);
+    })(modelId);
   }
 
   if ("accessToken" in vertex) {
@@ -89,7 +90,7 @@ function createVertexModel(
       location,
       baseURL: getBaseURL(location, projectId),
       fetch: createPatchedFetchForFinetune(accessToken),
-    })(vertex.modelId);
+    })(modelId);
   }
 
   return undefined as never;

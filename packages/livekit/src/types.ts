@@ -46,6 +46,7 @@ const RequestData = z.object({
     }),
     z.object({
       type: z.literal("google-vertex-tuning"),
+      modelId: z.string(),
       vertex: GoogleVertexModel,
       contextWindow: z.number().describe("Context window of the model."),
       maxOutputTokens: z.number().describe("Max output tokens of the model."),

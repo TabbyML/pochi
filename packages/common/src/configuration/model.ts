@@ -47,12 +47,10 @@ const OpenAIModelSettings = BaseModelSettings.extend({
 
 export const GoogleVertexModel = z.union([
   z.object({
-    modelId: z.string(),
     serviceAccountKey: z.string(),
     location: z.string(),
   }),
   z.object({
-    modelId: z.string(),
     accessToken: z.string(),
     projectId: z.string(),
     location: z.string(),

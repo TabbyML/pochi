@@ -244,6 +244,7 @@ function createLLMConfig({
   if (modelProvider.kind === "google-vertex-tuning") {
     return {
       type: "google-vertex-tuning",
+      modelId,
       vertex: modelProvider.vertex,
       contextWindow: modelSetting.contextWindow,
       maxOutputTokens: modelSetting.maxTokens,
