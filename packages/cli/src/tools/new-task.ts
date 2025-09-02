@@ -21,25 +21,7 @@ export const newTask =
       );
     }
 
-    // Get sub-task dependencies from the factory function
-    const subTaskDeps = options.createSubTaskRunner();
-
-    // Create sub-task runner with the same configuration as parent
-    const subTaskOptions: RunnerOptions = {
-      uid: taskId,
-      llm: subTaskDeps.llm,
-      apiClient: subTaskDeps.apiClient,
-      store: subTaskDeps.store,
-      prompt,
-      cwd: options.cwd,
-      rg: options.rg,
-      maxSteps: 10, // Limit sub-task steps
-      maxRetries: 3,
-      isSubTask: true, // Mark this as a sub-task to prevent middleware duplication
-      waitUntil: subTaskDeps.waitUntil,
-    };
-
-    const subTaskRunner = new TaskRunner(subTaskOptions);
+    const subTaskRunner = options.createSubTaskRunner(prompt, taskId);
 
     // Execute the sub-task
     await subTaskRunner.run();

@@ -89,18 +89,25 @@ export class TaskRunner {
   }
 
   constructor(options: RunnerOptions) {
-    // Create the sub-task runner factory function
-    const createSubTaskRunner = (): SubTaskOptions => ({
-      llm: options.llm,
-      apiClient: options.apiClient,
-      store: options.store,
-      waitUntil: options.waitUntil || (() => {}),
-    });
-
     this.toolCallOptions = {
       cwd: options.cwd,
       rg: options.rg,
-      createSubTaskRunner,
+      createSubTaskRunner: (prompt: string, taskId: string) => {
+        // create sub task
+        return new TaskRunner({
+          uid: taskId,
+          llm: options.llm,
+          apiClient: options.apiClient,
+          store: options.store,
+          prompt,
+          cwd: options.cwd,
+          rg: options.rg,
+          maxSteps: 10, // limit max steps for sub task
+          maxRetries: 3,
+          isSubTask: true, // flag subtask
+          waitUntil: options.waitUntil,
+        });
+      },
     };
     this.stepCount = new StepCount(options.maxSteps, options.maxRetries);
     this.chatKit = new LiveChatKit<Chat>({
