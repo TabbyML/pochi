@@ -22,7 +22,6 @@ export const startBackgroundJob: ToolFunctionType<
     command,
     cwd,
     abortSignal: abortSignal,
-    background: true,
   });
 
   return {
