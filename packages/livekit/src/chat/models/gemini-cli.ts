@@ -1,10 +1,10 @@
 import { createVertexWithoutCredentials } from "@ai-sdk/google-vertex/edge";
-import { type LanguageModel, wrapLanguageModel } from "ai";
+import { wrapLanguageModel } from "ai";
 import type { RequestData } from "../../types";
 
 export function createGeminiCliModel(
   llm: Extract<RequestData["llm"], { type: "gemini-cli" }>,
-): LanguageModel {
+) {
   const accessToken = llm.accessToken;
   const projectId = llm.projectId;
   const location = llm.location;
