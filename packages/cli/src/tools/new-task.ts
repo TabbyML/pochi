@@ -1,7 +1,5 @@
 import { getLogger } from "@getpochi/common";
 import type { ClientTools, ToolFunctionType } from "@getpochi/tools";
-import { TaskRunner } from "../task-runner";
-import type { RunnerOptions } from "../task-runner";
 import type { ToolCallOptions } from "../types";
 
 const logger = getLogger("NewTaskTool");
