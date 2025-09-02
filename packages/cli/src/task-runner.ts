@@ -102,8 +102,8 @@ export class TaskRunner {
           prompt,
           cwd: options.cwd,
           rg: options.rg,
-          maxSteps: 10, // limit max steps for sub task
-          maxRetries: 3,
+          maxSteps: options.maxSteps, // limit max steps for sub task
+          maxRetries: options.maxRetries,
           isSubTask: true, // flag subtask
           waitUntil: options.waitUntil,
         });
