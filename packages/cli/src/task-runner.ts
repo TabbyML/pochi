@@ -92,14 +92,14 @@ export class TaskRunner {
     this.toolCallOptions = {
       cwd: options.cwd,
       rg: options.rg,
-      createSubTaskRunner: (prompt: string, taskId: string) => {
+      createSubTaskRunner: (taskId: string) => {
         // create sub task
         return new TaskRunner({
           uid: taskId,
           llm: options.llm,
           apiClient: options.apiClient,
           store: options.store,
-          prompt,
+          prompt: options.prompt,
           cwd: options.cwd,
           rg: options.rg,
           maxSteps: options.maxSteps, // limit max steps for sub task

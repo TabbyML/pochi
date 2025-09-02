@@ -10,7 +10,7 @@ const logger = getLogger("NewTaskTool");
  */
 export const newTask =
   (options: ToolCallOptions): ToolFunctionType<ClientTools["newTask"]> =>
-  async ({ prompt, _meta }) => {
+  async ({ _meta }) => {
     const taskId = _meta?.uid || crypto.randomUUID();
 
     if (!options.createSubTaskRunner) {
@@ -19,7 +19,7 @@ export const newTask =
       );
     }
 
-    const subTaskRunner = options.createSubTaskRunner(prompt, taskId);
+    const subTaskRunner = options.createSubTaskRunner(taskId);
 
     // Execute the sub-task
     await subTaskRunner.run();

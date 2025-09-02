@@ -17,5 +17,5 @@ export interface ToolCallOptions {
   /**
    * Function to create a sub-task runner (optional, used by newTask tool)
    */
-  createSubTaskRunner?: (prompt: string, taskId: string) => TaskRunner;
+  createSubTaskRunner?: (taskId: string) => TaskRunner;
 }
