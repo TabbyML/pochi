@@ -183,12 +183,11 @@ export const AutoCompleteExtension = Extension.create<
         command: ({ editor, range, props }) => {
           const label = props.value;
           editor.chain().focus().insertContentAt(range, `${label} `).run();
-
-          storage.popup?.destroy();
-          storage.component?.destroy();
         },
         allow,
         render: () => {
+          let latestProps: SuggestionProps<AutoCompleteSuggestionItem> | null =
+            null;
           const fetchItems = async (query?: string) => {
             if (!query) return [];
             return fuzzySearchAutoCompleteItems(
@@ -212,7 +211,7 @@ export const AutoCompleteExtension = Extension.create<
               getReferenceClientRect: () => clientRect,
               appendTo: () => document.body,
               content: storage.component.element,
-              showOnCreate: false,
+              showOnCreate: true,
               interactive: true,
               trigger: "manual",
               placement: "top-start",
@@ -238,34 +237,33 @@ export const AutoCompleteExtension = Extension.create<
             }
           };
 
+          const showPopup = (
+            props: SuggestionProps<AutoCompleteSuggestionItem>,
+          ) => {
+            createMention(props);
+          };
+
           return {
             onStart: (props: SuggestionProps<AutoCompleteSuggestionItem>) => {
               if (!props.items.length) return;
-
-              createMention(props);
-
-              if (!storage.popup) return;
+              latestProps = props;
 
               storage.showTimeout = window.setTimeout(() => {
-                if (storage.popup && !storage.popup.state.isDestroyed) {
-                  storage.popup.show();
+                if (latestProps) {
+                  showPopup(latestProps);
                 }
                 storage.showTimeout = null;
               }, 200);
             },
             onUpdate: (props: SuggestionProps<AutoCompleteSuggestionItem>) => {
+              latestProps = props;
               if (!props.items?.length) {
                 destroyMention();
                 return;
               }
 
-              if (storage.popup && !storage.popup.state.isDestroyed) {
-                if (
-                  !storage.popup.state.isShown &&
-                  storage.showTimeout === null
-                ) {
-                  storage.popup.show();
-                }
+              if (storage.showTimeout === null && storage.component === null) {
+                showPopup(props);
               }
               storage.component?.updateProps(props);
             },
@@ -274,13 +272,7 @@ export const AutoCompleteExtension = Extension.create<
             },
             onKeyDown: (props: SuggestionKeyDownProps): boolean => {
               if (props.event.key === "Escape") {
-                if (storage.popup && !storage.popup.state.isDestroyed) {
-                  storage.popup.hide();
-                }
-                if (storage.showTimeout) {
-                  clearTimeout(storage.showTimeout);
-                  storage.showTimeout = null;
-                }
+                destroyMention();
                 return true;
               }
               return storage.component?.ref?.onKeyDown(props) ?? false;
