@@ -10,6 +10,52 @@ export type RunPochiRequest = {
   commentId: number;
 };
 
+// Helper types for execution context
+interface ExecutionContext {
+  outputBuffer: string;
+  updateInterval: NodeJS.Timeout | null;
+  handled: boolean;
+  historyCommentId: number;
+  eyesReactionId: number | undefined;
+}
+
+// Extract cleanup and finalization logic
+async function cleanupExecution(
+  context: ExecutionContext,
+  githubManager: GitHubManager,
+  request: RunPochiRequest,
+  success: boolean,
+  reaction: "rocket" | "-1",
+): Promise<void> {
+  if (context.handled) return;
+  context.handled = true;
+
+  // Clear update interval safely
+  if (context.updateInterval) {
+    clearInterval(context.updateInterval);
+    context.updateInterval = null;
+  }
+
+  // Finalize history comment
+  const truncatedOutput = buildBatchOutput(context.outputBuffer);
+  const finalComment = `\`\`\`\n${truncatedOutput}\n\`\`\`${createGitHubActionFooter(request.event)}`;
+
+  await githubManager.finalizeComment(
+    context.historyCommentId,
+    finalComment,
+    success,
+  );
+
+  // Handle reactions
+  await githubManager.createReaction(request.commentId, reaction);
+  if (context.eyesReactionId) {
+    await githubManager.deleteReaction(
+      request.commentId,
+      context.eyesReactionId,
+    );
+  }
+}
+
 export async function runPochi(
   request: RunPochiRequest,
   githubManager: GitHubManager,
@@ -24,7 +70,6 @@ export async function runPochi(
 
   // Create initial history comment with GitHub Action link
   const initialComment = `Starting Pochi execution...${createGitHubActionFooter(request.event)}`;
-
   const historyCommentId = await githubManager.createComment(initialComment);
 
   const args = ["--prompt", request.prompt, "--max-steps", "128"];
@@ -42,11 +87,16 @@ export async function runPochi(
     console.log(`Starting pochi CLI with custom instruction\n\n${instruction}`);
   }
 
+  const context: ExecutionContext = {
+    outputBuffer: "Starting Pochi execution...\n",
+    updateInterval: null,
+    handled: false,
+    historyCommentId,
+    eyesReactionId,
+  };
+
   // Execute pochi CLI with output capture
   await new Promise<void>((resolve, reject) => {
-    let outputBuffer = "Starting Pochi execution...\n";
-    let updateInterval: NodeJS.Timeout | null = null;
-
     const child = spawn(pochiCliPath, args, {
       stdio: [null, "inherit", "pipe"], // Capture stderr
       cwd: process.cwd(),
@@ -61,76 +111,45 @@ export async function runPochi(
     if (child.stderr) {
       child.stderr.setEncoding("utf8");
       child.stderr.on("data", (data: string) => {
-        outputBuffer += data;
+        context.outputBuffer += data;
       });
     }
 
-    // Update history comment every 10 seconds
-    updateInterval = setInterval(async () => {
-      const truncatedOutput = buildBatchOutput(outputBuffer);
-      await githubManager.updateComment(historyCommentId, truncatedOutput);
-    }, 10000);
+    // Update history comment every 15 seconds
+    context.updateInterval = setInterval(async () => {
+      try {
+        const truncatedOutput = buildBatchOutput(context.outputBuffer);
+        await githubManager.updateComment(historyCommentId, truncatedOutput);
+      } catch (error) {
+        console.error("Failed to update comment:", error);
+      }
+    }, 15000);
 
-    let handled = false;
     const handleFailure = async (error: Error) => {
-      if (handled) return;
-      handled = true;
-
-      // Clear update interval
-      if (updateInterval) {
-        clearInterval(updateInterval);
-      }
-
-      // Finalize history comment with failure status
-      const truncatedOutput = buildBatchOutput(outputBuffer);
-      const finalComment = `\`\`\`\n${truncatedOutput}\n\`\`\`${createGitHubActionFooter(request.event)}`;
-      await githubManager.finalizeComment(
-        historyCommentId,
-        finalComment,
-        false,
-      );
-
-      await githubManager.createReaction(request.commentId, "-1");
-      if (eyesReactionId) {
-        await githubManager.deleteReaction(request.commentId, eyesReactionId);
-      }
+      await cleanupExecution(context, githubManager, request, false, "-1");
       reject(error);
     };
 
-    child.on("close", async (code) => {
-      if (handled) return;
+    const handleSuccess = async () => {
+      await cleanupExecution(context, githubManager, request, true, "rocket");
+      resolve();
+    };
 
-      // Clear update interval
-      if (updateInterval) {
-        clearInterval(updateInterval);
-      }
+    child.on("close", async (code) => {
+      if (context.handled) return;
 
       if (code === 0) {
-        handled = true;
-
-        // Final update of history comment with success status
-        const truncatedOutput = buildBatchOutput(outputBuffer);
-        const finalComment = `\`\`\`\n${truncatedOutput}\n\`\`\`${createGitHubActionFooter(request.event)}`;
-        await githubManager.finalizeComment(
-          historyCommentId,
-          finalComment,
-          true,
-        );
-
-        // Add rocket reaction to indicate completion
-        await githubManager.createReaction(request.commentId, "rocket");
-        if (eyesReactionId) {
-          await githubManager.deleteReaction(request.commentId, eyesReactionId);
-        }
-        resolve();
+        await handleSuccess();
       } else {
-        outputBuffer += `\nProcess exited with code ${code}`;
-        handleFailure(new Error(`pochi CLI failed with code ${code}`));
+        context.outputBuffer += `\nProcess exited with code ${code}`;
+        await handleFailure(new Error(`pochi CLI failed with code ${code}`));
       }
     });
 
-    child.on("error", (error) => {
-      handleFailure(new Error(`Failed to spawn pochi CLI: ${error.message}`));
+    child.on("error", async (error) => {
+      await handleFailure(
+        new Error(`Failed to spawn pochi CLI: ${error.message}`),
+      );
     });
   });
 }
