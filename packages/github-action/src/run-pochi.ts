@@ -168,7 +168,7 @@ function getGitHubActionUrl(event: RunPochiRequest["event"]): string {
 
 function createGitHubActionFooter(event: RunPochiRequest["event"]): string {
   const actionUrl = getGitHubActionUrl(event);
-  return `\n\n🔗 **[View GitHub Action Execution](${actionUrl})**`;
+  return `\n\n🔗 **[View GitHub Action](${actionUrl})**`;
 }
 
 function formatCustomInstruction(event: RunPochiRequest["event"]) {
