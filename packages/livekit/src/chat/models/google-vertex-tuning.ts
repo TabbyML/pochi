@@ -103,7 +103,11 @@ function createVertexModel(
         _input: Request | URL | string,
         requestInit?: RequestInit,
       ) => {
-        const resp = (await fetch(issueUrl).then((x) => x.json())) as {
+        const resp = (await fetch(issueUrl, {
+          headers: {
+            "Metdata-Flavor": "Google",
+          },
+        }).then((x) => x.json())) as {
           access_token: string;
         };
         const headers = new Headers(requestInit?.headers);
