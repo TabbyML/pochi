@@ -365,7 +365,9 @@ Chutes provides access to various AI models through their API. To use Chutes, yo
       "apiKey": "your_api_token",
       "baseUrl": "https://llm.chutes.ai/v1",
       "models": {
-        "zai-org/GLM-4.5-FP8": {}
+        "zai-org/GLM-4.5-FP8": {
+          "name": "glm-4.5"
+        }
       }
     }
   }
@@ -384,7 +386,9 @@ Cerebras provides AI models through their OpenAI-compatible API. To use Cerebras
       "apiKey": "your_api_key",
       "baseUrl": "https://api.cerebras.ai/v1",
       "models": {
-        "llama3.1-8b": {}
+        "llama3.1-8b": {
+          "name": "llama-3.1-8b"
+        }
       }
     }
   }
@@ -403,7 +407,9 @@ DeepInfra provides access to a wide range of AI models through their OpenAI-comp
       "apiKey": "your_api_token",
       "baseUrl": "https://api.deepinfra.com/v1/openai",
       "models": {
-        "meta-llama/Llama-3.3-70B-Instruct": {}
+        "meta-llama/Llama-3.3-70B-Instruct": {
+          "name": "llama-3.3-70b"
+        }
       }
     }
   }
@@ -422,7 +428,9 @@ Groq is a cloud-based AI platform that provides fast inference for large languag
       "apiKey": "your_api_key",
       "baseUrl": "https://api.groq.com/openai/v1",
       "models": {
-        "llama3-8b-8192": {}
+        "llama3-8b-8192": {
+          "name": "llama-3-8b"
+        }
       }
     }
   }
@@ -440,7 +448,9 @@ LM Studio is a local IDE application that allows you to run and experiment with 
     "lmstudio": {
       "baseUrl": "http://127.0.0.1:1234/v1",
       "models": {
-        "gemma-2b-it-q4f32_1": {}
+        "gemma-2b-it-q4f32_1": {
+          "name": "gemma-2b"
+        }
       }
     }
   }
@@ -459,7 +469,9 @@ Mistral AI provides a range of powerful language models available through their 
       "apiKey": "your_api_key",
       "baseUrl": "https://api.mistral.ai/v1",
       "models": {
-        "mistral-small-latest": {}
+        "mistral-small-latest": {
+          "name": "mistral-small"
+        }
       }
     }
   }
@@ -477,7 +489,9 @@ Ollama is a tool that allows you to run large language models locally on your ma
     "ollama": {
       "baseUrl": "http://localhost:11434/v1",
       "models": {
-        "llama3:8b": {}
+        "llama3:8b": {
+          "name": "llama-3-8b"
+        }
       }
     }
   }
