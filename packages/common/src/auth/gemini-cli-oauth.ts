@@ -1,9 +1,7 @@
 import * as crypto from "node:crypto";
 import * as http from "node:http";
-import * as os from "node:os";
-import * as path from "node:path";
-import * as fs from "node:fs/promises";
 import { getLogger } from "../base";
+import { pochiConfig, updatePochiConfig } from "../configuration";
 
 const logger = getLogger("GeminiCliOAuth");
 
@@ -20,14 +18,6 @@ export interface GeminiTokens {
 }
 
 export class GeminiCliOAuthHandler {
-  private readonly configDir: string;
-  private readonly tokenPath: string;
-
-  constructor() {
-    this.configDir = path.join(os.homedir(), ".pochi");
-    this.tokenPath = path.join(this.configDir, "gemini-tokens.json");
-  }
-
   /**
    * Start the Gemini OAuth flow
    */
@@ -175,13 +165,15 @@ export class GeminiCliOAuthHandler {
 
     // Store the tokens securely in the file system
     try {
-      const tokens: GeminiTokens = {
-        refresh: tokenData.refresh_token,
-        access: tokenData.access_token,
-        expires: Date.now() + tokenData.expires_in * 1000,
-      };
-
-      await this.saveTokens(tokens);
+      await updatePochiConfig({
+        credentials: {
+          geminiCliCredentials: {
+            accessToken: tokenData.access_token,
+            refreshToken: tokenData.refresh_token,
+            expiresAt: +new Date() + tokenData.expires_in * 1000,
+          },
+        },
+      });
 
       logger.info("Gemini tokens saved successfully");
 
@@ -196,108 +188,78 @@ export class GeminiCliOAuthHandler {
     }
   }
 
-  private async refreshAccessToken(
-    refreshToken: string,
-    tokenUrl: string,
-    mcpServerUrl?: string,
-  ): Promise<OAuthTokenResponse> {
-    const params = new URLSearchParams({
-      grant_type: "refresh_token",
-      refresh_token: refreshToken,
-      client_id: this.getClientId(),
-    });
-
-    if (config.clientSecret) {
-      params.append("client_secret", config.clientSecret);
-    }
-
-    if (config.scopes && config.scopes.length > 0) {
-      params.append("scope", config.scopes.join(" "));
-    }
-
-    // Add resource parameter for MCP OAuth spec compliance
-    // Use the MCP server URL if provided, otherwise fall back to token URL
-    const resourceUrl = mcpServerUrl || tokenUrl;
-    try {
-      params.append("resource", OAuthUtils.buildResourceParameter(resourceUrl));
-    } catch (error) {
-      throw new Error(
-        `Invalid resource URL: "${resourceUrl}". ${getErrorMessage(error)}`,
-      );
-    }
-
-    const response = await fetch(tokenUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: params.toString(),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(
-        `Token refresh failed: ${response.status} - ${errorText}`,
-      );
-    }
-
-    return (await response.json()) as OAuthTokenResponse;
-  }
-
-  /**
-   * Save tokens to file system
-   */
-  private async saveTokens(tokens: GeminiTokens): Promise<void> {
-    try {
-      // Ensure config directory exists
-      await fs.mkdir(this.configDir, { recursive: true });
-
-      // Write tokens to file with restricted permissions
-      await fs.writeFile(this.tokenPath, JSON.stringify(tokens, null, 2), {
-        mode: 0o600, // Read/write for owner only
-      });
-    } catch (error) {
-      throw new Error(`Failed to save tokens: ${error}`);
-    }
-  }
-
-  /**
-   * Load tokens from file system
-   */
-  async loadTokens(): Promise<GeminiTokens | null> {
-    try {
-      const data = await fs.readFile(this.tokenPath, "utf-8");
-      return JSON.parse(data) as GeminiTokens;
-    } catch (error) {
-      // File doesn't exist or can't be read
-      return null;
-    }
-  }
+  // private async refreshAccessToken(
+  //   refreshToken: string,
+  //   tokenUrl: string,
+  //   mcpServerUrl?: string,
+  // ): Promise<OAuthTokenResponse> {
+  //   const params = new URLSearchParams({
+  //     grant_type: "refresh_token",
+  //     refresh_token: refreshToken,
+  //     client_id: this.getClientId(),
+  //   });
+  //
+  //   if (config.clientSecret) {
+  //     params.append("client_secret", config.clientSecret);
+  //   }
+  //
+  //   if (config.scopes && config.scopes.length > 0) {
+  //     params.append("scope", config.scopes.join(" "));
+  //   }
+  //
+  //   // Add resource parameter for MCP OAuth spec compliance
+  //   // Use the MCP server URL if provided, otherwise fall back to token URL
+  //   const resourceUrl = mcpServerUrl || tokenUrl;
+  //   try {
+  //     params.append("resource", OAuthUtils.buildResourceParameter(resourceUrl));
+  //   } catch (error) {
+  //     throw new Error(
+  //       `Invalid resource URL: "${resourceUrl}". ${getErrorMessage(error)}`,
+  //     );
+  //   }
+  //
+  //   const response = await fetch(tokenUrl, {
+  //     method: "POST",
+  //     headers: {
+  //       "Content-Type": "application/x-www-form-urlencoded",
+  //     },
+  //     body: params.toString(),
+  //   });
+  //
+  //   if (!response.ok) {
+  //     const errorText = await response.text();
+  //     throw new Error(
+  //       `Token refresh failed: ${response.status} - ${errorText}`,
+  //     );
+  //   }
+  //
+  //   return (await response.json()) as OAuthTokenResponse;
+  // }
 
   /**
    * Check if tokens exist and are valid
    */
   async isAuthenticated(): Promise<boolean> {
-    const tokens = await this.loadTokens();
-    if (!tokens) {
+    const credentials = pochiConfig.value.credentials?.geminiCliCredentials;
+    if (!credentials?.accessToken || !credentials.expiresAt) {
       return false;
     }
 
     // Check if tokens are not expired (with 5 minute buffer)
-    return tokens.expires > Date.now() + 5 * 60 * 1000;
+    return credentials.expiresAt > +new Date() + 5 * 60 * 1000;
   }
 
   /**
    * Get current user info if authenticated
    */
   async getCurrentUser(): Promise<{ email: string; name: string } | null> {
-    const tokens = await this.loadTokens();
-    if (!tokens) {
+    const credentials = pochiConfig.value.credentials?.geminiCliCredentials;
+    if (!credentials?.accessToken) {
       return null;
     }
 
     try {
-      return await this.fetchUserInfo(tokens.access);
+      return await this.fetchUserInfo(credentials.accessToken);
     } catch {
       return null;
     }
@@ -307,14 +269,12 @@ export class GeminiCliOAuthHandler {
    * Clear stored tokens
    */
   async logout(): Promise<void> {
-    try {
-      await fs.unlink(this.tokenPath);
-    } catch (error) {
-      // File might not exist, which is fine
-      logger.debug("Token file not found during logout:", error);
-    }
+    await updatePochiConfig({
+      credentials: {
+        geminiCliCredentials: null,
+      },
+    });
   }
-
   /**
    * Fetch user information using the access token
    */

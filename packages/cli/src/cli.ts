@@ -2,15 +2,15 @@
 // Workaround for https://github.com/oven-sh/bun/issues/18145
 import "@livestore/wa-sqlite/dist/wa-sqlite.node.wasm" with { type: "file" };
 
+import * as childProcess from "node:child_process";
 import { Command } from "@commander-js/extra-typings";
 import { getLogger } from "@getpochi/common";
-import { pochiConfig } from "@getpochi/common/configuration";
 import { GeminiCliOAuthHandler } from "@getpochi/common/auth";
+import { pochiConfig } from "@getpochi/common/configuration";
 import type { PochiApi, PochiApiClient } from "@getpochi/common/pochi-api";
 import type { LLMRequestData } from "@getpochi/livekit";
 import chalk from "chalk";
 import * as commander from "commander";
-import * as childProcess from "node:child_process";
 import { hc } from "hono/client";
 import packageJson from "../package.json";
 import { findRipgrep } from "./lib/find-ripgrep";
@@ -76,7 +76,7 @@ const program = new Command()
     const store = await createStore(process.cwd());
 
     const llm = createLLMConfig({ options, apiClient, program });
-
+    console.log("llm", llm);
     const rg = findRipgrep();
     if (!rg) {
       return program.error(
@@ -352,6 +352,7 @@ function createLLMConfig({
   const modelId = options.model.slice(sep + 1);
 
   const modelProvider = pochiConfig.value.providers?.[modelProviderId];
+
   const modelSetting = modelProvider?.models?.[modelId];
 
   if (!modelProvider) {
@@ -365,7 +366,6 @@ function createLLMConfig({
   if (!modelSetting) {
     return program.error(`Model ${options.model} not found in configuration`);
   }
-
   if (modelProvider.kind === undefined || modelProvider.kind === "openai") {
     return {
       type: "openai",
@@ -397,14 +397,17 @@ function createLLMConfig({
     };
   }
 
-  if (options.modelType === "gemini-cli") {
-    // todo FIXME check access_token?
+  if (modelProvider.kind === "gemini-cli") {
+    const geminiCliCredentials =
+      pochiConfig.value.credentials?.geminiCliCredentials;
     return {
       type: "gemini-cli",
-      modelId: options.model || "<default>",
-      apiKey: options.modelApiKey,
-      contextWindow: options.modelContextWindow,
-      maxOutputTokens: options.modelMaxOutputTokens,
+      modelId,
+      contextWindow: modelSetting.contextWindow,
+      maxOutputTokens: modelSetting.maxTokens,
+      location: modelProvider.location,
+      projectId: modelProvider.projectId,
+      accessToken: geminiCliCredentials?.accessToken,
     };
   }
 

@@ -1,5 +1,6 @@
 import type { RequestData } from "../../types";
 import { createAiGatewayModel } from "./ai-gateway";
+import { createGeminiCliModel } from "./gemini-cli";
 import { createGoogleVertexTuningModel } from "./google-vertex-tuning";
 import { createOpenAIModel } from "./openai";
 import { createPochiModel } from "./pochi";
@@ -15,6 +16,10 @@ export function createModel({
 
   if (llm.type === "google-vertex-tuning") {
     return createGoogleVertexTuningModel(llm);
+  }
+
+  if (llm.type === "gemini-cli") {
+    return createGeminiCliModel(llm);
   }
 
   if (llm.type === "vscode") {
