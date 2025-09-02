@@ -149,8 +149,14 @@ export function TokenUsage({
               {selectedModel.type === "byok" && (
                 <TooltipProvider>
                   <Tooltip>
-                    <TooltipTrigger>
-                      <CircleAlert className="size-3.5" />
+                    <TooltipTrigger asChild>
+                      <a
+                        href="command:pochi.openCustomModelSettings"
+                        className="inline-flex cursor-pointer items-center"
+                        rel="noopener noreferrer"
+                      >
+                        <CircleAlert className="size-3.5" />
+                      </a>
                     </TooltipTrigger>
                     <TooltipContent>
                       <p className="max-w-xs">
