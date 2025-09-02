@@ -13,27 +13,20 @@
           "type": "string"
         },
         "geminiCliCredentials": {
-          "anyOf": [
-            {
-              "type": "object",
-              "properties": {
-                "accessToken": {
-                  "type": "string"
-                },
-                "refreshToken": {
-                  "type": "string"
-                },
-                "expiresAt": {
-                  "type": "number"
-                }
-              },
-              "required": ["accessToken", "refreshToken", "expiresAt"],
-              "additionalProperties": false
+          "type": "object",
+          "properties": {
+            "accessToken": {
+              "type": "string"
             },
-            {
-              "type": "null"
+            "refreshToken": {
+              "type": "string"
+            },
+            "expiresAt": {
+              "type": "number"
             }
-          ]
+          },
+          "required": ["accessToken", "refreshToken", "expiresAt"],
+          "additionalProperties": false
         }
       },
       "additionalProperties": false
@@ -232,7 +225,7 @@
             "type": "object",
             "properties": {
               "name": {
-                "description": "Model provider name, e.g., \"OpenAI\", \"Anthropic\", etc.",
+                "description": "Display name of the provider, e.g., \"OpenAI\", \"Anthropic\", etc.",
                 "type": "string"
               },
               "models": {
@@ -249,10 +242,12 @@
                     },
                     "maxTokens": {
                       "description": "Maximum number of generated tokens for the model",
+                      "default": 4096,
                       "type": "number"
                     },
                     "contextWindow": {
                       "description": "Context window size for the model",
+                      "default": 100000,
                       "type": "number"
                     },
                     "useToolCallMiddleware": {
