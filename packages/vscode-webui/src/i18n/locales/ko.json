@@ -44,7 +44,8 @@
     "ofUsed": "{{total}} 중 {{used}} 사용됨",
     "newTaskWithSummary": "새 작업 및 요약",
     "compactTask": "작업 압축",
-    "minTokensRequired": "대화를 압축하려면 최소 {{minTokens}} 토큰이 필요합니다"
+    "minTokensRequired": "대화를 압축하려면 최소 {{minTokens}} 토큰이 필요합니다",
+    "defaultContextWindowWarning": "컨텍스트 창 값은 기본값이며 사용자 지정 모델에 대해 정확하지 않을 수 있습니다. 정확한 토큰 관리를 위해 모델 공급자의 설명서에 따라 설정에서 조정하십시오."
   },
   "modelSelect": {
     "selectModel": "모델 선택",

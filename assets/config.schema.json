@@ -26,7 +26,7 @@
             "type": "object",
             "properties": {
               "name": {
-                "description": "Model provider name, e.g., \"OpenAI\", \"Anthropic\", etc.",
+                "description": "Display name of the provider, e.g., \"OpenAI\", \"Anthropic\", etc.",
                 "type": "string"
               },
               "models": {
@@ -43,10 +43,12 @@
                     },
                     "maxTokens": {
                       "description": "Maximum number of generated tokens for the model",
+                      "default": 4096,
                       "type": "number"
                     },
                     "contextWindow": {
                       "description": "Context window size for the model",
+                      "default": 100000,
                       "type": "number"
                     },
                     "useToolCallMiddleware": {
@@ -78,7 +80,7 @@
             "type": "object",
             "properties": {
               "name": {
-                "description": "Model provider name, e.g., \"OpenAI\", \"Anthropic\", etc.",
+                "description": "Display name of the provider, e.g., \"OpenAI\", \"Anthropic\", etc.",
                 "type": "string"
               },
               "models": {
@@ -95,10 +97,12 @@
                     },
                     "maxTokens": {
                       "description": "Maximum number of generated tokens for the model",
+                      "default": 4096,
                       "type": "number"
                     },
                     "contextWindow": {
                       "description": "Context window size for the model",
+                      "default": 100000,
                       "type": "number"
                     },
                     "useToolCallMiddleware": {
@@ -114,23 +118,48 @@
                 "type": "string",
                 "const": "google-vertex-tuning"
               },
-              "location": {
-                "description": "Location of the model, e.g., us-central1",
-                "type": "string"
-              },
-              "credentials": {
-                "description": "Credentials for the vertex model.",
-                "type": "string"
+              "vertex": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "serviceAccountKey": {
+                        "type": "string"
+                      },
+                      "location": {
+                        "type": "string"
+                      }
+                    },
+                    "required": ["serviceAccountKey", "location"],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "accessToken": {
+                        "type": "string"
+                      },
+                      "projectId": {
+                        "type": "string"
+                      },
+                      "location": {
+                        "type": "string"
+                      }
+                    },
+                    "required": ["accessToken", "projectId", "location"],
+                    "additionalProperties": false
+                  }
+                ]
               }
             },
-            "required": ["models", "kind", "location", "credentials"],
+            "required": ["models", "kind", "vertex"],
             "additionalProperties": false
           },
           {
             "type": "object",
             "properties": {
               "name": {
-                "description": "Model provider name, e.g., \"OpenAI\", \"Anthropic\", etc.",
+                "description": "Display name of the provider, e.g., \"OpenAI\", \"Anthropic\", etc.",
                 "type": "string"
               },
               "models": {
@@ -147,10 +176,12 @@
                     },
                     "maxTokens": {
                       "description": "Maximum number of generated tokens for the model",
+                      "default": 4096,
                       "type": "number"
                     },
                     "contextWindow": {
                       "description": "Context window size for the model",
+                      "default": 100000,
                       "type": "number"
                     },
                     "useToolCallMiddleware": {

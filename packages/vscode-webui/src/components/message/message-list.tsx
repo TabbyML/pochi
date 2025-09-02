@@ -6,7 +6,10 @@ import { ToolInvocationPart } from "@/components/tool-invocation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { useToolCallLifeCycle } from "@/features/chat";
+import {
+  BackgroundJobContextProvider,
+  useToolCallLifeCycle,
+} from "@/features/chat";
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
 import { cn } from "@/lib/utils";
 import { isVSCodeEnvironment, vscodeHost } from "@/lib/vscode";
@@ -60,81 +63,85 @@ export const MessageList: React.FC<{
   const isExecuting = executingToolCalls.length > 0;
 
   return (
-    <ScrollArea
-      className={cn("mb-2 flex-1 overflow-y-auto px-4", className)}
-      ref={containerRef}
-    >
-      {renderMessages.map((m, messageIndex) => (
-        <div key={m.id} className="flex flex-col">
-          <div className={cn(showUserAvatar && "pt-4 pb-2")}>
-            {showUserAvatar && (
-              <div className="flex items-center gap-2">
-                {m.role === "user" ? (
-                  <Avatar className="size-7 select-none">
-                    <AvatarImage src={user?.image ?? undefined} />
-                    <AvatarFallback
-                      className={cn(
-                        "bg-[var(--vscode-chat-avatarBackground)] text-[var(--vscode-chat-avatarForeground)] text-xs uppercase",
-                      )}
-                    >
-                      {user?.name.slice(0, 2) || (
-                        <UserIcon className={cn("size-[50%]")} />
-                      )}
-                    </AvatarFallback>
-                  </Avatar>
-                ) : (
-                  <Avatar className="size-7 select-none">
-                    <AvatarImage
-                      src={assistant?.image ?? undefined}
-                      className="scale-110"
-                    />
-                    <AvatarFallback className="bg-[var(--vscode-chat-avatarBackground)] text-[var(--vscode-chat-avatarForeground)]" />
-                  </Avatar>
-                )}
-                <strong>
-                  {m.role === "user"
-                    ? user?.name
-                    : (assistant?.name ?? "Pochi")}
-                </strong>
-                {findCompactPart(m) && (
-                  <CompactPartToolTip className="ml-1" message={m} />
-                )}
+    <BackgroundJobContextProvider messages={renderMessages}>
+      <ScrollArea
+        className={cn("mb-2 flex-1 overflow-y-auto px-4", className)}
+        ref={containerRef}
+      >
+        {renderMessages.map((m, messageIndex) => (
+          <div key={m.id} className="flex flex-col">
+            <div className={cn(showUserAvatar && "pt-4 pb-2")}>
+              {showUserAvatar && (
+                <div className="flex items-center gap-2">
+                  {m.role === "user" ? (
+                    <Avatar className="size-7 select-none">
+                      <AvatarImage src={user?.image ?? undefined} />
+                      <AvatarFallback
+                        className={cn(
+                          "bg-[var(--vscode-chat-avatarBackground)] text-[var(--vscode-chat-avatarForeground)] text-xs uppercase",
+                        )}
+                      >
+                        {user?.name.slice(0, 2) || (
+                          <UserIcon className={cn("size-[50%]")} />
+                        )}
+                      </AvatarFallback>
+                    </Avatar>
+                  ) : (
+                    <Avatar className="size-7 select-none">
+                      <AvatarImage
+                        src={assistant?.image ?? undefined}
+                        className="scale-110"
+                      />
+                      <AvatarFallback className="bg-[var(--vscode-chat-avatarBackground)] text-[var(--vscode-chat-avatarForeground)]" />
+                    </Avatar>
+                  )}
+                  <strong>
+                    {m.role === "user"
+                      ? user?.name
+                      : (assistant?.name ?? "Pochi")}
+                  </strong>
+                  {findCompactPart(m) && (
+                    <CompactPartToolTip className="ml-1" message={m} />
+                  )}
+                </div>
+              )}
+              <div
+                className={cn("ml-1 flex flex-col", showUserAvatar && "mt-3")}
+              >
+                {m.parts.map((part, index) => (
+                  <Part
+                    role={m.role}
+                    key={index}
+                    isLastPartInMessages={
+                      index === m.parts.length - 1 &&
+                      messageIndex === renderMessages.length - 1
+                    }
+                    partIndex={index}
+                    part={part}
+                    isLoading={isLoading}
+                    isExecuting={isExecuting}
+                    messages={renderMessages}
+                  />
+                ))}
               </div>
-            )}
-            <div className={cn("ml-1 flex flex-col", showUserAvatar && "mt-3")}>
-              {m.parts.map((part, index) => (
-                <Part
-                  role={m.role}
-                  key={index}
-                  isLastPartInMessages={
-                    index === m.parts.length - 1 &&
-                    messageIndex === renderMessages.length - 1
-                  }
-                  partIndex={index}
-                  part={part}
-                  isLoading={isLoading}
-                  isExecuting={isExecuting}
-                  messages={renderMessages}
-                />
-              ))}
+              {/* Display attachments at the bottom of the message */}
+              <UserAttachments message={m} />
             </div>
-            {/* Display attachments at the bottom of the message */}
-            <UserAttachments message={m} />
+            {messageIndex < renderMessages.length - 1 && (
+              <SeparatorWithCheckpoint
+                message={m}
+                isLoading={isLoading || isExecuting}
+              />
+            )}
           </div>
-          {messageIndex < renderMessages.length - 1 && (
-            <SeparatorWithCheckpoint
-              message={m}
-              isLoading={isLoading || isExecuting}
-            />
-          )}
-        </div>
-      ))}
-      {debouncedIsLoading && (
-        <div className="py-2">
-          <Loader2 className="mx-auto size-6 animate-spin" />
-        </div>
-      )}
-    </ScrollArea>
+        ))}
+        {debouncedIsLoading && (
+          <div className="py-2">
+            <Loader2 className="mx-auto size-6 animate-spin" />
+          </div>
+        )}
+      </ScrollArea>
+    </BackgroundJobContextProvider>
   );
 };
 

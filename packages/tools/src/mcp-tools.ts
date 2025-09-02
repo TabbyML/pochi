@@ -1,5 +1,5 @@
 import type { JSONSchema7 } from "json-schema";
-import { z } from "zod";
+import { z } from "zod/v4";
 
 export const McpTool = z.object({
   description: z

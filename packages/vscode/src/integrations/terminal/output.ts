@@ -167,11 +167,14 @@ export class OutputManager {
 
     // Get the substring based on byte position
     let newOutput = "";
+    let noMoreOutput = false;
     if (this.lastReadLength < currentOutputBytes) {
       // Find the character position that corresponds to lastReadLength bytes
       const buffer = Buffer.from(currentOutput, "utf8");
       const slicedBuffer = buffer.subarray(this.lastReadLength);
       newOutput = slicedBuffer.toString("utf8");
+    } else if (this.output.value.status === "completed") {
+      noMoreOutput = true;
     }
 
     this.lastReadLength = currentOutputBytes;
@@ -200,7 +203,9 @@ export class OutputManager {
       output: newOutput,
       isTruncated: this.output.value.isTruncated ?? false,
       status: this.output.value.status,
-      error: this.output.value.error,
+      error: noMoreOutput
+        ? `No more Output to read.${this.output.value.error ?? ""}`
+        : this.output.value.error,
     };
   }
 
@@ -215,7 +220,7 @@ export class OutputManager {
   /**
    * Finalizes the output with completion status and optional error
    */
-  finalize(detached: boolean, error?: ExecutionError): void {
+  finalize(error?: ExecutionError): void {
     if (this.output.value.status === "completed") {
       // Ignore finalization if already completed
       return;
@@ -227,17 +232,6 @@ export class OutputManager {
       truncatedBytes,
     } = this.truncator.truncateChunks(this.chunks);
     this.chunks = finalChunks;
-    let errorText: string | undefined;
-
-    if (detached) {
-      if (error?.aborted) {
-        // ignore error as detached job is always aborted
-      } else {
-        errorText = error?.message;
-      }
-    } else {
-      errorText = error?.message;
-    }
 
     const finalContent = joinContent(this.chunks);
     const finalContentBytes = Buffer.byteLength(finalContent, "utf8");
@@ -248,7 +242,7 @@ export class OutputManager {
       content: finalContent,
       status: "completed",
       isTruncated,
-      error: errorText,
+      error: error?.message,
     };
   }
 

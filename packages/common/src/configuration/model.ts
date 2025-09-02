@@ -4,7 +4,9 @@ const BaseModelSettings = z.object({
   name: z
     .string()
     .optional()
-    .describe('Model provider name, e.g., "OpenAI", "Anthropic", etc.'),
+    .describe(
+      'Display name of the provider, e.g., "OpenAI", "Anthropic", etc.',
+    ),
   models: z.record(
     z.string(),
     z.object({
@@ -14,8 +16,14 @@ const BaseModelSettings = z.object({
         .describe('Display name of the model, e.g., "GPT-4o"'),
       maxTokens: z
         .number()
+        .optional()
+        .default(4096)
         .describe("Maximum number of generated tokens for the model"),
-      contextWindow: z.number().describe("Context window size for the model"),
+      contextWindow: z
+        .number()
+        .optional()
+        .default(100000)
+        .describe("Context window size for the model"),
       useToolCallMiddleware: z
         .boolean()
         .optional()
@@ -37,10 +45,23 @@ const OpenAIModelSettings = BaseModelSettings.extend({
     .describe("API key for the model provider, if required."),
 });
 
+export const GoogleVertexModel = z.union([
+  z.object({
+    serviceAccountKey: z.string(),
+    location: z.string(),
+  }),
+  z.object({
+    accessToken: z.string(),
+    projectId: z.string(),
+    location: z.string(),
+  }),
+]);
+
+export type GoogleVertexModel = z.infer<typeof GoogleVertexModel>;
+
 const GoogleVertexTuningModelSettings = BaseModelSettings.extend({
   kind: z.literal("google-vertex-tuning"),
-  location: z.string().describe("Location of the model, e.g., us-central1"),
-  credentials: z.string().describe("Credentials for the vertex model."),
+  vertex: GoogleVertexModel,
 });
 
 const AiGatewayModelSettings = BaseModelSettings.extend({

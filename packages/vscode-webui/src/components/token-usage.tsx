@@ -12,16 +12,17 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import type { DisplayModel } from "@/features/settings";
 import { useRules } from "@/lib/hooks/use-rules";
 import { constants } from "@getpochi/common";
-import { Loader2 } from "lucide-react";
+import { CircleAlert, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "./ui/button";
 import { Progress } from "./ui/progress";
 
 interface Props {
-  contextWindow: number;
+  selectedModel: DisplayModel;
   totalTokens: number;
   className?: string;
   compact?: {
@@ -35,12 +36,14 @@ interface Props {
 
 export function TokenUsage({
   totalTokens,
-  contextWindow,
   className,
   compact,
+  selectedModel,
 }: Props) {
   const { t } = useTranslation();
-  const percentage = Math.ceil((totalTokens / contextWindow) * 100);
+  const percentage = Math.ceil(
+    (totalTokens / selectedModel.contextWindow) * 100,
+  );
   const [isOpen, setIsOpen] = useState(false);
   const [isPinned, setIsPinned] = useState(false);
 
@@ -111,7 +114,7 @@ export function TokenUsage({
                 {t("tokenUsage.compacting")}
               </>
             ) : (
-              `${percentage}${t("tokenUsage.ofTokens", { tokens: formatTokens(contextWindow) })}`
+              `${percentage}${t("tokenUsage.ofTokens", { tokens: formatTokens(selectedModel.contextWindow) })}`
             )}
           </span>
         </div>
@@ -141,14 +144,34 @@ export function TokenUsage({
             </div>
           )}
           <div className="flex flex-col gap-y-1">
-            <div className="mb-1 text-muted-foreground">
-              {t("tokenUsage.contextWindow")}
+            <div className="mb-1 flex items-center gap-1 text-muted-foreground">
+              <span>{t("tokenUsage.contextWindow")}</span>
+              {selectedModel.type === "byok" && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <a
+                        href="command:pochi.openCustomModelSettings"
+                        className="inline-flex cursor-pointer items-center"
+                        rel="noopener noreferrer"
+                      >
+                        <CircleAlert className="size-3.5" />
+                      </a>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className="max-w-xs">
+                        {t("tokenUsage.defaultContextWindowWarning")}
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
             </div>
             <div>
               <Progress value={percentage} className="mb-1" />
               {t("tokenUsage.ofUsed", {
                 used: formatTokens(totalTokens),
-                total: formatTokens(contextWindow),
+                total: formatTokens(selectedModel.contextWindow),
               })}
             </div>
           </div>

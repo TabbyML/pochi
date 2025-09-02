@@ -24,7 +24,7 @@ async function main(): Promise<void> {
     const userPrompt = githubManager.parseRequest();
 
     // Let runner handle everything with original user prompt only
-    await runPochi(userPrompt);
+    await runPochi(userPrompt, githubManager);
 
     // Task completed successfully
   } catch (error) {

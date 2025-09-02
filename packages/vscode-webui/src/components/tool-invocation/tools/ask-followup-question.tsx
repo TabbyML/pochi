@@ -1,4 +1,4 @@
-import { useSendMessage } from "@/features/chat";
+import { useReplaceJobIdsInContent, useSendMessage } from "@/features/chat";
 import { cn } from "@/lib/utils";
 import type { ToolProps } from "../types";
 
@@ -6,6 +6,7 @@ export const AskFollowupQuestionTool: React.FC<
   ToolProps<"askFollowupQuestion">
 > = ({ tool: toolCall, isLoading }) => {
   const sendMessage = useSendMessage();
+  const replaceJobIdsInContent = useReplaceJobIdsInContent();
   const { question, followUp } = toolCall.input || {};
 
   return (
@@ -29,7 +30,9 @@ export const AskFollowupQuestionTool: React.FC<
                   })
                 }
               >
-                {followUpText}
+                {followUpText
+                  ? replaceJobIdsInContent(followUpText)
+                  : followUpText}
               </li>
             ))}
           </ol>

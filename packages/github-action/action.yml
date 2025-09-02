@@ -15,13 +15,23 @@ runs:
     - name: Install pochi CLI
       shell: bash
       run: |
-        echo "Installing pochi CLI..."
-        curl -fsSL https://app.getpochi.com/install.sh | bash
+        if ! curl -fsSL https://app.getpochi.com/install.sh | bash > /dev/null 2>&1; then
+          echo "Error: Failed to install pochi CLI"
+          exit 1
+        fi
 
-        echo "Installing ripgrep..."
-        curl -LO 'https://github.com/BurntSushi/ripgrep/releases/download/14.1.1/ripgrep-14.1.1-x86_64-unknown-linux-musl.tar.gz'
-        tar -xzf ripgrep-14.1.1-x86_64-unknown-linux-musl.tar.gz
-        mv ripgrep-14.1.1-x86_64-unknown-linux-musl/rg "$HOME/.pochi/bin/"
+        if ! curl -sLO 'https://github.com/BurntSushi/ripgrep/releases/download/14.1.1/ripgrep-14.1.1-x86_64-unknown-linux-musl.tar.gz'; then
+          echo "Error: Failed to download ripgrep"
+          exit 1
+        fi
+        if ! tar -xzf ripgrep-14.1.1-x86_64-unknown-linux-musl.tar.gz > /dev/null 2>&1; then
+          echo "Error: Failed to extract ripgrep"
+          exit 1
+        fi
+        if ! mv ripgrep-14.1.1-x86_64-unknown-linux-musl/rg "$HOME/.pochi/bin/"; then
+          echo "Error: Failed to move ripgrep binary"
+          exit 1
+        fi
         rm -rf ripgrep-14.1.1-x86_64-unknown-linux-musl*
 
         echo "$HOME/.pochi/bin" >> $GITHUB_PATH
@@ -35,14 +45,20 @@ runs:
     - name: Install bun
       shell: bash
       run: |
-        curl -fsSL https://bun.com/install | bash
+        if ! curl -fsSL https://bun.com/install | bash > /dev/null 2>&1; then
+          echo "Error: Failed to install bun"
+          exit 1
+        fi
         echo "$HOME/.bun/bin" >> $GITHUB_PATH
 
     - name: Install dependencies
       shell: bash
       run: |
         cd ${GITHUB_ACTION_PATH}
-        bun install --frozen-lockfile
+        if ! bun install --frozen-lockfile --silent; then
+          echo "Error: Failed to install dependencies"
+          exit 1
+        fi
 
     - name: Run pochi GitHub Action
       shell: bash

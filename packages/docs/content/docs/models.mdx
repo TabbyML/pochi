@@ -8,32 +8,34 @@ icon: "Zap"
 
 Pochi leverages the AI SDK to support various LLM providers and can run local models.
 
-## Pochi Models
+## Pochi
 
 After signing in, you gain access to the Pochi models shown below. Pochi uses a usage-based pricing strategy with no additional charges. For detailed pricing information, visit https://app.getpochi.com/pricing.
 
 ![Pochi Models](../assets/images/pochi-models.png)
 
-## GitHub Copilot Models
+## GitHub Copilot
 
 For Microsoft VS Code distributions, you can utilize your enabled Copilot models within Pochi.
 
 ![Copilot Models](../assets/images/copilot-models.png)
 
-## OpenAI Compatible Models
+## OpenAI Compatible
 
 Pochi allows you to configure any LLM provider that offers an OpenAI-compatible API by setting up the appropriate API keys. To configure custom models, use the VS Code command `Pochi: Open Custom Model Settings` to open the settings configuration file.
 
 ```json
 {
+  "$schema": "https://getpochi.com/config.schema.json",
   "providers": {
-    "groq": {
+    "provider-id": {
       "apiKey": "your_api_key",
-      "baseUrl": "https://api.groq.com/openai/v1",
+      "baseUrl": "https://api.provider.com/v1",
       "models": {
-        "moonshotai/kimi-k2-instruct": {
-          "contextWindow": 131072,
-          "maxTokens": 8000
+        "model-id": {
+          // The contextWindow and maxTokens are optional right now, it's default set to 10k and 4096
+          // "contextWindow": 131072,
+          // "maxTokens": 8000
         }
       }
     }
@@ -41,4 +43,147 @@ Pochi allows you to configure any LLM provider that offers an OpenAI-compatible 
 }
 ```
 
-After saving the configuration, the model will be available in the toolbar's model selector.
+### Chutes
+
+Chutes provides access to various AI models through their API. To use Chutes, you'll need to obtain an API token from [Chutes Platform](https://chutes.ai/).
+
+```json
+{
+  "$schema": "https://getpochi.com/config.schema.json",
+  "providers": {
+    "chutes": {
+      "apiKey": "your_api_token",
+      "baseUrl": "https://llm.chutes.ai/v1",
+      "models": {
+        "zai-org/GLM-4.5-FP8": {
+          "name": "glm-4.5"
+        }
+      }
+    }
+  }
+}
+```
+
+### Cerebras
+
+Cerebras provides AI models through their OpenAI-compatible API. To use Cerebras, you'll need to obtain an API key from [Cerebras Platform](https://inference.cerebras.ai/).
+
+```json
+{
+  "$schema": "https://getpochi.com/config.schema.json",
+  "providers": {
+    "cerebras": {
+      "apiKey": "your_api_key",
+      "baseUrl": "https://api.cerebras.ai/v1",
+      "models": {
+        "llama3.1-8b": {
+          "name": "llama-3.1-8b"
+        }
+      }
+    }
+  }
+}
+```
+
+### DeepInfra
+
+DeepInfra provides access to a wide range of AI models through their OpenAI-compatible API. To use DeepInfra, you'll need to obtain an API token from [DeepInfra Platform](https://deepinfra.com/).
+
+```json
+{
+  "$schema": "https://getpochi.com/config.schema.json",
+  "providers": {
+    "deepinfra": {
+      "apiKey": "your_api_token",
+      "baseUrl": "https://api.deepinfra.com/v1/openai",
+      "models": {
+        "meta-llama/Llama-3.3-70B-Instruct": {
+          "name": "llama-3.3-70b"
+        }
+      }
+    }
+  }
+}
+```
+
+### Groq
+
+Groq is a cloud-based AI platform that provides fast inference for large language models.
+
+```json
+{
+  "$schema": "https://getpochi.com/config.schema.json",
+  "providers": {
+    "groq": {
+      "apiKey": "your_api_key",
+      "baseUrl": "https://api.groq.com/openai/v1",
+      "models": {
+        "llama3-8b-8192": {
+          "name": "llama-3-8b"
+        }
+      }
+    }
+  }
+}
+```
+
+### LM Studio
+
+LM Studio is a local IDE application that allows you to run and experiment with language models on your own machine.
+
+```json
+{
+  "$schema": "https://getpochi.com/config.schema.json",
+  "providers": {
+    "lmstudio": {
+      "baseUrl": "http://127.0.0.1:1234/v1",
+      "models": {
+        "gemma-2b-it-q4f32_1": {
+          "name": "gemma-2b"
+        }
+      }
+    }
+  }
+}
+```
+
+### Mistral
+
+Mistral AI provides a range of powerful language models available through their API. To use Mistral models, you'll need to obtain an API key from [Mistral AI Platform](https://console.mistral.ai/).
+
+```json
+{
+  "$schema": "https://getpochi.com/config.schema.json",
+  "providers": {
+    "mistral": {
+      "apiKey": "your_api_key",
+      "baseUrl": "https://api.mistral.ai/v1",
+      "models": {
+        "mistral-small-latest": {
+          "name": "mistral-small"
+        }
+      }
+    }
+  }
+}
+```
+
+### Ollama
+
+Ollama is a tool that allows you to run large language models locally on your machine with a simple API.
+
+```json
+{
+  "$schema": "https://getpochi.com/config.schema.json",
+  "providers": {
+    "ollama": {
+      "baseUrl": "http://localhost:11434/v1",
+      "models": {
+        "llama3:8b": {
+          "name": "llama-3-8b"
+        }
+      }
+    }
+  }
+}
+```

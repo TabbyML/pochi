@@ -9,12 +9,8 @@ const uf = new uFuzzy({
   // Don't split on forward slashes - treat them as regular characters
   interSplit: "[^a-zA-Z\\d'@\\-_./]+",
   // Allow more insertions for path matching (like amp -> amp-07-08-2025)
-  intraIns: 20,
+  intraIns: 5,
 });
-
-export interface FuzzySearchOptions {
-  maxResults?: number;
-}
 
 /**
  * Generic fuzzy search function that works with any string array
@@ -40,15 +36,14 @@ export function fuzzySearchStrings(needle: string, haystack: string[]) {
 export function fuzzySearchWorkflows<T extends { id: string }>(
   needle: string | undefined,
   workflows: T[],
-  options: FuzzySearchOptions = {},
+  limit: number = MaxResult,
 ): T[] {
   if (!workflows || !Array.isArray(workflows)) {
     return [];
   }
 
   if (!needle) {
-    const maxResults = options.maxResults ?? MaxResult;
-    return workflows.slice(0, maxResults);
+    return workflows.slice(0, limit);
   }
 
   // Create a haystack of workflow names for searching
@@ -77,14 +72,10 @@ export function fuzzySearchFiles(
     files: FileItem[];
     activeTabs: FileItem[];
   },
-  options: FuzzySearchOptions = {},
+  limit = MaxResult,
 ): { filepath: string; isDir: boolean }[] {
-  const maxResults = options.maxResults || MaxResult;
   if (!needle) {
-    return mergeUniqueFileItems(data.activeTabs, data.files).slice(
-      0,
-      maxResults,
-    );
+    return mergeUniqueFileItems(data.activeTabs, data.files).slice(0, limit);
   }
 
   const activeTabSearchResult = fuzzySearchStrings(
@@ -100,7 +91,7 @@ export function fuzzySearchFiles(
   return mergeUniqueFileItems(
     activeTabSearchResult.map(({ idx }) => data.activeTabs[idx]),
     fileSearchResult.map(({ idx }) => data.files[idx]),
-  ).slice(0, maxResults);
+  ).slice(0, limit);
 }
 
 function mergeUniqueFileItems(...items: FileItem[][]): FileItem[] {
