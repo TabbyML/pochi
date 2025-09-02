@@ -1,6 +1,5 @@
 import { getLogger } from "@getpochi/common";
 import type { ClientTools, ToolFunctionType } from "@getpochi/tools";
-import type { ToolUIPart } from "ai";
 import { TaskRunner } from "../task-runner";
 import type { RunnerOptions } from "../task-runner";
 import type { ToolCallOptions } from "../types";
@@ -13,12 +12,7 @@ const logger = getLogger("NewTaskTool");
  */
 export const newTask =
   (options: ToolCallOptions): ToolFunctionType<ClientTools["newTask"]> =>
-  async ({ description, prompt, _meta }) => {
-    if (!description || !prompt) {
-      throw new Error(
-        "Description and prompt are required for creating a new task.",
-      );
-    }
+  async ({ prompt, _meta }) => {
 
     const taskId = _meta?.uid || crypto.randomUUID();
 
@@ -58,15 +52,13 @@ export const newTask =
 
       let result = "Sub-task completed";
       if (lastMessage?.role === "assistant") {
-        const completionPart = lastMessage.parts?.find(
-          (part) => part.type === "tool-attemptCompletion",
-        ) as ToolUIPart | undefined;
-        if (
-          completionPart?.input &&
-          typeof completionPart.input === "object" &&
-          "result" in completionPart.input
-        ) {
-          result = (completionPart.input as { result: string }).result;
+        for (const part of lastMessage.parts || []) {
+          if (part.type === "tool-attemptCompletion") {
+            if (part.input) {
+              result = (part.input as { result: string }).result;
+            }
+            break;
+          }
         }
       } else {
         logger.debug("No assistant message found in sub-task result");
