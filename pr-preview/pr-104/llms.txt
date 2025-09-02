@@ -403,7 +403,8 @@ DeepInfra provides access to a wide range of AI models through their OpenAI-comp
       "apiKey": "your_api_token",
       "baseUrl": "https://api.deepinfra.com/v1/openai",
       "models": {
-        "meta-llama/Llama-3.3-70B-Instruct": {
+        "meta-llama/Llama-3.3-70B-Instruct": {}
+      }
     }
   }
 }
