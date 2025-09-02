@@ -1,6 +1,3 @@
-import type { PochiApiClient } from "@getpochi/common/pochi-api";
-import type { LLMRequestData } from "@getpochi/livekit";
-import type { Store } from "@livestore/livestore";
 import type { TaskRunner } from "./task-runner";
 
 export interface ToolCallOptions {
