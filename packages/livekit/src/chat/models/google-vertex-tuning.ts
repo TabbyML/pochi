@@ -93,7 +93,7 @@ function createVertexModel(
     })(modelId);
   }
 
-  if (vertex.type === "reinforce-learning") {
+  if ("issueUrl" in vertex) {
     const { issueUrl, modelUrl } = vertex;
     return createVertex({
       project: "placeholder",
@@ -110,7 +110,7 @@ function createVertexModel(
         headers.append("Authorization", `Bearer ${resp.access_token}`);
         return fetch(modelUrl, { ...requestInit, headers });
       },
-    });
+    })("placeholder");
   }
 
   throw new Error("Unknown Google Vertex model type");
