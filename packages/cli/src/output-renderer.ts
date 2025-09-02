@@ -205,12 +205,7 @@ function renderToolPart(part: ToolUIPart<UITools>): {
   if (part.type === "tool-newTask") {
     const { description = "creating subtask" } = part.input || {};
 
-    if (
-      part.state === "output-available" &&
-      part.output &&
-      typeof part.output === "object" &&
-      "result" in part.output
-    ) {
+    if (part.state === "output-available" && part.output?.result) {
       const result = part.output.result as string;
       return {
         text: `🚀 Subtask completed: ${chalk.bold(description)}\n${chalk.dim("└─")} ${result}`,
