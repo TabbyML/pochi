@@ -22,10 +22,10 @@ export async function runPochi(
     "eyes",
   );
 
-  // Create initial history comment
-  const historyCommentId = await githubManager.createComment(
-    "Starting Pochi execution...",
-  );
+  // Create initial history comment with GitHub Action link
+  const initialComment = `Starting Pochi execution...${createGitHubActionFooter(request.event)}`;
+
+  const historyCommentId = await githubManager.createComment(initialComment);
 
   const args = ["--prompt", request.prompt, "--max-steps", "128"];
 
@@ -83,9 +83,10 @@ export async function runPochi(
 
       // Finalize history comment with failure status
       const truncatedOutput = buildBatchOutput(outputBuffer);
+      const finalComment = `${truncatedOutput}${createGitHubActionFooter(request.event)}`;
       await githubManager.finalizeComment(
         historyCommentId,
-        truncatedOutput,
+        finalComment,
         false,
       );
 
@@ -109,9 +110,10 @@ export async function runPochi(
 
         // Final update of history comment with success status
         const truncatedOutput = buildBatchOutput(outputBuffer);
+        const finalComment = `${truncatedOutput}${createGitHubActionFooter(request.event)}`;
         await githubManager.finalizeComment(
           historyCommentId,
-          truncatedOutput,
+          finalComment,
           true,
         );
 
@@ -131,6 +133,23 @@ export async function runPochi(
       handleFailure(new Error(`Failed to spawn pochi CLI: ${error.message}`));
     });
   });
+}
+
+function getGitHubActionUrl(event: RunPochiRequest["event"]): string {
+  const runId = process.env.GITHUB_RUN_ID;
+  const { owner, name: repoName } = event.repository;
+
+  if (!runId) {
+    // Fallback to actions page if run ID is not available
+    return `https://github.com/${owner.login}/${repoName}/actions`;
+  }
+
+  return `https://github.com/${owner.login}/${repoName}/actions/runs/${runId}`;
+}
+
+function createGitHubActionFooter(event: RunPochiRequest["event"]): string {
+  const actionUrl = getGitHubActionUrl(event);
+  return `\n\n🔗 **[View GitHub Action Execution](${actionUrl})**`;
 }
 
 function formatCustomInstruction(event: RunPochiRequest["event"]) {
