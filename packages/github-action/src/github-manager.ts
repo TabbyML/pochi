@@ -54,9 +54,8 @@ export class GitHubManager {
       owner: repo.owner,
       repo: repo.repo,
       issue_number: issueNumber,
-      body: `🔄 **Pochi Running...**\n\n\`\`\`\n${initialContent}\n\`\`\``,
+      body: `🔄 **Pochi Running...**\n\n${initialContent}`,
     });
-
     return response.data.id;
   }
 
@@ -82,10 +81,9 @@ export class GitHubManager {
       owner: repo.owner,
       repo: repo.repo,
       comment_id: commentId,
-      body: `${status}\n\n\`\`\`\n${content}\n\`\`\``,
+      body: `${status}\n\n${content}`,
     });
   }
-
   async createReaction(
     commentId: number,
     content: RestEndpointMethodTypes["reactions"]["createForIssueComment"]["parameters"]["content"],

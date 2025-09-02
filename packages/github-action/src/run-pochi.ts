@@ -83,7 +83,7 @@ export async function runPochi(
 
       // Finalize history comment with failure status
       const truncatedOutput = buildBatchOutput(outputBuffer);
-      const finalComment = `${truncatedOutput}${createGitHubActionFooter(request.event)}`;
+      const finalComment = `\`\`\`\n${truncatedOutput}\n\`\`\`${createGitHubActionFooter(request.event)}`;
       await githubManager.finalizeComment(
         historyCommentId,
         finalComment,
@@ -110,7 +110,7 @@ export async function runPochi(
 
         // Final update of history comment with success status
         const truncatedOutput = buildBatchOutput(outputBuffer);
-        const finalComment = `${truncatedOutput}${createGitHubActionFooter(request.event)}`;
+        const finalComment = `\`\`\`\n${truncatedOutput}\n\`\`\`${createGitHubActionFooter(request.event)}`;
         await githubManager.finalizeComment(
           historyCommentId,
           finalComment,
