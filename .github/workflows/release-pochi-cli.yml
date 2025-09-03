@@ -34,6 +34,22 @@ jobs:
             echo "This is a stable release version: $version"
           fi
 
+      - name: Publish to npm
+        if: github.repository_owner == 'TabbyML' && startsWith(github.ref, 'refs/tags/cli@')
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          cd packages/cli
+          # Configure npm auth
+          echo "//registry.npmjs.org/:_authToken=$NODE_AUTH_TOKEN" > ~/.npmrc
+
+          # Publish to npm with appropriate tag
+          if [ "${{ steps.release_info.outputs.is_prerelease }}" = "true" ]; then
+            npm publish --tag beta --access public
+          else
+            npm publish --access public
+          fi
+
       - name: Release Versioned
         uses: ncipollo/release-action@v1
         if: startsWith(github.ref, 'refs/tags/cli@')
