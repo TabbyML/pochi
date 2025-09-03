@@ -95,11 +95,15 @@ const RequestData = z.object({
     z.object({
       type: z.literal("gemini-cli"),
       modelId: z.string(),
-      accessToken: z.string().optional(),
       contextWindow: z.number().describe("Context window of the model."),
       maxOutputTokens: z.number().describe("Max output tokens of the model."),
-      projectId: z.string(),
-      location: z.string(),
+      credentials: z
+        .object({
+          accessToken: z.string(),
+          refreshToken: z.string(),
+          expiresAt: z.number(),
+        })
+        .optional(),
       useToolCallMiddleware: z
         .boolean()
         .optional()

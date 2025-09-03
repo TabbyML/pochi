@@ -11,19 +11,20 @@
     "tsc": "tsc"
   },
   "dependencies": {
-    "@livestore/livestore": "catalog:",
-    "@livestore/react": "catalog:",
-    "@getpochi/common": "workspace:*",
-    "@getpochi/tools": "workspace:*",
-    "ai": "catalog:",
-    "@ai-sdk/react": "catalog:",
+    "@ai-sdk/gateway": "catalog:",
     "@ai-sdk/google-vertex": "catalog:",
     "@ai-sdk/openai-compatible": "catalog:",
-    "@ai-sdk/provider-utils": "catalog:",
     "@ai-sdk/provider": "catalog:",
-    "@ai-sdk/gateway": "catalog:",
-    "zod": "catalog:",
+    "@ai-sdk/provider-utils": "catalog:",
+    "@ai-sdk/react": "catalog:",
+    "@getpochi/common": "workspace:*",
+    "@getpochi/tools": "workspace:*",
+    "@livestore/livestore": "catalog:",
+    "@livestore/react": "catalog:",
+    "ai": "catalog:",
+    "base58-js": "^3.0.3",
+    "cloud-code-ai-provider": "^0.1.0",
     "react": "catalog:",
-    "base58-js": "^3.0.3"
+    "zod": "catalog:"
   }
 }

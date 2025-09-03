@@ -208,8 +208,8 @@ function createLLMConfig({
   const modelId = options.model.slice(sep + 1);
 
   const modelProvider = pochiConfig.value.providers?.[modelProviderId];
-
   const modelSetting = modelProvider?.models?.[modelId];
+
   if (!modelProvider) {
     return {
       type: "pochi",
@@ -259,9 +259,7 @@ function createLLMConfig({
       modelId,
       contextWindow: modelSetting.contextWindow,
       maxOutputTokens: modelSetting.maxTokens,
-      location: modelProvider.location,
-      projectId: modelProvider.projectId,
-      accessToken: geminiCliCredentials?.accessToken,
+      credentials: geminiCliCredentials,
     };
   }
 

@@ -262,21 +262,9 @@
               "kind": {
                 "type": "string",
                 "const": "gemini-cli"
-              },
-              "projectId": {
-                "description": "Project ID for Gemini.",
-                "type": "string"
-              },
-              "location": {
-                "description": "Location for Gemini, e.g. us-central1",
-                "type": "string"
-              },
-              "accessToken": {
-                "description": "Access token for Gemini.",
-                "type": "string"
               }
             },
-            "required": ["models", "kind", "projectId", "location"],
+            "required": ["models", "kind"],
             "additionalProperties": false
           }
         ]

@@ -74,9 +74,6 @@ const AiGatewayModelSettings = BaseModelSettings.extend({
 
 const GeminiCliModelSettings = BaseModelSettings.extend({
   kind: z.literal("gemini-cli"),
-  projectId: z.string().describe("Project ID for Gemini."),
-  location: z.string().describe("Location for Gemini, e.g. us-central1"),
-  accessToken: z.string().optional().describe("Access token for Gemini."),
 });
 
 export const CustomModelSetting = z.discriminatedUnion("kind", [
