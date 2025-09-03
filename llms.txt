@@ -1,3 +1,74 @@
+# Auto Compact
+URL: /auto-compact
+Reduce context usage by summarizing long conversations—inline or into a new task
+***
+
+title: "Auto Compact"
+description: "Reduce context usage by summarizing long conversations—inline or into a new task"
+icon: "ScanText"
+----------------
+
+# Auto Compact
+
+Auto Compact helps you keep long conversations efficient by summarizing earlier messages when your token usage grows large. You can either:
+
+* Compact in the current task (inject a compact summary so you can continue seamlessly)
+* Start a new task with the summary (spawn a fresh task seeded with a concise recap)
+
+![Auto Compact overview](../assets/images/auto-compact.png)
+
+## When Auto Compact is available
+
+Auto Compact becomes available from the token usage chip in the toolbar when all of the following are true:
+
+* The conversation isn’t streaming or executing
+* The chat isn’t read-only
+* No other compact action is pending
+* Total tokens ≥ 50,000 (min threshold)
+
+If the threshold isn’t met, you’ll see a tooltip explaining that more tokens are required to compact.
+
+While compacting, the chip shows a spinner with the “Compacting” label.
+
+![Compacting in progress](../assets/images/auto-compacting.png)
+
+## Two ways to compact
+
+### Option A — Compact in current task
+
+Use this to stay in the same task. Pochi will:
+
+1. Generate a concise summary of the conversation up to your latest message
+2. Inject a compact block at the top of your last user message
+3. Continue the conversation with the condensed context
+
+> Notes: The summary is wrapped into a compact section and prepended to your last message to preserve intent while saving context.
+
+### Option B — Start new task with summary
+
+Use this to branch a fresh task based on the current work. Pochi will:
+
+1. Create a summary of the existing conversation
+2. Open a new task seeded with the summary and a short handoff message
+3. Navigate you to the new task to continue
+
+![Inline compact summary in current task (expandable)](../assets/images/auto-compact-with-new-task-summery.png)
+
+## Technical Details
+
+* Trigger: You choose either “Compact task” (inline) or “New task with summary”.
+* Summary prompt: Pochi asks the model to produce a concise recap focused on key topics, decisions, and important context (limited to a few thousand tokens of output).
+* Inline compact: The recap is wrapped in a compact block and prepended to your last user message before the next response.
+* New task: The recap becomes the first message of a brand-new task, followed by a short instruction letting the agent analyze status and confirm next steps.
+* Safety/availability: Buttons are disabled during streaming/execution, or when below the minimum token threshold.
+
+## Tips
+
+* Prefer inline compact when you want continuity within the same task.
+* Use “new task with summary” to cleanly branch, hand over, or checkpoint work.
+* You’ll see a “Compacting” state while the summary is being generated—this can take a moment for very long threads.
+
+
 # CLI
 URL: /cli
 Pochi CLI allows you to run an AI agent directly from the command line.
@@ -803,18 +874,129 @@ If you’re experiencing issues with Pochi:
    For real-time help and community discussion, join our Discord server: [https://getpochi.com/discord](https://getpochi.com/discord)
 
 
-# VSCode
+# VS Code
 URL: /vscode
 
 ***
 
-title: VSCode
+title: VS Code
 icon: "LayoutPanelLeft"
 -----------------------
 
-# VSCode
+# VS Code
 
-TBD
+This page covers the core Pochi experience in VS Code: the Home Chat after installation, the locally stored Task List, and Settings including sign-in and BYOK.
+
+## Installation (Recap)
+
+Please refer to the installation section in “Getting Started”: see the [Installation Guide](/#installation).
+
+* Install the extension from VS Code Marketplace or OpenVSX:
+  * Marketplace: [https://marketplace.visualstudio.com/items?itemName=TabbyML.pochi](https://marketplace.visualstudio.com/items?itemName=TabbyML.pochi)
+  * OpenVSX: [https://open-vsx.org/extension/TabbyML/pochi](https://open-vsx.org/extension/TabbyML/pochi)
+* We recommend dragging the Pochi view to the right sidebar to use it side by side with the editor.
+
+![Drag to right sidebar](../assets/images/vscode-right-sidebar.png)
+
+## Welcome
+
+On first install or the first time you open the extension, a Welcome (Get Started) page appears. You can start in two ways:
+
+* Bring Your Own Key (BYOK): Go to Settings to configure your model keys, or run “Pochi: Open Custom Model Settings” from the Command Palette to open `~/.pochi/config.jsonc`. Fill in provider API keys and model configurations. See [Models](/models) for details.
+* Sign in to Pochi: Click Sign In, complete authorization in your browser, and you'll be brought back to VS Code. After signing in, you can use Pochi subscriptions and Pochi models, plus cloud/team features (see the “Settings Page” below).
+
+<p align="center">![Welcome page](../assets/images/welcome-page.png)</p>
+
+## Chat
+
+After installation, you'll find the “Pochi” icon in the Activity Bar. Open it to access the Home Chat panel, where you can chat with Pochi and plan/execute tasks.
+
+The panel title bar provides quick actions:
+
+* New Task: Start from a natural-language goal; Pochi will plan and execute steps.
+* Show All Tasks: View and switch between historical task sessions.
+* Settings: Manage account, models, and preferences.
+
+Tip: You can also open the Pochi view via shortcut or the Command Palette (default on macOS: Cmd+L; Windows/Linux: Ctrl+L).
+
+<p align="center">![Chat page](../assets/images/chat-page.png)</p>
+
+### Toolbox
+
+* Top: Auto Approve menu for autonomous tools.
+* Middle: Chat Input, supports pasting/dragging images.
+* Bottom: Model selector, token usage, share, image upload, send button.
+
+<p align="center">
+  ![Home Page Toolbox](../assets/images/home-page-toolbox.png)
+</p>
+
+## Tasks
+
+* By default, task history and content are stored locally (the extension's local DB/storage) and are not uploaded to the cloud.
+* Uninstalling the extension or clearing VS Code's extension data may erase your local task history.
+* If you sign in to your Pochi account and opt to use cloud services, tasks can be associated with your account, shared within your team, and viewed on the web (see “Settings Page” below and the Getting Started page for cloud features).
+
+<p align="center">![Task List page](../assets/images/task-page.png)</p>
+
+## Settings
+
+The Settings page includes two common items:
+
+1. Account Sign-in (optional)
+
+* Click “Sign in” in Settings; VS Code will open your browser to the Pochi site for authorization.
+* After authorization, you'll return to VS Code and the extension will show as signed in; you can sign out in Settings.
+* After signing in, you can use Pochi-hosted cloud capabilities such as team collaboration, shared task history, and GitHub/Slack integrations (subject to your account and permissions).
+
+2. Bring Your Own Key (BYOK) and Custom Models (optional)
+
+* Run “Pochi: Open Custom Model Settings” from the Command Palette to open `~/.pochi/config.jsonc`.
+* Fill in provider API keys and model configurations to use your own models and credits.
+* See [Models](/models) for format and examples. The file is JSONC (comments allowed).
+
+Note: You can also use “Pochi: Edit Workspace Rules” to add workflow/rule files for the current project, helping Pochi better understand your conventions (see “Rules” in the sidebar).
+
+<p align="center">![Settings page](../assets/images/settings-page.png)</p>
+
+### Sections
+
+1. Account
+
+* Sign in/out of your Pochi account; after signing in you can use Pochi subscriptions and Pochi models.
+
+2. Workspace Rules
+
+* Show and open workspace rule files (`README.pochi.md` or `AGENTS.md`).
+* If third-party rules are detected (e.g., Cursor rules), you can import them into this repo with one click.
+* See [Rules](/rules) for syntax and search paths.
+
+3. Workflows
+
+* Automatically lists `.pochi/workflows/*.md`; click to open and edit.
+* Type `/` in the chat box to select and run a workflow. See [Workflows](/workflows).
+
+4. Tools & MCP
+
+* Built-in tools: read/write, search, command execution, and more.
+* MCP: start/stop local MCP servers, view tool lists and errors; discover third-party MCP configs and import with one click, or jump to VS Code commands to edit configuration.
+* See [MCP](/mcp) for concepts and usage.
+
+5. Models
+
+* Enable Pochi-hosted models after signing in.
+* BYOK custom models are read from `~/.pochi/config.jsonc`; see [Models](/models).
+* You can enable VS Code's Copilot (Language Model API) models and view their availability.
+
+6. Advanced
+
+* Developer Mode toggle (shows extra debug/experimental options).
+* Control whether to show Pochi-hosted models.
+* Clear local storage and other developer helpers.
+
+## Troubleshooting
+
+Having issues? Check [Troubleshooting](/troubleshooting), or verify in Settings that your sign-in status and model configuration are valid.
 
 
 # Workflows
