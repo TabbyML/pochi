@@ -69,7 +69,7 @@ export function getSidebarTabs(
   }
 
   scanOptions(tree);
-  if (tree.fallback) scanOptions(tree.fallback, true);
+  if ('fallback' in tree && tree.fallback) scanOptions(tree.fallback as PageTree.Root, true);
 
   return results;
 }

@@ -28,7 +28,7 @@ export function TreeContextProvider(props: {
     let result = searchPath(tree.children, pathname);
     if (result) return result;
 
-    if (tree.fallback) result = searchPath(tree.fallback.children, pathname);
+    if ('fallback' in tree && tree.fallback) result = searchPath(tree.fallback.children, pathname);
     return result ?? [];
   }, [tree, pathname]);
 
