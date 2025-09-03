@@ -1,7 +1,7 @@
 'use client';
 
 import {
-  Sidebar,
+  Sidebar as FumaSidebar,
   SidebarContent,
   SidebarContentMobile,
   SidebarFooter,
@@ -30,7 +30,7 @@ export interface ExtendedBaseLayoutProps extends Omit<BaseLayoutProps, 'githubUr
   };
 }
 
-interface CustomSidebarProps {
+interface SidebarProps {
   tree: PageTree.Root & { fallback?: PageTree.Root };
   banner?: React.ReactNode;
   footer?: React.ReactNode;
@@ -81,13 +81,13 @@ function SearchIconButton() {
   );
 }
 
-export function CustomSidebar({
+export function Sidebar({
   tree,
   banner,
   footer,
   collapsible = true,
   baseOptions,
-}: CustomSidebarProps) {
+}: SidebarProps) {
   // Create nav header from baseOptions
   const navHeader = baseOptions?.nav?.title && (
     <SidebarHeader>
@@ -143,7 +143,7 @@ export function CustomSidebar({
   return (
     <SidebarProvider>
       <TreeContextProvider tree={tree}>
-        <Sidebar
+        <FumaSidebar
           Content={desktopSidebar}
           Mobile={mobileSidebar}
           prefetch={false}

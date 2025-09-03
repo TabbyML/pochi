@@ -1,7 +1,7 @@
 import type { BaseLayoutProps } from "fumadocs-ui/layouts/shared";
 import logo from "../../public/logo512.png";
 import ExportedImage from "next-image-export-optimizer";
-import { ExtendedBaseLayoutProps } from "@/components/CustomSidebar";
+import { ExtendedBaseLayoutProps } from "@/components/sidebar";
 
 const basePath = process.env.__NEXT_ROUTER_BASEPATH
 
@@ -22,7 +22,7 @@ export const baseOptions: ExtendedBaseLayoutProps = {
     ),
   },
   github: {
-          owner: 'tababyml',
+          owner: 'tabbyml',
           repo: 'pochi',
         },
 };

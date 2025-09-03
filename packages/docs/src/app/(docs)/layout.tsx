@@ -2,7 +2,7 @@ import { DocsLayout } from 'fumadocs-ui/layouts/docs';
 import type { ReactNode } from 'react';
 import { baseOptions } from '@/app/layout.config';
 import { source } from '@/lib/source';
-import { CustomSidebar } from '@/components/CustomSidebar';
+import { Sidebar } from '@/components/sidebar';
 
 export default function Layout({ children }: { children: ReactNode }) {
   return (
@@ -12,7 +12,7 @@ export default function Layout({ children }: { children: ReactNode }) {
       sidebar={{ 
         prefetch: false, 
         component: (
-          <CustomSidebar 
+          <Sidebar 
             tree={source.pageTree} 
             collapsible={true}
             baseOptions={baseOptions}
