@@ -50,11 +50,9 @@ export function toTaskError(
   if (APICallError.isInstance(error)) {
     return {
       kind: "APICallError",
-      url: error.url,
       isRetryable: error.isRetryable,
       message: error.message,
       requestBodyValues: error.requestBodyValues,
-      responseHeaders: error.responseHeaders,
     };
   }
 
