@@ -22,7 +22,6 @@ export {
 } from "../sidebar";
 
 // Also export contexts
-export { SidebarProvider, useSidebar } from "@/contexts/sidebar";
 export {
   TreeContextProvider,
   useTreeContext,
