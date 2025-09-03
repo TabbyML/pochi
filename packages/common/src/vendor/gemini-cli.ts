@@ -4,7 +4,7 @@ import { getLogger } from "../base";
 import { pochiConfig, updatePochiConfig } from "../configuration";
 import { type ModelOptions, type User, VendorBase } from "./types";
 
-const logger = getLogger("GeminiCliOAuth");
+const logger = getLogger("GeminiCli");
 
 export interface GeminiOAuthResult {
   authUrl: string;
