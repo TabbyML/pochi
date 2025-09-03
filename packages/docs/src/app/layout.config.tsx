@@ -1,6 +1,7 @@
 import type { BaseLayoutProps } from "fumadocs-ui/layouts/shared";
 import logo from "../../public/logo512.png";
 import ExportedImage from "next-image-export-optimizer";
+import { ExtendedBaseLayoutProps } from "@/components/CustomSidebar";
 
 const basePath = process.env.__NEXT_ROUTER_BASEPATH
 
@@ -11,7 +12,7 @@ const basePath = process.env.__NEXT_ROUTER_BASEPATH
  * Home Layout: app/(home)/layout.tsx
  * Docs Layout: app/docs/layout.tsx
  */
-export const baseOptions: BaseLayoutProps = {
+export const baseOptions: ExtendedBaseLayoutProps = {
   nav: {
     title: (
       <>
@@ -19,9 +20,11 @@ export const baseOptions: BaseLayoutProps = {
         Pochi Docs
       </>
     ),
-
   },
-  githubUrl: 'https://github.com/TabbyML/pochi',
+  github: {
+          owner: 'tababyml',
+          repo: 'pochi',
+        },
 };
 
 export function formatTitle(title: string) {
