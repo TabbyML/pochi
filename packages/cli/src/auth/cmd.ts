@@ -1,11 +1,7 @@
 import type { Command } from "@commander-js/extra-typings";
 import { type User, vendors } from "@getpochi/common/vendor";
 import chalk from "chalk";
-import { geminiCliLogin } from "./gemini-cli";
-
-const loginFns: Record<string, () => Promise<User>> = {
-  "gemini-cli": geminiCliLogin,
-};
+import { getLoginFn } from "./login";
 
 export function registerAuthCommand(program: Command) {
   const vendorNames = Object.keys(vendors).join(", ");
@@ -33,11 +29,12 @@ export function registerAuthCommand(program: Command) {
         return;
       }
 
-      if (!(vendor in loginFns)) {
+      const loginFn = getLoginFn(vendor);
+      if (!loginFn) {
         return loginCommand.error(`Unknown vendor: ${vendor}`);
       }
 
-      const user = await loginFns[vendor]();
+      const user = await loginFn();
       console.log("Logged in as", renderUser(user));
     });
 
