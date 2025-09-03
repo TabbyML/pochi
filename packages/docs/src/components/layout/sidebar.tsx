@@ -92,7 +92,7 @@ export function Sidebar({
   Mobile,
   Content,
 }: SidebarProps) {
-  const isMobile = useMediaQuery("(width < 1280px)") ?? false; // xl breakpoint
+  const isMobile = useMediaQuery("(width < 1024px)") ?? false; // lg breakpoint
   const context = useMemo<InternalContext>(() => {
     return {
       defaultOpenLevel,

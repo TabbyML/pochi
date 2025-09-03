@@ -46,7 +46,7 @@ function CollapsibleControlInternal({
   return (
     <div
       className={cn(
-        "fixed left-4 z-50 hidden rounded-xl border bg-fd-muted p-0.5 text-fd-muted-foreground shadow-lg transition-opacity xl:flex",
+        "fixed left-4 z-50 hidden rounded-xl border bg-fd-muted p-0.5 text-fd-muted-foreground shadow-lg transition-opacity lg:flex",
         !collapsed && "pointer-events-none opacity-0",
       )}
       style={{
