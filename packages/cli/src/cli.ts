@@ -4,7 +4,7 @@ import "@livestore/wa-sqlite/dist/wa-sqlite.node.wasm" with { type: "file" };
 
 import { Command } from "@commander-js/extra-typings";
 import { getLogger } from "@getpochi/common";
-import { authProviders } from "@getpochi/common/auth";
+import { vendors } from "@getpochi/common/vendor";
 import { pochiConfig } from "@getpochi/common/configuration";
 import type { PochiApi, PochiApiClient } from "@getpochi/common/pochi-api";
 import type { LLMRequestData } from "@getpochi/livekit";
@@ -209,15 +209,20 @@ async function createLLMConfig({
   const modelId = options.model.slice(sep + 1);
 
   if (modelProviderId === "gemini-cli") {
-    const credentials = await authProviders["gemini-cli"].readCredentials();
+    const credentials = await vendors["gemini-cli"].readCredentials();
     if (!credentials) {
       return program.error("Missing credentials for gemini-cli");
+    }
+    const models = await vendors["gemini-cli"].fetchModels();
+    const model = models[modelId];
+    if (!model) {
+      return program.error(`Model ${modelId} not found`);
     }
     return {
       type: "gemini-cli",
       modelId: modelId,
-      contextWindow: 1_000_000,
-      maxOutputTokens: 4096,
+      contextWindow: model.contextWindow,
+      maxOutputTokens: model.maxOutputTokens,
       credentials,
     } satisfies LLMRequestData;
   }

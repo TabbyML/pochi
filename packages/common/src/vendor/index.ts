@@ -1,7 +1,7 @@
 import { GeminiCliAuth } from "./gemini-cli";
 
-export const authProviders = {
+export const vendors = {
   "gemini-cli": new GeminiCliAuth(),
 };
 
-export * from "./types";
+export type * from "./types";

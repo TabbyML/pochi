@@ -2,7 +2,7 @@ import * as crypto from "node:crypto";
 import * as http from "node:http";
 import { getLogger } from "../base";
 import { pochiConfig, updatePochiConfig } from "../configuration";
-import { AuthProvider, type User } from "./types";
+import { Vendor, type Model, type User } from "./types";
 
 const logger = getLogger("GeminiCliOAuth");
 
@@ -18,7 +18,7 @@ export interface GeminiTokens {
   expires: number;
 }
 
-export class GeminiCliAuth extends AuthProvider {
+export class GeminiCliAuth extends Vendor {
   /**
    * Start the Gemini OAuth flow
    */
@@ -382,5 +382,9 @@ export class GeminiCliAuth extends AuthProvider {
 
   private getClientSecret(): string {
     return "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";
+  }
+
+  override async fetchModels(): Promise<Record<string, Model>> {
+    return {};
   }
 }

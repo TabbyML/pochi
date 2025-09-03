@@ -1,8 +1,8 @@
 import * as childProcess from "node:child_process";
-import { authProviders } from "@getpochi/common/auth";
+import { vendors } from "@getpochi/common/vendor";
 import chalk from "chalk";
 
-const { "gemini-cli": geminiCli } = authProviders;
+const { "gemini-cli": geminiCli } = vendors;
 
 export async function geminiCliLogin() {
   console.log(chalk.yellow("Starting Gemini OAuth authentication..."));
