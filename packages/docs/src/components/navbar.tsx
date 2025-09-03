@@ -28,7 +28,7 @@ export function Navbar({ baseOptions, className, ...props }: NavbarProps) {
     <header
       id="nd-subnav"
       className={cn(
-        "fixed inset-x-0 top-(--fd-banner-height) z-30 flex h-14 items-center border-b bg-fd-background/80 px-4 backdrop-blur-sm transition-colors xl:hidden",
+        "fixed inset-x-0 top-(--fd-banner-height) z-30 flex h-14 items-center border-b bg-fd-background/80 px-4 backdrop-blur-sm transition-colors md:hidden",
         className,
       )}
       {...props}

@@ -28,8 +28,8 @@
   }
 }
 
-/* Adjust TOC position for custom navbar */
-@media (max-width: 1279px) {
+/* Adjust TOC position for custom navbar - only for mobile (below md breakpoint) */
+@media (max-width: 767px) {
   #nd-tocnav {
     top: calc(var(--fd-banner-height) + var(--fd-nav-height) + 3.5rem) !important;
   }
