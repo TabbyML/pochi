@@ -11,25 +11,23 @@
       "properties": {
         "pochiToken": {
           "type": "string"
-        },
-        "geminiCli": {
-          "type": "object",
-          "properties": {
-            "accessToken": {
-              "type": "string"
-            },
-            "refreshToken": {
-              "type": "string"
-            },
-            "expiresAt": {
-              "type": "number"
-            }
-          },
-          "required": ["accessToken", "refreshToken", "expiresAt"],
-          "additionalProperties": false
         }
       },
       "additionalProperties": false
+    },
+    "vendors": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "credentials": {}
+        },
+        "required": ["credentials"],
+        "additionalProperties": false
+      }
     },
     "providers": {
       "type": "object",
