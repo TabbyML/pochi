@@ -167,7 +167,7 @@ export class GeminiCliOAuthHandler {
     try {
       await updatePochiConfig({
         credentials: {
-          geminiCliCredentials: {
+          geminiCli: {
             accessToken: tokenData.access_token,
             refreshToken: tokenData.refresh_token,
             expiresAt: +new Date() + tokenData.expires_in * 1000,
@@ -192,7 +192,7 @@ export class GeminiCliOAuthHandler {
    * Check if tokens exist and are valid
    */
   async isAuthenticated(): Promise<boolean> {
-    const credentials = pochiConfig.value.credentials?.geminiCliCredentials;
+    const credentials = pochiConfig.value.credentials?.geminiCli;
     if (!credentials?.accessToken || !credentials.expiresAt) {
       return false;
     }
@@ -205,7 +205,7 @@ export class GeminiCliOAuthHandler {
    * Get current user info if authenticated
    */
   async getCurrentUser(): Promise<{ email: string; name: string } | null> {
-    const credentials = pochiConfig.value.credentials?.geminiCliCredentials;
+    const credentials = pochiConfig.value.credentials?.geminiCli;
     if (!credentials?.accessToken) {
       return null;
     }
@@ -223,7 +223,7 @@ export class GeminiCliOAuthHandler {
   async logout(): Promise<void> {
     await updatePochiConfig({
       credentials: {
-        geminiCliCredentials: undefined,
+        geminiCli: undefined,
       },
     });
   }
