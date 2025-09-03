@@ -44,24 +44,47 @@ function CollapsibleControlInternal({
   const { collapsed } = useSidebar();
 
   return (
-    <div
-      className={cn(
-        "fixed left-4 z-50 hidden rounded-xl border bg-fd-muted p-0.5 text-fd-muted-foreground shadow-lg transition-opacity md:flex",
-        !collapsed && "pointer-events-none opacity-0",
-      )}
-      style={{
-        top: "calc(var(--fd-banner-height) + var(--fd-nav-height) + var(--spacing) * 4)",
-      }}
-    >
-      <SidebarCollapseTrigger
+    <>
+      {/* Right position for screens below 1280px */}
+      <div
         className={cn(
-          "inline-flex h-8 w-8 items-center justify-center rounded-lg font-medium text-sm transition-colors hover:bg-fd-accent hover:text-fd-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-fd-ring disabled:pointer-events-none disabled:opacity-50",
+          "fixed right-4 z-50 hidden rounded-xl border bg-fd-muted p-0.5 text-fd-muted-foreground shadow-lg transition-opacity md:flex xl:hidden",
+          !collapsed && "pointer-events-none opacity-0",
         )}
+        style={{
+          top: "calc(var(--fd-banner-height) + var(--fd-nav-height) + var(--fd-tocnav-height) + var(--spacing) * 4)",
+        }}
       >
-        <SidebarIcon className="h-4 w-4" />
-      </SidebarCollapseTrigger>
-      {baseOptions?.searchToggle?.enabled !== false && <SearchIconButton />}
-    </div>
+        <SidebarCollapseTrigger
+          className={cn(
+            "inline-flex h-8 w-8 items-center justify-center rounded-lg font-medium text-sm transition-colors hover:bg-fd-accent hover:text-fd-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-fd-ring disabled:pointer-events-none disabled:opacity-50",
+          )}
+        >
+          <SidebarIcon className="h-4 w-4" />
+        </SidebarCollapseTrigger>
+        {baseOptions?.searchToggle?.enabled !== false && <SearchIconButton />}
+      </div>
+      
+      {/* Left position for screens 1280px and above */}
+      <div
+        className={cn(
+          "fixed left-4 z-50 hidden rounded-xl border bg-fd-muted p-0.5 text-fd-muted-foreground shadow-lg transition-opacity xl:flex",
+          !collapsed && "pointer-events-none opacity-0",
+        )}
+        style={{
+          top: "calc(var(--fd-banner-height) + var(--fd-nav-height) + var(--spacing) * 4)",
+        }}
+      >
+        <SidebarCollapseTrigger
+          className={cn(
+            "inline-flex h-8 w-8 items-center justify-center rounded-lg font-medium text-sm transition-colors hover:bg-fd-accent hover:text-fd-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-fd-ring disabled:pointer-events-none disabled:opacity-50",
+          )}
+        >
+          <SidebarIcon className="h-4 w-4" />
+        </SidebarCollapseTrigger>
+        {baseOptions?.searchToggle?.enabled !== false && <SearchIconButton />}
+      </div>
+    </>
   );
 }
 
