@@ -12,7 +12,7 @@
         "pochiToken": {
           "type": "string"
         },
-        "geminiCliCredentials": {
+        "geminiCli": {
           "type": "object",
           "properties": {
             "accessToken": {
