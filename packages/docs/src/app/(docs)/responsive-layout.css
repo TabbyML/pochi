@@ -27,3 +27,10 @@
     --fd-sidebar-width: 0px !important;
   }
 }
+
+/* Adjust TOC position for custom navbar */
+@media (max-width: 1279px) {
+  #nd-tocnav {
+    top: calc(var(--fd-banner-height) + var(--fd-nav-height) + 3.5rem) !important;
+  }
+}

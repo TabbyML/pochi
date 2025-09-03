@@ -63,7 +63,7 @@ export function Navbar({ baseOptions, className, ...props }: NavbarProps) {
       <button
         onClick={handleSidebarToggle}
         aria-label="Open Sidebar"
-        className="-me-1.5 inline-flex items-center justify-center rounded-md p-2 font-medium text-sm transition-colors duration-100 hover:bg-fd-accent hover:text-fd-accent-foreground focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 md:hidden [&_svg]:size-4.5"
+        className="-me-1.5 inline-flex items-center justify-center rounded-md p-2 font-medium text-sm transition-colors duration-100 hover:bg-fd-accent hover:text-fd-accent-foreground focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 xl:hidden [&_svg]:size-4.5"
       >
         <SidebarIcon className="h-6 w-6" />
       </button>
