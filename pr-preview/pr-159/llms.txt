@@ -827,7 +827,7 @@ Please refer to the installation section in “Getting Started”: see the [Inst
 
 ![Drag to right sidebar](../assets/images/vscode-right-sidebar.png)
 
-## Welcome (Get Started) Page
+## Welcome
 
 On first install or the first time you open the extension, a Welcome (Get Started) page appears. You can start in two ways:
 
@@ -836,7 +836,7 @@ On first install or the first time you open the extension, a Welcome (Get Starte
 
 <p align="center">![Welcome page](../assets/images/welcome-page.png)</p>
 
-## Chat Page
+## Chat
 
 After installation, you'll find the “Pochi” icon in the Activity Bar. Open it to access the Home Chat panel, where you can chat with Pochi and plan/execute tasks.
 
@@ -860,7 +860,7 @@ Tip: You can also open the Pochi view via shortcut or the Command Palette (defau
   ![Home Page Toolbox](../assets/images/home-page-toolbox.png)
 </p>
 
-## Task List Page
+## Tasks
 
 * By default, task history and content are stored locally (the extension's local DB/storage) and are not uploaded to the cloud.
 * Uninstalling the extension or clearing VS Code's extension data may erase your local task history.
@@ -868,7 +868,7 @@ Tip: You can also open the Pochi view via shortcut or the Command Palette (defau
 
 <p align="center">![Task List page](../assets/images/task-page.png)</p>
 
-## Settings Page
+## Settings
 
 The Settings page includes two common items:
 
@@ -888,7 +888,7 @@ Note: You can also use “Pochi: Edit Workspace Rules” to add workflow/rule fi
 
 <p align="center">![Settings page](../assets/images/settings-page.png)</p>
 
-### Sections in Settings (page order)
+### Sections
 
 1. Account
 
