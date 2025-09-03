@@ -98,8 +98,11 @@ export class GeminiCliOAuthHandler {
           try {
             await this.exchangeCodeForTokens(code, pkce.verifier, redirectUri);
 
-            res.writeHead(200, { "Content-Type": "text/html" });
-            res.end(this.getSuccessPage());
+            res.writeHead(301, {
+              Location:
+                "https://developers.google.com/gemini-code-assist/auth_success_gemini",
+            });
+            res.end();
             resolve();
           } catch (exchangeError) {
             logger.error("Gemini CLI token exchange error:", exchangeError);
@@ -161,8 +164,6 @@ export class GeminiCliOAuthHandler {
       expires_in: number;
     };
 
-    console.log("Token data received", tokenData);
-
     // Store the tokens securely in the file system
     try {
       await updatePochiConfig({
@@ -170,7 +171,7 @@ export class GeminiCliOAuthHandler {
           geminiCli: {
             accessToken: tokenData.access_token,
             refreshToken: tokenData.refresh_token,
-            expiresAt: +new Date() + tokenData.expires_in * 1000,
+            expiresAt: Date.now() + tokenData.expires_in * 1000,
           },
         },
       });
@@ -198,7 +199,7 @@ export class GeminiCliOAuthHandler {
     }
 
     // Check if tokens are not expired (with 5 minute buffer)
-    return credentials.expiresAt > +new Date() + 5 * 60 * 1000;
+    return credentials.expiresAt > Date.now() + 5 * 60 * 1000;
   }
 
   /**
@@ -301,43 +302,5 @@ export class GeminiCliOAuthHandler {
 
   private getClientSecret(): string {
     return "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";
-  }
-
-  /**
-   * Get the HTML content for the success page
-   */
-  private getSuccessPage(): string {
-    return `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>Authentication Successful</title>
-        </head>
-        <body>
-          <h1>Authentication Successful!</h1>
-          <p>You can now close this window and return to your terminal.</p>
-          <script>
-            // Try multiple methods to close the window
-            function closeWindow() {
-              try {
-                window.close();
-              } catch (e) {}
-              
-              try {
-                window.opener = null;
-                window.close();
-              } catch (e) {}
-              
-              try {
-                self.close();
-              } catch (e) {}
-            }
-            
-            // Close after a short delay
-            setTimeout(closeWindow, 2000);
-          </script>
-        </body>
-      </html>
-    `;
   }
 }

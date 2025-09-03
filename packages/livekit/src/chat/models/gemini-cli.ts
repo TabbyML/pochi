@@ -1,39 +1,24 @@
-import { createVertexWithoutCredentials } from "@ai-sdk/google-vertex/edge";
 import { wrapLanguageModel } from "ai";
+import { createGoogleCloudCode } from "cloud-code-ai-provider";
 import type { RequestData } from "../../types";
 
 export function createGeminiCliModel(
   llm: Extract<RequestData["llm"], { type: "gemini-cli" }>,
 ) {
-  const accessToken = llm.accessToken;
-  const projectId = llm.projectId;
-  const location = llm.location;
+  if (!llm.credentials) {
+    throw new Error("Missing credentials for gemini-cli");
+  }
 
-  // Since we assume accessToken always exists, we can directly create a
-  // custom fetch function that injects the Authorization header.
-  const customFetch = (
-    requestInfo: Request | URL | string,
-    requestInit?: RequestInit,
-  ) => {
-    const headers = new Headers(requestInit?.headers);
-    if (accessToken) {
-      headers.set("Authorization", `Bearer ${accessToken}`);
-    }
-    const newRequestInit = {
-      ...requestInit,
-      headers,
-    };
-    return fetch(requestInfo, newRequestInit);
-  };
-
-  const vertex = createVertexWithoutCredentials({
-    project: projectId,
-    fetch: customFetch,
-    location,
+  const cloudCode = createGoogleCloudCode({
+    credentials: {
+      access_token: llm.credentials.accessToken,
+      refresh_token: llm.credentials.refreshToken,
+      expiry_date: llm.credentials.expiresAt,
+    },
   });
 
   return wrapLanguageModel({
-    model: vertex(llm.modelId),
+    model: cloudCode(llm.modelId),
     middleware: {
       middlewareVersion: "v2",
       async transformParams({ params }) {

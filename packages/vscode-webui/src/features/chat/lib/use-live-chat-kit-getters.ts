@@ -132,9 +132,7 @@ function useLLM(): React.RefObject<LLMRequestData> {
         modelId: selectedModel.modelId,
         contextWindow: selectedModel.contextWindow,
         maxOutputTokens: selectedModel.maxTokens,
-        location: provider.location,
-        projectId: provider.projectId,
-        accessToken: provider.accessToken,
+        useToolCallMiddleware: selectedModel.useToolCallMiddleware,
       };
     }
 
