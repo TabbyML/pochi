@@ -1,5 +1,5 @@
 # Auto Compact
-URL: /auto-compaction
+URL: /auto-compact
 Reduce context usage by summarizing long conversations—inline or into a new task
 ***
 
