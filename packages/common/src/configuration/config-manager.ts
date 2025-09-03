@@ -7,7 +7,7 @@ import * as JSONC from "jsonc-parser/esm";
 import { funnel, isDeepEqual, mergeDeep } from "remeda";
 import * as fleece from "silver-fleece";
 import { getLogger } from "../base";
-import { PochiConfig } from "./types";
+import { PochiConfig, type Vendor } from "./types";
 
 const PochiConfigFilePath = path.join(os.homedir(), ".pochi", "config.jsonc");
 
@@ -115,14 +115,27 @@ class PochiConfigManager {
     this.save();
   };
 
+  getVendorConfig = (name: string) => {
+    return this.cfg.value.vendors?.[name];
+  };
+
+  updateVendorConfig = async (name: string, vendor: Vendor) => {
+    const vendors = this.cfg.value.vendors || {};
+    vendors[name] = vendor;
+    await this.updateConfig({ vendors });
+  };
+
   get config(): ReadonlySignal<PochiConfig> {
     return this.cfg;
   }
 }
 
-const { config, updateConfig } = new PochiConfigManager();
+const { config, updateConfig, getVendorConfig, updateVendorConfig } =
+  new PochiConfigManager();
 export {
   config as pochiConfig,
   updateConfig as updatePochiConfig,
+  getVendorConfig,
+  updateVendorConfig,
   PochiConfigFilePath,
 };

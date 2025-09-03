@@ -205,11 +205,12 @@ async function createLLMConfig({
   options: ProgramOpts;
 }): Promise<LLMRequestData> {
   const sep = options.model.indexOf("/");
-  const modelProviderId = options.model.slice(0, sep);
+  const vendorId = options.model.slice(0, sep);
   const modelId = options.model.slice(sep + 1);
 
-  if (modelProviderId === "gemini-cli") {
-    const credentials = await vendors["gemini-cli"].readCredentials();
+  if (vendorId in vendors) {
+    const vendor = vendors[vendorId as keyof typeof vendors];
+    const credentials = await vendor.readCredentials();
     if (!credentials) {
       return program.error("Missing credentials for gemini-cli");
     }
@@ -219,7 +220,8 @@ async function createLLMConfig({
       return program.error(`Model ${modelId} not found`);
     }
     return {
-      type: "gemini-cli",
+      type: "vendor",
+      vendorId: vendorId,
       modelId: modelId,
       contextWindow: model.contextWindow,
       maxOutputTokens: model.maxOutputTokens,
@@ -227,7 +229,7 @@ async function createLLMConfig({
     } satisfies LLMRequestData;
   }
 
-  const modelProvider = pochiConfig.value.providers?.[modelProviderId];
+  const modelProvider = pochiConfig.value.providers?.[vendorId];
   const modelSetting = modelProvider?.models?.[modelId];
 
   if (!modelProvider) {

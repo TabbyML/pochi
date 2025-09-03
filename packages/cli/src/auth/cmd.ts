@@ -21,7 +21,10 @@ export function registerAuthCommand(program: Command) {
 
   const loginCommand = authCommand.command("login");
   loginCommand
-    .requiredOption("--vendor <vendor>", `Vendor to login to: ${vendorNames}`)
+    .requiredOption(
+      "-v, --vendor <vendor>",
+      `Vendor to login to: ${vendorNames}`,
+    )
     .action(async ({ vendor }) => {
       const auth = vendors[vendor as keyof typeof vendors];
       if (auth.authenticated) {
@@ -41,7 +44,7 @@ export function registerAuthCommand(program: Command) {
   const logoutCommand = authCommand.command("logout");
   logoutCommand
     .option("-a, --all")
-    .option("--vendor <vendor>", `Vendor to logout from: ${vendors}`)
+    .option("-v, --vendor <vendor>", `Vendor to logout from: ${vendors}`)
     .action(async ({ vendor, all }) => {
       if (vendor) {
         const auth = vendors[vendor as keyof typeof vendors];

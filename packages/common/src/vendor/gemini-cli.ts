@@ -1,10 +1,24 @@
 import * as crypto from "node:crypto";
 import * as http from "node:http";
+import z from "zod/v4";
 import { getLogger } from "../base";
-import { pochiConfig, updatePochiConfig } from "../configuration";
+import { getVendorConfig, updateVendorConfig } from "../configuration";
 import { type ModelOptions, type User, VendorBase } from "./types";
 
-const logger = getLogger("GeminiCli");
+const VendorName = "gemini-cli";
+
+const logger = getLogger(VendorName);
+
+const GeminiCredentials = z
+  .object({
+    access_token: z.string(),
+    refresh_token: z.string(),
+    expires_at: z.number(),
+  })
+  .optional()
+  .catch(() => undefined);
+
+type GeminiCredentials = z.infer<typeof GeminiCredentials>;
 
 export interface GeminiOAuthResult {
   authUrl: string;
@@ -167,14 +181,10 @@ export class GeminiCli extends VendorBase {
 
     // Store the tokens securely in the file system
     try {
-      await updatePochiConfig({
-        credentials: {
-          "gemini-cli": {
-            accessToken: tokenData.access_token,
-            refreshToken: tokenData.refresh_token,
-            expiresAt: Date.now() + tokenData.expires_in * 1000,
-          },
-        },
+      await updateCredentials({
+        access_token: tokenData.access_token,
+        refresh_token: tokenData.refresh_token,
+        expires_at: Date.now() + tokenData.expires_in * 1000,
       });
 
       logger.info("Gemini tokens saved successfully");
@@ -192,54 +202,47 @@ export class GeminiCli extends VendorBase {
 
   override get authenticated() {
     const credentials = getCredentials();
-    if (!credentials?.accessToken || !credentials.expiresAt) {
+    if (!credentials?.access_token || !credentials.expires_at) {
       return false;
     }
 
     // Check if tokens are not expired (with 5 minute buffer)
-    return credentials.expiresAt > Date.now() + 5 * 60 * 1000;
+    return credentials.expires_at > Date.now() + 5 * 60 * 1000;
   }
 
   override async getUser(): Promise<User | null> {
     const credentials = getCredentials();
-    if (!credentials?.accessToken) {
+    if (!credentials?.access_token) {
       return null;
     }
 
     try {
-      return await this.fetchUserInfo(credentials.accessToken);
+      return await this.fetchUserInfo(credentials.access_token);
     } catch {
       return null;
     }
   }
 
-  async readCredentials(): Promise<
-    | {
-        accessToken: string;
-        refreshToken: string;
-        expiresAt: number;
-      }
-    | undefined
-  > {
+  async readCredentials(): Promise<unknown | undefined> {
     const credentials = getCredentials();
     if (
-      !credentials?.accessToken ||
-      !credentials.refreshToken ||
-      !credentials.expiresAt
+      !credentials?.access_token ||
+      !credentials.refresh_token ||
+      !credentials.expires_at
     ) {
       return undefined;
     }
 
     // Check if tokens are about to expire (with 5 minute buffer)
-    if (credentials.expiresAt <= Date.now() + 5 * 60 * 1000) {
+    if (credentials.expires_at <= Date.now() + 5 * 60 * 1000) {
       try {
-        await this.refreshAccessToken(credentials.refreshToken);
+        await this.refreshAccessToken(credentials.refresh_token);
         // re-read credentials after refresh
         const newCredentials = getCredentials();
         if (
-          !newCredentials?.accessToken ||
-          !newCredentials.refreshToken ||
-          !newCredentials.expiresAt
+          !newCredentials?.access_token ||
+          !newCredentials.refresh_token ||
+          !newCredentials.expires_at
         ) {
           return undefined;
         }
@@ -259,11 +262,7 @@ export class GeminiCli extends VendorBase {
    * Clear stored tokens
    */
   override async logout(): Promise<void> {
-    await updatePochiConfig({
-      credentials: {
-        "gemini-cli": undefined,
-      },
-    });
+    await updateCredentials(undefined);
   }
 
   /**
@@ -328,14 +327,10 @@ export class GeminiCli extends VendorBase {
     };
 
     const newRefreshToken = tokenData.refresh_token ?? refreshToken;
-    await updatePochiConfig({
-      credentials: {
-        "gemini-cli": {
-          accessToken: tokenData.access_token,
-          refreshToken: newRefreshToken,
-          expiresAt: Date.now() + tokenData.expires_in * 1000,
-        },
-      },
+    await updateCredentials({
+      access_token: tokenData.access_token,
+      refresh_token: newRefreshToken,
+      expires_at: Date.now() + tokenData.expires_in * 1000,
     });
 
     logger.info("Gemini tokens refreshed and saved successfully");
@@ -399,5 +394,12 @@ export class GeminiCli extends VendorBase {
 }
 
 function getCredentials() {
-  return pochiConfig.value.credentials?.["gemini-cli"];
+  const vendor = getVendorConfig(VendorName);
+  return GeminiCredentials.parse(vendor?.credentials);
+}
+
+function updateCredentials(credentials: GeminiCredentials) {
+  updateVendorConfig(VendorName, {
+    credentials,
+  });
 }

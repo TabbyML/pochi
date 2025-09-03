@@ -93,15 +93,12 @@ const RequestData = z.object({
         .describe("Whether to use tool call middleware"),
     }),
     z.object({
-      type: z.literal("gemini-cli"),
+      type: z.literal("vendor"),
+      vendorId: z.string(),
       modelId: z.string(),
       contextWindow: z.number().describe("Context window of the model."),
       maxOutputTokens: z.number().describe("Max output tokens of the model."),
-      credentials: z.object({
-        accessToken: z.string(),
-        refreshToken: z.string(),
-        expiresAt: z.number(),
-      }),
+      credentials: z.unknown(),
       useToolCallMiddleware: z
         .boolean()
         .optional()

@@ -2,6 +2,10 @@ import z from "zod/v4";
 import { McpServerConfig } from "./mcp";
 import { CustomModelSetting } from "./model";
 
+export const Vendor = z.object({
+  credentials: z.unknown(),
+});
+
 export const PochiConfig = makePochiConfig();
 
 export type PochiConfig = z.infer<typeof PochiConfig>;
@@ -39,16 +43,12 @@ export function makePochiConfig(strict = false) {
     credentials: z
       .object({
         pochiToken: z.string().optional(),
-        "gemini-cli": z
-          .object({
-            accessToken: z.string(),
-            refreshToken: z.string(),
-            expiresAt: z.number(),
-          })
-          .optional(),
       })
       .optional(),
+    vendors: z.record(z.string(), Vendor).optional(),
     providers: looseRecord(CustomModelSetting, strict).optional(),
     mcp: looseRecord(McpServerConfig, strict).optional(),
   });
 }
+
+export type Vendor = z.infer<typeof Vendor>;

@@ -5,3 +5,5 @@ export const vendors = {
 };
 
 export type { User, ModelOptions as Model } from "./types";
+
+export type { GeminiCli };
