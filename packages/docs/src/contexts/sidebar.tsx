@@ -1,15 +1,15 @@
-'use client';
+"use client";
+import { createContext, usePathname } from "fumadocs-core/framework";
+import { useMediaQuery } from "fumadocs-core/utils/use-media-query";
+import { useOnChange } from "fumadocs-core/utils/use-on-change";
 import {
   type ReactNode,
   type RefObject,
+  useEffect,
   useMemo,
   useRef,
   useState,
-  useEffect,
-} from 'react';
-import { createContext, usePathname } from 'fumadocs-core/framework';
-import { useOnChange } from 'fumadocs-core/utils/use-on-change';
-import { useMediaQuery } from 'fumadocs-core/utils/use-media-query';
+} from "react";
 
 interface SidebarContext {
   open: boolean;
@@ -23,7 +23,7 @@ interface SidebarContext {
   closeOnRedirect: RefObject<boolean>;
 }
 
-const SidebarContext = createContext<SidebarContext>('SidebarContext');
+const SidebarContext = createContext<SidebarContext>("SidebarContext");
 
 export function useSidebar(): SidebarContext {
   return SidebarContext.use();
@@ -35,8 +35,8 @@ export function SidebarProvider({
   children: ReactNode;
 }): ReactNode {
   const closeOnRedirect = useRef(true);
-  const isMobile = useMediaQuery('(width < 1280px)'); // xl breakpoint
-  
+  const isMobile = useMediaQuery("(width < 1280px)"); // xl breakpoint
+
   // Mobile sidebar state (overlay, starts closed)
   const [open, setOpen] = useState(false);
   // Desktop sidebar state (collapsible, starts open)
@@ -49,8 +49,7 @@ export function SidebarProvider({
     if (isMobile !== null) {
       if (isMobile) {
         setOpen(false);
-      }
-      else {
+      } else {
         setCollapsed(false);
       }
     }

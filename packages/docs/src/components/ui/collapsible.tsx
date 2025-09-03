@@ -1,7 +1,7 @@
-'use client';
-import * as CollapsiblePrimitive from '@radix-ui/react-collapsible';
-import { forwardRef, useEffect, useState } from 'react';
-import { cn } from '@/utils/cn';
+"use client";
+import { cn } from "@/utils/cn";
+import * as CollapsiblePrimitive from "@radix-ui/react-collapsible";
+import { forwardRef, useEffect, useState } from "react";
 
 const Collapsible = CollapsiblePrimitive.Root;
 
@@ -22,9 +22,9 @@ const CollapsibleContent = forwardRef<
       ref={ref}
       {...props}
       className={cn(
-        'overflow-hidden',
+        "overflow-hidden",
         mounted &&
-          'data-[state=closed]:animate-fd-collapsible-up data-[state=open]:animate-fd-collapsible-down',
+          "data-[state=closed]:animate-fd-collapsible-up data-[state=open]:animate-fd-collapsible-down",
         props.className,
       )}
     >

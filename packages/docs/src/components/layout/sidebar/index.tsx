@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 // Re-export all sidebar components from the main file
 export {
@@ -19,8 +19,12 @@ export {
   SidebarPageTree,
   type SidebarProps,
   type SidebarComponents,
-} from '../sidebar';
+} from "../sidebar";
 
 // Also export contexts
-export { SidebarProvider, useSidebar } from '@/contexts/sidebar';
-export { TreeContextProvider, useTreeContext, useTreePath } from '@/contexts/tree';
+export { SidebarProvider, useSidebar } from "@/contexts/sidebar";
+export {
+  TreeContextProvider,
+  useTreeContext,
+  useTreePath,
+} from "@/contexts/tree";

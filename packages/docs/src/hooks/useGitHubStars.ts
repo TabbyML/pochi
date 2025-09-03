@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState } from "react";
 
 export function useGitHubStars(owner: string, repo: string) {
   const [stars, setStars] = useState<number | null>(null);
@@ -22,23 +22,29 @@ export function useGitHubStars(owner: string, repo: string) {
         }
 
         // Fetch from GitHub API
-        const response = await fetch(`https://api.github.com/repos/${owner}/${repo}`, {
-          headers: {
-            'User-Agent': 'pochi-docs',
-            'Accept': 'application/vnd.github.v3+json',
-          }
-        });
+        const response = await fetch(
+          `https://api.github.com/repos/${owner}/${repo}`,
+          {
+            headers: {
+              "User-Agent": "pochi-docs",
+              Accept: "application/vnd.github.v3+json",
+            },
+          },
+        );
 
         if (response.ok) {
           const data = await response.json();
           const starCount = data.stargazers_count;
-          
+
           // Cache in localStorage
-          localStorage.setItem(cacheKey, JSON.stringify({
-            data: starCount,
-            timestamp: Date.now()
-          }));
-          
+          localStorage.setItem(
+            cacheKey,
+            JSON.stringify({
+              data: starCount,
+              timestamp: Date.now(),
+            }),
+          );
+
           setStars(starCount);
         } else {
           // If API fails, try to use cached data even if expired
@@ -49,8 +55,8 @@ export function useGitHubStars(owner: string, repo: string) {
           }
         }
       } catch (error) {
-        console.error('Failed to fetch GitHub stars:', error);
-        
+        console.error("Failed to fetch GitHub stars:", error);
+
         // Try to use cached data on error
         try {
           const cached = localStorage.getItem(cacheKey);
@@ -59,7 +65,7 @@ export function useGitHubStars(owner: string, repo: string) {
             setStars(data);
           }
         } catch (cacheError) {
-          console.error('Failed to read cache:', cacheError);
+          console.error("Failed to read cache:", cacheError);
         }
       } finally {
         setLoading(false);

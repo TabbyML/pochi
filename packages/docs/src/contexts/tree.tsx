@@ -1,17 +1,17 @@
-'use client';
-import type { PageTree } from 'fumadocs-core/server';
-import { createContext, usePathname } from 'fumadocs-core/framework';
-import { type ReactNode, useMemo, useRef } from 'react';
-import { searchPath } from 'fumadocs-core/breadcrumb';
+"use client";
+import { searchPath } from "fumadocs-core/breadcrumb";
+import { createContext, usePathname } from "fumadocs-core/framework";
+import type { PageTree } from "fumadocs-core/server";
+import { type ReactNode, useMemo, useRef } from "react";
 
 type MakeRequired<O, K extends keyof O> = Omit<O, K> & Pick<Required<O>, K>;
 
 interface TreeContextType {
-  root: MakeRequired<PageTree.Root | PageTree.Folder, '$id'>;
+  root: MakeRequired<PageTree.Root | PageTree.Folder, "$id">;
 }
 
-const TreeContext = createContext<TreeContextType>('TreeContext');
-const PathContext = createContext<PageTree.Node[]>('PathContext', []);
+const TreeContext = createContext<TreeContextType>("TreeContext");
+const PathContext = createContext<PageTree.Node[]>("PathContext", []);
 
 export function TreeContextProvider(props: {
   tree: PageTree.Root & { fallback?: PageTree.Root };
@@ -28,12 +28,13 @@ export function TreeContextProvider(props: {
     let result = searchPath(tree.children, pathname);
     if (result) return result;
 
-    if ('fallback' in tree && tree.fallback) result = searchPath(tree.fallback.children, pathname);
+    if ("fallback" in tree && tree.fallback)
+      result = searchPath(tree.fallback.children, pathname);
     return result ?? [];
   }, [tree, pathname]);
 
   const root =
-    path.findLast((item) => item.type === 'folder' && item.root) ?? tree;
+    path.findLast((item) => item.type === "folder" && item.root) ?? tree;
   root.$id ??= String(nextIdRef.current++);
 
   return (
@@ -50,5 +51,5 @@ export function useTreePath(): PageTree.Node[] {
 }
 
 export function useTreeContext(): TreeContextType {
-  return TreeContext.use('You must wrap this component under <DocsLayout />');
+  return TreeContext.use("You must wrap this component under <DocsLayout />");
 }
