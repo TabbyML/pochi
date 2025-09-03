@@ -9,6 +9,7 @@ export const prompts = {
   environment: createEnvironmentPrompt,
   createSystemReminder,
   isSystemReminder,
+  isEnvironmentSystemReminder,
   isCompact,
   compact: createCompactPrompt,
   inlineCompact,
@@ -31,6 +32,12 @@ function isSystemReminder(content: string) {
     (content.startsWith("<environment-details>") &&
       content.endsWith("</environment-details>"))
   );
+}
+
+function isEnvironmentSystemReminder(content: string) {
+  // FIXME(meng): this is really a hack to detect if the system reminder is for environment details
+  // We should have a better way to detect this
+  return isSystemReminder(content) && content.includes("# TODOs");
 }
 
 function isCompact(content: string) {
