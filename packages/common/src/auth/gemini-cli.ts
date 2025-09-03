@@ -213,6 +213,48 @@ export class GeminiCliAuth extends AuthProvider {
     }
   }
 
+  async readCredentials(): Promise<
+    | {
+        accessToken: string;
+        refreshToken: string;
+        expiresAt: number;
+      }
+    | undefined
+  > {
+    const credentials = pochiConfig.value.credentials?.geminiCli;
+    if (
+      !credentials?.accessToken ||
+      !credentials.refreshToken ||
+      !credentials.expiresAt
+    ) {
+      return undefined;
+    }
+
+    // Check if tokens are about to expire (with 5 minute buffer)
+    if (credentials.expiresAt <= Date.now() + 5 * 60 * 1000) {
+      try {
+        await this.refreshAccessToken(credentials.refreshToken);
+        // re-read credentials after refresh
+        const newCredentials = pochiConfig.value.credentials?.geminiCli;
+        if (
+          !newCredentials?.accessToken ||
+          !newCredentials.refreshToken ||
+          !newCredentials.expiresAt
+        ) {
+          return undefined;
+        }
+        return newCredentials;
+      } catch (error) {
+        logger.error("Failed to refresh Gemini token:", error);
+        // If refresh fails, treat as unauthenticated
+        await this.logout();
+        return undefined;
+      }
+    }
+
+    return credentials;
+  }
+
   /**
    * Clear stored tokens
    */
@@ -255,6 +297,48 @@ export class GeminiCliAuth extends AuthProvider {
     });
 
     return { email: userInfo.email, name: userInfo.name };
+  }
+
+  private async refreshAccessToken(refreshToken: string): Promise<void> {
+    const response = await fetch("https://oauth2.googleapis.com/token", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: new URLSearchParams({
+        client_id: this.getClientId(),
+        client_secret: this.getClientSecret(),
+        refresh_token: refreshToken,
+        grant_type: "refresh_token",
+      }),
+    });
+
+    logger.info("Token refresh response status:", response.ok);
+
+    if (!response.ok) {
+      throw new Error(
+        `Token refresh failed: ${response.status} ${response.statusText}`,
+      );
+    }
+
+    const tokenData = (await response.json()) as {
+      access_token: string;
+      expires_in: number;
+      refresh_token?: string; // Google might issue a new refresh token
+    };
+
+    const newRefreshToken = tokenData.refresh_token ?? refreshToken;
+    await updatePochiConfig({
+      credentials: {
+        geminiCli: {
+          accessToken: tokenData.access_token,
+          refreshToken: newRefreshToken,
+          expiresAt: Date.now() + tokenData.expires_in * 1000,
+        },
+      },
+    });
+
+    logger.info("Gemini tokens refreshed and saved successfully");
   }
 
   /**

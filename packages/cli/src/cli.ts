@@ -4,6 +4,7 @@ import "@livestore/wa-sqlite/dist/wa-sqlite.node.wasm" with { type: "file" };
 
 import { Command } from "@commander-js/extra-typings";
 import { getLogger } from "@getpochi/common";
+import { authProviders } from "@getpochi/common/auth";
 import { pochiConfig } from "@getpochi/common/configuration";
 import type { PochiApi, PochiApiClient } from "@getpochi/common/pochi-api";
 import type { LLMRequestData } from "@getpochi/livekit";
@@ -74,7 +75,7 @@ const program = new Command()
 
     const store = await createStore(process.cwd());
 
-    const llm = createLLMConfig({ options, apiClient, program });
+    const llm = await createLLMConfig({ options, apiClient, program });
     const rg = findRipgrep();
     if (!rg) {
       return program.error(
@@ -195,20 +196,20 @@ async function createApiClient(): Promise<PochiApiClient> {
   return authClient;
 }
 
-function createLLMConfig({
+async function createLLMConfig({
   apiClient,
   options,
 }: {
   apiClient: PochiApiClient;
   program: Program;
   options: ProgramOpts;
-}): LLMRequestData {
+}): Promise<LLMRequestData> {
   const sep = options.model.indexOf("/");
   const modelProviderId = options.model.slice(0, sep);
   const modelId = options.model.slice(sep + 1);
 
   if (modelProviderId === "gemini-cli") {
-    const credentials = pochiConfig.value.credentials?.geminiCli;
+    const credentials = await authProviders["gemini-cli"].readCredentials();
     if (!credentials) {
       return program.error("Missing credentials for gemini-cli");
     }

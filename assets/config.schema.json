@@ -220,52 +220,6 @@
             },
             "required": ["models", "kind"],
             "additionalProperties": false
-          },
-          {
-            "type": "object",
-            "properties": {
-              "name": {
-                "description": "Display name of the provider, e.g., \"OpenAI\", \"Anthropic\", etc.",
-                "type": "string"
-              },
-              "models": {
-                "type": "object",
-                "propertyNames": {
-                  "type": "string"
-                },
-                "additionalProperties": {
-                  "type": "object",
-                  "properties": {
-                    "name": {
-                      "description": "Display name of the model, e.g., \"GPT-4o\"",
-                      "type": "string"
-                    },
-                    "maxTokens": {
-                      "description": "Maximum number of generated tokens for the model",
-                      "default": 4096,
-                      "type": "number"
-                    },
-                    "contextWindow": {
-                      "description": "Context window size for the model",
-                      "default": 100000,
-                      "type": "number"
-                    },
-                    "useToolCallMiddleware": {
-                      "description": "Whether to use tool call middleware",
-                      "type": "boolean"
-                    }
-                  },
-                  "required": ["maxTokens", "contextWindow"],
-                  "additionalProperties": false
-                }
-              },
-              "kind": {
-                "type": "string",
-                "const": "gemini-cli"
-              }
-            },
-            "required": ["models", "kind"],
-            "additionalProperties": false
           }
         ]
       }
