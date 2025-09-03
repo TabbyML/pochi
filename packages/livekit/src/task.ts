@@ -44,50 +44,17 @@ export function toTaskStatus(
   return "failed";
 }
 
-const parseAPICallError = (error: unknown): APICallError | undefined => {
-  if (error instanceof Error) {
-    if (APICallError.isInstance(error)) {
-      return error;
-    }
-    try {
-      const errorObject = JSON.parse(error.message);
-      if (
-        errorObject &&
-        typeof errorObject === "object" &&
-        "name" in errorObject &&
-        "message" in errorObject &&
-        "url" in errorObject &&
-        "isRetryable" in errorObject &&
-        "requestBodyValues" in errorObject &&
-        "responseHeaders" in errorObject
-      ) {
-        return new APICallError({
-          message: errorObject.message,
-          url: errorObject.url,
-          isRetryable: errorObject.isRetryable,
-          requestBodyValues: errorObject.requestBodyValues,
-          responseHeaders: errorObject.responseHeaders,
-        });
-      }
-    } catch (error) {
-      // ignore JSON parse error
-    }
-  }
-};
-
 export function toTaskError(
   error: unknown,
 ): NonNullable<(typeof tables.tasks.Type)["error"]> {
-  const apiCallError = parseAPICallError(error);
-
-  if (apiCallError) {
+  if (APICallError.isInstance(error)) {
     return {
       kind: "APICallError",
-      url: apiCallError.url,
-      isRetryable: apiCallError.isRetryable,
-      message: apiCallError.message,
-      requestBodyValues: apiCallError.requestBodyValues,
-      responseHeaders: apiCallError.responseHeaders,
+      url: error.url,
+      isRetryable: error.isRetryable,
+      message: error.message,
+      requestBodyValues: error.requestBodyValues,
+      responseHeaders: error.responseHeaders,
     };
   }
 
