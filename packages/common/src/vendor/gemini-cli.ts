@@ -169,7 +169,7 @@ export class GeminiCli extends VendorBase {
     try {
       await updatePochiConfig({
         credentials: {
-          geminiCli: {
+          "gemini-cli": {
             accessToken: tokenData.access_token,
             refreshToken: tokenData.refresh_token,
             expiresAt: Date.now() + tokenData.expires_in * 1000,
@@ -191,7 +191,7 @@ export class GeminiCli extends VendorBase {
   }
 
   override get authenticated() {
-    const credentials = pochiConfig.value.credentials?.geminiCli;
+    const credentials = getCredentials();
     if (!credentials?.accessToken || !credentials.expiresAt) {
       return false;
     }
@@ -201,7 +201,7 @@ export class GeminiCli extends VendorBase {
   }
 
   override async getUser(): Promise<User | null> {
-    const credentials = pochiConfig.value.credentials?.geminiCli;
+    const credentials = getCredentials();
     if (!credentials?.accessToken) {
       return null;
     }
@@ -221,7 +221,7 @@ export class GeminiCli extends VendorBase {
       }
     | undefined
   > {
-    const credentials = pochiConfig.value.credentials?.geminiCli;
+    const credentials = getCredentials();
     if (
       !credentials?.accessToken ||
       !credentials.refreshToken ||
@@ -235,7 +235,7 @@ export class GeminiCli extends VendorBase {
       try {
         await this.refreshAccessToken(credentials.refreshToken);
         // re-read credentials after refresh
-        const newCredentials = pochiConfig.value.credentials?.geminiCli;
+        const newCredentials = getCredentials();
         if (
           !newCredentials?.accessToken ||
           !newCredentials.refreshToken ||
@@ -261,7 +261,7 @@ export class GeminiCli extends VendorBase {
   override async logout(): Promise<void> {
     await updatePochiConfig({
       credentials: {
-        geminiCli: undefined,
+        "gemini-cli": undefined,
       },
     });
   }
@@ -330,7 +330,7 @@ export class GeminiCli extends VendorBase {
     const newRefreshToken = tokenData.refresh_token ?? refreshToken;
     await updatePochiConfig({
       credentials: {
-        geminiCli: {
+        "gemini-cli": {
           accessToken: tokenData.access_token,
           refreshToken: newRefreshToken,
           expiresAt: Date.now() + tokenData.expires_in * 1000,
@@ -396,4 +396,8 @@ export class GeminiCli extends VendorBase {
       },
     };
   }
+}
+
+function getCredentials() {
+  return pochiConfig.value.credentials?.["gemini-cli"];
 }

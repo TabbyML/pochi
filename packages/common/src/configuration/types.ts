@@ -39,7 +39,7 @@ export function makePochiConfig(strict = false) {
     credentials: z
       .object({
         pochiToken: z.string().optional(),
-        geminiCli: z
+        "gemini-cli": z
           .object({
             accessToken: z.string(),
             refreshToken: z.string(),
