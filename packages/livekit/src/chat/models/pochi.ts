@@ -1,5 +1,8 @@
-import type { LanguageModelV2 } from "@ai-sdk/provider";
-import { EventSourceParserStream } from "@ai-sdk/provider-utils";
+import { APICallError, type LanguageModelV2 } from "@ai-sdk/provider";
+import {
+  EventSourceParserStream,
+  extractResponseHeaders,
+} from "@ai-sdk/provider-utils";
 import type { RequestData } from "../../types";
 
 export function createPochiModel(
@@ -14,17 +17,18 @@ export function createPochiModel(
     supportedUrls: {},
     doGenerate: async () => Promise.reject("Not implemented"),
     doStream: async ({ prompt, abortSignal, stopSequences, tools }) => {
+      const data = {
+        id,
+        model: llm.modelId,
+        callOptions: {
+          prompt,
+          stopSequences,
+          tools,
+        },
+      };
       const resp = await llm.apiClient.api.chat.stream.$post(
         {
-          json: {
-            id,
-            model: llm.modelId,
-            callOptions: {
-              prompt,
-              stopSequences,
-              tools,
-            },
-          },
+          json: data,
         },
         {
           init: {
@@ -34,7 +38,13 @@ export function createPochiModel(
       );
 
       if (!resp.ok || !resp.body) {
-        throw new Error(`Failed to fetch: ${resp.status} ${resp.statusText}`);
+        throw new APICallError({
+          message: `Failed to fetch: ${resp.status} ${resp.statusText}`,
+          statusCode: resp.status,
+          url: llm.apiClient.api.chat.stream.$url().toString(),
+          requestBodyValues: data,
+          responseHeaders: extractResponseHeaders(resp),
+        });
       }
 
       const stream = resp.body

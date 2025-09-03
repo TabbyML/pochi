@@ -38,8 +38,11 @@ const TaskError = Schema.Union(
   }),
   Schema.Struct({
     kind: Schema.Literal("APICallError"),
+    url: Schema.String,
+    isRetryable: Schema.Boolean,
     message: Schema.String,
     requestBodyValues: Schema.Unknown,
+    responseHeaders: Schema.Unknown,
   }),
   Schema.Struct({
     kind: Schema.Literal("AbortError"),
