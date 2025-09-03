@@ -176,8 +176,6 @@ export class GeminiCliOAuthHandler {
         },
       });
 
-      logger.info("Gemini tokens saved successfully");
-
       // Fetch user info after saving tokens
       await this.fetchUserInfo(tokenData.access_token);
     } catch (configError) {
@@ -203,8 +201,6 @@ export class GeminiCliOAuthHandler {
       }),
     });
 
-    logger.info("Token refresh response status:", response.ok);
-
     if (!response.ok) {
       throw new Error(
         `Token refresh failed: ${response.status} ${response.statusText}`,
@@ -228,7 +224,7 @@ export class GeminiCliOAuthHandler {
       },
     });
 
-    logger.info("Gemini tokens refreshed and saved successfully");
+    console.log("Gemini tokens refreshed successfully");
   }
 
   /**
@@ -336,11 +332,6 @@ export class GeminiCliOAuthHandler {
       name: string;
       picture?: string;
     };
-
-    logger.info("User info fetched successfully:", {
-      email: userInfo.email,
-      name: userInfo.name,
-    });
 
     return { email: userInfo.email, name: userInfo.name };
   }
