@@ -3,20 +3,19 @@
 import {
   Sidebar as FumaSidebar,
   SidebarContent,
-  SidebarContentMobile,
   SidebarFooter,
   SidebarHeader,
   SidebarPageTree,
   SidebarViewport,
   SidebarCollapseTrigger,
 } from '@/components/layout/sidebar';
-import { SidebarProvider, useSidebar } from '@/contexts/sidebar';
+import { useSidebar } from '@/contexts/sidebar';
 import { TreeContextProvider } from '@/contexts/tree';
 import { cn } from '@/utils/cn';
 import type { PageTree } from 'fumadocs-core/server';
 import type { BaseLayoutProps } from 'fumadocs-ui/layouts/shared';
 import Link from 'fumadocs-core/link';
-import { SidebarIcon } from 'lucide-react';
+import { SidebarIcon, Search } from 'lucide-react';
 import { SearchButton } from '@/components/SearchButton';
 import { useSearchContext } from 'fumadocs-ui/contexts/search';
 import { SidebarFooterContent } from '@/components/SidebarFooterContent';
@@ -40,10 +39,11 @@ interface SidebarProps {
 
 function CollapsibleControlInternal({ baseOptions }: { baseOptions?: ExtendedBaseLayoutProps }) {
   const { collapsed } = useSidebar();
+  
   return (
     <div
       className={cn(
-        'fixed flex shadow-lg transition-opacity rounded-xl p-0.5 border bg-fd-muted text-fd-muted-foreground z-10 max-md:hidden xl:start-4 max-xl:end-4',
+        'fixed shadow-lg transition-opacity rounded-xl p-0.5 border bg-fd-muted text-fd-muted-foreground z-50 hidden xl:flex left-4',
         !collapsed && 'pointer-events-none opacity-0',
       )}
       style={{
@@ -73,11 +73,45 @@ function SearchIconButton() {
       onClick={() => setOpenSearch(true)}
       className="inline-flex items-center justify-center rounded-lg text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-fd-ring disabled:pointer-events-none disabled:opacity-50 hover:bg-fd-accent hover:text-fd-accent-foreground h-8 w-8"
     >
-      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
-        <circle cx="11" cy="11" r="8"></circle>
-        <path d="m21 21-4.3-4.3"></path>
-      </svg>
+      <Search className="w-4 h-4" />
     </button>
+  );
+}
+
+// Custom mobile sidebar that slides from left (like desktop) but uses mobile open state
+function CustomSidebarContentMobile({ children, className, ...props }: React.ComponentProps<'aside'>) {
+  const { open, setOpen } = useSidebar();
+  const state = open ? 'open' : 'closed';
+  
+  return (
+    <>
+      {/* Backdrop */}
+      {open && (
+        <div
+          className="fixed z-40 inset-0 backdrop-blur-xs bg-black/20"
+          onClick={() => setOpen(false)}
+        />
+      )}
+      <aside
+        id="nd-sidebar-mobile-left"
+        {...props}
+        data-state={state}
+        className={cn(
+          'fixed text-sm flex flex-col shadow-lg border w-[85%] max-w-[380px] z-50 bg-fd-card transition-transform duration-300 ease-in-out',
+          'rounded-xl',
+          open ? 'translate-x-0' : '-translate-x-full',
+          'pt-5',
+          className,
+        )}
+        style={{
+          left: open ? '0.5rem' : '0',
+          bottom: '0.5rem',
+          top: 'calc(var(--fd-banner-height) + var(--fd-nav-height) + 0.5rem)',
+        } as React.CSSProperties}
+      >
+        {children}
+      </aside>
+    </>
   );
 }
 
@@ -110,7 +144,7 @@ export function Sidebar({
     </SidebarHeader>
   );
 
-  // Desktop sidebar content
+  // Desktop sidebar content (collapsed state)
   const desktopSidebar = (
     <SidebarContent>
       {navHeader}
@@ -124,12 +158,10 @@ export function Sidebar({
       </SidebarFooter>
     </SidebarContent>
   );
-
-  // Mobile sidebar content
+  
+  // Mobile sidebar content (open state) - slides from left like desktop but uses different state
   const mobileSidebar = (
-    <SidebarContentMobile>
-      {navHeader}
-      {banner && <SidebarHeader>{banner}</SidebarHeader>}
+    <CustomSidebarContentMobile>
       <SidebarViewport>
         <SidebarPageTree />
       </SidebarViewport>
@@ -137,20 +169,18 @@ export function Sidebar({
       <SidebarFooter>
         <SidebarFooterContent baseOptions={baseOptions} />
       </SidebarFooter>
-    </SidebarContentMobile>
+    </CustomSidebarContentMobile>
   );
 
   return (
-    <SidebarProvider>
-      <TreeContextProvider tree={tree}>
-        <FumaSidebar
-          Content={desktopSidebar}
-          Mobile={mobileSidebar}
-          prefetch={false}
-          defaultOpenLevel={0}
-        />
-        <CollapsibleControlInternal baseOptions={baseOptions} />
-      </TreeContextProvider>
-    </SidebarProvider>
+    <TreeContextProvider tree={tree}>
+      <FumaSidebar
+        Content={desktopSidebar}
+        Mobile={mobileSidebar}
+        prefetch={false}
+        defaultOpenLevel={0}
+      />
+      <CollapsibleControlInternal baseOptions={baseOptions} />
+    </TreeContextProvider>
   );
 }

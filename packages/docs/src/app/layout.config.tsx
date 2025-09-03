@@ -20,11 +20,12 @@ export const baseOptions: ExtendedBaseLayoutProps = {
         Pochi Docs
       </>
     ),
+    transparentMode:"none",
   },
   github: {
-          owner: 'tabbyml',
-          repo: 'pochi',
-        },
+    owner: 'tabbyml',
+    repo: 'pochi',
+  },
 };
 
 export function formatTitle(title: string) {

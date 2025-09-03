@@ -92,7 +92,7 @@ export function Sidebar({
   Mobile,
   Content,
 }: SidebarProps) {
-  const isMobile = useMediaQuery('(width < 768px)') ?? false;
+  const isMobile = useMediaQuery('(width < 1280px)') ?? false; // xl breakpoint
   const context = useMemo<InternalContext>(() => {
     return {
       defaultOpenLevel,
@@ -125,7 +125,7 @@ export function SidebarContent(props: ComponentProps<'aside'>) {
       {...props}
       data-collapsed={collapsed}
       className={cn(
-        'fixed left-0 rtl:left-auto rtl:right-(--removed-body-scroll-bar-size,0) flex flex-col items-end top-(--fd-sidebar-top) bottom-(--fd-sidebar-margin) z-20 bg-fd-card text-sm border-e transition-[top,opacity,translate,width] max-md:hidden *:w-(--fd-sidebar-width)',
+        'fixed left-0 rtl:left-auto rtl:right-(--removed-body-scroll-bar-size,0) flex flex-col items-end top-(--fd-sidebar-top) bottom-(--fd-sidebar-margin) z-20 bg-fd-card text-sm border-e transition-[top,opacity,translate,width] *:w-(--fd-sidebar-width)',
         collapsed && [
           'rounded-xl border translate-x-(--fd-sidebar-offset) rtl:-translate-x-(--fd-sidebar-offset)',
           hover ? 'z-50 shadow-lg' : 'opacity-0',
@@ -259,6 +259,7 @@ export function SidebarSeparator(props: ComponentProps<'p'>) {
       {...props}
       className={cn(
         'inline-flex items-center gap-2 mb-1.5 px-2 ps-(--sidebar-item-offset) empty:mb-0 [&_svg]:size-4 [&_svg]:shrink-0',
+        'text-base text-fd-foreground',
         props.className,
       )}
     >

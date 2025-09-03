@@ -5,9 +5,11 @@ import {
   useMemo,
   useRef,
   useState,
+  useEffect,
 } from 'react';
 import { createContext, usePathname } from 'fumadocs-core/framework';
 import { useOnChange } from 'fumadocs-core/utils/use-on-change';
+import { useMediaQuery } from 'fumadocs-core/utils/use-media-query';
 
 interface SidebarContext {
   open: boolean;
@@ -33,10 +35,26 @@ export function SidebarProvider({
   children: ReactNode;
 }): ReactNode {
   const closeOnRedirect = useRef(true);
+  const isMobile = useMediaQuery('(width < 1280px)'); // xl breakpoint
+  
+  // Mobile sidebar state (overlay, starts closed)
   const [open, setOpen] = useState(false);
+  // Desktop sidebar state (collapsible, starts open)
   const [collapsed, setCollapsed] = useState(false);
 
   const pathname = usePathname();
+
+  // Reset states when switching between mobile/desktop
+  useEffect(() => {
+    if (isMobile !== null) {
+      if (isMobile) {
+        setOpen(false);
+      }
+      else {
+        setCollapsed(false);
+      }
+    }
+  }, [isMobile]);
 
   useOnChange(pathname, () => {
     if (closeOnRedirect.current) {

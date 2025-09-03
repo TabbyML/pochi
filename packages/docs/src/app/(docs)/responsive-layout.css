@@ -1,0 +1,29 @@
+/* Custom responsive layout overrides for 1280px breakpoint */
+
+/* Reset sidebar width at smaller breakpoints (768px-1279px) */
+@media (min-width: 768px) and (max-width: 1279px) {
+  #nd-docs-layout {
+    --fd-sidebar-width: 0px !important;
+    margin-inline-start: 0px !important;
+  }
+}
+
+/* Set sidebar width only at xl breakpoint (1280px+) */
+@media (min-width: 1280px) {
+  #nd-docs-layout {
+    --fd-sidebar-width: 268px !important;
+    margin-inline-start: var(--fd-sidebar-width) !important;
+  }
+}
+
+/* Override fumadocs default md and lg breakpoint styles */
+@media (min-width: 768px) and (max-width: 1279px) {
+  /* Disable default fumadocs md/lg sidebar spacing */
+  .md\:\[--fd-sidebar-width\:268px\] {
+    --fd-sidebar-width: 0px !important;
+  }
+
+  .lg\:\[--fd-sidebar-width\:286px\] {
+    --fd-sidebar-width: 0px !important;
+  }
+}
