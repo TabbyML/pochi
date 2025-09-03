@@ -3,8 +3,6 @@ export abstract class VendorBase {
 
   abstract getUser(): Promise<User | null>;
 
-  abstract logout(): Promise<void>;
-
   abstract fetchModels(): Promise<Record<string, ModelOptions>>;
 
   abstract readCredentials(): Promise<unknown>;

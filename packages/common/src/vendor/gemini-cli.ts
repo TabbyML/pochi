@@ -261,7 +261,7 @@ export class GeminiCli extends VendorBase {
   /**
    * Clear stored tokens
    */
-  override async logout(): Promise<void> {
+  private async logout(): Promise<void> {
     await updateCredentials(undefined);
   }
 

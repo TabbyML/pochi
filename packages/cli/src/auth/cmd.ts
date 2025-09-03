@@ -1,4 +1,5 @@
 import type { Command } from "@commander-js/extra-typings";
+import { updateVendorConfig } from "@getpochi/common/configuration";
 import { type User, vendors } from "@getpochi/common/vendor";
 import chalk from "chalk";
 import { getLoginFn } from "./login";
@@ -43,11 +44,14 @@ export function registerAuthCommand(program: Command) {
     .option("-a, --all")
     .option("-v, --vendor <vendor>", `Vendor to logout from: ${vendors}`)
     .action(async ({ vendor, all }) => {
+      const logout = async (name: string) => {
+        await updateVendorConfig(name, { credentials: undefined });
+        console.log(`Logged out from ${name}`);
+      };
       if (vendor) {
         const auth = vendors[vendor as keyof typeof vendors];
         if (auth.authenticated) {
-          await auth.logout();
-          console.log(`Logged out from ${vendor}`);
+          await logout(vendor);
         } else {
           return logoutCommand.error(`You are not logged in to ${vendor}`);
         }
@@ -57,7 +61,7 @@ export function registerAuthCommand(program: Command) {
       if (all) {
         for (const [name, auth] of Object.entries(vendors)) {
           if (auth.authenticated) {
-            await auth.logout();
+            await logout(name);
             console.log(`Logged out from ${name}`);
           }
         }
