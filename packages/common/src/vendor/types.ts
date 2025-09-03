@@ -5,7 +5,7 @@ export abstract class VendorBase {
 
   abstract logout(): Promise<void>;
 
-  abstract fetchModels(): Promise<Record<string, Model>>;
+  abstract fetchModels(): Promise<Record<string, ModelOptions>>;
 }
 
 export type User = {
@@ -13,8 +13,7 @@ export type User = {
   email: string;
 };
 
-export type Model = {
-  id: string;
+export type ModelOptions = {
   contextWindow: number;
   maxOutputTokens: number;
 };
