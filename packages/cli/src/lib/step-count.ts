@@ -44,7 +44,7 @@ export class StepCount implements StepInfo {
     }
   }
 
-  nextRound() {
+  nextStep() {
     this.throwIfReachedMaxSteps();
     this.step++;
     this.retry = 0;

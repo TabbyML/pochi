@@ -42,3 +42,47 @@ jobs:
           prerelease: ${{ steps.release_info.outputs.is_prerelease }}
           artifacts: "packages/cli/dist/*"
           name: pochi-cli@${{ steps.release_info.outputs.version_number }}
+
+      - name: Update Homebrew formula
+        env:
+          GH_TOKEN: ${{ secrets.POCHI_HOMEBREW_GITHUB_TOKEN }}
+        if: startsWith(github.ref, 'refs/tags/cli@')
+        run: |
+          set -ex
+
+          VERSION=${{ steps.release_info.outputs.version_number }}
+          IS_PRERELEASE=${{ steps.release_info.outputs.is_prerelease }}
+          REPO_OWNER=${{ github.repository_owner }}
+
+          DARWIN_ARM_SHA=$(sha256sum packages/cli/dist/pochi-mac-arm64.tar.gz | awk '{ print $1 }')
+          LINUX_X86_SHA=$(sha256sum packages/cli/dist/pochi-linux-x64.tar.gz | awk '{ print $1 }')
+
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+          gh auth setup-git
+
+          gh repo clone "$REPO_OWNER/homebrew-pochi"
+          cd homebrew-pochi
+
+          OLD_VERSION=$(grep 'version ' Formula/pochi.rb | sed -E 's/.*version "(.*)".*/\1/')
+
+          cp Formula/pochi.rb "Formula/pochi@$VERSION.rb"
+          VERSION_NO_DOTS=$(echo $VERSION | tr -d '.')
+          sed -i "s/class Pochi < Formula/class PochiAT$VERSION_NO_DOTS < Formula/" "Formula/pochi@$VERSION.rb"
+
+          update_formula() {
+            FILE=$1
+            sed -i "s/version \"$OLD_VERSION\"/version \"$VERSION\"/" "$FILE"
+            sed -i '/pochi-mac-arm64.tar.gz/!b;n;s/sha256 = .*/sha256 = "'$DARWIN_ARM_SHA'"/' "$FILE"
+            sed -i '/pochi-linux-x64.tar.gz/!b;n;s/sha256 = .*/sha256 = "'$LINUX_X86_SHA'"/' "$FILE"
+          }
+
+          update_formula "Formula/pochi@$VERSION.rb"
+
+          if [ "$IS_PRERELEASE" = "false" ]; then
+            update_formula "Formula/pochi.rb"
+          fi
+          git add .
+          git commit -m "feat(cli): release version $VERSION"
+          git push

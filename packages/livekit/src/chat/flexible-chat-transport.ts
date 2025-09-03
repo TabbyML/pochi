@@ -1,9 +1,11 @@
+import { getErrorMessage } from "@ai-sdk/provider";
 import type { Environment } from "@getpochi/common";
 import { formatters, prompts } from "@getpochi/common";
 import type { PochiApiClient } from "@getpochi/common/pochi-api";
 import { type McpTool, selectClientTools } from "@getpochi/tools";
 import type { Store } from "@livestore/livestore";
 import {
+  APICallError,
   type ChatRequestOptions,
   type ChatTransport,
   type UIMessageChunk,
@@ -139,6 +141,13 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
       experimental_repairToolCall: makeRepairToolCall(model),
     });
     return stream.toUIMessageStream({
+      onError: (error) => {
+        if (APICallError.isInstance(error)) {
+          // throw error so we can handle it on Chat class onError
+          throw error;
+        }
+        return getErrorMessage(error);
+      },
       originalMessages: preparedMessages,
       messageMetadata: ({ part }) => {
         if (part.type === "finish") {

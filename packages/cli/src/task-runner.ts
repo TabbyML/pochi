@@ -134,7 +134,7 @@ export class TaskRunner {
         if (stepResult === "retry") {
           this.stepCount.nextRetry();
         } else {
-          this.stepCount.nextRound();
+          this.stepCount.nextStep();
         }
       }
     } catch (e) {
@@ -205,6 +205,9 @@ export class TaskRunner {
     }
 
     if (task.status === "failed") {
+      if (task.error?.kind === "APICallError" && !task.error.isRetryable) {
+        return "finished";
+      }
       logger.error(
         "Task is failed, trying to resend last message to resume it.",
         task.error,
