@@ -2,6 +2,7 @@ import type { LanguageModelV2FinishReason } from "@ai-sdk/provider";
 import { Environment } from "@getpochi/common";
 import { GoogleVertexModel } from "@getpochi/common/configuration";
 import type { PochiApiClient } from "@getpochi/common/pochi-api";
+import type { ModelOptions } from "@getpochi/common/vendor";
 import type { VSCodeLmRequestOptions } from "@getpochi/common/vscode-webui-bridge";
 import { type ClientTools, McpTool } from "@getpochi/tools";
 import type { InferUITools, UIMessage } from "ai";
@@ -96,13 +97,8 @@ const RequestData = z.object({
       type: z.literal("vendor"),
       vendorId: z.string(),
       modelId: z.string(),
-      contextWindow: z.number().describe("Context window of the model."),
-      maxOutputTokens: z.number().describe("Max output tokens of the model."),
       credentials: z.unknown(),
-      useToolCallMiddleware: z
-        .boolean()
-        .optional()
-        .describe("Whether to use tool call middleware"),
+      options: z.custom<ModelOptions>(),
     }),
   ]),
   mcpToolSet: z

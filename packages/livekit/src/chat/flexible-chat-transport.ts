@@ -106,8 +106,11 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
         // Turn on ToolCallMiddleware only for gemini backed models for now
         (llm.modelId?.startsWith("google/") ||
           llm.modelId?.startsWith("pochi/"))) ||
-      (llm.type !== "pochi" && llm.useToolCallMiddleware) ||
-      llm.type === "vscode"
+      (llm.type !== "pochi" &&
+        llm.type !== "vendor" &&
+        llm.useToolCallMiddleware) ||
+      llm.type === "vscode" ||
+      (llm.type === "vendor" && llm.options.useToolCallMiddleware)
     ) {
       middlewares.push(createToolCallMiddleware());
     }

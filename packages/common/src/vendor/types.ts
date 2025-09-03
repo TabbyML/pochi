@@ -16,4 +16,5 @@ export type User = {
 export type ModelOptions = {
   contextWindow: number;
   maxOutputTokens: number;
+  useToolCallMiddleware?: boolean;
 };

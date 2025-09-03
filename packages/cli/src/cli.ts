@@ -215,16 +215,15 @@ async function createLLMConfig({
       return program.error("Missing credentials for gemini-cli");
     }
     const models = await vendors["gemini-cli"].fetchModels();
-    const model = models[modelId];
-    if (!model) {
+    const options = models[modelId];
+    if (!options) {
       return program.error(`Model ${modelId} not found`);
     }
     return {
       type: "vendor",
       vendorId: vendorId,
       modelId: modelId,
-      contextWindow: model.contextWindow,
-      maxOutputTokens: model.maxOutputTokens,
+      options,
       credentials,
     } satisfies LLMRequestData;
   }

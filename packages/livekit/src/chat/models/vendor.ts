@@ -17,7 +17,7 @@ export function createVendorModel(
     middleware: {
       middlewareVersion: "v2",
       async transformParams({ params }) {
-        params.maxOutputTokens = llm.maxOutputTokens;
+        params.maxOutputTokens = llm.options.maxOutputTokens;
         return params;
       },
     },
