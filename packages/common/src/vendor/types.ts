@@ -1,4 +1,4 @@
-export abstract class Vendor {
+export abstract class VendorBase {
   abstract authenticated: boolean;
 
   abstract getUser(): Promise<User | null>;

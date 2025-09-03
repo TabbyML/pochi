@@ -2,7 +2,7 @@ import * as crypto from "node:crypto";
 import * as http from "node:http";
 import { getLogger } from "../base";
 import { pochiConfig, updatePochiConfig } from "../configuration";
-import { Vendor, type Model, type User } from "./types";
+import { type Model, type User, VendorBase } from "./types";
 
 const logger = getLogger("GeminiCliOAuth");
 
@@ -18,7 +18,7 @@ export interface GeminiTokens {
   expires: number;
 }
 
-export class GeminiCliAuth extends Vendor {
+export class GeminiCli extends VendorBase {
   /**
    * Start the Gemini OAuth flow
    */

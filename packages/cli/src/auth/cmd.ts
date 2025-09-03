@@ -1,9 +1,5 @@
 import type { Command } from "@commander-js/extra-typings";
-import {
-  type AuthProvider,
-  type User,
-  authProviders,
-} from "@getpochi/common/auth";
+import { type User, vendors } from "@getpochi/common/vendor";
 import chalk from "chalk";
 import { geminiCliLogin } from "./gemini-cli";
 
@@ -12,11 +8,11 @@ const loginFns: Record<string, () => Promise<User>> = {
 };
 
 export function registerAuthCommand(program: Command) {
-  const providers = Object.keys(authProviders).join(", ");
+  const vendorNames = Object.keys(vendors).join(", ");
 
   const authCommand = program.command("auth");
   authCommand.command("status", { isDefault: true }).action(async () => {
-    for (const [name, auth] of Object.entries(authProviders)) {
+    for (const [name, auth] of Object.entries(vendors)) {
       if (auth.authenticated) {
         console.log(`${name}:`, renderUser(await auth.getUser()));
       }
@@ -25,52 +21,44 @@ export function registerAuthCommand(program: Command) {
 
   const loginCommand = authCommand.command("login");
   loginCommand
-    .requiredOption(
-      "--provider <provider>",
-      `Provider to login to: ${providers}`,
-    )
-    .action(async ({ provider }) => {
-      if (provider) {
-        const auth = authProviders[provider as keyof typeof authProviders];
-        if (auth.authenticated) {
-          const user = await auth.getUser();
-          console.log("You're already logged in as", renderUser(user));
-          return;
-        }
+    .requiredOption("--vendor <vendor>", `Vendor to login to: ${vendorNames}`)
+    .action(async ({ vendor }) => {
+      const auth = vendors[vendor as keyof typeof vendors];
+      if (auth.authenticated) {
+        const user = await auth.getUser();
+        console.log("You're already logged in as", renderUser(user));
+        return;
       }
 
-      if (!(provider in loginFns)) {
-        return loginCommand.error(`Unknown provider: ${provider}`);
+      if (!(vendor in loginFns)) {
+        return loginCommand.error(`Unknown vendor: ${vendor}`);
       }
 
-      const user = await loginFns[provider]();
+      const user = await loginFns[vendor]();
       console.log("Logged in as", renderUser(user));
     });
 
   const logoutCommand = authCommand.command("logout");
   logoutCommand
     .option("-a, --all")
-    .option("--provider <provider>", `Provider to logout from: ${providers}`)
-    .action(async ({ provider, all }) => {
-      const logout = async (name: string, auth: AuthProvider) => {
-        await auth.logout();
-        console.log(`Logged out from ${name}`);
-      };
-
-      if (provider) {
-        const auth = authProviders[provider as keyof typeof authProviders];
+    .option("--vendor <vendor>", `Vendor to logout from: ${vendors}`)
+    .action(async ({ vendor, all }) => {
+      if (vendor) {
+        const auth = vendors[vendor as keyof typeof vendors];
         if (auth.authenticated) {
-          await logout(provider, auth);
+          await auth.logout();
+          console.log(`Logged out from ${vendor}`);
         } else {
-          return logoutCommand.error(`You are not logged in to ${provider}`);
+          return logoutCommand.error(`You are not logged in to ${vendor}`);
         }
         return;
       }
 
       if (all) {
-        for (const [name, auth] of Object.entries(authProviders)) {
+        for (const [name, auth] of Object.entries(vendors)) {
           if (auth.authenticated) {
-            await logout(name, auth);
+            await auth.logout();
+            console.log(`Logged out from ${name}`);
           }
         }
         return;
