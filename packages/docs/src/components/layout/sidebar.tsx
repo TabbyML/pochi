@@ -5,7 +5,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { ScrollArea, ScrollViewport } from "@/components/ui/scroll-area";
-import { useSidebar } from "@/contexts/sidebar";
+import { useSidebar } from "fumadocs-ui/provider";
 import { useTreeContext, useTreePath } from "@/contexts/tree";
 import { cn } from "@/utils/cn";
 import { isActive } from "@/utils/is-active";
@@ -92,7 +92,7 @@ export function Sidebar({
   Mobile,
   Content,
 }: SidebarProps) {
-  const isMobile = useMediaQuery("(width < 1024px)") ?? false; // lg breakpoint
+  const isMobile = useMediaQuery("(width < 768px)") ?? false; // md breakpoint
   const context = useMemo<InternalContext>(() => {
     return {
       defaultOpenLevel,

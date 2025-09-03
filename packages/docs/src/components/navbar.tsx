@@ -1,7 +1,7 @@
 "use client";
 
 import type { ExtendedBaseLayoutProps } from "@/components/sidebar";
-import { useSidebar } from "@/contexts/sidebar";
+import { useSidebar } from "fumadocs-ui/provider";
 import { cn } from "@/utils/cn";
 import Link from "fumadocs-core/link";
 import { useSearchContext } from "fumadocs-ui/contexts/search";

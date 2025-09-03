@@ -11,7 +11,7 @@ import {
   SidebarPageTree,
   SidebarViewport,
 } from "@/components/layout/sidebar";
-import { useSidebar } from "@/contexts/sidebar";
+import { useSidebar } from "fumadocs-ui/provider";
 import { TreeContextProvider } from "@/contexts/tree";
 import { cn } from "@/utils/cn";
 import Link from "fumadocs-core/link";
@@ -46,7 +46,7 @@ function CollapsibleControlInternal({
   return (
     <div
       className={cn(
-        "fixed left-4 z-50 hidden rounded-xl border bg-fd-muted p-0.5 text-fd-muted-foreground shadow-lg transition-opacity lg:flex",
+        "fixed left-4 z-50 hidden rounded-xl border bg-fd-muted p-0.5 text-fd-muted-foreground shadow-lg transition-opacity md:flex",
         !collapsed && "pointer-events-none opacity-0",
       )}
       style={{

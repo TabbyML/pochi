@@ -1,28 +1,12 @@
 /* Custom responsive layout overrides for 1280px breakpoint */
 
-/* Reset sidebar width only at md breakpoint (768px-1023px) */
-@media (min-width: 768px) and (max-width: 1023px) {
-  #nd-docs-layout {
-    --fd-sidebar-width: 0px !important;
-    margin-inline-start: 0px !important;
-  }
-}
-
-/* Set sidebar width for lg and xl breakpoints (1024px+) */
-@media (min-width: 1024px) {
+/* Set sidebar width for md, lg and xl breakpoints (768px+) */
+@media (min-width: 768px) {
   #nd-docs-layout {
     --fd-sidebar-width: 268px !important;
-    margin-inline-start: var(--fd-sidebar-width) !important;
   }
 }
 
-/* Override fumadocs default md breakpoint styles */
-@media (min-width: 768px) and (max-width: 1023px) {
-  /* Disable default fumadocs md sidebar spacing */
-  .md\:\[--fd-sidebar-width\:268px\] {
-    --fd-sidebar-width: 0px !important;
-  }
-}
 
 /* Adjust TOC position for custom navbar - only for mobile (below md breakpoint) */
 @media (max-width: 767px) {
