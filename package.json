@@ -75,12 +75,5 @@
     "ai@5.0.15": "patches/ai@5.0.15.patch",
     "jsonc-parser@3.3.1": "patches/jsonc-parser@3.3.1.patch",
     "@ai-sdk/google-vertex@3.0.8": "patches/@ai-sdk%2Fgoogle-vertex@3.0.8.patch"
-  },
-  "dependencies": {
-    "@radix-ui/react-collapsible": "^1.1.12",
-    "@radix-ui/react-presence": "^1.1.5",
-    "@radix-ui/react-scroll-area": "^1.2.10",
-    "class-variance-authority": "^0.7.1",
-    "tailwind-merge": "^3.3.1"
   }
 }

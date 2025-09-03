@@ -3,13 +3,6 @@
   "workspaces": {
     "": {
       "name": "ragdoll",
-      "dependencies": {
-        "@radix-ui/react-collapsible": "^1.1.12",
-        "@radix-ui/react-presence": "^1.1.5",
-        "@radix-ui/react-scroll-area": "^1.2.10",
-        "class-variance-authority": "^0.7.1",
-        "tailwind-merge": "^3.3.1",
-      },
       "devDependencies": {
         "@ast-grep/cli": "^0.38.5",
         "@biomejs/biome": "1.9.4",
