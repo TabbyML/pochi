@@ -2,6 +2,7 @@ import * as crypto from "node:crypto";
 import * as http from "node:http";
 import { getLogger } from "../base";
 import { pochiConfig, updatePochiConfig } from "../configuration";
+import { AuthProvider, type User } from "./types";
 
 const logger = getLogger("GeminiCliOAuth");
 
@@ -17,7 +18,7 @@ export interface GeminiTokens {
   expires: number;
 }
 
-export class GeminiCliOAuthHandler {
+export class GeminiCliAuth extends AuthProvider {
   /**
    * Start the Gemini OAuth flow
    */
@@ -189,10 +190,7 @@ export class GeminiCliOAuthHandler {
     }
   }
 
-  /**
-   * Check if tokens exist and are valid
-   */
-  async isAuthenticated(): Promise<boolean> {
+  override get authenticated() {
     const credentials = pochiConfig.value.credentials?.geminiCli;
     if (!credentials?.accessToken || !credentials.expiresAt) {
       return false;
@@ -202,10 +200,7 @@ export class GeminiCliOAuthHandler {
     return credentials.expiresAt > Date.now() + 5 * 60 * 1000;
   }
 
-  /**
-   * Get current user info if authenticated
-   */
-  async getCurrentUser(): Promise<{ email: string; name: string } | null> {
+  override async getUser(): Promise<User | null> {
     const credentials = pochiConfig.value.credentials?.geminiCli;
     if (!credentials?.accessToken) {
       return null;
@@ -221,13 +216,14 @@ export class GeminiCliOAuthHandler {
   /**
    * Clear stored tokens
    */
-  async logout(): Promise<void> {
+  override async logout(): Promise<void> {
     await updatePochiConfig({
       credentials: {
         geminiCli: undefined,
       },
     });
   }
+
   /**
    * Fetch user information using the access token
    */

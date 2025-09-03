@@ -126,16 +126,6 @@ function useLLM(): React.RefObject<LLMRequestData> {
       };
     }
 
-    if (provider.kind === "gemini-cli") {
-      return {
-        type: "gemini-cli" as const,
-        modelId: selectedModel.modelId,
-        contextWindow: selectedModel.contextWindow,
-        maxOutputTokens: selectedModel.maxTokens,
-        useToolCallMiddleware: selectedModel.useToolCallMiddleware,
-      };
-    }
-
     return {
       type: "openai" as const,
       modelId: selectedModel.modelId,

@@ -72,15 +72,10 @@ const AiGatewayModelSettings = BaseModelSettings.extend({
     .describe("API key for the model provider, if required."),
 });
 
-const GeminiCliModelSettings = BaseModelSettings.extend({
-  kind: z.literal("gemini-cli"),
-});
-
 export const CustomModelSetting = z.discriminatedUnion("kind", [
   OpenAIModelSettings,
   GoogleVertexTuningModelSettings,
   AiGatewayModelSettings,
-  GeminiCliModelSettings,
 ]);
 
 /**

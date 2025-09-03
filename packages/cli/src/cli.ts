@@ -11,7 +11,7 @@ import chalk from "chalk";
 import * as commander from "commander";
 import { hc } from "hono/client";
 import packageJson from "../package.json";
-import { registerGeminiCliAuthCommand } from "./auth/gemini-cli";
+import { registerAuthCommand } from "./auth";
 import { findRipgrep } from "./lib/find-ripgrep";
 import {
   containsWorkflowReference,
@@ -131,7 +131,7 @@ program
     outputError: (str, write) => write(chalk.red(str)),
   });
 
-registerGeminiCliAuthCommand(program);
+registerAuthCommand(program);
 
 program.parse(process.argv);
 
@@ -207,6 +207,20 @@ function createLLMConfig({
   const modelProviderId = options.model.slice(0, sep);
   const modelId = options.model.slice(sep + 1);
 
+  if (modelProviderId === "gemini-cli") {
+    const credentials = pochiConfig.value.credentials?.geminiCli;
+    if (!credentials) {
+      return program.error("Missing credentials for gemini-cli");
+    }
+    return {
+      type: "gemini-cli",
+      modelId: modelId,
+      contextWindow: 1_000_000,
+      maxOutputTokens: 4096,
+      credentials,
+    } satisfies LLMRequestData;
+  }
+
   const modelProvider = pochiConfig.value.providers?.[modelProviderId];
   const modelSetting = modelProvider?.models?.[modelId];
 
@@ -221,6 +235,7 @@ function createLLMConfig({
   if (!modelSetting) {
     return program.error(`Model ${options.model} not found in configuration`);
   }
+
   if (modelProvider.kind === undefined || modelProvider.kind === "openai") {
     return {
       type: "openai",
@@ -249,17 +264,6 @@ function createLLMConfig({
       vertex: modelProvider.vertex,
       contextWindow: modelSetting.contextWindow,
       maxOutputTokens: modelSetting.maxTokens,
-    };
-  }
-
-  if (modelProvider.kind === "gemini-cli") {
-    const geminiCliCredentials = pochiConfig.value.credentials?.geminiCli;
-    return {
-      type: "gemini-cli",
-      modelId,
-      contextWindow: modelSetting.contextWindow,
-      maxOutputTokens: modelSetting.maxTokens,
-      credentials: geminiCliCredentials,
     };
   }
 
