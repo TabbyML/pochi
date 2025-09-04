@@ -1,6 +1,5 @@
 import { createVertexWithoutCredentials } from "@ai-sdk/google-vertex/edge";
 import type { GeminiCliVendorConfig } from "@getpochi/common/configuration";
-import type { GoogleGenerativeAIProviderOptions } from "@ai-sdk/google";
 import { APICallError, wrapLanguageModel } from "ai";
 
 export function createGeminiCliModel(
