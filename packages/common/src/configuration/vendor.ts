@@ -24,3 +24,13 @@ export const PochiVendorConfig = VendorConfig.extend({
 });
 
 export type PochiVendorConfig = z.infer<typeof PochiVendorConfig>;
+
+export const GeminiCliVendorConfig = VendorConfig.extend({
+  credentials: z.object({
+    accessToken: z.string(),
+    refreshToken: z.string(),
+    expiresAt: z.number(),
+  }),
+});
+
+export type GeminiCliVendorConfig = z.infer<typeof GeminiCliVendorConfig>;

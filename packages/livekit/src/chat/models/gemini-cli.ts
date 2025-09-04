@@ -1,8 +1,9 @@
 import { createVertexWithoutCredentials } from "@ai-sdk/google-vertex/edge";
+import type { GeminiCliVendorConfig } from "@getpochi/common/configuration";
 import { APICallError, wrapLanguageModel } from "ai";
 
 export function createGeminiCliModel(
-  credentials: unknown,
+  credentials: GeminiCliVendorConfig["credentials"],
   project: string,
   modelId: string,
 ) {
@@ -10,7 +11,7 @@ export function createGeminiCliModel(
     project,
     location: "global",
     baseURL: "https://cloudcode-pa.googleapis.com",
-    fetch: createPatchedFetch(project, credentials.access_token),
+    fetch: createPatchedFetch(project, credentials.accessToken),
   })(modelId);
 
   return wrapLanguageModel({
@@ -23,14 +24,14 @@ export function createGeminiCliModel(
 
 function createPatchedFetch(project: string, accessToken: string) {
   return async (
-    requestInfo: Request | URL | string,
+    _requestInfo: Request | URL | string,
     requestInit?: RequestInit,
   ) => {
     const headers = new Headers(requestInit?.headers);
     if (accessToken) {
       headers.append("Authorization", `Bearer ${accessToken}`);
     }
-    const request = JSON.parse(requestInit?.body || "null");
+    const request = JSON.parse((requestInit?.body as string) || "null");
     const patchedRequestInit = {
       ...requestInit,
       headers,

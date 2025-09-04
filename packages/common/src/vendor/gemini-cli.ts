@@ -1,17 +1,13 @@
 import * as crypto from "node:crypto";
 import * as http from "node:http";
 import { getLogger } from "../base";
-import type { UserInfo } from "../configuration/vendor";
+import type { GeminiCliVendorConfig, UserInfo } from "../configuration";
 import { type ModelOptions, VendorBase } from "./types";
 
 const VendorId = "gemini-cli";
 const logger = getLogger(VendorId);
 
-type GeminiCredentials = {
-  access_token: string;
-  refresh_token: string;
-  expires_at: number;
-};
+type GeminiCredentials = GeminiCliVendorConfig["credentials"];
 
 export interface GeminiOAuthResult {
   authUrl: string;
@@ -177,9 +173,9 @@ export class GeminiCli extends VendorBase {
     };
 
     return {
-      access_token: tokenData.access_token,
-      refresh_token: tokenData.refresh_token,
-      expires_at: Date.now() + tokenData.expires_in * 1000,
+      accessToken: tokenData.access_token,
+      refreshToken: tokenData.refresh_token,
+      expiresAt: Date.now() + tokenData.expires_in * 1000,
     };
   }
 
@@ -187,10 +183,10 @@ export class GeminiCli extends VendorBase {
     credentials: GeminiCredentials,
   ): Promise<GeminiCredentials | undefined> {
     // Check if tokens are about to expire (with 5 minute buffer)
-    if (credentials.expires_at <= Date.now() + 5 * 60 * 1000) {
+    if (credentials.expiresAt <= Date.now() + 5 * 60 * 1000) {
       try {
         const newCredentials = await this.refreshAccessToken(
-          credentials.refresh_token,
+          credentials.refreshToken,
         );
         return newCredentials;
       } catch (error) {
@@ -208,7 +204,7 @@ export class GeminiCli extends VendorBase {
   override async fetchUserInfo(
     credentials: GeminiCredentials,
   ): Promise<UserInfo> {
-    const { access_token: accessToken } = credentials;
+    const { accessToken } = credentials;
     const response = await fetch(
       "https://www.googleapis.com/oauth2/v2/userinfo",
       {
@@ -272,9 +268,9 @@ export class GeminiCli extends VendorBase {
 
     const newRefreshToken = tokenData.refresh_token ?? refreshToken;
     return {
-      access_token: tokenData.access_token,
-      refresh_token: newRefreshToken,
-      expires_at: Date.now() + tokenData.expires_in * 1000,
+      accessToken: tokenData.access_token,
+      refreshToken: newRefreshToken,
+      expiresAt: Date.now() + tokenData.expires_in * 1000,
     };
   }
 

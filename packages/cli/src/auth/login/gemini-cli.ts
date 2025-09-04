@@ -1,6 +1,6 @@
 import * as childProcess from "node:child_process";
 import { updateVendorConfig } from "@getpochi/common/configuration";
-import { vendors } from "@getpochi/common/vendor";
+import { vendors } from "@getpochi/common/vendor/node";
 import chalk from "chalk";
 
 const { "gemini-cli": geminiCli } = vendors;
