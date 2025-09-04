@@ -1,7 +1,8 @@
 import { createAuthClient as createAuthClientImpl } from "better-auth/react";
 import type { PochiVendorConfig, UserInfo } from "../configuration";
 import { getServerBaseUrl } from "../vscode-webui-bridge";
-import { type ModelOptions, VendorBase } from "./types";
+import { VendorBase } from "./base";
+import type { ModelOptions } from "./types";
 
 type PochiCredentials = PochiVendorConfig["credentials"];
 
