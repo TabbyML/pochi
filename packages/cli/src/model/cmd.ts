@@ -29,9 +29,11 @@ function formatToolCall(useToolCallMiddleware: boolean) {
   return "";
 }
 
-export function registerModelsCommand(program: Command) {
+export function registerModelCommand(program: Command) {
   program
-    .command("models")
+    .command("model")
+    .description("Manage models")
+    .command("list", { isDefault: true })
     .description("List supported models from all providers")
     .action(async () => {
       // Display models from all vendors
