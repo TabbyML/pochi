@@ -21,6 +21,7 @@
     "rules",
     "workflows",
     "mcp",
+    "custom-agent",
     "---Resources---",
     "developer-updates"
   ]

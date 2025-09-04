@@ -20,5 +20,5 @@ export const useCustomAgent = () => {
     return { data: [], isLoading: true };
   }
 
-  return { data: customAgentsSignal.value, isLoading: false };
+  return { customAgents: customAgentsSignal.value, isLoading: false };
 };

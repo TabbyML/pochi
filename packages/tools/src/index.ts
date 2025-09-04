@@ -16,12 +16,13 @@ export type {
   ToolFunctionType,
   PreviewToolFunctionType,
 } from "./types";
+import { type CustomAgent, newCustomAgent } from "./custom-agent";
 import { killBackgroundJob } from "./kill-background-job";
 import { readBackgroundJobOutput } from "./read-background-job-output";
 import { startBackgroundJob } from "./start-background-job";
 import { writeToFile } from "./write-to-file";
 export type { SubTask } from "./new-task";
-export { CustomAgent } from "./custom-agent";
+export { CustomAgent, fixCustomAgentTools } from "./custom-agent";
 
 export function isUserInputToolPart(part: UIMessagePart<UIDataTypes, UITools>) {
   return (
@@ -34,7 +35,7 @@ export function isAutoApproveTool(part: ToolUIPart): boolean {
   return ToolsByPermission.default.some((tool) => part.type === `tool-${tool}`);
 }
 
-export type ToolName = keyof typeof ClientTools;
+export type ToolName = keyof ClientTools;
 
 export const ToolsByPermission = {
   read: [
@@ -54,6 +55,7 @@ export const ToolsByPermission = {
     "startBackgroundJob",
     "killBackgroundJob",
     "newTask",
+    "newCustomAgent",
   ] satisfies ToolName[] as string[],
   default: ["todoWrite"] satisfies ToolName[] as string[],
 };
@@ -74,28 +76,34 @@ const CliTools = {
   writeToFile,
 };
 
-export const ClientTools = {
-  ...CliTools,
-  newTask,
-  startBackgroundJob,
-  readBackgroundJobOutput,
-  killBackgroundJob,
+export const buildClientTools = (customAgents?: CustomAgent[]) => {
+  return {
+    ...CliTools,
+    newTask,
+    startBackgroundJob,
+    readBackgroundJobOutput,
+    killBackgroundJob,
+    newCustomAgent: newCustomAgent(customAgents),
+  };
 };
 
-export type ClientTools = typeof ClientTools;
+export type ClientTools = ReturnType<typeof buildClientTools>;
 
 export const selectClientTools = (options: {
   isSubTask: boolean;
   isCli: boolean;
+  customAgents?: CustomAgent[];
 }) => {
   if (options.isCli) {
     return CliTools;
   }
 
+  const clientTools = buildClientTools(options.customAgents);
+
   if (options?.isSubTask) {
-    const { newTask, ...rest } = ClientTools;
+    const { newTask, newCustomAgent, ...rest } = clientTools;
     return rest;
   }
 
-  return ClientTools;
+  return clientTools;
 };

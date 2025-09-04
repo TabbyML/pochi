@@ -1,5 +1,6 @@
 import { useSelectedModels } from "@/features/settings";
 import { apiClient } from "@/lib/auth-client";
+import { useCustomAgent } from "@/lib/hooks/use-custom-agent";
 import { useLatest } from "@/lib/hooks/use-latest";
 import { useMcp } from "@/lib/hooks/use-mcp";
 import { vscodeHost } from "@/lib/vscode";
@@ -21,6 +22,9 @@ export function useLiveChatKitGetters({
   const mcpToolSet = useLatest(toolset);
 
   const llm = useLLM();
+
+  const { customAgents } = useCustomAgent();
+  const customAgentsRef = useLatest(customAgents);
 
   const getEnvironment = useCallback(
     async ({ messages }: { messages: readonly Message[] }) => {
@@ -51,6 +55,9 @@ export function useLiveChatKitGetters({
 
     // biome-ignore lint/correctness/useExhaustiveDependencies(mcpToolSet.current): mcpToolSet is ref.
     getMcpToolSet: useCallback(() => mcpToolSet.current, []),
+
+    // biome-ignore lint/correctness/useExhaustiveDependencies(customAgentsRef.current): customAgentsRef is ref.
+    getCustomAgents: useCallback(() => customAgentsRef.current, []),
   };
 }
 

@@ -24,6 +24,7 @@
     "@ai-sdk/gateway": "catalog:",
     "zod": "catalog:",
     "react": "catalog:",
+    "remeda": "catalog:",
     "base58-js": "^3.0.3"
   }
 }

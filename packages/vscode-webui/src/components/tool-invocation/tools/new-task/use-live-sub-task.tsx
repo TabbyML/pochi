@@ -12,12 +12,13 @@ import {
 } from "@/features/retry";
 import { useTodos } from "@/features/todo";
 import { apiClient } from "@/lib/auth-client";
+import { useCustomAgent } from "@/lib/hooks/use-custom-agent";
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
 import { vscodeHost } from "@/lib/vscode";
 import { useChat } from "@ai-sdk/react";
 import { catalog } from "@getpochi/livekit";
 import { useLiveChatKit } from "@getpochi/livekit/react";
-import type { Todo } from "@getpochi/tools";
+import type { CustomAgent, Todo } from "@getpochi/tools";
 import { useStore } from "@livestore/react";
 import { ThreadAbortSignal } from "@quilted/threads";
 import { getToolName, lastAssistantMessageIsCompleteWithToolCalls } from "ai";
@@ -25,13 +26,23 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ToolProps } from "../../types";
 
 export function useLiveSubTask(
-  { tool, isExecuting }: Pick<ToolProps<"newTask">, "tool" | "isExecuting">,
+  {
+    tool,
+    isExecuting,
+  }: Pick<ToolProps<"newTask" | "newCustomAgent">, "tool" | "isExecuting">,
   toolCallStatusRegistry: ToolCallStatusRegistry,
 ): TaskThreadSource {
   const lifecycle = useToolCallLifeCycle().getToolCallLifeCycle({
     toolName: getToolName(tool),
     toolCallId: tool.toolCallId,
   });
+
+  const { customAgents } = useCustomAgent();
+
+  let customAgent: CustomAgent | undefined;
+  if (tool.type === "tool-newCustomAgent") {
+    customAgent = customAgents?.find((a) => a.name === tool.input?.agentType);
+  }
 
   const abortController = useRef(new AbortController());
 
@@ -71,6 +82,7 @@ export function useLiveSubTask(
     abortSignal: abortController.current.signal,
     getters,
     isSubTask: true,
+    customAgent,
     sendAutomaticallyWhen: (x) => {
       const streamingResult = ensureNewTaskStreamingResult(
         lifecycle.streamingResult,
@@ -307,7 +319,10 @@ const useInitAutoStart = ({
 const ensureNewTaskStreamingResult = (
   streamingResult: ToolCallLifeCycle["streamingResult"],
 ) => {
-  if (streamingResult?.toolName !== "newTask") {
+  if (
+    streamingResult?.toolName !== "newTask" &&
+    streamingResult?.toolName !== "newCustomAgent"
+  ) {
     return undefined;
   }
   return streamingResult;

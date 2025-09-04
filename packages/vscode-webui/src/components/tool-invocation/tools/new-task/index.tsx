@@ -14,7 +14,7 @@ import type { ToolProps } from "../../types";
 import { useInlinedSubTask } from "./use-inlined-sub-task";
 import { useLiveSubTask } from "./use-live-sub-task";
 
-interface NewTaskToolProps extends ToolProps<"newTask"> {
+interface NewTaskToolProps extends ToolProps<"newTask" | "newCustomAgent"> {
   // For storybook visualization
   taskThreadSource?: TaskThreadSource;
 }
@@ -42,6 +42,12 @@ export const newTaskTool: React.FC<NewTaskToolProps> = ({
     isLiveTaskSource = true;
   }
 
+  let agentType: string | undefined;
+  if (tool.type === "tool-newCustomAgent") {
+    agentType = tool.input?.agentType;
+  }
+  const toolTitle = agentType ?? "Subtask";
+
   const [showMessageList, setShowMessageList] = useState(false);
   return (
     <div>
@@ -52,10 +58,10 @@ export const newTaskTool: React.FC<NewTaskToolProps> = ({
             <Badge variant="secondary" className={cn("mr-1 ml-2 py-0")}>
               {isLiveTaskSource ? (
                 <Link to="/" search={{ uid, ts: Date.now() }} replace={true}>
-                  Subtask
+                  {toolTitle}
                 </Link>
               ) : (
-                <>Subtask</>
+                <>{toolTitle}</>
               )}
             </Badge>
             <span className="ml-2">{description}</span>
