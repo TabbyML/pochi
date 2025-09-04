@@ -160,8 +160,8 @@ export async function collectWorkflows(): Promise<
   // 1. Collect and add all global workflows to the map
   const globalWorkflows = await collectGlobalWorkflows();
   for (const workflow of globalWorkflows) {
-  allWorkflows.set(workflow.id, workflow);
-}
+    allWorkflows.set(workflow.id, workflow);
+  }
 
   // 2. Collect and add local workflows, overwriting global ones with the same ID
   const workflowsDir = getWorkflowsDirectoryUri();
