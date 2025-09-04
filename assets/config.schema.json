@@ -36,14 +36,7 @@
                     "type": "string"
                   },
                   "image": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
+                    "type": "string"
                   }
                 },
                 "required": ["name", "email"],

@@ -49,7 +49,9 @@ export class Pochi extends VendorBase {
     }
 
     return {
-      ...session.data.user,
+      name: session.data.user.name,
+      email: session.data.user.email,
+      image: session.data.user.image || undefined,
     };
   }
 }

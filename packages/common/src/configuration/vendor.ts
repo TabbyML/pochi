@@ -3,7 +3,7 @@ import z from "zod/v4";
 export const UserInfo = z.object({
   name: z.string(),
   email: z.string(),
-  image: z.string().nullable().optional(),
+  image: z.string().optional(),
 });
 
 export type UserInfo = z.infer<typeof UserInfo>;
