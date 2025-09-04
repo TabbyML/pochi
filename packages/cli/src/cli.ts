@@ -19,6 +19,7 @@ import {
   replaceWorkflowReferences,
 } from "./lib/workflow-loader";
 import { createStore } from "./livekit/store";
+import { registerModelsCommand } from "./models";
 import { OutputRenderer } from "./output-renderer";
 import { TaskRunner } from "./task-runner";
 import { waitUntil } from "./wait-until";
@@ -133,6 +134,7 @@ program
   });
 
 registerAuthCommand(program);
+registerModelsCommand(program);
 
 program.parse(process.argv);
 
