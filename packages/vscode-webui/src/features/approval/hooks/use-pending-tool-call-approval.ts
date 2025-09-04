@@ -1,12 +1,12 @@
 import type { Message, UITools } from "@getpochi/livekit";
-import type { ClientTools } from "@getpochi/tools";
+import type { ToolName } from "@getpochi/tools";
 import { isUserInputToolPart } from "@getpochi/tools";
 import { type ToolUIPart, getToolName, isToolUIPart } from "ai";
 import { useMemo } from "react";
 
 export type PendingToolCallApproval =
   | {
-      name: keyof ClientTools;
+      name: ToolName;
       tool: ToolUIPart<UITools>;
     }
   | {
@@ -41,7 +41,7 @@ export function usePendingToolCallApproval({
 
     if (tools.length === 1) {
       return {
-        name: getToolName(tools[0]) as keyof typeof ClientTools,
+        name: getToolName(tools[0]) as ToolName,
         tool: tools[0],
       };
     }

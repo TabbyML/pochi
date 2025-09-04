@@ -4,6 +4,7 @@ import type { Environment } from "../base";
 
 import type {
   CaptureEvent,
+  CustomAgentFile,
   DisplayModel,
   McpStatus,
   ResourceURI,
@@ -201,6 +202,11 @@ const VSCodeHostStub = {
   },
   readModelList: async () => {
     return Promise.resolve({} as ThreadSignalSerialization<DisplayModel[]>);
+  },
+  readCustomAgents: async (): Promise<
+    ThreadSignalSerialization<CustomAgentFile[]>
+  > => {
+    return Promise.resolve({} as ThreadSignalSerialization<CustomAgentFile[]>);
   },
 } satisfies VSCodeHostApi;
 

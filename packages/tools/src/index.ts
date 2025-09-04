@@ -21,6 +21,7 @@ import { readBackgroundJobOutput } from "./read-background-job-output";
 import { startBackgroundJob } from "./start-background-job";
 import { writeToFile } from "./write-to-file";
 export type { SubTask } from "./new-task";
+export { CustomAgent } from "./custom-agent";
 
 export function isUserInputToolPart(part: UIMessagePart<UIDataTypes, UITools>) {
   return (
@@ -33,7 +34,7 @@ export function isAutoApproveTool(part: ToolUIPart): boolean {
   return ToolsByPermission.default.some((tool) => part.type === `tool-${tool}`);
 }
 
-type ToolName = keyof typeof ClientTools;
+export type ToolName = keyof typeof ClientTools;
 
 export const ToolsByPermission = {
   read: [

@@ -11,6 +11,8 @@ import {
 import { getWorkspaceFolder, isFileExists } from "@/lib/fs";
 
 import path from "node:path";
+// biome-ignore lint/style/useImportType: needed for dependency injection
+import { CustomAgentManager } from "@/lib/custom-agent";
 import { getLogger } from "@/lib/logger";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { ModelList } from "@/lib/model-list";
@@ -21,22 +23,27 @@ import { TokenStorage } from "@/lib/token-storage";
 import { applyDiff, previewApplyDiff } from "@/tools/apply-diff";
 import { executeCommand } from "@/tools/execute-command";
 import { globFiles } from "@/tools/glob-files";
+import { killBackgroundJob } from "@/tools/kill-background-job";
 import { listFiles as listFilesTool } from "@/tools/list-files";
 import {
   multiApplyDiff,
   previewMultiApplyDiff,
 } from "@/tools/multi-apply-diff";
+import { readBackgroundJobOutput } from "@/tools/read-background-job-output";
 import { readFile } from "@/tools/read-file";
 import { searchFiles } from "@/tools/search-files";
+import { startBackgroundJob } from "@/tools/start-background-job";
 import { todoWrite } from "@/tools/todo-write";
 import { previewWriteToFile, writeToFile } from "@/tools/write-to-file";
 import type { Environment } from "@getpochi/common";
+import type { CustomModelSetting } from "@getpochi/common/configuration";
 import {
   GitStatusReader,
   ignoreWalk,
   isPlainTextFile,
   listWorkspaceFiles,
 } from "@getpochi/common/tool-utils";
+import type { CustomAgentFile } from "@getpochi/common/vscode-webui-bridge";
 import type {
   CaptureEvent,
   DisplayModel,
@@ -74,10 +81,6 @@ import { DiffChangesContentProvider } from "../editor/diff-changes-content-provi
 import { type FileSelection, TabState } from "../editor/tab-state";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { McpHub } from "../mcp/mcp-hub";
-
-import { killBackgroundJob } from "@/tools/kill-background-job";
-import { readBackgroundJobOutput } from "@/tools/read-background-job-output";
-import { startBackgroundJob } from "@/tools/start-background-job";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { ThirdMcpImporter } from "../mcp/third-party-mcp";
 import { isExecutable } from "../mcp/types";
@@ -112,8 +115,8 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     private readonly checkpointService: CheckpointService,
     private readonly pochiConfiguration: PochiConfiguration,
     private readonly modelList: ModelList,
+    private readonly customAgentManager: CustomAgentManager,
   ) {}
-
   listRuleFiles = async (): Promise<RuleFile[]> => {
     return await collectRuleFiles();
   };
@@ -692,6 +695,12 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     ThreadSignalSerialization<DisplayModel[]>
   > => {
     return ThreadSignal.serialize(this.modelList.modelList);
+  };
+
+  readCustomAgents = async (): Promise<
+    ThreadSignalSerialization<CustomAgentFile[]>
+  > => {
+    return ThreadSignal.serialize(this.customAgentManager.agents);
   };
 
   dispose() {

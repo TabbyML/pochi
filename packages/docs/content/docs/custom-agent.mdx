@@ -1,0 +1,56 @@
+---
+title: Custom Agent
+description: Learn how to create and use custom agents in Pochi.
+---
+
+# Custom Agents
+
+Pochi allows you to define custom agents to handle specific tasks. These agents can be tailored with their own system prompts and sets of tools, enabling you to create specialized assistants for your workflows.
+
+## Defining a Custom Agent
+
+Custom agents are defined in `.md` files located in either the project's `.pochi/agents/` directory or the system-wide `~/.pochi/agents/` directory.
+
+An agent definition file consists of two parts: a frontmatter section for configuration and a content section for the system prompt.
+
+Here is an example of a custom agent definition:
+
+```markdown
+---
+name: your-custom-agent-name
+description: Description of when this custom agent should be invoked
+tools: tool-1, tool-2, tool-3 # Optional - inherits all tools if omitted
+---
+
+Your custom agent's system prompt goes here. This can be multiple paragraphs
+and should clearly define the custom agent's role, capabilities, and approach
+to solving problems.
+
+Include specific instructions, best practices, and any constraints
+the custom agent should follow.
+```
+
+### Configuration
+
+The frontmatter provides metadata for the custom agent:
+
+- `name` (required): A unique name for your agent.
+- `description` (required): A short description of what the agent does. This is used to help Pochi decide when to use your agent.
+- `tools` (optional): A list of tools that the agent is allowed to use. If omitted, the agent inherits all available tools.
+
+### System Prompt
+
+The content of the file after the frontmatter is the system prompt for the agent. This prompt should define the agent's role, capabilities, and how it should behave.
+
+## Using a Custom Agent
+
+You can mention the custom agent's name in your prompt, and Pochi may decide to use it based on the context.
+
+## Managing Custom Agents
+
+You can manage your custom agents through the Pochi interface or by directly manipulating the agent definition files. The common operations include:
+
+- **List**: View all available agents in the `.pochi/agents/` directory or in Pochi settings.
+- **Create**: Create a new `.md` file in the `.pochi/agents/` directory.
+- **Delete**: Remove the corresponding agent file.
+- **Edit**: Modify the agent's definition file.

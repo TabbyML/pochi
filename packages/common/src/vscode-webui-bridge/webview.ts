@@ -3,6 +3,7 @@ import type { ThreadSignalSerialization } from "@quilted/threads/signals";
 import type { Environment } from "../base";
 import type {
   CaptureEvent,
+  CustomAgentFile,
   McpStatus,
   NewTaskParams,
   ResourceURI,
@@ -143,6 +144,8 @@ export interface VSCodeHostApi {
   ): void;
 
   readCurrentWorkspace(): Promise<string | undefined>;
+
+  readCustomAgents(): Promise<ThreadSignalSerialization<CustomAgentFile[]>>;
 
   readMinionId(): Promise<string | null>;
 
