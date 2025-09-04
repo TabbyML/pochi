@@ -10,10 +10,11 @@ function getLocalWorkflowPath(id: string) {
 
 function getGlobalWorkflowPath(id: string) {
   // Construct the workflow file path
-  const workflowsDir = path.join(...constants.GlobalWorkspaceWorkflowPathSegments);
+  const workflowsDir = path.join(
+    ...constants.GlobalWorkspaceWorkflowPathSegments,
+  );
   return path.join(workflowsDir, `${id}.md`);
 }
-
 
 /**
  * Loads workflow content from a workflow file, prioritizing local over global.
@@ -21,7 +22,10 @@ function getGlobalWorkflowPath(id: string) {
  * @param cwd The current working directory
  * @returns An object containing the content and the path, or null if not found
  */
-async function loadWorkflow(id: string, cwd: string): Promise<{ content: string; path: string } | null> {
+async function loadWorkflow(
+  id: string,
+  cwd: string,
+): Promise<{ content: string; path: string } | null> {
   // 1. Try to load the local workflow first
   const localPath = path.join(cwd, getLocalWorkflowPath(id));
   try {

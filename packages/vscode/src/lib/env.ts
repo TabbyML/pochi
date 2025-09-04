@@ -1,3 +1,4 @@
+import { homedir } from "node:os";
 import path from "node:path";
 import { getLogger } from "@getpochi/common";
 import {
@@ -14,7 +15,6 @@ import {
   readDirectoryFiles,
   readFileContent,
 } from "./fs";
-import { homedir } from "node:os";
 
 // Path constants - using arrays for consistency
 const WorkflowsDirPath = [".pochi", "workflows"];
@@ -24,13 +24,8 @@ export function getCwd() {
   return vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || process.cwd();
 }
 
-
 // Get the global workflow directory path
-const GlobalWorkflowsDirPath = path.join(
-  homedir(),
-  ".pochi",
-  "workflows",
-);
+const GlobalWorkflowsDirPath = path.join(homedir(), ".pochi", "workflows");
 
 /**
  * Gets system information such as current working directory, shell, OS, and home directory.
@@ -157,13 +152,16 @@ export async function collectGlobalWorkflows(): Promise<
 export async function collectWorkflows(): Promise<
   { id: string; path: string; content: string }[]
 > {
-  const allWorkflows = new Map<string, { id: string; path: string; content: string }>();
+  const allWorkflows = new Map<
+    string,
+    { id: string; path: string; content: string }
+  >();
 
   // 1. Collect and add all global workflows to the map
   const globalWorkflows = await collectGlobalWorkflows();
-  globalWorkflows.forEach((workflow) => {
-    allWorkflows.set(workflow.id, workflow);
-  });
+  for (const workflow of globalWorkflows) {
+  allWorkflows.set(workflow.id, workflow);
+}
 
   // 2. Collect and add local workflows, overwriting global ones with the same ID
   const workflowsDir = getWorkflowsDirectoryUri();
@@ -189,9 +187,10 @@ export async function collectWorkflows(): Promise<
       };
     }),
   );
-  (await localWorkflows).forEach((workflow) => {
+  const localWorkflowsArray = await localWorkflows;
+  for (const workflow of localWorkflowsArray) {
     allWorkflows.set(workflow.id, workflow);
-  });
+  }
 
   // Convert the map values to an array and return
   return Array.from(allWorkflows.values());
