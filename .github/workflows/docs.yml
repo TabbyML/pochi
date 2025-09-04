@@ -32,7 +32,6 @@ concurrency:
 jobs:
   build-docs:
     runs-on: ubuntu-latest
-    if: github.repository == 'TabbyML/pochi'
     steps:
       - uses: actions/checkout@v4
         with:
