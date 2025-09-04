@@ -4,6 +4,7 @@ import {
   getVendorConfig,
   updateVendorConfig,
 } from "../configuration";
+import type { ModelOptions } from "./types";
 
 export abstract class VendorBase {
   constructor(readonly vendorId: string) {}
