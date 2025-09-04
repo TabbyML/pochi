@@ -8,6 +8,7 @@ import { funnel, isDeepEqual, mergeDeep } from "remeda";
 import * as fleece from "silver-fleece";
 import { getLogger } from "../base";
 import { PochiConfig } from "./types";
+import type { VendorConfig } from "./vendor";
 
 const PochiConfigFilePath = path.join(os.homedir(), ".pochi", "config.jsonc");
 
@@ -24,9 +25,14 @@ class PochiConfigManager {
     if (process.env.POCHI_SESSION_TOKEN) {
       this.cfg.value = {
         ...this.cfg.value,
-        credentials: {
-          ...this.cfg.value.credentials,
-          pochiToken: process.env.POCHI_SESSION_TOKEN,
+        vendors: {
+          ...this.cfg.value.vendors,
+          pochi: {
+            ...this.cfg.value.vendors?.pochi,
+            credentials: {
+              token: process.env.POCHI_SESSION_TOKEN,
+            },
+          },
         },
       };
     }
@@ -100,7 +106,7 @@ class PochiConfigManager {
 
       await fsPromise.writeFile(PochiConfigFilePath, content);
     } catch (err) {
-      logger.debug("Failed to save config file", err);
+      logger.error("Failed to save config file", err);
     }
   }
 
@@ -112,7 +118,24 @@ class PochiConfigManager {
     this.cfg.value = config;
 
     // Save to file without await.
-    this.save();
+    await this.save();
+  };
+
+  getVendorConfig = (id: string) => {
+    const cfg =
+      this.cfg.value.vendors?.[id as keyof NonNullable<PochiConfig["vendors"]>];
+    return cfg as VendorConfig;
+  };
+
+  updateVendorConfig = async (name: string, vendor: VendorConfig | null) => {
+    this.cfg.value = {
+      ...this.cfg.value,
+      vendors: {
+        ...this.cfg.value.vendors,
+        [name]: vendor,
+      },
+    };
+    await this.save();
   };
 
   get config(): ReadonlySignal<PochiConfig> {
@@ -120,9 +143,12 @@ class PochiConfigManager {
   }
 }
 
-const { config, updateConfig } = new PochiConfigManager();
+const { config, updateConfig, getVendorConfig, updateVendorConfig } =
+  new PochiConfigManager();
 export {
   config as pochiConfig,
   updateConfig as updatePochiConfig,
+  getVendorConfig,
+  updateVendorConfig,
   PochiConfigFilePath,
 };

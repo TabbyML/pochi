@@ -1,3 +1,4 @@
+import "./i18n/config";
 import "./styles.css";
 import { StrictMode, useEffect } from "react";
 import ReactDOM from "react-dom/client";

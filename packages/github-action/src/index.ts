@@ -20,11 +20,8 @@ async function main(): Promise<void> {
     githubManager = await GitHubManager.create(github.context);
     await githubManager.check();
 
-    // Parse user prompt - pass only original query to runner
-    const userPrompt = githubManager.parseRequest();
-
-    // Let runner handle everything with original user prompt only
-    await runPochi(userPrompt, githubManager);
+    // Let runner handle everything
+    await runPochi(githubManager);
 
     // Task completed successfully
   } catch (error) {

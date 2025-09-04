@@ -1,4 +1,4 @@
-import { PluginKey } from "@tiptap/pm/state";
+import { type EditorState, Plugin, PluginKey } from "@tiptap/pm/state";
 import { Extension, ReactRenderer } from "@tiptap/react";
 import {
   Suggestion,
@@ -22,6 +22,34 @@ import {
 } from "./mention-list";
 
 export const autoCompletePluginKey = new PluginKey("autoCompletion");
+
+const suggestionTriggerPluginKey = new PluginKey("suggestionTrigger");
+
+const suggestionTriggerPlugin = new Plugin({
+  key: suggestionTriggerPluginKey,
+  state: {
+    init: () => false,
+    apply: (tr, was) => {
+      // Reset state when the suggestion is closed (e.g., by selecting an item, pressing Esc) or an item is applied.
+      if (tr.getMeta("autoCompleteClose") || tr.getMeta("docChangeEvent")) {
+        return false;
+      }
+
+      // Reset state when only the selection changes but the document content does not (e.g., clicking, moving cursor with arrow keys).
+      if (tr.selectionSet && !tr.docChanged) {
+        return false;
+      }
+
+      // Activate state when the document content changes, considered as user input.
+      if (tr.docChanged) {
+        return true;
+      }
+
+      // For other transactions that don't affect the suggestion, keep the previous state.
+      return was;
+    },
+  },
+});
 
 interface AutoCompleteSuggestionItem {
   value: string;
@@ -146,6 +174,15 @@ export const AutoCompleteExtension = Extension.create<
     const allow: SuggestionOptions<AutoCompleteSuggestionItem>["allow"] = (
       props,
     ) => {
+      const shouldTriggerSuggestion = suggestionTriggerPluginKey.getState(
+        props.editor.state,
+      );
+      // The suggestion is triggered by selection changes, but we only want to
+      // show it when the document has changed.
+      if (!shouldTriggerSuggestion) {
+        return false;
+      }
+
       const suggestionState = autoCompletePluginKey.getState(
         props.editor.state,
       );
@@ -153,19 +190,9 @@ export const AutoCompleteExtension = Extension.create<
         return false;
       }
 
-      const fileMentionState = fileMentionPluginKey.getState(
-        props.editor.state,
-      );
-      const workflowMentionState = workflowMentionPluginKey.getState(
-        props.editor.state,
-      );
-      const isMentionActive =
-        fileMentionState?.active || workflowMentionState?.active;
-
-      if (isMentionActive) {
+      if (isMentionExtensionActive(props.editor.state)) {
         return false;
       }
-
       if (userAllow) {
         return userAllow(props);
       }
@@ -173,6 +200,7 @@ export const AutoCompleteExtension = Extension.create<
     };
 
     return [
+      suggestionTriggerPlugin,
       Suggestion<AutoCompleteSuggestionItem>({
         ...suggestionOptions,
         editor: this.editor,
@@ -182,7 +210,12 @@ export const AutoCompleteExtension = Extension.create<
           fuzzySearchAutoCompleteItems(query, this.options.messageContent),
         command: ({ editor, range, props }) => {
           const label = props.value;
-          editor.chain().focus().insertContentAt(range, `${label} `).run();
+          editor
+            .chain()
+            .focus()
+            // .setMeta("docChangeEvent", { event: "autoComplete" })
+            .insertContentAt(range, `${label} `)
+            .run();
         },
         allow,
         render: () => {
@@ -199,6 +232,10 @@ export const AutoCompleteExtension = Extension.create<
           const createMention = (
             props: SuggestionProps<AutoCompleteSuggestionItem>,
           ) => {
+            if (isMentionExtensionActive(props.editor.state)) {
+              return;
+            }
+
             storage.component = new ReactRenderer(AutoCompleteMentionList, {
               props: { ...props, fetchItems },
               editor: props.editor,
@@ -235,6 +272,9 @@ export const AutoCompleteExtension = Extension.create<
               storage.component.destroy();
               storage.component = null;
             }
+            this.editor.view.dispatch(
+              this.editor.view.state.tr.setMeta("autoCompleteClose", true),
+            );
           };
 
           const showPopup = (
@@ -257,14 +297,26 @@ export const AutoCompleteExtension = Extension.create<
             },
             onUpdate: (props: SuggestionProps<AutoCompleteSuggestionItem>) => {
               latestProps = props;
-              if (!props.items?.length) {
+              const suggestionActive = suggestionTriggerPluginKey.getState(
+                props.editor.state,
+              );
+              if (!props.items?.length || !suggestionActive) {
                 destroyMention();
                 return;
               }
 
-              if (storage.showTimeout === null && storage.component === null) {
-                showPopup(props);
+              if (storage.showTimeout && storage.component === null) {
+                clearTimeout(storage.showTimeout);
+                storage.showTimeout = window.setTimeout(() => {
+                  if (latestProps) {
+                    if (storage.component === null) {
+                      showPopup(latestProps);
+                    }
+                  }
+                  storage.showTimeout = null;
+                }, 200);
               }
+
               storage.component?.updateProps(props);
             },
             onExit: () => {
@@ -284,3 +336,9 @@ export const AutoCompleteExtension = Extension.create<
     ];
   },
 });
+
+function isMentionExtensionActive(state: EditorState) {
+  const fileMentionState = fileMentionPluginKey.getState(state);
+  const workflowMentionState = workflowMentionPluginKey.getState(state);
+  return fileMentionState?.active || workflowMentionState?.active;
+}

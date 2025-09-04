@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import * as core from "@actions/core";
 import type { IssueCommentCreatedEvent } from "@octokit/webhooks-types";
 import { readPochiConfig } from "./env";
 import type { GitHubManager } from "./github-manager";
@@ -54,12 +55,21 @@ async function cleanupExecution(
       context.eyesReactionId,
     );
   }
+
+  if (context.outputBuffer.trim()) {
+    await core.summary
+      .addHeading("Task Details")
+      .addCodeBlock(buildBatchOutput(context.outputBuffer), "text")
+      .addRaw(
+        `**[View Full GitHub Action](${getGitHubActionUrl(request.event)})**\n\n`,
+      )
+      .write();
+  }
 }
 
-export async function runPochi(
-  request: RunPochiRequest,
-  githubManager: GitHubManager,
-): Promise<void> {
+export async function runPochi(githubManager: GitHubManager): Promise<void> {
+  // Parse the complete request from GitHubManager
+  const request = githubManager.parseRequest();
   const config = readPochiConfig();
 
   // Add eye reaction to indicate starting
