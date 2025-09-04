@@ -476,7 +476,11 @@ export function FormEditor({
       if (sessionState.input) {
         try {
           const content = JSON.parse(sessionState.input);
-          editor.commands.setContent(content, true);
+          editor.view.dispatch(
+            editor.state.tr
+              .setMeta("docChangeEvent", { event: "restoreSession" })
+              .replaceWith(0, editor.state.doc.content.size, content),
+          );
         } catch (error) {
           // ignore JSON parse errors
         }
