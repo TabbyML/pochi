@@ -1,36 +1,26 @@
 import { createAuthClient as createAuthClientImpl } from "better-auth/react";
-import z from "zod/v4";
-import type { UserInfo } from "../configuration";
+import type { PochiVendorConfig, UserInfo } from "../configuration";
 import { deviceLinkClient } from "../device-link/client";
 import { getServerBaseUrl } from "../vscode-webui-bridge";
 import { type ModelOptions, VendorBase } from "./types";
 
 export const PochiVendorId = "pochi";
 
-const PochiCredentials = z
-  .object({
-    token: z.string(),
-  })
-  .optional()
-  .catch(undefined);
-
-type PochiCredentials = z.infer<typeof PochiCredentials>;
+type PochiCredentials = PochiVendorConfig["credentials"];
 
 export class Pochi extends VendorBase {
   private authClient: ReturnType<typeof createAuthClientImpl>;
 
   constructor(
-    credentials: unknown,
+    credentials: PochiCredentials,
     updateCredentials: (credentials: PochiCredentials) => void,
   ) {
     super(PochiVendorId);
 
-    this.authClient = createAuthClient(
-      PochiCredentials.parse(credentials)?.token,
-      (token) =>
-        updateCredentials({
-          token,
-        }),
+    this.authClient = createAuthClient(credentials.token, (token) =>
+      updateCredentials({
+        token,
+      }),
     );
   }
 

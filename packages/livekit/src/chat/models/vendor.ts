@@ -8,6 +8,7 @@ import { wrapLanguageModel } from "ai";
 import { hc } from "hono/client";
 import type { RequestData } from "../../types";
 import { createPochiModel } from "./pochi";
+import type { PochiVendorConfig } from "@getpochi/common/configuration";
 
 export function createVendorModel(
   llm: Extract<RequestData["llm"], { type: "vendor" }>,
@@ -47,15 +48,19 @@ function createModel(
     return createPochiModel(modelId, {
       type: "pochi",
       modelId,
-      apiClient: createApiClient(credentials),
+      apiClient: createApiClient(
+        credentials as PochiVendorConfig["credentials"],
+      ),
     });
   }
 
   throw new Error(`Unknown vendor: ${vendorId}`);
 }
 
-function createApiClient(credentials: unknown): PochiApiClient {
-  const { token } = credentials as { token: string };
+function createApiClient(
+  credentials: PochiVendorConfig["credentials"],
+): PochiApiClient {
+  const { token } = credentials;
   const authClient: PochiApiClient = hc<PochiApi>("https://app.getpochi.com", {
     fetch(input: string | URL | Request, init?: RequestInit) {
       const headers = new Headers(init?.headers);

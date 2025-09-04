@@ -25,9 +25,14 @@ class PochiConfigManager {
     if (process.env.POCHI_SESSION_TOKEN) {
       this.cfg.value = {
         ...this.cfg.value,
-        credentials: {
-          ...this.cfg.value.credentials,
-          pochiToken: process.env.POCHI_SESSION_TOKEN,
+        vendors: {
+          ...this.cfg.value.vendors,
+          pochi: {
+            ...this.cfg.value.vendors?.pochi,
+            credentials: {
+              token: process.env.POCHI_SESSION_TOKEN,
+            },
+          },
         },
       };
     }

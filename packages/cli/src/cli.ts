@@ -177,7 +177,7 @@ async function parseTaskInput(options: ProgramOpts, program: Program) {
 
 async function createApiClient(): Promise<PochiApiClient> {
   const { credentials } = pochiConfig.value.vendors?.pochi || {};
-  const { token } = (credentials as { token: string } | undefined) || {};
+  const token = credentials?.token;
 
   const authClient: PochiApiClient = hc<PochiApi>(prodServerUrl, {
     fetch(input: string | URL | Request, init?: RequestInit) {

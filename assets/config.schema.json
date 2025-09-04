@@ -6,15 +6,6 @@
       "default": "https://getpochi.com/config.schema.json",
       "type": "string"
     },
-    "credentials": {
-      "type": "object",
-      "properties": {
-        "pochiToken": {
-          "type": "string"
-        }
-      },
-      "additionalProperties": false
-    },
     "vendors": {
       "type": "object",
       "propertyNames": {
