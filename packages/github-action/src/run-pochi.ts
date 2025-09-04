@@ -59,17 +59,10 @@ async function cleanupExecution(
   if (context.outputBuffer.trim()) {
     await core.summary
       .addHeading("Pochi Report")
-      .addHeading("🚀 System Initialization", 2)
-      .addRaw("**Available Tools:** 19 tools loaded\n\n")
-      .addRaw(
-        `**Event Type and Context:** ${formatCustomInstruction(request.event)}\n\n`,
-      )
       .addHeading("🔧 Execution Details", 2)
+      .addRaw(`${buildBatchOutput(context.outputBuffer)}\n\n`)
       .addRaw(
-        `${buildBatchOutput(context.outputBuffer).replace(/\\n/g, "\n")}\n\n`,
-      )
-      .addRaw(
-        `🔗 **[View Full GitHub Action Log](${getGitHubActionUrl(request.event)})**\n\n`,
+        `**[View Full GitHub Action](${getGitHubActionUrl(request.event)})**\n\n`,
       )
       .write();
   }
