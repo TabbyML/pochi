@@ -14,6 +14,7 @@ import {
   readDirectoryFiles,
   readFileContent,
 } from "./fs";
+import { homedir } from "node:os";
 
 // Path constants - using arrays for consistency
 const WorkflowsDirPath = [".pochi", "workflows"];
@@ -22,6 +23,14 @@ const logger = getLogger("env");
 export function getCwd() {
   return vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || process.cwd();
 }
+
+
+// Get the global workflow directory path
+const GlobalWorkflowsDirPath = path.join(
+  homedir(),
+  ".pochi",
+  "workflows",
+);
 
 /**
  * Gets system information such as current working directory, shell, OS, and home directory.
@@ -64,6 +73,10 @@ export function getWorkspaceRulesFileUris() {
 
 function getWorkflowsDirectoryUri() {
   return getWorkspaceUri(...WorkflowsDirPath);
+}
+
+function getGlobalWorkflowsDirectoryUri() {
+  return getWorkspaceUri(...GlobalWorkflowsDirPath);
 }
 
 export async function collectRuleFiles(): Promise<RuleFile[]> {
@@ -109,10 +122,10 @@ export async function collectCustomRules(
  * Collects all workflow files from .pochi/workflows directory
  * @returns Array of workflow file paths
  */
-export async function collectWorkflows(): Promise<
+export async function collectGlobalWorkflows(): Promise<
   { id: string; path: string; content: string }[]
 > {
-  const workflowsDir = getWorkflowsDirectoryUri();
+  const workflowsDir = getGlobalWorkflowsDirectoryUri();
   const isMarkdownFile = (name: string, type: vscode.FileType) =>
     type === vscode.FileType.File && name.toLowerCase().endsWith(".md");
   const files = await readDirectoryFiles(workflowsDir, isMarkdownFile);
@@ -135,6 +148,53 @@ export async function collectWorkflows(): Promise<
       };
     }),
   );
+}
+
+/**
+ * Collects all workflow files from .pochi/workflows directory
+ * @returns Array of workflow file paths
+ */
+export async function collectWorkflows(): Promise<
+  { id: string; path: string; content: string }[]
+> {
+  const allWorkflows = new Map<string, { id: string; path: string; content: string }>();
+
+  // 1. Collect and add all global workflows to the map
+  const globalWorkflows = await collectGlobalWorkflows();
+  globalWorkflows.forEach((workflow) => {
+    allWorkflows.set(workflow.id, workflow);
+  });
+
+  // 2. Collect and add local workflows, overwriting global ones with the same ID
+  const workflowsDir = getWorkflowsDirectoryUri();
+  const isMarkdownFile = (name: string, type: vscode.FileType) =>
+    type === vscode.FileType.File && name.toLowerCase().endsWith(".md");
+  const files = await readDirectoryFiles(workflowsDir, isMarkdownFile);
+  const localWorkflows = Promise.all(
+    files.map(async (file) => {
+      const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+      const absolutePath = workspaceFolder
+        ? vscode.Uri.joinPath(workspaceFolder.uri, file).fsPath
+        : file;
+
+      const content = await readFileContent(absolutePath);
+
+      // e.g., ".pochi/workflows/workflow1.md" -> "workflow1.md"
+      const fileName = path.basename(file).replace(/\.md$/i, "");
+
+      return {
+        id: fileName,
+        path: file,
+        content: content || "",
+      };
+    }),
+  );
+  (await localWorkflows).forEach((workflow) => {
+    allWorkflows.set(workflow.id, workflow);
+  });
+
+  // Convert the map values to an array and return
+  return Array.from(allWorkflows.values());
 }
 
 /**

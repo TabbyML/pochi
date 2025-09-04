@@ -2,28 +2,42 @@ import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { constants, prompts } from "@getpochi/common";
 
-function getWorkflowPath(id: string) {
+function getLocalWorkflowPath(id: string) {
   // Construct the workflow file path
   const workflowsDir = path.join(...constants.WorkspaceWorkflowPathSegments);
   return path.join(workflowsDir, `${id}.md`);
 }
 
+function getGlobalWorkflowPath(id: string) {
+  // Construct the workflow file path
+  const workflowsDir = path.join(...constants.GlobalWorkspaceWorkflowPathSegments);
+  return path.join(workflowsDir, `${id}.md`);
+}
+
+
 /**
- * Loads workflow content from a workflow file
+ * Loads workflow content from a workflow file, prioritizing local over global.
  * @param id The name of the workflow (without .md extension)
  * @param cwd The current working directory
- * @returns The content of the workflow file, or null if not found
+ * @returns An object containing the content and the path, or null if not found
  */
-async function loadWorkflow(id: string, cwd: string): Promise<string | null> {
+async function loadWorkflow(id: string, cwd: string): Promise<{ content: string; path: string } | null> {
+  // 1. Try to load the local workflow first
+  const localPath = path.join(cwd, getLocalWorkflowPath(id));
   try {
-    // Check if the file exists and read its content
-    const content = await fs.readFile(
-      path.join(cwd, getWorkflowPath(id)),
-      "utf-8",
-    );
-    return content;
+    const localContent = await fs.readFile(localPath, "utf-8");
+    return { content: localContent, path: localPath };
   } catch (error) {
-    // File doesn't exist or cannot be read
+    // Local file doesn't exist, proceed to check global path
+  }
+
+  // 2. If local workflow is not found, try to load the global workflow
+  const globalPath = getGlobalWorkflowPath(id);
+  try {
+    const globalContent = await fs.readFile(globalPath, "utf-8");
+    return { content: globalContent, path: globalPath };
+  } catch (error) {
+    // Neither local nor global workflow found
     return null;
   }
 }
@@ -73,10 +87,11 @@ export async function replaceWorkflowReferences(
     const content = await loadWorkflow(id, cwd);
 
     if (content !== null) {
-      // Replace only the workflow reference, preserving surrounding text
+      // Replace only the workflow reference, preserving surrounding text so this way if its a local workflow it will just take wrt the cwd
+      // if its a global workflow it will take the entire global path
       result = result.replace(
         `/${id}`,
-        prompts.workflow(id, getWorkflowPath(id), content),
+        prompts.workflow(id, path.relative(cwd, content.path), content.content),
       );
     } else {
       missingWorkflows.push(id);
