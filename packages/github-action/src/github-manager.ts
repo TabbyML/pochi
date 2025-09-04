@@ -171,13 +171,9 @@ export class GitHubManager {
 
   parseRequest(): RunPochiRequest {
     const prompt = this.parsePrompt();
-    const event = {
-      ...this.payload,
-      comment: undefined,
-    };
     return {
       prompt,
-      event,
+      event: this.payload,
       commentId: this.payload.comment.id,
     };
   }

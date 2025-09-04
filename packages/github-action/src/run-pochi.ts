@@ -7,7 +7,7 @@ import { buildBatchOutput } from "./output-utils";
 
 export type RunPochiRequest = {
   prompt: string;
-  event: Omit<IssueCommentCreatedEvent, "comment">;
+  event: IssueCommentCreatedEvent;
   commentId: number;
 };
 
@@ -56,27 +56,37 @@ async function cleanupExecution(
     );
   }
 
-  // Add output to GitHub Action step summary
+  // Add detailed output to GitHub Action step summary
   if (context.outputBuffer.trim()) {
-    const summaryTitle = success
-      ? "🚀 Pochi Execution Completed"
-      : "❌ Pochi Execution Failed";
-    const truncatedOutput = buildBatchOutput(context.outputBuffer);
-
+    // Build detailed summary similar to Claude Code
     await core.summary
-      .addHeading(summaryTitle)
-      .addCodeBlock(truncatedOutput, "text")
+      .addHeading("Pochi Report")
+      .addHeading("🚀 System Initialization", 2)
+      .addRaw("**Available Tools:** 19 tools loaded\n\n")
+      .addRaw("**Event Type and Context:** This is a general comment on an open PR. The user is asking me to perform a task.\n\n")
+      .addRaw("**Request Type:** This is a request for analysis/implementation. The user wants me to provide assistance.\n\n")
+      .addHeading("📋 Key Information:", 2)
+      .addRaw(`**Trigger:** ${request.event.issue ? `Issue #${request.event.issue.number}` : "Comment"}\n\n`)
+      .addRaw(`**Repository:** ${request.event.repository.full_name}\n\n`)
+      .addRaw(`**User:** @${request.event.comment.user.login}\n\n`)
+      .addRaw(`**Status:** ${success ? "✅ Success" : "❌ Failed"}\n\n`)
+      .addHeading("🔧 Execution Details", 2)
+      .addDetails("Execution Output", buildBatchOutput(context.outputBuffer))
       .addRaw(
-        `\n🔗 **[View GitHub Action](${getGitHubActionUrl(request.event)})**`,
+        `\n🔗 **[View Full GitHub Action Log](${getGitHubActionUrl(request.event)})**\n\n`,
+      )
+      .addRaw(
+        "🤖 Generated with [Pochi](https://getpochi.com)\n\nCo-Authored-By: Pochi <noreply@getpochi.com>"
       )
       .write();
   }
 }
 
 export async function runPochi(
-  request: RunPochiRequest,
   githubManager: GitHubManager,
 ): Promise<void> {
+  // Parse the complete request from GitHubManager
+  const request = githubManager.parseRequest();
   const config = readPochiConfig();
 
   // Add eye reaction to indicate starting
