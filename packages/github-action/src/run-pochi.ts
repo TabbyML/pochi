@@ -58,8 +58,7 @@ async function cleanupExecution(
 
   if (context.outputBuffer.trim()) {
     await core.summary
-      .addHeading("Pochi Report")
-      .addHeading("🔧 Execution Details", 2)
+      .addHeading("Task Details")
       .addCodeBlock(buildBatchOutput(context.outputBuffer), "text")
       .addRaw(
         `**[View Full GitHub Action](${getGitHubActionUrl(request.event)})**\n\n`,
