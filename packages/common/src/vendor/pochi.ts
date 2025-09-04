@@ -3,31 +3,39 @@ import type { UserInfo } from "../configuration";
 import { deviceLinkClient } from "../device-link/client";
 import { getServerBaseUrl } from "../vscode-webui-bridge";
 import { type ModelOptions, VendorBase } from "./types";
+import z from "zod/v4";
 
-type PochiCredentials = {
-  token: string;
-};
+export const PochiVendorId = "pochi";
+
+const PochiCredentials = z
+  .object({
+    token: z.string(),
+  })
+  .optional()
+  .catch(undefined);
+
+type PochiCredentials = z.infer<typeof PochiCredentials>;
 
 export class Pochi extends VendorBase {
   private authClient: ReturnType<typeof createAuthClientImpl>;
 
-  constructor() {
-    const vendorId = "pochi";
-    super(vendorId);
+  constructor(
+    credentials: unknown,
+    updateCredentials: (credentials: PochiCredentials) => void,
+  ) {
+    super(PochiVendorId);
 
-    this.authClient = createAuthClient(this.authToken, (token) =>
-      this.updateCredentials({
-        token,
-      }),
+    this.authClient = createAuthClient(
+      this.parseCredentials(credentials)?.token,
+      (token) =>
+        updateCredentials({
+          token,
+        }),
     );
   }
 
-  private get authToken() {
-    try {
-      return (this.getVendorConfig().credentials as PochiCredentials).token;
-    } catch {
-      return undefined;
-    }
+  parseCredentials(credentials: unknown): PochiCredentials {
+    return PochiCredentials.parse(credentials);
   }
 
   fetchModels(): Promise<Record<string, ModelOptions>> {
