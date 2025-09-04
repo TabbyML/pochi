@@ -4,7 +4,10 @@ import { wrapLanguageModel } from "ai";
 //   type GoogleCloudCodeProviderSettings,
 //   createGoogleCloudCode,
 // } from "cloud-code-ai-provider";
+import { hc } from "hono/client";
 import type { RequestData } from "../../types";
+import { createPochiModel } from "./pochi";
+import type { PochiApi, PochiApiClient } from "@getpochi/common/pochi-api";
 
 export function createVendorModel(
   llm: Extract<RequestData["llm"], { type: "vendor" }>,
@@ -27,8 +30,8 @@ export function createVendorModel(
 
 function createModel(
   vendorId: string,
-  _credentials: unknown,
-  _modelId: string,
+  credentials: unknown,
+  modelId: string,
 ): LanguageModelV2 {
   // FIXME(meng): this would add cloud-code-ai-provider dependency,
   //  and it has issues running in browser env which would break the vscode-webui build.
@@ -40,5 +43,31 @@ function createModel(
   //   })(modelId);
   // }
 
+  if (vendorId === "pochi") {
+    return createPochiModel(modelId, {
+      type: "pochi",
+      modelId,
+      apiClient: createApiClient((credentials as { token: string }).token),
+    });
+  }
+
   throw new Error(`Unknown vendor: ${vendorId}`);
+}
+
+function createApiClient(token: string): PochiApiClient {
+  const authClient: PochiApiClient = hc<PochiApi>("https://app.getpochi.com", {
+    fetch(input: string | URL | Request, init?: RequestInit) {
+      const headers = new Headers(init?.headers);
+      if (token) {
+        headers.append("Authorization", `Bearer ${token}`);
+      }
+      return fetch(input, {
+        ...init,
+        headers,
+      });
+    },
+  });
+
+  authClient.authenticated = !!token;
+  return authClient;
 }

@@ -75,7 +75,7 @@ const program = new Command()
 
     const store = await createStore(process.cwd());
 
-    const llm = await createLLMConfig({ options, apiClient, program });
+    const llm = await createLLMConfig({ options, program });
     const rg = findRipgrep();
     if (!rg) {
       return program.error(
@@ -176,7 +176,8 @@ async function parseTaskInput(options: ProgramOpts, program: Program) {
 }
 
 async function createApiClient(): Promise<PochiApiClient> {
-  const token = pochiConfig.value.credentials?.pochiToken;
+  const { credentials } = pochiConfig.value.vendors?.pochi || {};
+  const { token } = (credentials as { token: string } | undefined) || {};
 
   const authClient: PochiApiClient = hc<PochiApi>(prodServerUrl, {
     fetch(input: string | URL | Request, init?: RequestInit) {
@@ -197,10 +198,8 @@ async function createApiClient(): Promise<PochiApiClient> {
 }
 
 async function createLLMConfig({
-  apiClient,
   options,
 }: {
-  apiClient: PochiApiClient;
   program: Program;
   options: ProgramOpts;
 }): Promise<LLMRequestData> {
@@ -233,9 +232,15 @@ async function createLLMConfig({
 
   if (!modelProvider) {
     return {
-      type: "pochi",
+      type: "vendor",
+      vendorId: "pochi",
       modelId: options.model,
-      apiClient,
+      // FIXME
+      options: {
+        maxOutputTokens: 4096,
+        contextWindow: 1_000_000,
+      },
+      credentials: await vendors.pochi.getCredentials(),
     } satisfies LLMRequestData;
   }
 
@@ -275,8 +280,14 @@ async function createLLMConfig({
   }
 
   return {
-    type: "pochi",
+    type: "vendor",
+    vendorId: "pochi",
     modelId: options.model,
-    apiClient,
+    // FIXME
+    options: {
+      maxOutputTokens: 4096,
+      contextWindow: 1_000_000,
+    },
+    credentials: await vendors.pochi.getCredentials(),
   } satisfies LLMRequestData;
 }
