@@ -7,8 +7,8 @@ import type { PochiApi, PochiApiClient } from "@getpochi/common/pochi-api";
 import { wrapLanguageModel } from "ai";
 import { hc } from "hono/client";
 import type { RequestData } from "../../types";
-import { createPochiModel } from "./pochi";
 import { createGeminiCliModel } from "./gemini-cli";
+import { createPochiModel } from "./pochi";
 
 export function createVendorModel(
   llm: Extract<RequestData["llm"], { type: "vendor" }>,

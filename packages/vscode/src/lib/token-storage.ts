@@ -12,11 +12,13 @@ export class TokenStorage implements vscode.Disposable {
   setToken(token: string | undefined) {
     updatePochiConfig({
       vendors: {
-        pochi: {
-          credentials: {
-            token,
-          },
-        },
+        pochi: token
+          ? {
+              credentials: {
+                token,
+              },
+            }
+          : null,
       },
     });
   }

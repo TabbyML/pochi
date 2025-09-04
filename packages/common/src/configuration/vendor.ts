@@ -18,7 +18,7 @@ export type VendorConfig = z.infer<typeof VendorConfig>;
 export const PochiVendorConfig = VendorConfig.extend({
   credentials: z
     .object({
-      token: z.string().optional(),
+      token: z.string(),
     })
     .optional(),
 });
