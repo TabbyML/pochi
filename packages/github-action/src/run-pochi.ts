@@ -7,7 +7,7 @@ import { buildBatchOutput } from "./output-utils";
 
 export type RunPochiRequest = {
   prompt: string;
-  event: IssueCommentCreatedEvent;
+  event: Omit<IssueCommentCreatedEvent, "comment">;
   commentId: number;
 };
 
@@ -108,7 +108,7 @@ export async function runPochi(githubManager: GitHubManager): Promise<void> {
   // Execute pochi CLI with output capture
   await new Promise<void>((resolve, reject) => {
     const child = spawn(pochiCliPath, args, {
-      stdio: [null, "inherit", "pipe"], // Capture stderr only
+      stdio: [null, "inherit", "pipe"], // Capture stderr
       cwd: process.cwd(),
       env: {
         ...process.env,
@@ -117,12 +117,12 @@ export async function runPochi(githubManager: GitHubManager): Promise<void> {
       },
     });
 
-    // Capture stderr output (where pochi outputs its content)
+    // Capture stderr output
     if (child.stderr) {
       child.stderr.setEncoding("utf8");
       child.stderr.on("data", (data: string) => {
-        process.stderr.write(data); // Output to action logs
-        context.outputBuffer += data; // Capture for summary
+        process.stderr.write(data);
+        context.outputBuffer += data;
       });
     }
 
