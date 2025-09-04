@@ -60,7 +60,7 @@ function createModel(
 function createApiClient(
   credentials: PochiVendorConfig["credentials"],
 ): PochiApiClient {
-  const { token } = credentials;
+  const token = credentials?.token;
   const authClient: PochiApiClient = hc<PochiApi>("https://app.getpochi.com", {
     fetch(input: string | URL | Request, init?: RequestInit) {
       const headers = new Headers(init?.headers);

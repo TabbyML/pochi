@@ -39,7 +39,7 @@ export function makePochiConfig(strict = false) {
       .optional(),
     vendors: z
       .object({
-        pochi: PochiVendorConfig,
+        pochi: PochiVendorConfig.nullable().optional(),
       })
       .catchall(VendorConfig.nullable())
       .optional(),

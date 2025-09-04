@@ -1,14 +1,18 @@
-import { getVendorConfig, updateVendorConfig } from "../configuration";
+import { pochiConfig, updatePochiConfig } from "../configuration";
 import { GeminiCli } from "./gemini-cli";
-import { Pochi, PochiVendorId } from "./pochi";
+import { Pochi } from "./pochi";
 
 export const vendors = {
   "gemini-cli": new GeminiCli(),
   pochi: new Pochi(
-    getVendorConfig(PochiVendorId)?.credentials,
+    pochiConfig.value.vendors?.pochi?.credentials,
     (credentials) => {
-      updateVendorConfig(PochiVendorId, {
-        credentials,
+      updatePochiConfig({
+        vendors: {
+          pochi: {
+            credentials,
+          },
+        },
       });
     },
   ),

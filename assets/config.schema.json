@@ -10,36 +10,42 @@
       "type": "object",
       "properties": {
         "pochi": {
-          "type": "object",
-          "properties": {
-            "credentials": {
+          "anyOf": [
+            {
               "type": "object",
               "properties": {
-                "token": {
-                  "type": "string"
+                "credentials": {
+                  "type": "object",
+                  "properties": {
+                    "token": {
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "user": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "email": {
+                      "type": "string"
+                    },
+                    "image": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["name", "email"],
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
             },
-            "user": {
-              "type": "object",
-              "properties": {
-                "name": {
-                  "type": "string"
-                },
-                "email": {
-                  "type": "string"
-                },
-                "image": {
-                  "type": "string"
-                }
-              },
-              "required": ["name", "email"],
-              "additionalProperties": false
+            {
+              "type": "null"
             }
-          },
-          "required": ["credentials"],
-          "additionalProperties": false
+          ]
         }
       },
       "required": ["pochi"],

@@ -15,11 +15,12 @@ export const VendorConfig = z.object({
 
 export type VendorConfig = z.infer<typeof VendorConfig>;
 
-export const PochiVendorConfig = z.object({
-  credentials: z.object({
-    token: z.string().optional(),
-  }),
-  user: UserInfo.optional(),
+export const PochiVendorConfig = VendorConfig.extend({
+  credentials: z
+    .object({
+      token: z.string().optional(),
+    })
+    .optional(),
 });
 
 export type PochiVendorConfig = z.infer<typeof PochiVendorConfig>;

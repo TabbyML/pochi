@@ -4,8 +4,6 @@ import { deviceLinkClient } from "../device-link/client";
 import { getServerBaseUrl } from "../vscode-webui-bridge";
 import { type ModelOptions, VendorBase } from "./types";
 
-export const PochiVendorId = "pochi";
-
 type PochiCredentials = PochiVendorConfig["credentials"];
 
 export class Pochi extends VendorBase {
@@ -15,9 +13,9 @@ export class Pochi extends VendorBase {
     credentials: PochiCredentials,
     updateCredentials: (credentials: PochiCredentials) => void,
   ) {
-    super(PochiVendorId);
+    super("pochi");
 
-    this.authClient = createAuthClient(credentials.token, (token) =>
+    this.authClient = createAuthClient(credentials?.token, (token) =>
       updateCredentials({
         token,
       }),
