@@ -179,7 +179,7 @@ async function createApiClient(): Promise<PochiApiClient> {
   const { credentials } = pochiConfig.value.vendors?.pochi || {};
   const token = credentials?.token;
 
-  const authClient: PochiApiClient = hc<PochiApi>(prodServerUrl, {
+  const apiClient: PochiApiClient = hc<PochiApi>(prodServerUrl, {
     fetch(input: string | URL | Request, init?: RequestInit) {
       const headers = new Headers(init?.headers);
       if (token) {
@@ -193,8 +193,16 @@ async function createApiClient(): Promise<PochiApiClient> {
     },
   });
 
-  authClient.authenticated = !!token;
-  return authClient;
+  const proxed = new Proxy(apiClient, {
+    get(target, prop, receiver) {
+      if (prop === "authenticated") {
+        return !!token;
+      }
+      return Reflect.get(target, prop, receiver);
+    },
+  });
+
+  return proxed;
 }
 
 async function createLLMConfig({
@@ -230,20 +238,21 @@ async function createLLMConfig({
   const modelProvider = pochiConfig.value.providers?.[vendorId];
   const modelSetting = modelProvider?.models?.[modelId];
 
-  const pochiRequest = {
-    type: "vendor",
-    vendorId: "pochi",
-    modelId: options.model,
-    // FIXME
-    options: {
-      maxOutputTokens: 4096,
-      contextWindow: 1_000_000,
-    },
-    credentials: await vendors.pochi.getCredentials(),
-  } satisfies LLMRequestData;
+  const makePochiRequest = async () =>
+    ({
+      type: "vendor",
+      vendorId: "pochi",
+      modelId: options.model,
+      // FIXME
+      options: {
+        maxOutputTokens: 4096,
+        contextWindow: 1_000_000,
+      },
+      credentials: await vendors.pochi.getCredentials(),
+    }) satisfies LLMRequestData;
 
   if (!modelProvider) {
-    return pochiRequest;
+    return makePochiRequest();
   }
 
   if (!modelSetting) {
@@ -281,5 +290,5 @@ async function createLLMConfig({
     };
   }
 
-  return pochiRequest;
+  return makePochiRequest();
 }
