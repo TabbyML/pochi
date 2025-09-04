@@ -1,9 +1,9 @@
 import { createAuthClient as createAuthClientImpl } from "better-auth/react";
+import z from "zod/v4";
 import type { UserInfo } from "../configuration";
 import { deviceLinkClient } from "../device-link/client";
 import { getServerBaseUrl } from "../vscode-webui-bridge";
 import { type ModelOptions, VendorBase } from "./types";
-import z from "zod/v4";
 
 export const PochiVendorId = "pochi";
 

@@ -116,6 +116,7 @@
         "@livestore/react": "catalog:",
         "ai": "catalog:",
         "base58-js": "^3.0.3",
+        "hono": "catalog:",
         "react": "catalog:",
         "zod": "catalog:",
       },

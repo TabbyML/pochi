@@ -4,10 +4,10 @@ import { wrapLanguageModel } from "ai";
 //   type GoogleCloudCodeProviderSettings,
 //   createGoogleCloudCode,
 // } from "cloud-code-ai-provider";
+import type { PochiApi, PochiApiClient } from "@getpochi/common/pochi-api";
 import { hc } from "hono/client";
 import type { RequestData } from "../../types";
 import { createPochiModel } from "./pochi";
-import type { PochiApi, PochiApiClient } from "@getpochi/common/pochi-api";
 
 export function createVendorModel(
   llm: Extract<RequestData["llm"], { type: "vendor" }>,
