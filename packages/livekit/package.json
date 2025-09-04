@@ -23,7 +23,6 @@
     "@livestore/react": "catalog:",
     "ai": "catalog:",
     "base58-js": "^3.0.3",
-    "cloud-code-ai-provider": "^0.1.0",
     "react": "catalog:",
     "zod": "catalog:"
   }

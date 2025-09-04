@@ -1,8 +1,9 @@
+import type { LanguageModelV2 } from "@ai-sdk/provider";
 import { wrapLanguageModel } from "ai";
-import {
-  type GoogleCloudCodeProviderSettings,
-  createGoogleCloudCode,
-} from "cloud-code-ai-provider";
+// import {
+//   type GoogleCloudCodeProviderSettings,
+//   createGoogleCloudCode,
+// } from "cloud-code-ai-provider";
 import type { RequestData } from "../../types";
 
 export function createVendorModel(
@@ -24,13 +25,20 @@ export function createVendorModel(
   });
 }
 
-function createModel(vendorId: string, credentials: unknown, modelId: string) {
-  if (vendorId === "gemini-cli") {
-    return createGoogleCloudCode({
-      credentials:
-        credentials as GoogleCloudCodeProviderSettings["credentials"],
-    })(modelId);
-  }
+function createModel(
+  vendorId: string,
+  _credentials: unknown,
+  _modelId: string,
+): LanguageModelV2 {
+  // FIXME(meng): this would add cloud-code-ai-provider dependency,
+  //  and it has issues running in browser env which would break the vscode-webui build.
+  //
+  // if (vendorId === "gemini-cli") {
+  //   return createGoogleCloudCode({
+  //     credentials:
+  //       credentials as GoogleCloudCodeProviderSettings["credentials"],
+  //   })(modelId);
+  // }
 
   throw new Error(`Unknown vendor: ${vendorId}`);
 }

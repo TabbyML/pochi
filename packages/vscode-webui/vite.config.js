@@ -101,18 +101,6 @@ export default defineConfig({
     format: "es",
     rollupOptions: { output: OutputOptions[BuildTarget] },
   },
-  resolve: {
-    alias: {
-      // Stub out Node.js modules that shouldn't be used in browser
-      "cloud-code-ai-provider":
-        'data:text/javascript,export function createGoogleCloudCode() { throw new Error("Not available in browser"); }',
-      open: 'data:text/javascript,export default function() { throw new Error("Not available in browser"); }',
-      "wsl-utils":
-        'data:text/javascript,export function getWslFsPath() { throw new Error("Not available in browser"); }',
-      "default-browser":
-        'data:text/javascript,export default function() { throw new Error("Not available in browser"); }',
-    },
-  },
   optimizeDeps: {
     // TODO remove once fixed https://github.com/vitejs/vite/issues/8427
     exclude: ["@livestore/wa-sqlite"],
