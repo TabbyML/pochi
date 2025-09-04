@@ -10,7 +10,11 @@ export function createGeminiCliModel(
     project: credentials.project,
     location: "global",
     baseURL: "https://cloudcode-pa.googleapis.com",
-    fetch: createPatchedFetch(credentials.project, credentials.accessToken),
+    fetch: createPatchedFetch(
+      modelId,
+      credentials.project,
+      credentials.accessToken,
+    ),
   })(modelId);
 
   return wrapLanguageModel({
@@ -21,7 +25,11 @@ export function createGeminiCliModel(
   });
 }
 
-function createPatchedFetch(project: string, accessToken: string) {
+function createPatchedFetch(
+  model: string,
+  project: string,
+  accessToken: string,
+) {
   return async (
     _requestInfo: Request | URL | string,
     requestInit?: RequestInit,
@@ -35,7 +43,7 @@ function createPatchedFetch(project: string, accessToken: string) {
       ...requestInit,
       headers,
       body: JSON.stringify({
-        model: "gemini-2.5-flash",
+        model,
         request,
         project,
       }),
