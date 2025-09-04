@@ -34,22 +34,15 @@
                   "type": "string"
                 }
               },
-              "required": [
-                "name",
-                "email"
-              ],
+              "required": ["name", "email"],
               "additionalProperties": false
             }
           },
-          "required": [
-            "credentials"
-          ],
+          "required": ["credentials"],
           "additionalProperties": false
         }
       },
-      "required": [
-        "pochi"
-      ],
+      "required": ["pochi"],
       "additionalProperties": {
         "anyOf": [
           {
@@ -69,16 +62,11 @@
                     "type": "string"
                   }
                 },
-                "required": [
-                  "name",
-                  "email"
-                ],
+                "required": ["name", "email"],
                 "additionalProperties": false
               }
             },
-            "required": [
-              "credentials"
-            ],
+            "required": ["credentials"],
             "additionalProperties": false
           },
           {
@@ -128,10 +116,7 @@
                       "type": "boolean"
                     }
                   },
-                  "required": [
-                    "maxTokens",
-                    "contextWindow"
-                  ],
+                  "required": ["maxTokens", "contextWindow"],
                   "additionalProperties": false
                 }
               },
@@ -148,10 +133,7 @@
                 "type": "string"
               }
             },
-            "required": [
-              "models",
-              "baseURL"
-            ],
+            "required": ["models", "baseURL"],
             "additionalProperties": false
           },
           {
@@ -188,10 +170,7 @@
                       "type": "boolean"
                     }
                   },
-                  "required": [
-                    "maxTokens",
-                    "contextWindow"
-                  ],
+                  "required": ["maxTokens", "contextWindow"],
                   "additionalProperties": false
                 }
               },
@@ -211,10 +190,7 @@
                         "type": "string"
                       }
                     },
-                    "required": [
-                      "serviceAccountKey",
-                      "location"
-                    ],
+                    "required": ["serviceAccountKey", "location"],
                     "additionalProperties": false
                   },
                   {
@@ -230,21 +206,13 @@
                         "type": "string"
                       }
                     },
-                    "required": [
-                      "accessToken",
-                      "projectId",
-                      "location"
-                    ],
+                    "required": ["accessToken", "projectId", "location"],
                     "additionalProperties": false
                   }
                 ]
               }
             },
-            "required": [
-              "models",
-              "kind",
-              "vertex"
-            ],
+            "required": ["models", "kind", "vertex"],
             "additionalProperties": false
           },
           {
@@ -281,10 +249,7 @@
                       "type": "boolean"
                     }
                   },
-                  "required": [
-                    "maxTokens",
-                    "contextWindow"
-                  ],
+                  "required": ["maxTokens", "contextWindow"],
                   "additionalProperties": false
                 }
               },
@@ -297,10 +262,7 @@
                 "type": "string"
               }
             },
-            "required": [
-              "models",
-              "kind"
-            ],
+            "required": ["models", "kind"],
             "additionalProperties": false
           }
         ]
@@ -338,9 +300,7 @@
                 }
               }
             },
-            "required": [
-              "url"
-            ],
+            "required": ["url"],
             "additionalProperties": false
           },
           {
@@ -377,10 +337,7 @@
                 }
               }
             },
-            "required": [
-              "command",
-              "args"
-            ],
+            "required": ["command", "args"],
             "additionalProperties": false
           }
         ]

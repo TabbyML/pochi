@@ -1,4 +1,5 @@
 import type { LanguageModelV2 } from "@ai-sdk/provider";
+import type { PochiVendorConfig } from "@getpochi/common/configuration";
 // import {
 //   type GoogleCloudCodeProviderSettings,
 //   createGoogleCloudCode,
@@ -8,7 +9,6 @@ import { wrapLanguageModel } from "ai";
 import { hc } from "hono/client";
 import type { RequestData } from "../../types";
 import { createPochiModel } from "./pochi";
-import type { PochiVendorConfig } from "@getpochi/common/configuration";
 
 export function createVendorModel(
   llm: Extract<RequestData["llm"], { type: "vendor" }>,
