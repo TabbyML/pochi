@@ -210,9 +210,9 @@ async function createLLMConfig({
 
   if (vendorId in vendors) {
     const vendor = vendors[vendorId as keyof typeof vendors];
-    const credentials = await vendor.readCredentials();
+    const credentials = await vendor.getCredentials();
     if (!credentials) {
-      return program.error("Missing credentials for gemini-cli");
+      return program.error(`Missing credentials for ${vendorId}`);
     }
     const models = await vendors["gemini-cli"].fetchModels();
     const options = models[modelId];

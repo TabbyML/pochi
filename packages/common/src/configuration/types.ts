@@ -1,10 +1,7 @@
 import z from "zod/v4";
 import { McpServerConfig } from "./mcp";
 import { CustomModelSetting } from "./model";
-
-export const Vendor = z.object({
-  credentials: z.unknown(),
-});
+import { VendorConfig } from "./vendor";
 
 export const PochiConfig = makePochiConfig();
 
@@ -45,10 +42,8 @@ export function makePochiConfig(strict = false) {
         pochiToken: z.string().optional(),
       })
       .optional(),
-    vendors: z.record(z.string(), Vendor).optional(),
+    vendors: z.record(z.string(), VendorConfig).optional(),
     providers: looseRecord(CustomModelSetting, strict).optional(),
     mcp: looseRecord(McpServerConfig, strict).optional(),
   });
 }
-
-export type Vendor = z.infer<typeof Vendor>;

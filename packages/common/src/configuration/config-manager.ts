@@ -7,7 +7,8 @@ import * as JSONC from "jsonc-parser/esm";
 import { funnel, isDeepEqual, mergeDeep } from "remeda";
 import * as fleece from "silver-fleece";
 import { getLogger } from "../base";
-import { PochiConfig, type Vendor } from "./types";
+import { PochiConfig } from "./types";
+import type { VendorConfig } from "./vendor";
 
 const PochiConfigFilePath = path.join(os.homedir(), ".pochi", "config.jsonc");
 
@@ -119,10 +120,13 @@ class PochiConfigManager {
     return this.cfg.value.vendors?.[name];
   };
 
-  updateVendorConfig = async (name: string, vendor: Vendor) => {
-    const vendors = this.cfg.value.vendors || {};
-    vendors[name] = vendor;
-    await this.updateConfig({ vendors });
+  updateVendorConfig = async (name: string, vendor: VendorConfig) => {
+    await this.updateConfig({
+      vendors: {
+        ...this.cfg.value.vendors,
+        [name]: mergeDeep(this.cfg.value.vendors?.[name] || {}, vendor),
+      },
+    });
   };
 
   get config(): ReadonlySignal<PochiConfig> {

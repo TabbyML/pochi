@@ -1,6 +1,9 @@
 import type { Command } from "@commander-js/extra-typings";
-import { updateVendorConfig } from "@getpochi/common/configuration";
-import { type User, vendors } from "@getpochi/common/vendor";
+import {
+  type UserInfo,
+  updateVendorConfig,
+} from "@getpochi/common/configuration";
+import { vendors } from "@getpochi/common/vendor";
 import chalk from "chalk";
 import { getLoginFn } from "./login";
 
@@ -11,7 +14,7 @@ export function registerAuthCommand(program: Command) {
   authCommand.command("status", { isDefault: true }).action(async () => {
     for (const [name, auth] of Object.entries(vendors)) {
       if (auth.authenticated) {
-        console.log(`${name}:`, renderUser(await auth.getUser()));
+        console.log(`${name}:`, renderUser(await auth.getUserInfo()));
       }
     }
   });
@@ -25,7 +28,7 @@ export function registerAuthCommand(program: Command) {
     .action(async ({ vendor }) => {
       const auth = vendors[vendor as keyof typeof vendors];
       if (auth.authenticated) {
-        const user = await auth.getUser();
+        const user = await auth.getUserInfo();
         console.log("You're already logged in as", renderUser(user));
         return;
       }
@@ -72,6 +75,6 @@ export function registerAuthCommand(program: Command) {
     });
 }
 
-function renderUser(user: User | null) {
+function renderUser(user: UserInfo | null) {
   return `${chalk.bold(user?.name)} (${user?.email})`;
 }

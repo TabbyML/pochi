@@ -56,7 +56,7 @@ export async function geminiCliLogin() {
   await oauthResult.loginCompletePromise;
 
   // Get user info after authentication
-  const user = await geminiCli.getUser();
+  const user = await geminiCli.getUserInfo();
   if (!user) {
     throw new Error("Failed to get user info after authentication");
   }

@@ -1,17 +1,56 @@
-export abstract class VendorBase {
-  abstract authenticated: boolean;
+import {
+  type UserInfo,
+  type VendorConfig,
+  getVendorConfig,
+  updateVendorConfig,
+} from "../configuration";
 
-  abstract getUser(): Promise<User | null>;
+export abstract class VendorBase {
+  constructor(readonly vendorId: string) {}
+
+  async getCredentials(): Promise<unknown> {
+    const { credentials } = this.getVendorConfig();
+    const newCredentials = await this.renewCredentials(credentials);
+    if (credentials !== newCredentials) {
+      updateVendorConfig(this.vendorId, {
+        credentials: newCredentials,
+      });
+    }
+
+    return newCredentials;
+  }
+
+  async getUserInfo(): Promise<UserInfo> {
+    const { user, credentials } = this.getVendorConfig();
+    if (user) return user;
+
+    const newUser = await this.fetchUserInfo(credentials);
+    updateVendorConfig(this.vendorId, {
+      user: newUser,
+      credentials,
+    });
+    return newUser;
+  }
 
   abstract fetchModels(): Promise<Record<string, ModelOptions>>;
 
-  abstract readCredentials(): Promise<unknown>;
-}
+  get authenticated() {
+    const config = getVendorConfig(this.vendorId);
+    return !!config?.credentials;
+  }
 
-export type User = {
-  name: string;
-  email: string;
-};
+  protected abstract renewCredentials(credentials: unknown): Promise<unknown>;
+
+  protected abstract fetchUserInfo(credentials: unknown): Promise<UserInfo>;
+
+  private getVendorConfig(): VendorConfig {
+    const config = getVendorConfig(this.vendorId);
+    if (!config) throw new Error(`Vendor ${this.vendorId} not found`);
+    if (!config.credentials)
+      throw new Error(`Vendor ${this.vendorId} not authenticated`);
+    return config;
+  }
+}
 
 export type ModelOptions = {
   contextWindow: number;
