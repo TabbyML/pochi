@@ -5,6 +5,7 @@ import type { Environment } from "../base";
 import type { CustomModelSetting } from "../configuration";
 import type {
   CaptureEvent,
+  CustomAgentFile,
   McpStatus,
   ResourceURI,
   RuleFile,
@@ -203,6 +204,11 @@ const VSCodeHostStub = {
   },
   chatVSCodeLm: async (): Promise<void> => {
     return Promise.resolve();
+  },
+  readCustomAgents: async (): Promise<
+    ThreadSignalSerialization<CustomAgentFile[]>
+  > => {
+    return Promise.resolve({} as ThreadSignalSerialization<CustomAgentFile[]>);
   },
 } satisfies VSCodeHostApi;
 

@@ -17,6 +17,7 @@ export function SettingsPage({ user }: { user?: User }) {
           <WorkflowsSection />
           <ToolsSection />
           <ModelSection user={user} />
+          {/* <CustomAgentSection /> */}
           <AdvancedSettingsSection />
         </div>
       </ScrollArea>

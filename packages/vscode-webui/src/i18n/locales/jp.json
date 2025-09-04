@@ -111,6 +111,14 @@
       "mcp": "MCP",
       "retry": "再試行"
     },
+    "customAgent": {
+      "title": "カスタムエージェント",
+      "loading": "カスタムエージェントを読み込み中...",
+      "empty": {
+        "description": "カスタムエージェントが見つかりません。",
+        "hint": ".pochi/agents/ ディレクトリにエージェントファイルを作成してください（ワークスペースまたはシステムレベル）"
+      }
+    },
     "mcp": {
       "title": "MCP",
       "tooltip": "Pochi 用にグローバル MCP を設定します。",

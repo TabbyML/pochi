@@ -80,6 +80,7 @@ function createVSCodeHost(): VSCodeHostApi {
         "readCustomModelSetting",
         "readVSCodeLm",
         "chatVSCodeLm",
+        "readCustomAgents",
       ],
       exports: {
         openTask(params) {

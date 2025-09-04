@@ -4,6 +4,7 @@ import type { Environment } from "../base";
 import type { CustomModelSetting } from "../configuration";
 import type {
   CaptureEvent,
+  CustomAgentFile,
   McpStatus,
   NewTaskParams,
   ResourceURI,
@@ -138,6 +139,8 @@ export interface VSCodeHostApi {
   ): void;
 
   readCurrentWorkspace(): Promise<string | undefined>;
+
+  readCustomAgents(): Promise<ThreadSignalSerialization<CustomAgentFile[]>>;
 
   readMinionId(): Promise<string | null>;
 
