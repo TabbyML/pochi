@@ -56,35 +56,26 @@ async function cleanupExecution(
     );
   }
 
-  // Add detailed output to GitHub Action step summary
   if (context.outputBuffer.trim()) {
-    // Build detailed summary similar to Claude Code
     await core.summary
       .addHeading("Pochi Report")
       .addHeading("🚀 System Initialization", 2)
       .addRaw("**Available Tools:** 19 tools loaded\n\n")
-      .addRaw("**Event Type and Context:** This is a general comment on an open PR. The user is asking me to perform a task.\n\n")
-      .addRaw("**Request Type:** This is a request for analysis/implementation. The user wants me to provide assistance.\n\n")
-      .addHeading("📋 Key Information:", 2)
-      .addRaw(`**Trigger:** ${request.event.issue ? `Issue #${request.event.issue.number}` : "Comment"}\n\n`)
-      .addRaw(`**Repository:** ${request.event.repository.full_name}\n\n`)
-      .addRaw(`**User:** @${request.event.comment.user.login}\n\n`)
-      .addRaw(`**Status:** ${success ? "✅ Success" : "❌ Failed"}\n\n`)
-      .addHeading("🔧 Execution Details", 2)
-      .addDetails("Execution Output", buildBatchOutput(context.outputBuffer))
       .addRaw(
-        `\n🔗 **[View Full GitHub Action Log](${getGitHubActionUrl(request.event)})**\n\n`,
+        `**Event Type and Context:** ${formatCustomInstruction(request.event)}\n\n`,
+      )
+      .addHeading("🔧 Execution Details", 2)
+      .addRaw(
+        `${buildBatchOutput(context.outputBuffer).replace(/\\n/g, "\n")}\n\n`,
       )
       .addRaw(
-        "🤖 Generated with [Pochi](https://getpochi.com)\n\nCo-Authored-By: Pochi <noreply@getpochi.com>"
+        `🔗 **[View Full GitHub Action Log](${getGitHubActionUrl(request.event)})**\n\n`,
       )
       .write();
   }
 }
 
-export async function runPochi(
-  githubManager: GitHubManager,
-): Promise<void> {
+export async function runPochi(githubManager: GitHubManager): Promise<void> {
   // Parse the complete request from GitHubManager
   const request = githubManager.parseRequest();
   const config = readPochiConfig();
