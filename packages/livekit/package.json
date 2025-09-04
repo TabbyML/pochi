@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@ai-sdk/gateway": "catalog:",
+    "@ai-sdk/google": "^2.0.11",
     "@ai-sdk/google-vertex": "catalog:",
     "@ai-sdk/openai-compatible": "catalog:",
     "@ai-sdk/provider": "catalog:",
