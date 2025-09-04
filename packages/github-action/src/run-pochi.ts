@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import * as core from "@actions/core";
 import type { IssueCommentCreatedEvent } from "@octokit/webhooks-types";
 import { readPochiConfig } from "./env";
 import type { GitHubManager } from "./github-manager";
@@ -54,6 +55,22 @@ async function cleanupExecution(
       context.eyesReactionId,
     );
   }
+
+  // Add output to GitHub Action step summary
+  if (context.outputBuffer.trim()) {
+    const summaryTitle = success
+      ? "🚀 Pochi Execution Completed"
+      : "❌ Pochi Execution Failed";
+    const truncatedOutput = buildBatchOutput(context.outputBuffer);
+
+    await core.summary
+      .addHeading(summaryTitle)
+      .addCodeBlock(truncatedOutput, "text")
+      .addRaw(
+        `\n🔗 **[View GitHub Action](${getGitHubActionUrl(request.event)})**`,
+      )
+      .write();
+  }
 }
 
 export async function runPochi(
@@ -98,7 +115,7 @@ export async function runPochi(
   // Execute pochi CLI with output capture
   await new Promise<void>((resolve, reject) => {
     const child = spawn(pochiCliPath, args, {
-      stdio: [null, "inherit", "pipe"], // Capture stderr
+      stdio: [null, "inherit", "pipe"], // Capture stderr only
       cwd: process.cwd(),
       env: {
         ...process.env,
@@ -107,11 +124,12 @@ export async function runPochi(
       },
     });
 
-    // Capture stderr output
+    // Capture stderr output (where pochi outputs its content)
     if (child.stderr) {
       child.stderr.setEncoding("utf8");
       child.stderr.on("data", (data: string) => {
-        context.outputBuffer += data;
+        process.stderr.write(data); // Output to action logs
+        context.outputBuffer += data; // Capture for summary
       });
     }
 
