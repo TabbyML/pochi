@@ -12,6 +12,7 @@ curl -sSL https://raw.githubusercontent.com/tabbyml/pochi/main/packages/github-a
 ```
 
 This command will:
+
 - Auto-detect your repository owner and name
 - Create `.github/workflows/pochi.yml` workflow file
 - Provide setup instructions for required secrets
@@ -63,6 +64,30 @@ jobs:
    - `/pochi review this code`
    - `/pochi explain the changes in this PR`
    - `/pochi suggest improvements`
+
+The action will respond with AI-generated analysis and suggestions!
+
+## Configuration
+
+### Inputs
+
+The action will respond with AI-generated analysis and suggestions!
+
+## Configuration
+
+### Inputs
+
+The action will respond with AI-generated analysis and suggestions!
+
+## Configuration
+
+### Inputs
+
+The action will respond with AI-generated analysis and suggestions!
+
+## Configuration
+
+### Inputs
 
 The action will respond with AI-generated analysis and suggestions!
 
