@@ -23,7 +23,23 @@
       "additionalProperties": {
         "type": "object",
         "properties": {
-          "credentials": {}
+          "credentials": {},
+          "user": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "email": {
+                "type": "string"
+              },
+              "image": {
+                "type": "string"
+              }
+            },
+            "required": ["name", "email"],
+            "additionalProperties": false
+          }
         },
         "required": ["credentials"],
         "additionalProperties": false
