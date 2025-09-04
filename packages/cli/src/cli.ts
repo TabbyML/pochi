@@ -75,7 +75,7 @@ const program = new Command()
 
     const store = await createStore(process.cwd());
 
-    const llm = await createLLMConfig({ options, program });
+    const llm = await createLLMConfig(program, options);
     const rg = findRipgrep();
     if (!rg) {
       return program.error(
