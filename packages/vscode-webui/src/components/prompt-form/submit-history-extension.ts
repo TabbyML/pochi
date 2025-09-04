@@ -138,11 +138,9 @@ export const SubmitHistoryExtension = Extension.create<
                   JSON.parse(storage.currentDraft),
                 );
 
-                const transaction = tr.replaceWith(
-                  0,
-                  tr.doc.content.size,
-                  node,
-                );
+                const transaction = tr
+                  .replaceWith(0, tr.doc.content.size, node)
+                  .setMeta("docChangeEvent", { event: "submitHistory" });
 
                 if (dispatch) {
                   dispatch(transaction);
@@ -170,7 +168,9 @@ export const SubmitHistoryExtension = Extension.create<
               );
 
               // Use transaction to replace content safely and position cursor appropriately
-              const transaction = tr.replaceWith(0, tr.doc.content.size, node);
+              const transaction = tr
+                .replaceWith(0, tr.doc.content.size, node)
+                .setMeta("docChangeEvent", { event: "submitHistory" });
               transaction.setMeta(extensionName, { direction });
 
               if (dispatch) {

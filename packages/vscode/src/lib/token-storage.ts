@@ -6,13 +6,19 @@ import type * as vscode from "vscode";
 @injectable()
 @singleton()
 export class TokenStorage implements vscode.Disposable {
-  token = computed(() => pochiConfig.value.credentials?.pochiToken);
+  token = computed(() => pochiConfig.value.vendors?.pochi?.credentials?.token);
   dispose: () => void = () => {};
 
   setToken(token: string | undefined) {
     updatePochiConfig({
-      credentials: {
-        pochiToken: token,
+      vendors: {
+        pochi: token
+          ? {
+              credentials: {
+                token,
+              },
+            }
+          : null,
       },
     });
   }

@@ -80,7 +80,24 @@ function createApiClient(): PochiApiClient {
   // Initialize authentication status.
   getToken();
 
-  return app;
+  let authenticated = false;
+  const proxed = new Proxy(app, {
+    get(target, prop, receiver) {
+      if (prop === "authenticated") {
+        return authenticated;
+      }
+      return Reflect.get(target, prop, receiver);
+    },
+    set(target, prop, value, receiver) {
+      if (prop === "authenticated") {
+        authenticated = value;
+        return true;
+      }
+      return Reflect.set(target, prop, value, receiver);
+    },
+  });
+
+  return proxed;
 }
 
 export const apiClient = createApiClient();
