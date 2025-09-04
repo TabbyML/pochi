@@ -293,11 +293,10 @@
     "@ast-grep/cli",
   ],
   "patchedDependencies": {
-    "better-auth@1.2.9": "patches/better-auth@1.2.9.patch",
-    "silver-fleece@1.2.1": "patches/silver-fleece@1.2.1.patch",
     "jsonc-parser@3.3.1": "patches/jsonc-parser@3.3.1.patch",
     "@ai-sdk/google-vertex@3.0.8": "patches/@ai-sdk%2Fgoogle-vertex@3.0.8.patch",
     "ai@5.0.15": "patches/ai@5.0.15.patch",
+    "better-auth@1.2.9": "patches/better-auth@1.2.9.patch",
   },
   "catalog": {
     "@ai-sdk/gateway": "^1",
