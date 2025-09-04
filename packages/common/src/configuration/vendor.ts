@@ -30,6 +30,7 @@ export const GeminiCliVendorConfig = VendorConfig.extend({
     accessToken: z.string(),
     refreshToken: z.string(),
     expiresAt: z.number(),
+    project: z.string(),
   }),
 });
 

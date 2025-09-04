@@ -4,14 +4,13 @@ import { APICallError, wrapLanguageModel } from "ai";
 
 export function createGeminiCliModel(
   credentials: GeminiCliVendorConfig["credentials"],
-  project: string,
   modelId: string,
 ) {
   const vertexModel = createVertexWithoutCredentials({
-    project,
+    project: credentials.project,
     location: "global",
     baseURL: "https://cloudcode-pa.googleapis.com",
-    fetch: createPatchedFetch(project, credentials.accessToken),
+    fetch: createPatchedFetch(credentials.project, credentials.accessToken),
   })(modelId);
 
   return wrapLanguageModel({

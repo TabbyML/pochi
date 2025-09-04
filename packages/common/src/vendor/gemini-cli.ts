@@ -1,3 +1,4 @@
+import { GoogleCloudCodeAuth } from "cloud-code-ai-provider";
 import * as crypto from "node:crypto";
 import * as http from "node:http";
 import { getLogger } from "../base";
@@ -172,10 +173,14 @@ export class GeminiCli extends VendorBase {
       expires_in: number;
     };
 
+    await GoogleCloudCodeAuth.setCredentials(tokenData);
+    const project = await GoogleCloudCodeAuth.getProjectId();
+
     return {
       accessToken: tokenData.access_token,
       refreshToken: tokenData.refresh_token,
       expiresAt: Date.now() + tokenData.expires_in * 1000,
+      project,
     };
   }
 
@@ -187,6 +192,7 @@ export class GeminiCli extends VendorBase {
       try {
         const newCredentials = await this.refreshAccessToken(
           credentials.refreshToken,
+          credentials.project,
         );
         return newCredentials;
       } catch (error) {
@@ -238,6 +244,7 @@ export class GeminiCli extends VendorBase {
 
   private async refreshAccessToken(
     refreshToken: string,
+    project: string,
   ): Promise<GeminiCredentials> {
     const response = await fetch("https://oauth2.googleapis.com/token", {
       method: "POST",
@@ -271,6 +278,7 @@ export class GeminiCli extends VendorBase {
       accessToken: tokenData.access_token,
       refreshToken: newRefreshToken,
       expiresAt: Date.now() + tokenData.expires_in * 1000,
+      project,
     };
   }
 
@@ -322,10 +330,12 @@ export class GeminiCli extends VendorBase {
       "gemini-2.5-pro": {
         contextWindow: 1_000_000,
         maxOutputTokens: 32768,
+        useToolCallMiddleware: true,
       },
       "gemini-2.5-flash": {
         contextWindow: 1_000_000,
         maxOutputTokens: 32768,
+        useToolCallMiddleware: true,
       },
     };
   }

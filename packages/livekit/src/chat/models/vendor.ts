@@ -37,7 +37,6 @@ function createModel(
   if (vendorId === "gemini-cli") {
     return createGeminiCliModel(
       credentials as GeminiCliVendorConfig["credentials"],
-      "phonic-yarrow-thqbd",
       modelId,
     );
   }
