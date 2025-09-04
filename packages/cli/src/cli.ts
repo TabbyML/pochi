@@ -229,15 +229,15 @@ async function createLLMConfigWithVendors(
 
   if (vendorId in vendors) {
     const vendor = vendors[vendorId as keyof typeof vendors];
-    const credentials = await vendor.getCredentials();
-    if (!credentials) {
-      return program.error(`Missing credentials for ${vendorId}`);
-    }
     const models =
       await vendors[vendorId as keyof typeof vendors].fetchModels();
     const options = models[modelId];
     if (!options) {
       return program.error(`Model ${modelId} not found`);
+    }
+    const credentials = await vendor.getCredentials();
+    if (!credentials) {
+      return program.error(`Missing credentials for ${vendorId}`);
     }
     return {
       type: "vendor",
