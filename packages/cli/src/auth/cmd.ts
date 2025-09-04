@@ -13,9 +13,12 @@ export function registerAuthCommand(program: Command) {
   const authCommand = program.command("auth");
   authCommand.command("status", { isDefault: true }).action(async () => {
     for (const [name, auth] of Object.entries(vendors)) {
-      if (auth.authenticated) {
-        console.log(`${name}:`, renderUser(await auth.getUserInfo()));
-      }
+      console.log(
+        `${name}:`,
+        auth.authenticated
+          ? renderUser(await auth.getUserInfo())
+          : chalk.gray("Not logged in"),
+      );
     }
   });
 
@@ -48,7 +51,7 @@ export function registerAuthCommand(program: Command) {
     .option("-v, --vendor <vendor>", `Vendor to logout from: ${vendors}`)
     .action(async ({ vendor, all }) => {
       const logout = async (name: string) => {
-        await updateVendorConfig(name, { credentials: undefined });
+        await updateVendorConfig(name, null);
         console.log(`Logged out from ${name}`);
       };
       if (vendor) {
@@ -65,7 +68,6 @@ export function registerAuthCommand(program: Command) {
         for (const [name, auth] of Object.entries(vendors)) {
           if (auth.authenticated) {
             await logout(name);
-            console.log(`Logged out from ${name}`);
           }
         }
         return;

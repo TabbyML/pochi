@@ -101,7 +101,7 @@ class PochiConfigManager {
 
       await fsPromise.writeFile(PochiConfigFilePath, content);
     } catch (err) {
-      logger.debug("Failed to save config file", err);
+      logger.error("Failed to save config file", err);
     }
   }
 
@@ -113,20 +113,22 @@ class PochiConfigManager {
     this.cfg.value = config;
 
     // Save to file without await.
-    this.save();
+    await this.save();
   };
 
   getVendorConfig = (name: string) => {
     return this.cfg.value.vendors?.[name];
   };
 
-  updateVendorConfig = async (name: string, vendor: VendorConfig) => {
-    await this.updateConfig({
+  updateVendorConfig = async (name: string, vendor: VendorConfig | null) => {
+    this.cfg.value = {
+      ...this.cfg.value,
       vendors: {
         ...this.cfg.value.vendors,
-        [name]: mergeDeep(this.cfg.value.vendors?.[name] || {}, vendor),
+        [name]: vendor,
       },
-    });
+    };
+    await this.save();
   };
 
   get config(): ReadonlySignal<PochiConfig> {
