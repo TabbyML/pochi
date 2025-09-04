@@ -1,4 +1,5 @@
 import * as childProcess from "node:child_process";
+import { updateVendorConfig } from "@getpochi/common/configuration";
 import { vendors } from "@getpochi/common/vendor";
 import chalk from "chalk";
 
@@ -53,7 +54,10 @@ export async function geminiCliLogin() {
   console.log(chalk.yellow("\nWaiting for authentication to complete..."));
 
   // Wait for OAuth completion
-  await oauthResult.loginCompletePromise;
+  const credentials = await oauthResult.loginCompletePromise;
+  await updateVendorConfig(geminiCli.vendorId, {
+    credentials,
+  });
 
   // Get user info after authentication
   const user = await geminiCli.getUserInfo();

@@ -1,6 +1,5 @@
 import * as crypto from "node:crypto";
 import * as http from "node:http";
-import z from "zod/v4";
 import { getLogger } from "../base";
 import type { UserInfo } from "../configuration/vendor";
 import { type ModelOptions, VendorBase } from "./types";
@@ -8,24 +7,16 @@ import { type ModelOptions, VendorBase } from "./types";
 const VendorId = "gemini-cli";
 const logger = getLogger(VendorId);
 
-const GeminiCredentials = z.object({
-  access_token: z.string(),
-  refresh_token: z.string(),
-  expires_at: z.number(),
-});
-
-type GeminiCredentials = z.infer<typeof GeminiCredentials>;
+type GeminiCredentials = {
+  access_token: string;
+  refresh_token: string;
+  expires_at: number;
+};
 
 export interface GeminiOAuthResult {
   authUrl: string;
   port: number;
   loginCompletePromise: Promise<GeminiCredentials>;
-}
-
-export interface GeminiTokens {
-  refresh: string;
-  access: string;
-  expires: number;
 }
 
 export class GeminiCli extends VendorBase {

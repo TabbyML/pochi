@@ -21,8 +21,10 @@ export abstract class VendorBase {
   }
 
   async getUserInfo(): Promise<UserInfo> {
-    const { user, credentials } = this.getVendorConfig();
+    const { user } = this.getVendorConfig();
     if (user) return user;
+
+    const credentials = await this.getCredentials();
 
     const newUser = await this.fetchUserInfo(credentials);
     updateVendorConfig(this.vendorId, {
