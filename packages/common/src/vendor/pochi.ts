@@ -26,16 +26,12 @@ export class Pochi extends VendorBase {
     super(PochiVendorId);
 
     this.authClient = createAuthClient(
-      this.parseCredentials(credentials)?.token,
+      PochiCredentials.parse(credentials)?.token,
       (token) =>
         updateCredentials({
           token,
         }),
     );
-  }
-
-  parseCredentials(credentials: unknown): PochiCredentials {
-    return PochiCredentials.parse(credentials);
   }
 
   fetchModels(): Promise<Record<string, ModelOptions>> {

@@ -47,14 +47,15 @@ function createModel(
     return createPochiModel(modelId, {
       type: "pochi",
       modelId,
-      apiClient: createApiClient((credentials as { token: string }).token),
+      apiClient: createApiClient(credentials),
     });
   }
 
   throw new Error(`Unknown vendor: ${vendorId}`);
 }
 
-function createApiClient(token: string): PochiApiClient {
+function createApiClient(credentials: unknown): PochiApiClient {
+  const { token } = credentials as { token: string };
   const authClient: PochiApiClient = hc<PochiApi>("https://app.getpochi.com", {
     fetch(input: string | URL | Request, init?: RequestInit) {
       const headers = new Headers(init?.headers);

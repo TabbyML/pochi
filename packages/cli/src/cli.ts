@@ -230,18 +230,20 @@ async function createLLMConfig({
   const modelProvider = pochiConfig.value.providers?.[vendorId];
   const modelSetting = modelProvider?.models?.[modelId];
 
+  const pochiRequest = {
+    type: "vendor",
+    vendorId: "pochi",
+    modelId: options.model,
+    // FIXME
+    options: {
+      maxOutputTokens: 4096,
+      contextWindow: 1_000_000,
+    },
+    credentials: await vendors.pochi.getCredentials(),
+  } satisfies LLMRequestData;
+
   if (!modelProvider) {
-    return {
-      type: "vendor",
-      vendorId: "pochi",
-      modelId: options.model,
-      // FIXME
-      options: {
-        maxOutputTokens: 4096,
-        contextWindow: 1_000_000,
-      },
-      credentials: await vendors.pochi.getCredentials(),
-    } satisfies LLMRequestData;
+    return pochiRequest;
   }
 
   if (!modelSetting) {
@@ -279,15 +281,5 @@ async function createLLMConfig({
     };
   }
 
-  return {
-    type: "vendor",
-    vendorId: "pochi",
-    modelId: options.model,
-    // FIXME
-    options: {
-      maxOutputTokens: 4096,
-      contextWindow: 1_000_000,
-    },
-    credentials: await vendors.pochi.getCredentials(),
-  } satisfies LLMRequestData;
+  return pochiRequest;
 }
