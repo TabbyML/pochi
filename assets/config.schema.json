@@ -21,6 +21,7 @@
                       "type": "string"
                     }
                   },
+                  "required": ["token"],
                   "additionalProperties": false
                 },
                 "user": {
@@ -46,39 +47,63 @@
               "type": "null"
             }
           ]
+        },
+        "gemini-cli": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "credentials": {
+                  "type": "object",
+                  "properties": {
+                    "accessToken": {
+                      "type": "string"
+                    },
+                    "refreshToken": {
+                      "type": "string"
+                    },
+                    "expiresAt": {
+                      "type": "number"
+                    },
+                    "project": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "accessToken",
+                    "refreshToken",
+                    "expiresAt",
+                    "project"
+                  ],
+                  "additionalProperties": false
+                },
+                "user": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "email": {
+                      "type": "string"
+                    },
+                    "image": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["name", "email"],
+                  "additionalProperties": false
+                }
+              },
+              "required": ["credentials"],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
-      "additionalProperties": {
-        "anyOf": [
-          {
-            "type": "object",
-            "properties": {
-              "credentials": {},
-              "user": {
-                "type": "object",
-                "properties": {
-                  "name": {
-                    "type": "string"
-                  },
-                  "email": {
-                    "type": "string"
-                  },
-                  "image": {
-                    "type": "string"
-                  }
-                },
-                "required": ["name", "email"],
-                "additionalProperties": false
-              }
-            },
-            "required": ["credentials"],
-            "additionalProperties": false
-          },
-          {
-            "type": "null"
-          }
-        ]
-      }
+      "additionalProperties": false
     },
     "providers": {
       "type": "object",

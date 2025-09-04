@@ -1,6 +1,6 @@
-import { GoogleCloudCodeAuth } from "cloud-code-ai-provider";
 import * as crypto from "node:crypto";
 import * as http from "node:http";
+import { GoogleCloudCodeAuth } from "cloud-code-ai-provider";
 import { getLogger } from "../base";
 import type { GeminiCliVendorConfig, UserInfo } from "../configuration";
 import { type ModelOptions, VendorBase } from "./types";
