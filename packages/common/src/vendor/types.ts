@@ -2,7 +2,6 @@ import z from "zod/v4";
 
 export const ModelOptions = z.object({
   contextWindow: z.number(),
-  maxOutputTokens: z.number(),
   useToolCallMiddleware: z.boolean().optional(),
 });
 

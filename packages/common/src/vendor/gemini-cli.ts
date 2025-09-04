@@ -330,12 +330,10 @@ export class GeminiCli extends VendorBase {
     return {
       "gemini-2.5-pro": {
         contextWindow: 1_000_000,
-        maxOutputTokens: 32768,
         useToolCallMiddleware: true,
       },
       "gemini-2.5-flash": {
         contextWindow: 1_000_000,
-        maxOutputTokens: 32768,
         useToolCallMiddleware: true,
       },
     };
