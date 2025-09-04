@@ -27,7 +27,7 @@ export abstract class VendorBase {
     const credentials = await this.getCredentials();
 
     const newUser = await this.fetchUserInfo(credentials);
-    updateVendorConfig(this.vendorId, {
+    await updateVendorConfig(this.vendorId, {
       user: newUser,
       credentials,
     });
@@ -45,7 +45,11 @@ export abstract class VendorBase {
 
   protected abstract fetchUserInfo(credentials: unknown): Promise<UserInfo>;
 
-  private getVendorConfig(): VendorConfig {
+  protected async updateCredentials(credentials: unknown) {
+    await updateVendorConfig(this.vendorId, { credentials });
+  }
+
+  protected getVendorConfig(): VendorConfig {
     const config = getVendorConfig(this.vendorId);
     if (!config) throw new Error(`Vendor ${this.vendorId} not found`);
     if (!config.credentials)

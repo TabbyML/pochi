@@ -42,7 +42,7 @@ export function makePochiConfig(strict = false) {
         pochiToken: z.string().optional(),
       })
       .optional(),
-    vendors: z.record(z.string(), VendorConfig).optional(),
+    vendors: z.record(z.string(), VendorConfig.nullable()).optional(),
     providers: looseRecord(CustomModelSetting, strict).optional(),
     mcp: looseRecord(McpServerConfig, strict).optional(),
   });

@@ -21,28 +21,42 @@
         "type": "string"
       },
       "additionalProperties": {
-        "type": "object",
-        "properties": {
-          "credentials": {},
-          "user": {
+        "anyOf": [
+          {
             "type": "object",
             "properties": {
-              "name": {
-                "type": "string"
-              },
-              "email": {
-                "type": "string"
-              },
-              "image": {
-                "type": "string"
+              "credentials": {},
+              "user": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "email": {
+                    "type": "string"
+                  },
+                  "image": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": ["name", "email"],
+                "additionalProperties": false
               }
             },
-            "required": ["name", "email"],
+            "required": ["credentials"],
             "additionalProperties": false
+          },
+          {
+            "type": "null"
           }
-        },
-        "required": ["credentials"],
-        "additionalProperties": false
+        ]
       }
     },
     "providers": {
