@@ -28,6 +28,7 @@
     "@quilted/threads": "catalog:",
     "ai": "catalog:",
     "better-auth": "catalog:",
+    "cloud-code-ai-provider": "^0.1.0",
     "fast-levenshtein": "^3.0.0",
     "hast-util-to-text": "^4.0.2",
     "hono": "catalog:",
