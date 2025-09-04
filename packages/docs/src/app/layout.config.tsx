@@ -28,7 +28,7 @@ export const baseOptions: ExtendedBaseLayoutProps = {
     transparentMode: "none",
   },
   github: {
-    owner: "tabbyml",
+    owner: "TabbyML",
     repo: "pochi",
   },
 };
