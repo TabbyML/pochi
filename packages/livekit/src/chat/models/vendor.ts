@@ -4,7 +4,6 @@ import type {
   PochiVendorConfig,
 } from "@getpochi/common/configuration";
 import type { PochiApi, PochiApiClient } from "@getpochi/common/pochi-api";
-import { wrapLanguageModel } from "ai";
 import { hc } from "hono/client";
 import type { RequestData } from "../../types";
 import { createGeminiCliModel } from "./gemini-cli";
@@ -17,16 +16,7 @@ export function createVendorModel(
     throw new Error(`Missing credentials for ${llm.vendorId}`);
   }
 
-  return wrapLanguageModel({
-    model: createModel(llm.vendorId, llm.credentials, llm.modelId),
-    middleware: {
-      middlewareVersion: "v2",
-      async transformParams({ params }) {
-        params.maxOutputTokens = llm.options.maxOutputTokens;
-        return params;
-      },
-    },
-  });
+  return createModel(llm.vendorId, llm.credentials, llm.modelId);
 }
 
 function createModel(
@@ -55,15 +45,13 @@ function createModel(
 }
 
 function createApiClient(
-  credentials: PochiVendorConfig["credentials"],
+  credentials: NonNullable<PochiVendorConfig["credentials"]>,
 ): PochiApiClient {
-  const token = credentials?.token;
+  const { token } = credentials;
   const authClient: PochiApiClient = hc<PochiApi>("https://app.getpochi.com", {
     fetch(input: string | URL | Request, init?: RequestInit) {
       const headers = new Headers(init?.headers);
-      if (token) {
-        headers.append("Authorization", `Bearer ${token}`);
-      }
+      headers.append("Authorization", `Bearer ${token}`);
       return fetch(input, {
         ...init,
         headers,
@@ -71,6 +59,5 @@ function createApiClient(
     },
   });
 
-  authClient.authenticated = !!token;
   return authClient;
 }

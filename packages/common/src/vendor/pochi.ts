@@ -1,5 +1,7 @@
 import { createAuthClient as createAuthClientImpl } from "better-auth/react";
+import { hc } from "hono/client";
 import type { PochiVendorConfig, UserInfo } from "../configuration";
+import type { PochiApi, PochiApiClient } from "../pochi-api";
 import { getServerBaseUrl } from "../vscode-webui-bridge";
 import { VendorBase } from "./base";
 import type { ModelOptions } from "./types";
@@ -8,21 +10,40 @@ type PochiCredentials = PochiVendorConfig["credentials"];
 
 export class Pochi extends VendorBase {
   private newCredentials?: PochiCredentials = undefined;
+  private cachedModels?: Record<string, ModelOptions>;
 
   constructor() {
     super("pochi");
   }
 
-  fetchModels(): Promise<Record<string, ModelOptions>> {
-    throw new Error("Method not implemented.");
+  override async fetchModels(): Promise<Record<string, ModelOptions>> {
+    if (!this.cachedModels) {
+      const apiClient: PochiApiClient = hc<PochiApi>(
+        "https://app.getpochi.com",
+      );
+      const resp = await apiClient.api.models.$get();
+      const data = await resp.json();
+      this.cachedModels = Object.fromEntries(
+        data.map((x) => [
+          x.id,
+          {
+            contextWindow: x.contextWindow,
+            useToolCallMiddleware: x.id.includes("google/"),
+          } satisfies ModelOptions,
+        ]),
+      );
+    }
+
+    return this.cachedModels;
   }
 
   protected override async renewCredentials(
     credentials: PochiCredentials,
   ): Promise<PochiCredentials> {
     if (this.newCredentials) {
+      const newCredentials = this.newCredentials;
       this.newCredentials = undefined;
-      return this.newCredentials;
+      return newCredentials;
     }
     return credentials;
   }
