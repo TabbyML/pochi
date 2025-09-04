@@ -3,7 +3,7 @@ import {
   type UserInfo,
   updateVendorConfig,
 } from "@getpochi/common/configuration";
-import { vendors } from "@getpochi/common/vendor";
+import { vendors } from "@getpochi/common/vendor/node";
 import chalk from "chalk";
 import { getLoginFn } from "./login";
 

@@ -2,12 +2,12 @@ import type { LanguageModelV2FinishReason } from "@ai-sdk/provider";
 import { Environment } from "@getpochi/common";
 import { GoogleVertexModel } from "@getpochi/common/configuration";
 import type { PochiApiClient } from "@getpochi/common/pochi-api";
-import type { ModelOptions } from "@getpochi/common/vendor";
 import type { VSCodeLmRequestOptions } from "@getpochi/common/vscode-webui-bridge";
 import { type ClientTools, McpTool } from "@getpochi/tools";
 import type { InferUITools, UIMessage } from "ai";
 import z from "zod/v4";
 import type { tables } from "./livestore/schema";
+import { ModelOptions } from "@getpochi/common/vendor";
 
 export type Metadata =
   | {
@@ -98,7 +98,7 @@ const RequestData = z.object({
       vendorId: z.string(),
       modelId: z.string(),
       credentials: z.unknown(),
-      options: z.custom<ModelOptions>(),
+      options: ModelOptions,
     }),
   ]),
   mcpToolSet: z

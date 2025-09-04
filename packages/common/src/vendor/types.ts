@@ -1,3 +1,4 @@
+import z from "zod/v4";
 import {
   type UserInfo,
   type VendorConfig,
@@ -54,8 +55,10 @@ export abstract class VendorBase {
   }
 }
 
-export type ModelOptions = {
-  contextWindow: number;
-  maxOutputTokens: number;
-  useToolCallMiddleware?: boolean;
-};
+export const ModelOptions = z.object({
+  contextWindow: z.number(),
+  maxOutputTokens: z.number(),
+  useToolCallMiddleware: z.boolean().optional(),
+});
+
+export type ModelOptions = z.infer<typeof ModelOptions>;
