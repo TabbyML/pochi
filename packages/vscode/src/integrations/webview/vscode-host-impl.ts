@@ -229,6 +229,15 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     return ThreadSignal.serialize(this.tabState.activeSelection);
   };
 
+  readVisibleTerminals = async () => {
+    return {
+      terminals: ThreadSignal.serialize(this.terminalState.visibleTerminals),
+      openBackgroundJobTerminal: async (backgroundJobId: string) => {
+        this.terminalState.openBackgroundJobTerminal(backgroundJobId);
+      },
+    };
+  };
+
   readCurrentWorkspace = async (): Promise<string | undefined> => {
     return vscode.workspace.workspaceFolders?.[0].uri.fsPath;
   };

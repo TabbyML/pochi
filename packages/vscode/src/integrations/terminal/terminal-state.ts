@@ -2,7 +2,6 @@ import { signal } from "@preact/signals-core";
 import { injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
 import { TerminalJob } from "./terminal-job";
-
 export interface TerminalInfo {
   name: string;
   isActive: boolean;
@@ -19,6 +18,15 @@ export class TerminalState implements vscode.Disposable {
 
   constructor() {
     this.setupEventListeners();
+  }
+
+  public openBackgroundJobTerminal(backgroundJobId: string) {
+    const terminal = vscode.window.terminals.find((t) => {
+      const job = TerminalJob.get(t);
+      return job?.id === backgroundJobId;
+    });
+    if (!terminal) return;
+    terminal.show();
   }
 
   /**

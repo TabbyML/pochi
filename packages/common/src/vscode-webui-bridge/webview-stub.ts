@@ -204,6 +204,23 @@ const VSCodeHostStub = {
   chatVSCodeLm: async (): Promise<void> => {
     return Promise.resolve();
   },
+  readVisibleTerminals: async (): Promise<{
+    terminals: ThreadSignalSerialization<
+      Environment["workspace"]["terminals"] | undefined
+    >;
+    openBackgroundJobTerminal: (backgroundJobId: string) => Promise<void>;
+  }> => {
+    return Promise.resolve({
+      terminals: {} as ThreadSignalSerialization<
+        Environment["workspace"]["terminals"] | undefined
+      >,
+      openBackgroundJobTerminal: async (
+        _backgroundJobId: string,
+      ): Promise<void> => {
+        return Promise.resolve();
+      },
+    });
+  },
 } satisfies VSCodeHostApi;
 
 export function createVscodeHostStub(overrides?: Partial<VSCodeHostApi>) {

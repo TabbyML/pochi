@@ -116,6 +116,13 @@ export interface VSCodeHostApi {
     >
   >;
 
+  readVisibleTerminals(): Promise<{
+    terminals: ThreadSignalSerialization<
+      Environment["workspace"]["terminals"] | undefined
+    >;
+    openBackgroundJobTerminal: (backgroundJobId: string) => Promise<void>;
+  }>;
+
   /**
    * Opens a file at the specified file path.
    *
