@@ -56,7 +56,6 @@ const mockModels: ModelGroups = [
         type: "byok",
         contextWindow: 10000,
         maxTokens: 4000,
-        costType: "basic",
         provider: {
           name: "Custom Provider",
           baseURL: "http://localhost:8080",
@@ -69,7 +68,6 @@ const mockModels: ModelGroups = [
         type: "byok",
         contextWindow: 20000,
         maxTokens: 8000,
-        costType: "basic",
         provider: {
           name: "Custom Provider",
           baseURL: "http://localhost:8080",

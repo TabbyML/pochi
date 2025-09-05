@@ -38,8 +38,10 @@ export function registerModelCommand(program: Command) {
     .action(async () => {
       // Display models from all vendors
       for (const [vendorId, vendor] of Object.entries(vendors)) {
-        const models = await vendor.fetchModels();
-        displayModels(vendorId, models);
+        if (vendor.authenticated) {
+          const models = await vendor.fetchModels();
+          displayModels(vendorId, models);
+        }
       }
 
       // Display models from configuration providers
