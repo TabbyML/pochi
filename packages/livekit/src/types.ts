@@ -97,8 +97,8 @@ const RequestData = z.object({
       type: z.literal("vendor"),
       vendorId: z.string(),
       modelId: z.string(),
-      credentials: z.unknown(),
       options: ModelOptions,
+      getCredentials: z.custom<() => Promise<unknown>>(),
     }),
   ]),
   mcpToolSet: z

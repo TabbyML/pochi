@@ -239,16 +239,12 @@ async function createLLMConfigWithVendors(
     if (!options) {
       return program.error(`Model ${modelId} not found`);
     }
-    const credentials = await vendor.getCredentials();
-    if (!credentials) {
-      return program.error(`Missing credentials for ${vendorId}`);
-    }
     return {
       type: "vendor",
       vendorId: vendorId,
       modelId: modelId,
       options,
-      credentials,
+      getCredentials: vendor.getCredentials,
     } satisfies LLMRequestData;
   }
 
@@ -260,7 +256,7 @@ async function createLLMConfigWithVendors(
       vendorId: "pochi",
       modelId: options.model,
       options: pochiModelOptions,
-      credentials: await vendors.pochi.getCredentials(),
+      getCredentials: vendors.pochi.getCredentials,
     };
   }
 }

@@ -40,13 +40,14 @@ export class ModelList implements vscode.Disposable {
       if (vendor.authenticated) {
         try {
           const models = await vendor.fetchModels();
-          for (const [modelId, modelInfo] of Object.entries(models)) {
+          for (const [modelId, options] of Object.entries(models)) {
             modelList.push({
               type: "vendor",
               vendorId,
-              key: `${vendorId}/${modelId}`,
+              id: `${vendorId}/${modelId}`,
               modelId,
-              ...modelInfo,
+              options,
+              getCredentials: vendor.getCredentials,
             });
           }
         } catch (e) {
@@ -61,15 +62,16 @@ export class ModelList implements vscode.Disposable {
       for (const [providerId, provider] of Object.entries(providers)) {
         const { models, ...rest } = provider;
         if (models) {
-          for (const [modelId, modelInfo] of Object.entries(models)) {
+          for (const [modelId, { name, ...options }] of Object.entries(
+            models,
+          )) {
             modelList.push({
-              key: `${providerId}/${modelId}`,
+              id: `${providerId}/${modelId}`,
               type: "provider",
-              name: modelInfo.name,
+              name,
               modelId,
+              options,
               provider: rest,
-              maxTokens: modelInfo.maxTokens ?? 0,
-              contextWindow: modelInfo.contextWindow,
             });
           }
         }
@@ -83,10 +85,13 @@ export class ModelList implements vscode.Disposable {
       modelList.push({
         type: "vendor",
         vendorId,
-        key: `${vendorId}/${x.vendor}/${x.id}`,
+        id: `${vendorId}/${x.vendor}/${x.id}`,
         name: `${x.vendor}/${x.id}`,
         modelId,
-        contextWindow: x.contextWindow,
+        options: {
+          contextWindow: x.contextWindow,
+        },
+        getCredentials: async () => undefined,
       });
     }
 

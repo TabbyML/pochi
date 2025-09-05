@@ -1,8 +1,5 @@
 import type { LanguageModelV2 } from "@ai-sdk/provider";
-import type {
-  GeminiCliVendorConfig,
-  PochiVendorConfig,
-} from "@getpochi/common/configuration";
+import type { PochiVendorConfig } from "@getpochi/common/configuration";
 import type { PochiApi, PochiApiClient } from "@getpochi/common/pochi-api";
 import { hc } from "hono/client";
 import type { RequestData } from "../../types";
@@ -12,32 +9,23 @@ import { createPochiModel } from "./pochi";
 export function createVendorModel(
   llm: Extract<RequestData["llm"], { type: "vendor" }>,
 ) {
-  if (!llm.credentials) {
-    throw new Error(`Missing credentials for ${llm.vendorId}`);
-  }
-
-  return createModel(llm.vendorId, llm.credentials, llm.modelId);
+  return createModel(llm.vendorId, llm.getCredentials, llm.modelId);
 }
 
 function createModel(
   vendorId: string,
-  credentials: unknown,
+  getCredentials: () => Promise<unknown>,
   modelId: string,
 ): LanguageModelV2 {
   if (vendorId === "gemini-cli") {
-    return createGeminiCliModel(
-      credentials as GeminiCliVendorConfig["credentials"],
-      modelId,
-    );
+    return createGeminiCliModel(getCredentials, modelId);
   }
 
   if (vendorId === "pochi") {
     return createPochiModel(modelId, {
       type: "pochi",
       modelId,
-      apiClient: createApiClient(
-        credentials as PochiVendorConfig["credentials"],
-      ),
+      apiClient: createApiClient(getCredentials),
     });
   }
 
@@ -45,11 +33,13 @@ function createModel(
 }
 
 function createApiClient(
-  credentials: NonNullable<PochiVendorConfig["credentials"]>,
+  getCredentials: () => Promise<unknown>,
 ): PochiApiClient {
-  const { token } = credentials;
   const authClient: PochiApiClient = hc<PochiApi>("https://app.getpochi.com", {
-    fetch(input: string | URL | Request, init?: RequestInit) {
+    async fetch(input: string | URL | Request, init?: RequestInit) {
+      const { token } = (await getCredentials()) as NonNullable<
+        PochiVendorConfig["credentials"]
+      >;
       const headers = new Headers(init?.headers);
       headers.append("Authorization", `Bearer ${token}`);
       return fetch(input, {

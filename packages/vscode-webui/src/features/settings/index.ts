@@ -1,11 +1,9 @@
 // Settings feature barrel export
 export { useIsDevMode } from "./hooks/use-is-dev-mode";
 export {
-  useModels,
   useSelectedModels,
-  type DisplayModel,
   type ModelGroups,
-} from "./hooks/use-models";
+} from "./hooks/use-selected-models";
 export { useAutoApprove } from "./hooks/use-auto-approve";
 export { useToolAutoApproval } from "./hooks/use-tool-auto-approval";
 
