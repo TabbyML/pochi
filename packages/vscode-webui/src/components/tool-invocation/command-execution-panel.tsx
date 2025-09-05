@@ -95,8 +95,8 @@ const BackgroundJobIdButton: FC<{
       <TooltipTrigger asChild>
         <Button
           size="sm"
-          className={cn("size-[16px] rounded-sm border-l-2", {
-            "border-primary ": isActive,
+          className={cn("size-[16px] rounded-sm", {
+            "text-primary": isActive,
           })}
           variant="secondary"
           onClick={onClick}
