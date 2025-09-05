@@ -2,7 +2,7 @@ import { useSelectedModels } from "@/features/settings";
 import { useLatest } from "@/lib/hooks/use-latest";
 import { useMcp } from "@/lib/hooks/use-mcp";
 import { vscodeHost } from "@/lib/vscode";
-import type { Environment } from "@getpochi/common";
+import { constants, type Environment } from "@getpochi/common";
 import type { UserEditsDiff } from "@getpochi/common/vscode-webui-bridge";
 import type { LLMRequestData, Message } from "@getpochi/livekit";
 import type { Todo } from "@getpochi/tools";
@@ -88,8 +88,10 @@ function useLLM(): React.RefObject<LLMRequestData> {
         type: "google-vertex-tuning" as const,
         modelId: selectedModel.modelId,
         vertex: provider.vertex,
-        maxOutputTokens: selectedModel.options.maxTokens,
-        contextWindow: selectedModel.options.contextWindow,
+        maxOutputTokens:
+          selectedModel.options.maxTokens ?? constants.DefaultMaxOutputTokens,
+        contextWindow:
+          selectedModel.options.contextWindow ?? constants.DefaultContextWindow,
         useToolCallMiddleware: selectedModel.options.useToolCallMiddleware,
       };
     }
@@ -99,8 +101,10 @@ function useLLM(): React.RefObject<LLMRequestData> {
         type: "ai-gateway" as const,
         modelId: selectedModel.modelId,
         apiKey: provider.apiKey,
-        maxOutputTokens: selectedModel.options.maxTokens,
-        contextWindow: selectedModel.options.contextWindow,
+        maxOutputTokens:
+          selectedModel.options.maxTokens ?? constants.DefaultMaxOutputTokens,
+        contextWindow:
+          selectedModel.options.contextWindow ?? constants.DefaultContextWindow,
         useToolCallMiddleware: selectedModel.options.useToolCallMiddleware,
       };
     }
@@ -110,8 +114,10 @@ function useLLM(): React.RefObject<LLMRequestData> {
       modelId: selectedModel.modelId,
       baseURL: provider.baseURL,
       apiKey: provider.apiKey,
-      maxOutputTokens: selectedModel.options.maxTokens,
-      contextWindow: selectedModel.options.contextWindow,
+      maxOutputTokens:
+        selectedModel.options.maxTokens ?? constants.DefaultMaxOutputTokens,
+      contextWindow:
+        selectedModel.options.contextWindow ?? constants.DefaultContextWindow,
       useToolCallMiddleware: selectedModel.options.useToolCallMiddleware,
     };
   })();

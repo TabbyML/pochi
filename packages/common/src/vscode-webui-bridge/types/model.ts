@@ -16,7 +16,7 @@ export type DisplayModel =
       name: string;
       type: "provider";
       modelId: string;
-      options: ModelOptions & { maxTokens: number };
+      options: ModelOptions & { maxTokens?: number };
       provider: RemoveModelsField<CustomModelSetting>;
     };
 

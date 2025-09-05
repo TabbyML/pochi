@@ -3,7 +3,7 @@
 import "@livestore/wa-sqlite/dist/wa-sqlite.node.wasm" with { type: "file" };
 
 import { Command } from "@commander-js/extra-typings";
-import { getLogger } from "@getpochi/common";
+import { constants, getLogger } from "@getpochi/common";
 import { pochiConfig } from "@getpochi/common/configuration";
 import type { PochiApi, PochiApiClient } from "@getpochi/common/pochi-api";
 import { vendors } from "@getpochi/common/vendor/node";
@@ -283,8 +283,10 @@ async function createLLMConfigWithProviders(
       modelId,
       baseURL: modelProvider.baseURL,
       apiKey: modelProvider.apiKey,
-      contextWindow: modelSetting.contextWindow,
-      maxOutputTokens: modelSetting.maxTokens,
+      contextWindow:
+        modelSetting.contextWindow ?? constants.DefaultContextWindow,
+      maxOutputTokens:
+        modelSetting.maxTokens ?? constants.DefaultMaxOutputTokens,
     };
   }
 
@@ -293,8 +295,10 @@ async function createLLMConfigWithProviders(
       type: "ai-gateway",
       modelId,
       apiKey: modelProvider.apiKey,
-      contextWindow: modelSetting.contextWindow,
-      maxOutputTokens: modelSetting.maxTokens,
+      contextWindow:
+        modelSetting.contextWindow ?? constants.DefaultContextWindow,
+      maxOutputTokens:
+        modelSetting.maxTokens ?? constants.DefaultMaxOutputTokens,
     };
   }
 
@@ -303,8 +307,10 @@ async function createLLMConfigWithProviders(
       type: "google-vertex-tuning",
       modelId,
       vertex: modelProvider.vertex,
-      contextWindow: modelSetting.contextWindow,
-      maxOutputTokens: modelSetting.maxTokens,
+      contextWindow:
+        modelSetting.contextWindow ?? constants.DefaultContextWindow,
+      maxOutputTokens:
+        modelSetting.maxTokens ?? constants.DefaultMaxOutputTokens,
     };
   }
 }

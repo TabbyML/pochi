@@ -71,10 +71,14 @@ function displayModels(vendorId: string, models: Record<string, ModelOptions>) {
 
   for (const [modelId, modelInfo] of sortedModelEntries) {
     // Display model ID with proper alignment
-    const padding = " ".repeat(Math.max(0, 35 - modelId.length));
+    const padding = " ".repeat(
+      Math.max(0, 35 - (modelInfo?.contextWindow ? modelId.length : 0)),
+    );
 
     // Display context window size
-    const contextWindow = formatContextWindow(modelInfo.contextWindow);
+    const contextWindow = modelInfo.contextWindow
+      ? formatContextWindow(modelInfo.contextWindow)
+      : "";
 
     console.log(
       `  ${modelId}${padding}${contextWindow}${formatToolCall(!!modelInfo.useToolCallMiddleware)}`,
@@ -106,10 +110,14 @@ function displayProviderModels(
 
   for (const [modelId, modelInfo] of sortedModelEntries) {
     // Display model ID with proper alignment
-    const padding = " ".repeat(Math.max(0, 35 - modelId.length));
+    const padding = " ".repeat(
+      Math.max(0, 35 - (modelInfo?.contextWindow ? modelId.length : 0)),
+    );
 
     // Display context window size
-    const contextWindow = formatContextWindow(modelInfo.contextWindow);
+    const contextWindow = modelInfo.contextWindow
+      ? formatContextWindow(modelInfo.contextWindow)
+      : "";
 
     console.log(
       `  ${modelId}${padding}${contextWindow}${formatToolCall(!!modelInfo.useToolCallMiddleware)}`,
