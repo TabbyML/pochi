@@ -76,6 +76,9 @@ export class VSCodeLm implements vscode.Disposable {
 
     // Only first stop words is used.
     const stop = stopSequences?.[0];
+    if (!stop) {
+      throw new Error("Stop word is required for vscode-lm");
+    }
 
     const signal = new ThreadAbortSignal(abortSignal);
     const cancel = cancellationSourceFromAbortSignal(signal);
@@ -105,34 +108,32 @@ export class VSCodeLm implements vscode.Disposable {
           abortPromise as Promise<never>,
         ]);
 
+        if (result.done) {
+          break;
+        }
+
         // If we get here from abortPromise, it will throw, so we only handle the chunk case
         const chunk = result.value;
         buffer += chunk;
 
-        if (stop) {
-          const index = buffer.indexOf(stop);
-          if (index > 0) {
-            logger.debug("VSCode LM request stopped by stop word");
-            // Stop words found.
-            onChunk(buffer.slice(0, index));
-            break;
-          }
-
-          if (index < 0) {
-            const endIndex = getPotentialStartIndex(buffer, stop);
-            if (endIndex === null) {
-              onChunk(buffer);
-              buffer = "";
-              continue;
-            }
-
-            onChunk(buffer.slice(0, endIndex));
-            buffer = buffer.slice(endIndex);
-          }
+        const index = buffer.indexOf(stop);
+        if (index > 0) {
+          logger.debug("VSCode LM request stopped by stop word");
+          // Stop words found.
+          onChunk(buffer.slice(0, index));
+          break;
         }
 
-        if (result.done) {
-          break;
+        if (index < 0) {
+          const endIndex = getPotentialStartIndex(buffer, stop);
+          if (endIndex === null) {
+            onChunk(buffer);
+            buffer = "";
+            continue;
+          }
+
+          onChunk(buffer.slice(0, endIndex));
+          buffer = buffer.slice(endIndex);
         }
       }
     } catch (error) {

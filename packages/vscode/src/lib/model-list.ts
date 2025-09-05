@@ -3,7 +3,10 @@ import { VSCodeLm } from "@/integrations/vscode-lm";
 import { getLogger } from "@getpochi/common";
 import { pochiConfig } from "@getpochi/common/configuration";
 import { vendors } from "@getpochi/common/vendor/node";
-import type { DisplayModel } from "@getpochi/common/vscode-webui-bridge";
+import type {
+  DisplayModel,
+  VSCodeLmRequestOptions,
+} from "@getpochi/common/vscode-webui-bridge";
 import { type Signal, effect, signal } from "@preact/signals-core";
 import { injectable, singleton } from "tsyringe";
 import type * as vscode from "vscode";
@@ -47,8 +50,23 @@ export class ModelList implements vscode.Disposable {
         modelId,
         options: {
           contextWindow: x.contextWindow,
+          useToolCallMiddleware: true,
         },
-        getCredentials: async () => undefined,
+        // This is a hack to pass the model to the chat function
+        getCredentials: async () => {
+          return async (
+            options: Omit<VSCodeLmRequestOptions, "model">,
+            onChunk: (chunk: string) => Promise<void>,
+          ) => {
+            await this.vscodeLm.chat(
+              {
+                ...options,
+                model: x,
+              },
+              onChunk,
+            );
+          };
+        },
       });
     }
 

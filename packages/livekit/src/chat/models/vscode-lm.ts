@@ -2,63 +2,62 @@ import type {
   LanguageModelV2,
   LanguageModelV2StreamPart,
 } from "@ai-sdk/provider";
-import type { RequestData } from "../../types";
+import type { VSCodeLmRequestOptions } from "@getpochi/common/vscode-webui-bridge";
+import { ThreadAbortSignal } from "@quilted/threads";
 
-export function createVSCodeLmModel(
-  llm: Extract<RequestData["llm"], { type: "vscode" }>,
-) {
+export type ChatFn = (
+  options: Omit<VSCodeLmRequestOptions, "model">,
+  onChunk: (chunk: string) => Promise<void>,
+) => Promise<void>;
+
+export function createVSCodeLmModel(getChatFn: () => Promise<ChatFn>) {
   return {
     specificationVersion: "v2",
     provider: "vscode",
-    modelId: llm.modelId || "<default>",
+    modelId: "<default>",
     // FIXME(zhuquan): add supported URLs by model capabilities
     supportedUrls: {},
     doGenerate: async () => Promise.reject("Not implemented"),
     doStream: async ({ prompt, abortSignal, stopSequences }) => {
       const textId = "txt-0";
+      const chatFn = await getChatFn();
       const stream = new ReadableStream<LanguageModelV2StreamPart>({
         async start(controller) {
           controller.enqueue({
             type: "text-start",
             id: textId,
           });
-          llm
-            .chatVSCodeLm(
-              {
-                prompt: prompt,
-                model: {
-                  vendor: llm.vendor,
-                  family: llm.family,
-                  id: llm.id,
-                  version: llm.version,
-                },
-                stopSequences,
-                abortSignal,
-              },
-              async (chunk) => {
-                controller.enqueue({
-                  id: textId,
-                  type: "text-delta",
-                  delta: chunk,
-                });
-              },
-            )
-            .then(() => {
+          chatFn(
+            {
+              prompt: prompt,
+              stopSequences,
+              abortSignal: abortSignal
+                ? ThreadAbortSignal.serialize(abortSignal)
+                : undefined,
+            },
+            async (chunk) => {
               controller.enqueue({
-                type: "text-end",
                 id: textId,
+                type: "text-delta",
+                delta: chunk,
               });
-              controller.enqueue({
-                type: "finish",
-                usage: {
-                  inputTokens: undefined,
-                  outputTokens: undefined,
-                  totalTokens: undefined,
-                },
-                finishReason: "stop",
-              });
-              controller.close();
+            },
+          ).then(() => {
+            controller.enqueue({
+              type: "text-end",
+              id: textId,
             });
+            controller.enqueue({
+              type: "finish",
+              usage: {
+                inputTokens: undefined,
+                outputTokens: undefined,
+                totalTokens: undefined,
+              },
+              finishReason: "stop",
+            });
+            controller.close();
+          });
         },
       });
 

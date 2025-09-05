@@ -5,6 +5,7 @@ import { hc } from "hono/client";
 import type { RequestData } from "../../types";
 import { createGeminiCliModel } from "./gemini-cli";
 import { createPochiModel } from "./pochi";
+import { createVSCodeLmModel, type ChatFn } from "./vscode-lm";
 
 export function createVendorModel(
   llm: Extract<RequestData["llm"], { type: "vendor" }>,
@@ -27,6 +28,10 @@ function createModel(
       modelId,
       apiClient: createApiClient(getCredentials),
     });
+  }
+
+  if (vendorId === "vscode-lm") {
+    return createVSCodeLmModel(getCredentials as () => Promise<ChatFn>);
   }
 
   throw new Error(`Unknown vendor: ${vendorId}`);

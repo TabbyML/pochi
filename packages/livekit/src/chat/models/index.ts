@@ -4,7 +4,6 @@ import { createGoogleVertexTuningModel } from "./google-vertex-tuning";
 import { createOpenAIModel } from "./openai";
 import { createPochiModel } from "./pochi";
 import { createVendorModel } from "./vendor";
-import { createVSCodeLmModel } from "./vscode-lm";
 
 export function createModel({
   id,
@@ -20,10 +19,6 @@ export function createModel({
 
   if (llm.type === "vendor") {
     return createVendorModel(llm);
-  }
-
-  if (llm.type === "vscode") {
-    return createVSCodeLmModel(llm);
   }
 
   if (llm.type === "pochi") {
