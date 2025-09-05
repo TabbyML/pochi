@@ -2,59 +2,39 @@
 
 AI-powered GitHub Action that responds to PR comments with intelligent code analysis and suggestions.
 
-## 🚀 One-Line Installation
+## Documentation
 
-Install Pochi GitHub Action to your repository instantly:
-
-```bash
-# Run this command in your repository root directory
-bash <(curl -sSL https://raw.githubusercontent.com/tabbyml/pochi/main/packages/github-action/scripts/install)
-```
-
-This command will:
-- Auto-detect your repository owner and name
-- Create `.github/workflows/pochi.yml` workflow file
-- Provide setup instructions for required secrets
+For complete setup and configuration instructions, see: https://docs.getpochi.com/github
 
 ## Usage
 
-### Basic Setup
+### Quick Start
 
-1. **Add to your workflow** (`.github/workflows/pochi.yml`):
+Add this workflow to `.github/workflows/pochi.yml`:
 
 ```yaml
-name: pochi AI Assistant
+name: pochi
 
 on:
   issue_comment:
     types: [created]
 
-permissions:
-  contents: read
-  issues: write
-  pull-requests: write
-
 jobs:
   pochi:
-    if: github.event.issue.pull_request
+    if: contains(github.event.comment.body, '/pochi')
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
     steps:
       - uses: actions/checkout@v4
-
-      - name: Run pochi
-        uses: tabbyml/pochi/packages/github-action@main
+      - uses: tabbyml/pochi/packages/github-action@main
         env:
           POCHI_TOKEN: ${{ secrets.POCHI_TOKEN }}
 ```
 
-### Required Setup
-
-1. **Get your pochi token**:
-   - Visit [getpochi.com](https://getpochi.com)
-   - Sign in and get your session token
-2. **Add to GitHub Secrets**:
-   - Go to your repository Settings → Secrets and variables → Actions
-   - Add `POCHI_TOKEN` with your pochi session token
+Set up your `POCHI_TOKEN` secret and you're ready to go!
 
 ### How to Use
 
