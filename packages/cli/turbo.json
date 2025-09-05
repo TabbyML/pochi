@@ -1,4 +1,7 @@
 {
   "extends": ["//"],
-  "tags": ["public"]
+  "tags": ["public"],
+  "boundaries": {
+    "implicitDependencies": ["bun"]
+  }
 }
