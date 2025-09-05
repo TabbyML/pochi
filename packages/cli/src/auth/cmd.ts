@@ -38,11 +38,7 @@ export function registerAuthCommand(program: Command) {
         return;
       }
 
-      const loginFn = getLoginFn(vendor);
-      if (!loginFn) {
-        return loginCommand.error(`Unknown vendor: ${vendor}`);
-      }
-
+      const loginFn = getLoginFn(loginCommand, vendor);
       const user = await loginFn();
       console.log("Logged in as", renderUser(user));
     });
