@@ -43,6 +43,7 @@ export class ModelList implements vscode.Disposable {
           for (const [modelId, options] of Object.entries(models)) {
             modelList.push({
               type: "vendor",
+              name: vendorId === "pochi" ? modelId : `${vendorId}/${modelId}`,
               vendorId,
               id: `${vendorId}/${modelId}`,
               modelId,
@@ -60,11 +61,13 @@ export class ModelList implements vscode.Disposable {
     const providers = pochiConfig.value.providers;
     if (providers) {
       for (const [providerId, provider] of Object.entries(providers)) {
-        const { models, ...rest } = provider;
+        const { models, name: providerName, ...rest } = provider;
         if (models) {
-          for (const [modelId, { name, ...options }] of Object.entries(
-            models,
-          )) {
+          for (const [
+            modelId,
+            { name: modelName, ...options },
+          ] of Object.entries(models)) {
+            const name = `${providerName ?? providerId}/${modelName ?? modelId}`;
             modelList.push({
               id: `${providerId}/${modelId}`,
               type: "provider",

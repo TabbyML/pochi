@@ -81,6 +81,7 @@ function createVSCodeHost(): VSCodeHostApi {
         "readVSCodeLm",
         "chatVSCodeLm",
         "readVisibleTerminals",
+        "readModelList",
       ],
       exports: {
         openTask(params) {

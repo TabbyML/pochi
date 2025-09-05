@@ -4,7 +4,7 @@ import type { ModelOptions } from "../../vendor";
 export type DisplayModel =
   | {
       id: string;
-      name?: string;
+      name: string;
       type: "vendor";
       vendorId: string;
       modelId: string;
@@ -13,7 +13,7 @@ export type DisplayModel =
     }
   | {
       id: string;
-      name?: string;
+      name: string;
       type: "provider";
       modelId: string;
       options: ModelOptions & { maxTokens: number };

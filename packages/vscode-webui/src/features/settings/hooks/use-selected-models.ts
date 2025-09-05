@@ -37,9 +37,9 @@ export function useSelectedModels() {
         } else {
           swiftModels.models.push(x);
         }
+      } else {
+        customModels.models.push(x);
       }
-
-      customModels.models.push(x);
     }
 
     return [superModels, swiftModels, customModels];

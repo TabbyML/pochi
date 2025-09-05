@@ -174,6 +174,7 @@ export class GeminiCli extends VendorBase {
       expires_in: number;
     };
 
+    // FIXME(meng): find a better way to extract getProjectId, to avoid set `--external open` in compiling.
     await GoogleCloudCodeAuth.setCredentials(tokenData);
     const project = await GoogleCloudCodeAuth.getProjectId();
 
