@@ -15,6 +15,7 @@ import type {
   VSCodeLmModel,
   WorkspaceState,
 } from "./index";
+import type { DisplayModel } from "./types/model";
 import type { VSCodeLmRequest } from "./types/models";
 
 export interface VSCodeHostApi {
@@ -265,6 +266,8 @@ export interface VSCodeHostApi {
   readCustomModelSetting(): Promise<
     ThreadSignalSerialization<Record<string, CustomModelSetting> | undefined>
   >;
+
+  readModelList(): Promise<ThreadSignalSerialization<DisplayModel[]>>;
 
   readVSCodeLm(): Promise<{
     featureAvailable: boolean;

@@ -13,6 +13,8 @@ import { getWorkspaceFolder, isFileExists } from "@/lib/fs";
 import path from "node:path";
 import { getLogger } from "@/lib/logger";
 // biome-ignore lint/style/useImportType: needed for dependency injection
+import { ModelList } from "@/lib/model-list";
+// biome-ignore lint/style/useImportType: needed for dependency injection
 import { PostHog } from "@/lib/posthog";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { TokenStorage } from "@/lib/token-storage";
@@ -37,6 +39,7 @@ import {
 } from "@getpochi/common/tool-utils";
 import type {
   CaptureEvent,
+  DisplayModel,
   McpStatus,
   ResourceURI,
   RuleFile,
@@ -114,6 +117,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     private readonly checkpointService: CheckpointService,
     private readonly pochiConfiguration: PochiConfiguration,
     private readonly vscodeLm: VSCodeLm,
+    private readonly modelList: ModelList,
   ) {}
 
   listRuleFiles = async (): Promise<RuleFile[]> => {
@@ -694,6 +698,12 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     ThreadSignalSerialization<Record<string, CustomModelSetting> | undefined>
   > => {
     return ThreadSignal.serialize(this.pochiConfiguration.customModelSettings);
+  };
+
+  readModelList = async (): Promise<
+    ThreadSignalSerialization<DisplayModel[]>
+  > => {
+    return ThreadSignal.serialize(this.modelList.modelList);
   };
 
   readVSCodeLm = async (): Promise<{

@@ -5,6 +5,7 @@ import type { Environment } from "../base";
 import type { CustomModelSetting } from "../configuration";
 import type {
   CaptureEvent,
+  DisplayModel,
   McpStatus,
   ResourceURI,
   RuleFile,
@@ -220,6 +221,9 @@ const VSCodeHostStub = {
         return Promise.resolve();
       },
     });
+  },
+  readModelList: async () => {
+    return Promise.resolve({} as ThreadSignalSerialization<DisplayModel[]>);
   },
 } satisfies VSCodeHostApi;
 
