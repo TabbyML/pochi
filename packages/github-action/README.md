@@ -8,7 +8,7 @@ Install Pochi GitHub Action to your repository instantly:
 
 ```bash
 # Run this command in your repository root directory
-curl -sSL https://raw.githubusercontent.com/tabbyml/pochi/main/packages/github-action/scripts/install | bash
+bash <(curl -sSL https://raw.githubusercontent.com/tabbyml/pochi/main/packages/github-action/scripts/install)
 ```
 
 This command will:
@@ -42,9 +42,9 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Run pochi
-        uses: tabbyml/pochi/packages/github-action@action@latest
-        with:
-          pochi_token: ${{ secrets.POCHI_TOKEN }}
+        uses: tabbyml/pochi/packages/github-action@main
+        env:
+          POCHI_TOKEN: ${{ secrets.POCHI_TOKEN }}
 ```
 
 ### Required Setup
@@ -114,9 +114,9 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: pochi AI Assistant
-        uses: tabbyml/pochi/packages/github-action@action@latest
-        with:
-          pochi_token: ${{ secrets.POCHI_TOKEN }}
+        uses: tabbyml/pochi/packages/github-action@main
+        env:
+          POCHI_TOKEN: ${{ secrets.POCHI_TOKEN }}
 ```
 
 ### Custom Token
@@ -125,10 +125,10 @@ If you need to use a custom GitHub token (for cross-repo operations):
 
 ```yaml
 - name: pochi AI Assistant
-  uses: tabbyml/pochi/packages/github-action@action@latest
-  with:
-    pochi_token: ${{ secrets.POCHI_TOKEN }}
-    token: ${{ secrets.CUSTOM_GITHUB_TOKEN }}
+  uses: tabbyml/pochi/packages/github-action@main
+  env:
+    POCHI_TOKEN: ${{ secrets.POCHI_TOKEN }}
+    GITHUB_TOKEN: ${{ secrets.CUSTOM_GITHUB_TOKEN }}
 ```
 
 ## Features

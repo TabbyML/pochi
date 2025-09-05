@@ -70,7 +70,7 @@ jobs:
           fetch-depth: 1
 
       - name: Run pochi
-        uses: tabbyml/pochi/packages/github-action@action@latest
+        uses: tabbyml/pochi/packages/github-action@main
         env:
           POCHI_TOKEN: ${{ secrets.POCHI_TOKEN }}
 EOF
