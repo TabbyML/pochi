@@ -202,27 +202,12 @@ function renderToolPart(part: ToolUIPart<UITools>): {
     };
   }
 
+  // tool-newTask is now handled by ListRenderer to avoid UI conflicts
   if (part.type === "tool-newTask") {
-    const { description = "creating subtask" } = part.input || {};
-
-    if (part.state === "output-available" && part.output?.result) {
-      const result = part.output.result as string;
-      return {
-        text: `🚀 Subtask completed: ${chalk.bold(description)}\n${chalk.dim("└─")} ${result}`,
-        stop: hasError ? "fail" : "succeed",
-        error: errorText,
-      };
-    }
-    if (part.state === "input-streaming" || part.state === "input-available") {
-      return {
-        text: `🚀 Executing subtask: ${chalk.bold(description)}\n${chalk.dim("└─")} Running ...`,
-        stop: "stopAndPersist",
-        error: errorText,
-      };
-    }
+    // Skip rendering - handled by ListRenderer
     return {
-      text: `🚀 Creating subtask: ${chalk.bold(description)}`,
-      stop: hasError ? "fail" : "succeed",
+      text: "",
+      stop: "stopAndPersist",
       error: errorText,
     };
   }
