@@ -12,7 +12,7 @@ build_js() {
 
         # we use bun shebang in cli.ts to utilize bun link
         # change to node for npm release
-        sed -i "" 's|#!/usr/bin/env bun|#!/usr/bin/env node|g' ./dist/cli.js
+        sed -i 's|#!/usr/bin/env bun|#!/usr/bin/env node|g' ./dist/cli.js
         chmod +x ./dist/cli.js
 }
 
