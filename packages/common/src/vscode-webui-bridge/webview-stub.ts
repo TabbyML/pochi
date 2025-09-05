@@ -11,7 +11,6 @@ import type {
   SessionState,
   UserEditsDiff,
   VSCodeHostApi,
-  VSCodeLmModel,
   WorkspaceState,
 } from "./index";
 
@@ -182,18 +181,6 @@ const VSCodeHostStub = {
   },
   showInformationMessage: async (): Promise<undefined> => {
     return Promise.resolve(undefined);
-  },
-  readVSCodeLm: async (): Promise<{
-    featureAvailable: boolean;
-    models: ThreadSignalSerialization<VSCodeLmModel[]>;
-  }> => {
-    return Promise.resolve({
-      featureAvailable: false,
-      models: {} as ThreadSignalSerialization<VSCodeLmModel[]>,
-    });
-  },
-  chatVSCodeLm: async (): Promise<void> => {
-    return Promise.resolve();
   },
   readVisibleTerminals: async (): Promise<{
     terminals: ThreadSignalSerialization<

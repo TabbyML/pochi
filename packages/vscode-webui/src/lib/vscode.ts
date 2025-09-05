@@ -77,8 +77,6 @@ function createVSCodeHost(): VSCodeHostApi {
         "readAutoSaveDisabled",
         "diffWithCheckpoint",
         "showInformationMessage",
-        "readVSCodeLm",
-        "chatVSCodeLm",
         "readVisibleTerminals",
         "readModelList",
       ],

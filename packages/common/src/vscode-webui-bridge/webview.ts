@@ -11,11 +11,9 @@ import type {
   SessionState,
   TaskIdParams,
   UserEditsDiff,
-  VSCodeLmModel,
   WorkspaceState,
 } from "./index";
 import type { DisplayModel } from "./types/model";
-import type { VSCodeLmRequest } from "./types/models";
 
 export interface VSCodeHostApi {
   readResourceURI(): Promise<ResourceURI>;
@@ -259,13 +257,6 @@ export interface VSCodeHostApi {
   ): Promise<T | undefined>;
 
   readModelList(): Promise<ThreadSignalSerialization<DisplayModel[]>>;
-
-  readVSCodeLm(): Promise<{
-    featureAvailable: boolean;
-    models: ThreadSignalSerialization<VSCodeLmModel[]>;
-  }>;
-
-  chatVSCodeLm: VSCodeLmRequest;
 }
 
 export interface WebviewHostApi {
