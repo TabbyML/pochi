@@ -23,6 +23,7 @@ import { registerModelCommand } from "./model";
 import { OutputRenderer } from "./output-renderer";
 import { TaskRunner } from "./task-runner";
 import { waitUntil } from "./wait-until";
+import { upgrade } from "./lib/install/upgrade";
 
 const logger = getLogger("Pochi");
 logger.debug(`pochi v${packageJson.version}`);
@@ -132,6 +133,11 @@ program
   .configureOutput({
     outputError: (str, write) => write(chalk.red(str)),
   });
+
+program.command("upgrade").action(async () => {
+  await upgrade();
+});
+
 
 registerAuthCommand(program);
 registerModelCommand(program);

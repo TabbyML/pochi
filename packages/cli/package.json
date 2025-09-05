@@ -24,9 +24,11 @@
     "chalk": "^5.3.0",
     "commander": "^14.0.0",
     "hono": "catalog:",
-    "ora": "^8.2.0"
+    "ora": "^8.2.0",
+    "semver": "^7.6.3"
   },
   "devDependencies": {
-    "@getpochi/tools": "workspace:*"
+    "@getpochi/tools": "workspace:*",
+    "@types/semver": "^7.5.8"
   }
 }
