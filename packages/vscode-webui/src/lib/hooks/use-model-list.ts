@@ -1,8 +1,8 @@
+import { useEnablePochiModels } from "@/features/settings";
 import { vscodeHost } from "@/lib/vscode";
 import type { DisplayModel } from "@getpochi/common/vscode-webui-bridge";
 import { threadSignal } from "@quilted/threads/signals";
 import { useQuery } from "@tanstack/react-query";
-import { useSettingsStore } from "src/features/settings/store";
 
 /** @useSignals this comment is needed to enable signals in this hook */
 export const useModelList = (applyFilter: boolean) => {
@@ -12,7 +12,7 @@ export const useModelList = (applyFilter: boolean) => {
     staleTime: Number.POSITIVE_INFINITY,
   });
 
-  const { enablePochiModels } = useSettingsStore();
+  const enablePochiModels = useEnablePochiModels();
 
   const modelList = applyFilter
     ? modelListSignal?.value?.filter((model) => {

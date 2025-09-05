@@ -171,7 +171,7 @@ export function TokenUsage({
               <Progress value={percentage} className="mb-1" />
               {t("tokenUsage.ofUsed", {
                 used: formatTokens(totalTokens),
-                total: formatTokens(selectedModel.contextWindow),
+                total: formatTokens(selectedModel.options.contextWindow),
               })}
             </div>
           </div>

@@ -5,7 +5,7 @@ import { hc } from "hono/client";
 import type { RequestData } from "../../types";
 import { createGeminiCliModel } from "./gemini-cli";
 import { createPochiModel } from "./pochi";
-import { createVSCodeLmModel, type ChatFn } from "./vscode-lm";
+import { type ChatFn, createVSCodeLmModel } from "./vscode-lm";
 
 export function createVendorModel(
   llm: Extract<RequestData["llm"], { type: "vendor" }>,
