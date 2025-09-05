@@ -1,6 +1,7 @@
 {
   "name": "@getpochi/cli",
   "version": "0.5.0-dev",
+  "type": "module",
   "bin": {
     "pochi": "src/cli.ts"
   },
@@ -10,7 +11,8 @@
     "test": "bun vitest --run",
     "build": "./scripts/build-cli.sh",
     "build:all": "./scripts/build-platform-binary.sh",
-    "release": "bunx bumpp --tag=cli@%s"
+    "release": "bunx bumpp --tag=cli@%s",
+    "release:npm": "bun run ./scripts/npm-release.ts"
   },
   "dependencies": {
     "@commander-js/extra-typings": "^14.0.0",

@@ -86,3 +86,13 @@ jobs:
           git add .
           git commit -m "feat(cli): release version $VERSION"
           git push
+
+      - name: Release NPM
+        if: startsWith(github.ref, 'refs/tags/cli@')
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          cd packages/cli
+          echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" > .npmrc
+          # use env to override the default npm name, so we can test the release action
+          POCHI_CLI_NPM_NAME=${{ env.POCHI_CLI_NPM_NAME }} bun release:npm
