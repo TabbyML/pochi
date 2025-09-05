@@ -9,10 +9,8 @@ import {
   statSync,
   symlinkSync,
 } from "node:fs";
-import { createWriteStream } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { extname, join } from "node:path";
-import { pipeline } from "node:stream/promises";
 import chalk from "chalk";
 import {
   getBinaryFileName,
@@ -162,24 +160,23 @@ export async function downloadAndInstall(
 
     console.log(`⚙️ Installing to: ${binDir}`);
 
-    // Download the new binary
-    const response = await fetch(asset.browser_download_url);
-    if (!response.ok) {
-      throw new Error(`Failed to download: ${response.statusText}`);
-    }
-
-    if (!response.body) {
-      throw new Error("Response body is empty");
-    }
-
     // Create temporary directory for extraction
     const tempDir = join(tmpdir(), `pochi-upgrade-${Date.now()}`);
     mkdirSync(tempDir, { recursive: true });
     const archivePath = join(tempDir, asset.name);
 
-    // Save archive to temp file
-    const fileStream = createWriteStream(archivePath);
-    await pipeline(response.body, fileStream);
+    // Download the new binary using curl with progress
+    console.log("🔄 Downloading with progress...");
+    try {
+      execSync(
+        `curl -L --progress-bar "${asset.browser_download_url}" -o "${archivePath}"`,
+        {
+          stdio: "inherit",
+        },
+      );
+    } catch (error) {
+      throw new Error(`Failed to download: ${error}`);
+    }
 
     // Extract the archive and get the binary path
     const extractedBinaryPath = await extractArchive(archivePath, tempDir);

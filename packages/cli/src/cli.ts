@@ -14,7 +14,6 @@ import { hc } from "hono/client";
 import packageJson from "../package.json";
 import { registerAuthCommand } from "./auth";
 import { findRipgrep } from "./lib/find-ripgrep";
-import { upgrade } from "./lib/install/upgrade";
 import {
   containsWorkflowReference,
   replaceWorkflowReferences,
@@ -23,6 +22,7 @@ import { createStore } from "./livekit/store";
 import { registerModelCommand } from "./model";
 import { OutputRenderer } from "./output-renderer";
 import { TaskRunner } from "./task-runner";
+import { registerUpgradeCommand } from "./upgrade";
 import { waitUntil } from "./wait-until";
 
 const logger = getLogger("Pochi");
@@ -134,12 +134,9 @@ program
     outputError: (str, write) => write(chalk.red(str)),
   });
 
-program.command("upgrade").action(async () => {
-  await upgrade();
-});
-
 registerAuthCommand(program);
 registerModelCommand(program);
+registerUpgradeCommand(program);
 
 program.parse(process.argv);
 
