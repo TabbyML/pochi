@@ -39,9 +39,12 @@ export function makePochiConfig(strict = false) {
       .optional(),
     vendors: z
       .object({
-        pochi: PochiVendorConfig.nullable().optional(),
-        "gemini-cli": GeminiCliVendorConfig.nullable().optional(),
+        pochi: PochiVendorConfig.nullable().optional().catch(undefined),
+        "gemini-cli": GeminiCliVendorConfig.nullable()
+          .optional()
+          .catch(undefined),
       })
+      .catchall(z.unknown())
       .optional(),
     providers: looseRecord(CustomModelSetting, strict).optional(),
     mcp: looseRecord(McpServerConfig, strict).optional(),

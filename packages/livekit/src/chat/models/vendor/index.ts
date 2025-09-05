@@ -2,18 +2,20 @@ import type { LanguageModelV2 } from "@ai-sdk/provider";
 import type { PochiVendorConfig } from "@getpochi/common/configuration";
 import type { PochiApi, PochiApiClient } from "@getpochi/common/pochi-api";
 import { hc } from "hono/client";
-import type { RequestData } from "../../types";
+import type { RequestData } from "../../../types";
 import { createGeminiCliModel } from "./gemini-cli";
 import { createPochiModel } from "./pochi";
 import { type ChatFn, createVSCodeLmModel } from "./vscode-lm";
 
 export function createVendorModel(
+  id: string,
   llm: Extract<RequestData["llm"], { type: "vendor" }>,
 ) {
-  return createModel(llm.vendorId, llm.getCredentials, llm.modelId);
+  return createModel(id, llm.vendorId, llm.getCredentials, llm.modelId);
 }
 
 function createModel(
+  id: string,
   vendorId: string,
   getCredentials: () => Promise<unknown>,
   modelId: string,
@@ -23,11 +25,7 @@ function createModel(
   }
 
   if (vendorId === "pochi") {
-    return createPochiModel(modelId, {
-      type: "pochi",
-      modelId,
-      apiClient: createApiClient(getCredentials),
-    });
+    return createPochiModel(id, modelId, createApiClient(getCredentials));
   }
 
   if (vendorId === "vscode-lm") {

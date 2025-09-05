@@ -102,14 +102,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
     }
 
     if (
-      (llm.type === "pochi" &&
-        // Turn on ToolCallMiddleware only for gemini backed models for now
-        (llm.modelId?.startsWith("google/") ||
-          llm.modelId?.startsWith("pochi/"))) ||
-      (llm.type !== "pochi" &&
-        llm.type !== "vendor" &&
-        llm.useToolCallMiddleware) ||
-      llm.type === "vscode" ||
+      (llm.type !== "vendor" && llm.useToolCallMiddleware) ||
       (llm.type === "vendor" && llm.options.useToolCallMiddleware)
     ) {
       middlewares.push(createToolCallMiddleware());
@@ -123,7 +116,9 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
       messages: convertToModelMessages(
         formatters.llm(preparedMessages, {
           keepReasoningPart:
-            llm.type === "pochi" && llm.modelId?.includes("claude"),
+            llm.type === "vendor" &&
+            llm.vendorId === "pochi" &&
+            llm.modelId?.includes("claude"),
         }),
       ),
       model: wrapLanguageModel({

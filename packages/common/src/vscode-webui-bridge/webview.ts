@@ -1,7 +1,6 @@
 import type { ThreadAbortSignalSerialization } from "@quilted/threads";
 import type { ThreadSignalSerialization } from "@quilted/threads/signals";
 import type { Environment } from "../base";
-import type { CustomModelSetting } from "../configuration";
 import type {
   CaptureEvent,
   McpStatus,
@@ -12,11 +11,9 @@ import type {
   SessionState,
   TaskIdParams,
   UserEditsDiff,
-  VSCodeLmModel,
   WorkspaceState,
 } from "./index";
 import type { DisplayModel } from "./types/model";
-import type { VSCodeLmRequest } from "./types/models";
 
 export interface VSCodeHostApi {
   readResourceURI(): Promise<ResourceURI>;
@@ -259,22 +256,7 @@ export interface VSCodeHostApi {
     ...items: T[]
   ): Promise<T | undefined>;
 
-  /**
-   * Read the OpenAI model override configuration.
-   * @returns The OpenAI model override configuration or undefined if not set.
-   */
-  readCustomModelSetting(): Promise<
-    ThreadSignalSerialization<Record<string, CustomModelSetting> | undefined>
-  >;
-
   readModelList(): Promise<ThreadSignalSerialization<DisplayModel[]>>;
-
-  readVSCodeLm(): Promise<{
-    featureAvailable: boolean;
-    models: ThreadSignalSerialization<VSCodeLmModel[]>;
-  }>;
-
-  chatVSCodeLm: VSCodeLmRequest;
 }
 
 export interface WebviewHostApi {
