@@ -14,6 +14,7 @@ import { hc } from "hono/client";
 import packageJson from "../package.json";
 import { registerAuthCommand } from "./auth";
 import { findRipgrep } from "./lib/find-ripgrep";
+import { upgrade } from "./lib/install/upgrade";
 import {
   containsWorkflowReference,
   replaceWorkflowReferences,
@@ -23,7 +24,6 @@ import { registerModelCommand } from "./model";
 import { OutputRenderer } from "./output-renderer";
 import { TaskRunner } from "./task-runner";
 import { waitUntil } from "./wait-until";
-import { upgrade } from "./lib/install/upgrade";
 
 const logger = getLogger("Pochi");
 logger.debug(`pochi v${packageJson.version}`);
@@ -137,7 +137,6 @@ program
 program.command("upgrade").action(async () => {
   await upgrade();
 });
-
 
 registerAuthCommand(program);
 registerModelCommand(program);

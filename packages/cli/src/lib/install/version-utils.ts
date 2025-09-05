@@ -6,21 +6,21 @@ export function isNewerVersion(latest: string, current: string): boolean {
     // Try to parse as valid semver first (preserves pre-release info)
     const latestValid = semver.valid(latest);
     const currentValid = semver.valid(current);
-    
+
     if (latestValid && currentValid) {
       // Both are valid semver, use semver comparison
       return semver.gt(latestValid, currentValid);
     }
-    
+
     // Fallback to coerce if not valid semver (strips pre-release)
     const latestClean = semver.coerce(latest);
     const currentClean = semver.coerce(current);
-    
+
     if (!latestClean || !currentClean) {
       // Fallback to string comparison if semver parsing fails
       return latest > current;
     }
-    
+
     // Use semver.gt (greater than) for comparison
     return semver.gt(latestClean, currentClean);
   } catch (error) {
