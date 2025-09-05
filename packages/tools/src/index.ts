@@ -71,11 +71,11 @@ const CliTools = {
   searchFiles,
   todoWrite,
   writeToFile,
+  newTask,
 };
 
 export const ClientTools = {
   ...CliTools,
-  newTask,
   startBackgroundJob,
   readBackgroundJobOutput,
   killBackgroundJob,
@@ -88,22 +88,7 @@ export const selectClientTools = (options: {
   isCli: boolean;
 }) => {
   if (options.isCli) {
-    if (options?.isSubTask) {
-      const {
-        newTask,
-        startBackgroundJob,
-        readBackgroundJobOutput,
-        killBackgroundJob,
-        ...rest
-      } = ClientTools;
-      return rest;
-    }
-
-    // CLI support new task
-    return {
-      ...CliTools,
-      newTask,
-    };
+    return CliTools;
   }
 
   if (options?.isSubTask) {
