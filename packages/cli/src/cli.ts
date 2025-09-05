@@ -21,7 +21,6 @@ import {
 import { createStore } from "./livekit/store";
 import { registerModelCommand } from "./model";
 import { OutputRenderer } from "./output-renderer";
-import { ListRenderer } from "./list-renderer";
 import { TaskRunner } from "./task-runner";
 import { registerUpgradeCommand } from "./upgrade";
 import { waitUntil } from "./wait-until";
@@ -99,13 +98,11 @@ const program = new Command()
       waitUntil,
     });
 
-    const outputRenderer = new OutputRenderer(runner.state);
-    const listRenderer = new ListRenderer(runner.state);
+    const renderer = new OutputRenderer(runner.state);
 
     await runner.run();
 
-    outputRenderer.shutdown();
-    listRenderer.shutdown();
+    renderer.shutdown();
 
     const shareId = runner.shareId;
     if (shareId) {
