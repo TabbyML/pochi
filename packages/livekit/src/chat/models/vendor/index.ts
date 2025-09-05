@@ -2,7 +2,7 @@ import type { LanguageModelV2 } from "@ai-sdk/provider";
 import type { PochiVendorConfig } from "@getpochi/common/configuration";
 import type { PochiApi, PochiApiClient } from "@getpochi/common/pochi-api";
 import { hc } from "hono/client";
-import type { RequestData } from "../../types";
+import type { RequestData } from "../../../types";
 import { createGeminiCliModel } from "./gemini-cli";
 import { createPochiModel } from "./pochi";
 import { type ChatFn, createVSCodeLmModel } from "./vscode-lm";
