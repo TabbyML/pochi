@@ -385,6 +385,7 @@ export class DiffView implements vscode.Disposable {
         DiffViewMap.set(id, diffView);
         logger.debug(`Opened diff view for ${id}: ${relpath}`);
         logger.debug(`Total diff views: ${DiffViewMap.size}`);
+        await closeFileEditorTabs(diffView.fileUri);
       }
 
       return diffView;
@@ -397,6 +398,25 @@ export class DiffView implements vscode.Disposable {
       diffView.revertAndClose();
     }
   };
+}
+
+// Close any regular tabs for this file before open diff view
+async function closeFileEditorTabs(fileUri: vscode.Uri) {
+  const tabsToClose: vscode.Tab[] = [];
+  for (const group of vscode.window.tabGroups.all) {
+    for (const tab of group.tabs) {
+      if (
+        tab.input instanceof vscode.TabInputText &&
+        tab.input.uri.fsPath === fileUri.fsPath &&
+        !(tab.input instanceof vscode.TabInputTextDiff)
+      ) {
+        tabsToClose.push(tab);
+      }
+    }
+  }
+  for (const tab of tabsToClose) {
+    await vscode.window.tabGroups.close(tab, true);
+  }
 }
 
 const DiffViewMap = new Map<string, DiffView>();
