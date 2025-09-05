@@ -36,7 +36,7 @@ export interface RunnerOptions {
   store: Store;
 
   // The prompt to use for creating the task
-  prompt: string;
+  prompt?: string;
 
   /**
    * The current working directory for the task runner.
@@ -95,17 +95,10 @@ export class TaskRunner {
       createSubTaskRunner: (taskId: string) => {
         // create sub task
         return new TaskRunner({
+          ...options,
+          prompt: undefined, // should not use prompt
           uid: taskId,
-          llm: options.llm,
-          apiClient: options.apiClient,
-          store: options.store,
-          prompt: options.prompt,
-          cwd: options.cwd,
-          rg: options.rg,
-          maxSteps: options.maxSteps, // limit max steps for sub task
-          maxRetries: options.maxRetries,
-          isSubTask: true, // flag subtask
-          waitUntil: options.waitUntil,
+          isSubTask: true,
         });
       },
     };
