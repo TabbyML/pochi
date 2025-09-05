@@ -183,7 +183,9 @@ export const ModelSection: React.FC<ModelSectionProps> = ({ user }) => {
       {vendorModels.length > 0 && (
         <div className="ml-1">
           <AccordionSection
-            title={<div className="flex items-center gap-2 py-1">Others</div>}
+            title={
+              <div className="flex items-center gap-2 py-1">Third-party</div>
+            }
             variant="compact"
             className="py-0"
             defaultOpen
