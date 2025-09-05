@@ -1,6 +1,5 @@
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Switch } from "@/components/ui/switch";
 import {
   Tooltip,
   TooltipContent,
@@ -23,8 +22,7 @@ interface ModelSectionProps {
 export const ModelSection: React.FC<ModelSectionProps> = ({ user }) => {
   const { t } = useTranslation();
   const { modelList = [], isLoading } = useModelList(false);
-  const { enablePochiModels, enableVSCodeLm, updateEnableVSCodeLm } =
-    useSettingsStore();
+  const { enablePochiModels } = useSettingsStore();
 
   const getCostTypeBadgeText = (label?: string) => {
     return label === "super" ? t("modelSelect.super") : t("modelSelect.swift");
@@ -49,9 +47,9 @@ export const ModelSection: React.FC<ModelSectionProps> = ({ user }) => {
       return lhsLabel.localeCompare(rhsLabel);
     });
 
-  const vscodeLmModels = modelList.filter(
+  const vendorModels = modelList.filter(
     (x): x is Extract<DisplayModel, { type: "vendor" }> =>
-      x.type === "vendor" && x.vendorId === "vscode-lm",
+      x.type === "vendor" && x.vendorId !== "pochi",
   );
 
   const providerModels = modelList.filter(
@@ -127,61 +125,6 @@ export const ModelSection: React.FC<ModelSectionProps> = ({ user }) => {
               </AccordionSection>
             </div>
           )}
-          {/* Copilot Models Section */}
-          {vscodeLmModels.length > 0 && (
-            <div className="ml-1">
-              <AccordionSection
-                title={
-                  <div className="flex items-center gap-2 py-1">
-                    Copilot
-                    <Switch
-                      className="scale-75 cursor-pointer transition-all hover:bg-accent/20 hover:shadow-md "
-                      checked={enableVSCodeLm}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        updateEnableVSCodeLm(!enableVSCodeLm);
-                      }}
-                    />
-                  </div>
-                }
-                variant="compact"
-                className="py-0"
-                defaultOpen
-              >
-                <div className="space-y-2">
-                  {enableVSCodeLm ? (
-                    vscodeLmModels.length > 0 ? (
-                      vscodeLmModels.map((model) => (
-                        <div
-                          key={model.id}
-                          className="group rounded-md border p-2"
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="flex flex-1 items-center gap-2 overflow-x-hidden">
-                              <div className="flex size-6 shrink-0 items-center justify-center">
-                                <DotIcon className="size-6 text-muted-foreground" />
-                              </div>
-                              <span className="truncate font-semibold">
-                                {model.name}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="text-muted-foreground text-xs">
-                        {t("settings.models.noCopilotModels")}
-                      </div>
-                    )
-                  ) : (
-                    <div className="text-muted-foreground text-xs">
-                      {t("settings.models.copilotDisabled")}
-                    </div>
-                  )}
-                </div>
-              </AccordionSection>
-            </div>
-          )}
 
           {/* Custom Models Section */}
           {providerModels && (
@@ -235,6 +178,34 @@ export const ModelSection: React.FC<ModelSectionProps> = ({ user }) => {
         </div>
       ) : (
         <EmptySectionPlaceholder content={t("settings.models.noModelsFound")} />
+      )}
+
+      {vendorModels.length > 0 && (
+        <div className="ml-1">
+          <AccordionSection
+            title={<div className="flex items-center gap-2 py-1">Others</div>}
+            variant="compact"
+            className="py-0"
+            defaultOpen
+          >
+            <div className="space-y-2">
+              {vendorModels.map((model) => (
+                <div key={model.id} className="group rounded-md border p-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex flex-1 items-center gap-2 overflow-x-hidden">
+                      <div className="flex size-6 shrink-0 items-center justify-center">
+                        <DotIcon className="size-6 text-muted-foreground" />
+                      </div>
+                      <span className="truncate font-semibold">
+                        {model.name}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </AccordionSection>
+        </div>
       )}
     </Section>
   );

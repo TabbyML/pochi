@@ -12,15 +12,12 @@ export const useModelList = (applyFilter: boolean) => {
     staleTime: Number.POSITIVE_INFINITY,
   });
 
-  const { enablePochiModels, enableVSCodeLm } = useSettingsStore();
+  const { enablePochiModels } = useSettingsStore();
 
   const modelList = applyFilter
     ? modelListSignal?.value?.filter((model) => {
         if (model.type === "vendor" && model.vendorId === "pochi") {
           return !model.modelId.startsWith("pochi/") || enablePochiModels;
-        }
-        if (model.type === "vendor" && model.vendorId === "vscode-lm") {
-          return enableVSCodeLm;
         }
         return true;
       })
