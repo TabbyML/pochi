@@ -1,12 +1,16 @@
 name: "pochi GitHub Action"
 description: "Run pochi AI assistant in GitHub Actions workflows"
+author: "TabbyML"
 branding:
   icon: "code"
   color: "blue"
 
 inputs:
+  pochi_token:
+    description: "Your Pochi session token (can also be set as POCHI_TOKEN environment variable)"
+    required: false
   model:
-    description: "The AI model to use for pochi tasks"
+    description: "The AI model to use for pochi tasks (can also be set as POCHI_MODEL environment variable)"
     required: false
 
 runs:
@@ -63,6 +67,12 @@ runs:
     - name: Run pochi GitHub Action
       shell: bash
       run: |
+        # Set token from input or environment variable
+        if [ -n "${{ inputs.pochi_token }}" ]; then
+          export POCHI_TOKEN="${{ inputs.pochi_token }}"
+        fi
+        
+        # Set model from input or environment variable
         if [ -n "${{ inputs.model }}" ]; then
           export POCHI_MODEL="${{ inputs.model }}"
         fi

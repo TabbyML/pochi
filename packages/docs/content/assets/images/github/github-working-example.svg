@@ -1,0 +1,13 @@
+<svg width="600" height="200" xmlns="http://www.w3.org/2000/svg">
+  <rect width="100%" height="100%" fill="#f6f8fa"/>
+  <circle cx="30" cy="30" r="8" fill="#0366d6"/>
+  <text x="50" y="35" font-family="Arial" font-size="14" fill="#24292e" font-weight="bold">Pochi</text>
+  <text x="50" y="55" font-family="Arial" font-size="12" fill="#586069">🤖 AI Assistant</text>
+  
+  <rect x="20" y="80" width="560" height="80" rx="6" fill="#f1f8ff" stroke="#0366d6"/>
+  <text x="30" y="105" font-family="Arial" font-size="14" fill="#0366d6">🔄 Pochi Running...</text>
+  <text x="30" y="130" font-family="Arial" font-size="12" fill="#586069">Analyzing code changes...</text>
+  <text x="30" y="150" font-family="Arial" font-size="12" fill="#586069">Checking for potential issues...</text>
+  
+  <text x="20" y="190" font-family="Arial" font-size="12" fill="#586069">GitHub Action is processing the request</text>
+</svg>

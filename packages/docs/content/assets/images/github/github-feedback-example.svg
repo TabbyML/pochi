@@ -1,0 +1,19 @@
+<svg width="600" height="300" xmlns="http://www.w3.org/2000/svg">
+  <rect width="100%" height="100%" fill="#f6f8fa"/>
+  <circle cx="30" cy="30" r="8" fill="#0366d6"/>
+  <text x="50" y="35" font-family="Arial" font-size="14" fill="#24292e" font-weight="bold">Pochi</text>
+  <text x="50" y="55" font-family="Arial" font-size="12" fill="#586069">🤖 AI Assistant</text>
+  
+  <rect x="20" y="80" width="560" height="180" rx="6" fill="#f1f8ff" stroke="#28a745"/>
+  <text x="30" y="105" font-family="Arial" font-size="14" fill="#28a745">✅ Pochi Completed</text>
+  
+  <text x="30" y="130" font-family="Arial" font-size="12" fill="#24292e" font-weight="bold">Code Review Summary:</text>
+  <text x="30" y="150" font-family="Arial" font-size="12" fill="#24292e">• Found 2 potential improvements</text>
+  <text x="30" y="170" font-family="Arial" font-size="12" fill="#24292e">• No security issues detected</text>
+  <text x="30" y="190" font-family="Arial" font-size="12" fill="#24292e">• Code follows best practices</text>
+  
+  <text x="30" y="220" font-family="Arial" font-size="12" fill="#24292e" font-weight="bold">Suggestion:</text>
+  <text x="30" y="240" font-family="Arial" font-size="12" fill="#24292e">Consider adding error handling to the API call</text>
+  
+  <text x="20" y="280" font-family="Arial" font-size="12" fill="#586069">Pochi has provided detailed feedback on the pull request</text>
+</svg>
