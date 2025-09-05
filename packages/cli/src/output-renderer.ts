@@ -196,9 +196,7 @@ function renderToolPart(part: ToolUIPart<UITools>): {
       : "";
 
     return {
-      text: `${chalk.bold(chalk.yellow(`❓ ${question}`))}
-${followUpText}
-`,
+      text: `${chalk.bold(chalk.yellow(`❓ ${question}`))} ${followUpText}`,
       stop: "stopAndPersist",
       error: errorText,
     };
