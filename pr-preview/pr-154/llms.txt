@@ -1,3 +1,74 @@
+# Auto Compact
+URL: /auto-compact
+Reduce context usage by summarizing long conversations—inline or into a new task
+***
+
+title: "Auto Compact"
+description: "Reduce context usage by summarizing long conversations—inline or into a new task"
+icon: "ScanText"
+----------------
+
+# Auto Compact
+
+Auto Compact helps you keep long conversations efficient by summarizing earlier messages when your token usage grows large. You can either:
+
+* Compact in the current task (inject a compact summary so you can continue seamlessly)
+* Start a new task with the summary (spawn a fresh task seeded with a concise recap)
+
+![Auto Compact overview](../assets/images/auto-compact.png)
+
+## When Auto Compact is available
+
+Auto Compact becomes available from the token usage chip in the toolbar when all of the following are true:
+
+* The conversation isn’t streaming or executing
+* The chat isn’t read-only
+* No other compact action is pending
+* Total tokens ≥ 50,000 (min threshold)
+
+If the threshold isn’t met, you’ll see a tooltip explaining that more tokens are required to compact.
+
+While compacting, the chip shows a spinner with the “Compacting” label.
+
+![Compacting in progress](../assets/images/auto-compacting.png)
+
+## Two ways to compact
+
+### Option A — Compact in current task
+
+Use this to stay in the same task. Pochi will:
+
+1. Generate a concise summary of the conversation up to your latest message
+2. Inject a compact block at the top of your last user message
+3. Continue the conversation with the condensed context
+
+> Notes: The summary is wrapped into a compact section and prepended to your last message to preserve intent while saving context.
+
+### Option B — Start new task with summary
+
+Use this to branch a fresh task based on the current work. Pochi will:
+
+1. Create a summary of the existing conversation
+2. Open a new task seeded with the summary and a short handoff message
+3. Navigate you to the new task to continue
+
+![Inline compact summary in current task (expandable)](../assets/images/auto-compact-with-new-task-summery.png)
+
+## Technical Details
+
+* Trigger: You choose either “Compact task” (inline) or “New task with summary”.
+* Summary prompt: Pochi asks the model to produce a concise recap focused on key topics, decisions, and important context (limited to a few thousand tokens of output).
+* Inline compact: The recap is wrapped in a compact block and prepended to your last user message before the next response.
+* New task: The recap becomes the first message of a brand-new task, followed by a short instruction letting the agent analyze status and confirm next steps.
+* Safety/availability: Buttons are disabled during streaming/execution, or when below the minimum token threshold.
+
+## Tips
+
+* Prefer inline compact when you want continuity within the same task.
+* Use “new task with summary” to cleanly branch, hand over, or checkpoint work.
+* You’ll see a “Compacting” state while the summary is being generated—this can take a moment for very long threads.
+
+
 # CLI
 URL: /cli
 Pochi CLI allows you to run an AI agent directly from the command line.
@@ -16,6 +87,12 @@ Pochi offers a command-line interface (CLI) that allows you to run an AI agent d
 
 ```bash
 curl -fsSL https://getpochi.com/install.sh | bash
+```
+
+Alternatively, you can install pochi using Homebrew:
+
+```bash
+brew install tabbyml/pochi/pochi
 ```
 
 ## Authentication
@@ -117,46 +194,36 @@ Here you will find highlights on features, enhancements, and bug fixes, plus ins
 
 ***
 
-## Sep 2, 2025
-
-NOTE: PRs from August 29th \~ September 2nd.
+## Sep 5, 2025
 
 ### TL;DR
 
-TODO: summarize
+We had a massive week — **62 PRs shipped** 🎉!
+
+Pochi can now reply to you right in **GitHub comments**, the interface speaks more languages with new **i18n support**, and we rolled out a sleeker, more powerful **background job system**. On top of that, the **CLI** got smarter, **autocomplete** got friendlier, and the **docs** got a glow-up!
+
+### Features 🚀
+
+* **GitHub Action integration:** Pochi now lives in your PR comments! Ask for help in a PR with `/pochi`. [#76](https://github.com/TabbyML/pochi/pull/76)
+* **Internationalization (i18n):** The VS Code extension now supports 🇺🇸 🇨🇳 🇯🇵 🇰🇷. Want your language included? Open a PR! [#90](https://github.com/TabbyML/pochi/pull/90)
 
 ### Enhancements ✨
 
-* **CLI workflow support:** Trigger workflows directly from the CLI with `pochi -p "/create-pr"`. [#110](https://github.com/TabbyML/pochi/pull/110)
-* **Improved docs:** Updated CLI docs with the latest usage details and expanded model docs with new provider configuration examples. [#133](https://github.com/TabbyML/pochi/pull/133), [#141](https://github.com/TabbyML/pochi/pull/141)
-* **Model configuration improvements:** Switched from an array to a record structure for clearer organization. [#140](https://github.com/TabbyML/pochi/pull/140)
-* **Google Vertex Tuning model support:** Added ability to use access tokens with Google Vertex Tuning models. [#144](https://github.com/TabbyML/pochi/pull/144)
-* **Better MCP display:** Adjusted the display of MCP in the auto-complete panel for improved UX. [#143](https://github.com/TabbyML/pochi/pull/143)
-  * TODO: verify when released
+* **Enhanced Background jobs:** Added terminal integration and lifecycle controls. Enhanced the job UI with collapsible detail logs and readable IDs for a clearer experience. [#81](https://github.com/TabbyML/pochi/pull/81), [#97](https://github.com/TabbyML/pochi/pull/97)
+* **CLI workflow support:** Trigger a workflow directly from the CLI with `pochi -p "/create-pr"`. [#110](https://github.com/TabbyML/pochi/pull/110)
+* **Autocomplete:** Pochi suggests relevant tools, functions, and variables to help you type prompts faster. [#89](https://github.com/TabbyML/pochi/pull/89)
+* **BYOK models configuration is easier:** `maxTokens` and `contextWindow` are made optional. [#104](https://github.com/TabbyML/pochi/pull/104)
+* **Documentation updates:** Refreshed CLI usage docs, expanded model provider configuration examples, and added Slack integration documentation. [#133](https://github.com/TabbyML/pochi/pull/133), [#141](https://github.com/TabbyML/pochi/pull/141), [#82](https://github.com/TabbyML/pochi/pull/82)
 
 ### Bug Fixes 🐛
 
 * **CLI workflow fallback:** Missing workflows now trigger a warning instead of an error, allowing the CLI to continue execution. [#122](https://github.com/TabbyML/pochi/pull/122)
-* **File writing reliability:** The CLI now ensures directories exist before writing, so writeToFile tool calls won't fail. [#118](https://github.com/TabbyML/pochi/pull/118)
-* **VS Code diff view:** Fixed scrolling so the diff view no longer passes the last line. [#115](https://github.com/TabbyML/pochi/pull/115)
-  * TODO: verify
-* **Web UI error handling:** Debounced error messages to prevent blinking in the web UI. [#132](https://github.com/TabbyML/pochi/pull/132)
-  * TODO: verify
-* **Code completion fixes:** Fixed context provider document range calculations in VS Code. [#131](https://github.com/TabbyML/pochi/pull/131)
-  * TODO: verify
+* **File writing reliability:** The CLI will ensure directories exist before writing, so file operations won't fail. [#118](https://github.com/TabbyML/pochi/pull/118)
+* **More accurate file search suggestions:** File search shows the most relevant files instead of a broad range. [#131](https://github.com/TabbyML/pochi/pull/131)
 
-### Codebase Improvements & Minor Changes (TODO: remove)
+### New Contributors 🐾
 
-* **Enhanced CLI executeCommand tool:** Improved exit code handling for more robust command execution. [#113](https://github.com/TabbyML/pochi/pull/113)
-* **Dependency updates:** Updated dependencies and cleaned up markdown component. [#105](https://github.com/TabbyML/pochi/pull/105)
-* **Tool call aborting:** Prioritized aborting previewing tool calls in chat submit hook for better responsiveness. [#142](https://github.com/TabbyML/pochi/pull/142)
-* **Model auto-start protection:** Added auto-approve guard to pending model auto-start hook. [#129](https://github.com/TabbyML/pochi/pull/129)
-* **Enhanced tool descriptions:** Added missing tool descriptions for background job management. [#134](https://github.com/TabbyML/pochi/pull/134)
-* **Command execution improvements:** Enhanced executeCommand output processing and fixed LiveKit error handling. [#119](https://github.com/TabbyML/pochi/pull/119)
-* **Tool call lifecycle:** Integrated AbortController for improved abort handling in tool calls. [#114](https://github.com/TabbyML/pochi/pull/114)
-* **Configuration refactoring:** Moved custom model settings to a dedicated configuration module. [#120](https://github.com/TabbyML/pochi/pull/120)
-* **Improved fuzzy search:** Enhanced fuzzy search functionality and autocomplete candidates for better discoverability. [#145](https://github.com/TabbyML/pochi/pull/145)
-* **Refined fuzzy search results:** Improved fuzzy search result structure and ordering in VSCode. [#139](https://github.com/TabbyML/pochi/pull/139)
+[karim-coder](https://github.com/karim-coder) made their first contribution this week! Welcome aboard! 🎉
 
 ***
 
@@ -408,7 +475,9 @@ Chutes provides access to various AI models through their API. To use Chutes, yo
       "apiKey": "your_api_token",
       "baseUrl": "https://llm.chutes.ai/v1",
       "models": {
-        "zai-org/GLM-4.5-FP8": {}
+        "zai-org/GLM-4.5-FP8": {
+          "name": "glm-4.5"
+        }
       }
     }
   }
@@ -427,7 +496,9 @@ Cerebras provides AI models through their OpenAI-compatible API. To use Cerebras
       "apiKey": "your_api_key",
       "baseUrl": "https://api.cerebras.ai/v1",
       "models": {
-        "llama3.1-8b": {}
+        "llama3.1-8b": {
+          "name": "llama-3.1-8b"
+        }
       }
     }
   }
@@ -446,7 +517,9 @@ DeepInfra provides access to a wide range of AI models through their OpenAI-comp
       "apiKey": "your_api_token",
       "baseUrl": "https://api.deepinfra.com/v1/openai",
       "models": {
-        "meta-llama/Llama-3.3-70B-Instruct": {}
+        "meta-llama/Llama-3.3-70B-Instruct": {
+          "name": "llama-3.3-70b"
+        }
       }
     }
   }
@@ -465,7 +538,9 @@ Groq is a cloud-based AI platform that provides fast inference for large languag
       "apiKey": "your_api_key",
       "baseUrl": "https://api.groq.com/openai/v1",
       "models": {
-        "llama3-8b-8192": {}
+        "llama3-8b-8192": {
+          "name": "llama-3-8b"
+        }
       }
     }
   }
@@ -483,7 +558,9 @@ LM Studio is a local IDE application that allows you to run and experiment with 
     "lmstudio": {
       "baseUrl": "http://127.0.0.1:1234/v1",
       "models": {
-        "gemma-2b-it-q4f32_1": {}
+        "gemma-2b-it-q4f32_1": {
+          "name": "gemma-2b"
+        }
       }
     }
   }
@@ -502,7 +579,9 @@ Mistral AI provides a range of powerful language models available through their 
       "apiKey": "your_api_key",
       "baseUrl": "https://api.mistral.ai/v1",
       "models": {
-        "mistral-small-latest": {}
+        "mistral-small-latest": {
+          "name": "mistral-small"
+        }
       }
     }
   }
@@ -520,7 +599,9 @@ Ollama is a tool that allows you to run large language models locally on your ma
     "ollama": {
       "baseUrl": "http://localhost:11434/v1",
       "models": {
-        "llama3:8b": {}
+        "llama3:8b": {
+          "name": "llama-3-8b"
+        }
       }
     }
   }
@@ -826,18 +907,65 @@ If you’re experiencing issues with Pochi:
    For real-time help and community discussion, join our Discord server: [https://getpochi.com/discord](https://getpochi.com/discord)
 
 
-# VSCode
+# VS Code
 URL: /vscode
 
 ***
 
-title: VSCode
+title: VS Code
 icon: "LayoutPanelLeft"
 -----------------------
 
-# VSCode
+# VS Code
 
-TBD
+This page covers the core Pochi experience in VS Code, from installation and setup to the main chat and task management features.
+
+## Installation
+
+Install the Pochi extension from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=TabbyML.pochi) or [OpenVSX](https://open-vsx.org/extension/TabbyML/pochi).
+
+For the best experience, we recommend dragging the Pochi view to the right sidebar to use it side-by-side with your editor.
+
+![Drag the Pochi view to the right sidebar for a side-by-side experience.](../assets/images/vscode-right-sidebar.png)
+
+## Welcome
+
+Upon first launch, Pochi's Welcome page offers two ways to get started:
+
+* **Sign in to Pochi:** Click "Sign In" and authorize in your browser to use Pochi subscriptions, models, and cloud features.
+* **Bring Your Own Key (BYOK):** Use your own models by running `Pochi: Open Custom Model Settings` from the Command Palette. This opens `~/.pochi/config.jsonc` for you to add API keys. See [Models](/models) for details.
+
+<p align="center">![The Welcome page provides options to sign in or configure your own models.](../assets/images/welcome-page.png)</p>
+
+## Chat
+
+Access the Pochi chat panel via the Activity Bar icon or shortcut (macOS: `Cmd+L`, Win/Linux: `Ctrl+L`). This is your main interface for interacting with Pochi.
+
+The panel's title bar includes actions for starting a new task and viewing all tasks.
+
+<p align="center">![The main Chat panel is where you interact with Pochi.](../assets/images/chat-page.png)</p>
+
+### Toolbox
+
+The toolbox below the chat provides key features:
+
+* **Top:** Auto-approve menu for autonomous tool use.
+* **Middle:** Chat input supporting text and images.
+* **Bottom:** Model selector, token usage, sharing, and image uploads.
+
+<p align="center">
+  ![The chat toolbox provides access to key features like model selection and auto-approval.](../assets/images/home-page-toolbox.png)
+</p>
+
+## Tasks
+
+Task history is stored locally by default. Signing in to a Pochi account enables cloud storage, sharing, and team collaboration features. Be aware that clearing VS Code's extension data may erase local history.
+
+<p align="center">![The Task List page shows your historical task sessions.](../assets/images/task-page.png)</p>
+
+## Troubleshooting
+
+Having issues? Check [Troubleshooting](/troubleshooting), or verify that your sign-in status and model configuration are valid.
 
 
 # Workflows
