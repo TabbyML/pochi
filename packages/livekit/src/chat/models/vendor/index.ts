@@ -1,55 +1,48 @@
 import type { LanguageModelV2 } from "@ai-sdk/provider";
-import type {
-  GeminiCliVendorConfig,
-  PochiVendorConfig,
-} from "@getpochi/common/configuration";
+import type { PochiVendorConfig } from "@getpochi/common/configuration";
 import type { PochiApi, PochiApiClient } from "@getpochi/common/pochi-api";
 import { hc } from "hono/client";
-import type { RequestData } from "../../types";
+import type { RequestData } from "../../../types";
 import { createGeminiCliModel } from "./gemini-cli";
 import { createPochiModel } from "./pochi";
+import { type ChatFn, createVSCodeLmModel } from "./vscode-lm";
 
 export function createVendorModel(
+  id: string,
   llm: Extract<RequestData["llm"], { type: "vendor" }>,
 ) {
-  if (!llm.credentials) {
-    throw new Error(`Missing credentials for ${llm.vendorId}`);
-  }
-
-  return createModel(llm.vendorId, llm.credentials, llm.modelId);
+  return createModel(id, llm.vendorId, llm.getCredentials, llm.modelId);
 }
 
 function createModel(
+  id: string,
   vendorId: string,
-  credentials: unknown,
+  getCredentials: () => Promise<unknown>,
   modelId: string,
 ): LanguageModelV2 {
   if (vendorId === "gemini-cli") {
-    return createGeminiCliModel(
-      credentials as GeminiCliVendorConfig["credentials"],
-      modelId,
-    );
+    return createGeminiCliModel(getCredentials, modelId);
   }
 
   if (vendorId === "pochi") {
-    return createPochiModel(modelId, {
-      type: "pochi",
-      modelId,
-      apiClient: createApiClient(
-        credentials as PochiVendorConfig["credentials"],
-      ),
-    });
+    return createPochiModel(id, modelId, createApiClient(getCredentials));
+  }
+
+  if (vendorId === "vscode-lm") {
+    return createVSCodeLmModel(getCredentials as () => Promise<ChatFn>);
   }
 
   throw new Error(`Unknown vendor: ${vendorId}`);
 }
 
 function createApiClient(
-  credentials: NonNullable<PochiVendorConfig["credentials"]>,
+  getCredentials: () => Promise<unknown>,
 ): PochiApiClient {
-  const { token } = credentials;
   const authClient: PochiApiClient = hc<PochiApi>("https://app.getpochi.com", {
-    fetch(input: string | URL | Request, init?: RequestInit) {
+    async fetch(input: string | URL | Request, init?: RequestInit) {
+      const { token } = (await getCredentials()) as NonNullable<
+        PochiVendorConfig["credentials"]
+      >;
       const headers = new Headers(init?.headers);
       headers.append("Authorization", `Bearer ${token}`);
       return fetch(input, {

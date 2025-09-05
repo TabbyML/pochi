@@ -124,7 +124,7 @@ export interface ToolCallLifeCycle {
    * @param args - Tool call arguments
    * @param options - Execution options including model selection
    */
-  execute(args: unknown, options: { model?: string }): void;
+  execute(args: unknown): void;
 
   /**
    * Abort the currently executing tool call.

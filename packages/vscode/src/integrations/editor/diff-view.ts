@@ -415,23 +415,6 @@ async function openDiffEditor(
         tab.input?.original?.scheme === DiffOriginContentProvider.scheme &&
         tab.input.modified.fsPath === fileUri.fsPath
       ) {
-        // Close any regular tabs for this file before returning existing diff view
-        const tabsToClose: vscode.Tab[] = [];
-        for (const group of vscode.window.tabGroups.all) {
-          for (const tab of group.tabs) {
-            if (
-              tab.input instanceof vscode.TabInputText &&
-              tab.input.uri.fsPath === fileUri.fsPath &&
-              !(tab.input instanceof vscode.TabInputTextDiff)
-            ) {
-              tabsToClose.push(tab);
-            }
-          }
-        }
-        for (const tab of tabsToClose) {
-          vscode.window.tabGroups.close(tab);
-        }
-
         for (const textEditor of vscode.window.visibleTextEditors) {
           if (textEditor.document.uri.fsPath === fileUri.fsPath) {
             return textEditor;
@@ -459,24 +442,6 @@ function runVSCodeDiff(
         resolve(editor);
       }
     });
-
-    // Close existing non-diff editor tabs for the file to prevent confusion
-    const tabsToClose: vscode.Tab[] = [];
-    for (const group of vscode.window.tabGroups.all) {
-      for (const tab of group.tabs) {
-        if (
-          tab.input instanceof vscode.TabInputText &&
-          tab.input.uri.fsPath === fileUri.fsPath &&
-          !(tab.input instanceof vscode.TabInputTextDiff)
-        ) {
-          tabsToClose.push(tab);
-        }
-      }
-    }
-    for (const tab of tabsToClose) {
-      vscode.window.tabGroups.close(tab);
-    }
-
     vscode.commands.executeCommand(
       "vscode.diff",
       vscode.Uri.parse(`${DiffOriginContentProvider.scheme}:${id}`).with({

@@ -1,6 +1,7 @@
 {
   "name": "@getpochi/cli",
   "version": "0.5.0-dev",
+  "type": "module",
   "bin": {
     "pochi": "src/cli.ts"
   },
@@ -10,7 +11,8 @@
     "test": "bun vitest --run",
     "build": "./scripts/build-cli.sh",
     "build:all": "./scripts/build-platform-binary.sh",
-    "release": "bunx bumpp --tag=cli@%s"
+    "release": "bunx bumpp --tag=cli@%s",
+    "release:npm": "bun run ./scripts/npm-release.ts"
   },
   "dependencies": {
     "@commander-js/extra-typings": "^14.0.0",
@@ -24,9 +26,11 @@
     "chalk": "^5.3.0",
     "commander": "^14.0.0",
     "hono": "catalog:",
-    "ora": "^8.2.0"
+    "ora": "^8.2.0",
+    "semver": "^7.6.3"
   },
   "devDependencies": {
-    "@getpochi/tools": "workspace:*"
+    "@getpochi/tools": "workspace:*",
+    "@types/semver": "^7.5.8"
   }
 }

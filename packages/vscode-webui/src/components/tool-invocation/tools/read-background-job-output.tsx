@@ -1,4 +1,3 @@
-import { useBackgroundJobInfo } from "@/features/chat";
 import { BackgroundJobPanel } from "../command-execution-panel";
 import { HighlightedText } from "../highlight-text";
 import { StatusIcon } from "../status-icon";
@@ -7,12 +6,10 @@ import type { ToolProps } from "../types";
 
 export const ReadBackgroundJobOutputTool: React.FC<
   ToolProps<"readBackgroundJobOutput">
-> = ({ tool, isExecuting, messages }) => {
-  const info = useBackgroundJobInfo(
-    messages,
-    tool.state !== "input-streaming" ? tool.input?.backgroundJobId : undefined,
-  );
+> = ({ tool, isExecuting }) => {
   const { regex } = tool.input || {};
+  const backgroundJobId =
+    tool.state !== "input-streaming" ? tool.input?.backgroundJobId : undefined;
   const title = (
     <>
       <StatusIcon isExecuting={isExecuting} tool={tool} />
@@ -26,13 +23,17 @@ export const ReadBackgroundJobOutputTool: React.FC<
     </>
   );
 
-  const detail: React.ReactNode = info ? (
-    <BackgroundJobPanel
-      command={info.command}
-      displayId={info.displayId}
-      output={tool.output?.output}
+  return (
+    <ExpandableToolContainer
+      title={title}
+      detail={
+        backgroundJobId ? (
+          <BackgroundJobPanel
+            backgroundJobId={backgroundJobId}
+            output={tool.output?.output}
+          />
+        ) : null
+      }
     />
-  ) : null;
-
-  return <ExpandableToolContainer title={title} detail={detail} />;
+  );
 };

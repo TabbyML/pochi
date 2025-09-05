@@ -1,4 +1,3 @@
-import { useBackgroundJobInfo } from "@/features/chat";
 import { BackgroundJobPanel } from "../command-execution-panel";
 import { StatusIcon } from "../status-icon";
 import { ExpandableToolContainer } from "../tool-container";
@@ -6,11 +5,9 @@ import type { ToolProps } from "../types";
 
 export const KillBackgroundJobTool: React.FC<
   ToolProps<"killBackgroundJob">
-> = ({ tool, isExecuting, messages }) => {
-  const info = useBackgroundJobInfo(
-    messages,
-    tool.state !== "input-streaming" ? tool.input?.backgroundJobId : undefined,
-  );
+> = ({ tool, isExecuting }) => {
+  const backgroundJobId =
+    tool.state !== "input-streaming" ? tool.input?.backgroundJobId : undefined;
 
   const title = (
     <>
@@ -19,9 +16,14 @@ export const KillBackgroundJobTool: React.FC<
     </>
   );
 
-  const detail = info ? (
-    <BackgroundJobPanel command={info.command} displayId={info.displayId} />
-  ) : null;
-
-  return <ExpandableToolContainer title={title} detail={detail} />;
+  return (
+    <ExpandableToolContainer
+      title={title}
+      detail={
+        backgroundJobId ? (
+          <BackgroundJobPanel backgroundJobId={backgroundJobId} />
+        ) : null
+      }
+    />
+  );
 };

@@ -3,30 +3,31 @@ import {
   EventSourceParserStream,
   extractResponseHeaders,
 } from "@ai-sdk/provider-utils";
-import type { RequestData } from "../../types";
+import type { PochiApiClient } from "@getpochi/common/pochi-api";
 
 export function createPochiModel(
   id: string,
-  llm: Extract<RequestData["llm"], { type: "pochi" }>,
+  modelId: string,
+  apiClient: PochiApiClient,
 ) {
   return {
     specificationVersion: "v2",
     provider: "pochi",
-    modelId: llm.modelId || "<default>",
+    modelId: modelId || "<default>",
     // FIXME(meng): fill supported urls based on modelId.
     supportedUrls: {},
     doGenerate: async () => Promise.reject("Not implemented"),
     doStream: async ({ prompt, abortSignal, stopSequences, tools }) => {
       const data = {
         id,
-        model: llm.modelId,
+        model: modelId,
         callOptions: {
           prompt,
           stopSequences,
           tools,
         },
       };
-      const resp = await llm.apiClient.api.chat.stream.$post(
+      const resp = await apiClient.api.chat.stream.$post(
         {
           json: data,
         },
@@ -41,7 +42,7 @@ export function createPochiModel(
         throw new APICallError({
           message: `Failed to fetch: ${resp.status} ${resp.statusText}`,
           statusCode: resp.status,
-          url: llm.apiClient.api.chat.stream.$url().toString(),
+          url: apiClient.api.chat.stream.$url().toString(),
           requestBodyValues: data,
           responseHeaders: extractResponseHeaders(resp),
         });

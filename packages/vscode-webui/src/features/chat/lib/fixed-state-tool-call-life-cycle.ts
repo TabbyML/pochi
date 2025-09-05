@@ -27,7 +27,7 @@ export class FixedStateToolCallLifeCycle implements ToolCallLifeCycle {
     // no-op for preview tool call on FixedStateToolCallLifeCycle
   }
 
-  execute(_args: unknown, _options: { model?: string }) {
+  execute(_args: unknown) {
     throw new Error(
       "Method 'execute()' should not be called on FixedStateToolCallLifeCycle.",
     );

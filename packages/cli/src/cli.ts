@@ -19,8 +19,10 @@ import {
   replaceWorkflowReferences,
 } from "./lib/workflow-loader";
 import { createStore } from "./livekit/store";
+import { registerModelCommand } from "./model";
 import { OutputRenderer } from "./output-renderer";
 import { TaskRunner } from "./task-runner";
+import { registerUpgradeCommand } from "./upgrade";
 import { waitUntil } from "./wait-until";
 
 const logger = getLogger("Pochi");
@@ -133,6 +135,8 @@ program
   });
 
 registerAuthCommand(program);
+registerModelCommand(program);
+registerUpgradeCommand(program);
 
 program.parse(process.argv);
 
@@ -235,16 +239,12 @@ async function createLLMConfigWithVendors(
     if (!options) {
       return program.error(`Model ${modelId} not found`);
     }
-    const credentials = await vendor.getCredentials();
-    if (!credentials) {
-      return program.error(`Missing credentials for ${vendorId}`);
-    }
     return {
       type: "vendor",
       vendorId: vendorId,
       modelId: modelId,
       options,
-      credentials,
+      getCredentials: vendor.getCredentials,
     } satisfies LLMRequestData;
   }
 
@@ -256,7 +256,7 @@ async function createLLMConfigWithVendors(
       vendorId: "pochi",
       modelId: options.model,
       options: pochiModelOptions,
-      credentials: await vendors.pochi.getCredentials(),
+      getCredentials: vendors.pochi.getCredentials,
     };
   }
 }

@@ -1,4 +1,3 @@
-import { useMapJobIdToDisplayId } from "@/features/chat";
 import { BackgroundJobPanel } from "../command-execution-panel";
 import { HighlightedText } from "../highlight-text";
 import { StatusIcon } from "../status-icon";
@@ -8,10 +7,11 @@ import type { ToolProps } from "../types";
 export const StartBackgroundJobTool: React.FC<
   ToolProps<"startBackgroundJob">
 > = ({ tool, isExecuting }) => {
-  const { cwd, command } = tool.input || {};
-  const displayId = useMapJobIdToDisplayId(
-    tool.state === "output-available" ? tool.output.backgroundJobId : undefined,
-  );
+  const { cwd } = tool.input || {};
+
+  const backgroundJobId =
+    tool.state === "output-available" ? tool.output.backgroundJobId : undefined;
+
   const cwdNode = cwd ? (
     <span>
       {" "}
@@ -29,10 +29,14 @@ export const StartBackgroundJobTool: React.FC<
     </>
   );
 
-  const detail =
-    command && displayId ? (
-      <BackgroundJobPanel command={command} displayId={displayId} />
-    ) : null;
-
-  return <ExpandableToolContainer title={title} detail={detail} />;
+  return (
+    <ExpandableToolContainer
+      title={title}
+      detail={
+        backgroundJobId ? (
+          <BackgroundJobPanel backgroundJobId={backgroundJobId} />
+        ) : null
+      }
+    />
+  );
 };

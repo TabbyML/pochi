@@ -157,11 +157,6 @@ describe("DiffView with real file system", () => {
         this.modified = modified;
     } as any;
 
-    // A basic constructor stub for TabInputText for `instanceof` checks
-    const TabInputTextStub = function(this: any, uri: any) {
-        this.uri = uri;
-    } as any;
-
     vscodeStubs = {
       languages: {
         getDiagnostics: sinon.stub().returns([]),
@@ -213,7 +208,6 @@ describe("DiffView with real file system", () => {
       DiagnosticSeverity: vscode.DiagnosticSeverity,
       TextEditorRevealType: vscode.TextEditorRevealType,
       TabInputTextDiff: TabInputTextDiffStub,
-      TabInputText: TabInputTextStub,
       FileType: vscode.FileType, 
     };
 
@@ -515,55 +509,6 @@ describe("DiffView with real file system", () => {
 
       assert.ok(vscodeStubs.workspace.fs.stat.called, "fs.stat should be called for non-empty new file");
       assert.ok(vscodeStubs.workspace.fs.delete.notCalled, "fs.delete should NOT be called for non-empty new file");
-    });
-
-    it("should close existing non-diff editor tabs when opening diff view", async () => {
-      const testFileRelPath = "close-tabs-test.txt";
-      const testFileUri = vscode.Uri.joinPath(currentTestTempDirUri, testFileRelPath);
-      await createFile(testFileUri, "original content");
-
-      // Mock tab groups with existing non-diff tab for the file
-      const mockTab = {
-        input: new vscodeStubs.TabInputText(testFileUri),
-        isDirty: false
-      };
-
-      const mockDiffTab = {
-        input: new vscodeStubs.TabInputTextDiff(
-          { scheme: mockScheme },
-          { fsPath: testFileUri.fsPath }
-        ),
-        isDirty: false
-      };
-
-      vscodeStubs.window.tabGroups.all = [{
-        tabs: [mockTab, mockDiffTab]
-      }];
-
-      // Mock close method
-      let closedTabs: any[] = [];
-      vscodeStubs.window.tabGroups.close = sinon.stub().callsFake((tab: any) => {
-        closedTabs.push(tab);
-        return Promise.resolve();
-      });
-
-      // Mock the diff command execution
-      vscodeStubs.commands.executeCommand = sinon.stub().callsFake((command: string, _args: any[]) => {
-        if (command === "vscode.diff") {
-          // Simulate opening the diff editor
-          const mockEditor = { document: { uri: testFileUri, fsPath: testFileUri.fsPath } };
-          vscodeStubs.window.onDidChangeActiveTextEditor.getCall(0).args[0](mockEditor);
-        }
-        return Promise.resolve();
-      });
-
-      // Create diff view - this should close the existing non-diff tab
-      await DiffView.getOrCreate("close-tabs-test", testFileRelPath);
-
-      // Verify that the non-diff tab was closed but diff tab was not
-      assert.strictEqual(closedTabs.length, 1, "Should close exactly one tab");
-      assert.strictEqual(closedTabs[0], mockTab, "Should close the non-diff tab");
-      assert.ok(vscodeStubs.commands.executeCommand.calledWith("vscode.diff"), "Should execute diff command");
     });
   });
 });

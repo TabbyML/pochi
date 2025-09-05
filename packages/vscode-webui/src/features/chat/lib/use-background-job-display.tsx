@@ -8,63 +8,74 @@ import {
 } from "react";
 
 export const useBackgroundJobDisplay = (messages: Message[]) => {
-  const displayIds = useMemo(() => {
-    const map = new Map<string, number>();
+  const jobids = useMemo(() => {
+    const ids = new Set<string>();
     const parts = messages.flatMap((msg) => msg.parts);
     for (const p of parts) {
-      if (p.type === "tool-startBackgroundJob" && p.output?.backgroundJobId) {
-        map.set(p.output?.backgroundJobId, map.size + 1);
+      if (
+        p.type === "tool-startBackgroundJob" &&
+        p.state !== "input-streaming" &&
+        p.output?.backgroundJobId
+      ) {
+        ids.add(p.output.backgroundJobId);
+      }
+    }
+    return Array.from(ids).toString();
+  }, [messages]);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: only recompute when we start new background job
+  const displayInfo = useMemo(() => {
+    const map = new Map<string, { displayId: string; command: string }>();
+    const parts = messages.flatMap((msg) => msg.parts);
+    for (const p of parts) {
+      if (
+        p.type === "tool-startBackgroundJob" &&
+        p.state !== "input-streaming" &&
+        p.input?.command &&
+        p.output?.backgroundJobId
+      ) {
+        map.set(p.output?.backgroundJobId, {
+          displayId: `%${map.size + 1}`,
+          command: p.input.command,
+        });
       }
     }
 
     return map;
-  }, [messages]);
+  }, [jobids]);
 
-  const mapJobIdToDisplayId = useCallback(
+  const getJobDisplayId = useCallback(
     (jobId: string) => {
-      if (displayIds.has(jobId)) {
-        return `%${displayIds.get(jobId)}`;
-      }
-      return `job id: ${jobId}`;
+      return displayInfo.get(jobId)?.displayId ?? `job id: ${jobId}`;
     },
-    [displayIds],
+    [displayInfo],
   );
 
   const replaceJobIdsInContent = useCallback(
     (content: string) => {
       let newContent = content;
-      for (const [jobId, displayId] of displayIds) {
-        newContent = newContent.replace(
-          new RegExp(jobId, "g"),
-          `%${displayId}`,
-        );
+      for (const [jobId, { displayId }] of displayInfo) {
+        newContent = newContent.replace(new RegExp(jobId, "g"), displayId);
       }
       return newContent;
     },
-    [displayIds],
+    [displayInfo],
   );
 
-  return { mapJobIdToDisplayId, replaceJobIdsInContent };
-};
+  const getJobCommand = useCallback(
+    (jobId: string) => {
+      return displayInfo.get(jobId)?.command;
+    },
+    [displayInfo],
+  );
 
-const getBackgroundJobCommandFromMessages = (
-  messages: Message[],
-  backgroundJobId: string,
-): string | undefined => {
-  const parts = messages.flatMap((msg) => msg.parts);
-
-  for (const part of parts) {
-    if (part.type === "tool-startBackgroundJob") {
-      if (part.output?.backgroundJobId === backgroundJobId) {
-        return part.input?.command;
-      }
-    }
-  }
+  return { getJobDisplayId, replaceJobIdsInContent, getJobCommand };
 };
 
 interface BackgroundJobContext {
-  mapJobIdToDisplayId: (jobId: string) => string;
+  getJobDisplayId: (jobId: string) => string;
   replaceJobIdsInContent: (content: string) => string;
+  getJobCommand: (jobId: string) => string | undefined;
 }
 
 const BackgroundJobContext = createContext<BackgroundJobContext | undefined>(
@@ -75,12 +86,12 @@ export const BackgroundJobContextProvider = ({
   children,
   messages,
 }: { children: ReactNode; messages: Message[] }) => {
-  const { mapJobIdToDisplayId, replaceJobIdsInContent } =
+  const { getJobDisplayId, replaceJobIdsInContent, getJobCommand } =
     useBackgroundJobDisplay(messages);
 
   return (
     <BackgroundJobContext.Provider
-      value={{ mapJobIdToDisplayId, replaceJobIdsInContent }}
+      value={{ getJobDisplayId, replaceJobIdsInContent, getJobCommand }}
     >
       {children}
     </BackgroundJobContext.Provider>
@@ -94,8 +105,9 @@ const useBackgroundJobContext = () => {
       "useBackgroundJobContext must be used within a BackgroundJobContextProvider",
     );
     return {
-      mapJobIdToDisplayId: (jobId: string) => jobId,
+      getJobDisplayId: (jobId: string) => jobId,
       replaceJobIdsInContent: (content: string) => content,
+      getJobCommand: (jobId: string) => jobId,
     };
   }
   return context;
@@ -110,28 +122,15 @@ export const useReplaceJobIdsInContent = () => {
   return replaceJobIdsInContent;
 };
 
-export const useMapJobIdToDisplayId = (
-  backgroundJobId?: string,
-): string | undefined => {
-  const { mapJobIdToDisplayId } = useBackgroundJobContext();
-  return backgroundJobId ? mapJobIdToDisplayId(backgroundJobId) : undefined;
-};
-
 export const useBackgroundJobInfo = (
-  messages: Message[],
   backgroundJobId?: string,
-): { command: string; displayId: string } | undefined => {
+): { command: string | undefined; displayId: string } | undefined => {
   if (!backgroundJobId) return;
 
-  const { mapJobIdToDisplayId } = useBackgroundJobContext();
+  const { getJobDisplayId, getJobCommand } = useBackgroundJobContext();
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: only recompute on backgroundJobId changes, as command should be in messages(startBackgroundJob should happen before readBackgroundJobOutput and killBackgroundJob)
-  const command = useMemo(() => {
-    return (
-      getBackgroundJobCommandFromMessages(messages, backgroundJobId) ??
-      `Job id: ${backgroundJobId}`
-    );
-  }, [backgroundJobId]);
-
-  return { command, displayId: mapJobIdToDisplayId(backgroundJobId) };
+  return {
+    command: getJobCommand(backgroundJobId),
+    displayId: getJobDisplayId(backgroundJobId),
+  };
 };

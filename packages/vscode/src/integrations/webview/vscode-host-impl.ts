@@ -13,6 +13,8 @@ import { getWorkspaceFolder, isFileExists } from "@/lib/fs";
 import path from "node:path";
 import { getLogger } from "@/lib/logger";
 // biome-ignore lint/style/useImportType: needed for dependency injection
+import { ModelList } from "@/lib/model-list";
+// biome-ignore lint/style/useImportType: needed for dependency injection
 import { PostHog } from "@/lib/posthog";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { TokenStorage } from "@/lib/token-storage";
@@ -37,14 +39,13 @@ import {
 } from "@getpochi/common/tool-utils";
 import type {
   CaptureEvent,
+  DisplayModel,
   McpStatus,
   ResourceURI,
   RuleFile,
   SaveCheckpointOptions,
   SessionState,
   VSCodeHostApi,
-  VSCodeLmModel,
-  VSCodeLmRequest,
   WorkspaceState,
 } from "@getpochi/common/vscode-webui-bridge";
 import type {
@@ -77,7 +78,6 @@ import { McpHub } from "../mcp/mcp-hub";
 import { killBackgroundJob } from "@/tools/kill-background-job";
 import { readBackgroundJobOutput } from "@/tools/read-background-job-output";
 import { startBackgroundJob } from "@/tools/start-background-job";
-import type { CustomModelSetting } from "@getpochi/common/configuration";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { ThirdMcpImporter } from "../mcp/third-party-mcp";
 import { isExecutable } from "../mcp/types";
@@ -89,8 +89,6 @@ import {
 } from "../terminal-link-provider/url-utils";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { TerminalState } from "../terminal/terminal-state";
-// biome-ignore lint/style/useImportType: needed for dependency injection
-import { VSCodeLm } from "../vscode-lm";
 
 const logger = getLogger("VSCodeHostImpl");
 
@@ -113,7 +111,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     private readonly thirdMcpImporter: ThirdMcpImporter,
     private readonly checkpointService: CheckpointService,
     private readonly pochiConfiguration: PochiConfiguration,
-    private readonly vscodeLm: VSCodeLm,
+    private readonly modelList: ModelList,
   ) {}
 
   listRuleFiles = async (): Promise<RuleFile[]> => {
@@ -227,6 +225,15 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     ThreadSignalSerialization<FileSelection | undefined>
   > => {
     return ThreadSignal.serialize(this.tabState.activeSelection);
+  };
+
+  readVisibleTerminals = async () => {
+    return {
+      terminals: ThreadSignal.serialize(this.terminalState.visibleTerminals),
+      openBackgroundJobTerminal: async (backgroundJobId: string) => {
+        this.terminalState.openBackgroundJobTerminal(backgroundJobId);
+      },
+    };
   };
 
   readCurrentWorkspace = async (): Promise<string | undefined> => {
@@ -681,23 +688,11 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     );
   };
 
-  readCustomModelSetting = async (): Promise<
-    ThreadSignalSerialization<Record<string, CustomModelSetting> | undefined>
+  readModelList = async (): Promise<
+    ThreadSignalSerialization<DisplayModel[]>
   > => {
-    return ThreadSignal.serialize(this.pochiConfiguration.customModelSettings);
+    return ThreadSignal.serialize(this.modelList.modelList);
   };
-
-  readVSCodeLm = async (): Promise<{
-    featureAvailable: boolean;
-    models: ThreadSignalSerialization<VSCodeLmModel[]>;
-  }> => {
-    return {
-      featureAvailable: this.vscodeLm.featureAvailable,
-      models: ThreadSignal.serialize(this.vscodeLm.models),
-    };
-  };
-
-  chatVSCodeLm: VSCodeLmRequest = (...args) => this.vscodeLm.chat(...args);
 
   dispose() {
     for (const disposable of this.disposables) {

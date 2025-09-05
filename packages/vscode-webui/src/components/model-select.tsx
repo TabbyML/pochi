@@ -16,7 +16,8 @@ import { CheckIcon, ChevronDownIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import LoadingWrapper from "@/components/loading-wrapper";
-import type { DisplayModel, ModelGroups } from "@/features/settings";
+import type { ModelGroups } from "@/features/settings";
+import type { DisplayModel } from "@getpochi/common/vscode-webui-bridge";
 import { DropdownMenuPortal } from "@radix-ui/react-dropdown-menu";
 
 interface ModelSelectProps {

@@ -11,7 +11,6 @@ export { useSendMessage, useHandleChatEvents } from "./lib/chat-events";
 export { useLiveChatKitGetters } from "./lib/use-live-chat-kit-getters";
 export {
   useBackgroundJobInfo,
-  useMapJobIdToDisplayId,
   useReplaceJobIdsInContent,
   BackgroundJobContextProvider,
 } from "./lib/use-background-job-display";

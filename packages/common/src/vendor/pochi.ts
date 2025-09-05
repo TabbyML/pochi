@@ -29,6 +29,7 @@ export class Pochi extends VendorBase {
           {
             contextWindow: x.contextWindow,
             useToolCallMiddleware: x.id.includes("google/"),
+            label: x.costType === "basic" ? "swift" : "super",
           } satisfies ModelOptions,
         ]),
       );

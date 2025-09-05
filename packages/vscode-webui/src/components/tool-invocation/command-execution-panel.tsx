@@ -4,8 +4,10 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useBackgroundJobInfo } from "@/features/chat";
 import { useCopyToClipboard } from "@/lib/hooks/use-copy-to-clipboard";
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
+import { useVisibleTerminals } from "@/lib/hooks/use-visible-terminals";
 import { cn } from "@/lib/utils";
 import { isVSCodeEnvironment } from "@/lib/vscode";
 import {
@@ -15,7 +17,14 @@ import {
   CopyIcon,
   TerminalIcon,
 } from "lucide-react";
-import { type FC, useEffect, useRef, useState } from "react";
+import {
+  type FC,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { ScrollArea } from "../ui/scroll-area";
 import { XTerm } from "./xterm";
 
@@ -76,23 +85,28 @@ const ToggleExpandButton: FC<{ expanded: boolean; onToggle: () => void }> = ({
   );
 };
 
-const BackgroundJobIdButton: FC<{ displayId: string }> = ({ displayId }) => {
+const BackgroundJobIdButton: FC<{
+  displayId: string;
+  isActive?: boolean;
+  onClick: () => void;
+}> = ({ displayId, isActive, onClick }) => {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
         <Button
           size="sm"
-          className="size-[16px] rounded-sm"
+          className={cn("size-[16px] rounded-sm", {
+            "text-primary": isActive,
+          })}
           variant="secondary"
+          onClick={onClick}
         >
           <div className="font-bold font-mono text-[10px]">{displayId}</div>
         </Button>
       </TooltipTrigger>
-      {false && (
-        <TooltipContent>
-          <span>Show {displayId}</span>
-        </TooltipContent>
-      )}
+      <TooltipContent>
+        <span>Show {displayId}</span>
+      </TooltipContent>
     </Tooltip>
   );
 };
@@ -154,24 +168,46 @@ const CommandPanelContainer: FC<{
 };
 
 export const BackgroundJobPanel: FC<{
-  command: string;
-  displayId?: string;
+  backgroundJobId: string;
   output?: string;
-}> = ({ command, displayId, output }) => {
+}> = ({ backgroundJobId, output }) => {
   const [expanded, setExpanded] = useState(false);
   const toggleExpanded = () => setExpanded((prev) => !prev);
+  const info = useBackgroundJobInfo(backgroundJobId);
+  const { terminals, openBackgroundJobTerminal } = useVisibleTerminals();
+  const isActive = useMemo(
+    () =>
+      backgroundJobId
+        ? terminals?.some(
+            (t) => t.backgroundJobId === backgroundJobId && t.isActive,
+          )
+        : false,
+    [backgroundJobId, terminals],
+  );
+
+  const openTerminal = useCallback(() => {
+    openBackgroundJobTerminal?.(backgroundJobId);
+  }, [backgroundJobId, openBackgroundJobTerminal]);
 
   return (
     <CommandPanelContainer
-      icon={displayId && <BackgroundJobIdButton displayId={displayId} />}
-      title={command}
+      icon={
+        info?.displayId && (
+          <BackgroundJobIdButton
+            displayId={info.displayId}
+            isActive={isActive}
+            onClick={openTerminal}
+          />
+        )
+      }
+      title={info?.command}
       expanded={output !== undefined && expanded}
       actions={
         <>
           {output && (
             <ToggleExpandButton expanded={expanded} onToggle={toggleExpanded} />
           )}
-          <CopyCommandButton command={command} />
+          {info?.command && <CopyCommandButton command={info?.command} />}
         </>
       }
       output={output}

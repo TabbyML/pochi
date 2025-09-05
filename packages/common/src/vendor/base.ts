@@ -9,7 +9,7 @@ import type { ModelOptions } from "./types";
 export abstract class VendorBase {
   constructor(readonly vendorId: string) {}
 
-  async getCredentials(): Promise<unknown> {
+  getCredentials = async (): Promise<unknown> => {
     const { credentials } = this.getVendorConfig();
     const newCredentials = await this.renewCredentials(credentials);
     if (credentials !== newCredentials) {
@@ -19,7 +19,7 @@ export abstract class VendorBase {
     }
 
     return newCredentials;
-  }
+  };
 
   async getUserInfo(): Promise<UserInfo> {
     const { user } = this.getVendorConfig();
