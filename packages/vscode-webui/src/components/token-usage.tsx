@@ -42,7 +42,7 @@ export function TokenUsage({
 }: Props) {
   const { t } = useTranslation();
   const percentage = Math.ceil(
-    (totalTokens / selectedModel.contextWindow) * 100,
+    (totalTokens / selectedModel.options.contextWindow) * 100,
   );
   const [isOpen, setIsOpen] = useState(false);
   const [isPinned, setIsPinned] = useState(false);
@@ -114,7 +114,7 @@ export function TokenUsage({
                 {t("tokenUsage.compacting")}
               </>
             ) : (
-              `${percentage}${t("tokenUsage.ofTokens", { tokens: formatTokens(selectedModel.contextWindow) })}`
+              `${percentage}${t("tokenUsage.ofTokens", { tokens: formatTokens(selectedModel.options.contextWindow) })}`
             )}
           </span>
         </div>
@@ -146,7 +146,7 @@ export function TokenUsage({
           <div className="flex flex-col gap-y-1">
             <div className="mb-1 flex items-center gap-1 text-muted-foreground">
               <span>{t("tokenUsage.contextWindow")}</span>
-              {selectedModel.type === "byok" && (
+              {selectedModel.type === "provider" && (
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
