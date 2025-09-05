@@ -12,6 +12,40 @@ Here you will find highlights on features, enhancements, and bug fixes, plus ins
 
 ---
 
+## Sep 5, 2025
+
+### TL;DR
+
+We had a massive week — **62 PRs shipped** 🎉!
+
+Pochi can now reply to you right in **GitHub comments & issues**, the interface speaks more languages with new **i18n support**, and we rolled out a sleeker, more powerful **background job system**. On top of that, the **CLI** got smarter, **autocomplete** got friendlier, and the **docs** got a glow-up!
+
+### Features 🚀
+
+- **GitHub Action integration:** Pochi now lives in your PR comments / issues! Ask for help in a PR with `/pochi`. [#76](https://github.com/TabbyML/pochi/pull/76)
+- **Internationalization (i18n):** The VS Code extension now supports 🇺🇸 🇨🇳 🇯🇵 🇰🇷. Want your language included? Open a PR! [#90](https://github.com/TabbyML/pochi/pull/90)
+
+### Enhancements ✨
+
+- **CLI upgrades:** The Pochi CLI got a big boost this week!
+  - Install via Homebrew 🍺 [#125](https://github.com/TabbyML/pochi/issues/125)
+  - Authenticate with `pochi auth`, including support for Gemini login [#167](https://github.com/TabbyML/pochi/pull/167)
+  - Trigger workflows directly with `pochi -p "/create-pr"` [#110](https://github.com/TabbyML/pochi/pull/110)
+- **Enhanced Background jobs:** Added terminal integration and lifecycle controls. Enhanced the job UI with collapsible detail logs and readable IDs for a clearer experience. [#81](https://github.com/TabbyML/pochi/pull/81), [#97](https://github.com/TabbyML/pochi/pull/97)
+- **Autocomplete:** Pochi suggests relevant tools, functions, and variables to help you type prompts faster. [#89](https://github.com/TabbyML/pochi/pull/89)
+- **Documentation updates:** Refreshed CLI usage docs, expanded model provider configuration examples, and added Slack integration documentation. [#133](https://github.com/TabbyML/pochi/pull/133), [#141](https://github.com/TabbyML/pochi/pull/141), [#82](https://github.com/TabbyML/pochi/pull/82)
+
+### Bug Fixes 🐛
+
+- **File writing reliability:** The CLI ensures directories exist before writing, so `writeToFile` tool won't fail. [#118](https://github.com/TabbyML/pochi/pull/118)
+- **Code completion fix:** Corrected how VS Code calculates the replacement range for suggestions, so completions insert correctly. [#131](https://github.com/TabbyML/pochi/pull/131)
+
+### New Contributors 🐾
+
+[@karim-coder](https://github.com/karim-coder) made their first contribution this week! Welcome aboard! 🎉
+
+---
+
 ## Aug 29, 2025
 
 ### TL;DR
