@@ -35,6 +35,23 @@ export class ModelList implements vscode.Disposable {
   private async fetchModelList(): Promise<DisplayModel[]> {
     const modelList: DisplayModel[] = [];
 
+    // From VSCodeLM
+    for (const x of this.vscodeLm.models.value) {
+      const vendorId = "vscode-lm";
+      const modelId = JSON.stringify(x);
+      modelList.push({
+        type: "vendor",
+        vendorId,
+        id: `${vendorId}/${x.vendor}/${x.id}`,
+        name: `${x.vendor}/${x.id}`,
+        modelId,
+        options: {
+          contextWindow: x.contextWindow,
+        },
+        getCredentials: async () => undefined,
+      });
+    }
+
     // From vendors
     for (const [vendorId, vendor] of Object.entries(vendors)) {
       if (vendor.authenticated) {
@@ -79,23 +96,6 @@ export class ModelList implements vscode.Disposable {
           }
         }
       }
-    }
-
-    // From VSCodeLM
-    for (const x of this.vscodeLm.models.value) {
-      const vendorId = "vscode-lm";
-      const modelId = JSON.stringify(x);
-      modelList.push({
-        type: "vendor",
-        vendorId,
-        id: `${vendorId}/${x.vendor}/${x.id}`,
-        name: `${x.vendor}/${x.id}`,
-        modelId,
-        options: {
-          contextWindow: x.contextWindow,
-        },
-        getCredentials: async () => undefined,
-      });
     }
 
     return modelList;

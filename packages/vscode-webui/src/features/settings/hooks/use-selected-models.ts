@@ -14,7 +14,7 @@ export type ModelGroups = ModelGroup[];
 export function useSelectedModels() {
   const { t } = useTranslation();
   const { selectedModelId, updateSelectedModelId } = useSettingsStore();
-  const { modelList: models, isLoading } = useModelList();
+  const { modelList: models, isLoading } = useModelList(true);
   const groupedModels = useMemo<ModelGroups | undefined>(() => {
     if (!models) return undefined;
     const superModels: ModelGroup = {
