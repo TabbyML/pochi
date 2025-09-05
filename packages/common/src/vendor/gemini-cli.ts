@@ -1,6 +1,6 @@
 import * as crypto from "node:crypto";
 import * as http from "node:http";
-import { GoogleCloudCodeAuth } from "cloud-code-ai-provider";
+import * as os from "node:os";
 import { getLogger } from "../base";
 import type { GeminiCliVendorConfig, UserInfo } from "../configuration";
 import { VendorBase } from "./base";
@@ -8,6 +8,60 @@ import type { ModelOptions } from "./types";
 
 const VendorId = "gemini-cli";
 const logger = getLogger(VendorId);
+
+// Types for Cloud Code Assist API
+interface ClientMetadata {
+  ideType?: string;
+  ideVersion?: string;
+  pluginVersion?: string;
+  platform?: string;
+  updateChannel?: string;
+  duetProject?: string;
+  pluginType?: string;
+  ideName?: string;
+}
+
+interface LoadCodeAssistRequest {
+  cloudaicompanionProject?: string;
+  metadata: ClientMetadata;
+}
+
+interface LoadCodeAssistResponse {
+  currentTier?: GeminiUserTier | null;
+  allowedTiers?: GeminiUserTier[] | null;
+  cloudaicompanionProject?: string | null;
+}
+
+interface GeminiUserTier {
+  id: string;
+  name: string;
+  description: string;
+  userDefinedCloudaicompanionProject?: boolean | null;
+  isDefault?: boolean;
+  hasAcceptedTos?: boolean;
+  hasOnboardedPreviously?: boolean;
+}
+
+interface OnboardUserRequest {
+  tierId: string;
+  cloudaicompanionProject?: string;
+  metadata: ClientMetadata;
+}
+
+interface LongrunningOperationResponse {
+  name: string;
+  done?: boolean;
+  response?: {
+    cloudaicompanionProject?: {
+      id: string;
+      name: string;
+    };
+  };
+  error?: {
+    code: number;
+    message: string;
+  };
+}
 
 type GeminiCredentials = GeminiCliVendorConfig["credentials"];
 
@@ -174,9 +228,7 @@ export class GeminiCli extends VendorBase {
       expires_in: number;
     };
 
-    // FIXME(meng): find a better way to extract getProjectId, to avoid set `--external open` in compiling.
-    await GoogleCloudCodeAuth.setCredentials(tokenData);
-    const project = await GoogleCloudCodeAuth.getProjectId();
+    const project = await this.getProjectId(tokenData.access_token);
 
     return {
       accessToken: tokenData.access_token,
@@ -338,5 +390,147 @@ export class GeminiCli extends VendorBase {
         useToolCallMiddleware: true,
       },
     };
+  }
+
+  private async getProjectId(accessToken: string): Promise<string> {
+    try {
+      const loadRes = await this.loadCodeAssist(accessToken);
+
+      if (!loadRes.allowedTiers || loadRes.allowedTiers.length === 0) {
+        throw new Error(
+          "No available tiers for Code Assist. Your account may not have access.",
+        );
+      }
+
+      const defaultTier = loadRes.allowedTiers.find((tier) => tier.isDefault);
+      const selectedTier = defaultTier || loadRes.allowedTiers[0];
+
+      const projectId = loadRes.cloudaicompanionProject;
+      if (!projectId) {
+        throw new Error("No project ID found in the response.");
+      }
+      let operation = await this.onboardUser(
+        accessToken,
+        selectedTier.id,
+        projectId,
+      );
+
+      const maxAttempts = 12;
+      let attempts = 0;
+
+      while (!operation.done && attempts < maxAttempts) {
+        await new Promise((resolve) => setTimeout(resolve, 5000));
+        operation = await this.onboardUser(
+          accessToken,
+          selectedTier.id,
+          projectId,
+        );
+        attempts++;
+      }
+
+      if (!operation.done) {
+        throw new Error("Onboarding timeout - operation did not complete");
+      }
+
+      if (operation.error) {
+        throw new Error(`Onboarding failed: ${operation.error.message}`);
+      }
+
+      const resolvedProjectId = operation.response?.cloudaicompanionProject?.id;
+      if (!resolvedProjectId) {
+        throw new Error("No project ID returned from onboarding");
+      }
+
+      return resolvedProjectId;
+    } catch (error) {
+      if (error instanceof Error && error.message.includes("Workspace")) {
+        throw new Error(
+          "Google Workspace Account detected. Please set GOOGLE_CLOUD_PROJECT environment variable.",
+        );
+      }
+
+      logger.error("Failed to setup Code Assist:", error);
+
+      // Fallback project ID
+      const fallbackProjectId = "elegant-machine-vq6tl";
+      return fallbackProjectId;
+    }
+  }
+
+  private async loadCodeAssist(
+    accessToken: string,
+  ): Promise<LoadCodeAssistResponse> {
+    const metadata = this.getClientMetadata();
+    const request: LoadCodeAssistRequest = {
+      metadata,
+    };
+    return this.callEndpoint<LoadCodeAssistResponse>(
+      accessToken,
+      "loadCodeAssist",
+      request,
+    );
+  }
+
+  private async onboardUser(
+    accessToken: string,
+    tierId: string,
+    projectId: string,
+  ): Promise<LongrunningOperationResponse> {
+    const metadata = this.getClientMetadata(projectId);
+    const request: OnboardUserRequest = {
+      tierId,
+      cloudaicompanionProject: projectId,
+      metadata,
+    };
+    return this.callEndpoint<LongrunningOperationResponse>(
+      accessToken,
+      "onboardUser",
+      request,
+    );
+  }
+
+  private async callEndpoint<T>(
+    accessToken: string,
+    method: string,
+    body: object,
+  ): Promise<T> {
+    const res = await fetch(
+      `https://cloudcode-pa.googleapis.com/v1internal:${method}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify(body),
+      },
+    );
+    return res.json() as Promise<T>;
+  }
+
+  private getClientMetadata(projectId?: string): ClientMetadata {
+    const platform = this.getPlatform();
+    return {
+      ideType: "IDE_UNSPECIFIED",
+      platform,
+      pluginType: "GEMINI",
+      duetProject: projectId,
+    };
+  }
+
+  private getPlatform(): string {
+    const platform = os.platform();
+    const arch = os.arch();
+
+    if (platform === "darwin") {
+      return arch === "arm64" ? "DARWIN_ARM64" : "DARWIN_AMD64";
+    }
+    if (platform === "linux") {
+      return arch === "arm64" ? "LINUX_ARM64" : "LINUX_AMD64";
+    }
+    if (platform === "win32") {
+      return "WINDOWS_AMD64";
+    }
+    return "PLATFORM_UNSPECIFIED";
   }
 }
