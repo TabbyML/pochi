@@ -10,7 +10,9 @@ import { getLoginFn } from "./login";
 export function registerAuthCommand(program: Command) {
   const vendorNames = Object.keys(vendors).join(", ");
 
-  const authCommand = program.command("auth");
+  const authCommand = program
+    .command("auth")
+    .description("Manage auth for vendors");
   authCommand.command("status", { isDefault: true }).action(async () => {
     for (const [name, auth] of Object.entries(vendors)) {
       console.log(
@@ -36,11 +38,7 @@ export function registerAuthCommand(program: Command) {
         return;
       }
 
-      const loginFn = getLoginFn(vendor);
-      if (!loginFn) {
-        return loginCommand.error(`Unknown vendor: ${vendor}`);
-      }
-
+      const loginFn = getLoginFn(loginCommand, vendor);
       const user = await loginFn();
       console.log("Logged in as", renderUser(user));
     });

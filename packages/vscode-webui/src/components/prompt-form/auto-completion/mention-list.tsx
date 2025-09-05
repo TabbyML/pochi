@@ -61,7 +61,7 @@ export const AutoCompleteMentionList = forwardRef<
   useImperativeHandle(ref, () => keyboardNavigation);
 
   return (
-    <div className="relative flex w-[80vw] flex-col overflow-hidden py-1 sm:w-[600px]">
+    <div className="relative flex min-w-[220px] max-w-full flex-col overflow-hidden py-1">
       <ScrollArea viewportClassname="max-h-[300px] px-2">
         {items.length === 0 ? (
           <div className="px-2 py-1.5 text-muted-foreground text-xs">
@@ -141,7 +141,7 @@ const MentionItemView = memo(function MentionItemView({
       ref={ref}
     >
       <span className="mr-2 flex items-center gap-1 truncate whitespace-nowrap font-medium">
-        <span>{highlightedText()}</span>
+        <span className="truncate">{highlightedText()}</span>
       </span>
     </div>
   );

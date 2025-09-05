@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo } from "react"; // useMemo is now in th
 
 import { Button } from "@/components/ui/button";
 import { useAutoApproveGuard, useToolCallLifeCycle } from "@/features/chat";
-import { useSelectedModels, useToolAutoApproval } from "@/features/settings";
+import { useToolAutoApproval } from "@/features/settings";
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
 import { getToolName } from "ai";
 import type { PendingToolCallApproval } from "../hooks/use-pending-tool-call-approval";
@@ -42,8 +42,6 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
     [getToolCallLifeCycle, pendingApproval],
   );
 
-  const { selectedModel } = useSelectedModels();
-
   const ToolAcceptText: Record<string, string> = {
     writeToFile: "Save",
     executeCommand: "Run",
@@ -68,11 +66,9 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
         continue;
       }
 
-      lifecycle.execute(tools[i].input, {
-        model: selectedModel?.id,
-      });
+      lifecycle.execute(tools[i].input);
     }
-  }, [tools, lifecycles, selectedModel?.id, autoApproveGuard]);
+  }, [tools, lifecycles, autoApproveGuard]);
 
   const onReject = useCallback(() => {
     autoApproveGuard.current = false;

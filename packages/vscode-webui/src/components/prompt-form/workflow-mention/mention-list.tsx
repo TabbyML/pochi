@@ -72,7 +72,7 @@ export const WorkflowMentionList = forwardRef<
   useImperativeHandle(ref, () => keyboardNavigation);
 
   return (
-    <div className="relative flex w-[80vw] flex-col overflow-hidden py-1 sm:w-[600px]">
+    <div className="relative flex w-[200px] max-w-full flex-col overflow-hidden py-1">
       <ScrollArea viewportClassname="max-h-[300px] px-2">
         {items.length === 0 ? (
           <div className="px-2 py-3 text-muted-foreground text-xs">

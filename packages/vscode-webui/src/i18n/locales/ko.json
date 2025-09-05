@@ -1,7 +1,5 @@
 {
   "common": {
-    "continue": "계속",
-    "cancel": "취소",
     "disable": "비활성화",
     "openFolder": "폴더 열기",
     "account": "계정",
@@ -23,12 +21,6 @@
   },
   "workspace": {
     "required": "Pochi를 사용하려면 폴더 또는 워크스페이스를 여십시오."
-  },
-  "task": {
-    "completed": "작업 완료"
-  },
-  "approval": {
-    "continueIn": "{{seconds}}초 후 계속"
   },
   "chat": {
     "imageTooltip": "채팅에 이미지를 첨부합니다. 이미지를 드래그 앤 드롭하거나 채팅 입력란에 붙여넣을 수도 있습니다."

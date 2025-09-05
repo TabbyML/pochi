@@ -56,7 +56,7 @@ export class GeminiCli extends VendorBase {
     const loginCompletePromise = new Promise<GeminiCredentials>(
       (resolve, reject) => {
         server.listen(port, "localhost", () => {
-          logger.info(`OAuth callback server listening on port ${port}`);
+          logger.debug(`OAuth callback server listening on port ${port}`);
         });
 
         server.on("request", async (req, res) => {
@@ -160,7 +160,7 @@ export class GeminiCli extends VendorBase {
       }),
     });
 
-    logger.info("Token exchange response status:", response.ok);
+    logger.debug("Token exchange response status:", response.ok);
 
     if (!response.ok) {
       throw new Error(
@@ -174,6 +174,7 @@ export class GeminiCli extends VendorBase {
       expires_in: number;
     };
 
+    // FIXME(meng): find a better way to extract getProjectId, to avoid set `--external open` in compiling.
     await GoogleCloudCodeAuth.setCredentials(tokenData);
     const project = await GoogleCloudCodeAuth.getProjectId();
 
@@ -231,7 +232,7 @@ export class GeminiCli extends VendorBase {
       picture?: string;
     };
 
-    logger.info("User info fetched successfully:", {
+    logger.debug("User info fetched successfully:", {
       email: userInfo.email,
       name: userInfo.name,
     });
@@ -260,7 +261,7 @@ export class GeminiCli extends VendorBase {
       }),
     });
 
-    logger.info("Token refresh response status:", response.ok);
+    logger.debug("Token refresh response status:", response.ok);
 
     if (!response.ok) {
       throw new Error(

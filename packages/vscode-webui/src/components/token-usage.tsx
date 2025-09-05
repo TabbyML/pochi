@@ -12,9 +12,9 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import type { DisplayModel } from "@/features/settings";
 import { useRules } from "@/lib/hooks/use-rules";
 import { constants } from "@getpochi/common";
+import type { DisplayModel } from "@getpochi/common/vscode-webui-bridge";
 import { CircleAlert, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -42,7 +42,7 @@ export function TokenUsage({
 }: Props) {
   const { t } = useTranslation();
   const percentage = Math.ceil(
-    (totalTokens / selectedModel.contextWindow) * 100,
+    (totalTokens / selectedModel.options.contextWindow) * 100,
   );
   const [isOpen, setIsOpen] = useState(false);
   const [isPinned, setIsPinned] = useState(false);
@@ -114,7 +114,7 @@ export function TokenUsage({
                 {t("tokenUsage.compacting")}
               </>
             ) : (
-              `${percentage}${t("tokenUsage.ofTokens", { tokens: formatTokens(selectedModel.contextWindow) })}`
+              `${percentage}${t("tokenUsage.ofTokens", { tokens: formatTokens(selectedModel.options.contextWindow) })}`
             )}
           </span>
         </div>
@@ -146,7 +146,7 @@ export function TokenUsage({
           <div className="flex flex-col gap-y-1">
             <div className="mb-1 flex items-center gap-1 text-muted-foreground">
               <span>{t("tokenUsage.contextWindow")}</span>
-              {selectedModel.type === "byok" && (
+              {selectedModel.type === "provider" && (
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -171,7 +171,7 @@ export function TokenUsage({
               <Progress value={percentage} className="mb-1" />
               {t("tokenUsage.ofUsed", {
                 used: formatTokens(totalTokens),
-                total: formatTokens(selectedModel.contextWindow),
+                total: formatTokens(selectedModel.options.contextWindow),
               })}
             </div>
           </div>

@@ -1,7 +1,5 @@
 {
   "common": {
-    "continue": "继续",
-    "cancel": "取消",
     "disable": "禁用",
     "openFolder": "打开文件夹",
     "account": "账户",
@@ -23,12 +21,6 @@
   },
   "workspace": {
     "required": "要使用 Pochi，请打开一个文件夹或工作区。"
-  },
-  "task": {
-    "completed": "任务已完成"
-  },
-  "approval": {
-    "continueIn": "{{seconds}}秒后继续"
   },
   "chat": {
     "imageTooltip": "附加图片到对话。您也可以拖放图片或将其粘贴到聊天输入框中。"

@@ -105,6 +105,7 @@ async function runDepcheck(
   const options: Options = {
     ignorePatterns: ["dist"],
     ignoreMatches: [
+      "bun",
       ...(PackageIgnoreList[packageName] || []),
 
       // Workspace dependencies
@@ -231,7 +232,7 @@ const PackageIgnoreList: Record<string, string[]> = {
     // Releasing
     "ovsx",
   ],
-  cli: ["@types/bun"],
+  cli: ["@types/bun", "bun"],
   livekit: ["@ai-sdk/provider-utils", "@ai-sdk/provider"],
   docs: ["@tailwindcss/postcss", "postcss", "tailwindcss", "typescript"],
 };

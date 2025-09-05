@@ -23,6 +23,7 @@ export type {
   VSCodeLmRequestOptions,
   VSCodeLmRequest,
 } from "./types/models";
+export type { DisplayModel } from "./types/model";
 export type { RuleFile } from "./types/rules";
 export type { CaptureEvent } from "./types/capture-event";
 

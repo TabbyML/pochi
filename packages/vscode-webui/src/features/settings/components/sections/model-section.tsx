@@ -1,18 +1,15 @@
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Switch } from "@/components/ui/switch";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { type User, apiClient } from "@/lib/auth-client";
-import { useCustomModelSetting } from "@/lib/hooks/use-custom-model-setting";
-import { useVSCodeLmModels } from "@/lib/hooks/use-vscode-lm-models";
-import { useQuery } from "@tanstack/react-query";
+import type { User } from "@/lib/auth-client";
+import { useModelList } from "@/lib/hooks/use-model-list";
+import type { DisplayModel } from "@getpochi/common/vscode-webui-bridge";
 import { CircleQuestionMarkIcon, DotIcon, PencilIcon } from "lucide-react";
-import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useSettingsStore } from "../../store";
 import { AccordionSection } from "../ui/accordion-section";
@@ -24,60 +21,41 @@ interface ModelSectionProps {
 
 export const ModelSection: React.FC<ModelSectionProps> = ({ user }) => {
   const { t } = useTranslation();
-  const { enablePochiModels, enableVSCodeLm, updateEnableVSCodeLm } =
-    useSettingsStore();
-  const { data: pochiModelsData, isLoading: isPochiModelLoading } = useQuery({
-    queryKey: ["models", user?.id],
-    queryFn: async () => {
-      const res = await apiClient.api.models.$get();
-      return await res.json();
-    },
-    enabled: !!user,
-  });
+  const { modelList = [], isLoading } = useModelList(false);
+  const { enablePochiModels } = useSettingsStore();
 
-  const pochiModels = useMemo(() => {
-    if (!pochiModelsData) return undefined;
-
-    let models = pochiModelsData
-      .filter((x) => x)
-      .sort((a, b) => {
-        if (a.costType === "premium" && b.costType !== "premium") {
-          return -1;
-        }
-        if (a.costType !== "premium" && b.costType === "premium") {
-          return 1;
-        }
-        return 0;
-      });
-    if (!enablePochiModels) {
-      models = models.filter((model) => !model.id.startsWith("pochi/"));
-    }
-    return models;
-  }, [pochiModelsData, enablePochiModels]);
-
-  const { customModelSettings, isLoading: isCustomModelLoading } =
-    useCustomModelSetting();
-
-  const getCostTypeBadgeText = (costType: "basic" | "premium") => {
-    return costType === "premium"
-      ? t("modelSelect.super")
-      : t("modelSelect.swift");
+  const getCostTypeBadgeText = (label?: string) => {
+    return label === "super" ? t("modelSelect.super") : t("modelSelect.swift");
   };
 
-  const getCostTypeBadgeVariant = (costType: "basic" | "premium") => {
-    return costType === "premium" ? "default" : "secondary";
+  const getCostTypeBadgeVariant = (label?: string) => {
+    return label === "super" ? "default" : "secondary";
   };
 
-  const {
-    models: vscodeLmModels,
-    isLoading: isLoadingVscodeLmModels,
-    featureAvailable,
-  } = useVSCodeLmModels();
+  const hasModels = modelList.length > 0;
+  const pochiModels = modelList
+    .filter(
+      (x): x is Extract<DisplayModel, { type: "vendor" }> =>
+        x.type === "vendor" &&
+        x.vendorId === "pochi" &&
+        (!x.modelId.startsWith("pochi/") || enablePochiModels),
+    )
+    .sort((lhs, rhs) => {
+      const lhsLabel = lhs.options.label;
+      const rhsLabel = rhs.options.label;
+      if (!lhsLabel || !rhsLabel) return 0;
+      return lhsLabel.localeCompare(rhsLabel);
+    });
 
-  const hasModels =
-    !!pochiModels?.length ||
-    !!customModelSettings?.length ||
-    !!vscodeLmModels?.length;
+  const vendorModels = modelList.filter(
+    (x): x is Extract<DisplayModel, { type: "vendor" }> =>
+      x.type === "vendor" && x.vendorId !== "pochi",
+  );
+
+  const providerModels = modelList.filter(
+    (x): x is Extract<DisplayModel, { type: "provider" }> =>
+      x.type === "provider",
+  );
 
   return (
     <Section
@@ -85,9 +63,7 @@ export const ModelSection: React.FC<ModelSectionProps> = ({ user }) => {
         <div className="flex items-center">{t("settings.models.title")}</div>
       }
     >
-      {isPochiModelLoading ||
-      isCustomModelLoading ||
-      isLoadingVscodeLmModels ? (
+      {isLoading ? (
         <div className="space-y-2">
           {Array.from({ length: 2 }).map((_, i) => (
             <Skeleton key={i} className="h-10 w-full bg-secondary" />
@@ -116,7 +92,7 @@ export const ModelSection: React.FC<ModelSectionProps> = ({ user }) => {
                 className="py-0"
               >
                 <div className="space-y-2">
-                  {pochiModels?.map((model) => (
+                  {pochiModels.map((model) => (
                     <div key={model.id} className="group rounded-md border p-2">
                       <div className="flex items-center justify-between">
                         <div className="flex flex-1 items-center gap-2 overflow-x-hidden">
@@ -124,7 +100,7 @@ export const ModelSection: React.FC<ModelSectionProps> = ({ user }) => {
                             <DotIcon className="size-6 text-muted-foreground" />
                           </div>
                           <span className="truncate font-semibold">
-                            {model.id}
+                            {model.name}
                           </span>
                         </div>
                         <a
@@ -134,14 +110,12 @@ export const ModelSection: React.FC<ModelSectionProps> = ({ user }) => {
                           className="cursor-pointer"
                         >
                           <Badge
-                            variant={
-                              getCostTypeBadgeVariant(model.costType) as
-                                | "default"
-                                | "secondary"
-                            }
+                            variant={getCostTypeBadgeVariant(
+                              model.options.label,
+                            )}
                             className="text-xs"
                           >
-                            {getCostTypeBadgeText(model.costType)}
+                            {getCostTypeBadgeText(model.options.label)}
                           </Badge>
                         </a>
                       </div>
@@ -151,21 +125,31 @@ export const ModelSection: React.FC<ModelSectionProps> = ({ user }) => {
               </AccordionSection>
             </div>
           )}
-          {/* Copilot Models Section */}
-          {featureAvailable && (
+
+          {/* Custom Models Section */}
+          {providerModels && (
             <div className="ml-1">
               <AccordionSection
                 title={
-                  <div className="flex items-center gap-2 py-1">
-                    Copilot
-                    <Switch
-                      className="scale-75 cursor-pointer transition-all hover:bg-accent/20 hover:shadow-md "
-                      checked={enableVSCodeLm}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        updateEnableVSCodeLm(!enableVSCodeLm);
-                      }}
-                    />
+                  <div className="flex items-center gap-0.5 py-1">
+                    BYOK
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <a
+                            href="command:pochi.openCustomModelSettings"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="relative z-10 ml-1 rounded-md p-2 transition-colors hover:bg-secondary/50 hover:text-secondary-foreground dark:hover:bg-secondary"
+                          >
+                            <PencilIcon className="size-3" />
+                          </a>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>{t("settings.models.customModelsTooltip")}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   </div>
                 }
                 variant="compact"
@@ -173,104 +157,57 @@ export const ModelSection: React.FC<ModelSectionProps> = ({ user }) => {
                 defaultOpen
               >
                 <div className="space-y-2">
-                  {enableVSCodeLm ? (
-                    vscodeLmModels.length > 0 ? (
-                      vscodeLmModels.map((model) => (
-                        <div
-                          key={model.id}
-                          className="group rounded-md border p-2"
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="flex flex-1 items-center gap-2 overflow-x-hidden">
-                              <div className="flex size-6 shrink-0 items-center justify-center">
-                                <DotIcon className="size-6 text-muted-foreground" />
-                              </div>
-                              <span className="truncate font-semibold">
-                                {model.vendor}/{model.id}
-                              </span>
-                            </div>
+                  {Object.entries(providerModels).map(([modelId, model]) => (
+                    <div key={modelId} className="group rounded-md border p-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex flex-1 items-center gap-2 overflow-x-hidden">
+                          <div className="flex size-6 shrink-0 items-center justify-center">
+                            <DotIcon className="size-6 text-muted-foreground" />
                           </div>
+                          <span className="truncate font-semibold">
+                            {model.name ?? modelId}
+                          </span>
                         </div>
-                      ))
-                    ) : (
-                      <div className="text-muted-foreground text-xs">
-                        {t("settings.models.noCopilotModels")}
                       </div>
-                    )
-                  ) : (
-                    <div className="text-muted-foreground text-xs">
-                      {t("settings.models.copilotDisabled")}
                     </div>
-                  )}
+                  ))}
                 </div>
               </AccordionSection>
             </div>
           )}
-
-          {/* Custom Models Section */}
-          {customModelSettings &&
-            Object.entries(customModelSettings).map(
-              ([providerId, provider]) =>
-                provider.models &&
-                Object.keys(provider.models).length > 0 && (
-                  <div key={providerId} className="ml-1">
-                    <AccordionSection
-                      title={
-                        <div className="flex items-center gap-0.5 py-1">
-                          {provider.name || providerId}
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <a
-                                  href="command:pochi.openCustomModelSettings"
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="relative z-10 ml-1 rounded-md p-2 transition-colors hover:bg-secondary/50 hover:text-secondary-foreground dark:hover:bg-secondary"
-                                >
-                                  <PencilIcon className="size-3" />
-                                </a>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p>
-                                  {t("settings.models.customModelsTooltip")}
-                                </p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        </div>
-                      }
-                      variant="compact"
-                      className="py-0"
-                      defaultOpen
-                    >
-                      <div className="space-y-2">
-                        {Object.entries(provider.models).map(
-                          ([modelId, model]) => (
-                            <div
-                              key={modelId}
-                              className="group rounded-md border p-2"
-                            >
-                              <div className="flex items-center justify-between">
-                                <div className="flex flex-1 items-center gap-2 overflow-x-hidden">
-                                  <div className="flex size-6 shrink-0 items-center justify-center">
-                                    <DotIcon className="size-6 text-muted-foreground" />
-                                  </div>
-                                  <span className="truncate font-semibold">
-                                    {model.name ?? modelId}
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-                          ),
-                        )}
-                      </div>
-                    </AccordionSection>
-                  </div>
-                ),
-            )}
         </div>
       ) : (
         <EmptySectionPlaceholder content={t("settings.models.noModelsFound")} />
+      )}
+
+      {vendorModels.length > 0 && (
+        <div className="ml-1">
+          <AccordionSection
+            title={
+              <div className="flex items-center gap-2 py-1">Third-party</div>
+            }
+            variant="compact"
+            className="py-0"
+            defaultOpen
+          >
+            <div className="space-y-2">
+              {vendorModels.map((model) => (
+                <div key={model.id} className="group rounded-md border p-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex flex-1 items-center gap-2 overflow-x-hidden">
+                      <div className="flex size-6 shrink-0 items-center justify-center">
+                        <DotIcon className="size-6 text-muted-foreground" />
+                      </div>
+                      <span className="truncate font-semibold">
+                        {model.name}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </AccordionSection>
+        </div>
       )}
     </Section>
   );

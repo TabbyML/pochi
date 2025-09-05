@@ -11,6 +11,7 @@
       "**/*/routeTree.gen.ts",
       "*.test.ts",
       "*.story.tsx",
+      "assets/*",
 
       "private/packages/label-studio/data",
       "private/packages/website/src/components/ui/*.tsx",

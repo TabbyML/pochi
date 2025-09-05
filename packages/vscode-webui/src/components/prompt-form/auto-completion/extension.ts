@@ -236,6 +236,10 @@ export const AutoCompleteExtension = Extension.create<
               return;
             }
 
+            if (isQueryExactMatch(props)) {
+              return;
+            }
+
             storage.component = new ReactRenderer(AutoCompleteMentionList, {
               props: { ...props, fetchItems },
               editor: props.editor,
@@ -300,7 +304,11 @@ export const AutoCompleteExtension = Extension.create<
               const suggestionActive = suggestionTriggerPluginKey.getState(
                 props.editor.state,
               );
-              if (!props.items?.length || !suggestionActive) {
+              if (
+                !props.items?.length ||
+                !suggestionActive ||
+                isQueryExactMatch(props)
+              ) {
                 destroyMention();
                 return;
               }
@@ -341,4 +349,16 @@ function isMentionExtensionActive(state: EditorState) {
   const fileMentionState = fileMentionPluginKey.getState(state);
   const workflowMentionState = workflowMentionPluginKey.getState(state);
   return fileMentionState?.active || workflowMentionState?.active;
+}
+
+/**
+ * Checks if the query exactly matches the only candidate.
+ * @param props The suggestion props.
+ * @returns `true` if there is exactly one candidate and its value matches the query, otherwise `false`.
+ */
+function isQueryExactMatch(
+  props: SuggestionProps<AutoCompleteSuggestionItem>,
+): boolean {
+  const { query, items: candidates } = props;
+  return !!query && candidates.length === 1 && candidates[0].value === query;
 }

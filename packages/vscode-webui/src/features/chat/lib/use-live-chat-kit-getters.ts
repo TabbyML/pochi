@@ -1,5 +1,4 @@
 import { useSelectedModels } from "@/features/settings";
-import { apiClient } from "@/lib/auth-client";
 import { useLatest } from "@/lib/hooks/use-latest";
 import { useMcp } from "@/lib/hooks/use-mcp";
 import { vscodeHost } from "@/lib/vscode";
@@ -7,7 +6,6 @@ import type { Environment } from "@getpochi/common";
 import type { UserEditsDiff } from "@getpochi/common/vscode-webui-bridge";
 import type { LLMRequestData, Message } from "@getpochi/livekit";
 import type { Todo } from "@getpochi/tools";
-import { ThreadAbortSignal } from "@quilted/threads";
 import { useCallback } from "react";
 
 export function useLiveChatKitGetters({
@@ -74,32 +72,13 @@ function useLLM(): React.RefObject<LLMRequestData> {
   const llmFromSelectedModel = ((): LLMRequestData => {
     if (!selectedModel) return undefined as never;
 
-    if (selectedModel.type === "hosted") {
+    if (selectedModel.type === "vendor") {
       return {
-        type: "pochi" as const,
+        type: "vendor",
+        vendorId: selectedModel.vendorId,
         modelId: selectedModel.modelId,
-        apiClient,
-      };
-    }
-
-    if (selectedModel.type === "vscode") {
-      return {
-        type: "vscode" as const,
-        modelId: `${selectedModel.vscodeModel.vendor}:${selectedModel.vscodeModel.family}:${selectedModel.vscodeModel.id}:${selectedModel.vscodeModel.version}`,
-        vendor: selectedModel.vscodeModel.vendor,
-        family: selectedModel.vscodeModel.family,
-        version: selectedModel.vscodeModel.version,
-        id: selectedModel.vscodeModel.id,
-        chatVSCodeLm: (options, onChunk) =>
-          vscodeHost.chatVSCodeLm(
-            {
-              ...options,
-              abortSignal: options.abortSignal
-                ? ThreadAbortSignal.serialize(options.abortSignal)
-                : undefined,
-            },
-            onChunk,
-          ),
+        options: selectedModel.options,
+        getCredentials: selectedModel.getCredentials,
       };
     }
 
@@ -109,9 +88,9 @@ function useLLM(): React.RefObject<LLMRequestData> {
         type: "google-vertex-tuning" as const,
         modelId: selectedModel.modelId,
         vertex: provider.vertex,
-        maxOutputTokens: selectedModel.maxTokens,
-        contextWindow: selectedModel.contextWindow,
-        useToolCallMiddleware: selectedModel.useToolCallMiddleware,
+        maxOutputTokens: selectedModel.options.maxTokens,
+        contextWindow: selectedModel.options.contextWindow,
+        useToolCallMiddleware: selectedModel.options.useToolCallMiddleware,
       };
     }
 
@@ -120,9 +99,9 @@ function useLLM(): React.RefObject<LLMRequestData> {
         type: "ai-gateway" as const,
         modelId: selectedModel.modelId,
         apiKey: provider.apiKey,
-        maxOutputTokens: selectedModel.maxTokens,
-        contextWindow: selectedModel.contextWindow,
-        useToolCallMiddleware: selectedModel.useToolCallMiddleware,
+        maxOutputTokens: selectedModel.options.maxTokens,
+        contextWindow: selectedModel.options.contextWindow,
+        useToolCallMiddleware: selectedModel.options.useToolCallMiddleware,
       };
     }
 
@@ -131,9 +110,9 @@ function useLLM(): React.RefObject<LLMRequestData> {
       modelId: selectedModel.modelId,
       baseURL: provider.baseURL,
       apiKey: provider.apiKey,
-      maxOutputTokens: selectedModel.maxTokens,
-      contextWindow: selectedModel.contextWindow,
-      useToolCallMiddleware: selectedModel.useToolCallMiddleware,
+      maxOutputTokens: selectedModel.options.maxTokens,
+      contextWindow: selectedModel.options.contextWindow,
+      useToolCallMiddleware: selectedModel.options.useToolCallMiddleware,
     };
   })();
 
