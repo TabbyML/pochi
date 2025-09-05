@@ -12,33 +12,36 @@ Here you will find highlights on features, enhancements, and bug fixes, plus ins
 
 ---
 
-## Sep 2, 2025
-
-NOTE: PRs from August 29th ~ September 2nd.
+## Sep 5, 2025
 
 ### TL;DR
 
-TODO: summarize
+We had a massive week — **62 PRs shipped** 🎉!
+
+Pochi can now reply to you right in **GitHub comments**, the interface speaks more languages with new **i18n support**, and we rolled out a sleeker, more powerful **background job system**. On top of that, the **CLI** got smarter, **autocomplete** got friendlier, and the **docs** got a glow-up!
+
+### Features 🚀
+
+- **GitHub Action integration:** Pochi now lives in your PR comments! Ask for help in a PR with `/pochi`. [#76](https://github.com/TabbyML/pochi/pull/76)
+- **Internationalization (i18n):** The VS Code extension now supports 🇺🇸 🇨🇳 🇯🇵 🇰🇷. Want your language included? Open a PR! [#90](https://github.com/TabbyML/pochi/pull/90)
 
 ### Enhancements ✨
 
-- **CLI workflow support:** Trigger workflows directly from the CLI with `pochi -p "/create-pr"`. [#110](https://github.com/TabbyML/pochi/pull/110)
-- **Improved docs:** Updated CLI docs with the latest usage details and expanded model docs with new provider configuration examples. [#133](https://github.com/TabbyML/pochi/pull/133), [#141](https://github.com/TabbyML/pochi/pull/141)
-- **Model configuration improvements:** Switched from an array to a record structure for clearer organization. [#140](https://github.com/TabbyML/pochi/pull/140)
-- **Google Vertex Tuning model support:** Added ability to use access tokens with Google Vertex Tuning models. [#144](https://github.com/TabbyML/pochi/pull/144)
-- **Better MCP display:** Adjusted the display of MCP in the auto-complete panel for improved UX. [#143](https://github.com/TabbyML/pochi/pull/143)
-  - TODO: verify when released
+- **Enhanced Background jobs:** Added terminal integration and lifecycle controls. Enhanced the job UI with collapsible detail logs and readable IDs for a clearer experience. [#81](https://github.com/TabbyML/pochi/pull/81), [#97](https://github.com/TabbyML/pochi/pull/97)
+- **CLI workflow support:** Trigger a workflow directly from the CLI with `pochi -p "/create-pr"`. [#110](https://github.com/TabbyML/pochi/pull/110)
+- **Autocomplete:** Pochi suggests relevant tools, functions, and variables to help you type prompts faster. [#89](https://github.com/TabbyML/pochi/pull/89)
+- **BYOK models configuration is easier:** `maxTokens` and `contextWindow` are made optional. [#104](https://github.com/TabbyML/pochi/pull/104)
+- **Documentation updates:** Refreshed CLI usage docs, expanded model provider configuration examples, and added Slack integration documentation. [#133](https://github.com/TabbyML/pochi/pull/133), [#141](https://github.com/TabbyML/pochi/pull/141), [#82](https://github.com/TabbyML/pochi/pull/82)
 
 ### Bug Fixes 🐛
 
 - **CLI workflow fallback:** Missing workflows now trigger a warning instead of an error, allowing the CLI to continue execution. [#122](https://github.com/TabbyML/pochi/pull/122)
-- **File writing reliability:** The CLI now ensures directories exist before writing, so writeToFile tool calls won't fail. [#118](https://github.com/TabbyML/pochi/pull/118)
-- **VS Code diff view:** Fixed scrolling so the diff view no longer passes the last line. [#115](https://github.com/TabbyML/pochi/pull/115)
-  - TODO: verify
-- **Web UI error handling:** Debounced error messages to prevent blinking in the web UI. [#132](https://github.com/TabbyML/pochi/pull/132)
-  - TODO: verify
-- **Code completion fixes:** Fixed context provider document range calculations in VS Code. [#131](https://github.com/TabbyML/pochi/pull/131)
-  - TODO: verify
+- **File writing reliability:** The CLI will ensure directories exist before writing, so file operations won't fail. [#118](https://github.com/TabbyML/pochi/pull/118)
+- **More accurate file search suggestions:** File search shows the most relevant files instead of a broad range. [#131](https://github.com/TabbyML/pochi/pull/131)
+
+### New Contributors 🐾
+
+[karim-coder](https://github.com/karim-coder) made their first contribution this week! Welcome aboard! 🎉
 
 ### Codebase Improvements & Minor Changes (TODO: remove)
 
@@ -51,7 +54,25 @@ TODO: summarize
 - **Tool call lifecycle:** Integrated AbortController for improved abort handling in tool calls. [#114](https://github.com/TabbyML/pochi/pull/114)
 - **Configuration refactoring:** Moved custom model settings to a dedicated configuration module. [#120](https://github.com/TabbyML/pochi/pull/120)
 - **Improved fuzzy search:** Enhanced fuzzy search functionality and autocomplete candidates for better discoverability. [#145](https://github.com/TabbyML/pochi/pull/145)
-- **Refined fuzzy search results:** Improved fuzzy search result structure and ordering in VSCode. [#139](https://github.com/TabbyML/pochi/pull/139)
+- **Refined fuzzy search results:** Improved fuzzy search result structure and ordering in VScode. [#139](https://github.com/TabbyML/pochi/pull/139)
+- **Better MCP display:** Adjusted the display of MCP in the auto-complete panel for improved UX. [#143](https://github.com/TabbyML/pochi/pull/143)
+- **VS Code Release Automation:** Automated VSIX release process on VS Code tags for streamlined deployments. [#91](https://github.com/TabbyML/pochi/pull/91)
+- **Developer Updates Page:** Added developer updates page to track weekly progress and changes. [#95](https://github.com/TabbyML/pochi/pull/95)
+- **Web UI error handling:** Debounced error messages to prevent blinking in the web UI. [#132](https://github.com/TabbyML/pochi/pull/132)
+- **GitHub Action Implementation:** Refactored GitHub Action to use run-pochi approach for improved reliability, better error handling, and enhanced custom instruction passing. [#108](https://github.com/TabbyML/pochi/pull/108)
+- **Global Rules System:** Renamed system rules to global rules and added POCHI_CUSTOM_INSTRUCTIONS environment variable support for improved flexibility and better rule organization. [#106](https://github.com/TabbyML/pochi/pull/106)
+- **CLI Tool Selection:** Added CLI-specific tool selection and configuration for proper separation between CLI and non-CLI environments. [#98](https://github.com/TabbyML/pochi/pull/98)
+- **Documentation Expansion:** Added comprehensive documentation for CLI usage, GitHub integration, and VSCode extension features. [#88](https://github.com/TabbyML/pochi/pull/88)
+- **Playwright Tools Display:** Enhanced omitted display for playwright tools with better UI indicators. [#86](https://github.com/TabbyML/pochi/pull/86)
+- **Credential Security:** Added Zod validation to credential storage for improved type safety and data validation. [#84](https://github.com/TabbyML/pochi/pull/84)
+- **Tool Call Lifecycle:** Fixed handling of tool calls in 'ready' state when user aborts operations, ensuring proper state transitions. [#96](https://github.com/TabbyML/pochi/pull/96)
+- **Tool Call State Management:** Improved tool call abort functionality with proper state transitions and better chat submission handling. [#87](https://github.com/TabbyML/pochi/pull/87)
+- **Tool Call Rejection:** Simplified tool call rejection handling and fixed auto-approval guard reset on rejection. [#93](https://github.com/TabbyML/pochi/pull/93)
+- **Background Job Schema:** Fixed error field removal from read-background-job-output tool schema for consistency. [#92](https://github.com/TabbyML/pochi/pull/92)
+- **GitHub Action Alias:** Fixed alias finding issues in GitHub Action configuration. [#102](https://github.com/TabbyML/pochi/pull/102)
+- **VS Code diff view:** Fixed scrolling so the diff view no longer passes the last line. [#115](https://github.com/TabbyML/pochi/pull/115)
+- **Google Vertex Tuning models:** Added support for using access tokens with Google Vertex Tuning models. [#144](https://github.com/TabbyML/pochi/pull/144)
+- **Model configuration:** Switched from an array to a record structure for clearer organization. [#140](https://github.com/TabbyML/pochi/pull/140)
 
 ---
 
