@@ -67,18 +67,17 @@ export class VSCodeLm implements vscode.Disposable {
   ) => {
     const vscodeModels = await vscode.lm.selectChatModels(model);
     if (vscodeModels.length === 0) {
+      logger.error("No suitable VSCode model found");
       throw new Error("No suitable VSCode model found");
     }
     if (vscodeModels.length > 1) {
+      logger.error("Multiple suitable VSCode models found");
       throw new Error("Multiple suitable VSCode models found");
     }
     const [vscodeModel] = vscodeModels;
 
     // Only first stop words is used.
     const stop = stopSequences?.[0];
-    if (!stop) {
-      throw new Error("Stop word is required for vscode-lm");
-    }
 
     const signal = new ThreadAbortSignal(abortSignal);
     const cancel = cancellationSourceFromAbortSignal(signal);
@@ -115,6 +114,12 @@ export class VSCodeLm implements vscode.Disposable {
         // If we get here from abortPromise, it will throw, so we only handle the chunk case
         const chunk = result.value;
         buffer += chunk;
+
+        if (!stop) {
+          onChunk(buffer);
+          buffer = "";
+          continue;
+        }
 
         const index = buffer.indexOf(stop);
         if (index > 0) {

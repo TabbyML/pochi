@@ -2,8 +2,11 @@ import type {
   LanguageModelV2,
   LanguageModelV2StreamPart,
 } from "@ai-sdk/provider";
+import { getLogger } from "@getpochi/common";
 import type { VSCodeLmRequestOptions } from "@getpochi/common/vscode-webui-bridge";
 import { ThreadAbortSignal } from "@quilted/threads";
+
+const logger = getLogger("VscodeLM");
 
 export type ChatFn = (
   options: Omit<VSCodeLmRequestOptions, "model">,
@@ -21,6 +24,7 @@ export function createVSCodeLmModel(getChatFn: () => Promise<ChatFn>) {
     doStream: async ({ prompt, abortSignal, stopSequences }) => {
       const textId = "txt-0";
       const chatFn = await getChatFn();
+      let error: unknown = undefined;
       const stream = new ReadableStream<LanguageModelV2StreamPart>({
         async start(controller) {
           controller.enqueue({
@@ -42,22 +46,34 @@ export function createVSCodeLmModel(getChatFn: () => Promise<ChatFn>) {
                 delta: chunk,
               });
             },
-          ).then(() => {
-            controller.enqueue({
-              type: "text-end",
-              id: textId,
+          )
+            .catch((err) => {
+              logger.debug("Error in stream:", err);
+              error = err;
+            })
+            .finally(() => {
+              if (error) {
+                controller.enqueue({
+                  type: "error",
+                  error,
+                });
+              } else {
+                controller.enqueue({
+                  type: "text-end",
+                  id: textId,
+                });
+              }
+              controller.enqueue({
+                type: "finish",
+                usage: {
+                  inputTokens: undefined,
+                  outputTokens: undefined,
+                  totalTokens: undefined,
+                },
+                finishReason: error ? "error" : "stop",
+              });
+              controller.close();
             });
-            controller.enqueue({
-              type: "finish",
-              usage: {
-                inputTokens: undefined,
-                outputTokens: undefined,
-                totalTokens: undefined,
-              },
-              finishReason: "stop",
-            });
-            controller.close();
-          });
         },
       });
 
