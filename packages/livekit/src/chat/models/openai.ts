@@ -35,7 +35,11 @@ function patchedFetch(modelId: string) {
     const originalBody = init?.body as string | undefined;
 
     let confirmedInit = init;
-    if (shouldOverrideMaxOutputToken && originalBody && typeof originalBody === "string") {
+    if (
+      shouldOverrideMaxOutputToken &&
+      originalBody &&
+      typeof originalBody === "string"
+    ) {
       const patched = overrideMaxOutputToken(originalBody);
       if (patched) {
         confirmedInit = { ...init, body: patched };
@@ -53,10 +57,9 @@ function overrideMaxOutputToken(body: string): string | undefined {
     if (json && typeof json === "object") {
       json.max_completion_tokens = json.max_tokens;
       json.max_tokens = undefined;
-      } 
-    return JSON.stringify(json);
     }
-  catch {
+    return JSON.stringify(json);
+  } catch {
     // ignore if body is not JSON
   }
   return undefined;
