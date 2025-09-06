@@ -13,7 +13,7 @@ const debugLogFile = path.join(process.cwd(), '.pochi-debug.log');
 let logFileInitialized = false;
 
 const debugLogger = {
-  debug: (message: string, ...args: any[]) => {
+  debug: (message: string, ...args: unknown[]) => {
     if (!logFileInitialized) {
       fs.writeFileSync(debugLogFile, ''); // 清空文件
       logFileInitialized = true;
@@ -24,7 +24,7 @@ const debugLogger = {
     ).join(' ')}\n`;
     fs.appendFileSync(debugLogFile, logLine);
   },
-  error: (message: string, ...args: any[]) => {
+  error: (message: string, ...args: unknown[]) => {
     if (!logFileInitialized) {
       fs.writeFileSync(debugLogFile, ''); // 清空文件
       logFileInitialized = true;
@@ -38,7 +38,7 @@ const debugLogger = {
 };
 
 // 全局存储当前子任务运行器的注册表
-const activeSubTaskRunners = new Map<string, any>();
+const activeSubTaskRunners = new Map<string, unknown>();
 
 export class ListrHelper {
   private listr: Listr | null = null;
@@ -47,7 +47,7 @@ export class ListrHelper {
   /**
    * 注册子任务运行器供 Listr 监听使用
    */
-  static registerSubTaskRunner(taskId: string, runner: any): void {
+  static registerSubTaskRunner(taskId: string, runner: unknown): void {
     debugLogger.debug(`Registering subtask runner for task: ${taskId}`);
     activeSubTaskRunners.set(taskId, runner);
     debugLogger.debug(`Active subtask runners count: ${activeSubTaskRunners.size}`);
@@ -65,7 +65,7 @@ export class ListrHelper {
   /**
    * 获取子任务运行器
    */
-  static getSubTaskRunner(taskId: string): any {
+  static getSubTaskRunner(taskId: string): unknown {
     const runner = activeSubTaskRunners.get(taskId);
     debugLogger.debug(`Getting subtask runner for task: ${taskId}, found: ${!!runner}`);
     return runner;
@@ -132,12 +132,12 @@ export class ListrHelper {
             
             // 显示最终结果
             if (part.output && 'result' in part.output) {
-              const result = (part.output as any).result as string;
+              const result = (part.output as Record<string, unknown>).result as string;
               output += `${chalk.green('› ✓ Results processed')}\n`;
               output += `${chalk.dim(`  Result: ${result}`)}\n`;
               
               // 显示执行的命令详情（如果是 executeCommand）
-              const input = part.input as any;
+              const input = part.input as Record<string, unknown>;
               if (input?.command) {
                 output += `${chalk.dim(`  Command: ${input.command}`)}\n`;
               }
@@ -235,26 +235,27 @@ export class ListrHelper {
     monitor.interval = setInterval(() => {
       const subTaskRunner = ListrHelper.getSubTaskRunner(taskId);
       if (subTaskRunner) {
-        const messages = subTaskRunner.state?.messages || [];
+        const messages = (((subTaskRunner as Record<string, unknown>).state as Record<string, unknown>)?.messages as unknown[]) || [];
         
         // 重新检查所有消息，确保不遗漏
         for (let i = 0; i < messages.length; i++) {
-          const message = messages[i];
+          const message = messages[i] as Record<string, unknown>;
           if (message.role === 'assistant') {
-            for (const msgPart of message.parts || []) {
-              if (msgPart.type?.startsWith('tool-')) {
+            for (const msgPart of (message.parts as unknown[]) || []) {
+              const part = msgPart as Record<string, unknown>;
+              if (part.type?.toString().startsWith('tool-')) {
                 // 任务完成标志不作为普通工具显示
-                if (msgPart.type === 'tool-attemptCompletion' || msgPart.type === 'tool-askFollowupQuestion') {
+                if (part.type === 'tool-attemptCompletion' || part.type === 'tool-askFollowupQuestion') {
                   continue;
                 }
-                const toolName = msgPart.type.replace('tool-', '');
+                const toolName = part.type.toString().replace('tool-', '');
                 debugLogger.debug(`Tool part found: ${toolName}`, JSON.stringify(msgPart, null, 2));
                 
                 if (!monitor.tools.includes(toolName)) {
                   monitor.tools.push(toolName);
                   debugLogger.debug(`Tool detected: ${toolName} - calling onToolUse callback`);
                   
-                  const toolPart = msgPart as ToolUIPart<UITools>;
+                  const toolPart = part as ToolUIPart<UITools>;
                   try {
                     onToolUse(toolPart);
                     debugLogger.debug(`onToolUse callback executed successfully for ${toolName}`);
@@ -327,13 +328,15 @@ export class ListrHelper {
           const subTaskRunner = ListrHelper.getSubTaskRunner(taskId);
           if (subTaskRunner) {
             // 直接检查最新消息中的任务完成标志
-            const messages = subTaskRunner.state?.messages || [];
+            const messages = (((subTaskRunner as Record<string, unknown>).state as Record<string, unknown>)?.messages as unknown[]) || [];
             for (const message of messages) {
-              if (message.role === 'assistant') {
-                for (const msgPart of message.parts || []) {
-                  if (msgPart.type === 'tool-attemptCompletion' || msgPart.type === 'tool-askFollowupQuestion') {
+              const msg = message as Record<string, unknown>;
+              if (msg.role === 'assistant') {
+                for (const msgPart of (msg.parts as unknown[]) || []) {
+                  const part = msgPart as Record<string, unknown>;
+                  if (part.type === 'tool-attemptCompletion' || part.type === 'tool-askFollowupQuestion') {
                     clearInterval(interval);
-                    debugLogger.debug(`${msgPart.type} detected! Stopping for task ${taskId}`);
+                    debugLogger.debug(`${part.type} detected! Stopping for task ${taskId}`);
                     this.cleanupToolMonitoring(taskId);
                     resolve();
                     return;
