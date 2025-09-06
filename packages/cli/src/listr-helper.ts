@@ -94,22 +94,22 @@ export class ListrHelper {
             const shortPrompt = prompt.length > 100 
               ? prompt.substring(0, 97) + '...' 
               : prompt;
-            task.output = chalk.dim(`› Prompt: ${shortPrompt}`);
+            task.output = chalk.dim(`Prompt: ${shortPrompt}`);
           }
 
           // 初始化阶段
-          task.output = chalk.dim('› Setting up environment...');
+          task.output = chalk.dim('Setting up environment...');
           await this.waitForTaskInit(part);
-          task.output = chalk.dim('› ✓ Subtask initialized');
+          task.output = chalk.dim('✓ Subtask initialized');
 
           // 执行阶段
-          task.output = chalk.dim('› Executing subtask...');
+          task.output = chalk.dim('Executing subtask...');
           await this.waitForSubtaskCompletion(part, taskId);
-          task.output = chalk.dim('› ✓ Subtask completed');
+          task.output = chalk.dim('✓ Subtask completed');
 
           // 结果处理阶段
           if (part.state !== 'output-error') {
-            task.output = chalk.dim('› Processing results...');
+            task.output = chalk.dim('Processing results...');
             await this.processTaskResult(part);
             
             // 显示最终结果
@@ -118,9 +118,9 @@ export class ListrHelper {
               const shortResult = result.length > 80 
                 ? result.substring(0, 77) + '...' 
                 : result;
-              task.output = `${chalk.dim('› ✓ Results processed')}\n${chalk.dim(`  Result: ${shortResult}`)}`;
+              task.output = `${chalk.dim('✓ Results processed')}\n${chalk.dim(`  Result: ${shortResult}`)}`;
             } else {
-              task.output = chalk.dim('› ✓ Processing complete');
+              task.output = chalk.dim('✓ Processing complete');
             }
           }
         },
