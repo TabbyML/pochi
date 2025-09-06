@@ -17,6 +17,7 @@ import type { PochiApi, PochiApiClient } from "@getpochi/common/pochi-api";
 import { getVendor, getVendors } from "@getpochi/common/vendor";
 import { createModel } from "@getpochi/common/vendor/edge";
 import type { LLMRequestData } from "@getpochi/livekit";
+import { getPochiCredentials } from "@getpochi/vendor-pochi";
 import chalk from "chalk";
 import * as commander from "commander";
 import { hc } from "hono/client";
@@ -189,8 +190,7 @@ async function parseTaskInput(options: ProgramOpts, program: Program) {
 }
 
 async function createApiClient(): Promise<PochiApiClient> {
-  const { credentials } = pochiConfig.value.vendors?.pochi || {};
-  const token = credentials?.token;
+  const token = getPochiCredentials()?.token;
 
   const apiClient: PochiApiClient = hc<PochiApi>(prodServerUrl, {
     fetch(input: string | URL | Request, init?: RequestInit) {
