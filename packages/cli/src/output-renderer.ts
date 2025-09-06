@@ -5,8 +5,11 @@ import { type ToolUIPart, getToolName, isToolUIPart } from "ai";
 import chalk from "chalk";
 import ora, { type Ora } from "ora";
 import type { NodeChatState } from "./livekit/chat.node";
+import { ListrHelper } from "./listr-helper";
 
 export class OutputRenderer {
+  private listrHelper = new ListrHelper();
+
   constructor(state: NodeChatState) {
     state.signal.messages.subscribe((messages) => {
       this.renderLastMessage(messages);
@@ -59,20 +62,40 @@ export class OutputRenderer {
       } else if (part.type === "text") {
         this.spinner.prefixText = parseMarkdown(part.text.trim());
       } else {
-        const { text, stop, error } = renderToolPart(part);
-        this.spinner.prefixText = text;
-        if (
-          part.state === "output-available" ||
-          part.state === "output-error"
-        ) {
-          if (error) {
-            this.spinner.fail(chalk.dim(JSON.stringify(error)));
-          } else {
-            this.spinner[stop]();
+        // 特殊处理 newTask
+        if (part.type === "tool-newTask") {
+          if (!this.listrHelper.running) {
+            // 启动 listr 渲染（异步，不阻塞）
+            this.listrHelper.renderNewTask(part);
           }
-          this.nextSpinner(true);
+          
+          // 对于 newTask，完全跳过常规的 OutputRenderer 处理
+          // Listr 会处理所有的显示逻辑
+          if (part.state === "output-available" || part.state === "output-error") {
+            // newTask 完成，停止当前 spinner 并进入下一个 part（不启动新的 spinner）
+            this.spinner?.stopAndPersist();
+            this.pendingPartIndex++;
+          } else {
+            // 工具仍在执行中，等待状态更新
+            break;
+          }
         } else {
-          break;
+          // 其他工具的常规处理
+          const { text, stop, error } = renderToolPart(part);
+          this.spinner.prefixText = text;
+          if (
+            part.state === "output-available" ||
+            part.state === "output-error"
+          ) {
+            if (error) {
+              this.spinner.fail(chalk.dim(JSON.stringify(error)));
+            } else {
+              this.spinner[stop]();
+            }
+            this.nextSpinner(true);
+          } else {
+            break;
+          }
         }
       }
 
@@ -96,6 +119,7 @@ export class OutputRenderer {
   shutdown() {
     this.spinner?.stopAndPersist();
     this.spinner = undefined;
+    this.listrHelper.stop();
   }
 }
 
