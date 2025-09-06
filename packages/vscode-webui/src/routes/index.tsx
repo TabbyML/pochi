@@ -7,7 +7,7 @@ import { WelcomeScreen } from "@/components/welcome-screen";
 import { useModelList } from "@/lib/hooks/use-model-list";
 
 const searchSchema = z.object({
-  uid: z.string(),
+  uid: z.string().catch(() => crypto.randomUUID()),
   prompt: z.string().optional(),
 });
 
