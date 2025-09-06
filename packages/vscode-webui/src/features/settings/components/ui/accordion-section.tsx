@@ -1,6 +1,7 @@
 import { cn } from "@/lib/utils";
 import { ChevronLeft } from "lucide-react";
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
+import { useLocalStorage } from "react-use";
 
 interface AccordionSectionProps {
   children: React.ReactNode;
@@ -9,6 +10,7 @@ interface AccordionSectionProps {
   variant?: "default" | "compact";
   defaultOpen?: boolean;
   collapsable?: boolean;
+  localStorageKey: string;
 }
 
 export const AccordionSection: React.FC<AccordionSectionProps> = ({
@@ -18,18 +20,22 @@ export const AccordionSection: React.FC<AccordionSectionProps> = ({
   variant = "default",
   defaultOpen = false,
   collapsable = true,
+  localStorageKey,
 }) => {
-  const [isOpen, setIsOpen] = useState(defaultOpen);
+  const [isOpen, setIsOpen] = useLocalStorage(
+    `__accordion_section_${localStorageKey}`,
+    defaultOpen,
+  );
   const onClick = useCallback(() => {
     if (collapsable) {
       setIsOpen(!isOpen);
     }
-  }, [isOpen, collapsable]);
+  }, [isOpen, collapsable, setIsOpen]);
 
   const isCompact = variant === "compact";
 
   return (
-    <div className={cn(isCompact ? "py-2" : "py-6", className)}>
+    <div className={cn(isCompact ? "pt-2" : "pt-6", className)}>
       <div
         className={cn(
           "group flex w-full items-center justify-between text-left focus:outline-none",

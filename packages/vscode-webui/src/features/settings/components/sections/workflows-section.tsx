@@ -23,6 +23,7 @@ export const WorkflowsSection: React.FC = () => {
 
   return (
     <AccordionSection
+      localStorageKey="workflows-section"
       title={t("settings.workflows.title")}
       collapsable={workflows.length > 3}
     >

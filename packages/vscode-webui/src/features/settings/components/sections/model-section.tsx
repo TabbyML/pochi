@@ -75,6 +75,7 @@ export const ModelSection: React.FC<ModelSectionProps> = ({ user }) => {
           {!!user && (
             <div className="ml-1">
               <AccordionSection
+                localStorageKey="pochi-models-section"
                 title={
                   <div className="flex items-center gap-0.5 py-1">
                     Pochi
@@ -130,6 +131,7 @@ export const ModelSection: React.FC<ModelSectionProps> = ({ user }) => {
           {providerModels.length > 0 && (
             <div className="ml-1">
               <AccordionSection
+                localStorageKey="byok-models-section"
                 title={
                   <div className="flex items-center gap-0.5 py-1">
                     BYOK
@@ -183,6 +185,7 @@ export const ModelSection: React.FC<ModelSectionProps> = ({ user }) => {
       {vendorModels.length > 0 && (
         <div className="ml-1">
           <AccordionSection
+            localStorageKey="vendor-models-section"
             title={
               <div className="flex items-center gap-2 py-1">Third-party</div>
             }

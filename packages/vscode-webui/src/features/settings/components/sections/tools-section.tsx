@@ -13,7 +13,7 @@ export const ToolsSection: React.FC = () => {
 
   return (
     <Section title={t("settings.tools.title")}>
-      <div className="flex flex-col gap-6">
+      <div className="ml-1 flex flex-col gap-6">
         <McpSection />
 
         <SubSection title={t("settings.tools.builtIn")}>
