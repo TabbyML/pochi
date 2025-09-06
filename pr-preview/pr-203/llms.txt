@@ -75,8 +75,8 @@ URL: /checkpoint
 ***
 
 title: Checkpoints
-icon: "bookmark"
-----------------
+icon: "Route"
+-------------
 
 # Checkpoints
 
