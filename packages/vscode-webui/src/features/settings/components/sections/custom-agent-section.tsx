@@ -7,7 +7,7 @@ import { EmptySectionPlaceholder, ScetionItem, Section } from "../ui/section";
 
 export const CustomAgentSection: React.FC = () => {
   const { t } = useTranslation();
-  const { data: customAgents, isLoading } = useCustomAgent();
+  const { customAgents, isLoading } = useCustomAgent();
 
   const handleEditAgent = (agent: CustomAgentFile) => {
     vscodeHost.openFile(agent.filePath);
@@ -20,7 +20,7 @@ export const CustomAgentSection: React.FC = () => {
       );
     }
 
-    if (customAgents.length === 0) {
+    if (!customAgents || customAgents.length === 0) {
       return (
         <EmptySectionPlaceholder
           content={

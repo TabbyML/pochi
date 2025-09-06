@@ -36,7 +36,6 @@ import { startBackgroundJob } from "@/tools/start-background-job";
 import { todoWrite } from "@/tools/todo-write";
 import { previewWriteToFile, writeToFile } from "@/tools/write-to-file";
 import type { Environment } from "@getpochi/common";
-import type { CustomModelSetting } from "@getpochi/common/configuration";
 import {
   GitStatusReader,
   ignoreWalk,
@@ -59,7 +58,7 @@ import type {
   PreviewToolFunctionType,
   ToolFunctionType,
 } from "@getpochi/tools";
-import { ClientTools } from "@getpochi/tools";
+import { createClientTools } from "@getpochi/tools";
 import {
   ThreadAbortSignal,
   type ThreadAbortSignalSerialization,
@@ -69,6 +68,7 @@ import {
   type ThreadSignalSerialization,
 } from "@quilted/threads/signals";
 import type { Tool } from "ai";
+import { entries, keys } from "remeda";
 import * as runExclusive from "run-exclusive";
 import { inject, injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
@@ -269,8 +269,8 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   };
 
   listAutoCompleteCandidates = async (): Promise<string[]> => {
-    const clientTools = Object.entries({ ...ClientTools }).map(([id]) => id);
-    const mcps = Object.entries(this.mcpHub.status.value.connections)
+    const clientTools = keys(createClientTools());
+    const mcps = entries(this.mcpHub.status.value.connections)
       .filter(([_, v]) => v.status === "ready")
       .map(([id]) => id);
 

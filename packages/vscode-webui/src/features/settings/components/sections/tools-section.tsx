@@ -1,5 +1,6 @@
-import { ClientTools } from "@getpochi/tools";
+import { type ToolName, createClientTools } from "@getpochi/tools";
 import { useTranslation } from "react-i18next";
+import { keys } from "remeda";
 import { Section, SubSection } from "../ui/section";
 import { ToolBadgeList } from "../ui/tool-badge";
 import { McpSection } from "./mcp-section";
@@ -23,7 +24,7 @@ export const ToolsSection: React.FC = () => {
     </Section>
   );
 };
-const ToolDescriptions: Record<string, string> = {
+const ToolDescriptions: Record<ToolName, string> = {
   applyDiff:
     "This tool is designed for precision edits to existing files. It allows Pochi to apply a specific change by identifying a unique block of code or text (`searchContent`) and replacing it with your desired content (`replaceContent`). To ensure accuracy, Pochi provides enough surrounding context in `searchContent` to make it unique within the file. This prevents accidental changes to other parts of the code.\n\nFor example, Pochi can use `applyDiff` to fix a bug in a function, update a configuration value, or refactor a small piece of code. It's particularly useful when Pochi knows exactly what needs to change and wants to avoid rewriting the entire file. If Pochi needs to make the same change in multiple places, Pochi can specify `expectedReplacements` to ensure all instances are updated correctly.",
   askFollowupQuestion:
@@ -54,10 +55,12 @@ const ToolDescriptions: Record<string, string> = {
     "After starting a background job, Pochi uses the `readBackgroundJobOutput` tool to monitor its progress and retrieve any output or logs it has generated. This tool allows Pochi to check the status of background processes, read error messages, view progress updates, or capture the results of long-running operations.\n\nPochi can use this tool periodically to ensure background processes are running correctly, or to gather information needed for subsequent steps. It provides real-time visibility into asynchronous operations, helping Pochi make informed decisions based on the background job's current state.",
   killBackgroundJob:
     "When a background process is no longer needed or is causing issues, Pochi uses the `killBackgroundJob` tool to terminate it cleanly. This is important for resource management and ensuring that processes don't continue running unnecessarily after their purpose has been fulfilled.\n\nPochi might use this tool to stop development servers after completing work, cancel long-running builds, or terminate processes that are consuming too many resources. It gives Pochi full control over the lifecycle of background processes, ensuring efficient and clean task completion.",
+  newCustomAgent:
+    "The `newCustomAgent` tool allows Pochi to create a new custom agent instance. This is useful for tasks that require a dedicated agent with specific capabilities or configurations. By using this tool, Pochi can tailor the agent's behavior to better suit the needs of the task at hand.",
 };
 
-const AllTools = Object.entries({ ...ClientTools })
-  .map(([id]) => ({
+const AllTools = keys({ ...createClientTools() })
+  .map((id) => ({
     id,
     description: ToolDescriptions[id],
   }))

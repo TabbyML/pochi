@@ -2,7 +2,12 @@ import { getErrorMessage } from "@ai-sdk/provider";
 import type { Environment } from "@getpochi/common";
 import { formatters, prompts } from "@getpochi/common";
 import type { PochiApiClient } from "@getpochi/common/pochi-api";
-import { type McpTool, selectClientTools } from "@getpochi/tools";
+import {
+  type CustomAgent,
+  type McpTool,
+  overrideCustomAgentTools,
+  selectClientTools,
+} from "@getpochi/tools";
 import type { Store } from "@livestore/livestore";
 import {
   APICallError,
@@ -14,6 +19,7 @@ import {
   streamText,
   wrapLanguageModel,
 } from "ai";
+import { pickBy } from "remeda";
 import type { Message, Metadata, RequestData } from "../types";
 import { makeRepairToolCall } from "./llm";
 import { parseMcpToolSet } from "./mcp-utils";
@@ -38,6 +44,7 @@ export type PrepareRequestGetters = {
     readonly messages: Message[];
   }) => Promise<Environment>;
   getMcpToolSet?: () => Record<string, McpTool>;
+  getCustomAgents?: () => CustomAgent[];
 };
 
 export class FlexibleChatTransport implements ChatTransport<Message> {
@@ -48,6 +55,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
   private readonly store: Store;
   private readonly apiClient: PochiApiClient;
   private readonly waitUntil?: (promise: Promise<unknown>) => void;
+  private readonly customAgent?: CustomAgent;
 
   constructor(options: {
     onStart?: OnStartCallback;
@@ -57,6 +65,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
     store: Store;
     apiClient: PochiApiClient;
     waitUntil?: (promise: Promise<unknown>) => void;
+    customAgent?: CustomAgent;
   }) {
     this.onStart = options.onStart;
     this.getters = options.getters;
@@ -65,6 +74,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
     this.store = options.store;
     this.apiClient = options.apiClient;
     this.waitUntil = this.waitUntil;
+    this.customAgent = overrideCustomAgentTools(options.customAgent);
   }
 
   sendMessages: (
@@ -83,6 +93,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
     const llm = await this.getters.getLLM();
     const environment = await this.getters.getEnvironment?.({ messages });
     const mcpToolSet = this.getters.getMcpToolSet?.();
+    const customAgents = this.getters.getCustomAgents?.();
 
     await this.onStart?.({
       messages,
@@ -94,7 +105,9 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
     const middlewares = [];
 
     if (!this.isSubTask) {
-      middlewares.push(createNewTaskMiddleware(this.store, chatId));
+      middlewares.push(
+        createNewTaskMiddleware(this.store, chatId, customAgents),
+      );
     }
 
     if ("modelId" in llm && isWellKnownReasoningModel(llm.modelId)) {
@@ -112,7 +125,9 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
     const preparedMessages = await prepareMessages(messages, environment);
     const model = createModel({ id: chatId, llm });
     const stream = streamText({
-      system: prompts.system(environment?.info?.customRules),
+      system: this.customAgent
+        ? prompts.customAgentSystem(this.customAgent)
+        : prompts.system(environment?.info?.customRules),
       messages: convertToModelMessages(
         formatters.llm(preparedMessages, {
           keepReasoningPart:
@@ -126,13 +141,22 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
         middleware: middlewares,
       }),
       abortSignal,
-      tools: {
-        ...selectClientTools({
-          isSubTask: !!this.isSubTask,
-          isCli: !!this.isCli,
-        }),
-        ...(mcpTools || {}),
-      },
+      tools: pickBy(
+        {
+          ...selectClientTools({
+            isSubTask: !!this.isSubTask,
+            isCli: !!this.isCli,
+            customAgents,
+          }),
+          ...(mcpTools || {}),
+        },
+        (_val, key) => {
+          if (this.customAgent?.tools) {
+            return this.customAgent.tools.includes(key);
+          }
+          return true;
+        },
+      ),
       maxRetries: 0,
       // error log is handled in live chat kit.
       onError: () => {},

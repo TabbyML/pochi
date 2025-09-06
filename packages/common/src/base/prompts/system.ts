@@ -1,3 +1,4 @@
+import type { CustomAgent } from "@getpochi/tools";
 import type { Environment } from "../environment";
 import { SocialLinks } from "../social";
 
@@ -22,6 +23,16 @@ ${getCustomRulesPrompt(customRules)}
   return prompt.trim();
 }
 
+export function createCustomAgentSystemPrompt(customAgent: CustomAgent) {
+  const prompt = `${customAgent.systemPrompt}
+
+${customAgent.tools ? getCustomAgentCapabilitiesPrompt(customAgent.tools) : getCapabilitiesPrompt()}
+${getRulesPrompt()}
+${getObjectivePrompt()}
+`;
+  return prompt.trim();
+}
+
 function getCapabilitiesPrompt() {
   const prompt = `====
 
@@ -32,6 +43,16 @@ CAPABILITIES
 - You can use searchFiles to perform regex searches across files in a specified directory, outputting context-rich results that include surrounding lines. This is particularly useful for understanding code patterns, finding specific implementations, or identifying areas that need refactoring.
 - You can use the executeCommand tool to run commands on the user's computer whenever you feel it can help accomplish the user's task. When you need to execute a CLI command, you must provide a clear explanation of what the command does. Prefer to execute complex CLI commands over creating executable scripts, since they are more flexible and easier to run. Interactive and long-running commands are allowed, since the commands are run in the user's VSCode terminal. The user may keep commands running in the background and you will be kept updated on their status along the way. Each command you execute is run in a new terminal instance.
 - When doing file search, prefer to use the newTask tool in order to reduce context usage.
+`;
+  return prompt;
+}
+
+function getCustomAgentCapabilitiesPrompt(tools: string[]) {
+  const prompt = `====
+
+CAPABILITIES
+
+- You have access to these tools: ${tools.join(", ")}
 `;
   return prompt;
 }

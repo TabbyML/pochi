@@ -2,8 +2,12 @@ import type {
   LanguageModelV2Middleware,
   LanguageModelV2StreamPart,
 } from "@ai-sdk/provider";
-import { safeParseJSON } from "@ai-sdk/provider-utils";
-import { ClientTools } from "@getpochi/tools";
+import { type InferToolInput, safeParseJSON } from "@ai-sdk/provider-utils";
+import {
+  type ClientTools,
+  type CustomAgent,
+  createClientTools,
+} from "@getpochi/tools";
 import type { Store } from "@livestore/livestore";
 import { InvalidToolInputError } from "ai";
 import { events } from "../../livestore/schema";
@@ -11,6 +15,7 @@ import { events } from "../../livestore/schema";
 export function createNewTaskMiddleware(
   store: Store,
   parentTaskId: string,
+  customAgents?: CustomAgent[],
 ): LanguageModelV2Middleware {
   return {
     middlewareVersion: "v2",
@@ -19,7 +24,7 @@ export function createNewTaskMiddleware(
       if (!tools) return params;
 
       for (const x of tools) {
-        if (x.name !== "newTask") continue;
+        if (x.name !== "newTask" && x.name !== "newCustomAgent") continue;
         if (x.type === "function") {
           if (x.inputSchema?.properties) {
             // biome-ignore lint/performance/noDelete: type safe
@@ -46,7 +51,8 @@ export function createNewTaskMiddleware(
           async transform(chunk, controller) {
             if (
               chunk.type === "tool-input-start" &&
-              chunk.toolName === "newTask"
+              (chunk.toolName === "newTask" ||
+                chunk.toolName === "newCustomAgent")
             ) {
               toolCallId = chunk.id;
               return;
@@ -58,21 +64,43 @@ export function createNewTaskMiddleware(
 
             if (
               chunk.type === "tool-call" &&
-              chunk.toolName === "newTask" &&
+              (chunk.toolName === "newTask" ||
+                chunk.toolName === "newCustomAgent") &&
               (chunk.toolCallId === toolCallId || toolCallId === "")
             ) {
               const parsedResult = await safeParseJSON({
                 text: chunk.input,
-                schema: ClientTools.newTask.inputSchema,
+                schema: createClientTools()[chunk.toolName].inputSchema,
               });
               if (!parsedResult.success) {
                 throw new InvalidToolInputError({
-                  toolName: "newTask",
+                  toolName: chunk.toolName,
                   toolInput: chunk.input,
                   cause: parsedResult.error,
                 });
               }
-              const args = parsedResult.value;
+
+              let args = parsedResult.value as InferToolInput<
+                ClientTools["newTask"]
+              > &
+                InferToolInput<ClientTools["newCustomAgent"]>;
+
+              if (chunk.toolName === "newCustomAgent") {
+                args = args as InferToolInput<ClientTools["newCustomAgent"]>;
+                const agent = customAgents?.find(
+                  (a) => a.name === args.agentType,
+                );
+                if (!agent) {
+                  throw new InvalidToolInputError({
+                    toolName: "newCustomAgent",
+                    toolInput: chunk.input,
+                    cause: new Error(
+                      `Agent ${args.agentType} not found in available agents: ${customAgents ? customAgents.map((a) => a.name).join(", ") : "none"}`,
+                    ),
+                  });
+                }
+              }
+
               const uid = crypto.randomUUID();
               args._meta = {
                 uid,
