@@ -2,6 +2,9 @@
 // Workaround for https://github.com/oven-sh/bun/issues/18145
 import "@livestore/wa-sqlite/dist/wa-sqlite.node.wasm" with { type: "file" };
 
+// Register the vendor
+import "@getpochi/vendor-gemini-cli";
+
 import { Command } from "@commander-js/extra-typings";
 import { constants, getLogger } from "@getpochi/common";
 import { pochiConfig } from "@getpochi/common/configuration";
