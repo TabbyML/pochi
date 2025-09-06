@@ -5,7 +5,7 @@ import type { PochiApiClient } from "@getpochi/common/pochi-api";
 import {
   type CustomAgent,
   type McpTool,
-  fixCustomAgentTools,
+  overrideCustomAgentTools,
   selectClientTools,
 } from "@getpochi/tools";
 import type { Store } from "@livestore/livestore";
@@ -28,7 +28,6 @@ import {
   createReasoningMiddleware,
   createToolCallMiddleware,
 } from "./middlewares";
-import { createNewCustomAgentMiddleware } from "./middlewares/new-custom-agent-middleware";
 import { createModel } from "./models";
 import { persistManager } from "./persist-manager";
 
@@ -75,7 +74,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
     this.store = options.store;
     this.apiClient = options.apiClient;
     this.waitUntil = this.waitUntil;
-    this.customAgent = fixCustomAgentTools(options.customAgent);
+    this.customAgent = overrideCustomAgentTools(options.customAgent);
   }
 
   sendMessages: (
@@ -106,9 +105,8 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
     const middlewares = [];
 
     if (!this.isSubTask) {
-      middlewares.push(createNewTaskMiddleware(this.store, chatId));
       middlewares.push(
-        createNewCustomAgentMiddleware(this.store, chatId, customAgents ?? []),
+        createNewTaskMiddleware(this.store, chatId, customAgents),
       );
     }
 

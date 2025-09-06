@@ -21,7 +21,7 @@ const generalPurposeAgent: CustomAgent = {
   systemPrompt: "You are a general purpose agent.",
 };
 
-export const fixCustomAgentTools = (
+export const overrideCustomAgentTools = (
   customAgent: CustomAgent | undefined,
 ): CustomAgent | undefined => {
   if (!customAgent) return undefined;

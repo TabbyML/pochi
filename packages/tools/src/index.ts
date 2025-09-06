@@ -22,7 +22,10 @@ import { readBackgroundJobOutput } from "./read-background-job-output";
 import { startBackgroundJob } from "./start-background-job";
 import { writeToFile } from "./write-to-file";
 export type { SubTask } from "./new-task";
-export { CustomAgent, fixCustomAgentTools } from "./custom-agent";
+export {
+  CustomAgent,
+  overrideCustomAgentTools,
+} from "./custom-agent";
 
 export function isUserInputToolPart(part: UIMessagePart<UIDataTypes, UITools>) {
   return (
