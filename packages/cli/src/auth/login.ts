@@ -5,8 +5,6 @@ import chalk from "chalk";
 
 export async function login(vendorId: string) {
   const vendor = getVendor(vendorId);
-  console.log(chalk.yellow("Starting Gemini OAuth authentication..."));
-
   const { url, credentials } = await vendor.authenticate();
 
   console.log(chalk.blue("Opening browser for authentication..."));

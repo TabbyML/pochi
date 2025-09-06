@@ -39,8 +39,16 @@ export function registerAuthCommand(program: Command) {
         return;
       }
 
-      const user = await login(vendor);
-      console.log("Logged in as", renderUser(user));
+      try {
+        const user = await login(vendor);
+        console.log("Logged in as", renderUser(user));
+      } catch (err) {
+        if (err instanceof Error) {
+          return loginCommand.error(err.message);
+        }
+
+        throw err;
+      }
     });
 
   const logoutCommand = authCommand.command("logout");
