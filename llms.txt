@@ -359,7 +359,7 @@ on:
 
 jobs:
   pochi:
-    if: contains(github.event.comment.body, '/pochi')
+    if: startsWith(github.event.comment.body, '/pochi')
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -383,7 +383,7 @@ jobs:
 
 Notes:
 
-* Triggered by `issue_comment` (created) and runs only if the comment body contains `/pochi`
+* Triggered by `issue_comment` (created) and runs only if the comment body starts with `/pochi`
 * Requires write permissions to read changes, post comments, and add reactions to PRs
 * Provide `POCHI_TOKEN` via env; optionally set `POCHI_MODEL` to customize the model
 * By default, the action uses GitHub's built-in `GITHUB_TOKEN` (github-actions bot). You can customize this by setting a custom `GITHUB_TOKEN` environment variable with your own Personal Access Token (PAT)
