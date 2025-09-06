@@ -15,7 +15,10 @@ export const AdvancedSettingsSection: React.FC = () => {
   } = useSettingsStore();
 
   return (
-    <AccordionSection title={t("settings.advanced.title")}>
+    <AccordionSection
+      title={t("settings.advanced.title")}
+      localStorageKey="advanced-settings-section"
+    >
       <div className="flex flex-col gap-4 px-6">
         {isDevMode !== undefined && (
           <SettingsCheckboxOption
