@@ -27,7 +27,6 @@ export const newTaskTool: React.FC<NewTaskToolProps> = ({
   const uid = tool.input?._meta?.uid;
   const description = tool.input?.description ?? "";
 
-  let isLiveTaskSource = false;
   let taskSource = taskThreadSource;
 
   const subTaskToolCallStatusRegistry = useRef(new ToolCallStatusRegistry());
@@ -39,7 +38,6 @@ export const newTaskTool: React.FC<NewTaskToolProps> = ({
       { tool, isExecuting },
       subTaskToolCallStatusRegistry.current,
     );
-    isLiveTaskSource = true;
   }
 
   let agentType: string | undefined;
@@ -56,8 +54,8 @@ export const newTaskTool: React.FC<NewTaskToolProps> = ({
           <div>
             <StatusIcon tool={tool} isExecuting={isExecuting} />
             <Badge variant="secondary" className={cn("mr-1 ml-2 py-0")}>
-              {isLiveTaskSource ? (
-                <Link to="/" search={{ uid, ts: Date.now() }} replace={true}>
+              {uid ? (
+                <Link to="/" search={{ uid }} replace={true}>
                   {toolTitle}
                 </Link>
               ) : (

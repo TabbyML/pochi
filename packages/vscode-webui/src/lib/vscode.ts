@@ -86,9 +86,8 @@ function createVSCodeHost(): VSCodeHostApi {
           window.router.navigate({
             to: "/",
             search: {
-              uid: params.uid,
+              uid: params.uid || crypto.randomUUID(),
               prompt: "prompt" in params ? params.prompt : undefined,
-              ts: Date.now(),
             },
             replace: true,
           });
