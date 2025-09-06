@@ -1,11 +1,6 @@
-import { createAuthHooks } from "@daveyplate/better-auth-tanstack";
 import type { PochiApi, PochiApiClient } from "@getpochi/common/pochi-api";
 import { getServerBaseUrl } from "@getpochi/common/vscode-webui-bridge";
 import { type ThreadSignal, threadSignal } from "@quilted/threads/signals";
-import {
-  type ResponseContext,
-  createAuthClient as createAuthClientImpl,
-} from "better-auth/react";
 import { hc } from "hono/client";
 import { vscodeHost } from "./vscode";
 
@@ -46,31 +41,6 @@ const customFetchImpl = async (
     headers,
   });
 };
-
-function createAuthClient() {
-  const authClient = createAuthClientImpl({
-    baseURL: getServerBaseUrl(),
-    fetchOptions: {
-      customFetchImpl,
-      onResponse: (ctx: ResponseContext) => {
-        const authToken = ctx.response.headers.get("set-auth-token"); // get the token from the response headers
-        if (authToken) {
-          getToken().then((signal) => {
-            signal.value = authToken;
-          });
-        }
-      },
-    },
-  });
-
-  return authClient;
-}
-
-export const authClient = createAuthClient();
-
-export type User = (typeof authClient.$Infer.Session)["user"];
-
-export const authHooks = createAuthHooks(authClient);
 
 function createApiClient(): PochiApiClient {
   const app = hc<PochiApi>(getServerBaseUrl(), {

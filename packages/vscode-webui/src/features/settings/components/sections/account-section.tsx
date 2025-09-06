@@ -5,7 +5,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import type { UserInfo } from "@getpochi/common/configuration";
+import { useUserStorage } from "@/lib/hooks/use-user-storage";
 import {
   ChevronsUpDown,
   HelpCircle,
@@ -17,11 +17,10 @@ import { useTranslation } from "react-i18next";
 import { LanguageMenuItem } from "../ui/language-menu-item";
 import { Section } from "../ui/section";
 
-interface AccountSectionProps {
-  user?: UserInfo;
-}
-
-export const AccountSection: React.FC<AccountSectionProps> = ({ user }) => {
+export const AccountSection = () => {
+  const {
+    users: { pochi: user } = {},
+  } = useUserStorage();
   const { t } = useTranslation();
 
   if (!user) {

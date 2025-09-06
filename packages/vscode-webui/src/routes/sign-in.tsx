@@ -1,5 +1,5 @@
 import { buttonVariants } from "@/components/ui/button";
-import { authHooks } from "@/lib/auth-client";
+import { useUserStorage } from "@/lib/hooks/use-user-storage";
 import { cn } from "@/lib/utils";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { LogInIcon, TerminalIcon } from "lucide-react";
@@ -18,14 +18,14 @@ export const Route = createFileRoute("/sign-in")({
 function SignInPage() {
   const { navigate } = useRouter();
   const { redirect } = Route.useSearch();
-  const { session } = authHooks.useSession();
+  const { users } = useUserStorage();
 
   useEffect(() => {
-    if (session) {
+    if (users?.pochi) {
       const redirectPath = redirect || "/";
       navigate({ to: redirectPath, replace: true });
     }
-  }, [session, navigate, redirect]);
+  }, [users, navigate, redirect]);
 
   return (
     <div className="flex h-screen select-none flex-col items-center justify-center p-5 text-center text-gray-600 dark:text-gray-300">
