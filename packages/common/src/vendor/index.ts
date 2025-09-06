@@ -1,4 +1,4 @@
-export { ModelOptions } from "./types";
+export { type AuthOutput, ModelOptions } from "./types";
 export { VendorBase } from "./base";
 
 import type { VendorBase } from "./base";

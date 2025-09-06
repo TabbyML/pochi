@@ -4,7 +4,7 @@ import type { PochiVendorConfig, UserInfo } from "../configuration";
 import type { PochiApi, PochiApiClient } from "../pochi-api";
 import { getServerBaseUrl } from "../vscode-webui-bridge";
 import { VendorBase } from "./base";
-import type { ModelOptions } from "./types";
+import type { AuthOutput, ModelOptions } from "./types";
 
 type PochiCredentials = PochiVendorConfig["credentials"];
 
@@ -14,6 +14,12 @@ export class Pochi extends VendorBase {
 
   constructor() {
     super("pochi");
+  }
+
+  override authenticate(): Promise<AuthOutput> {
+    throw new Error(
+      "Please use the VSCode Extension UI to authenticate with Pochi.",
+    );
   }
 
   override async fetchModels(): Promise<Record<string, ModelOptions>> {

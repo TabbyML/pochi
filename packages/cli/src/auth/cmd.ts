@@ -5,7 +5,7 @@ import {
 } from "@getpochi/common/configuration";
 import { getVendors } from "@getpochi/common/vendor";
 import chalk from "chalk";
-import { getLoginFn } from "./login";
+import { login } from "./login";
 
 export function registerAuthCommand(program: Command) {
   const vendors = getVendors();
@@ -39,8 +39,7 @@ export function registerAuthCommand(program: Command) {
         return;
       }
 
-      const loginFn = getLoginFn(loginCommand, vendor);
-      const user = await loginFn();
+      const user = await login(vendor);
       console.log("Logged in as", renderUser(user));
     });
 

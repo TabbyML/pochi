@@ -1,21 +1,16 @@
 import * as childProcess from "node:child_process";
 import { updateVendorConfig } from "@getpochi/common/configuration";
 import { getVendor } from "@getpochi/common/vendor";
-import { VendorId, startOAuthFlow } from "@getpochi/vendor-gemini-cli";
 import chalk from "chalk";
 
-const geminiCli = getVendor(VendorId);
-
-export async function geminiCliLogin() {
+export async function login(vendorId: string) {
+  const vendor = getVendor(vendorId);
   console.log(chalk.yellow("Starting Gemini OAuth authentication..."));
 
-  const oauthResult = await startOAuthFlow();
+  const { url, credentials } = await vendor.authenticate();
 
-  console.log(
-    chalk.blue(`OAuth server started on localhost:${oauthResult.port}`),
-  );
   console.log(chalk.blue("Opening browser for authentication..."));
-  console.log(chalk.gray(`Auth URL: ${oauthResult.authUrl}`));
+  console.log(chalk.gray(`Auth URL: ${url}`));
 
   // Try to open the browser automatically
   try {
@@ -24,13 +19,13 @@ export async function geminiCliLogin() {
 
     switch (platform) {
       case "darwin": // macOS
-        cmd = `open "${oauthResult.authUrl}"`;
+        cmd = `open "${url}"`;
         break;
       case "win32": // Windows
-        cmd = `start "${oauthResult.authUrl}"`;
+        cmd = `start "${url}"`;
         break;
       default: // Linux and others
-        cmd = `xdg-open "${oauthResult.authUrl}"`;
+        cmd = `xdg-open "${url}"`;
         break;
     }
 
@@ -41,7 +36,7 @@ export async function geminiCliLogin() {
             "\nCould not open browser automatically. Please open the following URL manually:",
           ),
         );
-        console.log(chalk.cyan(oauthResult.authUrl));
+        console.log(chalk.cyan(url));
       }
     });
   } catch (error) {
@@ -50,18 +45,17 @@ export async function geminiCliLogin() {
         "\nPlease open the following URL in your browser to authenticate:",
       ),
     );
-    console.log(chalk.cyan(oauthResult.authUrl));
+    console.log(chalk.cyan(url));
   }
   console.log(chalk.yellow("\nWaiting for authentication to complete..."));
 
   // Wait for OAuth completion
-  const credentials = await oauthResult.loginCompletePromise;
-  await updateVendorConfig(geminiCli.vendorId, {
-    credentials,
+  await updateVendorConfig(vendorId, {
+    credentials: await credentials,
   });
 
   // Get user info after authentication
-  const user = await geminiCli.getUserInfo();
+  const user = await vendor.getUserInfo();
   if (!user) {
     throw new Error("Failed to get user info after authentication");
   }

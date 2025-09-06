@@ -55,9 +55,3 @@ export interface LongrunningOperationResponse {
 }
 
 export type GeminiCredentials = GeminiCliVendorConfig["credentials"];
-
-export interface GeminiOAuthResult {
-  authUrl: string;
-  port: number;
-  loginCompletePromise: Promise<GeminiCredentials>;
-}

@@ -3,10 +3,10 @@ import * as http from "node:http";
 import * as os from "node:os";
 import { getLogger } from "@getpochi/common";
 import type { UserInfo } from "@getpochi/common/configuration";
+import type { AuthOutput } from "@getpochi/common/vendor";
 import type {
   ClientMetadata,
   GeminiCredentials,
-  GeminiOAuthResult,
   LoadCodeAssistRequest,
   LoadCodeAssistResponse,
   LongrunningOperationResponse,
@@ -19,7 +19,7 @@ const logger = getLogger(VendorId);
 /**
  * Start the Gemini OAuth flow
  */
-export async function startOAuthFlow(): Promise<GeminiOAuthResult> {
+export async function startOAuthFlow(): Promise<AuthOutput> {
   // Generate PKCE parameters
   const pkce = generatePKCEParams();
 
@@ -47,87 +47,84 @@ export async function startOAuthFlow(): Promise<GeminiOAuthResult> {
 
   // Create HTTP server to handle the callback
   const server = http.createServer();
-  const loginCompletePromise = new Promise<GeminiCredentials>(
-    (resolve, reject) => {
-      server.listen(port, "localhost", () => {
-        logger.debug(`OAuth callback server listening on port ${port}`);
-      });
+  const credentials = new Promise<GeminiCredentials>((resolve, reject) => {
+    server.listen(port, "localhost", () => {
+      logger.debug(`OAuth callback server listening on port ${port}`);
+    });
 
-      server.on("request", async (req, res) => {
-        try {
-          if (!req.url) {
-            res.writeHead(400);
-            res.end("Invalid request");
-            return;
-          }
-
-          const reqUrl = new URL(req.url, `http://localhost:${port}`);
-
-          if (reqUrl.pathname !== "/oauth/callback") {
-            res.writeHead(404);
-            res.end("Not found");
-            return;
-          }
-
-          const code = reqUrl.searchParams.get("code");
-          const returnedState = reqUrl.searchParams.get("state");
-          const error = reqUrl.searchParams.get("error");
-
-          if (error) {
-            res.writeHead(400);
-            res.end(`OAuth error: ${error}`);
-            reject(new Error(`OAuth error: ${error}`));
-            return;
-          }
-
-          if (returnedState !== authParams.get("state")) {
-            res.writeHead(400);
-            res.end("State mismatch. Possible CSRF attack");
-            reject(new Error("State mismatch"));
-            return;
-          }
-
-          if (!code) {
-            res.writeHead(400);
-            res.end("No authorization code received");
-            reject(new Error("No authorization code"));
-            return;
-          }
-
-          try {
-            const credentials = await exchangeCodeForTokens(
-              code,
-              pkce.verifier,
-              redirectUri,
-            );
-
-            res.writeHead(301, {
-              Location:
-                "https://developers.google.com/gemini-code-assist/auth_success_gemini",
-            });
-            res.end();
-            resolve(credentials);
-          } catch (exchangeError) {
-            logger.error("Gemini CLI token exchange error:", exchangeError);
-            res.writeHead(500);
-            res.end(
-              `Token exchange failed: ${exchangeError instanceof Error ? exchangeError.message : String(exchangeError)}`,
-            );
-            reject(exchangeError);
-          }
-        } catch (e) {
-          reject(e);
-        } finally {
-          server.close();
+    server.on("request", async (req, res) => {
+      try {
+        if (!req.url) {
+          res.writeHead(400);
+          res.end("Invalid request");
+          return;
         }
-      });
-    },
-  );
+
+        const reqUrl = new URL(req.url, `http://localhost:${port}`);
+
+        if (reqUrl.pathname !== "/oauth/callback") {
+          res.writeHead(404);
+          res.end("Not found");
+          return;
+        }
+
+        const code = reqUrl.searchParams.get("code");
+        const returnedState = reqUrl.searchParams.get("state");
+        const error = reqUrl.searchParams.get("error");
+
+        if (error) {
+          res.writeHead(400);
+          res.end(`OAuth error: ${error}`);
+          reject(new Error(`OAuth error: ${error}`));
+          return;
+        }
+
+        if (returnedState !== authParams.get("state")) {
+          res.writeHead(400);
+          res.end("State mismatch. Possible CSRF attack");
+          reject(new Error("State mismatch"));
+          return;
+        }
+
+        if (!code) {
+          res.writeHead(400);
+          res.end("No authorization code received");
+          reject(new Error("No authorization code"));
+          return;
+        }
+
+        try {
+          const credentials = await exchangeCodeForTokens(
+            code,
+            pkce.verifier,
+            redirectUri,
+          );
+
+          res.writeHead(301, {
+            Location:
+              "https://developers.google.com/gemini-code-assist/auth_success_gemini",
+          });
+          res.end();
+          resolve(credentials);
+        } catch (exchangeError) {
+          logger.error("Gemini CLI token exchange error:", exchangeError);
+          res.writeHead(500);
+          res.end(
+            `Token exchange failed: ${exchangeError instanceof Error ? exchangeError.message : String(exchangeError)}`,
+          );
+          reject(exchangeError);
+        }
+      } catch (e) {
+        reject(e);
+      } finally {
+        server.close();
+      }
+    });
+  });
 
   return {
-    authUrl: url.toString(),
-    port,
-    loginCompletePromise,
+    url: url.toString(),
+    credentials,
   };
 }
 
