@@ -7,7 +7,6 @@
     "./configuration": "./src/configuration/index.ts",
     "./pochi-api": "./src/pochi-api.ts",
     "./vendor": "./src/vendor/index.ts",
-    "./vendor/node": "./src/vendor/node.ts",
     "./device-link": "./src/device-link/index.ts",
     "./device-link/client": "./src/device-link/client.ts",
     "./message-utils": "./src/message-utils/index.ts",

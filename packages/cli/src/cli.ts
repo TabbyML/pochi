@@ -6,7 +6,7 @@ import { Command } from "@commander-js/extra-typings";
 import { constants, getLogger } from "@getpochi/common";
 import { pochiConfig } from "@getpochi/common/configuration";
 import type { PochiApi, PochiApiClient } from "@getpochi/common/pochi-api";
-import { getVendors } from "@getpochi/common/vendor/node";
+import { getVendors } from "@getpochi/common/vendor";
 import type { LLMRequestData } from "@getpochi/livekit";
 import chalk from "chalk";
 import * as commander from "commander";

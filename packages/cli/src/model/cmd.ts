@@ -2,7 +2,7 @@ import type { Command } from "@commander-js/extra-typings";
 import { pochiConfig } from "@getpochi/common/configuration";
 import type { CustomModelSetting } from "@getpochi/common/configuration";
 import type { ModelOptions } from "@getpochi/common/vendor";
-import { getVendors } from "@getpochi/common/vendor/node";
+import { getVendors } from "@getpochi/common/vendor";
 import chalk from "chalk";
 
 // Format context window size for better readability

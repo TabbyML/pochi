@@ -5,7 +5,7 @@ import "@getpochi/vendor-gemini-cli";
 import { VSCodeLm } from "@/integrations/vscode-lm";
 import { getLogger } from "@getpochi/common";
 import { pochiConfig } from "@getpochi/common/configuration";
-import { getVendors } from "@getpochi/common/vendor/node";
+import { getVendors } from "@getpochi/common/vendor";
 import type {
   DisplayModel,
   VSCodeLmRequestOptions,

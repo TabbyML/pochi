@@ -1,6 +1,6 @@
 import * as childProcess from "node:child_process";
 import { updateVendorConfig } from "@getpochi/common/configuration";
-import { getVendor } from "@getpochi/common/vendor/node";
+import { getVendor } from "@getpochi/common/vendor";
 import { VendorId, startOAuthFlow } from "@getpochi/vendor-gemini-cli";
 import chalk from "chalk";
 
