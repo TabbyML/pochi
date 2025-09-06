@@ -79,7 +79,7 @@ const CliTools = {
   writeToFile,
 };
 
-export const buildClientTools = (customAgents?: CustomAgent[]) => {
+export const createClientTools = (customAgents?: CustomAgent[]) => {
   return {
     ...CliTools,
     newTask,
@@ -90,7 +90,7 @@ export const buildClientTools = (customAgents?: CustomAgent[]) => {
   };
 };
 
-export type ClientTools = ReturnType<typeof buildClientTools>;
+export type ClientTools = ReturnType<typeof createClientTools>;
 
 export const selectClientTools = (options: {
   isSubTask: boolean;
@@ -101,7 +101,7 @@ export const selectClientTools = (options: {
     return CliTools;
   }
 
-  const clientTools = buildClientTools(options.customAgents);
+  const clientTools = createClientTools(options.customAgents);
 
   if (options?.isSubTask) {
     const { newTask, newCustomAgent, ...rest } = clientTools;

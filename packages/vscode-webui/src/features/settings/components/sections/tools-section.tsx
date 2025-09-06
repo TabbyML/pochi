@@ -1,4 +1,4 @@
-import { type ToolName, buildClientTools } from "@getpochi/tools";
+import { type ToolName, createClientTools } from "@getpochi/tools";
 import { useTranslation } from "react-i18next";
 import { keys } from "remeda";
 import { Section, SubSection } from "../ui/section";
@@ -59,7 +59,7 @@ const ToolDescriptions: Record<ToolName, string> = {
     "The `newCustomAgent` tool allows Pochi to create a new custom agent instance. This is useful for tasks that require a dedicated agent with specific capabilities or configurations. By using this tool, Pochi can tailor the agent's behavior to better suit the needs of the task at hand.",
 };
 
-const AllTools = keys({ ...buildClientTools() })
+const AllTools = keys({ ...createClientTools() })
   .map((id) => ({
     id,
     description: ToolDescriptions[id],

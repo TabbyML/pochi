@@ -58,7 +58,7 @@ import type {
   PreviewToolFunctionType,
   ToolFunctionType,
 } from "@getpochi/tools";
-import { buildClientTools } from "@getpochi/tools";
+import { createClientTools } from "@getpochi/tools";
 import {
   ThreadAbortSignal,
   type ThreadAbortSignalSerialization,
@@ -262,7 +262,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   };
 
   listAutoCompleteCandidates = async (): Promise<string[]> => {
-    const clientTools = keys(buildClientTools());
+    const clientTools = keys(createClientTools());
     const mcps = entries(this.mcpHub.status.value.connections)
       .filter(([_, v]) => v.status === "ready")
       .map(([id]) => id);
