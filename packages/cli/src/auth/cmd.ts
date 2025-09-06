@@ -3,11 +3,12 @@ import {
   type UserInfo,
   updateVendorConfig,
 } from "@getpochi/common/configuration";
-import { vendors } from "@getpochi/common/vendor/node";
+import { getVendors } from "@getpochi/common/vendor";
 import chalk from "chalk";
-import { getLoginFn } from "./login";
+import { login } from "./login";
 
 export function registerAuthCommand(program: Command) {
+  const vendors = getVendors();
   const vendorNames = Object.keys(vendors).join(", ");
 
   const authCommand = program
@@ -38,9 +39,16 @@ export function registerAuthCommand(program: Command) {
         return;
       }
 
-      const loginFn = getLoginFn(loginCommand, vendor);
-      const user = await loginFn();
-      console.log("Logged in as", renderUser(user));
+      try {
+        const user = await login(vendor);
+        console.log("Logged in as", renderUser(user));
+      } catch (err) {
+        if (err instanceof Error) {
+          return loginCommand.error(err.message);
+        }
+
+        throw err;
+      }
     });
 
   const logoutCommand = authCommand.command("logout");

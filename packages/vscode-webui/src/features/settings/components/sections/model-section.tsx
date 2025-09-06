@@ -6,7 +6,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import type { User } from "@/lib/auth-client";
 import { useModelList } from "@/lib/hooks/use-model-list";
 import type { DisplayModel } from "@getpochi/common/vscode-webui-bridge";
 import { CircleQuestionMarkIcon, DotIcon, PencilIcon } from "lucide-react";
@@ -15,11 +14,7 @@ import { useSettingsStore } from "../../store";
 import { AccordionSection } from "../ui/accordion-section";
 import { EmptySectionPlaceholder, Section } from "../ui/section";
 
-interface ModelSectionProps {
-  user?: User;
-}
-
-export const ModelSection: React.FC<ModelSectionProps> = ({ user }) => {
+export const ModelSection = () => {
   const { t } = useTranslation();
   const { modelList = [], isLoading } = useModelList(false);
   const { enablePochiModels } = useSettingsStore();
@@ -72,9 +67,10 @@ export const ModelSection: React.FC<ModelSectionProps> = ({ user }) => {
       ) : hasModels ? (
         <div className="space-y-3">
           {/* Pochi Models Section */}
-          {!!user && (
+          {pochiModels.length > 0 && (
             <div className="ml-1">
               <AccordionSection
+                localStorageKey="pochi-models-section"
                 title={
                   <div className="flex items-center gap-0.5 py-1">
                     Pochi
@@ -130,6 +126,7 @@ export const ModelSection: React.FC<ModelSectionProps> = ({ user }) => {
           {providerModels.length > 0 && (
             <div className="ml-1">
               <AccordionSection
+                localStorageKey="byok-models-section"
                 title={
                   <div className="flex items-center gap-0.5 py-1">
                     BYOK
@@ -183,6 +180,7 @@ export const ModelSection: React.FC<ModelSectionProps> = ({ user }) => {
       {vendorModels.length > 0 && (
         <div className="ml-1">
           <AccordionSection
+            localStorageKey="vendor-models-section"
             title={
               <div className="flex items-center gap-2 py-1">Third-party</div>
             }

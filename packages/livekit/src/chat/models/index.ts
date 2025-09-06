@@ -2,14 +2,13 @@ import type { RequestData } from "../../types";
 import { createAiGatewayModel } from "./ai-gateway";
 import { createGoogleVertexTuningModel } from "./google-vertex-tuning";
 import { createOpenAIModel } from "./openai";
-import { createVendorModel } from "./vendor";
 
 export function createModel({
   id,
   llm,
 }: { id: string; llm: RequestData["llm"] }) {
   if (llm.type === "vendor") {
-    return createVendorModel(id, llm);
+    return llm.getModel(id);
   }
 
   if (llm.type === "openai") {

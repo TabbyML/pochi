@@ -1,5 +1,5 @@
 import type { CustomModelSetting } from "../../configuration";
-import type { ModelOptions } from "../../vendor";
+import type { ModelOptions } from "../../vendor/types";
 
 export type DisplayModel =
   | {

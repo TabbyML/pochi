@@ -21,11 +21,10 @@
     "@getpochi/tools": "workspace:*",
     "@livestore/livestore": "catalog:",
     "@livestore/react": "catalog:",
-    "@quilted/threads": "catalog:",
     "ai": "catalog:",
     "base58-js": "^3.0.3",
-    "hono": "catalog:",
     "react": "catalog:",
+    "remeda": "catalog:",
     "zod": "catalog:"
   }
 }

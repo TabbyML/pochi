@@ -31,7 +31,7 @@ type StreamingResult =
     }
   | {
       // Not actually a task streaming result, but we provide context here for the live-sub-task.
-      toolName: "newTask";
+      toolName: "newTask" | "newCustomAgent";
       abortSignal: AbortSignal;
       throws: (error: string) => void;
     };
@@ -259,7 +259,7 @@ export class ManagedToolCallLifeCycle
     ]);
     let executePromise: Promise<unknown>;
 
-    if (this.toolName === "newTask") {
+    if (this.toolName === "newTask" || this.toolName === "newCustomAgent") {
       executePromise = this.runNewTask(args as NewTaskParameterType);
     } else {
       executePromise = vscodeHost.executeToolCall(this.toolName, args, {
@@ -332,7 +332,10 @@ export class ManagedToolCallLifeCycle
       "output" in result
     ) {
       this.onExecuteCommand(result as ExecuteCommandReturnType);
-    } else if (this.toolName === "newTask") {
+    } else if (
+      this.toolName === "newTask" ||
+      this.toolName === "newCustomAgent"
+    ) {
       this.onExecuteNewTask(result as NewTaskReturnType);
     } else {
       this.transitTo("execute", {
@@ -402,7 +405,7 @@ export class ManagedToolCallLifeCycle
     this.transitTo("execute", {
       type: "execute:streaming",
       streamingResult: {
-        toolName: "newTask",
+        toolName: this.toolName as "newTask" | "newCustomAgent",
         abortSignal,
         throws: (error: string) => {
           this.transitTo("execute:streaming", {

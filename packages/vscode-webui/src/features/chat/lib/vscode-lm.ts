@@ -3,17 +3,22 @@ import type {
   LanguageModelV2StreamPart,
 } from "@ai-sdk/provider";
 import { getLogger } from "@getpochi/common";
+import {
+  type CreateModelOptions,
+  registerModel,
+} from "@getpochi/common/vendor/edge";
 import type { VSCodeLmRequestOptions } from "@getpochi/common/vscode-webui-bridge";
 import { ThreadAbortSignal } from "@quilted/threads";
 
 const logger = getLogger("VscodeLM");
 
-export type ChatFn = (
+type ChatFn = (
   options: Omit<VSCodeLmRequestOptions, "model">,
   onChunk: (chunk: string) => Promise<void>,
 ) => Promise<void>;
 
-export function createVSCodeLmModel(getChatFn: () => Promise<ChatFn>) {
+function createVSCodeLmModel({ getCredentials }: CreateModelOptions) {
+  const getChatFn = getCredentials as () => Promise<ChatFn>;
   return {
     specificationVersion: "v2",
     provider: "vscode",
@@ -81,3 +86,5 @@ export function createVSCodeLmModel(getChatFn: () => Promise<ChatFn>) {
     },
   } satisfies LanguageModelV2;
 }
+
+registerModel("vscode-lm", createVSCodeLmModel);

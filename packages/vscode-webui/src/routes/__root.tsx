@@ -1,10 +1,8 @@
-import type { authClient } from "@/lib/auth-client";
 import { Outlet, createRootRouteWithContext } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 
-interface RouterContext {
-  auth: typeof authClient.$Infer.Session | null;
-}
+// biome-ignore lint/suspicious/noEmptyInterface: placeholder
+interface RouterContext {}
 
 export const Route = createRootRouteWithContext<RouterContext>()({
   component: () => (

@@ -3,11 +3,12 @@ import { vscodeHost } from "@/lib/vscode";
 import { useQuery } from "@tanstack/react-query";
 import { Edit, Workflow } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { EmptySectionPlaceholder, ScetionItem, Section } from "../ui/section";
+import { AccordionSection } from "../ui/accordion-section";
+import { EmptySectionPlaceholder, ScetionItem } from "../ui/section";
 
 export const WorkflowsSection: React.FC = () => {
   const { t } = useTranslation();
-  const { data: workflows, isLoading } = useQuery({
+  const { data: workflows = [], isLoading } = useQuery({
     queryKey: ["workflows"],
     queryFn: async () => {
       return await vscodeHost.listWorkflowsInWorkspace();
@@ -21,7 +22,11 @@ export const WorkflowsSection: React.FC = () => {
   };
 
   return (
-    <Section title={t("settings.workflows.title")}>
+    <AccordionSection
+      localStorageKey="workflows-section"
+      title={t("settings.workflows.title")}
+      collapsable={workflows.length > 3}
+    >
       {isLoading ? (
         <div className="space-y-2">
           {Array.from({ length: 3 }).map((_, i) => (
@@ -52,7 +57,7 @@ export const WorkflowsSection: React.FC = () => {
           content={t("settings.workflows.noWorkflows")}
         />
       )}
-    </Section>
+    </AccordionSection>
   );
 };
 

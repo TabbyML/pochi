@@ -4,7 +4,7 @@ import {
   getVendorConfig,
   updateVendorConfig,
 } from "../configuration";
-import type { ModelOptions } from "./types";
+import type { AuthOutput, ModelOptions } from "./types";
 
 export abstract class VendorBase {
   constructor(readonly vendorId: string) {}
@@ -36,6 +36,8 @@ export abstract class VendorBase {
   }
 
   abstract fetchModels(): Promise<Record<string, ModelOptions>>;
+
+  abstract authenticate(): Promise<AuthOutput>;
 
   get authenticated() {
     const config = getVendorConfig(this.vendorId);

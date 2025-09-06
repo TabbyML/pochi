@@ -89,4 +89,6 @@ const Tools: Record<string, React.FC<ToolProps<any>>> = {
   todoWrite: todoWriteTool,
   // @ts-ignore
   newTask: newTaskTool,
+  // @ts-ignore
+  newCustomAgent: newTaskTool,
 };

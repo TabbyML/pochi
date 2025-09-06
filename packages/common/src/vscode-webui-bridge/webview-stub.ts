@@ -2,8 +2,10 @@ import type { ThreadAbortSignalSerialization } from "@quilted/threads";
 import type { ThreadSignalSerialization } from "@quilted/threads/signals";
 import type { Environment } from "../base";
 
+import type { UserInfo } from "../configuration";
 import type {
   CaptureEvent,
+  CustomAgentFile,
   DisplayModel,
   McpStatus,
   ResourceURI,
@@ -201,6 +203,16 @@ const VSCodeHostStub = {
   },
   readModelList: async () => {
     return Promise.resolve({} as ThreadSignalSerialization<DisplayModel[]>);
+  },
+  readUserStorage: async () => {
+    return Promise.resolve(
+      {} as ThreadSignalSerialization<Record<string, UserInfo>>,
+    );
+  },
+  readCustomAgents: async (): Promise<
+    ThreadSignalSerialization<CustomAgentFile[]>
+  > => {
+    return Promise.resolve({} as ThreadSignalSerialization<CustomAgentFile[]>);
   },
 } satisfies VSCodeHostApi;
 
