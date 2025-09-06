@@ -5,9 +5,9 @@ import {
   type GeminiCredentials,
   createGeminiCliModel,
 } from "@getpochi/vendor-gemini-cli/edge";
+import { createPochiModel } from "@getpochi/vendor-pochi";
 import { hc } from "hono/client";
 import type { RequestData } from "../../../types";
-import { createPochiModel } from "./pochi";
 import { type ChatFn, createVSCodeLmModel } from "./vscode-lm";
 
 export function createVendorModel(

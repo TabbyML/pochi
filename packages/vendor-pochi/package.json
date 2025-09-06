@@ -9,6 +9,8 @@
     "tsc": "tsc --noEmit"
   },
   "dependencies": {
+    "@ai-sdk/provider": "catalog:",
+    "@ai-sdk/provider-utils": "catalog:",
     "@getpochi/common": "workspace:*",
     "better-auth": "catalog:",
     "hono": "catalog:"

@@ -20,6 +20,7 @@
     "@getpochi/common": "workspace:*",
     "@getpochi/tools": "workspace:*",
     "@getpochi/vendor-gemini-cli": "workspace:*",
+    "@getpochi/vendor-pochi": "workspace:*",
     "@livestore/livestore": "catalog:",
     "@livestore/react": "catalog:",
     "@quilted/threads": "catalog:",

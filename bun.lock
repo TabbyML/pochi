@@ -117,6 +117,7 @@
         "@getpochi/common": "workspace:*",
         "@getpochi/tools": "workspace:*",
         "@getpochi/vendor-gemini-cli": "workspace:*",
+        "@getpochi/vendor-pochi": "workspace:*",
         "@livestore/livestore": "catalog:",
         "@livestore/react": "catalog:",
         "@quilted/threads": "catalog:",
@@ -150,6 +151,8 @@
       "name": "@getpochi/vendor-pochi",
       "version": "0.0.1",
       "dependencies": {
+        "@ai-sdk/provider": "catalog:",
+        "@ai-sdk/provider-utils": "catalog:",
         "@getpochi/common": "workspace:*",
         "better-auth": "catalog:",
         "hono": "catalog:",
