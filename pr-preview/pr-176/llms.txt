@@ -69,6 +69,87 @@ Use this to branch a fresh task based on the current work. Pochi will:
 * You’ll see a “Compacting” state while the summary is being generated—this can take a moment for very long threads.
 
 
+# Checkpoints
+URL: /checkpoint
+
+***
+
+title: Checkpoints
+icon: "Route"
+-------------
+
+# Checkpoints
+
+Checkpoints automatically save a snapshot of your workspace after key steps in a task. They help you track changes, roll back when needed, and explore different implementations without worrying about breaking your code.
+
+<div align="center">
+  ![Checkpoint overview](../assets/images/checkpoint-overview.png)
+</div>
+
+## How checkpoints work
+
+Pochi creates a checkpoint after important actions such as file edits or applied fixes. These checkpoints:
+
+* Run alongside your Git workflow without interference
+* Preserve the conversation context when restoring (chat and task context remain intact)
+* Track file changes using a shadow Git repository (no writes to your real repository)
+
+Example: while developing a feature, the assistant updates multiple files. Each change creates a checkpoint. You can review each modification, and if needed, roll back to any point without impacting your main branch or real Git history.
+
+## Viewing changes and restoring
+
+After each key action, you can:
+
+1. Click Compare to see modified files and diffs
+2. Click Restore to open restore options
+
+<div align="center">
+  ![Checkpoint compare](../assets/images/checkpoint-compare.png)
+</div>
+
+## Restore options
+
+To go back to a previous point:
+
+1. Click Restore next to any step
+2. Choose how you want to restore:
+   * Restore Workspace and Task (when available): revert both code and task context
+   * Restore Task Only (when available): keep code changes, revert task context
+   * Restore Workspace Only: revert code while preserving task context (current default)
+
+Note: The current version focuses on “Restore Workspace Only.” Other options will appear as their capabilities are enabled.
+
+<div align="center">
+  ![Checkpoint restore options](../assets/images/checkpoints-restore.png)
+</div>
+
+## Under the hood
+
+In VS Code, Pochi implements checkpoints with a shadow Git that stays separate from your real repository:
+
+* Initializes a bare repository under the extension’s storage directory (scoped per workspace)
+* Points the worktree to your workspace, then stages and commits changes into the shadow repo
+* Excludes common large/binary/cache/build artifacts (see Exclusions) to keep things fast and stable
+
+This shadow repo is fully independent. Saving or restoring checkpoints does not create commits in your actual Git repository.
+
+## Requirements
+
+* **Git** must be installed (the shadow Git depends on it). If Git isn’t available, the checkpoint feature can’t initialize and will be disabled.
+
+## Smart detection and exclusions
+
+Pochi automatically detects and excludes heavy or redundant files to keep checkpoints lean and fast, including:
+
+* Build artifacts and dependency folders
+* Media files and large binaries
+* Cache, logs, and temporary files
+* Environment configuration files
+* Files tracked by Git LFS
+
+With this smart filtering, checkpoints focus on core code changes—making diffs clearer and restores faster.
+
+
 # CLI
 URL: /cli
 Pochi CLI allows you to run an AI agent directly from the command line.
@@ -182,6 +263,7 @@ Learn how to create and use custom agents in Pochi.
 ***
 
 title: Custom Agent
+icon: Bot
 description: Learn how to create and use custom agents in Pochi.
 ----------------------------------------------------------------
 
@@ -256,6 +338,40 @@ Here you will find highlights on features, enhancements, and bug fixes, plus ins
 
 ***
 
+## Sep 5, 2025
+
+### TL;DR
+
+We had a massive week — **62 PRs shipped** 🎉!
+
+Pochi can now reply to you right in **GitHub comments & issues**, the interface speaks more languages with new **i18n support**, and we rolled out a sleeker, more powerful **background job system**. On top of that, the **CLI** got smarter, **autocomplete** got friendlier, and the **docs** got a glow-up!
+
+### Features 🚀
+
+* **GitHub Action integration:** Pochi now lives in your PR comments / issues! Ask for help in a PR with `/pochi`. [#76](https://github.com/TabbyML/pochi/pull/76)
+* **Internationalization (i18n):** The VS Code extension now supports 🇺🇸 🇨🇳 🇯🇵 🇰🇷. Want your language included? Open a PR! [#90](https://github.com/TabbyML/pochi/pull/90)
+
+### Enhancements ✨
+
+* **CLI upgrades:** The Pochi CLI got a big boost this week!
+  * Install via Homebrew 🍺 [#125](https://github.com/TabbyML/pochi/issues/125)
+  * Authenticate with `pochi auth`, including support for Gemini login [#167](https://github.com/TabbyML/pochi/pull/167)
+  * Trigger workflows directly with `pochi -p "/create-pr"` [#110](https://github.com/TabbyML/pochi/pull/110)
+* **Enhanced Background jobs:** Added terminal integration and lifecycle controls. Enhanced the job UI with collapsible detail logs and readable IDs for a clearer experience. [#81](https://github.com/TabbyML/pochi/pull/81), [#97](https://github.com/TabbyML/pochi/pull/97)
+* **Autocomplete:** Pochi suggests relevant tools, functions, and variables to help you type prompts faster. [#89](https://github.com/TabbyML/pochi/pull/89)
+* **Documentation updates:** Refreshed CLI usage docs, expanded model provider configuration examples, and added Slack integration documentation. [#133](https://github.com/TabbyML/pochi/pull/133), [#141](https://github.com/TabbyML/pochi/pull/141), [#82](https://github.com/TabbyML/pochi/pull/82)
+
+### Bug Fixes 🐛
+
+* **File writing reliability:** The CLI ensures directories exist before writing, so `writeToFile` tool won't fail. [#118](https://github.com/TabbyML/pochi/pull/118)
+* **Code completion fix:** Corrected how VS Code calculates the replacement range for suggestions, so completions insert correctly. [#131](https://github.com/TabbyML/pochi/pull/131)
+
+### New Contributors 🐾
+
+[@karim-coder](https://github.com/karim-coder) made their first contribution this week! Welcome aboard! 🎉
+
+***
+
 ## Aug 29, 2025
 
 ### TL;DR
@@ -284,7 +400,99 @@ icon: "Github"
 
 # GitHub
 
-TBD
+Use Pochi’s AI assistant directly in your GitHub repository by commenting on pull requests to perform code reviews, explain changes, and suggest improvements.
+
+<Callout type="info" title="How it works">
+  This integration runs inside a GitHub Actions runner. It temporarily installs
+  the pochi CLI and executes tasks in the context of your repository. Progress
+  is continuously updated under the triggering comment, and a final result
+  (✅/❌) is posted when finished.
+</Callout>
+
+## Setup
+
+Create a workflow file `.github/workflows/pochi.yml` in your repository:
+
+```yaml
+name: pochi
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  pochi:
+    if: startsWith(github.event.comment.body, '/pochi')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Run pochi
+        uses: tabbyml/pochi/packages/github-action@main
+        env:
+          # Required: Pochi session token (get it from app.getpochi.com and add as a repository secret)
+          POCHI_TOKEN: ${{ secrets.POCHI_TOKEN }}
+          # Optional: custom model (defaults to CLI's default model if not set)
+          # See the Models page for model options and configuration
+          # POCHI_MODEL: google/gemini-2.5-pro
+```
+
+Notes:
+
+* Triggered by `issue_comment` (created) and runs only if the comment body starts with `/pochi`
+* Requires write permissions to read changes, post comments, and add reactions to PRs
+* Provide `POCHI_TOKEN` via env; optionally set `POCHI_MODEL` to customize the model
+* By default, the action uses GitHub's built-in `GITHUB_TOKEN` (github-actions bot). You can customize this by setting a custom `GITHUB_TOKEN` environment variable with your own Personal Access Token (PAT)
+
+## Usage
+
+Comment on a PR with `/pochi` followed by your request, e.g. `/pochi review this code`, `/pochi explain the changes in this PR`, `/pochi suggest improvements`.
+
+![Comment example](../assets/images/github-comment.png)
+
+Once triggered:
+
+* Pochi reacts to your comment with 👀 to indicate it’s running
+* A progress comment is updated every 15 seconds
+* When finished, it posts the final result and reacts with 🚀 (success) or −1 (failure)
+
+![Progress example](../assets/images/github-progress.png)
+
+![Actions run example](../assets/images/github-action-run.png)
+
+Permission requirement: Only users with write/admin permission can trigger execution. Otherwise, an error will be posted as a comment.
+
+## Advanced configuration
+
+### Use a custom GitHub token (optional)
+
+By default, the action uses the GitHub-provided `GITHUB_TOKEN`. For cross-repo or higher-privileged operations, you can override it with a PAT:
+
+```yaml
+- name: Run pochi
+  uses: tabbyml/pochi/packages/github-action@main
+  env:
+    GITHUB_TOKEN: ${{ secrets.CUSTOM_GITHUB_TOKEN }} # Your PAT
+    POCHI_TOKEN: ${{ secrets.POCHI_TOKEN }}
+```
+
+### Permissions
+
+Ensure the workflow includes these permissions:
+
+```yaml
+permissions:
+  contents: write # Read repo contents and commit changes if needed
+  issues: write # Comment on issues/PRs
+  pull-requests: write # Access PR information and status
+```
 
 
 # Getting Started
