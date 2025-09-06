@@ -89,39 +89,60 @@ export class ListrHelper {
       {
         title: chalk.bold(`🚀 ${description}`),
         task: async (_ctx, task) => {
+          let output = '';
+          
           // 显示 prompt 信息
           if (prompt) {
-            const shortPrompt = prompt.length > 100 
-              ? prompt.substring(0, 97) + '...' 
+            const shortPrompt = prompt.length > 150 
+              ? prompt.substring(0, 147) + '...' 
               : prompt;
-            task.output = chalk.dim(`Prompt: ${shortPrompt}`);
+            output += `${chalk.dim(`› Prompt: ${shortPrompt}`)}\n`;
           }
 
           // 初始化阶段
-          task.output = chalk.dim('Setting up environment...');
+          output += `${chalk.dim('› Setting up environment...')}\n`;
+          task.output = output;
           await this.waitForTaskInit(part);
-          task.output = chalk.dim('✓ Subtask initialized');
+          output += `${chalk.green('› ✓ Subtask initialized')}\n`;
 
           // 执行阶段
-          task.output = chalk.dim('Executing subtask...');
+          output += `${chalk.dim('› Executing subtask...')}\n`;
+          task.output = output;
           await this.waitForSubtaskCompletion(part, taskId);
-          task.output = chalk.dim('✓ Subtask completed');
+          output += `${chalk.green('› ✓ Subtask completed')}\n`;
 
           // 结果处理阶段
           if (part.state !== 'output-error') {
-            task.output = chalk.dim('Processing results...');
+            output += `${chalk.dim('› Processing results...')}\n`;
+            task.output = output;
             await this.processTaskResult(part);
             
             // 显示最终结果
             if (part.output && 'result' in part.output) {
               const result = (part.output as any).result as string;
-              const shortResult = result.length > 80 
-                ? result.substring(0, 77) + '...' 
-                : result;
-              task.output = `${chalk.dim('✓ Results processed')}\n${chalk.dim(`  Result: ${shortResult}`)}`;
+              output += `${chalk.green('› ✓ Results processed')}\n`;
+              output += `${chalk.dim(`  Result: ${result}`)}\n`;
+              
+              // 显示执行的命令详情（如果是 executeCommand）
+              const input = part.input as any;
+              if (input?.command) {
+                output += `${chalk.dim(`  Command: ${input.command}`)}\n`;
+              }
+              if (input?.cwd) {
+                output += `${chalk.dim(`  Working directory: ${input.cwd}`)}\n`;
+              }
             } else {
-              task.output = chalk.dim('✓ Processing complete');
+              output += `${chalk.green('› ✓ Processing complete')}\n`;
             }
+            
+            task.output = output;
+          } else {
+            // 错误情况
+            output += `${chalk.red('› ✗ Subtask failed')}\n`;
+            if (part.errorText) {
+              output += `${chalk.dim(`  Error: ${part.errorText}`)}\n`;
+            }
+            task.output = output;
           }
         },
         // 关键：在任务级别设置 persistentOutput
