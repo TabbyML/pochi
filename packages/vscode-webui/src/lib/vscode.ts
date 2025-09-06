@@ -79,15 +79,16 @@ function createVSCodeHost(): VSCodeHostApi {
         "showInformationMessage",
         "readVisibleTerminals",
         "readModelList",
+        "readUserStorage",
+        "readCustomAgents",
       ],
       exports: {
         openTask(params) {
           window.router.navigate({
             to: "/",
             search: {
-              uid: params.uid,
+              uid: params.uid || crypto.randomUUID(),
               prompt: "prompt" in params ? params.prompt : undefined,
-              ts: Date.now(),
             },
             replace: true,
           });

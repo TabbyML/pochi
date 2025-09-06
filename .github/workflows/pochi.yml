@@ -6,7 +6,7 @@ on:
 
 jobs:
   pochi:
-    if: contains(github.event.comment.body, '/pochi')
+    if: startsWith(github.event.comment.body, '/pochi')
     runs-on: ubuntu-latest
     permissions:
       contents: write

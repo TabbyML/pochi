@@ -189,8 +189,14 @@ function renderToolPart(part: ToolUIPart<UITools>): {
   // Interactive tools
   if (part.type === "tool-askFollowupQuestion") {
     const { question, followUp } = part.input || {};
+    const followUpText = Array.isArray(followUp)
+      ? followUp
+          .map((option, i) => `${chalk.dim(`   ${i + 1}.`)} ${option}`)
+          .join("\n")
+      : "";
+
     return {
-      text: `${chalk.bold(chalk.yellow(`❓ ${question}`))}\n${followUp?.map((option, i) => `${chalk.dim(`   ${i + 1}.`)} ${option}`).join("\n")}\n`,
+      text: `${chalk.bold(chalk.yellow(`❓ ${question}`))} ${followUpText}`,
       stop: "stopAndPersist",
       error: errorText,
     };

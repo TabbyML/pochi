@@ -18,6 +18,8 @@
     "@commander-js/extra-typings": "^14.0.0",
     "@getpochi/common": "workspace:*",
     "@getpochi/livekit": "workspace:*",
+    "@getpochi/vendor-gemini-cli": "workspace:*",
+    "@getpochi/vendor-pochi": "workspace:*",
     "@livestore/adapter-node": "catalog:",
     "@livestore/livestore": "catalog:",
     "@livestore/wa-sqlite": "catalog:",

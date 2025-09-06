@@ -1,8 +1,15 @@
+// Register the models
+import "@getpochi/vendor-pochi/edge";
+import "@getpochi/vendor-gemini-cli/edge";
+import "./vscode-lm";
+
 import { useSelectedModels } from "@/features/settings";
+import { useCustomAgents } from "@/lib/hooks/use-custom-agents";
 import { useLatest } from "@/lib/hooks/use-latest";
 import { useMcp } from "@/lib/hooks/use-mcp";
 import { vscodeHost } from "@/lib/vscode";
-import type { Environment } from "@getpochi/common";
+import { constants, type Environment } from "@getpochi/common";
+import { createModel } from "@getpochi/common/vendor/edge";
 import type { UserEditsDiff } from "@getpochi/common/vscode-webui-bridge";
 import type { LLMRequestData, Message } from "@getpochi/livekit";
 import type { Todo } from "@getpochi/tools";
@@ -19,6 +26,9 @@ export function useLiveChatKitGetters({
   const mcpToolSet = useLatest(toolset);
 
   const llm = useLLM();
+
+  const { customAgents } = useCustomAgents();
+  const customAgentsRef = useLatest(customAgents);
 
   const getEnvironment = useCallback(
     async ({ messages }: { messages: readonly Message[] }) => {
@@ -49,6 +59,9 @@ export function useLiveChatKitGetters({
 
     // biome-ignore lint/correctness/useExhaustiveDependencies(mcpToolSet.current): mcpToolSet is ref.
     getMcpToolSet: useCallback(() => mcpToolSet.current, []),
+
+    // biome-ignore lint/correctness/useExhaustiveDependencies(customAgentsRef.current): customAgentsRef is ref.
+    getCustomAgents: useCallback(() => customAgentsRef.current, []),
   };
 }
 
@@ -75,10 +88,16 @@ function useLLM(): React.RefObject<LLMRequestData> {
     if (selectedModel.type === "vendor") {
       return {
         type: "vendor",
-        vendorId: selectedModel.vendorId,
-        modelId: selectedModel.modelId,
-        options: selectedModel.options,
-        getCredentials: selectedModel.getCredentials,
+        keepReasoningPart:
+          selectedModel.vendorId === "pochi" &&
+          selectedModel.modelId.includes("claude"),
+        useToolCallMiddleware: selectedModel.options.useToolCallMiddleware,
+        getModel: (id: string) =>
+          createModel(selectedModel.vendorId, {
+            id,
+            modelId: selectedModel.modelId,
+            getCredentials: selectedModel.getCredentials,
+          }),
       };
     }
 
@@ -88,8 +107,10 @@ function useLLM(): React.RefObject<LLMRequestData> {
         type: "google-vertex-tuning" as const,
         modelId: selectedModel.modelId,
         vertex: provider.vertex,
-        maxOutputTokens: selectedModel.options.maxTokens,
-        contextWindow: selectedModel.options.contextWindow,
+        maxOutputTokens:
+          selectedModel.options.maxTokens ?? constants.DefaultMaxOutputTokens,
+        contextWindow:
+          selectedModel.options.contextWindow ?? constants.DefaultContextWindow,
         useToolCallMiddleware: selectedModel.options.useToolCallMiddleware,
       };
     }
@@ -99,8 +120,10 @@ function useLLM(): React.RefObject<LLMRequestData> {
         type: "ai-gateway" as const,
         modelId: selectedModel.modelId,
         apiKey: provider.apiKey,
-        maxOutputTokens: selectedModel.options.maxTokens,
-        contextWindow: selectedModel.options.contextWindow,
+        maxOutputTokens:
+          selectedModel.options.maxTokens ?? constants.DefaultMaxOutputTokens,
+        contextWindow:
+          selectedModel.options.contextWindow ?? constants.DefaultContextWindow,
         useToolCallMiddleware: selectedModel.options.useToolCallMiddleware,
       };
     }
@@ -110,8 +133,10 @@ function useLLM(): React.RefObject<LLMRequestData> {
       modelId: selectedModel.modelId,
       baseURL: provider.baseURL,
       apiKey: provider.apiKey,
-      maxOutputTokens: selectedModel.options.maxTokens,
-      contextWindow: selectedModel.options.contextWindow,
+      maxOutputTokens:
+        selectedModel.options.maxTokens ?? constants.DefaultMaxOutputTokens,
+      contextWindow:
+        selectedModel.options.contextWindow ?? constants.DefaultContextWindow,
       useToolCallMiddleware: selectedModel.options.useToolCallMiddleware,
     };
   })();

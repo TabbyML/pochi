@@ -1,6 +1,6 @@
 import { type Environment, getLogger } from "@getpochi/common";
 import type { PochiApiClient } from "@getpochi/common/pochi-api";
-import type { McpTool } from "@getpochi/tools";
+import type { CustomAgent, McpTool } from "@getpochi/tools";
 import type { Store } from "@livestore/livestore";
 import type { ChatInit, ChatOnErrorCallback, ChatOnFinishCallback } from "ai";
 import type { LLMRequestData } from "..";
@@ -44,6 +44,8 @@ export type LiveChatKitOptions<T> = {
   }) => void | Promise<void>;
 
   waitUntil?: (promise: Promise<unknown>) => void;
+
+  customAgent?: CustomAgent;
 } & Omit<
   ChatInit<Message>,
   "id" | "messages" | "generateId" | "onFinish" | "onError" | "transport"
@@ -69,6 +71,7 @@ export class LiveChatKit<
     isSubTask,
     isCli,
     apiClient,
+    customAgent,
     ...chatInit
   }: LiveChatKitOptions<T>) {
     this.taskId = taskId;
@@ -80,6 +83,7 @@ export class LiveChatKit<
       isSubTask,
       isCli,
       apiClient,
+      customAgent,
     });
 
     this.chat = new chatClass({

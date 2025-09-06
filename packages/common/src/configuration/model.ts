@@ -17,12 +17,10 @@ const BaseModelSettings = z.object({
       maxTokens: z
         .number()
         .optional()
-        .default(4096)
         .describe("Maximum number of generated tokens for the model"),
       contextWindow: z
         .number()
         .optional()
-        .default(100000)
         .describe("Context window size for the model"),
       useToolCallMiddleware: z
         .boolean()

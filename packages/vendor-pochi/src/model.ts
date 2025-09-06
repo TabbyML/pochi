@@ -3,13 +3,16 @@ import {
   EventSourceParserStream,
   extractResponseHeaders,
 } from "@ai-sdk/provider-utils";
-import type { PochiApiClient } from "@getpochi/common/pochi-api";
+import type { PochiVendorConfig } from "@getpochi/common/configuration";
+import type { PochiApi, PochiApiClient } from "@getpochi/common/pochi-api";
+import type { CreateModelOptions } from "@getpochi/common/vendor/edge";
+import { hc } from "hono/client";
 
-export function createPochiModel(
-  id: string,
-  modelId: string,
-  apiClient: PochiApiClient,
-) {
+export function createPochiModel({
+  id,
+  modelId,
+  getCredentials,
+}: CreateModelOptions): LanguageModelV2 {
   return {
     specificationVersion: "v2",
     provider: "pochi",
@@ -18,6 +21,7 @@ export function createPochiModel(
     supportedUrls: {},
     doGenerate: async () => Promise.reject("Not implemented"),
     doStream: async ({ prompt, abortSignal, stopSequences, tools }) => {
+      const apiClient = createApiClient(getCredentials);
       const data = {
         id,
         model: modelId,
@@ -64,4 +68,24 @@ export function createPochiModel(
       return { stream };
     },
   } satisfies LanguageModelV2;
+}
+
+function createApiClient(
+  getCredentials: () => Promise<unknown>,
+): PochiApiClient {
+  const authClient: PochiApiClient = hc<PochiApi>("https://app.getpochi.com", {
+    async fetch(input: string | URL | Request, init?: RequestInit) {
+      const { token } = (await getCredentials()) as NonNullable<
+        PochiVendorConfig["credentials"]
+      >;
+      const headers = new Headers(init?.headers);
+      headers.append("Authorization", `Bearer ${token}`);
+      return fetch(input, {
+        ...init,
+        headers,
+      });
+    },
+  });
+
+  return authClient;
 }

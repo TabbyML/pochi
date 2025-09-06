@@ -2,7 +2,7 @@ import type { Command } from "@commander-js/extra-typings";
 import { pochiConfig } from "@getpochi/common/configuration";
 import type { CustomModelSetting } from "@getpochi/common/configuration";
 import type { ModelOptions } from "@getpochi/common/vendor";
-import { vendors } from "@getpochi/common/vendor/node";
+import { getVendors } from "@getpochi/common/vendor";
 import chalk from "chalk";
 
 // Format context window size for better readability
@@ -36,6 +36,8 @@ export function registerModelCommand(program: Command) {
     .command("list", { isDefault: true })
     .description("List supported models from all providers")
     .action(async () => {
+      const vendors = getVendors();
+
       // Display models from all vendors
       for (const [vendorId, vendor] of Object.entries(vendors)) {
         if (vendor.authenticated) {
@@ -71,10 +73,14 @@ function displayModels(vendorId: string, models: Record<string, ModelOptions>) {
 
   for (const [modelId, modelInfo] of sortedModelEntries) {
     // Display model ID with proper alignment
-    const padding = " ".repeat(Math.max(0, 35 - modelId.length));
+    const padding = " ".repeat(
+      Math.max(0, 35 - (modelInfo?.contextWindow ? modelId.length : 0)),
+    );
 
     // Display context window size
-    const contextWindow = formatContextWindow(modelInfo.contextWindow);
+    const contextWindow = modelInfo.contextWindow
+      ? formatContextWindow(modelInfo.contextWindow)
+      : "";
 
     console.log(
       `  ${modelId}${padding}${contextWindow}${formatToolCall(!!modelInfo.useToolCallMiddleware)}`,
@@ -106,10 +112,14 @@ function displayProviderModels(
 
   for (const [modelId, modelInfo] of sortedModelEntries) {
     // Display model ID with proper alignment
-    const padding = " ".repeat(Math.max(0, 35 - modelId.length));
+    const padding = " ".repeat(
+      Math.max(0, 35 - (modelInfo?.contextWindow ? modelId.length : 0)),
+    );
 
     // Display context window size
-    const contextWindow = formatContextWindow(modelInfo.contextWindow);
+    const contextWindow = modelInfo.contextWindow
+      ? formatContextWindow(modelInfo.contextWindow)
+      : "";
 
     console.log(
       `  ${modelId}${padding}${contextWindow}${formatToolCall(!!modelInfo.useToolCallMiddleware)}`,

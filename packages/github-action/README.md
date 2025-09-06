@@ -21,7 +21,7 @@ on:
 
 jobs:
   pochi:
-    if: contains(github.event.comment.body, '/pochi')
+    if: startsWith(github.event.comment.body, '/pochi')
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -127,7 +127,7 @@ If you need to use a custom GitHub token (for cross-repo operations):
 
 ### Action doesn't respond
 
-1. Check that the PR comment contains `/pochi`
+1. Check that the PR comment starts with `/pochi`
 2. Verify `POCHI_TOKEN` is set in repository secrets
 3. Ensure workflow has correct permissions
 4. Check workflow runs in Actions tab

@@ -15,7 +15,7 @@ import { routeTree } from "./routeTree.gen";
 
 import "./styles.css";
 import { Loader2 } from "lucide-react";
-import { authHooks } from "./lib/auth-client.ts";
+import { useUserStorage } from "./lib/hooks/use-user-storage.ts";
 import { isVSCodeEnvironment, vscodeHost } from "./lib/vscode";
 import { Providers } from "./providers.tsx";
 import reportWebVitals from "./reportWebVitals.ts";
@@ -25,9 +25,7 @@ const hashHistory = createHashHistory();
 // Create a new router instance
 const router = createRouter({
   routeTree,
-  context: {
-    auth: null,
-  },
+  context: {},
   defaultPreload: "intent",
   scrollRestoration: true,
   defaultStructuralSharing: true,
@@ -63,9 +61,9 @@ declare module "@tanstack/react-router" {
 }
 
 function InnerApp() {
-  const { data: auth, isPending } = authHooks.useSession();
+  const { isLoading } = useUserStorage();
 
-  if (isPending && isVSCodeEnvironment()) {
+  if (isLoading && isVSCodeEnvironment()) {
     return (
       <div className="flex h-screen w-screen items-center justify-center">
         <Loader2 className="animate-spin" />
@@ -75,7 +73,7 @@ function InnerApp() {
 
   return (
     <StrictMode>
-      <RouterProvider router={router} context={{ auth }} />
+      <RouterProvider router={router} context={{}} />
     </StrictMode>
   );
 }

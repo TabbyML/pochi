@@ -14,6 +14,7 @@
     "---Features---",
     "tab-completion",
     "auto-compact",
+    "checkpoint",
     "permissions",
     "share",
     "---Customize---",
@@ -21,6 +22,7 @@
     "rules",
     "workflows",
     "mcp",
+    "custom-agent",
     "---Resources---",
     "developer-updates"
   ]

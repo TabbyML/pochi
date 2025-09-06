@@ -103,6 +103,14 @@
       "mcp": "MCP",
       "retry": "재시도"
     },
+    "customAgent": {
+      "title": "커스텀 에이전트",
+      "loading": "커스텀 에이전트 로딩 중...",
+      "empty": {
+        "description": "커스텀 에이전트들을 찾을 수 없습니다.",
+        "hint": "워크스페이스의 .pochi/agents/ 디렉터리에 에이전트 파일을 생성하세요"
+      }
+    },
     "mcp": {
       "title": "MCP",
       "tooltip": "Pochi 전역 MCP 구성.",

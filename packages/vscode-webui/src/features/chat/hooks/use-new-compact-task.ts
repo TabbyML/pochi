@@ -13,7 +13,7 @@ export const useNewCompactTask = ({
       return compact();
     },
     onSuccess: (uid) => {
-      router.navigate({ to: "/", search: { uid, ts: Date.now() } });
+      router.navigate({ to: "/", search: { uid } });
     },
   });
 

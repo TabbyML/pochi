@@ -1,0 +1,21 @@
+{
+  "name": "@getpochi/vendor-gemini-cli",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "tsc": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ai-sdk/google-vertex": "catalog:",
+    "@ai-sdk/provider": "catalog:",
+    "@getpochi/common": "workspace:*",
+    "ai": "catalog:"
+  },
+  "exports": {
+    ".": "./src/node.ts",
+    "./edge": "./src/edge.ts"
+  }
+}

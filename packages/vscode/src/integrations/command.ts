@@ -412,12 +412,10 @@ export class CommandManager implements vscode.Disposable {
         apiKey: "your api key here",
         models: {
           "gpt-4.1": {
-            contextWindow: 1047576,
-            maxTokens: 32768,
+            name: "GPT-4.1",
           },
           "o4-mini": {
-            contextWindow: 200000,
-            maxTokens: 100000,
+            name: "O4-Mini",
           },
         },
       },

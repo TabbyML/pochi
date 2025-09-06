@@ -68,7 +68,8 @@ async function main() {
   );
 
   // Copy README and LICENSE if they exist
-  for (const file of ["README.md", "../../LICENSE"]) {
+  // .npmrc for auth, .npmrc will be ignore when push, so it safe to add it
+  for (const file of [".npmrc", "README.md", "../../LICENSE"]) {
     if (existsSync(file)) {
       await $`cp ${file} ${TEMP_PACKAGE_DIR}/`;
     }

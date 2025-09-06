@@ -19,7 +19,7 @@ const sectionContainerVariants = cva(
 );
 
 const sectionTitleVariants = cva(
-  "ml-1", // Common title styles
+  "ml-0", // Common title styles
   {
     variants: {
       variant: {

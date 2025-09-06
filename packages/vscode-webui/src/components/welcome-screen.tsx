@@ -1,10 +1,10 @@
 import { buttonVariants } from "@/components/ui/button";
-import type { User } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
+import type { UserInfo } from "@getpochi/common/configuration";
 import { LogInIcon, SettingsIcon } from "lucide-react";
 
 interface Props {
-  user: User | undefined;
+  user: UserInfo | undefined;
 }
 
 export const WelcomeScreen = ({ user }: Props) => {

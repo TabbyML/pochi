@@ -102,6 +102,14 @@
       "mcp": "MCP",
       "retry": "重试"
     },
+    "customAgent": {
+      "title": "自定义代理",
+      "loading": "加载自定义代理中...",
+      "empty": {
+        "description": "未找到自定义代理。",
+        "hint": "在工作区的 .pochi/agents/ 目录中创建代理文件"
+      }
+    },
     "mcp": {
       "title": "MCP",
       "tooltip": "全局配置 Pochi 的 MCP。",

@@ -5,7 +5,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import type { User } from "@/lib/auth-client";
+import { useUserStorage } from "@/lib/hooks/use-user-storage";
 import {
   ChevronsUpDown,
   HelpCircle,
@@ -17,11 +17,10 @@ import { useTranslation } from "react-i18next";
 import { LanguageMenuItem } from "../ui/language-menu-item";
 import { Section } from "../ui/section";
 
-interface AccountSectionProps {
-  user?: User;
-}
-
-export const AccountSection: React.FC<AccountSectionProps> = ({ user }) => {
+export const AccountSection = () => {
+  const {
+    users: { pochi: user } = {},
+  } = useUserStorage();
   const { t } = useTranslation();
 
   if (!user) {
@@ -64,9 +63,7 @@ export const AccountSection: React.FC<AccountSectionProps> = ({ user }) => {
                 </AvatarFallback>
               </Avatar>
               <div className="flex flex-col">
-                <span className="font-semibold">
-                  {user.name || user.email || `USER-${user.id}`}
-                </span>
+                <span className="font-semibold">{user.name || user.email}</span>
                 {user.email && (
                   <span className="text-muted-foreground text-sm">
                     {user.email}

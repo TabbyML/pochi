@@ -1,7 +1,9 @@
-import type { LanguageModelV2FinishReason } from "@ai-sdk/provider";
+import type {
+  LanguageModelV2,
+  LanguageModelV2FinishReason,
+} from "@ai-sdk/provider";
 import { Environment } from "@getpochi/common";
 import { GoogleVertexModel } from "@getpochi/common/configuration";
-import { ModelOptions } from "@getpochi/common/vendor";
 import { type ClientTools, McpTool } from "@getpochi/tools";
 import type { InferUITools, UIMessage } from "ai";
 import z from "zod/v4";
@@ -67,10 +69,12 @@ const RequestData = z.object({
     }),
     z.object({
       type: z.literal("vendor"),
-      vendorId: z.string(),
-      modelId: z.string(),
-      options: ModelOptions,
-      getCredentials: z.custom<() => Promise<unknown>>(),
+      keepReasoningPart: z.boolean().optional(),
+      useToolCallMiddleware: z
+        .boolean()
+        .optional()
+        .describe("Whether to use tool call middleware"),
+      getModel: z.custom<(id: string) => LanguageModelV2>(),
     }),
   ]),
   mcpToolSet: z

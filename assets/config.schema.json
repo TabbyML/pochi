@@ -146,12 +146,10 @@
                     },
                     "maxTokens": {
                       "description": "Maximum number of generated tokens for the model",
-                      "default": 4096,
                       "type": "number"
                     },
                     "contextWindow": {
                       "description": "Context window size for the model",
-                      "default": 100000,
                       "type": "number"
                     },
                     "useToolCallMiddleware": {
@@ -159,10 +157,6 @@
                       "type": "boolean"
                     }
                   },
-                  "required": [
-                    "maxTokens",
-                    "contextWindow"
-                  ],
                   "additionalProperties": false
                 }
               },
@@ -206,12 +200,10 @@
                     },
                     "maxTokens": {
                       "description": "Maximum number of generated tokens for the model",
-                      "default": 4096,
                       "type": "number"
                     },
                     "contextWindow": {
                       "description": "Context window size for the model",
-                      "default": 100000,
                       "type": "number"
                     },
                     "useToolCallMiddleware": {
@@ -219,10 +211,6 @@
                       "type": "boolean"
                     }
                   },
-                  "required": [
-                    "maxTokens",
-                    "contextWindow"
-                  ],
                   "additionalProperties": false
                 }
               },
@@ -299,12 +287,10 @@
                     },
                     "maxTokens": {
                       "description": "Maximum number of generated tokens for the model",
-                      "default": 4096,
                       "type": "number"
                     },
                     "contextWindow": {
                       "description": "Context window size for the model",
-                      "default": 100000,
                       "type": "number"
                     },
                     "useToolCallMiddleware": {
@@ -312,10 +298,6 @@
                       "type": "boolean"
                     }
                   },
-                  "required": [
-                    "maxTokens",
-                    "contextWindow"
-                  ],
                   "additionalProperties": false
                 }
               },

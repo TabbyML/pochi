@@ -1,10 +1,13 @@
 import type { LanguageModelV2 } from "@ai-sdk/provider";
+import { getLogger } from "@getpochi/common";
 import {
   NoSuchToolError,
   type Tool,
   type ToolCallRepairFunction,
   streamText,
 } from "ai";
+
+const logger = getLogger("RepairToolCall");
 
 export const makeRepairToolCall: (
   model: LanguageModelV2,
@@ -53,5 +56,8 @@ export const makeRepairToolCall: (
       maxRetries: 0,
     });
 
-    return { ...toolCall, input: await result.text };
+    const input = await result.text;
+    logger.debug("Repairing tool call:", toolCall.toolName, input);
+
+    return { ...toolCall, input };
   };

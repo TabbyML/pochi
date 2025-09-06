@@ -103,6 +103,14 @@
       "mcp": "MCP",
       "retry": "Retry"
     },
+    "customAgent": {
+      "title": "Custom Agent",
+      "loading": "Loading custom agent...",
+      "empty": {
+        "description": "No custom agents found.",
+        "hint": "Create agent files in .pochi/agents/ in your workspace"
+      }
+    },
     "mcp": {
       "title": "MCP",
       "tooltip": "Configuration MCP for Pochi globally.",

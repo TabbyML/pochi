@@ -235,7 +235,9 @@ function EmptyTaskPlaceholder() {
         Create a new task to get started with Pochi
       </p>
       <Button
-        onClick={() => navigate({ to: "/" })}
+        onClick={() =>
+          navigate({ to: "/", search: { uid: crypto.randomUUID() } })
+        }
         variant="ghost"
         className="mb-20"
       >
