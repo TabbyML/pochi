@@ -1,8 +1,0 @@
-{
-  "error": {
-    "message": "Invalid body: failed to parse application/x-www-form-urlencoded value that was JSON-like. Did you mean to set 'Content-Type: application/json'?",
-    "type": "invalid_request_error",
-    "param": null,
-    "code": "invalid_urlencoded_data"
-  }
-}
