@@ -1,6 +1,5 @@
 import type { LanguageModelV2 } from "@ai-sdk/provider";
-
-const models: Record<string, CreateModelFunction> = {};
+import { createRegistry } from "./registry";
 
 type CreateModelFunction = (opts: CreateModelOptions) => LanguageModelV2;
 
@@ -14,17 +13,11 @@ export type CreateModelOptions = {
   getCredentials: () => Promise<unknown>;
 };
 
-export function registerModel(
-  vendorId: string,
-  createModel: CreateModelFunction,
-) {
-  models[vendorId] = createModel;
-}
+const { register, get } = createRegistry<CreateModelFunction>();
+
+export const registerModel = register;
 
 export function createModel(vendorId: string, opts: CreateModelOptions) {
-  const model = models[vendorId];
-  if (!model) {
-    throw new Error(`Vendor ${vendorId} not found`);
-  }
-  return model(opts);
+  const modelCreator = get(vendorId);
+  return modelCreator(opts);
 }

@@ -92,7 +92,7 @@ async function main() {
   process.chdir(TEMP_PACKAGE_DIR);
 
   try {
-    await $`npm publish --tag ${tag}`;
+    await $`npm publish --access public --tag ${tag}`;
     console.log("🎉 Successfully published to npm!");
   } catch (error) {
     console.error("❌ Failed to publish to npm:", error);

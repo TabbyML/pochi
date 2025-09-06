@@ -14,10 +14,10 @@ export function SettingsPage() {
         <div className="space-y-1">
           <AccountSection />
           <WorkspaceRulesSection />
+          <CustomAgentSection />
           <WorkflowsSection />
           <ToolsSection />
           <ModelSection />
-          <CustomAgentSection />
           <AdvancedSettingsSection />
         </div>
       </ScrollArea>

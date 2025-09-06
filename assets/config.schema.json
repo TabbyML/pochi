@@ -8,115 +8,45 @@
     },
     "vendors": {
       "type": "object",
-      "properties": {
-        "pochi": {
-          "anyOf": [
-            {
-              "type": "object",
-              "properties": {
-                "credentials": {
-                  "type": "object",
-                  "properties": {
-                    "token": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "token"
-                  ],
-                  "additionalProperties": false
-                },
-                "user": {
-                  "type": "object",
-                  "properties": {
-                    "name": {
-                      "type": "string"
-                    },
-                    "email": {
-                      "type": "string"
-                    },
-                    "image": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "name",
-                    "email"
-                  ],
-                  "additionalProperties": false
-                }
-              },
-              "required": [
-                "credentials"
-              ],
-              "additionalProperties": false
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "gemini-cli": {
-          "anyOf": [
-            {
-              "type": "object",
-              "properties": {
-                "credentials": {
-                  "type": "object",
-                  "properties": {
-                    "accessToken": {
-                      "type": "string"
-                    },
-                    "refreshToken": {
-                      "type": "string"
-                    },
-                    "expiresAt": {
-                      "type": "number"
-                    },
-                    "project": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "accessToken",
-                    "refreshToken",
-                    "expiresAt",
-                    "project"
-                  ],
-                  "additionalProperties": false
-                },
-                "user": {
-                  "type": "object",
-                  "properties": {
-                    "name": {
-                      "type": "string"
-                    },
-                    "email": {
-                      "type": "string"
-                    },
-                    "image": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "name",
-                    "email"
-                  ],
-                  "additionalProperties": false
-                }
-              },
-              "required": [
-                "credentials"
-              ],
-              "additionalProperties": false
-            },
-            {
-              "type": "null"
-            }
-          ]
-        }
+      "propertyNames": {
+        "type": "string"
       },
-      "additionalProperties": {}
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "credentials": {},
+              "user": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "email": {
+                    "type": "string"
+                  },
+                  "image": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name",
+                  "email"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "credentials"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
     },
     "providers": {
       "type": "object",

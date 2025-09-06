@@ -3,10 +3,10 @@ import {
   EventSourceParserStream,
   extractResponseHeaders,
 } from "@ai-sdk/provider-utils";
-import type { PochiVendorConfig } from "@getpochi/common/configuration";
 import type { PochiApi, PochiApiClient } from "@getpochi/common/pochi-api";
 import type { CreateModelOptions } from "@getpochi/common/vendor/edge";
 import { hc } from "hono/client";
+import type { PochiCredentials } from "./types";
 
 export function createPochiModel({
   id,
@@ -75,9 +75,7 @@ function createApiClient(
 ): PochiApiClient {
   const authClient: PochiApiClient = hc<PochiApi>("https://app.getpochi.com", {
     async fetch(input: string | URL | Request, init?: RequestInit) {
-      const { token } = (await getCredentials()) as NonNullable<
-        PochiVendorConfig["credentials"]
-      >;
+      const { token } = (await getCredentials()) as PochiCredentials;
       const headers = new Headers(init?.headers);
       headers.append("Authorization", `Bearer ${token}`);
       return fetch(input, {

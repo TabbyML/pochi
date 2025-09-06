@@ -4,7 +4,7 @@ import "@getpochi/vendor-gemini-cli/edge";
 import "./vscode-lm";
 
 import { useSelectedModels } from "@/features/settings";
-import { useCustomAgent } from "@/lib/hooks/use-custom-agent";
+import { useCustomAgents } from "@/lib/hooks/use-custom-agents";
 import { useLatest } from "@/lib/hooks/use-latest";
 import { useMcp } from "@/lib/hooks/use-mcp";
 import { vscodeHost } from "@/lib/vscode";
@@ -27,7 +27,7 @@ export function useLiveChatKitGetters({
 
   const llm = useLLM();
 
-  const { customAgents } = useCustomAgent();
+  const { customAgents } = useCustomAgents();
   const customAgentsRef = useLatest(customAgents);
 
   const getEnvironment = useCallback(
@@ -35,7 +35,7 @@ export function useLiveChatKitGetters({
       const environment = await vscodeHost.readEnvironment(isSubTask);
 
       let userEdits: UserEditsDiff[] | undefined;
-      const lastCheckpointHash = findLastCheckpointFromMessages(messages);
+      const lastCheckpointHash = findSecondLastCheckpointFromMessages(messages);
       if (lastCheckpointHash) {
         userEdits =
           (await vscodeHost.diffWithCheckpoint(lastCheckpointHash)) ??
@@ -65,14 +65,19 @@ export function useLiveChatKitGetters({
   };
 }
 
-function findLastCheckpointFromMessages(
+function findSecondLastCheckpointFromMessages(
   messages: readonly Message[],
 ): string | undefined {
+  let foundCount = 0;
   for (let i = messages.length - 1; i >= 0; i--) {
     const message = messages[i];
-    for (const part of message.parts) {
+    for (let j = message.parts.length - 1; j >= 0; j--) {
+      const part = message.parts[j];
       if (part.type === "data-checkpoint" && part.data?.commit) {
-        return part.data.commit;
+        foundCount++;
+        if (foundCount === 2) {
+          return part.data.commit;
+        }
       }
     }
   }
