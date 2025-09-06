@@ -97,14 +97,13 @@ export class ListrHelper {
             const shortPrompt = prompt.length > 150 
               ? prompt.substring(0, 147) + '...' 
               : prompt;
-            output += `${chalk.dim(`› Prompt: ${shortPrompt}`)}\n`;
+            output += `${chalk.dim(`Prompt: ${shortPrompt}`)}\n`;
           }
 
           // 初始化阶段
           output += `${chalk.dim('› Setting up environment...')}\n`;
           task.output = output;
           await this.waitForTaskInit(part);
-          output += `${chalk.green('› ✓ Subtask initialized')}\n`;
 
           // 执行阶段
           output += `${chalk.dim('› Executing subtask...')}\n`;
@@ -120,8 +119,6 @@ export class ListrHelper {
           // 等待任务完成
           await this.waitForSubtaskCompletion(part, taskId);
           
-          output += `${chalk.green('› ✓ Subtask completed')}\n`;
-          
           // 获取最终的工具列表
           const usedTools = this.getUsedTools(taskId);
           if (usedTools.length > 0) {
@@ -130,7 +127,6 @@ export class ListrHelper {
 
           // 结果处理阶段
           if (part.state !== 'output-error') {
-            output += `${chalk.dim('› Processing results...')}\n`;
             task.output = output;
             await this.processTaskResult(part);
             
