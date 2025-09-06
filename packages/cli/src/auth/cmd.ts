@@ -3,11 +3,12 @@ import {
   type UserInfo,
   updateVendorConfig,
 } from "@getpochi/common/configuration";
-import { vendors } from "@getpochi/common/vendor/node";
+import { getVendors } from "@getpochi/common/vendor/node";
 import chalk from "chalk";
 import { getLoginFn } from "./login";
 
 export function registerAuthCommand(program: Command) {
+  const vendors = getVendors();
   const vendorNames = Object.keys(vendors).join(", ");
 
   const authCommand = program

@@ -114,6 +114,7 @@
         "@ai-sdk/react": "catalog:",
         "@getpochi/common": "workspace:*",
         "@getpochi/tools": "workspace:*",
+        "@getpochi/vendor-gemini-cli": "workspace:*",
         "@livestore/livestore": "catalog:",
         "@livestore/react": "catalog:",
         "@quilted/threads": "catalog:",
@@ -131,6 +132,15 @@
         "ai": "catalog:",
         "json-schema": "^0.4.0",
         "zod": "catalog:",
+      },
+    },
+    "packages/vendor-gemini-cli": {
+      "name": "@getpochi/vendor-gemini-cli",
+      "version": "0.1.0",
+      "dependencies": {
+        "@ai-sdk/google-vertex": "catalog:",
+        "@getpochi/common": "workspace:*",
+        "ai": "catalog:",
       },
     },
     "packages/vscode": {
@@ -604,6 +614,8 @@
     "@getpochi/livekit": ["@getpochi/livekit@workspace:packages/livekit"],
 
     "@getpochi/tools": ["@getpochi/tools@workspace:packages/tools"],
+
+    "@getpochi/vendor-gemini-cli": ["@getpochi/vendor-gemini-cli@workspace:packages/vendor-gemini-cli"],
 
     "@getpochi/vscode-webui": ["@getpochi/vscode-webui@workspace:packages/vscode-webui"],
 

@@ -19,6 +19,7 @@
     "@ai-sdk/react": "catalog:",
     "@getpochi/common": "workspace:*",
     "@getpochi/tools": "workspace:*",
+    "@getpochi/vendor-gemini-cli": "workspace:*",
     "@livestore/livestore": "catalog:",
     "@livestore/react": "catalog:",
     "@quilted/threads": "catalog:",

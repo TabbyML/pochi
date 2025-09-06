@@ -1,14 +1,15 @@
 import * as childProcess from "node:child_process";
 import { updateVendorConfig } from "@getpochi/common/configuration";
-import { vendors } from "@getpochi/common/vendor/node";
+import { getVendor } from "@getpochi/common/vendor/node";
+import { VendorId, startOAuthFlow } from "@getpochi/vendor-gemini-cli";
 import chalk from "chalk";
 
-const { "gemini-cli": geminiCli } = vendors;
+const geminiCli = getVendor(VendorId);
 
 export async function geminiCliLogin() {
   console.log(chalk.yellow("Starting Gemini OAuth authentication..."));
 
-  const oauthResult = await geminiCli.startOAuthFlow();
+  const oauthResult = await startOAuthFlow();
 
   console.log(
     chalk.blue(`OAuth server started on localhost:${oauthResult.port}`),

@@ -1,9 +1,12 @@
 import type { LanguageModelV2 } from "@ai-sdk/provider";
 import type { PochiVendorConfig } from "@getpochi/common/configuration";
 import type { PochiApi, PochiApiClient } from "@getpochi/common/pochi-api";
+import {
+  type GeminiCredentials,
+  createGeminiCliModel,
+} from "@getpochi/vendor-gemini-cli/edge";
 import { hc } from "hono/client";
 import type { RequestData } from "../../../types";
-import { createGeminiCliModel } from "./gemini-cli";
 import { createPochiModel } from "./pochi";
 import { type ChatFn, createVSCodeLmModel } from "./vscode-lm";
 
@@ -21,7 +24,10 @@ function createModel(
   modelId: string,
 ): LanguageModelV2 {
   if (vendorId === "gemini-cli") {
-    return createGeminiCliModel(getCredentials, modelId);
+    return createGeminiCliModel(
+      getCredentials as () => Promise<GeminiCredentials>,
+      modelId,
+    );
   }
 
   if (vendorId === "pochi") {

@@ -6,7 +6,7 @@ import { Command } from "@commander-js/extra-typings";
 import { constants, getLogger } from "@getpochi/common";
 import { pochiConfig } from "@getpochi/common/configuration";
 import type { PochiApi, PochiApiClient } from "@getpochi/common/pochi-api";
-import { vendors } from "@getpochi/common/vendor/node";
+import { getVendors } from "@getpochi/common/vendor/node";
 import type { LLMRequestData } from "@getpochi/livekit";
 import chalk from "chalk";
 import * as commander from "commander";
@@ -231,6 +231,7 @@ async function createLLMConfigWithVendors(
   const vendorId = options.model.slice(0, sep);
   const modelId = options.model.slice(sep + 1);
 
+  const vendors = getVendors();
   if (vendorId in vendors) {
     const vendor = vendors[vendorId as keyof typeof vendors];
     const models =

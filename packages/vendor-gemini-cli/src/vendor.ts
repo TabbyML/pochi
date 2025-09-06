@@ -1,0 +1,40 @@
+import type {
+  GeminiCliVendorConfig,
+  UserInfo,
+} from "@getpochi/common/configuration";
+import { VendorBase } from "@getpochi/common/vendor";
+import type { ModelOptions } from "@getpochi/common/vendor";
+import { fetchUserInfo, renewCredentials } from "./auth";
+
+export const VendorId = "gemini-cli";
+
+export class GeminiCli extends VendorBase {
+  constructor() {
+    super(VendorId);
+  }
+
+  override async renewCredentials(
+    credentials: GeminiCliVendorConfig["credentials"],
+  ): Promise<GeminiCliVendorConfig["credentials"] | undefined> {
+    return renewCredentials(credentials);
+  }
+
+  override async fetchUserInfo(
+    credentials: GeminiCliVendorConfig["credentials"],
+  ): Promise<UserInfo> {
+    return fetchUserInfo(credentials);
+  }
+
+  override async fetchModels(): Promise<Record<string, ModelOptions>> {
+    return {
+      "gemini-2.5-pro": {
+        contextWindow: 1_000_000,
+        useToolCallMiddleware: true,
+      },
+      "gemini-2.5-flash": {
+        contextWindow: 1_000_000,
+        useToolCallMiddleware: true,
+      },
+    };
+  }
+}
