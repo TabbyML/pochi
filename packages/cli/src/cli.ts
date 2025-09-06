@@ -14,7 +14,7 @@ import { Command } from "@commander-js/extra-typings";
 import { constants, getLogger } from "@getpochi/common";
 import { pochiConfig } from "@getpochi/common/configuration";
 import type { PochiApi, PochiApiClient } from "@getpochi/common/pochi-api";
-import { getVendors } from "@getpochi/common/vendor";
+import { getVendor, getVendors } from "@getpochi/common/vendor";
 import { createModel } from "@getpochi/common/vendor/edge";
 import type { LLMRequestData } from "@getpochi/livekit";
 import chalk from "chalk";
@@ -252,8 +252,7 @@ async function createLLMConfigWithVendors(
     }
     return {
       type: "vendor",
-      vendorId: vendorId,
-      modelId: modelId,
+      keepReasoningPart: vendorId === "pochi" && modelId.includes("claude"),
       useToolCallMiddleware: options.useToolCallMiddleware,
       getModel: (id: string) =>
         createModel(vendorId, {
@@ -268,21 +267,21 @@ async function createLLMConfigWithVendors(
 async function createLLMConfigWithPochi(
   options: ProgramOpts,
 ): Promise<LLMRequestData | undefined> {
-  const vendors = getVendors();
-  const pochiModels = await vendors.pochi.fetchModels();
+  const vendor = getVendor("pochi");
+  const pochiModels = await vendor.fetchModels();
   const pochiModelOptions = pochiModels[options.model];
   if (pochiModelOptions) {
     const vendorId = "pochi";
     return {
       type: "vendor",
-      vendorId,
-      modelId: options.model,
+      keepReasoningPart:
+        vendorId === "pochi" && options.model.includes("claude"),
       useToolCallMiddleware: pochiModelOptions.useToolCallMiddleware,
       getModel: (id: string) =>
         createModel(vendorId, {
           id,
           modelId: options.model,
-          getCredentials: vendors.pochi.getCredentials,
+          getCredentials: vendor.getCredentials,
         }),
     };
   }

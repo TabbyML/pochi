@@ -20,6 +20,8 @@ import { ModelList } from "@/lib/model-list";
 import { PostHog } from "@/lib/posthog";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { TokenStorage } from "@/lib/token-storage";
+// biome-ignore lint/style/useImportType: needed for dependency injection
+import { UserStorage } from "@/lib/user-storage";
 import { applyDiff, previewApplyDiff } from "@/tools/apply-diff";
 import { executeCommand } from "@/tools/execute-command";
 import { globFiles } from "@/tools/glob-files";
@@ -36,6 +38,7 @@ import { startBackgroundJob } from "@/tools/start-background-job";
 import { todoWrite } from "@/tools/todo-write";
 import { previewWriteToFile, writeToFile } from "@/tools/write-to-file";
 import type { Environment } from "@getpochi/common";
+import type { UserInfo } from "@getpochi/common/configuration";
 import {
   GitStatusReader,
   ignoreWalk,
@@ -115,6 +118,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     private readonly checkpointService: CheckpointService,
     private readonly pochiConfiguration: PochiConfiguration,
     private readonly modelList: ModelList,
+    private readonly userStorage: UserStorage,
     private readonly customAgentManager: CustomAgentManager,
   ) {}
   listRuleFiles = async (): Promise<RuleFile[]> => {
@@ -695,6 +699,12 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     ThreadSignalSerialization<DisplayModel[]>
   > => {
     return ThreadSignal.serialize(this.modelList.modelList);
+  };
+
+  readUserStorage = async (): Promise<
+    ThreadSignalSerialization<Record<string, UserInfo>>
+  > => {
+    return ThreadSignal.serialize(this.userStorage.users);
   };
 
   readCustomAgents = async (): Promise<

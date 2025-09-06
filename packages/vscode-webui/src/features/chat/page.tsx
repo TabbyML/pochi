@@ -2,12 +2,13 @@ import { buttonVariants } from "@/components/ui/button";
 import { WorkspaceRequiredPlaceholder } from "@/components/workspace-required-placeholder";
 import { ChatContextProvider, useHandleChatEvents } from "@/features/chat";
 import { usePendingModelAutoStart } from "@/features/retry";
-import { type User, apiClient } from "@/lib/auth-client";
+import { apiClient } from "@/lib/auth-client";
 import { useCurrentWorkspace } from "@/lib/hooks/use-current-workspace";
 import { useImageUpload } from "@/lib/hooks/use-image-upload";
 import { cn } from "@/lib/utils";
 import { useChat } from "@ai-sdk/react";
 import { formatters } from "@getpochi/common";
+import type { UserInfo } from "@getpochi/common/configuration";
 import { type Task, catalog } from "@getpochi/livekit";
 import { useLiveChatKit } from "@getpochi/livekit/react";
 import type { Todo } from "@getpochi/tools";
@@ -31,7 +32,7 @@ export function ChatPage({
   uid,
   user,
   prompt,
-}: { uid: string; user?: User; prompt?: string }) {
+}: { uid: string; user?: UserInfo; prompt?: string }) {
   return (
     <ChatContextProvider>
       <Chat user={user} uid={uid} prompt={prompt} />
@@ -41,7 +42,7 @@ export function ChatPage({
 
 interface ChatProps {
   uid: string;
-  user?: User;
+  user?: UserInfo;
   prompt?: string;
 }
 

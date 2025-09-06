@@ -1,7 +1,3 @@
-// Register the vendor
-import "@getpochi/vendor-pochi";
-import "@getpochi/vendor-gemini-cli";
-
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { VSCodeLm } from "@/integrations/vscode-lm";
 import { getLogger } from "@getpochi/common";

@@ -49,10 +49,6 @@ const OutputOptions = {
         return "react-syntax-highlighter";
       }
 
-      if (id.includes("better-auth")) {
-        return "better-auth";
-      }
-
       if (
         id.includes("react-markdown") ||
         id.includes("remark") ||
