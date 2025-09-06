@@ -1,5 +1,4 @@
 import { persister, queryClient } from "@/lib/query-client";
-import { AuthQueryProvider } from "@daveyplate/better-auth-tanstack";
 import { catalog, getStoreId } from "@getpochi/livekit";
 import {
   makeInMemoryAdapter,
@@ -48,9 +47,7 @@ export const Providers: React.FC<{ children: React.ReactNode }> = ({
           },
         }}
       >
-        <AuthQueryProvider>
-          <LiveStoreProviderWrapper>{children}</LiveStoreProviderWrapper>
-        </AuthQueryProvider>
+        <LiveStoreProviderWrapper>{children}</LiveStoreProviderWrapper>
       </PersistQueryClientProvider>
     </ThemeProvider>
   );
