@@ -121,6 +121,7 @@
         "ai": "catalog:",
         "base58-js": "^3.0.3",
         "react": "catalog:",
+        "remeda": "catalog:",
         "zod": "catalog:",
       },
     },
