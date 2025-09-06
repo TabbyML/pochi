@@ -25,6 +25,8 @@
         "@commander-js/extra-typings": "^14.0.0",
         "@getpochi/common": "workspace:*",
         "@getpochi/livekit": "workspace:*",
+        "@getpochi/vendor-gemini-cli": "workspace:*",
+        "@getpochi/vendor-pochi": "workspace:*",
         "@livestore/adapter-node": "catalog:",
         "@livestore/livestore": "catalog:",
         "@livestore/wa-sqlite": "catalog:",
@@ -139,8 +141,18 @@
       "version": "0.1.0",
       "dependencies": {
         "@ai-sdk/google-vertex": "catalog:",
+        "@ai-sdk/provider": "catalog:",
         "@getpochi/common": "workspace:*",
         "ai": "catalog:",
+      },
+    },
+    "packages/vendor-pochi": {
+      "name": "@getpochi/vendor-pochi",
+      "version": "0.0.1",
+      "dependencies": {
+        "@getpochi/common": "workspace:*",
+        "better-auth": "catalog:",
+        "hono": "catalog:",
       },
     },
     "packages/vscode": {
@@ -148,6 +160,8 @@
       "version": "0.8.8",
       "dependencies": {
         "@getpochi/common": "workspace:*",
+        "@getpochi/vendor-gemini-cli": "workspace:*",
+        "@getpochi/vendor-pochi": "workspace:*",
         "@modelcontextprotocol/sdk": "^1.12.0",
         "@orama/orama": "^3.1.11",
         "@preact/signals-core": "catalog:",
@@ -616,6 +630,8 @@
     "@getpochi/tools": ["@getpochi/tools@workspace:packages/tools"],
 
     "@getpochi/vendor-gemini-cli": ["@getpochi/vendor-gemini-cli@workspace:packages/vendor-gemini-cli"],
+
+    "@getpochi/vendor-pochi": ["@getpochi/vendor-pochi@workspace:packages/vendor-pochi"],
 
     "@getpochi/vscode-webui": ["@getpochi/vscode-webui@workspace:packages/vscode-webui"],
 

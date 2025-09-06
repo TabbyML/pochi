@@ -1,10 +1,16 @@
+import type {
+  PochiVendorConfig,
+  UserInfo,
+} from "@getpochi/common/configuration";
+import type { PochiApi, PochiApiClient } from "@getpochi/common/pochi-api";
+import {
+  type AuthOutput,
+  type ModelOptions,
+  VendorBase,
+} from "@getpochi/common/vendor";
+import { getServerBaseUrl } from "@getpochi/common/vscode-webui-bridge";
 import { createAuthClient as createAuthClientImpl } from "better-auth/react";
 import { hc } from "hono/client";
-import type { PochiVendorConfig, UserInfo } from "../configuration";
-import type { PochiApi, PochiApiClient } from "../pochi-api";
-import { getServerBaseUrl } from "../vscode-webui-bridge";
-import { VendorBase } from "./base";
-import type { AuthOutput, ModelOptions } from "./types";
 
 type PochiCredentials = PochiVendorConfig["credentials"];
 

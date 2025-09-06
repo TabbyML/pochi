@@ -1,4 +1,5 @@
 // Register the vendor
+import "@getpochi/vendor-pochi";
 import "@getpochi/vendor-gemini-cli";
 
 // biome-ignore lint/style/useImportType: needed for dependency injection

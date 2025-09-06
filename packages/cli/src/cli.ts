@@ -3,6 +3,7 @@
 import "@livestore/wa-sqlite/dist/wa-sqlite.node.wasm" with { type: "file" };
 
 // Register the vendor
+import "@getpochi/vendor-pochi";
 import "@getpochi/vendor-gemini-cli";
 
 import { Command } from "@commander-js/extra-typings";

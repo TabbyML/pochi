@@ -2,11 +2,8 @@ export { type AuthOutput, ModelOptions } from "./types";
 export { VendorBase } from "./base";
 
 import type { VendorBase } from "./base";
-import { Pochi } from "./pochi";
 
-const vendors: Record<string, VendorBase> = {
-  pochi: new Pochi(),
-};
+const vendors: Record<string, VendorBase> = {};
 
 export function registerVendor(vendor: VendorBase) {
   vendors[vendor.vendorId] = vendor;
