@@ -71,11 +71,11 @@ const CliTools = {
   searchFiles,
   todoWrite,
   writeToFile,
+  newTask,
 };
 
 export const ClientTools = {
   ...CliTools,
-  newTask,
   startBackgroundJob,
   readBackgroundJobOutput,
   killBackgroundJob,

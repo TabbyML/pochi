@@ -7,6 +7,7 @@ import { executeCommand } from "./execute-command";
 import { globFiles } from "./glob-files";
 import { listFiles } from "./list-files";
 import { multiApplyDiff } from "./multi-apply-diff";
+import { newTask } from "./new-task";
 import { readFile } from "./read-file";
 import { searchFiles } from "./search-files";
 import { todoWrite } from "./todo-write";
@@ -22,6 +23,7 @@ const ToolMap: Record<
   globFiles,
   listFiles,
   multiApplyDiff,
+  newTask,
   todoWrite,
   writeToFile,
   searchFiles,
