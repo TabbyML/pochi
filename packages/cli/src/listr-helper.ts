@@ -241,26 +241,36 @@ export class ListrHelper {
       if (subTaskRunner) {
         const messages = subTaskRunner.state?.messages || [];
         
-        for (let i = monitor.lastProcessedMessageIndex + 1; i < messages.length; i++) {
+        // 重新检查所有消息，确保不遗漏
+        for (let i = 0; i < messages.length; i++) {
           const message = messages[i];
           if (message.role === 'assistant') {
             for (const msgPart of message.parts || []) {
-              if (msgPart.type?.startsWith('tool-') && msgPart.type !== 'tool-attemptCompletion') {
+              if (msgPart.type?.startsWith('tool-')) {
+                // 任务完成标志不作为普通工具显示
+                if (msgPart.type === 'tool-attemptCompletion' || msgPart.type === 'tool-askFollowupQuestion') {
+                  continue;
+                }
                 const toolName = msgPart.type.replace('tool-', '');
                 debugLogger.debug(`Tool part found: ${toolName}`, JSON.stringify(msgPart, null, 2));
                 
                 if (!monitor.tools.includes(toolName)) {
                   monitor.tools.push(toolName);
-                  debugLogger.debug(`Tool detected: ${toolName}`);
+                  debugLogger.debug(`Tool detected: ${toolName} - calling onToolUse callback`);
                   
                   const toolPart = msgPart as ToolUIPart<UITools>;
-                  onToolUse(toolPart);
+                  try {
+                    onToolUse(toolPart);
+                    debugLogger.debug(`onToolUse callback executed successfully for ${toolName}`);
+                  } catch (error) {
+                    debugLogger.debug(`Error in onToolUse callback: ${error}`);
+                  }
                 }
               }
             }
           }
-          monitor.lastProcessedMessageIndex = i;
         }
+        monitor.lastProcessedMessageIndex = messages.length - 1;
       }
     }, 100);
   }
@@ -316,17 +326,24 @@ export class ListrHelper {
           return;
         }
         
-        // 检查 attemptCompletion
+        // 检查任务完成标志：attemptCompletion 或 askFollowupQuestion
         if (taskId) {
           const subTaskRunner = ListrHelper.getSubTaskRunner(taskId);
           if (subTaskRunner) {
-            const hasAttemptCompletion = this.checkForAttemptCompletion(subTaskRunner);
-            if (hasAttemptCompletion.found) {
-              clearInterval(interval);
-              debugLogger.debug(`AttemptCompletion detected early! Stopping for task ${taskId}`);
-              this.cleanupToolMonitoring(taskId);
-              resolve();
-              return;
+            // 直接检查最新消息中的任务完成标志
+            const messages = subTaskRunner.state?.messages || [];
+            for (const message of messages) {
+              if (message.role === 'assistant') {
+                for (const msgPart of message.parts || []) {
+                  if (msgPart.type === 'tool-attemptCompletion' || msgPart.type === 'tool-askFollowupQuestion') {
+                    clearInterval(interval);
+                    debugLogger.debug(`${msgPart.type} detected! Stopping for task ${taskId}`);
+                    this.cleanupToolMonitoring(taskId);
+                    resolve();
+                    return;
+                  }
+                }
+              }
             }
           }
         }
