@@ -29,42 +29,36 @@ function isReasoningModel(modelId: string): boolean {
 }
 
 function patchedFetch(modelId: string) {
-  const changeParam = isReasoningModel(modelId);
+  const shouldOverrideMaxOutputToken = isReasoningModel(modelId);
 
-  return async (
-    input: Request | URL | string,
-    init?: RequestInit,
-  ) => {
+  return async (input: Request | URL | string, init?: RequestInit) => {
     const originalBody = init?.body as string | undefined;
 
-    // Pre-write the params
-    let firstInit = init;
-    if (changeParam && originalBody && typeof originalBody === "string") {
-      const patched = swapField(originalBody);
+    let confirmedInit = init;
+    if (
+      shouldOverrideMaxOutputToken &&
+      originalBody &&
+      typeof originalBody === "string"
+    ) {
+      const patched = overrideMaxOutputToken(originalBody);
       if (patched) {
-        firstInit = { ...init, body: patched};
+        confirmedInit = { ...init, body: patched };
       }
     }
-    const firstResponse = await fetch(input, firstInit);
+    const firstResponse = await fetch(input, confirmedInit);
     return firstResponse;
   };
 }
 
 // helper function to access & edit the raw parameter initialisation
-function swapField(body: string): string | undefined {
+function overrideMaxOutputToken(body: string): string | undefined {
   try {
     const json = JSON.parse(body);
     if (json && typeof json === "object") {
-      if (Object.prototype.hasOwnProperty.call(json, "max_tokens")) {
-        json.max_completion_tokens = json.max_tokens;
-        delete json.max_tokens;
-      }
-      else if (Object.prototype.hasOwnProperty.call(json, "max_completion_tokens")) {
-        json.max_tokens = json.max_completion_tokens;
-        delete json.max_completion_tokens;
-      }
-      return JSON.stringify(json);
+      json.max_completion_tokens = json.max_tokens;
+      json.max_tokens = undefined;
     }
+    return JSON.stringify(json);
   } catch {
     // ignore if body is not JSON
   }
