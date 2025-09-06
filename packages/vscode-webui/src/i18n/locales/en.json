@@ -107,8 +107,8 @@
       "title": "Custom Agent",
       "loading": "Loading custom agent...",
       "empty": {
-        "description": "No custom agent found.",
-        "hint": "Create agent files in .pochi/agents/ directory (workspace or system level)"
+        "description": "No custom agents found.",
+        "hint": "Create agent files in .pochi/agents/ in your workspace"
       }
     },
     "mcp": {

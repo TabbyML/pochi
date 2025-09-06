@@ -15,10 +15,10 @@ export function SettingsPage({ user }: { user?: User }) {
         <div className="space-y-1">
           <AccountSection user={user} />
           <WorkspaceRulesSection />
+          <CustomAgentSection />
           <WorkflowsSection />
           <ToolsSection />
           <ModelSection user={user} />
-          <CustomAgentSection />
           <AdvancedSettingsSection />
         </div>
       </ScrollArea>

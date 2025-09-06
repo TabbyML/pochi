@@ -12,7 +12,7 @@ import {
 } from "@/features/retry";
 import { useTodos } from "@/features/todo";
 import { apiClient } from "@/lib/auth-client";
-import { useCustomAgent } from "@/lib/hooks/use-custom-agent";
+import { useCustomAgents } from "@/lib/hooks/use-custom-agents";
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
 import { vscodeHost } from "@/lib/vscode";
 import { useChat } from "@ai-sdk/react";
@@ -37,7 +37,7 @@ export function useLiveSubTask(
     toolCallId: tool.toolCallId,
   });
 
-  const { customAgents } = useCustomAgent();
+  const { customAgents } = useCustomAgents();
 
   let customAgent: CustomAgent | undefined;
   if (tool.type === "tool-newCustomAgent") {

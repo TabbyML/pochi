@@ -107,7 +107,7 @@
       "loading": "加载自定义代理中...",
       "empty": {
         "description": "未找到自定义代理。",
-        "hint": "在 .pochi/agents/ 目录中创建代理文件（工作区或系统级别）"
+        "hint": "在工作区的 .pochi/agents/ 目录中创建代理文件"
       }
     },
     "mcp": {

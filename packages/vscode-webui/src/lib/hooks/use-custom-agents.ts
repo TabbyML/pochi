@@ -7,7 +7,7 @@ import { vscodeHost } from "../vscode";
  * Uses ThreadSignal for real-time updates
  */
 /** @useSignals */
-export const useCustomAgent = () => {
+export const useCustomAgents = () => {
   const { data: customAgentsSignal } = useQuery({
     queryKey: ["customAgents"],
     queryFn: async () => {

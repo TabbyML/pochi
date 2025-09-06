@@ -4,7 +4,7 @@ import "@getpochi/vendor-gemini-cli/edge";
 import "./vscode-lm";
 
 import { useSelectedModels } from "@/features/settings";
-import { useCustomAgent } from "@/lib/hooks/use-custom-agent";
+import { useCustomAgents } from "@/lib/hooks/use-custom-agents";
 import { useLatest } from "@/lib/hooks/use-latest";
 import { useMcp } from "@/lib/hooks/use-mcp";
 import { vscodeHost } from "@/lib/vscode";
@@ -27,7 +27,7 @@ export function useLiveChatKitGetters({
 
   const llm = useLLM();
 
-  const { customAgents } = useCustomAgent();
+  const { customAgents } = useCustomAgents();
   const customAgentsRef = useLatest(customAgents);
 
   const getEnvironment = useCallback(
