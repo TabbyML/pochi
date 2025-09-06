@@ -360,38 +360,6 @@ export class ListrHelper {
   }
 
   /**
-   * 检查子任务运行器中是否出现了 attemptCompletion
-   */
-  private checkForAttemptCompletion(subTaskRunner: any): { found: boolean; result?: string } {
-    const state = subTaskRunner.state;
-    const messages = state.messages || [];
-    
-    debugLogger.debug(`Checking messages in subtask runner, total messages: ${messages.length}`);
-    
-    // 查找最新的 assistant 消息中的 attemptCompletion
-    for (let i = messages.length - 1; i >= 0; i--) {
-      const message = messages[i];
-      debugLogger.debug(`Checking message ${i}: role=${message.role}, parts=${message.parts?.length || 0}`);
-      
-      if (message.role === 'assistant') {
-        for (const part of message.parts || []) {
-          debugLogger.debug(`Checking part: type=${part.type}`);
-          if (part.type === 'tool-attemptCompletion') {
-            const result = part.input?.result || 'Task completed';
-            const shortResult = result.length > 50 
-              ? result.substring(0, 47) + '...' 
-              : result;
-            debugLogger.debug(`Found attemptCompletion! Result: ${result}`);
-            return { found: true, result: shortResult };
-          }
-        }
-      }
-    }
-    
-    return { found: false };
-  }
-
-  /**
    * 处理任务结果
    */
   private async processTaskResult(_part: ToolUIPart<UITools>): Promise<void> {
