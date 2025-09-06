@@ -53,6 +53,10 @@ export const GoogleVertexModel = z.union([
     projectId: z.string(),
     location: z.string(),
   }),
+  z.object({
+    issueUrl: z.string().default(process.env.POCHI_VERTEX_ISSUE_URL ?? ""),
+    modelUrl: z.string().default(process.env.POCHI_VERTEX_MODEL_URL ?? ""),
+  }),
 ]);
 
 export type GoogleVertexModel = z.infer<typeof GoogleVertexModel>;
