@@ -114,10 +114,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
       middlewares.push(createReasoningMiddleware());
     }
 
-    if (
-      (llm.type !== "vendor" && llm.useToolCallMiddleware) ||
-      (llm.type === "vendor" && llm.options.useToolCallMiddleware)
-    ) {
+    if (llm.useToolCallMiddleware) {
       middlewares.push(createToolCallMiddleware());
     }
 

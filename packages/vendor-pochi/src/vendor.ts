@@ -11,6 +11,7 @@ import {
 import { getServerBaseUrl } from "@getpochi/common/vscode-webui-bridge";
 import { createAuthClient as createAuthClientImpl } from "better-auth/react";
 import { hc } from "hono/client";
+import { VendorId } from "./constants";
 
 type PochiCredentials = PochiVendorConfig["credentials"];
 
@@ -19,7 +20,7 @@ export class Pochi extends VendorBase {
   private cachedModels?: Record<string, ModelOptions>;
 
   constructor() {
-    super("pochi");
+    super(VendorId);
   }
 
   override authenticate(): Promise<AuthOutput> {

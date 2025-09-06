@@ -6,11 +6,16 @@ import "@livestore/wa-sqlite/dist/wa-sqlite.node.wasm" with { type: "file" };
 import "@getpochi/vendor-pochi";
 import "@getpochi/vendor-gemini-cli";
 
+// Register the models
+import "@getpochi/vendor-pochi/edge";
+import "@getpochi/vendor-gemini-cli/edge";
+
 import { Command } from "@commander-js/extra-typings";
 import { constants, getLogger } from "@getpochi/common";
 import { pochiConfig } from "@getpochi/common/configuration";
 import type { PochiApi, PochiApiClient } from "@getpochi/common/pochi-api";
 import { getVendors } from "@getpochi/common/vendor";
+import { createModel } from "@getpochi/common/vendor/edge";
 import type { LLMRequestData } from "@getpochi/livekit";
 import chalk from "chalk";
 import * as commander from "commander";
@@ -219,6 +224,7 @@ async function createLLMConfig(
 ): Promise<LLMRequestData> {
   const llm =
     (await createLLMConfigWithVendors(program, options)) ||
+    (await createLLMConfigWithPochi(options)) ||
     (await createLLMConfigWithProviders(program, options));
   if (!llm) {
     return program.error(`Model ${options.model} not found in configuration`);
@@ -248,20 +254,36 @@ async function createLLMConfigWithVendors(
       type: "vendor",
       vendorId: vendorId,
       modelId: modelId,
-      options,
-      getCredentials: vendor.getCredentials,
+      useToolCallMiddleware: options.useToolCallMiddleware,
+      getModel: (id: string) =>
+        createModel(vendorId, {
+          id,
+          modelId,
+          getCredentials: vendor.getCredentials,
+        }),
     } satisfies LLMRequestData;
   }
+}
 
+async function createLLMConfigWithPochi(
+  options: ProgramOpts,
+): Promise<LLMRequestData | undefined> {
+  const vendors = getVendors();
   const pochiModels = await vendors.pochi.fetchModels();
   const pochiModelOptions = pochiModels[options.model];
   if (pochiModelOptions) {
+    const vendorId = "pochi";
     return {
       type: "vendor",
-      vendorId: "pochi",
+      vendorId,
       modelId: options.model,
-      options: pochiModelOptions,
-      getCredentials: vendors.pochi.getCredentials,
+      useToolCallMiddleware: pochiModelOptions.useToolCallMiddleware,
+      getModel: (id: string) =>
+        createModel(vendorId, {
+          id,
+          modelId: options.model,
+          getCredentials: vendors.pochi.getCredentials,
+        }),
     };
   }
 }

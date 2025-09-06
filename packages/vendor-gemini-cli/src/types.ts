@@ -55,3 +55,5 @@ export interface LongrunningOperationResponse {
 }
 
 export type GeminiCredentials = GeminiCliVendorConfig["credentials"];
+
+export const VendorId = "gemini-cli";

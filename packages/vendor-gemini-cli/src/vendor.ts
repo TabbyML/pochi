@@ -5,8 +5,7 @@ import type {
 import { VendorBase } from "@getpochi/common/vendor";
 import type { AuthOutput, ModelOptions } from "@getpochi/common/vendor";
 import { fetchUserInfo, renewCredentials, startOAuthFlow } from "./auth";
-
-export const VendorId = "gemini-cli";
+import { VendorId } from "./types";
 
 export class GeminiCli extends VendorBase {
   constructor() {

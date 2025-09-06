@@ -1,17 +1,21 @@
 import { createVertexWithoutCredentials } from "@ai-sdk/google-vertex/edge";
 import type { LanguageModelV2 } from "@ai-sdk/provider";
+import type { CreateModelOptions } from "@getpochi/common/vendor/edge";
 import { APICallError, wrapLanguageModel } from "ai";
 import type { GeminiCredentials } from "./types";
 
-export function createGeminiCliModel(
-  getCredentials: () => Promise<GeminiCredentials>,
-  modelId: string,
-): LanguageModelV2 {
+export function createGeminiCliModel({
+  modelId,
+  getCredentials,
+}: CreateModelOptions): LanguageModelV2 {
   const vertexModel = createVertexWithoutCredentials({
     project: "default",
     location: "global",
     baseURL: "https://cloudcode-pa.googleapis.com",
-    fetch: createPatchedFetch(modelId, getCredentials),
+    fetch: createPatchedFetch(
+      modelId,
+      getCredentials as () => Promise<GeminiCredentials>,
+    ),
   })(modelId);
 
   return wrapLanguageModel({

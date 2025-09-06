@@ -1,2 +1,5 @@
-export { createGeminiCliModel } from "./model";
-export type { GeminiCredentials } from "./types";
+import { registerModel } from "@getpochi/common/vendor/edge";
+import { createGeminiCliModel } from "./model";
+import { VendorId } from "./types";
+
+registerModel(VendorId, createGeminiCliModel);

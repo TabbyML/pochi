@@ -15,8 +15,11 @@
   },
   "dependencies": {
     "@ai-sdk/react": "catalog:",
+    "@ai-sdk/provider": "catalog:",
     "@daveyplate/better-auth-tanstack": "catalog:",
     "@getpochi/common": "workspace:*",
+    "@getpochi/vendor-pochi": "workspace:*",
+    "@getpochi/vendor-gemini-cli": "workspace:*",
     "@getpochi/livekit": "workspace:*",
     "@leeoniya/ufuzzy": "^1.0.18",
     "@livestore/adapter-web": "catalog:",

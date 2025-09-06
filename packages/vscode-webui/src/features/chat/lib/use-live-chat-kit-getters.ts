@@ -1,9 +1,15 @@
+// Register the models
+import "@getpochi/vendor-pochi/edge";
+import "@getpochi/vendor-gemini-cli/edge";
+import "./vscode-lm";
+
 import { useSelectedModels } from "@/features/settings";
 import { useCustomAgent } from "@/lib/hooks/use-custom-agent";
 import { useLatest } from "@/lib/hooks/use-latest";
 import { useMcp } from "@/lib/hooks/use-mcp";
 import { vscodeHost } from "@/lib/vscode";
 import { constants, type Environment } from "@getpochi/common";
+import { createModel } from "@getpochi/common/vendor/edge";
 import type { UserEditsDiff } from "@getpochi/common/vscode-webui-bridge";
 import type { LLMRequestData, Message } from "@getpochi/livekit";
 import type { Todo } from "@getpochi/tools";
@@ -84,8 +90,13 @@ function useLLM(): React.RefObject<LLMRequestData> {
         type: "vendor",
         vendorId: selectedModel.vendorId,
         modelId: selectedModel.modelId,
-        options: selectedModel.options,
-        getCredentials: selectedModel.getCredentials,
+        useToolCallMiddleware: selectedModel.options.useToolCallMiddleware,
+        getModel: (id: string) =>
+          createModel(selectedModel.vendorId, {
+            id,
+            modelId: selectedModel.modelId,
+            getCredentials: selectedModel.getCredentials,
+          }),
       };
     }
 
