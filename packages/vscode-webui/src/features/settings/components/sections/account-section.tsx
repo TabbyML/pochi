@@ -5,7 +5,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import type { User } from "@/lib/auth-client";
+import type { UserInfo } from "@getpochi/common/configuration";
 import {
   ChevronsUpDown,
   HelpCircle,
@@ -18,7 +18,7 @@ import { LanguageMenuItem } from "../ui/language-menu-item";
 import { Section } from "../ui/section";
 
 interface AccountSectionProps {
-  user?: User;
+  user?: UserInfo;
 }
 
 export const AccountSection: React.FC<AccountSectionProps> = ({ user }) => {
@@ -64,9 +64,7 @@ export const AccountSection: React.FC<AccountSectionProps> = ({ user }) => {
                 </AvatarFallback>
               </Avatar>
               <div className="flex flex-col">
-                <span className="font-semibold">
-                  {user.name || user.email || `USER-${user.id}`}
-                </span>
+                <span className="font-semibold">{user.name || user.email}</span>
                 {user.email && (
                   <span className="text-muted-foreground text-sm">
                     {user.email}
