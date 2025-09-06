@@ -84,44 +84,48 @@ export class ListrHelper {
     debugLogger.debug(`Starting listr render for newTask: ${description}, taskId: ${taskId} (from toolCallId)`);
     debugLogger.debug(`_meta?.uid: ${_meta?.uid}`);
     debugLogger.debug(`Full input:`, JSON.stringify(part.input, null, 2));
-    // 创建主任务和子任务
+    // 创建主任务
     const tasks: ListrTask[] = [
       {
         title: chalk.bold(`🚀 ${description}`),
-        task: (_ctx, task) => {
+        task: async (_ctx, task) => {
           // 显示 prompt 信息
           if (prompt) {
             const shortPrompt = prompt.length > 100 
               ? prompt.substring(0, 97) + '...' 
               : prompt;
-            task.output = chalk.dim(`Prompt: ${shortPrompt}`);
+            task.output = chalk.dim(`› Prompt: ${shortPrompt}`);
           }
 
-          // 创建子任务来显示执行进度
-          return task.newListr([
-            {
-              title: chalk.dim('Initializing subtask...'),
-              task: async (_ctx, subtask) => {
-                await this.waitForTaskInit(part, subtask);
-              }
-            },
-            {
-              title: chalk.dim('Running subtask...'),
-              task: async (_ctx, subtask) => {
-                await this.waitForSubtaskCompletion(part, subtask, taskId);
-              }
-            },
-            {
-              title: chalk.dim('Processing results...'),
-              skip: () => part.state === 'output-error',
-              task: async (_ctx, subtask) => {
-                await this.processTaskResult(part, subtask);
-              }
+          // 初始化阶段
+          task.output = chalk.dim('› Setting up environment...');
+          await this.waitForTaskInit(part);
+          task.output = chalk.dim('› ✓ Subtask initialized');
+
+          // 执行阶段
+          task.output = chalk.dim('› Executing subtask...');
+          await this.waitForSubtaskCompletion(part, taskId);
+          task.output = chalk.dim('› ✓ Subtask completed');
+
+          // 结果处理阶段
+          if (part.state !== 'output-error') {
+            task.output = chalk.dim('› Processing results...');
+            await this.processTaskResult(part);
+            
+            // 显示最终结果
+            if (part.output && 'result' in part.output) {
+              const result = (part.output as any).result as string;
+              const shortResult = result.length > 80 
+                ? result.substring(0, 77) + '...' 
+                : result;
+              task.output = `${chalk.dim('› ✓ Results processed')}\n${chalk.dim(`  Result: ${shortResult}`)}`;
+            } else {
+              task.output = chalk.dim('› ✓ Processing complete');
             }
-          ], { 
-            concurrent: false,
-          });
-        }
+          }
+        },
+        // 关键：在任务级别设置 persistentOutput
+        rendererOptions: { persistentOutput: true }
       }
     ];
 
@@ -133,9 +137,13 @@ export class ListrHelper {
         showSubtasks: true,
         collapse: false,
         collapseErrors: false,
+        collapseSkips: false,
         showTimer: true,
         clearOutput: false,
-        formatOutput: 'wrap'
+        formatOutput: 'wrap',
+        persistentOutput: true,
+        removeEmptyLines: false,
+        suffixSkips: false
       }
     });
 
@@ -144,7 +152,6 @@ export class ListrHelper {
     // 异步运行，不阻塞主流程
     this.listr.run()
       .then(() => {
-        // listr 任务完成，不输出任何额外消息
         debugLogger.debug(`Listr completed for task ${taskId}`);
       })
       .catch((error) => {
@@ -162,16 +169,9 @@ export class ListrHelper {
   /**
    * 等待任务初始化
    */
-  private async waitForTaskInit(
-    part: ToolUIPart<UITools>, 
-    task: any
-  ): Promise<void> {
-    task.output = chalk.dim('Setting up environment...');
-    
+  private async waitForTaskInit(part: ToolUIPart<UITools>): Promise<void> {
     // 等待状态变化到 input-available 或更高
     await this.waitForState(part, ['input-available', 'output-available', 'output-error']);
-    
-    task.title = chalk.green('✓ Subtask initialized');
   }
 
   /**
@@ -179,12 +179,9 @@ export class ListrHelper {
    */
   private async waitForSubtaskCompletion(
     part: ToolUIPart<UITools>,
-    task: any,
     taskId?: string
   ): Promise<void> {
     return new Promise((resolve) => {
-      let dots = 0;
-      let currentStep = 'Executing subtask';
       let attemptCompletionFound = false;
       let iterations = 0;
       const maxIterations = 300; // 最多 60 秒 (300 * 200ms)
@@ -195,30 +192,14 @@ export class ListrHelper {
         // 超时保护
         if (iterations >= maxIterations) {
           clearInterval(interval);
-          task.title = chalk.yellow('⚠ Subtask timeout');
-          task.output = chalk.dim('Task may still be running in background');
           debugLogger.debug(`Subtask timeout after ${maxIterations * 200}ms for task ${taskId}`);
           resolve();
           return;
         }
-        // 更新执行动画
-        dots = (dots + 1) % 4;
-        const ellipsis = '.'.repeat(dots);
-        task.output = chalk.dim(`${currentStep}${ellipsis}`);
         
         // 首先检查工具完成状态 - 这是最可靠的信号
         if (part.state === 'output-available') {
           clearInterval(interval);
-          task.title = chalk.green('✓ Subtask completed');
-          if (part.output && 'result' in part.output) {
-            const result = (part.output as any).result as string;
-            const shortResult = result.length > 50 
-              ? result.substring(0, 47) + '...' 
-              : result;
-            task.output = chalk.dim(`Result: ${shortResult}`);
-          } else {
-            task.output = chalk.dim('Subtask finished successfully');
-          }
           debugLogger.debug(`Subtask completed via output-available, stopping listr for task ${taskId}`);
           resolve();
           return;
@@ -232,8 +213,6 @@ export class ListrHelper {
             if (hasAttemptCompletion.found) {
               attemptCompletionFound = true;
               clearInterval(interval);
-              task.title = chalk.green('✓ Subtask completed');
-              task.output = chalk.dim(`Result: ${hasAttemptCompletion.result}`);
               debugLogger.debug(`AttemptCompletion detected early! Stopping listr for task ${taskId}`);
               resolve();
               return;
@@ -242,8 +221,6 @@ export class ListrHelper {
             // 如果 subtask runner 已经不存在，说明任务已经完成，停止检查
             debugLogger.debug(`Subtask runner no longer exists for task ${taskId}, assuming completed`);
             clearInterval(interval);
-            task.title = chalk.green('✓ Subtask completed');
-            task.output = chalk.dim('Task finished successfully');
             resolve();
             return;
           }
@@ -252,17 +229,8 @@ export class ListrHelper {
         // 检查错误状态
         if (part.state === 'output-error') {
           clearInterval(interval);
-          task.title = chalk.red('✗ Subtask execution failed');
-          task.output = chalk.dim(part.errorText || 'Unknown error');
           resolve();
           return;
-        }
-
-        // 根据工具状态更新显示文本
-        if (part.state === 'input-streaming') {
-          currentStep = 'Processing AI response';
-        } else if (part.state === 'input-available') {
-          currentStep = 'Finalizing subtask';
         }
       }, 200); // 减少检查间隔以提高响应速度
     });
@@ -303,25 +271,9 @@ export class ListrHelper {
   /**
    * 处理任务结果
    */
-  private async processTaskResult(
-    part: ToolUIPart<UITools>,
-    task: any
-  ): Promise<void> {
-    task.output = chalk.dim('Collecting results...');
-    
+  private async processTaskResult(_part: ToolUIPart<UITools>): Promise<void> {
     // 等待一小段时间以确保结果完整
     await new Promise(resolve => setTimeout(resolve, 300));
-    
-    if (part.state === 'output-available' && part.output && 'result' in part.output) {
-      const result = (part.output as any).result as string;
-      const shortResult = result.length > 80 
-        ? result.substring(0, 77) + '...' 
-        : result;
-      task.title = chalk.green('✓ Results ready');
-      task.output = chalk.dim(`Result: ${shortResult}`);
-    } else {
-      task.title = chalk.green('✓ Processing complete');
-    }
   }
 
   /**
