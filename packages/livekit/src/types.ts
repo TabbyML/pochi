@@ -69,8 +69,7 @@ const RequestData = z.object({
     }),
     z.object({
       type: z.literal("vendor"),
-      vendorId: z.string(),
-      modelId: z.string(),
+      keepReasoningPart: z.boolean().optional(),
       useToolCallMiddleware: z
         .boolean()
         .optional()

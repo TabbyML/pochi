@@ -127,10 +127,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
         : prompts.system(environment?.info?.customRules),
       messages: convertToModelMessages(
         formatters.llm(preparedMessages, {
-          keepReasoningPart:
-            llm.type === "vendor" &&
-            llm.vendorId === "pochi" &&
-            llm.modelId?.includes("claude"),
+          keepReasoningPart: llm.type === "vendor" && llm.keepReasoningPart,
         }),
       ),
       model: wrapLanguageModel({

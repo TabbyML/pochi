@@ -88,8 +88,9 @@ function useLLM(): React.RefObject<LLMRequestData> {
     if (selectedModel.type === "vendor") {
       return {
         type: "vendor",
-        vendorId: selectedModel.vendorId,
-        modelId: selectedModel.modelId,
+        keepReasoningPart:
+          selectedModel.vendorId === "pochi" &&
+          selectedModel.modelId.includes("claude"),
         useToolCallMiddleware: selectedModel.options.useToolCallMiddleware,
         getModel: (id: string) =>
           createModel(selectedModel.vendorId, {
