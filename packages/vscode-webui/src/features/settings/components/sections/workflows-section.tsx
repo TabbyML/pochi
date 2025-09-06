@@ -24,7 +24,6 @@ export const WorkflowsSection: React.FC = () => {
   return (
     <AccordionSection
       title={t("settings.workflows.title")}
-      defaultOpen={workflows.length <= 3}
       collapsable={workflows.length > 3}
     >
       {isLoading ? (
