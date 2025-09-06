@@ -84,7 +84,6 @@ export class ListrHelper {
     debugLogger.debug(`Starting listr render for newTask: ${description}, taskId: ${taskId} (from toolCallId)`);
     debugLogger.debug(`_meta?.uid: ${_meta?.uid}`);
     debugLogger.debug(`Full input:`, JSON.stringify(part.input, null, 2));
-    
     // 创建主任务和子任务
     const tasks: ListrTask[] = [
       {
@@ -121,11 +120,6 @@ export class ListrHelper {
             }
           ], { 
             concurrent: false,
-            rendererOptions: {
-              showSubtasks: true,
-              collapse: false,
-              collapseSkips: false
-            }
           });
         }
       }
@@ -134,6 +128,7 @@ export class ListrHelper {
     this.listr = new Listr(tasks, {
       concurrent: false,
       exitOnError: false,
+      registerSignalListeners: false,
       rendererOptions: {
         showSubtasks: true,
         collapse: false,

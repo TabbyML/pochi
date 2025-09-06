@@ -9,6 +9,7 @@ import { ListrHelper } from "./listr-helper";
 
 export class OutputRenderer {
   private listrHelper = new ListrHelper();
+  private renderedNewTasks = new Set<string>();
 
   constructor(state: NodeChatState) {
     state.signal.messages.subscribe((messages) => {
@@ -30,12 +31,15 @@ export class OutputRenderer {
       this.pendingMessageId = lastMessage.id;
       this.spinner?.stopAndPersist();
       this.pendingPartIndex = 0;
+      // 清理已渲染的 newTask 记录，为新消息做准备
+      this.renderedNewTasks.clear();
       const name = lastMessage.role === "assistant" ? "Pochi" : "You";
       if (messages.length > 1) {
         console.log("");
       }
       console.log(chalk.bold(chalk.underline(name)));
-      this.nextSpinner();
+      // 不立即创建 spinner，等到有实际内容时再创建
+      this.spinner = undefined;
     }
 
     while (true) {
@@ -55,53 +59,65 @@ export class OutputRenderer {
         continue;
       }
 
-      if (!this.spinner) throw new Error("Spinner not initialized");
+      // 特殊处理 newTask - 在检查 spinner 之前
+      if (part.type === "tool-newTask") {
+        // 如果当前有 spinner 在运行，停止它
+        if (this.spinner) {
+          this.spinner.stop();
+          this.spinner = undefined;
+        }
+        
+        // 使用 toolCallId 来跟踪已渲染的任务，避免重复渲染
+        if (!this.renderedNewTasks.has(part.toolCallId)) {
+          this.renderedNewTasks.add(part.toolCallId);
+          // 启动 listr 渲染（异步，不阻塞）
+          this.listrHelper.renderNewTask(part);
+        }
+        
+        // 对于 newTask，完全跳过常规的 OutputRenderer 处理
+        // Listr 会处理所有的显示逻辑
+        if (part.state === "output-available" || part.state === "output-error") {
+          // newTask 完成，移动到下一个 part
+          this.pendingPartIndex++;
+          // 不创建新的 spinner，让下一次循环决定
+          continue;
+        } else {
+          // 工具仍在执行中，等待状态更新
+          break;
+        }
+      }
+
+      // 对于非 newTask 的 part，确保有 spinner
+      if (!this.spinner) {
+        this.spinner = ora().start();
+      }
 
       if (part.type === "reasoning") {
         this.spinner.prefixText = `💭 Thinking for ${part.text.length} characters`;
       } else if (part.type === "text") {
         this.spinner.prefixText = parseMarkdown(part.text.trim());
       } else {
-        // 特殊处理 newTask
-        if (part.type === "tool-newTask") {
-          if (!this.listrHelper.running) {
-            // 启动 listr 渲染（异步，不阻塞）
-            this.listrHelper.renderNewTask(part);
-          }
-          
-          // 对于 newTask，完全跳过常规的 OutputRenderer 处理
-          // Listr 会处理所有的显示逻辑
-          if (part.state === "output-available" || part.state === "output-error") {
-            // newTask 完成，停止当前 spinner 并进入下一个 part（不启动新的 spinner）
-            this.spinner?.stopAndPersist();
-            this.pendingPartIndex++;
+        // 其他工具的常规处理
+        const { text, stop, error } = renderToolPart(part);
+        this.spinner.prefixText = text;
+        if (
+          part.state === "output-available" ||
+          part.state === "output-error"
+        ) {
+          if (error) {
+            this.spinner.fail(chalk.dim(JSON.stringify(error)));
           } else {
-            // 工具仍在执行中，等待状态更新
-            break;
+            this.spinner[stop]();
           }
+          this.nextSpinner(true);
         } else {
-          // 其他工具的常规处理
-          const { text, stop, error } = renderToolPart(part);
-          this.spinner.prefixText = text;
-          if (
-            part.state === "output-available" ||
-            part.state === "output-error"
-          ) {
-            if (error) {
-              this.spinner.fail(chalk.dim(JSON.stringify(error)));
-            } else {
-              this.spinner[stop]();
-            }
-            this.nextSpinner(true);
-          } else {
-            break;
-          }
+          break;
         }
       }
 
       if (this.pendingPartIndex < lastMessage.parts.length - 1) {
         this.spinner?.stopAndPersist();
-        this.nextSpinner();
+        this.spinner = undefined;  // 清理 spinner，下次循环会根据需要创建
         this.pendingPartIndex++;
       } else {
         break;
@@ -222,32 +238,6 @@ function renderToolPart(part: ToolUIPart<UITools>): {
     return {
       text: `${chalk.bold(chalk.yellow(`❓ ${question}`))} ${followUpText}`,
       stop: "stopAndPersist",
-      error: errorText,
-    };
-  }
-
-  // tool-newTask is now handled by ListRenderer to avoid UI conflicts
-  if (part.type === "tool-newTask") {
-    const { description = "creating subtask" } = part.input || {};
-
-    if (part.state === "output-available" && part.output?.result) {
-      const result = part.output.result as string;
-      return {
-        text: `🚀 Subtask completed: ${chalk.bold(description)}\n${chalk.dim("└─")} ${result}`,
-        stop: hasError ? "fail" : "succeed",
-        error: errorText,
-      };
-    }
-    if (part.state === "input-streaming" || part.state === "input-available") {
-      return {
-        text: `🚀 Executing subtask: ${chalk.bold(description)}\n${chalk.dim("└─")} Running ...`,
-        stop: "stopAndPersist",
-        error: errorText,
-      };
-    }
-    return {
-      text: `🚀 Creating subtask: ${chalk.bold(description)}`,
-      stop: hasError ? "fail" : "succeed",
       error: errorText,
     };
   }
