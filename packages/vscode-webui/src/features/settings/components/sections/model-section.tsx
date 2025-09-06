@@ -127,7 +127,7 @@ export const ModelSection: React.FC<ModelSectionProps> = ({ user }) => {
           )}
 
           {/* Custom Models Section */}
-          {providerModels && (
+          {providerModels.length > 0 && (
             <div className="ml-1">
               <AccordionSection
                 title={

@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import "@/components/prompt-form/prompt-form.css";
 import { WelcomeScreen } from "@/components/welcome-screen";
+import { useModelList } from "@/lib/hooks/use-model-list";
 
 const searchSchema = z.object({
   uid: z.string().optional(),
@@ -22,8 +23,9 @@ function RouteComponent() {
 
   const { auth } = Route.useRouteContext();
   const uid = uidFromRoute || crypto.randomUUID();
+  const { modelList = [] } = useModelList(true);
 
-  if (!auth?.user) {
+  if (!auth?.user && modelList.length === 0) {
     return <WelcomeScreen user={auth?.user} />;
   }
 
