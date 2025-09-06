@@ -4,6 +4,7 @@ import type { UITools } from "@getpochi/livekit";
 import chalk from 'chalk';
 import fs from 'fs';
 import path from 'path';
+import { renderToolPart } from './output-renderer';
 
 // 创建调试日志文件写入器
 const debugLogFile = path.join(process.cwd(), '.pochi-debug.log');
@@ -108,8 +109,24 @@ export class ListrHelper {
           // 执行阶段
           output += `${chalk.dim('› Executing subtask...')}\n`;
           task.output = output;
+          
+          // 启动工具监听，但不阻塞
+          this.startToolMonitoring(taskId, (toolPart: ToolUIPart<UITools>) => {
+            const { text } = renderToolPart(toolPart);
+            output += `${chalk.cyan(`  › ${text}`)}\n`;
+            task.output = output;
+          });
+          
+          // 等待任务完成
           await this.waitForSubtaskCompletion(part, taskId);
+          
           output += `${chalk.green('› ✓ Subtask completed')}\n`;
+          
+          // 获取最终的工具列表
+          const usedTools = this.getUsedTools(taskId);
+          if (usedTools.length > 0) {
+            output += `${chalk.dim(`› Tools used: ${usedTools.length} tool(s)`)}\n`;
+          }
 
           // 结果处理阶段
           if (part.state !== 'output-error') {
@@ -195,6 +212,78 @@ export class ListrHelper {
     await this.waitForState(part, ['input-available', 'output-available', 'output-error']);
   }
 
+  // 存储工具监听的状态
+  private toolMonitors = new Map<string, {
+    tools: string[],
+    interval?: NodeJS.Timeout,
+    lastProcessedMessageIndex: number
+  }>();
+
+  /**
+   * 启动工具监听（非阻塞）
+   */
+  private startToolMonitoring(taskId: string, onToolUse: (toolPart: ToolUIPart<UITools>) => void): void {
+    if (this.toolMonitors.has(taskId)) return;
+    
+    const monitor: {
+      tools: string[],
+      interval?: NodeJS.Timeout,
+      lastProcessedMessageIndex: number
+    } = {
+      tools: [],
+      lastProcessedMessageIndex: -1
+    };
+    
+    this.toolMonitors.set(taskId, monitor);
+    
+    monitor.interval = setInterval(() => {
+      const subTaskRunner = ListrHelper.getSubTaskRunner(taskId);
+      if (subTaskRunner) {
+        const messages = subTaskRunner.state?.messages || [];
+        
+        for (let i = monitor.lastProcessedMessageIndex + 1; i < messages.length; i++) {
+          const message = messages[i];
+          if (message.role === 'assistant') {
+            for (const msgPart of message.parts || []) {
+              if (msgPart.type?.startsWith('tool-') && msgPart.type !== 'tool-attemptCompletion') {
+                const toolName = msgPart.type.replace('tool-', '');
+                debugLogger.debug(`Tool part found: ${toolName}`, JSON.stringify(msgPart, null, 2));
+                
+                if (!monitor.tools.includes(toolName)) {
+                  monitor.tools.push(toolName);
+                  debugLogger.debug(`Tool detected: ${toolName}`);
+                  
+                  const toolPart = msgPart as ToolUIPart<UITools>;
+                  onToolUse(toolPart);
+                }
+              }
+            }
+          }
+          monitor.lastProcessedMessageIndex = i;
+        }
+      }
+    }, 100);
+  }
+
+  /**
+   * 获取已使用的工具
+   */
+  private getUsedTools(taskId: string): string[] {
+    const monitor = this.toolMonitors.get(taskId);
+    return monitor?.tools || [];
+  }
+
+  /**
+   * 清理工具监听
+   */
+  private cleanupToolMonitoring(taskId: string): void {
+    const monitor = this.toolMonitors.get(taskId);
+    if (monitor?.interval) {
+      clearInterval(monitor.interval);
+    }
+    this.toolMonitors.delete(taskId);
+  }
+
   /**
    * 等待子任务完成（简化版本，主要依赖工具状态）
    */
@@ -203,7 +292,6 @@ export class ListrHelper {
     taskId?: string
   ): Promise<void> {
     return new Promise((resolve) => {
-      let attemptCompletionFound = false;
       let iterations = 0;
       const maxIterations = 300; // 最多 60 秒 (300 * 200ms)
       
@@ -214,46 +302,43 @@ export class ListrHelper {
         if (iterations >= maxIterations) {
           clearInterval(interval);
           debugLogger.debug(`Subtask timeout after ${maxIterations * 200}ms for task ${taskId}`);
+          if (taskId) this.cleanupToolMonitoring(taskId);
           resolve();
           return;
         }
         
-        // 首先检查工具完成状态 - 这是最可靠的信号
+        // 检查工具完成状态
         if (part.state === 'output-available') {
           clearInterval(interval);
-          debugLogger.debug(`Subtask completed via output-available, stopping listr for task ${taskId}`);
+          debugLogger.debug(`Subtask completed via output-available for task ${taskId}`);
+          if (taskId) this.cleanupToolMonitoring(taskId);
           resolve();
           return;
         }
         
-        // 尝试提前检测 attemptCompletion（优化用户体验）
-        if (taskId && !attemptCompletionFound) {
+        // 检查 attemptCompletion
+        if (taskId) {
           const subTaskRunner = ListrHelper.getSubTaskRunner(taskId);
           if (subTaskRunner) {
             const hasAttemptCompletion = this.checkForAttemptCompletion(subTaskRunner);
             if (hasAttemptCompletion.found) {
-              attemptCompletionFound = true;
               clearInterval(interval);
-              debugLogger.debug(`AttemptCompletion detected early! Stopping listr for task ${taskId}`);
+              debugLogger.debug(`AttemptCompletion detected early! Stopping for task ${taskId}`);
+              this.cleanupToolMonitoring(taskId);
               resolve();
               return;
             }
-          } else {
-            // 如果 subtask runner 已经不存在，说明任务已经完成，停止检查
-            debugLogger.debug(`Subtask runner no longer exists for task ${taskId}, assuming completed`);
-            clearInterval(interval);
-            resolve();
-            return;
           }
         }
         
         // 检查错误状态
         if (part.state === 'output-error') {
           clearInterval(interval);
+          if (taskId) this.cleanupToolMonitoring(taskId);
           resolve();
           return;
         }
-      }, 200); // 减少检查间隔以提高响应速度
+      }, 200);
     });
   }
 
