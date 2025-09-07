@@ -40,10 +40,7 @@ export class ListrHelper {
   renderNewTask(part: ToolUIPart<UITools>): void {
     if (part.type !== "tool-newTask") return;
 
-    const {
-      description = "Creating subtask",
-      prompt,
-    } = part.input || {};
+    const { description = "Creating subtask", prompt } = part.input || {};
     // Use toolCallId as identifier, which is more reliable
     const taskId = part.toolCallId;
     // Create main task
@@ -71,7 +68,8 @@ export class ListrHelper {
 
           // Start tool monitoring, but don't block
           this.startToolMonitoring(taskId, (toolPart: ToolUIPart<UITools>) => {
-            const { text } = renderToolPart(toolPart);
+            const normalizedPart = normalizeFollowUpInPart(toolPart);
+            const { text } = renderToolPart(normalizedPart);
             output += `${chalk.cyan(`  > ${text}`)}\n`;
             task.output = output;
           });
@@ -175,6 +173,7 @@ export class ListrHelper {
       tools: string[];
       interval?: NodeJS.Timeout;
       lastProcessedMessageIndex: number;
+      processedToolCallIds: Set<string>;
     }
   >();
 
@@ -191,9 +190,11 @@ export class ListrHelper {
       tools: string[];
       interval?: NodeJS.Timeout;
       lastProcessedMessageIndex: number;
+      processedToolCallIds: Set<string>;
     } = {
       tools: [],
       lastProcessedMessageIndex: -1,
+      processedToolCallIds: new Set<string>(),
     };
 
     this.toolMonitors.set(taskId, monitor);
@@ -217,18 +218,18 @@ export class ListrHelper {
               const part = msgPart as Record<string, unknown>;
               if (part.type?.toString().startsWith("tool-")) {
                 // Task completion flags are not displayed as regular tools
-                if (
-                  part.type === "tool-attemptCompletion" ||
-                  part.type === "tool-askFollowupQuestion"
-                ) {
+                if (part.type === "tool-attemptCompletion") {
                   continue;
                 }
                 const toolName = part.type.toString().replace("tool-", "");
 
-                if (!monitor.tools.includes(toolName)) {
-                  monitor.tools.push(toolName);
-
-                  const toolPart = part as ToolUIPart<UITools>;
+                const toolPart = part as ToolUIPart<UITools>;
+                // Render once per toolCallId to avoid missing updates
+                if (!monitor.processedToolCallIds.has(toolPart.toolCallId)) {
+                  monitor.processedToolCallIds.add(toolPart.toolCallId);
+                  if (!monitor.tools.includes(toolName)) {
+                    monitor.tools.push(toolName);
+                  }
                   try {
                     onToolUse(toolPart);
                   } catch (error) {
@@ -314,6 +315,22 @@ export class ListrHelper {
                     part.type === "tool-attemptCompletion" ||
                     part.type === "tool-askFollowupQuestion"
                   ) {
+                    // For askFollowupQuestion, allow a brief delay so it can render before we resolve
+                    if (part.type === "tool-askFollowupQuestion") {
+                      clearInterval(interval);
+                      if (taskId) {
+                        setTimeout(
+                          () => this.cleanupToolMonitoring(taskId),
+                          250,
+                        );
+                      }
+                      setTimeout(() => {
+                        resolve();
+                      }, 250);
+                      return;
+                    }
+
+                    // For attemptCompletion, resolve immediately
                     clearInterval(interval);
                     this.cleanupToolMonitoring(taskId);
                     resolve();
@@ -377,4 +394,55 @@ export class ListrHelper {
   get running(): boolean {
     return this.isRunning;
   }
+}
+
+// Add normalize helper for followUp so renderer remains unchanged
+function normalizeFollowUpInPart(
+  part: ToolUIPart<UITools>,
+): ToolUIPart<UITools> {
+  try {
+    const input: Record<string, unknown> | undefined = part.input as
+      | Record<string, unknown>
+      | undefined;
+    if (!input) return part;
+
+    const followUp = (input as Record<string, unknown>).followUp as
+      | unknown
+      | undefined;
+    if (typeof followUp === "string") {
+      const s = followUp.trim();
+      let options: string[] | null = null;
+      // Try JSON
+      try {
+        const parsed = JSON.parse(s) as unknown;
+        if (Array.isArray(parsed)) {
+          options = parsed as string[];
+        }
+      } catch {}
+      // Try single-quoted array
+      if (!options && s.startsWith("[") && s.endsWith("]")) {
+        try {
+          const parsed2 = JSON.parse(s.replace(/'/g, '"')) as unknown;
+          if (Array.isArray(parsed2)) {
+            options = parsed2 as string[];
+          }
+        } catch {}
+      }
+      // Try CSV
+      if (!options) {
+        const parts = s
+          .split(",")
+          .map((x: string) => x.trim())
+          .filter((x: string) => Boolean(x));
+        if (parts.length > 1) options = parts;
+      }
+      if (options) {
+        return {
+          ...part,
+          input: { ...input, followUp: options },
+        } as ToolUIPart<UITools>;
+      }
+    }
+  } catch {}
+  return part;
 }
