@@ -294,7 +294,9 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       candidates.push(...tokens);
     }
 
-    return [...new Set([...clientTools, ...mcps, ...candidates])];
+    return [...new Set([...clientTools, ...mcps, ...candidates])].filter(
+      (candidate) => candidate.length <= 64,
+    );
   };
 
   openSymbol = async (symbol: string) => {
