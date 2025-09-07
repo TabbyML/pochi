@@ -61,18 +61,18 @@ export class ListrHelper {
           }
 
           // 初始化阶段
-          output += `${chalk.dim("› Setting up environment...")}\n`;
+          output += `${chalk.dim("> Setting up environment...")}\n`;
           task.output = output;
           await this.waitForTaskInit(part);
 
           // 执行阶段
-          output += `${chalk.dim("› Executing subtask...")}\n`;
+          output += `${chalk.dim("> Executing subtask...")}\n`;
           task.output = output;
 
           // 启动工具监听，但不阻塞
           this.startToolMonitoring(taskId, (toolPart: ToolUIPart<UITools>) => {
             const { text } = renderToolPart(toolPart);
-            output += `${chalk.cyan(`  › ${text}`)}\n`;
+            output += `${chalk.cyan(`  > ${text}`)}\n`;
             task.output = output;
           });
 
@@ -82,7 +82,7 @@ export class ListrHelper {
           // 获取最终的工具列表
           const usedTools = this.getUsedTools(taskId);
           if (usedTools.length > 0) {
-            output += `${chalk.dim(`› Tools used: ${usedTools.length} tool(s)`)}\n`;
+            output += `${chalk.dim(`> Tools used: ${usedTools.length} tool(s)`)}\n`;
           }
 
           // 结果处理阶段
@@ -94,7 +94,7 @@ export class ListrHelper {
             if (part.output && "result" in part.output) {
               const result = (part.output as Record<string, unknown>)
                 .result as string;
-              output += `${chalk.green("› ✓ Results processed")}\n`;
+              output += `${chalk.green("> ✓ Results processed")}\n`;
               output += `${chalk.dim(`  Result: ${result}`)}\n`;
 
               // 显示执行的命令详情（如果是 executeCommand）
@@ -106,13 +106,13 @@ export class ListrHelper {
                 output += `${chalk.dim(`  Working directory: ${input.cwd}`)}\n`;
               }
             } else {
-              output += `${chalk.green("› ✓ Processing complete")}\n`;
+              output += `${chalk.green("> ✓ Processing complete")}\n`;
             }
 
             task.output = output;
           } else {
             // 错误情况
-            output += `${chalk.red("› ✗ Subtask failed")}\n`;
+            output += `${chalk.red("> ✗ Subtask failed")}\n`;
             if (part.errorText) {
               output += `${chalk.dim(`  Error: ${part.errorText}`)}\n`;
             }
