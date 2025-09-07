@@ -66,22 +66,11 @@ export class ListrHelper {
           output += `${chalk.dim("> Executing subtask...")}\n`;
           task.output = output;
 
-          // Start tool monitoring, but don't block
-          this.startToolMonitoring(taskId, (toolPart: ToolUIPart<UITools>) => {
-            const normalizedPart = normalizeFollowUpInPart(toolPart);
-            const { text } = renderToolPart(normalizedPart);
-            output += `${chalk.cyan(`  > ${text}`)}\n`;
+          // Wait for task completion
+          await this.waitForSubtaskCompletion(part, taskId, (line: string) => {
+            output += line;
             task.output = output;
           });
-
-          // Wait for task completion
-          await this.waitForSubtaskCompletion(part, taskId);
-
-          // Get final tool list
-          const usedTools = this.getUsedTools(taskId);
-          if (usedTools.length > 0) {
-            output += `${chalk.dim(`> Tools used: ${usedTools.length} tool(s)`)}\n`;
-          }
 
           // Result processing phase
           if (part.state !== "output-error") {
@@ -150,111 +139,15 @@ export class ListrHelper {
     ]);
   }
 
-  // Store tool monitoring state
-  private toolMonitors = new Map<
-    string,
-    {
-      tools: string[];
-      interval?: NodeJS.Timeout;
-      lastProcessedMessageIndex: number;
-      processedToolCallIds: Set<string>;
-    }
-  >();
-
-  /**
-   * Start tool monitoring (non-blocking)
-   */
-  private startToolMonitoring(
-    taskId: string,
-    onToolUse: (toolPart: ToolUIPart<UITools>) => void,
-  ): void {
-    if (this.toolMonitors.has(taskId)) return;
-
-    const monitor: {
-      tools: string[];
-      interval?: NodeJS.Timeout;
-      lastProcessedMessageIndex: number;
-      processedToolCallIds: Set<string>;
-    } = {
-      tools: [],
-      lastProcessedMessageIndex: -1,
-      processedToolCallIds: new Set<string>(),
-    };
-
-    this.toolMonitors.set(taskId, monitor);
-
-    monitor.interval = setInterval(() => {
-      const subTaskRunner = ListrHelper.getSubTaskRunner(taskId);
-      if (subTaskRunner) {
-        const messages =
-          ((
-            (subTaskRunner as Record<string, unknown>).state as Record<
-              string,
-              unknown
-            >
-          )?.messages as unknown[]) || [];
-
-        // Re-check all messages to ensure none are missed
-        for (let i = 0; i < messages.length; i++) {
-          const message = messages[i] as Record<string, unknown>;
-          if (message.role === "assistant") {
-            for (const msgPart of (message.parts as unknown[]) || []) {
-              const part = msgPart as Record<string, unknown>;
-              if (part.type?.toString().startsWith("tool-")) {
-                // Task completion flags are not displayed as regular tools
-                if (part.type === "tool-attemptCompletion") {
-                  continue;
-                }
-                const toolName = part.type.toString().replace("tool-", "");
-
-                const toolPart = part as ToolUIPart<UITools>;
-                // Render once per toolCallId to avoid missing updates
-                if (!monitor.processedToolCallIds.has(toolPart.toolCallId)) {
-                  monitor.processedToolCallIds.add(toolPart.toolCallId);
-                  if (!monitor.tools.includes(toolName)) {
-                    monitor.tools.push(toolName);
-                  }
-                  try {
-                    onToolUse(toolPart);
-                  } catch (error) {
-                    // Handle error silently
-                  }
-                }
-              }
-            }
-          }
-        }
-        monitor.lastProcessedMessageIndex = messages.length - 1;
-      }
-    }, 100);
-  }
-
-  /**
-   * Get used tools
-   */
-  private getUsedTools(taskId: string): string[] {
-    const monitor = this.toolMonitors.get(taskId);
-    return monitor?.tools || [];
-  }
-
-  /**
-   * Clean up tool monitoring
-   */
-  private cleanupToolMonitoring(taskId: string): void {
-    const monitor = this.toolMonitors.get(taskId);
-    if (monitor?.interval) {
-      clearInterval(monitor.interval);
-    }
-    this.toolMonitors.delete(taskId);
-  }
-
   /**
    * Wait for subtask completion (simplified version, mainly relies on tool state)
    */
   private async waitForSubtaskCompletion(
     part: ToolUIPart<UITools>,
     taskId?: string,
+    onProgress?: (line: string) => void,
   ): Promise<void> {
+    const processedToolCallIds = new Set<string>();
     return new Promise((resolve) => {
       let iterations = 0;
       const maxIterations = 300; // Maximum 60 seconds (300 * 200ms)
@@ -265,7 +158,6 @@ export class ListrHelper {
         // Timeout protection
         if (iterations >= maxIterations) {
           clearInterval(interval);
-          if (taskId) this.cleanupToolMonitoring(taskId);
           resolve();
           return;
         }
@@ -273,7 +165,6 @@ export class ListrHelper {
         // Check tool completion status
         if (part.state === "output-available") {
           clearInterval(interval);
-          if (taskId) this.cleanupToolMonitoring(taskId);
           resolve();
           return;
         }
@@ -284,30 +175,41 @@ export class ListrHelper {
           if (subTaskRunner) {
             // Directly check task completion flags in latest messages
             const messages =
-              ((
-                (subTaskRunner as Record<string, unknown>).state as Record<
-                  string,
-                  unknown
-                >
-              )?.messages as unknown[]) || [];
+              (((subTaskRunner as Record<string, unknown>).state as Record<
+                string,
+                unknown
+              >)?.messages as unknown[]) || [];
             for (const message of messages) {
               const msg = message as Record<string, unknown>;
               if (msg.role === "assistant") {
                 for (const msgPart of (msg.parts as unknown[]) || []) {
-                  const part = msgPart as Record<string, unknown>;
+                  const p = msgPart as Record<string, unknown>;
+
+                  // Lightweight tool running display (exclude completion/followup)
                   if (
-                    part.type === "tool-attemptCompletion" ||
-                    part.type === "tool-askFollowupQuestion"
+                    typeof p.type === "string" &&
+                    p.type.startsWith("tool-") &&
+                    p.type !== "tool-attemptCompletion" &&
+                    p.type !== "tool-askFollowupQuestion" &&
+                    onProgress
+                  ) {
+                    const toolPart = p as ToolUIPart<UITools>;
+                    if (!processedToolCallIds.has(toolPart.toolCallId)) {
+                      processedToolCallIds.add(toolPart.toolCallId);
+                      const normalizedPart = normalizeFollowUpInPart(toolPart);
+                      const { text } = renderToolPart(normalizedPart);
+                      onProgress(`${chalk.cyan(`  > ${text}`)}\n`);
+                    }
+                  }
+
+                  // Completion checks
+                  if (
+                    p.type === "tool-attemptCompletion" ||
+                    p.type === "tool-askFollowupQuestion"
                   ) {
                     // For askFollowupQuestion, allow a brief delay so it can render before we resolve
-                    if (part.type === "tool-askFollowupQuestion") {
+                    if (p.type === "tool-askFollowupQuestion") {
                       clearInterval(interval);
-                      if (taskId) {
-                        setTimeout(
-                          () => this.cleanupToolMonitoring(taskId),
-                          250,
-                        );
-                      }
                       setTimeout(() => {
                         resolve();
                       }, 250);
@@ -316,7 +218,6 @@ export class ListrHelper {
 
                     // For attemptCompletion, resolve immediately
                     clearInterval(interval);
-                    this.cleanupToolMonitoring(taskId);
                     resolve();
                     return;
                   }
@@ -329,7 +230,6 @@ export class ListrHelper {
         // Check error status
         if (part.state === "output-error") {
           clearInterval(interval);
-          if (taskId) this.cleanupToolMonitoring(taskId);
           resolve();
           return;
         }
