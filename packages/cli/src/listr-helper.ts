@@ -175,10 +175,12 @@ export class ListrHelper {
           if (subTaskRunner) {
             // Directly check task completion flags in latest messages
             const messages =
-              (((subTaskRunner as Record<string, unknown>).state as Record<
-                string,
-                unknown
-              >)?.messages as unknown[]) || [];
+              ((
+                (subTaskRunner as Record<string, unknown>).state as Record<
+                  string,
+                  unknown
+                >
+              )?.messages as unknown[]) || [];
             for (const message of messages) {
               const msg = message as Record<string, unknown>;
               if (msg.role === "assistant") {
