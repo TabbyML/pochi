@@ -2,40 +2,7 @@ import { Listr, type ListrTask } from 'listr2';
 import type { ToolUIPart } from "ai";
 import type { UITools } from "@getpochi/livekit";
 import chalk from 'chalk';
-import fs from 'fs';
-import path from 'path';
 import { renderToolPart } from './output-renderer';
-
-// 创建调试日志文件写入器
-const debugLogFile = path.join(process.cwd(), '.pochi-debug.log');
-
-// 初始化时清空日志文件
-let logFileInitialized = false;
-
-const debugLogger = {
-  debug: (message: string, ...args: unknown[]) => {
-    if (!logFileInitialized) {
-      fs.writeFileSync(debugLogFile, ''); // 清空文件
-      logFileInitialized = true;
-    }
-    const timestamp = new Date().toISOString();
-    const logLine = `[${timestamp}] [ListrHelper] ${message} ${args.map(arg => 
-      typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
-    ).join(' ')}\n`;
-    fs.appendFileSync(debugLogFile, logLine);
-  },
-  error: (message: string, ...args: unknown[]) => {
-    if (!logFileInitialized) {
-      fs.writeFileSync(debugLogFile, ''); // 清空文件
-      logFileInitialized = true;
-    }
-    const timestamp = new Date().toISOString();
-    const logLine = `[${timestamp}] [ListrHelper ERROR] ${message} ${args.map(arg => 
-      typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
-    ).join(' ')}\n`;
-    fs.appendFileSync(debugLogFile, logLine);
-  }
-};
 
 // 全局存储当前子任务运行器的注册表
 const activeSubTaskRunners = new Map<string, unknown>();
@@ -48,18 +15,14 @@ export class ListrHelper {
    * 注册子任务运行器供 Listr 监听使用
    */
   static registerSubTaskRunner(taskId: string, runner: unknown): void {
-    debugLogger.debug(`Registering subtask runner for task: ${taskId}`);
     activeSubTaskRunners.set(taskId, runner);
-    debugLogger.debug(`Active subtask runners count: ${activeSubTaskRunners.size}`);
   }
 
   /**
    * 注销子任务运行器
    */
   static unregisterSubTaskRunner(taskId: string): void {
-    debugLogger.debug(`Unregistering subtask runner for task: ${taskId}`);
     activeSubTaskRunners.delete(taskId);
-    debugLogger.debug(`Active subtask runners count: ${activeSubTaskRunners.size}`);
   }
 
   /**
@@ -67,7 +30,6 @@ export class ListrHelper {
    */
   static getSubTaskRunner(taskId: string): unknown {
     const runner = activeSubTaskRunners.get(taskId);
-    debugLogger.debug(`Getting subtask runner for task: ${taskId}, found: ${!!runner}`);
     return runner;
   }
 
@@ -81,10 +43,6 @@ export class ListrHelper {
     const { description = "Creating subtask", prompt, _meta } = part.input || {};
     // 使用 toolCallId 作为标识符，这样更可靠
     const taskId = part.toolCallId;
-    
-    debugLogger.debug(`Starting listr render for newTask: ${description}, taskId: ${taskId} (from toolCallId)`);
-    debugLogger.debug(`_meta?.uid: ${_meta?.uid}`);
-    debugLogger.debug(`Full input:`, JSON.stringify(part.input, null, 2));
     // 创建主任务
     const tasks: ListrTask[] = [
       {
@@ -186,13 +144,10 @@ export class ListrHelper {
     // 异步运行，不阻塞主流程
     this.listr.run()
       .then(() => {
-        debugLogger.debug(`Listr completed for task ${taskId}`);
+        // Task completed
       })
       .catch((error) => {
-        if (error?.message) {
-          // 只在日志中记录错误，不在控制台输出
-          debugLogger.error(`Listr failed for task ${taskId}: ${error.message}`);
-        }
+        // Handle error silently
       })
       .finally(() => {
         this.isRunning = false;
@@ -249,18 +204,15 @@ export class ListrHelper {
                   continue;
                 }
                 const toolName = part.type.toString().replace('tool-', '');
-                debugLogger.debug(`Tool part found: ${toolName}`, JSON.stringify(msgPart, null, 2));
                 
                 if (!monitor.tools.includes(toolName)) {
                   monitor.tools.push(toolName);
-                  debugLogger.debug(`Tool detected: ${toolName} - calling onToolUse callback`);
                   
                   const toolPart = part as ToolUIPart<UITools>;
                   try {
                     onToolUse(toolPart);
-                    debugLogger.debug(`onToolUse callback executed successfully for ${toolName}`);
                   } catch (error) {
-                    debugLogger.debug(`Error in onToolUse callback: ${error}`);
+                    // Handle error silently
                   }
                 }
               }
@@ -308,7 +260,6 @@ export class ListrHelper {
         // 超时保护
         if (iterations >= maxIterations) {
           clearInterval(interval);
-          debugLogger.debug(`Subtask timeout after ${maxIterations * 200}ms for task ${taskId}`);
           if (taskId) this.cleanupToolMonitoring(taskId);
           resolve();
           return;
@@ -317,7 +268,6 @@ export class ListrHelper {
         // 检查工具完成状态
         if (part.state === 'output-available') {
           clearInterval(interval);
-          debugLogger.debug(`Subtask completed via output-available for task ${taskId}`);
           if (taskId) this.cleanupToolMonitoring(taskId);
           resolve();
           return;
@@ -336,7 +286,6 @@ export class ListrHelper {
                   const part = msgPart as Record<string, unknown>;
                   if (part.type === 'tool-attemptCompletion' || part.type === 'tool-askFollowupQuestion') {
                     clearInterval(interval);
-                    debugLogger.debug(`${part.type} detected! Stopping for task ${taskId}`);
                     this.cleanupToolMonitoring(taskId);
                     resolve();
                     return;
