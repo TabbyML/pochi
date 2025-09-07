@@ -10,7 +10,7 @@ export const newTask =
   (options: ToolCallOptions): ToolFunctionType<ClientTools["newTask"]> =>
   async ({ _meta }, { toolCallId }) => {
     const taskId = _meta?.uid || crypto.randomUUID();
-    // 使用 toolCallId 作为注册键，这样 ListrHelper 可以找到对应的运行器
+    // Use toolCallId as registration key so ListrHelper can find the corresponding runner
     const registrationKey = toolCallId;
 
     if (!options.createSubTaskRunner) {
@@ -21,17 +21,17 @@ export const newTask =
 
     const subTaskRunner = options.createSubTaskRunner(taskId);
 
-    // 注册子任务运行器供 ListrHelper 监听（使用 toolCallId 作为键）
+    // Register sub-task runner for ListrHelper monitoring (using toolCallId as key)
     ListrHelper.registerSubTaskRunner(registrationKey, subTaskRunner);
 
     try {
       // Execute the sub-task
       await subTaskRunner.run();
       
-      // 给 listr 一些时间来检测完成状态，避免过早注销
+      // Give listr some time to detect completion status, avoid premature cleanup
       await new Promise(resolve => setTimeout(resolve, 1000));
     } finally {
-      // 注销子任务运行器
+      // Unregister sub-task runner
       ListrHelper.unregisterSubTaskRunner(registrationKey);
     }
 
