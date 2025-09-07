@@ -31,15 +31,16 @@ export class OutputRenderer {
       this.pendingMessageId = lastMessage.id;
       this.spinner?.stopAndPersist();
       this.pendingPartIndex = 0;
-      // 清理已渲染的 newTask 记录，为新消息做准备
+
+      // Clear rendered newTask records to prepare for new messages
       this.renderedNewTasks.clear();
+
       const name = lastMessage.role === "assistant" ? "Pochi" : "You";
       if (messages.length > 1) {
         console.log("");
       }
       console.log(chalk.bold(chalk.underline(name)));
-      // 不立即创建 spinner，等到有实际内容时再创建
-      this.spinner = undefined;
+      this.nextSpinner();
     }
 
     while (true) {
@@ -59,37 +60,37 @@ export class OutputRenderer {
         continue;
       }
 
-      // 特殊处理 newTask - 在检查 spinner 之前
+      // Special handling for newTask - before checking spinner
       if (part.type === "tool-newTask") {
-        // 如果当前有 spinner 在运行，停止它
+        // If there's currently a spinner running, stop it
         if (this.spinner) {
           this.spinner.stop();
           this.spinner = undefined;
         }
 
-        // 使用 toolCallId 来跟踪已渲染的任务，避免重复渲染
+        // Use toolCallId to track rendered tasks, avoiding duplicate rendering
         if (!this.renderedNewTasks.has(part.toolCallId)) {
           this.renderedNewTasks.add(part.toolCallId);
-          // 启动 listr 渲染（异步，不阻塞）
+          // Start listr rendering (async, non-blocking)
           this.listrHelper.renderNewTask(part);
         }
 
-        // 对于 newTask，完全跳过常规的 OutputRenderer 处理
-        // Listr 会处理所有的显示逻辑
+        // For newTask, completely skip regular OutputRenderer processing
+        // Listr will handle all display logic
         if (
           part.state === "output-available" ||
           part.state === "output-error"
         ) {
-          // newTask 完成，移动到下一个 part
+          // newTask completed, move to next part
           this.pendingPartIndex++;
-          // 不创建新的 spinner，让下一次循环决定
+          // Don't create new spinner, let next loop decide
           continue;
         }
-        // 工具仍在执行中，等待状态更新
+        // Tool is still executing, wait for state update
         break;
       }
 
-      // 对于非 newTask 的 part，确保有 spinner
+      // For non-newTask parts, ensure there's a spinner
       if (!this.spinner) {
         this.spinner = ora().start();
       }
@@ -99,7 +100,7 @@ export class OutputRenderer {
       } else if (part.type === "text") {
         this.spinner.prefixText = parseMarkdown(part.text.trim());
       } else {
-        // 其他工具的常规处理
+        // Regular processing for other tools
         const { text, stop, error } = renderToolPart(part);
         this.spinner.prefixText = text;
         if (
@@ -119,7 +120,7 @@ export class OutputRenderer {
 
       if (this.pendingPartIndex < lastMessage.parts.length - 1) {
         this.spinner?.stopAndPersist();
-        this.spinner = undefined; // 清理 spinner，下次循环会根据需要创建
+        this.nextSpinner();
         this.pendingPartIndex++;
       } else {
         break;
