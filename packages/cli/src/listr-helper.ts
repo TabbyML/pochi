@@ -190,7 +190,6 @@ export class ListrHelper {
                     typeof p.type === "string" &&
                     p.type.startsWith("tool-") &&
                     p.type !== "tool-attemptCompletion" &&
-                    p.type !== "tool-askFollowupQuestion" &&
                     onProgress
                   ) {
                     const toolPart = p as ToolUIPart<UITools>;
