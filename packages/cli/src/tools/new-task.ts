@@ -1,8 +1,6 @@
-import { getLogger } from "@getpochi/common";
 import type { ClientTools, ToolFunctionType } from "@getpochi/tools";
+import { ListrHelper } from "../listr-helper";
 import type { ToolCallOptions } from "../types";
-
-const logger = getLogger("NewTaskTool");
 
 /**
  * Implements the newTask tool for CLI runner.
@@ -10,8 +8,10 @@ const logger = getLogger("NewTaskTool");
  */
 export const newTask =
   (options: ToolCallOptions): ToolFunctionType<ClientTools["newTask"]> =>
-  async ({ _meta }) => {
+  async ({ _meta }, { toolCallId }) => {
     const taskId = _meta?.uid || crypto.randomUUID();
+    // Use toolCallId as registration key so ListrHelper can find the corresponding runner
+    const registrationKey = toolCallId;
 
     if (!options.createSubTaskRunner) {
       throw new Error(
@@ -21,8 +21,19 @@ export const newTask =
 
     const subTaskRunner = options.createSubTaskRunner(taskId);
 
-    // Execute the sub-task
-    await subTaskRunner.run();
+    // Register sub-task runner for ListrHelper monitoring (using toolCallId as key)
+    ListrHelper.registerSubTaskRunner(registrationKey, subTaskRunner);
+
+    try {
+      // Execute the sub-task
+      await subTaskRunner.run();
+
+      // Give listr some time to detect completion status, avoid premature cleanup
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    } finally {
+      // Unregister sub-task runner
+      ListrHelper.unregisterSubTaskRunner(registrationKey);
+    }
 
     // Get the final state and extract result
     const finalState = subTaskRunner.state;
@@ -38,8 +49,6 @@ export const newTask =
           break;
         }
       }
-    } else {
-      logger.debug("No assistant message found in sub-task result");
     }
 
     return {

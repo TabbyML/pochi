@@ -4,9 +4,13 @@ import type { Message, UITools } from "@getpochi/livekit";
 import { type ToolUIPart, getToolName, isToolUIPart } from "ai";
 import chalk from "chalk";
 import ora, { type Ora } from "ora";
+import { ListrHelper } from "./listr-helper";
 import type { NodeChatState } from "./livekit/chat.node";
 
 export class OutputRenderer {
+  private listrHelper = new ListrHelper();
+  private renderedNewTasks = new Set<string>();
+
   constructor(state: NodeChatState) {
     state.signal.messages.subscribe((messages) => {
       this.renderLastMessage(messages);
@@ -27,6 +31,10 @@ export class OutputRenderer {
       this.pendingMessageId = lastMessage.id;
       this.spinner?.stopAndPersist();
       this.pendingPartIndex = 0;
+
+      // Clear rendered newTask records to prepare for new messages
+      this.renderedNewTasks.clear();
+
       const name = lastMessage.role === "assistant" ? "Pochi" : "You";
       if (messages.length > 1) {
         console.log("");
@@ -52,13 +60,47 @@ export class OutputRenderer {
         continue;
       }
 
-      if (!this.spinner) throw new Error("Spinner not initialized");
+      // Special handling for newTask - before checking spinner
+      if (part.type === "tool-newTask") {
+        // If there's currently a spinner running, stop it
+        if (this.spinner) {
+          this.spinner.stop();
+          this.spinner = undefined;
+        }
+
+        // Use toolCallId to track rendered tasks, avoiding duplicate rendering
+        if (!this.renderedNewTasks.has(part.toolCallId)) {
+          this.renderedNewTasks.add(part.toolCallId);
+          // Start listr rendering (async, non-blocking)
+          this.listrHelper.renderNewTask(part);
+        }
+
+        // For newTask, completely skip regular OutputRenderer processing
+        // Listr will handle all display logic
+        if (
+          part.state === "output-available" ||
+          part.state === "output-error"
+        ) {
+          // newTask completed, move to next part
+          this.pendingPartIndex++;
+          // Don't create new spinner, let next loop decide
+          continue;
+        }
+        // Tool is still executing, wait for state update
+        break;
+      }
+
+      // For non-newTask parts, ensure there's a spinner
+      if (!this.spinner) {
+        this.spinner = ora().start();
+      }
 
       if (part.type === "reasoning") {
         this.spinner.prefixText = `💭 Thinking for ${part.text.length} characters`;
       } else if (part.type === "text") {
         this.spinner.prefixText = parseMarkdown(part.text.trim());
       } else {
+        // Regular processing for other tools
         const { text, stop, error } = renderToolPart(part);
         this.spinner.prefixText = text;
         if (
@@ -96,10 +138,11 @@ export class OutputRenderer {
   shutdown() {
     this.spinner?.stopAndPersist();
     this.spinner = undefined;
+    this.listrHelper.stop();
   }
 }
 
-function renderToolPart(part: ToolUIPart<UITools>): {
+export function renderToolPart(part: ToolUIPart<UITools>): {
   text: string;
   stop: "succeed" | "stopAndPersist" | "fail";
   error?: string;
@@ -196,33 +239,8 @@ function renderToolPart(part: ToolUIPart<UITools>): {
       : "";
 
     return {
-      text: `${chalk.bold(chalk.yellow(`❓ ${question}`))} ${followUpText}`,
+      text: `${chalk.bold(chalk.yellow(`❓ ${question}`))}\n${followUpText}`,
       stop: "stopAndPersist",
-      error: errorText,
-    };
-  }
-
-  if (part.type === "tool-newTask") {
-    const { description = "creating subtask" } = part.input || {};
-
-    if (part.state === "output-available" && part.output?.result) {
-      const result = part.output.result as string;
-      return {
-        text: `🚀 Subtask completed: ${chalk.bold(description)}\n${chalk.dim("└─")} ${result}`,
-        stop: hasError ? "fail" : "succeed",
-        error: errorText,
-      };
-    }
-    if (part.state === "input-streaming" || part.state === "input-available") {
-      return {
-        text: `🚀 Executing subtask: ${chalk.bold(description)}\n${chalk.dim("└─")} Running ...`,
-        stop: "stopAndPersist",
-        error: errorText,
-      };
-    }
-    return {
-      text: `🚀 Creating subtask: ${chalk.bold(description)}`,
-      stop: hasError ? "fail" : "succeed",
       error: errorText,
     };
   }
