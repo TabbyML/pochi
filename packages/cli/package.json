@@ -3,8 +3,9 @@
   "version": "0.5.0-dev",
   "type": "module",
   "bin": {
-    "pochi": "src/cli.ts"
+    "pochi": "src/cli.js"
   },
+  "files": ["dist/**", "src/cli.js", "README.md", "LICENSE"],
   "scripts": {
     "start": "bun run src/cli.ts",
     "tsc": "tsc",

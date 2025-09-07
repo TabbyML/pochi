@@ -94,6 +94,20 @@ jobs:
           POCHI_CLI_NPM_NAME: ${{ vars.POCHI_CLI_NPM_NAME }}
         run: |
           cd packages/cli
-          echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" > .npmrc
-          # use env to override the default npm name, so we can test the release action
-          POCHI_CLI_NPM_NAME=$POCHI_CLI_NPM_NAME bun release:npm
+
+          # cleanup the binary build
+          rm -rf dist/
+          TARGET=node ./scripts/build-cli.sh
+
+          # for test the CI release
+          if [ -n "$POCHI_CLI_NPM_NAME" ]; then
+            sed -i "s|\"name\": .*|\"name\": \"$POCHI_CLI_NPM_NAME\",|" package.json
+          fi
+
+          # remove dependencies for npm package
+          # since we already have the binary and npm does not support dependencies with `catalog:` and `workspace:`
+          jq 'del(.dependencies) | del(.devDependencies)' package.json > package.json.tmp && mv package.json.tmp package.json
+
+          IS_PRERELEASE=${{ steps.release_info.outputs.is_prerelease }}
+          echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" > ~/.npmrc
+          npm publish --access public ${IS_PRERELEASE:+"--tag beta"}
