@@ -4,7 +4,7 @@ import chalk from "chalk";
 import { Listr, type ListrTask } from "listr2";
 import { renderToolPart } from "./output-renderer";
 
-// 全局存储当前子任务运行器的注册表
+// Global registry for storing current subtask runners
 const activeSubTaskRunners = new Map<string, unknown>();
 
 export class ListrHelper {
@@ -12,21 +12,21 @@ export class ListrHelper {
   private isRunning = false;
 
   /**
-   * 注册子任务运行器供 Listr 监听使用
+   * Register subtask runner for Listr monitoring
    */
   static registerSubTaskRunner(taskId: string, runner: unknown): void {
     activeSubTaskRunners.set(taskId, runner);
   }
 
   /**
-   * 注销子任务运行器
+   * Unregister subtask runner
    */
   static unregisterSubTaskRunner(taskId: string): void {
     activeSubTaskRunners.delete(taskId);
   }
 
   /**
-   * 获取子任务运行器
+   * Get subtask runner
    */
   static getSubTaskRunner(taskId: string): unknown {
     const runner = activeSubTaskRunners.get(taskId);
@@ -34,8 +34,8 @@ export class ListrHelper {
   }
 
   /**
-   * 为 newTask 创建并运行 Listr 任务
-   * 显示子任务的执行进度（异步，非阻塞）
+   * Create and run Listr task for newTask
+   * Display subtask execution progress (asynchronous, non-blocking)
    */
   renderNewTask(part: ToolUIPart<UITools>): void {
     if (part.type !== "tool-newTask") return;
@@ -44,60 +44,60 @@ export class ListrHelper {
       description = "Creating subtask",
       prompt,
     } = part.input || {};
-    // 使用 toolCallId 作为标识符，这样更可靠
+    // Use toolCallId as identifier, which is more reliable
     const taskId = part.toolCallId;
-    // 创建主任务
+    // Create main task
     const tasks: ListrTask[] = [
       {
         title: chalk.bold(`🚀 ${description}`),
         task: async (_ctx, task) => {
           let output = "";
 
-          // 显示 prompt 信息
+          // Display prompt information
           if (prompt) {
             const shortPrompt =
               prompt.length > 150 ? `${prompt.substring(0, 147)}...` : prompt;
             output += `${chalk.dim(`Prompt: ${shortPrompt}`)}\n`;
           }
 
-          // 初始化阶段
+          // Initialization phase
           output += `${chalk.dim("> Setting up environment...")}\n`;
           task.output = output;
           await this.waitForTaskInit(part);
 
-          // 执行阶段
+          // Execution phase
           output += `${chalk.dim("> Executing subtask...")}\n`;
           task.output = output;
 
-          // 启动工具监听，但不阻塞
+          // Start tool monitoring, but don't block
           this.startToolMonitoring(taskId, (toolPart: ToolUIPart<UITools>) => {
             const { text } = renderToolPart(toolPart);
             output += `${chalk.cyan(`  > ${text}`)}\n`;
             task.output = output;
           });
 
-          // 等待任务完成
+          // Wait for task completion
           await this.waitForSubtaskCompletion(part, taskId);
 
-          // 获取最终的工具列表
+          // Get final tool list
           const usedTools = this.getUsedTools(taskId);
           if (usedTools.length > 0) {
             output += `${chalk.dim(`> Tools used: ${usedTools.length} tool(s)`)}\n`;
           }
 
-          // 结果处理阶段
+          // Result processing phase
           if (part.state !== "output-error") {
             task.output = output;
             await this.processTaskResult(part);
 
-            // 显示最终结果
+            // Display final results
             if (part.output && "result" in part.output) {
               const result = (part.output as Record<string, unknown>)
                 .result as string;
               output += `${chalk.green("> ✓ Results processed")}\n`;
               output += `${chalk.dim(`  Result: ${result}`)}\n`;
 
-              // 显示执行的命令详情（如果是 executeCommand）
+              // Display executed command details (if executeCommand)
               const input = part.input as Record<string, unknown>;
               if (input?.command) {
                 output += `${chalk.dim(`  Command: ${input.command}`)}\n`;
@@ -111,7 +111,7 @@ export class ListrHelper {
 
             task.output = output;
           } else {
-            // 错误情况
+            // Error case
             output += `${chalk.red("> ✗ Subtask failed")}\n`;
             if (part.errorText) {
               output += `${chalk.dim(`  Error: ${part.errorText}`)}\n`;
@@ -119,7 +119,7 @@ export class ListrHelper {
             task.output = output;
           }
         },
-        // 关键：在任务级别设置 persistentOutput
+        // Key: Set persistentOutput at task level
         rendererOptions: { persistentOutput: true },
       },
     ];
@@ -144,7 +144,7 @@ export class ListrHelper {
 
     this.isRunning = true;
 
-    // 异步运行，不阻塞主流程
+    // Run asynchronously, don't block main flow
     this.listr
       .run()
       .then(() => {
@@ -157,10 +157,10 @@ export class ListrHelper {
   }
 
   /**
-   * 等待任务初始化
+   * Wait for task initialization
    */
   private async waitForTaskInit(part: ToolUIPart<UITools>): Promise<void> {
-    // 等待状态变化到 input-available 或更高
+    // Wait for state change to input-available or higher
     await this.waitForState(part, [
       "input-available",
       "output-available",
@@ -168,7 +168,7 @@ export class ListrHelper {
     ]);
   }
 
-  // 存储工具监听的状态
+  // Store tool monitoring state
   private toolMonitors = new Map<
     string,
     {
@@ -179,7 +179,7 @@ export class ListrHelper {
   >();
 
   /**
-   * 启动工具监听（非阻塞）
+   * Start tool monitoring (non-blocking)
    */
   private startToolMonitoring(
     taskId: string,
@@ -209,14 +209,14 @@ export class ListrHelper {
             >
           )?.messages as unknown[]) || [];
 
-        // 重新检查所有消息，确保不遗漏
+        // Re-check all messages to ensure none are missed
         for (let i = 0; i < messages.length; i++) {
           const message = messages[i] as Record<string, unknown>;
           if (message.role === "assistant") {
             for (const msgPart of (message.parts as unknown[]) || []) {
               const part = msgPart as Record<string, unknown>;
               if (part.type?.toString().startsWith("tool-")) {
-                // 任务完成标志不作为普通工具显示
+                // Task completion flags are not displayed as regular tools
                 if (
                   part.type === "tool-attemptCompletion" ||
                   part.type === "tool-askFollowupQuestion"
@@ -245,7 +245,7 @@ export class ListrHelper {
   }
 
   /**
-   * 获取已使用的工具
+   * Get used tools
    */
   private getUsedTools(taskId: string): string[] {
     const monitor = this.toolMonitors.get(taskId);
@@ -253,7 +253,7 @@ export class ListrHelper {
   }
 
   /**
-   * 清理工具监听
+   * Clean up tool monitoring
    */
   private cleanupToolMonitoring(taskId: string): void {
     const monitor = this.toolMonitors.get(taskId);
@@ -264,7 +264,7 @@ export class ListrHelper {
   }
 
   /**
-   * 等待子任务完成（简化版本，主要依赖工具状态）
+   * Wait for subtask completion (simplified version, mainly relies on tool state)
    */
   private async waitForSubtaskCompletion(
     part: ToolUIPart<UITools>,
@@ -272,12 +272,12 @@ export class ListrHelper {
   ): Promise<void> {
     return new Promise((resolve) => {
       let iterations = 0;
-      const maxIterations = 300; // 最多 60 秒 (300 * 200ms)
+      const maxIterations = 300; // Maximum 60 seconds (300 * 200ms)
 
       const interval = setInterval(() => {
         iterations++;
 
-        // 超时保护
+        // Timeout protection
         if (iterations >= maxIterations) {
           clearInterval(interval);
           if (taskId) this.cleanupToolMonitoring(taskId);
@@ -285,7 +285,7 @@ export class ListrHelper {
           return;
         }
 
-        // 检查工具完成状态
+        // Check tool completion status
         if (part.state === "output-available") {
           clearInterval(interval);
           if (taskId) this.cleanupToolMonitoring(taskId);
@@ -293,11 +293,11 @@ export class ListrHelper {
           return;
         }
 
-        // 检查任务完成标志：attemptCompletion 或 askFollowupQuestion
+        // Check task completion flags: attemptCompletion or askFollowupQuestion
         if (taskId) {
           const subTaskRunner = ListrHelper.getSubTaskRunner(taskId);
           if (subTaskRunner) {
-            // 直接检查最新消息中的任务完成标志
+            // Directly check task completion flags in latest messages
             const messages =
               ((
                 (subTaskRunner as Record<string, unknown>).state as Record<
@@ -325,7 +325,7 @@ export class ListrHelper {
           }
         }
 
-        // 检查错误状态
+        // Check error status
         if (part.state === "output-error") {
           clearInterval(interval);
           if (taskId) this.cleanupToolMonitoring(taskId);
@@ -337,15 +337,15 @@ export class ListrHelper {
   }
 
   /**
-   * 处理任务结果
+   * Process task result
    */
   private async processTaskResult(_part: ToolUIPart<UITools>): Promise<void> {
-    // 等待一小段时间以确保结果完整
+    // Wait a short time to ensure results are complete
     await new Promise((resolve) => setTimeout(resolve, 300));
   }
 
   /**
-   * 等待特定状态
+   * Wait for specific state
    */
   private async waitForState(
     part: ToolUIPart<UITools>,
@@ -362,7 +362,7 @@ export class ListrHelper {
   }
 
   /**
-   * 停止当前运行的 Listr
+   * Stop currently running Listr
    */
   stop(): void {
     if (this.isRunning && this.listr) {
@@ -372,7 +372,7 @@ export class ListrHelper {
   }
 
   /**
-   * 检查是否正在运行
+   * Check if currently running
    */
   get running(): boolean {
     return this.isRunning;
