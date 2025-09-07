@@ -12,7 +12,8 @@ import {
   FlexibleChatTransport,
   type OnStartCallback,
 } from "./flexible-chat-transport";
-import { compactTask, generateTaskTitle } from "./llm";
+import { generateTitleManager } from "./generate-title-manager";
+import { compactTask } from "./llm";
 import { createModel } from "./models";
 
 const logger = getLogger("LiveChatKit");
@@ -213,7 +214,6 @@ export class LiveChatKit<
   private readonly onStart: OnStartCallback = async ({
     messages,
     environment,
-    abortSignal,
     getters,
   }) => {
     const { store } = this;
@@ -235,10 +235,10 @@ export class LiveChatKit<
 
       const getModel = () =>
         createModel({ id: this.taskId, llm: getters.getLLM() });
-      const title = await generateTaskTitle({
-        title: task.title,
+      generateTitleManager.push({
+        taskId: this.taskId,
+        store,
         messages,
-        abortSignal,
         getModel,
       });
 
@@ -255,7 +255,6 @@ export class LiveChatKit<
                 branch: gitStatus.currentBranch,
               }
             : undefined,
-          title,
           updatedAt: new Date(),
         }),
       );

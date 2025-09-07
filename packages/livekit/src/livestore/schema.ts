@@ -129,6 +129,8 @@ export const events = {
       id: Schema.String,
       data: DBMessage,
       todos: Todos,
+      // @deprecated
+      // use updateTitle instead
       title: Schema.optional(Schema.String),
       git: Schema.optional(Git),
       updatedAt: Schema.Date,
@@ -158,6 +160,14 @@ export const events = {
     schema: Schema.Struct({
       id: Schema.String,
       shareId: Schema.String,
+      updatedAt: Schema.Date,
+    }),
+  }),
+  updateTitle: Events.synced({
+    name: "v1.UpdateTitle",
+    schema: Schema.Struct({
+      id: Schema.String,
+      title: Schema.String,
       updatedAt: Schema.Date,
     }),
   }),
@@ -252,6 +262,8 @@ const materializers = State.SQLite.materializers(events, {
   ],
   "v1.UpdateShareId": ({ id, shareId, updatedAt }) =>
     tables.tasks.update({ shareId, updatedAt }).where({ id, shareId: null }),
+  "v1.UpdateTitle": ({ id, title, updatedAt }) =>
+    tables.tasks.update({ title, updatedAt }).where({ id }),
 });
 
 const state = State.SQLite.makeState({ tables, materializers });
