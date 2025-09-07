@@ -1,8 +1,8 @@
-import { Listr, type ListrTask } from 'listr2';
-import type { ToolUIPart } from "ai";
 import type { UITools } from "@getpochi/livekit";
-import chalk from 'chalk';
-import { renderToolPart } from './output-renderer';
+import type { ToolUIPart } from "ai";
+import chalk from "chalk";
+import { Listr, type ListrTask } from "listr2";
+import { renderToolPart } from "./output-renderer";
 
 // 全局存储当前子任务运行器的注册表
 const activeSubTaskRunners = new Map<string, unknown>();
@@ -39,8 +39,11 @@ export class ListrHelper {
    */
   renderNewTask(part: ToolUIPart<UITools>): void {
     if (part.type !== "tool-newTask") return;
-    
-    const { description = "Creating subtask", prompt, _meta } = part.input || {};
+
+    const {
+      description = "Creating subtask",
+      prompt,
+    } = part.input || {};
     // 使用 toolCallId 作为标识符，这样更可靠
     const taskId = part.toolCallId;
     // 创建主任务
@@ -48,35 +51,34 @@ export class ListrHelper {
       {
         title: chalk.bold(`🚀 ${description}`),
         task: async (_ctx, task) => {
-          let output = '';
-          
+          let output = "";
+
           // 显示 prompt 信息
           if (prompt) {
-            const shortPrompt = prompt.length > 150 
-              ? prompt.substring(0, 147) + '...' 
-              : prompt;
+            const shortPrompt =
+              prompt.length > 150 ? `${prompt.substring(0, 147)}...` : prompt;
             output += `${chalk.dim(`Prompt: ${shortPrompt}`)}\n`;
           }
 
           // 初始化阶段
-          output += `${chalk.dim('› Setting up environment...')}\n`;
+          output += `${chalk.dim("› Setting up environment...")}\n`;
           task.output = output;
           await this.waitForTaskInit(part);
 
           // 执行阶段
-          output += `${chalk.dim('› Executing subtask...')}\n`;
+          output += `${chalk.dim("› Executing subtask...")}\n`;
           task.output = output;
-          
+
           // 启动工具监听，但不阻塞
           this.startToolMonitoring(taskId, (toolPart: ToolUIPart<UITools>) => {
             const { text } = renderToolPart(toolPart);
             output += `${chalk.cyan(`  › ${text}`)}\n`;
             task.output = output;
           });
-          
+
           // 等待任务完成
           await this.waitForSubtaskCompletion(part, taskId);
-          
+
           // 获取最终的工具列表
           const usedTools = this.getUsedTools(taskId);
           if (usedTools.length > 0) {
@@ -84,16 +86,17 @@ export class ListrHelper {
           }
 
           // 结果处理阶段
-          if (part.state !== 'output-error') {
+          if (part.state !== "output-error") {
             task.output = output;
             await this.processTaskResult(part);
-            
+
             // 显示最终结果
-            if (part.output && 'result' in part.output) {
-              const result = (part.output as Record<string, unknown>).result as string;
-              output += `${chalk.green('› ✓ Results processed')}\n`;
+            if (part.output && "result" in part.output) {
+              const result = (part.output as Record<string, unknown>)
+                .result as string;
+              output += `${chalk.green("› ✓ Results processed")}\n`;
               output += `${chalk.dim(`  Result: ${result}`)}\n`;
-              
+
               // 显示执行的命令详情（如果是 executeCommand）
               const input = part.input as Record<string, unknown>;
               if (input?.command) {
@@ -103,13 +106,13 @@ export class ListrHelper {
                 output += `${chalk.dim(`  Working directory: ${input.cwd}`)}\n`;
               }
             } else {
-              output += `${chalk.green('› ✓ Processing complete')}\n`;
+              output += `${chalk.green("› ✓ Processing complete")}\n`;
             }
-            
+
             task.output = output;
           } else {
             // 错误情况
-            output += `${chalk.red('› ✗ Subtask failed')}\n`;
+            output += `${chalk.red("› ✗ Subtask failed")}\n`;
             if (part.errorText) {
               output += `${chalk.dim(`  Error: ${part.errorText}`)}\n`;
             }
@@ -117,8 +120,8 @@ export class ListrHelper {
           }
         },
         // 关键：在任务级别设置 persistentOutput
-        rendererOptions: { persistentOutput: true }
-      }
+        rendererOptions: { persistentOutput: true },
+      },
     ];
 
     this.listr = new Listr(tasks, {
@@ -132,22 +135,20 @@ export class ListrHelper {
         collapseSkips: false,
         showTimer: true,
         clearOutput: false,
-        formatOutput: 'wrap',
+        formatOutput: "wrap",
         persistentOutput: true,
         removeEmptyLines: false,
-        suffixSkips: false
-      }
+        suffixSkips: false,
+      },
     });
 
     this.isRunning = true;
-    
+
     // 异步运行，不阻塞主流程
-    this.listr.run()
+    this.listr
+      .run()
       .then(() => {
         // Task completed
-      })
-      .catch((error) => {
-        // Handle error silently
       })
       .finally(() => {
         this.isRunning = false;
@@ -160,54 +161,73 @@ export class ListrHelper {
    */
   private async waitForTaskInit(part: ToolUIPart<UITools>): Promise<void> {
     // 等待状态变化到 input-available 或更高
-    await this.waitForState(part, ['input-available', 'output-available', 'output-error']);
+    await this.waitForState(part, [
+      "input-available",
+      "output-available",
+      "output-error",
+    ]);
   }
 
   // 存储工具监听的状态
-  private toolMonitors = new Map<string, {
-    tools: string[],
-    interval?: NodeJS.Timeout,
-    lastProcessedMessageIndex: number
-  }>();
+  private toolMonitors = new Map<
+    string,
+    {
+      tools: string[];
+      interval?: NodeJS.Timeout;
+      lastProcessedMessageIndex: number;
+    }
+  >();
 
   /**
    * 启动工具监听（非阻塞）
    */
-  private startToolMonitoring(taskId: string, onToolUse: (toolPart: ToolUIPart<UITools>) => void): void {
+  private startToolMonitoring(
+    taskId: string,
+    onToolUse: (toolPart: ToolUIPart<UITools>) => void,
+  ): void {
     if (this.toolMonitors.has(taskId)) return;
-    
+
     const monitor: {
-      tools: string[],
-      interval?: NodeJS.Timeout,
-      lastProcessedMessageIndex: number
+      tools: string[];
+      interval?: NodeJS.Timeout;
+      lastProcessedMessageIndex: number;
     } = {
       tools: [],
-      lastProcessedMessageIndex: -1
+      lastProcessedMessageIndex: -1,
     };
-    
+
     this.toolMonitors.set(taskId, monitor);
-    
+
     monitor.interval = setInterval(() => {
       const subTaskRunner = ListrHelper.getSubTaskRunner(taskId);
       if (subTaskRunner) {
-        const messages = (((subTaskRunner as Record<string, unknown>).state as Record<string, unknown>)?.messages as unknown[]) || [];
-        
+        const messages =
+          ((
+            (subTaskRunner as Record<string, unknown>).state as Record<
+              string,
+              unknown
+            >
+          )?.messages as unknown[]) || [];
+
         // 重新检查所有消息，确保不遗漏
         for (let i = 0; i < messages.length; i++) {
           const message = messages[i] as Record<string, unknown>;
-          if (message.role === 'assistant') {
+          if (message.role === "assistant") {
             for (const msgPart of (message.parts as unknown[]) || []) {
               const part = msgPart as Record<string, unknown>;
-              if (part.type?.toString().startsWith('tool-')) {
+              if (part.type?.toString().startsWith("tool-")) {
                 // 任务完成标志不作为普通工具显示
-                if (part.type === 'tool-attemptCompletion' || part.type === 'tool-askFollowupQuestion') {
+                if (
+                  part.type === "tool-attemptCompletion" ||
+                  part.type === "tool-askFollowupQuestion"
+                ) {
                   continue;
                 }
-                const toolName = part.type.toString().replace('tool-', '');
-                
+                const toolName = part.type.toString().replace("tool-", "");
+
                 if (!monitor.tools.includes(toolName)) {
                   monitor.tools.push(toolName);
-                  
+
                   const toolPart = part as ToolUIPart<UITools>;
                   try {
                     onToolUse(toolPart);
@@ -248,15 +268,15 @@ export class ListrHelper {
    */
   private async waitForSubtaskCompletion(
     part: ToolUIPart<UITools>,
-    taskId?: string
+    taskId?: string,
   ): Promise<void> {
     return new Promise((resolve) => {
       let iterations = 0;
       const maxIterations = 300; // 最多 60 秒 (300 * 200ms)
-      
+
       const interval = setInterval(() => {
         iterations++;
-        
+
         // 超时保护
         if (iterations >= maxIterations) {
           clearInterval(interval);
@@ -264,27 +284,36 @@ export class ListrHelper {
           resolve();
           return;
         }
-        
+
         // 检查工具完成状态
-        if (part.state === 'output-available') {
+        if (part.state === "output-available") {
           clearInterval(interval);
           if (taskId) this.cleanupToolMonitoring(taskId);
           resolve();
           return;
         }
-        
+
         // 检查任务完成标志：attemptCompletion 或 askFollowupQuestion
         if (taskId) {
           const subTaskRunner = ListrHelper.getSubTaskRunner(taskId);
           if (subTaskRunner) {
             // 直接检查最新消息中的任务完成标志
-            const messages = (((subTaskRunner as Record<string, unknown>).state as Record<string, unknown>)?.messages as unknown[]) || [];
+            const messages =
+              ((
+                (subTaskRunner as Record<string, unknown>).state as Record<
+                  string,
+                  unknown
+                >
+              )?.messages as unknown[]) || [];
             for (const message of messages) {
               const msg = message as Record<string, unknown>;
-              if (msg.role === 'assistant') {
+              if (msg.role === "assistant") {
                 for (const msgPart of (msg.parts as unknown[]) || []) {
                   const part = msgPart as Record<string, unknown>;
-                  if (part.type === 'tool-attemptCompletion' || part.type === 'tool-askFollowupQuestion') {
+                  if (
+                    part.type === "tool-attemptCompletion" ||
+                    part.type === "tool-askFollowupQuestion"
+                  ) {
                     clearInterval(interval);
                     this.cleanupToolMonitoring(taskId);
                     resolve();
@@ -295,9 +324,9 @@ export class ListrHelper {
             }
           }
         }
-        
+
         // 检查错误状态
-        if (part.state === 'output-error') {
+        if (part.state === "output-error") {
           clearInterval(interval);
           if (taskId) this.cleanupToolMonitoring(taskId);
           resolve();
@@ -312,7 +341,7 @@ export class ListrHelper {
    */
   private async processTaskResult(_part: ToolUIPart<UITools>): Promise<void> {
     // 等待一小段时间以确保结果完整
-    await new Promise(resolve => setTimeout(resolve, 300));
+    await new Promise((resolve) => setTimeout(resolve, 300));
   }
 
   /**
@@ -320,7 +349,7 @@ export class ListrHelper {
    */
   private async waitForState(
     part: ToolUIPart<UITools>,
-    targetStates: string[]
+    targetStates: string[],
   ): Promise<void> {
     return new Promise((resolve) => {
       const checkState = setInterval(() => {

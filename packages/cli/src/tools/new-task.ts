@@ -1,6 +1,6 @@
 import type { ClientTools, ToolFunctionType } from "@getpochi/tools";
-import type { ToolCallOptions } from "../types";
 import { ListrHelper } from "../listr-helper";
+import type { ToolCallOptions } from "../types";
 
 /**
  * Implements the newTask tool for CLI runner.
@@ -27,9 +27,9 @@ export const newTask =
     try {
       // Execute the sub-task
       await subTaskRunner.run();
-      
+
       // Give listr some time to detect completion status, avoid premature cleanup
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
     } finally {
       // Unregister sub-task runner
       ListrHelper.unregisterSubTaskRunner(registrationKey);

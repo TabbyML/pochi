@@ -4,8 +4,8 @@ import type { Message, UITools } from "@getpochi/livekit";
 import { type ToolUIPart, getToolName, isToolUIPart } from "ai";
 import chalk from "chalk";
 import ora, { type Ora } from "ora";
-import type { NodeChatState } from "./livekit/chat.node";
 import { ListrHelper } from "./listr-helper";
+import type { NodeChatState } from "./livekit/chat.node";
 
 export class OutputRenderer {
   private listrHelper = new ListrHelper();
@@ -66,25 +66,27 @@ export class OutputRenderer {
           this.spinner.stop();
           this.spinner = undefined;
         }
-        
+
         // 使用 toolCallId 来跟踪已渲染的任务，避免重复渲染
         if (!this.renderedNewTasks.has(part.toolCallId)) {
           this.renderedNewTasks.add(part.toolCallId);
           // 启动 listr 渲染（异步，不阻塞）
           this.listrHelper.renderNewTask(part);
         }
-        
+
         // 对于 newTask，完全跳过常规的 OutputRenderer 处理
         // Listr 会处理所有的显示逻辑
-        if (part.state === "output-available" || part.state === "output-error") {
+        if (
+          part.state === "output-available" ||
+          part.state === "output-error"
+        ) {
           // newTask 完成，移动到下一个 part
           this.pendingPartIndex++;
           // 不创建新的 spinner，让下一次循环决定
           continue;
-        } else {
-          // 工具仍在执行中，等待状态更新
-          break;
         }
+        // 工具仍在执行中，等待状态更新
+        break;
       }
 
       // 对于非 newTask 的 part，确保有 spinner
@@ -117,7 +119,7 @@ export class OutputRenderer {
 
       if (this.pendingPartIndex < lastMessage.parts.length - 1) {
         this.spinner?.stopAndPersist();
-        this.spinner = undefined;  // 清理 spinner，下次循环会根据需要创建
+        this.spinner = undefined; // 清理 spinner，下次循环会根据需要创建
         this.pendingPartIndex++;
       } else {
         break;
