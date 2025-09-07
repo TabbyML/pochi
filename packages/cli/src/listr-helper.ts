@@ -89,23 +89,7 @@ export class ListrHelper {
             await this.processTaskResult(part);
 
             // Display final results
-            if (part.output && "result" in part.output) {
-              const result = (part.output as Record<string, unknown>)
-                .result as string;
-              output += `${chalk.green("> ✓ Results processed")}\n`;
-              output += `${chalk.dim(`  Result: ${result}`)}\n`;
-
-              // Display executed command details (if executeCommand)
-              const input = part.input as Record<string, unknown>;
-              if (input?.command) {
-                output += `${chalk.dim(`  Command: ${input.command}`)}\n`;
-              }
-              if (input?.cwd) {
-                output += `${chalk.dim(`  Working directory: ${input.cwd}`)}\n`;
-              }
-            } else {
-              output += `${chalk.green("> ✓ Processing complete")}\n`;
-            }
+            output += `${chalk.green("> ✓ Processing complete")}\n`;
 
             task.output = output;
           } else {
