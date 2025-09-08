@@ -32,13 +32,13 @@ export function registerMcpListCommand(parentCommand: Command) {
       // Calculate column widths for proper alignment
       const maxNameLength = Math.max(
         ...sortedServerEntries.map(([name]) => name.length),
-        4, // minimum for "NAME" header
+        12, // minimum for "NAME" header
       );
       const statusWidth = 8; // "STATUS" header length
-      const transportWidth = 9; // "TRANSPORT" header length
+      const transportWidth = 12; // "TRANSPORT" header length
 
       // Calculate max details width if we have disabled tools column
-      let maxDetailsLength = 7; // minimum for "DETAILS" header
+      let maxDetailsLength = 8; // minimum for "DETAILS" header
       if (hasDisabledTools) {
         for (const [, serverConfig] of sortedServerEntries) {
           let details = "";
