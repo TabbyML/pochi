@@ -1,4 +1,5 @@
 import * as fs from "node:fs/promises";
+import * as os from "node:os";
 import * as path from "node:path";
 import { constants, prompts } from "@getpochi/common";
 
@@ -10,9 +11,7 @@ function getLocalWorkflowPath(id: string) {
 
 function getGlobalWorkflowPath(id: string) {
   // Construct the workflow file path
-  const workflowsDir = path.join(
-    ...constants.GlobalWorkspaceWorkflowPathSegments,
-  );
+  const workflowsDir = path.join(os.homedir(), ...constants.WorkspaceWorkflowPathSegments);
   return path.join(workflowsDir, `${id}.md`);
 }
 
