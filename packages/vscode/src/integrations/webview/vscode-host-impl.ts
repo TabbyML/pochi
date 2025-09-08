@@ -11,6 +11,9 @@ import {
 import { getWorkspaceFolder, isFileExists } from "@/lib/fs";
 
 import path from "node:path";
+import type { AuthClient } from "@/lib/auth-client";
+// biome-ignore lint/style/useImportType: needed for dependency injection
+import { AuthEvents } from "@/lib/auth-events";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { CustomAgentManager } from "@/lib/custom-agent";
 import { getLogger } from "@/lib/logger";
@@ -120,6 +123,8 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     private readonly modelList: ModelList,
     private readonly userStorage: UserStorage,
     private readonly customAgentManager: CustomAgentManager,
+    @inject("AuthClient") private readonly authClient: AuthClient,
+    private readonly authEvents: AuthEvents,
   ) {}
   listRuleFiles = async (): Promise<RuleFile[]> => {
     return await collectRuleFiles();
@@ -713,6 +718,29 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     ThreadSignalSerialization<CustomAgentFile[]>
   > => {
     return ThreadSignal.serialize(this.customAgentManager.agents);
+  };
+
+  loginWithToken = async (token: string): Promise<void> => {
+    await vscode.window.withProgress(
+      {
+        location: vscode.ProgressLocation.Notification,
+        cancellable: false,
+      },
+      async (progress) => {
+        progress.report({ message: "Login in progress, please wait..." });
+
+        const { data, error } = await this.authClient.deviceLink.verify({
+          query: { token },
+        });
+
+        if (error || "error" in data) {
+          vscode.window.showErrorMessage("Failed to login, please try again.");
+          return;
+        }
+
+        this.authEvents.loginEvent.fire();
+      },
+    );
   };
 
   dispose() {

@@ -265,6 +265,12 @@ export interface VSCodeHostApi {
   readUserStorage(): Promise<
     ThreadSignalSerialization<Record<string, UserInfo>>
   >;
+
+  /**
+   * Login with device token.
+   * @param token - The device token from the login page.
+   */
+  loginWithToken(token: string): Promise<void>;
 }
 
 export interface WebviewHostApi {

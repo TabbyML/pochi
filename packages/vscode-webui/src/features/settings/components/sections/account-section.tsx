@@ -1,10 +1,13 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import { useTokenLogin } from "@/lib/hooks/use-token-login";
 import { useUserStorage } from "@/lib/hooks/use-user-storage";
 import {
   ChevronsUpDown,
@@ -22,6 +25,13 @@ export const AccountSection = () => {
     users: { pochi: user } = {},
   } = useUserStorage();
   const { t } = useTranslation();
+  const {
+    showFallback,
+    userCode,
+    handleLoginClick,
+    handleUserCodeSubmit,
+    handleUserCodeChange,
+  } = useTokenLogin(user);
 
   if (!user) {
     return (
@@ -29,6 +39,7 @@ export const AccountSection = () => {
         <div className="my-2">
           <a
             href="command:pochi.openLoginPage"
+            onClick={handleLoginClick}
             target="_blank"
             rel="noopener noreferrer"
             className="flex cursor-pointer items-center gap-4 rounded-lg border border-[var(--vscode-textLink-foreground)]/70 border-dashed bg-[var(--vscode-textLink-foreground)]/5 px-4 py-5 transition-all hover:border-[var(--vscode-textLink-foreground)]/90 hover:bg-[var(--vscode-textLink-foreground)]/10 hover:shadow-sm"
@@ -45,6 +56,23 @@ export const AccountSection = () => {
               </span>
             </div>
           </a>
+          {showFallback && (
+            <div className="mt-4 flex flex-col gap-2">
+              <p className="text-muted-foreground text-xs">
+                If you clicked approve in the browser but weren't redirected
+                back to the extension, you can manually enter the code from the
+                login page.
+              </p>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Enter code..."
+                  value={userCode}
+                  onChange={(e) => handleUserCodeChange(e.target.value)}
+                />
+                <Button onClick={handleUserCodeSubmit}>Submit</Button>
+              </div>
+            </div>
+          )}
         </div>
       </Section>
     );
@@ -54,7 +82,7 @@ export const AccountSection = () => {
     <Section title="" className="pt-0">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <div className="flex flex-grow cursor-pointer items-center justify-between gap-3 rounded-md p-2 hover:bg-secondary/50 dark:hover:bg-secondary">
+          <div className="flex flex-grow cursor-pointer items-center justify-between gap-3 rounded-md p-2 hover:bg-secondary/50dark:hover:bg-secondary">
             <div className="flex items-center gap-3">
               <Avatar className="size-10">
                 <AvatarImage src={user.image ?? undefined} />

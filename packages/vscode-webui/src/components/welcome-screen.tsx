@@ -1,13 +1,25 @@
-import { buttonVariants } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { useTokenLogin } from "@/lib/hooks/use-token-login";
 import { cn } from "@/lib/utils";
 import type { UserInfo } from "@getpochi/common/configuration";
 import { LogInIcon, SettingsIcon } from "lucide-react";
+// import { useTranslation } from "react-i18next";
 
 interface Props {
   user: UserInfo | undefined;
 }
 
 export const WelcomeScreen = ({ user }: Props) => {
+  // const { t } = useTranslation();
+  const {
+    showFallback,
+    userCode,
+    handleLoginClick,
+    handleUserCodeSubmit,
+    handleUserCodeChange,
+  } = useTokenLogin(user);
+
   return (
     <div className="flex h-screen flex-col items-center justify-center">
       {/* Main Content - Scrollable */}
@@ -51,6 +63,7 @@ export const WelcomeScreen = ({ user }: Props) => {
                     "px-4 py-2 text-sm sm:px-6 sm:py-3",
                   )}
                   href="command:pochi.openLoginPage"
+                  onClick={handleLoginClick}
                   target="_blank"
                   rel="noopener noreferrer"
                 >
@@ -59,6 +72,23 @@ export const WelcomeScreen = ({ user }: Props) => {
                 </a>
               )}
             </div>
+            {!user && showFallback && (
+              <div className="mt-4 flex w-full max-w-md flex-col gap-2">
+                <p className="text-muted-foreground text-xs">
+                  If you clicked approve in the browser but weren't redirected
+                  back to the extension, you can manually enter the code from
+                  the login page.
+                </p>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Enter code..."
+                    value={userCode}
+                    onChange={(e) => handleUserCodeChange(e.target.value)}
+                  />
+                  <Button onClick={handleUserCodeSubmit}>Submit</Button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
         <div className="h-[12vh]" />

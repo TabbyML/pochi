@@ -214,6 +214,9 @@ const VSCodeHostStub = {
   > => {
     return Promise.resolve({} as ThreadSignalSerialization<CustomAgentFile[]>);
   },
+  loginWithToken(_token: string) {
+    return Promise.resolve();
+  },
 } satisfies VSCodeHostApi;
 
 export function createVscodeHostStub(overrides?: Partial<VSCodeHostApi>) {
