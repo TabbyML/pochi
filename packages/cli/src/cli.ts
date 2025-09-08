@@ -29,6 +29,7 @@ import {
   replaceWorkflowReferences,
 } from "./lib/workflow-loader";
 import { createStore } from "./livekit/store";
+import { registerMcpCommand } from "./mcp";
 import { registerModelCommand } from "./model";
 import { OutputRenderer } from "./output-renderer";
 import { TaskRunner } from "./task-runner";
@@ -147,6 +148,7 @@ program
 registerAuthCommand(program);
 registerModelCommand(program);
 registerUpgradeCommand(program);
+registerMcpCommand(program);
 
 program.parse(process.argv);
 
