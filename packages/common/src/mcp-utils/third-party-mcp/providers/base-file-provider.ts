@@ -1,9 +1,10 @@
-import { isFileExists, readFileContent } from "@/lib/fs";
-import { getLogger } from "@/lib/logger";
+import { isFileExists } from "../../../tool-utils";
+import { getLogger } from "../../../base";
 import type { McpServerConfig } from "@getpochi/common/configuration";
 import * as vscode from "vscode";
 import type { McpConfigProvider } from "../provider";
 import { expandPathSegments, normalizePath } from "./path-utils";
+import * as fs from "node:fs/promises";
 
 const logger = getLogger("BaseFileMcpProvider");
 
@@ -37,13 +38,13 @@ export abstract class BaseFileMcpProvider implements McpConfigProvider {
   async getServers(): Promise<Record<string, McpServerConfig>> {
     if (
       !this.configPath ||
-      !(await isFileExists(vscode.Uri.file(this.configPath)))
+      !(await isFileExists(this.configPath))
     ) {
       return {};
     }
 
     try {
-      const content = await readFileContent(this.configPath);
+      const content = await fs.readFile(this.configPath, "utf-8");
       if (!content) {
         return {};
       }
