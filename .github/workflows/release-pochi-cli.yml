@@ -104,10 +104,7 @@ jobs:
             sed -i "s|\"name\": .*|\"name\": \"$POCHI_CLI_NPM_NAME\",|" package.json
           fi
 
-          # remove dependencies for npm package
-          # since we already have the binary and npm does not support dependencies with `catalog:` and `workspace:`
-          jq 'del(.dependencies) | del(.devDependencies)' package.json > package.json.tmp && mv package.json.tmp package.json
-
           IS_PRERELEASE=${{ steps.release_info.outputs.is_prerelease }}
           echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" > ~/.npmrc
-          npm publish --access public ${IS_PRERELEASE:+"--tag beta"}
+          bun install
+          bun publish --access public ${IS_PRERELEASE:+"--tag beta"}

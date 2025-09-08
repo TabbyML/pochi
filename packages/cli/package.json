@@ -3,9 +3,9 @@
   "version": "0.5.0-dev",
   "type": "module",
   "bin": {
-    "pochi": "src/cli.js"
+    "pochi": "dist/cli.js"
   },
-  "files": ["dist/**", "src/cli.js", "README.md", "LICENSE"],
+  "files": ["dist/**", "README.md", "LICENSE"],
   "scripts": {
     "start": "bun run src/cli.ts",
     "tsc": "tsc",
@@ -15,7 +15,9 @@
     "release": "bunx bumpp --tag=cli@%s",
     "release:npm": "bun run ./scripts/npm-release.ts"
   },
-  "dependencies": {
+  "devDependencies": {
+    "@getpochi/tools": "workspace:*",
+    "@types/semver": "^7.5.8",
     "@commander-js/extra-typings": "^14.0.0",
     "@getpochi/common": "workspace:*",
     "@getpochi/livekit": "workspace:*",
@@ -31,9 +33,5 @@
     "hono": "catalog:",
     "ora": "^8.2.0",
     "semver": "^7.6.3"
-  },
-  "devDependencies": {
-    "@getpochi/tools": "workspace:*",
-    "@types/semver": "^7.5.8"
   }
 }

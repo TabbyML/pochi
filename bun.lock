@@ -19,18 +19,20 @@
       "name": "@getpochi/cli",
       "version": "0.5.0-dev",
       "bin": {
-        "pochi": "src/cli.ts",
+        "pochi": "dist/cli.js",
       },
-      "dependencies": {
+      "devDependencies": {
         "@commander-js/extra-typings": "^14.0.0",
         "@getpochi/common": "workspace:*",
         "@getpochi/livekit": "workspace:*",
+        "@getpochi/tools": "workspace:*",
         "@getpochi/vendor-gemini-cli": "workspace:*",
         "@getpochi/vendor-pochi": "workspace:*",
         "@livestore/adapter-node": "catalog:",
         "@livestore/livestore": "catalog:",
         "@livestore/wa-sqlite": "catalog:",
         "@preact/signals-core": "^1.6.2",
+        "@types/semver": "^7.5.8",
         "ai": "catalog:",
         "chalk": "^5.3.0",
         "commander": "^14.0.0",
@@ -38,13 +40,10 @@
         "ora": "^8.2.0",
         "semver": "^7.6.3",
       },
-      "devDependencies": {
-        "@getpochi/tools": "workspace:*",
-        "@types/semver": "^7.5.8",
-      },
     },
     "packages/common": {
       "name": "@getpochi/common",
+      "version": "0.1.0-dev",
       "dependencies": {
         "@ai-sdk/provider": "catalog:",
         "@getpochi/tools": "workspace:*",
@@ -107,6 +106,7 @@
     },
     "packages/livekit": {
       "name": "@getpochi/livekit",
+      "version": "0.1.0-dev",
       "dependencies": {
         "@ai-sdk/gateway": "catalog:",
         "@ai-sdk/google-vertex": "catalog:",
