@@ -160,7 +160,7 @@ const MentionItemView = memo(function MentionItemView({
         <span className="truncate">{highlightedText()}</span>
       </span>
       {isSelected && (
-        <span className="ml-auto flex-shrink-0 rounded-sm border border-foreground px-1.25 py-0.25 font-medium text-foreground text-xs">
+        <span className="ml-auto flex-shrink-0 rounded border border-foreground px-1.5 font-medium text-[0.65rem] text-foreground">
           Tab
         </span>
       )}
