@@ -93,7 +93,7 @@ export function registerMcpListCommand(parentCommand: Command) {
       const separator = "-".repeat(separatorLength);
       console.log(`${chalk.gray(separator)}`);
       for (const [serverName, serverConfig] of sortedServerEntries) {
-        const statusText = serverConfig.disabled ? "disabled" : "enabled";
+        const statusText = serverConfig.disabled ? "❌" : "✓";
         const statusColored = serverConfig.disabled
           ? chalk.red(statusText)
           : chalk.green(statusText);
