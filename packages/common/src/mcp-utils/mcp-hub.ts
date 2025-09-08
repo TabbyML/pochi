@@ -5,7 +5,7 @@ import { type Signal, signal } from "@preact/signals-core";
 import { inject, injectable, singleton } from "tsyringe";
 import type * as vscode from "vscode";
 // biome-ignore lint/style/useImportType: needed for dependency injection
-import { PochiConfiguration } from "../configuration";
+import { PochiConfiguration } from "./configuration";
 import { McpConnection } from "./mcp-connection";
 import type { McpToolExecutable } from "./types";
 import { omitDisabled } from "./types";
