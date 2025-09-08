@@ -1,14 +1,16 @@
-import { getLogger } from "@/lib/logger";
+import { getLogger } from "../base";
 import type { McpServerConfig } from "@getpochi/common/configuration";
 import type { McpTool } from "@getpochi/tools";
 import { type Signal, signal } from "@preact/signals-core";
-import { inject, injectable, singleton } from "tsyringe";
-import type * as vscode from "vscode";
+
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { PochiConfiguration } from "./configuration";
 import { McpConnection } from "./mcp-connection";
 import type { McpToolExecutable } from "./types";
 import { omitDisabled } from "./types";
+
+// Define a minimal Disposable interface to avoid vscode dependency
+type Disposable = { dispose(): void };
 
 const logger = getLogger("MCPHub");
 
@@ -17,23 +19,21 @@ type McpConnectionMap = Map<
   string,
   {
     instance: McpConnection;
-    listeners: vscode.Disposable[];
+    listeners: Disposable[];
   }
 >;
 
-@injectable()
-@singleton()
-export class McpHub implements vscode.Disposable {
+// Removed decorators to avoid decorator usage outside VSCode/tsyringe
+export class McpHub implements Disposable {
   private connections: McpConnectionMap = new Map();
-  private listeners: vscode.Disposable[] = [];
+  private listeners: Disposable[] = [];
   private config: Record<string, McpServerConfig> | undefined = undefined;
 
   readonly status: Signal<ReturnType<typeof this.buildStatus>>;
 
   constructor(
-    @inject("vscode.ExtensionContext")
-    private readonly context: vscode.ExtensionContext,
     private readonly configuration: PochiConfiguration,
+    private readonly clientName: string = "pochi",
   ) {
     this.status = signal(this.buildStatus());
     this.init();
@@ -250,10 +250,10 @@ export class McpHub implements vscode.Disposable {
   }
 
   private createConnection(name: string, config: McpServerConfig) {
-    const connection = new McpConnection(name, this.context, config);
+    const connection = new McpConnection(name, this.clientName, config);
     const connectionObject = {
       instance: connection,
-      listeners: [] as vscode.Disposable[],
+      listeners: [] as Disposable[],
     };
     this.connections.set(name, connectionObject);
     connectionObject.listeners.push({
