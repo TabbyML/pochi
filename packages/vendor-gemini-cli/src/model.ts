@@ -1,6 +1,6 @@
 import { createVertexWithoutCredentials } from "@ai-sdk/google-vertex/edge";
-import { EventSourceParserStream } from "@ai-sdk/provider-utils";
 import type { LanguageModelV2 } from "@ai-sdk/provider";
+import { EventSourceParserStream } from "@ai-sdk/provider-utils";
 import type { CreateModelOptions } from "@getpochi/common/vendor/edge";
 import { APICallError, wrapLanguageModel } from "ai";
 import type { GeminiCredentials } from "./types";
