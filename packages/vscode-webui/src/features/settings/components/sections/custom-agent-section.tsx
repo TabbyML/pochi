@@ -26,8 +26,7 @@ export const CustomAgentSection: React.FC = () => {
         <EmptySectionPlaceholder
           content={
             <div className="space-y-2">
-              <p>{t("settings.customAgent.empty.description")}</p>
-              <p className="text-xs">{t("settings.customAgent.empty.hint")}</p>
+              <p className="text-xs">{t("settings.customAgent.empty")}</p>
             </div>
           }
         />
