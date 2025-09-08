@@ -9,7 +9,7 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
 import { type Signal, signal } from "@preact/signals-core";
 import { createMachine, interpret } from "@xstate/fsm";
 import { type ToolSet, experimental_createMCPClient as createClient } from "ai";
-import type * as vscode from "vscode";
+
 import {
   type McpToolExecutable,
   isHttpTransport,
@@ -21,6 +21,9 @@ import {
   readableError,
   shouldRestartDueToConfigChanged,
 } from "./utils";
+
+// Define a minimal Disposable interface to avoid vscode dependency
+type Disposable = { dispose(): void };
 
 type McpClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -72,7 +75,7 @@ const AbortedError = "AbortedError" as const;
 const AutoReconnectDelay = 20_000; // 20 seconds
 const AutoReconnectMaxAttempts = 20;
 
-export class McpConnection implements vscode.Disposable {
+export class McpConnection implements Disposable {
   readonly logger: ReturnType<typeof getLogger>;
 
   private fsmDef = createMachine<FsmContext, FsmEvent, FsmState>({
@@ -164,13 +167,13 @@ export class McpConnection implements vscode.Disposable {
   });
 
   private fsm = interpret(this.fsmDef);
-  private listeners: vscode.Disposable[] = [];
+  private listeners: Disposable[] = [];
 
   readonly status: Signal<ReturnType<typeof this.buildStatus>>;
 
   constructor(
     readonly serverName: string,
-    private readonly extensionContext: vscode.ExtensionContext,
+    private readonly clientName: string,
     private config: McpServerConfig,
   ) {
     this.logger = getLogger(`MCPConnection(${this.serverName})`);
@@ -290,7 +293,7 @@ export class McpConnection implements vscode.Disposable {
               ...this.config.env,
             },
           }),
-          name: this.extensionContext.extension.id,
+          name: this.clientName,
           onUncaughtError,
         });
       } else if (isHttpTransport(this.config)) {
@@ -307,7 +310,7 @@ export class McpConnection implements vscode.Disposable {
               url: this.config.url,
               headers: this.config.headers,
             },
-            name: this.extensionContext.extension.id,
+            name: this.clientName,
             onUncaughtError,
           });
         } else {
@@ -321,7 +324,7 @@ export class McpConnection implements vscode.Disposable {
                 },
               },
             ),
-            name: this.extensionContext.extension.id,
+            name: this.clientName,
             onUncaughtError,
           });
         }
