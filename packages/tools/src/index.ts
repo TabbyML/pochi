@@ -22,7 +22,6 @@ import { startBackgroundJob } from "./start-background-job";
 import { writeToFile } from "./write-to-file";
 export {
   CustomAgent,
-  overrideCustomAgents,
   overrideCustomAgentTools,
 } from "./new-task";
 export type { SubTask } from "./new-task";

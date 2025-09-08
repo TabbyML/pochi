@@ -6,7 +6,6 @@ import {
   type CustomAgent,
   type McpTool,
   overrideCustomAgentTools,
-  overrideCustomAgents,
   selectClientTools,
 } from "@getpochi/tools";
 import type { Store } from "@livestore/livestore";
@@ -94,7 +93,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
     const llm = await this.getters.getLLM();
     const environment = await this.getters.getEnvironment?.({ messages });
     const mcpToolSet = this.getters.getMcpToolSet?.();
-    const customAgents = overrideCustomAgents(this.getters.getCustomAgents?.());
+    const customAgents = this.getters.getCustomAgents?.();
 
     await this.onStart?.({
       messages,
@@ -123,9 +122,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
     const preparedMessages = await prepareMessages(messages, environment);
     const model = createModel({ id: chatId, llm });
     const stream = streamText({
-      system: this.customAgent
-        ? prompts.customAgentSystem(this.customAgent)
-        : prompts.system(environment?.info?.customRules),
+      system: prompts.system(environment?.info?.customRules, this.customAgent),
       messages: convertToModelMessages(
         formatters.llm(preparedMessages, {
           keepReasoningPart: llm.type === "vendor" && llm.keepReasoningPart,

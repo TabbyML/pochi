@@ -22,26 +22,6 @@ export const CustomAgent = z.object({
 
 export type CustomAgent = z.infer<typeof CustomAgent>;
 
-const generalPurposeAgent: CustomAgent = {
-  name: "general-purpose",
-  description:
-    "General-purpose agent for researching complex questions, searching for code, and executing multi-step tasks. When you are searching for a keyword or file and are not confident that you will find the right match in the first few tries use this agent to perform the search for you.",
-  systemPrompt: "You are a general purpose agent.",
-};
-
-export const overrideCustomAgents = (
-  customAgents: CustomAgent[] | undefined,
-): CustomAgent[] => {
-  const agents = customAgents ? [...customAgents] : [];
-  const hasGeneralPurpose = agents.some(
-    (agent) => agent.name === generalPurposeAgent.name,
-  );
-  if (!hasGeneralPurpose) {
-    agents.unshift(generalPurposeAgent);
-  }
-  return agents;
-};
-
 export const overrideCustomAgentTools = (
   customAgent: CustomAgent | undefined,
 ): CustomAgent | undefined => {
@@ -59,13 +39,19 @@ export const overrideCustomAgentTools = (
   return { ...customAgent, tools: [...updatedTools, ...toAddTools] };
 };
 
+function makeCustomAgentToolDescription(customAgents?: CustomAgent[]) {
+  if (!customAgents || customAgents.length === 0) return "";
+
+  return `When using the newTask tool, you may specify a agentType parameter to select which agent type to use.
+Available agent types and the tools they have access to:
+${(customAgents ?? []).map((agent) => `- ${agent.name}: ${agent.description}`).join("\n")}
+`;
+}
+
 export const createNewTaskTool = (customAgents?: CustomAgent[]) =>
   defineClientTool({
     description: `Launch a new agent to handle complex, multi-step tasks autonomously.
-Available agent types and the tools they have access to:
-${(customAgents ?? []).map((agent) => `- ${agent.name}: ${agent.description} (Tools: ${agent.tools && agent.tools.length > 0 ? agent.tools.join(", ") : "*"})`).join("\n")}
-
-When using the newTask tool, you must specify a agentType parameter to select which agent type to use.
+${makeCustomAgentToolDescription(customAgents)}
 
 Always include a reminder in your prompt to ensure the result will be submitted through the \`attemptCompletion\` tool.
 If the task stops without submitting the result, it will return an error message.
