@@ -44,6 +44,7 @@ const newTaskProps: NewTaskProp["tool"] = {
   type: "tool-newTask",
   input: {
     description: "Find the relevant file to update for the user's request",
+    agentType: "general-purpose",
     prompt:
       "The user wants to add a new tool to the storybook gallery. Find the relevant file to update.",
   },

@@ -24,7 +24,7 @@ export function createNewTaskMiddleware(
       if (!tools) return params;
 
       for (const x of tools) {
-        if (x.name !== "newTask" && x.name !== "newCustomAgent") continue;
+        if (x.name !== "newTask") continue;
         if (x.type === "function") {
           if (x.inputSchema?.properties) {
             // biome-ignore lint/performance/noDelete: type safe
@@ -51,8 +51,7 @@ export function createNewTaskMiddleware(
           async transform(chunk, controller) {
             if (
               chunk.type === "tool-input-start" &&
-              (chunk.toolName === "newTask" ||
-                chunk.toolName === "newCustomAgent")
+              chunk.toolName === "newTask"
             ) {
               toolCallId = chunk.id;
               return;
@@ -64,8 +63,7 @@ export function createNewTaskMiddleware(
 
             if (
               chunk.type === "tool-call" &&
-              (chunk.toolName === "newTask" ||
-                chunk.toolName === "newCustomAgent") &&
+              chunk.toolName === "newTask" &&
               (chunk.toolCallId === toolCallId || toolCallId === "")
             ) {
               const parsedResult = await safeParseJSON({
@@ -80,25 +78,22 @@ export function createNewTaskMiddleware(
                 });
               }
 
-              let args = parsedResult.value as InferToolInput<
+              const args = parsedResult.value as InferToolInput<
                 ClientTools["newTask"]
-              > &
-                InferToolInput<ClientTools["newCustomAgent"]>;
+              >;
 
-              if (chunk.toolName === "newCustomAgent") {
-                args = args as InferToolInput<ClientTools["newCustomAgent"]>;
-                const agent = customAgents?.find(
-                  (a) => a.name === args.agentType,
-                );
-                if (!agent) {
-                  throw new InvalidToolInputError({
-                    toolName: "newCustomAgent",
-                    toolInput: chunk.input,
-                    cause: new Error(
-                      `Agent ${args.agentType} not found in available agents: ${customAgents ? customAgents.map((a) => a.name).join(", ") : "none"}`,
-                    ),
-                  });
-                }
+              const agent = customAgents?.find(
+                (a) => a.name === args.agentType,
+              );
+
+              if (!agent) {
+                throw new InvalidToolInputError({
+                  toolName: chunk.toolName,
+                  toolInput: chunk.input,
+                  cause: new Error(
+                    `Agent ${args.agentType} not found in available agents: ${customAgents ? customAgents.map((a) => a.name).join(", ") : "none"}`,
+                  ),
+                });
               }
 
               const uid = crypto.randomUUID();

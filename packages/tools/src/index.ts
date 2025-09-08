@@ -7,7 +7,7 @@ import { executeCommand } from "./execute-command";
 import { globFiles } from "./glob-files";
 import { listFiles } from "./list-files";
 import { multiApplyDiff } from "./multi-apply-diff";
-import { newTask } from "./new-task";
+import { type CustomAgent, createNewTaskTool } from "./new-task";
 import { readFile } from "./read-file";
 import { searchFiles } from "./search-files";
 import { todoWrite } from "./todo-write";
@@ -16,17 +16,16 @@ export type {
   ToolFunctionType,
   PreviewToolFunctionType,
 } from "./types";
-import { type CustomAgent, newCustomAgent } from "./custom-agent";
 import { killBackgroundJob } from "./kill-background-job";
 import { readBackgroundJobOutput } from "./read-background-job-output";
 import { startBackgroundJob } from "./start-background-job";
 import { writeToFile } from "./write-to-file";
-export type { SubTask } from "./new-task";
 export {
   CustomAgent,
   overrideCustomAgents,
   overrideCustomAgentTools,
-} from "./custom-agent";
+} from "./new-task";
+export type { SubTask } from "./new-task";
 
 export function isUserInputToolPart(part: UIMessagePart<UIDataTypes, UITools>) {
   return (
@@ -59,14 +58,13 @@ export const ToolsByPermission = {
     "startBackgroundJob",
     "killBackgroundJob",
     "newTask",
-    "newCustomAgent",
   ] satisfies ToolName[] as string[],
   default: ["todoWrite"] satisfies ToolName[] as string[],
 };
 
 export const ServerToolApproved = "<server-tool-approved>";
 
-const CliTools = {
+const createCliTools = (customAgents?: CustomAgent[]) => ({
   applyDiff,
   askFollowupQuestion,
   attemptCompletion,
@@ -78,16 +76,15 @@ const CliTools = {
   searchFiles,
   todoWrite,
   writeToFile,
-  newTask,
-};
+  newTask: createNewTaskTool(customAgents),
+});
 
 export const createClientTools = (customAgents?: CustomAgent[]) => {
   return {
-    ...CliTools,
+    ...createCliTools(customAgents),
     startBackgroundJob,
     readBackgroundJobOutput,
     killBackgroundJob,
-    newCustomAgent: newCustomAgent(customAgents),
   };
 };
 
@@ -98,20 +95,21 @@ export const selectClientTools = (options: {
   isCli: boolean;
   customAgents?: CustomAgent[];
 }) => {
+  const cliTools = createCliTools(options.customAgents);
   if (options.isCli) {
     if (options.isSubTask) {
-      const { newTask, ...rest } = CliTools;
+      const { newTask, ...rest } = cliTools;
       return rest;
     }
 
     // CLI support new task
-    return CliTools;
+    return cliTools;
   }
 
   const clientTools = createClientTools(options.customAgents);
 
   if (options?.isSubTask) {
-    const { newTask, newCustomAgent, ...rest } = clientTools;
+    const { newTask, ...rest } = clientTools;
     return rest;
   }
 

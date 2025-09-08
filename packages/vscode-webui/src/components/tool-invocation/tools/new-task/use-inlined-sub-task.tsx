@@ -3,7 +3,7 @@ import type { Message } from "@getpochi/livekit";
 import type { ToolProps } from "../../types";
 
 export function useInlinedSubTask(
-  tool: ToolProps<"newTask" | "newCustomAgent">["tool"],
+  tool: ToolProps<"newTask">["tool"],
 ): TaskThreadSource | undefined {
   if (tool.state === "input-streaming") {
     return undefined;
