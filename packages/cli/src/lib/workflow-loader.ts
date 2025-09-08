@@ -11,7 +11,10 @@ function getLocalWorkflowPath(id: string) {
 
 function getGlobalWorkflowPath(id: string) {
   // Construct the workflow file path
-  const workflowsDir = path.join(os.homedir(), ...constants.WorkspaceWorkflowPathSegments);
+  const workflowsDir = path.join(
+    os.homedir(),
+    ...constants.WorkspaceWorkflowPathSegments,
+  );
   return path.join(workflowsDir, `${id}.md`);
 }
 
