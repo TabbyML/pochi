@@ -127,6 +127,7 @@ assistant: "I'm going to use the Task tool to launch the with the greeting-respo
         .describe("The detailed prompt for the task to be performed."),
       agentType: z
         .string()
+        .optional()
         .describe("The type of the specialized agent to use for the task."),
       _meta: z
         .object({

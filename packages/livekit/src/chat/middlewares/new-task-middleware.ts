@@ -86,7 +86,8 @@ export function createNewTaskMiddleware(
                 (a) => a.name === args.agentType,
               );
 
-              if (!agent) {
+              // if agentType is specified but not found, throw error
+              if (args.agentType && !agent) {
                 throw new InvalidToolInputError({
                   toolName: chunk.toolName,
                   toolInput: chunk.input,

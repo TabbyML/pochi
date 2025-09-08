@@ -37,7 +37,7 @@ export function useLiveSubTask(
   const { customAgents } = useCustomAgents();
 
   const customAgent = customAgents?.find(
-    (a) => a.name === tool.input?.agentType,
+    (a) => tool.state !== "input-streaming" && a.name === tool.input?.agentType,
   );
 
   const abortController = useRef(new AbortController());
