@@ -132,7 +132,7 @@ export class OutputRenderer {
   }
 }
 
-export function renderToolPart(part: ToolUIPart<UITools>): {
+function renderToolPart(part: ToolUIPart<UITools>): {
   text: string;
   stop: "succeed" | "stopAndPersist" | "fail";
   error?: string;
