@@ -3,18 +3,17 @@
   "version": "0.5.0-dev",
   "type": "module",
   "bin": {
-    "pochi": "./src/main.js"
+    "pochi": "src/cli.ts"
   },
-  "files": ["dist/**", "README.md", "LICENSE"],
+  "files": ["dist/**", "README.md", "../../LICENSE"],
   "scripts": {
     "start": "bun run src/cli.ts",
     "tsc": "tsc",
     "test": "bun vitest --run",
     "build": "./scripts/build-cli.sh",
     "build:all": "./scripts/build-platform-binary.sh",
-    "release": "bunx bumpp --tag=cli@%s",
-    "release:npm": "bun run ./scripts/npm-release.ts",
-    "postinstall": "TARGET=node bun run build"
+    "build:node": "TARGET=node bun run build",
+    "release": "bunx bumpp --tag=cli@%s"
   },
   "devDependencies": {
     "@getpochi/tools": "workspace:*",

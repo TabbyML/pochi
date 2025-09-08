@@ -6,12 +6,17 @@ set -ex
 # so add this dispatcher if run bun locally
 build_js() {
         bun build src/cli.ts \
-                --banner '#!/usr/bin/env/node' \
                 --external lightningcss \
                 --target node \
                 --outdir ./dist \
                 --asset-naming="[name].[ext]" \
                 "$@"
+
+        # since we added bun shebang in cli.ts use bun to run pochi locally
+        # bun build will always add bun shebang for cli.js,
+        # so we have to replace it manually.
+        sed -i.bak '1s|^.*$|#!/usr/bin/env node|' ./dist/cli.js
+        rm -f ./dist/cli.js.bak
 }
 
 build_exe() {

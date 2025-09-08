@@ -19,7 +19,7 @@
       "name": "@getpochi/cli",
       "version": "0.5.0-dev",
       "bin": {
-        "pochi": "./src/main.js",
+        "pochi": "src/cli.ts",
       },
       "devDependencies": {
         "@commander-js/extra-typings": "^14.0.0",
