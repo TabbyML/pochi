@@ -19,7 +19,7 @@ if (isBun) {
                 --sourcemap=inline \
                 "$@"
 
-        sed -i '1s|^.*$|#!/usr/bin/env node|' ./dist/cli.js
+        sed -i.bak '1s|^.*$|#!/usr/bin/env node|' ./dist/cli.js
 }
 
 build_exe() {
