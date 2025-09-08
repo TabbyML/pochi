@@ -6,20 +6,12 @@ set -ex
 # so add this dispatcher if run bun locally
 build_js() {
         bun build src/cli.ts \
-                --banner 'const isBun = !!process.versions.bun;
-if (isBun) {
-  await import("../src/cli.ts");
-  process.exit(0);
-}
-' \
+                --banner '#!/usr/bin/env/node' \
                 --external lightningcss \
                 --target node \
                 --outdir ./dist \
                 --asset-naming="[name].[ext]" \
-                --sourcemap=inline \
                 "$@"
-
-        sed -i.bak '1s|^.*$|#!/usr/bin/env node|' ./dist/cli.js
 }
 
 build_exe() {
