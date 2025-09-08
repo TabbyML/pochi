@@ -1,7 +1,7 @@
 import { useCustomAgents } from "@/lib/hooks/use-custom-agents";
 import { vscodeHost } from "@/lib/vscode";
 import type { CustomAgentFile } from "@getpochi/common/vscode-webui-bridge";
-import { Bot, Settings } from "lucide-react";
+import { Bot, Edit } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { AccordionSection } from "../ui/accordion-section";
 import { EmptySectionPlaceholder, ScetionItem } from "../ui/section";
@@ -43,7 +43,7 @@ export const CustomAgentSection: React.FC = () => {
             onClick={() => handleEditAgent(agent)}
             actions={[
               {
-                icon: <Settings className="size-3" />,
+                icon: <Edit className="size-3.5" />,
                 onClick: () => {
                   handleEditAgent(agent);
                 },
