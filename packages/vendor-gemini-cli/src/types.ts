@@ -1,5 +1,3 @@
-import type { GeminiCliVendorConfig } from "@getpochi/common/configuration";
-
 // Types for Cloud Code Assist API
 export interface ClientMetadata {
   ideType?: string;
@@ -54,6 +52,11 @@ export interface LongrunningOperationResponse {
   };
 }
 
-export type GeminiCredentials = GeminiCliVendorConfig["credentials"];
+export type GeminiCredentials = {
+  accessToken: string;
+  refreshToken: string;
+  expiresAt: number;
+  project: string;
+};
 
 export const VendorId = "gemini-cli";

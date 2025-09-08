@@ -1,6 +1,5 @@
 {
   "name": "@getpochi/monorepo",
-  "private": true,
   "scripts": {
     "check": "npm-run-all check:default check:test check:ast-grep",
     "fix": "npm-run-all 'check:default -- --write' 'check:test -- --write'",

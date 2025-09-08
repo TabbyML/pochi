@@ -1,7 +1,7 @@
 import z from "zod/v4";
 import { McpServerConfig } from "./mcp";
 import { CustomModelSetting } from "./model";
-import { GeminiCliVendorConfig, PochiVendorConfig } from "./vendor";
+import { VendorConfig } from "./vendor";
 
 export const PochiConfig = makePochiConfig();
 
@@ -37,15 +37,7 @@ export function makePochiConfig(strict = false) {
       .string()
       .default("https://getpochi.com/config.schema.json")
       .optional(),
-    vendors: z
-      .object({
-        pochi: PochiVendorConfig.nullable().optional().catch(undefined),
-        "gemini-cli": GeminiCliVendorConfig.nullable()
-          .optional()
-          .catch(undefined),
-      })
-      .catchall(z.unknown())
-      .optional(),
+    vendors: z.record(z.string(), VendorConfig.nullable()).optional(),
     providers: looseRecord(CustomModelSetting, strict).optional(),
     mcp: looseRecord(McpServerConfig, strict).optional(),
   });

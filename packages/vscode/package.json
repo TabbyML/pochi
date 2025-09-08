@@ -63,6 +63,11 @@
         "category": "Pochi"
       },
       {
+        "command": "pochi.loginWithToken",
+        "title": "Login with Token",
+        "category": "Pochi"
+      },
+      {
         "command": "pochi.editWorkspaceRules",
         "title": "Edit Workspace Rules",
         "category": "Pochi"
@@ -137,7 +142,11 @@
         },
         {
           "command": "pochi.logout",
-          "when": "false"
+          "title": "Pochi: Logout"
+        },
+        {
+          "command": "pochi.loginWithToken",
+          "title": "Pochi: Login with Token"
         },
         {
           "command": "pochi.webui.navigate.newTask",

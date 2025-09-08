@@ -1,11 +1,10 @@
 import { createCompactPrompt } from "./compact";
 import { createEnvironmentPrompt, injectEnvironment } from "./environment";
 import { generateTitle } from "./generate-title";
-import { createCustomAgentSystemPrompt, createSystemPrompt } from "./system";
+import { createSystemPrompt } from "./system";
 
 export const prompts = {
   system: createSystemPrompt,
-  customAgentSystem: createCustomAgentSystemPrompt,
   injectEnvironment,
   environment: createEnvironmentPrompt,
   createSystemReminder,

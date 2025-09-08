@@ -106,6 +106,39 @@ export class CommandManager implements vscode.Disposable {
         }
       }),
 
+      vscode.commands.registerCommand("pochi.loginWithToken", async () => {
+        const token = await vscode.window.showInputBox({
+          prompt: "Enter your login token from the Pochi website",
+          placeHolder: "Paste your token here",
+          ignoreFocusOut: true,
+          password: true,
+        });
+        if (token) {
+          vscode.window.withProgress(
+            {
+              location: vscode.ProgressLocation.Notification,
+              cancellable: false,
+            },
+            async (progress) => {
+              progress.report({ message: "Login in progress, please wait..." });
+
+              const { data, error } = await this.authClient.deviceLink.verify({
+                query: { token },
+              });
+
+              if (error || "error" in data) {
+                vscode.window.showErrorMessage(
+                  "Failed to login, please try again.",
+                );
+                return;
+              }
+
+              this.authEvents.loginEvent.fire();
+            },
+          );
+        }
+      }),
+
       vscode.commands.registerCommand("pochi.editWorkspaceRules", async () => {
         try {
           const workspaceRulesUri = getWorkspaceRulesFileUri();

@@ -1,5 +1,5 @@
 import { registerModel } from "@getpochi/common/vendor/edge";
-import { VendorId } from "./constants";
 import { createPochiModel } from "./model";
+import { VendorId } from "./types";
 
 registerModel(VendorId, createPochiModel);

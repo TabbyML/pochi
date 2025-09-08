@@ -18,7 +18,7 @@ import { vscodeHost } from "@/lib/vscode";
 import { useChat } from "@ai-sdk/react";
 import { catalog } from "@getpochi/livekit";
 import { useLiveChatKit } from "@getpochi/livekit/react";
-import type { CustomAgent, Todo } from "@getpochi/tools";
+import type { Todo } from "@getpochi/tools";
 import { useStore } from "@livestore/react";
 import { ThreadAbortSignal } from "@quilted/threads";
 import { getToolName, lastAssistantMessageIsCompleteWithToolCalls } from "ai";
@@ -26,10 +26,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ToolProps } from "../../types";
 
 export function useLiveSubTask(
-  {
-    tool,
-    isExecuting,
-  }: Pick<ToolProps<"newTask" | "newCustomAgent">, "tool" | "isExecuting">,
+  { tool, isExecuting }: Pick<ToolProps<"newTask">, "tool" | "isExecuting">,
   toolCallStatusRegistry: ToolCallStatusRegistry,
 ): TaskThreadSource {
   const lifecycle = useToolCallLifeCycle().getToolCallLifeCycle({
@@ -39,10 +36,9 @@ export function useLiveSubTask(
 
   const { customAgents } = useCustomAgents();
 
-  let customAgent: CustomAgent | undefined;
-  if (tool.type === "tool-newCustomAgent") {
-    customAgent = customAgents?.find((a) => a.name === tool.input?.agentType);
-  }
+  const customAgent = customAgents?.find(
+    (a) => tool.state !== "input-streaming" && a.name === tool.input?.agentType,
+  );
 
   const abortController = useRef(new AbortController());
 
@@ -319,10 +315,7 @@ const useInitAutoStart = ({
 const ensureNewTaskStreamingResult = (
   streamingResult: ToolCallLifeCycle["streamingResult"],
 ) => {
-  if (
-    streamingResult?.toolName !== "newTask" &&
-    streamingResult?.toolName !== "newCustomAgent"
-  ) {
+  if (streamingResult?.toolName !== "newTask") {
     return undefined;
   }
   return streamingResult;

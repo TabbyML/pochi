@@ -257,7 +257,7 @@ export const AutoCompleteExtension = Extension.create<
               trigger: "manual",
               placement: "top-start",
               offset: [0, 6],
-              maxWidth: "none",
+              maxWidth: "70vw",
             });
           };
 

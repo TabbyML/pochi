@@ -21,8 +21,13 @@ export const multiApplyDiffTool: React.FC<ToolProps<"multiApplyDiff">> = ({
     toolCallId: tool.toolCallId,
   });
   const handleClick = useCallback(() => {
-    lifecycle.preview(tool.input, tool.state);
-  }, [tool, lifecycle]);
+    return tool.state !== "output-available" &&
+      (lifecycle.status === "init" ||
+        lifecycle.status === "pending" ||
+        lifecycle.status === "ready")
+      ? lifecycle.preview(tool.input, tool.state)
+      : undefined;
+  }, [tool.input, tool.state, lifecycle.status, lifecycle.preview]);
 
   const result =
     tool.state === "output-available" &&
@@ -40,12 +45,7 @@ export const multiApplyDiffTool: React.FC<ToolProps<"multiApplyDiff">> = ({
         <FileBadge
           className="ml-1"
           path={path}
-          onClick={
-            tool.state !== "output-available" &&
-            (lifecycle.status === "init" || lifecycle.status === "pending")
-              ? handleClick
-              : undefined
-          }
+          onClick={handleClick}
           editSummary={result?._meta?.editSummary}
           changes={result?.success ? changes : undefined}
         />

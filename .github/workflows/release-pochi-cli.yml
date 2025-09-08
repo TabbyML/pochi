@@ -90,10 +90,24 @@ jobs:
       - name: Release NPM
         if: startsWith(github.ref, 'refs/tags/cli@')
         env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_TOKEN: ${{ secrets.NPM_TOKEN }}
           POCHI_CLI_NPM_NAME: ${{ vars.POCHI_CLI_NPM_NAME }}
         run: |
           cd packages/cli
-          echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" > .npmrc
-          # use env to override the default npm name, so we can test the release action
-          POCHI_CLI_NPM_NAME=$POCHI_CLI_NPM_NAME bun release:npm
+
+          # cleanup the binary build
+          rm -rf dist/
+          TARGET=node ./scripts/build-cli.sh
+
+          # for test the CI release
+          if [ -n "$POCHI_CLI_NPM_NAME" ]; then
+            sed -i.bak "s|\"name\": .*|\"name\": \"$POCHI_CLI_NPM_NAME\",|" package.json
+          fi
+
+          IS_PRERELEASE=${{ steps.release_info.outputs.is_prerelease }}
+
+          # we use cli.ts for local dev, and ./dist/cli.js for npm package
+          # so we have to replace the bin path in package.json here
+          sed -i.bak 's|"pochi": "./src/cli.ts"|"pochi": "./dist/cli.js"|' package.json
+          rm -f package.json.bak
+          bun publish --access public ${IS_PRERELEASE:+"--tag beta"}

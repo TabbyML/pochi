@@ -1,11 +1,8 @@
-import type {
-  GeminiCliVendorConfig,
-  UserInfo,
-} from "@getpochi/common/configuration";
+import type { UserInfo } from "@getpochi/common/configuration";
 import { VendorBase } from "@getpochi/common/vendor";
 import type { AuthOutput, ModelOptions } from "@getpochi/common/vendor";
 import { fetchUserInfo, renewCredentials, startOAuthFlow } from "./auth";
-import { VendorId } from "./types";
+import { type GeminiCredentials, VendorId } from "./types";
 
 export class GeminiCli extends VendorBase {
   constructor() {
@@ -17,13 +14,13 @@ export class GeminiCli extends VendorBase {
   }
 
   override async renewCredentials(
-    credentials: GeminiCliVendorConfig["credentials"],
-  ): Promise<GeminiCliVendorConfig["credentials"] | undefined> {
+    credentials: GeminiCredentials,
+  ): Promise<GeminiCredentials | undefined> {
     return renewCredentials(credentials);
   }
 
   override async fetchUserInfo(
-    credentials: GeminiCliVendorConfig["credentials"],
+    credentials: GeminiCredentials,
   ): Promise<UserInfo> {
     return fetchUserInfo(credentials);
   }

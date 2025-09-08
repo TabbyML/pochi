@@ -1,19 +1,22 @@
 #!/bin/bash
 set -ex
 
+# we upload the released file to npm and run using node,
+# we use bun to utilize local dev,
+# so add this dispatcher if run bun locally
 build_js() {
         bun build src/cli.ts \
                 --external lightningcss \
                 --target node \
                 --outdir ./dist \
                 --asset-naming="[name].[ext]" \
-                --sourcemap=inline \
                 "$@"
 
-        # we use bun shebang in cli.ts to utilize bun link
-        # change to node for npm release
-        sed -i 's|#!/usr/bin/env bun|#!/usr/bin/env node|g' ./dist/cli.js
-        chmod +x ./dist/cli.js
+        # since we added bun shebang in cli.ts use bun to run pochi locally
+        # bun build will always add bun shebang for cli.js,
+        # so we have to replace it manually.
+        sed -i.bak '1s|^.*$|#!/usr/bin/env node|' ./dist/cli.js
+        rm -f ./dist/cli.js.bak
 }
 
 build_exe() {
