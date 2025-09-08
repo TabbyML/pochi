@@ -146,9 +146,11 @@ program
   });
 
 registerAuthCommand(program);
+
 registerModelCommand(program);
-registerUpgradeCommand(program);
 registerMcpCommand(program);
+
+registerUpgradeCommand(program);
 
 program.parse(process.argv);
 
