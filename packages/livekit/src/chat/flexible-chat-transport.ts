@@ -6,6 +6,7 @@ import {
   type CustomAgent,
   type McpTool,
   overrideCustomAgentTools,
+  overrideCustomAgents,
   selectClientTools,
 } from "@getpochi/tools";
 import type { Store } from "@livestore/livestore";
@@ -93,7 +94,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
     const llm = await this.getters.getLLM();
     const environment = await this.getters.getEnvironment?.({ messages });
     const mcpToolSet = this.getters.getMcpToolSet?.();
-    const customAgents = this.getters.getCustomAgents?.();
+    const customAgents = overrideCustomAgents(this.getters.getCustomAgents?.());
 
     await this.onStart?.({
       messages,

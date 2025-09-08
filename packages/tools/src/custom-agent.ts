@@ -21,6 +21,19 @@ const generalPurposeAgent: CustomAgent = {
   systemPrompt: "You are a general purpose agent.",
 };
 
+export const overrideCustomAgents = (
+  customAgents: CustomAgent[] | undefined,
+): CustomAgent[] => {
+  const agents = customAgents ? [...customAgents] : [];
+  const hasGeneralPurpose = agents.some(
+    (agent) => agent.name === generalPurposeAgent.name,
+  );
+  if (!hasGeneralPurpose) {
+    agents.unshift(generalPurposeAgent);
+  }
+  return agents;
+};
+
 export const overrideCustomAgentTools = (
   customAgent: CustomAgent | undefined,
 ): CustomAgent | undefined => {
@@ -42,7 +55,7 @@ export const newCustomAgent = (customAgents?: CustomAgent[]) =>
   defineClientTool({
     description: `Launch a new agent to handle complex, multi-step tasks autonomously.
 Available agent types and the tools they have access to:
-${[generalPurposeAgent, ...(customAgents ?? [])].map((agent) => `- ${agent.name}: ${agent.description} (Tools: ${agent.tools && agent.tools.length > 0 ? agent.tools.join(", ") : "*"})`).join("\n")}
+${(customAgents ?? []).map((agent) => `- ${agent.name}: ${agent.description} (Tools: ${agent.tools && agent.tools.length > 0 ? agent.tools.join(", ") : "*"})`).join("\n")}
 
 When using the newCustomAgent tool, you must specify a agentType parameter to select which agent type to use.
 

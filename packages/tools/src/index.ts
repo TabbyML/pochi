@@ -24,6 +24,7 @@ import { writeToFile } from "./write-to-file";
 export type { SubTask } from "./new-task";
 export {
   CustomAgent,
+  overrideCustomAgents,
   overrideCustomAgentTools,
 } from "./custom-agent";
 
