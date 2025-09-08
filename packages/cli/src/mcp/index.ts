@@ -1,0 +1,1 @@
+export { registerMcpCommand } from "./cmd";

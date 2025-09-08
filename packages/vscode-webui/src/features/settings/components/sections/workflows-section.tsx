@@ -35,22 +35,24 @@ export const WorkflowsSection: React.FC = () => {
         </div>
       ) : workflows && workflows.length > 0 ? (
         <>
-          {workflows.map(
-            (workflow: { id: string; path: string; content: string }) => (
-              <ScetionItem
-                key={workflow.id}
-                title={workflow.id}
-                icon={<Workflow className="size-4 text-muted-foreground" />}
-                onClick={() => handleEditWorkflow(workflow.id)}
-                actions={[
-                  {
-                    icon: <Edit className="size-3.5" />,
-                    onClick: () => handleEditWorkflow(workflow.id),
-                  },
-                ]}
-              />
-            ),
-          )}
+          <div className="space-y-2">
+            {workflows.map(
+              (workflow: { id: string; path: string; content: string }) => (
+                <ScetionItem
+                  key={workflow.id}
+                  title={workflow.id}
+                  icon={<Workflow className="size-4 text-muted-foreground" />}
+                  onClick={() => handleEditWorkflow(workflow.id)}
+                  actions={[
+                    {
+                      icon: <Edit className="size-3.5" />,
+                      onClick: () => handleEditWorkflow(workflow.id),
+                    },
+                  ]}
+                />
+              ),
+            )}
+          </div>
         </>
       ) : (
         <EmptySectionPlaceholder

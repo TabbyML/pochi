@@ -6,6 +6,7 @@ import {
   FixedStateChatContextProvider,
   ToolCallStatusRegistry,
 } from "@/features/chat";
+import { isVSCodeEnvironment } from "@/lib/vscode";
 import { Link } from "@tanstack/react-router";
 import { useRef, useState } from "react";
 import { StatusIcon } from "../../status-icon";
@@ -14,7 +15,7 @@ import type { ToolProps } from "../../types";
 import { useInlinedSubTask } from "./use-inlined-sub-task";
 import { useLiveSubTask } from "./use-live-sub-task";
 
-interface NewTaskToolProps extends ToolProps<"newTask" | "newCustomAgent"> {
+interface NewTaskToolProps extends ToolProps<"newTask"> {
   // For storybook visualization
   taskThreadSource?: TaskThreadSource;
 }
@@ -40,10 +41,7 @@ export const newTaskTool: React.FC<NewTaskToolProps> = ({
     );
   }
 
-  let agentType: string | undefined;
-  if (tool.type === "tool-newCustomAgent") {
-    agentType = tool.input?.agentType;
-  }
+  const agentType = tool.input?.agentType;
   const toolTitle = agentType ?? "Subtask";
 
   const [showMessageList, setShowMessageList] = useState(false);
@@ -54,7 +52,7 @@ export const newTaskTool: React.FC<NewTaskToolProps> = ({
           <div>
             <StatusIcon tool={tool} isExecuting={isExecuting} />
             <Badge variant="secondary" className={cn("mr-1 ml-2 py-0")}>
-              {uid ? (
+              {uid && isVSCodeEnvironment() ? (
                 <Link to="/" search={{ uid }} replace={true}>
                   {toolTitle}
                 </Link>

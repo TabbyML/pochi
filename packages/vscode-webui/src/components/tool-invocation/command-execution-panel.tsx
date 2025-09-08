@@ -95,8 +95,8 @@ const BackgroundJobIdButton: FC<{
       <TooltipTrigger asChild>
         <Button
           size="sm"
-          className={cn("size-[16px] rounded-sm", {
-            "text-primary": isActive,
+          className={cn("size-[16px] rounded-sm ring-primary", {
+            "ring-1": isActive,
           })}
           variant="secondary"
           onClick={onClick}
@@ -105,7 +105,7 @@ const BackgroundJobIdButton: FC<{
         </Button>
       </TooltipTrigger>
       <TooltipContent>
-        <span>Show {displayId}</span>
+        <span>Open job {displayId}</span>
       </TooltipContent>
     </Tooltip>
   );

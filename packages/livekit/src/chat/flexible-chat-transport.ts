@@ -122,9 +122,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
     const preparedMessages = await prepareMessages(messages, environment);
     const model = createModel({ id: chatId, llm });
     const stream = streamText({
-      system: this.customAgent
-        ? prompts.customAgentSystem(this.customAgent)
-        : prompts.system(environment?.info?.customRules),
+      system: prompts.system(environment?.info?.customRules, this.customAgent),
       messages: convertToModelMessages(
         formatters.llm(preparedMessages, {
           keepReasoningPart: llm.type === "vendor" && llm.keepReasoningPart,

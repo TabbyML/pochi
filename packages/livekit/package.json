@@ -1,5 +1,6 @@
 {
   "name": "@getpochi/livekit",
+  "version": "0.1.0-dev",
   "exports": {
     ".": "./src/index.ts",
     "./react": "./src/react.tsx",

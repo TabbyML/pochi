@@ -28,7 +28,6 @@ export const executeCommand =
     }
 
     try {
-      console.log("Executing command:", command, "in", resolvedCwd);
       const {
         code,
         stdout = "",

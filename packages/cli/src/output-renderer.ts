@@ -1,14 +1,18 @@
 import { formatters } from "@getpochi/common";
 import { parseMarkdown } from "@getpochi/common/message-utils";
 import type { Message, UITools } from "@getpochi/livekit";
+import { isUserInputToolPart } from "@getpochi/tools";
 import { type ToolUIPart, getToolName, isToolUIPart } from "ai";
 import chalk from "chalk";
+import { Listr, type ListrTask, type ObservableLike } from "listr2";
 import ora, { type Ora } from "ora";
 import type { NodeChatState } from "./livekit/chat.node";
+import type { TaskRunner } from "./task-runner";
 
 export class OutputRenderer {
-  constructor(state: NodeChatState) {
-    state.signal.messages.subscribe((messages) => {
+  private renderingSubTask = false;
+  constructor(private readonly state: NodeChatState) {
+    this.state.signal.messages.subscribe((messages) => {
       this.renderLastMessage(messages);
     });
   }
@@ -18,6 +22,10 @@ export class OutputRenderer {
   private spinner: Ora | undefined = undefined;
 
   renderLastMessage(messages: Message[]) {
+    if (this.renderingSubTask) {
+      return;
+    }
+
     const lastMessage = formatters.ui(messages).at(-1);
     if (!lastMessage) {
       return;
@@ -27,6 +35,7 @@ export class OutputRenderer {
       this.pendingMessageId = lastMessage.id;
       this.spinner?.stopAndPersist();
       this.pendingPartIndex = 0;
+
       const name = lastMessage.role === "assistant" ? "Pochi" : "You";
       if (messages.length > 1) {
         console.log("");
@@ -42,6 +51,7 @@ export class OutputRenderer {
       }
 
       if (
+        part.type === "tool-newTask" ||
         !(
           part.type === "text" ||
           part.type === "reasoning" ||
@@ -59,6 +69,7 @@ export class OutputRenderer {
       } else if (part.type === "text") {
         this.spinner.prefixText = parseMarkdown(part.text.trim());
       } else {
+        // Regular processing for other tools
         const { text, stop, error } = renderToolPart(part);
         this.spinner.prefixText = text;
         if (
@@ -86,10 +97,32 @@ export class OutputRenderer {
     }
   }
 
+  renderSubTask(runner: TaskRunner) {
+    this.renderingSubTask = true;
+    this.withoutSpinner(() => {
+      const listr = makeListr(runner.taskId, this.state, runner.state);
+
+      return listr.run();
+    }).finally(() => {
+      this.renderingSubTask = false;
+    });
+  }
+
   private nextSpinner(nextPendingPart = false) {
     this.spinner = ora().start();
     if (nextPendingPart) {
       this.pendingPartIndex++;
+    }
+  }
+
+  private async withoutSpinner(callback: () => Promise<void>) {
+    this.spinner?.stop();
+    this.spinner = undefined;
+
+    try {
+      await callback();
+    } finally {
+      this.nextSpinner();
     }
   }
 
@@ -196,17 +229,8 @@ function renderToolPart(part: ToolUIPart<UITools>): {
       : "";
 
     return {
-      text: `${chalk.bold(chalk.yellow(`❓ ${question}`))} ${followUpText}`,
+      text: `${chalk.bold(chalk.yellow(`❓ ${question}`))}\n${followUpText}`,
       stop: "stopAndPersist",
-      error: errorText,
-    };
-  }
-
-  if (part.type === "tool-newTask") {
-    const { description = "creating subtask" } = part.input || {};
-    return {
-      text: `🚀 Creating subtask: ${chalk.bold(description)}`,
-      stop: hasError ? "fail" : "succeed",
       error: errorText,
     };
   }
@@ -244,4 +268,113 @@ function renderToolPart(part: ToolUIPart<UITools>): {
     stop: hasError ? "fail" : "succeed",
     error: errorText,
   };
+}
+
+type NewTaskTool = Extract<ToolUIPart<UITools>, { type: "tool-newTask" }>;
+
+function makeListr(
+  subTaskId: string,
+  task: NodeChatState,
+  subtask: NodeChatState,
+): Listr {
+  const part = extractNewTaskTool(task.messages, subTaskId);
+
+  const tasks: ListrTask[] = [
+    {
+      title: part?.input?.description,
+      task: async () => {
+        const observable: ObservableLike<string> = {
+          subscribe(observer) {
+            const onUpdate = (unsubscribe: () => void) => {
+              const finalize = (err?: Error) => {
+                unsubscribe();
+                if (err) {
+                  observer.error(err);
+                } else {
+                  observer.complete();
+                }
+              };
+              const part = extractNewTaskTool(task.messages, subTaskId);
+              if (!part) {
+                finalize(new Error("No new task tool found"));
+              } else if (part.state === "output-error") {
+                finalize(new Error(part.errorText));
+              } else if (part.state === "output-available") {
+                finalize();
+              } else {
+                observer.next(
+                  renderSubtaskMessages(formatters.ui(subtask.messages)),
+                );
+              }
+            };
+
+            const unsubscribe1 = subtask.signal.messages.subscribe(() => {
+              onUpdate(() => unsubscribe1());
+            });
+
+            const unsubscribe2 = task.signal.messages.subscribe(() => {
+              onUpdate(() => unsubscribe2());
+            });
+
+            return;
+          },
+        };
+
+        return observable;
+      },
+      // Key: Set persistentOutput at task level
+      rendererOptions: { persistentOutput: true },
+    },
+  ];
+
+  return new Listr(tasks, {
+    concurrent: false,
+    exitOnError: false,
+    registerSignalListeners: false,
+    rendererOptions: {
+      showSubtasks: true,
+      collapse: false,
+      collapseErrors: false,
+      collapseSkips: false,
+      showTimer: true,
+      clearOutput: false,
+      formatOutput: "wrap",
+      persistentOutput: true,
+      removeEmptyLines: false,
+      suffixSkips: false,
+    },
+  });
+}
+
+function extractNewTaskTool(
+  messages: Message[],
+  uid: string,
+): NewTaskTool | undefined {
+  const lastMessage = formatters.ui(messages).at(-1);
+  if (!lastMessage) {
+    return;
+  }
+
+  for (const part of lastMessage.parts) {
+    if (part.type === "tool-newTask" && part.input?._meta?.uid === uid) {
+      return part;
+    }
+  }
+}
+
+function renderSubtaskMessages(messages: Message[]): string {
+  let output = "";
+  for (const x of messages) {
+    for (const p of x.parts) {
+      if (isToolUIPart(p) && !isUserInputToolPart(p)) {
+        const { text } = renderToolPart(p);
+        const lines = text.split("\n");
+        for (const line of lines) {
+          output += `${chalk.dim(`${line}`)}\n`;
+        }
+      }
+    }
+  }
+
+  return output;
 }

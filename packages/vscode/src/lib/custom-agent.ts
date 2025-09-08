@@ -84,37 +84,45 @@ export class CustomAgentManager implements vscode.Disposable {
   }
 
   private initWatchers() {
-    // Watch workspace .pochi/agents directory
-    const workspaceDir = getWorkspaceFolder();
-    if (workspaceDir) {
-      const projectAgentsPattern = new vscode.RelativePattern(
-        workspaceDir,
-        ".pochi/agents/**/*.md",
-      );
-      const projectWatcher =
-        vscode.workspace.createFileSystemWatcher(projectAgentsPattern);
+    try {
+      // Watch workspace .pochi/agents directory
+      const workspaceDir = getWorkspaceFolder();
+      if (workspaceDir) {
+        const projectAgentsPattern = new vscode.RelativePattern(
+          workspaceDir,
+          ".pochi/agents/**/*.md",
+        );
+        const projectWatcher =
+          vscode.workspace.createFileSystemWatcher(projectAgentsPattern);
 
-      projectWatcher.onDidCreate(() => this.loadAgents());
-      projectWatcher.onDidChange(() => this.loadAgents());
-      projectWatcher.onDidDelete(() => this.loadAgents());
+        projectWatcher.onDidCreate(() => this.loadAgents());
+        projectWatcher.onDidChange(() => this.loadAgents());
+        projectWatcher.onDidDelete(() => this.loadAgents());
 
-      this.disposables.push(projectWatcher);
+        this.disposables.push(projectWatcher);
+      }
+    } catch (error) {
+      logger.error("Failed to initialize project agents watcher", error);
     }
 
-    // Watch system .pochi/agents directory
-    const systemAgentsDir = path.join(os.homedir(), ".pochi", "agents");
-    const systemAgentsPattern = new vscode.RelativePattern(
-      systemAgentsDir,
-      "**/*.md",
-    );
-    const systemWatcher =
-      vscode.workspace.createFileSystemWatcher(systemAgentsPattern);
+    try {
+      // Watch system .pochi/agents directory
+      const systemAgentsDir = path.join(os.homedir(), ".pochi", "agents");
+      const systemAgentsPattern = new vscode.RelativePattern(
+        systemAgentsDir,
+        "**/*.md",
+      );
+      const systemWatcher =
+        vscode.workspace.createFileSystemWatcher(systemAgentsPattern);
 
-    systemWatcher.onDidCreate(() => this.loadAgents());
-    systemWatcher.onDidChange(() => this.loadAgents());
-    systemWatcher.onDidDelete(() => this.loadAgents());
+      systemWatcher.onDidCreate(() => this.loadAgents());
+      systemWatcher.onDidChange(() => this.loadAgents());
+      systemWatcher.onDidDelete(() => this.loadAgents());
 
-    this.disposables.push(systemWatcher);
+      this.disposables.push(systemWatcher);
+    } catch (error) {
+      logger.error("Failed to initialize system agents watcher", error);
+    }
   }
 
   private async loadAgents() {

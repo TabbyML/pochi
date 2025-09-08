@@ -10,49 +10,127 @@ export type SubTask = {
   todos: Todo[];
 };
 
-const toolDef = {
-  description:
-    `Create a task that can be executed autonomously by a runner in the same environment as the current task. When you are searching for a keyword or file and are not confident that you will find the right match in the first few tries, use the Agent tool to perform the search for you.
+export const CustomAgent = z.object({
+  name: z.string().describe("The name of the custom agent."),
+  description: z.string().describe("A brief description of the custom agent."),
+  tools: z
+    .array(z.string())
+    .optional()
+    .describe("List of tools the agent can use."),
+  systemPrompt: z.string().describe("The system prompt for the custom agent."),
+});
 
-Always include a reminder in your prompt to ensure the result will be submitted through the \`attemptCompletion\` tool.
-If the runner stops without submitting the result, it will return an error message.
+export type CustomAgent = z.infer<typeof CustomAgent>;
 
-For example, if you are searching for a keyword or file and are not confident about finding the right match in the first few tries, use this tool to perform the search.
-When to use this tool:
-- If you are searching for a keyword like "config" or "logger", or for questions like "which file does X?", this tool is strongly recommended.
-When NOT to use this tool:
-- To read a specific file or path, use the \`readFile\` or \`globFiles\` tool instead, to find the match more quickly.
-- To search for a specific class definition like "class Foo", use the \`searchFiles\` or \`globFiles\` tool instead.
-- To search for code within a specific file or a small set of files (2-3), use the \`readFile\` tool instead.
+export const overrideCustomAgentTools = (
+  customAgent: CustomAgent | undefined,
+): CustomAgent | undefined => {
+  if (!customAgent) return undefined;
+  if (!customAgent.tools || customAgent.tools.length === 0) {
+    return { ...customAgent, tools: undefined };
+  }
 
-Usage notes:
-1. Launch multiple \`newTask\` tools concurrently whenever possible to maximize performance. To do this, use a single message with multiple tool uses.
-2. You will not be able to send additional messages to the runner. Nor will the runner be able to communicate with you outside of its final report. 
-  Therefore, your prompt must contain a highly detailed task description for the runner to perform autonomously. You should also specify exactly what information the runner should return back through the \`attemptCompletion\` tool.
-`.trim(),
-  inputSchema: z.object({
-    description: z.string().describe("A short description of the task."),
-    prompt: z
-      .string()
-      .describe("The detailed prompt for the task to be performed."),
-    _meta: z
-      .object({
-        uid: z.string().describe("A unique identifier for the task."),
-      })
-      .optional(),
-    _transient: z
-      .object({
-        task: z.custom<SubTask>().describe("The inlined subtask result."),
-      })
-      .optional(),
-  }),
-  outputSchema: z.object({
-    result: z
-      .string()
-      .describe(
-        "The result of the task, submitted through the `attemptCompletion` tool.",
-      ),
-  }),
+  const toAddTools = ["todoWrite", "attemptCompletion"];
+  const toDeleteTools = ["askFollowupQuestion", "newTask"];
+
+  const updatedTools = customAgent.tools.filter(
+    (tool) => !toDeleteTools.includes(tool) && !toAddTools.includes(tool),
+  );
+  return { ...customAgent, tools: [...updatedTools, ...toAddTools] };
 };
 
-export const newTask = defineClientTool(toolDef);
+function makeCustomAgentToolDescription(customAgents?: CustomAgent[]) {
+  if (!customAgents || customAgents.length === 0) return "";
+
+  return `When using the newTask tool, you may specify a agentType parameter to select which agent type to use.
+Available agent types and the tools they have access to:
+${(customAgents ?? []).map((agent) => `- ${agent.name}: ${agent.description}`).join("\n")}
+`;
+}
+
+export const createNewTaskTool = (customAgents?: CustomAgent[]) =>
+  defineClientTool({
+    description: `Launch a new agent to handle complex, multi-step tasks autonomously.
+${makeCustomAgentToolDescription(customAgents)}
+
+Always include a reminder in your prompt to ensure the result will be submitted through the \`attemptCompletion\` tool.
+If the task stops without submitting the result, it will return an error message.
+
+When NOT to use the newTask tool:
+- If you want to read a specific file path, use the readFile or globFiles tool instead of the newTask tool, to find the match more quickly
+- If you are searching for a specific class definition like "class Foo", use the globFiles tool instead, to find the match more quickly
+- If you are searching for code within a specific file or set of 2-3 files, use the readFile tool instead of the newTask tool, to find the match more quickly
+- Other tasks that are not related to the agent descriptions above
+
+Usage notes:
+1. Launch multiple \`newTask\` tools concurrently whenever possible to maximize performance; to do that, use a single message with multiple tool uses
+2. When the agent is done, it will return a single message back to you. The result returned by the agent is not visible to the user. To show the user the result, you should send a text message back to the user with a concise summary of the result.
+3. Each agent invocation is stateless. You will not be able to send additional messages to the agent, nor will the agent be able to communicate with you outside of its final report. Therefore, your prompt should contain a highly detailed task description for the agent to perform autonomously and you should specify exactly what information the agent should return back to you in its final and only message to you.
+4. The agent's outputs should generally be trusted
+5. Clearly tell the agent whether you expect it to write code or just to do research (search, file reads, web fetches, etc.), since it is not aware of the user's intent
+6. If the agent description mentions that it should be used proactively, then you should try your best to use it without the user having to ask for it first. Use your judgement.
+
+Example usage:
+
+<example_agent_descriptions>
+"code-reviewer": use this agent after you are done writing a signficant piece of code
+"greeting-responder": use this agent when to respond to user greetings with a friendly joke
+</example_agent_description>
+
+<example>
+user: "Please write a function that checks if a number is prime"
+assistant: Sure let me write a function that checks if a number is prime
+assistant: First let me use the Write tool to write a function that checks if a number is prime
+assistant: I'm going to use the Write tool to write the following code:
+<code>
+function isPrime(n) {
+  if (n <= 1) return false
+  for (let i = 2; i * i <= n; i++) {
+    if (n % i === 0) return false
+  }
+  return true
+}
+</code>
+<commentary>
+Since a signficant piece of code was written and the task was completed, now use the code-reviewer agent to review the code
+</commentary>
+assistant: Now let me use the code-reviewer agent to review the code
+assistant: Uses the Task tool to launch the with the code-reviewer agent 
+</example>
+
+<example>
+user: "Hello"
+<commentary>
+Since the user is greeting, use the greeting-responder agent to respond with a friendly joke
+</commentary>
+assistant: "I'm going to use the Task tool to launch the with the greeting-responder agent"
+</example>
+      `,
+    inputSchema: z.object({
+      description: z.string().describe("A short description of the task."),
+      prompt: z
+        .string()
+        .describe("The detailed prompt for the task to be performed."),
+      agentType: z
+        .string()
+        .optional()
+        .describe("The type of the specialized agent to use for the task."),
+      _meta: z
+        .object({
+          uid: z.string().describe("A unique identifier for the task."),
+        })
+        .optional(),
+      _transient: z
+        .object({
+          task: z.custom<SubTask>().describe("The inlined subtask result."),
+        })
+        .optional(),
+    }),
+    outputSchema: z.object({
+      result: z
+        .string()
+        .describe(
+          "The result of the task, submitted through the `attemptCompletion` tool.",
+        ),
+    }),
+  });
