@@ -1,4 +1,4 @@
-import { getLogger } from "@/lib/logger";
+import { getLogger } from "../base";
 import type { McpServerConfig } from "@getpochi/common/configuration";
 import type { McpToolStatus } from "@getpochi/common/vscode-webui-bridge";
 import {
