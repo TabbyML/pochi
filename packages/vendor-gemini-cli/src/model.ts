@@ -1,4 +1,5 @@
 import { createVertexWithoutCredentials } from "@ai-sdk/google-vertex/edge";
+import { EventSourceParserStream } from "@ai-sdk/provider-utils";
 import type { LanguageModelV2 } from "@ai-sdk/provider";
 import type { CreateModelOptions } from "@getpochi/common/vendor/edge";
 import { APICallError, wrapLanguageModel } from "ai";
@@ -70,16 +71,13 @@ function createPatchedFetch(
     }
     const body = resp.body
       .pipeThrough(new TextDecoderStream())
+      .pipeThrough(new EventSourceParserStream())
       .pipeThrough(
         new TransformStream({
-          async transform(chunk, controller) {
-            if (chunk.startsWith("data: ")) {
-              const data = JSON.parse(chunk.slice(6));
-              const newChunk = `data: ${JSON.stringify(data.response)}\n\n`;
-              controller.enqueue(newChunk);
-            } else {
-              controller.enqueue(chunk);
-            }
+          async transform({ data }, controller) {
+            const item = JSON.parse(data);
+            const newChunk = `data: ${JSON.stringify(item.response)}\r\n\r\n`;
+            controller.enqueue(newChunk);
           },
         }),
       )
