@@ -1,4 +1,4 @@
-import { getLogger } from "@/lib/logger";
+import { getLogger } from "../../base";
 import type { McpServerConfig } from "@getpochi/common/configuration";
 import { injectable, singleton } from "tsyringe";
 // biome-ignore lint/style/useImportType: needed for dependency injection
