@@ -108,11 +108,11 @@ export class CommandManager implements vscode.Disposable {
 
       vscode.commands.registerCommand("pochi.loginWithToken", async () => {
         const token = await vscode.window.showInputBox({
-          prompt: "Enter your login token",
+          prompt: "Enter your login token from the Pochi website",
           placeHolder: "Paste your token here",
           ignoreFocusOut: true,
+          password: true,
         });
-
         if (token) {
           vscode.window.withProgress(
             {
