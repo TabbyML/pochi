@@ -19,11 +19,6 @@ runs:
         COMMENT_ID=$(echo '${{ github.event.comment.id }}')
         ISSUE_NUMBER=$(echo '${{ github.event.issue.number }}')
         
-        # Debug output
-        echo "Debug: COMMENT_ID=$COMMENT_ID"
-        echo "Debug: ISSUE_NUMBER=$ISSUE_NUMBER"
-        echo "Debug: REPOSITORY=${{ github.repository }}"
-        
         # Add eyes reaction to indicate starting
         EYES_REACTION_RESPONSE=$(curl -L \
           -X POST \
@@ -33,12 +28,8 @@ runs:
           https://api.github.com/repos/${{ github.repository }}/issues/comments/$COMMENT_ID/reactions \
           -d '{"content":"eyes"}')
         
-        # Debug output for eyes reaction response
-        echo "Debug: EYES_REACTION_RESPONSE=$EYES_REACTION_RESPONSE"
-        
         # Extract eyes reaction ID and export as environment variable
         EYES_REACTION_ID=$(echo "$EYES_REACTION_RESPONSE" | jq -r '.id')
-        echo "Debug: Extracted EYES_REACTION_ID=$EYES_REACTION_ID"
         echo "EYES_REACTION_ID=$EYES_REACTION_ID" >> $GITHUB_ENV
         
         # Create initial progress comment
@@ -50,12 +41,8 @@ runs:
           https://api.github.com/repos/${{ github.repository }}/issues/$ISSUE_NUMBER/comments \
           -d "{\"body\":\"🔄 **Pochi Running...**\\n\\nStarting Pochi execution...\\n\\n🔗 **[View GitHub Action](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})**\"}")
         
-        # Debug output for progress comment response
-        echo "Debug: PROGRESS_COMMENT_RESPONSE=$PROGRESS_COMMENT_RESPONSE"
-        
         # Extract progress comment ID and export as environment variable
         PROGRESS_COMMENT_ID=$(echo "$PROGRESS_COMMENT_RESPONSE" | jq -r '.id')
-        echo "Debug: Extracted PROGRESS_COMMENT_ID=$PROGRESS_COMMENT_ID"
         echo "PROGRESS_COMMENT_ID=$PROGRESS_COMMENT_ID" >> $GITHUB_ENV
 
     - name: Install pochi CLI

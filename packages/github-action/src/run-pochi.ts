@@ -73,20 +73,12 @@ export async function runPochi(githubManager: GitHubManager): Promise<void> {
   const config = readPochiConfig();
 
   const historyCommentId = process.env.PROGRESS_COMMENT_ID
-    ? (() => {
-        const id = Number.parseInt(process.env.PROGRESS_COMMENT_ID, 10);
-        console.log(`Using progress comment ID from env: ${id}`);
-        return id;
-      })()
+    ? Number.parseInt(process.env.PROGRESS_COMMENT_ID, 10)
     : await githubManager.createComment(
         `Starting Pochi execution...${createGitHubActionFooter(request.event)}`,
       );
   const eyesReactionId = process.env.EYES_REACTION_ID
-    ? (() => {
-        const id = Number.parseInt(process.env.EYES_REACTION_ID, 10);
-        console.log(`Using eyes reaction ID from env: ${id}`);
-        return id;
-      })()
+    ? Number.parseInt(process.env.EYES_REACTION_ID, 10)
     : undefined;
 
   const args = ["--prompt", request.prompt, "--max-steps", "128"];
