@@ -1,3 +1,4 @@
+import type { McpHub } from "@getpochi/common/mcp-utils";
 import type { UITools } from "@getpochi/livekit";
 import type { ToolFunctionType } from "@getpochi/tools";
 import { type ToolUIPart, getToolName } from "ai";
@@ -32,10 +33,34 @@ const ToolMap: Record<
 
 export async function executeToolCall(
   tool: ToolUIPart<UITools>,
-  options: ToolCallOptions,
+  options: ToolCallOptions & { mcpHub?: McpHub },
   abortSignal?: AbortSignal,
 ) {
   const toolName = getToolName(tool);
+
+  // Check if it's an MCP tool first
+  if (options.mcpHub) {
+    const mcpStatus = options.mcpHub.getStatus();
+    const mcpTool = mcpStatus.toolset[toolName];
+    if (mcpTool?.execute) {
+      try {
+        const result = await mcpTool.execute(tool.input, {
+          messages: [],
+          toolCallId: tool.toolCallId,
+          abortSignal,
+        });
+        return {
+          result: result,
+        };
+      } catch (e) {
+        return {
+          error: toErrorString(e),
+        };
+      }
+    }
+  }
+
+  // Fall back to built-in tools
   const toolFunction = ToolMap[toolName];
   if (!toolFunction) {
     return {
