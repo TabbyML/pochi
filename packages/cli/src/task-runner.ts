@@ -11,6 +11,7 @@ import type { PochiApiClient } from "@getpochi/common/pochi-api";
 import type { LLMRequestData, Message } from "@getpochi/livekit";
 import { LiveChatKit } from "@getpochi/livekit/node";
 import { type Todo, isUserInputToolPart } from "@getpochi/tools";
+import type { CustomAgent } from "@getpochi/tools";
 import type { Store } from "@livestore/livestore";
 import {
   getToolName,
@@ -68,6 +69,16 @@ export interface RunnerOptions {
    */
   isSubTask?: boolean;
 
+  /**
+   * Custom agent to use for this task
+   */
+  customAgent?: CustomAgent;
+
+  /**
+   * Available custom agents for the new task tool
+   */
+  customAgents?: CustomAgent[];
+
   waitUntil?: (promise: Promise<unknown>) => void;
 
   onSubTaskCreated?: (runner: TaskRunner) => void;
@@ -96,13 +107,15 @@ export class TaskRunner {
     this.toolCallOptions = {
       cwd: options.cwd,
       rg: options.rg,
-      createSubTaskRunner: (taskId: string) => {
+      customAgents: options.customAgents,
+      createSubTaskRunner: (taskId: string, customAgent?: CustomAgent) => {
         // create sub task
         const runner = new TaskRunner({
           ...options,
           prompt: undefined, // should not use prompt
           uid: taskId,
           isSubTask: true,
+          customAgent,
         });
 
         options.onSubTaskCreated?.(runner);
@@ -118,12 +131,14 @@ export class TaskRunner {
       waitUntil: options.waitUntil,
       isCli: true,
       isSubTask: options.isSubTask,
+      customAgent: options.customAgent,
       getters: {
         getLLM: () => options.llm,
         getEnvironment: async () => ({
           ...(await readEnvironment({ cwd: options.cwd })),
           todos: this.todos,
         }),
+        getCustomAgents: () => this.toolCallOptions.customAgents || [],
       },
     });
     if (options.prompt) {

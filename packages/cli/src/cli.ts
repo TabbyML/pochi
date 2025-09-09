@@ -24,6 +24,7 @@ import { hc } from "hono/client";
 import packageJson from "../package.json";
 import { registerAuthCommand } from "./auth";
 import { findRipgrep } from "./lib/find-ripgrep";
+import { loadAgents } from "./lib/load-agents";
 import {
   containsWorkflowReference,
   replaceWorkflowReferences,
@@ -77,7 +78,7 @@ const program = new Command()
   )
   .optionsGroup("Model:")
   .option(
-    "--model <model>",
+    "-m, --model <model>",
     "The model to use for the task.",
     "qwen/qwen3-coder",
   )
@@ -100,6 +101,9 @@ const program = new Command()
       renderer.renderSubTask(runner);
     };
 
+    // Load custom agents
+    const customAgents = await loadAgents(process.cwd());
+
     const runner = new TaskRunner({
       uid,
       apiClient,
@@ -112,6 +116,7 @@ const program = new Command()
       maxRetries: options.maxRetries,
       waitUntil,
       onSubTaskCreated,
+      customAgents,
     });
 
     const renderer = new OutputRenderer(runner.state);

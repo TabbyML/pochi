@@ -1,17 +1,5 @@
 export type CaptureEvent =
   | {
-      event: "newTask";
-      properties?: undefined;
-    }
-  | {
-      event: "chatFinish";
-      properties: {
-        modelId: string | undefined;
-        finishReason: string;
-        numToolCalls?: number;
-      };
-    }
-  | {
       event: "selectWorkflow";
       properties: {
         workflowId: string;
@@ -31,10 +19,6 @@ export type CaptureEvent =
       properties: {
         rulePaths: string[];
       };
-    }
-  | {
-      event: "sharePublic";
-      properties?: undefined;
     }
   | {
       event: "shareSupport";

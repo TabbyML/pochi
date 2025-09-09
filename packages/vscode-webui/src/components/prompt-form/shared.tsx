@@ -27,7 +27,6 @@ export function useMentionKeyboardNavigation<T>(
           newIndex = selectedIndex === lastIndex ? 0 : selectedIndex + 1;
           break;
         case "Enter":
-        case "Tab":
           if (items[selectedIndex]) {
             handleSelect(items[selectedIndex]);
           }

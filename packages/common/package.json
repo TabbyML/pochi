@@ -37,8 +37,11 @@
     "minimatch": "^10.0.1",
     "rehype": "^13.0.2",
     "remeda": "catalog:",
+    "remark": "^15.0.1",
+    "remark-frontmatter": "^5.0.0",
     "silver-fleece": "^1.2.1",
     "tslog": "catalog:",
+    "vfile-matter": "^5.0.1",
     "zod": "catalog:"
   },
   "devDependencies": {
