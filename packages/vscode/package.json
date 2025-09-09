@@ -206,6 +206,7 @@
               "inlineCompletion": {
                 "default": {},
                 "properties": {
+                  "additionalProperties": false,
                   "disabled": {
                     "type": "boolean",
                     "default": false,
@@ -218,6 +219,44 @@
                       "type": "string"
                     },
                     "description": "List of languages where inline completion is disabled."
+                  }
+                }
+              },
+              "codeCompletionProvider": {
+                "default": {},
+                "properties": {
+                  "additionalProperties": false,
+                  "type": {
+                    "type": "string",
+                    "enum": ["pochi", "openai"],
+                    "default": "pochi",
+                    "description": "The inline completion provider to use."
+                  },
+                  "openaiConfig": {
+                    "default": {},
+                    "properties": {
+                      "additionalProperties": false,
+                      "apiBaseUrl": {
+                        "type": "string",
+                        "default": "",
+                        "description": "The base URL for OpenAI API requests."
+                      },
+                      "apiKey": {
+                        "type": "string",
+                        "default": "",
+                        "description": "The API key for OpenAI API requests. If not set, will use the POCHI_CODE_COMPLETION_OPENAI_API_KEY environment variable."
+                      },
+                      "model": {
+                        "type": "string",
+                        "default": "",
+                        "description": "The OpenAI model to use for inline completion."
+                      },
+                      "promptTemplate": {
+                        "type": "string",
+                        "default": "",
+                        "description": "The prompt template to use for inline completion. If not set, will use the default template."
+                      }
+                    }
                   }
                 }
               },

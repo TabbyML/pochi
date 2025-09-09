@@ -137,6 +137,30 @@ export function calcDistance(a: string, b: string) {
 }
 
 /**
+ * Format placeholders in the template string.
+ * Example:
+ * ```
+ *   formatPlaceholders("Hello {{name}}", { name: "World" })
+ * ```
+ * @param template a string with placeholders in the form {{key}}
+ * @param replacements a map of replacements for the placeholders
+ * @returns a string with the placeholders replaced
+ */
+export function formatPlaceholders(
+  template: string,
+  replacements: Record<string, string>,
+): string {
+  const patterns = Object.keys(replacements)
+    .map((key) => `{{${key}}}`)
+    .join("|");
+  const regexp = new RegExp(patterns, "g");
+  return template.replace(regexp, (pattern: string) => {
+    const key = pattern.slice(2, -2);
+    return replacements[key] ?? "";
+  });
+}
+
+/**
  * Crop the text to fit within the specified character limit.
  * If the text is cropped, it ensures the last line is complete by trimming at the last newline.
  *
@@ -154,4 +178,51 @@ export function cropTextToMaxChars(text: string, maxChars: number): string {
     }
   }
   return croppedText;
+}
+
+/**
+ * Get the comment character for a specific programming language.
+ * @param language The programming language to get the comment character for.
+ * @returns The comment character for the specified language.
+ */
+export function getLanguageCommentChar(language: string): string {
+  switch (language.toLowerCase()) {
+    case "python":
+    case "bash":
+    case "shell":
+    case "yaml":
+    case "toml":
+      return "#";
+    case "javascript":
+    case "typescript":
+    case "javascriptreact":
+    case "typescriptreact":
+    case "java":
+    case "c":
+    case "cpp":
+    case "csharp":
+    case "go":
+    case "rust":
+    case "kotlin":
+    case "swift":
+    case "dart":
+      return "//";
+    case "html":
+    case "xml":
+      return "<!--";
+    case "css":
+    case "scss":
+    case "less":
+      return "/*";
+    case "sql":
+      return "--";
+    case "lua":
+      return "--";
+    case "haskell":
+      return "--";
+    case "erlang":
+      return "%";
+    default:
+      return "//"; // Default to // for other languages
+  }
 }
