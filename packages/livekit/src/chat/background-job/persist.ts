@@ -18,7 +18,7 @@ interface PersistJob {
 
 export function schedulePersistJob(job: PersistJob) {
   backgroundJobManager.push({
-    id: job.taskId,
+    id: `persist-${job.taskId}`,
     waitUntil: job.waitUntil,
     process: () => process(job),
   });
