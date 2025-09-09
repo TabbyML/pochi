@@ -5,6 +5,7 @@ import {
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { createMachine, interpret } from "@xstate/fsm";
 import { type ToolSet, experimental_createMCPClient as createClient } from "ai";
+import type { JSONSchema7 } from "json-schema";
 import { getLogger } from "../base";
 import type { McpServerConfig } from "../configuration/index.js";
 
@@ -35,7 +36,7 @@ export interface McpToolStatus {
   disabled: boolean;
   description?: string;
   inputSchema: {
-    jsonSchema: any;
+    jsonSchema: JSONSchema7;
   };
 }
 
@@ -225,9 +226,10 @@ export class McpConnection implements Disposable {
     // Check if disabled tools changed
     const oldDisabledTools = oldConfig.disabledTools ?? [];
     const newDisabledTools = config.disabledTools ?? [];
-    const toolsChanged = oldDisabledTools.length !== newDisabledTools.length ||
-      !oldDisabledTools.every(tool => newDisabledTools.includes(tool));
-    
+    const toolsChanged =
+      oldDisabledTools.length !== newDisabledTools.length ||
+      !oldDisabledTools.every((tool) => newDisabledTools.includes(tool));
+
     if (toolsChanged) {
       this.logger.debug("Tool enabled/disabled changed, updating status...");
       this.notifyStatusChange();

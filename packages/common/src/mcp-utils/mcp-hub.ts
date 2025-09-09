@@ -57,7 +57,7 @@ export class McpHub implements Disposable {
     if (this.config[name]) {
       const newConfig = {
         ...this.config,
-        [name]: { ...this.config[name], disabled: false }
+        [name]: { ...this.config[name], disabled: false },
       };
       this.updateConfig(newConfig);
     } else {
@@ -69,7 +69,7 @@ export class McpHub implements Disposable {
     if (this.config[name]) {
       const newConfig = {
         ...this.config,
-        [name]: { ...this.config[name], disabled: true }
+        [name]: { ...this.config[name], disabled: true },
       };
       this.updateConfig(newConfig);
     } else {
@@ -87,7 +87,7 @@ export class McpHub implements Disposable {
       ...this.config,
       [serverName]: serverConfig,
     };
-    
+
     this.updateConfig(newConfig);
     return serverName;
   }
