@@ -1137,7 +1137,7 @@ If you’re experiencing issues with Pochi:
 
 1. Report issues on Github
 
-   The best way to report bugs or request features is through our GitHub repository: github.com/TabbyML/pochi/issues
+   The best way to report bugs or request features is through our GitHub repository: [https://github.com/TabbyML/pochi/issues](https://github.com/TabbyML/pochi/issues)
 
 2. Join our Discord
 
