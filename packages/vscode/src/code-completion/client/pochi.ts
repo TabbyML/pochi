@@ -1,8 +1,8 @@
 import type { ApiClient } from "@/lib/auth-client";
 import { getLogger } from "@getpochi/common";
 import type {
-  CodeCompletionRequest,
-  CodeCompletionResponse,
+  CodeCompletionFIMRequest,
+  CodeCompletionFIMResponse,
 } from "@getpochi/common/pochi-api";
 import { container } from "tsyringe";
 import { CodeCompletionConfig } from "../configuration";
@@ -31,7 +31,7 @@ export class CodeCompletionPochiClient implements CodeCompletionClientProvider {
     const requestId = this.requestId;
 
     const prompt = buildPrompt(params.segments);
-    const request: CodeCompletionRequest = {
+    const request: CodeCompletionFIMRequest = {
       prompt: prompt.prompt,
       suffix: prompt.suffix,
       temperature: params.temperature,
@@ -41,7 +41,7 @@ export class CodeCompletionPochiClient implements CodeCompletionClientProvider {
 
     try {
       logger.trace(`[${requestId}] Completion request:`, request);
-      const response = await this.apiClient.api.code.completion.$post(
+      const response = await this.apiClient.api.code.fim.completion.$post(
         {
           json: request,
         },
@@ -78,7 +78,7 @@ export class CodeCompletionPochiClient implements CodeCompletionClientProvider {
 }
 
 function createCompletionResultItemFromResponse(
-  response: CodeCompletionResponse,
+  response: CodeCompletionFIMResponse,
 ): CompletionResultItem {
   const index = 0; // api always returns 0 or 1 choice
   return new CompletionResultItem(response.choices[index]?.text ?? "", {
