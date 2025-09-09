@@ -21,6 +21,7 @@ import {
 } from "ai";
 import { pickBy } from "remeda";
 import type { Message, Metadata, RequestData } from "../types";
+import { schedulePersistJob } from "./background-job";
 import { makeRepairToolCall } from "./llm";
 import { parseMcpToolSet } from "./mcp-utils";
 import {
@@ -29,7 +30,6 @@ import {
   createToolCallMiddleware,
 } from "./middlewares";
 import { createModel } from "./models";
-import { persistManager } from "./persist-manager";
 
 export type OnStartCallback = (options: {
   messages: Message[];
@@ -44,7 +44,18 @@ export type PrepareRequestGetters = {
     readonly messages: Message[];
   }) => Promise<Environment>;
   getMcpToolSet?: () => Record<string, McpTool>;
-  getCustomAgents?: () => CustomAgent[];
+  getCustomAgents?: () => CustomAgent[] | undefined;
+};
+
+export type ChatTransportOptions = {
+  onStart?: OnStartCallback;
+  getters: PrepareRequestGetters;
+  isSubTask?: boolean;
+  isCli?: boolean;
+  store: Store;
+  apiClient: PochiApiClient;
+  waitUntil?: (promise: Promise<unknown>) => void;
+  customAgent?: CustomAgent;
 };
 
 export class FlexibleChatTransport implements ChatTransport<Message> {
@@ -57,23 +68,14 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
   private readonly waitUntil?: (promise: Promise<unknown>) => void;
   private readonly customAgent?: CustomAgent;
 
-  constructor(options: {
-    onStart?: OnStartCallback;
-    getters: PrepareRequestGetters;
-    isSubTask?: boolean;
-    isCli?: boolean;
-    store: Store;
-    apiClient: PochiApiClient;
-    waitUntil?: (promise: Promise<unknown>) => void;
-    customAgent?: CustomAgent;
-  }) {
+  constructor(options: ChatTransportOptions) {
     this.onStart = options.onStart;
     this.getters = options.getters;
     this.isSubTask = options.isSubTask;
     this.isCli = options.isCli;
     this.store = options.store;
     this.apiClient = options.apiClient;
-    this.waitUntil = this.waitUntil;
+    this.waitUntil = options.waitUntil;
     this.customAgent = overrideCustomAgentTools(options.customAgent);
   }
 
@@ -175,7 +177,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
       },
       onFinish: async ({ messages }) => {
         if (this.apiClient.authenticated) {
-          persistManager.push({
+          schedulePersistJob({
             taskId: chatId,
             store: this.store,
             messages,

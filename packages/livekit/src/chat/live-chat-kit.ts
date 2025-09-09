@@ -8,11 +8,11 @@ import { makeMessagesQuery, makeTaskQuery } from "../livestore/queries";
 import { events, tables } from "../livestore/schema";
 import { toTaskError, toTaskStatus } from "../task";
 import type { Message } from "../types";
+import { scheduleGenerateTitleJob } from "./background-job";
 import {
   FlexibleChatTransport,
   type OnStartCallback,
 } from "./flexible-chat-transport";
-import { generateTitleManager } from "./generate-title-manager";
 import { compactTask } from "./llm";
 import { createModel } from "./models";
 
@@ -29,6 +29,7 @@ export type LiveChatKitOptions<T> = {
       readonly messages: Message[];
     }) => Promise<Environment>;
     getMcpTools?: () => Record<string, McpTool>;
+    getCustomAgents?: () => CustomAgent[] | undefined;
   };
 
   isSubTask?: boolean;
@@ -73,6 +74,7 @@ export class LiveChatKit<
     isCli,
     apiClient,
     customAgent,
+    waitUntil,
     ...chatInit
   }: LiveChatKitOptions<T>) {
     this.taskId = taskId;
@@ -85,6 +87,7 @@ export class LiveChatKit<
       isCli,
       apiClient,
       customAgent,
+      waitUntil,
     });
 
     this.chat = new chatClass({
@@ -235,7 +238,7 @@ export class LiveChatKit<
 
       const getModel = () =>
         createModel({ id: this.taskId, llm: getters.getLLM() });
-      generateTitleManager.push({
+      scheduleGenerateTitleJob({
         taskId: this.taskId,
         store,
         messages,

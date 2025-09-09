@@ -14,12 +14,12 @@
     "build-storybook": "storybook build"
   },
   "dependencies": {
-    "@ai-sdk/react": "catalog:",
     "@ai-sdk/provider": "catalog:",
+    "@ai-sdk/react": "catalog:",
     "@getpochi/common": "workspace:*",
-    "@getpochi/vendor-pochi": "workspace:*",
-    "@getpochi/vendor-gemini-cli": "workspace:*",
     "@getpochi/livekit": "workspace:*",
+    "@getpochi/vendor-gemini-cli": "workspace:*",
+    "@getpochi/vendor-pochi": "workspace:*",
     "@leeoniya/ufuzzy": "^1.0.18",
     "@livestore/adapter-web": "catalog:",
     "@livestore/livestore": "catalog:",
@@ -70,6 +70,7 @@
     "i18next": "^25.4.2",
     "i18next-browser-languagedetector": "^8.2.0",
     "lucide-react": "catalog:",
+    "mermaid": "^11.11.0",
     "motion": "^12.12.1",
     "react": "catalog:",
     "react-dom": "^19.0.0",
