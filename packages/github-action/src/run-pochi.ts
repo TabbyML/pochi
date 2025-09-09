@@ -72,15 +72,14 @@ export async function runPochi(githubManager: GitHubManager): Promise<void> {
   const request = githubManager.parseRequest();
   const config = readPochiConfig();
 
-  // Add eye reaction to indicate starting
-  const eyesReactionId = await githubManager.createReaction(
-    request.commentId,
-    "eyes",
-  );
-
-  // Create initial history comment with GitHub Action link
-  const initialComment = `Starting Pochi execution...${createGitHubActionFooter(request.event)}`;
-  const historyCommentId = await githubManager.createComment(initialComment);
+  const historyCommentId = process.env.PROGRESS_COMMENT_ID
+    ? Number.parseInt(process.env.PROGRESS_COMMENT_ID, 10)
+    : await githubManager.createComment(
+        `Starting Pochi execution...${createGitHubActionFooter(request.event)}`,
+      );
+  const eyesReactionId = process.env.EYES_REACTION_ID
+    ? Number.parseInt(process.env.EYES_REACTION_ID, 10)
+    : undefined;
 
   const args = ["--prompt", request.prompt, "--max-steps", "128"];
 
