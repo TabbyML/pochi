@@ -10,7 +10,13 @@ import { getLogger } from "../base";
 import { PochiConfig } from "./types";
 import type { VendorConfig } from "./vendor";
 
-const PochiConfigFilePath = path.join(os.homedir(), ".pochi", "config.jsonc");
+const isDev = process.env.POCHI_LOCAL_SERVER === "true";
+
+const PochiConfigFilePath = path.join(
+  os.homedir(),
+  ".pochi",
+  isDev ? "dev-config.jsonc" : "config.jsonc",
+);
 
 const logger = getLogger("PochiConfigManager");
 
