@@ -1,20 +1,15 @@
 import type { McpTool } from "@getpochi/tools";
-import { type Signal, signal } from "@preact/signals-core";
 import { getLogger } from "../base";
 import type { McpServerConfig } from "../configuration/index.js";
 
-// biome-ignore lint/style/useImportType: needed for dependency injection
-import { PochiConfiguration } from "./configuration";
-import { McpConnection } from "./mcp-connection";
+import { McpConnection, type McpConnectionStatus } from "./mcp-connection";
 import type { McpToolExecutable } from "./types";
-import { omitDisabled } from "./types";
 
 // Define a minimal Disposable interface to avoid vscode dependency
 type Disposable = { dispose(): void };
 
 const logger = getLogger("MCPHub");
 
-type McpConnectionStatus = McpConnection["status"]["value"];
 type McpConnectionMap = Map<
   string,
   {
@@ -23,19 +18,29 @@ type McpConnectionMap = Map<
   }
 >;
 
-// Removed decorators to avoid decorator usage outside VSCode/tsyringe
+export interface McpHubStatus {
+  connections: Record<string, McpConnectionStatus>;
+  toolset: Record<string, McpTool & McpToolExecutable>;
+}
+
+export interface McpHubOptions {
+  config: Record<string, McpServerConfig>;
+  logger?: ReturnType<typeof getLogger>;
+  onStatusChange?: (status: McpHubStatus) => void;
+  clientName?: string;
+}
+
 export class McpHub implements Disposable {
   private connections: McpConnectionMap = new Map();
   private listeners: Disposable[] = [];
-  private config: Record<string, McpServerConfig> | undefined = undefined;
+  private config: Record<string, McpServerConfig>;
+  private onStatusChange?: (status: McpHubStatus) => void;
+  private readonly clientName: string;
 
-  readonly status: Signal<ReturnType<typeof this.buildStatus>>;
-
-  constructor(
-    private readonly configuration: PochiConfiguration,
-    private readonly clientName: string = "pochi",
-  ) {
-    this.status = signal(this.buildStatus());
+  constructor(options: McpHubOptions) {
+    this.config = options.config;
+    this.onStatusChange = options.onStatusChange;
+    this.clientName = options.clientName ?? "pochi";
     this.init();
   }
 
@@ -49,107 +54,124 @@ export class McpHub implements Disposable {
   }
 
   start(name: string) {
-    if (this.config?.[name]) {
-      this.updateServerConfig(name, { ...this.config[name], disabled: false });
+    if (this.config[name]) {
+      const newConfig = {
+        ...this.config,
+        [name]: { ...this.config[name], disabled: false }
+      };
+      this.updateConfig(newConfig);
     } else {
       logger.debug(`Tried to start non-existing server: ${name}`);
     }
   }
 
   stop(name: string) {
-    if (this.config?.[name]) {
-      this.updateServerConfig(name, { ...this.config[name], disabled: true });
+    if (this.config[name]) {
+      const newConfig = {
+        ...this.config,
+        [name]: { ...this.config[name], disabled: true }
+      };
+      this.updateConfig(newConfig);
     } else {
       logger.debug(`Tried to stop non-existing server: ${name}`);
     }
   }
 
   addServer(name?: string, serverConfig?: McpServerConfig): string {
-    const uniqueName = this.generateUniqueName(
-      name || "replace-your-mcp-name-here",
-      this.config,
-    );
+    if (!serverConfig) {
+      throw new Error("Server configuration is required");
+    }
 
-    this.updateServerConfig(
-      uniqueName,
-      serverConfig || {
-        command: "npx",
-        args: ["@your-package/mcp-server"],
-      },
-    );
-
-    logger.debug(`Added MCP server: ${uniqueName}`);
-    return uniqueName;
+    const serverName = name ?? this.generateUniqueName("server");
+    const newConfig = {
+      ...this.config,
+      [serverName]: serverConfig,
+    };
+    
+    this.updateConfig(newConfig);
+    return serverName;
   }
 
   addServers(
     serverConfigs: Array<McpServerConfig & { name: string }>,
   ): string[] {
-    if (serverConfigs.length === 0) {
-      return [];
-    }
-
-    if (!this.config) {
-      logger.error("Cannot add servers: configuration not initialized");
-      return [];
-    }
-
+    const newConfig = { ...this.config };
     const addedNames: string[] = [];
-    const updatedConfig = { ...this.config };
 
-    for (const serverConfig of serverConfigs) {
-      const uniqueName = this.generateUniqueName(
-        serverConfig.name,
-        updatedConfig,
-      );
-      const { name: _, ...config } = serverConfig;
-      updatedConfig[uniqueName] = config;
-      addedNames.push(uniqueName);
+    for (const { name, ...config } of serverConfigs) {
+      const serverName = this.generateUniqueName(name, newConfig);
+      newConfig[serverName] = config;
+      addedNames.push(serverName);
     }
 
-    this.configuration.updateMcpServers(updatedConfig);
-    logger.debug(`Batch added ${addedNames.length} MCP servers`);
-
+    this.updateConfig(newConfig);
     return addedNames;
   }
 
-  getCurrentConfig(): Record<string, McpServerConfig> {
-    return this.config || {};
-  }
-  toggleToolEnabled(serverName: string, toolName: string) {
-    if (!this.config?.[serverName]) {
-      logger.debug(
-        `Tried to toggle tool for non-existing server: ${serverName}`,
-      );
-      return;
-    }
-    // Create a deep copy of the server config to avoid mutating the original
-    const serverConfig = { ...this.config[serverName] };
-    if (!serverConfig.disabledTools) {
-      serverConfig.disabledTools = [];
-    } else {
-      // Also copy the disabledTools array
-      serverConfig.disabledTools = [...serverConfig.disabledTools];
+  updateConfig(newConfig: Record<string, McpServerConfig>) {
+    this.config = newConfig;
+
+    // Update existing connections
+    for (const [name, config] of Object.entries(newConfig)) {
+      if (this.connections.has(name)) {
+        this.updateConnection(name, config);
+      } else {
+        this.createConnection(name, config);
+      }
     }
 
-    const index = serverConfig.disabledTools.indexOf(toolName);
-    const isCurrentlyDisabled = index > -1;
-    if (isCurrentlyDisabled) {
-      serverConfig.disabledTools.splice(index, 1);
-    } else {
-      serverConfig.disabledTools.push(toolName);
+    // Remove connections that are no longer in the config
+    for (const name of Array.from(this.connections.keys())) {
+      if (!(name in newConfig)) {
+        this.removeConnection(name);
+      }
     }
-    this.updateServerConfig(serverName, serverConfig);
+
+    this.notifyStatusChange();
+  }
+
+  getCurrentConfig(): Record<string, McpServerConfig> {
+    return { ...this.config };
+  }
+
+  toggleToolEnabled(serverName: string, toolName: string) {
+    const serverConfig = this.config[serverName];
+    if (!serverConfig) {
+      logger.debug(`Server ${serverName} not found`);
+      return;
+    }
+
+    const disabledTools = serverConfig.disabledTools ?? [];
+    const isCurrentlyDisabled = disabledTools.includes(toolName);
+
+    const newDisabledTools = isCurrentlyDisabled
+      ? disabledTools.filter((tool) => tool !== toolName)
+      : [...disabledTools, toolName];
+
+    const newConfig = {
+      ...this.config,
+      [serverName]: {
+        ...serverConfig,
+        disabledTools: newDisabledTools,
+      },
+    };
+
+    this.updateConfig(newConfig);
+  }
+
+  getStatus(): McpHubStatus {
+    return this.buildStatus();
   }
 
   private generateUniqueName(
     baseName: string,
     currentServers?: Record<string, McpServerConfig>,
   ): string {
+    const servers = currentServers ?? this.config;
     let serverName = baseName;
     let counter = 1;
 
-    while (currentServers && serverName in currentServers) {
+    while (servers && serverName in servers) {
       serverName = `${baseName}-${counter}`;
       counter++;
     }
@@ -157,69 +179,27 @@ export class McpHub implements Disposable {
     return serverName;
   }
 
-  private updateServerConfig(name: string, newConfig: McpServerConfig) {
-    this.configuration.updateMcpServers({
-      [name]: newConfig,
-    });
-    logger.debug(`Updated configuration for server ${name}:`, newConfig);
-  }
-
   private init() {
-    const mcpServersConfig = this.configuration.mcpServers.value;
-    this.config = mcpServersConfig;
-    logger.trace("Initializing MCP Hub with config:", mcpServersConfig);
-    for (const [name, config] of Object.entries(mcpServersConfig)) {
+    logger.trace("Initializing MCP Hub with config:", this.config);
+    for (const [name, config] of Object.entries(this.config)) {
       this.createConnection(name, config);
     }
-
-    this.listeners.push({
-      dispose: this.configuration.mcpServers.subscribe((newConfig) => {
-        logger.debug("MCP servers configuration changed:", newConfig);
-
-        // Check if the configuration actually changed to avoid redundant processing
-        if (
-          this.config &&
-          JSON.stringify(this.config) === JSON.stringify(newConfig)
-        ) {
-          logger.trace("Configuration unchanged, skipping processing");
-          return;
-        }
-
-        this.config = newConfig;
-
-        // Update existing connections
-        for (const [name, config] of Object.entries(newConfig)) {
-          if (this.connections.has(name)) {
-            this.updateConnection(name, config);
-          } else {
-            this.createConnection(name, config);
-          }
-        }
-
-        // Remove connections that are no longer in the config
-        for (const name of this.connections.keys()) {
-          if (!(name in newConfig)) {
-            this.removeConnection(name);
-          }
-        }
-
-        this.updateStatus();
-      }),
-    });
   }
 
-  private updateStatus() {
-    this.status.value = this.buildStatus();
-    logger.trace("Status updated:", this.status.value);
+  private notifyStatusChange() {
+    if (this.onStatusChange) {
+      this.onStatusChange(this.buildStatus());
+    }
+    logger.trace("Status updated:", this.buildStatus());
   }
 
-  private buildStatus() {
+  private buildStatus(): McpHubStatus {
     const connections = Object.keys(this.config ?? {}).reduce<
       Record<string, McpConnectionStatus>
     >((acc, name) => {
       const connection = this.connections.get(name);
       if (connection) {
-        acc[name] = connection.instance.status.value;
+        acc[name] = connection.instance.getStatus();
       }
       return acc;
     }, {});
@@ -232,9 +212,8 @@ export class McpHub implements Disposable {
           Record<string, McpTool & McpToolExecutable>
         >((toolAcc, [toolName, tool]) => {
           if (!tool.disabled) {
-            toolAcc[toolName] = {
-              ...omitDisabled(tool),
-            };
+            const { disabled, ...rest } = tool;
+            toolAcc[toolName] = rest;
           }
           return toolAcc;
         }, {});
@@ -250,18 +229,17 @@ export class McpHub implements Disposable {
   }
 
   private createConnection(name: string, config: McpServerConfig) {
-    const connection = new McpConnection(name, this.clientName, config);
+    const connection = new McpConnection(name, this.clientName, config, {
+      onStatusChange: () => {
+        logger.debug(`Connection status updated for ${name}`);
+        this.notifyStatusChange();
+      },
+    });
     const connectionObject = {
       instance: connection,
       listeners: [] as Disposable[],
     };
     this.connections.set(name, connectionObject);
-    connectionObject.listeners.push({
-      dispose: connection.status.subscribe(() => {
-        logger.debug(`Connection status updated for ${name}`);
-        this.updateStatus();
-      }),
-    });
     logger.debug(`Connection ${name} created.`);
   }
 
@@ -291,13 +269,13 @@ export class McpHub implements Disposable {
     }
     this.listeners = [];
 
-    for (const connection of this.connections.values()) {
+    for (const connection of Array.from(this.connections.values())) {
       for (const listener of connection.listeners) {
         listener.dispose();
       }
       connection.instance.dispose();
     }
     this.connections.clear();
-    this.updateStatus();
+    this.notifyStatusChange();
   }
 }

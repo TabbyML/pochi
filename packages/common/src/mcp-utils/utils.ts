@@ -1,5 +1,5 @@
-import http from "node:http";
-import https from "node:https";
+import * as http from "node:http";
+import * as https from "node:https";
 import deepEqual from "fast-deep-equal";
 import type { McpServerConfig } from "../configuration/index.js";
 import { isHttpTransport, isStdioTransport } from "./types";
@@ -98,16 +98,4 @@ export async function checkUrlIsSseServer(url: string): Promise<boolean> {
   } catch (e) {
     return false; // If URL parsing fails or other synchronous error
   }
-}
-
-export function isToolEnabledChanged(
-  oldConfig: McpServerConfig,
-  newConfig: McpServerConfig,
-): boolean {
-  const oldDisabledTools = oldConfig.disabledTools ?? [];
-  const newDisabledTools = newConfig.disabledTools ?? [];
-  return (
-    oldDisabledTools.length !== newDisabledTools.length ||
-    !deepEqual(oldDisabledTools, newDisabledTools)
-  );
 }

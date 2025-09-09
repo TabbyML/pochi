@@ -3,12 +3,10 @@ import {
   getDefaultEnvironment,
 } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-import { type Signal, signal } from "@preact/signals-core";
 import { createMachine, interpret } from "@xstate/fsm";
 import { type ToolSet, experimental_createMCPClient as createClient } from "ai";
 import { getLogger } from "../base";
 import type { McpServerConfig } from "../configuration/index.js";
-import type { McpToolStatus } from "../vscode-webui-bridge/index.js";
 
 import {
   type McpToolExecutable,
@@ -17,7 +15,6 @@ import {
 } from "./types";
 import {
   checkUrlIsSseServer,
-  isToolEnabledChanged,
   readableError,
   shouldRestartDueToConfigChanged,
 } from "./utils";
@@ -26,6 +23,21 @@ import {
 type Disposable = { dispose(): void };
 
 type McpClient = Awaited<ReturnType<typeof createClient>>;
+
+// Status interface for callback notifications
+export interface McpConnectionStatus {
+  status: "stopped" | "starting" | "ready" | "error";
+  error?: string;
+  tools: Record<string, McpToolStatus & McpToolExecutable>;
+}
+
+export interface McpToolStatus {
+  disabled: boolean;
+  description?: string;
+  inputSchema: {
+    jsonSchema: any;
+  };
+}
 
 type FsmContext = {
   startingAbortController?: AbortController;
@@ -75,8 +87,13 @@ const AbortedError = "AbortedError" as const;
 const AutoReconnectDelay = 20_000; // 20 seconds
 const AutoReconnectMaxAttempts = 20;
 
+export interface McpConnectionOptions {
+  onStatusChange?: (status: McpConnectionStatus) => void;
+}
+
 export class McpConnection implements Disposable {
   readonly logger: ReturnType<typeof getLogger>;
+  private onStatusChange?: (status: McpConnectionStatus) => void;
 
   private fsmDef = createMachine<FsmContext, FsmEvent, FsmState>({
     initial: "stopped",
@@ -92,14 +109,12 @@ export class McpConnection implements Disposable {
       },
       starting: {
         entry: (context) => {
-          const abortController = new AbortController();
-          context.startingAbortController = abortController;
-          this.connect({ signal: abortController.signal });
+          context.startingAbortController = new AbortController();
+          this.connect({ signal: context.startingAbortController.signal });
         },
         exit: (context) => {
           if (context.startingAbortController) {
             context.startingAbortController.abort();
-            context.startingAbortController = undefined;
           }
         },
         on: {
@@ -111,14 +126,11 @@ export class McpConnection implements Disposable {
       },
       ready: {
         entry: (context, event) => {
-          if (event.type !== "connected") {
-            this.logger.debug(
-              `Expected 'connected' event entry 'ready' state, got: ${event.type}`,
-            );
-            return;
+          if (event.type === "connected") {
+            context.client = event.client;
+            context.toolset = event.toolset;
+            context.autoReconnectAttempts = 0;
           }
-          context.client = event.client;
-          context.toolset = event.toolset;
         },
         exit: (context) => {
           if (context.client) {
@@ -135,23 +147,17 @@ export class McpConnection implements Disposable {
       },
       error: {
         entry: (context, event) => {
-          if (event.type !== "error") {
-            this.logger.debug(
-              `Expected 'error' event entry 'error' state, got: ${event.type}`,
-            );
-            return;
+          if (event.type === "error") {
+            context.error = event.error;
           }
-          context.error = event.error;
           if (context.autoReconnectAttempts < AutoReconnectMaxAttempts) {
-            this.logger.debug(`Auto reconnect in ${AutoReconnectDelay}ms`);
+            context.autoReconnectAttempts++;
             context.autoReconnectTimer = setTimeout(() => {
               this.fsm.send({ type: "restart" });
             }, AutoReconnectDelay);
-            context.autoReconnectAttempts += 1;
           }
         },
         exit: (context) => {
-          context.error = undefined;
           if (context.autoReconnectTimer) {
             clearTimeout(context.autoReconnectTimer);
             context.autoReconnectTimer = undefined;
@@ -169,20 +175,19 @@ export class McpConnection implements Disposable {
   private fsm = interpret(this.fsmDef);
   private listeners: Disposable[] = [];
 
-  readonly status: Signal<ReturnType<typeof this.buildStatus>>;
-
   constructor(
     readonly serverName: string,
     private readonly clientName: string,
     private config: McpServerConfig,
+    options: McpConnectionOptions = {},
   ) {
     this.logger = getLogger(`MCPConnection(${this.serverName})`);
-    this.status = signal(this.buildStatus());
+    this.onStatusChange = options.onStatusChange;
 
     this.fsm.start();
     const { unsubscribe: dispose } = this.fsm.subscribe((state) => {
       this.logger.debug(`State changed: ${state.value}`);
-      this.updateStatus();
+      this.notifyStatusChange();
     });
     this.listeners.push({ dispose });
 
@@ -217,9 +222,15 @@ export class McpConnection implements Disposable {
       return;
     }
 
-    if (isToolEnabledChanged(oldConfig, config)) {
+    // Check if disabled tools changed
+    const oldDisabledTools = oldConfig.disabledTools ?? [];
+    const newDisabledTools = config.disabledTools ?? [];
+    const toolsChanged = oldDisabledTools.length !== newDisabledTools.length ||
+      !oldDisabledTools.every(tool => newDisabledTools.includes(tool));
+    
+    if (toolsChanged) {
       this.logger.debug("Tool enabled/disabled changed, updating status...");
-      this.updateStatus();
+      this.notifyStatusChange();
     }
   }
 
@@ -228,11 +239,17 @@ export class McpConnection implements Disposable {
     this.fsm.send({ type: "restart" });
   }
 
-  private updateStatus() {
-    this.status.value = this.buildStatus();
+  getStatus(): McpConnectionStatus {
+    return this.buildStatus();
   }
 
-  private buildStatus() {
+  private notifyStatusChange() {
+    if (this.onStatusChange) {
+      this.onStatusChange(this.buildStatus());
+    }
+  }
+
+  private buildStatus(): McpConnectionStatus {
     const { value, context } = this.fsm.state;
     const toolset = context.toolset ?? {}; // FIXME: fallback to cache toolset info in file
     return {
