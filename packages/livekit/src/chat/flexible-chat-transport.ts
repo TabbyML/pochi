@@ -47,6 +47,17 @@ export type PrepareRequestGetters = {
   getCustomAgents?: () => CustomAgent[] | undefined;
 };
 
+export type ChatTransportOptions = {
+  onStart?: OnStartCallback;
+  getters: PrepareRequestGetters;
+  isSubTask?: boolean;
+  isCli?: boolean;
+  store: Store;
+  apiClient: PochiApiClient;
+  waitUntil?: (promise: Promise<unknown>) => void;
+  customAgent?: CustomAgent;
+};
+
 export class FlexibleChatTransport implements ChatTransport<Message> {
   private readonly onStart?: OnStartCallback;
   private readonly getters: PrepareRequestGetters;
@@ -57,23 +68,14 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
   private readonly waitUntil?: (promise: Promise<unknown>) => void;
   private readonly customAgent?: CustomAgent;
 
-  constructor(options: {
-    onStart?: OnStartCallback;
-    getters: PrepareRequestGetters;
-    isSubTask?: boolean;
-    isCli?: boolean;
-    store: Store;
-    apiClient: PochiApiClient;
-    waitUntil?: (promise: Promise<unknown>) => void;
-    customAgent?: CustomAgent;
-  }) {
+  constructor(options: ChatTransportOptions) {
     this.onStart = options.onStart;
     this.getters = options.getters;
     this.isSubTask = options.isSubTask;
     this.isCli = options.isCli;
     this.store = options.store;
     this.apiClient = options.apiClient;
-    this.waitUntil = this.waitUntil;
+    this.waitUntil = options.waitUntil;
     this.customAgent = overrideCustomAgentTools(options.customAgent);
   }
 

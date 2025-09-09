@@ -74,6 +74,7 @@ export class LiveChatKit<
     isCli,
     apiClient,
     customAgent,
+    waitUntil,
     ...chatInit
   }: LiveChatKitOptions<T>) {
     this.taskId = taskId;
@@ -86,6 +87,7 @@ export class LiveChatKit<
       isCli,
       apiClient,
       customAgent,
+      waitUntil,
     });
 
     this.chat = new chatClass({
