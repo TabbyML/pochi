@@ -67,22 +67,21 @@ const PochiAdvanceSettings = z.object({
     .object({
       disabled: z.boolean().optional(),
       disabledLanguages: z.array(z.string()).optional(),
-    })
-    .optional(),
-  codeCompletionProvider: z
-    .object({
-      type: z.enum(["pochi", "openai"]).default("pochi").optional(),
-      openaiConfig: z
-        .object({
-          apiBaseUrl: z.string().optional(),
-          apiKey: z.string().optional(),
-          model: z.string().optional(),
-          promptTemplate: z.string().optional(),
-        })
-        .default({})
+      provider: z
+        .discriminatedUnion("type", [
+          z.object({
+            type: z.literal("pochi"),
+          }),
+          z.object({
+            type: z.literal("openai"),
+            baseURL: z.string(),
+            apiKey: z.string().optional(),
+            model: z.string().optional(),
+            promptTemplate: z.string().optional(),
+          }),
+        ])
         .optional(),
     })
-    .default({})
     .optional(),
   webviewLogLevel: z.string().optional(),
 });

@@ -1,23 +1,37 @@
 import { getLogger } from "@getpochi/common";
-import { container } from "tsyringe";
-import { PochiConfiguration } from "../../integrations/configuration";
 import { CodeCompletionConfig } from "../configuration";
 import type { CompletionContextSegments } from "../contexts";
 import { CompletionResultItem, emptyCompletionResultItem } from "../solution";
 import { HttpError, isCanceledError } from "../utils/errors";
-import { buildPrompt } from "../utils/prompt";
-import type { CodeCompletionClientProvider } from "./type";
+import { formatPrompt } from "../utils/prompt";
+import type { CodeCompletionClientProvider, ProviderConfig } from "./type";
 
 const logger = getLogger("CodeCompletion.OpenAIClient");
+
+export type OpenAIProviderConfig = Extract<ProviderConfig, { type: "openai" }>;
 
 export class CodeCompletionOpenAIClient
   implements CodeCompletionClientProvider
 {
-  private pochiConfiguration: PochiConfiguration;
+  private readonly baseUrl: string;
+  private readonly apiKey: string | undefined;
+  private readonly model: string | undefined;
+  private readonly promptTemplate: string;
+
   private requestId = 0;
 
-  constructor() {
-    this.pochiConfiguration = container.resolve(PochiConfiguration);
+  constructor(config: OpenAIProviderConfig) {
+    this.baseUrl = config.baseURL.trim();
+    if (!this.baseUrl) {
+      logger.error(
+        "OpenAI baseURL is not configured. Code completion will not work.",
+      );
+    }
+    this.apiKey =
+      config.apiKey?.trim() || process.env.POCHI_CODE_COMPLETION_OPENAI_API_KEY;
+    this.model = config.model?.trim();
+    this.promptTemplate =
+      config.promptTemplate?.trim() || getDefaultPromptTemplate(this.model);
   }
 
   async fetchCompletion(params: {
@@ -25,25 +39,16 @@ export class CodeCompletionOpenAIClient
     temperature?: number | undefined;
     abortSignal?: AbortSignal | undefined;
   }): Promise<CompletionResultItem> {
-    const config =
-      this.pochiConfiguration.advancedSettings.value.codeCompletionProvider
-        ?.openaiConfig;
-
-    const baseUrl = config?.apiBaseUrl?.trim() || "https://api.openai.com/v1";
-    const apiKey =
-      config?.apiKey?.trim() ||
-      process.env.POCHI_CODE_COMPLETION_OPENAI_API_KEY ||
-      "";
-    const model = config?.model?.trim() || "";
-    const promptTemplate =
-      config?.promptTemplate?.trim() || getDefaultPromptTemplate(model);
+    if (!this.baseUrl) {
+      return emptyCompletionResultItem;
+    }
 
     this.requestId++;
     const requestId = this.requestId;
 
     const request = {
-      prompt: buildPrompt(promptTemplate, params.segments),
-      model: model,
+      prompt: formatPrompt(this.promptTemplate, params.segments),
+      model: this.model,
       temperature: params.temperature,
       max_tokens: CodeCompletionConfig.value.request.maxToken,
       stop: ["\n\n", "\r\n\r\n"],
@@ -51,11 +56,11 @@ export class CodeCompletionOpenAIClient
 
     try {
       logger.trace(`[${requestId}] Completion request:`, request);
-      const response = await fetch(`${baseUrl}/completions`, {
+      const response = await fetch(`${this.baseUrl}/completions`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${apiKey}`,
+          Authorization: `Bearer ${this.apiKey || ""}`,
         },
         body: JSON.stringify(request),
         signal: params.abortSignal,

@@ -54,55 +54,24 @@ export type ListModelsResponse = z.infer<typeof ListModelsResponse>;
 
 // Code Completion API types (Fill-in-Middle style completion)
 export const CodeCompletionRequest = z.object({
-  language: z.string().optional().describe("Programming language identifier"),
-  segments: z
-    .object({
-      prefix: z.string().describe("Code before cursor"),
-      suffix: z.string().optional().describe("Code after cursor"),
-      filepath: z.string().optional().describe("Relative file path"),
-      gitUrl: z.string().optional().describe("Git repository URL"),
-      declarations: z
-        .array(
-          z.object({
-            filepath: z.string().describe("File path (relative or URI)"),
-            body: z.string().describe("Declaration code"),
-          }),
-        )
-        .optional()
-        .describe("LSP-provided declarations"),
-      relevantSnippetsFromChangedFiles: z
-        .array(
-          z.object({
-            filepath: z.string().describe("File path"),
-            body: z.string().describe("Code snippet"),
-            score: z.number().optional().describe("Relevance score"),
-          }),
-        )
-        .optional()
-        .describe("Recent edit context"),
-      relevantSnippetsFromRecentlyOpenedFiles: z
-        .array(
-          z.object({
-            filepath: z.string().describe("File path"),
-            body: z.string().describe("Code snippet"),
-            score: z.number().optional().describe("Relevance score"),
-          }),
-        )
-        .optional()
-        .describe("Recent file context"),
-      clipboard: z.string().optional().describe("Clipboard content"),
-    })
-    .describe("Code completion segments"),
+  prompt: z.string().describe("Code before cursor"),
+  suffix: z.string().optional().describe("Code after cursor"),
+  model: z.string().optional().describe("Model to use for this request."),
   temperature: z
     .number()
     .min(0)
     .max(1)
     .optional()
-    .describe("Model temperature (0.0-1.0)"),
-  mode: z
-    .enum(["standard", "next_edit_suggestion"])
+    .describe("Temperature (0.0-1.0)"),
+  maxTokens: z
+    .number()
+    .min(1)
     .optional()
-    .describe("Completion mode"),
+    .describe("Maximum number of tokens to generate"),
+  stop: z
+    .array(z.string())
+    .optional()
+    .describe("Sequences where the model will stop generating further tokens"),
 });
 
 export const CodeCompletionResponse = z.object({

@@ -1,18 +1,18 @@
 import type { CompletionContextSegments } from "../contexts";
 import { formatPlaceholders, getLanguageCommentChar, isBlank } from "./strings";
 
-export function buildPrompt(
+export function formatPrompt(
   template: string,
   segments: CompletionContextSegments,
 ): string {
-  // Replace placeholders in the template with actual segment values
+  const prompt = buildPrompt(segments);
   return formatPlaceholders(template, {
-    prefix: buildPrefixWithSegments(segments),
-    suffix: segments.suffix || "",
+    prefix: prompt.prompt,
+    suffix: prompt.suffix || "",
   });
 }
 
-function buildPrefixWithSegments(segments: CompletionContextSegments): string {
+export function buildPrompt(segments: CompletionContextSegments) {
   const commentChar = getLanguageCommentChar(segments.language);
   const codeSnippetsLines: string[] = [];
 
@@ -38,5 +38,10 @@ function buildPrefixWithSegments(segments: CompletionContextSegments): string {
   });
 
   const codeSnippets = commentedCodeSnippetsLines.join("\n");
-  return `${codeSnippets}\n\n${segments.prefix}`;
+  const prompt = `${codeSnippets}\n\n${segments.prefix}`;
+
+  return {
+    prompt,
+    suffix: segments.suffix || undefined,
+  };
 }

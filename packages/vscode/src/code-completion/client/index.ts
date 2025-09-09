@@ -2,17 +2,14 @@ import { getLogger } from "@/lib/logger";
 import { injectable, singleton } from "tsyringe";
 import type * as vscode from "vscode";
 // biome-ignore lint/style/useImportType:
-import {
-  type PochiAdvanceSettings,
-  PochiConfiguration,
-} from "../../integrations/configuration";
+import { PochiConfiguration } from "../../integrations/configuration";
 import { CodeCompletionConfig } from "../configuration";
 import type { CompletionContextSegments } from "../contexts";
 import type { CompletionResultItem } from "../solution";
 import { isCanceledError, isTimeoutError } from "../utils/errors";
 import { CodeCompletionOpenAIClient } from "./openai";
 import { CodeCompletionPochiClient } from "./pochi";
-import type { CodeCompletionClientProvider } from "./type";
+import type { CodeCompletionClientProvider, ProviderConfig } from "./type";
 
 const logger = getLogger("CodeCompletion.Client");
 
@@ -27,19 +24,19 @@ export class CodeCompletionClient {
 
   constructor(private readonly pochiConfiguration: PochiConfiguration) {
     this.provider = this.createProvider(
-      pochiConfiguration.advancedSettings.value.codeCompletionProvider,
+      pochiConfiguration.advancedSettings.value.inlineCompletion?.provider,
     );
     this.pochiConfiguration.advancedSettings.subscribe((value) => {
-      this.provider = this.createProvider(value.codeCompletionProvider);
+      this.provider = this.createProvider(value.inlineCompletion?.provider);
     });
   }
 
   private createProvider(
-    providerConfig: PochiAdvanceSettings["codeCompletionProvider"],
+    providerConfig: ProviderConfig | undefined,
   ): CodeCompletionClientProvider {
     if (providerConfig?.type === "openai") {
-      logger.debug("Using OpenAI code completion provider");
-      return new CodeCompletionOpenAIClient();
+      logger.debug("Using OpenAI code completion provider: ", providerConfig);
+      return new CodeCompletionOpenAIClient(providerConfig);
     }
     logger.debug("Using Pochi code completion provider");
     return new CodeCompletionPochiClient();

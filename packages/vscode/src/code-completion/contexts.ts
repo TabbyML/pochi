@@ -202,8 +202,7 @@ interface CodeSnippets {
   language: string;
   text: string;
   score: number; // range 0-1
-
-  kind: "declaration" | "recent_edit" | "recent_viewed"; // for pochi api compatibility
+  kind: "declaration" | "recent_edit" | "recent_viewed";
   range?: vscode.Range; // for deduplication, undefined means whole file
 }
 
@@ -440,6 +439,6 @@ export function extractSegments(params: {
     filepath,
     language,
     gitUrl,
-    codeSnippets: codeSnippets.slice(0, config.fillDeclarations.maxSnippets), // crop to max snippets
+    codeSnippets,
   };
 }

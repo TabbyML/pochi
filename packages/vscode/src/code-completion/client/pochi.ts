@@ -5,9 +5,11 @@ import type {
   CodeCompletionResponse,
 } from "@getpochi/common/pochi-api";
 import { container } from "tsyringe";
+import { CodeCompletionConfig } from "../configuration";
 import type { CompletionContextSegments } from "../contexts";
 import { CompletionResultItem } from "../solution";
 import { HttpError, isCanceledError } from "../utils/errors";
+import { buildPrompt } from "../utils/prompt";
 import type { CodeCompletionClientProvider } from "./type";
 
 const logger = getLogger("CodeCompletion.PochiClient");
@@ -28,41 +30,13 @@ export class CodeCompletionPochiClient implements CodeCompletionClientProvider {
     this.requestId++;
     const requestId = this.requestId;
 
+    const prompt = buildPrompt(params.segments);
     const request: CodeCompletionRequest = {
-      language: params.segments.language,
-      segments: {
-        prefix: params.segments.prefix,
-        suffix: params.segments.suffix,
-        filepath: params.segments.filepath,
-        gitUrl: params.segments.gitUrl,
-        declarations: params.segments.codeSnippets
-          ?.filter((s) => s.kind === "declaration")
-          ?.map((s) => {
-            return {
-              filepath: s.filepath,
-              body: s.text,
-            };
-          }),
-        relevantSnippetsFromChangedFiles: params.segments.codeSnippets
-          ?.filter((s) => s.kind === "recent_edit")
-          ?.map((s) => {
-            return {
-              filepath: s.filepath,
-              body: s.text,
-              score: s.score,
-            };
-          }),
-        relevantSnippetsFromRecentlyOpenedFiles: params.segments.codeSnippets
-          ?.filter((s) => s.kind === "recent_viewed")
-          ?.map((s) => {
-            return {
-              filepath: s.filepath,
-              body: s.text,
-              score: s.score,
-            };
-          }),
-      },
+      prompt: prompt.prompt,
+      suffix: prompt.suffix,
       temperature: params.temperature,
+      maxTokens: CodeCompletionConfig.value.request.maxToken,
+      stop: ["\n\n", "\r\n\r\n"],
     };
 
     try {
