@@ -9,7 +9,7 @@ import {
 import { getServerBaseUrl } from "@getpochi/common/vscode-webui-bridge";
 import { createAuthClient as createAuthClientImpl } from "better-auth/react";
 import { hc } from "hono/client";
-import { getPochiCredentials, updatePochiCredentials } from "./node";
+import { getPochiCredentials, updatePochiCredentials } from "./credentials";
 import { type PochiCredentials, VendorId } from "./types";
 
 export class Pochi extends VendorBase {
@@ -54,7 +54,6 @@ export class Pochi extends VendorBase {
   protected override async fetchUserInfo(
     _credentials: PochiCredentials,
   ): Promise<UserInfo> {
-    const authClient = createAuthClient();
     const session = await authClient.getSession();
     if (!session.data) {
       throw new Error(session.error.message);
@@ -68,7 +67,7 @@ export class Pochi extends VendorBase {
   }
 }
 
-export function createAuthClient() {
+function createAuthClient() {
   const credentials = getPochiCredentials();
   const authClient = createAuthClientImpl({
     baseURL: getServerBaseUrl(),
@@ -84,7 +83,7 @@ export function createAuthClient() {
           if (!token) {
             throw new Error("token is missing");
           }
-          const jwt = jwtToken || credentials?.jwt || "";
+          const jwt = jwtToken || credentials?.jwt || null;
           updatePochiCredentials({
             token,
             jwt,
@@ -109,3 +108,5 @@ const buildCustomFetchImpl = (token: string | undefined) => {
     });
   };
 };
+
+export const authClient = createAuthClient();

@@ -1,9 +1,6 @@
 import type { PochiApi } from "@getpochi/common/pochi-api";
 import { getServerBaseUrl } from "@getpochi/common/vscode-webui-bridge";
-import {
-  createAuthClient as createAuthClientImpl,
-  getPochiCredentials,
-} from "@getpochi/vendor-pochi";
+import { authClient, getPochiCredentials } from "@getpochi/vendor-pochi";
 import { hc } from "hono/client";
 import type { DependencyContainer } from "tsyringe";
 import * as vscode from "vscode";
@@ -28,8 +25,6 @@ const buildCustomFetchImpl = () => {
 
 export function createAuthClient(container: DependencyContainer) {
   const posthog = container.resolve(PostHog);
-
-  const authClient = createAuthClientImpl();
 
   const identifyUser = () => {
     authClient.getSession().then(({ data }) => {

@@ -1,0 +1,13 @@
+diff --git a/dist/silver-fleece.es.mjs b/dist/silver-fleece.es.mjs
+index d42a28cf21ac467443f946aad387f660bc0d5f67..d42626c11990cc4f502bda6c33d9b3046a7c0bdb 100644
+--- a/dist/silver-fleece.es.mjs
++++ b/dist/silver-fleece.es.mjs
+@@ -371,7 +371,7 @@ function stringifyProperty(key, value, indentation, indentString, newlines) {
+ }
+ function stringifyValue(value, indentation, indentString, newlines) {
+     var type = typeof value;
+-    if (type === 'boolean' || type === 'number' || type === 'string' || type === null) {
++    if (type === 'boolean' || type === 'number' || type === 'string' || type === null || value === null) {
+         return JSON.stringify(value);
+     }
+     else if (Array.isArray(value)) {
