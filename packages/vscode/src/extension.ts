@@ -2,6 +2,9 @@ import "reflect-metadata";
 // FIXME(wei): required for vscode version <= 1.100, update vscode version to remove this polyfill
 import "iterator-helpers-polyfill";
 
+// Register the logger.
+import "./lib/logger";
+
 // Register the vendor
 import "@getpochi/vendor-pochi";
 import "@getpochi/vendor-gemini-cli";

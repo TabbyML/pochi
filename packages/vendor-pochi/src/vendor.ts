@@ -1,4 +1,5 @@
 import type { UserInfo } from "@getpochi/common/configuration";
+import { deviceLinkClient } from "@getpochi/common/device-link/client";
 import type { PochiApi, PochiApiClient } from "@getpochi/common/pochi-api";
 import {
   type AuthOutput,
@@ -8,10 +9,10 @@ import {
 import { getServerBaseUrl } from "@getpochi/common/vscode-webui-bridge";
 import { createAuthClient as createAuthClientImpl } from "better-auth/react";
 import { hc } from "hono/client";
+import { getPochiCredentials, updatePochiCredentials } from "./node";
 import { type PochiCredentials, VendorId } from "./types";
 
 export class Pochi extends VendorBase {
-  private newCredentials?: PochiCredentials = undefined;
   private cachedModels?: Record<string, ModelOptions>;
 
   constructor() {
@@ -47,18 +48,13 @@ export class Pochi extends VendorBase {
   protected override async renewCredentials(
     credentials: PochiCredentials,
   ): Promise<PochiCredentials> {
-    if (this.newCredentials) {
-      const newCredentials = this.newCredentials;
-      this.newCredentials = undefined;
-      return newCredentials;
-    }
     return credentials;
   }
 
   protected override async fetchUserInfo(
-    credentials: PochiCredentials,
+    _credentials: PochiCredentials,
   ): Promise<UserInfo> {
-    const authClient = this.createAuthClient(credentials?.token);
+    const authClient = createAuthClient();
     const session = await authClient.getSession();
     if (!session.data) {
       throw new Error(session.error.message);
@@ -70,26 +66,35 @@ export class Pochi extends VendorBase {
       image: session.data.user.image || undefined,
     };
   }
+}
 
-  private createAuthClient(token: string | undefined) {
-    const authClient = createAuthClientImpl({
-      baseURL: getServerBaseUrl(),
+export function createAuthClient() {
+  const credentials = getPochiCredentials();
+  const authClient = createAuthClientImpl({
+    baseURL: getServerBaseUrl(),
+    plugins: [deviceLinkClient()],
 
-      fetchOptions: {
-        customFetchImpl: buildCustomFetchImpl(token),
-        onResponse: (ctx) => {
-          const authToken = ctx.response.headers.get("set-auth-token"); // get the token from the response headers
-          if (authToken) {
-            this.newCredentials = {
-              token: authToken,
-            };
+    fetchOptions: {
+      customFetchImpl: buildCustomFetchImpl(credentials?.token),
+      onResponse: (ctx) => {
+        const authToken = ctx.response.headers.get("set-auth-token"); // get the token from the response headers
+        const jwtToken = ctx.response.headers.get("set-auth-jwt");
+        if (authToken || jwtToken) {
+          const token = authToken || credentials?.token;
+          if (!token) {
+            throw new Error("token is missing");
           }
-        },
+          const jwt = jwtToken || credentials?.jwt || "";
+          updatePochiCredentials({
+            token,
+            jwt,
+          });
+        }
       },
-    });
+    },
+  });
 
-    return authClient;
-  }
+  return authClient;
 }
 
 const buildCustomFetchImpl = (token: string | undefined) => {
