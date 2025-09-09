@@ -1,9 +1,8 @@
-import { type Environment, getLogger } from "@getpochi/common";
+import { getLogger } from "@getpochi/common";
 import type { PochiApiClient } from "@getpochi/common/pochi-api";
 import type { CustomAgent } from "@getpochi/tools";
 import type { Store } from "@livestore/livestore";
 import type { ChatInit, ChatOnErrorCallback, ChatOnFinishCallback } from "ai";
-import type { LLMRequestData } from "..";
 import { makeMessagesQuery, makeTaskQuery } from "../livestore/queries";
 import { events, tables } from "../livestore/schema";
 import { toTaskError, toTaskStatus } from "../task";
@@ -12,6 +11,7 @@ import { scheduleGenerateTitleJob } from "./background-job";
 import {
   FlexibleChatTransport,
   type OnStartCallback,
+  type PrepareRequestGetters,
 } from "./flexible-chat-transport";
 import { compactTask } from "./llm";
 import { createModel } from "./models";
@@ -23,13 +23,7 @@ export type LiveChatKitOptions<T> = {
   abortSignal?: AbortSignal;
 
   // Request related getters
-  getters: {
-    getLLM: () => LLMRequestData;
-    getEnvironment?: (options: {
-      readonly messages: Message[];
-    }) => Promise<Environment>;
-    getCustomAgents?: () => CustomAgent[] | undefined;
-  };
+  getters: PrepareRequestGetters;
 
   isSubTask?: boolean;
   isCli?: boolean;

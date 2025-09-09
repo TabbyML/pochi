@@ -2,6 +2,16 @@ import { expect, test } from "vitest";
 import { createEnvironmentPrompt } from "../environment";
 import { createSystemPrompt } from "../system";
 
+test("instructions", () => {
+  expect(
+    createSystemPrompt(
+      `# Rules from (abc)`,
+      undefined,
+      "custom instructions from mcp servers",
+    ),
+  ).toMatchSnapshot();
+});
+
 test("snapshot", () => {
   expect(
     createSystemPrompt(`# Rules from (abc)`),

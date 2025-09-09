@@ -2,6 +2,7 @@ import { getLogger } from "@/lib/logger";
 import type { McpServerConfig } from "@getpochi/common/configuration";
 import type { McpTool } from "@getpochi/tools";
 import { type Signal, signal } from "@preact/signals-core";
+import { entries } from "remeda";
 import { inject, injectable, singleton } from "tsyringe";
 import type * as vscode from "vscode";
 // biome-ignore lint/style/useImportType: needed for dependency injection
@@ -243,9 +244,12 @@ export class McpHub implements vscode.Disposable {
       return acc;
     }, {});
 
-    const instructions = Object.values(connections)
-      .map((connection) => connection.instructions)
-      .filter((instructions): instructions is string => !!instructions)
+    const instructions = entries(connections)
+      .filter(([, instructions]) => !!instructions)
+      .map(
+        ([name, instructions]) =>
+          `# Instructions from ${name} mcp server\n${instructions}`,
+      )
       .join("\n\n");
 
     return {

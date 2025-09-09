@@ -23,7 +23,7 @@ export function useLiveChatKitGetters({
   isSubTask?: boolean;
 }) {
   const { toolset, instructions } = useMcp();
-  const mcpToolSet = useLatest({ toolset, instructions });
+  const mcpInfo = useLatest({ toolset, instructions });
 
   const llm = useLLM();
 
@@ -57,8 +57,8 @@ export function useLiveChatKitGetters({
 
     getEnvironment,
 
-    // biome-ignore lint/correctness/useExhaustiveDependencies(mcpToolSet.current): mcpToolSet is ref.
-    getMcpInfo: useCallback(() => mcpToolSet.current, []),
+    // biome-ignore lint/correctness/useExhaustiveDependencies(mcpInfo.current): mcpInfo is ref.
+    getMcpInfo: useCallback(() => mcpInfo.current, []),
 
     // biome-ignore lint/correctness/useExhaustiveDependencies(customAgentsRef.current): customAgentsRef is ref.
     getCustomAgents: useCallback(() => customAgentsRef.current, []),
