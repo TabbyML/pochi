@@ -243,9 +243,15 @@ export class McpHub implements vscode.Disposable {
       return acc;
     }, {});
 
+    const instructions = Object.values(connections)
+      .map((connection) => connection.instructions)
+      .filter((instructions): instructions is string => !!instructions)
+      .join("\n\n");
+
     return {
       connections,
       toolset,
+      instructions,
     };
   }
 

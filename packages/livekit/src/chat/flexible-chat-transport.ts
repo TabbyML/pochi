@@ -43,7 +43,10 @@ export type PrepareRequestGetters = {
   getEnvironment?: (options: {
     readonly messages: Message[];
   }) => Promise<Environment>;
-  getMcpToolSet?: () => Record<string, McpTool>;
+  getMcpInfo?: () => {
+    toolset: Record<string, McpTool>;
+    instructions: string;
+  };
   getCustomAgents?: () => CustomAgent[] | undefined;
 };
 
@@ -94,7 +97,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
   }) => {
     const llm = await this.getters.getLLM();
     const environment = await this.getters.getEnvironment?.({ messages });
-    const mcpToolSet = this.getters.getMcpToolSet?.();
+    const mcpToolSet = this.getters.getMcpInfo?.();
     const customAgents = this.getters.getCustomAgents?.();
 
     await this.onStart?.({
@@ -117,10 +120,10 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
     }
 
     if (llm.useToolCallMiddleware) {
-      middlewares.push(createToolCallMiddleware());
+      middlewares.push(createToolCallMiddleware(mcpToolSet?.instructions));
     }
 
-    const mcpTools = mcpToolSet && parseMcpToolSet(mcpToolSet);
+    const mcpTools = mcpToolSet && parseMcpToolSet(mcpToolSet.toolset);
     const preparedMessages = await prepareMessages(messages, environment);
     const model = createModel({ id: chatId, llm });
     const stream = streamText({

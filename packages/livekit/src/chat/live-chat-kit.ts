@@ -1,6 +1,6 @@
 import { type Environment, getLogger } from "@getpochi/common";
 import type { PochiApiClient } from "@getpochi/common/pochi-api";
-import type { CustomAgent, McpTool } from "@getpochi/tools";
+import type { CustomAgent } from "@getpochi/tools";
 import type { Store } from "@livestore/livestore";
 import type { ChatInit, ChatOnErrorCallback, ChatOnFinishCallback } from "ai";
 import type { LLMRequestData } from "..";
@@ -28,7 +28,6 @@ export type LiveChatKitOptions<T> = {
     getEnvironment?: (options: {
       readonly messages: Message[];
     }) => Promise<Environment>;
-    getMcpTools?: () => Record<string, McpTool>;
     getCustomAgents?: () => CustomAgent[] | undefined;
   };
 
