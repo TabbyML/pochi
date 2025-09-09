@@ -22,10 +22,8 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import "./code-block.css";
-import mermaid from "mermaid";
 import { useTheme } from "../theme-provider";
 import { Mermaid } from "./mermaid";
-mermaid.startOnLoad = false;
 
 export interface CodeBlockProps {
   language: string;
