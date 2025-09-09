@@ -1,4 +1,5 @@
 import defaultMdxComponents from 'fumadocs-ui/mdx';
+import * as TabsComponents from 'fumadocs-ui/components/tabs';
 import type { MDXComponents } from 'mdx/types';
 import ExportedImage from "next-image-export-optimizer";
 
@@ -8,6 +9,7 @@ const basePath = process.env.__NEXT_ROUTER_BASEPATH
 export function getMDXComponents(components?: MDXComponents): MDXComponents {
   return {
     ...defaultMdxComponents,
+    ...TabsComponents,
     img: (props) => <ExportedImage {...props} basePath={basePath} />,
     ...components,
   };
