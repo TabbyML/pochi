@@ -1,5 +1,5 @@
-import type { McpServerConfig } from "../../../configuration/index.js";
 import * as vscode from "vscode";
+import type { McpServerConfig } from "../../../configuration/index.js";
 import { BaseFileMcpProvider } from "./base-file-provider";
 
 export class VscodeMcpProvider extends BaseFileMcpProvider {
