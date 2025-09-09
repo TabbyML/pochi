@@ -178,10 +178,6 @@ async function main(): Promise<void> {
 }
 
 const PackageIgnoreList: Record<string, string[]> = {
-  common: [
-    // vscode is provided by the host environment
-    "vscode",
-  ],
   "label-studio": [
     // tailwind
     "tailwindcss",
