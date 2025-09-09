@@ -5,7 +5,7 @@ icon: "Github"
 
 # GitHub
 
-Use Pochi’s AI assistant directly in your GitHub repository by commenting on pull requests to perform code reviews, explain changes, and suggest improvements.
+Use Pochi's AI assistant directly in your GitHub repository by commenting on pull requests to perform code reviews, explain changes, and suggest improvements.
 
 <Callout type="info" title="How it works">
   This integration runs inside a GitHub Actions runner. It temporarily installs
@@ -13,6 +13,22 @@ Use Pochi’s AI assistant directly in your GitHub repository by commenting on p
   is continuously updated under the triggering comment, and a final result
   (✅/❌) is posted when finished.
 </Callout>
+
+## Getting Your API Keys
+
+1. Log in to your Pochi account and go to **API Keys** from your user menu
+
+![User button overview](../assets/images/api-overview.png)
+
+2. Create a new API key with a descriptive name
+3. Copy the generated key (it's only shown once)
+
+![API page interface](../assets/images/api-page-interface.png)
+
+4. Add it to your GitHub repository as a secret named `POCHI_TOKEN`. See [GitHub's official guide](https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-secrets) for detailed steps:
+   - Go to **Settings** → **Secrets and variables** → **Actions**
+   - Click **"New repository secret"**
+   - Name: `POCHI_TOKEN`, Value: your API key
 
 ## Setup
 
@@ -64,7 +80,7 @@ Comment on a PR with `/pochi` followed by your request, e.g. `/pochi review this
 
 Once triggered:
 
-- Pochi reacts to your comment with 👀 to indicate it’s running
+- Pochi reacts to your comment with 👀 to indicate it's running
 - A progress comment is updated every 15 seconds
 - When finished, it posts the final result and reacts with 🚀 (success) or −1 (failure)
 
