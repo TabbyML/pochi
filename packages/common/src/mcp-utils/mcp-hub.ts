@@ -1,7 +1,7 @@
-import type { McpServerConfig } from "@getpochi/common/configuration";
 import type { McpTool } from "@getpochi/tools";
 import { type Signal, signal } from "@preact/signals-core";
 import { getLogger } from "../base";
+import type { McpServerConfig } from "../configuration/index.js";
 
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { PochiConfiguration } from "./configuration";

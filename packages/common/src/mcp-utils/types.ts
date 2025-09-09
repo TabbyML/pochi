@@ -1,10 +1,10 @@
+import type { ToolCallOptions } from "ai";
 import type {
   McpServerTransport,
   McpServerTransportHttp,
   McpServerTransportStdio,
-} from "@getpochi/common/configuration";
-import type { McpToolStatus } from "@getpochi/common/vscode-webui-bridge";
-import type { ToolCallOptions } from "ai";
+} from "../configuration/index.js";
+import type { McpToolStatus } from "../vscode-webui-bridge/index.js";
 
 export function isStdioTransport(
   config: McpServerTransport,

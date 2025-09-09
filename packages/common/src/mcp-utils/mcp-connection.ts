@@ -1,5 +1,3 @@
-import type { McpServerConfig } from "@getpochi/common/configuration";
-import type { McpToolStatus } from "@getpochi/common/vscode-webui-bridge";
 import {
   StdioClientTransport,
   getDefaultEnvironment,
@@ -9,6 +7,8 @@ import { type Signal, signal } from "@preact/signals-core";
 import { createMachine, interpret } from "@xstate/fsm";
 import { type ToolSet, experimental_createMCPClient as createClient } from "ai";
 import { getLogger } from "../base";
+import type { McpServerConfig } from "../configuration/index.js";
+import type { McpToolStatus } from "../vscode-webui-bridge/index.js";
 
 import {
   type McpToolExecutable,

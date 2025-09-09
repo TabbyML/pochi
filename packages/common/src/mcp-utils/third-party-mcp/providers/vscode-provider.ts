@@ -1,4 +1,4 @@
-import type { McpServerConfig } from "@getpochi/common/configuration";
+import type { McpServerConfig } from "../../../configuration/index.js";
 import * as vscode from "vscode";
 import { BaseFileMcpProvider } from "./base-file-provider";
 

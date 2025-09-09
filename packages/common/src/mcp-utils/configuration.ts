@@ -1,14 +1,14 @@
-import {
-  type CustomModelSetting,
-  type McpServerConfig,
-  pochiConfig,
-  updatePochiConfig,
-} from "@getpochi/common/configuration";
 import { computed, signal } from "@preact/signals-core";
 import deepEqual from "fast-deep-equal";
 import { injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
 import z from "zod";
+import {
+  type CustomModelSetting,
+  type McpServerConfig,
+  pochiConfig,
+  updatePochiConfig,
+} from "../configuration/index.js";
 
 @injectable()
 @singleton()

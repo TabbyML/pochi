@@ -1,4 +1,4 @@
-import type { McpServerConfig } from "@getpochi/common/configuration";
+import type { McpServerConfig } from "../../configuration/index.js";
 
 export interface McpConfigProvider {
   // A unique name for the provider

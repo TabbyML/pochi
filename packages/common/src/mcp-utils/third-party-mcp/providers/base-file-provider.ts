@@ -1,7 +1,7 @@
 import * as fs from "node:fs/promises";
-import type { McpServerConfig } from "@getpochi/common/configuration";
 import * as vscode from "vscode";
 import { getLogger } from "../../../base";
+import type { McpServerConfig } from "../../../configuration/index.js";
 import { isFileExists } from "../../../tool-utils";
 import type { McpConfigProvider } from "../provider";
 import { expandPathSegments, normalizePath } from "./path-utils";
