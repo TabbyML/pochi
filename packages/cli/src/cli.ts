@@ -77,7 +77,7 @@ const program = new Command()
   )
   .optionsGroup("Model:")
   .option(
-    "--model <model>",
+    "-m, --model <model>",
     "The model to use for the task.",
     "qwen/qwen3-coder",
   )

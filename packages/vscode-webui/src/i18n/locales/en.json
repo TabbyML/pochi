@@ -106,10 +106,7 @@
     "customAgent": {
       "title": "Custom Agent",
       "loading": "Loading custom agent...",
-      "empty": {
-        "description": "No custom agents found.",
-        "hint": "Create agent files in .pochi/agents/ in your workspace"
-      }
+      "empty": "No custom agents found, Create agent files in .pochi/agents/ in your workspace"
     },
     "mcp": {
       "title": "MCP",
