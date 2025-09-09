@@ -23,6 +23,7 @@
     "@leeoniya/ufuzzy": "^1.0.18",
     "@livestore/adapter-web": "catalog:",
     "@livestore/livestore": "catalog:",
+    "@livestore/sync-cf": "catalog:",
     "@livestore/peer-deps": "catalog:",
     "@livestore/react": "catalog:",
     "@livestore/wa-sqlite": "catalog:",

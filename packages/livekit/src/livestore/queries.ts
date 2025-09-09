@@ -4,9 +4,7 @@ import { tables } from "./schema";
 export const makeTaskQuery = (taskId: string) =>
   queryDb(
     () =>
-      tables.tasks.where("id", "=", taskId).first({
-        fallback: () => undefined,
-      }),
+      tables.tasks.where("id", "=", taskId).first({ behaviour: "undefined" }),
     {
       label: "task",
       deps: [taskId],

@@ -1,5 +1,5 @@
 import { pochiConfig, updatePochiConfig } from "@getpochi/common/configuration";
-import type { PochiCredentials } from "./types";
+import type { PochiCredentials } from "@getpochi/common/vscode-webui-bridge";
 
 export function getPochiCredentials() {
   return pochiConfig.value.vendors?.pochi?.credentials as

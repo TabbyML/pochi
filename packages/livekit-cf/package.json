@@ -1,0 +1,27 @@
+{
+  "name": "@getpochi/livekit-cf",
+  "version": "0.0.1-dev",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "@cloudflare/workers-types": "4.20250823.0",
+    "@livestore/adapter-cloudflare": "catalog:",
+    "@livestore/livestore": "catalog:",
+    "@livestore/peer-deps": "catalog:",
+    "@livestore/sync-cf": "catalog:",
+    "@getpochi/livekit": "workspace:*",
+    "@hono/zod-validator": "catalog:",
+    "hono": "catalog:",
+    "jose": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "wrangler": "^4.33.0"
+  },
+  "scripts": {
+    "build": "wrangler build",
+    "dev": "wrangler dev",
+    "wrangler:deploy": "wrangler deploy",
+    "tsc": "tsc"
+  }
+}
