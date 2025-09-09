@@ -21,6 +21,7 @@ import {
 } from "ai";
 import { pickBy } from "remeda";
 import type { Message, Metadata, RequestData } from "../types";
+import { schedulePersistJob } from "./background-job";
 import { makeRepairToolCall } from "./llm";
 import { parseMcpToolSet } from "./mcp-utils";
 import {
@@ -29,7 +30,6 @@ import {
   createToolCallMiddleware,
 } from "./middlewares";
 import { createModel } from "./models";
-import { persistManager } from "./persist-manager";
 
 export type OnStartCallback = (options: {
   messages: Message[];
@@ -175,7 +175,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
       },
       onFinish: async ({ messages }) => {
         if (this.apiClient.authenticated) {
-          persistManager.push({
+          schedulePersistJob({
             taskId: chatId,
             store: this.store,
             messages,

@@ -8,11 +8,11 @@ import { makeMessagesQuery, makeTaskQuery } from "../livestore/queries";
 import { events, tables } from "../livestore/schema";
 import { toTaskError, toTaskStatus } from "../task";
 import type { Message } from "../types";
+import { scheduleGenerateTitleJob } from "./background-job";
 import {
   FlexibleChatTransport,
   type OnStartCallback,
 } from "./flexible-chat-transport";
-import { generateTitleManager } from "./generate-title-manager";
 import { compactTask } from "./llm";
 import { createModel } from "./models";
 
@@ -235,7 +235,7 @@ export class LiveChatKit<
 
       const getModel = () =>
         createModel({ id: this.taskId, llm: getters.getLLM() });
-      generateTitleManager.push({
+      scheduleGenerateTitleJob({
         taskId: this.taskId,
         store,
         messages,
