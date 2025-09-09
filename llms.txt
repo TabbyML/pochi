@@ -166,15 +166,25 @@ Pochi offers a command-line interface (CLI) that allows you to run an AI agent d
 
 ## Oneliner Install
 
-```bash
-curl -fsSL https://getpochi.com/install.sh | bash
-```
+<Tabs items={['Curl', 'Homebrew', 'NPM']}>
+  <Tab value="Curl">
+    ```bash
+    curl -fsSL https://getpochi.com/install.sh | bash
+    ```
+  </Tab>
 
-Alternatively, you can install pochi using Homebrew:
+  <Tab value="Homebrew">
+    ```bash
+    brew install tabbyml/pochi/pochi
+    ```
+  </Tab>
 
-```bash
-brew install tabbyml/pochi/pochi
-```
+  <Tab value="NPM">
+    ```bash
+    npm install -g @getpochi/cli
+    ```
+  </Tab>
+</Tabs>
 
 ## Authentication
 
