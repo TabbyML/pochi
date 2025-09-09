@@ -1,15 +1,18 @@
-import type { ClientTools, ToolFunctionType } from "@getpochi/tools";
+import type {
+  ClientTools,
+  CustomAgent,
+  ToolFunctionType,
+} from "@getpochi/tools";
 import type { ToolCallOptions } from "../types";
 
 /**
- * Implements the newTask tool for CLI runner.
+ * Creates the newTask tool for CLI runner with custom agent support.
  * Creates and executes sub-tasks autonomously.
  */
 export const newTask =
   (options: ToolCallOptions): ToolFunctionType<ClientTools["newTask"]> =>
-  async ({ _meta }) => {
+  async ({ _meta, agentType }) => {
     const taskId = _meta?.uid || crypto.randomUUID();
-    // Use toolCallId as registration key so ListrHelper can find the corresponding runner
 
     if (!options.createSubTaskRunner) {
       throw new Error(
@@ -17,7 +20,20 @@ export const newTask =
       );
     }
 
-    const subTaskRunner = options.createSubTaskRunner(taskId);
+    // Find the custom agent if agentType is specified
+    let customAgent: CustomAgent | undefined;
+    if (agentType && options.customAgents) {
+      customAgent = options.customAgents.find(
+        (agent) => agent.name === agentType,
+      );
+      if (!customAgent) {
+        throw new Error(
+          `Custom agent type "${agentType}" not found. Available agents: ${options.customAgents.map((a) => a.name).join(", ")}`,
+        );
+      }
+    }
+
+    const subTaskRunner = options.createSubTaskRunner(taskId, customAgent);
 
     // Execute the sub-task
     await subTaskRunner.run();

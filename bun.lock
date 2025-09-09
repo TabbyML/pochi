@@ -60,9 +60,12 @@
         "jsonc-parser": "^3.3.1",
         "minimatch": "^10.0.1",
         "rehype": "^13.0.2",
+        "remark": "^15.0.1",
+        "remark-frontmatter": "^5.0.0",
         "remeda": "catalog:",
         "silver-fleece": "^1.2.1",
         "tslog": "catalog:",
+        "vfile-matter": "^5.0.1",
         "zod": "catalog:",
       },
       "devDependencies": {
@@ -141,6 +144,7 @@
       "dependencies": {
         "@ai-sdk/google-vertex": "catalog:",
         "@ai-sdk/provider": "catalog:",
+        "@ai-sdk/provider-utils": "catalog:",
         "@getpochi/common": "workspace:*",
         "ai": "catalog:",
       },
@@ -183,14 +187,11 @@
         "posthog-node": "^4.17.2",
         "project-name-generator": "^2.1.9",
         "reflect-metadata": "^0.2.2",
-        "remark": "^15.0.1",
-        "remark-frontmatter": "^5.0.0",
         "remeda": "catalog:",
         "run-exclusive": "^2.2.19",
         "simple-git": "^3.28.0",
         "stats-logscale": "^1.0.9",
         "tsyringe": "^4.10.0",
-        "vfile-matter": "^5.0.1",
         "zod": "catalog:",
       },
       "devDependencies": {
@@ -1849,7 +1850,7 @@
 
     "fastest-stable-stringify": ["fastest-stable-stringify@2.0.2", "", {}, "sha512-bijHueCGd0LqqNK9b5oCMHc0MluJAx0cwqASgbWMvkO01lCYgIhacVRLcaDz3QnyYIRNJRDwMb41VuT6pHJ91Q=="],
 
-    "fault": ["fault@1.0.4", "", { "dependencies": { "format": "^0.2.0" } }, "sha512-CJ0HCB5tL5fYTEA7ToAq5+kTwd++Borf1/bifxd9iT70QcXr4MRrO3Llf8Ifs70q+SJcGHFtnIE/Nw6giCtECA=="],
+    "fault": ["fault@2.0.1", "https://registry.npmmirror.com/fault/-/fault-2.0.1.tgz", { "dependencies": { "format": "^0.2.0" } }, "sha512-WtySTkS4OKev5JtpHXnib4Gxiurzh5NCGvWrFaZ34m6JehfTUhKZvn9njTfw48t6JumVQOmrKqpmGcdwxnhqBQ=="],
 
     "fd-slicer": ["fd-slicer@1.1.0", "", { "dependencies": { "pend": "~1.2.0" } }, "sha512-cE1qsB/VwyQozZ+q1dGxR8LBYNZeofhEdUNGSMbQD3Gw2lAzX9Zb3uIU6Ebc/Fmyjo9AWWfnn0AUCHqtevs/8g=="],
 
@@ -3787,6 +3788,8 @@
 
     "loud-rejection/signal-exit": ["signal-exit@3.0.7", "", {}, "sha512-wnD2ZE+l+SPC/uoS0vXeE9L1+0wuaMqKlfz9AMUo38JsyLSBWSFcHR1Rri62LZc12vLr1gb3jl7iwQhgwpAbGQ=="],
 
+    "lowlight/fault": ["fault@1.0.4", "", { "dependencies": { "format": "^0.2.0" } }, "sha512-CJ0HCB5tL5fYTEA7ToAq5+kTwd++Borf1/bifxd9iT70QcXr4MRrO3Llf8Ifs70q+SJcGHFtnIE/Nw6giCtECA=="],
+
     "magicast/@babel/parser": ["@babel/parser@7.27.3", "", { "dependencies": { "@babel/types": "^7.27.3" }, "bin": "./bin/babel-parser.js" }, "sha512-xyYxRj6+tLNDTWi0KCBcZ9V7yg3/lwL9DWh9Uwh/RIVlIfFidggcgxKX3GCXwCiswwcGRawBKbEg2LG/Y8eJhw=="],
 
     "magicast/@babel/types": ["@babel/types@7.27.3", "", { "dependencies": { "@babel/helper-string-parser": "^7.27.1", "@babel/helper-validator-identifier": "^7.27.1" } }, "sha512-Y1GkI4ktrtvmawoSq+4FCVHNryea6uR+qUQy0AGxLSsjCX0nVmkYQMBLHDkXZuo5hGx7eYdnIaslsdBFm7zbUw=="],
@@ -3804,8 +3807,6 @@
     "meow/object-assign": ["object-assign@4.1.1", "", {}, "sha512-rJgTQnkUnH1sFw8yT6VSU3zD3sWmu6sZhIseY8VX+GRu3P6F7Fu+JNDoXfklElbLJSnc3FUQHVe4cU5hj+BcUg=="],
 
     "micromark/debug": ["debug@4.4.0", "", { "dependencies": { "ms": "^2.1.3" } }, "sha512-6WTZ/IxCY/T6BALoZHaE4ctp9xm+Z5kY/pzYaCHRFeyVhojxlrm+46y68HA6hr0TcwEssoxNiDEUJQjfPZ/RYA=="],
-
-    "micromark-extension-frontmatter/fault": ["fault@2.0.1", "https://registry.npmmirror.com/fault/-/fault-2.0.1.tgz", { "dependencies": { "format": "^0.2.0" } }, "sha512-WtySTkS4OKev5JtpHXnib4Gxiurzh5NCGvWrFaZ34m6JehfTUhKZvn9njTfw48t6JumVQOmrKqpmGcdwxnhqBQ=="],
 
     "micromatch/picomatch": ["picomatch@2.3.1", "", {}, "sha512-JU3teHTNjmE2VCGFzuY8EXzCDVwEqB2a8fsIvwaStHhAWJEeVd1o1QD80CU6+ZdEXXSLbSsuLwJjkCBWqRQUVA=="],
 

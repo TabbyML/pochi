@@ -44,7 +44,7 @@ export type PrepareRequestGetters = {
     readonly messages: Message[];
   }) => Promise<Environment>;
   getMcpToolSet?: () => Record<string, McpTool>;
-  getCustomAgents?: () => CustomAgent[];
+  getCustomAgents?: () => CustomAgent[] | undefined;
 };
 
 export class FlexibleChatTransport implements ChatTransport<Message> {

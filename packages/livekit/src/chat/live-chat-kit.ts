@@ -29,6 +29,7 @@ export type LiveChatKitOptions<T> = {
       readonly messages: Message[];
     }) => Promise<Environment>;
     getMcpTools?: () => Record<string, McpTool>;
+    getCustomAgents?: () => CustomAgent[] | undefined;
   };
 
   isSubTask?: boolean;
