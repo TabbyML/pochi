@@ -97,7 +97,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
   }) => {
     const llm = await this.getters.getLLM();
     const environment = await this.getters.getEnvironment?.({ messages });
-    const mcpToolSet = this.getters.getMcpInfo?.();
+    const mcpInfo = this.getters.getMcpInfo?.();
     const customAgents = this.getters.getCustomAgents?.();
 
     await this.onStart?.({
@@ -120,14 +120,18 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
     }
 
     if (llm.useToolCallMiddleware) {
-      middlewares.push(createToolCallMiddleware(mcpToolSet?.instructions));
+      middlewares.push(createToolCallMiddleware());
     }
 
-    const mcpTools = mcpToolSet && parseMcpToolSet(mcpToolSet.toolset);
+    const mcpTools = mcpInfo?.toolset && parseMcpToolSet(mcpInfo.toolset);
     const preparedMessages = await prepareMessages(messages, environment);
     const model = createModel({ id: chatId, llm });
     const stream = streamText({
-      system: prompts.system(environment?.info?.customRules, this.customAgent),
+      system: prompts.system(
+        environment?.info?.customRules,
+        this.customAgent,
+        mcpInfo?.instructions,
+      ),
       messages: convertToModelMessages(
         formatters.llm(preparedMessages, {
           keepReasoningPart: llm.type === "vendor" && llm.keepReasoningPart,

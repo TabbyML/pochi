@@ -6,9 +6,7 @@ import type {
 import { generateId } from "ai";
 import { getPotentialStartIndex } from "./utils";
 
-export function createToolCallMiddleware(
-  instructions?: string,
-): LanguageModelV2Middleware {
+export function createToolCallMiddleware(): LanguageModelV2Middleware {
   // Set defaults with validated config
   const toolCallEndTag = "</api-request>";
   const toolResponseTagTemplate = (name: string) =>
@@ -48,7 +46,6 @@ export function createToolCallMiddleware(
 
       const toolSystemPrompt = toolSystemPromptTemplate(
         JSON.stringify(originalToolDefinitions, null, 2),
-        instructions,
       );
 
       const promptWithTools: LanguageModelV2Prompt =
@@ -397,7 +394,7 @@ function processToolResult(
   };
 }
 
-const defaultTemplate = (tools: string, instructions?: string) =>
+const defaultTemplate = (tools: string) =>
   `====
 
 API INVOCATIONS
@@ -408,7 +405,7 @@ Do not make assumptions about what values to plug into apis; you must follow the
 Here are the available apis:
 <api-list>
 ${tools}
-</api-list>${instructions && instructions.trim().length > 0 ? `\n\n${instructions}` : ""}
+</api-list>
 
 ## OUTPUT FORMAT
 Please remember you are not allowed to use any format related to api calling or fc or tool_code.
