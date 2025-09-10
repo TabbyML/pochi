@@ -16,11 +16,12 @@ import type {
   WorkspaceState,
 } from "./index";
 import type { DisplayModel } from "./types/model";
+import type { PochiCredentials } from "./types/pochi";
 
 export interface VSCodeHostApi {
   readResourceURI(): Promise<ResourceURI>;
 
-  readToken(): Promise<ThreadSignalSerialization<string | undefined>>;
+  readPochiCredentials(): Promise<PochiCredentials | null>;
 
   getSessionState<K extends keyof SessionState>(
     keys?: K[],

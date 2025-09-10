@@ -39,7 +39,7 @@ async function cleanupExecution(
 
   // Finalize history comment
   const truncatedOutput = buildBatchOutput(context.outputBuffer);
-  const finalComment = `\`\`\`\n${truncatedOutput}\n\`\`\`${createGitHubActionFooter(request.event)}`;
+  const finalComment = `\`\`\`\n${truncatedOutput}\n\`\`\`${githubManager.createGitHubActionFooter()}`;
 
   await githubManager.finalizeComment(
     context.historyCommentId,
@@ -61,7 +61,7 @@ async function cleanupExecution(
       .addHeading("Task Details")
       .addCodeBlock(buildBatchOutput(context.outputBuffer), "text")
       .addRaw(
-        `**[View Full GitHub Action](${getGitHubActionUrl(request.event)})**\n\n`,
+        `**[View Full GitHub Action](${githubManager.createGitHubActionFooter().match(/\[View GitHub Action\]\((.*?)\)/)?.[1] || "#"})**\n\n`,
       )
       .write();
   }
@@ -72,15 +72,14 @@ export async function runPochi(githubManager: GitHubManager): Promise<void> {
   const request = githubManager.parseRequest();
   const config = readPochiConfig();
 
-  // Add eye reaction to indicate starting
-  const eyesReactionId = await githubManager.createReaction(
-    request.commentId,
-    "eyes",
-  );
-
-  // Create initial history comment with GitHub Action link
-  const initialComment = `Starting Pochi execution...${createGitHubActionFooter(request.event)}`;
-  const historyCommentId = await githubManager.createComment(initialComment);
+  const historyCommentId = process.env.PROGRESS_COMMENT_ID
+    ? Number.parseInt(process.env.PROGRESS_COMMENT_ID, 10)
+    : await githubManager.createComment(
+        `Starting Pochi execution...${githubManager.createGitHubActionFooter()}`,
+      );
+  const eyesReactionId = process.env.EYES_REACTION_ID
+    ? Number.parseInt(process.env.EYES_REACTION_ID, 10)
+    : undefined;
 
   const args = ["--prompt", request.prompt, "--max-steps", "128"];
 
@@ -129,7 +128,8 @@ export async function runPochi(githubManager: GitHubManager): Promise<void> {
     context.updateInterval = setInterval(async () => {
       try {
         const truncatedOutput = buildBatchOutput(context.outputBuffer);
-        await githubManager.updateComment(historyCommentId, truncatedOutput);
+        const progressContent = `\`\`\`\n${truncatedOutput}\n\`\`\`${githubManager.createGitHubActionFooter()}`;
+        await githubManager.updateComment(historyCommentId, progressContent);
       } catch (error) {
         console.error("Failed to update comment:", error);
       }
@@ -162,23 +162,6 @@ export async function runPochi(githubManager: GitHubManager): Promise<void> {
       );
     });
   });
-}
-
-function getGitHubActionUrl(event: RunPochiRequest["event"]): string {
-  const runId = process.env.GITHUB_RUN_ID;
-  const { owner, name: repoName } = event.repository;
-
-  if (!runId) {
-    // Fallback to actions page if run ID is not available
-    return `https://github.com/${owner.login}/${repoName}/actions`;
-  }
-
-  return `https://github.com/${owner.login}/${repoName}/actions/runs/${runId}`;
-}
-
-function createGitHubActionFooter(event: RunPochiRequest["event"]): string {
-  const actionUrl = getGitHubActionUrl(event);
-  return `\n\n🔗 **[View GitHub Action](${actionUrl})**`;
 }
 
 function formatCustomInstruction(event: RunPochiRequest["event"]) {

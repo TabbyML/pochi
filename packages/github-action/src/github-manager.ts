@@ -65,7 +65,7 @@ export class GitHubManager {
       owner: repo.owner,
       repo: repo.repo,
       comment_id: commentId,
-      body: `🔄 **Pochi Running...**\n\n\`\`\`\n${content}\n\`\`\``,
+      body: `🔄 **Pochi Running...**\n\n${content}`,
     });
   }
 
@@ -131,6 +131,24 @@ export class GitHubManager {
       owner: this.context.repo.owner,
       repo: this.context.repo.repo,
     };
+  }
+
+  // GitHub Action URL operations
+  private getGitHubActionUrl(): string {
+    const runId = process.env.GITHUB_RUN_ID;
+    const repository = process.env.GITHUB_REPOSITORY; // owner/repo format
+
+    if (!runId || !repository) {
+      // Fallback to actions page if run ID or repository is not available
+      return `https://github.com/${repository || "unknown"}/actions`;
+    }
+
+    return `https://github.com/${repository}/actions/runs/${runId}`;
+  }
+
+  createGitHubActionFooter(): string {
+    const actionUrl = this.getGitHubActionUrl();
+    return `\n\n🔗 **[View GitHub Action](${actionUrl})**`;
   }
 
   // Permission and user operations

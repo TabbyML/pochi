@@ -20,12 +20,12 @@ import {
   PochiConfigFilePath,
 } from "@getpochi/common/configuration";
 import type { McpServerConfig } from "@getpochi/common/configuration";
+import { getVendor } from "@getpochi/common/vendor";
 import type {
   NewTaskParams,
   TaskIdParams,
 } from "@getpochi/common/vscode-webui-bridge";
 import { getServerBaseUrl } from "@getpochi/common/vscode-webui-bridge";
-import { updatePochiCredentials } from "@getpochi/vendor-pochi";
 import { inject, injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
 // biome-ignore lint/style/useImportType: needed for dependency injection
@@ -98,8 +98,8 @@ export class CommandManager implements vscode.Disposable {
           "Logout",
         );
         if (selection === "Logout") {
-          this.authClient.signOut();
-          updatePochiCredentials(null);
+          await this.authClient.signOut();
+          await getVendor("pochi").logout();
           this.authEvents.logoutEvent.fire();
         }
       }),

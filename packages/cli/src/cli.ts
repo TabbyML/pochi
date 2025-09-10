@@ -16,8 +16,8 @@ import { pochiConfig } from "@getpochi/common/configuration";
 import type { PochiApi, PochiApiClient } from "@getpochi/common/pochi-api";
 import { getVendor, getVendors } from "@getpochi/common/vendor";
 import { createModel } from "@getpochi/common/vendor/edge";
+import type { PochiCredentials } from "@getpochi/common/vscode-webui-bridge";
 import type { LLMRequestData } from "@getpochi/livekit";
-import { getPochiCredentials } from "@getpochi/vendor-pochi";
 import chalk from "chalk";
 import * as commander from "commander";
 import { hc } from "hono/client";
@@ -199,13 +199,16 @@ async function parseTaskInput(options: ProgramOpts, program: Program) {
 }
 
 async function createApiClient(): Promise<PochiApiClient> {
-  const token = getPochiCredentials()?.token;
+  const pochi = getVendor("pochi");
+  const credentials = (await pochi
+    .getCredentials()
+    .catch(() => null)) as PochiCredentials | null;
 
   const apiClient: PochiApiClient = hc<PochiApi>(prodServerUrl, {
-    fetch(input: string | URL | Request, init?: RequestInit) {
+    async fetch(input: string | URL | Request, init?: RequestInit) {
       const headers = new Headers(init?.headers);
-      if (token) {
-        headers.append("Authorization", `Bearer ${token}`);
+      if (credentials?.token) {
+        headers.append("Authorization", `Bearer ${credentials.token}`);
       }
       headers.set("User-Agent", userAgent);
       return fetch(input, {
@@ -218,7 +221,7 @@ async function createApiClient(): Promise<PochiApiClient> {
   const proxed = new Proxy(apiClient, {
     get(target, prop, receiver) {
       if (prop === "authenticated") {
-        return !!token;
+        return !!credentials?.token;
       }
       return Reflect.get(target, prop, receiver);
     },

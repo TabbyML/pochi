@@ -8,6 +8,7 @@ import type {
   CustomAgentFile,
   DisplayModel,
   McpStatus,
+  PochiCredentials,
   ResourceURI,
   RuleFile,
   SessionState,
@@ -23,8 +24,8 @@ const VSCodeHostStub = {
   readResourceURI: (): Promise<ResourceURI> => {
     return Promise.resolve({} as ResourceURI);
   },
-  readToken: (): Promise<ThreadSignalSerialization<string | undefined>> => {
-    return Promise.resolve({} as ThreadSignalSerialization<string | undefined>);
+  readPochiCredentials: (): Promise<PochiCredentials | null> => {
+    return Promise.resolve({} as PochiCredentials | null);
   },
   getSessionState: <K extends keyof SessionState>(
     _keys?: K[],

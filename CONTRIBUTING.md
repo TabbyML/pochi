@@ -27,6 +27,9 @@ We also welcome contributions to our documentation, which is located in the [`pa
 2.  **Launch the development environment:**
     Open the `Run and Debug` panel in VS Code and run the `Run VSCode Extension` task. This will open a new VS Code window with the extension loaded and ready for development.
 
+For local development, Pochi uses `dev-config.jsonc` as its configuration file.
+This prevents accidentally overriding your production configuration while developing.
+
 ## Agreement
 
 By submitting a pull request, you agree that your contributions will be licensed under the Apache License 2.0. a copy of which is available in the `LICENSE` file in the root of the repository.
