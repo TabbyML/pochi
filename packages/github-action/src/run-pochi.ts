@@ -61,7 +61,7 @@ async function cleanupExecution(
       .addHeading("Task Details")
       .addCodeBlock(buildBatchOutput(context.outputBuffer), "text")
       .addRaw(
-        `**[View Full GitHub Action](${githubManager.createGitHubActionFooter().match(/\[View GitHub Action\]\((.*?)\)/)?.[1] || '#'})**\n\n`,
+        `**[View Full GitHub Action](${githubManager.createGitHubActionFooter().match(/\[View GitHub Action\]\((.*?)\)/)?.[1] || "#"})**\n\n`,
       )
       .write();
   }
@@ -163,7 +163,6 @@ export async function runPochi(githubManager: GitHubManager): Promise<void> {
     });
   });
 }
-
 
 function formatCustomInstruction(event: RunPochiRequest["event"]) {
   return `## Instruction
