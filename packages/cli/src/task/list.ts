@@ -15,9 +15,9 @@ export function registerTaskListCommand(taskCommand: Command) {
         return taskCommand.error("Limit must be a positive number");
       }
 
-      try {
-        const store = await createStore(process.cwd());
+      const store = await createStore(process.cwd());
 
+      try {
         // Query recent tasks ordered by updatedAt
         // Use the existing tasks$ query which handles parentId IS NULL
         const allTasks = store.query(catalog.queries.tasks$);
@@ -25,6 +25,9 @@ export function registerTaskListCommand(taskCommand: Command) {
 
         if (tasks.length === 0) {
           console.log(chalk.gray("No tasks found"));
+          console.log();
+          console.log(chalk.cyan("💡 Tip: To start a new task, use:"));
+          console.log(chalk.white(`   pochi -p "<your task description>"`));
           return;
         }
 
@@ -54,12 +57,12 @@ export function registerTaskListCommand(taskCommand: Command) {
           }
           console.log();
         }
-
-        await store.shutdown();
       } catch (error) {
         return taskCommand.error(
           `Failed to list tasks: ${error instanceof Error ? error.message : "Unknown error"}`,
         );
+      } finally {
+        await store.shutdown();
       }
     });
 }
