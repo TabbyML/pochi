@@ -1,14 +1,23 @@
 import { vscodeHost } from "@/lib/vscode";
 import { useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
 
 /** @useSignals this comment is needed to enable signals in this hook */
-export const useJwt = () => {
+export const usePochiCredentials = () => {
   const { data } = useQuery({
-    queryKey: ["pochiJwt"],
+    queryKey: ["pochiCredentials"],
     queryFn: fetchPochiCredentials,
+    // Every 5 minutes
+    refetchInterval: 1000 * 60 * 5,
   });
 
-  return data?.jwt || null;
+  return useMemo(
+    () => ({
+      token: data?.token || null,
+      jwt: data?.jwt || null,
+    }),
+    [data?.token, data?.jwt],
+  );
 };
 
 async function fetchPochiCredentials() {
