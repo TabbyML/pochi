@@ -3,7 +3,6 @@ import { catalog, type Message } from "@getpochi/livekit";
 import chalk from "chalk";
 import { createApiClient } from "../lib/api-client";
 import { createStore } from "../livekit/store";
-import { events } from "../../../livekit/src/livestore/schema";
 
 export function registerTaskShareCommand(taskCommand: Command) {
   // pochi task share <id> - Create share link for a task ID
@@ -74,30 +73,6 @@ async function createShareLink(
     }
 
     const { shareId } = await resp.json();
-
-    if (shareId) {
-      // Check if task exists locally, if not create it first
-      const existingTask = store.query(catalog.queries.makeTaskQuery(taskId));
-
-      if (!existingTask) {
-        // Create the task locally first
-        store.commit(
-          events.taskInited({
-            id: taskId,
-            createdAt: new Date(),
-          }),
-        );
-      }
-
-      // Update the local store with the new shareId
-      store.commit(
-        events.updateShareId({
-          id: taskId,
-          shareId,
-          updatedAt: new Date(),
-        }),
-      );
-    }
 
     return shareId;
   } catch (error) {
