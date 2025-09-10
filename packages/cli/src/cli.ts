@@ -76,6 +76,7 @@ const program = new Command()
     parsePositiveInt,
     3,
   )
+  .option("--shared", "Get share link immediately when task starts", false)
   .optionsGroup("Model:")
   .option(
     "-m, --model <model>",
@@ -119,6 +120,26 @@ const program = new Command()
       customAgents,
     });
 
+    if (options.shared) {
+      const shareId = await runner.initializeSharing();
+
+      if (shareId) {
+        const shareUrl = chalk.underline(
+          `https://app.getpochi.com/share/${shareId}`,
+        );
+        console.log(`\n${chalk.bold("📎 Share link: ")} ${shareUrl}`);
+        console.log(
+          chalk.gray("You can view real-time progress at the link above\n"),
+        );
+      } else {
+        console.log(
+          chalk.yellow(
+            "⚠️  Unable to generate share link (possibly not logged in)",
+          ),
+        );
+      }
+    }
+
     const renderer = new OutputRenderer(runner.state);
 
     await runner.run();
@@ -126,7 +147,7 @@ const program = new Command()
     renderer.shutdown();
 
     const shareId = runner.shareId;
-    if (shareId) {
+    if (shareId && !options.shared) {
       // FIXME(zhiming): base url is hard code, should use options.url
       const shareUrl = chalk.underline(
         `https://app.getpochi.com/share/${shareId}`,
