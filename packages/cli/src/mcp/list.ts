@@ -1,5 +1,5 @@
 import type { Command } from "@commander-js/extra-typings";
-import { pochiConfig } from "@getpochi/common/configuration";
+import { pochiConfig } from "@getpochi/common/configuration/node";
 import chalk from "chalk";
 
 export function registerMcpListCommand(parentCommand: Command) {

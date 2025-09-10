@@ -6,6 +6,7 @@
   "exports": {
     ".": "./src/base/index.ts",
     "./configuration": "./src/configuration/index.ts",
+    "./configuration/node": "./src/configuration/node.ts",
     "./pochi-api": "./src/pochi-api.ts",
     "./vendor": "./src/vendor/node.ts",
     "./vendor/edge": "./src/vendor/edge.ts",

@@ -1,8 +1,6 @@
 import type { Command } from "@commander-js/extra-typings";
-import {
-  type UserInfo,
-  updateVendorConfig,
-} from "@getpochi/common/configuration";
+import type { UserInfo } from "@getpochi/common/configuration";
+import { updateVendorConfig } from "@getpochi/common/configuration/node";
 import { getVendors } from "@getpochi/common/vendor";
 import chalk from "chalk";
 import { login } from "./login";

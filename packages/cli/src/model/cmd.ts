@@ -1,6 +1,6 @@
 import type { Command } from "@commander-js/extra-typings";
-import { pochiConfig } from "@getpochi/common/configuration";
 import type { CustomModelSetting } from "@getpochi/common/configuration";
+import { pochiConfig } from "@getpochi/common/configuration/node";
 import type { ModelOptions } from "@getpochi/common/vendor";
 import { getVendors } from "@getpochi/common/vendor";
 import chalk from "chalk";

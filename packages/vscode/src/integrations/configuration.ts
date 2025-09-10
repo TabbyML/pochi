@@ -1,9 +1,11 @@
+import type {
+  CustomModelSetting,
+  McpServerConfig,
+} from "@getpochi/common/configuration";
 import {
-  type CustomModelSetting,
-  type McpServerConfig,
   pochiConfig,
   updatePochiConfig,
-} from "@getpochi/common/configuration";
+} from "@getpochi/common/configuration/node";
 import { computed, signal } from "@preact/signals-core";
 import deepEqual from "fast-deep-equal";
 import { injectable, singleton } from "tsyringe";

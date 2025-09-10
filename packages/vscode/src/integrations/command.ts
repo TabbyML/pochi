@@ -15,11 +15,9 @@ import { NewProjectRegistry, prepareProject } from "@/lib/new-project";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { PostHog } from "@/lib/posthog";
 import type { WebsiteTaskCreateEvent } from "@getpochi/common";
-import {
-  type CustomModelSetting,
-  PochiConfigFilePath,
-} from "@getpochi/common/configuration";
+import type { CustomModelSetting } from "@getpochi/common/configuration";
 import type { McpServerConfig } from "@getpochi/common/configuration";
+import { PochiConfigFilePath } from "@getpochi/common/configuration/node";
 import { getVendor } from "@getpochi/common/vendor";
 import type {
   NewTaskParams,

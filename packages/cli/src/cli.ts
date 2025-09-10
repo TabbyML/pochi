@@ -12,7 +12,7 @@ import "@getpochi/vendor-gemini-cli/edge";
 
 import { Command } from "@commander-js/extra-typings";
 import { constants, getLogger } from "@getpochi/common";
-import { pochiConfig } from "@getpochi/common/configuration";
+import { pochiConfig } from "@getpochi/common/configuration/node";
 import type { PochiApi, PochiApiClient } from "@getpochi/common/pochi-api";
 import { getVendor, getVendors } from "@getpochi/common/vendor";
 import { createModel } from "@getpochi/common/vendor/edge";

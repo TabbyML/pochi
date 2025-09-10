@@ -1,5 +1,6 @@
 import { getLogger } from "@getpochi/common";
-import { type UserInfo, pochiConfig } from "@getpochi/common/configuration";
+import type { UserInfo } from "@getpochi/common/configuration";
+import { pochiConfig } from "@getpochi/common/configuration/node";
 import { getVendors } from "@getpochi/common/vendor";
 import { type Signal, effect, signal } from "@preact/signals-core";
 import { injectable, singleton } from "tsyringe";

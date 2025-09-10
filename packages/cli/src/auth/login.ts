@@ -1,5 +1,5 @@
 import * as childProcess from "node:child_process";
-import { updateVendorConfig } from "@getpochi/common/configuration";
+import { updateVendorConfig } from "@getpochi/common/configuration/node";
 import { getVendor } from "@getpochi/common/vendor";
 import chalk from "chalk";
 

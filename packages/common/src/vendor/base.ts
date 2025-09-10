@@ -1,9 +1,5 @@
-import {
-  type UserInfo,
-  type VendorConfig,
-  getVendorConfig,
-  updateVendorConfig,
-} from "../configuration";
+import type { UserInfo, VendorConfig } from "../configuration";
+import { getVendorConfig, updateVendorConfig } from "../configuration/node";
 import type { AuthOutput, ModelOptions } from "./types";
 
 export abstract class VendorBase {
