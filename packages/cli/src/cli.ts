@@ -13,14 +13,11 @@ import "@getpochi/vendor-gemini-cli/edge";
 import { Command } from "@commander-js/extra-typings";
 import { constants, getLogger } from "@getpochi/common";
 import { pochiConfig } from "@getpochi/common/configuration";
-import type { PochiApi, PochiApiClient } from "@getpochi/common/pochi-api";
 import { getVendor, getVendors } from "@getpochi/common/vendor";
 import { createModel } from "@getpochi/common/vendor/edge";
 import type { LLMRequestData } from "@getpochi/livekit";
-import { getPochiCredentials } from "@getpochi/vendor-pochi";
 import chalk from "chalk";
 import * as commander from "commander";
-import { hc } from "hono/client";
 import packageJson from "../package.json";
 import { registerAuthCommand } from "./auth";
 import { findRipgrep } from "./lib/find-ripgrep";
@@ -37,13 +34,11 @@ import { registerTaskCommand } from "./task";
 import { TaskRunner } from "./task-runner";
 import { registerUpgradeCommand } from "./upgrade";
 import { waitUntil } from "./wait-until";
+import { createApiClient } from "./lib/api-client";
 
 const logger = getLogger("Pochi");
 logger.debug(`pochi v${packageJson.version}`);
 
-const prodServerUrl = "https://app.getpochi.com";
-
-const userAgent = `PochiCli/${packageJson.version} Node/${process.version} (${process.platform}; ${process.arch})`;
 
 const parsePositiveInt = (input: string): number => {
   if (!input) {
@@ -200,34 +195,7 @@ async function parseTaskInput(options: ProgramOpts, program: Program) {
   return { uid, prompt };
 }
 
-async function createApiClient(): Promise<PochiApiClient> {
-  const token = getPochiCredentials()?.token;
-
-  const apiClient: PochiApiClient = hc<PochiApi>(prodServerUrl, {
-    fetch(input: string | URL | Request, init?: RequestInit) {
-      const headers = new Headers(init?.headers);
-      if (token) {
-        headers.append("Authorization", `Bearer ${token}`);
-      }
-      headers.set("User-Agent", userAgent);
-      return fetch(input, {
-        ...init,
-        headers,
-      });
-    },
-  });
-
-  const proxed = new Proxy(apiClient, {
-    get(target, prop, receiver) {
-      if (prop === "authenticated") {
-        return !!token;
-      }
-      return Reflect.get(target, prop, receiver);
-    },
-  });
-
-  return proxed;
-}
+export { createApiClient } from "./lib/api-client";
 
 async function createLLMConfig(
   program: Program,
