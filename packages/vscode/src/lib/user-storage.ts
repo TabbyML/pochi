@@ -21,6 +21,8 @@ export class UserStorage implements vscode.Disposable {
         this.fetchUserStorage().then((users) => {
           this.users.value = users;
         });
+      } else {
+        this.users.value = {};
       }
     });
   }
