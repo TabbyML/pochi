@@ -53,7 +53,6 @@ export class LiveChatKit<
   protected readonly store: Store;
   readonly chat: T;
   private readonly transport: FlexibleChatTransport;
-  private readonly apiClient: PochiApiClient;
 
   readonly spawn: () => Promise<string>;
 
@@ -73,7 +72,6 @@ export class LiveChatKit<
   }: LiveChatKitOptions<T>) {
     this.taskId = taskId;
     this.store = store;
-    this.apiClient = apiClient;
     this.transport = new FlexibleChatTransport({
       store,
       onStart: this.onStart,
@@ -290,51 +288,4 @@ export class LiveChatKit<
       }),
     );
   };
-
-  /**
-   * Initialize task sharing and get shareId immediately
-   * @param taskId The task ID
-   * @returns shareId if successful, null if failed or not logged in
-   */
-  async initializeSharing(taskId: string): Promise<string | null> {
-    if (!this.apiClient.authenticated) {
-      return null;
-    }
-
-    const { formatters } = await import("@getpochi/common");
-    const resp = await this.apiClient.api.chat.persist.$post({
-      json: {
-        id: taskId,
-        messages: formatters.storage([]),
-        status: "pending-input",
-      },
-    });
-
-    if (resp.status !== 200) {
-      logger.debug("Failed to initialize sharing:", resp.statusText);
-      return null;
-    }
-
-    const { shareId } = await resp.json();
-
-    if (shareId && this.store) {
-      const existingShareId = this.store.query(
-        tables.tasks
-          .select("shareId")
-          .where("id", "=", taskId)
-          .first({ fallback: () => null }),
-      );
-      if (!existingShareId) {
-        this.store.commit(
-          events.updateShareId({
-            id: taskId,
-            shareId,
-            updatedAt: new Date(),
-          }),
-        );
-      }
-    }
-
-    return shareId;
-  }
 }

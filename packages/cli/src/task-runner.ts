@@ -160,14 +160,6 @@ export class TaskRunner {
     return this.chatKit.task?.shareId;
   }
 
-  /**
-   * Initialize task sharing and get shareId immediately
-   * @returns shareId if successful, null if failed or not logged in
-   */
-  async initializeSharing(): Promise<string | null> {
-    return await this.chatKit.initializeSharing(this.taskId);
-  }
-
   async run(): Promise<void> {
     logger.debug("Starting TaskRunner...");
 

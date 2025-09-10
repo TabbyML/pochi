@@ -33,6 +33,7 @@ import { createStore } from "./livekit/store";
 import { registerMcpCommand } from "./mcp";
 import { registerModelCommand } from "./model";
 import { OutputRenderer } from "./output-renderer";
+import { registerTaskCommand } from "./task";
 import { TaskRunner } from "./task-runner";
 import { registerUpgradeCommand } from "./upgrade";
 import { waitUntil } from "./wait-until";
@@ -76,7 +77,6 @@ const program = new Command()
     parsePositiveInt,
     3,
   )
-  .option("--shared", "Get share link immediately when task starts", false)
   .optionsGroup("Model:")
   .option(
     "-m, --model <model>",
@@ -120,25 +120,6 @@ const program = new Command()
       customAgents,
     });
 
-    if (options.shared) {
-      const shareId = await runner.initializeSharing();
-
-      if (shareId) {
-        const shareUrl = chalk.underline(
-          `https://app.getpochi.com/share/${shareId}`,
-        );
-        console.log(`\n${chalk.bold("📎 Share link: ")} ${shareUrl}`);
-        console.log(
-          chalk.gray("You can view real-time progress at the link above\n"),
-        );
-      } else {
-        console.log(
-          chalk.yellow(
-            "⚠️  Unable to generate share link (possibly not logged in)",
-          ),
-        );
-      }
-    }
 
     const renderer = new OutputRenderer(runner.state);
 
@@ -147,7 +128,7 @@ const program = new Command()
     renderer.shutdown();
 
     const shareId = runner.shareId;
-    if (shareId && !options.shared) {
+    if (shareId) {
       // FIXME(zhiming): base url is hard code, should use options.url
       const shareUrl = chalk.underline(
         `https://app.getpochi.com/share/${shareId}`,
@@ -180,6 +161,7 @@ registerAuthCommand(program);
 
 registerModelCommand(program);
 registerMcpCommand(program);
+registerTaskCommand(program);
 
 registerUpgradeCommand(program);
 
