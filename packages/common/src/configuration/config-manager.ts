@@ -7,10 +7,9 @@ import * as JSONC from "jsonc-parser/esm";
 import { funnel, isDeepEqual, mergeDeep } from "remeda";
 import * as fleece from "silver-fleece";
 import { getLogger } from "../base";
+import { isDev } from "../vscode-webui-bridge";
 import { PochiConfig } from "./types";
 import type { VendorConfig } from "./vendor";
-
-const isDev = process.env.POCHI_LOCAL_SERVER === "true";
 
 const PochiConfigFilePath = path.join(
   os.homedir(),
