@@ -17,25 +17,17 @@ export function registerTaskShareCommand(taskCommand: Command) {
 
         console.log(chalk.gray("Creating share link..."));
 
-        try {
-          const shareId = await createShareLink(taskId, store);
+        const shareId = await createShareLink(taskId, store);
 
-          if (shareId) {
-            const shareUrl = `https://app.getpochi.com/share/${shareId}`;
-            console.log(
-              `${chalk.bold("📎 Share link:")} ${chalk.underline(shareUrl)}`,
-            );
-          } else {
-            console.log(
-              chalk.red(
-                "❌ Failed to create share link (possibly not logged in)",
-              ),
-            );
-          }
-        } catch (error) {
+        if (shareId) {
+          const shareUrl = `https://app.getpochi.com/share/${shareId}`;
+          console.log(
+            `${chalk.bold("📎 Share link:")} ${chalk.underline(shareUrl)}`,
+          );
+        } else {
           console.log(
             chalk.red(
-              `❌ Failed to create share link: ${error instanceof Error ? error.message : "Unknown error"}`,
+              "❌ Failed to create share link (possibly not logged in)",
             ),
           );
         }
@@ -55,18 +47,17 @@ async function createShareLink(
 ): Promise<string | null> {
   try {
     const apiClient = await createApiClient();
-    
+
     if (!apiClient.authenticated) {
       return null;
     }
 
     // Get existing messages for this task (if any)
     const messagesData = store.query(catalog.queries.makeMessagesQuery(taskId));
-    
+
     // Extract Message data with proper types, default to empty array if no messages
-    const messages: Message[] = messagesData.length > 0 
-      ? messagesData.map((x) => x.data as Message)
-      : [];
+    const messages: Message[] =
+      messagesData.length > 0 ? messagesData.map((x) => x.data as Message) : [];
 
     const { formatters } = await import("@getpochi/common");
 
@@ -87,7 +78,7 @@ async function createShareLink(
     if (shareId) {
       // Check if task exists locally, if not create it first
       const existingTask = store.query(catalog.queries.makeTaskQuery(taskId));
-      
+
       if (!existingTask) {
         // Create the task locally first
         store.commit(
@@ -114,4 +105,3 @@ async function createShareLink(
     return null;
   }
 }
-
