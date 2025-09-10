@@ -18,10 +18,11 @@ export function registerTaskListCommand(taskCommand: Command) {
       const store = await createStore(process.cwd());
 
       try {
-        // Query recent tasks ordered by updatedAt
-        // Use the existing tasks$ query which handles parentId IS NULL
         const allTasks = store.query(catalog.queries.tasks$);
-        const tasks = allTasks.slice(0, limit);
+        const sortedTasks = [...allTasks].sort(
+          (a, b) => b.updatedAt.getTime() - a.updatedAt.getTime(),
+        );
+        const tasks = sortedTasks.slice(0, limit);
 
         if (tasks.length === 0) {
           console.log(chalk.gray("No tasks found"));
