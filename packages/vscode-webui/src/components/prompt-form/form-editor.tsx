@@ -85,7 +85,7 @@ interface FormEditorProps {
   onError?: (e: Error) => void;
   onPaste?: (e: ClipboardEvent) => void;
   enableSubmitHistory?: boolean;
-  onImageDrop?: (files: File[]) => boolean;
+  onFileDrop?: (files: File[]) => boolean;
   messageContent?: string;
 }
 
@@ -100,7 +100,7 @@ export function FormEditor({
   autoFocus = true,
   onPaste,
   enableSubmitHistory = true,
-  onImageDrop,
+  onFileDrop,
   messageContent = "",
 }: FormEditorProps) {
   const internalFormRef = useRef<HTMLFormElement>(null);
@@ -385,7 +385,7 @@ export function FormEditor({
           },
           drop: (_view, event) => {
             const dataTransfer = (event as DragEvent).dataTransfer;
-            if (!dataTransfer?.files.length || !onImageDrop) {
+            if (!dataTransfer?.files.length || !onFileDrop) {
               return false;
             }
 
@@ -395,7 +395,7 @@ export function FormEditor({
             event.stopPropagation();
             setIsDragOver(false);
 
-            onImageDrop(filesArray);
+            onFileDrop(filesArray);
             return true;
           },
         },
@@ -575,7 +575,7 @@ export function FormEditor({
         <div className="pointer-events-none absolute inset-0 z-50 flex items-center justify-center rounded-sm border-2 border-zinc-500 border-dashed dark:bg-zinc-500/30">
           <div className="rounded-md border bg-white px-4 py-2 shadow-lg dark:bg-gray-800">
             <p className="font-medium text-sm">
-              Drop images here to attach them to your message
+              Drop files here to attach them to your message
             </p>
           </div>
         </div>

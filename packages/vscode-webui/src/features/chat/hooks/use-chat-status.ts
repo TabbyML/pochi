@@ -6,7 +6,7 @@ interface UseChatStatusProps {
   isLoading: boolean;
   isInputEmpty: boolean;
   isFilesEmpty: boolean;
-  isUploadingImages: boolean;
+  isUploadingAttachments: boolean;
   newCompactTaskPending: boolean;
 }
 
@@ -16,7 +16,7 @@ export function useChatStatus({
   isLoading,
   isInputEmpty,
   isFilesEmpty,
-  isUploadingImages,
+  isUploadingAttachments,
   newCompactTaskPending,
 }: UseChatStatusProps) {
   const { executingToolCalls } = useToolCallLifeCycle();
@@ -31,7 +31,7 @@ export function useChatStatus({
     isReadOnly ||
     (!isLoading && isInputEmpty && isFilesEmpty && !isExecuting);
 
-  const showStopButton = isExecuting || isLoading || isUploadingImages;
+  const showStopButton = isExecuting || isLoading || isUploadingAttachments;
 
   const showPreview = !isBusyCore && !isReadOnly;
 

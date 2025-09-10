@@ -1,14 +1,15 @@
-import { MaxImages } from "@/lib/constants";
-import { createImageFileName, validateImage } from "@/lib/utils/image";
+// import { MaxImages } from "@/lib/constants";
+import { createFileName, validateFile } from "@/lib/utils/attachment";
 import type { FileUIPart } from "ai";
 import { useRef, useState } from "react";
+import { apiClient } from "../auth-client";
 
-interface UseImageUploadOptions {
-  maxImages?: number;
+interface UseAttachmentUploadOptions {
+  maxAttachments?: number;
 }
 
-export function useImageUpload(options?: UseImageUploadOptions) {
-  const maxImages = options?.maxImages ?? MaxImages;
+export function useAttachmentUpload(options?: UseAttachmentUploadOptions) {
+  const maxAttachments = options?.maxAttachments ?? 4;
   const [files, setFiles] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<Error | undefined>(undefined);
@@ -29,8 +30,8 @@ export function useImageUpload(options?: UseImageUploadOptions) {
     fromClipboard = false,
   ): boolean => {
     // Check total count
-    if (files.length + newFiles.length > maxImages) {
-      showError(`Cannot attach more than ${maxImages} images`);
+    if (files.length + newFiles.length > maxAttachments) {
+      showError(`Cannot attach more than ${maxAttachments} attachments`);
       return false;
     }
 
@@ -39,17 +40,17 @@ export function useImageUpload(options?: UseImageUploadOptions) {
     const validFiles: File[] = [];
 
     for (const file of newFiles) {
-      const validation = validateImage(file);
+      const validation = validateFile(file);
       if (validation.valid) {
-        // Process clipboard images to have consistent filenames
+        // Process clipboard files to have consistent filenames
         const processedFile = fromClipboard
-          ? new File([file], createImageFileName(file.type), {
+          ? new File([file], createFileName(file.type), {
               type: file.type,
             })
           : file;
         validFiles.push(processedFile);
       } else {
-        errors.push(validation.error || "Invalid image");
+        errors.push(validation.error || "Invalid file");
       }
     }
 
@@ -66,7 +67,7 @@ export function useImageUpload(options?: UseImageUploadOptions) {
 
     if (nonDuplicateFiles.length < validFiles.length) {
       const duplicateCount = validFiles.length - nonDuplicateFiles.length;
-      showError(`${duplicateCount} duplicate image(s) were skipped`);
+      showError(`${duplicateCount} duplicate file(s) were skipped`);
       if (nonDuplicateFiles.length === 0) {
         return false;
       }
@@ -102,13 +103,12 @@ export function useImageUpload(options?: UseImageUploadOptions) {
     const items = event.clipboardData?.items;
     if (!items) return false;
 
-    const imageFiles = Array.from(items)
-      .filter((item) => item.type.startsWith("image/"))
+    const pastedFiles = Array.from(items)
       .map((item) => item.getAsFile())
       .filter(Boolean) as File[];
 
-    if (imageFiles.length > 0) {
-      const success = validateAndAddFiles(imageFiles, true);
+    if (pastedFiles.length > 0) {
+      const success = validateAndAddFiles(pastedFiles, true);
       if (success) {
         event.preventDefault();
         return true;
@@ -118,7 +118,7 @@ export function useImageUpload(options?: UseImageUploadOptions) {
     return false;
   };
 
-  const handleImageDrop = (files: File[]): boolean => {
+  const handleFileDrop = (files: File[]): boolean => {
     if (!files || files.length === 0) return false;
 
     return validateAndAddFiles(files);
@@ -139,23 +139,24 @@ export function useImageUpload(options?: UseImageUploadOptions) {
       const uploadPromises = files.map(async (file) => {
         return {
           type: "file",
-          filename: file.name || "unnamed-image",
+          filename: file.name || "unnamed-file",
           mediaType: file.type,
-          url: await fileToDataUri(file),
+          url: await fileToRemoteUri(file),
+          // url: await fileToDataUri(file),
         } satisfies FileUIPart;
       });
 
-      const uploadedImages = await Promise.all(uploadPromises);
+      const uploadedAttachments = await Promise.all(uploadPromises);
 
       // Clear files after successful upload
       clearFiles();
 
-      return uploadedImages;
+      return uploadedAttachments;
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") {
         showError("Upload cancelled");
       } else {
-        showError("Failed to upload images. Please try again.");
+        showError("Failed to upload attachments. Please try again.");
       }
       throw error;
     } finally {
@@ -189,36 +190,37 @@ export function useImageUpload(options?: UseImageUploadOptions) {
     // Event handlers
     handleFileSelect,
     handlePaste,
-    handleImageDrop,
+    handleFileDrop,
   };
 }
 
-function fileToDataUri(file: File) {
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = (error) => reject(error);
-    reader.readAsDataURL(file);
-  });
-}
-
-// async function fileToRemoteUri(file: File, signal?: AbortSignal) {
-//   const response = await apiClient.api.upload.$post({
-//     form: {
-//       image: file,
-//     },
-//     signal,
+// function fileToDataUri(file: File) {
+//   return new Promise<string>((resolve, reject) => {
+//     const reader = new FileReader();
+//     reader.onload = () => resolve(reader.result as string);
+//     reader.onerror = (error) => reject(error);
+//     reader.readAsDataURL(file);
 //   });
-
-//   if (!response.ok) {
-//     throw new Error(`Upload failed: ${response.statusText}`);
-//   }
-
-//   const data = await response.json();
-
-//   if (!data.image) {
-//     throw new Error("Failed to upload images");
-//   }
-
-//   return data.image;
 // }
+
+// todo pass signal
+async function fileToRemoteUri(file: File, signal?: AbortSignal) {
+  // @ts-ignore
+  const response = await apiClient.api.upload.$post({
+    form: {
+      file,
+    },
+    signal,
+  });
+
+  if (!response.ok) {
+    throw new Error(`Upload failed: ${response.statusText}`);
+  }
+
+  const data = await response.json();
+
+  if (!data.url) {
+    throw new Error("Failed to upload attachment");
+  }
+  return data.url;
+}

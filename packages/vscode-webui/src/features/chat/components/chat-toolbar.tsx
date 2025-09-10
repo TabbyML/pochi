@@ -1,5 +1,5 @@
+import { AttachmentPreviewList } from "@/components/attachment-preview-list";
 import { DevModeButton } from "@/components/dev-mode-button";
-import { ImagePreviewList } from "@/components/image-preview-list";
 import { ModelSelect } from "@/components/model-select";
 import { PreviewTool } from "@/components/preview-tool";
 import { PublicShareButton } from "@/components/public-share-button";
@@ -16,7 +16,7 @@ import { useSelectedModels } from "@/features/settings";
 import { AutoApproveMenu } from "@/features/settings";
 import { TodoList, useTodos } from "@/features/todo";
 import { useAddCompleteToolCalls } from "@/lib/hooks/use-add-complete-tool-calls";
-import type { useImageUpload } from "@/lib/hooks/use-image-upload";
+import type { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
 import { vscodeHost } from "@/lib/vscode";
 import type { UseChatHelpers } from "@ai-sdk/react";
 import { constants } from "@getpochi/common";
@@ -24,7 +24,7 @@ import type { Environment } from "@getpochi/common";
 import type { UserEditsDiff } from "@getpochi/common/vscode-webui-bridge";
 import type { Message, Task } from "@getpochi/livekit";
 import type { Todo } from "@getpochi/tools";
-import { ImageIcon, SendHorizonal, StopCircleIcon } from "lucide-react";
+import { PaperclipIcon, SendHorizonal, StopCircleIcon } from "lucide-react";
 import type React from "react";
 import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -39,7 +39,7 @@ interface ChatToolbarProps {
   approvalAndRetry: ReturnType<typeof useApprovalAndRetry>;
   compact: () => Promise<string>;
   chat: UseChatHelpers<Message>;
-  imageUpload: ReturnType<typeof useImageUpload>;
+  attachmentUpload: ReturnType<typeof useAttachmentUpload>;
   isReadOnly: boolean;
   displayError: Error | undefined;
   todosRef: React.RefObject<Todo[] | undefined>;
@@ -49,7 +49,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   chat,
   approvalAndRetry: { pendingApproval, retry },
   compact,
-  imageUpload,
+  attachmentUpload,
   isReadOnly,
   task,
   displayError,
@@ -94,16 +94,16 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     } satisfies Environment;
   }, [messages, autoApproveGuard.current, todosRef.current]);
 
-  // Use the unified image upload hook
+  // Use the unified attachment upload hook
   const {
     files,
-    isUploading: isUploadingImages,
+    isUploading: isUploadingAttachments,
     fileInputRef,
-    removeFile: handleRemoveImage,
+    removeFile,
     handleFileSelect,
-    handlePaste: handlePasteImage,
-    handleImageDrop,
-  } = imageUpload;
+    handlePaste: handlePasteAttachment,
+    handleFileDrop,
+  } = attachmentUpload;
 
   const { inlineCompactTask, inlineCompactTaskPending } = useInlineCompactTask({
     sendMessage,
@@ -120,7 +120,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
       isLoading,
       isInputEmpty: !input.trim(),
       isFilesEmpty: files.length === 0,
-      isUploadingImages,
+      isUploadingAttachments,
       newCompactTaskPending,
     });
 
@@ -135,7 +135,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     chat,
     input,
     setInput,
-    imageUpload,
+    attachmentUpload,
     isSubmitDisabled,
     isLoading,
     pendingApproval,
@@ -182,10 +182,10 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
       )}
       <AutoApproveMenu />
       {files.length > 0 && (
-        <ImagePreviewList
+        <AttachmentPreviewList
           files={files}
-          onRemove={handleRemoveImage}
-          isUploading={isUploadingImages}
+          onRemove={removeFile}
+          isUploading={isUploadingAttachments}
         />
       )}
       <ChatInputForm
@@ -193,10 +193,10 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
         setInput={setInput}
         onSubmit={handleSubmit}
         isLoading={isLoading || isExecuting}
-        onPaste={handlePasteImage}
+        onPaste={handlePasteAttachment}
         pendingApproval={pendingApproval}
         status={status}
-        onImageDrop={handleImageDrop}
+        onFileDrop={handleFileDrop}
         messageContent={messageContent}
       />
 
@@ -205,7 +205,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
         type="file"
         ref={fileInputRef}
         onChange={handleFileSelect}
-        accept="image/*"
+        accept="image/*,application/pdf,video/*"
         multiple
         className="hidden"
       />
@@ -248,7 +248,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
                 onClick={() => fileInputRef.current?.click()}
                 className="button-focus h-6 w-6 p-0"
               >
-                <ImageIcon className="size-4" />
+                <PaperclipIcon className="size-4" />
               </Button>
             </TooltipTrigger>
             <TooltipContent>{t("chat.imageTooltip")}</TooltipContent>
