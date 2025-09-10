@@ -5,7 +5,8 @@ import {
 } from "@/components/ui/hover-card";
 import { cn } from "@/lib/utils";
 import type { FileUIPart } from "ai";
-import { FileIcon } from "lucide-react";
+import { FileIcon as LucideFileIcon, VideoIcon } from "lucide-react";
+import { FileIcon } from "../tool-invocation/file-icon/file-icon";
 
 interface MessageAttachmentsProps {
   attachments: FileUIPart[];
@@ -18,6 +19,8 @@ export function MessageAttachments({ attachments }: MessageAttachmentsProps) {
     <div className="my-2 flex flex-wrap gap-2">
       {attachments.map((attachment, index) => {
         const isImage = attachment.mediaType?.startsWith("image/");
+        const isVideo = attachment.mediaType?.startsWith("video/");
+        const isPdf = attachment.mediaType === "application/pdf";
 
         return (
           <HoverCard key={index} openDelay={300} closeDelay={200}>
@@ -25,8 +28,7 @@ export function MessageAttachments({ attachments }: MessageAttachmentsProps) {
               <HoverCardTrigger asChild>
                 <div
                   className={cn(
-                    "flex items-center gap-1.5 rounded border bg-[var(--vscode-editorWidget-background)] p-1.5 text-xs hover:bg-[var(--vscode-list-hoverBackground)]",
-                    "cursor-pointer border hover:border-[var(--vscode-focusBorder)]",
+                    "flex cursor-pointer items-center gap-1.5 rounded border border-[var(--vscode-editorWidget-background)] bg-[var(--vscode-editorWidget-background)] p-1.5 text-xs hover:border-[var(--vscode-focusBorder)] hover:bg-[var(--vscode-list-hoverBackground)]",
                   )}
                 >
                   {isImage ? (
@@ -42,9 +44,26 @@ export function MessageAttachments({ attachments }: MessageAttachmentsProps) {
                         {attachment.filename}
                       </span>
                     </>
+                  ) : isPdf ? (
+                    <>
+                      <FileIcon
+                        path={attachment.filename || "file.pdf"}
+                        className="h-4 w-4 shrink-0"
+                      />
+                      <span className="max-w-[100px] truncate">
+                        {attachment.filename}
+                      </span>
+                    </>
+                  ) : isVideo ? (
+                    <>
+                      <VideoIcon className="h-4 w-4 shrink-0 text-[var(--vscode-symbolIcon-fileForeground)]" />
+                      <span className="max-w-[100px] truncate">
+                        {attachment.filename}
+                      </span>
+                    </>
                   ) : (
                     <>
-                      <FileIcon className="h-4 w-4 shrink-0 text-[var(--vscode-symbolIcon-fileForeground)]" />
+                      <LucideFileIcon className="h-4 w-4 shrink-0 text-[var(--vscode-symbolIcon-fileForeground)]" />
                       <span className="max-w-[100px] truncate">
                         {attachment.filename}
                       </span>
@@ -76,7 +95,10 @@ export function MessageAttachments({ attachments }: MessageAttachmentsProps) {
                   </div>
                 ) : (
                   <div className="flex items-center gap-2 text-sm">
-                    <FileIcon className="h-5 w-5 text-[var(--vscode-symbolIcon-fileForeground)]" />
+                    <FileIcon
+                      path={attachment.filename || "file"}
+                      className="h-5 w-5"
+                    />
                     <span>{attachment.mediaType}</span>
                   </div>
                 )}
