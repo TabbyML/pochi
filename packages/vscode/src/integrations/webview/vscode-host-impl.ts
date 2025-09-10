@@ -43,7 +43,11 @@ import {
   isPlainTextFile,
   listWorkspaceFiles,
 } from "@getpochi/common/tool-utils";
-import type { CustomAgentFile } from "@getpochi/common/vscode-webui-bridge";
+import { getVendor } from "@getpochi/common/vendor";
+import type {
+  CustomAgentFile,
+  PochiCredentials,
+} from "@getpochi/common/vscode-webui-bridge";
 import type {
   CaptureEvent,
   DisplayModel,
@@ -60,8 +64,6 @@ import type {
   ToolFunctionType,
 } from "@getpochi/tools";
 import { createClientTools } from "@getpochi/tools";
-import { getPochiCredentials } from "@getpochi/vendor-pochi";
-import { computed } from "@preact/signals-core";
 import {
   ThreadAbortSignal,
   type ThreadAbortSignalSerialization,
@@ -105,7 +107,6 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   private checkpointGroup = runExclusive.createGroupRef();
   private sessionState: SessionState = {};
   private disposables: vscode.Disposable[] = [];
-  private token = computed(() => getPochiCredentials()?.token);
 
   constructor(
     @inject("vscode.ExtensionContext")
@@ -121,6 +122,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     private readonly userStorage: UserStorage,
     private readonly customAgentManager: CustomAgentManager,
   ) {}
+
   listRuleFiles = async (): Promise<RuleFile[]> => {
     return await collectRuleFiles();
   };
@@ -135,12 +137,12 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     throw new Error("Method not implemented.");
   };
 
-  readToken = async (): Promise<
-    ThreadSignalSerialization<string | undefined>
-  > => {
-    return ThreadSignal.serialize(this.token, {
-      writable: true,
-    });
+  readPochiCredentials = async (): Promise<PochiCredentials | null> => {
+    try {
+      return (await getVendor("pochi").getCredentials()) as PochiCredentials;
+    } catch (err) {
+      return null;
+    }
   };
 
   getSessionState = async <K extends keyof SessionState>(

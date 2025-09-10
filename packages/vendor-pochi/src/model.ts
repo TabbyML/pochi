@@ -5,9 +5,11 @@ import {
 } from "@ai-sdk/provider-utils";
 import type { PochiApi, PochiApiClient } from "@getpochi/common/pochi-api";
 import type { CreateModelOptions } from "@getpochi/common/vendor/edge";
-import { getServerBaseUrl } from "@getpochi/common/vscode-webui-bridge";
+import {
+  type PochiCredentials,
+  getServerBaseUrl,
+} from "@getpochi/common/vscode-webui-bridge";
 import { hc } from "hono/client";
-import type { PochiCredentials } from "./types";
 
 export function createPochiModel({
   id,

@@ -44,7 +44,7 @@ function createVSCodeHost(): VSCodeHostApi {
     vscode as unknown as Window,
     {
       imports: [
-        "readToken",
+        "readPochiCredentials",
         "getSessionState",
         "setSessionState",
         "getWorkspaceState",
