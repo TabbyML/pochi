@@ -74,38 +74,51 @@ export function registerTaskCommand(program: Command) {
 
         // First try exact match
         let task = store.query(catalog.queries.makeTaskQuery(taskIdInput));
-        
+
         if (!task) {
           // If no exact match, try prefix matching
           const allTasks = store.query(catalog.queries.tasks$);
-          const prefixMatches = allTasks.filter(t => t.id.startsWith(taskIdInput));
-          
+          const prefixMatches = allTasks.filter((t) =>
+            t.id.startsWith(taskIdInput),
+          );
+
           if (prefixMatches.length === 0) {
             return taskCommand.error(`Task ${taskIdInput} not found`);
-          } 
-          
+          }
+
           if (prefixMatches.length === 1) {
             task = prefixMatches[0];
           } else {
             // Multiple matches - show options
-            console.log(chalk.yellow(`⚠️  Multiple tasks match prefix "${taskIdInput}":`));
+            console.log(
+              chalk.yellow(`⚠️  Multiple tasks match prefix "${taskIdInput}":`),
+            );
             console.log();
-            
-            for (const matchedTask of prefixMatches.slice(0, 10)) { // Show max 10 matches
+
+            for (const matchedTask of prefixMatches.slice(0, 10)) {
+              // Show max 10 matches
               const title = matchedTask.title || matchedTask.id.substring(0, 8);
               const timeAgo = getTimeAgo(matchedTask.updatedAt);
               const statusIcon = getStatusIcon(matchedTask.status);
-              
-              console.log(`  ${statusIcon} ${chalk.bold(title)} ${chalk.gray(`(${timeAgo})`)}}`);
+
+              console.log(
+                `  ${statusIcon} ${chalk.bold(title)} ${chalk.gray(`(${timeAgo})`)}}`,
+              );
               console.log(chalk.gray(`     ID: ${matchedTask.id}`));
             }
-            
+
             if (prefixMatches.length > 10) {
-              console.log(chalk.gray(`     ... and ${prefixMatches.length - 10} more`));
+              console.log(
+                chalk.gray(`     ... and ${prefixMatches.length - 10} more`),
+              );
             }
-            
+
             console.log();
-            console.log(chalk.blue("Please provide a more specific ID prefix or the full ID."));
+            console.log(
+              chalk.blue(
+                "Please provide a more specific ID prefix or the full ID.",
+              ),
+            );
             await store.shutdown();
             return;
           }

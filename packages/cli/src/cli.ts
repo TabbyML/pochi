@@ -120,7 +120,6 @@ const program = new Command()
       customAgents,
     });
 
-
     const renderer = new OutputRenderer(runner.state);
 
     await runner.run();
