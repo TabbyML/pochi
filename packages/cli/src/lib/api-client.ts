@@ -1,20 +1,20 @@
 import type { PochiApi, PochiApiClient } from "@getpochi/common/pochi-api";
-import { getPochiCredentials } from "@getpochi/vendor-pochi";
 import { hc } from "hono/client";
 import packageJson from "../../package.json";
+import { getPochiCredentials } from "../livekit/store";
 
 const prodServerUrl = "https://app.getpochi.com";
 const userAgent = `PochiCli/${packageJson.version} Node/${process.version} (${process.platform}; ${process.arch})`;
 
 export async function createApiClient(): Promise<PochiApiClient> {
-  const token = getPochiCredentials()?.token;
-
   const apiClient: PochiApiClient = hc<PochiApi>(prodServerUrl, {
-    fetch(input: string | URL | Request, init?: RequestInit) {
+    async fetch(input: string | URL | Request, init?: RequestInit) {
+      const credentials = await getPochiCredentials();
       const headers = new Headers(init?.headers);
-      if (token) {
-        headers.append("Authorization", `Bearer ${token}`);
+      if (credentials?.token) {
+        headers.append("Authorization", `Bearer ${credentials.token}`);
       }
+      apiClient.authenticated = !!credentials;
       headers.set("User-Agent", userAgent);
       return fetch(input, {
         ...init,
@@ -23,12 +23,20 @@ export async function createApiClient(): Promise<PochiApiClient> {
     },
   });
 
+  let authenticated = !!(await getPochiCredentials());
   const proxed = new Proxy(apiClient, {
     get(target, prop, receiver) {
       if (prop === "authenticated") {
-        return !!token;
+        return authenticated;
       }
       return Reflect.get(target, prop, receiver);
+    },
+    set(target, prop, value, receiver) {
+      if (prop === "authenticated") {
+        authenticated = value;
+        return true;
+      }
+      return Reflect.set(target, prop, value, receiver);
     },
   });
 

@@ -1,22 +1,9 @@
 import type { PochiApi, PochiApiClient } from "@getpochi/common/pochi-api";
 import { getServerBaseUrl } from "@getpochi/common/vscode-webui-bridge";
-import { type ThreadSignal, threadSignal } from "@quilted/threads/signals";
 import { hc } from "hono/client";
 import { vscodeHost } from "./vscode";
 
-let TokenSignal: ThreadSignal<string | undefined> | null = null;
 let ExtensionVersionPromise: Promise<string> | null = null;
-
-const getToken = async () => {
-  if (!TokenSignal) {
-    const signal = threadSignal(await vscodeHost.readToken());
-    signal.subscribe(async (token) => {
-      apiClient.authenticated = !!token;
-    });
-    TokenSignal = signal;
-  }
-  return TokenSignal;
-};
 
 const getExtensionVersion = () => {
   if (!ExtensionVersionPromise) {
@@ -29,12 +16,13 @@ const customFetchImpl = async (
   input: RequestInfo | URL,
   requestInit?: RequestInit,
 ) => {
-  const token = await getToken();
+  const credentials = await vscodeHost.readPochiCredentials();
   const extensionVersion = await getExtensionVersion();
   const headers = new Headers(requestInit?.headers);
-  if (token) {
-    headers.append("Authorization", `Bearer ${token.value}`);
+  if (credentials?.token) {
+    headers.append("Authorization", `Bearer ${credentials.token}`);
   }
+  apiClient.authenticated = !!credentials;
   headers.set("X-Pochi-Extension-Version", extensionVersion);
   return fetch(input, {
     ...requestInit,
@@ -47,10 +35,12 @@ function createApiClient(): PochiApiClient {
     fetch: customFetchImpl,
   });
 
-  // Initialize authentication status.
-  getToken();
-
   let authenticated = false;
+  // Initialize authentication status.
+  vscodeHost.readPochiCredentials().then((credentials) => {
+    authenticated = !!credentials;
+  });
+
   const proxed = new Proxy(app, {
     get(target, prop, receiver) {
       if (prop === "authenticated") {

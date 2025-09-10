@@ -4,6 +4,7 @@ export type {
 } from "./webview";
 
 export { createVscodeHostStub } from "./webview-stub";
+export type { PochiCredentials } from "./types/pochi";
 
 export type {
   McpStatus,

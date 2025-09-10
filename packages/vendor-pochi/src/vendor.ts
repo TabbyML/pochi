@@ -7,13 +7,16 @@ import {
   type ModelOptions,
   VendorBase,
 } from "@getpochi/common/vendor";
-import { getServerBaseUrl } from "@getpochi/common/vscode-webui-bridge";
+import {
+  type PochiCredentials,
+  getServerBaseUrl,
+} from "@getpochi/common/vscode-webui-bridge";
 import { jwtClient } from "better-auth/client/plugins";
 import { createAuthClient as createAuthClientImpl } from "better-auth/react";
 import { hc } from "hono/client";
 import * as jose from "jose";
 import { getPochiCredentials, updatePochiCredentials } from "./credentials";
-import { type PochiCredentials, VendorId } from "./types";
+import { VendorId } from "./types";
 
 const logger = getLogger("PochiVendor");
 

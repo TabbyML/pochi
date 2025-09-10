@@ -124,6 +124,7 @@
         "@livestore/react": "catalog:",
         "ai": "catalog:",
         "base58-js": "^3.0.3",
+        "jose": "catalog:",
         "react": "catalog:",
         "remeda": "catalog:",
         "zod": "catalog:",
@@ -158,7 +159,7 @@
         "@getpochi/common": "workspace:*",
         "better-auth": "catalog:",
         "hono": "catalog:",
-        "jose": "^6.1.0",
+        "jose": "catalog:",
       },
     },
     "packages/vscode": {
@@ -298,7 +299,6 @@
       },
       "devDependencies": {
         "@getpochi/tools": "workspace:*",
-        "@livestore/devtools-vite": "catalog:",
         "@preact/signals-react-transform": "^0.5.1",
         "@storybook/addon-essentials": "^8.6.12",
         "@storybook/addon-interactions": "^8.6.12",
@@ -362,6 +362,7 @@
     "bidc": "^0.0.2",
     "emittery": "^1.1.0",
     "hono": "^4.7.5",
+    "jose": "^6.1.0",
     "kysely": "^0.27.6",
     "lucide-react": "^0.542.0",
     "moment": "^2.30.1",

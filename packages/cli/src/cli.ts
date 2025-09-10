@@ -79,7 +79,6 @@ const program = new Command()
   )
   .action(async (options) => {
     const { uid, prompt } = await parseTaskInput(options, program);
-
     const apiClient = await createApiClient();
 
     const store = await createStore(process.cwd());
@@ -193,8 +192,6 @@ async function parseTaskInput(options: ProgramOpts, program: Program) {
 
   return { uid, prompt };
 }
-
-export { createApiClient } from "./lib/api-client";
 
 async function createLLMConfig(
   program: Program,
