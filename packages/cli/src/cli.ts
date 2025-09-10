@@ -20,6 +20,7 @@ import chalk from "chalk";
 import * as commander from "commander";
 import packageJson from "../package.json";
 import { registerAuthCommand } from "./auth";
+import { createApiClient } from "./lib/api-client";
 import { findRipgrep } from "./lib/find-ripgrep";
 import { loadAgents } from "./lib/load-agents";
 import {
@@ -34,11 +35,9 @@ import { registerTaskCommand } from "./task";
 import { TaskRunner } from "./task-runner";
 import { registerUpgradeCommand } from "./upgrade";
 import { waitUntil } from "./wait-until";
-import { createApiClient } from "./lib/api-client";
 
 const logger = getLogger("Pochi");
 logger.debug(`pochi v${packageJson.version}`);
-
 
 const parsePositiveInt = (input: string): number => {
   if (!input) {

@@ -1,5 +1,5 @@
 import type { Command } from "@commander-js/extra-typings";
-import { catalog, type Message } from "@getpochi/livekit";
+import { type Message, catalog } from "@getpochi/livekit";
 import chalk from "chalk";
 import { createApiClient } from "../lib/api-client";
 import { createStore } from "../livekit/store";
