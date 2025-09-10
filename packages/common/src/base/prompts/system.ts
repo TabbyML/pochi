@@ -7,6 +7,7 @@ type CustomRules = Environment["info"]["customRules"];
 export function createSystemPrompt(
   customRules: CustomRules,
   customAgent?: CustomAgent,
+  mcpInstructions?: string,
 ) {
   const agentSystemPrompt =
     customAgent?.systemPrompt ||
@@ -27,6 +28,7 @@ ${getTodoListPrompt()}
 ${getRulesPrompt()}
 ${getObjectivePrompt()}
 ${customAgent ? "" : getCustomRulesPrompt(customRules)}
+${getMcpInstructionsPrompt(mcpInstructions)}
 `.trim();
 }
 
@@ -107,6 +109,20 @@ You should always speak and think in the "en" language unless the user gives you
 
 Rules:
 ${customRules}
+`;
+  return prompt;
+}
+
+function getMcpInstructionsPrompt(mcpInstructions?: string) {
+  if (!mcpInstructions) return "";
+  const prompt = `====
+
+MCP INSTRUCTIONS
+
+The following additional instructions are provided by MCP servers, and should be followed to the best of your ability without interfering with the TOOL USE guidelines.
+
+Instructions:
+${mcpInstructions}
 `;
   return prompt;
 }

@@ -13,7 +13,7 @@ export function readGithubToken(): string {
 }
 
 export function readPochiConfig() {
-  const pochiToken = process.env.POCHI_TOKEN;
+  const pochiToken = process.env.POCHI_API_KEY;
 
   return {
     token: pochiToken,

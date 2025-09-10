@@ -19,8 +19,6 @@ import { ModelList } from "@/lib/model-list";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { PostHog } from "@/lib/posthog";
 // biome-ignore lint/style/useImportType: needed for dependency injection
-import { TokenStorage } from "@/lib/token-storage";
-// biome-ignore lint/style/useImportType: needed for dependency injection
 import { UserStorage } from "@/lib/user-storage";
 import { applyDiff, previewApplyDiff } from "@/tools/apply-diff";
 import { executeCommand } from "@/tools/execute-command";
@@ -45,7 +43,11 @@ import {
   isPlainTextFile,
   listWorkspaceFiles,
 } from "@getpochi/common/tool-utils";
-import type { CustomAgentFile } from "@getpochi/common/vscode-webui-bridge";
+import { getVendor } from "@getpochi/common/vendor";
+import type {
+  CustomAgentFile,
+  PochiCredentials,
+} from "@getpochi/common/vscode-webui-bridge";
 import type {
   CaptureEvent,
   DisplayModel,
@@ -109,7 +111,6 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   constructor(
     @inject("vscode.ExtensionContext")
     private readonly context: vscode.ExtensionContext,
-    private readonly tokenStorage: TokenStorage,
     private readonly tabState: TabState,
     private readonly terminalState: TerminalState,
     private readonly posthog: PostHog,
@@ -121,6 +122,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     private readonly userStorage: UserStorage,
     private readonly customAgentManager: CustomAgentManager,
   ) {}
+
   listRuleFiles = async (): Promise<RuleFile[]> => {
     return await collectRuleFiles();
   };
@@ -135,12 +137,12 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     throw new Error("Method not implemented.");
   };
 
-  readToken = async (): Promise<
-    ThreadSignalSerialization<string | undefined>
-  > => {
-    return ThreadSignal.serialize(this.tokenStorage.token, {
-      writable: true,
-    });
+  readPochiCredentials = async (): Promise<PochiCredentials | null> => {
+    try {
+      return (await getVendor("pochi").getCredentials()) as PochiCredentials;
+    } catch (err) {
+      return null;
+    }
   };
 
   getSessionState = async <K extends keyof SessionState>(

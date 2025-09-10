@@ -3,8 +3,9 @@
 import { signal } from "@preact/signals-core";
 
 const DefaultConfig = {
-  fetcher: {
-    timeout: 5000, // ms
+  request: {
+    timeout: 60_000, // ms
+    maxToken: 256,
   },
   prompt: {
     maxPrefixLines: 20,
@@ -16,7 +17,8 @@ const DefaultConfig = {
     },
     collectSnippetsFromRecentChangedFiles: {
       enabled: true,
-      maxSnippets: 3,
+      maxSnippets: 5,
+      maxCharsPerSnippet: 500,
       indexing: {
         checkingChangesInterval: 500,
         changesDebouncingInterval: 1000,
@@ -29,15 +31,15 @@ const DefaultConfig = {
     },
     collectSnippetsFromRecentOpenedFiles: {
       enabled: true,
-      maxOpenedFiles: 5,
-      maxCharsPerOpenedFiles: 500,
+      maxSnippets: 5,
+      maxCharsPerSnippet: 500,
     },
   },
   debounce: {
     mode: "adaptive",
     interval: 250, // ms
   },
-  solution: {
+  multiChoice: {
     maxItems: 3,
     maxTries: 6,
     temperature: 0.8,

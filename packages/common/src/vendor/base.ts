@@ -39,6 +39,10 @@ export abstract class VendorBase {
 
   abstract authenticate(): Promise<AuthOutput>;
 
+  logout() {
+    return updateVendorConfig(this.vendorId, null);
+  }
+
   get authenticated() {
     const config = getVendorConfig(this.vendorId);
     return !!config?.credentials;

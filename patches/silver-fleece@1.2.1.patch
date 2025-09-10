@@ -1,0 +1,29 @@
+diff --git a/node_modules/silver-fleece/.bun-tag-e25d821ea5683c98 b/.bun-tag-e25d821ea5683c98
+new file mode 100644
+index 0000000000000000000000000000000000000000..e69de29bb2d1d6434b8b29ae775ad8c2e48c5391
+diff --git a/dist/silver-fleece.es.mjs b/dist/silver-fleece.es.mjs
+index d42a28cf21ac467443f946aad387f660bc0d5f67..d42626c11990cc4f502bda6c33d9b3046a7c0bdb 100644
+--- a/dist/silver-fleece.es.mjs
++++ b/dist/silver-fleece.es.mjs
+@@ -371,7 +371,7 @@ function stringifyProperty(key, value, indentation, indentString, newlines) {
+ }
+ function stringifyValue(value, indentation, indentString, newlines) {
+     var type = typeof value;
+-    if (type === 'boolean' || type === 'number' || type === 'string' || type === null) {
++    if (type === 'boolean' || type === 'number' || type === 'string' || type === null || value === null) {
+         return JSON.stringify(value);
+     }
+     else if (Array.isArray(value)) {
+diff --git a/dist/silver-fleece.umd.js b/dist/silver-fleece.umd.js
+index a47a9eafdca9fcbb2c0495a03ce312fdd4420d20..7b60be4d1036c5ee63c9c7366b275cf5460804b9 100644
+--- a/dist/silver-fleece.umd.js
++++ b/dist/silver-fleece.umd.js
+@@ -377,7 +377,7 @@
+     }
+     function stringifyValue(value, indentation, indentString, newlines) {
+         var type = typeof value;
+-        if (type === 'boolean' || type === 'number' || type === 'string' || type === null) {
++        if (type === 'boolean' || type === 'number' || type === 'string' || type === null || value === null) {
+             return JSON.stringify(value);
+         }
+         else if (Array.isArray(value)) {

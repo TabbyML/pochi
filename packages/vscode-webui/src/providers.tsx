@@ -12,6 +12,7 @@ import { useMemo } from "react";
 import { unstable_batchedUpdates as batchUpdates } from "react-dom";
 import { ThemeProvider } from "./components/theme-provider";
 import { useCurrentWorkspace } from "./lib/hooks/use-current-workspace";
+import { usePochiCredentials } from "./lib/hooks/use-pochi-credentials";
 import LiveStoreWorker from "./livestore.worker.ts?worker&inline";
 
 const adapter = makePersistedAdapter({
@@ -56,6 +57,7 @@ export const Providers: React.FC<{ children: React.ReactNode }> = ({
 function LiveStoreProviderWrapper({ children }: { children: React.ReactNode }) {
   const { data: cwd } = useCurrentWorkspace();
   const storeId = useMemo(() => (cwd ? getStoreId(cwd) : "default"), [cwd]);
+  const { jwt } = usePochiCredentials();
 
   return (
     <LiveStoreProvider
@@ -63,6 +65,7 @@ function LiveStoreProviderWrapper({ children }: { children: React.ReactNode }) {
       adapter={adapter}
       renderLoading={(_) => <></>}
       batchUpdates={batchUpdates}
+      syncPayload={{ jwt }}
       storeId={storeId}
     >
       {children}

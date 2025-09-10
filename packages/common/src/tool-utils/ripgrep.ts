@@ -134,8 +134,8 @@ export async function searchFilesWithRipgrep(
     }
     // biome-ignore lint/suspicious/noExplicitAny: exception catch has to be any
   } catch (error: any) {
-    logger.error("rg command error: ", error);
     if (!(error satisfies ExecError)) {
+      logger.error("rg command error: ", error);
       throw error;
     }
 
