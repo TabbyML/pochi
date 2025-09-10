@@ -128,7 +128,8 @@ export async function runPochi(githubManager: GitHubManager): Promise<void> {
     context.updateInterval = setInterval(async () => {
       try {
         const truncatedOutput = buildBatchOutput(context.outputBuffer);
-        await githubManager.updateComment(historyCommentId, truncatedOutput);
+        const progressContent = `\`\`\`\n${truncatedOutput}\n\`\`\`${createGitHubActionFooter(request.event)}`;
+        await githubManager.updateComment(historyCommentId, progressContent);
       } catch (error) {
         console.error("Failed to update comment:", error);
       }

@@ -65,7 +65,7 @@ export class GitHubManager {
       owner: repo.owner,
       repo: repo.repo,
       comment_id: commentId,
-      body: `🔄 **Pochi Running...**\n\n\`\`\`\n${content}\n\`\`\``,
+      body: `🔄 **Pochi Running...**\n\n${content}`,
     });
   }
 
