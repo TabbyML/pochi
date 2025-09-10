@@ -16,8 +16,8 @@ const adapter = makeAdapter({
     : undefined,
 });
 
-export async function createStore(cwd: string) {
-  const storeId = getStoreId(cwd);
+export async function createStore(cwd: string, jwt: string | null) {
+  const storeId = getStoreId(cwd, jwt);
   const store = await createStorePromise<LiveStoreSchema>({
     adapter,
     schema: catalog.schema,

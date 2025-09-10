@@ -84,10 +84,11 @@ const program = new Command()
   )
   .action(async (options) => {
     const { uid, prompt } = await parseTaskInput(options, program);
+    const credentials = await getPochiCredentials();
 
     const apiClient = await createApiClient();
 
-    const store = await createStore(process.cwd());
+    const store = await createStore(process.cwd(), credentials?.jwt || null);
 
     const llm = await createLLMConfig(program, options);
     const rg = findRipgrep();
@@ -199,17 +200,14 @@ async function parseTaskInput(options: ProgramOpts, program: Program) {
 }
 
 async function createApiClient(): Promise<PochiApiClient> {
-  const pochi = getVendor("pochi");
-  const credentials = (await pochi
-    .getCredentials()
-    .catch(() => null)) as PochiCredentials | null;
-
   const apiClient: PochiApiClient = hc<PochiApi>(prodServerUrl, {
     async fetch(input: string | URL | Request, init?: RequestInit) {
+      const credentials = await getPochiCredentials();
       const headers = new Headers(init?.headers);
       if (credentials?.token) {
         headers.append("Authorization", `Bearer ${credentials.token}`);
       }
+      apiClient.authenticated = !!credentials;
       headers.set("User-Agent", userAgent);
       return fetch(input, {
         ...init,
@@ -218,12 +216,20 @@ async function createApiClient(): Promise<PochiApiClient> {
     },
   });
 
+  let authenticated = !!(await getPochiCredentials());
   const proxed = new Proxy(apiClient, {
     get(target, prop, receiver) {
       if (prop === "authenticated") {
-        return !!credentials?.token;
+        return authenticated;
       }
       return Reflect.get(target, prop, receiver);
+    },
+    set(target, prop, value, receiver) {
+      if (prop === "authenticated") {
+        authenticated = value;
+        return true;
+      }
+      return Reflect.set(target, prop, value, receiver);
     },
   });
 
@@ -351,4 +357,12 @@ async function createLLMConfigWithProviders(
         modelSetting.maxTokens ?? constants.DefaultMaxOutputTokens,
     };
   }
+}
+
+async function getPochiCredentials() {
+  const pochi = getVendor("pochi");
+  const credentials = (await pochi
+    .getCredentials()
+    .catch(() => null)) as PochiCredentials | null;
+  return credentials;
 }
