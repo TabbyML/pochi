@@ -14,8 +14,6 @@ import { getLogger, showOutputPanel } from "@/lib/logger";
 import { NewProjectRegistry, prepareProject } from "@/lib/new-project";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { PostHog } from "@/lib/posthog";
-// biome-ignore lint/style/useImportType: needed for dependency injection
-import { TokenStorage } from "@/lib/token-storage";
 import type { WebsiteTaskCreateEvent } from "@getpochi/common";
 import {
   type CustomModelSetting,
@@ -27,6 +25,7 @@ import type {
   TaskIdParams,
 } from "@getpochi/common/vscode-webui-bridge";
 import { getServerBaseUrl } from "@getpochi/common/vscode-webui-bridge";
+import { updatePochiCredentials } from "@getpochi/vendor-pochi";
 import { inject, injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
 // biome-ignore lint/style/useImportType: needed for dependency injection
@@ -44,7 +43,6 @@ export class CommandManager implements vscode.Disposable {
 
   constructor(
     private readonly ragdollWebviewProvider: RagdollWebviewProvider,
-    private readonly tokenStorage: TokenStorage,
     private readonly newProjectRegistry: NewProjectRegistry,
     @inject("AuthClient") private readonly authClient: AuthClient,
     private readonly authEvents: AuthEvents,
@@ -101,7 +99,7 @@ export class CommandManager implements vscode.Disposable {
         );
         if (selection === "Logout") {
           this.authClient.signOut();
-          this.tokenStorage.setToken(undefined);
+          updatePochiCredentials(null);
           this.authEvents.logoutEvent.fire();
         }
       }),

@@ -52,7 +52,7 @@ export const ListModelsResponse = z.array(
 );
 export type ListModelsResponse = z.infer<typeof ListModelsResponse>;
 
-// Code Completion API types (Fill-in-Middle style completion)
+// Tabby-compatible Code Completion API
 export const CodeCompletionRequest = z.object({
   language: z.string().optional().describe("Programming language identifier"),
   segments: z
@@ -118,8 +118,46 @@ export const CodeCompletionResponse = z.object({
 });
 
 export type CodeCompletionRequest = z.infer<typeof CodeCompletionRequest>;
-
 export type CodeCompletionResponse = z.infer<typeof CodeCompletionResponse>;
+
+// Code Completion FIM API
+export const CodeCompletionFIMRequest = z.object({
+  prompt: z.string().describe("Code before cursor"),
+  suffix: z.string().optional().describe("Code after cursor"),
+  model: z.string().optional().describe("Model to use for this request."),
+  temperature: z
+    .number()
+    .min(0)
+    .max(1)
+    .optional()
+    .describe("Temperature (0.0-1.0)"),
+  maxTokens: z
+    .number()
+    .min(1)
+    .optional()
+    .describe("Maximum number of tokens to generate"),
+  stop: z
+    .array(z.string())
+    .optional()
+    .describe("Sequences where the model will stop generating further tokens"),
+});
+
+export const CodeCompletionFIMResponse = z.object({
+  id: z.string().describe("Completion ID"),
+  choices: z
+    .array(
+      z.object({
+        index: z.number().describe("Choice index"),
+        text: z.string().describe("Generated completion text"),
+      }),
+    )
+    .describe("Completion choices"),
+});
+
+export type CodeCompletionFIMRequest = z.infer<typeof CodeCompletionFIMRequest>;
+export type CodeCompletionFIMResponse = z.infer<
+  typeof CodeCompletionFIMResponse
+>;
 
 const stub = new Hono()
   .post("/api/chat/stream", zValidator("json", ModelGatewayRequest))
@@ -130,6 +168,11 @@ const stub = new Hono()
     "/api/code/completion",
     zValidator("json", CodeCompletionRequest),
     async (c) => c.json({} as CodeCompletionResponse),
+  )
+  .post(
+    "/api/code/fim/completion",
+    zValidator("json", CodeCompletionFIMRequest),
+    async (c) => c.json({} as CodeCompletionFIMResponse),
   )
   .get("/api/models", async (c) => c.json([] as ListModelsResponse));
 

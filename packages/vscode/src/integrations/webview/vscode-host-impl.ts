@@ -19,8 +19,6 @@ import { ModelList } from "@/lib/model-list";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { PostHog } from "@/lib/posthog";
 // biome-ignore lint/style/useImportType: needed for dependency injection
-import { TokenStorage } from "@/lib/token-storage";
-// biome-ignore lint/style/useImportType: needed for dependency injection
 import { UserStorage } from "@/lib/user-storage";
 import { applyDiff, previewApplyDiff } from "@/tools/apply-diff";
 import { executeCommand } from "@/tools/execute-command";
@@ -62,6 +60,8 @@ import type {
   ToolFunctionType,
 } from "@getpochi/tools";
 import { createClientTools } from "@getpochi/tools";
+import { getPochiCredentials } from "@getpochi/vendor-pochi";
+import { computed } from "@preact/signals-core";
 import {
   ThreadAbortSignal,
   type ThreadAbortSignalSerialization,
@@ -105,11 +105,11 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   private checkpointGroup = runExclusive.createGroupRef();
   private sessionState: SessionState = {};
   private disposables: vscode.Disposable[] = [];
+  private token = computed(() => getPochiCredentials()?.token);
 
   constructor(
     @inject("vscode.ExtensionContext")
     private readonly context: vscode.ExtensionContext,
-    private readonly tokenStorage: TokenStorage,
     private readonly tabState: TabState,
     private readonly terminalState: TerminalState,
     private readonly posthog: PostHog,
@@ -138,7 +138,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   readToken = async (): Promise<
     ThreadSignalSerialization<string | undefined>
   > => {
-    return ThreadSignal.serialize(this.tokenStorage.token, {
+    return ThreadSignal.serialize(this.token, {
       writable: true,
     });
   };

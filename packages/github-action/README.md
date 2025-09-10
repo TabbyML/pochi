@@ -31,10 +31,10 @@ jobs:
       - uses: actions/checkout@v4
       - uses: tabbyml/pochi/packages/github-action@main
         env:
-          POCHI_TOKEN: ${{ secrets.POCHI_TOKEN }}
+          POCHI_API_KEY: ${{ secrets.POCHI_API_KEY }}
 ```
 
-Set up your `POCHI_TOKEN` secret and you're ready to go!
+Set up your `POCHI_API_KEY` secret and you're ready to go!
 
 ### How to Use
 
@@ -52,7 +52,7 @@ The action will respond with AI-generated analysis and suggestions!
 
 | Input         | Description         | Required | Default |
 | ------------- | ------------------- | -------- | ------- |
-| `pochi_token` | pochi session token | Yes      | -       |
+| `pochi_api_key` | pochi API key | Yes      | -       |
 
 ### Permissions Required
 
@@ -96,7 +96,7 @@ jobs:
       - name: pochi AI Assistant
         uses: tabbyml/pochi/packages/github-action@main
         env:
-          POCHI_TOKEN: ${{ secrets.POCHI_TOKEN }}
+          POCHI_API_KEY: ${{ secrets.POCHI_API_KEY }}
 ```
 
 ### Custom Token
@@ -107,7 +107,7 @@ If you need to use a custom GitHub token (for cross-repo operations):
 - name: pochi AI Assistant
   uses: tabbyml/pochi/packages/github-action@main
   env:
-    POCHI_TOKEN: ${{ secrets.POCHI_TOKEN }}
+    POCHI_API_KEY: ${{ secrets.POCHI_API_KEY }}
     GITHUB_TOKEN: ${{ secrets.CUSTOM_GITHUB_TOKEN }}
 ```
 
@@ -128,7 +128,7 @@ If you need to use a custom GitHub token (for cross-repo operations):
 ### Action doesn't respond
 
 1. Check that the PR comment starts with `/pochi`
-2. Verify `POCHI_TOKEN` is set in repository secrets
+2. Verify `POCHI_API_KEY` is set in repository secrets
 3. Ensure workflow has correct permissions
 4. Check workflow runs in Actions tab
 

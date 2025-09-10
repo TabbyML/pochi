@@ -37,7 +37,7 @@ export class UserStorage implements vscode.Disposable {
           const userInfo = await vendor.getUserInfo();
           users[vendorId] = userInfo;
         } catch (e) {
-          logger.error(`Failed to fetch models for vendor ${vendorId}:`, e);
+          logger.error(`Failed to fetch user info for vendor ${vendorId}:`, e);
         }
       }
     }

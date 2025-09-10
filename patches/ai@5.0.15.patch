@@ -1,6 +1,9 @@
 diff --git a/node_modules/ai/.bun-tag-7e193a47979090c4 b/.bun-tag-7e193a47979090c4
 new file mode 100644
 index 0000000000000000000000000000000000000000..e69de29bb2d1d6434b8b29ae775ad8c2e48c5391
+diff --git a/node_modules/ai/.bun-tag-9a4b1e6b93066461 b/.bun-tag-9a4b1e6b93066461
+new file mode 100644
+index 0000000000000000000000000000000000000000..e69de29bb2d1d6434b8b29ae775ad8c2e48c5391
 diff --git a/node_modules/ai/.bun-tag-c16d0080840188b0 b/.bun-tag-c16d0080840188b0
 new file mode 100644
 index 0000000000000000000000000000000000000000..e69de29bb2d1d6434b8b29ae775ad8c2e48c5391
@@ -8,10 +11,18 @@ diff --git a/node_modules/ai/.bun-tag-d55912d6c5836c91 b/.bun-tag-d55912d6c5836c
 new file mode 100644
 index 0000000000000000000000000000000000000000..e69de29bb2d1d6434b8b29ae775ad8c2e48c5391
 diff --git a/dist/index.mjs b/dist/index.mjs
-index dcbeb1e797ab452ed68965ab4787d378d0ea754e..f9b4e1897b2d5018ac953d98940486a596e6348e 100644
+index dcbeb1e797ab452ed68965ab4787d378d0ea754e..7879004e9d47da5beb77e279bddaddd4d1e858dd 100644
 --- a/dist/index.mjs
 +++ b/dist/index.mjs
-@@ -9321,12 +9321,19 @@ var AbstractChat = class {
+@@ -8532,6 +8532,7 @@ var DefaultMCPClient = class {
+         });
+       }
+       this.serverCapabilities = result.capabilities;
++      this.instructions = result.instructions;
+       await this.notification({
+         method: "notifications/initialized"
+       });
+@@ -9321,12 +9322,19 @@ var AbstractChat = class {
      this.setStatus({ status: "submitted", error: void 0 });
      const lastMessage = this.lastMessage;
      try {
@@ -32,7 +43,7 @@ index dcbeb1e797ab452ed68965ab4787d378d0ea754e..f9b4e1897b2d5018ac953d98940486a5
        };
        this.activeResponse = activeResponse;
        let stream;
-@@ -9396,6 +9403,7 @@ var AbstractChat = class {
+@@ -9396,6 +9404,7 @@ var AbstractChat = class {
      } catch (err) {
        if (err.name === "AbortError") {
          this.setStatus({ status: "ready" });
