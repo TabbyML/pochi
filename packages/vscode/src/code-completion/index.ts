@@ -20,17 +20,15 @@ import {
   TextDocumentReader,
   WorkspaceContextProvider,
 } from "./context-provider";
-import { type CompletionContext, buildCompletionContext } from "./contexts";
+import {
+  type CompletionContext,
+  buildCompletionContext,
+  extractSegments,
+} from "./contexts";
 import { CompletionDebouncing, type DebouncingContext } from "./debouncing";
-// biome-ignore lint/style/useImportType: needed for dependency injection
-import { CompletionFetcher } from "./fetcher";
 import { LatencyTracker, analyzeMetrics } from "./latency-tracker";
 import { postCacheProcess, preCacheProcess } from "./post-process";
-import { buildSegments } from "./request-builder";
-import {
-  CompletionSolution,
-  createCompletionResultItemFromResponse,
-} from "./solution";
+import { CompletionSolution } from "./solution";
 import {
   type CompletionStatisticsEntry,
   CompletionStatisticsTracker,
@@ -46,6 +44,8 @@ import { extractNonReservedWordList, isBlank } from "./utils/strings";
 import "./utils/array"; // for mapAsync
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { PochiConfiguration } from "@/integrations/configuration";
+// biome-ignore lint/style/useImportType: needed for dependency injection
+import { CodeCompletionClient } from "./client";
 import { DocumentSelector } from "./constants";
 
 const logger = getLogger("CodeCompletion.Provider");
@@ -84,7 +84,7 @@ export class CompletionProvider
     private readonly recentlyChangedCodeSearch: RecentlyChangedCodeSearch,
     private readonly editorVisibleRangesTracker: EditorVisibleRangesTracker,
     private readonly editorOptionsProvider: EditorOptionsProvider,
-    private readonly fetcher: CompletionFetcher,
+    private readonly client: CodeCompletionClient,
   ) {
     this.initialize();
   }
@@ -250,7 +250,7 @@ export class CompletionProvider
         try {
           const prefixText = document.getText(prefixRange);
           const query = extractNonReservedWordList(prefixText);
-          solution.extraContext.recentlyChangedCodeSearchResult =
+          solution.extraContext.recentEditCodeSearchResult =
             await this.recentlyChangedCodeSearch.search(
               query,
               [document.uri],
@@ -269,11 +269,11 @@ export class CompletionProvider
         try {
           const ranges = await this.editorVisibleRangesTracker.getHistoryRanges(
             {
-              max: config.collectSnippetsFromRecentOpenedFiles.maxOpenedFiles,
+              max: config.collectSnippetsFromRecentOpenedFiles.maxSnippets,
               excludedUris: [document.uri],
             },
           );
-          solution.extraContext.lastViewedSnippets = (
+          solution.extraContext.recentlyViewedCodeSnippets = (
             await ranges?.mapAsync(async (range) => {
               return await this.textDocumentReader.read(
                 range.uri,
@@ -478,22 +478,17 @@ export class CompletionProvider
         try {
           const latencyStats: CompletionStatisticsEntry = {};
           latencyStatsList.push(latencyStats);
-          const response = await this.fetcher.fetchCompletion(
-            {
-              language: context.document.languageId,
-              segments: buildSegments({
-                context,
-                extraContexts: solution.extraContext,
-              }),
-              temperature: undefined,
-            },
+          const completionResultItem = await this.client.fetchCompletion(
+            extractSegments({
+              context,
+              extraContexts: solution.extraContext,
+            }),
+            undefined,
             cancellationToken,
             latencyStats,
           );
           this.updateRequireSubscription(undefined);
 
-          const completionResultItem =
-            createCompletionResultItemFromResponse(response);
           // postprocess: preCache
           const postprocessed = await preCacheProcess(
             [completionResultItem],
@@ -549,28 +544,23 @@ export class CompletionProvider
         try {
           let tries = 0;
           while (
-            solution.items.length < config.solution.maxItems &&
-            tries < config.solution.maxTries
+            solution.items.length < config.multiChoice.maxItems &&
+            tries < config.multiChoice.maxTries
           ) {
             tries++;
             const latencyStats: CompletionStatisticsEntry = {};
             latencyStatsList.push(latencyStats);
-            const response = await this.fetcher.fetchCompletion(
-              {
-                language: context.document.languageId,
-                segments: buildSegments({
-                  context,
-                  extraContexts: solution.extraContext,
-                }),
-                temperature: config.solution.temperature,
-              },
+            const completionResultItem = await this.client.fetchCompletion(
+              extractSegments({
+                context,
+                extraContexts: solution.extraContext,
+              }),
+              config.multiChoice.temperature,
               cancellationToken,
               latencyStats,
             );
             this.updateRequireSubscription(undefined);
 
-            const completionResultItem =
-              createCompletionResultItemFromResponse(response);
             // postprocess: preCache
             const postprocessed = await preCacheProcess(
               [completionResultItem],
@@ -591,9 +581,14 @@ export class CompletionProvider
             solution = undefined;
           }
 
-          const requiredSubscription = checkSubscriptionRequiredError(error);
-          if (requiredSubscription) {
-            this.updateRequireSubscription(requiredSubscription);
+          const requiredPayment = checkPaymentRequiredError(error);
+          if (requiredPayment) {
+            this.updateRequirePayment(requiredPayment);
+          } else {
+            const requiredSubscription = checkSubscriptionRequiredError(error);
+            if (requiredSubscription) {
+              this.updateRequireSubscription(requiredSubscription);
+            }
           }
         }
       }

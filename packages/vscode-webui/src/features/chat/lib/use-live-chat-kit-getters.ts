@@ -22,8 +22,8 @@ export function useLiveChatKitGetters({
   todos: React.RefObject<Todo[] | undefined>;
   isSubTask?: boolean;
 }) {
-  const { toolset } = useMcp();
-  const mcpToolSet = useLatest(toolset);
+  const { toolset, instructions } = useMcp();
+  const mcpInfo = useLatest({ toolset, instructions });
 
   const llm = useLLM();
 
@@ -57,8 +57,8 @@ export function useLiveChatKitGetters({
 
     getEnvironment,
 
-    // biome-ignore lint/correctness/useExhaustiveDependencies(mcpToolSet.current): mcpToolSet is ref.
-    getMcpToolSet: useCallback(() => mcpToolSet.current, []),
+    // biome-ignore lint/correctness/useExhaustiveDependencies(mcpInfo.current): mcpInfo is ref.
+    getMcpInfo: useCallback(() => mcpInfo.current, []),
 
     // biome-ignore lint/correctness/useExhaustiveDependencies(customAgentsRef.current): customAgentsRef is ref.
     getCustomAgents: useCallback(() => customAgentsRef.current, []),

@@ -1,20 +1,19 @@
-import { deviceLinkClient } from "@getpochi/common/device-link/client";
 import type { PochiApi } from "@getpochi/common/pochi-api";
 import { getServerBaseUrl } from "@getpochi/common/vscode-webui-bridge";
-import { createAuthClient as createAuthClientImpl } from "better-auth/react";
+import { authClient, getPochiCredentials } from "@getpochi/vendor-pochi";
 import { hc } from "hono/client";
 import type { DependencyContainer } from "tsyringe";
 import * as vscode from "vscode";
 import packageJson from "../../package.json";
 import { PostHog } from "./posthog";
-import { TokenStorage } from "./token-storage";
 
 const UserAgent = `Pochi/${packageJson.version} ${vscode.env.appName.replace(/\s+/g, "")}/${vscode.version} (${process.platform}; ${process.arch})`;
 
-const buildCustomFetchImpl = (tokenStorage: TokenStorage) => {
+const buildCustomFetchImpl = () => {
   return async (input: string | URL | Request, requestInit?: RequestInit) => {
+    const token = getPochiCredentials()?.token;
     const headers = new Headers(requestInit?.headers);
-    headers.append("Authorization", `Bearer ${tokenStorage.token.value}`);
+    headers.append("Authorization", `Bearer ${token}`);
     headers.set("User-Agent", UserAgent);
     headers.set("X-Pochi-Extension-Version", packageJson.version);
     return fetch(input, {
@@ -25,23 +24,7 @@ const buildCustomFetchImpl = (tokenStorage: TokenStorage) => {
 };
 
 export function createAuthClient(container: DependencyContainer) {
-  const tokenStorage = container.resolve(TokenStorage);
   const posthog = container.resolve(PostHog);
-
-  const authClient = createAuthClientImpl({
-    baseURL: getServerBaseUrl(),
-    plugins: [deviceLinkClient()],
-
-    fetchOptions: {
-      customFetchImpl: buildCustomFetchImpl(tokenStorage),
-      onResponse: (ctx) => {
-        const authToken = ctx.response.headers.get("set-auth-token"); // get the token from the response headers
-        if (authToken) {
-          tokenStorage.setToken(authToken);
-        }
-      },
-    },
-  });
 
   const identifyUser = () => {
     authClient.getSession().then(({ data }) => {
@@ -58,11 +41,9 @@ export function createAuthClient(container: DependencyContainer) {
   return authClient;
 }
 
-export function createApiClient(container: DependencyContainer) {
-  const tokenStorage = container.resolve(TokenStorage);
-
+export function createApiClient() {
   const app = hc<PochiApi>(getServerBaseUrl(), {
-    fetch: buildCustomFetchImpl(tokenStorage),
+    fetch: buildCustomFetchImpl(),
   });
 
   return app;

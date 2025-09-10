@@ -1,6 +1,5 @@
 // Modified from: https://github.com/TabbyML/tabby/blob/493cef3b3229548175de430dbc7f7e4a092ca507/clients/tabby-agent/src/codeCompletion/solution.ts
 
-import type { CodeCompletionResponse } from "@getpochi/common/pochi-api";
 import * as vscode from "vscode";
 import type { CompletionContext, CompletionExtraContexts } from "./contexts";
 import { isBlank, splitLines } from "./utils/strings";
@@ -93,13 +92,3 @@ export class CompletionSolution {
 }
 
 export const emptyCompletionResultItem = new CompletionResultItem("");
-
-export function createCompletionResultItemFromResponse(
-  response: CodeCompletionResponse,
-): CompletionResultItem {
-  const index = 0; // api always returns 0 or 1 choice
-  return new CompletionResultItem(response.choices[index]?.text ?? "", {
-    completionId: response.id,
-    choiceIndex: response.choices[index]?.index ?? index,
-  });
-}

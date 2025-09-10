@@ -113,8 +113,12 @@ export function registerMcpListCommand(parentCommand: Command) {
 
         // Format columns with proper padding
         const namePadded = serverName.padEnd(maxNameLength);
+        // The ❌ character takes up two cells in the terminal
+        const statusVisualWidthAdjustment = serverConfig.disabled ? 1 : 0;
         const statusPadded = statusColored.padEnd(
-          statusWidth + (statusColored.length - statusText.length),
+          statusWidth +
+            (statusColored.length - statusText.length) -
+            statusVisualWidthAdjustment,
         );
         const transportPadded = transport.padEnd(transportWidth);
         const disabledToolsPadded = hasDisabledTools

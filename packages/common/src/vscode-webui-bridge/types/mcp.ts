@@ -25,4 +25,6 @@ export type McpStatus = {
   toolset: {
     [toolName: string]: McpTool;
   };
+
+  instructions: string;
 };
