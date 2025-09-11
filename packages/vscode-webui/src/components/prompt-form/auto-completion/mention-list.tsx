@@ -1,4 +1,5 @@
 import { ScrollArea } from "@/components/ui/scroll-area";
+import type { SuggestionKeyDownProps } from "@tiptap/suggestion";
 import {
   forwardRef,
   memo,
@@ -8,11 +9,7 @@ import {
   useState,
 } from "react";
 import type { MentionListActions } from "../shared";
-import {
-  useMentionItems,
-  useMentionKeyboardNavigation,
-  useScrollIntoView,
-} from "../shared";
+import { useMentionItems, useScrollIntoView } from "../shared";
 
 export interface MentionItem {
   value: string;
@@ -51,14 +48,32 @@ export const AutoCompleteMentionList = forwardRef<
     [command],
   );
 
-  const keyboardNavigation = useMentionKeyboardNavigation(
-    items,
-    selectedIndex,
-    setSelectedIndex,
-    handleSelect,
-  );
+  useImperativeHandle(ref, () => ({
+    onKeyDown: ({ event }: SuggestionKeyDownProps) => {
+      const lastIndex = items.length - 1;
+      let newIndex = selectedIndex;
 
-  useImperativeHandle(ref, () => keyboardNavigation);
+      switch (event.key) {
+        case "ArrowUp":
+          newIndex = selectedIndex === 0 ? lastIndex : selectedIndex - 1;
+          break;
+        case "ArrowDown":
+          newIndex = selectedIndex === lastIndex ? 0 : selectedIndex + 1;
+          break;
+        case "Enter":
+        case "Tab":
+          if (items[selectedIndex]) {
+            handleSelect(items[selectedIndex]);
+          }
+          return true;
+        default:
+          return false;
+      }
+
+      setSelectedIndex(newIndex);
+      return true;
+    },
+  }));
 
   return (
     <div className="relative flex min-w-[120px] max-w-[250px] flex-col overflow-hidden py-1 sm:min-w-[250px] sm:max-w-[350px]">

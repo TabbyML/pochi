@@ -104,6 +104,8 @@ export function FormEditor({
 }: FormEditorProps) {
   const internalFormRef = useRef<HTMLFormElement>(null);
   const formRef = externalFormRef || internalFormRef;
+  const [isAutoCompleteHintVisible, setIsAutoCompleteHintVisible] =
+    useState(false);
 
   const activeTabs = useActiveTabs();
   const activeTabsRef = useRef(activeTabs);
@@ -340,6 +342,7 @@ export function FormEditor({
         ...(enableSubmitHistory ? [SubmitHistoryExtension] : []),
         AutoCompleteExtension.configure({
           messageContent: messageContent,
+          onHintVisibilityChange: setIsAutoCompleteHintVisible,
         }),
       ],
       editorProps: {
@@ -559,6 +562,11 @@ export function FormEditor({
           className="prose !border-none min-h-20 w-full max-w-none overflow-hidden break-words text-[var(--vscode-input-foreground)] focus:outline-none"
         />
       </ScrollArea>
+      {isAutoCompleteHintVisible && (
+        <div className="absolute right-1 bottom-1 text-muted-foreground text-xs">
+          Press Tab to complete
+        </div>
+      )}
 
       {/* Drop zone overlay - shows when dragging over the editor */}
       {isDragOver && (
