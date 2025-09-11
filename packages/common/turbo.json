@@ -1,7 +1,4 @@
 {
   "extends": ["//"],
-  "tags": ["public"],
-  "boundaries": {
-    "implicitDependencies": ["vscode"]
-  }
+  "tags": ["public"]
 }
