@@ -45,6 +45,15 @@ async function createShareLink(
   store: Awaited<ReturnType<typeof createStore>>,
 ): Promise<string | null> {
   try {
+    // First check if shareId already exists locally
+    const taskData = store.query(catalog.queries.makeTaskQuery(taskId));
+
+    if (taskData?.shareId) {
+      console.log(chalk.gray("Share link already exists locally."));
+      return taskData.shareId;
+    }
+
+    // If no local shareId, create one via API
     const apiClient = await createApiClient();
 
     if (!apiClient.authenticated) {
