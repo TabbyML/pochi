@@ -76,7 +76,7 @@ export class LiveStoreClientDO
 
     // Make sure to only subscribe once
     if (this.storeSubscription === undefined) {
-      this.storeSubscription = store.subscribe(catalog.tables.tasks, {
+      this.storeSubscription = store.subscribe(catalog.queries.tasks$, {
         onUpdate: (_tasks) => {
           // FIXME
         },
