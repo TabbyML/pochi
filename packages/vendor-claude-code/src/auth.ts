@@ -1,4 +1,6 @@
 import * as crypto from "node:crypto";
+import { stdin as input, stdout as output } from "node:process";
+import * as readline from "node:readline/promises";
 import { getLogger } from "@getpochi/common";
 import type { UserInfo } from "@getpochi/common/configuration";
 import type { AuthOutput } from "@getpochi/common/vendor";
@@ -34,24 +36,36 @@ export async function startOAuthFlow(): Promise<AuthOutput> {
   const url = new URL(baseUrl);
   url.search = authParams.toString();
 
-  // Return auth output with callback for manual code input
-  return {
-    url: url.toString(),
-    credentials: Promise.resolve({
-      mode: "callback",
-      callback: async (code: string) => {
-        // Exchange the manually entered code for tokens
+  // Create a Promise that resolves when the user provides the code
+  const credentials = new Promise<ClaudeCodeCredentials>((resolve, reject) => {
+    // Run async code in next tick to avoid async executor warning
+    setTimeout(async () => {
+      const rl = readline.createInterface({ input, output });
+
+      try {
+        const code = await rl.question(
+          "\nPlease paste the authorization code from your browser: ",
+        );
+
+        // Exchange the code for tokens
         const oauthTokens = await exchangeCodeForTokens(
-          code,
+          code.trim(),
           pkce.verifier,
           redirectUri,
         );
 
-        // Return OAuth tokens directly
-        return oauthTokens;
-      },
-      verifier: pkce.verifier,
-    }),
+        resolve(oauthTokens);
+      } catch (error) {
+        reject(error);
+      } finally {
+        rl.close();
+      }
+    }, 0);
+  });
+
+  return {
+    url: url.toString(),
+    credentials,
   };
 }
 
