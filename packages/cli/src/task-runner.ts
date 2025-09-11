@@ -117,12 +117,6 @@ export class TaskRunner {
       config: {},
       clientName: "pochi-cli",
     });
-    
-    // Initialize MCP Hub with configuration first
-    this.initializeMcpHub().catch((err: unknown) => {
-      logger.error("Failed to initialize MCP Hub:", err);
-    });
-    
     this.chatKit = new LiveChatKit<Chat>({
       taskId: options.uid,
       apiClient: options.apiClient,
@@ -139,13 +133,6 @@ export class TaskRunner {
         }),
         getMcpTools: () => {
           const status = this.mcpHub.getStatus();
-          logger.debug('MCP status:', {
-            connections: Object.keys(status.connections),
-            toolCount: Object.keys(status.toolset).length,
-            connectionStates: Object.fromEntries(
-              Object.entries(status.connections).map(([name, conn]) => [name, conn.status])
-            )
-          });
           return status.toolset;
         },
       },
@@ -163,6 +150,11 @@ export class TaskRunner {
     }
 
     this.taskId = options.uid;
+
+    // Initialize MCP Hub with configuration
+    this.initializeMcpHub().catch((err: unknown) => {
+      logger.error("Failed to initialize MCP Hub:", err);
+    });
   }
 
   get shareId() {
