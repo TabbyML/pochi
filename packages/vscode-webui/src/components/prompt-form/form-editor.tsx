@@ -31,6 +31,7 @@ import {
   type Trigger,
   findSuggestionMatch,
 } from "@tiptap/suggestion";
+import { ArrowRightToLine } from "lucide-react";
 import { ScrollArea } from "../ui/scroll-area";
 import { AutoCompleteExtension } from "./auto-completion/extension";
 import type { MentionListActions } from "./shared";
@@ -559,12 +560,13 @@ export function FormEditor({
       <ScrollArea viewportClassname="max-h-32">
         <EditorContent
           editor={editor}
-          className="prose !border-none min-h-20 w-full max-w-none overflow-hidden break-words text-[var(--vscode-input-foreground)] focus:outline-none"
+          className="prose !border-none min-h-25 w-full max-w-none overflow-hidden break-words text-[var(--vscode-input-foreground)] focus:outline-none"
         />
       </ScrollArea>
       {isAutoCompleteHintVisible && (
-        <div className="absolute right-1 bottom-1 text-muted-foreground text-xs">
-          Press Tab to complete
+        <div className="absolute bottom-1.5 left-2.5 flex items-center text-muted-foreground text-xs">
+          Use Tab <ArrowRightToLine className="mr-1.5 ml-0.5 size-4" /> to see
+          suggestions
         </div>
       )}
 
