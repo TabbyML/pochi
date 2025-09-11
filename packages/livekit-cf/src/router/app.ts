@@ -8,6 +8,10 @@ import { z } from "zod";
 
 export const app = new Hono<{ Bindings: Env }>();
 
+const Payload = z.object({
+  jwt: z.string(),
+});
+
 app
   .all(
     "/",
@@ -15,28 +19,19 @@ app
       "query",
       z.object({
         storeId: z.string(),
-        payload: z.preprocess(
-          (val) => {
-            if (typeof val === "string") {
-              return JSON.parse(decodeURIComponent(val));
-            }
-            return val;
-          },
-          z.object({
-            jwt: z.string().nullable(),
-          }),
-        ),
+        payload: z.preprocess((val) => {
+          if (typeof val === "string") {
+            return JSON.parse(decodeURIComponent(val));
+          }
+          return val;
+        }, Payload),
         transport: z.string(),
       }),
     ),
     async (c) => {
       const query = c.req.valid("query");
-      if (!query.payload.jwt) {
-        throw new HTTPException(401, { message: "Unauthorized" });
-      }
 
-      const user = await verifyJWT(query.payload.jwt);
-      if (!query.storeId.startsWith(`store-${user.id}-`)) {
+      if (!verifyStoreId(query.payload.jwt, query.storeId)) {
         throw new HTTPException(401, { message: "Unauthorized" });
       }
 
@@ -49,6 +44,14 @@ app
           searchParams: requestParamsResult.value,
           env: c.env,
           ctx: c.executionCtx as SyncBackend.CfTypes.ExecutionContext,
+          options: {
+            async validatePayload(inputPayload, { storeId }) {
+              const { jwt } = Payload.parse(inputPayload);
+              if (!verifyStoreId(jwt, storeId)) {
+                throw new Error("Unauthorized");
+              }
+            },
+          },
         });
       }
     },
@@ -62,3 +65,8 @@ app
       return c.env.CLIENT_DO.get(id).fetch(c.req.raw);
     },
   );
+
+async function verifyStoreId(jwt: string, storeId: string) {
+  const user = await verifyJWT(jwt);
+  return storeId.startsWith(`store-${user.sub}-`);
+}
