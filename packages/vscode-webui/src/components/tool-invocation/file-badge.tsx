@@ -43,7 +43,7 @@ export const FileBadge: React.FC<FileBadgeProps> = ({
 
   const defaultOnClick = async () => {
     if (changes?.origin && changes?.modified) {
-      await vscodeHost.showCheckpointDiff(
+      const showDiffSuccess = await vscodeHost.showCheckpointDiff(
         `${path} (Modified by Pochi)`,
         {
           origin: changes.origin,
@@ -51,7 +51,9 @@ export const FileBadge: React.FC<FileBadgeProps> = ({
         },
         path,
       );
-      return;
+      if (showDiffSuccess) {
+        return;
+      }
     }
     const options: {
       start?: number;
