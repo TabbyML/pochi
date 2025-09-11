@@ -38,7 +38,7 @@ export function truncateOutput(
 
   // Calculate how many lines were omitted
   const omittedLines = totalLines - headLines - tailLines;
-  const omittedInfo = `... [${omittedLines} lines truncated] ...`;
+  const omittedInfo = `... [${omittedLines} lines truncated, check full output in GitHub Action] ...`;
 
   // Combine head, separator, and tail
   return [...headContent, omittedInfo, ...tailContent].join("\n");
