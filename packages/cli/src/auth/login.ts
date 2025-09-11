@@ -2,6 +2,27 @@ import * as childProcess from "node:child_process";
 import { updateVendorConfig } from "@getpochi/common/configuration";
 import { getVendor } from "@getpochi/common/vendor";
 import chalk from "chalk";
+import { promptForCode } from "./prompt-code";
+
+// Type for callback-based authentication (used by claude-code vendor)
+interface CallbackCredentials {
+  mode: "callback";
+  callback: (code: string) => Promise<unknown>;
+}
+
+// Type guard to check if credentials have callback mode
+function isCallbackCredentials(
+  credentials: unknown,
+): credentials is CallbackCredentials {
+  return (
+    typeof credentials === "object" &&
+    credentials !== null &&
+    "mode" in credentials &&
+    credentials.mode === "callback" &&
+    "callback" in credentials &&
+    typeof credentials.callback === "function"
+  );
+}
 
 export async function login(vendorId: string) {
   const vendor = getVendor(vendorId);
@@ -45,11 +66,24 @@ export async function login(vendorId: string) {
     );
     console.log(chalk.cyan(url));
   }
-  console.log(chalk.yellow("\nWaiting for authentication to complete..."));
 
-  // Wait for OAuth completion
+  // Check if this is manual code input flow (for claude-code)
+  const credentialsValue = await credentials;
+  let finalCredentials: unknown;
+
+  if (isCallbackCredentials(credentialsValue)) {
+    // Manual code input flow
+    const code = await promptForCode();
+    finalCredentials = await credentialsValue.callback(code);
+  } else {
+    // Normal OAuth flow with automatic callback
+    console.log(chalk.yellow("\nWaiting for authentication to complete..."));
+    finalCredentials = credentialsValue;
+  }
+
+  // Save credentials
   await updateVendorConfig(vendorId, {
-    credentials: await credentials,
+    credentials: finalCredentials,
   });
 
   // Get user info after authentication
