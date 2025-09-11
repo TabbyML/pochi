@@ -13,5 +13,5 @@ export function getStoreId(cwd: string, jwt: string | null) {
     return `store-${sub}-${id}`;
   }
 
-  return id;
+  return `store-local-${id}`;
 }
