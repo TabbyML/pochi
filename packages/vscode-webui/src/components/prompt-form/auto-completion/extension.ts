@@ -30,23 +30,43 @@ const suggestionTriggerPlugin = new Plugin({
   state: {
     init: () => false,
     apply: (tr, was) => {
-      // Reset state when the suggestion is closed (e.g., by selecting an item, pressing Esc) or an item is applied.
-      if (tr.getMeta("autoCompleteClose") || tr.getMeta("docChangeEvent")) {
-        return false;
-      }
-
-      // Reset state when only the selection changes but the document content does not (e.g., clicking, moving cursor with arrow keys).
-      if (tr.selectionSet && !tr.docChanged) {
-        return false;
-      }
-
-      // Activate state when the document content changes, considered as user input.
-      if (tr.docChanged) {
+      if (tr.getMeta("autoCompleteOpen")) {
         return true;
+      }
+
+      // Reset state when the suggestion is closed (e.g., by selecting an item, pressing Esc) or an item is applied.
+      if (tr.getMeta("autoCompleteClose")) {
+        return false;
       }
 
       // For other transactions that don't affect the suggestion, keep the previous state.
       return was;
+    },
+  },
+  props: {
+    handleKeyDown(view, event) {
+      if (event.key === "Tab") {
+        const { state } = view;
+        // logic from findSuggestionMatch
+        const { $from: $position } = state.selection;
+        const text = $position.nodeBefore?.isText && $position.nodeBefore.text;
+        if (!text) return false;
+        const match = text.match(/([a-zA-Z0-9-_]+)$/);
+        if (!match) return false;
+
+        // If we have a match, we trigger the suggestion.
+        event.preventDefault();
+        // By inserting and then deleting a character, we can trick the suggestion plugin into re-evaluating.
+        // This is because it only triggers on `docChanged` or `selectionSet` transactions.
+        const { from, to } = state.selection;
+        const tr = view.state.tr
+          .insertText(" ", from, to)
+          .delete(from, from + 1)
+          .setMeta("autoCompleteOpen", true);
+        view.dispatch(tr);
+        return true;
+      }
+      return false;
     },
   },
 });
@@ -141,7 +161,6 @@ export const AutoCompleteExtension = Extension.create<
   {
     component: ReactRenderer<MentionListActions, AutoCompleteListProps> | null;
     popup: TippyInstance | null;
-    showTimeout: number | null;
   }
 >({
   name: "autoCompletion",
@@ -150,14 +169,10 @@ export const AutoCompleteExtension = Extension.create<
     return {
       component: null,
       popup: null,
-      showTimeout: null,
     };
   },
 
   destroy() {
-    if (this.storage.showTimeout) {
-      clearTimeout(this.storage.showTimeout);
-    }
     if (this.storage.popup) {
       this.storage.popup.destroy();
     }
@@ -210,17 +225,10 @@ export const AutoCompleteExtension = Extension.create<
           fuzzySearchAutoCompleteItems(query, this.options.messageContent),
         command: ({ editor, range, props }) => {
           const label = props.value;
-          editor
-            .chain()
-            .focus()
-            // .setMeta("docChangeEvent", { event: "autoComplete" })
-            .insertContentAt(range, `${label} `)
-            .run();
+          editor.chain().focus().insertContentAt(range, `${label} `).run();
         },
         allow,
         render: () => {
-          let latestProps: SuggestionProps<AutoCompleteSuggestionItem> | null =
-            null;
           const fetchItems = async (query?: string) => {
             if (!query) return [];
             return fuzzySearchAutoCompleteItems(
@@ -236,9 +244,9 @@ export const AutoCompleteExtension = Extension.create<
               return;
             }
 
-            if (isQueryExactMatch(props)) {
-              return;
-            }
+            // if (isQueryExactMatch(props)) {
+            //   return;
+            // }
 
             storage.component = new ReactRenderer(AutoCompleteMentionList, {
               props: { ...props, fetchItems },
@@ -262,10 +270,6 @@ export const AutoCompleteExtension = Extension.create<
           };
 
           const destroyMention = () => {
-            if (storage.showTimeout) {
-              clearTimeout(storage.showTimeout);
-              storage.showTimeout = null;
-            }
             if (storage.popup) {
               if (!storage.popup.state.isDestroyed) {
                 storage.popup.destroy();
@@ -281,48 +285,17 @@ export const AutoCompleteExtension = Extension.create<
             );
           };
 
-          const showPopup = (
-            props: SuggestionProps<AutoCompleteSuggestionItem>,
-          ) => {
-            createMention(props);
-          };
-
           return {
             onStart: (props: SuggestionProps<AutoCompleteSuggestionItem>) => {
-              if (!props.items.length) return;
-              latestProps = props;
-
-              storage.showTimeout = window.setTimeout(() => {
-                if (latestProps) {
-                  showPopup(latestProps);
-                }
-                storage.showTimeout = null;
-              }, 200);
+              createMention(props);
             },
             onUpdate: (props: SuggestionProps<AutoCompleteSuggestionItem>) => {
-              latestProps = props;
               const suggestionActive = suggestionTriggerPluginKey.getState(
                 props.editor.state,
               );
-              if (
-                !props.items?.length ||
-                !suggestionActive ||
-                isQueryExactMatch(props)
-              ) {
+              if (!suggestionActive) {
                 destroyMention();
                 return;
-              }
-
-              if (storage.showTimeout && storage.component === null) {
-                clearTimeout(storage.showTimeout);
-                storage.showTimeout = window.setTimeout(() => {
-                  if (latestProps) {
-                    if (storage.component === null) {
-                      showPopup(latestProps);
-                    }
-                  }
-                  storage.showTimeout = null;
-                }, 200);
               }
 
               storage.component?.updateProps(props);
@@ -356,9 +329,9 @@ function isMentionExtensionActive(state: EditorState) {
  * @param props The suggestion props.
  * @returns `true` if there is exactly one candidate and its value matches the query, otherwise `false`.
  */
-function isQueryExactMatch(
-  props: SuggestionProps<AutoCompleteSuggestionItem>,
-): boolean {
-  const { query, items: candidates } = props;
-  return !!query && candidates.length === 1 && candidates[0].value === query;
-}
+// function isQueryExactMatch(
+//   props: SuggestionProps<AutoCompleteSuggestionItem>,
+// ): boolean {
+//   const { query, items: candidates } = props;
+//   return !!query && candidates.length === 1 && candidates[0].value === query;
+// }

@@ -1,5 +1,4 @@
 import { ScrollArea } from "@/components/ui/scroll-area";
-import type { SuggestionKeyDownProps } from "@tiptap/suggestion";
 import {
   forwardRef,
   memo,
@@ -9,7 +8,11 @@ import {
   useState,
 } from "react";
 import type { MentionListActions } from "../shared";
-import { useMentionItems, useScrollIntoView } from "../shared";
+import {
+  useMentionItems,
+  useMentionKeyboardNavigation,
+  useScrollIntoView,
+} from "../shared";
 
 export interface MentionItem {
   value: string;
@@ -48,31 +51,14 @@ export const AutoCompleteMentionList = forwardRef<
     [command],
   );
 
-  useImperativeHandle(ref, () => ({
-    onKeyDown: ({ event }: SuggestionKeyDownProps) => {
-      const lastIndex = items.length - 1;
-      let newIndex = selectedIndex;
+  const keyboardNavigation = useMentionKeyboardNavigation(
+    items,
+    selectedIndex,
+    setSelectedIndex,
+    handleSelect,
+  );
 
-      switch (event.key) {
-        case "ArrowUp":
-          newIndex = selectedIndex === 0 ? lastIndex : selectedIndex - 1;
-          break;
-        case "ArrowDown":
-          newIndex = selectedIndex === lastIndex ? 0 : selectedIndex + 1;
-          break;
-        case "Tab":
-          if (items[selectedIndex]) {
-            handleSelect(items[selectedIndex]);
-          }
-          return true;
-        default:
-          return false;
-      }
-
-      setSelectedIndex(newIndex);
-      return true;
-    },
-  }));
+  useImperativeHandle(ref, () => keyboardNavigation);
 
   return (
     <div className="relative flex min-w-[120px] max-w-[250px] flex-col overflow-hidden py-1 sm:min-w-[250px] sm:max-w-[350px]">
@@ -159,11 +145,6 @@ const MentionItemView = memo(function MentionItemView({
       <span className="mr-2 flex items-center gap-1 truncate whitespace-nowrap font-medium">
         <span className="truncate">{highlightedText()}</span>
       </span>
-      {isSelected && (
-        <span className="ml-auto flex-shrink-0 rounded-sm border border-foreground px-1.25 py-0.25 font-medium text-foreground text-xs">
-          Tab
-        </span>
-      )}
     </div>
   );
 });
