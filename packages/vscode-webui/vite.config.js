@@ -72,13 +72,15 @@ const OutputOptions = {
   },
 };
 
+const envPlugin = EnvironmentPlugin({
+  POCHI_LOCAL_SERVER: "false",
+  POCHI_LOCAL_SYNC_SERVER: "false",
+});
+
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
-    EnvironmentPlugin({
-      POCHI_LOCAL_SERVER: "false",
-      POCHI_LOCAL_SYNC_SERVER: "false",
-    }),
+    envPlugin,
     tsconfigPaths(),
     TanStackRouterVite({ autoCodeSplitting: true }),
     viteReact({
@@ -97,6 +99,7 @@ export default defineConfig({
   worker: {
     format: "es",
     rollupOptions: { output: OutputOptions[BuildTarget] },
+    plugins: () => [envPlugin],
   },
   optimizeDeps: {
     // TODO remove once fixed https://github.com/vitejs/vite/issues/8427

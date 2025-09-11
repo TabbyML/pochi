@@ -18,6 +18,32 @@
     },
     {
       "type": "shell",
+      "label": "dev:vscode-local",
+      "command": "POCHI_LOCAL_SERVER=true bun run watch",
+      "options": {
+        "cwd": "packages/vscode"
+      },
+      "group": {
+        "kind": "none",
+        "isDefault": true
+      },
+      "isBackground": true
+    },
+    {
+      "type": "shell",
+      "label": "dev:vscode-local-sync",
+      "command": "POCHI_LOCAL_SYNC_SERVER=true bun run watch",
+      "options": {
+        "cwd": "packages/vscode"
+      },
+      "group": {
+        "kind": "none",
+        "isDefault": true
+      },
+      "isBackground": true
+    },
+    {
+      "type": "shell",
       "label": "dev:server-server",
       "command": "bun run dev:server",
       "options": {
