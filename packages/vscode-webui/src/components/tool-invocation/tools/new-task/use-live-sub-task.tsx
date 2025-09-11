@@ -16,11 +16,16 @@ import { useCustomAgents } from "@/lib/hooks/use-custom-agents";
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
 import { vscodeHost } from "@/lib/vscode";
 import { useChat } from "@ai-sdk/react";
+import type { ExecuteCommandResult } from "@getpochi/common/vscode-webui-bridge";
 import { catalog } from "@getpochi/livekit";
 import { useLiveChatKit } from "@getpochi/livekit/react";
 import type { Todo } from "@getpochi/tools";
 import { useStore } from "@livestore/react";
 import { ThreadAbortSignal } from "@quilted/threads";
+import {
+  type ThreadSignalSerialization,
+  threadSignal,
+} from "@quilted/threads/signals";
 import { getToolName, lastAssistantMessageIsCompleteWithToolCalls } from "ai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ToolProps } from "../../types";
@@ -112,7 +117,7 @@ export function useLiveSubTask(
       toolCallStatusRegistry.set(toolCall, {
         isExecuting: true,
       });
-      const output = await vscodeHost.executeToolCall(
+      const result = await vscodeHost.executeToolCall(
         toolCall.toolName,
         toolCall.input,
         {
@@ -123,6 +128,50 @@ export function useLiveSubTask(
           nonInteractive: true,
         },
       );
+
+      if (
+        toolCall.toolName === "executeCommand" &&
+        typeof result === "object" &&
+        result !== null &&
+        "output" in result
+      ) {
+        const signal = threadSignal(
+          result.output as ThreadSignalSerialization<ExecuteCommandResult>,
+        );
+
+        const unsubscribe = signal.subscribe((output) => {
+          if (output.status === "completed") {
+            unsubscribe();
+            const result: Record<string, unknown> = {
+              output: output.content,
+              isTruncated: output.isTruncated ?? false,
+            };
+            // do not set error property if it is undefined
+            if (output.error) {
+              result.error = output.error;
+            }
+            addToolResult({
+              // @ts-expect-error
+              tool: toolCall.toolName,
+              toolCallId: toolCall.toolCallId,
+              output: result,
+            });
+            toolCallStatusRegistry.set(toolCall, {
+              isExecuting: false,
+            });
+          } else {
+            toolCallStatusRegistry.set(toolCall, {
+              isExecuting: true,
+              streamingResult: {
+                toolName: "executeCommand",
+                output: signal.value,
+              },
+            });
+          }
+        });
+        return;
+      }
+
       toolCallStatusRegistry.set(toolCall, {
         isExecuting: false,
       });
@@ -132,7 +181,7 @@ export function useLiveSubTask(
         tool: toolCall.toolName,
         toolCallId: toolCall.toolCallId,
         // @ts-expect-error
-        output,
+        output: result,
       });
     },
   });

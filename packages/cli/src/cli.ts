@@ -13,16 +13,14 @@ import "@getpochi/vendor-gemini-cli/edge";
 import { Command } from "@commander-js/extra-typings";
 import { constants, getLogger } from "@getpochi/common";
 import { pochiConfig } from "@getpochi/common/configuration";
-import type { PochiApi, PochiApiClient } from "@getpochi/common/pochi-api";
 import { getVendor, getVendors } from "@getpochi/common/vendor";
 import { createModel } from "@getpochi/common/vendor/edge";
-import type { PochiCredentials } from "@getpochi/common/vscode-webui-bridge";
 import type { LLMRequestData } from "@getpochi/livekit";
 import chalk from "chalk";
 import * as commander from "commander";
-import { hc } from "hono/client";
 import packageJson from "../package.json";
 import { registerAuthCommand } from "./auth";
+import { createApiClient } from "./lib/api-client";
 import { findRipgrep } from "./lib/find-ripgrep";
 import { loadAgents } from "./lib/load-agents";
 import {
@@ -33,16 +31,13 @@ import { createStore } from "./livekit/store";
 import { registerMcpCommand } from "./mcp";
 import { registerModelCommand } from "./model";
 import { OutputRenderer } from "./output-renderer";
+import { registerTaskCommand } from "./task";
 import { TaskRunner } from "./task-runner";
 import { registerUpgradeCommand } from "./upgrade";
 import { waitUntil } from "./wait-until";
 
 const logger = getLogger("Pochi");
 logger.debug(`pochi v${packageJson.version}`);
-
-const prodServerUrl = "https://app.getpochi.com";
-
-const userAgent = `PochiCli/${packageJson.version} Node/${process.version} (${process.platform}; ${process.arch})`;
 
 const parsePositiveInt = (input: string): number => {
   if (!input) {
@@ -84,7 +79,6 @@ const program = new Command()
   )
   .action(async (options) => {
     const { uid, prompt } = await parseTaskInput(options, program);
-
     const apiClient = await createApiClient();
 
     const store = await createStore(process.cwd());
@@ -159,6 +153,7 @@ registerAuthCommand(program);
 
 registerModelCommand(program);
 registerMcpCommand(program);
+registerTaskCommand(program);
 
 registerUpgradeCommand(program);
 
@@ -196,38 +191,6 @@ async function parseTaskInput(options: ProgramOpts, program: Program) {
   }
 
   return { uid, prompt };
-}
-
-async function createApiClient(): Promise<PochiApiClient> {
-  const pochi = getVendor("pochi");
-  const credentials = (await pochi
-    .getCredentials()
-    .catch(() => null)) as PochiCredentials | null;
-
-  const apiClient: PochiApiClient = hc<PochiApi>(prodServerUrl, {
-    async fetch(input: string | URL | Request, init?: RequestInit) {
-      const headers = new Headers(init?.headers);
-      if (credentials?.token) {
-        headers.append("Authorization", `Bearer ${credentials.token}`);
-      }
-      headers.set("User-Agent", userAgent);
-      return fetch(input, {
-        ...init,
-        headers,
-      });
-    },
-  });
-
-  const proxed = new Proxy(apiClient, {
-    get(target, prop, receiver) {
-      if (prop === "authenticated") {
-        return !!credentials?.token;
-      }
-      return Reflect.get(target, prop, receiver);
-    },
-  });
-
-  return proxed;
 }
 
 async function createLLMConfig(

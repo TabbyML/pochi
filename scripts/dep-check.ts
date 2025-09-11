@@ -203,6 +203,7 @@ const PackageIgnoreList: Record<string, string[]> = {
     "@livestore/peer-deps",
     "@livestore/wa-sqlite",
   ],
+  "livekit-cf": ["@livestore/peer-deps", "cloudflare:workers"],
   "livekit-web-example": [
     "@livestore/peer-deps",
     "@livestore/wa-sqlite",
