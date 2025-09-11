@@ -1,7 +1,7 @@
 import type { UserInfo } from "@getpochi/common/configuration";
 import { VendorBase } from "@getpochi/common/vendor";
 import type { AuthOutput, ModelOptions } from "@getpochi/common/vendor";
-import { renewCredentials, startOAuthFlow, fetchUserInfo } from "./auth";
+import { fetchUserInfo, renewCredentials, startOAuthFlow } from "./auth";
 import { type ClaudeCodeCredentials, VendorId } from "./types";
 
 export class ClaudeCode extends VendorBase {

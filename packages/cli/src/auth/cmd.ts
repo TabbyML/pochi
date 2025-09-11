@@ -86,11 +86,11 @@ export function registerAuthCommand(program: Command) {
 function renderUser(user: UserInfo | null) {
   const name = chalk.bold(user?.name);
   const email = user?.email;
-  
+
   // Only show email in parentheses if it exists and is not empty
   if (email && email.trim() !== "") {
     return `${name} (${email})`;
   }
-  
+
   return name;
 }

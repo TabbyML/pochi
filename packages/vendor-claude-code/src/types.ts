@@ -15,7 +15,7 @@ export interface ClaudeCodeUserInfo {
   id: string;
   email: string;
   name: string;
-  subscription_tier?: 'pro' | 'max';
+  subscription_tier?: "pro" | "max";
 }
 
 export const VendorId = "claude-code";
