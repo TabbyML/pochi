@@ -28,7 +28,18 @@
         "POCHI_LOCAL_SERVER": "true"
       },
       "outFiles": ["${workspaceFolder}/packages/vscode/dist/**/*.js"],
-      "preLaunchTask": "dev:vscode-local"
+      "preLaunchTask": "dev:vscode"
+    },
+    {
+      "name": "Run VSCode Extension (Local Sync)",
+      "type": "extensionHost",
+      "request": "launch",
+      "args": ["--extensionDevelopmentPath=${workspaceFolder}/packages/vscode"],
+      "env": {
+        "POCHI_LOCAL_SYNC_SERVER": "true"
+      },
+      "outFiles": ["${workspaceFolder}/packages/vscode/dist/**/*.js"],
+      "preLaunchTask": "dev:vscode"
     },
     {
       "name": "Run VSCode Extension Tests",

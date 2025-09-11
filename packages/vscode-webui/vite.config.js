@@ -77,6 +77,7 @@ export default defineConfig({
   plugins: [
     EnvironmentPlugin({
       POCHI_LOCAL_SERVER: "false",
+      POCHI_LOCAL_SYNC_SERVER: "false",
     }),
     tsconfigPaths(),
     TanStackRouterVite({ autoCodeSplitting: true }),

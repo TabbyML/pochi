@@ -30,11 +30,14 @@ export type { CaptureEvent } from "./types/capture-event";
 export type { CustomAgentFile } from "./types/custom-agent";
 
 export const isDev = process.env.POCHI_LOCAL_SERVER === "true";
+export const isSyncDev = process.env.POCHI_SYNC_LOCAL_SERVER === "true";
 
 export function getServerBaseUrl() {
   return isDev ? "http://localhost:4113" : "https://app.getpochi.com";
 }
 
 export function getSyncBaseUrl() {
-  return isDev ? "ws://localhost:8787" : "wss://livekit-cf.tabbyml.workers.dev";
+  return isSyncDev
+    ? "ws://localhost:8787"
+    : "wss://livekit-cf.tabbyml.workers.dev";
 }
