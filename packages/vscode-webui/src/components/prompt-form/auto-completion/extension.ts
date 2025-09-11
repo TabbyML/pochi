@@ -50,7 +50,7 @@ const suggestionTriggerPlugin = new Plugin({
         if (autoCompletePluginKey.getState(state)?.active) {
           return false;
         }
-        // logic from findSuggestionMatch
+
         const { $from: $position } = state.selection;
         const match = getCurrentWordMatch($position);
         if (!match) return false;
