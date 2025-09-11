@@ -1,17 +1,16 @@
 import type { ToolUIPart } from "ai";
-import type { ToolCallLifeCycle } from "./tool-call-life-cycle";
+import type {
+  StreamingResult,
+  ToolCallLifeCycle,
+} from "./tool-call-life-cycle";
 
 export class FixedStateToolCallLifeCycle implements ToolCallLifeCycle {
   constructor(
     readonly toolName: string,
     readonly toolCallId: string,
     readonly status: "execute" | "dispose",
+    readonly streamingResult: StreamingResult | undefined,
   ) {}
-
-  get streamingResult() {
-    // streaming result is unsupported in FixedStateToolCallLifeCycle
-    return undefined;
-  }
 
   get complete(): { result: unknown; reason: "execute-finish" | "user-abort" } {
     throw new Error(

@@ -1,5 +1,5 @@
 import { resolve } from "node:path";
-import { livestoreDevtoolsPlugin } from "@livestore/devtools-vite";
+// import { livestoreDevtoolsPlugin } from "@livestore/devtools-vite";
 import tailwindcss from "@tailwindcss/vite";
 import { TanStackRouterVite } from "@tanstack/router-plugin/vite";
 import viteReact from "@vitejs/plugin-react";
@@ -72,12 +72,15 @@ const OutputOptions = {
   },
 };
 
+const envPlugin = EnvironmentPlugin({
+  POCHI_LOCAL_SERVER: "false",
+  POCHI_LOCAL_SYNC_SERVER: "false",
+});
+
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
-    EnvironmentPlugin({
-      POCHI_LOCAL_SERVER: "false",
-    }),
+    envPlugin,
     tsconfigPaths(),
     TanStackRouterVite({ autoCodeSplitting: true }),
     viteReact({
@@ -86,9 +89,9 @@ export default defineConfig({
       },
     }),
     tailwindcss(),
-    livestoreDevtoolsPlugin({
-      schemaPath: "../livekit/src/livestore/schema.ts",
-    }),
+    // livestoreDevtoolsPlugin({
+    //   schemaPath: "../livekit/src/livestore/schema.ts",
+    // }),
     analyzer({
       enabled: !!process.env.VITE_BUNDLE_ANALYZER,
     }),
@@ -96,6 +99,7 @@ export default defineConfig({
   worker: {
     format: "es",
     rollupOptions: { output: OutputOptions[BuildTarget] },
+    plugins: () => [envPlugin],
   },
   optimizeDeps: {
     // TODO remove once fixed https://github.com/vitejs/vite/issues/8427

@@ -70,6 +70,7 @@
       "title": "Advanced Settings",
       "developerMode": "Developer Mode",
       "enablePochiModels": "Enable Pochi Models",
+      "enableSync": "Enable Sync",
       "clearStorage": "Clear Storage",
       "language": "Language",
       "languageDescription": "Choose your preferred language"

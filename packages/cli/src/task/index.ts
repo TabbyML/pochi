@@ -1,0 +1,1 @@
+export { registerTaskCommand } from "./cmd";
