@@ -9,6 +9,7 @@ import {
   type VSCodeHostApi,
   type WebviewHostApi,
   getServerBaseUrl,
+  getSyncBaseUrl,
 } from "@getpochi/common/vscode-webui-bridge";
 import { Thread } from "@quilted/threads";
 import { container, inject, injectable, singleton } from "tsyringe";
@@ -232,7 +233,7 @@ export class RagdollWebviewProvider
         `style-src ${webview.cspSource} 'unsafe-inline'`,
         `font-src ${webview.cspSource}`,
         // https://* is required for local BYOK
-        `connect-src ${getServerBaseUrl()} https://*.vscode-cdn.net https://* http://*:* data:`,
+        `connect-src ${getServerBaseUrl()} ${getSyncBaseUrl()} https://*.vscode-cdn.net https://* http://*:* data:`,
         "worker-src data: blob:",
       ];
       const cspHeader = `<meta http-equiv="Content-Security-Policy" content="${csp.join("; ")}">`;
@@ -270,7 +271,7 @@ export class RagdollWebviewProvider
       `script-src 'nonce-${nonce}' ${devWebUIHttpBaseUrl} ${devWebUIHttpBaseUrlIp} '${reactRefreshHash}' 'unsafe-eval'`,
       `style-src ${webview.cspSource} 'self' 'unsafe-inline'`,
       `font-src ${webview.cspSource}`,
-      `connect-src ${devWebUIHttpBaseUrl} ${devWebUIHttpBaseUrlIp} ${devWebUIWsBaseUrl} ${devWebUIWsBaseUrlIp} ${getServerBaseUrl()} https://* data: http://*:*`,
+      `connect-src ${devWebUIHttpBaseUrl} ${devWebUIHttpBaseUrlIp} ${devWebUIWsBaseUrl} ${devWebUIWsBaseUrlIp} ${getServerBaseUrl()} ${getSyncBaseUrl()} https://* data: http://*:*`,
       `worker-src ${devWebUIHttpBaseUrl} blob:`,
     ];
     const cspHeader = `<meta http-equiv="Content-Security-Policy" content="${csp.join("; ")}">`;

@@ -59,7 +59,7 @@ async function process({
     tables.tasks
       .select("shareId")
       .where("id", "=", taskId)
-      .first({ fallback: () => null }),
+      .first({ behaviour: "undefined" }),
   );
   if (!existingShareId) {
     store.commit(
