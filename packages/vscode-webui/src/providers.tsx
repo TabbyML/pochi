@@ -11,6 +11,7 @@ import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client
 import { useEffect, useMemo, useRef } from "react";
 import { unstable_batchedUpdates as batchUpdates } from "react-dom";
 import { ThemeProvider } from "./components/theme-provider";
+import { useEnableSync } from "./features/settings";
 import { useCurrentWorkspace } from "./lib/hooks/use-current-workspace";
 import { usePochiCredentials } from "./lib/hooks/use-pochi-credentials";
 import LiveStoreWorker from "./livestore.worker.ts?worker&inline";
@@ -61,6 +62,7 @@ function LiveStoreProviderWrapper({ children }: { children: React.ReactNode }) {
     () => (cwd ? getStoreId(cwd, jwt) : undefined),
     [cwd, jwt],
   );
+  const enableSync = useEnableSync();
   const syncPayloadRef = useRef({ jwt });
   useEffect(() => {
     syncPayloadRef.current.jwt = jwt;
@@ -73,7 +75,7 @@ function LiveStoreProviderWrapper({ children }: { children: React.ReactNode }) {
       renderLoading={(_) => <></>}
       disableDevtools={true}
       batchUpdates={batchUpdates}
-      syncPayload={syncPayloadRef.current}
+      syncPayload={enableSync ? syncPayloadRef.current : undefined}
       storeId={storeId}
     >
       {children}
