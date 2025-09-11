@@ -47,7 +47,10 @@ const suggestionTriggerPlugin = new Plugin({
     handleKeyDown(view, event) {
       if (event.key === "Tab") {
         const { state } = view;
-        if (autoCompletePluginKey.getState(state)?.active) {
+        if (
+          autoCompletePluginKey.getState(state)?.active ||
+          isMentionExtensionActive(state)
+        ) {
           return false;
         }
 
@@ -313,6 +316,9 @@ export const AutoCompleteExtension = Extension.create<
             onKeyDown: (props: SuggestionKeyDownProps): boolean => {
               if (props.event.key === "Escape") {
                 destroyMention();
+                this.editor.view.dispatch(
+                  this.editor.view.state.tr.setMeta("autoCompleteCancel", true),
+                );
                 return true;
               }
               return storage.component?.ref?.onKeyDown(props) ?? false;
@@ -356,6 +362,9 @@ function createHintPlugin(options: {
     state: {
       init: () => ({ active: false }),
       apply: (tr, value) => {
+        if (tr.getMeta("autoCompleteCancel")) {
+          return { active: true };
+        }
         if (tr.docChanged) {
           return { active: true };
         }
@@ -368,10 +377,15 @@ function createHintPlugin(options: {
     view: () => {
       return {
         update: async (view) => {
+          if (!view.hasFocus()) {
+            hideHint();
+            return;
+          }
           const currentPluginState = hintPluginKey.getState(view.state);
           if (
             !currentPluginState.active ||
-            autoCompletePluginKey.getState(view.state)?.active
+            autoCompletePluginKey.getState(view.state)?.active ||
+            isMentionExtensionActive(view.state)
           ) {
             hideHint();
             return;
