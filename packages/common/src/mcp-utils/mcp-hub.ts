@@ -82,7 +82,7 @@ export class McpHub implements Disposable {
       throw new Error("Server configuration is required");
     }
 
-    const serverName = name ? this.generateUniqueName(name) : this.generateUniqueName("server");
+    const serverName = name ?? this.generateUniqueName("server");
     const newConfig = {
       ...this.config,
       [serverName]: serverConfig,
