@@ -69,6 +69,10 @@ export const SubmitHistoryExtension = Extension.create<
       addToSubmitHistory: (content: string) => () => {
         const storage = this.storage;
 
+        // Reset navigation index
+        storage.currentIndex = -1;
+        storage.isNavigating = false;
+
         // Don't add empty content or duplicate consecutive entries
         if (!content.trim()) return false;
 
@@ -82,10 +86,6 @@ export const SubmitHistoryExtension = Extension.create<
         if (storage.history.length > this.options.maxHistorySize) {
           storage.history = storage.history.slice(-this.options.maxHistorySize);
         }
-
-        // Reset navigation index
-        storage.currentIndex = -1;
-        storage.isNavigating = false;
 
         try {
           vscodeHost.setWorkspaceState(
