@@ -1,18 +1,18 @@
-import { type Environment, getLogger } from "@getpochi/common";
+import { getLogger } from "@getpochi/common";
 import type { PochiApiClient } from "@getpochi/common/pochi-api";
-import type { CustomAgent, McpTool } from "@getpochi/tools";
+import type { CustomAgent } from "@getpochi/tools";
 import type { Store } from "@livestore/livestore";
 import type { ChatInit, ChatOnErrorCallback, ChatOnFinishCallback } from "ai";
-import type { LLMRequestData } from "..";
 import { makeMessagesQuery, makeTaskQuery } from "../livestore/queries";
 import { events, tables } from "../livestore/schema";
 import { toTaskError, toTaskStatus } from "../task";
 import type { Message } from "../types";
+import { scheduleGenerateTitleJob } from "./background-job";
 import {
   FlexibleChatTransport,
   type OnStartCallback,
+  type PrepareRequestGetters,
 } from "./flexible-chat-transport";
-import { generateTitleManager } from "./generate-title-manager";
 import { compactTask } from "./llm";
 import { createModel } from "./models";
 
@@ -23,13 +23,7 @@ export type LiveChatKitOptions<T> = {
   abortSignal?: AbortSignal;
 
   // Request related getters
-  getters: {
-    getLLM: () => LLMRequestData;
-    getEnvironment?: (options: {
-      readonly messages: Message[];
-    }) => Promise<Environment>;
-    getMcpTools?: () => Record<string, McpTool>;
-  };
+  getters: PrepareRequestGetters;
 
   isSubTask?: boolean;
   isCli?: boolean;
@@ -73,6 +67,7 @@ export class LiveChatKit<
     isCli,
     apiClient,
     customAgent,
+    waitUntil,
     ...chatInit
   }: LiveChatKitOptions<T>) {
     this.taskId = taskId;
@@ -85,6 +80,7 @@ export class LiveChatKit<
       isCli,
       apiClient,
       customAgent,
+      waitUntil,
     });
 
     this.chat = new chatClass({
@@ -235,7 +231,7 @@ export class LiveChatKit<
 
       const getModel = () =>
         createModel({ id: this.taskId, llm: getters.getLLM() });
-      generateTitleManager.push({
+      scheduleGenerateTitleJob({
         taskId: this.taskId,
         store,
         messages,

@@ -22,3 +22,4 @@ export {
   fixExecuteCommandOutput,
   buildShellCommand,
 } from "./shell";
+export { parseAgentFile } from "./agent-parser";

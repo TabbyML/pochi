@@ -15,7 +15,11 @@ export const useMcp = () => {
     staleTime: Number.POSITIVE_INFINITY,
   });
 
-  const mcpStatus: McpStatus = data?.value ?? { connections: {}, toolset: {} };
+  const mcpStatus: McpStatus = data?.value ?? {
+    connections: {},
+    toolset: {},
+    instructions: "",
+  };
   const cachedMcpTools = useMcpToolsCache(mcpStatus);
 
   const mergedConnections: Record<string, McpConnection> = {};
@@ -32,6 +36,7 @@ export const useMcp = () => {
   return {
     connections: mergedConnections,
     toolset: mcpStatus.toolset,
+    instructions: mcpStatus.instructions,
     isLoading: isLoading,
   };
 };

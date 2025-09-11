@@ -15,6 +15,7 @@
     "@ai-sdk/provider-utils": "catalog:",
     "@getpochi/common": "workspace:*",
     "better-auth": "catalog:",
-    "hono": "catalog:"
+    "hono": "catalog:",
+    "jose": "catalog:"
   }
 }

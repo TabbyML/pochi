@@ -1,17 +1,26 @@
+import { getLogger } from "@getpochi/common";
 import type { UserInfo } from "@getpochi/common/configuration";
+import { deviceLinkClient } from "@getpochi/common/device-link/client";
 import type { PochiApi, PochiApiClient } from "@getpochi/common/pochi-api";
 import {
   type AuthOutput,
   type ModelOptions,
   VendorBase,
 } from "@getpochi/common/vendor";
-import { getServerBaseUrl } from "@getpochi/common/vscode-webui-bridge";
+import {
+  type PochiCredentials,
+  getServerBaseUrl,
+} from "@getpochi/common/vscode-webui-bridge";
+import { jwtClient } from "better-auth/client/plugins";
 import { createAuthClient as createAuthClientImpl } from "better-auth/react";
 import { hc } from "hono/client";
-import { type PochiCredentials, VendorId } from "./types";
+import * as jose from "jose";
+import { getPochiCredentials, updatePochiCredentials } from "./credentials";
+import { VendorId } from "./types";
+
+const logger = getLogger("PochiVendor");
 
 export class Pochi extends VendorBase {
-  private newCredentials?: PochiCredentials = undefined;
   private cachedModels?: Record<string, ModelOptions>;
 
   constructor() {
@@ -47,18 +56,21 @@ export class Pochi extends VendorBase {
   protected override async renewCredentials(
     credentials: PochiCredentials,
   ): Promise<PochiCredentials> {
-    if (this.newCredentials) {
-      const newCredentials = this.newCredentials;
-      this.newCredentials = undefined;
-      return newCredentials;
+    if (!credentials.jwt || isJWTExpiring(credentials.jwt)) {
+      logger.debug("JWT is expiring or missing, fetching a new one");
+      const { data } = await authClient.token();
+      return {
+        ...credentials,
+        jwt: data?.token || null,
+      };
     }
+
     return credentials;
   }
 
   protected override async fetchUserInfo(
-    credentials: PochiCredentials,
+    _credentials: PochiCredentials,
   ): Promise<UserInfo> {
-    const authClient = this.createAuthClient(credentials?.token);
     const session = await authClient.getSession();
     if (!session.data) {
       throw new Error(session.error.message);
@@ -70,30 +82,32 @@ export class Pochi extends VendorBase {
       image: session.data.user.image || undefined,
     };
   }
-
-  private createAuthClient(token: string | undefined) {
-    const authClient = createAuthClientImpl({
-      baseURL: getServerBaseUrl(),
-
-      fetchOptions: {
-        customFetchImpl: buildCustomFetchImpl(token),
-        onResponse: (ctx) => {
-          const authToken = ctx.response.headers.get("set-auth-token"); // get the token from the response headers
-          if (authToken) {
-            this.newCredentials = {
-              token: authToken,
-            };
-          }
-        },
-      },
-    });
-
-    return authClient;
-  }
 }
 
-const buildCustomFetchImpl = (token: string | undefined) => {
+function createAuthClient() {
+  const authClient = createAuthClientImpl({
+    baseURL: getServerBaseUrl(),
+    plugins: [deviceLinkClient(), jwtClient()],
+
+    fetchOptions: {
+      customFetchImpl: buildCustomFetchImpl(),
+      onResponse: (ctx) => {
+        const token = ctx.response.headers.get("set-auth-token"); // get the token from the response headers
+        if (token) {
+          updatePochiCredentials({
+            token,
+          });
+        }
+      },
+    },
+  });
+
+  return authClient;
+}
+
+const buildCustomFetchImpl = () => {
   return async (input: string | URL | Request, requestInit?: RequestInit) => {
+    const token = getPochiCredentials()?.token;
     const headers = new Headers(requestInit?.headers);
     if (token) {
       headers.append("Authorization", `Bearer ${token}`);
@@ -104,3 +118,10 @@ const buildCustomFetchImpl = (token: string | undefined) => {
     });
   };
 };
+
+export const authClient = createAuthClient();
+
+function isJWTExpiring(jwt: string) {
+  const { exp } = jose.decodeJwt(jwt);
+  return exp ? Date.now() >= (exp - 120) * 1000 : true;
+}

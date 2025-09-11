@@ -3,7 +3,9 @@ import { useCopyToClipboard } from "@/lib/hooks/use-copy-to-clipboard";
 import {
   AlignJustifyIcon,
   CheckIcon,
+  CodeIcon,
   CopyIcon,
+  ImageIcon,
   WrapTextIcon,
 } from "lucide-react";
 import { type FC, memo, useState } from "react";
@@ -21,6 +23,7 @@ import {
 import { cn } from "@/lib/utils";
 import "./code-block.css";
 import { useTheme } from "../theme-provider";
+import { Mermaid } from "./mermaid";
 
 export interface CodeBlockProps {
   language: string;
@@ -32,13 +35,73 @@ export interface CodeBlockProps {
   isMinimalView?: boolean;
 }
 
-export const generateRandomString = (length: number, lowercase = false) => {
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXY3456789"; // excluding similar looking characters like Z, 2, I, 1, O, 0
-  let result = "";
-  for (let i = 0; i < length; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
+interface MenuButtonProps {
+  onClick: () => void;
+  children: React.ReactNode;
+  tooltip: string;
+}
+
+const MenuButton: FC<MenuButtonProps> = ({ onClick, children, tooltip }) => (
+  <Tooltip>
+    <TooltipTrigger asChild>
+      <Button
+        size="icon"
+        variant="ghost"
+        className="size-6 p-0 text-xs focus-visible:ring-1 focus-visible:ring-slate-700 focus-visible:ring-offset-0"
+        onClick={onClick}
+      >
+        {children}
+      </Button>
+    </TooltipTrigger>
+    <TooltipContent>
+      <p className="m-0">{tooltip}</p>
+    </TooltipContent>
+  </Tooltip>
+);
+
+interface CodeRendererProps {
+  language: string;
+  value: string;
+  theme: string | undefined;
+  wrapLongLines?: boolean;
+  showMermaidPreview: boolean;
+}
+
+const CodeRenderer: FC<CodeRendererProps> = ({
+  language,
+  value,
+  theme,
+  wrapLongLines,
+  showMermaidPreview,
+}) => {
+  const languageForSyntax = language === "toml" ? "bash" : language;
+
+  if (language === "mermaid" && showMermaidPreview) {
+    return <Mermaid chart={value} />;
   }
-  return lowercase ? result.toLowerCase() : result;
+
+  return (
+    <SyntaxHighlighter
+      language={languageForSyntax}
+      style={theme === "dark" ? vscDarkPlus : oneLight}
+      PreTag="div"
+      customStyle={{
+        margin: 0,
+        width: "100%",
+        background: "transparent",
+        borderRadius: "0.25rem",
+      }}
+      wrapLongLines={wrapLongLines}
+      codeTagProps={{
+        style: {
+          backgroundColor: "transparent",
+          padding: "0px",
+        },
+      }}
+    >
+      {value}
+    </SyntaxHighlighter>
+  );
 };
 
 const CodeBlock: FC<CodeBlockProps> = memo(
@@ -51,6 +114,9 @@ const CodeBlock: FC<CodeBlockProps> = memo(
     isMinimalView,
   }) => {
     const [wrapLongLines, setWrapLongLines] = useState(canWrapLongLines);
+    const [showMermaidPreview, setShowMermaidPreview] = useState(
+      language === "mermaid",
+    );
     const { theme } = useTheme();
     const { isCopied, copyToClipboard } = useCopyToClipboard({
       timeout: 2000,
@@ -60,10 +126,6 @@ const CodeBlock: FC<CodeBlockProps> = memo(
       if (isCopied) return;
       copyToClipboard(value);
     };
-
-    // react-syntax-highlighter does not render .toml files correctly
-    // using bash syntax as a workaround for better display
-    const languageForSyntax = language === "toml" ? "bash" : language;
 
     return (
       <div
@@ -78,64 +140,37 @@ const CodeBlock: FC<CodeBlockProps> = memo(
               {!hidenLanguage ? language : ""}
             </span>
             <div className="flex items-center space-x-3">
-              {canWrapLongLines && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="size-6 p-0 text-xs focus-visible:ring-1 focus-visible:ring-slate-700 focus-visible:ring-offset-0"
-                      onClick={() => setWrapLongLines(!wrapLongLines)}
-                    >
-                      {wrapLongLines ? <AlignJustifyIcon /> : <WrapTextIcon />}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p className="m-0">Toggle word wrap</p>
-                  </TooltipContent>
-                </Tooltip>
+              {language === "mermaid" && (
+                <MenuButton
+                  onClick={() => setShowMermaidPreview(!showMermaidPreview)}
+                  tooltip={showMermaidPreview ? "Show code" : "Show diagram"}
+                >
+                  {showMermaidPreview ? <CodeIcon /> : <ImageIcon />}
+                </MenuButton>
               )}
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="size-6 p-0 text-xs focus-visible:ring-1 focus-visible:ring-slate-700 focus-visible:ring-offset-0"
-                    onClick={onCopy}
-                  >
-                    {isCopied ? <CheckIcon /> : <CopyIcon />}
-                    <span className="sr-only">Copy</span>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p className="m-0">Copy</p>
-                </TooltipContent>
-              </Tooltip>
+              {canWrapLongLines && !showMermaidPreview && (
+                <MenuButton
+                  onClick={() => setWrapLongLines(!wrapLongLines)}
+                  tooltip="Toggle word wrap"
+                >
+                  {wrapLongLines ? <AlignJustifyIcon /> : <WrapTextIcon />}
+                </MenuButton>
+              )}
+              <MenuButton onClick={onCopy} tooltip="Copy">
+                {isCopied ? <CheckIcon /> : <CopyIcon />}
+                <span className="sr-only">Copy</span>
+              </MenuButton>
             </div>
           </div>
         )}
         <div className="flex-1 overflow-y-auto rounded-b-sm">
-          {/* FIXME fix type error */}
-          <SyntaxHighlighter
-            language={languageForSyntax}
-            style={theme === "dark" ? vscDarkPlus : oneLight}
-            PreTag="div"
-            customStyle={{
-              margin: 0,
-              width: "100%",
-              background: "transparent",
-              borderRadius: "0.25rem",
-            }}
+          <CodeRenderer
+            language={language}
+            value={value}
+            theme={theme}
             wrapLongLines={wrapLongLines}
-            codeTagProps={{
-              style: {
-                backgroundColor: "transparent",
-                padding: "0px",
-              },
-            }}
-          >
-            {value}
-          </SyntaxHighlighter>
+            showMermaidPreview={showMermaidPreview}
+          />
         </div>
       </div>
     );

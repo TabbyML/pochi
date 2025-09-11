@@ -14,14 +14,13 @@ import { getLogger, showOutputPanel } from "@/lib/logger";
 import { NewProjectRegistry, prepareProject } from "@/lib/new-project";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { PostHog } from "@/lib/posthog";
-// biome-ignore lint/style/useImportType: needed for dependency injection
-import { TokenStorage } from "@/lib/token-storage";
 import type { WebsiteTaskCreateEvent } from "@getpochi/common";
 import {
   type CustomModelSetting,
   PochiConfigFilePath,
 } from "@getpochi/common/configuration";
 import type { McpServerConfig } from "@getpochi/common/configuration";
+import { getVendor } from "@getpochi/common/vendor";
 import type {
   NewTaskParams,
   TaskIdParams,
@@ -44,7 +43,6 @@ export class CommandManager implements vscode.Disposable {
 
   constructor(
     private readonly ragdollWebviewProvider: RagdollWebviewProvider,
-    private readonly tokenStorage: TokenStorage,
     private readonly newProjectRegistry: NewProjectRegistry,
     @inject("AuthClient") private readonly authClient: AuthClient,
     private readonly authEvents: AuthEvents,
@@ -100,8 +98,8 @@ export class CommandManager implements vscode.Disposable {
           "Logout",
         );
         if (selection === "Logout") {
-          this.authClient.signOut();
-          this.tokenStorage.setToken(undefined);
+          await this.authClient.signOut();
+          await getVendor("pochi").logout();
           this.authEvents.logoutEvent.fire();
         }
       }),

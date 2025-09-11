@@ -8,6 +8,7 @@ import {
   useState,
 } from "react";
 import { FixedStateToolCallLifeCycle } from "../fixed-state-tool-call-life-cycle";
+import type { StreamingResult } from "../tool-call-life-cycle";
 import {
   ChatContext,
   type ChatState,
@@ -24,14 +25,22 @@ function keyString(key: ToolCallLifeCycleKey) {
 export class ToolCallStatusRegistry extends Emittery<{ updated: undefined }> {
   private toolCallStatusMap = new Map<
     string,
-    { toolCallId: string; toolName: string; isExecuting: boolean }
+    {
+      toolCallId: string;
+      toolName: string;
+      isExecuting: boolean;
+      streamingResult?: StreamingResult;
+    }
   >();
 
   get(key: ToolCallLifeCycleKey) {
     return this.toolCallStatusMap.get(keyString(key));
   }
 
-  set(key: ToolCallLifeCycleKey, value: { isExecuting: boolean }) {
+  set(
+    key: ToolCallLifeCycleKey,
+    value: { isExecuting: boolean; streamingResult?: StreamingResult },
+  ) {
     this.toolCallStatusMap.set(keyString(key), { ...key, ...value });
     this.emit("updated");
   }
@@ -76,6 +85,7 @@ export function FixedStateChatContextProvider({
                 value.toolName,
                 value.toolCallId,
                 value.isExecuting ? "execute" : "dispose",
+                value.streamingResult,
               ),
             ];
           }),
@@ -89,7 +99,12 @@ export function FixedStateChatContextProvider({
     (key: ToolCallLifeCycleKey) => {
       return (
         toolCallLifeCycles.get(keyString(key)) ??
-        new FixedStateToolCallLifeCycle(key.toolName, key.toolCallId, "dispose")
+        new FixedStateToolCallLifeCycle(
+          key.toolName,
+          key.toolCallId,
+          "dispose",
+          undefined,
+        )
       );
     },
     [toolCallLifeCycles],

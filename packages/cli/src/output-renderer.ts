@@ -281,7 +281,9 @@ function makeListr(
 
   const tasks: ListrTask[] = [
     {
-      title: part?.input?.description,
+      title: part?.input?.agentType
+        ? `${part.input.description} (${chalk.cyan(part.input.agentType)})`
+        : part?.input?.description,
       task: async () => {
         const observable: ObservableLike<string> = {
           subscribe(observer) {

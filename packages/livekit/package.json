@@ -26,6 +26,7 @@
     "base58-js": "^3.0.3",
     "react": "catalog:",
     "remeda": "catalog:",
-    "zod": "catalog:"
+    "zod": "catalog:",
+    "jose": "catalog:"
   }
 }

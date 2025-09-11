@@ -1,13 +1,20 @@
-import { APICallError, type LanguageModelV2 } from "@ai-sdk/provider";
+import {
+  APICallError,
+  type LanguageModelV2,
+  type LanguageModelV2Prompt,
+} from "@ai-sdk/provider";
 import {
   EventSourceParserStream,
+  convertToBase64,
   extractResponseHeaders,
 } from "@ai-sdk/provider-utils";
 import type { PochiApi, PochiApiClient } from "@getpochi/common/pochi-api";
 import type { CreateModelOptions } from "@getpochi/common/vendor/edge";
-import { getServerBaseUrl } from "@getpochi/common/vscode-webui-bridge";
+import {
+  type PochiCredentials,
+  getServerBaseUrl,
+} from "@getpochi/common/vscode-webui-bridge";
 import { hc } from "hono/client";
-import type { PochiCredentials } from "./types";
 
 export function createPochiModel({
   id,
@@ -27,7 +34,7 @@ export function createPochiModel({
         id,
         model: modelId,
         callOptions: {
-          prompt,
+          prompt: convertFilePartDataToBase64(prompt),
           stopSequences,
           tools,
         },
@@ -87,4 +94,26 @@ function createApiClient(
   });
 
   return authClient;
+}
+
+function convertFilePartDataToBase64(
+  prompt: LanguageModelV2Prompt,
+): LanguageModelV2Prompt {
+  return prompt.map((message) => {
+    if (message.role === "system") {
+      return message;
+    }
+    return {
+      ...message,
+      content: message.content.map((part) => {
+        if (part.type === "file" && part.data instanceof Uint8Array) {
+          return {
+            ...part,
+            data: convertToBase64(part.data),
+          };
+        }
+        return part;
+      }),
+    };
+  }) as LanguageModelV2Prompt;
 }

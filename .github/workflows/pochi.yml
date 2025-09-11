@@ -19,4 +19,4 @@ jobs:
       - name: Run pochi
         uses: tabbyml/pochi/packages/github-action@main
         env:
-          POCHI_TOKEN: ${{ secrets.POCHI_TOKEN }}
+          POCHI_API_KEY: ${{ secrets.POCHI_API_KEY }}

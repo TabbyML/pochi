@@ -21,6 +21,7 @@ Usage notes:
 - If the output exceeds 30000 characters, output will be truncated before being returned to you.
 - When issuing multiple commands, use the ';' or '&&' operator to separate them. DO NOT use newlines (newlines are ok in quoted strings).
 - You shall avoid use the markdown code block syntax (backtick, '\`') in your command, as it will be interpreted as a command substitution.
+- Before using this tool, you must first think about the context provided in <system-reminder> to understand the user's environment and tailor your commands to ensure they are compatible with their system. You must also consider if the command you need to run should be executed in a specific directory rather than the current working directory, and properly set the \`cwd\` if necessary.
 
 # Committing changes with git
 

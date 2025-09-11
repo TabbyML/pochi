@@ -24,7 +24,7 @@ type NewTaskReturnType = {
 };
 type ExecuteReturnType = ExecuteCommandReturnType | NewTaskReturnType | unknown;
 
-type StreamingResult =
+export type StreamingResult =
   | {
       toolName: "executeCommand";
       output: ExecuteCommandResult;

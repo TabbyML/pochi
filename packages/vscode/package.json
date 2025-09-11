@@ -201,10 +201,11 @@
           "pochi.advanced": {
             "order": 2,
             "default": {},
+            "additionalProperties": false,
             "properties": {
-              "additionalProperties": false,
               "inlineCompletion": {
                 "default": {},
+                "additionalProperties": false,
                 "properties": {
                   "disabled": {
                     "type": "boolean",
@@ -218,6 +219,53 @@
                       "type": "string"
                     },
                     "description": "List of languages where inline completion is disabled."
+                  },
+                  "provider": {
+                    "type": "object",
+                    "default": {
+                      "type": "pochi"
+                    },
+                    "description": "The inline completion provider to use.",
+                    "oneOf": [
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "type": {
+                            "type": "string",
+                            "const": "pochi"
+                          }
+                        }
+                      },
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "type": {
+                            "type": "string",
+                            "const": "openai"
+                          },
+                          "baseURL": {
+                            "type": "string",
+                            "default": "",
+                            "description": "The base URL for OpenAI API requests."
+                          },
+                          "apiKey": {
+                            "type": "string",
+                            "default": "",
+                            "description": "The API key for OpenAI API requests. If not set, will use the POCHI_CODE_COMPLETION_OPENAI_API_KEY environment variable."
+                          },
+                          "model": {
+                            "type": "string",
+                            "default": "",
+                            "description": "The OpenAI model to use for inline completion."
+                          },
+                          "promptTemplate": {
+                            "type": "string",
+                            "default": "",
+                            "description": "The prompt template to use for inline completion. If not set, will use the default template."
+                          }
+                        }
+                      }
+                    ]
                   }
                 }
               },
@@ -269,7 +317,6 @@
     "@vscode-logging/logger": "^2.0.0",
     "@xstate/fsm": "^2.1.0",
     "ai": "catalog:",
-    "better-auth": "catalog:",
     "diff": "^7.0.0",
     "fast-deep-equal": "^3.1.3",
     "fast-levenshtein": "^3.0.0",
@@ -282,14 +329,11 @@
     "posthog-node": "^4.17.2",
     "project-name-generator": "^2.1.9",
     "reflect-metadata": "^0.2.2",
-    "remark": "^15.0.1",
-    "remark-frontmatter": "^5.0.0",
     "remeda": "catalog:",
     "run-exclusive": "^2.2.19",
     "simple-git": "^3.28.0",
     "stats-logscale": "^1.0.9",
     "tsyringe": "^4.10.0",
-    "vfile-matter": "^5.0.1",
     "zod": "catalog:"
   },
   "devDependencies": {

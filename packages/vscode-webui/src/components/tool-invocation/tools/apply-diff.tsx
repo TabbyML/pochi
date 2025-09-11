@@ -1,6 +1,6 @@
 import { useToolCallLifeCycle } from "@/features/chat";
 import { getToolName } from "ai";
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { FileBadge } from "../file-badge";
 import { NewProblems, NewProblemsIcon } from "../new-problems";
 import { StatusIcon } from "../status-icon";
@@ -18,14 +18,19 @@ export const applyDiffTool: React.FC<ToolProps<"applyDiff">> = ({
     toolName: getToolName(tool),
     toolCallId: tool.toolCallId,
   });
-  const handleClick = useCallback(() => {
-    return tool.state !== "output-available" &&
+
+  const shouldPreview = useMemo(() => {
+    return (
+      tool.state !== "output-available" &&
       (lifecycle.status === "init" ||
         lifecycle.status === "pending" ||
         lifecycle.status === "ready")
-      ? lifecycle.preview(tool.input, tool.state)
-      : undefined;
-  }, [tool.input, tool.state, lifecycle.status, lifecycle.preview]);
+    );
+  }, [tool.state, lifecycle.status]);
+
+  const handleClick = useCallback(() => {
+    lifecycle.preview(tool.input, tool.state);
+  }, [tool.input, tool.state, lifecycle.preview]);
 
   const result =
     tool.state === "output-available" && !("error" in tool.output)
@@ -41,7 +46,7 @@ export const applyDiffTool: React.FC<ToolProps<"applyDiff">> = ({
         <FileBadge
           className="ml-1"
           path={path}
-          onClick={handleClick}
+          onClick={shouldPreview ? handleClick : undefined}
           editSummary={result?._meta?.editSummary}
           changes={result?.success ? changes : undefined}
         />

@@ -2,47 +2,13 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { getWorkspaceFolder } from "@/lib/fs";
 import { getLogger } from "@getpochi/common";
+import { parseAgentFile } from "@getpochi/common/tool-utils";
 import type { CustomAgentFile } from "@getpochi/common/vscode-webui-bridge";
-import { CustomAgent } from "@getpochi/tools";
 import { signal } from "@preact/signals-core";
-import { remark } from "remark";
-import remarkFrontmatter from "remark-frontmatter";
 import { injectable, singleton } from "tsyringe";
-import { matter } from "vfile-matter";
 import * as vscode from "vscode";
 
 const logger = getLogger("CustomAgentManager");
-
-/**
- * Parse a custom agent file content
- */
-async function parseAgentFile(
-  content: string,
-): Promise<CustomAgent | undefined> {
-  const file = await remark()
-    .use(remarkFrontmatter, [{ type: "yaml", marker: "-" }])
-    .use(() => (_tree, file) => matter(file))
-    .process(content);
-
-  const systemPrompt = file.value.toString().trim();
-  const frontmatterData = file.data.matter;
-
-  if (typeof frontmatterData !== "object" || frontmatterData === null) {
-    return;
-  }
-
-  if ("tools" in frontmatterData && typeof frontmatterData.tools === "string") {
-    const tools = frontmatterData.tools.split(",").map((tool) => tool.trim());
-    frontmatterData.tools = tools;
-  }
-
-  const agentData = { ...frontmatterData, systemPrompt };
-  const result = CustomAgent.safeParse(agentData);
-
-  if (result.success) {
-    return result.data;
-  }
-}
 
 /**
  * Read custom agents from a directory
