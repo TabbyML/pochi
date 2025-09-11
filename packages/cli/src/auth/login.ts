@@ -45,14 +45,11 @@ export async function login(vendorId: string) {
     );
     console.log(chalk.cyan(url));
   }
-
-  // Wait for authentication to complete
   console.log(chalk.yellow("\nWaiting for authentication to complete..."));
-  const finalCredentials = await credentials;
 
-  // Save credentials
+  // Wait for OAuth completion
   await updateVendorConfig(vendorId, {
-    credentials: finalCredentials,
+    credentials: await credentials,
   });
 
   // Get user info after authentication
