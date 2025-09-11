@@ -290,14 +290,6 @@ export const AutoCompleteExtension = Extension.create<
               createMention(props);
             },
             onUpdate: (props: SuggestionProps<AutoCompleteSuggestionItem>) => {
-              const suggestionActive = suggestionTriggerPluginKey.getState(
-                props.editor.state,
-              );
-              if (!suggestionActive) {
-                destroyMention();
-                return;
-              }
-
               storage.component?.updateProps(props);
             },
             onExit: () => {
