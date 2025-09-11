@@ -1,6 +1,4 @@
 import { getLogger, prompts } from "@getpochi/common";
-import { pochiConfig } from "@getpochi/common/configuration";
-import { McpHub } from "@getpochi/common/mcp-utils";
 import {
   isAssistantMessageWithEmptyParts,
   isAssistantMessageWithNoToolCalls,
@@ -80,7 +78,6 @@ const logger = getLogger("TaskRunner");
 export class TaskRunner {
   private toolCallOptions: ToolCallOptions;
   private stepCount: StepCount;
-  private mcpHub: McpHub;
 
   private todos: Todo[] = [];
   private chatKit: LiveChatKit<Chat>;
@@ -113,10 +110,6 @@ export class TaskRunner {
       },
     };
     this.stepCount = new StepCount(options.maxSteps, options.maxRetries);
-    this.mcpHub = new McpHub({
-      config: {},
-      clientName: "pochi-cli",
-    });
     this.chatKit = new LiveChatKit<Chat>({
       taskId: options.uid,
       apiClient: options.apiClient,
@@ -131,10 +124,6 @@ export class TaskRunner {
           ...(await readEnvironment({ cwd: options.cwd })),
           todos: this.todos,
         }),
-        getMcpTools: () => {
-          const status = this.mcpHub.getStatus();
-          return status.toolset;
-        },
       },
     });
     if (options.prompt) {
@@ -150,31 +139,10 @@ export class TaskRunner {
     }
 
     this.taskId = options.uid;
-
-    // Initialize MCP Hub with configuration
-    this.initializeMcpHub().catch((err: unknown) => {
-      logger.error("Failed to initialize MCP Hub:", err);
-    });
   }
 
   get shareId() {
     return this.chatKit.task?.shareId;
-  }
-
-  dispose() {
-    logger.debug("Disposing TaskRunner and cleaning up MCP connections");
-    this.mcpHub.dispose();
-  }
-
-  private async initializeMcpHub(): Promise<void> {
-    try {
-      const config = pochiConfig.value;
-      const mcpConfig = config.mcp || {};
-      this.mcpHub.updateConfig(mcpConfig);
-      logger.info("MCP Hub initialized with config:", Object.keys(mcpConfig));
-    } catch (error) {
-      logger.error("Failed to load MCP configuration:", error);
-    }
   }
 
   async run(): Promise<void> {
@@ -324,10 +292,7 @@ export class TaskRunner {
         )}`,
       );
 
-      const toolResult = await executeToolCall(toolCall, {
-        ...this.toolCallOptions,
-        mcpHub: this.mcpHub,
-      });
+      const toolResult = await executeToolCall(toolCall, this.toolCallOptions);
 
       this.chatKit.chat.addToolResult({
         // @ts-expect-error

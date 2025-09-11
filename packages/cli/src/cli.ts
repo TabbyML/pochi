@@ -119,7 +119,6 @@ const program = new Command()
     await runner.run();
 
     renderer.shutdown();
-    runner.dispose();
 
     const shareId = runner.shareId;
     if (shareId) {

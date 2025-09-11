@@ -15,7 +15,6 @@
     "./git-utils": "./src/git-utils.ts",
     "./diff-utils": "./src/diff-utils.ts",
     "./tool-utils": "./src/tool-utils/index.ts",
-    "./mcp-utils": "./src/mcp-utils/index.ts",
     "./vscode-webui-bridge": "./src/vscode-webui-bridge/index.ts"
   },
   "scripts": {
