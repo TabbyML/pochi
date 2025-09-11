@@ -20,7 +20,7 @@ const makeSyncBackend =
         return backend;
       }
 
-      const isConnected = yield* SubscriptionRef.make(true);
+      const isConnected = yield* SubscriptionRef.make(false);
       return SyncBackend.of({
         isConnected,
         connect: Effect.void,
