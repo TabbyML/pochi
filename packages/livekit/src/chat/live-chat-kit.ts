@@ -7,10 +7,7 @@ import { makeMessagesQuery, makeTaskQuery } from "../livestore/queries";
 import { events, tables } from "../livestore/schema";
 import { toTaskError, toTaskStatus } from "../task";
 import type { Message } from "../types";
-import {
-  scheduleGenerateTitleJob,
-  waitForBackgroundJobs,
-} from "./background-job";
+import { scheduleGenerateTitleJob } from "./background-job";
 import {
   FlexibleChatTransport,
   type OnStartCallback,
@@ -291,12 +288,4 @@ export class LiveChatKit<
       }),
     );
   };
-
-  /**
-   * Clean up resources and wait for pending operations to complete.
-   * Should be called after task completion to ensure data persistence.
-   */
-  async cleanup(): Promise<void> {
-    await waitForBackgroundJobs();
-  }
 }
