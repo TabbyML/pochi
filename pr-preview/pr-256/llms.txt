@@ -360,6 +360,8 @@ This week we brought **custom agents** to life!🐣 Pochi **CLI is on npm**, `ne
 * **`newTask` in CLI:** Spin up tasks directly from the terminal, each with its dedicated agent. [#232](https://github.com/TabbyML/pochi/pull/232)
 * **Mermaid diagrams:** Drop Mermaid code blocks into Pochi and see them rendered as nice diagrams. [#255](https://github.com/TabbyML/pochi/pull/255)
 
+<div className="w-4/7 md:ml-8 *:shadow-xl/30 *:rounded-lg">![Mermaid.js rendered diagram](../assets/images/mermaid-js-diagram.png)</div>
+
 ### Enhancements ✨
 
 * **Pochi CLI on npm 📦:** `npm install -g pochi` and get it running! [#238](https://github.com/TabbyML/pochi/pull/238)
@@ -367,7 +369,8 @@ This week we brought **custom agents** to life!🐣 Pochi **CLI is on npm**, `ne
 * **MCP instructions:** MCP servers can now guide models on tool usage, enabling more complex interactions. [#254](https://github.com/TabbyML/pochi/pull/254)
 * **Token auth:** Log in with a token when browser auth doesn't work. [#235](https://github.com/TabbyML/pochi/pull/235), [#236](https://github.com/TabbyML/pochi/pull/236)
 * **Diff view focus mode:** Pochi automatically closes a file's regular editor tab when opening its diff view. [#197](https://github.com/TabbyML/pochi/pull/197)
-* **More CLI commands:** `pochi mcp list` to inspect configured MCP servers, [#231](https://github.com/TabbyML/pochi/pull/231) `pochi task list` to check task lists. [#266](https://github.com/TabbyML/pochi/pull/266)
+* **More CLI commands:** `pochi mcp list` to inspect configured MCP servers, and `pochi task list` to check task lists. [#231](https://github.com/TabbyML/pochi/pull/231), [#266](https://github.com/TabbyML/pochi/pull/266)
+  <div className="w-2/3">![Pochi CLI Task List](../assets/images/cli-task-list.png)</div>
 * **VS Code UI polish**: Autocomplete mention list is responsive and tabbable, workflow list is collapsible and better spaced. [#215](https://github.com/TabbyML/pochi/pull/215), [#204](https://github.com/TabbyML/pochi/pull/204), [#230](https://github.com/TabbyML/pochi/pull/230), [#228](https://github.com/TabbyML/pochi/pull/228), [#242](https://github.com/TabbyML/pochi/pull/242)
 * **Docs updates:** Added checkpoint feature and updated GitHub integration docs with API key setup. [#203](https://github.com/TabbyML/pochi/pull/203), [#262](https://github.com/TabbyML/pochi/pull/262)
 
