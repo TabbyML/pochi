@@ -1,4 +1,4 @@
-// import { MaxImages } from "@/lib/constants";
+import { MaxAttachments } from "@/lib/constants";
 import { createFileName, validateFile } from "@/lib/utils/attachment";
 import type { FileUIPart } from "ai";
 import { useRef, useState } from "react";
@@ -9,7 +9,7 @@ interface UseAttachmentUploadOptions {
 }
 
 export function useAttachmentUpload(options?: UseAttachmentUploadOptions) {
-  const maxAttachments = options?.maxAttachments ?? 4;
+  const maxAttachments = options?.maxAttachments ?? MaxAttachments;
   const [files, setFiles] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<Error | undefined>(undefined);
