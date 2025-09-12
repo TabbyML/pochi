@@ -15,11 +15,15 @@
     "./git-utils": "./src/git-utils.ts",
     "./diff-utils": "./src/diff-utils.ts",
     "./tool-utils": "./src/tool-utils/index.ts",
+    "./mcp-utils": "./src/mcp-utils/index.ts",
     "./vscode-webui-bridge": "./src/vscode-webui-bridge/index.ts"
   },
   "scripts": {
     "tsc": "tsc",
-    "test": "bun vitest --run"
+    "test": "bun test",
+    "test:mcp": "bun run src/mcp-utils/test-mcp-connection.ts",
+    "test:mcp:real": "bun run src/mcp-utils/test-real-mcp.ts",
+    "mcp:schema": "bun run src/mcp-utils/list-mcp-tools-schema.ts"
   },
   "dependencies": {
     "@ai-sdk/provider": "catalog:",
