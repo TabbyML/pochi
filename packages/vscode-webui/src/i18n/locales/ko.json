@@ -10,7 +10,7 @@
     "subtitle": "Pochi는 AI로 구동되므로 오류가 발생할 수 있습니다.",
     "disclaimer": "사용하기 전에 출력을 주의 깊게 검토하세요.",
     "tips": {
-      "images": "이미지 전송",
+      "attachments": "파일 보내기",
       "context": "컨텍스트 첨부",
       "workflow": "워크플로우 실행"
     },
@@ -23,7 +23,7 @@
     "required": "Pochi를 사용하려면 폴더 또는 워크스페이스를 여십시오."
   },
   "chat": {
-    "imageTooltip": "채팅에 이미지를 첨부합니다. 이미지를 드래그 앤 드롭하거나 채팅 입력란에 붙여넣을 수도 있습니다."
+    "attachmentTooltip": "채팅에 파일을 첨부합니다. 파일을 드래그 앤 드롭하거나 채팅 입력란에 붙여넣을 수도 있습니다."
   },
   "language": {
     "switcherTooltip": "Pochi에서 사용할 기본 언어를 선택하세요"
