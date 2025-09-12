@@ -93,6 +93,18 @@ export function MessageAttachments({ attachments }: MessageAttachmentsProps) {
                       }}
                     />
                   </div>
+                ) : isVideo ? (
+                  <video
+                    src={attachment.url}
+                    controls
+                    className="h-auto max-w-[90vw] object-contain"
+                    style={{
+                      maxHeight: "calc(60vh - 1rem)",
+                      minWidth: "200px",
+                    }}
+                  >
+                    <track kind="captions" />
+                  </video>
                 ) : (
                   <div className="flex items-center gap-2 text-sm">
                     <FileIcon
