@@ -1,5 +1,6 @@
 import { getLogger } from "@/lib/logger";
 import type { McpServerConfig } from "@getpochi/common/configuration";
+import type { McpToolExecutable } from "@getpochi/common/mcp-utils";
 import type { McpTool } from "@getpochi/tools";
 import { type Signal, signal } from "@preact/signals-core";
 import { entries } from "remeda";
@@ -8,7 +9,6 @@ import type * as vscode from "vscode";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { PochiConfiguration } from "../configuration";
 import { McpConnection } from "./mcp-connection";
-import type { McpToolExecutable } from "@getpochi/common/mcp-utils";
 import { omitDisabled } from "./types";
 
 const logger = getLogger("MCPHub");

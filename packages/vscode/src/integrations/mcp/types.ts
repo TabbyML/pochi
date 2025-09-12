@@ -1,5 +1,5 @@
-import type { McpToolStatus } from "@getpochi/common/vscode-webui-bridge";
 import type { McpToolExecutable } from "@getpochi/common/mcp-utils";
+import type { McpToolStatus } from "@getpochi/common/vscode-webui-bridge";
 import type { ToolCallOptions } from "ai";
 
 export function isExecutable(
