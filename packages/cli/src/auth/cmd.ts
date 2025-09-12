@@ -120,8 +120,11 @@ export function registerAuthCommand(program: Command) {
       } catch (err) {
         if (err instanceof Error) {
           // Handle user cancellation (Ctrl+C)
-          if (err.name === 'ExitPromptError' || err.message.includes('force closed')) {
-            console.log('Logout cancelled');
+          if (
+            err.name === "ExitPromptError" ||
+            err.message.includes("force closed")
+          ) {
+            console.log("Logout cancelled");
             return;
           }
           return logoutCommand.error(err.message);
