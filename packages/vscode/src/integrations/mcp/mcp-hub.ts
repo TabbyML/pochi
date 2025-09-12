@@ -2,7 +2,6 @@ import { getLogger } from "@/lib/logger";
 import type { McpServerConfig } from "@getpochi/common/configuration";
 import type { McpConnectionStatus, McpToolExecutable } from "@getpochi/common/mcp-utils";
 import type { McpTool } from "@getpochi/tools";
-import type { McpToolStatus } from "@getpochi/common/vscode-webui-bridge";
 import { type Signal, signal } from "@preact/signals-core";
 import { inject, injectable, singleton } from "tsyringe";
 import type * as vscode from "vscode";

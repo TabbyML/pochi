@@ -35,7 +35,7 @@ export class McpConnection implements vscode.Disposable {
     // Create the base connection with status change callback
     this.baseConnection = new BaseConnection(
       serverName,
-      extensionContext.extension.id, // Use extension ID as client name
+      this.extensionContext.extension.id, // Use extension ID as client name
       config,
       {
         onStatusChange: (status) => {
