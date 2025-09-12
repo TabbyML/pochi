@@ -1,6 +1,6 @@
 import { getLogger } from "@/lib/logger";
 import type { McpServerConfig } from "@getpochi/common/configuration";
-import type { McpToolExecutable } from "@getpochi/common/mcp-utils";
+import type { McpConnectionStatus, McpToolExecutable } from "@getpochi/common/mcp-utils";
 import type { McpTool } from "@getpochi/tools";
 import type { McpToolStatus } from "@getpochi/common/vscode-webui-bridge";
 import { type Signal, signal } from "@preact/signals-core";
@@ -216,7 +216,7 @@ export class McpHub implements vscode.Disposable {
 
   private buildStatus() {
     const connections = Object.keys(this.config ?? {}).reduce<
-      Record<string, { status: "stopped" | "starting" | "ready" | "error"; error: string | undefined; tools: Record<string, McpToolStatus> }>
+      Record<string, McpConnectionStatus>
     >((acc, name) => {
       const connection = this.connections.get(name);
       if (connection) {
