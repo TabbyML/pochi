@@ -17,9 +17,11 @@ import { isToolEnabledChanged } from "./utils";
  */
 export class McpConnection implements vscode.Disposable {
   private baseConnection: BaseConnection;
-  readonly status: Signal<McpConnectionStatus & {
-    tools: Record<string, McpToolStatus & McpToolExecutable>;
-  }>;
+  readonly status: Signal<
+    McpConnectionStatus & {
+      tools: Record<string, McpToolStatus & McpToolExecutable>;
+    }
+  >;
 
   constructor(
     readonly serverName: string,
@@ -29,6 +31,7 @@ export class McpConnection implements vscode.Disposable {
     // Initialize status signal first with default values
     this.status = signal({
       status: "stopped" as const,
+      error: undefined,
       tools: {},
     });
 
@@ -45,7 +48,7 @@ export class McpConnection implements vscode.Disposable {
             tools: this.transformTools(status.tools),
           };
         },
-      }
+      },
     );
 
     // Update status signal with current status
@@ -58,10 +61,10 @@ export class McpConnection implements vscode.Disposable {
   updateConfig(config: McpServerConfig) {
     const oldConfig = this.config;
     this.config = config;
-    
+
     // Update the base connection
     this.baseConnection.updateConfig(config);
-    
+
     // Handle VSCode-specific tool enabled/disabled changes
     if (isToolEnabledChanged(oldConfig, config)) {
       // The base connection will handle the status update via callback
@@ -77,10 +80,17 @@ export class McpConnection implements vscode.Disposable {
    * Transform tools from base connection to include VSCode-specific McpToolStatus
    */
   private transformTools(
-    tools: Record<string, McpToolExecutable & { disabled: boolean; description?: string; inputSchema: any }>
+    tools: Record<
+      string,
+      McpToolExecutable & {
+        disabled: boolean;
+        description?: string;
+        inputSchema: any;
+      }
+    >,
   ): Record<string, McpToolStatus & McpToolExecutable> {
     const result: Record<string, McpToolStatus & McpToolExecutable> = {};
-    
+
     for (const [name, tool] of Object.entries(tools)) {
       result[name] = {
         disabled: tool.disabled,
@@ -89,7 +99,7 @@ export class McpConnection implements vscode.Disposable {
         execute: tool.execute,
       };
     }
-    
+
     return result;
   }
 
