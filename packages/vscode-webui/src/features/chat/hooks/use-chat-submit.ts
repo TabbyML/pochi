@@ -3,7 +3,7 @@ import type { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
 import type { UseChatHelpers } from "@ai-sdk/react";
 import type { Message } from "@getpochi/livekit";
 import type React from "react";
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 import { useAutoApproveGuard, useToolCallLifeCycle } from "../lib/chat-state";
 
 type UseChatReturn = Pick<UseChatHelpers<Message>, "sendMessage" | "stop">;
@@ -19,6 +19,8 @@ interface UseChatSubmitProps {
   isLoading: boolean;
   newCompactTaskPending: boolean;
   pendingApproval: PendingApproval | undefined;
+  queuedMessages: string[];
+  setQueuedMessages: React.Dispatch<React.SetStateAction<string[]>>;
 }
 
 export function useChatSubmit({
@@ -30,11 +32,15 @@ export function useChatSubmit({
   isLoading,
   newCompactTaskPending,
   pendingApproval,
+  queuedMessages,
+  setQueuedMessages,
 }: UseChatSubmitProps) {
   const autoApproveGuard = useAutoApproveGuard();
   const { executingToolCalls, previewingToolCalls } = useToolCallLifeCycle();
   const isExecuting = executingToolCalls.length > 0;
   const isPreviewing = (previewingToolCalls?.length ?? 0) > 0;
+  const isSubmittingRef = useRef(false);
+
   const abortExecutingToolCalls = useCallback(() => {
     for (const toolCall of executingToolCalls) {
       toolCall.abort();
@@ -95,7 +101,11 @@ export function useChatSubmit({
       if (newCompactTaskPending) return;
 
       const content = input.trim();
-      if (isSubmitDisabled) {
+      const allMessages = [...queuedMessages];
+      if (content) {
+        allMessages.push(content);
+      }
+      if (isSubmitDisabled && allMessages.length === 0) {
         return;
       }
 
@@ -110,22 +120,24 @@ export function useChatSubmit({
           const uploadedAttachments = await upload();
 
           sendMessage({
-            text: content.length === 0 ? " " : content,
+            text: allMessages.join("\n") || " ",
             files: uploadedAttachments,
           });
 
           setInput("");
+          setQueuedMessages([]);
         } catch (error) {
           // Error is already handled by the hook
           return;
         }
-      } else if (content.length > 0) {
+      } else if (allMessages.length > 0) {
         autoApproveGuard.current = true;
         clearUploadError();
         sendMessage({
-          text: content,
+          text: allMessages.join("\n\n"),
         });
         setInput("");
+        setQueuedMessages([]);
       }
     },
     [
@@ -139,6 +151,8 @@ export function useChatSubmit({
       setInput,
       clearUploadError,
       newCompactTaskPending,
+      queuedMessages,
+      setQueuedMessages,
     ],
   );
 

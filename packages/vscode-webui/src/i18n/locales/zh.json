@@ -23,7 +23,8 @@
     "required": "要使用 Pochi，请打开一个文件夹或工作区。"
   },
   "chat": {
-    "attachmentTooltip": "附加文件到对话。您也可以拖放文件或将其粘贴到聊天输入框中。"
+    "attachmentTooltip": "附加文件到对话。您也可以拖放文件或将其粘贴到聊天输入框中。",
+    "queuedMessages": "排队中的消息 ({{count}})"
   },
   "language": {
     "switcherTooltip": "选择您在 Pochi 中的首选语言"

@@ -26,7 +26,7 @@ import type { Message, Task } from "@getpochi/livekit";
 import type { Todo } from "@getpochi/tools";
 import { PaperclipIcon, SendHorizonal, StopCircleIcon } from "lucide-react";
 import type React from "react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useChatStatus } from "../hooks/use-chat-status";
 import { useChatSubmit } from "../hooks/use-chat-submit";
@@ -61,6 +61,8 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   const totalTokens = task?.totalTokens || 0;
 
   const [input, setInput] = useState("");
+  const [queuedMessages, setQueuedMessages] = useState<string[]>([]);
+
   // Initialize task with prompt if provided and task doesn't exist yet
   const { todos } = useTodos({
     initialTodos: task?.todos,
@@ -118,7 +120,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
       isReadOnly,
       isModelsLoading,
       isLoading,
-      isInputEmpty: !input.trim(),
+      isInputEmpty: !input.trim() && queuedMessages.length === 0,
       isFilesEmpty: files.length === 0,
       isUploadingAttachments,
       newCompactTaskPending,
@@ -140,7 +142,32 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     isLoading,
     pendingApproval,
     newCompactTaskPending,
+    queuedMessages,
+    setQueuedMessages,
   });
+
+  const handleQueueMessage = (message: string) => {
+    if (message.trim()) {
+      setQueuedMessages((prev) => [...prev, message]);
+      setInput("");
+    }
+  };
+
+  useEffect(() => {
+    const isReady =
+      status === "ready" &&
+      !isExecuting &&
+      (!pendingApproval || pendingApproval.name === "retry");
+    if (isReady && queuedMessages.length > 0) {
+      handleSubmit();
+    }
+  }, [
+    status,
+    isExecuting,
+    queuedMessages.length,
+    pendingApproval,
+    handleSubmit,
+  ]);
 
   // Only allow adding tool results when not loading
   const allowAddToolResult = !(
@@ -192,12 +219,18 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
         input={input}
         setInput={setInput}
         onSubmit={handleSubmit}
+        onQueueMessage={handleQueueMessage}
         isLoading={isLoading || isExecuting}
         onPaste={handlePasteAttachment}
         pendingApproval={pendingApproval}
         status={status}
         onFileDrop={handleFileDrop}
         messageContent={messageContent}
+        queuedMessages={queuedMessages}
+        onRemoveQueuedMessage={(index) =>
+          setQueuedMessages((prev) => prev.filter((_, i) => i !== index))
+        }
+        onClearQueuedMessages={() => setQueuedMessages([])}
       />
 
       {/* Hidden file input for image uploads */}
