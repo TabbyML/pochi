@@ -28,7 +28,7 @@ type McpClient = Awaited<ReturnType<typeof createClient>>;
 // Status interface for callback notifications
 export interface McpConnectionStatus {
   status: "stopped" | "starting" | "ready" | "error";
-  error?: string;
+  error: string | undefined;
   tools: Record<string, McpToolStatus & McpToolExecutable>;
 }
 
