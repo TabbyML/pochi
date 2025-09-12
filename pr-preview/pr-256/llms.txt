@@ -348,61 +348,32 @@ Here you will find highlights on features, enhancements, and bug fixes, plus ins
 
 ***
 
-## Sep 9, 2025
+## Sep 12, 2025
 
 ### TL;DR
 
-We had another busy week with **33 PRs merged**! 🚀
+This week we brought **custom agents** to life!🐣 Pochi **CLI is on npm**, `newTask` makes it simple to create and manage tasks right from the terminal, and Mermaid diagrams render beautifully inside the app. MCP interactions are smarter too, and the docs and UI keep getting smoother with every update. ✨
 
-This week brought major enhancements to custom agents, including a new **debugger agent** and comprehensive **custom agent support** with UI and documentation. The **CLI got smarter** with new MCP commands and improved login flows, while the **webUI received significant UX improvements** including tab completion for mentions and better responsive design. We also made substantial **architecture improvements** with vendor restructuring, centralized registries, and streamlined configuration management.
+### Features 🚀
 
-### Codebase Improvements & Minor Changes
+* **Custom Agents:** Define your own assistants in `.pochi/agents` using markdown. [#176](https://github.com/TabbyML/pochi/pull/176), [#181](https://github.com/TabbyML/pochi/pull/181)
+* **`newTask` in CLI:** Spin up tasks directly from the terminal, each with its dedicated agent. [#232](https://github.com/TabbyML/pochi/pull/232)
+* **Mermaid diagrams:** Drop Mermaid code blocks into Pochi and see them rendered as nice diagrams. [#255](https://github.com/TabbyML/pochi/pull/255)
 
-* **fix: Make model options optional and provide default values:** Made model options optional with proper default values for better usability. [#198](https://github.com/TabbyML/pochi/pull/198)
-* **fix(ci): use gnu sed to change shebang:** Fixed CI configuration to use GNU sed for changing shebang in scripts. [#200](https://github.com/TabbyML/pochi/pull/200)
-* **fix(ci): copy npmrc to release project when push to npm:** Fixed CI issue with npmrc copying during npm release process. [#205](https://github.com/TabbyML/pochi/pull/205)
-* **refactor: restructure vendors and streamline UID handling:** Restructured vendor organization and improved UID handling mechanisms. [#206](https://github.com/TabbyML/pochi/pull/206)
-* **feat(livekit): add logging to tool call repair:** Added comprehensive logging to tool call repair functionality in LiveKit. [#207](https://github.com/TabbyML/pochi/pull/207)
-* **refactor: simplify vendor handling and remove better-auth dependencies:** Streamlined vendor handling and removed better-auth dependencies for cleaner architecture. [#208](https://github.com/TabbyML/pochi/pull/208)
-* **refactor: improve custom agents UI and hook organization:** Restructured custom agents UI and improved hook organization for better maintainability. [#210](https://github.com/TabbyML/pochi/pull/210)
-* **fix: improve checkpoint handling and add debug logging:** Enhanced checkpoint handling with improved debug logging capabilities. [#212](https://github.com/TabbyML/pochi/pull/212)
-* **refactor: create centralized registry for vendors and models:** Established a centralized registry system for managing vendors and models. [#211](https://github.com/TabbyML/pochi/pull/211)
-* **fix(ci): cli in npm should publish as public package:** Fixed CI configuration to ensure the CLI publishes as a public npm package. [#214](https://github.com/TabbyML/pochi/pull/214)
-* **refactor: introduce vendor-specific types and simplify vendor configuration:** Restructured vendor types and simplified configuration for better maintainability. [#216](https://github.com/TabbyML/pochi/pull/216)
-* **fix(webui): display file path in tool invocation:** Fixed file path display in tool invocations for better user visibility. [#217](https://github.com/TabbyML/pochi/pull/217)
-* **refactor: introduce generateTitleManager for async title updates:** Implemented generateTitleManager to handle asynchronous title updates more efficiently. [#218](https://github.com/TabbyML/pochi/pull/218)
-* **fix(vscode): handle errors in custom agent file watchers:** Improved error handling for custom agent file watchers in VS Code. [#221](https://github.com/TabbyML/pochi/pull/221)
-* **chore: use getServerBaseUrl for Pochi API:** Updated the Pochi API to use getServerBaseUrl for improved consistency. [#222](https://github.com/TabbyML/pochi/pull/222)
-* **chore(ci): replace bin to cli.js in package before publish to npm:** Updated CI configuration to replace bin with cli.js during npm package publishing. [#238](https://github.com/TabbyML/pochi/pull/238)
-* **feat: make general-purpose agent always available:** Ensured the general-purpose agent is always accessible to users. [#229](https://github.com/TabbyML/pochi/pull/229)
-* **feat: improve EventSource parsing in vendor-gemini-cli model:** Enhanced the EventSource parsing functionality in the Gemini CLI vendor model. [#239](https://github.com/TabbyML/pochi/pull/239)
-* **refactor: simplify custom agent system prompt handling:** Improved the system prompt handling mechanism for custom agents. [#240](https://github.com/TabbyML/pochi/pull/240)
-* **refactor(i18n): simplify custom agent empty message:** Streamlined the empty message handling for custom agents in the internationalization system. [#241](https://github.com/TabbyML/pochi/pull/241)
-* **feat: Add debugger agent:** Added a new debugger agent for enhanced development and troubleshooting capabilities. [#243](https://github.com/TabbyML/pochi/pull/243)
-  * NOTE: LAST
+### Enhancements ✨
 
-### Features
+* **Pochi CLI on npm 📦:** `npm install -g pochi` and get it running! [#238](https://github.com/TabbyML/pochi/pull/238)
+* **Custom models for completion:** Use your own models for code completion in VS Code. [#251](https://github.com/TabbyML/pochi/pull/251)
+* **MCP instructions:** MCP servers can now guide models on tool usage, enabling more complex interactions. [#254](https://github.com/TabbyML/pochi/pull/254)
+* **Token auth:** Log in with a token when browser auth doesn't work. [#235](https://github.com/TabbyML/pochi/pull/235), [#236](https://github.com/TabbyML/pochi/pull/236)
+* **Diff view focus mode:** Pochi automatically closes a file's regular editor tab when opening its diff view. [#197](https://github.com/TabbyML/pochi/pull/197)
+* **More CLI commands:** `pochi mcp list` to inspect configured MCP servers, [#231](https://github.com/TabbyML/pochi/pull/231) `pochi task list` to check task lists[#266](https://github.com/TabbyML/pochi/pull/266)
+* **VS Code UI polish**: Autocomplete mention list is responsive and tabbable, workflow list is collapsible and better spaced. [#215](https://github.com/TabbyML/pochi/pull/215), [#204](https://github.com/TabbyML/pochi/pull/204), [#230](https://github.com/TabbyML/pochi/pull/230), [#228](https://github.com/TabbyML/pochi/pull/228), [#242](https://github.com/TabbyML/pochi/pull/242)
+* **Docs updates:** Added checkpoint feature and updated GitHub integration docs with API key setup. [#203](https://github.com/TabbyML/pochi/pull/203),[#262](https://github.com/TabbyML/pochi/pull/262)
 
-* **Custom Agents:** Define your own assistants in `.pochi/agents` with markdown. [#176](https://github.com/TabbyML/pochi/pull/176), [#181](https://github.com/TabbyML/pochi/pull/181)
+### Bug fixes 🐛
 
-### Enhancements
-
-* **Diff view focus mode:** Closes a file's regular editor tab when opening its diff view to reduce confusion. [#197](https://github.com/TabbyML/pochi/pull/197)
-* \*\*Improved docs: \*\*checkpoint functionality, custom agents. [#203](https://github.com/TabbyML/pochi/pull/203)
-* **UI & UX Improvements**: Autocomplete mention list is responsive, workflow list is collapsible and well spaced out, select a mention list item with `Tab`, [#215](https://github.com/TabbyML/pochi/pull/215), [#204](https://github.com/TabbyML/pochi/pull/204), [#230](https://github.com/TabbyML/pochi/pull/230), [#228](https://github.com/TabbyML/pochi/pull/228), [#242](https://github.com/TabbyML/pochi/pull/242)
-* **Check MCP info from CLI:** `pochi mcp list` to inspect configured MCP servers. [#231](https://github.com/TabbyML/pochi/pull/231)
-* Reliable fallback when browser auth doesn't work. [#235](https://github.com/TabbyML/pochi/pull/235), [#236](https://github.com/TabbyML/pochi/pull/236)
-
-### Bug fixes
-
-* **Pochi now only responds when you start a comment with `/pochi`:** no more accidental replies. [#202](https://github.com/TabbyML/pochi/pull/202)
-* **Autocomplete mention list is responsive now:** scales smoothly with your chat window size.
-
-### Triage
-
-* **feat: add newTask to CliTools export:** Added the newTask functionality to the CliTools export for improved CLI capabilities. [#232](https://github.com/TabbyML/pochi/pull/232) [#220](https://github.com/TabbyML/pochi/pull/220)
-  * **sub-pr feat(cli): add listr2 render to subtask:** Enhanced CLI subtask rendering with listr2 for better user feedback. [#220](https://github.com/TabbyML/pochi/pull/220) **Sub PR**
-* **refactor(tools): improve new-task tool implementation:** Refined the implementation of the new-task tool for better performance and reliability. [#234](https://github.com/TabbyML/pochi/pull/234)
+* **Scoped replies:** Pochi only responds when you start a comment with `/pochi`. [#202](https://github.com/TabbyML/pochi/pull/202)
 
 ***
 
