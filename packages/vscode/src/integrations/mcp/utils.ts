@@ -2,7 +2,7 @@ import http from "node:http";
 import https from "node:https";
 import type { McpServerConfig } from "@getpochi/common/configuration";
 import deepEqual from "fast-deep-equal";
-import { isHttpTransport, isStdioTransport } from "./types";
+import { isHttpTransport, isStdioTransport } from "@getpochi/common/mcp-utils";
 
 export function readableError(error: unknown): string {
   return typeof error === "object" &&

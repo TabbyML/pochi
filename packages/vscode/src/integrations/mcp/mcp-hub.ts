@@ -8,7 +8,7 @@ import type * as vscode from "vscode";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { PochiConfiguration } from "../configuration";
 import { McpConnection } from "./mcp-connection";
-import type { McpToolExecutable } from "./types";
+import type { McpToolExecutable } from "@getpochi/common/mcp-utils";
 import { omitDisabled } from "./types";
 
 const logger = getLogger("MCPHub");

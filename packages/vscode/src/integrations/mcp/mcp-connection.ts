@@ -14,7 +14,7 @@ import {
   type McpToolExecutable,
   isHttpTransport,
   isStdioTransport,
-} from "./types";
+} from "@getpochi/common/mcp-utils";
 import {
   checkUrlIsSseServer,
   isToolEnabledChanged,
