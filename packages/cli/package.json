@@ -34,5 +34,8 @@
     "listr2": "^9.0.3",
     "ora": "^8.2.0",
     "semver": "^7.6.3"
+  },
+  "dependencies": {
+    "@inquirer/select": "^4.3.2"
   }
 }
