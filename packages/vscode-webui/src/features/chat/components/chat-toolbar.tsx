@@ -24,15 +24,70 @@ import type { Environment } from "@getpochi/common";
 import type { UserEditsDiff } from "@getpochi/common/vscode-webui-bridge";
 import type { Message, Task } from "@getpochi/livekit";
 import type { Todo } from "@getpochi/tools";
-import { ImageIcon, SendHorizonal, StopCircleIcon } from "lucide-react";
+import {
+  ImageIcon,
+  SendHorizonal,
+  StopCircleIcon,
+  Trash2,
+  X,
+} from "lucide-react";
 import type React from "react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useChatStatus } from "../hooks/use-chat-status";
 import { useChatSubmit } from "../hooks/use-chat-submit";
 import { useInlineCompactTask } from "../hooks/use-inline-compact-task";
 import { useNewCompactTask } from "../hooks/use-new-compact-task";
 import { ChatInputForm } from "./chat-input-form";
+
+interface QueuedMessagesProps {
+  messages: string[];
+  onRemove: (index: number) => void;
+  onClear: () => void;
+}
+
+const QueuedMessages: React.FC<QueuedMessagesProps> = ({
+  messages,
+  onRemove,
+  onClear,
+}) => {
+  const { t } = useTranslation();
+  return (
+    <div className="-mb-1 flex flex-col gap-2 rounded-t-lg border-x border-t p-3">
+      <div className="flex items-center justify-between">
+        <span className="font-semibold text-sm">
+          {t("chat.queuedMessages", { count: messages.length })}
+        </span>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={onClear}
+          className="h-6 w-6"
+        >
+          <Trash2 className="size-4" />
+        </Button>
+      </div>
+      <div className="flex max-h-48 flex-col gap-2 overflow-y-auto">
+        {messages.map((msg, index) => (
+          <div
+            key={index}
+            className="flex items-start justify-between gap-2 rounded-md bg-muted p-2 text-sm"
+          >
+            <p className="flex-1 whitespace-pre-wrap break-words">{msg}</p>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => onRemove(index)}
+              className="h-5 w-5 shrink-0"
+            >
+              <X className="size-3" />
+            </Button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
 
 interface ChatToolbarProps {
   task?: Task;
@@ -61,6 +116,8 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   const totalTokens = task?.totalTokens || 0;
 
   const [input, setInput] = useState("");
+  const [queuedMessages, setQueuedMessages] = useState<string[]>([]);
+
   // Initialize task with prompt if provided and task doesn't exist yet
   const { todos } = useTodos({
     initialTodos: task?.todos,
@@ -118,7 +175,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
       isReadOnly,
       isModelsLoading,
       isLoading,
-      isInputEmpty: !input.trim(),
+      isInputEmpty: !input.trim() && queuedMessages.length === 0,
       isFilesEmpty: files.length === 0,
       isUploadingImages,
       newCompactTaskPending,
@@ -140,7 +197,32 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     isLoading,
     pendingApproval,
     newCompactTaskPending,
+    queuedMessages,
+    setQueuedMessages,
   });
+
+  const handleQueueMessage = (message: string) => {
+    if (message.trim()) {
+      setQueuedMessages((prev) => [...prev, message]);
+      setInput("");
+    }
+  };
+
+  useEffect(() => {
+    const isReady =
+      status === "ready" &&
+      !isExecuting &&
+      (!pendingApproval || pendingApproval.name === "retry");
+    if (isReady && queuedMessages.length > 0) {
+      handleSubmit();
+    }
+  }, [
+    status,
+    isExecuting,
+    queuedMessages.length,
+    pendingApproval,
+    handleSubmit,
+  ]);
 
   // Only allow adding tool results when not loading
   const allowAddToolResult = !(
@@ -188,10 +270,20 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
           isUploading={isUploadingImages}
         />
       )}
+      {queuedMessages.length > 0 && (
+        <QueuedMessages
+          messages={queuedMessages}
+          onRemove={(index) =>
+            setQueuedMessages((prev) => prev.filter((_, i) => i !== index))
+          }
+          onClear={() => setQueuedMessages([])}
+        />
+      )}
       <ChatInputForm
         input={input}
         setInput={setInput}
         onSubmit={handleSubmit}
+        onQueueMessage={handleQueueMessage}
         isLoading={isLoading || isExecuting}
         onPaste={handlePasteImage}
         pendingApproval={pendingApproval}

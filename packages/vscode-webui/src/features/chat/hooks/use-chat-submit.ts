@@ -3,7 +3,7 @@ import type { useImageUpload } from "@/lib/hooks/use-image-upload";
 import type { UseChatHelpers } from "@ai-sdk/react";
 import type { Message } from "@getpochi/livekit";
 import type React from "react";
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 import { useAutoApproveGuard, useToolCallLifeCycle } from "../lib/chat-state";
 
 type UseChatReturn = Pick<UseChatHelpers<Message>, "sendMessage" | "stop">;
@@ -19,6 +19,8 @@ interface UseChatSubmitProps {
   isLoading: boolean;
   newCompactTaskPending: boolean;
   pendingApproval: PendingApproval | undefined;
+  queuedMessages: string[];
+  setQueuedMessages: React.Dispatch<React.SetStateAction<string[]>>;
 }
 
 export function useChatSubmit({
@@ -30,11 +32,15 @@ export function useChatSubmit({
   isLoading,
   newCompactTaskPending,
   pendingApproval,
+  queuedMessages,
+  setQueuedMessages,
 }: UseChatSubmitProps) {
   const autoApproveGuard = useAutoApproveGuard();
   const { executingToolCalls, previewingToolCalls } = useToolCallLifeCycle();
   const isExecuting = executingToolCalls.length > 0;
   const isPreviewing = (previewingToolCalls?.length ?? 0) > 0;
+  const isSubmittingRef = useRef(false);
+
   const abortExecutingToolCalls = useCallback(() => {
     for (const toolCall of executingToolCalls) {
       toolCall.abort();
@@ -90,42 +96,56 @@ export function useChatSubmit({
   const handleSubmit = useCallback(
     async (e?: React.FormEvent<HTMLFormElement>) => {
       e?.preventDefault();
+      if (isSubmittingRef.current) return;
 
-      // Compacting is not allowed to be stopped.
-      if (newCompactTaskPending) return;
+      isSubmittingRef.current = true;
 
-      const content = input.trim();
-      if (isSubmitDisabled) {
-        return;
-      }
+      try {
+        // Compacting is not allowed to be stopped.
+        if (newCompactTaskPending) return;
 
-      if (handleStop()) {
-        // break isLoading, we need to wait for some time to avoid racing between stop and submit.
-        await new Promise((resolve) => setTimeout(resolve, 25));
-      }
+        const currentInput = input.trim();
+        const allMessages = [...queuedMessages];
+        if (currentInput) {
+          allMessages.push(currentInput);
+        }
 
-      autoApproveGuard.current = false;
-      if (files.length > 0) {
-        try {
-          const uploadedImages = await upload();
-
-          sendMessage({
-            text: content.length === 0 ? " " : content,
-            files: uploadedImages,
-          });
-
-          setInput("");
-        } catch (error) {
-          // Error is already handled by the hook
+        if (isSubmitDisabled && allMessages.length === 0) {
           return;
         }
-      } else if (content.length > 0) {
-        autoApproveGuard.current = true;
-        clearUploadImageError();
-        sendMessage({
-          text: content,
-        });
-        setInput("");
+
+        if (handleStop()) {
+          // break isLoading, we need to wait for some time to avoid racing between stop and submit.
+          await new Promise((resolve) => setTimeout(resolve, 25));
+        }
+
+        autoApproveGuard.current = false;
+        if (files.length > 0) {
+          try {
+            const uploadedImages = await upload();
+
+            sendMessage({
+              text: allMessages.join("\n") || " ",
+              files: uploadedImages,
+            });
+
+            setInput("");
+            setQueuedMessages([]);
+          } catch (error) {
+            // Error is already handled by the hook
+            return;
+          }
+        } else if (allMessages.length > 0) {
+          autoApproveGuard.current = true;
+          clearUploadImageError();
+          sendMessage({
+            text: allMessages.join("\n"),
+          });
+          setInput("");
+          setQueuedMessages([]);
+        }
+      } finally {
+        isSubmittingRef.current = false;
       }
     },
     [
@@ -139,6 +159,8 @@ export function useChatSubmit({
       setInput,
       clearUploadImageError,
       newCompactTaskPending,
+      queuedMessages,
+      setQueuedMessages,
     ],
   );
 
