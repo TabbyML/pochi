@@ -30,6 +30,14 @@ class BackgroundJobManager {
 
     job.waitUntil?.(this.jobs);
   }
+
+  async waitForAllJobs(): Promise<void> {
+    await this.jobs;
+    // Also wait for any pending jobs that haven't started yet
+    while (this.pendingJobs.size > 0) {
+      await this.jobs;
+    }
+  }
 }
 
 export const backgroundJobManager = new BackgroundJobManager();

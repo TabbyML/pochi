@@ -180,6 +180,8 @@ export class TaskRunner {
     } catch (e) {
       const error = toError(e);
       logger.trace("Failed:", error);
+    } finally {
+      await this.chatKit.cleanup();
     }
   }
 
