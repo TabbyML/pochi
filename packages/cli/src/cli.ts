@@ -34,7 +34,7 @@ import { OutputRenderer } from "./output-renderer";
 import { registerTaskCommand } from "./task";
 import { TaskRunner } from "./task-runner";
 import { registerUpgradeCommand } from "./upgrade";
-import { waitUntil, waitForAllJobs } from "./wait-until";
+import { waitForAllJobs, waitUntil } from "./wait-until";
 
 const logger = getLogger("Pochi");
 logger.debug(`pochi v${packageJson.version}`);
