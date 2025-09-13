@@ -52,13 +52,16 @@
         "@preact/signals-core": "catalog:",
         "@quilted/threads": "catalog:",
         "ai": "catalog:",
+        "base58-js": "^3.0.3",
         "better-auth": "catalog:",
         "fast-levenshtein": "^3.0.0",
         "hast-util-to-text": "^4.0.2",
         "hono": "catalog:",
         "ignore": "^7.0.5",
+        "jose": "catalog:",
         "jsonc-parser": "^3.3.1",
         "minimatch": "^10.0.1",
+        "node-machine-id": "^1.1.12",
         "rehype": "^13.0.2",
         "remark": "^15.0.1",
         "remark-frontmatter": "^5.0.0",
@@ -123,8 +126,6 @@
         "@livestore/livestore": "catalog:",
         "@livestore/react": "catalog:",
         "ai": "catalog:",
-        "base58-js": "^3.0.3",
-        "jose": "catalog:",
         "react": "catalog:",
         "remeda": "catalog:",
         "zod": "catalog:",
@@ -2828,6 +2829,8 @@
     "node-fetch": ["node-fetch@2.7.0", "", { "dependencies": { "whatwg-url": "^5.0.0" }, "peerDependencies": { "encoding": "^0.1.0" }, "optionalPeers": ["encoding"] }, "sha512-c4FRfUm/dbcWZ7U+1Wq0AwCyFL+3nt2bEw05wfxSz+DWpWsitgmSgYmy2dQdWyKC1694ELPqMs/YzUSNozLt8A=="],
 
     "node-gyp-build-optional-packages": ["node-gyp-build-optional-packages@5.2.2", "https://registry.npmmirror.com/node-gyp-build-optional-packages/-/node-gyp-build-optional-packages-5.2.2.tgz", { "dependencies": { "detect-libc": "^2.0.1" }, "bin": { "node-gyp-build-optional-packages": "bin.js", "node-gyp-build-optional-packages-optional": "optional.js", "node-gyp-build-optional-packages-test": "build-test.js" } }, "sha512-s+w+rBWnpTMwSFbaE0UXsRlg7hU4FjekKU4eyAih5T8nJuNZT1nNsskXpxmeqSK9UzkBl6UgRlnKc8hz8IEqOw=="],
+
+    "node-machine-id": ["node-machine-id@1.1.12", "", {}, "sha512-QNABxbrPa3qEIfrE6GOJ7BYIuignnJw7iQ2YPbc3Nla1HzRJjXzZOiikfF8m7eAMfichLt3M4VgLOetqgDmgGQ=="],
 
     "node-pty": ["node-pty@1.0.0", "https://registry.npmmirror.com/node-pty/-/node-pty-1.0.0.tgz", { "dependencies": { "nan": "^2.17.0" } }, "sha512-wtBMWWS7dFZm/VgqElrTvtfMq4GzJ6+edFI0Y0zyzygUSZMgZdraDUMUhCIvkjhJjme15qWmbyJbtAx4ot4uZA=="],
 

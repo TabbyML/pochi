@@ -56,15 +56,10 @@ app
       }
     },
   )
-  .all(
-    "/client-do/*",
-    zValidator("query", z.object({ storeId: z.string() })),
-    async (c) => {
-      const query = c.req.valid("query");
-      const id = c.env.CLIENT_DO.idFromName(query.storeId);
-      return c.env.CLIENT_DO.get(id).fetch(c.req.raw);
-    },
-  );
+  .all("/stores/:storeId/*", async (c) => {
+    const id = c.env.CLIENT_DO.idFromName(c.req.param("storeId"));
+    return c.env.CLIENT_DO.get(id).fetch(c.req.raw);
+  });
 
 async function verifyStoreId(jwt: string, storeId: string) {
   const user = await verifyJWT(jwt);
