@@ -1,15 +1,15 @@
 import os from "node:os";
 import path from "node:path";
-import { makeWsSync } from "@livestore/sync-cf/client";
 import { getStoreId } from "@getpochi/common/configuration";
+import { getVendor } from "@getpochi/common/vendor";
+import {
+  type PochiCredentials,
+  getSyncBaseUrl,
+} from "@getpochi/common/vscode-webui-bridge";
 import { catalog } from "@getpochi/livekit";
 import { makeAdapter } from "@livestore/adapter-node";
 import { type LiveStoreSchema, createStorePromise } from "@livestore/livestore";
-import { getVendor } from "@getpochi/common/vendor";
-import {
-  getSyncBaseUrl,
-  type PochiCredentials,
-} from "@getpochi/common/vscode-webui-bridge";
+import { makeWsSync } from "@livestore/sync-cf/client";
 
 export async function createStore(cwd: string) {
   const storeId = await getStoreId(cwd);
@@ -24,13 +24,14 @@ export async function createStore(cwd: string) {
           schemaPath: "../../../packages/livekit/src/livestore/schema.ts",
         }
       : undefined,
-    sync: jwt
-      ? {
-          backend: makeWsSync({
-            url: getSyncBaseUrl(),
-          }),
-        }
-      : undefined,
+    sync:
+      jwt && process.env.POCHI_LIVEKIT_SYNC
+        ? {
+            backend: makeWsSync({
+              url: getSyncBaseUrl(),
+            }),
+          }
+        : undefined,
   });
 
   const store = await createStorePromise<LiveStoreSchema>({

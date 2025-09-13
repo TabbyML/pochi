@@ -27,6 +27,7 @@
     "@livestore/adapter-node": "catalog:",
     "@livestore/livestore": "catalog:",
     "@livestore/wa-sqlite": "catalog:",
+    "@livestore/sync-cf": "catalog:",
     "@preact/signals-core": "^1.6.2",
     "ai": "catalog:",
     "chalk": "^5.3.0",
