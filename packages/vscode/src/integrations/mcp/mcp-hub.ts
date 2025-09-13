@@ -1,5 +1,9 @@
 import { getLogger } from "@/lib/logger";
 import type { McpServerConfig } from "@getpochi/common/configuration";
+import type {
+  McpConnectionStatus,
+  McpToolExecutable,
+} from "@getpochi/common/mcp-utils";
 import type { McpTool } from "@getpochi/tools";
 import { type Signal, signal } from "@preact/signals-core";
 import { entries } from "remeda";
@@ -8,12 +12,10 @@ import type * as vscode from "vscode";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { PochiConfiguration } from "../configuration";
 import { McpConnection } from "./mcp-connection";
-import type { McpToolExecutable } from "./types";
 import { omitDisabled } from "./types";
 
 const logger = getLogger("MCPHub");
 
-type McpConnectionStatus = McpConnection["status"]["value"];
 type McpConnectionMap = Map<
   string,
   {
@@ -220,16 +222,21 @@ export class McpHub implements vscode.Disposable {
     >((acc, name) => {
       const connection = this.connections.get(name);
       if (connection) {
-        acc[name] = connection.instance.status.value;
+        const connectionStatus = connection.instance.status.value;
+        acc[name] = {
+          status: connectionStatus.status,
+          error: connectionStatus.error || undefined,
+          tools: connectionStatus.tools || {},
+        };
       }
       return acc;
     }, {});
 
     const toolset = Object.entries(connections).reduce<
       Record<string, McpTool & McpToolExecutable>
-    >((acc, [, connection]) => {
-      if (connection.status === "ready" && connection.tools) {
-        const tools = Object.entries(connection.tools).reduce<
+    >((acc, [, connectionStatus]) => {
+      if (connectionStatus.status === "ready" && connectionStatus.tools) {
+        const tools = Object.entries(connectionStatus.tools).reduce<
           Record<string, McpTool & McpToolExecutable>
         >((toolAcc, [toolName, tool]) => {
           if (!tool.disabled) {
