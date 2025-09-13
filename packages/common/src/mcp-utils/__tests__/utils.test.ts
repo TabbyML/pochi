@@ -1,4 +1,4 @@
-import { describe, expect, test, vi, beforeEach, afterEach } from "vitest";
+import { describe, expect, test, vi, afterEach } from "vitest";
 import { readableError, shouldRestartDueToConfigChanged, checkUrlIsSseServer } from "../utils";
 import type { McpServerConfig } from "../../configuration/index.js";
 
@@ -99,18 +99,6 @@ describe("MCP Utils", () => {
   });
 
   describe("checkUrlIsSseServer", () => {
-    let mockHttp: any;
-    let mockHttps: any;
-
-    beforeEach(() => {
-      // Create mock HTTP modules
-      mockHttp = {
-        request: vi.fn(),
-      };
-      mockHttps = {
-        request: vi.fn(),
-      };
-    });
 
     afterEach(() => {
       vi.clearAllMocks();

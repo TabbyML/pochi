@@ -40,7 +40,7 @@ describe("McpConnection", () => {
     };
 
     // Mock BaseConnection constructor that captures arguments
-    mockBaseConnectionClass = sandbox.stub().callsFake((serverName, clientName, config, options) => {
+    mockBaseConnectionClass = sandbox.stub().callsFake((config) => {
       // Store the config for later verification
       capturedConfig = config;
       return mockBaseConnection;
