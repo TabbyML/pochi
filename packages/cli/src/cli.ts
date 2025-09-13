@@ -34,7 +34,7 @@ import { OutputRenderer } from "./output-renderer";
 import { registerTaskCommand } from "./task";
 import { TaskRunner } from "./task-runner";
 import { registerUpgradeCommand } from "./upgrade";
-import { waitUntil } from "./wait-until";
+import { waitForAllJobs, waitUntil } from "./wait-until";
 
 const logger = getLogger("Pochi");
 logger.debug(`pochi v${packageJson.version}`);
@@ -128,6 +128,7 @@ const program = new Command()
       console.log(`\n${chalk.bold("Task link: ")} ${shareUrl}`);
     }
 
+    await waitForAllJobs();
     await store.shutdown();
   });
 

@@ -8,6 +8,10 @@ export const waitUntil = (promise: Promise<unknown>) => {
   waitUntilPromises.add(job);
 };
 
+export const waitForAllJobs = async (): Promise<void> => {
+  await Promise.all(waitUntilPromises);
+};
+
 const logger = getLogger("exit");
 
 const handleShutdown = async (signal: string, code: number) => {
