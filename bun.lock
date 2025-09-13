@@ -31,6 +31,7 @@
         "@getpochi/vendor-pochi": "workspace:*",
         "@livestore/adapter-node": "catalog:",
         "@livestore/livestore": "catalog:",
+        "@livestore/sync-cf": "catalog:",
         "@livestore/wa-sqlite": "catalog:",
         "@preact/signals-core": "^1.6.2",
         "@types/semver": "^7.5.8",
