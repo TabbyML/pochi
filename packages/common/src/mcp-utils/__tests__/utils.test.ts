@@ -1,6 +1,15 @@
-import { describe, expect, test, vi, afterEach } from "vitest";
+import { describe, expect, test, vi, beforeEach, afterEach } from "vitest";
 import { readableError, shouldRestartDueToConfigChanged, checkUrlIsSseServer } from "../utils";
 import type { McpServerConfig } from "../../configuration/index.js";
+
+// Mock HTTP modules
+vi.mock("node:http", () => ({
+  request: vi.fn(),
+}));
+
+vi.mock("node:https", () => ({
+  request: vi.fn(),
+}));
 
 describe("MCP Utils", () => {
   describe("readableError", () => {
@@ -99,9 +108,12 @@ describe("MCP Utils", () => {
   });
 
   describe("checkUrlIsSseServer", () => {
+    beforeEach(async () => {
+      vi.clearAllMocks();
+    });
 
     afterEach(() => {
-      vi.clearAllMocks();
+      vi.restoreAllMocks();
     });
 
     test("should return true when URL path contains 'sse'", async () => {
@@ -129,15 +141,265 @@ describe("MCP Utils", () => {
       expect(result).toBe(true);
     });
 
-    // Additional comprehensive tests (adapted from VSCode package)
     test("should return true when server responds with text/event-stream content-type", async () => {
-      // This test would require complex HTTP mocking setup
-      // For now, we rely on the path-based detection which is more reliable
-      const result = await checkUrlIsSseServer("http://localhost:3000/api/events");
-      expect(result).toBe(false); // No 'sse' in path, so returns false
+      const http = await import("node:http");
+      const mockHttpRequest = vi.mocked(http.request);
+      
+      const mockResponse = {
+        headers: {
+          "content-type": "text/event-stream",
+        },
+        destroy: vi.fn(),
+      };
+
+      const mockRequest = {
+        on: vi.fn(),
+        setTimeout: vi.fn(),
+        end: vi.fn(),
+        destroy: vi.fn(),
+      };
+
+      mockHttpRequest.mockImplementation((_options: any, callback: any) => {
+        // Simulate successful response
+        setTimeout(() => callback(mockResponse), 0);
+        return mockRequest as any;
+      });
+
+      const result = await checkUrlIsSseServer("http://localhost:3000/api/mcp");
+      expect(result).toBe(true);
+    });
+
+    test("should return false when server responds with different content-type", async () => {
+      const http = await import("node:http");
+      const mockHttpRequest = vi.mocked(http.request);
+      
+      const mockResponse = {
+        headers: {
+          "content-type": "application/json",
+        },
+        destroy: vi.fn(),
+      };
+
+      const mockRequest = {
+        on: vi.fn(),
+        setTimeout: vi.fn(),
+        end: vi.fn(),
+        destroy: vi.fn(),
+      };
+
+      mockHttpRequest.mockImplementation((_options: any, callback: any) => {
+        setTimeout(() => callback(mockResponse), 0);
+        return mockRequest as any;
+      });
+
+      const result = await checkUrlIsSseServer("http://localhost:3000/api/mcp");
+      expect(result).toBe(false);
+    });
+
+    test("should use https for https URLs", async () => {
+      const https = await import("node:https");
+      const http = await import("node:http");
+      const mockHttpsRequest = vi.mocked(https.request);
+      const mockHttpRequest = vi.mocked(http.request);
+      
+      const mockResponse = {
+        headers: {
+          "content-type": "text/event-stream",
+        },
+        destroy: vi.fn(),
+      };
+
+      const mockRequest = {
+        on: vi.fn(),
+        setTimeout: vi.fn(),
+        end: vi.fn(),
+        destroy: vi.fn(),
+      };
+
+      mockHttpsRequest.mockImplementation((_options: any, callback: any) => {
+        setTimeout(() => callback(mockResponse), 0);
+        return mockRequest as any;
+      });
+
+      const result = await checkUrlIsSseServer("https://example.com/api/mcp");
+      expect(result).toBe(true);
+      expect(mockHttpsRequest).toHaveBeenCalled();
+      expect(mockHttpRequest).not.toHaveBeenCalled();
+    });
+
+    test("should handle request errors", async () => {
+      const http = await import("node:http");
+      const mockHttpRequest = vi.mocked(http.request);
+      
+      const mockRequest = {
+        on: vi.fn(),
+        setTimeout: vi.fn(),
+        end: vi.fn(),
+        destroy: vi.fn(),
+      };
+
+      mockHttpRequest.mockImplementation(() => {
+        const request = mockRequest;
+        // Simulate error
+        setTimeout(() => {
+          const errorCallback = request.on.mock.calls.find(call => call[0] === 'error')?.[1];
+          if (errorCallback) errorCallback(new Error("Connection failed"));
+        }, 0);
+        return request as any;
+      });
+
+      const result = await checkUrlIsSseServer("http://localhost:3000/api/mcp");
+      expect(result).toBe(false);
+    });
+
+    test("should handle request timeout", async () => {
+      const http = await import("node:http");
+      const mockHttpRequest = vi.mocked(http.request);
+      
+      const mockRequest = {
+        on: vi.fn(),
+        setTimeout: vi.fn(),
+        end: vi.fn(),
+        destroy: vi.fn(),
+      };
+
+      mockHttpRequest.mockImplementation(() => {
+        const request = mockRequest;
+        // Simulate timeout
+        setTimeout(() => {
+          const timeoutCallback = request.on.mock.calls.find(call => call[0] === 'timeout')?.[1];
+          if (timeoutCallback) timeoutCallback();
+        }, 0);
+        return request as any;
+      });
+
+      const result = await checkUrlIsSseServer("http://localhost:3000/api/mcp");
+      expect(result).toBe(false);
+    });
+
+    test("should set correct request options", async () => {
+      const http = await import("node:http");
+      const mockHttpRequest = vi.mocked(http.request);
+      
+      const mockResponse = {
+        headers: {
+          "content-type": "application/json",
+        },
+        destroy: vi.fn(),
+      };
+
+      const mockRequest = {
+        on: vi.fn(),
+        setTimeout: vi.fn(),
+        end: vi.fn(),
+        destroy: vi.fn(),
+      };
+
+      mockHttpRequest.mockImplementation((options: any, callback: any) => {
+        // Verify request options
+        expect(options.hostname).toBe("localhost");
+        expect(options.port).toBe("3000");
+        expect(options.path).toBe("/api/mcp?param=value");
+        expect(options.method).toBe("GET");
+        expect(options.headers).toEqual({
+          Accept: "text/event-stream, */*",
+        });
+
+        setTimeout(() => callback(mockResponse), 0);
+        return mockRequest as any;
+      });
+
+      await checkUrlIsSseServer("http://localhost:3000/api/mcp?param=value");
+      expect(mockHttpRequest).toHaveBeenCalled();
+    });
+
+    test("should handle default ports correctly", async () => {
+      const http = await import("node:http");
+      const https = await import("node:https");
+      const mockHttpRequest = vi.mocked(http.request);
+      const mockHttpsRequest = vi.mocked(https.request);
+      
+      const mockResponse = {
+        headers: { "content-type": "application/json" },
+        destroy: vi.fn(),
+      };
+
+      const mockRequest = {
+        on: vi.fn(),
+        setTimeout: vi.fn(),
+        end: vi.fn(),
+        destroy: vi.fn(),
+      };
+
+      // Test HTTP default port (80)
+      mockHttpRequest.mockImplementation((options: any, callback: any) => {
+        expect(options.port).toBe(80);
+        setTimeout(() => callback(mockResponse), 0);
+        return mockRequest as any;
+      });
+
+      await checkUrlIsSseServer("http://example.com/api/mcp");
+
+      // Test HTTPS default port (443)
+      mockHttpsRequest.mockImplementation((options: any, callback: any) => {
+        expect(options.port).toBe(443);
+        setTimeout(() => callback(mockResponse), 0);
+        return mockRequest as any;
+      });
+
+      await checkUrlIsSseServer("https://example.com/api/mcp");
+    });
+
+    test("should handle case-insensitive content-type check", async () => {
+      const http = await import("node:http");
+      const mockHttpRequest = vi.mocked(http.request);
+      
+      const mockResponse = {
+        headers: {
+          "content-type": "TEXT/EVENT-STREAM; charset=utf-8",
+        },
+        destroy: vi.fn(),
+      };
+
+      const mockRequest = {
+        on: vi.fn(),
+        setTimeout: vi.fn(),
+        end: vi.fn(),
+        destroy: vi.fn(),
+      };
+
+      mockHttpRequest.mockImplementation((_options: any, callback: any) => {
+        setTimeout(() => callback(mockResponse), 0);
+        return mockRequest as any;
+      });
+
+      const result = await checkUrlIsSseServer("http://localhost:3000/api/mcp");
+      expect(result).toBe(true);
     });
 
     test("should handle case variations in URL path", async () => {
+      const http = await import("node:http");
+      const mockHttpRequest = vi.mocked(http.request);
+      
+      const mockResponse = {
+        headers: {
+          "content-type": "application/json",
+        },
+        destroy: vi.fn(),
+      };
+
+      const mockRequest = {
+        on: vi.fn(),
+        setTimeout: vi.fn(),
+        end: vi.fn(),
+        destroy: vi.fn(),
+      };
+
+      mockHttpRequest.mockImplementation((_options: any, callback: any) => {
+        setTimeout(() => callback(mockResponse), 0);
+        return mockRequest as any;
+      });
+      
       const result1 = await checkUrlIsSseServer("http://localhost:3000/api/SSE");
       const result2 = await checkUrlIsSseServer("http://localhost:3000/api/Sse");
       // Current implementation is case-sensitive for path detection
@@ -154,17 +416,5 @@ describe("MCP Utils", () => {
       const result = await checkUrlIsSseServer("http://localhost:3000/sse/api/sse/events");
       expect(result).toBe(true);
     });
-
-    // Note: The following HTTP request tests from VSCode package are not implemented here
-    // due to complexity of mocking HTTP modules in vitest environment:
-    // - HTTP/HTTPS request mocking with proper response simulation
-    // - Content-Type header validation (text/event-stream)
-    // - Request timeout and error handling
-    // - Request options validation (hostname, port, path, headers)
-    // - Default port handling (80 for HTTP, 443 for HTTPS)
-    // - Case-insensitive content-type checking
-    //
-    // The path-based detection implemented here covers the primary and most
-    // reliable detection method for SSE servers in practice.
   });
 });
