@@ -20,10 +20,7 @@
   },
   "scripts": {
     "tsc": "tsc",
-    "test": "bun vitest --run",
-    "test:mcp": "bun run src/mcp-utils/test-mcp-connection.ts",
-    "test:mcp:real": "bun run src/mcp-utils/test-real-mcp.ts",
-    "mcp:schema": "bun run src/mcp-utils/list-mcp-tools-schema.ts"
+    "test": "bun vitest --run"
   },
   "dependencies": {
     "@ai-sdk/provider": "catalog:",
