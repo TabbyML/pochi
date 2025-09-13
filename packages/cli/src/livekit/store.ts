@@ -21,7 +21,7 @@ export async function createStore(cwd: string) {
     },
     devtools: process.env.POCHI_LIVEKIT_DEVTOOLS
       ? {
-          schemaPath: "../../../packages/livekit/src/livestore/schema.ts",
+          schemaPath: "../../packages/livekit/src/livestore/schema.ts",
         }
       : undefined,
     sync:
