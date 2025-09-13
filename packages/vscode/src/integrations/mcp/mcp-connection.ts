@@ -6,9 +6,9 @@ import {
 } from "@getpochi/common/mcp-utils";
 import type { McpToolStatus } from "@getpochi/common/vscode-webui-bridge";
 import { type Signal, signal } from "@preact/signals-core";
+import type { JSONSchema7 } from "ai";
 import type * as vscode from "vscode";
 import { isToolEnabledChanged } from "./utils";
-import type { JSONSchema7 } from "ai";
 
 /**
  * VSCode-specific wrapper for McpConnection that adds:
@@ -86,7 +86,7 @@ export class McpConnection implements vscode.Disposable {
       McpToolExecutable & {
         disabled: boolean;
         description?: string;
-        inputSchema: { jsonSchema: JSONSchema7 }
+        inputSchema: { jsonSchema: JSONSchema7 };
       }
     >,
   ): Record<string, McpToolStatus & McpToolExecutable> {
