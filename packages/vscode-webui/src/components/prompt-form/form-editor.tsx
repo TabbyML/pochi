@@ -50,6 +50,7 @@ const newLineCharacter = "\n";
 // Custom keyboard shortcuts extension that handles Enter key behavior
 function CustomEnterKeyHandler(
   formRef: React.RefObject<HTMLFormElement | null>,
+  onQueueSubmit?: (message: string) => void,
 ) {
   return Extension.create({
     addKeyboardShortcuts() {
@@ -61,6 +62,16 @@ function CustomEnterKeyHandler(
             () => commands.liftEmptyBlock(),
             () => commands.splitBlock(),
           ]);
+        },
+        "Shift-Mod-Enter": () => {
+          if (onQueueSubmit) {
+            const message = this.editor.getText();
+            if (message.trim()) {
+              onQueueSubmit(message);
+              return true;
+            }
+          }
+          return false;
         },
         Enter: () => {
           if (formRef.current) {
@@ -77,6 +88,7 @@ interface FormEditorProps {
   input: string;
   setInput: (text: string) => void;
   onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
+  onQueueSubmit?: (message: string) => void;
   isLoading: boolean;
   formRef?: React.RefObject<HTMLFormElement>;
   editorRef?: React.MutableRefObject<Editor | null>;
@@ -93,6 +105,7 @@ export function FormEditor({
   input,
   setInput,
   onSubmit,
+  onQueueSubmit,
   isLoading,
   children,
   formRef: externalFormRef,
@@ -128,7 +141,7 @@ export function FormEditor({
         Placeholder.configure({
           placeholder: "Ask anything ...",
         }),
-        CustomEnterKeyHandler(formRef),
+        CustomEnterKeyHandler(formRef, onQueueSubmit),
         PromptFormMentionExtension.configure({
           suggestion: {
             char: "@",
