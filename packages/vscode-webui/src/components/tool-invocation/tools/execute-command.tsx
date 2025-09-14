@@ -25,10 +25,10 @@ export const executeCommandTool: React.FC<ToolProps<"executeCommand">> = ({
   const cwdNode = cwd ? (
     <span>
       {" "}
-      {t('toolInvocation.in')} <HighlightedText>{cwd}</HighlightedText>
+      {t("toolInvocation.in")} <HighlightedText>{cwd}</HighlightedText>
     </span>
   ) : null;
-  const text = t('toolInvocation.executeCommand');
+  const text = t("toolInvocation.executeCommand");
   const title = (
     <>
       <StatusIcon isExecuting={isExecuting} tool={tool} />

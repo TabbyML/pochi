@@ -17,7 +17,7 @@ interface ToolCallApprovalButtonProps {
 export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
   pendingApproval,
 }) => {
-  const {t} = useTranslation();
+  const { t } = useTranslation();
   const autoApproveGuard = useAutoApproveGuard();
   const { getToolCallLifeCycle } = useToolCallLifeCycle();
   const [lifecycles, tools] = useMemo(
@@ -45,10 +45,10 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
   );
 
   const ToolAcceptText: Record<string, string> = {
-    writeToFile: t('toolInvocation.save'),
-    executeCommand: t('toolInvocation.run'),
-    todoWrite: t('toolInvocation.continue'),
-    newTask: t('toolInvocation.run'),
+    writeToFile: t("toolInvocation.save"),
+    executeCommand: t("toolInvocation.run"),
+    todoWrite: t("toolInvocation.continue"),
+    newTask: t("toolInvocation.run"),
   };
 
   const ToolRejectText: Record<string, string> = {
@@ -57,9 +57,12 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
 
   const ToolAbortText: Record<string, string> = {};
 
-  const acceptText = ToolAcceptText[pendingApproval.name] || t('toolInvocation.accept');
-  const rejectText = ToolRejectText[pendingApproval.name] || t('toolInvocation.reject');
-  const abortText = ToolAbortText[pendingApproval.name] || t('toolInvocation.stop');
+  const acceptText =
+    ToolAcceptText[pendingApproval.name] || t("toolInvocation.accept");
+  const rejectText =
+    ToolRejectText[pendingApproval.name] || t("toolInvocation.reject");
+  const abortText =
+    ToolAbortText[pendingApproval.name] || t("toolInvocation.stop");
 
   const onAccept = useCallback(() => {
     autoApproveGuard.current = true;

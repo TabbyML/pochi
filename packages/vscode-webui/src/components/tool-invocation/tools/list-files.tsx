@@ -41,11 +41,12 @@ export const listFilesTool: React.FC<ToolProps<"listFiles">> = ({
     <>
       <StatusIcon isExecuting={isExecuting} tool={tool} />
       <span className="ml-2" />
-      {t('toolInvocation.reading')}{" "}
+      {t("toolInvocation.reading")}{" "}
       <FileBadge className="ml-1" path={path ?? ""} isDirectory={isDirectory} />
       {tool.state === "output-available" && (
         <>
-          , {t('toolInvocation.result')} {isTruncated && t('toolInvocation.resultsTruncated')}
+          , {t("toolInvocation.result")}{" "}
+          {isTruncated && t("toolInvocation.resultsTruncated")}
         </>
       )}
     </>

@@ -43,7 +43,7 @@ export const writeToFileTool: React.FC<ToolProps<"writeToFile">> = ({
     <>
       <StatusIcon isExecuting={isExecuting} tool={tool} />
       <span className="ml-2" />
-      {t('toolInvocation.writing')}
+      {t("toolInvocation.writing")}
       {path && (
         <FileBadge
           className="ml-1"

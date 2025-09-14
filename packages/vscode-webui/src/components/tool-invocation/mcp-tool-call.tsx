@@ -3,11 +3,11 @@ import { Switch } from "@/components/ui/switch";
 import { vscodeHost } from "@/lib/vscode";
 import { getToolName } from "ai";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { HighlightedText } from "./highlight-text";
 import { StatusIcon } from "./status-icon";
 import { ExpandableToolContainer } from "./tool-container";
 import type { ToolProps } from "./types";
-import { useTranslation } from "react-i18next";
 
 interface TextContent {
   type: "text";
@@ -67,7 +67,7 @@ export const McpToolCall: React.FC<ToolProps<any>> = ({
     <>
       <StatusIcon isExecuting={isExecuting} tool={tool} />
       <span className="ml-2">
-        {t('toolInvocation.calling')}
+        {t("toolInvocation.calling")}
         <HighlightedText>{toolName}</HighlightedText>
       </span>
     </>
@@ -80,7 +80,7 @@ export const McpToolCall: React.FC<ToolProps<any>> = ({
           {/* Request Section */}
           <div className="border-[var(--vscode-widget-border)] border-b bg-[var(--vscode-editorGroupHeader-tabsBackground)] px-4 py-2">
             <span className="font-medium text-[var(--vscode-editor-foreground)] text-sm">
-              {t('toolInvocation.request')}
+              {t("toolInvocation.request")}
             </span>
           </div>
           <CodeBlock
@@ -96,7 +96,7 @@ export const McpToolCall: React.FC<ToolProps<any>> = ({
             <>
               <div className="flex items-center justify-between border-[var(--vscode-widget-border)] border-t border-b bg-[var(--vscode-editorGroupHeader-tabsBackground)] px-4 py-2">
                 <span className="font-medium text-[var(--vscode-editor-foreground)] text-sm">
-                  {t('toolInvocation.response')}
+                  {t("toolInvocation.response")}
                 </span>
                 {hasTextContent(result) && (
                   <DisplayModeToggle
@@ -220,7 +220,7 @@ function ImageResult({
     >
       <img
         src={src}
-        alt={t('toolInvocation.imgAlt')}
+        alt={t("toolInvocation.imgAlt")}
         className="h-auto w-full shadow-sm"
       />
     </div>
@@ -236,7 +236,7 @@ function DisplayModeToggle({
   previewImageLink,
   onToggle,
 }: DisplayModeToggleProps) {
-  const {t} = useTranslation();
+  const { t } = useTranslation();
 
   return (
     <div className="flex items-center gap-2">
@@ -245,7 +245,9 @@ function DisplayModeToggle({
         onCheckedChange={onToggle}
         className="data-[state=checked]:bg-[var(--vscode-button-background)] data-[state=unchecked]:bg-[var(--vscode-input-background)]"
       />
-      <span className="text-[var(--vscode-foreground)] text-xs">{t('toolInvocation.preview')}</span>
+      <span className="text-[var(--vscode-foreground)] text-xs">
+        {t("toolInvocation.preview")}
+      </span>
     </div>
   );
 }

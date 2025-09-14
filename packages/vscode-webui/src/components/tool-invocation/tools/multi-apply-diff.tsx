@@ -46,7 +46,7 @@ export const multiApplyDiffTool: React.FC<ToolProps<"multiApplyDiff">> = ({
     <>
       <StatusIcon isExecuting={isExecuting} tool={tool} />
       <span className="ml-2" />
-      {t('toolInvocation.applyingDiffsTo')}
+      {t("toolInvocation.applyingDiffsTo")}
       {path && (
         <FileBadge
           className="ml-1"

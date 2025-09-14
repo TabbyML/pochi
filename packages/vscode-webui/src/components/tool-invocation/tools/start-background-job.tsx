@@ -1,9 +1,9 @@
+import { useTranslation } from "react-i18next";
 import { BackgroundJobPanel } from "../command-execution-panel";
 import { HighlightedText } from "../highlight-text";
 import { StatusIcon } from "../status-icon";
 import { ExpandableToolContainer } from "../tool-container";
 import type { ToolProps } from "../types";
-import { useTranslation } from "react-i18next";
 
 export const StartBackgroundJobTool: React.FC<
   ToolProps<"startBackgroundJob">
@@ -17,10 +17,10 @@ export const StartBackgroundJobTool: React.FC<
   const cwdNode = cwd ? (
     <span>
       {" "}
-      {t('toolInvocation.in')} <HighlightedText>{cwd}</HighlightedText>
+      {t("toolInvocation.in")} <HighlightedText>{cwd}</HighlightedText>
     </span>
   ) : null;
-  const text = t('toolInvocation.backgroundExecute');
+  const text = t("toolInvocation.backgroundExecute");
   const title = (
     <>
       <StatusIcon isExecuting={isExecuting} tool={tool} />
