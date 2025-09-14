@@ -1,5 +1,4 @@
 import { verifyJWT } from "@/lib/jwt";
-import { selectShardByStoreId } from "@/lib/shard";
 import type { Env } from "@/types";
 import { zValidator } from "@hono/zod-validator";
 import * as SyncBackend from "@livestore/sync-cf/cf-worker";
@@ -47,7 +46,8 @@ app
           searchParams: requestParamsResult.value,
           env: {
             ...c.env,
-            DB: selectShardByStoreId(c.env, query.storeId),
+            // @ts-expect-error - we're using a custom implementation
+            DB: null,
           },
           ctx: c.executionCtx as SyncBackend.CfTypes.ExecutionContext,
           options: {

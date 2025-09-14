@@ -1,15 +1,14 @@
 import type { CfTypes } from "@livestore/sync-cf/cf-worker";
 import * as SyncBackend from "@livestore/sync-cf/cf-worker";
-import { selectShard } from "./lib/shard";
+import { DoSqlD1 } from "./lib/do-sql-d1";
 import { fetch } from "./router";
 import type { Env } from "./types";
 
 export class SyncBackendDO extends SyncBackend.makeDurableObject() {
-  constructor(controller: CfTypes.DurableObjectState, env: Env) {
-    const doId = BigInt(`0x${controller.id.toString()}`);
-    super(controller, {
+  constructor(state: CfTypes.DurableObjectState, env: Env) {
+    super(state, {
       ...env,
-      DB: selectShard(env, doId),
+      DB: new DoSqlD1(state.storage.sql),
     });
   }
 }
