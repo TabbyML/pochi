@@ -1,5 +1,6 @@
 import type React from "react";
 import { useCallback, useEffect, useMemo } from "react"; // useMemo is now in the hook
+import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
 import { useAutoApproveGuard, useToolCallLifeCycle } from "@/features/chat";
@@ -16,6 +17,7 @@ interface ToolCallApprovalButtonProps {
 export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
   pendingApproval,
 }) => {
+  const {t} = useTranslation();
   const autoApproveGuard = useAutoApproveGuard();
   const { getToolCallLifeCycle } = useToolCallLifeCycle();
   const [lifecycles, tools] = useMemo(
@@ -43,10 +45,10 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
   );
 
   const ToolAcceptText: Record<string, string> = {
-    writeToFile: "Save",
-    executeCommand: "Run",
-    todoWrite: "Continue",
-    newTask: "Run",
+    writeToFile: t('toolInvocation.save'),
+    executeCommand: t('toolInvocation.run'),
+    todoWrite: t('toolInvocation.continue'),
+    newTask: t('toolInvocation.run'),
   };
 
   const ToolRejectText: Record<string, string> = {
@@ -55,9 +57,9 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
 
   const ToolAbortText: Record<string, string> = {};
 
-  const acceptText = ToolAcceptText[pendingApproval.name] || "Accept";
-  const rejectText = ToolRejectText[pendingApproval.name] || "Reject";
-  const abortText = ToolAbortText[pendingApproval.name] || "Stop";
+  const acceptText = ToolAcceptText[pendingApproval.name] || t('toolInvocation.accept');
+  const rejectText = ToolRejectText[pendingApproval.name] || t('toolInvocation.reject');
+  const abortText = ToolAbortText[pendingApproval.name] || t('toolInvocation.stop');
 
   const onAccept = useCallback(() => {
     autoApproveGuard.current = true;
