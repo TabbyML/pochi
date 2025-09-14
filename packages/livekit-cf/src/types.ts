@@ -7,10 +7,6 @@ export type Env = {
   SYNC_BACKEND_DO: CfTypes.DurableObjectNamespace<SyncBackend.SyncBackendRpcInterface>;
   ADMIN_SECRET: string;
   ENVIRONMENT: "dev" | "prod" | undefined;
-
-  // DB shards
-  // DB: D1Database;
-  DB_SHARD_1: D1Database;
 };
 
 export type User = {
