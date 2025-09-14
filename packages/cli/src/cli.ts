@@ -35,7 +35,7 @@ import { registerModelCommand } from "./model";
 import { OutputRenderer } from "./output-renderer";
 import { registerTaskCommand } from "./task";
 import { TaskRunner } from "./task-runner";
-import { registerUpgradeCommand, checkForUpdates } from "./upgrade";
+import { checkForUpdates, registerUpgradeCommand } from "./upgrade";
 import { waitForAllJobs, waitUntil } from "./wait-until";
 
 const logger = getLogger("Pochi");

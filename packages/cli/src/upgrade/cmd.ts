@@ -11,7 +11,8 @@ export function registerUpgradeCommand(program: Command) {
       console.log("Checking for updates...");
 
       try {
-        const { updateAvailable, latestVersion, latestRelease } = await returnVersionInfo();
+        const { updateAvailable, latestVersion, latestRelease } =
+          await returnVersionInfo();
 
         if (updateAvailable) {
           console.log(

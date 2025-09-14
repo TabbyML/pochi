@@ -1,9 +1,8 @@
+import chalk from "chalk";
 import packageJson from "../../package.json";
 import { fetchLatestCliRelease } from "./release-fetcher";
 import type { GitHubRelease } from "./release-fetcher";
 import { extractVersionFromTag, isNewerVersion } from "./version-utils";
-import chalk from "chalk";
-
 
 export interface VersionCheckResult {
   updateAvailable: boolean;
@@ -25,9 +24,9 @@ export async function returnVersionInfo(): Promise<VersionCheckResult> {
   };
 }
 
-
 export async function checkForUpdates() {
-  const { updateAvailable, currentVersion, latestVersion } = await returnVersionInfo();
+  const { updateAvailable, currentVersion, latestVersion } =
+    await returnVersionInfo();
 
   const header = `\n${chalk.bold("Pochi")} ${chalk.white(currentVersion)}`;
 
@@ -36,7 +35,7 @@ export async function checkForUpdates() {
     : header;
 
   console.log(line);
-    
+
   const columns = process.stdout.columns || 80;
   const width = Math.max(Math.min(columns, 100), 20);
   console.log(chalk.yellow("─".repeat(width)));
