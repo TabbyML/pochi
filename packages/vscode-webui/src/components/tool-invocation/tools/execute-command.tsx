@@ -1,6 +1,7 @@
 import { useToolCallLifeCycle } from "@/features/chat";
 import { getToolName } from "ai";
 import { useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { CommandExecutionPanel } from "../command-execution-panel";
 import { HighlightedText } from "../highlight-text";
 import { StatusIcon } from "../status-icon";
@@ -11,6 +12,7 @@ export const executeCommandTool: React.FC<ToolProps<"executeCommand">> = ({
   tool,
   isExecuting,
 }) => {
+  const { t } = useTranslation();
   const lifecycle = useToolCallLifeCycle().getToolCallLifeCycle({
     toolName: getToolName(tool),
     toolCallId: tool.toolCallId,
@@ -23,10 +25,10 @@ export const executeCommandTool: React.FC<ToolProps<"executeCommand">> = ({
   const cwdNode = cwd ? (
     <span>
       {" "}
-      in <HighlightedText>{cwd}</HighlightedText>
+      {t('toolInvocation.in')} <HighlightedText>{cwd}</HighlightedText>
     </span>
   ) : null;
-  const text = "I will execute the following command";
+  const text = t('toolInvocation.executeCommand');
   const title = (
     <>
       <StatusIcon isExecuting={isExecuting} tool={tool} />

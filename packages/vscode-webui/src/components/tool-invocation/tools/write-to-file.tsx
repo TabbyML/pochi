@@ -1,6 +1,7 @@
 import { useToolCallLifeCycle } from "@/features/chat";
 import { getToolName } from "ai";
 import { useCallback, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { FileBadge } from "../file-badge";
 import { NewProblems, NewProblemsIcon } from "../new-problems";
 import { StatusIcon } from "../status-icon";
@@ -13,6 +14,7 @@ export const writeToFileTool: React.FC<ToolProps<"writeToFile">> = ({
   isExecuting,
   changes,
 }) => {
+  const { t } = useTranslation();
   const lifecycle = useToolCallLifeCycle().getToolCallLifeCycle({
     toolName: getToolName(tool),
     toolCallId: tool.toolCallId,
@@ -41,7 +43,7 @@ export const writeToFileTool: React.FC<ToolProps<"writeToFile">> = ({
     <>
       <StatusIcon isExecuting={isExecuting} tool={tool} />
       <span className="ml-2" />
-      {"Writing "}
+      {t('toolInvocation.writing')}
       {path && (
         <FileBadge
           className="ml-1"

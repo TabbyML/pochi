@@ -3,10 +3,12 @@ import { HighlightedText } from "../highlight-text";
 import { StatusIcon } from "../status-icon";
 import { ExpandableToolContainer } from "../tool-container";
 import type { ToolProps } from "../types";
+import { useTranslation } from "react-i18next";
 
 export const StartBackgroundJobTool: React.FC<
   ToolProps<"startBackgroundJob">
 > = ({ tool, isExecuting }) => {
+  const { t } = useTranslation();
   const { cwd } = tool.input || {};
 
   const backgroundJobId =
@@ -15,10 +17,10 @@ export const StartBackgroundJobTool: React.FC<
   const cwdNode = cwd ? (
     <span>
       {" "}
-      in <HighlightedText>{cwd}</HighlightedText>
+      {t('toolInvocation.in')} <HighlightedText>{cwd}</HighlightedText>
     </span>
   ) : null;
-  const text = "I will execute the following command in background";
+  const text = t('toolInvocation.backgroundExecute');
   const title = (
     <>
       <StatusIcon isExecuting={isExecuting} tool={tool} />

@@ -3,11 +3,13 @@ import { HighlightedText } from "../highlight-text";
 import { StatusIcon } from "../status-icon";
 import { ExpandableToolContainer } from "../tool-container";
 import type { ToolProps } from "../types";
+import { useTranslation } from "react-i18next";
 
 export const globFilesTool: React.FC<ToolProps<"globFiles">> = ({
   tool,
   isExecuting,
 }) => {
+  const { t } = useTranslation();
   const { path, globPattern } = tool.input || {};
 
   let resultEl: React.ReactNode | null = null;
@@ -35,10 +37,10 @@ export const globFilesTool: React.FC<ToolProps<"globFiles">> = ({
 
   const searchCondition = (
     <>
-      in <HighlightedText>{path}</HighlightedText>
+      {t('toolInvocation.in')} <HighlightedText>{path}</HighlightedText>
       {globPattern && (
         <>
-          for <HighlightedText>{globPattern}</HighlightedText>
+          {t('toolInvocation.for')} <HighlightedText>{globPattern}</HighlightedText>
         </>
       )}
     </>
@@ -50,12 +52,11 @@ export const globFilesTool: React.FC<ToolProps<"globFiles">> = ({
       <span className="ml-2" />
       <span>
         {isExecuting || tool.state !== "output-available" ? (
-          <>Searching {searchCondition}</>
+          <>{t('toolInvocation.searching')} {searchCondition}</>
         ) : (
           <>
-            Searching {searchCondition}, {files.length} match
-            {files.length > 1 ? "es" : ""}{" "}
-            {isTruncated && ", results truncated"}
+            {t('toolInvocation.searching')} {searchCondition}, {t('toolInvocation.matchCount', {count: files.length})}{" "}
+            {isTruncated && t('toolInvocation.resultsTruncated')}
           </>
         )}
       </span>

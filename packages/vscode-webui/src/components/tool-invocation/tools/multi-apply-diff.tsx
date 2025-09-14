@@ -2,6 +2,7 @@ import { useToolCallLifeCycle } from "@/features/chat";
 
 import { getToolName } from "ai";
 import { useCallback, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { FileBadge } from "../file-badge";
 import { NewProblems, NewProblemsIcon } from "../new-problems";
 import { StatusIcon } from "../status-icon";
@@ -14,6 +15,7 @@ export const multiApplyDiffTool: React.FC<ToolProps<"multiApplyDiff">> = ({
   isExecuting,
   changes,
 }) => {
+  const { t } = useTranslation();
   const { path } = tool.input || {};
 
   const lifecycle = useToolCallLifeCycle().getToolCallLifeCycle({
@@ -44,7 +46,7 @@ export const multiApplyDiffTool: React.FC<ToolProps<"multiApplyDiff">> = ({
     <>
       <StatusIcon isExecuting={isExecuting} tool={tool} />
       <span className="ml-2" />
-      {"Applying diffs to "}
+      {t('toolInvocation.applyingDiffsTo')}
       {path && (
         <FileBadge
           className="ml-1"
