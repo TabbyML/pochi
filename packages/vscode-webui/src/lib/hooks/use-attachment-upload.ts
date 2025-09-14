@@ -204,7 +204,6 @@ export function useAttachmentUpload(options?: UseAttachmentUploadOptions) {
 // }
 
 async function fileToRemoteUri(file: File, signal?: AbortSignal) {
-  // @ts-ignore
   const response = await apiClient.api.upload.$post(
     {
       form: {
