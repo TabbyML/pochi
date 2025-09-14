@@ -28,7 +28,7 @@
     "@preact/signals-core": "catalog:",
     "@quilted/threads": "catalog:",
     "ai": "catalog:",
-    "base58-js": "^3.0.3",
+    "base58-js": "catalog:",
     "better-auth": "catalog:",
     "fast-levenshtein": "^3.0.0",
     "hast-util-to-text": "^4.0.2",
