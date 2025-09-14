@@ -229,11 +229,12 @@ export class RagdollWebviewProvider
       const csp = [
         `default-src 'none';`,
         `img-src ${webview.cspSource} https://* blob: data:`,
+        `media-src ${webview.cspSource} https://* blob: data:`,
         `script-src 'nonce-${nonce}' 'unsafe-eval'`,
         `style-src ${webview.cspSource} 'unsafe-inline'`,
         `font-src ${webview.cspSource}`,
         // https://* is required for local BYOK
-        `connect-src ${getServerBaseUrl()} ${getSyncBaseUrl()} https://*.vscode-cdn.net https://* http://*:* data:`,
+        `connect-src ${getServerBaseUrl()} ${getSyncBaseUrl()} ${getSyncBaseUrl().replace("http", "ws")} https://*.vscode-cdn.net https://* http://*:* data:`,
         "worker-src data: blob:",
       ];
       const cspHeader = `<meta http-equiv="Content-Security-Policy" content="${csp.join("; ")}">`;
@@ -268,10 +269,11 @@ export class RagdollWebviewProvider
     const csp = [
       `default-src 'none';`,
       `img-src ${devWebUIHttpBaseUrl} ${devWebUIHttpBaseUrlIp} https://* blob: data:`,
+      `media-src ${devWebUIHttpBaseUrl} ${devWebUIHttpBaseUrlIp} https://* blob: data:`,
       `script-src 'nonce-${nonce}' ${devWebUIHttpBaseUrl} ${devWebUIHttpBaseUrlIp} '${reactRefreshHash}' 'unsafe-eval'`,
       `style-src ${webview.cspSource} 'self' 'unsafe-inline'`,
       `font-src ${webview.cspSource}`,
-      `connect-src ${devWebUIHttpBaseUrl} ${devWebUIHttpBaseUrlIp} ${devWebUIWsBaseUrl} ${devWebUIWsBaseUrlIp} ${getServerBaseUrl()} ${getSyncBaseUrl()} https://* data: http://*:*`,
+      `connect-src ${devWebUIHttpBaseUrl} ${devWebUIHttpBaseUrlIp} ${devWebUIWsBaseUrl} ${devWebUIWsBaseUrlIp} ${getServerBaseUrl()} ${getSyncBaseUrl()} ${getSyncBaseUrl().replace("http", "ws")} https://* data: http://*:*`,
       `worker-src ${devWebUIHttpBaseUrl} blob:`,
     ];
     const cspHeader = `<meta http-equiv="Content-Security-Policy" content="${csp.join("; ")}">`;

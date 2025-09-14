@@ -1,16 +1,17 @@
 import type { CfTypes } from "@livestore/sync-cf/cf-worker";
 import * as SyncBackend from "@livestore/sync-cf/cf-worker";
+import { DoSqlD1 } from "./lib/do-sql-d1";
 import { fetch } from "./router";
 import type { Env } from "./types";
 
-export class SyncBackendDO extends SyncBackend.makeDurableObject({
-  onPush: async (_message, _data) => {
-    console.log(`onPush for store (${_data.storeId})`);
-  },
-  onPull: async (_message, _data) => {
-    console.log(`onPull for store (${_data.storeId})`);
-  },
-}) {}
+export class SyncBackendDO extends SyncBackend.makeDurableObject() {
+  constructor(state: CfTypes.DurableObjectState, env: Env) {
+    super(state, {
+      ...env,
+      DB: new DoSqlD1(state.storage.sql),
+    });
+  }
+}
 
 // Scoped by storeId
 export { LiveStoreClientDO } from "./client";

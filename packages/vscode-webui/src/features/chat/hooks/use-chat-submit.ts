@@ -1,5 +1,5 @@
 import type { PendingApproval } from "@/features/approval";
-import type { useImageUpload } from "@/lib/hooks/use-image-upload";
+import type { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
 import type { UseChatHelpers } from "@ai-sdk/react";
 import type { Message } from "@getpochi/livekit";
 import type React from "react";
@@ -8,13 +8,13 @@ import { useAutoApproveGuard, useToolCallLifeCycle } from "../lib/chat-state";
 
 type UseChatReturn = Pick<UseChatHelpers<Message>, "sendMessage" | "stop">;
 
-type UseImageUploadReturn = ReturnType<typeof useImageUpload>;
+type UseAttachmentUploadReturn = ReturnType<typeof useAttachmentUpload>;
 
 interface UseChatSubmitProps {
   chat: UseChatReturn;
   input: string;
   setInput: React.Dispatch<React.SetStateAction<string>>;
-  imageUpload: UseImageUploadReturn;
+  attachmentUpload: UseAttachmentUploadReturn;
   isSubmitDisabled: boolean;
   isLoading: boolean;
   newCompactTaskPending: boolean;
@@ -25,7 +25,7 @@ export function useChatSubmit({
   chat,
   input,
   setInput,
-  imageUpload,
+  attachmentUpload,
   isSubmitDisabled,
   isLoading,
   newCompactTaskPending,
@@ -53,8 +53,8 @@ export function useChatSubmit({
     isUploading,
     upload,
     cancelUpload,
-    clearError: clearUploadImageError,
-  } = imageUpload;
+    clearError: clearUploadError,
+  } = attachmentUpload;
 
   const handleStop = useCallback(() => {
     // Compacting is not allowed to be stopped.
@@ -107,11 +107,11 @@ export function useChatSubmit({
       autoApproveGuard.current = false;
       if (files.length > 0) {
         try {
-          const uploadedImages = await upload();
+          const uploadedAttachments = await upload();
 
           sendMessage({
             text: content.length === 0 ? " " : content,
-            files: uploadedImages,
+            files: uploadedAttachments,
           });
 
           setInput("");
@@ -121,7 +121,7 @@ export function useChatSubmit({
         }
       } else if (content.length > 0) {
         autoApproveGuard.current = true;
-        clearUploadImageError();
+        clearUploadError();
         sendMessage({
           text: content,
         });
@@ -137,7 +137,7 @@ export function useChatSubmit({
       upload,
       sendMessage,
       setInput,
-      clearUploadImageError,
+      clearUploadError,
       newCompactTaskPending,
     ],
   );

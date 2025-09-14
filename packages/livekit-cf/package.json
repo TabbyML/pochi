@@ -10,6 +10,7 @@
     "@livestore/peer-deps": "catalog:",
     "@livestore/sync-cf": "catalog:",
     "@getpochi/livekit": "workspace:*",
+    "@getpochi/common": "workspace:*",
     "@hono/zod-validator": "catalog:",
     "hono": "catalog:",
     "jose": "catalog:",

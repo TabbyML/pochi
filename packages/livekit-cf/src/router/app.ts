@@ -1,5 +1,6 @@
 import { verifyJWT } from "@/lib/jwt";
 import type { Env } from "@/types";
+import { decodeStoreId } from "@getpochi/common/store-id-utils";
 import { zValidator } from "@hono/zod-validator";
 import * as SyncBackend from "@livestore/sync-cf/cf-worker";
 import { Hono } from "hono";
@@ -31,23 +32,28 @@ app
     async (c) => {
       const query = c.req.valid("query");
 
-      if (!verifyStoreId(query.payload.jwt, query.storeId)) {
+      if (!(await verifyStoreId(c.env, query.payload.jwt, query.storeId))) {
         throw new HTTPException(401, { message: "Unauthorized" });
       }
 
       const requestParamsResult = SyncBackend.getSyncRequestSearchParams(
         c.req.raw,
       );
+
       if (requestParamsResult._tag === "Some") {
         return SyncBackend.handleSyncRequest({
           request: c.req.raw,
           searchParams: requestParamsResult.value,
-          env: c.env,
+          env: {
+            ...c.env,
+            // @ts-expect-error - we're using a custom implementation
+            DB: null,
+          },
           ctx: c.executionCtx as SyncBackend.CfTypes.ExecutionContext,
           options: {
             async validatePayload(inputPayload, { storeId }) {
               const { jwt } = Payload.parse(inputPayload);
-              if (!verifyStoreId(jwt, storeId)) {
+              if (!(await verifyStoreId(c.env, jwt, storeId))) {
                 throw new Error("Unauthorized");
               }
             },
@@ -56,17 +62,12 @@ app
       }
     },
   )
-  .all(
-    "/client-do/*",
-    zValidator("query", z.object({ storeId: z.string() })),
-    async (c) => {
-      const query = c.req.valid("query");
-      const id = c.env.CLIENT_DO.idFromName(query.storeId);
-      return c.env.CLIENT_DO.get(id).fetch(c.req.raw);
-    },
-  );
+  .all("/stores/:storeId/*", async (c) => {
+    const id = c.env.CLIENT_DO.idFromName(c.req.param("storeId"));
+    return c.env.CLIENT_DO.get(id).fetch(c.req.raw);
+  });
 
-async function verifyStoreId(jwt: string, storeId: string) {
-  const user = await verifyJWT(jwt);
-  return storeId.startsWith(`store-${user.sub}-`);
+async function verifyStoreId(env: Env, jwt: string, storeId: string) {
+  const user = await verifyJWT(env, jwt);
+  return user.sub === decodeStoreId(storeId).sub;
 }

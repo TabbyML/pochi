@@ -21,13 +21,6 @@ class_name = "LiveStoreClientDO"
 tag = "v1"
 new_sqlite_classes = ["SyncBackendDO", "LiveStoreClientDO"]
 
-[[d1_databases]]
-binding = "DB"
-database_name = "pochi-livekit-events"
-database_id = "29b297f5-75ee-437e-8a9a-94ae9de0fc0a"
-
-
-[vars]
 # should be set via CF dashboard (as secret)
 # ADMIN_SECRET = "..."
 # SYNC_BACKEND_URL = "http://localhost:8787"

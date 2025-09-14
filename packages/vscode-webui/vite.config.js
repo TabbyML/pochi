@@ -1,5 +1,5 @@
 import { resolve } from "node:path";
-// import { livestoreDevtoolsPlugin } from "@livestore/devtools-vite";
+import { livestoreDevtoolsPlugin } from "@livestore/devtools-vite";
 import tailwindcss from "@tailwindcss/vite";
 import { TanStackRouterVite } from "@tanstack/router-plugin/vite";
 import viteReact from "@vitejs/plugin-react";
@@ -89,9 +89,9 @@ export default defineConfig({
       },
     }),
     tailwindcss(),
-    // livestoreDevtoolsPlugin({
-    //   schemaPath: "../livekit/src/livestore/schema.ts",
-    // }),
+    livestoreDevtoolsPlugin({
+      schemaPath: "../livekit/src/livestore/schema.ts",
+    }),
     analyzer({
       enabled: !!process.env.VITE_BUNDLE_ANALYZER,
     }),

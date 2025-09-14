@@ -1,0 +1,21 @@
+{
+  "name": "@getpochi/vendor-claude-code",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/node.ts",
+  "types": "./src/node.ts",
+  "scripts": {
+    "tsc": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ai-sdk/anthropic": "^2.0.15",
+    "@ai-sdk/provider": "catalog:",
+    "@getpochi/common": "workspace:*",
+    "ai": "catalog:"
+  },
+  "exports": {
+    ".": "./src/node.ts",
+    "./edge": "./src/edge.ts"
+  }
+}

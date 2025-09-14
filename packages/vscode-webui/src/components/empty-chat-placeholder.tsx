@@ -1,5 +1,5 @@
 import { useAutoSaveDisabled } from "@/lib/hooks/use-auto-save";
-import { AlertTriangleIcon, ImageIcon, TerminalIcon } from "lucide-react";
+import { AlertTriangleIcon, PaperclipIcon, TerminalIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "./ui/button";
 
@@ -21,7 +21,8 @@ export function EmptyChatPlaceholder() {
       </p>
       <ul className="m-0 list-none p-0">
         <li className="mb-2 flex items-center">
-          <ImageIcon className="mr-2 size-4" /> {t("placeholder.tips.images")}
+          <PaperclipIcon className="mr-2 size-4" />{" "}
+          {t("placeholder.tips.attachments")}
         </li>
         <li className="mb-2 flex items-center">
           <span className="mr-2 text-base">@</span>{" "}

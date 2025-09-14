@@ -10,7 +10,7 @@
     "subtitle": "Pochi 由 AI 驱动，可能会出现错误。",
     "disclaimer": "使用前请仔细检查输出内容。",
     "tips": {
-      "images": "发送图片",
+      "attachments": "发送文件",
       "context": "附加上下文",
       "workflow": "触发工作流"
     },
@@ -23,7 +23,7 @@
     "required": "要使用 Pochi，请打开一个文件夹或工作区。"
   },
   "chat": {
-    "imageTooltip": "附加图片到对话。您也可以拖放图片或将其粘贴到聊天输入框中。"
+    "attachmentTooltip": "附加文件到对话。您也可以拖放文件或将其粘贴到聊天输入框中。"
   },
   "language": {
     "switcherTooltip": "选择您在 Pochi 中的首选语言"
