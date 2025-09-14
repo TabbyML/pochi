@@ -1,4 +1,5 @@
 import { verifyJWT } from "@/lib/jwt";
+import { selectShardByStoreId } from "@/lib/shard";
 import type { Env } from "@/types";
 import { zValidator } from "@hono/zod-validator";
 import * as SyncBackend from "@livestore/sync-cf/cf-worker";
@@ -39,11 +40,15 @@ app
       const requestParamsResult = SyncBackend.getSyncRequestSearchParams(
         c.req.raw,
       );
+
       if (requestParamsResult._tag === "Some") {
         return SyncBackend.handleSyncRequest({
           request: c.req.raw,
           searchParams: requestParamsResult.value,
-          env: c.env,
+          env: {
+            ...c.env,
+            DB: selectShardByStoreId(c.env, query.storeId),
+          },
           ctx: c.executionCtx as SyncBackend.CfTypes.ExecutionContext,
           options: {
             async validatePayload(inputPayload, { storeId }) {

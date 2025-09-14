@@ -1,16 +1,18 @@
 import type { CfTypes } from "@livestore/sync-cf/cf-worker";
 import * as SyncBackend from "@livestore/sync-cf/cf-worker";
+import { selectShard } from "./lib/shard";
 import { fetch } from "./router";
 import type { Env } from "./types";
 
-export class SyncBackendDO extends SyncBackend.makeDurableObject({
-  // onPush: async (_message, _data) => {
-  //   console.log(`onPush for store (${_data.storeId})`);
-  // },
-  // onPull: async (_message, _data) => {
-  //   console.log(`onPull for store (${_data.storeId})`);
-  // },
-}) {}
+export class SyncBackendDO extends SyncBackend.makeDurableObject() {
+  constructor(controller: CfTypes.DurableObjectState, env: Env) {
+    const doId = BigInt(`0x${controller.id.toString()}`);
+    super(controller, {
+      ...env,
+      DB: selectShard(env, doId),
+    });
+  }
+}
 
 // Scoped by storeId
 export { LiveStoreClientDO } from "./client";

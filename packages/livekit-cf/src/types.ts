@@ -5,9 +5,12 @@ import type * as SyncBackend from "@livestore/sync-cf/cf-worker";
 export type Env = {
   CLIENT_DO: CfTypes.DurableObjectNamespace<ClientDoWithRpcCallback>;
   SYNC_BACKEND_DO: CfTypes.DurableObjectNamespace<SyncBackend.SyncBackendRpcInterface>;
-  DB: D1Database;
+  // DB: D1Database;
   ADMIN_SECRET: string;
   ENVIRONMENT: "dev" | "prod" | undefined;
+
+  // DB shards
+  DB_SHARD_1: D1Database;
 };
 
 export type User = {
