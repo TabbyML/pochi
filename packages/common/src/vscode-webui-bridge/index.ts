@@ -39,6 +39,6 @@ export function getServerBaseUrl() {
 
 export function getSyncBaseUrl() {
   return isSyncDev
-    ? "ws://localhost:8787"
-    : "wss://livekit-cf.tabbyml.workers.dev";
+    ? "http://localhost:8787"
+    : "https://livekit-cf.tabbyml.workers.dev";
 }
