@@ -1,8 +1,9 @@
 import { getLogger } from "@/lib/logger";
 import type { McpServerConfig } from "@getpochi/common/configuration";
-import type {
-  McpConnectionStatus,
-  McpToolExecutable,
+import {
+  McpConnection,
+  type McpConnectionStatus,
+  type McpToolExecutable,
 } from "@getpochi/common/mcp-utils";
 import type { McpTool } from "@getpochi/tools";
 import { type Signal, signal } from "@preact/signals-core";
@@ -11,7 +12,6 @@ import { inject, injectable, singleton } from "tsyringe";
 import type * as vscode from "vscode";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { PochiConfiguration } from "../configuration";
-import { McpConnection } from "./mcp-connection";
 import { omitDisabled } from "./types";
 
 const logger = getLogger("MCPHub");
@@ -267,7 +267,11 @@ export class McpHub implements vscode.Disposable {
   }
 
   private createConnection(name: string, config: McpServerConfig) {
-    const connection = new McpConnection(name, this.context, config);
+    const connection = new McpConnection(
+      name,
+      this.context.extension.id, // Use extension ID as client name
+      config,
+    );
     const connectionObject = {
       instance: connection,
       listeners: [] as vscode.Disposable[],

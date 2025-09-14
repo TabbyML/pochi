@@ -3,6 +3,7 @@ import {
   getDefaultEnvironment,
 } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import { type Signal, signal } from "@preact/signals-core";
 import { createMachine, interpret } from "@xstate/fsm";
 import { type ToolSet, experimental_createMCPClient as createClient } from "ai";
 import type { JSONSchema7 } from "json-schema";
@@ -95,6 +96,7 @@ export interface McpConnectionOptions {
 export class McpConnection implements Disposable {
   readonly logger: ReturnType<typeof getLogger>;
   private onStatusChange?: (status: McpConnectionStatus) => void;
+  readonly status: Signal<McpConnectionStatus>;
 
   private fsmDef = createMachine<FsmContext, FsmEvent, FsmState>({
     initial: "stopped",
@@ -185,6 +187,13 @@ export class McpConnection implements Disposable {
     this.logger = getLogger(`MCPConnection(${this.serverName})`);
     this.onStatusChange = options.onStatusChange;
 
+    // Initialize status signal with default values
+    this.status = signal({
+      status: "stopped" as const,
+      error: undefined,
+      tools: {},
+    });
+
     this.fsm.start();
     const { unsubscribe: dispose } = this.fsm.subscribe((state) => {
       this.logger.debug(`State changed: ${state.value}`);
@@ -246,8 +255,10 @@ export class McpConnection implements Disposable {
   }
 
   private notifyStatusChange() {
+    const status = this.buildStatus();
+    this.status.value = status;
     if (this.onStatusChange) {
-      this.onStatusChange(this.buildStatus());
+      this.onStatusChange(status);
     }
   }
 
