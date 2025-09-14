@@ -24,14 +24,13 @@ export async function createStore(cwd: string) {
           schemaPath: "../../packages/livekit/src/livestore/schema.ts",
         }
       : undefined,
-    sync:
-      jwt && process.env.POCHI_LIVEKIT_SYNC
-        ? {
-            backend: makeWsSync({
-              url: getSyncBaseUrl(),
-            }),
-          }
-        : undefined,
+    sync: jwt
+      ? {
+          backend: makeWsSync({
+            url: getSyncBaseUrl(),
+          }),
+        }
+      : undefined,
   });
 
   const store = await createStorePromise<LiveStoreSchema>({
