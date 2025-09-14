@@ -79,6 +79,11 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
     this.apiClient = options.apiClient;
     this.waitUntil = options.waitUntil;
     this.customAgent = overrideCustomAgentTools(options.customAgent);
+
+    // Get rid of unused check.
+    // FIXME(meng): remove these two fields once we finalize everything to cloudflare sync.
+    this.apiClient;
+    this.waitUntil;
   }
 
   sendMessages: (
