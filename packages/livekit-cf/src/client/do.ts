@@ -80,21 +80,21 @@ export class LiveStoreClientDO
     // Make sure to only subscribe once
     if (this.storeSubscription === undefined) {
       this.storeSubscription = store.subscribe(catalog.queries.tasks$, {
-        onUpdate: (tasks) => {
-          for (const task of tasks) {
-            this.persistTask(store, task);
-          }
+        onUpdate: async (tasks) => {
+          await Promise.all(
+            tasks.map((task) =>
+              this.persistTask(store, task).catch(console.error),
+            ),
+          );
+
+          // Whenever the tasks change, we extend the ttl of the DO.
+          await this.state.storage.setAlarm(Date.now() + 10_000);
         },
       });
     }
-
-    // Make sure the DO stays alive
-    await this.state.storage.setAlarm(Date.now() + 1000);
   }
 
-  alarm(_alarmInfo?: AlarmInvocationInfo): void | Promise<void> {
-    this.subscribeToStore();
-  }
+  alarm(_alarmInfo?: AlarmInvocationInfo): void | Promise<void> {}
 
   async syncUpdateRpc(payload: unknown) {
     await handleSyncUpdateRpc(payload);
