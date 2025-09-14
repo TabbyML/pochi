@@ -185,7 +185,7 @@ const stub = new Hono()
     zValidator("json", CodeCompletionFIMRequest),
     async (c) => c.json({} as CodeCompletionFIMResponse),
   )
-  .post("api/upload", zValidator("form", UploadFileRequest), async (c) =>
+  .post("/api/upload", zValidator("form", UploadFileRequest), async (c) =>
     c.json({} as UploadFileResponse),
   )
   .get("/api/models", async (c) => c.json([] as ListModelsResponse));
