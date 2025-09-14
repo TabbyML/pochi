@@ -21,7 +21,6 @@ import {
 } from "ai";
 import { pickBy } from "remeda";
 import type { Message, Metadata, RequestData } from "../types";
-import { schedulePersistJob } from "./background-job";
 import { makeRepairToolCall } from "./llm";
 import { parseMcpToolSet } from "./mcp-utils";
 import {
@@ -182,17 +181,8 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
           } satisfies Metadata;
         }
       },
-      onFinish: async ({ messages }) => {
-        if (this.apiClient.authenticated) {
-          schedulePersistJob({
-            taskId: chatId,
-            store: this.store,
-            messages,
-            apiClient: this.apiClient,
-            environment,
-            waitUntil: this.waitUntil,
-          });
-        }
+      onFinish: async () => {
+        // DO NOTHING
       },
     });
   };
