@@ -10,11 +10,11 @@
     "@livestore/peer-deps": "catalog:",
     "@livestore/sync-cf": "catalog:",
     "@getpochi/livekit": "workspace:*",
+    "@getpochi/common": "workspace:*",
     "@hono/zod-validator": "catalog:",
     "hono": "catalog:",
     "jose": "catalog:",
-    "zod": "catalog:",
-    "base58-js": "catalog:"
+    "zod": "catalog:"
   },
   "devDependencies": {
     "wrangler": "^4.33.0"

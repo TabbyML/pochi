@@ -1,8 +1,8 @@
 import { verifyJWT } from "@/lib/jwt";
 import type { Env } from "@/types";
+import { decodeStoreId } from "@getpochi/common/store-id-utils";
 import { zValidator } from "@hono/zod-validator";
 import * as SyncBackend from "@livestore/sync-cf/cf-worker";
-import { base58_to_binary } from "base58-js";
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { z } from "zod";
@@ -69,14 +69,5 @@ app
 
 async function verifyStoreId(env: Env, jwt: string, storeId: string) {
   const user = await verifyJWT(env, jwt);
-  return user.sub === decodeSubFromStoreId(storeId);
+  return user.sub === decodeStoreId(storeId).sub;
 }
-
-const decodeSubFromStoreId = (storeId: string) => {
-  const decoded = new TextDecoder().decode(base58_to_binary(storeId));
-  return (
-    JSON.parse(decoded) as {
-      sub: string;
-    }
-  ).sub;
-};
