@@ -1,5 +1,6 @@
 import { persister, queryClient } from "@/lib/query-client";
-import { catalog, getStoreId } from "@getpochi/livekit";
+import { getLogger } from "@getpochi/common";
+import { catalog } from "@getpochi/livekit";
 import {
   makeInMemoryAdapter,
   makePersistedAdapter,
@@ -12,9 +13,11 @@ import { useEffect, useMemo, useRef } from "react";
 import { unstable_batchedUpdates as batchUpdates } from "react-dom";
 import { ThemeProvider } from "./components/theme-provider";
 import { useEnableSync } from "./features/settings";
-import { useCurrentWorkspace } from "./lib/hooks/use-current-workspace";
 import { usePochiCredentials } from "./lib/hooks/use-pochi-credentials";
+import { useStoreId } from "./lib/hooks/use-store-id";
 import LiveStoreWorker from "./livestore.worker.ts?worker&inline";
+
+const logger = getLogger("Providers");
 
 const adapter = makePersistedAdapter({
   storage: { type: "opfs" },
@@ -56,17 +59,19 @@ export const Providers: React.FC<{ children: React.ReactNode }> = ({
 };
 
 function LiveStoreProviderWrapper({ children }: { children: React.ReactNode }) {
-  const { data: cwd } = useCurrentWorkspace();
   const { jwt } = usePochiCredentials();
-  const storeId = useMemo(
-    () => (cwd ? getStoreId(cwd, jwt) : undefined),
-    [cwd, jwt],
-  );
+  const storeId = useStoreId();
   const enableSync = useEnableSync();
   const syncPayloadRef = useRef({ jwt });
   useEffect(() => {
     syncPayloadRef.current.jwt = jwt;
   }, [jwt]);
+
+  useMemo(() => {
+    if (storeId) {
+      logger.debug("storeId", storeId);
+    }
+  }, [storeId]);
 
   return (
     <LiveStoreProvider

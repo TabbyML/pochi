@@ -1,7 +1,8 @@
 import type { PochiApi, PochiApiClient } from "@getpochi/common/pochi-api";
+import { getVendor } from "@getpochi/common/vendor";
+import type { PochiCredentials } from "@getpochi/common/vscode-webui-bridge";
 import { hc } from "hono/client";
 import packageJson from "../../package.json";
-import { getPochiCredentials } from "../livekit/store";
 
 const prodServerUrl = "https://app.getpochi.com";
 const userAgent = `PochiCli/${packageJson.version} Node/${process.version} (${process.platform}; ${process.arch})`;
@@ -41,4 +42,12 @@ export async function createApiClient(): Promise<PochiApiClient> {
   });
 
   return proxed;
+}
+
+async function getPochiCredentials() {
+  const pochi = getVendor("pochi");
+  const credentials = (await pochi
+    .getCredentials()
+    .catch(() => null)) as PochiCredentials | null;
+  return credentials;
 }

@@ -56,7 +56,8 @@
       "@livestore/common": "0.4.0-dev.7",
       "bidc": "^0.0.2",
       "lucide-react": "^0.542.0",
-      "jose": "^6.1.0"
+      "jose": "^6.1.0",
+      "base58-js": "^3.0.3"
     }
   },
   "devDependencies": {

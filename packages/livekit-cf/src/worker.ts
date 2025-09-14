@@ -4,12 +4,12 @@ import { fetch } from "./router";
 import type { Env } from "./types";
 
 export class SyncBackendDO extends SyncBackend.makeDurableObject({
-  onPush: async (_message, _data) => {
-    console.log(`onPush for store (${_data.storeId})`);
-  },
-  onPull: async (_message, _data) => {
-    console.log(`onPull for store (${_data.storeId})`);
-  },
+  // onPush: async (_message, _data) => {
+  //   console.log(`onPush for store (${_data.storeId})`);
+  // },
+  // onPull: async (_message, _data) => {
+  //   console.log(`onPull for store (${_data.storeId})`);
+  // },
 }) {}
 
 // Scoped by storeId
