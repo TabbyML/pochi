@@ -162,43 +162,6 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
       // error log is handled in live chat kit.
       onError: () => {},
       experimental_repairToolCall: makeRepairToolCall(model),
-      // experimental_download: async (options) => {
-      //   const url = options?.[0]?.url;
-
-      //   if (url) {
-      //     const newUrl = new URL(url.toString());
-      //     newUrl.protocol = "https:";
-      //     newUrl.host = "pochi-file-uploads.getpochi.com";
-      //     const urlText = newUrl.toString();
-      //     console.log(urlText, "urlTexturlTexturlText");
-      //     try {
-      //       const response = await fetch(urlText, { mode: "cors" });
-
-      //       if (!response.ok) {
-      //         throw new DownloadError({
-      //           url: urlText,
-      //           statusCode: response.status,
-      //           statusText: response.statusText,
-      //         });
-      //       }
-
-      //       return [
-      //         {
-      //           data: new Uint8Array(await response.arrayBuffer()),
-      //           mediaType: response.headers.get("content-type") ?? undefined,
-      //         },
-      //       ];
-      //     } catch (error) {
-      //       console.log("fetch error", error);
-      //       if (DownloadError.isInstance(error)) {
-      //         throw error;
-      //       }
-
-      //       throw new DownloadError({ url: urlText, cause: error });
-      //     }
-      //   }
-      //   return Promise.resolve([]);
-      // },
     });
     return stream.toUIMessageStream({
       onError: (error) => {
