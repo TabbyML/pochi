@@ -1,4 +1,5 @@
 import { verifyJWT } from "@/lib/jwt";
+import { base58_to_binary, binary_to_base58 } from "base58-js";
 import type { Env } from "@/types";
 import { zValidator } from "@hono/zod-validator";
 import * as SyncBackend from "@livestore/sync-cf/cf-worker";
@@ -31,7 +32,7 @@ app
     async (c) => {
       const query = c.req.valid("query");
 
-      if (!verifyStoreId(query.payload.jwt, query.storeId)) {
+      if (!(await verifyStoreId(c.env, query.payload.jwt, query.storeId))) {
         throw new HTTPException(401, { message: "Unauthorized" });
       }
 
@@ -47,7 +48,7 @@ app
           options: {
             async validatePayload(inputPayload, { storeId }) {
               const { jwt } = Payload.parse(inputPayload);
-              if (!verifyStoreId(jwt, storeId)) {
+              if (!(await verifyStoreId(c.env, jwt, storeId))) {
                 throw new Error("Unauthorized");
               }
             },
@@ -61,7 +62,16 @@ app
     return c.env.CLIENT_DO.get(id).fetch(c.req.raw);
   });
 
-async function verifyStoreId(jwt: string, storeId: string) {
-  const user = await verifyJWT(jwt);
-  return storeId.startsWith(`store-${user.sub}-`);
+async function verifyStoreId(env: Env, jwt: string, storeId: string) {
+  const user = await verifyJWT(env, jwt);
+  return user.sub === decodeSubFromStoreId(storeId);
 }
+
+const decodeSubFromStoreId = (storeId: string) => {
+  const decoded = new TextDecoder().decode(base58_to_binary(storeId));
+  return (
+    JSON.parse(decoded) as {
+      sub: string;
+    }
+  ).sub;
+};

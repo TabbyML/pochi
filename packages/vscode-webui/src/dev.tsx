@@ -6,6 +6,7 @@ import LiveStoreWorker from "./livestore.worker.ts?worker";
 import LiveStoreSharedWorker from "@livestore/adapter-web/shared-worker?sharedworker";
 import { LiveStoreProvider, useStore } from "@livestore/react";
 import { liveStoreVersion } from "@livestore/livestore";
+import { type FormEvent, useState } from "react";
 
 const adapter = makePersistedAdapter({
   storage: { type: "opfs" },
@@ -21,26 +22,8 @@ function App() {
   const storeId = searchParams.get("storeId");
   const jwt = searchParams.get("jwt");
 
-  if (!storeId) {
-    const newStoreId = crypto.randomUUID();
-    searchParams.set("storeId", newStoreId);
-    window.location.search = searchParams.toString();
-    return <p>Setting up storeId, redirecting...</p>;
-  }
-
-  if (!jwt) {
-    return (
-      <div>
-        <h1>Missing JWT</h1>
-        <p>Please provide 'jwt' in the URL search parameters.</p>
-        <p>
-          For example:{" "}
-          <a href={`?storeId=${storeId}&jwt=your_jwt`}>
-            {`?storeId=${storeId}&jwt=your_jwt`}
-          </a>
-        </p>
-      </div>
-    );
+  if (!storeId || !jwt) {
+    return <AuthForm storeId={storeId} jwt={jwt} />;
   }
 
   return (
@@ -104,6 +87,55 @@ function RenderMessage({ message }: { message: Message }) {
         <pre>{JSON.stringify(message, null, 2)}</pre>
       </div>
     </details>
+  );
+}
+
+function AuthForm({
+  storeId: initialStoreId,
+  jwt: initialJwt,
+}: {
+  storeId: string | null;
+  jwt: string | null;
+}) {
+  const [storeId, setStoreId] = useState(initialStoreId || crypto.randomUUID());
+  const [jwt, setJwt] = useState(initialJwt || "");
+
+  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const searchParams = new URLSearchParams();
+    searchParams.set("storeId", storeId);
+    searchParams.set("jwt", jwt);
+    window.location.search = searchParams.toString();
+  };
+
+  return (
+    <div>
+      <h1>Enter Session Info</h1>
+      <form onSubmit={handleSubmit}>
+        <div>
+          <label>
+            Session ID (storeId):
+            <input
+              type="text"
+              value={storeId}
+              onChange={(e) => setStoreId(e.target.value)}
+              style={{ width: "400px" }}
+            />
+          </label>
+        </div>
+        <div>
+          <label>
+            JWT:
+            <textarea
+              value={jwt}
+              onChange={(e) => setJwt(e.target.value)}
+              style={{ width: "400px", height: "100px" }}
+            />
+          </label>
+        </div>
+        <button type="submit">Submit</button>
+      </form>
+    </div>
   );
 }
 
