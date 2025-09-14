@@ -197,31 +197,24 @@ const materializers = State.SQLite.materializers(events, {
         ]
       : []),
   ],
-  "v1.ChatStreamStarted": ({ id, data, todos, git, title, updatedAt }, ctx) => {
-    const task = ctx.query(tables.tasks.where("id", "=", id)).at(0);
-    if (!task) {
-      throw new Error(`Task ${id} not found`);
-    }
-
-    return [
-      tables.tasks
-        .update({
-          status: "pending-model",
-          todos,
-          git,
-          title,
-          updatedAt,
-        })
-        .where({ id }),
-      tables.messages
-        .insert({
-          id: data.id,
-          taskId: id,
-          data,
-        })
-        .onConflict("id", "replace"),
-    ];
-  },
+  "v1.ChatStreamStarted": ({ id, data, todos, git, title, updatedAt }) => [
+    tables.tasks
+      .update({
+        status: "pending-model",
+        todos,
+        git,
+        title,
+        updatedAt,
+      })
+      .where({ id }),
+    tables.messages
+      .insert({
+        id: data.id,
+        taskId: id,
+        data,
+      })
+      .onConflict("id", "replace"),
+  ],
   "v1.ChatStreamFinished": ({ id, data, totalTokens, status, updatedAt }) => [
     tables.tasks
       .update({

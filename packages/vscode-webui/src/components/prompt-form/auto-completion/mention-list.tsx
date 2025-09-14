@@ -60,6 +60,7 @@ export const AutoCompleteMentionList = forwardRef<
         case "ArrowDown":
           newIndex = selectedIndex === lastIndex ? 0 : selectedIndex + 1;
           break;
+        case "Enter":
         case "Tab":
           if (items[selectedIndex]) {
             handleSelect(items[selectedIndex]);
@@ -159,11 +160,6 @@ const MentionItemView = memo(function MentionItemView({
       <span className="mr-2 flex items-center gap-1 truncate whitespace-nowrap font-medium">
         <span className="truncate">{highlightedText()}</span>
       </span>
-      {isSelected && (
-        <span className="ml-auto flex-shrink-0 rounded-sm border border-foreground px-1.25 py-0.25 font-medium text-foreground text-xs">
-          Tab
-        </span>
-      )}
     </div>
   );
 });

@@ -36,7 +36,7 @@ import { startBackgroundJob } from "@/tools/start-background-job";
 import { todoWrite } from "@/tools/todo-write";
 import { previewWriteToFile, writeToFile } from "@/tools/write-to-file";
 import type { Environment } from "@getpochi/common";
-import type { UserInfo } from "@getpochi/common/configuration";
+import { type UserInfo, getStoreId } from "@getpochi/common/configuration";
 import {
   GitStatusReader,
   ignoreWalk,
@@ -143,6 +143,14 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     } catch (err) {
       return null;
     }
+  };
+
+  readStoreId = async (): Promise<string | undefined> => {
+    const cwd = await this.readCurrentWorkspace();
+    if (cwd) {
+      return getStoreId(cwd);
+    }
+    return undefined;
   };
 
   getSessionState = async <K extends keyof SessionState>(

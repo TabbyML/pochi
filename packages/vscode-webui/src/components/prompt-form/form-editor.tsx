@@ -31,6 +31,7 @@ import {
   type Trigger,
   findSuggestionMatch,
 } from "@tiptap/suggestion";
+import { ArrowRightToLine } from "lucide-react";
 import { ScrollArea } from "../ui/scroll-area";
 import { AutoCompleteExtension } from "./auto-completion/extension";
 import type { MentionListActions } from "./shared";
@@ -104,6 +105,8 @@ export function FormEditor({
 }: FormEditorProps) {
   const internalFormRef = useRef<HTMLFormElement>(null);
   const formRef = externalFormRef || internalFormRef;
+  const [isAutoCompleteHintVisible, setIsAutoCompleteHintVisible] =
+    useState(false);
 
   const activeTabs = useActiveTabs();
   const activeTabsRef = useRef(activeTabs);
@@ -340,6 +343,7 @@ export function FormEditor({
         ...(enableSubmitHistory ? [SubmitHistoryExtension] : []),
         AutoCompleteExtension.configure({
           messageContent: messageContent,
+          onHintVisibilityChange: setIsAutoCompleteHintVisible,
         }),
       ],
       editorProps: {
@@ -477,9 +481,11 @@ export function FormEditor({
         try {
           const content = JSON.parse(sessionState.input);
           editor.view.dispatch(
-            editor.state.tr
-              .setMeta("docChangeEvent", { event: "restoreSession" })
-              .replaceWith(0, editor.state.doc.content.size, content),
+            editor.state.tr.replaceWith(
+              0,
+              editor.state.doc.content.size,
+              content,
+            ),
           );
         } catch (error) {
           // ignore JSON parse errors
@@ -554,9 +560,15 @@ export function FormEditor({
       <ScrollArea viewportClassname="max-h-32">
         <EditorContent
           editor={editor}
-          className="prose !border-none min-h-20 w-full max-w-none overflow-hidden break-words text-[var(--vscode-input-foreground)] focus:outline-none"
+          className="prose !border-none min-h-25 w-full max-w-none overflow-hidden break-words text-[var(--vscode-input-foreground)] focus:outline-none"
         />
       </ScrollArea>
+      {isAutoCompleteHintVisible && (
+        <div className="absolute bottom-1.5 left-2.5 flex items-center text-muted-foreground text-xs">
+          Use Tab <ArrowRightToLine className="mr-1.5 ml-0.5 size-4" /> to see
+          suggestions
+        </div>
+      )}
 
       {/* Drop zone overlay - shows when dragging over the editor */}
       {isDragOver && (

@@ -13,7 +13,8 @@
     "@hono/zod-validator": "catalog:",
     "hono": "catalog:",
     "jose": "catalog:",
-    "zod": "catalog:"
+    "zod": "catalog:",
+    "base58-js": "catalog:"
   },
   "devDependencies": {
     "wrangler": "^4.33.0"
