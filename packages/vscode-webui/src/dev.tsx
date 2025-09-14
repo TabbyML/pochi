@@ -1,12 +1,12 @@
+import { type Message, type Task, catalog } from "@getpochi/livekit";
+import { makePersistedAdapter } from "@livestore/adapter-web";
+import LiveStoreSharedWorker from "@livestore/adapter-web/shared-worker?sharedworker";
+import { liveStoreVersion } from "@livestore/livestore";
+import { LiveStoreProvider, useStore } from "@livestore/react";
+import { type FormEvent, useState } from "react";
 import { unstable_batchedUpdates as batchUpdates } from "react-dom";
 import ReactDOM from "react-dom/client";
-import { catalog, type Message, type Task } from "@getpochi/livekit";
-import { makePersistedAdapter } from "@livestore/adapter-web";
 import LiveStoreWorker from "./livestore.worker.ts?worker";
-import LiveStoreSharedWorker from "@livestore/adapter-web/shared-worker?sharedworker";
-import { LiveStoreProvider, useStore } from "@livestore/react";
-import { liveStoreVersion } from "@livestore/livestore";
-import { type FormEvent, useState } from "react";
 
 const adapter = makePersistedAdapter({
   storage: { type: "opfs" },

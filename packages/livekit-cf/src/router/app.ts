@@ -1,8 +1,8 @@
 import { verifyJWT } from "@/lib/jwt";
-import { base58_to_binary, binary_to_base58 } from "base58-js";
 import type { Env } from "@/types";
 import { zValidator } from "@hono/zod-validator";
 import * as SyncBackend from "@livestore/sync-cf/cf-worker";
+import { base58_to_binary } from "base58-js";
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { z } from "zod";
