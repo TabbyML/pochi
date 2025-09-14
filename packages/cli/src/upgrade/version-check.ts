@@ -29,7 +29,7 @@ export async function returnVersionInfo(): Promise<VersionCheckResult> {
 export async function checkForUpdates() {
   const { updateAvailable, currentVersion, latestVersion } = await returnVersionInfo();
 
-  const header = `${chalk.bold("Pochi")} ${chalk.white(currentVersion)}`;
+  const header = `\n${chalk.bold("Pochi")} ${chalk.white(currentVersion)}`;
 
   const line = updateAvailable
     ? `${header} ${chalk.dim("(update available")} ${chalk.green(latestVersion)}${chalk.dim(")")}`
