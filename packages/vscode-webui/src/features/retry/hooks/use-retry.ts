@@ -2,6 +2,7 @@ import type { UseChatHelpers } from "@ai-sdk/react";
 import { prompts } from "@getpochi/common";
 import { prepareLastMessageForRetry } from "@getpochi/common/message-utils";
 import type { Message } from "@getpochi/livekit";
+import { APICallError } from "ai";
 import { useCallback } from "react";
 import { ReadyForRetryError } from "./use-ready-for-retry-error";
 
@@ -17,6 +18,10 @@ export function useRetry({
   const retryRequest = useCallback(
     async (error: Error) => {
       if (messages.length === 0) {
+        return;
+      }
+
+      if (APICallError.isInstance(error) && error.isRetryable === false) {
         return;
       }
 

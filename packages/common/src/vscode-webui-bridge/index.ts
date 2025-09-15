@@ -21,6 +21,7 @@ export type { SessionState, WorkspaceState } from "./types/session";
 export type { TaskIdParams, NewTaskParams } from "./types/task-params";
 export type {
   VSCodeLmModel,
+  VSCodeLmRequestCallback,
   VSCodeLmRequestOptions,
   VSCodeLmRequest,
 } from "./types/models";

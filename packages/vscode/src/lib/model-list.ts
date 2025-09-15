@@ -5,6 +5,7 @@ import { pochiConfig } from "@getpochi/common/configuration";
 import { getVendors } from "@getpochi/common/vendor";
 import type {
   DisplayModel,
+  VSCodeLmRequestCallback,
   VSCodeLmRequestOptions,
 } from "@getpochi/common/vscode-webui-bridge";
 import { type Signal, effect, signal } from "@preact/signals-core";
@@ -56,7 +57,7 @@ export class ModelList implements vscode.Disposable {
         getCredentials: async () => {
           return async (
             options: Omit<VSCodeLmRequestOptions, "model">,
-            onChunk: (chunk: string) => Promise<void>,
+            onChunk: VSCodeLmRequestCallback,
           ) => {
             await this.vscodeLm.chat(
               {
