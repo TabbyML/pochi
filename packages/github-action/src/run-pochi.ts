@@ -39,13 +39,10 @@ async function cleanupExecution(
 
   // Finalize history comment
   const truncatedOutput = buildBatchOutput(context.outputBuffer);
-  const finalComment = `\`\`\`\n${truncatedOutput}\n\`\`\`${githubManager.createGitHubActionFooter()}`;
 
-  await githubManager.finalizeComment(
-    context.historyCommentId,
-    finalComment,
+  await githubManager.updateComment(context.historyCommentId, truncatedOutput, {
     success,
-  );
+  });
 
   // Handle reactions
   await githubManager.createReaction(request.commentId, reaction);
@@ -57,9 +54,14 @@ async function cleanupExecution(
   }
 
   if (context.outputBuffer.trim()) {
+    const markdownFormattedOutput = context.outputBuffer
+      .replace(/\n\n/g, "<<<DOUBLE_NEWLINE>>>")
+      .replace(/\n/g, "\n\n")
+      .replace(/<<<DOUBLE_NEWLINE>>>/g, "\n\n");
+
     await core.summary
       .addHeading("Task Details")
-      .addCodeBlock(context.outputBuffer, "text")
+      .addRaw(markdownFormattedOutput)
       .addRaw(
         `**[View Full GitHub Action](${githubManager.createGitHubActionFooter().match(/\[View GitHub Action\]\((.*?)\)/)?.[1] || "#"})**\n\n`,
       )
@@ -74,9 +76,7 @@ export async function runPochi(githubManager: GitHubManager): Promise<void> {
 
   const historyCommentId = process.env.PROGRESS_COMMENT_ID
     ? Number.parseInt(process.env.PROGRESS_COMMENT_ID, 10)
-    : await githubManager.createComment(
-        `Starting Pochi execution...${githubManager.createGitHubActionFooter()}`,
-      );
+    : await githubManager.createComment("Starting Pochi execution...");
   const eyesReactionId = process.env.EYES_REACTION_ID
     ? Number.parseInt(process.env.EYES_REACTION_ID, 10)
     : undefined;
@@ -129,8 +129,7 @@ export async function runPochi(githubManager: GitHubManager): Promise<void> {
     context.updateInterval = setInterval(async () => {
       try {
         const truncatedOutput = buildBatchOutput(context.outputBuffer);
-        const progressContent = `\`\`\`\n${truncatedOutput}\n\`\`\`${githubManager.createGitHubActionFooter()}`;
-        await githubManager.updateComment(historyCommentId, progressContent);
+        await githubManager.updateComment(historyCommentId, truncatedOutput);
       } catch (error) {
         console.error("Failed to update comment:", error);
       }
