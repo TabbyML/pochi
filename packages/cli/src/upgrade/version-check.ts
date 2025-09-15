@@ -21,7 +21,10 @@ export async function returnVersionInfo(options?: {
     ? Promise.race<GitHubRelease | never>([
         latestReleasePromise,
         new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("version check timeout")), timeoutMs),
+          setTimeout(
+            () => reject(new Error("version check timeout")),
+            timeoutMs,
+          ),
         ),
       ])
     : latestReleasePromise)) as GitHubRelease;
