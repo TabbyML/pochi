@@ -12,12 +12,12 @@ export interface VersionCheckResult {
 }
 
 export async function returnVersionInfo(options?: {
-  timeoutMs?: number;
+  timeoutMs?: number | null;
 }): Promise<VersionCheckResult> {
   const { timeoutMs } = options ?? {};
 
   const latestReleasePromise = fetchLatestCliRelease();
-  const latestRelease = (await (timeoutMs
+  const latestRelease = (await (timeoutMs != null
     ? Promise.race<GitHubRelease | never>([
         latestReleasePromise,
         new Promise((_, reject) =>
