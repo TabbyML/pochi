@@ -11,6 +11,7 @@ import { type Store, type Unsubscribe, nanoid } from "@livestore/livestore";
 import { handleSyncUpdateRpc } from "@livestore/sync-cf/client";
 import { hc } from "hono/client";
 import moment from "moment";
+import { funnel } from "remeda";
 import { app } from "./app";
 import type { Env as ClientEnv } from "./types";
 
@@ -80,16 +81,7 @@ export class LiveStoreClientDO
     // Make sure to only subscribe once
     if (this.storeSubscription === undefined) {
       this.storeSubscription = store.subscribe(catalog.queries.tasks$, {
-        onUpdate: async (tasks) => {
-          await Promise.all(
-            tasks.map((task) =>
-              this.persistTask(store, task).catch(console.error),
-            ),
-          );
-
-          // Whenever the tasks change, we extend the ttl of the DO.
-          await this.state.storage.setAlarm(Date.now() + 10_000);
-        },
+        onUpdate: (tasks) => tasks && this.onTasksUpdate.call(tasks),
       });
     }
   }
@@ -99,6 +91,25 @@ export class LiveStoreClientDO
   async syncUpdateRpc(payload: unknown) {
     await handleSyncUpdateRpc(payload);
   }
+
+  private onTasksUpdate = funnel(
+    async (tasks: readonly Task[]) => {
+      if (!tasks) return;
+
+      const store = await this.getStore();
+      await Promise.all(
+        tasks.map((task) => this.persistTask(store, task).catch(console.error)),
+      );
+
+      // Whenever the tasks change, we extend the ttl of the DO.
+      await this.state.storage.setAlarm(Date.now() + 10_000);
+    },
+    {
+      minGapMs: 1000,
+      triggerAt: "start",
+      reducer: (_, rhs: readonly Task[]) => rhs,
+    },
+  );
 
   private async persistTask(store: Store<typeof catalog.schema>, task: Task) {
     const { sub: userId } = decodeStoreId(store.storeId);

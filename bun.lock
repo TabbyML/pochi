@@ -148,6 +148,7 @@
         "hono": "catalog:",
         "jose": "catalog:",
         "moment": "catalog:",
+        "remeda": "catalog:",
         "zod": "catalog:",
       },
       "devDependencies": {
