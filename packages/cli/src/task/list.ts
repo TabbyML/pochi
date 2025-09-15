@@ -1,5 +1,6 @@
 import type { Command } from "@commander-js/extra-typings";
-import { catalog } from "@getpochi/livekit";
+import { type Task, catalog } from "@getpochi/livekit";
+import select from "@inquirer/select";
 import chalk from "chalk";
 import { createStore } from "../livekit/store";
 
@@ -11,7 +12,7 @@ export function registerTaskListCommand(taskCommand: Command) {
     .option(
       "-n, --limit <number>",
       "The maximum number of tasks to display.",
-      "10",
+      "100",
     )
     .action(async (options) => {
       const limit = Number.parseInt(options.limit, 10);
@@ -36,40 +37,59 @@ export function registerTaskListCommand(taskCommand: Command) {
           return;
         }
 
-        console.log(chalk.bold(`\nRecent Tasks (${tasks.length}):`));
-        console.log();
+        const taskId = await select({
+          message: `Showing the last ${chalk.bold(limit)} tasks`,
+          choices: tasks.map((task) => ({
+            name: formatTaskForSelect(task),
+            short: task.id,
+            value: task.id,
+            description: formatTaskDescription(task),
+            disabled: !task.shareId,
+          })),
+          pageSize: 10,
+          theme: {
+            style: {
+              description: (text: string) => text,
+            },
+            helpMode: "never",
+            indexMode: "number",
+          },
+        });
 
-        for (const task of tasks) {
-          const statusColor = getStatusColor(task.status);
-          const title = task.title || task.id.substring(0, 8);
-          const timeAgo = getTimeAgo(task.updatedAt);
-
-          const shareInfo = task.shareId
-            ? chalk.blue(` [${task.shareId.substring(0, 8)}]`)
-            : "";
-
+        const task = tasks.find((t) => t.id === taskId);
+        if (task) {
           console.log(
-            `${statusColor(getStatusIcon(task.status))} ${chalk.bold(title)}${shareInfo} ${chalk.gray(`(${timeAgo})`)}`,
+            `\n${formatTaskForSelect(task)}\n${formatTaskDescription(task)}`,
           );
-          console.log(chalk.gray(`   ID: ${task.id}`));
-
-          if (task.shareId) {
-            console.log(
-              chalk.gray(
-                `   Share: https://app.getpochi.com/share/${task.shareId}`,
-              ),
-            );
-          }
-          console.log();
         }
       } catch (error) {
-        return taskCommand.error(
-          `Failed to list tasks: ${error instanceof Error ? error.message : "Unknown error"}`,
-        );
+        if (error instanceof Error && error.message.includes("SIGINT")) {
+          // ignore ctrl-c
+        } else {
+          return taskCommand.error(
+            `Failed to list tasks: ${error instanceof Error ? error.message : "Unknown error"}`,
+          );
+        }
       } finally {
         await store.shutdown();
       }
     });
+}
+
+function formatTaskForSelect(task: Task): string {
+  const statusColor = getStatusColor(task.status);
+  const title = clipTitle(task.title || task.id.substring(0, 8), 75);
+  return `${statusColor(getStatusIcon(task.status))} ${chalk.bold(title)}`;
+}
+
+function formatTaskDescription(task: Task): string {
+  const timeAgo = getTimeAgo(task.updatedAt);
+  let description = `\n  ID: ${chalk.cyan(task.id)}`;
+  description += `\n  Last Updated: ${chalk.gray(timeAgo)}`;
+  if (task.shareId) {
+    description += `\n  Share URL: ${chalk.underline(`https://app.getpochi.com/share/${task.shareId}`)}`;
+  }
+  return description;
 }
 
 function getStatusColor(status: string) {
@@ -115,4 +135,9 @@ function getTimeAgo(date: Date): string {
   if (diffDays < 7) return `${diffDays}d ago`;
 
   return date.toLocaleDateString();
+}
+
+function clipTitle(title: string, maxLength: number): string {
+  if (title.length <= maxLength) return title;
+  return `${title.substring(0, maxLength - 3)}...`;
 }

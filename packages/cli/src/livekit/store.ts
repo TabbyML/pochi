@@ -33,15 +33,14 @@ export async function createStore(cwd: string) {
       : undefined,
   });
 
-  const store = await createStorePromise<LiveStoreSchema>({
+  return createStorePromise<LiveStoreSchema>({
     adapter,
     schema: catalog.schema,
-    storeId: storeId,
+    storeId,
     syncPayload: {
       jwt,
     },
   });
-  return store;
 }
 
 async function getPochiCredentials() {
