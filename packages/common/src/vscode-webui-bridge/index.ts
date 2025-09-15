@@ -6,6 +6,7 @@ export type {
 export { createVscodeHostStub } from "./webview-stub";
 export type { PochiCredentials } from "./types/pochi";
 
+export type { McpStatus } from "../mcp-utils";
 export type {
   UserEditsDiff,
   ExecuteCommandResult,

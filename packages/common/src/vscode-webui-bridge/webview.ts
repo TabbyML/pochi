@@ -2,10 +2,10 @@ import type { ThreadAbortSignalSerialization } from "@quilted/threads";
 import type { ThreadSignalSerialization } from "@quilted/threads/signals";
 import type { Environment } from "../base";
 import type { UserInfo } from "../configuration";
-import type { McpStatus } from "../mcp-utils";
 import type {
   CaptureEvent,
   CustomAgentFile,
+  McpStatus,
   NewTaskParams,
   ResourceURI,
   RuleFile,
