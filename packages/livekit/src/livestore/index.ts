@@ -1,5 +1,5 @@
 export {
-  // events,
+  events,
   schema,
   // tables
 } from "./schema";

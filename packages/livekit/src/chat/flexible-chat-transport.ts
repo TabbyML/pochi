@@ -1,7 +1,7 @@
 import { getErrorMessage } from "@ai-sdk/provider";
 import type { Environment } from "@getpochi/common";
 import { formatters, prompts } from "@getpochi/common";
-import type { PochiApiClient } from "@getpochi/common/pochi-api";
+
 import {
   type CustomAgent,
   type McpTool,
@@ -21,7 +21,6 @@ import {
 } from "ai";
 import { pickBy } from "remeda";
 import type { Message, Metadata, RequestData } from "../types";
-import { schedulePersistJob } from "./background-job";
 import { makeRepairToolCall } from "./llm";
 import { parseMcpToolSet } from "./mcp-utils";
 import {
@@ -56,8 +55,6 @@ export type ChatTransportOptions = {
   isSubTask?: boolean;
   isCli?: boolean;
   store: Store;
-  apiClient: PochiApiClient;
-  waitUntil?: (promise: Promise<unknown>) => void;
   customAgent?: CustomAgent;
 };
 
@@ -67,8 +64,6 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
   private readonly isSubTask?: boolean;
   private readonly isCli?: boolean;
   private readonly store: Store;
-  private readonly apiClient: PochiApiClient;
-  private readonly waitUntil?: (promise: Promise<unknown>) => void;
   private readonly customAgent?: CustomAgent;
 
   constructor(options: ChatTransportOptions) {
@@ -77,8 +72,6 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
     this.isSubTask = options.isSubTask;
     this.isCli = options.isCli;
     this.store = options.store;
-    this.apiClient = options.apiClient;
-    this.waitUntil = options.waitUntil;
     this.customAgent = overrideCustomAgentTools(options.customAgent);
   }
 
@@ -182,17 +175,8 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
           } satisfies Metadata;
         }
       },
-      onFinish: async ({ messages }) => {
-        if (this.apiClient.authenticated) {
-          schedulePersistJob({
-            taskId: chatId,
-            store: this.store,
-            messages,
-            apiClient: this.apiClient,
-            environment,
-            waitUntil: this.waitUntil,
-          });
-        }
+      onFinish: async () => {
+        // DO NOTHING
       },
     });
   };

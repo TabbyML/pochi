@@ -12,9 +12,6 @@ export const AdvancedSettingsSection: React.FC = () => {
 
     enablePochiModels,
     updateEnablePochiModels,
-
-    enableSync,
-    updateEnableSync,
   } = useSettingsStore();
 
   return (
@@ -41,14 +38,6 @@ export const AdvancedSettingsSection: React.FC = () => {
               checked={enablePochiModels}
               onCheckedChange={(checked) => {
                 updateEnablePochiModels(!!checked);
-              }}
-            />
-            <SettingsCheckboxOption
-              id="enable-sync"
-              label={t("settings.advanced.enableSync")}
-              checked={enableSync}
-              onCheckedChange={(checked) => {
-                updateEnableSync(!!checked);
               }}
             />
             <div>

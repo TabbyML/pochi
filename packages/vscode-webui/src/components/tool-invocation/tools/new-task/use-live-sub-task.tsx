@@ -11,7 +11,7 @@ import {
   useRetry,
 } from "@/features/retry";
 import { useTodos } from "@/features/todo";
-import { apiClient } from "@/lib/auth-client";
+
 import { useCustomAgents } from "@/lib/hooks/use-custom-agents";
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
 import { vscodeHost } from "@/lib/vscode";
@@ -79,7 +79,6 @@ export function useLiveSubTask(
   // FIXME: handle auto retry for output without task.
   const chatKit = useLiveChatKit({
     taskId: uid,
-    apiClient,
     abortSignal: abortController.current.signal,
     getters,
     isSubTask: true,

@@ -14,7 +14,9 @@
     "@hono/zod-validator": "catalog:",
     "hono": "catalog:",
     "jose": "catalog:",
-    "zod": "catalog:"
+    "zod": "catalog:",
+    "moment": "catalog:",
+    "remeda": "catalog:"
   },
   "devDependencies": {
     "wrangler": "^4.33.0"

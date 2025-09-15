@@ -40,6 +40,11 @@ app
         c.req.raw,
       );
 
+      // Run a fetch to active CLIENT_DO
+      c.env.CLIENT_DO.get(c.env.CLIENT_DO.idFromName(query.storeId)).fetch(
+        `https://${c.req.header("host")}/stores/${query.storeId}`,
+      );
+
       if (requestParamsResult._tag === "Some") {
         return SyncBackend.handleSyncRequest({
           request: c.req.raw,

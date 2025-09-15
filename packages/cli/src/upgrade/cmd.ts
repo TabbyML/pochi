@@ -6,7 +6,9 @@ import { returnVersionInfo } from "./version-check";
 export function registerUpgradeCommand(program: Command) {
   program
     .command("upgrade")
-    .description("Upgrade CLI")
+    .description(
+      "Check for new releases and upgrade the Pochi CLI to the latest version.",
+    )
     .action(async () => {
       console.log("Checking for updates...");
 

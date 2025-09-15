@@ -1,8 +1,10 @@
 import { MaxAttachments } from "@/lib/constants";
 import { createFileName, validateFile } from "@/lib/utils/attachment";
+import type { PochiApi } from "@getpochi/common/pochi-api";
+import { getServerBaseUrl } from "@getpochi/common/vscode-webui-bridge";
 import type { FileUIPart } from "ai";
+import { hc } from "hono/client";
 import { useRef, useState } from "react";
-import { apiClient } from "../auth-client";
 
 interface UseAttachmentUploadOptions {
   maxAttachments?: number;
@@ -204,6 +206,7 @@ export function useAttachmentUpload(options?: UseAttachmentUploadOptions) {
 // }
 
 async function fileToRemoteUri(file: File, signal?: AbortSignal) {
+  const apiClient = hc<PochiApi>(getServerBaseUrl());
   const response = await apiClient.api.upload.$post(
     {
       form: {

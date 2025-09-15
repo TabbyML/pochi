@@ -1,5 +1,5 @@
 import { getLogger } from "@getpochi/common";
-import type { PochiApiClient } from "@getpochi/common/pochi-api";
+
 import type { CustomAgent } from "@getpochi/tools";
 import type { Store } from "@livestore/livestore";
 import type { ChatInit, ChatOnErrorCallback, ChatOnFinishCallback } from "ai";
@@ -30,15 +30,11 @@ export type LiveChatKitOptions<T> = {
 
   store: Store;
 
-  apiClient: PochiApiClient;
-
   chatClass: new (options: ChatInit<Message>) => T;
 
   onOverrideMessages?: (options: {
     messages: Message[];
   }) => void | Promise<void>;
-
-  waitUntil?: (promise: Promise<unknown>) => void;
 
   customAgent?: CustomAgent;
 } & Omit<
@@ -65,9 +61,7 @@ export class LiveChatKit<
     getters,
     isSubTask,
     isCli,
-    apiClient,
     customAgent,
-    waitUntil,
     ...chatInit
   }: LiveChatKitOptions<T>) {
     this.taskId = taskId;
@@ -78,9 +72,7 @@ export class LiveChatKit<
       getters,
       isSubTask,
       isCli,
-      apiClient,
       customAgent,
-      waitUntil,
     });
 
     this.chat = new chatClass({

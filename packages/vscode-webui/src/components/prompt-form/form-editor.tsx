@@ -563,12 +563,14 @@ export function FormEditor({
           className="prose !border-none min-h-25 w-full max-w-none overflow-hidden break-words text-[var(--vscode-input-foreground)] focus:outline-none"
         />
       </ScrollArea>
-      {isAutoCompleteHintVisible && (
-        <div className="absolute bottom-1.5 left-2.5 flex items-center text-muted-foreground text-xs">
-          Use Tab <ArrowRightToLine className="mr-1.5 ml-0.5 size-4" /> to see
-          suggestions
-        </div>
-      )}
+      <div className="h-5 bg-input py-0.5 pl-2">
+        {isAutoCompleteHintVisible && (
+          <div className="flex items-center text-muted-foreground text-xs">
+            Use Tab <ArrowRightToLine className="mr-1.5 ml-0.5 size-4" /> to see
+            suggestions
+          </div>
+        )}
+      </div>
 
       {/* Drop zone overlay - shows when dragging over the editor */}
       {isDragOver && (
