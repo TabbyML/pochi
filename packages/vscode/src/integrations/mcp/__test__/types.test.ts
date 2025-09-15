@@ -125,12 +125,12 @@ describe("MCP Types", () => {
 
     it("should return true and narrow type correctly", () => {
       const tool: McpToolExecutable = {
-        execute: async (args: unknown) => `processed: ${JSON.stringify(args)}`,
+        execute: async (args: unknown, options?: any) => `processed: ${JSON.stringify(args)}`,
       };
 
       if (isExecutable(tool)) {
         // TypeScript should know that tool.execute is defined here
-        const result = tool.execute({ test: "data" });
+        const result = tool.execute({ test: "data" }, { toolCallId: "test", messages: [] });
         assert.ok(result instanceof Promise);
       } else {
         assert.fail("Tool should be executable");
