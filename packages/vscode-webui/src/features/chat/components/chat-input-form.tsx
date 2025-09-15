@@ -21,13 +21,11 @@ import type { Message } from "@getpochi/livekit";
 interface QueuedMessagesProps {
   messages: string[];
   onRemove: (index: number) => void;
-  onClear: () => void;
 }
 
 const QueuedMessages: React.FC<QueuedMessagesProps> = ({
   messages,
   onRemove,
-  onClear,
 }) => {
   const { t } = useTranslation();
   return (
@@ -45,15 +43,6 @@ const QueuedMessages: React.FC<QueuedMessagesProps> = ({
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
-        {/* <Button
-          variant="ghost"
-          size="icon"
-          type="button"
-          onClick={onClear}
-          className="h-6 w-6"
-        >
-          <Trash2 className="size-4" />
-        </Button> */}
       </div>
       <div className="flex max-h-48 flex-col gap-1 overflow-y-auto">
         {messages.map((msg, index) => (
@@ -93,7 +82,6 @@ interface ChatInputFormProps {
   messageContent?: string;
   queuedMessages: string[];
   onRemoveQueuedMessage: (index: number) => void;
-  onClearQueuedMessages: () => void;
 }
 
 export function ChatInputForm({
@@ -109,7 +97,6 @@ export function ChatInputForm({
   messageContent,
   queuedMessages,
   onRemoveQueuedMessage,
-  onClearQueuedMessages,
 }: ChatInputFormProps) {
   const editorRef = useRef<Editor | null>(null);
 
@@ -136,7 +123,6 @@ export function ChatInputForm({
         <QueuedMessages
           messages={queuedMessages}
           onRemove={onRemoveQueuedMessage}
-          onClear={onClearQueuedMessages}
         />
       )}
     </FormEditor>

@@ -239,7 +239,6 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
         onRemoveQueuedMessage={(index) =>
           setQueuedMessages((prev) => prev.filter((_, i) => i !== index))
         }
-        onClearQueuedMessages={() => setQueuedMessages([])}
       />
 
       {/* Hidden file input for image uploads */}
