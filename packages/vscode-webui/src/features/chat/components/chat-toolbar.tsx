@@ -115,16 +115,21 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     compact,
   });
 
-  const { isExecuting, isSubmitDisabled, showStopButton, showPreview } =
-    useChatStatus({
-      isReadOnly,
-      isModelsLoading,
-      isLoading,
-      isInputEmpty: !input.trim() && queuedMessages.length === 0,
-      isFilesEmpty: files.length === 0,
-      isUploadingAttachments,
-      newCompactTaskPending,
-    });
+  const {
+    isExecuting,
+    isBusyCore,
+    isSubmitDisabled,
+    showStopButton,
+    showPreview,
+  } = useChatStatus({
+    isReadOnly,
+    isModelsLoading,
+    isLoading,
+    isInputEmpty: !input.trim() && queuedMessages.length === 0,
+    isFilesEmpty: files.length === 0,
+    isUploadingAttachments,
+    newCompactTaskPending,
+  });
 
   const compactEnabled = !(
     isLoading ||
@@ -133,18 +138,19 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     totalTokens < constants.CompactTaskMinTokens
   );
 
-  const { handleSubmit, handleStop } = useChatSubmit({
-    chat,
-    input,
-    setInput,
-    attachmentUpload,
-    isSubmitDisabled,
-    isLoading,
-    pendingApproval,
-    newCompactTaskPending,
-    queuedMessages,
-    setQueuedMessages,
-  });
+  const { handleSubmit, handleStop, handleSubmitQueuedMessages } =
+    useChatSubmit({
+      chat,
+      input,
+      setInput,
+      attachmentUpload,
+      isSubmitDisabled,
+      isLoading,
+      pendingApproval,
+      newCompactTaskPending,
+      queuedMessages,
+      setQueuedMessages,
+    });
 
   const handleQueueMessage = (message: string) => {
     if (message.trim()) {
@@ -157,16 +163,19 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     const isReady =
       status === "ready" &&
       !isExecuting &&
+      !isBusyCore &&
       (!pendingApproval || pendingApproval.name === "retry");
+
     if (isReady && queuedMessages.length > 0) {
-      handleSubmit();
+      handleSubmitQueuedMessages();
     }
   }, [
     status,
     isExecuting,
+    isBusyCore,
     queuedMessages.length,
     pendingApproval,
-    handleSubmit,
+    handleSubmitQueuedMessages,
   ]);
 
   // Only allow adding tool results when not loading

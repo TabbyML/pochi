@@ -3,7 +3,7 @@ import type { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
 import type { UseChatHelpers } from "@ai-sdk/react";
 import type { Message } from "@getpochi/livekit";
 import type React from "react";
-import { useCallback, useRef } from "react";
+import { useCallback } from "react";
 import { useAutoApproveGuard, useToolCallLifeCycle } from "../lib/chat-state";
 
 type UseChatReturn = Pick<UseChatHelpers<Message>, "sendMessage" | "stop">;
@@ -39,7 +39,6 @@ export function useChatSubmit({
   const { executingToolCalls, previewingToolCalls } = useToolCallLifeCycle();
   const isExecuting = executingToolCalls.length > 0;
   const isPreviewing = (previewingToolCalls?.length ?? 0) > 0;
-  const isSubmittingRef = useRef(false);
 
   const abortExecutingToolCalls = useCallback(() => {
     for (const toolCall of executingToolCalls) {
@@ -93,6 +92,10 @@ export function useChatSubmit({
     stopChat,
   ]);
 
+  /**
+   * Handles form submission, sending both the current input and any queued messages.
+   * This function supports text and file attachments.
+   */
   const handleSubmit = useCallback(
     async (e?: React.FormEvent<HTMLFormElement>) => {
       e?.preventDefault();
@@ -156,5 +159,43 @@ export function useChatSubmit({
     ],
   );
 
-  return { handleSubmit, handleStop };
+  /**
+   * Submits only the queued messages.
+   * This is for text-only messages and does not include the current input.
+   */
+  const handleSubmitQueuedMessages = useCallback(async () => {
+    // Compacting is not allowed to be stopped.
+    if (newCompactTaskPending) return;
+
+    if (isSubmitDisabled && queuedMessages.length === 0) {
+      return;
+    }
+
+    if (handleStop()) {
+      // break isLoading, we need to wait for some time to avoid racing between stop and submit.
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    }
+
+    autoApproveGuard.current = true;
+    clearUploadError();
+    sendMessage({
+      text: queuedMessages.join("\n\n"),
+    });
+    setQueuedMessages([]);
+  }, [
+    isSubmitDisabled,
+    handleStop,
+    autoApproveGuard,
+    sendMessage,
+    clearUploadError,
+    newCompactTaskPending,
+    queuedMessages,
+    setQueuedMessages,
+  ]);
+
+  return {
+    handleSubmit,
+    handleStop,
+    handleSubmitQueuedMessages,
+  };
 }
