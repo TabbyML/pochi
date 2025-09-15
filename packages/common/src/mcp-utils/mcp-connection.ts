@@ -45,6 +45,7 @@ type FsmContext = {
   startingAbortController?: AbortController;
   client?: McpClient;
   toolset?: ToolSet;
+  instructions?: string;
   error?: string;
   autoReconnectTimer?: ReturnType<typeof setTimeout>;
   autoReconnectAttempts: number;
