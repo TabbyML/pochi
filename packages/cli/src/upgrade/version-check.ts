@@ -14,10 +14,12 @@ export interface VersionCheckResult {
 export async function returnVersionInfo(options?: {
   timeoutMs?: number | null;
 }): Promise<VersionCheckResult> {
-  const { timeoutMs } = options ?? {};
+  const { timeoutMs } = options ?? {}; //Optional timeout, used for version check
 
   const latestReleasePromise = fetchLatestCliRelease();
-  const latestRelease = (await (timeoutMs != null
+
+  // If timeout is provided, use it else wait for the release to be fetched
+  const latestRelease = (await (timeoutMs != null 
     ? Promise.race<GitHubRelease | never>([
         latestReleasePromise,
         new Promise((_, reject) =>
@@ -46,6 +48,7 @@ export async function checkForUpdates() {
 
   const header = `\n${chalk.bold("Pochi")} ${chalk.white(currentVersion)}`;
 
+  // If update is available, show the latest version beside the current version in parentheses, else show the current version
   const line = updateAvailable
     ? `${header} ${chalk.dim("(update available")} ${chalk.green(latestVersion)}${chalk.dim(")")}`
     : header;
