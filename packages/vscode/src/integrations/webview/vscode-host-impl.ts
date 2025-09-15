@@ -39,6 +39,7 @@ import type { Environment } from "@getpochi/common";
 import { type UserInfo, getStoreId } from "@getpochi/common/configuration";
 import { isExecutable } from "@getpochi/common/mcp-utils";
 import type { McpStatus } from "@getpochi/common/mcp-utils";
+import type { McpHub } from "@getpochi/common/mcp-utils";
 import {
   GitStatusReader,
   ignoreWalk,
@@ -86,8 +87,6 @@ import { DiffChangesContentProvider } from "../editor/diff-changes-content-provi
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { type FileSelection, TabState } from "../editor/tab-state";
 // biome-ignore lint/style/useImportType: needed for dependency injection
-import { McpHub } from "../mcp/mcp-hub";
-// biome-ignore lint/style/useImportType: needed for dependency injection
 import { ThirdMcpImporter } from "../mcp/third-party-mcp";
 import { listSymbols } from "../symbol";
 import {
@@ -114,7 +113,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     private readonly tabState: TabState,
     private readonly terminalState: TerminalState,
     private readonly posthog: PostHog,
-    private readonly mcpHub: McpHub,
+    @inject("McpHub") private readonly mcpHub: McpHub,
     private readonly thirdMcpImporter: ThirdMcpImporter,
     private readonly checkpointService: CheckpointService,
     private readonly pochiConfiguration: PochiConfiguration,

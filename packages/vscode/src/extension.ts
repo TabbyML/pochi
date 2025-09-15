@@ -11,6 +11,7 @@ import "@getpochi/vendor-gemini-cli";
 
 import RagdollUriHandler from "@/integrations/uri-handler";
 import { RagdollWebviewProvider } from "@/integrations/webview/ragdoll-webview-provider";
+import type { McpHub } from "@getpochi/common/mcp-utils";
 import { container, instanceCachingFactory } from "tsyringe";
 import type * as vscode from "vscode";
 import { CompletionProvider } from "./code-completion";
@@ -18,7 +19,7 @@ import { PochiAuthenticationProvider } from "./integrations/auth-provider";
 import { CommandManager } from "./integrations/command";
 import { DiffChangesContentProvider } from "./integrations/editor/diff-changes-content-provider";
 import { DiffOriginContentProvider } from "./integrations/editor/diff-origin-content-provider";
-import { McpHub } from "./integrations/mcp/mcp-hub";
+import { createMcpHub } from "./integrations/mcp/mcp-hub-factory";
 import { StatusBarItem } from "./integrations/status-bar-item";
 import { TerminalLinkProvider } from "./integrations/terminal-link-provider";
 import {
@@ -47,6 +48,10 @@ export async function activate(context: vscode.ExtensionContext) {
     // ApiClient is also a singleton
     useFactory: instanceCachingFactory(createApiClient),
   });
+  container.register<McpHub>("McpHub", {
+    // McpHub is also a singleton
+    useFactory: instanceCachingFactory(createMcpHub),
+  });
 
   container.resolve(CompletionProvider);
   container.resolve(StatusBarItem);
@@ -55,7 +60,6 @@ export async function activate(context: vscode.ExtensionContext) {
   container.resolve(RagdollUriHandler);
   container.resolve(CommandManager);
   container.resolve(DiffOriginContentProvider);
-  container.resolve(McpHub);
   container.resolve(PostInstallActions);
   container.resolve(FileLogger);
   container.resolve(TerminalLinkProvider);

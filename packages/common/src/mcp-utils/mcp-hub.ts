@@ -1,9 +1,11 @@
 import type { McpTool } from "@getpochi/tools";
+import { type Signal, signal } from "@preact/signals-core";
 import { getLogger } from "../base";
 import type { McpServerConfig } from "../configuration/index.js";
 
+import { entries } from "remeda";
 import { McpConnection, type McpConnectionStatus } from "./mcp-connection";
-import type { McpToolExecutable } from "./types";
+import { type McpToolExecutable, omitDisabled } from "./types";
 
 // Define a minimal Disposable interface to avoid vscode dependency
 type Disposable = { dispose(): void };
@@ -21,10 +23,14 @@ type McpConnectionMap = Map<
 export interface McpHubStatus {
   connections: Record<string, McpConnectionStatus>;
   toolset: Record<string, McpTool & McpToolExecutable>;
+  instructions: string;
 }
 
 export interface McpHubOptions {
-  config: Record<string, McpServerConfig>;
+  /** Static configuration (for backward compatibility) */
+  config?: Record<string, McpServerConfig>;
+  /** Reactive configuration signal */
+  configSignal?: Signal<Record<string, McpServerConfig>>;
   logger?: ReturnType<typeof getLogger>;
   onStatusChange?: (status: McpHubStatus) => void;
   clientName?: string;
@@ -34,13 +40,22 @@ export class McpHub implements Disposable {
   private connections: McpConnectionMap = new Map();
   private listeners: Disposable[] = [];
   private config: Record<string, McpServerConfig>;
+  private configSignal?: Signal<Record<string, McpServerConfig>>;
   private onStatusChange?: (status: McpHubStatus) => void;
   private readonly clientName: string;
 
+  readonly status: Signal<McpHubStatus>;
+
   constructor(options: McpHubOptions) {
-    this.config = options.config;
+    if (!options.config && !options.configSignal) {
+      throw new Error("Either config or configSignal must be provided");
+    }
+
+    this.configSignal = options.configSignal;
+    this.config = options.config ?? (options.configSignal?.value || {});
     this.onStatusChange = options.onStatusChange;
     this.clientName = options.clientName ?? "pochi";
+    this.status = signal(this.buildStatus());
     this.init();
   }
 
@@ -183,16 +198,33 @@ export class McpHub implements Disposable {
 
   private init() {
     logger.trace("Initializing MCP Hub with config:", this.config);
+
+    // Initialize connections with current config
     for (const [name, config] of Object.entries(this.config)) {
       this.createConnection(name, config);
+    }
+
+    // Subscribe to config signal changes if provided
+    if (this.configSignal) {
+      this.listeners.push({
+        dispose: this.configSignal.subscribe((newConfig) => {
+          logger.debug(
+            "MCP servers configuration changed via signal:",
+            newConfig,
+          );
+          this.updateConfig(newConfig);
+        }),
+      });
     }
   }
 
   private notifyStatusChange() {
+    const status = this.buildStatus();
+    this.status.value = status;
     if (this.onStatusChange) {
-      this.onStatusChange(this.buildStatus());
+      this.onStatusChange(status);
     }
-    logger.trace("Status updated:", this.buildStatus());
+    logger.trace("Status updated:", status);
   }
 
   private buildStatus(): McpHubStatus {
@@ -208,14 +240,15 @@ export class McpHub implements Disposable {
 
     const toolset = Object.entries(connections).reduce<
       Record<string, McpTool & McpToolExecutable>
-    >((acc, [, connection]) => {
-      if (connection.status === "ready" && connection.tools) {
-        const tools = Object.entries(connection.tools).reduce<
+    >((acc, [, connectionStatus]) => {
+      if (connectionStatus.status === "ready" && connectionStatus.tools) {
+        const tools = Object.entries(connectionStatus.tools).reduce<
           Record<string, McpTool & McpToolExecutable>
         >((toolAcc, [toolName, tool]) => {
           if (!tool.disabled) {
-            const { disabled, ...rest } = tool;
-            toolAcc[toolName] = rest;
+            toolAcc[toolName] = {
+              ...omitDisabled(tool),
+            };
           }
           return toolAcc;
         }, {});
@@ -224,9 +257,18 @@ export class McpHub implements Disposable {
       return acc;
     }, {});
 
+    const instructions = entries(connections)
+      .filter(([, instructions]) => !!instructions)
+      .map(
+        ([name, instructions]) =>
+          `# Instructions from ${name} mcp server\n${instructions}`,
+      )
+      .join("\n\n");
+
     return {
       connections,
       toolset,
+      instructions,
     };
   }
 
