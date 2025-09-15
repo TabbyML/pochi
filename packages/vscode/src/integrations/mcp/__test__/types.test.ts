@@ -8,7 +8,7 @@ import {
   type McpToolExecutable,
 } from "@getpochi/common/mcp-utils";
 import type { McpServerConfig } from "@getpochi/common/configuration";
-import type { McpToolStatus } from "@getpochi/common/vscode-webui-bridge";
+import type { McpToolStatus } from "@getpochi/common/mcp-utils";
 
 describe("MCP Types", () => {
   describe("isStdioTransport", () => {

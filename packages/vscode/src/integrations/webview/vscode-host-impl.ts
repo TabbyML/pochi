@@ -52,7 +52,6 @@ import type {
 import type {
   CaptureEvent,
   DisplayModel,
-  McpStatus,
   ResourceURI,
   RuleFile,
   SaveCheckpointOptions,
@@ -60,6 +59,7 @@ import type {
   VSCodeHostApi,
   WorkspaceState,
 } from "@getpochi/common/vscode-webui-bridge";
+import type { McpStatus } from "@getpochi/common/mcp-utils";
 import type {
   PreviewToolFunctionType,
   ToolFunctionType,

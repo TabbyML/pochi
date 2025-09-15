@@ -7,7 +7,6 @@ import type {
   CaptureEvent,
   CustomAgentFile,
   DisplayModel,
-  McpStatus,
   PochiCredentials,
   ResourceURI,
   RuleFile,
@@ -16,6 +15,7 @@ import type {
   VSCodeHostApi,
   WorkspaceState,
 } from "./index";
+import type { McpStatus } from "../mcp-utils";
 
 const VSCodeHostStub = {
   readCurrentWorkspace: async () => {

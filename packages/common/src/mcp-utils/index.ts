@@ -10,6 +10,9 @@ export {
   isExecutable,
   omitDisabled,
   type McpToolExecutable,
+  type McpServerConnection,
+  type McpToolStatus,
+  type McpStatus,
 } from "./types";
 export {
   readableError,
