@@ -4,6 +4,11 @@ import type {
   McpServerTransportHttp,
   McpServerTransportStdio,
 } from "../configuration/index.js";
+import type { McpTool } from "@getpochi/tools";
+
+export interface McpToolStatus extends McpTool {
+  disabled: boolean;
+}
 
 export function isStdioTransport(
   config: McpServerTransport,
@@ -19,4 +24,19 @@ export function isHttpTransport(
 
 export interface McpToolExecutable {
   execute?(args: unknown, options: ToolCallOptions): Promise<unknown>;
+}
+
+export function isExecutable(
+  tool: McpToolExecutable,
+): tool is McpToolExecutable & {
+  execute: (args: unknown, options?: ToolCallOptions) => Promise<unknown>;
+} {
+  return typeof tool?.execute === "function";
+}
+
+export function omitDisabled<T extends McpToolStatus>(
+  tool: T,
+): Omit<T, "disabled"> {
+  const { disabled, ...rest } = tool;
+  return rest;
 }
