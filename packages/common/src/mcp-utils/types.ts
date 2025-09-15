@@ -1,10 +1,10 @@
+import type { McpTool } from "@getpochi/tools";
 import type { ToolCallOptions } from "ai";
 import type {
   McpServerTransport,
   McpServerTransportHttp,
   McpServerTransportStdio,
 } from "../configuration/index.js";
-import type { McpTool } from "@getpochi/tools";
 
 export interface McpToolStatus extends McpTool {
   disabled: boolean;

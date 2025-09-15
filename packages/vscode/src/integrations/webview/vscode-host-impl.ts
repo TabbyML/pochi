@@ -37,6 +37,7 @@ import { todoWrite } from "@/tools/todo-write";
 import { previewWriteToFile, writeToFile } from "@/tools/write-to-file";
 import type { Environment } from "@getpochi/common";
 import { type UserInfo, getStoreId } from "@getpochi/common/configuration";
+import { isExecutable } from "@getpochi/common/mcp-utils";
 import {
   GitStatusReader,
   ignoreWalk,
@@ -88,9 +89,6 @@ import { type FileSelection, TabState } from "../editor/tab-state";
 import { McpHub } from "../mcp/mcp-hub";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { ThirdMcpImporter } from "../mcp/third-party-mcp";
-import {
-  isExecutable
-} from "@getpochi/common/mcp-utils";
 import { listSymbols } from "../symbol";
 import {
   convertUrl,
