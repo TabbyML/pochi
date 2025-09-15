@@ -125,7 +125,7 @@ describe("MCP Types", () => {
 
     it("should return true and narrow type correctly", () => {
       const tool: McpToolExecutable = {
-        execute: async (args: unknown, options?: any) => `processed: ${JSON.stringify(args)}`,
+        execute: async (args: unknown, _options?: any) => `processed: ${JSON.stringify(args)}`,
       };
 
       if (isExecutable(tool)) {
