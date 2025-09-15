@@ -38,7 +38,7 @@ export function registerTaskListCommand(taskCommand: Command) {
         }
 
         const taskId = await select({
-          message: `Showing the last ${chalk.bold(limit)} tasks`,
+          message: `Showing the last ${chalk.bold(limit)} tasks:`,
           choices: tasks.map((task) => ({
             name: formatTaskForSelect(task),
             short: task.id,
@@ -59,7 +59,7 @@ export function registerTaskListCommand(taskCommand: Command) {
         const task = tasks.find((t) => t.id === taskId);
         if (task) {
           console.log(
-            `\n${formatTaskForSelect(task)}\n${formatTaskDescription(task)}`,
+            `\n${formatTaskForSelect(task)}\n${formatTaskDescription(task, false)}`,
           );
         }
       } catch (error) {
@@ -82,9 +82,12 @@ function formatTaskForSelect(task: Task): string {
   return `${statusColor(getStatusIcon(task.status))} ${chalk.bold(title)}`;
 }
 
-function formatTaskDescription(task: Task): string {
+function formatTaskDescription(task: Task, includeID = true): string {
   const timeAgo = getTimeAgo(task.updatedAt);
-  let description = `\n  ID: ${chalk.cyan(task.id)}`;
+  let description = "";
+  if (includeID) {
+    description += `\n  ID: ${chalk.cyan(task.id)}`;
+  }
   description += `\n  Last Updated: ${chalk.gray(timeAgo)}`;
   if (task.shareId) {
     description += `\n  Share URL: ${chalk.underline(`https://app.getpochi.com/share/${task.shareId}`)}`;
