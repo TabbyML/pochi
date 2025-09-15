@@ -1,14 +1,13 @@
-import * as assert from "assert";
-import { describe, it } from "mocha";
+import { describe, it, expect } from "vitest";
 import {
   isStdioTransport,
   isHttpTransport,
   isExecutable,
   omitDisabled,
   type McpToolExecutable,
-} from "@getpochi/common/mcp-utils";
+  type McpToolStatus,
+} from "../index";
 import type { McpServerConfig } from "@getpochi/common/configuration";
-import type { McpToolStatus } from "@getpochi/common/mcp-utils";
 
 describe("MCP Types", () => {
   describe("isStdioTransport", () => {
@@ -19,7 +18,7 @@ describe("MCP Types", () => {
       };
 
       const result = isStdioTransport(config);
-      assert.strictEqual(result, true);
+      expect(result).toBe(true);
     });
 
     it("should return false for http transport config", () => {
@@ -28,7 +27,7 @@ describe("MCP Types", () => {
       };
 
       const result = isStdioTransport(config);
-      assert.strictEqual(result, false);
+      expect(result).toBe(false);
     });
 
     it("should return true for stdio config with additional properties", () => {
@@ -41,7 +40,7 @@ describe("MCP Types", () => {
       };
 
       const result = isStdioTransport(config);
-      assert.strictEqual(result, true);
+      expect(result).toBe(true);
     });
   });
 
@@ -52,7 +51,7 @@ describe("MCP Types", () => {
       };
 
       const result = isHttpTransport(config);
-      assert.strictEqual(result, true);
+      expect(result).toBe(true);
     });
 
     it("should return false for stdio transport config", () => {
@@ -62,7 +61,7 @@ describe("MCP Types", () => {
       };
 
       const result = isHttpTransport(config);
-      assert.strictEqual(result, false);
+      expect(result).toBe(false);
     });
 
     it("should return true for http config with additional properties", () => {
@@ -77,7 +76,7 @@ describe("MCP Types", () => {
       };
 
       const result = isHttpTransport(config);
-      assert.strictEqual(result, true);
+      expect(result).toBe(true);
     });
 
     it("should return false for config with both command and url", () => {
@@ -89,7 +88,7 @@ describe("MCP Types", () => {
       } as any;
 
       const result = isHttpTransport(config);
-      assert.strictEqual(result, false);
+      expect(result).toBe(false);
     });
   });
 
@@ -100,14 +99,14 @@ describe("MCP Types", () => {
       };
 
       const result = isExecutable(tool);
-      assert.strictEqual(result, true);
+      expect(result).toBe(true);
     });
 
     it("should return false for tool without execute function", () => {
       const tool: McpToolExecutable = {};
 
       const result = isExecutable(tool);
-      assert.strictEqual(result, false);
+      expect(result).toBe(false);
     });
 
     it("should return false for tool with non-function execute property", () => {
@@ -116,12 +115,12 @@ describe("MCP Types", () => {
       } as any;
 
       const result = isExecutable(tool);
-      assert.strictEqual(result, false);
+      expect(result).toBe(false);
     });
 
     it("should return false for null or undefined tool", () => {
-      assert.strictEqual(isExecutable(null as any), false);
-      assert.strictEqual(isExecutable(undefined as any), false);
+      expect(isExecutable(null as any)).toBe(false);
+      expect(isExecutable(undefined as any)).toBe(false);
     });
 
     it("should return true and narrow type correctly", () => {
@@ -132,9 +131,9 @@ describe("MCP Types", () => {
       if (isExecutable(tool)) {
         // TypeScript should know that tool.execute is defined here
         const result = tool.execute({ test: "data" }, { toolCallId: "test", messages: [] });
-        assert.ok(result instanceof Promise);
+        expect(result).toBeInstanceOf(Promise);
       } else {
-        assert.fail("Tool should be executable");
+        throw new Error("Tool should be executable");
       }
     });
   });
@@ -156,9 +155,9 @@ describe("MCP Types", () => {
 
       const result = omitDisabled(tool);
 
-      assert.ok(!("disabled" in result));
-      assert.strictEqual(result.description, "Test tool");
-      assert.deepStrictEqual(result.inputSchema, tool.inputSchema);
+      expect("disabled" in result).toBe(false);
+      expect(result.description).toBe("Test tool");
+      expect(result.inputSchema).toEqual(tool.inputSchema);
     });
 
     it("should preserve all other properties", () => {
@@ -178,10 +177,10 @@ describe("MCP Types", () => {
 
       const result = omitDisabled(tool);
 
-      assert.ok(!("disabled" in result));
-      assert.strictEqual(result.description, "Test tool");
-      assert.strictEqual((result as any).customProp, "custom value");
-      assert.deepStrictEqual(result.inputSchema, tool.inputSchema);
+      expect("disabled" in result).toBe(false);
+      expect(result.description).toBe("Test tool");
+      expect((result as any).customProp).toBe("custom value");
+      expect(result.inputSchema).toEqual(tool.inputSchema);
     });
 
     it("should work with complex tool status objects", () => {
@@ -212,9 +211,9 @@ describe("MCP Types", () => {
 
       const result = omitDisabled(tool);
 
-      assert.ok(!("disabled" in result));
-      assert.strictEqual(result.description, tool.description);
-      assert.deepStrictEqual(result.inputSchema, tool.inputSchema);
+      expect("disabled" in result).toBe(false);
+      expect(result.description).toBe(tool.description);
+      expect(result.inputSchema).toEqual(tool.inputSchema);
     });
   });
 
@@ -229,7 +228,7 @@ describe("MCP Types", () => {
       };
 
       // If this compiles, the type is correct
-      assert.ok(config);
+      expect(config).toBeTruthy();
     });
 
     it("should accept valid http config", () => {
@@ -244,7 +243,7 @@ describe("MCP Types", () => {
       };
 
       // If this compiles, the type is correct
-      assert.ok(config);
+      expect(config).toBeTruthy();
     });
 
     it("should accept minimal stdio config", () => {
@@ -254,7 +253,7 @@ describe("MCP Types", () => {
       };
 
       // If this compiles, the type is correct
-      assert.ok(config);
+      expect(config).toBeTruthy();
     });
 
     it("should accept minimal http config", () => {
@@ -263,7 +262,7 @@ describe("MCP Types", () => {
       };
 
       // If this compiles, the type is correct
-      assert.ok(config);
+      expect(config).toBeTruthy();
     });
   });
 });

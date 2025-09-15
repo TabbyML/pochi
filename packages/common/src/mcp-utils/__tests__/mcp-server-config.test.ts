@@ -1,5 +1,4 @@
-import * as assert from "assert";
-import { describe, it } from "mocha";
+import { describe, it, expect } from "vitest";
 import type { McpServerConfig } from "@getpochi/common/configuration";
 
 describe("MCP Hub Tests", () => {
@@ -11,9 +10,9 @@ describe("MCP Hub Tests", () => {
         disabled: false,
         disabledTools: ["tool1"]
       };
-      assert.ok(config.command);
-      assert.ok(Array.isArray(config.args));
-      assert.strictEqual(typeof config.disabled, "boolean");
+      expect(config.command).toBeTruthy();
+      expect(Array.isArray(config.args)).toBe(true);
+      expect(typeof config.disabled).toBe("boolean");
     });
 
     it("should accept valid http config", () => {
@@ -21,8 +20,8 @@ describe("MCP Hub Tests", () => {
         url: "http://localhost:3000",
         disabled: false
       };
-      assert.ok(config.url);
-      assert.strictEqual(typeof config.disabled, "boolean");
+      expect(config.url).toBeTruthy();
+      expect(typeof config.disabled).toBe("boolean");
     });
 
     it("should accept config with optional properties", () => {
@@ -32,9 +31,9 @@ describe("MCP Hub Tests", () => {
         disabled: true,
         disabledTools: ["tool1", "tool2"]
       };
-      assert.strictEqual(config.disabled, true);
-      assert.ok('command' in config);
-      assert.ok(Array.isArray(config.disabledTools));
+      expect(config.disabled).toBe(true);
+      expect('command' in config).toBe(true);
+      expect(Array.isArray(config.disabledTools)).toBe(true);
     });
 
     it("should validate stdio transport properties", () => {
@@ -45,10 +44,10 @@ describe("MCP Hub Tests", () => {
         disabled: false
       };
       
-      assert.ok(stdioConfig.command);
-      assert.ok(Array.isArray(stdioConfig.args));
-      assert.ok(typeof stdioConfig.env === "object");
-      assert.ok(!('url' in stdioConfig));
+      expect(stdioConfig.command).toBeTruthy();
+      expect(Array.isArray(stdioConfig.args)).toBe(true);
+      expect(typeof stdioConfig.env).toBe("object");
+      expect('url' in stdioConfig).toBe(false);
     });
 
     it("should validate http transport properties", () => {
@@ -58,10 +57,10 @@ describe("MCP Hub Tests", () => {
         disabledTools: []
       };
       
-      assert.ok(httpConfig.url);
-      assert.ok(httpConfig.url.startsWith("http"));
-      assert.ok(!('command' in httpConfig));
-      assert.ok(!('args' in httpConfig));
+      expect(httpConfig.url).toBeTruthy();
+      expect(httpConfig.url.startsWith("http")).toBe(true);
+      expect('command' in httpConfig).toBe(false);
+      expect('args' in httpConfig).toBe(false);
     });
 
     it("should handle mixed configuration scenarios", () => {
@@ -77,12 +76,12 @@ describe("MCP Hub Tests", () => {
         disabledTools: ["dangerous-tool", "experimental-feature"]
       };
       
-      assert.ok(fullConfig.command);
-      assert.strictEqual(fullConfig.args.length, 2);
-      assert.ok(fullConfig.env);
-      assert.strictEqual(Object.keys(fullConfig.env).length, 2);
-      assert.ok(Array.isArray(fullConfig.disabledTools));
-      assert.strictEqual(fullConfig.disabledTools.length, 2);
+      expect(fullConfig.command).toBeTruthy();
+      expect(fullConfig.args.length).toBe(2);
+      expect(fullConfig.env).toBeTruthy();
+      expect(fullConfig.env && Object.keys(fullConfig.env).length).toBe(2);
+      expect(Array.isArray(fullConfig.disabledTools)).toBe(true);
+      expect(fullConfig.disabledTools && fullConfig.disabledTools.length).toBe(2);
     });
 
     it("should validate minimal configurations", () => {
@@ -97,9 +96,9 @@ describe("MCP Hub Tests", () => {
         disabled: false
       };
       
-      assert.ok(minimalStdio.command);
-      assert.ok(Array.isArray(minimalStdio.args));
-      assert.ok(minimalHttp.url);
+      expect(minimalStdio.command).toBeTruthy();
+      expect(Array.isArray(minimalStdio.args)).toBe(true);
+      expect(minimalHttp.url).toBeTruthy();
     });
 
     it("should handle disabled server configurations", () => {
@@ -110,9 +109,9 @@ describe("MCP Hub Tests", () => {
         disabledTools: ["all"]
       };
       
-      assert.strictEqual(disabledConfig.disabled, true);
-      assert.ok(disabledConfig.command); // Should still have valid config even when disabled
-      assert.ok(Array.isArray(disabledConfig.disabledTools));
+      expect(disabledConfig.disabled).toBe(true);
+      expect(disabledConfig.command).toBeTruthy(); // Should still have valid config even when disabled
+      expect(Array.isArray(disabledConfig.disabledTools)).toBe(true);
     });
   });
 
@@ -125,10 +124,10 @@ describe("MCP Hub Tests", () => {
       };
       
       // Type assertions to ensure proper typing
-      assert.strictEqual(typeof config.command, "string");
-      assert.ok(Array.isArray(config.args));
-      config.args.forEach(arg => assert.strictEqual(typeof arg, "string"));
-      assert.strictEqual(typeof config.disabled, "boolean");
+      expect(typeof config.command).toBe("string");
+      expect(Array.isArray(config.args)).toBe(true);
+      config.args.forEach(arg => expect(typeof arg).toBe("string"));
+      expect(typeof config.disabled).toBe("boolean");
     });
 
     it("should ensure type safety for http configs", () => {
@@ -137,8 +136,8 @@ describe("MCP Hub Tests", () => {
         disabled: false
       };
       
-      assert.strictEqual(typeof config.url, "string");
-      assert.strictEqual(typeof config.disabled, "boolean");
+      expect(typeof config.url).toBe("string");
+      expect(typeof config.disabled).toBe("boolean");
     });
 
     it("should handle optional environment variables", () => {
@@ -152,12 +151,14 @@ describe("MCP Hub Tests", () => {
         disabled: false
       };
       
-      assert.ok(config.env);
-      assert.strictEqual(typeof config.env, "object");
-      Object.entries(config.env).forEach(([key, value]) => {
-        assert.strictEqual(typeof key, "string");
-        assert.strictEqual(typeof value, "string");
-      });
+      expect(config.env).toBeTruthy();
+      expect(typeof config.env).toBe("object");
+      if (config.env) {
+        Object.entries(config.env).forEach(([key, value]) => {
+          expect(typeof key).toBe("string");
+          expect(typeof value).toBe("string");
+        });
+      }
     });
   });
 });
