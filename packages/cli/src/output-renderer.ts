@@ -255,7 +255,7 @@ function renderToolPart(part: ToolUIPart<UITools>): {
 
   if (part.type === "tool-attemptCompletion") {
     const { result = "" } = part.input || {};
-    const text = `${chalk.bold(chalk.green("🎉 Task Completed"))}\n${chalk.dim("└─")} ${result}`;
+    const text = `${chalk.bold(chalk.green("🎉 Task Completed"))}\n${result}`;
 
     return {
       text,
