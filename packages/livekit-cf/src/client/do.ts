@@ -84,6 +84,8 @@ export class LiveStoreClientDO
         onUpdate: (tasks) => tasks && this.onTasksUpdate.call(tasks),
       });
     }
+
+    await this.state.storage.setAlarm(Date.now() + 10_000);
   }
 
   alarm(_alarmInfo?: AlarmInvocationInfo): void | Promise<void> {}

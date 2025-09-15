@@ -1,20 +1,25 @@
-import type {
-  LanguageModelV2,
-  LanguageModelV2StreamPart,
+import {
+  APICallError,
+  type LanguageModelV2,
+  type LanguageModelV2StreamPart,
+  getErrorMessage,
 } from "@ai-sdk/provider";
 import { getLogger } from "@getpochi/common";
 import {
   type CreateModelOptions,
   registerModel,
 } from "@getpochi/common/vendor/edge";
-import type { VSCodeLmRequestOptions } from "@getpochi/common/vscode-webui-bridge";
+import type {
+  VSCodeLmRequestCallback,
+  VSCodeLmRequestOptions,
+} from "@getpochi/common/vscode-webui-bridge";
 import { ThreadAbortSignal } from "@quilted/threads";
 
 const logger = getLogger("VscodeLM");
 
 type ChatFn = (
   options: Omit<VSCodeLmRequestOptions, "model">,
-  onChunk: (chunk: string) => Promise<void>,
+  onChunk: VSCodeLmRequestCallback,
 ) => Promise<void>;
 
 function createVSCodeLmModel({ getCredentials }: CreateModelOptions) {
@@ -45,10 +50,14 @@ function createVSCodeLmModel({ getCredentials }: CreateModelOptions) {
                 : undefined,
             },
             async (chunk) => {
+              if (chunk.type === "error") {
+                error = chunk.error;
+                return;
+              }
               controller.enqueue({
                 id: textId,
                 type: "text-delta",
-                delta: chunk,
+                delta: chunk.text,
               });
             },
           )
@@ -60,7 +69,12 @@ function createVSCodeLmModel({ getCredentials }: CreateModelOptions) {
               if (error) {
                 controller.enqueue({
                   type: "error",
-                  error,
+                  error: new APICallError({
+                    message: getErrorMessage(error),
+                    isRetryable: false,
+                    url: "",
+                    requestBodyValues: null,
+                  }),
                 });
               } else {
                 controller.enqueue({
