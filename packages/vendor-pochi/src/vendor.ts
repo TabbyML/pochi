@@ -123,5 +123,5 @@ export const authClient = createAuthClient();
 
 function isJWTExpiring(jwt: string) {
   const { exp } = jose.decodeJwt(jwt);
-  return exp ? Date.now() >= (exp - 120) * 1000 : true;
+  return exp ? Date.now() >= (exp - 5 * 60) * 1000 : true;
 }

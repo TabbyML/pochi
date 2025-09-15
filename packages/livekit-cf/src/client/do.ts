@@ -1,12 +1,17 @@
 import { DurableObject } from "cloudflare:workers";
 import type { Env } from "@/types";
-import { catalog } from "@getpochi/livekit";
+import type { PochiApi, PochiApiClient } from "@getpochi/common/pochi-api";
+import { decodeStoreId } from "@getpochi/common/store-id-utils";
+import { type Task, catalog } from "@getpochi/livekit";
 import {
   type ClientDoWithRpcCallback,
   createStoreDoPromise,
 } from "@livestore/adapter-cloudflare";
 import { type Store, type Unsubscribe, nanoid } from "@livestore/livestore";
 import { handleSyncUpdateRpc } from "@livestore/sync-cf/client";
+import { hc } from "hono/client";
+import moment from "moment";
+import { funnel } from "remeda";
 import { app } from "./app";
 import type { Env as ClientEnv } from "./types";
 
@@ -72,26 +77,114 @@ export class LiveStoreClientDO
 
   private async subscribeToStore() {
     const store = await this.getStore();
-    // Do whatever you like with the store here :)
 
     // Make sure to only subscribe once
     if (this.storeSubscription === undefined) {
       this.storeSubscription = store.subscribe(catalog.queries.tasks$, {
-        onUpdate: (_tasks) => {
-          // FIXME
-        },
+        onUpdate: (tasks) => tasks && this.onTasksUpdate.call(tasks),
       });
     }
 
-    // Make sure the DO stays alive
-    await this.state.storage.setAlarm(Date.now() + 1000);
+    await this.state.storage.setAlarm(Date.now() + 10_000);
   }
 
-  alarm(_alarmInfo?: AlarmInvocationInfo): void | Promise<void> {
-    this.subscribeToStore();
-  }
+  alarm(_alarmInfo?: AlarmInvocationInfo): void | Promise<void> {}
 
   async syncUpdateRpc(payload: unknown) {
     await handleSyncUpdateRpc(payload);
   }
+
+  private onTasksUpdate = funnel(
+    async (tasks: readonly Task[]) => {
+      if (!tasks) return;
+
+      const store = await this.getStore();
+      await Promise.all(
+        tasks.map((task) => this.persistTask(store, task).catch(console.error)),
+      );
+
+      // Whenever the tasks change, we extend the ttl of the DO.
+      await this.state.storage.setAlarm(Date.now() + 10_000);
+    },
+    {
+      minGapMs: 1000,
+      triggerAt: "start",
+      reducer: (_, rhs: readonly Task[]) => rhs,
+    },
+  );
+
+  private async persistTask(store: Store<typeof catalog.schema>, task: Task) {
+    const { sub: userId } = decodeStoreId(store.storeId);
+    const apiClient = createApiClient(this.env.POCHI_API_KEY, userId);
+
+    // FIXME(meng): implement this with store.events stream when it's ready
+    const now = moment();
+    if (!moment(task.updatedAt).subtract(5, "minute").isBefore(now)) {
+      return;
+    }
+
+    // If a task was updated in the last 5 minutes, persist it to the pochi api
+    const messages = store
+      .query(catalog.queries.makeMessagesQuery(task.id))
+      .map((x) => x.data);
+    const resp = await apiClient.api.chat.persist.$post({
+      json: {
+        id: task.id,
+        // @ts-expect-error - ignore readonly modifier and unknown conversion.
+        messages: messages,
+        status: task.status,
+        parentClientTaskId: task.parentId || undefined,
+        environment: {
+          info: {
+            cwd: "",
+            shell: "",
+            os: "",
+            homedir: "",
+          },
+          currentTime: now.toString(),
+          workspace: {
+            files: [],
+            isTruncated: false,
+            gitStatus: task.git
+              ? {
+                  origin: task.git.origin,
+                  status: "",
+                  mainBranch: "",
+                  currentBranch: task.git.branch,
+                  recentCommits: [],
+                }
+              : undefined,
+          },
+          todos: task.todos as DeepWriteable<typeof task.todos>,
+        },
+      },
+    });
+
+    if (resp.status !== 200) {
+      console.error(`Failed to persist chat: ${resp.statusText}`);
+      return;
+    }
+
+    const { shareId } = await resp.json();
+    if (!task.shareId) {
+      store.commit(
+        catalog.events.updateShareId({
+          id: task.id,
+          shareId,
+          updatedAt: new Date(),
+        }),
+      );
+    }
+  }
+}
+
+type DeepWriteable<T> = { -readonly [P in keyof T]: DeepWriteable<T[P]> };
+
+function createApiClient(apiKey: string, userId: string): PochiApiClient {
+  const prodServerUrl = "https://app.getpochi.com";
+  return hc<PochiApi>(prodServerUrl, {
+    headers: {
+      authorization: `${apiKey},${userId}`,
+    },
+  });
 }

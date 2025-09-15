@@ -1,4 +1,4 @@
-import type { LanguageModelV2Prompt } from "@ai-sdk/provider";
+import { type LanguageModelV2Prompt, getErrorMessage } from "@ai-sdk/provider";
 import { getLogger } from "@getpochi/common";
 import type {
   VSCodeLmModel,
@@ -93,6 +93,12 @@ export class VSCodeLm implements vscode.Disposable {
       let buffer = "";
       const textIterator = response.text[Symbol.asyncIterator]();
 
+      const onTextChunk = (chunk: string) =>
+        onChunk({
+          type: "text-delta",
+          text: chunk,
+        });
+
       while (true) {
         if (signal.aborted) {
           logger.info("VSCode LM request aborted");
@@ -116,7 +122,7 @@ export class VSCodeLm implements vscode.Disposable {
         buffer += chunk;
 
         if (!stop) {
-          onChunk(buffer);
+          onTextChunk(buffer);
           buffer = "";
           continue;
         }
@@ -125,30 +131,29 @@ export class VSCodeLm implements vscode.Disposable {
         if (index > 0) {
           logger.debug("VSCode LM request stopped by stop word");
           // Stop words found.
-          onChunk(buffer.slice(0, index));
+          onTextChunk(buffer.slice(0, index));
           break;
         }
 
         if (index < 0) {
           const endIndex = getPotentialStartIndex(buffer, stop);
           if (endIndex === null) {
-            onChunk(buffer);
+            onTextChunk(buffer);
             buffer = "";
             continue;
           }
 
-          onChunk(buffer.slice(0, endIndex));
+          onTextChunk(buffer.slice(0, endIndex));
           buffer = buffer.slice(endIndex);
         }
       }
     } catch (error) {
-      if (error instanceof vscode.LanguageModelError) {
-        logger.error(
-          `VSCode LM request failed: ${error.message} ${error.code} ${error.cause}`,
-        );
-      } else {
-        logger.error("Failed to send VSCode LM request");
-      }
+      const errorInfo = `VSCode LM request failed: ${getErrorMessage(error)}`;
+      logger.error(errorInfo);
+      onChunk({
+        type: "error",
+        error: errorInfo,
+      });
     } finally {
       cancel.dispose();
     }

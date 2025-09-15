@@ -30,11 +30,16 @@ function formatToolCall(useToolCallMiddleware: boolean) {
 }
 
 export function registerModelCommand(program: Command) {
-  program
+  const modelCommand = program
     .command("model")
-    .description("Manage models")
+    .description("Manage and list available AI models.")
+    .addHelpCommand(true);
+
+  modelCommand
     .command("list", { isDefault: true })
-    .description("List supported models from all providers")
+    .description(
+      "List all supported models from configured vendors and providers.",
+    )
     .action(async () => {
       const vendors = getVendors();
 

@@ -7,8 +7,12 @@ export function registerTaskListCommand(taskCommand: Command) {
   // pochi task list - List recent tasks
   taskCommand
     .command("list", { isDefault: true })
-    .description("List recent tasks")
-    .option("-n, --limit <number>", "Number of tasks to show", "10")
+    .description("List all recent tasks, showing their status and IDs.")
+    .option(
+      "-n, --limit <number>",
+      "The maximum number of tasks to display.",
+      "10",
+    )
     .action(async (options) => {
       const limit = Number.parseInt(options.limit, 10);
       if (Number.isNaN(limit) || limit <= 0) {

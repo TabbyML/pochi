@@ -70,7 +70,6 @@
       "title": "詳細設定",
       "developerMode": "開発者モード",
       "enablePochiModels": "Pochi モデルを有効化",
-      "enableSync": "同期を有効化",
       "clearStorage": "ストレージをクリア",
       "language": "言語",
       "languageDescription": "希望の言語を選択してください"
@@ -104,7 +103,7 @@
       "mcp": "MCP",
       "retry": "再試行"
     },
-    "customAgent": {
+    "customAgents": {
       "title": "カスタムエージェント",
       "loading": "カスタムエージェントを読み込み中...",
       "empty": "カスタムエージェントが見つかりません。ワークスペースの .pochi/agents/ ディレクトリにエージェントファイルを作成してください"

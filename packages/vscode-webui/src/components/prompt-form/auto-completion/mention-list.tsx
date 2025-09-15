@@ -64,6 +64,9 @@ export const AutoCompleteMentionList = forwardRef<
         case "Tab":
           if (items[selectedIndex]) {
             handleSelect(items[selectedIndex]);
+          } else if (!items.length && event.key === "Enter") {
+            // submit form if no items are available
+            return false;
           }
           return true;
         default:

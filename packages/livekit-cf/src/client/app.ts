@@ -6,6 +6,11 @@ import type { Env } from "./types";
 const store = new Hono<{ Bindings: Env }>();
 
 store
+  .get("/", async (c) => {
+    // Activate store
+    await c.env.getStore();
+    return c.json({ success: true });
+  })
   .get("/tasks", async (c) => {
     const store = await c.env.getStore();
     const tasks = store.query(catalog.queries.tasks$);

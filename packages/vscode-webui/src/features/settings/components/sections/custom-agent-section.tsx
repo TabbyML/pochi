@@ -17,7 +17,7 @@ export const CustomAgentSection: React.FC = () => {
   const renderCustomAgentsContent = () => {
     if (isLoading) {
       return (
-        <EmptySectionPlaceholder content={t("settings.customAgent.loading")} />
+        <EmptySectionPlaceholder content={t("settings.customAgents.loading")} />
       );
     }
 
@@ -26,7 +26,7 @@ export const CustomAgentSection: React.FC = () => {
         <EmptySectionPlaceholder
           content={
             <div className="space-y-2">
-              <p className="text-xs">{t("settings.customAgent.empty")}</p>
+              <p className="text-xs">{t("settings.customAgents.empty")}</p>
             </div>
           }
         />
@@ -58,7 +58,7 @@ export const CustomAgentSection: React.FC = () => {
   return (
     <AccordionSection
       localStorageKey="settings-custom-agent-section"
-      title={t("settings.customAgent.title")}
+      title={t("settings.customAgents.title")}
       collapsable={customAgents.length > 3}
       defaultOpen={true}
     >

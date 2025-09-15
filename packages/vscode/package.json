@@ -328,7 +328,7 @@
     "project-name-generator": "^2.1.9",
     "reflect-metadata": "^0.2.2",
     "remeda": "catalog:",
-    "run-exclusive": "^2.2.19",
+    "run-exclusive": "catalog:",
     "simple-git": "^3.28.0",
     "stats-logscale": "^1.0.9",
     "tsyringe": "^4.10.0",

@@ -32,7 +32,7 @@ Pochi's workflow is built on these principles:
 
 ## 💬 Community & Support
 
-Interested in contributing or just engaging with the team? We welcome your input through our [Discord Community](https://discord.com/invite/tWF66yr8NQ)! Feel free to share feedback, report bugs, and suggest features there!
+Interested in contributing or just engaging with the team? We welcome your input through our [Discord Community](http://getpochi.com/discord)! Feel free to share feedback, report bugs, and suggest features there!
 
 ## 📄 License
 
