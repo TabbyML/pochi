@@ -151,17 +151,23 @@ export class McpConnection implements Disposable {
       },
       error: {
         entry: (context, event) => {
-          if (event.type === "error") {
-            context.error = event.error;
+          if (event.type !== "error") {
+            this.logger.debug(
+              `Expected 'error' event entry 'error' state, got: ${event.type}`,
+            );
+            return;
           }
+          context.error = event.error;
           if (context.autoReconnectAttempts < AutoReconnectMaxAttempts) {
-            context.autoReconnectAttempts++;
+            this.logger.debug(`Auto reconnect in ${AutoReconnectDelay}ms`);
             context.autoReconnectTimer = setTimeout(() => {
               this.fsm.send({ type: "restart" });
             }, AutoReconnectDelay);
+            context.autoReconnectAttempts += 1;
           }
         },
         exit: (context) => {
+          context.error = undefined;
           if (context.autoReconnectTimer) {
             clearTimeout(context.autoReconnectTimer);
             context.autoReconnectTimer = undefined;
