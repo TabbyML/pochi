@@ -7,8 +7,8 @@ export function registerTaskShareCommand(taskCommand: Command) {
   // pochi task get-share-url <id> - Get share URL for a task ID
   taskCommand
     .command("get-share-url")
-    .description("Get share URL for a task ID")
-    .argument("<task-id>", "Task ID to get share URL for")
+    .description("Get the shareable URL for a specific task by its ID.")
+    .argument("<task-id>", "The ID of the task to get the share URL for.")
     .action(async (taskId) => {
       const store = await createStore(process.cwd());
 

@@ -3,13 +3,13 @@ import * as fsPromise from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
 import { type ReadonlySignal, type Signal, signal } from "@preact/signals-core";
-import { binary_to_base58 } from "base58-js";
 import * as jose from "jose";
 import * as JSONC from "jsonc-parser/esm";
 import { machineId } from "node-machine-id";
 import { funnel, isDeepEqual, mergeDeep } from "remeda";
 import * as fleece from "silver-fleece";
 import { getLogger } from "../base";
+import { encodeStoreId } from "../store-id-utils";
 import { type PochiCredentials, isDev } from "../vscode-webui-bridge";
 import { PochiConfig } from "./types";
 import type { VendorConfig } from "./vendor";
@@ -154,14 +154,8 @@ class PochiConfigManager {
     const { credentials } = this.cfg.value?.vendors?.pochi || {};
     const { jwt = null } = (credentials as PochiCredentials | undefined) || {};
 
-    const sub = jwt ? jose.decodeJwt(jwt).sub : "anonymous";
-    const storeId = JSON.stringify({
-      sub,
-      machineId: await machineId(),
-      cwd,
-    });
-
-    return binary_to_base58(new TextEncoder().encode(storeId));
+    const sub = (jwt ? jose.decodeJwt(jwt).sub : undefined) ?? "anonymous";
+    return encodeStoreId({ sub, machineId: await machineId(), cwd });
   };
 }
 

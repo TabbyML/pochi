@@ -2,9 +2,9 @@ import { buttonVariants } from "@/components/ui/button";
 import { WorkspaceRequiredPlaceholder } from "@/components/workspace-required-placeholder";
 import { ChatContextProvider, useHandleChatEvents } from "@/features/chat";
 import { usePendingModelAutoStart } from "@/features/retry";
-import { apiClient } from "@/lib/auth-client";
+
+import { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
 import { useCurrentWorkspace } from "@/lib/hooks/use-current-workspace";
-import { useImageUpload } from "@/lib/hooks/use-image-upload";
 import { cn } from "@/lib/utils";
 import { useChat } from "@ai-sdk/react";
 import { formatters } from "@getpochi/common";
@@ -64,7 +64,6 @@ function Chat({ user, uid, prompt }: ChatProps) {
   const autoApproveGuard = useAutoApproveGuard();
   const chatKit = useLiveChatKit({
     taskId: uid,
-    apiClient,
     getters,
     abortSignal: chatAbortController.current.signal,
     sendAutomaticallyWhen: (x) => {
@@ -96,7 +95,7 @@ function Chat({ user, uid, prompt }: ChatProps) {
 
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   // Use the unified image upload hook
-  const imageUpload = useImageUpload();
+  const attachmentUpload = useAttachmentUpload();
 
   const chat = useChat({
     chat: chatKit.chat,
@@ -139,7 +138,7 @@ function Chat({ user, uid, prompt }: ChatProps) {
   // Display errors with priority: 1. autoDismissError, 2. uploadImageError, 3. error pending retry approval
   const displayError = isLoading
     ? undefined
-    : imageUpload.error ||
+    : attachmentUpload.error ||
       fromTaskError(task) ||
       (pendingApproval?.name === "retry" ? pendingApproval.error : undefined);
 
@@ -171,7 +170,7 @@ function Chat({ user, uid, prompt }: ChatProps) {
             todosRef={todosRef}
             compact={chatKit.spawn}
             approvalAndRetry={approvalAndRetry}
-            imageUpload={imageUpload}
+            attachmentUpload={attachmentUpload}
             isReadOnly={isReadOnly}
             displayError={displayError}
           />

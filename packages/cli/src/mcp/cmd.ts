@@ -4,7 +4,8 @@ import { registerMcpListCommand } from "./list";
 export function registerMcpCommand(program: Command) {
   const mcpCommand = program
     .command("mcp")
-    .description("Manage MCP (Model Context Protocol) servers");
+    .description("Manage Model Context Protocol (MCP) servers.")
+    .addHelpCommand(true);
 
   registerMcpListCommand(mcpCommand);
 
