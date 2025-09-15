@@ -74,6 +74,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     groupedModels,
     selectedModel,
     isLoading: isModelsLoading,
+    isValid: isModelValid,
     updateSelectedModelId: handleSelectModel,
   } = useSelectedModels();
 
@@ -257,6 +258,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
             value={selectedModel}
             models={groupedModels}
             isLoading={isModelsLoading}
+            isValid={isModelValid}
             onChange={handleSelectModel}
           />
         </div>
