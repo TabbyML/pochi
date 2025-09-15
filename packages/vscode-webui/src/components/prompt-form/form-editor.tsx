@@ -542,7 +542,7 @@ export function FormEditor({
       ref={formRef}
       onSubmit={handleSubmit}
       className={cn(
-        "relative rounded-sm border border-[var(--input-border)] bg-input p-1 pb-2.5 transition-color duration-300 focus-within:border-ring",
+        "relative rounded-sm border border-[var(--input-border)] bg-input p-1 transition-color duration-300 focus-within:border-ring",
         {
           "form-editor-loading": isLoading,
           "bg-zinc-50 dark:bg-zinc-950": isDragOver,
@@ -563,12 +563,14 @@ export function FormEditor({
           className="prose !border-none min-h-25 w-full max-w-none overflow-hidden break-words text-[var(--vscode-input-foreground)] focus:outline-none"
         />
       </ScrollArea>
-      {isAutoCompleteHintVisible && (
-        <div className="absolute bottom-1 left-2.5 flex items-center text-muted-foreground text-xs">
-          Use Tab <ArrowRightToLine className="mr-1.5 ml-0.5 size-4" /> to see
-          suggestions
-        </div>
-      )}
+      <div className="h-5 bg-input py-0.5 pl-2">
+        {isAutoCompleteHintVisible && (
+          <div className="flex items-center text-muted-foreground text-xs">
+            Use Tab <ArrowRightToLine className="mr-1.5 ml-0.5 size-4" /> to see
+            suggestions
+          </div>
+        )}
+      </div>
 
       {/* Drop zone overlay - shows when dragging over the editor */}
       {isDragOver && (
