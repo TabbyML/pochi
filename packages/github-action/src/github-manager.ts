@@ -49,41 +49,48 @@ export class GitHubManager {
     const repo = this.getRepository();
     const payload = this.context.payload as IssueCommentEvent;
     const issueNumber = payload.issue.number;
+    const footer = this.createGitHubActionFooter();
 
     const response = await this.octokit.rest.issues.createComment({
       owner: repo.owner,
       repo: repo.repo,
       issue_number: issueNumber,
-      body: `🔄 **Pochi Running...**\n\n${initialContent}`,
+      body: `🔄 **Pochi Running...**\n\n${initialContent}${footer}`,
     });
     return response.data.id;
   }
 
-  async updateComment(commentId: number, content: string): Promise<void> {
-    const repo = this.getRepository();
-    await this.octokit.rest.issues.updateComment({
-      owner: repo.owner,
-      repo: repo.repo,
-      comment_id: commentId,
-      body: `🔄 **Pochi Running...**\n\n${content}`,
-    });
-  }
-
-  async finalizeComment(
+  async updateComment(
     commentId: number,
-    content: string,
-    success: boolean,
+    body: string,
+    options?: {
+      header?: string;
+      footer?: string;
+      success?: boolean;
+    },
   ): Promise<void> {
     const repo = this.getRepository();
-    const status = success ? "✅ **Pochi Completed**" : "❌ **Pochi Failed**";
+
+    // Use provided header or generate default based on success state
+    const header =
+      options?.header ??
+      (options?.success !== undefined
+        ? options.success
+          ? "✅ **Pochi Completed**"
+          : "❌ **Pochi Failed**"
+        : "🔄 **Pochi Running...**");
+
+    // Use provided footer or generate default GitHub Action footer
+    const footer = options?.footer ?? this.createGitHubActionFooter();
 
     await this.octokit.rest.issues.updateComment({
       owner: repo.owner,
       repo: repo.repo,
       comment_id: commentId,
-      body: `${status}\n\n${content}`,
+      body: `${header}\n\n${body}${footer}`,
     });
   }
+
   async createReaction(
     commentId: number,
     content: RestEndpointMethodTypes["reactions"]["createForIssueComment"]["parameters"]["content"],
