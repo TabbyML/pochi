@@ -198,7 +198,10 @@
                         "type": "string"
                       }
                     },
-                    "required": ["issueUrl", "modelUrl"],
+                    "required": [
+                      "issueUrl",
+                      "modelUrl"
+                    ],
                     "additionalProperties": false
                   }
                 ]
