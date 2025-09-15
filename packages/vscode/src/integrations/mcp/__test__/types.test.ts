@@ -3,9 +3,10 @@ import { describe, it } from "mocha";
 import {
   isStdioTransport,
   isHttpTransport,
+  isExecutable
   type McpToolExecutable,
 } from "@getpochi/common/mcp-utils";
-import { isExecutable, omitDisabled } from "../types";
+import {omitDisabled } from "../types";
 import type { McpServerConfig } from "@getpochi/common/configuration";
 import type { McpToolStatus } from "@getpochi/common/vscode-webui-bridge";
 

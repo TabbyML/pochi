@@ -88,7 +88,9 @@ import { type FileSelection, TabState } from "../editor/tab-state";
 import { McpHub } from "../mcp/mcp-hub";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { ThirdMcpImporter } from "../mcp/third-party-mcp";
-import { isExecutable } from "../mcp/types";
+import {
+  isExecutable
+} from "@getpochi/common/mcp-utils";
 import { listSymbols } from "../symbol";
 import {
   convertUrl,
