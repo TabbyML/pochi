@@ -1,8 +1,8 @@
 import { verifyJWT } from "@/lib/jwt";
 import type { Env } from "@/types";
+import { decodeStoreId } from "@getpochi/common/store-id-utils";
 import { zValidator } from "@hono/zod-validator";
 import * as SyncBackend from "@livestore/sync-cf/cf-worker";
-import { base58_to_binary } from "base58-js";
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { z } from "zod";
@@ -39,11 +39,21 @@ app
       const requestParamsResult = SyncBackend.getSyncRequestSearchParams(
         c.req.raw,
       );
+
+      // Run a fetch to active CLIENT_DO
+      c.env.CLIENT_DO.get(c.env.CLIENT_DO.idFromName(query.storeId)).fetch(
+        `https://${c.req.header("host")}/stores/${query.storeId}`,
+      );
+
       if (requestParamsResult._tag === "Some") {
         return SyncBackend.handleSyncRequest({
           request: c.req.raw,
           searchParams: requestParamsResult.value,
-          env: c.env,
+          env: {
+            ...c.env,
+            // @ts-expect-error - we're using a custom implementation
+            DB: null,
+          },
           ctx: c.executionCtx as SyncBackend.CfTypes.ExecutionContext,
           options: {
             async validatePayload(inputPayload, { storeId }) {
@@ -64,14 +74,5 @@ app
 
 async function verifyStoreId(env: Env, jwt: string, storeId: string) {
   const user = await verifyJWT(env, jwt);
-  return user.sub === decodeSubFromStoreId(storeId);
+  return user.sub === decodeStoreId(storeId).sub;
 }
-
-const decodeSubFromStoreId = (storeId: string) => {
-  const decoded = new TextDecoder().decode(base58_to_binary(storeId));
-  return (
-    JSON.parse(decoded) as {
-      sub: string;
-    }
-  ).sub;
-};

@@ -15,7 +15,8 @@
     "./git-utils": "./src/git-utils.ts",
     "./diff-utils": "./src/diff-utils.ts",
     "./tool-utils": "./src/tool-utils/index.ts",
-    "./vscode-webui-bridge": "./src/vscode-webui-bridge/index.ts"
+    "./vscode-webui-bridge": "./src/vscode-webui-bridge/index.ts",
+    "./store-id-utils": "./src/store-id-utils.ts"
   },
   "scripts": {
     "tsc": "tsc",

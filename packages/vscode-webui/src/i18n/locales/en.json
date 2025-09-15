@@ -10,7 +10,7 @@
     "subtitle": "Pochi is powered by AI, so errors may occur.",
     "disclaimer": "Carefully review the output before using it.",
     "tips": {
-      "images": "to chat with images",
+      "attachments": "to chat with files",
       "context": "to attach context",
       "workflow": "to trigger workflow"
     },
@@ -23,7 +23,7 @@
     "required": "To use Pochi, please open a folder or workspace."
   },
   "chat": {
-    "imageTooltip": "Attach images to chat. You can also drag and drop images or paste them into the chat input box."
+    "attachmentTooltip": "Attach files to chat. You can also drag and drop files or paste them into the chat input box."
   },
   "language": {
     "switcherTooltip": "Choose your preferred language with Pochi"
@@ -70,7 +70,6 @@
       "title": "Advanced Settings",
       "developerMode": "Developer Mode",
       "enablePochiModels": "Enable Pochi Models",
-      "enableSync": "Enable Sync",
       "clearStorage": "Clear Storage",
       "language": "Language",
       "languageDescription": "Choose your preferred language"
@@ -104,9 +103,9 @@
       "mcp": "MCP",
       "retry": "Retry"
     },
-    "customAgent": {
-      "title": "Custom Agent",
-      "loading": "Loading custom agent...",
+    "customAgents": {
+      "title": "Custom Agents",
+      "loading": "Loading custom agents ...",
       "empty": "No custom agents found, Create agent files in .pochi/agents/ in your workspace"
     },
     "mcp": {

@@ -52,6 +52,17 @@ export const ListModelsResponse = z.array(
 );
 export type ListModelsResponse = z.infer<typeof ListModelsResponse>;
 
+export const UploadFileRequest = z.object({
+  file: z.instanceof(File),
+});
+
+export type UploadFileRequest = z.infer<typeof UploadFileRequest>;
+
+export const UploadFileResponse = z.object({
+  url: z.string(),
+});
+export type UploadFileResponse = z.infer<typeof UploadFileResponse>;
+
 // Tabby-compatible Code Completion API
 export const CodeCompletionRequest = z.object({
   language: z.string().optional().describe("Programming language identifier"),
@@ -174,12 +185,13 @@ const stub = new Hono()
     zValidator("json", CodeCompletionFIMRequest),
     async (c) => c.json({} as CodeCompletionFIMResponse),
   )
+  .post("/api/upload", zValidator("form", UploadFileRequest), async (c) =>
+    c.json({} as UploadFileResponse),
+  )
   .get("/api/models", async (c) => c.json([] as ListModelsResponse));
 
 export type PochiApi = typeof stub;
-export type PochiApiClient = ReturnType<typeof hc<PochiApi>> & {
-  authenticated?: boolean;
-};
+export type PochiApiClient = ReturnType<typeof hc<PochiApi>>;
 
 export const PochiApiErrors = {
   RequireSubscription: "REQUIRE_SUBSCRIPTION",
