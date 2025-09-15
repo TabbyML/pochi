@@ -3,6 +3,7 @@ import type { ThreadSignalSerialization } from "@quilted/threads/signals";
 import type { Environment } from "../base";
 
 import type { UserInfo } from "../configuration";
+import type { McpStatus } from "../mcp-utils";
 import type {
   CaptureEvent,
   CustomAgentFile,
@@ -15,7 +16,6 @@ import type {
   VSCodeHostApi,
   WorkspaceState,
 } from "./index";
-import type { McpStatus } from "../mcp-utils";
 
 const VSCodeHostStub = {
   readCurrentWorkspace: async () => {

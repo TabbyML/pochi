@@ -38,6 +38,7 @@ import { previewWriteToFile, writeToFile } from "@/tools/write-to-file";
 import type { Environment } from "@getpochi/common";
 import { type UserInfo, getStoreId } from "@getpochi/common/configuration";
 import { isExecutable } from "@getpochi/common/mcp-utils";
+import type { McpStatus } from "@getpochi/common/mcp-utils";
 import {
   GitStatusReader,
   ignoreWalk,
@@ -59,7 +60,6 @@ import type {
   VSCodeHostApi,
   WorkspaceState,
 } from "@getpochi/common/vscode-webui-bridge";
-import type { McpStatus } from "@getpochi/common/mcp-utils";
 import type {
   PreviewToolFunctionType,
   ToolFunctionType,
