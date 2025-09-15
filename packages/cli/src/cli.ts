@@ -22,7 +22,7 @@ import chalk from "chalk";
 import * as commander from "commander";
 import packageJson from "../package.json";
 import { registerAuthCommand } from "./auth";
-import { createApiClient } from "./lib/api-client";
+
 import { findRipgrep } from "./lib/find-ripgrep";
 import { loadAgents } from "./lib/load-agents";
 import {
@@ -36,7 +36,6 @@ import { OutputRenderer } from "./output-renderer";
 import { registerTaskCommand } from "./task";
 import { TaskRunner } from "./task-runner";
 import { registerUpgradeCommand } from "./upgrade";
-import { waitForAllJobs, waitUntil } from "./wait-until";
 
 const logger = getLogger("Pochi");
 logger.debug(`pochi v${packageJson.version}`);
@@ -81,7 +80,6 @@ const program = new Command()
   )
   .action(async (options) => {
     const { uid, prompt } = await parseTaskInput(options, program);
-    const apiClient = await createApiClient();
 
     const store = await createStore(process.cwd());
 
@@ -102,7 +100,6 @@ const program = new Command()
 
     const runner = new TaskRunner({
       uid,
-      apiClient,
       store,
       llm,
       prompt,
@@ -110,7 +107,6 @@ const program = new Command()
       rg,
       maxSteps: options.maxSteps,
       maxRetries: options.maxRetries,
-      waitUntil,
       onSubTaskCreated,
       customAgents,
     });
@@ -130,7 +126,6 @@ const program = new Command()
       console.log(`\n${chalk.bold("Task link: ")} ${shareUrl}`);
     }
 
-    await waitForAllJobs();
     await store.shutdown();
   });
 
