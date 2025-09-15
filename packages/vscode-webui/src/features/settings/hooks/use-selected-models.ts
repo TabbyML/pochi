@@ -1,6 +1,6 @@
 import { useModelList } from "@/lib/hooks/use-model-list";
 import type { DisplayModel } from "@getpochi/common/vscode-webui-bridge";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useSettingsStore } from "../store";
 
@@ -13,6 +13,7 @@ export type ModelGroups = ModelGroup[];
 
 export function useSelectedModels() {
   const { t } = useTranslation();
+  // todo should store the model info but not just modelId
   const { selectedModelId, updateSelectedModelId } = useSettingsStore();
   const { modelList: models, isLoading } = useModelList(true);
   const groupedModels = useMemo<ModelGroups | undefined>(() => {
@@ -44,26 +45,27 @@ export function useSelectedModels() {
 
     return [superModels, swiftModels, customModels];
   }, [models, t]);
-  const [isModelReady, setIsModelReady] = useState(
-    !!selectedModelId &&
-      getModelIdFromModelInfo(selectedModelId, models) === selectedModelId,
-  );
 
+  const validModelId = useMemo(() => {
+    return getModelIdFromModelInfo(selectedModelId, models);
+  }, [models, selectedModelId]);
+
+  const isValid = !!validModelId && validModelId === selectedModelId;
+
+  // set initial model
   useEffect(() => {
     if (!isLoading) {
-      // validate and init model
-      const validModelId = getModelIdFromModelInfo(selectedModelId, models);
-      if (validModelId !== selectedModelId) {
+      if (!selectedModelId && !!validModelId) {
         updateSelectedModelId(validModelId);
       }
-      setIsModelReady(!!validModelId);
     }
-  }, [isLoading, models, selectedModelId, updateSelectedModelId]);
+  }, [isLoading, validModelId, selectedModelId, updateSelectedModelId]);
 
   const selectedModel = models?.find((x) => x.id === selectedModelId);
 
   return {
-    isLoading: isLoading || !isModelReady,
+    isLoading,
+    isValid,
     models,
     groupedModels,
     selectedModel,

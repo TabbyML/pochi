@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import { CheckIcon, ChevronDownIcon } from "lucide-react";
+import { CheckIcon, ChevronDownIcon, TriangleAlertIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import LoadingWrapper from "@/components/loading-wrapper";
@@ -25,6 +25,7 @@ interface ModelSelectProps {
   value: DisplayModel | undefined;
   onChange: (v: string) => void;
   isLoading?: boolean;
+  isValid?: boolean;
   triggerClassName?: string;
 }
 
@@ -33,6 +34,7 @@ export function ModelSelect({
   value,
   onChange,
   isLoading,
+  isValid,
   triggerClassName,
 }: ModelSelectProps) {
   const { t } = useTranslation();
@@ -61,6 +63,11 @@ export function ModelSelect({
                 triggerClassName,
               )}
             >
+              {!isValid && (
+                <span>
+                  <TriangleAlertIcon className="mr-1 size-3.5 text-yellow-600 dark:text-yellow-400" />
+                </span>
+              )}
               <span
                 className={cn(
                   "truncate whitespace-nowrap transition-colors duration-200",
