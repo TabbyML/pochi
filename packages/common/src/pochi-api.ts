@@ -191,9 +191,7 @@ const stub = new Hono()
   .get("/api/models", async (c) => c.json([] as ListModelsResponse));
 
 export type PochiApi = typeof stub;
-export type PochiApiClient = ReturnType<typeof hc<PochiApi>> & {
-  authenticated?: boolean;
-};
+export type PochiApiClient = ReturnType<typeof hc<PochiApi>>;
 
 export const PochiApiErrors = {
   RequireSubscription: "REQUIRE_SUBSCRIPTION",

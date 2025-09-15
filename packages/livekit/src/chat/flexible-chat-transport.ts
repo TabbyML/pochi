@@ -1,7 +1,7 @@
 import { getErrorMessage } from "@ai-sdk/provider";
 import type { Environment } from "@getpochi/common";
 import { formatters, prompts } from "@getpochi/common";
-import type { PochiApiClient } from "@getpochi/common/pochi-api";
+
 import {
   type CustomAgent,
   type McpTool,
@@ -55,8 +55,6 @@ export type ChatTransportOptions = {
   isSubTask?: boolean;
   isCli?: boolean;
   store: Store;
-  apiClient: PochiApiClient;
-  waitUntil?: (promise: Promise<unknown>) => void;
   customAgent?: CustomAgent;
 };
 
@@ -66,8 +64,6 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
   private readonly isSubTask?: boolean;
   private readonly isCli?: boolean;
   private readonly store: Store;
-  private readonly apiClient: PochiApiClient;
-  private readonly waitUntil?: (promise: Promise<unknown>) => void;
   private readonly customAgent?: CustomAgent;
 
   constructor(options: ChatTransportOptions) {
@@ -76,14 +72,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
     this.isSubTask = options.isSubTask;
     this.isCli = options.isCli;
     this.store = options.store;
-    this.apiClient = options.apiClient;
-    this.waitUntil = options.waitUntil;
     this.customAgent = overrideCustomAgentTools(options.customAgent);
-
-    // Get rid of unused check.
-    // FIXME(meng): remove these two fields once we finalize everything to cloudflare sync.
-    this.apiClient;
-    this.waitUntil;
   }
 
   sendMessages: (

@@ -7,7 +7,7 @@ import {
   prepareLastMessageForRetry,
 } from "@getpochi/common/message-utils";
 import { findTodos, mergeTodos } from "@getpochi/common/message-utils";
-import type { PochiApiClient } from "@getpochi/common/pochi-api";
+
 import type { LLMRequestData, Message } from "@getpochi/livekit";
 import { LiveChatKit } from "@getpochi/livekit/node";
 import { type Todo, isUserInputToolPart } from "@getpochi/tools";
@@ -31,8 +31,6 @@ export interface RunnerOptions {
   uid: string;
 
   llm: LLMRequestData;
-
-  apiClient: PochiApiClient;
 
   store: Store;
 
@@ -79,8 +77,6 @@ export interface RunnerOptions {
    */
   customAgents?: CustomAgent[];
 
-  waitUntil?: (promise: Promise<unknown>) => void;
-
   onSubTaskCreated?: (runner: TaskRunner) => void;
 }
 
@@ -125,10 +121,8 @@ export class TaskRunner {
     this.stepCount = new StepCount(options.maxSteps, options.maxRetries);
     this.chatKit = new LiveChatKit<Chat>({
       taskId: options.uid,
-      apiClient: options.apiClient,
       store: options.store,
       chatClass: Chat,
-      waitUntil: options.waitUntil,
       isCli: true,
       isSubTask: options.isSubTask,
       customAgent: options.customAgent,

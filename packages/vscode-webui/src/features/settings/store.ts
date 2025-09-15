@@ -19,7 +19,6 @@ export interface SettingsState {
   isDevMode: boolean;
 
   enablePochiModels: boolean;
-  enableSync: boolean;
 
   updateAutoApproveSettings: (data: Partial<AutoApprove>) => void;
   updateSelectedModelId: (selectedModelId: string | undefined) => void;
@@ -27,7 +26,6 @@ export interface SettingsState {
   updateIsDevMode: (value: boolean) => void;
 
   updateEnablePochiModels: (value: boolean) => void;
-  updateEnableSync: (value: boolean) => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -46,9 +44,6 @@ export const useSettingsStore = create<SettingsState>()(
       isDevMode: false,
 
       enablePochiModels: false,
-      enableSync: false,
-
-      enableVSCodeLm: false,
 
       updateSelectedModelId: (selectedModelId: string | undefined) =>
         set({ selectedModelId }),
@@ -65,8 +60,6 @@ export const useSettingsStore = create<SettingsState>()(
 
       updateEnablePochiModels: (value: boolean) =>
         set(() => ({ enablePochiModels: value })),
-
-      updateEnableSync: (value: boolean) => set(() => ({ enableSync: value })),
     }),
     {
       name: "ragdoll-settings-storage",
