@@ -8,6 +8,7 @@ export {
   isStdioTransport,
   isHttpTransport,
   isExecutable,
+  omitDisabled,
   type McpToolExecutable,
 } from "./types";
 export {
