@@ -11,8 +11,21 @@ export interface VersionCheckResult {
   latestRelease: GitHubRelease;
 }
 
-export async function returnVersionInfo(): Promise<VersionCheckResult> {
-  const latestRelease = await fetchLatestCliRelease();
+export async function returnVersionInfo(options?: {
+  timeoutMs?: number;
+}): Promise<VersionCheckResult> {
+  const { timeoutMs } = options ?? {};
+
+  const latestReleasePromise = fetchLatestCliRelease();
+  const latestRelease = (await (timeoutMs
+    ? Promise.race<GitHubRelease | never>([
+        latestReleasePromise,
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("version check timeout")), timeoutMs),
+        ),
+      ])
+    : latestReleasePromise)) as GitHubRelease;
+
   const latestVersion = extractVersionFromTag(latestRelease.tag_name);
   const currentVersion = packageJson.version;
 
@@ -26,7 +39,7 @@ export async function returnVersionInfo(): Promise<VersionCheckResult> {
 
 export async function checkForUpdates() {
   const { updateAvailable, currentVersion, latestVersion } =
-    await returnVersionInfo();
+    await returnVersionInfo({ timeoutMs: 300 });
 
   const header = `\n${chalk.bold("Pochi")} ${chalk.white(currentVersion)}`;
 

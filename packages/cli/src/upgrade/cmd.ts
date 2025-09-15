@@ -12,7 +12,7 @@ export function registerUpgradeCommand(program: Command) {
 
       try {
         const { updateAvailable, latestVersion, latestRelease } =
-          await returnVersionInfo();
+          await returnVersionInfo({ timeoutMs: 300 });
 
         if (updateAvailable) {
           console.log(
