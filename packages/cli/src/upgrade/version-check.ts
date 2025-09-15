@@ -19,7 +19,7 @@ export async function returnVersionInfo(options?: {
   const latestReleasePromise = fetchLatestCliRelease();
 
   // If timeout is provided, use it else wait for the release to be fetched
-  const latestRelease = (await (timeoutMs != null 
+  const latestRelease = (await (timeoutMs != null
     ? Promise.race<GitHubRelease | never>([
         latestReleasePromise,
         new Promise((_, reject) =>
