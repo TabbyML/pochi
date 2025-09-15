@@ -7,7 +7,7 @@ import {
   type McpToolExecutable,
   type McpToolStatus,
 } from "../index";
-import type { McpServerConfig } from "@getpochi/common/configuration";
+import type { McpServerConfig } from "../../configuration";
 
 describe("MCP Types", () => {
   describe("isStdioTransport", () => {

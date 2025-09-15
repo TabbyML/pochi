@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import type { McpServerConfig } from "@getpochi/common/configuration";
+import type { McpServerConfig } from "../../configuration";
 
 describe("MCP Hub Tests", () => {
   describe("McpServerConfig validation", () => {
