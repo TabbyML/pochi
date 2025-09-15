@@ -121,6 +121,7 @@ export async function runPochi(githubManager: GitHubManager): Promise<void> {
       child.stderr.setEncoding("utf8");
       child.stderr.on("data", (data: string) => {
         context.outputBuffer += data;
+        process.stderr.write(data);
       });
     }
 
