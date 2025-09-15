@@ -37,7 +37,6 @@ import { registerTaskCommand } from "./task";
 import { TaskRunner } from "./task-runner";
 import { checkForUpdates, registerUpgradeCommand } from "./upgrade";
 
-
 const logger = getLogger("Pochi");
 logger.debug(`pochi v${packageJson.version}`);
 
