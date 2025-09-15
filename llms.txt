@@ -1177,7 +1177,7 @@ Here is an example configuration for a local OpenAI-compatible server running `q
 
 ***
 
-**Need help?** Visit our [Community Support](/community-support) page or join our [Discord](https://discord.com/invite/tWF66yr8NQ) for assistance with Tab Completion features.
+**Need help?** Join our [Discord](http://getpochi.com/discord) for assistance with Tab Completion features.
 
 
 # Troubleshooting
