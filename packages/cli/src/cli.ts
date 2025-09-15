@@ -54,29 +54,31 @@ const parsePositiveInt = (input: string): number => {
 
 const program = new Command()
   .name("pochi")
-  .description(`${chalk.bold("Pochi")} v${packageJson.version}`)
+  .description(
+    `${chalk.bold("Pochi")} v${packageJson.version} - A powerful CLI tool for AI-driven development.`,
+  )
   .optionsGroup("Prompt:")
   .option(
     "-p, --prompt <prompt>",
-    'Create a new task with the given prompt. You can also pipe input to use as a prompt, for example: `cat .pochi/workflows/create-pr.md | pochi`. To use a workflow, use /workflow-name, for example: `pochi -p /create-pr`. Workflows can be embedded in larger prompts, for example: `pochi -p "please /create-pr with feat semantic convention"`',
+    "Create a new task with a given prompt. Input can also be piped. For example: `cat my-prompt.md | pochi`. Workflows can be triggered with `/workflow-name`, like `pochi -p /create-pr`.",
   )
   .optionsGroup("Options:")
   .option(
     "--max-steps <number>",
-    "Maximum number of stepsto run the task. If the task cannot be completed in this number of rounds, the runner will stop.",
+    "Set the maximum number of steps for a task. The task will stop if it exceeds this limit.",
     parsePositiveInt,
     24,
   )
   .option(
     "--max-retries <number>",
-    "Maximum number of retries to run the task in a single step.",
+    "Set the maximum number of retries for a single step in a task.",
     parsePositiveInt,
     3,
   )
   .optionsGroup("Model:")
   .option(
     "-m, --model <model>",
-    "The model to use for the task.",
+    "Specify the model to be used for the task.",
     "qwen/qwen3-coder",
   )
   .action(async (options) => {

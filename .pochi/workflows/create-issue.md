@@ -4,5 +4,6 @@
     🤖 Generated with [Pochi](https://getpochi.com)
 4. Please include as much as possible information about the issues, especially link to existing code (make sure you make the link clickable by prefixing them with github link)
 5. Be respectful and considerate in your issue description and comments, make it concise and clear.
+6. After creating the issue, please assign it to project https://github.com/orgs/TabbyML/projects/15 and add appropriate labels (see existing issues for reference)
 
 IMPORTANT: You only need to create the issue, DO NOT attempt to fix the issue or implement the feature.

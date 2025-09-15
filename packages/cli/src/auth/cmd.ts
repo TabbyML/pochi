@@ -14,55 +14,63 @@ export function registerAuthCommand(program: Command) {
 
   const authCommand = program
     .command("auth")
-    .description("Manage auth for vendors");
-  authCommand.command("status", { isDefault: true }).action(async () => {
-    for (const [name, auth] of Object.entries(vendors)) {
-      console.log(
-        `${name}:`,
-        auth.authenticated
-          ? renderUser(await auth.getUserInfo())
-          : chalk.gray("Not logged in"),
-      );
-    }
-  });
+    .description("Manage authentication for different AI vendors.")
+    .addHelpCommand(true);
 
-  const loginCommand = authCommand.command("login");
-  loginCommand.description("log in to a provider").action(async () => {
-    try {
-      const selectedVendor = await selectVendor();
-      const auth = vendors[selectedVendor as keyof typeof vendors];
-      if (!auth) {
-        return loginCommand.error(`Unknown vendor: ${selectedVendor}`);
+  authCommand
+    .command("status", { isDefault: true })
+    .description("Check authentication status for all supported vendors.")
+    .action(async () => {
+      console.log("Checking authentication status...\n");
+      for (const [name, auth] of Object.entries(vendors)) {
+        console.log(
+          `${name}:`,
+          auth.authenticated
+            ? renderUser(await auth.getUserInfo())
+            : chalk.gray("Not logged in"),
+        );
       }
+    });
 
-      const shouldProceed = await confirmVendorSelection(selectedVendor);
-      if (!shouldProceed) {
-        const user = await auth.getUserInfo();
-        console.log("Using existing authentication for", renderUser(user));
-        return;
-      }
+  const loginCommand = authCommand
+    .command("login")
+    .description("Log in to a specific AI vendor.")
+    .action(async () => {
+      try {
+        const selectedVendor = await selectVendor();
+        const auth = vendors[selectedVendor as keyof typeof vendors];
+        if (!auth) {
+          return loginCommand.error(`Unknown vendor: ${selectedVendor}`);
+        }
 
-      const user = await login(selectedVendor);
-      console.log("Logged in as", renderUser(user));
-    } catch (err) {
-      if (err instanceof Error) {
-        if (
-          err.name === "ExitPromptError" ||
-          err.message.includes("force closed")
-        ) {
-          console.log("Login cancelled");
+        const shouldProceed = await confirmVendorSelection(selectedVendor);
+        if (!shouldProceed) {
+          const user = await auth.getUserInfo();
+          console.log("Using existing authentication for", renderUser(user));
           return;
         }
-        return loginCommand.error(err.message);
-      }
-      throw err;
-    }
-  });
 
-  const logoutCommand = authCommand.command("logout");
-  logoutCommand
-    .description("log out from a configured provider")
-    .option("-a, --all")
+        const user = await login(selectedVendor);
+        console.log("Logged in as", renderUser(user));
+      } catch (err) {
+        if (err instanceof Error) {
+          if (
+            err.name === "ExitPromptError" ||
+            err.message.includes("force closed")
+          ) {
+            console.log("Login cancelled");
+            return;
+          }
+          return loginCommand.error(err.message);
+        }
+        throw err;
+      }
+    });
+
+  const logoutCommand = authCommand
+    .command("logout")
+    .description("Log out from a specific AI vendor or all vendors.")
+    .option("-a, --all", "Log out from all authenticated vendors.")
     .action(async ({ all }) => {
       const logout = async (name: string) => {
         await updateVendorConfig(name, null);
