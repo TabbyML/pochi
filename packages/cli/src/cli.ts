@@ -33,12 +33,24 @@ import { createStore } from "./livekit/store";
 import { registerMcpCommand } from "./mcp";
 import { registerModelCommand } from "./model";
 import { OutputRenderer } from "./output-renderer";
+import { safeShutdownStore } from "./shutdown";
 import { registerTaskCommand } from "./task";
 import { TaskRunner } from "./task-runner";
 import { checkForUpdates, registerUpgradeCommand } from "./upgrade";
 
 const logger = getLogger("Pochi");
 logger.debug(`pochi v${packageJson.version}`);
+
+// Simple signal handlers - just exit immediately
+process.once("SIGINT", () => {
+  logger.debug("Received SIGINT, exiting...");
+  process.exit(130);
+});
+
+process.once("SIGTERM", () => {
+  logger.debug("Received SIGTERM, exiting...");
+  process.exit(1);
+});
 
 const parsePositiveInt = (input: string): number => {
   if (!input) {
@@ -117,8 +129,6 @@ const program = new Command()
 
     await runner.run();
 
-    renderer.shutdown();
-
     const shareId = runner.shareId;
     if (shareId) {
       // FIXME(zhiming): base url is hard code, should use options.url
@@ -128,7 +138,10 @@ const program = new Command()
       console.log(`\n${chalk.bold("Task link: ")} ${shareUrl}`);
     }
 
-    await store.shutdown();
+    renderer.shutdown();
+    await safeShutdownStore(store);
+
+    process.exit(0);
   });
 
 const otherOptionsGroup = "Others:";
