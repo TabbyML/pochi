@@ -29,7 +29,6 @@ export interface McpHubStatus {
 export interface McpHubOptions {
   /** Reactive configuration signal */
   configSignal: Signal<Record<string, McpServerConfig>>; // Remove the ?
-  logger?: ReturnType<typeof getLogger>;
   onStatusChange?: (status: McpHubStatus) => void;
   clientName?: string;
 }

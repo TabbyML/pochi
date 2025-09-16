@@ -1,11 +1,8 @@
-import { getLogger } from "@/lib/logger";
 import { pochiConfig } from "@getpochi/common/configuration";
 import { McpHub } from "@getpochi/common/mcp-utils";
 import { computed } from "@preact/signals-core";
 import type { DependencyContainer } from "tsyringe";
 import type * as vscode from "vscode";
-
-const logger = getLogger("McpHubFactory");
 
 /**
  * Creates a McpHub instance configured for VSCode environment
@@ -23,7 +20,6 @@ export function createMcpHub(container: DependencyContainer): McpHub {
   const mcpHub = new McpHub({
     configSignal: mcpServersSignal,
     clientName: context.extension.id,
-    logger,
   });
 
   // Register for cleanup when context is disposed
