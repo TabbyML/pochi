@@ -29,7 +29,6 @@ export interface McpHubStatus {
 export interface McpHubOptions {
   /** Reactive configuration signal */
   configSignal: Signal<Record<string, McpServerConfig>>; // Remove the ?
-  onStatusChange?: (status: McpHubStatus) => void;
   clientName?: string;
 }
 
@@ -38,7 +37,6 @@ export class McpHub implements Disposable {
   private listeners: Disposable[] = [];
   private config: Record<string, McpServerConfig>;
   private configSignal?: Signal<Record<string, McpServerConfig>>;
-  private onStatusChange?: (status: McpHubStatus) => void;
   private readonly clientName: string;
 
   readonly status: Signal<McpHubStatus>;
@@ -46,7 +44,6 @@ export class McpHub implements Disposable {
   constructor(options: McpHubOptions) {
     this.configSignal = options.configSignal;
     this.config = options.configSignal.value || {};
-    this.onStatusChange = options.onStatusChange;
     this.clientName = options.clientName ?? "pochi";
     this.status = signal(this.buildStatus());
     this.init();
@@ -210,9 +207,6 @@ export class McpHub implements Disposable {
   private notifyStatusChange() {
     const status = this.buildStatus();
     this.status.value = status;
-    if (this.onStatusChange) {
-      this.onStatusChange(status);
-    }
     logger.trace("Status updated:", status);
   }
 
