@@ -63,7 +63,7 @@ function CustomEnterKeyHandler(
             () => commands.splitBlock(),
           ]);
         },
-        "Shift-Mod-Enter": () => {
+        "Mod-Enter": () => {
           if (onQueueSubmit) {
             const message = this.editor.getText();
             if (message.trim()) {
