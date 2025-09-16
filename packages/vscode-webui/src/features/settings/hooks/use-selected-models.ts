@@ -13,8 +13,7 @@ export type ModelGroups = ModelGroup[];
 
 export function useSelectedModels() {
   const { t } = useTranslation();
-  // todo should store the model info but not just modelId
-  const { selectedModelId, updateSelectedModelId } = useSettingsStore();
+  const { selectedModel, updateSelectedModel } = useSettingsStore();
   const { modelList: models, isLoading } = useModelList(true);
   const groupedModels = useMemo<ModelGroups | undefined>(() => {
     if (!models) return undefined;
@@ -46,22 +45,20 @@ export function useSelectedModels() {
     return [superModels, swiftModels, customModels];
   }, [models, t]);
 
-  const validModelId = useMemo(() => {
-    return getModelIdFromModelInfo(selectedModelId, models);
-  }, [models, selectedModelId]);
+  const validModel = useMemo(() => {
+    return getModelFromModelInfo(selectedModel?.id, models);
+  }, [models, selectedModel]);
 
-  const isValid = !!validModelId && validModelId === selectedModelId;
+  const isValid = !!validModel?.id && validModel.id === selectedModel?.id;
 
   // set initial model
   useEffect(() => {
     if (!isLoading) {
-      if (!selectedModelId && !!validModelId) {
-        updateSelectedModelId(validModelId);
+      if (!selectedModel && !!validModel) {
+        updateSelectedModel(validModel);
       }
     }
-  }, [isLoading, validModelId, selectedModelId, updateSelectedModelId]);
-
-  const selectedModel = models?.find((x) => x.id === selectedModelId);
+  }, [isLoading, validModel, selectedModel, updateSelectedModel]);
 
   return {
     isLoading,
@@ -69,14 +66,14 @@ export function useSelectedModels() {
     models,
     groupedModels,
     selectedModel,
-    updateSelectedModelId,
+    updateSelectedModel,
   };
 }
 
-function getModelIdFromModelInfo(
+function getModelFromModelInfo(
   modelId: string | undefined,
   models: DisplayModel[] | undefined,
-): string | undefined {
+) {
   if (!models?.length) return undefined;
 
   const targetModel = modelId
@@ -84,9 +81,9 @@ function getModelIdFromModelInfo(
     : undefined;
 
   if (targetModel) {
-    return targetModel.id;
+    return targetModel;
   }
 
   // return the first model by default
-  return models[0].id;
+  return models[0];
 }

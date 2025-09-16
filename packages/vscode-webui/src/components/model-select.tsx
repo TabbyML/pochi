@@ -23,7 +23,7 @@ import { DropdownMenuPortal } from "@radix-ui/react-dropdown-menu";
 interface ModelSelectProps {
   models: ModelGroups | undefined;
   value: DisplayModel | undefined;
-  onChange: (v: string) => void;
+  onChange: (v: DisplayModel) => void;
   isLoading?: boolean;
   isValid?: boolean;
   triggerClassName?: string;
@@ -38,12 +38,14 @@ export function ModelSelect({
   triggerClassName,
 }: ModelSelectProps) {
   const { t } = useTranslation();
-  const onSelectModel = (v: string) => {
-    onChange(v);
-  };
 
   const hostedModels = models?.filter((x) => !x.isCustom);
   const customModels = models?.filter((x) => x.isCustom);
+
+  const onSelectModel = (v: DisplayModel) => {
+    onChange(v);
+  };
+
   return (
     <LoadingWrapper
       loading={isLoading}
@@ -93,8 +95,8 @@ export function ModelSelect({
               className="dropdown-menu max-h-[32vh] min-w-[18rem] animate-in overflow-y-auto overflow-x-hidden rounded-md border bg-background p-2 text-popover-foreground shadow"
             >
               <DropdownMenuRadioGroup
-                value={value?.id}
-                onValueChange={onChange}
+              // value={value?.id}
+              // onValueChange={onChange}
               >
                 {hostedModels?.map((group) => (
                   <div key={group.title}>
@@ -106,7 +108,7 @@ export function ModelSelect({
                       return (
                         <DropdownMenuRadioItem
                           onClick={(e) => {
-                            onSelectModel(model.id);
+                            onSelectModel(model);
                             e.stopPropagation();
                           }}
                           value={model.id}
@@ -139,7 +141,7 @@ export function ModelSelect({
                       return (
                         <DropdownMenuRadioItem
                           onClick={(e) => {
-                            onSelectModel(model.id);
+                            onSelectModel(model);
                             e.stopPropagation();
                           }}
                           value={model.id}
