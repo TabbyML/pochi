@@ -176,10 +176,6 @@ export class McpHub implements Disposable {
     this.updateConfig(newConfig);
   }
 
-  getStatus(): McpHubStatus {
-    return this.buildStatus();
-  }
-
   private generateUniqueName(
     baseName: string,
     currentServers?: Record<string, McpServerConfig>,
