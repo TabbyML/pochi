@@ -31,6 +31,7 @@ export interface McpHubOptions {
   config?: Record<string, McpServerConfig>;
   /** Reactive configuration signal */
   configSignal: Signal<Record<string, McpServerConfig>>;
+  logger?: ReturnType<typeof getLogger>;
   onStatusChange?: (status: McpHubStatus) => void;
   clientName?: string;
 }
