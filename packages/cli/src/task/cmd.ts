@@ -1,7 +1,7 @@
 import type { Command } from "@commander-js/extra-typings";
 import { Effect, Stream } from "@livestore/utils/effect";
 import { createStore } from "../livekit";
-import { safeShutdownStore } from "../shutdown";
+import { safeShutdownStore } from "../lib/shutdown";
 import { registerTaskListCommand } from "./list";
 import { registerTaskShareCommand } from "./share";
 

@@ -2,7 +2,7 @@ import type { Command } from "@commander-js/extra-typings";
 import { catalog } from "@getpochi/livekit";
 import chalk from "chalk";
 import { createStore } from "../livekit/store";
-import { safeShutdownStore } from "../shutdown";
+import { safeShutdownStore } from "../lib/shutdown";
 
 export function registerTaskShareCommand(taskCommand: Command) {
   // pochi task get-share-url <id> - Get share URL for a task ID
