@@ -11,6 +11,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { CheckIcon, ChevronDownIcon, TriangleAlertIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -66,9 +71,21 @@ export function ModelSelect({
               )}
             >
               {!isValid && (
-                <span>
-                  <TriangleAlertIcon className="mr-1 size-3.5 text-yellow-600 dark:text-yellow-400" />
-                </span>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span>
+                      <TriangleAlertIcon className="mr-1 size-3.5 text-yellow-600 dark:text-yellow-400" />
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent
+                    showArrow={false}
+                    className="max-w-sm sm:max-w-md"
+                    side="top"
+                    sideOffset={4}
+                  >
+                    {t("modelSelect.modelUnavailable")}
+                  </TooltipContent>
+                </Tooltip>
               )}
               <span
                 className={cn(
@@ -94,10 +111,7 @@ export function ModelSelect({
               alignOffset={6}
               className="dropdown-menu max-h-[32vh] min-w-[18rem] animate-in overflow-y-auto overflow-x-hidden rounded-md border bg-background p-2 text-popover-foreground shadow"
             >
-              <DropdownMenuRadioGroup
-              // value={value?.id}
-              // onValueChange={onChange}
-              >
+              <DropdownMenuRadioGroup>
                 {hostedModels?.map((group) => (
                   <div key={group.title}>
                     <div className="px-2 py-1.5 font-semibold text-muted-foreground text-sm">

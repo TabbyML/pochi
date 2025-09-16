@@ -125,6 +125,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   } = useChatStatus({
     isReadOnly,
     isModelsLoading,
+    isModelValid,
     isLoading,
     isInputEmpty: !input.trim() && queuedMessages.length === 0,
     isFilesEmpty: files.length === 0,

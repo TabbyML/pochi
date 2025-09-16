@@ -145,7 +145,9 @@ function Chat({ user, uid, prompt }: ChatProps) {
       (pendingApproval?.name === "retry" ? pendingApproval.error : undefined);
 
   useHandleChatEvents(
-    isLoading || isModelsLoading || isReadOnly ? undefined : sendMessage,
+    isLoading || isModelsLoading || !isModelValid || isReadOnly
+      ? undefined
+      : sendMessage,
   );
 
   return (
