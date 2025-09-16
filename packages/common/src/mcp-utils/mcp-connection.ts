@@ -257,10 +257,6 @@ export class McpConnection implements Disposable {
     this.fsm.send({ type: "restart" });
   }
 
-  getStatus(): McpConnectionStatus {
-    return this.buildStatus();
-  }
-
   private updateStatus() {
     const status = this.buildStatus();
     this.status.value = status;
