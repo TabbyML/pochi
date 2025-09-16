@@ -4,13 +4,6 @@ import { Layers, X } from "lucide-react";
 import { useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-
 import { DevRetryCountdown } from "@/components/dev-retry-countdown";
 import { ActiveSelectionBadge } from "@/components/prompt-form/active-selection-badge";
 import { FormEditor } from "@/components/prompt-form/form-editor";
@@ -35,40 +28,40 @@ const QueuedMessages: React.FC<QueuedMessagesProps> = ({
   }, [messages]);
 
   return (
-    <div className="mx-2 mt-2 flex gap-1.5 overflow-hidden rounded-lg border border-border bg-muted/50 pl-1">
-      <div className="mt-3.5 shrink-0">
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div className="ml-2 flex items-center gap-1.5">
-                <Layers className="size-4" />
-              </div>
-            </TooltipTrigger>
-            <TooltipContent className="tezt-sm">
-              <p>{t("chat.queuedMessages", { count: renderMessage.length })}</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+    <div className="mx-2 mt-2 overflow-hidden rounded-lg border border-border/60 bg-gradient-to-r from-muted/40 to-muted/20">
+      {/* Header */}
+      <div className="flex items-center border-border/30 border-b bg-muted/30 px-3 py-1.5">
+        <div className="flex items-center gap-2 font-medium text-muted-foreground text-xs">
+          <Layers className="size-3.5" />
+          <span>
+            {t("chat.queuedMessages", { count: renderMessage.length })}
+          </span>
+        </div>
       </div>
+
+      {/* Messages List */}
       <ScrollArea
         className="flex-1 overflow-hidden"
-        viewportClassname="max-h-40"
+        viewportClassname="max-h-32"
       >
-        <div className="flex flex-col gap-1 py-2 pr-1">
+        <div>
           {renderMessage.map((msg, index) => (
             <div
               key={index}
-              className="flex items-start justify-between gap-2 px-2 py-1 text-sm"
+              className="group flex items-center gap-3 px-3 py-1 transition-colors hover:bg-muted/50"
             >
-              <p className="truncate" title={msg}>
+              {/* Message content */}
+              <p className="flex-1 truncate text-sm" title={msg}>
                 {msg}
               </p>
+
+              {/* Remove button */}
               <Button
                 variant="ghost"
                 size="icon"
                 type="button"
                 onClick={() => onRemove(index)}
-                className="h-5 w-5 shrink-0"
+                className="h-6 w-6 shrink-0"
               >
                 <X className="size-3" />
               </Button>
@@ -110,6 +103,7 @@ export function ChatInputForm({
   onRemoveQueuedMessage,
 }: ChatInputFormProps) {
   const editorRef = useRef<Editor | null>(null);
+
   return (
     <FormEditor
       input={input}
