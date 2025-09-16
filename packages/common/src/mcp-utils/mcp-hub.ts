@@ -223,7 +223,6 @@ export class McpHub implements Disposable {
       const connection = this.connections.get(name);
       if (connection) {
         acc[name] = connection.instance.status.value;
-        console.log("connection.instance.status.value", connection.instance.status.value);
       }
       return acc;
     }, {});
