@@ -1,11 +1,10 @@
-import type { User } from "@/types";
+import { verifyJWT } from "@/lib/jwt";
 import type { ShareEvent } from "@getpochi/common/share-utils";
 import { catalog } from "@getpochi/livekit";
 import { zValidator } from "@hono/zod-validator";
 import type { UIMessage } from "ai";
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
-import * as jose from "jose";
 import z from "zod";
 import type { DeepWriteable, Env } from "./types";
 
@@ -13,7 +12,7 @@ const store = new Hono<{ Bindings: Env }>();
 
 store
   .get("/", zValidator("query", z.object({ jwt: z.string() })), async (c) => {
-    const user = jose.decodeJwt<User>(c.req.valid("query").jwt);
+    const user = await verifyJWT(undefined, c.req.valid("query").jwt);
 
     // Activate store
     await c.env.getStore();
