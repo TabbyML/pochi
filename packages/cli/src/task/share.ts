@@ -12,9 +12,8 @@ export function registerTaskShareCommand(taskCommand: Command) {
     .action(async (taskId) => {
       const store = await createStore(process.cwd());
 
-      const shareId = store.query(
-        catalog.queries.makeTaskQuery(taskId),
-      )?.shareId;
+      const { shareId } =
+        store.query(catalog.queries.makeTaskQuery(taskId)) || {};
 
       if (shareId) {
         const shareUrl = `https://app.getpochi.com/share/${shareId}`;
@@ -25,6 +24,6 @@ export function registerTaskShareCommand(taskCommand: Command) {
         console.log(chalk.red("❌ No share URL found for this task"));
       }
 
-      store.shutdown();
+      await store.shutdown();
     });
 }

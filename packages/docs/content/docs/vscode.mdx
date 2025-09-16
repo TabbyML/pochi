@@ -22,35 +22,51 @@ Upon first launch, Pochi's Welcome page offers two ways to get started:
 - **Sign in to Pochi:** Click "Sign In" and authorize in your browser to use Pochi subscriptions, models, and cloud features.
 - **Bring Your Own Key (BYOK):** Use your own models by running `Pochi: Open Custom Model Settings` from the Command Palette. This opens `~/.pochi/config.jsonc` for you to add API keys. See [Models](/models) for details.
 
-<p align="center">![The Welcome page provides options to sign in or configure your own models.](../assets/images/welcome-page.png)</p>
+<div align="center">![The Welcome page provides options to sign in or configure your own models.](../assets/images/welcome-page.png)</div>
 
 ## Chat
 
-Access the Pochi chat panel via the Activity Bar icon or shortcut (macOS: `Cmd+L`, Win/Linux: `Ctrl+L`). This is your main interface for interacting with Pochi.
+Access the Pochi chat panel via the Activity Bar icon or shortcut (macOS: `Cmd+L`, Win/Linux: `Ctrl+L`). This is your main interface for interacting with Pochi. **Note:** An active workspace (i.e., an open folder) is required to use the chat.
 
 The panel's title bar includes actions for starting a new task and viewing all tasks.
 
-<p align="center">![The main Chat panel is where you interact with Pochi.](../assets/images/chat-page.png)</p>
+<div align="center">![The main Chat panel is where you interact with Pochi.](../assets/images/chat-page.png)</div>
 
-### Toolbox
+## Prompting
 
-The toolbox below the chat provides key features:
+The input box, located below the chat history, is where you'll compose your messages and control the chat.
 
-- **Top:** Auto-approve menu for autonomous tool use.
-- **Middle:** Chat input supporting text and images.
-- **Bottom:** Model selector, token usage, sharing, and image uploads.
+- **Auto-Approve Menu:** This menu at the top of the zone allows you to grant Pochi permission to use tools autonomously, streamlining the workflow.
+- **Todo List:** When Pochi creates a to-do list for a task, it will appear here, allowing you to track progress.
+- **Chat Input:** The main text area supports both text and image uploads. You can attach files by clicking the **paperclip icon** or by dragging and dropping them into the input area.
+- **Bottom Toolbar:** The toolbar at the very bottom provides several key functions:
+    - **Model Selector:** Choose which language model you want to interact with.
+    - **Token Usage & Compact Task:** Monitor the token count of your conversation. If the conversation becomes long, a **Compact Task** button will appear, allowing you to condense the history and save tokens.
+    - **Sharing:** Share your chat session with others (requires a Pochi account).
+    - **Submit/Stop Button:** The send button dynamically transforms into a stop button during message generation, allowing you to interrupt the AI at any time.
 
-<p align="center">
-  ![The chat toolbox provides access to key features like model selection and auto-approval.](../assets/images/home-page-toolbox.png)
-</p>
+<div align="center">
+  ![The Prompt Zone provides access to key features like model selection and auto-approval.](../assets/images/home-page-toolbox.png)
+</div>
 
 ## Tasks
 
-Task history is stored locally by default. Signing in to a Pochi account enables cloud storage, sharing, and team collaboration features. Be aware that clearing VS Code's extension data may erase local history.
+A chat session in Pochi is saved as a **Task**. You can view your entire task history from the task list page.
 
-<p align="center">![The Task List page shows your historical task sessions.](../assets/images/task-page.png)</p>
+Some AI-powered actions might generate a **Sub-task**, which is a new, focused chat session dedicated to a specific part of the original task.
+When you're in a sub-task, you'll see a "Back" button to navigate to the parent task, allowing you to maintain context while breaking down complex problems.
+By default sub-tasks are hidden in the task list.
+
+By default, task history is stored locally. Signing in to a Pochi account enables cloud storage for your tasks, along with sharing and team collaboration features.
+Be aware that clearing VS Code's extension data may erase your local task history.
+
+<div align="center">![The Task List page shows your historical task sessions.](../assets/images/task-page.png)</div>
 
 ## Troubleshooting
 
-Having issues? Check [Troubleshooting](/troubleshooting), or verify that your sign-in status and model configuration are valid.
+Having issues? Here are a few things to check:
 
+- **No Active Workspace:** Pochi requires an open folder to function correctly. Make sure you have a workspace open.
+- **Sign-in/Model Configuration:** Verify that you are either signed in to your Pochi account or have a valid API key configured in your `~/.pochi/config.jsonc`.
+
+For more help, check the full [Troubleshooting](/troubleshooting) page or join our community on [Discord](https://getpochi.com/discord).

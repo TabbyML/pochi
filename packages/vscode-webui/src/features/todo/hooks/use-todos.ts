@@ -13,9 +13,11 @@ export function useTodos({
   messages: Message[];
   todosRef: React.RefObject<Todo[] | undefined>;
 }) {
-  const [todos, setTodosImpl] = useState<Todo[]>(
-    JSON.parse(JSON.stringify(initialTodos ?? [])),
-  );
+  const [todos, setTodosImpl] = useState<Todo[]>(() => {
+    const newTodos = JSON.parse(JSON.stringify(initialTodos ?? []));
+    todosRef.current = newTodos;
+    return newTodos;
+  });
 
   // biome-ignore lint/correctness/useExhaustiveDependencies(todosRef): todosRef is a ref
   const setTodos = useCallback((newTodos: Todo[]) => {

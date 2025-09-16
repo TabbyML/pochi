@@ -2,7 +2,7 @@ import "./i18n/config";
 import "./styles.css";
 import { StrictMode, useEffect } from "react";
 import ReactDOM from "react-dom/client";
-import { type Theme, useTheme } from "./components/theme-provider";
+import { useTheme } from "./components/theme-provider";
 import { SharePage } from "./features/share";
 import { ShareProviders } from "./providers";
 
@@ -12,14 +12,7 @@ function ThemeUpdater() {
   useEffect(() => {
     // Function to read theme from hash and update it
     const updateThemeFromHash = () => {
-      const hash = window.location.hash.substring(1); // Remove the # character
-      if (hash) {
-        const hashParams = new URLSearchParams(hash);
-        const theme = hashParams.get("theme");
-        if (theme && (theme === "light" || theme === "dark")) {
-          setTheme(theme as Theme);
-        }
-      }
+      setTheme(getThemeFromHash());
     };
 
     // Set initial theme from hash
@@ -58,4 +51,17 @@ if (rootElement && !rootElement.innerHTML) {
       <App />
     </StrictMode>,
   );
+}
+
+function getThemeFromHash(): "light" | "dark" {
+  const hash = window.location.hash.substring(1); // Remove the # character
+  if (hash) {
+    const hashParams = new URLSearchParams(hash);
+    const theme = hashParams.get("theme");
+    if (theme && (theme === "light" || theme === "dark")) {
+      return theme;
+    }
+  }
+
+  return "light";
 }

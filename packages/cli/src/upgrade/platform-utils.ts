@@ -34,11 +34,6 @@ export function getPlatformBinaryName(): string {
   return `pochi-${platformName}-${archName}${extension}`;
 }
 
-export function getBinaryFileName(version: string): string {
-  const extension = process.platform === "win32" ? ".exe" : "";
-  return `pochi-${version}${extension}`;
-}
-
 export function getLatestBinaryFileName(): string {
   const extension = process.platform === "win32" ? ".exe" : "";
   return `pochi${extension}`;
