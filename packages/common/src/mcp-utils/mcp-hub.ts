@@ -27,6 +27,8 @@ export interface McpHubStatus {
 }
 
 export interface McpHubOptions {
+  /** Static configuration (for backward compatibility) */
+  config?: Record<string, McpServerConfig>;
   /** Reactive configuration signal */
   configSignal: Signal<Record<string, McpServerConfig>>;
   onStatusChange?: (status: McpHubStatus) => void;
@@ -37,15 +39,19 @@ export class McpHub implements Disposable {
   private connections: McpConnectionMap = new Map();
   private listeners: Disposable[] = [];
   private config: Record<string, McpServerConfig>;
-  private configSignal: Signal<Record<string, McpServerConfig>>;
+  private configSignal?: Signal<Record<string, McpServerConfig>>;
   private onStatusChange?: (status: McpHubStatus) => void;
   private readonly clientName: string;
 
   readonly status: Signal<McpHubStatus>;
 
   constructor(options: McpHubOptions) {
+    if (!options.config && !options.configSignal) {
+      throw new Error("Either config or configSignal must be provided");
+    }
+
     this.configSignal = options.configSignal;
-    this.config = this.configSignal.value || {};
+    this.config = options.config ?? (options.configSignal?.value || {});
     this.onStatusChange = options.onStatusChange;
     this.clientName = options.clientName ?? "pochi";
     this.status = signal(this.buildStatus());
@@ -169,6 +175,10 @@ export class McpHub implements Disposable {
     this.updateConfig(newConfig);
   }
 
+  getStatus(): McpHubStatus {
+    return this.buildStatus();
+  }
+
   private generateUniqueName(
     baseName: string,
     currentServers?: Record<string, McpServerConfig>,
@@ -193,16 +203,18 @@ export class McpHub implements Disposable {
       this.createConnection(name, config);
     }
 
-    // Subscribe to config signal changes
-    this.listeners.push({
-      dispose: this.configSignal.subscribe((newConfig) => {
-        logger.debug(
-          "MCP servers configuration changed via signal:",
-          newConfig,
-        );
-        this.updateConfig(newConfig);
-      }),
-    });
+    // Subscribe to config signal changes if provided
+    if (this.configSignal) {
+      this.listeners.push({
+        dispose: this.configSignal.subscribe((newConfig) => {
+          logger.debug(
+            "MCP servers configuration changed via signal:",
+            newConfig,
+          );
+          this.updateConfig(newConfig);
+        }),
+      });
+    }
   }
 
   private notifyStatusChange() {
