@@ -20,7 +20,7 @@ async function setup() {
     core.exportVariable("EYES_REACTION_ID", eyesReactionId?.toString() || "");
 
     const progressCommentId = await githubManager.createComment(
-      "Starting Pochi execution...",
+      "```\nStarting Pochi execution...\n```",
     );
     core.exportVariable("PROGRESS_COMMENT_ID", progressCommentId.toString());
 
