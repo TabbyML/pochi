@@ -41,6 +41,10 @@ export interface McpToolStatus {
   };
 }
 
+interface McpClientWithInstructions extends McpClient {
+  instructions?: string;
+}
+
 type FsmContext = {
   startingAbortController?: AbortController;
   client?: McpClient;
@@ -276,13 +280,13 @@ export class McpConnection implements Disposable {
     }
   }
 
-  private buildStatus(): McpConnectionStatus {
+  private buildStatus() {
     const { value, context } = this.fsm.state;
     const toolset = context.toolset ?? {}; // FIXME: fallback to cache toolset info in file
     return {
       status: value,
       error: context.error,
-      // instructions: context.instructions,
+      instructions: context.instructions,
       tools: Object.entries(toolset).reduce<
         Record<string, McpToolStatus & McpToolExecutable>
       >((acc, [name, tool]) => {
@@ -385,11 +389,16 @@ export class McpConnection implements Disposable {
         throw AbortedError;
       }
 
+      const instructions = (client as McpClientWithInstructions).instructions;
+      if (signal?.aborted) {
+        throw AbortedError;
+      }
+
       this.fsm.send({
         type: "connected",
         client,
         toolset,
-        // instructions,
+        instructions,
       });
     } catch (error) {
       try {
