@@ -2,6 +2,7 @@ import type { McpTool } from "@getpochi/tools";
 import { type Signal, signal } from "@preact/signals-core";
 import { getLogger } from "../base";
 import type { McpServerConfig } from "../configuration/index.js";
+import { updatePochiConfig } from "../configuration/index.js";
 
 import { entries } from "remeda";
 import { McpConnection, type McpConnectionStatus } from "./mcp-connection";
@@ -117,6 +118,11 @@ export class McpHub implements Disposable {
 
   updateConfig(newConfig: Record<string, McpServerConfig>) {
     this.config = newConfig;
+
+    // Persist configuration changes to file
+    updatePochiConfig({ mcp: newConfig }).catch((error) => {
+      logger.error("Failed to persist MCP configuration changes", error);
+    });
 
     // Update existing connections
     for (const [name, config] of Object.entries(newConfig)) {
