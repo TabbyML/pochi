@@ -75,7 +75,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     selectedModel,
     isLoading: isModelsLoading,
     isValid: isModelValid,
-    updateSelectedModelId: handleSelectModel,
+    updateSelectedModel: handleSelectModel,
   } = useSelectedModels();
 
   const autoApproveGuard = useAutoApproveGuard();
@@ -204,6 +204,9 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     () => JSON.stringify(messages, null, 2),
     [messages],
   );
+
+  console.log(groupedModels, selectedModel);
+
   return (
     <>
       <ApprovalButton
