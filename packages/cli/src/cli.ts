@@ -41,7 +41,6 @@ import { checkForUpdates, registerUpgradeCommand } from "./upgrade";
 const logger = getLogger("Pochi");
 logger.debug(`pochi v${packageJson.version}`);
 
-// Simple signal handlers - just exit immediately
 process.once("SIGINT", () => {
   logger.debug("Received SIGINT, exiting...");
   process.exit(130);
