@@ -271,7 +271,7 @@ export class McpHub implements Disposable {
         this.notifyStatusChange();
       }),
     };
-    
+
     const connectionObject = {
       instance: connection,
       listeners: [statusListener] as Disposable[],
