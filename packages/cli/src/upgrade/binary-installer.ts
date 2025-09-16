@@ -7,13 +7,11 @@ import {
   readdirSync,
   rmSync,
   statSync,
-  symlinkSync,
 } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { extname, join } from "node:path";
 import chalk from "chalk";
 import {
-  getBinaryFileName,
   getLatestBinaryFileName,
   getPlatformBinaryName,
 } from "./platform-utils";
@@ -153,12 +151,10 @@ export async function downloadAndInstall(
     const version = extractVersionFromTag(release.tag_name);
 
     const binDir = getPochiDir();
-    const versionedBinaryName = getBinaryFileName(version);
     const latestBinaryName = getLatestBinaryFileName();
-    const versionedBinaryPath = join(binDir, versionedBinaryName);
     const latestBinaryPath = join(binDir, latestBinaryName);
 
-    console.log(`⚙️ Installing to: ${binDir}`);
+    console.log(`⚙️ Installing to: ${latestBinaryPath}`);
 
     // Create temporary directory for extraction
     const tempDir = join(tmpdir(), `pochi-upgrade-${Date.now()}`);
@@ -182,40 +178,24 @@ export async function downloadAndInstall(
     const extractedBinaryPath = await extractArchive(archivePath, tempDir);
     console.log(`🔍 Found binary: ${extractedBinaryPath}`);
 
-    // Copy binary to versioned name
-    copyFileSync(extractedBinaryPath, versionedBinaryPath);
-
-    // Make executable on Unix systems
-    if (process.platform !== "win32") {
-      chmodSync(versionedBinaryPath, 0o755);
-    }
-
-    // Create/update the "latest" symlink or copy
+    // If a previous version exists, remove it.
     if (existsSync(latestBinaryPath)) {
       rmSync(latestBinaryPath);
     }
 
-    if (process.platform === "win32") {
-      // On Windows, create a copy instead of symlink
-      copyFileSync(versionedBinaryPath, latestBinaryPath);
-    } else {
-      // On Unix, create a symlink
-      try {
-        symlinkSync(versionedBinaryName, latestBinaryPath);
-      } catch (error) {
-        // Fallback to execSync if symlinkSync fails
-        execSync(`ln -s "${versionedBinaryName}" "${latestBinaryPath}"`, {
-          cwd: binDir,
-        });
-      }
+    // Move the new binary to the final destination
+    copyFileSync(extractedBinaryPath, latestBinaryPath);
+
+    // Make executable
+    if (process.platform !== "win32") {
+      chmodSync(latestBinaryPath, 0o755);
     }
 
     // Clean up temporary directory
     rmSync(tempDir, { recursive: true, force: true });
 
     console.log(chalk.green(`✅ Successfully installed Pochi v${version}`));
-    console.log(chalk.cyan(`📍 Installed to: ${versionedBinaryPath}`));
-    console.log(chalk.cyan(`🔗 Latest symlink: ${latestBinaryPath}`));
+    console.log(chalk.cyan(`📍 Installed to: ${latestBinaryPath}`));
     console.log();
     console.log(chalk.yellow("To use the new version:"));
     console.log(chalk.white(`  ${latestBinaryPath} --version`));

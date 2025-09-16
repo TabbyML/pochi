@@ -8,11 +8,13 @@ export type Env = {
   ADMIN_SECRET: string;
   POCHI_API_KEY: string;
   ENVIRONMENT: "dev" | "prod" | undefined;
+  ASSETS: CfTypes.Fetcher;
 };
 
 export type User = {
   id: string;
   name: string;
   email: string;
+  image: string;
   emailVerified: boolean;
 };

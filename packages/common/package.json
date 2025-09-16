@@ -16,7 +16,8 @@
     "./diff-utils": "./src/diff-utils.ts",
     "./tool-utils": "./src/tool-utils/index.ts",
     "./vscode-webui-bridge": "./src/vscode-webui-bridge/index.ts",
-    "./store-id-utils": "./src/store-id-utils.ts"
+    "./store-id-utils": "./src/store-id-utils.ts",
+    "./share-utils": "./src/share-utils.ts"
   },
   "scripts": {
     "tsc": "tsc",

@@ -16,13 +16,16 @@
     "jose": "catalog:",
     "zod": "catalog:",
     "moment": "catalog:",
-    "remeda": "catalog:"
+    "remeda": "catalog:",
+    "ai": "catalog:"
   },
   "devDependencies": {
     "wrangler": "^4.33.0"
   },
   "scripts": {
-    "build": "wrangler build",
+    "build:share": "./scripts/copy-share.js",
+    "build:wrangler": "wrangler build",
+    "build": "npm-run-all build:share build:wrangler",
     "dev": "wrangler dev",
     "wrangler:deploy": "wrangler deploy",
     "tsc": "tsc"

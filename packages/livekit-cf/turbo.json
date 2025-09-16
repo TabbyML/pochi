@@ -1,0 +1,9 @@
+{
+  "extends": ["//"],
+  "$schema": "https://turborepo.com/schema.json",
+  "tasks": {
+    "build": {
+      "dependsOn": ["@getpochi/vscode-webui#build"]
+    }
+  }
+}

@@ -35,7 +35,7 @@ import { registerModelCommand } from "./model";
 import { OutputRenderer } from "./output-renderer";
 import { registerTaskCommand } from "./task";
 import { TaskRunner } from "./task-runner";
-import { registerUpgradeCommand } from "./upgrade";
+import { checkForUpdates, registerUpgradeCommand } from "./upgrade";
 
 const logger = getLogger("Pochi");
 logger.debug(`pochi v${packageJson.version}`);
@@ -148,6 +148,13 @@ program
   .configureOutput({
     outputError: (str, write) => write(chalk.red(str)),
   });
+
+// Run version check on every invocation before any command executes
+program.hook("preAction", async () => {
+  try {
+    await checkForUpdates();
+  } catch {}
+});
 
 registerAuthCommand(program);
 

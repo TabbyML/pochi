@@ -1,5 +1,5 @@
 import { DurableObject } from "cloudflare:workers";
-import type { Env } from "@/types";
+import type { Env, User } from "@/types";
 import type { PochiApi, PochiApiClient } from "@getpochi/common/pochi-api";
 import { decodeStoreId } from "@getpochi/common/store-id-utils";
 import { type Task, catalog } from "@getpochi/livekit";
@@ -13,7 +13,7 @@ import { hc } from "hono/client";
 import moment from "moment";
 import { funnel } from "remeda";
 import { app } from "./app";
-import type { Env as ClientEnv } from "./types";
+import type { Env as ClientEnv, DeepWriteable } from "./types";
 
 // Scoped by storeId
 export class LiveStoreClientDO
@@ -43,6 +43,13 @@ export class LiveStoreClientDO
         await this.subscribeToStore();
         return store;
       },
+      setUser: (user: User) => {
+        return this.state.storage.put("user", user);
+      },
+      getUser: async () => {
+        return await this.state.storage.get<User>("user");
+      },
+      ASSETS: this.env.ASSETS,
     } satisfies ClientEnv);
   }
 
@@ -177,8 +184,6 @@ export class LiveStoreClientDO
     }
   }
 }
-
-type DeepWriteable<T> = { -readonly [P in keyof T]: DeepWriteable<T[P]> };
 
 function createApiClient(apiKey: string, userId: string): PochiApiClient {
   const prodServerUrl = "https://app.getpochi.com";

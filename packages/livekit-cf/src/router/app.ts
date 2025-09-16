@@ -36,13 +36,15 @@ app
         throw new HTTPException(401, { message: "Unauthorized" });
       }
 
+      signalClientDo({
+        env: c.env,
+        host: c.req.header("host") || "",
+        storeId: query.storeId,
+        jwt: query.payload.jwt,
+      });
+
       const requestParamsResult = SyncBackend.getSyncRequestSearchParams(
         c.req.raw,
-      );
-
-      // Run a fetch to active CLIENT_DO
-      c.env.CLIENT_DO.get(c.env.CLIENT_DO.idFromName(query.storeId)).fetch(
-        `https://${c.req.header("host")}/stores/${query.storeId}`,
       );
 
       if (requestParamsResult._tag === "Some") {
@@ -73,6 +75,29 @@ app
   });
 
 async function verifyStoreId(env: Env, jwt: string, storeId: string) {
-  const user = await verifyJWT(env, jwt);
+  const user = await verifyJWT(env.ENVIRONMENT, jwt);
   return user.sub === decodeStoreId(storeId).sub;
 }
+
+type SignalClientDoOptions = {
+  env: Env;
+  host: string;
+  storeId: string;
+  jwt: string;
+};
+
+const signalClientDo = async ({
+  env,
+  host,
+  storeId,
+  jwt,
+}: SignalClientDoOptions) => {
+  // Run a fetch to active CLIENT_DO
+  const resp = await env.CLIENT_DO.get(env.CLIENT_DO.idFromName(storeId)).fetch(
+    `https://${host}/stores/${storeId}?jwt=${jwt}`,
+  );
+
+  if (!resp.ok) {
+    console.error("Failed to signal CLIENT_DO", await resp.status);
+  }
+};

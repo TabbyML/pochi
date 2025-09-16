@@ -1,7 +1,9 @@
 import type { PendingApproval } from "@/features/approval";
 import type { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
 import type { UseChatHelpers } from "@ai-sdk/react";
+import { prompts } from "@getpochi/common";
 import type { Message } from "@getpochi/livekit";
+import type { FileUIPart } from "ai";
 import type React from "react";
 import { useCallback } from "react";
 import { useAutoApproveGuard, useToolCallLifeCycle } from "../lib/chat-state";
@@ -108,10 +110,10 @@ export function useChatSubmit({
       if (files.length > 0) {
         try {
           const uploadedAttachments = await upload();
+          const parts = prepareMessageParts(content, uploadedAttachments);
 
           sendMessage({
-            text: content.length === 0 ? " " : content,
-            files: uploadedAttachments,
+            parts,
           });
 
           setInput("");
@@ -143,4 +145,18 @@ export function useChatSubmit({
   );
 
   return { handleSubmit, handleStop };
+}
+
+function prepareMessageParts(input: string, files: FileUIPart[]) {
+  const parts: Message["parts"] = [...files];
+  parts.push({
+    type: "text",
+    text: prompts.createSystemReminder(
+      `Attached files: ${files.map((file) => file.url).join(", ")}`,
+    ),
+  });
+  if (input) {
+    parts.push({ type: "text", text: input });
+  }
+  return parts;
 }
