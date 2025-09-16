@@ -14,7 +14,7 @@ export interface VersionCheckResult {
 export async function returnVersionInfo(options?: {
   timeoutMs?: number | null;
 }): Promise<VersionCheckResult> {
-  const { timeoutMs } = options ?? {}; //Optional timeout, used for version check
+  const { timeoutMs } = options ?? {}; // Optional timeout, used for version check on startup
 
   const latestReleasePromise = fetchLatestCliRelease();
 
@@ -32,11 +32,10 @@ export async function returnVersionInfo(options?: {
     : latestReleasePromise)) as GitHubRelease;
 
   const latestVersion = extractVersionFromTag(latestRelease.tag_name);
-  const currentVersion = packageJson.version;
 
   return {
-    updateAvailable: isNewerVersion(latestVersion, currentVersion),
-    currentVersion,
+    updateAvailable: isNewerVersion(latestVersion, packageJson.version),
+    currentVersion: packageJson.version,
     latestVersion,
     latestRelease,
   };
@@ -49,13 +48,12 @@ export async function checkForUpdates() {
   const header = `\n${chalk.bold("Pochi")} ${chalk.white(currentVersion)}`;
 
   // If update is available, show the latest version beside the current version in parentheses, else show the current version
-  const line = updateAvailable
-    ? `${header} ${chalk.dim("(update available")} ${chalk.green(latestVersion)}${chalk.dim(")")}`
-    : header;
-
-  console.log(line);
-
-  const columns = process.stdout.columns || 80;
-  const width = Math.max(Math.min(columns, 100), 20);
-  console.log(chalk.yellow("─".repeat(width)));
+  if (updateAvailable) {
+    console.log(
+      `${header} ${chalk.dim("(update available")} ${chalk.green(latestVersion)}${chalk.dim(")")}`,
+    );
+    const columns = process.stdout.columns || 80;
+    const width = Math.max(Math.min(columns, 100), 20);
+    console.log(chalk.yellow("─".repeat(width)));
+  } 
 }
