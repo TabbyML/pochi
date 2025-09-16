@@ -19,8 +19,9 @@ async function setup() {
     );
     core.exportVariable("EYES_REACTION_ID", eyesReactionId?.toString() || "");
 
-    const initialContent = `Starting Pochi execution...${githubManager.createGitHubActionFooter()}`;
-    const progressCommentId = await githubManager.createComment(initialContent);
+    const progressCommentId = await githubManager.createComment(
+      "Starting Pochi execution...",
+    );
     core.exportVariable("PROGRESS_COMMENT_ID", progressCommentId.toString());
 
     console.log("Setup completed successfully");
