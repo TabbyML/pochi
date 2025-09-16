@@ -147,6 +147,7 @@
         "@livestore/livestore": "catalog:",
         "@livestore/peer-deps": "catalog:",
         "@livestore/sync-cf": "catalog:",
+        "ai": "catalog:",
         "hono": "catalog:",
         "jose": "catalog:",
         "moment": "catalog:",
