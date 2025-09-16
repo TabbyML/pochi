@@ -102,6 +102,7 @@ export interface McpConnectionOptions {
 
 export class McpConnection implements Disposable {
   readonly logger: ReturnType<typeof getLogger>;
+  private onStatusChange?: (status: McpConnectionStatus) => void;
   readonly status: Signal<McpConnectionStatus>;
 
   private fsmDef = createMachine<FsmContext, FsmEvent, FsmState>({
@@ -202,9 +203,10 @@ export class McpConnection implements Disposable {
     readonly serverName: string,
     private readonly clientName: string,
     private config: McpServerConfig,
+    options: McpConnectionOptions = {},
   ) {
     this.logger = getLogger(`MCPConnection(${this.serverName})`);
-    this.status = signal(this.buildStatus());
+    this.onStatusChange = options.onStatusChange;
 
     // Initialize status signal with default values
     this.status = signal({
@@ -216,7 +218,7 @@ export class McpConnection implements Disposable {
     this.fsm.start();
     const { unsubscribe: dispose } = this.fsm.subscribe((state) => {
       this.logger.debug(`State changed: ${state.value}`);
-      this.updateStatus();
+      this.notifyStatusChange();
     });
     this.listeners.push({ dispose });
 
@@ -253,7 +255,7 @@ export class McpConnection implements Disposable {
 
     if (isToolEnabledChanged(oldConfig, config)) {
       this.logger.debug("Tool enabled/disabled changed, updating status...");
-      this.updateStatus();
+      this.notifyStatusChange();
     }
   }
 
@@ -266,8 +268,12 @@ export class McpConnection implements Disposable {
     return this.buildStatus();
   }
 
-  private updateStatus() {
-    this.status.value = this.buildStatus();
+  private notifyStatusChange() {
+    const status = this.buildStatus();
+    this.status.value = status;
+    if (this.onStatusChange) {
+      this.onStatusChange(status);
+    }
   }
 
   private buildStatus() {
