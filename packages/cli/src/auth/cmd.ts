@@ -21,7 +21,6 @@ export function registerAuthCommand(program: Command) {
     .command("status", { isDefault: true })
     .description("Check authentication status for all supported vendors.")
     .action(async () => {
-      console.log("Checking authentication status...\n");
       for (const [name, auth] of Object.entries(vendors)) {
         console.log(
           `${name}:`,

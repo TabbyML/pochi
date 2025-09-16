@@ -38,7 +38,7 @@ export async function selectVendor(): Promise<string> {
         description = "Not logged in";
       }
       return {
-        name: `${vendorId.charAt(0).toUpperCase() + vendorId.slice(1)} ${chalk.white("-")} ${vendor.authenticated ? chalk.green(description) : chalk.gray(description)}`,
+        name: `${vendorId} ${chalk.white("-")} ${vendor.authenticated ? chalk.green(description) : chalk.gray(description)}`,
         value: vendorId,
         description: `\n${chalk.gray("Current selection:")} ${chalk.gray(description)}`,
       };
