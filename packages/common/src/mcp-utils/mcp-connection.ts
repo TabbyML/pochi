@@ -17,6 +17,7 @@ import {
 } from "./types";
 import {
   checkUrlIsSseServer,
+  isToolEnabledChanged,
   readableError,
   shouldRestartDueToConfigChanged,
 } from "./utils";
@@ -250,14 +251,7 @@ export class McpConnection implements Disposable {
       return;
     }
 
-    // Check if disabled tools changed
-    const oldDisabledTools = oldConfig.disabledTools ?? [];
-    const newDisabledTools = config.disabledTools ?? [];
-    const toolsChanged =
-      oldDisabledTools.length !== newDisabledTools.length ||
-      !oldDisabledTools.every((tool) => newDisabledTools.includes(tool));
-
-    if (toolsChanged) {
+    if (isToolEnabledChanged(oldConfig, config)) {
       this.logger.debug("Tool enabled/disabled changed, updating status...");
       this.notifyStatusChange();
     }

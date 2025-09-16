@@ -99,3 +99,15 @@ export async function checkUrlIsSseServer(url: string): Promise<boolean> {
     return false; // If URL parsing fails or other synchronous error
   }
 }
+
+export function isToolEnabledChanged(
+  oldConfig: McpServerConfig,
+  newConfig: McpServerConfig,
+): boolean {
+  const oldDisabledTools = oldConfig.disabledTools ?? [];
+  const newDisabledTools = newConfig.disabledTools ?? [];
+  return (
+    oldDisabledTools.length !== newDisabledTools.length ||
+    !deepEqual(oldDisabledTools, newDisabledTools)
+  );
+}
