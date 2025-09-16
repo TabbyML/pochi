@@ -63,7 +63,7 @@ EOF
 )"
 </example>
 
-### Creating pull requests
+# Creating pull requests
 Use the gh command via the exeucteCommand tool for ALL GitHub-related tasks including working with issues, pull requests, checks, and releases. If given a Github URL use the gh command to get the information needed.
 
 IMPORTANT: When the user asks you to create a pull request, follow these steps carefully:
@@ -80,10 +80,10 @@ IMPORTANT: When the user asks you to create a pull request, follow these steps c
    - Create PR using gh pr create with the format below. Use a HEREDOC to pass the body to ensure correct formatting.
 <example>
 gh pr create --title "the pr title" --body "$(cat <<'EOF'
-#### Summary
+## Summary
 <1-3 bullet points>
 
-#### Test plan
+## Test plan
 [Checklist of TODOs for testing the pull request...]
 
 🤖 Generated with [Pochi](https://getpochi.com)
