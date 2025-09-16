@@ -117,34 +117,40 @@ export function ModelSelect({
                     <div className="px-2 py-1.5 font-semibold text-muted-foreground text-sm">
                       {group.title}
                     </div>
-                    {group.models.map((model: DisplayModel) => {
-                      const isSelected = model.id === value?.id;
-                      return (
-                        <DropdownMenuRadioItem
-                          onClick={(e) => {
-                            onSelectModel(model);
-                            e.stopPropagation();
-                          }}
-                          value={model.id}
-                          key={model.id}
-                          className="cursor-pointer py-2 pl-2"
-                        >
-                          <CheckIcon
-                            className={cn(
-                              "mr-1 shrink-0",
-                              isSelected ? "opacity-100" : "opacity-0",
-                            )}
-                          />
-                          <span
-                            className={cn({
-                              "font-semibold": isSelected,
-                            })}
+                    {!group.models.length ? (
+                      <p className="px-2 py-2 pl-8.5 text-muted-foreground text-xs">
+                        {t("settings.account.signIn")}
+                      </p>
+                    ) : (
+                      group.models.map((model: DisplayModel) => {
+                        const isSelected = model.id === value?.id;
+                        return (
+                          <DropdownMenuRadioItem
+                            onClick={(e) => {
+                              onSelectModel(model);
+                              e.stopPropagation();
+                            }}
+                            value={model.id}
+                            key={model.id}
+                            className="cursor-pointer py-2 pl-2"
                           >
-                            {model.name}
-                          </span>
-                        </DropdownMenuRadioItem>
-                      );
-                    })}
+                            <CheckIcon
+                              className={cn(
+                                "mr-1 shrink-0",
+                                isSelected ? "opacity-100" : "opacity-0",
+                              )}
+                            />
+                            <span
+                              className={cn({
+                                "font-semibold": isSelected,
+                              })}
+                            >
+                              {model.name}
+                            </span>
+                          </DropdownMenuRadioItem>
+                        );
+                      })
+                    )}
                   </div>
                 ))}
                 {!!hostedModels?.length && <DropdownMenuSeparator />}
