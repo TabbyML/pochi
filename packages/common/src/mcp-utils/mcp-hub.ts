@@ -273,12 +273,7 @@ export class McpHub implements Disposable {
   }
 
   private createConnection(name: string, config: McpServerConfig) {
-    const connection = new McpConnection(name, this.clientName, config, {
-      onStatusChange: () => {
-        logger.debug(`Connection status updated for ${name}`);
-        this.notifyStatusChange();
-      },
-    });
+    const connection = new McpConnection(name, this.clientName, config);
     const connectionObject = {
       instance: connection,
       listeners: [] as Disposable[],
