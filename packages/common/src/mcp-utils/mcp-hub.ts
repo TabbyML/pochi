@@ -27,10 +27,8 @@ export interface McpHubStatus {
 }
 
 export interface McpHubOptions {
-  /** Static configuration (for backward compatibility) */
-  config?: Record<string, McpServerConfig>;
   /** Reactive configuration signal */
-  configSignal: Signal<Record<string, McpServerConfig>>;
+  configSignal: Signal<Record<string, McpServerConfig>>; // Remove the ?
   logger?: ReturnType<typeof getLogger>;
   onStatusChange?: (status: McpHubStatus) => void;
   clientName?: string;
@@ -47,12 +45,8 @@ export class McpHub implements Disposable {
   readonly status: Signal<McpHubStatus>;
 
   constructor(options: McpHubOptions) {
-    if (!options.config && !options.configSignal) {
-      throw new Error("Either config or configSignal must be provided");
-    }
-
     this.configSignal = options.configSignal;
-    this.config = options.config ?? (options.configSignal?.value || {});
+    this.config = options.configSignal.value || {};
     this.onStatusChange = options.onStatusChange;
     this.clientName = options.clientName ?? "pochi";
     this.status = signal(this.buildStatus());
