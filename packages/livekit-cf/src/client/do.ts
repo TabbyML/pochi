@@ -13,7 +13,7 @@ import { hc } from "hono/client";
 import moment from "moment";
 import { funnel } from "remeda";
 import { app } from "./app";
-import type { Env as ClientEnv } from "./types";
+import type { Env as ClientEnv, DeepWriteable } from "./types";
 
 // Scoped by storeId
 export class LiveStoreClientDO
@@ -178,8 +178,6 @@ export class LiveStoreClientDO
     }
   }
 }
-
-type DeepWriteable<T> = { -readonly [P in keyof T]: DeepWriteable<T[P]> };
 
 function createApiClient(apiKey: string, userId: string): PochiApiClient {
   const prodServerUrl = "https://app.getpochi.com";

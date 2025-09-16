@@ -7,3 +7,7 @@ export type Env = {
   getStore: () => Promise<Store<typeof catalog.schema>>;
   ASSETS: CfTypes.Fetcher;
 };
+
+export type DeepWriteable<T> = {
+  -readonly [P in keyof T]: DeepWriteable<T[P]>;
+};

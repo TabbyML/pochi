@@ -16,7 +16,8 @@
     "jose": "catalog:",
     "zod": "catalog:",
     "moment": "catalog:",
-    "remeda": "catalog:"
+    "remeda": "catalog:",
+    "ai": "catalog:"
   },
   "devDependencies": {
     "wrangler": "^4.33.0"

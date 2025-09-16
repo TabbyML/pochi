@@ -3,12 +3,11 @@ import { VSCodeWebProvider } from "@/components/vscode-web-provider";
 import { ChatContextProvider } from "@/features/chat";
 import { cn } from "@/lib/utils";
 import { formatters } from "@getpochi/common";
+import { type ResizeEvent, ShareEvent } from "@getpochi/common/share-utils";
 import type { Message } from "@getpochi/livekit";
-import { Todo } from "@getpochi/tools";
 import { createChannel } from "bidc";
 import { Loader2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import z from "zod";
 import { ErrorMessageView } from "../chat/components/error-message-view";
 import { TodoList } from "../todo";
 
@@ -66,7 +65,10 @@ export function SharePage() {
     error,
   } = shareData || {};
 
-  const renderMessages = useMemo(() => formatters.ui(messages), [messages]);
+  const renderMessages = useMemo(
+    () => formatters.ui(messages) as Message[],
+    [messages],
+  );
   return (
     <VSCodeWebProvider>
       <ChatContextProvider>
@@ -118,59 +120,25 @@ export function SharePage() {
   );
 }
 
-const ZodResizeEvent = z.object({
-  type: z.literal("resize"),
-  height: z.number(),
-});
-
-type ResizeEvent = z.infer<typeof ZodResizeEvent>;
-
-const ZodShareEvent = z.object({
-  type: z.literal("share"),
-  messages: z.array(z.custom<Message>()).optional(),
-  user: z
-    .object({
-      name: z.string(),
-      image: z.string().optional().nullable(),
-    })
-    .optional(),
-  assistant: z
-    .object({
-      name: z.string(),
-      image: z.string().optional().nullable(),
-    })
-    .optional(),
-  todos: z.array(Todo).optional(),
-  isLoading: z.boolean().optional(),
-  error: z
-    .object({
-      message: z.string(),
-    })
-    .optional()
-    .nullable(),
-});
-
-type ShareEvent = z.infer<typeof ZodShareEvent>;
-
 function useShareData(channel: BIDCChannel | undefined) {
   const [data, setData] = useState<ShareEvent>();
   useEffect(() => {
     if (!channel) return;
     channel.receive((data) => {
-      setData(ZodShareEvent.parse(data));
+      setData(ShareEvent.parse(data));
     });
   }, [channel]);
   return data;
 }
 
 function useCFShareData() {
-  const api = location.pathname.replace("/html", "");
+  const api = location.pathname.replace("/html", "/json");
   const [data, setData] = useState<ShareEvent>();
   useEffect(() => {
     fetch(api)
       .then(async (res) => {
         const data = await res.json();
-        const parsed = ZodShareEvent.parse(data);
+        const parsed = ShareEvent.parse(data);
         setData(parsed);
       })
       .catch((err) => {
