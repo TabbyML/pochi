@@ -16,7 +16,9 @@ type BIDCChannel = ReturnType<typeof createChannel>;
 
 export function SharePage() {
   const [channel, setChannel] = useState<BIDCChannel | undefined>();
-  const shareData = useShareData(channel);
+  const shareData = isStorePathname()
+    ? useCFShareData()
+    : useShareData(channel);
 
   const isChannelCreated = useRef(false);
 
@@ -24,7 +26,11 @@ export function SharePage() {
     if (isChannelCreated.current) return;
 
     isChannelCreated.current = true;
-    setChannel(createChannel());
+    try {
+      setChannel(createChannel());
+    } catch (e) {
+      console.error(e);
+    }
   }, []);
 
   // Set up ResizeObserver to monitor content height and send updates to parent
@@ -155,4 +161,27 @@ function useShareData(channel: BIDCChannel | undefined) {
     });
   }, [channel]);
   return data;
+}
+
+function useCFShareData() {
+  const api = location.pathname.replace("/html", "");
+  const [data, setData] = useState<ShareEvent>();
+  useEffect(() => {
+    fetch(api)
+      .then(async (res) => {
+        const data = await res.json();
+        const parsed = ZodShareEvent.parse(data);
+        setData(parsed);
+      })
+      .catch((err) => {
+        console.error("Failed to fetch share data", err);
+      });
+  }, [api]);
+  return data;
+}
+
+function isStorePathname() {
+  const regex = /\/stores\/([^\/]+)\/tasks\/([^\/]+)\/html/;
+  const match = location.pathname.match(regex);
+  return !!match;
 }

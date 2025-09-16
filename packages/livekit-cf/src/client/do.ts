@@ -43,6 +43,7 @@ export class LiveStoreClientDO
         await this.subscribeToStore();
         return store;
       },
+      ASSETS: this.env.ASSETS,
     } satisfies ClientEnv);
   }
 

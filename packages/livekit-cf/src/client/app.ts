@@ -28,9 +28,24 @@ store
     }
 
     return c.json({
-      task,
-      messages,
+      type: "share",
+      messages: messages.map((message) => message.data),
+      todos: task.todos,
+      isLoading: task.status === "pending-model",
+      error: task.error,
+      // FIXME: Use the actual user name
+      user: {
+        name: "You",
+        image: `https://api.dicebear.com/9.x/adventurer/svg?seed=${encodeURIComponent(task.title || "")}&scale=150`,
+      },
+      assistant: {
+        name: "Pochi",
+        image: "https://app.getpochi.com/logo192.png",
+      },
     });
+  })
+  .get("/tasks/:taskId/html", async (c) => {
+    return c.env.ASSETS.fetch(c.req.raw);
   });
 
 export const app = new Hono<{ Bindings: Env }>();
