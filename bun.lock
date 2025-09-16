@@ -370,6 +370,7 @@
     "@ast-grep/cli",
   ],
   "patchedDependencies": {
+    "@livestore/livestore@0.4.0-dev.7": "patches/@livestore%2Flivestore@0.4.0-dev.7.patch",
     "better-auth@1.2.9": "patches/better-auth@1.2.9.patch",
     "silver-fleece@1.2.1": "patches/silver-fleece@1.2.1.patch",
     "jsonc-parser@3.3.1": "patches/jsonc-parser@3.3.1.patch",

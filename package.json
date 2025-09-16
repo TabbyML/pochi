@@ -81,6 +81,7 @@
     "ai@5.0.15": "patches/ai@5.0.15.patch",
     "jsonc-parser@3.3.1": "patches/jsonc-parser@3.3.1.patch",
     "@ai-sdk/google-vertex@3.0.8": "patches/@ai-sdk%2Fgoogle-vertex@3.0.8.patch",
-    "silver-fleece@1.2.1": "patches/silver-fleece@1.2.1.patch"
+    "silver-fleece@1.2.1": "patches/silver-fleece@1.2.1.patch",
+    "@livestore/livestore@0.4.0-dev.7": "patches/@livestore%2Flivestore@0.4.0-dev.7.patch"
   }
 }

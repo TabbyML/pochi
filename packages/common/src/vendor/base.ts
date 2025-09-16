@@ -8,7 +8,10 @@ import {
 import type { AuthOutput, ModelOptions } from "./types";
 
 export abstract class VendorBase {
-  constructor(readonly vendorId: string) {}
+  constructor(readonly vendorId: string) {
+    this.getCredentials = this.getCredentials.bind(this);
+    this.getUserInfo = this.getUserInfo.bind(this);
+  }
 
   getCredentials = runExclusive.buildMethod(async (): Promise<unknown> => {
     const { credentials } = this.getVendorConfig();
