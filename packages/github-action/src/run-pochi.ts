@@ -40,9 +40,13 @@ async function cleanupExecution(
   // Finalize history comment
   const truncatedOutput = buildBatchOutput(context.outputBuffer);
 
-  await githubManager.updateComment(context.historyCommentId, `\`\`\`\n${truncatedOutput}\n\`\`\``, {
-    success,
-  });
+  await githubManager.updateComment(
+    context.historyCommentId,
+    `\`\`\`\n${truncatedOutput}\n\`\`\``,
+    {
+      success,
+    },
+  );
 
   // Handle reactions
   await githubManager.createReaction(request.commentId, reaction);
@@ -132,7 +136,10 @@ export async function runPochi(githubManager: GitHubManager): Promise<void> {
     context.updateInterval = setInterval(async () => {
       try {
         const truncatedOutput = buildBatchOutput(context.outputBuffer);
-        await githubManager.updateComment(historyCommentId, `\`\`\`\n${truncatedOutput}\n\`\`\``);
+        await githubManager.updateComment(
+          historyCommentId,
+          `\`\`\`\n${truncatedOutput}\n\`\`\``,
+        );
       } catch (error) {
         console.error("Failed to update comment:", error);
       }
