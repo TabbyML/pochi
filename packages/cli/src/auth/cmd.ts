@@ -107,7 +107,9 @@ export function registerAuthCommand(program: Command) {
               const userInfo = await vendor.getUserInfo();
               const name = userInfo?.name || "Unknown User";
               const email = userInfo?.email || "";
-              const userDisplay = email ? `${chalk.bold(name)} (${email})` : chalk.bold(name);
+              const userDisplay = email
+                ? `${chalk.bold(name)} (${email})`
+                : chalk.bold(name);
               return {
                 name: `${vendorId} ${chalk.white("-")} ${chalk.green(userDisplay)}`,
                 value: vendorId,

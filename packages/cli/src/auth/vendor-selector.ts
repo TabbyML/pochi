@@ -32,7 +32,9 @@ export async function selectVendor(): Promise<string> {
           const userInfo = await vendor.getUserInfo();
           const name = userInfo?.name || "Unknown User";
           const email = userInfo?.email || "";
-          description = email ? `${chalk.bold(name)} (${email})` : chalk.bold(name);
+          description = email
+            ? `${chalk.bold(name)} (${email})`
+            : chalk.bold(name);
         } catch {
           description = chalk.bold("Unknown User");
         }
@@ -81,7 +83,9 @@ export async function confirmVendorSelection(
       const userInfo = await vendor.getUserInfo();
       const name = userInfo?.name || "Unknown User";
       const email = userInfo?.email || "";
-      const userDisplay = email ? `${chalk.bold(name)} (${email})` : chalk.bold(name);
+      const userDisplay = email
+        ? `${chalk.bold(name)} (${email})`
+        : chalk.bold(name);
       const confirm = await select({
         message: `You're already logged in to ${vendorId} as ${chalk.green(userDisplay)}. Do you want to re-authenticate?`,
         choices: [
