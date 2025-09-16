@@ -55,5 +55,5 @@ export async function checkForUpdates() {
     const columns = process.stdout.columns || 80;
     const width = Math.max(Math.min(columns, 100), 20);
     console.log(chalk.yellow("─".repeat(width)));
-  } 
+  }
 }

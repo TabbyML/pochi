@@ -13,8 +13,12 @@ export function registerUpgradeCommand(program: Command) {
       console.log("Checking for updates...");
 
       try {
-        const { updateAvailable, latestVersion, latestRelease, currentVersion } =
-          await returnVersionInfo({ timeoutMs: null });
+        const {
+          updateAvailable,
+          latestVersion,
+          latestRelease,
+          currentVersion,
+        } = await returnVersionInfo({ timeoutMs: null });
         console.log(`Current version: ${currentVersion}`);
 
         if (updateAvailable) {
