@@ -17,7 +17,6 @@ import {
 } from "./types";
 import {
   checkUrlIsSseServer,
-  isToolEnabledChanged,
   readableError,
   shouldRestartDueToConfigChanged,
 } from "./utils";
@@ -119,14 +118,12 @@ export class McpConnection implements Disposable {
       },
       starting: {
         entry: (context) => {
-          const abortController = new AbortController();
-          context.startingAbortController = abortController;
-          this.connect({ signal: abortController.signal });
+          context.startingAbortController = new AbortController();
+          this.connect({ signal: context.startingAbortController.signal });
         },
         exit: (context) => {
           if (context.startingAbortController) {
             context.startingAbortController.abort();
-            context.startingAbortController = undefined;
           }
         },
         on: {
@@ -253,7 +250,14 @@ export class McpConnection implements Disposable {
       return;
     }
 
-    if (isToolEnabledChanged(oldConfig, config)) {
+    // Check if disabled tools changed
+    const oldDisabledTools = oldConfig.disabledTools ?? [];
+    const newDisabledTools = config.disabledTools ?? [];
+    const toolsChanged =
+      oldDisabledTools.length !== newDisabledTools.length ||
+      !oldDisabledTools.every((tool) => newDisabledTools.includes(tool));
+
+    if (toolsChanged) {
       this.logger.debug("Tool enabled/disabled changed, updating status...");
       this.notifyStatusChange();
     }
