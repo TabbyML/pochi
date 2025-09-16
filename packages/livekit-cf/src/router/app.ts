@@ -75,7 +75,7 @@ app
   });
 
 async function verifyStoreId(env: Env, jwt: string, storeId: string) {
-  const user = await verifyJWT(env, jwt);
+  const user = await verifyJWT(env.ENVIRONMENT, jwt);
   return user.sub === decodeStoreId(storeId).sub;
 }
 
