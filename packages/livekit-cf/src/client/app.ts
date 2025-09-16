@@ -1,16 +1,24 @@
+import type { User } from "@/types";
 import type { ShareEvent } from "@getpochi/common/share-utils";
 import { catalog } from "@getpochi/livekit";
+import { zValidator } from "@hono/zod-validator";
 import type { UIMessage } from "ai";
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
+import * as jose from "jose";
+import z from "zod";
 import type { DeepWriteable, Env } from "./types";
 
 const store = new Hono<{ Bindings: Env }>();
 
 store
-  .get("/", async (c) => {
+  .get("/", zValidator("query", z.object({ jwt: z.string() })), async (c) => {
+    const user = jose.decodeJwt<User>(c.req.valid("query").jwt);
+
     // Activate store
     await c.env.getStore();
+    await c.env.setUser(user);
+
     return c.json({ success: true });
   })
   .get("/tasks/:taskId/json", async (c) => {
@@ -24,6 +32,8 @@ store
       throw new HTTPException(404, { message: "Task not found" });
     }
 
+    const user = await c.env.getUser();
+
     return c.json({
       type: "share",
       messages: messages.map((message) => message.data) as UIMessage[],
@@ -32,8 +42,10 @@ store
       error: task.error,
       // FIXME: Use the actual user name
       user: {
-        name: "You",
-        image: `https://api.dicebear.com/9.x/adventurer/svg?seed=${encodeURIComponent(task.title || "")}&scale=150`,
+        name: user?.name || "You",
+        image:
+          user?.image ||
+          `https://api.dicebear.com/9.x/adventurer/svg?seed=${encodeURIComponent(task.title || "")}&scale=150`,
       },
       assistant: {
         name: "Pochi",

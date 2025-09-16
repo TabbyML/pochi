@@ -1,5 +1,5 @@
 import { DurableObject } from "cloudflare:workers";
-import type { Env } from "@/types";
+import type { Env, User } from "@/types";
 import type { PochiApi, PochiApiClient } from "@getpochi/common/pochi-api";
 import { decodeStoreId } from "@getpochi/common/store-id-utils";
 import { type Task, catalog } from "@getpochi/livekit";
@@ -42,6 +42,12 @@ export class LiveStoreClientDO
 
         await this.subscribeToStore();
         return store;
+      },
+      setUser: (user: User) => {
+        return this.state.storage.put("user", user);
+      },
+      getUser: async () => {
+        return await this.state.storage.get<User>("user");
       },
       ASSETS: this.env.ASSETS,
     } satisfies ClientEnv);
