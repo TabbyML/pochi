@@ -29,7 +29,7 @@ export interface McpHubStatus {
 
 export interface McpHubOptions {
   /** Reactive configuration signal */
-  configSignal: Signal<Record<string, McpServerConfig>>; // Remove the ?
+  configSignal: Signal<Record<string, McpServerConfig>>;
   clientName?: string;
 }
 
@@ -223,6 +223,7 @@ export class McpHub implements Disposable {
       const connection = this.connections.get(name);
       if (connection) {
         acc[name] = connection.instance.status.value;
+        console.log("connection.instance.status.value", connection.instance.status.value);
       }
       return acc;
     }, {});
