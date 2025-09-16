@@ -218,7 +218,7 @@ export class McpConnection implements Disposable {
     this.fsm.start();
     const { unsubscribe: dispose } = this.fsm.subscribe((state) => {
       this.logger.debug(`State changed: ${state.value}`);
-      this.notifyStatusChange();
+      this.updateStatus();
     });
     this.listeners.push({ dispose });
 
@@ -255,7 +255,7 @@ export class McpConnection implements Disposable {
 
     if (isToolEnabledChanged(oldConfig, config)) {
       this.logger.debug("Tool enabled/disabled changed, updating status...");
-      this.notifyStatusChange();
+      this.updateStatus();
     }
   }
 
@@ -268,7 +268,7 @@ export class McpConnection implements Disposable {
     return this.buildStatus();
   }
 
-  private notifyStatusChange() {
+  private updateStatus() {
     const status = this.buildStatus();
     this.status.value = status;
     if (this.onStatusChange) {
