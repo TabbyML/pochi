@@ -119,12 +119,14 @@ export class McpConnection implements Disposable {
       },
       starting: {
         entry: (context) => {
-          context.startingAbortController = new AbortController();
-          this.connect({ signal: context.startingAbortController.signal });
+          const abortController = new AbortController();
+          context.startingAbortController = abortController;
+          this.connect({ signal: abortController.signal });
         },
         exit: (context) => {
           if (context.startingAbortController) {
             context.startingAbortController.abort();
+            context.startingAbortController = undefined;
           }
         },
         on: {
