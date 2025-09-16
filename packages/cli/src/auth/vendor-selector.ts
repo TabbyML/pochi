@@ -30,9 +30,11 @@ export async function selectVendor(): Promise<string> {
       if (vendor.authenticated) {
         try {
           const userInfo = await vendor.getUserInfo();
-          description = `✓ Logged in as ${userInfo?.name || userInfo?.email || "authenticated user"}`;
+          const name = userInfo?.name || "Unknown User";
+          const email = userInfo?.email || "";
+          description = email ? `${chalk.bold(name)} (${email})` : chalk.bold(name);
         } catch {
-          description = "✓ Authenticated";
+          description = chalk.bold("Unknown User");
         }
       } else {
         description = "Not logged in";
@@ -77,8 +79,11 @@ export async function confirmVendorSelection(
   if (vendor.authenticated) {
     try {
       const userInfo = await vendor.getUserInfo();
+      const name = userInfo?.name || "Unknown User";
+      const email = userInfo?.email || "";
+      const userDisplay = email ? `${chalk.bold(name)} (${email})` : chalk.bold(name);
       const confirm = await select({
-        message: `You're already logged in to ${vendorId} as ${userInfo?.name || userInfo?.email}. Do you want to re-authenticate?`,
+        message: `You're already logged in to ${vendorId} as ${chalk.green(userDisplay)}. Do you want to re-authenticate?`,
         choices: [
           { name: "No, use existing authentication", value: false },
           { name: "Yes, re-authenticate", value: true },

@@ -105,13 +105,16 @@ export function registerAuthCommand(program: Command) {
           authenticatedVendors.map(async ([vendorId, vendor]) => {
             try {
               const userInfo = await vendor.getUserInfo();
+              const name = userInfo?.name || "Unknown User";
+              const email = userInfo?.email || "";
+              const userDisplay = email ? `${chalk.bold(name)} (${email})` : chalk.bold(name);
               return {
-                name: `${vendorId} - ${userInfo?.name || userInfo?.email || "authenticated user"}`,
+                name: `${vendorId} ${chalk.white("-")} ${chalk.green(userDisplay)}`,
                 value: vendorId,
               };
             } catch {
               return {
-                name: `${vendorId} - authenticated user`,
+                name: `${vendorId} ${chalk.white("-")} ${chalk.green("authenticated user")}`,
                 value: vendorId,
               };
             }
@@ -142,13 +145,15 @@ export function registerAuthCommand(program: Command) {
 }
 
 function renderUser(user: UserInfo | null) {
-  const name = chalk.bold(user?.name);
-  const email = user?.email;
+  if (!user) return chalk.gray("Not logged in");
+
+  const name = user.name || "Unknown User";
+  const email = user.email;
 
   // Only show email in parentheses if it exists and is not empty
   if (email && email.trim() !== "") {
-    return `${name} (${email})`;
+    return `${chalk.bold(name)} (${email})`;
   }
 
-  return name;
+  return chalk.bold(name);
 }
