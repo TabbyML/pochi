@@ -67,6 +67,7 @@ type ConnectedEvent = {
   type: "connected";
   client: McpClient;
   toolset: ToolSet;
+  instructions?: string;
 };
 
 type ErrorEvent = {
@@ -130,17 +131,23 @@ export class McpConnection implements Disposable {
       },
       ready: {
         entry: (context, event) => {
-          if (event.type === "connected") {
-            context.client = event.client;
-            context.toolset = event.toolset;
-            context.autoReconnectAttempts = 0;
+          if (event.type !== "connected") {
+            this.logger.debug(
+              `Expected 'connected' event entry 'ready' state, got: ${event.type}`,
+            );
+            return;
           }
+
+          context.client = event.client;
+          context.toolset = event.toolset;
+          context.instructions = event.instructions;
         },
         exit: (context) => {
           if (context.client) {
             this.shutdown(context.client);
             context.client = undefined;
             context.toolset = undefined;
+            context.instructions = undefined;
           }
         },
         on: {
@@ -275,6 +282,7 @@ export class McpConnection implements Disposable {
     return {
       status: value,
       error: context.error,
+      // instructions: context.instructions,
       tools: Object.entries(toolset).reduce<
         Record<string, McpToolStatus & McpToolExecutable>
       >((acc, [name, tool]) => {
@@ -381,6 +389,7 @@ export class McpConnection implements Disposable {
         type: "connected",
         client,
         toolset,
+        // instructions,
       });
     } catch (error) {
       try {
