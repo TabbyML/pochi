@@ -918,9 +918,9 @@ icon: "Shield"
 
 By default, all permissions in Pochi are enabled. You can customize these permissions at any time using the Auto-Approve settings.
 
-<p align="center">
+<div align="center">
   ![Auto Approve](../assets/images/auto-approve.png)
-</p>
+</div>
 
 * **Read**: Read the file content Pochi decides to look up for analyzing or completing tasks.
 * **Write**: Creates new files, edits existing code, generates boilerplate, and writes documentation.
@@ -995,9 +995,9 @@ Pochi also reads global rules defined in `~/.pochi/README.pochi.md`. These rules
 
 You can view current active rules in toolbar's token usage popover
 
-<p align="center">
+<div align="center">
   ![Token Usage](../assets/images/usage-token-popover.png)
-</p>
+</div>
 
 
 # Share
@@ -1018,9 +1018,9 @@ The **Share** feature in Pochi's toolbar allows you to share your current develo
   Shared conversations are publicly accessible to anyone with the link. Do not share sensitive information or private code.
 </Callout>
 
-<p align="center">
+<div align="center">
   ![Task Sharing](../assets/images/task-sharing.png)
-</p>
+</div>
 
 ### How it works
 
@@ -1113,9 +1113,9 @@ Pochi uses a state-of-the-art model that adapts to your coding patterns in real 
 drawing on recent edits, diagnostics, and surrounding context to generate helpful,
 relevant completions right in your editor.
 
-<p align="center">
+<div align="center">
   ![Tab completion showing inline suggestions](../assets/images/completion.png)
-</p>
+</div>
 
 ### Multi-Language Support
 
@@ -1257,7 +1257,7 @@ Upon first launch, Pochi's Welcome page offers two ways to get started:
 * **Sign in to Pochi:** Click "Sign In" and authorize in your browser to use Pochi subscriptions, models, and cloud features.
 * **Bring Your Own Key (BYOK):** Use your own models by running `Pochi: Open Custom Model Settings` from the Command Palette. This opens `~/.pochi/config.jsonc` for you to add API keys. See [Models](/models) for details.
 
-<p align="center">![The Welcome page provides options to sign in or configure your own models.](../assets/images/welcome-page.png)</p>
+<div align="center">![The Welcome page provides options to sign in or configure your own models.](../assets/images/welcome-page.png)</div>
 
 ## Chat
 
@@ -1265,9 +1265,9 @@ Access the Pochi chat panel via the Activity Bar icon or shortcut (macOS: `Cmd+L
 
 The panel's title bar includes actions for starting a new task and viewing all tasks.
 
-<p align="center">![The main Chat panel is where you interact with Pochi.](../assets/images/chat-page.png)</p>
+<div align="center">![The main Chat panel is where you interact with Pochi.](../assets/images/chat-page.png)</div>
 
-## Promping
+## Prompting
 
 The input box, located below the chat history, is where you'll compose your messages and control the chat.
 
@@ -1280,9 +1280,9 @@ The input box, located below the chat history, is where you'll compose your mess
   * **Sharing:** Share your chat session with others (requires a Pochi account).
   * **Submit/Stop Button:** The send button dynamically transforms into a stop button during message generation, allowing you to interrupt the AI at any time.
 
-<p align="center">
+<div align="center">
   ![The Prompt Zone provides access to key features like model selection and auto-approval.](../assets/images/home-page-toolbox.png)
-</p>
+</div>
 
 ## Tasks
 
@@ -1295,7 +1295,7 @@ By default sub-tasks are hidden in the task list.
 By default, task history is stored locally. Signing in to a Pochi account enables cloud storage for your tasks, along with sharing and team collaboration features.
 Be aware that clearing VS Code's extension data may erase your local task history.
 
-<p align="center">![The Task List page shows your historical task sessions.](../assets/images/task-page.png)</p>
+<div align="center">![The Task List page shows your historical task sessions.](../assets/images/task-page.png)</div>
 
 ## Troubleshooting
 
