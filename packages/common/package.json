@@ -16,7 +16,8 @@
     "./diff-utils": "./src/diff-utils.ts",
     "./tool-utils": "./src/tool-utils/index.ts",
     "./vscode-webui-bridge": "./src/vscode-webui-bridge/index.ts",
-    "./store-id-utils": "./src/store-id-utils.ts"
+    "./store-id-utils": "./src/store-id-utils.ts",
+    "./share-utils": "./src/share-utils.ts"
   },
   "scripts": {
     "tsc": "tsc",
@@ -46,7 +47,8 @@
     "silver-fleece": "^1.2.1",
     "tslog": "catalog:",
     "vfile-matter": "^5.0.1",
-    "zod": "catalog:"
+    "zod": "catalog:",
+    "run-exclusive": "catalog:"
   },
   "devDependencies": {
     "@types/fast-levenshtein": "^0.0.4",

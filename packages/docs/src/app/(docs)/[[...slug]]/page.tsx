@@ -14,12 +14,18 @@ export default async function Page(props: {
 
   const MDXContent = page.data.body;
 
+  // Only show h1 and h2 in TOC for developer updates page to avoid having too many items
+  const isDeveloperUpdatesPage = page.slugs.includes('developer-updates');
+  const filteredToc = isDeveloperUpdatesPage
+    ? page.data.toc.filter(item => item.depth <= 2)
+    : page.data.toc;
+
   // Construct the file path for GitHub edit
   const filePath = page.slugs.join('/');
 
   return (
-    <DocsPage 
-      toc={page.data.toc} 
+    <DocsPage
+      toc={filteredToc}
       full={page.data.full}
       editOnGithub={
         {

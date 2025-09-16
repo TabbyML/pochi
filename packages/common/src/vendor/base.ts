@@ -1,3 +1,4 @@
+import * as runExclusive from "run-exclusive";
 import {
   type UserInfo,
   type VendorConfig,
@@ -7,21 +8,24 @@ import {
 import type { AuthOutput, ModelOptions } from "./types";
 
 export abstract class VendorBase {
-  constructor(readonly vendorId: string) {}
+  constructor(readonly vendorId: string) {
+    this.getCredentials = this.getCredentials.bind(this);
+    this.getUserInfo = this.getUserInfo.bind(this);
+  }
 
-  getCredentials = async (): Promise<unknown> => {
+  getCredentials = runExclusive.buildMethod(async (): Promise<unknown> => {
     const { credentials } = this.getVendorConfig();
     const newCredentials = await this.renewCredentials(credentials);
     if (credentials !== newCredentials) {
-      updateVendorConfig(this.vendorId, {
+      await updateVendorConfig(this.vendorId, {
         credentials: newCredentials,
       });
     }
 
     return newCredentials;
-  };
+  });
 
-  async getUserInfo(): Promise<UserInfo> {
+  getUserInfo = runExclusive.buildMethod(async (): Promise<UserInfo> => {
     const { user } = this.getVendorConfig();
     if (user) return user;
 
@@ -33,7 +37,7 @@ export abstract class VendorBase {
       credentials,
     });
     return newUser;
-  }
+  });
 
   abstract fetchModels(): Promise<Record<string, ModelOptions>>;
 

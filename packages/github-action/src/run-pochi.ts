@@ -39,12 +39,13 @@ async function cleanupExecution(
 
   // Finalize history comment
   const truncatedOutput = buildBatchOutput(context.outputBuffer);
-  const finalComment = `\`\`\`\n${truncatedOutput}\n\`\`\`${githubManager.createGitHubActionFooter()}`;
 
-  await githubManager.finalizeComment(
+  await githubManager.updateComment(
     context.historyCommentId,
-    finalComment,
-    success,
+    `\`\`\`\n${truncatedOutput}\n\`\`\``,
+    {
+      success,
+    },
   );
 
   // Handle reactions
@@ -74,9 +75,7 @@ export async function runPochi(githubManager: GitHubManager): Promise<void> {
 
   const historyCommentId = process.env.PROGRESS_COMMENT_ID
     ? Number.parseInt(process.env.PROGRESS_COMMENT_ID, 10)
-    : await githubManager.createComment(
-        `Starting Pochi execution...${githubManager.createGitHubActionFooter()}`,
-      );
+    : await githubManager.createComment("Starting Pochi execution...");
   const eyesReactionId = process.env.EYES_REACTION_ID
     ? Number.parseInt(process.env.EYES_REACTION_ID, 10)
     : undefined;
@@ -97,7 +96,7 @@ export async function runPochi(githubManager: GitHubManager): Promise<void> {
   }
 
   const context: ExecutionContext = {
-    outputBuffer: "Starting Pochi execution...\n",
+    outputBuffer: "",
     updateInterval: null,
     handled: false,
     historyCommentId,
@@ -107,7 +106,7 @@ export async function runPochi(githubManager: GitHubManager): Promise<void> {
   // Execute pochi CLI with output capture
   await new Promise<void>((resolve, reject) => {
     const child = spawn(pochiCliPath, args, {
-      stdio: [null, "inherit", "pipe"], // Capture stderr
+      stdio: [null, "pipe", "pipe"],
       cwd: process.cwd(),
       env: {
         ...process.env,
@@ -116,11 +115,20 @@ export async function runPochi(githubManager: GitHubManager): Promise<void> {
       },
     });
 
-    // Capture stderr output
+    // Capture stdout and stderr output
+    if (child.stdout) {
+      child.stdout.setEncoding("utf8");
+      child.stdout.on("data", (data: string) => {
+        context.outputBuffer += data;
+        process.stdout.write(data);
+      });
+    }
+
     if (child.stderr) {
       child.stderr.setEncoding("utf8");
       child.stderr.on("data", (data: string) => {
         context.outputBuffer += data;
+        process.stderr.write(data);
       });
     }
 
@@ -128,8 +136,10 @@ export async function runPochi(githubManager: GitHubManager): Promise<void> {
     context.updateInterval = setInterval(async () => {
       try {
         const truncatedOutput = buildBatchOutput(context.outputBuffer);
-        const progressContent = `\`\`\`\n${truncatedOutput}\n\`\`\`${githubManager.createGitHubActionFooter()}`;
-        await githubManager.updateComment(historyCommentId, progressContent);
+        await githubManager.updateComment(
+          historyCommentId,
+          `\`\`\`\n${truncatedOutput}\n\`\`\``,
+        );
       } catch (error) {
         console.error("Failed to update comment:", error);
       }

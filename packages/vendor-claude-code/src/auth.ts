@@ -170,7 +170,7 @@ export async function fetchUserInfo(
 ): Promise<UserInfo> {
   return {
     email: "",
-    name: "Authenticated Account",
+    name: "Logged-in",
   };
 }
 

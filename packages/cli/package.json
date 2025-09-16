@@ -26,6 +26,7 @@
     "@getpochi/vendor-pochi": "workspace:*",
     "@livestore/adapter-node": "catalog:",
     "@livestore/livestore": "catalog:",
+    "@livestore/utils": "catalog:",
     "@livestore/wa-sqlite": "catalog:",
     "@livestore/sync-cf": "catalog:",
     "@preact/signals-core": "^1.6.2",
