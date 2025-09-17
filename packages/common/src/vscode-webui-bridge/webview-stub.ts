@@ -215,8 +215,8 @@ const VSCodeHostStub = {
   > => {
     return Promise.resolve({} as ThreadSignalSerialization<CustomAgentFile[]>);
   },
-  readStoreId: async (): Promise<string | undefined> => {
-    return Promise.resolve(undefined);
+  readStoreId: async (): Promise<string> => {
+    return Promise.resolve("default");
   },
 } satisfies VSCodeHostApi;
 
