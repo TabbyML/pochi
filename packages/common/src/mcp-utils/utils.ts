@@ -1,7 +1,7 @@
-import http from "node:http";
-import https from "node:https";
-import type { McpServerConfig } from "@getpochi/common/configuration";
+import * as http from "node:http";
+import * as https from "node:https";
 import deepEqual from "fast-deep-equal";
+import type { McpServerConfig } from "../configuration/index.js";
 import { isHttpTransport, isStdioTransport } from "./types";
 
 export function readableError(error: unknown): string {

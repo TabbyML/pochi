@@ -20,6 +20,7 @@ import {
   PochiConfigFilePath,
 } from "@getpochi/common/configuration";
 import type { McpServerConfig } from "@getpochi/common/configuration";
+import type { McpHub } from "@getpochi/common/mcp-utils";
 import { getVendor } from "@getpochi/common/vendor";
 import type {
   NewTaskParams,
@@ -31,8 +32,6 @@ import * as vscode from "vscode";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { type PochiAdvanceSettings, PochiConfiguration } from "./configuration";
 import { DiffChangesContentProvider } from "./editor/diff-changes-content-provider";
-// biome-ignore lint/style/useImportType: needed for dependency injection
-import { McpHub } from "./mcp/mcp-hub";
 
 const logger = getLogger("CommandManager");
 
@@ -46,7 +45,7 @@ export class CommandManager implements vscode.Disposable {
     private readonly newProjectRegistry: NewProjectRegistry,
     @inject("AuthClient") private readonly authClient: AuthClient,
     private readonly authEvents: AuthEvents,
-    private readonly mcpHub: McpHub,
+    @inject("McpHub") private readonly mcpHub: McpHub,
     private readonly pochiConfiguration: PochiConfiguration,
     private readonly posthog: PostHog,
   ) {

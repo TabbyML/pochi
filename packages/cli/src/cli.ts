@@ -25,6 +25,7 @@ import { registerAuthCommand } from "./auth";
 
 import { findRipgrep } from "./lib/find-ripgrep";
 import { loadAgents } from "./lib/load-agents";
+import { shutdownStoreAndExit } from "./lib/store-utils";
 import {
   containsWorkflowReference,
   replaceWorkflowReferences,
@@ -117,8 +118,6 @@ const program = new Command()
 
     await runner.run();
 
-    renderer.shutdown();
-
     const shareId = runner.shareId;
     if (shareId) {
       // FIXME(zhiming): base url is hard code, should use options.url
@@ -128,7 +127,8 @@ const program = new Command()
       console.log(`\n${chalk.bold("Task link: ")} ${shareUrl}`);
     }
 
-    await store.shutdown();
+    renderer.shutdown();
+    await shutdownStoreAndExit(store);
   });
 
 const otherOptionsGroup = "Others:";

@@ -21,6 +21,8 @@ interface UseChatSubmitProps {
   isLoading: boolean;
   newCompactTaskPending: boolean;
   pendingApproval: PendingApproval | undefined;
+  queuedMessages: string[];
+  setQueuedMessages: React.Dispatch<React.SetStateAction<string[]>>;
 }
 
 export function useChatSubmit({
@@ -32,11 +34,14 @@ export function useChatSubmit({
   isLoading,
   newCompactTaskPending,
   pendingApproval,
+  queuedMessages,
+  setQueuedMessages,
 }: UseChatSubmitProps) {
   const autoApproveGuard = useAutoApproveGuard();
   const { executingToolCalls, previewingToolCalls } = useToolCallLifeCycle();
   const isExecuting = executingToolCalls.length > 0;
   const isPreviewing = (previewingToolCalls?.length ?? 0) > 0;
+
   const abortExecutingToolCalls = useCallback(() => {
     for (const toolCall of executingToolCalls) {
       toolCall.abort();
@@ -89,6 +94,10 @@ export function useChatSubmit({
     stopChat,
   ]);
 
+  /**
+   * Handles form submission, sending both the current input and any queued messages.
+   * This function supports text and file attachments.
+   */
   const handleSubmit = useCallback(
     async (e?: React.FormEvent<HTMLFormElement>) => {
       e?.preventDefault();
@@ -97,7 +106,11 @@ export function useChatSubmit({
       if (newCompactTaskPending) return;
 
       const content = input.trim();
-      if (isSubmitDisabled) {
+      const allMessages = [...queuedMessages];
+      if (content) {
+        allMessages.push(content);
+      }
+      if (isSubmitDisabled && allMessages.length === 0) {
         return;
       }
 
@@ -110,24 +123,29 @@ export function useChatSubmit({
       if (files.length > 0) {
         try {
           const uploadedAttachments = await upload();
-          const parts = prepareMessageParts(content, uploadedAttachments);
+          const parts = prepareMessageParts(
+            allMessages.join("\n"),
+            uploadedAttachments,
+          );
 
           sendMessage({
             parts,
           });
 
           setInput("");
+          setQueuedMessages([]);
         } catch (error) {
           // Error is already handled by the hook
           return;
         }
-      } else if (content.length > 0) {
+      } else if (allMessages.length > 0) {
         autoApproveGuard.current = true;
         clearUploadError();
         sendMessage({
-          text: content,
+          text: allMessages.join("\n\n"),
         });
         setInput("");
+        setQueuedMessages([]);
       }
     },
     [
@@ -141,10 +159,50 @@ export function useChatSubmit({
       setInput,
       clearUploadError,
       newCompactTaskPending,
+      queuedMessages,
+      setQueuedMessages,
     ],
   );
 
-  return { handleSubmit, handleStop };
+  /**
+   * Submits only the queued messages.
+   * This is for text-only messages and does not include the current input.
+   */
+  const handleSubmitQueuedMessages = useCallback(async () => {
+    // Compacting is not allowed to be stopped.
+    if (newCompactTaskPending) return;
+
+    if (isSubmitDisabled && queuedMessages.length === 0) {
+      return;
+    }
+
+    if (handleStop()) {
+      // break isLoading, we need to wait for some time to avoid racing between stop and submit.
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    }
+
+    autoApproveGuard.current = true;
+    clearUploadError();
+    sendMessage({
+      text: queuedMessages.join("\n\n"),
+    });
+    setQueuedMessages([]);
+  }, [
+    isSubmitDisabled,
+    handleStop,
+    autoApproveGuard,
+    sendMessage,
+    clearUploadError,
+    newCompactTaskPending,
+    queuedMessages,
+    setQueuedMessages,
+  ]);
+
+  return {
+    handleSubmit,
+    handleStop,
+    handleSubmitQueuedMessages,
+  };
 }
 
 function prepareMessageParts(input: string, files: FileUIPart[]) {

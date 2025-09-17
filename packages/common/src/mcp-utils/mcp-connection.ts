@@ -1,6 +1,3 @@
-import { getLogger } from "@/lib/logger";
-import type { McpServerConfig } from "@getpochi/common/configuration";
-import type { McpToolStatus } from "@getpochi/common/vscode-webui-bridge";
 import {
   StdioClientTransport,
   getDefaultEnvironment,
@@ -9,7 +6,10 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
 import { type Signal, signal } from "@preact/signals-core";
 import { createMachine, interpret } from "@xstate/fsm";
 import { type ToolSet, experimental_createMCPClient as createClient } from "ai";
-import type * as vscode from "vscode";
+import type { JSONSchema7 } from "json-schema";
+import { getLogger } from "../base";
+import type { McpServerConfig } from "../configuration/index.js";
+
 import {
   type McpToolExecutable,
   isHttpTransport,
@@ -22,7 +22,25 @@ import {
   shouldRestartDueToConfigChanged,
 } from "./utils";
 
+// Define a minimal Disposable interface to avoid vscode dependency
+type Disposable = { dispose(): void };
+
 type McpClient = Awaited<ReturnType<typeof createClient>>;
+
+// Status interface for callback notifications
+export interface McpConnectionStatus {
+  status: "stopped" | "starting" | "ready" | "error";
+  error: string | undefined;
+  tools: Record<string, McpToolStatus & McpToolExecutable>;
+}
+
+export interface McpToolStatus {
+  disabled: boolean;
+  description?: string;
+  inputSchema: {
+    jsonSchema: JSONSchema7;
+  };
+}
 
 interface McpClientWithInstructions extends McpClient {
   instructions?: string;
@@ -78,8 +96,9 @@ const AbortedError = "AbortedError" as const;
 const AutoReconnectDelay = 20_000; // 20 seconds
 const AutoReconnectMaxAttempts = 20;
 
-export class McpConnection implements vscode.Disposable {
+export class McpConnection implements Disposable {
   readonly logger: ReturnType<typeof getLogger>;
+  readonly status: Signal<McpConnectionStatus>;
 
   private fsmDef = createMachine<FsmContext, FsmEvent, FsmState>({
     initial: "stopped",
@@ -120,6 +139,7 @@ export class McpConnection implements vscode.Disposable {
             );
             return;
           }
+
           context.client = event.client;
           context.toolset = event.toolset;
           context.instructions = event.instructions;
@@ -172,17 +192,21 @@ export class McpConnection implements vscode.Disposable {
   });
 
   private fsm = interpret(this.fsmDef);
-  private listeners: vscode.Disposable[] = [];
-
-  readonly status: Signal<ReturnType<typeof this.buildStatus>>;
+  private listeners: Disposable[] = [];
 
   constructor(
     readonly serverName: string,
-    private readonly extensionContext: vscode.ExtensionContext,
+    private readonly clientName: string,
     private config: McpServerConfig,
   ) {
     this.logger = getLogger(`MCPConnection(${this.serverName})`);
-    this.status = signal(this.buildStatus());
+
+    // Initialize status signal with default values
+    this.status = signal({
+      status: "stopped" as const,
+      error: undefined,
+      tools: {},
+    });
 
     this.fsm.start();
     const { unsubscribe: dispose } = this.fsm.subscribe((state) => {
@@ -234,7 +258,8 @@ export class McpConnection implements vscode.Disposable {
   }
 
   private updateStatus() {
-    this.status.value = this.buildStatus();
+    const status = this.buildStatus();
+    this.status.value = status;
   }
 
   private buildStatus() {
@@ -299,7 +324,7 @@ export class McpConnection implements vscode.Disposable {
               ...this.config.env,
             },
           }),
-          name: this.extensionContext.extension.id,
+          name: this.clientName,
           onUncaughtError,
         });
       } else if (isHttpTransport(this.config)) {
@@ -316,7 +341,7 @@ export class McpConnection implements vscode.Disposable {
               url: this.config.url,
               headers: this.config.headers,
             },
-            name: this.extensionContext.extension.id,
+            name: this.clientName,
             onUncaughtError,
           });
         } else {
@@ -330,7 +355,7 @@ export class McpConnection implements vscode.Disposable {
                 },
               },
             ),
-            name: this.extensionContext.extension.id,
+            name: this.clientName,
             onUncaughtError,
           });
         }
