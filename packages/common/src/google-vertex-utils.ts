@@ -40,7 +40,7 @@ function createPatchedFetchForFinetune(accessToken?: string | undefined) {
 
 export function createVertexModel(vertex: GoogleVertexModel, modelId: string) {
   const getBaseURL = (location: string, projectId: string) =>
-    `https://aiplatform.googleapis.com/v1/projects/${projectId}/locations/${location}/publishers/google`;
+    `https://${location}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${location}/publishers/google`;
 
   if ("serviceAccountKey" in vertex) {
     const service_account_key = JSON.parse(vertex.serviceAccountKey);

@@ -70,7 +70,7 @@ export class CodeCompletionGoogleVertexTuningClient
         abortSignal: params.abortSignal,
       });
 
-      logger.trace(`[${requestId}] Completion result: ${result.text}.`);
+      logger.trace(`[${requestId}] Completion response:`, result.response.body);
 
       return new CompletionResultItem(result.text, {
         completionId: result.response.id,
