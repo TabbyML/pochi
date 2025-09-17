@@ -43,7 +43,7 @@
   "modelSelect": {
     "selectModel": "Select Model",
     "manageCustomModels": "Manage custom models...",
-    "modelUnavailable": "Model temporarily unavailable. It may need time to load or you may need to switch to an available model.",
+    "modelUnavailable": "Model is unavailable or still loading",
     "custom": "Custom",
     "super": "Super",
     "swift": "Swift"

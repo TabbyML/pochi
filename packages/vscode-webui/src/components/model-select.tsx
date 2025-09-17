@@ -74,7 +74,7 @@ export function ModelSelect({
                 <HoverCard openDelay={0}>
                   <HoverCardTrigger asChild>
                     <span>
-                      <TriangleAlertIcon className="mr-1 size-3.5 text-yellow-600 dark:text-yellow-400" />
+                      <TriangleAlertIcon className="mr-1 size-3.5 " />
                     </span>
                   </HoverCardTrigger>
                   <HoverCardContent

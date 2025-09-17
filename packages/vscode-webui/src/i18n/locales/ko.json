@@ -43,7 +43,7 @@
   "modelSelect": {
     "selectModel": "모델 선택",
     "manageCustomModels": "사용자 정의 모델 관리...",
-    "modelUnavailable": "모델을 일시적으로 사용할 수 없습니다. 로드하는 데 시간이 필요하거나 사용 가능한 모델로 전환해야 할 수 있습니다.",
+    "modelUnavailable": "모델을 사용할 수 없거나 로드 중입니다.",
     "custom": "사용자 정의",
     "super": "가강",
     "swift": "극속"
