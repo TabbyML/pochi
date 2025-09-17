@@ -20,3 +20,37 @@ export function readPochiConfig() {
     model: process.env.POCHI_MODEL,
   };
 }
+
+/**
+ * Check if running in development/testing mode
+ */
+export function isDevMode(): boolean {
+  return process.env.POCHI_DEV === "true";
+}
+
+/**
+ * Check if running in remote environment (GitHub Actions)
+ */
+export function isRemoteEnv(): boolean {
+  return process.env.POCHI_REMOTE_ENV === "1";
+}
+
+/**
+ * Get progress comment ID from environment
+ * This is the GitHub comment that displays real-time execution progress
+ * Set by preprocess-action.ts and used by run-pochi.ts
+ */
+export function getProgressCommentId(): number | undefined {
+  const id = process.env.PROGRESS_COMMENT_ID;
+  return id ? Number.parseInt(id, 10) : undefined;
+}
+
+/**
+ * Get eyes reaction ID from environment
+ * This is the 👀 reaction on the original /pochi command comment
+ * Added immediately for user feedback, removed when task completes
+ */
+export function getEyesReactionId(): number | undefined {
+  const id = process.env.EYES_REACTION_ID;
+  return id ? Number.parseInt(id, 10) : undefined;
+}
