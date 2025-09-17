@@ -17,6 +17,7 @@
     "checkpoint",
     "permissions",
     "share",
+    "queued-messages",
     "---Customize---",
     "models",
     "rules",
