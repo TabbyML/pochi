@@ -81,7 +81,7 @@ function createVSCodeHost(): VSCodeHostApi {
         "readModelList",
         "readUserStorage",
         "readCustomAgents",
-        "readStoreId",
+        "readMachineId",
       ],
       exports: {
         openTask(params) {

@@ -1,4 +1,5 @@
 import { persister, queryClient } from "@/lib/query-client";
+import { encodeStoreId } from "@getpochi/common/store-id-utils";
 import { catalog } from "@getpochi/livekit";
 import {
   makeInMemoryAdapter,
@@ -8,11 +9,13 @@ import LiveStoreSharedWorker from "@livestore/adapter-web/shared-worker?sharedwo
 import { LiveStoreProvider } from "@livestore/react";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
+import * as jose from "jose";
 import { useMemo } from "react";
 import { unstable_batchedUpdates as batchUpdates } from "react-dom";
 import { ThemeProvider } from "./components/theme-provider";
+import { useCurrentWorkspace } from "./lib/hooks/use-current-workspace";
+import { useMachineId } from "./lib/hooks/use-machine-id";
 import { usePochiCredentials } from "./lib/hooks/use-pochi-credentials";
-import { useStoreId } from "./lib/hooks/use-store-id";
 import LiveStoreWorker from "./livestore.worker.ts?worker&inline";
 
 const adapter = makePersistedAdapter({
@@ -56,7 +59,7 @@ export const Providers: React.FC<{ children: React.ReactNode }> = ({
 
 function LiveStoreProviderWrapper({ children }: { children: React.ReactNode }) {
   const { jwt } = usePochiCredentials();
-  const storeId = useStoreId();
+  const storeId = useStoreId(jwt);
   const syncPayload = useMemo(() => ({ jwt }), [jwt]);
 
   return (
@@ -94,3 +97,11 @@ export const ShareProviders: React.FC<{ children: React.ReactNode }> = ({
     </ThemeProvider>
   );
 };
+
+function useStoreId(jwt: string | null) {
+  const { data: cwd = "default" } = useCurrentWorkspace();
+  const { data: machineId = "default" } = useMachineId();
+  const sub = (jwt ? jose.decodeJwt(jwt).sub : undefined) ?? "anonymous";
+
+  return encodeStoreId({ sub, machineId, cwd });
+}

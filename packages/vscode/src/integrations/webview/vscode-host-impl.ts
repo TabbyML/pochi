@@ -9,6 +9,7 @@ import {
   getWorkspaceRulesFileUri,
 } from "@/lib/env";
 import { getWorkspaceFolder, isFileExists } from "@/lib/fs";
+import { machineId } from "node-machine-id";
 
 import path from "node:path";
 // biome-ignore lint/style/useImportType: needed for dependency injection
@@ -36,7 +37,7 @@ import { startBackgroundJob } from "@/tools/start-background-job";
 import { todoWrite } from "@/tools/todo-write";
 import { previewWriteToFile, writeToFile } from "@/tools/write-to-file";
 import type { Environment } from "@getpochi/common";
-import { type UserInfo, getStoreId } from "@getpochi/common/configuration";
+import type { UserInfo } from "@getpochi/common/configuration";
 import { isExecutable } from "@getpochi/common/mcp-utils";
 import type { McpStatus } from "@getpochi/common/mcp-utils";
 import type { McpHub } from "@getpochi/common/mcp-utils";
@@ -144,9 +145,8 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     }
   };
 
-  readStoreId = async (): Promise<string> => {
-    const cwd = await this.readCurrentWorkspace();
-    return getStoreId(cwd || "default");
+  readMachineId = async (): Promise<string> => {
+    return machineId();
   };
 
   getSessionState = async <K extends keyof SessionState>(
