@@ -1,12 +1,9 @@
 import { DurableObject } from "cloudflare:workers";
-import type { Env, User } from "@/types";
+import type { ClientDoCallback, Env, User } from "@/types";
 import type { PochiApi, PochiApiClient } from "@getpochi/common/pochi-api";
 import { decodeStoreId } from "@getpochi/common/store-id-utils";
 import { type Task, catalog } from "@getpochi/livekit";
-import {
-  type ClientDoWithRpcCallback,
-  createStoreDoPromise,
-} from "@livestore/adapter-cloudflare";
+import { createStoreDoPromise } from "@livestore/adapter-cloudflare";
 import { type Store, type Unsubscribe, nanoid } from "@livestore/livestore";
 import { handleSyncUpdateRpc } from "@livestore/sync-cf/client";
 import { hc } from "hono/client";
@@ -18,7 +15,7 @@ import type { Env as ClientEnv } from "./types";
 // Scoped by storeId
 export class LiveStoreClientDO
   extends DurableObject
-  implements ClientDoWithRpcCallback
+  implements ClientDoCallback
 {
   private storeId: string | undefined;
 
@@ -32,19 +29,19 @@ export class LiveStoreClientDO
     super(state, env);
   }
 
+  async setUser(user: User): Promise<void> {
+    await this.state.storage.put("user", user);
+  }
+
+  async signalKeepAlive(storeId: string): Promise<void> {
+    this.storeId = storeId;
+    await this.keepAliveAndInitSubscription();
+  }
+
   async fetch(request: Request): Promise<Response> {
     return app.fetch(request, {
-      setStoreId: (storeId: string) => {
-        this.storeId = storeId;
-      },
       getStore: async () => {
-        const store = await this.getStore();
-
-        await this.subscribeToStore();
-        return store;
-      },
-      setUser: (user: User) => {
-        return this.state.storage.put("user", user);
+        return this.getStore();
       },
       getUser: async () => {
         return await this.state.storage.get<User>("user");
@@ -82,7 +79,7 @@ export class LiveStoreClientDO
     return store;
   }
 
-  private async subscribeToStore() {
+  private async keepAliveAndInitSubscription() {
     const store = await this.getStore();
 
     // Make sure to only subscribe once
@@ -93,7 +90,7 @@ export class LiveStoreClientDO
       });
     }
 
-    await this.state.storage.setAlarm(Date.now() + 10_000);
+    await this.state.storage.setAlarm(Date.now() + 1_000);
   }
 
   alarm(_alarmInfo?: AlarmInvocationInfo): void | Promise<void> {}
@@ -119,9 +116,6 @@ export class LiveStoreClientDO
           this.persistTask(store, task).catch(console.error),
         ),
       );
-
-      // Whenever the tasks change, we extend the ttl of the DO.
-      await this.state.storage.setAlarm(Date.now() + 10_000);
     },
     {
       minGapMs: 1000,
