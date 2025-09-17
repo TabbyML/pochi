@@ -1,7 +1,7 @@
 import type {
-  McpConnection,
+  McpServerConnection,
   McpStatus,
-} from "@getpochi/common/vscode-webui-bridge";
+} from "@getpochi/common/mcp-utils";
 import { threadSignal } from "@quilted/threads/signals";
 import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
@@ -22,7 +22,7 @@ export const useMcp = () => {
   };
   const cachedMcpTools = useMcpToolsCache(mcpStatus);
 
-  const mergedConnections: Record<string, McpConnection> = {};
+  const mergedConnections: Record<string, McpServerConnection> = {};
   for (const [name, connection] of Object.entries(mcpStatus.connections)) {
     mergedConnections[name] = {
       ...connection,
@@ -71,7 +71,7 @@ const useMcpToolsCache = (mcpStatus: McpStatus) => {
     }
   }, [mcpStatus, queryClient]);
 
-  const cachedMcpTools: Record<string, McpConnection["tools"]> = {};
+  const cachedMcpTools: Record<string, McpServerConnection["tools"]> = {};
   for (const query of toolsQueries) {
     if (query.data) {
       cachedMcpTools[query.data.name] = query.data.tools;

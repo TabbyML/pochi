@@ -38,7 +38,8 @@
       "outFiles": ["${workspaceFolder}/packages/vscode/dist/**/*.js"],
       "preLaunchTask": "dev:vscode-local-sync",
       "env": {
-        "POCHI_LOCAL_SYNC_SERVER": "true"
+        "POCHI_LOCAL_SYNC_SERVER": "true",
+        "POCHI_LOCAL_SERVER": "true"
       }
     },
     {

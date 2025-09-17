@@ -50,6 +50,7 @@ const newLineCharacter = "\n";
 // Custom keyboard shortcuts extension that handles Enter key behavior
 function CustomEnterKeyHandler(
   formRef: React.RefObject<HTMLFormElement | null>,
+  onQueueSubmit?: (message: string) => void,
 ) {
   return Extension.create({
     addKeyboardShortcuts() {
@@ -61,6 +62,16 @@ function CustomEnterKeyHandler(
             () => commands.liftEmptyBlock(),
             () => commands.splitBlock(),
           ]);
+        },
+        "Mod-Enter": () => {
+          if (onQueueSubmit) {
+            const message = this.editor.getText();
+            if (message.trim()) {
+              onQueueSubmit(message);
+              return true;
+            }
+          }
+          return false;
         },
         Enter: () => {
           if (formRef.current) {
@@ -77,6 +88,7 @@ interface FormEditorProps {
   input: string;
   setInput: (text: string) => void;
   onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
+  onQueueSubmit?: (message: string) => void;
   isLoading: boolean;
   formRef?: React.RefObject<HTMLFormElement>;
   editorRef?: React.MutableRefObject<Editor | null>;
@@ -93,6 +105,7 @@ export function FormEditor({
   input,
   setInput,
   onSubmit,
+  onQueueSubmit,
   isLoading,
   children,
   formRef: externalFormRef,
@@ -128,7 +141,7 @@ export function FormEditor({
         Placeholder.configure({
           placeholder: "Ask anything ...",
         }),
-        CustomEnterKeyHandler(formRef),
+        CustomEnterKeyHandler(formRef, onQueueSubmit),
         PromptFormMentionExtension.configure({
           suggestion: {
             char: "@",
@@ -542,7 +555,7 @@ export function FormEditor({
       ref={formRef}
       onSubmit={handleSubmit}
       className={cn(
-        "relative rounded-sm border border-[var(--input-border)] bg-input p-1 transition-color duration-300 focus-within:border-ring",
+        "relative rounded-sm border border-[var(--input-border)] bg-input p-1 focus-within:border-ring",
         {
           "form-editor-loading": isLoading,
           "bg-zinc-50 dark:bg-zinc-950": isDragOver,
@@ -563,7 +576,12 @@ export function FormEditor({
           className="prose !border-none min-h-25 w-full max-w-none overflow-hidden break-words text-[var(--vscode-input-foreground)] focus:outline-none"
         />
       </ScrollArea>
-      <div className="h-5 bg-input py-0.5 pl-2">
+      <div
+        className={cn("h-5 py-0.5 pl-2", {
+          "bg-input": !isDragOver,
+          "bg-zinc-50 dark:bg-zinc-950": isDragOver,
+        })}
+      >
         {isAutoCompleteHintVisible && (
           <div className="flex items-center text-muted-foreground text-xs">
             Use Tab <ArrowRightToLine className="mr-1.5 ml-0.5 size-4" /> to see
@@ -575,8 +593,8 @@ export function FormEditor({
       {/* Drop zone overlay - shows when dragging over the editor */}
       {isDragOver && (
         <div className="pointer-events-none absolute inset-0 z-50 flex items-center justify-center rounded-sm border-2 border-zinc-500 border-dashed dark:bg-zinc-500/30">
-          <div className="rounded-md border bg-white px-4 py-2 shadow-lg dark:bg-gray-800">
-            <p className="font-medium text-sm">
+          <div className="rounded-md border bg-white px-4 py-2 shadow-lg dark:border-gray-700 dark:bg-gray-800">
+            <p className="font-medium text-sm text-zinc-900 dark:text-zinc-100">
               Drop files here to attach them to your message
             </p>
           </div>

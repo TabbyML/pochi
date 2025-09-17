@@ -7,6 +7,7 @@ import { CodeCompletionConfig } from "../configuration";
 import type { CompletionContextSegments } from "../contexts";
 import type { CompletionResultItem } from "../solution";
 import { isCanceledError, isTimeoutError } from "../utils/errors";
+import { CodeCompletionGoogleVertexTuningClient } from "./google-vertex-tuning";
 import { CodeCompletionOpenAIClient } from "./openai";
 import { CodeCompletionPochiClient } from "./pochi";
 import type { CodeCompletionClientProvider, ProviderConfig } from "./type";
@@ -37,6 +38,13 @@ export class CodeCompletionClient {
     if (providerConfig?.type === "openai") {
       logger.debug("Using OpenAI code completion provider: ", providerConfig);
       return new CodeCompletionOpenAIClient(providerConfig);
+    }
+    if (providerConfig?.type === "google-vertex-tuning") {
+      logger.debug(
+        "Using Google Vertex Tuning code completion provider: ",
+        providerConfig,
+      );
+      return new CodeCompletionGoogleVertexTuningClient(providerConfig);
     }
     logger.debug("Using Pochi code completion provider");
     return new CodeCompletionPochiClient();

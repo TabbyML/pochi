@@ -12,7 +12,7 @@ import { useMcp } from "@/lib/hooks/use-mcp";
 import { cn } from "@/lib/utils";
 import { getFileName } from "@/lib/utils/file";
 import { vscodeHost } from "@/lib/vscode";
-import type { McpConnection } from "@getpochi/common/vscode-webui-bridge";
+import type { McpServerConnection } from "@getpochi/common/mcp-utils";
 import {
   ChevronsUpDown,
   Dot,
@@ -309,7 +309,7 @@ const RecommandedMcpServers: React.FC = () => {
 
 const Connection: React.FC<{
   name: string;
-  connection: McpConnection;
+  connection: McpServerConnection;
 }> = ({ name, connection }) => {
   const { status, error, tools } = connection;
   const [isOpen, setIsOpen] = useState(false);
@@ -397,7 +397,7 @@ const Connection: React.FC<{
 const McpToolBadgeList: React.FC<{
   serverName: string;
   serverStatus: "stopped" | "starting" | "ready" | "error";
-  tools: McpConnection["tools"];
+  tools: McpServerConnection["tools"];
 }> = ({ serverName, serverStatus, tools }) => {
   const { t } = useTranslation();
   const keys = Object.keys(tools);

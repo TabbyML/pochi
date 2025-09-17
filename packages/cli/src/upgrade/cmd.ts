@@ -25,14 +25,13 @@ export function registerUpgradeCommand(program: Command) {
           console.log(
             chalk.green(`A new version (${latestVersion}) is available!`),
           );
-          await downloadAndInstall(latestRelease);
+          await downloadAndInstall(program, latestRelease);
         } else {
           console.log(chalk.green("You are already on the latest version."));
         }
       } catch (error) {
-        return program.error(
-          `Failed to check for updates: ${JSON.stringify(error)}`,
-        );
+        const message = error instanceof Error ? error.message : String(error);
+        return program.error(`Failed to check for updates: ${message}`);
       }
     });
 }
