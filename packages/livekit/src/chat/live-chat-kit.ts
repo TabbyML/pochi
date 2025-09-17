@@ -199,6 +199,16 @@ export class LiveChatKit<
     return countTask > 0;
   }
 
+  updateIsPublicShared = (isPublicShared: boolean) => {
+    this.store.commit(
+      events.updateIsPublicShared({
+        id: this.taskId,
+        isPublicShared,
+        updatedAt: new Date(),
+      }),
+    );
+  };
+
   private readonly onStart: OnStartCallback = async ({
     messages,
     environment,

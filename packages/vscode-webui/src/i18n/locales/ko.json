@@ -131,6 +131,8 @@
     "shareSupportTitle": "Pochi 팀과 작업이 공유되었습니다",
     "shareSupportDetails": "이 작업과 관련 디버그 정보가 전송되었습니다. 지원이 필요하시면 Discord 서버에 참여하시고 이 ID를 참조해 주세요: {{shareId}}.",
     "joinDiscord": "Discord 참여",
-    "ok": "확인"
+    "ok": "확인",
+    "setPublic": "링크가 있는 모든 사람",
+    "setPrivate": "나만"
   }
 }

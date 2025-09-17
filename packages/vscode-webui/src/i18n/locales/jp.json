@@ -131,6 +131,8 @@
     "shareSupportTitle": "タスクが Pochi チームと共有されました",
     "shareSupportDetails": "このタスクと関連するデバッグ情報が送信されました。サポートについては、Discord サーバーに参加し、このID を参照してください：{{shareId}}。",
     "joinDiscord": "Discord に参加",
-    "ok": "OK"
+    "ok": "OK",
+    "setPublic": "リンクを知っている人なら誰でも",
+    "setPrivate": "あなただけ"
   }
 }

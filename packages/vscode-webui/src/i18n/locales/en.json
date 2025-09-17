@@ -131,6 +131,8 @@
     "shareSupportTitle": "Task shared with the Pochi team",
     "shareSupportDetails": "This task and relevant debug information have been sent. For support, please join our Discord server and reference this issue with the ID: {{shareId}}.",
     "joinDiscord": "Join Discord",
-    "ok": "OK"
+    "ok": "OK",
+    "setPublic": "Anyone with link",
+    "setPrivate": "Only you"
   }
 }
