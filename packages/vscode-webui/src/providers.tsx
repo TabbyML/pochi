@@ -1,25 +1,12 @@
 import { persister, queryClient } from "@/lib/query-client";
 import { catalog } from "@getpochi/livekit";
-import {
-  makeInMemoryAdapter,
-  makePersistedAdapter,
-} from "@livestore/adapter-web";
-import LiveStoreSharedWorker from "@livestore/adapter-web/shared-worker?sharedworker&inline";
+import { makeInMemoryAdapter } from "@livestore/adapter-web";
 import { LiveStoreProvider } from "@livestore/react";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
-import { useMemo } from "react";
 import { unstable_batchedUpdates as batchUpdates } from "react-dom";
 import { ThemeProvider } from "./components/theme-provider";
-import { usePochiCredentials } from "./lib/hooks/use-pochi-credentials";
-import { useStoreId } from "./lib/hooks/use-store-id";
-import LiveStoreWorker from "./livestore.worker.ts?worker&inline";
-
-const adapter = makePersistedAdapter({
-  storage: { type: "opfs" },
-  worker: LiveStoreWorker,
-  sharedWorker: LiveStoreSharedWorker,
-});
+import { LiveStoreProvider as LiveStoreProviderWrapper } from "./livestore-provider";
 
 export const Providers: React.FC<{ children: React.ReactNode }> = ({
   children,
@@ -53,26 +40,6 @@ export const Providers: React.FC<{ children: React.ReactNode }> = ({
     </ThemeProvider>
   );
 };
-
-function LiveStoreProviderWrapper({ children }: { children: React.ReactNode }) {
-  const { jwt } = usePochiCredentials();
-  const storeId = useStoreId();
-  const syncPayload = useMemo(() => ({ jwt }), [jwt]);
-
-  return (
-    <LiveStoreProvider
-      schema={catalog.schema}
-      adapter={adapter}
-      renderLoading={(_) => <></>}
-      disableDevtools={true}
-      batchUpdates={batchUpdates}
-      syncPayload={syncPayload}
-      storeId={storeId}
-    >
-      {children}
-    </LiveStoreProvider>
-  );
-}
 
 const inMemoryAdapter = makeInMemoryAdapter();
 
