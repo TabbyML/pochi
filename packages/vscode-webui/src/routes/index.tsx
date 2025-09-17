@@ -11,7 +11,7 @@ import { useStoreDate } from "src/livestore-provider";
 
 const searchSchema = z.object({
   uid: z.string().catch(() => crypto.randomUUID()),
-  date: z.date().optional(),
+  date: z.number().optional(),
   prompt: z.string().optional(),
 });
 
@@ -28,7 +28,7 @@ function RouteComponent() {
 
   const { setDate } = useStoreDate();
   useEffect(() => {
-    setDate(date || new Date());
+    setDate(date ? new Date(date) : new Date());
   }, [date, setDate]);
 
   if (!users?.pochi && modelList.length === 0) {

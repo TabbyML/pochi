@@ -299,7 +299,7 @@ function TaskRow({ task, date }: { task: Task; date: Date }) {
   return (
     <Link
       to={"/"}
-      search={{ uid: task.id, date }}
+      search={{ uid: task.id, date: date.getTime() }}
       className="group cursor-pointer"
     >
       <div
