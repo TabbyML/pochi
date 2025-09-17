@@ -1,24 +1,21 @@
 import { DurableObject } from "cloudflare:workers";
-import type { Env, User } from "@/types";
+import type { ClientDoCallback, Env, User } from "@/types";
 import type { PochiApi, PochiApiClient } from "@getpochi/common/pochi-api";
 import { decodeStoreId } from "@getpochi/common/store-id-utils";
 import { type Task, catalog } from "@getpochi/livekit";
-import {
-  type ClientDoWithRpcCallback,
-  createStoreDoPromise,
-} from "@livestore/adapter-cloudflare";
+import { createStoreDoPromise } from "@livestore/adapter-cloudflare";
 import { type Store, type Unsubscribe, nanoid } from "@livestore/livestore";
 import { handleSyncUpdateRpc } from "@livestore/sync-cf/client";
 import { hc } from "hono/client";
 import moment from "moment";
 import { funnel } from "remeda";
 import { app } from "./app";
-import type { Env as ClientEnv, DeepWriteable } from "./types";
+import type { Env as ClientEnv } from "./types";
 
 // Scoped by storeId
 export class LiveStoreClientDO
   extends DurableObject
-  implements ClientDoWithRpcCallback
+  implements ClientDoCallback
 {
   private storeId: string | undefined;
 
@@ -32,19 +29,19 @@ export class LiveStoreClientDO
     super(state, env);
   }
 
+  async setUser(user: User): Promise<void> {
+    await this.state.storage.put("user", user);
+  }
+
+  async signalKeepAlive(storeId: string): Promise<void> {
+    this.storeId = storeId;
+    await this.keepAliveAndInitSubscription();
+  }
+
   async fetch(request: Request): Promise<Response> {
     return app.fetch(request, {
-      setStoreId: (storeId: string) => {
-        this.storeId = storeId;
-      },
       getStore: async () => {
-        const store = await this.getStore();
-
-        await this.subscribeToStore();
-        return store;
-      },
-      setUser: (user: User) => {
-        return this.state.storage.put("user", user);
+        return this.getStore();
       },
       getUser: async () => {
         return await this.state.storage.get<User>("user");
@@ -82,17 +79,18 @@ export class LiveStoreClientDO
     return store;
   }
 
-  private async subscribeToStore() {
+  private async keepAliveAndInitSubscription() {
     const store = await this.getStore();
 
     // Make sure to only subscribe once
     if (this.storeSubscription === undefined) {
       this.storeSubscription = store.subscribe(catalog.queries.tasks$, {
-        onUpdate: (tasks) => tasks && this.onTasksUpdate.call(tasks),
+        // FIXME(meng): implement this with store.events stream when it's ready
+        onUpdate: (tasks) => this.onTasksUpdate.call(tasks),
       });
     }
 
-    await this.state.storage.setAlarm(Date.now() + 10_000);
+    await this.state.storage.setAlarm(Date.now() + 1_000);
   }
 
   alarm(_alarmInfo?: AlarmInvocationInfo): void | Promise<void> {}
@@ -102,16 +100,22 @@ export class LiveStoreClientDO
   }
 
   private onTasksUpdate = funnel(
-    async (tasks: readonly Task[]) => {
+    async (tasks: readonly Task[] | undefined) => {
       if (!tasks) return;
-
       const store = await this.getStore();
-      await Promise.all(
-        tasks.map((task) => this.persistTask(store, task).catch(console.error)),
+      const now = moment();
+      const updatedTasks = tasks.filter((task) =>
+        moment(task.updatedAt).isAfter(now.subtract(5, "minute")),
       );
 
-      // Whenever the tasks change, we extend the ttl of the DO.
-      await this.state.storage.setAlarm(Date.now() + 10_000);
+      if (!updatedTasks.length) return;
+
+      console.log(`onTasksUpdate: persisting ${updatedTasks.length} tasks`);
+      await Promise.all(
+        updatedTasks.map((task) =>
+          this.persistTask(store, task).catch(console.error),
+        ),
+      );
     },
     {
       minGapMs: 1000,
@@ -124,12 +128,6 @@ export class LiveStoreClientDO
     const { sub: userId } = decodeStoreId(store.storeId);
     const apiClient = createApiClient(this.env.POCHI_API_KEY, userId);
 
-    // FIXME(meng): implement this with store.events stream when it's ready
-    const now = moment();
-    if (!moment(task.updatedAt).subtract(5, "minute").isBefore(now)) {
-      return;
-    }
-
     // If a task was updated in the last 5 minutes, persist it to the pochi api
     const messages = store
       .query(catalog.queries.makeMessagesQuery(task.id))
@@ -141,28 +139,12 @@ export class LiveStoreClientDO
         messages: messages,
         status: task.status,
         parentClientTaskId: task.parentId || undefined,
-        environment: {
-          info: {
-            cwd: "",
-            shell: "",
-            os: "",
-            homedir: "",
-          },
-          currentTime: now.toString(),
-          workspace: {
-            files: [],
-            isTruncated: false,
-            gitStatus: task.git
-              ? {
-                  origin: task.git.origin,
-                  status: "",
-                  mainBranch: "",
-                  currentBranch: task.git.branch,
-                  recentCommits: [],
-                }
-              : undefined,
-          },
-          todos: task.todos as DeepWriteable<typeof task.todos>,
+        storeId: store.storeId,
+        clientTaskData: {
+          ...task,
+          todos: task.todos.map((t) => ({ ...t })),
+          git: task.git ? { ...task.git } : null,
+          error: task.error ? { ...task.error } : null,
         },
       },
     });

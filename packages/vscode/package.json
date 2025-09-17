@@ -264,6 +264,72 @@
                             "description": "The prompt template to use for inline completion. If not set, will use the default template."
                           }
                         }
+                      },
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "type": {
+                            "type": "string",
+                            "const": "google-vertex-tuning"
+                          },
+                          "vertex": {
+                            "type": "object",
+                            "description": "Google Vertex AI credentials.",
+                            "oneOf": [
+                              {
+                                "title": "Service Account Key",
+                                "type": "object",
+                                "properties": {
+                                  "serviceAccountKey": {
+                                    "type": "string",
+                                    "description": "The service account key JSON for authentication."
+                                  },
+                                  "location": {
+                                    "type": "string",
+                                    "description": "The Google Cloud location (e.g., 'us-central1')."
+                                  }
+                                },
+                                "required": ["serviceAccountKey", "location"]
+                              },
+                              {
+                                "title": "Access Token",
+                                "type": "object",
+                                "properties": {
+                                  "accessToken": {
+                                    "type": "string",
+                                    "description": "A short-lived access token for authentication."
+                                  },
+                                  "projectId": {
+                                    "type": "string",
+                                    "description": "The Google Cloud Project ID."
+                                  },
+                                  "location": {
+                                    "type": "string",
+                                    "description": "The Google Cloud location (e.g., 'us-central1')."
+                                  }
+                                },
+                                "required": [
+                                  "accessToken",
+                                  "projectId",
+                                  "location"
+                                ]
+                              }
+                            ]
+                          },
+                          "model": {
+                            "type": "string",
+                            "description": "The ID of the model to use."
+                          },
+                          "systemPrompt": {
+                            "type": "string",
+                            "description": "An optional system prompt for inline completion."
+                          },
+                          "promptTemplate": {
+                            "type": "string",
+                            "description": "A custom prompt template to use for inline completion."
+                          }
+                        },
+                        "required": ["type", "vertex", "model"]
                       }
                     ]
                   }

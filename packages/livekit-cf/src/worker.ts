@@ -1,21 +1,53 @@
 import type { CfTypes } from "@livestore/sync-cf/cf-worker";
-import * as SyncBackend from "@livestore/sync-cf/cf-worker";
-import { DoSqlD1 } from "./lib/do-sql-d1";
-import { fetch } from "./router";
 import type { Env } from "./types";
 
-export class SyncBackendDO extends SyncBackend.makeDurableObject() {
-  constructor(state: CfTypes.DurableObjectState, env: Env) {
-    super(state, {
-      ...env,
-      DB: new DoSqlD1(state.storage.sql),
-    });
-  }
-}
+import { verifyStoreId } from "@/lib/jwt";
+import * as SyncBackend from "@livestore/sync-cf/cf-worker";
+import { Hono } from "hono";
 
-// Scoped by storeId
-export { LiveStoreClientDO } from "./client";
+export const app = new Hono<{ Bindings: Env }>();
+
+app
+  .all("/", async (c) => {
+    const requestParamsResult = SyncBackend.getSyncRequestSearchParams(
+      c.req.raw,
+    );
+    if (requestParamsResult._tag === "Some") {
+      return SyncBackend.handleSyncRequest({
+        request: c.req.raw,
+        searchParams: requestParamsResult.value,
+        env: {
+          ...c.env,
+          // @ts-expect-error - we're using a custom implementation
+          DB: null,
+        },
+        ctx: c.executionCtx as SyncBackend.CfTypes.ExecutionContext,
+        options: {
+          async validatePayload(inputPayload, { storeId }) {
+            const user = await verifyStoreId(
+              c.env.ENVIRONMENT,
+              inputPayload,
+              storeId,
+            );
+            if (!user) {
+              throw new Error("Unauthorized");
+            }
+
+            const id = c.env.CLIENT_DO.idFromName(storeId);
+            const stub = c.env.CLIENT_DO.get(id);
+            await stub.setUser(user);
+          },
+        },
+      });
+    }
+  })
+  .all("/stores/:storeId/*", async (c) => {
+    const id = c.env.CLIENT_DO.idFromName(c.req.param("storeId"));
+    return c.env.CLIENT_DO.get(id).fetch(c.req.raw);
+  });
 
 export default {
-  fetch,
+  fetch: app.fetch,
 } satisfies CfTypes.ExportedHandler<Env>;
+
+export { SyncBackendDO, LiveStoreClientDO } from "./do";

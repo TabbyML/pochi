@@ -18,7 +18,8 @@
     "./mcp-utils": "./src/mcp-utils/index.ts",
     "./vscode-webui-bridge": "./src/vscode-webui-bridge/index.ts",
     "./store-id-utils": "./src/store-id-utils.ts",
-    "./share-utils": "./src/share-utils.ts"
+    "./share-utils": "./src/share-utils.ts",
+    "./google-vertex-utils": "./src/google-vertex-utils.ts"
   },
   "scripts": {
     "tsc": "tsc",
@@ -26,6 +27,7 @@
   },
   "dependencies": {
     "@ai-sdk/provider": "catalog:",
+    "@ai-sdk/google-vertex": "catalog:",
     "@getpochi/tools": "workspace:*",
     "@hono/zod-validator": "catalog:",
     "@modelcontextprotocol/sdk": "^1.0.2",

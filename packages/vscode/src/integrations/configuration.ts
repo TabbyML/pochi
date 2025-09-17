@@ -1,5 +1,6 @@
 import {
   type CustomModelSetting,
+  type GoogleVertexModel,
   type McpServerConfig,
   pochiConfig,
   updatePochiConfig,
@@ -77,6 +78,13 @@ const PochiAdvanceSettings = z.object({
             baseURL: z.string(),
             apiKey: z.string().optional(),
             model: z.string().optional(),
+            promptTemplate: z.string().optional(),
+          }),
+          z.object({
+            type: z.literal("google-vertex-tuning"),
+            vertex: z.custom<GoogleVertexModel>(),
+            model: z.string(),
+            systemPrompt: z.string().optional(),
             promptTemplate: z.string().optional(),
           }),
         ])

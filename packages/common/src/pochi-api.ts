@@ -35,6 +35,8 @@ export const PersistRequest = z.object({
   messages: z.array(z.custom<UIMessage>()),
   environment: Environment.optional(),
   parentClientTaskId: z.string().optional(),
+  storeId: z.string().optional(),
+  clientTaskData: z.unknown().optional(),
 });
 export type PersistRequest = z.infer<typeof PersistRequest>;
 

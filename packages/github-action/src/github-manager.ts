@@ -7,8 +7,18 @@ import type {
 /**
  * GitHub operations manager
  */
-import { readGithubToken } from "./env";
+import { isDevMode, readGithubToken } from "./env";
 import type { RunPochiRequest } from "./run-pochi";
+
+async function envCheck<T>(
+  operation: () => Promise<T>,
+  devModeReturn?: T,
+): Promise<T> {
+  if (isDevMode()) {
+    return devModeReturn as T;
+  }
+  return operation();
+}
 
 export class GitHubManager {
   private octokit: Octokit;
@@ -32,35 +42,37 @@ export class GitHubManager {
     await this.checkPermissions();
   }
 
-  async reportError(errorMessage: string): Promise<void> {
-    const repo = this.getRepository();
-    const payload = this.context.payload as IssueCommentEvent;
-    const issueNumber = payload.issue.number;
+  reportError = async (errorMessage: string): Promise<void> =>
+    envCheck(async () => {
+      const repo = this.getRepository();
+      const payload = this.context.payload as IssueCommentEvent;
+      const issueNumber = payload.issue.number;
 
-    await this.octokit.rest.issues.createComment({
-      owner: repo.owner,
-      repo: repo.repo,
-      issue_number: issueNumber,
-      body: `❌ **Pochi Failed**\n${errorMessage}`,
+      await this.octokit.rest.issues.createComment({
+        owner: repo.owner,
+        repo: repo.repo,
+        issue_number: issueNumber,
+        body: `❌ **Pochi Failed**\n${errorMessage}`,
+      });
     });
-  }
 
-  async createComment(initialContent: string): Promise<number> {
-    const repo = this.getRepository();
-    const payload = this.context.payload as IssueCommentEvent;
-    const issueNumber = payload.issue.number;
-    const footer = this.createGitHubActionFooter();
+  createComment = async (initialContent: string): Promise<number> =>
+    envCheck(async () => {
+      const repo = this.getRepository();
+      const payload = this.context.payload as IssueCommentEvent;
+      const issueNumber = payload.issue.number;
+      const footer = this.createGitHubActionFooter();
 
-    const response = await this.octokit.rest.issues.createComment({
-      owner: repo.owner,
-      repo: repo.repo,
-      issue_number: issueNumber,
-      body: `🔄 **Pochi Running...**\n\n${initialContent}${footer}`,
-    });
-    return response.data.id;
-  }
+      const response = await this.octokit.rest.issues.createComment({
+        owner: repo.owner,
+        repo: repo.repo,
+        issue_number: issueNumber,
+        body: `🔄 **Pochi Running...**\n\n${initialContent}${footer}`,
+      });
+      return response.data.id;
+    }, 999999);
 
-  async updateComment(
+  updateComment = async (
     commentId: number,
     body: string,
     options?: {
@@ -68,69 +80,76 @@ export class GitHubManager {
       footer?: string;
       success?: boolean;
     },
-  ): Promise<void> {
-    const repo = this.getRepository();
+  ): Promise<void> =>
+    envCheck(async () => {
+      const repo = this.getRepository();
 
-    // Use provided header or generate default based on success state
-    const header =
-      options?.header ??
-      (options?.success !== undefined
-        ? options.success
-          ? "✅ **Pochi Completed**"
-          : "❌ **Pochi Failed**"
-        : "🔄 **Pochi Running...**");
+      // Use provided header or generate default based on success state
+      const header =
+        options?.header ??
+        (options?.success !== undefined
+          ? options.success
+            ? "✅ **Pochi Completed**"
+            : "❌ **Pochi Failed**"
+          : "🔄 **Pochi Running...**");
 
-    // Use provided footer or generate default GitHub Action footer
-    const footer = options?.footer ?? this.createGitHubActionFooter();
+      // Use provided footer or generate default GitHub Action footer
+      const footer = options?.footer ?? this.createGitHubActionFooter();
 
-    await this.octokit.rest.issues.updateComment({
-      owner: repo.owner,
-      repo: repo.repo,
-      comment_id: commentId,
-      body: `${header}\n\n${body}${footer}`,
+      await this.octokit.rest.issues.updateComment({
+        owner: repo.owner,
+        repo: repo.repo,
+        comment_id: commentId,
+        body: `${header}\n\n${body}${footer}`,
+      });
     });
-  }
 
-  async createReaction(
+  createReaction = async (
     commentId: number,
     content: RestEndpointMethodTypes["reactions"]["createForIssueComment"]["parameters"]["content"],
-  ): Promise<number | undefined> {
-    const repo = this.getRepository();
-    try {
-      const response = await this.octokit.rest.reactions.createForIssueComment({
-        owner: repo.owner,
-        repo: repo.repo,
-        comment_id: commentId,
-        content: content as
-          | "+1"
-          | "-1"
-          | "laugh"
-          | "confused"
-          | "heart"
-          | "hooray"
-          | "rocket"
-          | "eyes",
-      });
-      return response.data.id;
-    } catch (error) {
-      console.warn(`Failed to add reaction ${content}: ${error}`);
-      return undefined;
-    }
-  }
+  ): Promise<number | undefined> =>
+    envCheck(async () => {
+      const repo = this.getRepository();
+      try {
+        const response =
+          await this.octokit.rest.reactions.createForIssueComment({
+            owner: repo.owner,
+            repo: repo.repo,
+            comment_id: commentId,
+            content: content as
+              | "+1"
+              | "-1"
+              | "laugh"
+              | "confused"
+              | "heart"
+              | "hooray"
+              | "rocket"
+              | "eyes",
+          });
+        return response.data.id;
+      } catch (error) {
+        console.warn(`Failed to add reaction ${content}: ${error}`);
+        return undefined;
+      }
+    });
 
-  async deleteReaction(commentId: number, reactionId: number): Promise<void> {
-    const repo = this.getRepository();
-    try {
-      await this.octokit.rest.reactions.deleteForIssueComment({
-        owner: repo.owner,
-        repo: repo.repo,
-        comment_id: commentId,
-        reaction_id: reactionId,
-      });
-    } catch (error) {
-      console.warn(`Failed to delete reaction ${reactionId}: ${error}`);
-    }
-  }
+  deleteReaction = async (
+    commentId: number,
+    reactionId: number,
+  ): Promise<void> =>
+    envCheck(async () => {
+      const repo = this.getRepository();
+      try {
+        await this.octokit.rest.reactions.deleteForIssueComment({
+          owner: repo.owner,
+          repo: repo.repo,
+          comment_id: commentId,
+          reaction_id: reactionId,
+        });
+      } catch (error) {
+        console.warn(`Failed to delete reaction ${reactionId}: ${error}`);
+      }
+    });
 
   // Repository operations
   private getRepository() {
@@ -159,32 +178,36 @@ export class GitHubManager {
   }
 
   // Permission and user operations
-  private async checkPermissions(): Promise<void> {
-    const actor = this.context.actor;
-    const repo = this.getRepository();
-    if (this.context.payload.sender?.type === "Bot") {
-      return;
-    }
-    let permission: string;
-    try {
-      const response = await this.octokit.repos.getCollaboratorPermissionLevel({
-        owner: repo.owner,
-        repo: repo.repo,
-        username: actor,
-      });
+  private checkPermissions = async (): Promise<void> =>
+    envCheck(async () => {
+      const actor = this.context.actor;
+      const repo = this.getRepository();
 
-      permission = response.data.permission;
-    } catch (error) {
-      console.error(`Failed to check permissions: ${error}`);
-      throw new Error(
-        `Failed to check permissions for user ${actor}: ${error}`,
-      );
-    }
+      if (this.context.payload.sender?.type === "Bot") {
+        return;
+      }
 
-    if (!["admin", "write"].includes(permission)) {
-      throw new Error(`User ${actor} does not have write permissions`);
-    }
-  }
+      let permission: string;
+      try {
+        const response =
+          await this.octokit.repos.getCollaboratorPermissionLevel({
+            owner: repo.owner,
+            repo: repo.repo,
+            username: actor,
+          });
+
+        permission = response.data.permission;
+      } catch (error) {
+        console.error(`Failed to check permissions: ${error}`);
+        throw new Error(
+          `Failed to check permissions for user ${actor}: ${error}`,
+        );
+      }
+
+      if (!["admin", "write"].includes(permission)) {
+        throw new Error(`User ${actor} does not have write permissions`);
+      }
+    });
 
   // Validation and parsing operations
   private checkPochiKeyword(): void {

@@ -10,6 +10,7 @@ import {
 } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { extname, join } from "node:path";
+import type { Command } from "@commander-js/extra-typings";
 import chalk from "chalk";
 import {
   getLatestBinaryFileName,
@@ -125,6 +126,7 @@ async function extractArchive(
 }
 
 export async function downloadAndInstall(
+  program: Command,
   release: GitHubRelease,
 ): Promise<void> {
   try {
@@ -210,6 +212,7 @@ export async function downloadAndInstall(
     console.log(chalk.gray("Or create an alias:"));
     console.log(chalk.white(`  alias pochi="${latestBinaryPath}"`));
   } catch (error) {
-    console.error(chalk.red("Failed to install update:"), error);
+    const message = error instanceof Error ? error.message : String(error);
+    program.error(`Failed to install update: ${message}`);
   }
 }
