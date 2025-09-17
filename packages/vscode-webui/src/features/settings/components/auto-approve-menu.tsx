@@ -191,14 +191,7 @@ export function AutoApproveMenu() {
             >
               <span className="ml-1.5 flex items-center gap-2 font-semibold">
                 <RotateCcw className="size-4 shrink-0" />
-                <span
-                  className="whitespace-nowrap text-foreground text-sm"
-                  onClick={(e) => {
-                    if (autoApproveSettings.retry) {
-                      e.stopPropagation();
-                    }
-                  }}
-                >
+                <span className="whitespace-nowrap text-foreground text-sm">
                   {autoApproveSettings.retry
                     ? `${t("settings.autoApprove.maxAttempts")}:`
                     : t("settings.autoApprove.retryActions")}
