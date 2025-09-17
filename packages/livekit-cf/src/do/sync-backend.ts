@@ -1,6 +1,6 @@
+import { DoSqlD1 } from "@/lib/do-sql-d1";
+import type { Env } from "@/types";
 import * as SyncBackend from "@livestore/sync-cf/cf-worker";
-import { DoSqlD1 } from "./lib/do-sql-d1";
-import type { Env } from "./types";
 
 let signalKeepAliveClientDo: ((storeId: string) => Promise<void>) | undefined =
   undefined;
