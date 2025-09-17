@@ -2,9 +2,9 @@ import { spawn } from "node:child_process";
 import * as core from "@actions/core";
 import type { IssueCommentCreatedEvent } from "@octokit/webhooks-types";
 import {
-  readPochiConfig,
-  getProgressCommentId,
   getEyesReactionId,
+  getProgressCommentId,
+  readPochiConfig,
 } from "./env";
 import type { GitHubManager } from "./github-manager";
 import { buildBatchOutput } from "./output-utils";

@@ -7,7 +7,7 @@ import type {
 /**
  * GitHub operations manager
  */
-import { readGithubToken, isDevMode } from "./env";
+import { isDevMode, readGithubToken } from "./env";
 import type { RunPochiRequest } from "./run-pochi";
 
 async function envCheck<T>(
