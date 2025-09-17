@@ -14,9 +14,9 @@ NC='\033[0m' # No Color
 # Default values
 INSTRUCTION="${1:-I'm testing you in virtual env, don't do any gh update operation, just finish the task with attemptCompletion}"
 DEBUG_MODE=false
-WORKFLOW_FILE="packages/github-action/test/test-workflows/test-pochi-dev.yml"
-EVENT_FILE="packages/github-action/test/act-event.json"
-SECRETS_FILE="packages/github-action/test/act-secrets.env"
+WORKFLOW_FILE="packages/github-action/local-test/test-workflows/test-pochi-dev.yml"
+EVENT_FILE="packages/github-action/local-test/act-event.json"
+SECRETS_FILE="packages/github-action/local-test/act-secrets.env"
 
 # Parse arguments
 shift || true
