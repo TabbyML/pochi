@@ -1,7 +1,11 @@
 import { spawn } from "node:child_process";
 import * as core from "@actions/core";
 import type { IssueCommentCreatedEvent } from "@octokit/webhooks-types";
-import { readPochiConfig } from "./env";
+import {
+  getEyesReactionId,
+  getProgressCommentId,
+  readPochiConfig,
+} from "./env";
 import type { GitHubManager } from "./github-manager";
 import { buildBatchOutput } from "./output-utils";
 
@@ -73,12 +77,10 @@ export async function runPochi(githubManager: GitHubManager): Promise<void> {
   const request = githubManager.parseRequest();
   const config = readPochiConfig();
 
-  const historyCommentId = process.env.PROGRESS_COMMENT_ID
-    ? Number.parseInt(process.env.PROGRESS_COMMENT_ID, 10)
-    : await githubManager.createComment("Starting Pochi execution...");
-  const eyesReactionId = process.env.EYES_REACTION_ID
-    ? Number.parseInt(process.env.EYES_REACTION_ID, 10)
-    : undefined;
+  const historyCommentId =
+    getProgressCommentId() ??
+    (await githubManager.createComment("Starting Pochi execution..."));
+  const eyesReactionId = getEyesReactionId();
 
   const args = ["--prompt", request.prompt, "--max-steps", "128"];
 

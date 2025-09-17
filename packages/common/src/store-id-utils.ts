@@ -5,6 +5,7 @@ export const StoreId = z.object({
   sub: z.string(),
   machineId: z.string(),
   cwd: z.string(),
+  date: z.string().describe("Local date in MM/DD/YYYY format"),
 });
 
 export type StoreId = z.infer<typeof StoreId>;

@@ -1,25 +1,13 @@
-import { verifyJWT } from "@/lib/jwt";
 import type { ShareEvent } from "@getpochi/common/share-utils";
 import { catalog } from "@getpochi/livekit";
-import { zValidator } from "@hono/zod-validator";
 import type { UIMessage } from "ai";
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
-import z from "zod";
 import type { DeepWriteable, Env } from "./types";
 
 const store = new Hono<{ Bindings: Env }>();
 
 store
-  .get("/", zValidator("query", z.object({ jwt: z.string() })), async (c) => {
-    const user = await verifyJWT(undefined, c.req.valid("query").jwt);
-
-    // Activate store
-    await c.env.getStore();
-    await c.env.setUser(user);
-
-    return c.json({ success: true });
-  })
   .get("/tasks/:taskId/json", async (c) => {
     const store = await c.env.getStore();
     const taskId = c.req.param("taskId");
@@ -57,13 +45,4 @@ store
   });
 
 export const app = new Hono<{ Bindings: Env }>();
-app
-  .use("/stores/:storeId/*", async (c, next) => {
-    const storeId = c.req.param("storeId");
-    c.env.setStoreId(storeId);
-
-    // Initialize the store in middleware
-    await c.env.getStore();
-    return next();
-  })
-  .route("/stores/:storeId", store);
+app.route("/stores/:storeId", store);

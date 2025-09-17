@@ -1,25 +1,23 @@
-import type { User } from "@/types";
+import type { Env, User } from "@/types";
+import { decodeStoreId } from "@getpochi/common/store-id-utils";
 import { HTTPException } from "hono/http-exception";
 import * as jose from "jose";
 import { JOSEError } from "jose/errors";
-import { getServerBaseUrl } from "./server";
+import z from "zod";
 
-let JWKS: jose.GetKeyFunction<
-  jose.JWSHeaderParameters,
-  jose.FlattenedJWSInput
-> | null = null;
+const Payload = z.object({
+  jwt: z.string(),
+});
 
-export async function verifyJWT(env: "dev" | "prod" | undefined, jwt: string) {
+const JWKS = jose.createRemoteJWKSet(
+  new URL("https://app.getpochi.com/api/auth/jwks"),
+);
+
+async function verifyJWT(env: Env["ENVIRONMENT"], jwt: string) {
   try {
-    if (JWKS === null) {
-      JWKS = jose.createRemoteJWKSet(
-        new URL(`${getServerBaseUrl(env)}/api/auth/jwks`),
-      );
-    }
-
     const { payload: user } = await jose.jwtVerify<User>(jwt, JWKS, {
-      issuer: getServerBaseUrl(env),
-      audience: getServerBaseUrl(env),
+      issuer: "https://app.getpochi.com",
+      audience: "https://app.getpochi.com",
       clockTolerance: env === "dev" ? "4 hours" : undefined,
     });
     return user;
@@ -29,5 +27,21 @@ export async function verifyJWT(env: "dev" | "prod" | undefined, jwt: string) {
     }
 
     throw err;
+  }
+}
+
+async function verifyPayload(env: Env["ENVIRONMENT"], inputPayload: unknown) {
+  const payload = Payload.parse(inputPayload);
+  return verifyJWT(env, payload.jwt);
+}
+
+export async function verifyStoreId(
+  env: Env["ENVIRONMENT"],
+  payload: unknown,
+  storeId: string,
+) {
+  const user = await verifyPayload(env, payload);
+  if (user.sub === decodeStoreId(storeId).sub) {
+    return user;
   }
 }

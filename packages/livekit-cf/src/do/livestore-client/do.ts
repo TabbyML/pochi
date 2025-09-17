@@ -1,25 +1,21 @@
 import { DurableObject } from "cloudflare:workers";
-import type { Env, User } from "@/types";
+import type { ClientDoCallback, Env, User } from "@/types";
 import type { PochiApi, PochiApiClient } from "@getpochi/common/pochi-api";
 import { decodeStoreId } from "@getpochi/common/store-id-utils";
 import { type Task, catalog } from "@getpochi/livekit";
-import {
-  type ClientDoWithRpcCallback,
-  createStoreDoPromise,
-} from "@livestore/adapter-cloudflare";
+import { createStoreDoPromise } from "@livestore/adapter-cloudflare";
 import { type Store, type Unsubscribe, nanoid } from "@livestore/livestore";
 import { handleSyncUpdateRpc } from "@livestore/sync-cf/client";
 import { hc } from "hono/client";
 import moment from "moment";
 import { funnel } from "remeda";
-import { getServerBaseUrl } from "../lib/server";
 import { app } from "./app";
 import type { Env as ClientEnv } from "./types";
 
 // Scoped by storeId
 export class LiveStoreClientDO
   extends DurableObject
-  implements ClientDoWithRpcCallback
+  implements ClientDoCallback
 {
   private storeId: string | undefined;
 
@@ -33,19 +29,19 @@ export class LiveStoreClientDO
     super(state, env);
   }
 
+  async setUser(user: User): Promise<void> {
+    await this.state.storage.put("user", user);
+  }
+
+  async signalKeepAlive(storeId: string): Promise<void> {
+    this.storeId = storeId;
+    await this.keepAliveAndInitSubscription();
+  }
+
   async fetch(request: Request): Promise<Response> {
     return app.fetch(request, {
-      setStoreId: (storeId: string) => {
-        this.storeId = storeId;
-      },
       getStore: async () => {
-        const store = await this.getStore();
-
-        await this.subscribeToStore();
-        return store;
-      },
-      setUser: (user: User) => {
-        return this.state.storage.put("user", user);
+        return this.getStore();
       },
       getUser: async () => {
         return await this.state.storage.get<User>("user");
@@ -83,7 +79,7 @@ export class LiveStoreClientDO
     return store;
   }
 
-  private async subscribeToStore() {
+  private async keepAliveAndInitSubscription() {
     const store = await this.getStore();
 
     // Make sure to only subscribe once
@@ -94,7 +90,7 @@ export class LiveStoreClientDO
       });
     }
 
-    await this.state.storage.setAlarm(Date.now() + 10_000);
+    await this.state.storage.setAlarm(Date.now() + 1_000);
   }
 
   alarm(_alarmInfo?: AlarmInvocationInfo): void | Promise<void> {}
@@ -109,7 +105,7 @@ export class LiveStoreClientDO
       const store = await this.getStore();
       const now = moment();
       const updatedTasks = tasks.filter((task) =>
-        moment(task.updatedAt).isAfter(now.subtract(5, "minute")),
+        moment(task.updatedAt).isAfter(now.subtract(1, "minute")),
       );
 
       if (!updatedTasks.length) return;
@@ -120,9 +116,6 @@ export class LiveStoreClientDO
           this.persistTask(store, task).catch(console.error),
         ),
       );
-
-      // Whenever the tasks change, we extend the ttl of the DO.
-      await this.state.storage.setAlarm(Date.now() + 10_000);
     },
     {
       minGapMs: 1000,
@@ -133,11 +126,7 @@ export class LiveStoreClientDO
 
   private async persistTask(store: Store<typeof catalog.schema>, task: Task) {
     const { sub: userId } = decodeStoreId(store.storeId);
-    const apiClient = createApiClient(
-      this.env.ENVIRONMENT,
-      this.env.POCHI_API_KEY,
-      userId,
-    );
+    const apiClient = createApiClient(this.env.POCHI_API_KEY, userId);
 
     // If a task was updated in the last 5 minutes, persist it to the pochi api
     const messages = store
@@ -178,12 +167,8 @@ export class LiveStoreClientDO
   }
 }
 
-function createApiClient(
-  env: "dev" | "prod" | undefined,
-  apiKey: string,
-  userId: string,
-): PochiApiClient {
-  const prodServerUrl = getServerBaseUrl(env);
+function createApiClient(apiKey: string, userId: string): PochiApiClient {
+  const prodServerUrl = "https://app.getpochi.com";
   return hc<PochiApi>(prodServerUrl, {
     headers: {
       authorization: `${apiKey},${userId}`,

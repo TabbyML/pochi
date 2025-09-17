@@ -43,7 +43,6 @@
   "modelSelect": {
     "selectModel": "모델 선택",
     "manageCustomModels": "사용자 정의 모델 관리...",
-    "modelUnavailable": "모델을 사용할 수 없거나 로드 중입니다.",
     "custom": "사용자 정의",
     "super": "가강",
     "swift": "극속"

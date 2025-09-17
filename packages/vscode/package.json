@@ -389,6 +389,7 @@
     "jszip": "^3.10.1",
     "linkify-it": "^5.0.0",
     "lru-cache": "^11.1.0",
+    "node-machine-id": "catalog:",
     "object-hash": "^3.0.0",
     "posthog-node": "^4.17.2",
     "project-name-generator": "^2.1.9",

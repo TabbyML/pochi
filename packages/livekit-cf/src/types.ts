@@ -3,7 +3,7 @@ import type { CfTypes } from "@livestore/sync-cf/cf-worker";
 import type * as SyncBackend from "@livestore/sync-cf/cf-worker";
 
 export type Env = {
-  CLIENT_DO: CfTypes.DurableObjectNamespace<ClientDoWithRpcCallback>;
+  CLIENT_DO: CfTypes.DurableObjectNamespace<ClientDoCallback>;
   SYNC_BACKEND_DO: CfTypes.DurableObjectNamespace<SyncBackend.SyncBackendRpcInterface>;
   ADMIN_SECRET: string;
   POCHI_API_KEY: string;
@@ -18,3 +18,8 @@ export type User = {
   image: string;
   emailVerified: boolean;
 };
+
+export interface ClientDoCallback extends ClientDoWithRpcCallback {
+  setUser: (user: User) => Promise<void>;
+  signalKeepAlive: (storeId: string) => Promise<void>;
+}

@@ -1,0 +1,98 @@
+name: Test Pochi Dev
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  test-pochi-dev:
+    if: startsWith(github.event.comment.body, '/pochi')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Copy to clean workspace
+        shell: bash
+        run: |
+          # Copy files to a clean workspace to avoid macOS node_modules issues
+          mkdir -p /tmp/pochi-workspace
+          cp -r . /tmp/pochi-workspace/
+          cd /tmp/pochi-workspace
+
+          # Clean up any existing node_modules and build artifacts
+          rm -rf node_modules packages/*/node_modules
+          rm -rf packages/cli/dist
+
+      - name: Setup Git Config
+        shell: bash
+        run: |
+          git config --global user.email "noreply@getpochi.com"
+          git config --global user.name "Pochi"
+
+      - name: Install bun
+        shell: bash
+        run: |
+          curl -fsSL https://bun.sh/install | bash
+          echo "$HOME/.bun/bin" >> $GITHUB_PATH
+
+      - name: Build Pochi CLI
+        shell: bash
+        run: |
+          cd /tmp/pochi-workspace
+          echo "Current directory: $(pwd)"
+          echo "Installing dependencies..."
+          bun install --frozen-lockfile
+          echo "Building CLI..."
+          cd packages/cli
+          bun run build
+
+      - name: Install ripgrep
+        shell: bash
+        run: |
+          curl -sLO 'https://github.com/BurntSushi/ripgrep/releases/download/14.1.1/ripgrep-14.1.1-x86_64-unknown-linux-musl.tar.gz'
+          tar -xzf ripgrep-14.1.1-x86_64-unknown-linux-musl.tar.gz
+          mkdir -p "$HOME/.pochi/bin"
+          mv ripgrep-14.1.1-x86_64-unknown-linux-musl/rg "$HOME/.pochi/bin/"
+          rm -rf ripgrep-14.1.1-x86_64-unknown-linux-musl*
+          echo "$HOME/.pochi/bin" >> $GITHUB_PATH
+
+      - name: Setup initial reaction and progress comment
+        shell: bash
+        run: |
+          cd /tmp/pochi-workspace/packages/github-action
+          bun install --frozen-lockfile
+          bun src/preprocess-action.ts
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          POCHI_DEV: true
+
+      - name: Run Pochi GitHub Action
+        shell: bash
+        run: |
+          cd /tmp/pochi-workspace/packages/github-action
+          export POCHI_CLI_PATH="/tmp/pochi-workspace/packages/cli/dist/pochi"
+          echo "Using CLI at: $POCHI_CLI_PATH"
+
+          # Verify CLI exists and is executable
+          if [ ! -f "$POCHI_CLI_PATH" ]; then
+            echo "ERROR: CLI not found at $POCHI_CLI_PATH"
+            exit 1
+          fi
+
+          echo "Testing CLI:"
+          "$POCHI_CLI_PATH" --version || true
+
+          echo "Running GitHub Action..."
+          bun src/index.ts
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          POCHI_API_KEY: ${{ secrets.POCHI_API_KEY }}
+          POCHI_REMOTE_ENV: 1
+          POCHI_DEV: true
+          PROGRESS_COMMENT_ID: ${{ env.PROGRESS_COMMENT_ID }}
+          EYES_REACTION_ID: ${{ env.EYES_REACTION_ID }}
