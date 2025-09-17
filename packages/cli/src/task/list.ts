@@ -2,8 +2,8 @@ import type { Command } from "@commander-js/extra-typings";
 import { type Task, catalog } from "@getpochi/livekit";
 import select from "@inquirer/select";
 import chalk from "chalk";
-import { createStore } from "../livekit/store";
 import { shutdownStoreAndExit } from "../lib/store-utils";
+import { createStore } from "../livekit/store";
 
 export function registerTaskListCommand(taskCommand: Command) {
   // pochi task list - List recent tasks
