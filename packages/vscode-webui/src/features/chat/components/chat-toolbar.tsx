@@ -206,8 +206,6 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     [messages],
   );
 
-  console.log(groupedModels, selectedModel);
-
   return (
     <>
       <ApprovalButton
