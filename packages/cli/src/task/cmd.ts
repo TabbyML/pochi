@@ -1,6 +1,5 @@
 import type { Command } from "@commander-js/extra-typings";
 import { Effect, Stream } from "@livestore/utils/effect";
-import { safeShutdownStore } from "../lib/shutdown";
 import { createStore } from "../livekit";
 import { registerTaskListCommand } from "./list";
 import { registerTaskShareCommand } from "./share";
@@ -38,5 +37,5 @@ async function waitForSync() {
     }
   }).pipe(Effect.runPromise);
 
-  await safeShutdownStore(store);
+  await store.shutdown();
 }
