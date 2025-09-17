@@ -56,8 +56,8 @@ export const ToolsByPermission = {
     "executeCommand",
     "startBackgroundJob",
     "killBackgroundJob",
-    "newTask",
   ] satisfies ToolName[] as string[],
+  subtask: ["newTask"] satisfies ToolName[] as string[],
   default: ["todoWrite"] satisfies ToolName[] as string[],
 };
 

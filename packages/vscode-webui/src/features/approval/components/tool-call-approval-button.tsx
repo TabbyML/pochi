@@ -5,17 +5,24 @@ import { Button } from "@/components/ui/button";
 import { useAutoApproveGuard, useToolCallLifeCycle } from "@/features/chat";
 import { useToolAutoApproval } from "@/features/settings";
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
-import { getToolName } from "ai";
+import type { UITools } from "@getpochi/livekit";
+import { useNavigate } from "@tanstack/react-router";
+import { type ToolUIPart, getToolName } from "ai";
 import type { PendingToolCallApproval } from "../hooks/use-pending-tool-call-approval";
 
 interface ToolCallApprovalButtonProps {
   pendingApproval: PendingToolCallApproval;
+  isSubTask: boolean;
 }
+
+type NewTaskTool = Extract<ToolUIPart<UITools>, { type: "tool-newTask" }>;
 
 // Component
 export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
   pendingApproval,
+  isSubTask,
 }) => {
+  const navigate = useNavigate();
   const autoApproveGuard = useAutoApproveGuard();
   const { getToolCallLifeCycle } = useToolCallLifeCycle();
   const [lifecycles, tools] = useMemo(
@@ -84,6 +91,7 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
   const isAutoApproved = useToolAutoApproval(
     pendingApproval,
     autoApproveGuard.current === "auto",
+    isSubTask,
   );
   useEffect(() => {
     if (isReady && isAutoApproved) {
@@ -120,10 +128,38 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
   }, [lifecycles]);
 
   const showAccept = !isAutoApproved && isReady;
+  const newTaskInput =
+    pendingApproval.name === "newTask"
+      ? (pendingApproval.tool as NewTaskTool).input
+      : undefined;
+  const newTaskUid = newTaskInput?._meta?.uid;
+
+  const onManualRunSubtask = useCallback(() => {
+    if (!newTaskUid || !newTaskInput) {
+      return;
+    }
+    navigate({
+      to: "/",
+      search: {
+        uid: newTaskUid,
+        subtask: {
+          agent: newTaskInput?.agentType,
+          description: newTaskInput.description,
+          manualRun: true,
+        },
+      },
+    });
+  }, [newTaskUid, newTaskInput, navigate]);
+
   if (showAccept) {
     return (
       <>
-        <Button onClick={onAccept}>{acceptText}</Button>
+        <Button onClick={() => onAccept()}>{acceptText}</Button>
+        {newTaskUid && (
+          <Button onClick={onManualRunSubtask} variant="secondary">
+            Manual Run
+          </Button>
+        )}
         {rejectText !== "<disabled>" && (
           <Button onClick={onReject} variant="secondary">
             {rejectText}

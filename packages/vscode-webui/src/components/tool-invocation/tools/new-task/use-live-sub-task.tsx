@@ -12,7 +12,7 @@ import {
 } from "@/features/retry";
 import { useTodos } from "@/features/todo";
 
-import { useCustomAgents } from "@/lib/hooks/use-custom-agents";
+import { useCustomAgent } from "@/lib/hooks/use-custom-agents";
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
 import { vscodeHost } from "@/lib/vscode";
 import { useChat } from "@ai-sdk/react";
@@ -39,10 +39,8 @@ export function useLiveSubTask(
     toolCallId: tool.toolCallId,
   });
 
-  const { customAgents } = useCustomAgents();
-
-  const customAgent = customAgents?.find(
-    (a) => tool.state !== "input-streaming" && a.name === tool.input?.agentType,
+  const customAgent = useCustomAgent(
+    tool.state !== "input-streaming" ? tool.input?.agentType : undefined,
   );
 
   const abortController = useRef(new AbortController());

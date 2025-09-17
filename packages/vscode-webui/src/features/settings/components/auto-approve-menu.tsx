@@ -12,11 +12,13 @@ import {
   FileEdit,
   type LucideIcon,
   RotateCcw,
+  SquareChevronRightIcon,
   Terminal,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { type AutoApprove, useSettingsStore } from "../store";
+import { useAutoApprove } from "../hooks/use-auto-approve";
+import type { AutoApprove } from "../store";
 
 interface CoreActionSetting {
   id: keyof Omit<AutoApprove, "default">;
@@ -25,14 +27,14 @@ interface CoreActionSetting {
   summary: string;
 }
 
-export function AutoApproveMenu() {
+export function AutoApproveMenu({ isSubTask }: { isSubTask: boolean }) {
   const { t } = useTranslation();
   const {
     autoApproveActive,
     updateAutoApproveActive,
     autoApproveSettings,
     updateAutoApproveSettings,
-  } = useSettingsStore();
+  } = useAutoApprove({ isSubTask });
 
   const [currentMaxRetry, setCurrentMaxRetry] = useState(
     autoApproveSettings.maxRetryLimit.toString(),
@@ -60,6 +62,12 @@ export function AutoApproveMenu() {
       summary: t("settings.autoApprove.execute"),
       label: t("settings.autoApprove.executeCommands"),
       iconClass: Terminal,
+    },
+    {
+      id: "subtask",
+      summary: "Subtask",
+      label: "Run subtask",
+      iconClass: SquareChevronRightIcon,
     },
     {
       id: "mcp",
@@ -148,28 +156,30 @@ export function AutoApproveMenu() {
         className="grid grid-cols-1 gap-2.5 [@media(min-width:400px)]:w-[400px] [@media(min-width:400px)]:grid-cols-2"
         side="top"
       >
-        {coreActionSettings.map((setting) => (
-          <div key={setting.id} className="flex items-center">
-            <label
-              htmlFor={`core-action-dialog-${setting.id}`}
-              className={
-                "flex flex-1 cursor-pointer select-none items-center pl-1 text-foreground text-sm"
-              }
-            >
-              <Checkbox
-                id={`core-action-dialog-${setting.id}`}
-                checked={getCoreActionCheckedState(setting.id)}
-                onCheckedChange={(checked) =>
-                  handleCoreActionToggle(setting.id, !!checked)
+        {coreActionSettings
+          .filter((item) => !(isSubTask && item.id === "subtask"))
+          .map((setting) => (
+            <div key={setting.id} className="flex items-center">
+              <label
+                htmlFor={`core-action-dialog-${setting.id}`}
+                className={
+                  "flex flex-1 cursor-pointer select-none items-center pl-1 text-foreground text-sm"
                 }
-              />
-              <span className="ml-4 flex items-center gap-2 font-semibold">
-                <setting.iconClass className="size-4 shrink-0" />
-                {setting.label}
-              </span>
-            </label>
-          </div>
-        ))}
+              >
+                <Checkbox
+                  id={`core-action-dialog-${setting.id}`}
+                  checked={getCoreActionCheckedState(setting.id)}
+                  onCheckedChange={(checked) =>
+                    handleCoreActionToggle(setting.id, !!checked)
+                  }
+                />
+                <span className="ml-4 flex items-center gap-2 font-semibold">
+                  <setting.iconClass className="size-4 shrink-0" />
+                  {setting.label}
+                </span>
+              </label>
+            </div>
+          ))}
 
         {/* Max Attempts Section - Always visible */}
         <div className="mt-1 border-gray-200/30 border-t pt-2 [@media(min-width:400px)]:col-span-2">

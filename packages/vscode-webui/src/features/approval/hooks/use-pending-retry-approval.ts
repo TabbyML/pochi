@@ -48,9 +48,11 @@ interface PendingRetry {
 export function usePendingRetryApproval({
   error,
   status,
+  isSubTask,
 }: {
   error?: Error;
   status: "submitted" | "streaming" | "ready" | "error";
+  isSubTask: boolean;
 }) {
   const autoApproveGuard = useAutoApproveGuard();
 
@@ -62,9 +64,10 @@ export function usePendingRetryApproval({
     autoApproveGuard.current = "stop";
   }
 
-  const { autoApproveActive, autoApproveSettings } = useAutoApprove(
-    autoApproveGuard.current === "auto",
-  );
+  const { autoApproveActive, autoApproveSettings } = useAutoApprove({
+    autoApproveGuard: autoApproveGuard.current === "auto",
+    isSubTask,
+  });
 
   const [retryCount, setRetryCount] = useState<RetryCount | undefined>(
     undefined,

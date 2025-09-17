@@ -13,6 +13,13 @@ const searchSchema = z.object({
   uid: z.string().catch(() => crypto.randomUUID()),
   storeDate: z.number().optional(),
   prompt: z.string().optional(),
+  subtask: z
+    .object({
+      manualRun: z.boolean(),
+      agent: z.string().optional(),
+      description: z.string().optional(),
+    })
+    .optional(),
 });
 
 export const Route = createFileRoute("/")({
@@ -21,7 +28,7 @@ export const Route = createFileRoute("/")({
 });
 
 function RouteComponent() {
-  const { uid, prompt, storeDate } = Route.useSearch();
+  const { uid, prompt, storeDate, subtask } = Route.useSearch();
 
   const { users } = useUserStorage();
   const { modelList = [] } = useModelList(true);
@@ -37,5 +44,13 @@ function RouteComponent() {
 
   const key = `task-${uid}`;
 
-  return <ChatPage key={key} user={users?.pochi} uid={uid} prompt={prompt} />;
+  return (
+    <ChatPage
+      key={key}
+      user={users?.pochi}
+      uid={uid}
+      prompt={prompt}
+      subtask={subtask}
+    />
+  );
 }

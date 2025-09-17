@@ -5,6 +5,7 @@ import { usePendingModelAutoStart } from "@/features/retry";
 
 import { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
 import { useCurrentWorkspace } from "@/lib/hooks/use-current-workspace";
+import { useCustomAgent } from "@/lib/hooks/use-custom-agents";
 import { cn } from "@/lib/utils";
 import { useChat } from "@ai-sdk/react";
 import { formatters } from "@getpochi/common";
@@ -28,25 +29,28 @@ import { useAutoApproveGuard, useChatAbortController } from "./lib/chat-state";
 import { onOverrideMessages } from "./lib/on-override-messages";
 import { useLiveChatKitGetters } from "./lib/use-live-chat-kit-getters";
 
-export function ChatPage({
-  uid,
-  user,
-  prompt,
-}: { uid: string; user?: UserInfo; prompt?: string }) {
+export function ChatPage({ uid, user, prompt, subtask }: ChatProps) {
   return (
     <ChatContextProvider>
-      <Chat user={user} uid={uid} prompt={prompt} />
+      <Chat user={user} uid={uid} prompt={prompt} subtask={subtask} />
     </ChatContextProvider>
   );
+}
+
+interface SubtaskInfo {
+  manualRun: boolean;
+  agent?: string;
+  description?: string;
 }
 
 interface ChatProps {
   uid: string;
   user?: UserInfo;
   prompt?: string;
+  subtask?: SubtaskInfo;
 }
 
-function Chat({ user, uid, prompt }: ChatProps) {
+function Chat({ user, uid, prompt, subtask }: ChatProps) {
   const { store } = useStore();
   const todosRef = useRef<Todo[] | undefined>(undefined);
   const getters = useLiveChatKitGetters({
@@ -61,10 +65,17 @@ function Chat({ user, uid, prompt }: ChatProps) {
   const chatAbortController = useChatAbortController();
   useAbortBeforeNavigation(chatAbortController.current);
 
+  const task = store.useQuery(catalog.queries.makeTaskQuery(uid));
+  const isSubTask = !!task?.parentId;
+  const isReadOnly = isSubTask && subtask?.manualRun !== true;
+  const customAgent = useCustomAgent(subtask?.agent);
+
   const autoApproveGuard = useAutoApproveGuard();
   const chatKit = useLiveChatKit({
     taskId: uid,
     getters,
+    isSubTask,
+    customAgent,
     abortSignal: chatAbortController.current.signal,
     sendAutomaticallyWhen: (x) => {
       if (chatAbortController.current.signal.aborted) {
@@ -81,13 +92,8 @@ function Chat({ user, uid, prompt }: ChatProps) {
       }
       return lastAssistantMessageIsCompleteWithToolCalls(x);
     },
-    onOverrideMessages,
+    onOverrideMessages: isSubTask ? undefined : onOverrideMessages, // subtask do not support checkpoint
   });
-  const task = store.useQuery(catalog.queries.makeTaskQuery(uid));
-  const isSubTask = !!task?.parentId;
-
-  // Readonly for subtask
-  const isReadOnly = isSubTask;
 
   const { data: currentWorkspace, isFetching: isFetchingWorkspace } =
     useCurrentWorkspace();
@@ -109,6 +115,7 @@ function Chat({ user, uid, prompt }: ChatProps) {
   const approvalAndRetry = useApprovalAndRetry({
     ...chat,
     showApproval: !isLoading && !isModelsLoading && !!selectedModel,
+    isSubTask,
   });
 
   const { pendingApproval, retry } = approvalAndRetry;
@@ -151,6 +158,7 @@ function Chat({ user, uid, prompt }: ChatProps) {
 
   return (
     <div className="flex h-screen flex-col">
+      {isSubTask && subtask && <SubtaskHeader subtask={subtask} />}
       <ChatArea
         messages={renderMessages}
         isLoading={isLoading}
@@ -159,14 +167,12 @@ function Chat({ user, uid, prompt }: ChatProps) {
       />
       <div className="flex flex-col px-4">
         <ErrorMessageView error={displayError} />
-        {isSubTask ? (
-          <NavigateParentTask className="mb-16" parentId={task.parentId} />
-        ) : !isWorkspaceActive ? (
+        {!isWorkspaceActive ? (
           <WorkspaceRequiredPlaceholder
             isFetching={isFetchingWorkspace}
             className="mb-12"
           />
-        ) : (
+        ) : !isReadOnly ? (
           <ChatToolbar
             chat={chat}
             task={task}
@@ -175,10 +181,12 @@ function Chat({ user, uid, prompt }: ChatProps) {
             approvalAndRetry={approvalAndRetry}
             attachmentUpload={attachmentUpload}
             isReadOnly={isReadOnly}
+            isSubTask={isSubTask}
             displayError={displayError}
             onUpdateIsPublicShared={chatKit.updateIsPublicShared}
           />
-        )}
+        ) : null}
+        {isSubTask ? <NavigateParentTask parentId={task.parentId} /> : null}
       </div>
     </div>
   );
@@ -199,17 +207,33 @@ function useAbortBeforeNavigation(abortController: AbortController) {
   }, [abortController, router]);
 }
 
+const SubtaskHeader: React.FC<{ subtask: SubtaskInfo }> = ({ subtask }) => {
+  return (
+    <div className="flex items-center border-gray-200/30 border-b py-2.5">
+      {subtask?.agent ?? "Subtask"} : {subtask?.description ?? ""}
+    </div>
+  );
+};
+
 const NavigateParentTask: React.FC<{
   parentId: string;
   className?: string;
 }> = ({ parentId, className }) => {
   return (
-    <div className={cn("flex flex-col items-center justify-center", className)}>
+    <div
+      className={cn(
+        "flex flex-1 grow-0 flex-col items-start justify-center",
+        className,
+      )}
+    >
       <Link
         to="/"
         search={{ uid: parentId }}
         replace={true}
-        className={cn(buttonVariants(), "!text-primary-foreground gap-1")}
+        className={cn(
+          buttonVariants({ variant: "ghost" }),
+          "!text-primary-foreground gap-1",
+        )}
       >
         <ChevronLeft className="mr-1.5 size-4" /> Back
       </Link>

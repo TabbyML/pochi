@@ -19,15 +19,20 @@ export interface SettingsState {
   autoApproveActive: boolean;
   autoApproveSettings: AutoApprove;
 
+  subtaskAutoApproveActive: boolean;
+  subtaskAutoApproveSettings: AutoApprove;
+
   isDevMode: boolean;
 
   enablePochiModels: boolean;
 
   updateAutoApproveSettings: (data: Partial<AutoApprove>) => void;
+  updateSubtaskAutoApproveSettings: (data: Partial<AutoApprove>) => void;
   updateSelectedModel: (
     selectedModel: SelectedModelInStore | undefined,
   ) => void;
   updateAutoApproveActive: (value: boolean) => void;
+  updateSubtaskAutoApproveActive: (value: boolean) => void;
   updateIsDevMode: (value: boolean) => void;
 
   updateEnablePochiModels: (value: boolean) => void;
@@ -42,10 +47,25 @@ export const useSettingsStore = create<SettingsState>()(
         read: true,
         write: true,
         execute: true,
+        subtask: true,
         retry: true,
         maxRetryLimit: 3,
         mcp: false,
       },
+
+      // subtask manual run specific auto-approve settings
+
+      subtaskAutoApproveActive: false,
+      subtaskAutoApproveSettings: {
+        read: false,
+        write: false,
+        execute: false,
+        subtask: false,
+        retry: true,
+        maxRetryLimit: 3,
+        mcp: false,
+      },
+
       isDevMode: false,
 
       enablePochiModels: false,
@@ -58,8 +78,19 @@ export const useSettingsStore = create<SettingsState>()(
           autoApproveSettings: { ...state.autoApproveSettings, ...data },
         })),
 
+      updateSubtaskAutoApproveSettings: (data) =>
+        set((state) => ({
+          subtaskAutoApproveSettings: {
+            ...state.subtaskAutoApproveSettings,
+            ...data,
+          },
+        })),
+
       updateAutoApproveActive: (value: boolean) =>
         set(() => ({ autoApproveActive: value })),
+
+      updateSubtaskAutoApproveActive: (value: boolean) =>
+        set(() => ({ subtaskAutoApproveActive: value })),
 
       updateIsDevMode: (value: boolean) => set(() => ({ isDevMode: value })),
 

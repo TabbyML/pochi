@@ -8,11 +8,13 @@ interface ApprovalButtonProps {
   pendingApproval?: PendingApproval;
   retry: (error: Error) => void;
   allowAddToolResult: boolean;
+  isSubTask: boolean;
 }
 
 export const ApprovalButton: React.FC<ApprovalButtonProps> = ({
   allowAddToolResult,
   pendingApproval,
+  isSubTask,
   retry,
 }) => {
   if (!allowAddToolResult || !pendingApproval) return null;
@@ -22,7 +24,10 @@ export const ApprovalButton: React.FC<ApprovalButtonProps> = ({
       {pendingApproval.name === "retry" ? (
         <RetryApprovalButton pendingApproval={pendingApproval} retry={retry} />
       ) : (
-        <ToolCallApprovalButton pendingApproval={pendingApproval} />
+        <ToolCallApprovalButton
+          pendingApproval={pendingApproval}
+          isSubTask={isSubTask}
+        />
       )}
     </div>
   );

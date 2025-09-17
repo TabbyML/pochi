@@ -53,7 +53,18 @@ export const newTaskTool: React.FC<NewTaskToolProps> = ({
             <StatusIcon tool={tool} isExecuting={isExecuting} />
             <Badge variant="secondary" className={cn("mr-1 ml-2 py-0")}>
               {uid && isVSCodeEnvironment() ? (
-                <Link to="/" search={{ uid }} replace={true}>
+                <Link
+                  to="/"
+                  search={{
+                    uid,
+                    subtask: {
+                      manualRun: false,
+                      agent: agentType,
+                      description,
+                    },
+                  }}
+                  replace={true}
+                >
                   {toolTitle}
                 </Link>
               ) : (
