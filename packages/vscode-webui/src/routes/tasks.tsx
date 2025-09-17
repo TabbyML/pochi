@@ -29,7 +29,7 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { MdOutlineErrorOutline } from "react-icons/md";
-import { useStoreDate } from "src/livestore-provider";
+import { useStoreDate } from "../livestore-provider";
 
 export const Route = createFileRoute("/tasks")({
   validateSearch: (search: Record<string, unknown>): { page?: number } => {

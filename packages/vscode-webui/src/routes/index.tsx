@@ -7,7 +7,7 @@ import { WelcomeScreen } from "@/components/welcome-screen";
 import { useModelList } from "@/lib/hooks/use-model-list";
 import { useUserStorage } from "@/lib/hooks/use-user-storage";
 import { useEffect } from "react";
-import { useStoreDate } from "src/livestore-provider";
+import { useStoreDate } from "../livestore-provider";
 
 const searchSchema = z.object({
   uid: z.string().catch(() => crypto.randomUUID()),

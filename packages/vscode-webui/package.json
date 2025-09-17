@@ -67,7 +67,6 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "copy-to-clipboard": "^3.3.3",
-    "date-fns": "^4.1.0",
     "emittery": "catalog:",
     "hast": "^1.0.0",
     "hono": "catalog:",
