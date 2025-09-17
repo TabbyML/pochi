@@ -6,10 +6,10 @@ import { PublicShareButton } from "@/components/public-share-button";
 import { TokenUsage } from "@/components/token-usage";
 import { Button } from "@/components/ui/button";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
 import { ApprovalButton, type useApprovalAndRetry } from "@/features/approval";
 import { useAutoApproveGuard } from "@/features/chat";
 import { useSelectedModels } from "@/features/settings";
@@ -287,26 +287,28 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
             modelId={selectedModel?.id}
             displayError={displayError?.message}
           />
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => fileInputRef.current?.click()}
-                className="button-focus h-6 w-6 p-0"
-              >
-                <PaperclipIcon className="size-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent
-              showArrow={false}
-              className="max-w-[80vw]"
+          <HoverCard>
+            <HoverCardTrigger asChild>
+              <span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="button-focus h-6 w-6 p-0"
+                >
+                  <PaperclipIcon className="size-4" />
+                </Button>
+              </span>
+            </HoverCardTrigger>
+            <HoverCardContent
               side="top"
-              sideOffset={4}
+              align="start"
+              sideOffset={6}
+              className="!w-auto max-w-sm bg-background px-3 py-1.5 text-xs"
             >
               {t("chat.attachmentTooltip")}
-            </TooltipContent>
-          </Tooltip>
+            </HoverCardContent>
+          </HoverCard>
           <SubmitStopButton
             isSubmitDisabled={isSubmitDisabled}
             showStopButton={showStopButton}
