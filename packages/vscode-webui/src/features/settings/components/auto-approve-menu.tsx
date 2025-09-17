@@ -173,23 +173,41 @@ export function AutoApproveMenu() {
 
         {/* Max Attempts Section - Always visible */}
         <div className="mt-1 border-gray-200/30 border-t pt-2 [@media(min-width:400px)]:col-span-2">
-          <div className="flex h-7 items-center gap-3 pl-1">
+          <div className="flex h-7 items-center pl-1">
             <Checkbox
+              id="retry-actions-trigger-dialog"
               checked={autoApproveSettings.retry}
               onCheckedChange={(checked) =>
                 handleCoreActionToggle("retry", !!checked)
               }
             />
-            <span className="ml-1.5 flex items-center gap-2 font-semibold">
-              <RotateCcw className="size-4 shrink-0" />
-              <span className="whitespace-nowrap text-foreground text-sm">
-                {autoApproveSettings.retry
-                  ? `${t("settings.autoApprove.maxAttempts")}:`
-                  : t("settings.autoApprove.retryActions")}
+            <label
+              className="flex cursor-pointer items-center gap-3 px-3"
+              htmlFor={
+                autoApproveSettings.retry
+                  ? "retry-actions-max-attempts"
+                  : "retry-actions-trigger-dialog"
+              }
+            >
+              <span className="ml-1.5 flex items-center gap-2 font-semibold">
+                <RotateCcw className="size-4 shrink-0" />
+                <span
+                  className="whitespace-nowrap text-foreground text-sm"
+                  onClick={(e) => {
+                    if (autoApproveSettings.retry) {
+                      e.stopPropagation();
+                    }
+                  }}
+                >
+                  {autoApproveSettings.retry
+                    ? `${t("settings.autoApprove.maxAttempts")}:`
+                    : t("settings.autoApprove.retryActions")}
+                </span>
               </span>
-            </span>
+            </label>
             {autoApproveSettings.retry && (
               <Input
+                id="retry-actions-max-attempts"
                 type="number"
                 min="1"
                 max="10"
