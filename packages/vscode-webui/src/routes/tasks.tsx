@@ -29,12 +29,7 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { MdOutlineErrorOutline } from "react-icons/md";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
+import { useStoreDate } from "src/livestore-provider";
 
 export const Route = createFileRoute("/tasks")({
   validateSearch: (search: Record<string, unknown>): { page?: number } => {
@@ -180,8 +175,8 @@ function Tasks() {
   const router = useRouter();
   const { page = 1 } = Route.useSearch();
   const { store } = useStore();
-  const [date, setDate] = useState<Date>(new Date());
-  const tasks = store.useQuery(catalog.queries.makeTasksQuery(date));
+  const { date, setDate } = useStoreDate();
+  const tasks = store.useQuery(catalog.queries.tasks$);
   const totalPages = Math.ceil(tasks.length / limit);
   const paginatedTasks = tasks.slice((page - 1) * limit, page * limit);
 
@@ -203,7 +198,7 @@ function Tasks() {
           <ScrollArea className="h-full">
             <div className="flex flex-col gap-4 p-4 pb-6">
               {paginatedTasks.map((task) => (
-                <TaskRow key={task.id} task={task} />
+                <TaskRow key={task.id} task={task} date={date} />
               ))}
             </div>
           </ScrollArea>
@@ -245,7 +240,10 @@ function EmptyTaskPlaceholder() {
       </p>
       <Button
         onClick={() =>
-          navigate({ to: "/", search: { uid: crypto.randomUUID() } })
+          navigate({
+            to: "/",
+            search: { uid: crypto.randomUUID() },
+          })
         }
         variant="ghost"
         className="mb-20"
@@ -296,10 +294,14 @@ const getStatusBorderColor = (status: string): string => {
   }
 };
 
-function TaskRow({ task }: { task: Task }) {
+function TaskRow({ task, date }: { task: Task; date: Date }) {
   const title = useMemo(() => parseTitle(task.title), [task.title]);
   return (
-    <Link to={"/"} search={{ uid: task.id }} className="group cursor-pointer">
+    <Link
+      to={"/"}
+      search={{ uid: task.id, date }}
+      className="group cursor-pointer"
+    >
       <div
         className={cn(
           "cursor-pointer rounded-lg border border-border/50 bg-card transition-all duration-200 hover:border-border hover:bg-card/90 hover:shadow-md",
