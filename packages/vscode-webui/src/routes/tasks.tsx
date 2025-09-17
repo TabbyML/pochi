@@ -1,6 +1,5 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
 import {
   Pagination,
   PaginationContent,
@@ -10,11 +9,6 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination"; // Import pagination components
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { WorkspaceRequiredPlaceholder } from "@/components/workspace-required-placeholder";
 import { useCurrentWorkspace } from "@/lib/hooks/use-current-workspace";
