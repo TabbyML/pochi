@@ -10,12 +10,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { CheckIcon, ChevronDownIcon, TriangleAlertIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -66,26 +66,26 @@ export function ModelSelect({
             <Button
               variant="ghost"
               className={cn(
-                "!gap-0.5 !px-1 button-focus h-6 max-w-full py-0 font-normal",
+                "!gap-0.5 !px-1 button-focus h-6 max-w-full items-center py-0 font-normal",
                 triggerClassName,
               )}
             >
               {!isValid && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
+                <HoverCard openDelay={0}>
+                  <HoverCardTrigger asChild>
                     <span>
                       <TriangleAlertIcon className="mr-1 size-3.5 text-yellow-600 dark:text-yellow-400" />
                     </span>
-                  </TooltipTrigger>
-                  <TooltipContent
-                    showArrow={false}
-                    className="max-w-sm sm:max-w-md"
+                  </HoverCardTrigger>
+                  <HoverCardContent
                     side="top"
-                    sideOffset={4}
+                    align="start"
+                    sideOffset={6}
+                    className="!w-auto max-w-sm bg-background px-3 py-1.5 text-xs"
                   >
                     {t("modelSelect.modelUnavailable")}
-                  </TooltipContent>
-                </Tooltip>
+                  </HoverCardContent>
+                </HoverCard>
               )}
               <span
                 className={cn(
@@ -112,17 +112,14 @@ export function ModelSelect({
               className="dropdown-menu max-h-[32vh] min-w-[18rem] animate-in overflow-y-auto overflow-x-hidden rounded-md border bg-background p-2 text-popover-foreground shadow"
             >
               <DropdownMenuRadioGroup>
-                {hostedModels?.map((group) => (
-                  <div key={group.title}>
-                    <div className="px-2 py-1.5 font-semibold text-muted-foreground text-sm">
-                      {group.title}
-                    </div>
-                    {!group.models.length ? (
-                      <p className="px-2 py-2 pl-8.5 text-muted-foreground text-xs">
-                        {t("settings.account.signIn")}
-                      </p>
-                    ) : (
-                      group.models.map((model: DisplayModel) => {
+                {hostedModels
+                  ?.filter((group) => group.models.length > 0)
+                  .map((group) => (
+                    <div key={group.title}>
+                      <div className="px-2 py-1.5 font-semibold text-muted-foreground text-sm">
+                        {group.title}
+                      </div>
+                      {group.models.map((model: DisplayModel) => {
                         const isSelected = model.id === value?.id;
                         return (
                           <DropdownMenuRadioItem
@@ -149,11 +146,11 @@ export function ModelSelect({
                             </span>
                           </DropdownMenuRadioItem>
                         );
-                      })
-                    )}
-                  </div>
-                ))}
-                {!!hostedModels?.length && <DropdownMenuSeparator />}
+                      })}
+                    </div>
+                  ))}
+                {!!hostedModels?.filter((group) => group.models.length > 0)
+                  .length && <DropdownMenuSeparator />}
                 {customModels?.map((group) => (
                   <div key={group.title}>
                     {group.models.map((model: DisplayModel) => {
