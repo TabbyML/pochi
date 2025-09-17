@@ -11,7 +11,7 @@ import { useStoreDate } from "../livestore-provider";
 
 const searchSchema = z.object({
   uid: z.string().catch(() => crypto.randomUUID()),
-  date: z.number().optional(),
+  createdAt: z.number().optional(),
   prompt: z.string().optional(),
 });
 
@@ -21,15 +21,15 @@ export const Route = createFileRoute("/")({
 });
 
 function RouteComponent() {
-  const { uid, prompt, date } = Route.useSearch();
+  const { uid, prompt, createdAt } = Route.useSearch();
 
   const { users } = useUserStorage();
   const { modelList = [] } = useModelList(true);
 
   const { setDate } = useStoreDate();
   useEffect(() => {
-    setDate(date ? new Date(date) : new Date());
-  }, [date, setDate]);
+    setDate(createdAt ? new Date(createdAt) : new Date());
+  }, [createdAt, setDate]);
 
   if (!users?.pochi && modelList.length === 0) {
     return <WelcomeScreen user={users?.pochi} />;
