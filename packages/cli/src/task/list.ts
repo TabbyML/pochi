@@ -3,7 +3,7 @@ import { type Task, catalog } from "@getpochi/livekit";
 import select from "@inquirer/select";
 import chalk from "chalk";
 import { createStore } from "../livekit/store";
-import { safeShutdownStore } from "../lib/shutdown";
+import { shutdownStoreAndExit } from "../lib/store-utils";
 
 export function registerTaskListCommand(taskCommand: Command) {
   // pochi task list - List recent tasks
@@ -72,7 +72,7 @@ export function registerTaskListCommand(taskCommand: Command) {
           );
         }
       } finally {
-        await safeShutdownStore(store);
+        await shutdownStoreAndExit(store);
       }
     });
 }
