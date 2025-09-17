@@ -178,7 +178,6 @@ function formatCustomInstruction(event: RunPochiRequest["event"]) {
   return `## Instruction
 
 This task is triggered in an Github Action Workflow. Please follow user's prompt, perform the task.
-In the end, please always use "gh" command to reply the comment that triggered this task, and explain what you have done.
 
 ## Event triggering this task
 

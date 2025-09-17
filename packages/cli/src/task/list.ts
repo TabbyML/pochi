@@ -2,6 +2,7 @@ import type { Command } from "@commander-js/extra-typings";
 import { type Task, catalog } from "@getpochi/livekit";
 import select from "@inquirer/select";
 import chalk from "chalk";
+import { shutdownStoreAndExit } from "../lib/store-utils";
 import { createStore } from "../livekit/store";
 
 export function registerTaskListCommand(taskCommand: Command) {
@@ -71,7 +72,7 @@ export function registerTaskListCommand(taskCommand: Command) {
           );
         }
       } finally {
-        await store.shutdown();
+        await shutdownStoreAndExit(store);
       }
     });
 }

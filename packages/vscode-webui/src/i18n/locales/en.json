@@ -23,7 +23,8 @@
     "required": "To use Pochi, please open a folder or workspace."
   },
   "chat": {
-    "attachmentTooltip": "Attach files to chat. You can also drag and drop files or paste them into the chat input box."
+    "attachmentTooltip": "Attach files to chat. You can also drag and drop files or paste them into the chat input box.",
+    "queuedMessages": "Queued Messages ({{count}})"
   },
   "language": {
     "switcherTooltip": "Choose your preferred language with Pochi"
@@ -42,6 +43,7 @@
   "modelSelect": {
     "selectModel": "Select Model",
     "manageCustomModels": "Manage custom models...",
+    "modelUnavailable": "Model is unavailable or still loading",
     "custom": "Custom",
     "super": "Super",
     "swift": "Swift"

@@ -1,10 +1,39 @@
+import type { McpTool } from "@getpochi/tools";
+import type { ToolCallOptions } from "ai";
 import type {
   McpServerTransport,
   McpServerTransportHttp,
   McpServerTransportStdio,
-} from "@getpochi/common/configuration";
-import type { McpToolStatus } from "@getpochi/common/vscode-webui-bridge";
-import type { ToolCallOptions } from "ai";
+} from "../configuration/index.js";
+
+export interface McpServerConnection {
+  status: "stopped" | "starting" | "ready" | "error";
+  error: string | undefined;
+  tools: {
+    [toolName: string]: McpToolStatus;
+  };
+}
+
+export interface McpToolStatus extends McpTool {
+  disabled: boolean;
+}
+
+export type McpStatus = {
+  /**
+   * Connection status for each MCP server.
+   */
+  connections: {
+    [serverName: string]: McpServerConnection;
+  };
+  /**
+   * Reduced available toolset from all MCP servers, disabled tools are excluded.
+   */
+  toolset: {
+    [toolName: string]: McpTool;
+  };
+
+  instructions: string;
+};
 
 export function isStdioTransport(
   config: McpServerTransport,

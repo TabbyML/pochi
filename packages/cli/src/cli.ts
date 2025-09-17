@@ -25,6 +25,7 @@ import { registerAuthCommand } from "./auth";
 
 import { findRipgrep } from "./lib/find-ripgrep";
 import { loadAgents } from "./lib/load-agents";
+import { shutdownStoreAndExit } from "./lib/store-utils";
 import {
   containsWorkflowReference,
   replaceWorkflowReferences,
@@ -42,11 +43,15 @@ logger.debug(`pochi v${packageJson.version}`);
 
 const parsePositiveInt = (input: string): number => {
   if (!input) {
-    return program.error("error: Option must be a positive integer");
+    return program.error(
+      "The value for this option must be a positive integer.",
+    );
   }
   const result = Number.parseInt(input);
   if (Number.isNaN(result) || result <= 0) {
-    return program.error("error: Option must be a positive integer");
+    return program.error(
+      "The value for this option must be a positive integer.",
+    );
   }
   return result;
 };
@@ -89,7 +94,7 @@ const program = new Command()
     const rg = findRipgrep();
     if (!rg) {
       return program.error(
-        "ripgrep is required to run the task. Please install it first and make sure it is available in your $PATH.",
+        "ripgrep is not installed or not found in your $PATH. Please install it to continue.",
       );
     }
 
@@ -117,8 +122,6 @@ const program = new Command()
 
     await runner.run();
 
-    renderer.shutdown();
-
     const shareId = runner.shareId;
     if (shareId) {
       // FIXME(zhiming): base url is hard code, should use options.url
@@ -128,7 +131,8 @@ const program = new Command()
       console.log(`\n${chalk.bold("Task link: ")} ${shareUrl}`);
     }
 
-    await store.shutdown();
+    renderer.shutdown();
+    await shutdownStoreAndExit(store);
   });
 
 const otherOptionsGroup = "Others:";
@@ -185,7 +189,9 @@ async function parseTaskInput(options: ProgramOpts, program: Program) {
   }
 
   if (!prompt) {
-    return program.error("error: A prompt must be provided");
+    return program.error(
+      "A prompt is required. Please provide one using the --prompt option or by piping input.",
+    );
   }
 
   // Check if the prompt contains workflow references
@@ -209,7 +215,9 @@ async function createLLMConfig(
     (await createLLMConfigWithPochi(options)) ||
     (await createLLMConfigWithProviders(program, options));
   if (!llm) {
-    return program.error(`Model ${options.model} not found in configuration`);
+    return program.error(
+      `Model '${options.model}' not found. Please check your configuration or run 'pochi model list' to see available models.`,
+    );
   }
 
   return llm;
@@ -230,7 +238,9 @@ async function createLLMConfigWithVendors(
       await vendors[vendorId as keyof typeof vendors].fetchModels();
     const options = models[modelId];
     if (!options) {
-      return program.error(`Model ${modelId} not found`);
+      return program.error(
+        `Model '${modelId}' not found. Please run 'pochi model' to see available models.`,
+      );
     }
     return {
       type: "vendor",
@@ -282,7 +292,9 @@ async function createLLMConfigWithProviders(
   if (!modelProvider) return;
 
   if (!modelSetting) {
-    return program.error(`Model ${options.model} not found in configuration`);
+    return program.error(
+      `Model '${options.model}' not found. Please check your configuration or run 'pochi model' to see available models.`,
+    );
   }
 
   if (modelProvider.kind === undefined || modelProvider.kind === "openai") {

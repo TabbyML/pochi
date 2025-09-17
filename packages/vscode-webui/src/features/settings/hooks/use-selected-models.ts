@@ -1,6 +1,6 @@
 import { useModelList } from "@/lib/hooks/use-model-list";
 import type { DisplayModel } from "@getpochi/common/vscode-webui-bridge";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useSettingsStore } from "../store";
 
@@ -13,7 +13,7 @@ export type ModelGroups = ModelGroup[];
 
 export function useSelectedModels() {
   const { t } = useTranslation();
-  const { selectedModelId, updateSelectedModelId } = useSettingsStore();
+  const { selectedModel, updateSelectedModel } = useSettingsStore();
   const { modelList: models, isLoading } = useModelList(true);
   const groupedModels = useMemo<ModelGroups | undefined>(() => {
     if (!models) return undefined;
@@ -44,37 +44,36 @@ export function useSelectedModels() {
 
     return [superModels, swiftModels, customModels];
   }, [models, t]);
-  const [isModelReady, setIsModelReady] = useState(
-    !!selectedModelId &&
-      getModelIdFromModelInfo(selectedModelId, models) === selectedModelId,
-  );
 
+  const validModel = useMemo(() => {
+    return getModelFromModelInfo(selectedModel?.id, models);
+  }, [models, selectedModel]);
+
+  const isValid = !!validModel?.id && validModel.id === selectedModel?.id;
+
+  // set initial model
   useEffect(() => {
     if (!isLoading) {
-      // validate and init model
-      const validModelId = getModelIdFromModelInfo(selectedModelId, models);
-      if (validModelId !== selectedModelId) {
-        updateSelectedModelId(validModelId);
+      if (!selectedModel && !!validModel) {
+        updateSelectedModel(validModel);
       }
-      setIsModelReady(!!validModelId);
     }
-  }, [isLoading, models, selectedModelId, updateSelectedModelId]);
-
-  const selectedModel = models?.find((x) => x.id === selectedModelId);
+  }, [isLoading, validModel, selectedModel, updateSelectedModel]);
 
   return {
-    isLoading: isLoading || !isModelReady,
+    isLoading,
+    isValid,
     models,
     groupedModels,
     selectedModel,
-    updateSelectedModelId,
+    updateSelectedModel,
   };
 }
 
-function getModelIdFromModelInfo(
+function getModelFromModelInfo(
   modelId: string | undefined,
   models: DisplayModel[] | undefined,
-): string | undefined {
+) {
   if (!models?.length) return undefined;
 
   const targetModel = modelId
@@ -82,9 +81,9 @@ function getModelIdFromModelInfo(
     : undefined;
 
   if (targetModel) {
-    return targetModel.id;
+    return targetModel;
   }
 
   // return the first model by default
-  return models[0].id;
+  return models[0];
 }
