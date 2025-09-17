@@ -26,3 +26,27 @@ export const tasks$ = queryDb(
     label: "tasks",
   },
 );
+
+export const makeTasksQuery = (date: Date) => {
+  if (!date) {
+    return tasks$;
+  }
+
+  const startOfDay = new Date(date);
+  startOfDay.setHours(0, 0, 0, 0);
+
+  const endOfDay = new Date(date);
+  endOfDay.setHours(23, 59, 59, 999);
+
+  return queryDb(
+    {
+      query: sql`SELECT * FROM tasks WHERE parentId IS NULL AND createdAt BETWEEN ? AND ? ORDER BY updatedAt DESC`,
+      bindValues: [startOfDay.getTime(), endOfDay.getTime()],
+      schema: Schema.Array(tables.tasks.rowSchema),
+    },
+    {
+      label: "tasksByDate",
+      deps: [startOfDay.getTime()],
+    },
+  );
+};

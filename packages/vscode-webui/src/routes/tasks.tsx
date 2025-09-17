@@ -27,8 +27,14 @@ import {
   Wrench,
   Zap,
 } from "lucide-react";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { MdOutlineErrorOutline } from "react-icons/md";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 
 export const Route = createFileRoute("/tasks")({
   validateSearch: (search: Record<string, unknown>): { page?: number } => {
@@ -174,9 +180,10 @@ function Tasks() {
   const router = useRouter();
   const { page = 1 } = Route.useSearch();
   const { store } = useStore();
-  const allTasks = store.useQuery(catalog.queries.tasks$);
-  const totalPages = Math.ceil(allTasks.length / limit);
-  const tasks = allTasks.slice((page - 1) * limit, page * limit);
+  const [date, setDate] = useState<Date>(new Date());
+  const tasks = store.useQuery(catalog.queries.makeTasksQuery(date));
+  const totalPages = Math.ceil(tasks.length / limit);
+  const paginatedTasks = tasks.slice((page - 1) * limit, page * limit);
 
   const handlePageChange = (newPage: number) => {
     if (newPage < 1 || (totalPages && newPage > totalPages)) return;
@@ -186,39 +193,41 @@ function Tasks() {
     });
   };
 
-  if (tasks.length === 0) {
-    return (
-      <div className="flex h-screen w-full flex-col items-center justify-center">
-        <EmptyTaskPlaceholder />
-      </div>
-    );
-  }
-
   return (
     <div className="flex h-screen w-full flex-col">
       {/* Main content area with scroll */}
-      <div className="min-h-0 flex-1">
-        <ScrollArea className="h-full">
-          <div className="flex flex-col gap-4 p-4 pb-6">
-            {tasks.map((task) => (
-              <TaskRow key={task.id} task={task} />
-            ))}
-          </div>
-        </ScrollArea>
-      </div>
-
-      {/* Pagination footer */}
-      {totalPages && totalPages > 1 && (
-        <div className="flex-shrink-0 border-border/50 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-          <div className="px-3 py-2.5 sm:px-4 sm:py-3">
-            <Pagination>
-              <PaginationContent className="gap-0.5 sm:gap-1">
-                {getPaginationItems(page, totalPages, handlePageChange)}
-              </PaginationContent>
-            </Pagination>
-          </div>
+      {tasks.length === 0 ? (
+        <EmptyTaskPlaceholder />
+      ) : (
+        <div className="min-h-0 flex-1">
+          <ScrollArea className="h-full">
+            <div className="flex flex-col gap-4 p-4 pb-6">
+              {paginatedTasks.map((task) => (
+                <TaskRow key={task.id} task={task} />
+              ))}
+            </div>
+          </ScrollArea>
         </div>
       )}
+
+      {/* Pagination footer */}
+      <div className="flex-shrink-0">
+        <div className="flex items-center justify-between px-2 py-2.5 sm:py-3">
+          <DatePicker date={date} setDate={setDate} />
+          {totalPages > 1 && (
+            <div className="mr-2 flex-1 px-3 sm:px-4">
+              <Pagination>
+                <PaginationContent className="gap-0.5 sm:gap-1">
+                  {getPaginationItems(page, totalPages, handlePageChange)}
+                </PaginationContent>
+              </Pagination>
+            </div>
+          )}
+          <div className="invisible">
+            <DatePicker date={date} setDate={setDate} />
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -333,5 +342,44 @@ function GitBadge({
       <GitBranch className="shrink-0" />
       <span className="truncate">{git.branch}</span>
     </Badge>
+  );
+}
+
+function DatePicker({
+  date,
+  setDate,
+}: { date: Date; setDate: (date: Date) => void }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="flex flex-col gap-3">
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="ghost"
+            id="date"
+            className="w-24 justify-between font-normal"
+          >
+            {date ? date.toLocaleDateString() : "Select date"}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto overflow-hidden p-0" align="start">
+          <Calendar
+            mode="single"
+            selected={date}
+            captionLayout="dropdown"
+            disabled={(date) =>
+              date > new Date() || date < new Date("1900-01-01")
+            }
+            onSelect={(date) => {
+              if (date) {
+                setDate(date);
+                setOpen(false);
+              }
+            }}
+          />
+        </PopoverContent>
+      </Popover>
+    </div>
   );
 }
