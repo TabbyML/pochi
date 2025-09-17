@@ -13,7 +13,7 @@ import { hc } from "hono/client";
 import moment from "moment";
 import { funnel } from "remeda";
 import { app } from "./app";
-import type { Env as ClientEnv, DeepWriteable } from "./types";
+import type { Env as ClientEnv } from "./types";
 
 // Scoped by storeId
 export class LiveStoreClientDO
@@ -145,28 +145,12 @@ export class LiveStoreClientDO
         messages: messages,
         status: task.status,
         parentClientTaskId: task.parentId || undefined,
-        environment: {
-          info: {
-            cwd: "",
-            shell: "",
-            os: "",
-            homedir: "",
-          },
-          currentTime: new Date().toString(),
-          workspace: {
-            files: [],
-            isTruncated: false,
-            gitStatus: task.git
-              ? {
-                  origin: task.git.origin,
-                  status: "",
-                  mainBranch: "",
-                  currentBranch: task.git.branch,
-                  recentCommits: [],
-                }
-              : undefined,
-          },
-          todos: task.todos as DeepWriteable<typeof task.todos>,
+        storeId: store.storeId,
+        clientTaskData: {
+          ...task,
+          todos: task.todos.map((t) => ({ ...t })),
+          git: task.git ? { ...task.git } : null,
+          error: task.error ? { ...task.error } : null,
         },
       },
     });
