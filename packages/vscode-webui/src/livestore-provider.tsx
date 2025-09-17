@@ -4,13 +4,13 @@ import { makePersistedAdapter } from "@livestore/adapter-web";
 import LiveStoreSharedWorker from "@livestore/adapter-web/shared-worker?sharedworker&inline";
 import { LiveStoreProvider as LiveStoreProviderImpl } from "@livestore/react";
 import * as jose from "jose";
+import { Loader2 } from "lucide-react";
 import { createContext, useContext, useMemo, useState } from "react";
 import { unstable_batchedUpdates as batchUpdates } from "react-dom";
 import { useCurrentWorkspace } from "./lib/hooks/use-current-workspace";
 import { useMachineId } from "./lib/hooks/use-machine-id";
 import { usePochiCredentials } from "./lib/hooks/use-pochi-credentials";
 import LiveStoreWorker from "./livestore.worker.ts?worker&inline";
-import { Loader2 } from "lucide-react";
 
 const adapter = makePersistedAdapter({
   storage: { type: "opfs" },
