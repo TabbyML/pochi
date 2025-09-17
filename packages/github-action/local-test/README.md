@@ -51,6 +51,7 @@ This directory contains tools and scripts for testing the Pochi GitHub Action lo
 - `act-event.json` - Mock GitHub issue_comment event
 - `act-secrets.env.example` - Template for environment variables
 - `run-local-test.sh` - Main test script
+- `fetch-pr-event.sh` - Script to fetch real PR event data for testing
 - `test-workflows/` - Custom workflow files for testing
   - `test-pochi-dev.yml` - Workflow that uses local code for development
 
@@ -68,9 +69,26 @@ This directory contains tools and scripts for testing the Pochi GitHub Action lo
 
 ## Advanced Usage
 
+### Fetch Real PR Event Data
+
+You can fetch real PR event data from GitHub to test with actual PR information. This is useful for testing GitHub-related operations locally:
+
+```bash
+# Fetch PR event data using a PR comment URL
+./fetch-pr-event.sh https://github.com/Sma1lboy/pochi/pull/34#issuecomment-3301070409
+
+# Then run the local test
+./run-local-test.sh "your instruction here"
+```
+
+This script helps you:
+- Fetch real PR data to enable local testing of `gh` commands
+- Test with actual repository and PR information
+- Simulate real GitHub Actions environment locally
+
 ### Custom Event JSON
 
-You can modify `act-event.json` to simulate different GitHub events:
+You can also manually modify `act-event.json` to simulate different GitHub events:
 
 - Different issue numbers
 - Different repository names
