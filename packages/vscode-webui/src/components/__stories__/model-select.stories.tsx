@@ -101,7 +101,6 @@ export const Default: Story = {
     value: mockModels[0].models[0],
     onChange: (v) => console.log("Selected model:", v),
     isLoading: false,
-    isValid: true,
   },
 };
 
@@ -111,7 +110,6 @@ export const LoadingState: Story = {
     value: undefined,
     onChange: (v) => console.log("Selected model:", v),
     isLoading: true,
-    isValid: false,
   },
 };
 
@@ -121,16 +119,5 @@ export const NoModels: Story = {
     value: undefined,
     onChange: (v) => console.log("Selected model:", v),
     isLoading: false,
-    isValid: false,
-  },
-};
-
-export const Invalid: Story = {
-  args: {
-    models: mockModels,
-    value: mockModels[0].models[0],
-    onChange: (v) => console.log("Selected model:", v),
-    isLoading: false,
-    isValid: false,
   },
 };

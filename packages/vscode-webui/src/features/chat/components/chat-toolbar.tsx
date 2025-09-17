@@ -6,10 +6,10 @@ import { PublicShareButton } from "@/components/public-share-button";
 import { TokenUsage } from "@/components/token-usage";
 import { Button } from "@/components/ui/button";
 import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-} from "@/components/ui/hover-card";
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { ApprovalButton, type useApprovalAndRetry } from "@/features/approval";
 import { useAutoApproveGuard } from "@/features/chat";
 import { useSelectedModels } from "@/features/settings";
@@ -74,8 +74,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     groupedModels,
     selectedModel,
     isLoading: isModelsLoading,
-    isValid: isModelValid,
-    updateSelectedModel: handleSelectModel,
+    updateSelectedModelId: handleSelectModel,
   } = useSelectedModels();
 
   const autoApproveGuard = useAutoApproveGuard();
@@ -125,7 +124,6 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   } = useChatStatus({
     isReadOnly,
     isModelsLoading,
-    isModelValid,
     isLoading,
     isInputEmpty: !input.trim() && queuedMessages.length === 0,
     isFilesEmpty: files.length === 0,
@@ -205,7 +203,6 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     () => JSON.stringify(messages, null, 2),
     [messages],
   );
-
   return (
     <>
       <ApprovalButton
@@ -260,7 +257,6 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
             value={selectedModel}
             models={groupedModels}
             isLoading={isModelsLoading}
-            isValid={isModelValid}
             onChange={handleSelectModel}
           />
         </div>
@@ -285,28 +281,26 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
             modelId={selectedModel?.id}
             displayError={displayError?.message}
           />
-          <HoverCard>
-            <HoverCardTrigger asChild>
-              <span>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="button-focus h-6 w-6 p-0"
-                >
-                  <PaperclipIcon className="size-4" />
-                </Button>
-              </span>
-            </HoverCardTrigger>
-            <HoverCardContent
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => fileInputRef.current?.click()}
+                className="button-focus h-6 w-6 p-0"
+              >
+                <PaperclipIcon className="size-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent
+              showArrow={false}
+              className="max-w-[80vw]"
               side="top"
-              align="start"
-              sideOffset={6}
-              className="!w-auto max-w-sm bg-background px-3 py-1.5 text-xs"
+              sideOffset={4}
             >
               {t("chat.attachmentTooltip")}
-            </HoverCardContent>
-          </HoverCard>
+            </TooltipContent>
+          </Tooltip>
           <SubmitStopButton
             isSubmitDisabled={isSubmitDisabled}
             showStopButton={showStopButton}
