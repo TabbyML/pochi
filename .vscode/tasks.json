@@ -31,10 +31,23 @@
     },
     {
       "type": "shell",
-      "label": "dev:vscode-local-sync",
-      "command": "POCHI_LOCAL_SYNC_SERVER=true bun run watch",
+      "label": "dev:vscode-local-sync-server",
+      "command": "POCHI_LOCAL_SYNC_SERVER=true POCHI_LOCAL_SERVER=true bun run watch",
       "options": {
         "cwd": "packages/vscode"
+      },
+      "group": {
+        "kind": "none",
+        "isDefault": true
+      },
+      "isBackground": true
+    },
+    {
+      "type": "shell",
+      "label": "dev:vscode-local-sync-worker",
+      "command": "bun dev",
+      "options": {
+        "cwd": "packages/livekit-cf"
       },
       "group": {
         "kind": "none",
@@ -105,6 +118,14 @@
     {
       "label": "dev:server",
       "dependsOn": ["dev:server-website", "dev:server-server"],
+      "isBackground": true
+    },
+    {
+      "label": "dev:vscode-local-sync",
+      "dependsOn": [
+        "dev:vscode-local-sync-server",
+        "dev:vscode-local-sync-worker"
+      ],
       "isBackground": true
     }
   ]
