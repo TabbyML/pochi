@@ -30,6 +30,12 @@ import {
 import { useMemo, useState } from "react";
 import { MdOutlineErrorOutline } from "react-icons/md";
 import { useStoreDate } from "../livestore-provider";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 
 export const Route = createFileRoute("/tasks")({
   validateSearch: (search: Record<string, unknown>): { page?: number } => {
@@ -371,7 +377,7 @@ function DatePicker({
             selected={date}
             captionLayout="dropdown"
             disabled={(date) =>
-              date > new Date() || date < new Date("1900-01-01")
+              date > new Date() || date < new Date("2020-01-01")
             }
             onSelect={(date) => {
               if (date) {
