@@ -6,11 +6,13 @@ import "@livestore/wa-sqlite/dist/wa-sqlite.node.wasm" with { type: "file" };
 import "@getpochi/vendor-pochi";
 import "@getpochi/vendor-gemini-cli";
 import "@getpochi/vendor-claude-code";
+import "@getpochi/vendor-codex";
 
 // Register the models
 import "@getpochi/vendor-pochi/edge";
 import "@getpochi/vendor-gemini-cli/edge";
 import "@getpochi/vendor-claude-code/edge";
+import "@getpochi/vendor-codex/edge";
 
 import { Command } from "@commander-js/extra-typings";
 import { constants, getLogger } from "@getpochi/common";

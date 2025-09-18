@@ -181,6 +181,16 @@
         "ai": "catalog:",
       },
     },
+    "packages/vendor-codex": {
+      "name": "@getpochi/vendor-codex",
+      "version": "0.1.0",
+      "dependencies": {
+        "@ai-sdk/openai-compatible": "catalog:",
+        "@ai-sdk/provider": "catalog:",
+        "@getpochi/common": "workspace:*",
+        "ai": "catalog:",
+      },
+    },
     "packages/vendor-gemini-cli": {
       "name": "@getpochi/vendor-gemini-cli",
       "version": "0.1.0",
@@ -725,6 +735,8 @@
     "@getpochi/tools": ["@getpochi/tools@workspace:packages/tools"],
 
     "@getpochi/vendor-claude-code": ["@getpochi/vendor-claude-code@workspace:packages/vendor-claude-code"],
+
+    "@getpochi/vendor-codex": ["@getpochi/vendor-codex@workspace:packages/vendor-codex"],
 
     "@getpochi/vendor-gemini-cli": ["@getpochi/vendor-gemini-cli@workspace:packages/vendor-gemini-cli"],
 
