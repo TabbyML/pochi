@@ -16,6 +16,8 @@
   },
   "exports": {
     ".": "./src/node.ts",
-    "./edge": "./src/edge.ts"
+    "./edge": "./src/edge.ts",
+    "./edge-webview": "./src/edge-webview.ts",
+    "./node-with-proxy": "./src/node-with-proxy.ts"
   }
 }

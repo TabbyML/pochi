@@ -146,7 +146,6 @@
         "@cloudflare/workers-types": "4.20250823.0",
         "@getpochi/common": "workspace:*",
         "@getpochi/livekit": "workspace:*",
-        "@hono/zod-validator": "catalog:",
         "@livestore/adapter-cloudflare": "catalog:",
         "@livestore/livestore": "catalog:",
         "@livestore/peer-deps": "catalog:",

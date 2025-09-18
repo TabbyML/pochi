@@ -1,6 +1,7 @@
 // Register the models
 import "@getpochi/vendor-pochi/edge";
 import "@getpochi/vendor-gemini-cli/edge";
+import "@getpochi/vendor-claude-code/edge-webview";
 import "./vscode-lm";
 
 import { useSelectedModels } from "@/features/settings";
