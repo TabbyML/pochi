@@ -204,7 +204,7 @@ function Tasks() {
           <ScrollArea className="h-full">
             <div className="flex flex-col gap-4 p-4 pb-6">
               {paginatedTasks.map((task) => (
-                <TaskRow key={task.id} task={task} />
+                <TaskRow key={task.id} task={task} storeDate={date.getTime()} />
               ))}
             </div>
           </ScrollArea>
@@ -300,12 +300,12 @@ const getStatusBorderColor = (status: string): string => {
   }
 };
 
-function TaskRow({ task }: { task: Task }) {
+function TaskRow({ task, storeDate }: { task: Task; storeDate: number }) {
   const title = useMemo(() => parseTitle(task.title), [task.title]);
   return (
     <Link
       to={"/"}
-      search={{ uid: task.id, createdAt: task.createdAt.getTime() }}
+      search={{ uid: task.id, storeDate }}
       className="group cursor-pointer"
     >
       <div
