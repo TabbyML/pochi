@@ -61,21 +61,6 @@ function createClaudeCodeModelBase(
   });
 }
 
-export function createClaudeCodeModel({
-  modelId,
-  getCredentials,
-}: CreateModelOptions): LanguageModelV2 {
-  const customFetch = createPatchedFetch(
-    getCredentials as () => Promise<ClaudeCodeCredentials>,
-  );
-
-  return createClaudeCodeModelBase(
-    modelId,
-    "https://api.anthropic.com/v1",
-    customFetch,
-  );
-}
-
 function createPatchedFetch(
   getCredentials: () => Promise<ClaudeCodeCredentials>,
 ) {
@@ -90,21 +75,6 @@ function createPatchedFetch(
 
     return fetch(input, { ...init, headers });
   };
-}
-
-export function createWebviewClaudeCodeModel({
-  modelId,
-  getCredentials,
-}: CreateModelOptions): LanguageModelV2 {
-  const PROXY_URL =
-    process.env.CLAUDE_CODE_PROXY_URL || "http://localhost:54321";
-
-  const customFetch = createProxyFetch(
-    getCredentials as () => Promise<ClaudeCodeCredentials | undefined>,
-    PROXY_URL,
-  );
-
-  return createClaudeCodeModelBase(modelId, `${PROXY_URL}/v1`, customFetch);
 }
 
 function createProxyFetch(
@@ -146,4 +116,34 @@ function convertToProxyUrl(
   }
 
   return (input as Request).url.replace("https://api.anthropic.com", proxyUrl);
+}
+
+export function createClaudeCodeModel({
+  modelId,
+  getCredentials,
+}: CreateModelOptions): LanguageModelV2 {
+  const customFetch = createPatchedFetch(
+    getCredentials as () => Promise<ClaudeCodeCredentials>,
+  );
+
+  return createClaudeCodeModelBase(
+    modelId,
+    "https://api.anthropic.com/v1",
+    customFetch,
+  );
+}
+
+export function createWebviewClaudeCodeModel({
+  modelId,
+  getCredentials,
+}: CreateModelOptions): LanguageModelV2 {
+  const PROXY_URL =
+    process.env.CLAUDE_CODE_PROXY_URL || "http://localhost:54321";
+
+  const customFetch = createProxyFetch(
+    getCredentials as () => Promise<ClaudeCodeCredentials | undefined>,
+    PROXY_URL,
+  );
+
+  return createClaudeCodeModelBase(modelId, `${PROXY_URL}/v1`, customFetch);
 }
