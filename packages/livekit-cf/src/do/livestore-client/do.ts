@@ -46,8 +46,8 @@ export class LiveStoreClientDO
       getUser: async () => {
         return await this.state.storage.get<User>("user");
       },
-      signalKeepAlive: async (storeId: string) => {
-        return await this.signalKeepAlive(storeId);
+      setStoreId: (storeId: string) => {
+        this.storeId = storeId;
       },
       ASSETS: this.env.ASSETS,
     } satisfies ClientEnv);

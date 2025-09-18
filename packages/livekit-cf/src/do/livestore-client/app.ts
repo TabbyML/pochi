@@ -10,7 +10,7 @@ const store = new Hono<{ Bindings: Env }>();
 store
   .get("/:storeId/tasks/:taskId/json", async (c) => {
     const storeId = c.req.param("storeId");
-    await c.env.signalKeepAlive(storeId);
+    c.env.setStoreId(storeId);
     const store = await c.env.getStore();
     const taskId = c.req.param("taskId");
 
