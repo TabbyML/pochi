@@ -71,7 +71,7 @@ function Chat({ user, uid, prompt }: ChatProps) {
         return false;
       }
 
-      if (!autoApproveGuard.current) {
+      if (autoApproveGuard.current === "stop") {
         return false;
       }
 

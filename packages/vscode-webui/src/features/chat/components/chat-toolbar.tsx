@@ -84,7 +84,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
 
     let userEdits: UserEditsDiff[] | undefined;
     const lastCheckpointHash = findLastCheckpointFromMessages(messages);
-    if (lastCheckpointHash && autoApproveGuard.current) {
+    if (lastCheckpointHash && autoApproveGuard.current === "auto") {
       userEdits =
         (await vscodeHost.diffWithCheckpoint(lastCheckpointHash)) ?? undefined;
     }
@@ -339,7 +339,7 @@ const SubmitStopButton: React.FC<SubmitStopButtonProps> = ({
       className="button-focus h-6 w-6 p-0"
       onClick={() => {
         if (showStopButton) {
-          autoApproveGuard.current = false;
+          autoApproveGuard.current = "stop";
           onStop();
         } else {
           onSubmit();

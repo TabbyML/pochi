@@ -119,7 +119,7 @@ export function useChatSubmit({
         await new Promise((resolve) => setTimeout(resolve, 25));
       }
 
-      autoApproveGuard.current = false;
+      autoApproveGuard.current = "stop";
       if (files.length > 0) {
         try {
           const uploadedAttachments = await upload();
@@ -139,7 +139,7 @@ export function useChatSubmit({
           return;
         }
       } else if (allMessages.length > 0) {
-        autoApproveGuard.current = true;
+        autoApproveGuard.current = "auto";
         clearUploadError();
         sendMessage({
           text: allMessages.join("\n\n"),
@@ -181,7 +181,7 @@ export function useChatSubmit({
       await new Promise((resolve) => setTimeout(resolve, 25));
     }
 
-    autoApproveGuard.current = true;
+    autoApproveGuard.current = "auto";
     clearUploadError();
     sendMessage({
       text: queuedMessages.join("\n\n"),
