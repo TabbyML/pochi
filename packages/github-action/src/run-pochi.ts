@@ -1,6 +1,5 @@
 import { spawn } from "node:child_process";
 import * as core from "@actions/core";
-import type { IssueCommentCreatedEvent } from "@octokit/webhooks-types";
 import {
   getEyesReactionId,
   getProgressCommentId,
@@ -8,12 +7,7 @@ import {
 } from "./env";
 import type { GitHubManager } from "./github-manager";
 import { buildBatchOutput } from "./output-utils";
-
-export type RunPochiRequest = {
-  prompt: string;
-  event: Omit<IssueCommentCreatedEvent, "comment">;
-  commentId: number;
-};
+import { createGitHubActionSystemPrompt, type RunPochiRequest } from "./prompt";
 
 // Helper types for execution context
 interface ExecutionContext {
@@ -92,7 +86,7 @@ export async function runPochi(githubManager: GitHubManager): Promise<void> {
   // Use pochi CLI from PATH (installed by action.yml) or env var
   const pochiCliPath = process.env.POCHI_CLI_PATH || "pochi";
 
-  const instruction = formatCustomInstruction(request);
+  const instruction = createGitHubActionSystemPrompt(request, true);
   if (process.env.POCHI_GITHUB_ACTION_DEBUG) {
     console.log(`Starting pochi CLI with custom instruction\n\n${instruction}`);
   }
@@ -174,68 +168,4 @@ export async function runPochi(githubManager: GitHubManager): Promise<void> {
       );
     });
   });
-}
-
-function formatEventInfo(request: RunPochiRequest) {
-  const { event, prompt } = request;
-  const isPR = event.issue?.pull_request !== undefined;
-  const eventType = isPR ? "PULL_REQUEST_COMMENT" : "GENERAL_COMMENT";
-  const triggerPhrase = "/pochi";
-
-  return `### Issue Title
-${event.issue?.title || "No title"}
-
-### Issue Author
-${event.issue?.user?.login || "unknown"}
-
-### Issue State
-${event.issue?.state?.toUpperCase() || "UNKNOWN"}
-
-### PR or Issue Body
-${event.issue?.body || "No description provided"}
-
-### Comments
-No comments
-
-### Event Type
-${eventType}
-
-### Is PR
-${isPR}
-
-### Trigger Context
-${isPR ? `pull request comment with '${triggerPhrase}'` : `issue comment with '${triggerPhrase}'`}
-
-### Repository
-${event.repository.full_name}
-
-### Issue Number
-${event.issue?.number || "unknown"}
-
-### Trigger Username
-${event.sender?.login || "unknown"}
-
-### Trigger Display Name
-${event.sender?.name || event.sender?.login || "Unknown"}
-
-### Trigger Phrase
-${triggerPhrase}
-
-### Trigger Comment
-${prompt}`;
-}
-
-function formatCustomInstruction(request: RunPochiRequest) {
-  return `## Instruction
-
-This task is triggered in an Github Action Workflow. Please follow user's prompt, perform the task.
-
-## Event triggering this task:
-
-${formatEventInfo(request)}
-
-## Additional Notes
-* If this event has a corresponding PR, always checkout the PR branch first (use gh)
-
-`.trim();
 }

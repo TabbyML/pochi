@@ -1,0 +1,113 @@
+import type { IssueCommentCreatedEvent } from "@octokit/webhooks-types";
+
+export type RunPochiRequest = {
+  prompt: string;
+  event: Omit<IssueCommentCreatedEvent, "comment">;
+  commentId: number;
+};
+
+export function createGitHubActionSystemPrompt(
+  request: RunPochiRequest,
+  includeSnapshot = true,
+): string {
+  return `${getBaseSystemPrompt()}
+
+${getGitHubActionRulesSection()}
+${includeSnapshot ? getEventSnapshotSection(request) : ""}
+${getAdditionalNotesSection()}`.trim();
+}
+
+function getBaseSystemPrompt(): string {
+  return `## GitHub Action Task Execution
+
+This task is triggered in a GitHub Action Workflow. You are operating within a GitHub repository context and should follow the user's prompt to perform the requested task.
+
+You have access to the full repository and can make changes, run commands, and interact with the GitHub API as needed.`;
+}
+
+function getGitHubActionRulesSection(): string {
+  return `====
+
+GITHUB ACTION RULES
+
+- You are operating within a GitHub Action environment with access to the repository
+- All file operations should be relative to the repository root
+- You can use 'gh' CLI commands to interact with GitHub (PRs, issues, etc.)
+- If this event corresponds to a PR, always checkout the PR branch first using 'gh pr checkout'
+- When making changes, ensure they are appropriate for the repository and follow existing patterns
+- Be mindful of repository permissions and only make changes that are requested
+- Use git commands appropriately for version control operations
+- Consider the impact of your changes on CI/CD pipelines and other workflows`;
+}
+
+
+function getEventSnapshotSection(request: RunPochiRequest): string {
+  return `====
+
+EVENT SNAPSHOT
+
+## Event triggering this task:
+
+${formatEventSnapshot(request)}`;
+}
+
+function getAdditionalNotesSection(): string {
+  return `====
+
+ADDITIONAL NOTES
+
+- If this event has a corresponding PR, always checkout the PR branch first (use gh pr checkout)
+- Consider the context of the issue/PR when making changes
+- Ensure your changes align with the repository's coding standards and practices
+- Use appropriate commit messages if making git commits
+- Be concise and focused in your responses within the GitHub Action context`;
+}
+
+function formatEventSnapshot(request: RunPochiRequest): string {
+  const { event, prompt } = request;
+  const isPR = event.issue?.pull_request !== undefined;
+  const eventType = isPR ? "PULL_REQUEST_COMMENT" : "GENERAL_COMMENT";
+  const triggerPhrase = "/pochi";
+
+  return `### Issue Title
+${event.issue?.title || "No title"}
+
+### Issue Author
+${event.issue?.user?.login || "unknown"}
+
+### Issue State
+${event.issue?.state?.toUpperCase() || "UNKNOWN"}
+
+### PR or Issue Body
+${event.issue?.body || "No description provided"}
+
+### Comments
+No comments
+
+### Event Type
+${eventType}
+
+### Is PR
+${isPR}
+
+### Trigger Context
+${isPR ? `pull request comment with '${triggerPhrase}'` : `issue comment with '${triggerPhrase}'`}
+
+### Repository
+${event.repository.full_name}
+
+### Issue Number
+${event.issue?.number || "unknown"}
+
+### Trigger Username
+${event.sender?.login || "unknown"}
+
+### Trigger Display Name
+${event.sender?.name || event.sender?.login || "Unknown"}
+
+### Trigger Phrase
+${triggerPhrase}
+
+### Trigger Comment
+${prompt}`;
+}

@@ -119,6 +119,9 @@
         "@octokit/rest": "^22.0.0",
         "@octokit/webhooks-types": "^7.6.1",
       },
+      "devDependencies": {
+        "vitest": "^3.2.4",
+      },
     },
     "packages/livekit": {
       "name": "@getpochi/livekit",
@@ -146,7 +149,6 @@
         "@cloudflare/workers-types": "4.20250823.0",
         "@getpochi/common": "workspace:*",
         "@getpochi/livekit": "workspace:*",
-        "@hono/zod-validator": "catalog:",
         "@livestore/adapter-cloudflare": "catalog:",
         "@livestore/livestore": "catalog:",
         "@livestore/peer-deps": "catalog:",
