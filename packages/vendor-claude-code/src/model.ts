@@ -133,7 +133,7 @@ export function createClaudeCodeModel({
   );
 }
 
-export function createWebviewClaudeCodeModel({
+export function createEdgeClaudeCodeModel({
   modelId,
   getCredentials,
 }: CreateModelOptions): LanguageModelV2 {

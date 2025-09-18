@@ -1,10 +1,8 @@
 import { registerModel } from "@getpochi/common/vendor/edge";
-import { createClaudeCodeModel, createWebviewClaudeCodeModel } from "./model";
+import { createClaudeCodeModel, createEdgeClaudeCodeModel } from "./model";
 import { VendorId } from "./types";
 
 const modelCreator =
-  typeof process !== "undefined" && process.versions != null
-    ? createClaudeCodeModel
-    : createWebviewClaudeCodeModel;
+  "window" in globalThis ? createEdgeClaudeCodeModel : createClaudeCodeModel;
 
 registerModel(VendorId, modelCreator);

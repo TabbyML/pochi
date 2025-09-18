@@ -6,7 +6,7 @@ import { ClaudeCode } from "./vendor";
 
 const logger = getLogger(`${VendorId}-node`);
 
-export const isVSCodeEnvironment = (): boolean => {
+const isVSCodeEnvironment = (): boolean => {
   if (typeof process !== "undefined") {
     if (process.env.VSCODE_PID) {
       return true;
