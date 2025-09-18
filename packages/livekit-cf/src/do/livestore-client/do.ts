@@ -90,12 +90,13 @@ export class LiveStoreClientDO
       });
     }
 
-    await this.state.storage.setAlarm(Date.now() + 1_000);
+    await this.state.storage.setAlarm(Date.now() + 30_000);
   }
 
   alarm(_alarmInfo?: AlarmInvocationInfo): void | Promise<void> {}
 
   async syncUpdateRpc(payload: unknown) {
+    await this.keepAliveAndInitSubscription();
     await handleSyncUpdateRpc(payload);
   }
 

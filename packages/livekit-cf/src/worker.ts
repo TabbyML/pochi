@@ -36,6 +36,7 @@ app
             const id = c.env.CLIENT_DO.idFromName(storeId);
             const stub = c.env.CLIENT_DO.get(id);
             await stub.setUser(user);
+            await stub.signalKeepAlive(storeId);
           },
         },
       });

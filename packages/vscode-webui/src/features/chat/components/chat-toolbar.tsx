@@ -6,10 +6,10 @@ import { PublicShareButton } from "@/components/public-share-button";
 import { TokenUsage } from "@/components/token-usage";
 import { Button } from "@/components/ui/button";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
 import { ApprovalButton, type useApprovalAndRetry } from "@/features/approval";
 import { useAutoApproveGuard } from "@/features/chat";
 import { useSelectedModels } from "@/features/settings";
@@ -73,8 +73,9 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   const {
     groupedModels,
     selectedModel,
+    selectedModelFromStore, // for fallback display
     isLoading: isModelsLoading,
-    updateSelectedModelId: handleSelectModel,
+    updateSelectedModel,
   } = useSelectedModels();
 
   const autoApproveGuard = useAutoApproveGuard();
@@ -84,7 +85,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
 
     let userEdits: UserEditsDiff[] | undefined;
     const lastCheckpointHash = findLastCheckpointFromMessages(messages);
-    if (lastCheckpointHash && autoApproveGuard.current) {
+    if (lastCheckpointHash && autoApproveGuard.current === "auto") {
       userEdits =
         (await vscodeHost.diffWithCheckpoint(lastCheckpointHash)) ?? undefined;
     }
@@ -124,6 +125,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   } = useChatStatus({
     isReadOnly,
     isModelsLoading,
+    isModelValid: !!selectedModel,
     isLoading,
     isInputEmpty: !input.trim() && queuedMessages.length === 0,
     isFilesEmpty: files.length === 0,
@@ -203,6 +205,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     () => JSON.stringify(messages, null, 2),
     [messages],
   );
+
   return (
     <>
       <ApprovalButton
@@ -254,10 +257,11 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
       <div className="my-2 flex shrink-0 justify-between gap-5 overflow-x-hidden">
         <div className="flex items-center gap-2 overflow-x-hidden truncate">
           <ModelSelect
-            value={selectedModel}
+            value={selectedModel || selectedModelFromStore}
             models={groupedModels}
             isLoading={isModelsLoading}
-            onChange={handleSelectModel}
+            isValid={!!selectedModel}
+            onChange={updateSelectedModel}
           />
         </div>
 
@@ -281,26 +285,28 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
             modelId={selectedModel?.id}
             displayError={displayError?.message}
           />
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => fileInputRef.current?.click()}
-                className="button-focus h-6 w-6 p-0"
-              >
-                <PaperclipIcon className="size-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent
-              showArrow={false}
-              className="max-w-[80vw]"
+          <HoverCard>
+            <HoverCardTrigger asChild>
+              <span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="button-focus h-6 w-6 p-0"
+                >
+                  <PaperclipIcon className="size-4" />
+                </Button>
+              </span>
+            </HoverCardTrigger>
+            <HoverCardContent
               side="top"
-              sideOffset={4}
+              align="start"
+              sideOffset={6}
+              className="!w-auto max-w-sm bg-background px-3 py-1.5 text-xs"
             >
               {t("chat.attachmentTooltip")}
-            </TooltipContent>
-          </Tooltip>
+            </HoverCardContent>
+          </HoverCard>
           <SubmitStopButton
             isSubmitDisabled={isSubmitDisabled}
             showStopButton={showStopButton}
@@ -339,7 +345,7 @@ const SubmitStopButton: React.FC<SubmitStopButtonProps> = ({
       className="button-focus h-6 w-6 p-0"
       onClick={() => {
         if (showStopButton) {
-          autoApproveGuard.current = false;
+          autoApproveGuard.current = "stop";
           onStop();
         } else {
           onSubmit();

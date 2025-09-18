@@ -28,7 +28,7 @@ export const RetryApprovalButton: React.FC<RetryApprovalButtonProps> = ({
 
   const autoApproveGuard = useAutoApproveGuard();
   const onAccept = useCallback(() => {
-    autoApproveGuard.current = true;
+    autoApproveGuard.current = "auto";
     doRetry();
   }, [autoApproveGuard, doRetry]);
 

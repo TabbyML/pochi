@@ -43,6 +43,7 @@
   "modelSelect": {
     "selectModel": "モデルを選択",
     "manageCustomModels": "カスタムモデルを管理...",
+    "modelUnavailable": "モデルが利用できないか、読み込み中です。",
     "custom": "カスタム",
     "super": "加強",
     "swift": "極速"

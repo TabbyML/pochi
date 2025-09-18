@@ -2,7 +2,11 @@ import { createContext } from "react";
 import type { ToolCallLifeCycle } from "../tool-call-life-cycle";
 
 export interface ChatState {
-  autoApproveGuard: React.RefObject<boolean>;
+  // Auto approve guard have three modes:
+  // "auto": auto execute tool call run, and auto start next round (sendAutomaticWhen === true)
+  // "manual": manual execute tool call run, and auto start next round (sendAutomaticWhen === true)
+  // "stop": stop auto execute tool call run, and stop next round (sendAutomaticWhen === false)
+  autoApproveGuard: React.RefObject<"auto" | "manual" | "stop">;
   abortController: React.RefObject<AbortController>;
   getToolCallLifeCycle: (key: ToolCallLifeCycleKey) => ToolCallLifeCycle;
   executingToolCalls: ToolCallLifeCycle[];
