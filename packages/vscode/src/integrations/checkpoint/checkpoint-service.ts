@@ -142,7 +142,7 @@ export class CheckpointService implements vscode.Disposable {
     }
     try {
       const changes = await this.shadowGit.getDiff(from, to);
-      return filterGitChanges(changes);
+      return filterGitChanges(changes, 48 * 1024); // 48 KB
     } catch (error) {
       const errorMessage = toErrorMessage(error);
       logger.error(
