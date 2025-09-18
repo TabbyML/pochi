@@ -1,6 +1,6 @@
 import { getLogger } from "@getpochi/common";
-import { VendorId } from "./types";
 import { initializeProxy } from "./proxy";
+import { VendorId } from "./types";
 
 const logger = getLogger(`${VendorId}-node-proxy`);
 

@@ -55,7 +55,8 @@ export async function startProxyServer(
 
     server.listen(port, host, () => {
       const address = server.address();
-      const actualPort = typeof address === "object" && address ? address.port : port;
+      const actualPort =
+        typeof address === "object" && address ? address.port : port;
       const url = `http://${host}:${actualPort}`;
       logger.info(`Claude Code proxy server started at ${url}`);
 
@@ -130,7 +131,8 @@ async function handleProxyRequest(
   // Override with required headers - make it look like a server request
   headers.host = "api.anthropic.com";
   headers.authorization = `Bearer ${credentials.accessToken}`;
-  headers["anthropic-beta"] = "oauth-2025-04-20,claude-code-20250219,interleaved-thinking-2025-05-14,fine-grained-tool-streaming-2025-05-14";
+  headers["anthropic-beta"] =
+    "oauth-2025-04-20,claude-code-20250219,interleaved-thinking-2025-05-14,fine-grained-tool-streaming-2025-05-14";
   headers["anthropic-version"] = "2023-06-01";
 
   const body = await collectRequestBody(req);
@@ -148,7 +150,11 @@ async function handleProxyRequest(
 
     const responseHeaders: Record<string, string> = {};
     response.headers.forEach((value, key) => {
-      if (!["content-encoding", "content-length", "transfer-encoding"].includes(key.toLowerCase())) {
+      if (
+        !["content-encoding", "content-length", "transfer-encoding"].includes(
+          key.toLowerCase(),
+        )
+      ) {
         responseHeaders[key] = value;
       }
     });
