@@ -135,7 +135,7 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
   const newTaskUid = newTaskInput?._meta?.uid;
 
   const onManualRunSubtask = useCallback(() => {
-    if (!newTaskUid || !newTaskInput) {
+    if (!newTaskInput || !newTaskUid) {
       return;
     }
     navigate({

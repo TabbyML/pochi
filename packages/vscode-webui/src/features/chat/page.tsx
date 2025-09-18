@@ -1,14 +1,11 @@
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 import { WorkspaceRequiredPlaceholder } from "@/components/workspace-required-placeholder";
 import { ChatContextProvider, useHandleChatEvents } from "@/features/chat";
 import { usePendingModelAutoStart } from "@/features/retry";
-
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
 import { useCurrentWorkspace } from "@/lib/hooks/use-current-workspace";
 import { useCustomAgent } from "@/lib/hooks/use-custom-agents";
-import { cn } from "@/lib/utils";
 import { useChat } from "@ai-sdk/react";
 import { formatters } from "@getpochi/common";
 import type { UserInfo } from "@getpochi/common/configuration";
@@ -144,7 +141,11 @@ function Chat({ user, uid, prompt, subtask, completedSubtaskUid }: ChatProps) {
     retry,
   });
 
-  const taskCompleted = useSubtaskCompleted(isSubTask, chat.messages);
+  const taskCompleted = useSubtaskCompleted(
+    isSubTask,
+    !!subtask?.manualRun,
+    chat.messages,
+  );
   useCompleteSubtask({ ...chat, completedSubtaskUid });
 
   useScrollToBottom({
@@ -232,7 +233,7 @@ const SubtaskHeader: React.FC<{
 }> = ({ subtask, uid, parentId, taskCompleted }) => {
   return (
     <>
-      <div className="flex items-center border-gray-200/30 py-1">
+      <div className="flex items-center border-gray-200/30 px-4 py-1">
         <Link
           to="/"
           search={{
@@ -240,20 +241,20 @@ const SubtaskHeader: React.FC<{
             completedSubtaskUid: taskCompleted ? uid : undefined,
           }}
           replace={true}
-          className={cn(
-            buttonVariants({ variant: "ghost" }),
-            "!text-primary-foreground gap-1",
-          )}
+          viewTransition
         >
-          <ChevronLeft className="mr-1.5 size-4" />
-          <Button variant={taskCompleted ? "default" : "ghost"} size="xs">
-            {taskCompleted ? "Finish" : "Back"}
+          <Button
+            variant={taskCompleted ? "default" : "ghost"}
+            size="sm"
+            className="h-8 px-3"
+          >
+            <ChevronLeft className="size-4" />
+            {taskCompleted && "Finish"}
           </Button>
         </Link>
-        <Badge variant="secondary" className={cn("mr-1 ml-2 py-0")}>
-          {subtask?.agent ?? "Subtask"}
-        </Badge>
-        <span className="mx-2">{subtask?.description ?? ""}</span>
+        <span className="ml-2 text-accent-foreground first-letter:capitalize">
+          {subtask?.description ?? ""}
+        </span>
       </div>
       <Separator className="mt-1 mb-2" />
     </>

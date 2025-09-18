@@ -284,7 +284,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
             buildEnvironment={buildEnvironment}
             todos={todos}
           />
-          {!isReadOnly && (
+          {!isSubTask && (
             <PublicShareButton
               task={task}
               disabled={isReadOnly || isModelsLoading}

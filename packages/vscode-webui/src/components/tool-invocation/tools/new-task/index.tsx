@@ -65,6 +65,7 @@ export const newTaskTool: React.FC<NewTaskToolProps> = ({
                     },
                   }}
                   replace={true}
+                  viewTransition
                 >
                   {toolTitle}
                 </Link>
