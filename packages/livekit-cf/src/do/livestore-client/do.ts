@@ -8,7 +8,7 @@ import { type Store, type Unsubscribe, nanoid } from "@livestore/livestore";
 import { handleSyncUpdateRpc } from "@livestore/sync-cf/client";
 import { hc } from "hono/client";
 import moment from "moment";
-import { funnel } from "remeda";
+import * as runExclusive from "run-exclusive";
 import { app } from "./app";
 import type { Env as ClientEnv } from "./types";
 
@@ -27,6 +27,8 @@ export class LiveStoreClientDO
     readonly env: Env,
   ) {
     super(state, env);
+
+    this.onTasksUpdate = runExclusive.buildMethod(this.onTasksUpdate);
   }
 
   async setUser(user: User): Promise<void> {
@@ -86,7 +88,7 @@ export class LiveStoreClientDO
     if (this.storeSubscription === undefined) {
       this.storeSubscription = store.subscribe(catalog.queries.tasks$, {
         // FIXME(meng): implement this with store.events stream when it's ready
-        onUpdate: (tasks) => this.onTasksUpdate.call(tasks),
+        onUpdate: this.onTasksUpdate,
       });
     }
 
@@ -100,30 +102,23 @@ export class LiveStoreClientDO
     await handleSyncUpdateRpc(payload);
   }
 
-  private onTasksUpdate = funnel(
-    async (tasks: readonly Task[] | undefined) => {
-      if (!tasks) return;
-      const store = await this.getStore();
-      const now = moment();
-      const updatedTasks = tasks.filter((task) =>
-        moment(task.updatedAt).isAfter(now.subtract(1, "minute")),
-      );
+  private onTasksUpdate = async (tasks: readonly Task[] | undefined) => {
+    if (!tasks) return;
+    const store = await this.getStore();
+    const now = moment();
+    const updatedTasks = tasks.filter((task) =>
+      moment(task.updatedAt).isAfter(now.subtract(1, "minute")),
+    );
 
-      if (!updatedTasks.length) return;
+    if (!updatedTasks.length) return;
 
-      console.log(`onTasksUpdate: persisting ${updatedTasks.length} tasks`);
-      await Promise.all(
-        updatedTasks.map((task) =>
-          this.persistTask(store, task).catch(console.error),
-        ),
-      );
-    },
-    {
-      minGapMs: 1000,
-      triggerAt: "start",
-      reducer: (_, rhs: readonly Task[]) => rhs,
-    },
-  );
+    console.log(`onTasksUpdate: persisting ${updatedTasks.length} tasks`);
+    await Promise.all(
+      updatedTasks.map((task) =>
+        this.persistTask(store, task).catch(console.error),
+      ),
+    );
+  };
 
   private async persistTask(store: Store<typeof catalog.schema>, task: Task) {
     const { sub: userId } = decodeStoreId(store.storeId);

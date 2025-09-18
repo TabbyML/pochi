@@ -15,7 +15,7 @@
     "jose": "catalog:",
     "zod": "catalog:",
     "moment": "catalog:",
-    "remeda": "catalog:",
+    "run-exclusive": "catalog:",
     "ai": "catalog:"
   },
   "devDependencies": {
