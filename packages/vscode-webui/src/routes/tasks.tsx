@@ -181,7 +181,7 @@ function Tasks() {
   const router = useRouter();
   const { page = 1 } = Route.useSearch();
   const { store } = useStore();
-  const { date, setDate } = useStoreDate();
+  const { storeDate, setStoreDate } = useStoreDate();
   const tasks = store.useQuery(catalog.queries.tasks$);
   const totalPages = Math.ceil(tasks.length / limit);
   const paginatedTasks = tasks.slice((page - 1) * limit, page * limit);
@@ -198,13 +198,17 @@ function Tasks() {
     <div className="flex h-screen w-full flex-col">
       {/* Main content area with scroll */}
       {tasks.length === 0 ? (
-        <EmptyTaskPlaceholder />
+        <EmptyTaskPlaceholder date={storeDate} />
       ) : (
         <div className="min-h-0 flex-1">
           <ScrollArea className="h-full">
             <div className="flex flex-col gap-4 p-4 pb-6">
               {paginatedTasks.map((task) => (
-                <TaskRow key={task.id} task={task} storeDate={date.getTime()} />
+                <TaskRow
+                  key={task.id}
+                  task={task}
+                  storeDate={storeDate.getTime()}
+                />
               ))}
             </div>
           </ScrollArea>
@@ -214,7 +218,7 @@ function Tasks() {
       {/* Pagination footer */}
       <div className="flex-shrink-0">
         <div className="flex items-center justify-between px-2 py-2.5 sm:py-3">
-          <DatePicker date={date} setDate={setDate} />
+          <DatePicker date={storeDate} setDate={setStoreDate} />
           {totalPages > 1 && (
             <div className="mr-2 flex-1 px-3 sm:px-4">
               <Pagination>
@@ -224,22 +228,20 @@ function Tasks() {
               </Pagination>
             </div>
           )}
-          <div className="invisible">
-            <DatePicker date={date} setDate={setDate} />
-          </div>
+          <div className="w-24" />
         </div>
       </div>
     </div>
   );
 }
 
-function EmptyTaskPlaceholder() {
+function EmptyTaskPlaceholder({ date }: { date: Date }) {
   const { navigate } = useRouter();
   return (
     <div className="flex h-full select-none flex-col items-center justify-center p-5 text-center text-gray-500 dark:text-gray-300">
       <h2 className="mb-2 flex items-center gap-3 font-semibold text-2xl text-gray-700 dark:text-gray-100">
         <TerminalIcon />
-        No tasks found
+        No tasks found for {date.toLocaleDateString()}
       </h2>
       <p className="mb-4 leading-relaxed">
         Create a new task to get started with Pochi

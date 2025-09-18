@@ -26,10 +26,10 @@ function RouteComponent() {
   const { users } = useUserStorage();
   const { modelList = [] } = useModelList(true);
 
-  const { setDate } = useStoreDate();
+  const { setStoreDate } = useStoreDate();
   useEffect(() => {
-    setDate(storeDate ? new Date(storeDate) : new Date());
-  }, [storeDate, setDate]);
+    setStoreDate(storeDate ? new Date(storeDate) : new Date());
+  }, [storeDate, setStoreDate]);
 
   if (!users?.pochi && modelList.length === 0) {
     return <WelcomeScreen user={users?.pochi} />;
