@@ -73,9 +73,9 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   const {
     groupedModels,
     selectedModel,
+    selectedModelFromStore, // for fallback display
     isLoading: isModelsLoading,
-    isValid: isModelValid,
-    updateSelectedModel: handleSelectModel,
+    updateSelectedModel,
   } = useSelectedModels();
 
   const autoApproveGuard = useAutoApproveGuard();
@@ -125,7 +125,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   } = useChatStatus({
     isReadOnly,
     isModelsLoading,
-    isModelValid,
+    isModelValid: !!selectedModel,
     isLoading,
     isInputEmpty: !input.trim() && queuedMessages.length === 0,
     isFilesEmpty: files.length === 0,
@@ -257,11 +257,11 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
       <div className="my-2 flex shrink-0 justify-between gap-5 overflow-x-hidden">
         <div className="flex items-center gap-2 overflow-x-hidden truncate">
           <ModelSelect
-            value={selectedModel}
+            value={selectedModel || selectedModelFromStore}
             models={groupedModels}
             isLoading={isModelsLoading}
-            isValid={isModelValid}
-            onChange={handleSelectModel}
+            isValid={!!selectedModel}
+            onChange={updateSelectedModel}
           />
         </div>
 

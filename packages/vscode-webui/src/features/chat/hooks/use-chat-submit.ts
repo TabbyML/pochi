@@ -110,7 +110,7 @@ export function useChatSubmit({
       if (content) {
         allMessages.push(content);
       }
-      if (isSubmitDisabled && allMessages.length === 0) {
+      if (isSubmitDisabled) {
         return;
       }
 
@@ -172,7 +172,7 @@ export function useChatSubmit({
     // Compacting is not allowed to be stopped.
     if (newCompactTaskPending) return;
 
-    if (isSubmitDisabled && queuedMessages.length === 0) {
+    if (isSubmitDisabled || queuedMessages.length === 0) {
       return;
     }
 

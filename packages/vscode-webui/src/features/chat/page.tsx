@@ -103,13 +103,12 @@ function Chat({ user, uid, prompt }: ChatProps) {
 
   const { messages, sendMessage, status } = chat;
   const renderMessages = useMemo(() => formatters.ui(messages), [messages]);
-  const { isLoading: isModelsLoading, isValid: isModelValid } =
-    useSelectedModels();
+  const { isLoading: isModelsLoading, selectedModel } = useSelectedModels();
   const isLoading = status === "streaming" || status === "submitted";
 
   const approvalAndRetry = useApprovalAndRetry({
     ...chat,
-    showApproval: !isLoading && !isModelsLoading && isModelValid,
+    showApproval: !isLoading && !isModelsLoading && !!selectedModel,
   });
 
   const { pendingApproval, retry } = approvalAndRetry;
@@ -126,7 +125,7 @@ function Chat({ user, uid, prompt }: ChatProps) {
       messages.length === 1 &&
       !isReadOnly &&
       !isModelsLoading &&
-      isModelValid,
+      !!selectedModel,
     task,
     retry,
   });
@@ -145,7 +144,7 @@ function Chat({ user, uid, prompt }: ChatProps) {
       (pendingApproval?.name === "retry" ? pendingApproval.error : undefined);
 
   useHandleChatEvents(
-    isLoading || isModelsLoading || !isModelValid || isReadOnly
+    isLoading || isModelsLoading || !selectedModel || isReadOnly
       ? undefined
       : sendMessage,
   );

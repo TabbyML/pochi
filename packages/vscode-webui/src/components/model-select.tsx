@@ -24,11 +24,14 @@ import LoadingWrapper from "@/components/loading-wrapper";
 import type { ModelGroups } from "@/features/settings";
 import type { DisplayModel } from "@getpochi/common/vscode-webui-bridge";
 import { DropdownMenuPortal } from "@radix-ui/react-dropdown-menu";
+import { pick } from "remeda";
+
+type ModelSelectValue = Pick<DisplayModel, "id" | "name">;
 
 interface ModelSelectProps {
   models: ModelGroups | undefined;
-  value: DisplayModel | undefined;
-  onChange: (v: DisplayModel) => void;
+  value: ModelSelectValue | undefined;
+  onChange: (v: ModelSelectValue) => void;
   isLoading?: boolean;
   isValid?: boolean;
   triggerClassName?: string;
@@ -48,7 +51,7 @@ export function ModelSelect({
   const customModels = models?.filter((x) => x.isCustom);
 
   const onSelectModel = (v: DisplayModel) => {
-    onChange(v);
+    onChange(pick(v, ["id", "name"]));
   };
 
   return (

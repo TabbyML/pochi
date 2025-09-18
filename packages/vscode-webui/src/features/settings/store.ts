@@ -12,8 +12,10 @@ export type AutoApprove = Record<
   mcp: boolean;
 };
 
+export type SelectedModelInStore = Pick<DisplayModel, "id" | "name">;
+
 export interface SettingsState {
-  selectedModel: DisplayModel | undefined;
+  selectedModel: SelectedModelInStore | undefined;
   autoApproveActive: boolean;
   autoApproveSettings: AutoApprove;
 
@@ -22,7 +24,9 @@ export interface SettingsState {
   enablePochiModels: boolean;
 
   updateAutoApproveSettings: (data: Partial<AutoApprove>) => void;
-  updateSelectedModel: (selectedModel: DisplayModel | undefined) => void;
+  updateSelectedModel: (
+    selectedModel: SelectedModelInStore | undefined,
+  ) => void;
   updateAutoApproveActive: (value: boolean) => void;
   updateIsDevMode: (value: boolean) => void;
 
@@ -46,7 +50,7 @@ export const useSettingsStore = create<SettingsState>()(
 
       enablePochiModels: false,
 
-      updateSelectedModel: (selectedModel: DisplayModel | undefined) =>
+      updateSelectedModel: (selectedModel: SelectedModelInStore | undefined) =>
         set({ selectedModel }),
 
       updateAutoApproveSettings: (data) =>
