@@ -251,14 +251,9 @@ export async function initializeProxy(): Promise<string> {
     const proxy = await startProxyServer({
       port: 54321,
       getCredentials: async () => {
-        try {
-          const vendor = getVendor("claude-code");
-          const creds = await vendor.getCredentials();
-          return creds as ClaudeCodeCredentials | undefined;
-        } catch (error) {
-          logger.error("Failed to get credentials:", error);
-          return undefined;
-        }
+        const vendor = getVendor("claude-code");
+        const creds = await vendor.getCredentials();
+        return creds as ClaudeCodeCredentials | undefined;
       },
     });
 
