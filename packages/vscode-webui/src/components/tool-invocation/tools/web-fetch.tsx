@@ -1,4 +1,5 @@
 import { addLineBreak } from "@/lib/utils/file";
+import { useTranslation } from "react-i18next";
 import { StatusIcon } from "../status-icon";
 import { ExpandableToolContainer } from "../tool-container";
 import type { ToolProps } from "../types";
@@ -8,6 +9,7 @@ export const webFetchTool: React.FC<ToolProps<any>> = ({
   tool,
   isExecuting,
 }) => {
+  const { t } = useTranslation();
   const url =
     typeof tool.input === "object" &&
     "url" in tool.input &&
@@ -19,7 +21,7 @@ export const webFetchTool: React.FC<ToolProps<any>> = ({
     <>
       <StatusIcon isExecuting={isExecuting} tool={tool} />
       <span className="ml-2" />
-      {"Reading "}
+      {t("toolInvocation.reading")}
       {url && (
         <a href={url} target="_blank" className="ml-1" rel="noreferrer">
           {addLineBreak(url)}
