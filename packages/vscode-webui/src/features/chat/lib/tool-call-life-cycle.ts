@@ -512,7 +512,7 @@ function convertState(state: ToolUIPart["state"]) {
   return "result";
 }
 
-function extractCompletionResult(store: Store, uid: string) {
+export function extractCompletionResult(store: Store, uid: string) {
   const lastMessage = store
     .query(catalog.queries.makeMessagesQuery(uid))
     .map((x) => x.data as Message)

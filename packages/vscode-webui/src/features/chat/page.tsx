@@ -1,8 +1,10 @@
-import { buttonVariants } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { WorkspaceRequiredPlaceholder } from "@/components/workspace-required-placeholder";
 import { ChatContextProvider, useHandleChatEvents } from "@/features/chat";
 import { usePendingModelAutoStart } from "@/features/retry";
 
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 import { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
 import { useCurrentWorkspace } from "@/lib/hooks/use-current-workspace";
 import { useCustomAgent } from "@/lib/hooks/use-custom-agents";
@@ -25,14 +27,18 @@ import { ChatArea } from "./components/chat-area";
 import { ChatToolbar } from "./components/chat-toolbar";
 import { ErrorMessageView } from "./components/error-message-view";
 import { useScrollToBottom } from "./hooks/use-scroll-to-bottom";
+import {
+  useCompleteSubtask,
+  useSubtaskCompleted,
+} from "./hooks/use-subtask-completed";
 import { useAutoApproveGuard, useChatAbortController } from "./lib/chat-state";
 import { onOverrideMessages } from "./lib/on-override-messages";
 import { useLiveChatKitGetters } from "./lib/use-live-chat-kit-getters";
 
-export function ChatPage({ uid, user, prompt, subtask }: ChatProps) {
+export function ChatPage(props: ChatProps) {
   return (
     <ChatContextProvider>
-      <Chat user={user} uid={uid} prompt={prompt} subtask={subtask} />
+      <Chat {...props} />
     </ChatContextProvider>
   );
 }
@@ -48,9 +54,10 @@ interface ChatProps {
   user?: UserInfo;
   prompt?: string;
   subtask?: SubtaskInfo;
+  completedSubtaskUid?: string;
 }
 
-function Chat({ user, uid, prompt, subtask }: ChatProps) {
+function Chat({ user, uid, prompt, subtask, completedSubtaskUid }: ChatProps) {
   const { store } = useStore();
   const todosRef = useRef<Todo[] | undefined>(undefined);
   const getters = useLiveChatKitGetters({
@@ -137,6 +144,9 @@ function Chat({ user, uid, prompt, subtask }: ChatProps) {
     retry,
   });
 
+  const taskCompleted = useSubtaskCompleted(isSubTask, chat.messages);
+  useCompleteSubtask({ ...chat, completedSubtaskUid });
+
   useScrollToBottom({
     messagesContainerRef,
     isLoading,
@@ -158,12 +168,20 @@ function Chat({ user, uid, prompt, subtask }: ChatProps) {
 
   return (
     <div className="flex h-screen flex-col">
-      {isSubTask && subtask && <SubtaskHeader subtask={subtask} />}
+      {isSubTask && subtask && (
+        <SubtaskHeader
+          subtask={subtask}
+          uid={uid}
+          parentId={task.parentId}
+          taskCompleted={taskCompleted}
+        />
+      )}
       <ChatArea
         messages={renderMessages}
         isLoading={isLoading}
         user={user || defaultUser}
         messagesContainerRef={messagesContainerRef}
+        agent={subtask?.agent}
       />
       <div className="flex flex-col px-4">
         <ErrorMessageView error={displayError} />
@@ -186,7 +204,6 @@ function Chat({ user, uid, prompt, subtask }: ChatProps) {
             onUpdateIsPublicShared={chatKit.updateIsPublicShared}
           />
         ) : null}
-        {isSubTask ? <NavigateParentTask parentId={task.parentId} /> : null}
       </div>
     </div>
   );
@@ -207,37 +224,39 @@ function useAbortBeforeNavigation(abortController: AbortController) {
   }, [abortController, router]);
 }
 
-const SubtaskHeader: React.FC<{ subtask: SubtaskInfo }> = ({ subtask }) => {
-  return (
-    <div className="flex items-center border-gray-200/30 border-b py-2.5">
-      {subtask?.agent ?? "Subtask"} : {subtask?.description ?? ""}
-    </div>
-  );
-};
-
-const NavigateParentTask: React.FC<{
+const SubtaskHeader: React.FC<{
+  subtask: SubtaskInfo;
+  uid: string;
   parentId: string;
-  className?: string;
-}> = ({ parentId, className }) => {
+  taskCompleted: boolean;
+}> = ({ subtask, uid, parentId, taskCompleted }) => {
   return (
-    <div
-      className={cn(
-        "flex flex-1 grow-0 flex-col items-start justify-center",
-        className,
-      )}
-    >
-      <Link
-        to="/"
-        search={{ uid: parentId }}
-        replace={true}
-        className={cn(
-          buttonVariants({ variant: "ghost" }),
-          "!text-primary-foreground gap-1",
-        )}
-      >
-        <ChevronLeft className="mr-1.5 size-4" /> Back
-      </Link>
-    </div>
+    <>
+      <div className="flex items-center border-gray-200/30 py-1">
+        <Link
+          to="/"
+          search={{
+            uid: parentId,
+            completedSubtaskUid: taskCompleted ? uid : undefined,
+          }}
+          replace={true}
+          className={cn(
+            buttonVariants({ variant: "ghost" }),
+            "!text-primary-foreground gap-1",
+          )}
+        >
+          <ChevronLeft className="mr-1.5 size-4" />
+          <Button variant={taskCompleted ? "default" : "ghost"} size="xs">
+            {taskCompleted ? "Finish" : "Back"}
+          </Button>
+        </Link>
+        <Badge variant="secondary" className={cn("mr-1 ml-2 py-0")}>
+          {subtask?.agent ?? "Subtask"}
+        </Badge>
+        <span className="mx-2">{subtask?.description ?? ""}</span>
+      </div>
+      <Separator className="mt-1 mb-2" />
+    </>
   );
 };
 

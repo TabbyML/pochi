@@ -26,6 +26,7 @@ export const newTaskTool: React.FC<NewTaskToolProps> = ({
   taskThreadSource,
 }) => {
   const uid = tool.input?._meta?.uid;
+  const agent = tool.input?.agentType;
   const description = tool.input?.description ?? "";
 
   let taskSource = taskThreadSource;
@@ -86,7 +87,11 @@ export const newTaskTool: React.FC<NewTaskToolProps> = ({
         <FixedStateChatContextProvider
           toolCallStatusRegistry={subTaskToolCallStatusRegistry.current}
         >
-          <TaskThread source={taskSource} showMessageList={showMessageList} />
+          <TaskThread
+            source={taskSource}
+            showMessageList={showMessageList}
+            assistant={{ name: agent ?? "Pochi" }}
+          />
         </FixedStateChatContextProvider>
       )}
     </div>

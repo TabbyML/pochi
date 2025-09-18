@@ -225,106 +225,104 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
         </TodoList>
       )}
       <AutoApproveMenu isSubTask={isSubTask} />
-      {!isSubTask && (
-        <>
-          {files.length > 0 && (
-            <AttachmentPreviewList
-              files={files}
-              onRemove={removeFile}
-              isUploading={isUploadingAttachments}
+      {files.length > 0 && (
+        <AttachmentPreviewList
+          files={files}
+          onRemove={removeFile}
+          isUploading={isUploadingAttachments}
+        />
+      )}
+      <ChatInputForm
+        input={input}
+        setInput={setInput}
+        onSubmit={handleSubmit}
+        onQueueMessage={handleQueueMessage}
+        isLoading={isLoading || isExecuting}
+        onPaste={handlePasteAttachment}
+        pendingApproval={pendingApproval}
+        status={status}
+        onFileDrop={handleFileDrop}
+        messageContent={messageContent}
+        queuedMessages={queuedMessages}
+        onRemoveQueuedMessage={(index) =>
+          setQueuedMessages((prev) => prev.filter((_, i) => i !== index))
+        }
+      />
+
+      {/* Hidden file input for image uploads */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileSelect}
+        accept="image/*,application/pdf,video/*"
+        multiple
+        className="hidden"
+      />
+
+      <div className="my-2 flex shrink-0 justify-between gap-5 overflow-x-hidden">
+        <div className="flex items-center gap-2 overflow-x-hidden truncate">
+          <ModelSelect
+            value={selectedModel || selectedModelFromStore}
+            models={groupedModels}
+            isLoading={isModelsLoading}
+            isValid={!!selectedModel}
+            onChange={updateSelectedModel}
+          />
+        </div>
+
+        <div className="flex shrink-0 items-center gap-1">
+          {!!selectedModel && (
+            <TokenUsage
+              totalTokens={totalTokens}
+              className="mr-5"
+              compact={compactOptions}
+              selectedModel={selectedModel}
             />
           )}
-          <ChatInputForm
-            input={input}
-            setInput={setInput}
-            onSubmit={handleSubmit}
-            onQueueMessage={handleQueueMessage}
-            isLoading={isLoading || isExecuting}
-            onPaste={handlePasteAttachment}
-            pendingApproval={pendingApproval}
-            status={status}
-            onFileDrop={handleFileDrop}
-            messageContent={messageContent}
-            queuedMessages={queuedMessages}
-            onRemoveQueuedMessage={(index) =>
-              setQueuedMessages((prev) => prev.filter((_, i) => i !== index))
-            }
+          <DevModeButton
+            messages={messages}
+            buildEnvironment={buildEnvironment}
+            todos={todos}
           />
-
-          {/* Hidden file input for image uploads */}
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleFileSelect}
-            accept="image/*,application/pdf,video/*"
-            multiple
-            className="hidden"
-          />
-
-          <div className="my-2 flex shrink-0 justify-between gap-5 overflow-x-hidden">
-            <div className="flex items-center gap-2 overflow-x-hidden truncate">
-              <ModelSelect
-                value={selectedModel || selectedModelFromStore}
-                models={groupedModels}
-                isLoading={isModelsLoading}
-                isValid={!!selectedModel}
-                onChange={updateSelectedModel}
-              />
-            </div>
-
-            <div className="flex shrink-0 items-center gap-1">
-              {!!selectedModel && (
-                <TokenUsage
-                  totalTokens={totalTokens}
-                  className="mr-5"
-                  compact={compactOptions}
-                  selectedModel={selectedModel}
-                />
-              )}
-              <DevModeButton
-                messages={messages}
-                buildEnvironment={buildEnvironment}
-                todos={todos}
-              />
-              <PublicShareButton
-                task={task}
-                disabled={isReadOnly || isModelsLoading}
-                modelId={selectedModel?.id}
-                displayError={displayError?.message}
-                onUpdateIsPublicShared={onUpdateIsPublicShared}
-              />
-              <HoverCard>
-                <HoverCardTrigger asChild>
-                  <span>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="button-focus h-6 w-6 p-0"
-                    >
-                      <PaperclipIcon className="size-4" />
-                    </Button>
-                  </span>
-                </HoverCardTrigger>
-                <HoverCardContent
-                  side="top"
-                  align="start"
-                  sideOffset={6}
-                  className="!w-auto max-w-sm bg-background px-3 py-1.5 text-xs"
+          {!isReadOnly && (
+            <PublicShareButton
+              task={task}
+              disabled={isReadOnly || isModelsLoading}
+              modelId={selectedModel?.id}
+              displayError={displayError?.message}
+              onUpdateIsPublicShared={onUpdateIsPublicShared}
+            />
+          )}
+          <HoverCard>
+            <HoverCardTrigger asChild>
+              <span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="button-focus h-6 w-6 p-0"
                 >
-                  {t("chat.attachmentTooltip")}
-                </HoverCardContent>
-              </HoverCard>
-              <SubmitStopButton
-                isSubmitDisabled={isSubmitDisabled}
-                showStopButton={showStopButton}
-                onSubmit={handleSubmit}
-                onStop={handleStop}
-              />
-            </div>
-          </div>
-        </>
-      )}
+                  <PaperclipIcon className="size-4" />
+                </Button>
+              </span>
+            </HoverCardTrigger>
+            <HoverCardContent
+              side="top"
+              align="start"
+              sideOffset={6}
+              className="!w-auto max-w-sm bg-background px-3 py-1.5 text-xs"
+            >
+              {t("chat.attachmentTooltip")}
+            </HoverCardContent>
+          </HoverCard>
+          <SubmitStopButton
+            isSubmitDisabled={isSubmitDisabled}
+            showStopButton={showStopButton}
+            onSubmit={handleSubmit}
+            onStop={handleStop}
+          />
+        </div>
+      </div>
 
       {showPreview && <PreviewTool messages={messages} />}
     </>

@@ -20,6 +20,7 @@ const searchSchema = z.object({
       description: z.string().optional(),
     })
     .optional(),
+  completedSubtaskUid: z.string().optional(),
 });
 
 export const Route = createFileRoute("/")({
@@ -28,7 +29,8 @@ export const Route = createFileRoute("/")({
 });
 
 function RouteComponent() {
-  const { uid, prompt, storeDate, subtask } = Route.useSearch();
+  const { uid, prompt, storeDate, subtask, completedSubtaskUid } =
+    Route.useSearch();
 
   const { users } = useUserStorage();
   const { modelList = [] } = useModelList(true);
@@ -51,6 +53,7 @@ function RouteComponent() {
       uid={uid}
       prompt={prompt}
       subtask={subtask}
+      completedSubtaskUid={completedSubtaskUid}
     />
   );
 }
