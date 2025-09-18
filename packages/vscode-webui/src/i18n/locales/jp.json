@@ -57,7 +57,8 @@
       "noCopilotModels": "Copilot モデルが見つかりません",
       "copilotDisabled": "Copilot モデルは無効です。有効にするにはスイッチをオンにしてください。",
       "noModelsFound": "モデルが見つかりません",
-      "customModelsTooltip": "カスタムモデルを管理します。"
+      "customModelsTooltip": "カスタムモデルを管理します。",
+      "viewPricing": "Pochi の価格を見る"
     },
     "tools": {
       "title": "ツール",

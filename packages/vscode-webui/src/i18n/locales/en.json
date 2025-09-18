@@ -57,7 +57,8 @@
       "noCopilotModels": "No copilot models found",
       "copilotDisabled": "Copilot models are disabled. Turn on the switch to enable them.",
       "noModelsFound": "No models found",
-      "customModelsTooltip": "Manage your custom models."
+      "customModelsTooltip": "Manage your custom models.",
+      "viewPricing": "View Pochi pricing"
     },
     "tools": {
       "title": "Tools",

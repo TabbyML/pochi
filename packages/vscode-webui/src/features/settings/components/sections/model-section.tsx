@@ -74,14 +74,23 @@ export const ModelSection = () => {
                 title={
                   <div className="flex items-center gap-0.5 py-1">
                     Pochi
-                    <a
-                      href="https://app.getpochi.com/pricing"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="relative z-10 ml-1 rounded-md p-1.5 transition-colors hover:bg-secondary/50 hover:text-secondary-foreground dark:hover:bg-secondary"
-                    >
-                      <CircleQuestionMarkIcon className="size-4" />
-                    </a>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <a
+                            href="https://app.getpochi.com/pricing"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="relative z-10 ml-1 rounded-md p-1.5 transition-colors hover:bg-secondary/50 hover:text-secondary-foreground dark:hover:bg-secondary"
+                          >
+                            <CircleQuestionMarkIcon className="size-4" />
+                          </a>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>{t("settings.models.viewPricing")}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   </div>
                 }
                 variant="compact"
