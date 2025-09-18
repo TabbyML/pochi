@@ -7,7 +7,7 @@ import {
 } from "./env";
 import type { GitHubManager } from "./github-manager";
 import { buildBatchOutput } from "./output-utils";
-import { createGitHubActionSystemPrompt, type RunPochiRequest } from "./prompt";
+import { type RunPochiRequest, createGitHubActionSystemPrompt } from "./prompt";
 
 // Helper types for execution context
 interface ExecutionContext {
