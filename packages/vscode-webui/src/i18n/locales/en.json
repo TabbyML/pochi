@@ -8,7 +8,6 @@
   "placeholder": {
     "title": "What can I help you ship?",
     "subtitle": "Pochi is powered by AI, so errors may occur.",
-    "disclaimer": "Carefully review the output before using it.",
     "tips": {
       "attachments": "to chat with files",
       "context": "to attach context",
