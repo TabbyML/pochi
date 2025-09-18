@@ -40,7 +40,7 @@ store
       },
     } satisfies ShareEvent);
   })
-  .get("/:storeId/tasks/:taskId/html", async (c) => {
+  .get("/tasks/:taskId/html", async (c) => {
     return c.env.ASSETS.fetch(c.req.raw);
   });
 
