@@ -12,8 +12,10 @@ export function createGitHubActionSystemPrompt(
 ): string {
   return `${getBaseSystemPrompt()}
 
-${getGitHubActionRulesSection()}
 ${includeSnapshot ? getEventSnapshotSection(request) : ""}
+${getGitHubActionRulesSection()}
+${getCommunicationGuidelinesSection()}
+${getCodeQualityGuidelinesSection()}
 ${getAdditionalNotesSection()}`.trim();
 }
 
@@ -40,6 +42,36 @@ GITHUB ACTION RULES
 - Consider the impact of your changes on CI/CD pipelines and other workflows`;
 }
 
+function getCommunicationGuidelinesSection(): string {
+  return `====
+
+COMMUNICATION GUIDELINES
+
+- All communication happens through clear, structured responses
+- Use technical language appropriate for the development context
+- Reference specific code sections with file paths and line numbers when applicable
+- Include progress updates and status information
+- Use appropriate formatting (code blocks, checklists, headers)
+- Provide concise summaries of actions taken and results achieved
+- When reviewing code, cite specific examples and suggest concrete improvements`;
+}
+
+function getCodeQualityGuidelinesSection(): string {
+  return `====
+
+CODE QUALITY GUIDELINES
+
+When reviewing or implementing code, focus on:
+- Logic errors and bug-prone patterns
+- Code quality and maintainability issues
+- Significant security concerns (leaked credentials, SQL injection, etc.)
+- Significant performance problems (memory leaks, deadlocks, long-lived requests)
+- Clear documentation and code readability
+- Adherence to established coding standards and best practices
+
+Do not flag minor concerns as issues. Keep tone professional and constructive.
+Provide specific, actionable suggestions for improvements.`;
+}
 
 function getEventSnapshotSection(request: RunPochiRequest): string {
   return `====
