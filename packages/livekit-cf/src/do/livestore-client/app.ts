@@ -8,9 +8,7 @@ import type { DeepWriteable, Env } from "./types";
 const store = new Hono<{ Bindings: Env }>();
 
 store
-  .get("/:storeId/tasks/:taskId/json", async (c) => {
-    const storeId = c.req.param("storeId");
-    c.env.setStoreId(storeId);
+  .get("/tasks/:taskId/json", async (c) => {
     const store = await c.env.getStore();
     const taskId = c.req.param("taskId");
 
@@ -47,4 +45,10 @@ store
   });
 
 export const app = new Hono<{ Bindings: Env }>();
-app.route("/stores", store);
+app
+  .use("/stores/:storeId/*", async (c, next) => {
+    const storeId = c.req.param("storeId");
+    await c.env.setStoreId(storeId);
+    await next();
+  })
+  .route("/stores/:storeId", store);
