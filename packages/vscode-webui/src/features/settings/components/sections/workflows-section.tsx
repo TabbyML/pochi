@@ -26,7 +26,7 @@ export const WorkflowsSection: React.FC = () => {
       localStorageKey="workflows-section"
       title={t("settings.workflows.title")}
       collapsable={workflows.length > 3}
-      defaultOpen={workflows.length <= 3}
+      forceOpen={workflows.length <= 3}
     >
       {isLoading ? (
         <div className="space-y-2">
