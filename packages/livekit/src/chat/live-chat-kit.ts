@@ -20,6 +20,7 @@ const logger = getLogger("LiveChatKit");
 
 export type LiveChatKitOptions<T> = {
   taskId: string;
+  cwd: string;
   abortSignal?: AbortSignal;
 
   // Request related getters
@@ -49,11 +50,13 @@ export class LiveChatKit<
   protected readonly store: Store;
   readonly chat: T;
   private readonly transport: FlexibleChatTransport;
+  private readonly cwd: string;
 
   readonly spawn: () => Promise<string>;
 
   constructor({
     taskId,
+    cwd,
     abortSignal,
     store,
     chatClass,
@@ -65,6 +68,7 @@ export class LiveChatKit<
     ...chatInit
   }: LiveChatKitOptions<T>) {
     this.taskId = taskId;
+    this.cwd = cwd;
     this.store = store;
     this.transport = new FlexibleChatTransport({
       store,
@@ -73,6 +77,7 @@ export class LiveChatKit<
       isSubTask,
       isCli,
       customAgent,
+      cwd,
     });
 
     this.chat = new chatClass({
@@ -140,6 +145,7 @@ export class LiveChatKit<
       this.store.commit(
         events.taskInited({
           id: taskId,
+          cwd: this.cwd,
           createdAt: new Date(),
           initMessage: {
             id: crypto.randomUUID(),
@@ -165,6 +171,7 @@ export class LiveChatKit<
     this.store.commit(
       events.taskInited({
         id: this.taskId,
+        cwd: this.cwd,
         createdAt: new Date(),
         initMessage: {
           id: crypto.randomUUID(),
@@ -221,6 +228,7 @@ export class LiveChatKit<
         store.commit(
           events.taskInited({
             id: this.taskId,
+            cwd: this.cwd,
             createdAt: new Date(),
           }),
         );

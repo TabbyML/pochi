@@ -182,7 +182,8 @@ function Tasks() {
   const { page = 1 } = Route.useSearch();
   const { store } = useStore();
   const { storeDate, setStoreDate } = useStoreDate();
-  const tasks = store.useQuery(catalog.queries.tasks$);
+  const { data: cwd = "default" } = useCurrentWorkspace();
+  const tasks = store.useQuery(catalog.queries.makeTasksQuery(cwd));
   const totalPages = Math.ceil(tasks.length / limit);
   const paginatedTasks = tasks.slice((page - 1) * limit, page * limit);
 

@@ -90,10 +90,13 @@ export class LiveStoreClientDO
 
     // Make sure to only subscribe once
     if (this.storeSubscription === undefined) {
-      this.storeSubscription = store.subscribe(catalog.queries.tasks$, {
-        // FIXME(meng): implement this with store.events stream when it's ready
-        onUpdate: this.onTasksUpdate,
-      });
+      this.storeSubscription = store.subscribe(
+        catalog.queries.makeTasksQuery(),
+        {
+          // FIXME(meng): implement this with store.events stream when it's ready
+          onUpdate: this.onTasksUpdate,
+        },
+      );
     }
   }
 

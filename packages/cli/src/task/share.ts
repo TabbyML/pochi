@@ -11,7 +11,7 @@ export function registerTaskShareCommand(taskCommand: Command) {
     .description("Get the shareable URL for a specific task by its ID.")
     .argument("<task-id>", "The ID of the task to get the share URL for.")
     .action(async (taskId) => {
-      const store = await createStore(process.cwd());
+      const store = await createStore();
 
       const { shareId } =
         store.query(catalog.queries.makeTaskQuery(taskId)) || {};

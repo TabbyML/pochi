@@ -21,10 +21,12 @@ export function registerTaskListCommand(taskCommand: Command) {
         return taskCommand.error("Limit must be a positive number");
       }
 
-      const store = await createStore(process.cwd());
+      const store = await createStore();
 
       try {
-        const allTasks = store.query(catalog.queries.tasks$);
+        const allTasks = store.query(
+          catalog.queries.makeTasksQuery(process.cwd()),
+        );
         const sortedTasks = [...allTasks].sort(
           (a, b) => b.updatedAt.getTime() - a.updatedAt.getTime(),
         );

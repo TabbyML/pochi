@@ -62,7 +62,9 @@ function Chat({ user, uid, prompt }: ChatProps) {
   useAbortBeforeNavigation(chatAbortController.current);
 
   const autoApproveGuard = useAutoApproveGuard();
+  const { data: cwd = "default" } = useCurrentWorkspace();
   const chatKit = useLiveChatKit({
+    cwd,
     taskId: uid,
     getters,
     abortSignal: chatAbortController.current.signal,
