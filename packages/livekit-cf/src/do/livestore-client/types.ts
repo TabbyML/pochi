@@ -10,6 +10,6 @@ export type Env = {
   ASSETS: CfTypes.Fetcher;
 };
 
-export type DeepWriteable<T> = {
-  -readonly [P in keyof T]: DeepWriteable<T[P]>;
+export type DeepWritable<T> = {
+  -readonly [P in keyof T]: DeepWritable<T[P]>;
 };

@@ -13,7 +13,7 @@ const JWKS = jose.createRemoteJWKSet(
   new URL("https://app.getpochi.com/api/auth/jwks"),
 );
 
-async function verifyJWT(env: Env["ENVIRONMENT"], jwt: string) {
+export async function verifyJWT(env: Env["ENVIRONMENT"], jwt: string) {
   try {
     const { payload: user } = await jose.jwtVerify<User>(jwt, JWKS, {
       issuer: "https://app.getpochi.com",

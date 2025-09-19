@@ -58,7 +58,8 @@
       "noCopilotModels": "未找到 Copilot 模型",
       "copilotDisabled": "Copilot 模型已禁用。请打开开关以启用它们。",
       "noModelsFound": "未找到模型",
-      "customModelsTooltip": "管理您的自定义模型。"
+      "customModelsTooltip": "管理您的自定义模型。",
+      "viewPricing": "查看 Pochi 价格"
     },
     "tools": {
       "title": "工具",

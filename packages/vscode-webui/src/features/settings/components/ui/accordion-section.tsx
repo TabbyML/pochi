@@ -9,6 +9,7 @@ interface AccordionSectionProps {
   title: string | React.ReactNode;
   variant?: "default" | "compact";
   defaultOpen?: boolean;
+  forceOpen?: boolean;
   collapsable?: boolean;
   localStorageKey: string;
 }
@@ -19,18 +20,22 @@ export const AccordionSection: React.FC<AccordionSectionProps> = ({
   className,
   variant = "default",
   defaultOpen = false,
+  forceOpen,
   collapsable = true,
   localStorageKey,
 }) => {
-  const [isOpen, setIsOpen] = useLocalStorage(
+  const [isStoredOpen, setIsStoredOpen] = useLocalStorage(
     `__accordion_section_${localStorageKey}`,
     defaultOpen,
   );
+  const isOpen = forceOpen ? true : isStoredOpen;
+  const isCollapsable = forceOpen !== true && collapsable;
+
   const onClick = useCallback(() => {
-    if (collapsable) {
-      setIsOpen(!isOpen);
+    if (isCollapsable) {
+      setIsStoredOpen(!isOpen);
     }
-  }, [isOpen, collapsable, setIsOpen]);
+  }, [isOpen, isCollapsable, setIsStoredOpen]);
 
   const isCompact = variant === "compact";
 
@@ -39,7 +44,7 @@ export const AccordionSection: React.FC<AccordionSectionProps> = ({
       <div
         className={cn(
           "group flex w-full items-center justify-between text-left focus:outline-none",
-          collapsable && "cursor-pointer",
+          isCollapsable && "cursor-pointer",
         )}
         onClick={(e: React.MouseEvent<HTMLDivElement>) => {
           if ((e.target as HTMLElement).closest("a")) {
@@ -58,7 +63,7 @@ export const AccordionSection: React.FC<AccordionSectionProps> = ({
         >
           {title}
         </span>
-        {collapsable && (
+        {isCollapsable && (
           <ChevronLeft
             className={cn(
               "shrink-0 text-muted-foreground transition-transform duration-200 ease-in-out",
