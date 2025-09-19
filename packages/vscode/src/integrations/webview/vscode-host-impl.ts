@@ -146,7 +146,12 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   };
 
   readMachineId = async (): Promise<string> => {
-    return machineId();
+    const id = await machineId();
+    if (this.context.extensionMode === vscode.ExtensionMode.Production) {
+      return id;
+    }
+
+    return `dev-${id}`;
   };
 
   getSessionState = async <K extends keyof SessionState>(
