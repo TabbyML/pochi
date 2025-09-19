@@ -121,6 +121,7 @@ export class TaskRunner {
     this.stepCount = new StepCount(options.maxSteps, options.maxRetries);
     this.chatKit = new LiveChatKit<Chat>({
       taskId: options.uid,
+      cwd: options.cwd,
       store: options.store,
       chatClass: Chat,
       isCli: true,

@@ -1,4 +1,4 @@
-import { Schema, queryDb, sql } from "@livestore/livestore";
+import { queryDb } from "@livestore/livestore";
 import { tables } from "./schema";
 
 export const makeTaskQuery = (taskId: string) =>
@@ -17,15 +17,19 @@ export const makeMessagesQuery = (taskId: string) =>
     deps: [taskId],
   });
 
-export const tasks$ = queryDb(
-  {
-    query: sql`select * from tasks where parentId is null order by updatedAt desc`,
-    schema: Schema.Array(tables.tasks.rowSchema),
-  },
-  {
-    label: "tasks",
-  },
-);
+export const makeTasksQuery = (cwd?: string) =>
+  queryDb(
+    () => {
+      const q = tables.tasks
+        .where("parentId", "=", null)
+        .orderBy("updatedAt", "desc");
+      return cwd ? q.where("cwd", "=", cwd) : q;
+    },
+    {
+      label: "tasks",
+      deps: [cwd],
+    },
+  );
 
 export const makeSubTaskQuery = (taskId: string) =>
   queryDb(() => tables.tasks.where("parentId", "=", taskId), {

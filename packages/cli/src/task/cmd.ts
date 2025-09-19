@@ -19,7 +19,7 @@ export function registerTaskCommand(program: Command) {
 }
 
 async function waitForSync() {
-  const store = await createStore(process.cwd());
+  const store = await createStore();
 
   await Effect.gen(function* (_) {
     while (true) {

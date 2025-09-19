@@ -13,9 +13,9 @@ import { makeWsSync } from "@livestore/sync-cf/client";
 import * as jose from "jose";
 import { machineId } from "node-machine-id";
 
-export async function createStore(cwd: string) {
+export async function createStore() {
   const { jwt = null } = (await getPochiCredentials()) || {};
-  const storeId = await getStoreId(jwt, cwd);
+  const storeId = await getStoreId(jwt);
   const adapter = makeAdapter({
     storage: {
       type: "fs",
@@ -54,9 +54,9 @@ async function getPochiCredentials() {
   return credentials;
 }
 
-async function getStoreId(jwt: string | null, cwd: string) {
+async function getStoreId(jwt: string | null) {
   const sub = (jwt ? jose.decodeJwt(jwt).sub : undefined) ?? "anonymous";
   const date = new Date().toLocaleDateString("en-US");
 
-  return encodeStoreId({ sub, machineId: await machineId(), cwd, date });
+  return encodeStoreId({ sub, machineId: await machineId(), date });
 }

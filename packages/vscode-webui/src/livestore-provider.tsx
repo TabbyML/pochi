@@ -7,7 +7,6 @@ import * as jose from "jose";
 import { Loader2 } from "lucide-react";
 import { createContext, useContext, useMemo, useState } from "react";
 import { unstable_batchedUpdates as batchUpdates } from "react-dom";
-import { useCurrentWorkspace } from "./lib/hooks/use-current-workspace";
 import { useMachineId } from "./lib/hooks/use-machine-id";
 import { usePochiCredentials } from "./lib/hooks/use-pochi-credentials";
 import LiveStoreWorker from "./livestore.worker.ts?worker&inline";
@@ -64,11 +63,10 @@ export function LiveStoreProvider({ children }: { children: React.ReactNode }) {
 }
 
 function useStoreId(jwt: string | null, date: string) {
-  const { data: cwd = "default" } = useCurrentWorkspace();
   const { data: machineId = "default" } = useMachineId();
   const sub = (jwt ? jose.decodeJwt(jwt).sub : undefined) ?? "anonymous";
 
-  return encodeStoreId({ sub, machineId, cwd, date });
+  return encodeStoreId({ sub, machineId, date });
 }
 
 function Loading() {
