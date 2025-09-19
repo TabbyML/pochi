@@ -43,6 +43,7 @@ interface ChatToolbarProps {
   isReadOnly: boolean;
   displayError: Error | undefined;
   todosRef: React.RefObject<Todo[] | undefined>;
+  onUpdateIsPublicShared?: (isPublicShared: boolean) => void;
 }
 
 export const ChatToolbar: React.FC<ChatToolbarProps> = ({
@@ -54,6 +55,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   task,
   displayError,
   todosRef,
+  onUpdateIsPublicShared,
 }) => {
   const { t } = useTranslation();
   const { messages, sendMessage, addToolResult, status } = chat;
@@ -280,10 +282,11 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
             todos={todos}
           />
           <PublicShareButton
+            task={task}
             disabled={isReadOnly || isModelsLoading}
-            shareId={task?.shareId}
             modelId={selectedModel?.id}
             displayError={displayError?.message}
+            onUpdateIsPublicShared={onUpdateIsPublicShared}
           />
           <HoverCard>
             <HoverCardTrigger asChild>

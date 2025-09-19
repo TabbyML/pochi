@@ -59,6 +59,7 @@ export const tables = {
     columns: {
       id: State.SQLite.text({ primaryKey: true }),
       shareId: State.SQLite.text({ nullable: true }),
+      isPublicShared: State.SQLite.boolean({ default: false }),
       title: State.SQLite.text({ nullable: true }),
       parentId: State.SQLite.text({ nullable: true }),
       status: State.SQLite.text({
@@ -171,6 +172,14 @@ export const events = {
       updatedAt: Schema.Date,
     }),
   }),
+  updateIsPublicShared: Events.synced({
+    name: "v1.UpdateIsPublicShared",
+    schema: Schema.Struct({
+      id: Schema.String,
+      isPublicShared: Schema.Boolean,
+      updatedAt: Schema.Date,
+    }),
+  }),
 };
 
 // Materializers are used to map events to state (https://docs.livestore.dev/reference/state/materializers)
@@ -257,6 +266,8 @@ const materializers = State.SQLite.materializers(events, {
     tables.tasks.update({ shareId, updatedAt }).where({ id, shareId: null }),
   "v1.UpdateTitle": ({ id, title, updatedAt }) =>
     tables.tasks.update({ title, updatedAt }).where({ id }),
+  "v1.UpdateIsPublicShared": ({ id, isPublicShared, updatedAt }) =>
+    tables.tasks.update({ isPublicShared, updatedAt }).where({ id }),
 });
 
 const state = State.SQLite.makeState({ tables, materializers });

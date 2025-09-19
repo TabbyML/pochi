@@ -8,7 +8,6 @@
   "placeholder": {
     "title": "我能帮您实现什么？",
     "subtitle": "Pochi 由 AI 驱动，可能会出现错误。",
-    "disclaimer": "使用前请仔细检查输出内容。",
     "tips": {
       "attachments": "发送文件",
       "context": "附加上下文",
@@ -59,7 +58,8 @@
       "noCopilotModels": "未找到 Copilot 模型",
       "copilotDisabled": "Copilot 模型已禁用。请打开开关以启用它们。",
       "noModelsFound": "未找到模型",
-      "customModelsTooltip": "管理您的自定义模型。"
+      "customModelsTooltip": "管理您的自定义模型。",
+      "viewPricing": "查看 Pochi 价格"
     },
     "tools": {
       "title": "工具",
@@ -130,6 +130,8 @@
     "shareSupportTitle": "任务已与 Pochi 团队分享",
     "shareSupportDetails": "此任务和相关调试信息已发送。如需支持，请加入我们的 Discord 服务器并引用此问题 ID：{{shareId}}。",
     "joinDiscord": "加入 Discord",
-    "ok": "确定"
+    "ok": "确定",
+    "setPublic": "任何有链接的人",
+    "setPrivate": "仅自己可见"
   }
 }

@@ -1,9 +1,14 @@
+import { verifyJWT } from "@/lib/jwt";
 import type { ShareEvent } from "@getpochi/common/share-utils";
+import { decodeStoreId } from "@getpochi/common/store-id-utils";
 import { catalog } from "@getpochi/livekit";
+import type { ClientTools, SubTask } from "@getpochi/tools";
+import type { Store } from "@livestore/livestore";
 import type { UIMessage } from "ai";
+import type { InferToolInput } from "ai";
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
-import type { DeepWriteable, Env } from "./types";
+import type { DeepWritable, Env } from "./types";
 
 const store = new Hono<{ Bindings: Env }>();
 
@@ -13,18 +18,32 @@ store
     const taskId = c.req.param("taskId");
 
     const task = store.query(catalog.queries.makeTaskQuery(taskId));
-    const messages = store.query(catalog.queries.makeMessagesQuery(taskId));
 
     if (!task) {
       throw new HTTPException(404, { message: "Task not found" });
     }
 
+    const EnablePublicSharedCheck = false;
+    if (EnablePublicSharedCheck && !task.isPublicShared) {
+      const jwt = c.req.header("authorization")?.replace("Bearer ", "");
+      const user = jwt && (await verifyJWT(undefined, jwt));
+      const isOwner = user && user.sub === decodeStoreId(store.storeId).sub;
+      if (!isOwner) {
+        throw new HTTPException(403, { message: "Task is not public" });
+      }
+    }
+
+    const messages = store
+      .query(catalog.queries.makeMessagesQuery(taskId))
+      .map((x) => x.data as UIMessage);
+    const subTasks = collectSubTasks(store, taskId);
+
     const user = await c.env.getUser();
 
     return c.json({
       type: "share",
-      messages: messages.map((message) => message.data) as UIMessage[],
-      todos: task.todos as DeepWriteable<typeof task.todos>,
+      messages: inlineSubTasks(messages, subTasks),
+      todos: task.todos as DeepWritable<typeof task.todos>,
       isLoading: task.status === "pending-model",
       error: task.error,
       // FIXME: Use the actual user name
@@ -45,4 +64,54 @@ store
   });
 
 export const app = new Hono<{ Bindings: Env }>();
-app.route("/stores/:storeId", store);
+app
+  .use("/stores/:storeId/*", async (c, next) => {
+    const storeId = c.req.param("storeId");
+    await c.env.setStoreId(storeId);
+    await next();
+  })
+  .route("/stores/:storeId", store);
+
+function collectSubTasks(store: Store<typeof catalog.schema>, taskId: string) {
+  const tasks = store.query(catalog.queries.makeSubTaskQuery(taskId));
+  return tasks.map((task) => {
+    const messages = store.query(catalog.queries.makeMessagesQuery(task.id));
+    return {
+      clientTaskId: task.id,
+      todos: task.todos as DeepWritable<typeof task.todos>,
+      messages: messages.map((message) => message.data) as UIMessage[],
+    } satisfies SubTask;
+  });
+}
+
+function inlineSubTasks(
+  uiMessages: UIMessage[],
+  subtasks: SubTask[],
+): UIMessage[] {
+  return uiMessages.map((uiMessage) => {
+    const partsWithSubtasks = uiMessage.parts.map((part) => {
+      if (part.type === "tool-newTask" && part.state !== "input-streaming") {
+        const input = part.input as InferToolInput<ClientTools["newTask"]>;
+        const subtask = subtasks.find(
+          (t) => t.clientTaskId === input._meta?.uid,
+        );
+        if (subtask) {
+          return {
+            ...part,
+            input: {
+              ...input,
+              _transient: {
+                task: subtask,
+              },
+            },
+          };
+        }
+      }
+      return part;
+    });
+    return {
+      ...uiMessage,
+      parts: partsWithSubtasks,
+    };
+  });
+}

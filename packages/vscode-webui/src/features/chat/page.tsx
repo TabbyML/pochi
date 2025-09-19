@@ -176,6 +176,7 @@ function Chat({ user, uid, prompt }: ChatProps) {
             attachmentUpload={attachmentUpload}
             isReadOnly={isReadOnly}
             displayError={displayError}
+            onUpdateIsPublicShared={chatKit.updateIsPublicShared}
           />
         )}
       </div>

@@ -26,3 +26,9 @@ export const tasks$ = queryDb(
     label: "tasks",
   },
 );
+
+export const makeSubTaskQuery = (taskId: string) =>
+  queryDb(() => tables.tasks.where("parentId", "=", taskId), {
+    label: "subTasks",
+    deps: [taskId],
+  });

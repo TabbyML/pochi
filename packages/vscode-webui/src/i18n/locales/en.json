@@ -8,7 +8,6 @@
   "placeholder": {
     "title": "What can I help you ship?",
     "subtitle": "Pochi is powered by AI, so errors may occur.",
-    "disclaimer": "Carefully review the output before using it.",
     "tips": {
       "attachments": "to chat with files",
       "context": "to attach context",
@@ -59,7 +58,8 @@
       "noCopilotModels": "No copilot models found",
       "copilotDisabled": "Copilot models are disabled. Turn on the switch to enable them.",
       "noModelsFound": "No models found",
-      "customModelsTooltip": "Manage your custom models."
+      "customModelsTooltip": "Manage your custom models.",
+      "viewPricing": "View Pochi pricing"
     },
     "tools": {
       "title": "Tools",
@@ -132,6 +132,8 @@
     "shareSupportTitle": "Task shared with the Pochi team",
     "shareSupportDetails": "This task and relevant debug information have been sent. For support, please join our Discord server and reference this issue with the ID: {{shareId}}.",
     "joinDiscord": "Join Discord",
-    "ok": "OK"
+    "ok": "OK",
+    "setPublic": "Anyone with link",
+    "setPrivate": "Only you"
   }
 }

@@ -134,18 +134,19 @@ export function useChatSubmit({
 
           setInput("");
           setQueuedMessages([]);
+          autoApproveGuard.current = "auto";
         } catch (error) {
           // Error is already handled by the hook
           return;
         }
       } else if (allMessages.length > 0) {
-        autoApproveGuard.current = "auto";
         clearUploadError();
         sendMessage({
           text: allMessages.join("\n\n"),
         });
         setInput("");
         setQueuedMessages([]);
+        autoApproveGuard.current = "auto";
       }
     },
     [
