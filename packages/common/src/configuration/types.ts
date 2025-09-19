@@ -3,7 +3,18 @@ import { McpServerConfig } from "./mcp";
 import { CustomModelSetting } from "./model";
 import { VendorConfig } from "./vendor";
 
+function getObjectSchemaDefaults<Schema extends z.ZodObject>(schema: Schema) {
+  return Object.fromEntries(
+    Object.entries(schema.shape).map(([key, value]) => {
+      return [key, value.unwrap().def.defaultValue];
+    }),
+  );
+}
+
 export const PochiConfig = makePochiConfig();
+
+export const getPochiConfigDefaults = () =>
+  getObjectSchemaDefaults(PochiConfig);
 
 export type PochiConfig = z.infer<typeof PochiConfig>;
 
@@ -37,8 +48,27 @@ export function makePochiConfig(strict = false) {
       .string()
       .default("https://getpochi.com/config.schema.json")
       .optional(),
-    vendors: z.record(z.string(), VendorConfig.nullable()).optional(),
-    providers: looseRecord(CustomModelSetting, strict).optional(),
-    mcp: looseRecord(McpServerConfig, strict).optional(),
+    vendors: z
+      .record(z.string(), VendorConfig.nullable())
+      .default({})
+      .optional(),
+    providers: looseRecord(CustomModelSetting, strict)
+      .default({
+        openai: {
+          kind: "openai",
+          baseURL: "https://api.openai.com/v1",
+          apiKey: "your api key here",
+          models: {
+            "gpt-4.1": {
+              name: "GPT-4.1",
+            },
+            "o4-mini": {
+              name: "O4-Mini",
+            },
+          },
+        },
+      })
+      .optional(),
+    mcp: looseRecord(McpServerConfig, strict).default({}).optional(),
   });
 }

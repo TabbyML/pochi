@@ -15,10 +15,6 @@ import { NewProjectRegistry, prepareProject } from "@/lib/new-project";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { PostHog } from "@/lib/posthog";
 import type { WebsiteTaskCreateEvent } from "@getpochi/common";
-import {
-  type CustomModelSetting,
-  PochiConfigFilePath,
-} from "@getpochi/common/configuration";
 import type { McpServerConfig } from "@getpochi/common/configuration";
 import type { McpHub } from "@getpochi/common/mcp-utils";
 import { getVendor } from "@getpochi/common/vendor";
@@ -262,23 +258,20 @@ export class CommandManager implements vscode.Disposable {
         "pochi.mcp.addServer",
         async (name?: string, recommendedServer?: McpServerConfig) => {
           this.mcpHub.addServer(name, recommendedServer);
-          await vscode.commands.executeCommand(
-            "vscode.open",
-            vscode.Uri.file(PochiConfigFilePath),
-          );
+          await this.pochiConfiguration.openConfig({
+            key: "mcp",
+          });
         },
       ),
 
       vscode.commands.registerCommand(
         "pochi.mcp.openServerSettings",
         async () => {
-          await vscode.commands.executeCommand(
-            "vscode.open",
-            vscode.Uri.file(PochiConfigFilePath),
-          );
+          await this.pochiConfiguration.openConfig({
+            key: "mcp",
+          });
         },
       ),
-
       vscode.commands.registerCommand(
         "pochi.mcp.serverControl",
         async (action: string, serverName: string) => {
@@ -416,42 +409,12 @@ export class CommandManager implements vscode.Disposable {
       vscode.commands.registerCommand(
         "pochi.openCustomModelSettings",
         async () => {
-          await this.ensureDefaultCustomModelSettings();
-          await vscode.commands.executeCommand(
-            "vscode.open",
-            vscode.Uri.file(PochiConfigFilePath),
-          );
+          await this.pochiConfiguration.openConfig({
+            key: "providers",
+          });
         },
       ),
     );
-  }
-
-  private async ensureDefaultCustomModelSettings() {
-    const currentSettings = this.pochiConfiguration.customModelSettings.value;
-
-    // If there are already settings, don't add defaults
-    if (currentSettings && Object.keys(currentSettings).length > 0) {
-      return;
-    }
-
-    // Define default custom model settings
-    const defaultSettings = {
-      openai: {
-        kind: "openai",
-        baseURL: "https://api.openai.com/v1",
-        apiKey: "your api key here",
-        models: {
-          "gpt-4.1": {
-            name: "GPT-4.1",
-          },
-          "o4-mini": {
-            name: "O4-Mini",
-          },
-        },
-      },
-    } satisfies Record<string, CustomModelSetting>;
-
-    await this.pochiConfiguration.updateCustomModelSettings(defaultSettings);
   }
 
   dispose() {

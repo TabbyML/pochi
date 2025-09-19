@@ -9,3 +9,4 @@ export {
 export * from "./model";
 export * from "./mcp";
 export * from "./vendor";
+export { getPochiConfigDefaults } from "./types";

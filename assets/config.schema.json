@@ -7,6 +7,7 @@
       "type": "string"
     },
     "vendors": {
+      "default": {},
       "type": "object",
       "propertyNames": {
         "type": "string"
@@ -49,6 +50,21 @@
       }
     },
     "providers": {
+      "default": {
+        "openai": {
+          "kind": "openai",
+          "baseURL": "https://api.openai.com/v1",
+          "apiKey": "your api key here",
+          "models": {
+            "gpt-4.1": {
+              "name": "GPT-4.1"
+            },
+            "o4-mini": {
+              "name": "O4-Mini"
+            }
+          }
+        }
+      },
       "type": "object",
       "propertyNames": {
         "type": "string"
@@ -250,6 +266,7 @@
       }
     },
     "mcp": {
+      "default": {},
       "type": "object",
       "propertyNames": {
         "type": "string"
