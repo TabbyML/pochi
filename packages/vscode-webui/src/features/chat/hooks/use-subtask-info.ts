@@ -1,4 +1,4 @@
-import { useAutoApprove } from "@/features/settings";
+import { useSubtaskOffhand } from "@/features/settings";
 import { type Message, type UITools, catalog } from "@getpochi/livekit";
 import { useStore } from "@livestore/react";
 import type { ToolUIPart } from "ai";
@@ -34,16 +34,12 @@ export function useSubtaskInfo(
   const agent = newtaskTool.input?.agentType;
   const description = newtaskTool.input?.description;
   const isSubTask = !!parentUid;
-  // get parent task auto-approve settings
-  const { autoApproveSettings } = useAutoApprove({
-    autoApproveGuard: true,
-    isSubTask: false,
-  });
+  const { subtaskOffhand } = useSubtaskOffhand();
 
   return {
     uid,
     parentUid: parentUid,
-    manualRun: isSubTask && autoApproveSettings.autoRunSubtask === false,
+    manualRun: isSubTask && subtaskOffhand === false,
     agent,
     description,
   };

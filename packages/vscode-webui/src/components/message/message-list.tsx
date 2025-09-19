@@ -96,11 +96,7 @@ export const MessageList: React.FC<{
                       <AvatarFallback className="bg-[var(--vscode-chat-avatarBackground)] text-[var(--vscode-chat-avatarForeground)]" />
                     </Avatar>
                   )}
-                  <strong
-                    className={
-                      m.role !== "user" ? "first-letter:capitalize" : ""
-                    }
-                  >
+                  <strong>
                     {m.role === "user" ? user?.name : assistantName}
                   </strong>
                   {findCompactPart(m) && (

@@ -19,6 +19,7 @@ import {
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAutoApprove } from "../hooks/use-auto-approve";
+import { useSubtaskOffhand } from "../hooks/use-subtask-offhand";
 import type { AutoApprove } from "../store";
 
 interface CoreActionSetting {
@@ -104,6 +105,7 @@ export function AutoApproveMenu({ isSubTask }: { isSubTask: boolean }) {
     ...(autoApproveSettings.retry ? [t("settings.autoApprove.retry")] : []),
   ];
 
+  const { subtaskOffhand, toggleSubtaskOffhand } = useSubtaskOffhand();
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -192,7 +194,7 @@ export function AutoApproveMenu({ isSubTask }: { isSubTask: boolean }) {
                   : "retry-actions-trigger-dialog"
               }
             >
-              <span className="ml-1.5 flex items-center gap-2 font-semibold">
+              <span className="ml-3.5 flex items-center gap-2 font-semibold">
                 <RotateCcw className="size-4 shrink-0" />
                 <span className="whitespace-nowrap text-foreground text-sm">
                   {autoApproveSettings.retry
@@ -217,42 +219,23 @@ export function AutoApproveMenu({ isSubTask }: { isSubTask: boolean }) {
           </div>
 
           {!isSubTask && (
-            <div className="flex h-7 items-center pl-1">
-              <Checkbox
-                id="subtask-actions-trigger-dialog"
-                checked={autoApproveSettings.subtask}
-                onCheckedChange={(checked) =>
-                  handleCoreActionToggle("subtask", !!checked)
-                }
+            <div className="mt-1 flex h-7 items-center">
+              <Switch
+                id="subtask-toggle-offhand"
+                checked={subtaskOffhand}
+                onCheckedChange={toggleSubtaskOffhand}
               />
               <label
                 className="flex cursor-pointer items-center gap-3 px-3"
-                htmlFor={
-                  autoApproveSettings.subtask
-                    ? "subtask-actions-auto-run"
-                    : "subtask-actions-trigger-dialog"
-                }
+                htmlFor={"subtask-toggle-offhand"}
               >
                 <span className="ml-1.5 flex items-center gap-2 font-semibold">
                   <SquareChevronRightIcon className="size-4 shrink-0" />
                   <span className="whitespace-nowrap text-foreground text-sm">
-                    {!autoApproveSettings.subtask ||
-                    (autoApproveSettings.subtask &&
-                      autoApproveSettings.autoRunSubtask)
-                      ? "Run subtasks: auto"
-                      : "Run subtasks: manual"}
+                    {subtaskOffhand ? "Subtask - Offhand" : "Subtask - Manual"}
                   </span>
                 </span>
               </label>
-              {autoApproveSettings.subtask && (
-                <Switch
-                  id="subtask-actions-auto-run"
-                  checked={autoApproveSettings.autoRunSubtask}
-                  onCheckedChange={(checked) =>
-                    handleCoreActionToggle("autoRunSubtask", !!checked)
-                  }
-                />
-              )}
             </div>
           )}
         </div>

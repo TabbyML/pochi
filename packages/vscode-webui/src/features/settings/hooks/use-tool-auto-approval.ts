@@ -46,14 +46,6 @@ export function useToolAutoApproval(
     }
 
     if (
-      autoApproveSettings.subtask &&
-      autoApproveSettings.autoRunSubtask &&
-      ToolsByPermission.subtask.includes(toolName)
-    ) {
-      return true;
-    }
-
-    if (
       autoApproveSettings.mcp &&
       Object.keys(toolset).some((name) => name === toolName)
     ) {
