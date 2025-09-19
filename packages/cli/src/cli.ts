@@ -32,7 +32,7 @@ import {
   replaceWorkflowReferences,
 } from "./lib/workflow-loader";
 import { createStore } from "./livekit/store";
-import { registerMcpCommand, initializeMcp } from "./mcp";
+import { initializeMcp, registerMcpCommand } from "./mcp";
 import { registerModelCommand } from "./model";
 import { OutputRenderer } from "./output-renderer";
 import { registerTaskCommand } from "./task";
