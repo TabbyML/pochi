@@ -15,14 +15,6 @@ export function encodeStoreId(storeId: StoreId): string {
   return binary_to_base58(encoded);
 }
 
-function createShortHash(input: string): string {
-  let hash = 0;
-  for (let i = 0; i < input.length; i++) {
-    hash = ((hash << 5) - hash + input.charCodeAt(i)) & 0xffffffff;
-  }
-  return Math.abs(hash).toString(36).slice(0, 8); // 8 characters for better uniqueness
-}
-
 export function decodeStoreId(storeId: string): StoreId {
   const decoded = new TextDecoder().decode(base58_to_binary(storeId));
   return StoreId.parse(JSON.parse(decoded));
