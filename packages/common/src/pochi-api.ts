@@ -3,11 +3,9 @@ import type {
   LanguageModelV2Prompt,
 } from "@ai-sdk/provider";
 import { zValidator } from "@hono/zod-validator";
-import type { UIMessage } from "ai";
 import { Hono } from "hono";
 import type { hc } from "hono/client";
 import z from "zod";
-import { Environment } from "./base";
 
 export const ModelGatewayRequest = z.object({
   id: z.string().optional(),
@@ -32,8 +30,6 @@ export const PersistRequest = z.object({
       z.literal("pending-model"),
     ])
     .optional(),
-  messages: z.array(z.custom<UIMessage>()),
-  environment: Environment.optional(),
   parentClientTaskId: z.string().optional(),
   storeId: z.string().optional(),
   clientTaskData: z.unknown().optional(),

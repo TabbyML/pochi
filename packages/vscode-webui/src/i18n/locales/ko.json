@@ -58,7 +58,8 @@
       "noCopilotModels": "Copilot 모델을 찾을 수 없습니다",
       "copilotDisabled": "Copilot 모델이 비활성화되었습니다. 활성화하려면 스위치를 켜세요.",
       "noModelsFound": "모델을 찾을 수 없습니다",
-      "customModelsTooltip": "사용자 정의 모델을 관리하세요."
+      "customModelsTooltip": "사용자 정의 모델을 관리하세요.",
+      "viewPricing": "Pochi 가격 보기"
     },
     "tools": {
       "title": "도구",

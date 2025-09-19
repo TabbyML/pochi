@@ -5,10 +5,11 @@ import type { CfTypes } from "@livestore/sync-cf/cf-worker";
 
 export type Env = {
   getStore: () => Promise<Store<typeof catalog.schema>>;
+  setStoreId: (storeId: string) => void;
   getUser: () => Promise<User | undefined>;
   ASSETS: CfTypes.Fetcher;
 };
 
-export type DeepWriteable<T> = {
-  -readonly [P in keyof T]: DeepWriteable<T[P]>;
+export type DeepWritable<T> = {
+  -readonly [P in keyof T]: DeepWritable<T[P]>;
 };

@@ -88,7 +88,7 @@ const program = new Command()
   .action(async (options) => {
     const { uid, prompt } = await parseTaskInput(options, program);
 
-    const store = await createStore(process.cwd());
+    const store = await createStore();
 
     const llm = await createLLMConfig(program, options);
     const rg = findRipgrep();

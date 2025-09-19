@@ -64,7 +64,9 @@ function Chat({ user, uid, prompt }: ChatProps) {
   const isReadOnly = isSubTask && subtask?.manualRun === false;
 
   const autoApproveGuard = useAutoApproveGuard();
+  const { data: cwd = "default" } = useCurrentWorkspace();
   const chatKit = useLiveChatKit({
+    cwd,
     taskId: uid,
     getters,
     isSubTask,
