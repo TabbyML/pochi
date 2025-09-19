@@ -38,7 +38,7 @@ async function showMcpStatus() {
   // Wait for connections to establish with retry logic
   let status = mcpHub.status.value;
   let attempts = 0;
-  const maxAttempts = 10;
+  const maxAttempts = 15; // Increase max attempts for slower servers
   
   while (attempts < maxAttempts) {
     status = mcpHub.status.value;
@@ -47,12 +47,15 @@ async function showMcpStatus() {
     const readyConnections = connections.filter(conn => conn.status === "ready").length;
     const errorConnections = connections.filter(conn => conn.status === "error").length;
     
-    // Wait for all non-error connections to be ready, or until we have a reasonable number of tools
-    if (readyConnections + errorConnections >= allConnections || Object.keys(status.toolset).length > 10) {
-      break;
+    // Wait for ALL non-error connections to be ready, not just when we have some tools
+    if (readyConnections + errorConnections >= allConnections) {
+      // Give a bit more time for all tools to be fully loaded after connections are ready
+      if (attempts > 8) {
+        break;
+      }
     }
     
-    await new Promise(resolve => setTimeout(resolve, 800));
+    await new Promise(resolve => setTimeout(resolve, 600));
     attempts++;
   }
   
