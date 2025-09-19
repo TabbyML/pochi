@@ -107,12 +107,12 @@ const program = new Command()
     const customAgents = await loadAgents(process.cwd());
 
     // Create MCP Hub for accessing MCP server tools
-    const mcpHub = createCliMcpHub(process.cwd());
+    const mcpHub = createCliMcpHub();
     
     // Wait for MCP connections to establish before starting the task
     console.log(chalk.blue("🔌 Initializing MCP connections..."));
     let attempts = 0;
-    const maxAttempts = 10;
+    const maxAttempts = 12;
     let lastToolCount = 0;
     
     while (attempts < maxAttempts) {
@@ -135,7 +135,7 @@ const program = new Command()
         }
       }
       
-      await new Promise(resolve => setTimeout(resolve, 600));
+      await new Promise(resolve => setTimeout(resolve, 500));
       attempts++;
     }
     

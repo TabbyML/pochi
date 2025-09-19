@@ -4,10 +4,9 @@ import { computed } from "@preact/signals-core";
 
 /**
  * Creates a McpHub instance configured for CLI environment
- * @param workingDirectory Current working directory for the CLI
  * @returns Configured McpHub instance
  */
-export function createCliMcpHub(workingDirectory: string): McpHub {
+export function createCliMcpHub(): McpHub {
   // Create a computed signal for MCP servers configuration
   const mcpServersSignal = computed(() => pochiConfig.value.mcp || {});
 
