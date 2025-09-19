@@ -125,24 +125,13 @@ export class LiveStoreClientDO
     const { sub: userId } = decodeStoreId(store.storeId);
     const apiClient = createApiClient(this.env.POCHI_API_KEY, userId);
 
-    // If a task was updated in the last 5 minutes, persist it to the pochi api
-    const messages = store
-      .query(catalog.queries.makeMessagesQuery(task.id))
-      .map((x) => x.data);
     const resp = await apiClient.api.chat.persist.$post({
       json: {
         id: task.id,
-        // @ts-expect-error - ignore readonly modifier and unknown conversion.
-        messages: messages,
         status: task.status,
         parentClientTaskId: task.parentId || undefined,
         storeId: store.storeId,
-        clientTaskData: {
-          ...task,
-          todos: task.todos.map((t) => ({ ...t })),
-          git: task.git ? { ...task.git } : null,
-          error: task.error ? { ...task.error } : null,
-        },
+        clientTaskData: task,
       },
     });
 
