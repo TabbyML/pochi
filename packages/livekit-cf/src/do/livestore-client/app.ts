@@ -23,8 +23,7 @@ store
       throw new HTTPException(404, { message: "Task not found" });
     }
 
-    const EnablePublicSharedCheck = false;
-    if (EnablePublicSharedCheck && !task.isPublicShared) {
+    if (!task.isPublicShared) {
       const jwt = c.req.header("authorization")?.replace("Bearer ", "");
       const user = jwt && (await verifyJWT(undefined, jwt));
       const isOwner = user && user.sub === decodeStoreId(store.storeId).sub;

@@ -38,7 +38,7 @@ export function PublicShareButton({
 }: PublicShareButtonProps) {
   const { t } = useTranslation();
   const menuItemRef = useRef<"share" | "support">(null);
-  const shareId = task?.shareId || "abc";
+  const shareId = task?.shareId;
   const isPublicShared = task?.isPublicShared;
   const [open, setOpen] = useState(false);
   const { isCopied, copyToClipboard } = useCopyToClipboard({ timeout: 2000 });
