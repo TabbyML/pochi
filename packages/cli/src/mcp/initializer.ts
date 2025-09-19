@@ -44,18 +44,6 @@ export async function initializeMcp(mcpHub: McpHub): Promise<void> {
     attempts++;
   }
 
-  const finalStatus = mcpHub.status.value;
-  const finalToolCount = Object.keys(finalStatus.toolset).length;
-  const finalConnections = Object.values(finalStatus.connections);
-  const readyConnections = finalConnections.filter(
-    (conn) => conn.status === "ready",
-  ).length;
-
-  if (finalToolCount > 0) {
-    spinner.succeed(
-      `MCP ready: ${readyConnections}/${finalConnections.length} servers, ${finalToolCount} tools available`,
-    );
-  } else {
-    spinner.warn("No MCP tools available");
-  }
+  // Simply stop the spinner without showing any final status
+  spinner.stop();
 }
