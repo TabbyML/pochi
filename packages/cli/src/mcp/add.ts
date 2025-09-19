@@ -1,8 +1,8 @@
 import type { Command } from "@commander-js/extra-typings";
 import {
   type McpServerConfig,
-  updatePochiConfig,
   pochiConfig,
+  updatePochiConfig,
 } from "@getpochi/common/configuration";
 import chalk from "chalk";
 
@@ -21,14 +21,14 @@ export function registerMcpAddCommand(parentCommand: Command) {
       try {
         const config = await collectServerConfig(name, options);
         await addMcpServer(config.name, config.serverConfig);
-        
+
         console.log(
-          chalk.green(`✓ Successfully added MCP server "${config.name}"`)
+          chalk.green(`✓ Successfully added MCP server "${config.name}"`),
         );
-        
+
         if (!config.serverConfig.disabled) {
           console.log(
-            chalk.blue(`  Server will be started on next task execution.`)
+            chalk.blue("  Server will be started on next task execution."),
           );
         }
       } catch (error) {
@@ -52,10 +52,10 @@ async function collectServerConfig(
     cwd?: string;
     disabled?: boolean;
     nonInteractive?: boolean;
-  } = {}
+  } = {},
 ): Promise<ServerConfigResult> {
   // Get server name
-  let name = providedName;
+  const name = providedName;
   if (!name) {
     throw new Error("Server name is required");
   }
@@ -67,10 +67,11 @@ async function collectServerConfig(
 
   // Determine transport type
   let transportType: "stdio" | "http";
-  
+
   if (options.command && options.url) {
     throw new Error("Cannot specify both --command and --url");
-  } else if (options.command) {
+  }
+  if (options.command) {
     transportType = "stdio";
   } else if (options.url) {
     transportType = "http";

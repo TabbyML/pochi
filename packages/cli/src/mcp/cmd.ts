@@ -1,6 +1,9 @@
 import type { Command } from "@commander-js/extra-typings";
 import { registerMcpAddCommand } from "./add";
-import { registerMcpDisableCommand, registerMcpEnableCommand } from "./enable-disable";
+import {
+  registerMcpDisableCommand,
+  registerMcpEnableCommand,
+} from "./enable-disable";
 import { registerMcpListCommand } from "./list";
 import { registerMcpRemoveCommand } from "./remove";
 import { registerMcpRestartCommand } from "./restart";

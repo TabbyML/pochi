@@ -1,5 +1,9 @@
 import type { Command } from "@commander-js/extra-typings";
-import { updatePochiConfig, pochiConfig } from "@getpochi/common/configuration";
+import {
+  type McpServerConfig,
+  pochiConfig,
+  updatePochiConfig,
+} from "@getpochi/common/configuration";
 import chalk from "chalk";
 
 export function registerMcpRemoveCommand(parentCommand: Command) {
@@ -11,15 +15,19 @@ export function registerMcpRemoveCommand(parentCommand: Command) {
     .action(async (name, options) => {
       try {
         const serverName = await getServerToRemove(name);
-        
+
         if (!options.yes) {
-          console.log(chalk.yellow("Operation cancelled. Use --yes flag to skip confirmation."));
+          console.log(
+            chalk.yellow(
+              "Operation cancelled. Use --yes flag to skip confirmation.",
+            ),
+          );
           return;
         }
-        
+
         await removeMcpServer(serverName);
         console.log(
-          chalk.green(`✓ Successfully removed MCP server "${serverName}"`)
+          chalk.green(`✓ Successfully removed MCP server "${serverName}"`),
         );
       } catch (error) {
         console.error(chalk.red(`Error removing MCP server: ${error}`));
@@ -31,26 +39,29 @@ export function registerMcpRemoveCommand(parentCommand: Command) {
 async function getServerToRemove(providedName?: string): Promise<string> {
   const mcpServers = pochiConfig.value.mcp || {};
   const serverNames = Object.keys(mcpServers);
-  
+
   if (serverNames.length === 0) {
     throw new Error("No MCP servers configured");
   }
-  
+
   if (providedName) {
     if (!mcpServers[providedName]) {
       throw new Error(`MCP server "${providedName}" not found`);
     }
     return providedName;
   }
-  
+
   // For now, require explicit server name
-  throw new Error("Server name is required. Use: pochi mcp remove <server-name>");
+  throw new Error(
+    "Server name is required. Use: pochi mcp remove <server-name>",
+  );
 }
 
-function getServerDescription(config: any): string {
-  if (config.url) {
+function getServerDescription(config: McpServerConfig): string {
+  if ("url" in config) {
     return `HTTP: ${config.url}`;
-  } else if (config.command) {
+  }
+  if ("command" in config) {
     return `stdio: ${config.command}`;
   }
   return "Unknown transport";
@@ -59,6 +70,6 @@ function getServerDescription(config: any): string {
 async function removeMcpServer(name: string) {
   const currentConfig = pochiConfig.value.mcp || {};
   const { [name]: removed, ...newConfig } = currentConfig;
-  
+
   await updatePochiConfig({ mcp: newConfig });
 }

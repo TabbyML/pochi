@@ -1,5 +1,5 @@
 import { getLogger, prompts } from "@getpochi/common";
-import { type McpHub } from "@getpochi/common/mcp-utils";
+import type { McpHub } from "@getpochi/common/mcp-utils";
 import {
   isAssistantMessageWithEmptyParts,
   isAssistantMessageWithNoToolCalls,

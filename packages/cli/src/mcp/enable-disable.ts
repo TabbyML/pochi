@@ -1,5 +1,5 @@
 import type { Command } from "@commander-js/extra-typings";
-import { updatePochiConfig, pochiConfig } from "@getpochi/common/configuration";
+import { pochiConfig, updatePochiConfig } from "@getpochi/common/configuration";
 import chalk from "chalk";
 
 export function registerMcpEnableCommand(parentCommand: Command) {
@@ -12,7 +12,7 @@ export function registerMcpEnableCommand(parentCommand: Command) {
         const serverName = await getServerToToggle(name, "disabled");
         await toggleMcpServer(serverName, false);
         console.log(
-          chalk.green(`✓ Successfully enabled MCP server "${serverName}"`)
+          chalk.green(`✓ Successfully enabled MCP server "${serverName}"`),
         );
       } catch (error) {
         console.error(chalk.red(`Error enabling MCP server: ${error}`));
@@ -31,7 +31,7 @@ export function registerMcpDisableCommand(parentCommand: Command) {
         const serverName = await getServerToToggle(name, "enabled");
         await toggleMcpServer(serverName, true);
         console.log(
-          chalk.green(`✓ Successfully disabled MCP server "${serverName}"`)
+          chalk.green(`✓ Successfully disabled MCP server "${serverName}"`),
         );
       } catch (error) {
         console.error(chalk.red(`Error disabling MCP server: ${error}`));
@@ -42,32 +42,32 @@ export function registerMcpDisableCommand(parentCommand: Command) {
 
 async function getServerToToggle(
   providedName?: string,
-  filter: "enabled" | "disabled" | "all" = "all"
+  filter: "enabled" | "disabled" | "all" = "all",
 ): Promise<string> {
   const mcpServers = pochiConfig.value.mcp || {};
   let serverNames = Object.keys(mcpServers);
-  
+
   if (serverNames.length === 0) {
     throw new Error("No MCP servers configured");
   }
-  
+
   // Filter servers based on current state
   if (filter === "enabled") {
-    serverNames = serverNames.filter(name => !mcpServers[name].disabled);
+    serverNames = serverNames.filter((name) => !mcpServers[name].disabled);
   } else if (filter === "disabled") {
-    serverNames = serverNames.filter(name => mcpServers[name].disabled);
+    serverNames = serverNames.filter((name) => mcpServers[name].disabled);
   }
-  
+
   if (serverNames.length === 0) {
     const filterText = filter === "enabled" ? "enabled" : "disabled";
     throw new Error(`No ${filterText} MCP servers found`);
   }
-  
+
   if (providedName) {
     if (!mcpServers[providedName]) {
       throw new Error(`MCP server "${providedName}" not found`);
     }
-    
+
     // Check if server matches filter
     const isDisabled = mcpServers[providedName].disabled;
     if (filter === "enabled" && isDisabled) {
@@ -76,23 +76,25 @@ async function getServerToToggle(
     if (filter === "disabled" && !isDisabled) {
       throw new Error(`MCP server "${providedName}" is already enabled`);
     }
-    
+
     return providedName;
   }
-  
+
   // For now, require explicit server name
   const action = filter === "enabled" ? "disable" : "enable";
-  throw new Error(`Server name is required. Use: pochi mcp ${action} <server-name>`);
+  throw new Error(
+    `Server name is required. Use: pochi mcp ${action} <server-name>`,
+  );
 }
 
 async function toggleMcpServer(name: string, disabled: boolean) {
   const currentConfig = pochiConfig.value.mcp || {};
   const serverConfig = currentConfig[name];
-  
+
   if (!serverConfig) {
     throw new Error(`MCP server "${name}" not found`);
   }
-  
+
   const newConfig = {
     ...currentConfig,
     [name]: {
@@ -100,6 +102,6 @@ async function toggleMcpServer(name: string, disabled: boolean) {
       disabled,
     },
   };
-  
+
   await updatePochiConfig({ mcp: newConfig });
 }

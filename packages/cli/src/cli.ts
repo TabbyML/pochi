@@ -108,43 +108,56 @@ const program = new Command()
 
     // Create MCP Hub for accessing MCP server tools
     const mcpHub = createCliMcpHub();
-    
+
     // Wait for MCP connections to establish before starting the task
     console.log(chalk.blue("🔌 Initializing MCP connections..."));
     let attempts = 0;
     const maxAttempts = 12;
     let lastToolCount = 0;
-    
+
     while (attempts < maxAttempts) {
       const status = mcpHub.status.value;
       const connections = Object.values(status.connections);
-      const readyConnections = connections.filter(conn => conn.status === "ready").length;
-      const errorConnections = connections.filter(conn => conn.status === "error").length;
+      const readyConnections = connections.filter(
+        (conn) => conn.status === "ready",
+      ).length;
+      const errorConnections = connections.filter(
+        (conn) => conn.status === "error",
+      ).length;
       const toolCount = Object.keys(status.toolset).length;
-      
+
       if (connections.length > 0) {
         // Only show status when tool count changes or first time
         if (toolCount !== lastToolCount || attempts === 0) {
-          console.log(chalk.gray(`   ${readyConnections}/${connections.length} servers ready, ${toolCount} tools available`));
+          console.log(
+            chalk.gray(
+              `   ${readyConnections}/${connections.length} servers ready, ${toolCount} tools available`,
+            ),
+          );
           lastToolCount = toolCount;
         }
-        
+
         // Wait for ALL non-error connections to be ready
-        if (readyConnections + errorConnections >= connections.length && attempts > 3) {
+        if (
+          readyConnections + errorConnections >= connections.length &&
+          attempts > 3
+        ) {
           break;
         }
       }
-      
-      await new Promise(resolve => setTimeout(resolve, 500));
+
+      await new Promise((resolve) => setTimeout(resolve, 500));
       attempts++;
     }
-    
+
     const finalStatus = mcpHub.status.value;
     const finalToolCount = Object.keys(finalStatus.toolset).length;
     if (finalToolCount > 0) {
-      console.log(chalk.green(`✓ MCP ready with ${finalToolCount} tools available\n`));
+      console.log(
+        chalk.green(`✓ MCP ready with ${finalToolCount} tools available\n`),
+      );
     } else {
-      console.log(chalk.yellow(`⚠ No MCP tools available\n`));
+      console.log(chalk.yellow("⚠ No MCP tools available\n"));
     }
 
     const runner = new TaskRunner({
