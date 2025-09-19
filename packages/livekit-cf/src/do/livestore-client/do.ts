@@ -1,7 +1,6 @@
 import { DurableObject } from "cloudflare:workers";
 import type { ClientDoCallback, Env, User } from "@/types";
 import type { PochiApi, PochiApiClient } from "@getpochi/common/pochi-api";
-import { decodeStoreId } from "@getpochi/common/store-id-utils";
 import { type Task, catalog } from "@getpochi/livekit";
 import { createStoreDoPromise } from "@livestore/adapter-cloudflare";
 import { type Store, type Unsubscribe, nanoid } from "@livestore/livestore";
@@ -122,8 +121,13 @@ export class LiveStoreClientDO
   };
 
   private async persistTask(store: Store<typeof catalog.schema>, task: Task) {
-    const { sub: userId } = decodeStoreId(store.storeId);
-    const apiClient = createApiClient(this.env.POCHI_API_KEY, userId);
+    const user = await this.state.storage.get<User>("user");
+    if (!user?.id) {
+      console.error("No user found for persisting task");
+      return;
+    }
+    
+    const apiClient = createApiClient(this.env.POCHI_API_KEY, user.id);
 
     // If a task was updated in the last 5 minutes, persist it to the pochi api
     const messages = store

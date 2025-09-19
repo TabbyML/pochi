@@ -25,6 +25,7 @@ import { registerAuthCommand } from "./auth";
 
 import { findRipgrep } from "./lib/find-ripgrep";
 import { loadAgents } from "./lib/load-agents";
+import { createCliMcpHub } from "./lib/mcp-hub-factory";
 import { shutdownStoreAndExit } from "./lib/store-utils";
 import {
   containsWorkflowReference,
@@ -105,6 +106,9 @@ const program = new Command()
     // Load custom agents
     const customAgents = await loadAgents(process.cwd());
 
+    // Create MCP Hub for accessing MCP server tools
+    const mcpHub = createCliMcpHub(process.cwd());
+
     const runner = new TaskRunner({
       uid,
       store,
@@ -116,6 +120,7 @@ const program = new Command()
       maxRetries: options.maxRetries,
       onSubTaskCreated,
       customAgents,
+      mcpHub,
     });
 
     const renderer = new OutputRenderer(runner.state);
@@ -132,6 +137,7 @@ const program = new Command()
     }
 
     renderer.shutdown();
+    mcpHub.dispose();
     await shutdownStoreAndExit(store);
   });
 

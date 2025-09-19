@@ -1,3 +1,4 @@
+import type { McpHub } from "@getpochi/common/mcp-utils";
 import type { CustomAgent } from "@getpochi/tools";
 import type { TaskRunner } from "./task-runner";
 
@@ -27,4 +28,9 @@ export interface ToolCallOptions {
     taskId: string,
     customAgent?: CustomAgent,
   ) => TaskRunner;
+
+  /**
+   * MCP Hub instance for accessing MCP server tools
+   */
+  mcpHub?: McpHub;
 }

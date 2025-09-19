@@ -1,4 +1,5 @@
 import { getLogger, prompts } from "@getpochi/common";
+import { type McpHub } from "@getpochi/common/mcp-utils";
 import {
   isAssistantMessageWithEmptyParts,
   isAssistantMessageWithNoToolCalls,
@@ -78,6 +79,11 @@ export interface RunnerOptions {
   customAgents?: CustomAgent[];
 
   onSubTaskCreated?: (runner: TaskRunner) => void;
+
+  /**
+   * MCP Hub instance for accessing MCP server tools
+   */
+  mcpHub?: McpHub;
 }
 
 const logger = getLogger("TaskRunner");
@@ -104,6 +110,7 @@ export class TaskRunner {
       cwd: options.cwd,
       rg: options.rg,
       customAgents: options.customAgents,
+      mcpHub: options.mcpHub,
       createSubTaskRunner: (taskId: string, customAgent?: CustomAgent) => {
         // create sub task
         const runner = new TaskRunner({

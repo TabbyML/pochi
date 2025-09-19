@@ -35,12 +35,26 @@ async function showMcpStatus() {
   // Create MCP hub to get real-time status
   const mcpHub = createCliMcpHub(process.cwd());
   
-  // Wait a moment for connections to establish
-  await new Promise(resolve => setTimeout(resolve, 1000));
+  // Wait for connections to establish with retry logic
+  let status = mcpHub.status.value;
+  let attempts = 0;
+  const maxAttempts = 10;
   
-  const status = mcpHub.status.value;
-
-  console.log("status", status);
+  while (attempts < maxAttempts) {
+    status = mcpHub.status.value;
+    const connections = Object.values(status.connections);
+    const allConnections = connections.length;
+    const readyConnections = connections.filter(conn => conn.status === "ready").length;
+    const errorConnections = connections.filter(conn => conn.status === "error").length;
+    
+    // Wait for all non-error connections to be ready, or until we have a reasonable number of tools
+    if (readyConnections + errorConnections >= allConnections || Object.keys(status.toolset).length > 10) {
+      break;
+    }
+    
+    await new Promise(resolve => setTimeout(resolve, 800));
+    attempts++;
+  }
   
   // Sort servers by name for consistent display
   const sortedServerNames = Object.keys(mcpServers).sort();
@@ -66,9 +80,11 @@ async function showMcpStatus() {
         console.log(`   Error:  ${chalk.red(connectionStatus.error)}`);
       }
       
-      // Tools info
-      const toolCount = Object.keys(connectionStatus.tools || {}).length;
-      const enabledTools = Object.values(connectionStatus.tools || {}).filter(
+      // Tools info - show tools even in starting state if available
+      const tools = connectionStatus.tools || {};
+      const toolCount = Object.keys(tools).length;
+      
+      const enabledTools = Object.values(tools).filter(
         tool => !tool.disabled
       ).length;
       
@@ -77,8 +93,8 @@ async function showMcpStatus() {
         
         // List individual tools if not too many
         if (toolCount <= 10) {
-          const tools = Object.entries(connectionStatus.tools || {});
-          for (const [toolName, tool] of tools) {
+          const toolEntries = Object.entries(tools);
+          for (const [toolName, tool] of toolEntries) {
             const toolStatus = tool.disabled 
               ? chalk.gray("disabled")
               : chalk.green("enabled");

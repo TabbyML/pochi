@@ -1,5 +1,5 @@
 import type { Env, User } from "@/types";
-import { decodeStoreId } from "@getpochi/common/store-id-utils";
+import { verifyStoreIdSub } from "@getpochi/common/store-id-utils";
 import { HTTPException } from "hono/http-exception";
 import * as jose from "jose";
 import { JOSEError } from "jose/errors";
@@ -41,7 +41,7 @@ export async function verifyStoreId(
   storeId: string,
 ) {
   const user = await verifyPayload(env, payload);
-  if (user.sub === decodeStoreId(storeId).sub) {
+  if (user.sub && verifyStoreIdSub(storeId, user.sub)) {
     return user;
   }
 }

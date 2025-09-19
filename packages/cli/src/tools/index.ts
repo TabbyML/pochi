@@ -36,24 +36,48 @@ export async function executeToolCall(
   abortSignal?: AbortSignal,
 ) {
   const toolName = getToolName(tool);
+  
+  // First, try to find the tool in the built-in tool map
   const toolFunction = ToolMap[toolName];
-  if (!toolFunction) {
-    return {
-      error: `Tool ${toolName} not found.`,
-    };
+  if (toolFunction) {
+    try {
+      return await toolFunction(options)(tool.input, {
+        messages: [],
+        toolCallId: tool.toolCallId,
+        abortSignal,
+      });
+    } catch (e) {
+      return {
+        error: toErrorString(e),
+      };
+    }
   }
-
-  try {
-    return await toolFunction(options)(tool.input, {
-      messages: [],
-      toolCallId: tool.toolCallId,
-      abortSignal,
-    });
-  } catch (e) {
-    return {
-      error: toErrorString(e),
-    };
+  
+  // If not found in built-in tools, try MCP tools
+  if (options.mcpHub) {
+    const mcpTools = options.mcpHub.status.value.toolset;
+    const mcpTool = mcpTools[toolName];
+    
+    if (mcpTool && mcpTool.execute) {
+      try {
+        const result = await mcpTool.execute(tool.input, {
+          messages: [],
+          toolCallId: tool.toolCallId,
+          abortSignal,
+        });
+        return result;
+      } catch (e) {
+        return {
+          error: toErrorString(e),
+        };
+      }
+    }
   }
+  
+  // Tool not found in either built-in or MCP tools
+  return {
+    error: `Tool ${toolName} not found.`,
+  };
 }
 
 function toErrorString(e: unknown): string {

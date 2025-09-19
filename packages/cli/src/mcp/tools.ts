@@ -41,8 +41,23 @@ async function showMcpTools(
   // Create MCP hub to get real-time tool information
   const mcpHub = createCliMcpHub(process.cwd());
   
-  // Wait a moment for connections to establish
-  await new Promise(resolve => setTimeout(resolve, 1500));
+  // Wait for connections to establish with retry logic
+  let attempts = 0;
+  const maxAttempts = 10;
+  
+  while (attempts < maxAttempts) {
+    const currentStatus = mcpHub.status.value;
+    const hasReadyConnections = Object.values(currentStatus.connections).some(
+      conn => conn.status === "ready"
+    );
+    
+    if (hasReadyConnections || Object.keys(currentStatus.toolset).length > 0) {
+      break;
+    }
+    
+    await new Promise(resolve => setTimeout(resolve, 500));
+    attempts++;
+  }
   
   const status = mcpHub.status.value;
   
