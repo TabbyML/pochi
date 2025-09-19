@@ -1,9 +1,5 @@
 import type { Command } from "@commander-js/extra-typings";
-import {
-  type McpServerConfig,
-  pochiConfig,
-  updatePochiConfig,
-} from "@getpochi/common/configuration";
+import { pochiConfig, updatePochiConfig } from "@getpochi/common/configuration";
 import chalk from "chalk";
 
 export function registerMcpRemoveCommand(parentCommand: Command) {
@@ -55,16 +51,6 @@ async function getServerToRemove(providedName?: string): Promise<string> {
   throw new Error(
     "Server name is required. Use: pochi mcp remove <server-name>",
   );
-}
-
-function getServerDescription(config: McpServerConfig): string {
-  if ("url" in config) {
-    return `HTTP: ${config.url}`;
-  }
-  if ("command" in config) {
-    return `stdio: ${config.command}`;
-  }
-  return "Unknown transport";
 }
 
 async function removeMcpServer(name: string) {

@@ -1,8 +1,5 @@
 import type { Command } from "@commander-js/extra-typings";
-import {
-  type McpServerConfig,
-  pochiConfig,
-} from "@getpochi/common/configuration";
+import { pochiConfig } from "@getpochi/common/configuration";
 import chalk from "chalk";
 import { createCliMcpHub } from "../lib/mcp-hub-factory";
 
@@ -44,16 +41,6 @@ async function getServerToRestart(providedName?: string): Promise<string> {
   throw new Error(
     "Server name is required. Use: pochi mcp restart <server-name>",
   );
-}
-
-function getServerDescription(config: McpServerConfig): string {
-  if ("url" in config) {
-    return `HTTP: ${config.url}`;
-  }
-  if ("command" in config) {
-    return `stdio: ${config.command}`;
-  }
-  return "Unknown transport";
 }
 
 async function restartMcpServer(name: string) {

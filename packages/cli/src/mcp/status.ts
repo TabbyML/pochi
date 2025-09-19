@@ -158,7 +158,7 @@ async function watchMcpStatus() {
   await showMcpStatus();
 
   // Subscribe to status changes
-  mcpHub.status.subscribe((status) => {
+  mcpHub.status.subscribe((_status) => {
     console.clear();
     console.log(
       chalk.blue("👀 Watching MCP server status... (Press Ctrl+C to exit)"),

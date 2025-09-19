@@ -140,16 +140,17 @@ export class TaskRunner {
           todos: this.todos,
         }),
         getCustomAgents: () => this.toolCallOptions.customAgents || [],
-        getMcpInfo: () => {
-          if (!options.mcpHub) {
-            return undefined;
-          }
-          const status = options.mcpHub.status.value;
-          return {
-            toolset: status.toolset,
-            instructions: status.instructions,
-          };
-        },
+        ...(options.mcpHub
+          ? {
+              getMcpInfo: () => {
+                const status = options.mcpHub?.status.value;
+                return {
+                  toolset: status?.toolset || {},
+                  instructions: status?.instructions || "",
+                };
+              },
+            }
+          : {}),
       },
     });
     if (options.prompt) {
