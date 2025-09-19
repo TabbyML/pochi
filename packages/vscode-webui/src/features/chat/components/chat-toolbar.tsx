@@ -32,7 +32,9 @@ import { useChatStatus } from "../hooks/use-chat-status";
 import { useChatSubmit } from "../hooks/use-chat-submit";
 import { useInlineCompactTask } from "../hooks/use-inline-compact-task";
 import { useNewCompactTask } from "../hooks/use-new-compact-task";
+import type { SubtaskInfo } from "../hooks/use-subtask-info";
 import { ChatInputForm } from "./chat-input-form";
+import { CompleteSubtaskButton } from "./subtask";
 
 interface ChatToolbarProps {
   task?: Task;
@@ -40,8 +42,8 @@ interface ChatToolbarProps {
   compact: () => Promise<string>;
   chat: UseChatHelpers<Message>;
   attachmentUpload: ReturnType<typeof useAttachmentUpload>;
-  isReadOnly: boolean;
   isSubTask: boolean;
+  subtask?: SubtaskInfo;
   displayError: Error | undefined;
   todosRef: React.RefObject<Todo[] | undefined>;
   onUpdateIsPublicShared?: (isPublicShared: boolean) => void;
@@ -52,8 +54,8 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   approvalAndRetry: { pendingApproval, retry },
   compact,
   attachmentUpload,
-  isReadOnly,
   isSubTask,
+  subtask,
   task,
   displayError,
   todosRef,
@@ -127,7 +129,6 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     showStopButton,
     showPreview,
   } = useChatStatus({
-    isReadOnly,
     isModelsLoading,
     isModelValid: !!selectedModel,
     isLoading,
@@ -139,7 +140,6 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
 
   const compactEnabled = !(
     isLoading ||
-    isReadOnly ||
     isExecuting ||
     totalTokens < constants.CompactTaskMinTokens
   );
@@ -185,11 +185,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   ]);
 
   // Only allow adding tool results when not loading
-  const allowAddToolResult = !(
-    isLoading ||
-    isReadOnly ||
-    newCompactTaskPending
-  );
+  const allowAddToolResult = !(isLoading || newCompactTaskPending);
   useAddCompleteToolCalls({
     messages,
     enable: allowAddToolResult,
@@ -212,6 +208,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
 
   return (
     <>
+      <CompleteSubtaskButton subtask={subtask} messages={messages} />
       <ApprovalButton
         pendingApproval={pendingApproval}
         retry={retry}
@@ -287,7 +284,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
           {!isSubTask && (
             <PublicShareButton
               task={task}
-              disabled={isReadOnly || isModelsLoading}
+              disabled={isModelsLoading}
               modelId={selectedModel?.id}
               displayError={displayError?.message}
               onUpdateIsPublicShared={onUpdateIsPublicShared}

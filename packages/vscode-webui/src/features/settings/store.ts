@@ -10,6 +10,7 @@ export type AutoApprove = Record<
   retry: boolean;
   maxRetryLimit: number;
   mcp: boolean;
+  autoRunSubtask: boolean;
 };
 
 export type SelectedModelInStore = Pick<DisplayModel, "id" | "name">;
@@ -51,10 +52,10 @@ export const useSettingsStore = create<SettingsState>()(
         retry: true,
         maxRetryLimit: 3,
         mcp: false,
+        autoRunSubtask: true,
       },
 
       // subtask manual run specific auto-approve settings
-
       subtaskAutoApproveActive: false,
       subtaskAutoApproveSettings: {
         read: false,
@@ -64,6 +65,7 @@ export const useSettingsStore = create<SettingsState>()(
         retry: true,
         maxRetryLimit: 3,
         mcp: false,
+        autoRunSubtask: false,
       },
 
       isDevMode: false,

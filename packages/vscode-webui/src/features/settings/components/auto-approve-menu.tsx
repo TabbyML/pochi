@@ -5,6 +5,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import {
   Blocks,
@@ -62,12 +63,6 @@ export function AutoApproveMenu({ isSubTask }: { isSubTask: boolean }) {
       summary: t("settings.autoApprove.execute"),
       label: t("settings.autoApprove.executeCommands"),
       iconClass: Terminal,
-    },
-    {
-      id: "subtask",
-      summary: "Subtask",
-      label: "Run subtask",
-      iconClass: SquareChevronRightIcon,
     },
     {
       id: "mcp",
@@ -156,30 +151,28 @@ export function AutoApproveMenu({ isSubTask }: { isSubTask: boolean }) {
         className="grid grid-cols-1 gap-2.5 [@media(min-width:400px)]:w-[400px] [@media(min-width:400px)]:grid-cols-2"
         side="top"
       >
-        {coreActionSettings
-          .filter((item) => !(isSubTask && item.id === "subtask"))
-          .map((setting) => (
-            <div key={setting.id} className="flex items-center">
-              <label
-                htmlFor={`core-action-dialog-${setting.id}`}
-                className={
-                  "flex flex-1 cursor-pointer select-none items-center pl-1 text-foreground text-sm"
+        {coreActionSettings.map((setting) => (
+          <div key={setting.id} className="flex items-center">
+            <label
+              htmlFor={`core-action-dialog-${setting.id}`}
+              className={
+                "flex flex-1 cursor-pointer select-none items-center pl-1 text-foreground text-sm"
+              }
+            >
+              <Checkbox
+                id={`core-action-dialog-${setting.id}`}
+                checked={getCoreActionCheckedState(setting.id)}
+                onCheckedChange={(checked) =>
+                  handleCoreActionToggle(setting.id, !!checked)
                 }
-              >
-                <Checkbox
-                  id={`core-action-dialog-${setting.id}`}
-                  checked={getCoreActionCheckedState(setting.id)}
-                  onCheckedChange={(checked) =>
-                    handleCoreActionToggle(setting.id, !!checked)
-                  }
-                />
-                <span className="ml-4 flex items-center gap-2 font-semibold">
-                  <setting.iconClass className="size-4 shrink-0" />
-                  {setting.label}
-                </span>
-              </label>
-            </div>
-          ))}
+              />
+              <span className="ml-4 flex items-center gap-2 font-semibold">
+                <setting.iconClass className="size-4 shrink-0" />
+                {setting.label}
+              </span>
+            </label>
+          </div>
+        ))}
 
         {/* Max Attempts Section - Always visible */}
         <div className="mt-1 border-gray-200/30 border-t pt-2 [@media(min-width:400px)]:col-span-2">
@@ -222,6 +215,46 @@ export function AutoApproveMenu({ isSubTask }: { isSubTask: boolean }) {
               />
             )}
           </div>
+
+          {!isSubTask && (
+            <div className="flex h-7 items-center pl-1">
+              <Checkbox
+                id="subtask-actions-trigger-dialog"
+                checked={autoApproveSettings.subtask}
+                onCheckedChange={(checked) =>
+                  handleCoreActionToggle("subtask", !!checked)
+                }
+              />
+              <label
+                className="flex cursor-pointer items-center gap-3 px-3"
+                htmlFor={
+                  autoApproveSettings.subtask
+                    ? "subtask-actions-auto-run"
+                    : "subtask-actions-trigger-dialog"
+                }
+              >
+                <span className="ml-1.5 flex items-center gap-2 font-semibold">
+                  <SquareChevronRightIcon className="size-4 shrink-0" />
+                  <span className="whitespace-nowrap text-foreground text-sm">
+                    {!autoApproveSettings.subtask ||
+                    (autoApproveSettings.subtask &&
+                      autoApproveSettings.autoRunSubtask)
+                      ? "Run subtasks: auto"
+                      : "Run subtasks: manual"}
+                  </span>
+                </span>
+              </label>
+              {autoApproveSettings.subtask && (
+                <Switch
+                  id="subtask-actions-auto-run"
+                  checked={autoApproveSettings.autoRunSubtask}
+                  onCheckedChange={(checked) =>
+                    handleCoreActionToggle("autoRunSubtask", !!checked)
+                  }
+                />
+              )}
+            </div>
+          )}
         </div>
       </PopoverContent>
     </Popover>

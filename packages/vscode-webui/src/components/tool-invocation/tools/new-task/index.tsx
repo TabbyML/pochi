@@ -58,11 +58,6 @@ export const newTaskTool: React.FC<NewTaskToolProps> = ({
                   to="/"
                   search={{
                     uid,
-                    subtask: {
-                      manualRun: false,
-                      agent: agentType,
-                      description,
-                    },
                   }}
                   replace={true}
                   viewTransition

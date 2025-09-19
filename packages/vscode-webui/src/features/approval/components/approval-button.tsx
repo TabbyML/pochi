@@ -14,8 +14,8 @@ interface ApprovalButtonProps {
 export const ApprovalButton: React.FC<ApprovalButtonProps> = ({
   allowAddToolResult,
   pendingApproval,
-  isSubTask,
   retry,
+  isSubTask,
 }) => {
   if (!allowAddToolResult || !pendingApproval) return null;
 

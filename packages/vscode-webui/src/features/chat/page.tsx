@@ -1,5 +1,3 @@
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import { WorkspaceRequiredPlaceholder } from "@/components/workspace-required-placeholder";
 import { ChatContextProvider, useHandleChatEvents } from "@/features/chat";
 import { usePendingModelAutoStart } from "@/features/retry";
@@ -13,21 +11,18 @@ import { type Task, catalog } from "@getpochi/livekit";
 import { useLiveChatKit } from "@getpochi/livekit/react";
 import type { Todo } from "@getpochi/tools";
 import { useStore } from "@livestore/react";
-import { Link, useRouter } from "@tanstack/react-router";
+import { useRouter } from "@tanstack/react-router";
 import { lastAssistantMessageIsCompleteWithToolCalls } from "ai";
-import { ChevronLeft } from "lucide-react";
-import type React from "react";
 import { useEffect, useMemo, useRef } from "react";
 import { useApprovalAndRetry } from "../approval";
 import { useSelectedModels } from "../settings";
 import { ChatArea } from "./components/chat-area";
 import { ChatToolbar } from "./components/chat-toolbar";
 import { ErrorMessageView } from "./components/error-message-view";
+import { SubtaskHeader } from "./components/subtask";
 import { useScrollToBottom } from "./hooks/use-scroll-to-bottom";
-import {
-  useCompleteSubtask,
-  useSubtaskCompleted,
-} from "./hooks/use-subtask-completed";
+import { useAddSubtaskResult } from "./hooks/use-subtask-completed";
+import { useSubtaskInfo } from "./hooks/use-subtask-info";
 import { useAutoApproveGuard, useChatAbortController } from "./lib/chat-state";
 import { onOverrideMessages } from "./lib/on-override-messages";
 import { useLiveChatKitGetters } from "./lib/use-live-chat-kit-getters";
@@ -40,21 +35,13 @@ export function ChatPage(props: ChatProps) {
   );
 }
 
-interface SubtaskInfo {
-  manualRun: boolean;
-  agent?: string;
-  description?: string;
-}
-
 interface ChatProps {
   uid: string;
   user?: UserInfo;
   prompt?: string;
-  subtask?: SubtaskInfo;
-  completedSubtaskUid?: string;
 }
 
-function Chat({ user, uid, prompt, subtask, completedSubtaskUid }: ChatProps) {
+function Chat({ user, uid, prompt }: ChatProps) {
   const { store } = useStore();
   const todosRef = useRef<Todo[] | undefined>(undefined);
   const getters = useLiveChatKitGetters({
@@ -71,8 +58,10 @@ function Chat({ user, uid, prompt, subtask, completedSubtaskUid }: ChatProps) {
 
   const task = store.useQuery(catalog.queries.makeTaskQuery(uid));
   const isSubTask = !!task?.parentId;
-  const isReadOnly = isSubTask && subtask?.manualRun !== true;
+  const subtask = useSubtaskInfo(uid, task?.parentId);
   const customAgent = useCustomAgent(subtask?.agent);
+
+  const isReadOnly = isSubTask && subtask?.manualRun === false;
 
   const autoApproveGuard = useAutoApproveGuard();
   const chatKit = useLiveChatKit({
@@ -134,19 +123,13 @@ function Chat({ user, uid, prompt, subtask, completedSubtaskUid }: ChatProps) {
     enabled:
       status === "ready" &&
       messages.length === 1 &&
-      !isReadOnly &&
       !isModelsLoading &&
       !!selectedModel,
     task,
     retry,
   });
 
-  const taskCompleted = useSubtaskCompleted(
-    isSubTask,
-    !!subtask?.manualRun,
-    chat.messages,
-  );
-  useCompleteSubtask({ ...chat, completedSubtaskUid });
+  useAddSubtaskResult({ ...chat });
 
   useScrollToBottom({
     messagesContainerRef,
@@ -162,21 +145,12 @@ function Chat({ user, uid, prompt, subtask, completedSubtaskUid }: ChatProps) {
       (pendingApproval?.name === "retry" ? pendingApproval.error : undefined);
 
   useHandleChatEvents(
-    isLoading || isModelsLoading || !selectedModel || isReadOnly
-      ? undefined
-      : sendMessage,
+    isLoading || isModelsLoading || !selectedModel ? undefined : sendMessage,
   );
 
   return (
     <div className="flex h-screen flex-col">
-      {isSubTask && subtask && (
-        <SubtaskHeader
-          subtask={subtask}
-          uid={uid}
-          parentId={task.parentId}
-          taskCompleted={taskCompleted}
-        />
-      )}
+      {isSubTask && subtask && <SubtaskHeader subtask={subtask} />}
       <ChatArea
         messages={renderMessages}
         isLoading={isLoading}
@@ -199,8 +173,8 @@ function Chat({ user, uid, prompt, subtask, completedSubtaskUid }: ChatProps) {
             compact={chatKit.spawn}
             approvalAndRetry={approvalAndRetry}
             attachmentUpload={attachmentUpload}
-            isReadOnly={isReadOnly}
             isSubTask={isSubTask}
+            subtask={subtask}
             displayError={displayError}
             onUpdateIsPublicShared={chatKit.updateIsPublicShared}
           />
@@ -224,42 +198,6 @@ function useAbortBeforeNavigation(abortController: AbortController) {
     };
   }, [abortController, router]);
 }
-
-const SubtaskHeader: React.FC<{
-  subtask: SubtaskInfo;
-  uid: string;
-  parentId: string;
-  taskCompleted: boolean;
-}> = ({ subtask, uid, parentId, taskCompleted }) => {
-  return (
-    <>
-      <div className="flex items-center border-gray-200/30 px-4 py-1">
-        <Link
-          to="/"
-          search={{
-            uid: parentId,
-            completedSubtaskUid: taskCompleted ? uid : undefined,
-          }}
-          replace={true}
-          viewTransition
-        >
-          <Button
-            variant={taskCompleted ? "default" : "ghost"}
-            size="sm"
-            className="h-8 px-3"
-          >
-            <ChevronLeft className="size-4" />
-            {taskCompleted && "Finish"}
-          </Button>
-        </Link>
-        <span className="ml-2 text-accent-foreground first-letter:capitalize">
-          {subtask?.description ?? ""}
-        </span>
-      </div>
-      <Separator className="mt-1 mb-2" />
-    </>
-  );
-};
 
 function fromTaskError(task?: Task) {
   if (task?.error) {

@@ -439,7 +439,10 @@ export class ManagedToolCallLifeCycle
     }
 
     const onTaskUpdate = (task: Task | undefined) => {
-      if (task?.status === "completed") {
+      if (
+        task?.status === "completed" &&
+        this.state.type === "execute:streaming"
+      ) {
         const result = {
           result: extractCompletionResult(this.store, uid),
         };
