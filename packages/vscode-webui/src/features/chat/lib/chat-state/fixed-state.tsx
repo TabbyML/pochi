@@ -64,7 +64,7 @@ export function FixedStateChatContextProvider({
   toolCallStatusRegistry,
   children,
 }: FixedStateChatContextProviderProps) {
-  const autoApproveGuard = useRef(false);
+  const autoApproveGuard = useRef("stop" as const);
   const abortController = useRef(new AbortController());
 
   const [toolCallLifeCycles, setToolCallLifeCycles] = useState<

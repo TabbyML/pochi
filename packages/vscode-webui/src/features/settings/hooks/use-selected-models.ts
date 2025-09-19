@@ -1,7 +1,8 @@
 import { useModelList } from "@/lib/hooks/use-model-list";
 import type { DisplayModel } from "@getpochi/common/vscode-webui-bridge";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { pick } from "remeda";
 import { useSettingsStore } from "../store";
 
 export type ModelGroup = {
@@ -13,7 +14,8 @@ export type ModelGroups = ModelGroup[];
 
 export function useSelectedModels() {
   const { t } = useTranslation();
-  const { selectedModelId, updateSelectedModelId } = useSettingsStore();
+  const { selectedModel: selectedModelFromStore, updateSelectedModel } =
+    useSettingsStore();
   const { modelList: models, isLoading } = useModelList(true);
   const groupedModels = useMemo<ModelGroups | undefined>(() => {
     if (!models) return undefined;
@@ -44,47 +46,26 @@ export function useSelectedModels() {
 
     return [superModels, swiftModels, customModels];
   }, [models, t]);
-  const [isModelReady, setIsModelReady] = useState(
-    !!selectedModelId &&
-      getModelIdFromModelInfo(selectedModelId, models) === selectedModelId,
-  );
 
+  const selectedModel = useMemo(() => {
+    const model = models?.find((x) => x.id === selectedModelFromStore?.id);
+    return model;
+  }, [selectedModelFromStore, models]);
+
+  // set initial model
   useEffect(() => {
-    if (!isLoading) {
-      // validate and init model
-      const validModelId = getModelIdFromModelInfo(selectedModelId, models);
-      if (validModelId !== selectedModelId) {
-        updateSelectedModelId(validModelId);
-      }
-      setIsModelReady(!!validModelId);
+    if (!isLoading && !selectedModelFromStore && !!models?.length) {
+      updateSelectedModel(pick(models[0], ["id", "name"]));
     }
-  }, [isLoading, models, selectedModelId, updateSelectedModelId]);
-
-  const selectedModel = models?.find((x) => x.id === selectedModelId);
+  }, [isLoading, models, selectedModelFromStore, updateSelectedModel]);
 
   return {
-    isLoading: isLoading || !isModelReady,
+    isLoading,
     models,
     groupedModels,
     selectedModel,
-    updateSelectedModelId,
+    updateSelectedModel,
+    // for fallback display
+    selectedModelFromStore,
   };
-}
-
-function getModelIdFromModelInfo(
-  modelId: string | undefined,
-  models: DisplayModel[] | undefined,
-): string | undefined {
-  if (!models?.length) return undefined;
-
-  const targetModel = modelId
-    ? models.find((x) => x.id === modelId)
-    : undefined;
-
-  if (targetModel) {
-    return targetModel.id;
-  }
-
-  // return the first model by default
-  return models[0].id;
 }

@@ -9,11 +9,13 @@ import type { AuthOutput, ModelOptions } from "./types";
 
 export abstract class VendorBase {
   constructor(readonly vendorId: string) {
-    this.getCredentials = this.getCredentials.bind(this);
-    this.getUserInfo = this.getUserInfo.bind(this);
+    this.getCredentials = runExclusive
+      .buildMethod(this.getCredentials)
+      .bind(this);
+    this.getUserInfo = runExclusive.buildMethod(this.getUserInfo).bind(this);
   }
 
-  getCredentials = runExclusive.buildMethod(async (): Promise<unknown> => {
+  getCredentials = async (): Promise<unknown> => {
     const { credentials } = this.getVendorConfig();
     const newCredentials = await this.renewCredentials(credentials);
     if (credentials !== newCredentials) {
@@ -23,9 +25,9 @@ export abstract class VendorBase {
     }
 
     return newCredentials;
-  });
+  };
 
-  getUserInfo = runExclusive.buildMethod(async (): Promise<UserInfo> => {
+  getUserInfo = async (): Promise<UserInfo> => {
     const { user } = this.getVendorConfig();
     if (user) return user;
 
@@ -37,7 +39,7 @@ export abstract class VendorBase {
       credentials,
     });
     return newUser;
-  });
+  };
 
   abstract fetchModels(): Promise<Record<string, ModelOptions>>;
 

@@ -8,7 +8,6 @@
   "placeholder": {
     "title": "무엇을 도와드릴까요?",
     "subtitle": "Pochi는 AI로 구동되므로 오류가 발생할 수 있습니다.",
-    "disclaimer": "사용하기 전에 출력을 주의 깊게 검토하세요.",
     "tips": {
       "attachments": "파일 보내기",
       "context": "컨텍스트 첨부",
@@ -43,6 +42,7 @@
   "modelSelect": {
     "selectModel": "모델 선택",
     "manageCustomModels": "사용자 정의 모델 관리...",
+    "modelUnavailable": "모델을 사용할 수 없거나 로드 중입니다.",
     "custom": "사용자 정의",
     "super": "가강",
     "swift": "극속"
@@ -58,7 +58,8 @@
       "noCopilotModels": "Copilot 모델을 찾을 수 없습니다",
       "copilotDisabled": "Copilot 모델이 비활성화되었습니다. 활성화하려면 스위치를 켜세요.",
       "noModelsFound": "모델을 찾을 수 없습니다",
-      "customModelsTooltip": "사용자 정의 모델을 관리하세요."
+      "customModelsTooltip": "사용자 정의 모델을 관리하세요.",
+      "viewPricing": "Pochi 가격 보기"
     },
     "tools": {
       "title": "도구",
@@ -131,6 +132,8 @@
     "shareSupportTitle": "Pochi 팀과 작업이 공유되었습니다",
     "shareSupportDetails": "이 작업과 관련 디버그 정보가 전송되었습니다. 지원이 필요하시면 Discord 서버에 참여하시고 이 ID를 참조해 주세요: {{shareId}}.",
     "joinDiscord": "Discord 참여",
-    "ok": "확인"
+    "ok": "확인",
+    "setPublic": "링크가 있는 모든 사람",
+    "setPrivate": "나만"
   }
 }

@@ -1,3 +1,4 @@
+import type { DisplayModel } from "@getpochi/common/vscode-webui-bridge";
 import type { ToolsByPermission } from "@getpochi/tools";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
@@ -11,8 +12,10 @@ export type AutoApprove = Record<
   mcp: boolean;
 };
 
+export type SelectedModelInStore = Pick<DisplayModel, "id" | "name">;
+
 export interface SettingsState {
-  selectedModelId: string | undefined;
+  selectedModel: SelectedModelInStore | undefined;
   autoApproveActive: boolean;
   autoApproveSettings: AutoApprove;
 
@@ -21,7 +24,9 @@ export interface SettingsState {
   enablePochiModels: boolean;
 
   updateAutoApproveSettings: (data: Partial<AutoApprove>) => void;
-  updateSelectedModelId: (selectedModelId: string | undefined) => void;
+  updateSelectedModel: (
+    selectedModel: SelectedModelInStore | undefined,
+  ) => void;
   updateAutoApproveActive: (value: boolean) => void;
   updateIsDevMode: (value: boolean) => void;
 
@@ -31,7 +36,7 @@ export interface SettingsState {
 export const useSettingsStore = create<SettingsState>()(
   persist(
     (set) => ({
-      selectedModelId: undefined,
+      selectedModel: undefined,
       autoApproveActive: true,
       autoApproveSettings: {
         read: true,
@@ -45,8 +50,8 @@ export const useSettingsStore = create<SettingsState>()(
 
       enablePochiModels: false,
 
-      updateSelectedModelId: (selectedModelId: string | undefined) =>
-        set({ selectedModelId }),
+      updateSelectedModel: (selectedModel: SelectedModelInStore | undefined) =>
+        set({ selectedModel }),
 
       updateAutoApproveSettings: (data) =>
         set((state) => ({

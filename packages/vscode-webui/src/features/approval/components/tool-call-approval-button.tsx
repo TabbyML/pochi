@@ -60,7 +60,7 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
   const abortText = ToolAbortText[pendingApproval.name] || "Stop";
 
   const onAccept = useCallback(() => {
-    autoApproveGuard.current = true;
+    autoApproveGuard.current = "auto";
     for (const [i, lifecycle] of lifecycles.entries()) {
       if (lifecycle.status !== "ready") {
         continue;
@@ -71,7 +71,7 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
   }, [tools, lifecycles, autoApproveGuard]);
 
   const onReject = useCallback(() => {
-    autoApproveGuard.current = false;
+    autoApproveGuard.current = "manual";
     for (const lifecycle of lifecycles) {
       if (lifecycle.status !== "ready") {
         continue;
@@ -83,7 +83,7 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
   const isReady = lifecycles.every((x) => x.status === "ready");
   const isAutoApproved = useToolAutoApproval(
     pendingApproval,
-    autoApproveGuard.current,
+    autoApproveGuard.current === "auto",
   );
   useEffect(() => {
     if (isReady && isAutoApproved) {
@@ -113,7 +113,7 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
 
   // biome-ignore lint/correctness/useExhaustiveDependencies(autoApproveGuard): autoApproveGuard is a ref, so it won't change
   const abort = useCallback(() => {
-    autoApproveGuard.current = false;
+    autoApproveGuard.current = "stop";
     for (const lifecycle of lifecycles) {
       lifecycle.abort();
     }

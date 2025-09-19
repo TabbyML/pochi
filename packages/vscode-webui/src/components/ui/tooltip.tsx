@@ -36,11 +36,8 @@ function TooltipContent({
   className,
   sideOffset = 0,
   children,
-  showArrow = true,
   ...props
-}: React.ComponentProps<typeof TooltipPrimitive.Content> & {
-  showArrow?: boolean;
-}) {
+}: React.ComponentProps<typeof TooltipPrimitive.Content>) {
   return (
     <TooltipPrimitive.Portal>
       <TooltipPrimitive.Content
@@ -53,9 +50,7 @@ function TooltipContent({
         {...props}
       >
         {children}
-        {!!showArrow && (
-          <TooltipPrimitive.Arrow className="z-50 size-2.5 translate-y-[calc(-50%_-_2px)] rotate-45 rounded-[2px] bg-popover fill-popover/90" />
-        )}
+        <TooltipPrimitive.Arrow className="z-50 size-2.5 translate-y-[calc(-50%_-_2px)] rotate-45 rounded-[2px] bg-popover fill-popover/90" />
       </TooltipPrimitive.Content>
     </TooltipPrimitive.Portal>
   );

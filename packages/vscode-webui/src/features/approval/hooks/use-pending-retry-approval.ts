@@ -55,15 +55,15 @@ export function usePendingRetryApproval({
   const autoApproveGuard = useAutoApproveGuard();
 
   if (error && Object.values(PochiApiErrors).includes(error.message)) {
-    autoApproveGuard.current = false;
+    autoApproveGuard.current = "stop";
   }
 
   if (error && APICallError.isInstance(error) && error.isRetryable === false) {
-    autoApproveGuard.current = false;
+    autoApproveGuard.current = "stop";
   }
 
   const { autoApproveActive, autoApproveSettings } = useAutoApprove(
-    autoApproveGuard.current,
+    autoApproveGuard.current === "auto",
   );
 
   const [retryCount, setRetryCount] = useState<RetryCount | undefined>(

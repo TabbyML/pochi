@@ -4,7 +4,6 @@ import type { Todo } from "./todo-write";
 import { defineClientTool } from "./types";
 
 export type SubTask = {
-  uid: string;
   clientTaskId: string;
   messages: UIMessage[];
   todos: Todo[];

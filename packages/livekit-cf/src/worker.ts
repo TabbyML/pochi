@@ -4,10 +4,20 @@ import type { Env } from "./types";
 import { verifyStoreId } from "@/lib/jwt";
 import * as SyncBackend from "@livestore/sync-cf/cf-worker";
 import { Hono } from "hono";
+import { cors } from "hono/cors";
 
 export const app = new Hono<{ Bindings: Env }>();
 
+const corsMiddleware = cors();
 app
+  .use("*", async (c, next) => {
+    const url = new URL(c.req.url);
+    if (url.searchParams.get("transport") === "http") {
+      return corsMiddleware(c, next);
+    }
+
+    return next();
+  })
   .all("/", async (c) => {
     const requestParamsResult = SyncBackend.getSyncRequestSearchParams(
       c.req.raw,

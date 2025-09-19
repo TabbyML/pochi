@@ -110,7 +110,7 @@ export function useChatSubmit({
       if (content) {
         allMessages.push(content);
       }
-      if (isSubmitDisabled && allMessages.length === 0) {
+      if (isSubmitDisabled) {
         return;
       }
 
@@ -119,7 +119,7 @@ export function useChatSubmit({
         await new Promise((resolve) => setTimeout(resolve, 25));
       }
 
-      autoApproveGuard.current = false;
+      autoApproveGuard.current = "stop";
       if (files.length > 0) {
         try {
           const uploadedAttachments = await upload();
@@ -134,18 +134,19 @@ export function useChatSubmit({
 
           setInput("");
           setQueuedMessages([]);
+          autoApproveGuard.current = "auto";
         } catch (error) {
           // Error is already handled by the hook
           return;
         }
       } else if (allMessages.length > 0) {
-        autoApproveGuard.current = true;
         clearUploadError();
         sendMessage({
           text: allMessages.join("\n\n"),
         });
         setInput("");
         setQueuedMessages([]);
+        autoApproveGuard.current = "auto";
       }
     },
     [
@@ -172,7 +173,7 @@ export function useChatSubmit({
     // Compacting is not allowed to be stopped.
     if (newCompactTaskPending) return;
 
-    if (isSubmitDisabled && queuedMessages.length === 0) {
+    if (isSubmitDisabled || queuedMessages.length === 0) {
       return;
     }
 
@@ -181,7 +182,7 @@ export function useChatSubmit({
       await new Promise((resolve) => setTimeout(resolve, 25));
     }
 
-    autoApproveGuard.current = true;
+    autoApproveGuard.current = "auto";
     clearUploadError();
     sendMessage({
       text: queuedMessages.join("\n\n"),

@@ -19,8 +19,8 @@ const adapter = makePersistedAdapter({
 });
 
 interface StoreDateContextType {
-  date: Date;
-  setDate: (date: Date) => void;
+  storeDate: Date;
+  setStoreDate: (date: Date) => void;
 }
 
 const StoreDateContext = createContext<StoreDateContextType | undefined>(
@@ -37,11 +37,14 @@ export function useStoreDate() {
 
 export function LiveStoreProvider({ children }: { children: React.ReactNode }) {
   const { jwt } = usePochiCredentials();
-  const [date, setDate] = useState(new Date());
-  const storeId = useStoreId(jwt, date.toLocaleDateString("en-US"));
+  const [storeDate, setStoreDate] = useState(new Date());
+  const storeId = useStoreId(jwt, storeDate.toLocaleDateString("en-US"));
   const syncPayload = useMemo(() => ({ jwt }), [jwt]);
 
-  const storeDateContextValue = useMemo(() => ({ date, setDate }), [date]);
+  const storeDateContextValue = useMemo(
+    () => ({ storeDate, setStoreDate }),
+    [storeDate],
+  );
 
   return (
     <StoreDateContext.Provider value={storeDateContextValue}>
