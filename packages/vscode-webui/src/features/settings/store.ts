@@ -16,18 +16,27 @@ export type SelectedModelInStore = Pick<DisplayModel, "id" | "name">;
 
 export interface SettingsState {
   selectedModel: SelectedModelInStore | undefined;
+
+  subtaskOffhand: boolean;
+
   autoApproveActive: boolean;
   autoApproveSettings: AutoApprove;
+
+  subtaskAutoApproveActive: boolean;
+  subtaskAutoApproveSettings: AutoApprove;
 
   isDevMode: boolean;
 
   enablePochiModels: boolean;
 
+  toggleSubtaskOffhand: () => void;
   updateAutoApproveSettings: (data: Partial<AutoApprove>) => void;
+  updateSubtaskAutoApproveSettings: (data: Partial<AutoApprove>) => void;
   updateSelectedModel: (
     selectedModel: SelectedModelInStore | undefined,
   ) => void;
   updateAutoApproveActive: (value: boolean) => void;
+  updateSubtaskAutoApproveActive: (value: boolean) => void;
   updateIsDevMode: (value: boolean) => void;
 
   updateEnablePochiModels: (value: boolean) => void;
@@ -37,6 +46,9 @@ export const useSettingsStore = create<SettingsState>()(
   persist(
     (set) => ({
       selectedModel: undefined,
+
+      subtaskOffhand: false,
+
       autoApproveActive: true,
       autoApproveSettings: {
         read: true,
@@ -45,10 +57,29 @@ export const useSettingsStore = create<SettingsState>()(
         retry: true,
         maxRetryLimit: 3,
         mcp: false,
+        autoRunSubtask: true,
       },
+
+      // subtask manual run specific auto-approve settings
+      subtaskAutoApproveActive: false,
+      subtaskAutoApproveSettings: {
+        read: false,
+        write: false,
+        execute: false,
+        retry: true,
+        maxRetryLimit: 3,
+        mcp: false,
+        autoRunSubtask: false,
+      },
+
       isDevMode: false,
 
       enablePochiModels: false,
+
+      toggleSubtaskOffhand: () =>
+        set((state) => ({
+          subtaskOffhand: !state.subtaskOffhand,
+        })),
 
       updateSelectedModel: (selectedModel: SelectedModelInStore | undefined) =>
         set({ selectedModel }),
@@ -58,8 +89,19 @@ export const useSettingsStore = create<SettingsState>()(
           autoApproveSettings: { ...state.autoApproveSettings, ...data },
         })),
 
+      updateSubtaskAutoApproveSettings: (data) =>
+        set((state) => ({
+          subtaskAutoApproveSettings: {
+            ...state.subtaskAutoApproveSettings,
+            ...data,
+          },
+        })),
+
       updateAutoApproveActive: (value: boolean) =>
         set(() => ({ autoApproveActive: value })),
+
+      updateSubtaskAutoApproveActive: (value: boolean) =>
+        set(() => ({ subtaskAutoApproveActive: value })),
 
       updateIsDevMode: (value: boolean) => set(() => ({ isDevMode: value })),
 

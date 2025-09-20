@@ -3,19 +3,23 @@ import { useCallback, useEffect, useMemo } from "react"; // useMemo is now in th
 
 import { Button } from "@/components/ui/button";
 import { useAutoApproveGuard, useToolCallLifeCycle } from "@/features/chat";
-import { useToolAutoApproval } from "@/features/settings";
+import { useSubtaskOffhand, useToolAutoApproval } from "@/features/settings";
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
+import { useNavigate } from "@tanstack/react-router";
 import { getToolName } from "ai";
 import type { PendingToolCallApproval } from "../hooks/use-pending-tool-call-approval";
 
 interface ToolCallApprovalButtonProps {
   pendingApproval: PendingToolCallApproval;
+  isSubTask: boolean;
 }
 
 // Component
 export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
   pendingApproval,
+  isSubTask,
 }) => {
+  const navigate = useNavigate();
   const autoApproveGuard = useAutoApproveGuard();
   const { getToolCallLifeCycle } = useToolCallLifeCycle();
   const [lifecycles, tools] = useMemo(
@@ -59,6 +63,19 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
   const rejectText = ToolRejectText[pendingApproval.name] || "Reject";
   const abortText = ToolAbortText[pendingApproval.name] || "Stop";
 
+  const manualRunSubtask = useCallback(
+    (subtaskUid: string) => {
+      navigate({
+        to: "/",
+        search: {
+          uid: subtaskUid,
+        },
+      });
+    },
+    [navigate],
+  );
+
+  const { subtaskOffhand } = useSubtaskOffhand();
   const onAccept = useCallback(() => {
     autoApproveGuard.current = "auto";
     for (const [i, lifecycle] of lifecycles.entries()) {
@@ -66,9 +83,28 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
         continue;
       }
 
+      if (lifecycle.toolName === "newTask" && subtaskOffhand === false) {
+        const newTaskInput =
+          pendingApproval.name === "newTask" &&
+          pendingApproval.tool.type === "tool-newTask"
+            ? pendingApproval.tool.input
+            : undefined;
+        const subtaskUid = newTaskInput?._meta?.uid;
+        if (subtaskUid) {
+          manualRunSubtask(subtaskUid);
+        }
+        return;
+      }
       lifecycle.execute(tools[i].input);
     }
-  }, [tools, lifecycles, autoApproveGuard]);
+  }, [
+    tools,
+    lifecycles,
+    autoApproveGuard,
+    manualRunSubtask,
+    pendingApproval,
+    subtaskOffhand,
+  ]);
 
   const onReject = useCallback(() => {
     autoApproveGuard.current = "manual";
@@ -84,6 +120,7 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
   const isAutoApproved = useToolAutoApproval(
     pendingApproval,
     autoApproveGuard.current === "auto",
+    isSubTask,
   );
   useEffect(() => {
     if (isReady && isAutoApproved) {
@@ -120,10 +157,11 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
   }, [lifecycles]);
 
   const showAccept = !isAutoApproved && isReady;
+
   if (showAccept) {
     return (
       <>
-        <Button onClick={onAccept}>{acceptText}</Button>
+        <Button onClick={() => onAccept()}>{acceptText}</Button>
         {rejectText !== "<disabled>" && (
           <Button onClick={onReject} variant="secondary">
             {rejectText}

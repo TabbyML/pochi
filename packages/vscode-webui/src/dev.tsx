@@ -42,7 +42,7 @@ function App() {
 
 function Content() {
   const { store } = useStore();
-  const tasks = store.useQuery(catalog.queries.makeTasksQuery());
+  const tasks = store.useQuery(catalog.queries.tasks$);
   const devtoolsLink = `/_livestore/web/${store.storeId}/${store.clientId}/${store.sessionId}/default`;
   return (
     <div>

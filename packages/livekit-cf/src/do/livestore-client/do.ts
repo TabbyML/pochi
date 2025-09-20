@@ -90,13 +90,10 @@ export class LiveStoreClientDO
 
     // Make sure to only subscribe once
     if (this.storeSubscription === undefined) {
-      this.storeSubscription = store.subscribe(
-        catalog.queries.makeTasksQuery(),
-        {
-          // FIXME(meng): implement this with store.events stream when it's ready
-          onUpdate: this.onTasksUpdate,
-        },
-      );
+      this.storeSubscription = store.subscribe(catalog.queries.tasks$, {
+        // FIXME(meng): implement this with store.events stream when it's ready
+        onUpdate: this.onTasksUpdate,
+      });
     }
   }
 
@@ -110,13 +107,15 @@ export class LiveStoreClientDO
     if (!tasks) return;
     const store = await this.getStore();
     const oneMinuteAgo = moment().subtract(1, "minute");
+
+    console.log(`Updating ${tasks.length} tasks`);
     const updatedTasks = tasks.filter((task) =>
       moment(task.updatedAt).isAfter(oneMinuteAgo),
     );
 
     if (!updatedTasks.length) return;
 
-    console.log(`onTasksUpdate: persisting ${updatedTasks.length} tasks`);
+    console.log(`Persisting ${updatedTasks.length} tasks`);
     await Promise.all(
       updatedTasks.map((task) =>
         this.persistTask(store, task).catch(console.error),

@@ -27,6 +27,8 @@ async function readAgentsFromDir(dir: string): Promise<CustomAgentFile[]> {
         const agent = await parseAgentFile(contentStr);
         if (agent) {
           agents.push({ ...agent, filePath });
+        } else {
+          logger.warn(`Could not parse agent file ${fileName}`);
         }
       }
     }

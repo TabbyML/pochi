@@ -5,6 +5,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import {
   Blocks,
@@ -12,11 +13,14 @@ import {
   FileEdit,
   type LucideIcon,
   RotateCcw,
+  SquareChevronRightIcon,
   Terminal,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { type AutoApprove, useSettingsStore } from "../store";
+import { useAutoApprove } from "../hooks/use-auto-approve";
+import { useSubtaskOffhand } from "../hooks/use-subtask-offhand";
+import type { AutoApprove } from "../store";
 
 interface CoreActionSetting {
   id: keyof Omit<AutoApprove, "default">;
@@ -25,14 +29,14 @@ interface CoreActionSetting {
   summary: string;
 }
 
-export function AutoApproveMenu() {
+export function AutoApproveMenu({ isSubTask }: { isSubTask: boolean }) {
   const { t } = useTranslation();
   const {
     autoApproveActive,
     updateAutoApproveActive,
     autoApproveSettings,
     updateAutoApproveSettings,
-  } = useSettingsStore();
+  } = useAutoApprove({ isSubTask });
 
   const [currentMaxRetry, setCurrentMaxRetry] = useState(
     autoApproveSettings.maxRetryLimit.toString(),
@@ -101,6 +105,7 @@ export function AutoApproveMenu() {
     ...(autoApproveSettings.retry ? [t("settings.autoApprove.retry")] : []),
   ];
 
+  const { subtaskOffhand, toggleSubtaskOffhand } = useSubtaskOffhand();
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -189,7 +194,7 @@ export function AutoApproveMenu() {
                   : "retry-actions-trigger-dialog"
               }
             >
-              <span className="ml-1.5 flex items-center gap-2 font-semibold">
+              <span className="ml-3.5 flex items-center gap-2 font-semibold">
                 <RotateCcw className="size-4 shrink-0" />
                 <span className="whitespace-nowrap text-foreground text-sm">
                   {autoApproveSettings.retry
@@ -212,6 +217,27 @@ export function AutoApproveMenu() {
               />
             )}
           </div>
+
+          {!isSubTask && (
+            <div className="mt-1 flex h-7 items-center">
+              <Switch
+                id="subtask-toggle-offhand"
+                checked={subtaskOffhand}
+                onCheckedChange={toggleSubtaskOffhand}
+              />
+              <label
+                className="flex cursor-pointer items-center gap-3 px-3"
+                htmlFor={"subtask-toggle-offhand"}
+              >
+                <span className="ml-1.5 flex items-center gap-2 font-semibold">
+                  <SquareChevronRightIcon className="size-4 shrink-0" />
+                  <span className="whitespace-nowrap text-foreground text-sm">
+                    {subtaskOffhand ? "Subtask - Offhand" : "Subtask - Manual"}
+                  </span>
+                </span>
+              </label>
+            </div>
+          )}
         </div>
       </PopoverContent>
     </Popover>

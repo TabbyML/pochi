@@ -17,16 +17,22 @@ export const makeMessagesQuery = (taskId: string) =>
     deps: [taskId],
   });
 
-export const makeTasksQuery = (cwd?: string) =>
+export const tasks$ = queryDb(
+  () => tables.tasks.where("parentId", "=", null).orderBy("updatedAt", "desc"),
+  {
+    label: "tasks",
+  },
+);
+
+export const makeTasksQuery = (cwd: string) =>
   queryDb(
-    () => {
-      const q = tables.tasks
+    () =>
+      tables.tasks
         .where("parentId", "=", null)
-        .orderBy("updatedAt", "desc");
-      return cwd ? q.where("cwd", "=", cwd) : q;
-    },
+        .where("cwd", "=", cwd)
+        .orderBy("updatedAt", "desc"),
     {
-      label: "tasks",
+      label: "tasks.cwd",
       deps: [cwd],
     },
   );
