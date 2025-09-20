@@ -1,5 +1,5 @@
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import type { Message } from "@getpochi/livekit";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { ChevronLeft } from "lucide-react";
@@ -9,28 +9,19 @@ import type { SubtaskInfo } from "../hooks/use-subtask-info";
 
 export const SubtaskHeader: React.FC<{
   subtask: SubtaskInfo;
-}> = ({ subtask }) => {
+  className?: string;
+}> = ({ subtask, className }) => {
   return (
-    <>
-      <div className="flex items-center border-gray-200/30 px-4 py-1">
-        <Link
-          to="/"
-          search={{
-            uid: subtask.parentUid,
-          }}
-          replace={true}
-          viewTransition
-        >
-          <Button variant={"ghost"} size="sm" className="h-8 px-3">
-            <ChevronLeft className="size-4" />
-          </Button>
-        </Link>
-        <span className="ml-2 text-accent-foreground first-letter:capitalize">
-          {subtask?.description ?? ""}
-        </span>
-      </div>
-      <Separator className="mt-1 mb-2" />
-    </>
+    <div className={cn("px-2 pb-0", className)}>
+      <Link
+        to="/"
+        search={{ uid: subtask.parentUid }}
+        replace={true}
+        className={cn(buttonVariants({ variant: "ghost" }), "gap-1")}
+      >
+        <ChevronLeft className="mr-1.5 size-4" /> Back
+      </Link>
+    </div>
   );
 };
 

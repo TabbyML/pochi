@@ -57,7 +57,6 @@ function Chat({ user, uid, prompt }: ChatProps) {
   useAbortBeforeNavigation(chatAbortController.current);
 
   const task = store.useQuery(catalog.queries.makeTaskQuery(uid));
-  const isSubTask = !!task?.parentId;
   const subtask = useSubtaskInfo(uid, task?.parentId);
   const customAgent = useCustomAgent(subtask?.agent);
 
@@ -67,7 +66,7 @@ function Chat({ user, uid, prompt }: ChatProps) {
     cwd,
     taskId: uid,
     getters,
-    isSubTask,
+    isSubTask: !!subtask,
     customAgent,
     abortSignal: chatAbortController.current.signal,
     sendAutomaticallyWhen: (x) => {
@@ -108,7 +107,7 @@ function Chat({ user, uid, prompt }: ChatProps) {
   const approvalAndRetry = useApprovalAndRetry({
     ...chat,
     showApproval: !isLoading && !isModelsLoading && !!selectedModel,
-    isSubTask,
+    isSubTask: !!subtask,
   });
 
   const { pendingApproval, retry } = approvalAndRetry;
@@ -150,7 +149,12 @@ function Chat({ user, uid, prompt }: ChatProps) {
 
   return (
     <div className="flex h-screen flex-col">
-      {isSubTask && subtask && <SubtaskHeader subtask={subtask} />}
+      {subtask && (
+        <SubtaskHeader
+          subtask={subtask}
+          className="absolute top-1 right-2 z-10"
+        />
+      )}
       <ChatArea
         messages={renderMessages}
         isLoading={isLoading}
@@ -173,7 +177,7 @@ function Chat({ user, uid, prompt }: ChatProps) {
             compact={chatKit.spawn}
             approvalAndRetry={approvalAndRetry}
             attachmentUpload={attachmentUpload}
-            isSubTask={isSubTask}
+            isSubTask={!!subtask}
             subtask={subtask}
             displayError={displayError}
             onUpdateIsPublicShared={chatKit.updateIsPublicShared}
