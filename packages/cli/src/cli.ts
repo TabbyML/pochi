@@ -333,4 +333,17 @@ async function createLLMConfigWithProviders(
         modelSetting.maxTokens ?? constants.DefaultMaxOutputTokens,
     };
   }
+
+  if (modelProvider.kind === "anthropic") {
+    return {
+      type: "anthropic",
+      modelId,
+      baseURL: modelProvider.baseURL,
+      apiKey: modelProvider.apiKey,
+      contextWindow:
+        modelSetting.contextWindow ?? constants.DefaultContextWindow,
+      maxOutputTokens:
+        modelSetting.maxTokens ?? constants.DefaultMaxOutputTokens,
+    };
+  }
 }
