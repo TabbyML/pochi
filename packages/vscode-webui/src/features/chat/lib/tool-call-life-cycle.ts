@@ -135,6 +135,8 @@ export interface ToolCallLifeCycle {
    * Reject the tool call, preventing execution.
    */
   reject(): void;
+
+  addResult(result: unknown): void;
 }
 
 const logger = getLogger("ToolCallLifeCycle");
@@ -291,6 +293,14 @@ export class ManagedToolCallLifeCycle
     }
 
     return Promise.resolve({ uid });
+  }
+
+  addResult(result: unknown): void {
+    this.transitTo("ready", {
+      type: "complete",
+      result,
+      reason: "execute-finish",
+    });
   }
 
   abort() {

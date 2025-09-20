@@ -1,8 +1,9 @@
 import type { UseChatHelpers } from "@ai-sdk/react";
 import type { Message } from "@getpochi/livekit";
 import { useStore } from "@livestore/react";
-import { useCallback, useEffect, useState } from "react";
-import { useAutoApproveGuard } from "../lib/chat-state";
+import { getToolName } from "ai";
+import { useEffect, useState } from "react";
+import { useAutoApproveGuard, useToolCallLifeCycle } from "../lib/chat-state";
 import { extractCompletionResult } from "../lib/tool-call-life-cycle";
 import type { SubtaskInfo } from "./use-subtask-info";
 
@@ -31,30 +32,13 @@ export const useSubtaskCompleted = (
 
 // Complete subtask by adding tool result (in parent task)
 export const useAddSubtaskResult = ({
-  addToolResult,
   messages,
-}: Pick<UseChatHelpers<Message>, "addToolResult" | "messages">) => {
-  const { store } = useStore();
+}: Pick<UseChatHelpers<Message>, "messages">) => {
   const autoApproveGuard = useAutoApproveGuard();
+  const { store } = useStore();
+  const { getToolCallLifeCycle, previewingToolCalls } = useToolCallLifeCycle();
 
-  const addSubtaskResult = useCallback(
-    (subtaskUid: string, toolCallId: string) => {
-      try {
-        const result = extractCompletionResult(store, subtaskUid);
-        if (result) {
-          addToolResult({
-            tool: "newTask",
-            toolCallId: toolCallId,
-            output: { result },
-          }).then(() => {
-            autoApproveGuard.current = "auto";
-          });
-        }
-      } catch (error) {}
-    },
-    [addToolResult, store, autoApproveGuard],
-  );
-
+  // biome-ignore lint/correctness/useExhaustiveDependencies(previewingToolCalls): watch for previewingToolCalls
   useEffect(() => {
     const toolPart = messages.at(-1)?.parts.at(-1);
     if (
@@ -66,6 +50,19 @@ export const useAddSubtaskResult = ({
     }
     const subtaskUid = toolPart.input?._meta?.uid;
     if (!subtaskUid) return;
-    addSubtaskResult(subtaskUid, toolPart.toolCallId);
-  }, [addSubtaskResult, messages]);
+    const lifecycle = getToolCallLifeCycle({
+      toolName: getToolName(toolPart),
+      toolCallId: toolPart.toolCallId,
+    });
+    if (lifecycle.status === "ready") {
+      autoApproveGuard.current = "auto";
+      lifecycle.addResult(extractCompletionResult(store, subtaskUid));
+    }
+  }, [
+    autoApproveGuard,
+    previewingToolCalls,
+    messages,
+    getToolCallLifeCycle,
+    store,
+  ]);
 };
