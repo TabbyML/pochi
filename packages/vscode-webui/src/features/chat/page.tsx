@@ -85,7 +85,7 @@ function Chat({ user, uid, prompt }: ChatProps) {
       }
       return lastAssistantMessageIsCompleteWithToolCalls(x);
     },
-    onOverrideMessages: isSubTask ? undefined : onOverrideMessages, // subtask do not support checkpoint
+    onOverrideMessages,
   });
 
   const { data: currentWorkspace, isFetching: isFetchingWorkspace } =
