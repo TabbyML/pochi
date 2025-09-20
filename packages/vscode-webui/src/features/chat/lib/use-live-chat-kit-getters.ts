@@ -134,6 +134,20 @@ function useLLM(): React.RefObject<LLMRequestData> {
       };
     }
 
+    if (provider.kind === "anthropic") {
+      return {
+        type: "anthropic" as const,
+        modelId: selectedModel.modelId,
+        baseURL: provider.baseURL,
+        apiKey: provider.apiKey,
+        maxOutputTokens:
+          selectedModel.options.maxTokens ?? constants.DefaultMaxOutputTokens,
+        contextWindow:
+          selectedModel.options.contextWindow ?? constants.DefaultContextWindow,
+        useToolCallMiddleware: selectedModel.options.useToolCallMiddleware,
+      };
+    }
+
     return {
       type: "openai" as const,
       modelId: selectedModel.modelId,
