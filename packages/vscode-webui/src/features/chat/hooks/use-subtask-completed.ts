@@ -1,20 +1,37 @@
 import type { UseChatHelpers } from "@ai-sdk/react";
-import type { Message } from "@getpochi/livekit";
+import { type Message, catalog } from "@getpochi/livekit";
 import { useStore } from "@livestore/react";
 import { getToolName } from "ai";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo } from "react";
 import { useAutoApproveGuard, useToolCallLifeCycle } from "../lib/chat-state";
 import { extractCompletionResult } from "../lib/tool-call-life-cycle";
 import type { SubtaskInfo } from "./use-subtask-info";
 
 // Detect if subtask is completed (in subtask)
-export const useSubtaskCompleted = (
+export const useShowCompleteSubtaskButton = (
   subtaskInfo: SubtaskInfo | undefined,
   messages: Message[],
 ) => {
-  const [taskCompleted, setTaskCompleted] = useState(false);
-  useEffect(() => {
-    if (!subtaskInfo || !subtaskInfo.manualRun || taskCompleted) return;
+  const { store } = useStore();
+  const parentMessages = store
+    .useQuery(catalog.queries.makeMessagesQuery(subtaskInfo?.parentUid ?? ""))
+    .map((x) => x.data as Message);
+
+  const isSubtaskToolCallCompleted = useMemo(() => {
+    for (const message of parentMessages) {
+      for (const part of message.parts) {
+        if (
+          part.type === "tool-newTask" &&
+          part.input?._meta?.uid === subtaskInfo?.uid
+        ) {
+          return part.state === "output-available";
+        }
+      }
+    }
+    return false;
+  }, [parentMessages, subtaskInfo]);
+
+  const isSubtaskCompleted = useMemo(() => {
     const lastMessage = messages.at(-1);
     if (!lastMessage) return;
     for (const part of lastMessage.parts) {
@@ -22,12 +39,12 @@ export const useSubtaskCompleted = (
         part.type === "tool-attemptCompletion" &&
         part.state === "input-available"
       ) {
-        setTaskCompleted(true);
+        return true;
       }
     }
-  }, [subtaskInfo, messages, taskCompleted]);
+  }, [messages]);
 
-  return taskCompleted;
+  return isSubtaskCompleted && !isSubtaskToolCallCompleted;
 };
 
 // Complete subtask by adding tool result (in parent task)
@@ -55,8 +72,11 @@ export const useAddSubtaskResult = ({
       toolCallId: toolPart.toolCallId,
     });
     if (lifecycle.status === "ready") {
-      autoApproveGuard.current = "auto";
-      lifecycle.addResult(extractCompletionResult(store, subtaskUid));
+      const result = extractCompletionResult(store, subtaskUid);
+      if (result) {
+        autoApproveGuard.current = "auto";
+        lifecycle.addResult(result);
+      }
     }
   }, [
     autoApproveGuard,

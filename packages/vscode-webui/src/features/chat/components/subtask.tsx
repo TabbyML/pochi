@@ -4,7 +4,7 @@ import type { Message } from "@getpochi/livekit";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { ChevronLeft } from "lucide-react";
 import { useCallback } from "react";
-import { useSubtaskCompleted } from "../hooks/use-subtask-completed";
+import { useShowCompleteSubtaskButton } from "../hooks/use-subtask-completed";
 import type { SubtaskInfo } from "../hooks/use-subtask-info";
 
 export const SubtaskHeader: React.FC<{
@@ -40,10 +40,10 @@ export const CompleteSubtaskButton: React.FC<{
 }> = ({ subtask, messages }) => {
   const navigate = useNavigate();
 
-  const subtaskCompleted = useSubtaskCompleted(subtask, messages);
+  const showCompleteButton = useShowCompleteSubtaskButton(subtask, messages);
 
   const onCompleteSubtask = useCallback(() => {
-    if (!subtask || !subtaskCompleted) {
+    if (!subtask || !showCompleteButton) {
       return null;
     }
     navigate({
@@ -54,15 +54,15 @@ export const CompleteSubtaskButton: React.FC<{
       replace: true,
       viewTransition: true,
     });
-  }, [navigate, subtask, subtaskCompleted]);
+  }, [navigate, subtask, showCompleteButton]);
 
-  if (!subtask || !subtaskCompleted) {
+  if (!subtask || !showCompleteButton) {
     return null;
   }
 
   return (
     <Button className="flex-1 rounded-sm" onClick={onCompleteSubtask}>
-      Complete Subtask
+      Complete
     </Button>
   );
 };
