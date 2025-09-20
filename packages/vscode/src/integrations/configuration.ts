@@ -4,7 +4,6 @@ import {
   type GoogleVertexModel,
   type McpServerConfig,
   PochiConfigFilePath,
-  getPochiConfigDefaults,
   pochiConfig,
   updatePochiConfig,
 } from "@getpochi/common/configuration";
@@ -14,6 +13,8 @@ import * as JSONC from "jsonc-parser/esm";
 import { injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
 import z from "zod";
+
+const logger = getLogger("PochiConfiguration");
 
 @injectable()
 @singleton()
@@ -48,14 +49,16 @@ export class PochiConfiguration implements vscode.Disposable {
     });
   }
 
-  updateCustomModelSettings(providers: Record<string, CustomModelSetting>) {
-    updatePochiConfig({
+  async updateCustomModelSettings(
+    providers: Record<string, CustomModelSetting>,
+  ) {
+    await updatePochiConfig({
       providers,
     });
   }
 
-  updateMcpServers(mcp: Record<string, McpServerConfig>) {
-    updatePochiConfig({
+  async updateMcpServers(mcp: Record<string, McpServerConfig>) {
+    await updatePochiConfig({
       mcp,
     });
   }
@@ -201,10 +204,7 @@ async function revealSettingInConfig(
       }
     }
   } catch (error) {
-    getLogger("pochi.PochiConfiguration").error(
-      "Error revealing setting in config:",
-      error,
-    );
+    logger.error("Error revealing setting in config:", error);
     // Fallback to just opening the file
     await vscode.commands.executeCommand("vscode.open", configUri);
   }
@@ -280,7 +280,7 @@ async function createMissingPath(
 
     // Set the final key with a placeholder value
     const finalKey = pathSegments[pathSegments.length - 1];
-    current[finalKey] = getDefaultValueForKey(finalKey);
+    current[finalKey] = {};
 
     // Apply the changes to the existing content
     const edits = JSONC.modify(content, pathSegments, current[finalKey], {
@@ -329,17 +329,7 @@ async function createMissingPath(
 
     return { shouldUpdate: false };
   } catch (error) {
-    getLogger("pochi.PochiConfiguration").error(
-      "Error creating missing path:",
-      error,
-    );
+    logger.error("Error creating missing path:", error);
     return { shouldUpdate: false };
   }
-}
-
-/**
- * Returns default value for specific configuration keys
- */
-function getDefaultValueForKey(key: string): unknown {
-  return getPochiConfigDefaults()[key];
 }

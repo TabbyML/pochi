@@ -15,7 +15,10 @@ import { NewProjectRegistry, prepareProject } from "@/lib/new-project";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { PostHog } from "@/lib/posthog";
 import type { WebsiteTaskCreateEvent } from "@getpochi/common";
-import type { McpServerConfig } from "@getpochi/common/configuration";
+import type {
+  CustomModelSetting,
+  McpServerConfig,
+} from "@getpochi/common/configuration";
 import type { McpHub } from "@getpochi/common/mcp-utils";
 import { getVendor } from "@getpochi/common/vendor";
 import type {
@@ -409,12 +412,43 @@ export class CommandManager implements vscode.Disposable {
       vscode.commands.registerCommand(
         "pochi.openCustomModelSettings",
         async () => {
+          await this.ensureDefaultCustomModelSettings();
           await this.pochiConfiguration.openConfig({
             key: "providers",
           });
         },
       ),
     );
+  }
+
+  private async ensureDefaultCustomModelSettings() {
+    const currentSettings = this.pochiConfiguration.customModelSettings.value;
+
+    // If there are already settings, don't add defaults
+    if (currentSettings && Object.keys(currentSettings).length > 0) {
+      return;
+    }
+
+    // Define default custom model settings
+    const defaultSettings = {
+      openai: {
+        kind: "openai",
+        baseURL: "https://api.openai.com/v1",
+        apiKey: "your api key here",
+        models: {
+          "gpt-4.1": {
+            name: "GPT-4.1",
+          },
+          "o4-mini": {
+            name: "O4-Mini",
+          },
+        },
+      },
+    } satisfies Record<string, CustomModelSetting>;
+
+    await this.pochiConfiguration.updateCustomModelSettings(defaultSettings);
+    // wait for a while to ensure the settings are saved
+    await new Promise((resolve) => setTimeout(resolve, 500));
   }
 
   dispose() {
