@@ -1,5 +1,6 @@
 import type { RequestData } from "../../types";
 import { createAiGatewayModel } from "./ai-gateway";
+import { createAnthropicModel } from "./anthropic";
 import { createGoogleVertexTuningModel } from "./google-vertex-tuning";
 import { createOpenAIModel } from "./openai";
 import { createOpenAIResponsesModel } from "./openai-responses";
@@ -14,6 +15,10 @@ export function createModel({
 
   if (llm.type === "openai") {
     return createOpenAIModel(llm);
+  }
+
+  if (llm.type === "anthropic") {
+    return createAnthropicModel(llm);
   }
 
   if (llm.type === "google-vertex-tuning") {

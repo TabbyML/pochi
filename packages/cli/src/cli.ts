@@ -352,9 +352,12 @@ async function createLLMConfigWithProviders(
     };
   }
 
-  if (modelProvider.kind === "openai-responses") {
+  if (
+    modelProvider.kind === "openai-responses" ||
+    modelProvider.kind === "anthropic"
+  ) {
     return {
-      type: "openai-responses",
+      type: modelProvider.kind,
       modelId,
       baseURL: modelProvider.baseURL,
       apiKey: modelProvider.apiKey,

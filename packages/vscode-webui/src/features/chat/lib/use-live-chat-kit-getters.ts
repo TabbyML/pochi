@@ -132,9 +132,9 @@ function useLLM(): React.RefObject<LLMRequestData> {
       };
     }
 
-    if (provider.kind === "openai-responses") {
+    if (provider.kind === "anthropic" || provider.kind === "openai-responses") {
       return {
-        type: "openai-responses" as const,
+        type: provider.kind,
         modelId: selectedModel.modelId,
         baseURL: provider.baseURL,
         apiKey: provider.apiKey,
@@ -148,7 +148,7 @@ function useLLM(): React.RefObject<LLMRequestData> {
 
     if (provider.kind === undefined || provider.kind === "openai") {
       return {
-        type: "openai" as const,
+        type: provider.kind || "openai",
         modelId: selectedModel.modelId,
         baseURL: provider.baseURL,
         apiKey: provider.apiKey,

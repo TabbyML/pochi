@@ -58,6 +58,18 @@ const RequestData = z.object({
         .describe("Whether to use tool call middleware"),
     }),
     z.object({
+      type: z.literal("anthropic"),
+      modelId: z.string(),
+      baseURL: z.string().optional(),
+      apiKey: z.string().optional(),
+      contextWindow: z.number().describe("Context window of the model."),
+      maxOutputTokens: z.number().describe("Max output tokens of the model."),
+      useToolCallMiddleware: z
+        .boolean()
+        .optional()
+        .describe("Whether to use tool call middleware"),
+    }),
+    z.object({
       type: z.literal("google-vertex-tuning"),
       modelId: z.string(),
       vertex: GoogleVertexModel,

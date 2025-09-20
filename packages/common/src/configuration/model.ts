@@ -57,6 +57,20 @@ const OpenAIResponsesModelSettings = BaseModelSettings.extend({
     .describe("API key for the model provider, if required."),
 });
 
+const AnthropicModelSettings = BaseModelSettings.extend({
+  kind: z.literal("anthropic"),
+  baseURL: z
+    .string()
+    .optional()
+    .describe(
+      'Base URL for the model provider\'s API, e.g., "https://api.anthropic.com/v1"',
+    ),
+  apiKey: z
+    .string()
+    .optional()
+    .describe("API key for the model provider, if required."),
+});
+
 export const GoogleVertexModel = z.union([
   z.object({
     serviceAccountKey: z.string(),
@@ -87,6 +101,7 @@ const AiGatewayModelSettings = BaseModelSettings.extend({
 export const CustomModelSetting = z.discriminatedUnion("kind", [
   OpenAIModelSettings,
   OpenAIResponsesModelSettings,
+  AnthropicModelSettings,
   GoogleVertexTuningModelSettings,
   AiGatewayModelSettings,
 ]);
