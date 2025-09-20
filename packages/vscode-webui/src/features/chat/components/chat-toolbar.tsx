@@ -297,9 +297,11 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
                   variant="ghost"
                   size="icon"
                   onClick={() => fileInputRef.current?.click()}
-                  className="button-focus h-6 w-6 p-0"
+                  className="button-focus relative h-6 w-6 p-0"
                 >
-                  <PaperclipIcon className="size-4" />
+                  <span className="size-4">
+                    <PaperclipIcon className="size-4 translate-y-[1.5px] scale-105" />
+                  </span>
                 </Button>
               </span>
             </HoverCardTrigger>
