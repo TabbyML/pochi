@@ -61,8 +61,6 @@ function Chat({ user, uid, prompt }: ChatProps) {
   const subtask = useSubtaskInfo(uid, task?.parentId);
   const customAgent = useCustomAgent(subtask?.agent);
 
-  const isReadOnly = isSubTask && subtask?.manualRun === false;
-
   const autoApproveGuard = useAutoApproveGuard();
   const { data: cwd = "default" } = useCurrentWorkspace();
   const chatKit = useLiveChatKit({
@@ -167,7 +165,7 @@ function Chat({ user, uid, prompt }: ChatProps) {
             isFetching={isFetchingWorkspace}
             className="mb-12"
           />
-        ) : !isReadOnly ? (
+        ) : (
           <ChatToolbar
             chat={chat}
             task={task}
@@ -180,7 +178,7 @@ function Chat({ user, uid, prompt }: ChatProps) {
             displayError={displayError}
             onUpdateIsPublicShared={chatKit.updateIsPublicShared}
           />
-        ) : null}
+        )}
       </div>
     </div>
   );
