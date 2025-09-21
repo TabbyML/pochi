@@ -18,9 +18,11 @@ Here is an example of a custom agent definition:
 
 ```markdown
 ---
-name: your-custom-agent-name
 description: Description of when this custom agent should be invoked
-tools: tool-1, tool-2, tool-3 # Optional - inherits all tools if omitted
+tools:
+  - tool-1
+  - tool-2
+  - tool-3
 ---
 
 Your custom agent's system prompt goes here. This can be multiple paragraphs
@@ -31,13 +33,15 @@ Include specific instructions, best practices, and any constraints
 the custom agent should follow.
 ```
 
+If the agent is saved as `my-agent.md` and the `name` attribute is omitted, `my-agent` will be used as the agent name.
+
 ### Configuration
 
 The frontmatter provides metadata for the custom agent:
 
-- `name` (required): A unique name for your agent.
+- `name` (optional): A unique name for your agent. If omitted, the filename (without the extension) is used as the name.
 - `description` (required): A short description of what the agent does. This is used to help Pochi decide when to use your agent.
-- `tools` (optional): A list of tools that the agent is allowed to use. If omitted, the agent inherits all available tools.
+- `tools` (optional): A list of tools that the agent is allowed to use. This can be a comma-separated string (e.g., `tool-1, tool-2`) or a YAML array. If omitted, the agent inherits all available tools.
 
 ### System Prompt
 

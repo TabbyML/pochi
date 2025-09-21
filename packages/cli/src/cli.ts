@@ -333,4 +333,9 @@ async function createLLMConfigWithProviders(
         modelSetting.maxTokens ?? constants.DefaultMaxOutputTokens,
     };
   }
+  assertUnreachable(modelProvider.kind);
+}
+
+function assertUnreachable(_x: never): never {
+  throw new Error("Didn't expect to get here");
 }
