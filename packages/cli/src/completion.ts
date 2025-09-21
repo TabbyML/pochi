@@ -10,7 +10,7 @@ function extractCommandStructure(command: CommandUnknownOpts): TreeValue {
 
   try {
     // Extract options from the command
-    const options = command.options || [];
+   const options = command.options || [];
     for (const option of options) {
       // Add long form (--option)
       if (option.long) {
@@ -62,19 +62,6 @@ export function initializeCompletion(program: CommandUnknownOpts) {
   completion.tree(tree);
   completion.init();
   return completion;
-}
-
-// Get completion script as string
-export function getCompletionScript(program: CommandUnknownOpts) {
-  if (!program) {
-    throw new Error(
-      "Program instance is required for completion script generation",
-    );
-  }
-  const completion = omelette("pochi");
-  const tree = createCompletionTreeFromProgram(program);
-  completion.tree(tree);
-  return completion.setupShellInitFile();
 }
 
 // Re-export the completion command registration
