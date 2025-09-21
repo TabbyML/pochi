@@ -56,6 +56,12 @@ export function createCompletionTree() {
       "--help": [],
       "-h": [],
     },
+    // Completion command
+    completion: {
+      "--help": [],
+      "-h": [],
+      "--shell": []
+    },
   };
 }
 
