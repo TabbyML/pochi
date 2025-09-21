@@ -67,13 +67,6 @@ export function initializeCompletion() {
   return completion;
 }
 
-// Generate completion script
-export function generateCompletionScript() {
-  const completion = omelette('pochi');
-  completion.tree(createCompletionTree());
-  return completion.setupShellInitFile();
-}
-
 // Get completion script as string
 export function getCompletionScript() {
   const completion = omelette('pochi');
