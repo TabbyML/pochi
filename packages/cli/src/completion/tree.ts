@@ -53,7 +53,7 @@ export function createCompletionTreeFromProgram(
 }
 
 // Initialize completion for pochi CLI
-export function initializeCompletion(program: CommandUnknownOpts) {
+export function initializeShellCompletion(program: CommandUnknownOpts) {
   if (!program) {
     throw new Error("Program instance is required for auto-completion");
   }

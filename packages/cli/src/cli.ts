@@ -23,7 +23,7 @@ import * as commander from "commander";
 import packageJson from "../package.json";
 import { registerAuthCommand } from "./auth";
 
-import { initializeCompletion } from "./completion/tree";
+import { initializeShellCompletion } from "./completion/tree";
 import { registerCompletionCommand } from "./completion";
 import { findRipgrep } from "./lib/find-ripgrep";
 import { loadAgents } from "./lib/load-agents";
@@ -172,7 +172,7 @@ registerCompletionCommand(program);
 registerUpgradeCommand(program);
 
 // Initialize auto-completion after all commands are registered
-initializeCompletion(program);
+initializeShellCompletion(program);
 
 program.parse(process.argv);
 
