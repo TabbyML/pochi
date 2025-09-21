@@ -25,13 +25,14 @@ import { registerAuthCommand } from "./auth";
 
 import { findRipgrep } from "./lib/find-ripgrep";
 import { loadAgents } from "./lib/load-agents";
+import { createCliMcpHub } from "./lib/mcp-hub-factory";
 import { shutdownStoreAndExit } from "./lib/store-utils";
 import {
   containsWorkflowReference,
   replaceWorkflowReferences,
 } from "./lib/workflow-loader";
 import { createStore } from "./livekit/store";
-import { registerMcpCommand } from "./mcp";
+import { initializeMcp, registerMcpCommand } from "./mcp";
 import { registerModelCommand } from "./model";
 import { OutputRenderer } from "./output-renderer";
 import { registerTaskCommand } from "./task";
@@ -105,6 +106,12 @@ const program = new Command()
     // Load custom agents
     const customAgents = await loadAgents(process.cwd());
 
+    // Create MCP Hub for accessing MCP server tools
+    const mcpHub = createCliMcpHub();
+
+    // Initialize MCP connections
+    await initializeMcp(mcpHub);
+
     const runner = new TaskRunner({
       uid,
       store,
@@ -116,6 +123,7 @@ const program = new Command()
       maxRetries: options.maxRetries,
       onSubTaskCreated,
       customAgents,
+      mcpHub,
     });
 
     const renderer = new OutputRenderer(runner.state);
@@ -132,6 +140,7 @@ const program = new Command()
     }
 
     renderer.shutdown();
+    mcpHub.dispose();
     await shutdownStoreAndExit(store);
   });
 
