@@ -23,6 +23,8 @@ import * as commander from "commander";
 import packageJson from "../package.json";
 import { registerAuthCommand } from "./auth";
 
+import { initializeCompletion } from "./completion";
+import { registerCompletionCommand } from "./completion";
 import { findRipgrep } from "./lib/find-ripgrep";
 import { loadAgents } from "./lib/load-agents";
 import { shutdownStoreAndExit } from "./lib/store-utils";
@@ -37,8 +39,6 @@ import { OutputRenderer } from "./output-renderer";
 import { registerTaskCommand } from "./task";
 import { TaskRunner } from "./task-runner";
 import { checkForUpdates, registerUpgradeCommand } from "./upgrade";
-import { initializeCompletion } from "./completion";
-import { registerCompletionCommand } from "./completion";
 
 const logger = getLogger("Pochi");
 logger.debug(`pochi v${packageJson.version}`);

@@ -1,1 +1,1 @@
-export { registerCompletionCommand } from './cmd';
+export { registerCompletionCommand } from "./cmd";
