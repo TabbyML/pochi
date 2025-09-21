@@ -118,11 +118,13 @@ export class McpHub implements Disposable {
 
   updateConfig(newConfig: Record<string, McpServerConfig>) {
     this.config = newConfig;
-
+    const size = Object.keys(newConfig).length;
     // Persist configuration changes to file
-    updatePochiConfig({ mcp: newConfig }).catch((error) => {
-      logger.error("Failed to persist MCP configuration changes", error);
-    });
+    updatePochiConfig({ mcp: size > 0 ? newConfig : undefined }).catch(
+      (error) => {
+        logger.error("Failed to persist MCP configuration changes", error);
+      },
+    );
 
     // Update existing connections
     for (const [name, config] of Object.entries(newConfig)) {
