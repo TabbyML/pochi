@@ -104,14 +104,15 @@ export function useChatSubmit({
 
       // Compacting is not allowed to be stopped.
       if (newCompactTaskPending) return;
+      if (isSubmitDisabled) return;
+
+      const allMessages = [...queuedMessages];
+      // Clear queued messages after adding them to allMessages
+      setQueuedMessages([]);
 
       const content = input.trim();
-      const allMessages = [...queuedMessages];
       if (content) {
         allMessages.push(content);
-      }
-      if (isSubmitDisabled) {
-        return;
       }
 
       if (handleStop()) {
@@ -133,7 +134,6 @@ export function useChatSubmit({
           });
 
           setInput("");
-          setQueuedMessages([]);
           autoApproveGuard.current = "auto";
         } catch (error) {
           // Error is already handled by the hook
@@ -145,7 +145,6 @@ export function useChatSubmit({
           text: allMessages.join("\n\n"),
         });
         setInput("");
-        setQueuedMessages([]);
         autoApproveGuard.current = "auto";
       }
     },

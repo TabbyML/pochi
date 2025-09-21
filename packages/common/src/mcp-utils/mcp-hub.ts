@@ -65,7 +65,7 @@ export class McpHub implements Disposable {
         ...this.config,
         [name]: { ...this.config[name], disabled: false },
       };
-      this.updateConfig(newConfig);
+      this.reloadConfig(newConfig);
     } else {
       logger.debug(`Tried to start non-existing server: ${name}`);
     }
@@ -77,7 +77,7 @@ export class McpHub implements Disposable {
         ...this.config,
         [name]: { ...this.config[name], disabled: true },
       };
-      this.updateConfig(newConfig);
+      this.reloadConfig(newConfig);
     } else {
       logger.debug(`Tried to stop non-existing server: ${name}`);
     }
@@ -96,7 +96,7 @@ export class McpHub implements Disposable {
       [serverName]: serverConfig,
     };
 
-    this.updateConfig(newConfig);
+    this.reloadConfig(newConfig);
     return serverName;
   }
 
@@ -112,17 +112,22 @@ export class McpHub implements Disposable {
       addedNames.push(serverName);
     }
 
-    this.updateConfig(newConfig);
+    this.reloadConfig(newConfig);
     return addedNames;
   }
 
-  updateConfig(newConfig: Record<string, McpServerConfig>) {
+  private reloadConfig(
+    newConfig: Record<string, McpServerConfig>,
+    save = true,
+  ) {
     this.config = newConfig;
 
-    // Persist configuration changes to file
-    updatePochiConfig({ mcp: newConfig }).catch((error) => {
-      logger.error("Failed to persist MCP configuration changes", error);
-    });
+    if (save) {
+      // Persist configuration changes to file
+      updatePochiConfig({ mcp: newConfig }).catch((error) => {
+        logger.error("Failed to persist MCP configuration changes", error);
+      });
+    }
 
     // Update existing connections
     for (const [name, config] of Object.entries(newConfig)) {
@@ -169,7 +174,7 @@ export class McpHub implements Disposable {
       },
     };
 
-    this.updateConfig(newConfig);
+    this.reloadConfig(newConfig);
   }
 
   private generateUniqueName(
@@ -204,7 +209,7 @@ export class McpHub implements Disposable {
             "MCP servers configuration changed via signal:",
             newConfig,
           );
-          this.updateConfig(newConfig);
+          this.reloadConfig(newConfig, false);
         }),
       });
     }
