@@ -38,19 +38,10 @@ export function registerCompletionCommand(program: Command) {
           console.log("1. Add the completion script to your shell:");
           console.log(chalk.yellow("   source <(pochi --completion)"));
           console.log();
-          console.log("2. Create a shell function (required for zsh):");
-          console.log(chalk.yellow("   pochi() { node $(which pochi) $@ }"));
           console.log();
-          console.log(
-            "3. Add both to your ~/.zshrc file to make them permanent:",
-          );
+          console.log("2. Add your ~/.zshrc file to make them permanent:");
           console.log(
             chalk.yellow("   echo 'source <(pochi --completion)' >> ~/.zshrc"),
-          );
-          console.log(
-            chalk.yellow(
-              "   echo 'pochi() { node $(which pochi) $@ }' >> ~/.zshrc",
-            ),
           );
         } else {
           console.log(chalk.cyan("For Bash:"));
