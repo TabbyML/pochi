@@ -65,4 +65,4 @@ export function initializeCompletion(program: CommandUnknownOpts) {
 }
 
 // Re-export the completion command registration
-export { registerCompletionCommand } from "./completion/cmd";
+export { registerCompletionCommand } from "./cmd";
