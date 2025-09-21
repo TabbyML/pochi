@@ -37,9 +37,25 @@ import { OutputRenderer } from "./output-renderer";
 import { registerTaskCommand } from "./task";
 import { TaskRunner } from "./task-runner";
 import { checkForUpdates, registerUpgradeCommand } from "./upgrade";
+import { initializeCompletion, generateCompletionScript } from "./completion";
+import { registerCompletionCommand } from "./completion";
 
 const logger = getLogger("Pochi");
 logger.debug(`pochi v${packageJson.version}`);
+
+// Handle completion script generation
+if (process.argv.includes('--completion')) {
+  try {
+    console.log(generateCompletionScript());
+    process.exit(0);
+  } catch (error) {
+    console.error('Failed to generate completion script:', error);
+    process.exit(1);
+  }
+} else {
+  // Initialize auto-completion for normal CLI usage
+  initializeCompletion();
+}
 
 const parsePositiveInt = (input: string): number => {
   if (!input) {
@@ -165,6 +181,7 @@ registerAuthCommand(program);
 registerModelCommand(program);
 registerMcpCommand(program);
 registerTaskCommand(program);
+registerCompletionCommand(program);
 
 registerUpgradeCommand(program);
 

@@ -1,0 +1,1 @@
+export { registerCompletionCommand } from './cmd';
