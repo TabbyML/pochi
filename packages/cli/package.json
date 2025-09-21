@@ -36,6 +36,7 @@
     "jose": "catalog:",
     "node-machine-id": "catalog:",
     "listr2": "^9.0.3",
+    "omelette": "^0.4.17",
     "ora": "^8.2.0",
     "semver": "^7.6.3",
     "@inquirer/select": "^4.3.2"
