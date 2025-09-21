@@ -10,7 +10,7 @@ function extractCommandStructure(command: CommandUnknownOpts): TreeValue {
 
   try {
     // Extract options from the command
-   const options = command.options || [];
+    const options = command.options || [];
     for (const option of options) {
       // Add long form (--option)
       if (option.long) {
