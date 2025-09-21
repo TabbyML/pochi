@@ -35,7 +35,7 @@ export function useLiveSubTask(
   { tool, isExecuting }: Pick<ToolProps<"newTask">, "tool" | "isExecuting">,
   toolCallStatusRegistry: ToolCallStatusRegistry,
 ): TaskThreadSource {
-  const { data: cwd = "default" } = useCurrentWorkspace();
+  const { data: cwd } = useCurrentWorkspace();
 
   const lifecycle = useToolCallLifeCycle().getToolCallLifeCycle({
     toolName: getToolName(tool),
@@ -79,7 +79,7 @@ export function useLiveSubTask(
 
   // FIXME: handle auto retry for output without task.
   const chatKit = useLiveChatKit({
-    cwd,
+    cwd: cwd || "default",
     taskId: uid,
     abortSignal: abortController.current.signal,
     getters,
