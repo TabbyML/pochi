@@ -60,7 +60,7 @@ export function createCompletionTree() {
     completion: {
       "--help": [],
       "-h": [],
-      "--shell": []
+      "--shell": [],
     },
   };
 }
