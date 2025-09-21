@@ -61,7 +61,7 @@ function createPatchedFetch(
       "https://cloudcode-pa.googleapis.com/v1internal:streamGenerateContent?alt=sse",
       patchedRequestInit,
     );
-    if (!resp.body) {
+    if (!resp.ok || !resp.body) {
       throw new APICallError({
         message: `Failed to fetch: ${resp.status} ${resp.statusText}`,
         statusCode: resp.status,
