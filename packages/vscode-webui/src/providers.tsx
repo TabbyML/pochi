@@ -23,12 +23,7 @@ export const Providers: React.FC<{ children: React.ReactNode }> = ({
 
               const cacheQuery =
                 query.queryKey[0] === "session" ||
-                // Only persist tasks query page 1.
-                (query.queryKey[0] === "tasks" && query.queryKey[1] === 1) ||
-                query.queryKey[0] === "integrations" ||
-                query.queryKey[0] === "tools" ||
-                query.queryKey[0] === "mcpConnectTools" ||
-                (query.queryKey[0] === "models" && !!query.queryKey[1]);
+                query.queryKey[0] === "mcpConnectTools";
 
               return isSuccess && cacheQuery;
             },
