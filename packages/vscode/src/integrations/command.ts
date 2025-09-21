@@ -260,9 +260,9 @@ export class CommandManager implements vscode.Disposable {
       vscode.commands.registerCommand(
         "pochi.mcp.addServer",
         async (name?: string, recommendedServer?: McpServerConfig) => {
-          this.mcpHub.addServer(name, recommendedServer);
-          await this.ensureDefaultMcpServer();
-          await this.pochiConfiguration.openConfig({
+          await this.mcpHub.addServer(name, recommendedServer);
+          await new Promise((resolve) => setTimeout(resolve, 500));
+          await this.pochiConfiguration.revealConfig({
             key: "mcp",
           });
         },
@@ -272,7 +272,7 @@ export class CommandManager implements vscode.Disposable {
         "pochi.mcp.openServerSettings",
         async () => {
           await this.ensureDefaultMcpServer();
-          await this.pochiConfiguration.openConfig({
+          await this.pochiConfiguration.revealConfig({
             key: "mcp",
           });
         },
@@ -415,7 +415,7 @@ export class CommandManager implements vscode.Disposable {
         "pochi.openCustomModelSettings",
         async () => {
           await this.ensureDefaultCustomModelSettings();
-          await this.pochiConfiguration.openConfig({
+          await this.pochiConfiguration.revealConfig({
             key: "providers",
           });
         },

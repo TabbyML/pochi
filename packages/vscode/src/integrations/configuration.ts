@@ -1,4 +1,3 @@
-import { getLogger } from "@/lib/logger";
 import {
   type CustomModelSetting,
   type GoogleVertexModel,
@@ -13,8 +12,6 @@ import * as JSONC from "jsonc-parser/esm";
 import { injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
 import z from "zod";
-
-const logger = getLogger("PochiConfiguration");
 
 @injectable()
 @singleton()
@@ -66,12 +63,12 @@ export class PochiConfiguration implements vscode.Disposable {
   /**
    * Opens the Pochi configuration file and optionally reveals/creates a specific setting
    */
-  async openConfig(options?: { key?: string }): Promise<void> {
+  async revealConfig(options?: { key?: string }): Promise<void> {
     const configUri = vscode.Uri.file(PochiConfigFilePath);
 
-    if (options?.key) {
-      await revealSettingInConfig(configUri, options.key);
-    } else {
+    try {
+      await revealSettingInConfig(configUri, options?.key);
+    } catch (err) {
       await vscode.commands.executeCommand("vscode.open", configUri);
     }
   }
@@ -146,190 +143,72 @@ function getAutoSaveDisabled() {
  */
 async function revealSettingInConfig(
   configUri: vscode.Uri,
-  jsonPath: string,
+  path?: string,
 ): Promise<void> {
-  try {
-    // Ensure the config file exists
-    await ensureConfigFileExists(configUri);
+  await vscode.workspace.fs.stat(configUri);
 
-    // Open the document
-    const document = await vscode.workspace.openTextDocument(configUri);
-    let content = document.getText();
+  // Ensure the config file exists
 
-    // Parse the JSON with comments
-    const parseOptions: JSONC.ParseOptions = {
-      allowTrailingComma: true,
-      disallowComments: false,
-      allowEmptyContent: true,
-    };
+  // Open the document
+  const document = await vscode.workspace.openTextDocument(configUri);
+  await vscode.window.showTextDocument(document);
 
-    let jsonObject: unknown;
-    try {
-      jsonObject = JSONC.parse(content, [], parseOptions) || {};
-    } catch (error) {
-      // If parsing fails, start with empty object
-      jsonObject = {};
-      content = "{}";
+  const content = document.getText();
+
+  if (!path) return;
+
+  const pathSegments = path.split(".");
+
+  // Check if the path exists and create it if necessary
+  const position = await findPathPosition(content, pathSegments, document);
+
+  // Reveal the position if found
+  if (position) {
+    const editor = vscode.window.activeTextEditor;
+    if (editor) {
+      editor.selection = new vscode.Selection(position, position);
+      editor.revealRange(
+        new vscode.Range(position, position),
+        vscode.TextEditorRevealType.InCenter,
+      );
     }
-
-    // Split the path (e.g., "pochi.mcpServers" -> ["pochi", "mcpServers"])
-    const pathSegments = jsonPath.split(".");
-
-    // Check if the path exists and create it if necessary
-    const { shouldUpdate, position } = await ensurePathExists(
-      content,
-      jsonObject,
-      pathSegments,
-      document,
-    );
-
-    if (shouldUpdate) {
-      // Refresh the document after potential updates
-      const updatedDocument =
-        await vscode.workspace.openTextDocument(configUri);
-      await vscode.window.showTextDocument(updatedDocument);
-    } else {
-      await vscode.window.showTextDocument(document);
-    }
-
-    // Reveal the position if found
-    if (position) {
-      const editor = vscode.window.activeTextEditor;
-      if (editor) {
-        editor.selection = new vscode.Selection(position, position);
-        editor.revealRange(
-          new vscode.Range(position, position),
-          vscode.TextEditorRevealType.InCenter,
-        );
-      }
-    }
-  } catch (error) {
-    logger.error("Error revealing setting in config:", error);
-    // Fallback to just opening the file
-    await vscode.commands.executeCommand("vscode.open", configUri);
-  }
-}
-
-/**
- * Ensures the configuration file exists
- */
-async function ensureConfigFileExists(configUri: vscode.Uri): Promise<void> {
-  try {
-    await vscode.workspace.fs.stat(configUri);
-  } catch (error) {
-    // File doesn't exist, create it with empty JSON
-    const emptyConfig = "{}\n";
-    await vscode.workspace.fs.writeFile(
-      configUri,
-      Buffer.from(emptyConfig, "utf8"),
-    );
   }
 }
 
 /**
  * Ensures a JSON path exists in the configuration, creating it if necessary
  */
-async function ensurePathExists(
+async function findPathPosition(
   content: string,
-  jsonObject: unknown,
   pathSegments: string[],
   document: vscode.TextDocument,
-): Promise<{ shouldUpdate: boolean; position?: vscode.Position }> {
+): Promise<vscode.Position | undefined> {
+  // Parse the JSON with comments
+  const parseOptions: JSONC.ParseOptions = {
+    allowTrailingComma: true,
+    disallowComments: false,
+    allowEmptyContent: true,
+  };
+
+  const jsonObject = JSONC.parse(content, [], parseOptions) || {};
+
   // Check if the full path exists
   let current = jsonObject as Record<string, unknown>;
   for (const segment of pathSegments) {
     if (current && typeof current === "object" && segment in current) {
       current = current[segment] as Record<string, unknown>;
     } else {
-      // Path doesn't exist, we need to create it
-      return await createMissingPath(content, pathSegments, document);
+      return;
     }
   }
 
   // Path exists, find its position
   const tree = JSONC.parseTree(content);
-  if (!tree) return { shouldUpdate: false };
+  if (!tree) return;
 
   const targetNode = JSONC.findNodeAtLocation(tree, pathSegments);
   if (targetNode?.offset !== undefined) {
     const position = document.positionAt(targetNode.offset);
-    return { shouldUpdate: false, position };
-  }
-
-  return { shouldUpdate: false };
-}
-
-/**
- * Creates missing path in JSON configuration
- */
-async function createMissingPath(
-  content: string,
-  pathSegments: string[],
-  document: vscode.TextDocument,
-): Promise<{ shouldUpdate: boolean; position?: vscode.Position }> {
-  try {
-    // Create the nested structure
-    const newValue: Record<string, unknown> = {};
-    let current = newValue;
-
-    // Build nested object structure
-    for (let i = 0; i < pathSegments.length - 1; i++) {
-      current[pathSegments[i]] = {};
-      current = current[pathSegments[i]] as Record<string, unknown>;
-    }
-
-    // Set the final key with a placeholder value
-    const finalKey = pathSegments[pathSegments.length - 1];
-    current[finalKey] = {};
-
-    // Apply the changes to the existing content
-    const edits = JSONC.modify(content, pathSegments, current[finalKey], {
-      formattingOptions: {
-        tabSize: 2,
-        insertSpaces: true,
-        insertFinalNewline: true,
-      },
-      isArrayInsertion: false,
-    });
-
-    if (edits.length > 0) {
-      const edit = new vscode.WorkspaceEdit();
-      edit.set(
-        document.uri,
-        edits.map(
-          (e) =>
-            new vscode.TextEdit(
-              new vscode.Range(
-                document.positionAt(e.offset),
-                document.positionAt(e.offset + e.length),
-              ),
-              e.content,
-            ),
-        ),
-      );
-
-      await vscode.workspace.applyEdit(edit);
-      await document.save();
-
-      // Calculate position of the new content
-      const newContent = JSONC.applyEdits(content, edits);
-      const newDocument = await vscode.workspace.openTextDocument(document.uri);
-
-      const newTree = JSONC.parseTree(newContent);
-      if (!newTree) return { shouldUpdate: true };
-
-      const targetNode = JSONC.findNodeAtLocation(newTree, pathSegments);
-      const position =
-        targetNode?.offset !== undefined
-          ? newDocument.positionAt(targetNode.offset)
-          : undefined;
-
-      return { shouldUpdate: true, position };
-    }
-
-    return { shouldUpdate: false };
-  } catch (error) {
-    logger.error("Error creating missing path:", error);
-    return { shouldUpdate: false };
+    return position;
   }
 }
