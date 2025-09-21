@@ -134,18 +134,26 @@ function useLLM(): React.RefObject<LLMRequestData> {
       };
     }
 
-    return {
-      type: "openai" as const,
-      modelId: selectedModel.modelId,
-      baseURL: provider.baseURL,
-      apiKey: provider.apiKey,
-      maxOutputTokens:
-        selectedModel.options.maxTokens ?? constants.DefaultMaxOutputTokens,
-      contextWindow:
-        selectedModel.options.contextWindow ?? constants.DefaultContextWindow,
-      useToolCallMiddleware: selectedModel.options.useToolCallMiddleware,
-    };
+    if (provider.kind === undefined || provider.kind === "openai") {
+      return {
+        type: "openai" as const,
+        modelId: selectedModel.modelId,
+        baseURL: provider.baseURL,
+        apiKey: provider.apiKey,
+        maxOutputTokens:
+          selectedModel.options.maxTokens ?? constants.DefaultMaxOutputTokens,
+        contextWindow:
+          selectedModel.options.contextWindow ?? constants.DefaultContextWindow,
+        useToolCallMiddleware: selectedModel.options.useToolCallMiddleware,
+      };
+    }
+
+    assertUnreachable(provider.kind);
   })();
 
   return useLatest(llmFromSelectedModel);
+}
+
+function assertUnreachable(_x: never): never {
+  throw new Error("Didn't expect to get here");
 }

@@ -1,12 +1,15 @@
-import { CustomAgent } from "@getpochi/tools";
+import * as path from "node:path";
+import type { CustomAgent } from "@getpochi/tools";
 import { remark } from "remark";
 import remarkFrontmatter from "remark-frontmatter";
 import { matter } from "vfile-matter";
+import z from "zod/v4";
 
 /**
  * Parse a custom agent file content
  */
 export async function parseAgentFile(
+  filePath: string,
   content: string,
 ): Promise<CustomAgent | undefined> {
   const file = await remark()
@@ -14,22 +17,33 @@ export async function parseAgentFile(
     .use(() => (_tree, file) => matter(file))
     .process(content);
 
+  const parseResult = CustomAgentFrontmatter.safeParse(file.data.matter);
+  if (!parseResult.success) {
+    return undefined;
+  }
+
+  const frontmatterData = parseResult.data;
   const systemPrompt = file.value.toString().trim();
-  const frontmatterData = file.data.matter;
+  const defaultName = path.basename(filePath, path.extname(filePath));
 
-  if (typeof frontmatterData !== "object" || frontmatterData === null) {
-    return;
+  const toolsRaw = frontmatterData.tools;
+  let tools: string[] | undefined;
+  if (typeof toolsRaw === "string") {
+    tools = toolsRaw ? toolsRaw.split(",").map((tool) => tool.trim()) : [];
+  } else if (Array.isArray(toolsRaw)) {
+    tools = toolsRaw;
   }
 
-  if ("tools" in frontmatterData && typeof frontmatterData.tools === "string") {
-    const tools = frontmatterData.tools.split(",").map((tool) => tool.trim());
-    frontmatterData.tools = tools;
-  }
-
-  const agentData = { ...frontmatterData, systemPrompt };
-  const result = CustomAgent.safeParse(agentData);
-
-  if (result.success) {
-    return result.data;
-  }
+  return {
+    name: frontmatterData.name || defaultName,
+    tools,
+    description: frontmatterData.description,
+    systemPrompt,
+  } satisfies CustomAgent;
 }
+
+const CustomAgentFrontmatter = z.object({
+  name: z.string().optional(),
+  description: z.string(),
+  tools: z.union([z.string(), z.array(z.string())]).optional(),
+});

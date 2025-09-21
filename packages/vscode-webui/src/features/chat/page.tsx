@@ -1,11 +1,9 @@
-import { buttonVariants } from "@/components/ui/button";
 import { WorkspaceRequiredPlaceholder } from "@/components/workspace-required-placeholder";
 import { ChatContextProvider, useHandleChatEvents } from "@/features/chat";
 import { usePendingModelAutoStart } from "@/features/retry";
-
 import { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
 import { useCurrentWorkspace } from "@/lib/hooks/use-current-workspace";
-import { cn } from "@/lib/utils";
+import { useCustomAgent } from "@/lib/hooks/use-custom-agents";
 import { useChat } from "@ai-sdk/react";
 import { formatters } from "@getpochi/common";
 import type { UserInfo } from "@getpochi/common/configuration";
@@ -13,29 +11,26 @@ import { type Task, catalog } from "@getpochi/livekit";
 import { useLiveChatKit } from "@getpochi/livekit/react";
 import type { Todo } from "@getpochi/tools";
 import { useStore } from "@livestore/react";
-import { Link, useRouter } from "@tanstack/react-router";
+import { useRouter } from "@tanstack/react-router";
 import { lastAssistantMessageIsCompleteWithToolCalls } from "ai";
-import { ChevronLeft } from "lucide-react";
-import type React from "react";
 import { useEffect, useMemo, useRef } from "react";
 import { useApprovalAndRetry } from "../approval";
 import { useSelectedModels } from "../settings";
 import { ChatArea } from "./components/chat-area";
 import { ChatToolbar } from "./components/chat-toolbar";
 import { ErrorMessageView } from "./components/error-message-view";
+import { SubtaskHeader } from "./components/subtask";
 import { useScrollToBottom } from "./hooks/use-scroll-to-bottom";
+import { useAddSubtaskResult } from "./hooks/use-subtask-completed";
+import { useSubtaskInfo } from "./hooks/use-subtask-info";
 import { useAutoApproveGuard, useChatAbortController } from "./lib/chat-state";
 import { onOverrideMessages } from "./lib/on-override-messages";
 import { useLiveChatKitGetters } from "./lib/use-live-chat-kit-getters";
 
-export function ChatPage({
-  uid,
-  user,
-  prompt,
-}: { uid: string; user?: UserInfo; prompt?: string }) {
+export function ChatPage(props: ChatProps) {
   return (
     <ChatContextProvider>
-      <Chat user={user} uid={uid} prompt={prompt} />
+      <Chat {...props} />
     </ChatContextProvider>
   );
 }
@@ -61,12 +56,18 @@ function Chat({ user, uid, prompt }: ChatProps) {
   const chatAbortController = useChatAbortController();
   useAbortBeforeNavigation(chatAbortController.current);
 
+  const task = store.useQuery(catalog.queries.makeTaskQuery(uid));
+  const subtask = useSubtaskInfo(uid, task?.parentId);
+  const customAgent = useCustomAgent(subtask?.agent);
+
   const autoApproveGuard = useAutoApproveGuard();
   const { data: cwd = "default" } = useCurrentWorkspace();
   const chatKit = useLiveChatKit({
     cwd,
     taskId: uid,
     getters,
+    isSubTask: !!subtask,
+    customAgent,
     abortSignal: chatAbortController.current.signal,
     sendAutomaticallyWhen: (x) => {
       if (chatAbortController.current.signal.aborted) {
@@ -85,11 +86,6 @@ function Chat({ user, uid, prompt }: ChatProps) {
     },
     onOverrideMessages,
   });
-  const task = store.useQuery(catalog.queries.makeTaskQuery(uid));
-  const isSubTask = !!task?.parentId;
-
-  // Readonly for subtask
-  const isReadOnly = isSubTask;
 
   const { data: currentWorkspace, isFetching: isFetchingWorkspace } =
     useCurrentWorkspace();
@@ -111,6 +107,7 @@ function Chat({ user, uid, prompt }: ChatProps) {
   const approvalAndRetry = useApprovalAndRetry({
     ...chat,
     showApproval: !isLoading && !isModelsLoading && !!selectedModel,
+    isSubTask: !!subtask,
   });
 
   const { pendingApproval, retry } = approvalAndRetry;
@@ -125,12 +122,13 @@ function Chat({ user, uid, prompt }: ChatProps) {
     enabled:
       status === "ready" &&
       messages.length === 1 &&
-      !isReadOnly &&
       !isModelsLoading &&
       !!selectedModel,
     task,
     retry,
   });
+
+  useAddSubtaskResult({ ...chat });
 
   useScrollToBottom({
     messagesContainerRef,
@@ -146,24 +144,27 @@ function Chat({ user, uid, prompt }: ChatProps) {
       (pendingApproval?.name === "retry" ? pendingApproval.error : undefined);
 
   useHandleChatEvents(
-    isLoading || isModelsLoading || !selectedModel || isReadOnly
-      ? undefined
-      : sendMessage,
+    isLoading || isModelsLoading || !selectedModel ? undefined : sendMessage,
   );
 
   return (
     <div className="flex h-screen flex-col">
+      {subtask && (
+        <SubtaskHeader
+          subtask={subtask}
+          className="absolute top-1 right-2 z-10"
+        />
+      )}
       <ChatArea
         messages={renderMessages}
         isLoading={isLoading}
         user={user || defaultUser}
         messagesContainerRef={messagesContainerRef}
+        agent={subtask?.agent}
       />
       <div className="flex flex-col px-4">
         <ErrorMessageView error={displayError} />
-        {isSubTask ? (
-          <NavigateParentTask className="mb-16" parentId={task.parentId} />
-        ) : !isWorkspaceActive ? (
+        {!isWorkspaceActive ? (
           <WorkspaceRequiredPlaceholder
             isFetching={isFetchingWorkspace}
             className="mb-12"
@@ -176,7 +177,8 @@ function Chat({ user, uid, prompt }: ChatProps) {
             compact={chatKit.spawn}
             approvalAndRetry={approvalAndRetry}
             attachmentUpload={attachmentUpload}
-            isReadOnly={isReadOnly}
+            isSubTask={!!subtask}
+            subtask={subtask}
             displayError={displayError}
             onUpdateIsPublicShared={chatKit.updateIsPublicShared}
           />
@@ -200,24 +202,6 @@ function useAbortBeforeNavigation(abortController: AbortController) {
     };
   }, [abortController, router]);
 }
-
-const NavigateParentTask: React.FC<{
-  parentId: string;
-  className?: string;
-}> = ({ parentId, className }) => {
-  return (
-    <div className={cn("flex flex-col items-center justify-center", className)}>
-      <Link
-        to="/"
-        search={{ uid: parentId }}
-        replace={true}
-        className={cn(buttonVariants(), "!text-primary-foreground gap-1")}
-      >
-        <ChevronLeft className="mr-1.5 size-4" /> Back
-      </Link>
-    </div>
-  );
-};
 
 function fromTaskError(task?: Task) {
   if (task?.error) {

@@ -26,6 +26,7 @@ export const newTaskTool: React.FC<NewTaskToolProps> = ({
   taskThreadSource,
 }) => {
   const uid = tool.input?._meta?.uid;
+  const agent = tool.input?.agentType;
   const description = tool.input?.description ?? "";
 
   let taskSource = taskThreadSource;
@@ -53,7 +54,14 @@ export const newTaskTool: React.FC<NewTaskToolProps> = ({
             <StatusIcon tool={tool} isExecuting={isExecuting} />
             <Badge variant="secondary" className={cn("mr-1 ml-2 py-0")}>
               {uid && isVSCodeEnvironment() ? (
-                <Link to="/" search={{ uid }} replace={true}>
+                <Link
+                  to="/"
+                  search={{
+                    uid,
+                  }}
+                  replace={true}
+                  viewTransition
+                >
                   {toolTitle}
                 </Link>
               ) : (
@@ -75,7 +83,11 @@ export const newTaskTool: React.FC<NewTaskToolProps> = ({
         <FixedStateChatContextProvider
           toolCallStatusRegistry={subTaskToolCallStatusRegistry.current}
         >
-          <TaskThread source={taskSource} showMessageList={showMessageList} />
+          <TaskThread
+            source={taskSource}
+            showMessageList={showMessageList}
+            assistant={{ name: agent ?? "Pochi" }}
+          />
         </FixedStateChatContextProvider>
       )}
     </div>
