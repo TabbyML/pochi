@@ -1,33 +1,27 @@
 import * as crypto from "node:crypto";
 import * as http from "node:http";
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { getLogger } from "@getpochi/common";
 import type { UserInfo } from "@getpochi/common/configuration";
 import type { AuthOutput } from "@getpochi/common/vendor";
+import {
+  AUTH_ISSUER,
+  OAUTH_CONFIG,
+} from "./constants";
+import { updateCodexCredentials } from "./credentials";
 import type {
+  AuthClaims,
   CodexCredentials,
   CodexTokenResponse,
   IdClaims,
-  IdTokenInfo,
 } from "./types";
-import { AuthIssuer, ClientId, VendorId } from "./types";
 
-const logger = getLogger(VendorId);
-
-/**
- * Start the Codex OAuth flow using local callback server
- */
 export async function startOAuthFlow(): Promise<AuthOutput> {
   const pkce = generatePKCE();
   const state = generateState();
-  const port = 1455; // Same port as codex uses
-
+  const port = 1455;
   const server = await createAuthServer(port, pkce, state);
-
-  const redirectUri = `http://localhost:${port}/auth/callback`;
+  const redirectUri = `http://localhost:${port}${OAUTH_CONFIG.redirectPath}`;
   const authUrl = buildAuthorizeUrl(redirectUri, pkce.challenge, state);
-
-  logger.info("Browser will open for authentication...");
 
   return {
     url: authUrl,
@@ -35,9 +29,6 @@ export async function startOAuthFlow(): Promise<AuthOutput> {
   };
 }
 
-/**
- * Create local HTTP server to handle OAuth callback
- */
 async function createAuthServer(
   port: number,
   pkce: { verifier: string; challenge: string },
@@ -59,115 +50,106 @@ async function createAuthServer(
       async (req: IncomingMessage, res: ServerResponse) => {
         const url = new URL(req.url || "/", `http://localhost:${port}`);
 
-        if (url.pathname === "/auth/callback") {
-          const code = url.searchParams.get("code");
-          const returnedState = url.searchParams.get("state");
-
-          if (!code || returnedState !== state) {
-            res.writeHead(400, { "Content-Type": "text/html" });
-            res.end(
-              "<html><body><h1>Error</h1><p>Invalid authorization response</p></body></html>",
+        switch (url.pathname) {
+          case OAUTH_CONFIG.redirectPath:
+            await handleCallback(
+              url,
+              res,
+              state,
+              pkce,
+              port,
+              credentialsResolve,
+              credentialsReject,
+              server,
             );
-            credentialsReject(new Error("Invalid authorization response"));
-            return;
-          }
+            break;
 
-          try {
-            // Exchange code for tokens
-            const tokens = await exchangeCodeForTokens(
-              code,
-              pkce.verifier,
-              `http://localhost:${port}/auth/callback`,
-            );
+          case OAUTH_CONFIG.successPath:
+            sendSuccessPage(res);
+            break;
 
-            // Parse ID token
-            const idTokenInfo = parseIdToken(tokens.id_token);
+          case OAUTH_CONFIG.cancelPath:
+            handleCancel(res, server, credentialsReject);
+            break;
 
-            const credentials: CodexCredentials = {
-              accessToken: tokens.access_token,
-              mode: "chatgpt",
-              refreshToken: tokens.refresh_token,
-              idToken: idTokenInfo,
-              lastRefresh: Date.now(),
-            };
-
-            // Send success response
-            res.writeHead(302, {
-              Location: "/success",
-            });
-            res.end();
-
-            credentialsResolve(credentials);
-
-            // Close server after short delay
-            setTimeout(() => server.close(), 1000);
-          } catch (error) {
-            logger.error("OAuth flow error:", error);
-            res.writeHead(500, { "Content-Type": "text/html" });
-            res.end(
-              "<html><body><h1>Error</h1><p>Authentication failed</p></body></html>",
-            );
-            credentialsReject(
-              error instanceof Error ? error : new Error(String(error)),
-            );
-          }
-        } else if (url.pathname === "/success") {
-          res.writeHead(200, { "Content-Type": "text/html" });
-          res.end(`
-            <html>
-              <head>
-                <title>Authentication Successful</title>
-                <style>
-                  body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-                  .container { text-align: center; }
-                  h1 { color: #10a37f; }
-                </style>
-              </head>
-              <body>
-                <div class="container">
-                  <h1>✓ Authentication Successful</h1>
-                  <p>You can now close this window and return to Pochi.</p>
-                </div>
-              </body>
-            </html>
-          `);
-        } else if (url.pathname === "/cancel") {
-          res.writeHead(200, { "Content-Type": "text/plain" });
-          res.end("Cancelled");
-          server.close();
-          credentialsReject(new Error("Authentication cancelled"));
-        } else {
-          res.writeHead(404);
-          res.end("Not Found");
+          default:
+            res.writeHead(404);
+            res.end("Not Found");
         }
       },
     );
 
     server.listen(port, () => {
-      logger.debug(`Auth server listening on port ${port}`);
       resolve({ server, credentialsPromise });
     });
 
     server.on("error", (err: NodeJS.ErrnoException) => {
       if (err.code === "EADDRINUSE") {
-        logger.error(`Port ${port} is already in use`);
-        // Try to cancel any existing auth server
-        fetch(`http://localhost:${port}/cancel`).catch(() => {});
+        fetch(`http://localhost:${port}${OAUTH_CONFIG.cancelPath}`).catch(
+          () => {},
+        );
       }
       reject(err);
     });
   });
 }
 
-/**
- * Exchange authorization code for tokens
- */
+async function handleCallback(
+  url: URL,
+  res: ServerResponse,
+  expectedState: string,
+  pkce: { verifier: string; challenge: string },
+  port: number,
+  credentialsResolve: (value: CodexCredentials) => void,
+  credentialsReject: (reason?: Error) => void,
+  server: http.Server,
+): Promise<void> {
+  const code = url.searchParams.get("code");
+  const returnedState = url.searchParams.get("state");
+
+  if (!code || returnedState !== expectedState) {
+    sendErrorResponse(res, 400, "Invalid authorization response");
+    credentialsReject(new Error("Invalid authorization response"));
+    return;
+  }
+
+  try {
+    const redirectUri = `http://localhost:${port}${OAUTH_CONFIG.redirectPath}`;
+    const tokens = await exchangeCodeForTokens(code, pkce.verifier, redirectUri);
+    const credentials = createCredentials(tokens);
+
+    updateCodexCredentials(credentials);
+
+    res.writeHead(302, { Location: OAUTH_CONFIG.successPath });
+    res.end();
+
+    credentialsResolve(credentials);
+    setTimeout(() => server.close(), 1000);
+  } catch (error) {
+    sendErrorResponse(res, 500, "Authentication failed");
+    credentialsReject(error instanceof Error ? error : new Error(String(error)));
+  }
+}
+
+function createCredentials(tokens: CodexTokenResponse): CodexCredentials {
+  const idTokenInfo = parseIdToken(tokens.id_token);
+
+  return {
+    accessToken: tokens.access_token,
+    mode: "chatgpt" as const,
+    refreshToken: tokens.refresh_token,
+    email: idTokenInfo.email,
+    chatgptPlanType: idTokenInfo.chatgptPlanType,
+    lastRefresh: Date.now(),
+  };
+}
+
 async function exchangeCodeForTokens(
   code: string,
   codeVerifier: string,
   redirectUri: string,
 ): Promise<CodexTokenResponse> {
-  const response = await fetch(`${AuthIssuer}/oauth/token`, {
+  const response = await fetch(`${AUTH_ISSUER}/oauth/token`, {
     method: "POST",
     headers: {
       "Content-Type": "application/x-www-form-urlencoded",
@@ -176,7 +158,7 @@ async function exchangeCodeForTokens(
       grant_type: "authorization_code",
       code,
       redirect_uri: redirectUri,
-      client_id: ClientId,
+      client_id: OAUTH_CONFIG.clientId,
       code_verifier: codeVerifier,
     }).toString(),
   });
@@ -189,45 +171,63 @@ async function exchangeCodeForTokens(
   return response.json() as Promise<CodexTokenResponse>;
 }
 
-
-/**
- * Refresh credentials (currently just returns existing as API keys don't expire)
- */
 export async function renewCredentials(
   credentials: CodexCredentials,
 ): Promise<CodexCredentials | undefined> {
-  // OpenAI API keys don't expire, so just return the existing credentials
-  return credentials;
+  if (!credentials.refreshToken) {
+    return credentials;
+  }
+
+  try {
+    const response = await fetch(`${AUTH_ISSUER}/oauth/token`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: new URLSearchParams({
+        grant_type: "refresh_token",
+        client_id: OAUTH_CONFIG.clientId,
+        refresh_token: credentials.refreshToken,
+      }).toString(),
+    });
+
+    if (!response.ok) {
+      return credentials;
+    }
+
+    const tokens = (await response.json()) as CodexTokenResponse;
+    const newCredentials = tokens.id_token
+      ? createCredentials(tokens)
+      : {
+          ...credentials,
+          accessToken: tokens.access_token,
+          refreshToken: tokens.refresh_token || credentials.refreshToken,
+          lastRefresh: Date.now(),
+        };
+
+    updateCodexCredentials(newCredentials);
+    return newCredentials;
+  } catch {
+    return credentials;
+  }
 }
 
-/**
- * Fetch user information
- */
 export async function fetchUserInfo(
   credentials: CodexCredentials,
 ): Promise<UserInfo> {
-  try {
-    // Get user info from parsed ID token
-    if (credentials.idToken?.email) {
-      return {
-        email: credentials.idToken.email,
-        name: credentials.idToken.email.split("@")[0],
-      };
-    }
-  } catch (error) {
-    logger.debug("Failed to get user info:", error);
+  if (credentials.email) {
+    return {
+      email: credentials.email,
+      name: credentials.email.split("@")[0],
+    };
   }
 
-  // Fallback
   return {
     email: "",
     name: "OpenAI User",
   };
 }
 
-/**
- * Build OAuth authorization URL
- */
 function buildAuthorizeUrl(
   redirectUri: string,
   codeChallenge: string,
@@ -235,9 +235,9 @@ function buildAuthorizeUrl(
 ): string {
   const params = new URLSearchParams({
     response_type: "code",
-    client_id: ClientId,
+    client_id: OAUTH_CONFIG.clientId,
     redirect_uri: redirectUri,
-    scope: "openid profile email offline_access",
+    scope: OAUTH_CONFIG.scope,
     code_challenge: codeChallenge,
     code_challenge_method: "S256",
     id_token_add_organizations: "true",
@@ -246,12 +246,9 @@ function buildAuthorizeUrl(
     originator: "pochi_vendor_codex",
   });
 
-  return `${AuthIssuer}/oauth/authorize?${params.toString()}`;
+  return `${AUTH_ISSUER}/oauth/authorize?${params.toString()}`;
 }
 
-/**
- * Generate PKCE parameters
- */
 function generatePKCE(): { verifier: string; challenge: string } {
   const verifier = crypto.randomBytes(32).toString("base64url");
   const challenge = crypto
@@ -262,30 +259,106 @@ function generatePKCE(): { verifier: string; challenge: string } {
   return { verifier, challenge };
 }
 
-/**
- * Generate random state parameter
- */
 function generateState(): string {
   return crypto.randomBytes(32).toString("base64url");
 }
 
-/**
- * Parse ID token to extract user claims
- */
-function parseIdToken(idToken: string): IdTokenInfo {
+function parseIdToken(idToken: string): {
+  email?: string;
+  chatgptPlanType?: string;
+} {
   try {
     const [, payload] = idToken.split(".");
-    const claims = JSON.parse(Buffer.from(payload, "base64url").toString()) as IdClaims;
+    const claims = JSON.parse(
+      Buffer.from(payload, "base64url").toString(),
+    ) as IdClaims;
 
     return {
       email: claims.email,
       chatgptPlanType: claims["https://api.openai.com/auth"]?.chatgpt_plan_type,
-      rawJwt: idToken,
     };
-  } catch (error) {
-    logger.debug("Failed to parse ID token:", error);
-    return {
-      rawJwt: idToken,
-    };
+  } catch {
+    return {};
   }
+}
+
+export function extractAccountId(accessToken: string): string {
+  try {
+    const [, payload] = accessToken.split(".");
+    const claims = JSON.parse(Buffer.from(payload, "base64url").toString());
+    const authClaims = claims["https://api.openai.com/auth"] as AuthClaims;
+    return authClaims?.chatgpt_account_id || "";
+  } catch {
+    return "";
+  }
+}
+
+function sendSuccessPage(res: ServerResponse): void {
+  res.writeHead(200, { "Content-Type": "text/html" });
+  res.end(`
+    <html>
+      <head>
+        <title>Authentication Successful</title>
+        <style>
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          }
+          .container {
+            text-align: center;
+            background: white;
+            padding: 2rem 3rem;
+            border-radius: 12px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+          }
+          h1 {
+            color: #10a37f;
+            margin-bottom: 0.5rem;
+          }
+          p {
+            color: #666;
+            margin-top: 0.5rem;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <h1>✓ Authentication Successful</h1>
+          <p>You can now close this window and return to Pochi.</p>
+        </div>
+      </body>
+    </html>
+  `);
+}
+
+function sendErrorResponse(
+  res: ServerResponse,
+  statusCode: number,
+  message: string,
+): void {
+  res.writeHead(statusCode, { "Content-Type": "text/html" });
+  res.end(`
+    <html>
+      <body>
+        <h1>Error</h1>
+        <p>${message}</p>
+      </body>
+    </html>
+  `);
+}
+
+function handleCancel(
+  res: ServerResponse,
+  server: http.Server,
+  credentialsReject: (reason?: Error) => void,
+): void {
+  res.writeHead(200, { "Content-Type": "text/plain" });
+  res.end("Cancelled");
+  server.close();
+  credentialsReject(new Error("Authentication cancelled"));
 }

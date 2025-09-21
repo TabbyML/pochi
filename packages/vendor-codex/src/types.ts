@@ -2,7 +2,8 @@ export interface CodexCredentials {
   accessToken: string;
   mode: "chatgpt";
   refreshToken?: string;
-  idToken?: IdTokenInfo;
+  email?: string;
+  chatgptPlanType?: string;
   lastRefresh?: number;
 }
 
@@ -32,5 +33,3 @@ export interface CodexTokenResponse {
 
 
 export const VendorId = "codex";
-export const ClientId = "app_EMoamEEZ73f0CkXaXp7hrann";
-export const AuthIssuer = "https://auth.openai.com";
