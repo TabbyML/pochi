@@ -1,3 +1,4 @@
+import { getLogger } from "@getpochi/common";
 import {
   type CustomModelSetting,
   type GoogleVertexModel,
@@ -12,6 +13,8 @@ import * as JSONC from "jsonc-parser/esm";
 import { injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
 import z from "zod";
+
+const logger = getLogger("PochiConfiguration");
 
 @injectable()
 @singleton()
@@ -66,10 +69,11 @@ export class PochiConfiguration implements vscode.Disposable {
   async revealConfig(options?: { key?: string }): Promise<void> {
     const configUri = vscode.Uri.file(PochiConfigFilePath);
 
+    await vscode.commands.executeCommand("vscode.open", configUri);
     try {
       await revealSettingInConfig(configUri, options?.key);
     } catch (err) {
-      await vscode.commands.executeCommand("vscode.open", configUri);
+      logger.error("Failed to reveal setting in config", err);
     }
   }
 
@@ -150,20 +154,25 @@ async function revealSettingInConfig(
   // Ensure the config file exists
 
   // Open the document
-  const document = await vscode.workspace.openTextDocument(configUri);
-  await vscode.window.showTextDocument(document);
 
-  const content = document.getText();
+  const content = new TextDecoder().decode(
+    await vscode.workspace.fs.readFile(configUri),
+  );
 
   if (!path) return;
 
   const pathSegments = path.split(".");
 
   // Check if the path exists and create it if necessary
-  const position = await findPathPosition(content, pathSegments, document);
+  const offset = await findPathOffset(content, pathSegments);
 
   // Reveal the position if found
-  if (position) {
+  if (offset) {
+    const document = await vscode.workspace.openTextDocument(configUri);
+    await vscode.window.showTextDocument(document);
+
+    const position = document.positionAt(offset);
+
     const editor = vscode.window.activeTextEditor;
     if (editor) {
       editor.selection = new vscode.Selection(position, position);
@@ -178,11 +187,10 @@ async function revealSettingInConfig(
 /**
  * Ensures a JSON path exists in the configuration, creating it if necessary
  */
-async function findPathPosition(
+async function findPathOffset(
   content: string,
   pathSegments: string[],
-  document: vscode.TextDocument,
-): Promise<vscode.Position | undefined> {
+): Promise<number | undefined> {
   // Parse the JSON with comments
   const parseOptions: JSONC.ParseOptions = {
     allowTrailingComma: true,
@@ -207,8 +215,5 @@ async function findPathPosition(
   if (!tree) return;
 
   const targetNode = JSONC.findNodeAtLocation(tree, pathSegments);
-  if (targetNode?.offset !== undefined) {
-    const position = document.positionAt(targetNode.offset);
-    return position;
-  }
+  return targetNode?.offset;
 }
