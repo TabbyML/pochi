@@ -22,7 +22,8 @@ export function registerCompletionCommand(program: Command) {
       try {
         const completion = omelette("pochi");
         // Get the root program by checking if parent exists
-        const rootProgram = 'parent' in program && program.parent ? program.parent : program;
+        const rootProgram =
+          "parent" in program && program.parent ? program.parent : program;
         completion.tree(createCompletionTreeFromProgram(rootProgram));
         console.log(
           chalk.green("✅ Completion script generated successfully!"),

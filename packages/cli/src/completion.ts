@@ -1,11 +1,11 @@
-import type { Command, CommandUnknownOpts } from "@commander-js/extra-typings";
+import type { CommandUnknownOpts } from "@commander-js/extra-typings";
 import omelette, { type TreeValue } from "omelette";
 
 /**
  * Recursively extracts command structure from a Commander.js program
  * to automatically generate completion tree
  */
-function extractCommandStructure(command: Command | CommandUnknownOpts): TreeValue {
+function extractCommandStructure(command: CommandUnknownOpts): TreeValue {
   const tree: TreeValue = {};
 
   try {
@@ -26,7 +26,7 @@ function extractCommandStructure(command: Command | CommandUnknownOpts): TreeVal
     const commands = command.commands || [];
     for (const subCommand of commands) {
       try {
-        const name = subCommand.name()
+        const name = subCommand.name();
         if (name) {
           // Recursively extract subcommand structure
           tree[name] = extractCommandStructure(subCommand);
@@ -47,13 +47,13 @@ function extractCommandStructure(command: Command | CommandUnknownOpts): TreeVal
  * Automatically generates completion tree from CLI program structure
  */
 export function createCompletionTreeFromProgram(
-  program: Command | CommandUnknownOpts,
+  program: CommandUnknownOpts,
 ): TreeValue {
   return extractCommandStructure(program);
 }
 
 // Initialize completion for pochi CLI
-export function initializeCompletion(program: Command | CommandUnknownOpts) {
+export function initializeCompletion(program: CommandUnknownOpts) {
   if (!program) {
     throw new Error("Program instance is required for auto-completion");
   }
@@ -65,7 +65,7 @@ export function initializeCompletion(program: Command | CommandUnknownOpts) {
 }
 
 // Get completion script as string
-export function getCompletionScript(program: Command | CommandUnknownOpts) {
+export function getCompletionScript(program: CommandUnknownOpts) {
   if (!program) {
     throw new Error(
       "Program instance is required for completion script generation",
