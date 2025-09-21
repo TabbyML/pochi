@@ -1,11 +1,12 @@
-import omelette from "omelette";
+import type { Command, CommandUnknownOpts } from "@commander-js/extra-typings";
+import omelette, { type TreeValue } from "omelette";
 
 /**
  * Recursively extracts command structure from a Commander.js program
  * to automatically generate completion tree
  */
-function extractCommandStructure(command: any): Record<string, any> {
-  const tree: Record<string, any> = {};
+function extractCommandStructure(command: Command | CommandUnknownOpts): TreeValue {
+  const tree: TreeValue = {};
 
   try {
     // Extract options from the command
@@ -25,18 +26,18 @@ function extractCommandStructure(command: any): Record<string, any> {
     const commands = command.commands || [];
     for (const subCommand of commands) {
       try {
-        const name = typeof subCommand.name === 'function' ? subCommand.name() : subCommand.name;
-        if (name && name !== "help") {
+        const name = subCommand.name()
+        if (name) {
           // Recursively extract subcommand structure
           tree[name] = extractCommandStructure(subCommand);
         }
       } catch (err) {
         // Skip commands that can't be processed
-        console.debug('Failed to process subcommand:', err);
+        console.debug("Failed to process subcommand:", err);
       }
     }
   } catch (err) {
-    console.debug('Failed to extract command structure:', err);
+    console.debug("Failed to extract command structure:", err);
   }
 
   return tree;
@@ -45,13 +46,14 @@ function extractCommandStructure(command: any): Record<string, any> {
 /**
  * Automatically generates completion tree from CLI program structure
  */
-export function createCompletionTreeFromProgram(program: any): Record<string, any> {
+export function createCompletionTreeFromProgram(
+  program: Command | CommandUnknownOpts,
+): TreeValue {
   return extractCommandStructure(program);
 }
 
-
 // Initialize completion for pochi CLI
-export function initializeCompletion(program: any) {
+export function initializeCompletion(program: Command | CommandUnknownOpts) {
   if (!program) {
     throw new Error("Program instance is required for auto-completion");
   }
@@ -63,9 +65,11 @@ export function initializeCompletion(program: any) {
 }
 
 // Get completion script as string
-export function getCompletionScript(program: any) {
+export function getCompletionScript(program: Command | CommandUnknownOpts) {
   if (!program) {
-    throw new Error("Program instance is required for completion script generation");
+    throw new Error(
+      "Program instance is required for completion script generation",
+    );
   }
   const completion = omelette("pochi");
   const tree = createCompletionTreeFromProgram(program);
