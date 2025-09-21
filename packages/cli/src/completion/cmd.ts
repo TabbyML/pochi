@@ -1,7 +1,7 @@
 import type { Command } from "@commander-js/extra-typings";
 import chalk from "chalk";
 import omelette from "omelette";
-import { createCompletionTree } from "../completion";
+import { createCompletionTreeFromProgram } from "../completion";
 
 export function registerCompletionCommand(program: Command) {
   program
@@ -21,7 +21,9 @@ export function registerCompletionCommand(program: Command) {
       // Generate the completion script
       try {
         const completion = omelette("pochi");
-        completion.tree(createCompletionTree());
+        // Get the root program by checking if parent exists
+        const rootProgram = 'parent' in program && program.parent ? program.parent : program;
+        completion.tree(createCompletionTreeFromProgram(rootProgram));
         console.log(
           chalk.green("✅ Completion script generated successfully!"),
         );

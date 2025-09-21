@@ -43,9 +43,6 @@ import { checkForUpdates, registerUpgradeCommand } from "./upgrade";
 const logger = getLogger("Pochi");
 logger.debug(`pochi v${packageJson.version}`);
 
-// Initialize auto-completion for normal CLI usage
-initializeCompletion();
-
 const parsePositiveInt = (input: string): number => {
   if (!input) {
     return program.error(
@@ -173,6 +170,9 @@ registerTaskCommand(program);
 registerCompletionCommand(program);
 
 registerUpgradeCommand(program);
+
+// Initialize auto-completion after all commands are registered
+initializeCompletion(program);
 
 program.parse(process.argv);
 
