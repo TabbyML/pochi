@@ -23,8 +23,7 @@ import * as commander from "commander";
 import packageJson from "../package.json";
 import { registerAuthCommand } from "./auth";
 
-import { registerCompletionCommand } from "./completion";
-import { initializeShellCompletion } from "./completion/tree";
+import { registerCompletionCommand, initializeShellCompletion } from "./completion";
 import { findRipgrep } from "./lib/find-ripgrep";
 import { loadAgents } from "./lib/load-agents";
 import { shutdownStoreAndExit } from "./lib/store-utils";

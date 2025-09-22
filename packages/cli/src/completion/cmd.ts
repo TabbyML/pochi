@@ -1,7 +1,7 @@
 import type { Command } from "@commander-js/extra-typings";
 import chalk from "chalk";
 import omelette from "omelette";
-import { createCompletionTreeFromProgram } from "../completion/tree";
+import { createCompletionTreeFromProgram } from "./tree";
 
 export function registerCompletionCommand(program: Command) {
   program
