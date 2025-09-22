@@ -31,7 +31,7 @@ export class LiveStoreClientDO
     this.onTasksUpdate = runExclusive.buildMethod(this.onTasksUpdate);
   }
 
-  async setUser(user: User): Promise<void> {
+  async setOwner(user: User): Promise<void> {
     await this.state.storage.put("user", user);
   }
 
@@ -46,11 +46,18 @@ export class LiveStoreClientDO
       getStore: async () => {
         return this.getStore();
       },
-      getUser: async () => {
+      getOwner: async () => {
         return await this.state.storage.get<User>("user");
       },
       setStoreId: (storeId: string) => {
         this.storeId = storeId;
+      },
+      reloadShareTasks: async () => {
+        const store = await this.getStore();
+        const tasks = await store.query(catalog.queries.tasks$);
+        console.log("Force reloading share tasks", tasks.length);
+        await this.onTasksUpdate(tasks, true);
+        return tasks;
       },
       ASSETS: this.env.ASSETS,
     } satisfies ClientEnv);
@@ -103,14 +110,14 @@ export class LiveStoreClientDO
     await handleSyncUpdateRpc(payload);
   }
 
-  private onTasksUpdate = async (tasks: readonly Task[] | undefined) => {
+  onTasksUpdate = async (tasks: readonly Task[] | undefined, force = false) => {
     if (!tasks) return;
     const store = await this.getStore();
     const oneMinuteAgo = moment().subtract(1, "minute");
 
     console.log(`Updating ${tasks.length} tasks`);
-    const updatedTasks = tasks.filter((task) =>
-      moment(task.updatedAt).isAfter(oneMinuteAgo),
+    const updatedTasks = tasks.filter(
+      (task) => force || moment(task.updatedAt).isAfter(oneMinuteAgo),
     );
 
     if (!updatedTasks.length) return;

@@ -7,12 +7,46 @@ import type { Store } from "@livestore/livestore";
 import type { UIMessage } from "ai";
 import type { InferToolInput } from "ai";
 import { Hono } from "hono";
+import type { MiddlewareHandler } from "hono";
 import { HTTPException } from "hono/http-exception";
 import type { DeepWritable, Env } from "./types";
 
-const store = new Hono<{ Bindings: Env }>();
+type RequestVariables = {
+  isOwner: boolean;
+};
+
+const checkOwner: MiddlewareHandler<{
+  Bindings: Env;
+  Variables: RequestVariables;
+}> = async (c, next) => {
+  const store = await c.env.getStore();
+  const jwt = c.req.header("authorization")?.replace("Bearer ", "");
+  const user = jwt && (await verifyJWT(undefined, jwt));
+  const isOwner = user && user.sub === decodeStoreId(store.storeId).sub;
+  c.set("isOwner", !!isOwner);
+  await next();
+};
+
+const store = new Hono<{ Bindings: Env; Variables: RequestVariables }>().use(
+  checkOwner,
+);
 
 store
+  .post("/tasks/share", async (c) => {
+    if (!c.get("isOwner")) {
+      throw new HTTPException(403, { message: "Unauthorized" });
+    }
+    const tasks = await c.env.reloadShareTasks();
+    return c.json(tasks);
+  })
+  .patch("/tasks", async (c) => {
+    if (!c.get("isOwner")) {
+      throw new HTTPException(403, { message: "Unauthorized" });
+    }
+    const store = await c.env.getStore();
+    const tasks = store.query(catalog.queries.tasks$);
+    return c.json(tasks);
+  })
   .get("/tasks/:taskId/json", async (c) => {
     const store = await c.env.getStore();
     const taskId = c.req.param("taskId");
@@ -24,10 +58,7 @@ store
     }
 
     if (!task.isPublicShared) {
-      const jwt = c.req.header("authorization")?.replace("Bearer ", "");
-      const user = jwt && (await verifyJWT(undefined, jwt));
-      const isOwner = user && user.sub === decodeStoreId(store.storeId).sub;
-      if (!isOwner) {
+      if (!c.get("isOwner")) {
         throw new HTTPException(403, { message: "Task is not public" });
       }
     }
@@ -37,7 +68,7 @@ store
       .map((x) => x.data as UIMessage);
     const subTasks = collectSubTasks(store, taskId);
 
-    const user = await c.env.getUser();
+    const user = await c.env.getOwner();
 
     return c.json({
       type: "share",
