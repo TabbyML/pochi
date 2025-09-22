@@ -57,7 +57,7 @@ export class LiveStoreClientDO
         const tasks = await store.query(catalog.queries.tasks$);
         console.log("Force reloading share tasks", tasks.length);
         await this.onTasksUpdate(tasks, true);
-        return tasks;
+        return await store.query(catalog.queries.tasks$);
       },
       ASSETS: this.env.ASSETS,
     } satisfies ClientEnv);

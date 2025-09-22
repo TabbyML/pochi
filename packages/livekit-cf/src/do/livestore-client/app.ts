@@ -39,14 +39,6 @@ store
     const tasks = await c.env.reloadShareTasks();
     return c.json(tasks);
   })
-  .patch("/tasks", async (c) => {
-    if (!c.get("isOwner")) {
-      throw new HTTPException(403, { message: "Unauthorized" });
-    }
-    const store = await c.env.getStore();
-    const tasks = store.query(catalog.queries.tasks$);
-    return c.json(tasks);
-  })
   .get("/tasks/:taskId/json", async (c) => {
     const store = await c.env.getStore();
     const taskId = c.req.param("taskId");
