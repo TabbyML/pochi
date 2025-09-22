@@ -174,7 +174,6 @@ registerCompletionCommand(program);
 registerUpgradeCommand(program);
 
 // Initialize auto-completion after all commands are registered
-program.name("pochi");
 initializeShellCompletion(program);
 
 program.parse(process.argv);
