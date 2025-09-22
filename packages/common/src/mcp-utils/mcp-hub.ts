@@ -83,7 +83,10 @@ export class McpHub implements Disposable {
     }
   }
 
-  addServer(name?: string, serverConfig?: McpServerConfig): string {
+  async addServer(
+    name?: string,
+    serverConfig?: McpServerConfig,
+  ): Promise<string> {
     if (!serverConfig) {
       throw new Error("Server configuration is required");
     }
@@ -96,7 +99,7 @@ export class McpHub implements Disposable {
       [serverName]: serverConfig,
     };
 
-    this.reloadConfig(newConfig);
+    await this.reloadConfig(newConfig);
     return serverName;
   }
 
@@ -116,7 +119,7 @@ export class McpHub implements Disposable {
     return addedNames;
   }
 
-  private reloadConfig(
+  private async reloadConfig(
     newConfig: Record<string, McpServerConfig>,
     save = true,
   ) {
@@ -124,7 +127,7 @@ export class McpHub implements Disposable {
 
     if (save) {
       // Persist configuration changes to file
-      updatePochiConfig({ mcp: newConfig }).catch((error) => {
+      await updatePochiConfig({ mcp: newConfig }).catch((error) => {
         logger.error("Failed to persist MCP configuration changes", error);
       });
     }

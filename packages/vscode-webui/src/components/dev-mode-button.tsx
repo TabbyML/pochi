@@ -8,13 +8,15 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useIsDevMode } from "@/features/settings";
 import { useCopyToClipboard } from "@/lib/hooks/use-copy-to-clipboard";
+import { usePochiCredentials } from "@/lib/hooks/use-pochi-credentials";
 import { vscodeHost } from "@/lib/vscode";
 import type { Environment } from "@getpochi/common";
 import type { Message } from "@getpochi/livekit";
 import type { Todo } from "@getpochi/tools";
+import { useStore } from "@livestore/react";
 import { convertToModelMessages } from "ai";
 
-import { CheckIcon, CopyIcon, Gavel } from "lucide-react"; // Removed FilesIcon
+import { CheckIcon, CopyIcon, Gavel, StoreIcon } from "lucide-react"; // Removed FilesIcon
 import type React from "react";
 import { useCallback } from "react";
 
@@ -127,8 +129,27 @@ export function DevModeButton({
             text="Copy Checkpoint Command"
           />
           <CopyMenuItem fetchContent={getTodosContent} text="Copy TODOs" />
+          <OpenDevStore />
         </DropdownMenuContent>
       </DropdownMenuPortal>
     </DropdownMenu>
   );
+}
+
+function OpenDevStore() {
+  const { store } = useStore();
+  const { jwt } = usePochiCredentials();
+  const onClick = useCallback(() => {
+    vscodeHost.openExternal(
+      `http://localhost:4112/dev.html?storeId=${store.storeId}&jwt=${jwt}`,
+    );
+  }, [store.storeId, jwt]);
+  if (import.meta.env.DEV && jwt && store) {
+    return (
+      <DropdownMenuItem onClick={onClick}>
+        <StoreIcon className="inline" />
+        <span className="ml-2">Open Store</span>
+      </DropdownMenuItem>
+    );
+  }
 }

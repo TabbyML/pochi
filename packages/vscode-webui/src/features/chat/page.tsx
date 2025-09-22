@@ -61,9 +61,10 @@ function Chat({ user, uid, prompt }: ChatProps) {
   const customAgent = useCustomAgent(subtask?.agent);
 
   const autoApproveGuard = useAutoApproveGuard();
-  const { data: cwd = "default" } = useCurrentWorkspace();
+  const { data: currentWorkspace, isFetching: isFetchingWorkspace } =
+    useCurrentWorkspace();
+  const isWorkspaceActive = !!currentWorkspace;
   const chatKit = useLiveChatKit({
-    cwd,
     taskId: uid,
     getters,
     isSubTask: !!subtask,
@@ -86,10 +87,6 @@ function Chat({ user, uid, prompt }: ChatProps) {
     },
     onOverrideMessages,
   });
-
-  const { data: currentWorkspace, isFetching: isFetchingWorkspace } =
-    useCurrentWorkspace();
-  const isWorkspaceActive = !!currentWorkspace;
 
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   // Use the unified image upload hook
@@ -114,9 +111,9 @@ function Chat({ user, uid, prompt }: ChatProps) {
 
   useEffect(() => {
     if (prompt && !chatKit.inited) {
-      chatKit.init(prompt);
+      chatKit.init(currentWorkspace, prompt);
     }
-  }, [prompt, chatKit]);
+  }, [currentWorkspace, prompt, chatKit]);
 
   usePendingModelAutoStart({
     enabled:

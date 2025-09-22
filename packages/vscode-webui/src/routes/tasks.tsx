@@ -388,6 +388,20 @@ function DatePicker({
                 setOpen(false);
               }
             }}
+            footer={
+              <div className="mt-2 flex justify-end px-2 py-1">
+                <Button
+                  variant="outline"
+                  className="h-7 px-2 py-0 text-xs"
+                  onClick={() => {
+                    setDate(new Date());
+                    setOpen(false);
+                  }}
+                >
+                  Today
+                </Button>
+              </div>
+            }
           />
         </PopoverContent>
       </Popover>
