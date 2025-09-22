@@ -25,7 +25,7 @@ MCP (Model Context Protocol) is a lightweight, flexible interface that allows la
 
 We’re going to use Supabase database and limit to read only queries, but you can always extend to perform CRUD operations too. Using MCP servers makes it easy to extend AI assistants with custom functionality and is a perfect way to keep your focus on coding while still getting the data context you need.
 
-### Self host or use the managed service.
+### Self host or use the managed service
 
 Some teams may prefer to run Pochi entirely on their own infrastructure rather than rely on the managed cloud service. Pochi provides you with both options. You can either self-host which means that the chat interface, orchestration, and MCP connections all run locally or on your servers. This is ideal if you require stricter compliance, private networking, or better cost control when integrating with internal systems.
 
@@ -39,13 +39,12 @@ As you follow along, everything we build, be it the Supabase MCP server, the pla
 ### Step 1: Setup your VS code project
 
 First, we’ll set up a new project inside VS Code. To do so, we’ll create a new folder and initialise a Node project.
-
-The command `npm init -y` quickly creates a `package.json` file in your project directory using default values, without prompting you for configuration.
 ```bash
 mkdir supabase-mcp-server
 cd supabase-mcp-server
 npm init -y
 ```
+The command `npm init -y` quickly creates a `package.json` file in your project directory using default values, without prompting you for configuration.
 
 Once the project is setup, we need to install the required dependencies. Run the following command:
 ```bash
@@ -62,7 +61,7 @@ npm install @modelcontextprotocol/sdk zod openai dotenv @supabase/supabase-js
 The `.env` file is created to store your Supabase and OpenAI keys to avoid exposing them on the code side. You can fetch your Supabase API key by going to Settings -> API keys and creating a secret service role API key. 
 ![API Keys Supabase Dashboard](./images/api-keys-supabase-dashboard.png)
 
-For the OpenAI key, go to your dashboard and API keys section where you can click "+Create a secret key" button. 
+For the OpenAI key, go to your **[dashboard and API keys](https://platform.openai.com/settings/organization/api-keys)** section where you can click "+Create a secret key" button. 
 ![OpenAI Dashboard](./images/openai-dashboard.png)
 
 Paste these keys in the `.env` file as follows:
@@ -401,7 +400,7 @@ The above code snippet will register a local MCP server in Pochi.
 * `cwd` = The current working directory where the command will run.
 * `disabledTools` = Allows you to disable certain tools or integrations (like linters or debuggers). It’s currently empty, so no tools are disabled.
 
-When you save this config in the `~/config.json file`, Pochi will know to launch `node index.js` as a subprocess and communicate with it via stdio transport when the “my-supabase-mcp” server is enabled. Read more about it **[here](https://docs.getpochi.com/mcp/)**.
+When you save this config in the `~/config.json` file, Pochi will know to launch `node index.js` as a subprocess and communicate with it via stdio transport when the “my-supabase-mcp” server is enabled. Read more about it **[here](https://docs.getpochi.com/mcp/)**.
 
 
 
