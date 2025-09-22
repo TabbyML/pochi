@@ -4,7 +4,7 @@ import type { CreateModelOptions } from "@getpochi/common/vendor/edge";
 import { APICallError, wrapLanguageModel } from "ai";
 import type { GithubCopilotCredentials } from "./types";
 
-// const COPILOT_CHAT_URL = "https://api.githubcopilot.com";
+// FIXME(jueliang): get url from credentials
 const COPILOT_CHAT_URL = "https://api.individual.githubcopilot.com";
 
 export function createCopilotModel({
@@ -45,7 +45,6 @@ function createPatchedFetch(
     headers.set("Authorization", `Bearer ${accessToken}`);
     headers.set("Editor-Version", "vscode/1.99.3");
     headers.set("Copilot-Integration-Id", "vscode-chat");
-
     const resp = await fetch(requestInfo, {
       ...requestInit,
       headers,
