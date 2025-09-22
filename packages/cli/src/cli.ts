@@ -25,7 +25,6 @@ import { registerAuthCommand } from "./auth";
 
 import {
   initializeShellCompletion,
-  registerCompletionCommand,
 } from "./completion";
 import { findRipgrep } from "./lib/find-ripgrep";
 import { loadAgents } from "./lib/load-agents";
@@ -169,7 +168,6 @@ registerAuthCommand(program);
 registerModelCommand(program);
 registerMcpCommand(program);
 registerTaskCommand(program);
-registerCompletionCommand(program);
 
 registerUpgradeCommand(program);
 
