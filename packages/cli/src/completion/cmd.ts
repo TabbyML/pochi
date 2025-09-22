@@ -20,7 +20,8 @@ export function registerCompletionCommand(program: Command) {
 
       // Generate the completion script
       try {
-        const completion = omelette("pochi");
+        const programName = program.name();
+        const completion = omelette(programName);
         // Get the root program by checking if parent exists
         const rootProgram =
           "parent" in program && program.parent ? program.parent : program;
@@ -33,31 +34,30 @@ export function registerCompletionCommand(program: Command) {
         console.log(chalk.bold("📋 Setup Instructions:"));
         console.log();
 
-        if (shell === "zsh") {
-          console.log(chalk.cyan("For Zsh:"));
-          console.log("1. Add the completion script to your shell:");
-          console.log(chalk.yellow("   source <(pochi --completion)"));
-          console.log();
-          console.log();
-          console.log("2. Add your ~/.zshrc file to make them permanent:");
-          console.log(
-            chalk.yellow("   echo 'source <(pochi --completion)' >> ~/.zshrc"),
-          );
-        } else {
-          console.log(chalk.cyan("For Bash:"));
-          console.log("1. Add the completion script to your shell:");
-          console.log(chalk.yellow("   source <(pochi --completion)"));
-          console.log();
-          console.log("2. Add to your ~/.bashrc file to make it permanent:");
-          console.log(
-            chalk.yellow("   echo 'source <(pochi --completion)' >> ~/.bashrc"),
-          );
-        }
+        const setupCommand = `source <(${programName} --completion)`;
+
+        const shellInstructions: { [key: string]: { profile: string } } = {
+          zsh: {
+            profile: "~/.zshrc",
+          },
+          bash: {
+            profile: "~/.bashrc",
+          },
+        };
+
+        const { profile } = shellInstructions[shell] || shellInstructions.bash;
+
+        console.log(chalk.cyan(`For ${shell}:`));
+        console.log("1. Add the completion script to your shell:");
+        console.log(chalk.yellow(`   ${setupCommand}`));
+        console.log();
+        console.log(`2. Add to your ${profile} file to make it permanent:`);
+        console.log(chalk.yellow(`   echo '${setupCommand}' >> ${profile}`));
 
         console.log();
         console.log(
           chalk.green(
-            "🎉 After setup, you can use Tab completion with pochi commands!",
+            `🎉 After setup, you can use Tab completion with ${programName} commands!`,
           ),
         );
       } catch (error) {

@@ -52,14 +52,19 @@ export function createCompletionTreeFromProgram(
   return extractCommandStructure(program);
 }
 
-// Initialize completion for pochi CLI
+// Initialize completion for the CLI
 export function initializeShellCompletion(program: CommandUnknownOpts) {
-  if (!program) {
-    throw new Error("Program instance is required for auto-completion");
+  if (!program || !program.name()) {
+    throw new Error(
+      "Program instance with a name is required for auto-completion",
+    );
   }
-  const completion = omelette("pochi");
+
+  const programName = program.name();
+  const completion = omelette(programName);
   const tree = createCompletionTreeFromProgram(program);
   completion.tree(tree);
   completion.init();
+
   return completion;
 }
