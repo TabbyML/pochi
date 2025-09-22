@@ -63,6 +63,3 @@ export function initializeShellCompletion(program: CommandUnknownOpts) {
   completion.init();
   return completion;
 }
-
-// Re-export the completion command registration
-export { registerCompletionCommand } from "./cmd";
