@@ -110,7 +110,10 @@ export class LiveStoreClientDO
     await handleSyncUpdateRpc(payload);
   }
 
-  onTasksUpdate = async (tasks: readonly Task[] | undefined, force = false) => {
+  private onTasksUpdate = async (
+    tasks: readonly Task[] | undefined,
+    force = false,
+  ) => {
     if (!tasks) return;
     const store = await this.getStore();
     const oneMinuteAgo = moment().subtract(1, "minute");
