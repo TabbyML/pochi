@@ -493,7 +493,7 @@ Once it works in Inspector, we can connect it into Pochi (your config already po
 
 Prompt used: 
 
->“Use the queryDatabase tool to find out what are the total sales for each product by region”
+>Use the queryDatabase tool to find out what are the total sales for each product by region
 
 Here’s the final working demo:
 
@@ -526,6 +526,51 @@ Here’s the final working demo:
 You can also paste in the Vega - Lite JSON spec you receive in response into the Vega Editor and get a chart response of the requested query:
 
 ![Vega Lite Chart](./images/vega-chart-final-image.png)
+
+## How This Improves Developer Workflow
+
+While the sample database in this tutorial uses `sales_data` for simplicity, the core idea is universally applicable to developer workflows in enterprise environments.
+
+In real-world projects, your database might contain user accounts and sessions, application logs or event streams, feature flags and configuration tables or order and subscription data.
+Which is why being able to ask questions like:
+
+> Are there any failed jobs in the background_tasks table?
+
+> How many users signed up in the last 7 days from Europe?
+
+> What’s the schema of the sales_data table?
+
+
+…directly in your code editor helps you debug issues without switching to a DB client, quickly verify backend logic during development and tay in flow while writing or reviewing code.
+
+<div
+  style={{
+    position: "relative",
+    paddingBottom: "53.7%",
+    marginBottom: 20,
+    height: 0,
+    overflow: "hidden",
+    maxWidth: "100%",
+  }}
+>
+  <iframe
+    src="https://drive.google.com/file/d/1oUbk24ZuNbnG3okq1npFqJ2YxxwAUi9w/preview"
+    style={{
+      position: "absolute",
+      top: 0,
+      left: 0,
+      width: "100%",
+      height: "100%",
+      border: "none",
+      borderRadius: "8px",
+    }}
+    allowFullScreen
+    title="Testing MCP Server in MCP Inspector"
+  />
+</div>
+
+Following this tutorial, the same setup can be plugged into your real database to increase your team productivity, especially when you're self-hosting Pochi and integrating it with your internal tooling.
+
 
 ## Next Steps
 Congratulations on building your first Supabase MCP server! You’ve now set up a powerful way to query your database using natural language directly from your code editor using Pochi.
