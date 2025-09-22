@@ -65,7 +65,6 @@ function Chat({ user, uid, prompt }: ChatProps) {
     useCurrentWorkspace();
   const isWorkspaceActive = !!currentWorkspace;
   const chatKit = useLiveChatKit({
-    cwd: currentWorkspace || "default",
     taskId: uid,
     getters,
     isSubTask: !!subtask,
@@ -112,9 +111,9 @@ function Chat({ user, uid, prompt }: ChatProps) {
 
   useEffect(() => {
     if (prompt && !chatKit.inited) {
-      chatKit.init(prompt);
+      chatKit.init(currentWorkspace, prompt);
     }
-  }, [prompt, chatKit]);
+  }, [currentWorkspace, prompt, chatKit]);
 
   usePendingModelAutoStart({
     enabled:

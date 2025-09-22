@@ -20,7 +20,6 @@ const logger = getLogger("LiveChatKit");
 
 export type LiveChatKitOptions<T> = {
   taskId: string;
-  cwd: string;
   abortSignal?: AbortSignal;
 
   // Request related getters
@@ -50,13 +49,11 @@ export class LiveChatKit<
   protected readonly store: Store;
   readonly chat: T;
   private readonly transport: FlexibleChatTransport;
-  private readonly cwd: string;
 
   readonly spawn: () => Promise<string>;
 
   constructor({
     taskId,
-    cwd,
     abortSignal,
     store,
     chatClass,
@@ -68,7 +65,6 @@ export class LiveChatKit<
     ...chatInit
   }: LiveChatKitOptions<T>) {
     this.taskId = taskId;
-    this.cwd = cwd;
     this.store = store;
     this.transport = new FlexibleChatTransport({
       store,
@@ -77,7 +73,6 @@ export class LiveChatKit<
       isSubTask,
       isCli,
       customAgent,
-      cwd,
     });
 
     this.chat = new chatClass({
@@ -145,7 +140,7 @@ export class LiveChatKit<
       this.store.commit(
         events.taskInited({
           id: taskId,
-          cwd: this.cwd,
+          cwd: this.task?.cwd || undefined,
           createdAt: new Date(),
           initMessage: {
             id: crypto.randomUUID(),
@@ -167,21 +162,23 @@ export class LiveChatKit<
     };
   }
 
-  init(prompt: string) {
+  init(cwd: string | undefined, prompt?: string) {
     this.store.commit(
       events.taskInited({
         id: this.taskId,
-        cwd: this.cwd,
+        cwd,
         createdAt: new Date(),
-        initMessage: {
-          id: crypto.randomUUID(),
-          parts: [
-            {
-              type: "text",
-              text: prompt,
-            },
-          ],
-        },
+        initMessage: prompt
+          ? {
+              id: crypto.randomUUID(),
+              parts: [
+                {
+                  type: "text",
+                  text: prompt,
+                },
+              ],
+            }
+          : undefined,
       }),
     );
 
@@ -228,7 +225,7 @@ export class LiveChatKit<
         store.commit(
           events.taskInited({
             id: this.taskId,
-            cwd: this.cwd,
+            cwd: environment?.info.cwd,
             createdAt: new Date(),
           }),
         );
