@@ -24,6 +24,7 @@
     "@getpochi/vendor-gemini-cli": "workspace:*",
     "@getpochi/vendor-pochi": "workspace:*",
     "@inquirer/select": "^4.3.2",
+    "@getpochi/vendor-github-copilot": "workspace:*",
     "@livestore/adapter-node": "catalog:",
     "@livestore/livestore": "catalog:",
     "@livestore/sync-cf": "catalog:",

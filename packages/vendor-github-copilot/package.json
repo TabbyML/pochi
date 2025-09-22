@@ -1,0 +1,22 @@
+{
+  "name": "@getpochi/vendor-github-copilot",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "module": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "tsc": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ai-sdk/provider": "catalog:",
+    "@getpochi/common": "workspace:*",
+    "ai": "catalog:",
+    "@ai-sdk/openai-compatible": "catalog:"
+  },
+  "exports": {
+    ".": "./src/node.ts",
+    "./edge": "./src/edge.ts"
+  }
+}

@@ -10,5 +10,6 @@ export type ModelOptions = z.infer<typeof ModelOptions>;
 
 export interface AuthOutput {
   url: string;
+  userCode?: string;
   credentials: Promise<unknown>;
 }
