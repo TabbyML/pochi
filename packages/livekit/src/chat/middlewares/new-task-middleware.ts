@@ -14,7 +14,7 @@ import { events } from "../../livestore/schema";
 
 export function createNewTaskMiddleware(
   store: Store,
-  cwd: string,
+  cwd: string | undefined,
   parentTaskId: string,
   customAgents?: CustomAgent[],
 ): LanguageModelV2Middleware {

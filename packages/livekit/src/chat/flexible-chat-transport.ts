@@ -56,7 +56,6 @@ export type ChatTransportOptions = {
   isCli?: boolean;
   store: Store;
   customAgent?: CustomAgent;
-  cwd: string;
 };
 
 export class FlexibleChatTransport implements ChatTransport<Message> {
@@ -66,7 +65,6 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
   private readonly isCli?: boolean;
   private readonly store: Store;
   private readonly customAgent?: CustomAgent;
-  private readonly cwd: string;
 
   constructor(options: ChatTransportOptions) {
     this.onStart = options.onStart;
@@ -75,7 +73,6 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
     this.isCli = options.isCli;
     this.store = options.store;
     this.customAgent = overrideCustomAgentTools(options.customAgent);
-    this.cwd = options.cwd;
   }
 
   sendMessages: (
@@ -107,7 +104,12 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
 
     if (!this.isSubTask) {
       middlewares.push(
-        createNewTaskMiddleware(this.store, this.cwd, chatId, customAgents),
+        createNewTaskMiddleware(
+          this.store,
+          environment?.info.cwd,
+          chatId,
+          customAgents,
+        ),
       );
     }
 

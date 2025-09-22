@@ -11,8 +11,6 @@ import {
   useRetry,
 } from "@/features/retry";
 import { useTodos } from "@/features/todo";
-
-import { useCurrentWorkspace } from "@/lib/hooks/use-current-workspace";
 import { useCustomAgent } from "@/lib/hooks/use-custom-agents";
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
 import { vscodeHost } from "@/lib/vscode";
@@ -35,8 +33,6 @@ export function useLiveSubTask(
   { tool, isExecuting }: Pick<ToolProps<"newTask">, "tool" | "isExecuting">,
   toolCallStatusRegistry: ToolCallStatusRegistry,
 ): TaskThreadSource {
-  const { data: cwd } = useCurrentWorkspace();
-
   const lifecycle = useToolCallLifeCycle().getToolCallLifeCycle({
     toolName: getToolName(tool),
     toolCallId: tool.toolCallId,
@@ -79,7 +75,6 @@ export function useLiveSubTask(
 
   // FIXME: handle auto retry for output without task.
   const chatKit = useLiveChatKit({
-    cwd: cwd || "default",
     taskId: uid,
     abortSignal: abortController.current.signal,
     getters,

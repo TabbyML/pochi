@@ -26,8 +26,11 @@ function Calendar({
   ...props
 }: React.ComponentProps<typeof DayPicker> & {
   buttonVariant?: React.ComponentProps<typeof Button>["variant"];
+  selected: Date;
 }) {
   const defaultClassNames = getDefaultClassNames();
+  const defaultMonth =
+    props.selected instanceof Date ? props.selected : undefined;
 
   return (
     <DayPicker
@@ -44,6 +47,8 @@ function Calendar({
           date.toLocaleString("default", { month: "short" }),
         ...formatters,
       }}
+      defaultMonth={defaultMonth}
+      startMonth={new Date(2022, 0)}
       classNames={{
         root: cn("w-fit", defaultClassNames.root),
         months: cn(
