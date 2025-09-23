@@ -173,9 +173,13 @@ export async function fetchUserInfo(
     avatar_url: string;
   };
 
-  return {
-    email: userInfo.email ?? undefined,
+  const result: UserInfo = {
     name: userInfo.name || userInfo.login,
     image: userInfo.avatar_url,
   };
+  if (userInfo.email) {
+    result.email = userInfo.email;
+  }
+
+  return result;
 }
