@@ -9,6 +9,7 @@ import "./lib/logger";
 import "@getpochi/vendor-pochi";
 import "@getpochi/vendor-gemini-cli";
 import "@getpochi/vendor-claude-code";
+import "@getpochi/vendor-github-copilot";
 
 import RagdollUriHandler from "@/integrations/uri-handler";
 import { RagdollWebviewProvider } from "@/integrations/webview/ragdoll-webview-provider";

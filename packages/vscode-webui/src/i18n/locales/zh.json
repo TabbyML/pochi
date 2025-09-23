@@ -48,6 +48,7 @@
     "swift": "极速"
   },
   "settings": {
+    "learnMore": "了解更多关于 Pochi",
     "account": {
       "signIn": "登录获取 Pochi 模型",
       "signInDescription": "使用高级 AI 模型和功能",

@@ -6,11 +6,13 @@ import "@livestore/wa-sqlite/dist/wa-sqlite.node.wasm" with { type: "file" };
 import "@getpochi/vendor-pochi";
 import "@getpochi/vendor-gemini-cli";
 import "@getpochi/vendor-claude-code";
+import "@getpochi/vendor-github-copilot";
 
 // Register the models
 import "@getpochi/vendor-pochi/edge";
 import "@getpochi/vendor-gemini-cli/edge";
 import "@getpochi/vendor-claude-code/edge";
+import "@getpochi/vendor-github-copilot/edge";
 
 import { Command } from "@commander-js/extra-typings";
 import { constants, getLogger } from "@getpochi/common";
@@ -23,6 +25,7 @@ import * as commander from "commander";
 import packageJson from "../package.json";
 import { registerAuthCommand } from "./auth";
 
+import { initializeShellCompletion } from "./completion";
 import { findRipgrep } from "./lib/find-ripgrep";
 import { loadAgents } from "./lib/load-agents";
 import { createCliMcpHub } from "./lib/mcp-hub-factory";
@@ -176,6 +179,9 @@ registerMcpCommand(program);
 registerTaskCommand(program);
 
 registerUpgradeCommand(program);
+
+// Initialize auto-completion after all commands are registered
+initializeShellCompletion(program);
 
 program.parse(process.argv);
 

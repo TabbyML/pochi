@@ -89,7 +89,6 @@ import { DiffChangesContentProvider } from "../editor/diff-changes-content-provi
 import { type FileSelection, TabState } from "../editor/tab-state";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { ThirdMcpImporter } from "../mcp/third-party-mcp";
-import { listSymbols } from "../symbol";
 import {
   convertUrl,
   isLocalUrl,
@@ -310,25 +309,6 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     );
   };
 
-  openSymbol = async (symbol: string) => {
-    const symbolInfos = await listSymbols({ query: symbol, limit: 1 });
-    if (symbolInfos.length > 0) {
-      const symbolInfo = symbolInfos[0];
-      const fileUri = vscode.Uri.joinPath(
-        getWorkspaceFolder().uri,
-        symbolInfo.filepath,
-      );
-      await vscode.window.showTextDocument(fileUri, {
-        selection: new vscode.Range(
-          symbolInfo?.range?.start?.line ?? 0,
-          symbolInfo?.range?.start?.character ?? 0,
-          symbolInfo?.range?.end?.line ?? 0,
-          symbolInfo?.range?.end?.character ?? 0,
-        ),
-      });
-    }
-  };
-
   executeToolCall = runExclusive.build(
     this.toolCallGroup,
     async (
@@ -503,10 +483,6 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
 
   capture = async ({ event, properties }: CaptureEvent) => {
     this.posthog.capture(event, properties);
-  };
-
-  closeCurrentWorkspace = async () => {
-    await vscode.commands.executeCommand("workbench.action.closeWindow");
   };
 
   readMcpStatus = async (): Promise<ThreadSignalSerialization<McpStatus>> => {

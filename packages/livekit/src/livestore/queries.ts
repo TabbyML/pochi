@@ -18,7 +18,7 @@ export const makeMessagesQuery = (taskId: string) =>
   });
 
 export const tasks$ = queryDb(
-  () => tables.tasks.where("parentId", "=", null).orderBy("updatedAt", "desc"),
+  () => tables.tasks.where("parentId", "=", null).orderBy("createdAt", "desc"),
   {
     label: "tasks",
   },

@@ -1,0 +1,1 @@
+export { initializeShellCompletion } from "./tree";

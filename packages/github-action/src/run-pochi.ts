@@ -1,6 +1,5 @@
 import { spawn } from "node:child_process";
 import * as core from "@actions/core";
-import type { IssueCommentCreatedEvent } from "@octokit/webhooks-types";
 import {
   getEyesReactionId,
   getProgressCommentId,
@@ -8,12 +7,7 @@ import {
 } from "./env";
 import type { GitHubManager } from "./github-manager";
 import { buildBatchOutput } from "./output-utils";
-
-export type RunPochiRequest = {
-  prompt: string;
-  event: Omit<IssueCommentCreatedEvent, "comment">;
-  commentId: number;
-};
+import { type RunPochiRequest, createGitHubActionSystemPrompt } from "./prompt";
 
 // Helper types for execution context
 interface ExecutionContext {
@@ -92,7 +86,7 @@ export async function runPochi(githubManager: GitHubManager): Promise<void> {
   // Use pochi CLI from PATH (installed by action.yml) or env var
   const pochiCliPath = process.env.POCHI_CLI_PATH || "pochi";
 
-  const instruction = formatCustomInstruction(request.event);
+  const instruction = createGitHubActionSystemPrompt(request);
   if (process.env.POCHI_GITHUB_ACTION_DEBUG) {
     console.log(`Starting pochi CLI with custom instruction\n\n${instruction}`);
   }
@@ -174,20 +168,4 @@ export async function runPochi(githubManager: GitHubManager): Promise<void> {
       );
     });
   });
-}
-
-function formatCustomInstruction(event: RunPochiRequest["event"]) {
-  return `## Instruction
-
-This task is triggered in an Github Action Workflow. Please follow user's prompt, perform the task.
-
-## Event triggering this task
-
-${JSON.stringify(event, null, 2)}
-
-
-## Additional Notes
-* If this event has a corresponding PR, always checkout the PR branch first (use gh)
-
-`.trim();
 }

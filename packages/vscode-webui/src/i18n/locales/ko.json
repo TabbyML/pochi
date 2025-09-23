@@ -48,6 +48,7 @@
     "swift": "극속"
   },
   "settings": {
+    "learnMore": "Pochi에 대해 더 알아보기",
     "account": {
       "signIn": "Pochi 모델 로그인",
       "signInDescription": "프리미엄 AI 모델 및 기능에 액세스",
