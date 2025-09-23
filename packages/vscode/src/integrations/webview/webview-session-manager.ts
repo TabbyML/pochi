@@ -1,5 +1,5 @@
-import type { SessionState } from "@getpochi/common/vscode-webui-bridge";
 import { getLogger } from "@getpochi/common";
+import type { SessionState } from "@getpochi/common/vscode-webui-bridge";
 import { injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
 

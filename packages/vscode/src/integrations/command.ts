@@ -2,9 +2,9 @@ import {
   applyQuickFixes,
   calcEditedRangeAfterAccept,
 } from "@/code-completion/auto-code-actions";
+import { PochiWebviewPanel } from "@/integrations/webview/pochi-webview-panel";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { RagdollWebviewSidebar } from "@/integrations/webview/ragdoll-webview-provider";
-import { PochiWebviewPanel } from "@/integrations/webview/pochi-webview-panel";
 import type { AuthClient } from "@/lib/auth-client";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { AuthEvents } from "@/lib/auth-events";

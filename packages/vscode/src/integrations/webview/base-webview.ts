@@ -56,7 +56,8 @@ export abstract class BaseWebview implements vscode.Disposable {
     webview: vscode.Webview,
     webviewLogLevel?: string,
   ): string {
-    const isProd = this.context.extensionMode === vscode.ExtensionMode.Production;
+    const isProd =
+      this.context.extensionMode === vscode.ExtensionMode.Production;
 
     const setiFontUri = getUri(webview, this.context.extensionUri, [
       "assets",
@@ -163,10 +164,7 @@ export abstract class BaseWebview implements vscode.Disposable {
     );
   }
 
-  private buildHtml(
-    headElements: string[],
-    bodyElements: string[],
-  ): string {
+  private buildHtml(headElements: string[], bodyElements: string[]): string {
     return /*html*/ `<!DOCTYPE html>
     <html lang="en">
       <head>

@@ -162,7 +162,9 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
 
   private getCurrentSessionState(): SessionState {
     if (!this.currentSessionId) {
-      throw new Error("No session context set. Call setSessionContext() first.");
+      throw new Error(
+        "No session context set. Call setSessionContext() first.",
+      );
     }
     return this.sessionManager.getSessionState(this.currentSessionId) || {};
   }
@@ -188,7 +190,9 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
 
   setSessionState = async (state: Partial<SessionState>): Promise<void> => {
     if (!this.currentSessionId) {
-      throw new Error("No session context set. Call setSessionContext() first.");
+      throw new Error(
+        "No session context set. Call setSessionContext() first.",
+      );
     }
     this.sessionManager.updateSessionState(this.currentSessionId, state);
   };
