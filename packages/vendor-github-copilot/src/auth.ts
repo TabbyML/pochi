@@ -33,7 +33,9 @@ interface CopilotTokenResponse {
   };
 }
 
-export async function startDeviceFlow(): Promise<AuthOutput> {
+export async function startDeviceFlow(): Promise<
+  AuthOutput & { userCode: string }
+> {
   const deviceResponse = await fetch(DEVICE_CODE_URL, {
     method: "POST",
     headers: {

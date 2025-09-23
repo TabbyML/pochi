@@ -22,7 +22,7 @@ export class GithubCopilot extends VendorBase {
       console.log(`Code: ${chalk.bold(userCode)}`);
     }
 
-    return { url, userCode, credentials };
+    return { url, credentials };
   }
 
   override async renewCredentials(
