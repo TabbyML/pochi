@@ -107,7 +107,12 @@
     "customAgents": {
       "title": "自定义代理",
       "loading": "加载自定义代理中...",
-      "empty": "未找到自定义代理。在工作区的 .pochi/agents/ 目录中创建代理文件"
+      "empty": "未找到自定义代理。在工作区的 .pochi/agents/ 目录中创建代理文件",
+      "errors": {
+        "readError": "读取代理定义失败",
+        "parseError": "解析代理定义失败",
+        "validationError": "代理定义缺少必需的属性"
+      }
     },
     "mcp": {
       "title": "MCP",

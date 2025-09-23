@@ -24,7 +24,12 @@ export type {
 export type { DisplayModel } from "./types/model";
 export type { RuleFile } from "./types/rules";
 export type { CaptureEvent } from "./types/capture-event";
-export type { CustomAgentFile } from "./types/custom-agent";
+export type {
+  CustomAgentFile,
+  InvalidCustomAgentFile,
+  ValidCustomAgentFile,
+} from "./types/custom-agent";
+export { isValidCustomAgentFile } from "./types/custom-agent";
 
 const isPochiDev = process.env.POCHI_LOCAL_SERVER === "true";
 const isSyncDev = process.env.POCHI_LOCAL_SYNC_SERVER === "true";

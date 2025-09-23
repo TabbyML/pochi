@@ -85,7 +85,6 @@
       "noRules": "워크스페이스에서 규칙을 찾을 수 없습니다.",
       "importRules": "규칙 가져오기",
       "foundRules": "{{count}}개의 규칙을 찾았습니다",
-      "foundRules_other": "{{count}}개의 규칙을 찾았습니다",
       "import": "가져오기",
       "importing": "가져오는 중..."
     },
@@ -108,7 +107,12 @@
     "customAgents": {
       "title": "커스텀 에이전트",
       "loading": "커스텀 에이전트 로딩 중...",
-      "empty": "커스텀 에이전트들을 찾을 수 없습니다. 워크스페이스의 .pochi/agents/ 디렉터리에 에이전트 파일을 생성하세요"
+      "empty": "커스텀 에이전트들을 찾을 수 없습니다. 워크스페이스의 .pochi/agents/ 디렉터리에 에이전트 파일을 생성하세요",
+      "errors": {
+        "readError": "에이전트 정의를 읽지 못했습니다",
+        "parseError": "에이전트 정의를 파싱하지 못했습니다",
+        "validationError": "에이전트 정의에 필수 속성이 없습니다"
+      }
     },
     "mcp": {
       "title": "MCP",

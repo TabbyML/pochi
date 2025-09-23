@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Edit, Workflow } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { AccordionSection } from "../ui/accordion-section";
-import { EmptySectionPlaceholder, ScetionItem } from "../ui/section";
+import { EmptySectionPlaceholder, SectionItem } from "../ui/section";
 
 export const WorkflowsSection: React.FC = () => {
   const { t } = useTranslation();
@@ -39,7 +39,7 @@ export const WorkflowsSection: React.FC = () => {
           <div className="space-y-2">
             {workflows.map(
               (workflow: { id: string; path: string; content: string }) => (
-                <ScetionItem
+                <SectionItem
                   key={workflow.id}
                   title={workflow.id}
                   icon={<Workflow className="size-4 text-muted-foreground" />}

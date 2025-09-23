@@ -10,6 +10,7 @@ import { injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
 
 const logger = getLogger("VSCodeLm");
+const EnableVscodeLM = false;
 
 const isVSCodeIDE = () => {
   return ["vscode", "vscode-insider"].includes(vscode.env.uriScheme);
@@ -18,7 +19,7 @@ const isVSCodeIDE = () => {
 @injectable()
 @singleton()
 export class VSCodeLm implements vscode.Disposable {
-  featureAvailable = isVSCodeIDE();
+  featureAvailable = EnableVscodeLM && isVSCodeIDE();
 
   private disposables: vscode.Disposable[] = [];
 

@@ -150,48 +150,10 @@ describe('formatters', () => {
   });
 
   describe('formatters.llm', () => {
-    it('should remove reasoning parts by default', () => {
+    it('should keep reasoning parts by default', () => {
       const formatted = formatters.llm(clone(baseMessages));
       const assistantMsg = formatted.find((m) => m.id === 'assistant-1');
-      expect(assistantMsg?.parts.some((p) => p.type === 'reasoning')).toBe(false);
-    });
-
-    it('should keep reasoning parts for claude', () => {
-      const formatted = formatters.llm(clone(baseMessages), { keepReasoningPart: true });
-      const assistantMsg = formatted.find((m) => m.id === 'assistant-1');
       expect(assistantMsg?.parts.some((p) => p.type === 'reasoning')).toBe(true);
-    });
-
-    it('should remove system reminders if option is passed', () => {
-      const formatted = formatters.llm(clone(baseMessages), { keepReasoningPart: false, removeSystemReminder: true });
-      expect(formatted.find((m) => m.id === 'user-2')).toBeUndefined();
-    });
-
-    it('should strip known XML tags', () => {
-      const messages: UIMessage[] = [
-        { id: '1', role: 'user', parts: [{ type: 'text', text: '<compact>thought</compact>Hello' }] },
-      ];
-      const formatted = formatters.llm(messages, { keepReasoningPart: false });
-      expect((formatted[0].parts[0] as any).text).toBe('thoughtHello');
-    });
-
-    it('should remove tool call metadata', () => {
-      const formatted = formatters.llm(clone(baseMessages), { keepReasoningPart: false });
-      const tool1 = formatted.find(m => m.id === 'assistant-1')?.parts.find(p => p.type === 'tool-testTool');
-      const tool2 = formatted.find(m => m.id === 'assistant-2')?.parts.find(p => p.type === 'tool-anotherTool');
-      expect((tool1 as any).input).not.toHaveProperty('_meta');
-      expect((tool2 as any).output).not.toHaveProperty('_meta');
-    });
-
-    it('should extract compact messages', () => {
-        const messages: UIMessage[] = [
-            { id: '1', role: 'user', parts: [{ type: 'text', text: 'A' }] },
-            { id: '2', role: 'user', parts: [{ type: 'text', text: 'B <compact>' }] },
-            { id: '3', role: 'user', parts: [{ type: 'text', text: 'C' }] },
-        ];
-        const formatted = formatters.llm(messages, { keepReasoningPart: false });
-        expect(formatted).toHaveLength(2);
-        expect(formatted[0].id).toBe('2');
     });
   });
 

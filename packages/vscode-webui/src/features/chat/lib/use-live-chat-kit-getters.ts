@@ -2,7 +2,7 @@
 import "@getpochi/vendor-pochi/edge";
 import "@getpochi/vendor-gemini-cli/edge";
 import "@getpochi/vendor-claude-code/edge";
-
+import "@getpochi/vendor-github-copilot/edge";
 import "./vscode-lm";
 
 import { useSelectedModels } from "@/features/settings";
@@ -29,7 +29,7 @@ export function useLiveChatKitGetters({
 
   const llm = useLLM();
 
-  const { customAgents } = useCustomAgents();
+  const { customAgents } = useCustomAgents(true);
   const customAgentsRef = useLatest(customAgents);
 
   const getEnvironment = useCallback(
@@ -95,9 +95,6 @@ function useLLM(): React.RefObject<LLMRequestData> {
     if (selectedModel.type === "vendor") {
       return {
         type: "vendor",
-        keepReasoningPart:
-          selectedModel.vendorId === "pochi" &&
-          selectedModel.modelId.includes("claude"),
         useToolCallMiddleware: selectedModel.options.useToolCallMiddleware,
         getModel: (id: string) =>
           createModel(selectedModel.vendorId, {
@@ -126,6 +123,20 @@ function useLLM(): React.RefObject<LLMRequestData> {
       return {
         type: "ai-gateway" as const,
         modelId: selectedModel.modelId,
+        apiKey: provider.apiKey,
+        maxOutputTokens:
+          selectedModel.options.maxTokens ?? constants.DefaultMaxOutputTokens,
+        contextWindow:
+          selectedModel.options.contextWindow ?? constants.DefaultContextWindow,
+        useToolCallMiddleware: selectedModel.options.useToolCallMiddleware,
+      };
+    }
+
+    if (provider.kind === "openai-responses") {
+      return {
+        type: "openai-responses" as const,
+        modelId: selectedModel.modelId,
+        baseURL: provider.baseURL,
         apiKey: provider.apiKey,
         maxOutputTokens:
           selectedModel.options.maxTokens ?? constants.DefaultMaxOutputTokens,

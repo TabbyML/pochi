@@ -101,15 +101,6 @@ function removeEmptyMessages(messages: UIMessage[]): UIMessage[] {
   return messages.filter((message) => message.parts.length > 0);
 }
 
-function removeReasoningParts(messages: UIMessage[]): UIMessage[] {
-  return messages.map((message) => {
-    message.parts = message.parts.filter((part) => {
-      return part.type !== "reasoning";
-    });
-    return message;
-  });
-}
-
 function removeMessagesWithoutTextOrToolCall(
   messages: UIMessage[],
 ): UIMessage[] {
@@ -242,7 +233,6 @@ function formatMessages(messages: UIMessage[], ops: FormatOp[]): UIMessage[] {
 }
 
 export interface LLMFormatterOptions {
-  keepReasoningPart?: boolean;
   removeSystemReminder?: boolean;
 }
 
@@ -254,7 +244,6 @@ export const formatters = {
   // Format messages before sending them to the LLM.
   llm: <T extends UIMessage>(messages: T[], options?: LLMFormatterOptions) => {
     const llmFormatOps = [
-      ...(options?.keepReasoningPart ? [] : [removeReasoningParts]),
       ...(options?.removeSystemReminder ? [removeSystemReminder] : []),
       ...LLMFormatOps,
     ];

@@ -70,39 +70,54 @@ export const SubSection: React.FC<SectionProps> = (props) => {
   return <Section {...props} variant="subsection" />;
 };
 
-export const ScetionItem: React.FC<{
-  title: string;
+export const SectionItem: React.FC<{
+  title: React.ReactNode;
   icon: React.ReactNode;
   onClick?: () => void;
   actions?: { icon: React.ReactNode; onClick: () => void }[];
-}> = ({ title, icon, onClick, actions }) => {
+  subtitle?: React.ReactNode;
+  className?: string;
+}> = ({ title, icon, onClick, actions, subtitle, className }) => {
   return (
     <div
-      className={cn("group rounded-md border p-2", {
-        "cursor-pointer": !!onClick,
-      })}
+      className={cn(
+        "group rounded-md border p-2",
+        {
+          "cursor-pointer": !!onClick,
+        },
+        className,
+      )}
       onClick={onClick}
     >
       <div className="flex items-center justify-between">
-        <div className="flex flex-1 items-center overflow-x-hidden">
+        <div className="flex flex-1 items-center gap-1 overflow-x-hidden">
           <div className="flex size-6 shrink-0 items-center justify-center">
             {icon}
           </div>
-          <span className="truncate font-semibold">{title}</span>
+          <div className="flex items-center gap-2 overflow-x-hidden">
+            <span className={cn("shrink-0 truncate font-semibold", {})}>
+              {title}
+            </span>
+          </div>
         </div>
-        <div className="invisible flex shrink-0 items-center group-hover:visible">
-          {actions?.map(({ icon, onClick }, index) => (
-            <Button
-              key={index}
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="size-6"
-              onClick={onClick}
-            >
-              {icon}
-            </Button>
-          ))}
+        <div className="flex items-center">
+          <span className="mr-1 truncate text-muted-foreground text-xs">
+            {subtitle}
+          </span>
+          <div className="invisible flex shrink-0 items-center group-hover:visible">
+            {actions?.map(({ icon, onClick }, index) => (
+              <Button
+                key={index}
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="size-6"
+                onClick={onClick}
+              >
+                {icon}
+              </Button>
+            ))}
+          </div>
         </div>
       </div>
     </div>

@@ -7,12 +7,14 @@ import "@getpochi/vendor-pochi";
 import "@getpochi/vendor-gemini-cli";
 import "@getpochi/vendor-claude-code";
 import "@getpochi/vendor-codex";
+import "@getpochi/vendor-github-copilot";
 
 // Register the models
 import "@getpochi/vendor-pochi/edge";
 import "@getpochi/vendor-gemini-cli/edge";
 import "@getpochi/vendor-claude-code/edge";
 import "@getpochi/vendor-codex/edge";
+import "@getpochi/vendor-github-copilot/edge";
 
 import { Command } from "@commander-js/extra-typings";
 import { constants, getLogger } from "@getpochi/common";
@@ -259,7 +261,6 @@ async function createLLMConfigWithVendors(
     }
     return {
       type: "vendor",
-      keepReasoningPart: vendorId === "pochi" && modelId.includes("claude"),
       useToolCallMiddleware: options.useToolCallMiddleware,
       getModel: (id: string) =>
         createModel(vendorId, {
@@ -281,8 +282,6 @@ async function createLLMConfigWithPochi(
     const vendorId = "pochi";
     return {
       type: "vendor",
-      keepReasoningPart:
-        vendorId === "pochi" && options.model.includes("claude"),
       useToolCallMiddleware: pochiModelOptions.useToolCallMiddleware,
       getModel: (id: string) =>
         createModel(vendorId, {
@@ -346,6 +345,20 @@ async function createLLMConfigWithProviders(
         modelSetting.contextWindow ?? constants.DefaultContextWindow,
       maxOutputTokens:
         modelSetting.maxTokens ?? constants.DefaultMaxOutputTokens,
+    };
+  }
+
+  if (modelProvider.kind === "openai-responses") {
+    return {
+      type: "openai-responses",
+      modelId,
+      baseURL: modelProvider.baseURL,
+      apiKey: modelProvider.apiKey,
+      contextWindow:
+        modelSetting.contextWindow ?? constants.DefaultContextWindow,
+      maxOutputTokens:
+        modelSetting.maxTokens ?? constants.DefaultMaxOutputTokens,
+      useToolCallMiddleware: modelSetting.useToolCallMiddleware,
     };
   }
   assertUnreachable(modelProvider.kind);

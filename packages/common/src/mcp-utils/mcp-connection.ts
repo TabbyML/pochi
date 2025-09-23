@@ -319,6 +319,7 @@ export class McpConnection implements Disposable {
             command: this.config.command,
             args: this.config.args,
             cwd: this.config.cwd,
+            stderr: "ignore",
             env: {
               ...getDefaultEnvironment(),
               ...this.config.env,

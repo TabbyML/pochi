@@ -31,8 +31,7 @@
                   }
                 },
                 "required": [
-                  "name",
-                  "email"
+                  "name"
                 ],
                 "additionalProperties": false
               }
@@ -106,6 +105,60 @@
             "required": [
               "models",
               "baseURL"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "name": {
+                "description": "Display name of the provider, e.g., \"OpenAI\", \"Anthropic\", etc.",
+                "type": "string"
+              },
+              "models": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "description": "Display name of the model, e.g., \"GPT-4o\"",
+                      "type": "string"
+                    },
+                    "maxTokens": {
+                      "description": "Maximum number of generated tokens for the model",
+                      "type": "number"
+                    },
+                    "contextWindow": {
+                      "description": "Context window size for the model",
+                      "type": "number"
+                    },
+                    "useToolCallMiddleware": {
+                      "description": "Whether to use tool call middleware",
+                      "type": "boolean"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "kind": {
+                "type": "string",
+                "const": "openai-responses"
+              },
+              "baseURL": {
+                "description": "Base URL for the model provider's API, e.g., \"https://api.openai.com/v1\"",
+                "type": "string"
+              },
+              "apiKey": {
+                "description": "API key for the model provider, if required.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "models",
+              "kind"
             ],
             "additionalProperties": false
           },
