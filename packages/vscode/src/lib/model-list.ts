@@ -96,7 +96,6 @@ export class ModelList implements vscode.Disposable {
 
     // From configuration providers
     const providers = pochiConfig.value.providers;
-    logger.debug("providers", providers);
     if (providers) {
       for (const [providerId, provider] of Object.entries(providers)) {
         const { models, name: providerName, ...rest } = provider;
