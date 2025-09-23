@@ -3,6 +3,7 @@ import type { LanguageModelV2 } from "@ai-sdk/provider";
 import type { CreateModelOptions } from "@getpochi/common/vendor/edge";
 import { wrapLanguageModel } from "ai";
 import type { ClaudeCodeCredentials } from "./types";
+import { ModelIdMap } from "./vendor";
 
 const ClaudeCodeSystemPrompt =
   "You are Claude Code, Anthropic's official CLI for Claude.";
@@ -24,11 +25,6 @@ function addAnthropicHeaders(
   headers.delete("x-api-key");
 }
 
-const modelIdMap: Record<string, string> = {
-  "claude-opus-4-1": "claude-opus-4-1-20250805",
-  "claude-sonnet-4": "claude-sonnet-4-20250514",
-};
-
 function createClaudeCodeModelBase(
   modelId: string,
   baseURL: string,
@@ -37,7 +33,7 @@ function createClaudeCodeModelBase(
     init?: RequestInit,
   ) => Promise<Response>,
 ): LanguageModelV2 {
-  const actualModelId = modelIdMap[modelId] || modelId;
+  const actualModelId = ModelIdMap[modelId] || modelId;
 
   const anthropic = createAnthropic({
     baseURL,
