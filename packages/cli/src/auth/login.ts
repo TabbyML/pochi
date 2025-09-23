@@ -45,6 +45,7 @@ export async function login(vendorId: string) {
     console.log(chalk.cyan(url));
   }
   console.log(chalk.yellow("\nWaiting for authentication to complete..."));
+  console.log(chalk.gray(`Auth URL: ${url}`));
 
   // Wait for OAuth completion
   await updateVendorConfig(vendorId, {

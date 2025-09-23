@@ -19,7 +19,6 @@ export class GithubCopilot extends VendorBase {
           "Please enter the following code on the page to authenticate:",
         ),
       );
-      console.log(`URL: ${chalk.cyan(url)}`);
       console.log(`Code: ${chalk.bold(userCode)}`);
     }
 
