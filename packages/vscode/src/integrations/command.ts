@@ -3,7 +3,8 @@ import {
   calcEditedRangeAfterAccept,
 } from "@/code-completion/auto-code-actions";
 // biome-ignore lint/style/useImportType: needed for dependency injection
-import { RagdollWebviewProvider } from "@/integrations/webview/ragdoll-webview-provider";
+import { RagdollWebviewSidebar } from "@/integrations/webview/ragdoll-webview-provider";
+import { PochiWebviewPanel } from "@/integrations/webview/pochi-webview-panel";
 import type { AuthClient } from "@/lib/auth-client";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { AuthEvents } from "@/lib/auth-events";
@@ -40,13 +41,15 @@ export class CommandManager implements vscode.Disposable {
   private disposables: vscode.Disposable[] = [];
 
   constructor(
-    private readonly ragdollWebviewProvider: RagdollWebviewProvider,
+    private readonly ragdollWebviewProvider: RagdollWebviewSidebar,
     private readonly newProjectRegistry: NewProjectRegistry,
     @inject("AuthClient") private readonly authClient: AuthClient,
     private readonly authEvents: AuthEvents,
     @inject("McpHub") private readonly mcpHub: McpHub,
     private readonly pochiConfiguration: PochiConfiguration,
     private readonly posthog: PostHog,
+    @inject("vscode.ExtensionContext")
+    private readonly context: vscode.ExtensionContext,
   ) {
     this.registerCommands();
   }
@@ -420,6 +423,10 @@ export class CommandManager implements vscode.Disposable {
           });
         },
       ),
+
+      vscode.commands.registerCommand("pochi.openInEditor", async () => {
+        PochiWebviewPanel.createOrShow(this.context.extensionUri);
+      }),
     );
   }
 
