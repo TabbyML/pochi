@@ -9,8 +9,8 @@
     "tsc": "tsc --noEmit"
   },
   "dependencies": {
-    "@ai-sdk/openai-compatible": "catalog:",
     "@ai-sdk/provider": "catalog:",
+    "@ai-sdk/provider-utils": "catalog:",
     "@getpochi/common": "workspace:*",
     "ai": "catalog:"
   },
