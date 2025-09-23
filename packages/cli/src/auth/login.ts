@@ -8,6 +8,7 @@ export async function login(vendorId: string) {
   const { url, credentials } = await vendor.authenticate();
 
   console.log(chalk.blue("Opening browser for authentication..."));
+  console.log(chalk.gray(`Auth URL: ${url}`));
 
   // Try to open the browser automatically
   try {
@@ -45,7 +46,6 @@ export async function login(vendorId: string) {
     console.log(chalk.cyan(url));
   }
   console.log(chalk.yellow("\nWaiting for authentication to complete..."));
-  console.log(chalk.gray(`Auth URL: ${url}`));
 
   // Wait for OAuth completion
   await updateVendorConfig(vendorId, {
