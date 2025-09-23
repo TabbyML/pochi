@@ -47,10 +47,6 @@ export class GithubCopilot extends VendorBase {
         contextWindow: 200_000,
         useToolCallMiddleware: true,
       },
-      "gpt-4.1": {
-        contextWindow: 1e6,
-        useToolCallMiddleware: true,
-      },
     };
   }
 }
