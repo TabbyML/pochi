@@ -37,6 +37,7 @@
       "emittery": "^1.1.0",
       "ai": "^5.0.15",
       "@ai-sdk/google-vertex": "3.0.8",
+      "@ai-sdk/openai": "^2.0.32",
       "@ai-sdk/provider-utils": "3.0.3",
       "@ai-sdk/openai-compatible": "^1.0.7",
       "@ai-sdk/react": "^2.0.15",

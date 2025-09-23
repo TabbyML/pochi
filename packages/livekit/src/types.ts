@@ -46,6 +46,18 @@ const RequestData = z.object({
         .describe("Whether to use tool call middleware"),
     }),
     z.object({
+      type: z.literal("openai-responses"),
+      modelId: z.string(),
+      baseURL: z.string().optional(),
+      apiKey: z.string().optional(),
+      contextWindow: z.number().describe("Context window of the model."),
+      maxOutputTokens: z.number().describe("Max output tokens of the model."),
+      useToolCallMiddleware: z
+        .boolean()
+        .optional()
+        .describe("Whether to use tool call middleware"),
+    }),
+    z.object({
       type: z.literal("google-vertex-tuning"),
       modelId: z.string(),
       vertex: GoogleVertexModel,
@@ -69,7 +81,6 @@ const RequestData = z.object({
     }),
     z.object({
       type: z.literal("vendor"),
-      keepReasoningPart: z.boolean().optional(),
       useToolCallMiddleware: z
         .boolean()
         .optional()

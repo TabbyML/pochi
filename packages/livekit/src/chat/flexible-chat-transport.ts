@@ -148,9 +148,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
         mcpInfo?.instructions,
       ),
       messages: convertToModelMessages(
-        formatters.llm(preparedMessages, {
-          keepReasoningPart: llm.type === "vendor" && llm.keepReasoningPart,
-        }),
+        formatters.llm(preparedMessages),
         // toModelOutput is invoked within convertToModelMessages, thus we need to pass the tools here.
         { tools },
       ),

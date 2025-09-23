@@ -43,6 +43,20 @@ const OpenAIModelSettings = BaseModelSettings.extend({
     .describe("API key for the model provider, if required."),
 });
 
+const OpenAIResponsesModelSettings = BaseModelSettings.extend({
+  kind: z.literal("openai-responses"),
+  baseURL: z
+    .string()
+    .optional()
+    .describe(
+      'Base URL for the model provider\'s API, e.g., "https://api.openai.com/v1"',
+    ),
+  apiKey: z
+    .string()
+    .optional()
+    .describe("API key for the model provider, if required."),
+});
+
 export const GoogleVertexModel = z.union([
   z.object({
     serviceAccountKey: z.string(),
@@ -72,6 +86,7 @@ const AiGatewayModelSettings = BaseModelSettings.extend({
 
 export const CustomModelSetting = z.discriminatedUnion("kind", [
   OpenAIModelSettings,
+  OpenAIResponsesModelSettings,
   GoogleVertexTuningModelSettings,
   AiGatewayModelSettings,
 ]);
