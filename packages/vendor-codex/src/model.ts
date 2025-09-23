@@ -1,8 +1,11 @@
-import type { LanguageModelV2, LanguageModelV2StreamPart } from "@ai-sdk/provider";
+import * as crypto from "node:crypto";
+import type {
+  LanguageModelV2,
+  LanguageModelV2StreamPart,
+} from "@ai-sdk/provider";
 import { EventSourceParserStream } from "@ai-sdk/provider-utils";
 import type { CreateModelOptions } from "@getpochi/common/vendor/edge";
 import { APICallError } from "ai";
-import * as crypto from "node:crypto";
 import { extractAccountId } from "./auth";
 import {
   transformFromCodexFormat,
@@ -93,7 +96,20 @@ export function createCodexModel({
                 const chunk = transformFromCodexFormat(item);
 
                 // Transform the OpenAI-like response to LanguageModelV2StreamPart
-                const choices = (chunk as { choices?: Array<{ delta?: { content?: string; tool_calls?: Array<{ id: string; function?: { name?: string; arguments?: string } }> }; finish_reason?: string }> }).choices;
+                const choices = (
+                  chunk as {
+                    choices?: Array<{
+                      delta?: {
+                        content?: string;
+                        tool_calls?: Array<{
+                          id: string;
+                          function?: { name?: string; arguments?: string };
+                        }>;
+                      };
+                      finish_reason?: string;
+                    }>;
+                  }
+                ).choices;
 
                 if (choices?.[0]?.delta?.content) {
                   // Start text stream if not already started
@@ -173,10 +189,14 @@ export function createCodexModel({
                   }
                   controller.enqueue({
                     type: "finish",
-                    finishReason: choices[0].finish_reason === "stop" ? "stop" :
-                                 choices[0].finish_reason === "length" ? "length" :
-                                 choices[0].finish_reason === "tool_calls" ? "tool-calls" :
-                                 "unknown",
+                    finishReason:
+                      choices[0].finish_reason === "stop"
+                        ? "stop"
+                        : choices[0].finish_reason === "length"
+                          ? "length"
+                          : choices[0].finish_reason === "tool_calls"
+                            ? "tool-calls"
+                            : "unknown",
                     usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 }, // Would need proper token tracking
                   });
                 }

@@ -31,5 +31,4 @@ export interface CodexTokenResponse {
   refresh_token: string;
 }
 
-
 export const VendorId = "codex";
