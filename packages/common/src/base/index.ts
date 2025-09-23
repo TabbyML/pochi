@@ -12,3 +12,5 @@ export {
 } from "./environment";
 
 export { WebsiteTaskCreateEvent } from "./event";
+
+export { toErrorMessage } from "./error";

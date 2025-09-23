@@ -1,3 +1,4 @@
+import { toErrorMessage } from "@getpochi/common";
 import type { UITools } from "@getpochi/livekit";
 import type { ToolFunctionType } from "@getpochi/tools";
 import { type ToolUIPart, getToolName } from "ai";
@@ -48,7 +49,7 @@ export async function executeToolCall(
       });
     } catch (e) {
       return {
-        error: toErrorString(e),
+        error: toErrorMessage(e),
       };
     }
   }
@@ -68,7 +69,7 @@ export async function executeToolCall(
         return result;
       } catch (e) {
         return {
-          error: toErrorString(e),
+          error: toErrorMessage(e),
         };
       }
     }
@@ -78,14 +79,4 @@ export async function executeToolCall(
   return {
     error: `Tool ${toolName} not found.`,
   };
-}
-
-function toErrorString(e: unknown): string {
-  if (e instanceof Error) {
-    return e.message;
-  }
-  if (typeof e === "string") {
-    return e;
-  }
-  return JSON.stringify(e);
 }

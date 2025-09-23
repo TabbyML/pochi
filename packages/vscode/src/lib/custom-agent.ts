@@ -20,16 +20,14 @@ async function readAgentsFromDir(dir: string): Promise<CustomAgentFile[]> {
     for (const [fileName] of files) {
       if (fileName.endsWith(".md")) {
         const filePath = path.join(dir, fileName);
-        const fileContent = await vscode.workspace.fs.readFile(
-          vscode.Uri.file(filePath),
-        );
-        const contentStr = new TextDecoder().decode(fileContent);
-        const agent = await parseAgentFile(filePath, contentStr);
-        if (agent) {
-          agents.push({ ...agent, filePath });
-        } else {
-          logger.warn(`Could not parse agent file ${fileName}`);
-        }
+        const readFileContent = async (filePath: string): Promise<string> => {
+          const fileContent = await vscode.workspace.fs.readFile(
+            vscode.Uri.file(filePath),
+          );
+          return new TextDecoder().decode(fileContent);
+        };
+        const agent = await parseAgentFile(filePath, readFileContent);
+        agents.push(agent);
       }
     }
   } catch (error) {
