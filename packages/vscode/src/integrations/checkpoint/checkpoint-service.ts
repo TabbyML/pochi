@@ -1,7 +1,7 @@
 import { mkdir } from "node:fs/promises";
 import * as path from "node:path";
 import { getWorkspaceFolder } from "@/lib/fs";
-import { getLogger } from "@getpochi/common";
+import { getLogger, toErrorMessage } from "@getpochi/common";
 import type {
   SaveCheckpointOptions,
   UserEditsDiff,
@@ -14,7 +14,6 @@ import {
   Deferred,
   filterGitChanges,
   processGitChangesToUserEdits,
-  toErrorMessage,
 } from "./util";
 
 const logger = getLogger("CheckpointService");

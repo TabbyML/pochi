@@ -108,7 +108,12 @@
     "customAgents": {
       "title": "커스텀 에이전트",
       "loading": "커스텀 에이전트 로딩 중...",
-      "empty": "커스텀 에이전트들을 찾을 수 없습니다. 워크스페이스의 .pochi/agents/ 디렉터리에 에이전트 파일을 생성하세요"
+      "empty": "커스텀 에이전트들을 찾을 수 없습니다. 워크스페이스의 .pochi/agents/ 디렉터리에 에이전트 파일을 생성하세요",
+      "errors": {
+        "readError": "에이전트 파일을 로드하지 못했습니다",
+        "parseError": "에이전트 파일에 구문 오류가 있습니다",
+        "validationError": "에이전트 파일에 필요한 속성이 없습니다"
+      }
     },
     "mcp": {
       "title": "MCP",

@@ -108,7 +108,12 @@
     "customAgents": {
       "title": "Custom Agents",
       "loading": "Loading custom agents ...",
-      "empty": "No custom agents found, Create agent files in .pochi/agents/ in your workspace"
+      "empty": "No custom agents found, Create agent files in .pochi/agents/ in your workspace",
+      "errors": {
+        "readError": "Failed to load agent file",
+        "parseError": "Agent file has a syntax error",
+        "validationError": "Agent file is missing required properties"
+      }
     },
     "mcp": {
       "title": "MCP",

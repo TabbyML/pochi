@@ -1,10 +1,30 @@
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useCustomAgents } from "@/lib/hooks/use-custom-agents";
 import { vscodeHost } from "@/lib/vscode";
-import type { CustomAgentFile } from "@getpochi/common/vscode-webui-bridge";
-import { Bot, Edit } from "lucide-react";
+import type {
+  CustomAgentFile,
+  InvalidCustomAgentFile,
+} from "@getpochi/common/vscode-webui-bridge";
+import { isValidCustomAgentFile } from "@getpochi/common/vscode-webui-bridge";
+import { AlertTriangle, Bot, Edit } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { AccordionSection } from "../ui/accordion-section";
-import { EmptySectionPlaceholder, ScetionItem } from "../ui/section";
+import { EmptySectionPlaceholder, SectionItem } from "../ui/section";
+
+const CustomAgentParseErrorMap: Record<
+  InvalidCustomAgentFile["error"],
+  | "settings.customAgents.errors.readError"
+  | "settings.customAgents.errors.parseError"
+  | "settings.customAgents.errors.validationError"
+> = {
+  readError: "settings.customAgents.errors.readError",
+  parseError: "settings.customAgents.errors.parseError",
+  validationError: "settings.customAgents.errors.validationError",
+};
 
 export const CustomAgentSection: React.FC = () => {
   const { t } = useTranslation();
@@ -35,22 +55,53 @@ export const CustomAgentSection: React.FC = () => {
 
     return (
       <div className="space-y-2">
-        {customAgents.map((agent) => (
-          <ScetionItem
-            key={`${agent.name}-${agent.filePath}`}
-            title={agent.name}
-            icon={<Bot className="size-4" />}
-            onClick={() => handleEditAgent(agent)}
-            actions={[
-              {
-                icon: <Edit className="size-3.5" />,
-                onClick: () => {
-                  handleEditAgent(agent);
+        {customAgents.map((agent) => {
+          const isValid = isValidCustomAgentFile(agent);
+
+          const subtitle = !isValid ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span>{t(CustomAgentParseErrorMap[agent.error])}</span>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-[calc(100vw-30px)]">
+                <span className="text-wrap break-words">{agent.message}</span>
+              </TooltipContent>
+            </Tooltip>
+          ) : null;
+
+          return (
+            <SectionItem
+              key={`${agent.name}-${agent.filePath}`}
+              title={
+                isValid ? (
+                  agent.name
+                ) : (
+                  <span className="text-destructive">{agent.name}</span>
+                )
+              }
+              subtitle={subtitle}
+              className={
+                isValid ? undefined : "border-destructive/30 bg-destructive/5"
+              }
+              icon={
+                isValid ? (
+                  <Bot className="size-4" />
+                ) : (
+                  <AlertTriangle className="size-4 text-destructive" />
+                )
+              }
+              onClick={() => handleEditAgent(agent)}
+              actions={[
+                {
+                  icon: <Edit className="size-3.5" />,
+                  onClick: () => {
+                    handleEditAgent(agent);
+                  },
                 },
-              },
-            ]}
-          />
-        ))}
+              ]}
+            />
+          );
+        })}
       </div>
     );
   };

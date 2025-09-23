@@ -28,7 +28,7 @@ export function useLiveChatKitGetters({
 
   const llm = useLLM();
 
-  const { customAgents } = useCustomAgents();
+  const { customAgents } = useCustomAgents(true);
   const customAgentsRef = useLatest(customAgents);
 
   const getEnvironment = useCallback(
