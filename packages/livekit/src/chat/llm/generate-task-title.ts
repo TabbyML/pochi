@@ -101,9 +101,7 @@ async function generateTitle(
   const stream = streamText({
     model,
     prompt: convertToModelMessages(
-      formatters.llm(messages, {
-        removeSystemReminder: true,
-      }),
+      formatters.llm(messages, { removeSystemReminder: true }),
     ),
     abortSignal,
     maxOutputTokens: 50,
