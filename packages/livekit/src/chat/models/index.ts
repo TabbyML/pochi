@@ -2,6 +2,7 @@ import type { RequestData } from "../../types";
 import { createAiGatewayModel } from "./ai-gateway";
 import { createGoogleVertexTuningModel } from "./google-vertex-tuning";
 import { createOpenAIModel } from "./openai";
+import { createOpenAIResponsesModel } from "./openai-response";
 
 export function createModel({
   id,
@@ -23,5 +24,13 @@ export function createModel({
     return createAiGatewayModel(llm);
   }
 
-  throw new Error(`Unknown LLM type: ${llm}`);
+  if (llm.type === "openai-responses") {
+    return createOpenAIResponsesModel(llm);
+  }
+
+  assertUnreachable(llm);
+}
+
+function assertUnreachable(_x: never): never {
+  throw new Error("Didn't expect to get here");
 }

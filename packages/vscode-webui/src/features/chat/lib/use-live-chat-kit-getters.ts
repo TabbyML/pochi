@@ -95,9 +95,6 @@ function useLLM(): React.RefObject<LLMRequestData> {
     if (selectedModel.type === "vendor") {
       return {
         type: "vendor",
-        keepReasoningPart:
-          selectedModel.vendorId === "pochi" &&
-          selectedModel.modelId.includes("claude"),
         useToolCallMiddleware: selectedModel.options.useToolCallMiddleware,
         getModel: (id: string) =>
           createModel(selectedModel.vendorId, {
@@ -132,6 +129,19 @@ function useLLM(): React.RefObject<LLMRequestData> {
         contextWindow:
           selectedModel.options.contextWindow ?? constants.DefaultContextWindow,
         useToolCallMiddleware: selectedModel.options.useToolCallMiddleware,
+      };
+    }
+
+    if (provider.kind === "openai-responses") {
+      return {
+        type: "openai-responses" as const,
+        modelId: selectedModel.modelId,
+        baseURL: provider.baseURL,
+        apiKey: provider.apiKey,
+        maxOutputTokens:
+          selectedModel.options.maxTokens ?? constants.DefaultMaxOutputTokens,
+        contextWindow:
+          selectedModel.options.contextWindow ?? constants.DefaultContextWindow,
       };
     }
 
