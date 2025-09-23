@@ -20,6 +20,6 @@ export type User = {
 };
 
 export interface ClientDoCallback extends ClientDoWithRpcCallback {
-  setUser: (user: User) => Promise<void>;
+  setOwner: (user: User) => Promise<void>;
   signalKeepAlive: (storeId: string) => Promise<void>;
 }

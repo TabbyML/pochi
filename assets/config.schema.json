@@ -31,8 +31,7 @@
                   }
                 },
                 "required": [
-                  "name",
-                  "email"
+                  "name"
                 ],
                 "additionalProperties": false
               }

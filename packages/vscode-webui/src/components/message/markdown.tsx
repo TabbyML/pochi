@@ -1,9 +1,7 @@
 import { CustomHtmlTags } from "@/lib/constants";
 import { cn } from "@/lib/utils";
-import { addLineBreak } from "@/lib/utils/file";
 import { isKnownProgrammingLanguage } from "@/lib/utils/languages";
 import { isVSCodeEnvironment, vscodeHost } from "@/lib/vscode";
-import { CodeXmlIcon } from "lucide-react";
 import { type ElementType, type FC, memo, useCallback, useMemo } from "react";
 import ReactMarkdown, { type Components, type Options } from "react-markdown";
 import rehypeRaw from "rehype-raw";
@@ -66,14 +64,6 @@ function InlineCodeComponent({
       );
     };
 
-    const isSymbol = (text: string): boolean => {
-      if (SymbolBlacklist.has(text)) {
-        return false; // Skip blacklisted symbols
-      }
-      // A symbol is typically a single word or a sequence of characters without spaces
-      return /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(text);
-    };
-
     // children may be file path, folder path, symbol or normal text, we need to handle each case
     if (isFilePath(children)) {
       const pathSeparatorCount = (children.match(/[\/\\]/g) || []).length;
@@ -89,10 +79,6 @@ function InlineCodeComponent({
     }
     if (isFolderPath(children)) {
       return <FileBadge path={children} isDirectory={true} />;
-    }
-    if (isSymbol(children)) {
-      // FIXME(meng): turn off symbol detection for now.
-      // return <SymbolBadge label={children} />;
     }
   }
 
@@ -328,89 +314,3 @@ export function MessageMarkdown({
     </div>
   );
 }
-
-// @ts-expect-error expect unused.
-const SymbolBadge: FC<{ label: string; className?: string }> = ({
-  label,
-  className,
-}) => {
-  return (
-    <span
-      onClick={(e) => {
-        e.stopPropagation();
-        vscodeHost.openSymbol(label);
-      }}
-      className={cn(
-        "mx-px cursor-pointer rounded-sm border border-border box-decoration-clone p-0.5 text-sm/6 hover:bg-zinc-200 active:bg-zinc-200 dark:active:bg-zinc-700 dark:hover:bg-zinc-700",
-        className,
-      )}
-    >
-      <CodeXmlIcon
-        className={cn(
-          "mx-0.5 inline size-3 w-[15px] text-blue-600 dark:text-blue-400",
-          className,
-        )}
-      />
-      <span className={cn("ml-0.5 break-words")}>{addLineBreak(label)}</span>
-    </span>
-  );
-};
-
-const SymbolBlacklist = new Set([
-  "Infinity",
-  "NaN",
-  "a",
-  "an",
-  "and",
-  "are",
-  "as",
-  "async",
-  "await",
-  "break",
-  "case",
-  "catch",
-  "class",
-  "const",
-  "continue",
-  "debugger",
-  "default",
-  "do",
-  "else",
-  "export",
-  "false",
-  "for",
-  "function",
-  "if",
-  "implements",
-  "import",
-  "in",
-  "instanceof",
-  "interface",
-  "is",
-  "it",
-  "its",
-  "let",
-  "new",
-  "null",
-  "of",
-  "private",
-  "protected",
-  "public",
-  "return",
-  "static",
-  "super",
-  "switch",
-  "the",
-  "this",
-  "throw",
-  "to",
-  "true",
-  "try",
-  "typeof",
-  "undefined",
-  "var",
-  "void",
-  "while",
-  "with",
-  "yield",
-]);

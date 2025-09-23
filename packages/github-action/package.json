@@ -8,7 +8,8 @@
   "scripts": {
     "build": "bun build src/index.ts --outdir dist --target bun",
     "dev": "bun --watch src/index.ts",
-    "test": "echo 'No tests for github-action package - this is expected'",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "lint": "biome check src/",
     "lint:fix": "biome check --apply src/",
     "typecheck": "tsc --noEmit"

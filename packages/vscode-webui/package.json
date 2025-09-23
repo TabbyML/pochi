@@ -21,6 +21,7 @@
     "@getpochi/vendor-gemini-cli": "workspace:*",
     "@getpochi/vendor-pochi": "workspace:*",
     "@getpochi/vendor-claude-code": "workspace:*",
+    "@getpochi/vendor-github-copilot": "workspace:*",
     "@leeoniya/ufuzzy": "^1.0.18",
     "@livestore/adapter-web": "catalog:",
     "@livestore/common": "catalog:",

@@ -1,0 +1,9 @@
+{
+  "extends": ["//"],
+  "tags": ["public"],
+  "tasks": {
+    "build": {
+      "outputs": ["dist/**"]
+    }
+  }
+}
