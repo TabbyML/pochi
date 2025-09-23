@@ -61,9 +61,12 @@ export const CustomAgentSection: React.FC = () => {
           const subtitle = !isValid ? (
             <Tooltip>
               <TooltipTrigger asChild>
-                <span>{t(CustomAgentParseErrorMap[agent.error])}</span>
+                <span>
+                  <AlertTriangle className="mr-1.5 inline-block size-3 text-yellow-700 dark:text-yellow-500" />
+                  {t(CustomAgentParseErrorMap[agent.error])}
+                </span>
               </TooltipTrigger>
-              <TooltipContent side="top" className="max-w-[calc(100vw-30px)]">
+              <TooltipContent side="top" className="max-w-[calc(60vw)]">
                 <span className="text-wrap break-words">{agent.message}</span>
               </TooltipContent>
             </Tooltip>
@@ -72,24 +75,9 @@ export const CustomAgentSection: React.FC = () => {
           return (
             <SectionItem
               key={`${agent.name}-${agent.filePath}`}
-              title={
-                isValid ? (
-                  agent.name
-                ) : (
-                  <span className="text-destructive">{agent.name}</span>
-                )
-              }
+              title={agent.name}
               subtitle={subtitle}
-              className={
-                isValid ? undefined : "border-destructive/30 bg-destructive/5"
-              }
-              icon={
-                isValid ? (
-                  <Bot className="size-4" />
-                ) : (
-                  <AlertTriangle className="size-4 text-destructive" />
-                )
-              }
+              icon={<Bot className="size-4" />}
               onClick={() => handleEditAgent(agent)}
               actions={[
                 {

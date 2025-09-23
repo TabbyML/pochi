@@ -98,24 +98,26 @@ export const SectionItem: React.FC<{
             <span className={cn("shrink-0 truncate font-semibold", {})}>
               {title}
             </span>
-            <span className="truncate text-muted-foreground text-xs">
-              {subtitle}
-            </span>
           </div>
         </div>
-        <div className="invisible flex shrink-0 items-center group-hover:visible">
-          {actions?.map(({ icon, onClick }, index) => (
-            <Button
-              key={index}
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="size-6"
-              onClick={onClick}
-            >
-              {icon}
-            </Button>
-          ))}
+        <div className="flex items-center">
+          <span className="mr-1 truncate text-muted-foreground text-xs">
+            {subtitle}
+          </span>
+          <div className="invisible flex shrink-0 items-center group-hover:visible">
+            {actions?.map(({ icon, onClick }, index) => (
+              <Button
+                key={index}
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="size-6"
+                onClick={onClick}
+              >
+                {icon}
+              </Button>
+            ))}
+          </div>
         </div>
       </div>
     </div>
