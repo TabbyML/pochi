@@ -49,7 +49,7 @@ function createPatchedFetch(
       ...requestInit,
       headers,
     });
-    if (!resp.body) {
+    if (!resp.ok) {
       throw new APICallError({
         message: `Failed to fetch: ${resp.status} ${resp.statusText}`,
         statusCode: resp.status,
