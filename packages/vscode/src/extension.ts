@@ -8,6 +8,7 @@ import "./lib/logger";
 // Register the vendor
 import "@getpochi/vendor-pochi";
 import "@getpochi/vendor-gemini-cli";
+import "@getpochi/vendor-codex";
 
 import RagdollUriHandler from "@/integrations/uri-handler";
 import { RagdollWebviewProvider } from "@/integrations/webview/ragdoll-webview-provider";

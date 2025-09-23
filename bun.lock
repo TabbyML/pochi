@@ -219,6 +219,7 @@
       "version": "0.8.8",
       "dependencies": {
         "@getpochi/common": "workspace:*",
+        "@getpochi/vendor-codex": "workspace:*",
         "@getpochi/vendor-gemini-cli": "workspace:*",
         "@getpochi/vendor-pochi": "workspace:*",
         "@orama/orama": "^3.1.11",
@@ -273,6 +274,7 @@
         "@ai-sdk/react": "catalog:",
         "@getpochi/common": "workspace:*",
         "@getpochi/livekit": "workspace:*",
+        "@getpochi/vendor-codex": "workspace:*",
         "@getpochi/vendor-gemini-cli": "workspace:*",
         "@getpochi/vendor-pochi": "workspace:*",
         "@leeoniya/ufuzzy": "^1.0.18",
