@@ -11,6 +11,76 @@ import type { MiddlewareHandler } from "hono";
 import { HTTPException } from "hono/http-exception";
 import type { DeepWritable, Env } from "./types";
 
+const SANITIZED_MESSAGE = "[FILE CONTENT SANITIZED]";
+
+// Sanitize sensitive content from tool calls
+function sanitizeMessage(message: UIMessage): UIMessage {
+  return {
+    ...message,
+    parts: message.parts.map((part) => {
+      // Sanitize readFile output content
+      if (
+        part.type === "tool-readFile" &&
+        "output" in part &&
+        part.output &&
+        typeof part.output === "object" &&
+        "content" in part.output
+      ) {
+        return {
+          ...part,
+          output: {
+            ...part.output,
+            content: SANITIZED_MESSAGE,
+          },
+        };
+      }
+
+      // Sanitize applyDiff input content
+      if (
+        part.type === "tool-applyDiff" &&
+        "input" in part &&
+        part.input &&
+        typeof part.input === "object" &&
+        "searchContent" in part.input &&
+        "replaceContent" in part.input
+      ) {
+        return {
+          ...part,
+          input: {
+            ...part.input,
+            searchContent: SANITIZED_MESSAGE,
+            replaceContent: SANITIZED_MESSAGE,
+          },
+        };
+      }
+
+      // Sanitize multiApplyDiff input content
+      if (
+        part.type === "tool-multiApplyDiff" &&
+        "input" in part &&
+        part.input &&
+        typeof part.input === "object" &&
+        "edits" in part.input &&
+        Array.isArray(part.input.edits)
+      ) {
+        return {
+          ...part,
+          input: {
+            ...part.input,
+            edits: part.input.edits.map((edit: unknown) => ({
+              ...(edit as Record<string, unknown>),
+              searchContent: SANITIZED_MESSAGE,
+              replaceContent: SANITIZED_MESSAGE,
+            })),
+          },
+        };
+      }
+
+      return part;
+    }),
+  };
+}
+
 type RequestVariables = {
   isOwner: boolean;
 };
@@ -57,8 +127,12 @@ store
 
     const messages = store
       .query(catalog.queries.makeMessagesQuery(taskId))
-      .map((x) => x.data as UIMessage);
-    const subTasks = collectSubTasks(store, taskId);
+      .map((x) => x.data as UIMessage)
+      .map(sanitizeMessage);
+    const subTasks = collectSubTasks(store, taskId).map((subTask) => ({
+      ...subTask,
+      messages: subTask.messages.map(sanitizeMessage),
+    }));
 
     const user = await c.env.getOwner();
 
