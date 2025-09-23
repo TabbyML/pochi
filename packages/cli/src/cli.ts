@@ -259,7 +259,6 @@ async function createLLMConfigWithVendors(
     }
     return {
       type: "vendor",
-      keepReasoningPart: vendorId === "pochi" && modelId.includes("claude"),
       useToolCallMiddleware: options.useToolCallMiddleware,
       getModel: (id: string) =>
         createModel(vendorId, {
@@ -281,8 +280,6 @@ async function createLLMConfigWithPochi(
     const vendorId = "pochi";
     return {
       type: "vendor",
-      keepReasoningPart:
-        vendorId === "pochi" && options.model.includes("claude"),
       useToolCallMiddleware: pochiModelOptions.useToolCallMiddleware,
       getModel: (id: string) =>
         createModel(vendorId, {
@@ -346,6 +343,20 @@ async function createLLMConfigWithProviders(
         modelSetting.contextWindow ?? constants.DefaultContextWindow,
       maxOutputTokens:
         modelSetting.maxTokens ?? constants.DefaultMaxOutputTokens,
+    };
+  }
+
+  if (modelProvider.kind === "openai-responses") {
+    return {
+      type: "openai-responses",
+      modelId,
+      baseURL: modelProvider.baseURL,
+      apiKey: modelProvider.apiKey,
+      contextWindow:
+        modelSetting.contextWindow ?? constants.DefaultContextWindow,
+      maxOutputTokens:
+        modelSetting.maxTokens ?? constants.DefaultMaxOutputTokens,
+      useToolCallMiddleware: modelSetting.useToolCallMiddleware,
     };
   }
   assertUnreachable(modelProvider.kind);
