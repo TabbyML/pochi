@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "@ai-sdk/gateway": "catalog:",
-    "@ai-sdk/openai": "^2.0.32",
+    "@ai-sdk/openai": "catalog:",
     "@ai-sdk/openai-compatible": "catalog:",
     "@ai-sdk/provider": "catalog:",
     "@ai-sdk/provider-utils": "catalog:",

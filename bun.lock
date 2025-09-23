@@ -128,7 +128,7 @@
       "version": "0.1.0-dev",
       "dependencies": {
         "@ai-sdk/gateway": "catalog:",
-        "@ai-sdk/openai": "^2.0.32",
+        "@ai-sdk/openai": "catalog:",
         "@ai-sdk/openai-compatible": "catalog:",
         "@ai-sdk/provider": "catalog:",
         "@ai-sdk/provider-utils": "catalog:",
@@ -406,6 +406,7 @@
   "catalog": {
     "@ai-sdk/gateway": "^1",
     "@ai-sdk/google-vertex": "3.0.8",
+    "@ai-sdk/openai": "^2.0.32",
     "@ai-sdk/openai-compatible": "^1.0.7",
     "@ai-sdk/provider": "^2",
     "@ai-sdk/provider-utils": "3.0.3",
