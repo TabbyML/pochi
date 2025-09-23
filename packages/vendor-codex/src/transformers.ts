@@ -1,42 +1,36 @@
-import * as fs from "node:fs";
-import * as path from "node:path";
-import { SHELL_TOOL, UPDATE_PLAN_TOOL } from "./tools";
+import { DefaultCodexInstructions } from "./constants";
 
-function loadCodexInstructions(): string {
-  try {
-    const instructionsPath = path.join(__dirname, "codex-instructions.txt");
-    return fs.readFileSync(instructionsPath, "utf-8");
-  } catch {
-    return "You are a helpful assistant.";
-  }
+interface CodexRequest {
+  model?: string;
+  messages?: Array<{ role: string; content: unknown }>;
 }
 
 export function transformToCodexFormat(request: Record<string, unknown>) {
-  const instructions = loadCodexInstructions();
+  const requestTyped = request as CodexRequest;
+  const model = requestTyped.model || "gpt-5";
+  const instructions = DefaultCodexInstructions;
 
   const userMessages = (
     (request.messages as Array<{ role: string; content: unknown }>) || []
-  )
-    .filter((msg) => msg.role === "user")
-    .map((msg) => ({
-      type: "message",
-      role: msg.role,
-      content: [
-        {
-          type: "input_text",
-          text: extractTextContent(msg.content),
-        },
-      ],
-    }));
+  ).map((msg) => ({
+    type: "message",
+    role: "user",
+    content: [
+      {
+        type: "input_text",
+        text: extractTextContent(msg.content),
+      },
+    ],
+  }));
 
   return {
-    model: "gpt-5",
+    model,
     instructions,
     input: userMessages,
     store: false,
     stream: true,
     include: ["reasoning.encrypted_content"],
-    tools: [SHELL_TOOL, UPDATE_PLAN_TOOL],
+    tools: [],
     tool_choice: "auto",
     parallel_tool_calls: false,
   };
@@ -63,9 +57,7 @@ function extractTextContent(content: unknown): string {
     text = String(content || "");
   }
 
-  return text
-    .replace(/<system-reminder>[\s\S]*?<\/system-reminder>/g, "")
-    .trim();
+  return text;
 }
 
 interface ChatGPTResponseEvent {

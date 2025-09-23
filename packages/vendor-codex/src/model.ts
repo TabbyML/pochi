@@ -1,8 +1,7 @@
-import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
-import type { LanguageModelV2 } from "@ai-sdk/provider";
+import type { LanguageModelV2, LanguageModelV2StreamPart } from "@ai-sdk/provider";
 import { EventSourceParserStream } from "@ai-sdk/provider-utils";
 import type { CreateModelOptions } from "@getpochi/common/vendor/edge";
-import { APICallError, wrapLanguageModel } from "ai";
+import { APICallError } from "ai";
 import * as crypto from "node:crypto";
 import { extractAccountId } from "./auth";
 import {
@@ -15,107 +14,181 @@ export function createCodexModel({
   modelId,
   getCredentials,
 }: CreateModelOptions): LanguageModelV2 {
-  const chatgptModel = createOpenAICompatible({
-    name: "chatgpt",
-    baseURL: "https://chatgpt.com/backend-api",
-    apiKey: "placeholder",
-    fetch: createPatchedFetch(
-      modelId,
-      getCredentials as () => Promise<CodexCredentials>,
-    ) as typeof fetch,
-  })(modelId);
+  return {
+    specificationVersion: "v2",
+    provider: "codex",
+    modelId: modelId || "gpt-5",
+    supportedUrls: {},
+    doGenerate: async () => Promise.reject("Not implemented"),
+    doStream: async ({ prompt, abortSignal, tools, toolChoice }) => {
+      const { accessToken } =
+        await (getCredentials() as Promise<CodexCredentials>);
 
-  return wrapLanguageModel({
-    model: chatgptModel,
-    middleware: {
-      middlewareVersion: "v2",
-      async transformParams({ params }) {
-        return {
-          ...params,
-          model: "gpt-5",
-          maxOutputTokens: 32768,
-        };
-      },
+      const request = {
+        model: modelId || "gpt-5",
+        messages: prompt,
+        tools,
+        toolChoice,
+        maxTokens: 32768,
+        stream: true,
+      };
+
+      const transformedBody = transformToCodexFormat(request);
+
+      const headers = new Headers();
+      if (accessToken) {
+        headers.set("Authorization", `Bearer ${accessToken}`);
+      }
+
+      const accountId = extractAccountId(accessToken);
+      headers.set("OpenAI-Beta", "responses=experimental");
+      headers.set("session_id", crypto.randomUUID());
+      headers.set("originator", "codex_cli_rs");
+      headers.set("Content-Type", "application/json");
+
+      if (accountId) {
+        headers.set("chatgpt-account-id", accountId);
+      }
+
+      const response = await fetch(
+        "https://chatgpt.com/backend-api/codex/responses",
+        {
+          method: "POST",
+          headers,
+          body: JSON.stringify(transformedBody),
+          signal: abortSignal,
+        },
+      );
+
+      if (!response.ok) {
+        const errorBody = await response.text();
+        throw new APICallError({
+          message: `Failed to fetch: ${response.status} ${response.statusText} - ${errorBody}`,
+          statusCode: response.status,
+          url: "https://chatgpt.com/backend-api/codex/responses",
+          requestBodyValues: transformedBody,
+        });
+      }
+
+      if (!response.body) {
+        throw new APICallError({
+          message: "No response body",
+          statusCode: response.status,
+          url: "https://chatgpt.com/backend-api/codex/responses",
+          requestBodyValues: transformedBody,
+        });
+      }
+
+      let currentTextId: string | null = null;
+      let currentToolId: string | null = null;
+
+      const stream = response.body
+        .pipeThrough(new TextDecoderStream())
+        .pipeThrough(new EventSourceParserStream())
+        .pipeThrough(
+          new TransformStream<{ data: string }, LanguageModelV2StreamPart>({
+            async transform({ data }, controller) {
+              try {
+                const item = JSON.parse(data);
+                const chunk = transformFromCodexFormat(item);
+
+                // Transform the OpenAI-like response to LanguageModelV2StreamPart
+                const choices = (chunk as { choices?: Array<{ delta?: { content?: string; tool_calls?: Array<{ id: string; function?: { name?: string; arguments?: string } }> }; finish_reason?: string }> }).choices;
+
+                if (choices?.[0]?.delta?.content) {
+                  // Start text stream if not already started
+                  if (!currentTextId) {
+                    currentTextId = `text-${Date.now()}`;
+                    controller.enqueue({
+                      type: "text-start",
+                      id: currentTextId,
+                    });
+                  }
+                  controller.enqueue({
+                    type: "text-delta",
+                    id: currentTextId,
+                    delta: choices[0].delta.content,
+                  });
+                } else if (choices?.[0]?.delta?.tool_calls?.[0]) {
+                  // End text stream if it was started
+                  if (currentTextId) {
+                    controller.enqueue({
+                      type: "text-end",
+                      id: currentTextId,
+                    });
+                    currentTextId = null;
+                  }
+
+                  const toolCall = choices[0].delta.tool_calls[0];
+                  if (toolCall.function?.name && toolCall.function?.arguments) {
+                    // This is the complete tool call from response.output_item.done
+                    currentToolId = toolCall.id;
+                    controller.enqueue({
+                      type: "tool-input-start",
+                      id: toolCall.id,
+                      toolName: toolCall.function.name,
+                    });
+                    controller.enqueue({
+                      type: "tool-input-delta",
+                      id: toolCall.id,
+                      delta: toolCall.function.arguments,
+                    });
+                    controller.enqueue({
+                      type: "tool-input-end",
+                      id: toolCall.id,
+                    });
+                    currentToolId = null;
+                  } else if (toolCall.function?.name) {
+                    // Start a new tool call
+                    currentToolId = toolCall.id;
+                    controller.enqueue({
+                      type: "tool-input-start",
+                      id: toolCall.id,
+                      toolName: toolCall.function.name,
+                    });
+                  } else if (toolCall.function?.arguments) {
+                    // Continue streaming tool arguments
+                    controller.enqueue({
+                      type: "tool-input-delta",
+                      id: currentToolId || toolCall.id,
+                      delta: toolCall.function.arguments,
+                    });
+                  }
+                } else if (choices?.[0]?.finish_reason) {
+                  // End any active text stream
+                  if (currentTextId) {
+                    controller.enqueue({
+                      type: "text-end",
+                      id: currentTextId,
+                    });
+                    currentTextId = null;
+                  }
+                  // End any active tool call
+                  if (currentToolId) {
+                    controller.enqueue({
+                      type: "tool-input-end",
+                      id: currentToolId,
+                    });
+                    currentToolId = null;
+                  }
+                  controller.enqueue({
+                    type: "finish",
+                    finishReason: choices[0].finish_reason === "stop" ? "stop" :
+                                 choices[0].finish_reason === "length" ? "length" :
+                                 choices[0].finish_reason === "tool_calls" ? "tool-calls" :
+                                 "unknown",
+                    usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 }, // Would need proper token tracking
+                  });
+                }
+              } catch (error) {
+                // Log error but don't break the stream
+                console.error("Error parsing Codex response:", error);
+              }
+            },
+          }),
+        );
+
+      return { stream };
     },
-  });
-}
-
-function createPatchedFetch(
-  _model: string,
-  getCredentials: () => Promise<CodexCredentials>,
-) {
-  return async (
-    _requestInfo: Request | URL | string,
-    requestInit?: RequestInit,
-  ) => {
-    const { accessToken } = await getCredentials();
-    const headers = new Headers(requestInit?.headers);
-
-    if (accessToken) {
-      headers.set("Authorization", `Bearer ${accessToken}`);
-    }
-
-    const accountId = extractAccountId(accessToken);
-    headers.set("OpenAI-Beta", "responses=experimental");
-    headers.set("session_id", crypto.randomUUID());
-    headers.set("originator", "codex_cli_rs");
-
-    if (accountId) {
-      headers.set("chatgpt-account-id", accountId);
-    }
-
-    const request = JSON.parse((requestInit?.body as string) || "null");
-    const transformedBody = transformToCodexFormat(request);
-
-    const patchedRequestInit = {
-      ...requestInit,
-      headers,
-      body: JSON.stringify(transformedBody),
-    };
-
-    const response = await fetch(
-      "https://chatgpt.com/backend-api/codex/responses",
-      patchedRequestInit,
-    );
-
-    if (!response.ok) {
-      const errorBody = await response.text();
-      throw new APICallError({
-        message: `Failed to fetch: ${response.status} ${response.statusText} - ${errorBody}`,
-        statusCode: response.status,
-        url: "",
-        requestBodyValues: null,
-      });
-    }
-
-    if (!response.body) {
-      throw new APICallError({
-        message: "No response body",
-        statusCode: response.status,
-        url: "",
-        requestBodyValues: null,
-      });
-    }
-
-    const body = response.body
-      .pipeThrough(new TextDecoderStream())
-      .pipeThrough(new EventSourceParserStream())
-      .pipeThrough(
-        new TransformStream({
-          async transform({ data }, controller) {
-            try {
-              const item = JSON.parse(data);
-              const openAIResponse = transformFromCodexFormat(item);
-              const newChunk = `data: ${JSON.stringify(openAIResponse)}\r\n\r\n`;
-              controller.enqueue(newChunk);
-            } catch {
-              // Ignore parse errors
-            }
-          },
-        }),
-      )
-      .pipeThrough(new TextEncoderStream());
-
-    return new Response(body, response);
-  };
+  } satisfies LanguageModelV2;
 }

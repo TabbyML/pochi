@@ -1,13 +1,10 @@
 import * as crypto from "node:crypto";
 import * as http from "node:http";
 import type { IncomingMessage, ServerResponse } from "node:http";
+import { updatePochiConfig } from "@getpochi/common/configuration";
 import type { UserInfo } from "@getpochi/common/configuration";
 import type { AuthOutput } from "@getpochi/common/vendor";
-import {
-  AUTH_ISSUER,
-  OAUTH_CONFIG,
-} from "./constants";
-import { updateCodexCredentials } from "./credentials";
+import { AuthIssuer, OAuthConfig } from "./constants";
 import type {
   AuthClaims,
   CodexCredentials,
@@ -15,12 +12,24 @@ import type {
   IdClaims,
 } from "./types";
 
+// Credentials management
+
+export function updateCodexCredentials(
+  credentials: Partial<CodexCredentials> | null,
+): void {
+  updatePochiConfig({
+    vendors: {
+      codex: credentials === null ? null : { credentials },
+    },
+  });
+}
+
 export async function startOAuthFlow(): Promise<AuthOutput> {
   const pkce = generatePKCE();
   const state = generateState();
   const port = 1455;
   const server = await createAuthServer(port, pkce, state);
-  const redirectUri = `http://localhost:${port}${OAUTH_CONFIG.redirectPath}`;
+  const redirectUri = `http://localhost:${port}${OAuthConfig.redirectPath}`;
   const authUrl = buildAuthorizeUrl(redirectUri, pkce.challenge, state);
 
   return {
@@ -51,7 +60,7 @@ async function createAuthServer(
         const url = new URL(req.url || "/", `http://localhost:${port}`);
 
         switch (url.pathname) {
-          case OAUTH_CONFIG.redirectPath:
+          case OAuthConfig.redirectPath:
             await handleCallback(
               url,
               res,
@@ -64,11 +73,11 @@ async function createAuthServer(
             );
             break;
 
-          case OAUTH_CONFIG.successPath:
+          case OAuthConfig.successPath:
             sendSuccessPage(res);
             break;
 
-          case OAUTH_CONFIG.cancelPath:
+          case OAuthConfig.cancelPath:
             handleCancel(res, server, credentialsReject);
             break;
 
@@ -85,7 +94,7 @@ async function createAuthServer(
 
     server.on("error", (err: NodeJS.ErrnoException) => {
       if (err.code === "EADDRINUSE") {
-        fetch(`http://localhost:${port}${OAUTH_CONFIG.cancelPath}`).catch(
+        fetch(`http://localhost:${port}${OAuthConfig.cancelPath}`).catch(
           () => {},
         );
       }
@@ -114,20 +123,26 @@ async function handleCallback(
   }
 
   try {
-    const redirectUri = `http://localhost:${port}${OAUTH_CONFIG.redirectPath}`;
-    const tokens = await exchangeCodeForTokens(code, pkce.verifier, redirectUri);
+    const redirectUri = `http://localhost:${port}${OAuthConfig.redirectPath}`;
+    const tokens = await exchangeCodeForTokens(
+      code,
+      pkce.verifier,
+      redirectUri,
+    );
     const credentials = createCredentials(tokens);
 
     updateCodexCredentials(credentials);
 
-    res.writeHead(302, { Location: OAUTH_CONFIG.successPath });
+    res.writeHead(302, { Location: OAuthConfig.successPath });
     res.end();
 
     credentialsResolve(credentials);
     setTimeout(() => server.close(), 1000);
   } catch (error) {
     sendErrorResponse(res, 500, "Authentication failed");
-    credentialsReject(error instanceof Error ? error : new Error(String(error)));
+    credentialsReject(
+      error instanceof Error ? error : new Error(String(error)),
+    );
   }
 }
 
@@ -149,7 +164,7 @@ async function exchangeCodeForTokens(
   codeVerifier: string,
   redirectUri: string,
 ): Promise<CodexTokenResponse> {
-  const response = await fetch(`${AUTH_ISSUER}/oauth/token`, {
+  const response = await fetch(`${AuthIssuer}/oauth/token`, {
     method: "POST",
     headers: {
       "Content-Type": "application/x-www-form-urlencoded",
@@ -158,7 +173,7 @@ async function exchangeCodeForTokens(
       grant_type: "authorization_code",
       code,
       redirect_uri: redirectUri,
-      client_id: OAUTH_CONFIG.clientId,
+      client_id: OAuthConfig.clientId,
       code_verifier: codeVerifier,
     }).toString(),
   });
@@ -179,14 +194,14 @@ export async function renewCredentials(
   }
 
   try {
-    const response = await fetch(`${AUTH_ISSUER}/oauth/token`, {
+    const response = await fetch(`${AuthIssuer}/oauth/token`, {
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
       },
       body: new URLSearchParams({
         grant_type: "refresh_token",
-        client_id: OAUTH_CONFIG.clientId,
+        client_id: OAuthConfig.clientId,
         refresh_token: credentials.refreshToken,
       }).toString(),
     });
@@ -235,9 +250,9 @@ function buildAuthorizeUrl(
 ): string {
   const params = new URLSearchParams({
     response_type: "code",
-    client_id: OAUTH_CONFIG.clientId,
+    client_id: OAuthConfig.clientId,
     redirect_uri: redirectUri,
-    scope: OAUTH_CONFIG.scope,
+    scope: OAuthConfig.scope,
     code_challenge: codeChallenge,
     code_challenge_method: "S256",
     id_token_add_organizations: "true",
@@ -246,7 +261,7 @@ function buildAuthorizeUrl(
     originator: "pochi_vendor_codex",
   });
 
-  return `${AUTH_ISSUER}/oauth/authorize?${params.toString()}`;
+  return `${AuthIssuer}/oauth/authorize?${params.toString()}`;
 }
 
 function generatePKCE(): { verifier: string; challenge: string } {
