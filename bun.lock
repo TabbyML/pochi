@@ -203,6 +203,7 @@
         "@ai-sdk/provider": "catalog:",
         "@getpochi/common": "workspace:*",
         "ai": "catalog:",
+        "chalk": "^5.3.0",
       },
     },
     "packages/vendor-pochi": {

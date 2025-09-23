@@ -5,21 +5,9 @@ import chalk from "chalk";
 
 export async function login(vendorId: string) {
   const vendor = getVendor(vendorId);
-  const { url, userCode, credentials } = await vendor.authenticate();
+  const { url, credentials } = await vendor.authenticate();
 
   console.log(chalk.blue("Opening browser for authentication..."));
-
-  if (userCode) {
-    console.log(
-      chalk.blue(
-        "Please enter the following code on the page to authenticate:",
-      ),
-    );
-    console.log(`URL: ${chalk.cyan(url)}`);
-    console.log(`Code: ${chalk.bold(userCode)}`);
-  } else {
-    console.log(chalk.gray(`Auth URL: ${url}`));
-  }
 
   // Try to open the browser automatically
   try {
