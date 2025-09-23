@@ -238,7 +238,6 @@ export class LiveChatKit<
 
       const getModel = () =>
         createModel({ id: this.taskId, llm: getters.getLLM() });
-
       scheduleGenerateTitleJob({
         taskId: this.taskId,
         store,
