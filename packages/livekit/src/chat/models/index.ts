@@ -2,7 +2,7 @@ import type { RequestData } from "../../types";
 import { createAiGatewayModel } from "./ai-gateway";
 import { createGoogleVertexTuningModel } from "./google-vertex-tuning";
 import { createOpenAIModel } from "./openai";
-import { createOpenAIResponsesModel } from "./openai-response";
+import { createOpenAIResponsesModel } from "./openai-responses";
 
 export function createModel({
   id,

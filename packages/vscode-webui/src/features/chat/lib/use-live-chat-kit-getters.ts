@@ -142,6 +142,7 @@ function useLLM(): React.RefObject<LLMRequestData> {
           selectedModel.options.maxTokens ?? constants.DefaultMaxOutputTokens,
         contextWindow:
           selectedModel.options.contextWindow ?? constants.DefaultContextWindow,
+        useToolCallMiddleware: selectedModel.options.useToolCallMiddleware,
       };
     }
 

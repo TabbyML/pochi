@@ -31,7 +31,6 @@ function RouteComponent() {
     setStoreDate(storeDate ? new Date(storeDate) : new Date());
   }, [storeDate, setStoreDate]);
 
-  console.log("users", users, modelList);
   if (!users?.pochi && modelList.length === 0) {
     return <WelcomeScreen user={users?.pochi} />;
   }
