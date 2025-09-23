@@ -72,7 +72,6 @@ export class ModelList implements vscode.Disposable {
     }
 
     const vendors = getVendors();
-
     // From vendors
     for (const [vendorId, vendor] of Object.entries(vendors)) {
       if (vendor.authenticated) {
