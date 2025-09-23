@@ -4,7 +4,6 @@ import type { Todo } from "./todo-write";
 import { defineClientTool } from "./types";
 
 export type SubTask = {
-  uid: string;
   clientTaskId: string;
   messages: UIMessage[];
   todos: Todo[];
@@ -40,7 +39,8 @@ export const overrideCustomAgentTools = (
 };
 
 function makeCustomAgentToolDescription(customAgents?: CustomAgent[]) {
-  if (!customAgents || customAgents.length === 0) return "";
+  if (!customAgents || customAgents.length === 0)
+    return "No custom agents are available. You shall always leave the agentType parameter empty to use the default agent.";
 
   return `When using the newTask tool, you may specify a agentType parameter to select which agent type to use.
 Available agent types and the tools they have access to:

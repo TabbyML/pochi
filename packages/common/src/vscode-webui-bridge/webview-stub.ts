@@ -75,9 +75,6 @@ const VSCodeHostStub = {
   listAutoCompleteCandidates(): Promise<string[]> {
     return Promise.resolve([]);
   },
-  openSymbol: (_symbol: string): Promise<void> => {
-    return Promise.resolve();
-  },
   listRuleFiles: (): Promise<RuleFile[]> => {
     return Promise.resolve([]);
   },
@@ -113,7 +110,6 @@ const VSCodeHostStub = {
   capture: (_e: CaptureEvent): Promise<void> => {
     return Promise.resolve();
   },
-  closeCurrentWorkspace: (): void => {},
   readMcpStatus: (): Promise<ThreadSignalSerialization<McpStatus>> => {
     return Promise.resolve({} as ThreadSignalSerialization<McpStatus>);
   },
@@ -215,8 +211,9 @@ const VSCodeHostStub = {
   > => {
     return Promise.resolve({} as ThreadSignalSerialization<CustomAgentFile[]>);
   },
-  readStoreId: async (): Promise<string | undefined> => {
-    return Promise.resolve(undefined);
+
+  readMachineId: async (): Promise<string> => {
+    return "test-machine-id";
   },
 } satisfies VSCodeHostApi;
 

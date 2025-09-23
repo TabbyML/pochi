@@ -11,7 +11,7 @@ tools: readFile, writeToFile
 
 You are a test agent for verification purposes.`;
 
-    const result = await parseAgentFile(content);
+    const result = await parseAgentFile("test-agent.md", content);
     
     expect(result).toBeDefined();
     expect(result?.name).toBe("test-agent");
@@ -32,7 +32,7 @@ tools:
 
 Agent with array-style tools.`;
 
-    const result = await parseAgentFile(content);
+    const result = await parseAgentFile("array-tools-agent.md", content);
     
     expect(result).toBeDefined();
     expect(result?.tools).toEqual(["readFile", "writeToFile", "executeCommand"]);
@@ -45,7 +45,7 @@ name: missing-description
 
 Content without required agent data.`;
 
-    const result = await parseAgentFile(content);
+    const result = await parseAgentFile("invalid-agent.md", content);
     
     expect(result).toBeUndefined();
   });
@@ -53,7 +53,7 @@ Content without required agent data.`;
   it("should return undefined when frontmatter is missing", async () => {
     const content = "Just plain markdown content without frontmatter.";
 
-    const result = await parseAgentFile(content);
+    const result = await parseAgentFile("no-frontmatter.md", content);
     
     expect(result).toBeUndefined();
   });
@@ -64,7 +64,7 @@ Content without required agent data.`;
 
 Content with empty frontmatter.`;
 
-    const result = await parseAgentFile(content);
+    const result = await parseAgentFile("empty-frontmatter.md", content);
     
     expect(result).toBeUndefined();
   });

@@ -1,8 +1,8 @@
 import { useToolCallLifeCycle } from "../lib/chat-state";
 
 interface UseChatStatusProps {
-  isReadOnly: boolean;
   isModelsLoading: boolean;
+  isModelValid: boolean;
   isLoading: boolean;
   isInputEmpty: boolean;
   isFilesEmpty: boolean;
@@ -11,8 +11,8 @@ interface UseChatStatusProps {
 }
 
 export function useChatStatus({
-  isReadOnly,
   isModelsLoading,
+  isModelValid,
   isLoading,
   isInputEmpty,
   isFilesEmpty,
@@ -28,12 +28,12 @@ export function useChatStatus({
 
   const isSubmitDisabled =
     isBusyCore ||
-    isReadOnly ||
+    !isModelValid ||
     (!isLoading && isInputEmpty && isFilesEmpty && !isExecuting);
 
   const showStopButton = isExecuting || isLoading || isUploadingAttachments;
 
-  const showPreview = !isBusyCore && !isReadOnly;
+  const showPreview = !isBusyCore;
 
   return {
     isExecuting,

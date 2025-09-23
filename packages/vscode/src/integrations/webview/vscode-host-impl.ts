@@ -9,6 +9,7 @@ import {
   getWorkspaceRulesFileUri,
 } from "@/lib/env";
 import { getWorkspaceFolder, isFileExists } from "@/lib/fs";
+import { machineId } from "node-machine-id";
 
 import path from "node:path";
 // biome-ignore lint/style/useImportType: needed for dependency injection
@@ -36,7 +37,7 @@ import { startBackgroundJob } from "@/tools/start-background-job";
 import { todoWrite } from "@/tools/todo-write";
 import { previewWriteToFile, writeToFile } from "@/tools/write-to-file";
 import type { Environment } from "@getpochi/common";
-import { type UserInfo, getStoreId } from "@getpochi/common/configuration";
+import type { UserInfo } from "@getpochi/common/configuration";
 import { isExecutable } from "@getpochi/common/mcp-utils";
 import type { McpStatus } from "@getpochi/common/mcp-utils";
 import type { McpHub } from "@getpochi/common/mcp-utils";
@@ -88,7 +89,6 @@ import { DiffChangesContentProvider } from "../editor/diff-changes-content-provi
 import { type FileSelection, TabState } from "../editor/tab-state";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { ThirdMcpImporter } from "../mcp/third-party-mcp";
-import { listSymbols } from "../symbol";
 import {
   convertUrl,
   isLocalUrl,
@@ -144,12 +144,13 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     }
   };
 
-  readStoreId = async (): Promise<string | undefined> => {
-    const cwd = await this.readCurrentWorkspace();
-    if (cwd) {
-      return getStoreId(cwd);
+  readMachineId = async (): Promise<string> => {
+    const id = await machineId();
+    if (this.context.extensionMode === vscode.ExtensionMode.Production) {
+      return id;
     }
-    return undefined;
+
+    return `dev-${id}`;
   };
 
   getSessionState = async <K extends keyof SessionState>(
@@ -306,25 +307,6 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     return [...new Set([...clientTools, ...mcps, ...candidates])].filter(
       (candidate) => candidate.length <= 64,
     );
-  };
-
-  openSymbol = async (symbol: string) => {
-    const symbolInfos = await listSymbols({ query: symbol, limit: 1 });
-    if (symbolInfos.length > 0) {
-      const symbolInfo = symbolInfos[0];
-      const fileUri = vscode.Uri.joinPath(
-        getWorkspaceFolder().uri,
-        symbolInfo.filepath,
-      );
-      await vscode.window.showTextDocument(fileUri, {
-        selection: new vscode.Range(
-          symbolInfo?.range?.start?.line ?? 0,
-          symbolInfo?.range?.start?.character ?? 0,
-          symbolInfo?.range?.end?.line ?? 0,
-          symbolInfo?.range?.end?.character ?? 0,
-        ),
-      });
-    }
   };
 
   executeToolCall = runExclusive.build(
@@ -501,10 +483,6 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
 
   capture = async ({ event, properties }: CaptureEvent) => {
     this.posthog.capture(event, properties);
-  };
-
-  closeCurrentWorkspace = async () => {
-    await vscode.commands.executeCommand("workbench.action.closeWindow");
   };
 
   readMcpStatus = async (): Promise<ThreadSignalSerialization<McpStatus>> => {

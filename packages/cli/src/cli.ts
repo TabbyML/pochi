@@ -25,15 +25,17 @@ import * as commander from "commander";
 import packageJson from "../package.json";
 import { registerAuthCommand } from "./auth";
 
+import { initializeShellCompletion } from "./completion";
 import { findRipgrep } from "./lib/find-ripgrep";
 import { loadAgents } from "./lib/load-agents";
+import { createCliMcpHub } from "./lib/mcp-hub-factory";
 import { shutdownStoreAndExit } from "./lib/store-utils";
 import {
   containsWorkflowReference,
   replaceWorkflowReferences,
 } from "./lib/workflow-loader";
 import { createStore } from "./livekit/store";
-import { registerMcpCommand } from "./mcp";
+import { initializeMcp, registerMcpCommand } from "./mcp";
 import { registerModelCommand } from "./model";
 import { OutputRenderer } from "./output-renderer";
 import { registerTaskCommand } from "./task";
@@ -90,7 +92,7 @@ const program = new Command()
   .action(async (options) => {
     const { uid, prompt } = await parseTaskInput(options, program);
 
-    const store = await createStore(process.cwd());
+    const store = await createStore();
 
     const llm = await createLLMConfig(program, options);
     const rg = findRipgrep();
@@ -107,6 +109,12 @@ const program = new Command()
     // Load custom agents
     const customAgents = await loadAgents(process.cwd());
 
+    // Create MCP Hub for accessing MCP server tools
+    const mcpHub = createCliMcpHub();
+
+    // Initialize MCP connections
+    await initializeMcp(mcpHub);
+
     const runner = new TaskRunner({
       uid,
       store,
@@ -118,6 +126,7 @@ const program = new Command()
       maxRetries: options.maxRetries,
       onSubTaskCreated,
       customAgents,
+      mcpHub,
     });
 
     const renderer = new OutputRenderer(runner.state);
@@ -134,6 +143,7 @@ const program = new Command()
     }
 
     renderer.shutdown();
+    mcpHub.dispose();
     await shutdownStoreAndExit(store);
   });
 
@@ -169,6 +179,9 @@ registerMcpCommand(program);
 registerTaskCommand(program);
 
 registerUpgradeCommand(program);
+
+// Initialize auto-completion after all commands are registered
+initializeShellCompletion(program);
 
 program.parse(process.argv);
 
@@ -335,4 +348,9 @@ async function createLLMConfigWithProviders(
         modelSetting.maxTokens ?? constants.DefaultMaxOutputTokens,
     };
   }
+  assertUnreachable(modelProvider.kind);
+}
+
+function assertUnreachable(_x: never): never {
+  throw new Error("Didn't expect to get here");
 }

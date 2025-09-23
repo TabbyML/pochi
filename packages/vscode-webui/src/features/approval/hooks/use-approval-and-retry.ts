@@ -12,8 +12,10 @@ export function useApprovalAndRetry({
   regenerate,
   sendMessage,
   showApproval,
+  isSubTask,
 }: {
   showApproval: boolean;
+  isSubTask: boolean;
 } & Pick<
   UseChatHelpers<Message>,
   "error" | "messages" | "sendMessage" | "regenerate" | "status" | "setMessages"
@@ -22,6 +24,7 @@ export function useApprovalAndRetry({
     error: useMixinReadyForRetryError(messages, error),
     messages,
     status,
+    isSubTask,
   });
 
   const retryImpl = useRetry({

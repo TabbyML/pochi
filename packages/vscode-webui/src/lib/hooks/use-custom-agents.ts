@@ -22,3 +22,12 @@ export const useCustomAgents = () => {
 
   return { customAgents: customAgentsSignal.value, isLoading: false };
 };
+
+export const useCustomAgent = (name?: string) => {
+  const { customAgents } = useCustomAgents();
+  if (!name) {
+    return undefined;
+  }
+  const customAgent = customAgents?.find((agent) => agent.name === name);
+  return customAgent;
+};

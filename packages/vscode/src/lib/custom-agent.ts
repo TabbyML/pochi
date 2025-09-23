@@ -24,9 +24,11 @@ async function readAgentsFromDir(dir: string): Promise<CustomAgentFile[]> {
           vscode.Uri.file(filePath),
         );
         const contentStr = new TextDecoder().decode(fileContent);
-        const agent = await parseAgentFile(contentStr);
+        const agent = await parseAgentFile(filePath, contentStr);
         if (agent) {
           agents.push({ ...agent, filePath });
+        } else {
+          logger.warn(`Could not parse agent file ${fileName}`);
         }
       }
     }

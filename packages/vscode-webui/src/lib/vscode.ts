@@ -53,7 +53,6 @@ function createVSCodeHost(): VSCodeHostApi {
         "executeToolCall",
         "listFilesInWorkspace",
         "listAutoCompleteCandidates",
-        "openSymbol",
         "readActiveTabs",
         "readActiveSelection",
         "readCurrentWorkspace",
@@ -63,7 +62,6 @@ function createVSCodeHost(): VSCodeHostApi {
         "listRuleFiles",
         "listWorkflowsInWorkspace",
         "capture",
-        "closeCurrentWorkspace",
         "readMcpStatus",
         "fetchThirdPartyRules",
         "fetchAvailableThirdPartyMcpConfigs",
@@ -81,7 +79,7 @@ function createVSCodeHost(): VSCodeHostApi {
         "readModelList",
         "readUserStorage",
         "readCustomAgents",
-        "readStoreId",
+        "readMachineId",
       ],
       exports: {
         openTask(params) {

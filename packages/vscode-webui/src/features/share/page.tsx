@@ -135,7 +135,17 @@ function useCFShareData() {
   const api = location.pathname.replace("/html", "/json");
   const [data, setData] = useState<ShareEvent>();
   useEffect(() => {
-    fetch(api)
+    const token = getTokenFromHash();
+    fetch(
+      api,
+      token
+        ? {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        : undefined,
+    )
       .then(async (res) => {
         const data = await res.json();
         const parsed = ShareEvent.parse(data);
@@ -152,4 +162,12 @@ function isStorePathname() {
   const regex = /\/stores\/([^\/]+)\/tasks\/([^\/]+)\/html/;
   const match = location.pathname.match(regex);
   return !!match;
+}
+
+function getTokenFromHash() {
+  const hash = window.location.hash.substring(1); // Remove the # character
+  if (hash) {
+    const hashParams = new URLSearchParams(hash);
+    return hashParams.get("token");
+  }
 }

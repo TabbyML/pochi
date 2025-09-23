@@ -140,6 +140,7 @@ export class LiveChatKit<
       this.store.commit(
         events.taskInited({
           id: taskId,
+          cwd: this.task?.cwd || undefined,
           createdAt: new Date(),
           initMessage: {
             id: crypto.randomUUID(),
@@ -161,20 +162,23 @@ export class LiveChatKit<
     };
   }
 
-  init(prompt: string) {
+  init(cwd: string | undefined, prompt?: string) {
     this.store.commit(
       events.taskInited({
         id: this.taskId,
+        cwd,
         createdAt: new Date(),
-        initMessage: {
-          id: crypto.randomUUID(),
-          parts: [
-            {
-              type: "text",
-              text: prompt,
-            },
-          ],
-        },
+        initMessage: prompt
+          ? {
+              id: crypto.randomUUID(),
+              parts: [
+                {
+                  type: "text",
+                  text: prompt,
+                },
+              ],
+            }
+          : undefined,
       }),
     );
 
@@ -199,6 +203,16 @@ export class LiveChatKit<
     return countTask > 0;
   }
 
+  updateIsPublicShared = (isPublicShared: boolean) => {
+    this.store.commit(
+      events.updateIsPublicShared({
+        id: this.taskId,
+        isPublicShared,
+        updatedAt: new Date(),
+      }),
+    );
+  };
+
   private readonly onStart: OnStartCallback = async ({
     messages,
     environment,
@@ -211,6 +225,7 @@ export class LiveChatKit<
         store.commit(
           events.taskInited({
             id: this.taskId,
+            cwd: environment?.info.cwd,
             createdAt: new Date(),
           }),
         );

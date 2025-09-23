@@ -135,6 +135,8 @@ export interface ToolCallLifeCycle {
    * Reject the tool call, preventing execution.
    */
   reject(): void;
+
+  addResult(result: unknown): void;
 }
 
 const logger = getLogger("ToolCallLifeCycle");
@@ -293,6 +295,14 @@ export class ManagedToolCallLifeCycle
     return Promise.resolve({ uid });
   }
 
+  addResult(result: unknown): void {
+    this.transitTo("ready", {
+      type: "complete",
+      result,
+      reason: "execute-finish",
+    });
+  }
+
   abort() {
     if (
       this.state.type === "init" ||
@@ -439,7 +449,10 @@ export class ManagedToolCallLifeCycle
     }
 
     const onTaskUpdate = (task: Task | undefined) => {
-      if (task?.status === "completed") {
+      if (
+        task?.status === "completed" &&
+        this.state.type === "execute:streaming"
+      ) {
         const result = {
           result: extractCompletionResult(this.store, uid),
         };
@@ -512,7 +525,7 @@ function convertState(state: ToolUIPart["state"]) {
   return "result";
 }
 
-function extractCompletionResult(store: Store, uid: string) {
+export function extractCompletionResult(store: Store, uid: string) {
   const lastMessage = store
     .query(catalog.queries.makeMessagesQuery(uid))
     .map((x) => x.data as Message)

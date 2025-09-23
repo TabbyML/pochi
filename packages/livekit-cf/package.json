@@ -11,11 +11,12 @@
     "@livestore/sync-cf": "catalog:",
     "@getpochi/livekit": "workspace:*",
     "@getpochi/common": "workspace:*",
+    "@getpochi/tools": "workspace:*",
     "hono": "catalog:",
     "jose": "catalog:",
     "zod": "catalog:",
     "moment": "catalog:",
-    "remeda": "catalog:",
+    "run-exclusive": "catalog:",
     "ai": "catalog:"
   },
   "devDependencies": {

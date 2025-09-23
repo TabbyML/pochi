@@ -23,7 +23,7 @@ export interface VSCodeHostApi {
 
   readPochiCredentials(): Promise<PochiCredentials | null>;
 
-  readStoreId(): Promise<string | undefined>;
+  readMachineId(): Promise<string>;
 
   getSessionState<K extends keyof SessionState>(
     keys?: K[],
@@ -84,8 +84,6 @@ export interface VSCodeHostApi {
   >;
 
   listAutoCompleteCandidates(): Promise<string[]>;
-
-  openSymbol(symbol: string): Promise<void>;
 
   /**
    * List all rule files in the workspace and home directory.
@@ -158,8 +156,6 @@ export interface VSCodeHostApi {
    * @param properties - The event properties.
    */
   capture(e: CaptureEvent): Promise<void>;
-
-  closeCurrentWorkspace(): void;
 
   /**
    * Get all configured MCP server connection status and tools.

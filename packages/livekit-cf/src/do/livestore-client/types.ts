@@ -1,14 +1,16 @@
 import type { User } from "@/types";
-import type { catalog } from "@getpochi/livekit";
+import type { Task, catalog } from "@getpochi/livekit";
 import type { Store } from "@livestore/livestore";
 import type { CfTypes } from "@livestore/sync-cf/cf-worker";
 
 export type Env = {
   getStore: () => Promise<Store<typeof catalog.schema>>;
-  getUser: () => Promise<User | undefined>;
+  setStoreId: (storeId: string) => void;
+  getOwner: () => Promise<User | undefined>;
+  reloadShareTasks: () => Promise<readonly Task[] | undefined>;
   ASSETS: CfTypes.Fetcher;
 };
 
-export type DeepWriteable<T> = {
-  -readonly [P in keyof T]: DeepWriteable<T[P]>;
+export type DeepWritable<T> = {
+  -readonly [P in keyof T]: DeepWritable<T[P]>;
 };

@@ -23,7 +23,7 @@ async function readAgentsFromDir(dir: string): Promise<CustomAgentFile[]> {
         const filePath = path.join(dir, fileName);
         try {
           const contentStr = await fs.readFile(filePath, "utf-8");
-          const agent = await parseAgentFile(contentStr);
+          const agent = await parseAgentFile(filePath, contentStr);
           if (agent) {
             agents.push({ ...agent, filePath });
           }

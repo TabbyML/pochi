@@ -3,12 +3,14 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useCopyToClipboard } from "@/lib/hooks/use-copy-to-clipboard";
 import { vscodeHost } from "@/lib/vscode";
 import { SocialLinks, prompts } from "@getpochi/common";
 import { getServerBaseUrl } from "@getpochi/common/vscode-webui-bridge";
+import type { Task } from "@getpochi/livekit";
 import {
   CheckIcon,
   CopyIcon,
@@ -20,20 +22,24 @@ import { useTranslation } from "react-i18next";
 
 interface PublicShareButtonProps {
   disabled?: boolean;
-  shareId: string | undefined | null;
+  task?: Task;
   onError?: (e: Error) => void;
   modelId?: string;
   displayError?: string;
+  onUpdateIsPublicShared?: (isPublicShared: boolean) => void;
 }
 
 export function PublicShareButton({
   disabled,
-  shareId,
   modelId,
   displayError,
+  task,
+  onUpdateIsPublicShared,
 }: PublicShareButtonProps) {
   const { t } = useTranslation();
   const menuItemRef = useRef<"share" | "support">(null);
+  const shareId = task?.shareId;
+  const isPublicShared = task?.isPublicShared;
   const [open, setOpen] = useState(false);
   const { isCopied, copyToClipboard } = useCopyToClipboard({ timeout: 2000 });
 
@@ -104,6 +110,21 @@ ${environmentInfo}
       await vscodeHost.openExternal(SocialLinks.Discord);
     }
   };
+
+  const handleUpdatePublicShare: React.MouseEventHandler<HTMLDivElement> = (
+    e,
+  ) => {
+    e.preventDefault();
+    onUpdateIsPublicShared?.(true);
+  };
+
+  const handleUpdatePrivateShare: React.MouseEventHandler<HTMLDivElement> = (
+    e,
+  ) => {
+    e.preventDefault();
+    onUpdateIsPublicShared?.(false);
+  };
+
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger asChild>
@@ -118,6 +139,31 @@ ${environmentInfo}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
+        <DropdownMenuItem
+          onClick={handleUpdatePublicShare}
+          disabled={!shareId}
+          className="cursor-pointer"
+        >
+          {isPublicShared ? (
+            <CheckIcon className="mr-2 size-4" />
+          ) : (
+            <div className="mr-2 size-4" />
+          )}
+          {t("share.setPublic")}
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onClick={handleUpdatePrivateShare}
+          disabled={!shareId}
+          className="cursor-pointer"
+        >
+          {!isPublicShared ? (
+            <CheckIcon className="mr-2 size-4" />
+          ) : (
+            <div className="mr-2 size-4" />
+          )}
+          {t("share.setPrivate")}
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
         <DropdownMenuItem
           onClick={handleCopyLink}
           disabled={!shareId}

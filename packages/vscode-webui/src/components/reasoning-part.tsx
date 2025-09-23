@@ -9,12 +9,14 @@ interface ReasoningPartUIProps {
   isLoading: boolean;
   part: ReasoningUIPart;
   className?: string;
+  assistant: string;
 }
 
 export function ReasoningPartUI({
   className,
   part,
   isLoading,
+  assistant,
 }: ReasoningPartUIProps) {
   const iconClass = tw`text-blue-700 dark:text-blue-300`;
   const title = (
@@ -29,7 +31,7 @@ export function ReasoningPartUI({
       ) : (
         <Lightbulb className={cn("size-4 scale-90", iconClass)} />
       )}
-      <span className="font-medium italic">Pochi is thinking ...</span>
+      <span className="font-medium italic">{assistant} is thinking ...</span>
     </span>
   );
 

@@ -4,7 +4,6 @@ export {
   getVendorConfig,
   updateVendorConfig,
   PochiConfigFilePath,
-  getStoreId,
 } from "./config-manager";
 
 export * from "./model";

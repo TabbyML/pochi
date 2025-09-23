@@ -106,8 +106,8 @@ jobs:
 
           IS_PRERELEASE=${{ steps.release_info.outputs.is_prerelease }}
 
-          # we use cli.ts for local dev, and ./dist/cli.js for npm package
+          # we use cli.ts for local dev, and dist/cli.js for npm package
           # so we have to replace the bin path in package.json here
-          sed -i.bak 's|"pochi": "./src/cli.ts"|"pochi": "./dist/cli.js"|' package.json
+          sed -i.bak 's|"pochi": "src/cli.ts"|"pochi": "dist/cli.js"|' package.json
           rm -f package.json.bak
           bun publish --access public ${IS_PRERELEASE:+"--tag beta"}

@@ -14,6 +14,7 @@ import { events } from "../../livestore/schema";
 
 export function createNewTaskMiddleware(
   store: Store,
+  cwd: string | undefined,
   parentTaskId: string,
   customAgents?: CustomAgent[],
 ): LanguageModelV2Middleware {
@@ -104,6 +105,7 @@ export function createNewTaskMiddleware(
               store.commit(
                 events.taskInited({
                   id: uid,
+                  cwd,
                   parentId: parentTaskId,
                   createdAt: new Date(),
                   initMessage: {

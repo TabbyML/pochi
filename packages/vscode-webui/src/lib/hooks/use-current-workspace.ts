@@ -5,5 +5,6 @@ export function useCurrentWorkspace() {
   return useQuery({
     queryKey: ["currentWorkspace"],
     queryFn: () => vscodeHost.readCurrentWorkspace(),
+    staleTime: Number.POSITIVE_INFINITY,
   });
 }

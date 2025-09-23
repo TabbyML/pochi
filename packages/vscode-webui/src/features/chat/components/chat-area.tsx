@@ -9,6 +9,7 @@ interface ChatAreaProps {
   isLoading: boolean;
   user?: { name: string; image?: string | null };
   messagesContainerRef: React.RefObject<HTMLDivElement | null>;
+  agent?: string;
 }
 
 export function ChatArea({
@@ -16,6 +17,7 @@ export function ChatArea({
   isLoading,
   user,
   messagesContainerRef,
+  agent,
 }: ChatAreaProps) {
   const resourceUri = useResourceURI();
   return (
@@ -26,7 +28,7 @@ export function ChatArea({
         messages={messages}
         user={user}
         assistant={{
-          name: "Pochi",
+          name: agent ?? "Pochi",
           image: resourceUri?.logo128,
         }}
         isLoading={isLoading}

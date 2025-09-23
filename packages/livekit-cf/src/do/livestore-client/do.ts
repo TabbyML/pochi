@@ -8,7 +8,7 @@ import { type Store, type Unsubscribe, nanoid } from "@livestore/livestore";
 import { handleSyncUpdateRpc } from "@livestore/sync-cf/client";
 import { hc } from "hono/client";
 import moment from "moment";
-import { funnel } from "remeda";
+import * as runExclusive from "run-exclusive";
 import { app } from "./app";
 import type { Env as ClientEnv } from "./types";
 
@@ -27,15 +27,18 @@ export class LiveStoreClientDO
     readonly env: Env,
   ) {
     super(state, env);
+
+    this.onTasksUpdate = runExclusive.buildMethod(this.onTasksUpdate);
   }
 
-  async setUser(user: User): Promise<void> {
+  async setOwner(user: User): Promise<void> {
     await this.state.storage.put("user", user);
   }
 
   async signalKeepAlive(storeId: string): Promise<void> {
     this.storeId = storeId;
-    await this.keepAliveAndInitSubscription();
+    await this.state.storage.setAlarm(Date.now() + 30_000);
+    await this.subscribeToStoreUpdates();
   }
 
   async fetch(request: Request): Promise<Response> {
@@ -43,8 +46,18 @@ export class LiveStoreClientDO
       getStore: async () => {
         return this.getStore();
       },
-      getUser: async () => {
+      getOwner: async () => {
         return await this.state.storage.get<User>("user");
+      },
+      setStoreId: (storeId: string) => {
+        this.storeId = storeId;
+      },
+      reloadShareTasks: async () => {
+        const store = await this.getStore();
+        const tasks = await store.query(catalog.queries.tasks$);
+        console.log("Force reloading share tasks", tasks.length);
+        await this.onTasksUpdate(tasks, true);
+        return await store.query(catalog.queries.tasks$);
       },
       ASSETS: this.env.ASSETS,
     } satisfies ClientEnv);
@@ -79,18 +92,16 @@ export class LiveStoreClientDO
     return store;
   }
 
-  private async keepAliveAndInitSubscription() {
+  private async subscribeToStoreUpdates() {
     const store = await this.getStore();
 
     // Make sure to only subscribe once
     if (this.storeSubscription === undefined) {
       this.storeSubscription = store.subscribe(catalog.queries.tasks$, {
         // FIXME(meng): implement this with store.events stream when it's ready
-        onUpdate: (tasks) => this.onTasksUpdate.call(tasks),
+        onUpdate: this.onTasksUpdate,
       });
     }
-
-    await this.state.storage.setAlarm(Date.now() + 1_000);
   }
 
   alarm(_alarmInfo?: AlarmInvocationInfo): void | Promise<void> {}
@@ -99,53 +110,40 @@ export class LiveStoreClientDO
     await handleSyncUpdateRpc(payload);
   }
 
-  private onTasksUpdate = funnel(
-    async (tasks: readonly Task[] | undefined) => {
-      if (!tasks) return;
-      const store = await this.getStore();
-      const now = moment();
-      const updatedTasks = tasks.filter((task) =>
-        moment(task.updatedAt).isAfter(now.subtract(5, "minute")),
-      );
+  private onTasksUpdate = async (
+    tasks: readonly Task[] | undefined,
+    force = false,
+  ) => {
+    if (!tasks) return;
+    const store = await this.getStore();
+    const oneMinuteAgo = moment().subtract(1, "minute");
 
-      if (!updatedTasks.length) return;
+    console.log(`Updating ${tasks.length} tasks`);
+    const updatedTasks = tasks.filter(
+      (task) => force || moment(task.updatedAt).isAfter(oneMinuteAgo),
+    );
 
-      console.log(`onTasksUpdate: persisting ${updatedTasks.length} tasks`);
-      await Promise.all(
-        updatedTasks.map((task) =>
-          this.persistTask(store, task).catch(console.error),
-        ),
-      );
-    },
-    {
-      minGapMs: 1000,
-      triggerAt: "start",
-      reducer: (_, rhs: readonly Task[]) => rhs,
-    },
-  );
+    if (!updatedTasks.length) return;
+
+    console.log(`Persisting ${updatedTasks.length} tasks`);
+    await Promise.all(
+      updatedTasks.map((task) =>
+        this.persistTask(store, task).catch(console.error),
+      ),
+    );
+  };
 
   private async persistTask(store: Store<typeof catalog.schema>, task: Task) {
     const { sub: userId } = decodeStoreId(store.storeId);
     const apiClient = createApiClient(this.env.POCHI_API_KEY, userId);
 
-    // If a task was updated in the last 5 minutes, persist it to the pochi api
-    const messages = store
-      .query(catalog.queries.makeMessagesQuery(task.id))
-      .map((x) => x.data);
     const resp = await apiClient.api.chat.persist.$post({
       json: {
         id: task.id,
-        // @ts-expect-error - ignore readonly modifier and unknown conversion.
-        messages: messages,
         status: task.status,
         parentClientTaskId: task.parentId || undefined,
         storeId: store.storeId,
-        clientTaskData: {
-          ...task,
-          todos: task.todos.map((t) => ({ ...t })),
-          git: task.git ? { ...task.git } : null,
-          error: task.error ? { ...task.error } : null,
-        },
+        clientTaskData: task,
       },
     });
 

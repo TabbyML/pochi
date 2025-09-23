@@ -15,11 +15,10 @@ import { NewProjectRegistry, prepareProject } from "@/lib/new-project";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { PostHog } from "@/lib/posthog";
 import type { WebsiteTaskCreateEvent } from "@getpochi/common";
-import {
-  type CustomModelSetting,
-  PochiConfigFilePath,
+import type {
+  CustomModelSetting,
+  McpServerConfig,
 } from "@getpochi/common/configuration";
-import type { McpServerConfig } from "@getpochi/common/configuration";
 import type { McpHub } from "@getpochi/common/mcp-utils";
 import { getVendor } from "@getpochi/common/vendor";
 import type {
@@ -261,24 +260,23 @@ export class CommandManager implements vscode.Disposable {
       vscode.commands.registerCommand(
         "pochi.mcp.addServer",
         async (name?: string, recommendedServer?: McpServerConfig) => {
-          this.mcpHub.addServer(name, recommendedServer);
-          await vscode.commands.executeCommand(
-            "vscode.open",
-            vscode.Uri.file(PochiConfigFilePath),
-          );
+          await this.mcpHub.addServer(name, recommendedServer);
+          await new Promise((resolve) => setTimeout(resolve, 500));
+          await this.pochiConfiguration.revealConfig({
+            key: "mcp",
+          });
         },
       ),
 
       vscode.commands.registerCommand(
         "pochi.mcp.openServerSettings",
         async () => {
-          await vscode.commands.executeCommand(
-            "vscode.open",
-            vscode.Uri.file(PochiConfigFilePath),
-          );
+          await this.ensureDefaultMcpServer();
+          await this.pochiConfiguration.revealConfig({
+            key: "mcp",
+          });
         },
       ),
-
       vscode.commands.registerCommand(
         "pochi.mcp.serverControl",
         async (action: string, serverName: string) => {
@@ -417,10 +415,9 @@ export class CommandManager implements vscode.Disposable {
         "pochi.openCustomModelSettings",
         async () => {
           await this.ensureDefaultCustomModelSettings();
-          await vscode.commands.executeCommand(
-            "vscode.open",
-            vscode.Uri.file(PochiConfigFilePath),
-          );
+          await this.pochiConfiguration.revealConfig({
+            key: "providers",
+          });
         },
       ),
     );
@@ -452,6 +449,26 @@ export class CommandManager implements vscode.Disposable {
     } satisfies Record<string, CustomModelSetting>;
 
     await this.pochiConfiguration.updateCustomModelSettings(defaultSettings);
+    // wait for a while to ensure the settings are saved
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+
+  private async ensureDefaultMcpServer() {
+    const currentServer = this.pochiConfiguration.mcpServers.value;
+
+    if (currentServer && Object.keys(currentServer).length > 0) {
+      return;
+    }
+
+    const defaulMcpServer = {
+      "your-mcp-server-name": {
+        command: "npx",
+        args: ["your mcp server command"],
+      },
+    } satisfies Record<string, McpServerConfig>;
+
+    await this.pochiConfiguration.updateMcpServers(defaulMcpServer);
+    await new Promise((resolve) => setTimeout(resolve, 500));
   }
 
   dispose() {

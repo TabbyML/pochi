@@ -16,28 +16,31 @@
     "release": "bunx bumpp --tag=cli@%s"
   },
   "devDependencies": {
-    "@getpochi/tools": "workspace:*",
-    "@types/semver": "^7.5.8",
     "@commander-js/extra-typings": "^14.0.0",
     "@getpochi/common": "workspace:*",
     "@getpochi/livekit": "workspace:*",
+    "@getpochi/tools": "workspace:*",
     "@getpochi/vendor-claude-code": "workspace:*",
     "@getpochi/vendor-gemini-cli": "workspace:*",
     "@getpochi/vendor-pochi": "workspace:*",
     "@getpochi/vendor-codex": "workspace:*",
+    "@inquirer/select": "^4.3.2",
     "@livestore/adapter-node": "catalog:",
     "@livestore/livestore": "catalog:",
+    "@livestore/sync-cf": "catalog:",
     "@livestore/utils": "catalog:",
     "@livestore/wa-sqlite": "catalog:",
-    "@livestore/sync-cf": "catalog:",
     "@preact/signals-core": "^1.6.2",
+    "@types/omelette": "^0.4.5",
+    "@types/semver": "^7.5.8",
     "ai": "catalog:",
     "chalk": "^5.3.0",
     "commander": "^14.0.0",
-
+    "jose": "catalog:",
     "listr2": "^9.0.3",
+    "node-machine-id": "catalog:",
+    "omelette": "^0.4.17",
     "ora": "^8.2.0",
-    "semver": "^7.6.3",
-    "@inquirer/select": "^4.3.2"
+    "semver": "^7.6.3"
   }
 }

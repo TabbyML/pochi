@@ -48,23 +48,26 @@ interface PendingRetry {
 export function usePendingRetryApproval({
   error,
   status,
+  isSubTask,
 }: {
   error?: Error;
   status: "submitted" | "streaming" | "ready" | "error";
+  isSubTask: boolean;
 }) {
   const autoApproveGuard = useAutoApproveGuard();
 
   if (error && Object.values(PochiApiErrors).includes(error.message)) {
-    autoApproveGuard.current = false;
+    autoApproveGuard.current = "stop";
   }
 
   if (error && APICallError.isInstance(error) && error.isRetryable === false) {
-    autoApproveGuard.current = false;
+    autoApproveGuard.current = "stop";
   }
 
-  const { autoApproveActive, autoApproveSettings } = useAutoApprove(
-    autoApproveGuard.current,
-  );
+  const { autoApproveActive, autoApproveSettings } = useAutoApprove({
+    autoApproveGuard: autoApproveGuard.current === "auto",
+    isSubTask,
+  });
 
   const [retryCount, setRetryCount] = useState<RetryCount | undefined>(
     undefined,

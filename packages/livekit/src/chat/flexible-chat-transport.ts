@@ -104,7 +104,12 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
 
     if (!this.isSubTask) {
       middlewares.push(
-        createNewTaskMiddleware(this.store, chatId, customAgents),
+        createNewTaskMiddleware(
+          this.store,
+          environment?.info.cwd,
+          chatId,
+          customAgents,
+        ),
       );
     }
 
@@ -117,6 +122,23 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
     }
 
     const mcpTools = mcpInfo?.toolset && parseMcpToolSet(mcpInfo.toolset);
+    const tools = pickBy(
+      {
+        ...selectClientTools({
+          isSubTask: !!this.isSubTask,
+          isCli: !!this.isCli,
+          customAgents,
+        }),
+        ...(mcpTools || {}),
+      },
+      (_val, key) => {
+        if (this.customAgent?.tools) {
+          return this.customAgent.tools.includes(key);
+        }
+        return true;
+      },
+    );
+
     const preparedMessages = await prepareMessages(messages, environment);
     const model = createModel({ id: chatId, llm });
     const stream = streamText({
@@ -129,28 +151,15 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
         formatters.llm(preparedMessages, {
           keepReasoningPart: llm.type === "vendor" && llm.keepReasoningPart,
         }),
+        // toModelOutput is invoked within convertToModelMessages, thus we need to pass the tools here.
+        { tools },
       ),
       model: wrapLanguageModel({
         model,
         middleware: middlewares,
       }),
       abortSignal,
-      tools: pickBy(
-        {
-          ...selectClientTools({
-            isSubTask: !!this.isSubTask,
-            isCli: !!this.isCli,
-            customAgents,
-          }),
-          ...(mcpTools || {}),
-        },
-        (_val, key) => {
-          if (this.customAgent?.tools) {
-            return this.customAgent.tools.includes(key);
-          }
-          return true;
-        },
-      ),
+      tools,
       maxRetries: 0,
       // error log is handled in live chat kit.
       onError: () => {},
