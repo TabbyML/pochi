@@ -1,10 +1,10 @@
 import type { VSCodeHostImpl } from "@/integrations/webview/vscode-host-impl";
-import type { WebviewSessionManager } from "@/integrations/webview/webview-session-manager";
 import type { AuthEvents } from "@/lib/auth-events";
 import { getNonce } from "@/lib/get-nonce";
 import { getUri } from "@/lib/get-uri";
 import { getLogger } from "@getpochi/common";
 import type {
+  SessionState,
   VSCodeHostApi,
   WebviewHostApi,
 } from "@getpochi/common/vscode-webui-bridge";
@@ -35,13 +35,13 @@ export abstract class BaseWebview implements vscode.Disposable {
   protected webviewHost?: WebviewHostApi;
   protected disposables: vscode.Disposable[] = [];
   protected webviewReadyCallbacks: (() => void)[] = [];
+  protected sessionState: SessionState = {};
 
   constructor(
     protected readonly sessionId: string,
     protected readonly context: vscode.ExtensionContext,
     protected readonly events: AuthEvents,
     protected readonly pochiConfiguration: PochiConfiguration,
-    protected readonly sessionManager: WebviewSessionManager,
     protected readonly vscodeHost: VSCodeHostImpl,
   ) {}
 
@@ -276,14 +276,12 @@ export abstract class BaseWebview implements vscode.Disposable {
   }
 
   private createVSCodeHostWrapper(): VSCodeHostApi {
-    const sessionId = this.sessionId;
-    const sessionManager = this.sessionManager;
     const vscodeHost = this.vscodeHost;
 
     const wrapper: VSCodeHostApi = {
       ...vscodeHost,
       getSessionState: async (keys) => {
-        const currentState = sessionManager.getSessionState(sessionId) || {};
+        const currentState = this.sessionState;
         if (!keys || keys.length === 0) {
           return { ...currentState };
         }
@@ -295,7 +293,7 @@ export abstract class BaseWebview implements vscode.Disposable {
         }, {} as any);
       },
       setSessionState: async (state) => {
-        sessionManager.updateSessionState(sessionId, state);
+        this.sessionState = { ...this.sessionState, ...state };
       },
       readResourceURI: this.getReadResourceURI(),
     };
@@ -307,9 +305,6 @@ export abstract class BaseWebview implements vscode.Disposable {
   protected abstract getReadResourceURI(): VSCodeHostApi["readResourceURI"];
 
   public dispose(): void {
-    // Clean up session
-    this.sessionManager.removeSession(this.sessionId);
-
     // Clean up disposables
     while (this.disposables.length) {
       const disposable = this.disposables.pop();

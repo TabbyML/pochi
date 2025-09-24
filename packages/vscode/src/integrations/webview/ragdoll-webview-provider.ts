@@ -2,8 +2,6 @@ import { BaseWebview } from "@/integrations/webview/base-webview";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { VSCodeHostImpl } from "@/integrations/webview/vscode-host-impl";
 // biome-ignore lint/style/useImportType: needed for dependency injection
-import { WebviewSessionManager } from "@/integrations/webview/webview-session-manager";
-// biome-ignore lint/style/useImportType: needed for dependency injection
 import { AuthEvents } from "@/lib/auth-events";
 import { getUri } from "@/lib/get-uri";
 import type {
@@ -43,7 +41,6 @@ export class RagdollWebviewSidebar
     context: vscode.ExtensionContext,
     events: AuthEvents,
     pochiConfiguration: PochiConfiguration,
-    sessionManager: WebviewSessionManager,
     vscodeHost: VSCodeHostImpl,
   ) {
     super(
@@ -51,11 +48,8 @@ export class RagdollWebviewSidebar
       context,
       events,
       pochiConfiguration,
-      sessionManager,
       vscodeHost,
     );
-    // Create default sidebar session
-    this.sessionManager.createSession("sidebar-default");
   }
 
   private providerDisposables: vscode.Disposable[] = [
@@ -95,8 +89,7 @@ export class RagdollWebviewSidebar
   }
 
   public async getCurrentSessionState() {
-    // Get current session state from session manager
-    return this.sessionManager.getSessionState(this.sessionId) || {};
+    return this.sessionState;
   }
 
   public resolveWebviewView(

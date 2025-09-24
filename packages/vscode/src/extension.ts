@@ -13,7 +13,6 @@ import "@getpochi/vendor-github-copilot";
 
 import RagdollUriHandler from "@/integrations/uri-handler";
 import { RagdollWebviewSidebar } from "@/integrations/webview/ragdoll-webview-provider";
-import { WebviewSessionManager } from "@/integrations/webview/webview-session-manager";
 import type { McpHub } from "@getpochi/common/mcp-utils";
 import { container, instanceCachingFactory } from "tsyringe";
 import type * as vscode from "vscode";
@@ -55,9 +54,6 @@ export async function activate(context: vscode.ExtensionContext) {
     // McpHub is also a singleton
     useFactory: instanceCachingFactory(createMcpHub),
   });
-
-  // Register WebviewSessionManager as a singleton
-  container.resolve(WebviewSessionManager);
 
   container.resolve(CompletionProvider);
   container.resolve(StatusBarItem);

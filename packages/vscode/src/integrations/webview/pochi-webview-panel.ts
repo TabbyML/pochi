@@ -1,6 +1,5 @@
 import { BaseWebview } from "@/integrations/webview/base-webview";
 import { VSCodeHostImpl } from "@/integrations/webview/vscode-host-impl";
-import { WebviewSessionManager } from "@/integrations/webview/webview-session-manager";
 import { AuthEvents } from "@/lib/auth-events";
 import { getUri } from "@/lib/get-uri";
 import { getLogger } from "@getpochi/common";
@@ -45,7 +44,6 @@ export class PochiWebviewPanel
     context: vscode.ExtensionContext,
     events: AuthEvents,
     pochiConfiguration: PochiConfiguration,
-    sessionManager: WebviewSessionManager,
     vscodeHost: VSCodeHostImpl,
   ) {
     super(
@@ -53,7 +51,6 @@ export class PochiWebviewPanel
       context,
       events,
       pochiConfiguration,
-      sessionManager,
       vscodeHost,
     );
     this.panel = panel;
@@ -121,11 +118,7 @@ export class PochiWebviewPanel
     );
     const events = container.resolve(AuthEvents);
     const pochiConfiguration = container.resolve(PochiConfiguration);
-    const sessionManager = container.resolve(WebviewSessionManager);
     const vscodeHost = container.resolve(VSCodeHostImpl);
-
-    // Create session
-    sessionManager.createSession(sessionId);
 
     // Create panel instance
     const pochiPanel = new PochiWebviewPanel(
@@ -134,7 +127,6 @@ export class PochiWebviewPanel
       context,
       events,
       pochiConfiguration,
-      sessionManager,
       vscodeHost,
     );
 
