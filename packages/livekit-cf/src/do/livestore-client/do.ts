@@ -1,4 +1,5 @@
 import { DurableObject } from "cloudflare:workers";
+import { getServerBaseUrl } from "@/lib/server";
 import type { ClientDoCallback, Env, User } from "@/types";
 import type { PochiApi, PochiApiClient } from "@getpochi/common/pochi-api";
 import { decodeStoreId } from "@getpochi/common/store-id-utils";
@@ -135,7 +136,11 @@ export class LiveStoreClientDO
 
   private async persistTask(store: Store<typeof catalog.schema>, task: Task) {
     const { sub: userId } = decodeStoreId(store.storeId);
-    const apiClient = createApiClient(this.env.POCHI_API_KEY, userId);
+    const apiClient = createApiClient(
+      this.env.ENVIRONMENT,
+      this.env.POCHI_API_KEY,
+      userId,
+    );
 
     const resp = await apiClient.api.chat.persist.$post({
       json: {
@@ -165,8 +170,12 @@ export class LiveStoreClientDO
   }
 }
 
-function createApiClient(apiKey: string, userId: string): PochiApiClient {
-  const prodServerUrl = "https://app.getpochi.com";
+function createApiClient(
+  env: Env["ENVIRONMENT"],
+  apiKey: string,
+  userId: string,
+): PochiApiClient {
+  const prodServerUrl = getServerBaseUrl(env);
   return hc<PochiApi>(prodServerUrl, {
     headers: {
       authorization: `${apiKey},${userId}`,
