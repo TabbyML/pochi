@@ -290,7 +290,7 @@ export abstract class BaseWebview implements vscode.Disposable {
             filtered[key] = currentState[key];
           }
           return filtered;
-        }, {} as any);
+        }, {} as Pick<SessionState, keyof SessionState>);
       },
       setSessionState: async (state) => {
         this.sessionState = { ...this.sessionState, ...state };

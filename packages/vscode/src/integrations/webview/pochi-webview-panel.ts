@@ -46,13 +46,7 @@ export class PochiWebviewPanel
     pochiConfiguration: PochiConfiguration,
     vscodeHost: VSCodeHostImpl,
   ) {
-    super(
-      sessionId,
-      context,
-      events,
-      pochiConfiguration,
-      vscodeHost,
-    );
+    super(sessionId, context, events, pochiConfiguration, vscodeHost);
     this.panel = panel;
 
     // Set webview options

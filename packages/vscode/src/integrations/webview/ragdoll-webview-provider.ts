@@ -43,13 +43,7 @@ export class RagdollWebviewSidebar
     pochiConfiguration: PochiConfiguration,
     vscodeHost: VSCodeHostImpl,
   ) {
-    super(
-      "sidebar-default",
-      context,
-      events,
-      pochiConfiguration,
-      vscodeHost,
-    );
+    super("sidebar-default", context, events, pochiConfiguration, vscodeHost);
   }
 
   private providerDisposables: vscode.Disposable[] = [
