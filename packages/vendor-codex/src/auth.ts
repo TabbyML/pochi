@@ -1,7 +1,6 @@
 import * as crypto from "node:crypto";
 import * as http from "node:http";
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { updatePochiConfig } from "@getpochi/common/configuration";
 import type { UserInfo } from "@getpochi/common/configuration";
 import type { AuthOutput } from "@getpochi/common/vendor";
 import { AuthIssuer, OAuthConfig } from "./constants";
@@ -11,18 +10,6 @@ import type {
   CodexTokenResponse,
   IdClaims,
 } from "./types";
-
-// Credentials management
-
-export function updateCodexCredentials(
-  credentials: Partial<CodexCredentials> | null,
-): void {
-  updatePochiConfig({
-    vendors: {
-      codex: credentials === null ? null : { credentials },
-    },
-  });
-}
 
 export async function startOAuthFlow(): Promise<AuthOutput> {
   const pkce = generatePKCE();
@@ -131,8 +118,6 @@ async function handleCallback(
     );
     const credentials = createCredentials(tokens);
 
-    updateCodexCredentials(credentials);
-
     res.writeHead(302, { Location: OAuthConfig.successPath });
     res.end();
 
@@ -220,7 +205,6 @@ export async function renewCredentials(
           lastRefresh: Date.now(),
         };
 
-    updateCodexCredentials(newCredentials);
     return newCredentials;
   } catch {
     return credentials;
@@ -314,37 +298,91 @@ function sendSuccessPage(res: ServerResponse): void {
     <html>
       <head>
         <title>Authentication Successful</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
         <style>
+          * {
+            box-sizing: border-box;
+          }
           body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
+            min-height: 100vh;
             margin: 0;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 1rem;
+            background: #0f0f0f;
+            color: #ffffff;
           }
           .container {
             text-align: center;
-            background: white;
-            padding: 2rem 3rem;
-            border-radius: 12px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            background: #1a1a1a;
+            border: 1px solid #333;
+            padding: 3rem 2rem;
+            border-radius: 16px;
+            max-width: 400px;
+            width: 100%;
+            position: relative;
+            overflow: hidden;
+          }
+          .container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, #10a37f, transparent);
+          }
+          .icon {
+            width: 64px;
+            height: 64px;
+            margin: 0 auto 1.5rem;
+            background: #10a37f;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            position: relative;
+          }
+          .icon::after {
+            content: '';
+            width: 20px;
+            height: 12px;
+            border: 3px solid white;
+            border-top: none;
+            border-right: none;
+            transform: rotate(-45deg);
+            margin-top: -4px;
           }
           h1 {
-            color: #10a37f;
-            margin-bottom: 0.5rem;
+            color: #ffffff;
+            margin: 0 0 0.5rem 0;
+            font-size: 1.5rem;
+            font-weight: 600;
           }
           p {
+            color: #a0a0a0;
+            margin: 0;
+            font-size: 0.95rem;
+            line-height: 1.4;
+          }
+          .footer {
+            margin-top: 2rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid #333;
+            font-size: 0.85rem;
             color: #666;
-            margin-top: 0.5rem;
           }
         </style>
       </head>
       <body>
         <div class="container">
-          <h1>✓ Authentication Successful</h1>
+          <div class="icon"></div>
+          <h1>Authentication Successful</h1>
           <p>You can now close this window and return to Pochi.</p>
+          <div class="footer">Powered by OpenAI Codex</div>
         </div>
       </body>
     </html>
