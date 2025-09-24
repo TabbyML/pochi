@@ -524,7 +524,7 @@ So far, we’ve tested our Supabase MCP server in the Inspector, wired it into t
 This means you can query your database without opening VS Code at all:
 
 ```bash
-pochi -p "pochi -p'What are the total sales for Europe region?"
+pochi -p "What are the total sales for Europe region?"
 ```
 
 Behind the scenes, the Pochi CLI works the same way as the VS Code extension: it connects to your MCP server via `stdio`, calls the `queryDatabas`e tool, and streams the results back into your terminal. 
