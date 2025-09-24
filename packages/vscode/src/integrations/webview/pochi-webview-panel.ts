@@ -6,7 +6,6 @@ import { getUri } from "@/lib/get-uri";
 import { getLogger } from "@getpochi/common";
 import type {
   ResourceURI,
-  SessionState,
   VSCodeHostApi,
 } from "@getpochi/common/vscode-webui-bridge";
 import { container } from "tsyringe";
@@ -75,9 +74,6 @@ export class PochiWebviewPanel
 
     // Create webview thread
     this.createWebviewThread(this.panel.webview);
-
-    // Store panel reference
-    PochiWebviewPanel.panels.set(sessionId, this);
   }
 
   protected getReadResourceURI(): VSCodeHostApi["readResourceURI"] {
@@ -93,10 +89,6 @@ export class PochiWebviewPanel
   }
 
   public static createOrShow(extensionUri: vscode.Uri): void {
-    const column = vscode.window.activeTextEditor
-      ? vscode.window.activeTextEditor.viewColumn
-      : undefined;
-
     // Generate unique session ID
     const sessionId = `editor-${Date.now()}-${++PochiWebviewPanel.panelCounter}`;
 
@@ -104,7 +96,7 @@ export class PochiWebviewPanel
     const panel = vscode.window.createWebviewPanel(
       PochiWebviewPanel.viewType,
       "Pochi",
-      column || vscode.ViewColumn.One,
+      vscode.ViewColumn.Active,
       {
         enableScripts: true,
         retainContextWhenHidden: true,
@@ -133,10 +125,10 @@ export class PochiWebviewPanel
     const vscodeHost = container.resolve(VSCodeHostImpl);
 
     // Create session
-    sessionManager.createSession(sessionId, "editor");
+    sessionManager.createSession(sessionId);
 
     // Create panel instance
-    new PochiWebviewPanel(
+    const pochiPanel = new PochiWebviewPanel(
       panel,
       sessionId,
       context,
@@ -146,31 +138,9 @@ export class PochiWebviewPanel
       vscodeHost,
     );
 
+    PochiWebviewPanel.panels.set(sessionId, pochiPanel);
+
     logger.info(`Created new Pochi panel: ${sessionId}`);
-  }
-
-  public reveal(): void {
-    this.panel.reveal();
-  }
-
-  public async setSidebarState(
-    sidebarState: Pick<SessionState, keyof SessionState>,
-  ): Promise<void> {
-    try {
-      // Use the injected vscodeHost instance
-      this.vscodeHost.setSessionContext(this.sessionId);
-      await this.vscodeHost.setSessionState(sidebarState);
-      if (sidebarState.lastVisitedRoute && this.panel.webview) {
-        this.panel.webview.postMessage({
-          type: "navigate",
-          data: {
-            path: sidebarState.lastVisitedRoute,
-          },
-        });
-      }
-    } catch (error) {
-      logger.error("Failed to set sidebar state:", error);
-    }
   }
 
   dispose(): void {

@@ -55,7 +55,7 @@ export class RagdollWebviewSidebar
       vscodeHost,
     );
     // Create default sidebar session
-    this.sessionManager.createSession("sidebar-default", "sidebar");
+    this.sessionManager.createSession("sidebar-default");
   }
 
   private providerDisposables: vscode.Disposable[] = [
