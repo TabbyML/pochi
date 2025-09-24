@@ -4,9 +4,9 @@ title: 'Building a Supabase MCP Server for Natural Language SQL Queries in Pochi
 
 # Building a Supabase MCP Server for Natural Language SQL Queries in Pochi
 
-Often, when working with teams to debug code or build features, you need to look up data from your database. This may include checking if a recent migration seeded correctly, inspecting a particular table schema, or verifying specific column values. Normally, this means breaking your flow, opening the SQL client, writing queries by hand, or involving a co-worker.
+In this tutorial, you’ll learn how to build a custom MCP server that connects Supabase to Pochi, allowing you to query your database using natural language directly from your code editor.
 
-This tutorial is designed to help you avoid that. We’ll build a system where you can prompt Pochi right inside your code editor to answer all your database related queries using natural language prompts. For example: “Give me the table schema of the ‘sales_report’ table.”
+This is a practical example of how to extend Pochi using the Model Context Protocol (MCP), and illustrates how teams can integrate AI into internal workflows for powerful, context-aware automation. This is particularly useful when you're debugging code, collaborating across teams, or building features that require quick access to live data (e.g: checking whether a migration seeded correctly, inspecting a table schema, or verifying specific column values). 
 
 ### Prerequisites
 
@@ -19,18 +19,11 @@ Before we start, you’ll need the following:
 
 ## What is MCP (Model Context Protocol)?
 
-MCP (Model Context Protocol) is a lightweight, flexible interface that allows large language models (LLMs) like those used in Pochi to connect and interact with external tools, APIs, or databases. In this tutorial, MCP acts as the bridge between your natural language queries and the Supabase database, enabling Pochi to translate plain English questions into SQL queries using OpenAI, execute them, and even generate visualizations using Vega Charts.
+MCP (Model Context Protocol) is a lightweight, flexible interface that allows large language models (LLMs) like those used in Pochi to connect and interact with external tools, APIs, or databases. In this tutorial, **[MCP](https://docs.getpochi.com/mcp/)** acts as the bridge between your natural language queries and the Supabase database, enabling Pochi to translate plain English questions into SQL queries using OpenAI, execute them, and even generate visualizations using Vega Charts.
 
 ![Architectural Diagram](./images/mcp-server-supabase-diagram.png)
 
 We’re going to use Supabase database and limit to read only queries, but you can always extend to perform CRUD operations too. Using MCP servers makes it easy to extend AI assistants with custom functionality and is a perfect way to keep your focus on coding while still getting the data context you need.
-
-### Self host or use the managed service
-
-Some teams may prefer to run Pochi entirely on their own infrastructure rather than rely on the managed cloud service. Pochi provides you with both options. You can either self-host which means that the chat interface, orchestration, and MCP connections all run locally or on your servers. This is ideal if you require stricter compliance, private networking, or better cost control when integrating with internal systems.
-
-For the purpose of this tutorial, though, we’ll assume you’re using the regular Pochi VS Code extension, since that’s the fastest way to get started. 
-As you follow along, everything we build, be it the Supabase MCP server, the plain-English to SQL translation, and the Vega-Lite chart generation, will work whether you’re self-hosting Pochi or using the managed extension.
 
 
 ## Getting Started: How to Build the MCP Server
@@ -241,30 +234,34 @@ const server = new McpServer({
 server.tool(
   "queryDatabase",
   {
-    inputSchema: z.object({
-      question: z.string(),
-    }),
-    outputSchema: z.object({
-  success: z.boolean().optional(),
-  rows: z.array(z.any()).optional(),
-  vega: z.any().optional(),
-  error: z.string().optional(),
-  content: z.any().optional(),   //  make content loose instead of array
-  sql: z.string().optional(),
-})
-,
+    inputSchema: z.any(),   // loosened to tolerate Pochi sending strings
+    outputSchema: z.any(),  // same here
   },
   async (input) => {
     try {
-      const question =
-        input.question ||
-        (input.inputSchema && input.inputSchema.question) ||
-        "";
+      let question = "";
+
+      // Normalize input from different runtimes
+      if (typeof input === "string") {
+        question = input;
+      } else if (input?.question) {
+        question = input.question;
+      } else if (typeof input?.inputSchema === "string") {
+        try {
+          const parsed = JSON.parse(input.inputSchema);
+          if (parsed.question) question = parsed.question;
+        } catch {
+          // ignore parse errors
+        }
+      } else if (input?.inputSchema?.question) {
+        question = input.inputSchema.question;
+      }
+
       if (!question.trim()) {
         return { success: false, rows: [], error: "No question provided" };
       }
 
-      // Use OpenAI to translate English → SQL (restricted to your schema)
+      // 🚀 Translate English → SQL
       const completion = await openai.chat.completions.create({
         model: "gpt-4.1",
         messages: [
@@ -282,7 +279,6 @@ ${schemaDescription}
       const sqlRaw = completion.choices[0].message.content.trim();
       console.error("Generated SQL (raw):", sqlRaw);
 
-      // Extract SQL (remove ```sql ... ``` if present)
       const sqlMatch = sqlRaw.match(/```(?:sql)?\s*([\s\S]*?)\s*```/i);
       const sql = (sqlMatch ? sqlMatch[1] : sqlRaw).replace(/;$/, "").trim();
 
@@ -303,29 +299,15 @@ ${schemaDescription}
       const rows = Array.isArray(data) ? data : [];
       const vega = buildVegaLiteSpec(rows);
 
-      // Wrap Vega into MCP content
-      // Wrap Vega into MCP content (Inspector-compatible)
-
-
-/*const content = vega
-  ? [
-      {
-        type: "text",
-        text: JSON.stringify(vega, null, 2), // Inspector expects "text" not "data"
-      },
-    ]
-  : [];
-*/
-  const content = vega
-  ? [
-      {
-        type: "chart",
-        format: "vega-lite",
-        data: vega,
-      },
-    ]
-  : [];
-
+      const content = vega
+        ? [
+            {
+              type: "chart",
+              format: "vega-lite",
+              data: vega,
+            },
+          ]
+        : [];
 
       return { success: true, rows, vega, content, sql };
     } catch (err) {
@@ -341,13 +323,11 @@ ${schemaDescription}
 // Transport
 const transport = new StdioServerTransport();
 
-// Connect the server and handle potential errors
 server.connect(transport).catch((error) => {
   console.error("Connection error:", error);
   process.exit(1);
 });
 
-// Keep the process alive
 process.on("SIGINT", () => process.exit(0));
 process.on("SIGTERM", () => process.exit(0));
 
@@ -388,8 +368,7 @@ Paste this JSON snippet inside the existing MCP config :
       "args": [
         "index.js"
       ],
-      "cwd": "/Users/apple/Documents/supabase-mcp-server",
-      "disabledTools": []
+      "cwd": "/Users/apple/Documents/supabase-mcp-server"
     }
   }
 ```
@@ -398,43 +377,8 @@ The above code snippet will register a local MCP server in Pochi.
 * `command` = This is the path to the Node.js executable you want to use.
 * `args` = The actual MCP server package or script to run (which we will generate in Step 6)
 * `cwd` = The current working directory where the command will run.
-* `disabledTools` = Allows you to disable certain tools or integrations (like linters or debuggers). It’s currently empty, so no tools are disabled.
 
 When you save this config in the `~/config.json` file, Pochi will know to launch `node index.js` as a subprocess and communicate with it via stdio transport when the “my-supabase-mcp” server is enabled. Read more about it **[here](https://docs.getpochi.com/mcp/)**.
-
-
-
-#### Enable your MCP server
-
-Next, we need to go to Pochi’s Tools Settings page (you can also find it via Command Palette: `Pochi: Open Tools Settings`)
-
-Look for the MCP server named `my-supabase-mcp` and toggle it ON (enabled). You should see a green dot to indicate its connected.
-
-<div
-  style={{
-    position: "relative",
-    paddingBottom: "53.7%",
-    marginBottom: 20,
-    height: 0,
-    overflow: "hidden",
-    maxWidth: "100%",
-  }}
->
-  <iframe
-    src="https://drive.google.com/file/d/1txzxWQ5R0fRZVSme1UtCRb77WguU0O6H/preview"
-    style={{
-      position: "absolute",
-      top: 0,
-      left: 0,
-      width: "100%",
-      height: "100%",
-      border: "none",
-      borderRadius: "8px",
-    }}
-    allowFullScreen
-    title="Testing MCP Server in MCP Inspector"
-  />
-</div>
 
 
 ### Step 5: Testing the MCP Server
@@ -452,8 +396,8 @@ npx @modelcontextprotocol/inspector node index.js
 
 
 Open the Inspector in your browser (it launches a local port).
-* You’ll see a UI showing your server name (supabase-mcp).
-* Under “Tools” you should see querySupabaseSQL.
+* You’ll see a UI showing your server name (`supabase-mcp``).
+* Under “Tools” you should see `querySupabaseSQL``.
 * Click it, pass in your input:
 ```jsonc
 {"question":"What are the total sales of each product by region?"}
@@ -486,10 +430,42 @@ You should see the correct response which includes the Supabase database query r
   />
 </div>
 
+#### Enable your MCP server
+
+Now that your MCP server is verified, you can enable it inside Pochi to use it in your editor’s natural language chat UI. For that, we need to go to Pochi’s Tools Settings page (you can also find it via Command Palette: `Pochi: Open Tools Settings`)
+
+Look for the MCP server named `my-supabase-mcp` and toggle it ON (enabled). You should see a green dot to indicate its connected.
+
+<div
+  style={{
+    position: "relative",
+    paddingBottom: "53.7%",
+    marginBottom: 20,
+    height: 0,
+    overflow: "hidden",
+    maxWidth: "100%",
+  }}
+>
+  <iframe
+    src="https://drive.google.com/file/d/1txzxWQ5R0fRZVSme1UtCRb77WguU0O6H/preview"
+    style={{
+      position: "absolute",
+      top: 0,
+      left: 0,
+      width: "100%",
+      height: "100%",
+      border: "none",
+      borderRadius: "8px",
+    }}
+    allowFullScreen
+    title="Enable MCP Server in Pochi"
+  />
+</div>
+
 
 ### Step 6: Executing the MCP server in Pochi
 
-Once it works in Inspector, we can connect it into Pochi (your config already points to `index.js`). Then when you give Pochi a natural language prompt,  asking the model to call `queryDatabase` tool, it will answer all your database related queries easily. 
+Once it works in Inspector, we can connect it into Pochi (our config already points to `index.js`). Then when you give Pochi a natural language prompt,  asking the model to call `queryDatabase` tool, it will answer all your database related queries easily. 
 
 Prompt used: 
 
@@ -519,7 +495,7 @@ Here’s the final working demo:
       borderRadius: "8px",
     }}
     allowFullScreen
-    title="Testing MCP Server in MCP Inspector"
+    title="Executing MCP Server in Pochi"
   />
 </div>
 
@@ -527,21 +503,17 @@ You can also paste in the Vega - Lite JSON spec you receive in response into the
 
 ![Vega Lite Chart](./images/vega-chart-final-image.png)
 
-## How This Improves Developer Workflow for Teams and Enterprises
+## Step 7 (Optional): Using the MCP Server with Pochi CLI
 
-While the sample database in this tutorial uses `sales_data` for simplicity, the core idea is universally applicable to developer workflows in enterprise environments.
+So far, we’ve tested our Supabase MCP server in the Inspector, wired it into the Pochi VS Code extension, and also tested via the Pochi chat UI. But Pochi also provides a **[CLI client](https://docs.getpochi.com/cli/)** that can connect to MCP servers directly from your terminal.
 
-In real-world projects, your database might contain user accounts and sessions, application logs or event streams, feature flags and configuration tables or order and subscription data.
-Which is why being able to ask questions like:
+This means you can query your database without opening VS Code at all:
 
-> Are there any failed jobs in the `background_tasks` table?
+```bash
+pochi -p "What are the total sales for each product by region?"
+```
 
-> How many users signed up in the last 7 days from Europe?
-
-> What’s the schema of the `sales_data` table?
-
-
-…directly in your code editor helps you debug issues without switching to a DB client, quickly verify backend logic during development and stay in flow while writing or reviewing code.
+Behind the scenes, the Pochi CLI works the same way as the VS Code extension: it connects to your MCP server via `stdio`, calls the `queryDatabas`e tool, and streams the results back into your terminal. 
 
 <div
   style={{
@@ -554,7 +526,7 @@ Which is why being able to ask questions like:
   }}
 >
   <iframe
-    src="https://drive.google.com/file/d/1oUbk24ZuNbnG3okq1npFqJ2YxxwAUi9w/preview"
+    src="https://drive.google.com/file/d/1V8Ut_XXM9sRdSPHhoGVhMMnJHkxeaYFp/preview"
     style={{
       position: "absolute",
       top: 0,
@@ -565,20 +537,20 @@ Which is why being able to ask questions like:
       borderRadius: "8px",
     }}
     allowFullScreen
-    title="Testing MCP Server in MCP Inspector"
+    title="Executing MCP server via CLI"
   />
 </div>
 
-Following this tutorial, the same setup can be plugged into your real database to increase your team productivity, especially when you're self-hosting Pochi and integrating it with your internal tooling.
+Invoking via the CLI helps if you spend most of your time in the shell or on remote servers. It also works great over SSH, in Docker containers, or CI/CD pipelines where you don’t have an editor UI. Moreover, you can use in automation workflows by wrapping `pochi -p` commands in scripts to periodically check metrics.
 
 
-## Next Steps
-Congratulations on building your first Supabase MCP server! You’ve now set up a powerful way to query your database using natural language directly from your code editor using Pochi.
+## Conclusion: Improving Developer Workflow for Teams and Enterprises
 
-Here are some ideas to take your project further:
+Whether you're querying user logs, verifying migrations, or building internal dashboards, MCP lets you build custom servers that connect Pochi to your unique internal tools and workflows. This Supabase MCP server is just one example of how Pochi’s powerful extensibility can help your team stay in flow, access real-time context, and reduce the friction of internal data access.
+
+Now that you’ve seen what’s possible, here are a few ways to take your project further:
 
 * **Deploy your MCP server with HTTP Transport**: Instead of running locally via stdio, you can deploy your server over HTTP. This enables multiple team members. from developers to engineering managers, to securely access the same database instance through Pochi, with proper access controls, rate limiting, and centralized schema management. **[Learn more](https://docs.getpochi.com/mcp/#remote-mcp-servers-http-transport)**
 * **Expand beyond read-only queries**: This tutorial focused on read-only queries for simplicity, but you can extend your MCP server to support full CRUD operations, allowing your natural language interface to create, update, and delete records as well.
 * **Customize and optimize prompts**: Experiment with prompt design for OpenAI to improve SQL accuracy or add support for additional data visualizations beyond Vega Lite charts.
 * **Contribute and share**: If you built something cool or want to see tutorials on related topics, such as CRUD operations or deployment best practices, please reach out by using `/create-issue command` within the Pochi VS Code extension or **[contribute to the project](https://github.com/TabbyML/pochi?tab=contributing-ov-file)**!
-
