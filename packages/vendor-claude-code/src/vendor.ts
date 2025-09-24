@@ -73,19 +73,14 @@ export class ClaudeCode extends VendorBase {
 
   override async fetchModels(): Promise<Record<string, ModelOptions>> {
     return {
-      "claude-opus-4-1": {
+      "claude-opus-4-1-20250805": {
         contextWindow: 200_000,
-        useToolCallMiddleware: false,
+        useToolCallMiddleware: true,
       },
-      "claude-sonnet-4": {
+      "claude-sonnet-4-20250514": {
         contextWindow: 200_000,
-        useToolCallMiddleware: false,
+        useToolCallMiddleware: true,
       },
     };
   }
 }
-
-export const ModelIdMap: Record<string, string> = {
-  "claude-opus-4-1": "claude-opus-4-1-20250805",
-  "claude-sonnet-4": "claude-sonnet-4-20250514",
-};

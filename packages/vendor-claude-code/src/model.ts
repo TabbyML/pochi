@@ -3,7 +3,6 @@ import type { LanguageModelV2 } from "@ai-sdk/provider";
 import type { CreateModelOptions } from "@getpochi/common/vendor/edge";
 import { wrapLanguageModel } from "ai";
 import type { ClaudeCodeCredentials } from "./types";
-import { ModelIdMap } from "./vendor";
 
 const ClaudeCodeSystemPrompt =
   "You are Claude Code, Anthropic's official CLI for Claude.";
@@ -33,14 +32,13 @@ function createClaudeCodeModelBase(
     init?: RequestInit,
   ) => Promise<Response>,
 ): LanguageModelV2 {
-  const actualModelId = ModelIdMap[modelId] || modelId;
-
   const anthropic = createAnthropic({
     baseURL,
     apiKey: "oauth-token",
     fetch: customFetch as typeof fetch,
   });
-  const model = anthropic(actualModelId);
+
+  const model = anthropic(modelId);
 
   return wrapLanguageModel({
     model,
