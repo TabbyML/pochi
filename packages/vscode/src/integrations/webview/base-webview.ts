@@ -196,15 +196,7 @@ export abstract class BaseWebview implements vscode.Disposable {
   protected async createWebviewThread(
     webview: vscode.Webview,
   ): Promise<Thread<WebviewHostApi, VSCodeHostApi>> {
-    // Create a new instance of VSCodeHostImpl with session context
-    const vscodeHostClone = Object.create(
-      Object.getPrototypeOf(this.vscodeHost),
-    );
-    Object.assign(vscodeHostClone, this.vscodeHost);
-    vscodeHostClone.setSessionContext(this.sessionId);
-
-    // Set readResourceURI method (to be implemented by subclasses)
-    vscodeHostClone.readResourceURI = this.getReadResourceURI();
+    const vscodeHostWrapper = this.createVSCodeHostWrapper();
 
     // See "tabby-threads/source/targets/iframe/shared.ts"
     const CHECK_MESSAGE = "quilt.threads.ping";
@@ -249,7 +241,7 @@ export abstract class BaseWebview implements vscode.Disposable {
         },
       },
       {
-        exports: vscodeHostClone,
+        exports: vscodeHostWrapper,
         imports: [
           "openTask",
           "openTaskList",
@@ -281,6 +273,34 @@ export abstract class BaseWebview implements vscode.Disposable {
       // Add to pending callbacks
       this.webviewReadyCallbacks.push(callback);
     }
+  }
+
+  private createVSCodeHostWrapper(): VSCodeHostApi {
+    const sessionId = this.sessionId;
+    const sessionManager = this.sessionManager;
+    const vscodeHost = this.vscodeHost;
+
+    const wrapper: VSCodeHostApi = {
+      ...vscodeHost,
+      getSessionState: async (keys) => {
+        const currentState = sessionManager.getSessionState(sessionId) || {};
+        if (!keys || keys.length === 0) {
+          return { ...currentState };
+        }
+        return keys.reduce((filtered, key) => {
+          if (Object.prototype.hasOwnProperty.call(currentState, key)) {
+            filtered[key] = currentState[key];
+          }
+          return filtered;
+        }, {} as any);
+      },
+      setSessionState: async (state) => {
+        sessionManager.updateSessionState(sessionId, state);
+      },
+      readResourceURI: this.getReadResourceURI(),
+    };
+
+    return wrapper;
   }
 
   // Abstract methods to be implemented by subclasses

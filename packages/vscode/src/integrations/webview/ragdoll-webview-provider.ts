@@ -96,8 +96,7 @@ export class RagdollWebviewSidebar
 
   public async getCurrentSessionState() {
     // Get current session state from session manager
-    this.vscodeHost.setSessionContext(this.sessionId);
-    return await this.vscodeHost.getSessionState();
+    return this.sessionManager.getSessionState(this.sessionId) || {};
   }
 
   public resolveWebviewView(

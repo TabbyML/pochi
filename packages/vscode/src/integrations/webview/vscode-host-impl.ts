@@ -96,8 +96,6 @@ import {
 } from "../terminal-link-provider/url-utils";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { TerminalState } from "../terminal/terminal-state";
-// biome-ignore lint/style/useImportType: needed for dependency injection
-import { WebviewSessionManager } from "./webview-session-manager";
 
 const logger = getLogger("VSCodeHostImpl");
 
@@ -106,7 +104,6 @@ const logger = getLogger("VSCodeHostImpl");
 export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   private toolCallGroup = runExclusive.createGroupRef();
   private checkpointGroup = runExclusive.createGroupRef();
-  private currentSessionId?: string;
   private disposables: vscode.Disposable[] = [];
 
   constructor(
@@ -122,7 +119,6 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     private readonly modelList: ModelList,
     private readonly userStorage: UserStorage,
     private readonly customAgentManager: CustomAgentManager,
-    private readonly sessionManager: WebviewSessionManager,
   ) {}
 
   listRuleFiles = async (): Promise<RuleFile[]> => {
@@ -156,45 +152,20 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     return `dev-${id}`;
   };
 
-  setSessionContext(sessionId: string): void {
-    this.currentSessionId = sessionId;
-  }
-
-  private getCurrentSessionState(): SessionState {
-    if (!this.currentSessionId) {
-      throw new Error(
-        "No session context set. Call setSessionContext() first.",
-      );
-    }
-    return this.sessionManager.getSessionState(this.currentSessionId) || {};
-  }
-
+  // These methods are overridden in the wrapper created by BaseWebview.createVSCodeHostWrapper()
+  // They are only here to satisfy the VSCodeHostApi interface
   getSessionState = async <K extends keyof SessionState>(
-    keys?: K[] | undefined,
+    _keys?: K[] | undefined,
   ): Promise<Pick<SessionState, K>> => {
-    const currentState = this.getCurrentSessionState();
-    if (!keys || keys.length === 0) {
-      return { ...currentState };
-    }
-
-    return keys.reduce<Pick<SessionState, K>>(
-      (filtered, key) => {
-        if (Object.prototype.hasOwnProperty.call(currentState, key)) {
-          filtered[key] = currentState[key];
-        }
-        return filtered;
-      },
-      {} as Pick<SessionState, K>,
+    throw new Error(
+      "getSessionState should be called on the webview-specific wrapper, not the singleton",
     );
   };
 
-  setSessionState = async (state: Partial<SessionState>): Promise<void> => {
-    if (!this.currentSessionId) {
-      throw new Error(
-        "No session context set. Call setSessionContext() first.",
-      );
-    }
-    this.sessionManager.updateSessionState(this.currentSessionId, state);
+  setSessionState = async (_state: Partial<SessionState>): Promise<void> => {
+    throw new Error(
+      "setSessionState should be called on the webview-specific wrapper, not the singleton",
+    );
   };
 
   getWorkspaceState = async <K extends keyof WorkspaceState>(
