@@ -46,7 +46,8 @@ Output: `const cache = require('node-cache'); cache.set('users', await db.query(
 
 For complex logic, request step-by-step reasoning.
 
-**E.g.,**“Debug `@main.py`: Identify the null reference issue in `fetchUser()`, propose a fix, test with `pytest test_main.py`, log the result."
+**Example:**
+“Debug `@main.py`: Identify the null reference issue in `fetchUser()`, propose a fix, test with `pytest test_main.py`, log the result."
 
 ### Use Structured Prompts
 
@@ -85,13 +86,15 @@ Apply structured formats (XML or JSON) for precision, repeatability, and task ch
 
 Specify a role in the prompt or via `.pochi/agents/` to enforce standards.
 
-**E.g.,** “Act as linter for `@models/db.py` per `README.pochi.md`, focusing on PEP 8 spacing issues.”
+**Example:**
+“Act as linter for `@models/db.py` per `README.pochi.md`, focusing on PEP 8 spacing issues.”
 
 ### Chain Complex Prompts
 
 Divide large tasks into numbered steps for manageability.
 
-**E.g.,** “Step 1: Review `@api.py` for existing `/users` route, Step 2: Add `/users` GET endpoint with Flask-Login authentication.”
+**Example:** 
+“Step 1: Review `@api.py` for existing `/users` route, Step 2: Add `/users` GET endpoint with Flask-Login authentication.”
 
 ## Task-Specific Applications
 
@@ -131,7 +134,7 @@ This section applies prompting patterns to common development workflows, from pr
 
 ### Performance Optimization
 
-- **Profiling Latency:** “Profile `@api.js`: Identify `/users` bottlenecks, suggest caching (e.g., `cache.set(...)`), target <300ms latency, log as `{ latency: Xms }` JSON.”
+- **Profiling Latency:** “Profile `@api.js`: Identify `/users` bottlenecks, suggest caching (e.g., `cache.set(...)`), target `<300ms` latency, log as `{ latency: Xms }` JSON.”
 - **Query Optimization:** “Optimize `@services/db.js`: Improve a slow SELECT query, propose an index, log performance gain as `{ gain: Y% }` JSON.”
 - **Resource Check:** “Audit `@api.js`: Reduce `/users` memory usage by 20%, document changes separately.”
 
@@ -140,4 +143,3 @@ This section applies prompting patterns to common development workflows, from pr
 - **Adding Inline Comments:** “Document `@api.js`: Add comments to `/users` GET explaining auth flow.”
 - **Updating Project Docs:** “Update `README.pochi.md`: Summarize `@api.js` `/users` changes, list endpoints, enforce rules.”
 - **Generating API Specs:** “Create `@api.js` docs: Write OpenAPI specs for `/users` and `/orders`, save to `docs/api.md`.”
-
