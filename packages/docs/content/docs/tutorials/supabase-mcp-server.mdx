@@ -1,10 +1,10 @@
 ---
-title: 'Building a Supabase MCP Server for Natural Language SQL Queries in Pochi'
+title: 'Querying SQL in Natural Language with a custom Supabase MCP Server in Pochi'
 ---
 
-# Building a Supabase MCP Server for Natural Language SQL Queries in Pochi
+# Querying SQL in Natural Language with a custom Supabase MCP Server in Pochi
 
-In this tutorial, you’ll learn how to build a custom MCP server that connects Supabase to Pochi, allowing you to query your database using natural language directly from your code editor.
+In this tutorial, you’ll learn how to query your database using natural language directly from your code editor, with a custom MCP server that connects Supabase in Pochi.
 
 This is a practical example of how to extend Pochi using the Model Context Protocol (MCP), and illustrates how teams can integrate AI into internal workflows for powerful, context-aware automation. This is particularly useful when you're debugging code, collaborating across teams, or building features that require quick access to live data (e.g: checking whether a migration seeded correctly, inspecting a table schema, or verifying specific column values). 
 
@@ -14,7 +14,7 @@ Before we start, you’ll need the following:
 
 - **[Install Pochi](https://docs.getpochi.com/#installation)** 
 - **[Setup a Supabase Project](https://supabase.com/dashboard/)**  
-- **[OpenAI API Key](https://platform.openai.com/)**  (You can use any other AI model if preferred.)
+- **[OpenAI API Key](https://platform.openai.com/)**  (You can use any other LLM model if preferred.)
 
 
 ## What is MCP (Model Context Protocol)?
@@ -29,7 +29,7 @@ We’re going to use Supabase database and limit to read only queries, but you c
 ## Getting Started: How to Build the MCP Server
 
 
-### Step 1: Setup your VS code project
+### Step 1: Setup your VS Code project
 
 First, we’ll set up a new project inside VS Code. To do so, we’ll create a new folder and initialise a Node project.
 ```bash
@@ -54,7 +54,7 @@ npm install @modelcontextprotocol/sdk zod openai dotenv @supabase/supabase-js
 The `.env` file is created to store your Supabase and OpenAI keys to avoid exposing them on the code side. You can fetch your Supabase API key by going to Settings -> API keys and creating a secret service role API key. 
 ![API Keys Supabase Dashboard](./images/api-keys-supabase-dashboard.png)
 
-For the OpenAI key, go to your **[dashboard and API keys](https://platform.openai.com/settings/organization/api-keys)** section where you can click "+Create a secret key" button. 
+For the OpenAI key, go to your **[dashboard and API keys](https://platform.openai.com/settings/organization/api-keys)** section where you can click `+Create a secret key` button on the top right corner. 
 ![OpenAI Dashboard](./images/openai-dashboard.png)
 
 Paste these keys in the `.env` file as follows:
