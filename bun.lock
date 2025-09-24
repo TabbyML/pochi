@@ -191,8 +191,6 @@
       "version": "0.1.0",
       "dependencies": {
         "@ai-sdk/openai": "catalog:",
-        "@ai-sdk/provider": "catalog:",
-        "@ai-sdk/provider-utils": "catalog:",
         "@getpochi/common": "workspace:*",
         "ai": "catalog:",
       },
