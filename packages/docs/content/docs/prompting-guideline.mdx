@@ -1,0 +1,143 @@
+---
+title: Prompting Guideline
+description: A guide to effective prompt engineering with Pochi
+icon: "Lightbulb"
+---
+
+# Pochi Prompting Guide
+
+## Intro
+
+Use this Prompting Guide to enhance code quality and streamline development workflows through effective prompt engineering, focusing on outcomes you can control.
+Challenges like latency or cost are better addressed through model selection or configuration, not prompts.
+This guide offers practical strategies to boost development workflows.
+
+## Overall Prompting Guidelines
+
+- **Provide Clear Context:** Use `@` to reference files/folders (e.g., `@api.js`) or `README.pochi.md` for project rules and goals (e.g., coding standards, security priorities).
+- **Break Down Tasks:** Split complex problems into steps for stability (e.g., review, then optimize).
+- **Ensure Consistency:** Rely on structured prompts (XML/JSON) for repeatable, predictable outputs.
+- **Iterate Safely:** Tweak prompts step-by-step, using structure to revert changes if needed.
+- **Leverage Pochi Features:** Use `~/.pochi/config.jsonc` for models & MCPs, `README.pochi.md` for agents/rules, Pochi Cloud for shared histories, GitHub/Slack for team work.
+
+## How to Prompt Pochi
+
+Effective prompting transforms vague ideas into precise actions by emphasizing clarity, examples, and structure. Approach it as directive a collaborative agent that benefits from guided, step-by-step instructions to deliver reliable results.
+
+### Craft Clear Prompts
+
+Be specific and direct. Avoid indirect phrasing like “can you", state the action explicitly.
+
+**Example:** “Fix `@utils.js` line 42: Add input validation for `process(data)` where `data` can be null, return a diff.”
+
+### Use Few Shot Prompts
+
+Provide 2-3 input-output examples to set expectations
+
+**Example:**
+“Input: Error in `@hooks.js` - ‘useEffect is not defined’ in `render()`;
+Output: `import { useEffect } from 'react'; useEffect(() => { console.log('mounted'); }, []);`.”
+
+**Example:**
+ “Input: Slow `@api.js` - 5s load on `/users` due to DB query;
+Output: `const cache = require('node-cache'); cache.set('users', await db.query('SELECT * FROM users'), 3600);`.”
+
+### Let Pochi Think (Chain-of-Thought)
+
+For complex logic, request step-by-step reasoning.
+
+**E.g.,**“Debug `@main.py`: Identify the null reference issue in `fetchUser()`, propose a fix, test with `pytest test_main.py`, log the result."
+
+### Use Structured Prompts
+
+Apply structured formats (XML or JSON) for precision, repeatability, and task chaining. Use XML for hierarchical edits (e.g., nested tags) or JSON for data-driven tasks (e.g., key-value pairs).
+
+**XML:**
+```xml
+<edit>
+  <file>@api.js</file>
+  <line>42</line>
+  <context>function validateUser(input) { return input.length; } in @api.js fails with TypeError: Cannot read property 'length' of null</context>
+  <fix>
+    try {
+      if (!input) throw new TypeError('Input cannot be null');
+      return validateInput(input);
+    } catch (e) {
+      logError(e, { file: '@api.js', line: 42 });
+      return false;
+    }
+  </fix>
+</edit>
+```
+
+**JSON:**
+```json
+{
+  "task": "refactor",
+  "file": "@api.js",
+  "line": 42,
+  "context": "validateUser(input) fails with TypeError: Cannot read property 'length' of null",
+  "change": "add input validation with try-catch"
+}
+```
+
+### Assign Pochi a Role (System Prompts)
+
+Specify a role in the prompt or via `.pochi/agents/` to enforce standards.
+
+**E.g.,** “Act as linter for `@models/db.py` per `README.pochi.md`, focusing on PEP 8 spacing issues.”
+
+### Chain Complex Prompts
+
+Divide large tasks into numbered steps for manageability.
+
+**E.g.,** “Step 1: Review `@api.py` for existing `/users` route, Step 2: Add `/users` GET endpoint with Flask-Login authentication.”
+
+## Task-Specific Applications
+
+This section applies prompting patterns to common development workflows, from project management to optimization. Customize these templates for your stack.
+
+### Project Management
+
+- **Initiating a New Project Phase:** “Start a new phase for `@api.js`: Initialize a `/auth` module, list dependencies, document setup separately.”
+- **Reviewing Recent Changes:** “Review `@api.js`: Summarize last 3 commits’ impact on `/users`, flag issues.”
+- **Syncing Team Context:** “Sync `@utils.js` changes: Compile a summary of edits across `@api.js` and `@utils.js`, share via Pochi link, align with standards.”
+
+### Debugging
+
+- **Analyzing a Crash:** “Analyze `@main.py`: Investigate why `fetchUser()` crashes with null, suggest fix, test with `pytest`.”
+- **Handling Concurrency Issues:** “Debug `@main.py`: Identify deadlock in `fetchUser()` under 50 calls, propose lock fix, validate with `pytest --concurrency=5`.”
+- **Handling a 500 Error:** “Handle `@api.js`: Diagnose a 500 error on `/users`, suggest a fallback, test with mock data.”
+- **Handling an API Fetch Error:** “Debug `@frontend.js`: Fix a fetch error from external API, suggest retry logic (e.g., `setTimeout`), test with mock delay.”
+
+### Refactoring
+
+- **Breaking Down Functions:** “Refactor `@old.js`: Split 100-line `processData` into `validateInput` and `transformData` using ES6.”
+- **Modernizing Legacy Code:** “Update `@legacy.js`: Convert PHP 5.6 loops to Node 14, preserve `/login`, test with legacy data.”
+- **Optimizing Structure:** “Optimize `@api.js`: Restructure `/users` handler into smaller functions, ensure Node 16+ compatibility.”
+
+### Feature Development
+
+- **Designing a New Endpoint:** “Create a `/orders` GET in `@api.py` with Flask-Login, include auth checks.”
+- **Enhancing with Validation:** “Enhance `@api.js`: Add a `/users` POST with validation, return JSON (id, name).”
+- **Integrating a Tool:** “Build `@api.js`: Implement a `/deploy` POST to trigger GitHub Actions, log CI status.”
+- **Triggering CI Build:** “Build `@api.js`: Add a `/ci` POST to trigger Jenkins, log build status as `{ status: pass/fail }`.”
+
+### Testing
+
+- **Testing Basic Cases:** “Test `@utils.js` `process()` with null, save to `tests/utils.test.js`.”
+- **Covering Edge Cases:** “Test `@utils.js` `process()` with empty arrays and mock `{ id: 1 }`, target 85% coverage in `tests/utils.test.js`.”
+- **Load Testing:** “Validate `@api.js` `/users` GET under 200 requests, use Jest with mocks, log pass rate as `{ passRate: X% }` JSON. If fails, check `@` file paths.”
+
+### Performance Optimization
+
+- **Profiling Latency:** “Profile `@api.js`: Identify `/users` bottlenecks, suggest caching (e.g., `cache.set(...)`), target <300ms latency, log as `{ latency: Xms }` JSON.”
+- **Query Optimization:** “Optimize `@services/db.js`: Improve a slow SELECT query, propose an index, log performance gain as `{ gain: Y% }` JSON.”
+- **Resource Check:** “Audit `@api.js`: Reduce `/users` memory usage by 20%, document changes separately.”
+
+### Documentation
+
+- **Adding Inline Comments:** “Document `@api.js`: Add comments to `/users` GET explaining auth flow.”
+- **Updating Project Docs:** “Update `README.pochi.md`: Summarize `@api.js` `/users` changes, list endpoints, enforce rules.”
+- **Generating API Specs:** “Create `@api.js` docs: Write OpenAPI specs for `/users` and `/orders`, save to `docs/api.md`.”
+
