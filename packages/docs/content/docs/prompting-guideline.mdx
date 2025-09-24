@@ -57,8 +57,7 @@ Apply structured formats (XML or JSON) for precision, repeatability, and task ch
 ```xml
 <edit>
   <file>@api.js</file>
-  <line>42</line>
-  <context>function validateUser(input) { return input.length; } in @api.js fails with TypeError: Cannot read property 'length' of null</context>
+  <line>42</line>  <context>function validateUser(input) { return input.length; } in @api.js fails with TypeError: Cannot read property 'length' of null</context>
   <fix>
     try {
       if (!input) throw new TypeError('Input cannot be null');
@@ -134,7 +133,7 @@ This section applies prompting patterns to common development workflows, from pr
 
 ### Performance Optimization
 
-- **Profiling Latency:** “Profile `@api.js`: Identify `/users` bottlenecks, suggest caching (e.g., `cache.set(...)`), target `<300ms` latency, log as `{ latency: Xms }` JSON.”
+- **Profiling Latency:** “Profile `@api.js`: Identify `/users` bottlenecks, suggest caching (e.g., `cache.set(...)`), target `&lt;300ms` latency, log as `{ latency: Xms }` JSON.”
 - **Query Optimization:** “Optimize `@services/db.js`: Improve a slow SELECT query, propose an index, log performance gain as `{ gain: Y% }` JSON.”
 - **Resource Check:** “Audit `@api.js`: Reduce `/users` memory usage by 20%, document changes separately.”
 
