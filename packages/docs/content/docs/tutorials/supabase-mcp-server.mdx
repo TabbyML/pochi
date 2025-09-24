@@ -234,14 +234,17 @@ const server = new McpServer({
 server.tool(
   "queryDatabase",
   {
-    inputSchema: z.any(),   // loosened to tolerate Pochi sending strings
-    outputSchema: z.any(),  // same here
+    inputSchema: z.union([
+      z.string(), // tolerate CLI sending plain string
+      z.object({ question: z.string() }), // VS Code sends {question: "..."}
+    ]),
+    outputSchema: z.any(), // tolerate CLI sending "{}" as a string
   },
   async (input) => {
     try {
       let question = "";
 
-      // Normalize input from different runtimes
+      // 🔑 Normalize input from different runtimes
       if (typeof input === "string") {
         question = input;
       } else if (input?.question) {
@@ -285,7 +288,12 @@ ${schemaDescription}
       console.error("Final SQL:", sql);
 
       if (!/^select/i.test(sql)) {
-        return { success: false, rows: [], error: "Generated SQL is not a SELECT statement", sql };
+        return {
+          success: false,
+          rows: [],
+          error: "Generated SQL is not a SELECT statement",
+          sql,
+        };
       }
 
       const { data, error } = await supabase.rpc("exec_sql", {
@@ -293,7 +301,12 @@ ${schemaDescription}
       });
 
       if (error) {
-        return { success: false, rows: [], error: `SQL execution failed: ${error.message}`, sql };
+        return {
+          success: false,
+          rows: [],
+          error: `SQL execution failed: ${error.message}`,
+          sql,
+        };
       }
 
       const rows = Array.isArray(data) ? data : [];
@@ -323,6 +336,7 @@ ${schemaDescription}
 // Transport
 const transport = new StdioServerTransport();
 
+// Connect the server and handle potential errors
 server.connect(transport).catch((error) => {
   console.error("Connection error:", error);
   process.exit(1);
