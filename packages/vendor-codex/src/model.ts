@@ -1,7 +1,7 @@
 import * as crypto from "node:crypto";
 import { createOpenAI } from "@ai-sdk/openai";
-import { wrapLanguageModel } from "ai";
 import type { CreateModelOptions } from "@getpochi/common/vendor/edge";
+import { wrapLanguageModel } from "ai";
 import { extractAccountId } from "./auth";
 import { transformToCodexFormat } from "./transformers";
 import type { CodexCredentials } from "./types";
