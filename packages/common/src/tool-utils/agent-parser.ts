@@ -71,9 +71,7 @@ export async function parseAgentFile(
       name: defaultName,
       filePath,
       error: "validationError",
-      message: parseResult.error.issues
-        .map((i) => `Field \`${i.path}\` parse error, ${i.message}`)
-        .join("; "),
+      message: z.prettifyError(parseResult.error),
       systemPrompt,
     } satisfies InvalidCustomAgentFile;
   }
