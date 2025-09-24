@@ -45,7 +45,7 @@ export class ShadowGitRepo implements vscode.Disposable {
     private workspaceDir: string,
   ) {
     // For bare repository, we initialize simple-git with the bare repository directory
-    this.git = simpleGit(this.gitPath);
+    this.git = simpleGit(this.gitPath).env("GIT_DIR", this.gitPath);
   }
 
   async init() {
