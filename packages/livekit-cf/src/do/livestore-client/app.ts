@@ -1,7 +1,7 @@
 import { verifyJWT } from "@/lib/jwt";
 import type { ShareEvent } from "@getpochi/common/share-utils";
 import { decodeStoreId } from "@getpochi/common/store-id-utils";
-import { catalog } from "@getpochi/livekit";
+import { type Message, catalog } from "@getpochi/livekit";
 import type { ClientTools, SubTask } from "@getpochi/tools";
 import type { Store } from "@livestore/livestore";
 import type { UIMessage } from "ai";
@@ -11,57 +11,41 @@ import type { MiddlewareHandler } from "hono";
 import { HTTPException } from "hono/http-exception";
 import type { DeepWritable, Env } from "./types";
 
-const SANITIZED_MESSAGE = "[FILE CONTENT SANITIZED]";
+const REDACTED_MESSAGE = "[FILE CONTENT REDACTED]";
 
 // Sanitize sensitive content from tool calls
-function sanitizeMessage(message: UIMessage): UIMessage {
+function sanitizeMessage(message: Message): Message {
   return {
     ...message,
     parts: message.parts.map((part) => {
-      // Sanitize readFile output content
-      if (
-        part.type === "tool-readFile" &&
-        "output" in part &&
-        part.output &&
-        typeof part.output === "object" &&
-        "content" in part.output
-      ) {
+      if (part.type === "tool-readFile" && part.output?.content) {
         return {
           ...part,
           output: {
             ...part.output,
-            content: SANITIZED_MESSAGE,
+            content: REDACTED_MESSAGE,
           },
         };
       }
 
-      // Sanitize applyDiff input content
       if (
         part.type === "tool-applyDiff" &&
-        "input" in part &&
-        part.input &&
-        typeof part.input === "object" &&
-        "searchContent" in part.input &&
-        "replaceContent" in part.input
+        (part.input?.searchContent || part.input?.replaceContent)
       ) {
         return {
           ...part,
           input: {
             ...part.input,
-            searchContent: SANITIZED_MESSAGE,
-            replaceContent: SANITIZED_MESSAGE,
+            searchContent: REDACTED_MESSAGE,
+            replaceContent: REDACTED_MESSAGE,
           },
         };
       }
 
-      // Sanitize multiApplyDiff input content
       if (
         part.type === "tool-multiApplyDiff" &&
-        "input" in part &&
-        part.input &&
-        typeof part.input === "object" &&
-        "edits" in part.input &&
-        Array.isArray(part.input.edits)
+        part.input?.edits &&
+        part.input.edits.length > 0
       ) {
         return {
           ...part,
@@ -69,15 +53,15 @@ function sanitizeMessage(message: UIMessage): UIMessage {
             ...part.input,
             edits: part.input.edits.map((edit: unknown) => ({
               ...(edit as Record<string, unknown>),
-              searchContent: SANITIZED_MESSAGE,
-              replaceContent: SANITIZED_MESSAGE,
+              searchContent: REDACTED_MESSAGE,
+              replaceContent: REDACTED_MESSAGE,
             })),
           },
         };
       }
 
       return part;
-    }),
+    }) as Message["parts"],
   };
 }
 
@@ -127,11 +111,12 @@ store
 
     const messages = store
       .query(catalog.queries.makeMessagesQuery(taskId))
-      .map((x) => x.data as UIMessage)
-      .map(sanitizeMessage);
+      .map((x) => sanitizeMessage(x.data as Message))
+      .map((x) => x as UIMessage);
+
     const subTasks = collectSubTasks(store, taskId).map((subTask) => ({
       ...subTask,
-      messages: subTask.messages.map(sanitizeMessage),
+      messages: subTask.messages.map((x) => sanitizeMessage(x as Message)),
     }));
 
     const user = await c.env.getOwner();
