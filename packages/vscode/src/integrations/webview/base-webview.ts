@@ -285,12 +285,15 @@ export abstract class BaseWebview implements vscode.Disposable {
         if (!keys || keys.length === 0) {
           return { ...currentState };
         }
-        return keys.reduce((filtered, key) => {
-          if (Object.prototype.hasOwnProperty.call(currentState, key)) {
-            filtered[key] = currentState[key];
-          }
-          return filtered;
-        }, {} as Pick<SessionState, keyof SessionState>);
+        return keys.reduce(
+          (filtered, key) => {
+            if (Object.prototype.hasOwnProperty.call(currentState, key)) {
+              filtered[key] = currentState[key];
+            }
+            return filtered;
+          },
+          {} as Pick<SessionState, keyof SessionState>,
+        );
       },
       setSessionState: async (state) => {
         this.sessionState = { ...this.sessionState, ...state };
