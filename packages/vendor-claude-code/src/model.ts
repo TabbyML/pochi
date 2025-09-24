@@ -4,7 +4,6 @@ import type { CreateModelOptions } from "@getpochi/common/vendor/edge";
 import { wrapLanguageModel } from "ai";
 import type { ClaudeCodeCredentials } from "./types";
 
-
 const ClaudeCodeSystemPrompt =
   "You are Claude Code, Anthropic's official CLI for Claude.";
 
