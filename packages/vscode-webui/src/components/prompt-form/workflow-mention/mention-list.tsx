@@ -21,6 +21,7 @@ export interface WorkflowItem {
   id: string;
   path: string;
   content: string;
+  frontmatter: { model?: string };
 }
 
 export interface WorkflowListProps {

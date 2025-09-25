@@ -1,6 +1,7 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { constants, prompts } from "@getpochi/common";
+import { parseWorkflowFrontmatter as commonParseWorkflowFrontmatter } from "@getpochi/common/tool-utils";
 
 function getWorkflowPath(id: string) {
   // Construct the workflow file path
@@ -71,12 +72,15 @@ export async function replaceWorkflowReferences(
   // Process each workflow reference
   for (const id of workflowNames) {
     const content = await loadWorkflow(id, cwd);
+    const frontmatter = content
+      ? await commonParseWorkflowFrontmatter(content)
+      : { model: undefined };
 
     if (content !== null) {
       // Replace only the workflow reference, preserving surrounding text
       result = result.replace(
         `/${id}`,
-        prompts.workflow(id, getWorkflowPath(id), content),
+        prompts.workflow(id, getWorkflowPath(id), content, frontmatter),
       );
     } else {
       missingWorkflows.push(id);
@@ -84,4 +88,12 @@ export async function replaceWorkflowReferences(
   }
 
   return { prompt: result, missingWorkflows };
+}
+
+export async function parseWorkflowFrontmatter(id: string) {
+  const content = await loadWorkflow(id, process.cwd());
+  if (content === null) {
+    return { model: undefined };
+  }
+  return commonParseWorkflowFrontmatter(content);
 }

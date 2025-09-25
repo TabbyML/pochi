@@ -5,6 +5,7 @@ import {
   WorkspaceRulesFilePaths,
   collectCustomRules as collectCustomRulesImpl,
   getSystemInfo as getSystemInfoImpl,
+  parseWorkflowFrontmatter,
 } from "@getpochi/common/tool-utils";
 import type { RuleFile } from "@getpochi/common/vscode-webui-bridge";
 import * as vscode from "vscode";
@@ -110,7 +111,12 @@ export async function collectCustomRules(
  * @returns Array of workflow file paths
  */
 export async function collectWorkflows(): Promise<
-  { id: string; path: string; content: string }[]
+  {
+    id: string;
+    path: string;
+    content: string;
+    frontmatter: { model?: string };
+  }[]
 > {
   const workflowsDir = getWorkflowsDirectoryUri();
   const isMarkdownFile = (name: string, type: vscode.FileType) =>
@@ -124,7 +130,7 @@ export async function collectWorkflows(): Promise<
         : file;
 
       const content = await readFileContent(absolutePath);
-
+      const frontmatter = await parseWorkflowFrontmatter(content);
       // e.g., ".pochi/workflows/workflow1.md" -> "workflow1.md"
       const fileName = path.basename(file).replace(/\.md$/i, "");
 
@@ -132,6 +138,7 @@ export async function collectWorkflows(): Promise<
         id: fileName,
         path: file,
         content: content || "",
+        frontmatter,
       };
     }),
   );

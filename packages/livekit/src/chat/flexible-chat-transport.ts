@@ -19,7 +19,11 @@ import {
   streamText,
   wrapLanguageModel,
 } from "ai";
+import { remark } from "remark";
+import remarkFrontmatter from "remark-frontmatter";
 import { pickBy } from "remeda";
+import { matter } from "vfile-matter";
+import z from "zod/v4";
 import type { Message, Metadata, RequestData } from "../types";
 import { makeRepairToolCall } from "./llm";
 import { parseMcpToolSet } from "./mcp-utils";
@@ -30,6 +34,48 @@ import {
 } from "./middlewares";
 import { createModel } from "./models";
 
+type VFile = Parameters<typeof matter>[0];
+
+const WorkflowFrontmatter = z.object({
+  model: z.string().optional(),
+});
+
+/**
+ * Parse a custom agent file content
+ */
+export async function parseWorkflowFile(content: string) {
+  let vfile: VFile;
+  try {
+    vfile = await remark()
+      .use(remarkFrontmatter, [{ type: "yaml", marker: "-" }])
+      .use(() => (_tree, file) => matter(file))
+      .process(content);
+  } catch (error) {
+    return {
+      model: undefined,
+    };
+  }
+
+  if (!vfile.data.matter || Object.keys(vfile.data.matter).length === 0) {
+    return {
+      model: undefined,
+    };
+  }
+
+  const parseResult = WorkflowFrontmatter.safeParse(vfile.data.matter);
+  if (!parseResult.success) {
+    return {
+      model: undefined,
+    };
+  }
+
+  const frontmatterData = parseResult.data;
+
+  return {
+    model: frontmatterData.model,
+  };
+}
+
 export type OnStartCallback = (options: {
   messages: Message[];
   environment?: Environment;
@@ -38,7 +84,9 @@ export type OnStartCallback = (options: {
 }) => void;
 
 export type PrepareRequestGetters = {
-  getLLM: () => RequestData["llm"];
+  getLLM: (options?: {
+    readonly messages: Message[];
+  }) => RequestData["llm"];
   getEnvironment?: (options: {
     readonly messages: Message[];
   }) => Promise<Environment>;
@@ -88,7 +136,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
     messages,
     abortSignal,
   }) => {
-    const llm = await this.getters.getLLM();
+    const llm = await this.getters.getLLM({ messages });
     const environment = await this.getters.getEnvironment?.({ messages });
     const mcpInfo = this.getters.getMcpInfo?.();
     const customAgents = this.getters.getCustomAgents?.();

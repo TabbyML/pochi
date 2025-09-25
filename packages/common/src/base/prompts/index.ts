@@ -2,6 +2,11 @@ import { createCompactPrompt } from "./compact";
 import { createEnvironmentPrompt, injectEnvironment } from "./environment";
 import { generateTitle } from "./generate-title";
 import { createSystemPrompt } from "./system";
+// import z from "zod/v4";
+// import { remark } from "remark";
+// import remarkFrontmatter from "remark-frontmatter";
+// import { matter } from "vfile-matter";
+// type VFile = Parameters<typeof matter>[0];
 
 export const prompts = {
   system: createSystemPrompt,
@@ -60,7 +65,12 @@ function parseInlineCompact(text: string) {
   };
 }
 
-function createWorkflowPrompt(id: string, path: string, content: string) {
+function createWorkflowPrompt(
+  id: string,
+  path: string,
+  content: string,
+  frontmatter: { model?: string },
+) {
   // Remove extra newlines from the content
   let processedContent = content.replace(/\n+/g, "\n");
   // Escape '<' to avoid </workflow> being interpreted as a closing tag
@@ -68,5 +78,5 @@ function createWorkflowPrompt(id: string, path: string, content: string) {
   processedContent = processedContent.replace(workflowTagRegex, (match) => {
     return match.replace("<", "&lt;");
   });
-  return `<workflow id="${id}" path="${path}">${processedContent}</workflow>`;
+  return `<workflow id="${id}" path="${path}" model="${frontmatter?.model ?? ""}">${processedContent}</workflow>`;
 }

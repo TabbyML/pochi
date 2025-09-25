@@ -36,6 +36,8 @@ import { createCliMcpHub } from "./lib/mcp-hub-factory";
 import { shutdownStoreAndExit } from "./lib/store-utils";
 import {
   containsWorkflowReference,
+  extractWorkflowNames,
+  parseWorkflowFrontmatter,
   replaceWorkflowReferences,
 } from "./lib/workflow-loader";
 import { createStore } from "./livekit/store";
@@ -88,14 +90,9 @@ const program = new Command()
     3,
   )
   .optionsGroup("Model:")
-  .option(
-    "-m, --model <model>",
-    "Specify the model to be used for the task.",
-    "qwen/qwen3-coder",
-  )
+  .option("-m, --model <model>", "Specify the model to be used for the task.")
   .action(async (options) => {
     const { uid, prompt } = await parseTaskInput(options, program);
-
     const store = await createStore();
 
     const llm = await createLLMConfig(program, options);
@@ -193,6 +190,7 @@ program.parse(process.argv);
 
 type Program = typeof program;
 type ProgramOpts = ReturnType<(typeof program)["opts"]>;
+type ResolvedProgramOpts = ProgramOpts & { model: string };
 
 async function parseTaskInput(options: ProgramOpts, program: Program) {
   const uid = process.env.POCHI_TASK_ID || crypto.randomUUID();
@@ -227,17 +225,58 @@ async function parseTaskInput(options: ProgramOpts, program: Program) {
   return { uid, prompt };
 }
 
+async function resolveModelOption(
+  options: ProgramOpts,
+): Promise<ResolvedProgramOpts> {
+  // Create a mutable copy of the options to avoid side effects.
+  const newOptions = { ...options };
+  const prompt = options.prompt;
+  // Determine the model to use based on a clear precedence:
+  // 1. User-provided model via the `--model` flag.
+  // 2. Model specified in the referenced workflow's frontmatter.
+  // 3. The default model as a fallback.
+
+  // If the user has explicitly specified a model, it takes the highest precedence.
+  if (options.model) {
+    console.debug(`Using user-specified model: ${options.model}`);
+    return newOptions as ResolvedProgramOpts;
+  }
+  // If no model is specified by the user, check for a model in the workflow frontmatter.
+  if (prompt && containsWorkflowReference(prompt)) {
+    const workflowNames = extractWorkflowNames(prompt);
+    if (workflowNames.length > 0) {
+      const { model: workflowModel } = await parseWorkflowFrontmatter(
+        workflowNames[0],
+      );
+      // If a valid model is found in the workflow, use it.
+      if (workflowModel && (await isValidModel(workflowModel))) {
+        console.debug(`Using model from workflow: ${workflowModel}`);
+        newOptions.model = workflowModel;
+        return newOptions as ResolvedProgramOpts;
+      }
+    }
+  }
+
+  // If no model is specified by the user or in the workflow, use the default model.
+  const defaultModel = "qwen/qwen3-coder";
+  console.debug(`Using default model: ${defaultModel}`);
+  newOptions.model = defaultModel;
+
+  return newOptions as ResolvedProgramOpts;
+}
+
 async function createLLMConfig(
   program: Program,
   options: ProgramOpts,
 ): Promise<LLMRequestData> {
+  const resolvedOptions = await resolveModelOption(options);
   const llm =
-    (await createLLMConfigWithVendors(program, options)) ||
-    (await createLLMConfigWithPochi(options)) ||
-    (await createLLMConfigWithProviders(program, options));
+    (await createLLMConfigWithVendors(program, resolvedOptions)) ||
+    (await createLLMConfigWithPochi(resolvedOptions)) ||
+    (await createLLMConfigWithProviders(program, resolvedOptions));
   if (!llm) {
     return program.error(
-      `Model '${options.model}' not found. Please check your configuration or run 'pochi model list' to see available models.`,
+      `Model '${resolvedOptions.model}' not found. Please check your configuration or run 'pochi model list' to see available models.`,
     );
   }
 
@@ -246,7 +285,7 @@ async function createLLMConfig(
 
 async function createLLMConfigWithVendors(
   program: Program,
-  options: ProgramOpts,
+  options: ResolvedProgramOpts,
 ): Promise<LLMRequestData | undefined> {
   const sep = options.model.indexOf("/");
   const vendorId = options.model.slice(0, sep);
@@ -277,7 +316,7 @@ async function createLLMConfigWithVendors(
 }
 
 async function createLLMConfigWithPochi(
-  options: ProgramOpts,
+  options: ResolvedProgramOpts,
 ): Promise<LLMRequestData | undefined> {
   const vendor = getVendor("pochi");
   const pochiModels = await vendor.fetchModels();
@@ -299,7 +338,7 @@ async function createLLMConfigWithPochi(
 
 async function createLLMConfigWithProviders(
   program: Program,
-  options: ProgramOpts,
+  options: ResolvedProgramOpts,
 ): Promise<LLMRequestData | undefined> {
   const sep = options.model.indexOf("/");
   const providerId = options.model.slice(0, sep);
@@ -393,6 +432,32 @@ async function waitForSync(
   if (!inputStore) {
     await store.shutdown();
   }
+}
+
+async function isValidModel(model: string): Promise<boolean> {
+  const sep = model.indexOf("/");
+  const vendorId = model.slice(0, sep);
+  const modelId = model.slice(sep + 1);
+
+  const vendors = getVendors();
+  if (vendorId in vendors) {
+    const vendor = vendors[vendorId as keyof typeof vendors];
+    const models = await vendor.fetchModels();
+    return modelId in models;
+  }
+
+  const pochiVendor = getVendor("pochi");
+  const pochiModels = await pochiVendor.fetchModels();
+  if (model in pochiModels) {
+    return true;
+  }
+
+  const modelProvider = pochiConfig.value.providers?.[vendorId];
+  if (modelProvider?.models?.[modelId]) {
+    return true;
+  }
+
+  return false;
 }
 
 function assertUnreachable(_x: never): never {
