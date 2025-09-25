@@ -73,7 +73,7 @@ export function ReasoningPartUI({
       <span
         className={cn(
           "font-medium italic transition-opacity duration-300 ease-in-out",
-          isHeadlineChanging ? "opacity-0" : "opacity-100",
+          isHeadlineChanging && isLoading ? "opacity-0" : "opacity-100",
         )}
       >
         {isLoading ? displayHeadline : finishHeadline}
