@@ -8,7 +8,7 @@ title: Weekly Update #5
 
 This release focuses on making Pochi more powerful across environments. We’ve added MCP support in the CLI, enabled Github Copilot and Claude Pro/Max authentication, and brought powerful extensibility and completions to your workflows. 
 
-We’ve also added a self-hostable data sync backend (Livestore), a new manual sub-task execution mode, and key security and stability improvements. 🙌 
+We’ve also added a new manual sub-task execution mode, new tutorials, and key security and stability improvements. 🙌 
 
 #### 🚀 Features
 
@@ -41,10 +41,36 @@ className="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg"
   />
 </div>
 
-- **Reveal Settings in VS Code Config Commands:** Pochi’s VS Code commands now let you jump directly to the relevant configuration section, rather than opening raw settings files. Just hit `Cmd+Shift+P` and search for "Pochi: Settings". **[#301](https://github.com/TabbyML/pochi/issues/301)**
-<div className="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg">![Reveal Settings in VS Code](./images/reveal-settings.png)</div>
+- **Improved VS Code Configuration Navigation:** VS Code commands like `Pochi: Open MCP Server Settings` and `Pochi: Open Custom Model Settings` now open the relevant config file and jump directly to the specific setting —rather than opening the file at the top. This makes it faster to configure custom models, MCP servers, and more. **[#301](https://github.com/TabbyML/pochi/issues/301)**
 
-- **GitHub Copilot Integration:** We’ve added support for authenticating GitHub Copilot in the CLI. This ensures users with active subscriptions can now use Copilot completions and suggestions inside Pochi’s terminal workflows. **[#184](https://github.com/TabbyML/pochi/issues/184)**
+<div
+className="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg"
+  style={{
+    position: "relative",
+    paddingBottom: "53.7%",
+    marginBottom: 20,
+    height: 0,
+    overflow: "hidden",
+    maxWidth: "100%",
+  }}
+>
+  <iframe
+    src="https://drive.google.com/file/d/1lkBTHVXQ3RXvbjplBs-HWPQ31nvCfNRL/preview"
+    style={{
+      position: "absolute",
+      top: 0,
+      left: 0,
+      width: "100%",
+      height: "100%",
+      border: "none",
+      borderRadius: "8px",
+    }}
+    allowFullScreen
+    title="MCP Support in CLI"
+  />
+</div>
+
+- **GitHub Copilot Integration:** We’ve added support for authenticating GitHub Copilot and made it available via CLI and VS Code once logged in. This ensures users with active subscriptions can now use Copilot completions and suggestions inside Pochi’s workflows. **[#184](https://github.com/TabbyML/pochi/issues/184)**
 
 <div
 className="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg"
@@ -73,13 +99,8 @@ className="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg"
   />
 </div>
 
-- **Gemini Model Support:** Added support for PDF and video inputs, enabling richer multimodal workflows with Gemini models. **[#219](https://github.com/TabbyML/pochi/issues/219)**
-
-- **Claude Pro / Max Authentication:** We’ve now added support for users to connect their existing Claude Pro/Max subscriptions via OAuth for both CLI and VSCode. **[#61](https://github.com/TabbyML/pochi/issues/61), [#306](https://github.com/TabbyML/pochi/issues/306)** 
+- **Claude Pro / Max Authentication:** We’ve released support for users to connect their existing Claude Pro/Max subscriptions via OAuth for both CLI and VSCode. **[#61](https://github.com/TabbyML/pochi/issues/61), [#306](https://github.com/TabbyML/pochi/issues/306)** 
   <div className="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg">![Claude Support](./images/claude-support.png)</div>
-
-- **Self-hostable Data Sync Backend (Livestore):** We've implemented a self-hostable data sync backend that integrates with Pochi's Livestore architecture, allowing you to deploy your own sync backend and web sharing experience. **[#37](https://github.com/TabbyML/pochi/issues/37)**
-
 
 
 #### ✨ Enhancements
@@ -114,17 +135,9 @@ className="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg"
   />
 </div>
 
+- **Enhanced Gemini Model Support:** We've improved existing image input capabilities with added PDF and video inputs, providing richer multimodal workflows with Gemini models. **[#219](https://github.com/TabbyML/pochi/issues/219)**
+
 - **Malformed Custom Agents in VSCode Settings:** Previously ignored malformed agent files (e.g., with YAML parsing errors) are now displayed in the settings UI with a clear warning, making it easier to debug and fix broken custom agent configurations. **[#391](https://github.com/TabbyML/pochi/issues/391)**, **[#415](https://github.com/TabbyML/pochi/issues/415)**
-
-- **GitHub Action Improvements:** We’ve packaged changes that introduced:
-  - Vitest for testing infrastructure.
-  - Added unit tests and snapshots for GitHub Action system prompt logic.
-  - Updated imports and code organization for better maintainability. **[#362](https://github.com/TabbyML/pochi/issues/362)**
-
-#### 🐞 Bug fixes
-
-- **Sensitive Data Sanitization in Shared Sessions:** Fixed an issue where tool call inputs/outputs (e.g., readFile, applyDiff) were leaked in shared Livekit-CF sessions. Sensitive content is now redacted before being exposed via the share API. **[#409](https://github.com/TabbyML/pochi/issues/409)**, **[#418](https://github.com/TabbyML/pochi/issues/418)**
-- **Custom OpenAI Models and `max_tokens`Error:** A recent OpenAI API change broke compatibility with custom models configured in Pochi, replacing `max_tokens` with `max_completion_tokens`. We’ve patched the integration so tasks now run smoothly with the new parameter. **[#13](https://github.com/TabbyML/pochi/issues/13)**
 
 #### 📖 Resources
 
