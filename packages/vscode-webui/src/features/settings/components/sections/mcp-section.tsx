@@ -347,6 +347,17 @@ const Connection: React.FC<{
         </div>
         <div className="flex items-center gap-2">
           <a
+            href={commandForMcp("openServerSettings", name)}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <PencilIcon
+              className={cn(
+                "size-4 cursor-pointer opacity-0 transition-opacity duration-200 group-hover:opacity-100",
+              )}
+            />
+          </a>
+          <a
             href={commandForMcp(
               status === "stopped" ? "startServer" : "stopServer",
               name,
@@ -460,6 +471,8 @@ function commandForMcp(
     args = [serverName, toolName];
   } else if (command === "addServer" && recommendedServer) {
     args = [serverName, recommendedServer];
+  } else if (command === "openServerSettings") {
+    args = [serverName];
   }
 
   return `command:pochi.mcp.${cmd}?${encodeURIComponent(JSON.stringify(args))}`;

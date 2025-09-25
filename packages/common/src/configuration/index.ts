@@ -3,8 +3,11 @@ export {
   updatePochiConfig,
   getVendorConfig,
   updateVendorConfig,
-  PochiConfigFilePath,
+  getPochiConfigFilePath,
+  inspectPochiConfig,
+  setPochiConfigWorkspacePath,
 } from "./config-manager";
+export type { PochiConfigTarget } from "./config-manager";
 
 export * from "./model";
 export * from "./mcp";

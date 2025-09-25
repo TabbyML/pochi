@@ -19,6 +19,7 @@ import type * as vscode from "vscode";
 import { CompletionProvider } from "./code-completion";
 import { PochiAuthenticationProvider } from "./integrations/auth-provider";
 import { CommandManager } from "./integrations/command";
+import { PochiConfiguration } from "./integrations/configuration";
 import { DiffChangesContentProvider } from "./integrations/editor/diff-changes-content-provider";
 import { DiffOriginContentProvider } from "./integrations/editor/diff-origin-content-provider";
 import { createMcpHub } from "./integrations/mcp/mcp-hub-factory";
@@ -55,6 +56,7 @@ export async function activate(context: vscode.ExtensionContext) {
     useFactory: instanceCachingFactory(createMcpHub),
   });
 
+  container.resolve(PochiConfiguration);
   container.resolve(CompletionProvider);
   container.resolve(StatusBarItem);
   container.resolve(PochiAuthenticationProvider);

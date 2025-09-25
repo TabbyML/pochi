@@ -1,10 +1,14 @@
+import { getWorkspaceFolder } from "@/lib/fs";
 import { getLogger } from "@getpochi/common";
 import {
   type CustomModelSetting,
   type GoogleVertexModel,
   type McpServerConfig,
-  PochiConfigFilePath,
+  type PochiConfigTarget,
+  getPochiConfigFilePath,
+  inspectPochiConfig,
   pochiConfig,
+  setPochiConfigWorkspacePath,
   updatePochiConfig,
 } from "@getpochi/common/configuration";
 import { computed, signal } from "@preact/signals-core";
@@ -27,6 +31,12 @@ export class PochiConfiguration implements vscode.Disposable {
   readonly customModelSettings = computed(() => pochiConfig.value.providers);
 
   constructor() {
+    try {
+      const workspaceFolder = getWorkspaceFolder();
+      setPochiConfigWorkspacePath(workspaceFolder.uri.fsPath);
+    } catch (error) {
+      logger.debug("No workspace folder found, using user config only");
+    }
     this.disposables.push(
       vscode.workspace.onDidChangeConfiguration((e) => {
         if (e.affectsConfiguration("pochi.advanced")) {
@@ -66,8 +76,39 @@ export class PochiConfiguration implements vscode.Disposable {
   /**
    * Opens the Pochi configuration file and optionally reveals/creates a specific setting
    */
-  async revealConfig(options?: { key?: string }): Promise<void> {
-    const configUri = vscode.Uri.file(PochiConfigFilePath);
+  async revealConfig(options?: {
+    key?: string;
+    configTarget?: PochiConfigTarget;
+  }): Promise<void> {
+    let openTarget: PochiConfigTarget = "user";
+
+    if (options?.configTarget) {
+      openTarget = options.configTarget;
+    } else {
+      let effectiveTargets: PochiConfigTarget[] = [];
+      try {
+        const result = inspectPochiConfig(options?.key);
+        effectiveTargets = result.effectiveTargets;
+      } catch (error) {
+        logger.error("Failed to inspect Pochi config", error);
+      }
+      if (effectiveTargets.length > 1) {
+        logger.warn(
+          `The setting "${options?.key}" is set in multiple scopes: ${effectiveTargets.join(
+            ", ",
+          )}. The first effective config file will be opened.`,
+        );
+        openTarget = effectiveTargets[0];
+      } else {
+        openTarget = effectiveTargets[0] || "user";
+      }
+    }
+
+    const configPath = getPochiConfigFilePath(openTarget);
+    if (!configPath) {
+      return;
+    }
+    const configUri = vscode.Uri.file(configPath);
 
     await vscode.commands.executeCommand("vscode.open", configUri);
     try {

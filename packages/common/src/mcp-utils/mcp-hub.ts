@@ -1,10 +1,12 @@
 import type { McpTool } from "@getpochi/tools";
 import { type Signal, signal } from "@preact/signals-core";
+import { entries } from "remeda";
 import { getLogger } from "../base";
 import type { McpServerConfig } from "../configuration/index.js";
-import { updatePochiConfig } from "../configuration/index.js";
-
-import { entries } from "remeda";
+import {
+  inspectPochiConfig,
+  updatePochiConfig,
+} from "../configuration/index.js";
 import { McpConnection, type McpConnectionStatus } from "./mcp-connection";
 import { type McpToolExecutable, omitDisabled } from "./types";
 
@@ -126,10 +128,16 @@ export class McpHub implements Disposable {
     this.config = newConfig;
 
     if (save) {
-      // Persist configuration changes to file
-      await updatePochiConfig({ mcp: newConfig }).catch((error) => {
-        logger.error("Failed to persist MCP configuration changes", error);
-      });
+      for (const [name, config] of entries(newConfig)) {
+        const { effectiveTargets } = inspectPochiConfig(`mcp.${name}`);
+        const editTarget = effectiveTargets[0] || "user";
+        // Persist configuration changes to file
+        await updatePochiConfig({ mcp: { [name]: config } }, editTarget).catch(
+          (error) => {
+            logger.error("Failed to persist MCP configuration changes", error);
+          },
+        );
+      }
     }
 
     // Update existing connections

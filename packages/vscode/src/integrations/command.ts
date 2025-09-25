@@ -270,10 +270,11 @@ export class CommandManager implements vscode.Disposable {
 
       vscode.commands.registerCommand(
         "pochi.mcp.openServerSettings",
-        async () => {
+        async (serverName?: string) => {
           await this.ensureDefaultMcpServer();
           await this.pochiConfiguration.revealConfig({
-            key: "mcp",
+            key: serverName ? `mcp.${serverName}` : "mcp",
+            configTarget: serverName ? undefined : "user", // open user config if no specific server
           });
         },
       ),
