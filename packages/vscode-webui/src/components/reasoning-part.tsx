@@ -19,7 +19,7 @@ export function ReasoningPartUI({
   isLoading,
 }: ReasoningPartUIProps) {
   const iconClass = tw`text-blue-700 dark:text-blue-300`;
-  const [headline, setHeadline] = useDebounceState("Thinking ...", 750);
+  const [headline, setHeadline] = useDebounceState("Thinking ...", 1000);
   const [isHeadlineChanging, setIsHeadlineChanging] = useState(false);
   const [displayHeadline, setDisplayHeadline] = useState(headline);
 
