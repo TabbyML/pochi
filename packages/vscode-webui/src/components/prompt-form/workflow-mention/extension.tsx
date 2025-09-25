@@ -39,9 +39,9 @@ export const PromptFormWorkflowExtension = Mention.extend({
   },
 
   renderText({ node }) {
-    const { id, path, content, frontmatter } = node.attrs;
+    const { id, path, content } = node.attrs;
     const workflowContent: string = content || "error loading workflow";
-    return prompts.workflow(id, path, workflowContent, frontmatter);
+    return prompts.workflow(id, path, workflowContent);
   },
 
   addAttributes() {
