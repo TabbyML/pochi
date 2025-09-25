@@ -110,7 +110,7 @@ This is a workflow with a model.
       const prompt = "Use /model-workflow";
       const { prompt: result, missingWorkflows } = await replaceWorkflowReferences(prompt, tempDir);
 
-      const expected = `Use <workflow id="model-workflow" path="${path.relative(tempDir, workflowPath)}" model="my-special-model">---\nmodel: my-special-model\n---\n\nThis is a workflow with a model.</workflow>`;
+      const expected = `Use <workflow id="model-workflow" path="${path.relative(tempDir, workflowPath)}" model="my-special-model">---\nmodel: my-special-model\n---\nThis is a workflow with a model.</workflow>`;
       expect(result).toBe(expected);
       expect(missingWorkflows).toEqual([]);
     });
