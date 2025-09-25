@@ -22,11 +22,13 @@ import { pochiConfig } from "@getpochi/common/configuration";
 import { getVendor, getVendors } from "@getpochi/common/vendor";
 import { createModel } from "@getpochi/common/vendor/edge";
 import type { LLMRequestData } from "@getpochi/livekit";
+import { type Duration, Effect, Stream } from "@livestore/utils/effect";
 import chalk from "chalk";
 import * as commander from "commander";
 import packageJson from "../package.json";
 import { registerAuthCommand } from "./auth";
 
+import type { Store } from "@livestore/livestore";
 import { initializeShellCompletion } from "./completion";
 import { findRipgrep } from "./lib/find-ripgrep";
 import { loadAgents } from "./lib/load-agents";
@@ -146,6 +148,7 @@ const program = new Command()
 
     renderer.shutdown();
     mcpHub.dispose();
+    await waitForSync(store, "2 second").catch(console.error);
     await shutdownStoreAndExit(store);
   });
 
@@ -169,9 +172,10 @@ program
 
 // Run version check on every invocation before any command executes
 program.hook("preAction", async () => {
-  try {
-    await checkForUpdates();
-  } catch {}
+  await Promise.all([
+    checkForUpdates().catch(() => {}),
+    waitForSync().catch(console.error),
+  ]);
 });
 
 registerAuthCommand(program);
@@ -362,6 +366,33 @@ async function createLLMConfigWithProviders(
     };
   }
   assertUnreachable(modelProvider.kind);
+}
+
+async function waitForSync(
+  inputStore?: Store,
+  timeoutDuration: Duration.DurationInput = "1 second",
+) {
+  const store = inputStore || (await createStore());
+
+  await Effect.gen(function* (_) {
+    while (true) {
+      const nextChange = store.syncProcessor.syncState.changes.pipe(
+        Stream.take(1),
+        Stream.runCollect,
+        Effect.as(false),
+      );
+
+      const timeout = Effect.sleep(timeoutDuration).pipe(Effect.as(true));
+
+      if (yield* Effect.raceFirst(nextChange, timeout)) {
+        break;
+      }
+    }
+  }).pipe(Effect.runPromise);
+
+  if (!inputStore) {
+    await store.shutdown();
+  }
 }
 
 function assertUnreachable(_x: never): never {
