@@ -4,7 +4,7 @@ import { MessageMarkdown } from "@/components/message/markdown";
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
 import { cn, tw } from "@/lib/utils";
 import type { ReasoningUIPart } from "ai";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ExpandableToolContainer } from "./tool-invocation/tool-container";
 
 interface ReasoningPartUIProps {
