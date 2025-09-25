@@ -17,7 +17,8 @@
     "zod": "catalog:",
     "moment": "catalog:",
     "run-exclusive": "catalog:",
-    "ai": "catalog:"
+    "ai": "catalog:",
+    "remeda": "catalog:"
   },
   "devDependencies": {
     "wrangler": "^4.33.0"

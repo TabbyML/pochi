@@ -1,7 +1,7 @@
 import { verifyJWT } from "@/lib/jwt";
 import type { ShareEvent } from "@getpochi/common/share-utils";
 import { decodeStoreId } from "@getpochi/common/store-id-utils";
-import { catalog } from "@getpochi/livekit";
+import { type Message, catalog } from "@getpochi/livekit";
 import type { ClientTools, SubTask } from "@getpochi/tools";
 import type { Store } from "@livestore/livestore";
 import type { UIMessage } from "ai";
@@ -10,6 +10,60 @@ import { Hono } from "hono";
 import type { MiddlewareHandler } from "hono";
 import { HTTPException } from "hono/http-exception";
 import type { DeepWritable, Env } from "./types";
+
+const REDACTED_MESSAGE = "[FILE CONTENT REDACTED]";
+
+// Sanitize sensitive content from tool calls
+function sanitizeMessage(message: Message): Message {
+  return {
+    ...message,
+    parts: message.parts.map((part) => {
+      if (part.type === "tool-readFile" && part.output?.content) {
+        return {
+          ...part,
+          output: {
+            ...part.output,
+            content: REDACTED_MESSAGE,
+          },
+        };
+      }
+
+      if (
+        part.type === "tool-applyDiff" &&
+        (part.input?.searchContent || part.input?.replaceContent)
+      ) {
+        return {
+          ...part,
+          input: {
+            ...part.input,
+            searchContent: REDACTED_MESSAGE,
+            replaceContent: REDACTED_MESSAGE,
+          },
+        };
+      }
+
+      if (
+        part.type === "tool-multiApplyDiff" &&
+        part.input?.edits &&
+        part.input.edits.length > 0
+      ) {
+        return {
+          ...part,
+          input: {
+            ...part.input,
+            edits: part.input.edits.map((edit: unknown) => ({
+              ...(edit as Record<string, unknown>),
+              searchContent: REDACTED_MESSAGE,
+              replaceContent: REDACTED_MESSAGE,
+            })),
+          },
+        };
+      }
+
+      return part;
+    }) as Message["parts"],
+  };
+}
 
 type RequestVariables = {
   isOwner: boolean;
@@ -57,8 +111,13 @@ store
 
     const messages = store
       .query(catalog.queries.makeMessagesQuery(taskId))
-      .map((x) => x.data as UIMessage);
-    const subTasks = collectSubTasks(store, taskId);
+      .map((x) => sanitizeMessage(x.data as Message))
+      .map((x) => x as UIMessage);
+
+    const subTasks = collectSubTasks(store, taskId).map((subTask) => ({
+      ...subTask,
+      messages: subTask.messages.map((x) => sanitizeMessage(x as Message)),
+    }));
 
     const user = await c.env.getOwner();
 

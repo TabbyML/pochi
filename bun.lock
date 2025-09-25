@@ -159,6 +159,7 @@
         "hono": "catalog:",
         "jose": "catalog:",
         "moment": "catalog:",
+        "remeda": "catalog:",
         "run-exclusive": "catalog:",
         "zod": "catalog:",
       },

@@ -1,4 +1,7 @@
-import { createOpenAI } from "@ai-sdk/openai";
+import {
+  type OpenAIResponsesProviderOptions,
+  createOpenAI,
+} from "@ai-sdk/openai";
 import { wrapLanguageModel } from "ai";
 import type { RequestData } from "../../types";
 
@@ -15,6 +18,11 @@ export function createOpenAIResponsesModel(
       middlewareVersion: "v2",
       async transformParams({ params }) {
         params.maxOutputTokens = llm.maxOutputTokens;
+        params.providerOptions = {
+          openai: {
+            reasoningSummary: "detailed",
+          } satisfies OpenAIResponsesProviderOptions,
+        };
         return params;
       },
     },

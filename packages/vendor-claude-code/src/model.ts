@@ -24,6 +24,11 @@ function addAnthropicHeaders(
   headers.delete("x-api-key");
 }
 
+export const ModelIdMap: Record<string, string> = {
+  "claude-opus-4-1": "claude-opus-4-1-20250805",
+  "claude-sonnet-4": "claude-sonnet-4-20250514",
+};
+
 function createClaudeCodeModelBase(
   modelId: string,
   baseURL: string,
@@ -32,13 +37,14 @@ function createClaudeCodeModelBase(
     init?: RequestInit,
   ) => Promise<Response>,
 ): LanguageModelV2 {
+  const actualModelId = ModelIdMap[modelId] || modelId;
+
   const anthropic = createAnthropic({
     baseURL,
     apiKey: "oauth-token",
     fetch: customFetch as typeof fetch,
   });
-
-  const model = anthropic(modelId);
+  const model = anthropic(actualModelId);
 
   return wrapLanguageModel({
     model,
