@@ -12,6 +12,7 @@ import "@getpochi/vendor-claude-code";
 import "@getpochi/vendor-github-copilot";
 
 import RagdollUriHandler from "@/integrations/uri-handler";
+import { RagdollWebviewProvider } from "@/integrations/webview/ragdoll-webview-provider";
 import type { McpHub } from "@getpochi/common/mcp-utils";
 import { container, instanceCachingFactory } from "tsyringe";
 import type * as vscode from "vscode";
@@ -23,7 +24,6 @@ import { DiffOriginContentProvider } from "./integrations/editor/diff-origin-con
 import { createMcpHub } from "./integrations/mcp/mcp-hub-factory";
 import { StatusBarItem } from "./integrations/status-bar-item";
 import { TerminalLinkProvider } from "./integrations/terminal-link-provider";
-import { PochiWebviewSidebar } from "./integrations/webview";
 import {
   type ApiClient,
   type AuthClient,
@@ -58,7 +58,7 @@ export async function activate(context: vscode.ExtensionContext) {
   container.resolve(CompletionProvider);
   container.resolve(StatusBarItem);
   container.resolve(PochiAuthenticationProvider);
-  container.resolve(PochiWebviewSidebar);
+  container.resolve(RagdollWebviewProvider);
   container.resolve(RagdollUriHandler);
   container.resolve(CommandManager);
   container.resolve(DiffOriginContentProvider);
