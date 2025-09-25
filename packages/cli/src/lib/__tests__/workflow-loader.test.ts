@@ -59,7 +59,7 @@ describe("workflow-loader", () => {
       const prompt = "Please use /test-workflow for this task";
       const { prompt: result, missingWorkflows } = await replaceWorkflowReferences(prompt, tempDir);
       
-      expect(result).toBe(`Please use <workflow id=\"test-workflow\" path=\"${path.relative(tempDir, workflowPath)}\">This is a test workflow</workflow> for this task`);
+      expect(result).toBe(`Please use <workflow id="test-workflow" path="${path.relative(tempDir, workflowPath)}">This is a test workflow</workflow> for this task`);
       expect(missingWorkflows).toEqual([]);
     });
 
@@ -76,7 +76,7 @@ describe("workflow-loader", () => {
       const prompt = "Use /workflow1 and then /workflow2";
       const { prompt: result, missingWorkflows } = await replaceWorkflowReferences(prompt, tempDir);
       
-      expect(result).toBe(`Use <workflow id=\"workflow1\" path=\"${path.relative(tempDir, workflowPath1)}\">Workflow 1 content</workflow> and then <workflow id=\"workflow2\" path=\"${path.relative(tempDir, workflowPath2)}\">Workflow 2 content</workflow>`);
+      expect(result).toBe(`Use <workflow id="workflow1" path="${path.relative(tempDir, workflowPath1)}">Workflow 1 content</workflow> and then <workflow id="workflow2" path="${path.relative(tempDir, workflowPath2)}">Workflow 2 content</workflow>`);
       expect(missingWorkflows).toEqual([]);
     });
 
@@ -97,4 +97,3 @@ describe("workflow-loader", () => {
     });
   });
 });
-
