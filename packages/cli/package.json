@@ -23,6 +23,7 @@
     "@getpochi/vendor-claude-code": "workspace:*",
     "@getpochi/vendor-gemini-cli": "workspace:*",
     "@getpochi/vendor-pochi": "workspace:*",
+    "@getpochi/vendor-codex": "workspace:*",
     "@inquirer/select": "^4.3.2",
     "@getpochi/vendor-github-copilot": "workspace:*",
     "@livestore/adapter-node": "catalog:",
