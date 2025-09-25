@@ -8,9 +8,9 @@ title: Weekly Update #5
 
 This release focuses on making Pochi more powerful across environments. We’ve added MCP support in the CLI, enabled Github Copilot and Claude Pro/Max subscriptions, and brought powerful extensibility and completions to your workflows. 
 
-We’ve also added a self-hostable Livestore backend, improved UX and added bug fixes to  improve security and stability. 🙌 
+We’ve also added a self-hostable data sync backend with Livestore, improved UX for more controlled sub-tasks execution, and added bug fixes to  improve security and stability. 🙌 
 
-### 🚀 Features
+#### 🚀 Features
 
 - **MCP support in CLI:** The CLI now supports running your Model Context Protocol (MCP) servers, allowing you to connect your tools, and run MCP-powered workflows directly from the terminal. This update brings the CLI closer to parity with the VS Code extension. **[#100](https://github.com/TabbyML/pochi/issues/100)**
 
@@ -78,11 +78,11 @@ className="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg"
 - **Claude Pro / Max subscription support:** We’ve now added support for users to connect their Claude Pro/Max subscriptions via OAuth for both CLI and VSCode. [#61](https://github.com/TabbyML/pochi/issues/61)**, [#306](https://github.com/TabbyML/pochi/issues/306)** 
   <div className="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg">![Claude Support](./images/claude-support.png)</div>
 
-- **Self-hostable data sync backend with Livestore:** You can now deploy your own Livestore-based backend for syncing data. This supports offline-first storage and real-time collaboration without relying on Pochi’s hosted infrastructure.**[#37](https://github.com/TabbyML/pochi/issues/37)**
+- **Self-hostable data sync backend with Livestore:** We've implemented a self-hostable data sync backend that integrates with Pochi's livestore architecture, allowing you to deploy you own sync backend and web sharing experience.**[#37](https://github.com/TabbyML/pochi/issues/37)**
 
 
 
-### ✨ Enhancements
+#### ✨ Enhancements
 
 - **Manual Execution Mode for Sub-Tasks:** Sub-tasks created with `newTask` can now be run in a manual, step-by-step mode avoiding large unmoderated changes to your codebases in your sensitive workflows. **[#300](https://github.com/TabbyML/pochi/issues/300)**
 
@@ -121,12 +121,12 @@ className="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg"
   - Added unit tests and snapshots for GitHub Action system prompt logic.
   - Updated imports and code organization for better maintainability.**[#362](https://github.com/TabbyML/pochi/issues/362)**
 
-### 🐞 Bug fixes
+#### 🐞 Bug fixes
 
 - **Sensitive data sanitization in shared sessions:** Fixed an issue where tool call inputs/outputs (e.g., readFile, applyDiff) were leaked in shared Livekit-CF sessions. Sensitive content is now redacted before being exposed via the share API. **[#409](https://github.com/TabbyML/pochi/issues/409)**, **[#418](https://github.com/TabbyML/pochi/issues/418)**
 - **Custom OpenAI models and max_tokens error:** A recent OpenAI API change broke compatibility with custom models configured in Pochi, replacing `max_tokens` with `max_completion_tokens`. We’ve patched the integration so tasks now run smoothly with the new parameter. **[#13](https://github.com/TabbyML/pochi/issues/13)**
 
-### 📖 Resources
+#### 📖 Resources
 
 - [Learn how to connect Pochi to your self-hosted Tabby server](https://docs.getpochi.com/tutorials/connect-to-tabby-server/)
 - [Tutorial on Querying SQL in Natural Language with a custom Supabase MCP Server](https://docs.getpochi.com/tutorials/supabase-mcp-server/)
