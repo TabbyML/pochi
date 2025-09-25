@@ -125,6 +125,12 @@
         "command": "pochi.openCustomModelSettings",
         "title": "Open Custom Model Settings",
         "category": "Pochi"
+      },
+      {
+        "command": "pochi.openInEditor",
+        "title": "Open in Editor",
+        "category": "Pochi",
+        "icon": "$(window)"
       }
     ],
     "menus": {
@@ -184,6 +190,11 @@
           "command": "pochi.webui.navigate.settings",
           "when": "view == pochiWebui",
           "group": "navigation@2"
+        },
+        {
+          "command": "pochi.openInEditor",
+          "when": "view == pochiWebui",
+          "group": "navigation@3"
         }
       ]
     },
