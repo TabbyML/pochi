@@ -4,7 +4,7 @@ import { MessageMarkdown } from "@/components/message/markdown";
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
 import { cn, tw } from "@/lib/utils";
 import type { ReasoningUIPart } from "ai";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ExpandableToolContainer } from "./tool-invocation/tool-container";
 
 interface ReasoningPartUIProps {
@@ -21,7 +21,7 @@ export function ReasoningPartUI({
   assistant,
 }: ReasoningPartUIProps) {
   const iconClass = tw`text-blue-700 dark:text-blue-300`;
-  const [headline, setHeadline, setHeadlineImmediately] = useDebounceState(
+  const [headline, setHeadline] = useDebounceState(
     `${assistant} is thinking ...`,
     750,
   );
@@ -33,23 +33,17 @@ export function ReasoningPartUI({
     [part.text],
   );
 
+  const finishHeadline = `Thought for ${part.text.length} characters`;
+
   useEffect(() => {
     if (headlineFromMarkdown) {
-      if (isLoading) {
-        setHeadline(headlineFromMarkdown);
-      } else {
-        setHeadlineImmediately(headlineFromMarkdown);
-      }
+      setHeadline(headlineFromMarkdown);
     }
-  }, [headlineFromMarkdown, setHeadline, setHeadlineImmediately, isLoading]);
+  }, [headlineFromMarkdown, setHeadline]);
 
   // Handle fade animation when headline changes
   useEffect(() => {
     if (headline !== displayHeadline) {
-      if (!isLoading) {
-        setDisplayHeadline(headline);
-        return;
-      }
       setIsHeadlineChanging(true);
       // Fade out current headline
       const fadeOutTimer = setTimeout(() => {
@@ -62,7 +56,7 @@ export function ReasoningPartUI({
       }, 250);
       return () => clearTimeout(fadeOutTimer);
     }
-  }, [isLoading, headline, displayHeadline]);
+  }, [headline, displayHeadline]);
 
   const title = (
     <span className="flex items-center gap-2">
@@ -82,7 +76,7 @@ export function ReasoningPartUI({
           isHeadlineChanging ? "opacity-0" : "opacity-100",
         )}
       >
-        {displayHeadline}
+        {isLoading ? displayHeadline : finishHeadline}
       </span>
     </span>
   );
