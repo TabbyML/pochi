@@ -10,7 +10,7 @@ import type {
 import { isValidCustomAgentFile } from "@getpochi/common/vscode-webui-bridge";
 import type { CustomAgent } from "@getpochi/tools";
 
-const logger = getLogger("CustomAgentManager");
+const logger = getLogger("loadAgents");
 
 /**
  * Read custom agents from a directory

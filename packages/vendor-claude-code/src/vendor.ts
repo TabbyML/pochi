@@ -73,13 +73,13 @@ export class ClaudeCode extends VendorBase {
 
   override async fetchModels(): Promise<Record<string, ModelOptions>> {
     return {
-      "claude-opus-4-1-20250805": {
+      "claude-opus-4-1": {
         contextWindow: 200_000,
-        useToolCallMiddleware: true,
+        useToolCallMiddleware: false,
       },
-      "claude-sonnet-4-20250514": {
+      "claude-sonnet-4": {
         contextWindow: 200_000,
-        useToolCallMiddleware: true,
+        useToolCallMiddleware: false,
       },
     };
   }

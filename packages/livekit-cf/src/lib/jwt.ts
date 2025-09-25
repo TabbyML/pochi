@@ -4,20 +4,23 @@ import { HTTPException } from "hono/http-exception";
 import * as jose from "jose";
 import { JOSEError } from "jose/errors";
 import z from "zod";
+import { getServerBaseUrl } from "./server";
 
 const Payload = z.object({
   jwt: z.string(),
 });
 
-const JWKS = jose.createRemoteJWKSet(
-  new URL("https://app.getpochi.com/api/auth/jwks"),
-);
+let JWKS: jose.JWTVerifyGetKey | null = null;
 
 export async function verifyJWT(env: Env["ENVIRONMENT"], jwt: string) {
+  const serverUrl = getServerBaseUrl(env);
+  if (JWKS === null) {
+    JWKS = jose.createRemoteJWKSet(new URL(`${serverUrl}/api/auth/jwks`));
+  }
   try {
     const { payload: user } = await jose.jwtVerify<User>(jwt, JWKS, {
-      issuer: "https://app.getpochi.com",
-      audience: "https://app.getpochi.com",
+      issuer: serverUrl,
+      audience: serverUrl,
       clockTolerance: env === "dev" ? "4 hours" : undefined,
     });
     return user;
