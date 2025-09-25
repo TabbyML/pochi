@@ -2,11 +2,6 @@ import { createCompactPrompt } from "./compact";
 import { createEnvironmentPrompt, injectEnvironment } from "./environment";
 import { generateTitle } from "./generate-title";
 import { createSystemPrompt } from "./system";
-// import z from "zod/v4";
-// import { remark } from "remark";
-// import remarkFrontmatter from "remark-frontmatter";
-// import { matter } from "vfile-matter";
-// type VFile = Parameters<typeof matter>[0];
 
 export const prompts = {
   system: createSystemPrompt,

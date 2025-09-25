@@ -25,6 +25,7 @@ import {
   type MentionListProps,
 } from "./context-mention/mention-list";
 import "./prompt-form.css";
+import { useSelectedModels } from "@/features/settings";
 import { cn } from "@/lib/utils";
 import {
   type SuggestionMatch,
@@ -32,6 +33,7 @@ import {
   findSuggestionMatch,
 } from "@tiptap/suggestion";
 import { ArrowRightToLine } from "lucide-react";
+import { pick } from "remeda";
 import { ScrollArea } from "../ui/scroll-area";
 import { AutoCompleteExtension } from "./auto-completion/extension";
 import type { MentionListActions } from "./shared";
@@ -41,6 +43,7 @@ import {
   workflowMentionPluginKey,
 } from "./workflow-mention/extension";
 import {
+  type WorkflowItem,
   type WorkflowListProps,
   WorkflowMentionList,
 } from "./workflow-mention/mention-list";
@@ -116,6 +119,7 @@ export function FormEditor({
   onFileDrop,
   messageContent = "",
 }: FormEditorProps) {
+  const { updateSelectedModel, models } = useSelectedModels();
   const internalFormRef = useRef<HTMLFormElement>(null);
   const formRef = externalFormRef || internalFormRef;
   const [isAutoCompleteHintVisible, setIsAutoCompleteHintVisible] =
@@ -131,6 +135,17 @@ export function FormEditor({
 
   // State for drag overlay UI
   const [isDragOver, setIsDragOver] = useState(false);
+
+  const onSelectWorkflow = useCallback(
+    (workflow: WorkflowItem) => {
+      if (!workflow.frontmatter.model) return;
+
+      const model = models?.find((x) => x.id === workflow.frontmatter.model);
+      if (!model) return;
+      updateSelectedModel(pick(model, ["id", "name"]));
+    },
+    [models, updateSelectedModel],
+  );
 
   const editor = useEditor(
     {
@@ -305,6 +320,7 @@ export function FormEditor({
                     props: {
                       ...props,
                       fetchItems,
+                      onSelectWorkflow,
                     },
                     editor: props.editor,
                   });

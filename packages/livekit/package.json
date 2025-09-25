@@ -24,10 +24,7 @@
     "@livestore/react": "catalog:",
     "ai": "catalog:",
     "react": "catalog:",
-    "remark": "^15.0.1",
-    "remark-frontmatter": "^5.0.0",
     "remeda": "catalog:",
-    "vfile-matter": "^5.0.1",
     "zod": "catalog:"
   }
 }

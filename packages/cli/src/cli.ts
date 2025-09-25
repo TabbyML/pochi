@@ -93,6 +93,7 @@ const program = new Command()
   .option("-m, --model <model>", "Specify the model to be used for the task.")
   .action(async (options) => {
     const { uid, prompt } = await parseTaskInput(options, program);
+
     const store = await createStore();
 
     const llm = await createLLMConfig(program, options);
