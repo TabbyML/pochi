@@ -1,4 +1,3 @@
-import type { VSCodeHostImpl } from "@/integrations/webview/vscode-host-impl";
 import type { AuthEvents } from "@/lib/auth-events";
 import { getNonce } from "@/lib/get-nonce";
 import { getUri } from "@/lib/get-uri";
@@ -15,8 +14,9 @@ import {
 import { Thread } from "@quilted/threads";
 import * as vscode from "vscode";
 import type { PochiConfiguration } from "../configuration";
+import type { VSCodeHostImpl } from "./vscode-host-impl";
 
-const logger = getLogger("BaseWebview");
+const logger = getLogger("WebviewBase");
 
 /**
  * BASE WEBVIEW CLASS
@@ -31,7 +31,7 @@ const logger = getLogger("BaseWebview");
  * - Auth event handling
  * - Session management integration
  */
-export abstract class BaseWebview implements vscode.Disposable {
+export abstract class WebviewBase implements vscode.Disposable {
   protected webviewHost?: WebviewHostApi;
   protected disposables: vscode.Disposable[] = [];
   protected webviewReadyCallbacks: (() => void)[] = [];

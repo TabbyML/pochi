@@ -1,5 +1,3 @@
-import { BaseWebview } from "@/integrations/webview/base-webview";
-import { VSCodeHostImpl } from "@/integrations/webview/vscode-host-impl";
 import { AuthEvents } from "@/lib/auth-events";
 import { getUri } from "@/lib/get-uri";
 import { getLogger } from "@getpochi/common";
@@ -10,6 +8,8 @@ import type {
 import { container } from "tsyringe";
 import * as vscode from "vscode";
 import { PochiConfiguration } from "../configuration";
+import { WebviewBase } from "./base";
+import { VSCodeHostImpl } from "./vscode-host-impl";
 
 const logger = getLogger("PochiWebviewPanel");
 
@@ -29,7 +29,7 @@ const logger = getLogger("PochiWebviewPanel");
  * - Each panel has independent state and lifecycle
  */
 export class PochiWebviewPanel
-  extends BaseWebview
+  extends WebviewBase
   implements vscode.Disposable
 {
   private static readonly viewType = "pochiEditor";

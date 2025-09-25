@@ -1,6 +1,3 @@
-import { BaseWebview } from "@/integrations/webview/base-webview";
-// biome-ignore lint/style/useImportType: needed for dependency injection
-import { VSCodeHostImpl } from "@/integrations/webview/vscode-host-impl";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { AuthEvents } from "@/lib/auth-events";
 import { getUri } from "@/lib/get-uri";
@@ -13,6 +10,9 @@ import { inject, injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { PochiConfiguration } from "../configuration";
+import { WebviewBase } from "./base";
+// biome-ignore lint/style/useImportType: needed for dependency injection
+import { VSCodeHostImpl } from "./vscode-host-impl";
 
 /**
  * This class manages the Pochi webview that appears in the VS Code sidebar.
@@ -27,8 +27,8 @@ import { PochiConfiguration } from "../configuration";
  */
 @injectable()
 @singleton()
-export class RagdollWebviewSidebar
-  extends BaseWebview
+export class PochiWebviewSidebar
+  extends WebviewBase
   implements vscode.WebviewViewProvider, vscode.Disposable
 {
   public static readonly viewType = "pochiWebui";
@@ -48,7 +48,7 @@ export class RagdollWebviewSidebar
 
   private providerDisposables: vscode.Disposable[] = [
     vscode.window.registerWebviewViewProvider(
-      RagdollWebviewSidebar.viewType,
+      PochiWebviewSidebar.viewType,
       this,
       { webviewOptions: { retainContextWhenHidden: true } },
     ),

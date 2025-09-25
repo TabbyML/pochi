@@ -2,9 +2,8 @@ import {
   applyQuickFixes,
   calcEditedRangeAfterAccept,
 } from "@/code-completion/auto-code-actions";
-import { PochiWebviewPanel } from "@/integrations/webview/pochi-webview-panel";
 // biome-ignore lint/style/useImportType: needed for dependency injection
-import { RagdollWebviewSidebar } from "@/integrations/webview/ragdoll-webview-provider";
+import { PochiWebviewPanel, PochiWebviewSidebar } from "@/integrations/webview";
 import type { AuthClient } from "@/lib/auth-client";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { AuthEvents } from "@/lib/auth-events";
@@ -41,7 +40,7 @@ export class CommandManager implements vscode.Disposable {
   private disposables: vscode.Disposable[] = [];
 
   constructor(
-    private readonly ragdollWebviewProvider: RagdollWebviewSidebar,
+    private readonly pochiWebviewProvider: PochiWebviewSidebar,
     private readonly newProjectRegistry: NewProjectRegistry,
     @inject("AuthClient") private readonly authClient: AuthClient,
     private readonly authEvents: AuthEvents,
@@ -67,7 +66,7 @@ export class CommandManager implements vscode.Disposable {
       await prepareProject(workspaceUri, githubTemplateUrl, progress);
     }
 
-    const webviewHost = await this.ragdollWebviewProvider.retrieveWebviewHost();
+    const webviewHost = await this.pochiWebviewProvider.retrieveWebviewHost();
     webviewHost.openTask(openTaskParams);
 
     if (requestId) {
@@ -212,7 +211,7 @@ export class CommandManager implements vscode.Disposable {
             progress.report({ message: "Pochi: Opening task..." });
             await vscode.commands.executeCommand("pochiWebui.focus");
             const webviewHost =
-              await this.ragdollWebviewProvider.retrieveWebviewHost();
+              await this.pochiWebviewProvider.retrieveWebviewHost();
             webviewHost.openTask({ uid });
           },
         );
@@ -223,7 +222,7 @@ export class CommandManager implements vscode.Disposable {
         async () => {
           await vscode.commands.executeCommand("pochiWebui.focus");
           const webviewHost =
-            await this.ragdollWebviewProvider.retrieveWebviewHost();
+            await this.pochiWebviewProvider.retrieveWebviewHost();
           webviewHost.openTask({ uid: undefined });
         },
       ),
@@ -233,7 +232,7 @@ export class CommandManager implements vscode.Disposable {
         async () => {
           await vscode.commands.executeCommand("pochiWebui.focus");
           const webviewHost =
-            await this.ragdollWebviewProvider.retrieveWebviewHost();
+            await this.pochiWebviewProvider.retrieveWebviewHost();
           webviewHost.openTaskList();
         },
       ),
@@ -243,7 +242,7 @@ export class CommandManager implements vscode.Disposable {
         async () => {
           await vscode.commands.executeCommand("pochiWebui.focus");
           const webviewHost =
-            await this.ragdollWebviewProvider.retrieveWebviewHost();
+            await this.pochiWebviewProvider.retrieveWebviewHost();
           webviewHost.openSettings();
         },
       ),
@@ -310,7 +309,7 @@ export class CommandManager implements vscode.Disposable {
 
       vscode.commands.registerCommand("pochi.toggleFocus", async () => {
         const webviewHost =
-          await this.ragdollWebviewProvider.retrieveWebviewHost();
+          await this.pochiWebviewProvider.retrieveWebviewHost();
         if (await webviewHost.isFocused()) {
           logger.debug("Focused on editor");
           await vscode.commands.executeCommand(
