@@ -16,7 +16,7 @@ import type {
   DisplayModel,
   UserEditsDiff,
 } from "@getpochi/common/vscode-webui-bridge";
-import type { LLMRequestData, Message } from "@getpochi/livekit";
+import type { Message } from "@getpochi/livekit";
 import type { Todo } from "@getpochi/tools";
 import { useCallback } from "react";
 
@@ -193,85 +193,6 @@ function getLLMByModel(selectedModel: DisplayModel | undefined) {
   }
 
   assertUnreachable(provider.kind);
-}
-
-function useLLM(): React.RefObject<LLMRequestData> {
-  const { selectedModel } = useSelectedModels();
-  const llmFromSelectedModel = ((): LLMRequestData => {
-    if (!selectedModel) return undefined as never;
-
-    if (selectedModel.type === "vendor") {
-      return {
-        type: "vendor",
-        useToolCallMiddleware: selectedModel.options.useToolCallMiddleware,
-        getModel: (id: string) =>
-          createModel(selectedModel.vendorId, {
-            id,
-            modelId: selectedModel.modelId,
-            getCredentials: selectedModel.getCredentials,
-          }),
-      };
-    }
-
-    const { provider } = selectedModel;
-    if (provider.kind === "google-vertex-tuning") {
-      return {
-        type: "google-vertex-tuning" as const,
-        modelId: selectedModel.modelId,
-        vertex: provider.vertex,
-        maxOutputTokens:
-          selectedModel.options.maxTokens ?? constants.DefaultMaxOutputTokens,
-        contextWindow:
-          selectedModel.options.contextWindow ?? constants.DefaultContextWindow,
-        useToolCallMiddleware: selectedModel.options.useToolCallMiddleware,
-      };
-    }
-
-    if (provider.kind === "ai-gateway") {
-      return {
-        type: "ai-gateway" as const,
-        modelId: selectedModel.modelId,
-        apiKey: provider.apiKey,
-        maxOutputTokens:
-          selectedModel.options.maxTokens ?? constants.DefaultMaxOutputTokens,
-        contextWindow:
-          selectedModel.options.contextWindow ?? constants.DefaultContextWindow,
-        useToolCallMiddleware: selectedModel.options.useToolCallMiddleware,
-      };
-    }
-
-    if (provider.kind === "openai-responses") {
-      return {
-        type: "openai-responses" as const,
-        modelId: selectedModel.modelId,
-        baseURL: provider.baseURL,
-        apiKey: provider.apiKey,
-        maxOutputTokens:
-          selectedModel.options.maxTokens ?? constants.DefaultMaxOutputTokens,
-        contextWindow:
-          selectedModel.options.contextWindow ?? constants.DefaultContextWindow,
-        useToolCallMiddleware: selectedModel.options.useToolCallMiddleware,
-      };
-    }
-
-    if (provider.kind === undefined || provider.kind === "openai") {
-      return {
-        type: "openai" as const,
-        modelId: selectedModel.modelId,
-        baseURL: provider.baseURL,
-        apiKey: provider.apiKey,
-        maxOutputTokens:
-          selectedModel.options.maxTokens ?? constants.DefaultMaxOutputTokens,
-        contextWindow:
-          selectedModel.options.contextWindow ?? constants.DefaultContextWindow,
-        useToolCallMiddleware: selectedModel.options.useToolCallMiddleware,
-      };
-    }
-
-    assertUnreachable(provider.kind);
-  })();
-
-  return useLatest(llmFromSelectedModel);
 }
 
 function assertUnreachable(_x: never): never {
