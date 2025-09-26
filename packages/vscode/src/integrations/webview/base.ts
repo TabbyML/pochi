@@ -2,12 +2,12 @@ import type { AuthEvents } from "@/lib/auth-events";
 import { getNonce } from "@/lib/get-nonce";
 import { getUri } from "@/lib/get-uri";
 import { getLogger } from "@getpochi/common";
+import { getCorsProxyPort } from "@getpochi/common/cors-proxy";
 import type {
   SessionState,
   VSCodeHostApi,
   WebviewHostApi,
 } from "@getpochi/common/vscode-webui-bridge";
-import { getCorsProxyPort } from "@getpochi/common/cors-proxy";
 import {
   getServerBaseUrl,
   getSyncBaseUrl,
