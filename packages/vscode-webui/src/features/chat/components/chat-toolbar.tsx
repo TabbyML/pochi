@@ -221,7 +221,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   );
 
   const handleOpenInTab = async () => {
-    await vscodeHost.openInNewTab();
+    await vscodeHost.openPochiInNewTab();
   };
 
   const showOpenInTab = openInTab && credentials;

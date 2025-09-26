@@ -265,7 +265,7 @@ export interface VSCodeHostApi {
     ThreadSignalSerialization<Record<string, UserInfo>>
   >;
 
-  openInNewTab(): Promise<void>;
+  openPochiInNewTab(): Promise<void>;
 }
 
 export interface WebviewHostApi {

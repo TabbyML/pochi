@@ -689,7 +689,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     return ThreadSignal.serialize(this.userStorage.users);
   };
 
-  openInNewTab = async (): Promise<void> => {
+  openPochiInNewTab = async (): Promise<void> => {
     await vscode.commands.executeCommand("pochi.openInEditor");
   };
 
