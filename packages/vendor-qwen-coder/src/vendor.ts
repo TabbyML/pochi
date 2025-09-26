@@ -27,11 +27,11 @@ export class ClaudeCode extends VendorBase {
 
   override async fetchModels(): Promise<Record<string, ModelOptions>> {
     return {
-      "claude-opus-4-1": {
+      "vision-model": {
         contextWindow: 200_000,
         useToolCallMiddleware: false,
       },
-      "claude-sonnet-4": {
+      "coder-model": {
         contextWindow: 200_000,
         useToolCallMiddleware: false,
       },
