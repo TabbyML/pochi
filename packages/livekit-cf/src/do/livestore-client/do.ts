@@ -7,6 +7,7 @@ import { type Task, catalog } from "@getpochi/livekit";
 import { createStoreDoPromise } from "@livestore/adapter-cloudflare";
 import { type Store, nanoid } from "@livestore/livestore";
 import { handleSyncUpdateRpc } from "@livestore/sync-cf/client";
+import type { CfTypes } from "@livestore/sync-cf/common";
 import { hc } from "hono/client";
 import moment from "moment";
 import { funnel } from "remeda";
@@ -79,10 +80,12 @@ export class LiveStoreClientDO
       storeId,
       clientId: "client-do",
       sessionId: nanoid(),
-      durableObjectId: this.state.id.toString(),
-      bindingName: "CLIENT_DO",
-      storage: this.state.storage,
-      syncBackendDurableObject: this.env.SYNC_BACKEND_DO.get(
+      durableObject: {
+        ctx: this.ctx as CfTypes.DurableObjectState,
+        env: this.env,
+        bindingName: "CLIENT_DO",
+      },
+      syncBackendStub: this.env.SYNC_BACKEND_DO.get(
         this.env.SYNC_BACKEND_DO.idFromName(storeId),
       ),
       livePull: true,
