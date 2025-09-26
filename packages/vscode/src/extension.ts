@@ -39,7 +39,7 @@ import { PostInstallActions } from "./lib/post-install-actions";
 export async function activate(context: vscode.ExtensionContext) {
   // Container will dispose all the registered instances when itself is disposed
   context.subscriptions.push(container);
-  if (process.env.NODE_ENV !== "test") {
+  if (!process.env.POCHI_TEST) {
     context.subscriptions.push(startCorsProxy());
   }
 
