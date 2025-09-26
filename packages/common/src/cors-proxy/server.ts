@@ -1,3 +1,4 @@
+import type { AddressInfo } from "node:net";
 import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
@@ -41,27 +42,27 @@ export interface ProxyServer {
   dispose: () => void;
 }
 
-const port = 54343;
-let initialized = false;
+let port = 0;
 
 export function startCorsProxy() {
-  if (initialized) {
+  if (port) {
     throw new Error("Proxy server already initialized");
   }
 
-  initialized = true;
-
   const server = serve({
     fetch: app.fetch,
-    port: 54343,
+    port: 0,
   });
+  port = (server.address() as AddressInfo).port;
+  logger.debug(`Proxy server started on port ${port}`);
   return {
+    port,
     dispose: () => {
       server.close();
     },
   };
 }
 
-export function getProxyUrl() {
-  return `http://localhost:${port}`;
+export function getCorsProxyPort() {
+  return port;
 }

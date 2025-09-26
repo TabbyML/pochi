@@ -4,6 +4,7 @@ import { AuthEvents } from "@/lib/auth-events";
 import { getNonce } from "@/lib/get-nonce";
 import { getUri } from "@/lib/get-uri";
 import { getLogger } from "@getpochi/common";
+import { getCorsProxyPort } from "@getpochi/common/cors-proxy";
 import {
   type ResourceURI,
   type VSCodeHostApi,
@@ -191,7 +192,10 @@ export class RagdollWebviewProvider
     </style>`;
 
     const nonce = getNonce();
-    const webuiLoggingScript = `<script type="module" nonce="${nonce}">window.POCHI_LOG = "${this.pochiConfiguration.advancedSettings.value.webviewLogLevel || ""}";</script>`;
+    const injectGlobalVars = `<script type="module" nonce="${nonce}">
+      window.POCHI_CORS_PROXY_PORT = "${getCorsProxyPort()}";
+      window.POCHI_LOG = "${this.pochiConfiguration.advancedSettings.value.webviewLogLevel || ""}";
+    </script>`;
 
     if (isProd) {
       const sqliteWasmUri = getUri(webview, this.context.extensionUri, [
@@ -241,7 +245,7 @@ export class RagdollWebviewProvider
 
       return this.buildHtml(
         [cspHeader, style, setiFontStyle],
-        [assetLoaderScript, webuiLoggingScript, script],
+        [assetLoaderScript, injectGlobalVars, script],
       );
     }
 
@@ -280,7 +284,7 @@ export class RagdollWebviewProvider
 
     return this.buildHtml(
       [cspHeader, setiFontStyle],
-      [webuiLoggingScript, reactRefresh, script],
+      [injectGlobalVars, reactRefresh, script],
     );
   }
 

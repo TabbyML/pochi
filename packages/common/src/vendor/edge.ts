@@ -21,3 +21,7 @@ export function createModel(vendorId: string, opts: CreateModelOptions) {
   const modelCreator = get(vendorId);
   return modelCreator(opts);
 }
+
+declare global {
+  var POCHI_CORS_PROXY_PORT: string;
+}
