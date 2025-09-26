@@ -23,3 +23,4 @@ export {
   buildShellCommand,
 } from "./shell";
 export { parseAgentFile } from "./agent-parser";
+export { parseWorkflowFrontmatter } from "./workflow-parser";

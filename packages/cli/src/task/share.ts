@@ -1,7 +1,6 @@
 import type { Command } from "@commander-js/extra-typings";
 import { catalog } from "@getpochi/livekit";
 import chalk from "chalk";
-import { shutdownStoreAndExit } from "../lib/store-utils";
 import { createStore } from "../livekit/store";
 
 export function registerTaskShareCommand(taskCommand: Command) {
@@ -25,6 +24,6 @@ export function registerTaskShareCommand(taskCommand: Command) {
         console.log(chalk.red("❌ No share URL found for this task"));
       }
 
-      await shutdownStoreAndExit(store);
+      await store.shutdownPromise();
     });
 }

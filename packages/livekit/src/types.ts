@@ -36,7 +36,7 @@ const RequestData = z.object({
     z.object({
       type: z.literal("openai"),
       modelId: z.string(),
-      baseURL: z.string(),
+      baseURL: z.string().optional(),
       apiKey: z.string().optional(),
       contextWindow: z.number().describe("Context window of the model."),
       maxOutputTokens: z.number().describe("Max output tokens of the model."),
@@ -47,6 +47,18 @@ const RequestData = z.object({
     }),
     z.object({
       type: z.literal("openai-responses"),
+      modelId: z.string(),
+      baseURL: z.string().optional(),
+      apiKey: z.string().optional(),
+      contextWindow: z.number().describe("Context window of the model."),
+      maxOutputTokens: z.number().describe("Max output tokens of the model."),
+      useToolCallMiddleware: z
+        .boolean()
+        .optional()
+        .describe("Whether to use tool call middleware"),
+    }),
+    z.object({
+      type: z.literal("anthropic"),
       modelId: z.string(),
       baseURL: z.string().optional(),
       apiKey: z.string().optional(),

@@ -7,6 +7,7 @@ import type {
   VSCodeHostApi,
   WebviewHostApi,
 } from "@getpochi/common/vscode-webui-bridge";
+import { getCorsProxyPort } from "@getpochi/common/cors-proxy";
 import {
   getServerBaseUrl,
   getSyncBaseUrl,
@@ -72,7 +73,10 @@ export abstract class WebviewBase implements vscode.Disposable {
     </style>`;
 
     const nonce = getNonce();
-    const webuiLoggingScript = `<script type="module" nonce="${nonce}">window.POCHI_LOG = "${webviewLogLevel || ""}";</script>`;
+    const injectGlobalVars = `<script type="module" nonce="${nonce}">
+      window.POCHI_CORS_PROXY_PORT = "${getCorsProxyPort()}";
+      window.POCHI_LOG = "${this.pochiConfiguration.advancedSettings.value.webviewLogLevel || ""}";
+    </script>`;
 
     if (isProd) {
       const sqliteWasmUri = getUri(webview, this.context.extensionUri, [
@@ -121,7 +125,7 @@ export abstract class WebviewBase implements vscode.Disposable {
 
       return this.buildHtml(
         [cspHeader, style, setiFontStyle],
-        [assetLoaderScript, webuiLoggingScript, script],
+        [assetLoaderScript, injectGlobalVars, script],
       );
     }
 
@@ -160,7 +164,7 @@ export abstract class WebviewBase implements vscode.Disposable {
 
     return this.buildHtml(
       [cspHeader, setiFontStyle],
-      [webuiLoggingScript, reactRefresh, script],
+      [injectGlobalVars, reactRefresh, script],
     );
   }
 

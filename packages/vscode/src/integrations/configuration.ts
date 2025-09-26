@@ -1,10 +1,15 @@
+import { getWorkspaceFolder } from "@/lib/fs";
 import { getLogger } from "@getpochi/common";
 import {
   type CustomModelSetting,
   type GoogleVertexModel,
   type McpServerConfig,
-  PochiConfigFilePath,
+  type PochiConfigTarget,
+  getPochiConfigFilePath,
+  inspectPochiConfig,
   pochiConfig,
+  pochiConfigRelativePath,
+  setPochiConfigWorkspacePath,
   updatePochiConfig,
 } from "@getpochi/common/configuration";
 import { computed, signal } from "@preact/signals-core";
@@ -22,11 +27,17 @@ export class PochiConfiguration implements vscode.Disposable {
   private disposables: vscode.Disposable[] = [];
 
   readonly advancedSettings = signal(getPochiAdvanceSettings());
-  readonly mcpServers = computed(() => pochiConfig.value.mcp || {});
   readonly autoSaveDisabled = signal(getAutoSaveDisabled());
   readonly customModelSettings = computed(() => pochiConfig.value.providers);
 
   constructor() {
+    try {
+      const workspaceFolder = getWorkspaceFolder();
+      setPochiConfigWorkspacePath(workspaceFolder.uri.fsPath);
+      this.watchWorkspaceConfig();
+    } catch (error) {
+      logger.debug("No workspace folder found, using user config only");
+    }
     this.disposables.push(
       vscode.workspace.onDidChangeConfiguration((e) => {
         if (e.affectsConfiguration("pochi.advanced")) {
@@ -49,6 +60,33 @@ export class PochiConfiguration implements vscode.Disposable {
     });
   }
 
+  watchWorkspaceConfig() {
+    try {
+      // Watch workspace .pochi/agents directory
+      const workspaceDir = getWorkspaceFolder();
+      if (workspaceDir) {
+        const workspaceConfigPattern = new vscode.RelativePattern(
+          workspaceDir,
+          pochiConfigRelativePath,
+        );
+        const configWatcher = vscode.workspace.createFileSystemWatcher(
+          workspaceConfigPattern,
+        );
+
+        configWatcher.onDidCreate(() => {
+          setPochiConfigWorkspacePath(workspaceDir.uri.fsPath);
+        });
+        configWatcher.onDidDelete(() => {
+          setPochiConfigWorkspacePath(undefined);
+        });
+
+        this.disposables.push(configWatcher);
+      }
+    } catch (error) {
+      logger.error("Failed to initialize workspace config watcher", error);
+    }
+  }
+
   async updateCustomModelSettings(
     providers: Record<string, CustomModelSetting>,
   ) {
@@ -66,8 +104,39 @@ export class PochiConfiguration implements vscode.Disposable {
   /**
    * Opens the Pochi configuration file and optionally reveals/creates a specific setting
    */
-  async revealConfig(options?: { key?: string }): Promise<void> {
-    const configUri = vscode.Uri.file(PochiConfigFilePath);
+  async revealConfig(options?: {
+    key?: string;
+    configTarget?: PochiConfigTarget;
+  }): Promise<void> {
+    let openTarget: PochiConfigTarget = "user";
+
+    if (options?.configTarget) {
+      openTarget = options.configTarget;
+    } else {
+      let effectiveTargets: PochiConfigTarget[] = [];
+      try {
+        const result = inspectPochiConfig(options?.key);
+        effectiveTargets = result.effectiveTargets;
+      } catch (error) {
+        logger.error("Failed to inspect Pochi config", error);
+      }
+      if (effectiveTargets.length > 1) {
+        logger.warn(
+          `The setting "${options?.key}" is set in multiple scopes: ${effectiveTargets.join(
+            ", ",
+          )}. The first effective config file will be opened.`,
+        );
+        openTarget = effectiveTargets[0];
+      } else {
+        openTarget = effectiveTargets[0] || "user";
+      }
+    }
+
+    const configPath = getPochiConfigFilePath(openTarget);
+    if (!configPath) {
+      return;
+    }
+    const configUri = vscode.Uri.file(configPath);
 
     await vscode.commands.executeCommand("vscode.open", configUri);
     try {
