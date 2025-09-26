@@ -76,7 +76,7 @@
       "clearStorage": "Clear Storage",
       "language": "Language",
       "languageDescription": "Choose your preferred language",
-      "openInTab": "Open in Tab"
+      "openInTab": "Allows to open the task in a new tab"
     },
     "workflows": {
       "title": "Workflows",
