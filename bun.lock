@@ -58,6 +58,7 @@
         "@ai-sdk/google-vertex": "catalog:",
         "@ai-sdk/provider": "catalog:",
         "@getpochi/tools": "workspace:*",
+        "@hono/node-server": "^1.19.4",
         "@hono/zod-validator": "catalog:",
         "@modelcontextprotocol/sdk": "^1.0.2",
         "@preact/signals-core": "catalog:",
@@ -780,6 +781,8 @@
     "@getpochi/vscode-webui": ["@getpochi/vscode-webui@workspace:packages/vscode-webui"],
 
     "@hexagon/base64": ["@hexagon/base64@1.1.28", "", {}, "sha512-lhqDEAvWixy3bZ+UOYbPwUbBkwBq5C1LAJ/xPC8Oi+lL54oyakv/npbA0aU2hgCsx/1NUd4IBvV03+aUBWxerw=="],
+
+    "@hono/node-server": ["@hono/node-server@1.19.4", "", { "peerDependencies": { "hono": "^4" } }, "sha512-AWKQZ/YkHUBSHeL/5Ld8FWgUs6wFf4TxGYxqp9wLZxRdFuHBpXmgOq+CuDoL4vllkZLzovCf5HBJnypiy3EtHA=="],
 
     "@hono/zod-validator": ["@hono/zod-validator@0.4.3", "", { "peerDependencies": { "hono": ">=3.9.0", "zod": "^3.19.1" } }, "sha512-xIgMYXDyJ4Hj6ekm9T9Y27s080Nl9NXHcJkOvkXPhubOLj8hZkOL8pDnnXfvCf5xEE8Q4oMFenQUZZREUY2gqQ=="],
 

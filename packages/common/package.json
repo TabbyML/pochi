@@ -19,20 +19,23 @@
     "./vscode-webui-bridge": "./src/vscode-webui-bridge/index.ts",
     "./store-id-utils": "./src/store-id-utils.ts",
     "./share-utils": "./src/share-utils.ts",
-    "./google-vertex-utils": "./src/google-vertex-utils.ts"
+    "./google-vertex-utils": "./src/google-vertex-utils.ts",
+    "./cors-proxy": "./src/cors-proxy/index.ts"
   },
   "scripts": {
     "tsc": "tsc",
     "test": "bun vitest --run"
   },
   "dependencies": {
-    "@ai-sdk/provider": "catalog:",
     "@ai-sdk/google-vertex": "catalog:",
+    "@ai-sdk/provider": "catalog:",
     "@getpochi/tools": "workspace:*",
+    "@hono/node-server": "^1.19.4",
     "@hono/zod-validator": "catalog:",
     "@modelcontextprotocol/sdk": "^1.0.2",
     "@preact/signals-core": "catalog:",
     "@quilted/threads": "catalog:",
+    "@types/json-schema": "^7.0.15",
     "@xstate/fsm": "^2.1.0",
     "ai": "catalog:",
     "base58-js": "catalog:",
@@ -43,17 +46,16 @@
     "hono": "catalog:",
     "ignore": "^7.0.5",
     "jsonc-parser": "catalog:",
-    "@types/json-schema": "^7.0.15",
     "minimatch": "^10.0.1",
     "rehype": "^13.0.2",
     "remark": "^15.0.1",
     "remark-frontmatter": "^5.0.0",
     "remeda": "catalog:",
+    "run-exclusive": "catalog:",
     "silver-fleece": "^1.2.1",
     "tslog": "catalog:",
     "vfile-matter": "^5.0.1",
-    "zod": "catalog:",
-    "run-exclusive": "catalog:"
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@types/fast-levenshtein": "^0.0.4",
