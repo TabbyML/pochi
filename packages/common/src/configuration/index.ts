@@ -6,6 +6,7 @@ export {
   getPochiConfigFilePath,
   inspectPochiConfig,
   setPochiConfigWorkspacePath,
+  configRelativePath as pochiConfigRelativePath,
 } from "./config-manager";
 export type { PochiConfigTarget } from "./config-manager";
 

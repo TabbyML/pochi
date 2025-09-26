@@ -24,12 +24,17 @@ function prop(data: unknown, ...keys: ReadonlyArray<PropertyKey>): unknown {
   return output;
 }
 
-const configFileName = isDev ? "dev-config.jsonc" : "test-config.jsonc";
+// current only allow workspace to override mcp setting
+const AllowedWorkspaceConfigKeys = ["mcp"] as const;
 
-const UserConfigFilePath = path.join(os.homedir(), ".pochi", configFileName);
+const configFileName = isDev ? "dev-config.jsonc" : "config.jsonc";
+
+export const configRelativePath = path.join(".pochi", configFileName);
+
+const UserConfigFilePath = path.join(os.homedir(), configRelativePath);
 
 const getWorkspaceConfigFilePath = (workspacePath: string) =>
-  path.join(workspacePath, ".pochi", configFileName);
+  path.join(workspacePath, configRelativePath);
 
 const logger = getLogger("PochiConfigManager");
 
@@ -39,11 +44,9 @@ class PochiConfigFile {
   private readonly cfg: Signal<PochiConfig> = signal({});
   private events = new EventTarget();
   readonly configFilePath: string;
-  private forceCreateFile: boolean;
 
-  constructor(configFilePath: string, forceCreateFile = true) {
+  constructor(configFilePath: string) {
     this.configFilePath = configFilePath;
-    this.forceCreateFile = forceCreateFile;
     this.cfg.value = this.load();
     this.watch();
   }
@@ -66,9 +69,7 @@ class PochiConfigFile {
   };
 
   private async watch() {
-    if (this.forceCreateFile) {
-      await this.ensureFileExists();
-    }
+    await this.ensureFileExists();
     this.events.addEventListener("change", this.onChange);
     const debouncer = funnel(
       () => {
@@ -183,10 +184,8 @@ class PochiConfigManager {
   }
 
   private updateMergedConfig = () => {
-    // current only allow workspace to override mcp setting
-    const mergeKeys = ["mcp"] as const;
     const mergedValue: PochiConfig = { ...this.userConfigFile.config.value };
-    for (const key of mergeKeys) {
+    for (const key of AllowedWorkspaceConfigKeys) {
       const workspaceValue = prop(
         this.workspaceConfigFile?.config.value || {},
         key,
@@ -204,13 +203,16 @@ class PochiConfigManager {
   setWorkspacePath = async (workspacePath: string | undefined) => {
     if (workspacePath) {
       const workspaceConfigFilepath = getWorkspaceConfigFilePath(workspacePath);
+      const fileExist = await fsPromise
+        .access(workspaceConfigFilepath)
+        .then(() => true)
+        .catch(() => false);
       if (
-        this.workspaceConfigFile?.configFilePath !== workspaceConfigFilepath
+        this.workspaceConfigFile?.configFilePath !== workspaceConfigFilepath &&
+        fileExist
       ) {
-        this.workspaceConfigFile = new PochiConfigFile(
-          workspaceConfigFilepath,
-          false,
-        );
+        logger.debug(`add workspace config: ${workspaceConfigFilepath}`);
+        this.workspaceConfigFile = new PochiConfigFile(workspaceConfigFilepath);
         await new Promise<void>((resolve) => {
           this.workspaceConfigFile?.config.subscribe(() => {
             this.updateMergedConfig();
@@ -218,11 +220,11 @@ class PochiConfigManager {
           });
         });
         this.updateMergedConfig();
+        return;
       }
-    } else {
-      this.workspaceConfigFile = null;
-      this.updateMergedConfig();
     }
+    this.workspaceConfigFile = null;
+    this.updateMergedConfig();
   };
 
   get config(): ReadonlySignal<PochiConfig> {

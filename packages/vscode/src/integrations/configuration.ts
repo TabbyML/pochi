@@ -8,6 +8,7 @@ import {
   getPochiConfigFilePath,
   inspectPochiConfig,
   pochiConfig,
+  pochiConfigRelativePath,
   setPochiConfigWorkspacePath,
   updatePochiConfig,
 } from "@getpochi/common/configuration";
@@ -26,7 +27,6 @@ export class PochiConfiguration implements vscode.Disposable {
   private disposables: vscode.Disposable[] = [];
 
   readonly advancedSettings = signal(getPochiAdvanceSettings());
-  readonly mcpServers = computed(() => pochiConfig.value.mcp || {});
   readonly autoSaveDisabled = signal(getAutoSaveDisabled());
   readonly customModelSettings = computed(() => pochiConfig.value.providers);
 
@@ -34,6 +34,7 @@ export class PochiConfiguration implements vscode.Disposable {
     try {
       const workspaceFolder = getWorkspaceFolder();
       setPochiConfigWorkspacePath(workspaceFolder.uri.fsPath);
+      this.watchWorkspaceConfig();
     } catch (error) {
       logger.debug("No workspace folder found, using user config only");
     }
@@ -57,6 +58,33 @@ export class PochiConfiguration implements vscode.Disposable {
         }
       }),
     });
+  }
+
+  watchWorkspaceConfig() {
+    try {
+      // Watch workspace .pochi/agents directory
+      const workspaceDir = getWorkspaceFolder();
+      if (workspaceDir) {
+        const workspaceConfigPattern = new vscode.RelativePattern(
+          workspaceDir,
+          pochiConfigRelativePath,
+        );
+        const configWatcher = vscode.workspace.createFileSystemWatcher(
+          workspaceConfigPattern,
+        );
+
+        configWatcher.onDidCreate(() => {
+          setPochiConfigWorkspacePath(workspaceDir.uri.fsPath);
+        });
+        configWatcher.onDidDelete(() => {
+          setPochiConfigWorkspacePath(undefined);
+        });
+
+        this.disposables.push(configWatcher);
+      }
+    } catch (error) {
+      logger.error("Failed to initialize workspace config watcher", error);
+    }
   }
 
   async updateCustomModelSettings(

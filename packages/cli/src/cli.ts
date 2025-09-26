@@ -178,6 +178,7 @@ program.hook("preAction", async () => {
   await Promise.all([
     checkForUpdates().catch(() => {}),
     waitForSync().catch(console.error),
+    setPochiConfigWorkspacePath(process.cwd()).catch(() => {}),
   ]);
 });
 

@@ -15,9 +15,10 @@ import { NewProjectRegistry, prepareProject } from "@/lib/new-project";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { PostHog } from "@/lib/posthog";
 import type { WebsiteTaskCreateEvent } from "@getpochi/common";
-import type {
-  CustomModelSetting,
-  McpServerConfig,
+import {
+  type CustomModelSetting,
+  type McpServerConfig,
+  pochiConfig,
 } from "@getpochi/common/configuration";
 import type { McpHub } from "@getpochi/common/mcp-utils";
 import { getVendor } from "@getpochi/common/vendor";
@@ -455,7 +456,7 @@ export class CommandManager implements vscode.Disposable {
   }
 
   private async ensureDefaultMcpServer() {
-    const currentServer = this.pochiConfiguration.mcpServers.value;
+    const currentServer = pochiConfig.value.mcp;
 
     if (currentServer && Object.keys(currentServer).length > 0) {
       return;
