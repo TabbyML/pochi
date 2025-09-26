@@ -104,6 +104,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   private toolCallGroup = runExclusive.createGroupRef();
   private checkpointGroup = runExclusive.createGroupRef();
   private disposables: vscode.Disposable[] = [];
+  private cwd = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? "";
 
   constructor(
     @inject("vscode.ExtensionContext")
@@ -251,7 +252,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   };
 
   readCurrentWorkspace = async (): Promise<string | undefined> => {
-    return vscode.workspace.workspaceFolders?.[0].uri.fsPath;
+    return this.cwd;
   };
 
   readMinionId = async (): Promise<string | null> => {
