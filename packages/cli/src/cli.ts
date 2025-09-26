@@ -234,7 +234,6 @@ async function createLLMConfig(
   options: ProgramOpts,
 ): Promise<LLMRequestData> {
   const model = (await getModelFromWorkflow(options)) || options.model;
-  console.debug(`${chalk.grey("Model:")} ${model}`);
 
   const llm =
     (await createLLMConfigWithVendors(program, model)) ||
