@@ -168,9 +168,6 @@ setup_shell_completion() {
   # Prefer a binary explicitly named "pochi" if present
   if [ -x "$bin_dir/pochi" ]; then
     binary_path="$bin_dir/pochi"
-  else
-    # Otherwise pick the first executable file in bin
-    binary_path="$(find "$bin_dir" -maxdepth 1 -type f -perm -111 2>/dev/null | head -n 1)"
   fi
 
   if [ -z "$binary_path" ]; then
