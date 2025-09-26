@@ -178,6 +178,14 @@ export async function renewCredentials(
     return credentials;
   }
 
+  const now = Date.now();
+  const lastRefresh = credentials.lastRefresh || 0;
+  const fiveMinutesInMs = 5 * 60 * 1000;
+
+  if (now - lastRefresh < fiveMinutesInMs) {
+    return credentials;
+  }
+
   try {
     const response = await fetch(`${AuthIssuer}/oauth/token`, {
       method: "POST",

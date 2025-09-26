@@ -85,43 +85,29 @@ function createPatchedFetch(
 
 function createProxyFetch(
   getCredentials: () => Promise<ClaudeCodeCredentials | undefined>,
-  proxyUrl: string,
 ) {
   return async (
     input: string | URL | Request,
     init?: RequestInit,
   ): Promise<Response> => {
-    const url = convertToProxyUrl(input, proxyUrl);
+    const originalUrl = new URL(input.toString());
+
+    const url = new URL(originalUrl);
+    url.protocol = "http:";
+    url.host = "localhost";
+    url.port = "54343";
+
     const credentials = await getCredentials();
     const headers = new Headers(init?.headers);
 
     addAnthropicHeaders(headers, credentials);
-    headers.delete("origin");
-    headers.delete("referer");
+    headers.set("x-proxy-origin", originalUrl.toString());
 
-    return fetch(url, { ...init, headers });
+    return fetch(url, {
+      ...init,
+      headers,
+    });
   };
-}
-
-function convertToProxyUrl(
-  input: string | URL | Request,
-  proxyUrl: string,
-): string {
-  if (typeof input === "string") {
-    if (input.startsWith("https://api.anthropic.com")) {
-      return input.replace("https://api.anthropic.com", proxyUrl);
-    }
-    if (input.startsWith("/")) {
-      return `${proxyUrl}${input}`;
-    }
-    return input;
-  }
-
-  if (input instanceof URL) {
-    return input.toString().replace("https://api.anthropic.com", proxyUrl);
-  }
-
-  return (input as Request).url.replace("https://api.anthropic.com", proxyUrl);
 }
 
 export function createClaudeCodeModel({
@@ -143,13 +129,13 @@ export function createEdgeClaudeCodeModel({
   modelId,
   getCredentials,
 }: CreateModelOptions): LanguageModelV2 {
-  const PROXY_URL =
-    process.env.CLAUDE_CODE_PROXY_URL || "http://localhost:54321";
-
   const customFetch = createProxyFetch(
-    getCredentials as () => Promise<ClaudeCodeCredentials | undefined>,
-    PROXY_URL,
+    getCredentials as () => Promise<ClaudeCodeCredentials>,
   );
 
-  return createClaudeCodeModelBase(modelId, `${PROXY_URL}/v1`, customFetch);
+  return createClaudeCodeModelBase(
+    modelId,
+    "https://api.anthropic.com/v1",
+    customFetch,
+  );
 }

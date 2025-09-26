@@ -89,10 +89,6 @@
                   "additionalProperties": false
                 }
               },
-              "kind": {
-                "type": "string",
-                "const": "openai"
-              },
               "baseURL": {
                 "description": "Base URL for the model provider's API, e.g., \"https://api.openai.com/v1\"",
                 "type": "string"
@@ -100,11 +96,14 @@
               "apiKey": {
                 "description": "API key for the model provider, if required.",
                 "type": "string"
+              },
+              "kind": {
+                "type": "string",
+                "const": "openai"
               }
             },
             "required": [
-              "models",
-              "baseURL"
+              "models"
             ],
             "additionalProperties": false
           },
@@ -143,9 +142,59 @@
                   "additionalProperties": false
                 }
               },
+              "baseURL": {
+                "description": "Base URL for the model provider's API, e.g., \"https://api.openai.com/v1\"",
+                "type": "string"
+              },
+              "apiKey": {
+                "description": "API key for the model provider, if required.",
+                "type": "string"
+              },
               "kind": {
                 "type": "string",
                 "const": "openai-responses"
+              }
+            },
+            "required": [
+              "models",
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "name": {
+                "description": "Display name of the provider, e.g., \"OpenAI\", \"Anthropic\", etc.",
+                "type": "string"
+              },
+              "models": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "description": "Display name of the model, e.g., \"GPT-4o\"",
+                      "type": "string"
+                    },
+                    "maxTokens": {
+                      "description": "Maximum number of generated tokens for the model",
+                      "type": "number"
+                    },
+                    "contextWindow": {
+                      "description": "Context window size for the model",
+                      "type": "number"
+                    },
+                    "useToolCallMiddleware": {
+                      "description": "Whether to use tool call middleware",
+                      "type": "boolean"
+                    }
+                  },
+                  "additionalProperties": false
+                }
               },
               "baseURL": {
                 "description": "Base URL for the model provider's API, e.g., \"https://api.openai.com/v1\"",
@@ -154,6 +203,10 @@
               "apiKey": {
                 "description": "API key for the model provider, if required.",
                 "type": "string"
+              },
+              "kind": {
+                "type": "string",
+                "const": "anthropic"
               }
             },
             "required": [
