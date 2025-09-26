@@ -24,16 +24,16 @@ import type { Environment } from "@getpochi/common";
 import type { UserEditsDiff } from "@getpochi/common/vscode-webui-bridge";
 import type { Message, Task } from "@getpochi/livekit";
 import type { Todo } from "@getpochi/tools";
+import { useQuery } from "@tanstack/react-query";
 import {
   PaperclipIcon,
   SendHorizonal,
-  StopCircleIcon,
   SquareArrowOutUpRightIcon,
+  StopCircleIcon,
 } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useQuery } from "@tanstack/react-query";
 import { useChatStatus } from "../hooks/use-chat-status";
 import { useChatSubmit } from "../hooks/use-chat-submit";
 import { useInlineCompactTask } from "../hooks/use-inline-compact-task";
