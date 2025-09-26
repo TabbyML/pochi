@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/hover-card";
 import { ApprovalButton, type useApprovalAndRetry } from "@/features/approval";
 import { useAutoApproveGuard } from "@/features/chat";
-import { useSelectedModels } from "@/features/settings";
+import { useSelectedModels, useSettingsStore } from "@/features/settings";
 import { AutoApproveMenu } from "@/features/settings";
 import { TodoList, useTodos } from "@/features/todo";
 import { useAddCompleteToolCalls } from "@/lib/hooks/use-add-complete-tool-calls";
@@ -24,10 +24,16 @@ import type { Environment } from "@getpochi/common";
 import type { UserEditsDiff } from "@getpochi/common/vscode-webui-bridge";
 import type { Message, Task } from "@getpochi/livekit";
 import type { Todo } from "@getpochi/tools";
-import { PaperclipIcon, SendHorizonal, StopCircleIcon } from "lucide-react";
+import {
+  PaperclipIcon,
+  SendHorizonal,
+  StopCircleIcon,
+  SquareArrowOutUpRightIcon,
+} from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useQuery } from "@tanstack/react-query";
 import { useChatStatus } from "../hooks/use-chat-status";
 import { useChatSubmit } from "../hooks/use-chat-submit";
 import { useInlineCompactTask } from "../hooks/use-inline-compact-task";
@@ -62,6 +68,14 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   onUpdateIsPublicShared,
 }) => {
   const { t } = useTranslation();
+  const { openInTab } = useSettingsStore();
+
+  // Get user auth status
+  const { data: credentials } = useQuery({
+    queryKey: ["credentials"],
+    queryFn: () => vscodeHost.readPochiCredentials(),
+  });
+
   const { messages, sendMessage, addToolResult, status } = chat;
   const isLoading = status === "streaming" || status === "submitted";
   const totalTokens = task?.totalTokens || 0;
@@ -206,6 +220,12 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     [messages],
   );
 
+  const handleOpenInTab = async () => {
+    await vscodeHost.openInNewTab();
+  };
+
+  const showOpenInTab = openInTab && credentials;
+
   return (
     <>
       <CompleteSubtaskButton subtask={subtask} messages={messages} />
@@ -289,6 +309,32 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
               displayError={displayError?.message}
               onUpdateIsPublicShared={onUpdateIsPublicShared}
             />
+          )}
+          {showOpenInTab && (
+            <HoverCard>
+              <HoverCardTrigger asChild>
+                <span>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleOpenInTab}
+                    className="button-focus relative h-6 w-6 p-0"
+                  >
+                    <span className="size-4">
+                      <SquareArrowOutUpRightIcon className="size-4.5" />
+                    </span>
+                  </Button>
+                </span>
+              </HoverCardTrigger>
+              <HoverCardContent
+                side="top"
+                align="start"
+                sideOffset={6}
+                className="!w-auto max-w-sm bg-background px-3 py-1.5 text-xs"
+              >
+                {t("chat.openInTab")}
+              </HoverCardContent>
+            </HoverCard>
           )}
           <HoverCard>
             <HoverCardTrigger asChild>

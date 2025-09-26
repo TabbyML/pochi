@@ -23,7 +23,8 @@
   },
   "chat": {
     "attachmentTooltip": "Attach files to chat. You can also drag and drop files or paste them into the chat input box.",
-    "queuedMessages": "Queued Messages ({{count}})"
+    "queuedMessages": "Queued Messages ({{count}})",
+    "openInTab": "Open in Tab"
   },
   "language": {
     "switcherTooltip": "Choose your preferred language with Pochi"
@@ -74,7 +75,8 @@
       "enablePochiModels": "Enable Pochi Models",
       "clearStorage": "Clear Storage",
       "language": "Language",
-      "languageDescription": "Choose your preferred language"
+      "languageDescription": "Choose your preferred language",
+      "openInTab": "Open in Tab"
     },
     "workflows": {
       "title": "Workflows",

@@ -264,6 +264,8 @@ export interface VSCodeHostApi {
   readUserStorage(): Promise<
     ThreadSignalSerialization<Record<string, UserInfo>>
   >;
+
+  openInNewTab(): Promise<void>;
 }
 
 export interface WebviewHostApi {

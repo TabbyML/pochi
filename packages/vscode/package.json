@@ -190,11 +190,6 @@
           "command": "pochi.webui.navigate.settings",
           "when": "view == pochiWebui",
           "group": "navigation@2"
-        },
-        {
-          "command": "pochi.openInEditor",
-          "when": "view == pochiWebui",
-          "group": "navigation@3"
         }
       ]
     },

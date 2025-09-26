@@ -689,6 +689,10 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     return ThreadSignal.serialize(this.userStorage.users);
   };
 
+  openInNewTab = async (): Promise<void> => {
+    await vscode.commands.executeCommand("pochi.openInEditor");
+  };
+
   readCustomAgents = async (): Promise<
     ThreadSignalSerialization<CustomAgentFile[]>
   > => {

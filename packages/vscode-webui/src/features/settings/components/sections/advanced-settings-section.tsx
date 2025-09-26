@@ -12,6 +12,9 @@ export const AdvancedSettingsSection: React.FC = () => {
 
     enablePochiModels,
     updateEnablePochiModels,
+
+    openInTab,
+    updateOpenInTab,
   } = useSettingsStore();
 
   return (
@@ -20,6 +23,14 @@ export const AdvancedSettingsSection: React.FC = () => {
       localStorageKey="advanced-settings-section"
     >
       <div className="flex flex-col gap-4 px-6">
+        <SettingsCheckboxOption
+          id="open-in-tab"
+          label={t("settings.advanced.openInTab")}
+          checked={openInTab}
+          onCheckedChange={(checked) => {
+            updateOpenInTab(!!checked);
+          }}
+        />
         {isDevMode !== undefined && (
           <SettingsCheckboxOption
             id="dev-mode"
