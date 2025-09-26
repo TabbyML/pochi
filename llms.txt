@@ -514,7 +514,12 @@ To use these features, sign up at [app.getpochi.com](http://app.getpochi.com) an
 
 ## Customize
 
-You can tailor Pochi to your needs by editing its configuration file, located at `~/.pochi/config.jsonc`. The file uses the JSONC (JSON with Comments) format, so you can add notes to explain your settings.
+Pochi supports hierarchical configuration with both global (user-level) and workspace-specific settings.
+
+1. **Global Configuration**: `~/.pochi/config.jsonc` - Your default configuration available across all projects
+2. **Workspace Configuration**: `.pochi/config.jsonc` - Project-specific configuration that override or extend global settings
+
+You can tailor Pochi to your needs by editing these configuration file. The file uses the JSONC (JSON with Comments) format, so you can add notes to explain your settings.
 
 ```jsonc
 {
@@ -610,6 +615,67 @@ You can use the toggle switch to enable or disable the MCP server entirely. You 
   }
 }
 ```
+
+## Configuration Hierarchy
+
+Pochi supports hierarchical MCP configuration with both global (user-level) and workspace-specific settings.
+
+1. **Global Configuration**: `~/.pochi/config.jsonc` - Your default MCP servers available across all projects
+2. **Workspace Configuration**: `.pochi/config.jsonc` - Project-specific MCP servers that override or extend global settings
+
+The workspace configuration takes precedence and is merged with the global configuration, allowing you to:
+
+* Add project-specific MCP servers
+* Override global server configurations for specific projects
+* Maintain different MCP setups for different codebases
+
+### Global MCP Configuration Example (`~/.pochi/config.jsonc`)
+
+```json
+{
+  "mcp": {
+    "context7": {
+      "command": "npx",
+      "args": ["@upstash/context7-mcp"]
+    },
+    "filesystem": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "/Users/yourname/Documents"
+      ]
+    }
+  }
+}
+```
+
+### Workspace MCP Configuration Example (`.pochi/config.jsonc`)
+
+```json
+{
+  "mcp": {
+    "project-db": {
+      "command": "npx",
+      "args": ["@modelcontextprotocol/server-sqlite", "./database.db"]
+    },
+    "filesystem": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "./src"
+      ]
+    }
+  }
+}
+```
+
+In this example:
+
+* The `context7` server from global config will be available
+* The workspace-specific `project-db` server will be added
+* The `filesystem` server configuration will be overridden to only access the project's `src` directory
 
 
 # Models
