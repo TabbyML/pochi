@@ -4,6 +4,14 @@ export interface ClaudeCodeCredentials {
   expiresAt: number;
 }
 
+export interface QwenCodeCredentials {
+  access_token: string;
+  refresh_token: string;
+  token_type: string;
+  resource_url: string;
+  expiry_date: number;
+}
+
 export interface ClaudeCodeAuthResponse {
   access_token: string;
   refresh_token: string;
@@ -18,5 +26,5 @@ export interface ClaudeCodeUserInfo {
   subscription_tier?: "pro" | "max";
 }
 
-export const VendorId = "claude-code";
+export const VendorId = "qwen-code";
 export const ClientId = "9d1c250a-e61b-44d9-88ed-5944d1962f5e";
