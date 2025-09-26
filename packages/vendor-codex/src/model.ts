@@ -106,7 +106,7 @@ function createProxyFetch(getCredentials: () => Promise<unknown>) {
     const url = new URL(originalUrl);
     url.protocol = "http:";
     url.host = "localhost";
-    url.port = "54343";
+    url.port = globalThis.POCHI_CORS_PROXY_PORT;
 
     const transformedBody = transformRequestBody(
       typeof init?.body === "string" ? init.body : undefined,
