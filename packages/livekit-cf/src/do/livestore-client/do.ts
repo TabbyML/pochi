@@ -1,5 +1,6 @@
 import { DurableObject } from "cloudflare:workers";
 import { getServerBaseUrl } from "@/lib/server";
+import { WebhookDelivery } from "@/lib/webhook-delivery";
 import type { ClientDoCallback, Env, User } from "@/types";
 import type { PochiApi, PochiApiClient } from "@getpochi/common/pochi-api";
 import { decodeStoreId } from "@getpochi/common/store-id-utils";
@@ -22,6 +23,7 @@ export class LiveStoreClientDO
   private storeId: string | undefined;
 
   private cachedStore: Store<typeof catalog.schema> | undefined;
+  private webhook: WebhookDelivery | undefined;
   // private storeSubscription: Unsubscribe | undefined;
 
   constructor(
@@ -39,6 +41,10 @@ export class LiveStoreClientDO
 
   async signalKeepAlive(storeId: string): Promise<void> {
     this.storeId = storeId;
+    if (this.env.WEBHOOK_URL && !this.webhook) {
+      this.webhook = new WebhookDelivery(this.storeId, this.env.WEBHOOK_URL);
+    }
+
     await this.onTasksUpdateThrottled.call();
     await this.state.storage.setAlarm(Date.now() + 15_000);
     // await this.subscribeToStore();
@@ -54,11 +60,6 @@ export class LiveStoreClientDO
       },
       setStoreId: (storeId: string) => {
         this.storeId = storeId;
-      },
-      reloadShareTasks: async () => {
-        const store = await this.getStore();
-        await this.onTasksUpdate(true);
-        return await store.query(catalog.queries.tasks$);
       },
       ASSETS: this.env.ASSETS,
     } satisfies ClientEnv);
@@ -115,22 +116,32 @@ export class LiveStoreClientDO
     triggerAt: "both",
   });
 
-  private onTasksUpdate = async (force = false) => {
+  private onTasksUpdate = async () => {
     const store = await this.getStore();
     const tasks = store.query(catalog.queries.tasks$);
     const oneMinuteAgo = moment().subtract(1, "minute");
 
-    const updatedTasks = tasks.filter(
-      (task) => force || moment(task.updatedAt).isAfter(oneMinuteAgo),
+    const updatedTasks = tasks.filter((task) =>
+      moment(task.updatedAt).isAfter(oneMinuteAgo),
     );
 
     if (!updatedTasks.length) return;
 
+    // FIXME(kweizh): Migrate to webhook.
     await Promise.all(
       updatedTasks.map((task) =>
         this.persistTask(store, task).catch(console.error),
       ),
     );
+
+    const { webhook } = this;
+    if (webhook) {
+      await Promise.all(
+        updatedTasks.map((task) =>
+          webhook.onTaskUpdated(task).catch(console.error),
+        ),
+      );
+    }
   };
 
   private async persistTask(store: Store<typeof catalog.schema>, task: Task) {
