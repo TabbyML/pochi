@@ -120,7 +120,6 @@ export const MessageList: React.FC<{
                     isLoading={isLoading}
                     isExecuting={isExecuting}
                     messages={renderMessages}
-                    assistant={assistantName}
                   />
                 ))}
               </div>
@@ -167,7 +166,6 @@ function Part({
   isLoading,
   isExecuting,
   messages,
-  assistant,
 }: {
   role: Message["role"];
   partIndex: number;
@@ -176,7 +174,6 @@ function Part({
   isLoading: boolean;
   isExecuting: boolean;
   messages: Message[];
-  assistant: string;
 }) {
   const paddingClass = partIndex === 0 ? "" : "mt-2";
   if (part.type === "text") {
@@ -189,7 +186,6 @@ function Part({
         className={paddingClass}
         part={part}
         isLoading={isLastPartInMessages}
-        assistant={assistant}
       />
     );
   }

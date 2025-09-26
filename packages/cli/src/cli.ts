@@ -18,7 +18,10 @@ import "@getpochi/vendor-github-copilot/edge";
 
 import { Command } from "@commander-js/extra-typings";
 import { constants, getLogger } from "@getpochi/common";
-import { pochiConfig } from "@getpochi/common/configuration";
+import {
+  pochiConfig,
+  setPochiConfigWorkspacePath,
+} from "@getpochi/common/configuration";
 import { getVendor, getVendors } from "@getpochi/common/vendor";
 import { createModel } from "@getpochi/common/vendor/edge";
 import type { LLMRequestData } from "@getpochi/livekit";
@@ -33,11 +36,11 @@ import { initializeShellCompletion } from "./completion";
 import { findRipgrep } from "./lib/find-ripgrep";
 import { loadAgents } from "./lib/load-agents";
 import { createCliMcpHub } from "./lib/mcp-hub-factory";
-import { shutdownStoreAndExit } from "./lib/store-utils";
 import {
   containsWorkflowReference,
   replaceWorkflowReferences,
 } from "./lib/workflow-loader";
+
 import { createStore } from "./livekit/store";
 import { initializeMcp, registerMcpCommand } from "./mcp";
 import { registerModelCommand } from "./model";
@@ -149,7 +152,7 @@ const program = new Command()
     renderer.shutdown();
     mcpHub.dispose();
     await waitForSync(store, "2 second").catch(console.error);
-    await shutdownStoreAndExit(store);
+    await store.shutdownPromise();
   });
 
 const otherOptionsGroup = "Others:";
@@ -175,6 +178,7 @@ program.hook("preAction", async () => {
   await Promise.all([
     checkForUpdates().catch(() => {}),
     waitForSync().catch(console.error),
+    setPochiConfigWorkspacePath(process.cwd()).catch(() => {}),
   ]);
 });
 
@@ -315,19 +319,6 @@ async function createLLMConfigWithProviders(
     );
   }
 
-  if (modelProvider.kind === undefined || modelProvider.kind === "openai") {
-    return {
-      type: "openai",
-      modelId,
-      baseURL: modelProvider.baseURL,
-      apiKey: modelProvider.apiKey,
-      contextWindow:
-        modelSetting.contextWindow ?? constants.DefaultContextWindow,
-      maxOutputTokens:
-        modelSetting.maxTokens ?? constants.DefaultMaxOutputTokens,
-    };
-  }
-
   if (modelProvider.kind === "ai-gateway") {
     return {
       type: "ai-gateway",
@@ -352,9 +343,14 @@ async function createLLMConfigWithProviders(
     };
   }
 
-  if (modelProvider.kind === "openai-responses") {
+  if (
+    modelProvider.kind === undefined ||
+    modelProvider.kind === "openai" ||
+    modelProvider.kind === "openai-responses" ||
+    modelProvider.kind === "anthropic"
+  ) {
     return {
-      type: "openai-responses",
+      type: modelProvider.kind || "openai",
       modelId,
       baseURL: modelProvider.baseURL,
       apiKey: modelProvider.apiKey,
@@ -365,6 +361,7 @@ async function createLLMConfigWithProviders(
       useToolCallMiddleware: modelSetting.useToolCallMiddleware,
     };
   }
+
   assertUnreachable(modelProvider.kind);
 }
 

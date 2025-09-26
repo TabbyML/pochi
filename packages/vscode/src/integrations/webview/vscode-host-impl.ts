@@ -104,6 +104,7 @@ const logger = getLogger("VSCodeHostImpl");
 export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   private toolCallGroup = runExclusive.createGroupRef();
   private checkpointGroup = runExclusive.createGroupRef();
+  private sessionState: SessionState = {};
   private disposables: vscode.Disposable[] = [];
 
   constructor(
@@ -152,20 +153,26 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     return `dev-${id}`;
   };
 
-  // These methods are overridden in the wrapper created by BaseWebview.createVSCodeHostWrapper()
-  // They are only here to satisfy the VSCodeHostApi interface
   getSessionState = async <K extends keyof SessionState>(
-    _keys?: K[] | undefined,
+    keys?: K[] | undefined,
   ): Promise<Pick<SessionState, K>> => {
-    throw new Error(
-      "getSessionState should be called on the webview-specific wrapper, not the singleton",
+    if (!keys || keys.length === 0) {
+      return { ...this.sessionState };
+    }
+
+    return keys.reduce<Pick<SessionState, K>>(
+      (filtered, key) => {
+        if (Object.prototype.hasOwnProperty.call(this.sessionState, key)) {
+          filtered[key] = this.sessionState[key];
+        }
+        return filtered;
+      },
+      {} as Pick<SessionState, K>,
     );
   };
 
-  setSessionState = async (_state: Partial<SessionState>): Promise<void> => {
-    throw new Error(
-      "setSessionState should be called on the webview-specific wrapper, not the singleton",
-    );
+  setSessionState = async (state: Partial<SessionState>): Promise<void> => {
+    Object.assign(this.sessionState, state);
   };
 
   getWorkspaceState = async <K extends keyof WorkspaceState>(

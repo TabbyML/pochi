@@ -2,6 +2,7 @@
 import "@getpochi/vendor-pochi/edge";
 import "@getpochi/vendor-gemini-cli/edge";
 import "@getpochi/vendor-claude-code/edge";
+import "@getpochi/vendor-codex/edge";
 import "@getpochi/vendor-github-copilot/edge";
 import "./vscode-lm";
 
@@ -132,23 +133,14 @@ function useLLM(): React.RefObject<LLMRequestData> {
       };
     }
 
-    if (provider.kind === "openai-responses") {
+    if (
+      provider.kind === undefined ||
+      provider.kind === "openai" ||
+      provider.kind === "anthropic" ||
+      provider.kind === "openai-responses"
+    ) {
       return {
-        type: "openai-responses" as const,
-        modelId: selectedModel.modelId,
-        baseURL: provider.baseURL,
-        apiKey: provider.apiKey,
-        maxOutputTokens:
-          selectedModel.options.maxTokens ?? constants.DefaultMaxOutputTokens,
-        contextWindow:
-          selectedModel.options.contextWindow ?? constants.DefaultContextWindow,
-        useToolCallMiddleware: selectedModel.options.useToolCallMiddleware,
-      };
-    }
-
-    if (provider.kind === undefined || provider.kind === "openai") {
-      return {
-        type: "openai" as const,
+        type: provider.kind || "openai",
         modelId: selectedModel.modelId,
         baseURL: provider.baseURL,
         apiKey: provider.apiKey,

@@ -17,7 +17,6 @@ export const Default: Story = {
       type: "reasoning",
       text: "This is a reasoning message.",
     },
-    assistant: "Pochi",
   },
 };
 
@@ -28,6 +27,5 @@ export const Loading: Story = {
       type: "reasoning",
       text: "This is a reasoning message.",
     },
-    assistant: "Pochi",
   },
 };

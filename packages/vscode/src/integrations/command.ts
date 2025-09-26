@@ -3,7 +3,7 @@ import {
   calcEditedRangeAfterAccept,
 } from "@/code-completion/auto-code-actions";
 // biome-ignore lint/style/useImportType: needed for dependency injection
-import { PochiWebviewPanel, PochiWebviewSidebar } from "@/integrations/webview";
+import { RagdollWebviewProvider } from "@/integrations/webview/ragdoll-webview-provider";
 import type { AuthClient } from "@/lib/auth-client";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { AuthEvents } from "@/lib/auth-events";
@@ -15,9 +15,10 @@ import { NewProjectRegistry, prepareProject } from "@/lib/new-project";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { PostHog } from "@/lib/posthog";
 import type { WebsiteTaskCreateEvent } from "@getpochi/common";
-import type {
-  CustomModelSetting,
-  McpServerConfig,
+import {
+  type CustomModelSetting,
+  type McpServerConfig,
+  pochiConfig,
 } from "@getpochi/common/configuration";
 import type { McpHub } from "@getpochi/common/mcp-utils";
 import { getVendor } from "@getpochi/common/vendor";
@@ -40,15 +41,13 @@ export class CommandManager implements vscode.Disposable {
   private disposables: vscode.Disposable[] = [];
 
   constructor(
-    private readonly pochiWebviewProvider: PochiWebviewSidebar,
+    private readonly ragdollWebviewProvider: RagdollWebviewProvider,
     private readonly newProjectRegistry: NewProjectRegistry,
     @inject("AuthClient") private readonly authClient: AuthClient,
     private readonly authEvents: AuthEvents,
     @inject("McpHub") private readonly mcpHub: McpHub,
     private readonly pochiConfiguration: PochiConfiguration,
     private readonly posthog: PostHog,
-    @inject("vscode.ExtensionContext")
-    private readonly context: vscode.ExtensionContext,
   ) {
     this.registerCommands();
   }
@@ -66,7 +65,7 @@ export class CommandManager implements vscode.Disposable {
       await prepareProject(workspaceUri, githubTemplateUrl, progress);
     }
 
-    const webviewHost = await this.pochiWebviewProvider.retrieveWebviewHost();
+    const webviewHost = await this.ragdollWebviewProvider.retrieveWebviewHost();
     webviewHost.openTask(openTaskParams);
 
     if (requestId) {
@@ -211,7 +210,7 @@ export class CommandManager implements vscode.Disposable {
             progress.report({ message: "Pochi: Opening task..." });
             await vscode.commands.executeCommand("pochiWebui.focus");
             const webviewHost =
-              await this.pochiWebviewProvider.retrieveWebviewHost();
+              await this.ragdollWebviewProvider.retrieveWebviewHost();
             webviewHost.openTask({ uid });
           },
         );
@@ -222,7 +221,7 @@ export class CommandManager implements vscode.Disposable {
         async () => {
           await vscode.commands.executeCommand("pochiWebui.focus");
           const webviewHost =
-            await this.pochiWebviewProvider.retrieveWebviewHost();
+            await this.ragdollWebviewProvider.retrieveWebviewHost();
           webviewHost.openTask({ uid: undefined });
         },
       ),
@@ -232,7 +231,7 @@ export class CommandManager implements vscode.Disposable {
         async () => {
           await vscode.commands.executeCommand("pochiWebui.focus");
           const webviewHost =
-            await this.pochiWebviewProvider.retrieveWebviewHost();
+            await this.ragdollWebviewProvider.retrieveWebviewHost();
           webviewHost.openTaskList();
         },
       ),
@@ -242,7 +241,7 @@ export class CommandManager implements vscode.Disposable {
         async () => {
           await vscode.commands.executeCommand("pochiWebui.focus");
           const webviewHost =
-            await this.pochiWebviewProvider.retrieveWebviewHost();
+            await this.ragdollWebviewProvider.retrieveWebviewHost();
           webviewHost.openSettings();
         },
       ),
@@ -272,10 +271,11 @@ export class CommandManager implements vscode.Disposable {
 
       vscode.commands.registerCommand(
         "pochi.mcp.openServerSettings",
-        async () => {
+        async (serverName?: string) => {
           await this.ensureDefaultMcpServer();
           await this.pochiConfiguration.revealConfig({
-            key: "mcp",
+            key: serverName ? `mcp.${serverName}` : "mcp",
+            configTarget: serverName ? undefined : "user", // open user config if no specific server
           });
         },
       ),
@@ -309,7 +309,7 @@ export class CommandManager implements vscode.Disposable {
 
       vscode.commands.registerCommand("pochi.toggleFocus", async () => {
         const webviewHost =
-          await this.pochiWebviewProvider.retrieveWebviewHost();
+          await this.ragdollWebviewProvider.retrieveWebviewHost();
         if (await webviewHost.isFocused()) {
           logger.debug("Focused on editor");
           await vscode.commands.executeCommand(
@@ -422,10 +422,6 @@ export class CommandManager implements vscode.Disposable {
           });
         },
       ),
-
-      vscode.commands.registerCommand("pochi.openInEditor", async () => {
-        PochiWebviewPanel.createOrShow(this.context.extensionUri);
-      }),
     );
   }
 
@@ -460,7 +456,7 @@ export class CommandManager implements vscode.Disposable {
   }
 
   private async ensureDefaultMcpServer() {
-    const currentServer = this.pochiConfiguration.mcpServers.value;
+    const currentServer = pochiConfig.value.mcp;
 
     if (currentServer && Object.keys(currentServer).length > 0) {
       return;

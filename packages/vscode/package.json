@@ -125,12 +125,6 @@
         "command": "pochi.openCustomModelSettings",
         "title": "Open Custom Model Settings",
         "category": "Pochi"
-      },
-      {
-        "command": "pochi.openInEditor",
-        "title": "Open in Editor",
-        "category": "Pochi",
-        "icon": "$(window)"
       }
     ],
     "menus": {
@@ -190,11 +184,6 @@
           "command": "pochi.webui.navigate.settings",
           "when": "view == pochiWebui",
           "group": "navigation@2"
-        },
-        {
-          "command": "pochi.openInEditor",
-          "when": "view == pochiWebui",
-          "group": "navigation@3"
         }
       ]
     },
@@ -388,6 +377,7 @@
     "@getpochi/vendor-gemini-cli": "workspace:*",
     "@getpochi/vendor-pochi": "workspace:*",
     "@getpochi/vendor-claude-code": "workspace:*",
+    "@getpochi/vendor-codex": "workspace:*",
     "@getpochi/vendor-github-copilot": "workspace:*",
     "@orama/orama": "^3.1.11",
     "@preact/signals-core": "catalog:",

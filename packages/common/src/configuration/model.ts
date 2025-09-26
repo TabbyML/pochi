@@ -30,10 +30,10 @@ const BaseModelSettings = z.object({
   ),
 });
 
-const OpenAIModelSettings = BaseModelSettings.extend({
-  kind: z.optional(z.literal("openai")),
+const ExtendedModelSettings = BaseModelSettings.extend({
   baseURL: z
     .string()
+    .optional()
     .describe(
       'Base URL for the model provider\'s API, e.g., "https://api.openai.com/v1"',
     ),
@@ -43,18 +43,16 @@ const OpenAIModelSettings = BaseModelSettings.extend({
     .describe("API key for the model provider, if required."),
 });
 
-const OpenAIResponsesModelSettings = BaseModelSettings.extend({
+const OpenAIModelSettings = ExtendedModelSettings.extend({
+  kind: z.optional(z.literal("openai")),
+});
+
+const OpenAIResponsesModelSettings = ExtendedModelSettings.extend({
   kind: z.literal("openai-responses"),
-  baseURL: z
-    .string()
-    .optional()
-    .describe(
-      'Base URL for the model provider\'s API, e.g., "https://api.openai.com/v1"',
-    ),
-  apiKey: z
-    .string()
-    .optional()
-    .describe("API key for the model provider, if required."),
+});
+
+const AnthropicModelSettings = ExtendedModelSettings.extend({
+  kind: z.literal("anthropic"),
 });
 
 export const GoogleVertexModel = z.union([
@@ -87,6 +85,7 @@ const AiGatewayModelSettings = BaseModelSettings.extend({
 export const CustomModelSetting = z.discriminatedUnion("kind", [
   OpenAIModelSettings,
   OpenAIResponsesModelSettings,
+  AnthropicModelSettings,
   GoogleVertexTuningModelSettings,
   AiGatewayModelSettings,
 ]);
