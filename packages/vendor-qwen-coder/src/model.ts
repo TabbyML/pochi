@@ -1,0 +1,141 @@
+import { createAnthropic } from "@ai-sdk/anthropic";
+import type { LanguageModelV2 } from "@ai-sdk/provider";
+import type { CreateModelOptions } from "@getpochi/common/vendor/edge";
+import { wrapLanguageModel } from "ai";
+import type { ClaudeCodeCredentials } from "./types";
+
+const ClaudeCodeSystemPrompt =
+  "You are Claude Code, Anthropic's official CLI for Claude.";
+
+const AnthropicHeaders = {
+  beta: "oauth-2025-04-20,claude-code-20250219,interleaved-thinking-2025-05-14,fine-grained-tool-streaming-2025-05-14",
+  version: "2023-06-01",
+} as const;
+
+function addAnthropicHeaders(
+  headers: Headers,
+  credentials?: ClaudeCodeCredentials,
+): void {
+  if (credentials) {
+    headers.set("authorization", `Bearer ${credentials.accessToken}`);
+  }
+  headers.set("anthropic-beta", AnthropicHeaders.beta);
+  headers.set("anthropic-version", AnthropicHeaders.version);
+  headers.delete("x-api-key");
+}
+
+export const ModelIdMap: Record<string, string> = {
+  "claude-opus-4-1": "claude-opus-4-1-20250805",
+  "claude-sonnet-4": "claude-sonnet-4-20250514",
+};
+
+function createClaudeCodeModelBase(
+  modelId: string,
+  baseURL: string,
+  customFetch: (
+    input: string | URL | Request,
+    init?: RequestInit,
+  ) => Promise<Response>,
+): LanguageModelV2 {
+  const actualModelId = ModelIdMap[modelId] || modelId;
+
+  const anthropic = createAnthropic({
+    baseURL,
+    apiKey: "oauth-token",
+    fetch: customFetch as typeof fetch,
+  });
+  const model = anthropic(actualModelId);
+
+  return wrapLanguageModel({
+    model,
+    middleware: {
+      middlewareVersion: "v2",
+      async transformParams({ params }) {
+        params.prompt = [
+          {
+            role: "system",
+            content: ClaudeCodeSystemPrompt,
+          },
+          ...params.prompt,
+        ];
+        return {
+          ...params,
+          maxOutputTokens: 8192,
+        };
+      },
+    },
+  });
+}
+
+function createPatchedFetch(
+  getCredentials: () => Promise<ClaudeCodeCredentials>,
+) {
+  return async (
+    input: string | URL | Request,
+    init?: RequestInit,
+  ): Promise<Response> => {
+    const credentials = await getCredentials();
+    const headers = new Headers(init?.headers);
+
+    addAnthropicHeaders(headers, credentials);
+
+    return fetch(input, { ...init, headers });
+  };
+}
+
+function createProxyFetch(
+  getCredentials: () => Promise<ClaudeCodeCredentials | undefined>,
+) {
+  return async (
+    input: string | URL | Request,
+    init?: RequestInit,
+  ): Promise<Response> => {
+    const originalUrl = new URL(input.toString());
+
+    const url = new URL(originalUrl);
+    url.protocol = "http:";
+    url.host = "localhost";
+    url.port = "54343";
+
+    const credentials = await getCredentials();
+    const headers = new Headers(init?.headers);
+
+    addAnthropicHeaders(headers, credentials);
+    headers.set("x-proxy-origin", originalUrl.toString());
+
+    return fetch(url, {
+      ...init,
+      headers,
+    });
+  };
+}
+
+export function createClaudeCodeModel({
+  modelId,
+  getCredentials,
+}: CreateModelOptions): LanguageModelV2 {
+  const customFetch = createPatchedFetch(
+    getCredentials as () => Promise<ClaudeCodeCredentials>,
+  );
+
+  return createClaudeCodeModelBase(
+    modelId,
+    "https://api.anthropic.com/v1",
+    customFetch,
+  );
+}
+
+export function createEdgeClaudeCodeModel({
+  modelId,
+  getCredentials,
+}: CreateModelOptions): LanguageModelV2 {
+  const customFetch = createProxyFetch(
+    getCredentials as () => Promise<ClaudeCodeCredentials>,
+  );
+
+  return createClaudeCodeModelBase(
+    modelId,
+    "https://api.anthropic.com/v1",
+    customFetch,
+  );
+}

@@ -1,0 +1,21 @@
+{
+  "name": "@getpochi/vendor-qwen-coder",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "tsc": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ai-sdk/openai": "catalog:",
+    "@getpochi/common": "workspace:*",
+    "ai": "catalog:",
+    "qwen-ai-provider": "^0.1.1"
+  },
+  "exports": {
+    ".": "./src/node.ts",
+    "./edge": "./src/edge.ts"
+  }
+}
