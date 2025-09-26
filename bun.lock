@@ -238,6 +238,7 @@
       "dependencies": {
         "@getpochi/common": "workspace:*",
         "@getpochi/vendor-claude-code": "workspace:*",
+        "@getpochi/vendor-codex": "workspace:*",
         "@getpochi/vendor-gemini-cli": "workspace:*",
         "@getpochi/vendor-github-copilot": "workspace:*",
         "@getpochi/vendor-pochi": "workspace:*",
@@ -296,6 +297,7 @@
         "@getpochi/common": "workspace:*",
         "@getpochi/livekit": "workspace:*",
         "@getpochi/vendor-claude-code": "workspace:*",
+        "@getpochi/vendor-codex": "workspace:*",
         "@getpochi/vendor-gemini-cli": "workspace:*",
         "@getpochi/vendor-github-copilot": "workspace:*",
         "@getpochi/vendor-pochi": "workspace:*",

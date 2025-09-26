@@ -2,6 +2,7 @@
 import "@getpochi/vendor-pochi/edge";
 import "@getpochi/vendor-gemini-cli/edge";
 import "@getpochi/vendor-claude-code/edge";
+import "@getpochi/vendor-codex/edge";
 import "@getpochi/vendor-github-copilot/edge";
 import "./vscode-lm";
 

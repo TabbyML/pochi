@@ -9,6 +9,7 @@ import "./lib/logger";
 import "@getpochi/vendor-pochi";
 import "@getpochi/vendor-gemini-cli";
 import "@getpochi/vendor-claude-code";
+import "@getpochi/vendor-codex";
 import "@getpochi/vendor-github-copilot";
 
 import RagdollUriHandler from "@/integrations/uri-handler";
@@ -39,9 +40,7 @@ import { PostInstallActions } from "./lib/post-install-actions";
 export async function activate(context: vscode.ExtensionContext) {
   // Container will dispose all the registered instances when itself is disposed
   context.subscriptions.push(container);
-  if (!process.env.POCHI_TEST) {
-    context.subscriptions.push(startCorsProxy());
-  }
+  context.subscriptions.push(startCorsProxy());
 
   container.register<vscode.ExtensionContext>("vscode.ExtensionContext", {
     useValue: context,

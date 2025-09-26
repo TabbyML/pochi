@@ -1,10 +1,69 @@
-import * as crypto from "node:crypto";
 import { createOpenAI } from "@ai-sdk/openai";
 import type { CreateModelOptions } from "@getpochi/common/vendor/edge";
 import { wrapLanguageModel } from "ai";
 import { extractAccountId } from "./auth";
 import { transformToCodexFormat } from "./transformers";
 import type { CodexCredentials } from "./types";
+
+/**
+ * Create headers for Codex API requests
+ */
+function createCodexHeaders(
+  credentials: CodexCredentials,
+  init?: RequestInit,
+): Headers {
+  const headers = new Headers(init?.headers);
+  headers.set("OpenAI-Beta", "responses=experimental");
+  headers.set("originator", "codex_cli_rs");
+  headers.set("Content-Type", "application/json");
+  if (credentials.accessToken) {
+    headers.set("Authorization", `Bearer ${credentials.accessToken}`);
+    const accountId = extractAccountId(credentials.accessToken);
+    if (accountId) {
+      headers.set("chatgpt-account-id", accountId);
+    }
+  }
+  return headers;
+}
+
+/**
+ * Transform request body for Codex API
+ */
+function transformRequestBody(body: string | undefined): string {
+  if (!body) return "";
+
+  try {
+    const originalRequest = JSON.parse(body);
+    const codexRequest = transformToCodexFormat(originalRequest);
+    return JSON.stringify(codexRequest);
+  } catch (error) {
+    return body;
+  }
+}
+
+/**
+ * Create a fetch function with Codex-specific transformations
+ */
+function createCodexFetch(getCredentials: () => Promise<unknown>) {
+  return async (
+    url: string | URL | Request,
+    init?: RequestInit,
+  ): Promise<Response> => {
+    const credentials = await (getCredentials() as Promise<CodexCredentials>);
+
+    const transformedBody = transformRequestBody(
+      typeof init?.body === "string" ? init.body : undefined,
+    );
+
+    const headers = createCodexHeaders(credentials, init);
+
+    return fetch(url, {
+      ...init,
+      headers,
+      body: transformedBody || undefined,
+    });
+  };
+}
 
 export function createCodexModel({
   modelId,
@@ -25,55 +84,63 @@ function createCodexResponsesModel(
   modelId: string | undefined,
   getCredentials: () => Promise<unknown>,
 ) {
-  const customFetch = async (
-    url: string | URL | Request,
-    init?: RequestInit,
-  ) => {
-    const { accessToken } =
-      await (getCredentials() as Promise<CodexCredentials>);
-
-    // Transform the request body to codex format
-    let transformedBody: string;
-    if (init?.body && typeof init.body === "string") {
-      try {
-        const originalRequest = JSON.parse(init.body);
-        const codexRequest = transformToCodexFormat(originalRequest);
-        transformedBody = JSON.stringify(codexRequest);
-      } catch (error) {
-        transformedBody = init.body;
-      }
-    } else {
-      transformedBody = (init?.body as string) || "";
-    }
-
-    // Add required headers for vendor-codex
-    const headers = new Headers(init?.headers);
-    headers.set("OpenAI-Beta", "responses=experimental");
-    headers.set("session_id", crypto.randomUUID());
-    headers.set("originator", "codex_cli_rs");
-    headers.set("Content-Type", "application/json");
-
-    if (accessToken) {
-      headers.set("Authorization", `Bearer ${accessToken}`);
-
-      const accountId = extractAccountId(accessToken);
-      if (accountId) {
-        headers.set("chatgpt-account-id", accountId);
-      }
-    }
-
-    return globalThis.fetch(url, {
-      ...init,
-      headers,
-      body: transformedBody,
-    });
-  };
+  const customFetch = createCodexFetch(getCredentials);
 
   const openai = createOpenAI({
     baseURL: "https://chatgpt.com/backend-api/codex",
-    apiKey: "placeholder", // The actual token is set in the fetch function
+    apiKey: "placeholder",
     fetch: customFetch as typeof fetch,
   });
 
   return openai.responses(modelId || "gpt-5");
+}
+
+function createProxyFetch(getCredentials: () => Promise<unknown>) {
+  return async (
+    input: string | URL | Request,
+    init?: RequestInit,
+  ): Promise<Response> => {
+    const originalUrl = new URL(input.toString());
+    const apiOrigin = originalUrl.origin;
+
+    const url = new URL(originalUrl);
+    url.protocol = "http:";
+    url.host = "localhost";
+    url.port = "54343";
+
+    const transformedBody = transformRequestBody(
+      typeof init?.body === "string" ? init.body : undefined,
+    );
+
+    const credentials = await (getCredentials() as Promise<CodexCredentials>);
+    const headers = createCodexHeaders(credentials, init);
+
+    headers.set("x-proxy-origin", apiOrigin);
+
+    return fetch(url, {
+      ...init,
+      headers,
+      body: transformedBody || undefined,
+    });
+  };
+}
+
+export function createEdgeCodexModel({
+  modelId,
+  getCredentials,
+}: CreateModelOptions) {
+  const customFetch = createProxyFetch(getCredentials);
+  return wrapLanguageModel({
+    model: createOpenAI({
+      baseURL: "https://chatgpt.com/backend-api/codex",
+      apiKey: "placeholder",
+      fetch: customFetch as typeof fetch,
+    }).responses(modelId || "gpt-5"),
+    middleware: {
+      middlewareVersion: "v2",
+      async transformParams({ params }) {
+        return params;
+      },
+    },
+  });
 }
