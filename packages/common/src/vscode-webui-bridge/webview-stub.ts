@@ -79,7 +79,12 @@ const VSCodeHostStub = {
     return Promise.resolve([]);
   },
   listWorkflowsInWorkspace: (): Promise<
-    { id: string; path: string; content: string }[]
+    {
+      id: string;
+      path: string;
+      content: string;
+      frontmatter: { model?: string };
+    }[]
   > => {
     return Promise.resolve([]);
   },

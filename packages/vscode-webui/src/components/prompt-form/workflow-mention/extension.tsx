@@ -56,6 +56,9 @@ export const PromptFormWorkflowExtension = Mention.extend({
       content: {
         default: "",
       },
+      frontmatter: {
+        defualt: {},
+      },
     };
   },
 });
