@@ -47,16 +47,10 @@ export abstract class WebviewBase implements vscode.Disposable {
   ) {}
 
   protected setupWebviewHtml(webview: vscode.Webview): void {
-    webview.html = this.getHtmlForWebview(
-      webview,
-      this.pochiConfiguration.advancedSettings.value.webviewLogLevel,
-    );
+    webview.html = this.getHtmlForWebview(webview);
   }
 
-  private getHtmlForWebview(
-    webview: vscode.Webview,
-    webviewLogLevel?: string,
-  ): string {
+  private getHtmlForWebview(webview: vscode.Webview): string {
     const isProd =
       this.context.extensionMode === vscode.ExtensionMode.Production;
 
