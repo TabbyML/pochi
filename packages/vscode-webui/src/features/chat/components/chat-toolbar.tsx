@@ -24,11 +24,7 @@ import type { Environment } from "@getpochi/common";
 import type { UserEditsDiff } from "@getpochi/common/vscode-webui-bridge";
 import type { Message, Task } from "@getpochi/livekit";
 import type { Todo } from "@getpochi/tools";
-import {
-  PaperclipIcon,
-  SendHorizonal,
-  StopCircleIcon,
-} from "lucide-react";
+import { PaperclipIcon, SendHorizonal, StopCircleIcon } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";

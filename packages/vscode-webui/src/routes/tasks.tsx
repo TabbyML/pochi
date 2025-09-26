@@ -22,11 +22,14 @@ import {
 } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { WorkspaceRequiredPlaceholder } from "@/components/workspace-required-placeholder";
+import { useSettingsStore } from "@/features/settings";
 import { useCurrentWorkspace } from "@/lib/hooks/use-current-workspace";
 import { cn } from "@/lib/utils";
+import { vscodeHost } from "@/lib/vscode";
 import { parseTitle } from "@getpochi/common/message-utils";
 import { type Task, catalog } from "@getpochi/livekit";
 import { useStore } from "@livestore/react";
+import { useQuery } from "@tanstack/react-query";
 import { Link, createFileRoute, useRouter } from "@tanstack/react-router";
 import {
   Brain,
@@ -40,12 +43,9 @@ import {
   Zap,
 } from "lucide-react";
 import { useMemo, useState } from "react";
-import { MdOutlineErrorOutline } from "react-icons/md";
 import { useTranslation } from "react-i18next";
+import { MdOutlineErrorOutline } from "react-icons/md";
 import { useStoreDate } from "../livestore-provider";
-import { useSettingsStore } from "@/features/settings";
-import { vscodeHost } from "@/lib/vscode";
-import { useQuery } from "@tanstack/react-query";
 
 export const Route = createFileRoute("/tasks")({
   validateSearch: (search: Record<string, unknown>): { page?: number } => {
