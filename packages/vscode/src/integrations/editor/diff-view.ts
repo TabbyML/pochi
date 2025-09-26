@@ -39,7 +39,7 @@ export class DiffView implements vscode.Disposable {
     private readonly fileExists: boolean,
     private readonly originalContent: string,
     private readonly activeDiffEditor: vscode.TextEditor,
-    private readonly wasFileOpenBeforeDiff = false,
+    private readonly isFileOpenBeforeDiffPreview = false,
   ) {
     this.fadedOverlayController = new DecorationController(
       "fadedOverlay",
@@ -100,7 +100,7 @@ export class DiffView implements vscode.Disposable {
     closeAllNonDirtyDiffViews();
 
     // Reopen the file if it was open before the diff view
-    if (this.wasFileOpenBeforeDiff) {
+    if (this.isFileOpenBeforeDiffPreview) {
       logger.debug(
         "Reopening file that was open before diff view",
         this.fileUri.fsPath,
@@ -378,7 +378,7 @@ export class DiffView implements vscode.Disposable {
       originalContent,
     );
     // Check if file was open before creating diff view
-    const wasFileOpenBeforeDiff = await isFileCurrentlyOpen(fileUri);
+    const wasFileOpenBeforeDiff = await isFileOpen(fileUri);
 
     return new DiffView(
       id,
@@ -423,7 +423,7 @@ export class DiffView implements vscode.Disposable {
 }
 
 // Check if a file is currently open in any tab (excluding diff views)
-async function isFileCurrentlyOpen(fileUri: vscode.Uri): Promise<boolean> {
+async function isFileOpen(fileUri: vscode.Uri): Promise<boolean> {
   for (const group of vscode.window.tabGroups.all) {
     for (const tab of group.tabs) {
       if (
