@@ -159,36 +159,15 @@ _append_if_missing() {
 
 # Configure shell auto-completion by sourcing the CLI's completion output
 # args: <install_dir>
-setup_shell_completion() {
+# Print manual instructions to set PATH and enable completion
+print_shell_setup_instructions() {
   local install_dir="$1"
   local bin_dir="$install_dir/bin"
- 
-  # Try to locate the installed executable without hardcoding its name
-  local binary_path
-  # Prefer a binary explicitly named "pochi" if present
-  if [ -x "$bin_dir/pochi" ]; then
-    binary_path="$bin_dir/pochi"
-  fi
 
-  if [ -z "$binary_path" ]; then
-    warning "Could not locate installed binary in $bin_dir to configure shell completion."
-    return 0
-  fi
-
-  local profile="$(_detect_shell_profile)"
-  if [ -z "$profile" ]; then
-    warning "Could not detect shell profile. Please add completion manually: source <(\"$binary_path\" --completion)"
-    return 0
-  fi
- 
-  local marker="# Pochi CLI auto-completion"
-  local line="source <(\"$binary_path\" --completion)"
-
-  if _append_if_missing "$profile" "$marker" "$line"; then
-    info 'Updating' "Added shell completion to $(bold "$profile")"
-  else
-    info 'Skipping' "Shell completion already configured in $(bold "$profile")"
-  fi
+  info 'Next steps' "Add the following to your shell profile (e.g., ~/.zshrc or ~/.bashrc):"
+  eprintf "  export PATH=\"$bin_dir:\$PATH\""
+  eprintf "  source <(pochi --completion)"
+  eprintf ""
 }
 
 install_version() {
@@ -212,7 +191,7 @@ install_version() {
   then
     "$install_dir"/bin/pochi-code --version &>/dev/null # creates the default shims
     # Set up shell auto-completion
-    setup_shell_completion "$install_dir"
+    print_shell_setup_instructions "$install_dir"
     info 'Finished' "Pochi is installed at $install_dir/bin"
   fi
 }
