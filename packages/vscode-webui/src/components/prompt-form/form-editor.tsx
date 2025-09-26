@@ -27,6 +27,7 @@ import {
 import "./prompt-form.css";
 import { useSelectedModels } from "@/features/settings";
 import { cn } from "@/lib/utils";
+import type { DisplayModel } from "@getpochi/common/vscode-webui-bridge";
 import {
   type SuggestionMatch,
   type Trigger,
@@ -138,11 +139,13 @@ export function FormEditor({
 
   const onSelectWorkflow = useCallback(
     (workflow: WorkflowItem) => {
-      if (!workflow.frontmatter.model) return;
-
-      const model = models?.find((x) => x.id === workflow.frontmatter.model);
-      if (!model) return;
-      updateSelectedModel(pick(model, ["id", "name"]));
+      const foundModel = resolveModelFromString(
+        workflow.frontmatter.model,
+        models,
+      );
+      if (foundModel) {
+        updateSelectedModel(pick(foundModel, ["id", "name"]));
+      }
     },
     [models, updateSelectedModel],
   );
@@ -645,3 +648,25 @@ export const debouncedListWorkflows = debounceWithCachedValue(
     leading: true,
   },
 );
+
+function resolveModelFromString(
+  model: string | undefined,
+  models: DisplayModel[] | undefined,
+) {
+  if (!model || !models?.length) {
+    return;
+  }
+  const sep = model.indexOf("/");
+  const vendorId = model.slice(0, sep);
+  const modelId = model.slice(sep + 1);
+
+  const vendors = models.filter((x) => x.type === "vendor");
+  const pochiVendors = vendors.filter((x) => x.vendorId === "pochi");
+  const providers = models.filter((x) => x.type === "provider");
+
+  return (
+    vendors.find((x) => x.vendorId === vendorId && x.modelId === modelId) ||
+    pochiVendors.find((x) => x.modelId === model) ||
+    providers.find((x) => x.id === model)
+  );
+}
