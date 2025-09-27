@@ -14,12 +14,11 @@ type VendorToolSet = Record<string, McpTool & McpToolExecutable>;
 @injectable()
 @singleton()
 export class VendorTools implements vscode.Disposable {
-  dispose() {}
-
   readonly tools: Signal<Record<string, VendorToolSet>> = signal({});
+  readonly dispose: () => void;
 
   constructor() {
-    watchPochiConfigKeys(["vendors"], () => {
+    this.dispose = watchPochiConfigKeys(["vendors"], () => {
       this.fetchTools().then((tools) => {
         this.tools.value = tools;
       });

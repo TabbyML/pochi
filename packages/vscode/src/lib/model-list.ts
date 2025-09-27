@@ -14,23 +14,14 @@ const logger = getLogger("ModelList");
 @injectable()
 @singleton()
 export class ModelList implements vscode.Disposable {
-  private readonly disposables: vscode.Disposable[] = [];
-  dispose() {
-    for (const disposable of this.disposables) {
-      disposable.dispose();
-    }
-    this.disposables.length = 0;
-  }
-
+  dispose: () => void;
   readonly modelList: Signal<DisplayModel[]> = signal([]);
 
   constructor() {
-    this.disposables.push({
-      dispose: watchPochiConfigKeys(["providers", "vendors"], () => {
-        this.fetchModelList().then((models) => {
-          this.modelList.value = models;
-        });
-      }),
+    this.dispose = watchPochiConfigKeys(["providers", "vendors"], () => {
+      this.fetchModelList().then((models) => {
+        this.modelList.value = models;
+      });
     });
   }
 

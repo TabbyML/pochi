@@ -13,12 +13,11 @@ const logger = getLogger("UserStorage");
 @injectable()
 @singleton()
 export class UserStorage implements vscode.Disposable {
-  dispose() {}
-
   readonly users: Signal<Record<string, UserInfo>> = signal({});
+  readonly dispose: () => void;
 
   constructor() {
-    watchPochiConfigKeys(["vendors"], () => {
+    this.dispose = watchPochiConfigKeys(["vendors"], () => {
       this.fetchUserStorage().then((users) => {
         this.users.value = users;
       });
