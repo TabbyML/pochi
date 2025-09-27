@@ -38,7 +38,6 @@ import { todoWrite } from "@/tools/todo-write";
 import { previewWriteToFile, writeToFile } from "@/tools/write-to-file";
 import type { Environment } from "@getpochi/common";
 import type { UserInfo } from "@getpochi/common/configuration";
-import { isExecutable } from "@getpochi/common/mcp-utils";
 import type { McpStatus } from "@getpochi/common/mcp-utils";
 import type { McpHub } from "@getpochi/common/mcp-utils";
 import {
@@ -322,13 +321,9 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
 
       if (toolName in ToolMap) {
         tool = ToolMap[toolName];
-      } else if (toolName in this.mcpHub.status.value.toolset) {
-        const mcpTool = this.mcpHub.status.value.toolset[toolName];
-        if (isExecutable(mcpTool)) {
-          tool = (args, options) => {
-            return mcpTool.execute(args, options);
-          };
-        }
+      } else if (toolName in this.mcpHub.executeFns.value) {
+        const execute = this.mcpHub.executeFns.value[toolName];
+        tool = (args, options) => execute(args, options);
       }
 
       if (!tool) {

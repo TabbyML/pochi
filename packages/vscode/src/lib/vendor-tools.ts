@@ -1,9 +1,9 @@
 import { getLogger } from "@getpochi/common";
-import { pochiConfig } from "@getpochi/common/configuration";
+import { watchPochiConfigKeys } from "@getpochi/common/configuration";
 import type { McpToolExecutable } from "@getpochi/common/mcp-utils";
 import { getVendors } from "@getpochi/common/vendor";
 import type { McpTool } from "@getpochi/tools";
-import { type Signal, effect, signal } from "@preact/signals-core";
+import { type Signal, signal } from "@preact/signals-core";
 import { injectable, singleton } from "tsyringe";
 import type * as vscode from "vscode";
 
@@ -14,18 +14,14 @@ type VendorToolSet = Record<string, McpTool & McpToolExecutable>;
 @injectable()
 @singleton()
 export class VendorTools implements vscode.Disposable {
-  dispose() {}
-
   readonly tools: Signal<Record<string, VendorToolSet>> = signal({});
+  readonly dispose: () => void;
 
   constructor() {
-    effect(() => {
-      // Explicitly depend on the config to trigger the effect
-      if (pochiConfig.value.vendors) {
-        this.fetchTools().then((tools) => {
-          this.tools.value = tools;
-        });
-      }
+    this.dispose = watchPochiConfigKeys(["vendors"], () => {
+      this.fetchTools().then((tools) => {
+        this.tools.value = tools;
+      });
     });
   }
 
