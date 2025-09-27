@@ -33,8 +33,8 @@ export interface McpHubStatus {
 
 export interface McpHubOptions {
   /** Reactive configuration signal */
-  configSignal: Signal<Record<string, McpServerConfig>>;
-  vendorToolsSignal: Signal<
+  config: Signal<Record<string, McpServerConfig>>;
+  vendorTools: Signal<
     Record<string, Record<string, McpTool & McpToolExecutable>>
   >;
   clientName?: string;
@@ -46,8 +46,8 @@ export class McpHub implements Disposable {
   private readonly connections: Signal<Record<string, McpConnection>> = signal(
     {},
   );
-  private readonly configSignal: Signal<Record<string, McpServerConfig>>;
-  private readonly vendorToolsSignal: Signal<
+  private readonly config: Signal<Record<string, McpServerConfig>>;
+  private readonly vendorTools: Signal<
     Record<string, Record<string, McpTool & McpToolExecutable>>
   >;
   private readonly clientName: string;
@@ -55,8 +55,8 @@ export class McpHub implements Disposable {
   readonly status: ReadonlySignal<McpHubStatus>;
 
   constructor(options: McpHubOptions) {
-    this.configSignal = options.configSignal;
-    this.vendorToolsSignal = options.vendorToolsSignal;
+    this.config = options.config;
+    this.vendorTools = options.vendorTools;
     this.clientName = options.clientName ?? "pochi";
     this.status = computed(() => this.buildStatus());
     this.init();
@@ -72,10 +72,10 @@ export class McpHub implements Disposable {
   }
 
   start(name: string) {
-    if (this.configSignal.value[name]) {
+    if (this.config.value[name]) {
       const newConfig = {
-        ...this.configSignal.value,
-        [name]: { ...this.configSignal.value[name], disabled: false },
+        ...this.config.value,
+        [name]: { ...this.config.value[name], disabled: false },
       };
       this.saveConfig(newConfig);
     } else {
@@ -84,10 +84,10 @@ export class McpHub implements Disposable {
   }
 
   stop(name: string) {
-    if (this.configSignal.value[name]) {
+    if (this.config.value[name]) {
       const newConfig = {
-        ...this.configSignal.value,
-        [name]: { ...this.configSignal.value[name], disabled: true },
+        ...this.config.value,
+        [name]: { ...this.config.value[name], disabled: true },
       };
       this.saveConfig(newConfig);
     } else {
@@ -107,7 +107,7 @@ export class McpHub implements Disposable {
       ? this.generateUniqueName(name)
       : this.generateUniqueName("server");
     const newConfig = {
-      ...this.configSignal.value,
+      ...this.config.value,
       [serverName]: serverConfig,
     };
 
@@ -118,7 +118,7 @@ export class McpHub implements Disposable {
   addServers(
     serverConfigs: Array<McpServerConfig & { name: string }>,
   ): string[] {
-    const newConfig = { ...this.configSignal.value };
+    const newConfig = { ...this.config.value };
     const addedNames: string[] = [];
 
     for (const { name, ...config } of serverConfigs) {
@@ -145,7 +145,7 @@ export class McpHub implements Disposable {
   }
 
   private async reloadConfig() {
-    const newConfig = this.configSignal.value;
+    const newConfig = this.config.value;
     // Update existing connections
     for (const [name, config] of Object.entries(newConfig)) {
       if (this.connections.value[name]) {
@@ -164,11 +164,11 @@ export class McpHub implements Disposable {
   }
 
   getCurrentConfig(): Record<string, McpServerConfig> {
-    return { ...this.configSignal.value };
+    return { ...this.config.value };
   }
 
   toggleToolEnabled(serverName: string, toolName: string) {
-    const serverConfig = this.configSignal.value[serverName];
+    const serverConfig = this.config.value[serverName];
     if (!serverConfig) {
       logger.debug(`Server ${serverName} not found`);
       return;
@@ -182,7 +182,7 @@ export class McpHub implements Disposable {
       : [...disabledTools, toolName];
 
     const newConfig = {
-      ...this.configSignal.value,
+      ...this.config.value,
       [serverName]: {
         ...serverConfig,
         disabledTools: newDisabledTools,
@@ -196,7 +196,7 @@ export class McpHub implements Disposable {
     baseName: string,
     currentServers?: Record<string, McpServerConfig>,
   ): string {
-    const servers = currentServers ?? this.configSignal.value;
+    const servers = currentServers ?? this.config.value;
     let serverName = baseName;
     let counter = 1;
 
@@ -209,19 +209,19 @@ export class McpHub implements Disposable {
   }
 
   private init() {
-    logger.trace("Initializing MCP Hub with config:", this.configSignal.value);
+    logger.trace("Initializing MCP Hub with config:", this.config.value);
 
     // Initialize connections with current config
     batch(() => {
-      for (const [name, config] of Object.entries(this.configSignal.value)) {
+      for (const [name, config] of Object.entries(this.config.value)) {
         this.createConnection(name, config);
       }
     });
 
     // Subscribe to config signal changes if provided
-    if (this.configSignal) {
+    if (this.config) {
       this.listeners.push({
-        dispose: this.configSignal.subscribe(() => {
+        dispose: this.config.subscribe(() => {
           logger.debug("MCP servers configuration changed via signal:");
           this.reloadConfig();
         }),
@@ -232,9 +232,7 @@ export class McpHub implements Disposable {
   private buildStatus(): McpHubStatus {
     logger.debug("Build MCPHub Status");
     const connections: Record<string, McpConnectionStatus> = {};
-    for (const [vendorId, tools] of Object.entries(
-      this.vendorToolsSignal.value,
-    )) {
+    for (const [vendorId, tools] of Object.entries(this.vendorTools.value)) {
       if (!connections[vendorId]) {
         connections[vendorId] = {
           status: "ready",
