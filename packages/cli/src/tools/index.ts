@@ -55,23 +55,20 @@ export async function executeToolCall(
   }
 
   // If not found in built-in tools, try MCP tools
-  if (options.mcpHub) {
-    const mcpTools = options.mcpHub.status.value.toolset;
-    const mcpTool = mcpTools[toolName];
-
-    if (mcpTool?.execute) {
-      try {
-        const result = await mcpTool.execute(tool.input, {
-          messages: [],
-          toolCallId: tool.toolCallId,
-          abortSignal,
-        });
-        return result;
-      } catch (e) {
-        return {
-          error: toErrorMessage(e),
-        };
-      }
+  const mcpHub = options.mcpHub;
+  const mcpTools = mcpHub?.status.value.toolset || {};
+  if (mcpHub && toolName in mcpTools) {
+    try {
+      const result = await mcpHub.executeTool(toolName, tool.input, {
+        messages: [],
+        toolCallId: tool.toolCallId,
+        abortSignal,
+      });
+      return result;
+    } catch (e) {
+      return {
+        error: toErrorMessage(e),
+      };
     }
   }
 
