@@ -119,7 +119,7 @@ const program = new Command()
     const customAgents = await loadAgents(process.cwd());
 
     // Create MCP Hub for accessing MCP server tools
-    const mcpHub = createCliMcpHub();
+    const mcpHub = await createCliMcpHub();
 
     // Initialize MCP connections
     await initializeMcp(mcpHub);

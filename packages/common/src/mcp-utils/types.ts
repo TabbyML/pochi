@@ -9,6 +9,7 @@ import type {
 export interface McpServerConnection {
   status: "stopped" | "starting" | "ready" | "error";
   error: string | undefined;
+  kind?: "vendor";
   tools: {
     [toolName: string]: McpToolStatus;
   };

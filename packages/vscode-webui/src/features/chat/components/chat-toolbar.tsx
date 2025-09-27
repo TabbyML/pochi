@@ -62,6 +62,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   onUpdateIsPublicShared,
 }) => {
   const { t } = useTranslation();
+
   const { messages, sendMessage, addToolResult, status } = chat;
   const isLoading = status === "streaming" || status === "submitted";
   const totalTokens = task?.totalTokens || 0;

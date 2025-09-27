@@ -32,6 +32,7 @@ export interface McpConnectionStatus {
   status: "stopped" | "starting" | "ready" | "error";
   error: string | undefined;
   tools: Record<string, McpToolStatus & McpToolExecutable>;
+  kind?: "vendor";
 }
 
 export interface McpToolStatus {

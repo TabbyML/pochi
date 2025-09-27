@@ -1,3 +1,7 @@
+---
+model: google/gemini-2.5-pro
+---
+
 1. Please conduct a thorough search of the codebase on relevant code snippets to help implement the feature / debug the issue.
 2. Create an issue in the TabbyML/pochi repository. Select the appropriate template from `.github/ISSUE_TEMPLATE`. and use `gh` cli to to create the issue.
 3. When creating issue, attach following information in footer of issue.

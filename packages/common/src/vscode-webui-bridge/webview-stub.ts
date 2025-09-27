@@ -220,6 +220,8 @@ const VSCodeHostStub = {
   readMachineId: async (): Promise<string> => {
     return "test-machine-id";
   },
+
+  openPochiInNewTab: async (): Promise<void> => {},
 } satisfies VSCodeHostApi;
 
 export function createVscodeHostStub(overrides?: Partial<VSCodeHostApi>) {

@@ -125,6 +125,12 @@
         "command": "pochi.openCustomModelSettings",
         "title": "Open Custom Model Settings",
         "category": "Pochi"
+      },
+      {
+        "command": "pochi.openInEditor",
+        "title": "Open in Editor",
+        "category": "Pochi",
+        "icon": "$(window)"
       }
     ],
     "menus": {
@@ -374,11 +380,11 @@
   },
   "dependencies": {
     "@getpochi/common": "workspace:*",
-    "@getpochi/vendor-gemini-cli": "workspace:*",
-    "@getpochi/vendor-pochi": "workspace:*",
     "@getpochi/vendor-claude-code": "workspace:*",
     "@getpochi/vendor-codex": "workspace:*",
+    "@getpochi/vendor-gemini-cli": "workspace:*",
     "@getpochi/vendor-github-copilot": "workspace:*",
+    "@getpochi/vendor-pochi": "workspace:*",
     "@orama/orama": "^3.1.11",
     "@preact/signals-core": "catalog:",
     "@quilted/threads": "catalog:",
@@ -388,8 +394,8 @@
     "fast-deep-equal": "^3.1.3",
     "fast-levenshtein": "^3.0.0",
     "hono": "catalog:",
-    "jsonc-parser": "catalog:",
     "iterator-helpers-polyfill": "^3.0.1",
+    "jsonc-parser": "catalog:",
     "jszip": "^3.10.1",
     "linkify-it": "^5.0.0",
     "lru-cache": "^11.1.0",

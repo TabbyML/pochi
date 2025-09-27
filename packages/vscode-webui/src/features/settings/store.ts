@@ -29,6 +29,8 @@ export interface SettingsState {
 
   enablePochiModels: boolean;
 
+  openInTab: boolean;
+
   toggleSubtaskOffhand: () => void;
   updateAutoApproveSettings: (data: Partial<AutoApprove>) => void;
   updateSubtaskAutoApproveSettings: (data: Partial<AutoApprove>) => void;
@@ -40,6 +42,8 @@ export interface SettingsState {
   updateIsDevMode: (value: boolean) => void;
 
   updateEnablePochiModels: (value: boolean) => void;
+
+  updateOpenInTab: (value: boolean) => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -76,6 +80,8 @@ export const useSettingsStore = create<SettingsState>()(
 
       enablePochiModels: false,
 
+      openInTab: false,
+
       toggleSubtaskOffhand: () =>
         set((state) => ({
           subtaskOffhand: !state.subtaskOffhand,
@@ -107,6 +113,8 @@ export const useSettingsStore = create<SettingsState>()(
 
       updateEnablePochiModels: (value: boolean) =>
         set(() => ({ enablePochiModels: value })),
+
+      updateOpenInTab: (value: boolean) => set(() => ({ openInTab: value })),
     }),
     {
       name: "ragdoll-settings-storage",
