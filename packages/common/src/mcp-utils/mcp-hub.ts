@@ -219,14 +219,12 @@ export class McpHub implements Disposable {
     });
 
     // Subscribe to config signal changes if provided
-    if (this.config) {
-      this.listeners.push({
-        dispose: this.config.subscribe(() => {
-          logger.debug("MCP servers configuration changed via signal:");
-          this.reloadConfig();
-        }),
-      });
-    }
+    this.listeners.push({
+      dispose: this.config.subscribe(() => {
+        logger.debug("MCP servers configuration changed via signal:");
+        this.reloadConfig();
+      }),
+    });
   }
 
   private buildStatus(): McpHubStatus {
