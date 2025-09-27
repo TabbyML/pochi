@@ -4,7 +4,7 @@ import type { AuthOutput, ModelOptions } from "@getpochi/common/vendor";
 import { fetchUserInfo, renewCredentials, startOAuthFlow } from "./auth";
 import { type ClaudeCodeCredentials, VendorId } from "./types";
 
-export class ClaudeCode extends VendorBase {
+export class QwenCode extends VendorBase {
   constructor() {
     super(VendorId);
   }
