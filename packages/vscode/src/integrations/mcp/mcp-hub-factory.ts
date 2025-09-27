@@ -18,10 +18,10 @@ export function createMcpHub(container: DependencyContainer): McpHub {
   const vendorTools = container.resolve(VendorTools);
 
   // Create a computed signal for MCP servers configuration
-  const mcpServersSignal = computed(() => pochiConfig.value.mcp || {});
+  const config = computed(() => pochiConfig.value.mcp || {});
 
   const mcpHub = new McpHub({
-    config: mcpServersSignal,
+    config,
     vendorTools: vendorTools.tools,
     clientName: context.extension.id,
   });
