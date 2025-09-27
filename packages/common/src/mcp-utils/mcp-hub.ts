@@ -144,7 +144,7 @@ export class McpHub implements Disposable {
     }
   }
 
-  private async reloadConfig() {
+  private async onConfigChanged() {
     const newConfig = this.config.value;
     // Update existing connections
     for (const [name, config] of Object.entries(newConfig)) {
@@ -222,7 +222,7 @@ export class McpHub implements Disposable {
     this.listeners.push({
       dispose: this.config.subscribe(() => {
         logger.debug("MCP servers configuration changed via signal:");
-        this.reloadConfig();
+        this.onConfigChanged();
       }),
     });
   }
