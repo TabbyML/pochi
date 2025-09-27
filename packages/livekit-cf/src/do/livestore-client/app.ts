@@ -3,12 +3,14 @@ import type { ShareEvent } from "@getpochi/common/share-utils";
 import { decodeStoreId } from "@getpochi/common/store-id-utils";
 import { type Message, catalog } from "@getpochi/livekit";
 import type { ClientTools, SubTask } from "@getpochi/tools";
+import { zValidator } from "@hono/zod-validator";
 import type { Store } from "@livestore/livestore";
 import type { UIMessage } from "ai";
 import type { InferToolInput } from "ai";
 import { Hono } from "hono";
 import type { MiddlewareHandler } from "hono";
 import { HTTPException } from "hono/http-exception";
+import z from "zod";
 import type { DeepWritable, Env } from "./types";
 
 const REDACTED_MESSAGE = "[FILE CONTENT REDACTED]";
@@ -85,14 +87,28 @@ const store = new Hono<{ Bindings: Env; Variables: RequestVariables }>().use(
   checkOwner,
 );
 
+const ShareRequest = z.object({
+  shareId: z.string(),
+});
+
 store
-  .post("/tasks/share", async (c) => {
+  // Update task shareId.
+  .post("/tasks/:taskId/share", zValidator("json", ShareRequest), async (c) => {
     if (!c.get("isOwner")) {
-      throw new HTTPException(403, { message: "Unauthorized" });
+      throw new HTTPException(401, { message: "Unauthorized" });
     }
-    const tasks = await c.env.reloadShareTasks();
-    return c.json(tasks);
+
+    const store = await c.env.getStore();
+    const taskId = c.req.param("taskId");
+    store.commit(
+      catalog.events.updateShareId({
+        id: taskId,
+        ...c.req.valid("json"),
+        updatedAt: new Date(),
+      }),
+    );
   })
+  // Get a task by ID
   .get("/tasks/:taskId/json", async (c) => {
     const store = await c.env.getStore();
     const taskId = c.req.param("taskId");

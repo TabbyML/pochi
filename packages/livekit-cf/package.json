@@ -5,6 +5,7 @@
   "private": true,
   "dependencies": {
     "@cloudflare/workers-types": "4.20250823.0",
+    "@hono/zod-validator": "catalog:",
     "@livestore/adapter-cloudflare": "catalog:",
     "@livestore/livestore": "catalog:",
     "@livestore/peer-deps": "catalog:",
@@ -21,7 +22,7 @@
     "remeda": "catalog:"
   },
   "devDependencies": {
-    "wrangler": "^4.33.0"
+    "wrangler": "^4.40.1"
   },
   "scripts": {
     "build:share": "./scripts/copy-share.js",
