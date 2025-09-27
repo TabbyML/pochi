@@ -454,8 +454,7 @@ const McpToolBadgeList: React.FC<{
   serverName: string;
   serverStatus: "stopped" | "starting" | "ready" | "error";
   tools: McpServerConnection["tools"];
-  readonly?: boolean;
-}> = ({ serverName, serverStatus, tools, readonly }) => {
+}> = ({ serverName, serverStatus, tools }) => {
   const { t } = useTranslation();
   const keys = Object.keys(tools);
   return (
@@ -469,7 +468,7 @@ const McpToolBadgeList: React.FC<{
               disabled={tools[name].disabled}
               notAvailable={tools[name].disabled || serverStatus !== "ready"}
               href={
-                !readonly && serverStatus === "ready"
+                serverStatus === "ready"
                   ? commandForMcp("toggleToolEnabled", serverName, name)
                   : undefined
               }
