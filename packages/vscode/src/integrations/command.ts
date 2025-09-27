@@ -432,7 +432,7 @@ export class CommandManager implements vscode.Disposable {
   }
 
   private async ensureDefaultCustomModelSettings() {
-    const currentSettings = this.pochiConfiguration.customModelSettings.value;
+    const currentSettings = pochiConfig.value.providers;
 
     // If there are already settings, don't add defaults
     if (currentSettings && Object.keys(currentSettings).length > 0) {

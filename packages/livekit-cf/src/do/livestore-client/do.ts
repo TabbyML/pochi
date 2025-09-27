@@ -111,7 +111,7 @@ export class LiveStoreClientDO
   }
 
   private onTasksUpdateThrottled = funnel(async () => this.onTasksUpdate(), {
-    minGapMs: 7_500,
+    minGapMs: 5_000,
     triggerAt: "both",
   });
 

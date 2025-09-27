@@ -384,7 +384,7 @@ const Connection: React.FC<{
           >
             <Edit
               className={cn(
-                "size-4 cursor-pointer opacity-0 transition-opacity duration-200 group-hover:opacity-100",
+                "inline size-3.5 cursor-pointer opacity-0 transition-opacity duration-200 group-hover:opacity-100",
               )}
             />
           </a>

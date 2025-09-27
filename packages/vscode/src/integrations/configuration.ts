@@ -7,12 +7,11 @@ import {
   type PochiConfigTarget,
   getPochiConfigFilePath,
   inspectPochiConfig,
-  pochiConfig,
   pochiConfigRelativePath,
   setPochiConfigWorkspacePath,
   updatePochiConfig,
 } from "@getpochi/common/configuration";
-import { computed, signal } from "@preact/signals-core";
+import { signal } from "@preact/signals-core";
 import deepEqual from "fast-deep-equal";
 import * as JSONC from "jsonc-parser/esm";
 import { injectable, singleton } from "tsyringe";
@@ -28,7 +27,6 @@ export class PochiConfiguration implements vscode.Disposable {
 
   readonly advancedSettings = signal(getPochiAdvanceSettings());
   readonly autoSaveDisabled = signal(getAutoSaveDisabled());
-  readonly customModelSettings = computed(() => pochiConfig.value.providers);
 
   constructor() {
     try {

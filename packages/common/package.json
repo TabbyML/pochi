@@ -35,7 +35,6 @@
     "@modelcontextprotocol/sdk": "^1.0.2",
     "@preact/signals-core": "catalog:",
     "@quilted/threads": "catalog:",
-    "@types/json-schema": "^7.0.15",
     "@xstate/fsm": "^2.1.0",
     "ai": "catalog:",
     "base58-js": "catalog:",

@@ -1,14 +1,11 @@
-// biome-ignore lint/style/useImportType: needed for dependency injection
-import { VSCodeLm } from "@/integrations/vscode-lm";
 import { getLogger } from "@getpochi/common";
-import { pochiConfig } from "@getpochi/common/configuration";
+import {
+  pochiConfig,
+  watchPochiConfigKeys,
+} from "@getpochi/common/configuration";
 import { getVendors } from "@getpochi/common/vendor";
-import type {
-  DisplayModel,
-  VSCodeLmRequestCallback,
-  VSCodeLmRequestOptions,
-} from "@getpochi/common/vscode-webui-bridge";
-import { type Signal, effect, signal } from "@preact/signals-core";
+import type { DisplayModel } from "@getpochi/common/vscode-webui-bridge";
+import { type Signal, signal } from "@preact/signals-core";
 import { injectable, singleton } from "tsyringe";
 import type * as vscode from "vscode";
 
@@ -17,59 +14,19 @@ const logger = getLogger("ModelList");
 @injectable()
 @singleton()
 export class ModelList implements vscode.Disposable {
-  dispose() {}
-
+  dispose: () => void;
   readonly modelList: Signal<DisplayModel[]> = signal([]);
 
-  constructor(private readonly vscodeLm: VSCodeLm) {
-    effect(() => {
-      // Explicitly depend on the config to trigger the effect
-      if (
-        pochiConfig.value.providers ||
-        pochiConfig.value.vendors ||
-        this.vscodeLm.models.value.length > 0
-      ) {
-        this.fetchModelList().then((models) => {
-          this.modelList.value = models;
-        });
-      }
+  constructor() {
+    this.dispose = watchPochiConfigKeys(["providers", "vendors"], () => {
+      this.fetchModelList().then((models) => {
+        this.modelList.value = models;
+      });
     });
   }
 
   private async fetchModelList(): Promise<DisplayModel[]> {
     const modelList: DisplayModel[] = [];
-
-    // From VSCodeLM
-    for (const x of this.vscodeLm.models.value) {
-      const vendorId = "vscode-lm";
-      const modelId = JSON.stringify(x);
-      modelList.push({
-        type: "vendor",
-        vendorId,
-        id: `${vendorId}/${x.vendor}/${x.id}`,
-        name: `${x.vendor}/${x.id}`,
-        modelId,
-        options: {
-          contextWindow: x.contextWindow,
-          useToolCallMiddleware: true,
-        },
-        // This is a hack to pass the model to the chat function
-        getCredentials: async () => {
-          return async (
-            options: Omit<VSCodeLmRequestOptions, "model">,
-            onChunk: VSCodeLmRequestCallback,
-          ) => {
-            await this.vscodeLm.chat(
-              {
-                ...options,
-                model: x,
-              },
-              onChunk,
-            );
-          };
-        },
-      });
-    }
 
     const vendors = getVendors();
     // From vendors

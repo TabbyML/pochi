@@ -26,7 +26,7 @@ new_sqlite_classes = ["SyncBackendDO", "LiveStoreClientDO"]
 # SYNC_BACKEND_URL = "http://localhost:8787"
 
 [observability]
-enabled = true
+enabled = false
 
 [assets]
 directory = "./dist"
