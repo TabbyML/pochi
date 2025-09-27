@@ -1,8 +1,14 @@
 import * as fsPromise from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
-import { type ReadonlySignal, type Signal, signal } from "@preact/signals-core";
-import { merge, mergeDeep } from "remeda";
+import {
+  type ReadonlySignal,
+  type Signal,
+  effect,
+  signal,
+  untracked,
+} from "@preact/signals-core";
+import { isDeepEqual, merge, mergeDeep, pick } from "remeda";
 import { getLogger } from "../base";
 import { isDev } from "../vscode-webui-bridge";
 import { PochiConfigFile } from "./config-file";
@@ -27,12 +33,12 @@ const AllowedWorkspaceConfigKeys = ["mcp"] as const;
 
 const configFileName = isDev ? "dev-config.jsonc" : "config.jsonc";
 
-export const configRelativePath = path.join(".pochi", configFileName);
+export const pochiConfigRelativePath = path.join(".pochi", configFileName);
 
-const UserConfigFilePath = path.join(os.homedir(), configRelativePath);
+const UserConfigFilePath = path.join(os.homedir(), pochiConfigRelativePath);
 
 const getWorkspaceConfigFilePath = (workspacePath: string) =>
-  path.join(workspacePath, configRelativePath);
+  path.join(workspacePath, pochiConfigRelativePath);
 
 const logger = getLogger("PochiConfigManager");
 
@@ -179,6 +185,20 @@ class PochiConfigManager {
         throw target satisfies never;
     }
   };
+
+  // callback is called in untrack context, thus won't trigger effect
+  watchKeys = (keys: Array<keyof PochiConfig>, callback: () => void) => {
+    let previousDeps = pick(this.config.value, keys);
+    return effect(() => {
+      const deps = pick(this.config.value, keys);
+      if (!isDeepEqual(deps, previousDeps)) {
+        previousDeps = deps;
+        untracked(() => {
+          callback();
+        });
+      }
+    });
+  };
 }
 
 const {
@@ -189,6 +209,7 @@ const {
   inspect,
   setWorkspacePath,
   getConfigFilePath,
+  watchKeys,
 } = new PochiConfigManager();
 
 export {
@@ -199,4 +220,5 @@ export {
   inspect as inspectPochiConfig,
   setWorkspacePath as setPochiConfigWorkspacePath,
   getConfigFilePath as getPochiConfigFilePath,
+  watchKeys as watchPochiConfigKeys,
 };

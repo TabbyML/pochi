@@ -1,7 +1,10 @@
 import { getLogger } from "@getpochi/common";
-import { type UserInfo, pochiConfig } from "@getpochi/common/configuration";
+import {
+  type UserInfo,
+  watchPochiConfigKeys,
+} from "@getpochi/common/configuration";
 import { getVendors } from "@getpochi/common/vendor";
-import { type Signal, effect, signal } from "@preact/signals-core";
+import { type Signal, signal } from "@preact/signals-core";
 import { injectable, singleton } from "tsyringe";
 import type * as vscode from "vscode";
 
@@ -15,15 +18,10 @@ export class UserStorage implements vscode.Disposable {
   readonly users: Signal<Record<string, UserInfo>> = signal({});
 
   constructor() {
-    effect(() => {
-      // Explicitly depend on the config to trigger the effect
-      if (pochiConfig.value.vendors) {
-        this.fetchUserStorage().then((users) => {
-          this.users.value = users;
-        });
-      } else {
-        this.users.value = {};
-      }
+    watchPochiConfigKeys(["vendors"], () => {
+      this.fetchUserStorage().then((users) => {
+        this.users.value = users;
+      });
     });
   }
 

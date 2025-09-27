@@ -1,10 +1,9 @@
 import { getLogger } from "@getpochi/common";
-import { pochiConfig } from "@getpochi/common/configuration";
+import { watchPochiConfigKeys } from "@getpochi/common/configuration";
 import type { McpToolExecutable } from "@getpochi/common/mcp-utils";
 import { getVendors } from "@getpochi/common/vendor";
 import type { McpTool } from "@getpochi/tools";
-import { type Signal, effect, signal } from "@preact/signals-core";
-import { isDeepEqual } from "remeda";
+import { type Signal, signal } from "@preact/signals-core";
 import { injectable, singleton } from "tsyringe";
 import type * as vscode from "vscode";
 
@@ -17,18 +16,13 @@ type VendorToolSet = Record<string, McpTool & McpToolExecutable>;
 export class VendorTools implements vscode.Disposable {
   dispose() {}
 
-  private deps: Array<unknown> = [];
   readonly tools: Signal<Record<string, VendorToolSet>> = signal({});
 
   constructor() {
-    effect(() => {
-      // Explicitly depend on the config to trigger the effect
-      if (!isDeepEqual([pochiConfig.value.vendors], this.deps)) {
-        this.deps = [pochiConfig.value.vendors];
-        this.fetchTools().then((tools) => {
-          this.tools.value = tools;
-        });
-      }
+    watchPochiConfigKeys(["vendors"], () => {
+      this.fetchTools().then((tools) => {
+        this.tools.value = tools;
+      });
     });
   }
 

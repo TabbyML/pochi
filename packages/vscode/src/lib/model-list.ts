@@ -1,9 +1,11 @@
 import { getLogger } from "@getpochi/common";
-import { pochiConfig } from "@getpochi/common/configuration";
+import {
+  pochiConfig,
+  watchPochiConfigKeys,
+} from "@getpochi/common/configuration";
 import { getVendors } from "@getpochi/common/vendor";
 import type { DisplayModel } from "@getpochi/common/vscode-webui-bridge";
-import { type Signal, effect, signal } from "@preact/signals-core";
-import { isDeepEqual } from "remeda";
+import { type Signal, signal } from "@preact/signals-core";
 import { injectable, singleton } from "tsyringe";
 import type * as vscode from "vscode";
 
@@ -12,21 +14,23 @@ const logger = getLogger("ModelList");
 @injectable()
 @singleton()
 export class ModelList implements vscode.Disposable {
-  dispose() {}
+  private readonly disposables: vscode.Disposable[] = [];
+  dispose() {
+    for (const disposable of this.disposables) {
+      disposable.dispose();
+    }
+    this.disposables.length = 0;
+  }
 
-  private deps: Array<unknown> = [];
   readonly modelList: Signal<DisplayModel[]> = signal([]);
 
   constructor() {
-    effect(() => {
-      const deps = [pochiConfig.value.providers, pochiConfig.value.vendors];
-      // Explicitly depend on the config to trigger the effect
-      if (!isDeepEqual(this.deps, deps)) {
-        this.deps = deps;
+    this.disposables.push({
+      dispose: watchPochiConfigKeys(["providers", "vendors"], () => {
         this.fetchModelList().then((models) => {
           this.modelList.value = models;
         });
-      }
+      }),
     });
   }
 
