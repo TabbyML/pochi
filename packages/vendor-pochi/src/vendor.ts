@@ -13,6 +13,7 @@ import {
   type PochiCredentials,
   getServerBaseUrl,
 } from "@getpochi/common/vscode-webui-bridge";
+import type { McpTool } from "@getpochi/tools";
 import { jwtClient } from "better-auth/client/plugins";
 import { createAuthClient as createAuthClientImpl } from "better-auth/react";
 import { hc } from "hono/client";
@@ -20,7 +21,6 @@ import * as jose from "jose";
 import z from "zod/v4";
 import { getPochiCredentials, updatePochiCredentials } from "./credentials";
 import { VendorId } from "./types";
-import type { McpTool } from "@getpochi/tools";
 
 const logger = getLogger("PochiVendor");
 
