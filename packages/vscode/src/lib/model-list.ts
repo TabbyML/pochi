@@ -17,7 +17,6 @@ export class ModelList implements vscode.Disposable {
 
   constructor() {
     effect(() => {
-      const deps = [pochiConfig.value.providers, pochiConfig.value.vendors];
       // Explicitly depend on the config to trigger the effect
       if (pochiConfig.value.providers || pochiConfig.value.vendors) {
         this.fetchModelList().then((models) => {
