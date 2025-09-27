@@ -188,7 +188,7 @@ class PochiConfigManager {
 
   // callback is called in untrack context, thus won't trigger effect
   watchKeys = (keys: Array<keyof PochiConfig>, callback: () => void) => {
-    let previousDeps = pick(this.config.value, keys);
+    let previousDeps: Partial<PochiConfig> = {};
     return effect(() => {
       const deps = pick(this.config.value, keys);
       if (!isDeepEqual(deps, previousDeps)) {
