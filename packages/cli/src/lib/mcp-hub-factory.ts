@@ -13,14 +13,12 @@ const logger = getLogger("McpHubFactory");
  */
 export async function createCliMcpHub(): Promise<McpHub> {
   // Create a computed signal for MCP servers configuration
-  const mcpServersSignal = computed(() => pochiConfig.value.mcp || {});
-  const vendorToolsSignal = signal<Record<string, VendorToolSet>>(
-    await fetchTools(),
-  );
+  const config = computed(() => pochiConfig.value.mcp || {});
+  const vendorTools = signal<Record<string, VendorToolSet>>(await fetchTools());
 
   const mcpHub = new McpHub({
-    configSignal: mcpServersSignal,
-    vendorToolsSignal,
+    config,
+    vendorTools,
     clientName: "pochi-cli",
   });
 
