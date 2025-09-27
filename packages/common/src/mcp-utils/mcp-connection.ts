@@ -5,12 +5,13 @@ import {
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { createMachine, interpret } from "@xstate/fsm";
 import { type ToolSet, experimental_createMCPClient as createClient } from "ai";
-import type { JSONSchema7 } from "json-schema";
 import { getLogger } from "../base";
 import type { McpServerConfig } from "../configuration/index.js";
 
 import {
+  type McpServerConnectionExecutable,
   type McpToolExecutable,
+  type McpToolStatus,
   isHttpTransport,
   isStdioTransport,
 } from "./types";
@@ -25,22 +26,6 @@ import {
 type Disposable = { dispose(): void };
 
 type McpClient = Awaited<ReturnType<typeof createClient>>;
-
-// Status interface for callback notifications
-export interface McpConnectionStatus {
-  status: "stopped" | "starting" | "ready" | "error";
-  error: string | undefined;
-  tools: Record<string, McpToolStatus & McpToolExecutable>;
-  kind?: "vendor";
-}
-
-export interface McpToolStatus {
-  disabled: boolean;
-  description?: string;
-  inputSchema: {
-    jsonSchema: JSONSchema7;
-  };
-}
 
 interface McpClientWithInstructions extends McpClient {
   instructions?: string;
@@ -98,18 +83,18 @@ const AutoReconnectMaxAttempts = 20;
 
 export class McpConnection implements Disposable {
   readonly logger: ReturnType<typeof getLogger>;
-  private _status: McpConnectionStatus = {
+  #status: McpServerConnectionExecutable = {
     status: "stopped" as const,
     error: undefined,
     tools: {},
   };
 
   get status() {
-    return this._status;
+    return this.#status;
   }
 
-  private set status(status: McpConnectionStatus) {
-    this._status = status;
+  private set status(status: McpServerConnectionExecutable) {
+    this.#status = status;
     this.onStatusChanged();
   }
 
