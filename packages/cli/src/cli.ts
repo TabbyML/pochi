@@ -8,6 +8,7 @@ import "@getpochi/vendor-gemini-cli";
 import "@getpochi/vendor-claude-code";
 import "@getpochi/vendor-codex";
 import "@getpochi/vendor-github-copilot";
+import "@getpochi/vendor-qwen-coder";
 
 // Register the models
 import "@getpochi/vendor-pochi/edge";
@@ -15,6 +16,7 @@ import "@getpochi/vendor-gemini-cli/edge";
 import "@getpochi/vendor-claude-code/edge";
 import "@getpochi/vendor-codex/edge";
 import "@getpochi/vendor-github-copilot/edge";
+import "@getpochi/vendor-qwen-coder/edge";
 
 import { Command } from "@commander-js/extra-typings";
 import { constants, getLogger } from "@getpochi/common";
