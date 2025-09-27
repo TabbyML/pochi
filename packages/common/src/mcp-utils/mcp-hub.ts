@@ -1,6 +1,6 @@
 import type { McpTool } from "@getpochi/tools";
 import { type Signal, batch, computed, signal } from "@preact/signals-core";
-import { entries, mapValues, mergeAll, omit, pickBy, values } from "remeda";
+import * as R from "remeda";
 import { getLogger } from "../base";
 import type { McpServerConfig } from "../configuration/index.js";
 import {
@@ -48,7 +48,7 @@ export class McpHub implements Disposable {
 
   readonly #status = computed(() => this.buildStatus());
 
-  readonly status = computed(() => omit(this.#status.value, ["executeFns"]));
+  readonly status = computed(() => R.omit(this.#status.value, ["executeFns"]));
 
   readonly executeFns = computed(() => this.#status.value.executeFns);
 
@@ -129,7 +129,7 @@ export class McpHub implements Disposable {
   }
 
   private async saveConfig(newConfig: Record<string, McpServerConfig>) {
-    for (const [name, config] of entries(newConfig)) {
+    for (const [name, config] of Object.entries(newConfig)) {
       const { effectiveTargets } = inspectPochiConfig(`mcp.${name}`);
       const editTarget = effectiveTargets[0] || "user";
       // Persist configuration changes to file
@@ -232,7 +232,7 @@ export class McpHub implements Disposable {
         status: "ready",
         error: undefined,
         kind: "vendor",
-        tools: mapValues(tools, (tool) => ({
+        tools: R.mapValues(tools, (tool) => ({
           ...tool,
           disabled: false,
         })),
@@ -242,24 +242,26 @@ export class McpHub implements Disposable {
     for (const [name, connection] of Object.entries(this.connections.value)) {
       connections[name] = {
         ...connection.status,
-        tools: mapValues(connection.status.tools, (tool) => ({
+        tools: R.mapValues(connection.status.tools, (tool) => ({
           ...tool,
         })),
       };
     }
 
-    const toolset: Record<string, McpTool & McpToolExecutable> = mergeAll(
-      values(
-        pickBy(
+    const toolset: Record<string, McpTool & McpToolExecutable> = R.mergeAll(
+      R.values(
+        R.pickBy(
           connections,
           (connection) => connection.status === "ready" && !!connection.tools,
         ),
       )
-        .map((connection) => pickBy(connection.tools, (tool) => !tool.disabled))
-        .map((tool) => mapValues(tool, (tool) => omit(tool, ["disabled"]))),
+        .map((connection) =>
+          R.pickBy(connection.tools, (tool) => !tool.disabled),
+        )
+        .map((tool) => R.mapValues(tool, (tool) => R.omit(tool, ["disabled"]))),
     );
 
-    const instructions = entries(connections)
+    const instructions = Object.entries(connections)
       .filter(([, instructions]) => !!instructions)
       .map(
         ([name, instructions]) =>
@@ -268,13 +270,15 @@ export class McpHub implements Disposable {
       .join("\n\n");
 
     return {
-      connections: mapValues(connections, (connection) => ({
+      connections: R.mapValues(connections, (connection) => ({
         ...connection,
-        tools: mapValues(connection.tools, (tool) => omit(tool, ["execute"])),
+        tools: R.mapValues(connection.tools, (tool) =>
+          R.omit(tool, ["execute"]),
+        ),
       })),
-      toolset: mapValues(toolset, (tool) => omit(tool, ["execute"])),
+      toolset: R.mapValues(toolset, (tool) => R.omit(tool, ["execute"])),
       instructions,
-      executeFns: mapValues(toolset, (tool) => tool.execute),
+      executeFns: R.mapValues(toolset, (tool) => tool.execute),
     };
   }
 
@@ -312,7 +316,7 @@ export class McpHub implements Disposable {
     const connection = this.connections.value[name];
     if (connection) {
       connection.dispose();
-      this.connections.value = omit(this.connections.value, [name]);
+      this.connections.value = R.omit(this.connections.value, [name]);
       logger.debug(`Connection ${name} removed.`);
     }
   }
