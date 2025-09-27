@@ -23,25 +23,28 @@ export function parseMcpToolSet(
     : undefined;
 }
 
+const contentOutputFn = (output: {
+  content: Array<
+    | { type: "text"; text: string }
+    | { type: "image"; mimeType: string; data: string }
+  >;
+}) => {
+  return {
+    type: "content" as const,
+    value: output.content.map((item) => {
+      if (item.type === "text") {
+        return item;
+      }
+      return {
+        type: "media" as const,
+        data: item.data,
+        mediaType: item.mimeType,
+      };
+    }),
+  };
+};
+
 const toModelOutputFn: Record<string, Tool["toModelOutput"]> = {
-  browser_take_screenshot: (output: {
-    content: Array<
-      | { type: "text"; text: string }
-      | { type: "image"; mimeType: string; data: string }
-    >;
-  }) => {
-    return {
-      type: "content",
-      value: output.content.map((item) => {
-        if (item.type === "text") {
-          return item;
-        }
-        return {
-          type: "media",
-          data: item.data,
-          mediaType: item.mimeType,
-        };
-      }),
-    };
-  },
+  browser_take_screenshot: contentOutputFn,
+  webFetch: contentOutputFn,
 };

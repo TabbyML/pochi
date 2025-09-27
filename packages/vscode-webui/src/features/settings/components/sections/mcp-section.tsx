@@ -17,6 +17,7 @@ import {
   ChevronsUpDown,
   Dot,
   Download,
+  Edit,
   Github,
   PencilIcon,
   RotateCw,
@@ -24,7 +25,7 @@ import {
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { EmptySectionPlaceholder, SubSection } from "../ui/section";
-import { ToolBadge } from "../ui/tool-badge";
+import { ToolBadge, ToolBadgeList } from "../ui/tool-badge";
 
 interface RecommendedMcpServer {
   id: string;
@@ -197,9 +198,52 @@ const McpConfigList: React.FC<{
   );
 };
 
+export const PochiTools: React.FC = () => {
+  const { connections, isLoading } = useMcp();
+  const pochiConnection = connections?.pochi;
+  if (!pochiConnection) return;
+
+  const tools = Object.entries(pochiConnection.tools).map(([id, tool]) => ({
+    id,
+    ...tool,
+  }));
+
+  return (
+    <SubSection title="Pochi">
+      {isLoading ? (
+        <div className="flex w-full flex-wrap gap-2 py-2 ">
+          <PochiToolsSkeleton />
+        </div>
+      ) : (
+        <ToolBadgeList tools={tools} />
+      )}
+    </SubSection>
+  );
+};
+
+function PochiToolsSkeleton() {
+  return Array.from({ length: 4 }).map((_, i) => (
+    <Skeleton
+      key={i}
+      className="h-6 bg-secondary"
+      style={{
+        width: `${Math.random() * 3 + 4}rem`,
+      }}
+    />
+  ));
+}
+
 export const McpSection: React.FC = () => {
   const { t } = useTranslation();
-  const { connections, isLoading: isLoadingConnections } = useMcp();
+  const { connections: mcpConnections, isLoading: isLoadingConnections } =
+    useMcp();
+
+  const connections = Object.fromEntries(
+    Object.entries(mcpConnections).filter(
+      ([_, connection]) => connection.kind === undefined,
+    ),
+  );
+
   const {
     isLoading: isLoadingThirdParty,
     availableConfigs,
@@ -332,6 +376,18 @@ const Connection: React.FC<{
             })}
           />
           <span className="truncate font-semibold">{name}</span>
+          <a
+            href={commandForMcp("openServerSettings", name)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="ml-2"
+          >
+            <Edit
+              className={cn(
+                "size-4 cursor-pointer opacity-0 transition-opacity duration-200 group-hover:opacity-100",
+              )}
+            />
+          </a>
           {status === "error" && (
             <a
               href={commandForMcp("restartServer", name)}
@@ -346,17 +402,6 @@ const Connection: React.FC<{
           )}
         </div>
         <div className="flex items-center gap-2">
-          <a
-            href={commandForMcp("openServerSettings", name)}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <PencilIcon
-              className={cn(
-                "size-4 cursor-pointer opacity-0 transition-opacity duration-200 group-hover:opacity-100",
-              )}
-            />
-          </a>
           <a
             href={commandForMcp(
               status === "stopped" ? "startServer" : "stopServer",
@@ -409,7 +454,8 @@ const McpToolBadgeList: React.FC<{
   serverName: string;
   serverStatus: "stopped" | "starting" | "ready" | "error";
   tools: McpServerConnection["tools"];
-}> = ({ serverName, serverStatus, tools }) => {
+  readonly?: boolean;
+}> = ({ serverName, serverStatus, tools, readonly }) => {
   const { t } = useTranslation();
   const keys = Object.keys(tools);
   return (
@@ -423,7 +469,7 @@ const McpToolBadgeList: React.FC<{
               disabled={tools[name].disabled}
               notAvailable={tools[name].disabled || serverStatus !== "ready"}
               href={
-                serverStatus === "ready"
+                !readonly && serverStatus === "ready"
                   ? commandForMcp("toggleToolEnabled", serverName, name)
                   : undefined
               }
