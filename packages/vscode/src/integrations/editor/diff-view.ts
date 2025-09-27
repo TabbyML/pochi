@@ -39,6 +39,7 @@ export class DiffView implements vscode.Disposable {
     private readonly fileExists: boolean,
     private readonly originalContent: string,
     private readonly activeDiffEditor: vscode.TextEditor,
+    private readonly isFileOpenBeforeDiffPreview = false,
   ) {
     this.fadedOverlayController = new DecorationController(
       "fadedOverlay",
@@ -97,6 +98,23 @@ export class DiffView implements vscode.Disposable {
       this.originalContent,
     );
     closeAllNonDirtyDiffViews();
+
+    // Reopen the file if it was open before the diff view
+    if (this.isFileOpenBeforeDiffPreview) {
+      logger.debug(
+        "Reopening file that was open before diff view",
+        this.fileUri.fsPath,
+      );
+      try {
+        const document = await vscode.workspace.openTextDocument(this.fileUri);
+        await vscode.window.showTextDocument(document, {
+          preview: false,
+          preserveFocus: true,
+        });
+      } catch (error) {
+        logger.debug("Failed to reopen file", error);
+      }
+    }
   };
 
   async update(content: string, isFinal: boolean, abortSignal?: AbortSignal) {
@@ -359,12 +377,16 @@ export class DiffView implements vscode.Disposable {
       fileExists,
       originalContent,
     );
+    // Check if file was open before creating diff view
+    const wasFileOpenBeforeDiff = await isFileOpen(fileUri);
+
     return new DiffView(
       id,
       fileUri,
       fileExists,
       originalContent,
       activeDiffEditor,
+      wasFileOpenBeforeDiff,
     );
   }
 
@@ -398,6 +420,22 @@ export class DiffView implements vscode.Disposable {
       diffView.revertAndClose();
     }
   };
+}
+
+// Check if a file is currently open in any tab (excluding diff views)
+async function isFileOpen(fileUri: vscode.Uri): Promise<boolean> {
+  for (const group of vscode.window.tabGroups.all) {
+    for (const tab of group.tabs) {
+      if (
+        tab.input instanceof vscode.TabInputText &&
+        tab.input.uri.fsPath === fileUri.fsPath &&
+        !(tab.input instanceof vscode.TabInputTextDiff)
+      ) {
+        return true;
+      }
+    }
+  }
+  return false;
 }
 
 // Close any regular tabs for this file before open diff view

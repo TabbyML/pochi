@@ -1,9 +1,9 @@
 import { createOpenAI } from "@ai-sdk/openai";
 import type { CreateModelOptions } from "@getpochi/common/vendor/edge";
 import { wrapLanguageModel } from "ai";
-import { extractAccountId } from "./auth";
 import { transformToCodexFormat } from "./transformers";
 import type { CodexCredentials } from "./types";
+import { extractAccountId } from "./utils";
 
 /**
  * Create headers for Codex API requests
@@ -106,7 +106,7 @@ function createProxyFetch(getCredentials: () => Promise<unknown>) {
     const url = new URL(originalUrl);
     url.protocol = "http:";
     url.host = "localhost";
-    url.port = "54343";
+    url.port = globalThis.POCHI_CORS_PROXY_PORT;
 
     const transformedBody = transformRequestBody(
       typeof init?.body === "string" ? init.body : undefined,

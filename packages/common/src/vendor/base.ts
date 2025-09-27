@@ -1,3 +1,4 @@
+import type { McpTool } from "@getpochi/tools";
 import * as runExclusive from "run-exclusive";
 import {
   type UserInfo,
@@ -5,6 +6,7 @@ import {
   getVendorConfig,
   updateVendorConfig,
 } from "../configuration";
+import type { McpToolExecutable } from "../mcp-utils";
 import type { AuthOutput, ModelOptions } from "./types";
 
 export abstract class VendorBase {
@@ -42,6 +44,10 @@ export abstract class VendorBase {
   };
 
   abstract fetchModels(): Promise<Record<string, ModelOptions>>;
+
+  getTools(): Promise<Record<string, McpTool & McpToolExecutable>> {
+    return Promise.resolve({});
+  }
 
   abstract authenticate(): Promise<AuthOutput>;
 

@@ -1,6 +1,8 @@
+import type { JSONSchema7 } from "@ai-sdk/provider";
 import { getLogger } from "@getpochi/common";
 import type { UserInfo } from "@getpochi/common/configuration";
 import { deviceLinkClient } from "@getpochi/common/device-link/client";
+import type { McpToolExecutable } from "@getpochi/common/mcp-utils";
 import type { PochiApi, PochiApiClient } from "@getpochi/common/pochi-api";
 import {
   type AuthOutput,
@@ -11,10 +13,12 @@ import {
   type PochiCredentials,
   getServerBaseUrl,
 } from "@getpochi/common/vscode-webui-bridge";
+import type { McpTool } from "@getpochi/tools";
 import { jwtClient } from "better-auth/client/plugins";
 import { createAuthClient as createAuthClientImpl } from "better-auth/react";
 import { hc } from "hono/client";
 import * as jose from "jose";
+import z from "zod/v4";
 import { getPochiCredentials, updatePochiCredentials } from "./credentials";
 import { VendorId } from "./types";
 
@@ -80,6 +84,50 @@ export class Pochi extends VendorBase {
       name: session.data.user.name,
       email: session.data.user.email,
       image: session.data.user.image || undefined,
+    };
+  }
+
+  override async getTools(): Promise<
+    Record<string, McpTool & McpToolExecutable>
+  > {
+    return {
+      webFetch: {
+        description: "Fetch a URL and return the content as text.",
+        inputSchema: {
+          jsonSchema: z.toJSONSchema(
+            z.object({
+              url: z.url(),
+            }),
+          ) as JSONSchema7,
+        },
+        execute: async (args: { url: string }) => {
+          const { jwt } = (await this.getCredentials()) as PochiCredentials;
+          const response = await fetch(
+            "https://api-gateway.getpochi.com/https/r.jina.ai",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${jwt}`,
+              },
+              body: JSON.stringify(args),
+            },
+          );
+          if (response.ok) {
+            const content = await response.text();
+            return {
+              content: [
+                {
+                  type: "text",
+                  text: content,
+                },
+              ],
+            };
+          }
+
+          throw new Error(`Failed to fetch: ${response.statusText}`);
+        },
+      },
     };
   }
 }

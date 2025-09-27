@@ -80,6 +80,7 @@ function createVSCodeHost(): VSCodeHostApi {
         "readUserStorage",
         "readCustomAgents",
         "readMachineId",
+        "openPochiInNewTab",
       ],
       exports: {
         openTask(params) {

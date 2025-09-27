@@ -79,7 +79,12 @@ const VSCodeHostStub = {
     return Promise.resolve([]);
   },
   listWorkflowsInWorkspace: (): Promise<
-    { id: string; path: string; content: string }[]
+    {
+      id: string;
+      path: string;
+      content: string;
+      frontmatter: { model?: string };
+    }[]
   > => {
     return Promise.resolve([]);
   },
@@ -215,6 +220,8 @@ const VSCodeHostStub = {
   readMachineId: async (): Promise<string> => {
     return "test-machine-id";
   },
+
+  openPochiInNewTab: async (): Promise<void> => {},
 } satisfies VSCodeHostApi;
 
 export function createVscodeHostStub(overrides?: Partial<VSCodeHostApi>) {

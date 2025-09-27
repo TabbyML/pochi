@@ -37,11 +37,12 @@ export const WorkflowsSection: React.FC = () => {
       ) : workflows && workflows.length > 0 ? (
         <>
           <div className="space-y-2">
-            {workflows.map(
-              (workflow: { id: string; path: string; content: string }) => (
+            {workflows.map((workflow) => {
+              return (
                 <SectionItem
                   key={workflow.id}
                   title={workflow.id}
+                  subtitle={workflow.frontmatter.model}
                   icon={<Workflow className="size-4 text-muted-foreground" />}
                   onClick={() => handleEditWorkflow(workflow.id)}
                   actions={[
@@ -51,8 +52,8 @@ export const WorkflowsSection: React.FC = () => {
                     },
                   ]}
                 />
-              ),
-            )}
+              );
+            })}
           </div>
         </>
       ) : (

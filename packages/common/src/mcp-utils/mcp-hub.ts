@@ -8,7 +8,11 @@ import {
   updatePochiConfig,
 } from "../configuration/index.js";
 import { McpConnection, type McpConnectionStatus } from "./mcp-connection";
-import { type McpToolExecutable, omitDisabled } from "./types";
+import {
+  type McpToolExecutable,
+  type McpToolStatus,
+  omitDisabled,
+} from "./types";
 
 // Define a minimal Disposable interface to avoid vscode dependency
 type Disposable = { dispose(): void };
@@ -32,6 +36,9 @@ export interface McpHubStatus {
 export interface McpHubOptions {
   /** Reactive configuration signal */
   configSignal: Signal<Record<string, McpServerConfig>>;
+  vendorToolsSignal: Signal<
+    Record<string, Record<string, McpTool & McpToolExecutable>>
+  >;
   clientName?: string;
 }
 
@@ -39,13 +46,17 @@ export class McpHub implements Disposable {
   private connections: McpConnectionMap = new Map();
   private listeners: Disposable[] = [];
   private config: Record<string, McpServerConfig>;
-  private configSignal?: Signal<Record<string, McpServerConfig>>;
+  private readonly configSignal: Signal<Record<string, McpServerConfig>>;
+  private readonly vendorToolsSignal: Signal<
+    Record<string, Record<string, McpTool & McpToolExecutable>>
+  >;
   private readonly clientName: string;
 
   readonly status: Signal<McpHubStatus>;
 
   constructor(options: McpHubOptions) {
     this.configSignal = options.configSignal;
+    this.vendorToolsSignal = options.vendorToolsSignal;
     this.config = options.configSignal.value || {};
     this.clientName = options.clientName ?? "pochi";
     this.status = signal(this.buildStatus());
@@ -233,15 +244,40 @@ export class McpHub implements Disposable {
   }
 
   private buildStatus(): McpHubStatus {
-    const connections = Object.keys(this.config ?? {}).reduce<
-      Record<string, McpConnectionStatus>
-    >((acc, name) => {
-      const connection = this.connections.get(name);
-      if (connection) {
-        acc[name] = connection.instance.status.value;
+    const connections: Record<string, McpConnectionStatus> = {};
+    for (const [vendorId, tools] of Object.entries(
+      this.vendorToolsSignal.value,
+    )) {
+      if (!connections[vendorId]) {
+        connections[vendorId] = {
+          status: "ready",
+          error: undefined,
+          kind: "vendor",
+          tools: Object.entries(tools).reduce<
+            Record<string, McpToolStatus & McpToolExecutable>
+          >((acc, [toolName, tool]) => {
+            acc[toolName] = {
+              ...tool,
+              disabled: false,
+            };
+            return acc;
+          }, {}),
+        };
       }
-      return acc;
-    }, {});
+    }
+
+    Object.assign(
+      connections,
+      Object.keys(this.config ?? {}).reduce<
+        Record<string, McpConnectionStatus>
+      >((acc, name) => {
+        const connection = this.connections.get(name);
+        if (connection) {
+          acc[name] = connection.instance.status.value;
+        }
+        return acc;
+      }, {}),
+    );
 
     const toolset = Object.entries(connections).reduce<
       Record<string, McpTool & McpToolExecutable>

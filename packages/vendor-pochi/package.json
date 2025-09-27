@@ -16,6 +16,8 @@
     "@getpochi/common": "workspace:*",
     "better-auth": "catalog:",
     "hono": "catalog:",
-    "jose": "catalog:"
+    "jose": "catalog:",
+    "@getpochi/tools": "workspace:*",
+    "zod": "^4.1.11"
   }
 }

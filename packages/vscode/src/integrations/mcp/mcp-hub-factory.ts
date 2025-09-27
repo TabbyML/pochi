@@ -1,3 +1,4 @@
+import { VendorTools } from "@/lib/vendor-tools";
 import { pochiConfig } from "@getpochi/common/configuration";
 import { McpHub } from "@getpochi/common/mcp-utils";
 import { computed } from "@preact/signals-core";
@@ -14,11 +15,14 @@ export function createMcpHub(container: DependencyContainer): McpHub {
     "vscode.ExtensionContext",
   );
 
+  const vendorTools = container.resolve(VendorTools);
+
   // Create a computed signal for MCP servers configuration
   const mcpServersSignal = computed(() => pochiConfig.value.mcp || {});
 
   const mcpHub = new McpHub({
     configSignal: mcpServersSignal,
+    vendorToolsSignal: vendorTools.tools,
     clientName: context.extension.id,
   });
 
