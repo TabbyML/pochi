@@ -83,18 +83,18 @@ const AutoReconnectMaxAttempts = 20;
 
 export class McpConnection implements Disposable {
   readonly logger: ReturnType<typeof getLogger>;
-  private _status: McpServerConnectionExecutable = {
+  #status: McpServerConnectionExecutable = {
     status: "stopped" as const,
     error: undefined,
     tools: {},
   };
 
   get status() {
-    return this._status;
+    return this.#status;
   }
 
   private set status(status: McpServerConnectionExecutable) {
-    this._status = status;
+    this.#status = status;
     this.onStatusChanged();
   }
 

@@ -1,13 +1,6 @@
 import type { McpTool } from "@getpochi/tools";
-import {
-  type ReadonlySignal,
-  type Signal,
-  batch,
-  computed,
-  signal,
-} from "@preact/signals-core";
-import type { ToolCallOptions } from "ai";
-import { entries, omit } from "remeda";
+import { type Signal, batch, computed, signal } from "@preact/signals-core";
+import { entries, mapValues, mergeAll, omit, pickBy, values } from "remeda";
 import { getLogger } from "../base";
 import type { McpServerConfig } from "../configuration/index.js";
 import {
@@ -17,8 +10,8 @@ import {
 import { McpConnection } from "./mcp-connection";
 import type {
   McpServerConnection,
+  McpServerConnectionExecutable,
   McpToolExecutable,
-  McpToolStatus,
 } from "./types";
 
 // Define a minimal Disposable interface to avoid vscode dependency
@@ -53,37 +46,17 @@ export class McpHub implements Disposable {
   >;
   private readonly clientName: string;
 
-  readonly status: ReadonlySignal<McpHubStatus> = computed(() =>
-    this.buildStatus(),
-  );
+  readonly #status = computed(() => this.buildStatus());
+
+  readonly status = computed(() => omit(this.#status.value, ["executeFns"]));
+
+  readonly executeFns = computed(() => this.#status.value.executeFns);
 
   constructor(options: McpHubOptions) {
     this.config = options.config;
     this.vendorTools = options.vendorTools;
     this.clientName = options.clientName ?? "pochi";
     this.init();
-  }
-
-  executeTool(
-    name: string,
-    args: unknown,
-    options: ToolCallOptions,
-  ): Promise<unknown> {
-    for (const [_, tools] of Object.entries(this.vendorTools.value)) {
-      const execute = tools[name]?.execute;
-      if (execute) {
-        return execute(args, options);
-      }
-    }
-
-    for (const [_, connection] of Object.entries(this.connections.value)) {
-      const execute = connection.status.tools[name]?.execute;
-      if (execute) {
-        return execute(args, options);
-      }
-    }
-
-    throw new Error(`Tool ${name} not found`);
   }
 
   restart(name: string) {
@@ -251,57 +224,39 @@ export class McpHub implements Disposable {
     });
   }
 
-  private buildStatus(): McpHubStatus {
+  private buildStatus() {
     logger.debug("Build MCPHub Status");
-    const connections: McpHubStatus["connections"] = {};
+    const connections: Record<string, McpServerConnectionExecutable> = {};
     for (const [vendorId, tools] of Object.entries(this.vendorTools.value)) {
-      if (!connections[vendorId]) {
-        connections[vendorId] = {
-          status: "ready",
-          error: undefined,
-          kind: "vendor",
-          tools: Object.entries(tools).reduce<Record<string, McpToolStatus>>(
-            (acc, [toolName, tool]) => {
-              acc[toolName] = {
-                ...omit(tool, ["execute"]),
-                disabled: false,
-              };
-              return acc;
-            },
-            {},
-          ),
-        };
-      }
+      connections[vendorId] = {
+        status: "ready",
+        error: undefined,
+        kind: "vendor",
+        tools: mapValues(tools, (tool) => ({
+          ...tool,
+          disabled: false,
+        })),
+      };
     }
 
     for (const [name, connection] of Object.entries(this.connections.value)) {
       connections[name] = {
         ...connection.status,
-        tools: Object.entries(connection.status.tools).reduce<
-          Record<string, McpToolStatus>
-        >((acc, [toolName, tool]) => {
-          acc[toolName] = omit(tool, ["execute"]);
-          return acc;
-        }, {}),
+        tools: mapValues(connection.status.tools, (tool) => ({
+          ...tool,
+        })),
       };
     }
 
-    const toolset = Object.entries(connections).reduce<Record<string, McpTool>>(
-      (acc, [, connectionStatus]) => {
-        if (connectionStatus.status === "ready" && connectionStatus.tools) {
-          const tools = Object.entries(connectionStatus.tools).reduce<
-            Record<string, McpTool>
-          >((toolAcc, [toolName, tool]) => {
-            if (!tool.disabled) {
-              toolAcc[toolName] = omit(tool, ["disabled"]);
-            }
-            return toolAcc;
-          }, {});
-          Object.assign(acc, tools);
-        }
-        return acc;
-      },
-      {},
+    const toolset: Record<string, McpTool & McpToolExecutable> = mergeAll(
+      values(
+        pickBy(
+          connections,
+          (connection) => connection.status === "ready" && !!connection.tools,
+        ),
+      )
+        .map((connection) => pickBy(connection.tools, (tool) => !tool.disabled))
+        .map((tool) => mapValues(tool, (tool) => omit(tool, ["disabled"]))),
     );
 
     const instructions = entries(connections)
@@ -313,9 +268,13 @@ export class McpHub implements Disposable {
       .join("\n\n");
 
     return {
-      connections,
-      toolset,
+      connections: mapValues(connections, (connection) => ({
+        ...connection,
+        tools: mapValues(connection.tools, (tool) => omit(tool, ["execute"])),
+      })),
+      toolset: mapValues(toolset, (tool) => omit(tool, ["execute"])),
       instructions,
+      executeFns: mapValues(toolset, (tool) => tool.execute),
     };
   }
 

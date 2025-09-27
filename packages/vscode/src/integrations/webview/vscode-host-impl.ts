@@ -321,10 +321,9 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
 
       if (toolName in ToolMap) {
         tool = ToolMap[toolName];
-      } else if (toolName in this.mcpHub.status.value.toolset) {
-        tool = (args, options) => {
-          return this.mcpHub.executeTool(toolName, args, options);
-        };
+      } else if (toolName in this.mcpHub.executeFns.value) {
+        const execute = this.mcpHub.executeFns.value[toolName];
+        tool = (args, options) => execute(args, options);
       }
 
       if (!tool) {

@@ -55,11 +55,10 @@ export async function executeToolCall(
   }
 
   // If not found in built-in tools, try MCP tools
-  const mcpHub = options.mcpHub;
-  const mcpTools = mcpHub?.status.value.toolset || {};
-  if (mcpHub && toolName in mcpTools) {
+  const execute = options.mcpHub?.executeFns.value?.[toolName];
+  if (execute) {
     try {
-      const result = await mcpHub.executeTool(toolName, tool.input, {
+      const result = await execute(tool.input, {
         messages: [],
         toolCallId: tool.toolCallId,
         abortSignal,
