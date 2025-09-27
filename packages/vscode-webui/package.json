@@ -14,7 +14,6 @@
     "build-storybook": "storybook build"
   },
   "dependencies": {
-    "@ai-sdk/provider": "catalog:",
     "@ai-sdk/react": "catalog:",
     "@getpochi/common": "workspace:*",
     "@getpochi/livekit": "workspace:*",
