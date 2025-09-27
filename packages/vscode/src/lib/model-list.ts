@@ -9,6 +9,7 @@ import type {
   VSCodeLmRequestOptions,
 } from "@getpochi/common/vscode-webui-bridge";
 import { type Signal, effect, signal } from "@preact/signals-core";
+import { isDeepEqual } from "remeda";
 import { injectable, singleton } from "tsyringe";
 import type * as vscode from "vscode";
 
@@ -19,16 +20,19 @@ const logger = getLogger("ModelList");
 export class ModelList implements vscode.Disposable {
   dispose() {}
 
+  private deps: Array<unknown> = [];
   readonly modelList: Signal<DisplayModel[]> = signal([]);
 
   constructor(private readonly vscodeLm: VSCodeLm) {
     effect(() => {
+      const deps = [
+        pochiConfig.value.providers,
+        pochiConfig.value.vendors,
+        this.vscodeLm.models.value,
+      ];
       // Explicitly depend on the config to trigger the effect
-      if (
-        pochiConfig.value.providers ||
-        pochiConfig.value.vendors ||
-        this.vscodeLm.models.value.length > 0
-      ) {
+      if (!isDeepEqual(this.deps, deps)) {
+        this.deps = deps;
         this.fetchModelList().then((models) => {
           this.modelList.value = models;
         });

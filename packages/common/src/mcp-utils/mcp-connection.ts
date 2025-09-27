@@ -3,7 +3,6 @@ import {
   getDefaultEnvironment,
 } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-import { type Signal, signal } from "@preact/signals-core";
 import { createMachine, interpret } from "@xstate/fsm";
 import { type ToolSet, experimental_createMCPClient as createClient } from "ai";
 import type { JSONSchema7 } from "json-schema";
@@ -99,7 +98,20 @@ const AutoReconnectMaxAttempts = 20;
 
 export class McpConnection implements Disposable {
   readonly logger: ReturnType<typeof getLogger>;
-  readonly status: Signal<McpConnectionStatus>;
+  private _status: McpConnectionStatus = {
+    status: "stopped" as const,
+    error: undefined,
+    tools: {},
+  };
+
+  get status() {
+    return this._status;
+  }
+
+  private set status(status: McpConnectionStatus) {
+    this._status = status;
+    this.onStatusChanged();
+  }
 
   private fsmDef = createMachine<FsmContext, FsmEvent, FsmState>({
     initial: "stopped",
@@ -199,15 +211,9 @@ export class McpConnection implements Disposable {
     readonly serverName: string,
     private readonly clientName: string,
     private config: McpServerConfig,
+    private readonly onStatusChanged: () => void,
   ) {
     this.logger = getLogger(`MCPConnection(${this.serverName})`);
-
-    // Initialize status signal with default values
-    this.status = signal({
-      status: "stopped" as const,
-      error: undefined,
-      tools: {},
-    });
 
     this.fsm.start();
     const { unsubscribe: dispose } = this.fsm.subscribe((state) => {
@@ -259,8 +265,7 @@ export class McpConnection implements Disposable {
   }
 
   private updateStatus() {
-    const status = this.buildStatus();
-    this.status.value = status;
+    this.status = this.buildStatus();
   }
 
   private buildStatus() {

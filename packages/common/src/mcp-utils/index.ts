@@ -1,9 +1,5 @@
 export { McpHub, type McpHubOptions, type McpHubStatus } from "./mcp-hub";
 export {
-  McpConnection,
-  type McpConnectionStatus,
-} from "./mcp-connection";
-export {
   isStdioTransport,
   isHttpTransport,
   isExecutable,
