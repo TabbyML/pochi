@@ -23,12 +23,23 @@ export function parseMcpToolSet(
     : undefined;
 }
 
-const contentOutputFn = (output: {
-  content: Array<
-    | { type: "text"; text: string }
-    | { type: "image"; mimeType: string; data: string }
-  >;
-}) => {
+const contentOutputFn = (
+  output:
+    | {
+        content: Array<
+          | { type: "text"; text: string }
+          | { type: "image"; mimeType: string; data: string }
+        >;
+      }
+    | { error: string },
+) => {
+  if ("error" in output) {
+    return {
+      type: "error-text" as const,
+      value: output.error,
+    };
+  }
+
   return {
     type: "content" as const,
     value: output.content.map((item) => {
