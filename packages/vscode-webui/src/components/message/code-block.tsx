@@ -84,7 +84,7 @@ const CodeRenderer: FC<CodeRendererProps> = ({
       language={languageForSyntax}
       value={value}
       theme={theme}
-      preClassName="not-prose bg-transparent [&>code]:bg-transparent text-sm"
+      preClassName="not-prose bg-transparent [&>code]:!bg-transparent text-sm"
       className="mx-3 mb-1"
     />
   );
