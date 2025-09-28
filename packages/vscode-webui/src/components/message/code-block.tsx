@@ -9,11 +9,6 @@ import {
   WrapTextIcon,
 } from "lucide-react";
 import { type FC, memo, useState } from "react";
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import {
-  oneLight,
-  vscDarkPlus,
-} from "react-syntax-highlighter/dist/esm/styles/prism";
 
 import {
   Tooltip,
@@ -22,7 +17,9 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import "./code-block.css";
+import type { BundledLanguage } from "shiki";
 import { useTheme } from "../theme-provider";
+import { CodeHighlighter } from "./code-highlighter";
 import { Mermaid } from "./mermaid";
 
 export interface CodeBlockProps {
@@ -71,36 +68,25 @@ const CodeRenderer: FC<CodeRendererProps> = ({
   language,
   value,
   theme,
-  wrapLongLines,
+  // wrapLongLines,
   showMermaidPreview,
 }) => {
-  const languageForSyntax = language === "toml" ? "bash" : language;
+  const languageForSyntax = (
+    language === "toml" ? "bash" : language
+  ) as BundledLanguage;
 
   if (language === "mermaid" && showMermaidPreview) {
     return <Mermaid chart={value} />;
   }
 
   return (
-    <SyntaxHighlighter
+    <CodeHighlighter
       language={languageForSyntax}
-      style={theme === "dark" ? vscDarkPlus : oneLight}
-      PreTag="div"
-      customStyle={{
-        margin: 0,
-        width: "100%",
-        background: "transparent",
-        borderRadius: "0.25rem",
-      }}
-      wrapLongLines={wrapLongLines}
-      codeTagProps={{
-        style: {
-          backgroundColor: "transparent",
-          padding: "0px",
-        },
-      }}
-    >
-      {value}
-    </SyntaxHighlighter>
+      value={value}
+      theme={theme}
+      preClassName="not-prose bg-transparent [&>code]:bg-transparent text-sm"
+      className="mx-3 mb-1"
+    />
   );
 };
 

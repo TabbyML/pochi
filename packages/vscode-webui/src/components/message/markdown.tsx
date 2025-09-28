@@ -2,40 +2,31 @@ import { CustomHtmlTags } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { isKnownProgrammingLanguage } from "@/lib/utils/languages";
 import { isVSCodeEnvironment, vscodeHost } from "@/lib/vscode";
-import { type ElementType, type FC, memo, useCallback, useMemo } from "react";
-import ReactMarkdown, { type Components, type Options } from "react-markdown";
+import {
+  type DetailedHTMLProps,
+  type HTMLAttributes,
+  type JSX,
+  memo,
+  useCallback,
+  useContext,
+  useMemo,
+} from "react";
 import rehypeRaw from "rehype-raw";
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
+import { ControlsContext, Streamdown } from "streamdown";
 import { FileBadge } from "../tool-invocation/file-badge";
 import { CodeBlock } from "./code-block";
 import { customStripTagsPlugin } from "./custom-strip-tags-plugin";
 import "./markdown.css";
 import { useReplaceJobIdsInContent } from "@/features/chat";
-
-interface CodeComponentProps {
-  className?: string;
-  children?: React.ReactNode;
-  node?: {
-    position?: {
-      start: { line: number };
-      end: { line: number };
-    };
-  };
-  isMinimalView?: boolean;
-}
+import type { ExtraProps, Options } from "react-markdown";
+import "./markdown.css";
 
 interface InlineCodeComponentProps {
   className?: string;
   children?: React.ReactNode;
-}
-
-interface BlockCodeComponentProps {
-  className?: string;
-  children?: React.ReactNode;
-  language?: string;
-  isMinimalView?: boolean;
 }
 
 function InlineCodeComponent({
@@ -85,14 +76,32 @@ function InlineCodeComponent({
   return <code className={cn("inline-code", className)}>{children}</code>;
 }
 
+interface BlockCodeComponentProps {
+  className?: string;
+  children?: React.ReactNode;
+  language?: string;
+}
+
+const shouldShowControls = (
+  config: boolean | { table?: boolean; code?: boolean; mermaid?: boolean },
+  type: "table" | "code" | "mermaid",
+) => {
+  if (typeof config === "boolean") {
+    return config;
+  }
+
+  return config[type] !== false;
+};
+
 function BlockCodeComponent({
   className,
   children,
   language = "",
-  isMinimalView,
 }: BlockCodeComponentProps) {
+  const controlsConfig = useContext(ControlsContext);
+
   let value = String(children).replace(/\n$/, "");
-  if (isMinimalView && value.length > 512) {
+  if (!shouldShowControls(controlsConfig, "code") && value.length > 512) {
     value = `... ${language} code omitted ( ${value.length} bytes ) ...`;
   }
   return (
@@ -101,17 +110,22 @@ function BlockCodeComponent({
       value={value}
       canWrapLongLines={true}
       className={cn("max-h-none", className)}
-      isMinimalView={isMinimalView}
     />
   );
 }
 
-function CodeComponent({
-  className,
-  children,
-  node,
-  isMinimalView,
-}: CodeComponentProps) {
+interface CodeComponentProps {
+  className?: string;
+  children?: React.ReactNode;
+  node?: {
+    position?: {
+      start: { line: number };
+      end: { line: number };
+    };
+  };
+}
+
+function CodeComponent({ className, children, node }: CodeComponentProps) {
   if (children && Array.isArray(children) && children.length) {
     if (children[0] === "▍") {
       return <span className="mt-1 animate-pulse cursor-default">▍</span>;
@@ -134,24 +148,11 @@ function CodeComponent({
   }
 
   return (
-    <BlockCodeComponent
-      className={className}
-      language={match?.[1]}
-      isMinimalView={isMinimalView}
-    >
+    <BlockCodeComponent className={className} language={match?.[1]}>
       {children}
     </BlockCodeComponent>
   );
 }
-
-type CustomTag = (typeof CustomHtmlTags)[number];
-
-type ExtendedMarkdownOptions = Omit<Options, "components"> & {
-  components?: Components & {
-    // for custom html tags rendering
-    [Tag in CustomTag]?: ElementType;
-  };
-};
 
 interface MessageMarkdownProps {
   children: string;
@@ -191,12 +192,59 @@ function isImageLink(url: string): boolean {
   return /\.(jpeg|jpg|gif|png|bmp|webp|svg)(?=[?#]|$)/i.test(url);
 }
 
-const MemoizedReactMarkdown: FC<ExtendedMarkdownOptions> = memo(
-  ReactMarkdown,
-  (prevProps, nextProps) =>
-    prevProps.children === nextProps.children &&
-    prevProps.components === nextProps.components,
+type MarkdownPoint = { line?: number; column?: number };
+type MarkdownPosition = { start?: MarkdownPoint; end?: MarkdownPoint };
+type MarkdownNode = {
+  position?: MarkdownPosition;
+  properties?: { className?: string };
+};
+
+function sameNodePosition(prev?: MarkdownNode, next?: MarkdownNode): boolean {
+  if (!(prev?.position || next?.position)) {
+    return true;
+  }
+  if (!(prev?.position && next?.position)) {
+    return false;
+  }
+
+  const prevStart = prev.position.start;
+  const nextStart = next.position.start;
+  const prevEnd = prev.position.end;
+  const nextEnd = next.position.end;
+
+  return (
+    prevStart?.line === nextStart?.line &&
+    prevStart?.column === nextStart?.column &&
+    prevEnd?.line === nextEnd?.line &&
+    prevEnd?.column === nextEnd?.column
+  );
+}
+
+const MemoCode = memo<
+  DetailedHTMLProps<HTMLAttributes<HTMLElement>, HTMLElement> &
+    ExtraProps & { isMinimalView?: boolean }
+>(
+  CodeComponent,
+  (p, n) => p.className === n.className && sameNodePosition(p.node, n.node),
 );
+MemoCode.displayName = "MarkdownCode";
+
+type WithNode<T> = T & {
+  node?: MarkdownNode;
+  children?: React.ReactNode;
+  className?: string;
+};
+type LiProps = WithNode<JSX.IntrinsicElements["li"]>;
+
+const MemoLi = memo<LiProps>(
+  ({ children, className, ...props }: LiProps) => (
+    <li className={className} data-streamdown="list-item" {...props}>
+      {children}
+    </li>
+  ),
+  (p, n) => p.className === n.className && sameNodePosition(p.node, n.node),
+);
+MemoLi.displayName = "MarkdownLi";
 
 export function MessageMarkdown({
   children,
@@ -215,7 +263,7 @@ export function MessageMarkdown({
     return replaceJobIdsInContent(result);
   }, [children, replaceJobIdsInContent]);
 
-  const components: Components = useMemo(() => {
+  const components: Options["components"] = useMemo(() => {
     return {
       file: (props: FileComponentProps) => {
         const { children } = props;
@@ -228,9 +276,7 @@ export function MessageMarkdown({
           <FileBadge label={id.replaceAll("user-content-", "/")} path={path} />
         );
       },
-      code: (props) => (
-        <CodeComponent {...props} isMinimalView={isMinimalView} />
-      ),
+      code: (props) => <MemoCode {...props} />,
       a({ href, children, ...props }) {
         const openLink = useCallback(() => {
           href && isVSCodeEnvironment()
@@ -268,8 +314,9 @@ export function MessageMarkdown({
       p: ({ children }) => (
         <p className="whitespace-pre-wrap leading-relaxed">{children}</p>
       ),
+      li: (props) => <MemoLi {...props} />,
     };
-  }, [isMinimalView, previewImageLink]);
+  }, [previewImageLink]);
 
   return (
     <div
@@ -278,7 +325,7 @@ export function MessageMarkdown({
         className,
       )}
     >
-      <MemoizedReactMarkdown
+      <Streamdown
         remarkPlugins={[remarkMath, remarkGfm]}
         rehypePlugins={
           isMinimalView
@@ -308,9 +355,11 @@ export function MessageMarkdown({
               ]
         }
         components={components}
+        controls={{ code: !isMinimalView, table: false }}
+        shikiTheme={["light-plus", "dark-plus"]}
       >
         {processedChildren}
-      </MemoizedReactMarkdown>
+      </Streamdown>
     </div>
   );
 }
