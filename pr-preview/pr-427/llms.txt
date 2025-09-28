@@ -921,8 +921,8 @@ This guide offers practical strategies to boost development workflows.
 * **Provide Clear Context:** Use `@` to reference files/folders (e.g., `@api.js`) or `README.pochi.md` for project rules and goals (e.g., coding standards, security priorities).
 * **Break Down Tasks:** Split complex problems into steps for stability (e.g., review, then optimize).
 * **Ensure Consistency:** Rely on structured prompts (XML/JSON) for repeatable, predictable outputs.
-* **Iterate Safely:** Tweak prompts step-by-step. Using structured formats like XML or JSON for your prompts makes it easier to track and revert changes if needed.
-* **Leverage Pochi Features:** Use `~/.pochi/config.jsonc` for models & MCPs, the `.pochi/agents/` directory for custom agents, the `rules/` directory for custom rules, Pochi Cloud for shared histories, and GitHub/Slack for team collaboration.
+* **Iterate Safely:** Tweak prompts step-by-step, using structure to revert changes if needed.
+* **Leverage Pochi Features:** Use `~/.pochi/config.jsonc` for models & MCPs, `README.pochi.md` for agents/rules, Pochi Cloud for shared histories, GitHub/Slack for team work.
 
 ## How to Prompt Pochi
 
