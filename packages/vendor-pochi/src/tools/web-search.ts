@@ -1,5 +1,5 @@
 import type { JSONSchema7 } from "@ai-sdk/provider";
-import z from "zod";
+import z from "zod/v4";
 
 export const makeWebSearch = (getToken: () => Promise<string>) => ({
   description: `
