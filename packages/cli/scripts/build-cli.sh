@@ -5,6 +5,15 @@ set -ex
 # we use bun to utilize local dev,
 # so add this dispatcher if run bun locally
 build_js() {
+        BUN_VERSION=$(bun --version)
+        REQUIRED_VERSION="1.2.15"
+
+        if [ "$(printf '%s\n' "$REQUIRED_VERSION" "$BUN_VERSION" | sort -V | tail -n 1)" != "$REQUIRED_VERSION" ]; then
+                echo "Error: The current bun version ($BUN_VERSION) has an issue building the node target for Pochi." >&2
+                echo "Please use a version up to 1.2.15." >&2
+                exit 1
+        fi
+
         bun build src/cli.ts \
                 --external lightningcss \
                 --target node \
