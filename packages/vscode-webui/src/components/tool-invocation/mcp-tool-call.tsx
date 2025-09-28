@@ -3,6 +3,7 @@ import { Switch } from "@/components/ui/switch";
 import { vscodeHost } from "@/lib/vscode";
 import { getToolName } from "ai";
 import { useState } from "react";
+import { ScrollArea } from "../ui/scroll-area";
 import { HighlightedText } from "./highlight-text";
 import { StatusIcon } from "./status-icon";
 import { ExpandableToolContainer } from "./tool-container";
@@ -160,7 +161,12 @@ function Result({
   };
 
   return (
-    <div className="px-4 py-2">{result.content.map(renderContentItem)}</div>
+    <ScrollArea
+      className="px-4 py-2"
+      viewportClassname="max-h-[300px] my-1 rounded-sm border"
+    >
+      {result.content.map(renderContentItem)}
+    </ScrollArea>
   );
 }
 
@@ -238,7 +244,7 @@ function DisplayModeToggle({
       <Switch
         checked={previewImageLink}
         onCheckedChange={onToggle}
-        className="data-[state=checked]:bg-[var(--vscode-button-background)] data-[state=unchecked]:bg-[var(--vscode-input-background)]"
+        className="data-[state=checked]:bg-[var(--vscode-button-background)] data-[state=unchecked]:bg-[var(--vscode-widget-border)]"
       />
       <span className="text-[var(--vscode-foreground)] text-xs">Preview</span>
     </div>
