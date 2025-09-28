@@ -2,9 +2,9 @@ import type { UserInfo } from "@getpochi/common/configuration";
 import { VendorBase } from "@getpochi/common/vendor";
 import type { AuthOutput, ModelOptions } from "@getpochi/common/vendor";
 import { fetchUserInfo, renewCredentials, startOAuthFlow } from "./auth";
-import { type ClaudeCodeCredentials, VendorId } from "./types";
+import { type QwenCoderCredentials, VendorId } from "./types";
 
-export class QwenCode extends VendorBase {
+export class QwenCoder extends VendorBase {
   constructor() {
     super(VendorId);
   }
@@ -14,13 +14,13 @@ export class QwenCode extends VendorBase {
   }
 
   override async renewCredentials(
-    credentials: ClaudeCodeCredentials,
-  ): Promise<ClaudeCodeCredentials | undefined> {
+    credentials: QwenCoderCredentials,
+  ): Promise<QwenCoderCredentials | undefined> {
     return renewCredentials(credentials);
   }
 
   override async fetchUserInfo(
-    credentials: ClaudeCodeCredentials,
+    credentials: QwenCoderCredentials,
   ): Promise<UserInfo> {
     return fetchUserInfo(credentials);
   }

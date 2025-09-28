@@ -1,8 +1,8 @@
 import { registerModel } from "@getpochi/common/vendor/edge";
-import { createClaudeCodeModel, createEdgeClaudeCodeModel } from "./model";
+import { createQwenCoderModel, createEdgeQwenCoderModel } from "./model";
 import { VendorId } from "./types";
 
 const modelCreator =
-  "window" in globalThis ? createEdgeClaudeCodeModel : createClaudeCodeModel;
+  "window" in globalThis ? createEdgeQwenCoderModel : createQwenCoderModel;
 
 registerModel(VendorId, modelCreator);

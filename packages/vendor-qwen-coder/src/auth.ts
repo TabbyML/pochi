@@ -4,7 +4,7 @@ import * as readline from "node:readline/promises";
 import { getLogger } from "@getpochi/common";
 import type { UserInfo } from "@getpochi/common/configuration";
 import type { AuthOutput } from "@getpochi/common/vendor";
-import type { ClaudeCodeAuthResponse, ClaudeCodeCredentials } from "./types";
+import type { QwenCoderAuthResponse, QwenCoderCredentials } from "./types";
 import { ClientId, VendorId } from "./types";
 
 const logger = getLogger(VendorId);
@@ -38,7 +38,7 @@ export async function startOAuthFlow(): Promise<AuthOutput> {
   url.search = authParams.toString();
 
   // Create a Promise that resolves when the user provides the code
-  const credentials = new Promise<ClaudeCodeCredentials>((resolve, reject) => {
+  const credentials = new Promise<QwenCoderCredentials>((resolve, reject) => {
     // Run async code in next tick to avoid async executor warning
     setTimeout(async () => {
       const rl = readline.createInterface({ input, output });
@@ -77,7 +77,7 @@ async function exchangeCodeForTokens(
   code: string,
   verifier: string,
   redirectUri: string,
-): Promise<ClaudeCodeCredentials> {
+): Promise<QwenCoderCredentials> {
   // Parse code if it contains state (format: code#state)
   const [actualCode, state] = code.split("#");
 
@@ -106,7 +106,7 @@ async function exchangeCodeForTokens(
     );
   }
 
-  const tokenData = (await response.json()) as ClaudeCodeAuthResponse;
+  const tokenData = (await response.json()) as QwenCoderAuthResponse;
 
   return {
     accessToken: tokenData.access_token,
@@ -119,8 +119,8 @@ async function exchangeCodeForTokens(
  * Refresh access token
  */
 export async function renewCredentials(
-  credentials: ClaudeCodeCredentials,
-): Promise<ClaudeCodeCredentials | undefined> {
+  credentials: QwenCoderCredentials,
+): Promise<QwenCoderCredentials | undefined> {
   // Check if tokens are about to expire (with 5 minute buffer)
   if (credentials.expiresAt > Date.now() + 5 * 60 * 1000) {
     return credentials;
@@ -150,7 +150,7 @@ export async function renewCredentials(
       );
     }
 
-    const tokenData = (await response.json()) as ClaudeCodeAuthResponse;
+    const tokenData = (await response.json()) as QwenCoderAuthResponse;
 
     return {
       accessToken: tokenData.access_token,
@@ -167,7 +167,7 @@ export async function renewCredentials(
  * Fetch user information using the access token
  */
 export async function fetchUserInfo(
-  _credentials: ClaudeCodeCredentials,
+  _credentials: QwenCoderCredentials,
 ): Promise<UserInfo> {
   return {
     email: "",

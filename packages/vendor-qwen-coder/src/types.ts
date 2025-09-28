@@ -1,10 +1,16 @@
-export interface ClaudeCodeCredentials {
+export interface QwenCoderCredentials {
   accessToken: string;
   refreshToken: string;
   expiresAt: number;
 }
 
-export interface QwenCodeCredentials {
+// export interface ClaudeCodeCredentials {
+//   accessToken: string;
+//   refreshToken: string;
+//   expiresAt: number;
+// }
+
+export interface aQwenCoderCredentials {
   access_token: string;
   refresh_token: string;
   token_type: string;
@@ -12,14 +18,14 @@ export interface QwenCodeCredentials {
   expiry_date: number;
 }
 
-export interface ClaudeCodeAuthResponse {
+export interface QwenCoderAuthResponse {
   access_token: string;
   refresh_token: string;
   expires_in: number;
   token_type: string;
 }
 
-export interface ClaudeCodeUserInfo {
+export interface QwenCoderUserInfo {
   id: string;
   email: string;
   name: string;

@@ -2,9 +2,9 @@ import { createAnthropic } from "@ai-sdk/anthropic";
 import type { LanguageModelV2 } from "@ai-sdk/provider";
 import type { CreateModelOptions } from "@getpochi/common/vendor/edge";
 import { wrapLanguageModel } from "ai";
-import type { ClaudeCodeCredentials } from "./types";
+import type { QwenCoderCredentials } from "./types";
 
-const ClaudeCodeSystemPrompt =
+const QwenCoderSystemPrompt =
   "You are Claude Code, Anthropic's official CLI for Claude.";
 
 const AnthropicHeaders = {
@@ -14,7 +14,7 @@ const AnthropicHeaders = {
 
 function addAnthropicHeaders(
   headers: Headers,
-  credentials?: ClaudeCodeCredentials,
+  credentials?: QwenCoderCredentials,
 ): void {
   if (credentials) {
     headers.set("authorization", `Bearer ${credentials.accessToken}`);
@@ -29,7 +29,7 @@ export const ModelIdMap: Record<string, string> = {
   "claude-sonnet-4": "claude-sonnet-4-20250514",
 };
 
-function createClaudeCodeModelBase(
+function createQwenCoderModelBase(
   modelId: string,
   baseURL: string,
   customFetch: (
@@ -54,7 +54,7 @@ function createClaudeCodeModelBase(
         params.prompt = [
           {
             role: "system",
-            content: ClaudeCodeSystemPrompt,
+            content: QwenCoderSystemPrompt,
           },
           ...params.prompt,
         ];
@@ -68,7 +68,7 @@ function createClaudeCodeModelBase(
 }
 
 function createPatchedFetch(
-  getCredentials: () => Promise<ClaudeCodeCredentials>,
+  getCredentials: () => Promise<QwenCoderCredentials>,
 ) {
   return async (
     input: string | URL | Request,
@@ -84,7 +84,7 @@ function createPatchedFetch(
 }
 
 function createProxyFetch(
-  getCredentials: () => Promise<ClaudeCodeCredentials | undefined>,
+  getCredentials: () => Promise<QwenCoderCredentials | undefined>,
 ) {
   return async (
     input: string | URL | Request,
@@ -110,30 +110,30 @@ function createProxyFetch(
   };
 }
 
-export function createClaudeCodeModel({
+export function createQwenCoderModel({
   modelId,
   getCredentials,
 }: CreateModelOptions): LanguageModelV2 {
   const customFetch = createPatchedFetch(
-    getCredentials as () => Promise<ClaudeCodeCredentials>,
+    getCredentials as () => Promise<QwenCoderCredentials>,
   );
 
-  return createClaudeCodeModelBase(
+  return createQwenCoderModelBase(
     modelId,
     "https://api.anthropic.com/v1",
     customFetch,
   );
 }
 
-export function createEdgeClaudeCodeModel({
+export function createEdgeQwenCoderModel({
   modelId,
   getCredentials,
 }: CreateModelOptions): LanguageModelV2 {
   const customFetch = createProxyFetch(
-    getCredentials as () => Promise<ClaudeCodeCredentials>,
+    getCredentials as () => Promise<QwenCoderCredentials>,
   );
 
-  return createClaudeCodeModelBase(
+  return createQwenCoderModelBase(
     modelId,
     "https://api.anthropic.com/v1",
     customFetch,
