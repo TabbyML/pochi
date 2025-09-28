@@ -119,12 +119,6 @@ assistant: "I'm going to use the Task tool to launch the with the greeting-respo
         .string()
         .optional()
         .describe("The type of the specialized agent to use for the task."),
-      model: z
-        .string()
-        .optional()
-        .describe(
-          "The specialized model to use for the task. If not provided, the default model will be used.",
-        ),
       _meta: z
         .object({
           uid: z.string().describe("A unique identifier for the task."),
