@@ -16,11 +16,12 @@ export async function startOAuthFlow(): Promise<AuthOutput> {
   // Generate PKCE parameters
   const pkce = generatePKCEParams();
 
-  // Use fixed redirect URI as per reference implementation
-  const redirectUri = "https://console.anthropic.com/oauth/code/callback";
+  const port = await getAvailablePort();
 
-  // Always use claude.ai for OAuth
-  const baseUrl = "https://claude.ai/oauth/authorize";
+  const redirectUri = `http://localhost:${port}/oauth2callback`;
+
+  // Always use claude.ai for OAuth https://chat.qwen.ai/api/v2/oauth2/authorize
+  const baseUrl = "https://chat.qwen.ai/api/v2/oauth2/authorize";
 
   const authParams = new URLSearchParams({
     code: "true",
@@ -186,3 +187,7 @@ function generatePKCEParams(): { verifier: string; challenge: string } {
 
   return { verifier, challenge };
 }
+function getAvailablePort() {
+  throw new Error("Function not implemented.");
+}
+

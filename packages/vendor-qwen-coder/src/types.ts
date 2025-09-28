@@ -28,3 +28,14 @@ export interface ClaudeCodeUserInfo {
 
 export const VendorId = "qwen-code";
 export const ClientId = "9d1c250a-e61b-44d9-88ed-5944d1962f5e";
+export const user_code = "ZCNLIED2"
+export const client = "qwen-code"
+export const OAUTH_CLIENT_ID = '681255809395-oo8ft2oprdrnp9e3aqf6av3hmdib135j.apps.googleusercontent.com';
+
+export const OAUTH_SCOPE = [
+  'https://www.googleapis.com/auth/cloud-platform',
+  'https://www.googleapis.com/auth/userinfo.email',
+  'https://www.googleapis.com/auth/userinfo.profile',
+];
+
+const HTTP_REDIRECT = 301;

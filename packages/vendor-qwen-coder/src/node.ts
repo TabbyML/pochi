@@ -1,7 +1,7 @@
 import { registerVendor } from "@getpochi/common/vendor";
-import { ClaudeCode } from "./vendor";
+import { QwenCode } from "./vendor";
 
-registerVendor(new ClaudeCode());
+registerVendor(new QwenCode());
 
-export { ClaudeCode } from "./vendor";
+export { QwenCode } from "./vendor";
 export type { ClaudeCodeCredentials } from "./types";
