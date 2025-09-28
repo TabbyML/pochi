@@ -21,7 +21,7 @@ export const makeWebSearch = (getToken: () => Promise<string>) => ({
       }),
     ) as JSONSchema7,
   },
-  execute: async (args: { url: string }) => {
+  execute: async (args: { query: string; country?: string }) => {
     const token = await getToken();
     const response = await fetch(
       "https://api-gateway.getpochi.com/https/api.perplexity.ai/search",
