@@ -41,12 +41,18 @@ export type ToolName = keyof ClientTools;
 
 export const ToolsByPermission = {
   read: [
-    "readFile",
-    "listFiles",
-    "globFiles",
-    "searchFiles",
-    "readBackgroundJobOutput",
-  ] satisfies ToolName[] as string[],
+    ...([
+      "readFile",
+      "listFiles",
+      "globFiles",
+      "searchFiles",
+      "readBackgroundJobOutput",
+    ] satisfies ToolName[]),
+
+    // Pochi offered-tools
+    "webFetch",
+    "webSearch",
+  ] as string[],
   write: [
     "writeToFile",
     "applyDiff",
