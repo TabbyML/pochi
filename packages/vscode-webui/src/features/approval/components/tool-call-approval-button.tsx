@@ -3,10 +3,21 @@ import { useCallback, useEffect, useMemo } from "react"; // useMemo is now in th
 
 import { Button } from "@/components/ui/button";
 import { useAutoApproveGuard, useToolCallLifeCycle } from "@/features/chat";
-import { useSubtaskOffhand, useToolAutoApproval } from "@/features/settings";
+import {
+  useSelectedModels,
+  useSubtaskOffhand,
+  useToolAutoApproval,
+} from "@/features/settings";
+import { useCustomAgents } from "@/lib/hooks/use-custom-agents";
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
+import { resolveModelFromString } from "@/lib/utils/model";
+import type {
+  CustomAgentFile,
+  DisplayModel,
+} from "@getpochi/common/vscode-webui-bridge";
 import { useNavigate } from "@tanstack/react-router";
 import { getToolName } from "ai";
+import { pick } from "remeda";
 import type { PendingToolCallApproval } from "../hooks/use-pending-tool-call-approval";
 
 interface ToolCallApprovalButtonProps {
@@ -20,6 +31,8 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
   isSubTask,
 }) => {
   const navigate = useNavigate();
+  const { models, updateSelectedModel } = useSelectedModels();
+  const { customAgents } = useCustomAgents();
   const autoApproveGuard = useAutoApproveGuard();
   const { getToolCallLifeCycle } = useToolCallLifeCycle();
   const [lifecycles, tools] = useMemo(
@@ -91,6 +104,16 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
             : undefined;
         const subtaskUid = newTaskInput?._meta?.uid;
         if (subtaskUid) {
+          if (newTaskInput.agentType) {
+            const specificModel = getModelFromCustomAgent(
+              newTaskInput.agentType,
+              customAgents,
+              models ?? [],
+            );
+            if (specificModel) {
+              updateSelectedModel(pick(specificModel, ["id", "name"]));
+            }
+          }
           manualRunSubtask(subtaskUid);
         }
         return;
@@ -104,6 +127,9 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
     manualRunSubtask,
     pendingApproval,
     subtaskOffhand,
+    customAgents,
+    models,
+    updateSelectedModel,
   ]);
 
   const onReject = useCallback(() => {
@@ -183,3 +209,17 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
 
   return null;
 };
+
+function getModelFromCustomAgent(
+  agentType: string | undefined,
+  customAgents: CustomAgentFile[],
+  models: DisplayModel[],
+) {
+  if (agentType) {
+    const agent = customAgents.find((x) => x.name === agentType);
+    if (agent) {
+      const model = resolveModelFromString(agent.model, models);
+      return model;
+    }
+  }
+}
