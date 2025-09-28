@@ -187,7 +187,20 @@ function generatePKCEParams(): { verifier: string; challenge: string } {
 
   return { verifier, challenge };
 }
-function getAvailablePort() {
-  throw new Error("Function not implemented.");
+function getAvailablePort(): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const server = require("node:net").createServer();
+    server.listen(0, () => {
+      const port = server.address()?.port;
+      server.close(() => {
+        if (port) {
+          resolve(port);
+        } else {
+          reject(new Error("Failed to get available port"));
+        }
+      });
+    });
+    server.on("error", reject);
+  });
 }
 
