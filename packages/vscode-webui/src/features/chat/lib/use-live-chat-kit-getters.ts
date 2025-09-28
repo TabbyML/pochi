@@ -4,6 +4,7 @@ import "@getpochi/vendor-gemini-cli/edge";
 import "@getpochi/vendor-claude-code/edge";
 import "@getpochi/vendor-codex/edge";
 import "@getpochi/vendor-github-copilot/edge";
+import "@getpochi/vendor-qwen-coder/edge";
 import "./vscode-lm";
 
 import { useSelectedModels } from "@/features/settings";
