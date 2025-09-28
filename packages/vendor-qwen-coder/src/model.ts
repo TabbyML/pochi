@@ -17,7 +17,7 @@ function addAnthropicHeaders(
   credentials?: QwenCoderCredentials,
 ): void {
   if (credentials) {
-    headers.set("authorization", `Bearer ${credentials.accessToken}`);
+    headers.set("authorization", `Bearer ${credentials.access_token}`);
   }
   headers.set("anthropic-beta", AnthropicHeaders.beta);
   headers.set("anthropic-version", AnthropicHeaders.version);

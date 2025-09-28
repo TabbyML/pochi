@@ -169,9 +169,11 @@ async function pollForToken(
           logger.debug("Authentication successful! Access token obtained.");
           
           return {
-            accessToken: tokenData.access_token,
-            refreshToken: tokenData.refresh_token || "",
-            expiresAt: tokenData.expires_in 
+            access_token: tokenData.access_token,
+            refresh_token: tokenData.refresh_token || "",
+            token_type: tokenData.token_type || "",
+            resource_url: tokenData.resource_url || "",
+            expiry_date: tokenData.expires_in 
               ? Date.now() + tokenData.expires_in * 1000 
               : Date.now() + 3600 * 1000, // Default 1 hour
           };
@@ -241,11 +243,11 @@ export async function renewCredentials(
   credentials: QwenCoderCredentials,
 ): Promise<QwenCoderCredentials | undefined> {
   // Check if tokens are about to expire (with 5 minute buffer)
-  if (credentials.expiresAt > Date.now() + 5 * 60 * 1000) {
+  if (credentials.expiry_date > Date.now() + 5 * 60 * 1000) {
     return credentials;
   }
 
-  if (!credentials.refreshToken) {
+  if (!credentials.refresh_token) {
     logger.error("No refresh token available");
     return undefined;
   }
@@ -253,7 +255,7 @@ export async function renewCredentials(
   try {
     const bodyData = {
       grant_type: "refresh_token",
-      refresh_token: credentials.refreshToken,
+      refresh_token: credentials.refresh_token,
       client_id: QWEN_OAUTH_CLIENT_ID,
     };
 
@@ -285,9 +287,11 @@ export async function renewCredentials(
     const tokenData = (await response.json()) as QwenCoderAuthResponse;
 
     return {
-      accessToken: tokenData.access_token,
-      refreshToken: tokenData.refresh_token || credentials.refreshToken,
-      expiresAt: Date.now() + tokenData.expires_in * 1000,
+      access_token: tokenData.access_token,
+      refresh_token: tokenData.refresh_token || credentials.refresh_token,
+      token_type: tokenData.token_type || "",
+      resource_url: tokenData.resource_url || "",
+      expiry_date: Date.now() + tokenData.expires_in * 1000,
     };
   } catch (error) {
     logger.error("Failed to refresh Qwen token:", error);
