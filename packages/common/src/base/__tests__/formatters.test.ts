@@ -49,7 +49,7 @@ const baseMessages: UIMessage[] = [
     id: 'assistant-1',
     role: 'assistant',
     parts: [
-      { type: 'reasoning', content: 'Thinking...' },
+      { type: 'reasoning', text: 'Thinking...' },
       { type: 'text', text: 'I will call a tool.' },
       createToolPart('testTool', 'input-available', { arg: 1, _meta: 'meta' }),
     ],
