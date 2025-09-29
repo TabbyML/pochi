@@ -123,6 +123,18 @@ export class LiveStoreClientDO
 
     if (!updatedTasks.length) return;
 
+    updatedTasks.map((task) => {
+      if (!task.shareId) {
+        store.commit(
+          catalog.events.updateShareId({
+            id: task.id,
+            shareId: `p-${task.id.replaceAll("-", "")}`,
+            updatedAt: new Date(),
+          }),
+        );
+      }
+    });
+
     const { webhook } = this;
     if (webhook) {
       await Promise.all(

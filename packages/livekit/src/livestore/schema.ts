@@ -195,7 +195,6 @@ const materializers = State.SQLite.materializers(events, {
       id,
       status: initMessage ? "pending-model" : "pending-input",
       parentId,
-      shareId: `p-${id.replaceAll("-", "")}`,
       createdAt,
       cwd,
       updatedAt: createdAt,
