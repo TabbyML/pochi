@@ -27,12 +27,12 @@ export class QwenCode extends VendorBase {
 
   override async fetchModels(): Promise<Record<string, ModelOptions>> {
     return {
-      "vision-model": {
-        contextWindow: 200_000,
+      "qwen3-coder-plus": {
+        contextWindow: 1_000_000,
         useToolCallMiddleware: false,
       },
-      "qwen3-coder-plus": {
-        contextWindow: 200_000,
+      "qwen3-coder": {
+        contextWindow: 256_000,
         useToolCallMiddleware: false,
       },
     };
