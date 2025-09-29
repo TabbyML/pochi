@@ -8,14 +8,14 @@ import { VendorId } from "./types";
 const logger = getLogger(VendorId);
 
 // Qwen OAuth configuration
-const QWEN_OAUTH_BASE_URL = "https://chat.qwen.ai";
-const QWEN_OAUTH_DEVICE_CODE_ENDPOINT = `${QWEN_OAUTH_BASE_URL}/api/v1/oauth2/device/code`;
-const QWEN_OAUTH_TOKEN_ENDPOINT = `${QWEN_OAUTH_BASE_URL}/api/v1/oauth2/token`;
+const BaseUrl = "https://chat.qwen.ai";
+const DeviceCodeEndpoint = `${BaseUrl}/api/v1/oauth2/device/code`;
+const TokenEndpoint = `${BaseUrl}/api/v1/oauth2/token`;
 
 // Client configuration
-const QWEN_OAUTH_CLIENT_ID = "f0304373b74a44d2b584a3fb70ca9e56";
-const QWEN_OAUTH_SCOPE = "openid profile email model.completion";
-const QWEN_OAUTH_GRANT_TYPE = "urn:ietf:params:oauth:grant-type:device_code";
+const ClientId = "f0304373b74a44d2b584a3fb70ca9e56";
+const Scope = "openid profile email model.completion";
+const GrantType = "urn:ietf:params:oauth:grant-type:device_code";
 
 // Interface definitions
 interface DeviceAuthorizationData {
@@ -92,15 +92,15 @@ async function requestDeviceAuthorization(pkce: {
   challenge: string;
 }): Promise<DeviceAuthorizationData> {
   const bodyData = {
-    client_id: QWEN_OAUTH_CLIENT_ID,
-    scope: QWEN_OAUTH_SCOPE,
+    client_id: ClientId,
+    scope: Scope,
     code_challenge: pkce.challenge,
     code_challenge_method: "S256",
   };
 
   logger.debug("Requesting device authorization with body:", bodyData);
 
-  const response = await fetch(QWEN_OAUTH_DEVICE_CODE_ENDPOINT, {
+  const response = await fetch(DeviceCodeEndpoint, {
     method: "POST",
     headers: {
       "Content-Type": "application/x-www-form-urlencoded",
@@ -145,15 +145,15 @@ async function pollForToken(
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     try {
       const bodyData = {
-        grant_type: QWEN_OAUTH_GRANT_TYPE,
-        client_id: QWEN_OAUTH_CLIENT_ID,
+        grant_type: GrantType,
+        client_id: ClientId,
         device_code: deviceCode,
         code_verifier: codeVerifier,
       };
 
       logger.debug(`Polling for token (attempt ${attempt + 1}/${maxAttempts})`);
 
-      const response = await fetch(QWEN_OAUTH_TOKEN_ENDPOINT, {
+      const response = await fetch(TokenEndpoint, {
         method: "POST",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
@@ -267,10 +267,10 @@ export async function renewCredentials(
     const bodyData = {
       grant_type: "refresh_token",
       refresh_token: credentials.refresh_token,
-      client_id: QWEN_OAUTH_CLIENT_ID,
+      client_id: ClientId,
     };
 
-    const response = await fetch(QWEN_OAUTH_TOKEN_ENDPOINT, {
+    const response = await fetch(TokenEndpoint, {
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
