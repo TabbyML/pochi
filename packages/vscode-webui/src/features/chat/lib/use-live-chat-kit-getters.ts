@@ -4,7 +4,7 @@ import "@getpochi/vendor-gemini-cli/edge";
 import "@getpochi/vendor-claude-code/edge";
 import "@getpochi/vendor-codex/edge";
 import "@getpochi/vendor-github-copilot/edge";
-import "@getpochi/vendor-qwen-coder/edge";
+import "@getpochi/vendor-qwen-code/edge";
 
 import { useSelectedModels } from "@/features/settings";
 import { useCustomAgents } from "@/lib/hooks/use-custom-agents";
