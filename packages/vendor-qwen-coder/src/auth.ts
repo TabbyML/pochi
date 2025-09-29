@@ -45,7 +45,7 @@ interface ErrorData {
 function objectToUrlEncoded(data: Record<string, string>): string {
   return Object.keys(data)
     .map((key) => `${encodeURIComponent(key)}=${encodeURIComponent(data[key])}`)
-    .join('&');
+    .join("&");
 }
 
 /**
@@ -55,10 +55,10 @@ export async function startOAuthFlow(): Promise<AuthOutput> {
   try {
     // Generate PKCE parameters
     const pkce = generatePKCEParams();
-    
+
     // Step 1: Request device authorization
     const deviceAuth = await requestDeviceAuthorization(pkce);
-    
+
     // Display authorization instructions
     console.log("\n=== Qwen OAuth Device Authorization ===");
     console.log("Please visit the following URL in your browser to authorize:");
@@ -66,14 +66,14 @@ export async function startOAuthFlow(): Promise<AuthOutput> {
     console.log(`Or go to: ${deviceAuth.verification_uri}`);
     console.log(`And enter code: ${deviceAuth.user_code}\n`);
     console.log("Waiting for authorization...\n");
-    
+
     // Create a Promise for the credentials
     const credentials = pollForToken(
       deviceAuth.device_code,
       pkce.verifier,
-      deviceAuth.expires_in
+      deviceAuth.expires_in,
     );
-    
+
     return {
       url: deviceAuth.verification_uri_complete,
       credentials,
@@ -87,9 +87,10 @@ export async function startOAuthFlow(): Promise<AuthOutput> {
 /**
  * Request device authorization from Qwen
  */
-async function requestDeviceAuthorization(
-  pkce: { verifier: string; challenge: string }
-): Promise<DeviceAuthorizationData> {
+async function requestDeviceAuthorization(pkce: {
+  verifier: string;
+  challenge: string;
+}): Promise<DeviceAuthorizationData> {
   const bodyData = {
     client_id: QWEN_OAUTH_CLIENT_ID,
     scope: QWEN_OAUTH_SCOPE,
@@ -103,7 +104,7 @@ async function requestDeviceAuthorization(
     method: "POST",
     headers: {
       "Content-Type": "application/x-www-form-urlencoded",
-      "Accept": "application/json",
+      Accept: "application/json",
     },
     body: objectToUrlEncoded(bodyData),
   });
@@ -112,16 +113,16 @@ async function requestDeviceAuthorization(
     const errorText = await response.text();
     logger.error("Device authorization failed:", errorText);
     throw new Error(
-      `Device authorization failed: ${response.status} ${response.statusText}. Response: ${errorText}`
+      `Device authorization failed: ${response.status} ${response.statusText}. Response: ${errorText}`,
     );
   }
 
   const result = (await response.json()) as DeviceAuthorizationData | ErrorData;
-  
+
   // Check for error response
-  if ('error' in result) {
+  if ("error" in result) {
     throw new Error(
-      `Device authorization error: ${result.error} - ${result.error_description || 'No details'}`
+      `Device authorization error: ${result.error} - ${result.error_description || "No details"}`,
     );
   }
 
@@ -135,7 +136,7 @@ async function requestDeviceAuthorization(
 async function pollForToken(
   deviceCode: string,
   codeVerifier: string,
-  expiresIn: number
+  expiresIn: number,
 ): Promise<QwenCoderCredentials> {
   const pollInterval = 2000; // Start with 2 seconds
   let currentInterval = pollInterval;
@@ -156,7 +157,7 @@ async function pollForToken(
         method: "POST",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
-          "Accept": "application/json",
+          Accept: "application/json",
         },
         body: objectToUrlEncoded(bodyData),
       });
@@ -164,17 +165,17 @@ async function pollForToken(
       // Handle successful response
       if (response.ok) {
         const tokenData = (await response.json()) as DeviceTokenData;
-        
+
         if (tokenData.access_token) {
           logger.debug("Authentication successful! Access token obtained.");
-          
+
           return {
             access_token: tokenData.access_token,
             refresh_token: tokenData.refresh_token || "",
             token_type: tokenData.token_type || "",
             resource_url: tokenData.resource_url || "",
-            expiry_date: tokenData.expires_in 
-              ? Date.now() + tokenData.expires_in * 1000 
+            expiry_date: tokenData.expires_in
+              ? Date.now() + tokenData.expires_in * 1000
               : Date.now() + 3600 * 1000, // Default 1 hour
           };
         }
@@ -184,7 +185,7 @@ async function pollForToken(
       if (!response.ok) {
         try {
           const errorData = (await response.json()) as ErrorData;
-          
+
           // Standard OAuth device flow errors
           if (response.status === 400) {
             if (errorData.error === "authorization_pending") {
@@ -193,20 +194,30 @@ async function pollForToken(
             } else if (errorData.error === "slow_down") {
               // Server requested to slow down polling
               currentInterval = Math.min(currentInterval * 1.5, 10000);
-              logger.debug(`Slowing down poll interval to ${currentInterval}ms`);
+              logger.debug(
+                `Slowing down poll interval to ${currentInterval}ms`,
+              );
             } else if (errorData.error === "access_denied") {
               throw new Error("Authorization was denied by the user");
             } else if (errorData.error === "expired_token") {
-              throw new Error("Device code has expired. Please restart the authorization process.");
+              throw new Error(
+                "Device code has expired. Please restart the authorization process.",
+              );
             } else {
-              throw new Error(`Token poll error: ${errorData.error} - ${errorData.error_description || 'Unknown error'}`);
+              throw new Error(
+                `Token poll error: ${errorData.error} - ${errorData.error_description || "Unknown error"}`,
+              );
             }
           } else if (response.status === 429) {
             // Rate limit - slow down
             currentInterval = Math.min(currentInterval * 2, 10000);
-            logger.warn(`Rate limited. Increasing poll interval to ${currentInterval}ms`);
+            logger.warn(
+              `Rate limited. Increasing poll interval to ${currentInterval}ms`,
+            );
           } else {
-            throw new Error(`Unexpected response: ${response.status} ${response.statusText}`);
+            throw new Error(
+              `Unexpected response: ${response.status} ${response.statusText}`,
+            );
           }
         } catch (parseError) {
           // If JSON parsing fails, treat as text
@@ -216,20 +227,20 @@ async function pollForToken(
       }
 
       // Wait before next poll
-      await new Promise(resolve => setTimeout(resolve, currentInterval));
-      
+      await new Promise((resolve) => setTimeout(resolve, currentInterval));
     } catch (error) {
       // Re-throw non-retryable errors
-      if (error instanceof Error && 
-          (error.message.includes("denied") || 
-           error.message.includes("expired"))) {
+      if (
+        error instanceof Error &&
+        (error.message.includes("denied") || error.message.includes("expired"))
+      ) {
         throw error;
       }
-      
+
       logger.error(`Error polling for token (attempt ${attempt + 1}):`, error);
-      
+
       // Wait before retry
-      await new Promise(resolve => setTimeout(resolve, currentInterval));
+      await new Promise((resolve) => setTimeout(resolve, currentInterval));
     }
   }
 
@@ -263,7 +274,7 @@ export async function renewCredentials(
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
-        "Accept": "application/json",
+        Accept: "application/json",
       },
       body: objectToUrlEncoded(bodyData),
     });
@@ -272,15 +283,15 @@ export async function renewCredentials(
 
     if (!response.ok) {
       const errorText = await response.text();
-      
+
       // Handle 400 errors (refresh token expired)
       if (response.status === 400) {
         logger.error("Refresh token expired or invalid:", errorText);
         return undefined;
       }
-      
+
       throw new Error(
-        `Token refresh failed: ${response.status} ${response.statusText}. Response: ${errorText}`
+        `Token refresh failed: ${response.status} ${response.statusText}. Response: ${errorText}`,
       );
     }
 
