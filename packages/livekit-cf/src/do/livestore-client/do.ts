@@ -1,14 +1,10 @@
 import { DurableObject } from "cloudflare:workers";
-import { getServerBaseUrl } from "@/lib/server";
 import { WebhookDelivery } from "@/lib/webhook-delivery";
 import type { ClientDoCallback, Env, User } from "@/types";
-import type { PochiApi, PochiApiClient } from "@getpochi/common/pochi-api";
-import { decodeStoreId } from "@getpochi/common/store-id-utils";
-import { type Task, catalog } from "@getpochi/livekit";
+import { catalog } from "@getpochi/livekit";
 import { createStoreDoPromise } from "@livestore/adapter-cloudflare";
 import { type Store, nanoid } from "@livestore/livestore";
 import { handleSyncUpdateRpc } from "@livestore/sync-cf/client";
-import { hc } from "hono/client";
 import moment from "moment";
 import { funnel } from "remeda";
 import * as runExclusive from "run-exclusive";
@@ -127,13 +123,6 @@ export class LiveStoreClientDO
 
     if (!updatedTasks.length) return;
 
-    // FIXME(kweizh): Migrate to webhook.
-    await Promise.all(
-      updatedTasks.map((task) =>
-        this.persistTask(store, task).catch(console.error),
-      ),
-    );
-
     const { webhook } = this;
     if (webhook) {
       await Promise.all(
@@ -143,52 +132,4 @@ export class LiveStoreClientDO
       );
     }
   };
-
-  private async persistTask(store: Store<typeof catalog.schema>, task: Task) {
-    const { sub: userId } = decodeStoreId(store.storeId);
-    const apiClient = createApiClient(
-      this.env.ENVIRONMENT,
-      this.env.POCHI_API_KEY,
-      userId,
-    );
-
-    const resp = await apiClient.api.chat.persist.$post({
-      json: {
-        id: task.id,
-        status: task.status,
-        parentClientTaskId: task.parentId || undefined,
-        storeId: store.storeId,
-        clientTaskData: task,
-      },
-    });
-
-    if (resp.status !== 200) {
-      console.error(`Failed to persist chat: ${resp.statusText}`);
-      return;
-    }
-
-    const { shareId } = await resp.json();
-    if (!task.shareId) {
-      store.commit(
-        catalog.events.updateShareId({
-          id: task.id,
-          shareId,
-          updatedAt: new Date(),
-        }),
-      );
-    }
-  }
-}
-
-function createApiClient(
-  env: Env["ENVIRONMENT"],
-  apiKey: string,
-  userId: string,
-): PochiApiClient {
-  const prodServerUrl = getServerBaseUrl(env);
-  return hc<PochiApi>(prodServerUrl, {
-    headers: {
-      authorization: `${apiKey},${userId}`,
-    },
-  });
 }
