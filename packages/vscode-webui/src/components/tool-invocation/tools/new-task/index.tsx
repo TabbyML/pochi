@@ -6,9 +6,10 @@ import {
   FixedStateChatContextProvider,
   ToolCallStatusRegistry,
 } from "@/features/chat";
+import { useDebounceState } from "@/lib/hooks/use-debounce-state";
 import { isVSCodeEnvironment } from "@/lib/vscode";
 import { Link } from "@tanstack/react-router";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { StatusIcon } from "../../status-icon";
 import { ExpandIcon, ToolTitle } from "../../tool-container";
 import type { ToolProps } from "../../types";
@@ -44,15 +45,28 @@ export const newTaskTool: React.FC<NewTaskToolProps> = ({
 
   const agentType = tool.input?.agentType;
   const toolTitle = agentType ?? "Subtask";
+  const completed =
+    tool.state === "output-available" &&
+    "result" in tool.output &&
+    tool.output.result.trim().length > 0;
 
-  const [showMessageList, setShowMessageList] = useState(false);
+  const [showMessageList, setShowMessageList, setShowMessageListImmediately] =
+    useShowMessageList(completed);
+
+  // Collapse when execution completes
+  const wasCompleted = useRef(completed);
+  useEffect(() => {
+    if (!wasCompleted.current && !isExecuting && completed) {
+      setShowMessageList(false);
+    }
+  }, [isExecuting, completed, setShowMessageList]);
   return (
     <div>
       <ToolTitle>
         <span className={cn("flex items-center gap-2")}>
           <div>
             <StatusIcon tool={tool} isExecuting={isExecuting} />
-            <Badge variant="secondary" className={cn("mr-1 ml-2 py-0")}>
+            <Badge variant="secondary" className={cn("my-0.5 mr-1 ml-2 py-0")}>
               {uid && isVSCodeEnvironment() ? (
                 <Link
                   to="/"
@@ -75,16 +89,16 @@ export const newTaskTool: React.FC<NewTaskToolProps> = ({
           <ExpandIcon
             className="cursor-pointer"
             isExpanded={showMessageList}
-            onClick={() => setShowMessageList(!showMessageList)}
+            onClick={() => setShowMessageListImmediately(!showMessageList)}
           />
         )}
       </ToolTitle>
-      {taskSource && (
+      {taskSource && taskSource.messages.length > 1 && (
         <FixedStateChatContextProvider
           toolCallStatusRegistry={subTaskToolCallStatusRegistry.current}
         >
           <TaskThread
-            source={taskSource}
+            source={{ ...taskSource, isLoading: false }}
             showMessageList={showMessageList}
             assistant={{ name: agent ?? "Pochi" }}
           />
@@ -93,3 +107,11 @@ export const newTaskTool: React.FC<NewTaskToolProps> = ({
     </div>
   );
 };
+
+function useShowMessageList(completed: boolean) {
+  if (isVSCodeEnvironment()) {
+    return useDebounceState(!completed, 1_500);
+  }
+  const [value, setValue] = useState(false);
+  return [value, setValue, setValue] as const;
+}

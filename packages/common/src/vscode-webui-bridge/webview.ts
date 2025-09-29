@@ -95,7 +95,12 @@ export interface VSCodeHostApi {
    * Returns an array of objects containing the name and content of each workflow.
    */
   listWorkflowsInWorkspace(): Promise<
-    { id: string; path: string; content: string }[]
+    {
+      id: string;
+      path: string;
+      content: string;
+      frontmatter: { model?: string };
+    }[]
   >;
 
   /**
@@ -264,6 +269,8 @@ export interface VSCodeHostApi {
   readUserStorage(): Promise<
     ThreadSignalSerialization<Record<string, UserInfo>>
   >;
+
+  openPochiInNewTab(): Promise<void>;
 }
 
 export interface WebviewHostApi {

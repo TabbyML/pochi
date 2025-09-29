@@ -34,11 +34,7 @@ app
         ctx: c.executionCtx as SyncBackend.CfTypes.ExecutionContext,
         options: {
           async validatePayload(inputPayload, { storeId }) {
-            const user = await verifyStoreId(
-              c.env.ENVIRONMENT,
-              inputPayload,
-              storeId,
-            );
+            const user = await verifyStoreId(inputPayload, storeId);
             if (!user) {
               throw new Error("Unauthorized");
             }

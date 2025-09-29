@@ -1,6 +1,7 @@
 import { getLogger } from "@getpochi/common";
 import type { UserInfo } from "@getpochi/common/configuration";
 import { deviceLinkClient } from "@getpochi/common/device-link/client";
+import type { McpToolExecutable } from "@getpochi/common/mcp-utils";
 import type { PochiApi, PochiApiClient } from "@getpochi/common/pochi-api";
 import {
   type AuthOutput,
@@ -11,11 +12,13 @@ import {
   type PochiCredentials,
   getServerBaseUrl,
 } from "@getpochi/common/vscode-webui-bridge";
+import type { McpTool } from "@getpochi/tools";
 import { jwtClient } from "better-auth/client/plugins";
 import { createAuthClient as createAuthClientImpl } from "better-auth/react";
 import { hc } from "hono/client";
 import * as jose from "jose";
 import { getPochiCredentials, updatePochiCredentials } from "./credentials";
+import { makeWebFetch, makeWebSearch } from "./tools";
 import { VendorId } from "./types";
 
 const logger = getLogger("PochiVendor");
@@ -80,6 +83,17 @@ export class Pochi extends VendorBase {
       name: session.data.user.name,
       email: session.data.user.email,
       image: session.data.user.image || undefined,
+    };
+  }
+
+  override async getTools(): Promise<
+    Record<string, McpTool & McpToolExecutable>
+  > {
+    const getToken = () =>
+      this.getCredentials().then((c) => (c as PochiCredentials).jwt || "");
+    return {
+      webFetch: makeWebFetch(getToken),
+      webSearch: makeWebSearch(getToken),
     };
   }
 }

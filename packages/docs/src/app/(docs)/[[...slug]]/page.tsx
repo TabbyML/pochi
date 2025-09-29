@@ -17,7 +17,7 @@ export default async function Page(props: {
   // Only show h1 and h2 in TOC for developer updates page to avoid having too many items
   const isDeveloperUpdatesPage = page.slugs.includes('developer-updates') && page.slugs.length === 1;
   const filteredToc = isDeveloperUpdatesPage
-    ? page.data.toc.filter(x => x.depth === 3)
+    ? page.data.toc.filter(x => x.depth === 4)
     : page.data.toc;
   
   // Construct the file path for GitHub edit

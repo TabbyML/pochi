@@ -28,7 +28,7 @@ const proxedFetch: typeof fetch = async (input, init) => {
   const origin = url.origin;
   url.protocol = "http:";
   url.host = "localhost";
-  url.port = "54343";
+  url.port = globalThis.POCHI_CORS_PROXY_PORT;
 
   const headers = {
     ...init?.headers,

@@ -4,12 +4,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import type { UserInfo } from "@getpochi/common/configuration";
 import type { AuthOutput } from "@getpochi/common/vendor";
 import { AuthIssuer, OAuthConfig } from "./constants";
-import type {
-  AuthClaims,
-  CodexCredentials,
-  CodexTokenResponse,
-  IdClaims,
-} from "./types";
+import type { CodexCredentials, CodexTokenResponse, IdClaims } from "./types";
 
 export async function startOAuthFlow(): Promise<AuthOutput> {
   const pkce = generatePKCE();
@@ -286,17 +281,6 @@ function parseIdToken(idToken: string): {
     };
   } catch {
     return {};
-  }
-}
-
-export function extractAccountId(accessToken: string): string {
-  try {
-    const [, payload] = accessToken.split(".");
-    const claims = JSON.parse(Buffer.from(payload, "base64url").toString());
-    const authClaims = claims["https://api.openai.com/auth"] as AuthClaims;
-    return authClaims?.chatgpt_account_id || "";
-  } catch {
-    return "";
   }
 }
 

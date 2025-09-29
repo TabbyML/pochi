@@ -10,11 +10,15 @@ Workflows are step-by-step automation templates that guide Pochi through complex
 
 ### Configure
 
-Workflows shall be put inside `.pochi/workflows/` directory in your workspace root. Each workflow is a markdown file with a specific name.
+Workflows shall be put inside `.pochi/workflows/` directory in your workspace root. Each workflow is a markdown file with a specific name. You can also specify metadata, such as which model to use for the workflow, through YAML frontmatter. 
 
 `.pochi/workflows/create-pr.md` is an example we used in Pochi's own development.
 
 ```markdown
+---
+model: "anthropic/claude-4-sonnet"
+---
+
 Please help create a PR for the current staging changes, following these guidelines:
 - If there are no staging changes but there are uncommitted changes, please stage them first.
 - Create a branch name based on the current git diff status.

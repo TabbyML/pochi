@@ -38,6 +38,8 @@ import { loadAgents } from "./lib/load-agents";
 import { createCliMcpHub } from "./lib/mcp-hub-factory";
 import {
   containsWorkflowReference,
+  extractWorkflowNames,
+  parseWorkflowFrontmatter,
   replaceWorkflowReferences,
 } from "./lib/workflow-loader";
 
@@ -117,7 +119,7 @@ const program = new Command()
     const customAgents = await loadAgents(process.cwd());
 
     // Create MCP Hub for accessing MCP server tools
-    const mcpHub = createCliMcpHub();
+    const mcpHub = await createCliMcpHub();
 
     // Initialize MCP connections
     await initializeMcp(mcpHub);
@@ -235,13 +237,15 @@ async function createLLMConfig(
   program: Program,
   options: ProgramOpts,
 ): Promise<LLMRequestData> {
+  const model = (await getModelFromWorkflow(options)) || options.model;
+
   const llm =
-    (await createLLMConfigWithVendors(program, options)) ||
-    (await createLLMConfigWithPochi(options)) ||
-    (await createLLMConfigWithProviders(program, options));
+    (await createLLMConfigWithVendors(program, model)) ||
+    (await createLLMConfigWithPochi(model)) ||
+    (await createLLMConfigWithProviders(program, model));
   if (!llm) {
     return program.error(
-      `Model '${options.model}' not found. Please check your configuration or run 'pochi model list' to see available models.`,
+      `Model '${model}' not found. Please check your configuration or run 'pochi model list' to see available models.`,
     );
   }
 
@@ -250,11 +254,11 @@ async function createLLMConfig(
 
 async function createLLMConfigWithVendors(
   program: Program,
-  options: ProgramOpts,
+  model: string,
 ): Promise<LLMRequestData | undefined> {
-  const sep = options.model.indexOf("/");
-  const vendorId = options.model.slice(0, sep);
-  const modelId = options.model.slice(sep + 1);
+  const sep = model.indexOf("/");
+  const vendorId = model.slice(0, sep);
+  const modelId = model.slice(sep + 1);
 
   const vendors = getVendors();
   if (vendorId in vendors) {
@@ -281,11 +285,11 @@ async function createLLMConfigWithVendors(
 }
 
 async function createLLMConfigWithPochi(
-  options: ProgramOpts,
+  model: string,
 ): Promise<LLMRequestData | undefined> {
   const vendor = getVendor("pochi");
   const pochiModels = await vendor.fetchModels();
-  const pochiModelOptions = pochiModels[options.model];
+  const pochiModelOptions = pochiModels[model];
   if (pochiModelOptions) {
     const vendorId = "pochi";
     return {
@@ -294,7 +298,7 @@ async function createLLMConfigWithPochi(
       getModel: (id: string) =>
         createModel(vendorId, {
           id,
-          modelId: options.model,
+          modelId: model,
           getCredentials: vendor.getCredentials,
         }),
     };
@@ -303,11 +307,11 @@ async function createLLMConfigWithPochi(
 
 async function createLLMConfigWithProviders(
   program: Program,
-  options: ProgramOpts,
+  model: string,
 ): Promise<LLMRequestData | undefined> {
-  const sep = options.model.indexOf("/");
-  const providerId = options.model.slice(0, sep);
-  const modelId = options.model.slice(sep + 1);
+  const sep = model.indexOf("/");
+  const providerId = model.slice(0, sep);
+  const modelId = model.slice(sep + 1);
 
   const modelProvider = pochiConfig.value.providers?.[providerId];
   const modelSetting = modelProvider?.models?.[modelId];
@@ -315,7 +319,7 @@ async function createLLMConfigWithProviders(
 
   if (!modelSetting) {
     return program.error(
-      `Model '${options.model}' not found. Please check your configuration or run 'pochi model' to see available models.`,
+      `Model '${model}' not found. Please check your configuration or run 'pochi model' to see available models.`,
     );
   }
 
@@ -394,4 +398,22 @@ async function waitForSync(
 
 function assertUnreachable(_x: never): never {
   throw new Error("Didn't expect to get here");
+}
+
+async function getModelFromWorkflow(
+  options: ProgramOpts,
+): Promise<string | undefined> {
+  const prompt = options.prompt;
+  if (prompt && containsWorkflowReference(prompt)) {
+    const workflowNames = extractWorkflowNames(prompt);
+    if (workflowNames.length > 0) {
+      const { model: workflowModel } = await parseWorkflowFrontmatter(
+        workflowNames[0],
+      );
+      // If a model is found in the workflow, use it.
+      if (workflowModel) {
+        return workflowModel;
+      }
+    }
+  }
 }

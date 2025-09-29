@@ -1,4 +1,3 @@
-import { pochiConfig } from "@getpochi/common/configuration";
 import type { McpHub } from "@getpochi/common/mcp-utils";
 import ora from "ora";
 
@@ -8,10 +7,8 @@ import ora from "ora";
  * @returns Promise that resolves when initialization is complete
  */
 export async function initializeMcp(mcpHub: McpHub): Promise<void> {
-  const mcpConfig = pochiConfig.value.mcp || {};
-  const hasMcpServers = Object.keys(mcpConfig).length > 0;
-
-  if (!hasMcpServers) {
+  // Skip if no connections are configured
+  if (Object.keys(mcpHub.status.value.connections).length === 0) {
     return;
   }
 

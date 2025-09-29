@@ -77,7 +77,7 @@ const checkOwner: MiddlewareHandler<{
 }> = async (c, next) => {
   const store = await c.env.getStore();
   const jwt = c.req.header("authorization")?.replace("Bearer ", "");
-  const user = jwt && (await verifyJWT(undefined, jwt));
+  const user = jwt && (await verifyJWT(jwt));
   const isOwner = user && user.sub === decodeStoreId(store.storeId).sub;
   c.set("isOwner", !!isOwner);
   await next();

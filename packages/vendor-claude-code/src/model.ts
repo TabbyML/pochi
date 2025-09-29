@@ -95,7 +95,7 @@ function createProxyFetch(
     const url = new URL(originalUrl);
     url.protocol = "http:";
     url.host = "localhost";
-    url.port = "54343";
+    url.port = globalThis.POCHI_CORS_PROXY_PORT;
 
     const credentials = await getCredentials();
     const headers = new Headers(init?.headers);

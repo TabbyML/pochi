@@ -2,11 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   isStdioTransport,
   isHttpTransport,
-  isExecutable,
-  omitDisabled,
-  type McpToolExecutable,
-  type McpToolStatus,
-} from "../index";
+} from "../types";
 import type { McpServerConfig } from "../../configuration";
 
 describe("MCP Types", () => {
@@ -89,131 +85,6 @@ describe("MCP Types", () => {
 
       const result = isHttpTransport(config);
       expect(result).toBe(false);
-    });
-  });
-
-  describe("isExecutable", () => {
-    it("should return true for tool with execute function", () => {
-      const tool: McpToolExecutable = {
-        execute: async () => "result",
-      };
-
-      const result = isExecutable(tool);
-      expect(result).toBe(true);
-    });
-
-    it("should return false for tool without execute function", () => {
-      const tool: McpToolExecutable = {};
-
-      const result = isExecutable(tool);
-      expect(result).toBe(false);
-    });
-
-    it("should return false for tool with non-function execute property", () => {
-      const tool = {
-        execute: "not a function",
-      } as any;
-
-      const result = isExecutable(tool);
-      expect(result).toBe(false);
-    });
-
-    it("should return false for null or undefined tool", () => {
-      expect(isExecutable(null as any)).toBe(false);
-      expect(isExecutable(undefined as any)).toBe(false);
-    });
-
-    it("should return true and narrow type correctly", () => {
-      const tool: McpToolExecutable = {
-        execute: async (args: unknown, _options?: any) => `processed: ${JSON.stringify(args)}`,
-      };
-
-      if (isExecutable(tool)) {
-        // TypeScript should know that tool.execute is defined here
-        const result = tool.execute({ test: "data" }, { toolCallId: "test", messages: [] });
-        expect(result).toBeInstanceOf(Promise);
-      } else {
-        throw new Error("Tool should be executable");
-      }
-    });
-  });
-
-  describe("omitDisabled", () => {
-    it("should remove disabled property from tool status", () => {
-      const tool: McpToolStatus = {
-        disabled: true,
-        description: "Test tool",
-        inputSchema: {
-          jsonSchema: {
-            type: "object",
-            properties: {
-              input: { type: "string" },
-            },
-          },
-        },
-      };
-
-      const result = omitDisabled(tool);
-
-      expect("disabled" in result).toBe(false);
-      expect(result.description).toBe("Test tool");
-      expect(result.inputSchema).toEqual(tool.inputSchema);
-    });
-
-    it("should preserve all other properties", () => {
-      const tool: McpToolStatus & { customProp: string } = {
-        disabled: false,
-        description: "Test tool",
-        inputSchema: {
-          jsonSchema: {
-            type: "object",
-            properties: {
-              input: { type: "string" },
-            },
-          },
-        },
-        customProp: "custom value",
-      };
-
-      const result = omitDisabled(tool);
-
-      expect("disabled" in result).toBe(false);
-      expect(result.description).toBe("Test tool");
-      expect((result as any).customProp).toBe("custom value");
-      expect(result.inputSchema).toEqual(tool.inputSchema);
-    });
-
-    it("should work with complex tool status objects", () => {
-      const tool: McpToolStatus = {
-        disabled: true,
-        description: "Complex test tool with detailed schema",
-        inputSchema: {
-          jsonSchema: {
-            type: "object",
-            properties: {
-              input: {
-                type: "string",
-                description: "Input parameter",
-              },
-              options: {
-                type: "object",
-                properties: {
-                  verbose: { type: "boolean" },
-                  timeout: { type: "number" },
-                },
-                required: ["verbose"],
-              },
-            },
-            required: ["input"],
-          },
-        },
-      };
-
-      const result = omitDisabled(tool);
-
-      expect("disabled" in result).toBe(false);
-      expect(result.description).toBe(tool.description);
-      expect(result.inputSchema).toEqual(tool.inputSchema);
     });
   });
 

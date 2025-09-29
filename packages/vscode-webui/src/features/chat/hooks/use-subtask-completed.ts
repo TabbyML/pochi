@@ -75,7 +75,7 @@ export const useAddSubtaskResult = ({
       const result = extractCompletionResult(store, subtaskUid);
       if (result) {
         autoApproveGuard.current = "auto";
-        lifecycle.addResult(result);
+        lifecycle.addResult({ result });
       }
     }
   }, [
