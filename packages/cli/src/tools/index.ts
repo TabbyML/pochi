@@ -46,6 +46,7 @@ export async function executeToolCall(
         messages: [],
         toolCallId: tool.toolCallId,
         abortSignal,
+        cwd: "", // no cwd in CLI context
       });
     } catch (e) {
       return {

@@ -36,7 +36,7 @@ import { searchFiles } from "@/tools/search-files";
 import { startBackgroundJob } from "@/tools/start-background-job";
 import { todoWrite } from "@/tools/todo-write";
 import { previewWriteToFile, writeToFile } from "@/tools/write-to-file";
-import type { Environment } from "@getpochi/common";
+import type { Environment, GitStatus } from "@getpochi/common";
 import type { UserInfo } from "@getpochi/common/configuration";
 import type { McpStatus } from "@getpochi/common/mcp-utils";
 import type { McpHub } from "@getpochi/common/mcp-utils";
@@ -104,7 +104,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   private toolCallGroup = runExclusive.createGroupRef();
   private checkpointGroup = runExclusive.createGroupRef();
   private disposables: vscode.Disposable[] = [];
-  private cwd = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? "";
+  private cwd = getWorkspaceFolder()?.uri.fsPath;
 
   constructor(
     @inject("vscode.ExtensionContext")
@@ -122,7 +122,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   ) {}
 
   listRuleFiles = async (): Promise<RuleFile[]> => {
-    return await collectRuleFiles();
+    return this.cwd ? await collectRuleFiles(this.cwd) : [];
   };
 
   listWorkflowsInWorkspace = (): Promise<
@@ -133,7 +133,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       frontmatter: { model?: string };
     }[]
   > => {
-    return collectWorkflows();
+    return this.cwd ? collectWorkflows(this.cwd) : Promise.resolve([]);
   };
 
   readResourceURI = (): Promise<ResourceURI> => {
@@ -188,24 +188,26 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   };
 
   readEnvironment = async (isSubTask = false): Promise<Environment> => {
-    const workspaceFolders = vscode.workspace.workspaceFolders;
-
-    const { files, isTruncated } = workspaceFolders?.length
+    const { files, isTruncated } = this.cwd
       ? await listWorkspaceFiles({
-          cwd: workspaceFolders[0].uri.fsPath,
+          cwd: this.cwd,
           recursive: true,
           maxItems: 500,
         })
       : { files: [], isTruncated: false };
 
-    const customRules = isSubTask ? undefined : await collectCustomRules();
+    const customRules =
+      !isSubTask && this.cwd ? await collectCustomRules(this.cwd) : undefined;
 
-    const systemInfo = getSystemInfo();
+    const systemInfo = getSystemInfo(this.cwd);
 
-    const gitStatusReader = new GitStatusReader({
-      cwd: getWorkspaceFolder().uri.fsPath,
-    });
-    const gitStatus = await gitStatusReader.readGitStatus();
+    let gitStatus: GitStatus | undefined;
+    if (this.cwd) {
+      const gitStatusReader = new GitStatusReader({
+        cwd: this.cwd,
+      });
+      gitStatus = await gitStatusReader.readGitStatus();
+    }
 
     const environment: Environment = {
       currentTime: new Date().toString(),
@@ -265,13 +267,12 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       isDir: boolean;
     }[]
   > => {
-    const workspaceFolders = vscode.workspace.workspaceFolders;
-    if (!workspaceFolders?.length || !workspaceFolders[0]) {
+    if (!this.cwd) {
       return [];
     }
 
     const results = await ignoreWalk({
-      dir: workspaceFolders[0].uri.fsPath,
+      dir: this.cwd,
       recursive: true,
     });
     return results.map((item) => ({
@@ -331,6 +332,12 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         };
       }
 
+      if (!this.cwd) {
+        return {
+          error: "No workspace folder found.",
+        };
+      }
+
       const abortSignal = new ThreadAbortSignal(options.abortSignal);
       const toolCallStart = Date.now();
       const result = await safeCall(
@@ -339,6 +346,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
           messages: [],
           toolCallId: options.toolCallId,
           nonInteractive: options.nonInteractive,
+          cwd: this.cwd,
         }),
       );
 
@@ -383,6 +391,10 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         return;
       }
 
+      if (!this.cwd) {
+        return;
+      }
+
       if (options.state === "call") {
         logger.debug(
           `previewToolCall(call): ${toolName}(${options.toolCallId})`,
@@ -398,6 +410,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         tool(args as any, {
           ...options,
           abortSignal,
+          cwd: this.cwd,
         }),
       );
     },
@@ -413,11 +426,11 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       fallbackGlobPattern?: string;
     },
   ) => {
-    const current = getWorkspaceFolder().uri;
-
     const fileUri = path.isAbsolute(filePath)
       ? vscode.Uri.file(filePath)
-      : vscode.Uri.joinPath(current, filePath);
+      : this.cwd
+        ? vscode.Uri.joinPath(vscode.Uri.parse(this.cwd), filePath)
+        : vscode.Uri.file(filePath);
 
     try {
       const stat = await vscode.workspace.fs.stat(fileUri);
@@ -482,11 +495,18 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   };
 
   fetchThirdPartyRules = async () => {
-    const rulePaths = await detectThirdPartyRules();
-    const workspaceRuleExists = await isFileExists(getWorkspaceRulesFileUri());
+    const rulePaths = this.cwd ? await detectThirdPartyRules(this.cwd) : [];
+    const workspaceRuleExists = this.cwd
+      ? await isFileExists(getWorkspaceRulesFileUri(this.cwd))
+      : false;
     const copyRules = async () => {
-      await copyThirdPartyRules();
-      await vscode.commands.executeCommand("pochi.editWorkspaceRules");
+      if (this.cwd) {
+        await copyThirdPartyRules(this.cwd);
+        await vscode.commands.executeCommand(
+          "pochi.editWorkspaceRules",
+          this.cwd,
+        );
+      }
     };
     return { rulePaths, workspaceRuleExists, copyRules };
   };
@@ -637,17 +657,21 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         );
         return true;
       }
+
+      if (!this.cwd) {
+        return false;
+      }
       await vscode.commands.executeCommand(
         "vscode.changes",
         title,
         changedFiles.map((file) => [
-          vscode.Uri.joinPath(getWorkspaceFolder().uri, file.filepath),
+          vscode.Uri.joinPath(vscode.Uri.parse(this.cwd ?? ""), file.filepath),
           vscode.Uri.parse(
             `${DiffChangesContentProvider.scheme}:${file.filepath}`,
           ).with({
             query: Buffer.from(file.before ?? "").toString("base64"),
           }),
-          vscode.Uri.joinPath(getWorkspaceFolder().uri, file.filepath),
+          vscode.Uri.joinPath(vscode.Uri.parse(this.cwd ?? ""), file.filepath),
         ]),
       );
       return true;

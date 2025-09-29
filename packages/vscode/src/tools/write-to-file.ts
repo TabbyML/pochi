@@ -12,14 +12,14 @@ const logger = getLogger("writeToFileTool");
 
 export const previewWriteToFile: PreviewToolFunctionType<
   ClientTools["writeToFile"]
-> = async (args, { state, toolCallId, abortSignal }) => {
+> = async (args, { state, toolCallId, abortSignal, cwd }) => {
   const { path, content } = args || {};
   if (path === undefined || content === undefined) return;
 
   try {
     const processedContent = fixCodeGenerationOutput(content);
 
-    const diffView = await DiffView.getOrCreate(toolCallId, path);
+    const diffView = await DiffView.getOrCreate(toolCallId, path, cwd);
     await diffView.update(
       processedContent,
       state !== "partial-call",
@@ -37,7 +37,7 @@ export const previewWriteToFile: PreviewToolFunctionType<
  */
 export const writeToFile: ToolFunctionType<ClientTools["writeToFile"]> = async (
   { path, content },
-  { toolCallId, abortSignal, nonInteractive },
+  { toolCallId, abortSignal, nonInteractive, cwd },
 ) => {
   try {
     const processedContent = fixCodeGenerationOutput(content);
@@ -46,6 +46,7 @@ export const writeToFile: ToolFunctionType<ClientTools["writeToFile"]> = async (
       const edits = await writeTextDocument(
         path,
         processedContent,
+        cwd,
         abortSignal,
       );
       logger.debug(
@@ -54,7 +55,7 @@ export const writeToFile: ToolFunctionType<ClientTools["writeToFile"]> = async (
       return { success: true, ...edits };
     }
 
-    const diffView = await DiffView.getOrCreate(toolCallId, path);
+    const diffView = await DiffView.getOrCreate(toolCallId, path, cwd);
     await diffView.update(processedContent, true);
     const edits = await diffView.saveChanges(path, processedContent);
     return { success: true, ...edits };

@@ -20,6 +20,7 @@ async function createDirectory(uri: vscode.Uri): Promise<void> {
 const dummyToolOptions = {
   toolCallId: "test-call-id-123",
   messages: [], // Provide a minimal message object
+  cwd: ""
 };
 
 describe("readFile Tool", () => {

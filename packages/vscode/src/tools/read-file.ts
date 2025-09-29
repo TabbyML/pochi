@@ -1,4 +1,3 @@
-import { getWorkspaceFolder } from "@/lib/fs";
 import {
   resolvePath,
   selectFileContent,
@@ -7,14 +6,11 @@ import {
 import type { ClientTools, ToolFunctionType } from "@getpochi/tools";
 import * as vscode from "vscode";
 
-export const readFile: ToolFunctionType<ClientTools["readFile"]> = async ({
-  path,
-  startLine,
-  endLine,
-}) => {
-  const workspaceFolder = getWorkspaceFolder();
-
-  const resolvedPath = resolvePath(path, workspaceFolder.uri.fsPath);
+export const readFile: ToolFunctionType<ClientTools["readFile"]> = async (
+  { path, startLine, endLine },
+  { cwd },
+) => {
+  const resolvedPath = resolvePath(path, cwd);
   const fileUri = vscode.Uri.file(resolvedPath);
 
   const fileBuffer = await vscode.workspace.fs.readFile(fileUri);

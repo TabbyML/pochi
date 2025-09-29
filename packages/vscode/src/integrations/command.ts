@@ -141,43 +141,42 @@ export class CommandManager implements vscode.Disposable {
         }
       }),
 
-      vscode.commands.registerCommand("pochi.editWorkspaceRules", async () => {
-        try {
-          const workspaceRulesUri = getWorkspaceRulesFileUri();
-          let textDocument: vscode.TextDocument;
-
+      vscode.commands.registerCommand(
+        "pochi.editWorkspaceRules",
+        async (cwd: string) => {
           try {
-            textDocument =
-              await vscode.workspace.openTextDocument(workspaceRulesUri);
-          } catch (error) {
-            const fileContent = "<!-- Add your custom workspace rules here -->";
-            await vscode.workspace.fs.writeFile(
-              workspaceRulesUri,
-              Buffer.from(fileContent, "utf8"),
-            );
-            textDocument =
-              await vscode.workspace.openTextDocument(workspaceRulesUri);
-          }
+            const workspaceRulesUri = getWorkspaceRulesFileUri(cwd);
+            let textDocument: vscode.TextDocument;
 
-          await vscode.window.showTextDocument(textDocument);
-        } catch (error) {
-          const errorMessage =
-            error instanceof Error ? error.message : "Unknown error";
-          vscode.window.showErrorMessage(
-            `Pochi: Failed to open workspace rules. ${errorMessage}`,
-          );
-        }
-      }),
+            try {
+              textDocument =
+                await vscode.workspace.openTextDocument(workspaceRulesUri);
+            } catch (error) {
+              const fileContent =
+                "<!-- Add your custom workspace rules here -->";
+              await vscode.workspace.fs.writeFile(
+                workspaceRulesUri,
+                Buffer.from(fileContent, "utf8"),
+              );
+              textDocument =
+                await vscode.workspace.openTextDocument(workspaceRulesUri);
+            }
+
+            await vscode.window.showTextDocument(textDocument);
+          } catch (error) {
+            const errorMessage =
+              error instanceof Error ? error.message : "Unknown error";
+            vscode.window.showErrorMessage(
+              `Pochi: Failed to open workspace rules. ${errorMessage}`,
+            );
+          }
+        },
+      ),
 
       vscode.commands.registerCommand(
         "pochi.createProject",
-        async (event: WebsiteTaskCreateEvent) => {
+        async (event: WebsiteTaskCreateEvent, cwd: string) => {
           const params = event.data;
-          const currentWorkspace = vscode.workspace.workspaceFolders?.[0].uri;
-          if (!currentWorkspace) {
-            return;
-          }
-
           return vscode.window.withProgress(
             {
               location: vscode.ProgressLocation.Notification,
@@ -188,7 +187,7 @@ export class CommandManager implements vscode.Disposable {
                 progress.report({ message: "Pochi: Creating project..." });
                 await this.prepareProjectAndOpenTask(
                   progress,
-                  currentWorkspace,
+                  vscode.Uri.parse(cwd),
                   params.githubTemplateUrl,
                   { uid: params.uid, prompt: params.prompt },
                   params.uid,
@@ -400,22 +399,29 @@ export class CommandManager implements vscode.Disposable {
         },
       ),
 
-      vscode.commands.registerCommand("pochi.openFileFromDiff", async () => {
-        const activeTab = vscode.window.tabGroups.activeTabGroup.activeTab;
-        if (
-          activeTab &&
-          activeTab.input instanceof vscode.TabInputTextDiff &&
-          activeTab.input.original.scheme === DiffChangesContentProvider.scheme
-        ) {
-          const fileUri = vscode.Uri.joinPath(
-            getWorkspaceFolder().uri,
-            activeTab.input.original.path,
-          );
-          await vscode.window.showTextDocument(fileUri, {
-            preview: false,
-          });
-        }
-      }),
+      vscode.commands.registerCommand(
+        "pochi.openFileFromDiff",
+        async (args) => {
+          logger.debug("Opening file from diff view", args);
+          const activeTab = vscode.window.tabGroups.activeTabGroup.activeTab;
+          const workspaceFolder = getWorkspaceFolder();
+          if (
+            workspaceFolder &&
+            activeTab &&
+            activeTab.input instanceof vscode.TabInputTextDiff &&
+            activeTab.input.original.scheme ===
+              DiffChangesContentProvider.scheme
+          ) {
+            const fileUri = vscode.Uri.joinPath(
+              workspaceFolder.uri,
+              activeTab.input.original.path,
+            );
+            await vscode.window.showTextDocument(fileUri, {
+              preview: false,
+            });
+          }
+        },
+      ),
 
       vscode.commands.registerCommand(
         "pochi.openCustomModelSettings",

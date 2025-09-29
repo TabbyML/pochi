@@ -12,6 +12,7 @@ describe("executeCommand", () => {
     toolCallId: "test-call-id",
     messages: [],
     abortSignal: new AbortController().signal,
+    cwd: ""
   };
 
   it("should execute a simple command successfully", async () => {

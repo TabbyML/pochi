@@ -4,11 +4,7 @@ import {
   diagnosticsToProblemsString,
   getNewDiagnostics,
 } from "@/lib/diagnostic";
-import {
-  ensureFileDirectoryExists,
-  getWorkspaceFolder,
-  isFileExists,
-} from "@/lib/fs";
+import { ensureFileDirectoryExists, isFileExists } from "@/lib/fs";
 import { createPrettyPatch } from "@/lib/fs";
 import { getLogger } from "@/lib/logger";
 import { resolvePath } from "@getpochi/common/tool-utils";
@@ -40,6 +36,7 @@ export class DiffView implements vscode.Disposable {
     private readonly originalContent: string,
     private readonly activeDiffEditor: vscode.TextEditor,
     private readonly isFileOpenBeforeDiffPreview = false,
+    private readonly cwd: string,
   ) {
     this.fadedOverlayController = new DecorationController(
       "fadedOverlay",
@@ -264,7 +261,7 @@ export class DiffView implements vscode.Disposable {
       [
         vscode.DiagnosticSeverity.Error, // only including errors since warnings can be distracting (if user wants to fix warnings they can use the @problems mention)
       ],
-      getWorkspaceFolder()?.uri.fsPath,
+      this.cwd,
     ); // will be empty string if no errors
 
     const newContentEOL = newContent.includes("\r\n") ? "\r\n" : "\n";
@@ -359,9 +356,9 @@ export class DiffView implements vscode.Disposable {
   private static async createDiffView(
     id: string,
     relpath: string,
+    cwd: string,
   ): Promise<DiffView> {
-    const workspaceFolder = getWorkspaceFolder();
-    const resolvedPath = resolvePath(relpath, workspaceFolder.uri.fsPath);
+    const resolvedPath = resolvePath(relpath, cwd);
     const fileUri = vscode.Uri.file(resolvedPath);
     const fileExists = await isFileExists(fileUri);
     if (!fileExists) {
@@ -387,13 +384,14 @@ export class DiffView implements vscode.Disposable {
       originalContent,
       activeDiffEditor,
       wasFileOpenBeforeDiff,
+      cwd,
     );
   }
 
   private static readonly diffViewGetGroup = runExclusive.createGroupRef();
   static readonly getOrCreate = runExclusive.build(
     DiffView.diffViewGetGroup,
-    async (id: string, relpath: string) => {
+    async (id: string, relpath: string, cwd: string) => {
       // Install hook for first diff view
       if (DiffViewMap.size === 0 && !DiffViewDisposable) {
         logger.info("Installing diff view hook");
@@ -403,7 +401,7 @@ export class DiffView implements vscode.Disposable {
 
       let diffView = DiffViewMap.get(id);
       if (!diffView) {
-        diffView = await this.createDiffView(id, relpath);
+        diffView = await this.createDiffView(id, relpath, cwd);
         DiffViewMap.set(id, diffView);
         logger.debug(`Opened diff view for ${id}: ${relpath}`);
         logger.debug(`Total diff views: ${DiffViewMap.size}`);

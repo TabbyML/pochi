@@ -1,6 +1,7 @@
 import type { AuthClient } from "@/lib/auth-client";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { AuthEvents } from "@/lib/auth-events";
+import { getWorkspaceFolder } from "@/lib/fs";
 import { getLogger } from "@/lib/logger";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { NewProjectRegistry, createNewWorkspace } from "@/lib/new-project";
@@ -106,9 +107,7 @@ class RagdollUriHandler implements vscode.UriHandler, vscode.Disposable {
 
     // Open the workspace, only open in newWindow when there is a existed workspace
     // In Remote Pochi, There is no opened workspace, opening new window would cause a new tab.
-    const forceNewWindow =
-      vscode.workspace.workspaceFolders &&
-      vscode.workspace.workspaceFolders.length > 0;
+    const forceNewWindow = !!getWorkspaceFolder();
     await vscode.commands.executeCommand("vscode.openFolder", existingProject, {
       forceNewWindow,
     });
@@ -145,14 +144,18 @@ class RagdollUriHandler implements vscode.UriHandler, vscode.Disposable {
     // In remote environments, check if we're already in the target workspace
     // Minion already created the workspace, so we did not need to create a new one in remote pochi
     const isRemoteEnv = !!process.env.POCHI_REMOTE_ENV;
-    const currentWorkspace = vscode.workspace.workspaceFolders?.[0]?.uri;
+    const currentWorkspace = getWorkspaceFolder()?.uri.fsPath;
     if (isRemoteEnv && currentWorkspace) {
       logger.info(
         "Already in target workspace, executing createProject directly",
       );
 
       // Execute the command directly instead of queueing it
-      await vscode.commands.executeCommand("pochi.createProject", event);
+      await vscode.commands.executeCommand(
+        "pochi.createProject",
+        event,
+        currentWorkspace,
+      );
       return;
     }
 
@@ -162,14 +165,14 @@ class RagdollUriHandler implements vscode.UriHandler, vscode.Disposable {
       return;
     }
     logger.info(
-      `created workspace: ${newWorkspaceUri}, current workspace: ${vscode.workspace.workspaceFolders?.[0]?.uri}, POCHI_MINION_ID: ${process.env.POCHI_MINION_ID}`,
+      `created workspace: ${newWorkspaceUri}, current workspace: ${getWorkspaceFolder()?.uri}, POCHI_MINION_ID: ${process.env.POCHI_MINION_ID}`,
     );
 
     // push a global job to create task after the new workspace is opened
     await this.workspaceJobQueue.push({
       workspaceUri: newWorkspaceUri.toString(),
       command: "pochi.createProject",
-      args: [event],
+      args: [event, currentWorkspace],
       expiresAt: Date.now() + 1000 * 60,
     });
 
@@ -195,7 +198,11 @@ class RagdollUriHandler implements vscode.UriHandler, vscode.Disposable {
         logger.info(
           "Attempting to execute createProject directly after folder open failure",
         );
-        await vscode.commands.executeCommand("pochi.createProject", event);
+        await vscode.commands.executeCommand(
+          "pochi.createProject",
+          event,
+          currentWorkspace,
+        );
       }
     }
   }

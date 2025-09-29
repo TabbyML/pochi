@@ -44,10 +44,14 @@ export class CheckpointService implements vscode.Disposable {
 
   private async init() {
     try {
+      const workspaceFolder = getWorkspaceFolder();
+      if (!workspaceFolder) {
+        throw new Error("No workspace folder found");
+      }
       const gitPath = await this.getShadowGitPath();
       this.shadowGit = await ShadowGitRepo.getOrCreate(
         gitPath,
-        getWorkspaceFolder().uri.fsPath,
+        workspaceFolder.uri.fsPath,
       );
       logger.trace("Shadow Git repository initialized at", gitPath);
       this.readyDefer.resolve();
