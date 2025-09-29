@@ -44,7 +44,7 @@ function createPatchedFetch(
     headers.set("Authorization", `Bearer ${access_token}`);
 
     let finalUrl: string | URL | Request;
-    
+
     // Check if CORS proxy is available (VSCode environment)
     if (globalThis.POCHI_CORS_PROXY_PORT) {
       const originalUrl = new URL(requestInfo.toString());
@@ -64,7 +64,7 @@ function createPatchedFetch(
       ...requestInit,
       headers,
     });
-    
+
     if (!resp.ok) {
       throw new APICallError({
         message: `Failed to fetch: ${resp.status} ${resp.statusText}`,
