@@ -921,12 +921,12 @@ Welcome to Pochi Prompting Guideline! Please consider using this doc as referenc
 * **Ensure Consistency:** Rely on structured prompts (XML/JSON) for repeatable, predictable outputs.
 * **Iterate Safely:** Tweak prompts step-by-step. Using structured formats like XML or JSON for your prompts makes it easier to track and revert changes if needed.
 * **Leverage Pochi Features:**
-  * Use `~/.pochi/config.jsonc` for models & MCPs.
-  * Use `README.pochi.md` for project-specific rules.
-  * Use `.pochi/workflows/` for custom workflows.
-  * Use `.pochi/agents/` for custom agents.
-  * Use Pochi Cloud for sharing task histories.
-  * Use the GitHub & Slack integrations for team collaboration.
+  * Use [`~/.pochi/config.jsonc`](/cli) for models & MCPs.
+  * Use [`README.pochi.md`](/rules) for project-specific rules.
+  * Use [`.pochi/workflows/`](/workflows) for custom workflows.
+  * Use [`.pochi/agents/`](/custom-agent) for custom agents.
+  * Use [Pochi's sharing features](/share) to share task histories.
+  * Use the [GitHub](/github) & [Slack](/slack) integrations for team collaboration.
 
 ## How to Prompt Pochi
 
@@ -966,7 +966,8 @@ Apply structured formats (XML or JSON) for precision, repeatability, and task ch
 ```xml
 <edit>
   <file>@api.js</file>
-  <line>42</line>  <context>function validateUser(input) { return input.length; } in @api.js fails with TypeError: Cannot read property 'length' of null</context>
+  <line>42</line>
+  <context>function validateUser(input) { return input.length; } in @api.js fails with TypeError: Cannot read property 'length' of null</context>
   <fix>
     try {
       if (!input) throw new TypeError('Input cannot be null');
@@ -993,7 +994,7 @@ Apply structured formats (XML or JSON) for precision, repeatability, and task ch
 
 ### Assign Pochi a Role (System Prompts)
 
-Specify a role in the prompt or via `.pochi/agents/` to enforce standards.
+Specify a role in the prompt or via [`.pochi/agents/`](/custom-agent) to enforce standards.
 
 **Example:**
 “Act as linter for `@models/db.py` per `README.pochi.md`, focusing on PEP 8 spacing issues.”
@@ -1013,7 +1014,7 @@ This section applies prompting patterns to common development workflows, from pr
 
 * **Initiating a New Project Phase:** “Start a new phase for `@api.js`: Initialize a `/auth` module, list dependencies, document setup separately.”
 * **Reviewing Recent Changes:** “Review `@api.js`: Summarize last 3 commits’ impact on `/users`, flag issues.”
-* **Syncing Team Context:** “Sync `@utils.js` changes: Compile a summary of edits across `@api.js` and `@utils.js`, share via Pochi link, align with standards.”
+* **Syncing Team Context:** “Sync `@utils.js` changes: Compile a summary of edits across `@api.js` and `@utils.js`, share via [Pochi link](/share), align with standards.”
 
 ### Debugging
 
