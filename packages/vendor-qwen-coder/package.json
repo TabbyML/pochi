@@ -9,10 +9,10 @@
     "tsc": "tsc --noEmit"
   },
   "dependencies": {
-    "@ai-sdk/openai": "catalog:",
+    "@ai-sdk/openai-compatible": "catalog:",
+    "@ai-sdk/provider": "catalog:",
     "@getpochi/common": "workspace:*",
-    "ai": "catalog:",
-    "qwen-ai-provider": "^0.1.1"
+    "ai": "catalog:"
   },
   "exports": {
     ".": "./src/node.ts",
