@@ -26,11 +26,16 @@ interface DeviceAuthorizationData {
   expires_in: number;
 }
 
-interface DeviceTokenData {
+/**
+ * Device token success data
+ */
+export interface DeviceTokenData {
   access_token: string | null;
   refresh_token?: string | null;
   token_type: string;
   expires_in: number | null;
+  scope?: string | null;
+  endpoint?: string;
   resource_url?: string;
 }
 

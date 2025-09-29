@@ -4,7 +4,7 @@ import type { CreateModelOptions } from "@getpochi/common/vendor/edge";
 import { APICallError, wrapLanguageModel } from "ai";
 import type { QwenCoderCredentials } from "./types";
 
-const QWEN_CHAT_URL = "https://portal.qwen.ai/v1";
+const BaseUrl = "https://portal.qwen.ai/v1";
 
 export function createQwenModel({
   modelId,
@@ -12,7 +12,7 @@ export function createQwenModel({
 }: CreateModelOptions): LanguageModelV2 {
   const qwenModel = createOpenAICompatible({
     name: "OpenAI",
-    baseURL: QWEN_CHAT_URL,
+    baseURL: BaseUrl,
     fetch: createPatchedFetch(
       getCredentials as () => Promise<QwenCoderCredentials>,
     ),
