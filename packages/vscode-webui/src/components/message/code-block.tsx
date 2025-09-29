@@ -1,13 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { useCopyToClipboard } from "@/lib/hooks/use-copy-to-clipboard";
-import {
-  AlignJustifyIcon,
-  CheckIcon,
-  CodeIcon,
-  CopyIcon,
-  ImageIcon,
-  WrapTextIcon,
-} from "lucide-react";
+import { CheckIcon, CodeIcon, CopyIcon, ImageIcon } from "lucide-react";
 import { type FC, memo, useState } from "react";
 
 import {
@@ -25,10 +18,7 @@ import { Mermaid } from "./mermaid";
 export interface CodeBlockProps {
   language: string;
   value: string;
-  onCopyContent?: (value: string) => void;
-  canWrapLongLines?: boolean;
   className?: string;
-  hidenLanguage?: boolean;
   isMinimalView?: boolean;
 }
 
@@ -60,7 +50,6 @@ interface CodeRendererProps {
   language: string;
   value: string;
   theme: string | undefined;
-  wrapLongLines?: boolean;
   showMermaidPreview: boolean;
 }
 
@@ -68,7 +57,6 @@ const CodeRenderer: FC<CodeRendererProps> = ({
   language,
   value,
   theme,
-  // wrapLongLines,
   showMermaidPreview,
 }) => {
   const languageForSyntax = (
@@ -91,15 +79,7 @@ const CodeRenderer: FC<CodeRendererProps> = ({
 };
 
 const CodeBlock: FC<CodeBlockProps> = memo(
-  ({
-    language,
-    value,
-    canWrapLongLines,
-    className,
-    hidenLanguage,
-    isMinimalView,
-  }) => {
-    const [wrapLongLines, setWrapLongLines] = useState(canWrapLongLines);
+  ({ language, value, className, isMinimalView }) => {
     const [showMermaidPreview, setShowMermaidPreview] = useState(
       language === "mermaid",
     );
@@ -122,9 +102,7 @@ const CodeBlock: FC<CodeBlockProps> = memo(
       >
         {!isMinimalView && (
           <div className="flex w-full items-center justify-between rounded-t-sm border-b bg-[var(--vscode-editor-background)] py-1.5 pr-3 pl-4 text-[var(--vscode-editor-foreground)]">
-            <span className="text-xs lowercase">
-              {!hidenLanguage ? language : ""}
-            </span>
+            <span className="text-xs lowercase">{language}</span>
             <div className="flex items-center space-x-3">
               {language === "mermaid" && (
                 <MenuButton
@@ -132,14 +110,6 @@ const CodeBlock: FC<CodeBlockProps> = memo(
                   tooltip={showMermaidPreview ? "Show code" : "Show diagram"}
                 >
                   {showMermaidPreview ? <CodeIcon /> : <ImageIcon />}
-                </MenuButton>
-              )}
-              {canWrapLongLines && !showMermaidPreview && (
-                <MenuButton
-                  onClick={() => setWrapLongLines(!wrapLongLines)}
-                  tooltip="Toggle word wrap"
-                >
-                  {wrapLongLines ? <AlignJustifyIcon /> : <WrapTextIcon />}
                 </MenuButton>
               )}
               <MenuButton onClick={onCopy} tooltip="Copy">
@@ -154,7 +124,6 @@ const CodeBlock: FC<CodeBlockProps> = memo(
             language={language}
             value={value}
             theme={theme}
-            wrapLongLines={wrapLongLines}
             showMermaidPreview={showMermaidPreview}
           />
         </div>

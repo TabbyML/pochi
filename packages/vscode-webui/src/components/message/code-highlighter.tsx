@@ -158,8 +158,8 @@ class HighlighterManager {
     };
 
     return [
-      removePreBackground(addPreClass(light ?? "")),
-      removePreBackground(addPreClass(dark ?? "")),
+      addPreClass(removePreBackground(light ?? "")),
+      addPreClass(removePreBackground(dark ?? "")),
     ];
   }
 }
@@ -169,9 +169,10 @@ const highlighterManager = new HighlighterManager();
 
 // Remove background styles from <pre> tags (inline style)
 const removePreBackground = (html: string) => {
+  // Remove both background and background-color from style attribute
   return html.replace(
-    /(<pre[^>]*)(style="[^"]*background[^";]*;?[^"]*")([^>]*>)/g,
-    "$1$3",
+    /(<pre[^>]*)(style="[^"]*(background(-color)?)[^";]*;?[^"]*")([^>]*>)/g,
+    "$1$5",
   );
 };
 

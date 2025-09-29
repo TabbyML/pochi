@@ -108,8 +108,8 @@ function BlockCodeComponent({
     <CodeBlock
       language={language}
       value={value}
-      canWrapLongLines={true}
       className={cn("max-h-none", className)}
+      isMinimalView={!shouldShowControls(controlsConfig, "code")}
     />
   );
 }
