@@ -385,6 +385,7 @@
     "@getpochi/vendor-gemini-cli": "workspace:*",
     "@getpochi/vendor-github-copilot": "workspace:*",
     "@getpochi/vendor-pochi": "workspace:*",
+    "@getpochi/vendor-qwen-coder": "workspace:*",
     "@orama/orama": "^3.1.11",
     "@preact/signals-core": "catalog:",
     "@quilted/threads": "catalog:",
