@@ -18,8 +18,8 @@ const DEFAULT_QWEN_BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1
 // Qwen 模型映射
 export const ModelIdMap: Record<string, string> = {
   // 根据 Qwen 的实际模型 ID 进行映射
-  "vision-model": "Qwen3-Coder",
-  "coder-model": "Qwen3-VL-235B-A22B",
+  "vision-model": "qwen3-coder-plus",
+  "coder-model": "qwen3-coder-plus",
 };
 
 /**
