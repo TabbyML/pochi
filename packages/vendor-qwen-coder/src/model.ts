@@ -42,7 +42,16 @@ function createPatchedFetch(
     const { access_token } = await getCredentials();
     const headers = new Headers(requestInit?.headers);
     headers.set("Authorization", `Bearer ${access_token}`);
-    const resp = await fetch(requestInfo, {
+
+    const originalUrl = new URL(requestInfo.toString());
+    const url = new URL(originalUrl);
+    url.protocol = "http:";
+    url.host = "localhost";
+    url.port = globalThis.POCHI_CORS_PROXY_PORT;
+
+    headers.set("x-proxy-origin", originalUrl.origin);
+
+    const resp = await fetch(url, {
       ...requestInit,
       headers,
     });
