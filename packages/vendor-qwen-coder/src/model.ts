@@ -18,8 +18,8 @@ const DEFAULT_QWEN_BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1
 // Qwen 模型映射
 export const ModelIdMap: Record<string, string> = {
   // 根据 Qwen 的实际模型 ID 进行映射
-  "vision-model": "qwen-vl-max",
-  "coder-model": "qwen-coder-turbo",
+  "vision-model": "Qwen3-Coder",
+  "coder-model": "Qwen3-VL-235B-A22B",
 };
 
 /**
@@ -190,7 +190,7 @@ export function createQwenCoderModel({
   // 使用默认 URL 初始化，实际请求时会被 customFetch 替换
   return createQwenCoderModelBase(
     modelId,
-    "https://placeholder.qwen.ai/v1",
+    "https://portal.qwen.ai/v1/chat/completions",
     customFetch,
   );
 }
