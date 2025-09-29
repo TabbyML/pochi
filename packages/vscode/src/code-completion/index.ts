@@ -33,13 +33,7 @@ import {
   type CompletionStatisticsEntry,
   CompletionStatisticsTracker,
 } from "./statistics";
-import {
-  AbortError,
-  TimeoutError,
-  checkPaymentRequiredError,
-  checkSubscriptionRequiredError,
-  isCanceledError,
-} from "./utils/errors";
+import { AbortError, TimeoutError, isCanceledError } from "./utils/errors";
 import { extractNonReservedWordList, isBlank } from "./utils/strings";
 import "./utils/array"; // for mapAsync
 // biome-ignore lint/style/useImportType: needed for dependency injection
@@ -72,8 +66,6 @@ export class CompletionProvider
 
   readonly latencyIssue = signal<LatencyIssue | undefined>(undefined);
   readonly isFetching = signal<boolean>(false);
-  readonly requireSubscription = signal<"user" | "team" | undefined>(undefined);
-  readonly requirePayment = signal<"user" | "team" | undefined>(undefined);
 
   constructor(
     private readonly pochiConfiguration: PochiConfiguration,
@@ -161,14 +153,6 @@ export class CompletionProvider
 
   private updateIsFetching(value: boolean) {
     this.isFetching.value = value;
-  }
-
-  private updateRequireSubscription(value: "user" | "team" | undefined) {
-    this.requireSubscription.value = value;
-  }
-
-  private updateRequirePayment(value: "user" | "team" | undefined) {
-    this.requirePayment.value = value;
   }
 
   private submitCompletionStatistics() {
@@ -487,7 +471,6 @@ export class CompletionProvider
             cancellationToken,
             latencyStats,
           );
-          this.updateRequireSubscription(undefined);
 
           // postprocess: preCache
           const postprocessed = await preCacheProcess(
@@ -501,16 +484,6 @@ export class CompletionProvider
           if (isCanceledError(error)) {
             logger.debug("Fetching completion canceled.");
             solution = undefined;
-          }
-
-          const requiredPayment = checkPaymentRequiredError(error);
-          if (requiredPayment) {
-            this.updateRequirePayment(requiredPayment);
-          } else {
-            const requiredSubscription = checkSubscriptionRequiredError(error);
-            if (requiredSubscription) {
-              this.updateRequireSubscription(requiredSubscription);
-            }
           }
         }
       } else {
@@ -559,7 +532,6 @@ export class CompletionProvider
               cancellationToken,
               latencyStats,
             );
-            this.updateRequireSubscription(undefined);
 
             // postprocess: preCache
             const postprocessed = await preCacheProcess(
@@ -579,16 +551,6 @@ export class CompletionProvider
           if (isCanceledError(error)) {
             logger.debug("Fetching completion canceled.");
             solution = undefined;
-          }
-
-          const requiredPayment = checkPaymentRequiredError(error);
-          if (requiredPayment) {
-            this.updateRequirePayment(requiredPayment);
-          } else {
-            const requiredSubscription = checkSubscriptionRequiredError(error);
-            if (requiredSubscription) {
-              this.updateRequireSubscription(requiredSubscription);
-            }
           }
         }
       }

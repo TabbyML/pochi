@@ -8,13 +8,13 @@ import {
   convertToBase64,
   extractResponseHeaders,
 } from "@ai-sdk/provider-utils";
-import type { PochiApi, PochiApiClient } from "@getpochi/common/pochi-api";
 import type { CreateModelOptions } from "@getpochi/common/vendor/edge";
 import {
   type PochiCredentials,
   getServerBaseUrl,
 } from "@getpochi/common/vscode-webui-bridge";
 import { hc } from "hono/client";
+import type { PochiApi, PochiApiClient } from "./pochi-api";
 
 export function createPochiModel({
   id,
@@ -81,7 +81,7 @@ export function createPochiModel({
 function createApiClient(
   getCredentials: () => Promise<unknown>,
 ): PochiApiClient {
-  const authClient: PochiApiClient = hc<PochiApi>(getServerBaseUrl(), {
+  const apiClient: PochiApiClient = hc<PochiApi>(getServerBaseUrl(), {
     async fetch(input: string | URL | Request, init?: RequestInit) {
       const { token } = (await getCredentials()) as PochiCredentials;
       const headers = new Headers(init?.headers);
@@ -93,7 +93,7 @@ function createApiClient(
     },
   });
 
-  return authClient;
+  return apiClient;
 }
 
 function convertFilePartDataToBase64(

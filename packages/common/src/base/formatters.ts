@@ -205,8 +205,21 @@ function extractCompactMessages(messages: UIMessage[]) {
   return messages;
 }
 
+function removeEmptyTextParts(messages: UIMessage[]) {
+  return messages.map((message) => {
+    message.parts = message.parts.filter((part) => {
+      if (part.type === "text" || part.type === "reasoning") {
+        return part.text.trim().length > 0;
+      }
+      return true;
+    });
+    return message;
+  });
+}
+
 type FormatOp = (messages: UIMessage[]) => UIMessage[];
 const LLMFormatOps: FormatOp[] = [
+  removeEmptyTextParts,
   removeEmptyMessages,
   extractCompactMessages,
   removeMessagesWithoutTextOrToolCall,
