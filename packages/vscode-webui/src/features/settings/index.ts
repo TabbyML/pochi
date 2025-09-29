@@ -11,3 +11,4 @@ export { useEnablePochiModels } from "./hooks/use-enable-pochi-models";
 
 export { AutoApproveMenu } from "./components/auto-approve-menu";
 export { SettingsPage } from "./components/page";
+export { useSettingsStore } from "./store";

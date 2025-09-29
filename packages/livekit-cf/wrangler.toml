@@ -17,6 +17,10 @@ class_name = "SyncBackendDO"
 name = "CLIENT_DO"
 class_name = "LiveStoreClientDO"
 
+[[kv_namespaces]]
+binding = "CACHE"
+id = "0d6f1601697445289df0605504cae5bc"
+
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["SyncBackendDO", "LiveStoreClientDO"]
@@ -26,7 +30,7 @@ new_sqlite_classes = ["SyncBackendDO", "LiveStoreClientDO"]
 # SYNC_BACKEND_URL = "http://localhost:8787"
 
 [observability]
-enabled = true
+enabled = false
 
 [assets]
 directory = "./dist"

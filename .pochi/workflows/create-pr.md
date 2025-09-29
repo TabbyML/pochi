@@ -1,3 +1,7 @@
+---
+model: qwen/qwen3-coder
+---
+
 Please help create a PR for the current staging changes, following these guidelines:
 - If there are no staging changes but there are uncommitted changes, please stage them first.
 - Create a branch name based on the current git diff status.

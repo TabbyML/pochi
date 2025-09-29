@@ -9,6 +9,7 @@ export type Env = {
   POCHI_API_KEY: string;
   ENVIRONMENT: "dev" | "prod" | undefined;
   ASSETS: CfTypes.Fetcher;
+  CACHE: CfTypes.KVNamespace;
 };
 
 export type User = {

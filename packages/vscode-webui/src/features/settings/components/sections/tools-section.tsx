@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { keys } from "remeda";
 import { Section, SubSection } from "../ui/section";
 import { ToolBadgeList } from "../ui/tool-badge";
-import { McpSection } from "./mcp-section";
+import { McpSection, PochiTools } from "./mcp-section";
 export const ToolsSection: React.FC = () => {
   const { t } = useTranslation();
   const toolsData = AllTools;
@@ -15,8 +15,8 @@ export const ToolsSection: React.FC = () => {
   return (
     <Section title={t("settings.tools.title")}>
       <div className="ml-1 flex flex-col gap-6">
+        <PochiTools />
         <McpSection />
-
         <SubSection title={t("settings.tools.builtIn")}>
           {renderToolsContent()}
         </SubSection>

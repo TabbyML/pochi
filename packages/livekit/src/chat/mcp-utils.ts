@@ -23,25 +23,39 @@ export function parseMcpToolSet(
     : undefined;
 }
 
-const toModelOutputFn: Record<string, Tool["toModelOutput"]> = {
-  browser_take_screenshot: (output: {
-    content: Array<
-      | { type: "text"; text: string }
-      | { type: "image"; mimeType: string; data: string }
-    >;
-  }) => {
+const contentOutputFn = (
+  output:
+    | {
+        content: Array<
+          | { type: "text"; text: string }
+          | { type: "image"; mimeType: string; data: string }
+        >;
+      }
+    | { error: string },
+) => {
+  if ("error" in output) {
     return {
-      type: "content",
-      value: output.content.map((item) => {
-        if (item.type === "text") {
-          return item;
-        }
-        return {
-          type: "media",
-          data: item.data,
-          mediaType: item.mimeType,
-        };
-      }),
+      type: "error-text" as const,
+      value: output.error,
     };
-  },
+  }
+
+  return {
+    type: "content" as const,
+    value: output.content.map((item) => {
+      if (item.type === "text") {
+        return item;
+      }
+      return {
+        type: "media" as const,
+        data: item.data,
+        mediaType: item.mimeType,
+      };
+    }),
+  };
+};
+
+const toModelOutputFn: Record<string, Tool["toModelOutput"]> = {
+  browser_take_screenshot: contentOutputFn,
+  webFetch: contentOutputFn,
 };

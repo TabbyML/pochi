@@ -9,8 +9,15 @@ import type {
 export interface McpServerConnection {
   status: "stopped" | "starting" | "ready" | "error";
   error: string | undefined;
+  kind?: "vendor";
   tools: {
     [toolName: string]: McpToolStatus;
+  };
+}
+
+export interface McpServerConnectionExecutable extends McpServerConnection {
+  tools: {
+    [toolName: string]: McpToolStatus & McpToolExecutable;
   };
 }
 
@@ -48,20 +55,5 @@ export function isHttpTransport(
 }
 
 export interface McpToolExecutable {
-  execute?(args: unknown, options: ToolCallOptions): Promise<unknown>;
-}
-
-export function isExecutable(
-  tool: McpToolExecutable,
-): tool is McpToolExecutable & {
-  execute: (args: unknown, options?: ToolCallOptions) => Promise<unknown>;
-} {
-  return typeof tool?.execute === "function";
-}
-
-export function omitDisabled<T extends McpToolStatus>(
-  tool: T,
-): Omit<T, "disabled"> {
-  const { disabled, ...rest } = tool;
-  return rest;
+  execute(args: unknown, options: ToolCallOptions): Promise<unknown>;
 }

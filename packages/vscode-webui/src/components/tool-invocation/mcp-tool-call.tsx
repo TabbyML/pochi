@@ -3,6 +3,8 @@ import { Switch } from "@/components/ui/switch";
 import { vscodeHost } from "@/lib/vscode";
 import { getToolName } from "ai";
 import { useState } from "react";
+import { ScrollArea } from "../ui/scroll-area";
+import { Separator } from "../ui/separator";
 import { HighlightedText } from "./highlight-text";
 import { StatusIcon } from "./status-icon";
 import { ExpandableToolContainer } from "./tool-container";
@@ -129,24 +131,22 @@ function Result({
   result: MCPToolCallResult;
   previewImageLink: boolean;
 }) {
-  const renderContentItem = (item: ContentBlock, index: number) => {
-    const key = index;
-
+  const renderContentItem = (item: ContentBlock) => {
     switch (item.type) {
       case "image":
         return previewImageLink ? (
-          <div key={key} className="overflow-hidden">
+          <div className="overflow-hidden">
             <ImageResult {...item} />
           </div>
         ) : (
-          <JsonCodeBlock key={key} item={item} />
+          <JsonCodeBlock item={item} />
         );
 
       case "text": {
         const textContent = item.text;
 
         return (
-          <div key={key}>
+          <div>
             <MessageMarkdown isMinimalView previewImageLink={previewImageLink}>
               {textContent}
             </MessageMarkdown>
@@ -155,12 +155,24 @@ function Result({
       }
 
       default:
-        return <JsonCodeBlock key={key} item={item} />;
+        return <JsonCodeBlock item={item} />;
     }
   };
 
   return (
-    <div className="px-4 py-2">{result.content.map(renderContentItem)}</div>
+    <ScrollArea
+      className="px-4 py-2"
+      viewportClassname="max-h-[300px] my-1 rounded-sm"
+    >
+      {result.content.map((x, index) => (
+        <div key={index}>
+          {renderContentItem(x)}
+          {index < result.content.length - 1 && (
+            <Separator className="mt-1 mb-2" />
+          )}
+        </div>
+      ))}
+    </ScrollArea>
   );
 }
 
@@ -238,7 +250,7 @@ function DisplayModeToggle({
       <Switch
         checked={previewImageLink}
         onCheckedChange={onToggle}
-        className="data-[state=checked]:bg-[var(--vscode-button-background)] data-[state=unchecked]:bg-[var(--vscode-input-background)]"
+        className="data-[state=checked]:bg-[var(--vscode-button-background)] data-[state=unchecked]:bg-[var(--vscode-widget-border)]"
       />
       <span className="text-[var(--vscode-foreground)] text-xs">Preview</span>
     </div>

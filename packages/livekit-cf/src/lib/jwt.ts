@@ -1,4 +1,5 @@
-import type { Env, User } from "@/types";
+import { env } from "cloudflare:workers";
+import type { User } from "@/types";
 import { decodeStoreId } from "@getpochi/common/store-id-utils";
 import { HTTPException } from "hono/http-exception";
 import * as jose from "jose";
@@ -12,16 +13,31 @@ const Payload = z.object({
 
 let JWKS: jose.JWTVerifyGetKey | null = null;
 
-export async function verifyJWT(env: Env["ENVIRONMENT"], jwt: string) {
-  const serverUrl = getServerBaseUrl(env);
+export async function getJWKS() {
+  const serverUrl = getServerBaseUrl(env.ENVIRONMENT);
+  const key = `jwks:${serverUrl}`;
+  let jwks = await env.CACHE.get(key);
+  if (!jwks) {
+    const res = await fetch(new URL(`${serverUrl}/api/auth/jwks`));
+    jwks = await res.text();
+  }
+  await env.CACHE.put(key, jwks, {
+    expirationTtl: 60 * 60 * 24,
+  });
+
+  return jose.createLocalJWKSet(JSON.parse(jwks));
+}
+
+export async function verifyJWT(jwt: string) {
+  const serverUrl = getServerBaseUrl(env.ENVIRONMENT);
   if (JWKS === null) {
-    JWKS = jose.createRemoteJWKSet(new URL(`${serverUrl}/api/auth/jwks`));
+    JWKS = await getJWKS();
   }
   try {
     const { payload: user } = await jose.jwtVerify<User>(jwt, JWKS, {
       issuer: serverUrl,
       audience: serverUrl,
-      clockTolerance: env === "dev" ? "4 hours" : undefined,
+      clockTolerance: env.ENVIRONMENT === "dev" ? "4 hours" : undefined,
     });
     return user;
   } catch (err) {
@@ -33,17 +49,13 @@ export async function verifyJWT(env: Env["ENVIRONMENT"], jwt: string) {
   }
 }
 
-async function verifyPayload(env: Env["ENVIRONMENT"], inputPayload: unknown) {
+async function verifyPayload(inputPayload: unknown) {
   const payload = Payload.parse(inputPayload);
-  return verifyJWT(env, payload.jwt);
+  return verifyJWT(payload.jwt);
 }
 
-export async function verifyStoreId(
-  env: Env["ENVIRONMENT"],
-  payload: unknown,
-  storeId: string,
-) {
-  const user = await verifyPayload(env, payload);
+export async function verifyStoreId(payload: unknown, storeId: string) {
+  const user = await verifyPayload(payload);
   if (user.sub === decodeStoreId(storeId).sub) {
     return user;
   }
