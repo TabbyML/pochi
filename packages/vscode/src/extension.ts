@@ -26,12 +26,7 @@ import { createMcpHub } from "./integrations/mcp/mcp-hub-factory";
 import { StatusBarItem } from "./integrations/status-bar-item";
 import { TerminalLinkProvider } from "./integrations/terminal-link-provider";
 import { PochiWebviewSidebar } from "./integrations/webview";
-import {
-  type ApiClient,
-  type AuthClient,
-  createApiClient,
-  createAuthClient,
-} from "./lib/auth-client";
+import { type AuthClient, createAuthClient } from "./lib/auth-client";
 import { FileLogger } from "./lib/file-logger";
 import { PostInstallActions } from "./lib/post-install-actions";
 
@@ -50,10 +45,6 @@ export async function activate(context: vscode.ExtensionContext) {
   container.register<AuthClient>("AuthClient", {
     // AuthClient is also a singleton
     useFactory: instanceCachingFactory(createAuthClient),
-  });
-  container.register<ApiClient>("ApiClient", {
-    // ApiClient is also a singleton
-    useFactory: instanceCachingFactory(createApiClient),
   });
   container.register<McpHub>("McpHub", {
     // McpHub is also a singleton

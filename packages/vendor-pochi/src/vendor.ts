@@ -2,7 +2,6 @@ import { getLogger } from "@getpochi/common";
 import type { UserInfo } from "@getpochi/common/configuration";
 import { deviceLinkClient } from "@getpochi/common/device-link/client";
 import type { McpToolExecutable } from "@getpochi/common/mcp-utils";
-import type { PochiApi, PochiApiClient } from "@getpochi/common/pochi-api";
 import {
   type AuthOutput,
   type ModelOptions,
@@ -18,6 +17,7 @@ import { createAuthClient as createAuthClientImpl } from "better-auth/react";
 import { hc } from "hono/client";
 import * as jose from "jose";
 import { getPochiCredentials, updatePochiCredentials } from "./credentials";
+import type { PochiApi, PochiApiClient } from "./pochi-api";
 import { makeWebFetch, makeWebSearch } from "./tools";
 import { VendorId } from "./types";
 
