@@ -13,8 +13,6 @@ import {
 } from "react";
 import rehypeRaw from "rehype-raw";
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
-import remarkGfm from "remark-gfm";
-import remarkMath from "remark-math";
 import { ControlsContext, Streamdown } from "streamdown";
 import { FileBadge } from "../tool-invocation/file-badge";
 import { CodeBlock } from "./code-block";
@@ -419,7 +417,6 @@ export function MessageMarkdown({
       )}
     >
       <Streamdown
-        remarkPlugins={[[remarkGfm, {}], remarkMath]}
         rehypePlugins={
           isMinimalView
             ? undefined
