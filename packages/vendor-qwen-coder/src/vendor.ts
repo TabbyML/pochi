@@ -31,7 +31,7 @@ export class QwenCoder extends VendorBase {
         contextWindow: 200_000,
         useToolCallMiddleware: false,
       },
-      "coder-model": {
+      "qwen3-coder-plus": {
         contextWindow: 200_000,
         useToolCallMiddleware: false,
       },
