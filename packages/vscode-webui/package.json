@@ -71,7 +71,6 @@
     "copy-to-clipboard": "^3.3.3",
     "emittery": "catalog:",
     "hast": "^1.0.0",
-    "hono": "catalog:",
     "i18next": "^25.4.2",
     "i18next-browser-languagedetector": "^8.2.0",
     "jose": "catalog:",

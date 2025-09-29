@@ -157,7 +157,6 @@ function Chat({ user, uid, prompt }: ChatProps) {
         isLoading={isLoading}
         user={user || defaultUser}
         messagesContainerRef={messagesContainerRef}
-        agent={subtask?.agent}
       />
       <div className="flex flex-col px-4">
         <ErrorMessageView error={displayError} />
