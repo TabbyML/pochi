@@ -83,7 +83,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     selectedModelFromStore, // for fallback display
     isLoading: isModelsLoading,
     updateSelectedModel,
-  } = useSelectedModels();
+  } = useSelectedModels({ isSubTask });
 
   const autoApproveGuard = useAutoApproveGuard();
 
@@ -245,6 +245,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
         onRemoveQueuedMessage={(index) =>
           setQueuedMessages((prev) => prev.filter((_, i) => i !== index))
         }
+        isSubTask={isSubTask}
       />
 
       {/* Hidden file input for image uploads */}
@@ -260,7 +261,11 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
       <div className="my-2 flex shrink-0 justify-between gap-5 overflow-x-hidden">
         <div className="flex items-center gap-2 overflow-x-hidden truncate">
           <ModelSelect
-            value={selectedModel || selectedModelFromStore}
+            value={
+              isSubTask
+                ? selectedModel
+                : selectedModel || selectedModelFromStore
+            }
             models={groupedModels}
             isLoading={isModelsLoading}
             isValid={!!selectedModel}

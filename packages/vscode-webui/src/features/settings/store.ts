@@ -12,6 +12,8 @@ export type AutoApprove = Record<
   mcp: boolean;
 };
 
+export type SubTaskAutoApprove = AutoApprove & { modelId: string | undefined };
+
 export type SelectedModelInStore = Pick<DisplayModel, "id" | "name">;
 
 export interface SettingsState {
@@ -23,7 +25,7 @@ export interface SettingsState {
   autoApproveSettings: AutoApprove;
 
   subtaskAutoApproveActive: boolean;
-  subtaskAutoApproveSettings: AutoApprove;
+  subtaskAutoApproveSettings: SubTaskAutoApprove;
 
   isDevMode: boolean;
 
@@ -33,7 +35,7 @@ export interface SettingsState {
 
   toggleSubtaskOffhand: () => void;
   updateAutoApproveSettings: (data: Partial<AutoApprove>) => void;
-  updateSubtaskAutoApproveSettings: (data: Partial<AutoApprove>) => void;
+  updateSubtaskAutoApproveSettings: (data: Partial<SubTaskAutoApprove>) => void;
   updateSelectedModel: (
     selectedModel: SelectedModelInStore | undefined,
   ) => void;
@@ -74,6 +76,7 @@ export const useSettingsStore = create<SettingsState>()(
         maxRetryLimit: 3,
         mcp: false,
         autoRunSubtask: false,
+        modelId: undefined,
       },
 
       isDevMode: false,

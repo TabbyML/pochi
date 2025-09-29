@@ -12,7 +12,10 @@ import { useMcp } from "@/lib/hooks/use-mcp";
 import { vscodeHost } from "@/lib/vscode";
 import { constants, type Environment } from "@getpochi/common";
 import { createModel } from "@getpochi/common/vendor/edge";
-import type { UserEditsDiff } from "@getpochi/common/vscode-webui-bridge";
+import type {
+  DisplayModel,
+  UserEditsDiff,
+} from "@getpochi/common/vscode-webui-bridge";
 import type { LLMRequestData, Message } from "@getpochi/livekit";
 import type { Todo } from "@getpochi/tools";
 import { useCallback } from "react";
@@ -20,14 +23,18 @@ import { useCallback } from "react";
 export function useLiveChatKitGetters({
   todos,
   isSubTask = false,
+  offhand = false,
+  model,
 }: {
   todos: React.RefObject<Todo[] | undefined>;
   isSubTask?: boolean;
+  offhand?: boolean;
+  model?: DisplayModel;
 }) {
   const { toolset, instructions } = useMcp();
   const mcpInfo = useLatest({ toolset, instructions });
 
-  const llm = useLLM();
+  const llm = useLLM({ isSubTask, model, offhand });
 
   const { customAgents } = useCustomAgents(true);
   const customAgentsRef = useLatest(customAgents);
@@ -86,49 +93,59 @@ function findSecondLastCheckpointFromMessages(
   return undefined;
 }
 
-function useLLM(): React.RefObject<LLMRequestData> {
-  const { selectedModel } = useSelectedModels();
-
+function useLLM({
+  model: propsModel,
+  isSubTask,
+  offhand,
+}: {
+  isSubTask: boolean;
+  model?: DisplayModel;
+  offhand: boolean;
+}): React.RefObject<LLMRequestData> {
+  const { selectedModel } = useSelectedModels({
+    isSubTask: offhand ? false : isSubTask,
+  });
+  // For offhand mode, use the frontmatter model or parent task model
+  const model = propsModel || selectedModel;
   const llmFromSelectedModel = ((): LLMRequestData => {
-    if (!selectedModel) return undefined as never;
-
-    if (selectedModel.type === "vendor") {
+    if (!model) return undefined as never;
+    if (model.type === "vendor") {
       return {
         type: "vendor",
-        useToolCallMiddleware: selectedModel.options.useToolCallMiddleware,
+        useToolCallMiddleware: model.options.useToolCallMiddleware,
         getModel: (id: string) =>
-          createModel(selectedModel.vendorId, {
+          createModel(model.vendorId, {
             id,
-            modelId: selectedModel.modelId,
-            getCredentials: selectedModel.getCredentials,
+            modelId: model.modelId,
+            getCredentials: model.getCredentials,
           }),
       };
     }
 
-    const { provider } = selectedModel;
+    const { provider } = model;
     if (provider.kind === "google-vertex-tuning") {
       return {
         type: "google-vertex-tuning" as const,
-        modelId: selectedModel.modelId,
+        modelId: model.modelId,
         vertex: provider.vertex,
         maxOutputTokens:
-          selectedModel.options.maxTokens ?? constants.DefaultMaxOutputTokens,
+          model.options.maxTokens ?? constants.DefaultMaxOutputTokens,
         contextWindow:
-          selectedModel.options.contextWindow ?? constants.DefaultContextWindow,
-        useToolCallMiddleware: selectedModel.options.useToolCallMiddleware,
+          model.options.contextWindow ?? constants.DefaultContextWindow,
+        useToolCallMiddleware: model.options.useToolCallMiddleware,
       };
     }
 
     if (provider.kind === "ai-gateway") {
       return {
         type: "ai-gateway" as const,
-        modelId: selectedModel.modelId,
+        modelId: model.modelId,
         apiKey: provider.apiKey,
         maxOutputTokens:
-          selectedModel.options.maxTokens ?? constants.DefaultMaxOutputTokens,
+          model.options.maxTokens ?? constants.DefaultMaxOutputTokens,
         contextWindow:
-          selectedModel.options.contextWindow ?? constants.DefaultContextWindow,
-        useToolCallMiddleware: selectedModel.options.useToolCallMiddleware,
+          model.options.contextWindow ?? constants.DefaultContextWindow,
+        useToolCallMiddleware: model.options.useToolCallMiddleware,
       };
     }
 
@@ -140,14 +157,14 @@ function useLLM(): React.RefObject<LLMRequestData> {
     ) {
       return {
         type: provider.kind || "openai",
-        modelId: selectedModel.modelId,
+        modelId: model.modelId,
         baseURL: provider.baseURL,
         apiKey: provider.apiKey,
         maxOutputTokens:
-          selectedModel.options.maxTokens ?? constants.DefaultMaxOutputTokens,
+          model.options.maxTokens ?? constants.DefaultMaxOutputTokens,
         contextWindow:
-          selectedModel.options.contextWindow ?? constants.DefaultContextWindow,
-        useToolCallMiddleware: selectedModel.options.useToolCallMiddleware,
+          model.options.contextWindow ?? constants.DefaultContextWindow,
+        useToolCallMiddleware: model.options.useToolCallMiddleware,
       };
     }
 

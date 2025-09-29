@@ -44,9 +44,6 @@ interface ChatProps {
 function Chat({ user, uid, prompt }: ChatProps) {
   const { store } = useStore();
   const todosRef = useRef<Todo[] | undefined>(undefined);
-  const getters = useLiveChatKitGetters({
-    todos: todosRef,
-  });
 
   const defaultUser = {
     name: "You",
@@ -59,11 +56,14 @@ function Chat({ user, uid, prompt }: ChatProps) {
   const task = store.useQuery(catalog.queries.makeTaskQuery(uid));
   const subtask = useSubtaskInfo(uid, task?.parentId);
   const customAgent = useCustomAgent(subtask?.agent);
-
   const autoApproveGuard = useAutoApproveGuard();
   const { data: currentWorkspace, isFetching: isFetchingWorkspace } =
     useCurrentWorkspace();
   const isWorkspaceActive = !!currentWorkspace;
+  const getters = useLiveChatKitGetters({
+    todos: todosRef,
+    isSubTask: !!subtask,
+  });
   const chatKit = useLiveChatKit({
     taskId: uid,
     getters,
@@ -98,7 +98,9 @@ function Chat({ user, uid, prompt }: ChatProps) {
 
   const { messages, sendMessage, status } = chat;
   const renderMessages = useMemo(() => formatters.ui(messages), [messages]);
-  const { isLoading: isModelsLoading, selectedModel } = useSelectedModels();
+  const { isLoading: isModelsLoading, selectedModel } = useSelectedModels({
+    isSubTask: !!subtask,
+  });
   const isLoading = status === "streaming" || status === "submitted";
 
   const approvalAndRetry = useApprovalAndRetry({

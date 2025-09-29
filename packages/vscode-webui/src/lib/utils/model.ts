@@ -3,7 +3,7 @@ import type { DisplayModel } from "@getpochi/common/vscode-webui-bridge";
 export function resolveModelFromString(
   model: string | undefined,
   models: DisplayModel[] | undefined,
-) {
+): DisplayModel | undefined {
   if (!model || !models?.length) {
     return;
   }

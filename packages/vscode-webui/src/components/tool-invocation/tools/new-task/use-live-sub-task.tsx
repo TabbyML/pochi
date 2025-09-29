@@ -11,7 +11,10 @@ import {
   useRetry,
 } from "@/features/retry";
 import { useTodos } from "@/features/todo";
-import { useCustomAgent } from "@/lib/hooks/use-custom-agents";
+import {
+  useCustomAgent,
+  useCustomAgentModel,
+} from "@/lib/hooks/use-custom-agents";
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
 import { vscodeHost } from "@/lib/vscode";
 import { useChat } from "@ai-sdk/react";
@@ -42,6 +45,8 @@ export function useLiveSubTask(
     tool.state !== "input-streaming" ? tool.input?.agentType : undefined,
   );
 
+  const customAgentModel = useCustomAgentModel(customAgent);
+
   const abortController = useRef(new AbortController());
 
   useEffect(() => {
@@ -71,6 +76,7 @@ export function useLiveSubTask(
   const getters = useLiveChatKitGetters({
     todos: todosRef,
     isSubTask: true,
+    model: customAgentModel,
   });
 
   // FIXME: handle auto retry for output without task.
@@ -224,6 +230,7 @@ export function useLiveSubTask(
         );
         return;
       }
+      console.log("call retyr");
       retry(error);
     },
     [retry, retryCount, lifecycle.streamingResult, isExecuting],

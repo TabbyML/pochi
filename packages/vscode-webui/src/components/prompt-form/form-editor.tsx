@@ -34,7 +34,6 @@ import {
   findSuggestionMatch,
 } from "@tiptap/suggestion";
 import { ArrowRightToLine } from "lucide-react";
-import { pick } from "remeda";
 import { ScrollArea } from "../ui/scroll-area";
 import { AutoCompleteExtension } from "./auto-completion/extension";
 import type { MentionListActions } from "./shared";
@@ -103,6 +102,7 @@ interface FormEditorProps {
   enableSubmitHistory?: boolean;
   onFileDrop?: (files: File[]) => boolean;
   messageContent?: string;
+  isSubTask: boolean;
 }
 
 export function FormEditor({
@@ -119,8 +119,9 @@ export function FormEditor({
   enableSubmitHistory = true,
   onFileDrop,
   messageContent = "",
+  isSubTask,
 }: FormEditorProps) {
-  const { updateSelectedModel, models } = useSelectedModels();
+  const { updateSelectedModel, models } = useSelectedModels({ isSubTask });
   const internalFormRef = useRef<HTMLFormElement>(null);
   const formRef = externalFormRef || internalFormRef;
   const [isAutoCompleteHintVisible, setIsAutoCompleteHintVisible] =
@@ -144,7 +145,7 @@ export function FormEditor({
         models,
       );
       if (foundModel) {
-        updateSelectedModel(pick(foundModel, ["id", "name"]));
+        updateSelectedModel(foundModel.id);
       }
     },
     [models, updateSelectedModel],

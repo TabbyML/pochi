@@ -1,6 +1,6 @@
 import { useModelList } from "@/lib/hooks/use-model-list";
 import type { DisplayModel } from "@getpochi/common/vscode-webui-bridge";
-import { useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { pick } from "remeda";
 import { useSettingsStore } from "../store";
@@ -12,10 +12,18 @@ export type ModelGroup = {
 };
 export type ModelGroups = ModelGroup[];
 
-export function useSelectedModels() {
+type UseSelectedModelsOptions = {
+  isSubTask: boolean;
+};
+export function useSelectedModels(options?: UseSelectedModelsOptions) {
   const { t } = useTranslation();
-  const { selectedModel: selectedModelFromStore, updateSelectedModel } =
-    useSettingsStore();
+  const isSubTask = options?.isSubTask ?? false;
+  const {
+    selectedModel: selectedModelFromStore,
+    updateSelectedModel: updateSelectedModelInStore,
+    subtaskAutoApproveSettings,
+    updateSubtaskAutoApproveSettings,
+  } = useSettingsStore();
   const { modelList: models, isLoading } = useModelList(true);
   const groupedModels = useMemo<ModelGroups | undefined>(() => {
     if (!models) return undefined;
@@ -48,16 +56,45 @@ export function useSelectedModels() {
   }, [models, t]);
 
   const selectedModel = useMemo(() => {
-    const model = models?.find((x) => x.id === selectedModelFromStore?.id);
-    return model;
-  }, [selectedModelFromStore, models]);
+    const targetModelId = isSubTask
+      ? subtaskAutoApproveSettings.modelId
+      : selectedModelFromStore?.id;
+    if (!targetModelId) return undefined;
+
+    return models?.find((x) => x.id === targetModelId);
+  }, [
+    selectedModelFromStore,
+    models,
+    isSubTask,
+    subtaskAutoApproveSettings.modelId,
+  ]);
+
+  const updateSelectedModel = useCallback(
+    (modelId: string | undefined) => {
+      if (!modelId) return;
+      const model = models?.find((x) => x.id === modelId);
+      if (!model) return;
+
+      if (isSubTask) {
+        updateSubtaskAutoApproveSettings({ modelId: model.id });
+      } else {
+        updateSelectedModelInStore(pick(model, ["id", "name"]));
+      }
+    },
+    [
+      models,
+      updateSelectedModelInStore,
+      isSubTask,
+      updateSubtaskAutoApproveSettings,
+    ],
+  );
 
   // set initial model
   useEffect(() => {
     if (!isLoading && !selectedModelFromStore && !!models?.length) {
-      updateSelectedModel(pick(models[0], ["id", "name"]));
+      updateSelectedModelInStore(pick(models[0], ["id", "name"]));
     }
-  }, [isLoading, models, selectedModelFromStore, updateSelectedModel]);
+  }, [isLoading, models, selectedModelFromStore, updateSelectedModelInStore]);
 
   return {
     isLoading,

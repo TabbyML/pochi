@@ -5,7 +5,9 @@ import {
 } from "@getpochi/common/vscode-webui-bridge";
 import { threadSignal } from "@quilted/threads/signals";
 import { useQuery } from "@tanstack/react-query";
+import { resolveModelFromString } from "../utils/model";
 import { vscodeHost } from "../vscode";
+import { useModelList } from "./use-model-list";
 
 /**
  * Hook to get custom agents
@@ -52,4 +54,14 @@ export const useCustomAgent = (name?: string) => {
   }
   const customAgent = customAgents?.find((agent) => agent.name === name);
   return customAgent;
+};
+
+export const useCustomAgentModel = (
+  customAgent: ValidCustomAgentFile | undefined,
+) => {
+  const { modelList } = useModelList(true);
+  if (customAgent?.model) {
+    return resolveModelFromString(customAgent.model, modelList);
+  }
+  return undefined;
 };

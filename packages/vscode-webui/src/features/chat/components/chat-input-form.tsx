@@ -23,6 +23,7 @@ interface ChatInputFormProps {
   messageContent?: string;
   queuedMessages: string[];
   onRemoveQueuedMessage: (index: number) => void;
+  isSubTask: boolean;
 }
 
 export function ChatInputForm({
@@ -38,6 +39,7 @@ export function ChatInputForm({
   messageContent,
   queuedMessages,
   onRemoveQueuedMessage,
+  isSubTask,
 }: ChatInputFormProps) {
   const editorRef = useRef<Editor | null>(null);
 
@@ -53,6 +55,7 @@ export function ChatInputForm({
       enableSubmitHistory={true}
       onFileDrop={onFileDrop}
       messageContent={messageContent}
+      isSubTask={isSubTask}
     >
       <ActiveSelectionBadge
         onClick={() => {
