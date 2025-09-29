@@ -11,6 +11,7 @@ import "@getpochi/vendor-gemini-cli";
 import "@getpochi/vendor-claude-code";
 import "@getpochi/vendor-codex";
 import "@getpochi/vendor-github-copilot";
+import "@getpochi/vendor-qwen-code";
 
 import RagdollUriHandler from "@/integrations/uri-handler";
 import { startCorsProxy } from "@getpochi/common/cors-proxy";

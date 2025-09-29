@@ -41,6 +41,7 @@ async function readAgentsFromDir(dir: string): Promise<CustomAgentFile[]> {
 
 export async function loadAgents(
   workingDirectory?: string,
+  includeSystemAgents = true,
 ): Promise<CustomAgent[]> {
   try {
     const allAgents: CustomAgentFile[] = [];
@@ -52,8 +53,10 @@ export async function loadAgents(
     }
 
     // Load system agents
-    const systemAgentsDir = path.join(os.homedir(), ".pochi", "agents");
-    allAgents.push(...(await readAgentsFromDir(systemAgentsDir)));
+    if (includeSystemAgents) {
+      const systemAgentsDir = path.join(os.homedir(), ".pochi", "agents");
+      allAgents.push(...(await readAgentsFromDir(systemAgentsDir)));
+    }
 
     // Filter out invalid agents for CLI usage
     const validAgents = allAgents.filter(

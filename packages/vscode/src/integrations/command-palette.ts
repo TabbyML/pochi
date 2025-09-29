@@ -133,6 +133,17 @@ export class CommandPalette {
           },
         };
 
+      case "payment-required":
+        return {
+          label: "Payment",
+          iconPath: new vscode.ThemeIcon("account"),
+          detail:
+            "Your freebie usage has been rate limited. Consider upgrading your subscription.",
+          onDidAccept: () => {
+            vscode.commands.executeCommand("pochi.openWebsite", "/profile");
+          },
+        };
+
       case "disabled":
         return {
           label: "Code Completion Disabled",

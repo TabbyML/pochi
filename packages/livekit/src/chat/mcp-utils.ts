@@ -56,6 +56,11 @@ const contentOutputFn = (
 };
 
 const toModelOutputFn: Record<string, Tool["toModelOutput"]> = {
+  // chrome-devtools
+  take_screenshot: contentOutputFn,
+  // playwright
   browser_take_screenshot: contentOutputFn,
+  // pochi
   webFetch: contentOutputFn,
+  webSearch: contentOutputFn,
 };
