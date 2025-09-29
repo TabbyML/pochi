@@ -29,6 +29,7 @@ export const Default: Story = {
     input: "Hello, world!",
     isLoading: false,
     autoFocus: true,
+    isSubTask: false,
   },
 };
 
@@ -37,5 +38,6 @@ export const Loading: Story = {
     input: "This is a loading state",
     isLoading: true,
     autoFocus: false,
+    isSubTask: false,
   },
 };
