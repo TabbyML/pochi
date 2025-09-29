@@ -921,10 +921,10 @@ Welcome to Pochi Prompting Guideline! Please consider using this doc as referenc
 * **Ensure Consistency:** Rely on structured prompts (XML/JSON) for repeatable, predictable outputs.
 * **Iterate Safely:** Tweak prompts step-by-step. Using structured formats like XML or JSON for your prompts makes it easier to track and revert changes if needed.
 * **Leverage Pochi Features:**
-  * Use [`~/.pochi/config.jsonc`](/cli) for models & MCPs.
-  * Use [`README.pochi.md`](/rules) for project-specific rules.
-  * Use [`.pochi/workflows/`](/workflows) for custom workflows.
-  * Use [`.pochi/agents/`](/custom-agent) for custom agents.
+  * Use `~/.pochi/config.jsonc` for [models](/models) & [MCPs](/mcp).
+  * Use `README.pochi.md` for [project-specific rules](/rules).
+  * Use `.pochi/workflows/` for [custom workflows](/workflows).
+  * Use `.pochi/agents/` for [custom agents](/custom-agent).
   * Use [Pochi's sharing features](/share) to share task histories.
   * Use the [GitHub](/github) & [Slack](/slack) integrations for team collaboration.
 
@@ -994,7 +994,7 @@ Apply structured formats (XML or JSON) for precision, repeatability, and task ch
 
 ### Assign Pochi a Role (System Prompts)
 
-Specify a role in the prompt or via [`.pochi/agents/`](/custom-agent) to enforce standards.
+Specify a role in the prompt or via a [custom agent](/custom-agent) to enforce standards.
 
 **Example:**
 “Act as linter for `@models/db.py` per `README.pochi.md`, focusing on PEP 8 spacing issues.”
