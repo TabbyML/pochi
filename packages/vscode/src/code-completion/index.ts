@@ -33,7 +33,12 @@ import {
   type CompletionStatisticsEntry,
   CompletionStatisticsTracker,
 } from "./statistics";
-import { AbortError, TimeoutError, isCanceledError } from "./utils/errors";
+import {
+  AbortError,
+  TimeoutError,
+  isCanceledError,
+  isPaymentRequiredError,
+} from "./utils/errors";
 import { extractNonReservedWordList, isBlank } from "./utils/strings";
 import "./utils/array"; // for mapAsync
 // biome-ignore lint/style/useImportType: needed for dependency injection
@@ -66,6 +71,7 @@ export class CompletionProvider
 
   readonly latencyIssue = signal<LatencyIssue | undefined>(undefined);
   readonly isFetching = signal<boolean>(false);
+  readonly requirePayment = signal<boolean>(false);
 
   constructor(
     private readonly pochiConfiguration: PochiConfiguration,
@@ -153,6 +159,10 @@ export class CompletionProvider
 
   private updateIsFetching(value: boolean) {
     this.isFetching.value = value;
+  }
+
+  private updateRequirePayment(value: boolean) {
+    this.requirePayment.value = value;
   }
 
   private submitCompletionStatistics() {
@@ -471,6 +481,7 @@ export class CompletionProvider
             cancellationToken,
             latencyStats,
           );
+          this.updateRequirePayment(false);
 
           // postprocess: preCache
           const postprocessed = await preCacheProcess(
@@ -484,6 +495,10 @@ export class CompletionProvider
           if (isCanceledError(error)) {
             logger.debug("Fetching completion canceled.");
             solution = undefined;
+          }
+
+          if (isPaymentRequiredError(error)) {
+            this.updateRequirePayment(true);
           }
         }
       } else {
@@ -532,6 +547,7 @@ export class CompletionProvider
               cancellationToken,
               latencyStats,
             );
+            this.updateRequirePayment(false);
 
             // postprocess: preCache
             const postprocessed = await preCacheProcess(
@@ -551,6 +567,10 @@ export class CompletionProvider
           if (isCanceledError(error)) {
             logger.debug("Fetching completion canceled.");
             solution = undefined;
+          }
+
+          if (isPaymentRequiredError(error)) {
+            this.updateRequirePayment(true);
           }
         }
       }

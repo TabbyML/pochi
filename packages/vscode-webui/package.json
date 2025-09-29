@@ -22,6 +22,7 @@
     "@getpochi/vendor-claude-code": "workspace:*",
     "@getpochi/vendor-codex": "workspace:*",
     "@getpochi/vendor-github-copilot": "workspace:*",
+    "@getpochi/vendor-qwen-code": "workspace:*",
     "@leeoniya/ufuzzy": "^1.0.18",
     "@livestore/adapter-web": "catalog:",
     "@livestore/common": "catalog:",

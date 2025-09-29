@@ -20,6 +20,7 @@ export class StatusBarItem implements vscode.Disposable {
   readonly status = signal<
     | "initializing"
     | "logged-out"
+    | "payment-required"
     | "disabled"
     | "disabled-language"
     | "ready"
@@ -93,6 +94,13 @@ export class StatusBarItem implements vscode.Disposable {
     ) {
       return "disabled-language";
     }
+    // Inline completion is enabled
+    if (this.inlineCompletionProvider.requirePayment.value) {
+      return "payment-required";
+    }
+
+    // Subscription is valid
+
     if (this.inlineCompletionProvider.isFetching.value) {
       return "loading";
     }
@@ -125,6 +133,20 @@ export class StatusBarItem implements vscode.Disposable {
           "statusBarItem.warningBackground",
         );
         this.statusBarItem.command = "pochi.openLoginPage";
+        break;
+
+      case "payment-required":
+        this.statusBarItem.text = "$(warning) Pochi";
+        this.statusBarItem.tooltip =
+          "Your freebie usage has been rate limited. Consider upgrading your subscription.";
+        this.statusBarItem.backgroundColor = new vscode.ThemeColor(
+          "statusBarItem.warningBackground",
+        );
+        this.statusBarItem.command = {
+          title: "Open Profile",
+          command: "pochi.openWebsite",
+          arguments: ["/profile"],
+        };
         break;
 
       case "disabled":

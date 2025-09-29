@@ -57,3 +57,7 @@ export function isUnauthorizedError(error: unknown) {
 export function isRateLimitExceededError(error: unknown) {
   return error instanceof HttpError && error.status === 429;
 }
+
+export function isPaymentRequiredError(error: unknown) {
+  return error instanceof HttpError && error.status === 402;
+}
