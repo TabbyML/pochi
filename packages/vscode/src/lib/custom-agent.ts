@@ -5,6 +5,7 @@ import { getLogger } from "@getpochi/common";
 import { parseAgentFile } from "@getpochi/common/tool-utils";
 import type { CustomAgentFile } from "@getpochi/common/vscode-webui-bridge";
 import { signal } from "@preact/signals-core";
+import { uniqueBy } from "remeda";
 import { injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
 
@@ -108,7 +109,7 @@ export class CustomAgentManager implements vscode.Disposable {
       }
       allAgents.push(...(await readAgentsFromDir(systemAgentsDir)));
 
-      this.agents.value = allAgents;
+      this.agents.value = uniqueBy(allAgents, (agent) => agent.name);
       logger.debug(`Loaded ${allAgents.length} custom agents`);
     } catch (error) {
       logger.error("Failed to load custom agents", error);

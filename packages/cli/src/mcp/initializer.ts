@@ -29,10 +29,7 @@ export async function initializeMcp(mcpHub: McpHub): Promise<void> {
 
     if (connections.length > 0) {
       // Wait for ALL non-error connections to be ready
-      if (
-        readyConnections + errorConnections >= connections.length &&
-        attempts > 3
-      ) {
+      if (readyConnections + errorConnections >= connections.length) {
         break;
       }
     }
