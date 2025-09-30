@@ -21,6 +21,7 @@ import { ChatToolbar } from "./components/chat-toolbar";
 import { ErrorMessageView } from "./components/error-message-view";
 import { SubtaskHeader } from "./components/subtask";
 import { useScrollToBottom } from "./hooks/use-scroll-to-bottom";
+import { useSetSubtaskModel } from "./hooks/use-set-subtask-model";
 import { useAddSubtaskResult } from "./hooks/use-subtask-completed";
 import { useSubtaskInfo } from "./hooks/use-subtask-info";
 import { useAutoApproveGuard, useChatAbortController } from "./lib/chat-state";
@@ -126,6 +127,8 @@ function Chat({ user, uid, prompt }: ChatProps) {
     task,
     retry,
   });
+
+  useSetSubtaskModel({ customAgent, isSubTask: !!subtask });
 
   useAddSubtaskResult({ ...chat });
 

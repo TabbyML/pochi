@@ -3,15 +3,7 @@ import { useCallback, useEffect, useMemo } from "react"; // useMemo is now in th
 
 import { Button } from "@/components/ui/button";
 import { useAutoApproveGuard, useToolCallLifeCycle } from "@/features/chat";
-import {
-  useSettingsStore,
-  useSubtaskOffhand,
-  useToolAutoApproval,
-} from "@/features/settings";
-import {
-  useCustomAgent,
-  useCustomAgentModel,
-} from "@/lib/hooks/use-custom-agents";
+import { useSubtaskOffhand, useToolAutoApproval } from "@/features/settings";
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
 import { useNavigate } from "@tanstack/react-router";
 import { getToolName } from "ai";
@@ -28,19 +20,6 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
   isSubTask,
 }) => {
   const navigate = useNavigate();
-  const { updateSubtaskAutoApproveSettings } = useSettingsStore();
-
-  const { subtaskOffhand } = useSubtaskOffhand();
-
-  const newTaskInput =
-    !subtaskOffhand &&
-    pendingApproval.name === "newTask" &&
-    pendingApproval.tool.type === "tool-newTask"
-      ? pendingApproval.tool.input
-      : undefined;
-  const customAgent = useCustomAgent(newTaskInput?.agentType);
-  const customAgentModel = useCustomAgentModel(customAgent);
-
   const autoApproveGuard = useAutoApproveGuard();
   const { getToolCallLifeCycle } = useToolCallLifeCycle();
   const [lifecycles, tools] = useMemo(
@@ -96,6 +75,7 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
     [navigate],
   );
 
+  const { subtaskOffhand } = useSubtaskOffhand();
   const onAccept = useCallback(() => {
     autoApproveGuard.current = "auto";
     for (const [i, lifecycle] of lifecycles.entries()) {
@@ -104,9 +84,13 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
       }
 
       if (lifecycle.toolName === "newTask" && subtaskOffhand === false) {
+        const newTaskInput =
+          pendingApproval.name === "newTask" &&
+          pendingApproval.tool.type === "tool-newTask"
+            ? pendingApproval.tool.input
+            : undefined;
         const subtaskUid = newTaskInput?._meta?.uid;
         if (subtaskUid) {
-          updateSubtaskAutoApproveSettings({ modelId: customAgentModel?.id });
           manualRunSubtask(subtaskUid);
         }
         return;
@@ -118,10 +102,8 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
     lifecycles,
     autoApproveGuard,
     manualRunSubtask,
+    pendingApproval,
     subtaskOffhand,
-    customAgentModel?.id,
-    newTaskInput,
-    updateSubtaskAutoApproveSettings,
   ]);
 
   const onReject = useCallback(() => {
