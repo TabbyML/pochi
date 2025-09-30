@@ -1,4 +1,6 @@
 import * as os from "node:os";
+import path from "node:path";
+import { CustomAgentManager } from "@/lib/custom-agent";
 import {
   collectCustomRules,
   collectRuleFiles,
@@ -9,9 +11,6 @@ import {
   getWorkspaceRulesFileUri,
 } from "@/lib/env";
 import { getWorkspaceFolder, isFileExists } from "@/lib/fs";
-import { machineId } from "node-machine-id";
-import path from "node:path";
-import { CustomAgentManager } from "@/lib/custom-agent";
 import { getLogger } from "@/lib/logger";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { ModelList } from "@/lib/model-list";
@@ -73,6 +72,7 @@ import {
   type ThreadSignalSerialization,
 } from "@quilted/threads/signals";
 import type { Tool } from "ai";
+import { machineId } from "node-machine-id";
 import { keys } from "remeda";
 import * as runExclusive from "run-exclusive";
 import { inject, injectable, singleton } from "tsyringe";
