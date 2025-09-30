@@ -10,7 +10,7 @@ import {
   getSystemInfo,
   getWorkspaceRulesFileUri,
 } from "@/lib/env";
-import { getWorkspaceFolder, isFileExists } from "@/lib/fs";
+import { isFileExists } from "@/lib/fs";
 import { getLogger } from "@/lib/logger";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { ModelList } from "@/lib/model-list";
@@ -102,7 +102,8 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   private checkpointGroup = runExclusive.createGroupRef();
   private disposables: vscode.Disposable[] = [];
   // cwd === null means no workspace is currently open.
-  private cwd: string | null = getWorkspaceFolder()?.uri.fsPath ?? null;
+  private cwd: string | null =
+    vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? null;
   private checkpointService: CheckpointService | null = null;
   private customAgentManager: CustomAgentManager;
 
