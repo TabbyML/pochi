@@ -22,7 +22,7 @@ const useModelSelectionState = (isSubtask: boolean) => {
   if (isSubtask) {
     return {
       updateSelectedModel: settings.updateSubtaskSelectedModel,
-      selectedModel: settings.subtaskSelectedModel || settings.selectedModel,
+      selectedModel: settings.subtaskSelectedModel,
     };
   }
   return {
