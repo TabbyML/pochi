@@ -1,7 +1,7 @@
-import * as vscode from "vscode";
-import type { ClientTools, ToolFunctionType } from "@getpochi/tools";
-import * as path from "node:path";
 import * as fs from "node:fs/promises";
+import * as path from "node:path";
+import type { ClientTools, ToolFunctionType } from "@getpochi/tools";
+import * as vscode from "vscode";
 
 interface NotebookCell {
   id?: string;
