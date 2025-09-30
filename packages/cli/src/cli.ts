@@ -150,7 +150,7 @@ const program = new Command()
       const shareUrl = chalk.underline(
         `https://app.getpochi.com/share/${shareId}`,
       );
-      console.log(`\n${chalk.bold("Task link: ")} ${shareUrl}`);
+      // console.log(`\n${chalk.bold("Task link: ")} ${shareUrl}`);
     }
 
     renderer.shutdown();
