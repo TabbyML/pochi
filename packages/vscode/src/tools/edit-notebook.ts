@@ -69,7 +69,6 @@ export const editNotebook: ToolFunctionType<
 
     return { success: true };
   } catch (error) {
-    console.error("Error editing notebook:", error);
     return { success: false };
   }
 };
