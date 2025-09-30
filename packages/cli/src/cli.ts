@@ -145,7 +145,7 @@ const program = new Command()
     await runner.run();
 
     renderer.shutdown();
-    
+
     const shareId = runner.shareId;
     if (shareId) {
       // FIXME(zhiming): base url is hard code, should use options.url
