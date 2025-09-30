@@ -150,7 +150,7 @@ export interface VSCodeHostApi {
     },
   ): void;
 
-  readCurrentWorkspace(): Promise<string | undefined>;
+  readCurrentWorkspace(): Promise<string | null>;
 
   readCustomAgents(): Promise<ThreadSignalSerialization<CustomAgentFile[]>>;
 

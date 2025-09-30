@@ -35,8 +35,8 @@ export class DiffView implements vscode.Disposable {
     private readonly fileExists: boolean,
     private readonly originalContent: string,
     private readonly activeDiffEditor: vscode.TextEditor,
-    private readonly isFileOpenBeforeDiffPreview = false,
     private readonly cwd: string,
+    private readonly isFileOpenBeforeDiffPreview = false,
   ) {
     this.fadedOverlayController = new DecorationController(
       "fadedOverlay",
@@ -383,8 +383,8 @@ export class DiffView implements vscode.Disposable {
       fileExists,
       originalContent,
       activeDiffEditor,
-      wasFileOpenBeforeDiff,
       cwd,
+      wasFileOpenBeforeDiff,
     );
   }
 

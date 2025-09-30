@@ -19,7 +19,7 @@ const logger = getLogger("env");
  * Gets system information such as current working directory, shell, OS, and home directory.
  * @returns An object containing system information such as cwd, shell, os, and homedir.
  */
-export function getSystemInfo(cwd?: string): {
+export function getSystemInfo(cwd: string | null): {
   cwd: string;
   shell: string;
   os: string;

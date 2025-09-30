@@ -10,9 +10,7 @@ import {
 } from "@/lib/env";
 import { getWorkspaceFolder, isFileExists } from "@/lib/fs";
 import { machineId } from "node-machine-id";
-
 import path from "node:path";
-// biome-ignore lint/style/useImportType: needed for dependency injection
 import { CustomAgentManager } from "@/lib/custom-agent";
 import { getLogger } from "@/lib/logger";
 // biome-ignore lint/style/useImportType: needed for dependency injection
@@ -79,7 +77,6 @@ import { keys } from "remeda";
 import * as runExclusive from "run-exclusive";
 import { inject, injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
-// biome-ignore lint/style/useImportType: needed for dependency injection
 import { CheckpointService } from "../checkpoint/checkpoint-service";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { PochiConfiguration } from "../configuration";
@@ -104,7 +101,10 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   private toolCallGroup = runExclusive.createGroupRef();
   private checkpointGroup = runExclusive.createGroupRef();
   private disposables: vscode.Disposable[] = [];
-  private cwd = getWorkspaceFolder()?.uri.fsPath;
+  // cwd === null means no workspace is currently open.
+  private cwd: string | null = getWorkspaceFolder()?.uri.fsPath ?? null;
+  private checkpointService: CheckpointService | null = null;
+  private customAgentManager: CustomAgentManager;
 
   constructor(
     @inject("vscode.ExtensionContext")
@@ -114,12 +114,15 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     private readonly posthog: PostHog,
     @inject("McpHub") private readonly mcpHub: McpHub,
     private readonly thirdMcpImporter: ThirdMcpImporter,
-    private readonly checkpointService: CheckpointService,
     private readonly pochiConfiguration: PochiConfiguration,
     private readonly modelList: ModelList,
     private readonly userStorage: UserStorage,
-    private readonly customAgentManager: CustomAgentManager,
-  ) {}
+  ) {
+    if (this.cwd) {
+      this.checkpointService = new CheckpointService(this.cwd, this.context);
+    }
+    this.customAgentManager = new CustomAgentManager(this.cwd);
+  }
 
   listRuleFiles = async (): Promise<RuleFile[]> => {
     return this.cwd ? await collectRuleFiles(this.cwd) : [];
@@ -253,7 +256,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     };
   };
 
-  readCurrentWorkspace = async (): Promise<string | undefined> => {
+  readCurrentWorkspace = async (): Promise<string | null> => {
     return this.cwd;
   };
 
@@ -579,6 +582,9 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       message: string,
       options?: SaveCheckpointOptions,
     ): Promise<string | null> => {
+      if (!this.checkpointService) {
+        return null;
+      }
       return await this.checkpointService.saveCheckpoint(message, options);
     },
   );
@@ -586,12 +592,12 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   restoreCheckpoint = runExclusive.build(
     this.checkpointGroup,
     async (commitHash: string): Promise<void> => {
-      await this.checkpointService.restoreCheckpoint(commitHash);
+      await this.checkpointService?.restoreCheckpoint(commitHash);
     },
   );
 
   readCheckpointPath = async (): Promise<string | undefined> => {
-    return this.checkpointService.getShadowGitPath();
+    return this.checkpointService?.getShadowGitPath();
   };
 
   diffWithCheckpoint = runExclusive.build(
@@ -600,7 +606,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       try {
         // Get changes using existing method
         const changes =
-          await this.checkpointService.getCheckpointUserEditsDiff(
+          await this.checkpointService?.getCheckpointUserEditsDiff(
             fromCheckpoint,
           );
         if (!changes || changes.length === 0) {
@@ -623,31 +629,36 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       checkpoint: { origin: string; modified?: string },
       displayPath?: string,
     ) => {
-      const changedFiles = await this.checkpointService.getCheckpointChanges(
+      const changedFiles = await this.checkpointService?.getCheckpointChanges(
         checkpoint.origin,
         checkpoint.modified,
       );
-      if (changedFiles.length === 0) {
+      if (!changedFiles || changedFiles.length === 0) {
         logger.info(
           `No changes found in the checkpoint from ${checkpoint.origin} to ${checkpoint.modified}`,
         );
         return false;
       }
+
+      if (!this.cwd) {
+        return false;
+      }
+
       if (displayPath) {
         const changedFile = changedFiles.filter(
           (file) => file.filepath === displayPath,
         )[0];
         await vscode.commands.executeCommand(
           "vscode.diff",
-          vscode.Uri.parse(
-            `${DiffChangesContentProvider.scheme}:${changedFile.filepath}`,
-          ).with({
-            query: Buffer.from(changedFile.before ?? "").toString("base64"),
+          DiffChangesContentProvider.decode({
+            filepath: changedFile.filepath,
+            content: changedFile.before,
+            cwd: this.cwd,
           }),
-          vscode.Uri.parse(
-            `${DiffChangesContentProvider.scheme}:${changedFile.filepath}`,
-          ).with({
-            query: Buffer.from(changedFile.after ?? "").toString("base64"),
+          DiffChangesContentProvider.decode({
+            filepath: changedFile.filepath,
+            content: changedFile.after,
+            cwd: this.cwd,
           }),
           title,
           {
@@ -658,18 +669,15 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         return true;
       }
 
-      if (!this.cwd) {
-        return false;
-      }
       await vscode.commands.executeCommand(
         "vscode.changes",
         title,
         changedFiles.map((file) => [
           vscode.Uri.joinPath(vscode.Uri.parse(this.cwd ?? ""), file.filepath),
-          vscode.Uri.parse(
-            `${DiffChangesContentProvider.scheme}:${file.filepath}`,
-          ).with({
-            query: Buffer.from(file.before ?? "").toString("base64"),
+          DiffChangesContentProvider.decode({
+            filepath: file.filepath,
+            content: file.after,
+            cwd: this.cwd ?? "",
           }),
           vscode.Uri.joinPath(vscode.Uri.parse(this.cwd ?? ""), file.filepath),
         ]),

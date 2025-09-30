@@ -8,7 +8,6 @@ import type { AuthClient } from "@/lib/auth-client";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { AuthEvents } from "@/lib/auth-events";
 import { getWorkspaceRulesFileUri } from "@/lib/env";
-import { getWorkspaceFolder } from "@/lib/fs";
 import { getLogger, showOutputPanel } from "@/lib/logger";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { NewProjectRegistry, prepareProject } from "@/lib/new-project";
@@ -399,29 +398,25 @@ export class CommandManager implements vscode.Disposable {
         },
       ),
 
-      vscode.commands.registerCommand(
-        "pochi.openFileFromDiff",
-        async (args) => {
-          logger.debug("Opening file from diff view", args);
-          const activeTab = vscode.window.tabGroups.activeTabGroup.activeTab;
-          const workspaceFolder = getWorkspaceFolder();
-          if (
-            workspaceFolder &&
-            activeTab &&
-            activeTab.input instanceof vscode.TabInputTextDiff &&
-            activeTab.input.original.scheme ===
-              DiffChangesContentProvider.scheme
-          ) {
-            const fileUri = vscode.Uri.joinPath(
-              workspaceFolder.uri,
-              activeTab.input.original.path,
-            );
-            await vscode.window.showTextDocument(fileUri, {
+      vscode.commands.registerCommand("pochi.openFileFromDiff", async () => {
+        const activeTab = vscode.window.tabGroups.activeTabGroup.activeTab;
+        logger.debug("openFileFromDiff", { activeTab });
+        if (
+          activeTab &&
+          activeTab.input instanceof vscode.TabInputTextDiff &&
+          activeTab.input.original.scheme === DiffChangesContentProvider.scheme
+        ) {
+          const data = DiffChangesContentProvider.parse(
+            activeTab.input.original,
+          );
+          await vscode.window.showTextDocument(
+            vscode.Uri.joinPath(vscode.Uri.parse(data.cwd), data.filepath),
+            {
               preview: false,
-            });
-          }
-        },
-      ),
+            },
+          );
+        }
+      }),
 
       vscode.commands.registerCommand(
         "pochi.openCustomModelSettings",
