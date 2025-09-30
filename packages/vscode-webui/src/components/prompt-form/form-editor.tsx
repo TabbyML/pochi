@@ -27,7 +27,7 @@ import {
 import "./prompt-form.css";
 import { useSelectedModels } from "@/features/settings";
 import { cn } from "@/lib/utils";
-import { resolveModelFromString } from "@/lib/utils/model";
+import { resolveModelFromId } from "@/lib/utils/resolve-model-from-id";
 import {
   type SuggestionMatch,
   type Trigger,
@@ -140,10 +140,7 @@ export function FormEditor({
 
   const onSelectWorkflow = useCallback(
     (workflow: WorkflowItem) => {
-      const foundModel = resolveModelFromString(
-        workflow.frontmatter.model,
-        models,
-      );
+      const foundModel = resolveModelFromId(workflow.frontmatter.model, models);
       if (foundModel) {
         updateSelectedModel(foundModel.id);
       }

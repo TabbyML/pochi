@@ -20,9 +20,9 @@ export function useSelectedModels(options?: UseSelectedModelsOptions) {
   const isSubTask = options?.isSubTask ?? false;
   const {
     selectedModel: selectedModelFromStore,
-    updateSelectedModel: updateSelectedModelInStore,
-    subtaskAutoApproveSettings,
-    updateSubtaskAutoApproveSettings,
+    subtaskSelectedModel,
+    updateSelectedModel,
+    updateSubtaskSelectedModel,
   } = useSettingsStore();
   const { modelList: models, isLoading } = useModelList(true);
   const groupedModels = useMemo<ModelGroups | undefined>(() => {
@@ -57,51 +57,41 @@ export function useSelectedModels(options?: UseSelectedModelsOptions) {
 
   const selectedModel = useMemo(() => {
     const targetModelId = isSubTask
-      ? subtaskAutoApproveSettings.modelId
+      ? subtaskSelectedModel?.id
       : selectedModelFromStore?.id;
     if (!targetModelId) return undefined;
 
     return models?.find((x) => x.id === targetModelId);
-  }, [
-    selectedModelFromStore,
-    models,
-    isSubTask,
-    subtaskAutoApproveSettings.modelId,
-  ]);
+  }, [selectedModelFromStore, models, isSubTask, subtaskSelectedModel]);
 
-  const updateSelectedModel = useCallback(
+  const handleUpdateSelectedModel = useCallback(
     (modelId: string | undefined) => {
       if (!modelId) return;
       const model = models?.find((x) => x.id === modelId);
       if (!model) return;
 
       if (isSubTask) {
-        updateSubtaskAutoApproveSettings({ modelId: model.id });
+        updateSubtaskSelectedModel(pick(model, ["id", "name"]));
       } else {
-        updateSelectedModelInStore(pick(model, ["id", "name"]));
+        updateSelectedModel(pick(model, ["id", "name"]));
       }
     },
-    [
-      models,
-      updateSelectedModelInStore,
-      isSubTask,
-      updateSubtaskAutoApproveSettings,
-    ],
+    [isSubTask, models, updateSelectedModel, updateSubtaskSelectedModel],
   );
 
   // set initial model
   useEffect(() => {
     if (!isLoading && !selectedModelFromStore && !!models?.length) {
-      updateSelectedModelInStore(pick(models[0], ["id", "name"]));
+      updateSelectedModel(pick(models[0], ["id", "name"]));
     }
-  }, [isLoading, models, selectedModelFromStore, updateSelectedModelInStore]);
+  }, [isLoading, models, selectedModelFromStore, updateSelectedModel]);
 
   return {
     isLoading,
     models,
     groupedModels,
     selectedModel,
-    updateSelectedModel,
+    updateSelectedModel: handleUpdateSelectedModel,
     // for fallback display
     selectedModelFromStore,
   };

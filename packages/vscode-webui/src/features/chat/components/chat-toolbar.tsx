@@ -261,11 +261,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
       <div className="my-2 flex shrink-0 justify-between gap-5 overflow-x-hidden">
         <div className="flex items-center gap-2 overflow-x-hidden truncate">
           <ModelSelect
-            value={
-              isSubTask
-                ? selectedModel
-                : selectedModel || selectedModelFromStore
-            }
+            value={selectedModel || selectedModelFromStore}
             models={groupedModels}
             isLoading={isModelsLoading}
             isValid={!!selectedModel}

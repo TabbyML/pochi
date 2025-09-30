@@ -1,17 +1,16 @@
 import { useSelectedModels, useSettingsStore } from "@/features/settings";
-import { useCustomAgentModel } from "@/lib/hooks/use-custom-agents";
-import type { ValidCustomAgentFile } from "@getpochi/common/vscode-webui-bridge";
+import type { DisplayModel } from "@getpochi/common/vscode-webui-bridge";
 import { useEffect } from "react";
+import { pick } from "remeda";
 
 export const useSetSubtaskModel = ({
   isSubTask,
-  customAgent,
-}: { isSubTask: boolean; customAgent?: ValidCustomAgentFile }) => {
+  customAgentModel,
+}: { isSubTask: boolean; customAgentModel?: DisplayModel }) => {
   const { selectedModel: parentTaskModel } = useSelectedModels({
     isSubTask: false,
   });
-  const customAgentModel = useCustomAgentModel(customAgent);
-  const { updateSubtaskAutoApproveSettings } = useSettingsStore();
+  const { updateSubtaskSelectedModel } = useSettingsStore();
 
   useEffect(() => {
     if (!isSubTask) return;
@@ -19,14 +18,12 @@ export const useSetSubtaskModel = ({
     // use parent task model as fallback
     const subtaskModel = customAgentModel || parentTaskModel;
     if (subtaskModel) {
-      updateSubtaskAutoApproveSettings({
-        modelId: subtaskModel.id,
-      });
+      updateSubtaskSelectedModel(pick(subtaskModel, ["id", "name"]));
     }
   }, [
     isSubTask,
     customAgentModel,
     parentTaskModel,
-    updateSubtaskAutoApproveSettings,
+    updateSubtaskSelectedModel,
   ]);
 };

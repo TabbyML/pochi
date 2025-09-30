@@ -1,6 +1,6 @@
 import type { DisplayModel } from "@getpochi/common/vscode-webui-bridge";
 
-export function resolveModelFromString(
+export function resolveModelFromId(
   model: string | undefined,
   models: DisplayModel[] | undefined,
 ): DisplayModel | undefined {

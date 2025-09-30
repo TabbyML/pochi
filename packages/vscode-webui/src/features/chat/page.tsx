@@ -56,7 +56,7 @@ function Chat({ user, uid, prompt }: ChatProps) {
 
   const task = store.useQuery(catalog.queries.makeTaskQuery(uid));
   const subtask = useSubtaskInfo(uid, task?.parentId);
-  const customAgent = useCustomAgent(subtask?.agent);
+  const { customAgent, customAgentModel } = useCustomAgent(subtask?.agent);
   const autoApproveGuard = useAutoApproveGuard();
   const { data: currentWorkspace, isFetching: isFetchingWorkspace } =
     useCurrentWorkspace();
@@ -128,7 +128,7 @@ function Chat({ user, uid, prompt }: ChatProps) {
     retry,
   });
 
-  useSetSubtaskModel({ customAgent, isSubTask: !!subtask });
+  useSetSubtaskModel({ customAgentModel, isSubTask: !!subtask });
 
   useAddSubtaskResult({ ...chat });
 

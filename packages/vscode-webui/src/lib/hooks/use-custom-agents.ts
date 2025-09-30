@@ -1,11 +1,12 @@
 import {
   type CustomAgentFile,
+  type DisplayModel,
   type ValidCustomAgentFile,
   isValidCustomAgentFile,
 } from "@getpochi/common/vscode-webui-bridge";
 import { threadSignal } from "@quilted/threads/signals";
 import { useQuery } from "@tanstack/react-query";
-import { resolveModelFromString } from "../utils/model";
+import { resolveModelFromId } from "../utils/resolve-model-from-id";
 import { vscodeHost } from "../vscode";
 import { useModelList } from "./use-model-list";
 
@@ -49,19 +50,22 @@ export function useCustomAgents(filterValidFiles = false) {
 
 export const useCustomAgent = (name?: string) => {
   const { customAgents } = useCustomAgents(true);
-  if (!name) {
-    return undefined;
-  }
-  const customAgent = customAgents?.find((agent) => agent.name === name);
-  return customAgent;
-};
-
-export const useCustomAgentModel = (
-  customAgent: ValidCustomAgentFile | undefined,
-) => {
   const { modelList } = useModelList(true);
-  if (customAgent?.model) {
-    return resolveModelFromString(customAgent.model, modelList);
+
+  if (!name) {
+    return {
+      customAgent: undefined,
+      customAgentModel: undefined,
+    };
   }
-  return undefined;
+
+  const customAgent = customAgents?.find((agent) => agent.name === name);
+  let customAgentModel: DisplayModel | undefined;
+  if (customAgent?.model) {
+    customAgentModel = resolveModelFromId(customAgent.model, modelList);
+  }
+  return {
+    customAgent,
+    customAgentModel,
+  };
 };
