@@ -144,6 +144,8 @@ const program = new Command()
 
     await runner.run();
 
+    renderer.shutdown();
+
     const shareId = runner.shareId;
     if (shareId) {
       // FIXME(zhiming): base url is hard code, should use options.url
@@ -153,7 +155,6 @@ const program = new Command()
       console.log(`\n${chalk.bold("Task link: ")} ${shareUrl}`);
     }
 
-    renderer.shutdown();
     mcpHub.dispose();
     await waitForSync(store, "2 second").catch(console.error);
     await store.shutdownPromise();
