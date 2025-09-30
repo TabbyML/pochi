@@ -17,10 +17,12 @@ export async function createStore() {
   const { jwt = null } = (await getPochiCredentials()) || {};
   const storeId = await getStoreId(jwt);
   const adapter = makeAdapter({
-    storage: {
-      type: "fs",
-      baseDirectory: path.join(os.homedir(), ".pochi", "storage"),
-    },
+    storage: process.env.POCHI_LIVEKIT_IN_MEMORY
+      ? { type: "in-memory" }
+      : {
+          type: "fs",
+          baseDirectory: path.join(os.homedir(), ".pochi", "storage"),
+        },
     devtools: process.env.POCHI_LIVEKIT_DEVTOOLS
       ? {
           schemaPath: "../../packages/livekit/src/livestore/schema.ts",
