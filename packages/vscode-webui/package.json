@@ -86,7 +86,6 @@
     "react-icons": "catalog:",
     "react-markdown": "^10.1.0",
     "react-use": "^17.6.0",
-    "rehype-raw": "^7.0.0",
     "rehype-sanitize": "^6.0.0",
     "remeda": "catalog:",
     "shiki": "^3.13.0",

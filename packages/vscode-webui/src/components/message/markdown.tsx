@@ -11,7 +11,6 @@ import {
   useContext,
   useMemo,
 } from "react";
-import rehypeRaw from "rehype-raw";
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import { ControlsContext, Streamdown } from "streamdown";
 import { FileBadge } from "../tool-invocation/file-badge";
@@ -417,7 +416,8 @@ export function MessageMarkdown({
       )}
     >
       <Streamdown
-        rehypePlugins={
+        // @ts-ignore patch api, not typed yet
+        rehypePluginsBefore={
           isMinimalView
             ? undefined
             : [
@@ -427,7 +427,12 @@ export function MessageMarkdown({
                     tagNames: CustomHtmlTags,
                   },
                 ],
-                rehypeRaw,
+              ]
+        }
+        rehypePlugins={
+          isMinimalView
+            ? undefined
+            : [
                 [
                   rehypeSanitize,
                   {
