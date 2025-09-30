@@ -111,7 +111,7 @@ function Chat({ user, uid, prompt }: ChatProps) {
 
   useEffect(() => {
     if (prompt && !chatKit.inited) {
-      chatKit.init(currentWorkspace, prompt);
+      chatKit.init(currentWorkspace ?? undefined, prompt);
     }
   }, [currentWorkspace, prompt, chatKit]);
 

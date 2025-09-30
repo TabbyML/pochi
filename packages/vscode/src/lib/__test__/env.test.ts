@@ -252,7 +252,7 @@ describe("env.ts", () => {
       Object.defineProperty(process, "platform", { value: "darwin", writable: true });
       process.env.SHELL = "/bin/zsh";
 
-      const info = env.getSystemInfo();
+      const info = env.getSystemInfo(testWorkspaceUri.fsPath);
       assert.deepStrictEqual(info, {
         cwd: testWorkspaceUri.fsPath,
         shell: "/bin/zsh",
@@ -267,7 +267,7 @@ describe("env.ts", () => {
       process.cwd = () => "/current/dir_process";
       currentTestWorkspaceFolders = undefined;
 
-      const info = env.getSystemInfo();
+      const info = env.getSystemInfo("/current/dir_process");
       assert.deepStrictEqual(info, {
         cwd: "/current/dir_process",
         shell: "/bin/bash",
@@ -284,7 +284,7 @@ describe("env.ts", () => {
       process.cwd = () => "C:\\project_process";
       currentTestWorkspaceFolders = [];
 
-      const info = env.getSystemInfo();
+      const info = env.getSystemInfo("C:\\project_process");
       assert.deepStrictEqual(info, {
         cwd: "C:\\project_process",
         shell: "powershell.exe",
@@ -299,7 +299,7 @@ describe("env.ts", () => {
       process.cwd = () => "/fallback/cwd_process";
       currentTestWorkspaceFolders = undefined;
 
-      const info = env.getSystemInfo();
+      const info = env.getSystemInfo("/fallback/cwd_process");
       assert.deepStrictEqual(info, {
         cwd: "/fallback/cwd_process",
         shell: "",
@@ -320,7 +320,7 @@ describe("env.ts", () => {
       const workspaceRuleContent = "workspace rule content";
       await createFile(workspaceReadmeUri, workspaceRuleContent);
 
-      const rules = await env.collectCustomRules([]);
+      const rules = await env.collectCustomRules(testWorkspaceUri.fsPath, []);
       assert.ok(rules.includes(workspaceRuleContent), `Rules should include workspace rule content. Got: ${rules}`);
       // Check that the path is somewhat correct, using basename as asRelativePath mock does
       assert.ok(rules.includes(`# Rules from ${nodePath.basename(workspaceReadmeUri.fsPath)}`), "Rule header for workspace should be present");
@@ -331,7 +331,7 @@ describe("env.ts", () => {
       const customRuleContent = "custom rule 1 content";
       await createFile(vscode.Uri.file(customRuleFile1Path), customRuleContent);
 
-      const rules = await env.collectCustomRules([customRuleFile1Path]);
+      const rules = await env.collectCustomRules(testWorkspaceUri.fsPath, [customRuleFile1Path]);
       assert.ok(rules.includes(customRuleContent), `Rules should include custom rule 1 content. Got: ${rules}`);
       assert.ok(rules.includes(`# Rules from ${nodePath.basename(customRuleFile1Path)}`), "Rule header for custom rule 1 should be present");
     });
@@ -344,7 +344,7 @@ describe("env.ts", () => {
       await createFile(vscode.Uri.file(customRuleFile1Path), ruleAContent);
       await createFile(vscode.Uri.file(customRuleFile2Path), ruleBContent);
 
-      const rules = await env.collectCustomRules([customRuleFile1Path, customRuleFile2Path]);
+      const rules = await env.collectCustomRules(testWorkspaceUri.fsPath, [customRuleFile1Path, customRuleFile2Path]);
 
       assert.ok(rules.includes(ruleAContent), `Rules should include custom rule A content. Got: ${rules}`);
       assert.ok(rules.includes(ruleBContent), `Rules should include custom rule B content. Got: ${rules}`);
@@ -361,7 +361,7 @@ describe("env.ts", () => {
       await createFile(vscode.Uri.file(customRuleFile1Path), customCRuleContent);
 
       // Pass homeReadmeUri.fsPath and customRuleFile1Path as custom rules
-      const rules = await env.collectCustomRules([customRuleFile1Path]);
+      const rules = await env.collectCustomRules(testWorkspaceUri.fsPath, [customRuleFile1Path]);
 
       assert.ok(rules.includes(wsRuleContent), "Should include workspace rule content");
       assert.ok(rules.includes(customCRuleContent), "Should include custom C rule content");
@@ -373,7 +373,7 @@ describe("env.ts", () => {
     it("should return empty string if no rules are found", async () => {
       // Ensure no workspace README exists for this test
       try { await vscode.workspace.fs.delete(workspaceReadmeUri); } catch (e) {}
-      const rules = await env.collectCustomRules([]);
+      const rules = await env.collectCustomRules(testWorkspaceUri.fsPath, []);
       assert.strictEqual(rules, "");
     });
 
@@ -382,7 +382,7 @@ describe("env.ts", () => {
       await createFile(workspaceReadmeUri, wsRuleContent);
       const customRuleNonExistent = nodePath.join(currentTestTempDirUri.fsPath, "non-existent-custom.md");
 
-      const rules = await env.collectCustomRules([customRuleNonExistent]);
+      const rules = await env.collectCustomRules(testWorkspaceUri.fsPath, [customRuleNonExistent]);
       assert.ok(rules.includes(wsRuleContent));
       assert.ok(!rules.includes(nodePath.basename(customRuleNonExistent)));
     });
@@ -404,7 +404,7 @@ describe("env.ts", () => {
       await createFile(vscode.Uri.joinPath(workflowsDir, "workflow1.md"), workflow1Content);
       await createFile(vscode.Uri.joinPath(workflowsDir, "workflow2.md"), workflow2Content);
 
-      const workflows = await env.collectWorkflows();
+      const workflows = await env.collectWorkflows(testWorkspaceUri.fsPath);
 
       assert.strictEqual(workflows.length, 2);
 
@@ -428,14 +428,14 @@ describe("env.ts", () => {
       // Ensure workflows directory doesn't exist
       try { await vscode.workspace.fs.delete(workflowsDir, { recursive: true }); } catch (e) {}
 
-      const workflows = await env.collectWorkflows();
+      const workflows = await env.collectWorkflows(testWorkspaceUri.fsPath);
       assert.strictEqual(workflows.length, 0);
     });
 
     it("should return empty array when workflows directory is empty", async () => {
       await createDirectory(workflowsDir);
 
-      const workflows = await env.collectWorkflows();
+      const workflows = await env.collectWorkflows(testWorkspaceUri.fsPath);
       assert.strictEqual(workflows.length, 0);
     });
 
@@ -448,7 +448,7 @@ describe("env.ts", () => {
       await createFile(vscode.Uri.joinPath(workflowsDir, "invalid.txt"), "This should be ignored");
       await createFile(vscode.Uri.joinPath(workflowsDir, "also-invalid.json"), '{"ignored": true}');
 
-      const workflows = await env.collectWorkflows();
+      const workflows = await env.collectWorkflows(testWorkspaceUri.fsPath);
 
       assert.strictEqual(workflows.length, 1);
       assert.strictEqual(workflows[0].id, "valid-workflow");
@@ -462,7 +462,7 @@ describe("env.ts", () => {
 
       await createFile(vscode.Uri.joinPath(workflowsDir, "complex-workflow-name.md"), complexNameContent);
 
-      const workflows = await env.collectWorkflows();
+      const workflows = await env.collectWorkflows(testWorkspaceUri.fsPath);
 
       assert.strictEqual(workflows.length, 1);
       assert.strictEqual(workflows[0].id, "complex-workflow-name");
@@ -474,7 +474,7 @@ describe("env.ts", () => {
 
       await createFile(vscode.Uri.joinPath(workflowsDir, "empty-workflow.md"), "");
 
-      const workflows = await env.collectWorkflows();
+      const workflows = await env.collectWorkflows(testWorkspaceUri.fsPath);
 
       assert.strictEqual(workflows.length, 1);
       assert.strictEqual(workflows[0].id, "empty-workflow");
@@ -489,7 +489,7 @@ describe("env.ts", () => {
 
       // Since we can't easily simulate a file read error in the test environment,
       // we'll test that files that exist are properly read
-      const workflows = await env.collectWorkflows();
+      const workflows = await env.collectWorkflows(testWorkspaceUri.fsPath);
 
       assert.strictEqual(workflows.length, 1);
       assert.strictEqual(workflows[0].id, "valid");
@@ -505,7 +505,7 @@ describe("env.ts", () => {
       await createFile(vscode.Uri.joinPath(workflowsDir, "uppercase.MD"), upperCaseContent);
       await createFile(vscode.Uri.joinPath(workflowsDir, "mixedcase.Md"), mixedCaseContent);
       
-      const workflows = await env.collectWorkflows();
+      const workflows = await env.collectWorkflows(testWorkspaceUri.fsPath);
       
       // The function should detect .MD and .Md files (case-insensitive)
       assert.strictEqual(workflows.length, 2);
