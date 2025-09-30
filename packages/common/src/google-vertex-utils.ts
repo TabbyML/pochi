@@ -69,5 +69,29 @@ export function createVertexModel(vertex: GoogleVertexModel, modelId: string) {
     })(modelId);
   }
 
+  if ("issueUrl" in vertex) {
+    const { issueUrl, modelUrl } = vertex;
+    return createVertexWithoutCredentials({
+      project: "placeholder",
+      location: "placeholder",
+      baseURL: "placeholder",
+      fetch: async (
+        _input: Request | URL | string,
+        requestInit?: RequestInit,
+      ) => {
+        const resp = (await fetch(issueUrl, {
+          headers: {
+            "Metdata-Flavor": "Google",
+          },
+        }).then((x) => x.json())) as {
+          access_token: string;
+        };
+        const headers = new Headers(requestInit?.headers);
+        headers.append("Authorization", `Bearer ${resp.access_token}`);
+        return fetch(modelUrl, { ...requestInit, headers });
+      },
+    })("placeholder");
+  }
+
   return undefined as never;
 }

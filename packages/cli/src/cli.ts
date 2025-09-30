@@ -343,6 +343,7 @@ async function createLLMConfigWithProviders(
         modelSetting.contextWindow ?? constants.DefaultContextWindow,
       maxOutputTokens:
         modelSetting.maxTokens ?? constants.DefaultMaxOutputTokens,
+      useToolCallMiddleware: modelSetting.useToolCallMiddleware,
     };
   }
 

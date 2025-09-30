@@ -291,6 +291,24 @@
                       "location"
                     ],
                     "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "issueUrl": {
+                        "default": "",
+                        "type": "string"
+                      },
+                      "modelUrl": {
+                        "default": "",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "issueUrl",
+                      "modelUrl"
+                    ],
+                    "additionalProperties": false
                   }
                 ]
               }
