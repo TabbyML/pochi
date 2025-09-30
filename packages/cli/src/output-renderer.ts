@@ -1,7 +1,7 @@
 import { formatters } from "@getpochi/common";
 import { parseMarkdown } from "@getpochi/common/message-utils";
 import type { Message, UITools } from "@getpochi/livekit";
-import { isUserInputToolPart } from "@getpochi/tools";
+import { isAutoApproveTool, isUserInputToolPart } from "@getpochi/tools";
 import { type ToolUIPart, getToolName, isToolUIPart } from "ai";
 import chalk from "chalk";
 import { Listr, type ListrTask, type ObservableLike } from "listr2";
@@ -73,6 +73,8 @@ export class OutputRenderer {
         const { text, stop, error } = renderToolPart(part);
         this.spinner.prefixText = text;
         if (
+          ((isUserInputToolPart(part) || isAutoApproveTool(part)) &&
+            part.state === "input-available") ||
           part.state === "output-available" ||
           part.state === "output-error"
         ) {
