@@ -123,7 +123,7 @@ function getCurrentWorkingFile(workspace: Environment["workspace"]) {
   }
 
   const location = notebookCell
-    ? `${filepath} (Cell ${notebookCell.cellIndex + 1}, ID: ${notebookCell.cellId})`
+    ? `${filepath} (Cell ID: ${notebookCell.cellId})`
     : `${filepath}:${range.start.line + 1}-${range.end.line + 1}`;
 
   return `# Active Selection (${location})\n\n\`\`\`\n${content}\n\`\`\`\n`;
