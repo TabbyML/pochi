@@ -206,8 +206,6 @@ const {
   updateConfig,
   getVendorConfig,
   updateVendorConfig,
-  inspect,
-  setWorkspacePath,
   getConfigFilePath,
   watchKeys,
 } = new PochiConfigManager();
@@ -217,8 +215,6 @@ export {
   updateConfig as updatePochiConfig,
   getVendorConfig,
   updateVendorConfig,
-  inspect as inspectPochiConfig,
-  setWorkspacePath as setPochiConfigWorkspacePath,
   getConfigFilePath as getPochiConfigFilePath,
   watchKeys as watchPochiConfigKeys,
 };
