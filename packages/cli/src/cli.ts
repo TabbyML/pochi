@@ -42,6 +42,7 @@ import {
   replaceWorkflowReferences,
 } from "./lib/workflow-loader";
 
+import { shutdownStoreAndExit } from "./lib/shutdown";
 import { createStore } from "./livekit/store";
 import { initializeMcp, registerMcpCommand } from "./mcp";
 import { registerModelCommand } from "./model";
@@ -154,7 +155,7 @@ const program = new Command()
 
     mcpHub.dispose();
     await waitForSync(store, "2 second").catch(console.error);
-    await store.shutdownPromise();
+    await shutdownStoreAndExit(store);
   });
 
 const otherOptionsGroup = "Others:";

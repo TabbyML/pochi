@@ -66,8 +66,14 @@ export const GoogleVertexModel = z.union([
     location: z.string(),
   }),
   z.object({
-    issueUrl: z.string().default(process.env.POCHI_VERTEX_ISSUE_URL ?? ""),
-    modelUrl: z.string().default(process.env.POCHI_VERTEX_MODEL_URL ?? ""),
+    issueUrl: z
+      .string()
+      .optional()
+      .default(process.env.POCHI_VERTEX_ISSUE_URL ?? ""),
+    modelUrl: z
+      .string()
+      .optional()
+      .default(process.env.POCHI_VERTEX_MODEL_URL ?? ""),
   }),
 ]);
 
