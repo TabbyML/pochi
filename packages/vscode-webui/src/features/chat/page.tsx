@@ -21,7 +21,6 @@ import { ChatToolbar } from "./components/chat-toolbar";
 import { ErrorMessageView } from "./components/error-message-view";
 import { SubtaskHeader } from "./components/subtask";
 import { useScrollToBottom } from "./hooks/use-scroll-to-bottom";
-import { useSetSubtaskModel } from "./hooks/use-set-subtask-model";
 import { useAddSubtaskResult } from "./hooks/use-subtask-completed";
 import { useSubtaskInfo } from "./hooks/use-subtask-info";
 import { useAutoApproveGuard, useChatAbortController } from "./lib/chat-state";
@@ -56,6 +55,9 @@ function Chat({ user, uid, prompt }: ChatProps) {
 
   const task = store.useQuery(catalog.queries.makeTaskQuery(uid));
   const subtask = useSubtaskInfo(uid, task?.parentId);
+  const { isLoading: isModelsLoading, selectedModel } = useSelectedModels({
+    isSubTask: !!subtask,
+  });
   const { customAgent, customAgentModel } = useCustomAgent(subtask?.agent);
   const autoApproveGuard = useAutoApproveGuard();
   const { data: currentWorkspace, isFetching: isFetchingWorkspace } =
@@ -63,7 +65,7 @@ function Chat({ user, uid, prompt }: ChatProps) {
   const isWorkspaceActive = !!currentWorkspace;
   const getters = useLiveChatKitGetters({
     todos: todosRef,
-    isSubTask: !!subtask,
+    subtaskModel: subtask ? selectedModel || customAgentModel : undefined,
   });
   const chatKit = useLiveChatKit({
     taskId: uid,
@@ -99,9 +101,6 @@ function Chat({ user, uid, prompt }: ChatProps) {
 
   const { messages, sendMessage, status } = chat;
   const renderMessages = useMemo(() => formatters.ui(messages), [messages]);
-  const { isLoading: isModelsLoading, selectedModel } = useSelectedModels({
-    isSubTask: !!subtask,
-  });
   const isLoading = status === "streaming" || status === "submitted";
 
   const approvalAndRetry = useApprovalAndRetry({
@@ -127,8 +126,6 @@ function Chat({ user, uid, prompt }: ChatProps) {
     task,
     retry,
   });
-
-  useSetSubtaskModel({ customAgentModel, isSubTask: !!subtask });
 
   useAddSubtaskResult({ ...chat });
 

@@ -79,6 +79,10 @@ export function useSelectedModels(options?: UseSelectedModelsOptions) {
     [isSubTask, models, updateSelectedModel, updateSubtaskSelectedModel],
   );
 
+  const clearSubtaskSelectedModel = useCallback(() => {
+    updateSubtaskSelectedModel(undefined);
+  }, [updateSubtaskSelectedModel]);
+
   // set initial model
   useEffect(() => {
     if (!isLoading && !selectedModelFromStore && !!models?.length) {
@@ -91,7 +95,8 @@ export function useSelectedModels(options?: UseSelectedModelsOptions) {
     models,
     groupedModels,
     selectedModel,
-    updateSelectedModel: handleUpdateSelectedModel,
+    updateSelectedModelId: handleUpdateSelectedModel,
+    clearSubtaskSelectedModel,
     // for fallback display
     selectedModelFromStore,
   };

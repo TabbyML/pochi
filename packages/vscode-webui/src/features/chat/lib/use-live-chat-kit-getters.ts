@@ -18,26 +18,33 @@ import type {
 } from "@getpochi/common/vscode-webui-bridge";
 import type { LLMRequestData, Message } from "@getpochi/livekit";
 import type { Todo } from "@getpochi/tools";
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 
 export function useLiveChatKitGetters({
   todos,
-  isSubTask = false,
-  offhand = false,
-  model,
+  subtaskModel,
 }: {
   todos: React.RefObject<Todo[] | undefined>;
-  isSubTask?: boolean;
-  offhand?: boolean;
-  model?: DisplayModel;
+  subtaskModel?: DisplayModel;
 }) {
+  const isSubTask = !!subtaskModel;
   const { toolset, instructions } = useMcp();
   const mcpInfo = useLatest({ toolset, instructions });
 
-  const llm = useLLM({ isSubTask, model, offhand });
+  const llm = useLLM({ subtaskModel });
 
   const { customAgents } = useCustomAgents(true);
   const customAgentsRef = useLatest(customAgents);
+  const { updateSelectedModelId, clearSubtaskSelectedModel } =
+    useSelectedModels({ isSubTask });
+
+  useEffect(() => {
+    if (subtaskModel?.id) {
+      updateSelectedModelId(subtaskModel.id);
+    } else {
+      clearSubtaskSelectedModel();
+    }
+  }, [subtaskModel?.id, updateSelectedModelId, clearSubtaskSelectedModel]);
 
   const getEnvironment = useCallback(
     async ({ messages }: { messages: readonly Message[] }) => {
@@ -94,19 +101,15 @@ function findSecondLastCheckpointFromMessages(
 }
 
 function useLLM({
-  model: propsModel,
-  isSubTask,
-  offhand,
+  subtaskModel,
 }: {
-  isSubTask: boolean;
-  model?: DisplayModel;
-  offhand: boolean;
+  subtaskModel?: DisplayModel;
 }): React.RefObject<LLMRequestData> {
-  const { selectedModel } = useSelectedModels({
-    isSubTask: offhand ? false : isSubTask,
+  const { selectedModel: parentSelectedModel } = useSelectedModels({
+    isSubTask: false,
   });
-  // For offhand mode, use the frontmatter model or parent task model
-  const model = propsModel || selectedModel;
+
+  const model = subtaskModel || parentSelectedModel;
   const llmFromSelectedModel = ((): LLMRequestData => {
     if (!model) return undefined as never;
     if (model.type === "vendor") {

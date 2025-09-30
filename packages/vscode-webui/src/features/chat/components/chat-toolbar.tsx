@@ -82,7 +82,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     selectedModel,
     selectedModelFromStore, // for fallback display
     isLoading: isModelsLoading,
-    updateSelectedModel,
+    updateSelectedModelId,
   } = useSelectedModels({ isSubTask });
 
   const autoApproveGuard = useAutoApproveGuard();
@@ -265,7 +265,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
             models={groupedModels}
             isLoading={isModelsLoading}
             isValid={!!selectedModel}
-            onChange={updateSelectedModel}
+            onChange={updateSelectedModelId}
           />
         </div>
 

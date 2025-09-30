@@ -1,6 +1,6 @@
+import { useSelectedModels } from "@/features/settings";
 import {
   type CustomAgentFile,
-  type DisplayModel,
   type ValidCustomAgentFile,
   isValidCustomAgentFile,
 } from "@getpochi/common/vscode-webui-bridge";
@@ -51,17 +51,20 @@ export function useCustomAgents(filterValidFiles = false) {
 export const useCustomAgent = (name?: string) => {
   const { customAgents } = useCustomAgents(true);
   const { modelList } = useModelList(true);
-
+  const { selectedModel: parentTaskModel } = useSelectedModels({
+    isSubTask: false,
+  });
+  let customAgentModel = parentTaskModel;
   if (!name) {
     return {
       customAgent: undefined,
-      customAgentModel: undefined,
+      customAgentModel,
     };
   }
 
   const customAgent = customAgents?.find((agent) => agent.name === name);
-  let customAgentModel: DisplayModel | undefined;
   if (customAgent?.model) {
+    // if customAgent has configured model, use it
     customAgentModel = resolveModelFromId(customAgent.model, modelList);
   }
   return {

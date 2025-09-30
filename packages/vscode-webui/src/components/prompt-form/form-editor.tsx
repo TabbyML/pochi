@@ -121,7 +121,7 @@ export function FormEditor({
   messageContent = "",
   isSubTask,
 }: FormEditorProps) {
-  const { updateSelectedModel, models } = useSelectedModels({ isSubTask });
+  const { updateSelectedModelId, models } = useSelectedModels({ isSubTask });
   const internalFormRef = useRef<HTMLFormElement>(null);
   const formRef = externalFormRef || internalFormRef;
   const [isAutoCompleteHintVisible, setIsAutoCompleteHintVisible] =
@@ -142,10 +142,10 @@ export function FormEditor({
     (workflow: WorkflowItem) => {
       const foundModel = resolveModelFromId(workflow.frontmatter.model, models);
       if (foundModel) {
-        updateSelectedModel(foundModel.id);
+        updateSelectedModelId(foundModel.id);
       }
     },
-    [models, updateSelectedModel],
+    [models, updateSelectedModelId],
   );
 
   const editor = useEditor(
