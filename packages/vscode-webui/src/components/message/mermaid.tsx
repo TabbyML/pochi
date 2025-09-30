@@ -63,6 +63,7 @@ export function Mermaid({ chart }: { chart: string }): ReactElement {
         fontFamily: "inherit",
         themeCSS: "margin: 1.5rem auto 0;",
         theme: isDarkTheme ? "dark" : "default",
+        suppressErrorRendering: true,
       };
 
       const { default: mermaid } = await import("mermaid");

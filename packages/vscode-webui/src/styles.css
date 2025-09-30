@@ -5,6 +5,8 @@
 
 @custom-variant dark (&:is(.dark *));
 
+@source "../../../node_modules/streamdown/dist/index.js";
+
 html {
   font-size: var(--vscode-font-size);
 }

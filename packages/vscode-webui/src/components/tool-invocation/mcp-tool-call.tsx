@@ -86,7 +86,6 @@ export const McpToolCall: React.FC<ToolProps<any>> = ({
           <CodeBlock
             language={"json"}
             value={JSON.stringify(input, null, 2)}
-            canWrapLongLines={true}
             isMinimalView={true}
             className="border-0"
           />
@@ -112,7 +111,6 @@ export const McpToolCall: React.FC<ToolProps<any>> = ({
               <CodeBlock
                 language={"json"}
                 value={JSON.stringify(result, null, 2)}
-                canWrapLongLines={true}
                 isMinimalView={true}
                 className="border-0"
               />
@@ -182,7 +180,6 @@ function JsonCodeBlock({ item }: { item: unknown }) {
       <CodeBlock
         language="json"
         value={JSON.stringify(item, null, 2)}
-        canWrapLongLines={true}
         isMinimalView={true}
         className="border-0"
       />
