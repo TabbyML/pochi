@@ -5,21 +5,11 @@ import * as vscode from "vscode";
 
 interface NotebookCell {
   id?: string;
-  cell_type: "code" | "markdown" | "raw";
   source: string | string[];
-  // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-  metadata?: Record<string, any>;
-  // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-  outputs?: any[];
-  execution_count?: number | null;
 }
 
 interface NotebookContent {
   cells: NotebookCell[];
-  // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-  metadata?: Record<string, any>;
-  nbformat?: number;
-  nbformat_minor?: number;
 }
 
 export const editNotebook: ToolFunctionType<
