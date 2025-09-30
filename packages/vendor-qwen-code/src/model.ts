@@ -14,7 +14,6 @@ export function createQwenModel({
   modelId,
   getCredentials,
 }: CreateModelOptions): LanguageModelV2 {
-
   const actualModelId = ModelIdMap[modelId] || modelId;
   const qwenModel = createOpenAICompatible({
     name: "OpenAI",
