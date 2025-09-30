@@ -20,6 +20,7 @@ import { killBackgroundJob } from "./kill-background-job";
 import { readBackgroundJobOutput } from "./read-background-job-output";
 import { startBackgroundJob } from "./start-background-job";
 import { writeToFile } from "./write-to-file";
+import { editNotebook } from "./edit-notebook";
 export {
   CustomAgent,
   overrideCustomAgentTools,
@@ -57,6 +58,7 @@ export const ToolsByPermission = {
     "writeToFile",
     "applyDiff",
     "multiApplyDiff",
+    "editNotebook",
   ] satisfies ToolName[] as string[],
   execute: [
     "executeCommand",
@@ -81,6 +83,7 @@ const createCliTools = (customAgents?: CustomAgent[]) => ({
   searchFiles,
   todoWrite,
   writeToFile,
+  editNotebook,
   newTask: createNewTaskTool(customAgents),
 });
 

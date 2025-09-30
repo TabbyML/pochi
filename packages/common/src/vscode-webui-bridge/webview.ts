@@ -147,6 +147,7 @@ export interface VSCodeHostApi {
       preserveFocus?: boolean;
       base64Data?: string;
       fallbackGlobPattern?: string;
+      cellId?: string;
     },
   ): void;
 

@@ -8,6 +8,7 @@ import { McpToolCall } from "./mcp-tool-call";
 import { applyDiffTool } from "./tools/apply-diff";
 import { AskFollowupQuestionTool } from "./tools/ask-followup-question";
 import { AttemptCompletionTool } from "./tools/attempt-completion";
+import { editNotebookTool } from "./tools/edit-notebook";
 import { executeCommandTool } from "./tools/execute-command";
 import { globFilesTool } from "./tools/glob-files";
 import { KillBackgroundJobTool } from "./tools/kill-background-job";
@@ -85,6 +86,7 @@ const Tools: Record<string, React.FC<ToolProps<any>>> = {
   listFiles: listFilesTool,
   globFiles: globFilesTool,
   todoWrite: todoWriteTool,
+  editNotebook: editNotebookTool,
   // @ts-ignore
   newTask: newTaskTool,
 };

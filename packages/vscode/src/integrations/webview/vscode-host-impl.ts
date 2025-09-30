@@ -36,6 +36,7 @@ import { searchFiles } from "@/tools/search-files";
 import { startBackgroundJob } from "@/tools/start-background-job";
 import { todoWrite } from "@/tools/todo-write";
 import { previewWriteToFile, writeToFile } from "@/tools/write-to-file";
+import { editNotebook } from "@/tools/edit-notebook";
 import type { Environment } from "@getpochi/common";
 import type { UserInfo } from "@getpochi/common/configuration";
 import type { McpStatus } from "@getpochi/common/mcp-utils";
@@ -412,6 +413,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       preserveFocus?: boolean;
       base64Data?: string;
       fallbackGlobPattern?: string;
+      cellId?: string;
     },
   ) => {
     const current = getWorkspaceFolder().uri;
@@ -427,6 +429,36 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         await vscode.commands.executeCommand("revealInExplorer", fileUri);
         await vscode.commands.executeCommand("list.expand");
       } else if (stat.type === vscode.FileType.File) {
+        if (fileUri.fsPath.endsWith(".ipynb")) {
+          // Open notebook with the notebook editor
+          await vscode.commands.executeCommand(
+            "vscode.openWith",
+            fileUri,
+            "jupyter-notebook",
+          );
+
+          if (options?.cellId) {
+            const notebook = vscode.workspace.notebookDocuments.find(
+              (nb) => nb.uri.toString() === fileUri.toString(),
+            );
+            if (!notebook) return;
+            const cellIndex = notebook
+              .getCells()
+              .findIndex((cell) => cell.metadata?.id === options.cellId);
+            if (cellIndex < 0) return;
+            const editor = vscode.window.visibleNotebookEditors.find(
+              (e) => e.notebook.uri.toString() === fileUri.toString(),
+            );
+            if (!editor) return;
+            editor.selection = new vscode.NotebookRange(
+              cellIndex,
+              cellIndex + 1,
+            );
+            await vscode.commands.executeCommand("notebook.cell.edit");
+          }
+          return;
+        }
+
         const isPlainText = await isPlainTextFile(fileUri.fsPath);
         if (!isPlainText) {
           await vscode.commands.executeCommand("vscode.open", fileUri);
@@ -732,6 +764,7 @@ const ToolMap: Record<
   applyDiff,
   todoWrite,
   multiApplyDiff,
+  editNotebook,
 };
 
 const ToolPreviewMap: Record<
