@@ -15,16 +15,31 @@ export type ModelGroups = ModelGroup[];
 type UseSelectedModelsOptions = {
   isSubTask: boolean;
 };
+
+const useModelSelectionState = (isSubtask: boolean) => {
+  const settings = useSettingsStore();
+
+  if (isSubtask) {
+    return {
+      updateSelectedModel: settings.updateSubtaskSelectedModel,
+      selectedModel: settings.subtaskSelectedModel || settings.selectedModel,
+    };
+  }
+  return {
+    updateSelectedModel: settings.updateSelectedModel,
+    selectedModel: settings.selectedModel,
+  };
+};
+
 export function useSelectedModels(options?: UseSelectedModelsOptions) {
   const { t } = useTranslation();
   const isSubTask = options?.isSubTask ?? false;
-  const {
-    selectedModel: selectedModelFromStore,
-    subtaskSelectedModel,
-    updateSelectedModel,
-    updateSubtaskSelectedModel,
-  } = useSettingsStore();
+
   const { modelList: models, isLoading } = useModelList(true);
+  const { selectedModel: selectedModelFromStore } = useSettingsStore();
+  const { updateSelectedModel, selectedModel: storedSelectedModel } =
+    useModelSelectionState(isSubTask);
+
   const groupedModels = useMemo<ModelGroups | undefined>(() => {
     if (!models) return undefined;
     const superModels: ModelGroup = {
@@ -55,38 +70,28 @@ export function useSelectedModels(options?: UseSelectedModelsOptions) {
     return [superModels, swiftModels, customModels];
   }, [models, t]);
 
-  const selectedModel = useMemo(() => {
-    const targetModelId = isSubTask
-      ? subtaskSelectedModel?.id
-      : selectedModelFromStore?.id;
+  // SelectedModel with full information
+  const selectedModel = useMemo<DisplayModel | undefined>(() => {
+    const targetModelId = storedSelectedModel?.id;
     if (!targetModelId) return undefined;
+    return models?.find((m) => m.id === targetModelId);
+  }, [storedSelectedModel, models]);
 
-    return models?.find((x) => x.id === targetModelId);
-  }, [selectedModelFromStore, models, isSubTask, subtaskSelectedModel]);
-
-  const handleUpdateSelectedModel = useCallback(
+  const updateSelectedModelId = useCallback(
     (modelId: string | undefined) => {
       if (!modelId) return;
-      const model = models?.find((x) => x.id === modelId);
+      const model = models?.find((m) => m.id === modelId);
       if (!model) return;
-
-      if (isSubTask) {
-        updateSubtaskSelectedModel(pick(model, ["id", "name"]));
-      } else {
-        updateSelectedModel(pick(model, ["id", "name"]));
-      }
+      updateSelectedModel(pick(model, ["id", "name"]));
     },
-    [isSubTask, models, updateSelectedModel, updateSubtaskSelectedModel],
+    [models, updateSelectedModel],
   );
 
-  const clearSubtaskSelectedModel = useCallback(() => {
-    updateSubtaskSelectedModel(undefined);
-  }, [updateSubtaskSelectedModel]);
-
-  // set initial model
+  // Effect to set an initial model if none is selected and models are loaded.
   useEffect(() => {
-    if (!isLoading && !selectedModelFromStore && !!models?.length) {
-      updateSelectedModel(pick(models[0], ["id", "name"]));
+    if (!isLoading && !selectedModelFromStore && models?.length) {
+      const initialModel = models[0];
+      updateSelectedModel(pick(initialModel, ["id", "name"]));
     }
   }, [isLoading, models, selectedModelFromStore, updateSelectedModel]);
 
@@ -94,10 +99,10 @@ export function useSelectedModels(options?: UseSelectedModelsOptions) {
     isLoading,
     models,
     groupedModels,
+    // model with full information
     selectedModel,
-    updateSelectedModelId: handleUpdateSelectedModel,
-    clearSubtaskSelectedModel,
-    // for fallback display
+    updateSelectedModelId,
+    // model for fallback display
     selectedModelFromStore,
   };
 }

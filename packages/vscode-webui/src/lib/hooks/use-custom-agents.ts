@@ -54,18 +54,23 @@ export const useCustomAgent = (name?: string) => {
   const { selectedModel: parentTaskModel } = useSelectedModels({
     isSubTask: false,
   });
+  // Use the parent task's model as the initial fallback model for the subtask.
   let customAgentModel = parentTaskModel;
+
   if (!name) {
     return {
       customAgent: undefined,
-      customAgentModel,
+      customAgentModel: parentTaskModel,
     };
   }
 
   const customAgent = customAgents?.find((agent) => agent.name === name);
   if (customAgent?.model) {
+    const resolvedModel = resolveModelFromId(customAgent.model, modelList);
     // if customAgent has configured model, use it
-    customAgentModel = resolveModelFromId(customAgent.model, modelList);
+    if (resolvedModel) {
+      customAgentModel = resolvedModel;
+    }
   }
   return {
     customAgent,

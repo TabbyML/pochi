@@ -18,33 +18,23 @@ import type {
 } from "@getpochi/common/vscode-webui-bridge";
 import type { LLMRequestData, Message } from "@getpochi/livekit";
 import type { Todo } from "@getpochi/tools";
-import { useCallback, useEffect } from "react";
+import { useCallback } from "react";
 
 export function useLiveChatKitGetters({
   todos,
-  subtaskModel,
+  isSubTask,
+  modelOverride,
 }: {
   todos: React.RefObject<Todo[] | undefined>;
-  subtaskModel?: DisplayModel;
+  isSubTask: boolean;
+  modelOverride?: DisplayModel;
 }) {
-  const isSubTask = !!subtaskModel;
   const { toolset, instructions } = useMcp();
   const mcpInfo = useLatest({ toolset, instructions });
-
-  const llm = useLLM({ subtaskModel });
+  const llm = useLLM({ isSubTask, modelOverride });
 
   const { customAgents } = useCustomAgents(true);
   const customAgentsRef = useLatest(customAgents);
-  const { updateSelectedModelId, clearSubtaskSelectedModel } =
-    useSelectedModels({ isSubTask });
-
-  useEffect(() => {
-    if (subtaskModel?.id) {
-      updateSelectedModelId(subtaskModel.id);
-    } else {
-      clearSubtaskSelectedModel();
-    }
-  }, [subtaskModel?.id, updateSelectedModelId, clearSubtaskSelectedModel]);
 
   const getEnvironment = useCallback(
     async ({ messages }: { messages: readonly Message[] }) => {
@@ -101,15 +91,15 @@ function findSecondLastCheckpointFromMessages(
 }
 
 function useLLM({
-  subtaskModel,
+  isSubTask,
+  modelOverride,
 }: {
-  subtaskModel?: DisplayModel;
+  isSubTask: boolean;
+  modelOverride?: DisplayModel;
 }): React.RefObject<LLMRequestData> {
-  const { selectedModel: parentSelectedModel } = useSelectedModels({
-    isSubTask: false,
-  });
+  const { selectedModel } = useSelectedModels({ isSubTask });
 
-  const model = subtaskModel || parentSelectedModel;
+  const model = modelOverride || selectedModel;
   const llmFromSelectedModel = ((): LLMRequestData => {
     if (!model) return undefined as never;
     if (model.type === "vendor") {

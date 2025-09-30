@@ -70,7 +70,8 @@ export function useLiveSubTask(
 
   const getters = useLiveChatKitGetters({
     todos: todosRef,
-    subtaskModel: customAgentModel,
+    isSubTask: true,
+    modelOverride: customAgentModel,
   });
 
   // FIXME: handle auto retry for output without task.
