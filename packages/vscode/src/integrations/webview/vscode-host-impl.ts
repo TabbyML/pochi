@@ -75,7 +75,7 @@ import {
   type ThreadSignalSerialization,
 } from "@quilted/threads/signals";
 import type { Tool } from "ai";
-import { entries, keys } from "remeda";
+import { keys } from "remeda";
 import * as runExclusive from "run-exclusive";
 import { inject, injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
@@ -281,9 +281,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
 
   listAutoCompleteCandidates = async (): Promise<string[]> => {
     const clientTools = keys(createClientTools());
-    const mcps = entries(this.mcpHub.status.value.connections)
-      .filter(([_, v]) => v.status === "ready")
-      .map(([id]) => id);
+    const mcps = keys(this.mcpHub.status.value.toolset);
 
     // Inline listDocumentCompletion function
     const candidates: string[] = [];

@@ -6,6 +6,7 @@ import * as JSONC from "jsonc-parser/esm";
 import { funnel, isDeepEqual, mergeDeep } from "remeda";
 import * as fleece from "silver-fleece";
 import { getLogger } from "../base";
+import { isVSCodeEnvironment } from "../env-utils";
 import { PochiConfig } from "./types";
 import type { VendorConfig } from "./vendor";
 
@@ -19,7 +20,7 @@ export class PochiConfigFile {
   constructor(configFilePath: string) {
     this.configFilePath = configFilePath;
     this.cfg.value = this.load();
-    this.watch();
+    this.init();
   }
 
   private load() {
@@ -39,8 +40,14 @@ export class PochiConfigFile {
     this.cfg.value = newValue;
   };
 
-  private async watch() {
+  private async init() {
     await this.ensureFileExists();
+    if (isVSCodeEnvironment()) {
+      this.watch();
+    }
+  }
+
+  private watch() {
     this.events.addEventListener("change", this.onChange);
     const debouncer = funnel(
       () => {
