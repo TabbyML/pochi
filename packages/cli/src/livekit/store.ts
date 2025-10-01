@@ -16,21 +16,21 @@ import { machineId } from "node-machine-id";
 export async function createStore() {
   const { jwt = null } = (await getPochiCredentials()) || {};
   const storeId = await getStoreId(jwt);
-  const disableSync = !!process.env.POCHI_LIVEKIT_NO_SYNC;
+  const enableSync = !!process.env.POCHI_LIVEKIT_SYNC_ON;
   const adapter = makeAdapter({
-    storage: disableSync
-      ? { type: "in-memory" }
-      : {
+    storage: enableSync
+      ? {
           type: "fs",
           baseDirectory: path.join(os.homedir(), ".pochi", "storage"),
-        },
+        }
+      : { type: "in-memory" },
     devtools: process.env.POCHI_LIVEKIT_DEVTOOLS
       ? {
           schemaPath: "../../packages/livekit/src/livestore/schema.ts",
         }
       : undefined,
     sync:
-      jwt && !disableSync
+      jwt && enableSync
         ? {
             backend: makeWsSync({
               url: getSyncBaseUrl(),
