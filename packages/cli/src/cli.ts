@@ -143,9 +143,10 @@ const program = new Command()
       mcpHub,
     });
 
-    const renderer = options.streamJson
-      ? new JsonRenderer(runner.state)
-      : new OutputRenderer(runner.state);
+    const renderer = new OutputRenderer(runner.state);
+    if (options.streamJson) {
+      new JsonRenderer(runner.state);
+    }
 
     await runner.run();
 

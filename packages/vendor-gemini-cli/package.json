@@ -9,6 +9,7 @@
     "tsc": "tsc --noEmit"
   },
   "dependencies": {
+    "@ai-sdk/google": "catalog:",
     "@ai-sdk/google-vertex": "catalog:",
     "@ai-sdk/provider": "catalog:",
     "@ai-sdk/provider-utils": "catalog:",

@@ -1,3 +1,4 @@
+import type { GoogleGenerativeAIProviderOptions } from "@ai-sdk/google";
 import { createVertexWithoutCredentials } from "@ai-sdk/google-vertex/edge";
 import type { LanguageModelV2 } from "@ai-sdk/provider";
 import { EventSourceParserStream } from "@ai-sdk/provider-utils";
@@ -27,6 +28,14 @@ export function createGeminiCliModel({
         return {
           ...params,
           maxOutputTokens: 32768,
+          providerOptions: {
+            google: {
+              thinkingConfig: {
+                includeThoughts: true,
+                thinkingBudget: 4096,
+              },
+            } satisfies GoogleGenerativeAIProviderOptions,
+          },
         };
       },
     },
