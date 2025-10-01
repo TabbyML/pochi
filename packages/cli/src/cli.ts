@@ -374,6 +374,9 @@ async function waitForSync(
   inputStore?: Store,
   timeoutDuration: Duration.DurationInput = "1 second",
 ) {
+  if (!process.env.POCHI_LIVEKIT_SYNC_ON) {
+    return;
+  }
   const store = inputStore || (await createStore());
 
   await Effect.gen(function* (_) {
