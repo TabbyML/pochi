@@ -143,16 +143,6 @@ const program = new Command()
     await runner.run();
 
     renderer.shutdown();
-
-    const shareId = runner.shareId;
-    if (shareId) {
-      // FIXME(zhiming): base url is hard code, should use options.url
-      const shareUrl = chalk.underline(
-        `https://app.getpochi.com/share/${shareId}`,
-      );
-      console.log(`\n${chalk.bold("Task link: ")} ${shareUrl}`);
-    }
-
     mcpHub.dispose();
     await waitForSync(store, "2 second").catch(console.error);
     await shutdownStoreAndExit(store);
