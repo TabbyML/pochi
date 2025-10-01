@@ -42,6 +42,7 @@ import {
   replaceWorkflowReferences,
 } from "./lib/workflow-loader";
 
+import { JsonRenderer } from "./json-renderer";
 import { shutdownStoreAndExit } from "./lib/shutdown";
 import { createStore } from "./livekit/store";
 import { initializeMcp, registerMcpCommand } from "./mcp";
@@ -80,6 +81,10 @@ const program = new Command()
     "Create a new task with a given prompt. Input can also be piped. For example: `cat my-prompt.md | pochi`. Workflows can be triggered with `/workflow-name`, like `pochi -p /create-pr`.",
   )
   .optionsGroup("Options:")
+  .option(
+    "--stream-json",
+    "Stream the output in JSON format. This is useful for parsing the output in scripts.",
+  )
   .option(
     "--max-steps <number>",
     "Set the maximum number of steps for a task. The task will stop if it exceeds this limit.",
@@ -138,7 +143,9 @@ const program = new Command()
       mcpHub,
     });
 
-    const renderer = new OutputRenderer(runner.state);
+    const renderer = options.streamJson
+      ? new JsonRenderer(runner.state)
+      : new OutputRenderer(runner.state);
 
     await runner.run();
 

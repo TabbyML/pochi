@@ -1,3 +1,4 @@
+import { Console } from "node:console";
 import { formatters } from "@getpochi/common";
 import { parseMarkdown } from "@getpochi/common/message-utils";
 import type { Message, UITools } from "@getpochi/livekit";
@@ -8,6 +9,7 @@ import { Listr, type ListrTask, type ObservableLike } from "listr2";
 import ora, { type Ora } from "ora";
 import type { NodeChatState } from "./livekit/chat.node";
 import type { TaskRunner } from "./task-runner";
+const console = new Console(process.stderr);
 
 export class OutputRenderer {
   private renderingSubTask = false;
