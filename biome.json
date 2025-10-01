@@ -22,6 +22,7 @@
 
       "packages/vscode/.vscode-test",
       "packages/vscode/out",
+      "packages/vscode/src/nes/git/git.d.ts",
 
       "packages/docs/**",
 

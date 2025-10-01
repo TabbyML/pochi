@@ -84,7 +84,11 @@ export class CompletionProvider
     private readonly editorOptionsProvider: EditorOptionsProvider,
     private readonly client: CodeCompletionClient,
   ) {
-    this.initialize();
+    if (
+      !pochiConfiguration.advancedSettings.value.nextEditSuggestion?.enabled
+    ) {
+      this.initialize();
+    }
   }
 
   private initialize() {
