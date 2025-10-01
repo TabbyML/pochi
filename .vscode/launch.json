@@ -20,6 +20,17 @@
       "preLaunchTask": "dev:vscode"
     },
     {
+      "name": "Run VSCode Extension (Disable Other Extensions)",
+      "type": "extensionHost",
+      "request": "launch",
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}/packages/vscode",
+        "--disable-extensions"
+      ],
+      "outFiles": ["${workspaceFolder}/packages/vscode/dist/**/*.js"],
+      "preLaunchTask": "dev:vscode"
+    },
+    {
       "name": "Run VSCode Extension (Local Server)",
       "type": "extensionHost",
       "request": "launch",

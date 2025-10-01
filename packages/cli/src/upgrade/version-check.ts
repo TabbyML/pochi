@@ -1,8 +1,11 @@
+import { Console } from "node:console";
 import chalk from "chalk";
 import packageJson from "../../package.json";
 import { fetchLatestCliRelease } from "./release-fetcher";
 import type { GitHubRelease } from "./release-fetcher";
 import { extractVersionFromTag, isNewerVersion } from "./version-utils";
+
+const console = new Console(process.stderr);
 
 export interface VersionCheckResult {
   updateAvailable: boolean;
@@ -43,7 +46,7 @@ export async function returnVersionInfo(options?: {
 
 export async function checkForUpdates() {
   const { updateAvailable, currentVersion, latestVersion } =
-    await returnVersionInfo({ timeoutMs: 300 });
+    await returnVersionInfo({ timeoutMs: 500 });
 
   const header = `\n${chalk.bold("Pochi")} ${chalk.white(currentVersion)}`;
 

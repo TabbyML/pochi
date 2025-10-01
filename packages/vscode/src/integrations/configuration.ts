@@ -115,6 +115,23 @@ const PochiAdvanceSettings = z.object({
         .optional(),
     })
     .optional(),
+  nextEditSuggestion: z
+    .object({
+      enabled: z.boolean().optional(),
+      provider: z
+        .discriminatedUnion("type", [
+          z.object({
+            type: z.literal("pochi"),
+          }),
+          z.object({
+            type: z.literal("google-vertex-tuning"),
+            vertex: z.custom<GoogleVertexModel>(),
+            model: z.string(),
+          }),
+        ])
+        .optional(),
+    })
+    .optional(),
   webviewLogLevel: z.string().optional(),
 });
 

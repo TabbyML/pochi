@@ -42,6 +42,8 @@ import {
   replaceWorkflowReferences,
 } from "./lib/workflow-loader";
 
+import { JsonRenderer } from "./json-renderer";
+import { shutdownStoreAndExit } from "./lib/shutdown";
 import { createStore } from "./livekit/store";
 import { initializeMcp, registerMcpCommand } from "./mcp";
 import { registerModelCommand } from "./model";
@@ -79,6 +81,10 @@ const program = new Command()
     "Create a new task with a given prompt. Input can also be piped. For example: `cat my-prompt.md | pochi`. Workflows can be triggered with `/workflow-name`, like `pochi -p /create-pr`.",
   )
   .optionsGroup("Options:")
+  .option(
+    "--stream-json",
+    "Stream the output in JSON format. This is useful for parsing the output in scripts.",
+  )
   .option(
     "--max-steps <number>",
     "Set the maximum number of steps for a task. The task will stop if it exceeds this limit.",
@@ -138,23 +144,16 @@ const program = new Command()
     });
 
     const renderer = new OutputRenderer(runner.state);
+    if (options.streamJson) {
+      new JsonRenderer(runner.state);
+    }
 
     await runner.run();
 
     renderer.shutdown();
-
-    const shareId = runner.shareId;
-    if (shareId) {
-      // FIXME(zhiming): base url is hard code, should use options.url
-      const shareUrl = chalk.underline(
-        `https://app.getpochi.com/share/${shareId}`,
-      );
-      console.log(`\n${chalk.bold("Task link: ")} ${shareUrl}`);
-    }
-
     mcpHub.dispose();
     await waitForSync(store, "2 second").catch(console.error);
-    await store.shutdownPromise();
+    await shutdownStoreAndExit(store);
   });
 
 const otherOptionsGroup = "Others:";
@@ -373,6 +372,9 @@ async function waitForSync(
   inputStore?: Store,
   timeoutDuration: Duration.DurationInput = "1 second",
 ) {
+  if (!process.env.POCHI_LIVEKIT_SYNC_ON) {
+    return;
+  }
   const store = inputStore || (await createStore());
 
   await Effect.gen(function* (_) {

@@ -81,7 +81,7 @@ export function createVertexModel(vertex: GoogleVertexModel, modelId: string) {
       ) => {
         const resp = (await fetch(issueUrl, {
           headers: {
-            "Metdata-Flavor": "Google",
+            "Metadata-Flavor": "Google",
           },
         }).then((x) => x.json())) as {
           access_token: string;

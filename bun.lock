@@ -202,6 +202,7 @@
       "name": "@getpochi/vendor-gemini-cli",
       "version": "0.1.0",
       "dependencies": {
+        "@ai-sdk/google": "catalog:",
         "@ai-sdk/google-vertex": "catalog:",
         "@ai-sdk/provider": "catalog:",
         "@ai-sdk/provider-utils": "catalog:",
@@ -431,6 +432,7 @@
   "catalog": {
     "@ai-sdk/anthropic": "^2.0.17",
     "@ai-sdk/gateway": "^1",
+    "@ai-sdk/google": "^2.0.0",
     "@ai-sdk/google-vertex": "3.0.8",
     "@ai-sdk/openai": "^2.0.32",
     "@ai-sdk/openai-compatible": "^1.0.7",

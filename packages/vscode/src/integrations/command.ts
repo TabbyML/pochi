@@ -14,6 +14,8 @@ import { getLogger, showOutputPanel } from "@/lib/logger";
 import { NewProjectRegistry, prepareProject } from "@/lib/new-project";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { PostHog } from "@/lib/posthog";
+// biome-ignore lint/style/useImportType: needed for dependency injection
+import { NESDecorationManager } from "@/nes/decoration-manager";
 import type { WebsiteTaskCreateEvent } from "@getpochi/common";
 import {
   type CustomModelSetting,
@@ -50,6 +52,7 @@ export class CommandManager implements vscode.Disposable {
     private readonly posthog: PostHog,
     @inject("vscode.ExtensionContext")
     private readonly context: vscode.ExtensionContext,
+    private readonly nesDecorationManager: NESDecorationManager,
   ) {
     this.registerCommands();
   }
@@ -427,6 +430,20 @@ export class CommandManager implements vscode.Disposable {
       vscode.commands.registerCommand("pochi.openInEditor", async () => {
         PochiWebviewPanel.createOrShow(this.context.extensionUri);
       }),
+
+      vscode.commands.registerCommand(
+        "pochi.nextEditSuggestion.accept",
+        async () => {
+          this.nesDecorationManager.accept();
+        },
+      ),
+
+      vscode.commands.registerCommand(
+        "pochi.nextEditSuggestion.reject",
+        async () => {
+          this.nesDecorationManager.reject();
+        },
+      ),
     );
   }
 
