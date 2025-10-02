@@ -1,8 +1,8 @@
+import { StoreBlobProtocol, catalog } from "@getpochi/livekit";
 import type { Store } from "@livestore/livestore";
+import * as R from "remeda";
 import type { NodeChatState } from "./livekit/chat.node";
 import type { TaskRunner } from "./task-runner";
-import * as R from "remeda";
-import { catalog, StoreBlobProtocol } from "@getpochi/livekit";
 
 export class JsonRenderer {
   private pendingMessageId = "";
