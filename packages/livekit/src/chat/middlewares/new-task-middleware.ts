@@ -69,6 +69,7 @@ export function createNewTaskMiddleware(
             ) {
               const parsedResult = await safeParseJSON({
                 text: chunk.input,
+                // @ts-ignore
                 schema: createClientTools()[chunk.toolName].inputSchema,
               });
               if (!parsedResult.success) {
