@@ -1,6 +1,6 @@
 import { MaxAttachments } from "@/lib/constants";
 import { createFileName, validateFile } from "@/lib/utils/attachment";
-import { catalog } from "@getpochi/livekit";
+import { StoreBlobProtocol, catalog } from "@getpochi/livekit";
 import type { Store } from "@livestore/livestore";
 import { useStore } from "@livestore/react";
 import type { FileUIPart } from "ai";
@@ -233,7 +233,7 @@ async function fileToStoreBlobUri(store: Store, file: File): Promise<string> {
   const data = new Uint8Array(await file.arrayBuffer());
   const mimeType = file.type;
   const checksum = await digest(data);
-  const url = `store-blob:${checksum}`;
+  const url = `${StoreBlobProtocol}${checksum}`;
   if (store.query(catalog.queries.makeBlobQuery(checksum))) {
     return url;
   }

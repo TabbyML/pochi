@@ -1,4 +1,4 @@
-import { catalog } from "@getpochi/livekit";
+import { StoreBlobProtocol, catalog } from "@getpochi/livekit";
 import { useStore } from "@livestore/react";
 import { isVSCodeEnvironment } from "./vscode";
 
@@ -15,7 +15,7 @@ export function useStoreBlobUrl(inputUrl: string): string | null {
   }
 
   const url = new URL(inputUrl);
-  if (url.protocol !== "store-blob:") return inputUrl;
+  if (url.protocol !== StoreBlobProtocol) return inputUrl;
   if (isVSCodeEnvironment()) {
     const { store } = useStore();
     const data = store.query(catalog.queries.makeBlobQuery(url.pathname));

@@ -20,6 +20,7 @@ import {
   wrapLanguageModel,
 } from "ai";
 import { pickBy } from "remeda";
+import { StoreBlobProtocol } from "..";
 import { makeBlobQuery } from "../livestore/queries";
 import type { Message, Metadata, RequestData } from "../types";
 import { makeRepairToolCall } from "./llm";
@@ -173,7 +174,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
             mediaType: string | undefined;
           } | null> => {
             if (isUrlSupportedByModel) return null;
-            if (url.protocol === "store-blob:") {
+            if (url.protocol === StoreBlobProtocol) {
               const blob = this.store.query(makeBlobQuery(url.pathname));
               if (!blob)
                 throw new Error(`Blob with checksum ${url.pathname} not found`);
