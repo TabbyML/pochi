@@ -8,7 +8,7 @@ const logger = getLogger("searchFiles");
 
 export const searchFiles =
   (context: ToolCallOptions): ToolFunctionType<ClientTools["searchFiles"]> =>
-  async ({ path, regex, filePattern }, { abortSignal }) => {
+  async ({ path, regex, filePattern }, { abortSignal, cwd }) => {
     const rgPath = context.rg;
     if (!rgPath || !fs.existsSync(rgPath)) {
       logger.error("Ripgrep not found at path", rgPath);
@@ -18,7 +18,7 @@ export const searchFiles =
       path,
       regex,
       rgPath,
-      context.cwd,
+      cwd,
       filePattern,
       abortSignal,
     );

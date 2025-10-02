@@ -11,11 +11,13 @@ import {
   getShellPath,
 } from "@getpochi/common/tool-utils";
 import type { ClientTools, ToolFunctionType } from "@getpochi/tools";
-import type { ToolCallOptions } from "../types";
 
 export const executeCommand =
-  (context: ToolCallOptions): ToolFunctionType<ClientTools["executeCommand"]> =>
-  async ({ command, cwd = ".", timeout = 120 }, { abortSignal }) => {
+  (): ToolFunctionType<ClientTools["executeCommand"]> =>
+  async (
+    { command, cwd = ".", timeout = 120 },
+    { abortSignal, cwd: workspaceDir },
+  ) => {
     if (!command) {
       throw new Error("Command is required to execute.");
     }
@@ -24,7 +26,7 @@ export const executeCommand =
     if (path.isAbsolute(cwd)) {
       resolvedCwd = path.normalize(cwd);
     } else {
-      resolvedCwd = path.normalize(path.join(context.cwd, cwd));
+      resolvedCwd = path.normalize(path.join(workspaceDir, cwd));
     }
 
     try {

@@ -1,22 +1,17 @@
 import { describe, expect, it } from "vitest";
 import { executeCommand } from "../execute-command";
-import type { ToolCallOptions } from "../../types";
 
 describe("executeCommand", () => {
-  const mockContext: ToolCallOptions = {
-    cwd: process.cwd(),
-    rg: "",
-  };
 
   const mockToolExecutionOptions = {
     toolCallId: "test-call-id",
     messages: [],
     abortSignal: new AbortController().signal,
-    cwd: ""
+    cwd: process.cwd()
   };
 
   it("should execute a simple command successfully", async () => {
-    const result = await executeCommand(mockContext)(
+    const result = await executeCommand()(
       { command: "echo 'Hello World'" },
       mockToolExecutionOptions,
     );
@@ -27,7 +22,7 @@ describe("executeCommand", () => {
 
   it("should handle command timeout", async () => {
     await expect(
-      executeCommand(mockContext)(
+      executeCommand()(
         { command: "sleep 3", timeout: 1 }, // Sleep for 3 seconds with 1 second timeout
         mockToolExecutionOptions,
       )
@@ -42,7 +37,7 @@ describe("executeCommand", () => {
     };
     
     // Start command and abort it immediately
-    const promise = executeCommand(mockContext)(
+    const promise = executeCommand()(
       { command: "sleep 5", timeout: 10 },
       options,
     );
@@ -55,7 +50,7 @@ describe("executeCommand", () => {
 
   it("should use default timeout when not specified", async () => {
     // This test just ensures the default timeout doesn't interfere with quick commands
-    const result = await executeCommand(mockContext)(
+    const result = await executeCommand()(
       { command: "echo 'test'" },
       mockToolExecutionOptions,
     );
@@ -64,7 +59,7 @@ describe("executeCommand", () => {
   });
 
   it("should handle command errors", async () => {
-    const result = await executeCommand(mockContext)(
+    const result = await executeCommand()(
         { command: "nonexistentcommand" },
         mockToolExecutionOptions,
       );
@@ -74,7 +69,7 @@ describe("executeCommand", () => {
   it("should indicate when output is truncated", async () => {
     // Create a command that generates a lot of output
     const longOutput = "a".repeat(100);
-    const result = await executeCommand(mockContext)(
+    const result = await executeCommand()(
       { command: `echo '${longOutput}'` },
       mockToolExecutionOptions,
     );
@@ -87,7 +82,7 @@ describe("executeCommand", () => {
 
   it("should handle timeout errors correctly with proper formatting", async () => {
     await expect(
-      executeCommand(mockContext)(
+      executeCommand()(
         { command: "sleep 2", timeout: 1 }, // Sleep for 2 seconds with 1 second timeout
         mockToolExecutionOptions,
       )
@@ -102,7 +97,7 @@ describe("executeCommand", () => {
     };
     
     // Start command and abort it immediately
-    const promise = executeCommand(mockContext)(
+    const promise = executeCommand()(
       { command: "sleep 3", timeout: 10 },
       options,
     );
@@ -114,7 +109,7 @@ describe("executeCommand", () => {
   });
 
   it("should handle generic errors correctly with proper formatting", async () => {
-    const result = await executeCommand(mockContext)(
+    const result = await executeCommand()(
       { command: "invalidcommandthatdoesnotexist" },
       mockToolExecutionOptions,
     )
@@ -139,7 +134,7 @@ describe("executeCommand", () => {
       command = "echo $GIT_COMMITTER_NAME $GIT_COMMITTER_EMAIL";
     }
 
-    const result = await executeCommand(mockContext)(
+    const result = await executeCommand()(
       { command },
       mockToolExecutionOptions,
     );
