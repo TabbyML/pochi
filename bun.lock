@@ -49,6 +49,7 @@
         "node-machine-id": "catalog:",
         "omelette": "^0.4.17",
         "ora": "^8.2.0",
+        "remeda": "catalog:",
         "semver": "^7.6.3",
       },
     },
