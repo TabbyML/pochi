@@ -7,6 +7,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Loader2, Play, Video, X } from "lucide-react";
 import { useEffect, useState } from "react";
+import { CopyableImage } from "./ui/copyable-image";
 
 interface AttachmentPreviewListProps {
   files: File[];
@@ -202,7 +203,7 @@ export function AttachmentPreviewList({
                   <div className="overflow-hidden rounded-md border border-[var(--input-border)]">
                     <div className="relative flex items-center justify-center bg-[var(--vscode-input-background)]">
                       {isImage && previewUrl && (
-                        <img
+                        <CopyableImage
                           src={previewUrl}
                           alt={file.name}
                           className="h-auto max-w-[90vw] object-contain"

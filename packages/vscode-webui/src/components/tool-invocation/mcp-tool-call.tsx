@@ -1,16 +1,15 @@
 import { CodeBlock, MessageMarkdown } from "@/components/message";
 import { Switch } from "@/components/ui/switch";
-import { useStoreBlobUrl } from "@/lib/store-blob";
-import { cn } from "@/lib/utils";
-import { isVSCodeEnvironment, vscodeHost } from "@/lib/vscode";
 import { getToolName } from "ai";
 import { useState } from "react";
+import { CopyableImage } from "../ui/copyable-image";
 import { ScrollArea } from "../ui/scroll-area";
 import { Separator } from "../ui/separator";
 import { HighlightedText } from "./highlight-text";
 import { StatusIcon } from "./status-icon";
 import { ExpandableToolContainer } from "./tool-container";
 import type { ToolProps } from "./types";
+import { useStoreBlobUrl } from "@/lib/store-blob";
 
 interface TextContent {
   type: "text";
@@ -204,33 +203,19 @@ function ImageResult({
     previewSuffix = data.slice(0, 8);
   }
 
+  const extension = mimeType.split("/")[1] || "png";
+  const filename = `mcp-image-preview-${previewSuffix}.${extension}`;
+
   if (!url) return;
 
-  const handleClick = async () => {
-    const data = await imageUrlToBase64(url);
-    // Base64 data - determine file extension from mimeType
-    const extension = mimeType.split("/")[1] || "png";
-    const filename = `mcp-image-preview-${previewSuffix}.${extension}`;
-    // Open the file in VS Code
-    vscodeHost.openFile(filename, {
-      base64Data: data,
-    });
-  };
-
   return (
-    <div
-      className={cn(
-        "bg-[var(--vscode-editor-background)]",
-        isVSCodeEnvironment() && "cursor-pointer hover:opacity-80",
-      )}
-      onClick={isVSCodeEnvironment() ? handleClick : undefined}
-    >
-      <img
-        src={url}
-        alt="MCP tool response snapshot"
-        className="h-auto w-full shadow-sm"
-      />
-    </div>
+    <CopyableImage
+      src={data}
+      alt="MCP tool response snapshot"
+      className="h-auto w-full shadow-sm"
+      mimeType={mimeType}
+      filename={filename}
+    />
   );
 }
 
@@ -254,21 +239,3 @@ function DisplayModeToggle({
     </div>
   );
 }
-
-const imageUrlToBase64 = async (url: string) => {
-  const response = await fetch(url);
-  const blob = await response.blob();
-  return new Promise<string>((onSuccess, onError) => {
-    try {
-      const reader = new FileReader();
-      reader.onload = function () {
-        onSuccess(
-          (this.result as string).replace(/^data:image\/(.*);base64,/, ""),
-        );
-      };
-      reader.readAsDataURL(blob);
-    } catch (e) {
-      onError(e);
-    }
-  });
-};
