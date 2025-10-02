@@ -264,12 +264,23 @@ export class LiveChatKit<
     }
   };
 
-  private readonly onFinish: ChatOnFinishCallback<Message> = ({ message }) => {
+  private readonly onFinish: ChatOnFinishCallback<Message> = ({
+    message,
+    isAbort,
+    isError,
+  }) => {
+    const abortError = new Error("Transport is aborted");
+    abortError.name = "AbortError";
+
+    if (isAbort) {
+      return this.onError(abortError);
+    }
+
+    if (isError) return; // handled in onError already.
+
     const { store } = this;
     if (message.metadata?.kind !== "assistant") {
-      const error = new Error("Transport is aborted");
-      error.name = "AbortError";
-      throw error;
+      return this.onError(abortError);
     }
 
     store.commit(
