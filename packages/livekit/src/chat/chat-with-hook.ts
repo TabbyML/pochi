@@ -31,7 +31,7 @@ export function makeChatWithHookClass<
               return {
                 type: "image",
                 mimeType: item.mimeType,
-                blobUri: await findBlobUrl(store, item.mimeType, item.data),
+                data: await findBlobUrl(store, item.mimeType, item.data),
               };
             }
             return item;

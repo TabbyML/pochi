@@ -30,7 +30,8 @@ const ContentOutput = z.union([
         }),
         z.object({
           type: z.literal("image"),
-          blobUri: z.string(),
+          data: z.string(),
+          mimeType: z.string(),
         }),
       ]),
     ),
@@ -75,11 +76,11 @@ function parseMcpTool(store: Store, _name: string, mcpTool: McpTool): Tool {
             return item;
           }
 
-          const blob = findBlob(store, new URL(item.blobUri));
+          const blob = findBlob(store, new URL(item.data));
           if (!blob) {
             return {
               type: "text" as const,
-              text: item.blobUri,
+              text: item.data,
             };
           }
 

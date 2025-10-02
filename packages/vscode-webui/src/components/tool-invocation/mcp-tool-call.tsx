@@ -19,7 +19,7 @@ interface TextContent {
 
 interface ImageContent {
   type: "image";
-  blobUri: string;
+  data: string;
   mimeType: string; // e.g., "image/png"
 }
 
@@ -189,11 +189,11 @@ function JsonCodeBlock({ item }: { item: unknown }) {
 }
 
 function ImageResult({
-  blobUri,
+  data,
   mimeType,
-}: { type: "image"; blobUri: string; mimeType: string }) {
-  const blobUrl = new URL(blobUri);
-  const url = useStoreBlobUrl(blobUri);
+}: { type: "image"; data: string; mimeType: string }) {
+  const blobUrl = new URL(data);
+  const url = useStoreBlobUrl(data);
   if (!url) return;
 
   const handleClick = async () => {
