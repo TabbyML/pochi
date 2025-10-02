@@ -326,7 +326,7 @@ export class TaskRunner {
         this.cwd,
       );
 
-      this.chatKit.chat.addToolResult({
+      await this.chatKit.chat.addToolResult({
         // @ts-expect-error
         tool: toolName,
         toolCallId: toolCall.toolCallId,

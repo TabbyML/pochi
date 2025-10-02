@@ -36,13 +36,14 @@ export function makeChatWithHookClass<
             }
             return item;
           });
+          const output = {
+            ...options.output,
+            content: await Promise.all(content),
+          };
           return addToolResult({
             ...options,
             // @ts-ignore
-            output: {
-              ...options.output,
-              content: await Promise.all(content),
-            },
+            output,
           });
         }
         return addToolResult(options);

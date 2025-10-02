@@ -44,7 +44,7 @@ function parseMcpTool(store: Store, _name: string, mcpTool: McpTool): Tool {
   return tool({
     description: mcpTool.description,
     inputSchema: jsonSchema(mcpTool.inputSchema.jsonSchema),
-    toModelOutput(output) {
+    toModelOutput: (output) => {
       if (typeof output === "string") {
         return {
           type: "text",
@@ -53,42 +53,44 @@ function parseMcpTool(store: Store, _name: string, mcpTool: McpTool): Tool {
       }
 
       const parsed = ContentOutput.safeParse(output);
-      if (parsed.success) {
-        const output = parsed.data;
-        if ("error" in output) {
-          return {
-            type: "error-text" as const,
-            value: output.error,
-          };
-        }
-
+      if (!parsed.success) {
         return {
-          type: "content" as const,
-          value: output.content.map((item) => {
-            if (item.type === "text") {
-              return item;
-            }
-
-            const blob = findBlob(store, new URL(item.blobUri));
-            if (!blob) {
-              return {
-                type: "text" as const,
-                text: item.blobUri,
-              };
-            }
-
-            return {
-              type: "media" as const,
-              ...blob,
-            };
-          }),
+          type: "json",
+          value: toJSONValue(output),
         };
       }
 
-      return {
-        type: "json",
-        value: toJSONValue(output),
+      const { data } = parsed;
+      if ("error" in data) {
+        return {
+          type: "error-text" as const,
+          value: data.error,
+        };
+      }
+
+      const contentOutput = {
+        type: "content" as const,
+        value: data.content.map((item) => {
+          if (item.type === "text") {
+            return item;
+          }
+
+          const blob = findBlob(store, new URL(item.blobUri));
+          if (!blob) {
+            return {
+              type: "text" as const,
+              text: item.blobUri,
+            };
+          }
+
+          return {
+            type: "media" as const,
+            ...blob,
+          };
+        }),
       };
+
+      return contentOutput;
     },
   });
 }
@@ -101,7 +103,8 @@ function toBase64(bytes: Uint8Array) {
   const binString = Array.from(bytes, (byte) =>
     String.fromCodePoint(byte),
   ).join("");
-  return btoa(binString);
+  const base64 = btoa(binString);
+  return base64;
 }
 
 function findBlob(store: Store, url: URL) {
