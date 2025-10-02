@@ -19,8 +19,9 @@ export function useChatStatus({
   isUploadingAttachments,
   newCompactTaskPending,
 }: UseChatStatusProps) {
-  const { executingToolCalls } = useToolCallLifeCycle();
+  const { executingToolCalls, previewingToolCalls } = useToolCallLifeCycle();
   const isExecuting = executingToolCalls.length > 0;
+  const isPreviewing = previewingToolCalls.length > 0;
 
   const isBusyCore = isModelsLoading || newCompactTaskPending;
 
@@ -29,9 +30,14 @@ export function useChatStatus({
   const isSubmitDisabled =
     isBusyCore ||
     !isModelValid ||
-    (!isLoading && isInputEmpty && isFilesEmpty && !isExecuting);
+    (!isLoading &&
+      isInputEmpty &&
+      isFilesEmpty &&
+      !isExecuting &&
+      !isPreviewing);
 
-  const showStopButton = isExecuting || isLoading || isUploadingAttachments;
+  const showStopButton =
+    isPreviewing || isExecuting || isLoading || isUploadingAttachments;
 
   const showPreview = !isBusyCore;
 

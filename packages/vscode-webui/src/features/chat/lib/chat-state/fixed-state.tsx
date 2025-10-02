@@ -120,6 +120,7 @@ export function FixedStateChatContextProvider({
 
   const value: ChatState = {
     autoApproveGuard,
+    previewingToolCalls: [],
     abortController,
     getToolCallLifeCycle,
     executingToolCalls,
