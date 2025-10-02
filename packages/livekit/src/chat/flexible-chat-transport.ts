@@ -123,7 +123,8 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
       middlewares.push(createToolCallMiddleware());
     }
 
-    const mcpTools = mcpInfo?.toolset && parseMcpToolSet(mcpInfo.toolset);
+    const mcpTools =
+      mcpInfo?.toolset && parseMcpToolSet(this.store, mcpInfo.toolset);
     const tools = pickBy(
       {
         ...selectClientTools({
