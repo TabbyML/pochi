@@ -29,7 +29,10 @@ export function useStoreBlobUrl(inputUrl: string): string | null {
     if (!storeIdMatch) return null;
 
     const storeId = storeIdMatch[1];
-    const blobUrl = new URL(`/stores/${storeId}/blobs/${url.pathname}`);
+    const blobUrl = new URL(
+      `/stores/${storeId}/blobs/${url.pathname}`,
+      window.location.href,
+    );
     blobs.set(inputUrl, blobUrl.toString());
   }
   return blobs.get(inputUrl) ?? null;
