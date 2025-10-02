@@ -5,7 +5,6 @@
   "private": true,
   "dependencies": {
     "@cloudflare/workers-types": "4.20250823.0",
-    "@hono/zod-validator": "catalog:",
     "@livestore/adapter-cloudflare": "catalog:",
     "@livestore/livestore": "catalog:",
     "@livestore/peer-deps": "catalog:",

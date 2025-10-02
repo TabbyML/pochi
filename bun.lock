@@ -154,7 +154,6 @@
         "@getpochi/common": "workspace:*",
         "@getpochi/livekit": "workspace:*",
         "@getpochi/tools": "workspace:*",
-        "@hono/zod-validator": "catalog:",
         "@livestore/adapter-cloudflare": "catalog:",
         "@livestore/livestore": "catalog:",
         "@livestore/peer-deps": "catalog:",

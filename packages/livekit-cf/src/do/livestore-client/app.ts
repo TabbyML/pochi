@@ -3,14 +3,12 @@ import type { ShareEvent } from "@getpochi/common/share-utils";
 import { decodeStoreId } from "@getpochi/common/store-id-utils";
 import { type Message, catalog } from "@getpochi/livekit";
 import type { ClientTools, SubTask } from "@getpochi/tools";
-import { zValidator } from "@hono/zod-validator";
 import type { Store } from "@livestore/livestore";
 import type { UIMessage } from "ai";
 import type { InferToolInput } from "ai";
 import { Hono } from "hono";
 import type { MiddlewareHandler } from "hono";
 import { HTTPException } from "hono/http-exception";
-import z from "zod";
 import type { DeepWritable, Env } from "./types";
 
 const REDACTED_MESSAGE = "[FILE CONTENT REDACTED]";
@@ -87,27 +85,7 @@ const store = new Hono<{ Bindings: Env; Variables: RequestVariables }>().use(
   checkOwner,
 );
 
-const ShareRequest = z.object({
-  shareId: z.string(),
-});
-
 store
-  // Update task shareId.
-  .post("/tasks/:taskId/share", zValidator("json", ShareRequest), async (c) => {
-    if (!c.get("isOwner")) {
-      throw new HTTPException(401, { message: "Unauthorized" });
-    }
-
-    const store = await c.env.getStore();
-    const taskId = c.req.param("taskId");
-    store.commit(
-      catalog.events.updateShareId({
-        id: taskId,
-        ...c.req.valid("json"),
-        updatedAt: new Date(),
-      }),
-    );
-  })
   // Get a task by ID
   .get("/tasks/:taskId/json", async (c) => {
     const store = await c.env.getStore();
@@ -158,6 +136,19 @@ store
   })
   .get("/tasks/:taskId/html", async (c) => {
     return c.env.ASSETS.fetch(c.req.raw);
+  })
+  .get("/blobs/:blobId", async (c) => {
+    const store = await c.env.getStore();
+    const blob = store.query(
+      catalog.queries.makeBlobQuery(c.req.param("blobId")),
+    );
+    if (!blob) {
+      throw new HTTPException(404, { message: "Blob not found" });
+    }
+    return c.body(blob.data, 200, {
+      "content-type": blob.mimeType,
+      "cache-control": "public, max-age=31536000, immutable",
+    });
   });
 
 export const app = new Hono<{ Bindings: Env }>();
