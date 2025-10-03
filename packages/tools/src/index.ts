@@ -30,8 +30,9 @@ import { writeToFile } from "./write-to-file";
 export {
   CustomAgent,
   overrideCustomAgentTools,
+  type SubTask,
+  inputSchema as newTaskInputSchema,
 } from "./new-task";
-export type { SubTask } from "./new-task";
 
 export function isUserInputToolName(name: string): boolean {
   return name === "askFollowupQuestion" || name === "attemptCompletion";

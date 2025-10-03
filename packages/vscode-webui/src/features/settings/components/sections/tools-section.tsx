@@ -1,12 +1,13 @@
-import { type ToolName, createClientTools } from "@getpochi/tools";
+import type { ToolName } from "@getpochi/tools";
 import { useTranslation } from "react-i18next";
-import { keys } from "remeda";
 import { Section, SubSection } from "../ui/section";
 import { ToolBadgeList } from "../ui/tool-badge";
 import { McpSection, PochiTools } from "./mcp-section";
 export const ToolsSection: React.FC = () => {
   const { t } = useTranslation();
-  const toolsData = AllTools;
+  const toolsData = Object.entries(ToolDescriptions).map(
+    ([id, description]) => ({ id, description }),
+  );
 
   const renderToolsContent = () => {
     return <ToolBadgeList tools={toolsData} />;
@@ -56,9 +57,3 @@ const ToolDescriptions: Record<ToolName, string> = {
   newTask:
     "The newTask tool allows Pochi to create a new task with a dedicated agent. This is useful for tasks that require a dedicated agent with specific capabilities or configurations. By using this tool, Pochi can tailor the agent's behavior to better suit the needs of the task at hand.",
 };
-const AllTools = keys({ ...createClientTools() })
-  .map((id) => ({
-    id,
-    description: ToolDescriptions[id],
-  }))
-  .filter((x) => !!x.description);
