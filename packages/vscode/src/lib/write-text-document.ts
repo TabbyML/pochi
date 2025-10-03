@@ -6,7 +6,6 @@ import { diagnosticsToProblemsString, getNewDiagnostics } from "./diagnostic";
 import {
   createPrettyPatch,
   ensureFileDirectoryExists,
-  getWorkspaceFolder,
   isFileExists,
 } from "./fs";
 
@@ -15,11 +14,11 @@ const logger = getLogger("WriteTextDocument");
 export async function writeTextDocument(
   path: string,
   content: string,
+  cwd: string,
   abortSignal?: AbortSignal,
 ) {
   logger.debug(`Will write to ${path}, content length: ${content.length}`);
-  const workspaceFolder = getWorkspaceFolder();
-  const resolvedPath = resolvePath(path, workspaceFolder.uri.fsPath);
+  const resolvedPath = resolvePath(path, cwd);
   const fileUri = vscode.Uri.file(resolvedPath);
   const fileExists = await isFileExists(fileUri);
   if (!fileExists) {
@@ -68,7 +67,7 @@ export async function writeTextDocument(
     [
       vscode.DiagnosticSeverity.Error, // only including errors since warnings can be distracting (if user wants to fix warnings they can use the @problems mention)
     ],
-    getWorkspaceFolder().uri.fsPath,
+    cwd,
   );
 
   const editSummary = getEditSummary(preEditContent, postSaveContent);

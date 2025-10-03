@@ -1,6 +1,8 @@
 import { CodeBlock, MessageMarkdown } from "@/components/message";
 import { Switch } from "@/components/ui/switch";
-import { vscodeHost } from "@/lib/vscode";
+import { useStoreBlobUrl } from "@/lib/store-blob";
+import { cn } from "@/lib/utils";
+import { isVSCodeEnvironment, vscodeHost } from "@/lib/vscode";
 import { getToolName } from "ai";
 import { useState } from "react";
 import { ScrollArea } from "../ui/scroll-area";
@@ -17,12 +19,11 @@ interface TextContent {
 
 interface ImageContent {
   type: "image";
-  data: string; // base64-encoded image data or URL
+  data: string;
   mimeType: string; // e.g., "image/png"
 }
 
 type ContentBlock = TextContent | ImageContent;
-
 /**
  * Current supported mcp tool call output types
  * For full mcp tool call output @see https://github.com/modelcontextprotocol/modelcontextprotocol/blob/175a52036c73385047a85bfb996f24e5f1f51c80/schema/2025-06-18/schema.ts#L778
@@ -191,41 +192,31 @@ function ImageResult({
   data,
   mimeType,
 }: { type: "image"; data: string; mimeType: string }) {
-  const src = data.startsWith("https://")
-    ? data
-    : `data:${mimeType};base64,${data}`;
+  const blobUrl = new URL(data);
+  const url = useStoreBlobUrl(data);
+  if (!url) return;
 
   const handleClick = async () => {
-    if (data.startsWith("https://")) {
-      // External URL - use openExternal instead
-      vscodeHost.openExternal(data);
-    } else {
-      // Base64 data - determine file extension from mimeType
-      const extension = mimeType.split("/")[1] || "png";
-      const encoder = new TextEncoder();
-      const hashArray = await window.crypto.subtle.digest(
-        "SHA-256",
-        encoder.encode(data),
-      );
-      const hashHex = Array.from(new Uint8Array(hashArray))
-        .map((b) => b.toString(16).padStart(2, "0"))
-        .join("")
-        .substring(0, 8); // convert bytes to hex string and take first 8 chars
-      const filename = `mcp-image-preview-${hashHex}.${extension}`;
-      // Open the file in VS Code
-      vscodeHost.openFile(filename, {
-        base64Data: data,
-      });
-    }
+    const data = await imageUrlToBase64(url);
+    // Base64 data - determine file extension from mimeType
+    const extension = mimeType.split("/")[1] || "png";
+    const filename = `mcp-image-preview-${blobUrl.pathname.slice(0, 8)}.${extension}`;
+    // Open the file in VS Code
+    vscodeHost.openFile(filename, {
+      base64Data: data,
+    });
   };
 
   return (
     <div
-      className="cursor-pointer bg-[var(--vscode-editor-background)] hover:opacity-80"
-      onClick={handleClick}
+      className={cn(
+        "bg-[var(--vscode-editor-background)]",
+        isVSCodeEnvironment() && "cursor-pointer hover:opacity-80",
+      )}
+      onClick={isVSCodeEnvironment() ? handleClick : undefined}
     >
       <img
-        src={src}
+        src={url}
         alt="MCP tool response snapshot"
         className="h-auto w-full shadow-sm"
       />
@@ -253,3 +244,21 @@ function DisplayModeToggle({
     </div>
   );
 }
+
+const imageUrlToBase64 = async (url: string) => {
+  const response = await fetch(url);
+  const blob = await response.blob();
+  return new Promise<string>((onSuccess, onError) => {
+    try {
+      const reader = new FileReader();
+      reader.onload = function () {
+        onSuccess(
+          (this.result as string).replace(/^data:image\/(.*);base64,/, ""),
+        );
+      };
+      reader.readAsDataURL(blob);
+    } catch (e) {
+      onError(e);
+    }
+  });
+};

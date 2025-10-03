@@ -45,6 +45,10 @@ export class WorkspaceJobQueue implements vscode.Disposable {
     );
   }
 
+  get currentWorkspaceUri() {
+    return vscode.workspace.workspaceFolders?.[0]?.uri;
+  }
+
   private async run() {
     const jobs = this.context.globalState.get<WorkspaceJob[]>(
       WorkspaceJobQueue.GlobalStateKey,
@@ -55,9 +59,7 @@ export class WorkspaceJobQueue implements vscode.Disposable {
 
     // extract the current workspace job
     const currentWorkspaceJob = jobs.filter(
-      (job) =>
-        job.workspaceUri ===
-        vscode.workspace.workspaceFolders?.[0].uri.toString(),
+      (job) => job.workspaceUri === this.currentWorkspaceUri?.fsPath,
     );
 
     // update registry with the rest of the jobs

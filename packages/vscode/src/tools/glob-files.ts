@@ -1,4 +1,3 @@
-import { getWorkspaceFolder } from "@/lib/fs";
 import { globFiles as globFilesImpl } from "@getpochi/common/tool-utils";
 import type { ClientTools, ToolFunctionType } from "@getpochi/tools";
 
@@ -7,12 +6,10 @@ import type { ClientTools, ToolFunctionType } from "@getpochi/tools";
  */
 export const globFiles: ToolFunctionType<ClientTools["globFiles"]> = async (
   { path: searchPath, globPattern },
-  { abortSignal },
+  { abortSignal, cwd },
 ) => {
-  const workspaceFolder = getWorkspaceFolder();
-
   return globFilesImpl({
-    cwd: workspaceFolder.uri.fsPath,
+    cwd,
     path: searchPath,
     globPattern,
     abortSignal,

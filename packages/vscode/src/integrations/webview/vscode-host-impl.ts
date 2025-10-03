@@ -1,4 +1,6 @@
 import * as os from "node:os";
+import path from "node:path";
+import { CustomAgentManager } from "@/lib/custom-agent";
 import {
   collectCustomRules,
   collectRuleFiles,
@@ -8,12 +10,7 @@ import {
   getSystemInfo,
   getWorkspaceRulesFileUri,
 } from "@/lib/env";
-import { getWorkspaceFolder, isFileExists } from "@/lib/fs";
-import { machineId } from "node-machine-id";
-
-import path from "node:path";
-// biome-ignore lint/style/useImportType: needed for dependency injection
-import { CustomAgentManager } from "@/lib/custom-agent";
+import { isFileExists } from "@/lib/fs";
 import { getLogger } from "@/lib/logger";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { ModelList } from "@/lib/model-list";
@@ -36,7 +33,7 @@ import { searchFiles } from "@/tools/search-files";
 import { startBackgroundJob } from "@/tools/start-background-job";
 import { todoWrite } from "@/tools/todo-write";
 import { previewWriteToFile, writeToFile } from "@/tools/write-to-file";
-import type { Environment } from "@getpochi/common";
+import type { Environment, GitStatus } from "@getpochi/common";
 import type { UserInfo } from "@getpochi/common/configuration";
 import type { McpStatus } from "@getpochi/common/mcp-utils";
 import type { McpHub } from "@getpochi/common/mcp-utils";
@@ -75,11 +72,11 @@ import {
   type ThreadSignalSerialization,
 } from "@quilted/threads/signals";
 import type { Tool } from "ai";
-import { entries, keys } from "remeda";
+import { machineId } from "node-machine-id";
+import { keys } from "remeda";
 import * as runExclusive from "run-exclusive";
 import { inject, injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
-// biome-ignore lint/style/useImportType: needed for dependency injection
 import { CheckpointService } from "../checkpoint/checkpoint-service";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { PochiConfiguration } from "../configuration";
@@ -104,6 +101,11 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   private toolCallGroup = runExclusive.createGroupRef();
   private checkpointGroup = runExclusive.createGroupRef();
   private disposables: vscode.Disposable[] = [];
+  // cwd === null means no workspace is currently open.
+  private cwd: string | null =
+    vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? null;
+  private checkpointService: CheckpointService | null = null;
+  private customAgentManager: CustomAgentManager;
 
   constructor(
     @inject("vscode.ExtensionContext")
@@ -113,15 +115,18 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     private readonly posthog: PostHog,
     @inject("McpHub") private readonly mcpHub: McpHub,
     private readonly thirdMcpImporter: ThirdMcpImporter,
-    private readonly checkpointService: CheckpointService,
     private readonly pochiConfiguration: PochiConfiguration,
     private readonly modelList: ModelList,
     private readonly userStorage: UserStorage,
-    private readonly customAgentManager: CustomAgentManager,
-  ) {}
+  ) {
+    if (this.cwd) {
+      this.checkpointService = new CheckpointService(this.cwd, this.context);
+    }
+    this.customAgentManager = new CustomAgentManager(this.cwd);
+  }
 
   listRuleFiles = async (): Promise<RuleFile[]> => {
-    return await collectRuleFiles();
+    return this.cwd ? await collectRuleFiles(this.cwd) : [];
   };
 
   listWorkflowsInWorkspace = (): Promise<
@@ -132,7 +137,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       frontmatter: { model?: string };
     }[]
   > => {
-    return collectWorkflows();
+    return this.cwd ? collectWorkflows(this.cwd) : Promise.resolve([]);
   };
 
   readResourceURI = (): Promise<ResourceURI> => {
@@ -187,24 +192,26 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   };
 
   readEnvironment = async (isSubTask = false): Promise<Environment> => {
-    const workspaceFolders = vscode.workspace.workspaceFolders;
-
-    const { files, isTruncated } = workspaceFolders?.length
+    const { files, isTruncated } = this.cwd
       ? await listWorkspaceFiles({
-          cwd: workspaceFolders[0].uri.fsPath,
+          cwd: this.cwd,
           recursive: true,
           maxItems: 500,
         })
       : { files: [], isTruncated: false };
 
-    const customRules = isSubTask ? undefined : await collectCustomRules();
+    const customRules =
+      !isSubTask && this.cwd ? await collectCustomRules(this.cwd) : undefined;
 
-    const systemInfo = getSystemInfo();
+    const systemInfo = getSystemInfo(this.cwd);
 
-    const gitStatusReader = new GitStatusReader({
-      cwd: getWorkspaceFolder().uri.fsPath,
-    });
-    const gitStatus = await gitStatusReader.readGitStatus();
+    let gitStatus: GitStatus | undefined;
+    if (this.cwd) {
+      const gitStatusReader = new GitStatusReader({
+        cwd: this.cwd,
+      });
+      gitStatus = await gitStatusReader.readGitStatus();
+    }
 
     const environment: Environment = {
       currentTime: new Date().toString(),
@@ -250,8 +257,8 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     };
   };
 
-  readCurrentWorkspace = async (): Promise<string | undefined> => {
-    return vscode.workspace.workspaceFolders?.[0].uri.fsPath;
+  readCurrentWorkspace = async (): Promise<string | null> => {
+    return this.cwd;
   };
 
   readMinionId = async (): Promise<string | null> => {
@@ -264,13 +271,12 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       isDir: boolean;
     }[]
   > => {
-    const workspaceFolders = vscode.workspace.workspaceFolders;
-    if (!workspaceFolders?.length || !workspaceFolders[0]) {
+    if (!this.cwd) {
       return [];
     }
 
     const results = await ignoreWalk({
-      dir: workspaceFolders[0].uri.fsPath,
+      dir: this.cwd,
       recursive: true,
     });
     return results.map((item) => ({
@@ -281,9 +287,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
 
   listAutoCompleteCandidates = async (): Promise<string[]> => {
     const clientTools = keys(createClientTools());
-    const mcps = entries(this.mcpHub.status.value.connections)
-      .filter(([_, v]) => v.status === "ready")
-      .map(([id]) => id);
+    const mcps = keys(this.mcpHub.status.value.toolset);
 
     // Inline listDocumentCompletion function
     const candidates: string[] = [];
@@ -332,6 +336,12 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         };
       }
 
+      if (!this.cwd) {
+        return {
+          error: "No workspace folder found.",
+        };
+      }
+
       const abortSignal = new ThreadAbortSignal(options.abortSignal);
       const toolCallStart = Date.now();
       const result = await safeCall(
@@ -340,6 +350,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
           messages: [],
           toolCallId: options.toolCallId,
           nonInteractive: options.nonInteractive,
+          cwd: this.cwd,
         }),
       );
 
@@ -384,6 +395,10 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         return;
       }
 
+      if (!this.cwd) {
+        return;
+      }
+
       if (options.state === "call") {
         logger.debug(
           `previewToolCall(call): ${toolName}(${options.toolCallId})`,
@@ -399,6 +414,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         tool(args as any, {
           ...options,
           abortSignal,
+          cwd: this.cwd,
         }),
       );
     },
@@ -414,11 +430,11 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       fallbackGlobPattern?: string;
     },
   ) => {
-    const current = getWorkspaceFolder().uri;
-
     const fileUri = path.isAbsolute(filePath)
       ? vscode.Uri.file(filePath)
-      : vscode.Uri.joinPath(current, filePath);
+      : this.cwd
+        ? vscode.Uri.joinPath(vscode.Uri.parse(this.cwd), filePath)
+        : vscode.Uri.file(filePath);
 
     try {
       const stat = await vscode.workspace.fs.stat(fileUri);
@@ -483,11 +499,18 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   };
 
   fetchThirdPartyRules = async () => {
-    const rulePaths = await detectThirdPartyRules();
-    const workspaceRuleExists = await isFileExists(getWorkspaceRulesFileUri());
+    const rulePaths = this.cwd ? await detectThirdPartyRules(this.cwd) : [];
+    const workspaceRuleExists = this.cwd
+      ? await isFileExists(getWorkspaceRulesFileUri(this.cwd))
+      : false;
     const copyRules = async () => {
-      await copyThirdPartyRules();
-      await vscode.commands.executeCommand("pochi.editWorkspaceRules");
+      if (this.cwd) {
+        await copyThirdPartyRules(this.cwd);
+        await vscode.commands.executeCommand(
+          "pochi.editWorkspaceRules",
+          this.cwd,
+        );
+      }
     };
     return { rulePaths, workspaceRuleExists, copyRules };
   };
@@ -560,6 +583,9 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       message: string,
       options?: SaveCheckpointOptions,
     ): Promise<string | null> => {
+      if (!this.checkpointService) {
+        return null;
+      }
       return await this.checkpointService.saveCheckpoint(message, options);
     },
   );
@@ -567,12 +593,12 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   restoreCheckpoint = runExclusive.build(
     this.checkpointGroup,
     async (commitHash: string): Promise<void> => {
-      await this.checkpointService.restoreCheckpoint(commitHash);
+      await this.checkpointService?.restoreCheckpoint(commitHash);
     },
   );
 
   readCheckpointPath = async (): Promise<string | undefined> => {
-    return this.checkpointService.getShadowGitPath();
+    return this.checkpointService?.getShadowGitPath();
   };
 
   diffWithCheckpoint = runExclusive.build(
@@ -581,7 +607,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       try {
         // Get changes using existing method
         const changes =
-          await this.checkpointService.getCheckpointUserEditsDiff(
+          await this.checkpointService?.getCheckpointUserEditsDiff(
             fromCheckpoint,
           );
         if (!changes || changes.length === 0) {
@@ -604,31 +630,36 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       checkpoint: { origin: string; modified?: string },
       displayPath?: string,
     ) => {
-      const changedFiles = await this.checkpointService.getCheckpointChanges(
+      const changedFiles = await this.checkpointService?.getCheckpointChanges(
         checkpoint.origin,
         checkpoint.modified,
       );
-      if (changedFiles.length === 0) {
+      if (!changedFiles || changedFiles.length === 0) {
         logger.info(
           `No changes found in the checkpoint from ${checkpoint.origin} to ${checkpoint.modified}`,
         );
         return false;
       }
+
+      if (!this.cwd) {
+        return false;
+      }
+
       if (displayPath) {
         const changedFile = changedFiles.filter(
           (file) => file.filepath === displayPath,
         )[0];
         await vscode.commands.executeCommand(
           "vscode.diff",
-          vscode.Uri.parse(
-            `${DiffChangesContentProvider.scheme}:${changedFile.filepath}`,
-          ).with({
-            query: Buffer.from(changedFile.before ?? "").toString("base64"),
+          DiffChangesContentProvider.decode({
+            filepath: changedFile.filepath,
+            content: changedFile.before,
+            cwd: this.cwd,
           }),
-          vscode.Uri.parse(
-            `${DiffChangesContentProvider.scheme}:${changedFile.filepath}`,
-          ).with({
-            query: Buffer.from(changedFile.after ?? "").toString("base64"),
+          DiffChangesContentProvider.decode({
+            filepath: changedFile.filepath,
+            content: changedFile.after,
+            cwd: this.cwd,
           }),
           title,
           {
@@ -638,17 +669,18 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         );
         return true;
       }
+
       await vscode.commands.executeCommand(
         "vscode.changes",
         title,
         changedFiles.map((file) => [
-          vscode.Uri.joinPath(getWorkspaceFolder().uri, file.filepath),
-          vscode.Uri.parse(
-            `${DiffChangesContentProvider.scheme}:${file.filepath}`,
-          ).with({
-            query: Buffer.from(file.before ?? "").toString("base64"),
+          vscode.Uri.joinPath(vscode.Uri.parse(this.cwd ?? ""), file.filepath),
+          DiffChangesContentProvider.decode({
+            filepath: file.filepath,
+            content: file.after,
+            cwd: this.cwd ?? "",
           }),
-          vscode.Uri.joinPath(getWorkspaceFolder().uri, file.filepath),
+          vscode.Uri.joinPath(vscode.Uri.parse(this.cwd ?? ""), file.filepath),
         ]),
       );
       return true;

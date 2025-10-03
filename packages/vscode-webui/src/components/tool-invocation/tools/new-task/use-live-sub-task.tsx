@@ -263,6 +263,13 @@ export function useLiveSubTask(
     isExecuting,
   ]);
 
+  useEffect(() => {
+    if (isExecuting && status === "ready" && errorForRetry === undefined) {
+      // Reset retry count when status is ok and no error
+      setRetryCount(0);
+    }
+  }, [isExecuting, status, errorForRetry]);
+
   const stepCount = useMemo(() => {
     return messages
       .flatMap((message) => message.parts)
@@ -272,7 +279,6 @@ export function useLiveSubTask(
   useEffect(() => {
     if (isExecuting && stepCount > currentStepCount) {
       setCurrentStepCount(stepCount);
-      setRetryCount(0); // Reset retry count when a new step is started
     }
   }, [stepCount, currentStepCount, isExecuting]);
 

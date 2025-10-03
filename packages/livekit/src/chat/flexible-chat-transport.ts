@@ -20,6 +20,8 @@ import {
   wrapLanguageModel,
 } from "ai";
 import { pickBy } from "remeda";
+import { StoreBlobProtocol } from "..";
+import { makeBlobQuery } from "../livestore/queries";
 import type { Message, Metadata, RequestData } from "../types";
 import { makeRepairToolCall } from "./llm";
 import { parseMcpToolSet } from "./mcp-utils";
@@ -121,7 +123,8 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
       middlewares.push(createToolCallMiddleware());
     }
 
-    const mcpTools = mcpInfo?.toolset && parseMcpToolSet(mcpInfo.toolset);
+    const mcpTools =
+      mcpInfo?.toolset && parseMcpToolSet(this.store, mcpInfo.toolset);
     const tools = pickBy(
       {
         ...selectClientTools({
@@ -162,6 +165,34 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
       // error log is handled in live chat kit.
       onError: () => {},
       experimental_repairToolCall: makeRepairToolCall(model),
+      experimental_download: async (items) => {
+        const promises = items.map(
+          async ({
+            url,
+            isUrlSupportedByModel,
+          }): Promise<{
+            data: Uint8Array;
+            mediaType: string | undefined;
+          } | null> => {
+            if (isUrlSupportedByModel) return null;
+            if (url.protocol === StoreBlobProtocol) {
+              const blob = this.store.query(makeBlobQuery(url.pathname));
+              if (!blob)
+                throw new Error(`Blob with checksum ${url.pathname} not found`);
+              return {
+                data: blob.data,
+                mediaType: blob.mimeType,
+              };
+            }
+            const resp = await fetch(url);
+            return {
+              data: new Uint8Array(await resp.arrayBuffer()),
+              mediaType: resp.headers.get("content-type") || undefined,
+            };
+          },
+        );
+        return Promise.all(promises);
+      },
     });
     return stream.toUIMessageStream({
       onError: (error) => {

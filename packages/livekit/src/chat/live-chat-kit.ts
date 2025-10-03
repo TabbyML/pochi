@@ -2,12 +2,18 @@ import { getLogger } from "@getpochi/common";
 
 import type { CustomAgent } from "@getpochi/tools";
 import type { Store } from "@livestore/livestore";
-import type { ChatInit, ChatOnErrorCallback, ChatOnFinishCallback } from "ai";
+import type {
+  AbstractChat,
+  ChatInit,
+  ChatOnErrorCallback,
+  ChatOnFinishCallback,
+} from "ai";
 import { makeMessagesQuery, makeTaskQuery } from "../livestore/queries";
 import { events, tables } from "../livestore/schema";
 import { toTaskError, toTaskStatus } from "../task";
 import type { Message } from "../types";
 import { scheduleGenerateTitleJob } from "./background-job";
+import { makeChatWithHookClass } from "./chat-with-hook";
 import {
   FlexibleChatTransport,
   type OnStartCallback,
@@ -43,7 +49,11 @@ export type LiveChatKitOptions<T> = {
 >;
 
 export class LiveChatKit<
-  T extends { messages: Message[]; stop: () => Promise<void> },
+  T extends {
+    messages: Message[];
+    stop: () => Promise<void>;
+    addToolResult: AbstractChat<Message>["addToolResult"];
+  },
 > {
   protected readonly taskId: string;
   protected readonly store: Store;
@@ -75,7 +85,7 @@ export class LiveChatKit<
       customAgent,
     });
 
-    this.chat = new chatClass({
+    this.chat = new (makeChatWithHookClass(store, chatClass))({
       ...chatInit,
       id: taskId,
       messages: this.messages,
@@ -264,12 +274,23 @@ export class LiveChatKit<
     }
   };
 
-  private readonly onFinish: ChatOnFinishCallback<Message> = ({ message }) => {
+  private readonly onFinish: ChatOnFinishCallback<Message> = ({
+    message,
+    isAbort,
+    isError,
+  }) => {
+    const abortError = new Error("Transport is aborted");
+    abortError.name = "AbortError";
+
+    if (isAbort) {
+      return this.onError(abortError);
+    }
+
+    if (isError) return; // handled in onError already.
+
     const { store } = this;
     if (message.metadata?.kind !== "assistant") {
-      const error = new Error("Transport is aborted");
-      error.name = "AbortError";
-      throw error;
+      return this.onError(abortError);
     }
 
     store.commit(

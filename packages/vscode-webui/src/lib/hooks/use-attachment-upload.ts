@@ -1,6 +1,8 @@
 import { MaxAttachments } from "@/lib/constants";
 import { createFileName, validateFile } from "@/lib/utils/attachment";
-import { getServerBaseUrl } from "@getpochi/common/vscode-webui-bridge";
+import { StoreBlobProtocol, catalog } from "@getpochi/livekit";
+import type { Store } from "@livestore/livestore";
+import { useStore } from "@livestore/react";
 import type { FileUIPart } from "ai";
 import { useRef, useState } from "react";
 
@@ -9,6 +11,7 @@ interface UseAttachmentUploadOptions {
 }
 
 export function useAttachmentUpload(options?: UseAttachmentUploadOptions) {
+  const { store } = useStore();
   const maxAttachments = options?.maxAttachments ?? MaxAttachments;
   const [files, setFiles] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
@@ -141,7 +144,8 @@ export function useAttachmentUpload(options?: UseAttachmentUploadOptions) {
           type: "file",
           filename: file.name || "unnamed-file",
           mediaType: file.type,
-          url: await fileToRemoteUri(file, abortController.current?.signal),
+          url: await fileToStoreBlobUri(store, file),
+          // url: await fileToRemoteUri(file, abortController.current?.signal),
           // url: await fileToDataUri(file),
         } satisfies FileUIPart;
       });
@@ -203,24 +207,51 @@ export function useAttachmentUpload(options?: UseAttachmentUploadOptions) {
 //   });
 // }
 
-async function fileToRemoteUri(file: File, signal?: AbortSignal) {
-  const formData = new FormData();
-  formData.append("file", file);
+// async function fileToRemoteUri(file: File, signal?: AbortSignal) {
+//   const formData = new FormData();
+//   formData.append("file", file);
 
-  const response = await fetch(`${getServerBaseUrl()}/api/upload`, {
-    method: "POST",
-    body: formData,
-    signal,
-  });
+//   const response = await fetch(`${getServerBaseUrl()}/api/upload`, {
+//     method: "POST",
+//     body: formData,
+//     signal,
+//   });
 
-  if (!response.ok) {
-    throw new Error(`Upload failed: ${response.statusText}`);
+//   if (!response.ok) {
+//     throw new Error(`Upload failed: ${response.statusText}`);
+//   }
+
+//   const data = await response.json();
+
+//   if (!data.url) {
+//     throw new Error("Failed to upload attachment");
+//   }
+//   return data.url;
+// }
+
+async function fileToStoreBlobUri(store: Store, file: File): Promise<string> {
+  const data = new Uint8Array(await file.arrayBuffer());
+  const mimeType = file.type;
+  const checksum = await digest(data);
+  const url = `${StoreBlobProtocol}${checksum}`;
+  if (store.query(catalog.queries.makeBlobQuery(checksum))) {
+    return url;
   }
 
-  const data = await response.json();
+  store.commit(
+    catalog.events.blobInserted({
+      checksum,
+      data,
+      createdAt: new Date(),
+      mimeType,
+    }),
+  );
 
-  if (!data.url) {
-    throw new Error("Failed to upload attachment");
-  }
-  return data.url;
+  return url;
+}
+
+async function digest(data: Uint8Array<ArrayBuffer>): Promise<string> {
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer)); // convert buffer to byte array
+  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join(""); // convert byte array to hex string
 }

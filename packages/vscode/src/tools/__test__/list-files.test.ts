@@ -16,12 +16,6 @@ async function createDirectory(uri: vscode.Uri): Promise<void> {
   await vscode.workspace.fs.createDirectory(uri);
 }
 
-// Dummy options for tool execution context
-const dummyToolOptions = {
-  toolCallId: "test-call-id-123",
-  messages: [], // Provide a minimal message object
-};
-
 describe("listFiles Tool", () => {
   let testSuiteRootTempDir: vscode.Uri;
   let currentTestTempDirUri: vscode.Uri;
@@ -81,7 +75,7 @@ describe("listFiles Tool", () => {
 
     const result = await listFiles(
       { path: currentTestTempDirRelativePath, recursive: false },
-      dummyToolOptions,
+      { toolCallId: "test-call-id-123", messages: [], cwd: testSuiteRootTempDir.fsPath },
     );
 
     assert.ok(result.files.some(file => file.includes("file1.txt")));
@@ -98,7 +92,7 @@ describe("listFiles Tool", () => {
 
     const result = await listFiles(
       { path: currentTestTempDirRelativePath, recursive: true },
-      dummyToolOptions,
+      { toolCallId: "test-call-id-123", messages: [], cwd: testSuiteRootTempDir.fsPath },
     );
 
     assert.ok(result.files.some(file => file.includes("file1.txt")));
@@ -115,7 +109,7 @@ describe("listFiles Tool", () => {
 
     const result = await listFiles(
       { path: currentTestTempDirRelativePath, recursive: false },
-      dummyToolOptions,
+      { toolCallId: "test-call-id-123", messages: [], cwd: testSuiteRootTempDir.fsPath },
     );
 
     assert.ok(result.files.some(file => file.includes("file1.txt")));
@@ -126,7 +120,7 @@ describe("listFiles Tool", () => {
   it("should handle empty directories", async () => {
     const result = await listFiles(
       { path: currentTestTempDirRelativePath, recursive: false },
-      dummyToolOptions,
+      { toolCallId: "test-call-id-123", messages: [], cwd: testSuiteRootTempDir.fsPath },
     );
 
     assert.deepStrictEqual(result.files, []);
@@ -139,7 +133,7 @@ describe("listFiles Tool", () => {
     const absolutePath = currentTestTempDirUri.fsPath;
     const result = await listFiles(
       { path: absolutePath, recursive: false },
-      dummyToolOptions,
+      { toolCallId: "test-call-id-123", messages: [], cwd: testSuiteRootTempDir.fsPath },
     );
     
     assert.ok(result.files.some(file => file.includes("absolute-test.txt")));
@@ -152,7 +146,7 @@ describe("listFiles Tool", () => {
     const abortController = new AbortController();
     const promise = listFiles(
       { path: currentTestTempDirRelativePath, recursive: false },
-      { ...dummyToolOptions, abortSignal: abortController.signal },
+      { toolCallId: "test-call-id-123", messages: [], cwd: testSuiteRootTempDir.fsPath, abortSignal: abortController.signal },
     );
     abortController.abort();
     

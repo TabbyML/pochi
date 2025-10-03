@@ -78,7 +78,9 @@ function extractResult(text: string): string {
     text.indexOf("<|editable_region_start|>") +
     "<|editable_region_start|>".length;
   const endIndex = text.indexOf("<|editable_region_end|>");
-  return text.slice(startIndex, endIndex);
+  return text
+    .slice(startIndex, endIndex)
+    .replace("<|user_cursor_is_here|>", "");
 }
 
 const SystemPromptTemplate =

@@ -104,11 +104,11 @@ export function usePendingRetryApproval({
   }, [error]);
 
   useEffect(() => {
-    // reset retry count when status is ok
-    if (status === "ready") {
+    // reset retry count when status is ok and no error
+    if (status === "ready" && error === undefined) {
       setRetryCount(undefined);
     }
-  }, [status]);
+  }, [status, error]);
 
   useEffect(() => {
     // reset retry count when settings updated to enable auto-retry

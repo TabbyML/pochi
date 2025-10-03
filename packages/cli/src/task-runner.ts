@@ -89,6 +89,7 @@ export interface RunnerOptions {
 const logger = getLogger("TaskRunner");
 
 export class TaskRunner {
+  private cwd: string;
   private toolCallOptions: ToolCallOptions;
   private stepCount: StepCount;
 
@@ -106,8 +107,8 @@ export class TaskRunner {
   }
 
   constructor(options: RunnerOptions) {
+    this.cwd = options.cwd;
     this.toolCallOptions = {
-      cwd: options.cwd,
       rg: options.rg,
       customAgents: options.customAgents,
       mcpHub: options.mcpHub,
@@ -304,7 +305,7 @@ export class TaskRunner {
         ),
       );
       this.chat.appendOrReplaceMessage(message);
-      return "next";
+      return "retry";
     }
   }
 
@@ -319,9 +320,13 @@ export class TaskRunner {
         )}`,
       );
 
-      const toolResult = await executeToolCall(toolCall, this.toolCallOptions);
+      const toolResult = await executeToolCall(
+        toolCall,
+        this.toolCallOptions,
+        this.cwd,
+      );
 
-      this.chatKit.chat.addToolResult({
+      await this.chatKit.chat.addToolResult({
         // @ts-expect-error
         tool: toolName,
         toolCallId: toolCall.toolCallId,

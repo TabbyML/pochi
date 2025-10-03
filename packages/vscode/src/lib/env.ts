@@ -9,65 +9,48 @@ import {
 } from "@getpochi/common/tool-utils";
 import type { RuleFile } from "@getpochi/common/vscode-webui-bridge";
 import * as vscode from "vscode";
-import {
-  getWorkspaceFolder,
-  isFileExists,
-  readDirectoryFiles,
-  readFileContent,
-} from "./fs";
+import { isFileExists, readDirectoryFiles, readFileContent } from "./fs";
 
 // Path constants - using arrays for consistency
 const WorkflowsDirPath = [".pochi", "workflows"];
 const logger = getLogger("env");
 
-export function getCwd() {
-  return vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || process.cwd();
-}
-
 /**
  * Gets system information such as current working directory, shell, OS, and home directory.
  * @returns An object containing system information such as cwd, shell, os, and homedir.
  */
-export function getSystemInfo(): {
+export function getSystemInfo(cwd: string | null): {
   cwd: string;
   shell: string;
   os: string;
   homedir: string;
 } {
-  const cwd = getCwd();
   return getSystemInfoImpl(cwd);
 }
 
 /**
  * Gets a URI relative to workspace root, or fallback to current directory
  */
-function getWorkspaceUri(...pathSegments: string[]): vscode.Uri {
-  if (
-    vscode.workspace.workspaceFolders &&
-    vscode.workspace.workspaceFolders.length > 0
-  ) {
-    return vscode.Uri.joinPath(
-      vscode.workspace.workspaceFolders[0].uri,
-      ...pathSegments,
-    );
-  }
-  return vscode.Uri.file(pathSegments.join("/"));
+function getWorkspaceUri(cwd: string, ...pathSegments: string[]): vscode.Uri {
+  return vscode.Uri.joinPath(vscode.Uri.parse(cwd), ...pathSegments);
 }
 
 // Deprecated: use getWorkspaceRulesFileUris
-export function getWorkspaceRulesFileUri() {
-  return getWorkspaceRulesFileUris()[0];
+export function getWorkspaceRulesFileUri(cwd: string) {
+  return getWorkspaceRulesFileUris(cwd)[0];
 }
 
-export function getWorkspaceRulesFileUris() {
-  return WorkspaceRulesFilePaths.map((fileName) => getWorkspaceUri(fileName));
+export function getWorkspaceRulesFileUris(cwd: string) {
+  return WorkspaceRulesFilePaths.map((fileName) =>
+    getWorkspaceUri(cwd, fileName),
+  );
 }
 
-function getWorkflowsDirectoryUri() {
-  return getWorkspaceUri(...WorkflowsDirPath);
+function getWorkflowsDirectoryUri(cwd: string) {
+  return getWorkspaceUri(cwd, ...WorkflowsDirPath);
 }
 
-export async function collectRuleFiles(): Promise<RuleFile[]> {
+export async function collectRuleFiles(cwd: string): Promise<RuleFile[]> {
   const ruleFiles: RuleFile[] = [];
   // Add global rules
   for (const rule of GlobalRules) {
@@ -78,7 +61,7 @@ export async function collectRuleFiles(): Promise<RuleFile[]> {
       });
     }
   }
-  for (const uri of getWorkspaceRulesFileUris()) {
+  for (const uri of getWorkspaceRulesFileUris(cwd)) {
     if (await isFileExists(uri)) {
       ruleFiles.push({
         filepath: uri.fsPath,
@@ -97,10 +80,9 @@ export async function collectRuleFiles(): Promise<RuleFile[]> {
  * @returns A string containing all collected rules, or empty string if no rules found
  */
 export async function collectCustomRules(
+  cwd: string,
   customRuleFiles: string[] = [],
 ): Promise<string> {
-  const cwd = getCwd();
-
   // Use the shared implementation with default rules enabled
   // The common function will handle adding README.pochi.md from cwd
   return await collectCustomRulesImpl(cwd, customRuleFiles, true);
@@ -110,7 +92,7 @@ export async function collectCustomRules(
  * Collects all workflow files from .pochi/workflows directory
  * @returns Array of workflow file paths
  */
-export async function collectWorkflows(): Promise<
+export async function collectWorkflows(cwd: string): Promise<
   {
     id: string;
     path: string;
@@ -118,16 +100,16 @@ export async function collectWorkflows(): Promise<
     frontmatter: { model?: string };
   }[]
 > {
-  const workflowsDir = getWorkflowsDirectoryUri();
+  const workflowsDir = getWorkflowsDirectoryUri(cwd);
   const isMarkdownFile = (name: string, type: vscode.FileType) =>
     type === vscode.FileType.File && name.toLowerCase().endsWith(".md");
   const files = await readDirectoryFiles(workflowsDir, isMarkdownFile);
   return Promise.all(
     files.map(async (file) => {
-      const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-      const absolutePath = workspaceFolder
-        ? vscode.Uri.joinPath(workspaceFolder.uri, file).fsPath
-        : file;
+      const absolutePath = vscode.Uri.joinPath(
+        vscode.Uri.parse(cwd),
+        file,
+      ).fsPath;
 
       const content = await readFileContent(absolutePath);
       const frontmatter = await parseWorkflowFrontmatter(content);
@@ -148,22 +130,13 @@ export async function collectWorkflows(): Promise<
  * Detects all cursor rule file paths in the workspace
  * @returns Array of cursor rule file paths found in the workspace
  */
-export async function detectThirdPartyRules(): Promise<string[]> {
+export async function detectThirdPartyRules(cwd: string): Promise<string[]> {
   const cursorRulePaths: string[] = [];
-
-  if (
-    !vscode.workspace.workspaceFolders ||
-    vscode.workspace.workspaceFolders.length === 0
-  ) {
-    return cursorRulePaths;
-  }
-
-  const workspaceFolder = vscode.workspace.workspaceFolders[0];
 
   try {
     // Check for legacy .cursorrules file in root
     const legacyRulesUri = vscode.Uri.joinPath(
-      workspaceFolder.uri,
+      vscode.Uri.parse(cwd),
       ".cursorrules",
     );
     try {
@@ -232,7 +205,7 @@ export async function detectThirdPartyRules(): Promise<string[]> {
       }
     };
 
-    await findCursorRulesDirectories(workspaceFolder.uri);
+    await findCursorRulesDirectories(vscode.Uri.parse(cwd));
   } catch (error) {
     logger.error("Error detecting cursor rule files:", error);
   }
@@ -247,15 +220,14 @@ export async function detectThirdPartyRules(): Promise<string[]> {
  * @returns Promise that resolves when copying is complete
  */
 export async function copyThirdPartyRules(
+  cwd: string,
   cursorRulePaths: string[] = [],
   targetFileName = WorkspaceRulesFilePaths[0],
 ): Promise<void> {
-  const workspaceFolder = getWorkspaceFolder();
-
   // If no paths provided, auto-detect them
   let rulePaths = cursorRulePaths;
   if (rulePaths.length === 0) {
-    rulePaths = await detectThirdPartyRules();
+    rulePaths = await detectThirdPartyRules(cwd);
   }
 
   if (rulePaths.length === 0) {
@@ -263,7 +235,7 @@ export async function copyThirdPartyRules(
   }
 
   // Read existing workspace rules content
-  const workspaceRulesUri = getWorkspaceRulesFileUri();
+  const workspaceRulesUri = getWorkspaceRulesFileUri(cwd);
   const existingContent = await readFileContent(workspaceRulesUri.fsPath);
 
   let combinedContent = existingContent || "";
@@ -281,7 +253,7 @@ export async function copyThirdPartyRules(
     // Convert workspace-relative path to absolute path for reading
     // Use the workspaceFolder from the beginning of the function
     const absolutePath = vscode.Uri.joinPath(
-      workspaceFolder.uri,
+      vscode.Uri.parse(cwd),
       rulePath,
     ).fsPath;
     const content = await readFileContent(absolutePath);
@@ -321,7 +293,7 @@ export async function copyThirdPartyRules(
     }
   }
 
-  const targetUri = vscode.Uri.joinPath(workspaceFolder.uri, targetFileName);
+  const targetUri = vscode.Uri.joinPath(vscode.Uri.parse(cwd), targetFileName);
 
   try {
     const encoder = new TextEncoder();
