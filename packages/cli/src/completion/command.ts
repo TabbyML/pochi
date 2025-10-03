@@ -1,7 +1,7 @@
 import type { CommandUnknownOpts } from "@commander-js/extra-typings";
 import { Command } from "@commander-js/extra-typings";
-import { install, uninstall } from "tabtab";
 import chalk from "chalk";
+import { install, uninstall } from "tabtab";
 
 export function registerCompletionCommand(program: CommandUnknownOpts) {
   const completionCommand = new Command("completion")
@@ -15,15 +15,20 @@ export function registerCompletionCommand(program: CommandUnknownOpts) {
               name: "pochi",
               completer: "pochi",
             });
-            console.log(chalk.green("✓ Shell completion installed successfully!"));
+            console.log(
+              chalk.green("✓ Shell completion installed successfully!"),
+            );
             console.log(chalk.dim("Please restart your shell or run:"));
             console.log(chalk.dim("  source ~/.bashrc  # for bash"));
             console.log(chalk.dim("  source ~/.zshrc   # for zsh"));
           } catch (error) {
-            console.error(chalk.red("✗ Failed to install shell completion:"), error);
+            console.error(
+              chalk.red("✗ Failed to install shell completion:"),
+              error,
+            );
             process.exit(1);
           }
-        })
+        }),
     )
     .addCommand(
       new Command("uninstall")
@@ -33,12 +38,17 @@ export function registerCompletionCommand(program: CommandUnknownOpts) {
             await uninstall({
               name: "pochi",
             });
-            console.log(chalk.green("✓ Shell completion uninstalled successfully!"));
+            console.log(
+              chalk.green("✓ Shell completion uninstalled successfully!"),
+            );
           } catch (error) {
-            console.error(chalk.red("✗ Failed to uninstall shell completion:"), error);
+            console.error(
+              chalk.red("✗ Failed to uninstall shell completion:"),
+              error,
+            );
             process.exit(1);
           }
-        })
+        }),
     );
 
   program.addCommand(completionCommand);

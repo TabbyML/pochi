@@ -1,5 +1,5 @@
 import type { CommandUnknownOpts } from "@commander-js/extra-typings";
-import { install, uninstall, log, parseEnv } from "tabtab";
+import { install, log, parseEnv, uninstall } from "tabtab";
 
 interface CompletionItem {
   name: string;
@@ -21,7 +21,7 @@ function extractCommandStructure(command: CommandUnknownOpts): CompletionTree {
     // Extract options from the command
     const options = command.options || [];
     const optionItems: CompletionItem[] = [];
-    
+
     for (const option of options) {
       // Add long form (--option)
       if (option.long) {
@@ -47,7 +47,7 @@ function extractCommandStructure(command: CommandUnknownOpts): CompletionTree {
     // Extract subcommands
     const commands = command.commands || [];
     const commandItems: CompletionItem[] = [];
-    
+
     for (const subCommand of commands) {
       try {
         const name = subCommand.name();
@@ -57,7 +57,7 @@ function extractCommandStructure(command: CommandUnknownOpts): CompletionTree {
             name,
             description: subCommand.description() || undefined,
           });
-          
+
           // Recursively extract subcommand structure
           tree[name] = extractCommandStructure(subCommand);
         }
@@ -92,20 +92,20 @@ export function createCompletionTreeFromProgram(
  */
 function convertTreeToTabtabFormat(tree: CompletionTree): CompletionItem[] {
   const items: CompletionItem[] = [];
-  
+
   // Add commands
   if (tree._commands && Array.isArray(tree._commands)) {
     items.push(...tree._commands);
   }
-  
+
   // Add options
   if (tree._options && Array.isArray(tree._options)) {
     items.push(...tree._options);
   }
-  
+
   // Note: We don't need to add other keys as commands because they are already
   // included in the _commands array. Adding them here would cause duplicates.
-  
+
   return items;
 }
 
@@ -119,34 +119,34 @@ export function initializeShellCompletion(program: CommandUnknownOpts) {
 
   const programName = program.name();
   const tree = createCompletionTreeFromProgram(program);
-  
+
   // Install tabtab completion
   const completionHandler = () => {
     const env = parseEnv(process.env);
     if (!env.complete) return;
-    
+
     const { line } = env;
-    const words = line.split(' ').filter(Boolean);
-    
+    const words = line.split(" ").filter(Boolean);
+
     // Navigate through the tree based on the current command path
     let currentTree = tree;
     let currentIndex = 1; // Skip the program name
-    
+
     // If the line ends with a space, we want to complete the next level
     // If it doesn't end with a space, we want to complete the current partial word
-    const endsWithSpace = line.endsWith(' ');
+    const endsWithSpace = line.endsWith(" ");
     const maxIndex = endsWithSpace ? words.length : words.length - 1;
-    
+
     while (currentIndex < maxIndex && currentTree[words[currentIndex]]) {
       const nextLevel = currentTree[words[currentIndex]];
-      if (typeof nextLevel === 'object' && !Array.isArray(nextLevel)) {
+      if (typeof nextLevel === "object" && !Array.isArray(nextLevel)) {
         currentTree = nextLevel as CompletionTree;
         currentIndex++;
       } else {
         break;
       }
     }
-    
+
     // Return completions for the current level
     const completions = convertTreeToTabtabFormat(currentTree);
     return log(completions);

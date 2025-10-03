@@ -31,7 +31,10 @@ import packageJson from "../package.json";
 import { registerAuthCommand } from "./auth";
 
 import type { Store } from "@livestore/livestore";
-import { initializeShellCompletion, registerCompletionCommand } from "./completion";
+import {
+  initializeShellCompletion,
+  registerCompletionCommand,
+} from "./completion";
 import { findRipgrep } from "./lib/find-ripgrep";
 import { loadAgents } from "./lib/load-agents";
 import { createCliMcpHub } from "./lib/mcp-hub-factory";
@@ -194,7 +197,7 @@ const shellCompletion = initializeShellCompletion(program);
 
 // Handle tabtab completion before parsing
 const args = process.argv.slice(2);
-if (args[0] === 'completion' && args[1] === '--') {
+if (args[0] === "completion" && args[1] === "--") {
   // This is the tabtab completion handler called by shell completion
   shellCompletion.completion();
   process.exit(0);
