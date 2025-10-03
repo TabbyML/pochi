@@ -1,3 +1,4 @@
+import { isAutoApproveToolName, isUserInputToolName } from "@getpochi/tools";
 import { useToolCallLifeCycle } from "../lib/chat-state";
 
 interface UseChatStatusProps {
@@ -21,7 +22,11 @@ export function useChatStatus({
 }: UseChatStatusProps) {
   const { executingToolCalls, previewingToolCalls } = useToolCallLifeCycle();
   const isExecuting = executingToolCalls.length > 0;
-  const isPreviewing = previewingToolCalls.length > 0;
+  const isPreviewing =
+    previewingToolCalls.filter(
+      (x) =>
+        !isUserInputToolName(x.toolName) && !isAutoApproveToolName(x.toolName),
+    ).length > 0;
 
   const isBusyCore = isModelsLoading || newCompactTaskPending;
 

@@ -26,11 +26,19 @@ export {
 } from "./new-task";
 export type { SubTask } from "./new-task";
 
+export function isUserInputToolName(name: string): boolean {
+  return name === "askFollowupQuestion" || name === "attemptCompletion";
+}
+
 export function isUserInputToolPart(part: UIMessagePart<UIDataTypes, UITools>) {
   return (
     part.type === "tool-askFollowupQuestion" ||
     part.type === "tool-attemptCompletion"
   );
+}
+
+export function isAutoApproveToolName(name: string): boolean {
+  return ToolsByPermission.default.some((tool) => name === tool);
 }
 
 export function isAutoApproveTool(part: ToolUIPart): boolean {
