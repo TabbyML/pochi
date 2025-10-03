@@ -2146,9 +2146,9 @@ Copy the key and store it securely, it will only be shown once.
 
 Now, in order for GitHub Actions to access Pochi securely, you need to add the API key in the repository. Head over to your GitHub repository → Settings tabs → Secrets and Variables → Actions → New repository secret.
 
-Here you can create a secret called `POCHI_API_KEY` and paste your key value. Now we’re all set up!
-
 ![Create Repository Secret](./images/create-repository-secret.png)
+
+Here you can create a secret called `POCHI_API_KEY` and paste your key value. Now we’re all set up!
 
 ## Step 1: Add Your First Workflow
 
