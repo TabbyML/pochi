@@ -1,6 +1,5 @@
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { AuthEvents } from "@/lib/auth-events";
-import { getUri } from "@/lib/get-uri";
 import type {
   ResourceURI,
   VSCodeHostApi,
@@ -60,13 +59,7 @@ export class PochiWebviewSidebar
         throw new Error("Webview not initialized");
       }
 
-      return {
-        logo128: getUri(this.view.webview, this.context.extensionUri, [
-          "assets",
-          "icons",
-          "logo128.png",
-        ]).toString(),
-      };
+      return this.buildResourceURI(this.view.webview);
     };
   }
 
