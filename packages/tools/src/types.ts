@@ -10,6 +10,7 @@ export type ToolFunctionType<T extends Tool> = (
   input: InferToolInput<T>,
   options: ToolCallOptions & {
     nonInteractive?: boolean;
+    cwd: string;
   },
 ) => PromiseLike<InferToolOutput<T>> | InferToolOutput<T>;
 
@@ -19,5 +20,6 @@ export type PreviewToolFunctionType<T extends Tool> = (
     toolCallId: string;
     state: "partial-call" | "call" | "result";
     abortSignal?: AbortSignal;
+    cwd: string;
   },
 ) => Promise<undefined>;

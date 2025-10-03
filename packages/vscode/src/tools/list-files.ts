@@ -1,4 +1,3 @@
-import { getWorkspaceFolder } from "@/lib/fs";
 import { listFiles as listFilesImpl } from "@getpochi/common/tool-utils";
 import type { ClientTools, ToolFunctionType } from "@getpochi/tools";
 
@@ -7,10 +6,10 @@ import type { ClientTools, ToolFunctionType } from "@getpochi/tools";
  */
 export const listFiles: ToolFunctionType<ClientTools["listFiles"]> = async (
   { path: dirPath, recursive },
-  { abortSignal },
+  { abortSignal, cwd },
 ) => {
   return await listFilesImpl({
-    cwd: getWorkspaceFolder().uri.fsPath,
+    cwd,
     path: dirPath,
     recursive,
     abortSignal,

@@ -6,7 +6,7 @@ import type { Environment } from "../base";
  * @param cwd The current working directory to use. If not provided, uses process.cwd()
  * @returns An object containing system information such as cwd, shell, os, and homedir.
  */
-export function getSystemInfo(cwd?: string): Environment["info"] {
+export function getSystemInfo(cwd: string | null): Environment["info"] {
   const platform = process.platform;
   const homedir = os.homedir();
   const shell = process.env.SHELL || "";

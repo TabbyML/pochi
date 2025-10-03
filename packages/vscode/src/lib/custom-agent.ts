@@ -1,12 +1,10 @@
 import * as os from "node:os";
 import * as path from "node:path";
-import { getWorkspaceFolder } from "@/lib/fs";
 import { getLogger } from "@getpochi/common";
 import { parseAgentFile } from "@getpochi/common/tool-utils";
 import type { CustomAgentFile } from "@getpochi/common/vscode-webui-bridge";
 import { signal } from "@preact/signals-core";
 import { uniqueBy } from "remeda";
-import { injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
 
 const logger = getLogger("CustomAgentManager");
@@ -38,25 +36,23 @@ async function readAgentsFromDir(dir: string): Promise<CustomAgentFile[]> {
   return agents;
 }
 
-@injectable()
-@singleton()
 export class CustomAgentManager implements vscode.Disposable {
   private disposables: vscode.Disposable[] = [];
+  private readonly cwd: string | null;
 
   readonly agents = signal<CustomAgentFile[]>([]);
 
-  constructor() {
+  constructor(cwd: string | null) {
+    this.cwd = cwd;
     this.initWatchers();
     this.loadAgents();
   }
 
   private initWatchers() {
     try {
-      // Watch workspace .pochi/agents directory
-      const workspaceDir = getWorkspaceFolder();
-      if (workspaceDir) {
+      if (this.cwd) {
         const projectAgentsPattern = new vscode.RelativePattern(
-          workspaceDir,
+          this.cwd,
           ".pochi/agents/**/*.md",
         );
         const projectWatcher =
@@ -94,19 +90,13 @@ export class CustomAgentManager implements vscode.Disposable {
 
   private async loadAgents() {
     try {
-      const workspaceDir = getWorkspaceFolder();
-      const projectAgentsDir = path.join(
-        workspaceDir.uri.fsPath,
-        ".pochi",
-        "agents",
-      );
-      const systemAgentsDir = path.join(os.homedir(), ".pochi", "agents");
-
       const allAgents: CustomAgentFile[] = [];
-
-      if (projectAgentsDir) {
+      if (this.cwd) {
+        const projectAgentsDir = path.join(this.cwd, ".pochi", "agents");
         allAgents.push(...(await readAgentsFromDir(projectAgentsDir)));
       }
+      const systemAgentsDir = path.join(os.homedir(), ".pochi", "agents");
+
       allAgents.push(...(await readAgentsFromDir(systemAgentsDir)));
 
       this.agents.value = uniqueBy(allAgents, (agent) => agent.name);

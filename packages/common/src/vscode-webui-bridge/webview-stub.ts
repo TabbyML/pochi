@@ -19,7 +19,7 @@ import type {
 
 const VSCodeHostStub = {
   readCurrentWorkspace: async () => {
-    return Promise.resolve(undefined);
+    return Promise.resolve(null);
   },
   readResourceURI: (): Promise<ResourceURI> => {
     return Promise.resolve({} as ResourceURI);

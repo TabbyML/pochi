@@ -23,7 +23,7 @@ describe("getSystemInfo", () => {
     process.env.SHELL = "/bin/bash";
     vi.spyOn(process, "cwd").mockReturnValue("/workspace");
 
-    const info = getSystemInfo();
+    const info = getSystemInfo(null);
 
     expect(info).toEqual({
       os: "linux",
@@ -39,7 +39,7 @@ describe("getSystemInfo", () => {
     vi.spyOn(os, "homedir").mockReturnValue("C:\\Users\\User");
     vi.spyOn(process, "cwd").mockReturnValue("C:\\workspace");
 
-    const info = getSystemInfo();
+    const info = getSystemInfo(null);
 
     expect(info).toEqual({
       os: "win32",
@@ -54,4 +54,3 @@ describe("getSystemInfo", () => {
     expect(info.cwd).toBe("/custom/path");
   });
 });
-

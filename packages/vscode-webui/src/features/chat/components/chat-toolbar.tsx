@@ -145,19 +145,18 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     totalTokens < constants.CompactTaskMinTokens
   );
 
-  const { handleSubmit, handleStop, handleSubmitQueuedMessages } =
-    useChatSubmit({
-      chat,
-      input,
-      setInput,
-      attachmentUpload,
-      isSubmitDisabled,
-      isLoading,
-      pendingApproval,
-      newCompactTaskPending,
-      queuedMessages,
-      setQueuedMessages,
-    });
+  const { handleSubmit, handleStop } = useChatSubmit({
+    chat,
+    input,
+    setInput,
+    attachmentUpload,
+    isSubmitDisabled,
+    isLoading,
+    pendingApproval,
+    newCompactTaskPending,
+    queuedMessages,
+    setQueuedMessages,
+  });
 
   const handleQueueMessage = (message: string) => {
     if (message.trim()) {
@@ -174,7 +173,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
       (!pendingApproval || pendingApproval.name === "retry");
 
     if (isReady && queuedMessages.length > 0) {
-      handleSubmitQueuedMessages();
+      handleSubmit();
     }
   }, [
     status,
@@ -182,7 +181,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     isBusyCore,
     queuedMessages.length,
     pendingApproval,
-    handleSubmitQueuedMessages,
+    handleSubmit,
   ]);
 
   // Only allow adding tool results when not loading

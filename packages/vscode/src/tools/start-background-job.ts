@@ -1,11 +1,10 @@
 import * as path from "node:path";
 import { TerminalJob } from "@/integrations/terminal/terminal-job";
-import { getWorkspaceFolder } from "@/lib/fs";
 import type { ClientTools, ToolFunctionType } from "@getpochi/tools";
 
 export const startBackgroundJob: ToolFunctionType<
   ClientTools["startBackgroundJob"]
-> = async ({ command, cwd = "." }, { abortSignal }) => {
+> = async ({ command, cwd = "." }, { abortSignal, cwd: workspaceDir }) => {
   if (!command) {
     throw new Error("Command is required to execute.");
   }
@@ -13,8 +12,7 @@ export const startBackgroundJob: ToolFunctionType<
   if (path.isAbsolute(cwd)) {
     cwd = path.normalize(cwd);
   } else {
-    const workspaceRootUri = getWorkspaceFolder().uri;
-    cwd = path.normalize(path.join(workspaceRootUri.fsPath, cwd));
+    cwd = path.normalize(path.join(workspaceDir, cwd));
   }
 
   const job = TerminalJob.create({

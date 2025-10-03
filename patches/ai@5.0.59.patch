@@ -1,0 +1,50 @@
+diff --git a/node_modules/ai/.bun-tag-4ada6cc0b46cc36 b/.bun-tag-4ada6cc0b46cc36
+new file mode 100644
+index 0000000000000000000000000000000000000000..e69de29bb2d1d6434b8b29ae775ad8c2e48c5391
+diff --git a/node_modules/ai/.bun-tag-5d514628035da591 b/.bun-tag-5d514628035da591
+new file mode 100644
+index 0000000000000000000000000000000000000000..e69de29bb2d1d6434b8b29ae775ad8c2e48c5391
+diff --git a/node_modules/ai/.bun-tag-86d858334fd397de b/.bun-tag-86d858334fd397de
+new file mode 100644
+index 0000000000000000000000000000000000000000..e69de29bb2d1d6434b8b29ae775ad8c2e48c5391
+diff --git a/node_modules/ai/.bun-tag-bb8ac0b9c4610361 b/.bun-tag-bb8ac0b9c4610361
+new file mode 100644
+index 0000000000000000000000000000000000000000..e69de29bb2d1d6434b8b29ae775ad8c2e48c5391
+diff --git a/node_modules/ai/.bun-tag-d93229d11a7f0e99 b/.bun-tag-d93229d11a7f0e99
+new file mode 100644
+index 0000000000000000000000000000000000000000..e69de29bb2d1d6434b8b29ae775ad8c2e48c5391
+diff --git a/dist/index.mjs b/dist/index.mjs
+index 4abe4552b293ab70f7d673b1efafb10c16d8c143..b5e588405e13f55fccf0e0cc27253a78d16421de 100644
+--- a/dist/index.mjs
++++ b/dist/index.mjs
+@@ -8988,6 +8988,7 @@ var DefaultMCPClient = class {
+         });
+       }
+       this.serverCapabilities = result.capabilities;
++      this.instructions = result.instructions;
+       await this.notification({
+         method: "notifications/initialized"
+       });
+@@ -9806,6 +9807,13 @@ var AbstractChat = class {
+     var _a17, _b, _c;
+     this.setStatus({ status: "submitted", error: void 0 });
+     const lastMessage = this.lastMessage;
++    const abortController = new AbortController();
++    this.activeResponse = {
++      abortController,
++    }
++    await this.onBeforeSnapshotInMakeRequest?.({
++      abortSignal: abortController.signal,
++    })
+     let isAbort = false;
+     let isDisconnect = false;
+     let isError = false;
+@@ -9815,7 +9823,7 @@ var AbstractChat = class {
+           lastMessage: this.state.snapshot(lastMessage),
+           messageId: this.generateId()
+         }),
+-        abortController: new AbortController()
++        abortController,
+       };
+       activeResponse.abortController.signal.addEventListener("abort", () => {
+         isAbort = true;

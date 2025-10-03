@@ -1,5 +1,5 @@
 import { DiffView } from "@/integrations/editor/diff-view";
-import { ensureFileDirectoryExists, getWorkspaceFolder } from "@/lib/fs";
+import { ensureFileDirectoryExists } from "@/lib/fs";
 import { getLogger } from "@/lib/logger";
 import { writeTextDocument } from "@/lib/write-text-document";
 import { processMultipleDiffs } from "@getpochi/common/diff-utils";
@@ -18,22 +18,21 @@ const logger = getLogger("multiApplyDiffTool");
  */
 export const previewMultiApplyDiff: PreviewToolFunctionType<
   ClientTools["multiApplyDiff"]
-> = async (args, { toolCallId, state, abortSignal }) => {
+> = async (args, { toolCallId, state, abortSignal, cwd }) => {
   const { path, edits } = args || {};
   if (!args || !path || !edits || edits.length === 0) {
     return;
   }
 
   try {
-    const workspaceFolder = getWorkspaceFolder();
-    const fileUri = vscode.Uri.joinPath(workspaceFolder.uri, path);
+    const fileUri = vscode.Uri.joinPath(vscode.Uri.parse(cwd), path);
 
     const fileBuffer = await vscode.workspace.fs.readFile(fileUri);
     validateTextFile(fileBuffer);
     const fileContent = fileBuffer.toString();
     const updatedContent = await processMultipleDiffs(fileContent, edits);
 
-    const diffView = await DiffView.getOrCreate(toolCallId, path);
+    const diffView = await DiffView.getOrCreate(toolCallId, path, cwd);
     await diffView.update(
       updatedContent,
       state !== "partial-call",
@@ -50,10 +49,12 @@ export const previewMultiApplyDiff: PreviewToolFunctionType<
  */
 export const multiApplyDiff: ToolFunctionType<
   ClientTools["multiApplyDiff"]
-> = async ({ path, edits }, { toolCallId, abortSignal, nonInteractive }) => {
+> = async (
+  { path, edits },
+  { toolCallId, abortSignal, nonInteractive, cwd },
+) => {
   try {
-    const workspaceFolder = getWorkspaceFolder();
-    const fileUri = vscode.Uri.joinPath(workspaceFolder.uri, path);
+    const fileUri = vscode.Uri.joinPath(vscode.Uri.parse(cwd), path);
     await ensureFileDirectoryExists(fileUri);
 
     const fileBuffer = await vscode.workspace.fs.readFile(fileUri);
@@ -63,14 +64,19 @@ export const multiApplyDiff: ToolFunctionType<
     const updatedContent = await processMultipleDiffs(fileContent, edits);
 
     if (nonInteractive) {
-      const edits = await writeTextDocument(path, updatedContent, abortSignal);
+      const edits = await writeTextDocument(
+        path,
+        updatedContent,
+        cwd,
+        abortSignal,
+      );
       logger.info(
         `Successfully applied multiple diff to ${path} in non-interactive mode`,
       );
       return { success: true, ...edits };
     }
 
-    const diffView = await DiffView.getOrCreate(toolCallId, path);
+    const diffView = await DiffView.getOrCreate(toolCallId, path, cwd);
     await diffView.update(updatedContent, true);
     const editsResult = await diffView.saveChanges(path, updatedContent);
 

@@ -1,12 +1,10 @@
 import { mkdir } from "node:fs/promises";
 import * as path from "node:path";
-import { getWorkspaceFolder } from "@/lib/fs";
 import { getLogger, toErrorMessage } from "@getpochi/common";
 import type {
   SaveCheckpointOptions,
   UserEditsDiff,
 } from "@getpochi/common/vscode-webui-bridge";
-import { inject, injectable, singleton } from "tsyringe";
 import type * as vscode from "vscode";
 import { ShadowGitRepo } from "./shadow-git-repo";
 import type { GitDiff } from "./types";
@@ -18,15 +16,13 @@ import {
 
 const logger = getLogger("CheckpointService");
 
-@injectable()
-@singleton()
 export class CheckpointService implements vscode.Disposable {
   private shadowGit: ShadowGitRepo | undefined;
   private readyDefer = new Deferred<void>();
   private initialized = false;
 
   constructor(
-    @inject("vscode.ExtensionContext")
+    private readonly cwd: string,
     private readonly context: vscode.ExtensionContext,
   ) {}
 
@@ -45,10 +41,7 @@ export class CheckpointService implements vscode.Disposable {
   private async init() {
     try {
       const gitPath = await this.getShadowGitPath();
-      this.shadowGit = await ShadowGitRepo.getOrCreate(
-        gitPath,
-        getWorkspaceFolder().uri.fsPath,
-      );
+      this.shadowGit = await ShadowGitRepo.getOrCreate(gitPath, this.cwd);
       logger.trace("Shadow Git repository initialized at", gitPath);
       this.readyDefer.resolve();
     } catch (error) {

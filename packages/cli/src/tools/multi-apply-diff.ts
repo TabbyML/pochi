@@ -4,15 +4,14 @@ import { processMultipleDiffs } from "@getpochi/common/diff-utils";
 import { validateTextFile } from "@getpochi/common/tool-utils";
 import type { ClientTools, ToolFunctionType } from "@getpochi/tools";
 import { ensureFileDirectoryExists } from "../lib/fs";
-import type { ToolCallOptions } from "../types";
 
 /**
  * Apply multiple diff operations to a file using DiffView
  */
 export const multiApplyDiff =
-  (context: ToolCallOptions): ToolFunctionType<ClientTools["multiApplyDiff"]> =>
-  async ({ path, edits }) => {
-    const fileUri = nodePath.join(context.cwd, path);
+  (): ToolFunctionType<ClientTools["multiApplyDiff"]> =>
+  async ({ path, edits }, { cwd }) => {
+    const fileUri = nodePath.join(cwd, path);
     await ensureFileDirectoryExists(fileUri);
 
     const fileBuffer = await fs.readFile(fileUri);

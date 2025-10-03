@@ -34,6 +34,7 @@ const ToolMap: Record<
 export async function executeToolCall(
   tool: ToolUIPart<UITools>,
   options: ToolCallOptions,
+  cwd: string,
   abortSignal?: AbortSignal,
 ) {
   const toolName = getToolName(tool);
@@ -46,6 +47,7 @@ export async function executeToolCall(
         messages: [],
         toolCallId: tool.toolCallId,
         abortSignal,
+        cwd,
       });
     } catch (e) {
       return {

@@ -1,4 +1,4 @@
-import { getWorkspaceFolder, vscodeRipgrepPath } from "@/lib/fs";
+import { vscodeRipgrepPath } from "@/lib/fs";
 import { getLogger } from "@/lib/logger";
 import { searchFilesWithRipgrep } from "@getpochi/common/tool-utils";
 import type { ClientTools, ToolFunctionType } from "@getpochi/tools";
@@ -7,7 +7,7 @@ const logger = getLogger("searchFiles");
 
 export const searchFiles: ToolFunctionType<ClientTools["searchFiles"]> = async (
   { path, regex, filePattern },
-  { abortSignal },
+  { abortSignal, cwd },
 ) => {
   logger.debug(
     "handling searchFiles with path",
@@ -21,7 +21,7 @@ export const searchFiles: ToolFunctionType<ClientTools["searchFiles"]> = async (
     path,
     regex,
     vscodeRipgrepPath,
-    getWorkspaceFolder().uri.fsPath ?? "",
+    cwd,
     filePattern,
     abortSignal,
   );

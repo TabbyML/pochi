@@ -111,6 +111,15 @@ export const tables = {
       },
     ],
   }),
+  blobs: State.SQLite.table({
+    name: "blobs",
+    columns: {
+      checksum: State.SQLite.text({ primaryKey: true }),
+      mimeType: State.SQLite.text(),
+      data: State.SQLite.blob(),
+      createdAt: State.SQLite.integer({ schema: Schema.DateFromNumber }),
+    },
+  }),
 };
 
 // Events describe data changes (https://docs.livestore.dev/reference/events)
@@ -184,6 +193,15 @@ export const events = {
       id: Schema.String,
       isPublicShared: Schema.Boolean,
       updatedAt: Schema.Date,
+    }),
+  }),
+  blobInserted: Events.synced({
+    name: "v1.BlobInserted",
+    schema: Schema.Struct({
+      checksum: Schema.String,
+      createdAt: Schema.Date,
+      mimeType: Schema.String,
+      data: Schema.Uint8Array,
     }),
   }),
 };
@@ -275,6 +293,15 @@ const materializers = State.SQLite.materializers(events, {
     tables.tasks.update({ title, updatedAt }).where({ id }),
   "v1.UpdateIsPublicShared": ({ id, isPublicShared, updatedAt }) =>
     tables.tasks.update({ isPublicShared, updatedAt }).where({ id }),
+  "v1.BlobInserted": ({ checksum, mimeType, data, createdAt }) =>
+    tables.blobs
+      .insert({
+        checksum,
+        mimeType,
+        data: new Uint8Array(data),
+        createdAt,
+      })
+      .onConflict("checksum", "ignore"),
 });
 
 const state = State.SQLite.makeState({ tables, materializers });

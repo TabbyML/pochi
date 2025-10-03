@@ -3,17 +3,6 @@ import * as diff from "diff";
 import * as vscode from "vscode";
 
 /**
- * Get the workspace folder or throw an error if none exists
- */
-export function getWorkspaceFolder(): vscode.WorkspaceFolder {
-  const workspaceFolders = vscode.workspace.workspaceFolders;
-  if (!workspaceFolders || workspaceFolders.length === 0) {
-    throw new Error("No workspace folder found. Please open a workspace.");
-  }
-  return workspaceFolders[0];
-}
-
-/**
  * Ensure a directory exists by creating it if needed
  */
 export async function ensureFileDirectoryExists(
