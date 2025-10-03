@@ -46,12 +46,16 @@ app
         },
       });
     }
+
+    return c.env.ASSETS.fetch(c.req.raw);
+  })
+  .get("/index.html", async (c) => {
+    return c.env.ASSETS.fetch(c.req.raw);
   })
   .all("/stores/:storeId/*", async (c) => {
     const id = c.env.CLIENT_DO.idFromName(c.req.param("storeId"));
     return c.env.CLIENT_DO.get(id).fetch(c.req.raw);
   });
-
 export default {
   fetch: app.fetch,
 } satisfies CfTypes.ExportedHandler<Env>;

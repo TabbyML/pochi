@@ -17,16 +17,13 @@ import { AutoApproveMenu } from "@/features/settings";
 import { TodoList, useTodos } from "@/features/todo";
 import { useAddCompleteToolCalls } from "@/lib/hooks/use-add-complete-tool-calls";
 import type { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
-import { vscodeHost } from "@/lib/vscode";
 import type { UseChatHelpers } from "@ai-sdk/react";
 import { constants } from "@getpochi/common";
-import type { Environment } from "@getpochi/common";
-import type { UserEditsDiff } from "@getpochi/common/vscode-webui-bridge";
 import type { Message, Task } from "@getpochi/livekit";
 import type { Todo } from "@getpochi/tools";
 import { PaperclipIcon, SendHorizonal, StopCircleIcon } from "lucide-react";
 import type React from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useChatStatus } from "../hooks/use-chat-status";
 import { useChatSubmit } from "../hooks/use-chat-submit";
@@ -84,25 +81,6 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     isLoading: isModelsLoading,
     updateSelectedModel,
   } = useSelectedModels();
-
-  const autoApproveGuard = useAutoApproveGuard();
-
-  const buildEnvironment = useCallback(async () => {
-    const environment = await vscodeHost.readEnvironment();
-
-    let userEdits: UserEditsDiff[] | undefined;
-    const lastCheckpointHash = findLastCheckpointFromMessages(messages);
-    if (lastCheckpointHash && autoApproveGuard.current === "auto") {
-      userEdits =
-        (await vscodeHost.diffWithCheckpoint(lastCheckpointHash)) ?? undefined;
-    }
-
-    return {
-      todos: todosRef.current,
-      ...environment,
-      userEdits,
-    } satisfies Environment;
-  }, [messages, autoApproveGuard.current, todosRef.current]);
 
   // Use the unified attachment upload hook
   const {
@@ -276,11 +254,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
               selectedModel={selectedModel}
             />
           )}
-          <DevModeButton
-            messages={messages}
-            buildEnvironment={buildEnvironment}
-            todos={todos}
-          />
+          <DevModeButton messages={messages} todos={todos} />
           {!isSubTask && (
             <PublicShareButton
               task={task}
@@ -367,17 +341,3 @@ const SubmitStopButton: React.FC<SubmitStopButtonProps> = ({
     </Button>
   );
 };
-
-function findLastCheckpointFromMessages(
-  messages: Message[],
-): string | undefined {
-  for (let i = messages.length - 1; i >= 0; i--) {
-    const message = messages[i];
-    for (const part of message.parts) {
-      if (part.type === "data-checkpoint" && part.data?.commit) {
-        return part.data.commit;
-      }
-    }
-  }
-  return undefined;
-}
