@@ -15,6 +15,7 @@ type VFile = Parameters<typeof matter>[0];
 const CustomAgentFrontmatter = z.object({
   name: z.string().optional(),
   description: z.string(),
+  model: z.string().optional(),
   tools: z.union([z.string(), z.array(z.string())]).optional(),
 });
 
@@ -77,7 +78,6 @@ export async function parseAgentFile(
   }
 
   const frontmatterData = parseResult.data;
-
   const toolsRaw = frontmatterData.tools;
   let tools: string[] | undefined;
   if (typeof toolsRaw === "string") {
@@ -98,5 +98,6 @@ export async function parseAgentFile(
     tools,
     description: frontmatterData.description,
     systemPrompt,
+    model: frontmatterData.model,
   } satisfies ValidCustomAgentFile;
 }

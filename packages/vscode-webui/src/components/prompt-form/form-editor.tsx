@@ -27,14 +27,13 @@ import {
 import "./prompt-form.css";
 import { useSelectedModels } from "@/features/settings";
 import { cn } from "@/lib/utils";
-import type { DisplayModel } from "@getpochi/common/vscode-webui-bridge";
+import { resolveModelFromId } from "@/lib/utils/resolve-model-from-id";
 import {
   type SuggestionMatch,
   type Trigger,
   findSuggestionMatch,
 } from "@tiptap/suggestion";
 import { ArrowRightToLine } from "lucide-react";
-import { pick } from "remeda";
 import { ScrollArea } from "../ui/scroll-area";
 import { AutoCompleteExtension } from "./auto-completion/extension";
 import type { MentionListActions } from "./shared";
@@ -103,6 +102,7 @@ interface FormEditorProps {
   enableSubmitHistory?: boolean;
   onFileDrop?: (files: File[]) => boolean;
   messageContent?: string;
+  isSubTask: boolean;
 }
 
 export function FormEditor({
@@ -119,8 +119,9 @@ export function FormEditor({
   enableSubmitHistory = true,
   onFileDrop,
   messageContent = "",
+  isSubTask,
 }: FormEditorProps) {
-  const { updateSelectedModel, models } = useSelectedModels();
+  const { updateSelectedModelId, models } = useSelectedModels({ isSubTask });
   const internalFormRef = useRef<HTMLFormElement>(null);
   const formRef = externalFormRef || internalFormRef;
   const [isAutoCompleteHintVisible, setIsAutoCompleteHintVisible] =
@@ -139,15 +140,12 @@ export function FormEditor({
 
   const onSelectWorkflow = useCallback(
     (workflow: WorkflowItem) => {
-      const foundModel = resolveModelFromString(
-        workflow.frontmatter.model,
-        models,
-      );
+      const foundModel = resolveModelFromId(workflow.frontmatter.model, models);
       if (foundModel) {
-        updateSelectedModel(pick(foundModel, ["id", "name"]));
+        updateSelectedModelId(foundModel.id);
       }
     },
-    [models, updateSelectedModel],
+    [models, updateSelectedModelId],
   );
 
   const editor = useEditor(
@@ -648,25 +646,3 @@ export const debouncedListWorkflows = debounceWithCachedValue(
     leading: true,
   },
 );
-
-function resolveModelFromString(
-  model: string | undefined,
-  models: DisplayModel[] | undefined,
-) {
-  if (!model || !models?.length) {
-    return;
-  }
-  const sep = model.indexOf("/");
-  const vendorId = model.slice(0, sep);
-  const modelId = model.slice(sep + 1);
-
-  const vendors = models.filter((x) => x.type === "vendor");
-  const pochiVendors = vendors.filter((x) => x.vendorId === "pochi");
-  const providers = models.filter((x) => x.type === "provider");
-
-  return (
-    vendors.find((x) => x.vendorId === vendorId && x.modelId === modelId) ||
-    pochiVendors.find((x) => x.modelId === model) ||
-    providers.find((x) => x.id === model)
-  );
-}

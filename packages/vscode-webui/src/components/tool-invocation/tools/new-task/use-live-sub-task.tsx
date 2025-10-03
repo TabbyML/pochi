@@ -38,7 +38,7 @@ export function useLiveSubTask(
     toolCallId: tool.toolCallId,
   });
 
-  const customAgent = useCustomAgent(
+  const { customAgent, customAgentModel } = useCustomAgent(
     tool.state !== "input-streaming" ? tool.input?.agentType : undefined,
   );
 
@@ -71,6 +71,7 @@ export function useLiveSubTask(
   const getters = useLiveChatKitGetters({
     todos: todosRef,
     isSubTask: true,
+    modelOverride: customAgentModel,
   });
 
   // FIXME: handle auto retry for output without task.

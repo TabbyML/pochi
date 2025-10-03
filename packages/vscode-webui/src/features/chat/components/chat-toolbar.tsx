@@ -79,8 +79,8 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     selectedModel,
     selectedModelFromStore, // for fallback display
     isLoading: isModelsLoading,
-    updateSelectedModel,
-  } = useSelectedModels();
+    updateSelectedModelId,
+  } = useSelectedModels({ isSubTask });
 
   // Use the unified attachment upload hook
   const {
@@ -222,6 +222,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
         onRemoveQueuedMessage={(index) =>
           setQueuedMessages((prev) => prev.filter((_, i) => i !== index))
         }
+        isSubTask={isSubTask}
       />
 
       {/* Hidden file input for image uploads */}
@@ -241,7 +242,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
             models={groupedModels}
             isLoading={isModelsLoading}
             isValid={!!selectedModel}
-            onChange={updateSelectedModel}
+            onChange={updateSelectedModelId}
           />
         </div>
 

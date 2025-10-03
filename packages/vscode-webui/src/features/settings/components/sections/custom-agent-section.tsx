@@ -57,7 +57,6 @@ export const CustomAgentSection: React.FC = () => {
       <div className="space-y-2">
         {customAgents.map((agent) => {
           const isValid = isValidCustomAgentFile(agent);
-
           const subtitle = !isValid ? (
             <Tooltip>
               <TooltipTrigger asChild>
@@ -70,6 +69,8 @@ export const CustomAgentSection: React.FC = () => {
                 <span className="text-wrap break-words">{agent.message}</span>
               </TooltipContent>
             </Tooltip>
+          ) : agent.model ? (
+            <span>{agent.model}</span>
           ) : null;
 
           return (

@@ -16,6 +16,7 @@ export type SelectedModelInStore = Pick<DisplayModel, "id" | "name">;
 
 export interface SettingsState {
   selectedModel: SelectedModelInStore | undefined;
+  subtaskSelectedModel: SelectedModelInStore | undefined;
 
   subtaskOffhand: boolean;
 
@@ -34,9 +35,8 @@ export interface SettingsState {
   toggleSubtaskOffhand: () => void;
   updateAutoApproveSettings: (data: Partial<AutoApprove>) => void;
   updateSubtaskAutoApproveSettings: (data: Partial<AutoApprove>) => void;
-  updateSelectedModel: (
-    selectedModel: SelectedModelInStore | undefined,
-  ) => void;
+  updateSelectedModel: (model: SelectedModelInStore | undefined) => void;
+  updateSubtaskSelectedModel: (model: SelectedModelInStore | undefined) => void;
   updateAutoApproveActive: (value: boolean) => void;
   updateSubtaskAutoApproveActive: (value: boolean) => void;
   updateIsDevMode: (value: boolean) => void;
@@ -50,7 +50,7 @@ export const useSettingsStore = create<SettingsState>()(
   persist(
     (set) => ({
       selectedModel: undefined,
-
+      subtaskSelectedModel: undefined,
       subtaskOffhand: false,
 
       autoApproveActive: true,
@@ -89,6 +89,10 @@ export const useSettingsStore = create<SettingsState>()(
 
       updateSelectedModel: (selectedModel: SelectedModelInStore | undefined) =>
         set({ selectedModel }),
+
+      updateSubtaskSelectedModel: (
+        subtaskSelectedModel: SelectedModelInStore | undefined,
+      ) => set({ subtaskSelectedModel }),
 
       updateAutoApproveSettings: (data) =>
         set((state) => ({

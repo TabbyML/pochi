@@ -17,6 +17,10 @@ export const CustomAgent = z.object({
     .optional()
     .describe("List of tools the agent can use."),
   systemPrompt: z.string().describe("The system prompt for the custom agent."),
+  model: z
+    .string()
+    .optional()
+    .describe("The model to use for the custom agent."),
 });
 
 export type CustomAgent = z.infer<typeof CustomAgent>;
