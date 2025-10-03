@@ -305,7 +305,7 @@ export class TaskRunner {
         ),
       );
       this.chat.appendOrReplaceMessage(message);
-      return "next";
+      return "retry";
     }
   }
 
