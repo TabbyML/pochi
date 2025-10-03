@@ -145,7 +145,7 @@ const program = new Command()
 
     const renderer = new OutputRenderer(runner.state);
     if (options.streamJson) {
-      new JsonRenderer(runner.state);
+      new JsonRenderer(store, runner.state);
     }
 
     await runner.run();
