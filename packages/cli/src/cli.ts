@@ -31,7 +31,7 @@ import packageJson from "../package.json";
 import { registerAuthCommand } from "./auth";
 
 import type { Store } from "@livestore/livestore";
-import { initializeShellCompletion } from "./completion";
+import { initializeShellCompletion, registerCompletionCommand } from "./completion";
 import { findRipgrep } from "./lib/find-ripgrep";
 import { loadAgents } from "./lib/load-agents";
 import { createCliMcpHub } from "./lib/mcp-hub-factory";
@@ -183,15 +183,22 @@ program.hook("preAction", async () => {
 });
 
 registerAuthCommand(program);
-
+registerCompletionCommand(program);
 registerModelCommand(program);
 registerMcpCommand(program);
 registerTaskCommand(program);
-
 registerUpgradeCommand(program);
 
 // Initialize auto-completion after all commands are registered
-initializeShellCompletion(program);
+const shellCompletion = initializeShellCompletion(program);
+
+// Handle tabtab completion before parsing
+const args = process.argv.slice(2);
+if (args[0] === 'completion' && args[1] === '--') {
+  // This is the tabtab completion handler called by shell completion
+  shellCompletion.completion();
+  process.exit(0);
+}
 
 program.parse(process.argv);
 
