@@ -9,11 +9,12 @@ import { InvalidToolInputError, generateObject } from "ai";
 import z from "zod/v4";
 
 export function createOutputSchemaMiddleware(
+  model: LanguageModelV2,
   outputSchema: z.ZodAny,
 ): LanguageModelV2Middleware {
   return {
     middlewareVersion: "v2",
-    wrapStream: async ({ doStream, model }) => {
+    wrapStream: async ({ doStream }) => {
       const { stream, ...rest } = await doStream();
 
       let toolCallId = "";

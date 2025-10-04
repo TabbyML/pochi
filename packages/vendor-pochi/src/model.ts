@@ -1,3 +1,4 @@
+import * as R from "remeda";
 import {
   APICallError,
   type LanguageModelV2,
@@ -17,7 +18,6 @@ import { hc } from "hono/client";
 import type { PochiApi, PochiApiClient } from "./pochi-api";
 
 export function createPochiModel({
-  id,
   modelId,
   getCredentials,
 }: CreateModelOptions): LanguageModelV2 {
@@ -27,11 +27,33 @@ export function createPochiModel({
     modelId: modelId || "<default>",
     // FIXME(meng): fill supported urls based on modelId.
     supportedUrls: {},
-    doGenerate: async () => Promise.reject("Not implemented"),
-    doStream: async ({ prompt, abortSignal, stopSequences, tools }) => {
+    doGenerate: async ({ headers, ...options }) => {
+      const apiClient = createApiClient(getCredentials);
+      const resp = await apiClient.api.chat.$post(
+        {
+          json: {
+            model: modelId,
+            options,
+          },
+        },
+        {
+          headers: headers ? R.mapValues(headers, (x) => x || "") : undefined,
+        },
+      );
+      const data = (await resp.json()) as Awaited<
+        ReturnType<LanguageModelV2["doGenerate"]>
+      >;
+      return data;
+    },
+    doStream: async ({
+      prompt,
+      abortSignal,
+      stopSequences,
+      tools,
+      headers,
+    }) => {
       const apiClient = createApiClient(getCredentials);
       const data = {
-        id,
         model: modelId,
         callOptions: {
           prompt: convertFilePartDataToBase64(prompt),
@@ -44,6 +66,7 @@ export function createPochiModel({
           json: data,
         },
         {
+          headers: headers ? R.mapValues(headers, (x) => x || "") : undefined,
           init: {
             signal: abortSignal,
           },

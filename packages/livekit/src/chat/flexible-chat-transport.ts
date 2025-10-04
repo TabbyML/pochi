@@ -107,6 +107,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
       getters: this.getters,
     });
 
+    const model = createModel({ llm });
     const middlewares = [];
 
     if (!this.isSubTask) {
@@ -125,7 +126,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
     }
 
     if (this.outputSchema) {
-      middlewares.push(createOutputSchemaMiddleware(this.outputSchema));
+      middlewares.push(createOutputSchemaMiddleware(model, this.outputSchema));
     }
 
     if (llm.useToolCallMiddleware) {
@@ -152,8 +153,10 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
     );
 
     const preparedMessages = await prepareMessages(messages, environment);
-    const model = createModel({ id: chatId, llm });
     const stream = streamText({
+      headers: {
+        "X-Pochi-Task-Id": chatId,
+      },
       system: prompts.system(
         environment?.info?.customRules,
         this.customAgent,
