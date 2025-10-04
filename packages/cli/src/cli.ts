@@ -116,7 +116,7 @@ const program = new Command()
           "⚠️  Warning: ripgrep is not installed or not found in your $PATH.\n" +
             "   Some file search features may be limited. To install ripgrep:\n" +
             "   • macOS: brew install ripgrep\n" +
-            "   • Ubuntu/Debian: apt-get install ripgrep\n" +
+            "   • Ubuntu/Debian: apt install ripgrep\n" +
             "   • Windows: winget install BurntSushi.ripgrep.MSVC\n" +
             "   • Or visit: https://github.com/BurntSushi/ripgrep?tab=readme-ov-file#installation",
         ),
