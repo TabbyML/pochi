@@ -23,6 +23,7 @@ export type {
   ToolFunctionType,
   PreviewToolFunctionType,
 } from "./types";
+import { editNotebook } from "./edit-notebook";
 import { killBackgroundJob } from "./kill-background-job";
 import { readBackgroundJobOutput } from "./read-background-job-output";
 import { startBackgroundJob } from "./start-background-job";
@@ -30,8 +31,9 @@ import { writeToFile } from "./write-to-file";
 export {
   CustomAgent,
   overrideCustomAgentTools,
+  type SubTask,
+  inputSchema as newTaskInputSchema,
 } from "./new-task";
-export type { SubTask } from "./new-task";
 
 export function isUserInputToolName(name: string): boolean {
   return name === "askFollowupQuestion" || name === "attemptCompletion";
@@ -70,6 +72,7 @@ export const ToolsByPermission = {
     "writeToFile",
     "applyDiff",
     "multiApplyDiff",
+    "editNotebook",
   ] satisfies ToolName[] as string[],
   execute: [
     "executeCommand",
@@ -94,6 +97,7 @@ const createCliTools = (customAgents?: CustomAgent[]) => ({
   searchFiles,
   todoWrite,
   writeToFile,
+  editNotebook,
   newTask: createNewTaskTool(customAgents),
 });
 

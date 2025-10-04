@@ -117,11 +117,16 @@ function getCurrentWorkingFile(workspace: Environment["workspace"]) {
   if (!selection) {
     return "";
   }
-  const { filepath, range, content } = selection;
+  const { filepath, range, content, notebookCell } = selection;
   if (!content || content.trim() === "") {
     return "";
   }
-  return `# Active Selection (${filepath}:${range.start.line + 1}-${range.end.line + 1})\n\n\`\`\`\n${content}\n\`\`\`\n`;
+
+  const location = notebookCell
+    ? `${filepath} (Cell ID: ${notebookCell.cellId})`
+    : `${filepath}:${range.start.line + 1}-${range.end.line + 1}`;
+
+  return `# Active Selection (${location})\n\n\`\`\`\n${content}\n\`\`\`\n`;
 }
 
 function getGitStatus(gitStatus: GitStatus | undefined) {

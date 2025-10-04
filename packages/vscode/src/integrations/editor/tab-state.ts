@@ -9,6 +9,10 @@ export type FileSelection = {
     end: { line: number; character: number };
   };
   content: string;
+  notebookCell?: {
+    cellIndex: number;
+    cellId: string;
+  };
 };
 
 @injectable()
@@ -41,6 +45,15 @@ export class TabState implements vscode.Disposable {
 
     this.disposables.push(
       vscode.window.onDidChangeTextEditorSelection(this.onSelectionChanged),
+    );
+
+    // Add notebook editor listeners
+    this.disposables.push(
+      vscode.window.onDidChangeActiveNotebookEditor(this.onTabChanged),
+    );
+
+    this.disposables.push(
+      vscode.window.onDidChangeNotebookEditorSelection(this.onSelectionChanged),
     );
   }
 
@@ -90,6 +103,53 @@ function getActiveSelection(): FileSelection | undefined {
       content: activeEditor.document.getText(selection),
     };
   }
+
+  const activeNotebookEditor = vscode.window.activeNotebookEditor;
+  if (activeNotebookEditor?.notebook) {
+    const notebook = activeNotebookEditor.notebook;
+    const relativePath = vscode.workspace.asRelativePath(notebook.uri);
+
+    // Get the active cell selection
+    const activeCell = activeNotebookEditor.selection?.start;
+    if (activeCell !== undefined) {
+      const cell = notebook.cellAt(activeCell);
+      if (cell) {
+        const cellDocument = cell.document;
+
+        const cellTextEditor = vscode.window.visibleTextEditors.find(
+          (editor) =>
+            editor.document.uri.toString() === cellDocument.uri.toString(),
+        );
+
+        const selection =
+          cellTextEditor?.selection ||
+          new vscode.Selection(0, 0, cellDocument.lineCount, 0);
+        const content = cellTextEditor
+          ? cellDocument.getText(selection)
+          : cellDocument.getText();
+
+        return {
+          filepath: relativePath,
+          range: {
+            start: {
+              line: selection.start.line,
+              character: selection.start.character,
+            },
+            end: {
+              line: selection.end.line,
+              character: selection.end.character,
+            },
+          },
+          content: content,
+          notebookCell: {
+            cellIndex: activeCell,
+            cellId: cell.metadata.id || activeCell.toString(),
+          },
+        };
+      }
+    }
+  }
+
   return undefined;
 }
 
