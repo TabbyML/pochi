@@ -52,7 +52,7 @@ export const makeRepairToolCall: (
         '{"path": "./src/file.ts", "content": "console.log("hello");"} // Fixed arguments',
         "</bad-example>",
       ].join("\n"),
-      maxOutputTokens: 32769,
+      maxOutputTokens: 3_000,
       maxRetries: 0,
     });
 
