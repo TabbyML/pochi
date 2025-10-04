@@ -8,6 +8,7 @@ import type {
   ChatOnErrorCallback,
   ChatOnFinishCallback,
 } from "ai";
+import type z from "zod/v4";
 import { makeMessagesQuery, makeTaskQuery } from "../livestore/queries";
 import { events, tables } from "../livestore/schema";
 import { toTaskError, toTaskStatus } from "../task";
@@ -43,6 +44,7 @@ export type LiveChatKitOptions<T> = {
   }) => void | Promise<void>;
 
   customAgent?: CustomAgent;
+  outputSchema?: z.ZodAny;
 } & Omit<
   ChatInit<Message>,
   "id" | "messages" | "generateId" | "onFinish" | "onError" | "transport"
@@ -72,6 +74,7 @@ export class LiveChatKit<
     isSubTask,
     isCli,
     customAgent,
+    outputSchema,
     ...chatInit
   }: LiveChatKitOptions<T>) {
     this.taskId = taskId;
@@ -83,6 +86,7 @@ export class LiveChatKit<
       isSubTask,
       isCli,
       customAgent,
+      outputSchema,
     });
 
     this.chat = new (makeChatWithHookClass(store, chatClass))({

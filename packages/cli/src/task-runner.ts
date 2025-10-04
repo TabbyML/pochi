@@ -19,6 +19,7 @@ import {
   isToolUIPart,
   lastAssistantMessageIsCompleteWithToolCalls,
 } from "ai";
+import type z from "zod/v4";
 import { readEnvironment } from "./lib/read-environment";
 import { StepCount } from "./lib/step-count";
 import { Chat } from "./livekit";
@@ -84,6 +85,8 @@ export interface RunnerOptions {
    * MCP Hub instance for accessing MCP server tools
    */
   mcpHub?: McpHub;
+
+  outputSchema?: z.ZodAny;
 }
 
 const logger = getLogger("TaskRunner");
@@ -134,6 +137,7 @@ export class TaskRunner {
       isCli: true,
       isSubTask: options.isSubTask,
       customAgent: options.customAgent,
+      outputSchema: options.outputSchema,
       getters: {
         getLLM: () => options.llm,
         getEnvironment: async () => ({

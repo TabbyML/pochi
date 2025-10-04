@@ -2,12 +2,8 @@ import type {
   LanguageModelV2Middleware,
   LanguageModelV2StreamPart,
 } from "@ai-sdk/provider";
-import { type InferToolInput, safeParseJSON } from "@ai-sdk/provider-utils";
-import {
-  type ClientTools,
-  type CustomAgent,
-  newTaskInputSchema,
-} from "@getpochi/tools";
+import { safeParseJSON } from "@ai-sdk/provider-utils";
+import { type CustomAgent, newTaskInputSchema } from "@getpochi/tools";
 import type { Store } from "@livestore/livestore";
 import { InvalidToolInputError } from "ai";
 import { events } from "../../livestore/schema";
@@ -79,10 +75,7 @@ export function createNewTaskMiddleware(
                 });
               }
 
-              const args = parsedResult.value as InferToolInput<
-                ClientTools["newTask"]
-              >;
-
+              const args = parsedResult.value;
               const agent = customAgents?.find(
                 (a) => a.name === args.agentType,
               );

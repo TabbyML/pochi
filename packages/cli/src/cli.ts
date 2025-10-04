@@ -18,7 +18,7 @@ import "@getpochi/vendor-codex/edge";
 import "@getpochi/vendor-github-copilot/edge";
 import "@getpochi/vendor-qwen-code/edge";
 
-import { Command } from "@commander-js/extra-typings";
+import { Command, Option } from "@commander-js/extra-typings";
 import { constants, getLogger } from "@getpochi/common";
 import { pochiConfig } from "@getpochi/common/configuration";
 import { getVendor, getVendors } from "@getpochi/common/vendor";
@@ -27,6 +27,7 @@ import type { LLMRequestData } from "@getpochi/livekit";
 import { type Duration, Effect, Stream } from "@livestore/utils/effect";
 import chalk from "chalk";
 import * as commander from "commander";
+import z from "zod/v4";
 import packageJson from "../package.json";
 import { registerAuthCommand } from "./auth";
 
@@ -96,6 +97,12 @@ const program = new Command()
     parsePositiveInt,
     3,
   )
+  .addOption(
+    new Option(
+      "--experimental-output-schema <schema>",
+      "Specify a JSON schema for the output of the task. The task will be validated against this schema.",
+    ).hideHelp(),
+  )
   .optionsGroup("Model:")
   .option(
     "-m, --model <model>",
@@ -149,6 +156,9 @@ const program = new Command()
       onSubTaskCreated,
       customAgents,
       mcpHub,
+      outputSchema: options.experimentalOutputSchema
+        ? parseOutputSchema(options.experimentalOutputSchema)
+        : undefined,
     });
 
     const renderer = new OutputRenderer(runner.state);
@@ -428,4 +438,12 @@ async function getModelFromWorkflow(
       }
     }
   }
+}
+
+function parseOutputSchema(outputSchema: string): z.ZodAny {
+  const schema = Function(
+    "...args",
+    `function getZodSchema(z) { return ${outputSchema} }; return getZodSchema(...args);`,
+  )(z);
+  return schema;
 }

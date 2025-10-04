@@ -20,6 +20,7 @@ import {
   wrapLanguageModel,
 } from "ai";
 import { pickBy } from "remeda";
+import type z from "zod/v4";
 import { StoreBlobProtocol } from "..";
 import { makeBlobQuery } from "../livestore/queries";
 import type { Message, Metadata, RequestData } from "../types";
@@ -30,6 +31,7 @@ import {
   createReasoningMiddleware,
   createToolCallMiddleware,
 } from "./middlewares";
+import { createOutputSchemaMiddleware } from "./middlewares/output-schema-middleware";
 import { createModel } from "./models";
 
 export type OnStartCallback = (options: {
@@ -58,6 +60,7 @@ export type ChatTransportOptions = {
   isCli?: boolean;
   store: Store;
   customAgent?: CustomAgent;
+  outputSchema?: z.ZodAny;
 };
 
 export class FlexibleChatTransport implements ChatTransport<Message> {
@@ -67,6 +70,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
   private readonly isCli?: boolean;
   private readonly store: Store;
   private readonly customAgent?: CustomAgent;
+  private readonly outputSchema?: z.ZodAny;
 
   constructor(options: ChatTransportOptions) {
     this.onStart = options.onStart;
@@ -75,6 +79,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
     this.isCli = options.isCli;
     this.store = options.store;
     this.customAgent = overrideCustomAgentTools(options.customAgent);
+    this.outputSchema = options.outputSchema;
   }
 
   sendMessages: (
@@ -117,6 +122,10 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
 
     if ("modelId" in llm && isWellKnownReasoningModel(llm.modelId)) {
       middlewares.push(createReasoningMiddleware());
+    }
+
+    if (this.outputSchema) {
+      middlewares.push(createOutputSchemaMiddleware(this.outputSchema));
     }
 
     if (llm.useToolCallMiddleware) {
