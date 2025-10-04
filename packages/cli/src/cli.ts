@@ -27,6 +27,7 @@ import type { LLMRequestData } from "@getpochi/livekit";
 import { type Duration, Effect, Stream } from "@livestore/utils/effect";
 import chalk from "chalk";
 import * as commander from "commander";
+import z from "zod/v4";
 import packageJson from "../package.json";
 import { registerAuthCommand } from "./auth";
 
@@ -102,6 +103,10 @@ const program = new Command()
     "Specify the model to be used for the task.",
     "qwen/qwen3-coder",
   )
+  .option(
+    "--output-schema <schema>",
+    "Specify a JSON schema for the output of the task. The task will be validated against this schema.",
+  )
   .optionsGroup("MCP:")
   .option(
     "--no-mcp",
@@ -149,6 +154,9 @@ const program = new Command()
       onSubTaskCreated,
       customAgents,
       mcpHub,
+      outputSchema: options.outputSchema
+        ? parseOutputSchema(options.outputSchema)
+        : undefined,
     });
 
     const renderer = new OutputRenderer(runner.state);
@@ -428,4 +436,12 @@ async function getModelFromWorkflow(
       }
     }
   }
+}
+
+function parseOutputSchema(outputSchema: string): z.ZodAny {
+  const schema = Function(
+    "...args",
+    `function getZodSchema(z) { return ${outputSchema} }; return getZodSchema(...args);`,
+  )(z);
+  return schema;
 }

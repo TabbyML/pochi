@@ -44,6 +44,7 @@
     "omelette": "^0.4.17",
     "ora": "^8.2.0",
     "remeda": "catalog:",
-    "semver": "^7.6.3"
+    "semver": "^7.6.3",
+    "zod": "catalog:"
   }
 }

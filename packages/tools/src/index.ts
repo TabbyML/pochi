@@ -28,12 +28,14 @@ import { killBackgroundJob } from "./kill-background-job";
 import { readBackgroundJobOutput } from "./read-background-job-output";
 import { startBackgroundJob } from "./start-background-job";
 import { writeToFile } from "./write-to-file";
+
 export {
   CustomAgent,
   overrideCustomAgentTools,
   type SubTask,
   inputSchema as newTaskInputSchema,
 } from "./new-task";
+export { attemptCompletionSchema } from "./attempt-completion";
 
 export function isUserInputToolName(name: string): boolean {
   return name === "askFollowupQuestion" || name === "attemptCompletion";
