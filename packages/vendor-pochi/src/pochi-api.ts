@@ -8,7 +8,6 @@ import type { hc } from "hono/client";
 import z from "zod";
 
 export const ModelGatewayRequest = z.object({
-  id: z.string().optional(),
   model: z.string().optional().describe("Model to use for this request."),
   modelEndpointId: z.string().optional(),
   callOptions: z.object({
@@ -30,6 +29,7 @@ export type ListModelsResponse = z.infer<typeof ListModelsResponse>;
 
 const stub = new Hono()
   .post("/api/chat/stream", zValidator("json", ModelGatewayRequest))
+  .post("/api/chat", zValidator("json", z.any()))
   .get("/api/models", async (c) => c.json([] as ListModelsResponse));
 
 export type PochiApi = typeof stub;

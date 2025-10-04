@@ -51,6 +51,7 @@
         "ora": "^8.2.0",
         "remeda": "catalog:",
         "semver": "^7.6.3",
+        "zod": "catalog:",
       },
     },
     "packages/common": {
@@ -131,7 +132,7 @@
       "dependencies": {
         "@ai-sdk/anthropic": "catalog:",
         "@ai-sdk/gateway": "catalog:",
-        "@ai-sdk/google": "^2.0.17",
+        "@ai-sdk/google": "catalog:",
         "@ai-sdk/openai": "catalog:",
         "@ai-sdk/openai-compatible": "catalog:",
         "@ai-sdk/provider": "catalog:",
@@ -234,6 +235,7 @@
         "better-auth": "catalog:",
         "hono": "catalog:",
         "jose": "catalog:",
+        "remeda": "catalog:",
         "zod": "catalog:",
       },
     },

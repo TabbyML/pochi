@@ -251,27 +251,34 @@ install_from_file() {
 return 0 2>/dev/null
 
 install_dir="${POCHI_HOME:-"$HOME/.pochi"}"
+version_to_install=""
 
 # parse command line options
-while [ $# -gt 0 ]
-do
-  arg="$1"
-
-  case "$arg" in
+if [ $# -gt 0 ]; then
+  case "$1" in
     -h|--help)
       usage
       exit 0
       ;;
-    *)
-      error "unknown option: '$arg'"
+    -*)
+      error "unknown option: '$1'"
       usage
       exit 1
       ;;
+    *)
+      version_to_install="$1"
+      ;;
   esac
-done
+fi
 
 get_latest_version() {
-  curl https://api.github.com/repos/TabbyML/pochi/releases | grep 'tag_name' | grep 'cli@' | head -1 | cut -d : -f 2,3 | tr -d \",
+  curl -s https://api.github.com/repos/TabbyML/pochi/releases | grep 'tag_name' | grep 'cli@' | head -1 | cut -d '"' -f 4
 }
 
-install_version $(get_latest_version) "$install_dir"
+if [ -z "$version_to_install" ]; then
+  version_to_install=$(get_latest_version)
+fi
+
+version_to_install="${version_to_install/pochi-v/cli@}"
+
+install_version "$version_to_install" "$install_dir"

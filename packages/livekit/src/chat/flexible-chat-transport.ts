@@ -1,6 +1,7 @@
 import { getErrorMessage } from "@ai-sdk/provider";
 import type { Environment } from "@getpochi/common";
 import { formatters, prompts } from "@getpochi/common";
+import { PochiTaskIdHeader } from "@getpochi/common/pochi-api";
 
 import {
   type CustomAgent,
@@ -20,6 +21,7 @@ import {
   wrapLanguageModel,
 } from "ai";
 import { pickBy } from "remeda";
+import type z from "zod/v4";
 import { StoreBlobProtocol } from "..";
 import { makeBlobQuery } from "../livestore/queries";
 import type { Message, Metadata, RequestData } from "../types";
@@ -30,6 +32,7 @@ import {
   createReasoningMiddleware,
   createToolCallMiddleware,
 } from "./middlewares";
+import { createOutputSchemaMiddleware } from "./middlewares/output-schema-middleware";
 import { createModel } from "./models";
 
 export type OnStartCallback = (options: {
@@ -58,6 +61,7 @@ export type ChatTransportOptions = {
   isCli?: boolean;
   store: Store;
   customAgent?: CustomAgent;
+  outputSchema?: z.ZodAny;
 };
 
 export class FlexibleChatTransport implements ChatTransport<Message> {
@@ -67,6 +71,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
   private readonly isCli?: boolean;
   private readonly store: Store;
   private readonly customAgent?: CustomAgent;
+  private readonly outputSchema?: z.ZodAny;
 
   constructor(options: ChatTransportOptions) {
     this.onStart = options.onStart;
@@ -75,6 +80,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
     this.isCli = options.isCli;
     this.store = options.store;
     this.customAgent = overrideCustomAgentTools(options.customAgent);
+    this.outputSchema = options.outputSchema;
   }
 
   sendMessages: (
@@ -102,6 +108,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
       getters: this.getters,
     });
 
+    const model = createModel({ llm });
     const middlewares = [];
 
     if (!this.isSubTask) {
@@ -117,6 +124,12 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
 
     if ("modelId" in llm && isWellKnownReasoningModel(llm.modelId)) {
       middlewares.push(createReasoningMiddleware());
+    }
+
+    if (this.outputSchema) {
+      middlewares.push(
+        createOutputSchemaMiddleware(chatId, model, this.outputSchema),
+      );
     }
 
     if (llm.useToolCallMiddleware) {
@@ -143,8 +156,10 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
     );
 
     const preparedMessages = await prepareMessages(messages, environment);
-    const model = createModel({ id: chatId, llm });
     const stream = streamText({
+      headers: {
+        [PochiTaskIdHeader]: chatId,
+      },
       system: prompts.system(
         environment?.info?.customRules,
         this.customAgent,
@@ -164,7 +179,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
       maxRetries: 0,
       // error log is handled in live chat kit.
       onError: () => {},
-      experimental_repairToolCall: makeRepairToolCall(model),
+      experimental_repairToolCall: makeRepairToolCall(chatId, model),
       experimental_download: async (items) => {
         const promises = items.map(
           async ({

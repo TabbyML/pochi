@@ -5,12 +5,9 @@ import { createGoogleVertexTuningModel } from "./google-vertex-tuning";
 import { createOpenAIModel } from "./openai";
 import { createOpenAIResponsesModel } from "./openai-responses";
 
-export function createModel({
-  id,
-  llm,
-}: { id: string; llm: RequestData["llm"] }) {
+export function createModel({ llm }: { llm: RequestData["llm"] }) {
   if (llm.type === "vendor") {
-    return llm.getModel(id);
+    return llm.getModel();
   }
 
   if (llm.type === "openai") {
