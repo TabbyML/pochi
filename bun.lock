@@ -22,7 +22,9 @@
         "pochi": "src/cli.ts",
       },
       "dependencies": {
+        "semver": "^7.6.3",
         "tabtab": "^3.0.2",
+        "zod": "catalog:",
       },
       "devDependencies": {
         "@commander-js/extra-typings": "^14.0.0",
@@ -53,7 +55,6 @@
         "ora": "^8.2.0",
         "remeda": "catalog:",
         "semver": "^7.6.3",
-        "zod": "catalog:",
       },
     },
     "packages/common": {
