@@ -27,19 +27,14 @@ export function createPochiModel({
     modelId: modelId || "<default>",
     // FIXME(meng): fill supported urls based on modelId.
     supportedUrls: {},
-    doGenerate: async ({ headers, ...options }) => {
+    doGenerate: async (options) => {
       const apiClient = createApiClient(getCredentials);
-      const resp = await apiClient.api.chat.$post(
-        {
-          json: {
-            model: modelId,
-            options,
-          },
+      const resp = await apiClient.api.chat.$post({
+        json: {
+          model: modelId,
+          options,
         },
-        {
-          headers: headers ? R.mapValues(headers, (x) => x || "") : undefined,
-        },
-      );
+      });
       const data = (await resp.json()) as Awaited<
         ReturnType<LanguageModelV2["doGenerate"]>
       >;
