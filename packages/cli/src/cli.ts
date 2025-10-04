@@ -111,15 +111,15 @@ const program = new Command()
     const llm = await createLLMConfig(program, options);
     const rg = findRipgrep();
     if (!rg) {
-      console.warn(
-        chalk.yellow(
-          "⚠️  Warning: ripgrep is not installed or not found in your $PATH.\n" +
-            "   Some file search features may be limited. To install ripgrep:\n" +
-            "   • macOS: brew install ripgrep\n" +
-            "   • Ubuntu/Debian: apt install ripgrep\n" +
-            "   • Windows: winget install BurntSushi.ripgrep.MSVC\n" +
-            "   • Or visit: https://github.com/BurntSushi/ripgrep?tab=readme-ov-file#installation",
-        ),
+      return program.error(
+        "ripgrep is not installed or not found in your $PATH.\n" +
+          "Some file search features require ripgrep to function properly.\n\n" +
+          "To install ripgrep:\n" +
+          "• macOS: brew install ripgrep\n" +
+          "• Ubuntu/Debian: apt-get install ripgrep\n" +
+          "• Windows: winget install BurntSushi.ripgrep.MSVC\n" +
+          "• Or visit: https://github.com/BurntSushi/ripgrep#installation\n\n" +
+          "Please install ripgrep and try again."
       );
     }
 
