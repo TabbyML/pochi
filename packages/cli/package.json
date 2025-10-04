@@ -46,6 +46,8 @@
     "semver": "^7.6.3"
   },
   "dependencies": {
-    "tabtab": "^3.0.2"
+    "tabtab": "^3.0.2",
+    "semver": "^7.6.3",
+    "zod": "catalog:"
   }
 }

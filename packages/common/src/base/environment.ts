@@ -53,6 +53,21 @@ export const Environment = z.object({
             })
             .describe("The range of the active selection."),
           content: z.string().describe("The content of the active selection."),
+          notebookCell: z
+            .object({
+              cellIndex: z
+                .number()
+                .describe("The zero-based index of the notebook cell."),
+              cellId: z
+                .string()
+                .describe(
+                  "The ID of the notebook cell. This can be used with the editNotebook tool to edit the cell. Falls back to the cell index as a string if no ID is available.",
+                ),
+            })
+            .optional()
+            .describe(
+              "Notebook cell information if the selection is in a Jupyter notebook. The cellId can be used directly with the editNotebook tool.",
+            ),
         })
         .optional()
         .describe("Active editor selection in the current workspace."),

@@ -1,5 +1,4 @@
 import { AuthEvents } from "@/lib/auth-events";
-import { getUri } from "@/lib/get-uri";
 import { getLogger } from "@getpochi/common";
 import type {
   ResourceURI,
@@ -69,13 +68,7 @@ export class PochiWebviewPanel
 
   protected getReadResourceURI(): VSCodeHostApi["readResourceURI"] {
     return async (): Promise<ResourceURI> => {
-      return {
-        logo128: getUri(this.panel.webview, this.context.extensionUri, [
-          "assets",
-          "icons",
-          "logo128.png",
-        ]).toString(),
-      };
+      return this.buildResourceURI(this.panel.webview);
     };
   }
 
@@ -96,15 +89,7 @@ export class PochiWebviewPanel
     );
 
     // Set icon
-    panel.iconPath = {
-      light: vscode.Uri.joinPath(
-        extensionUri,
-        "assets",
-        "icons",
-        "logo128.png",
-      ),
-      dark: vscode.Uri.joinPath(extensionUri, "assets", "icons", "logo128.png"),
-    };
+    panel.iconPath = WebviewBase.getLogoIconPath(extensionUri);
 
     // Get dependencies from container
     const context = container.resolve<vscode.ExtensionContext>(

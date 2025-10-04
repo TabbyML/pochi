@@ -1,12 +1,13 @@
-import { type ToolName, createClientTools } from "@getpochi/tools";
+import type { ToolName } from "@getpochi/tools";
 import { useTranslation } from "react-i18next";
-import { keys } from "remeda";
 import { Section, SubSection } from "../ui/section";
 import { ToolBadgeList } from "../ui/tool-badge";
 import { McpSection, PochiTools } from "./mcp-section";
 export const ToolsSection: React.FC = () => {
   const { t } = useTranslation();
-  const toolsData = AllTools;
+  const toolsData = Object.entries(ToolDescriptions).map(
+    ([id, description]) => ({ id, description }),
+  );
 
   const renderToolsContent = () => {
     return <ToolBadgeList tools={toolsData} />;
@@ -55,10 +56,6 @@ const ToolDescriptions: Record<ToolName, string> = {
     "When a background process is no longer needed or is causing issues, Pochi uses the killBackgroundJob tool to terminate it cleanly. This is important for resource management and ensuring that processes don't continue running unnecessarily after their purpose has been fulfilled.\n\nPochi might use this tool to stop development servers after completing work, cancel long-running builds, or terminate processes that are consuming too many resources. It gives Pochi full control over the lifecycle of background processes, ensuring efficient and clean task completion.",
   newTask:
     "The newTask tool allows Pochi to create a new task with a dedicated agent. This is useful for tasks that require a dedicated agent with specific capabilities or configurations. By using this tool, Pochi can tailor the agent's behavior to better suit the needs of the task at hand.",
+  editNotebook:
+    "The editNotebook tool enables Pochi to edit Jupyter notebook cells directly. It can modify the content of individual cells within .ipynb files by targeting specific cell IDs or indices. This is essential for working with data science projects, updating code cells, modifying markdown documentation, or adjusting notebook outputs. Pochi uses this tool to make precise changes to notebook cells without affecting the entire notebook structure.",
 };
-const AllTools = keys({ ...createClientTools() })
-  .map((id) => ({
-    id,
-    description: ToolDescriptions[id],
-  }))
-  .filter((x) => !!x.description);

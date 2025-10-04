@@ -97,7 +97,7 @@ const RequestData = z.object({
         .boolean()
         .optional()
         .describe("Whether to use tool call middleware"),
-      getModel: z.custom<(id: string) => LanguageModelV2>(),
+      getModel: z.custom<() => LanguageModelV2>(),
     }),
   ]),
   mcpToolSet: z

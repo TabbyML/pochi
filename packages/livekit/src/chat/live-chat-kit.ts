@@ -8,6 +8,7 @@ import type {
   ChatOnErrorCallback,
   ChatOnFinishCallback,
 } from "ai";
+import type z from "zod/v4";
 import { makeMessagesQuery, makeTaskQuery } from "../livestore/queries";
 import { events, tables } from "../livestore/schema";
 import { toTaskError, toTaskStatus } from "../task";
@@ -43,6 +44,7 @@ export type LiveChatKitOptions<T> = {
   }) => void | Promise<void>;
 
   customAgent?: CustomAgent;
+  outputSchema?: z.ZodAny;
 } & Omit<
   ChatInit<Message>,
   "id" | "messages" | "generateId" | "onFinish" | "onError" | "transport"
@@ -72,6 +74,7 @@ export class LiveChatKit<
     isSubTask,
     isCli,
     customAgent,
+    outputSchema,
     ...chatInit
   }: LiveChatKitOptions<T>) {
     this.taskId = taskId;
@@ -83,6 +86,7 @@ export class LiveChatKit<
       isSubTask,
       isCli,
       customAgent,
+      outputSchema,
     });
 
     this.chat = new (makeChatWithHookClass(store, chatClass))({
@@ -117,8 +121,9 @@ export class LiveChatKit<
         lastMessage.metadata.compact
       ) {
         try {
-          const model = createModel({ id: taskId, llm: getters.getLLM() });
+          const model = createModel({ llm: getters.getLLM() });
           await compactTask({
+            taskId: this.taskId,
             model,
             messages,
             abortSignal,
@@ -137,8 +142,9 @@ export class LiveChatKit<
     this.spawn = async () => {
       const taskId = crypto.randomUUID();
       const { messages } = this.chat;
-      const model = createModel({ id: taskId, llm: getters.getLLM() });
+      const model = createModel({ llm: getters.getLLM() });
       const summary = await compactTask({
+        taskId,
         model,
         messages,
         abortSignal,
@@ -246,8 +252,7 @@ export class LiveChatKit<
         throw new Error("Task not found");
       }
 
-      const getModel = () =>
-        createModel({ id: this.taskId, llm: getters.getLLM() });
+      const getModel = () => createModel({ llm: getters.getLLM() });
       scheduleGenerateTitleJob({
         taskId: this.taskId,
         store,

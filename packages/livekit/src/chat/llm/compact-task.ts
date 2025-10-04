@@ -1,16 +1,19 @@
 import type { LanguageModelV2 } from "@ai-sdk/provider";
 import { formatters, getLogger, prompts } from "@getpochi/common";
-import { convertToModelMessages, streamText } from "ai";
+import { PochiTaskIdHeader } from "@getpochi/common/pochi-api";
+import { convertToModelMessages, generateText } from "ai";
 import type { Message } from "../../types";
 
 const logger = getLogger("compactTask");
 
 export async function compactTask({
+  taskId,
   model,
   messages,
   abortSignal,
   inline,
 }: {
+  taskId: string;
   model: LanguageModelV2;
   messages: Message[];
   abortSignal?: AbortSignal;
@@ -23,7 +26,7 @@ export async function compactTask({
 
   try {
     const text = prompts.inlineCompact(
-      await createSummary(model, abortSignal, messages.slice(0, -1)),
+      await createSummary(taskId, model, abortSignal, messages.slice(0, -1)),
       messages.length - 1,
     );
     if (inline) {
@@ -40,6 +43,7 @@ export async function compactTask({
 }
 
 async function createSummary(
+  taskId: string,
   model: LanguageModelV2,
   abortSignal: AbortSignal | undefined,
   inputMessages: Message[],
@@ -58,7 +62,10 @@ async function createSummary(
     },
   ];
 
-  const stream = streamText({
+  const resp = await generateText({
+    headers: {
+      [PochiTaskIdHeader]: taskId,
+    },
     model,
     prompt: convertToModelMessages(
       formatters.llm(messages, {
@@ -70,5 +77,5 @@ async function createSummary(
     maxRetries: 0,
   });
 
-  return stream.text;
+  return resp.text;
 }

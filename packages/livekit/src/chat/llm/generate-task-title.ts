@@ -1,11 +1,13 @@
 import type { LanguageModelV2 } from "@ai-sdk/provider";
 import { formatters, getLogger, prompts } from "@getpochi/common";
-import { convertToModelMessages, streamText } from "ai";
+import { PochiTaskIdHeader } from "@getpochi/common/pochi-api";
+import { convertToModelMessages, generateText } from "ai";
 import type { Message } from "../../types";
 
 const logger = getLogger("generateTaskTitle");
 
 interface GenerateTaskTitleOptions {
+  taskId: string;
   title: string | null;
   messages: Message[];
   getModel: () => LanguageModelV2;
@@ -22,6 +24,7 @@ export async function generateTaskTitle(options: GenerateTaskTitleOptions) {
 }
 
 async function generateTaskTitleImpl({
+  taskId,
   title,
   messages,
   getModel,
@@ -47,7 +50,7 @@ async function generateTaskTitleImpl({
   ) {
     try {
       const model = getModel();
-      const title = await generateTitle(model, messages, abortSignal);
+      const title = await generateTitle(taskId, model, messages, abortSignal);
       if (title.length > 0) {
         return title;
       }
@@ -80,6 +83,7 @@ function isTitleGeneratedByLlm(
 }
 
 async function generateTitle(
+  taskId: string,
   model: LanguageModelV2,
   inputMessages: Message[],
   abortSignal: AbortSignal | undefined,
@@ -98,7 +102,10 @@ async function generateTitle(
     },
   ];
 
-  const stream = streamText({
+  const resp = await generateText({
+    headers: {
+      [PochiTaskIdHeader]: taskId,
+    },
     model,
     prompt: convertToModelMessages(
       formatters.llm(messages, { removeSystemReminder: true }),
@@ -108,5 +115,5 @@ async function generateTitle(
     maxRetries: 0,
   });
 
-  return (await stream.text).trim();
+  return resp.text;
 }

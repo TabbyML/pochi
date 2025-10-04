@@ -107,9 +107,8 @@ function useLLM({
       return {
         type: "vendor",
         useToolCallMiddleware: model.options.useToolCallMiddleware,
-        getModel: (id: string) =>
+        getModel: () =>
           createModel(model.vendorId, {
-            id,
             modelId: model.modelId,
             getCredentials: model.getCredentials,
           }),
