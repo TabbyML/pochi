@@ -97,7 +97,7 @@ export function createVertexModel(vertex: GoogleVertexModel, modelId: string) {
         headers.append("Authorization", `Bearer ${resp.access_token}`);
         return fetch(`${modelUrl}/${lastSegment}`, { ...requestInit, headers });
       },
-    })("placeholder");
+    })(modelId);
   }
 
   return undefined as never;
