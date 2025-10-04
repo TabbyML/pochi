@@ -116,6 +116,30 @@ create_tree() {
   fi
 }
 
+# Configure shell auto-completion by sourcing the CLI's completion output
+# args: <install_dir>
+# Print manual instructions to set PATH and enable completion
+print_shell_setup_instructions() {
+  local install_dir="$1"
+  local bin_dir="$install_dir/bin"
+
+  info 'Next steps' "Follow these steps to complete the installation:"
+  eprintf ""
+  eprintf " 1. Add Pochi to your PATH by adding this line to your shell profile:"
+  eprintf "   (e.g., ~/.zshrc for zsh or ~/.bashrc for bash)"
+  eprintf ""
+  eprintf "  # Add Pochi to PATH"
+  eprintf "  export PATH=\"$bin_dir:\$PATH\""
+  eprintf ""
+  eprintf " 2. Restart your terminal or reload your shell configuration:"
+  eprintf "   source ~/.zshrc  # for zsh users"
+  eprintf "   source ~/.bashrc # for bash users"
+  eprintf ""
+  eprintf " 3. Install shell auto-completion by running:"
+  eprintf "   pochi completion install"
+  eprintf ""
+}
+
 install_version() {
   local version_to_install="$1"
   local install_dir="$2"
@@ -136,6 +160,8 @@ install_version() {
   if [ "$?" == 0 ]
   then
     "$install_dir"/bin/pochi-code --version &>/dev/null # creates the default shims
+    # Set up shell auto-completion
+    print_shell_setup_instructions "$install_dir"
     info 'Finished' "Pochi is installed at $install_dir/bin"
   fi
 }
