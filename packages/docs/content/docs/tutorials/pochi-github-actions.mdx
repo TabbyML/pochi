@@ -246,7 +246,7 @@ But there are two things we need to address: why we need a separate workflow fil
 
 Your original `.github/workflows/pochi.yml` is the engine that runs Pochi when it sees `/pochi` comments. Now we’ll be creating a new `.github/workflows/pochi-auto-comments.yml` which will be just a trigger that posts those comments automatically. Keeping them separate makes it easier to read / debug later especially if you’re working in teams. 
 
-In production repositories, teams often split workflows. For example: `deploy.yml` for deployments, `ci.yml` for tests, and `pochi.yml` for the AI assistant engine. This helps to tweak automation triggers without touching the core runner. Further this also helps with modularity. Suppose later you want two flavours of auto-comments (e.g one for PRs and one for weekly cross). Having them as separate workflows means you can enable / disable independently. 
+In production repositories, teams often split workflows. For example: `deploy.yml` for deployments, `ci.yml` for tests, and `pochi.yml` for the AI assistant engine. This helps to tweak automation triggers without touching the core runner. Further, this also helps with modularity. Suppose later you want two flavours of auto-comments (e.g one for PRs and one for weekly crosn). Having them as separate workflows means you can enable / disable independently. 
 
 ![Structuring workflows](./images/structuring-workflows.png)
 
@@ -456,7 +456,7 @@ At this stage, Pochi no longer needs you to type out commands. It can react auto
 
 ## Step 3: Integrations into CI/CD
 
-Now, we’ll work towards how Pochi can go from just commenting to actually driving workflows. We’ll make Pochi review a PR and identify if it needs changes. If yes, we stop the workflow and address the user to implement the feedback and if everything looks good, we’ll let the pipeline continue after Pochi has approved. 
+Now, we’ll work towards how Pochi can go from just commenting to actually driving workflows. We’ll make Pochi review a PR and identify if it needs changes. If yes, Pochi stops the workflow and addresses the user to implement the feedback. On the other hand, if everything looks good, Pochi lets the pipeline continue after approval. 
 
 This means you can run:
 
