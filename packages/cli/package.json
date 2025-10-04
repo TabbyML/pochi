@@ -43,10 +43,10 @@
     "node-machine-id": "catalog:",
     "ora": "^8.2.0",
     "remeda": "catalog:",
-    "semver": "^7.6.3"
+    "semver": "^7.6.3",
+    "tabtab": "^3.0.2"
   },
   "dependencies": {
-    "tabtab": "^3.0.2",
     "semver": "^7.6.3",
     "zod": "catalog:"
   }
