@@ -1,12 +1,13 @@
-import type { McpHub } from "@getpochi/common/mcp-utils";
 import ora from "ora";
+import { createCliMcpHub } from "../lib/mcp-hub-factory";
 
 /**
  * Initialize MCP connections with a spinner showing progress
  * @param mcpHub The MCP hub instance to initialize
  * @returns Promise that resolves when initialization is complete
  */
-export async function initializeMcp(mcpHub: McpHub): Promise<void> {
+export async function initializeMcp() {
+  const mcpHub = await createCliMcpHub();
   // Skip if no connections are configured
   if (Object.keys(mcpHub.status.value.connections).length === 0) {
     return;
@@ -40,4 +41,6 @@ export async function initializeMcp(mcpHub: McpHub): Promise<void> {
 
   // Simply stop the spinner without showing any final status
   spinner.stop();
+
+  return mcpHub;
 }

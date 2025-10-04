@@ -34,7 +34,6 @@ import type { Store } from "@livestore/livestore";
 import { initializeShellCompletion } from "./completion";
 import { findRipgrep } from "./lib/find-ripgrep";
 import { loadAgents } from "./lib/load-agents";
-import { createCliMcpHub } from "./lib/mcp-hub-factory";
 import {
   containsWorkflowReference,
   extractWorkflowNames,
@@ -103,6 +102,11 @@ const program = new Command()
     "Specify the model to be used for the task.",
     "qwen/qwen3-coder",
   )
+  .optionsGroup("MCP:")
+  .option(
+    "--no-mcp",
+    "Disable MCP (Model Context Protocol) integration completely.",
+  )
   .action(async (options) => {
     const { uid, prompt } = await parseTaskInput(options, program);
 
@@ -130,11 +134,8 @@ const program = new Command()
     // Load custom agents
     const customAgents = await loadAgents(process.cwd());
 
-    // Create MCP Hub for accessing MCP server tools
-    const mcpHub = await createCliMcpHub();
-
-    // Initialize MCP connections
-    await initializeMcp(mcpHub);
+    // Create MCP Hub for accessing MCP server tools (only if MCP is enabled)
+    const mcpHub = options.mcp ? await initializeMcp() : undefined;
 
     const runner = new TaskRunner({
       uid,
@@ -158,7 +159,9 @@ const program = new Command()
     await runner.run();
 
     renderer.shutdown();
-    mcpHub.dispose();
+    if (mcpHub) {
+      mcpHub.dispose();
+    }
     await waitForSync(store, "2 second").catch(console.error);
     await shutdownStoreAndExit(store);
   });
