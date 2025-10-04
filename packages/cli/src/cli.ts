@@ -119,7 +119,7 @@ const program = new Command()
           "• Ubuntu/Debian: apt-get install ripgrep\n" +
           "• Windows: winget install BurntSushi.ripgrep.MSVC\n" +
           "• Or visit: https://github.com/BurntSushi/ripgrep#installation\n\n" +
-          "Please install ripgrep and try again."
+          "Please install ripgrep and try again.",
       );
     }
 
