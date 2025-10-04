@@ -50,7 +50,7 @@ export interface RunnerOptions {
    * This is used for searching files in the task runner.
    * Can be null if ripgrep is not available.
    */
-  rg: string | null;
+  rg: string;
 
   /**
    * Force stop the runner after max rounds reached.

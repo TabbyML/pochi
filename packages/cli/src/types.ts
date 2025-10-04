@@ -8,7 +8,7 @@ export interface ToolCallOptions {
    * This is used for searching files in the task runner.
    * Can be null if ripgrep is not available.
    */
-  rg: string | null;
+  rg: string;
 
   /**
    * Available custom agents for tools that support them (e.g., newTask)
