@@ -38,6 +38,7 @@ async function process({
   }
 
   const newTitle = await generateTaskTitle({
+    taskId,
     title: task.title,
     messages,
     getModel,

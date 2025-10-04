@@ -4,16 +4,19 @@ import type {
   LanguageModelV2StreamPart,
 } from "@ai-sdk/provider";
 import { safeParseJSON } from "@ai-sdk/provider-utils";
+import { PochiTaskIdHeader } from "@getpochi/common/pochi-api";
 import { attemptCompletionSchema } from "@getpochi/tools";
 import { InvalidToolInputError, generateObject } from "ai";
 import z from "zod/v4";
 
 export function createOutputSchemaMiddleware(
+  taskId: string,
+  model: LanguageModelV2,
   outputSchema: z.ZodAny,
 ): LanguageModelV2Middleware {
   return {
     middlewareVersion: "v2",
-    wrapStream: async ({ doStream, model }) => {
+    wrapStream: async ({ doStream }) => {
       const { stream, ...rest } = await doStream();
 
       let toolCallId = "";
@@ -57,7 +60,12 @@ export function createOutputSchemaMiddleware(
 
               const newInput = {
                 ...parsedResult.value,
-                result: await ensureOutputSchema(model, outputSchema, result),
+                result: await ensureOutputSchema(
+                  taskId,
+                  model,
+                  outputSchema,
+                  result,
+                ),
               };
 
               controller.enqueue({
@@ -82,12 +90,16 @@ export function createOutputSchemaMiddleware(
 }
 
 async function ensureOutputSchema(
+  taskId: string,
   model: LanguageModelV2,
   schema: z.ZodAny,
   content: string,
 ) {
   try {
     const { object } = await generateObject({
+      headers: {
+        [PochiTaskIdHeader]: taskId,
+      },
       model,
       schema,
       prompt: [

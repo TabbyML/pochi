@@ -292,9 +292,8 @@ async function createLLMConfigWithVendors(
     return {
       type: "vendor",
       useToolCallMiddleware: options.useToolCallMiddleware,
-      getModel: (id: string) =>
+      getModel: () =>
         createModel(vendorId, {
-          id,
           modelId,
           getCredentials: vendor.getCredentials,
         }),
@@ -313,9 +312,8 @@ async function createLLMConfigWithPochi(
     return {
       type: "vendor",
       useToolCallMiddleware: pochiModelOptions.useToolCallMiddleware,
-      getModel: (id: string) =>
+      getModel: () =>
         createModel(vendorId, {
-          id,
           modelId: model,
           getCredentials: vendor.getCredentials,
         }),

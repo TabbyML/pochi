@@ -14,11 +14,12 @@
     "@ai-sdk/provider": "catalog:",
     "@ai-sdk/provider-utils": "catalog:",
     "@getpochi/common": "workspace:*",
+    "@getpochi/tools": "workspace:*",
     "@hono/zod-validator": "catalog:",
     "better-auth": "catalog:",
     "hono": "catalog:",
     "jose": "catalog:",
-    "@getpochi/tools": "workspace:*",
+    "remeda": "catalog:",
     "zod": "catalog:"
   }
 }

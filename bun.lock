@@ -235,6 +235,7 @@
         "better-auth": "catalog:",
         "hono": "catalog:",
         "jose": "catalog:",
+        "remeda": "catalog:",
         "zod": "catalog:",
       },
     },
