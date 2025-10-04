@@ -76,9 +76,16 @@ export function createVertexModel(vertex: GoogleVertexModel, modelId: string) {
       location: "placeholder",
       baseURL: "placeholder",
       fetch: async (
-        _input: Request | URL | string,
+        input: Request | URL | string,
         requestInit?: RequestInit,
       ) => {
+        const url =
+          typeof input === "string"
+            ? input
+            : input instanceof URL
+              ? input.toString()
+              : input.url;
+        const lastSegment = url.split("/").at(-1);
         const resp = (await fetch(issueUrl, {
           headers: {
             "Metadata-Flavor": "Google",
@@ -88,7 +95,7 @@ export function createVertexModel(vertex: GoogleVertexModel, modelId: string) {
         };
         const headers = new Headers(requestInit?.headers);
         headers.append("Authorization", `Bearer ${resp.access_token}`);
-        return fetch(modelUrl, { ...requestInit, headers });
+        return fetch(`${modelUrl}/${lastSegment}`, { ...requestInit, headers });
       },
     })("placeholder");
   }
