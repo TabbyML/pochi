@@ -1,3 +1,4 @@
+import type { GoogleGenerativeAIProviderOptions } from "@ai-sdk/google";
 import { createVertexModel } from "@getpochi/common/google-vertex-utils";
 import { wrapLanguageModel } from "ai";
 import type { RequestData } from "../../types";
@@ -12,8 +13,18 @@ export function createGoogleVertexTuningModel(
     middleware: {
       middlewareVersion: "v2",
       async transformParams({ params }) {
-        params.maxOutputTokens = llm.maxOutputTokens;
-        return params;
+        return {
+          ...params,
+          maxOutputTokens: params.maxOutputTokens,
+          providerOptions: {
+            google: {
+              thinkingConfig: {
+                includeThoughts: true,
+                thinkingBudget: 4096,
+              },
+            } satisfies GoogleGenerativeAIProviderOptions,
+          },
+        };
       },
     },
   });
