@@ -12,7 +12,8 @@ export const searchFiles =
       return {
         matches: [],
         isTruncated: false,
-        error: "Search functionality requires ripgrep to be installed. Please install ripgrep to enable file searching.",
+        error:
+          "Search functionality requires ripgrep to be installed. Please install ripgrep to enable file searching.",
       };
     }
     return await searchFilesWithRipgrep(

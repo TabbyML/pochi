@@ -114,12 +114,12 @@ const program = new Command()
       console.warn(
         chalk.yellow(
           "⚠️  Warning: ripgrep is not installed or not found in your $PATH.\n" +
-          "   Some file search features may be limited. To install ripgrep:\n" +
-          "   • macOS: brew install ripgrep\n" +
-          "   • Ubuntu/Debian: apt-get install ripgrep\n" +
-          "   • Windows: winget install BurntSushi.ripgrep.MSVC\n" +
-          "   • Or visit: https://github.com/BurntSushi/ripgrep?tab=readme-ov-file#installation"
-        )
+            "   Some file search features may be limited. To install ripgrep:\n" +
+            "   • macOS: brew install ripgrep\n" +
+            "   • Ubuntu/Debian: apt-get install ripgrep\n" +
+            "   • Windows: winget install BurntSushi.ripgrep.MSVC\n" +
+            "   • Or visit: https://github.com/BurntSushi/ripgrep?tab=readme-ov-file#installation",
+        ),
       );
     }
 
