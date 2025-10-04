@@ -141,7 +141,7 @@ export class LiveChatKit<
     this.spawn = async () => {
       const taskId = crypto.randomUUID();
       const { messages } = this.chat;
-      const model = createModel({ id: taskId, llm: getters.getLLM() });
+      const model = createModel({ llm: getters.getLLM() });
       const summary = await compactTask({
         model,
         messages,
@@ -250,8 +250,7 @@ export class LiveChatKit<
         throw new Error("Task not found");
       }
 
-      const getModel = () =>
-        createModel({ id: this.taskId, llm: getters.getLLM() });
+      const getModel = () => createModel({ llm: getters.getLLM() });
       scheduleGenerateTitleJob({
         taskId: this.taskId,
         store,
