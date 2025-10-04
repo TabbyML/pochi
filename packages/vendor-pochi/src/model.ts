@@ -1,4 +1,3 @@
-import * as R from "remeda";
 import {
   APICallError,
   type LanguageModelV2,
@@ -15,6 +14,7 @@ import {
   getServerBaseUrl,
 } from "@getpochi/common/vscode-webui-bridge";
 import { hc } from "hono/client";
+import * as R from "remeda";
 import type { PochiApi, PochiApiClient } from "./pochi-api";
 
 export function createPochiModel({
