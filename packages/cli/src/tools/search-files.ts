@@ -1,18 +1,19 @@
 import * as fs from "node:fs";
-import { getLogger } from "@getpochi/common";
 import { searchFilesWithRipgrep } from "@getpochi/common/tool-utils";
 import type { ClientTools, ToolFunctionType } from "@getpochi/tools";
 import type { ToolCallOptions } from "../types";
-
-const logger = getLogger("searchFiles");
 
 export const searchFiles =
   (context: ToolCallOptions): ToolFunctionType<ClientTools["searchFiles"]> =>
   async ({ path, regex, filePattern }, { abortSignal, cwd }) => {
     const rgPath = context.rg;
     if (!rgPath || !fs.existsSync(rgPath)) {
-      logger.error("Ripgrep not found at path", rgPath);
-      throw new Error(`Ripgrep not found at path: ${rgPath}`);
+      // Return empty results with a helpful message when ripgrep is not available
+      return {
+        matches: [],
+        isTruncated: false,
+        error: "Search functionality requires ripgrep to be installed. Please install ripgrep to enable file searching.",
+      };
     }
     return await searchFilesWithRipgrep(
       path,
