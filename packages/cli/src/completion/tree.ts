@@ -103,9 +103,6 @@ function convertTreeToTabtabFormat(tree: CompletionTree): CompletionItem[] {
     items.push(...tree._options);
   }
 
-  // Note: We don't need to add other keys as commands because they are already
-  // included in the _commands array. Adding them here would cause duplicates.
-
   return items;
 }
 
