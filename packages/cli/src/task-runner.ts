@@ -48,8 +48,9 @@ export interface RunnerOptions {
   /**
    * The path to the ripgrep executable.
    * This is used for searching files in the task runner.
+   * Can be null if ripgrep is not available.
    */
-  rg: string;
+  rg: string | null;
 
   /**
    * Force stop the runner after max rounds reached.
