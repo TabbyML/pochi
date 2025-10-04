@@ -52,10 +52,6 @@ export abstract class WebviewBase implements vscode.Disposable {
     protected readonly vscodeHost: VSCodeHostImpl,
   ) {}
 
-  protected setupWebviewHtml(webview: vscode.Webview): void {
-    webview.html = this.getHtmlForWebview(webview);
-  }
-
   /**
    * Build resource URIs for the webview
    */
@@ -78,7 +74,10 @@ export abstract class WebviewBase implements vscode.Disposable {
     return vscode.Uri.joinPath(extensionUri, ...LogoPathSegments);
   }
 
-  private getHtmlForWebview(webview: vscode.Webview): string {
+  protected getHtmlForWebview(
+    webview: vscode.Webview,
+    kind: "sidebar" | "pane",
+  ): string {
     const isProd =
       this.context.extensionMode === vscode.ExtensionMode.Production;
 
@@ -98,6 +97,7 @@ export abstract class WebviewBase implements vscode.Disposable {
     const injectGlobalVars = `<script type="module" nonce="${nonce}">
       window.POCHI_CORS_PROXY_PORT = "${getCorsProxyPort()}";
       window.POCHI_LOG = "${this.pochiConfiguration.advancedSettings.value.webviewLogLevel || ""}";
+      window.POCHI_WEBVIEW_KIND = "${kind}";
     </script>`;
 
     if (isProd) {
@@ -222,16 +222,16 @@ export abstract class WebviewBase implements vscode.Disposable {
   protected async createWebviewThread(
     webview: vscode.Webview,
   ): Promise<Thread<WebviewHostApi, VSCodeHostApi>> {
-    const vscodeHostWrapper = this.createVSCodeHostWrapper();
+    const vscodeHostApi = this.createVSCodeHostApi();
 
     // See "tabby-threads/source/targets/iframe/shared.ts"
-    const CHECK_MESSAGE = "quilt.threads.ping";
-    const RESPONSE_MESSAGE = "quilt.threads.pong";
+    const checkMessage = "quilt.threads.ping";
+    const responseMessage = "quilt.threads.pong";
     let connected = false;
 
     const connectedPromise = new Promise<void>((resolve) => {
       const { dispose } = webview.onDidReceiveMessage((message) => {
-        if (message === RESPONSE_MESSAGE) {
+        if (message === responseMessage) {
           logger.info(`Webview ${this.sessionId} ready`);
           connected = true;
           dispose();
@@ -240,7 +240,7 @@ export abstract class WebviewBase implements vscode.Disposable {
       });
 
       // Send ping to check if webview is ready
-      webview.postMessage(CHECK_MESSAGE);
+      webview.postMessage(checkMessage);
     });
 
     const thread = new Thread<WebviewHostApi, VSCodeHostApi>(
@@ -254,7 +254,7 @@ export abstract class WebviewBase implements vscode.Disposable {
         listen(listen, { signal }) {
           const { dispose } = webview.onDidReceiveMessage((message) => {
             // Ignore connection check messages
-            if (message === RESPONSE_MESSAGE) return;
+            if (message === responseMessage) return;
             listen(message);
           });
           signal?.addEventListener(
@@ -267,13 +267,14 @@ export abstract class WebviewBase implements vscode.Disposable {
         },
       },
       {
-        exports: vscodeHostWrapper,
+        exports: vscodeHostApi,
         imports: [
           "openTask",
           "openTaskList",
           "openSettings",
           "onAuthChanged",
           "isFocused",
+          "commitStoreEvent",
         ],
       },
     );
@@ -301,7 +302,7 @@ export abstract class WebviewBase implements vscode.Disposable {
     }
   }
 
-  private createVSCodeHostWrapper(): VSCodeHostApi {
+  private createVSCodeHostApi(): VSCodeHostApi {
     const vscodeHost = this.vscodeHost;
 
     const wrapper: VSCodeHostApi = {

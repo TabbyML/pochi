@@ -5,12 +5,11 @@ import type {
   VSCodeHostApi,
   WebviewHostApi,
 } from "@getpochi/common/vscode-webui-bridge";
-import { inject, injectable, singleton } from "tsyringe";
+import { container, inject, injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { PochiConfiguration } from "../configuration";
 import { WebviewBase } from "./base";
-// biome-ignore lint/style/useImportType: needed for dependency injection
 import { VSCodeHostImpl } from "./vscode-host-impl";
 
 /**
@@ -93,13 +92,18 @@ export class PochiWebviewSidebar
     };
 
     // Use base class methods
-    this.setupWebviewHtml(this.view.webview);
+    this.view.webview.html = this.getHtmlForWebview(
+      this.view.webview,
+      "sidebar",
+    );
     this.setupAuthEventListeners();
 
-    this.createWebviewThread(webviewView.webview).then(() => {
+    this.createWebviewThread(webviewView.webview).then((thread) => {
       if (this.webviewHost) {
         this.webviewHostReady.fire(this.webviewHost);
       }
+
+      container.resolve(VSCodeHostImpl).sidebarWebviewHostApi = thread.imports;
     });
   }
 

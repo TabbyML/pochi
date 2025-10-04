@@ -56,7 +56,10 @@ export class PochiWebviewPanel
     };
 
     // Use base class methods
-    this.setupWebviewHtml(this.panel.webview);
+    this.panel.webview.html = this.getHtmlForWebview(
+      this.panel.webview,
+      "pane",
+    );
     this.setupAuthEventListeners();
 
     // Listen to panel events

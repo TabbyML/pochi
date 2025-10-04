@@ -222,6 +222,8 @@ const VSCodeHostStub = {
   },
 
   openPochiInNewTab: async (): Promise<void> => {},
+
+  bridgeStoreEvent: async (): Promise<void> => {},
 } satisfies VSCodeHostApi;
 
 export function createVscodeHostStub(overrides?: Partial<VSCodeHostApi>) {

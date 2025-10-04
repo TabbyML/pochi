@@ -29,7 +29,6 @@ import { vscodeHost } from "@/lib/vscode";
 import { parseTitle } from "@getpochi/common/message-utils";
 import { type Task, catalog } from "@getpochi/livekit";
 import { useStore } from "@livestore/react";
-import { useQuery } from "@tanstack/react-query";
 import { Link, createFileRoute, useRouter } from "@tanstack/react-router";
 import {
   Brain,
@@ -369,18 +368,12 @@ function GitBadge({
 function OpenInTabButton() {
   const { t } = useTranslation();
   const { openInTab } = useSettingsStore();
-  const { data: credentials } = useQuery({
-    queryKey: ["pochi-credentials"],
-    queryFn: () => vscodeHost.readPochiCredentials(),
-  });
 
   const handleOpenInTab = async () => {
     await vscodeHost.openPochiInNewTab();
   };
 
-  const showOpenInTab = openInTab && credentials;
-
-  if (!showOpenInTab) {
+  if (!openInTab) {
     return <div className="w-6" />;
   }
 
