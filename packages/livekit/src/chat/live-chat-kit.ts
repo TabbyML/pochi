@@ -121,7 +121,7 @@ export class LiveChatKit<
         lastMessage.metadata.compact
       ) {
         try {
-          const model = createModel({ id: taskId, llm: getters.getLLM() });
+          const model = createModel({ llm: getters.getLLM() });
           await compactTask({
             model,
             messages,
