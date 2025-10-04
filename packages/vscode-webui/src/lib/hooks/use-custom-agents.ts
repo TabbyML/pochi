@@ -1,3 +1,4 @@
+import { useSelectedModels } from "@/features/settings";
 import {
   type CustomAgentFile,
   type ValidCustomAgentFile,
@@ -5,7 +6,9 @@ import {
 } from "@getpochi/common/vscode-webui-bridge";
 import { threadSignal } from "@quilted/threads/signals";
 import { useQuery } from "@tanstack/react-query";
+import { resolveModelFromId } from "../utils/resolve-model-from-id";
 import { vscodeHost } from "../vscode";
+import { useModelList } from "./use-model-list";
 
 /**
  * Hook to get custom agents
@@ -47,9 +50,30 @@ export function useCustomAgents(filterValidFiles = false) {
 
 export const useCustomAgent = (name?: string) => {
   const { customAgents } = useCustomAgents(true);
+  const { modelList } = useModelList(true);
+  const { selectedModel: parentTaskModel } = useSelectedModels({
+    isSubTask: false,
+  });
+  // Use the parent task's model as the initial fallback model for the subtask.
+  let customAgentModel = parentTaskModel;
+
   if (!name) {
-    return undefined;
+    return {
+      customAgent: undefined,
+      customAgentModel: parentTaskModel,
+    };
   }
+
   const customAgent = customAgents?.find((agent) => agent.name === name);
-  return customAgent;
+  if (customAgent?.model) {
+    const resolvedModel = resolveModelFromId(customAgent.model, modelList);
+    // if customAgent has configured model, use it
+    if (resolvedModel) {
+      customAgentModel = resolvedModel;
+    }
+  }
+  return {
+    customAgent,
+    customAgentModel,
+  };
 };

@@ -3,9 +3,10 @@ import { vscodeHost } from "@/lib/vscode";
 import type { DisplayModel } from "@getpochi/common/vscode-webui-bridge";
 import { threadSignal } from "@quilted/threads/signals";
 import { useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
 
 /** @useSignals this comment is needed to enable signals in this hook */
-export const useModelList = (applyFilter: boolean) => {
+export const useModelList = (filterPochiModels: boolean) => {
   const { data: modelListSignal, isLoading } = useQuery({
     queryKey: ["modelList"],
     queryFn: fetchModelList,
@@ -14,14 +15,16 @@ export const useModelList = (applyFilter: boolean) => {
 
   const enablePochiModels = useEnablePochiModels();
 
-  const modelList = applyFilter
-    ? modelListSignal?.value?.filter((model) => {
-        if (model.type === "vendor" && model.vendorId === "pochi") {
-          return !model.modelId.startsWith("pochi/") || enablePochiModels;
-        }
-        return true;
-      })
-    : modelListSignal?.value;
+  const modelList = useMemo(() => {
+    return filterPochiModels
+      ? modelListSignal?.value?.filter((model) => {
+          if (model.type === "vendor" && model.vendorId === "pochi") {
+            return !model.modelId.startsWith("pochi/") || enablePochiModels;
+          }
+          return true;
+        })
+      : modelListSignal?.value;
+  }, [filterPochiModels, modelListSignal?.value, enablePochiModels]);
 
   return { modelList, isLoading };
 };

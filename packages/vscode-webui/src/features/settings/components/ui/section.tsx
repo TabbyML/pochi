@@ -89,7 +89,7 @@ export const SectionItem: React.FC<{
       )}
       onClick={onClick}
     >
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <div className="flex flex-1 items-center gap-1 overflow-x-hidden">
           <div className="flex size-6 shrink-0 items-center justify-center">
             {icon}

@@ -192,15 +192,25 @@ function ImageResult({
   data,
   mimeType,
 }: { type: "image"; data: string; mimeType: string }) {
-  const blobUrl = new URL(data);
-  const url = useStoreBlobUrl(data);
+  let url: string | null;
+  let previewSuffix: string;
+  try {
+    const blobUrl = new URL(data);
+    url = useStoreBlobUrl(data);
+    previewSuffix = blobUrl.pathname.slice(0, 8);
+  } catch (err) {
+    // Likely to be base64.
+    url = `data:${mimeType};base64,${data}`;
+    previewSuffix = data.slice(0, 8);
+  }
+
   if (!url) return;
 
   const handleClick = async () => {
     const data = await imageUrlToBase64(url);
     // Base64 data - determine file extension from mimeType
     const extension = mimeType.split("/")[1] || "png";
-    const filename = `mcp-image-preview-${blobUrl.pathname.slice(0, 8)}.${extension}`;
+    const filename = `mcp-image-preview-${previewSuffix}.${extension}`;
     // Open the file in VS Code
     vscodeHost.openFile(filename, {
       base64Data: data,

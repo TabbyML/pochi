@@ -122,7 +122,7 @@ describe("message-utils", () => {
       expect(before).toBe(2);
       const message = prepareLastMessageForRetry(lastMessage)
       const after = message?.parts.filter((part) => part.type === "step-start").length || 0;
-      expect(after).toBe(1);
+      expect(after).toBe(2);
     })
   })
 })

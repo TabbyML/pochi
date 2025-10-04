@@ -6,7 +6,7 @@ import { type InferToolInput, safeParseJSON } from "@ai-sdk/provider-utils";
 import {
   type ClientTools,
   type CustomAgent,
-  createClientTools,
+  newTaskInputSchema,
 } from "@getpochi/tools";
 import type { Store } from "@livestore/livestore";
 import { InvalidToolInputError } from "ai";
@@ -69,7 +69,7 @@ export function createNewTaskMiddleware(
             ) {
               const parsedResult = await safeParseJSON({
                 text: chunk.input,
-                schema: createClientTools()[chunk.toolName].inputSchema,
+                schema: newTaskInputSchema,
               });
               if (!parsedResult.success) {
                 throw new InvalidToolInputError({

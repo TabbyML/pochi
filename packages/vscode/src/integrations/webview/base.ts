@@ -4,6 +4,7 @@ import { getUri } from "@/lib/get-uri";
 import { getLogger } from "@getpochi/common";
 import { getCorsProxyPort } from "@getpochi/common/cors-proxy";
 import type {
+  ResourceURI,
   SessionState,
   VSCodeHostApi,
   WebviewHostApi,
@@ -18,6 +19,11 @@ import type { PochiConfiguration } from "../configuration";
 import type { VSCodeHostImpl } from "./vscode-host-impl";
 
 const logger = getLogger("WebviewBase");
+
+/**
+ * Path segments for the logo resource
+ */
+const LogoPathSegments = ["assets", "icons", "logo128.png"];
 
 /**
  * BASE WEBVIEW CLASS
@@ -48,6 +54,28 @@ export abstract class WebviewBase implements vscode.Disposable {
 
   protected setupWebviewHtml(webview: vscode.Webview): void {
     webview.html = this.getHtmlForWebview(webview);
+  }
+
+  /**
+   * Build resource URIs for the webview
+   */
+  protected buildResourceURI(webview: vscode.Webview): ResourceURI {
+    return {
+      logo128: getUri(
+        webview,
+        this.context.extensionUri,
+        LogoPathSegments,
+      ).toString(),
+    };
+  }
+
+  /**
+   * Get the logo icon path for VS Code UI
+   */
+  protected static getLogoIconPath(
+    extensionUri: vscode.Uri,
+  ): vscode.Uri | { light: vscode.Uri; dark: vscode.Uri } {
+    return vscode.Uri.joinPath(extensionUri, ...LogoPathSegments);
   }
 
   private getHtmlForWebview(webview: vscode.Webview): string {

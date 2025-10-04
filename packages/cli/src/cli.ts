@@ -112,7 +112,14 @@ const program = new Command()
     const rg = findRipgrep();
     if (!rg) {
       return program.error(
-        "ripgrep is not installed or not found in your $PATH. Please install it to continue.",
+        "ripgrep is not installed or not found in your $PATH.\n" +
+          "Some file search features require ripgrep to function properly.\n\n" +
+          "To install ripgrep:\n" +
+          "• macOS: brew install ripgrep\n" +
+          "• Ubuntu/Debian: apt-get install ripgrep\n" +
+          "• Windows: winget install BurntSushi.ripgrep.MSVC\n" +
+          "• Or visit: https://github.com/BurntSushi/ripgrep#installation\n\n" +
+          "Please install ripgrep and try again.",
       );
     }
 

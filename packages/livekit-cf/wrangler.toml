@@ -36,4 +36,4 @@ enabled = false
 directory = "./dist"
 binding = "ASSETS"
 not_found_handling = "single-page-application"
-run_worker_first = ["/*", "!/*/html", "!/assets/*", "!/index.html"]
+run_worker_first = ["/*", "!/assets/*"]
