@@ -18,9 +18,6 @@ export function registerCompletionCommand(program: CommandUnknownOpts) {
             console.log(
               chalk.green("✓ Shell completion installed successfully!"),
             );
-            console.log(chalk.dim("Please restart your shell or run:"));
-            console.log(chalk.dim("  source ~/.bashrc  # for bash"));
-            console.log(chalk.dim("  source ~/.zshrc   # for zsh"));
           } catch (error) {
             console.error(
               chalk.red("✗ Failed to install shell completion:"),
