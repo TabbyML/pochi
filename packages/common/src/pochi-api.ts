@@ -7,3 +7,5 @@ export const PochiApiErrors = {
   RequireOrgPayment: "REQUIRE_ORG_PAYMENT",
   RequireGithubIntegration: "REQUIRE_GITHUB_INTEGRATION",
 };
+
+export const PochiTaskIdHeader = "x-pochi-task-id";

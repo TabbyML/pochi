@@ -1,6 +1,7 @@
 import { getErrorMessage } from "@ai-sdk/provider";
 import type { Environment } from "@getpochi/common";
 import { formatters, prompts } from "@getpochi/common";
+import { PochiTaskIdHeader } from "@getpochi/common/pochi-api";
 
 import {
   type CustomAgent,
@@ -126,7 +127,9 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
     }
 
     if (this.outputSchema) {
-      middlewares.push(createOutputSchemaMiddleware(model, this.outputSchema));
+      middlewares.push(
+        createOutputSchemaMiddleware(chatId, model, this.outputSchema),
+      );
     }
 
     if (llm.useToolCallMiddleware) {
@@ -155,7 +158,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
     const preparedMessages = await prepareMessages(messages, environment);
     const stream = streamText({
       headers: {
-        "X-Pochi-Task-Id": chatId,
+        [PochiTaskIdHeader]: chatId,
       },
       system: prompts.system(
         environment?.info?.customRules,
@@ -176,7 +179,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
       maxRetries: 0,
       // error log is handled in live chat kit.
       onError: () => {},
-      experimental_repairToolCall: makeRepairToolCall(model),
+      experimental_repairToolCall: makeRepairToolCall(chatId, model),
       experimental_download: async (items) => {
         const promises = items.map(
           async ({
