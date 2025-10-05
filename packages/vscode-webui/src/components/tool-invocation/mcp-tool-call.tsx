@@ -1,5 +1,6 @@
 import { CodeBlock, MessageMarkdown } from "@/components/message";
 import { Switch } from "@/components/ui/switch";
+import { useStoreBlobUrl } from "@/lib/store-blob";
 import { getToolName } from "ai";
 import { useState } from "react";
 import { CopyableImage } from "../ui/copyable-image";
@@ -9,7 +10,6 @@ import { HighlightedText } from "./highlight-text";
 import { StatusIcon } from "./status-icon";
 import { ExpandableToolContainer } from "./tool-container";
 import type { ToolProps } from "./types";
-import { useStoreBlobUrl } from "@/lib/store-blob";
 
 interface TextContent {
   type: "text";
