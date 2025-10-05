@@ -87,6 +87,7 @@ export class McpConnection implements Disposable {
     status: "stopped" as const,
     error: undefined,
     tools: {},
+    instructions: undefined,
   };
 
   get status() {
