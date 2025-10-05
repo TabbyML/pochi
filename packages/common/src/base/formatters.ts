@@ -230,11 +230,14 @@ const LLMFormatOps: FormatOp[] = [
   removeToolCallArgumentTransientData,
 ];
 const UIFormatOps = [
+  removeEmptyTextParts,
+  removeEmptyMessages,
   resolvePendingToolCalls,
   removeSystemReminder,
   combineConsecutiveAssistantMessages,
 ];
 const StorageFormatOps = [
+  removeEmptyTextParts,
   removeEmptyMessages,
   removeInvalidCharForStorage,
   removeToolCallArgumentTransientData,
