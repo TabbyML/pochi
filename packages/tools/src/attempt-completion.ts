@@ -7,12 +7,6 @@ export const attemptCompletionSchema = z.object({
     .describe(
       "The result of the task. Formulate this result in a way that is final and does not require further input from the user.",
     ),
-  command: z
-    .string()
-    .optional()
-    .describe(
-      "A CLI command to execute to show a live demo of the result to the user.",
-    ),
 });
 
 const toolDef = {

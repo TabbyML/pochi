@@ -256,7 +256,6 @@ const attemptCompletionProps: AttemptCompletionProp["tool"] = {
   input: {
     result:
       "The new Button component has been created and styled with the primary theme.",
-    command: "git status",
   },
   output: {
     success: true,
