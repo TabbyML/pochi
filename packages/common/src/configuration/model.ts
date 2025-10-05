@@ -57,10 +57,6 @@ const AnthropicModelSettings = ExtendedModelSettings.extend({
 
 export const GoogleVertexModel = z.union([
   z.object({
-    serviceAccountKey: z.string(),
-    location: z.string(),
-  }),
-  z.object({
     accessToken: z.string(),
     projectId: z.string(),
     location: z.string(),
