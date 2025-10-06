@@ -32,6 +32,8 @@ jobs:
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile
 
+      - run: sudo apt-get install -y xvfb xorg gtk2-engines-pixbuf dbus-x11 xfonts-base xfonts-100dpi xfonts-75dpi xfonts-cyrillic xfonts-scalable
+
       - name: Run test with coverage
         uses: GabrielBB/xvfb-action@v1.0
         with:

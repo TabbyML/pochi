@@ -5,8 +5,6 @@ import { defineConfig } from "@vscode/test-cli";
 // Get directory path in ES modules
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-console.log("DISPLAY", process.env.DISPLAY);
-
 export default defineConfig({
   files: "src/**/*.test.ts",
   mocha: {
@@ -21,7 +19,6 @@ export default defineConfig({
   // Launch VS Code with the test-workspace folder open
   env: {
     POCHI_TEST: "true",
-    DISPLAY: process.env.DISPLAY,
   },
   launchArgs: [path.resolve(__dirname, "test-workspace")],
 });
