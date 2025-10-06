@@ -8,18 +8,13 @@ title: Weekly Update #6
 
 Q4 is here, and Pochi’s cooking. 🍳
 
-We’ve introduced vendor-level tooling for MCP with the new `webFetch` and `webSearch` integrations, added support for new AI vendors (**Codex** and **Qwen Coder**), and continued improving the VS Code experience with tabbed views and workspace-level configs.
+We’ve rolled out new built-in tools (`webFetch` and `webSearch`) that extend Pochi’s server-side capabilities, added support for new AI vendors (**Codex** and **Qwen Coder**), and released a new tutorial that shows how Pochi can act as your AI teammate in GitHub Actions.
 
-And yes, webhook delivery is here too (finally!). Ping your favorite services in real time while making Pochi fit neatly into your CI/CD and automation setups.
-
-Let’s roll. 🧡
+Let’s start! 🧡
 
 ### 🚀 Features
 
-- **Webhook Delivery for Task Updates:**  Pochi can now send task update events to any external URL via webhooks, keeping your systems (Slack, Notion, custom dashboards or CI/CD pipelines) in sync. Just configure a `WEBHOOK_URL` to receive real-time notifications and automatically log, notify, or orchestrate actions whenever Pochi updates a task. **[#441](https://github.com/TabbyML/pochi/issues/441)**
-
-- **Vendor Tools for MCP:** Pochi’s MCP got a major upgrade. It now supports vendor-level tooling, allowing Pochi to register capabilities that come bundled directly within the app. This allows different model vendors to expose their own tools alongside traditional MCP servers. The first built-in vendor tool introduced here is `webFetch`, a simple but powerful utility that allows AI agents to fetch and process web content. **[#447](https://github.com/TabbyML/pochi/issues/447)**
-
+- **Built-in Tools for MCP:** Pochi’s MCP got a major upgrade. It now supports server-side tools, allowing Pochi to register and expose capabilities that come bundled directly with the app. The first built-in tool introduced here is `webFetch`, a simple but powerful utility that allows AI agents to fetch and process web content. **[#447](https://github.com/TabbyML/pochi/issues/447)**
 
 <div
 className="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg"
@@ -52,41 +47,9 @@ className="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg"
 
   <div class="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg">![Codex / Qwen Support](./images/qwen-codex-support.png)</div>
 
-- **Open Pochi in a VS Code Tab:** Pochi can now be opened as a full editor tab (via Command Palette → `Pochi: Open in Editor`), giving you more room for conversations and workflows. You can split or move it like any regular file tab for a more flexible workspace. **[#378](https://github.com/TabbyML/pochi/issues/378)**
-
-
-<div
-className="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg"
-  style={{
-    position: "relative",
-    paddingBottom: "53.7%",
-    marginBottom: 20,
-    height: 0,
-    overflow: "hidden",
-    maxWidth: "100%",
-  }}
->
-  <iframe
-    src="https://drive.google.com/file/d/1zLxF-hM5MdaGSL0cCLQYITfeelMBGIYg/preview"
-    style={{
-      position: "absolute",
-      top: 0,
-      left: 0,
-      width: "100%",
-      height: "100%",
-      border: "none",
-      borderRadius: "8px",
-    }}
-    allowFullScreen
-    title="MCP Support in CLI"
-  />
-</div>
-
 ### ✨ Enhancements
 
-- **Workspace-Level Configuration:** We've added support for workspace-level `~/.pochi/config.jsonc` files, allowing teams to define project-specific settings that override global configurations. This allows your team to share custom MCP servers or model settings at the workspace level. **[#310](https://github.com/TabbyML/pochi/issues/310)**
-
-- **Support for YAML Frontmatter** Workflow definitions now support YAML frontmatter, letting you specify metadata such as the preferred model directly within your `~/.pochi/workflows/*.md` files. This give you more control over which LLM handles each automation, especially if you’re balancing multiple providers. **[#343](https://github.com/TabbyML/pochi/issues/343)**
+- **Model-Aware Workflows:** You can now define which model a workflow should use directly in its configuration. This gives you more control over which LLM handles each automation, especially useful if your team switches between providers like Claude, Gemini, or Codex. **[#343](https://github.com/TabbyML/pochi/issues/343)**
 
 ### 🐛 Bug fixes
 
