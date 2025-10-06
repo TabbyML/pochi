@@ -10,7 +10,7 @@
       "outputs": ["dist/**"]
     }
   },
-  "globalPassThroughEnv": ["NODE_ENV"],
+  "globalPassThroughEnv": ["NODE_ENV", "DISPLAY"],
   "boundaries": {
     "implicitDependencies": ["vitest"],
     "tags": {

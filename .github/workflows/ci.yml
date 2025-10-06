@@ -31,10 +31,16 @@ jobs:
             ${{ runner.os }}-turbo-
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile
-      - name: Run headless tests
+
+      - name: Run pre-push
         uses: GabrielBB/xvfb-action@v1.0
         with:
-          run: bun pre-push && bun run test:coverage
+          run: bun pre-push
+
+      - name: Run tests with coverage
+        uses: GabrielBB/xvfb-action@v1.0
+        with:
+          run: bun test:coverage
 
       - name: Upload results to Codecov
         uses: codecov/codecov-action@v5
