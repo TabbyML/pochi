@@ -1,7 +1,12 @@
 import { vscodeHost } from "@/lib/vscode";
 import { getLogger } from "@getpochi/common";
 import type { ExecuteCommandResult } from "@getpochi/common/vscode-webui-bridge";
-import { type Message, type Task, catalog } from "@getpochi/livekit";
+import {
+  type Message,
+  type Task,
+  catalog,
+  processContentOutput,
+} from "@getpochi/livekit";
 import type { ClientTools } from "@getpochi/tools";
 import type { Store } from "@livestore/livestore";
 import { ThreadAbortSignal } from "@quilted/threads";
@@ -274,6 +279,7 @@ export class ManagedToolCallLifeCycle
       .catch((err) => ({
         error: `Failed to execute tool: ${err.message}`,
       }))
+      .then((result) => processContentOutput(this.store, result))
       .then((result) => {
         this.onExecuteDone(result);
       });
@@ -454,7 +460,7 @@ export class ManagedToolCallLifeCycle
         this.state.type === "execute:streaming"
       ) {
         const result = {
-          result: extractCompletionResult(this.store, uid),
+          result: extractTaskResult(this.store, uid),
         };
         this.transitTo("execute:streaming", {
           type: "complete",
@@ -525,7 +531,7 @@ function convertState(state: ToolUIPart["state"]) {
   return "result";
 }
 
-export function extractCompletionResult(store: Store, uid: string) {
+export function extractTaskResult(store: Store, uid: string) {
   const lastMessage = store
     .query(catalog.queries.makeMessagesQuery(uid))
     .map((x) => x.data as Message)
