@@ -110,7 +110,7 @@ async function generateTitle(
       formatters.llm(messages, { removeSystemReminder: true }),
     ),
     abortSignal,
-    maxOutputTokens: 50,
+    maxOutputTokens: 2048,
     maxRetries: 0,
   });
 

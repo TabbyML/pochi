@@ -35,7 +35,7 @@ function PreviewOneTool({
             toolName: getToolName(tool),
             toolCallId: tool.toolCallId,
           });
-          if (lifecycle.status === "init") {
+          if (lifecycle.status === "init" || lifecycle.status === "pre-init") {
             lifecycle.preview(tool.input, tool.state);
           }
         },
