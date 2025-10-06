@@ -1635,7 +1635,7 @@ We’ve introduced vendor-level tooling for MCP with the new `webFetch` and `web
 
 And yes, webhook delivery is here too (finally!). Ping your favorite services in real time while making Pochi fit neatly into your CI/CD and automation setups.
 
-Let’s roll.
+Let’s roll. 🧡
 
 ### 🚀 Features
 
@@ -1670,7 +1670,7 @@ Let’s roll.
   />
 </div>
 
-* **New AI Vendor Support:** Following up on our vendor tool feature, Pochi  now supports Qwen Coder and Codex, adding new model vendors alongside Claude, Gemini, and Copilot. Additionally, we've introduced native compatibility with Anthropic’s API format, enabling faster and more stable integration with Claude models. **[#8](https://github.com/TabbyML/pochi/issues/8)**, **[#304](https://github.com/TabbyML/pochi/issues/304)**, **[#302](https://github.com/TabbyML/pochi/issues/302)**
+* **New AI Vendor Support:** Following up on our vendor tool feature, Pochi  now supports Qwen Coder and Codex, adding new model vendors alongside Claude, Gemini, and Copilot. Additionally, we've introduced native compatibility with Anthropic’s API format, enabling faster and more stable integration with Claude models. **[52](https://github.com/TabbyML/pochi/issues/52)**, **[#304](https://github.com/TabbyML/pochi/issues/304)**, **[#302](https://github.com/TabbyML/pochi/issues/302)**
 
   <div class="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg">![Codex / Qwen Support](./images/qwen-codex-support.png)</div>
 
@@ -1705,7 +1705,7 @@ Let’s roll.
 
 ### ✨ Enhancements
 
-* **Workspace-Level Configuration:** We've added support for workspace-level `~/.pochi/config.jsonc` files, allowing teams to define project-specific settings that override global configurations. This allows your team to share custom MCP servers or model settings at the workspace level. **[#219](https://github.com/TabbyML/pochi/issues/219)**
+* **Workspace-Level Configuration:** We've added support for workspace-level `~/.pochi/config.jsonc` files, allowing teams to define project-specific settings that override global configurations. This allows your team to share custom MCP servers or model settings at the workspace level. **[#310](https://github.com/TabbyML/pochi/issues/310)**
 
 * **Support for YAML Frontmatter** Workflow definitions now support YAML frontmatter, letting you specify metadata such as the preferred model directly within your `~/.pochi/workflows/*.md` files. This give you more control over which LLM handles each automation, especially if you’re balancing multiple providers. **[#343](https://github.com/TabbyML/pochi/issues/343)**
 
@@ -1756,7 +1756,7 @@ We’ve introduced vendor-level tooling for MCP with the new `webFetch` and `web
 
 And yes, webhook delivery is here too (finally!). Ping your favorite services in real time while making Pochi fit neatly into your CI/CD and automation setups.
 
-Let’s roll.
+Let’s roll. 🧡
 
 ### 🚀 Features
 
@@ -1791,7 +1791,7 @@ Let’s roll.
   />
 </div>
 
-* **New AI Vendor Support:** Following up on our vendor tool feature, Pochi  now supports Qwen Coder and Codex, adding new model vendors alongside Claude, Gemini, and Copilot. Additionally, we've introduced native compatibility with Anthropic’s API format, enabling faster and more stable integration with Claude models. **[#8](https://github.com/TabbyML/pochi/issues/8)**, **[#304](https://github.com/TabbyML/pochi/issues/304)**, **[#302](https://github.com/TabbyML/pochi/issues/302)**
+* **New AI Vendor Support:** Following up on our vendor tool feature, Pochi  now supports Qwen Coder and Codex, adding new model vendors alongside Claude, Gemini, and Copilot. Additionally, we've introduced native compatibility with Anthropic’s API format, enabling faster and more stable integration with Claude models. **[52](https://github.com/TabbyML/pochi/issues/52)**, **[#304](https://github.com/TabbyML/pochi/issues/304)**, **[#302](https://github.com/TabbyML/pochi/issues/302)**
 
   <div class="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg">![Codex / Qwen Support](./images/qwen-codex-support.png)</div>
 
@@ -1826,7 +1826,7 @@ Let’s roll.
 
 ### ✨ Enhancements
 
-* **Workspace-Level Configuration:** We've added support for workspace-level `~/.pochi/config.jsonc` files, allowing teams to define project-specific settings that override global configurations. This allows your team to share custom MCP servers or model settings at the workspace level. **[#219](https://github.com/TabbyML/pochi/issues/219)**
+* **Workspace-Level Configuration:** We've added support for workspace-level `~/.pochi/config.jsonc` files, allowing teams to define project-specific settings that override global configurations. This allows your team to share custom MCP servers or model settings at the workspace level. **[#310](https://github.com/TabbyML/pochi/issues/310)**
 
 * **Support for YAML Frontmatter** Workflow definitions now support YAML frontmatter, letting you specify metadata such as the preferred model directly within your `~/.pochi/workflows/*.md` files. This give you more control over which LLM handles each automation, especially if you’re balancing multiple providers. **[#343](https://github.com/TabbyML/pochi/issues/343)**
 
