@@ -9,6 +9,7 @@
     "build": "npm-run-all --parallel build:share build:default",
     "serve": "vite preview",
     "test": "bun vitest --run",
+    "test:coverage": "bun vitest --run --coverage",
     "tsc": "tsc --noEmit",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build"

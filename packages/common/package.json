@@ -23,7 +23,8 @@
   },
   "scripts": {
     "tsc": "tsc",
-    "test": "bun vitest --run"
+    "test": "bun vitest --run",
+    "test:coverage": "bun vitest --run --coverage"
   },
   "dependencies": {
     "@ai-sdk/google-vertex": "catalog:",

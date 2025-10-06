@@ -7,6 +7,7 @@
     "check:default": "biome check .",
     "check:test": "biome check --config-path=./biome.test.json .",
     "test": "turbo test",
+    "test:coverage": "turbo test:coverage && ./scripts/merge-coverage.sh",
     "tsc": "turbo tsc",
     "dep-check": "bun scripts/dep-check.ts",
     "prepare": "husky",
@@ -73,6 +74,7 @@
     "depcheck": "^1.4.7",
     "husky": "^9.1.7",
     "npm-run-all": "^4.1.5",
+    "nyc": "^17.1.0",
     "turbo": "^2.5.5",
     "typescript": "^5.7.2",
     "vitest": "^3.2.4"

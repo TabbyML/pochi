@@ -31,4 +31,7 @@ jobs:
             ${{ runner.os }}-turbo-
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile
-      - run: POCHI_REMOTE_ENV=1 bun pre-push
+      - name: Run headless tests
+        uses: GabrielBB/xvfb-action@v1.0
+        with:
+          run: bun pre-push
