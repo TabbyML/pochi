@@ -9,4 +9,3 @@ coverage/
 .DS_store
 
 *storybook.log
-.nyc_output
