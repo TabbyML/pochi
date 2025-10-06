@@ -1,7 +1,6 @@
 import { MaxAttachments } from "@/lib/constants";
 import { createFileName, validateFile } from "@/lib/utils/attachment";
-import { arrayBufferToStoreBlobUri } from "@getpochi/livekit";
-import type { Store } from "@livestore/livestore";
+import { fileToUri } from "@getpochi/livekit";
 import { useStore } from "@livestore/react";
 import type { FileUIPart } from "ai";
 import { useRef, useState } from "react";
@@ -144,7 +143,7 @@ export function useAttachmentUpload(options?: UseAttachmentUploadOptions) {
           type: "file",
           filename: file.name || "unnamed-file",
           mediaType: file.type,
-          url: await fileToStoreBlobUri(store, file),
+          url: await fileToUri(store, file, abortController.current?.signal),
           // url: await fileToRemoteUri(file, abortController.current?.signal),
           // url: await fileToDataUri(file),
         } satisfies FileUIPart;
@@ -228,8 +227,3 @@ export function useAttachmentUpload(options?: UseAttachmentUploadOptions) {
 //   }
 //   return data.url;
 // }
-
-async function fileToStoreBlobUri(store: Store, file: File): Promise<string> {
-  const data = new Uint8Array(await file.arrayBuffer());
-  return arrayBufferToStoreBlobUri(store, file.type, data);
-}

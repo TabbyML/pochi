@@ -1,10 +1,15 @@
+import { getServerBaseUrl } from "@getpochi/common/vscode-webui-bridge";
 import type { Store } from "@livestore/livestore";
 import z from "zod";
 import { StoreBlobProtocol } from ".";
 import { events } from "./livestore";
 import { makeBlobQuery } from "./livestore/queries";
 
-export async function processContentOutput(store: Store, output: unknown) {
+export async function processContentOutput(
+  store: Store,
+  output: unknown,
+  signal?: AbortSignal,
+) {
   const parsed = ContentOutput.safeParse(output);
   if (parsed.success) {
     const content = parsed.data.content.map(async (item) => {
@@ -15,7 +20,7 @@ export async function processContentOutput(store: Store, output: unknown) {
         return {
           type: "image",
           mimeType: item.mimeType,
-          data: await findBlobUrl(store, item.mimeType, item.data),
+          data: await findBlobUrl(store, item.mimeType, item.data, signal),
         };
       }
       return item;
@@ -44,11 +49,16 @@ const ContentOutput = z.object({
   ),
 });
 
-export async function arrayBufferToStoreBlobUri(
+export async function fileToUri(
   store: Store,
-  mimeType: string,
-  data: Uint8Array<ArrayBufferLike>,
+  file: File,
+  signal?: AbortSignal,
 ) {
+  // isBrowser
+  if (typeof process === "undefined") {
+    return fileToRemoteUri(file, signal);
+  }
+  const data = new Uint8Array(await file.arrayBuffer());
   const checksum = await digest(data);
   const blob = store.query(makeBlobQuery(checksum));
   const url = `${StoreBlobProtocol}${checksum}`;
@@ -61,7 +71,7 @@ export async function arrayBufferToStoreBlobUri(
       checksum,
       data,
       createdAt: new Date(),
-      mimeType,
+      mimeType: file.type,
     }),
   );
 
@@ -72,8 +82,12 @@ async function findBlobUrl(
   store: Store,
   mimeType: string,
   base64: string,
+  signal?: AbortSignal,
 ): Promise<string> {
-  return arrayBufferToStoreBlobUri(store, mimeType, fromBase64(base64));
+  const file = new File([fromBase64(base64)], "file", {
+    type: mimeType,
+  });
+  return fileToUri(store, file, signal);
 }
 
 const fromBase64 = (base64: string) =>
@@ -83,4 +97,26 @@ async function digest(data: Uint8Array<ArrayBufferLike>): Promise<string> {
   const hashBuffer = await crypto.subtle.digest("SHA-256", data);
   const hashArray = Array.from(new Uint8Array(hashBuffer)); // convert buffer to byte array
   return hashArray.map((b) => b.toString(16).padStart(2, "0")).join(""); // convert byte array to hex string
+}
+
+async function fileToRemoteUri(file: File, signal?: AbortSignal) {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const response = await fetch(`${getServerBaseUrl()}/api/upload`, {
+    method: "POST",
+    body: formData,
+    signal,
+  });
+
+  if (!response.ok) {
+    throw new Error(`Upload failed: ${response.statusText}`);
+  }
+
+  const data = (await response.json()) as { url?: string };
+
+  if (!data.url) {
+    throw new Error("Failed to upload attachment");
+  }
+  return data.url;
 }
