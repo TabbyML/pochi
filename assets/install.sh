@@ -150,19 +150,7 @@ create_shell_completion() {
 
   case "$shell_type" in
     zsh)
-      info 'Creating' "zsh shell completion file"
-      cat > "$install_dir/.pochi-completion.zsh" << 'EOF'
-if type compdef &>/dev/null; then
-  _pochi_completion() {
-    local reply
-    local si=$IFS
-    IFS=$'\n' reply=($(COMP_CWORD="$((CURRENT-1))" COMP_LINE="$BUFFER" COMP_POINT="$CURSOR" pochi completion -- "${words[@]}"))
-    IFS=$si
-    _describe 'values' reply
-  }
-  compdef _pochi_completion pochi
-fi
-EOF
+      create_zsh_shell_completion "$install_dir"
       ;;
     bash)
       create_bash_shell_completion "$install_dir"
@@ -173,18 +161,7 @@ EOF
     *)
       # Default to creating all completion files for unknown shells
       info 'Creating' "shell completion files (zsh, bash, and fish)"
-      cat > "$install_dir/.pochi-completion.zsh" << 'EOF'
-if type compdef &>/dev/null; then
-  _pochi_completion() {
-    local reply
-    local si=$IFS
-    IFS=$'\n' reply=($(COMP_CWORD="$((CURRENT-1))" COMP_LINE="$BUFFER" COMP_POINT="$CURSOR" pochi completion -- "${words[@]}"))
-    IFS=$si
-    _describe 'values' reply
-  }
-  compdef _pochi_completion pochi
-fi
-EOF
+      create_zsh_shell_completion "$install_dir"
       create_bash_shell_completion "$install_dir"
       create_fish_shell_completion "$install_dir"
       ;;
@@ -221,6 +198,24 @@ if type complete &>/dev/null; then
   complete -o default -F _pochi_completion pochi
 fi
 ###-end-pochi-completion-###
+EOF
+}
+
+create_zsh_shell_completion() {
+  local install_dir="$1"
+
+  info 'Creating' "zsh shell completion file"
+  cat > "$install_dir/.pochi-completion.zsh" << 'EOF'
+if type compdef &>/dev/null; then
+  _pochi_completion() {
+    local reply
+    local si=$IFS
+    IFS=$'\n' reply=($(COMP_CWORD="$((CURRENT-1))" COMP_LINE="$BUFFER" COMP_POINT="$CURSOR" pochi completion -- "${words[@]}"))
+    IFS=$si
+    _describe 'values' reply
+  }
+  compdef _pochi_completion pochi
+fi
 EOF
 }
 
