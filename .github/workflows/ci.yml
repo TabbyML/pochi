@@ -35,7 +35,7 @@ jobs:
       - name: Run pre-push
         uses: GabrielBB/xvfb-action@v1.0
         with:
-          run: bash -c 'echo $DISPLAY'
+          run: bash -c "echo DISPLAY $DISPLAY"
 
       - name: Run tests with coverage
         run: xvfb-run --auto-servernum bun test:coverage
