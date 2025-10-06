@@ -32,10 +32,7 @@ jobs:
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile
 
-      - name: Run test with coverage
-        uses: GabrielBB/xvfb-action@v1.0
-        with:
-          run: bun test:coverage
+      - run: cd packages/vscode && xvfb-run bun run test
 
       - name: Upload results to Codecov
         uses: codecov/codecov-action@v5
