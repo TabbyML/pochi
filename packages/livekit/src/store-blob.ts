@@ -54,8 +54,8 @@ export async function fileToUri(
   file: File,
   signal?: AbortSignal,
 ) {
-  // isBrowser
-  if (typeof process === "undefined") {
+  if ("POCHI_CORS_PROXY_PORT" in globalThis) {
+    // isBrowser
     return fileToRemoteUri(file, signal);
   }
   const data = new Uint8Array(await file.arrayBuffer());

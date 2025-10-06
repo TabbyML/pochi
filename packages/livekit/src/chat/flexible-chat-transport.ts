@@ -2,6 +2,7 @@ import { getErrorMessage } from "@ai-sdk/provider";
 import type { Environment } from "@getpochi/common";
 import { formatters, prompts } from "@getpochi/common";
 import { PochiTaskIdHeader } from "@getpochi/common/pochi-api";
+import * as R from "remeda";
 
 import {
   type CustomAgent,
@@ -14,6 +15,7 @@ import {
   APICallError,
   type ChatRequestOptions,
   type ChatTransport,
+  type ModelMessage,
   type UIMessageChunk,
   convertToModelMessages,
   isToolUIPart,
@@ -156,6 +158,13 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
     );
 
     const preparedMessages = await prepareMessages(messages, environment);
+    const modelMessages = (await resolvePromise(
+      convertToModelMessages(
+        formatters.llm(preparedMessages),
+        // toModelOutput is invoked within convertToModelMessages, thus we need to pass the tools here.
+        { tools },
+      ),
+    )) as ModelMessage[];
     const stream = streamText({
       headers: {
         [PochiTaskIdHeader]: chatId,
@@ -165,11 +174,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
         this.customAgent,
         mcpInfo?.instructions,
       ),
-      messages: convertToModelMessages(
-        formatters.llm(preparedMessages),
-        // toModelOutput is invoked within convertToModelMessages, thus we need to pass the tools here.
-        { tools },
-      ),
+      messages: modelMessages,
       model: wrapLanguageModel({
         model,
         middleware: middlewares,
@@ -273,4 +278,24 @@ function estimateTotalTokens(messages: Message[]): number {
     }
   }
   return Math.ceil(totalTextLength / 4);
+}
+
+async function resolvePromise(o: unknown): Promise<unknown> {
+  const resolved = await o;
+  if (R.isArray(resolved)) {
+    return Promise.all(resolved.map((x) => resolvePromise(x)));
+  }
+
+  if (R.isObjectType(resolved)) {
+    return Object.fromEntries(
+      await Promise.all(
+        Object.entries(resolved).map(async ([k, v]) => [
+          k,
+          await resolvePromise(v),
+        ]),
+      ),
+    );
+  }
+
+  return resolved;
 }
