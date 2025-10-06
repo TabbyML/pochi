@@ -1,6 +1,6 @@
 import { MaxAttachments } from "@/lib/constants";
 import { createFileName, validateFile } from "@/lib/utils/attachment";
-import { StoreBlobProtocol, catalog } from "@getpochi/livekit";
+import { arrayBufferToStoreBlobUri } from "@getpochi/livekit";
 import type { Store } from "@livestore/livestore";
 import { useStore } from "@livestore/react";
 import type { FileUIPart } from "ai";
@@ -231,27 +231,5 @@ export function useAttachmentUpload(options?: UseAttachmentUploadOptions) {
 
 async function fileToStoreBlobUri(store: Store, file: File): Promise<string> {
   const data = new Uint8Array(await file.arrayBuffer());
-  const mimeType = file.type;
-  const checksum = await digest(data);
-  const url = `${StoreBlobProtocol}${checksum}`;
-  if (store.query(catalog.queries.makeBlobQuery(checksum))) {
-    return url;
-  }
-
-  store.commit(
-    catalog.events.blobInserted({
-      checksum,
-      data,
-      createdAt: new Date(),
-      mimeType,
-    }),
-  );
-
-  return url;
-}
-
-async function digest(data: Uint8Array<ArrayBuffer>): Promise<string> {
-  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer)); // convert buffer to byte array
-  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join(""); // convert byte array to hex string
+  return arrayBufferToStoreBlobUri(store, file.type, data);
 }
