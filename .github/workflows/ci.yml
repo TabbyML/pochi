@@ -34,4 +34,9 @@ jobs:
       - name: Run headless tests
         uses: GabrielBB/xvfb-action@v1.0
         with:
-          run: bun pre-push
+          run: bun pre-push && bun run test:coverage
+
+      - name: Upload results to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}

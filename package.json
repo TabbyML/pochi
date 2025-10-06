@@ -7,7 +7,7 @@
     "check:default": "biome check .",
     "check:test": "biome check --config-path=./biome.test.json .",
     "test": "turbo test",
-    "test:coverage": "turbo test:coverage && ./scripts/merge-coverage.sh",
+    "test:coverage": "turbo test:coverage",
     "tsc": "turbo tsc",
     "dep-check": "bun scripts/dep-check.ts",
     "prepare": "husky",
