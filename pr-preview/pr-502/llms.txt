@@ -1637,7 +1637,7 @@ Let’s start! 🧡
 
 ### 🚀 Features
 
-* **Built-in Tools for MCP:** Pochi’s MCP got a major upgrade. It now supports server-side tools, allowing Pochi to register and expose capabilities that come bundled directly with the app. The first two built-in tools introduced are `webFetch` and `webSearch`. These let AI agents fetch, read, and process web content directly, without needing external MCP servers. **[#447](https://github.com/TabbyML/pochi/issues/447)**
+* **Built-in Tools:** Pochi now supports server-side tools, allowing it to register and expose capabilities that come bundled directly with the app. The first two built-in tools introduced are `webFetch` and `webSearch`. These let AI agents fetch, read, and process web content directly. **[#447](https://github.com/TabbyML/pochi/issues/447)**
 
 <div
   className="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg"
@@ -1723,7 +1723,7 @@ Let’s start! 🧡
 
 ### 🚀 Features
 
-* **Built-in Tools for MCP:** Pochi’s MCP got a major upgrade. It now supports server-side tools, allowing Pochi to register and expose capabilities that come bundled directly with the app. The first two built-in tools introduced are `webFetch` and `webSearch`. These let AI agents fetch, read, and process web content directly, without needing external MCP servers. **[#447](https://github.com/TabbyML/pochi/issues/447)**
+* **Built-in Tools:** Pochi now supports server-side tools, allowing it to register and expose capabilities that come bundled directly with the app. The first two built-in tools introduced are `webFetch` and `webSearch`. These let AI agents fetch, read, and process web content directly. **[#447](https://github.com/TabbyML/pochi/issues/447)**
 
 <div
   className="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg"
