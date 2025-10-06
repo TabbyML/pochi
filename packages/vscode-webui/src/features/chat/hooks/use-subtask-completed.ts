@@ -4,7 +4,7 @@ import { useStore } from "@livestore/react";
 import { getToolName } from "ai";
 import { useEffect, useMemo } from "react";
 import { useAutoApproveGuard, useToolCallLifeCycle } from "../lib/chat-state";
-import { extractCompletionResult } from "../lib/tool-call-life-cycle";
+import { extractTaskResult } from "../lib/tool-call-life-cycle";
 import type { SubtaskInfo } from "./use-subtask-info";
 
 // Detect if subtask is completed (in subtask)
@@ -72,7 +72,7 @@ export const useAddSubtaskResult = ({
       toolCallId: toolPart.toolCallId,
     });
     if (lifecycle.status === "ready") {
-      const result = extractCompletionResult(store, subtaskUid);
+      const result = extractTaskResult(store, subtaskUid);
       if (result) {
         autoApproveGuard.current = "auto";
         lifecycle.addResult({ result });

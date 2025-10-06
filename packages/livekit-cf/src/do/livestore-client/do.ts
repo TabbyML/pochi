@@ -58,6 +58,9 @@ export class LiveStoreClientDO
       setStoreId: (storeId: string) => {
         this.storeId = storeId;
       },
+      forceUpdateTasks: async () => {
+        return (await this.onTasksUpdate(true)) || 0;
+      },
       ASSETS: this.env.ASSETS,
     } satisfies ClientEnv);
   }
@@ -115,13 +118,13 @@ export class LiveStoreClientDO
     triggerAt: "both",
   });
 
-  private onTasksUpdate = async () => {
+  private onTasksUpdate = async (force?: boolean) => {
     const store = await this.getStore();
     const tasks = store.query(catalog.queries.tasks$);
     const oneMinuteAgo = moment().subtract(1, "minute");
 
-    const updatedTasks = tasks.filter((task) =>
-      moment(task.updatedAt).isAfter(oneMinuteAgo),
+    const updatedTasks = tasks.filter(
+      (task) => force || moment(task.updatedAt).isAfter(oneMinuteAgo),
     );
 
     if (!updatedTasks.length) return;
@@ -146,5 +149,7 @@ export class LiveStoreClientDO
         ),
       );
     }
+
+    return updatedTasks.length;
   };
 }
