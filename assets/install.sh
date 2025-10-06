@@ -55,6 +55,34 @@ bold() {
   command printf '\033[1m%s\033[0m' "$1"
 }
 
+# Detect the current shell type
+detect_shell() {
+  # First check SHELL environment variable (user's default shell)
+  case "$(basename "$SHELL" 2>/dev/null)" in
+    zsh)
+      echo "zsh"
+      ;;
+    bash)
+      echo "bash"
+      ;;
+    fish)
+      echo "fish"
+      ;;
+    *)
+      # Fallback to checking shell version variables
+      if [ -n "$ZSH_VERSION" ]; then
+        echo "zsh"
+      elif [ -n "$BASH_VERSION" ]; then
+        echo "bash"
+      elif [ -n "$FISH_VERSION" ]; then
+        echo "fish"
+      else
+        echo "unknown"
+      fi
+      ;;
+  esac
+}
+
 # Check if it is OK to upgrade to the new version
 upgrade_is_ok() {
   return 0
@@ -118,9 +146,12 @@ create_tree() {
 
 create_shell_completion() {
   local install_dir="$1"
+  local shell_type="$(detect_shell)"
 
-  info 'Creating' "shell completion file"
-  cat > "$install_dir/.pochi-completion.zsh" << 'EOF'
+  case "$shell_type" in
+    zsh)
+      info 'Creating' "zsh shell completion file"
+      cat > "$install_dir/.pochi-completion.zsh" << 'EOF'
 if type compdef &>/dev/null; then
   _pochi_completion() {
     local reply
@@ -132,6 +163,88 @@ if type compdef &>/dev/null; then
   compdef _pochi_completion pochi
 fi
 EOF
+      ;;
+    bash)
+      create_bash_shell_completion "$install_dir"
+      ;;
+    fish)
+      create_fish_shell_completion "$install_dir"
+      ;;
+    *)
+      # Default to creating all completion files for unknown shells
+      info 'Creating' "shell completion files (zsh, bash, and fish)"
+      cat > "$install_dir/.pochi-completion.zsh" << 'EOF'
+if type compdef &>/dev/null; then
+  _pochi_completion() {
+    local reply
+    local si=$IFS
+    IFS=$'\n' reply=($(COMP_CWORD="$((CURRENT-1))" COMP_LINE="$BUFFER" COMP_POINT="$CURSOR" pochi completion -- "${words[@]}"))
+    IFS=$si
+    _describe 'values' reply
+  }
+  compdef _pochi_completion pochi
+fi
+EOF
+      create_bash_shell_completion "$install_dir"
+      create_fish_shell_completion "$install_dir"
+      ;;
+  esac
+}
+
+create_bash_shell_completion() {
+  local install_dir="$1"
+
+  info 'Creating' "bash shell completion file"
+  cat > "$install_dir/.pochi-completion.bash" << 'EOF'
+###-begin-pochi-completion-###
+if type complete &>/dev/null; then
+  _pochi_completion () {
+    local words cword
+    if type _get_comp_words_by_ref &>/dev/null; then
+      _get_comp_words_by_ref -n = -n @ -n : -w words -i cword
+    else
+      cword="$COMP_CWORD"
+      words=("${COMP_WORDS[@]}")
+    fi
+
+    local si="$IFS"
+    IFS=$'\n' COMPREPLY=($(COMP_CWORD="$cword" \
+                           COMP_LINE="$COMP_LINE" \
+                           COMP_POINT="$COMP_POINT" \
+                           pochi completion -- "${words[@]}" \
+                           2>/dev/null)) || return $?
+    IFS="$si"
+    if type __ltrim_colon_completions &>/dev/null; then
+      __ltrim_colon_completions "${words[cword]}"
+    fi
+  }
+  complete -o default -F _pochi_completion pochi
+fi
+###-end-pochi-completion-###
+EOF
+}
+
+create_fish_shell_completion() {
+  local install_dir="$1"
+
+  info 'Creating' "fish shell completion file"
+  cat > "$install_dir/.pochi-completion.fish" << 'EOF'
+###-begin-pochi-completion-###
+function _pochi_completion
+  set cmd (commandline -o)
+  set cursor (commandline -C)
+  set words (node -pe "'$cmd'.split(' ').length")
+
+  set completions (eval env DEBUG="" COMP_CWORD="$words" COMP_LINE="$cmd " COMP_POINT="$cursor" pochi completion -- $cmd)
+
+  for completion in $completions
+    echo -e $completion
+  end
+end
+
+complete -f -d 'pochi' -c pochi -a "(eval _pochi_completion)"
+###-end-pochi-completion-###
+EOF
 }
 
 # Configure shell auto-completion by sourcing the CLI's completion output
@@ -140,22 +253,67 @@ EOF
 print_shell_setup_instructions() {
   local install_dir="$1"
   local bin_dir="$install_dir/bin"
+  local shell_type="$(detect_shell)"
 
   info 'Next steps' "Follow these steps to complete the installation:"
   eprintf ""
   eprintf " 1. Add Pochi to your PATH by adding this line to your shell profile:"
-  eprintf "   (e.g., ~/.zshrc for zsh or ~/.bashrc for bash)"
-  eprintf ""
-  eprintf "   export PATH=\"$bin_dir:\$PATH\""
-  eprintf ""
-  eprintf " 2. Enable shell auto-completion by adding this line to your shell profile:"
-  eprintf "   (e.g., ~/.zshrc for zsh or ~/.bashrc for bash)"
-  eprintf ""
-  eprintf "   source $install_dir/.pochi-completion.zsh"
-  eprintf ""
-  eprintf " 3. Restart your terminal or reload your shell configuration:"
-  eprintf "   source ~/.zshrc  # for zsh users"
-  eprintf "   source ~/.bashrc # for bash users"
+  
+  case "$shell_type" in
+    zsh)
+      eprintf "   (add to ~/.zshrc)"
+      eprintf ""
+      eprintf "   export PATH=\"$bin_dir:\$PATH\""
+      eprintf ""
+      eprintf " 2. Enable shell auto-completion by adding this line to ~/.zshrc:"
+      eprintf ""
+      eprintf "   source $install_dir/.pochi-completion.zsh"
+      eprintf ""
+      eprintf " 3. Restart your terminal or reload your shell configuration:"
+      eprintf "   source ~/.zshrc"
+      ;;
+    bash)
+      eprintf "   (add to ~/.bashrc or ~/.bash_profile)"
+      eprintf ""
+      eprintf "   export PATH=\"$bin_dir:\$PATH\""
+      eprintf ""
+      eprintf " 2. Enable shell auto-completion by adding this line to ~/.bashrc or ~/.bash_profile:"
+      eprintf ""
+      eprintf "   source $install_dir/.pochi-completion.bash"
+      eprintf ""
+      eprintf " 3. Restart your terminal or reload your shell configuration:"
+      eprintf "   source ~/.bashrc  # or source ~/.bash_profile"
+      ;;
+    fish)
+      eprintf "   (add to ~/.config/fish/config.fish)"
+      eprintf ""
+      eprintf "   set -gx PATH \"$bin_dir\" \$PATH"
+      eprintf ""
+      eprintf " 2. Enable shell auto-completion by adding this line to ~/.config/fish/config.fish:"
+      eprintf ""
+      eprintf "   source $install_dir/.pochi-completion.fish"
+      eprintf ""
+      eprintf " 3. Restart your terminal or reload your shell configuration:"
+      eprintf "   source ~/.config/fish/config.fish"
+      ;;
+    *)
+      eprintf "   (e.g., ~/.zshrc for zsh, ~/.bashrc for bash, or ~/.config/fish/config.fish for fish)"
+      eprintf ""
+      eprintf "   For zsh/bash: export PATH=\"$bin_dir:\$PATH\""
+      eprintf "   For fish: set -gx PATH \"$bin_dir\" \$PATH"
+      eprintf ""
+      eprintf " 2. Enable shell auto-completion by adding the appropriate line to your shell profile:"
+      eprintf "   For zsh: source $install_dir/.pochi-completion.zsh"
+      eprintf "   For bash: source $install_dir/.pochi-completion.bash"
+      eprintf "   For fish: source $install_dir/.pochi-completion.fish"
+      eprintf ""
+      eprintf " 3. Restart your terminal or reload your shell configuration:"
+      eprintf "   source ~/.zshrc  # for zsh users"
+      eprintf "   source ~/.bashrc # for bash users"
+      eprintf "   source ~/.config/fish/config.fish # for fish users"
+      ;;
+  esac
+  
   eprintf ""
 }
 
