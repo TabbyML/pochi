@@ -35,12 +35,12 @@ jobs:
       - name: Run pre-push
         uses: GabrielBB/xvfb-action@v1.0
         with:
-          run: bun pre-push
+          run: echo DISPLAY $DISPLAY; bun pre-push
 
       - name: Run tests with coverage
         uses: GabrielBB/xvfb-action@v1.0
         with:
-          run: echo DISPLAY $DISPLAY; bun test:coverage
+          run: bun test:coverage
 
       - name: Upload results to Codecov
         uses: codecov/codecov-action@v5
