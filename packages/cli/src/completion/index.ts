@@ -1,2 +1,2 @@
 export { initializeShellCompletion } from "./tree";
-export { registerCompletionCommand } from "./command";
+export { registerCompletionCommand } from "./cmd";
