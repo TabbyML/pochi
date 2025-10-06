@@ -35,7 +35,7 @@ jobs:
       - name: Run pre-push
         uses: GabrielBB/xvfb-action@v1.0
         with:
-          run: echo DISPLAY $DISPLAY; bun pre-push
+          run: echo DISPLAY $DISPLAY && bun pre-push
 
       - name: Run tests with coverage
         uses: GabrielBB/xvfb-action@v1.0
