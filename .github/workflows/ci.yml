@@ -32,13 +32,10 @@ jobs:
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile
 
-      - name: Run pre-push
+      - name: Run test with coverage
         uses: GabrielBB/xvfb-action@v1.0
         with:
-          run: bash -c "echo DISPLAY $DISPLAY"
-
-      - name: Run tests with coverage
-        run: xvfb-run --auto-servernum bun test:coverage
+          run: bun test:coverage
 
       - name: Upload results to Codecov
         uses: codecov/codecov-action@v5
