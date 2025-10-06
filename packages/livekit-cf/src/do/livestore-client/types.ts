@@ -7,6 +7,7 @@ export type Env = {
   getStore: () => Promise<Store<typeof catalog.schema>>;
   setStoreId: (storeId: string) => void;
   getOwner: () => Promise<User | undefined>;
+  forceUpdateTasks: () => Promise<number>;
   ASSETS: CfTypes.Fetcher;
 };
 

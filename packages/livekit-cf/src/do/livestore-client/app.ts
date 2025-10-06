@@ -1,69 +1,17 @@
 import { verifyJWT } from "@/lib/jwt";
+import { sanitizeMessage } from "@/lib/sanitize-message";
 import type { ShareEvent } from "@getpochi/common/share-utils";
 import { decodeStoreId } from "@getpochi/common/store-id-utils";
 import { type Message, catalog } from "@getpochi/livekit";
 import type { ClientTools, SubTask } from "@getpochi/tools";
 import type { Store } from "@livestore/livestore";
+import { Effect } from "@livestore/utils/effect";
 import type { UIMessage } from "ai";
 import type { InferToolInput } from "ai";
 import { Hono } from "hono";
 import type { MiddlewareHandler } from "hono";
 import { HTTPException } from "hono/http-exception";
 import type { DeepWritable, Env } from "./types";
-
-const REDACTED_MESSAGE = "[FILE CONTENT REDACTED]";
-
-// Sanitize sensitive content from tool calls
-function sanitizeMessage(message: Message): Message {
-  return {
-    ...message,
-    parts: message.parts.map((part) => {
-      if (part.type === "tool-readFile" && part.output?.content) {
-        return {
-          ...part,
-          output: {
-            ...part.output,
-            content: REDACTED_MESSAGE,
-          },
-        };
-      }
-
-      if (
-        part.type === "tool-applyDiff" &&
-        (part.input?.searchContent || part.input?.replaceContent)
-      ) {
-        return {
-          ...part,
-          input: {
-            ...part.input,
-            searchContent: REDACTED_MESSAGE,
-            replaceContent: REDACTED_MESSAGE,
-          },
-        };
-      }
-
-      if (
-        part.type === "tool-multiApplyDiff" &&
-        part.input?.edits &&
-        part.input.edits.length > 0
-      ) {
-        return {
-          ...part,
-          input: {
-            ...part.input,
-            edits: part.input.edits.map((edit: unknown) => ({
-              ...(edit as Record<string, unknown>),
-              searchContent: REDACTED_MESSAGE,
-              replaceContent: REDACTED_MESSAGE,
-            })),
-          },
-        };
-      }
-
-      return part;
-    }) as Message["parts"],
-  };
-}
 
 type RequestVariables = {
   isOwner: boolean;
@@ -86,11 +34,33 @@ const store = new Hono<{ Bindings: Env; Variables: RequestVariables }>().use(
 );
 
 store
+  .get("/_debug/sync-state", async (c) => {
+    const isOwner = c.get("isOwner");
+    if (!isOwner) {
+      throw new HTTPException(401, { message: "Unauthorized" });
+    }
+    const store = await c.env.getStore();
+    const syncState = await Effect.runPromise(
+      store.syncProcessor.syncState.get,
+    );
+    return c.json({
+      clientId: store.clientId,
+      sessionId: store.sessionId,
+      syncState,
+    });
+  })
+  .post("/_debug/force-update-tasks", async (c) => {
+    const isOwner = c.get("isOwner");
+    if (!isOwner) {
+      throw new HTTPException(401, { message: "Unauthorized" });
+    }
+    const updated = await c.env.forceUpdateTasks();
+    return c.json({ updated });
+  })
   // Get a task by ID
   .get("/tasks/:taskId/json", async (c) => {
     const store = await c.env.getStore();
     const taskId = c.req.param("taskId");
-
     const task = store.query(catalog.queries.makeTaskQuery(taskId));
 
     if (!task) {

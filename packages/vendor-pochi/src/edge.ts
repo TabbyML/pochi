@@ -3,3 +3,5 @@ import { createPochiModel } from "./model";
 import { VendorId } from "./types";
 
 registerModel(VendorId, createPochiModel);
+
+export { PochiApiErrors } from "./pochi-api";

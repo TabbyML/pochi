@@ -1,6 +1,6 @@
 import { useAutoApproveGuard } from "@/features/chat";
 import { useAutoApprove } from "@/features/settings";
-import { PochiApiErrors } from "@getpochi/common/pochi-api";
+import { PochiApiErrors } from "@getpochi/vendor-pochi/edge";
 import { APICallError } from "ai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 

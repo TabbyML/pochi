@@ -14,7 +14,6 @@ import { events, tables } from "../livestore/schema";
 import { toTaskError, toTaskStatus } from "../task";
 import type { Message } from "../types";
 import { scheduleGenerateTitleJob } from "./background-job";
-import { makeChatWithHookClass } from "./chat-with-hook";
 import {
   FlexibleChatTransport,
   type OnStartCallback,
@@ -89,7 +88,7 @@ export class LiveChatKit<
       outputSchema,
     });
 
-    this.chat = new (makeChatWithHookClass(store, chatClass))({
+    this.chat = new chatClass({
       ...chatInit,
       id: taskId,
       messages: this.messages,

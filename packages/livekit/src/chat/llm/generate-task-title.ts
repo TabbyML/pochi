@@ -1,6 +1,5 @@
 import type { LanguageModelV2 } from "@ai-sdk/provider";
-import { formatters, getLogger, prompts } from "@getpochi/common";
-import { PochiTaskIdHeader } from "@getpochi/common/pochi-api";
+import { constants, formatters, getLogger, prompts } from "@getpochi/common";
 import { convertToModelMessages, generateText } from "ai";
 import type { Message } from "../../types";
 
@@ -104,7 +103,7 @@ async function generateTitle(
 
   const resp = await generateText({
     headers: {
-      [PochiTaskIdHeader]: taskId,
+      [constants.PochiTaskIdHeader]: taskId,
     },
     model,
     prompt: convertToModelMessages(

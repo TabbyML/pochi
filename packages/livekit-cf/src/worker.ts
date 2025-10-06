@@ -19,31 +19,24 @@ app
     return next();
   })
   .all("/", async (c) => {
-    const requestParamsResult = SyncBackend.getSyncRequestSearchParams(
-      c.req.raw,
-    );
-    if (requestParamsResult._tag === "Some") {
+    const searchParams = SyncBackend.matchSyncRequest(c.req.raw);
+    if (searchParams !== undefined) {
       return SyncBackend.handleSyncRequest({
         request: c.req.raw,
-        searchParams: requestParamsResult.value,
-        env: {
-          ...c.env,
-          // @ts-expect-error - we're using a custom implementation
-          DB: null,
-        },
+        searchParams,
+        env: c.env,
         ctx: c.executionCtx as SyncBackend.CfTypes.ExecutionContext,
-        options: {
-          async validatePayload(inputPayload, { storeId }) {
-            const user = await verifyStoreId(inputPayload, storeId);
-            if (!user) {
-              throw new Error("Unauthorized");
-            }
+        async validatePayload(inputPayload, { storeId }) {
+          const user = await verifyStoreId(inputPayload, storeId);
+          if (!user) {
+            throw new Error("Unauthorized");
+          }
 
-            const id = c.env.CLIENT_DO.idFromName(storeId);
-            const stub = c.env.CLIENT_DO.get(id);
-            await stub.setOwner(user);
-          },
+          const id = c.env.CLIENT_DO.idFromName(storeId);
+          const stub = c.env.CLIENT_DO.get(id);
+          await stub.setOwner(user);
         },
+        syncBackendBinding: "SYNC_BACKEND_DO",
       });
     }
 
