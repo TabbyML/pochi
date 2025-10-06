@@ -10,7 +10,7 @@ This means, instead of being limited to tests and deployments, we’ll use Pochi
 
 ![Architectural Diagram](./images/github-actions-with-pochi-architecture.png)
 
-Throughout the tutorial, we’ll tailor each step that builds on the last, so you’ll see Pochi evolve from a simple reviewer into a full-fledged agent that embeds intelligence inside your development workflow.
+Throughout the tutorial, each use case builds on the last, so you’ll see Pochi evolve from a simple reviewer into a full-fledged agent that embeds intelligence inside your development workflow.
 
 ## Automating Your Code Reviews and CI/CD Pipelines with Pochi
 
@@ -51,7 +51,7 @@ Now, in order for GitHub Actions to access Pochi securely, you need to add the A
 Here you can create a secret called `POCHI_API_KEY` and paste your key value. Now we’re all set up!
 
 
-## Step 1: Add Your First Workflow
+## Use Case 1: Pochi as Your Code Reviewer
 
 We’ll create our first Pochi review in GitHub Actions. To get started, go to your repository, click the 'Add file' button  and 'Create new file'. 
 
@@ -92,7 +92,7 @@ Scroll down and commit the changes directly to `main` branch.  At this point, yo
 
 To test this out, we’ll create a sample pull request. To make it feel more realistic and production-like, let’s set up something meaningful to analyze.
 
-For Step 1, since Pochi will be reviewing our code, we’ll create a small full-stack Node.js + TypeScript + React snippet with a few intentional mistakes (bad naming, missing error handling, inconsistent types). This way, Pochi’s review will surface meaningful feedback.
+For Use Case 1, since Pochi will be reviewing our code, we’ll create a small full-stack Node.js + TypeScript + React snippet with a few intentional mistakes (bad naming, missing error handling, inconsistent types). This way, Pochi’s review will surface meaningful feedback.
 
 
 Head over to your repo main page and add a file `src/server.ts` which will be our Express backend. Paste in the following:
@@ -233,7 +233,7 @@ Now that we got Pochi to review the code and point out the flaws, wouldn't it be
 </div>
 
 
-## Step 2: Automate Reviews Based on Events
+## Use Case 2: Automate Reviews Based on Events
 
 So far, we’ve seen Pochi respond when you type `/pochi` either on an issue or a pull request. That’s great, but we can go further. Now, we’ll make Pochi respond automatically to repository events like when a PR is opened or when you push commits to `main`. 
 
@@ -256,7 +256,7 @@ That being said, you can always merge them into your existing `pochi.yml` file. 
 
 When you create the new `.github/workflows/pochi-auto-comments.yml` workflow, the bot will automatically post a `/pochi summarize this PR` comment on your pull request. However, Pochi won’t respond to it. This is because GitHub has built-in protections: comments made by `github-actions[bot]` (the default Actions identity) do not trigger new workflows. This is done to prevent infinite workflow loops. 
 
-The solution is to use Personal Access Token (PAT) so the auto-comments come from your account instead of `github-actions[bot]`, mimicking as if you commented yourself like we did in Step 1. GitHub treats these PAT-authored comments as real user events which trigger workflows normally.
+The solution is to use Personal Access Token (PAT) so the auto-comments come from your account instead of `github-actions[bot]`, mimicking as if you commented yourself like we did in Use Case 1. GitHub treats these PAT-authored comments as real user events which trigger workflows normally.
 
 
 ### Set Up the PAT
@@ -360,7 +360,7 @@ jobs:
 ```
 
 
-The `pochi.yml` workflow (from Step 1) still listens for `/pochi` comments. Now, `pochi-auto-comments.yml` automatically posts those comments in response to events. To test this out, we’ll make two tiny changes so the PR summary looks legit.
+The `pochi.yml` workflow (from Use Case 1) still listens for `/pochi` comments. Now, `pochi-auto-comments.yml` automatically posts those comments in response to events. To test this out, we’ll make two tiny changes so the PR summary looks legit.
 
 Navigate to your `src/server.ts` and edit the code by adding the following to your existing routes:
 
@@ -454,7 +454,7 @@ When you create a new issue Pochi, fill in your title and description, being as 
 
 At this stage, Pochi no longer needs you to type out commands. It can react automatically to PRs, commits, and issues, acting like a proactive AI teammate.
 
-## Step 3: Integrations into CI/CD
+## Use Case 3: Pochi as Your CI/CD Gatekeeper
 
 Now, we’ll work towards how Pochi can go from just commenting to actually driving workflows. We’ll make Pochi review a PR and identify if it needs changes. If yes, Pochi stops the workflow and addresses the user to implement the feedback. On the other hand, if everything looks good, Pochi lets the pipeline continue after approval. 
 
@@ -679,7 +679,7 @@ app.listen(3000, () => {
 });
 ```
 
-**Note:** You’ll temporarily need to comment out your `pochi-auto-comments.yml` file while doing Step 3. Otherwise, both workflows may run simultaneously and interfere with each other.
+**Note:** You’ll temporarily need to comment out your `pochi-auto-comments.yml` file while doing Use Case 3. Otherwise, both workflows may run simultaneously and interfere with each other.
 
 
 To test this out, once you open a PR, you need to comment: 
@@ -747,213 +747,11 @@ Here is a demo showing when changes were approved:
 
 This demonstration showcased how Pochi integrates directly into your CI/CD. It doesn't just review your PRs, it also acts as a gatekeeper, determining whether your code can proceed through the pipeline. You can easily wire this into your existing test suites and deployment targets. 
 
-
-### Integrating Slack Notifications
-
-To enhance the workflow further, we’ll show how to add integration tools like Slack notifications to your deployment process. We've demonstrated how Pochi can review your PR, act as a gatekeeper based on the output, and then allow the rest of your pipeline to continue. And now, we’ll also show you how to chain in extra jobs like notifications on top of tests and deploys. 
-
-
-To showcase this, we'll do Slack notifications. Since this is just GitHub Actions, you can integrate with any API-based tool your team uses, like Linear, Jira, Datadog, PagerDuty, or others. Pochi becomes the gatekeeper, and the rest of the pipeline is up to you. 
-
-
-### Slack Setup
-
-To add Slack to your pipelines, you’d first need a Slack workspace where you have admin / developer access. Next, you’ll need to create a Slack Incoming Webhook. To create one, go to Slack API Apps  and Create New App. 
-
-- Choose "From scratch" and give it a name (e.g., PochiBot) and select your workspace.
-- In the app, enable Incoming Webhooks and add a new webhook to your channel.
-- Copy the Webhook URL (it will look like `https://hooks.slack.com/services/T000/B000/XXXX`).
-
-Here’s a setup video:
-
-
-<div
-  style={{
-    position: "relative",
-    paddingBottom: "53.7%",
-    marginBottom: 20,
-    height: 0,
-    overflow: "hidden",
-    maxWidth: "100%",
-  }}
->
-  <iframe
-    src="https://drive.google.com/file/d/1zi32sY54ZDEtk0o37_jcmOR7klLmP46J/preview"
-    style={{
-      position: "absolute",
-      top: 0,
-      left: 0,
-      width: "100%",
-      height: "100%",
-      border: "none",
-      borderRadius: "8px",
-    }}
-    allowFullScreen
-    title="Slack setup"
-  />
-</div>
-
-Next, store it in your repository as a GitHub Secret, the same way we stored the PAT token. Go to Repo → Settings → Secrets → Actions → New Secret, and this time name it `SLACK_WEBHOOK_URL`. Paste the webhook URL as the value and save it. 
-
-Finally, add the `notify_slack` job in your `pochi.yml` file. Here’s the updated file:
-
-
-```yaml
-name: Pochi Manual Reviewer
-
-on:
-  issue_comment:
-    types: [created]
-
-permissions:
-  contents: write
-  pull-requests: write
-  issues: write
-
-jobs:
-  pochi_review:
-    if: startsWith(github.event.comment.body, '/pochi')
-    runs-on: ubuntu-latest
-    outputs:
-      approved: ${{ steps.decide.outputs.approved }}
-      decision: ${{ steps.decide.outputs.decision }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Run Pochi
-        id: run_pochi
-        uses: tabbyml/pochi/packages/github-action@main
-        env:
-          POCHI_API_KEY: ${{ secrets.POCHI_API_KEY }}
-        with:
-          args: "review this PR in detail. At the end, on the last line only, output exactly one of: ✅ APPROVED or ❌ CHANGES_REQUIRED"
-
-      - name: Decide from Pochi's final comment (✅ or ❌)
-        id: decide
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const owner = context.repo.owner;
-            const repo = context.repo.repo;
-            const issue_number = context.payload.issue.number;
-
-            function pickDecision(body) {
-              if (!body) return null;
-              if (body.includes('✅ APPROVED')) return 'APPROVED';
-              if (body.includes('❌ CHANGES_REQUIRED') || body.includes('❌')) return 'CHANGES_REQUIRED';
-              return null;
-            }
-
-            let decision = null;
-
-            // Poll up to ~60s to let Pochi post its final result comment
-            for (let i = 0; i < 12; i++) {
-              const { data: comments } = await github.rest.issues.listComments({
-                owner,
-                repo,
-                issue_number,
-                per_page: 50,
-              });
-
-              for (const c of comments.slice().reverse()) {
-                const d = pickDecision(c.body);
-                if (d) { decision = d; break; }
-              }
-
-              if (decision) break;
-              await new Promise(r => setTimeout(r, 5000));
-            }
-
-            core.info(`Pochi decision found: ${decision || 'NONE'}`);
-            core.setOutput('decision', decision || 'NONE');
-            core.setOutput('approved', decision === 'APPROVED' ? 'true' : 'false');
-
-      - name: Show decision
-        run: |
-          echo "Decision: ${{ steps.decide.outputs.decision }}"
-          echo "Approved: ${{ steps.decide.outputs.approved }}"
-
-  run_tests:
-    needs: pochi_review
-    if: needs.pochi_review.outputs.approved == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - run: echo "✅ Running tests..."; exit 0
-      # replace the line above with: npm ci && npm test
-
-  deploy:
-    needs: run_tests
-    if: success()
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo "🚀 Deploying application..."
-      # replace with your real deploy steps
-
-  notify_slack:
-    needs: [pochi_review, run_tests, deploy]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Send Slack Notification
-        uses: slackapi/slack-github-action@v1.24.0
-        with:
-          payload: |
-            {
-              "text": "📢 *Pochi Review Result* for PR #${{ github.event.issue.number }}\n*Decision:* ${{ needs.pochi_review.outputs.decision }}\n*Approved:* ${{ needs.pochi_review.outputs.approved }}\n*Repo:* ${{ github.repository }}"
-            }
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-
-  # Fail workflow run if rejected
-  reject_status:
-    needs: pochi_review
-    if: needs.pochi_review.outputs.approved != 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - run: |
-          echo "❌ Pochi did not approve (decision=${{ needs.pochi_review.outputs.decision }}). Failing this run."
-          exit 1
-
-```
-
-
-Now you can run the workflow by commenting in the PR: 
-
-```bash
-/pochi please review this PR. At the end, on the last line, please output either ✅ APPROVED or ❌ CHANGES_REQUIRED
-```
-
-When you visit the workflow run, you’ll see that a new `notify_slack` job was added. On successful run, you get a notification in your Slack workspace. 
-
-<div
-  style={{
-    position: "relative",
-    paddingBottom: "53.7%",
-    marginBottom: 20,
-    height: 0,
-    overflow: "hidden",
-    maxWidth: "100%",
-  }}
->
-  <iframe
-    src="https://drive.google.com/file/d/1qNDDO30UqzweGuZwhIKxubDRdBSx99Ea/preview"
-    style={{
-      position: "absolute",
-      top: 0,
-      left: 0,
-      width: "100%",
-      height: "100%",
-      border: "none",
-      borderRadius: "8px",
-    }}
-    allowFullScreen
-    title="Slack notification"
-  />
-</div>
+An example enhancement could include chaining in extra jobs like notifications on top of tests and deploys. You can integrate with any API-based tool your team uses, like Linear, Jira, Datadog, PagerDuty, or others. Pochi becomes the gatekeeper, and the rest of the pipeline is up to you. 
 
 
 
-## Step 4: Enforce Coding Rules
+## Use Case 4: Enforce Team Coding Rules
 
 Next, let’s look at team-based use cases. In large organisations, developers often have to follow team’s specific coding rules instead of just generic best practices. You can take the learnings from this tutorial so far and create a `.md` file that holds your team coding standard / review ruleset.
 
@@ -1009,9 +807,9 @@ You can also test out any PR by commenting:
 ```bash
 /pochi review this PR according to POCHI.md
 ```
-## Step 5: CRON Jobs
+## Use Case 5: Schedule Background Jobs (CRON)
 
-We’ll now add cron jobs in GitHub Actions to call Pochi automatically. This means Pochi can also run on its own schedule, like a background agent in your repository. You can ask it to draft weekly release notes by updating the `CHANGELOG.md` file, schedule dependency and security reviews, or scan your repo for code that needs attention.
+We’ll now add CRON jobs in GitHub Actions to call Pochi automatically. This means Pochi can also run on its own schedule, like a background agent in your repository. You can ask it to draft weekly release notes by updating the `CHANGELOG.md` file, schedule dependency and security reviews, or scan your repo for code that needs attention.
 
 
 We can showcase this with a small demo. Let’s create a simple `pochi-cron.yml `file.
@@ -1124,8 +922,7 @@ You can also have it draft weekly release notes by adding a new job to your `poc
 
 ```
 
-
-## Step 6: Enterprise Scaling - Power Up Your Pochi
+## Enterprise Scaling - Power Up Your Pochi
 
 So far, we’ve seen how Pochi can help as a reviewer, gatekeeper and improve productivity across teams and developers. Now we’ll talk about Pochi in enterprise environments where speed, control, and cost play an even bigger role. Let’s have a look at how Pochi can run anywhere with custom models, custom tokens and custom runners. 
 
@@ -1144,7 +941,7 @@ This gives control, as teams prefer different models, sometimes many models acro
 
 ### Custom Tokens
 
-We saw in Step 2, how we created a custom GitHub token (PAT) to mimic user-authored comments, allowing us to maintain GitHub’s built-in protections and avoid infinite workflow loops. This is how enterprises in production codebases grant Pochi extra permissions safely.
+We saw in Use Case 2, how we created a custom GitHub token (PAT) to mimic user-authored comments, allowing us to maintain GitHub’s built-in protections and avoid infinite workflow loops. This is how enterprises in production codebases grant Pochi extra permissions safely.
 
 
 ### Custom Runners
@@ -1195,13 +992,10 @@ If you’re just starting out and Pochi doesn’t respond the first time, here a
     * Then run a basic curl command with the webhook URL to confirm if it works.
 
 
-
-
-
 ## Conclusion
 
 
-We started this tutorial with a basic GitHub Actions workflow where Pochi reviewed pull requests on command. Step by step, we extended it into something more powerful that could gatekeeper PRs, enforce custom rules and handle routine tasks in the background. 
+We started this tutorial with a basic GitHub Actions workflow where Pochi reviewed pull requests on command. As we progressed through each use case, we extended it into something more powerful that could gatekeeper PRs, enforce custom rules and handle routine tasks in the background. 
 
 This is the true power, where we just didn’t automate pipelines, but extended them with intelligence using Pochi. And because Pochi lives inside GitHub Actions, it integrates with the tools and workflows your team already uses.
 
