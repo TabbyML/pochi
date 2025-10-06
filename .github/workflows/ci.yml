@@ -31,9 +31,8 @@ jobs:
             ${{ runner.os }}-turbo-
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile
-
-      - run: cd packages/vscode && xvfb-run bun turbo test
-
+      - run: bun pre-push
+      - run: bun test:coverage
       - name: Upload results to Codecov
         uses: codecov/codecov-action@v5
         with:

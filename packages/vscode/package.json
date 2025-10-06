@@ -471,8 +471,8 @@
     "start": "code --extensionDevelopmentPath=$PWD",
     "dev": "npm-run-all --parallel watch start",
     "tsc": "tsc --noEmit",
-    "test": "vscode-test",
-    "test:coverage": "npm run test -- --coverage --coverage-output ./coverage --coverage-reporter html --coverage-reporter json",
+    "test": "xvfb-maybe vscode-test",
+    "test:coverage": "xvfb-maybe vscode-test --coverage --coverage-output ./coverage --coverage-reporter html --coverage-reporter json",
     "release": "bunx bumpp --tag=vscode@%s"
   },
   "dependencies": {
@@ -526,7 +526,8 @@
     "proxyquire": "^2.1.3",
     "semver": "^7.7.1",
     "sinon": "^20.0.0",
-    "tsconfig-paths": "^4.2.0"
+    "tsconfig-paths": "^4.2.0",
+    "xvfb-maybe": "^0.2.1"
   },
   "vsce": {
     "dependencies": false
