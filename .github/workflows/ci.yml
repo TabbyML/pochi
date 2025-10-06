@@ -40,7 +40,7 @@ jobs:
       - name: Run tests with coverage
         uses: GabrielBB/xvfb-action@v1.0
         with:
-          run: bun test:coverage
+          run: echo DISPLAY $DISPLAY; bun test:coverage
 
       - name: Upload results to Codecov
         uses: codecov/codecov-action@v5
