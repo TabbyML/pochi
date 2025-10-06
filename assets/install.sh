@@ -116,6 +116,24 @@ create_tree() {
   fi
 }
 
+create_shell_completion() {
+  local install_dir="$1"
+
+  info 'Creating' "shell completion file"
+  cat > "$install_dir/.pochi-completion.zsh" << 'EOF'
+if type compdef &>/dev/null; then
+  _pochi_completion() {
+    local reply
+    local si=$IFS
+    IFS=$'\n' reply=($(COMP_CWORD="$((CURRENT-1))" COMP_LINE="$BUFFER" COMP_POINT="$CURSOR" pochi completion -- "${words[@]}"))
+    IFS=$si
+    _describe 'values' reply
+  }
+  compdef _pochi_completion pochi
+fi
+EOF
+}
+
 # Configure shell auto-completion by sourcing the CLI's completion output
 # args: <install_dir>
 # Print manual instructions to set PATH and enable completion
@@ -130,26 +148,14 @@ print_shell_setup_instructions() {
   eprintf ""
   eprintf "   export PATH=\"$bin_dir:\$PATH\""
   eprintf ""
-  eprintf " 2. Restart your terminal or reload your shell configuration:"
+  eprintf " 2. Enable shell auto-completion by adding this line to your shell profile:"
+  eprintf "   (e.g., ~/.zshrc for zsh or ~/.bashrc for bash)"
+  eprintf ""
+  eprintf "   source $install_dir/.pochi-completion.zsh"
+  eprintf ""
+  eprintf " 3. Restart your terminal or reload your shell configuration:"
   eprintf "   source ~/.zshrc  # for zsh users"
   eprintf "   source ~/.bashrc # for bash users"
-  eprintf ""
-  eprintf " 3. Set up shell auto-completion by creating the completion file:"
-  eprintf "   cat > $install_dir/.pochi-completion.zsh << 'EOF'"
-  eprintf "   if type compdef &>/dev/null; then"
-  eprintf "     _pochi_completion() {"
-  eprintf "       local reply"
-  eprintf "       local si=\$IFS"
-  eprintf "       IFS=\$'\\n' reply=(\$(COMP_CWORD=\"\$((CURRENT-1))\" COMP_LINE=\"\$BUFFER\" COMP_POINT=\"\$CURSOR\" pochi completion -- \"\${words[@]}\"))"
-  eprintf "       IFS=\$si"
-  eprintf "       _describe 'values' reply"
-  eprintf "     }"
-  eprintf "     compdef _pochi_completion pochi"
-  eprintf "   fi"
-  eprintf "   EOF"
-  eprintf ""
-  eprintf "   Then add this line to your shell profile (~/.zshrc):"
-  eprintf "   source $install_dir/.pochi-completion.zsh"
   eprintf ""
 }
 
@@ -173,6 +179,8 @@ install_version() {
   if [ "$?" == 0 ]
   then
     "$install_dir"/bin/pochi-code --version &>/dev/null # creates the default shims
+    # Create shell completion file
+    create_shell_completion "$install_dir"
     # Set up shell auto-completion
     print_shell_setup_instructions "$install_dir"
     info 'Finished' "Pochi is installed at $install_dir/bin"
