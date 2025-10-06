@@ -33,8 +33,7 @@ import { registerAuthCommand } from "./auth";
 
 import type { Store } from "@livestore/livestore";
 import {
-  initializeShellCompletion,
-  registerCompletionCommand,
+  initializeShellCompletion
 } from "./completion";
 import { findRipgrep } from "./lib/find-ripgrep";
 import { loadAgents } from "./lib/load-agents";
@@ -206,7 +205,6 @@ program.hook("preAction", async () => {
 });
 
 registerAuthCommand(program);
-registerCompletionCommand(program);
 registerModelCommand(program);
 registerMcpCommand(program);
 registerTaskCommand(program);
