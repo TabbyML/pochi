@@ -1,7 +1,6 @@
 import * as fs from "node:fs/promises";
-import * as path from "node:path";
+import { resolvePath } from "@getpochi/common/tool-utils";
 import type { ClientTools, ToolFunctionType } from "@getpochi/tools";
-import * as vscode from "vscode";
 
 interface NotebookCell {
   id?: string;
@@ -14,16 +13,9 @@ interface NotebookContent {
 
 export const editNotebook: ToolFunctionType<
   ClientTools["editNotebook"]
-> = async ({ path: filePath, cellId, content }) => {
+> = async ({ path: filePath, cellId, content }, { cwd }) => {
   try {
-    const workspacePath = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
-    if (!workspacePath) {
-      return { success: false };
-    }
-
-    const absolutePath = path.isAbsolute(filePath)
-      ? filePath
-      : path.join(workspacePath, filePath);
+    const absolutePath = resolvePath(filePath, cwd);
 
     if (!absolutePath.endsWith(".ipynb")) {
       throw new Error("File must be a Jupyter notebook (.ipynb)");

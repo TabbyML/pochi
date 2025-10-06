@@ -8,7 +8,7 @@ const toolDef = {
 Before using this tool, use the readFile tool to understand the file's contents and context
 
 To make a file edit, provide the following:
-1. path: The relative path to the file to modify
+1. path: The path to the file to modify (relative to the current working directory, or an absolute path)
 2. searchContent: The text to replace (must match the file contents exactly, including all whitespace and indentation)
 3. replaceContent: The edited text to replace the searchContent (must be different from searchContent)
 4. expectedReplacements: The number of replacements you expect to make. Defaults to 1 if not specified.
@@ -44,7 +44,6 @@ When making edits:
    - Ensure the edit results in idiomatic, correct code
    - Do not add trailing whitespace to lines (a newline at the end of a file is fine)
    - Do not leave the code in a broken state
-   - Always use absolute file paths (starting with /)
 
 If you want to create a new file, use:
    - A new file path, including dir name if needed
@@ -58,7 +57,7 @@ ${EditFileResultPrompt}`,
     path: z
       .string()
       .describe(
-        "The path of the file to modify (relative to the current working directory).",
+        "The path of the file to modify (relative to the current working directory, or an absolute path).",
       ),
     searchContent: z.string().describe("The text to replace."),
     replaceContent: z.string().describe("The text to replace it with."),
