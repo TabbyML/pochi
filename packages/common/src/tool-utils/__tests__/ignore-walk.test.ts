@@ -19,6 +19,7 @@ describe("ignoreWalk", () => {
     isFIFO: () => false,
     isSocket: () => false,
     parentPath: "",
+    path: "",
   });
 
   const mockFs = {
