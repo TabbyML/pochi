@@ -1,7 +1,12 @@
 import { vscodeHost } from "@/lib/vscode";
 import { getLogger } from "@getpochi/common";
 import type { ExecuteCommandResult } from "@getpochi/common/vscode-webui-bridge";
-import { type Message, type Task, catalog } from "@getpochi/livekit";
+import {
+  type Message,
+  type Task,
+  catalog,
+  processContentOutput,
+} from "@getpochi/livekit";
 import type { ClientTools } from "@getpochi/tools";
 import type { Store } from "@livestore/livestore";
 import { ThreadAbortSignal } from "@quilted/threads";
@@ -45,6 +50,10 @@ type CompleteReason =
 type AbortFunctionType = AbortController["abort"];
 
 type ToolCallState =
+  | {
+      // Represent a fresh state that hasn't been used.
+      type: "pre-init";
+    }
   | {
       // Represents preview runs at toolCall.state === "partial-call"
       type: "init";
@@ -157,17 +166,7 @@ export class ManagedToolCallLifeCycle
     super();
     this.toolName = key.toolName;
     this.toolCallId = key.toolCallId;
-    const abortController = new AbortController();
-    const abortSignal = AbortSignal.any([
-      abortController.signal,
-      this.outerAbortSignal,
-    ]);
-    this.state = {
-      type: "init",
-      previewJob: Promise.resolve(undefined),
-      abort: (reason) => abortController.abort(reason),
-      abortSignal: abortSignal,
-    };
+    this.state = { type: "pre-init" };
   }
 
   get status() {
@@ -210,7 +209,23 @@ export class ManagedToolCallLifeCycle
   }
 
   private previewInit(args: unknown, state: ToolUIPart["state"]) {
-    let { previewJob, abortSignal, abort } = this.checkState("Preview", "init");
+    let { abort, previewJob, abortSignal } = (() => {
+      if (this.state.type === "pre-init") {
+        const abortController = new AbortController();
+        const abortSignal = AbortSignal.any([
+          abortController.signal,
+          this.outerAbortSignal,
+        ]);
+        return {
+          previewJob: Promise.resolve(undefined),
+          // biome-ignore lint/suspicious/noExplicitAny: abort function type uses any
+          abort: (reason: any) => abortController.abort(reason),
+          abortSignal,
+        };
+      }
+
+      return this.checkState("Preview", "init");
+    })();
     const previewToolCall = (abortSignal: AbortSignal) =>
       vscodeHost.previewToolCall(this.toolName, args, {
         state: convertState(state),
@@ -220,7 +235,7 @@ export class ManagedToolCallLifeCycle
 
     if (state === "input-streaming") {
       previewJob = previewJob.then(() => previewToolCall(abortSignal));
-      this.transitTo("init", {
+      this.transitTo(["init", "pre-init"], {
         type: "init",
         previewJob,
         abortSignal,
@@ -244,7 +259,7 @@ export class ManagedToolCallLifeCycle
           });
         }
       });
-      this.transitTo("init", {
+      this.transitTo(["init", "pre-init"], {
         type: "pending",
         previewJob,
         abort,
@@ -274,6 +289,7 @@ export class ManagedToolCallLifeCycle
       .catch((err) => ({
         error: `Failed to execute tool: ${err.message}`,
       }))
+      .then((result) => processContentOutput(this.store, result, abortSignal))
       .then((result) => {
         this.onExecuteDone(result);
       });
@@ -454,7 +470,7 @@ export class ManagedToolCallLifeCycle
         this.state.type === "execute:streaming"
       ) {
         const result = {
-          result: extractCompletionResult(this.store, uid),
+          result: extractTaskResult(this.store, uid),
         };
         this.transitTo("execute:streaming", {
           type: "complete",
@@ -525,7 +541,7 @@ function convertState(state: ToolUIPart["state"]) {
   return "result";
 }
 
-export function extractCompletionResult(store: Store, uid: string) {
+export function extractTaskResult(store: Store, uid: string) {
   const lastMessage = store
     .query(catalog.queries.makeMessagesQuery(uid))
     .map((x) => x.data as Message)

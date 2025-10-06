@@ -1,6 +1,6 @@
 import { ErrorMessage } from "@/components/error-message";
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
-import { PochiApiErrors } from "@getpochi/common/pochi-api";
+import { PochiApiErrors } from "@getpochi/vendor-pochi/edge";
 import { ExternalLinkIcon } from "lucide-react";
 import { useEffect } from "react";
 

@@ -4,7 +4,7 @@ import type {
   LanguageModelV2StreamPart,
 } from "@ai-sdk/provider";
 import { safeParseJSON } from "@ai-sdk/provider-utils";
-import { PochiTaskIdHeader } from "@getpochi/common/pochi-api";
+import { constants } from "@getpochi/common";
 import { attemptCompletionSchema } from "@getpochi/tools";
 import { InvalidToolInputError, generateObject } from "ai";
 import z from "zod/v4";
@@ -98,16 +98,16 @@ async function ensureOutputSchema(
   try {
     const { object } = await generateObject({
       headers: {
-        [PochiTaskIdHeader]: taskId,
+        [constants.PochiTaskIdHeader]: taskId,
       },
       model,
       schema,
       prompt: [
-        "The model is trying to generate object with following schema:",
+        "The model is trying to generate an object that conforms to the following schema:",
         JSON.stringify(z.toJSONSchema(schema)),
-        "Current input is",
+        "The current input is:",
         content,
-        "Please fix the inputs.",
+        "Please correct the input to match the schema. Ensure that all information from the original input is preserved in the corrected output.",
       ].join("\n"),
       maxRetries: 0,
     });

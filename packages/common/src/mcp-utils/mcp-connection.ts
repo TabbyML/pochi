@@ -87,6 +87,7 @@ export class McpConnection implements Disposable {
     status: "stopped" as const,
     error: undefined,
     tools: {},
+    instructions: undefined,
   };
 
   get status() {
@@ -132,7 +133,7 @@ export class McpConnection implements Disposable {
       ready: {
         entry: (context, event) => {
           if (event.type !== "connected") {
-            this.logger.debug(
+            this.logger.warn(
               `Expected 'connected' event entry 'ready' state, got: ${event.type}`,
             );
             return;
@@ -159,14 +160,14 @@ export class McpConnection implements Disposable {
       error: {
         entry: (context, event) => {
           if (event.type !== "error") {
-            this.logger.debug(
+            this.logger.warn(
               `Expected 'error' event entry 'error' state, got: ${event.type}`,
             );
             return;
           }
           context.error = event.error;
           if (context.autoReconnectAttempts < AutoReconnectMaxAttempts) {
-            this.logger.debug(`Auto reconnect in ${AutoReconnectDelay}ms`);
+            this.logger.warn(`Auto reconnect in ${AutoReconnectDelay}ms`);
             context.autoReconnectTimer = setTimeout(() => {
               this.fsm.send({ type: "restart" });
             }, AutoReconnectDelay);
@@ -284,7 +285,7 @@ export class McpConnection implements Disposable {
                 }
                 return await tool.execute(args, options);
               } catch (error) {
-                this.logger.debug(`Error while executing tool ${name}`, error);
+                this.logger.warn(`Error while executing tool ${name}`, error);
                 this.handleError(error);
                 throw error;
               }
@@ -300,7 +301,7 @@ export class McpConnection implements Disposable {
     let client: McpClient | undefined = undefined;
     try {
       const onUncaughtError = (error: unknown) => {
-        this.logger.debug("Uncaught error.", error);
+        this.logger.error("Uncaught error.", error);
         this.handleError(error);
       };
       if (isStdioTransport(this.config)) {
@@ -386,7 +387,7 @@ export class McpConnection implements Disposable {
       }
 
       const message = readableError(error);
-      this.logger.debug("Error while connecting.", error);
+      this.logger.error("Error while connecting.", error);
       this.fsm.send({ type: "error", error: message });
     }
   }
@@ -395,7 +396,7 @@ export class McpConnection implements Disposable {
     try {
       await client.close();
     } catch (error) {
-      this.logger.debug("Error while shutting down.", error);
+      this.logger.error("Error while shutting down.", error);
     }
   }
 

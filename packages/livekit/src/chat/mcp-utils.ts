@@ -76,7 +76,7 @@ function parseMcpTool(store: Store, _name: string, mcpTool: McpTool): Tool {
             return item;
           }
 
-          const blob = findBlob(store, new URL(item.data));
+          const blob = findBlob(store, new URL(item.data), item.mimeType);
           if (!blob) {
             return {
               type: "text" as const,
@@ -108,7 +108,11 @@ function toBase64(bytes: Uint8Array) {
   return base64;
 }
 
-function findBlob(store: Store, url: URL) {
+function findBlob(
+  store: Store,
+  url: URL,
+  mediaType: string,
+): { data: string; mediaType: string } | undefined {
   if (url.protocol === StoreBlobProtocol) {
     const blob = store.query(makeBlobQuery(url.pathname));
     if (blob) {
@@ -117,5 +121,14 @@ function findBlob(store: Store, url: URL) {
         mediaType: blob.mimeType,
       };
     }
+  } else {
+    return {
+      // @ts-ignore: promise is resolved in flexible-chat-transport. we keep the string type to make toModelOutput type happy.
+      data: fetch(url)
+        .then((x) => x.blob())
+        .then((blob) => blob.arrayBuffer())
+        .then((data) => toBase64(new Uint8Array(data))),
+      mediaType,
+    };
   }
 }

@@ -253,10 +253,10 @@ export class McpHub implements Disposable {
     );
 
     const instructions = Object.entries(connections)
-      .filter(([, instructions]) => !!instructions)
+      .filter(([, conn]) => !!conn.instructions)
       .map(
-        ([name, instructions]) =>
-          `# Instructions from ${name} mcp server\n${instructions}`,
+        ([name, conn]) =>
+          `# Instructions from ${name} mcp server\n${conn.instructions}`,
       )
       .join("\n\n");
 

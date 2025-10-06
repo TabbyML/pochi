@@ -8,7 +8,7 @@ const toolDef = {
     path: z
       .string()
       .describe(
-        "The path of the directory to search in (relative to the current working directory)",
+        "The path of the directory to search in (relative to the current working directory, or an absolute path)",
       ),
     globPattern: z
       .string()
