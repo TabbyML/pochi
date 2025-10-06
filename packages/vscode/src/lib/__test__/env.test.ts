@@ -43,7 +43,6 @@ describe("env.ts", () => {
   let originalProcessPlatform: NodeJS.Platform;
 
   before(async () => {
-    await new Promise(resolve => setTimeout(resolve, 50000))
     const rootPath = nodePath.join(
       nodeOs.tmpdir(),
       `vscode-ragdoll-env-suite-${Date.now()}`

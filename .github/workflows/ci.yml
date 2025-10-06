@@ -32,7 +32,7 @@ jobs:
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile
 
-      - run: cd packages/vscode && xvfb-run bun run test
+      - run: cd packages/vscode && xvfb-run bun turbo test
 
       - name: Upload results to Codecov
         uses: codecov/codecov-action@v5
