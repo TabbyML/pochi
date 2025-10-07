@@ -9,6 +9,7 @@ import { PochiConfiguration } from "../configuration";
 import { WebviewBase } from "./base";
 import { VSCodeHostImpl } from "./vscode-host-impl";
 import { workspaceScoped } from "@/lib/workspace-scoped";
+import type { DependencyContainer } from "tsyringe";
 
 const logger = getLogger("PochiWebviewPanel");
 
@@ -76,7 +77,7 @@ export class PochiWebviewPanel
   }
 
   public static createOrShow(
-    cwd: string | null,
+    workspaceContainer: DependencyContainer,
     extensionUri: vscode.Uri,
   ): void {
     // Generate unique session ID
@@ -96,8 +97,6 @@ export class PochiWebviewPanel
 
     // Set icon
     panel.iconPath = WebviewBase.getLogoIconPath(extensionUri);
-
-    const workspaceContainer = workspaceScoped(cwd);
 
     // Get dependencies from container
     const context = workspaceContainer.resolve<vscode.ExtensionContext>(

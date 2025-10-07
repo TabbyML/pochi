@@ -33,6 +33,7 @@ import * as vscode from "vscode";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { type PochiAdvanceSettings, PochiConfiguration } from "./configuration";
 import { DiffChangesContentProvider } from "./editor/diff-changes-content-provider";
+import { workspaceScoped } from "@/lib/workspace-scoped";
 
 const logger = getLogger("CommandManager");
 
@@ -429,8 +430,13 @@ export class CommandManager implements vscode.Disposable {
       ),
 
       vscode.commands.registerCommand("pochi.openInEditor", async () => {
+        // FIXME(zhanba): allow pass cwd
         const cwd = vscode.workspace.workspaceFolders?.[0].uri.fsPath ?? null;
-        PochiWebviewPanel.createOrShow(cwd, this.context.extensionUri);
+        const workspaceContainer = workspaceScoped(cwd);
+        PochiWebviewPanel.createOrShow(
+          workspaceContainer,
+          this.context.extensionUri,
+        );
       }),
 
       vscode.commands.registerCommand(
