@@ -9,7 +9,8 @@ export function registerCompletionCommand(program: CommandUnknownOpts) {
     .option("--zsh", "Generate zsh completion script")
     .option("--fish", "Generate fish completion script")
     .action((options) => {
-      const guide = "Copy and run below command. Then reload your terminal.\n";
+      const installDir = "~/.pochi";
+      const guide = `Copy below script and save it as ${installDir}/.pochi-completion.sh .Then reload your terminal.\n`;
       if (options.bash) {
         console.log(guide);
         console.log(bashCompletionCommand);
@@ -33,25 +34,26 @@ export function registerCompletionCommand(program: CommandUnknownOpts) {
 }
 
 const zshCompletionCommand = `
-  cat > "~/.pochi/.pochi-completion.sh" << 'EOF'
+###-begin-{pkgname}-completion-###
 if type compdef &>/dev/null; then
-  _pochi_completion() {
+  _{pkgname}_completion () {
     local reply
     local si=$IFS
-    IFS=$'\n' reply=($(COMP_CWORD="$((CURRENT-1))" COMP_LINE="$BUFFER" COMP_POINT="$CURSOR" pochi completion -- "\${words[@]}"))
+
+    IFS=$'\n' reply=($(COMP_CWORD="$((CURRENT-1))" COMP_LINE="$BUFFER" COMP_POINT="$CURSOR" {completer} completion -- "\${words[@]}"))
     IFS=$si
+
     _describe 'values' reply
   }
-  compdef _pochi_completion pochi
+  compdef _{pkgname}_completion {pkgname}
 fi
-EOF
+###-end-{pkgname}-completion-###
 `;
 
 const bashCompletionCommand = `
-  cat > "~/.pochi/.pochi-completion.sh" << 'EOF'
-###-begin-pochi-completion-###
+###-begin-{pkgname}-completion-###
 if type complete &>/dev/null; then
-  _pochi_completion () {
+  _{pkgname}_completion () {
     local words cword
     if type _get_comp_words_by_ref &>/dev/null; then
       _get_comp_words_by_ref -n = -n @ -n : -w words -i cword
@@ -64,35 +66,32 @@ if type complete &>/dev/null; then
     IFS=$'\n' COMPREPLY=($(COMP_CWORD="$cword" \
                            COMP_LINE="$COMP_LINE" \
                            COMP_POINT="$COMP_POINT" \
-                           pochi completion -- "\${words[@]}" \
+                           {completer} completion -- "\${words[@]}" \
                            2>/dev/null)) || return $?
     IFS="$si"
     if type __ltrim_colon_completions &>/dev/null; then
       __ltrim_colon_completions "\${words[cword]}"
     fi
   }
-  complete -o default -F _pochi_completion pochi
+  complete -o default -F _{pkgname}_completion {pkgname}
 fi
-###-end-pochi-completion-###
-EOF
+###-end-{pkgname}-completion-###
 `;
 
 const fishCompletionCommand = `
-  cat > "~/.pochi/.pochi-completion.sh" << 'EOF'
-###-begin-pochi-completion-###
-function _pochi_completion
+###-begin-{pkgname}-completion-###
+function _{pkgname}_completion
   set cmd (commandline -o)
   set cursor (commandline -C)
   set words (node -pe "'$cmd'.split(' ').length")
 
-  set completions (eval env DEBUG="" COMP_CWORD="$words" COMP_LINE="$cmd " COMP_POINT="$cursor" pochi completion -- $cmd)
+  set completions (eval env DEBUG=\"" \"" COMP_CWORD=\""$words\"" COMP_LINE=\""$cmd \"" COMP_POINT=\""$cursor\"" {completer} completion -- $cmd)
 
   for completion in $completions
     echo -e $completion
   end
 end
 
-complete -f -d 'pochi' -c pochi -a "(eval _pochi_completion)"
-###-end-pochi-completion-###
-EOF
+complete -f -d '{pkgname}' -c {pkgname} -a "(eval _{pkgname}_completion)"
+###-end-{pkgname}-completion-###
 `;
