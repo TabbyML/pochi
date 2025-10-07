@@ -1,6 +1,6 @@
 import { mkdir } from "node:fs/promises";
 import * as path from "node:path";
-import type { WorkspaceScope } from "@/lib/workspace-scoped-container";
+import type { WorkspaceScope } from "@/lib/workspace-scoped";
 import { getLogger, toErrorMessage } from "@getpochi/common";
 import type {
   SaveCheckpointOptions,

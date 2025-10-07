@@ -1,25 +1,23 @@
+import { getLogger } from "@getpochi/common";
 import { type DependencyContainer, container } from "tsyringe";
-import type * as vscode from "vscode";
 
+const logger = getLogger("WorkspaceScoped");
 const activeContainers = new Map<string | null, DependencyContainer>();
 
-export class WorkspaceScope implements vscode.Disposable {
+export class WorkspaceScope {
   // cwd === null means no workspace is currently open.
   constructor(readonly cwd: string | null) {}
-
-  dispose() {
-    activeContainers.delete(this.cwd);
-  }
 }
 
-export function getWorkspaceScopedContainer(
-  cwd: string | null,
-): DependencyContainer {
+export function workspaceScoped(cwd: string | null): DependencyContainer {
   let childContainer = activeContainers.get(cwd);
   if (childContainer) {
     return childContainer;
   }
 
+  logger.debug(
+    `Creating workspace-scoped container for cwd: ${cwd ?? "(no workspace)"}`,
+  );
   childContainer = container.createChildContainer();
   childContainer.register<WorkspaceScope>("WorkspaceScope", {
     useValue: new WorkspaceScope(cwd),

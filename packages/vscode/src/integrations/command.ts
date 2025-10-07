@@ -429,7 +429,8 @@ export class CommandManager implements vscode.Disposable {
       ),
 
       vscode.commands.registerCommand("pochi.openInEditor", async () => {
-        PochiWebviewPanel.createOrShow(this.context.extensionUri);
+        const cwd = vscode.workspace.workspaceFolders?.[0].uri.fsPath ?? null;
+        PochiWebviewPanel.createOrShow(cwd, this.context.extensionUri);
       }),
 
       vscode.commands.registerCommand(

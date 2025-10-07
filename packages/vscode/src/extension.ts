@@ -30,7 +30,7 @@ import { PochiWebviewSidebar } from "./integrations/webview";
 import { type AuthClient, createAuthClient } from "./lib/auth-client";
 import { FileLogger } from "./lib/file-logger";
 import { PostInstallActions } from "./lib/post-install-actions";
-import { getWorkspaceScopedContainer } from "./lib/workspace-scoped-container";
+import { workspaceScoped } from "./lib/workspace-scoped";
 import { NESProvider } from "./nes";
 
 // This method is called when your extension is activated
@@ -38,12 +38,6 @@ import { NESProvider } from "./nes";
 export async function activate(context: vscode.ExtensionContext) {
   // Container will dispose all the registered instances when itself is disposed
   context.subscriptions.push(container);
-
-  const defaultWorkspaceContainer = getWorkspaceScopedContainer(
-    vscode.workspace.workspaceFolders?.[0].uri.fsPath ?? null,
-  );
-  context.subscriptions.push(defaultWorkspaceContainer);
-
   if (!process.env.POCHI_TEST) {
     context.subscriptions.push(startCorsProxy());
   }
@@ -60,6 +54,9 @@ export async function activate(context: vscode.ExtensionContext) {
     useFactory: instanceCachingFactory(createMcpHub),
   });
 
+  const defaultWorkspaceContainer = workspaceScoped(
+    vscode.workspace.workspaceFolders?.[0].uri.fsPath ?? null,
+  );
   defaultWorkspaceContainer.resolve(PochiWebviewSidebar);
   container.resolve(CompletionProvider);
   container.resolve(NESProvider);

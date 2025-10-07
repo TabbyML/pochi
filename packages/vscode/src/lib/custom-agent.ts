@@ -7,7 +7,7 @@ import { signal } from "@preact/signals-core";
 import { uniqueBy } from "remeda";
 import { Lifecycle, inject, injectable, scoped } from "tsyringe";
 import * as vscode from "vscode";
-import type { WorkspaceScope } from "./workspace-scoped-container";
+import type { WorkspaceScope } from "./workspace-scoped";
 
 const logger = getLogger("CustomAgentManager");
 

@@ -4,11 +4,11 @@ import type {
   ResourceURI,
   VSCodeHostApi,
 } from "@getpochi/common/vscode-webui-bridge";
-import { container } from "tsyringe";
 import * as vscode from "vscode";
 import { PochiConfiguration } from "../configuration";
 import { WebviewBase } from "./base";
 import { VSCodeHostImpl } from "./vscode-host-impl";
+import { workspaceScoped } from "@/lib/workspace-scoped";
 
 const logger = getLogger("PochiWebviewPanel");
 
@@ -37,7 +37,7 @@ export class PochiWebviewPanel
 
   private readonly panel: vscode.WebviewPanel;
 
-  private constructor(
+  constructor(
     panel: vscode.WebviewPanel,
     sessionId: string,
     context: vscode.ExtensionContext,
@@ -75,7 +75,10 @@ export class PochiWebviewPanel
     };
   }
 
-  public static createOrShow(extensionUri: vscode.Uri): void {
+  public static createOrShow(
+    cwd: string | null,
+    extensionUri: vscode.Uri,
+  ): void {
     // Generate unique session ID
     const sessionId = `editor-${Date.now()}-${++PochiWebviewPanel.panelCounter}`;
 
@@ -94,13 +97,15 @@ export class PochiWebviewPanel
     // Set icon
     panel.iconPath = WebviewBase.getLogoIconPath(extensionUri);
 
+    const workspaceContainer = workspaceScoped(cwd);
+
     // Get dependencies from container
-    const context = container.resolve<vscode.ExtensionContext>(
+    const context = workspaceContainer.resolve<vscode.ExtensionContext>(
       "vscode.ExtensionContext",
     );
-    const events = container.resolve(AuthEvents);
-    const pochiConfiguration = container.resolve(PochiConfiguration);
-    const vscodeHost = container.resolve(VSCodeHostImpl);
+    const events = workspaceContainer.resolve(AuthEvents);
+    const pochiConfiguration = workspaceContainer.resolve(PochiConfiguration);
+    const vscodeHost = workspaceContainer.resolve(VSCodeHostImpl);
 
     // Create panel instance
     const pochiPanel = new PochiWebviewPanel(

@@ -1,6 +1,7 @@
 import * as os from "node:os";
 import path from "node:path";
-import type { CustomAgentManager } from "@/lib/custom-agent";
+// biome-ignore lint/style/useImportType: needed for dependency injection
+import { CustomAgentManager } from "@/lib/custom-agent";
 import {
   collectCustomRules,
   collectRuleFiles,
@@ -18,7 +19,7 @@ import { ModelList } from "@/lib/model-list";
 import { PostHog } from "@/lib/posthog";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { UserStorage } from "@/lib/user-storage";
-import type { WorkspaceScope } from "@/lib/workspace-scoped-container";
+import type { WorkspaceScope } from "@/lib/workspace-scoped";
 import { applyDiff, previewApplyDiff } from "@/tools/apply-diff";
 import { editNotebook } from "@/tools/edit-notebook";
 import { executeCommand } from "@/tools/execute-command";
