@@ -166,11 +166,11 @@ print_shell_setup_instructions() {
 
   info 'Next steps' "Add the following to your shell profile (e.g., ~/.zshrc or ~/.bashrc):"
   eprintf "  export PATH=\"$bin_dir:\$PATH\""
-  eprintf "  source $install_dir/.pochi-completion.sh"
   eprintf ""
   eprintf "  reload your terminal" 
   eprintf ""
   eprintf "  run pochi completion to generate completion script"
+  eprintf "  pochi completion"
   eprintf ""
 }
 
