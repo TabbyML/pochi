@@ -4,8 +4,11 @@ import darkPlus from "@shikijs/themes/dark-plus";
 import lightPlus from "@shikijs/themes/light-plus";
 import { type HTMLAttributes, useEffect, useRef, useState } from "react";
 import { type ThemeRegistration, createHighlighterCore } from "shiki/core";
-import { type BundledLanguage, bundledLanguages } from "shiki/langs";
 import { useTheme } from "../theme-provider";
+import {
+  type BundledLanguage,
+  bundledLanguages,
+} from "./code-highlighter-langs";
 
 type CodeBlockProps = HTMLAttributes<HTMLDivElement> & {
   language: BundledLanguage;
