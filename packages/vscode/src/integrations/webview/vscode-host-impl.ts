@@ -1,6 +1,6 @@
 import * as os from "node:os";
 import path from "node:path";
-import { CustomAgentManager } from "@/lib/custom-agent";
+import type { CustomAgentManager } from "@/lib/custom-agent";
 import {
   collectCustomRules,
   collectRuleFiles,
@@ -18,6 +18,7 @@ import { ModelList } from "@/lib/model-list";
 import { PostHog } from "@/lib/posthog";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { UserStorage } from "@/lib/user-storage";
+import type { WorkspaceScope } from "@/lib/workspace-scoped-container";
 import { applyDiff, previewApplyDiff } from "@/tools/apply-diff";
 import { editNotebook } from "@/tools/edit-notebook";
 import { executeCommand } from "@/tools/execute-command";
@@ -76,8 +77,9 @@ import type { Tool } from "ai";
 import { machineId } from "node-machine-id";
 import { keys } from "remeda";
 import * as runExclusive from "run-exclusive";
-import { inject, injectable, singleton } from "tsyringe";
+import { Lifecycle, inject, injectable, scoped } from "tsyringe";
 import * as vscode from "vscode";
+// biome-ignore lint/style/useImportType: needed for dependency injection
 import { CheckpointService } from "../checkpoint/checkpoint-service";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { PochiConfiguration } from "../configuration";
@@ -97,17 +99,12 @@ import { commitStore } from "./base";
 
 const logger = getLogger("VSCodeHostImpl");
 
+@scoped(Lifecycle.ContainerScoped)
 @injectable()
-@singleton()
 export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   private toolCallGroup = runExclusive.createGroupRef();
   private checkpointGroup = runExclusive.createGroupRef();
   private disposables: vscode.Disposable[] = [];
-  // cwd === null means no workspace is currently open.
-  private cwd: string | null =
-    vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? null;
-  private checkpointService: CheckpointService | null = null;
-  private customAgentManager: CustomAgentManager;
 
   constructor(
     @inject("vscode.ExtensionContext")
@@ -120,11 +117,13 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     private readonly pochiConfiguration: PochiConfiguration,
     private readonly modelList: ModelList,
     private readonly userStorage: UserStorage,
-  ) {
-    if (this.cwd) {
-      this.checkpointService = new CheckpointService(this.cwd, this.context);
-    }
-    this.customAgentManager = new CustomAgentManager(this.cwd);
+    @inject("WorkspaceScope") private readonly workspaceScope: WorkspaceScope,
+    private readonly checkpointService: CheckpointService,
+    private readonly customAgentManager: CustomAgentManager,
+  ) {}
+
+  private get cwd() {
+    return this.workspaceScope.cwd;
   }
 
   listRuleFiles = async (): Promise<RuleFile[]> => {
@@ -616,9 +615,6 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       message: string,
       options?: SaveCheckpointOptions,
     ): Promise<string | null> => {
-      if (!this.checkpointService) {
-        return null;
-      }
       return await this.checkpointService.saveCheckpoint(message, options);
     },
   );
@@ -626,12 +622,12 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   restoreCheckpoint = runExclusive.build(
     this.checkpointGroup,
     async (commitHash: string): Promise<void> => {
-      await this.checkpointService?.restoreCheckpoint(commitHash);
+      await this.checkpointService.restoreCheckpoint(commitHash);
     },
   );
 
   readCheckpointPath = async (): Promise<string | undefined> => {
-    return this.checkpointService?.getShadowGitPath();
+    return this.checkpointService.getShadowGitPath();
   };
 
   diffWithCheckpoint = runExclusive.build(
@@ -640,7 +636,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       try {
         // Get changes using existing method
         const changes =
-          await this.checkpointService?.getCheckpointUserEditsDiff(
+          await this.checkpointService.getCheckpointUserEditsDiff(
             fromCheckpoint,
           );
         if (!changes || changes.length === 0) {
@@ -663,7 +659,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       checkpoint: { origin: string; modified?: string },
       displayPath?: string,
     ) => {
-      const changedFiles = await this.checkpointService?.getCheckpointChanges(
+      const changedFiles = await this.checkpointService.getCheckpointChanges(
         checkpoint.origin,
         checkpoint.modified,
       );

@@ -17,7 +17,7 @@ import RagdollUriHandler from "@/integrations/uri-handler";
 import { startCorsProxy } from "@getpochi/common/cors-proxy";
 import type { McpHub } from "@getpochi/common/mcp-utils";
 import { container, instanceCachingFactory } from "tsyringe";
-import type * as vscode from "vscode";
+import * as vscode from "vscode";
 import { CompletionProvider } from "./code-completion";
 import { PochiAuthenticationProvider } from "./integrations/auth-provider";
 import { CommandManager } from "./integrations/command";
@@ -30,6 +30,7 @@ import { PochiWebviewSidebar } from "./integrations/webview";
 import { type AuthClient, createAuthClient } from "./lib/auth-client";
 import { FileLogger } from "./lib/file-logger";
 import { PostInstallActions } from "./lib/post-install-actions";
+import { getWorkspaceScopedContainer } from "./lib/workspace-scoped-container";
 import { NESProvider } from "./nes";
 
 // This method is called when your extension is activated
@@ -37,6 +38,12 @@ import { NESProvider } from "./nes";
 export async function activate(context: vscode.ExtensionContext) {
   // Container will dispose all the registered instances when itself is disposed
   context.subscriptions.push(container);
+
+  const defaultWorkspaceContainer = getWorkspaceScopedContainer(
+    vscode.workspace.workspaceFolders?.[0].uri.fsPath ?? null,
+  );
+  context.subscriptions.push(defaultWorkspaceContainer);
+
   if (!process.env.POCHI_TEST) {
     context.subscriptions.push(startCorsProxy());
   }
@@ -53,11 +60,11 @@ export async function activate(context: vscode.ExtensionContext) {
     useFactory: instanceCachingFactory(createMcpHub),
   });
 
+  defaultWorkspaceContainer.resolve(PochiWebviewSidebar);
   container.resolve(CompletionProvider);
   container.resolve(NESProvider);
   container.resolve(StatusBarItem);
   container.resolve(PochiAuthenticationProvider);
-  container.resolve(PochiWebviewSidebar);
   container.resolve(RagdollUriHandler);
   container.resolve(CommandManager);
   container.resolve(DiffOriginContentProvider);

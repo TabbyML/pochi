@@ -9,7 +9,7 @@ import { inject, injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { PochiConfiguration } from "../configuration";
-import { commitStore, WebviewBase } from "./base";
+import { WebviewBase, commitStore } from "./base";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { VSCodeHostImpl } from "./vscode-host-impl";
 
