@@ -31,7 +31,7 @@ export class PochiWebviewPanel
   extends WebviewBase
   implements vscode.Disposable
 {
-  private static readonly viewType = "pochiEditor";
+  private static readonly viewType = "pochiPanel";
   private static panels = new Map<string, PochiWebviewPanel>();
   private static panelCounter = 0;
 

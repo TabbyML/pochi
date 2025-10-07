@@ -35,7 +35,7 @@ export class CommandPalette {
           label: "Chat",
           iconPath: new vscode.ThemeIcon("comment"),
           onDidAccept: () => {
-            vscode.commands.executeCommand("pochiWebui.focus");
+            vscode.commands.executeCommand("pochiSidebar.focus");
           },
         },
         {

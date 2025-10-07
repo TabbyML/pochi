@@ -30,7 +30,7 @@ export class PochiWebviewSidebar
   extends WebviewBase
   implements vscode.WebviewViewProvider, vscode.Disposable
 {
-  public static readonly viewType = "pochiWebui";
+  public static readonly viewType = "pochiSidebar";
 
   private view?: vscode.WebviewView;
   private webviewHostReady = new vscode.EventEmitter<WebviewHostApi>();
