@@ -1,5 +1,6 @@
 import type { CommandUnknownOpts } from "@commander-js/extra-typings";
 import { Command } from "@commander-js/extra-typings";
+import chalk from "chalk";
 
 export function registerCompletionCommand(program: CommandUnknownOpts) {
   const completionCommand = new Command("completion")
@@ -8,13 +9,23 @@ export function registerCompletionCommand(program: CommandUnknownOpts) {
     .option("--zsh", "Generate zsh completion script")
     .option("--fish", "Generate fish completion script")
     .action((options) => {
-      
+      const guide = "Copy and run below command. Then reload your terminal.\n";
       if (options.bash) {
+        console.log(guide);
         console.log(bashCompletionCoammand);
       } else if (options.zsh) {
+        console.log(guide);
         console.log(zshCompletionCoammand);
       } else if (options.fish) {
+        console.log(guide);
         console.log(fishCompletionCoammand);
+      } else {
+        console.log(chalk.yellow("Choose shell: --bash, --zsh, or --fish"));
+        console.log("");
+        console.log("Examples:");
+        console.log(chalk.cyan("  pochi completion --bash"));
+        console.log(chalk.cyan("  pochi completion --zsh"));
+        console.log(chalk.cyan("  pochi completion --fish"));
       }
     });
 
