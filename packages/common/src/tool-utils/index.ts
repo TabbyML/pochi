@@ -24,3 +24,12 @@ export {
 } from "./shell";
 export { parseAgentFile } from "./agent-parser";
 export { parseWorkflowFrontmatter } from "./workflow-parser";
+export {
+  type NotebookCell,
+  type NotebookContent,
+  validateNotebookPath,
+  validateNotebookStructure,
+  parseNotebook,
+  editNotebookCell,
+  serializeNotebook,
+} from "./notebook-utils";

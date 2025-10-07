@@ -3,7 +3,7 @@ import { ensureFileDirectoryExists } from "@/lib/fs";
 import { getLogger } from "@/lib/logger";
 import { writeTextDocument } from "@/lib/write-text-document";
 import { processMultipleDiffs } from "@getpochi/common/diff-utils";
-import { validateTextFile } from "@getpochi/common/tool-utils";
+import { resolvePath, validateTextFile } from "@getpochi/common/tool-utils";
 import type { ClientTools } from "@getpochi/tools";
 import type {
   PreviewToolFunctionType,
@@ -25,7 +25,8 @@ export const previewMultiApplyDiff: PreviewToolFunctionType<
   }
 
   try {
-    const fileUri = vscode.Uri.joinPath(vscode.Uri.parse(cwd), path);
+    const resolvedPath = resolvePath(path, cwd);
+    const fileUri = vscode.Uri.file(resolvedPath);
 
     const fileBuffer = await vscode.workspace.fs.readFile(fileUri);
     validateTextFile(fileBuffer);
@@ -54,7 +55,8 @@ export const multiApplyDiff: ToolFunctionType<
   { toolCallId, abortSignal, nonInteractive, cwd },
 ) => {
   try {
-    const fileUri = vscode.Uri.joinPath(vscode.Uri.parse(cwd), path);
+    const resolvedPath = resolvePath(path, cwd);
+    const fileUri = vscode.Uri.file(resolvedPath);
     await ensureFileDirectoryExists(fileUri);
 
     const fileBuffer = await vscode.workspace.fs.readFile(fileUri);

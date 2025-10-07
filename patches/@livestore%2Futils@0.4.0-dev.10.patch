@@ -1,0 +1,19 @@
+diff --git a/dist/node/mod.js b/dist/node/mod.js
+index 7461f15523ec34f664e10df5e633590e069fbe61..cbb51d3b030f80a9edf124adc1204807426d9384 100644
+--- a/dist/node/mod.js
++++ b/dist/node/mod.js
+@@ -1,6 +1,5 @@
+ import * as http from 'node:http';
+ import * as PlatformNode from '@effect/platform-node';
+-import { layer as ParcelWatcherLayer } from '@effect/platform-node/NodeFileSystem/ParcelWatcher';
+ import { Effect, Layer } from 'effect';
+ import { OtelTracer, UnknownError } from "../effect/index.js";
+ import { makeNoopTracer } from "../NoopTracer.js";
+@@ -43,5 +42,5 @@ export const OtelLiveDummy = Layer.suspend(() => {
+  * the Parcel-based watch backend. Mirrored from Effect’s platform-node Parcel watcher layer:
+  * https://github.com/Effect-TS/effect/blob/main/packages/platform-node/src/NodeFileSystem/ParcelWatcher.ts
+  */
+-export const NodeRecursiveWatchLayer = Layer.mergeAll(PlatformNode.NodeFileSystem.layer, ParcelWatcherLayer);
++export const NodeRecursiveWatchLayer = Layer.mergeAll(PlatformNode.NodeFileSystem.layer);
+ //# sourceMappingURL=mod.js.map
+\ No newline at end of file

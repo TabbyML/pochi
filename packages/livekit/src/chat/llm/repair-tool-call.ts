@@ -1,5 +1,5 @@
 import type { LanguageModelV2 } from "@ai-sdk/provider";
-import { PochiTaskIdHeader } from "@getpochi/common/pochi-api";
+import { constants } from "@getpochi/common";
 import { createClientTools } from "@getpochi/tools";
 import {
   NoSuchToolError,
@@ -23,7 +23,7 @@ export const makeRepairToolCall: (
 
     const { object: repairedArgs } = await generateObject({
       headers: {
-        [PochiTaskIdHeader]: taskId,
+        [constants.PochiTaskIdHeader]: taskId,
       },
       model,
       schema: tool.inputSchema,

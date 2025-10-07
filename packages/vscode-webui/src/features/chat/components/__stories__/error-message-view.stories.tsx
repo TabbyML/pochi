@@ -1,4 +1,4 @@
-import { PochiApiErrors } from "@getpochi/common/pochi-api";
+import { PochiApiErrors } from "@getpochi/vendor-pochi/edge";
 import type { Meta, StoryObj } from "@storybook/react";
 import { ErrorMessageView } from "../error-message-view";
 

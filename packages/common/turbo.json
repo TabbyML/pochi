@@ -1,4 +1,9 @@
 {
   "extends": ["//"],
-  "tags": ["public"]
+  "tags": ["public"],
+  "tasks": {
+    "test:coverage": {
+      "outputs": ["coverage/**"]
+    }
+  }
 }

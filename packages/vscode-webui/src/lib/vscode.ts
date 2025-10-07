@@ -3,7 +3,9 @@ import type {
   VSCodeHostApi,
   WebviewHostApi,
 } from "@getpochi/common/vscode-webui-bridge";
+import type { Store } from "@livestore/livestore";
 import { ThreadNestedWindow } from "@quilted/threads";
+import * as R from "remeda";
 import type { WebviewApi } from "vscode-webview";
 import { queryClient } from "./query-client";
 
@@ -35,6 +37,11 @@ function getVSCodeApi() {
 export function isVSCodeEnvironment() {
   const vscodeApi = getVSCodeApi();
   return !!vscodeApi?.getState;
+}
+
+let store: Store | null = null;
+export function setActiveStore(newStore: Store | null): void {
+  store = newStore;
 }
 
 function createVSCodeHost(): VSCodeHostApi {
@@ -81,6 +88,7 @@ function createVSCodeHost(): VSCodeHostApi {
         "readCustomAgents",
         "readMachineId",
         "openPochiInNewTab",
+        "bridgeStoreEvent",
       ],
       exports: {
         openTask(params) {
@@ -114,6 +122,24 @@ function createVSCodeHost(): VSCodeHostApi {
 
         async isFocused() {
           return window.document.hasFocus();
+        },
+
+        async commitStoreEvent(event: unknown) {
+          if (globalThis.POCHI_WEBVIEW_KIND === "pane") return;
+          if (R.isObjectType(event)) {
+            const dateFields = ["createdAt", "updatedAt"];
+            for (const field of dateFields) {
+              if (
+                "args" in event &&
+                R.isPlainObject(event.args) &&
+                R.isString(event.args[field])
+              ) {
+                event.args[field] = new Date(event.args[field]);
+              }
+            }
+          }
+          // @ts-expect-error
+          store?.commit(event);
         },
       },
     },

@@ -1,0 +1,13 @@
+id: no-workspace-folders
+language: tsx
+rule:
+  pattern: $$$.workspaceFolders
+message: "Do not access workspace.workspaceFolders directly. Use the workspace helpers instead."
+severity: error
+ignores:
+  - "**/__test__/**"
+  - "packages/vscode/src/integrations/webview/vscode-host-impl.ts"
+  - "packages/vscode/src/integrations/uri-handler.ts"
+  - "packages/vscode/src/lib/workspace-job.ts"
+files:
+  - "packages/vscode/src/**/*.ts"
