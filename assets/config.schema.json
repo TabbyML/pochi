@@ -259,6 +259,22 @@
                   {
                     "type": "object",
                     "properties": {
+                      "serviceAccountKey": {
+                        "type": "string"
+                      },
+                      "location": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "serviceAccountKey",
+                      "location"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
                       "accessToken": {
                         "type": "string"
                       },

@@ -1,4 +1,7 @@
-import { createVertexWithoutCredentials } from "@ai-sdk/google-vertex/edge";
+import {
+  createVertex,
+  createVertexWithoutCredentials,
+} from "@ai-sdk/google-vertex/edge";
 import type { GoogleVertexModel } from "./configuration";
 
 function createPatchedFetchForFinetune(accessToken?: string | undefined) {
@@ -38,6 +41,23 @@ function createPatchedFetchForFinetune(accessToken?: string | undefined) {
 export function createVertexModel(vertex: GoogleVertexModel, modelId: string) {
   const getBaseURL = (location: string, projectId: string) =>
     `https://${location}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${location}/publishers/google`;
+
+  if ("serviceAccountKey" in vertex) {
+    const service_account_key = JSON.parse(vertex.serviceAccountKey);
+    const location = vertex.location;
+    const project = service_account_key.project_id;
+    return createVertex({
+      project,
+      location,
+      baseURL: getBaseURL(location, project),
+      googleCredentials: {
+        clientEmail: service_account_key.client_email,
+        privateKeyId: service_account_key.private_key_id,
+        privateKey: service_account_key.private_key,
+      },
+      fetch: createPatchedFetchForFinetune(),
+    })(modelId);
+  }
 
   if ("accessToken" in vertex) {
     const { location, projectId, accessToken } = vertex;

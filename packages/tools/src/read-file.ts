@@ -8,7 +8,7 @@ const toolDef = {
     path: z
       .string()
       .describe(
-        "The path of the file to read (relative to the current working directory)",
+        "The path of the file to read (relative to the current working directory, or an absolute path)",
       ),
     startLine: z
       .number()

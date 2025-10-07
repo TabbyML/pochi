@@ -7,6 +7,7 @@
     "check:default": "biome check .",
     "check:test": "biome check --config-path=./biome.test.json .",
     "test": "turbo test",
+    "test:coverage": "turbo test:coverage",
     "tsc": "turbo tsc",
     "dep-check": "bun scripts/dep-check.ts",
     "prepare": "husky",
@@ -89,6 +90,7 @@
     "streamdown@1.3.0": "patches/streamdown@1.3.0.patch",
     "ai@5.0.59": "patches/ai@5.0.59.patch",
     "@ai-sdk/google-vertex@3.0.34": "patches/@ai-sdk%2Fgoogle-vertex@3.0.34.patch",
-    "@livestore/livestore@0.4.0-dev.10": "patches/@livestore%2Flivestore@0.4.0-dev.10.patch"
+    "@livestore/livestore@0.4.0-dev.10": "patches/@livestore%2Flivestore@0.4.0-dev.10.patch",
+    "@livestore/utils@0.4.0-dev.10": "patches/@livestore%2Futils@0.4.0-dev.10.patch"
   }
 }

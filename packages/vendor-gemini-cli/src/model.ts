@@ -14,9 +14,11 @@ export function createGeminiCliModel({
     project: "default",
     location: "global",
     baseURL: "https://cloudcode-pa.googleapis.com",
-    fetch: createPatchedFetch(
+    fetch: createFetcher(
       modelId,
       getCredentials as () => Promise<GeminiCredentials>,
+      // Turn on cors if in browser env
+      "window" in globalThis,
     ),
   })(modelId);
 
@@ -42,9 +44,10 @@ export function createGeminiCliModel({
   });
 }
 
-function createPatchedFetch(
+function createFetcher(
   model: string,
   getCredentials: () => Promise<GeminiCredentials>,
+  cors?: boolean,
 ) {
   return async (
     _requestInfo: Request | URL | string,
@@ -56,6 +59,24 @@ function createPatchedFetch(
       headers.append("Authorization", `Bearer ${accessToken}`);
     }
     const request = JSON.parse((requestInit?.body as string) || "null");
+
+    const originalUrl = new URL(
+      "https://cloudcode-pa.googleapis.com/v1internal:streamGenerateContent?alt=sse",
+    );
+
+    let urlToFetch: URL;
+
+    if (cors) {
+      const url = new URL(originalUrl);
+      url.protocol = "http:";
+      url.host = "localhost";
+      url.port = globalThis.POCHI_CORS_PROXY_PORT;
+      urlToFetch = url;
+      headers.set("x-proxy-origin", originalUrl.toString());
+    } else {
+      urlToFetch = originalUrl;
+    }
+
     const patchedRequestInit = {
       ...requestInit,
       headers,
@@ -66,15 +87,12 @@ function createPatchedFetch(
       }),
     };
 
-    const resp = await fetch(
-      "https://cloudcode-pa.googleapis.com/v1internal:streamGenerateContent?alt=sse",
-      patchedRequestInit,
-    );
+    const resp = await fetch(urlToFetch, patchedRequestInit);
     if (!resp.ok || !resp.body) {
       throw new APICallError({
         message: `Failed to fetch: ${resp.status} ${resp.statusText}`,
         statusCode: resp.status,
-        url: "",
+        url: urlToFetch.toString(),
         requestBodyValues: null,
       });
     }

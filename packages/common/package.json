@@ -6,7 +6,6 @@
   "exports": {
     ".": "./src/base/index.ts",
     "./configuration": "./src/configuration/index.ts",
-    "./pochi-api": "./src/pochi-api.ts",
     "./vendor": "./src/vendor/node.ts",
     "./vendor/edge": "./src/vendor/edge.ts",
     "./device-link": "./src/device-link/index.ts",
@@ -24,7 +23,8 @@
   },
   "scripts": {
     "tsc": "tsc",
-    "test": "bun vitest --run"
+    "test": "bun vitest --run",
+    "test:coverage": "bun vitest --run --coverage"
   },
   "dependencies": {
     "@ai-sdk/google-vertex": "catalog:",

@@ -124,7 +124,8 @@ export class LiveStoreClientDO
     const oneMinuteAgo = moment().subtract(1, "minute");
 
     const updatedTasks = tasks.filter(
-      (task) => force || moment(task.updatedAt).isAfter(oneMinuteAgo),
+      (task) =>
+        force || !task.shareId || moment(task.updatedAt).isAfter(oneMinuteAgo),
     );
 
     if (!updatedTasks.length) return;

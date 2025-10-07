@@ -1,4 +1,3 @@
-import { getServerBaseUrl } from "@getpochi/common/vscode-webui-bridge";
 import type { Store } from "@livestore/livestore";
 import z from "zod";
 import { StoreBlobProtocol } from ".";
@@ -103,7 +102,7 @@ async function fileToRemoteUri(file: File, signal?: AbortSignal) {
   const formData = new FormData();
   formData.append("file", file);
 
-  const response = await fetch(`${getServerBaseUrl()}/api/upload`, {
+  const response = await fetch("https://app.getpochi.com/api/upload", {
     method: "POST",
     body: formData,
     signal,

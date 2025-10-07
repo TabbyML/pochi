@@ -51,6 +51,10 @@ type AbortFunctionType = AbortController["abort"];
 
 type ToolCallState =
   | {
+      // Represent a fresh state that hasn't been used.
+      type: "pre-init";
+    }
+  | {
       // Represents preview runs at toolCall.state === "partial-call"
       type: "init";
       previewJob: Promise<PreviewReturnType>;
@@ -162,17 +166,7 @@ export class ManagedToolCallLifeCycle
     super();
     this.toolName = key.toolName;
     this.toolCallId = key.toolCallId;
-    const abortController = new AbortController();
-    const abortSignal = AbortSignal.any([
-      abortController.signal,
-      this.outerAbortSignal,
-    ]);
-    this.state = {
-      type: "init",
-      previewJob: Promise.resolve(undefined),
-      abort: (reason) => abortController.abort(reason),
-      abortSignal: abortSignal,
-    };
+    this.state = { type: "pre-init" };
   }
 
   get status() {
@@ -215,7 +209,23 @@ export class ManagedToolCallLifeCycle
   }
 
   private previewInit(args: unknown, state: ToolUIPart["state"]) {
-    let { previewJob, abortSignal, abort } = this.checkState("Preview", "init");
+    let { abort, previewJob, abortSignal } = (() => {
+      if (this.state.type === "pre-init") {
+        const abortController = new AbortController();
+        const abortSignal = AbortSignal.any([
+          abortController.signal,
+          this.outerAbortSignal,
+        ]);
+        return {
+          previewJob: Promise.resolve(undefined),
+          // biome-ignore lint/suspicious/noExplicitAny: abort function type uses any
+          abort: (reason: any) => abortController.abort(reason),
+          abortSignal,
+        };
+      }
+
+      return this.checkState("Preview", "init");
+    })();
     const previewToolCall = (abortSignal: AbortSignal) =>
       vscodeHost.previewToolCall(this.toolName, args, {
         state: convertState(state),
@@ -225,7 +235,7 @@ export class ManagedToolCallLifeCycle
 
     if (state === "input-streaming") {
       previewJob = previewJob.then(() => previewToolCall(abortSignal));
-      this.transitTo("init", {
+      this.transitTo(["init", "pre-init"], {
         type: "init",
         previewJob,
         abortSignal,
@@ -249,7 +259,7 @@ export class ManagedToolCallLifeCycle
           });
         }
       });
-      this.transitTo("init", {
+      this.transitTo(["init", "pre-init"], {
         type: "pending",
         previewJob,
         abort,
