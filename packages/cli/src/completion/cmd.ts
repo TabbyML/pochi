@@ -24,7 +24,11 @@ export function registerCompletionCommand(program: CommandUnknownOpts) {
         console.log(chalk.cyan("  pochi completion --fish"));
         console.log("");
         console.log("Usage:");
-        console.log(chalk.cyan("  add those in your profile file (e.g. ~/.bashrc, ~/.zshrc), after the PATH export"));
+        console.log(
+          chalk.cyan(
+            "  add those in your profile file (e.g. ~/.bashrc, ~/.zshrc), after the PATH export",
+          ),
+        );
         console.log(chalk.cyan("  source <(pochi completion --bash)"));
         console.log(chalk.cyan("  source <(pochi completion --zsh)"));
         console.log(chalk.cyan("  pochi completion --fish | source"));
