@@ -198,7 +198,12 @@ program
   });
 
 // Run version check on every invocation before any command executes
-program.hook("preAction", async () => {
+program.hook("preAction", async (thisCommand, actionCommand) => {
+  // Skip version check for completion commands to avoid polluting output
+  if (actionCommand.name() === "completion") {
+    return;
+  }
+  
   await Promise.all([
     checkForUpdates().catch(() => {}),
     waitForSync().catch(console.error),
