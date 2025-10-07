@@ -116,6 +116,47 @@ create_tree() {
   fi
 }
 
+# Determine the user's shell profile file
+# Returns the absolute path to the profile file, or empty if not detected
+# Supported: zsh, bash
+_detect_shell_profile() {
+  local shell_path="${SHELL:-}"
+  local profile=""
+
+  if echo "$shell_path" | grep -qi "zsh"; then
+    profile="$HOME/.zshrc"
+  elif echo "$shell_path" | grep -qi "bash"; then
+    # On macOS bash often uses .bash_profile; otherwise .bashrc
+    if [ -f "$HOME/.bash_profile" ] || [ ! -f "$HOME/.bashrc" ]; then
+      profile="$HOME/.bash_profile"
+    else
+      profile="$HOME/.bashrc"
+    fi
+  fi
+
+  echo "$profile"
+}
+
+# Append a block to a file if a marker is not present
+# args: <file> <marker> <content_line>
+_append_if_missing() {
+  local file="$1"
+  local marker="$2"
+  local line="$3"
+
+  mkdir -p "$(dirname "$file")"
+  touch "$file"
+
+  if ! grep -Fqs "$marker" "$file"; then
+    {
+      echo "$marker"
+      echo "$line"
+    } >>"$file"
+    return 0
+  fi
+  return 1
+}
+
 # Configure shell auto-completion by sourcing the CLI's completion output
 # args: <install_dir>
 # Print manual instructions to set PATH and enable completion
