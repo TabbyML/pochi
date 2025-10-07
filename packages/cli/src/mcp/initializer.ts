@@ -1,12 +1,13 @@
 import ora from "ora";
 import { createCliMcpHub } from "../lib/mcp-hub-factory";
+import type { Command } from "@commander-js/extra-typings";
 
 /**
  * Initialize MCP connections with a spinner showing progress
  * @param mcpHub The MCP hub instance to initialize
  * @returns Promise that resolves when initialization is complete
  */
-export async function initializeMcp() {
+export async function initializeMcp(program: Command) {
   const mcpHub = await createCliMcpHub();
   // Skip if no connections are configured
   if (Object.keys(mcpHub.status.value.connections).length === 0) {
@@ -28,11 +29,16 @@ export async function initializeMcp() {
       (conn) => conn.status === "error",
     ).length;
 
-    if (connections.length > 0) {
-      // Wait for ALL non-error connections to be ready
-      if (readyConnections + errorConnections >= connections.length) {
-        break;
-      }
+    if (errorConnections > 0) {
+      spinner.fail(
+        `Failed to initialize MCP connections after ${attempts} attempts.`,
+      );
+      return program.error("MCP initialization failed");
+    }
+
+    // Wait for ALL non-error connections to be ready
+    if (readyConnections >= connections.length) {
+      break;
     }
 
     await new Promise((resolve) => setTimeout(resolve, 500));
