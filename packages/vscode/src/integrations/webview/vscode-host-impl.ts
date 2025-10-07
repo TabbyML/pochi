@@ -48,7 +48,6 @@ import { getVendor } from "@getpochi/common/vendor";
 import type {
   CustomAgentFile,
   PochiCredentials,
-  WebviewHostApi,
 } from "@getpochi/common/vscode-webui-bridge";
 import type {
   CaptureEvent,
@@ -94,6 +93,7 @@ import {
 } from "../terminal-link-provider/url-utils";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { TerminalState } from "../terminal/terminal-state";
+import { commitStore } from "./base";
 
 const logger = getLogger("VSCodeHostImpl");
 
@@ -126,8 +126,6 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     }
     this.customAgentManager = new CustomAgentManager(this.cwd);
   }
-
-  sidebarWebviewHostApi: WebviewHostApi | null = null;
 
   listRuleFiles = async (): Promise<RuleFile[]> => {
     return this.cwd ? await collectRuleFiles(this.cwd) : [];
@@ -772,7 +770,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   ): Promise<void> => {
     // Ignore messages from the sidebar WebView as they're synced already.
     if (webviewType === "sidebar") return;
-    await this.sidebarWebviewHostApi?.commitStoreEvent(event);
+    commitStore.fire({ event });
   };
 
   dispose() {
