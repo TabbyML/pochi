@@ -1,6 +1,6 @@
+import type { Command } from "@commander-js/extra-typings";
 import ora from "ora";
 import { createCliMcpHub } from "../lib/mcp-hub-factory";
-import type { Command } from "@commander-js/extra-typings";
 
 /**
  * Initialize MCP connections with a spinner showing progress
