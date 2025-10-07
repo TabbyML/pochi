@@ -429,7 +429,7 @@ export class CommandManager implements vscode.Disposable {
         },
       ),
 
-      vscode.commands.registerCommand("pochi.openInEditor", async () => {
+      vscode.commands.registerCommand("pochi.openInPanel", async () => {
         // FIXME(zhanba): allow pass cwd
         const cwd = vscode.workspace.workspaceFolders?.[0].uri.fsPath ?? null;
         const workspaceContainer = workspaceScoped(cwd);

@@ -752,7 +752,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   };
 
   openPochiInNewTab = async (): Promise<void> => {
-    await vscode.commands.executeCommand("pochi.openInEditor");
+    await vscode.commands.executeCommand("pochi.openInPanel");
   };
 
   readCustomAgents = async (): Promise<
