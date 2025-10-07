@@ -4,12 +4,11 @@ import type {
   ResourceURI,
   VSCodeHostApi,
 } from "@getpochi/common/vscode-webui-bridge";
+import type { DependencyContainer } from "tsyringe";
 import * as vscode from "vscode";
 import { PochiConfiguration } from "../configuration";
 import { WebviewBase } from "./base";
 import { VSCodeHostImpl } from "./vscode-host-impl";
-import { workspaceScoped } from "@/lib/workspace-scoped";
-import type { DependencyContainer } from "tsyringe";
 
 const logger = getLogger("PochiWebviewPanel");
 

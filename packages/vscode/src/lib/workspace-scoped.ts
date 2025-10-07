@@ -1,5 +1,6 @@
 import { getLogger } from "@getpochi/common";
 import { type DependencyContainer, container } from "tsyringe";
+import * as vscode from "vscode";
 
 const logger = getLogger("WorkspaceScoped");
 const activeContainers = new Map<string | null, DependencyContainer>();
@@ -9,12 +10,13 @@ export class WorkspaceScope {
   constructor(readonly cwd: string | null) {}
 }
 
-export function workspaceScoped(cwd: string | null): DependencyContainer {
+export function workspaceScoped(inputCwd?: string): DependencyContainer {
+  const cwd =
+    inputCwd || vscode.workspace.workspaceFolders?.[0].uri.fsPath || null;
   let childContainer = activeContainers.get(cwd);
   if (childContainer) {
     return childContainer;
   }
-
   logger.debug(
     `Creating workspace-scoped container for cwd: ${cwd ?? "(no workspace)"}`,
   );

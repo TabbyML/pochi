@@ -13,6 +13,7 @@ import { getLogger, showOutputPanel } from "@/lib/logger";
 import { NewProjectRegistry, prepareProject } from "@/lib/new-project";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { PostHog } from "@/lib/posthog";
+import { workspaceScoped } from "@/lib/workspace-scoped";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { NESDecorationManager } from "@/nes/decoration-manager";
 import type { WebsiteTaskCreateEvent } from "@getpochi/common";
@@ -33,7 +34,6 @@ import * as vscode from "vscode";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { type PochiAdvanceSettings, PochiConfiguration } from "./configuration";
 import { DiffChangesContentProvider } from "./editor/diff-changes-content-provider";
-import { workspaceScoped } from "@/lib/workspace-scoped";
 
 const logger = getLogger("CommandManager");
 
@@ -430,9 +430,8 @@ export class CommandManager implements vscode.Disposable {
       ),
 
       vscode.commands.registerCommand("pochi.openInPanel", async () => {
-        // FIXME(zhanba): allow pass cwd
-        const cwd = vscode.workspace.workspaceFolders?.[0].uri.fsPath ?? null;
-        const workspaceContainer = workspaceScoped(cwd);
+        // FIXME(zhanba): pass cwd from command argument
+        const workspaceContainer = workspaceScoped();
         PochiWebviewPanel.createOrShow(
           workspaceContainer,
           this.context.extensionUri,

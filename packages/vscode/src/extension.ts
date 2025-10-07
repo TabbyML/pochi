@@ -17,7 +17,7 @@ import RagdollUriHandler from "@/integrations/uri-handler";
 import { startCorsProxy } from "@getpochi/common/cors-proxy";
 import type { McpHub } from "@getpochi/common/mcp-utils";
 import { container, instanceCachingFactory } from "tsyringe";
-import * as vscode from "vscode";
+import type * as vscode from "vscode";
 import { CompletionProvider } from "./code-completion";
 import { PochiAuthenticationProvider } from "./integrations/auth-provider";
 import { CommandManager } from "./integrations/command";
@@ -54,9 +54,7 @@ export async function activate(context: vscode.ExtensionContext) {
     useFactory: instanceCachingFactory(createMcpHub),
   });
 
-  const defaultWorkspaceContainer = workspaceScoped(
-    vscode.workspace.workspaceFolders?.[0].uri.fsPath ?? null,
-  );
+  const defaultWorkspaceContainer = workspaceScoped();
   defaultWorkspaceContainer.resolve(PochiWebviewSidebar);
   container.resolve(CompletionProvider);
   container.resolve(NESProvider);
