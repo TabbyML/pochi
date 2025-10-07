@@ -1,7 +1,8 @@
 import { getLogger } from "@/lib/logger";
 import type { McpServerConfig } from "@getpochi/common/configuration";
-import type { McpHub } from "@getpochi/common/mcp-utils";
-import { inject, injectable, singleton } from "tsyringe";
+// biome-ignore lint/style/useImportType: needed for dependency injection
+import { McpHub } from "@getpochi/common/mcp-utils";
+import { injectable } from "tsyringe";
 import type { McpConfigProvider } from "./provider";
 import { ClaudeDesktopMcpProvider } from "./providers/claude-desktop-provider";
 import { ClineMcpProvider } from "./providers/cline-provider";
@@ -12,7 +13,6 @@ import { VscodeMcpProvider } from "./providers/vscode-provider";
 const logger = getLogger("ThirdMcpImporter");
 
 @injectable()
-@singleton()
 export class ThirdMcpImporter {
   private providers: McpConfigProvider[] = [
     new VscodeMcpProvider(),
@@ -22,7 +22,7 @@ export class ThirdMcpImporter {
     new RooCodeMcpProvider(),
   ];
 
-  constructor(@inject("McpHub") private readonly mcpHub: McpHub) {}
+  constructor(private readonly mcpHub: McpHub) {}
 
   async getAvailableProviders(): Promise<McpConfigProvider[]> {
     const availableProviders: McpConfigProvider[] = [];

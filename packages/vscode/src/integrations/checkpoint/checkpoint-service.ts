@@ -1,6 +1,7 @@
 import { mkdir } from "node:fs/promises";
 import * as path from "node:path";
-import type { WorkspaceScope } from "@/lib/workspace-scoped";
+// biome-ignore lint/style/useImportType: needed for dependency injection
+import { WorkspaceScope } from "@/lib/workspace-scoped";
 import { getLogger, toErrorMessage } from "@getpochi/common";
 import type {
   SaveCheckpointOptions,
@@ -26,7 +27,7 @@ export class CheckpointService implements vscode.Disposable {
   private initialized = false;
 
   constructor(
-    @inject("WorkspaceScope") private readonly workspaceScope: WorkspaceScope,
+    private readonly workspaceScope: WorkspaceScope,
     @inject("vscode.ExtensionContext")
     private readonly context: vscode.ExtensionContext,
   ) {}

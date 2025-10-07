@@ -19,7 +19,8 @@ import { ModelList } from "@/lib/model-list";
 import { PostHog } from "@/lib/posthog";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { UserStorage } from "@/lib/user-storage";
-import type { WorkspaceScope } from "@/lib/workspace-scoped";
+// biome-ignore lint/style/useImportType: needed for dependency injection
+import { WorkspaceScope } from "@/lib/workspace-scoped";
 import { applyDiff, previewApplyDiff } from "@/tools/apply-diff";
 import { editNotebook } from "@/tools/edit-notebook";
 import { executeCommand } from "@/tools/execute-command";
@@ -39,7 +40,8 @@ import { previewWriteToFile, writeToFile } from "@/tools/write-to-file";
 import type { Environment, GitStatus } from "@getpochi/common";
 import type { UserInfo } from "@getpochi/common/configuration";
 import type { McpStatus } from "@getpochi/common/mcp-utils";
-import type { McpHub } from "@getpochi/common/mcp-utils";
+// biome-ignore lint/style/useImportType: needed for dependency injection
+import { McpHub } from "@getpochi/common/mcp-utils";
 import {
   GitStatusReader,
   ignoreWalk,
@@ -113,12 +115,12 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     private readonly tabState: TabState,
     private readonly terminalState: TerminalState,
     private readonly posthog: PostHog,
-    @inject("McpHub") private readonly mcpHub: McpHub,
+    private readonly mcpHub: McpHub,
     private readonly thirdMcpImporter: ThirdMcpImporter,
     private readonly pochiConfiguration: PochiConfiguration,
     private readonly modelList: ModelList,
     private readonly userStorage: UserStorage,
-    @inject("WorkspaceScope") private readonly workspaceScope: WorkspaceScope,
+    private readonly workspaceScope: WorkspaceScope,
     private readonly checkpointService: CheckpointService,
     private readonly customAgentManager: CustomAgentManager,
   ) {}

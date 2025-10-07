@@ -33,7 +33,7 @@ const AllowedWorkspaceConfigKeys = ["mcp"] as const;
 
 const configFileName = isDev ? "dev-config.jsonc" : "config.jsonc";
 
-export const pochiConfigRelativePath = path.join(".pochi", configFileName);
+const pochiConfigRelativePath = path.join(".pochi", configFileName);
 
 const UserConfigFilePath = path.join(os.homedir(), pochiConfigRelativePath);
 
@@ -208,6 +208,8 @@ const {
   updateVendorConfig,
   getConfigFilePath,
   watchKeys,
+  inspect,
+  setWorkspacePath,
 } = new PochiConfigManager();
 
 export {
@@ -217,4 +219,7 @@ export {
   updateVendorConfig,
   getConfigFilePath as getPochiConfigFilePath,
   watchKeys as watchPochiConfigKeys,
+  inspect as inspectPochiConfig,
+  setWorkspacePath as setPochiConfigWorkspacePath,
+  pochiConfigRelativePath,
 };

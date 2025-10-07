@@ -22,7 +22,8 @@ import {
   type McpServerConfig,
   pochiConfig,
 } from "@getpochi/common/configuration";
-import type { McpHub } from "@getpochi/common/mcp-utils";
+// biome-ignore lint/style/useImportType: needed for dependency injection
+import { McpHub } from "@getpochi/common/mcp-utils";
 import { getVendor } from "@getpochi/common/vendor";
 import type {
   NewTaskParams,
@@ -43,11 +44,11 @@ export class CommandManager implements vscode.Disposable {
   private disposables: vscode.Disposable[] = [];
 
   constructor(
-    private readonly pochiWebviewProvider: PochiWebviewSidebar,
+    private readonly pochiWebviewSidebar: PochiWebviewSidebar,
     private readonly newProjectRegistry: NewProjectRegistry,
     @inject("AuthClient") private readonly authClient: AuthClient,
     private readonly authEvents: AuthEvents,
-    @inject("McpHub") private readonly mcpHub: McpHub,
+    private readonly mcpHub: McpHub,
     private readonly pochiConfiguration: PochiConfiguration,
     private readonly posthog: PostHog,
     @inject("vscode.ExtensionContext")
@@ -70,7 +71,7 @@ export class CommandManager implements vscode.Disposable {
       await prepareProject(workspaceUri, githubTemplateUrl, progress);
     }
 
-    const webviewHost = await this.pochiWebviewProvider.retrieveWebviewHost();
+    const webviewHost = await this.pochiWebviewSidebar.retrieveWebviewHost();
     webviewHost.openTask(openTaskParams);
 
     if (requestId) {
@@ -214,7 +215,7 @@ export class CommandManager implements vscode.Disposable {
             progress.report({ message: "Pochi: Opening task..." });
             await vscode.commands.executeCommand("pochiSidebar.focus");
             const webviewHost =
-              await this.pochiWebviewProvider.retrieveWebviewHost();
+              await this.pochiWebviewSidebar.retrieveWebviewHost();
             webviewHost.openTask({ uid });
           },
         );
@@ -225,7 +226,7 @@ export class CommandManager implements vscode.Disposable {
         async () => {
           await vscode.commands.executeCommand("pochiSidebar.focus");
           const webviewHost =
-            await this.pochiWebviewProvider.retrieveWebviewHost();
+            await this.pochiWebviewSidebar.retrieveWebviewHost();
           webviewHost.openTask({ uid: undefined });
         },
       ),
@@ -235,7 +236,7 @@ export class CommandManager implements vscode.Disposable {
         async () => {
           await vscode.commands.executeCommand("pochiSidebar.focus");
           const webviewHost =
-            await this.pochiWebviewProvider.retrieveWebviewHost();
+            await this.pochiWebviewSidebar.retrieveWebviewHost();
           webviewHost.openTaskList();
         },
       ),
@@ -245,7 +246,7 @@ export class CommandManager implements vscode.Disposable {
         async () => {
           await vscode.commands.executeCommand("pochiSidebar.focus");
           const webviewHost =
-            await this.pochiWebviewProvider.retrieveWebviewHost();
+            await this.pochiWebviewSidebar.retrieveWebviewHost();
           webviewHost.openSettings();
         },
       ),
@@ -279,6 +280,7 @@ export class CommandManager implements vscode.Disposable {
           await this.ensureDefaultMcpServer();
           await this.pochiConfiguration.revealConfig({
             key: serverName ? `mcp.${serverName}` : "mcp",
+            target: serverName ? undefined : "user",
           });
         },
       ),
@@ -312,7 +314,7 @@ export class CommandManager implements vscode.Disposable {
 
       vscode.commands.registerCommand("pochi.toggleFocus", async () => {
         const webviewHost =
-          await this.pochiWebviewProvider.retrieveWebviewHost();
+          await this.pochiWebviewSidebar.retrieveWebviewHost();
         if (await webviewHost.isFocused()) {
           logger.debug("Focused on editor");
           await vscode.commands.executeCommand(
@@ -431,7 +433,13 @@ export class CommandManager implements vscode.Disposable {
 
       vscode.commands.registerCommand("pochi.openInPanel", async () => {
         // FIXME(zhanba): pass cwd from command argument
-        const workspaceContainer = workspaceScoped();
+        const cwd = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
+        if (!cwd) {
+          throw new Error(
+            "Cannot open Pochi panel without a workspace folder.",
+          );
+        }
+        const workspaceContainer = workspaceScoped(cwd);
         PochiWebviewPanel.createOrShow(
           workspaceContainer,
           this.context.extensionUri,
