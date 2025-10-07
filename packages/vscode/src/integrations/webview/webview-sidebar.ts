@@ -106,7 +106,7 @@ export class PochiWebviewSidebar
 
       const { commitStoreEvent } = thread.imports;
       this.disposables.push(
-        commitStore.event((event) => commitStoreEvent(event)),
+        commitStore.event(({ event }) => commitStoreEvent(event)),
       );
     });
   }
