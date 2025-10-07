@@ -9,16 +9,11 @@ export function registerCompletionCommand(program: CommandUnknownOpts) {
     .option("--zsh", "Generate zsh completion script")
     .option("--fish", "Generate fish completion script")
     .action((options) => {
-      const installDir = "~/.pochi";
-      const guide = `Copy below script and save it as ${installDir}/.pochi-completion.sh . Then reload your terminal.\n`;
       if (options.bash) {
-        console.log(guide);
         console.log(bashCompletionCommand);
       } else if (options.zsh) {
-        console.log(guide);
         console.log(zshCompletionCommand);
       } else if (options.fish) {
-        console.log(guide);
         console.log(fishCompletionCommand);
       } else {
         console.log(chalk.yellow("Choose shell: --bash, --zsh, or --fish"));
@@ -27,6 +22,12 @@ export function registerCompletionCommand(program: CommandUnknownOpts) {
         console.log(chalk.cyan("  pochi completion --bash"));
         console.log(chalk.cyan("  pochi completion --zsh"));
         console.log(chalk.cyan("  pochi completion --fish"));
+        console.log("");
+        console.log("Usage:");
+        console.log(chalk.cyan("  add those in your profile file (e.g. ~/.bashrc, ~/.zshrc), after the PATH export"));
+        console.log(chalk.cyan("  source <(pochi completion --bash)"));
+        console.log(chalk.cyan("  source <(pochi completion --zsh)"));
+        console.log(chalk.cyan("  pochi completion --fish | source"));
       }
     });
 
