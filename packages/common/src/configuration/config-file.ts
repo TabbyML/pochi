@@ -40,7 +40,7 @@ export class PochiConfigFile {
     this.cfg.value = newValue;
   };
 
-  async init() {
+  private async init() {
     await this.ensureFileExists();
     if (isVSCodeEnvironment()) {
       this.watch();
