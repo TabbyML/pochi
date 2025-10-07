@@ -198,7 +198,7 @@ program
   });
 
 // Run version check on every invocation before any command executes
-program.hook("preAction", async (thisCommand, actionCommand) => {
+program.hook("preAction", async (_thisCommand, actionCommand) => {
   // Skip version check for completion commands to avoid polluting output
   if (actionCommand.name() === "completion") {
     return;
