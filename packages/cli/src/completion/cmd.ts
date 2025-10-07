@@ -12,13 +12,13 @@ export function registerCompletionCommand(program: CommandUnknownOpts) {
       const guide = "Copy and run below command. Then reload your terminal.\n";
       if (options.bash) {
         console.log(guide);
-        console.log(bashCompletionCoammand);
+        console.log(bashCompletionCommand);
       } else if (options.zsh) {
         console.log(guide);
-        console.log(zshCompletionCoammand);
+        console.log(zshCompletionCommand);
       } else if (options.fish) {
         console.log(guide);
-        console.log(fishCompletionCoammand);
+        console.log(fishCompletionCommand);
       } else {
         console.log(chalk.yellow("Choose shell: --bash, --zsh, or --fish"));
         console.log("");
@@ -32,8 +32,8 @@ export function registerCompletionCommand(program: CommandUnknownOpts) {
   program.addCommand(completionCommand);
 }
 
-const zshCompletionCoammand = `
-  cat > ".pochi/.pochi-completion.sh" << 'EOF'
+const zshCompletionCommand = `
+  cat > "~/.pochi/.pochi-completion.sh" << 'EOF'
 if type compdef &>/dev/null; then
   _pochi_completion() {
     local reply
@@ -47,8 +47,8 @@ fi
 EOF
 `;
 
-const bashCompletionCoammand = `
-  cat > "$install_dir/.pochi-completion.sh" << 'EOF'
+const bashCompletionCommand = `
+  cat > "~/.pochi/.pochi-completion.sh" << 'EOF'
 ###-begin-pochi-completion-###
 if type complete &>/dev/null; then
   _pochi_completion () {
@@ -77,8 +77,8 @@ fi
 EOF
 `;
 
-const fishCompletionCoammand = `
-  cat > "$.pochi/.pochi-completion.sh" << 'EOF'
+const fishCompletionCommand = `
+  cat > "~/.pochi/.pochi-completion.sh" << 'EOF'
 ###-begin-pochi-completion-###
 function _pochi_completion
   set cmd (commandline -o)
