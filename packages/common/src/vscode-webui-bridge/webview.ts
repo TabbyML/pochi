@@ -272,6 +272,11 @@ export interface VSCodeHostApi {
   >;
 
   openPochiInNewTab(): Promise<void>;
+
+  bridgeStoreEvent(
+    webviewKind: "sidebar" | "pane",
+    event: unknown,
+  ): Promise<void>;
 }
 
 export interface WebviewHostApi {
@@ -287,4 +292,6 @@ export interface WebviewHostApi {
   onAuthChanged(): void;
 
   isFocused(): Promise<boolean>;
+
+  commitStoreEvent(event: unknown): Promise<void>;
 }

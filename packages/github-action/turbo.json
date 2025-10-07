@@ -1,9 +1,5 @@
 {
   "extends": ["//"],
-  "tags": ["public"],
-  "boundaries": {
-    "implicitDependencies": ["bun"]
-  },
   "tasks": {
     "test:coverage": {
       "outputs": ["coverage/**"]

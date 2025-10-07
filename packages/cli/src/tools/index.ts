@@ -4,6 +4,7 @@ import type { ToolFunctionType } from "@getpochi/tools";
 import { type ToolUIPart, getToolName } from "ai";
 import type { ToolCallOptions } from "../types";
 import { applyDiff } from "./apply-diff";
+import { editNotebook } from "./edit-notebook";
 import { executeCommand } from "./execute-command";
 import { globFiles } from "./glob-files";
 import { listFiles } from "./list-files";
@@ -21,6 +22,7 @@ const ToolMap: Record<
 > = {
   readFile,
   applyDiff,
+  editNotebook,
   globFiles,
   listFiles,
   multiApplyDiff,

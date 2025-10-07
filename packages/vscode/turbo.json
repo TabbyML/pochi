@@ -9,6 +9,9 @@
     "build": {
       "dependsOn": ["@getpochi/vscode-webui#build"],
       "outputs": ["assets/webview-ui/**", "dist/**"]
+    },
+    "test:coverage": {
+      "outputs": ["coverage/**"]
     }
   }
 }
