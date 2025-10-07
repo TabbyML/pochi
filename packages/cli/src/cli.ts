@@ -203,7 +203,7 @@ program.hook("preAction", async (thisCommand, actionCommand) => {
   if (actionCommand.name() === "completion") {
     return;
   }
-  
+
   await Promise.all([
     checkForUpdates().catch(() => {}),
     waitForSync().catch(console.error),
