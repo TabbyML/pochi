@@ -5,7 +5,10 @@ import { parseAgentFile } from "@getpochi/common/tool-utils";
 import type { CustomAgentFile } from "@getpochi/common/vscode-webui-bridge";
 import { signal } from "@preact/signals-core";
 import { uniqueBy } from "remeda";
+import { Lifecycle, injectable, scoped } from "tsyringe";
 import * as vscode from "vscode";
+// biome-ignore lint/style/useImportType: needed for dependency injection
+import { WorkspaceScope } from "./workspace-scoped";
 
 const logger = getLogger("CustomAgentManager");
 
@@ -36,16 +39,20 @@ async function readAgentsFromDir(dir: string): Promise<CustomAgentFile[]> {
   return agents;
 }
 
+@scoped(Lifecycle.ContainerScoped)
+@injectable()
 export class CustomAgentManager implements vscode.Disposable {
   private disposables: vscode.Disposable[] = [];
-  private readonly cwd: string | null;
 
   readonly agents = signal<CustomAgentFile[]>([]);
 
-  constructor(cwd: string | null) {
-    this.cwd = cwd;
+  constructor(private readonly workspaceScope: WorkspaceScope) {
     this.initWatchers();
     this.loadAgents();
+  }
+
+  private get cwd() {
+    return this.workspaceScope.cwd;
   }
 
   private initWatchers() {
