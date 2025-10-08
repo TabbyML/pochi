@@ -3,7 +3,9 @@ import {
   type CustomModelSetting,
   type GoogleVertexModel,
   type McpServerConfig,
+  type PochiConfigTarget,
   getPochiConfigFilePath,
+  inspectPochiConfig,
   updatePochiConfig,
 } from "@getpochi/common/configuration";
 import { signal } from "@preact/signals-core";
@@ -65,8 +67,33 @@ export class PochiConfiguration implements vscode.Disposable {
    */
   async revealConfig(options?: {
     key?: string;
+    target?: PochiConfigTarget;
   }): Promise<void> {
-    const configPath = getPochiConfigFilePath();
+    let target: PochiConfigTarget = "user";
+
+    if (options?.target) {
+      target = options.target;
+    } else {
+      let effectiveTargets: PochiConfigTarget[] = [];
+      try {
+        const result = inspectPochiConfig(options?.key);
+        effectiveTargets = result.effectiveTargets;
+      } catch (error) {
+        logger.error("Failed to inspect Pochi config", error);
+      }
+      if (effectiveTargets.length > 1) {
+        logger.warn(
+          `The setting "${options?.key}" is set in multiple scopes: ${effectiveTargets.join(
+            ", ",
+          )}. The first effective config file will be opened.`,
+        );
+        target = effectiveTargets[0];
+      } else {
+        target = effectiveTargets[0] || "user";
+      }
+    }
+
+    const configPath = getPochiConfigFilePath(target);
     if (!configPath) {
       return;
     }

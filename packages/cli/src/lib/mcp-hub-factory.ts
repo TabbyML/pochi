@@ -19,7 +19,6 @@ export async function createCliMcpHub(): Promise<McpHub> {
   const mcpHub = new McpHub({
     config,
     vendorTools,
-    clientName: "pochi-cli",
   });
 
   return mcpHub;
