@@ -174,12 +174,15 @@ export function useChatSubmit({
 
 function prepareMessageParts(input: string, files: FileUIPart[]) {
   const parts: Message["parts"] = [...files];
-  parts.push({
-    type: "text",
-    text: prompts.createSystemReminder(
-      `Attached files: ${files.map((file) => file.url).join(", ")}`,
-    ),
-  });
+  const isPublicUrl = files.every((x) => x.url.startsWith("http"));
+  if (isPublicUrl) {
+    parts.push({
+      type: "text",
+      text: prompts.createSystemReminder(
+        `Attached files: ${files.map((file) => file.url).join(", ")}`,
+      ),
+    });
+  }
   if (input) {
     parts.push({ type: "text", text: input });
   }
