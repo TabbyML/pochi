@@ -32,10 +32,7 @@ import packageJson from "../package.json";
 import { registerAuthCommand } from "./auth";
 
 import type { Store } from "@livestore/livestore";
-import {
-  initializeShellCompletion,
-  registerCompletionCommand,
-} from "./completion";
+import { handleShellCompletion } from "./completion";
 import { findRipgrep } from "./lib/find-ripgrep";
 import { loadAgents } from "./lib/load-agents";
 import {
@@ -211,20 +208,13 @@ program.hook("preAction", async (_thisCommand, actionCommand) => {
 });
 
 registerAuthCommand(program);
-registerCompletionCommand(program);
 registerModelCommand(program);
 registerMcpCommand(program);
 registerTaskCommand(program);
 registerUpgradeCommand(program);
 
-// Initialize auto-completion after all commands are registered
-const shellCompletion = initializeShellCompletion(program);
-
-// Handle tabtab completion before parsing
-const args = process.argv.slice(2);
-if (args[0] === "completion" && args[1] === "--") {
-  // This is the tabtab completion handler called by shell completion
-  shellCompletion.completion();
+if (process.argv[2] === "--completion") {
+  handleShellCompletion(program, process.argv);
   process.exit(0);
 }
 
