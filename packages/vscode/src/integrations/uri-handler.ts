@@ -34,7 +34,7 @@ class RagdollUriHandler implements vscode.UriHandler, vscode.Disposable {
   }
 
   private async handleUriImpl(uri: vscode.Uri) {
-    await vscode.commands.executeCommand("pochiWebui.focus");
+    await vscode.commands.executeCommand("pochiSidebar.focus");
 
     /**
      * Supported URI formats:

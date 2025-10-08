@@ -5,11 +5,12 @@ import type {
   VSCodeHostApi,
   WebviewHostApi,
 } from "@getpochi/common/vscode-webui-bridge";
-import { container, inject, injectable, singleton } from "tsyringe";
+import { inject, injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { PochiConfiguration } from "../configuration";
-import { WebviewBase } from "./base";
+import { WebviewBase, commitStore } from "./base";
+// biome-ignore lint/style/useImportType: needed for dependency injection
 import { VSCodeHostImpl } from "./vscode-host-impl";
 
 /**
@@ -29,7 +30,7 @@ export class PochiWebviewSidebar
   extends WebviewBase
   implements vscode.WebviewViewProvider, vscode.Disposable
 {
-  public static readonly viewType = "pochiWebui";
+  public static readonly viewType = "pochiSidebar";
 
   private view?: vscode.WebviewView;
   private webviewHostReady = new vscode.EventEmitter<WebviewHostApi>();
@@ -42,15 +43,15 @@ export class PochiWebviewSidebar
     vscodeHost: VSCodeHostImpl,
   ) {
     super("sidebar-default", context, events, pochiConfiguration, vscodeHost);
-  }
 
-  private providerDisposables: vscode.Disposable[] = [
-    vscode.window.registerWebviewViewProvider(
-      PochiWebviewSidebar.viewType,
-      this,
-      { webviewOptions: { retainContextWhenHidden: true } },
-    ),
-  ];
+    this.disposables.push(
+      vscode.window.registerWebviewViewProvider(
+        PochiWebviewSidebar.viewType,
+        this,
+        { webviewOptions: { retainContextWhenHidden: true } },
+      ),
+    );
+  }
 
   protected getReadResourceURI(): VSCodeHostApi["readResourceURI"] {
     return async (): Promise<ResourceURI> => {
@@ -103,16 +104,15 @@ export class PochiWebviewSidebar
         this.webviewHostReady.fire(this.webviewHost);
       }
 
-      container.resolve(VSCodeHostImpl).sidebarWebviewHostApi = thread.imports;
+      const { commitStoreEvent } = thread.imports;
+      this.disposables.push(
+        commitStore.event(({ event }) => commitStoreEvent(event)),
+      );
     });
   }
 
   dispose() {
     super.dispose();
-    for (const disposable of this.providerDisposables) {
-      disposable.dispose();
-    }
-    this.providerDisposables = [];
     this.webviewHostReady.dispose();
   }
 }
