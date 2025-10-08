@@ -165,8 +165,9 @@ const program = new Command()
     });
 
     const renderer = new OutputRenderer(runner.state);
+    let jsonRenderer: JsonRenderer | undefined;
     if (options.streamJson) {
-      new JsonRenderer(store, runner.state);
+      jsonRenderer = new JsonRenderer(store, runner.state);
     }
 
     await runner.run();
@@ -174,6 +175,9 @@ const program = new Command()
     renderer.shutdown();
     if (mcpHub) {
       mcpHub.dispose();
+    }
+    if (jsonRenderer) {
+      jsonRenderer.shutdown();
     }
     await waitForSync(store, "2 second").catch(console.error);
     await shutdownStoreAndExit(store);
