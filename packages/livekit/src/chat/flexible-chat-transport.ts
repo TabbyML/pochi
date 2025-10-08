@@ -23,8 +23,7 @@ import {
 } from "ai";
 import { pickBy } from "remeda";
 import type z from "zod/v4";
-import { StoreBlobProtocol } from "..";
-import { makeBlobQuery } from "../livestore/queries";
+import { makeDownloadFunction } from "../store-blob";
 import type { Message, Metadata, RequestData } from "../types";
 import { makeRepairToolCall } from "./llm";
 import { parseMcpToolSet } from "./mcp-utils";
@@ -184,34 +183,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
       // error log is handled in live chat kit.
       onError: () => {},
       experimental_repairToolCall: makeRepairToolCall(chatId, model),
-      experimental_download: async (items) => {
-        const promises = items.map(
-          async ({
-            url,
-            isUrlSupportedByModel,
-          }): Promise<{
-            data: Uint8Array;
-            mediaType: string | undefined;
-          } | null> => {
-            if (isUrlSupportedByModel) return null;
-            if (url.protocol === StoreBlobProtocol) {
-              const blob = this.store.query(makeBlobQuery(url.pathname));
-              if (!blob)
-                throw new Error(`Blob with checksum ${url.pathname} not found`);
-              return {
-                data: blob.data,
-                mediaType: blob.mimeType,
-              };
-            }
-            const resp = await fetch(url);
-            return {
-              data: new Uint8Array(await resp.arrayBuffer()),
-              mediaType: resp.headers.get("content-type") || undefined,
-            };
-          },
-        );
-        return Promise.all(promises);
-      },
+      experimental_download: makeDownloadFunction(this.store),
     });
     return stream.toUIMessageStream({
       onError: (error) => {

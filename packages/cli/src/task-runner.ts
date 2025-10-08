@@ -40,8 +40,8 @@ export interface RunnerOptions {
 
   store: Store;
 
-  // The prompt to use for creating the task
-  prompt?: string;
+  // The parts to use for creating the task
+  parts?: Message["parts"];
 
   /**
    * The current working directory for the task runner.
@@ -124,7 +124,7 @@ export class TaskRunner {
         // create sub task
         const runner = new TaskRunner({
           ...options,
-          prompt: undefined, // should not use prompt
+          parts: undefined, // should not use parts from parent
           uid: taskId,
           isSubTask: true,
           customAgent,
@@ -164,15 +164,15 @@ export class TaskRunner {
           : {}),
       },
     });
-    if (options.prompt) {
+    if (options.parts && options.parts.length > 0) {
       if (this.chatKit.inited) {
         this.chatKit.chat.appendOrReplaceMessage({
           id: crypto.randomUUID(),
           role: "user",
-          parts: [{ type: "text", text: options.prompt }],
+          parts: options.parts,
         });
       } else {
-        this.chatKit.init(options.cwd, options.prompt);
+        this.chatKit.init(options.cwd, options.parts);
       }
     }
 
