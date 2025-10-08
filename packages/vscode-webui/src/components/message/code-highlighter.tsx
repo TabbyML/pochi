@@ -1,21 +1,14 @@
 import { cn } from "@/lib/utils";
-import {
-  type HTMLAttributes,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { createJavaScriptRegexEngine } from "@shikijs/engine-javascript";
+import darkPlus from "@shikijs/themes/dark-plus";
+import lightPlus from "@shikijs/themes/light-plus";
+import { type HTMLAttributes, useEffect, useRef, useState } from "react";
+import { type ThemeRegistration, createHighlighterCore } from "shiki/core";
+import { useTheme } from "../theme-provider";
 import {
   type BundledLanguage,
-  type BundledTheme,
-  type SpecialLanguage,
   bundledLanguages,
-  createHighlighter,
-  createJavaScriptRegexEngine,
-} from "shiki";
-import { ShikiThemeContext } from "streamdown";
-import { useTheme } from "../theme-provider";
+} from "./code-highlighter-langs";
 
 type CodeBlockProps = HTMLAttributes<HTMLDivElement> & {
   language: BundledLanguage;
@@ -28,13 +21,13 @@ const PRE_TAG_REGEX = /<pre(\s|>)/;
 
 class HighlighterManager {
   private lightHighlighter: Awaited<
-    ReturnType<typeof createHighlighter>
+    ReturnType<typeof createHighlighterCore>
   > | null = null;
   private darkHighlighter: Awaited<
-    ReturnType<typeof createHighlighter>
+    ReturnType<typeof createHighlighterCore>
   > | null = null;
-  private lightTheme: BundledTheme | null = null;
-  private darkTheme: BundledTheme | null = null;
+  private lightTheme: ThemeRegistration | null = null;
+  private darkTheme: ThemeRegistration | null = null;
   private readonly loadedLanguages: Set<BundledLanguage> = new Set();
   private initializationPromise: Promise<void> | null = null;
 
@@ -42,22 +35,20 @@ class HighlighterManager {
     return Object.hasOwn(bundledLanguages, language);
   }
 
-  private getFallbackLanguage(): SpecialLanguage {
+  private getFallbackLanguage(): string {
     return "text";
   }
 
   private async ensureHighlightersInitialized(
-    themes: [BundledTheme, BundledTheme],
     language: BundledLanguage,
   ): Promise<void> {
-    const [lightTheme, darkTheme] = themes;
     const jsEngine = createJavaScriptRegexEngine({ forgiving: true });
 
     // Check if we need to recreate highlighters due to theme change
     const needsLightRecreation =
-      !this.lightHighlighter || this.lightTheme !== lightTheme;
+      !this.lightHighlighter || this.lightTheme !== lightPlus;
     const needsDarkRecreation =
-      !this.darkHighlighter || this.darkTheme !== darkTheme;
+      !this.darkHighlighter || this.darkTheme !== darkPlus;
 
     if (needsLightRecreation || needsDarkRecreation) {
       // If themes changed, reset loaded languages
@@ -71,18 +62,18 @@ class HighlighterManager {
 
     // Create or recreate light highlighter if needed
     if (needsLightRecreation) {
-      this.lightHighlighter = await createHighlighter({
-        themes: [lightTheme],
-        langs: isLanguageSupported ? [language] : [],
+      this.lightHighlighter = await createHighlighterCore({
+        themes: [lightPlus],
+        langs: isLanguageSupported ? [bundledLanguages[language]] : [],
         engine: jsEngine,
       });
-      this.lightTheme = lightTheme;
+      this.lightTheme = lightPlus;
       if (isLanguageSupported) {
         this.loadedLanguages.add(language);
       }
     } else if (needsLanguageLoad) {
       // Load the language if not already loaded
-      await this.lightHighlighter?.loadLanguage(language);
+      await this.lightHighlighter?.loadLanguage(bundledLanguages[language]);
     }
 
     // Create or recreate dark highlighter if needed
@@ -94,20 +85,20 @@ class HighlighterManager {
           )
         : Array.from(this.loadedLanguages);
 
-      this.darkHighlighter = await createHighlighter({
-        themes: [darkTheme],
+      this.darkHighlighter = await createHighlighterCore({
+        themes: [darkPlus],
         langs:
           langsToLoad.length > 0
-            ? langsToLoad
+            ? langsToLoad.map((lang) => bundledLanguages[lang])
             : isLanguageSupported
-              ? [language]
+              ? [bundledLanguages[language]]
               : [],
         engine: jsEngine,
       });
-      this.darkTheme = darkTheme;
+      this.darkTheme = darkPlus;
     } else if (needsLanguageLoad) {
       // Load the language if not already loaded
-      await this.darkHighlighter?.loadLanguage(language);
+      await this.darkHighlighter?.loadLanguage(bundledLanguages[language]);
     }
 
     // Mark language as loaded after both highlighters have it
@@ -119,7 +110,6 @@ class HighlighterManager {
   async highlightCode(
     code: string,
     language: BundledLanguage,
-    themes: [BundledTheme, BundledTheme],
     preClassName?: string,
   ): Promise<[string, string]> {
     // Ensure only one initialization happens at a time
@@ -127,14 +117,9 @@ class HighlighterManager {
       await this.initializationPromise;
     }
     // Initialize or load language
-    this.initializationPromise = this.ensureHighlightersInitialized(
-      themes,
-      language,
-    );
+    this.initializationPromise = this.ensureHighlightersInitialized(language);
     await this.initializationPromise;
     this.initializationPromise = null;
-
-    const [lightTheme, darkTheme] = themes;
 
     const lang = this.isLanguageSupported(language)
       ? language
@@ -142,12 +127,12 @@ class HighlighterManager {
 
     const light = this.lightHighlighter?.codeToHtml(code, {
       lang,
-      theme: lightTheme,
+      theme: "light-plus",
     });
 
     const dark = this.darkHighlighter?.codeToHtml(code, {
       lang,
-      theme: darkTheme,
+      theme: "dark-plus",
     });
 
     const addPreClass = (html: string) => {
@@ -187,7 +172,6 @@ export const CodeHighlighter = ({
   const [html, setHtml] = useState<string>("");
   const [darkHtml, setDarkHtml] = useState<string>("");
   const mounted = useRef(false);
-  const [lightTheme, darkTheme] = useContext(ShikiThemeContext);
 
   const { theme } = useTheme();
 
@@ -197,12 +181,7 @@ export const CodeHighlighter = ({
     const languageForSyntax = language === "toml" ? "bash" : language;
 
     highlighterManager
-      .highlightCode(
-        value,
-        languageForSyntax,
-        [lightTheme, darkTheme],
-        preClassName,
-      )
+      .highlightCode(value, languageForSyntax, preClassName)
       .then(([light, dark]) => {
         if (mounted.current) {
           setHtml(light);
@@ -213,7 +192,7 @@ export const CodeHighlighter = ({
     return () => {
       mounted.current = false;
     };
-  }, [value, language, lightTheme, darkTheme, preClassName]);
+  }, [value, language, preClassName]);
 
   return (
     <div className="w-full">

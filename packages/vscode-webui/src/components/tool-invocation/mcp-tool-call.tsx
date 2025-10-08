@@ -210,7 +210,7 @@ function ImageResult({
 
   return (
     <CopyableImage
-      src={data}
+      src={url}
       alt="MCP tool response snapshot"
       className="h-auto w-full shadow-sm"
       mimeType={mimeType}

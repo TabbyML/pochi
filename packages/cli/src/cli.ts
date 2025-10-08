@@ -142,7 +142,7 @@ const program = new Command()
     const customAgents = await loadAgents(process.cwd());
 
     // Create MCP Hub for accessing MCP server tools (only if MCP is enabled)
-    const mcpHub = options.mcp ? await initializeMcp() : undefined;
+    const mcpHub = options.mcp ? await initializeMcp(program) : undefined;
 
     const runner = new TaskRunner({
       uid,
@@ -188,7 +188,6 @@ program
   .configureHelp({
     styleTitle: (title) => chalk.bold(title),
   })
-  .showHelpAfterError()
   .showSuggestionAfterError()
   .configureOutput({
     outputError: (str, write) => write(chalk.red(str)),

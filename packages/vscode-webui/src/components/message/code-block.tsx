@@ -10,9 +10,9 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import "./code-block.css";
-import type { BundledLanguage } from "shiki";
 import { useTheme } from "../theme-provider";
 import { CodeHighlighter } from "./code-highlighter";
+import type { BundledLanguage } from "./code-highlighter-langs";
 import { Mermaid } from "./mermaid";
 
 export interface CodeBlockProps {
