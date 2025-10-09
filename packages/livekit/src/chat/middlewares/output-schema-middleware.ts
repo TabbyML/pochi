@@ -111,7 +111,7 @@ async function ensureOutputSchema(
       ].join("\n"),
       maxRetries: 0,
     });
-    return JSON.stringify(object);
+    return JSON.stringify(object, null, 2);
   } catch (err) {
     return content;
   }
