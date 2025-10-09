@@ -13,7 +13,7 @@ import type { TextDocumentEditStep } from "./edit-history";
 export interface NESContext {
   readonly document: vscode.TextDocument;
   readonly selection: vscode.Selection;
-  readonly editHistory: TextDocumentEditStep[];
+  readonly editHistory: readonly TextDocumentEditStep[];
 }
 
 export interface NESContextSegments {

@@ -1,1 +1,1 @@
-export { initializeShellCompletion } from "./tree";
+export { handleShellCompletion } from "./cmd";

@@ -20,7 +20,10 @@ import "@getpochi/vendor-qwen-code/edge";
 
 import { Command, Option } from "@commander-js/extra-typings";
 import { constants, getLogger } from "@getpochi/common";
-import { pochiConfig } from "@getpochi/common/configuration";
+import {
+  pochiConfig,
+  setPochiConfigWorkspacePath,
+} from "@getpochi/common/configuration";
 import { getVendor, getVendors } from "@getpochi/common/vendor";
 import { createModel } from "@getpochi/common/vendor/edge";
 import type { LLMRequestData } from "@getpochi/livekit";
@@ -32,7 +35,7 @@ import packageJson from "../package.json";
 import { registerAuthCommand } from "./auth";
 
 import type { Store } from "@livestore/livestore";
-import { initializeShellCompletion } from "./completion";
+import { handleShellCompletion } from "./completion";
 import { findRipgrep } from "./lib/find-ripgrep";
 import { loadAgents } from "./lib/load-agents";
 import {
@@ -142,7 +145,7 @@ const program = new Command()
     const customAgents = await loadAgents(process.cwd());
 
     // Create MCP Hub for accessing MCP server tools (only if MCP is enabled)
-    const mcpHub = options.mcp ? await initializeMcp() : undefined;
+    const mcpHub = options.mcp ? await initializeMcp(program) : undefined;
 
     const runner = new TaskRunner({
       uid,
@@ -162,8 +165,9 @@ const program = new Command()
     });
 
     const renderer = new OutputRenderer(runner.state);
+    let jsonRenderer: JsonRenderer | undefined;
     if (options.streamJson) {
-      new JsonRenderer(store, runner.state);
+      jsonRenderer = new JsonRenderer(store, runner.state);
     }
 
     await runner.run();
@@ -171,6 +175,9 @@ const program = new Command()
     renderer.shutdown();
     if (mcpHub) {
       mcpHub.dispose();
+    }
+    if (jsonRenderer) {
+      jsonRenderer.shutdown();
     }
     await waitForSync(store, "2 second").catch(console.error);
     await shutdownStoreAndExit(store);
@@ -188,30 +195,30 @@ program
   .configureHelp({
     styleTitle: (title) => chalk.bold(title),
   })
-  .showHelpAfterError()
   .showSuggestionAfterError()
   .configureOutput({
     outputError: (str, write) => write(chalk.red(str)),
   });
 
 // Run version check on every invocation before any command executes
-program.hook("preAction", async () => {
+program.hook("preAction", async (_thisCommand) => {
   await Promise.all([
     checkForUpdates().catch(() => {}),
     waitForSync().catch(console.error),
+    setPochiConfigWorkspacePath(process.cwd()).catch(() => {}),
   ]);
 });
 
 registerAuthCommand(program);
-
 registerModelCommand(program);
 registerMcpCommand(program);
 registerTaskCommand(program);
-
 registerUpgradeCommand(program);
 
-// Initialize auto-completion after all commands are registered
-initializeShellCompletion(program);
+if (process.argv[2] === "--completion") {
+  handleShellCompletion(program, process.argv);
+  process.exit(0);
+}
 
 program.parse(process.argv);
 

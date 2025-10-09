@@ -1,5 +1,6 @@
 import * as os from "node:os";
 import path from "node:path";
+// biome-ignore lint/style/useImportType: needed for dependency injection
 import { CustomAgentManager } from "@/lib/custom-agent";
 import {
   collectCustomRules,
@@ -18,6 +19,8 @@ import { ModelList } from "@/lib/model-list";
 import { PostHog } from "@/lib/posthog";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { UserStorage } from "@/lib/user-storage";
+// biome-ignore lint/style/useImportType: needed for dependency injection
+import { WorkspaceScope } from "@/lib/workspace-scoped";
 import { applyDiff, previewApplyDiff } from "@/tools/apply-diff";
 import { editNotebook } from "@/tools/edit-notebook";
 import { executeCommand } from "@/tools/execute-command";
@@ -37,7 +40,8 @@ import { previewWriteToFile, writeToFile } from "@/tools/write-to-file";
 import type { Environment, GitStatus } from "@getpochi/common";
 import type { UserInfo } from "@getpochi/common/configuration";
 import type { McpStatus } from "@getpochi/common/mcp-utils";
-import type { McpHub } from "@getpochi/common/mcp-utils";
+// biome-ignore lint/style/useImportType: needed for dependency injection
+import { McpHub } from "@getpochi/common/mcp-utils";
 import {
   GitStatusReader,
   ignoreWalk,
@@ -48,7 +52,6 @@ import { getVendor } from "@getpochi/common/vendor";
 import type {
   CustomAgentFile,
   PochiCredentials,
-  WebviewHostApi,
 } from "@getpochi/common/vscode-webui-bridge";
 import type {
   CaptureEvent,
@@ -77,8 +80,9 @@ import type { Tool } from "ai";
 import { machineId } from "node-machine-id";
 import { keys } from "remeda";
 import * as runExclusive from "run-exclusive";
-import { inject, injectable, singleton } from "tsyringe";
+import { Lifecycle, inject, injectable, scoped } from "tsyringe";
 import * as vscode from "vscode";
+// biome-ignore lint/style/useImportType: needed for dependency injection
 import { CheckpointService } from "../checkpoint/checkpoint-service";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { PochiConfiguration } from "../configuration";
@@ -94,20 +98,16 @@ import {
 } from "../terminal-link-provider/url-utils";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { TerminalState } from "../terminal/terminal-state";
+import { commitStore } from "./base";
 
 const logger = getLogger("VSCodeHostImpl");
 
+@scoped(Lifecycle.ContainerScoped)
 @injectable()
-@singleton()
 export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   private toolCallGroup = runExclusive.createGroupRef();
   private checkpointGroup = runExclusive.createGroupRef();
   private disposables: vscode.Disposable[] = [];
-  // cwd === null means no workspace is currently open.
-  private cwd: string | null =
-    vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? null;
-  private checkpointService: CheckpointService | null = null;
-  private customAgentManager: CustomAgentManager;
 
   constructor(
     @inject("vscode.ExtensionContext")
@@ -115,19 +115,19 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     private readonly tabState: TabState,
     private readonly terminalState: TerminalState,
     private readonly posthog: PostHog,
-    @inject("McpHub") private readonly mcpHub: McpHub,
+    private readonly mcpHub: McpHub,
     private readonly thirdMcpImporter: ThirdMcpImporter,
     private readonly pochiConfiguration: PochiConfiguration,
     private readonly modelList: ModelList,
     private readonly userStorage: UserStorage,
-  ) {
-    if (this.cwd) {
-      this.checkpointService = new CheckpointService(this.cwd, this.context);
-    }
-    this.customAgentManager = new CustomAgentManager(this.cwd);
-  }
+    private readonly workspaceScope: WorkspaceScope,
+    private readonly checkpointService: CheckpointService,
+    private readonly customAgentManager: CustomAgentManager,
+  ) {}
 
-  sidebarWebviewHostApi: WebviewHostApi | null = null;
+  private get cwd() {
+    return this.workspaceScope.cwd;
+  }
 
   listRuleFiles = async (): Promise<RuleFile[]> => {
     return this.cwd ? await collectRuleFiles(this.cwd) : [];
@@ -618,9 +618,6 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       message: string,
       options?: SaveCheckpointOptions,
     ): Promise<string | null> => {
-      if (!this.checkpointService) {
-        return null;
-      }
       return await this.checkpointService.saveCheckpoint(message, options);
     },
   );
@@ -628,12 +625,12 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   restoreCheckpoint = runExclusive.build(
     this.checkpointGroup,
     async (commitHash: string): Promise<void> => {
-      await this.checkpointService?.restoreCheckpoint(commitHash);
+      await this.checkpointService.restoreCheckpoint(commitHash);
     },
   );
 
   readCheckpointPath = async (): Promise<string | undefined> => {
-    return this.checkpointService?.getShadowGitPath();
+    return this.checkpointService.getShadowGitPath();
   };
 
   diffWithCheckpoint = runExclusive.build(
@@ -642,7 +639,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       try {
         // Get changes using existing method
         const changes =
-          await this.checkpointService?.getCheckpointUserEditsDiff(
+          await this.checkpointService.getCheckpointUserEditsDiff(
             fromCheckpoint,
           );
         if (!changes || changes.length === 0) {
@@ -665,7 +662,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       checkpoint: { origin: string; modified?: string },
       displayPath?: string,
     ) => {
-      const changedFiles = await this.checkpointService?.getCheckpointChanges(
+      const changedFiles = await this.checkpointService.getCheckpointChanges(
         checkpoint.origin,
         checkpoint.modified,
       );
@@ -757,7 +754,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   };
 
   openPochiInNewTab = async (): Promise<void> => {
-    await vscode.commands.executeCommand("pochi.openInEditor");
+    await vscode.commands.executeCommand("pochi.openInPanel");
   };
 
   readCustomAgents = async (): Promise<
@@ -772,7 +769,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   ): Promise<void> => {
     // Ignore messages from the sidebar WebView as they're synced already.
     if (webviewType === "sidebar") return;
-    await this.sidebarWebviewHostApi?.commitStoreEvent(event);
+    commitStore.fire({ event });
   };
 
   dispose() {

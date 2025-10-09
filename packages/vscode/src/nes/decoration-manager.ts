@@ -57,7 +57,7 @@ export class NESDecorationManager implements vscode.Disposable {
     | undefined = undefined;
 
   show(editor: vscode.TextEditor, solution: NESSolution) {
-    const { changes, patch } = solution;
+    const { changes, editableRegion } = solution;
 
     this.current = { editor, solution };
     vscode.commands.executeCommand(
@@ -68,16 +68,15 @@ export class NESDecorationManager implements vscode.Disposable {
 
     const cursorPosition = editor.selection.active;
 
-    const preview = buildPreview(patch);
+    const preview = buildPreview(editableRegion.diff);
     const replacements: vscode.DecorationOptions[] = [];
     const insertions: vscode.DecorationOptions[] = [];
     const lineEnds: vscode.DecorationOptions[] = [];
 
     if (changes.some((c) => isMultiLine(c.text))) {
       // If there are multi-line changes, show a line-end decoration to preview all changes.
-      const lineEndPostion = cursorPosition.translate(
-        0,
-        Number.MAX_SAFE_INTEGER,
+      const lineEndPostion = editor.document.validatePosition(
+        cursorPosition.translate(0, Number.MAX_SAFE_INTEGER),
       );
       const lineEndDecoration: vscode.DecorationOptions = {
         range: new vscode.Range(lineEndPostion, lineEndPostion),
@@ -129,14 +128,14 @@ export class NESDecorationManager implements vscode.Disposable {
     editor.setDecorations(this.lineEndDecorationType, lineEnds);
   }
 
-  accept() {
+  async accept() {
     logger.debug("Accepting the current edit suggestion");
     if (!this.current) {
       logger.debug("No current edit suggestion to accept");
       return;
     }
     const { editor, solution } = this.current;
-    editor.edit((editBuilder) => {
+    await editor.edit((editBuilder) => {
       for (const change of solution.changes) {
         editBuilder.replace(change.range, change.text);
       }
@@ -145,9 +144,8 @@ export class NESDecorationManager implements vscode.Disposable {
 
     // Move cursor to the end of the last change
     const lastChange = solution.changes[solution.changes.length - 1];
-    const cursorPosition = lastChange.range.end.translate(
-      0,
-      lastChange.text.length - lastChange.rangeLength,
+    const cursorPosition = editor.document.positionAt(
+      lastChange.rangeOffset + lastChange.text.length,
     );
     editor.selection = new vscode.Selection(cursorPosition, cursorPosition);
   }
@@ -196,7 +194,6 @@ function buildPreview(patch: string) {
     patch
       // Split by hunk
       .split(/@@ .+ @@/)
-      .map((s) => s.trim())
       .filter((s) => s.length > 0)
       // Format each hunk as a code block
       .map((diff) => {

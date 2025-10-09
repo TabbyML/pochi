@@ -34,7 +34,7 @@ class RagdollUriHandler implements vscode.UriHandler, vscode.Disposable {
   }
 
   private async handleUriImpl(uri: vscode.Uri) {
-    await vscode.commands.executeCommand("pochiWebui.focus");
+    await vscode.commands.executeCommand("pochiSidebar.focus");
 
     /**
      * Supported URI formats:
@@ -109,8 +109,14 @@ class RagdollUriHandler implements vscode.UriHandler, vscode.Disposable {
     );
 
     // Open the workspace, only open in newWindow when there is a existed workspace
-    // In Remote Pochi, There is no opened workspace, opening new window would cause a new tab.
-    const forceNewWindow = !!this.currentWorkspaceUri;
+    // In Remote Pochi, when opening a existed task, the workspace is opened by uri, so we don't need to open it again
+    const currentUri = this.currentWorkspaceUri;
+    if (currentUri && currentUri.toString() === existingProject.toString()) {
+      logger.info("Workspace is already open, skipping open command");
+      return true;
+    }
+
+    const forceNewWindow = !!currentUri;
     await vscode.commands.executeCommand("vscode.openFolder", existingProject, {
       forceNewWindow,
     });

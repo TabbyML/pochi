@@ -1,30 +1,39 @@
-import { StoreBlobProtocol, catalog } from "@getpochi/livekit";
+import { type Message, StoreBlobProtocol, catalog } from "@getpochi/livekit";
 import type { Store } from "@livestore/livestore";
 import * as R from "remeda";
 import type { NodeChatState } from "./livekit/chat.node";
 import type { TaskRunner } from "./task-runner";
 
 export class JsonRenderer {
-  private pendingMessageId = "";
+  private outputMessageIds = new Set<string>();
+  private lastMessageCount = 0;
+
   constructor(
-    store: Store,
+    private readonly store: Store,
     private readonly state: NodeChatState,
   ) {
     this.state.signal.messages.subscribe((messages) => {
-      const pendingMessageIndex = messages.findIndex(
-        (message) => message.id === this.pendingMessageId,
-      );
-
-      const pendingMessages = messages.slice(pendingMessageIndex);
-      for (const message of pendingMessages) {
-        console.log(JSON.stringify(mapStoreBlob(store, message)));
+      if (messages.length > this.lastMessageCount) {
+        this.outputMessages(messages.slice(0, -1));
+        this.lastMessageCount = messages.length;
       }
     });
   }
 
-  shutdown() {}
+  shutdown() {
+    this.outputMessages(this.state.signal.messages.value);
+  }
 
   renderSubTask(_task: TaskRunner) {}
+
+  private outputMessages(messages: Message[]) {
+    for (const message of messages) {
+      if (!this.outputMessageIds.has(message.id)) {
+        console.log(JSON.stringify(mapStoreBlob(this.store, message)));
+        this.outputMessageIds.add(message.id);
+      }
+    }
+  }
 }
 
 function mapStoreBlob(store: Store, o: unknown): unknown {

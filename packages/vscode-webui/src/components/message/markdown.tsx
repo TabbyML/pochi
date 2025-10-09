@@ -453,7 +453,6 @@ export function MessageMarkdown({
         }
         components={components}
         controls={{ code: !isMinimalView, table: false }}
-        shikiTheme={["light-plus", "dark-plus"]}
       >
         {processedChildren}
       </Streamdown>

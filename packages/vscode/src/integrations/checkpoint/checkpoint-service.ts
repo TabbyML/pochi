@@ -1,10 +1,13 @@
 import { mkdir } from "node:fs/promises";
 import * as path from "node:path";
+// biome-ignore lint/style/useImportType: needed for dependency injection
+import { WorkspaceScope } from "@/lib/workspace-scoped";
 import { getLogger, toErrorMessage } from "@getpochi/common";
 import type {
   SaveCheckpointOptions,
   UserEditsDiff,
 } from "@getpochi/common/vscode-webui-bridge";
+import { Lifecycle, inject, injectable, scoped } from "tsyringe";
 import type * as vscode from "vscode";
 import { ShadowGitRepo } from "./shadow-git-repo";
 import type { GitDiff } from "./types";
@@ -16,15 +19,25 @@ import {
 
 const logger = getLogger("CheckpointService");
 
+@scoped(Lifecycle.ContainerScoped)
+@injectable()
 export class CheckpointService implements vscode.Disposable {
   private shadowGit: ShadowGitRepo | undefined;
   private readyDefer = new Deferred<void>();
   private initialized = false;
 
   constructor(
-    private readonly cwd: string,
+    private readonly workspaceScope: WorkspaceScope,
+    @inject("vscode.ExtensionContext")
     private readonly context: vscode.ExtensionContext,
   ) {}
+
+  private get cwd() {
+    if (!this.workspaceScope.cwd) {
+      throw new Error("No workspace folder found. Please open a workspace.");
+    }
+    return this.workspaceScope.cwd;
+  }
 
   /**
    * Lazy initializes the checkpoint service.

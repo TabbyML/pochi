@@ -3,7 +3,10 @@ import { type Signal, batch, computed, signal } from "@preact/signals-core";
 import * as R from "remeda";
 import { getLogger } from "../base";
 import type { McpServerConfig } from "../configuration/index.js";
-import { updatePochiConfig } from "../configuration/index.js";
+import {
+  inspectPochiConfig,
+  updatePochiConfig,
+} from "../configuration/index.js";
 import { McpConnection } from "./mcp-connection";
 import type {
   McpServerConnection,
@@ -126,10 +129,16 @@ export class McpHub implements Disposable {
   }
 
   private async saveConfig(newConfig: Record<string, McpServerConfig>) {
-    // Persist configuration changes to file
-    await updatePochiConfig({ mcp: newConfig }).catch((error) => {
-      logger.error("Failed to persist MCP configuration changes", error);
-    });
+    for (const [name, config] of Object.entries(newConfig)) {
+      const { effectiveTargets } = inspectPochiConfig(`mcp.${name}`);
+      const editTarget = effectiveTargets[0] || "user";
+      // Persist configuration changes to file
+      await updatePochiConfig({ mcp: { [name]: config } }, editTarget).catch(
+        (error) => {
+          logger.error("Failed to persist MCP configuration changes", error);
+        },
+      );
+    }
   }
 
   private async onConfigChanged() {

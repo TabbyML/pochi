@@ -8,6 +8,7 @@ import { useStoreBlobUrl } from "@/lib/store-blob";
 import { cn } from "@/lib/utils";
 import { isVSCodeEnvironment, vscodeHost } from "@/lib/vscode";
 import type React from "react";
+import { useTranslation } from "react-i18next";
 
 interface CopyableImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
   mimeType?: string;
@@ -40,6 +41,7 @@ export function CopyableImage({
   filename,
   ...props
 }: CopyableImageProps) {
+  const { t } = useTranslation();
   const url = useStoreBlobUrl(src ?? "");
 
   if (!url) return null;
@@ -70,32 +72,34 @@ export function CopyableImage({
     });
   };
 
+  const imageEl = (
+    // biome-ignore lint/a11y/useAltText: alt in props
+    <img src={url} className={cn("h-auto w-full", className)} {...props} />
+  );
+
+  if (!isVSCodeEnvironment()) {
+    return imageEl;
+  }
+
   return (
     <div onCopy={handleCopy}>
       <ContextMenu>
         <ContextMenuTrigger>
           <div
-            className={cn(
-              isVSCodeEnvironment() && "cursor-pointer hover:opacity-80",
-            )}
+            className="cursor-pointer hover:opacity-80"
             onClick={handleClick}
           >
-            {/* biome-ignore lint/a11y/useAltText: alt is passed in props */}
-            <img
-              src={url}
-              className={cn("h-auto w-full", className)}
-              {...props}
-            />
+            {imageEl}
           </div>
         </ContextMenuTrigger>
-        {isVSCodeEnvironment() && (
-          <ContextMenuContent>
-            <ContextMenuItem onClick={() => handleCopy()}>
-              Copy Image
-            </ContextMenuItem>
-            <ContextMenuItem onClick={handleClick}>Open Image</ContextMenuItem>
-          </ContextMenuContent>
-        )}
+        <ContextMenuContent>
+          <ContextMenuItem onClick={() => handleCopy()}>
+            {t("chat.copyImage")}
+          </ContextMenuItem>
+          <ContextMenuItem onClick={handleClick}>
+            {t("chat.openImage")}
+          </ContextMenuItem>
+        </ContextMenuContent>
       </ContextMenu>
     </div>
   );

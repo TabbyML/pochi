@@ -344,3 +344,5 @@ export abstract class WebviewBase implements vscode.Disposable {
     }
   }
 }
+
+export const commitStore = new vscode.EventEmitter<{ event: unknown }>();

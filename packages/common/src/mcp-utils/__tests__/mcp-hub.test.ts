@@ -17,9 +17,16 @@ vi.mock("../../base", () => ({
   })),
 }));
 
-vi.mock("../../configuration/index.js", () => ({
-  updatePochiConfig: vi.fn().mockResolvedValue(undefined),
-}));
+vi.mock("../../configuration/index.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../configuration/index.js")>();
+  return {
+    ...actual,
+    updatePochiConfig: vi.fn().mockResolvedValue(undefined),
+    inspectPochiConfig: vi.fn().mockReturnValue({
+      effectiveTargets: ["user"],
+    }),
+  };
+});
 
 vi.mock("../mcp-connection", () => ({
   McpConnection: vi.fn(),
@@ -27,6 +34,7 @@ vi.mock("../mcp-connection", () => ({
 
 const configModule = await import("../../configuration/index.js");
 const mockedUpdatePochiConfig = configModule.updatePochiConfig as Mock;
+const mockedInspectPochiConfig = configModule.inspectPochiConfig as Mock;
 const MockedMcpConnection = McpConnection as unknown as Mock;
 
 describe("McpHub", () => {
@@ -50,6 +58,9 @@ describe("McpHub", () => {
     
     // Reset the mock to return a resolved promise
     mockedUpdatePochiConfig.mockResolvedValue(undefined);
+    mockedInspectPochiConfig.mockReturnValue({
+      effectiveTargets: ["user"],
+    });
     
     configSignal = signal<Record<string, McpServerConfig>>({});
     vendorToolsSignal = signal<
@@ -207,7 +218,7 @@ describe("McpHub", () => {
             disabled: false,
           },
         },
-      });
+      }, "user");
 
       hub.dispose();
     });
@@ -249,7 +260,7 @@ describe("McpHub", () => {
             disabled: true,
           },
         },
-      });
+      }, "user");
 
       hub.dispose();
     });
@@ -285,7 +296,7 @@ describe("McpHub", () => {
         mcp: {
           myserver: newConfig,
         },
-      });
+      }, "user");
 
       hub.dispose();
     });
@@ -311,15 +322,21 @@ describe("McpHub", () => {
       const serverName = await hub.addServer("myserver", newConfig);
 
       expect(serverName).toBe("myserver-1");
+      // The implementation saves each server configuration individually
+      expect(mockedUpdatePochiConfig).toHaveBeenCalledTimes(2);
       expect(mockedUpdatePochiConfig).toHaveBeenCalledWith({
         mcp: {
           myserver: {
             command: "existing",
             args: [],
           },
+        },
+      }, "user");
+      expect(mockedUpdatePochiConfig).toHaveBeenCalledWith({
+        mcp: {
           "myserver-1": newConfig,
         },
-      });
+      }, "user");
 
       hub.dispose();
     });
@@ -342,7 +359,7 @@ describe("McpHub", () => {
         mcp: {
           server: newConfig,
         },
-      });
+      }, "user");
 
       hub.dispose();
     });
@@ -383,7 +400,7 @@ describe("McpHub", () => {
   });
 
   describe("addServers", () => {
-    it("should add multiple servers at once", () => {
+    it("should add multiple servers at once", async () => {
       const hub = new McpHub({
         config: configSignal,
         vendorTools: vendorToolsSignal,
@@ -404,13 +421,22 @@ describe("McpHub", () => {
 
       const addedNames = hub.addServers(servers);
 
+      // Wait for async saveConfig operations to complete
+      await new Promise(resolve => setTimeout(resolve, 100));
+
       expect(addedNames).toEqual(["server1", "server2"]);
+      // The implementation saves each server configuration individually
+      expect(mockedUpdatePochiConfig).toHaveBeenCalledTimes(2);
       expect(mockedUpdatePochiConfig).toHaveBeenCalledWith({
         mcp: {
           server1: { command: "node", args: ["s1.js"] },
+        },
+      }, "user");
+      expect(mockedUpdatePochiConfig).toHaveBeenCalledWith({
+        mcp: {
           server2: { command: "node", args: ["s2.js"] },
         },
-      });
+      }, "user");
 
       hub.dispose();
     });
@@ -474,7 +500,7 @@ describe("McpHub", () => {
             disabledTools: ["toolA"],
           },
         },
-      });
+      }, "user");
 
       hub.dispose();
     });
@@ -503,7 +529,7 @@ describe("McpHub", () => {
             disabledTools: ["toolB"],
           },
         },
-      });
+      }, "user");
 
       hub.dispose();
     });
@@ -542,7 +568,7 @@ describe("McpHub", () => {
             disabledTools: ["toolA"],
           },
         },
-      });
+      }, "user");
 
       hub.dispose();
     });

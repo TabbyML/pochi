@@ -36,7 +36,7 @@
     "views": {
       "pochi": [
         {
-          "id": "pochiWebui",
+          "id": "pochiSidebar",
           "type": "webview",
           "name": "Pochi"
         }
@@ -127,7 +127,7 @@
         "category": "Pochi"
       },
       {
-        "command": "pochi.openInEditor",
+        "command": "pochi.openInPanel",
         "title": "Open in Editor",
         "category": "Pochi",
         "icon": "$(window)"
@@ -178,17 +178,17 @@
       "view/title": [
         {
           "command": "pochi.webui.navigate.newTask",
-          "when": "view == pochiWebui",
+          "when": "view == pochiSidebar",
           "group": "navigation@0"
         },
         {
           "command": "pochi.webui.navigate.taskList",
-          "when": "view == pochiWebui",
+          "when": "view == pochiSidebar",
           "group": "navigation@1"
         },
         {
           "command": "pochi.webui.navigate.settings",
-          "when": "view == pochiWebui",
+          "when": "view == pochiSidebar",
           "group": "navigation@2"
         }
       ]
