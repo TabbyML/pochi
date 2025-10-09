@@ -19,7 +19,7 @@ const logger = getLogger("loadAgents");
 async function readAgentsFromDir(dir: string): Promise<CustomAgentFile[]> {
   const agents: CustomAgentFile[] = [];
   try {
-    if (!isFileExists(dir)) {
+    if (!(await isFileExists(dir))) {
       return agents;
     }
 
