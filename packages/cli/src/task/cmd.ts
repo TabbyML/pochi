@@ -3,8 +3,8 @@ import { registerTaskListCommand } from "./list";
 import { registerTaskShareCommand } from "./share";
 
 export function registerTaskCommand(program: Command) {
-  const enableSync = !!process.env.POCHI_LIVEKIT_SYNC_ON;
-  if (!enableSync) return;
+  const disableSync = !!process.env.POCHI_LIVEKIT_SYNC_OFF;
+  if (disableSync) return;
 
   const taskCommand = program
     .command("task")

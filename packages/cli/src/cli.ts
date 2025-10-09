@@ -397,7 +397,7 @@ async function waitForSync(
   inputStore?: Store,
   timeoutDuration: Duration.DurationInput = "1 second",
 ) {
-  if (!process.env.POCHI_LIVEKIT_SYNC_ON) {
+  if (process.env.POCHI_LIVEKIT_SYNC_OFF) {
     return;
   }
   const store = inputStore || (await createStore());

@@ -16,9 +16,9 @@ import { machineId } from "node-machine-id";
 export async function createStore() {
   const { jwt = null } = (await getPochiCredentials()) || {};
   const storeId = await getStoreId(jwt);
-  const enableSync = !!process.env.POCHI_LIVEKIT_SYNC_ON;
+  const disableSync = !!process.env.POCHI_LIVEKIT_SYNC_OFF;
   const adapter = makeAdapter({
-    storage: enableSync
+    storage: !disableSync
       ? {
           type: "fs",
           baseDirectory: path.join(os.homedir(), ".pochi", "storage"),
@@ -30,7 +30,7 @@ export async function createStore() {
         }
       : undefined,
     sync:
-      jwt && enableSync
+      jwt && !disableSync
         ? {
             backend: makeWsSync({
               url: getSyncBaseUrl(),
