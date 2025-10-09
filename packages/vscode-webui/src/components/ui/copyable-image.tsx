@@ -8,6 +8,7 @@ import { useStoreBlobUrl } from "@/lib/store-blob";
 import { cn } from "@/lib/utils";
 import { isVSCodeEnvironment, vscodeHost } from "@/lib/vscode";
 import type React from "react";
+import { useTranslation } from "react-i18next";
 
 interface CopyableImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
   mimeType?: string;
@@ -40,6 +41,7 @@ export function CopyableImage({
   filename,
   ...props
 }: CopyableImageProps) {
+  const { t } = useTranslation();
   const url = useStoreBlobUrl(src ?? "");
 
   if (!url) return null;
@@ -92,9 +94,11 @@ export function CopyableImage({
         </ContextMenuTrigger>
         <ContextMenuContent>
           <ContextMenuItem onClick={() => handleCopy()}>
-            Copy Image
+            {t("chat.copyImage")}
           </ContextMenuItem>
-          <ContextMenuItem onClick={handleClick}>Open Image</ContextMenuItem>
+          <ContextMenuItem onClick={handleClick}>
+            {t("chat.openImage")}
+          </ContextMenuItem>
         </ContextMenuContent>
       </ContextMenu>
     </div>

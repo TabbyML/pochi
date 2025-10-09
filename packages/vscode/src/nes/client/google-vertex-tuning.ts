@@ -67,20 +67,33 @@ export class NESGoogleVertexTuningClient implements NESClientProvider {
 
     logger.trace(`[${requestId}] Completion response:`, result.response.body);
 
-    return {
-      text: extractResult(result.text),
-    };
+    if (result.finishReason !== "stop") {
+      return undefined;
+    }
+
+    const extractedResult = extractResult(result.text);
+    if (extractedResult) {
+      return {
+        text: extractedResult,
+      };
+    }
+
+    return undefined;
   }
 }
 
-function extractResult(text: string): string {
+function extractResult(text: string) {
   const startIndex =
     text.indexOf("<|editable_region_start|>") +
     "<|editable_region_start|>".length;
+  if (startIndex === -1) {
+    return undefined;
+  }
+
   const endIndex = text.indexOf("<|editable_region_end|>");
-  return text
-    .slice(startIndex, endIndex)
-    .replace("<|user_cursor_is_here|>", "");
+  const extracted =
+    endIndex === -1 ? text.slice(startIndex) : text.slice(startIndex, endIndex);
+  return extracted.replace("<|user_cursor_is_here|>", "");
 }
 
 const SystemPromptTemplate =

@@ -1,4 +1,5 @@
-import { isMultiLine } from "@/code-completion/utils/strings";
+import { isBlank, isMultiLine } from "@/code-completion/utils/strings";
+import { getLogger } from "@/lib/logger";
 import { createPatch, diffLines, diffWords } from "diff";
 import * as vscode from "vscode";
 import {
@@ -7,12 +8,43 @@ import {
 } from "./constants";
 import type { NESContext } from "./contexts";
 import type { NESResponseItem, TextContentChange } from "./types";
+import { applyEdit } from "./utils";
+
+const logger = getLogger("NES.Solution");
 
 export interface NESSolution {
+  /**
+   * The solution is calculated based on this context.
+   */
   context: NESContext;
-  item: NESResponseItem;
+
+  /**
+   * The LLM's response, including edited text.
+   */
+  responseItem: NESResponseItem;
+
+  /**
+   * The calculated changes to apply to the text document.
+   */
   changes: readonly TextContentChange[];
-  patch: string; // in diff format
+
+  editableRegion: {
+    /**
+     * Editable region text before the changes.
+     */
+    before: string;
+
+    /**
+     * Editable region text after the changes.
+     * This may not exactly equal the `responseItem.text`, adding/removing empty lines is ignored.
+     */
+    after: string;
+
+    /**
+     * The diff `between` before and `after`, line numbers are relative to the editable region.
+     */
+    diff: string;
+  };
 }
 
 export function calculateSolution(
@@ -42,12 +74,12 @@ export function calculateSolution(
 
   // Try to use word-based diff first
   let diff = diffWords(editableRegionText, item.text);
+  logger.trace("Word diff", diff);
 
   if (diff.some((part) => part.added && isMultiLine(part.value))) {
     // If there are added multi-line changes, use line-based diff instead.
-    diff = diffLines(editableRegionText, item.text, {
-      ignoreWhitespace: true,
-    });
+    diff = diffLines(editableRegionText, item.text);
+    logger.trace("Line diff", diff);
   }
 
   let currentOffset = editableRegionOffset;
@@ -88,44 +120,114 @@ export function calculateSolution(
     }
   }
 
-  const filteredChanges = changes
+  const refinedChanges = changes
     .map((change) => {
+      // If the change range ends at the start of a line, and new text ends with a newline,
+      // move the range end to the end of the previous line, remove trailing newline from new text
       if (
         change.range.end.line > change.range.start.line &&
         change.range.end.character === 0 &&
         change.text.endsWith("\n")
       ) {
-        // If the change ends at the start of a line, move it to the end of the previous line.
-        const newEnd = context.document.positionAt(
-          change.rangeOffset + change.rangeLength - 1,
-        );
-        const newRange = new vscode.Range(change.range.start, newEnd);
         return {
-          range: newRange,
+          range: new vscode.Range(
+            change.range.start,
+            context.document.positionAt(
+              change.rangeOffset + change.rangeLength - 1,
+            ),
+          ),
           rangeOffset: change.rangeOffset,
-          rangeLength: change.rangeLength - 1, // Remove the newline character
-          text: change.text.slice(0, -1), // Remove the newline character
+          rangeLength: change.rangeLength - 1,
+          text: change.text.slice(0, -1),
         };
       }
       return change;
     })
-    .filter((change) => change.rangeLength > 0 || change.text.length > 0);
+    .filter((change) => {
+      // Filter out: No change
+      if (change.range.isEmpty && change.text.length === 0) {
+        return false;
+      }
 
-  const patch = createPatch("", editableRegionText, item.text, "", "", {
-    context: 0,
-    ignoreNewlineAtEof: true,
-  })
-    // Remove the header lines
+      // Filter out: Add an empty line
+      if (
+        change.range.isEmpty &&
+        (change.range.start.character === 0 ||
+          isLineEndPosition(change.range.start, context.document)) &&
+        change.text.endsWith("\n") &&
+        isBlank(change.text)
+      ) {
+        return false;
+      }
+
+      // Filter out: Remove an empty line
+      if (
+        change.range.end.line === change.range.start.line + 1 &&
+        change.range.start.character === 0 &&
+        change.range.end.character === 0 &&
+        context.document.lineAt(change.range.start.line).isEmptyOrWhitespace &&
+        change.text === ""
+      ) {
+        return false;
+      }
+
+      return true;
+    });
+
+  // map changes range offset to editable region
+  const convertedChanges = refinedChanges.map((c) => {
+    return {
+      range: new vscode.Range(
+        c.range.start.translate(-editableRegionStart.line),
+        c.range.end.translate(-editableRegionStart.line),
+      ),
+      rangeOffset: c.rangeOffset - editableRegionOffset,
+      rangeLength: c.rangeLength,
+      text: c.text,
+    };
+  });
+  const editableRegionTextAfterChange = applyEdit(
+    editableRegionText,
+    convertedChanges,
+  );
+
+  const patch = createPatch(
+    "",
+    editableRegionText,
+    editableRegionTextAfterChange,
+    "",
+    "",
+    {
+      context: 1,
+      ignoreNewlineAtEof: true,
+    },
+  )
     .split("\n")
-    .slice(4)
+    .slice(4) // Remove the header lines
     .join("\n");
 
   return {
     context,
-    item,
-    changes: filteredChanges,
-    patch,
+    responseItem: item,
+    changes: refinedChanges,
+    editableRegion: {
+      before: editableRegionText,
+      after: editableRegionTextAfterChange,
+      diff: patch,
+    },
   };
+}
+
+function isLineEndPosition(
+  position: vscode.Position,
+  document: vscode.TextDocument,
+): boolean {
+  const textLine = document.lineAt(position);
+  return position.character === textLine.text.length;
+}
+
+export function isEmptySolution(solution: NESSolution) {
+  return solution.changes.length === 0;
 }
 
 // If the changes can be represented as a single InlineCompletionItem, return it.
@@ -133,46 +235,115 @@ export function calculateSolution(
 export function asInlineCompletionItem(
   solution: NESSolution,
 ): vscode.InlineCompletionItem | undefined {
-  const { context, changes } = solution;
-  if (changes.length !== 1) {
-    // Multiple changes, cannot represent as a single InlineCompletionItem
-    return undefined;
-  }
+  const { context, editableRegion } = solution;
 
-  const cursorPosition = context.selection.active;
-  const change = changes[0];
-  if (!change.range.contains(cursorPosition)) {
-    // The change does not contain the cursor position
-    return undefined;
-  }
-  if (
-    change.range.start.line !== cursorPosition.line ||
-    change.range.end.line !== cursorPosition.line
+  // find the changed lines range
+  const beforeLines = editableRegion.before.split("\n");
+  const afterLines = editableRegion.after.split("\n");
+  let unchangedLinesFromStart = 0;
+  while (
+    unchangedLinesFromStart < beforeLines.length &&
+    unchangedLinesFromStart < afterLines.length &&
+    beforeLines[unchangedLinesFromStart] === afterLines[unchangedLinesFromStart]
   ) {
-    // The change spans multiple lines
+    unchangedLinesFromStart++;
+  }
+  let unchangedLinesFromEnd = 0;
+  while (
+    beforeLines.length - 1 - unchangedLinesFromEnd > unchangedLinesFromStart &&
+    afterLines.length - 1 - unchangedLinesFromEnd > unchangedLinesFromStart &&
+    beforeLines[beforeLines.length - 1 - unchangedLinesFromEnd] ===
+      afterLines[afterLines.length - 1 - unchangedLinesFromEnd]
+  ) {
+    unchangedLinesFromEnd++;
+  }
+
+  if (
+    beforeLines.length - unchangedLinesFromStart - unchangedLinesFromEnd >
+    1
+  ) {
+    logger.debug(
+      "Can not be represented as a single InlineCompletionItem, the changes span multiple lines.",
+    );
     return undefined;
   }
 
-  const prefix = context.document.getText(
-    new vscode.Range(change.range.start, cursorPosition),
+  if (afterLines.length - unchangedLinesFromStart - unchangedLinesFromEnd < 1) {
+    logger.debug(
+      "Can not be represented as a single InlineCompletionItem, the change is removing a line.",
+    );
+    return undefined;
+  }
+
+  const changedLineNumber = unchangedLinesFromStart;
+  const cursorPosition = context.selection.active;
+
+  // documentBaseLineNumber = editableRegionStartLine + changedLineNumber
+  // editableRegionStartLine = cursorLineNumber - EditableRegionPrefixLine
+  // We need documentBaseLineNumber === cursorLineNumber
+  // =>  changedLineNumber === EditableRegionPrefixLine
+  if (changedLineNumber !== EditableRegionPrefixLine) {
+    logger.debug(
+      "Can not be represented as a single InlineCompletionItem, the change is not at the current line.",
+    );
+    return undefined;
+  }
+
+  const originalText = beforeLines[changedLineNumber];
+  const editedText = afterLines
+    .slice(unchangedLinesFromStart, afterLines.length - unchangedLinesFromEnd)
+    .join("\n");
+
+  const originalPrefix = originalText.slice(0, cursorPosition.character);
+  const editedPrefix = editedText.slice(0, cursorPosition.character);
+  if (originalPrefix !== editedPrefix) {
+    logger.debug(
+      "Can not be represented as a single InlineCompletionItem, the original text prefix does not match the edited text prefix.",
+    );
+    return undefined;
+  }
+
+  const originalSuffix = originalText.slice(cursorPosition.character);
+  const editedSuffix = editedText.slice(cursorPosition.character);
+  if (originalSuffix.length > editedSuffix.length) {
+    logger.debug(
+      "Can not be represented as a single InlineCompletionItem, the change is removing characters.",
+    );
+    return undefined;
+  }
+
+  // Find the length of the same suffix
+  let sameSuffixLength = 0;
+  while (
+    originalSuffix.length - 1 - sameSuffixLength >= 0 &&
+    editedSuffix.length - 1 - sameSuffixLength >= 0 &&
+    originalSuffix[originalSuffix.length - 1 - sameSuffixLength] ===
+      editedSuffix[editedSuffix.length - 1 - sameSuffixLength]
+  ) {
+    sameSuffixLength++;
+  }
+
+  const removedText = originalSuffix.slice(
+    0,
+    originalSuffix.length - sameSuffixLength,
   );
-  if (change.text.slice(0, prefix.length) !== prefix) {
-    // The change text does not start with the prefix
-    return undefined;
-  }
-
-  const suffix = context.document.getText(
-    new vscode.Range(cursorPosition, change.range.end),
+  const insertedText = editedSuffix.slice(
+    0,
+    editedSuffix.length - sameSuffixLength,
   );
-  if (!isSubsequence(suffix, change.text.slice(prefix.length))) {
-    // The change text does not contain the suffix
+  if (!isSubsequence(removedText, insertedText)) {
+    logger.debug(
+      "Can not be represented as a single InlineCompletionItem, the edited text suffix does not contain the original text suffix.",
+    );
     return undefined;
   }
 
-  const newText = change.text.slice(prefix.length);
   return new vscode.InlineCompletionItem(
-    newText,
-    new vscode.Range(cursorPosition, change.range.end),
+    insertedText,
+    new vscode.Range(
+      cursorPosition,
+      cursorPosition.translate(0, removedText.length),
+    ),
   );
 }
 
