@@ -23,7 +23,9 @@
   },
   "chat": {
     "attachmentTooltip": "ファイルをチャットに添付します。ファイルをドラッグ＆ドロップするか、チャット入力欄に貼り付けることもできます。",
-    "queuedMessages": "キュー内のメッセージ ({{count}})"
+    "queuedMessages": "キュー内のメッセージ ({{count}})",
+    "copyImage": "画像をコピー",
+    "openImage": "画像を開く"
   },
   "language": {
     "switcherTooltip": "Pochi で使用する言語を選択してください"
