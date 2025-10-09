@@ -8,6 +8,7 @@ import {
   parseWorkflowFrontmatter,
 } from "@getpochi/common/tool-utils";
 import type { RuleFile } from "@getpochi/common/vscode-webui-bridge";
+import { uniqueBy } from "remeda";
 import * as vscode from "vscode";
 import { isFileExists, readFileContent } from "./fs";
 
@@ -177,7 +178,7 @@ export async function collectWorkflows(
     }
   }
 
-  return allWorkflows;
+  return uniqueBy(allWorkflows, (workflow) => workflow.id);
 }
 /**
  * Detects all cursor rule file paths in the workspace

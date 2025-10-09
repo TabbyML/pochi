@@ -133,7 +133,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     return this.cwd ? await collectRuleFiles(this.cwd) : [];
   };
 
-  listWorkflowsInWorkspace = (): Promise<
+  listWorkflows = (): Promise<
     {
       id: string;
       path: string;

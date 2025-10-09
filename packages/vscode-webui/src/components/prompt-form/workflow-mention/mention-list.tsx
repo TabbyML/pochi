@@ -135,9 +135,6 @@ const WorkflowItemView = memo(function WorkflowItemView({
           {data.id}
         </span>
       </div>
-      {data.path.startsWith("~/") && (
-        <span className="shrink-0 text-muted-foreground">Global</span>
-      )}
     </div>
   );
 });
