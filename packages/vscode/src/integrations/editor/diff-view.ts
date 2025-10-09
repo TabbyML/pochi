@@ -19,6 +19,7 @@ const ShouldAutoScroll = true;
 
 export class DiffView implements vscode.Disposable {
   private isFinalized = false;
+  private isReverted = false;
   private streamedLines: string[] = [];
 
   private preDiagnostics: [vscode.Uri, vscode.Diagnostic[]][] =
@@ -88,13 +89,19 @@ export class DiffView implements vscode.Disposable {
   }
 
   private revertAndClose = async () => {
+    if (this.isReverted) {
+      logger.debug("revertAndClose already called, skipping");
+      return;
+    }
+    this.isReverted = true;
+
     logger.debug("revert and close diff view");
     const updatedDocument = this.activeDiffEditor.document;
     await discardChangesWithWorkspaceEdit(
       updatedDocument,
       this.originalContent,
     );
-    closeAllNonDirtyDiffViews();
+    await closeAllNonDirtyDiffViews();
 
     // Reopen the file if it was open before the diff view
     if (this.isFileOpenBeforeDiffPreview) {
@@ -115,7 +122,7 @@ export class DiffView implements vscode.Disposable {
   };
 
   async update(content: string, isFinal: boolean, abortSignal?: AbortSignal) {
-    if (this.isFinalized) {
+    if (this.isFinalized || this.isReverted) {
       return;
     }
 
