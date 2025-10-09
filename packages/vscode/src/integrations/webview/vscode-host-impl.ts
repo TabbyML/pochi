@@ -435,11 +435,18 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       cellId?: string;
     },
   ) => {
-    const fileUri = path.isAbsolute(filePath)
-      ? vscode.Uri.file(filePath)
+    // Expand ~ to home directory if present
+    let resolvedPath = filePath;
+    if (filePath.startsWith("~/")) {
+      const homedir = os.homedir();
+      resolvedPath = filePath.replace(/^~/, homedir);
+    }
+
+    const fileUri = path.isAbsolute(resolvedPath)
+      ? vscode.Uri.file(resolvedPath)
       : this.cwd
-        ? vscode.Uri.joinPath(vscode.Uri.parse(this.cwd), filePath)
-        : vscode.Uri.file(filePath);
+        ? vscode.Uri.joinPath(vscode.Uri.parse(this.cwd), resolvedPath)
+        : vscode.Uri.file(resolvedPath);
 
     try {
       const stat = await vscode.workspace.fs.stat(fileUri);
