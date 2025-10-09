@@ -54,6 +54,48 @@ describe("ignoreWalk", () => {
     ]);
   });
 
+  it("should respect useGitignore option", async () => {
+    vi.mocked(fs.readFile).mockImplementation(async (path) => {
+      if (path === "/workspace/.gitignore") {
+        return "dir1";
+      }
+      return "";
+    });
+
+    // With useGitignore: false, dir1 should not be ignored
+    const resultsNoGitignore = await ignoreWalk({ dir: "/workspace", useGitignore: false });
+    expect(resultsNoGitignore.map((r) => r.relativePath)).toEqual([
+      "file1.ts",
+      "dir1",
+      "dir1/file2.ts",
+    ]);
+
+    // With useGitignore: true (default), dir1 should be ignored
+    const resultsWithGitignore = await ignoreWalk({ dir: "/workspace", useGitignore: true });
+    expect(resultsWithGitignore.map((r) => r.relativePath)).toEqual(["file1.ts"]);
+  });
+
+  it("should respect usePochiignore option", async () => {
+    vi.mocked(fs.readFile).mockImplementation(async (path) => {
+      if (path === "/workspace/.pochiignore") {
+        return "dir1";
+      }
+      return "";
+    });
+
+    // With usePochiignore: false, dir1 should not be ignored
+    const resultsNoPochiignore = await ignoreWalk({ dir: "/workspace", usePochiignore: false });
+    expect(resultsNoPochiignore.map((r) => r.relativePath)).toEqual([
+      "file1.ts",
+      "dir1",
+      "dir1/file2.ts",
+    ]);
+
+    // With usePochiignore: true (default), dir1 should be ignored
+    const resultsWithPochiignore = await ignoreWalk({ dir: "/workspace", usePochiignore: true });
+    expect(resultsWithPochiignore.map((r) => r.relativePath)).toEqual(["file1.ts"]);
+  });
+
   it("should not walk recursively if disabled", async () => {
     const results = await ignoreWalk({ dir: "/workspace", recursive: false });
 
