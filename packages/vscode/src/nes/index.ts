@@ -21,7 +21,9 @@ import {
   type NESSolution,
   asInlineCompletionItem,
   calculateSolution,
+  isEmptySolution,
 } from "./solution";
+import type { NESResponseItem } from "./types";
 
 const logger = getLogger("NES.Provider");
 
@@ -66,10 +68,17 @@ export class NESProvider implements vscode.Disposable {
     selection: vscode.Selection,
   ): Promise<NESSolution | undefined> {
     logger.debug("Begin provide NES");
+
+    const editHistory = this.editHistoryTracker.getEditSteps(document);
+    if (!editHistory || editHistory.length === 0) {
+      logger.debug("The current document is not being edited.");
+      return undefined;
+    }
+
     const context: NESContext = {
       document,
       selection,
-      editHistory: this.editHistoryTracker.getEdits(document) ?? [],
+      editHistory,
     };
     const hash = calculateNESContextHash(context);
 
@@ -104,28 +113,36 @@ export class NESProvider implements vscode.Disposable {
         }
       });
 
-      // Check cache
+      let responseItem: NESResponseItem | undefined = undefined;
+
+      // Check cache or make new request
       const cached = this.cache.get(hash);
       if (cached) {
         logger.debug("Cache hit", cached);
-        const solution = calculateSolution(context, cached);
-        logger.debug("Calculated solution", solution);
-        return solution;
+        responseItem = cached;
+      } else {
+        const result = await this.client.fetchCompletion(
+          extractNESContextSegments(context),
+          token,
+        );
+        if (result) {
+          this.cache.set(hash, result);
+          logger.debug("Result received", result);
+          responseItem = result;
+        } else {
+          logger.debug("No result received");
+        }
       }
 
-      // Request
-      const result = await this.client.fetchCompletion(
-        extractNESContextSegments(context),
-        token,
-      );
-      if (result) {
-        this.cache.set(hash, result);
-        logger.debug("Result received", result);
-        const solution = calculateSolution(context, result);
-        logger.debug("Calculated solution", solution);
-        return solution;
+      if (responseItem) {
+        const solution = calculateSolution(context, responseItem);
+        logger.debug("Calculated solution", {
+          changes: solution.changes,
+          editableRegion: solution.editableRegion,
+        });
+        return isEmptySolution(solution) ? undefined : solution;
       }
-      logger.debug("No result received");
+
       return undefined;
     } catch (error) {
       if (isCanceledError(error)) {

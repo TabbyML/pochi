@@ -88,9 +88,11 @@ export class EditHistoryTracker implements vscode.Disposable {
     }
   }
 
-  getEdits(document: vscode.TextDocument): TextDocumentEditStep[] | undefined {
+  getEditSteps(
+    document: vscode.TextDocument,
+  ): readonly TextDocumentEditStep[] | undefined {
     const tracker = this.documents.get(document.uri.toString());
-    return tracker?.getEdits();
+    return tracker?.getEditSteps();
   }
 
   dispose() {
@@ -188,7 +190,7 @@ export class TextDocumentEditHistoryTracker implements vscode.Disposable {
     this.paused = false;
   }
 
-  getEdits(): TextDocumentEditStep[] {
+  getEditSteps(): readonly TextDocumentEditStep[] {
     return this.history;
   }
 
@@ -225,14 +227,12 @@ export class TextDocumentEditStep {
     return this.after;
   }
 
-  getEdits() {
+  getEdits(): readonly SingleEdit[] {
     return this.edits;
   }
 
-  appendEdit(newEdit: SingleEdit, edited?: vscode.TextDocument) {
-    this.after = edited
-      ? createTextDocumentSnapshot(edited)
-      : applyEdit(this.after, newEdit);
+  appendEdit(newEdit: SingleEdit, edited: vscode.TextDocument) {
+    this.after = createTextDocumentSnapshot(edited);
     this.edits.push(newEdit);
   }
 
@@ -261,26 +261,6 @@ function createTextDocumentSnapshot(document: vscode.TextDocument) {
     "", // languageId should not be used in document history
     0, // version should not be used
     document.getText(),
-  );
-}
-
-function applyEdit(document: vscode.TextDocument, edit: SingleEdit) {
-  const original = document.getText();
-  const sortedChanges = edit.toSorted((a, b) => {
-    return a.rangeOffset - b.rangeOffset;
-  });
-  let text = "";
-  let index = 0;
-  for (const changes of sortedChanges) {
-    text += original.slice(index, changes.rangeOffset) + changes.text;
-    index = changes.rangeOffset + changes.rangeLength;
-  }
-  text += original.slice(index);
-  return new StaticTextDocument(
-    document.uri,
-    "", // languageId should not be used in document history
-    0, // version should not be used
-    text,
   );
 }
 
