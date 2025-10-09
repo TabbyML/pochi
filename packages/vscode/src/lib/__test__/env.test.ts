@@ -596,32 +596,31 @@ describe("env.ts", () => {
       assert.strictEqual(workflows[0].id, "workspace-workflow");
     });
 
-    it("should handle duplicate workflow names from workspace and global directories", async () => {
-      // Create workspace workflow with same name
-      await createDirectory(workflowsDir);
-      const workspaceWorkflowContent = "# Workspace Version\nThis is the workspace version";
-      await createFile(vscode.Uri.joinPath(workflowsDir, "duplicate-workflow.md"), workspaceWorkflowContent);
-
-      // Create global workflow with same name
+    it("should prioritize workspace workflows over global ones with the same name", async () => {
+      // Create global workflow
       const globalWorkflowsDir = vscode.Uri.joinPath(testHomeDirUri, ".pochi", "workflows");
       await createDirectory(globalWorkflowsDir);
       const globalWorkflowContent = "# Global Version\nThis is the global version";
       await createFile(vscode.Uri.joinPath(globalWorkflowsDir, "duplicate-workflow.md"), globalWorkflowContent);
 
+      // Create workspace workflow with the same name
+      await createDirectory(workflowsDir);
+      const workspaceWorkflowContent = "# Workspace Version\nThis is the workspace version";
+      await createFile(vscode.Uri.joinPath(workflowsDir, "duplicate-workflow.md"), workspaceWorkflowContent);
+
       const workflows = await env.collectWorkflows(testWorkspaceUri.fsPath, true);
 
-      // Both workflows should be collected (they have the same id but different paths)
-      assert.strictEqual(workflows.length, 2, "Should collect both workflows even with duplicate names");
+      // Only one workflow should be collected, with the workspace version taking precedence.
+      assert.strictEqual(workflows.length, 1, "Should collect only one workflow for duplicate names");
 
-      const workflowsWithSameId = workflows.filter(w => w.id === "duplicate-workflow");
-      assert.strictEqual(workflowsWithSameId.length, 2, "Should have 2 workflows with the same id");
+      const workflow = workflows[0];
+      assert.strictEqual(workflow.id, "duplicate-workflow", "Workflow ID should be correct");
+      
+      // Check that the content is from the workspace workflow
+      assert.strictEqual(workflow.content, workspaceWorkflowContent, "Should use the content from the workspace workflow");
 
-      // One should be workspace, one should be global (distinguished by path)
-      const hasWorkspacePath = workflowsWithSameId.some(w => !w.path.startsWith("~"));
-      const hasGlobalPath = workflowsWithSameId.some(w => w.path.startsWith("~"));
-
-      assert.ok(hasWorkspacePath, "Should have at least one workflow with workspace path");
-      assert.ok(hasGlobalPath, "Should have at least one workflow with global path");
+      // Check that the path is the workspace path, not the global one
+      assert.ok(!workflow.path.startsWith("~"), "Path should be the workspace path, not global");
     });
 
     it("should default to includeGlobalWorkflow=true when parameter is not provided", async () => {
