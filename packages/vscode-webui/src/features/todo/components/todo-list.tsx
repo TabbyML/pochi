@@ -61,7 +61,10 @@ interface TodoListRootProps {
 }
 
 function TodoListRoot({ todos, className, children }: TodoListRootProps) {
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const pendingTodosNum = todos.filter(
+    (todo) => todo.status === "pending",
+  ).length;
+  const [isCollapsed, setIsCollapsed] = useState(pendingTodosNum <= 0);
 
   const contextValue: TodoListContextValue = {
     todos,
