@@ -111,7 +111,9 @@ export const CheckpointUI: React.FC<{
       return t("checkpointUI.opening");
     }
     if (showActionSuccessIcon && currentAction === "compare") {
-      return actionResult === true ? t("checkpointUI.success") : t("checkpointUI.noChangesDetected");
+      return actionResult === true
+        ? t("checkpointUI.success")
+        : t("checkpointUI.noChangesDetected");
     }
     return t("checkpointUI.compare");
   };

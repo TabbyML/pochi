@@ -57,7 +57,11 @@ const CopyCommandButton: FC<{ command: string }> = ({ command }) => {
         </Button>
       </TooltipTrigger>
       <TooltipContent>
-        <span>{isCopied ? t("commandExecutionPanel.copied") : t("commandExecutionPanel.copyCommand")}</span>
+        <span>
+          {isCopied
+            ? t("commandExecutionPanel.copied")
+            : t("commandExecutionPanel.copyCommand")}
+        </span>
       </TooltipContent>
     </Tooltip>
   );
@@ -68,7 +72,7 @@ const ToggleExpandButton: FC<{ expanded: boolean; onToggle: () => void }> = ({
   onToggle,
 }) => {
   const { t } = useTranslation();
-  
+
   return (
     <Tooltip>
       <TooltipTrigger asChild>
@@ -79,11 +83,19 @@ const ToggleExpandButton: FC<{ expanded: boolean; onToggle: () => void }> = ({
           onClick={onToggle}
         >
           {expanded ? <ChevronsDownUpIcon /> : <ChevronsUpDownIcon />}
-          <span className="sr-only">{expanded ? t("commandExecutionPanel.collapse") : t("commandExecutionPanel.expand")}</span>
+          <span className="sr-only">
+            {expanded
+              ? t("commandExecutionPanel.collapse")
+              : t("commandExecutionPanel.expand")}
+          </span>
         </Button>
       </TooltipTrigger>
       <TooltipContent>
-        <p className="m-0">{expanded ? t("commandExecutionPanel.collapse") : t("commandExecutionPanel.expand")}</p>
+        <p className="m-0">
+          {expanded
+            ? t("commandExecutionPanel.collapse")
+            : t("commandExecutionPanel.expand")}
+        </p>
       </TooltipContent>
     </Tooltip>
   );
@@ -95,7 +107,7 @@ const BackgroundJobIdButton: FC<{
   onClick: () => void;
 }> = ({ displayId, isActive, onClick }) => {
   const { t } = useTranslation();
-  
+
   return (
     <Tooltip>
       <TooltipTrigger asChild>

@@ -19,7 +19,9 @@ export const WelcomeScreen = ({ user }: Props) => {
           {/* Title and Description */}
           <div className="space-y-3 sm:space-y-4">
             <div className="flex items-center justify-center gap-2">
-              <h1 className="font-bold text-3xl sm:text-4xl">{t("welcomeScreen.title")}</h1>
+              <h1 className="font-bold text-3xl sm:text-4xl">
+                {t("welcomeScreen.title")}
+              </h1>
             </div>
             <p className="mx-auto max-w-lg text-base text-muted-foreground leading-relaxed sm:text-lg">
               {t("welcomeScreen.description")}

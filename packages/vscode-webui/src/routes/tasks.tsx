@@ -248,7 +248,7 @@ function Tasks() {
 function EmptyTaskPlaceholder({ date }: { date: Date }) {
   const { navigate } = useRouter();
   const { t } = useTranslation();
-  
+
   return (
     <div className="flex h-full select-none flex-col items-center justify-center p-5 text-center text-gray-500 dark:text-gray-300">
       <h2 className="mb-2 flex items-center gap-3 font-semibold text-2xl text-gray-700 dark:text-gray-100">
@@ -280,20 +280,41 @@ const TaskStatusIcon = ({ status }: { status: string }) => {
   const iconProps = { className: "size-5 text-muted-foreground" };
   switch (status) {
     case "streaming":
-      return <Zap {...iconProps} aria-label={t("tasksPage.status.streaming")} />;
+      return (
+        <Zap {...iconProps} aria-label={t("tasksPage.status.streaming")} />
+      );
     case "pending-tool":
-      return <Wrench {...iconProps} aria-label={t("tasksPage.status.pendingTool")} />;
+      return (
+        <Wrench {...iconProps} aria-label={t("tasksPage.status.pendingTool")} />
+      );
     case "pending-input":
-      return <Edit3 {...iconProps} aria-label={t("tasksPage.status.pendingInput")} />;
+      return (
+        <Edit3 {...iconProps} aria-label={t("tasksPage.status.pendingInput")} />
+      );
     case "completed":
-      return <CheckCircle2 {...iconProps} aria-label={t("tasksPage.status.completed")} />;
+      return (
+        <CheckCircle2
+          {...iconProps}
+          aria-label={t("tasksPage.status.completed")}
+        />
+      );
     case "failed":
-      return <MdOutlineErrorOutline {...iconProps} aria-label={t("tasksPage.status.failed")} />;
+      return (
+        <MdOutlineErrorOutline
+          {...iconProps}
+          aria-label={t("tasksPage.status.failed")}
+        />
+      );
     case "pending-model":
-      return <Brain {...iconProps} aria-label={t("tasksPage.status.pendingModel")} />;
+      return (
+        <Brain {...iconProps} aria-label={t("tasksPage.status.pendingModel")} />
+      );
     default:
       return (
-        <HelpCircle {...iconProps} aria-label={t("tasksPage.status.unknown", { status })} />
+        <HelpCircle
+          {...iconProps}
+          aria-label={t("tasksPage.status.unknown", { status })}
+        />
       );
   }
 };
@@ -424,7 +445,9 @@ function DatePicker({
             id="date"
             className="w-24 justify-between font-normal"
           >
-            {date ? date.toLocaleDateString() : t("tasksPage.datePicker.selectDate")}
+            {date
+              ? date.toLocaleDateString()
+              : t("tasksPage.datePicker.selectDate")}
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-auto overflow-hidden p-0" align="start">
