@@ -208,5 +208,9 @@
   "reasoning": {
     "thinking": "考え中 ...",
     "thoughtFor": "{{count}}文字について考えました"
+  },
+  "attachmentPreview": {
+    "removeAttachment": "添付ファイルを削除",
+    "uploading": "アップロード中..."
   }
 }

@@ -210,5 +210,9 @@
   "reasoning": {
     "thinking": "Thinking ...",
     "thoughtFor": "Thought for {{count}} characters"
+  },
+  "attachmentPreview": {
+    "removeAttachment": "Remove attachment",
+    "uploading": "Uploading..."
   }
 }

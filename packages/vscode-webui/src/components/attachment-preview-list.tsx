@@ -7,6 +7,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Loader2, Play, Video, X } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { CopyableImage } from "./ui/copyable-image";
 
 interface AttachmentPreviewListProps {
@@ -20,6 +21,7 @@ export function AttachmentPreviewList({
   onRemove,
   isUploading,
 }: AttachmentPreviewListProps) {
+  const { t } = useTranslation();
   const [previews, setPreviews] = useState<string[]>([]);
 
   // Generate previews for attachments when files change
@@ -166,7 +168,7 @@ export function AttachmentPreviewList({
                   "-top-2 -right-2 absolute flex h-5 w-5 items-center justify-center rounded-full p-0.5 text-xs",
                   "bg-secondary text-secondary-foreground opacity-70 transition-opacity hover:opacity-100",
                 )}
-                aria-label="Remove attachment"
+                aria-label={t("attachmentPreview.removeAttachment")}
               >
                 <X className="size-3.5" />
               </button>
@@ -195,7 +197,7 @@ export function AttachmentPreviewList({
                     {isUploading && (
                       <div className="flex items-center gap-1 text-xs">
                         <Loader2 className="h-3 w-3 animate-spin" />
-                        <span>Uploading...</span>
+                        <span>{t("attachmentPreview.uploading")}</span>
                       </div>
                     )}
                   </div>

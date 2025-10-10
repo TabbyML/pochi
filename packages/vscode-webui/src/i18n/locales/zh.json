@@ -207,5 +207,9 @@
   "reasoning": {
     "thinking": "思考中 ...",
     "thoughtFor": "思考了 {{count}} 个字符"
+  },
+  "attachmentPreview": {
+    "removeAttachment": "移除附件",
+    "uploading": "上传中..."
   }
 }
