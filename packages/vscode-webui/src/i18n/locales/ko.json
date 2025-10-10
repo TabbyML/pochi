@@ -248,6 +248,9 @@
     "showDiagram": "다이어그램 보기",
     "copy": "복사"
   },
+  "messageList": {
+    "compactedConversationTooltip": "토큰 사용량을 줄이기 위해 이 지점부터 대화가 압축되었습니다"
+  },
   "commandExecutionPanel": {
     "copied": "복사됨!",
     "copyCommand": "명령 복사",

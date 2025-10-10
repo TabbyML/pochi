@@ -247,6 +247,9 @@
     "showDiagram": "显示图表",
     "copy": "复制"
   },
+  "messageList": {
+    "compactedConversationTooltip": "从此处开始的对话已被压缩以减少令牌使用量"
+  },
   "commandExecutionPanel": {
     "copied": "已复制！",
     "copyCommand": "复制命令",

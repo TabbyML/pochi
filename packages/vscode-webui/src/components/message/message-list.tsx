@@ -1,5 +1,6 @@
 import { Loader2, SquareChartGantt, UserIcon } from "lucide-react";
 import type React from "react";
+import { useTranslation } from "react-i18next";
 
 import { ReasoningPartUI } from "@/components/reasoning-part.tsx";
 import { ToolInvocationPart } from "@/components/tool-invocation";
@@ -303,6 +304,7 @@ function CompactPartToolTip({
   message,
   className,
 }: { message: Message; className?: string }) {
+  const { t } = useTranslation();
   const compactPart = findCompactPart(message);
   const parsed = compactPart && prompts.parseInlineCompact(compactPart.text);
   if (!parsed) return null;
@@ -320,8 +322,7 @@ function CompactPartToolTip({
       </TooltipTrigger>
       <TooltipContent sideOffset={2} side="right">
         <p className="m-0 w-48">
-          Conversation has been compacted from this point onward to reduce token
-          usage
+          {t('messageList.compactedConversationTooltip')}
         </p>
       </TooltipContent>
     </Tooltip>

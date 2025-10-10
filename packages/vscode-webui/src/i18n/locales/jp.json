@@ -248,6 +248,9 @@
     "showDiagram": "図を表示",
     "copy": "コピー"
   },
+  "messageList": {
+    "compactedConversationTooltip": "トークン使用量を削減するため、この時点以降の会話が圧縮されています"
+  },
   "commandExecutionPanel": {
     "copied": "コピーしました！",
     "copyCommand": "コマンドをコピー",

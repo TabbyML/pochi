@@ -250,6 +250,9 @@
     "showDiagram": "Show diagram",
     "copy": "Copy"
   },
+  "messageList": {
+    "compactedConversationTooltip": "Conversation has been compacted from this point onward to reduce token usage"
+  },
   "commandExecutionPanel": {
     "copied": "Copied!",
     "copyCommand": "Copy command",
