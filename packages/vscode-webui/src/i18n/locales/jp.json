@@ -229,5 +229,8 @@
   },
   "fileIcon": {
     "fileAriaLabel": "ファイル：{{path}}"
+  },
+  "statusIcon": {
+    "copyToolResult": "ツール結果をコピー"
   }
 }

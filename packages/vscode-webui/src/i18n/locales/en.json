@@ -231,5 +231,8 @@
   },
   "fileIcon": {
     "fileAriaLabel": "File: {{path}}"
+  },
+  "statusIcon": {
+    "copyToolResult": "Copy Tool Result"
   }
 }

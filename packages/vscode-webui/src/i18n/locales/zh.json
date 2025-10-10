@@ -228,5 +228,8 @@
   },
   "fileIcon": {
     "fileAriaLabel": "文件：{{path}}"
+  },
+  "statusIcon": {
+    "copyToolResult": "复制工具结果"
   }
 }
