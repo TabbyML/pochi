@@ -176,5 +176,9 @@
     "withRegexFilter": "使用正则表达式过滤器",
     "backgroundExecute": "我将在后台执行以下命令",
     "updatingToDos": "更新待办事项中"
+  },
+  "reasoning": {
+    "thinking": "思考中 ...",
+    "thoughtFor": "思考了 {{count}} 个字符"
   }
 }

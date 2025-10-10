@@ -5,6 +5,7 @@ import { useDebounceState } from "@/lib/hooks/use-debounce-state";
 import { cn, tw } from "@/lib/utils";
 import type { ReasoningUIPart } from "ai";
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ExpandableToolContainer } from "./tool-invocation/tool-container";
 
 interface ReasoningPartUIProps {
@@ -18,8 +19,9 @@ export function ReasoningPartUI({
   part,
   isLoading,
 }: ReasoningPartUIProps) {
+  const { t } = useTranslation();
   const iconClass = tw`text-blue-700 dark:text-blue-300`;
-  const [headline, setHeadline] = useDebounceState("Thinking ...", 1000);
+  const [headline, setHeadline] = useDebounceState(t("reasoning.thinking"), 1000);
   const [isHeadlineChanging, setIsHeadlineChanging] = useState(false);
   const [displayHeadline, setDisplayHeadline] = useState(headline);
 
@@ -28,7 +30,7 @@ export function ReasoningPartUI({
     [part.text],
   );
 
-  const finishHeadline = `Thought for ${part.text.length} characters`;
+  const finishHeadline = t("reasoning.thoughtFor", { count: part.text.length });
 
   useEffect(() => {
     if (headlineFromMarkdown) {

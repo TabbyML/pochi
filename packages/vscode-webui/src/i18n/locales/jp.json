@@ -177,5 +177,9 @@
     "withRegexFilter": "正規表現フィルター付き",
     "backgroundExecute": "以下のコマンドをバックグラウンドで実行します",
     "updatingToDos": "TODOを更新中"
+  },
+  "reasoning": {
+    "thinking": "考え中 ...",
+    "thoughtFor": "{{count}}文字について考えました"
   }
 }

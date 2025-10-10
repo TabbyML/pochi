@@ -167,17 +167,21 @@
     "executeCommand": "I will execute the following command",
     "for": "for",
     "searching": "Searching",
-    "searchingFor": "Searching for",
+    "searchingFor": "Searching for:",
     "matchCount_one": "{{count}} match",
     "matchCount_other": "{{count}} matches",
-    "matched": "matched",
+    "matched": " matched",
     "resultsTruncated": ", results truncated",
     "stopBackgroundJob": "I will stop the following background job",
     "result_one": "{{count}} result",
     "result_other": "{{count}} results",
     "readBackground": "Reading background job output",
     "withRegexFilter": "with regex filter",
-    "backgroundExecute": "I will execute the following command in background",
-    "updatingToDos": "Updating TODOs"
+    "backgroundExecute": "I will execute the following command in the background",
+    "updatingToDos": "Updating todos"
+  },
+  "reasoning": {
+    "thinking": "Thinking ...",
+    "thoughtFor": "Thought for {{count}} characters"
   }
 }

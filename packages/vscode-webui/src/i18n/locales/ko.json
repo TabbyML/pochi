@@ -177,5 +177,9 @@
     "withRegexFilter": "정규식 필터 사용",
     "backgroundExecute": "다음 명령을 백그라운드에서 실행합니다",
     "updatingToDos": "할 일 업데이트 중"
+  },
+  "reasoning": {
+    "thinking": "생각 중 ...",
+    "thoughtFor": "{{count}}자에 대해 생각했습니다"
   }
 }
