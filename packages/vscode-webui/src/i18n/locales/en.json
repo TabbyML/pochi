@@ -234,5 +234,13 @@
   },
   "statusIcon": {
     "copyToolResult": "Copy Tool Result"
+  },
+  "commandExecutionPanel": {
+    "copied": "Copied!",
+    "copyCommand": "Copy command",
+    "collapse": "Collapse",
+    "expand": "Expand",
+    "openJob": "Open job {{displayId}}",
+    "stop": "STOP"
   }
 }

@@ -232,5 +232,13 @@
   },
   "statusIcon": {
     "copyToolResult": "도구 결과 복사"
+  },
+  "commandExecutionPanel": {
+    "copied": "복사됨!",
+    "copyCommand": "명령 복사",
+    "collapse": "접기",
+    "expand": "펼치기",
+    "openJob": "작업 {{displayId}} 열기",
+    "stop": "중지"
   }
 }

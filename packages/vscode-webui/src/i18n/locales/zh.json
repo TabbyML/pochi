@@ -231,5 +231,13 @@
   },
   "statusIcon": {
     "copyToolResult": "复制工具结果"
+  },
+  "commandExecutionPanel": {
+    "copied": "已复制！",
+    "copyCommand": "复制命令",
+    "collapse": "收起",
+    "expand": "展开",
+    "openJob": "打开任务 {{displayId}}",
+    "stop": "停止"
   }
 }

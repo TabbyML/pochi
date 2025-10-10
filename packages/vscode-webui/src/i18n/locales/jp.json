@@ -232,5 +232,13 @@
   },
   "statusIcon": {
     "copyToolResult": "ツール結果をコピー"
+  },
+  "commandExecutionPanel": {
+    "copied": "コピーしました！",
+    "copyCommand": "コマンドをコピー",
+    "collapse": "折りたたむ",
+    "expand": "展開",
+    "openJob": "ジョブ {{displayId}} を開く",
+    "stop": "停止"
   }
 }

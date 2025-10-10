@@ -25,10 +25,12 @@ import {
   useRef,
   useState,
 } from "react";
+import { useTranslation } from "react-i18next";
 import { ScrollArea } from "../ui/scroll-area";
 import { XTerm } from "./xterm";
 
 const CopyCommandButton: FC<{ command: string }> = ({ command }) => {
+  const { t } = useTranslation();
   const { isCopied, copyToClipboard } = useCopyToClipboard({
     timeout: 2000,
   });
@@ -55,7 +57,7 @@ const CopyCommandButton: FC<{ command: string }> = ({ command }) => {
         </Button>
       </TooltipTrigger>
       <TooltipContent>
-        <span>{isCopied ? "Copied!" : "Copy command"}</span>
+        <span>{isCopied ? t("commandExecutionPanel.copied") : t("commandExecutionPanel.copyCommand")}</span>
       </TooltipContent>
     </Tooltip>
   );
@@ -65,6 +67,8 @@ const ToggleExpandButton: FC<{ expanded: boolean; onToggle: () => void }> = ({
   expanded,
   onToggle,
 }) => {
+  const { t } = useTranslation();
+  
   return (
     <Tooltip>
       <TooltipTrigger asChild>
@@ -75,11 +79,11 @@ const ToggleExpandButton: FC<{ expanded: boolean; onToggle: () => void }> = ({
           onClick={onToggle}
         >
           {expanded ? <ChevronsDownUpIcon /> : <ChevronsUpDownIcon />}
-          <span className="sr-only">{expanded ? "Collapse" : "Expand"}</span>
+          <span className="sr-only">{expanded ? t("commandExecutionPanel.collapse") : t("commandExecutionPanel.expand")}</span>
         </Button>
       </TooltipTrigger>
       <TooltipContent>
-        <p className="m-0">{expanded ? "Collapse" : "Expand"}</p>
+        <p className="m-0">{expanded ? t("commandExecutionPanel.collapse") : t("commandExecutionPanel.expand")}</p>
       </TooltipContent>
     </Tooltip>
   );
@@ -90,6 +94,8 @@ const BackgroundJobIdButton: FC<{
   isActive?: boolean;
   onClick: () => void;
 }> = ({ displayId, isActive, onClick }) => {
+  const { t } = useTranslation();
+  
   return (
     <Tooltip>
       <TooltipTrigger asChild>
@@ -105,7 +111,7 @@ const BackgroundJobIdButton: FC<{
         </Button>
       </TooltipTrigger>
       <TooltipContent>
-        <span>Open job {displayId}</span>
+        <span>{t("commandExecutionPanel.openJob", { displayId })}</span>
       </TooltipContent>
     </Tooltip>
   );
@@ -232,6 +238,7 @@ export const CommandExecutionPanel: FC<ExecutionPanelProps> = ({
   isExecuting,
   completed,
 }) => {
+  const { t } = useTranslation();
   const [expanded, setExpanded, setExpandedImmediately] =
     useExpanded(completed);
   const [isStopping, setIsStopping] = useState<boolean>(false);
@@ -268,7 +275,7 @@ export const CommandExecutionPanel: FC<ExecutionPanelProps> = ({
         <>
           {false && showButton && (
             <Button size="xs" variant="ghost" onClick={handleStop}>
-              STOP
+              {t("commandExecutionPanel.stop")}
             </Button>
           )}
           {output && (
