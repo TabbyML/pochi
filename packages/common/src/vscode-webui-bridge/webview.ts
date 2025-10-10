@@ -94,7 +94,7 @@ export interface VSCodeHostApi {
    * List all workflows from .pochirules/workflows directory
    * Returns an array of objects containing the name and content of each workflow.
    */
-  listWorkflowsInWorkspace(): Promise<
+  listWorkflows(): Promise<
     {
       id: string;
       path: string;

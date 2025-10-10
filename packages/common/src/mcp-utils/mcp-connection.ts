@@ -78,7 +78,7 @@ type FsmState = {
 };
 
 const AbortedError = "AbortedError" as const;
-const AutoReconnectDelay = 20_000; // 20 seconds
+const AutoReconnectDelay = 1_000; // 10 seconds
 const AutoReconnectMaxAttempts = 20;
 
 export class McpConnection implements Disposable {

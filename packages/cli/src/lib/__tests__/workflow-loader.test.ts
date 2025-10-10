@@ -6,6 +6,7 @@ import { containsWorkflowReference, extractWorkflowNames, replaceWorkflowReferen
 
 describe("workflow-loader", () => {
   let tempDir: string;
+  let globalTempDir: string;
 
   beforeEach(async () => {
     // Create a temporary directory for testing
@@ -14,11 +15,19 @@ describe("workflow-loader", () => {
     // Create .pochi/workflows directory structure
     const workflowsDir = path.join(tempDir, ".pochi", "workflows");
     await fs.mkdir(workflowsDir, { recursive: true });
+
+    // Create a temporary global directory for testing
+    globalTempDir = await fs.mkdtemp(path.join(os.tmpdir(), "pochi-global-test-"));
+    
+    // Create global .pochi/workflows directory structure
+    const globalWorkflowsDir = path.join(globalTempDir, ".pochi", "workflows");
+    await fs.mkdir(globalWorkflowsDir, { recursive: true });
   });
 
   afterEach(async () => {
-    // Clean up the temporary directory
+    // Clean up the temporary directories
     await fs.rm(tempDir, { recursive: true, force: true });
+    await fs.rm(globalTempDir, { recursive: true, force: true });
   });
 
   describe("containsWorkflowReference", () => {

@@ -8,8 +8,9 @@ import {
   parseWorkflowFrontmatter,
 } from "@getpochi/common/tool-utils";
 import type { RuleFile } from "@getpochi/common/vscode-webui-bridge";
+import { uniqueBy } from "remeda";
 import * as vscode from "vscode";
-import { isFileExists, readDirectoryFiles, readFileContent } from "./fs";
+import { isFileExists, readFileContent } from "./fs";
 
 // Path constants - using arrays for consistency
 const WorkflowsDirPath = [".pochi", "workflows"];
@@ -90,9 +91,13 @@ export async function collectCustomRules(
 
 /**
  * Collects all workflow files from .pochi/workflows directory
+ * @param includeGlobalWorkflow Whether to include workflows from global directory (home directory). Defaults to true.
  * @returns Array of workflow file paths
  */
-export async function collectWorkflows(cwd: string): Promise<
+export async function collectWorkflows(
+  cwd: string,
+  includeGlobalWorkflow = true,
+): Promise<
   {
     id: string;
     path: string;
@@ -100,32 +105,81 @@ export async function collectWorkflows(cwd: string): Promise<
     frontmatter: { model?: string };
   }[]
 > {
-  const workflowsDir = getWorkflowsDirectoryUri(cwd);
+  const systemInfo = getSystemInfo(cwd);
+  const workspaceWorkflowsDir = getWorkflowsDirectoryUri(cwd);
+
+  const directories: { uri: vscode.Uri; isGlobal: boolean }[] = [
+    { uri: workspaceWorkflowsDir, isGlobal: false },
+  ];
+
+  // Add global workflow directory from home directory if enabled
+  if (includeGlobalWorkflow) {
+    const globalWorkflowsDir = vscode.Uri.joinPath(
+      vscode.Uri.file(systemInfo.homedir),
+      ...WorkflowsDirPath,
+    );
+    directories.push({ uri: globalWorkflowsDir, isGlobal: true });
+  }
+
   const isMarkdownFile = (name: string, type: vscode.FileType) =>
     type === vscode.FileType.File && name.toLowerCase().endsWith(".md");
-  const files = await readDirectoryFiles(workflowsDir, isMarkdownFile);
-  return Promise.all(
-    files.map(async (file) => {
-      const absolutePath = vscode.Uri.joinPath(
-        vscode.Uri.parse(cwd),
-        file,
-      ).fsPath;
 
-      const content = await readFileContent(absolutePath);
-      const frontmatter = await parseWorkflowFrontmatter(content);
-      // e.g., ".pochi/workflows/workflow1.md" -> "workflow1.md"
-      const fileName = path.basename(file).replace(/\.md$/i, "");
+  const allWorkflows: {
+    id: string;
+    path: string;
+    content: string;
+    frontmatter: { model?: string };
+  }[] = [];
 
-      return {
-        id: fileName,
-        path: file,
-        content: content || "",
-        frontmatter,
-      };
-    }),
-  );
+  for (const { uri: workflowsDir, isGlobal } of directories) {
+    try {
+      // Check if directory exists first
+      const stat = await vscode.workspace.fs.stat(workflowsDir);
+      if (stat.type !== vscode.FileType.Directory) {
+        continue;
+      }
+
+      const entries = await vscode.workspace.fs.readDirectory(workflowsDir);
+      const workflows = await Promise.all(
+        entries
+          .filter(([name, type]) => isMarkdownFile(name, type))
+          .map(async ([name]) => {
+            const fileUri = vscode.Uri.joinPath(workflowsDir, name);
+            const absolutePath = fileUri.fsPath;
+
+            const content = await readFileContent(absolutePath);
+            const frontmatter = await parseWorkflowFrontmatter(content);
+            // e.g., "workflow1.md" -> "workflow1"
+            const fileName = name.replace(/\.md$/i, "");
+
+            // For global workflows, replace home directory with ~
+            let file: string;
+            if (isGlobal) {
+              file = absolutePath.replace(systemInfo.homedir, "~");
+            } else {
+              file = vscode.workspace.asRelativePath(fileUri);
+            }
+
+            return {
+              id: fileName,
+              path: file,
+              content: content || "",
+              frontmatter,
+            };
+          }),
+      );
+      allWorkflows.push(...workflows);
+    } catch (error) {
+      // Directory might not exist, continue with other directories
+      logger.debug(
+        `Failed to read workflows from ${workflowsDir.fsPath}:`,
+        error,
+      );
+    }
+  }
+
+  return uniqueBy(allWorkflows, (workflow) => workflow.id);
 }
-
 /**
  * Detects all cursor rule file paths in the workspace
  * @returns Array of cursor rule file paths found in the workspace

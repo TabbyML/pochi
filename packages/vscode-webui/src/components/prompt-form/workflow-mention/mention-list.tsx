@@ -129,10 +129,12 @@ const WorkflowItemView = memo(function WorkflowItemView({
       {...rest}
       ref={ref}
     >
-      <FileIcon className="size-4 shrink-0" />
-      <span className="mr-2 ml-1 truncate whitespace-nowrap font-medium">
-        {data.id}
-      </span>
+      <div className="flex flex-1 flex-nowrap items-center gap-1 overflow-hidden">
+        <FileIcon className="size-4 shrink-0" />
+        <span className="mr-2 ml-1 truncate whitespace-nowrap font-medium">
+          {data.id}
+        </span>
+      </div>
     </div>
   );
 });

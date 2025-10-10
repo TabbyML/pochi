@@ -17,9 +17,9 @@ export async function initializeMcp(program: Command) {
   // Wait for MCP connections to establish before starting the task
   const spinner = ora("Initializing MCP connections...").start();
   let attempts = 0;
-  const maxAttempts = 3;
+  const maxAttempts = 15;
 
-  while (attempts < maxAttempts) {
+  while (true) {
     const status = mcpHub.status.value;
     const connections = Object.values(status.connections);
     const readyConnections = connections.filter(
