@@ -167,7 +167,7 @@
     "searchingFor": "搜索：",
     "matchCount_one": "{{count}}个匹配",
     "matchCount_other": "{{count}}个匹配",
-    "matched": "已匹配",
+    "matched": "个已匹配",
     "resultsTruncated": "，结果已截断",
     "stopBackgroundJob": "我将停止以下后台任务",
     "result_one": "{{count}}个结果",
