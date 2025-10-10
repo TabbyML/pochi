@@ -235,6 +235,10 @@
   "statusIcon": {
     "copyToolResult": "Copy Tool Result"
   },
+  "newProblems": {
+    "aboveProblemsDetected": "Above problems have been detected after the change",
+    "problemsDetectedTooltip": "Problems detected after change"
+  },
   "commandExecutionPanel": {
     "copied": "Copied!",
     "copyCommand": "Copy command",

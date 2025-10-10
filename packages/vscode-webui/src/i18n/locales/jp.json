@@ -233,6 +233,10 @@
   "statusIcon": {
     "copyToolResult": "ツール結果をコピー"
   },
+  "newProblems": {
+    "aboveProblemsDetected": "上記の問題が変更後に検出されました",
+    "problemsDetectedTooltip": "変更後に問題が検出されました"
+  },
   "commandExecutionPanel": {
     "copied": "コピーしました！",
     "copyCommand": "コマンドをコピー",
