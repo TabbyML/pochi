@@ -45,7 +45,7 @@ export const listFilesTool: React.FC<ToolProps<"listFiles">> = ({
       <FileBadge className="ml-1" path={path ?? ""} isDirectory={isDirectory} />
       {tool.state === "output-available" && (
         <>
-          , {t("toolInvocation.result")}{" "}
+          , {t("toolInvocation.result", { count: files.length })}
           {isTruncated && t("toolInvocation.resultsTruncated")}
         </>
       )}
