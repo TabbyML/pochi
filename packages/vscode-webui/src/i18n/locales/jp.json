@@ -266,6 +266,10 @@
     "cell": "セル",
     "addContext": "コンテキストを追加"
   },
+  "mentionList": {
+    "noResultsFound": "結果が見つかりません",
+    "typeToSearch": "入力して検索..."
+  },
   "commandExecutionPanel": {
     "copied": "コピーしました！",
     "copyCommand": "コマンドをコピー",

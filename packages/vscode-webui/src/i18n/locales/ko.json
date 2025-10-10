@@ -266,6 +266,10 @@
     "cell": "셀",
     "addContext": "컨텍스트 추가"
   },
+  "mentionList": {
+    "noResultsFound": "결과를 찾을 수 없습니다",
+    "typeToSearch": "입력하여 검색..."
+  },
   "commandExecutionPanel": {
     "copied": "복사됨!",
     "copyCommand": "명령 복사",

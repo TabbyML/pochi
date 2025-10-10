@@ -266,6 +266,10 @@
     "cell": "Cell",
     "addContext": "Add Context"
   },
+  "mentionList": {
+    "noResultsFound": "No results found",
+    "typeToSearch": "Type to search..."
+  },
   "commandExecutionPanel": {
     "copied": "Copied!",
     "copyCommand": "Copy command",

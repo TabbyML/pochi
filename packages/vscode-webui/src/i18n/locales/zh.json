@@ -265,6 +265,10 @@
     "cell": "单元格",
     "addContext": "添加上下文"
   },
+  "mentionList": {
+    "noResultsFound": "未找到结果",
+    "typeToSearch": "输入以搜索..."
+  },
   "commandExecutionPanel": {
     "copied": "已复制！",
     "copyCommand": "复制命令",
