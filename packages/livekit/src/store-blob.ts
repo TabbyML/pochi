@@ -1,9 +1,9 @@
 import type { Store } from "@livestore/livestore";
+import type { JSONValue } from "ai";
 import z from "zod";
 import { StoreBlobProtocol } from ".";
 import { events } from "./livestore";
 import { makeBlobQuery } from "./livestore/queries";
-import type { JSONValue } from "ai";
 
 export async function processContentOutput(
   store: Store,
