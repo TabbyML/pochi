@@ -143,11 +143,13 @@ export class NESDecorationManager implements vscode.Disposable {
     this.hide();
 
     // Move cursor to the end of the last change
-    const lastChange = solution.changes[solution.changes.length - 1];
-    const cursorPosition = editor.document.positionAt(
-      lastChange.rangeOffset + lastChange.text.length,
-    );
-    editor.selection = new vscode.Selection(cursorPosition, cursorPosition);
+    if (solution.changes.length > 0) {
+      const lastChange = solution.changes[solution.changes.length - 1];
+      const cursorPosition = editor.document.positionAt(
+        lastChange.rangeOffset + lastChange.text.length,
+      );
+      editor.selection = new vscode.Selection(cursorPosition, cursorPosition);
+    }
   }
 
   reject() {
