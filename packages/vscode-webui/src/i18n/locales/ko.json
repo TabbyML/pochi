@@ -237,6 +237,9 @@
     "aboveProblemsDetected": "위의 문제들이 변경 후 감지되었습니다",
     "problemsDetectedTooltip": "변경 후 문제가 감지됨"
   },
+  "userEdits": {
+    "youHaveMadeAboveEdits": "위의 편집을 수행했습니다"
+  },
   "commandExecutionPanel": {
     "copied": "복사됨!",
     "copyCommand": "명령 복사",

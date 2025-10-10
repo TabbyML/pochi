@@ -236,6 +236,9 @@
     "aboveProblemsDetected": "上述问题在更改后被检测到",
     "problemsDetectedTooltip": "更改后检测到问题"
   },
+  "userEdits": {
+    "youHaveMadeAboveEdits": "您已进行了上述编辑"
+  },
   "commandExecutionPanel": {
     "copied": "已复制！",
     "copyCommand": "复制命令",
