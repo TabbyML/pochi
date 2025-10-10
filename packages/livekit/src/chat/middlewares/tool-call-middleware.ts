@@ -2,6 +2,7 @@ import type {
   LanguageModelV2Middleware,
   LanguageModelV2Prompt,
   LanguageModelV2StreamPart,
+  LanguageModelV2ToolResultPart,
 } from "@ai-sdk/provider";
 import { generateId } from "ai";
 import { getPotentialStartIndex } from "./utils";
@@ -392,7 +393,7 @@ function processToolResult(
     } else {
       content.push({
         type: "text",
-        text: `${toolResponseTagTemplate(x.toolName)}${JSON.stringify(x.output)}${toolResponseEndTag}`,
+        text: `${toolResponseTagTemplate(x.toolName)}${convertToolResultOutput(x.output)}${toolResponseEndTag}`,
       });
     }
   }
@@ -558,4 +559,28 @@ function createStopWordStream(
       }
     },
   });
+}
+
+function convertToolResultOutput(
+  x: Exclude<LanguageModelV2ToolResultPart["output"], { type: "content" }>,
+) {
+  if (x.type === "json") {
+    return JSON.stringify(x.value);
+  }
+
+  if (x.type === "text") {
+    return x.value;
+  }
+
+  if (x.type === "error-text" || x.type === "error-json") {
+    return JSON.stringify({
+      error: x.value,
+    });
+  }
+
+  assertUnreachable(x);
+}
+
+function assertUnreachable(x: never): never {
+  throw new Error(`Unreachable case: ${x}`);
 }
