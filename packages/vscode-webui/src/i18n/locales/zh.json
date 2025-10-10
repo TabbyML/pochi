@@ -242,6 +242,11 @@
   "fileBadge": {
     "modifiedByPochi": "（由 Pochi 修改）"
   },
+  "codeBlock": {
+    "showCode": "显示代码",
+    "showDiagram": "显示图表",
+    "copy": "复制"
+  },
   "commandExecutionPanel": {
     "copied": "已复制！",
     "copyCommand": "复制命令",

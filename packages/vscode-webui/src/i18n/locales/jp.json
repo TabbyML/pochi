@@ -243,6 +243,11 @@
   "fileBadge": {
     "modifiedByPochi": "（Pochi により変更）"
   },
+  "codeBlock": {
+    "showCode": "コードを表示",
+    "showDiagram": "図を表示",
+    "copy": "コピー"
+  },
   "commandExecutionPanel": {
     "copied": "コピーしました！",
     "copyCommand": "コマンドをコピー",

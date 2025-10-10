@@ -243,6 +243,11 @@
   "fileBadge": {
     "modifiedByPochi": "(Pochi에 의해 수정됨)"
   },
+  "codeBlock": {
+    "showCode": "코드 보기",
+    "showDiagram": "다이어그램 보기",
+    "copy": "복사"
+  },
   "commandExecutionPanel": {
     "copied": "복사됨!",
     "copyCommand": "명령 복사",

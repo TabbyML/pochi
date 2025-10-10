@@ -245,6 +245,11 @@
   "fileBadge": {
     "modifiedByPochi": "(Modified by Pochi)"
   },
+  "codeBlock": {
+    "showCode": "Show code",
+    "showDiagram": "Show diagram",
+    "copy": "Copy"
+  },
   "commandExecutionPanel": {
     "copied": "Copied!",
     "copyCommand": "Copy command",
