@@ -255,6 +255,12 @@
   "markdown": {
     "codeOmitted": "... {{language}} 代码已省略 ( {{bytes}} 字节 ) ..."
   },
+  "formEditor": {
+    "placeholder": "询问任何问题 ...",
+    "autoCompleteHintPrefix": "使用 Tab 键",
+    "autoCompleteHintSuffix": "查看建议",
+    "dropFilesMessage": "将文件拖放到此处以附加到您的消息"
+  },
   "commandExecutionPanel": {
     "copied": "已复制！",
     "copyCommand": "复制命令",

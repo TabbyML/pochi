@@ -256,6 +256,12 @@
   "markdown": {
     "codeOmitted": "... {{language}} コードが省略されました ( {{bytes}} バイト ) ..."
   },
+  "formEditor": {
+    "placeholder": "何でも聞いてください ...",
+    "autoCompleteHintPrefix": "Tabキーで",
+    "autoCompleteHintSuffix": "候補を表示",
+    "dropFilesMessage": "ファイルをここにドロップしてメッセージに添付"
+  },
   "commandExecutionPanel": {
     "copied": "コピーしました！",
     "copyCommand": "コマンドをコピー",

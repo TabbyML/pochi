@@ -256,6 +256,12 @@
   "markdown": {
     "codeOmitted": "... {{language}} code omitted ( {{bytes}} bytes ) ..."
   },
+  "formEditor": {
+    "placeholder": "Ask anything ...",
+    "autoCompleteHintPrefix": "Use Tab",
+    "autoCompleteHintSuffix": "to see suggestions",
+    "dropFilesMessage": "Drop files here to attach them to your message"
+  },
   "commandExecutionPanel": {
     "copied": "Copied!",
     "copyCommand": "Copy command",

@@ -256,6 +256,12 @@
   "markdown": {
     "codeOmitted": "... {{language}} 코드 생략됨 ( {{bytes}} 바이트 ) ..."
   },
+  "formEditor": {
+    "placeholder": "무엇이든 물어보세요 ...",
+    "autoCompleteHintPrefix": "Tab 키로",
+    "autoCompleteHintSuffix": "제안 보기",
+    "dropFilesMessage": "파일을 여기에 드롭하여 메시지에 첨부"
+  },
   "commandExecutionPanel": {
     "copied": "복사됨!",
     "copyCommand": "명령 복사",
