@@ -19,6 +19,7 @@ import { customStripTagsPlugin } from "./custom-strip-tags-plugin";
 import "./markdown.css";
 import { useReplaceJobIdsInContent } from "@/features/chat";
 import type { ExtraProps, Options } from "react-markdown";
+import { useTranslation } from "react-i18next";
 
 const mathSanitizeConfig = {
   // Custom schema to allow math-related elements
@@ -148,10 +149,11 @@ function BlockCodeComponent({
   language = "",
 }: BlockCodeComponentProps) {
   const controlsConfig = useContext(ControlsContext);
+  const { t } = useTranslation();
 
   let value = String(children).replace(/\n$/, "");
   if (!shouldShowControls(controlsConfig, "code") && value.length > 512) {
-    value = `... ${language} code omitted ( ${value.length} bytes ) ...`;
+    value = t('markdown.codeOmitted', { language, bytes: value.length });
   }
   return (
     <CodeBlock

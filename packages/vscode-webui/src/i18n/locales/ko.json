@@ -249,7 +249,12 @@
     "copy": "복사"
   },
   "messageList": {
+    "defaultUserName": "사용자",
+    "defaultAssistantName": "Pochi",
     "compactedConversationTooltip": "토큰 사용량을 줄이기 위해 이 지점부터 대화가 압축되었습니다"
+  },
+  "markdown": {
+    "codeOmitted": "... {{language}} 코드 생략됨 ( {{bytes}} 바이트 ) ..."
   },
   "commandExecutionPanel": {
     "copied": "복사됨!",

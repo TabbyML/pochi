@@ -248,7 +248,12 @@
     "copy": "复制"
   },
   "messageList": {
-    "compactedConversationTooltip": "从此处开始的对话已被压缩以减少令牌使用量"
+    "defaultUserName": "用户",
+    "defaultAssistantName": "Pochi",
+    "compactedConversationTooltip": "从此处开始，对话已被压缩以减少令牌使用量"
+  },
+  "markdown": {
+    "codeOmitted": "... {{language}} 代码已省略 ( {{bytes}} 字节 ) ..."
   },
   "commandExecutionPanel": {
     "copied": "已复制！",

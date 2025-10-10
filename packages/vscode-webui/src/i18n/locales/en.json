@@ -253,6 +253,9 @@
   "messageList": {
     "compactedConversationTooltip": "Conversation has been compacted from this point onward to reduce token usage"
   },
+  "markdown": {
+    "codeOmitted": "... {{language}} code omitted ( {{bytes}} bytes ) ..."
+  },
   "commandExecutionPanel": {
     "copied": "Copied!",
     "copyCommand": "Copy command",
