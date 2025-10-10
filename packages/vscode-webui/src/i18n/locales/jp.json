@@ -220,5 +220,11 @@
     "opening": "開いています...",
     "noChangesDetected": "変更が検出されませんでした",
     "compare": "比較"
+  },
+  "welcomeScreen": {
+    "title": "始めましょう",
+    "description": "Pochi が提供するモデルにアクセスし、豊富なチーム機能を活用するためにサインインするか、お好みのモデルを使用するために独自のキーをお持ちください。",
+    "bringYourOwnKey": "独自のキーを持参",
+    "signIn": "サインイン"
   }
 }
