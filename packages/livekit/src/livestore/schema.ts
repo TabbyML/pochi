@@ -51,6 +51,7 @@ const TaskError = Schema.Union(
 const Git = Schema.Struct({
   origin: Schema.optional(Schema.String),
   branch: Schema.String,
+  worktree: Schema.String,
 });
 
 export const tables = {
@@ -75,6 +76,7 @@ export const tables = {
         nullable: true,
         schema: Git,
       }),
+      gitRoot: State.SQLite.text({ nullable: true }),
       totalTokens: State.SQLite.integer({ nullable: true }),
       error: State.SQLite.json({ schema: TaskError, nullable: true }),
       createdAt: State.SQLite.integer({ schema: Schema.DateFromNumber }),
@@ -93,6 +95,10 @@ export const tables = {
       {
         name: "idx-cwd",
         columns: ["cwd"],
+      },
+      {
+        name: "idx-gitRoot",
+        columns: ["gitRoot"],
       },
     ],
   }),
@@ -137,6 +143,8 @@ export const events = {
           parts: Schema.Array(DBUIPart),
         }),
       ),
+      git: Schema.optional(Git),
+      gitRoot: Schema.optional(Schema.String),
     }),
   }),
   chatStreamStarted: Events.synced({
@@ -149,6 +157,7 @@ export const events = {
       // use updateTitle instead
       title: Schema.optional(Schema.String),
       git: Schema.optional(Git),
+      gitRoot: Schema.optional(Schema.String),
       updatedAt: Schema.Date,
     }),
   }),
@@ -208,7 +217,15 @@ export const events = {
 
 // Materializers are used to map events to state (https://docs.livestore.dev/reference/state/materializers)
 const materializers = State.SQLite.materializers(events, {
-  "v1.TaskInited": ({ id, parentId, createdAt, cwd, initMessage }) => [
+  "v1.TaskInited": ({
+    id,
+    parentId,
+    createdAt,
+    cwd,
+    initMessage,
+    git,
+    gitRoot,
+  }) => [
     tables.tasks.insert({
       id,
       status: initMessage ? "pending-model" : "pending-input",
@@ -216,6 +233,8 @@ const materializers = State.SQLite.materializers(events, {
       createdAt,
       cwd,
       updatedAt: createdAt,
+      git,
+      gitRoot,
     }),
     ...(initMessage
       ? [
@@ -231,12 +250,21 @@ const materializers = State.SQLite.materializers(events, {
         ]
       : []),
   ],
-  "v1.ChatStreamStarted": ({ id, data, todos, git, title, updatedAt }) => [
+  "v1.ChatStreamStarted": ({
+    id,
+    data,
+    todos,
+    git,
+    gitRoot,
+    title,
+    updatedAt,
+  }) => [
     tables.tasks
       .update({
         status: "pending-model",
         todos,
         git,
+        gitRoot,
         title,
         updatedAt,
       })

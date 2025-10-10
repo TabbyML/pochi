@@ -1,4 +1,5 @@
 import { AuthEvents } from "@/lib/auth-events";
+import { WorkspaceScope } from "@/lib/workspace-scoped";
 import { getLogger } from "@getpochi/common";
 import type {
   ResourceURI,
@@ -33,7 +34,6 @@ export class PochiWebviewPanel
 {
   private static readonly viewType = "pochiPanel";
   private static panels = new Map<string, PochiWebviewPanel>();
-  private static panelCounter = 0;
 
   private readonly panel: vscode.WebviewPanel;
 
@@ -78,14 +78,28 @@ export class PochiWebviewPanel
   public static createOrShow(
     workspaceContainer: DependencyContainer,
     extensionUri: vscode.Uri,
+    uid?: string,
   ): void {
-    // Generate unique session ID
-    const sessionId = `editor-${Date.now()}-${++PochiWebviewPanel.panelCounter}`;
+    const cwd = workspaceContainer.resolve(WorkspaceScope).cwd;
+    const sessionId = `editor-${cwd}`;
+
+    if (PochiWebviewPanel.panels.has(sessionId)) {
+      const existingPanel = PochiWebviewPanel.panels.get(sessionId);
+      existingPanel?.panel.reveal();
+      logger.info(`Revealed existing Pochi panel: ${sessionId}`);
+      if (uid) {
+        logger.info(`Opening task ${uid} in existing panel`);
+        existingPanel?.webviewHost?.openTask({ uid });
+      }
+      return;
+    }
+
+    const worktreeName = cwd?.split(/[\/\\]/).pop();
 
     // Create a new panel
     const panel = vscode.window.createWebviewPanel(
       PochiWebviewPanel.viewType,
-      "Pochi",
+      `Pochi${worktreeName ? ` - ${worktreeName}` : ""}`,
       vscode.ViewColumn.Active,
       {
         enableScripts: true,
@@ -116,6 +130,13 @@ export class PochiWebviewPanel
     );
 
     PochiWebviewPanel.panels.set(sessionId, pochiPanel);
+
+    if (uid) {
+      pochiPanel.onWebviewReady(() => {
+        logger.info(`Webview ready, opening task ${uid} in new panel`);
+        pochiPanel.webviewHost?.openTask({ uid });
+      });
+    }
 
     logger.info(`Created new Pochi panel: ${sessionId}`);
   }
