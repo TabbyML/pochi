@@ -133,7 +133,9 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
     }
 
     if (llm.useToolCallMiddleware) {
-      middlewares.push(createToolCallMiddleware());
+      middlewares.push(
+        createToolCallMiddleware(llm.type !== "google-vertex-tuning"),
+      );
     }
 
     const mcpTools =
