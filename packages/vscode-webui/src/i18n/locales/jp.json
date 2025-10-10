@@ -270,6 +270,10 @@
     "noResultsFound": "結果が見つかりません",
     "typeToSearch": "入力して検索..."
   },
+  "workflowMentionList": {
+    "noWorkflowsFound": "ワークフローが見つかりません",
+    "typeToSearchWorkflows": "入力してワークフローを検索..."
+  },
   "commandExecutionPanel": {
     "copied": "コピーしました！",
     "copyCommand": "コマンドをコピー",

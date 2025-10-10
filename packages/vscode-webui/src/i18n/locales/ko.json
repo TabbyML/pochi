@@ -270,6 +270,10 @@
     "noResultsFound": "결과를 찾을 수 없습니다",
     "typeToSearch": "입력하여 검색..."
   },
+  "workflowMentionList": {
+    "noWorkflowsFound": "워크플로를 찾을 수 없습니다",
+    "typeToSearchWorkflows": "입력하여 워크플로 검색..."
+  },
   "commandExecutionPanel": {
     "copied": "복사됨!",
     "copyCommand": "명령 복사",

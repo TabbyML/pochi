@@ -9,6 +9,7 @@ import {
   useImperativeHandle,
   useState,
 } from "react";
+import { useTranslation } from "react-i18next";
 import type { MentionListActions } from "../shared";
 import {
   useMentionItems,
@@ -45,6 +46,7 @@ export const WorkflowMentionList = forwardRef<
     { items: initialItems, command, query, fetchItems, onSelectWorkflow },
     ref,
   ) => {
+    const { t } = useTranslation();
     const [selectedIndex, setSelectedIndex] = useState(0);
     const items = useMentionItems(initialItems, query, fetchItems);
 
@@ -83,7 +85,7 @@ export const WorkflowMentionList = forwardRef<
         <ScrollArea viewportClassname="max-h-[300px] px-2">
           {items.length === 0 ? (
             <div className="px-2 py-3 text-muted-foreground text-xs">
-              {query ? "No workflows found" : "Type to search workflows..."}
+              {query ? t('workflowMentionList.noWorkflowsFound') : t('workflowMentionList.typeToSearchWorkflows')}
             </div>
           ) : (
             <div className="grid gap-0.5">

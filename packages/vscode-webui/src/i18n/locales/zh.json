@@ -269,6 +269,10 @@
     "noResultsFound": "未找到结果",
     "typeToSearch": "输入以搜索..."
   },
+  "workflowMentionList": {
+    "noWorkflowsFound": "未找到工作流",
+    "typeToSearchWorkflows": "输入以搜索工作流..."
+  },
   "commandExecutionPanel": {
     "copied": "已复制！",
     "copyCommand": "复制命令",
