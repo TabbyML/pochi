@@ -212,5 +212,13 @@
   "attachmentPreview": {
     "removeAttachment": "添付ファイルを削除",
     "uploading": "アップロード中..."
+  },
+  "checkpointUI": {
+    "restoring": "復元中...",
+    "success": "成功",
+    "restore": "復元",
+    "opening": "開いています...",
+    "noChangesDetected": "変更が検出されませんでした",
+    "compare": "比較"
   }
 }

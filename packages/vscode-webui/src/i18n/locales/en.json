@@ -214,5 +214,13 @@
   "attachmentPreview": {
     "removeAttachment": "Remove attachment",
     "uploading": "Uploading..."
+  },
+  "checkpointUI": {
+    "restoring": "Restoring...",
+    "success": "Success",
+    "restore": "Restore",
+    "opening": "Opening...",
+    "noChangesDetected": "No changes detected",
+    "compare": "Compare"
   }
 }

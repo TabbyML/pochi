@@ -211,5 +211,13 @@
   "attachmentPreview": {
     "removeAttachment": "移除附件",
     "uploading": "上传中..."
+  },
+  "checkpointUI": {
+    "restoring": "恢复中...",
+    "success": "成功",
+    "restore": "恢复",
+    "opening": "打开中...",
+    "noChangesDetected": "未检测到更改",
+    "compare": "比较"
   }
 }
