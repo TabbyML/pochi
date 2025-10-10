@@ -1,18 +1,48 @@
-import { useEffect, useState } from "react";
+import {
+  type SetStateAction,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
-export function useDebounceState<T>(initialValue: T, delay: number) {
-  const [value, setValue] = useState<T>(initialValue);
-  const [debouncedValue, setDebouncedValue] = useState<T>(initialValue);
+interface UseDebouncedStateOptions {
+  leading?: boolean;
+}
 
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedValue(value);
-    }, delay);
+export function useDebounceState<T>(
+  defaultValue: T,
+  wait: number,
+  options: UseDebouncedStateOptions = { leading: false },
+) {
+  const [value, setValue] = useState(defaultValue);
+  const timeoutRef = useRef<number | null>(null);
+  const leadingRef = useRef(true);
 
-    return () => {
-      clearTimeout(handler);
-    };
-  }, [value, delay]);
+  const clearTimeout = useCallback(() => {
+    if (timeoutRef.current) {
+      window.clearTimeout(timeoutRef.current);
+    }
+  }, []);
 
-  return [debouncedValue, setValue, setDebouncedValue] as const;
+  useEffect(() => clearTimeout, [clearTimeout]);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies(wait): do not recreate debouncedSetValue on wait change
+  const debouncedSetValue = useCallback(
+    (newValue: SetStateAction<T>) => {
+      clearTimeout();
+      if (leadingRef.current && options.leading) {
+        setValue(newValue);
+      } else {
+        timeoutRef.current = window.setTimeout(() => {
+          leadingRef.current = true;
+          setValue(newValue);
+        }, wait);
+      }
+      leadingRef.current = false;
+    },
+    [options.leading, clearTimeout],
+  );
+
+  return [value, debouncedSetValue, setValue] as const;
 }

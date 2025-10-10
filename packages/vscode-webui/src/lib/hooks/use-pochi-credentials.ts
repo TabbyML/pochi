@@ -8,8 +8,8 @@ export const usePochiCredentials = () => {
   const { data, refetch } = useQuery({
     queryKey: ["pochiCredentials"],
     queryFn: fetchPochiCredentials,
-    // Every 5 minutes
-    refetchInterval: 1000 * 60 * 5,
+    // Every 1 minutes
+    refetchInterval: 1000 * 60,
   });
 
   const userStorage = useUserStorage();

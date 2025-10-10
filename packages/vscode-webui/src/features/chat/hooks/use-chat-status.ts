@@ -1,8 +1,9 @@
+import { isAutoApproveToolName, isUserInputToolName } from "@getpochi/tools";
 import { useToolCallLifeCycle } from "../lib/chat-state";
 
 interface UseChatStatusProps {
-  isReadOnly: boolean;
   isModelsLoading: boolean;
+  isModelValid: boolean;
   isLoading: boolean;
   isInputEmpty: boolean;
   isFilesEmpty: boolean;
@@ -11,16 +12,21 @@ interface UseChatStatusProps {
 }
 
 export function useChatStatus({
-  isReadOnly,
   isModelsLoading,
+  isModelValid,
   isLoading,
   isInputEmpty,
   isFilesEmpty,
   isUploadingAttachments,
   newCompactTaskPending,
 }: UseChatStatusProps) {
-  const { executingToolCalls } = useToolCallLifeCycle();
+  const { executingToolCalls, previewingToolCalls } = useToolCallLifeCycle();
   const isExecuting = executingToolCalls.length > 0;
+  const isPreviewing =
+    previewingToolCalls.filter(
+      (x) =>
+        !isUserInputToolName(x.toolName) && !isAutoApproveToolName(x.toolName),
+    ).length > 0;
 
   const isBusyCore = isModelsLoading || newCompactTaskPending;
 
@@ -28,12 +34,17 @@ export function useChatStatus({
 
   const isSubmitDisabled =
     isBusyCore ||
-    isReadOnly ||
-    (!isLoading && isInputEmpty && isFilesEmpty && !isExecuting);
+    !isModelValid ||
+    (!isLoading &&
+      isInputEmpty &&
+      isFilesEmpty &&
+      !isExecuting &&
+      !isPreviewing);
 
-  const showStopButton = isExecuting || isLoading || isUploadingAttachments;
+  const showStopButton =
+    isPreviewing || isExecuting || isLoading || isUploadingAttachments;
 
-  const showPreview = !isBusyCore && !isReadOnly;
+  const showPreview = !isBusyCore;
 
   return {
     isExecuting,

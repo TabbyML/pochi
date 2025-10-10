@@ -45,12 +45,13 @@ const OutputOptions = {
         return "refractor";
       }
 
-      if (id.includes("react-syntax-highlighter")) {
-        return "react-syntax-highlighter";
+      if (id.includes("shiki")) {
+        return "shiki";
       }
 
       if (
         id.includes("react-markdown") ||
+        id.includes("streamdown") ||
         id.includes("remark") ||
         id.includes("rehype")
       ) {

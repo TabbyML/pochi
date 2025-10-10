@@ -15,6 +15,20 @@ export const ActiveSelectionBadge: React.FC<ActiveSelectionBadgeProps> = ({
 }) => {
   const activeSelection = useActiveSelection();
 
+  // Build label for the badge
+  const getBadgeLabel = () => {
+    if (!activeSelection) return "";
+
+    const filename = activeSelection.filepath.split("/").pop();
+
+    if (activeSelection.notebookCell) {
+      const cellIndex = activeSelection.notebookCell.cellIndex + 1;
+      return `${filename} • Cell ${cellIndex}`;
+    }
+
+    return filename;
+  };
+
   return (
     <div className={cn("mt-1 select-none pl-2", className)}>
       <div
@@ -29,16 +43,18 @@ export const ActiveSelectionBadge: React.FC<ActiveSelectionBadgeProps> = ({
           <FileBadge
             className="hover:!bg-transparent !py-0 m-0 cursor-default truncate rounded-sm border border-[var(--vscode-chat-requestBorder)] pr-1"
             labelClassName="whitespace-nowrap"
-            label={activeSelection.filepath.split("/").pop()}
+            label={getBadgeLabel()}
             path={activeSelection.filepath}
             startLine={
-              // display as 1-based
-              activeSelection.content.length > 0
+              // display as 1-based, but not for notebook cells (show cell index instead)
+              activeSelection.content.length > 0 &&
+              !activeSelection.notebookCell
                 ? activeSelection.range.start.line + 1
                 : undefined
             }
             endLine={
-              activeSelection.content.length > 0
+              activeSelection.content.length > 0 &&
+              !activeSelection.notebookCell
                 ? activeSelection.range.end.line + 1
                 : undefined
             }

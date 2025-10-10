@@ -8,7 +8,6 @@
   "placeholder": {
     "title": "무엇을 도와드릴까요?",
     "subtitle": "Pochi는 AI로 구동되므로 오류가 발생할 수 있습니다.",
-    "disclaimer": "사용하기 전에 출력을 주의 깊게 검토하세요.",
     "tips": {
       "attachments": "파일 보내기",
       "context": "컨텍스트 첨부",
@@ -23,7 +22,10 @@
     "required": "Pochi를 사용하려면 폴더 또는 워크스페이스를 여십시오."
   },
   "chat": {
-    "attachmentTooltip": "채팅에 파일을 첨부합니다. 파일을 드래그 앤 드롭하거나 채팅 입력란에 붙여넣을 수도 있습니다."
+    "attachmentTooltip": "채팅에 파일을 첨부합니다. 파일을 드래그 앤 드롭하거나 채팅 입력란에 붙여넣을 수도 있습니다.",
+    "queuedMessages": "대기 중인 메시지 ({{count}})",
+    "copyImage": "이미지 복사",
+    "openImage": "이미지 열기"
   },
   "language": {
     "switcherTooltip": "Pochi에서 사용할 기본 언어를 선택하세요"
@@ -42,6 +44,7 @@
   "modelSelect": {
     "selectModel": "모델 선택",
     "manageCustomModels": "사용자 정의 모델 관리...",
+    "modelUnavailable": "모델을 사용할 수 없거나 로드 중입니다.",
     "custom": "사용자 정의",
     "super": "가강",
     "swift": "극속"
@@ -57,7 +60,8 @@
       "noCopilotModels": "Copilot 모델을 찾을 수 없습니다",
       "copilotDisabled": "Copilot 모델이 비활성화되었습니다. 활성화하려면 스위치를 켜세요.",
       "noModelsFound": "모델을 찾을 수 없습니다",
-      "customModelsTooltip": "사용자 정의 모델을 관리하세요."
+      "customModelsTooltip": "사용자 정의 모델을 관리하세요.",
+      "viewPricing": "Pochi 가격 보기"
     },
     "tools": {
       "title": "도구",
@@ -70,7 +74,6 @@
       "title": "고급 설정",
       "developerMode": "개발자 모드",
       "enablePochiModels": "Pochi 모델 활성화",
-      "enableSync": "동기화 활성화",
       "clearStorage": "저장소 지우기",
       "language": "언어",
       "languageDescription": "선호하는 언어를 선택하세요"
@@ -84,7 +87,6 @@
       "noRules": "워크스페이스에서 규칙을 찾을 수 없습니다.",
       "importRules": "규칙 가져오기",
       "foundRules": "{{count}}개의 규칙을 찾았습니다",
-      "foundRules_other": "{{count}}개의 규칙을 찾았습니다",
       "import": "가져오기",
       "importing": "가져오는 중..."
     },
@@ -104,10 +106,15 @@
       "mcp": "MCP",
       "retry": "재시도"
     },
-    "customAgent": {
+    "customAgents": {
       "title": "커스텀 에이전트",
       "loading": "커스텀 에이전트 로딩 중...",
-      "empty": "커스텀 에이전트들을 찾을 수 없습니다. 워크스페이스의 .pochi/agents/ 디렉터리에 에이전트 파일을 생성하세요"
+      "empty": "커스텀 에이전트들을 찾을 수 없습니다. 워크스페이스의 .pochi/agents/ 디렉터리에 에이전트 파일을 생성하세요",
+      "errors": {
+        "readError": "에이전트 정의를 읽지 못했습니다",
+        "parseError": "에이전트 정의를 파싱하지 못했습니다",
+        "validationError": "에이전트 정의에 필수 속성이 없습니다"
+      }
     },
     "mcp": {
       "title": "MCP",
@@ -131,7 +138,9 @@
     "shareSupportTitle": "Pochi 팀과 작업이 공유되었습니다",
     "shareSupportDetails": "이 작업과 관련 디버그 정보가 전송되었습니다. 지원이 필요하시면 Discord 서버에 참여하시고 이 ID를 참조해 주세요: {{shareId}}.",
     "joinDiscord": "Discord 참여",
-    "ok": "확인"
+    "ok": "확인",
+    "setPublic": "링크가 있는 모든 사람",
+    "setPrivate": "나만"
   },
   "toolInvocation": {
     "taskCompleted": "작업 완료",

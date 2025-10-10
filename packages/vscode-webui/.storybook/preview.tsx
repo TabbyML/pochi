@@ -1,4 +1,5 @@
 import "./fake-vscode-api";
+import "../src/i18n/config";
 
 import { withThemeByClassName } from "@storybook/addon-themes";
 import { MINIMAL_VIEWPORTS } from "@storybook/addon-viewport";

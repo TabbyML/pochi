@@ -1,4 +1,5 @@
 import { getLogger, prompts } from "@getpochi/common";
+import type { McpHub } from "@getpochi/common/mcp-utils";
 import {
   isAssistantMessageWithEmptyParts,
   isAssistantMessageWithNoToolCalls,
@@ -7,8 +8,12 @@ import {
   prepareLastMessageForRetry,
 } from "@getpochi/common/message-utils";
 import { findTodos, mergeTodos } from "@getpochi/common/message-utils";
-import type { PochiApiClient } from "@getpochi/common/pochi-api";
-import type { LLMRequestData, Message } from "@getpochi/livekit";
+
+import {
+  type LLMRequestData,
+  type Message,
+  processContentOutput,
+} from "@getpochi/livekit";
 import { LiveChatKit } from "@getpochi/livekit/node";
 import { type Todo, isUserInputToolPart } from "@getpochi/tools";
 import type { CustomAgent } from "@getpochi/tools";
@@ -18,6 +23,7 @@ import {
   isToolUIPart,
   lastAssistantMessageIsCompleteWithToolCalls,
 } from "ai";
+import type z from "zod/v4";
 import { readEnvironment } from "./lib/read-environment";
 import { StepCount } from "./lib/step-count";
 import { Chat } from "./livekit";
@@ -32,12 +38,10 @@ export interface RunnerOptions {
 
   llm: LLMRequestData;
 
-  apiClient: PochiApiClient;
-
   store: Store;
 
-  // The prompt to use for creating the task
-  prompt?: string;
+  // The parts to use for creating the task
+  parts?: Message["parts"];
 
   /**
    * The current working directory for the task runner.
@@ -79,14 +83,21 @@ export interface RunnerOptions {
    */
   customAgents?: CustomAgent[];
 
-  waitUntil?: (promise: Promise<unknown>) => void;
-
   onSubTaskCreated?: (runner: TaskRunner) => void;
+
+  /**
+   * MCP Hub instance for accessing MCP server tools
+   */
+  mcpHub?: McpHub;
+
+  outputSchema?: z.ZodAny;
 }
 
 const logger = getLogger("TaskRunner");
 
 export class TaskRunner {
+  private store: Store;
+  private cwd: string;
   private toolCallOptions: ToolCallOptions;
   private stepCount: StepCount;
 
@@ -104,15 +115,16 @@ export class TaskRunner {
   }
 
   constructor(options: RunnerOptions) {
+    this.cwd = options.cwd;
     this.toolCallOptions = {
-      cwd: options.cwd,
       rg: options.rg,
       customAgents: options.customAgents,
+      mcpHub: options.mcpHub,
       createSubTaskRunner: (taskId: string, customAgent?: CustomAgent) => {
         // create sub task
         const runner = new TaskRunner({
           ...options,
-          prompt: undefined, // should not use prompt
+          parts: undefined, // should not use parts from parent
           uid: taskId,
           isSubTask: true,
           customAgent,
@@ -123,15 +135,15 @@ export class TaskRunner {
       },
     };
     this.stepCount = new StepCount(options.maxSteps, options.maxRetries);
+    this.store = options.store;
     this.chatKit = new LiveChatKit<Chat>({
       taskId: options.uid,
-      apiClient: options.apiClient,
       store: options.store,
       chatClass: Chat,
-      waitUntil: options.waitUntil,
       isCli: true,
       isSubTask: options.isSubTask,
       customAgent: options.customAgent,
+      outputSchema: options.outputSchema,
       getters: {
         getLLM: () => options.llm,
         getEnvironment: async () => ({
@@ -139,17 +151,28 @@ export class TaskRunner {
           todos: this.todos,
         }),
         getCustomAgents: () => this.toolCallOptions.customAgents || [],
+        ...(options.mcpHub
+          ? {
+              getMcpInfo: () => {
+                const status = options.mcpHub?.status.value;
+                return {
+                  toolset: status?.toolset || {},
+                  instructions: status?.instructions || "",
+                };
+              },
+            }
+          : {}),
       },
     });
-    if (options.prompt) {
+    if (options.parts && options.parts.length > 0) {
       if (this.chatKit.inited) {
         this.chatKit.chat.appendOrReplaceMessage({
           id: crypto.randomUUID(),
           role: "user",
-          parts: [{ type: "text", text: options.prompt }],
+          parts: options.parts,
         });
       } else {
-        this.chatKit.init(options.prompt);
+        this.chatKit.init(options.cwd, options.parts);
       }
     }
 
@@ -292,7 +315,7 @@ export class TaskRunner {
         ),
       );
       this.chat.appendOrReplaceMessage(message);
-      return "next";
+      return "retry";
     }
   }
 
@@ -307,9 +330,12 @@ export class TaskRunner {
         )}`,
       );
 
-      const toolResult = await executeToolCall(toolCall, this.toolCallOptions);
+      const toolResult = await processContentOutput(
+        this.store,
+        await executeToolCall(toolCall, this.toolCallOptions, this.cwd),
+      );
 
-      this.chatKit.chat.addToolResult({
+      await this.chatKit.chat.addToolResult({
         // @ts-expect-error
         tool: toolName,
         toolCallId: toolCall.toolCallId,

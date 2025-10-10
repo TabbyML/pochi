@@ -61,6 +61,7 @@ export const MessageList: React.FC<{
 
   const { executingToolCalls } = useToolCallLifeCycle();
   const isExecuting = executingToolCalls.length > 0;
+  const assistantName = assistant?.name ?? "Pochi";
 
   return (
     <BackgroundJobContextProvider messages={renderMessages}>
@@ -96,9 +97,7 @@ export const MessageList: React.FC<{
                     </Avatar>
                   )}
                   <strong>
-                    {m.role === "user"
-                      ? user?.name
-                      : (assistant?.name ?? "Pochi")}
+                    {m.role === "user" ? user?.name : assistantName}
                   </strong>
                   {findCompactPart(m) && (
                     <CompactPartToolTip className="ml-1" message={m} />

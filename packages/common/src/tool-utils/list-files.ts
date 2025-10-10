@@ -54,6 +54,7 @@ export async function listFiles(
       recursive: !!recursive,
       abortSignal,
       useGitignore: false,
+      usePochiignore: false,
     });
 
     const isTruncated = fileResults.length > MaxListFileItems;

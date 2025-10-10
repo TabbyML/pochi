@@ -16,7 +16,19 @@ export interface VSCodeLmRequestOptions {
   abortSignal?: ThreadAbortSignalSerialization;
 }
 
+export type VSCodeLmRequestCallback = (
+  chunk:
+    | {
+        type: "text-delta";
+        text: string;
+      }
+    | {
+        type: "error";
+        error: string;
+      },
+) => Promise<void>;
+
 export type VSCodeLmRequest = (
   options: VSCodeLmRequestOptions,
-  onChunk: (chunk: string) => Promise<void>,
+  onChunk: VSCodeLmRequestCallback,
 ) => Promise<void>;

@@ -3,10 +3,12 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
+import { useStoreBlobUrl } from "@/lib/store-blob";
 import { cn } from "@/lib/utils";
 import type { FileUIPart } from "ai";
 import { FileIcon as LucideFileIcon, VideoIcon } from "lucide-react";
 import { FileIcon } from "../tool-invocation/file-icon/file-icon";
+import { CopyableImage } from "../ui/copyable-image";
 
 interface MessageAttachmentsProps {
   attachments: FileUIPart[];
@@ -18,6 +20,9 @@ export function MessageAttachments({ attachments }: MessageAttachmentsProps) {
   return (
     <div className="my-2 flex flex-wrap gap-2">
       {attachments.map((attachment, index) => {
+        const url = useStoreBlobUrl(attachment.url);
+        if (!url) return;
+
         const isImage = attachment.mediaType?.startsWith("image/");
         const isVideo = attachment.mediaType?.startsWith("video/");
         const isPdf = attachment.mediaType === "application/pdf";
@@ -34,8 +39,8 @@ export function MessageAttachments({ attachments }: MessageAttachmentsProps) {
                   {isImage ? (
                     <>
                       <div className="h-5 w-5 overflow-hidden rounded-sm border border-[var(--vscode-input-border)]">
-                        <img
-                          src={attachment.url}
+                        <CopyableImage
+                          src={url}
                           alt={attachment.filename}
                           className="h-full w-full object-cover"
                         />
@@ -83,8 +88,8 @@ export function MessageAttachments({ attachments }: MessageAttachmentsProps) {
                 </div>
                 {isImage ? (
                   <div className="overflow-hidden rounded-md border border-[var(--vscode-input-border)]">
-                    <img
-                      src={attachment.url}
+                    <CopyableImage
+                      src={url}
                       alt={attachment.filename}
                       className="h-auto max-w-[90vw] object-contain"
                       style={{
@@ -95,7 +100,7 @@ export function MessageAttachments({ attachments }: MessageAttachmentsProps) {
                   </div>
                 ) : isVideo ? (
                   <video
-                    src={attachment.url}
+                    src={url}
                     controls
                     className="h-auto max-w-[90vw] object-contain"
                     style={{

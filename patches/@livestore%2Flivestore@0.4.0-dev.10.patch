@@ -1,0 +1,13 @@
+diff --git a/dist/store/create-store.js b/dist/store/create-store.js
+index 390adad0711d3a2773bde85e093389ed2c0bd945..8f628c56c86fc006756ddd1d96aff00e48e69d34 100644
+--- a/dist/store/create-store.js
++++ b/dist/store/create-store.js
+@@ -29,7 +29,7 @@ export const createStorePromise = async ({ signal, otelOptions, ...options }) =>
+     return yield* createStore({ ...options }).pipe(Scope.extend(scope));
+ }).pipe(Effect.withSpan('createStore', {
+     attributes: { storeId: options.storeId, disableDevtools: options.disableDevtools },
+-}), provideOtel(omitUndefineds({ parentSpanContext: otelOptions?.rootSpanContext, otelTracer: otelOptions?.tracer })), Effect.tapCauseLogPretty, Effect.annotateLogs({ thread: 'window' }), Effect.provide(Logger.prettyWithThread('window')), Logger.withMinimumLogLevel(LogLevel.Debug), Effect.runPromise);
++}), provideOtel(omitUndefineds({ parentSpanContext: otelOptions?.rootSpanContext, otelTracer: otelOptions?.tracer })), Effect.tapCauseLogPretty, Effect.annotateLogs({ thread: 'window' }), Effect.provide(Logger.prettyWithThread('window')), Logger.withMinimumLogLevel(LogLevel.Error), Effect.runPromise);
+ export const createStore = ({ schema, adapter, storeId, context = {}, boot, batchUpdates, disableDevtools, onBootStatus, shutdownDeferred, params, debug, confirmUnsavedChanges = true, syncPayload, }) => Effect.gen(function* () {
+     const lifetimeScope = yield* Scope.make();
+     yield* validateStoreId(storeId);

@@ -1,12 +1,14 @@
 import * as os from "node:os";
 import * as path from "node:path";
-import { getWorkspaceFolder } from "@/lib/fs";
 import { getLogger } from "@getpochi/common";
 import { parseAgentFile } from "@getpochi/common/tool-utils";
 import type { CustomAgentFile } from "@getpochi/common/vscode-webui-bridge";
 import { signal } from "@preact/signals-core";
-import { injectable, singleton } from "tsyringe";
+import { uniqueBy } from "remeda";
+import { Lifecycle, injectable, scoped } from "tsyringe";
 import * as vscode from "vscode";
+// biome-ignore lint/style/useImportType: needed for dependency injection
+import { WorkspaceScope } from "./workspace-scoped";
 
 const logger = getLogger("CustomAgentManager");
 
@@ -20,14 +22,14 @@ async function readAgentsFromDir(dir: string): Promise<CustomAgentFile[]> {
     for (const [fileName] of files) {
       if (fileName.endsWith(".md")) {
         const filePath = path.join(dir, fileName);
-        const fileContent = await vscode.workspace.fs.readFile(
-          vscode.Uri.file(filePath),
-        );
-        const contentStr = new TextDecoder().decode(fileContent);
-        const agent = await parseAgentFile(contentStr);
-        if (agent) {
-          agents.push({ ...agent, filePath });
-        }
+        const readFileContent = async (filePath: string): Promise<string> => {
+          const fileContent = await vscode.workspace.fs.readFile(
+            vscode.Uri.file(filePath),
+          );
+          return new TextDecoder().decode(fileContent);
+        };
+        const agent = await parseAgentFile(filePath, readFileContent);
+        agents.push(agent);
       }
     }
   } catch (error) {
@@ -37,25 +39,27 @@ async function readAgentsFromDir(dir: string): Promise<CustomAgentFile[]> {
   return agents;
 }
 
+@scoped(Lifecycle.ContainerScoped)
 @injectable()
-@singleton()
 export class CustomAgentManager implements vscode.Disposable {
   private disposables: vscode.Disposable[] = [];
 
   readonly agents = signal<CustomAgentFile[]>([]);
 
-  constructor() {
+  constructor(private readonly workspaceScope: WorkspaceScope) {
     this.initWatchers();
     this.loadAgents();
   }
 
+  private get cwd() {
+    return this.workspaceScope.cwd;
+  }
+
   private initWatchers() {
     try {
-      // Watch workspace .pochi/agents directory
-      const workspaceDir = getWorkspaceFolder();
-      if (workspaceDir) {
+      if (this.cwd) {
         const projectAgentsPattern = new vscode.RelativePattern(
-          workspaceDir,
+          this.cwd,
           ".pochi/agents/**/*.md",
         );
         const projectWatcher =
@@ -93,22 +97,16 @@ export class CustomAgentManager implements vscode.Disposable {
 
   private async loadAgents() {
     try {
-      const workspaceDir = getWorkspaceFolder();
-      const projectAgentsDir = path.join(
-        workspaceDir.uri.fsPath,
-        ".pochi",
-        "agents",
-      );
-      const systemAgentsDir = path.join(os.homedir(), ".pochi", "agents");
-
       const allAgents: CustomAgentFile[] = [];
-
-      if (projectAgentsDir) {
+      if (this.cwd) {
+        const projectAgentsDir = path.join(this.cwd, ".pochi", "agents");
         allAgents.push(...(await readAgentsFromDir(projectAgentsDir)));
       }
+      const systemAgentsDir = path.join(os.homedir(), ".pochi", "agents");
+
       allAgents.push(...(await readAgentsFromDir(systemAgentsDir)));
 
-      this.agents.value = allAgents;
+      this.agents.value = uniqueBy(allAgents, (agent) => agent.name);
       logger.debug(`Loaded ${allAgents.length} custom agents`);
     } catch (error) {
       logger.error("Failed to load custom agents", error);

@@ -50,4 +50,3 @@ describe("readEnvironment", () => {
     expect(environment.workspace.activeSelection).toBeUndefined();
   });
 });
-

@@ -20,6 +20,17 @@
       "preLaunchTask": "dev:vscode"
     },
     {
+      "name": "Run VSCode Extension (Disable Other Extensions)",
+      "type": "extensionHost",
+      "request": "launch",
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}/packages/vscode",
+        "--disable-extensions"
+      ],
+      "outFiles": ["${workspaceFolder}/packages/vscode/dist/**/*.js"],
+      "preLaunchTask": "dev:vscode"
+    },
+    {
       "name": "Run VSCode Extension (Local Server)",
       "type": "extensionHost",
       "request": "launch",
@@ -39,6 +50,18 @@
       "preLaunchTask": "dev:vscode-local-sync",
       "env": {
         "POCHI_LOCAL_SYNC_SERVER": "true"
+      }
+    },
+    {
+      "name": "Run VSCode Extension (Local Sync and Local Server)",
+      "type": "extensionHost",
+      "request": "launch",
+      "args": ["--extensionDevelopmentPath=${workspaceFolder}/packages/vscode"],
+      "outFiles": ["${workspaceFolder}/packages/vscode/dist/**/*.js"],
+      "preLaunchTask": "dev:vscode-local-sync-local-server",
+      "env": {
+        "POCHI_LOCAL_SYNC_SERVER": "true",
+        "POCHI_LOCAL_SERVER": "true"
       }
     },
     {

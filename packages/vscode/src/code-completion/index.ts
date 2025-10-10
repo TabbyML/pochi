@@ -36,9 +36,8 @@ import {
 import {
   AbortError,
   TimeoutError,
-  checkPaymentRequiredError,
-  checkSubscriptionRequiredError,
   isCanceledError,
+  isPaymentRequiredError,
 } from "./utils/errors";
 import { extractNonReservedWordList, isBlank } from "./utils/strings";
 import "./utils/array"; // for mapAsync
@@ -72,8 +71,7 @@ export class CompletionProvider
 
   readonly latencyIssue = signal<LatencyIssue | undefined>(undefined);
   readonly isFetching = signal<boolean>(false);
-  readonly requireSubscription = signal<"user" | "team" | undefined>(undefined);
-  readonly requirePayment = signal<"user" | "team" | undefined>(undefined);
+  readonly requirePayment = signal<boolean>(false);
 
   constructor(
     private readonly pochiConfiguration: PochiConfiguration,
@@ -86,7 +84,11 @@ export class CompletionProvider
     private readonly editorOptionsProvider: EditorOptionsProvider,
     private readonly client: CodeCompletionClient,
   ) {
-    this.initialize();
+    if (
+      !pochiConfiguration.advancedSettings.value.nextEditSuggestion?.enabled
+    ) {
+      this.initialize();
+    }
   }
 
   private initialize() {
@@ -163,11 +165,7 @@ export class CompletionProvider
     this.isFetching.value = value;
   }
 
-  private updateRequireSubscription(value: "user" | "team" | undefined) {
-    this.requireSubscription.value = value;
-  }
-
-  private updateRequirePayment(value: "user" | "team" | undefined) {
+  private updateRequirePayment(value: boolean) {
     this.requirePayment.value = value;
   }
 
@@ -487,7 +485,7 @@ export class CompletionProvider
             cancellationToken,
             latencyStats,
           );
-          this.updateRequireSubscription(undefined);
+          this.updateRequirePayment(false);
 
           // postprocess: preCache
           const postprocessed = await preCacheProcess(
@@ -503,14 +501,8 @@ export class CompletionProvider
             solution = undefined;
           }
 
-          const requiredPayment = checkPaymentRequiredError(error);
-          if (requiredPayment) {
-            this.updateRequirePayment(requiredPayment);
-          } else {
-            const requiredSubscription = checkSubscriptionRequiredError(error);
-            if (requiredSubscription) {
-              this.updateRequireSubscription(requiredSubscription);
-            }
+          if (isPaymentRequiredError(error)) {
+            this.updateRequirePayment(true);
           }
         }
       } else {
@@ -559,7 +551,7 @@ export class CompletionProvider
               cancellationToken,
               latencyStats,
             );
-            this.updateRequireSubscription(undefined);
+            this.updateRequirePayment(false);
 
             // postprocess: preCache
             const postprocessed = await preCacheProcess(
@@ -581,14 +573,8 @@ export class CompletionProvider
             solution = undefined;
           }
 
-          const requiredPayment = checkPaymentRequiredError(error);
-          if (requiredPayment) {
-            this.updateRequirePayment(requiredPayment);
-          } else {
-            const requiredSubscription = checkSubscriptionRequiredError(error);
-            if (requiredSubscription) {
-              this.updateRequireSubscription(requiredSubscription);
-            }
+          if (isPaymentRequiredError(error)) {
+            this.updateRequirePayment(true);
           }
         }
       }

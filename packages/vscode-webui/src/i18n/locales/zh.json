@@ -8,7 +8,6 @@
   "placeholder": {
     "title": "我能帮您实现什么？",
     "subtitle": "Pochi 由 AI 驱动，可能会出现错误。",
-    "disclaimer": "使用前请仔细检查输出内容。",
     "tips": {
       "attachments": "发送文件",
       "context": "附加上下文",
@@ -23,7 +22,10 @@
     "required": "要使用 Pochi，请打开一个文件夹或工作区。"
   },
   "chat": {
-    "attachmentTooltip": "附加文件到对话。您也可以拖放文件或将其粘贴到聊天输入框中。"
+    "attachmentTooltip": "附加文件到对话。您也可以拖放文件或将其粘贴到聊天输入框中。",
+    "queuedMessages": "排队中的消息 ({{count}})",
+    "copyImage": "复制图片",
+    "openImage": "打开图片"
   },
   "language": {
     "switcherTooltip": "选择您在 Pochi 中的首选语言"
@@ -42,6 +44,7 @@
   "modelSelect": {
     "selectModel": "选择模型",
     "manageCustomModels": "管理自定义模型...",
+    "modelUnavailable": "模型不可用或仍在加载中。",
     "custom": "自定义",
     "super": "加强",
     "swift": "极速"
@@ -57,7 +60,8 @@
       "noCopilotModels": "未找到 Copilot 模型",
       "copilotDisabled": "Copilot 模型已禁用。请打开开关以启用它们。",
       "noModelsFound": "未找到模型",
-      "customModelsTooltip": "管理您的自定义模型。"
+      "customModelsTooltip": "管理您的自定义模型。",
+      "viewPricing": "查看 Pochi 价格"
     },
     "tools": {
       "title": "工具",
@@ -70,7 +74,6 @@
       "title": "高级设置",
       "developerMode": "开发者模式",
       "enablePochiModels": "启用 Pochi 模型",
-      "enableSync": "启用同步",
       "clearStorage": "清除存储",
       "language": "语言",
       "languageDescription": "选择您的首选语言"
@@ -103,10 +106,15 @@
       "mcp": "MCP",
       "retry": "重试"
     },
-    "customAgent": {
+    "customAgents": {
       "title": "自定义代理",
       "loading": "加载自定义代理中...",
-      "empty": "未找到自定义代理。在工作区的 .pochi/agents/ 目录中创建代理文件"
+      "empty": "未找到自定义代理。在工作区的 .pochi/agents/ 目录中创建代理文件",
+      "errors": {
+        "readError": "读取代理定义失败",
+        "parseError": "解析代理定义失败",
+        "validationError": "代理定义缺少必需的属性"
+      }
     },
     "mcp": {
       "title": "MCP",
@@ -129,7 +137,9 @@
     "shareSupportTitle": "任务已与 Pochi 团队分享",
     "shareSupportDetails": "此任务和相关调试信息已发送。如需支持，请加入我们的 Discord 服务器并引用此问题 ID：{{shareId}}。",
     "joinDiscord": "加入 Discord",
-    "ok": "确定"
+    "ok": "确定",
+    "setPublic": "任何有链接的人",
+    "setPrivate": "仅自己可见"
   },
   "toolInvocation": {
     "taskCompleted": "任务完成",

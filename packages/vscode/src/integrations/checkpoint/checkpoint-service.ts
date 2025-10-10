@@ -1,12 +1,13 @@
 import { mkdir } from "node:fs/promises";
 import * as path from "node:path";
-import { getWorkspaceFolder } from "@/lib/fs";
-import { getLogger } from "@getpochi/common";
+// biome-ignore lint/style/useImportType: needed for dependency injection
+import { WorkspaceScope } from "@/lib/workspace-scoped";
+import { getLogger, toErrorMessage } from "@getpochi/common";
 import type {
   SaveCheckpointOptions,
   UserEditsDiff,
 } from "@getpochi/common/vscode-webui-bridge";
-import { inject, injectable, singleton } from "tsyringe";
+import { Lifecycle, inject, injectable, scoped } from "tsyringe";
 import type * as vscode from "vscode";
 import { ShadowGitRepo } from "./shadow-git-repo";
 import type { GitDiff } from "./types";
@@ -14,22 +15,29 @@ import {
   Deferred,
   filterGitChanges,
   processGitChangesToUserEdits,
-  toErrorMessage,
 } from "./util";
 
 const logger = getLogger("CheckpointService");
 
+@scoped(Lifecycle.ContainerScoped)
 @injectable()
-@singleton()
 export class CheckpointService implements vscode.Disposable {
   private shadowGit: ShadowGitRepo | undefined;
   private readyDefer = new Deferred<void>();
   private initialized = false;
 
   constructor(
+    private readonly workspaceScope: WorkspaceScope,
     @inject("vscode.ExtensionContext")
     private readonly context: vscode.ExtensionContext,
   ) {}
+
+  private get cwd() {
+    if (!this.workspaceScope.cwd) {
+      throw new Error("No workspace folder found. Please open a workspace.");
+    }
+    return this.workspaceScope.cwd;
+  }
 
   /**
    * Lazy initializes the checkpoint service.
@@ -46,10 +54,7 @@ export class CheckpointService implements vscode.Disposable {
   private async init() {
     try {
       const gitPath = await this.getShadowGitPath();
-      this.shadowGit = await ShadowGitRepo.getOrCreate(
-        gitPath,
-        getWorkspaceFolder().uri.fsPath,
-      );
+      this.shadowGit = await ShadowGitRepo.getOrCreate(gitPath, this.cwd);
       logger.trace("Shadow Git repository initialized at", gitPath);
       this.readyDefer.resolve();
     } catch (error) {
@@ -142,7 +147,7 @@ export class CheckpointService implements vscode.Disposable {
     }
     try {
       const changes = await this.shadowGit.getDiff(from, to);
-      return filterGitChanges(changes);
+      return filterGitChanges(changes, 48 * 1024); // 48 KB
     } catch (error) {
       const errorMessage = toErrorMessage(error);
       logger.error(

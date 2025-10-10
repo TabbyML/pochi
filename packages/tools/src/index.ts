@@ -1,5 +1,12 @@
 export { McpTool } from "./mcp-tools";
-import type { ToolUIPart, UIDataTypes, UIMessagePart, UITools } from "ai";
+import {
+  type ToolUIPart,
+  type UIDataTypes,
+  type UIMessagePart,
+  type UITools,
+  getToolName,
+  isToolUIPart,
+} from "ai";
 import { applyDiff } from "./apply-diff";
 import { askFollowupQuestion } from "./ask-followup-question";
 import { attemptCompletion } from "./attempt-completion";
@@ -16,41 +23,58 @@ export type {
   ToolFunctionType,
   PreviewToolFunctionType,
 } from "./types";
+import { editNotebook } from "./edit-notebook";
 import { killBackgroundJob } from "./kill-background-job";
 import { readBackgroundJobOutput } from "./read-background-job-output";
 import { startBackgroundJob } from "./start-background-job";
 import { writeToFile } from "./write-to-file";
+
 export {
   CustomAgent,
   overrideCustomAgentTools,
+  type SubTask,
+  inputSchema as newTaskInputSchema,
 } from "./new-task";
-export type { SubTask } from "./new-task";
+export { attemptCompletionSchema } from "./attempt-completion";
+
+export function isUserInputToolName(name: string): boolean {
+  return name === "askFollowupQuestion" || name === "attemptCompletion";
+}
 
 export function isUserInputToolPart(part: UIMessagePart<UIDataTypes, UITools>) {
-  return (
-    part.type === "tool-askFollowupQuestion" ||
-    part.type === "tool-attemptCompletion"
-  );
+  if (!isToolUIPart(part)) return false;
+  return isUserInputToolName(getToolName(part));
+}
+
+export function isAutoApproveToolName(name: string): boolean {
+  return ToolsByPermission.default.some((tool) => name === tool);
 }
 
 export function isAutoApproveTool(part: ToolUIPart): boolean {
-  return ToolsByPermission.default.some((tool) => part.type === `tool-${tool}`);
+  return isAutoApproveToolName(getToolName(part));
 }
 
 export type ToolName = keyof ClientTools;
 
 export const ToolsByPermission = {
   read: [
-    "readFile",
-    "listFiles",
-    "globFiles",
-    "searchFiles",
-    "readBackgroundJobOutput",
-  ] satisfies ToolName[] as string[],
+    ...([
+      "readFile",
+      "listFiles",
+      "globFiles",
+      "searchFiles",
+      "readBackgroundJobOutput",
+    ] satisfies ToolName[]),
+
+    // Pochi offered-tools
+    "webFetch",
+    "webSearch",
+  ] as string[],
   write: [
     "writeToFile",
     "applyDiff",
     "multiApplyDiff",
+    "editNotebook",
   ] satisfies ToolName[] as string[],
   execute: [
     "executeCommand",
@@ -75,6 +99,7 @@ const createCliTools = (customAgents?: CustomAgent[]) => ({
   searchFiles,
   todoWrite,
   writeToFile,
+  editNotebook,
   newTask: createNewTaskTool(customAgents),
 });
 

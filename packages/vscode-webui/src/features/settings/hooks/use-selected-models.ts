@@ -1,7 +1,8 @@
 import { useModelList } from "@/lib/hooks/use-model-list";
 import type { DisplayModel } from "@getpochi/common/vscode-webui-bridge";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { pick } from "remeda";
 import { useSettingsStore } from "../store";
 
 export type ModelGroup = {
@@ -11,10 +12,34 @@ export type ModelGroup = {
 };
 export type ModelGroups = ModelGroup[];
 
-export function useSelectedModels() {
+type UseSelectedModelsOptions = {
+  isSubTask: boolean;
+};
+
+const useModelSelectionState = (isSubtask: boolean) => {
+  const settings = useSettingsStore();
+
+  if (isSubtask) {
+    return {
+      updateSelectedModel: settings.updateSubtaskSelectedModel,
+      selectedModel: settings.subtaskSelectedModel,
+    };
+  }
+  return {
+    updateSelectedModel: settings.updateSelectedModel,
+    selectedModel: settings.selectedModel,
+  };
+};
+
+export function useSelectedModels(options?: UseSelectedModelsOptions) {
   const { t } = useTranslation();
-  const { selectedModelId, updateSelectedModelId } = useSettingsStore();
+  const isSubTask = options?.isSubTask ?? false;
+
   const { modelList: models, isLoading } = useModelList(true);
+  const { selectedModel: selectedModelFromStore } = useSettingsStore();
+  const { updateSelectedModel, selectedModel: storedSelectedModel } =
+    useModelSelectionState(isSubTask);
+
   const groupedModels = useMemo<ModelGroups | undefined>(() => {
     if (!models) return undefined;
     const superModels: ModelGroup = {
@@ -44,47 +69,40 @@ export function useSelectedModels() {
 
     return [superModels, swiftModels, customModels];
   }, [models, t]);
-  const [isModelReady, setIsModelReady] = useState(
-    !!selectedModelId &&
-      getModelIdFromModelInfo(selectedModelId, models) === selectedModelId,
+
+  // SelectedModel with full information
+  const selectedModel = useMemo<DisplayModel | undefined>(() => {
+    const targetModelId = storedSelectedModel?.id;
+    if (!targetModelId) return undefined;
+    return models?.find((m) => m.id === targetModelId);
+  }, [storedSelectedModel, models]);
+
+  const updateSelectedModelId = useCallback(
+    (modelId: string | undefined) => {
+      if (!modelId) return;
+      const model = models?.find((m) => m.id === modelId);
+      if (!model) return;
+      updateSelectedModel(pick(model, ["id", "name"]));
+    },
+    [models, updateSelectedModel],
   );
 
+  // Effect to set an initial model if none is selected and models are loaded.
   useEffect(() => {
-    if (!isLoading) {
-      // validate and init model
-      const validModelId = getModelIdFromModelInfo(selectedModelId, models);
-      if (validModelId !== selectedModelId) {
-        updateSelectedModelId(validModelId);
-      }
-      setIsModelReady(!!validModelId);
+    if (!isLoading && !selectedModelFromStore && models?.length) {
+      const initialModel = models[0];
+      updateSelectedModel(pick(initialModel, ["id", "name"]));
     }
-  }, [isLoading, models, selectedModelId, updateSelectedModelId]);
-
-  const selectedModel = models?.find((x) => x.id === selectedModelId);
+  }, [isLoading, models, selectedModelFromStore, updateSelectedModel]);
 
   return {
-    isLoading: isLoading || !isModelReady,
+    isLoading,
     models,
     groupedModels,
+    // model with full information
     selectedModel,
     updateSelectedModelId,
+    // model for fallback display
+    selectedModelFromStore,
   };
-}
-
-function getModelIdFromModelInfo(
-  modelId: string | undefined,
-  models: DisplayModel[] | undefined,
-): string | undefined {
-  if (!models?.length) return undefined;
-
-  const targetModel = modelId
-    ? models.find((x) => x.id === modelId)
-    : undefined;
-
-  if (targetModel) {
-    return targetModel.id;
-  }
-
-  // return the first model by default
-  return models[0].id;
 }

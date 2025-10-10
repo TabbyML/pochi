@@ -17,11 +17,12 @@ const OpenAIRequestParamsSchema = z
 export function createOpenAIModel(
   llm: Extract<RequestData["llm"], { type: "openai" }>,
 ) {
+  const baseURL = llm.baseURL ?? "https://api.openai.com/v1";
   const openai = createOpenAICompatible({
     name: "OpenAI",
-    baseURL: llm.baseURL,
+    baseURL,
     apiKey: llm.apiKey,
-    fetch: patchedFetch(llm.baseURL),
+    fetch: patchedFetch(baseURL),
   });
   return wrapLanguageModel({
     model: openai(llm.modelId),

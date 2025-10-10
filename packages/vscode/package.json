@@ -36,7 +36,7 @@
     "views": {
       "pochi": [
         {
-          "id": "pochiWebui",
+          "id": "pochiSidebar",
           "type": "webview",
           "name": "Pochi"
         }
@@ -125,6 +125,12 @@
         "command": "pochi.openCustomModelSettings",
         "title": "Open Custom Model Settings",
         "category": "Pochi"
+      },
+      {
+        "command": "pochi.openInPanel",
+        "title": "Open in Editor",
+        "category": "Pochi",
+        "icon": "$(window)"
       }
     ],
     "menus": {
@@ -172,17 +178,17 @@
       "view/title": [
         {
           "command": "pochi.webui.navigate.newTask",
-          "when": "view == pochiWebui",
+          "when": "view == pochiSidebar",
           "group": "navigation@0"
         },
         {
           "command": "pochi.webui.navigate.taskList",
-          "when": "view == pochiWebui",
+          "when": "view == pochiSidebar",
           "group": "navigation@1"
         },
         {
           "command": "pochi.webui.navigate.settings",
-          "when": "view == pochiWebui",
+          "when": "view == pochiSidebar",
           "group": "navigation@2"
         }
       ]
@@ -192,6 +198,16 @@
         "command": "pochi.toggleFocus",
         "key": "ctrl+l",
         "mac": "cmd+l"
+      },
+      {
+        "command": "pochi.nextEditSuggestion.accept",
+        "key": "tab",
+        "when": "editorTextFocus && pochiNextEditSuggestionVisible"
+      },
+      {
+        "command": "pochi.nextEditSuggestion.reject",
+        "key": "escape",
+        "when": "editorTextFocus && pochiNextEditSuggestionVisible"
       }
     ],
     "configuration": [
@@ -264,6 +280,159 @@
                             "description": "The prompt template to use for inline completion. If not set, will use the default template."
                           }
                         }
+                      },
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "type": {
+                            "type": "string",
+                            "const": "google-vertex-tuning"
+                          },
+                          "vertex": {
+                            "type": "object",
+                            "description": "Google Vertex AI credentials.",
+                            "oneOf": [
+                              {
+                                "title": "Service Account Key",
+                                "type": "object",
+                                "properties": {
+                                  "serviceAccountKey": {
+                                    "type": "string",
+                                    "description": "The service account key JSON for authentication."
+                                  },
+                                  "location": {
+                                    "type": "string",
+                                    "description": "The Google Cloud location (e.g., 'us-central1')."
+                                  }
+                                },
+                                "required": ["serviceAccountKey", "location"]
+                              },
+                              {
+                                "title": "Access Token",
+                                "type": "object",
+                                "properties": {
+                                  "accessToken": {
+                                    "type": "string",
+                                    "description": "A short-lived access token for authentication."
+                                  },
+                                  "projectId": {
+                                    "type": "string",
+                                    "description": "The Google Cloud Project ID."
+                                  },
+                                  "location": {
+                                    "type": "string",
+                                    "description": "The Google Cloud location (e.g., 'us-central1')."
+                                  }
+                                },
+                                "required": [
+                                  "accessToken",
+                                  "projectId",
+                                  "location"
+                                ]
+                              }
+                            ]
+                          },
+                          "model": {
+                            "type": "string",
+                            "description": "The ID of the model to use."
+                          },
+                          "systemPrompt": {
+                            "type": "string",
+                            "description": "An optional system prompt for inline completion."
+                          },
+                          "promptTemplate": {
+                            "type": "string",
+                            "description": "A custom prompt template to use for inline completion."
+                          }
+                        },
+                        "required": ["type", "vertex", "model"]
+                      }
+                    ]
+                  }
+                }
+              },
+              "nextEditSuggestion": {
+                "default": {},
+                "additionalProperties": false,
+                "properties": {
+                  "enabled": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Enable next edit suggestion."
+                  },
+                  "provider": {
+                    "type": "object",
+                    "default": {
+                      "type": "pochi"
+                    },
+                    "description": "The next edit suggestion provider to use.",
+                    "oneOf": [
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "type": {
+                            "type": "string",
+                            "const": "pochi"
+                          }
+                        }
+                      },
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "type": {
+                            "type": "string",
+                            "const": "google-vertex-tuning"
+                          },
+                          "vertex": {
+                            "type": "object",
+                            "description": "Google Vertex AI credentials.",
+                            "oneOf": [
+                              {
+                                "title": "Service Account Key",
+                                "type": "object",
+                                "properties": {
+                                  "serviceAccountKey": {
+                                    "type": "string",
+                                    "description": "The service account key JSON for authentication."
+                                  },
+                                  "location": {
+                                    "type": "string",
+                                    "description": "The Google Cloud location (e.g., 'us-central1')."
+                                  }
+                                },
+                                "required": ["serviceAccountKey", "location"]
+                              },
+                              {
+                                "title": "Access Token",
+                                "type": "object",
+                                "properties": {
+                                  "accessToken": {
+                                    "type": "string",
+                                    "description": "A short-lived access token for authentication."
+                                  },
+                                  "projectId": {
+                                    "type": "string",
+                                    "description": "The Google Cloud Project ID."
+                                  },
+                                  "location": {
+                                    "type": "string",
+                                    "description": "The Google Cloud location (e.g., 'us-central1')."
+                                  }
+                                },
+                                "required": [
+                                  "accessToken",
+                                  "projectId",
+                                  "location"
+                                ]
+                              }
+                            ]
+                          },
+                          "model": {
+                            "type": "string",
+                            "description": "The ID of the model to use."
+                          }
+                        },
+                        "required": ["type", "vertex", "model"]
                       }
                     ]
                   }
@@ -302,35 +471,38 @@
     "start": "code --extensionDevelopmentPath=$PWD",
     "dev": "npm-run-all --parallel watch start",
     "tsc": "tsc --noEmit",
-    "test": "vscode-test",
-    "test:coverage": "npm run test -- --coverage --coverage-output ./coverage --coverage-reporter html --coverage-reporter text",
+    "test": "xvfb-maybe vscode-test",
+    "test:coverage": "xvfb-maybe vscode-test --coverage",
     "release": "bunx bumpp --tag=vscode@%s"
   },
   "dependencies": {
     "@getpochi/common": "workspace:*",
+    "@getpochi/vendor-claude-code": "workspace:*",
+    "@getpochi/vendor-codex": "workspace:*",
     "@getpochi/vendor-gemini-cli": "workspace:*",
+    "@getpochi/vendor-github-copilot": "workspace:*",
     "@getpochi/vendor-pochi": "workspace:*",
-    "@modelcontextprotocol/sdk": "^1.12.0",
+    "@getpochi/vendor-qwen-code": "workspace:*",
     "@orama/orama": "^3.1.11",
     "@preact/signals-core": "catalog:",
     "@quilted/threads": "catalog:",
     "@vscode-logging/logger": "^2.0.0",
-    "@xstate/fsm": "^2.1.0",
     "ai": "catalog:",
     "diff": "^7.0.0",
     "fast-deep-equal": "^3.1.3",
     "fast-levenshtein": "^3.0.0",
-    "hono": "catalog:",
     "iterator-helpers-polyfill": "^3.0.1",
+    "jsonc-parser": "catalog:",
     "jszip": "^3.10.1",
     "linkify-it": "^5.0.0",
     "lru-cache": "^11.1.0",
+    "node-machine-id": "catalog:",
     "object-hash": "^3.0.0",
     "posthog-node": "^4.17.2",
     "project-name-generator": "^2.1.9",
     "reflect-metadata": "^0.2.2",
     "remeda": "catalog:",
-    "run-exclusive": "^2.2.19",
+    "run-exclusive": "catalog:",
     "simple-git": "^3.28.0",
     "stats-logscale": "^1.0.9",
     "tsyringe": "^4.10.0",
@@ -354,7 +526,8 @@
     "proxyquire": "^2.1.3",
     "semver": "^7.7.1",
     "sinon": "^20.0.0",
-    "tsconfig-paths": "^4.2.0"
+    "tsconfig-paths": "^4.2.0",
+    "xvfb-maybe": "^0.2.1"
   },
   "vsce": {
     "dependencies": false

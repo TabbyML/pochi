@@ -5,6 +5,11 @@
 </p>
 
 <p align="center">
+  <img alt="Visual Studio Marketplace Version" src="https://img.shields.io/visual-studio-marketplace/v/tabbyml.pochi">
+  <a href="https://codecov.io/github/TabbyML/pochi"><img src="https://codecov.io/github/TabbyML/pochi/graph/badge.svg?token=VV9JGSXAWI" alt="Codecov" /></a>
+</p>
+
+<p align="center">
   Install from <a href="https://marketplace.visualstudio.com/items?itemName=TabbyML.pochi"><strong>VS Code Marketplace</strong></a> or <a href="https://open-vsx.org/extension/TabbyML/pochi"><strong>Open VSX Registry</strong></a>
 </p>
 
@@ -32,7 +37,7 @@ Pochi's workflow is built on these principles:
 
 ## 💬 Community & Support
 
-Interested in contributing or just engaging with the team? We welcome your input through our [Discord Community](https://discord.com/invite/tWF66yr8NQ)! Feel free to share feedback, report bugs, and suggest features there!
+Interested in contributing or just engaging with the team? We welcome your input through our [Discord Community](http://getpochi.com/discord)! Feel free to share feedback, report bugs, and suggest features there!
 
 ## 📄 License
 

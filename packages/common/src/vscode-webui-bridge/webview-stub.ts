@@ -19,7 +19,7 @@ import type {
 
 const VSCodeHostStub = {
   readCurrentWorkspace: async () => {
-    return Promise.resolve(undefined);
+    return Promise.resolve(null);
   },
   readResourceURI: (): Promise<ResourceURI> => {
     return Promise.resolve({} as ResourceURI);
@@ -75,14 +75,16 @@ const VSCodeHostStub = {
   listAutoCompleteCandidates(): Promise<string[]> {
     return Promise.resolve([]);
   },
-  openSymbol: (_symbol: string): Promise<void> => {
-    return Promise.resolve();
-  },
   listRuleFiles: (): Promise<RuleFile[]> => {
     return Promise.resolve([]);
   },
-  listWorkflowsInWorkspace: (): Promise<
-    { id: string; path: string; content: string }[]
+  listWorkflows: (): Promise<
+    {
+      id: string;
+      path: string;
+      content: string;
+      frontmatter: { model?: string };
+    }[]
   > => {
     return Promise.resolve([]);
   },
@@ -113,7 +115,6 @@ const VSCodeHostStub = {
   capture: (_e: CaptureEvent): Promise<void> => {
     return Promise.resolve();
   },
-  closeCurrentWorkspace: (): void => {},
   readMcpStatus: (): Promise<ThreadSignalSerialization<McpStatus>> => {
     return Promise.resolve({} as ThreadSignalSerialization<McpStatus>);
   },
@@ -215,9 +216,14 @@ const VSCodeHostStub = {
   > => {
     return Promise.resolve({} as ThreadSignalSerialization<CustomAgentFile[]>);
   },
-  readStoreId: async (): Promise<string | undefined> => {
-    return Promise.resolve(undefined);
+
+  readMachineId: async (): Promise<string> => {
+    return "test-machine-id";
   },
+
+  openPochiInNewTab: async (): Promise<void> => {},
+
+  bridgeStoreEvent: async (): Promise<void> => {},
 } satisfies VSCodeHostApi;
 
 export function createVscodeHostStub(overrides?: Partial<VSCodeHostApi>) {

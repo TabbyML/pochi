@@ -43,4 +43,10 @@ export class FixedStateToolCallLifeCycle implements ToolCallLifeCycle {
       "Method 'reject()' should not be called on FixedStateToolCallLifeCycle.",
     );
   }
+
+  addResult(_result: unknown): void {
+    throw new Error(
+      "Method 'addResult()' should not be called on FixedStateToolCallLifeCycle.",
+    );
+  }
 }

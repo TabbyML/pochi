@@ -1,9 +1,12 @@
 import { CodeBlock, MessageMarkdown } from "@/components/message";
 import { Switch } from "@/components/ui/switch";
-import { vscodeHost } from "@/lib/vscode";
+import { useStoreBlobUrl } from "@/lib/store-blob";
 import { getToolName } from "ai";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { CopyableImage } from "../ui/copyable-image";
+import { ScrollArea } from "../ui/scroll-area";
+import { Separator } from "../ui/separator";
 import { HighlightedText } from "./highlight-text";
 import { StatusIcon } from "./status-icon";
 import { ExpandableToolContainer } from "./tool-container";
@@ -16,12 +19,11 @@ interface TextContent {
 
 interface ImageContent {
   type: "image";
-  data: string; // base64-encoded image data or URL
+  data: string;
   mimeType: string; // e.g., "image/png"
 }
 
 type ContentBlock = TextContent | ImageContent;
-
 /**
  * Current supported mcp tool call output types
  * For full mcp tool call output @see https://github.com/modelcontextprotocol/modelcontextprotocol/blob/175a52036c73385047a85bfb996f24e5f1f51c80/schema/2025-06-18/schema.ts#L778
@@ -86,7 +88,6 @@ export const McpToolCall: React.FC<ToolProps<any>> = ({
           <CodeBlock
             language={"json"}
             value={JSON.stringify(input, null, 2)}
-            canWrapLongLines={true}
             isMinimalView={true}
             className="border-0"
           />
@@ -112,7 +113,6 @@ export const McpToolCall: React.FC<ToolProps<any>> = ({
               <CodeBlock
                 language={"json"}
                 value={JSON.stringify(result, null, 2)}
-                canWrapLongLines={true}
                 isMinimalView={true}
                 className="border-0"
               />
@@ -131,24 +131,22 @@ function Result({
   result: MCPToolCallResult;
   previewImageLink: boolean;
 }) {
-  const renderContentItem = (item: ContentBlock, index: number) => {
-    const key = index;
-
+  const renderContentItem = (item: ContentBlock) => {
     switch (item.type) {
       case "image":
         return previewImageLink ? (
-          <div key={key} className="overflow-hidden">
+          <div className="overflow-hidden">
             <ImageResult {...item} />
           </div>
         ) : (
-          <JsonCodeBlock key={key} item={item} />
+          <JsonCodeBlock item={item} />
         );
 
       case "text": {
         const textContent = item.text;
 
         return (
-          <div key={key}>
+          <div>
             <MessageMarkdown isMinimalView previewImageLink={previewImageLink}>
               {textContent}
             </MessageMarkdown>
@@ -157,12 +155,24 @@ function Result({
       }
 
       default:
-        return <JsonCodeBlock key={key} item={item} />;
+        return <JsonCodeBlock item={item} />;
     }
   };
 
   return (
-    <div className="px-4 py-2">{result.content.map(renderContentItem)}</div>
+    <ScrollArea
+      className="px-4 py-2"
+      viewportClassname="max-h-[300px] my-1 rounded-sm"
+    >
+      {result.content.map((x, index) => (
+        <div key={index}>
+          {renderContentItem(x)}
+          {index < result.content.length - 1 && (
+            <Separator className="mt-1 mb-2" />
+          )}
+        </div>
+      ))}
+    </ScrollArea>
   );
 }
 
@@ -172,7 +182,6 @@ function JsonCodeBlock({ item }: { item: unknown }) {
       <CodeBlock
         language="json"
         value={JSON.stringify(item, null, 2)}
-        canWrapLongLines={true}
         isMinimalView={true}
         className="border-0"
       />
@@ -185,45 +194,31 @@ function ImageResult({
   mimeType,
 }: { type: "image"; data: string; mimeType: string }) {
   const { t } = useTranslation();
-  const src = data.startsWith("https://")
-    ? data
-    : `data:${mimeType};base64,${data}`;
+  let url: string | null;
+  let previewSuffix: string;
+  try {
+    const blobUrl = new URL(data);
+    url = useStoreBlobUrl(data);
+    previewSuffix = blobUrl.pathname.slice(0, 8);
+  } catch (err) {
+    // Likely to be base64.
+    url = `data:${mimeType};base64,${data}`;
+    previewSuffix = data.slice(0, 8);
+  }
 
-  const handleClick = async () => {
-    if (data.startsWith("https://")) {
-      // External URL - use openExternal instead
-      vscodeHost.openExternal(data);
-    } else {
-      // Base64 data - determine file extension from mimeType
-      const extension = mimeType.split("/")[1] || "png";
-      const encoder = new TextEncoder();
-      const hashArray = await window.crypto.subtle.digest(
-        "SHA-256",
-        encoder.encode(data),
-      );
-      const hashHex = Array.from(new Uint8Array(hashArray))
-        .map((b) => b.toString(16).padStart(2, "0"))
-        .join("")
-        .substring(0, 8); // convert bytes to hex string and take first 8 chars
-      const filename = `mcp-image-preview-${hashHex}.${extension}`;
-      // Open the file in VS Code
-      vscodeHost.openFile(filename, {
-        base64Data: data,
-      });
-    }
-  };
+  const extension = mimeType.split("/")[1] || "png";
+  const filename = `mcp-image-preview-${previewSuffix}.${extension}`;
+
+  if (!url) return;
 
   return (
-    <div
-      className="cursor-pointer bg-[var(--vscode-editor-background)] hover:opacity-80"
-      onClick={handleClick}
-    >
-      <img
-        src={src}
-        alt={t("toolInvocation.imgAlt")}
-        className="h-auto w-full shadow-sm"
-      />
-    </div>
+    <CopyableImage
+      src={url}
+      alt={t("toolInvocation.imgAlt")}
+      className="h-auto w-full shadow-sm"
+      mimeType={mimeType}
+      filename={filename}
+    />
   );
 }
 
@@ -243,7 +238,7 @@ function DisplayModeToggle({
       <Switch
         checked={previewImageLink}
         onCheckedChange={onToggle}
-        className="data-[state=checked]:bg-[var(--vscode-button-background)] data-[state=unchecked]:bg-[var(--vscode-input-background)]"
+        className="data-[state=checked]:bg-[var(--vscode-button-background)] data-[state=unchecked]:bg-[var(--vscode-widget-border)]"
       />
       <span className="text-[var(--vscode-foreground)] text-xs">
         {t("toolInvocation.preview")}

@@ -14,10 +14,6 @@ export class Deferred<T> {
   }
 }
 
-export function toErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
-
 /**
  * Generates inline diff content based on original file with diff blocks
  *

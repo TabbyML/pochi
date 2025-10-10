@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/tooltip";
 import { useModelList } from "@/lib/hooks/use-model-list";
 import type { DisplayModel } from "@getpochi/common/vscode-webui-bridge";
-import { CircleQuestionMarkIcon, DotIcon, PencilIcon } from "lucide-react";
+import { DotIcon, PencilIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useSettingsStore } from "../../store";
 import { AccordionSection } from "../ui/accordion-section";
@@ -72,16 +72,8 @@ export const ModelSection = () => {
               <AccordionSection
                 localStorageKey="pochi-models-section"
                 title={
-                  <div className="flex items-center gap-0.5 py-1">
+                  <div className="flex items-center gap-0.5 py-1 font-semibold text-foreground/80 text-sm">
                     Pochi
-                    <a
-                      href="https://app.getpochi.com/pricing"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="relative z-10 ml-1 rounded-md p-1.5 transition-colors hover:bg-secondary/50 hover:text-secondary-foreground dark:hover:bg-secondary"
-                    >
-                      <CircleQuestionMarkIcon className="size-4" />
-                    </a>
                   </div>
                 }
                 variant="compact"
@@ -128,7 +120,7 @@ export const ModelSection = () => {
               <AccordionSection
                 localStorageKey="byok-models-section"
                 title={
-                  <div className="flex items-center gap-0.5 py-1">
+                  <div className="flex items-center gap-0.5 py-1 font-semibold text-foreground/80 text-sm">
                     BYOK
                     <TooltipProvider>
                       <Tooltip>
@@ -182,7 +174,9 @@ export const ModelSection = () => {
           <AccordionSection
             localStorageKey="vendor-models-section"
             title={
-              <div className="flex items-center gap-2 py-1">Third-party</div>
+              <div className="flex items-center gap-0.5 py-1 font-semibold text-foreground/80 text-sm">
+                Third-party
+              </div>
             }
             variant="compact"
             className="py-0"

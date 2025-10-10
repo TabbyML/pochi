@@ -15,7 +15,7 @@ describe("Load Agents", () => {
   });
 
   it("should return empty array for non-existent directories", async () => {
-    const agents = await loadAgents("/non/existent/path");
+    const agents = await loadAgents("/non/existent/path", false);
     expect(agents).toEqual([]);
   });
 });

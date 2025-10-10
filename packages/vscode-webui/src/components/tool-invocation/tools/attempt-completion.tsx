@@ -7,7 +7,7 @@ export const AttemptCompletionTool: React.FC<
   ToolProps<"attemptCompletion">
 > = ({ tool: toolCall }) => {
   const { t } = useTranslation();
-  const { result = "", command = "" } = toolCall.input || {};
+  const { result = "" } = toolCall.input || {};
 
   // Return null if there's nothing to display
   if (!result) {
@@ -21,9 +21,6 @@ export const AttemptCompletionTool: React.FC<
         {t("toolInvocation.taskCompleted")}
       </span>
       <MessageMarkdown>{result}</MessageMarkdown>
-      {command && (
-        <span className="mx-auto mt-1 font-mono font-semibold">{command}</span>
-      )}
     </div>
   );
 };

@@ -11,8 +11,7 @@ import {
   useRetry,
 } from "@/features/retry";
 import { useTodos } from "@/features/todo";
-import { apiClient } from "@/lib/auth-client";
-import { useCustomAgents } from "@/lib/hooks/use-custom-agents";
+import { useCustomAgent } from "@/lib/hooks/use-custom-agents";
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
 import { vscodeHost } from "@/lib/vscode";
 import { useChat } from "@ai-sdk/react";
@@ -39,10 +38,8 @@ export function useLiveSubTask(
     toolCallId: tool.toolCallId,
   });
 
-  const { customAgents } = useCustomAgents();
-
-  const customAgent = customAgents?.find(
-    (a) => tool.state !== "input-streaming" && a.name === tool.input?.agentType,
+  const { customAgent, customAgentModel } = useCustomAgent(
+    tool.state !== "input-streaming" ? tool.input?.agentType : undefined,
   );
 
   const abortController = useRef(new AbortController());
@@ -74,12 +71,12 @@ export function useLiveSubTask(
   const getters = useLiveChatKitGetters({
     todos: todosRef,
     isSubTask: true,
+    modelOverride: customAgentModel,
   });
 
   // FIXME: handle auto retry for output without task.
   const chatKit = useLiveChatKit({
     taskId: uid,
-    apiClient,
     abortSignal: abortController.current.signal,
     getters,
     isSubTask: true,
@@ -267,6 +264,13 @@ export function useLiveSubTask(
     isExecuting,
   ]);
 
+  useEffect(() => {
+    if (isExecuting && status === "ready" && errorForRetry === undefined) {
+      // Reset retry count when status is ok and no error
+      setRetryCount(0);
+    }
+  }, [isExecuting, status, errorForRetry]);
+
   const stepCount = useMemo(() => {
     return messages
       .flatMap((message) => message.parts)
@@ -276,7 +280,6 @@ export function useLiveSubTask(
   useEffect(() => {
     if (isExecuting && stepCount > currentStepCount) {
       setCurrentStepCount(stepCount);
-      setRetryCount(0); // Reset retry count when a new step is started
     }
   }, [stepCount, currentStepCount, isExecuting]);
 

@@ -1,5 +1,3 @@
-import { PochiApiErrors } from "@getpochi/common/pochi-api";
-
 export class HttpError extends Error {
   public readonly status: number;
   public readonly statusText: string;
@@ -60,30 +58,6 @@ export function isRateLimitExceededError(error: unknown) {
   return error instanceof HttpError && error.status === 429;
 }
 
-export function checkSubscriptionRequiredError(
-  error: unknown,
-): undefined | "user" | "team" {
-  if (error instanceof HttpError && error.status === 422) {
-    if (error.text === PochiApiErrors.RequireSubscription) {
-      return "user";
-    }
-    if (error.text === PochiApiErrors.RequireOrgSubscription) {
-      return "team";
-    }
-  }
-  return undefined;
-}
-
-export function checkPaymentRequiredError(
-  error: unknown,
-): undefined | "user" | "team" {
-  if (error instanceof HttpError && error.status === 422) {
-    if (error.text === PochiApiErrors.RequirePayment) {
-      return "user";
-    }
-    if (error.text === PochiApiErrors.RequireOrgPayment) {
-      return "team";
-    }
-  }
-  return undefined;
+export function isPaymentRequiredError(error: unknown) {
+  return error instanceof HttpError && error.status === 402;
 }

@@ -1,14 +1,16 @@
 import { MaxAttachments } from "@/lib/constants";
 import { createFileName, validateFile } from "@/lib/utils/attachment";
+import { fileToUri } from "@getpochi/livekit";
+import { useStore } from "@livestore/react";
 import type { FileUIPart } from "ai";
 import { useRef, useState } from "react";
-import { apiClient } from "../auth-client";
 
 interface UseAttachmentUploadOptions {
   maxAttachments?: number;
 }
 
 export function useAttachmentUpload(options?: UseAttachmentUploadOptions) {
+  const { store } = useStore();
   const maxAttachments = options?.maxAttachments ?? MaxAttachments;
   const [files, setFiles] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
@@ -141,7 +143,8 @@ export function useAttachmentUpload(options?: UseAttachmentUploadOptions) {
           type: "file",
           filename: file.name || "unnamed-file",
           mediaType: file.type,
-          url: await fileToRemoteUri(file, abortController.current?.signal),
+          url: await fileToUri(store, file, abortController.current?.signal),
+          // url: await fileToRemoteUri(file, abortController.current?.signal),
           // url: await fileToDataUri(file),
         } satisfies FileUIPart;
       });
@@ -203,28 +206,24 @@ export function useAttachmentUpload(options?: UseAttachmentUploadOptions) {
 //   });
 // }
 
-async function fileToRemoteUri(file: File, signal?: AbortSignal) {
-  const response = await apiClient.api.upload.$post(
-    {
-      form: {
-        file,
-      },
-    },
-    {
-      init: {
-        signal,
-      },
-    },
-  );
+// async function fileToRemoteUri(file: File, signal?: AbortSignal) {
+//   const formData = new FormData();
+//   formData.append("file", file);
 
-  if (!response.ok) {
-    throw new Error(`Upload failed: ${response.statusText}`);
-  }
+//   const response = await fetch(`${getServerBaseUrl()}/api/upload`, {
+//     method: "POST",
+//     body: formData,
+//     signal,
+//   });
 
-  const data = await response.json();
+//   if (!response.ok) {
+//     throw new Error(`Upload failed: ${response.statusText}`);
+//   }
 
-  if (!data.url) {
-    throw new Error("Failed to upload attachment");
-  }
-  return data.url;
-}
+//   const data = await response.json();
+
+//   if (!data.url) {
+//     throw new Error("Failed to upload attachment");
+//   }
+//   return data.url;
+// }

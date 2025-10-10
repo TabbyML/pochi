@@ -1,3 +1,5 @@
+set -e
+
 check_git_clean() {
     git diff --exit-code
     git diff --staged --exit-code
@@ -13,13 +15,7 @@ main() {
     check_git_clean
     bun tsc
     bun install --frozen-lockfile
-
-    if [ -n "$POCHI_REMOTE_ENV" ]; then
-        echo "Running in pochi remote env, skip vscode tests"
-        bun run turbo test --filter='!pochi'
-    else
-        bun run test
-    fi
+    bun run test
 }
 
 main

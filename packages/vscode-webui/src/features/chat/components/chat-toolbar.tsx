@@ -6,10 +6,10 @@ import { PublicShareButton } from "@/components/public-share-button";
 import { TokenUsage } from "@/components/token-usage";
 import { Button } from "@/components/ui/button";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
 import { ApprovalButton, type useApprovalAndRetry } from "@/features/approval";
 import { useAutoApproveGuard } from "@/features/chat";
 import { useSelectedModels } from "@/features/settings";
@@ -17,22 +17,21 @@ import { AutoApproveMenu } from "@/features/settings";
 import { TodoList, useTodos } from "@/features/todo";
 import { useAddCompleteToolCalls } from "@/lib/hooks/use-add-complete-tool-calls";
 import type { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
-import { vscodeHost } from "@/lib/vscode";
 import type { UseChatHelpers } from "@ai-sdk/react";
 import { constants } from "@getpochi/common";
-import type { Environment } from "@getpochi/common";
-import type { UserEditsDiff } from "@getpochi/common/vscode-webui-bridge";
 import type { Message, Task } from "@getpochi/livekit";
 import type { Todo } from "@getpochi/tools";
 import { PaperclipIcon, SendHorizonal, StopCircleIcon } from "lucide-react";
 import type React from "react";
-import { useCallback, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useChatStatus } from "../hooks/use-chat-status";
 import { useChatSubmit } from "../hooks/use-chat-submit";
 import { useInlineCompactTask } from "../hooks/use-inline-compact-task";
 import { useNewCompactTask } from "../hooks/use-new-compact-task";
+import type { SubtaskInfo } from "../hooks/use-subtask-info";
 import { ChatInputForm } from "./chat-input-form";
+import { CompleteSubtaskButton } from "./subtask";
 
 interface ChatToolbarProps {
   task?: Task;
@@ -40,9 +39,11 @@ interface ChatToolbarProps {
   compact: () => Promise<string>;
   chat: UseChatHelpers<Message>;
   attachmentUpload: ReturnType<typeof useAttachmentUpload>;
-  isReadOnly: boolean;
+  isSubTask: boolean;
+  subtask?: SubtaskInfo;
   displayError: Error | undefined;
   todosRef: React.RefObject<Todo[] | undefined>;
+  onUpdateIsPublicShared?: (isPublicShared: boolean) => void;
 }
 
 export const ChatToolbar: React.FC<ChatToolbarProps> = ({
@@ -50,17 +51,22 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   approvalAndRetry: { pendingApproval, retry },
   compact,
   attachmentUpload,
-  isReadOnly,
+  isSubTask,
+  subtask,
   task,
   displayError,
   todosRef,
+  onUpdateIsPublicShared,
 }) => {
   const { t } = useTranslation();
+
   const { messages, sendMessage, addToolResult, status } = chat;
   const isLoading = status === "streaming" || status === "submitted";
   const totalTokens = task?.totalTokens || 0;
 
   const [input, setInput] = useState("");
+  const [queuedMessages, setQueuedMessages] = useState<string[]>([]);
+
   // Initialize task with prompt if provided and task doesn't exist yet
   const { todos } = useTodos({
     initialTodos: task?.todos,
@@ -71,28 +77,10 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   const {
     groupedModels,
     selectedModel,
+    selectedModelFromStore, // for fallback display
     isLoading: isModelsLoading,
-    updateSelectedModelId: handleSelectModel,
-  } = useSelectedModels();
-
-  const autoApproveGuard = useAutoApproveGuard();
-
-  const buildEnvironment = useCallback(async () => {
-    const environment = await vscodeHost.readEnvironment();
-
-    let userEdits: UserEditsDiff[] | undefined;
-    const lastCheckpointHash = findLastCheckpointFromMessages(messages);
-    if (lastCheckpointHash && autoApproveGuard.current) {
-      userEdits =
-        (await vscodeHost.diffWithCheckpoint(lastCheckpointHash)) ?? undefined;
-    }
-
-    return {
-      todos: todosRef.current,
-      ...environment,
-      userEdits,
-    } satisfies Environment;
-  }, [messages, autoApproveGuard.current, todosRef.current]);
+    updateSelectedModelId,
+  } = useSelectedModels({ isSubTask });
 
   // Use the unified attachment upload hook
   const {
@@ -113,20 +101,24 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     compact,
   });
 
-  const { isExecuting, isSubmitDisabled, showStopButton, showPreview } =
-    useChatStatus({
-      isReadOnly,
-      isModelsLoading,
-      isLoading,
-      isInputEmpty: !input.trim(),
-      isFilesEmpty: files.length === 0,
-      isUploadingAttachments,
-      newCompactTaskPending,
-    });
+  const {
+    isExecuting,
+    isBusyCore,
+    isSubmitDisabled,
+    showStopButton,
+    showPreview,
+  } = useChatStatus({
+    isModelsLoading,
+    isModelValid: !!selectedModel,
+    isLoading,
+    isInputEmpty: !input.trim() && queuedMessages.length === 0,
+    isFilesEmpty: files.length === 0,
+    isUploadingAttachments,
+    newCompactTaskPending,
+  });
 
   const compactEnabled = !(
     isLoading ||
-    isReadOnly ||
     isExecuting ||
     totalTokens < constants.CompactTaskMinTokens
   );
@@ -140,14 +132,38 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     isLoading,
     pendingApproval,
     newCompactTaskPending,
+    queuedMessages,
+    setQueuedMessages,
   });
 
+  const handleQueueMessage = (message: string) => {
+    if (message.trim()) {
+      setQueuedMessages((prev) => [...prev, message]);
+      setInput("");
+    }
+  };
+
+  useEffect(() => {
+    const isReady =
+      status === "ready" &&
+      !isExecuting &&
+      !isBusyCore &&
+      (!pendingApproval || pendingApproval.name === "retry");
+
+    if (isReady && queuedMessages.length > 0) {
+      handleSubmit();
+    }
+  }, [
+    status,
+    isExecuting,
+    isBusyCore,
+    queuedMessages.length,
+    pendingApproval,
+    handleSubmit,
+  ]);
+
   // Only allow adding tool results when not loading
-  const allowAddToolResult = !(
-    isLoading ||
-    isReadOnly ||
-    newCompactTaskPending
-  );
+  const allowAddToolResult = !(isLoading || newCompactTaskPending);
   useAddCompleteToolCalls({
     messages,
     enable: allowAddToolResult,
@@ -167,12 +183,15 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     () => JSON.stringify(messages, null, 2),
     [messages],
   );
+
   return (
     <>
+      <CompleteSubtaskButton subtask={subtask} messages={messages} />
       <ApprovalButton
         pendingApproval={pendingApproval}
         retry={retry}
         allowAddToolResult={allowAddToolResult}
+        isSubTask={isSubTask}
       />
       {todos && todos.length > 0 && (
         <TodoList todos={todos} className="mt-2">
@@ -180,7 +199,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
           <TodoList.Items viewportClassname="max-h-48" />
         </TodoList>
       )}
-      <AutoApproveMenu />
+      <AutoApproveMenu isSubTask={isSubTask} />
       {files.length > 0 && (
         <AttachmentPreviewList
           files={files}
@@ -192,12 +211,18 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
         input={input}
         setInput={setInput}
         onSubmit={handleSubmit}
+        onQueueMessage={handleQueueMessage}
         isLoading={isLoading || isExecuting}
         onPaste={handlePasteAttachment}
         pendingApproval={pendingApproval}
         status={status}
         onFileDrop={handleFileDrop}
         messageContent={messageContent}
+        queuedMessages={queuedMessages}
+        onRemoveQueuedMessage={(index) =>
+          setQueuedMessages((prev) => prev.filter((_, i) => i !== index))
+        }
+        isSubTask={isSubTask}
       />
 
       {/* Hidden file input for image uploads */}
@@ -213,10 +238,11 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
       <div className="my-2 flex shrink-0 justify-between gap-5 overflow-x-hidden">
         <div className="flex items-center gap-2 overflow-x-hidden truncate">
           <ModelSelect
-            value={selectedModel}
+            value={selectedModel || selectedModelFromStore}
             models={groupedModels}
             isLoading={isModelsLoading}
-            onChange={handleSelectModel}
+            isValid={!!selectedModel}
+            onChange={updateSelectedModelId}
           />
         </div>
 
@@ -229,30 +255,40 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
               selectedModel={selectedModel}
             />
           )}
-          <DevModeButton
-            messages={messages}
-            buildEnvironment={buildEnvironment}
-            todos={todos}
-          />
-          <PublicShareButton
-            disabled={isReadOnly || isModelsLoading}
-            shareId={task?.shareId}
-            modelId={selectedModel?.id}
-            displayError={displayError?.message}
-          />
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => fileInputRef.current?.click()}
-                className="button-focus h-6 w-6 p-0"
-              >
-                <PaperclipIcon className="size-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>{t("chat.attachmentTooltip")}</TooltipContent>
-          </Tooltip>
+          <DevModeButton messages={messages} todos={todos} />
+          {!isSubTask && (
+            <PublicShareButton
+              task={task}
+              disabled={isModelsLoading}
+              modelId={selectedModel?.id}
+              displayError={displayError?.message}
+              onUpdateIsPublicShared={onUpdateIsPublicShared}
+            />
+          )}
+          <HoverCard>
+            <HoverCardTrigger asChild>
+              <span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="button-focus relative h-6 w-6 p-0"
+                >
+                  <span className="size-4">
+                    <PaperclipIcon className="size-4 translate-y-[1.5px] scale-105" />
+                  </span>
+                </Button>
+              </span>
+            </HoverCardTrigger>
+            <HoverCardContent
+              side="top"
+              align="start"
+              sideOffset={6}
+              className="!w-auto max-w-sm bg-background px-3 py-1.5 text-xs"
+            >
+              {t("chat.attachmentTooltip")}
+            </HoverCardContent>
+          </HoverCard>
           <SubmitStopButton
             isSubmitDisabled={isSubmitDisabled}
             showStopButton={showStopButton}
@@ -291,7 +327,7 @@ const SubmitStopButton: React.FC<SubmitStopButtonProps> = ({
       className="button-focus h-6 w-6 p-0"
       onClick={() => {
         if (showStopButton) {
-          autoApproveGuard.current = false;
+          autoApproveGuard.current = "stop";
           onStop();
         } else {
           onSubmit();
@@ -306,17 +342,3 @@ const SubmitStopButton: React.FC<SubmitStopButtonProps> = ({
     </Button>
   );
 };
-
-function findLastCheckpointFromMessages(
-  messages: Message[],
-): string | undefined {
-  for (let i = messages.length - 1; i >= 0; i--) {
-    const message = messages[i];
-    for (const part of message.parts) {
-      if (part.type === "data-checkpoint" && part.data?.commit) {
-        return part.data.commit;
-      }
-    }
-  }
-  return undefined;
-}

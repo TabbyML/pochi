@@ -265,7 +265,7 @@ describe("DiffView with real file system", () => {
       fsStubs.isFileExists.withArgs(vscode.Uri.joinPath(currentTestTempDirUri, relPath)).resolves(true);
       fsStubs.readFile.withArgs(vscode.Uri.joinPath(currentTestTempDirUri, relPath)).resolves(Buffer.from("initial content\n"));
 
-      const diffViewInstance = await DiffView.getOrCreate(id, relPath);
+      const diffViewInstance = await DiffView.getOrCreate(id, relPath, currentTestTempDirUri.fsPath);
 
       assert.ok(diffViewInstance instanceof DiffView, "Should return an instance of DiffView");
     });
@@ -290,8 +290,8 @@ describe("DiffView with real file system", () => {
 
       const id = "test-id-2";
       const relPath = "test-file.txt";
-      const firstInstance = await DiffView.getOrCreate(id, relPath);
-      const secondInstance = await DiffView.getOrCreate(id, relPath);
+      const firstInstance = await DiffView.getOrCreate(id, relPath, currentTestTempDirUri.fsPath);
+      const secondInstance = await DiffView.getOrCreate(id, relPath, currentTestTempDirUri.fsPath);
 
       assert.strictEqual(secondInstance, firstInstance, "Should return the same instance");
     });
@@ -329,7 +329,7 @@ describe("DiffView with real file system", () => {
       fsStubs.isFileExists.resolves(true);
       fsStubs.readFile.resolves(Buffer.from("initial content\n"));
 
-      const diffView = await DiffView.getOrCreate("update-test", "test-file.txt");
+      const diffView = await DiffView.getOrCreate("update-test", "test-file.txt", currentTestTempDirUri.fsPath);
       const newContent = "updated content\nline2\nline3";
       await diffView.update(newContent, false);
 
@@ -363,7 +363,7 @@ describe("DiffView with real file system", () => {
       fsStubs.isFileExists.resolves(true);
       fsStubs.readFile.resolves(Buffer.from("initial content\n"));
 
-      const diffView = await DiffView.getOrCreate("final-update-test", "test-file.txt");
+      const diffView = await DiffView.getOrCreate("final-update-test", "test-file.txt", currentTestTempDirUri.fsPath);
       const finalContent = "final content";
       await diffView.update(finalContent, true);
 
@@ -419,7 +419,7 @@ describe("DiffView with real file system", () => {
       };
       vscodeStubs.window.tabGroups.all = [{ tabs: [mockTabToClose] }];
 
-      const diffView = await DiffView.getOrCreate("save-test", "test-file.txt");
+      const diffView = await DiffView.getOrCreate("save-test", "test-file.txt", currentTestTempDirUri.fsPath);
       (diffView as any).activeDiffEditor = mockEditor as any;
       (diffView as any).originalContent = initialDocText;
 
@@ -455,7 +455,7 @@ describe("DiffView with real file system", () => {
         return Promise.resolve();
       });
 
-      const diffView = await DiffView.getOrCreate("dispose-new-empty-test", newFileRelPath);
+      const diffView = await DiffView.getOrCreate("dispose-new-empty-test", newFileRelPath, currentTestTempDirUri.fsPath);
       (diffView as any).fileUri = newFileUri; 
 
       await diffView.dispose();
@@ -482,7 +482,7 @@ describe("DiffView with real file system", () => {
         return Promise.resolve();
       });
 
-      const diffViewExisting = await DiffView.getOrCreate("dispose-existing-test", existingFileRelPath);
+      const diffViewExisting = await DiffView.getOrCreate("dispose-existing-test", existingFileRelPath, currentTestTempDirUri.fsPath);
       (diffViewExisting as any).fileUri = existingFileUri;
       await diffViewExisting.dispose();
       await new Promise(resolve => setTimeout(resolve, 50));
@@ -507,7 +507,7 @@ describe("DiffView with real file system", () => {
         return Promise.resolve();
       });
 
-      const diffViewNewNonEmpty = await DiffView.getOrCreate("dispose-new-non-empty-test", newNonEmptyFileRelPath);
+      const diffViewNewNonEmpty = await DiffView.getOrCreate("dispose-new-non-empty-test", newNonEmptyFileRelPath, currentTestTempDirUri.fsPath);
       (diffViewNewNonEmpty as any).fileUri = newNonEmptyFileUri;
       
       await diffViewNewNonEmpty.dispose();
@@ -559,7 +559,7 @@ describe("DiffView with real file system", () => {
       });
 
       // Create diff view - this should close the existing non-diff tab
-      await DiffView.getOrCreate("close-tabs-test", testFileRelPath);
+      await DiffView.getOrCreate("close-tabs-test", testFileRelPath, currentTestTempDirUri.fsPath);
 
       // Verify that the non-diff tab was closed but diff tab was not
       assert.strictEqual(closedTabs.length, 1, "Should close exactly one tab");

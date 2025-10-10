@@ -37,7 +37,7 @@ export function makePochiConfig(strict = false) {
       .string()
       .default("https://getpochi.com/config.schema.json")
       .optional(),
-    vendors: z.record(z.string(), VendorConfig.nullable()).optional(),
+    vendors: looseRecord(VendorConfig.nullable(), strict).optional(),
     providers: looseRecord(CustomModelSetting, strict).optional(),
     mcp: looseRecord(McpServerConfig, strict).optional(),
   });

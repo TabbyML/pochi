@@ -344,6 +344,7 @@ function createHintPlugin(options: {
 }) {
   let searchVersion = 0;
   let isHintVisible = false;
+  let showHintTimeout: ReturnType<typeof setTimeout> | undefined;
 
   const showHint = () => {
     if (isHintVisible) return;
@@ -351,7 +352,13 @@ function createHintPlugin(options: {
     options.onHintVisibilityChange?.(true);
   };
 
+  const debouncedShowHint = () => {
+    clearTimeout(showHintTimeout);
+    showHintTimeout = setTimeout(showHint, 300);
+  };
+
   const hideHint = () => {
+    clearTimeout(showHintTimeout);
     if (!isHintVisible) return;
     isHintVisible = false;
     options.onHintVisibilityChange?.(false);
@@ -407,7 +414,7 @@ function createHintPlugin(options: {
           }
 
           if (items.length > 0) {
-            showHint();
+            debouncedShowHint();
           } else {
             hideHint();
           }

@@ -116,6 +116,73 @@ create_tree() {
   fi
 }
 
+# Determine the user's shell profile file
+# Returns the absolute path to the profile file, or empty if not detected
+# Supported: zsh, bash
+_detect_shell_profile() {
+  local shell_path="${SHELL:-}"
+  local profile=""
+
+  if echo "$shell_path" | grep -qi "zsh"; then
+    profile="$HOME/.zshrc"
+  elif echo "$shell_path" | grep -qi "bash"; then
+    # On macOS bash often uses .bash_profile; otherwise .bashrc
+    if [ -f "$HOME/.bash_profile" ] || [ ! -f "$HOME/.bashrc" ]; then
+      profile="$HOME/.bash_profile"
+    else
+      profile="$HOME/.bashrc"
+    fi
+  fi
+
+  echo "$profile"
+}
+
+# Append a block to a file if a marker is not present
+# args: <file> <marker> <content_line>
+_append_if_missing() {
+  local file="$1"
+  local marker="$2"
+  local line="$3"
+
+  mkdir -p "$(dirname "$file")"
+  touch "$file"
+
+  if ! grep -Fqs "$marker" "$file"; then
+    {
+      echo "$marker"
+      echo "$line"
+    } >>"$file"
+    return 0
+  fi
+  return 1
+}
+
+# Configure shell auto-completion by sourcing the CLI's completion output
+# args: <install_dir>
+# Print manual instructions to set PATH and enable completion
+print_shell_setup_instructions() {
+  local install_dir="$1"
+  local bin_dir="$install_dir/bin"
+
+  info 'Next steps' "Add the following to your shell profile:"
+  eprintf ""
+  eprintf "    bash ~/.bashrc:"
+  eprintf ""
+  eprintf "        export PATH=\"$bin_dir:\$PATH\""
+  eprintf "        source <(pochi --completion)"
+  eprintf ""
+  eprintf "    zsh ~/.zshrc:"
+  eprintf ""
+  eprintf "        export PATH=\"$bin_dir:\$PATH\""
+  eprintf "        source <(pochi --completion --zsh)"
+  eprintf ""
+  eprintf "    fish ~/.config/fish/config.fish:"
+  eprintf ""
+  eprintf "        export PATH=\"$bin_dir:\$PATH\""
+  eprintf "        pochi --completion --fish | source"
+  eprintf ""
+}
+
 install_version() {
   local version_to_install="$1"
   local install_dir="$2"
@@ -136,6 +203,8 @@ install_version() {
   if [ "$?" == 0 ]
   then
     "$install_dir"/bin/pochi-code --version &>/dev/null # creates the default shims
+    # Set up shell auto-completion
+    print_shell_setup_instructions "$install_dir"
     info 'Finished' "Pochi is installed at $install_dir/bin"
   fi
 }
@@ -195,27 +264,34 @@ install_from_file() {
 return 0 2>/dev/null
 
 install_dir="${POCHI_HOME:-"$HOME/.pochi"}"
+version_to_install=""
 
 # parse command line options
-while [ $# -gt 0 ]
-do
-  arg="$1"
-
-  case "$arg" in
+if [ $# -gt 0 ]; then
+  case "$1" in
     -h|--help)
       usage
       exit 0
       ;;
-    *)
-      error "unknown option: '$arg'"
+    -*)
+      error "unknown option: '$1'"
       usage
       exit 1
       ;;
+    *)
+      version_to_install="$1"
+      ;;
   esac
-done
+fi
 
 get_latest_version() {
-  curl https://api.github.com/repos/TabbyML/pochi/releases | grep 'tag_name' | grep 'cli@' | head -1 | cut -d : -f 2,3 | tr -d \",
+  curl -s https://api.github.com/repos/TabbyML/pochi/releases | grep 'tag_name' | grep 'cli@' | head -1 | cut -d '"' -f 4
 }
 
-install_version $(get_latest_version) "$install_dir"
+if [ -z "$version_to_install" ]; then
+  version_to_install=$(get_latest_version)
+fi
+
+version_to_install="${version_to_install/pochi-v/cli@}"
+
+install_version "$version_to_install" "$install_dir"

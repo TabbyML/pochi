@@ -243,8 +243,9 @@ export const CommandExecutionPanel: FC<ExecutionPanelProps> = ({
   };
 
   // Collapse when execution completes
+  const wasCompleted = useRef(completed);
   useEffect(() => {
-    if (!isExecuting && completed) {
+    if (!wasCompleted.current && !isExecuting && completed) {
       setExpanded(false);
     }
   }, [isExecuting, completed, setExpanded]);

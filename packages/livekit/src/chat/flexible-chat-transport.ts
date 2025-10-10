@@ -1,7 +1,8 @@
 import { getErrorMessage } from "@ai-sdk/provider";
 import type { Environment } from "@getpochi/common";
-import { formatters, prompts } from "@getpochi/common";
-import type { PochiApiClient } from "@getpochi/common/pochi-api";
+import { constants, formatters, prompts } from "@getpochi/common";
+import * as R from "remeda";
+
 import {
   type CustomAgent,
   type McpTool,
@@ -13,6 +14,7 @@ import {
   APICallError,
   type ChatRequestOptions,
   type ChatTransport,
+  type ModelMessage,
   type UIMessageChunk,
   convertToModelMessages,
   isToolUIPart,
@@ -20,8 +22,9 @@ import {
   wrapLanguageModel,
 } from "ai";
 import { pickBy } from "remeda";
+import type z from "zod/v4";
+import { makeDownloadFunction } from "../store-blob";
 import type { Message, Metadata, RequestData } from "../types";
-import { schedulePersistJob } from "./background-job";
 import { makeRepairToolCall } from "./llm";
 import { parseMcpToolSet } from "./mcp-utils";
 import {
@@ -29,6 +32,7 @@ import {
   createReasoningMiddleware,
   createToolCallMiddleware,
 } from "./middlewares";
+import { createOutputSchemaMiddleware } from "./middlewares/output-schema-middleware";
 import { createModel } from "./models";
 
 export type OnStartCallback = (options: {
@@ -56,9 +60,8 @@ export type ChatTransportOptions = {
   isSubTask?: boolean;
   isCli?: boolean;
   store: Store;
-  apiClient: PochiApiClient;
-  waitUntil?: (promise: Promise<unknown>) => void;
   customAgent?: CustomAgent;
+  outputSchema?: z.ZodAny;
 };
 
 export class FlexibleChatTransport implements ChatTransport<Message> {
@@ -67,9 +70,8 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
   private readonly isSubTask?: boolean;
   private readonly isCli?: boolean;
   private readonly store: Store;
-  private readonly apiClient: PochiApiClient;
-  private readonly waitUntil?: (promise: Promise<unknown>) => void;
   private readonly customAgent?: CustomAgent;
+  private readonly outputSchema?: z.ZodAny;
 
   constructor(options: ChatTransportOptions) {
     this.onStart = options.onStart;
@@ -77,9 +79,8 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
     this.isSubTask = options.isSubTask;
     this.isCli = options.isCli;
     this.store = options.store;
-    this.apiClient = options.apiClient;
-    this.waitUntil = options.waitUntil;
     this.customAgent = overrideCustomAgentTools(options.customAgent);
+    this.outputSchema = options.outputSchema;
   }
 
   sendMessages: (
@@ -107,11 +108,17 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
       getters: this.getters,
     });
 
+    const model = createModel({ llm });
     const middlewares = [];
 
     if (!this.isSubTask) {
       middlewares.push(
-        createNewTaskMiddleware(this.store, chatId, customAgents),
+        createNewTaskMiddleware(
+          this.store,
+          environment?.info.cwd,
+          chatId,
+          customAgents,
+        ),
       );
     }
 
@@ -119,49 +126,66 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
       middlewares.push(createReasoningMiddleware());
     }
 
-    if (llm.useToolCallMiddleware) {
-      middlewares.push(createToolCallMiddleware());
+    if (this.outputSchema) {
+      middlewares.push(
+        createOutputSchemaMiddleware(chatId, model, this.outputSchema),
+      );
     }
 
-    const mcpTools = mcpInfo?.toolset && parseMcpToolSet(mcpInfo.toolset);
+    if (llm.useToolCallMiddleware) {
+      middlewares.push(
+        createToolCallMiddleware(llm.type !== "google-vertex-tuning"),
+      );
+    }
+
+    const mcpTools =
+      mcpInfo?.toolset && parseMcpToolSet(this.store, mcpInfo.toolset);
+    const tools = pickBy(
+      {
+        ...selectClientTools({
+          isSubTask: !!this.isSubTask,
+          isCli: !!this.isCli,
+          customAgents,
+        }),
+        ...(mcpTools || {}),
+      },
+      (_val, key) => {
+        if (this.customAgent?.tools) {
+          return this.customAgent.tools.includes(key);
+        }
+        return true;
+      },
+    );
+
     const preparedMessages = await prepareMessages(messages, environment);
-    const model = createModel({ id: chatId, llm });
+    const modelMessages = (await resolvePromise(
+      convertToModelMessages(
+        formatters.llm(preparedMessages),
+        // toModelOutput is invoked within convertToModelMessages, thus we need to pass the tools here.
+        { tools },
+      ),
+    )) as ModelMessage[];
     const stream = streamText({
+      headers: {
+        [constants.PochiTaskIdHeader]: chatId,
+      },
       system: prompts.system(
         environment?.info?.customRules,
         this.customAgent,
         mcpInfo?.instructions,
       ),
-      messages: convertToModelMessages(
-        formatters.llm(preparedMessages, {
-          keepReasoningPart: llm.type === "vendor" && llm.keepReasoningPart,
-        }),
-      ),
+      messages: modelMessages,
       model: wrapLanguageModel({
         model,
         middleware: middlewares,
       }),
       abortSignal,
-      tools: pickBy(
-        {
-          ...selectClientTools({
-            isSubTask: !!this.isSubTask,
-            isCli: !!this.isCli,
-            customAgents,
-          }),
-          ...(mcpTools || {}),
-        },
-        (_val, key) => {
-          if (this.customAgent?.tools) {
-            return this.customAgent.tools.includes(key);
-          }
-          return true;
-        },
-      ),
+      tools,
       maxRetries: 0,
       // error log is handled in live chat kit.
       onError: () => {},
-      experimental_repairToolCall: makeRepairToolCall(model),
+      experimental_repairToolCall: makeRepairToolCall(chatId, model),
+      experimental_download: makeDownloadFunction(this.store),
     });
     return stream.toUIMessageStream({
       onError: (error) => {
@@ -182,17 +206,8 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
           } satisfies Metadata;
         }
       },
-      onFinish: async ({ messages }) => {
-        if (this.apiClient.authenticated) {
-          schedulePersistJob({
-            taskId: chatId,
-            store: this.store,
-            messages,
-            apiClient: this.apiClient,
-            environment,
-            waitUntil: this.waitUntil,
-          });
-        }
+      onFinish: async () => {
+        // DO NOTHING
       },
     });
   };
@@ -214,7 +229,7 @@ function prepareMessages<T extends import("ai").UIMessage>(
 function isWellKnownReasoningModel(model?: string): boolean {
   if (!model) return false;
 
-  const models = [/glm-4.5/, /qwen3.*thinking/];
+  const models = [/glm-4.*/, /qwen3.*thinking/];
   const x = model.toLowerCase();
   for (const m of models) {
     if (x.match(m)?.length) {
@@ -236,4 +251,24 @@ function estimateTotalTokens(messages: Message[]): number {
     }
   }
   return Math.ceil(totalTextLength / 4);
+}
+
+async function resolvePromise(o: unknown): Promise<unknown> {
+  const resolved = await o;
+  if (R.isArray(resolved)) {
+    return Promise.all(resolved.map((x) => resolvePromise(x)));
+  }
+
+  if (R.isObjectType(resolved)) {
+    return Object.fromEntries(
+      await Promise.all(
+        Object.entries(resolved).map(async ([k, v]) => [
+          k,
+          await resolvePromise(v),
+        ]),
+      ),
+    );
+  }
+
+  return resolved;
 }

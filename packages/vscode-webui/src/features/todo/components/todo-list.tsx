@@ -37,6 +37,8 @@ interface TodoListContextValue {
   todos: Todo[];
   isCollapsed: boolean;
   setIsCollapsed: (collapsed: boolean) => void;
+  disableCollapse: boolean;
+  disableInProgressTodoTitle: boolean;
 }
 
 const TodoListContext = createContext<TodoListContextValue | undefined>(
@@ -58,15 +60,30 @@ interface TodoListRootProps {
   todos: Todo[];
   className?: string;
   children: ReactNode;
+  disableCollapse?: boolean;
+  disableInProgressTodoTitle?: boolean;
 }
 
-function TodoListRoot({ todos, className, children }: TodoListRootProps) {
-  const [isCollapsed, setIsCollapsed] = useState(false);
+function TodoListRoot({
+  todos,
+  className,
+  children,
+  disableCollapse,
+  disableInProgressTodoTitle,
+}: TodoListRootProps) {
+  const pendingTodosNum = todos.filter(
+    (todo) => todo.status === "pending",
+  ).length;
+  const [isCollapsed, setIsCollapsed] = useState(
+    pendingTodosNum === 0 && !disableCollapse && todos.length > 0,
+  );
 
   const contextValue: TodoListContextValue = {
     todos,
     isCollapsed,
     setIsCollapsed,
+    disableCollapse: !!disableCollapse,
+    disableInProgressTodoTitle: !!disableInProgressTodoTitle,
   };
 
   return (
@@ -82,16 +99,16 @@ function TodoListRoot({ todos, className, children }: TodoListRootProps) {
 // Header component with toggle functionality
 interface TodoListHeaderProps {
   children?: ReactNode;
-  disableCollapse?: boolean;
-  disableInProgressTodoTitle?: boolean;
 }
 
-function TodoListHeader({
-  disableCollapse,
-  disableInProgressTodoTitle,
-  children,
-}: TodoListHeaderProps) {
-  const { todos, isCollapsed, setIsCollapsed } = useTodoListContext();
+function TodoListHeader({ children }: TodoListHeaderProps) {
+  const {
+    todos,
+    isCollapsed,
+    setIsCollapsed,
+    disableCollapse,
+    disableInProgressTodoTitle,
+  } = useTodoListContext();
 
   // Use draftTodos when in edit mode, otherwise use todos
   const displayTodos = todos.filter((todo) => todo.status !== "cancelled");

@@ -1,161 +1,203 @@
-import * as fs from "node:fs";
 import * as fsPromise from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
-import { type ReadonlySignal, type Signal, signal } from "@preact/signals-core";
-import * as jose from "jose";
-import * as JSONC from "jsonc-parser/esm";
-import { machineId } from "node-machine-id";
-import { funnel, isDeepEqual, mergeDeep } from "remeda";
-import * as fleece from "silver-fleece";
+import {
+  type ReadonlySignal,
+  type Signal,
+  effect,
+  signal,
+  untracked,
+} from "@preact/signals-core";
+import { isDeepEqual, merge, mergeDeep, pick } from "remeda";
 import { getLogger } from "../base";
-import { encodeStoreId } from "../store-id-utils";
-import { type PochiCredentials, isDev } from "../vscode-webui-bridge";
-import { PochiConfig } from "./types";
+import { isDev } from "../vscode-webui-bridge";
+import { PochiConfigFile } from "./config-file";
+import type { PochiConfig } from "./types";
 import type { VendorConfig } from "./vendor";
 
-const PochiConfigFilePath = path.join(
-  os.homedir(),
-  ".pochi",
-  isDev ? "dev-config.jsonc" : "config.jsonc",
-);
+// remeda prop is not working as expected, so we implement our own
+function prop(data: unknown, ...keys: ReadonlyArray<PropertyKey>): unknown {
+  let output: unknown = data;
+  for (const key of keys) {
+    if (output === undefined || output === null) {
+      return undefined;
+    }
+    // @ts-expect-error - we don't know the type of output
+    output = output[key];
+  }
+  return output;
+}
+
+// current only allow workspace to override mcp setting
+const AllowedWorkspaceConfigKeys = ["mcp"] as const;
+
+const configFileName = isDev ? "dev-config.jsonc" : "config.jsonc";
+
+const pochiConfigRelativePath = path.join(".pochi", configFileName);
+
+const UserConfigFilePath = path.join(os.homedir(), pochiConfigRelativePath);
+
+const getWorkspaceConfigFilePath = (workspacePath: string) =>
+  path.join(workspacePath, pochiConfigRelativePath);
 
 const logger = getLogger("PochiConfigManager");
 
+export type PochiConfigTarget = "user" | "workspace";
+
 class PochiConfigManager {
-  private readonly cfg: Signal<PochiConfig> = signal({});
-  private events = new EventTarget();
+  private userConfigFile: PochiConfigFile;
+  private workspaceConfigFile: PochiConfigFile | null = null;
+
+  private readonly mergedConfig: Signal<PochiConfig> = signal({});
 
   constructor() {
-    this.cfg.value = this.load();
-    this.watch();
-
+    this.userConfigFile = new PochiConfigFile(UserConfigFilePath);
     if (process.env.POCHI_SESSION_TOKEN) {
-      this.cfg.value = {
-        ...this.cfg.value,
-        vendors: {
-          ...this.cfg.value.vendors,
-          pochi: {
-            ...this.cfg.value.vendors?.pochi,
-            credentials: {
-              token: process.env.POCHI_SESSION_TOKEN,
+      this.userConfigFile.config.value = mergeDeep(
+        this.userConfigFile.config.value,
+        {
+          vendors: {
+            pochi: {
+              credentials: {
+                token: process.env.POCHI_SESSION_TOKEN,
+              },
             },
           },
         },
-      };
+      );
     }
+    this.userConfigFile.config.subscribe(this.updateMergedConfig);
+    this.updateMergedConfig();
   }
 
-  private load() {
-    try {
-      const content = fs.readFileSync(PochiConfigFilePath, "utf-8");
-      return PochiConfig.parse(JSONC.parse(content));
-    } catch (err) {
-      logger.debug("Failed to load config file", err);
+  private updateMergedConfig = () => {
+    const mergedValue: PochiConfig = { ...this.userConfigFile.config.value };
+    for (const key of AllowedWorkspaceConfigKeys) {
+      const workspaceValue = prop(
+        this.workspaceConfigFile?.config.value || {},
+        key,
+      ) as PochiConfig[typeof key];
+      const userValue = prop(
+        this.userConfigFile.config.value,
+        key,
+      ) as PochiConfig[typeof key];
+      // must be shallow merge, because mcp is a record of record, we want to merge the inner record instead of override it
+      mergedValue[key] = merge(userValue, workspaceValue ?? {});
     }
-    return {};
-  }
-
-  private onChange = () => {
-    const oldValue = this.cfg.value;
-    const newValue = this.load();
-    if (isDeepEqual(oldValue, newValue)) return;
-    this.cfg.value = newValue;
+    this.mergedConfig.value = mergedValue;
   };
 
-  private async watch() {
-    await this.ensureFileExists();
-    this.events.addEventListener("change", this.onChange);
-    const debouncer = funnel(
-      () => {
-        this.events.dispatchEvent(new Event("change"));
-      },
-      {
-        minQuietPeriodMs: process.platform === "win32" ? 100 : 1000,
-        triggerAt: "end",
-      },
-    );
-    fs.watch(PochiConfigFilePath, { persistent: false }, () =>
-      debouncer.call(),
-    );
-  }
-
-  private async ensureFileExists() {
-    const fileExist = await fsPromise
-      .access(PochiConfigFilePath)
-      .then(() => true)
-      .catch(() => false);
-    if (!fileExist) {
-      const dirPath = path.dirname(PochiConfigFilePath);
-      await fsPromise.mkdir(dirPath, { recursive: true });
-      await this.save();
+  setWorkspacePath = async (workspacePath: string | undefined) => {
+    if (workspacePath) {
+      const workspaceConfigFilepath = getWorkspaceConfigFilePath(workspacePath);
+      const fileExist = await fsPromise
+        .access(workspaceConfigFilepath)
+        .then(() => true)
+        .catch(() => false);
+      if (
+        this.workspaceConfigFile?.configFilePath !== workspaceConfigFilepath &&
+        fileExist
+      ) {
+        logger.debug(`add workspace config: ${workspaceConfigFilepath}`);
+        this.workspaceConfigFile = new PochiConfigFile(workspaceConfigFilepath);
+        await new Promise<void>((resolve) => {
+          this.workspaceConfigFile?.config.subscribe(() => {
+            this.updateMergedConfig();
+            resolve();
+          });
+        });
+        this.updateMergedConfig();
+        return;
+      }
     }
+    this.workspaceConfigFile = null;
+    this.updateMergedConfig();
+  };
+
+  get config(): ReadonlySignal<PochiConfig> {
+    return this.mergedConfig;
   }
 
-  private async save() {
-    try {
-      let content =
-        (
-          await fsPromise
-            .readFile(PochiConfigFilePath, "utf8")
-            .catch(() => undefined)
-        )?.trim() || "{}";
-
-      // Apply changes.
-      content = fleece.patch(content, this.cfg.value);
-
-      // Formatting.
-      const edits = JSONC.format(content, undefined, {
-        tabSize: 2,
-        insertFinalNewline: true,
-        insertSpaces: true,
-      });
-      content = JSONC.applyEdits(content, edits);
-
-      await fsPromise.writeFile(PochiConfigFilePath, content);
-    } catch (err) {
-      logger.error("Failed to save config file", err);
+  updateConfig = async (
+    newConfig: Partial<PochiConfig>,
+    target: PochiConfigTarget = "user",
+  ): Promise<boolean> => {
+    if (target === "user") {
+      return await this.userConfigFile.updateConfig(newConfig);
     }
-  }
-
-  updateConfig = async (newConfig: Partial<PochiConfig>) => {
-    let config: PochiConfig = {};
-    config = mergeDeep(config, this.cfg.value);
-    config = mergeDeep(config, newConfig);
-    if (isDeepEqual(config, this.cfg.value)) return;
-    this.cfg.value = config;
-
-    // Save to file without await.
-    await this.save();
+    if (target === "workspace" && this.workspaceConfigFile) {
+      return await this.workspaceConfigFile.updateConfig(newConfig);
+    }
+    return false;
   };
 
   getVendorConfig = (id: string) => {
     const cfg =
-      this.cfg.value.vendors?.[id as keyof NonNullable<PochiConfig["vendors"]>];
+      this.config.value.vendors?.[
+        id as keyof NonNullable<PochiConfig["vendors"]>
+      ];
     return cfg as VendorConfig;
   };
 
-  updateVendorConfig = async (name: string, vendor: VendorConfig | null) => {
-    this.cfg.value = {
-      ...this.cfg.value,
-      vendors: {
-        ...this.cfg.value.vendors,
-        [name]: vendor,
-      },
-    };
-    await this.save();
+  updateVendorConfig = async (
+    name: string,
+    vendor: VendorConfig | null,
+    target: PochiConfigTarget = "user",
+  ) => {
+    if (target === "user") {
+      await this.userConfigFile.updateVendorConfig(name, vendor);
+    } else if (target === "workspace" && this.workspaceConfigFile) {
+      await this.workspaceConfigFile.updateVendorConfig(name, vendor);
+    }
   };
 
-  get config(): ReadonlySignal<PochiConfig> {
-    return this.cfg;
-  }
+  private getConfig = (path?: string, target: PochiConfigTarget = "user") => {
+    const cfg =
+      target === "user"
+        ? this.userConfigFile.config.value
+        : this.workspaceConfigFile?.config.value;
+    if (!path || !cfg) return cfg;
+    const segments = path.split(".") as [keyof PochiConfig];
+    return prop(cfg, ...segments);
+  };
 
-  getStoreId = async (cwd: string) => {
-    const { credentials } = this.cfg.value?.vendors?.pochi || {};
-    const { jwt = null } = (credentials as PochiCredentials | undefined) || {};
+  inspect = (path?: string) => {
+    const userValue = this.getConfig(path);
+    const workspaceValue = this.getConfig(path, "workspace");
+    const effectiveTargets = [] as PochiConfigTarget[];
+    if (workspaceValue !== undefined) effectiveTargets.push("workspace");
+    if (userValue !== undefined) effectiveTargets.push("user");
+    return {
+      path,
+      userValue,
+      workspaceValue,
+      effectiveTargets,
+    };
+  };
 
-    const sub = (jwt ? jose.decodeJwt(jwt).sub : undefined) ?? "anonymous";
-    return encodeStoreId({ sub, machineId: await machineId(), cwd });
+  getConfigFilePath = (target: PochiConfigTarget = "user") => {
+    switch (target) {
+      case "user":
+        return this.userConfigFile.configFilePath;
+      case "workspace":
+        return this.workspaceConfigFile?.configFilePath;
+      default:
+        throw target satisfies never;
+    }
+  };
+
+  // callback is called in untrack context, thus won't trigger effect
+  watchKeys = (keys: Array<keyof PochiConfig>, callback: () => void) => {
+    let previousDeps: Partial<PochiConfig> = {};
+    return effect(() => {
+      const deps = pick(this.config.value, keys);
+      if (!isDeepEqual(deps, previousDeps)) {
+        previousDeps = deps;
+        untracked(() => {
+          callback();
+        });
+      }
+    });
   };
 }
 
@@ -164,7 +206,10 @@ const {
   updateConfig,
   getVendorConfig,
   updateVendorConfig,
-  getStoreId,
+  getConfigFilePath,
+  watchKeys,
+  inspect,
+  setWorkspacePath,
 } = new PochiConfigManager();
 
 export {
@@ -172,6 +217,9 @@ export {
   updateConfig as updatePochiConfig,
   getVendorConfig,
   updateVendorConfig,
-  PochiConfigFilePath,
-  getStoreId,
+  getConfigFilePath as getPochiConfigFilePath,
+  watchKeys as watchPochiConfigKeys,
+  inspect as inspectPochiConfig,
+  setWorkspacePath as setPochiConfigWorkspacePath,
+  pochiConfigRelativePath,
 };

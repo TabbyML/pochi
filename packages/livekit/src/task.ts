@@ -24,6 +24,7 @@ export function toTaskStatus(
 
   if (!finishReason) return "failed";
 
+  let hasToolCall = false;
   for (const part of message.parts.slice(lastStepStart + 1)) {
     if (
       part.type === "tool-askFollowupQuestion" ||
@@ -33,8 +34,12 @@ export function toTaskStatus(
     }
 
     if (isToolUIPart(part)) {
-      return "pending-tool";
+      hasToolCall = true;
     }
+  }
+
+  if (hasToolCall) {
+    return "pending-tool";
   }
 
   if (finishReason !== "error") {

@@ -1,63 +1,40 @@
 import type { LanguageModelV2 } from "@ai-sdk/provider";
-import { getLogger } from "@getpochi/common";
+import { constants } from "@getpochi/common";
+import { createClientTools } from "@getpochi/tools";
 import {
   NoSuchToolError,
   type Tool,
   type ToolCallRepairFunction,
-  streamText,
+  generateObject,
 } from "ai";
 
-const logger = getLogger("RepairToolCall");
-
 export const makeRepairToolCall: (
+  taskId: string,
   model: LanguageModelV2,
 ) => ToolCallRepairFunction<Record<string, Tool>> =
-  (model) =>
+  (taskId, model) =>
   async ({ toolCall, inputSchema, error }) => {
     if (NoSuchToolError.isInstance(error)) {
       return null; // do not attempt to fix invalid tool names
     }
 
-    const result = await streamText({
+    const tools = createClientTools();
+    const tool = tools[toolCall.toolName as keyof typeof tools];
+
+    const { object: repairedArgs } = await generateObject({
+      headers: {
+        [constants.PochiTaskIdHeader]: taskId,
+      },
       model,
+      schema: tool.inputSchema,
       prompt: [
-        `The model tried to call the tool "${toolCall.toolName}" with the following arguments:`,
+        `The model tried to call the tool "${toolCall.toolName}" with the following inputs:`,
         JSON.stringify(toolCall.input),
         "The tool accepts the following schema:",
         JSON.stringify(inputSchema(toolCall)),
-        "Please fix the arguments. Please ONLY output the json string, without any other text (no markdown code block wrapper, either)",
-        "",
-        "<good-example>",
-        '{"path": "./src/file.ts", "content": "console.log("hello");"}',
-        "</good-example>",
-        "",
-        "<bad-example>",
-        "```json",
-        '{"path": "./src/file.ts", "content": "console.log("hello");"}',
-        "```",
-        "</bad-example>",
-        "",
-        "<bad-example>",
-        "Here is the corrected JSON:",
-        '{"path": "./src/file.ts", "content": "console.log("hello");"}',
-        "</bad-example>",
-        "",
-        "<bad-example>",
-        "```",
-        '{"path": "./src/file.ts", "content": "console.log("hello");"}',
-        "```",
-        "</bad-example>",
-        "",
-        "<bad-example>",
-        '{"path": "./src/file.ts", "content": "console.log("hello");"} // Fixed arguments',
-        "</bad-example>",
+        "Please fix the inputs.",
       ].join("\n"),
-      maxOutputTokens: 3_000,
-      maxRetries: 0,
     });
 
-    const input = await result.text;
-    logger.debug("Repairing tool call:", toolCall.toolName, input);
-
-    return { ...toolCall, input };
+    return { ...toolCall, input: JSON.stringify(repairedArgs) };
   };

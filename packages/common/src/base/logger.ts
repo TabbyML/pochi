@@ -1,23 +1,6 @@
 import { minimatch } from "minimatch";
 import { type ILogObjMeta, type IMeta, Logger } from "tslog";
-
-const isVSCodeEnvironment = () => {
-  if (typeof process !== "undefined") {
-    if (process.env.VSCODE_PID) {
-      return true;
-    }
-
-    if (process.env.VSCODE_SERVER_PORT) {
-      return true;
-    }
-
-    if (process.env.VSCODE_CWD) {
-      return true;
-    }
-  }
-
-  return false;
-};
+import { isVSCodeEnvironment } from "../env-utils";
 
 const isConsoleLogDisabled = () => {
   return (

@@ -1,11 +1,15 @@
 import type { LanguageModelV2 } from "@ai-sdk/provider";
-import { formatters, getLogger, prompts } from "@getpochi/common";
-import { convertToModelMessages, streamText } from "ai";
+import { constants, formatters, getLogger, prompts } from "@getpochi/common";
+import type { Store } from "@livestore/livestore";
+import { convertToModelMessages, generateText } from "ai";
+import { makeDownloadFunction } from "../../store-blob";
 import type { Message } from "../../types";
 
 const logger = getLogger("generateTaskTitle");
 
 interface GenerateTaskTitleOptions {
+  store: Store;
+  taskId: string;
   title: string | null;
   messages: Message[];
   getModel: () => LanguageModelV2;
@@ -22,6 +26,8 @@ export async function generateTaskTitle(options: GenerateTaskTitleOptions) {
 }
 
 async function generateTaskTitleImpl({
+  store,
+  taskId,
   title,
   messages,
   getModel,
@@ -47,7 +53,13 @@ async function generateTaskTitleImpl({
   ) {
     try {
       const model = getModel();
-      const title = await generateTitle(model, messages, abortSignal);
+      const title = await generateTitle(
+        store,
+        taskId,
+        model,
+        messages,
+        abortSignal,
+      );
       if (title.length > 0) {
         return title;
       }
@@ -80,6 +92,8 @@ function isTitleGeneratedByLlm(
 }
 
 async function generateTitle(
+  store: Store,
+  taskId: string,
   model: LanguageModelV2,
   inputMessages: Message[],
   abortSignal: AbortSignal | undefined,
@@ -98,15 +112,19 @@ async function generateTitle(
     },
   ];
 
-  const stream = streamText({
+  const resp = await generateText({
+    headers: {
+      [constants.PochiTaskIdHeader]: taskId,
+    },
     model,
     prompt: convertToModelMessages(
       formatters.llm(messages, { removeSystemReminder: true }),
     ),
+    experimental_download: makeDownloadFunction(store),
     abortSignal,
-    maxOutputTokens: 50,
+    maxOutputTokens: 2048,
     maxRetries: 0,
   });
 
-  return (await stream.text).trim();
+  return resp.text;
 }

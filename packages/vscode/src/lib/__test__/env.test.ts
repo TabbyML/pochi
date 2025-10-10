@@ -252,7 +252,7 @@ describe("env.ts", () => {
       Object.defineProperty(process, "platform", { value: "darwin", writable: true });
       process.env.SHELL = "/bin/zsh";
 
-      const info = env.getSystemInfo();
+      const info = env.getSystemInfo(testWorkspaceUri.fsPath);
       assert.deepStrictEqual(info, {
         cwd: testWorkspaceUri.fsPath,
         shell: "/bin/zsh",
@@ -267,7 +267,7 @@ describe("env.ts", () => {
       process.cwd = () => "/current/dir_process";
       currentTestWorkspaceFolders = undefined;
 
-      const info = env.getSystemInfo();
+      const info = env.getSystemInfo("/current/dir_process");
       assert.deepStrictEqual(info, {
         cwd: "/current/dir_process",
         shell: "/bin/bash",
@@ -284,7 +284,7 @@ describe("env.ts", () => {
       process.cwd = () => "C:\\project_process";
       currentTestWorkspaceFolders = [];
 
-      const info = env.getSystemInfo();
+      const info = env.getSystemInfo("C:\\project_process");
       assert.deepStrictEqual(info, {
         cwd: "C:\\project_process",
         shell: "powershell.exe",
@@ -299,7 +299,7 @@ describe("env.ts", () => {
       process.cwd = () => "/fallback/cwd_process";
       currentTestWorkspaceFolders = undefined;
 
-      const info = env.getSystemInfo();
+      const info = env.getSystemInfo("/fallback/cwd_process");
       assert.deepStrictEqual(info, {
         cwd: "/fallback/cwd_process",
         shell: "",
@@ -320,7 +320,7 @@ describe("env.ts", () => {
       const workspaceRuleContent = "workspace rule content";
       await createFile(workspaceReadmeUri, workspaceRuleContent);
 
-      const rules = await env.collectCustomRules([]);
+      const rules = await env.collectCustomRules(testWorkspaceUri.fsPath, []);
       assert.ok(rules.includes(workspaceRuleContent), `Rules should include workspace rule content. Got: ${rules}`);
       // Check that the path is somewhat correct, using basename as asRelativePath mock does
       assert.ok(rules.includes(`# Rules from ${nodePath.basename(workspaceReadmeUri.fsPath)}`), "Rule header for workspace should be present");
@@ -331,7 +331,7 @@ describe("env.ts", () => {
       const customRuleContent = "custom rule 1 content";
       await createFile(vscode.Uri.file(customRuleFile1Path), customRuleContent);
 
-      const rules = await env.collectCustomRules([customRuleFile1Path]);
+      const rules = await env.collectCustomRules(testWorkspaceUri.fsPath, [customRuleFile1Path]);
       assert.ok(rules.includes(customRuleContent), `Rules should include custom rule 1 content. Got: ${rules}`);
       assert.ok(rules.includes(`# Rules from ${nodePath.basename(customRuleFile1Path)}`), "Rule header for custom rule 1 should be present");
     });
@@ -344,7 +344,7 @@ describe("env.ts", () => {
       await createFile(vscode.Uri.file(customRuleFile1Path), ruleAContent);
       await createFile(vscode.Uri.file(customRuleFile2Path), ruleBContent);
 
-      const rules = await env.collectCustomRules([customRuleFile1Path, customRuleFile2Path]);
+      const rules = await env.collectCustomRules(testWorkspaceUri.fsPath, [customRuleFile1Path, customRuleFile2Path]);
 
       assert.ok(rules.includes(ruleAContent), `Rules should include custom rule A content. Got: ${rules}`);
       assert.ok(rules.includes(ruleBContent), `Rules should include custom rule B content. Got: ${rules}`);
@@ -361,7 +361,7 @@ describe("env.ts", () => {
       await createFile(vscode.Uri.file(customRuleFile1Path), customCRuleContent);
 
       // Pass homeReadmeUri.fsPath and customRuleFile1Path as custom rules
-      const rules = await env.collectCustomRules([customRuleFile1Path]);
+      const rules = await env.collectCustomRules(testWorkspaceUri.fsPath, [customRuleFile1Path]);
 
       assert.ok(rules.includes(wsRuleContent), "Should include workspace rule content");
       assert.ok(rules.includes(customCRuleContent), "Should include custom C rule content");
@@ -373,7 +373,7 @@ describe("env.ts", () => {
     it("should return empty string if no rules are found", async () => {
       // Ensure no workspace README exists for this test
       try { await vscode.workspace.fs.delete(workspaceReadmeUri); } catch (e) {}
-      const rules = await env.collectCustomRules([]);
+      const rules = await env.collectCustomRules(testWorkspaceUri.fsPath, []);
       assert.strictEqual(rules, "");
     });
 
@@ -382,7 +382,7 @@ describe("env.ts", () => {
       await createFile(workspaceReadmeUri, wsRuleContent);
       const customRuleNonExistent = nodePath.join(currentTestTempDirUri.fsPath, "non-existent-custom.md");
 
-      const rules = await env.collectCustomRules([customRuleNonExistent]);
+      const rules = await env.collectCustomRules(testWorkspaceUri.fsPath, [customRuleNonExistent]);
       assert.ok(rules.includes(wsRuleContent));
       assert.ok(!rules.includes(nodePath.basename(customRuleNonExistent)));
     });
@@ -404,7 +404,7 @@ describe("env.ts", () => {
       await createFile(vscode.Uri.joinPath(workflowsDir, "workflow1.md"), workflow1Content);
       await createFile(vscode.Uri.joinPath(workflowsDir, "workflow2.md"), workflow2Content);
 
-      const workflows = await env.collectWorkflows();
+      const workflows = await env.collectWorkflows(testWorkspaceUri.fsPath);
 
       assert.strictEqual(workflows.length, 2);
 
@@ -428,14 +428,14 @@ describe("env.ts", () => {
       // Ensure workflows directory doesn't exist
       try { await vscode.workspace.fs.delete(workflowsDir, { recursive: true }); } catch (e) {}
 
-      const workflows = await env.collectWorkflows();
+      const workflows = await env.collectWorkflows(testWorkspaceUri.fsPath);
       assert.strictEqual(workflows.length, 0);
     });
 
     it("should return empty array when workflows directory is empty", async () => {
       await createDirectory(workflowsDir);
 
-      const workflows = await env.collectWorkflows();
+      const workflows = await env.collectWorkflows(testWorkspaceUri.fsPath);
       assert.strictEqual(workflows.length, 0);
     });
 
@@ -448,7 +448,7 @@ describe("env.ts", () => {
       await createFile(vscode.Uri.joinPath(workflowsDir, "invalid.txt"), "This should be ignored");
       await createFile(vscode.Uri.joinPath(workflowsDir, "also-invalid.json"), '{"ignored": true}');
 
-      const workflows = await env.collectWorkflows();
+      const workflows = await env.collectWorkflows(testWorkspaceUri.fsPath);
 
       assert.strictEqual(workflows.length, 1);
       assert.strictEqual(workflows[0].id, "valid-workflow");
@@ -462,7 +462,7 @@ describe("env.ts", () => {
 
       await createFile(vscode.Uri.joinPath(workflowsDir, "complex-workflow-name.md"), complexNameContent);
 
-      const workflows = await env.collectWorkflows();
+      const workflows = await env.collectWorkflows(testWorkspaceUri.fsPath);
 
       assert.strictEqual(workflows.length, 1);
       assert.strictEqual(workflows[0].id, "complex-workflow-name");
@@ -474,7 +474,7 @@ describe("env.ts", () => {
 
       await createFile(vscode.Uri.joinPath(workflowsDir, "empty-workflow.md"), "");
 
-      const workflows = await env.collectWorkflows();
+      const workflows = await env.collectWorkflows(testWorkspaceUri.fsPath);
 
       assert.strictEqual(workflows.length, 1);
       assert.strictEqual(workflows[0].id, "empty-workflow");
@@ -489,7 +489,7 @@ describe("env.ts", () => {
 
       // Since we can't easily simulate a file read error in the test environment,
       // we'll test that files that exist are properly read
-      const workflows = await env.collectWorkflows();
+      const workflows = await env.collectWorkflows(testWorkspaceUri.fsPath);
 
       assert.strictEqual(workflows.length, 1);
       assert.strictEqual(workflows[0].id, "valid");
@@ -505,7 +505,7 @@ describe("env.ts", () => {
       await createFile(vscode.Uri.joinPath(workflowsDir, "uppercase.MD"), upperCaseContent);
       await createFile(vscode.Uri.joinPath(workflowsDir, "mixedcase.Md"), mixedCaseContent);
       
-      const workflows = await env.collectWorkflows();
+      const workflows = await env.collectWorkflows(testWorkspaceUri.fsPath);
       
       // The function should detect .MD and .Md files (case-insensitive)
       assert.strictEqual(workflows.length, 2);
@@ -519,6 +519,123 @@ describe("env.ts", () => {
       // Verify the files are detected even with different case extensions
       assert.ok(workflows.some(w => w.path.includes("uppercase.MD")), "Should detect uppercase.MD file");
       assert.ok(workflows.some(w => w.path.includes("mixedcase.Md")), "Should detect mixedcase.Md file");
+    });
+
+    it("should collect workflows from global directory when includeGlobalWorkflow is true", async () => {
+      // Create global workflows directory in the mocked home directory
+      const globalWorkflowsDir = vscode.Uri.joinPath(testHomeDirUri, ".pochi", "workflows");
+      await createDirectory(globalWorkflowsDir);
+
+      const globalWorkflowContent = "# Global Workflow\nThis is a global workflow";
+      await createFile(vscode.Uri.joinPath(globalWorkflowsDir, "global-workflow.md"), globalWorkflowContent);
+
+      const workflows = await env.collectWorkflows(testWorkspaceUri.fsPath, true);
+
+      assert.strictEqual(workflows.length, 1);
+      assert.strictEqual(workflows[0].id, "global-workflow");
+      
+      // Check that the path starts with ~ for global workflows
+      assert.ok(workflows[0].path.startsWith("~"), `Global workflow path should start with ~. Got: ${workflows[0].path}`);
+      assert.ok(workflows[0].path.includes("global-workflow.md"), "Path should contain global-workflow.md");
+    });
+
+    it("should not collect workflows from global directory when includeGlobalWorkflow is false", async () => {
+      // Create global workflows directory in the mocked home directory
+      const globalWorkflowsDir = vscode.Uri.joinPath(testHomeDirUri, ".pochi", "workflows");
+      await createDirectory(globalWorkflowsDir);
+
+      const globalWorkflowContent = "# Global Workflow\nThis is a global workflow";
+      await createFile(vscode.Uri.joinPath(globalWorkflowsDir, "global-workflow.md"), globalWorkflowContent);
+
+      const workflows = await env.collectWorkflows(testWorkspaceUri.fsPath, false);
+
+      assert.strictEqual(workflows.length, 0, "Should not collect global workflows when includeGlobalWorkflow is false");
+    });
+
+    it("should collect workflows from both workspace and global directories", async () => {
+      // Create workspace workflows
+      await createDirectory(workflowsDir);
+      const workspaceWorkflowContent = "# Workspace Workflow\nThis is a workspace workflow";
+      await createFile(vscode.Uri.joinPath(workflowsDir, "workspace-workflow.md"), workspaceWorkflowContent);
+
+      // Create global workflows
+      const globalWorkflowsDir = vscode.Uri.joinPath(testHomeDirUri, ".pochi", "workflows");
+      await createDirectory(globalWorkflowsDir);
+      const globalWorkflowContent = "# Global Workflow\nThis is a global workflow";
+      await createFile(vscode.Uri.joinPath(globalWorkflowsDir, "global-workflow.md"), globalWorkflowContent);
+
+      const workflows = await env.collectWorkflows(testWorkspaceUri.fsPath, true);
+
+      assert.strictEqual(workflows.length, 2, "Should collect workflows from both workspace and global directories");
+
+      const workspaceWorkflow = workflows.find(w => w.id === "workspace-workflow");
+      const globalWorkflow = workflows.find(w => w.id === "global-workflow");
+
+      assert.ok(workspaceWorkflow, "Should find workspace workflow");
+      assert.ok(globalWorkflow, "Should find global workflow");
+
+      // Workspace workflow path should be relative to workspace
+      assert.ok(workspaceWorkflow.path.includes("workspace-workflow.md"), "Workspace workflow path should contain filename");
+      assert.ok(!workspaceWorkflow.path.startsWith("~"), "Workspace workflow path should not start with ~");
+
+      // Global workflow path should start with ~
+      assert.ok(globalWorkflow.path.startsWith("~"), `Global workflow path should start with ~. Got: ${globalWorkflow.path}`);
+      assert.ok(globalWorkflow.path.includes("global-workflow.md"), "Global workflow path should contain filename");
+    });
+
+    it("should handle missing global workflows directory gracefully", async () => {
+      // Create only workspace workflow
+      await createDirectory(workflowsDir);
+      const workspaceWorkflowContent = "# Workspace Workflow\nContent";
+      await createFile(vscode.Uri.joinPath(workflowsDir, "workspace-workflow.md"), workspaceWorkflowContent);
+
+      // Do not create global workflows directory - it should handle this gracefully
+      const workflows = await env.collectWorkflows(testWorkspaceUri.fsPath, true);
+
+      assert.strictEqual(workflows.length, 1, "Should only collect workspace workflow when global directory doesn't exist");
+      assert.strictEqual(workflows[0].id, "workspace-workflow");
+    });
+
+    it("should prioritize workspace workflows over global ones with the same name", async () => {
+      // Create global workflow
+      const globalWorkflowsDir = vscode.Uri.joinPath(testHomeDirUri, ".pochi", "workflows");
+      await createDirectory(globalWorkflowsDir);
+      const globalWorkflowContent = "# Global Version\nThis is the global version";
+      await createFile(vscode.Uri.joinPath(globalWorkflowsDir, "duplicate-workflow.md"), globalWorkflowContent);
+
+      // Create workspace workflow with the same name
+      await createDirectory(workflowsDir);
+      const workspaceWorkflowContent = "# Workspace Version\nThis is the workspace version";
+      await createFile(vscode.Uri.joinPath(workflowsDir, "duplicate-workflow.md"), workspaceWorkflowContent);
+
+      const workflows = await env.collectWorkflows(testWorkspaceUri.fsPath, true);
+
+      // Only one workflow should be collected, with the workspace version taking precedence.
+      assert.strictEqual(workflows.length, 1, "Should collect only one workflow for duplicate names");
+
+      const workflow = workflows[0];
+      assert.strictEqual(workflow.id, "duplicate-workflow", "Workflow ID should be correct");
+      
+      // Check that the content is from the workspace workflow
+      assert.strictEqual(workflow.content, workspaceWorkflowContent, "Should use the content from the workspace workflow");
+
+      // Check that the path is the workspace path, not the global one
+      assert.ok(!workflow.path.startsWith("~"), "Path should be the workspace path, not global");
+    });
+
+    it("should default to includeGlobalWorkflow=true when parameter is not provided", async () => {
+      // Create global workflows directory
+      const globalWorkflowsDir = vscode.Uri.joinPath(testHomeDirUri, ".pochi", "workflows");
+      await createDirectory(globalWorkflowsDir);
+      const globalWorkflowContent = "# Global Workflow\nContent";
+      await createFile(vscode.Uri.joinPath(globalWorkflowsDir, "global-workflow.md"), globalWorkflowContent);
+
+      // Call without the second parameter - should default to true
+      const workflows = await env.collectWorkflows(testWorkspaceUri.fsPath);
+
+      assert.strictEqual(workflows.length, 1, "Should collect global workflows by default");
+      assert.strictEqual(workflows[0].id, "global-workflow");
+      assert.ok(workflows[0].path.startsWith("~"), "Global workflow path should start with ~");
     });
   });
 });

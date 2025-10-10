@@ -2,7 +2,7 @@ import z from "zod/v4";
 
 export const UserInfo = z.object({
   name: z.string(),
-  email: z.string(),
+  email: z.string().optional(),
   image: z.string().optional(),
 });
 

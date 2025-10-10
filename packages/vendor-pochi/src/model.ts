@@ -8,16 +8,16 @@ import {
   convertToBase64,
   extractResponseHeaders,
 } from "@ai-sdk/provider-utils";
-import type { PochiApi, PochiApiClient } from "@getpochi/common/pochi-api";
 import type { CreateModelOptions } from "@getpochi/common/vendor/edge";
 import {
   type PochiCredentials,
   getServerBaseUrl,
 } from "@getpochi/common/vscode-webui-bridge";
 import { hc } from "hono/client";
+import * as R from "remeda";
+import type { PochiApi, PochiApiClient } from "./pochi-api";
 
 export function createPochiModel({
-  id,
   modelId,
   getCredentials,
 }: CreateModelOptions): LanguageModelV2 {
@@ -27,11 +27,39 @@ export function createPochiModel({
     modelId: modelId || "<default>",
     // FIXME(meng): fill supported urls based on modelId.
     supportedUrls: {},
-    doGenerate: async () => Promise.reject("Not implemented"),
-    doStream: async ({ prompt, abortSignal, stopSequences, tools }) => {
+    doGenerate: async ({ headers, abortSignal, prompt, ...options }) => {
+      const apiClient = createApiClient(getCredentials);
+      const resp = await apiClient.api.chat.$post(
+        {
+          json: {
+            model: modelId,
+            options: {
+              prompt: convertFilePartDataToBase64(prompt),
+              ...options,
+            },
+          },
+        },
+        {
+          headers: headers ? R.mapValues(headers, (x) => x || "") : undefined,
+          init: {
+            signal: abortSignal,
+          },
+        },
+      );
+      const data = (await resp.json()) as Awaited<
+        ReturnType<LanguageModelV2["doGenerate"]>
+      >;
+      return data;
+    },
+    doStream: async ({
+      prompt,
+      abortSignal,
+      stopSequences,
+      tools,
+      headers,
+    }) => {
       const apiClient = createApiClient(getCredentials);
       const data = {
-        id,
         model: modelId,
         callOptions: {
           prompt: convertFilePartDataToBase64(prompt),
@@ -44,6 +72,7 @@ export function createPochiModel({
           json: data,
         },
         {
+          headers: headers ? R.mapValues(headers, (x) => x || "") : undefined,
           init: {
             signal: abortSignal,
           },
@@ -81,7 +110,7 @@ export function createPochiModel({
 function createApiClient(
   getCredentials: () => Promise<unknown>,
 ): PochiApiClient {
-  const authClient: PochiApiClient = hc<PochiApi>(getServerBaseUrl(), {
+  const apiClient: PochiApiClient = hc<PochiApi>(getServerBaseUrl(), {
     async fetch(input: string | URL | Request, init?: RequestInit) {
       const { token } = (await getCredentials()) as PochiCredentials;
       const headers = new Headers(init?.headers);
@@ -93,7 +122,7 @@ function createApiClient(
     },
   });
 
-  return authClient;
+  return apiClient;
 }
 
 function convertFilePartDataToBase64(

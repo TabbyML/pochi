@@ -16,13 +16,6 @@ async function createDirectory(uri: vscode.Uri): Promise<void> {
   await vscode.workspace.fs.createDirectory(uri);
 }
 
-// Dummy options for tool execution context
-const dummyToolOptions = {
-  toolCallId: "test-call-id-123",
-  messages: [], // Provide a minimal message object
-};
-
-
 describe("globFiles Tool", () => {
   let testSuiteRootTempDir: vscode.Uri;
   let currentTestTempDirUri: vscode.Uri;
@@ -85,7 +78,7 @@ describe("globFiles Tool", () => {
   it("should return an empty array for an empty directory", async () => {
     const result = await globFiles(
       { path: currentTestTempDirRelativePath, globPattern: "*.txt" },
-      dummyToolOptions,
+      { toolCallId: "test-call-id-123", messages: [], cwd: testSuiteRootTempDir.fsPath },
     );
     assert.deepStrictEqual(result.files, []);
     assert.strictEqual(result.isTruncated, false);
@@ -107,7 +100,7 @@ describe("globFiles Tool", () => {
 
     const result = await globFiles(
       { path: currentTestTempDirRelativePath, globPattern: "*.txt" },
-      dummyToolOptions,
+      { toolCallId: "test-call-id-123", messages: [], cwd: testSuiteRootTempDir.fsPath },
     );
     assert.deepStrictEqual(
       result.files.sort(),
@@ -135,7 +128,7 @@ describe("globFiles Tool", () => {
 
     const result = await globFiles(
       { path: currentTestTempDirRelativePath, globPattern: "**/*.txt" },
-      dummyToolOptions,
+      { toolCallId: "test-call-id-123", messages: [], cwd: testSuiteRootTempDir.fsPath },
     );
     assert.deepStrictEqual(
       result.files.sort(),
@@ -158,7 +151,7 @@ describe("globFiles Tool", () => {
 
     const result = await globFiles(
       { path: currentTestTempDirRelativePath, globPattern: "*.txt" },
-      dummyToolOptions,
+      { toolCallId: "test-call-id-123", messages: [], cwd: testSuiteRootTempDir.fsPath },
     );
     assert.deepStrictEqual(result.files, []);
     assert.strictEqual(result.isTruncated, false);
@@ -172,7 +165,7 @@ describe("globFiles Tool", () => {
     const absolutePath = currentTestTempDirUri.fsPath;
     const result = await globFiles(
       { path: absolutePath, globPattern: "*.txt" },
-      dummyToolOptions,
+      { toolCallId: "test-call-id-123", messages: [], cwd: testSuiteRootTempDir.fsPath },
     );
     
     assert.deepStrictEqual(result.files, [_path.join(absolutePath, fileName)]);
@@ -186,7 +179,7 @@ describe("globFiles Tool", () => {
     const abortController = new AbortController();
     const promise = globFiles(
       { path: currentTestTempDirRelativePath, globPattern: "*.txt" },
-      { ...dummyToolOptions, abortSignal: abortController.signal },
+      { toolCallId: "test-call-id-123", messages: [], cwd: testSuiteRootTempDir.fsPath, abortSignal: abortController.signal },
     );
     abortController.abort();
     try {
@@ -223,7 +216,7 @@ describe("globFiles Tool", () => {
 
     let result = await globFiles(
       { path: currentTestTempDirRelativePath, globPattern: "targetdir/*.txt" },
-      dummyToolOptions,
+      { toolCallId: "test-call-id-123", messages: [], cwd: testSuiteRootTempDir.fsPath },
     );
     assert.deepStrictEqual(result.files.sort(), [
       _path.join(currentTestTempDirRelativePath, "targetdir", "fileA.txt"),
@@ -232,7 +225,7 @@ describe("globFiles Tool", () => {
 
     result = await globFiles(
       { path: currentTestTempDirRelativePath, globPattern: "**/fileA.txt" },
-      dummyToolOptions,
+      { toolCallId: "test-call-id-123", messages: [], cwd: testSuiteRootTempDir.fsPath },
     );
     assert.deepStrictEqual(result.files.sort(), [
       _path.join(currentTestTempDirRelativePath, "targetdir", "fileA.txt"),
@@ -241,7 +234,7 @@ describe("globFiles Tool", () => {
 
     result = await globFiles(
       { path: currentTestTempDirRelativePath, globPattern: "otherdir/*" },
-      dummyToolOptions,
+      { toolCallId: "test-call-id-123", messages: [], cwd: testSuiteRootTempDir.fsPath },
     );
     assert.deepStrictEqual(result.files.sort(), [
       _path.join(currentTestTempDirRelativePath, "otherdir", "fileC.txt"),
@@ -262,7 +255,7 @@ describe("globFiles Tool", () => {
 
     const result = await globFiles(
       { path: currentTestTempDirRelativePath, globPattern: "*.txt" },
-      dummyToolOptions,
+      { toolCallId: "test-call-id-123", messages: [], cwd: testSuiteRootTempDir.fsPath },
     );
     assert.deepStrictEqual(
       result.files.sort(),
@@ -275,7 +268,7 @@ describe("globFiles Tool", () => {
 
     const resultJpg = await globFiles(
       { path: currentTestTempDirRelativePath, globPattern: "*.jpg" },
-      dummyToolOptions,
+      { toolCallId: "test-call-id-123", messages: [], cwd: testSuiteRootTempDir.fsPath },
     );
     assert.deepStrictEqual(resultJpg.files.sort(), [
       _path.join(currentTestTempDirRelativePath, "IMAGE.JPG"),

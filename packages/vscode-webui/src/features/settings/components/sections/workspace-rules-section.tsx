@@ -6,7 +6,7 @@ import { useThirdPartyRules } from "@/lib/hooks/use-third-party-rules";
 import { vscodeHost } from "@/lib/vscode";
 import { Download, Edit, FileIcon, Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { EmptySectionPlaceholder, ScetionItem, Section } from "../ui/section";
+import { EmptySectionPlaceholder, Section, SectionItem } from "../ui/section";
 
 export const WorkspaceRulesSection: React.FC = () => {
   const { t } = useTranslation();
@@ -86,7 +86,7 @@ export const WorkspaceRulesSection: React.FC = () => {
       ) : rules.length > 0 ? (
         rules.map((rule) => {
           return (
-            <ScetionItem
+            <SectionItem
               title={rule.label ?? rule.relativeFilepath ?? rule.filepath}
               key={rule.filepath}
               icon={<FileIcon className="size-4 text-muted-foreground" />}

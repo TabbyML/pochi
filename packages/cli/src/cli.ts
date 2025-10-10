@@ -6,90 +6,174 @@ import "@livestore/wa-sqlite/dist/wa-sqlite.node.wasm" with { type: "file" };
 import "@getpochi/vendor-pochi";
 import "@getpochi/vendor-gemini-cli";
 import "@getpochi/vendor-claude-code";
+import "@getpochi/vendor-codex";
+import "@getpochi/vendor-github-copilot";
+import "@getpochi/vendor-qwen-code";
 
 // Register the models
 import "@getpochi/vendor-pochi/edge";
 import "@getpochi/vendor-gemini-cli/edge";
 import "@getpochi/vendor-claude-code/edge";
+import "@getpochi/vendor-codex/edge";
+import "@getpochi/vendor-github-copilot/edge";
+import "@getpochi/vendor-qwen-code/edge";
 
-import { Command } from "@commander-js/extra-typings";
+import fs from "node:fs/promises";
+import path from "node:path";
+import { Command, Option } from "@commander-js/extra-typings";
 import { constants, getLogger } from "@getpochi/common";
-import { pochiConfig } from "@getpochi/common/configuration";
+import {
+  pochiConfig,
+  setPochiConfigWorkspacePath,
+} from "@getpochi/common/configuration";
 import { getVendor, getVendors } from "@getpochi/common/vendor";
 import { createModel } from "@getpochi/common/vendor/edge";
-import type { LLMRequestData } from "@getpochi/livekit";
+import {
+  type LLMRequestData,
+  type Message,
+  fileToUri,
+} from "@getpochi/livekit";
+import { type Duration, Effect, Stream } from "@livestore/utils/effect";
 import chalk from "chalk";
 import * as commander from "commander";
+import z from "zod/v4";
 import packageJson from "../package.json";
 import { registerAuthCommand } from "./auth";
-import { createApiClient } from "./lib/api-client";
+
+import type { Store } from "@livestore/livestore";
+import { handleShellCompletion } from "./completion";
 import { findRipgrep } from "./lib/find-ripgrep";
 import { loadAgents } from "./lib/load-agents";
 import {
   containsWorkflowReference,
+  extractWorkflowNames,
+  parseWorkflowFrontmatter,
   replaceWorkflowReferences,
 } from "./lib/workflow-loader";
+
+import type { FileUIPart } from "ai";
+import { JsonRenderer } from "./json-renderer";
+import { shutdownStoreAndExit } from "./lib/shutdown";
 import { createStore } from "./livekit/store";
-import { registerMcpCommand } from "./mcp";
+import { initializeMcp, registerMcpCommand } from "./mcp";
 import { registerModelCommand } from "./model";
 import { OutputRenderer } from "./output-renderer";
 import { registerTaskCommand } from "./task";
 import { TaskRunner } from "./task-runner";
-import { registerUpgradeCommand } from "./upgrade";
-import { waitForAllJobs, waitUntil } from "./wait-until";
+import { checkForUpdates, registerUpgradeCommand } from "./upgrade";
 
 const logger = getLogger("Pochi");
 logger.debug(`pochi v${packageJson.version}`);
 
 const parsePositiveInt = (input: string): number => {
   if (!input) {
-    return program.error("error: Option must be a positive integer");
+    return program.error(
+      "The value for this option must be a positive integer.",
+    );
   }
   const result = Number.parseInt(input);
   if (Number.isNaN(result) || result <= 0) {
-    return program.error("error: Option must be a positive integer");
+    return program.error(
+      "The value for this option must be a positive integer.",
+    );
   }
   return result;
 };
 
 const program = new Command()
   .name("pochi")
-  .description(`${chalk.bold("Pochi")} v${packageJson.version}`)
+  .description(
+    `${chalk.bold("Pochi")} v${packageJson.version} - A powerful CLI tool for AI-driven development.`,
+  )
   .optionsGroup("Prompt:")
   .option(
     "-p, --prompt <prompt>",
-    'Create a new task with the given prompt. You can also pipe input to use as a prompt, for example: `cat .pochi/workflows/create-pr.md | pochi`. To use a workflow, use /workflow-name, for example: `pochi -p /create-pr`. Workflows can be embedded in larger prompts, for example: `pochi -p "please /create-pr with feat semantic convention"`',
+    "Create a new task with a given prompt. Input can also be piped. For example: `cat my-prompt.md | pochi`. Workflows can be triggered with `/workflow-name`, like `pochi -p /create-pr`.",
+  )
+  .option(
+    "-a, --attach <path...>",
+    "Attach one or more files to the prompt, e.g images",
   )
   .optionsGroup("Options:")
   .option(
+    "--stream-json",
+    "Stream the output in JSON format. This is useful for parsing the output in scripts.",
+  )
+  .option(
     "--max-steps <number>",
-    "Maximum number of stepsto run the task. If the task cannot be completed in this number of rounds, the runner will stop.",
+    "Set the maximum number of steps for a task. The task will stop if it exceeds this limit.",
     parsePositiveInt,
     24,
   )
   .option(
     "--max-retries <number>",
-    "Maximum number of retries to run the task in a single step.",
+    "Set the maximum number of retries for a single step in a task.",
     parsePositiveInt,
     3,
+  )
+  .addOption(
+    new Option(
+      "--experimental-output-schema <schema>",
+      "Specify a JSON schema for the output of the task. The task will be validated against this schema.",
+    ).hideHelp(),
   )
   .optionsGroup("Model:")
   .option(
     "-m, --model <model>",
-    "The model to use for the task.",
+    "Specify the model to be used for the task.",
     "qwen/qwen3-coder",
   )
+  .optionsGroup("MCP:")
+  .option(
+    "--no-mcp",
+    "Disable MCP (Model Context Protocol) integration completely.",
+  )
   .action(async (options) => {
-    const { uid, prompt } = await parseTaskInput(options, program);
-    const apiClient = await createApiClient();
+    const store = await createStore();
+    const { uid, prompt, attachments } = await parseTaskInput(options, program);
 
-    const store = await createStore(process.cwd());
+    const parts: Message["parts"] = [];
+    if (attachments && attachments.length > 0) {
+      for (const attachmentPath of attachments) {
+        try {
+          const absolutePath = path.resolve(process.cwd(), attachmentPath);
+          const buffer = await fs.readFile(absolutePath);
+          const mimeType = getMimeType(attachmentPath);
+          const dataUrl = await fileToUri(
+            store,
+            new File([buffer], attachmentPath, {
+              type: mimeType,
+            }),
+          );
+          parts.push({
+            type: "file",
+            mediaType: mimeType,
+            url: dataUrl,
+          } satisfies FileUIPart);
+        } catch (error) {
+          program.error(
+            `Failed to read attachment: ${attachmentPath}\n${error}`,
+          );
+        }
+      }
+    }
+
+    if (prompt) {
+      parts.push({ type: "text", text: prompt });
+    }
 
     const llm = await createLLMConfig(program, options);
     const rg = findRipgrep();
     if (!rg) {
       return program.error(
-        "ripgrep is required to run the task. Please install it first and make sure it is available in your $PATH.",
+        "ripgrep is not installed or not found in your $PATH.\n" +
+          "Some file search features require ripgrep to function properly.\n\n" +
+          "To install ripgrep:\n" +
+          "• macOS: brew install ripgrep\n" +
+          "• Ubuntu/Debian: apt-get install ripgrep\n" +
+          "• Windows: winget install BurntSushi.ripgrep.MSVC\n" +
+          "• Or visit: https://github.com/BurntSushi/ripgrep#installation\n\n" +
+          "Please install ripgrep and try again.",
       );
     }
 
@@ -100,38 +184,43 @@ const program = new Command()
     // Load custom agents
     const customAgents = await loadAgents(process.cwd());
 
+    // Create MCP Hub for accessing MCP server tools (only if MCP is enabled)
+    const mcpHub = options.mcp ? await initializeMcp(program) : undefined;
+
     const runner = new TaskRunner({
       uid,
-      apiClient,
       store,
       llm,
-      prompt,
+      parts,
       cwd: process.cwd(),
       rg,
       maxSteps: options.maxSteps,
       maxRetries: options.maxRetries,
-      waitUntil,
       onSubTaskCreated,
       customAgents,
+      mcpHub,
+      outputSchema: options.experimentalOutputSchema
+        ? parseOutputSchema(options.experimentalOutputSchema)
+        : undefined,
     });
 
     const renderer = new OutputRenderer(runner.state);
+    let jsonRenderer: JsonRenderer | undefined;
+    if (options.streamJson) {
+      jsonRenderer = new JsonRenderer(store, runner.state);
+    }
 
     await runner.run();
 
     renderer.shutdown();
-
-    const shareId = runner.shareId;
-    if (shareId) {
-      // FIXME(zhiming): base url is hard code, should use options.url
-      const shareUrl = chalk.underline(
-        `https://app.getpochi.com/share/${shareId}`,
-      );
-      console.log(`\n${chalk.bold("Task link: ")} ${shareUrl}`);
+    if (mcpHub) {
+      mcpHub.dispose();
     }
-
-    await waitForAllJobs();
-    await store.shutdown();
+    if (jsonRenderer) {
+      jsonRenderer.shutdown();
+    }
+    await waitForSync(store, "2 second").catch(console.error);
+    await shutdownStoreAndExit(store);
   });
 
 const otherOptionsGroup = "Others:";
@@ -146,19 +235,30 @@ program
   .configureHelp({
     styleTitle: (title) => chalk.bold(title),
   })
-  .showHelpAfterError()
   .showSuggestionAfterError()
   .configureOutput({
     outputError: (str, write) => write(chalk.red(str)),
   });
 
-registerAuthCommand(program);
+// Run version check on every invocation before any command executes
+program.hook("preAction", async (_thisCommand) => {
+  await Promise.all([
+    checkForUpdates().catch(() => {}),
+    waitForSync().catch(console.error),
+    setPochiConfigWorkspacePath(process.cwd()).catch(() => {}),
+  ]);
+});
 
+registerAuthCommand(program);
 registerModelCommand(program);
 registerMcpCommand(program);
 registerTaskCommand(program);
-
 registerUpgradeCommand(program);
+
+if (process.argv[2] === "--completion") {
+  handleShellCompletion(program, process.argv);
+  process.exit(0);
+}
 
 program.parse(process.argv);
 
@@ -168,7 +268,8 @@ type ProgramOpts = ReturnType<(typeof program)["opts"]>;
 async function parseTaskInput(options: ProgramOpts, program: Program) {
   const uid = process.env.POCHI_TASK_ID || crypto.randomUUID();
 
-  let prompt = options.prompt?.trim();
+  let prompt = options.prompt?.trim() || "";
+  const attachments = options.attach || [];
   if (!prompt && !process.stdin.isTTY) {
     const chunks = [];
     for await (const chunk of process.stdin) {
@@ -180,8 +281,10 @@ async function parseTaskInput(options: ProgramOpts, program: Program) {
     }
   }
 
-  if (!prompt) {
-    return program.error("error: A prompt must be provided");
+  if (prompt.length === 0 && attachments.length === 0) {
+    return program.error(
+      "A prompt or attachment is required. Please provide one using the -p and/or -a option or by piping input.",
+    );
   }
 
   // Check if the prompt contains workflow references
@@ -193,19 +296,23 @@ async function parseTaskInput(options: ProgramOpts, program: Program) {
     prompt = updatedPrompt;
   }
 
-  return { uid, prompt };
+  return { uid, prompt, attachments };
 }
 
 async function createLLMConfig(
   program: Program,
   options: ProgramOpts,
 ): Promise<LLMRequestData> {
+  const model = (await getModelFromWorkflow(options)) || options.model;
+
   const llm =
-    (await createLLMConfigWithVendors(program, options)) ||
-    (await createLLMConfigWithPochi(options)) ||
-    (await createLLMConfigWithProviders(program, options));
+    (await createLLMConfigWithVendors(program, model)) ||
+    (await createLLMConfigWithPochi(model)) ||
+    (await createLLMConfigWithProviders(program, model));
   if (!llm) {
-    return program.error(`Model ${options.model} not found in configuration`);
+    return program.error(
+      `Model '${model}' not found. Please check your configuration or run 'pochi model list' to see available models.`,
+    );
   }
 
   return llm;
@@ -213,11 +320,11 @@ async function createLLMConfig(
 
 async function createLLMConfigWithVendors(
   program: Program,
-  options: ProgramOpts,
+  model: string,
 ): Promise<LLMRequestData | undefined> {
-  const sep = options.model.indexOf("/");
-  const vendorId = options.model.slice(0, sep);
-  const modelId = options.model.slice(sep + 1);
+  const sep = model.indexOf("/");
+  const vendorId = model.slice(0, sep);
+  const modelId = model.slice(sep + 1);
 
   const vendors = getVendors();
   if (vendorId in vendors) {
@@ -226,15 +333,15 @@ async function createLLMConfigWithVendors(
       await vendors[vendorId as keyof typeof vendors].fetchModels();
     const options = models[modelId];
     if (!options) {
-      return program.error(`Model ${modelId} not found`);
+      return program.error(
+        `Model '${modelId}' not found. Please run 'pochi model' to see available models.`,
+      );
     }
     return {
       type: "vendor",
-      keepReasoningPart: vendorId === "pochi" && modelId.includes("claude"),
       useToolCallMiddleware: options.useToolCallMiddleware,
-      getModel: (id: string) =>
+      getModel: () =>
         createModel(vendorId, {
-          id,
           modelId,
           getCredentials: vendor.getCredentials,
         }),
@@ -243,22 +350,19 @@ async function createLLMConfigWithVendors(
 }
 
 async function createLLMConfigWithPochi(
-  options: ProgramOpts,
+  model: string,
 ): Promise<LLMRequestData | undefined> {
   const vendor = getVendor("pochi");
   const pochiModels = await vendor.fetchModels();
-  const pochiModelOptions = pochiModels[options.model];
+  const pochiModelOptions = pochiModels[model];
   if (pochiModelOptions) {
     const vendorId = "pochi";
     return {
       type: "vendor",
-      keepReasoningPart:
-        vendorId === "pochi" && options.model.includes("claude"),
       useToolCallMiddleware: pochiModelOptions.useToolCallMiddleware,
-      getModel: (id: string) =>
+      getModel: () =>
         createModel(vendorId, {
-          id,
-          modelId: options.model,
+          modelId: model,
           getCredentials: vendor.getCredentials,
         }),
     };
@@ -267,31 +371,20 @@ async function createLLMConfigWithPochi(
 
 async function createLLMConfigWithProviders(
   program: Program,
-  options: ProgramOpts,
+  model: string,
 ): Promise<LLMRequestData | undefined> {
-  const sep = options.model.indexOf("/");
-  const providerId = options.model.slice(0, sep);
-  const modelId = options.model.slice(sep + 1);
+  const sep = model.indexOf("/");
+  const providerId = model.slice(0, sep);
+  const modelId = model.slice(sep + 1);
 
   const modelProvider = pochiConfig.value.providers?.[providerId];
   const modelSetting = modelProvider?.models?.[modelId];
   if (!modelProvider) return;
 
   if (!modelSetting) {
-    return program.error(`Model ${options.model} not found in configuration`);
-  }
-
-  if (modelProvider.kind === undefined || modelProvider.kind === "openai") {
-    return {
-      type: "openai",
-      modelId,
-      baseURL: modelProvider.baseURL,
-      apiKey: modelProvider.apiKey,
-      contextWindow:
-        modelSetting.contextWindow ?? constants.DefaultContextWindow,
-      maxOutputTokens:
-        modelSetting.maxTokens ?? constants.DefaultMaxOutputTokens,
-    };
+    return program.error(
+      `Model '${model}' not found. Please check your configuration or run 'pochi model' to see available models.`,
+    );
   }
 
   if (modelProvider.kind === "ai-gateway") {
@@ -315,6 +408,107 @@ async function createLLMConfigWithProviders(
         modelSetting.contextWindow ?? constants.DefaultContextWindow,
       maxOutputTokens:
         modelSetting.maxTokens ?? constants.DefaultMaxOutputTokens,
+      useToolCallMiddleware: modelSetting.useToolCallMiddleware,
     };
+  }
+
+  if (
+    modelProvider.kind === undefined ||
+    modelProvider.kind === "openai" ||
+    modelProvider.kind === "openai-responses" ||
+    modelProvider.kind === "anthropic"
+  ) {
+    return {
+      type: modelProvider.kind || "openai",
+      modelId,
+      baseURL: modelProvider.baseURL,
+      apiKey: modelProvider.apiKey,
+      contextWindow:
+        modelSetting.contextWindow ?? constants.DefaultContextWindow,
+      maxOutputTokens:
+        modelSetting.maxTokens ?? constants.DefaultMaxOutputTokens,
+      useToolCallMiddleware: modelSetting.useToolCallMiddleware,
+    };
+  }
+
+  assertUnreachable(modelProvider.kind);
+}
+
+async function waitForSync(
+  inputStore?: Store,
+  timeoutDuration: Duration.DurationInput = "1 second",
+) {
+  if (!process.env.POCHI_LIVEKIT_SYNC_ON) {
+    return;
+  }
+  const store = inputStore || (await createStore());
+
+  await Effect.gen(function* (_) {
+    while (true) {
+      const nextChange = store.syncProcessor.syncState.changes.pipe(
+        Stream.take(1),
+        Stream.runCollect,
+        Effect.as(false),
+      );
+
+      const timeout = Effect.sleep(timeoutDuration).pipe(Effect.as(true));
+
+      if (yield* Effect.raceFirst(nextChange, timeout)) {
+        break;
+      }
+    }
+  }).pipe(Effect.runPromise);
+
+  if (!inputStore) {
+    await store.shutdown();
+  }
+}
+
+function assertUnreachable(_x: never): never {
+  throw new Error("Didn't expect to get here");
+}
+
+async function getModelFromWorkflow(
+  options: ProgramOpts,
+): Promise<string | undefined> {
+  const prompt = options.prompt;
+  if (prompt && containsWorkflowReference(prompt)) {
+    const workflowNames = extractWorkflowNames(prompt);
+    if (workflowNames.length > 0) {
+      const { model: workflowModel } = await parseWorkflowFrontmatter(
+        workflowNames[0],
+      );
+      // If a model is found in the workflow, use it.
+      if (workflowModel) {
+        return workflowModel;
+      }
+    }
+  }
+}
+
+function parseOutputSchema(outputSchema: string): z.ZodAny {
+  const schema = Function(
+    "...args",
+    `function getZodSchema(z) { return ${outputSchema} }; return getZodSchema(...args);`,
+  )(z);
+  return schema;
+}
+
+function getMimeType(filePath: string): string {
+  const extension = path.extname(filePath).toLowerCase();
+  switch (extension) {
+    case ".png":
+      return "image/png";
+    case ".jpg":
+    case ".jpeg":
+      return "image/jpeg";
+    case ".gif":
+      return "image/gif";
+    case ".webp":
+      return "image/webp";
+    case ".svg":
+      return "image/svg+xml";
+    default:
+      return "application/octet-stream";
   }
 }

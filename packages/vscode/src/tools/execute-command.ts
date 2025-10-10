@@ -1,7 +1,6 @@
 import * as path from "node:path";
 import type { ExecuteCommandOptions } from "@/integrations/terminal/types";
 import { waitForWebviewSubscription } from "@/integrations/terminal/utils";
-import { getWorkspaceFolder } from "@/lib/fs";
 import { getLogger } from "@getpochi/common";
 import { getShellPath } from "@getpochi/common/tool-utils";
 import type { ExecuteCommandResult } from "@getpochi/common/vscode-webui-bridge";
@@ -18,7 +17,10 @@ const logger = getLogger("ExecuteCommand");
 
 export const executeCommand: ToolFunctionType<
   ClientTools["executeCommand"]
-> = async ({ command, cwd = ".", timeout }, { abortSignal }) => {
+> = async (
+  { command, cwd = ".", timeout },
+  { abortSignal, cwd: workspaceDir },
+) => {
   const defaultTimeout = 120;
   if (!command) {
     throw new Error("Command is required to execute.");
@@ -27,8 +29,7 @@ export const executeCommand: ToolFunctionType<
   if (path.isAbsolute(cwd)) {
     cwd = path.normalize(cwd);
   } else {
-    const workspaceRootUri = getWorkspaceFolder().uri;
-    cwd = path.normalize(path.join(workspaceRootUri.fsPath, cwd));
+    cwd = path.normalize(path.join(workspaceDir, cwd));
   }
 
   const output = signal<ExecuteCommandResult>({

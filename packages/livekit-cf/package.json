@@ -9,18 +9,25 @@
     "@livestore/livestore": "catalog:",
     "@livestore/peer-deps": "catalog:",
     "@livestore/sync-cf": "catalog:",
+    "@livestore/utils": "catalog:",
     "@getpochi/livekit": "workspace:*",
     "@getpochi/common": "workspace:*",
-    "@hono/zod-validator": "catalog:",
+    "@getpochi/tools": "workspace:*",
     "hono": "catalog:",
     "jose": "catalog:",
-    "zod": "catalog:"
+    "zod": "catalog:",
+    "moment": "catalog:",
+    "run-exclusive": "catalog:",
+    "ai": "catalog:",
+    "remeda": "catalog:"
   },
   "devDependencies": {
-    "wrangler": "^4.33.0"
+    "wrangler": "^4.40.1"
   },
   "scripts": {
-    "build": "wrangler build",
+    "build:share": "./scripts/copy-share.js",
+    "build:wrangler": "wrangler build",
+    "build": "npm-run-all build:share build:wrangler",
     "dev": "wrangler dev",
     "wrangler:deploy": "wrangler deploy",
     "tsc": "tsc"

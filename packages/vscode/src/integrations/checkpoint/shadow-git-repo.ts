@@ -1,12 +1,11 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
-import { getLogger } from "@getpochi/common";
+import { getLogger, toErrorMessage } from "@getpochi/common";
 import { isFileExists } from "@getpochi/common/tool-utils";
 import simpleGit, { type SimpleGit } from "simple-git";
 import type * as vscode from "vscode";
 import { writeExcludesFile } from "./shadow-git-excludes";
 import type { GitDiff } from "./types";
-import { toErrorMessage } from "./util";
 
 const logger = getLogger("ShadowGitRepo");
 
@@ -46,7 +45,7 @@ export class ShadowGitRepo implements vscode.Disposable {
     private workspaceDir: string,
   ) {
     // For bare repository, we initialize simple-git with the bare repository directory
-    this.git = simpleGit(this.gitPath);
+    this.git = simpleGit(this.gitPath).env("GIT_DIR", this.gitPath);
   }
 
   async init() {

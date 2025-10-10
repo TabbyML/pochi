@@ -5,7 +5,7 @@ import chalk from "chalk";
 export function registerMcpListCommand(parentCommand: Command) {
   parentCommand
     .command("list", { isDefault: true })
-    .description("List configured MCP servers")
+    .description("List all configured MCP servers and their statuses.")
     .action(async () => {
       const mcpServers = pochiConfig.value.mcp || {};
 

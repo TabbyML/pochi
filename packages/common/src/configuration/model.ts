@@ -30,10 +30,10 @@ const BaseModelSettings = z.object({
   ),
 });
 
-const OpenAIModelSettings = BaseModelSettings.extend({
-  kind: z.optional(z.literal("openai")),
+const ExtendedModelSettings = BaseModelSettings.extend({
   baseURL: z
     .string()
+    .optional()
     .describe(
       'Base URL for the model provider\'s API, e.g., "https://api.openai.com/v1"',
     ),
@@ -41,6 +41,18 @@ const OpenAIModelSettings = BaseModelSettings.extend({
     .string()
     .optional()
     .describe("API key for the model provider, if required."),
+});
+
+const OpenAIModelSettings = ExtendedModelSettings.extend({
+  kind: z.optional(z.literal("openai")),
+});
+
+const OpenAIResponsesModelSettings = ExtendedModelSettings.extend({
+  kind: z.literal("openai-responses"),
+});
+
+const AnthropicModelSettings = ExtendedModelSettings.extend({
+  kind: z.literal("anthropic"),
 });
 
 export const GoogleVertexModel = z.union([
@@ -52,6 +64,16 @@ export const GoogleVertexModel = z.union([
     accessToken: z.string(),
     projectId: z.string(),
     location: z.string(),
+  }),
+  z.object({
+    issueUrl: z
+      .string()
+      .optional()
+      .default(process.env.POCHI_VERTEX_ISSUE_URL ?? ""),
+    modelUrl: z
+      .string()
+      .optional()
+      .default(process.env.POCHI_VERTEX_MODEL_URL ?? ""),
   }),
 ]);
 
@@ -72,6 +94,8 @@ const AiGatewayModelSettings = BaseModelSettings.extend({
 
 export const CustomModelSetting = z.discriminatedUnion("kind", [
   OpenAIModelSettings,
+  OpenAIResponsesModelSettings,
+  AnthropicModelSettings,
   GoogleVertexTuningModelSettings,
   AiGatewayModelSettings,
 ]);

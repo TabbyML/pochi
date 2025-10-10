@@ -35,7 +35,7 @@ export class CommandPalette {
           label: "Chat",
           iconPath: new vscode.ThemeIcon("comment"),
           onDidAccept: () => {
-            vscode.commands.executeCommand("pochiWebui.focus");
+            vscode.commands.executeCommand("pochiSidebar.focus");
           },
         },
         {
@@ -133,47 +133,14 @@ export class CommandPalette {
           },
         };
 
-      case "subscription-required":
-        return {
-          label: "Subscribe",
-          iconPath: new vscode.ThemeIcon("account"),
-          detail:
-            "To continue using code completion, please subscribe to Pochi.",
-          onDidAccept: () => {
-            vscode.commands.executeCommand("pochi.openWebsite", "/profile");
-          },
-        };
-
-      case "subscription-required-team":
-        return {
-          label: "Subscribe",
-          iconPath: new vscode.ThemeIcon("account"),
-          detail:
-            "Your team does not have a subscription yet, please subscribe to Pochi.",
-          onDidAccept: () => {
-            vscode.commands.executeCommand("pochi.openWebsite", "/team");
-          },
-        };
-
       case "payment-required":
         return {
           label: "Payment",
           iconPath: new vscode.ThemeIcon("account"),
           detail:
-            "You have unpaid invoices, please make a payment to continue using code completion.",
+            "Your freebie usage has been rate limited. Consider upgrading your subscription.",
           onDidAccept: () => {
             vscode.commands.executeCommand("pochi.openWebsite", "/profile");
-          },
-        };
-
-      case "payment-required-team":
-        return {
-          label: "Payment",
-          iconPath: new vscode.ThemeIcon("account"),
-          detail:
-            "Your team have unpaid invoices, please make a payment to continue using code completion.",
-          onDidAccept: () => {
-            vscode.commands.executeCommand("pochi.openWebsite", "/team");
           },
         };
 

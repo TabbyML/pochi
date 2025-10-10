@@ -8,6 +8,7 @@ import { McpToolCall } from "./mcp-tool-call";
 import { applyDiffTool } from "./tools/apply-diff";
 import { AskFollowupQuestionTool } from "./tools/ask-followup-question";
 import { AttemptCompletionTool } from "./tools/attempt-completion";
+import { editNotebookTool } from "./tools/edit-notebook";
 import { executeCommandTool } from "./tools/execute-command";
 import { globFilesTool } from "./tools/glob-files";
 import { KillBackgroundJobTool } from "./tools/kill-background-job";
@@ -19,7 +20,6 @@ import { readFileTool } from "./tools/read-file";
 import { searchFilesTool } from "./tools/search-files";
 import { StartBackgroundJobTool } from "./tools/start-background-job";
 import { todoWriteTool } from "./tools/todo-write";
-import { webFetchTool } from "./tools/web-fetch";
 import { writeToFileTool } from "./tools/write-to-file";
 import type { ToolProps } from "./types";
 
@@ -85,8 +85,8 @@ const Tools: Record<string, React.FC<ToolProps<any>>> = {
   searchFiles: searchFilesTool,
   listFiles: listFilesTool,
   globFiles: globFilesTool,
-  webFetch: webFetchTool,
   todoWrite: todoWriteTool,
+  editNotebook: editNotebookTool,
   // @ts-ignore
   newTask: newTaskTool,
 };

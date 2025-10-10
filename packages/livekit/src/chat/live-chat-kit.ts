@@ -1,8 +1,14 @@
 import { getLogger } from "@getpochi/common";
-import type { PochiApiClient } from "@getpochi/common/pochi-api";
+
 import type { CustomAgent } from "@getpochi/tools";
 import type { Store } from "@livestore/livestore";
-import type { ChatInit, ChatOnErrorCallback, ChatOnFinishCallback } from "ai";
+import type {
+  AbstractChat,
+  ChatInit,
+  ChatOnErrorCallback,
+  ChatOnFinishCallback,
+} from "ai";
+import type z from "zod/v4";
 import { makeMessagesQuery, makeTaskQuery } from "../livestore/queries";
 import { events, tables } from "../livestore/schema";
 import { toTaskError, toTaskStatus } from "../task";
@@ -30,24 +36,25 @@ export type LiveChatKitOptions<T> = {
 
   store: Store;
 
-  apiClient: PochiApiClient;
-
   chatClass: new (options: ChatInit<Message>) => T;
 
   onOverrideMessages?: (options: {
     messages: Message[];
   }) => void | Promise<void>;
 
-  waitUntil?: (promise: Promise<unknown>) => void;
-
   customAgent?: CustomAgent;
+  outputSchema?: z.ZodAny;
 } & Omit<
   ChatInit<Message>,
   "id" | "messages" | "generateId" | "onFinish" | "onError" | "transport"
 >;
 
 export class LiveChatKit<
-  T extends { messages: Message[]; stop: () => Promise<void> },
+  T extends {
+    messages: Message[];
+    stop: () => Promise<void>;
+    addToolResult: AbstractChat<Message>["addToolResult"];
+  },
 > {
   protected readonly taskId: string;
   protected readonly store: Store;
@@ -65,9 +72,8 @@ export class LiveChatKit<
     getters,
     isSubTask,
     isCli,
-    apiClient,
     customAgent,
-    waitUntil,
+    outputSchema,
     ...chatInit
   }: LiveChatKitOptions<T>) {
     this.taskId = taskId;
@@ -78,9 +84,8 @@ export class LiveChatKit<
       getters,
       isSubTask,
       isCli,
-      apiClient,
       customAgent,
-      waitUntil,
+      outputSchema,
     });
 
     this.chat = new chatClass({
@@ -115,8 +120,10 @@ export class LiveChatKit<
         lastMessage.metadata.compact
       ) {
         try {
-          const model = createModel({ id: taskId, llm: getters.getLLM() });
+          const model = createModel({ llm: getters.getLLM() });
           await compactTask({
+            store: this.store,
+            taskId: this.taskId,
             model,
             messages,
             abortSignal,
@@ -135,8 +142,10 @@ export class LiveChatKit<
     this.spawn = async () => {
       const taskId = crypto.randomUUID();
       const { messages } = this.chat;
-      const model = createModel({ id: taskId, llm: getters.getLLM() });
+      const model = createModel({ llm: getters.getLLM() });
       const summary = await compactTask({
+        store: this.store,
+        taskId,
         model,
         messages,
         abortSignal,
@@ -148,6 +157,7 @@ export class LiveChatKit<
       this.store.commit(
         events.taskInited({
           id: taskId,
+          cwd: this.task?.cwd || undefined,
           createdAt: new Date(),
           initMessage: {
             id: crypto.randomUUID(),
@@ -169,20 +179,23 @@ export class LiveChatKit<
     };
   }
 
-  init(prompt: string) {
+  init(cwd: string | undefined, promptOrParts?: string | Message["parts"]) {
+    const parts =
+      typeof promptOrParts === "string"
+        ? [{ type: "text", text: promptOrParts }]
+        : promptOrParts;
+
     this.store.commit(
       events.taskInited({
         id: this.taskId,
+        cwd,
         createdAt: new Date(),
-        initMessage: {
-          id: crypto.randomUUID(),
-          parts: [
-            {
-              type: "text",
-              text: prompt,
-            },
-          ],
-        },
+        initMessage: parts
+          ? {
+              id: crypto.randomUUID(),
+              parts,
+            }
+          : undefined,
       }),
     );
 
@@ -207,6 +220,16 @@ export class LiveChatKit<
     return countTask > 0;
   }
 
+  updateIsPublicShared = (isPublicShared: boolean) => {
+    this.store.commit(
+      events.updateIsPublicShared({
+        id: this.taskId,
+        isPublicShared,
+        updatedAt: new Date(),
+      }),
+    );
+  };
+
   private readonly onStart: OnStartCallback = async ({
     messages,
     environment,
@@ -219,6 +242,7 @@ export class LiveChatKit<
         store.commit(
           events.taskInited({
             id: this.taskId,
+            cwd: environment?.info.cwd,
             createdAt: new Date(),
           }),
         );
@@ -229,8 +253,7 @@ export class LiveChatKit<
         throw new Error("Task not found");
       }
 
-      const getModel = () =>
-        createModel({ id: this.taskId, llm: getters.getLLM() });
+      const getModel = () => createModel({ llm: getters.getLLM() });
       scheduleGenerateTitleJob({
         taskId: this.taskId,
         store,
@@ -257,12 +280,23 @@ export class LiveChatKit<
     }
   };
 
-  private readonly onFinish: ChatOnFinishCallback<Message> = ({ message }) => {
+  private readonly onFinish: ChatOnFinishCallback<Message> = ({
+    message,
+    isAbort,
+    isError,
+  }) => {
+    const abortError = new Error("Transport is aborted");
+    abortError.name = "AbortError";
+
+    if (isAbort) {
+      return this.onError(abortError);
+    }
+
+    if (isError) return; // handled in onError already.
+
     const { store } = this;
     if (message.metadata?.kind !== "assistant") {
-      const error = new Error("Transport is aborted");
-      error.name = "AbortError";
-      throw error;
+      return this.onError(abortError);
     }
 
     store.commit(

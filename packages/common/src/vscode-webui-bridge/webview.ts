@@ -23,7 +23,7 @@ export interface VSCodeHostApi {
 
   readPochiCredentials(): Promise<PochiCredentials | null>;
 
-  readStoreId(): Promise<string | undefined>;
+  readMachineId(): Promise<string>;
 
   getSessionState<K extends keyof SessionState>(
     keys?: K[],
@@ -85,8 +85,6 @@ export interface VSCodeHostApi {
 
   listAutoCompleteCandidates(): Promise<string[]>;
 
-  openSymbol(symbol: string): Promise<void>;
-
   /**
    * List all rule files in the workspace and home directory.
    */
@@ -96,8 +94,13 @@ export interface VSCodeHostApi {
    * List all workflows from .pochirules/workflows directory
    * Returns an array of objects containing the name and content of each workflow.
    */
-  listWorkflowsInWorkspace(): Promise<
-    { id: string; path: string; content: string }[]
+  listWorkflows(): Promise<
+    {
+      id: string;
+      path: string;
+      content: string;
+      frontmatter: { model?: string };
+    }[]
   >;
 
   /**
@@ -144,10 +147,11 @@ export interface VSCodeHostApi {
       preserveFocus?: boolean;
       base64Data?: string;
       fallbackGlobPattern?: string;
+      cellId?: string;
     },
   ): void;
 
-  readCurrentWorkspace(): Promise<string | undefined>;
+  readCurrentWorkspace(): Promise<string | null>;
 
   readCustomAgents(): Promise<ThreadSignalSerialization<CustomAgentFile[]>>;
 
@@ -158,8 +162,6 @@ export interface VSCodeHostApi {
    * @param properties - The event properties.
    */
   capture(e: CaptureEvent): Promise<void>;
-
-  closeCurrentWorkspace(): void;
 
   /**
    * Get all configured MCP server connection status and tools.
@@ -268,6 +270,13 @@ export interface VSCodeHostApi {
   readUserStorage(): Promise<
     ThreadSignalSerialization<Record<string, UserInfo>>
   >;
+
+  openPochiInNewTab(): Promise<void>;
+
+  bridgeStoreEvent(
+    webviewKind: "sidebar" | "pane",
+    event: unknown,
+  ): Promise<void>;
 }
 
 export interface WebviewHostApi {
@@ -283,4 +292,6 @@ export interface WebviewHostApi {
   onAuthChanged(): void;
 
   isFocused(): Promise<boolean>;
+
+  commitStoreEvent(event: unknown): Promise<void>;
 }

@@ -1,16 +1,22 @@
 import type { LanguageModelV2 } from "@ai-sdk/provider";
-import { formatters, getLogger, prompts } from "@getpochi/common";
-import { convertToModelMessages, streamText } from "ai";
+import { constants, formatters, getLogger, prompts } from "@getpochi/common";
+import type { Store } from "@livestore/livestore";
+import { convertToModelMessages, generateText } from "ai";
+import { makeDownloadFunction } from "../../store-blob";
 import type { Message } from "../../types";
 
 const logger = getLogger("compactTask");
 
 export async function compactTask({
+  store,
+  taskId,
   model,
   messages,
   abortSignal,
   inline,
 }: {
+  store: Store;
+  taskId: string;
   model: LanguageModelV2;
   messages: Message[];
   abortSignal?: AbortSignal;
@@ -23,7 +29,13 @@ export async function compactTask({
 
   try {
     const text = prompts.inlineCompact(
-      await createSummary(model, abortSignal, messages.slice(0, -1)),
+      await createSummary(
+        store,
+        taskId,
+        model,
+        abortSignal,
+        messages.slice(0, -1),
+      ),
       messages.length - 1,
     );
     if (inline) {
@@ -40,6 +52,8 @@ export async function compactTask({
 }
 
 async function createSummary(
+  store: Store,
+  taskId: string,
   model: LanguageModelV2,
   abortSignal: AbortSignal | undefined,
   inputMessages: Message[],
@@ -58,15 +72,21 @@ async function createSummary(
     },
   ];
 
-  const stream = streamText({
+  const resp = await generateText({
+    headers: {
+      [constants.PochiTaskIdHeader]: taskId,
+    },
     model,
     prompt: convertToModelMessages(
-      formatters.llm(messages, { removeSystemReminder: true }),
+      formatters.llm(messages, {
+        removeSystemReminder: true,
+      }),
     ),
+    experimental_download: makeDownloadFunction(store),
     abortSignal,
     maxOutputTokens: 3_000,
     maxRetries: 0,
   });
 
-  return stream.text;
+  return resp.text;
 }

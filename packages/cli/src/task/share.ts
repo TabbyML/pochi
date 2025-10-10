@@ -1,20 +1,20 @@
 import type { Command } from "@commander-js/extra-typings";
 import { catalog } from "@getpochi/livekit";
 import chalk from "chalk";
+import { shutdownStoreAndExit } from "../lib/shutdown";
 import { createStore } from "../livekit/store";
 
 export function registerTaskShareCommand(taskCommand: Command) {
   // pochi task get-share-url <id> - Get share URL for a task ID
   taskCommand
     .command("get-share-url")
-    .description("Get share URL for a task ID")
-    .argument("<task-id>", "Task ID to get share URL for")
+    .description("Get the shareable URL for a specific task by its ID.")
+    .argument("<task-id>", "The ID of the task to get the share URL for.")
     .action(async (taskId) => {
-      const store = await createStore(process.cwd());
+      const store = await createStore();
 
-      const shareId = store.query(
-        catalog.queries.makeTaskQuery(taskId),
-      )?.shareId;
+      const { shareId } =
+        store.query(catalog.queries.makeTaskQuery(taskId)) || {};
 
       if (shareId) {
         const shareUrl = `https://app.getpochi.com/share/${shareId}`;
@@ -25,6 +25,6 @@ export function registerTaskShareCommand(taskCommand: Command) {
         console.log(chalk.red("❌ No share URL found for this task"));
       }
 
-      store.shutdown();
+      await shutdownStoreAndExit(store);
     });
 }

@@ -8,9 +8,12 @@ import { useAutoApprove } from "./use-auto-approve";
 export function useToolAutoApproval(
   pendingApproval: PendingToolCallApproval,
   autoApproveGuard: boolean,
+  isSubTask: boolean,
 ): boolean {
-  const { autoApproveActive, autoApproveSettings } =
-    useAutoApprove(autoApproveGuard);
+  const { autoApproveActive, autoApproveSettings } = useAutoApprove({
+    autoApproveGuard,
+    isSubTask,
+  });
   const { toolset } = useMcp();
 
   const isToolApproved = (tool: ToolUIPart<UITools>) => {

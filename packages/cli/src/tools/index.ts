@@ -1,8 +1,10 @@
+import { toErrorMessage } from "@getpochi/common";
 import type { UITools } from "@getpochi/livekit";
 import type { ToolFunctionType } from "@getpochi/tools";
 import { type ToolUIPart, getToolName } from "ai";
 import type { ToolCallOptions } from "../types";
 import { applyDiff } from "./apply-diff";
+import { editNotebook } from "./edit-notebook";
 import { executeCommand } from "./execute-command";
 import { globFiles } from "./glob-files";
 import { listFiles } from "./list-files";
@@ -20,6 +22,7 @@ const ToolMap: Record<
 > = {
   readFile,
   applyDiff,
+  editNotebook,
   globFiles,
   listFiles,
   multiApplyDiff,
@@ -33,35 +36,47 @@ const ToolMap: Record<
 export async function executeToolCall(
   tool: ToolUIPart<UITools>,
   options: ToolCallOptions,
+  cwd: string,
   abortSignal?: AbortSignal,
 ) {
   const toolName = getToolName(tool);
+
+  // First, try to find the tool in the built-in tool map
   const toolFunction = ToolMap[toolName];
-  if (!toolFunction) {
-    return {
-      error: `Tool ${toolName} not found.`,
-    };
+  if (toolFunction) {
+    try {
+      return await toolFunction(options)(tool.input, {
+        messages: [],
+        toolCallId: tool.toolCallId,
+        abortSignal,
+        cwd,
+      });
+    } catch (e) {
+      return {
+        error: toErrorMessage(e),
+      };
+    }
   }
 
-  try {
-    return await toolFunction(options)(tool.input, {
-      messages: [],
-      toolCallId: tool.toolCallId,
-      abortSignal,
-    });
-  } catch (e) {
-    return {
-      error: toErrorString(e),
-    };
+  // If not found in built-in tools, try MCP tools
+  const execute = options.mcpHub?.executeFns.value?.[toolName];
+  if (execute) {
+    try {
+      const result = await execute(tool.input, {
+        messages: [],
+        toolCallId: tool.toolCallId,
+        abortSignal,
+      });
+      return result;
+    } catch (e) {
+      return {
+        error: toErrorMessage(e),
+      };
+    }
   }
-}
 
-function toErrorString(e: unknown): string {
-  if (e instanceof Error) {
-    return e.message;
-  }
-  if (typeof e === "string") {
-    return e;
-  }
-  return JSON.stringify(e);
+  // Tool not found in either built-in or MCP tools
+  return {
+    error: `Tool ${toolName} not found.`,
+  };
 }

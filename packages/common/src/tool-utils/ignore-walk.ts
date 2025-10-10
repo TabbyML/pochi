@@ -19,18 +19,17 @@ export interface FileResult {
  * @param directoryPath Path to directory that may contain a .gitignore file
  * @returns Array of parsed .gitignore rules (empty if file not found)
  */
-async function attemptLoadIgnoreFromPath(
+async function attemptLoadIgnoreFile(
   directoryPath: string,
+  filename: string,
 ): Promise<string[]> {
   try {
-    const gitignoreUri = path.join(directoryPath, ".gitignore");
-
-    const gitignoreContentBytes = await fs.readFile(gitignoreUri);
-    const gitignoreContent = Buffer.from(gitignoreContentBytes).toString(
+    const ignoreFileUri = path.join(directoryPath, filename);
+    const ignoreFileContentBytes = await fs.readFile(ignoreFileUri);
+    const ignoreFileContent = Buffer.from(ignoreFileContentBytes).toString(
       "utf8",
     );
-
-    return gitignoreContent
+    return ignoreFileContent
       .split(/\r?\n/)
       .map((rule) => rule.trim())
       .filter((rule) => rule && !rule.startsWith("#"));
@@ -49,6 +48,7 @@ export interface IgnoreWalkOptions {
   recursive?: boolean;
   abortSignal?: AbortSignal;
   useGitignore?: boolean;
+  usePochiignore?: boolean;
 }
 
 async function processDirectoryEntry(
@@ -67,7 +67,10 @@ async function processDirectoryEntry(
   // Normalize path separators to forward slashes for consistent ignore matching
   const normalizedPath = relativePath.replace(/\\/g, "/");
 
-  if (directoryIg.ignores(normalizedPath)) {
+  const pathToTest = entry.isDirectory()
+    ? `${normalizedPath}/`
+    : normalizedPath;
+  if (directoryIg.ignores(pathToTest)) {
     return false;
   }
 
@@ -97,6 +100,7 @@ export async function ignoreWalk({
   recursive = true,
   abortSignal,
   useGitignore = true,
+  usePochiignore = true,
 }: IgnoreWalkOptions): Promise<FileResult[]> {
   const scannedFileResults: FileResult[] = [];
   const processedDirs = new Set<string>();
@@ -129,11 +133,18 @@ export async function ignoreWalk({
     processedDirs.add(currentFsPath);
 
     try {
-      const newRules = useGitignore
-        ? await attemptLoadIgnoreFromPath(currentFsPath)
+      let directoryIg = currentIg;
+      const gitIgnoreRules = useGitignore
+        ? await attemptLoadIgnoreFile(currentFsPath, ".gitignore")
         : [];
-      const directoryIg =
-        newRules.length > 0 ? ignore().add(currentIg).add(newRules) : currentIg;
+
+      const pochiIgnoreRules = usePochiignore
+        ? await attemptLoadIgnoreFile(currentFsPath, ".pochiignore")
+        : [];
+
+      if (gitIgnoreRules.length > 0 || pochiIgnoreRules.length > 0) {
+        directoryIg = currentIg.add(gitIgnoreRules).add(pochiIgnoreRules);
+      }
 
       const entries = await fs.readdir(currentFsPath, { withFileTypes: true });
 

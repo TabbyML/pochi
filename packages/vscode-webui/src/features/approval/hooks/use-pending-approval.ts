@@ -14,15 +14,18 @@ export function usePendingApproval({
   error,
   messages,
   status,
+  isSubTask,
 }: {
   error?: Error;
   messages: Message[];
   status: "submitted" | "streaming" | "ready" | "error";
+  isSubTask: boolean;
 }) {
   const { pendingApproval: pendingRetryApproval, increaseRetryCount } =
     usePendingRetryApproval({
       error,
       status,
+      isSubTask,
     });
   const { pendingApproval: pendingToolCallApproval } =
     usePendingToolCallApproval({

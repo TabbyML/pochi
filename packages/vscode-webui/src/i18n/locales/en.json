@@ -8,7 +8,6 @@
   "placeholder": {
     "title": "What can I help you ship?",
     "subtitle": "Pochi is powered by AI, so errors may occur.",
-    "disclaimer": "Carefully review the output before using it.",
     "tips": {
       "attachments": "to chat with files",
       "context": "to attach context",
@@ -23,7 +22,11 @@
     "required": "To use Pochi, please open a folder or workspace."
   },
   "chat": {
-    "attachmentTooltip": "Attach files to chat. You can also drag and drop files or paste them into the chat input box."
+    "attachmentTooltip": "Attach files to chat. You can also drag and drop files or paste them into the chat input box.",
+    "queuedMessages": "Queued Messages ({{count}})",
+    "openInTab": "Open in Tab",
+    "copyImage": "Copy Image",
+    "openImage": "Open Image"
   },
   "language": {
     "switcherTooltip": "Choose your preferred language with Pochi"
@@ -42,6 +45,7 @@
   "modelSelect": {
     "selectModel": "Select Model",
     "manageCustomModels": "Manage custom models...",
+    "modelUnavailable": "Model is unavailable or still loading",
     "custom": "Custom",
     "super": "Super",
     "swift": "Swift"
@@ -57,7 +61,8 @@
       "noCopilotModels": "No copilot models found",
       "copilotDisabled": "Copilot models are disabled. Turn on the switch to enable them.",
       "noModelsFound": "No models found",
-      "customModelsTooltip": "Manage your custom models."
+      "customModelsTooltip": "Manage your custom models.",
+      "viewPricing": "View Pochi pricing"
     },
     "tools": {
       "title": "Tools",
@@ -70,10 +75,10 @@
       "title": "Advanced Settings",
       "developerMode": "Developer Mode",
       "enablePochiModels": "Enable Pochi Models",
-      "enableSync": "Enable Sync",
       "clearStorage": "Clear Storage",
       "language": "Language",
-      "languageDescription": "Choose your preferred language"
+      "languageDescription": "Choose your preferred language",
+      "openInTab": "Allows to open the task in a new tab"
     },
     "workflows": {
       "title": "Workflows",
@@ -84,7 +89,6 @@
       "noRules": "No rules found in workspace.",
       "importRules": "Import Rules",
       "foundRules": "Found {{count}} rule",
-      "foundRules_other": "Found {{count}} rules",
       "import": "Import",
       "importing": "Importing..."
     },
@@ -104,10 +108,15 @@
       "mcp": "MCP",
       "retry": "Retry"
     },
-    "customAgent": {
-      "title": "Custom Agent",
-      "loading": "Loading custom agent...",
-      "empty": "No custom agents found, Create agent files in .pochi/agents/ in your workspace"
+    "customAgents": {
+      "title": "Custom Agents",
+      "loading": "Loading custom agents ...",
+      "empty": "No custom agents found, Create agent files in .pochi/agents/ in your workspace",
+      "errors": {
+        "readError": "Failed to read agent definition",
+        "parseError": "Failed to parse agent definition",
+        "validationError": "Missing required properties in agent definition"
+      }
     },
     "mcp": {
       "title": "MCP",
@@ -131,7 +140,9 @@
     "shareSupportTitle": "Task shared with the Pochi team",
     "shareSupportDetails": "This task and relevant debug information have been sent. For support, please join our Discord server and reference this issue with the ID: {{shareId}}.",
     "joinDiscord": "Join Discord",
-    "ok": "OK"
+    "ok": "OK",
+    "setPublic": "Anyone with link",
+    "setPrivate": "Only you"
   },
   "toolInvocation": {
     "taskCompleted": "Task Completed",

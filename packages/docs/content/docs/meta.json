@@ -17,6 +17,7 @@
     "checkpoint",
     "permissions",
     "share",
+    "queued-messages",
     "---Customize---",
     "models",
     "rules",
@@ -24,6 +25,7 @@
     "mcp",
     "custom-agent",
     "---Resources---",
-    "developer-updates"
+    "...developer-updates",
+    "tutorials"
   ]
 }

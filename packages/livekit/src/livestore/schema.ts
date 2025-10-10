@@ -59,6 +59,8 @@ export const tables = {
     columns: {
       id: State.SQLite.text({ primaryKey: true }),
       shareId: State.SQLite.text({ nullable: true }),
+      cwd: State.SQLite.text({ nullable: true }),
+      isPublicShared: State.SQLite.boolean({ default: false }),
       title: State.SQLite.text({ nullable: true }),
       parentId: State.SQLite.text({ nullable: true }),
       status: State.SQLite.text({
@@ -88,6 +90,10 @@ export const tables = {
         columns: ["shareId"],
         isUnique: true,
       },
+      {
+        name: "idx-cwd",
+        columns: ["cwd"],
+      },
     ],
   }),
   // Many to one relationship with tasks
@@ -105,6 +111,15 @@ export const tables = {
       },
     ],
   }),
+  blobs: State.SQLite.table({
+    name: "blobs",
+    columns: {
+      checksum: State.SQLite.text({ primaryKey: true }),
+      mimeType: State.SQLite.text(),
+      data: State.SQLite.blob(),
+      createdAt: State.SQLite.integer({ schema: Schema.DateFromNumber }),
+    },
+  }),
 };
 
 // Events describe data changes (https://docs.livestore.dev/reference/events)
@@ -114,6 +129,7 @@ export const events = {
     schema: Schema.Struct({
       id: Schema.String,
       parentId: Schema.optional(Schema.String),
+      cwd: Schema.optional(Schema.String),
       createdAt: Schema.Date,
       initMessage: Schema.optional(
         Schema.Struct({
@@ -171,16 +187,34 @@ export const events = {
       updatedAt: Schema.Date,
     }),
   }),
+  updateIsPublicShared: Events.synced({
+    name: "v1.UpdateIsPublicShared",
+    schema: Schema.Struct({
+      id: Schema.String,
+      isPublicShared: Schema.Boolean,
+      updatedAt: Schema.Date,
+    }),
+  }),
+  blobInserted: Events.synced({
+    name: "v1.BlobInserted",
+    schema: Schema.Struct({
+      checksum: Schema.String,
+      createdAt: Schema.Date,
+      mimeType: Schema.String,
+      data: Schema.Uint8Array,
+    }),
+  }),
 };
 
 // Materializers are used to map events to state (https://docs.livestore.dev/reference/state/materializers)
 const materializers = State.SQLite.materializers(events, {
-  "v1.TaskInited": ({ id, parentId, createdAt, initMessage }) => [
+  "v1.TaskInited": ({ id, parentId, createdAt, cwd, initMessage }) => [
     tables.tasks.insert({
       id,
       status: initMessage ? "pending-model" : "pending-input",
       parentId,
       createdAt,
+      cwd,
       updatedAt: createdAt,
     }),
     ...(initMessage
@@ -257,6 +291,17 @@ const materializers = State.SQLite.materializers(events, {
     tables.tasks.update({ shareId, updatedAt }).where({ id, shareId: null }),
   "v1.UpdateTitle": ({ id, title, updatedAt }) =>
     tables.tasks.update({ title, updatedAt }).where({ id }),
+  "v1.UpdateIsPublicShared": ({ id, isPublicShared, updatedAt }) =>
+    tables.tasks.update({ isPublicShared, updatedAt }).where({ id }),
+  "v1.BlobInserted": ({ checksum, mimeType, data, createdAt }) =>
+    tables.blobs
+      .insert({
+        checksum,
+        mimeType,
+        data: new Uint8Array(data),
+        createdAt,
+      })
+      .onConflict("checksum", "ignore"),
 });
 
 const state = State.SQLite.makeState({ tables, materializers });

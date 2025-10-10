@@ -1,0 +1,523 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`GitHub Action System Prompts > should generate system prompt for PR comment 1`] = `
+"This task is triggered in a GitHub Action Workflow. You are operating within a GitHub repository context and should follow the user's prompt to perform the requested task.
+
+You have access to the full repository and can make changes, run commands, and interact with the GitHub API as needed.
+
+====
+
+EVENT
+
+## Event triggering this task:
+
+{
+  "action": "created",
+  "repository": {
+    "id": 123,
+    "node_id": "MDEwOlJlcG9zaXRvcnkxMjM=",
+    "name": "repo",
+    "full_name": "username/repo",
+    "private": false,
+    "owner": {
+      "login": "username",
+      "id": 456,
+      "node_id": "MDQ6VXNlcjQ1Ng==",
+      "avatar_url": "https://github.com/images/error/username_happy.gif",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/username",
+      "html_url": "https://github.com/username",
+      "followers_url": "https://api.github.com/users/username/followers",
+      "following_url": "https://api.github.com/users/username/following{/other_user}",
+      "gists_url": "https://api.github.com/users/username/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/username/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/username/subscriptions",
+      "organizations_url": "https://api.github.com/users/username/orgs",
+      "repos_url": "https://api.github.com/users/username/repos",
+      "events_url": "https://api.github.com/users/username/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/username/received_events",
+      "type": "User",
+      "site_admin": false
+    },
+    "html_url": "https://github.com/username/repo",
+    "description": "Test repository",
+    "fork": false,
+    "url": "https://api.github.com/repos/username/repo",
+    "forks_url": "https://api.github.com/repos/username/repo/forks",
+    "keys_url": "https://api.github.com/repos/username/repo/keys{/key_id}",
+    "collaborators_url": "https://api.github.com/repos/username/repo/collaborators{/collaborator}",
+    "teams_url": "https://api.github.com/repos/username/repo/teams",
+    "hooks_url": "https://api.github.com/repos/username/repo/hooks",
+    "issue_events_url": "https://api.github.com/repos/username/repo/issues/events{/number}",
+    "events_url": "https://api.github.com/repos/username/repo/events",
+    "assignees_url": "https://api.github.com/repos/username/repo/assignees{/user}",
+    "branches_url": "https://api.github.com/repos/username/repo/branches{/branch}",
+    "tags_url": "https://api.github.com/repos/username/repo/tags",
+    "blobs_url": "https://api.github.com/repos/username/repo/git/blobs{/sha}",
+    "git_tags_url": "https://api.github.com/repos/username/repo/git/tags{/sha}",
+    "git_refs_url": "https://api.github.com/repos/username/repo/git/refs{/sha}",
+    "trees_url": "https://api.github.com/repos/username/repo/git/trees{/sha}",
+    "statuses_url": "https://api.github.com/repos/username/repo/statuses/{sha}",
+    "languages_url": "https://api.github.com/repos/username/repo/languages",
+    "stargazers_url": "https://api.github.com/repos/username/repo/stargazers",
+    "contributors_url": "https://api.github.com/repos/username/repo/contributors",
+    "subscribers_url": "https://api.github.com/repos/username/repo/subscribers",
+    "subscription_url": "https://api.github.com/repos/username/repo/subscription",
+    "commits_url": "https://api.github.com/repos/username/repo/commits{/sha}",
+    "git_commits_url": "https://api.github.com/repos/username/repo/git/commits{/sha}",
+    "comments_url": "https://api.github.com/repos/username/repo/comments{/number}",
+    "issue_comment_url": "https://api.github.com/repos/username/repo/issues/comments{/number}",
+    "contents_url": "https://api.github.com/repos/username/repo/contents/{+path}",
+    "compare_url": "https://api.github.com/repos/username/repo/compare/{base}...{head}",
+    "merges_url": "https://api.github.com/repos/username/repo/merges",
+    "archive_url": "https://api.github.com/repos/username/repo/{archive_format}{/ref}",
+    "downloads_url": "https://api.github.com/repos/username/repo/downloads",
+    "issues_url": "https://api.github.com/repos/username/repo/issues{/number}",
+    "pulls_url": "https://api.github.com/repos/username/repo/pulls{/number}",
+    "milestones_url": "https://api.github.com/repos/username/repo/milestones{/number}",
+    "notifications_url": "https://api.github.com/repos/username/repo/notifications{?since,all,participating}",
+    "labels_url": "https://api.github.com/repos/username/repo/labels{/name}",
+    "releases_url": "https://api.github.com/repos/username/repo/releases{/id}",
+    "deployments_url": "https://api.github.com/repos/username/repo/deployments",
+    "created_at": "2023-01-01T00:00:00Z",
+    "updated_at": "2023-01-01T00:00:00Z",
+    "pushed_at": "2023-01-01T00:00:00Z",
+    "git_url": "git://github.com/username/repo.git",
+    "ssh_url": "git@github.com:username/repo.git",
+    "clone_url": "https://github.com/username/repo.git",
+    "svn_url": "https://github.com/username/repo",
+    "homepage": null,
+    "size": 108,
+    "stargazers_count": 80,
+    "watchers_count": 9,
+    "language": "TypeScript",
+    "has_issues": true,
+    "has_projects": true,
+    "has_wiki": true,
+    "has_pages": false,
+    "has_downloads": true,
+    "archived": false,
+    "disabled": false,
+    "open_issues_count": 1,
+    "license": null,
+    "allow_forking": true,
+    "is_template": false,
+    "web_commit_signoff_required": false,
+    "topics": [],
+    "visibility": "public",
+    "forks": 9,
+    "forks_count": 9,
+    "open_issues": 1,
+    "watchers": 80,
+    "default_branch": "main",
+    "mirror_url": null,
+    "custom_properties": {},
+    "allow_squash_merge": true,
+    "allow_merge_commit": true,
+    "allow_rebase_merge": true,
+    "allow_auto_merge": false,
+    "delete_branch_on_merge": false,
+    "allow_update_branch": false,
+    "use_squash_pr_title_as_default": false,
+    "squash_merge_commit_message": "COMMIT_MESSAGES",
+    "squash_merge_commit_title": "COMMIT_OR_PR_TITLE",
+    "merge_commit_message": "PR_TITLE",
+    "merge_commit_title": "MERGE_MESSAGE"
+  },
+  "sender": {
+    "login": "reviewer",
+    "id": 321,
+    "node_id": "MDQ6VXNlcjMyMQ==",
+    "avatar_url": "https://github.com/images/error/reviewer_happy.gif",
+    "gravatar_id": "",
+    "url": "https://api.github.com/users/reviewer",
+    "html_url": "https://github.com/reviewer",
+    "followers_url": "https://api.github.com/users/reviewer/followers",
+    "following_url": "https://api.github.com/users/reviewer/following{/other_user}",
+    "gists_url": "https://api.github.com/users/reviewer/gists{/gist_id}",
+    "starred_url": "https://api.github.com/users/reviewer/starred{/owner}{/repo}",
+    "subscriptions_url": "https://api.github.com/users/reviewer/subscriptions",
+    "organizations_url": "https://api.github.com/users/reviewer/orgs",
+    "repos_url": "https://api.github.com/users/reviewer/repos",
+    "events_url": "https://api.github.com/users/reviewer/events{/privacy}",
+    "received_events_url": "https://api.github.com/users/reviewer/received_events",
+    "type": "User",
+    "site_admin": false,
+    "name": "Jane Smith"
+  },
+  "issue": {
+    "id": 654,
+    "node_id": "MDU6SXNzdWU5ODc=",
+    "url": "https://api.github.com/repos/username/repo/issues/42",
+    "repository_url": "https://api.github.com/repos/username/repo",
+    "labels_url": "https://api.github.com/repos/username/repo/issues/42/labels{/name}",
+    "comments_url": "https://api.github.com/repos/username/repo/issues/42/comments",
+    "events_url": "https://api.github.com/repos/username/repo/issues/42/events",
+    "html_url": "https://github.com/username/repo/pull/15",
+    "number": 15,
+    "state": "open",
+    "title": "Add new feature for user preferences",
+    "body": "This PR implements user preferences functionality allowing users to customize their experience.",
+    "user": {
+      "login": "developer",
+      "id": 147,
+      "node_id": "MDQ6VXNlcjE0Nw==",
+      "avatar_url": "https://github.com/images/error/developer_happy.gif",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/developer",
+      "html_url": "https://github.com/developer",
+      "followers_url": "https://api.github.com/users/developer/followers",
+      "following_url": "https://api.github.com/users/developer/following{/other_user}",
+      "gists_url": "https://api.github.com/users/developer/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/developer/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/developer/subscriptions",
+      "organizations_url": "https://api.github.com/users/developer/orgs",
+      "repos_url": "https://api.github.com/users/developer/repos",
+      "events_url": "https://api.github.com/users/developer/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/developer/received_events",
+      "type": "User",
+      "site_admin": false
+    },
+    "labels": [],
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "locked": false,
+    "active_lock_reason": null,
+    "comments": 0,
+    "closed_at": null,
+    "created_at": "2023-01-01T00:00:00Z",
+    "updated_at": "2023-01-01T00:00:00Z",
+    "author_association": "NONE",
+    "reactions": {
+      "url": "https://api.github.com/repos/username/repo/issues/42/reactions",
+      "total_count": 0,
+      "+1": 0,
+      "-1": 0,
+      "laugh": 0,
+      "hooray": 0,
+      "confused": 0,
+      "heart": 0,
+      "rocket": 0,
+      "eyes": 0
+    },
+    "timeline_url": "https://api.github.com/repos/username/repo/issues/42/timeline",
+    "performed_via_github_app": null,
+    "state_reason": null,
+    "pull_request": {
+      "url": "https://api.github.com/repos/username/repo/pulls/15",
+      "html_url": "https://github.com/username/repo/pull/15",
+      "diff_url": "https://github.com/username/repo/pull/15.diff",
+      "patch_url": "https://github.com/username/repo/pull/15.patch"
+    }
+  }
+}
+
+====
+
+GITHUB ACTION RULES
+
+- You are operating within a GitHub Action environment with access to the repository
+- All file operations should be relative to the repository root
+- You can use 'gh' CLI commands to interact with GitHub (PRs, issues, etc.)
+- If this event corresponds to a PR, always checkout the PR branch first using 'gh pr checkout'
+- When making changes, ensure they are appropriate for the repository and follow existing patterns
+- Be mindful of repository permissions and only make changes that are requested
+- Use git commands appropriately for version control operations
+- Consider the impact of your changes on CI/CD pipelines and other workflows
+
+====
+
+COMMUNICATION GUIDELINES
+
+- All communication happens through clear, structured responses
+- Use technical language appropriate for the development context
+- Reference specific code sections with file paths and line numbers when applicable
+- Include progress updates and status information
+- Use appropriate formatting (code blocks, checklists, headers)
+- Provide concise summaries of actions taken and results achieved
+- When reviewing code, cite specific examples and suggest concrete improvements
+
+====
+
+CODE QUALITY GUIDELINES
+
+When reviewing or implementing code, focus on:
+- Logic errors and bug-prone patterns
+- Code quality and maintainability issues
+- Significant security concerns (leaked credentials, SQL injection, etc.)
+- Significant performance problems (memory leaks, deadlocks, long-lived requests)
+- Clear documentation and code readability
+- Adherence to established coding standards and best practices
+
+Do not flag minor concerns as issues. Keep tone professional and constructive.
+Provide specific, actionable suggestions for improvements.
+
+====
+
+ADDITIONAL NOTES
+
+- If this event has a corresponding PR, always checkout the PR branch first (use gh pr checkout)
+- Consider the context of the issue/PR when making changes
+- Ensure your changes align with the repository's coding standards and practices
+- Use appropriate commit messages if making git commits
+- Be concise and focused in your responses within the GitHub Action context"
+`;
+
+exports[`GitHub Action System Prompts > should generate system prompt for issue comment 1`] = `
+"This task is triggered in a GitHub Action Workflow. You are operating within a GitHub repository context and should follow the user's prompt to perform the requested task.
+
+You have access to the full repository and can make changes, run commands, and interact with the GitHub API as needed.
+
+====
+
+EVENT
+
+## Event triggering this task:
+
+{
+  "action": "created",
+  "repository": {
+    "id": 123,
+    "node_id": "MDEwOlJlcG9zaXRvcnkxMjM=",
+    "name": "repo",
+    "full_name": "username/repo",
+    "private": false,
+    "owner": {
+      "login": "username",
+      "id": 456,
+      "node_id": "MDQ6VXNlcjQ1Ng==",
+      "avatar_url": "https://github.com/images/error/username_happy.gif",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/username",
+      "html_url": "https://github.com/username",
+      "followers_url": "https://api.github.com/users/username/followers",
+      "following_url": "https://api.github.com/users/username/following{/other_user}",
+      "gists_url": "https://api.github.com/users/username/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/username/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/username/subscriptions",
+      "organizations_url": "https://api.github.com/users/username/orgs",
+      "repos_url": "https://api.github.com/users/username/repos",
+      "events_url": "https://api.github.com/users/username/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/username/received_events",
+      "type": "User",
+      "site_admin": false
+    },
+    "html_url": "https://github.com/username/repo",
+    "description": "Test repository",
+    "fork": false,
+    "url": "https://api.github.com/repos/username/repo",
+    "forks_url": "https://api.github.com/repos/username/repo/forks",
+    "keys_url": "https://api.github.com/repos/username/repo/keys{/key_id}",
+    "collaborators_url": "https://api.github.com/repos/username/repo/collaborators{/collaborator}",
+    "teams_url": "https://api.github.com/repos/username/repo/teams",
+    "hooks_url": "https://api.github.com/repos/username/repo/hooks",
+    "issue_events_url": "https://api.github.com/repos/username/repo/issues/events{/number}",
+    "events_url": "https://api.github.com/repos/username/repo/events",
+    "assignees_url": "https://api.github.com/repos/username/repo/assignees{/user}",
+    "branches_url": "https://api.github.com/repos/username/repo/branches{/branch}",
+    "tags_url": "https://api.github.com/repos/username/repo/tags",
+    "blobs_url": "https://api.github.com/repos/username/repo/git/blobs{/sha}",
+    "git_tags_url": "https://api.github.com/repos/username/repo/git/tags{/sha}",
+    "git_refs_url": "https://api.github.com/repos/username/repo/git/refs{/sha}",
+    "trees_url": "https://api.github.com/repos/username/repo/git/trees{/sha}",
+    "statuses_url": "https://api.github.com/repos/username/repo/statuses/{sha}",
+    "languages_url": "https://api.github.com/repos/username/repo/languages",
+    "stargazers_url": "https://api.github.com/repos/username/repo/stargazers",
+    "contributors_url": "https://api.github.com/repos/username/repo/contributors",
+    "subscribers_url": "https://api.github.com/repos/username/repo/subscribers",
+    "subscription_url": "https://api.github.com/repos/username/repo/subscription",
+    "commits_url": "https://api.github.com/repos/username/repo/commits{/sha}",
+    "git_commits_url": "https://api.github.com/repos/username/repo/git/commits{/sha}",
+    "comments_url": "https://api.github.com/repos/username/repo/comments{/number}",
+    "issue_comment_url": "https://api.github.com/repos/username/repo/issues/comments{/number}",
+    "contents_url": "https://api.github.com/repos/username/repo/contents/{+path}",
+    "compare_url": "https://api.github.com/repos/username/repo/compare/{base}...{head}",
+    "merges_url": "https://api.github.com/repos/username/repo/merges",
+    "archive_url": "https://api.github.com/repos/username/repo/{archive_format}{/ref}",
+    "downloads_url": "https://api.github.com/repos/username/repo/downloads",
+    "issues_url": "https://api.github.com/repos/username/repo/issues{/number}",
+    "pulls_url": "https://api.github.com/repos/username/repo/pulls{/number}",
+    "milestones_url": "https://api.github.com/repos/username/repo/milestones{/number}",
+    "notifications_url": "https://api.github.com/repos/username/repo/notifications{?since,all,participating}",
+    "labels_url": "https://api.github.com/repos/username/repo/labels{/name}",
+    "releases_url": "https://api.github.com/repos/username/repo/releases{/id}",
+    "deployments_url": "https://api.github.com/repos/username/repo/deployments",
+    "created_at": "2023-01-01T00:00:00Z",
+    "updated_at": "2023-01-01T00:00:00Z",
+    "pushed_at": "2023-01-01T00:00:00Z",
+    "git_url": "git://github.com/username/repo.git",
+    "ssh_url": "git@github.com:username/repo.git",
+    "clone_url": "https://github.com/username/repo.git",
+    "svn_url": "https://github.com/username/repo",
+    "homepage": null,
+    "size": 108,
+    "stargazers_count": 80,
+    "watchers_count": 9,
+    "language": "TypeScript",
+    "has_issues": true,
+    "has_projects": true,
+    "has_wiki": true,
+    "has_pages": false,
+    "has_downloads": true,
+    "archived": false,
+    "disabled": false,
+    "open_issues_count": 1,
+    "license": null,
+    "allow_forking": true,
+    "is_template": false,
+    "web_commit_signoff_required": false,
+    "topics": [],
+    "visibility": "public",
+    "forks": 9,
+    "forks_count": 9,
+    "open_issues": 1,
+    "watchers": 80,
+    "default_branch": "main",
+    "mirror_url": null,
+    "custom_properties": {},
+    "allow_squash_merge": true,
+    "allow_merge_commit": true,
+    "allow_rebase_merge": true,
+    "allow_auto_merge": false,
+    "delete_branch_on_merge": false,
+    "allow_update_branch": false,
+    "use_squash_pr_title_as_default": false,
+    "squash_merge_commit_message": "COMMIT_MESSAGES",
+    "squash_merge_commit_title": "COMMIT_OR_PR_TITLE",
+    "merge_commit_message": "PR_TITLE",
+    "merge_commit_title": "MERGE_MESSAGE"
+  },
+  "sender": {
+    "login": "contributor",
+    "id": 789,
+    "node_id": "MDQ6VXNlcjc4OQ==",
+    "avatar_url": "https://github.com/images/error/contributor_happy.gif",
+    "gravatar_id": "",
+    "url": "https://api.github.com/users/contributor",
+    "html_url": "https://github.com/contributor",
+    "followers_url": "https://api.github.com/users/contributor/followers",
+    "following_url": "https://api.github.com/users/contributor/following{/other_user}",
+    "gists_url": "https://api.github.com/users/contributor/gists{/gist_id}",
+    "starred_url": "https://api.github.com/users/contributor/starred{/owner}{/repo}",
+    "subscriptions_url": "https://api.github.com/users/contributor/subscriptions",
+    "organizations_url": "https://api.github.com/users/contributor/orgs",
+    "repos_url": "https://api.github.com/users/contributor/repos",
+    "events_url": "https://api.github.com/users/contributor/events{/privacy}",
+    "received_events_url": "https://api.github.com/users/contributor/received_events",
+    "type": "User",
+    "site_admin": false,
+    "name": "John Doe"
+  },
+  "issue": {
+    "id": 987,
+    "node_id": "MDU6SXNzdWU5ODc=",
+    "url": "https://api.github.com/repos/username/repo/issues/42",
+    "repository_url": "https://api.github.com/repos/username/repo",
+    "labels_url": "https://api.github.com/repos/username/repo/issues/42/labels{/name}",
+    "comments_url": "https://api.github.com/repos/username/repo/issues/42/comments",
+    "events_url": "https://api.github.com/repos/username/repo/issues/42/events",
+    "html_url": "https://github.com/username/repo/issues/42",
+    "number": 42,
+    "state": "open",
+    "title": "Authentication bug in login flow",
+    "body": "There's a bug in the authentication module that prevents users from logging in with their credentials.",
+    "user": {
+      "login": "reporter",
+      "id": 654,
+      "node_id": "MDQ6VXNlcjY1NA==",
+      "avatar_url": "https://github.com/images/error/reporter_happy.gif",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/reporter",
+      "html_url": "https://github.com/reporter",
+      "followers_url": "https://api.github.com/users/reporter/followers",
+      "following_url": "https://api.github.com/users/reporter/following{/other_user}",
+      "gists_url": "https://api.github.com/users/reporter/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/reporter/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/reporter/subscriptions",
+      "organizations_url": "https://api.github.com/users/reporter/orgs",
+      "repos_url": "https://api.github.com/users/reporter/repos",
+      "events_url": "https://api.github.com/users/reporter/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/reporter/received_events",
+      "type": "User",
+      "site_admin": false
+    },
+    "labels": [],
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "locked": false,
+    "active_lock_reason": null,
+    "comments": 0,
+    "closed_at": null,
+    "created_at": "2023-01-01T00:00:00Z",
+    "updated_at": "2023-01-01T00:00:00Z",
+    "author_association": "NONE",
+    "reactions": {
+      "url": "https://api.github.com/repos/username/repo/issues/42/reactions",
+      "total_count": 0,
+      "+1": 0,
+      "-1": 0,
+      "laugh": 0,
+      "hooray": 0,
+      "confused": 0,
+      "heart": 0,
+      "rocket": 0,
+      "eyes": 0
+    },
+    "timeline_url": "https://api.github.com/repos/username/repo/issues/42/timeline",
+    "performed_via_github_app": null,
+    "state_reason": null
+  }
+}
+
+====
+
+GITHUB ACTION RULES
+
+- You are operating within a GitHub Action environment with access to the repository
+- All file operations should be relative to the repository root
+- You can use 'gh' CLI commands to interact with GitHub (PRs, issues, etc.)
+- If this event corresponds to a PR, always checkout the PR branch first using 'gh pr checkout'
+- When making changes, ensure they are appropriate for the repository and follow existing patterns
+- Be mindful of repository permissions and only make changes that are requested
+- Use git commands appropriately for version control operations
+- Consider the impact of your changes on CI/CD pipelines and other workflows
+
+====
+
+COMMUNICATION GUIDELINES
+
+- All communication happens through clear, structured responses
+- Use technical language appropriate for the development context
+- Reference specific code sections with file paths and line numbers when applicable
+- Include progress updates and status information
+- Use appropriate formatting (code blocks, checklists, headers)
+- Provide concise summaries of actions taken and results achieved
+- When reviewing code, cite specific examples and suggest concrete improvements
+
+====
+
+CODE QUALITY GUIDELINES
+
+When reviewing or implementing code, focus on:
+- Logic errors and bug-prone patterns
+- Code quality and maintainability issues
+- Significant security concerns (leaked credentials, SQL injection, etc.)
+- Significant performance problems (memory leaks, deadlocks, long-lived requests)
+- Clear documentation and code readability
+- Adherence to established coding standards and best practices
+
+Do not flag minor concerns as issues. Keep tone professional and constructive.
+Provide specific, actionable suggestions for improvements.
+
+====
+
+ADDITIONAL NOTES
+
+- If this event has a corresponding PR, always checkout the PR branch first (use gh pr checkout)
+- Consider the context of the issue/PR when making changes
+- Ensure your changes align with the repository's coding standards and practices
+- Use appropriate commit messages if making git commits
+- Be concise and focused in your responses within the GitHub Action context"
+`;

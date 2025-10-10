@@ -16,12 +16,6 @@ async function createDirectory(uri: vscode.Uri): Promise<void> {
   await vscode.workspace.fs.createDirectory(uri);
 }
 
-// Dummy options for tool execution context
-const dummyToolOptions = {
-  toolCallId: "test-call-id-123",
-  messages: [], // Provide a minimal message object
-};
-
 describe("readFile Tool", () => {
   let testSuiteRootTempDir: vscode.Uri;
   let currentTestTempDirUri: vscode.Uri;
@@ -86,7 +80,7 @@ describe("readFile Tool", () => {
 
     const result = await readFileWithMock(
       { path: filePath },
-      dummyToolOptions,
+      { toolCallId: "test-call-id-123", messages: [], cwd: testSuiteRootTempDir.fsPath },
     );
 
     assert.strictEqual(
@@ -104,7 +98,7 @@ describe("readFile Tool", () => {
 
     const result = await readFileWithMock(
       { path: filePath, startLine: 2, endLine: 4 },
-      dummyToolOptions,
+      { toolCallId: "test-call-id-123", messages: [], cwd: testSuiteRootTempDir.fsPath },
     );
 
     assert.strictEqual(
@@ -122,7 +116,7 @@ describe("readFile Tool", () => {
 
     const result = await readFileWithMock(
       { path: filePath, startLine: 3 },
-      dummyToolOptions,
+      { toolCallId: "test-call-id-123", messages: [], cwd: testSuiteRootTempDir.fsPath },
     );
 
     assert.strictEqual(
@@ -140,7 +134,7 @@ describe("readFile Tool", () => {
 
     const result = await readFileWithMock(
       { path: filePath, endLine: 3 },
-      dummyToolOptions,
+      { toolCallId: "test-call-id-123", messages: [], cwd: testSuiteRootTempDir.fsPath },
     );
 
     assert.strictEqual(
@@ -156,7 +150,7 @@ describe("readFile Tool", () => {
     try {
       await readFileWithMock(
         { path: nonExistentPath },
-        dummyToolOptions,
+        { toolCallId: "test-call-id-123", messages: [], cwd: testSuiteRootTempDir.fsPath },
       );
       assert.fail("Should have thrown an error for non-existent file");
     } catch (error: any) {
@@ -177,7 +171,7 @@ describe("readFile Tool", () => {
     try {
       await readFileWithMock(
         { path: filePath },
-        dummyToolOptions,
+        { toolCallId: "test-call-id-123", messages: [], cwd: testSuiteRootTempDir.fsPath },
       );
       assert.fail("Should have thrown an error for binary file");
     } catch (error: any) {
@@ -199,7 +193,7 @@ describe("readFile Tool", () => {
 
     const result = await readFileWithMock(
       { path: filePath },
-      dummyToolOptions,
+      { toolCallId: "test-call-id-123", messages: [], cwd: testSuiteRootTempDir.fsPath },
     );
 
     assert.strictEqual(result.isTruncated, true);
@@ -216,7 +210,7 @@ describe("readFile Tool", () => {
 
     const result = await readFileWithMock(
       { path: filePath },
-      dummyToolOptions,
+      { toolCallId: "test-call-id-123", messages: [], cwd: testSuiteRootTempDir.fsPath },
     );
 
     assert.strictEqual(result.content, "1 | ");
@@ -231,7 +225,7 @@ describe("readFile Tool", () => {
 
     const result = await readFileWithMock(
       { path: filePath },
-      dummyToolOptions,
+      { toolCallId: "test-call-id-123", messages: [], cwd: testSuiteRootTempDir.fsPath },
     );
 
     assert.strictEqual(
@@ -250,7 +244,7 @@ describe("readFile Tool", () => {
     const abortController = new AbortController();
     const promise = readFileWithMock(
       { path: filePath },
-      { ...dummyToolOptions, abortSignal: abortController.signal },
+      { toolCallId: "test-call-id-123", messages: [], cwd: testSuiteRootTempDir.fsPath, abortSignal: abortController.signal },
     );
     
     abortController.abort();
@@ -278,7 +272,7 @@ describe("readFile Tool", () => {
 
     const result = await readFileWithMock(
       { path: absoluteFilePath },
-      dummyToolOptions,
+      { toolCallId: "test-call-id-123", messages: [], cwd: testSuiteRootTempDir.fsPath },
     );
 
     assert.strictEqual(
@@ -288,4 +282,3 @@ describe("readFile Tool", () => {
     assert.strictEqual(result.isTruncated, false);
   });
 });
-

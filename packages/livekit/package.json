@@ -12,8 +12,10 @@
     "tsc": "tsc"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "catalog:",
     "@ai-sdk/gateway": "catalog:",
-    "@ai-sdk/google-vertex": "catalog:",
+    "@ai-sdk/google": "catalog:",
+    "@ai-sdk/openai": "catalog:",
     "@ai-sdk/openai-compatible": "catalog:",
     "@ai-sdk/provider": "catalog:",
     "@ai-sdk/provider-utils": "catalog:",

@@ -1,7 +1,9 @@
 import type { PendingApproval } from "@/features/approval";
 import type { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
 import type { UseChatHelpers } from "@ai-sdk/react";
+import { prompts } from "@getpochi/common";
 import type { Message } from "@getpochi/livekit";
+import type { FileUIPart } from "ai";
 import type React from "react";
 import { useCallback } from "react";
 import { useAutoApproveGuard, useToolCallLifeCycle } from "../lib/chat-state";
@@ -19,6 +21,8 @@ interface UseChatSubmitProps {
   isLoading: boolean;
   newCompactTaskPending: boolean;
   pendingApproval: PendingApproval | undefined;
+  queuedMessages: string[];
+  setQueuedMessages: React.Dispatch<React.SetStateAction<string[]>>;
 }
 
 export function useChatSubmit({
@@ -30,11 +34,14 @@ export function useChatSubmit({
   isLoading,
   newCompactTaskPending,
   pendingApproval,
+  queuedMessages,
+  setQueuedMessages,
 }: UseChatSubmitProps) {
   const autoApproveGuard = useAutoApproveGuard();
   const { executingToolCalls, previewingToolCalls } = useToolCallLifeCycle();
   const isExecuting = executingToolCalls.length > 0;
   const isPreviewing = (previewingToolCalls?.length ?? 0) > 0;
+
   const abortExecutingToolCalls = useCallback(() => {
     for (const toolCall of executingToolCalls) {
       toolCall.abort();
@@ -87,6 +94,10 @@ export function useChatSubmit({
     stopChat,
   ]);
 
+  /**
+   * Handles form submission, sending both the current input and any queued messages.
+   * This function supports text and file attachments.
+   */
   const handleSubmit = useCallback(
     async (e?: React.FormEvent<HTMLFormElement>) => {
       e?.preventDefault();
@@ -94,38 +105,49 @@ export function useChatSubmit({
       // Compacting is not allowed to be stopped.
       if (newCompactTaskPending) return;
 
+      const allMessages = [...queuedMessages];
+      // Clear queued messages after adding them to allMessages
+      setQueuedMessages([]);
+
       const content = input.trim();
-      if (isSubmitDisabled) {
+      if (content) {
+        allMessages.push(content);
+        setInput("");
+      }
+      const text = allMessages.join("\n\n").trim();
+
+      // Disallow empty submissions
+      if (text.length === 0 && files.length === 0) return;
+
+      const stopIsLoading = handleStop();
+      if (stopIsLoading || isSubmitDisabled) {
+        autoApproveGuard.current = "stop";
+        if (text.length > 0) {
+          setQueuedMessages([text]);
+        }
         return;
       }
 
-      if (handleStop()) {
-        // break isLoading, we need to wait for some time to avoid racing between stop and submit.
-        await new Promise((resolve) => setTimeout(resolve, 25));
-      }
-
-      autoApproveGuard.current = false;
       if (files.length > 0) {
         try {
           const uploadedAttachments = await upload();
+          const parts = prepareMessageParts(text, uploadedAttachments);
 
-          sendMessage({
-            text: content.length === 0 ? " " : content,
-            files: uploadedAttachments,
+          await sendMessage({
+            parts,
           });
 
-          setInput("");
+          autoApproveGuard.current = "auto";
         } catch (error) {
           // Error is already handled by the hook
           return;
         }
-      } else if (content.length > 0) {
-        autoApproveGuard.current = true;
+      } else if (allMessages.length > 0) {
         clearUploadError();
-        sendMessage({
-          text: content,
+        await sendMessage({
+          text,
         });
-        setInput("");
+        autoApproveGuard.current = "auto";
       }
     },
     [
@@ -139,8 +161,30 @@ export function useChatSubmit({
       setInput,
       clearUploadError,
       newCompactTaskPending,
+      queuedMessages,
+      setQueuedMessages,
     ],
   );
 
-  return { handleSubmit, handleStop };
+  return {
+    handleSubmit,
+    handleStop,
+  };
+}
+
+function prepareMessageParts(input: string, files: FileUIPart[]) {
+  const parts: Message["parts"] = [...files];
+  const isPublicUrl = files.every((x) => x.url.startsWith("http"));
+  if (isPublicUrl) {
+    parts.push({
+      type: "text",
+      text: prompts.createSystemReminder(
+        `Attached files: ${files.map((file) => file.url).join(", ")}`,
+      ),
+    });
+  }
+  if (input) {
+    parts.push({ type: "text", text: input });
+  }
+  return parts;
 }

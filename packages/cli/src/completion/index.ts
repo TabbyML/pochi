@@ -1,0 +1,1 @@
+export { handleShellCompletion } from "./cmd";

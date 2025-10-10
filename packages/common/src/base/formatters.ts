@@ -101,15 +101,6 @@ function removeEmptyMessages(messages: UIMessage[]): UIMessage[] {
   return messages.filter((message) => message.parts.length > 0);
 }
 
-function removeReasoningParts(messages: UIMessage[]): UIMessage[] {
-  return messages.map((message) => {
-    message.parts = message.parts.filter((part) => {
-      return part.type !== "reasoning";
-    });
-    return message;
-  });
-}
-
 function removeMessagesWithoutTextOrToolCall(
   messages: UIMessage[],
 ): UIMessage[] {
@@ -214,8 +205,21 @@ function extractCompactMessages(messages: UIMessage[]) {
   return messages;
 }
 
+function removeEmptyTextParts(messages: UIMessage[]) {
+  return messages.map((message) => {
+    message.parts = message.parts.filter((part) => {
+      if (part.type === "text" || part.type === "reasoning") {
+        return part.text.trim().length > 0;
+      }
+      return true;
+    });
+    return message;
+  });
+}
+
 type FormatOp = (messages: UIMessage[]) => UIMessage[];
 const LLMFormatOps: FormatOp[] = [
+  removeEmptyTextParts,
   removeEmptyMessages,
   extractCompactMessages,
   removeMessagesWithoutTextOrToolCall,
@@ -226,11 +230,14 @@ const LLMFormatOps: FormatOp[] = [
   removeToolCallArgumentTransientData,
 ];
 const UIFormatOps = [
+  removeEmptyTextParts,
+  removeEmptyMessages,
   resolvePendingToolCalls,
   removeSystemReminder,
   combineConsecutiveAssistantMessages,
 ];
 const StorageFormatOps = [
+  removeEmptyTextParts,
   removeEmptyMessages,
   removeInvalidCharForStorage,
   removeToolCallArgumentTransientData,
@@ -242,7 +249,6 @@ function formatMessages(messages: UIMessage[], ops: FormatOp[]): UIMessage[] {
 }
 
 export interface LLMFormatterOptions {
-  keepReasoningPart?: boolean;
   removeSystemReminder?: boolean;
 }
 
@@ -254,7 +260,6 @@ export const formatters = {
   // Format messages before sending them to the LLM.
   llm: <T extends UIMessage>(messages: T[], options?: LLMFormatterOptions) => {
     const llmFormatOps = [
-      ...(options?.keepReasoningPart ? [] : [removeReasoningParts]),
       ...(options?.removeSystemReminder ? [removeSystemReminder] : []),
       ...LLMFormatOps,
     ];

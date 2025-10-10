@@ -3,23 +3,27 @@ import {
   calcEditedRangeAfterAccept,
 } from "@/code-completion/auto-code-actions";
 // biome-ignore lint/style/useImportType: needed for dependency injection
-import { RagdollWebviewProvider } from "@/integrations/webview/ragdoll-webview-provider";
+import { PochiWebviewPanel, PochiWebviewSidebar } from "@/integrations/webview";
 import type { AuthClient } from "@/lib/auth-client";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { AuthEvents } from "@/lib/auth-events";
 import { getWorkspaceRulesFileUri } from "@/lib/env";
-import { getWorkspaceFolder } from "@/lib/fs";
 import { getLogger, showOutputPanel } from "@/lib/logger";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { NewProjectRegistry, prepareProject } from "@/lib/new-project";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { PostHog } from "@/lib/posthog";
+import { workspaceScoped } from "@/lib/workspace-scoped";
+// biome-ignore lint/style/useImportType: needed for dependency injection
+import { NESDecorationManager } from "@/nes/decoration-manager";
 import type { WebsiteTaskCreateEvent } from "@getpochi/common";
 import {
   type CustomModelSetting,
-  PochiConfigFilePath,
+  type McpServerConfig,
+  pochiConfig,
 } from "@getpochi/common/configuration";
-import type { McpServerConfig } from "@getpochi/common/configuration";
+// biome-ignore lint/style/useImportType: needed for dependency injection
+import { McpHub } from "@getpochi/common/mcp-utils";
 import { getVendor } from "@getpochi/common/vendor";
 import type {
   NewTaskParams,
@@ -31,8 +35,6 @@ import * as vscode from "vscode";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { type PochiAdvanceSettings, PochiConfiguration } from "./configuration";
 import { DiffChangesContentProvider } from "./editor/diff-changes-content-provider";
-// biome-ignore lint/style/useImportType: needed for dependency injection
-import { McpHub } from "./mcp/mcp-hub";
 
 const logger = getLogger("CommandManager");
 
@@ -42,13 +44,16 @@ export class CommandManager implements vscode.Disposable {
   private disposables: vscode.Disposable[] = [];
 
   constructor(
-    private readonly ragdollWebviewProvider: RagdollWebviewProvider,
+    private readonly pochiWebviewSidebar: PochiWebviewSidebar,
     private readonly newProjectRegistry: NewProjectRegistry,
     @inject("AuthClient") private readonly authClient: AuthClient,
     private readonly authEvents: AuthEvents,
     private readonly mcpHub: McpHub,
     private readonly pochiConfiguration: PochiConfiguration,
     private readonly posthog: PostHog,
+    @inject("vscode.ExtensionContext")
+    private readonly context: vscode.ExtensionContext,
+    private readonly nesDecorationManager: NESDecorationManager,
   ) {
     this.registerCommands();
   }
@@ -60,13 +65,13 @@ export class CommandManager implements vscode.Disposable {
     openTaskParams: TaskIdParams | NewTaskParams,
     requestId?: string,
   ) {
-    await vscode.commands.executeCommand("pochiWebui.focus");
+    await vscode.commands.executeCommand("pochiSidebar.focus");
 
     if (githubTemplateUrl) {
       await prepareProject(workspaceUri, githubTemplateUrl, progress);
     }
 
-    const webviewHost = await this.ragdollWebviewProvider.retrieveWebviewHost();
+    const webviewHost = await this.pochiWebviewSidebar.retrieveWebviewHost();
     webviewHost.openTask(openTaskParams);
 
     if (requestId) {
@@ -137,43 +142,42 @@ export class CommandManager implements vscode.Disposable {
         }
       }),
 
-      vscode.commands.registerCommand("pochi.editWorkspaceRules", async () => {
-        try {
-          const workspaceRulesUri = getWorkspaceRulesFileUri();
-          let textDocument: vscode.TextDocument;
-
+      vscode.commands.registerCommand(
+        "pochi.editWorkspaceRules",
+        async (cwd: string) => {
           try {
-            textDocument =
-              await vscode.workspace.openTextDocument(workspaceRulesUri);
-          } catch (error) {
-            const fileContent = "<!-- Add your custom workspace rules here -->";
-            await vscode.workspace.fs.writeFile(
-              workspaceRulesUri,
-              Buffer.from(fileContent, "utf8"),
-            );
-            textDocument =
-              await vscode.workspace.openTextDocument(workspaceRulesUri);
-          }
+            const workspaceRulesUri = getWorkspaceRulesFileUri(cwd);
+            let textDocument: vscode.TextDocument;
 
-          await vscode.window.showTextDocument(textDocument);
-        } catch (error) {
-          const errorMessage =
-            error instanceof Error ? error.message : "Unknown error";
-          vscode.window.showErrorMessage(
-            `Pochi: Failed to open workspace rules. ${errorMessage}`,
-          );
-        }
-      }),
+            try {
+              textDocument =
+                await vscode.workspace.openTextDocument(workspaceRulesUri);
+            } catch (error) {
+              const fileContent =
+                "<!-- Add your custom workspace rules here -->";
+              await vscode.workspace.fs.writeFile(
+                workspaceRulesUri,
+                Buffer.from(fileContent, "utf8"),
+              );
+              textDocument =
+                await vscode.workspace.openTextDocument(workspaceRulesUri);
+            }
+
+            await vscode.window.showTextDocument(textDocument);
+          } catch (error) {
+            const errorMessage =
+              error instanceof Error ? error.message : "Unknown error";
+            vscode.window.showErrorMessage(
+              `Pochi: Failed to open workspace rules. ${errorMessage}`,
+            );
+          }
+        },
+      ),
 
       vscode.commands.registerCommand(
         "pochi.createProject",
-        async (event: WebsiteTaskCreateEvent) => {
+        async (event: WebsiteTaskCreateEvent, cwd: string) => {
           const params = event.data;
-          const currentWorkspace = vscode.workspace.workspaceFolders?.[0].uri;
-          if (!currentWorkspace) {
-            return;
-          }
-
           return vscode.window.withProgress(
             {
               location: vscode.ProgressLocation.Notification,
@@ -184,7 +188,7 @@ export class CommandManager implements vscode.Disposable {
                 progress.report({ message: "Pochi: Creating project..." });
                 await this.prepareProjectAndOpenTask(
                   progress,
-                  currentWorkspace,
+                  vscode.Uri.parse(cwd),
                   params.githubTemplateUrl,
                   { uid: params.uid, prompt: params.prompt },
                   params.uid,
@@ -209,9 +213,9 @@ export class CommandManager implements vscode.Disposable {
           },
           async (progress) => {
             progress.report({ message: "Pochi: Opening task..." });
-            await vscode.commands.executeCommand("pochiWebui.focus");
+            await vscode.commands.executeCommand("pochiSidebar.focus");
             const webviewHost =
-              await this.ragdollWebviewProvider.retrieveWebviewHost();
+              await this.pochiWebviewSidebar.retrieveWebviewHost();
             webviewHost.openTask({ uid });
           },
         );
@@ -220,9 +224,9 @@ export class CommandManager implements vscode.Disposable {
       vscode.commands.registerCommand(
         "pochi.webui.navigate.newTask",
         async () => {
-          await vscode.commands.executeCommand("pochiWebui.focus");
+          await vscode.commands.executeCommand("pochiSidebar.focus");
           const webviewHost =
-            await this.ragdollWebviewProvider.retrieveWebviewHost();
+            await this.pochiWebviewSidebar.retrieveWebviewHost();
           webviewHost.openTask({ uid: undefined });
         },
       ),
@@ -230,9 +234,9 @@ export class CommandManager implements vscode.Disposable {
       vscode.commands.registerCommand(
         "pochi.webui.navigate.taskList",
         async () => {
-          await vscode.commands.executeCommand("pochiWebui.focus");
+          await vscode.commands.executeCommand("pochiSidebar.focus");
           const webviewHost =
-            await this.ragdollWebviewProvider.retrieveWebviewHost();
+            await this.pochiWebviewSidebar.retrieveWebviewHost();
           webviewHost.openTaskList();
         },
       ),
@@ -240,9 +244,9 @@ export class CommandManager implements vscode.Disposable {
       vscode.commands.registerCommand(
         "pochi.webui.navigate.settings",
         async () => {
-          await vscode.commands.executeCommand("pochiWebui.focus");
+          await vscode.commands.executeCommand("pochiSidebar.focus");
           const webviewHost =
-            await this.ragdollWebviewProvider.retrieveWebviewHost();
+            await this.pochiWebviewSidebar.retrieveWebviewHost();
           webviewHost.openSettings();
         },
       ),
@@ -262,24 +266,24 @@ export class CommandManager implements vscode.Disposable {
       vscode.commands.registerCommand(
         "pochi.mcp.addServer",
         async (name?: string, recommendedServer?: McpServerConfig) => {
-          this.mcpHub.addServer(name, recommendedServer);
-          await vscode.commands.executeCommand(
-            "vscode.open",
-            vscode.Uri.file(PochiConfigFilePath),
-          );
+          await this.mcpHub.addServer(name, recommendedServer);
+          await new Promise((resolve) => setTimeout(resolve, 500));
+          await this.pochiConfiguration.revealConfig({
+            key: "mcp",
+          });
         },
       ),
 
       vscode.commands.registerCommand(
         "pochi.mcp.openServerSettings",
-        async () => {
-          await vscode.commands.executeCommand(
-            "vscode.open",
-            vscode.Uri.file(PochiConfigFilePath),
-          );
+        async (serverName?: string) => {
+          await this.ensureDefaultMcpServer();
+          await this.pochiConfiguration.revealConfig({
+            key: serverName ? `mcp.${serverName}` : "mcp",
+            target: serverName ? undefined : "user",
+          });
         },
       ),
-
       vscode.commands.registerCommand(
         "pochi.mcp.serverControl",
         async (action: string, serverName: string) => {
@@ -310,7 +314,7 @@ export class CommandManager implements vscode.Disposable {
 
       vscode.commands.registerCommand("pochi.toggleFocus", async () => {
         const webviewHost =
-          await this.ragdollWebviewProvider.retrieveWebviewHost();
+          await this.pochiWebviewSidebar.retrieveWebviewHost();
         if (await webviewHost.isFocused()) {
           logger.debug("Focused on editor");
           await vscode.commands.executeCommand(
@@ -318,7 +322,7 @@ export class CommandManager implements vscode.Disposable {
           );
         } else {
           logger.debug("Focused on webui");
-          await vscode.commands.executeCommand("pochiWebui.focus");
+          await vscode.commands.executeCommand("pochiSidebar.focus");
         }
       }),
 
@@ -399,18 +403,21 @@ export class CommandManager implements vscode.Disposable {
 
       vscode.commands.registerCommand("pochi.openFileFromDiff", async () => {
         const activeTab = vscode.window.tabGroups.activeTabGroup.activeTab;
+        logger.debug("openFileFromDiff", { activeTab });
         if (
           activeTab &&
           activeTab.input instanceof vscode.TabInputTextDiff &&
           activeTab.input.original.scheme === DiffChangesContentProvider.scheme
         ) {
-          const fileUri = vscode.Uri.joinPath(
-            getWorkspaceFolder().uri,
-            activeTab.input.original.path,
+          const data = DiffChangesContentProvider.parse(
+            activeTab.input.original,
           );
-          await vscode.window.showTextDocument(fileUri, {
-            preview: false,
-          });
+          await vscode.window.showTextDocument(
+            vscode.Uri.joinPath(vscode.Uri.parse(data.cwd), data.filepath),
+            {
+              preview: false,
+            },
+          );
         }
       }),
 
@@ -418,17 +425,45 @@ export class CommandManager implements vscode.Disposable {
         "pochi.openCustomModelSettings",
         async () => {
           await this.ensureDefaultCustomModelSettings();
-          await vscode.commands.executeCommand(
-            "vscode.open",
-            vscode.Uri.file(PochiConfigFilePath),
+          await this.pochiConfiguration.revealConfig({
+            key: "providers",
+          });
+        },
+      ),
+
+      vscode.commands.registerCommand("pochi.openInPanel", async () => {
+        // FIXME(zhanba): pass cwd from command argument
+        const cwd = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
+        if (!cwd) {
+          throw new Error(
+            "Cannot open Pochi panel without a workspace folder.",
           );
+        }
+        const workspaceContainer = workspaceScoped(cwd);
+        PochiWebviewPanel.createOrShow(
+          workspaceContainer,
+          this.context.extensionUri,
+        );
+      }),
+
+      vscode.commands.registerCommand(
+        "pochi.nextEditSuggestion.accept",
+        async () => {
+          this.nesDecorationManager.accept();
+        },
+      ),
+
+      vscode.commands.registerCommand(
+        "pochi.nextEditSuggestion.reject",
+        async () => {
+          this.nesDecorationManager.reject();
         },
       ),
     );
   }
 
   private async ensureDefaultCustomModelSettings() {
-    const currentSettings = this.pochiConfiguration.customModelSettings.value;
+    const currentSettings = pochiConfig.value.providers;
 
     // If there are already settings, don't add defaults
     if (currentSettings && Object.keys(currentSettings).length > 0) {
@@ -453,6 +488,26 @@ export class CommandManager implements vscode.Disposable {
     } satisfies Record<string, CustomModelSetting>;
 
     await this.pochiConfiguration.updateCustomModelSettings(defaultSettings);
+    // wait for a while to ensure the settings are saved
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+
+  private async ensureDefaultMcpServer() {
+    const currentServer = pochiConfig.value.mcp;
+
+    if (currentServer && Object.keys(currentServer).length > 0) {
+      return;
+    }
+
+    const defaulMcpServer = {
+      "your-mcp-server-name": {
+        command: "npx",
+        args: ["your mcp server command"],
+      },
+    } satisfies Record<string, McpServerConfig>;
+
+    await this.pochiConfiguration.updateMcpServers(defaulMcpServer);
+    await new Promise((resolve) => setTimeout(resolve, 500));
   }
 
   dispose() {

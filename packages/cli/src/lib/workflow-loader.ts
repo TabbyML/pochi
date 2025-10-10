@@ -1,6 +1,8 @@
 import * as fs from "node:fs/promises";
+import { homedir } from "node:os";
 import * as path from "node:path";
 import { constants, prompts } from "@getpochi/common";
+import { parseWorkflowFrontmatter as commonParseWorkflowFrontmatter } from "@getpochi/common/tool-utils";
 
 function getWorkflowPath(id: string) {
   // Construct the workflow file path
@@ -14,18 +16,29 @@ function getWorkflowPath(id: string) {
  * @param cwd The current working directory
  * @returns The content of the workflow file, or null if not found
  */
-async function loadWorkflow(id: string, cwd: string): Promise<string | null> {
-  try {
-    // Check if the file exists and read its content
-    const content = await fs.readFile(
-      path.join(cwd, getWorkflowPath(id)),
-      "utf-8",
-    );
-    return content;
-  } catch (error) {
-    // File doesn't exist or cannot be read
-    return null;
+async function loadWorkflow(
+  id: string,
+  cwd: string,
+  includeGlobalWorkflow = true,
+): Promise<string | null> {
+  const workflowFilePaths = [path.join(cwd, getWorkflowPath(id))];
+  if (includeGlobalWorkflow) {
+    workflowFilePaths.push(path.join(homedir(), getWorkflowPath(id)));
   }
+
+  for (const filePath of workflowFilePaths) {
+    try {
+      // Check if the file exists and read its content
+      const content = await fs.readFile(filePath, "utf-8");
+      if (content) {
+        return content;
+      }
+    } catch (error) {
+      // File doesn't exist or cannot be read
+    }
+  }
+
+  return null;
 }
 
 /**
@@ -71,7 +84,6 @@ export async function replaceWorkflowReferences(
   // Process each workflow reference
   for (const id of workflowNames) {
     const content = await loadWorkflow(id, cwd);
-
     if (content !== null) {
       // Replace only the workflow reference, preserving surrounding text
       result = result.replace(
@@ -84,4 +96,12 @@ export async function replaceWorkflowReferences(
   }
 
   return { prompt: result, missingWorkflows };
+}
+
+export async function parseWorkflowFrontmatter(id: string) {
+  const content = await loadWorkflow(id, process.cwd());
+  if (content === null) {
+    return { model: undefined };
+  }
+  return commonParseWorkflowFrontmatter(content);
 }

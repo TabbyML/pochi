@@ -2,11 +2,14 @@ import type {
   LanguageModelV2Middleware,
   LanguageModelV2Prompt,
   LanguageModelV2StreamPart,
+  LanguageModelV2ToolResultPart,
 } from "@ai-sdk/provider";
 import { generateId } from "ai";
 import { getPotentialStartIndex } from "./utils";
 
-export function createToolCallMiddleware(): LanguageModelV2Middleware {
+export function createToolCallMiddleware(
+  useStopWordStream: boolean,
+): LanguageModelV2Middleware {
   // Set defaults with validated config
   const toolCallEndTag = "</api-request>";
   const toolResponseTagTemplate = (name: string) =>
@@ -19,6 +22,7 @@ export function createToolCallMiddleware(): LanguageModelV2Middleware {
   const toolCallStartPrefix = "<api-request";
 
   const toolSectionStartTag = "<api-section>";
+  const toolSectionEndTag = "</api-section>";
 
   return {
     middlewareVersion: "v2",
@@ -65,8 +69,10 @@ export function createToolCallMiddleware(): LanguageModelV2Middleware {
               ...processedPrompt,
             ];
 
-      const stopSequences = params.stopSequences || [];
-      stopSequences.push("</api-section>");
+      let stopSequences = params.stopSequences;
+      if (!useStopWordStream) {
+        stopSequences = [...(stopSequences || []), "</api-section>"];
+      }
 
       return {
         ...params,
@@ -78,9 +84,13 @@ export function createToolCallMiddleware(): LanguageModelV2Middleware {
 
     wrapStream: async ({ doStream }) => {
       const { stream, ...rest } = await doStream();
+      let newStream = stream;
+      if (useStopWordStream) {
+        newStream = stream.pipeThrough(createStopWordStream(toolSectionEndTag));
+      }
 
       return {
-        stream: stream.pipeThrough(
+        stream: newStream.pipeThrough(
           createToolCallStream(
             toolCallStartRegex,
             toolCallStartPrefix,
@@ -383,7 +393,7 @@ function processToolResult(
     } else {
       content.push({
         type: "text",
-        text: `${toolResponseTagTemplate(x.toolName)}${JSON.stringify(x.output)}${toolResponseEndTag}`,
+        text: `${toolResponseTagTemplate(x.toolName)}${convertToolResultOutput(x.output)}${toolResponseEndTag}`,
       });
     }
   }
@@ -408,7 +418,7 @@ ${tools}
 </api-list>
 
 ## OUTPUT FORMAT
-Please remember you are not allowed to use any format related to api calling or fc or tool_code.
+Please remember you are not allowed to use any format related to api calling or fc or tool_code. You shall stop immediately after generating </api-section> tag.
 For each api request respone, you are only allowed to return the arguments in JSON text format within api-request XML tags (within api-section) as following:
 
 <api-section>
@@ -465,3 +475,112 @@ For each api request respone, you are only allowed to return the arguments in JS
 </api-request>
 </api-section>
 `;
+
+function createStopWordStream(
+  stop: string,
+): TransformStream<LanguageModelV2StreamPart, LanguageModelV2StreamPart> {
+  let buffer = "";
+  let stopped = false;
+  let pendingTextStart:
+    | Extract<LanguageModelV2StreamPart, { type: "text-start" }>
+    | undefined;
+  let textId = "";
+
+  const publish = (
+    text: string,
+    controller: TransformStreamDefaultController<LanguageModelV2StreamPart>,
+  ) => {
+    if (text.length === 0) return;
+    if (pendingTextStart) {
+      controller.enqueue(pendingTextStart);
+      pendingTextStart = undefined;
+    }
+    controller.enqueue({ type: "text-delta", id: textId, delta: text });
+  };
+
+  return new TransformStream({
+    transform(chunk, controller) {
+      if (stopped) {
+        if (chunk.type.startsWith("text-")) {
+          return;
+        }
+        controller.enqueue(chunk);
+        return;
+      }
+
+      if (chunk.type === "text-start") {
+        pendingTextStart = chunk;
+        textId = chunk.id;
+        return;
+      }
+
+      if (chunk.type === "text-end") {
+        if (buffer.length > 0) {
+          publish(buffer, controller);
+          buffer = "";
+        }
+        if (!pendingTextStart) {
+          controller.enqueue(chunk);
+        }
+        pendingTextStart = undefined;
+        return;
+      }
+
+      if (chunk.type !== "text-delta") {
+        controller.enqueue(chunk);
+        return;
+      }
+
+      buffer += chunk.delta;
+
+      const index = buffer.indexOf(stop);
+      if (index !== -1) {
+        const remainingText = buffer.substring(0, index);
+        publish(remainingText, controller);
+        stopped = true;
+        buffer = "";
+        return;
+      }
+
+      const potentialStartIndex = getPotentialStartIndex(buffer, stop);
+      if (potentialStartIndex == null) {
+        publish(buffer, controller);
+        buffer = "";
+      } else {
+        const textToEnqueue = buffer.substring(0, potentialStartIndex);
+        publish(textToEnqueue, controller);
+        buffer = buffer.substring(potentialStartIndex);
+      }
+    },
+
+    flush(controller) {
+      if (!stopped && buffer.length > 0) {
+        publish(buffer, controller);
+      }
+    },
+  });
+}
+
+function convertToolResultOutput(
+  x: Exclude<LanguageModelV2ToolResultPart["output"], { type: "content" }>,
+) {
+  if (x.type === "json") {
+    return JSON.stringify(x.value);
+  }
+
+  if (x.type === "text") {
+    return x.value;
+  }
+
+  if (x.type === "error-text" || x.type === "error-json") {
+    return JSON.stringify({
+      error: x.value,
+    });
+  }
+
+  assertUnreachable(x);
+}
+
+function assertUnreachable(x: never): never {
+  throw new Error(`Unreachable case: ${x}`);
+}

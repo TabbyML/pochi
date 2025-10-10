@@ -7,7 +7,7 @@ interface ChatContextProviderProps {
 }
 
 export function ChatContextProvider({ children }: ChatContextProviderProps) {
-  const autoApproveGuard = useRef(false);
+  const autoApproveGuard = useRef<"auto" | "manual" | "stop">("stop");
   const abortController = useRef(new AbortController());
 
   const {

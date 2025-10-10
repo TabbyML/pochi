@@ -1,6 +1,7 @@
 import { useAutoApproveGuard } from "@/features/chat";
 import { useAutoApprove } from "@/features/settings";
-import { PochiApiErrors } from "@getpochi/common/pochi-api";
+import { PochiApiErrors } from "@getpochi/vendor-pochi/edge";
+import { APICallError } from "ai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 // fibonacci sequence starting from 1, 2, 3, 5, 8...
@@ -47,19 +48,26 @@ interface PendingRetry {
 export function usePendingRetryApproval({
   error,
   status,
+  isSubTask,
 }: {
   error?: Error;
   status: "submitted" | "streaming" | "ready" | "error";
+  isSubTask: boolean;
 }) {
   const autoApproveGuard = useAutoApproveGuard();
 
   if (error && Object.values(PochiApiErrors).includes(error.message)) {
-    autoApproveGuard.current = false;
+    autoApproveGuard.current = "stop";
   }
 
-  const { autoApproveActive, autoApproveSettings } = useAutoApprove(
-    autoApproveGuard.current,
-  );
+  if (error && APICallError.isInstance(error) && error.isRetryable === false) {
+    autoApproveGuard.current = "stop";
+  }
+
+  const { autoApproveActive, autoApproveSettings } = useAutoApprove({
+    autoApproveGuard: autoApproveGuard.current === "auto",
+    isSubTask,
+  });
 
   const [retryCount, setRetryCount] = useState<RetryCount | undefined>(
     undefined,
@@ -96,11 +104,11 @@ export function usePendingRetryApproval({
   }, [error]);
 
   useEffect(() => {
-    // reset retry count when status is ok
-    if (status === "ready") {
+    // reset retry count when status is ok and no error
+    if (status === "ready" && error === undefined) {
       setRetryCount(undefined);
     }
-  }, [status]);
+  }, [status, error]);
 
   useEffect(() => {
     // reset retry count when settings updated to enable auto-retry

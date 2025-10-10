@@ -17,6 +17,10 @@ class_name = "SyncBackendDO"
 name = "CLIENT_DO"
 class_name = "LiveStoreClientDO"
 
+[[kv_namespaces]]
+binding = "CACHE"
+id = "0d6f1601697445289df0605504cae5bc"
+
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["SyncBackendDO", "LiveStoreClientDO"]
@@ -25,5 +29,11 @@ new_sqlite_classes = ["SyncBackendDO", "LiveStoreClientDO"]
 # ADMIN_SECRET = "..."
 # SYNC_BACKEND_URL = "http://localhost:8787"
 
-[triggers] # bootstrap ping every minute
-crons = ["*/1 * * * *"]
+[observability]
+enabled = false
+
+[assets]
+directory = "./dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+run_worker_first = ["/*", "!/assets/*"]

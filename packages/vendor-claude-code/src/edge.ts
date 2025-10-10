@@ -1,5 +1,8 @@
 import { registerModel } from "@getpochi/common/vendor/edge";
-import { createClaudeCodeModel } from "./model";
+import { createClaudeCodeModel, createEdgeClaudeCodeModel } from "./model";
 import { VendorId } from "./types";
 
-registerModel(VendorId, createClaudeCodeModel);
+const modelCreator =
+  "window" in globalThis ? createEdgeClaudeCodeModel : createClaudeCodeModel;
+
+registerModel(VendorId, modelCreator);

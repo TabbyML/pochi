@@ -22,7 +22,7 @@ export const usePendingModelAutoStart = ({
   useEffect(() => {
     if (enabled && init && !initStarted.current) {
       initStarted.current = true;
-      autoApproveGuard.current = true;
+      autoApproveGuard.current = "auto";
       retry(new ReadyForRetryError("ready"));
     }
   }, [init, retry, enabled, autoApproveGuard]);

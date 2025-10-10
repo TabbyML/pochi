@@ -1,7 +1,10 @@
 // Register the models
 import "@getpochi/vendor-pochi/edge";
 import "@getpochi/vendor-gemini-cli/edge";
-import "./vscode-lm";
+import "@getpochi/vendor-claude-code/edge";
+import "@getpochi/vendor-codex/edge";
+import "@getpochi/vendor-github-copilot/edge";
+import "@getpochi/vendor-qwen-code/edge";
 
 import { useSelectedModels } from "@/features/settings";
 import { useCustomAgents } from "@/lib/hooks/use-custom-agents";
@@ -10,24 +13,28 @@ import { useMcp } from "@/lib/hooks/use-mcp";
 import { vscodeHost } from "@/lib/vscode";
 import { constants, type Environment } from "@getpochi/common";
 import { createModel } from "@getpochi/common/vendor/edge";
-import type { UserEditsDiff } from "@getpochi/common/vscode-webui-bridge";
+import type {
+  DisplayModel,
+  UserEditsDiff,
+} from "@getpochi/common/vscode-webui-bridge";
 import type { LLMRequestData, Message } from "@getpochi/livekit";
 import type { Todo } from "@getpochi/tools";
 import { useCallback } from "react";
 
 export function useLiveChatKitGetters({
   todos,
-  isSubTask = false,
+  isSubTask,
+  modelOverride,
 }: {
   todos: React.RefObject<Todo[] | undefined>;
-  isSubTask?: boolean;
+  isSubTask: boolean;
+  modelOverride?: DisplayModel;
 }) {
   const { toolset, instructions } = useMcp();
   const mcpInfo = useLatest({ toolset, instructions });
+  const llm = useLLM({ isSubTask, modelOverride });
 
-  const llm = useLLM();
-
-  const { customAgents } = useCustomAgents();
+  const { customAgents } = useCustomAgents(true);
   const customAgentsRef = useLatest(customAgents);
 
   const getEnvironment = useCallback(
@@ -84,67 +91,82 @@ function findSecondLastCheckpointFromMessages(
   return undefined;
 }
 
-function useLLM(): React.RefObject<LLMRequestData> {
-  const { selectedModel } = useSelectedModels();
+function useLLM({
+  isSubTask,
+  modelOverride,
+}: {
+  isSubTask: boolean;
+  modelOverride?: DisplayModel;
+}): React.RefObject<LLMRequestData> {
+  const { selectedModel } = useSelectedModels({ isSubTask });
 
+  const model = modelOverride || selectedModel;
   const llmFromSelectedModel = ((): LLMRequestData => {
-    if (!selectedModel) return undefined as never;
-
-    if (selectedModel.type === "vendor") {
+    if (!model) return undefined as never;
+    if (model.type === "vendor") {
       return {
         type: "vendor",
-        keepReasoningPart:
-          selectedModel.vendorId === "pochi" &&
-          selectedModel.modelId.includes("claude"),
-        useToolCallMiddleware: selectedModel.options.useToolCallMiddleware,
-        getModel: (id: string) =>
-          createModel(selectedModel.vendorId, {
-            id,
-            modelId: selectedModel.modelId,
-            getCredentials: selectedModel.getCredentials,
+        useToolCallMiddleware: model.options.useToolCallMiddleware,
+        getModel: () =>
+          createModel(model.vendorId, {
+            modelId: model.modelId,
+            getCredentials: model.getCredentials,
           }),
       };
     }
 
-    const { provider } = selectedModel;
+    const { provider } = model;
     if (provider.kind === "google-vertex-tuning") {
       return {
         type: "google-vertex-tuning" as const,
-        modelId: selectedModel.modelId,
+        modelId: model.modelId,
         vertex: provider.vertex,
         maxOutputTokens:
-          selectedModel.options.maxTokens ?? constants.DefaultMaxOutputTokens,
+          model.options.maxTokens ?? constants.DefaultMaxOutputTokens,
         contextWindow:
-          selectedModel.options.contextWindow ?? constants.DefaultContextWindow,
-        useToolCallMiddleware: selectedModel.options.useToolCallMiddleware,
+          model.options.contextWindow ?? constants.DefaultContextWindow,
+        useToolCallMiddleware: model.options.useToolCallMiddleware,
       };
     }
 
     if (provider.kind === "ai-gateway") {
       return {
         type: "ai-gateway" as const,
-        modelId: selectedModel.modelId,
+        modelId: model.modelId,
         apiKey: provider.apiKey,
         maxOutputTokens:
-          selectedModel.options.maxTokens ?? constants.DefaultMaxOutputTokens,
+          model.options.maxTokens ?? constants.DefaultMaxOutputTokens,
         contextWindow:
-          selectedModel.options.contextWindow ?? constants.DefaultContextWindow,
-        useToolCallMiddleware: selectedModel.options.useToolCallMiddleware,
+          model.options.contextWindow ?? constants.DefaultContextWindow,
+        useToolCallMiddleware: model.options.useToolCallMiddleware,
       };
     }
 
-    return {
-      type: "openai" as const,
-      modelId: selectedModel.modelId,
-      baseURL: provider.baseURL,
-      apiKey: provider.apiKey,
-      maxOutputTokens:
-        selectedModel.options.maxTokens ?? constants.DefaultMaxOutputTokens,
-      contextWindow:
-        selectedModel.options.contextWindow ?? constants.DefaultContextWindow,
-      useToolCallMiddleware: selectedModel.options.useToolCallMiddleware,
-    };
+    if (
+      provider.kind === undefined ||
+      provider.kind === "openai" ||
+      provider.kind === "anthropic" ||
+      provider.kind === "openai-responses"
+    ) {
+      return {
+        type: provider.kind || "openai",
+        modelId: model.modelId,
+        baseURL: provider.baseURL,
+        apiKey: provider.apiKey,
+        maxOutputTokens:
+          model.options.maxTokens ?? constants.DefaultMaxOutputTokens,
+        contextWindow:
+          model.options.contextWindow ?? constants.DefaultContextWindow,
+        useToolCallMiddleware: model.options.useToolCallMiddleware,
+      };
+    }
+
+    assertUnreachable(provider.kind);
   })();
 
   return useLatest(llmFromSelectedModel);
+}
+
+function assertUnreachable(_x: never): never {
+  throw new Error("Didn't expect to get here");
 }

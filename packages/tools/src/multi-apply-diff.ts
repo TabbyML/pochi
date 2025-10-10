@@ -9,7 +9,7 @@ This is a tool for making multiple edits to a single file in one operation. It i
 Before using this tool, use the readFile tool to understand the file's contents and context
 
 To make multiple file edits, provide the following:
-1. path: The relative path to the file to modify
+1. path: The path to the file to modify (relative to the current working directory, or an absolute path)
 2. edits: An array of edit operations to perform, where each edit contains:
    - searchContent: The text to replace (must match the file contents exactly, including all whitespace and indentation)
    - replaceContent : The edited text to replace the old_string
@@ -36,7 +36,6 @@ WARNING:
 When making edits:
 - Ensure all edits result in idiomatic, correct code
 - Do not leave the code in a broken state
-- Always use absolute file paths (starting with /)
 
 If you want to create a new file, use:
 - A new file path, including dir name if needed
@@ -48,7 +47,7 @@ ${EditFileResultPrompt}`.trim(),
     path: z
       .string()
       .describe(
-        "The path of the file to modify (relative to the current working directory).",
+        "The path of the file to modify (relative to the current working directory, or an absolute path).",
       ),
     edits: z
       .array(

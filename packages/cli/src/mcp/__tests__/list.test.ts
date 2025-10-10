@@ -14,7 +14,7 @@ describe("mcp list command", () => {
   it("should register the list command correctly", () => {
     const listCommand = program.commands.find(cmd => cmd.name() === "list");
     expect(listCommand).toBeDefined();
-    expect(listCommand?.description()).toBe("List configured MCP servers");
+    expect(listCommand?.description()).toBe("List all configured MCP servers and their statuses.");
   });
 
   it("should have the correct command structure", () => {

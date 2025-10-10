@@ -4,11 +4,7 @@ import {
   diagnosticsToProblemsString,
   getNewDiagnostics,
 } from "@/lib/diagnostic";
-import {
-  ensureFileDirectoryExists,
-  getWorkspaceFolder,
-  isFileExists,
-} from "@/lib/fs";
+import { ensureFileDirectoryExists, isFileExists } from "@/lib/fs";
 import { createPrettyPatch } from "@/lib/fs";
 import { getLogger } from "@/lib/logger";
 import { resolvePath } from "@getpochi/common/tool-utils";
@@ -23,6 +19,7 @@ const ShouldAutoScroll = true;
 
 export class DiffView implements vscode.Disposable {
   private isFinalized = false;
+  private isReverted = false;
   private streamedLines: string[] = [];
 
   private preDiagnostics: [vscode.Uri, vscode.Diagnostic[]][] =
@@ -39,6 +36,8 @@ export class DiffView implements vscode.Disposable {
     private readonly fileExists: boolean,
     private readonly originalContent: string,
     private readonly activeDiffEditor: vscode.TextEditor,
+    private readonly cwd: string,
+    private readonly isFileOpenBeforeDiffPreview = false,
   ) {
     this.fadedOverlayController = new DecorationController(
       "fadedOverlay",
@@ -90,17 +89,40 @@ export class DiffView implements vscode.Disposable {
   }
 
   private revertAndClose = async () => {
+    if (this.isReverted) {
+      logger.debug("revertAndClose already called, skipping");
+      return;
+    }
+    this.isReverted = true;
+
     logger.debug("revert and close diff view");
     const updatedDocument = this.activeDiffEditor.document;
     await discardChangesWithWorkspaceEdit(
       updatedDocument,
       this.originalContent,
     );
-    closeAllNonDirtyDiffViews();
+    await closeAllNonDirtyDiffViews();
+
+    // Reopen the file if it was open before the diff view
+    if (this.isFileOpenBeforeDiffPreview) {
+      logger.debug(
+        "Reopening file that was open before diff view",
+        this.fileUri.fsPath,
+      );
+      try {
+        const document = await vscode.workspace.openTextDocument(this.fileUri);
+        await vscode.window.showTextDocument(document, {
+          preview: false,
+          preserveFocus: true,
+        });
+      } catch (error) {
+        logger.debug("Failed to reopen file", error);
+      }
+    }
   };
 
   async update(content: string, isFinal: boolean, abortSignal?: AbortSignal) {
-    if (this.isFinalized) {
+    if (this.isFinalized || this.isReverted) {
       return;
     }
 
@@ -246,7 +268,7 @@ export class DiffView implements vscode.Disposable {
       [
         vscode.DiagnosticSeverity.Error, // only including errors since warnings can be distracting (if user wants to fix warnings they can use the @problems mention)
       ],
-      getWorkspaceFolder()?.uri.fsPath,
+      this.cwd,
     ); // will be empty string if no errors
 
     const newContentEOL = newContent.includes("\r\n") ? "\r\n" : "\n";
@@ -341,9 +363,9 @@ export class DiffView implements vscode.Disposable {
   private static async createDiffView(
     id: string,
     relpath: string,
+    cwd: string,
   ): Promise<DiffView> {
-    const workspaceFolder = getWorkspaceFolder();
-    const resolvedPath = resolvePath(relpath, workspaceFolder.uri.fsPath);
+    const resolvedPath = resolvePath(relpath, cwd);
     const fileUri = vscode.Uri.file(resolvedPath);
     const fileExists = await isFileExists(fileUri);
     if (!fileExists) {
@@ -359,19 +381,24 @@ export class DiffView implements vscode.Disposable {
       fileExists,
       originalContent,
     );
+    // Check if file was open before creating diff view
+    const wasFileOpenBeforeDiff = await isFileOpen(fileUri);
+
     return new DiffView(
       id,
       fileUri,
       fileExists,
       originalContent,
       activeDiffEditor,
+      cwd,
+      wasFileOpenBeforeDiff,
     );
   }
 
   private static readonly diffViewGetGroup = runExclusive.createGroupRef();
   static readonly getOrCreate = runExclusive.build(
     DiffView.diffViewGetGroup,
-    async (id: string, relpath: string) => {
+    async (id: string, relpath: string, cwd: string) => {
       // Install hook for first diff view
       if (DiffViewMap.size === 0 && !DiffViewDisposable) {
         logger.info("Installing diff view hook");
@@ -381,7 +408,7 @@ export class DiffView implements vscode.Disposable {
 
       let diffView = DiffViewMap.get(id);
       if (!diffView) {
-        diffView = await this.createDiffView(id, relpath);
+        diffView = await this.createDiffView(id, relpath, cwd);
         DiffViewMap.set(id, diffView);
         logger.debug(`Opened diff view for ${id}: ${relpath}`);
         logger.debug(`Total diff views: ${DiffViewMap.size}`);
@@ -398,6 +425,22 @@ export class DiffView implements vscode.Disposable {
       diffView.revertAndClose();
     }
   };
+}
+
+// Check if a file is currently open in any tab (excluding diff views)
+async function isFileOpen(fileUri: vscode.Uri): Promise<boolean> {
+  for (const group of vscode.window.tabGroups.all) {
+    for (const tab of group.tabs) {
+      if (
+        tab.input instanceof vscode.TabInputText &&
+        tab.input.uri.fsPath === fileUri.fsPath &&
+        !(tab.input instanceof vscode.TabInputTextDiff)
+      ) {
+        return true;
+      }
+    }
+  }
+  return false;
 }
 
 // Close any regular tabs for this file before open diff view
