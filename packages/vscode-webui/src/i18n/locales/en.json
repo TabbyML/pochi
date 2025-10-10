@@ -144,6 +144,13 @@
     "setPublic": "Anyone with link",
     "setPrivate": "Only you"
   },
+  "signInPage": {
+    "welcome": "Welcome to Pochi",
+    "description": "To use Pochi, you need to sign in with your account.",
+    "securityNote": "This allows Pochi to securely access your information and provide personalized assistance.",
+    "signInButton": "Sign In",
+    "needHelp": "Need help? View documentation"
+  },
   "toolInvocation": {
     "taskCompleted": "Task Completed",
     "reading": "Reading ",

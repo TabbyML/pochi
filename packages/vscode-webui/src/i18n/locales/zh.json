@@ -141,6 +141,13 @@
     "setPublic": "任何有链接的人",
     "setPrivate": "仅自己可见"
   },
+  "signInPage": {
+    "welcome": "欢迎使用 Pochi",
+    "description": "要使用 Pochi，您需要登录您的账户。",
+    "securityNote": "这允许 Pochi 安全地访问您的信息并提供个性化协助。",
+    "signInButton": "登录",
+    "needHelp": "需要帮助？查看文档"
+  },
   "toolInvocation": {
     "taskCompleted": "任务完成",
     "reading": "正在读取 ",
