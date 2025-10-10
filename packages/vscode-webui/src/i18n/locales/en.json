@@ -262,6 +262,10 @@
     "autoCompleteHintSuffix": "to see suggestions",
     "dropFilesMessage": "Drop files here to attach them to your message"
   },
+  "activeSelectionBadge": {
+    "cell": "Cell",
+    "addContext": "Add Context"
+  },
   "commandExecutionPanel": {
     "copied": "Copied!",
     "copyCommand": "Copy command",

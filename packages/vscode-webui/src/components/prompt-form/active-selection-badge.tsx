@@ -2,6 +2,7 @@ import { FileBadge } from "@/components/tool-invocation/file-badge";
 import { useActiveSelection } from "@/lib/hooks/use-active-selection";
 import { cn } from "@/lib/utils";
 import { Plus } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Button } from "../ui/button";
 
 interface ActiveSelectionBadgeProps {
@@ -14,6 +15,7 @@ export const ActiveSelectionBadge: React.FC<ActiveSelectionBadgeProps> = ({
   className,
 }) => {
   const activeSelection = useActiveSelection();
+  const { t } = useTranslation();
 
   // Build label for the badge
   const getBadgeLabel = () => {
@@ -23,7 +25,7 @@ export const ActiveSelectionBadge: React.FC<ActiveSelectionBadgeProps> = ({
 
     if (activeSelection.notebookCell) {
       const cellIndex = activeSelection.notebookCell.cellIndex + 1;
-      return `${filename} • Cell ${cellIndex}`;
+      return `${filename} • ${t('activeSelectionBadge.cell')} ${cellIndex}`;
     }
 
     return filename;
@@ -67,7 +69,7 @@ export const ActiveSelectionBadge: React.FC<ActiveSelectionBadgeProps> = ({
             onClick={onClick}
           >
             <Plus className="size-3" />
-            Add Context
+            {t('activeSelectionBadge.addContext')}
           </Button>
         )}
       </div>
