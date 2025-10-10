@@ -149,6 +149,26 @@
     "signInButton": "サインイン",
     "needHelp": "ヘルプが必要ですか？ドキュメントを表示"
   },
+  "tasksPage": {
+    "emptyState": {
+      "title": "{{date}} のタスクが見つかりません",
+      "description": "Pochi を始めるために新しいタスクを作成してください",
+      "createButton": "新しいタスクを作成"
+    },
+    "status": {
+      "streaming": "ストリーミング中",
+      "pendingTool": "ツール待機中",
+      "pendingInput": "入力待機中",
+      "completed": "完了",
+      "failed": "失敗",
+      "pendingModel": "モデル待機中",
+      "unknown": "不明なステータス：{{status}}"
+    },
+    "datePicker": {
+      "selectDate": "日付を選択",
+      "today": "今日"
+    }
+  },
   "toolInvocation": {
     "taskCompleted": "タスク完了",
     "reading": "読み込み中 ",

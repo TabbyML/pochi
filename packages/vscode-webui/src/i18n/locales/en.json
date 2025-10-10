@@ -151,6 +151,26 @@
     "signInButton": "Sign In",
     "needHelp": "Need help? View documentation"
   },
+  "tasksPage": {
+    "emptyState": {
+      "title": "No tasks found for {{date}}",
+      "description": "Create a new task to get started with Pochi",
+      "createButton": "Create New Task"
+    },
+    "status": {
+      "streaming": "Streaming",
+      "pendingTool": "Pending Tool",
+      "pendingInput": "Pending Input",
+      "completed": "Completed",
+      "failed": "Failed",
+      "pendingModel": "Pending Model",
+      "unknown": "Unknown Status: {{status}}"
+    },
+    "datePicker": {
+      "selectDate": "Select date",
+      "today": "Today"
+    }
+  },
   "toolInvocation": {
     "taskCompleted": "Task Completed",
     "reading": "Reading ",

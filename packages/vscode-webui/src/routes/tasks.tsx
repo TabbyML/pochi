@@ -247,14 +247,16 @@ function Tasks() {
 
 function EmptyTaskPlaceholder({ date }: { date: Date }) {
   const { navigate } = useRouter();
+  const { t } = useTranslation();
+  
   return (
     <div className="flex h-full select-none flex-col items-center justify-center p-5 text-center text-gray-500 dark:text-gray-300">
       <h2 className="mb-2 flex items-center gap-3 font-semibold text-2xl text-gray-700 dark:text-gray-100">
         <TerminalIcon />
-        No tasks found for {date.toLocaleDateString()}
+        {t("tasksPage.emptyState.title", { date: date.toLocaleDateString() })}
       </h2>
       <p className="mb-4 leading-relaxed">
-        Create a new task to get started with Pochi
+        {t("tasksPage.emptyState.description")}
       </p>
       <Button
         onClick={() =>
@@ -267,30 +269,31 @@ function EmptyTaskPlaceholder({ date }: { date: Date }) {
         className="mb-20"
       >
         <Zap className="size-4" />
-        Create New Task
+        {t("tasksPage.emptyState.createButton")}
       </Button>
     </div>
   );
 }
 
 const TaskStatusIcon = ({ status }: { status: string }) => {
+  const { t } = useTranslation();
   const iconProps = { className: "size-5 text-muted-foreground" };
   switch (status) {
     case "streaming":
-      return <Zap {...iconProps} aria-label="Streaming" />;
+      return <Zap {...iconProps} aria-label={t("tasksPage.status.streaming")} />;
     case "pending-tool":
-      return <Wrench {...iconProps} aria-label="Pending Tool" />;
+      return <Wrench {...iconProps} aria-label={t("tasksPage.status.pendingTool")} />;
     case "pending-input":
-      return <Edit3 {...iconProps} aria-label="Pending Input" />;
+      return <Edit3 {...iconProps} aria-label={t("tasksPage.status.pendingInput")} />;
     case "completed":
-      return <CheckCircle2 {...iconProps} aria-label="Completed" />;
+      return <CheckCircle2 {...iconProps} aria-label={t("tasksPage.status.completed")} />;
     case "failed":
-      return <MdOutlineErrorOutline {...iconProps} aria-label="Failed" />;
+      return <MdOutlineErrorOutline {...iconProps} aria-label={t("tasksPage.status.failed")} />;
     case "pending-model":
-      return <Brain {...iconProps} aria-label="Pending Model" />;
+      return <Brain {...iconProps} aria-label={t("tasksPage.status.pendingModel")} />;
     default:
       return (
-        <HelpCircle {...iconProps} aria-label={`Unknown Status: ${status}`} />
+        <HelpCircle {...iconProps} aria-label={t("tasksPage.status.unknown", { status })} />
       );
   }
 };
@@ -410,6 +413,7 @@ function DatePicker({
   setDate,
 }: { date: Date; setDate: (date: Date) => void }) {
   const [open, setOpen] = useState(false);
+  const { t } = useTranslation();
 
   return (
     <div className="flex flex-col gap-3">
@@ -420,7 +424,7 @@ function DatePicker({
             id="date"
             className="w-24 justify-between font-normal"
           >
-            {date ? date.toLocaleDateString() : "Select date"}
+            {date ? date.toLocaleDateString() : t("tasksPage.datePicker.selectDate")}
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-auto overflow-hidden p-0" align="start">
@@ -447,7 +451,7 @@ function DatePicker({
                     setOpen(false);
                   }}
                 >
-                  Today
+                  {t("tasksPage.datePicker.today")}
                 </Button>
               </div>
             }

@@ -143,10 +143,30 @@
   },
   "signInPage": {
     "welcome": "欢迎使用 Pochi",
-    "description": "要使用 Pochi，您需要登录您的账户。",
+    "description": "要使用 Pochi，您需要使用您的账户登录。",
     "securityNote": "这允许 Pochi 安全地访问您的信息并提供个性化协助。",
     "signInButton": "登录",
     "needHelp": "需要帮助？查看文档"
+  },
+  "tasksPage": {
+    "emptyState": {
+      "title": "未找到 {{date}} 的任务",
+      "description": "创建一个新任务以开始使用 Pochi",
+      "createButton": "创建新任务"
+    },
+    "status": {
+      "streaming": "流式处理中",
+      "pendingTool": "等待工具",
+      "pendingInput": "等待输入",
+      "completed": "已完成",
+      "failed": "失败",
+      "pendingModel": "等待模型",
+      "unknown": "未知状态：{{status}}"
+    },
+    "datePicker": {
+      "selectDate": "选择日期",
+      "today": "今天"
+    }
   },
   "toolInvocation": {
     "taskCompleted": "任务完成",
