@@ -228,5 +228,8 @@
     "description": "Sign in to access models provided by Pochi and take advantage of a rich set of team features, or bring your own key to use any model you prefer.",
     "bringYourOwnKey": "Bring Your Own Key",
     "signIn": "Sign In"
+  },
+  "fileIcon": {
+    "fileAriaLabel": "File: {{path}}"
   }
 }

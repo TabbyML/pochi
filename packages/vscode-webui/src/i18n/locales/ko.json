@@ -223,8 +223,11 @@
   },
   "welcomeScreen": {
     "title": "시작하기",
-    "description": "Pochi가 제공하는 모델에 액세스하고 풍부한 팀 기능을 활용하려면 로그인하거나, 원하는 모델을 사용하려면 자신의 키를 가져오세요.",
+    "description": "Pochi에서 제공하는 모델에 액세스하고 풍부한 팀 기능을 활용하려면 로그인하거나, 원하는 모델을 사용하려면 자신의 키를 가져오세요.",
     "bringYourOwnKey": "자신의 키 가져오기",
     "signIn": "로그인"
+  },
+  "fileIcon": {
+    "fileAriaLabel": "파일: {{path}}"
   }
 }

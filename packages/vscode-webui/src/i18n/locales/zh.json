@@ -223,7 +223,10 @@
   "welcomeScreen": {
     "title": "开始使用",
     "description": "登录以访问 Pochi 提供的模型并利用丰富的团队功能，或者使用您自己的密钥来使用任何您喜欢的模型。",
-    "bringYourOwnKey": "使用您自己的密钥",
+    "bringYourOwnKey": "使用自己的密钥",
     "signIn": "登录"
+  },
+  "fileIcon": {
+    "fileAriaLabel": "文件：{{path}}"
   }
 }
