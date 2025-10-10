@@ -18,6 +18,8 @@ import "@getpochi/vendor-codex/edge";
 import "@getpochi/vendor-github-copilot/edge";
 import "@getpochi/vendor-qwen-code/edge";
 
+import fs from "node:fs/promises";
+import path from "node:path";
 import { Command, Option } from "@commander-js/extra-typings";
 import { constants, getLogger } from "@getpochi/common";
 import {
@@ -26,7 +28,11 @@ import {
 } from "@getpochi/common/configuration";
 import { getVendor, getVendors } from "@getpochi/common/vendor";
 import { createModel } from "@getpochi/common/vendor/edge";
-import type { LLMRequestData } from "@getpochi/livekit";
+import {
+  type LLMRequestData,
+  type Message,
+  fileToUri,
+} from "@getpochi/livekit";
 import { type Duration, Effect, Stream } from "@livestore/utils/effect";
 import chalk from "chalk";
 import * as commander from "commander";
@@ -45,6 +51,7 @@ import {
   replaceWorkflowReferences,
 } from "./lib/workflow-loader";
 
+import type { FileUIPart } from "ai";
 import { JsonRenderer } from "./json-renderer";
 import { shutdownStoreAndExit } from "./lib/shutdown";
 import { createStore } from "./livekit/store";
@@ -83,6 +90,10 @@ const program = new Command()
     "-p, --prompt <prompt>",
     "Create a new task with a given prompt. Input can also be piped. For example: `cat my-prompt.md | pochi`. Workflows can be triggered with `/workflow-name`, like `pochi -p /create-pr`.",
   )
+  .option(
+    "-a, --attach <path...>",
+    "Attach one or more files to the prompt, e.g images",
+  )
   .optionsGroup("Options:")
   .option(
     "--stream-json",
@@ -118,9 +129,38 @@ const program = new Command()
     "Disable MCP (Model Context Protocol) integration completely.",
   )
   .action(async (options) => {
-    const { uid, prompt } = await parseTaskInput(options, program);
-
     const store = await createStore();
+    const { uid, prompt, attachments } = await parseTaskInput(options, program);
+
+    const parts: Message["parts"] = [];
+    if (attachments && attachments.length > 0) {
+      for (const attachmentPath of attachments) {
+        try {
+          const absolutePath = path.resolve(process.cwd(), attachmentPath);
+          const buffer = await fs.readFile(absolutePath);
+          const mimeType = getMimeType(attachmentPath);
+          const dataUrl = await fileToUri(
+            store,
+            new File([buffer], attachmentPath, {
+              type: mimeType,
+            }),
+          );
+          parts.push({
+            type: "file",
+            mediaType: mimeType,
+            url: dataUrl,
+          } satisfies FileUIPart);
+        } catch (error) {
+          program.error(
+            `Failed to read attachment: ${attachmentPath}\n${error}`,
+          );
+        }
+      }
+    }
+
+    if (prompt) {
+      parts.push({ type: "text", text: prompt });
+    }
 
     const llm = await createLLMConfig(program, options);
     const rg = findRipgrep();
@@ -151,7 +191,7 @@ const program = new Command()
       uid,
       store,
       llm,
-      prompt,
+      parts,
       cwd: process.cwd(),
       rg,
       maxSteps: options.maxSteps,
@@ -228,7 +268,8 @@ type ProgramOpts = ReturnType<(typeof program)["opts"]>;
 async function parseTaskInput(options: ProgramOpts, program: Program) {
   const uid = process.env.POCHI_TASK_ID || crypto.randomUUID();
 
-  let prompt = options.prompt?.trim();
+  let prompt = options.prompt?.trim() || "";
+  const attachments = options.attach || [];
   if (!prompt && !process.stdin.isTTY) {
     const chunks = [];
     for await (const chunk of process.stdin) {
@@ -240,9 +281,9 @@ async function parseTaskInput(options: ProgramOpts, program: Program) {
     }
   }
 
-  if (!prompt) {
+  if (prompt.length === 0 && attachments.length === 0) {
     return program.error(
-      "A prompt is required. Please provide one using the --prompt option or by piping input.",
+      "A prompt or attachment is required. Please provide one using the -p and/or -a option or by piping input.",
     );
   }
 
@@ -255,7 +296,7 @@ async function parseTaskInput(options: ProgramOpts, program: Program) {
     prompt = updatedPrompt;
   }
 
-  return { uid, prompt };
+  return { uid, prompt, attachments };
 }
 
 async function createLLMConfig(
@@ -451,4 +492,23 @@ function parseOutputSchema(outputSchema: string): z.ZodAny {
     `function getZodSchema(z) { return ${outputSchema} }; return getZodSchema(...args);`,
   )(z);
   return schema;
+}
+
+function getMimeType(filePath: string): string {
+  const extension = path.extname(filePath).toLowerCase();
+  switch (extension) {
+    case ".png":
+      return "image/png";
+    case ".jpg":
+    case ".jpeg":
+      return "image/jpeg";
+    case ".gif":
+      return "image/gif";
+    case ".webp":
+      return "image/webp";
+    case ".svg":
+      return "image/svg+xml";
+    default:
+      return "application/octet-stream";
+  }
 }

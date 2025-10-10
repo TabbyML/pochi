@@ -234,8 +234,8 @@ export abstract class WebviewBase implements vscode.Disposable {
         if (message === responseMessage) {
           logger.info(`Webview ${this.sessionId} ready`);
           connected = true;
-          dispose();
           resolve();
+          dispose();
         }
       });
 
