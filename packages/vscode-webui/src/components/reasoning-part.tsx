@@ -21,7 +21,10 @@ export function ReasoningPartUI({
 }: ReasoningPartUIProps) {
   const { t } = useTranslation();
   const iconClass = tw`text-blue-700 dark:text-blue-300`;
-  const [headline, setHeadline] = useDebounceState(t("reasoning.thinking"), 1000);
+  const [headline, setHeadline] = useDebounceState(
+    t("reasoning.thinking"),
+    1000,
+  );
   const [isHeadlineChanging, setIsHeadlineChanging] = useState(false);
   const [displayHeadline, setDisplayHeadline] = useState(headline);
 
