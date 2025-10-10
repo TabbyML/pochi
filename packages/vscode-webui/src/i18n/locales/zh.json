@@ -239,6 +239,9 @@
   "userEdits": {
     "youHaveMadeAboveEdits": "您已进行了上述编辑"
   },
+  "fileBadge": {
+    "modifiedByPochi": "（由 Pochi 修改）"
+  },
   "commandExecutionPanel": {
     "copied": "已复制！",
     "copyCommand": "复制命令",

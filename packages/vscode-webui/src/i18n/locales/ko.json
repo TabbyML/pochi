@@ -240,6 +240,9 @@
   "userEdits": {
     "youHaveMadeAboveEdits": "위의 편집을 수행했습니다"
   },
+  "fileBadge": {
+    "modifiedByPochi": "(Pochi에 의해 수정됨)"
+  },
   "commandExecutionPanel": {
     "copied": "복사됨!",
     "copyCommand": "명령 복사",

@@ -242,6 +242,9 @@
   "userEdits": {
     "youHaveMadeAboveEdits": "You have made the above edits"
   },
+  "fileBadge": {
+    "modifiedByPochi": "(Modified by Pochi)"
+  },
   "commandExecutionPanel": {
     "copied": "Copied!",
     "copyCommand": "Copy command",
