@@ -11,13 +11,12 @@ export const WorkflowsSection: React.FC = () => {
   const { data: workflows = [], isLoading } = useQuery({
     queryKey: ["workflows"],
     queryFn: async () => {
-      return await vscodeHost.listWorkflowsInWorkspace();
+      return await vscodeHost.listWorkflows();
     },
     refetchInterval: 3000,
   });
 
-  const handleEditWorkflow = (workflowName: string) => {
-    const workflowPath = getWorkflowPath(workflowName);
+  const handleEditWorkflow = (workflowPath: string) => {
     vscodeHost.openFile(workflowPath);
   };
 
@@ -40,15 +39,15 @@ export const WorkflowsSection: React.FC = () => {
             {workflows.map((workflow) => {
               return (
                 <SectionItem
-                  key={workflow.id}
+                  key={workflow.path}
                   title={workflow.id}
                   subtitle={workflow.frontmatter.model}
                   icon={<Workflow className="size-4 text-muted-foreground" />}
-                  onClick={() => handleEditWorkflow(workflow.id)}
+                  onClick={() => handleEditWorkflow(workflow.path)}
                   actions={[
                     {
                       icon: <Edit className="size-3.5" />,
-                      onClick: () => handleEditWorkflow(workflow.id),
+                      onClick: () => handleEditWorkflow(workflow.path),
                     },
                   ]}
                 />
@@ -64,7 +63,3 @@ export const WorkflowsSection: React.FC = () => {
     </AccordionSection>
   );
 };
-
-function getWorkflowPath(workflowName: string): string {
-  return `.pochi/workflows/${workflowName}.md`;
-}

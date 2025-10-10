@@ -230,14 +230,13 @@ export abstract class WebviewBase implements vscode.Disposable {
     let connected = false;
 
     const connectedPromise = new Promise<void>((resolve) => {
-      const { dispose } = webview.onDidReceiveMessage((message) => {
+      webview.onDidReceiveMessage((message) => {
         if (message === responseMessage) {
           logger.info(`Webview ${this.sessionId} ready`);
           connected = true;
           resolve();
-          dispose();
         }
-      });
+      }, this.disposables);
 
       // Send ping to check if webview is ready
       webview.postMessage(checkMessage);
@@ -336,12 +335,10 @@ export abstract class WebviewBase implements vscode.Disposable {
 
   public dispose(): void {
     // Clean up disposables
-    while (this.disposables.length) {
-      const disposable = this.disposables.pop();
-      if (disposable) {
-        disposable.dispose();
-      }
+    for (const d of this.disposables) {
+      d.dispose();
     }
+    this.disposables.length = 0;
   }
 }
 

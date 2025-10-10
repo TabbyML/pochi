@@ -520,5 +520,122 @@ describe("env.ts", () => {
       assert.ok(workflows.some(w => w.path.includes("uppercase.MD")), "Should detect uppercase.MD file");
       assert.ok(workflows.some(w => w.path.includes("mixedcase.Md")), "Should detect mixedcase.Md file");
     });
+
+    it("should collect workflows from global directory when includeGlobalWorkflow is true", async () => {
+      // Create global workflows directory in the mocked home directory
+      const globalWorkflowsDir = vscode.Uri.joinPath(testHomeDirUri, ".pochi", "workflows");
+      await createDirectory(globalWorkflowsDir);
+
+      const globalWorkflowContent = "# Global Workflow\nThis is a global workflow";
+      await createFile(vscode.Uri.joinPath(globalWorkflowsDir, "global-workflow.md"), globalWorkflowContent);
+
+      const workflows = await env.collectWorkflows(testWorkspaceUri.fsPath, true);
+
+      assert.strictEqual(workflows.length, 1);
+      assert.strictEqual(workflows[0].id, "global-workflow");
+      
+      // Check that the path starts with ~ for global workflows
+      assert.ok(workflows[0].path.startsWith("~"), `Global workflow path should start with ~. Got: ${workflows[0].path}`);
+      assert.ok(workflows[0].path.includes("global-workflow.md"), "Path should contain global-workflow.md");
+    });
+
+    it("should not collect workflows from global directory when includeGlobalWorkflow is false", async () => {
+      // Create global workflows directory in the mocked home directory
+      const globalWorkflowsDir = vscode.Uri.joinPath(testHomeDirUri, ".pochi", "workflows");
+      await createDirectory(globalWorkflowsDir);
+
+      const globalWorkflowContent = "# Global Workflow\nThis is a global workflow";
+      await createFile(vscode.Uri.joinPath(globalWorkflowsDir, "global-workflow.md"), globalWorkflowContent);
+
+      const workflows = await env.collectWorkflows(testWorkspaceUri.fsPath, false);
+
+      assert.strictEqual(workflows.length, 0, "Should not collect global workflows when includeGlobalWorkflow is false");
+    });
+
+    it("should collect workflows from both workspace and global directories", async () => {
+      // Create workspace workflows
+      await createDirectory(workflowsDir);
+      const workspaceWorkflowContent = "# Workspace Workflow\nThis is a workspace workflow";
+      await createFile(vscode.Uri.joinPath(workflowsDir, "workspace-workflow.md"), workspaceWorkflowContent);
+
+      // Create global workflows
+      const globalWorkflowsDir = vscode.Uri.joinPath(testHomeDirUri, ".pochi", "workflows");
+      await createDirectory(globalWorkflowsDir);
+      const globalWorkflowContent = "# Global Workflow\nThis is a global workflow";
+      await createFile(vscode.Uri.joinPath(globalWorkflowsDir, "global-workflow.md"), globalWorkflowContent);
+
+      const workflows = await env.collectWorkflows(testWorkspaceUri.fsPath, true);
+
+      assert.strictEqual(workflows.length, 2, "Should collect workflows from both workspace and global directories");
+
+      const workspaceWorkflow = workflows.find(w => w.id === "workspace-workflow");
+      const globalWorkflow = workflows.find(w => w.id === "global-workflow");
+
+      assert.ok(workspaceWorkflow, "Should find workspace workflow");
+      assert.ok(globalWorkflow, "Should find global workflow");
+
+      // Workspace workflow path should be relative to workspace
+      assert.ok(workspaceWorkflow.path.includes("workspace-workflow.md"), "Workspace workflow path should contain filename");
+      assert.ok(!workspaceWorkflow.path.startsWith("~"), "Workspace workflow path should not start with ~");
+
+      // Global workflow path should start with ~
+      assert.ok(globalWorkflow.path.startsWith("~"), `Global workflow path should start with ~. Got: ${globalWorkflow.path}`);
+      assert.ok(globalWorkflow.path.includes("global-workflow.md"), "Global workflow path should contain filename");
+    });
+
+    it("should handle missing global workflows directory gracefully", async () => {
+      // Create only workspace workflow
+      await createDirectory(workflowsDir);
+      const workspaceWorkflowContent = "# Workspace Workflow\nContent";
+      await createFile(vscode.Uri.joinPath(workflowsDir, "workspace-workflow.md"), workspaceWorkflowContent);
+
+      // Do not create global workflows directory - it should handle this gracefully
+      const workflows = await env.collectWorkflows(testWorkspaceUri.fsPath, true);
+
+      assert.strictEqual(workflows.length, 1, "Should only collect workspace workflow when global directory doesn't exist");
+      assert.strictEqual(workflows[0].id, "workspace-workflow");
+    });
+
+    it("should prioritize workspace workflows over global ones with the same name", async () => {
+      // Create global workflow
+      const globalWorkflowsDir = vscode.Uri.joinPath(testHomeDirUri, ".pochi", "workflows");
+      await createDirectory(globalWorkflowsDir);
+      const globalWorkflowContent = "# Global Version\nThis is the global version";
+      await createFile(vscode.Uri.joinPath(globalWorkflowsDir, "duplicate-workflow.md"), globalWorkflowContent);
+
+      // Create workspace workflow with the same name
+      await createDirectory(workflowsDir);
+      const workspaceWorkflowContent = "# Workspace Version\nThis is the workspace version";
+      await createFile(vscode.Uri.joinPath(workflowsDir, "duplicate-workflow.md"), workspaceWorkflowContent);
+
+      const workflows = await env.collectWorkflows(testWorkspaceUri.fsPath, true);
+
+      // Only one workflow should be collected, with the workspace version taking precedence.
+      assert.strictEqual(workflows.length, 1, "Should collect only one workflow for duplicate names");
+
+      const workflow = workflows[0];
+      assert.strictEqual(workflow.id, "duplicate-workflow", "Workflow ID should be correct");
+      
+      // Check that the content is from the workspace workflow
+      assert.strictEqual(workflow.content, workspaceWorkflowContent, "Should use the content from the workspace workflow");
+
+      // Check that the path is the workspace path, not the global one
+      assert.ok(!workflow.path.startsWith("~"), "Path should be the workspace path, not global");
+    });
+
+    it("should default to includeGlobalWorkflow=true when parameter is not provided", async () => {
+      // Create global workflows directory
+      const globalWorkflowsDir = vscode.Uri.joinPath(testHomeDirUri, ".pochi", "workflows");
+      await createDirectory(globalWorkflowsDir);
+      const globalWorkflowContent = "# Global Workflow\nContent";
+      await createFile(vscode.Uri.joinPath(globalWorkflowsDir, "global-workflow.md"), globalWorkflowContent);
+
+      // Call without the second parameter - should default to true
+      const workflows = await env.collectWorkflows(testWorkspaceUri.fsPath);
+
+      assert.strictEqual(workflows.length, 1, "Should collect global workflows by default");
+      assert.strictEqual(workflows[0].id, "global-workflow");
+      assert.ok(workflows[0].path.startsWith("~"), "Global workflow path should start with ~");
+    });
   });
 });

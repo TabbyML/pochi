@@ -78,7 +78,7 @@ const VSCodeHostStub = {
   listRuleFiles: (): Promise<RuleFile[]> => {
     return Promise.resolve([]);
   },
-  listWorkflowsInWorkspace: (): Promise<
+  listWorkflows: (): Promise<
     {
       id: string;
       path: string;

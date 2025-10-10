@@ -27,13 +27,16 @@ export function createPochiModel({
     modelId: modelId || "<default>",
     // FIXME(meng): fill supported urls based on modelId.
     supportedUrls: {},
-    doGenerate: async ({ headers, abortSignal, ...options }) => {
+    doGenerate: async ({ headers, abortSignal, prompt, ...options }) => {
       const apiClient = createApiClient(getCredentials);
       const resp = await apiClient.api.chat.$post(
         {
           json: {
             model: modelId,
-            options,
+            options: {
+              prompt: convertFilePartDataToBase64(prompt),
+              ...options,
+            },
           },
         },
         {

@@ -12,6 +12,8 @@ Workflows are step-by-step automation templates that guide Pochi through complex
 
 Workflows shall be put inside `.pochi/workflows/` directory in your workspace root. Each workflow is a markdown file with a specific name. You can also specify metadata, such as which model to use for the workflow, through YAML frontmatter. 
 
+Pochi also supports global workflows, which will be loaded from `~/.pochi/workflows`. This allows you to define a set of common workflows that you use across all of your projects, without having to copy them into each project's workspace. 
+
 `.pochi/workflows/create-pr.md` is an example we used in Pochi's own development.
 
 ```markdown

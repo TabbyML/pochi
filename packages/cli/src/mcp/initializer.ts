@@ -19,7 +19,7 @@ export async function initializeMcp(program: Command) {
   let attempts = 0;
   const maxAttempts = 15;
 
-  while (attempts < maxAttempts) {
+  while (true) {
     const status = mcpHub.status.value;
     const connections = Object.values(status.connections);
     const readyConnections = connections.filter(
@@ -29,20 +29,23 @@ export async function initializeMcp(program: Command) {
       (conn) => conn.status === "error",
     ).length;
 
-    if (errorConnections > 0) {
-      spinner.fail(
-        `Failed to initialize MCP connections after ${attempts} attempts.`,
-      );
-      return program.error("MCP initialization failed");
-    }
-
     // Wait for ALL non-error connections to be ready
     if (readyConnections >= connections.length) {
       break;
     }
 
+    if (errorConnections > 0) {
+      if (attempts < maxAttempts) {
+        attempts++;
+      } else {
+        spinner.fail(
+          `Failed to initialize MCP connections after ${attempts} attempts.`,
+        );
+        return program.error("MCP initialization failed");
+      }
+    }
+
     await new Promise((resolve) => setTimeout(resolve, 500));
-    attempts++;
   }
 
   // Simply stop the spinner without showing any final status

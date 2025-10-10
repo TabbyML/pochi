@@ -2,11 +2,14 @@ import type {
   LanguageModelV2Middleware,
   LanguageModelV2Prompt,
   LanguageModelV2StreamPart,
+  LanguageModelV2ToolResultPart,
 } from "@ai-sdk/provider";
 import { generateId } from "ai";
 import { getPotentialStartIndex } from "./utils";
 
-export function createToolCallMiddleware(): LanguageModelV2Middleware {
+export function createToolCallMiddleware(
+  useStopWordStream: boolean,
+): LanguageModelV2Middleware {
   // Set defaults with validated config
   const toolCallEndTag = "</api-request>";
   const toolResponseTagTemplate = (name: string) =>
@@ -66,8 +69,14 @@ export function createToolCallMiddleware(): LanguageModelV2Middleware {
               ...processedPrompt,
             ];
 
+      let stopSequences = params.stopSequences;
+      if (!useStopWordStream) {
+        stopSequences = [...(stopSequences || []), "</api-section>"];
+      }
+
       return {
         ...params,
+        stopSequences,
         tools: undefined,
         prompt: promptWithTools,
       };
@@ -75,18 +84,20 @@ export function createToolCallMiddleware(): LanguageModelV2Middleware {
 
     wrapStream: async ({ doStream }) => {
       const { stream, ...rest } = await doStream();
+      let newStream = stream;
+      if (useStopWordStream) {
+        newStream = stream.pipeThrough(createStopWordStream(toolSectionEndTag));
+      }
 
       return {
-        stream: stream
-          .pipeThrough(createStopWordStream(toolSectionEndTag))
-          .pipeThrough(
-            createToolCallStream(
-              toolCallStartRegex,
-              toolCallStartPrefix,
-              toolCallEndTag,
-              toolSectionStartTag,
-            ),
+        stream: newStream.pipeThrough(
+          createToolCallStream(
+            toolCallStartRegex,
+            toolCallStartPrefix,
+            toolCallEndTag,
+            toolSectionStartTag,
           ),
+        ),
         ...rest,
       };
     },
@@ -382,7 +393,7 @@ function processToolResult(
     } else {
       content.push({
         type: "text",
-        text: `${toolResponseTagTemplate(x.toolName)}${JSON.stringify(x.output)}${toolResponseEndTag}`,
+        text: `${toolResponseTagTemplate(x.toolName)}${convertToolResultOutput(x.output)}${toolResponseEndTag}`,
       });
     }
   }
@@ -548,4 +559,28 @@ function createStopWordStream(
       }
     },
   });
+}
+
+function convertToolResultOutput(
+  x: Exclude<LanguageModelV2ToolResultPart["output"], { type: "content" }>,
+) {
+  if (x.type === "json") {
+    return JSON.stringify(x.value);
+  }
+
+  if (x.type === "text") {
+    return x.value;
+  }
+
+  if (x.type === "error-text" || x.type === "error-json") {
+    return JSON.stringify({
+      error: x.value,
+    });
+  }
+
+  assertUnreachable(x);
+}
+
+function assertUnreachable(x: never): never {
+  throw new Error(`Unreachable case: ${x}`);
 }

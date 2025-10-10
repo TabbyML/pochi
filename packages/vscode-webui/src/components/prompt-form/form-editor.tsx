@@ -636,7 +636,7 @@ const debouncedListWorkspaceFiles = debounceWithCachedValue(
 
 export const debouncedListWorkflows = debounceWithCachedValue(
   async () => {
-    const workflows = await vscodeHost.listWorkflowsInWorkspace();
+    const workflows = await vscodeHost.listWorkflows();
     return {
       workflows,
     };

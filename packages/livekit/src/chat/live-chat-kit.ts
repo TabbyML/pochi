@@ -122,6 +122,7 @@ export class LiveChatKit<
         try {
           const model = createModel({ llm: getters.getLLM() });
           await compactTask({
+            store: this.store,
             taskId: this.taskId,
             model,
             messages,
@@ -143,6 +144,7 @@ export class LiveChatKit<
       const { messages } = this.chat;
       const model = createModel({ llm: getters.getLLM() });
       const summary = await compactTask({
+        store: this.store,
         taskId,
         model,
         messages,
@@ -177,21 +179,21 @@ export class LiveChatKit<
     };
   }
 
-  init(cwd: string | undefined, prompt?: string) {
+  init(cwd: string | undefined, promptOrParts?: string | Message["parts"]) {
+    const parts =
+      typeof promptOrParts === "string"
+        ? [{ type: "text", text: promptOrParts }]
+        : promptOrParts;
+
     this.store.commit(
       events.taskInited({
         id: this.taskId,
         cwd,
         createdAt: new Date(),
-        initMessage: prompt
+        initMessage: parts
           ? {
               id: crypto.randomUUID(),
-              parts: [
-                {
-                  type: "text",
-                  text: prompt,
-                },
-              ],
+              parts,
             }
           : undefined,
       }),

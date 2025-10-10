@@ -4,6 +4,11 @@ import {
 } from "@ai-sdk/google-vertex/edge";
 import type { GoogleVertexModel } from "./configuration";
 
+// Declare global variable for CORS proxy port
+declare global {
+  var POCHI_CORS_PROXY_PORT: string;
+}
+
 function createPatchedFetchForFinetune(accessToken?: string | undefined) {
   function patchString(str: string) {
     return str.replace("/publishers/google/models", "/endpoints");
@@ -19,22 +24,31 @@ function createPatchedFetchForFinetune(accessToken?: string | undefined) {
       headers,
     };
 
+    let finalUrl: URL;
     if (requestInfo instanceof URL) {
-      const patchedUrl = new URL(requestInfo);
-      patchedUrl.pathname = patchString(patchedUrl.pathname);
-      return fetch(patchedUrl, patchedRequestInit);
-    }
-    if (requestInfo instanceof Request) {
+      finalUrl = new URL(requestInfo);
+      finalUrl.pathname = patchString(finalUrl.pathname);
+    } else if (requestInfo instanceof Request) {
       const patchedUrl = patchString(requestInfo.url);
-      const patchedRequest = new Request(patchedUrl, requestInfo);
-      return fetch(patchedRequest, patchedRequestInit);
-    }
-    if (typeof requestInfo === "string") {
+      finalUrl = new URL(patchedUrl);
+    } else if (typeof requestInfo === "string") {
       const patchedUrl = patchString(requestInfo);
-      return fetch(patchedUrl, patchedRequestInit);
+      finalUrl = new URL(patchedUrl);
+    } else {
+      // Should never happen
+      throw new Error(`Unexpected requestInfo type: ${typeof requestInfo}`);
     }
-    // Should never happen
-    throw new Error(`Unexpected requestInfo type: ${typeof requestInfo}`);
+
+    // Use CORS proxy if configured
+    if (globalThis.POCHI_CORS_PROXY_PORT) {
+      const origin = finalUrl.origin;
+      finalUrl.protocol = "http:";
+      finalUrl.host = "localhost";
+      finalUrl.port = globalThis.POCHI_CORS_PROXY_PORT;
+      patchedRequestInit.headers.set("x-proxy-origin", origin);
+    }
+
+    return fetch(finalUrl, patchedRequestInit);
   };
 }
 
@@ -86,15 +100,23 @@ export function createVertexModel(vertex: GoogleVertexModel, modelId: string) {
               ? input.toString()
               : input.url;
         const lastSegment = url.split("/").at(-1);
-        const resp = (await fetch(issueUrl, {
+        const resp = await fetch(issueUrl, {
           headers: {
             "Metadata-Flavor": "Google",
           },
-        }).then((x) => x.json())) as {
-          access_token: string;
-        };
+        });
+        let accessToken: string;
+        if (resp.headers.get("content-type") === "application/json") {
+          const { access_token } = (await resp.json()) as {
+            access_token: string;
+          };
+          accessToken = access_token;
+        } else {
+          accessToken = await resp.text();
+        }
+
         const headers = new Headers(requestInit?.headers);
-        headers.append("Authorization", `Bearer ${resp.access_token}`);
+        headers.append("Authorization", `Bearer ${accessToken}`);
         return fetch(`${modelUrl}/${lastSegment}`, { ...requestInit, headers });
       },
     })(modelId);
