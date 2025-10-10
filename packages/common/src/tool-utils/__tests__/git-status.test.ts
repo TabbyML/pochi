@@ -33,6 +33,8 @@ describe("GitStatusReader", () => {
     );
     execMocks.set("config user.name", "Test User");
     execMocks.set("config user.email", "test@example.com");
+    execMocks.set("rev-parse --path-format=absolute --git-common-dir", "/test/repo/.git");
+    execMocks.set("rev-parse --path-format=absolute --show-toplevel", "/test/repo");
 
     const reader = new GitStatusReader({ cwd: "/test/repo" });
     const status = await reader.readGitStatus();
@@ -45,6 +47,8 @@ describe("GitStatusReader", () => {
       recentCommits: ["abc1234 feat: new feature", "def5678 fix: a bug"],
       userName: "Test User",
       userEmail: "test@example.com",
+      gitRoot: "/test/repo",
+      worktree: "/test/repo",
     });
   });
 

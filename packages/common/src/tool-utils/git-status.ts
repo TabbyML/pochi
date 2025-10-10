@@ -132,6 +132,8 @@ export class GitStatusReader {
       recentCommits,
       userName,
       userEmail,
+      gitRoot,
+      worktree,
     ] = await Promise.all([
       this.execGit("remote get-url origin").catch(() => undefined),
       this.execGit("rev-parse --abbrev-ref HEAD").catch(() => "unknown"),
@@ -142,6 +144,12 @@ export class GitStatusReader {
         .catch(() => []),
       this.execGit("config user.name").catch(() => undefined),
       this.execGit("config user.email").catch(() => undefined),
+      this.execGit("rev-parse --path-format=absolute --git-common-dir").catch(
+        () => "",
+      ),
+      this.execGit("rev-parse --path-format=absolute --show-toplevel").catch(
+        () => "",
+      ),
     ]);
 
     const origin = this.sanitizeOriginUrl(rawOrigin);
@@ -154,6 +162,8 @@ export class GitStatusReader {
       recentCommits,
       userName,
       userEmail,
+      gitRoot: gitRoot.replace(/[\/\\]\.git$/, ""),
+      worktree,
     };
   }
 

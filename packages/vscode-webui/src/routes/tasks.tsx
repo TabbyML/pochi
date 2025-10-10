@@ -36,6 +36,7 @@ import {
   Edit3,
   GitBranch,
   HelpCircle,
+  ListTreeIcon,
   SquareArrowOutUpRightIcon,
   TerminalIcon,
   Wrench,
@@ -218,6 +219,11 @@ function Tasks() {
                   key={task.id}
                   task={task}
                   storeDate={storeDate.getTime()}
+                  worktree={
+                    task.cwd === cwd
+                      ? undefined
+                      : task.cwd?.split(/[\/\\]/).pop()
+                  }
                 />
               ))}
             </div>
@@ -312,38 +318,56 @@ const getStatusBorderColor = (status: string): string => {
   }
 };
 
-function TaskRow({ task, storeDate }: { task: Task; storeDate: number }) {
+function TaskRow({
+  task,
+  storeDate,
+  worktree,
+}: { task: Task; storeDate: number; worktree?: string }) {
   const title = useMemo(() => parseTitle(task.title), [task.title]);
-  return (
-    <Link
-      to={"/"}
-      search={{ uid: task.id, storeDate }}
-      className="group cursor-pointer"
+
+  const content = (
+    <div
+      className={cn(
+        "group cursor-pointer rounded-lg border border-border/50 bg-card transition-all duration-200 hover:border-border hover:bg-card/90 hover:shadow-md",
+        "border-l-4",
+        getStatusBorderColor(task.status),
+      )}
     >
-      <div
-        className={cn(
-          "cursor-pointer rounded-lg border border-border/50 bg-card transition-all duration-200 hover:border-border hover:bg-card/90 hover:shadow-md",
-          "border-l-4",
-          getStatusBorderColor(task.status),
-        )}
-      >
-        <div className="px-4 py-3">
-          <div className="flex items-start gap-3">
-            <div className="flex-1 space-y-1 overflow-hidden">
-              <GitBadge
-                git={task.git}
-                className="max-w-full text-muted-foreground/80 text-xs"
-              />
-              <h3 className="line-clamp-2 flex-1 font-medium text-foreground leading-relaxed transition-colors duration-200 group-hover:text-foreground/80">
-                {title}
-              </h3>
-            </div>
-            <div className="mt-0.5 shrink-0">
-              <TaskStatusIcon status={task.status} />
-            </div>
+      <div className="px-4 py-3">
+        <div className="flex items-start gap-3">
+          <div className="flex-1 space-y-1 overflow-hidden">
+            <GitBadge
+              git={task.git}
+              worktree={worktree}
+              className="max-w-full text-muted-foreground/80 text-xs"
+            />
+            <h3 className="line-clamp-2 flex-1 font-medium text-foreground leading-relaxed transition-colors duration-200 group-hover:text-foreground/80">
+              {title}
+            </h3>
+          </div>
+          <div className="mt-0.5 shrink-0">
+            <TaskStatusIcon status={task.status} />
           </div>
         </div>
       </div>
+    </div>
+  );
+
+  if (worktree) {
+    return (
+      <a
+        href={`command:pochi.openInPanel?${encodeURIComponent(JSON.stringify([task.cwd, task.id]))}`}
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        {content}
+      </a>
+    );
+  }
+
+  return (
+    <Link to={"/"} search={{ uid: task.id, storeDate }}>
+      {content}
     </Link>
   );
 }
@@ -351,7 +375,8 @@ function TaskRow({ task, storeDate }: { task: Task; storeDate: number }) {
 function GitBadge({
   className,
   git,
-}: { git: Task["git"]; className?: string }) {
+  worktree,
+}: { git: Task["git"]; worktree?: string; className?: string }) {
   if (!git?.origin) return null;
 
   return (
@@ -361,6 +386,12 @@ function GitBadge({
     >
       <GitBranch className="shrink-0" />
       <span className="truncate">{git.branch}</span>
+      {worktree && (
+        <>
+          <ListTreeIcon className="ml-1 shrink-0" />
+          <span className="truncate">{worktree}</span>
+        </>
+      )}
     </Badge>
   );
 }

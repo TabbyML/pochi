@@ -128,12 +128,19 @@
       },
       {
         "command": "pochi.openInPanel",
-        "title": "Open in Editor",
+        "title": "Open in Pochi",
         "category": "Pochi",
         "icon": "$(window)"
       }
     ],
     "menus": {
+      "scm/sourceControl": [
+        {
+          "command": "pochi.openInPanel",
+          "group": "worktree@999",
+          "when": "scmProviderContext == worktree"
+        }
+      ],
       "editor/title": [
         {
           "command": "pochi.openFileFromDiff",

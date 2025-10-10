@@ -13,6 +13,12 @@ export function createNewTaskMiddleware(
   cwd: string | undefined,
   parentTaskId: string,
   customAgents?: CustomAgent[],
+  gitStatus?: {
+    branch: string;
+    origin?: string;
+    gitRoot: string;
+    worktree: string;
+  },
 ): LanguageModelV2Middleware {
   return {
     middlewareVersion: "v2",
@@ -110,6 +116,7 @@ export function createNewTaskMiddleware(
                       },
                     ],
                   },
+                  git: gitStatus,
                 }),
               );
 

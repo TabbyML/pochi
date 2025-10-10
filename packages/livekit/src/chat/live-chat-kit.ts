@@ -54,6 +54,7 @@ export class LiveChatKit<
   protected readonly store: Store;
   readonly chat: T;
   private readonly transport: FlexibleChatTransport;
+  private readonly getters: PrepareRequestGetters;
 
   readonly spawn: () => Promise<string>;
 
@@ -72,6 +73,7 @@ export class LiveChatKit<
   }: LiveChatKitOptions<T>) {
     this.taskId = taskId;
     this.store = store;
+    this.getters = getters;
     this.transport = new FlexibleChatTransport({
       store,
       onStart: this.onStart,
@@ -137,6 +139,8 @@ export class LiveChatKit<
       const taskId = crypto.randomUUID();
       const { messages } = this.chat;
       const model = createModel({ llm: getters.getLLM() });
+      const gitStatus = (await getters.getEnvironment?.({ messages }))
+        ?.workspace.gitStatus;
       const summary = await compactTask({
         store: this.store,
         taskId,
@@ -167,13 +171,25 @@ export class LiveChatKit<
               },
             ],
           },
+          git: gitStatus
+            ? {
+                origin: gitStatus.origin,
+                branch: gitStatus.currentBranch,
+                worktree: gitStatus.worktree,
+              }
+            : undefined,
+          gitRoot: gitStatus?.gitRoot,
         }),
       );
       return taskId;
     };
   }
 
-  init(cwd: string | undefined, promptOrParts?: string | Message["parts"]) {
+  async init(
+    cwd: string | undefined,
+    promptOrParts?: string | Message["parts"],
+  ) {
+    const environment = await this.getters.getEnvironment?.({ messages: [] });
     const parts =
       typeof promptOrParts === "string"
         ? [{ type: "text", text: promptOrParts }]
@@ -190,6 +206,14 @@ export class LiveChatKit<
               parts,
             }
           : undefined,
+        git: environment?.workspace.gitStatus
+          ? {
+              origin: environment.workspace.gitStatus.origin,
+              branch: environment.workspace.gitStatus.currentBranch,
+              worktree: environment.workspace.gitStatus.worktree,
+            }
+          : undefined,
+        gitRoot: environment?.workspace.gitStatus?.gitRoot,
       }),
     );
 
@@ -248,6 +272,14 @@ export class LiveChatKit<
             id: this.taskId,
             cwd: environment?.info.cwd,
             createdAt: new Date(),
+            git: environment?.workspace.gitStatus
+              ? {
+                  origin: environment.workspace.gitStatus.origin,
+                  branch: environment.workspace.gitStatus.currentBranch,
+                  worktree: environment.workspace.gitStatus.worktree,
+                }
+              : undefined,
+            gitRoot: environment?.workspace.gitStatus?.gitRoot,
           }),
         );
       }
@@ -276,8 +308,10 @@ export class LiveChatKit<
             ? {
                 origin: gitStatus.origin,
                 branch: gitStatus.currentBranch,
+                worktree: gitStatus.worktree,
               }
             : undefined,
+          gitRoot: gitStatus?.gitRoot,
           updatedAt: new Date(),
         }),
       );
