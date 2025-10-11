@@ -2,6 +2,7 @@ import { AbortError, isCanceledError } from "@/code-completion/utils/errors";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { PochiConfiguration } from "@/integrations/configuration";
 import { getLogger } from "@/lib/logger";
+import { signal } from "@preact/signals-core";
 import { injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
 import { NESCache } from "./cache";
@@ -36,24 +37,26 @@ export class NESProvider implements vscode.Disposable {
 
   private disposables: vscode.Disposable[] = [];
 
-  private onGoing:
+  readonly fetching = signal<
     | {
         hash: string;
         tokenSource: vscode.CancellationTokenSource;
       }
-    | undefined = undefined;
+    | undefined
+  >(undefined);
 
   constructor(
-    pochiConfiguration: PochiConfiguration,
+    private readonly pochiConfiguration: PochiConfiguration,
     private readonly client: NESClient,
     private readonly editHistoryTracker: EditHistoryTracker,
     private readonly nesDecorationManager: NESDecorationManager,
   ) {
+    this.initialize();
+
     if (pochiConfiguration.advancedSettings.value.nextEditSuggestion?.enabled) {
       logger.info(
         "Next Edit Suggestion is enabled. This feature is experimental.",
       );
-      this.initialize();
     }
   }
 
@@ -67,6 +70,14 @@ export class NESProvider implements vscode.Disposable {
     document: vscode.TextDocument,
     selection: vscode.Selection,
   ): Promise<NESSolution | undefined> {
+    const enabled =
+      this.pochiConfiguration.advancedSettings.value.nextEditSuggestion
+        ?.enabled;
+    if (!enabled) {
+      logger.debug("NES is not enabled.");
+      return undefined;
+    }
+
     logger.debug("Begin provide NES");
 
     const editHistory = this.editHistoryTracker.getEditSteps(document);
@@ -82,24 +93,26 @@ export class NESProvider implements vscode.Disposable {
     };
     const hash = calculateNESContextHash(context);
 
-    if (this.onGoing?.hash === hash) {
+    if (this.fetching.value?.hash === hash) {
       logger.debug("Request is already ongoing with the same context");
       return;
     }
 
     // Cancel the ongoing request if not matched
-    if (this.onGoing) {
-      this.onGoing.tokenSource.cancel();
+    if (this.fetching.value) {
+      this.fetching.value.tokenSource.cancel();
+      this.fetching.value.tokenSource.dispose();
     }
-    this.onGoing = {
+    const tokenSource = new vscode.CancellationTokenSource();
+    const token = tokenSource.token;
+    this.fetching.value = {
       hash,
-      tokenSource: new vscode.CancellationTokenSource(),
+      tokenSource,
     };
-    const token = this.onGoing.tokenSource.token;
 
     try {
       // Debounce
-      const delay = 100; // 100ms
+      const delay = 100; // ms
       await new Promise((resolve, reject) => {
         const timer = setTimeout(resolve, delay);
         if (token.isCancellationRequested) {
@@ -151,16 +164,18 @@ export class NESProvider implements vscode.Disposable {
         logger.debug("Failed to fetch completion", error);
       }
     } finally {
-      if (this.onGoing?.hash === hash) {
-        this.onGoing = undefined;
+      if (this.fetching.value?.hash === hash) {
+        this.fetching.value.tokenSource.dispose();
+        this.fetching.value = undefined;
       }
     }
   }
 
   dispose() {
-    if (this.onGoing) {
-      this.onGoing.tokenSource.cancel();
-      this.onGoing = undefined;
+    if (this.fetching.value) {
+      this.fetching.value.tokenSource.cancel();
+      this.fetching.value.tokenSource.dispose();
+      this.fetching.value = undefined;
     }
     for (const disposable of this.disposables) {
       disposable.dispose();
@@ -193,16 +208,18 @@ class NESInlineCompletionProvider
   async provideInlineCompletionItems(
     document: vscode.TextDocument,
     position: vscode.Position,
-    context: vscode.InlineCompletionContext,
-    _token: vscode.CancellationToken,
-  ): Promise<vscode.InlineCompletionItem[]> {
-    if (!vscode.languages.match(DocumentSelector, document)) {
-      return [];
+    context?: vscode.InlineCompletionContext | undefined,
+    token?: vscode.CancellationToken | undefined,
+  ): Promise<vscode.InlineCompletionList | undefined> {
+    if (token?.isCancellationRequested) {
+      return undefined;
     }
-
-    if (context.selectedCompletionInfo) {
+    if (!vscode.languages.match(DocumentSelector, document)) {
+      return undefined;
+    }
+    if (context?.selectedCompletionInfo) {
       // Don't trigger if the dropdown is showing
-      return [];
+      return undefined;
     }
 
     if (this.nesProvider) {
@@ -219,7 +236,7 @@ class NESInlineCompletionProvider
           logger.debug(
             `Show result as InlineCompletionItem, insertText: ${inlineCompletionItem.insertText}`,
           );
-          return [inlineCompletionItem];
+          return new vscode.InlineCompletionList([inlineCompletionItem]);
         }
         if (this.nesDecorationManager) {
           logger.debug("Show result as decorations");
@@ -231,7 +248,7 @@ class NESInlineCompletionProvider
       }
     }
 
-    return [];
+    return undefined;
   }
 
   dispose() {

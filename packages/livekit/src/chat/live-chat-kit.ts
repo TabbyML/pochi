@@ -2,12 +2,7 @@ import { getLogger } from "@getpochi/common";
 
 import type { CustomAgent } from "@getpochi/tools";
 import type { Store } from "@livestore/livestore";
-import type {
-  AbstractChat,
-  ChatInit,
-  ChatOnErrorCallback,
-  ChatOnFinishCallback,
-} from "ai";
+import type { ChatInit, ChatOnErrorCallback, ChatOnFinishCallback } from "ai";
 import type z from "zod/v4";
 import { makeMessagesQuery, makeTaskQuery } from "../livestore/queries";
 import { events, tables } from "../livestore/schema";
@@ -53,7 +48,6 @@ export class LiveChatKit<
   T extends {
     messages: Message[];
     stop: () => Promise<void>;
-    addToolResult: AbstractChat<Message>["addToolResult"];
   },
 > {
   protected readonly taskId: string;
