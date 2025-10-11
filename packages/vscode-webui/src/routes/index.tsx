@@ -9,10 +9,18 @@ import { useUserStorage } from "@/lib/hooks/use-user-storage";
 import { useEffect } from "react";
 import { useStoreDate } from "../livestore-provider";
 
+// Corresponds to the FileUIPart type in the ai/react library
+const fileUIPartSchema = z.object({
+  name: z.string(),
+  contentType: z.string(),
+  url: z.string(),
+});
+
 const searchSchema = z.object({
   uid: z.string().catch(() => crypto.randomUUID()),
   storeDate: z.number().optional(),
   prompt: z.string().optional(),
+  files: z.array(fileUIPartSchema).optional(),
 });
 
 export const Route = createFileRoute("/")({
@@ -21,7 +29,13 @@ export const Route = createFileRoute("/")({
 });
 
 function RouteComponent() {
-  const { uid, prompt, storeDate } = Route.useSearch();
+  const { uid, prompt, files, storeDate } = Route.useSearch();
+  const uiFiles = files?.map((file) => ({
+    type: "file" as const,
+    filename: file.name,
+    mediaType: file.contentType,
+    url: file.url,
+  }));
 
   const { users } = useUserStorage();
   const { modelList = [] } = useModelList(true);
@@ -37,5 +51,13 @@ function RouteComponent() {
 
   const key = `task-${uid}`;
 
-  return <ChatPage key={key} user={users?.pochi} uid={uid} prompt={prompt} />;
+  return (
+    <ChatPage
+      key={key}
+      user={users?.pochi}
+      uid={uid}
+      prompt={prompt}
+      files={uiFiles}
+    />
+  );
 }

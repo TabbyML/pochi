@@ -4,16 +4,22 @@ import { usePendingModelAutoStart } from "@/features/retry";
 import { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
 import { useCurrentWorkspace } from "@/lib/hooks/use-current-workspace";
 import { useCustomAgent } from "@/lib/hooks/use-custom-agents";
+import { prepareMessageParts } from "@/lib/message-utils";
 import { useChat } from "@ai-sdk/react";
 import { formatters } from "@getpochi/common";
 import type { UserInfo } from "@getpochi/common/configuration";
 import { type Task, catalog } from "@getpochi/livekit";
+import type { Message } from "@getpochi/livekit";
 import { useLiveChatKit } from "@getpochi/livekit/react";
 import type { Todo } from "@getpochi/tools";
 import { useStore } from "@livestore/react";
 import { useRouter } from "@tanstack/react-router";
-import { lastAssistantMessageIsCompleteWithToolCalls } from "ai";
+import {
+  type FileUIPart,
+  lastAssistantMessageIsCompleteWithToolCalls,
+} from "ai";
 import { useEffect, useMemo, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { useApprovalAndRetry } from "../approval";
 import { useSelectedModels } from "../settings";
 import { ChatArea } from "./components/chat-area";
@@ -40,9 +46,11 @@ interface ChatProps {
   uid: string;
   user?: UserInfo;
   prompt?: string;
+  files?: FileUIPart[];
 }
 
-function Chat({ user, uid, prompt }: ChatProps) {
+function Chat({ user, uid, prompt, files }: ChatProps) {
+  const { t } = useTranslation();
   const { store } = useStore();
   const todosRef = useRef<Todo[] | undefined>(undefined);
 
@@ -114,9 +122,15 @@ function Chat({ user, uid, prompt }: ChatProps) {
 
   useEffect(() => {
     if (prompt && !chatKit.inited) {
-      chatKit.init(currentWorkspace ?? undefined, prompt);
+      let partsOrString: Message["parts"] | string;
+      if (files?.length) {
+        partsOrString = prepareMessageParts(prompt, files, t);
+      } else {
+        partsOrString = prompt;
+      }
+      chatKit.init(currentWorkspace ?? undefined, partsOrString);
     }
-  }, [currentWorkspace, prompt, chatKit]);
+  }, [currentWorkspace, prompt, chatKit, files, t]);
 
   useSetSubtaskModel({ isSubTask: !!subtask, customAgent });
 
