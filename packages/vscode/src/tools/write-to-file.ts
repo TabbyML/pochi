@@ -26,7 +26,9 @@ export const previewWriteToFile: PreviewToolFunctionType<
       abortSignal,
     );
   } catch (error) {
-    DiffView.revertAndClose(toolCallId);
+    if (state === "call") {
+      DiffView.revertAndClose(toolCallId);
+    }
     throw error;
   }
 };
