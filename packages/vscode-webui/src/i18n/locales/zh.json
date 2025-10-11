@@ -292,6 +292,10 @@
   "chatPage": {
     "defaultUserName": "您"
   },
+  "todoList": {
+    "todos": "待办事项",
+    "allDone": "🎉 全部完成！"
+  },
   "commandExecutionPanel": {
     "copied": "已复制！",
     "copyCommand": "复制命令",

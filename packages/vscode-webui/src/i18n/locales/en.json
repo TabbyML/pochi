@@ -293,6 +293,10 @@
   "chatPage": {
     "defaultUserName": "You"
   },
+  "todoList": {
+    "todos": "TODOs",
+    "allDone": "🎉 All done!"
+  },
   "commandExecutionPanel": {
     "copied": "Copied!",
     "copyCommand": "Copy command",
