@@ -278,6 +278,18 @@
     "back": "Back",
     "complete": "Complete"
   },
+  "errorMessageView": {
+    "reachedCreditLimit": "You have reached the spending limit.",
+    "seeMore": "See more",
+    "teamReachedCreditLimit": "Your team has reached the spending limit.",
+    "requireSubscription": "You've used all your free credits. To continue, please subscribe to Pochi.",
+    "subscribe": "Subscribe",
+    "requireOrgSubscription": "Your team does not have a subscription yet. To continue, please subscribe to Pochi.",
+    "requirePayment": "You have unpaid invoices. Please",
+    "makePayment": "make a payment",
+    "toContinueUsingPochi": "to continue using Pochi",
+    "requireOrgPayment": "Your team have unpaid invoices. Please"
+  },
   "commandExecutionPanel": {
     "copied": "Copied!",
     "copyCommand": "Copy command",

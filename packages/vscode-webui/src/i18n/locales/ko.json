@@ -278,6 +278,18 @@
     "back": "뒤로",
     "complete": "완료"
   },
+  "errorMessageView": {
+    "reachedCreditLimit": "지출 한도에 도달했습니다.",
+    "seeMore": "더 보기",
+    "teamReachedCreditLimit": "팀이 지출 한도에 도달했습니다.",
+    "requireSubscription": "모든 무료 크레딧을 사용했습니다. 계속하려면 Pochi를 구독하세요.",
+    "subscribe": "구독",
+    "requireOrgSubscription": "팀이 아직 구독하지 않았습니다. 계속하려면 Pochi를 구독하세요.",
+    "requirePayment": "미지불 청구서가 있습니다.",
+    "makePayment": "결제하기",
+    "toContinueUsingPochi": "Pochi를 계속 사용하려면",
+    "requireOrgPayment": "팀에 미지불 청구서가 있습니다."
+  },
   "commandExecutionPanel": {
     "copied": "복사됨!",
     "copyCommand": "명령 복사",

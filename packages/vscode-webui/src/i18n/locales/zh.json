@@ -277,6 +277,18 @@
     "back": "返回",
     "complete": "完成"
   },
+  "errorMessageView": {
+    "reachedCreditLimit": "您已达到消费限额。",
+    "seeMore": "查看更多",
+    "teamReachedCreditLimit": "您的团队已达到消费限额。",
+    "requireSubscription": "您已用完所有免费积分。要继续使用，请订阅 Pochi。",
+    "subscribe": "订阅",
+    "requireOrgSubscription": "您的团队尚未订阅。要继续使用，请订阅 Pochi。",
+    "requirePayment": "您有未付款的发票。请",
+    "makePayment": "付款",
+    "toContinueUsingPochi": "以继续使用 Pochi",
+    "requireOrgPayment": "您的团队有未付款的发票。请"
+  },
   "commandExecutionPanel": {
     "copied": "已复制！",
     "copyCommand": "复制命令",
