@@ -1,12 +1,16 @@
 import type { PendingApproval } from "@/features/approval";
 import type { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
 import type { UseChatHelpers } from "@ai-sdk/react";
-import { prompts } from "@getpochi/common";
+import { getLogger, prompts } from "@getpochi/common";
 import type { Message } from "@getpochi/livekit";
+import { isAutoSuccessToolName } from "@getpochi/tools";
 import type { FileUIPart } from "ai";
 import type React from "react";
 import { useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { useAutoApproveGuard, useToolCallLifeCycle } from "../lib/chat-state";
+
+const logger = getLogger("UseChatSubmit");
 
 type UseChatReturn = Pick<UseChatHelpers<Message>, "sendMessage" | "stop">;
 
@@ -39,6 +43,7 @@ export function useChatSubmit({
 }: UseChatSubmitProps) {
   const autoApproveGuard = useAutoApproveGuard();
   const { executingToolCalls, previewingToolCalls } = useToolCallLifeCycle();
+  const { t } = useTranslation();
   const isExecuting = executingToolCalls.length > 0;
   const isPreviewing = (previewingToolCalls?.length ?? 0) > 0;
 
@@ -50,7 +55,9 @@ export function useChatSubmit({
 
   const abortPreviewingToolCalls = useCallback(() => {
     for (const toolCall of previewingToolCalls || []) {
-      toolCall.abort();
+      if (!isAutoSuccessToolName(toolCall.toolName)) {
+        toolCall.abort();
+      }
     }
   }, [previewingToolCalls]);
 
@@ -102,6 +109,8 @@ export function useChatSubmit({
     async (e?: React.FormEvent<HTMLFormElement>) => {
       e?.preventDefault();
 
+      logger.debug("handleSubmit");
+
       // Compacting is not allowed to be stopped.
       if (newCompactTaskPending) return;
 
@@ -130,8 +139,10 @@ export function useChatSubmit({
 
       if (files.length > 0) {
         try {
+          logger.debug("Uploading files...");
           const uploadedAttachments = await upload();
-          const parts = prepareMessageParts(text, uploadedAttachments);
+          const parts = prepareMessageParts(text, uploadedAttachments, t);
+          logger.debug("Sending message with files");
 
           await sendMessage({
             parts,
@@ -144,8 +155,9 @@ export function useChatSubmit({
         }
       } else if (allMessages.length > 0) {
         clearUploadError();
+        const parts = prepareMessageParts(text, [], t);
         await sendMessage({
-          text,
+          parts,
         });
         autoApproveGuard.current = "auto";
       }
@@ -163,6 +175,7 @@ export function useChatSubmit({
       newCompactTaskPending,
       queuedMessages,
       setQueuedMessages,
+      t,
     ],
   );
 
@@ -172,19 +185,28 @@ export function useChatSubmit({
   };
 }
 
-function prepareMessageParts(input: string, files: FileUIPart[]) {
+function prepareMessageParts(
+  input: string,
+  files: FileUIPart[],
+  t: ReturnType<typeof useTranslation>["t"],
+) {
   const parts: Message["parts"] = [...files];
-  const isPublicUrl = files.every((x) => x.url.startsWith("http"));
-  if (isPublicUrl) {
+  if (files.length > 0) {
     parts.push({
       type: "text",
       text: prompts.createSystemReminder(
-        `Attached files: ${files.map((file) => file.url).join(", ")}`,
+        `Attached files: ${files.map(getFilePrompt).join(", ")}`,
       ),
     });
   }
-  if (input) {
-    parts.push({ type: "text", text: input });
-  }
+  parts.push({ type: "text", text: input || t("chat.pleaseCheckFiles") });
   return parts;
+}
+
+function getFilePrompt(file: FileUIPart, index: number): string {
+  const filename = file.filename || `file-${index}`;
+  if (file.url.startsWith("http")) {
+    return `[${filename}](${file.url})`;
+  }
+  return filename;
 }
