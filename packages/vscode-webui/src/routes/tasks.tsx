@@ -42,7 +42,7 @@ import {
   Wrench,
   Zap,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { MdOutlineErrorOutline } from "react-icons/md";
 import { useStoreDate } from "../livestore-provider";
@@ -323,6 +323,7 @@ function TaskRow({
   storeDate,
   worktree,
 }: { task: Task; storeDate: number; worktree?: string }) {
+  const { store } = useStore();
   const title = useMemo(() => parseTitle(task.title), [task.title]);
 
   const content = (
@@ -353,16 +354,19 @@ function TaskRow({
     </div>
   );
 
+  const openTaskInPanel = useCallback(() => {
+    const messages = store.query(catalog.queries.makeMessagesQuery(task.id));
+
+    vscodeHost.openTaskInPanel({
+      ...task,
+      createdAt: task.createdAt.toISOString(),
+      updatedAt: task.updatedAt.toISOString(),
+      messages: messages.map((m) => m.data),
+    });
+  }, [task.id, task.createdAt, task.updatedAt, task, store.query]);
+
   if (worktree) {
-    return (
-      <a
-        href={`command:pochi.openInPanel?${encodeURIComponent(JSON.stringify([task.cwd, task.id]))}`}
-        target="_blank"
-        rel="noopener noreferrer"
-      >
-        {content}
-      </a>
-    );
+    return <div onClick={openTaskInPanel}>{content}</div>;
   }
 
   return (
@@ -400,10 +404,6 @@ function OpenInTabButton() {
   const { t } = useTranslation();
   const { openInTab } = useSettingsStore();
 
-  const handleOpenInTab = async () => {
-    await vscodeHost.openPochiInNewTab();
-  };
-
   if (!openInTab) {
     return <div className="w-6" />;
   }
@@ -411,18 +411,21 @@ function OpenInTabButton() {
   return (
     <HoverCard>
       <HoverCardTrigger asChild>
-        <span>
+        <a
+          href={"command:pochi.createTaskInPanel"}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
           <Button
             variant="ghost"
             size="icon"
-            onClick={handleOpenInTab}
             className="button-focus relative mr-2 h-6 w-6 p-0"
           >
             <span className="size-4">
               <SquareArrowOutUpRightIcon className="size-4.5" />
             </span>
           </Button>
-        </span>
+        </a>
       </HoverCardTrigger>
       <HoverCardContent
         side="top"

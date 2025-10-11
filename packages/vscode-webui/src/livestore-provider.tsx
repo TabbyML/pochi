@@ -77,13 +77,14 @@ export function LiveStoreProvider({ children }: { children: React.ReactNode }) {
 // https://github.com/livestorejs/livestore/pull/514
 function StoreWithCommitHook({ children }: { children: React.ReactNode }) {
   const { store } = useStore();
+  useEffect(() => {
+    console.log("Setting active store", store);
+    setActiveStore(store);
+    return () => {
+      setActiveStore(null);
+    };
+  }, [store]);
   if (globalThis.POCHI_WEBVIEW_KIND === "sidebar") {
-    useEffect(() => {
-      setActiveStore(store);
-      return () => {
-        setActiveStore(null);
-      };
-    }, [store]);
     return children;
   }
 
