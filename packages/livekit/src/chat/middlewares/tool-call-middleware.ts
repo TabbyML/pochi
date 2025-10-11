@@ -342,22 +342,22 @@ function createToolCallStream(
 function processAssistant(
   message: Extract<LanguageModelV2Prompt[number], { role: "assistant" }>,
 ) {
-  const toolDefs = message.content
+  const toolCalls = message.content
     .filter(
       (x): x is Extract<typeof x, { type: "tool-call" }> =>
         x.type === "tool-call",
     )
     .map(
       (x) =>
-        `<api-request name="${x.toolName}">${JSON.stringify(x.input)}</api-request>`,
+        `<api-request name="${x.toolName}">${convertToolCallInput(x)}</api-request>`,
     );
 
   const toolContent = `<api-section>
-${toolDefs.join("\n")}
+${toolCalls.join("\n")}
 </api-section>`;
 
   const content = [...message.content.filter((x) => x.type !== "tool-call")];
-  if (toolDefs.length > 0) {
+  if (toolCalls.length > 0) {
     content.push({
       type: "text",
       text: toolContent,
@@ -393,7 +393,7 @@ function processToolResult(
     } else {
       content.push({
         type: "text",
-        text: `${toolResponseTagTemplate(x.toolName)}${convertToolResultOutput(x.output)}${toolResponseEndTag}`,
+        text: `${toolResponseTagTemplate(x.toolName)}${convertToolCallOutput(x.output)}${toolResponseEndTag}`,
       });
     }
   }
@@ -561,7 +561,14 @@ function createStopWordStream(
   });
 }
 
-function convertToolResultOutput(
+function convertToolCallInput(x: unknown) {
+  if (typeof x === "string") {
+    return x;
+  }
+  return JSON.stringify(x);
+}
+
+function convertToolCallOutput(
   x: Exclude<LanguageModelV2ToolResultPart["output"], { type: "content" }>,
 ) {
   if (x.type === "json") {
