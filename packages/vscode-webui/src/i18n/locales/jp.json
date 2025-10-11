@@ -290,6 +290,9 @@
     "toContinueUsingPochi": "Pochiを引き続き使用するために",
     "requireOrgPayment": "チームに未払いの請求書があります。"
   },
+  "chatPage": {
+    "defaultUserName": "あなた"
+  },
   "commandExecutionPanel": {
     "copied": "コピーしました！",
     "copyCommand": "コマンドをコピー",

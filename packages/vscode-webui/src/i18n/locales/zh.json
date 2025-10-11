@@ -289,6 +289,9 @@
     "toContinueUsingPochi": "以继续使用 Pochi",
     "requireOrgPayment": "您的团队有未付款的发票。请"
   },
+  "chatPage": {
+    "defaultUserName": "您"
+  },
   "commandExecutionPanel": {
     "copied": "已复制！",
     "copyCommand": "复制命令",

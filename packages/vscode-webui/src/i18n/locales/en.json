@@ -290,6 +290,9 @@
     "toContinueUsingPochi": "to continue using Pochi",
     "requireOrgPayment": "Your team have unpaid invoices. Please"
   },
+  "chatPage": {
+    "defaultUserName": "You"
+  },
   "commandExecutionPanel": {
     "copied": "Copied!",
     "copyCommand": "Copy command",

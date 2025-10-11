@@ -14,6 +14,7 @@ import { useStore } from "@livestore/react";
 import { useRouter } from "@tanstack/react-router";
 import { lastAssistantMessageIsCompleteWithToolCalls } from "ai";
 import { useEffect, useMemo, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { useApprovalAndRetry } from "../approval";
 import { useSelectedModels } from "../settings";
 import { ChatArea } from "./components/chat-area";
@@ -43,11 +44,12 @@ interface ChatProps {
 }
 
 function Chat({ user, uid, prompt }: ChatProps) {
+  const { t } = useTranslation();
   const { store } = useStore();
   const todosRef = useRef<Todo[] | undefined>(undefined);
 
   const defaultUser = {
-    name: "You",
+    name: t('chatPage.defaultUserName'),
     image: `https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(store.clientId)}&scale=120`,
   };
 
