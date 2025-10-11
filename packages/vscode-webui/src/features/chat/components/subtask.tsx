@@ -4,6 +4,7 @@ import type { Message } from "@getpochi/livekit";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { ChevronLeft } from "lucide-react";
 import { useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { useShowCompleteSubtaskButton } from "../hooks/use-subtask-completed";
 import type { SubtaskInfo } from "../hooks/use-subtask-info";
 
@@ -11,6 +12,8 @@ export const SubtaskHeader: React.FC<{
   subtask: SubtaskInfo;
   className?: string;
 }> = ({ subtask, className }) => {
+  const { t } = useTranslation();
+  
   return (
     <div className={cn("px-2 pb-0", className)}>
       <Link
@@ -19,7 +22,7 @@ export const SubtaskHeader: React.FC<{
         replace={true}
         className={cn(buttonVariants({ variant: "ghost" }), "gap-1")}
       >
-        <ChevronLeft className="mr-1.5 size-4" /> Back
+        <ChevronLeft className="mr-1.5 size-4" /> {t('subtask.back')}
       </Link>
     </div>
   );
@@ -29,6 +32,7 @@ export const CompleteSubtaskButton: React.FC<{
   subtask: SubtaskInfo | undefined;
   messages: Message[];
 }> = ({ subtask, messages }) => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
 
   const showCompleteButton = useShowCompleteSubtaskButton(subtask, messages);
@@ -53,7 +57,7 @@ export const CompleteSubtaskButton: React.FC<{
 
   return (
     <Button className="flex-1 rounded-sm" onClick={onCompleteSubtask}>
-      Complete
+      {t('subtask.complete')}
     </Button>
   );
 };

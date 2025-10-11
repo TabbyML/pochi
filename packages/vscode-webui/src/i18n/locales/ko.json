@@ -274,6 +274,10 @@
     "noWorkflowsFound": "워크플로를 찾을 수 없습니다",
     "typeToSearchWorkflows": "입력하여 워크플로 검색..."
   },
+  "subtask": {
+    "back": "뒤로",
+    "complete": "완료"
+  },
   "commandExecutionPanel": {
     "copied": "복사됨!",
     "copyCommand": "명령 복사",

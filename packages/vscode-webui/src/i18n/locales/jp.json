@@ -274,6 +274,10 @@
     "noWorkflowsFound": "ワークフローが見つかりません",
     "typeToSearchWorkflows": "入力してワークフローを検索..."
   },
+  "subtask": {
+    "back": "戻る",
+    "complete": "完了"
+  },
   "commandExecutionPanel": {
     "copied": "コピーしました！",
     "copyCommand": "コマンドをコピー",

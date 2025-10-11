@@ -273,6 +273,10 @@
     "noWorkflowsFound": "未找到工作流",
     "typeToSearchWorkflows": "输入以搜索工作流..."
   },
+  "subtask": {
+    "back": "返回",
+    "complete": "完成"
+  },
   "commandExecutionPanel": {
     "copied": "已复制！",
     "copyCommand": "复制命令",

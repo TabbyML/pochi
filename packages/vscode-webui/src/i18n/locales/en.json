@@ -274,6 +274,10 @@
     "noWorkflowsFound": "No workflows found",
     "typeToSearchWorkflows": "Type to search workflows..."
   },
+  "subtask": {
+    "back": "Back",
+    "complete": "Complete"
+  },
   "commandExecutionPanel": {
     "copied": "Copied!",
     "copyCommand": "Copy command",
