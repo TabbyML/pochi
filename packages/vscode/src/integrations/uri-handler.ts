@@ -98,7 +98,7 @@ class RagdollUriHandler implements vscode.UriHandler, vscode.Disposable {
 
     // Push job to open the task after workspace opens
     await this.workspaceJobQueue.push({
-      workspaceUri: existingProject.toString(),
+      workspaceUri: existingProject.fsPath,
       command: "pochi.openTask",
       args: [uid],
       expiresAt: Date.now() + 1000 * 60,
@@ -178,7 +178,7 @@ class RagdollUriHandler implements vscode.UriHandler, vscode.Disposable {
 
     // push a global job to create task after the new workspace is opened
     await this.workspaceJobQueue.push({
-      workspaceUri: newWorkspaceUri.toString(),
+      workspaceUri: newWorkspaceUri.fsPath,
       command: "pochi.createProject",
       args: [event, this.currentWorkspaceUri?.fsPath],
       expiresAt: Date.now() + 1000 * 60,
