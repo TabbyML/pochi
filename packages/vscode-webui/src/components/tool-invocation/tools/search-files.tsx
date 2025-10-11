@@ -1,4 +1,5 @@
 import type React from "react";
+import { useTranslation } from "react-i18next";
 import { FileList } from "../file-list";
 import { HighlightedText } from "../highlight-text";
 import { StatusIcon } from "../status-icon";
@@ -9,6 +10,7 @@ export const searchFilesTool: React.FC<ToolProps<"searchFiles">> = ({
   tool,
   isExecuting,
 }) => {
+  const { t } = useTranslation();
   const { path, regex, filePattern } = tool.input || {};
 
   let resultEl: React.ReactNode;
@@ -27,7 +29,7 @@ export const searchFilesTool: React.FC<ToolProps<"searchFiles">> = ({
 
   const searchCondition = (
     <>
-      <HighlightedText>{regex}</HighlightedText> in{" "}
+      <HighlightedText>{regex}</HighlightedText> {t("toolInvocation.in")}{" "}
       <HighlightedText>{path}</HighlightedText>
       {filePattern && <HighlightedText>{filePattern}</HighlightedText>}
     </>
@@ -38,11 +40,14 @@ export const searchFilesTool: React.FC<ToolProps<"searchFiles">> = ({
       <StatusIcon isExecuting={isExecuting} tool={tool} />
       <span className="ml-2" />
       {isExecuting || tool.state !== "output-available" ? (
-        <span>Searching for {searchCondition}</span>
+        <span>
+          {t("toolInvocation.searchingFor")} {searchCondition}
+        </span>
       ) : (
         <span>
-          Searching for {searchCondition}, {matches.length} matched
-          {isTruncated && ", results truncated"}
+          {t("toolInvocation.searchingFor")} {searchCondition}, {matches.length}{" "}
+          {t("toolInvocation.matched")}
+          {isTruncated && t("toolInvocation.resultsTruncated")}
         </span>
       )}
     </>
