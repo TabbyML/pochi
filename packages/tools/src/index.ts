@@ -46,16 +46,16 @@ export function isUserInputToolPart(part: UIMessagePart<UIDataTypes, UITools>) {
   return isUserInputToolName(getToolName(part));
 }
 
-export function isAutoExecuteToolName(name: string): boolean {
+export function isAutoSuccessToolName(name: string): boolean {
   return (
     isUserInputToolName(name) ||
     ToolsByPermission.default.some((tool) => name === tool)
   );
 }
 
-export function isAutoExecuteToolPart(part: ToolUIPart): boolean {
+export function isAutoSuccessToolPart(part: ToolUIPart): boolean {
   if (!isToolUIPart(part)) return false;
-  return isAutoExecuteToolName(getToolName(part));
+  return isAutoSuccessToolName(getToolName(part));
 }
 
 export type ToolName = keyof ClientTools;

@@ -1,4 +1,4 @@
-import { isAutoExecuteToolPart } from "@getpochi/tools";
+import { isAutoSuccessToolPart } from "@getpochi/tools";
 import { type UIMessage, getToolName, isToolUIPart } from "ai";
 import { clone } from "remeda";
 import { KnownTags } from "./constants";
@@ -19,7 +19,7 @@ function resolvePendingToolCalls(
           part.state !== "output-available" &&
           part.state !== "output-error"
         ) {
-          const isSuccess = isAutoExecuteToolPart(part);
+          const isSuccess = isAutoSuccessToolPart(part);
           return {
             ...part,
             state: "output-available",
