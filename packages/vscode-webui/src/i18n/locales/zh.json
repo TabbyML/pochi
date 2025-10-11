@@ -317,5 +317,10 @@
     "copyTodos": "复制待办事项",
     "noCheckpointAvailable": "没有可用的检查点",
     "openStore": "打开存储"
+  },
+  "devRetryCountdown": {
+    "attempts": "尝试次数：",
+    "countdown": "倒计时：",
+    "delay": "延迟："
   }
 }

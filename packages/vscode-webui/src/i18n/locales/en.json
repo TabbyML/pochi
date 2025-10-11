@@ -313,5 +313,10 @@
     "copyTodos": "Copy TODOs",
     "noCheckpointAvailable": "No checkpoint available",
     "openStore": "Open Store"
+  },
+  "devRetryCountdown": {
+    "attempts": "Attempts:",
+    "countdown": "Countdown:",
+    "delay": "Delay:"
   }
 }

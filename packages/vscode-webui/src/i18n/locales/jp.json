@@ -318,5 +318,10 @@
     "copyTodos": "TODOをコピー",
     "noCheckpointAvailable": "利用可能なチェックポイントがありません",
     "openStore": "ストアを開く"
+  },
+  "devRetryCountdown": {
+    "attempts": "試行回数：",
+    "countdown": "カウントダウン：",
+    "delay": "遅延："
   }
 }

@@ -313,5 +313,10 @@
     "copyTodos": "할 일 복사",
     "noCheckpointAvailable": "사용 가능한 체크포인트가 없습니다",
     "openStore": "스토어 열기"
+  },
+  "devRetryCountdown": {
+    "attempts": "시도 횟수:",
+    "countdown": "카운트다운:",
+    "delay": "지연:"
   }
 }
