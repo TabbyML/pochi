@@ -2,11 +2,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-} from "@/components/ui/hover-card";
-import {
   Pagination,
   PaginationContent,
   PaginationEllipsis,
@@ -37,13 +32,11 @@ import {
   GitBranch,
   HelpCircle,
   ListTreeIcon,
-  SquareArrowOutUpRightIcon,
   TerminalIcon,
   Wrench,
   Zap,
 } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
-import { useTranslation } from "react-i18next";
 import { MdOutlineErrorOutline } from "react-icons/md";
 import { useStoreDate } from "../livestore-provider";
 
@@ -244,7 +237,6 @@ function Tasks() {
               </Pagination>
             </div>
           )}
-          <OpenInTabButton />
         </div>
       </div>
     </div>
@@ -324,6 +316,8 @@ function TaskRow({
   worktree,
 }: { task: Task; storeDate: number; worktree?: string }) {
   const { store } = useStore();
+  const { openInTab } = useSettingsStore();
+
   const title = useMemo(() => parseTitle(task.title), [task.title]);
 
   const content = (
@@ -355,6 +349,9 @@ function TaskRow({
   );
 
   const openTaskInPanel = useCallback(() => {
+    if (!openInTab) {
+      return;
+    }
     const messages = store.query(catalog.queries.makeMessagesQuery(task.id));
 
     vscodeHost.openTaskInPanel({
@@ -363,7 +360,7 @@ function TaskRow({
       updatedAt: task.updatedAt.toISOString(),
       messages: messages.map((m) => m.data),
     });
-  }, [task.id, task.createdAt, task.updatedAt, task, store.query]);
+  }, [task.id, task.createdAt, task.updatedAt, task, store.query, openInTab]);
 
   if (worktree) {
     return <div onClick={openTaskInPanel}>{content}</div>;
@@ -397,45 +394,6 @@ function GitBadge({
         </>
       )}
     </Badge>
-  );
-}
-
-function OpenInTabButton() {
-  const { t } = useTranslation();
-  const { openInTab } = useSettingsStore();
-
-  if (!openInTab) {
-    return <div className="w-6" />;
-  }
-
-  return (
-    <HoverCard>
-      <HoverCardTrigger asChild>
-        <a
-          href={"command:pochi.createTaskInPanel"}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Button
-            variant="ghost"
-            size="icon"
-            className="button-focus relative mr-2 h-6 w-6 p-0"
-          >
-            <span className="size-4">
-              <SquareArrowOutUpRightIcon className="size-4.5" />
-            </span>
-          </Button>
-        </a>
-      </HoverCardTrigger>
-      <HoverCardContent
-        side="top"
-        align="end"
-        sideOffset={6}
-        className="!w-auto max-w-sm bg-background px-3 py-1.5 text-xs"
-      >
-        {t("chat.openInTab")}
-      </HoverCardContent>
-    </HoverCard>
   );
 }
 
