@@ -18,6 +18,7 @@ import { convertToModelMessages } from "ai";
 import { CheckIcon, CopyIcon, Gavel, StoreIcon } from "lucide-react"; // Removed FilesIcon
 import type React from "react";
 import { useCallback } from "react";
+import { useTranslation } from "react-i18next";
 
 interface UpdatedCopyMenuItemProps {
   fetchContent: () => Promise<string> | string; // Can be sync or async
@@ -52,6 +53,7 @@ interface DevModeButtonProps {
 }
 
 export function DevModeButton({ messages, todos }: DevModeButtonProps) {
+  const { t } = useTranslation();
   const [isDevMode] = useIsDevMode();
   if (!isDevMode) return null;
   const getMessagesContent = () => {
@@ -77,11 +79,11 @@ export function DevModeButton({ messages, todos }: DevModeButtonProps) {
   const getCheckpintCommand = useCallback(async () => {
     const checkpointPath = await vscodeHost.readCheckpointPath();
     if (!checkpointPath) {
-      return "No checkpoint available";
+      return t('devModeButton.noCheckpointAvailable');
     }
     const workspaceFolder = await vscodeHost.readCurrentWorkspace();
     return `alias pgit="git --git-dir=\\"${checkpointPath}\\" --work-tree=\\"${workspaceFolder}\\""`;
-  }, []);
+  }, [t]);
 
   return (
     <DropdownMenu>
@@ -90,7 +92,7 @@ export function DevModeButton({ messages, todos }: DevModeButtonProps) {
           variant="ghost"
           size="icon"
           className="button-focus h-6 w-6 p-0"
-          title="Dev mode"
+          title={t('devModeButton.title')}
         >
           <Gavel className="size-4" />
         </Button>
@@ -103,17 +105,17 @@ export function DevModeButton({ messages, todos }: DevModeButtonProps) {
         >
           <CopyMenuItem
             fetchContent={getMessagesContent}
-            text="Copy Messages"
+            text={t('devModeButton.copyMessages')}
           />
           <CopyMenuItem
             fetchContent={getCoreMessagesContent}
-            text="Copy Core Messages"
+            text={t('devModeButton.copyCoreMessages')}
           />
           <CopyMenuItem
             fetchContent={getCheckpintCommand}
-            text="Copy Checkpoint Command"
+            text={t('devModeButton.copyCheckpointCommand')}
           />
-          <CopyMenuItem fetchContent={getTodosContent} text="Copy TODOs" />
+          <CopyMenuItem fetchContent={getTodosContent} text={t('devModeButton.copyTodos')} />
           <OpenDevStore />
         </DropdownMenuContent>
       </DropdownMenuPortal>
@@ -122,6 +124,7 @@ export function DevModeButton({ messages, todos }: DevModeButtonProps) {
 }
 
 function OpenDevStore() {
+  const { t } = useTranslation();
   const { store } = useStore();
   const { jwt } = usePochiCredentials();
   const onClick = useCallback(() => {
@@ -133,7 +136,7 @@ function OpenDevStore() {
     return (
       <DropdownMenuItem onClick={onClick}>
         <StoreIcon className="inline" />
-        <span className="ml-2">Open Store</span>
+        <span className="ml-2">{t('devModeButton.openStore')}</span>
       </DropdownMenuItem>
     );
   }

@@ -304,5 +304,19 @@
     "expand": "展開",
     "openJob": "ジョブ {{displayId}} を開く",
     "stop": "停止"
+  },
+  "liveSubTask": {
+    "unexpectedParentToolCallState": "予期しない親ツール呼び出し状態",
+    "subTaskFailedMaxRetry": "サブタスクの実行に失敗しました。最大再試行回数に達しました。",
+    "subTaskFailedMaxStep": "サブタスクの実行に失敗しました。最大ステップ数に達しました。"
+  },
+  "devModeButton": {
+    "title": "開発モード",
+    "copyMessages": "メッセージをコピー",
+    "copyCoreMessages": "コアメッセージをコピー",
+    "copyCheckpointCommand": "チェックポイントコマンドをコピー",
+    "copyTodos": "TODOをコピー",
+    "noCheckpointAvailable": "利用可能なチェックポイントがありません",
+    "openStore": "ストアを開く"
   }
 }

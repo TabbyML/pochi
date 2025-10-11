@@ -303,5 +303,19 @@
     "expand": "展开",
     "openJob": "打开任务 {{displayId}}",
     "stop": "停止"
+  },
+  "liveSubTask": {
+    "unexpectedParentToolCallState": "意外的父工具调用状态",
+    "subTaskFailedMaxRetry": "子任务执行失败，已达到最大重试次数。",
+    "subTaskFailedMaxStep": "子任务执行失败，已达到最大步骤数。"
+  },
+  "devModeButton": {
+    "title": "开发模式",
+    "copyMessages": "复制消息",
+    "copyCoreMessages": "复制核心消息",
+    "copyCheckpointCommand": "复制检查点命令",
+    "copyTodos": "复制待办事项",
+    "noCheckpointAvailable": "没有可用的检查点",
+    "openStore": "打开存储"
   }
 }

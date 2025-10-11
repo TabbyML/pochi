@@ -304,5 +304,14 @@
     "expand": "Expand",
     "openJob": "Open job {{displayId}}",
     "stop": "STOP"
+  },
+  "devModeButton": {
+    "title": "Dev mode",
+    "copyMessages": "Copy Messages",
+    "copyCoreMessages": "Copy Core Messages",
+    "copyCheckpointCommand": "Copy Checkpoint Command",
+    "copyTodos": "Copy TODOs",
+    "noCheckpointAvailable": "No checkpoint available",
+    "openStore": "Open Store"
   }
 }
