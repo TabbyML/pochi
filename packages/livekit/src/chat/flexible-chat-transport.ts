@@ -118,6 +118,14 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
           environment?.info.cwd,
           chatId,
           customAgents,
+          environment?.workspace.gitStatus
+            ? {
+                origin: environment.workspace.gitStatus.origin,
+                branch: environment.workspace.gitStatus.currentBranch,
+                gitRoot: environment.workspace.gitStatus.gitRoot,
+                worktree: environment.workspace.gitStatus.worktree,
+              }
+            : undefined,
         ),
       );
     }

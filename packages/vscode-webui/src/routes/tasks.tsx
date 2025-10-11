@@ -2,11 +2,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-} from "@/components/ui/hover-card";
-import {
   Pagination,
   PaginationContent,
   PaginationEllipsis,
@@ -36,13 +31,12 @@ import {
   Edit3,
   GitBranch,
   HelpCircle,
-  SquareArrowOutUpRightIcon,
+  ListTreeIcon,
   TerminalIcon,
   Wrench,
   Zap,
 } from "lucide-react";
-import { useMemo, useState } from "react";
-import { useTranslation } from "react-i18next";
+import { useCallback, useMemo, useState } from "react";
 import { MdOutlineErrorOutline } from "react-icons/md";
 import { useStoreDate } from "../livestore-provider";
 
@@ -218,6 +212,11 @@ function Tasks() {
                   key={task.id}
                   task={task}
                   storeDate={storeDate.getTime()}
+                  worktree={
+                    task.cwd === cwd
+                      ? undefined
+                      : task.cwd?.split(/[\/\\]/).pop()
+                  }
                 />
               ))}
             </div>
@@ -238,7 +237,6 @@ function Tasks() {
               </Pagination>
             </div>
           )}
-          <OpenInTabButton />
         </div>
       </div>
     </div>
@@ -312,38 +310,65 @@ const getStatusBorderColor = (status: string): string => {
   }
 };
 
-function TaskRow({ task, storeDate }: { task: Task; storeDate: number }) {
+function TaskRow({
+  task,
+  storeDate,
+  worktree,
+}: { task: Task; storeDate: number; worktree?: string }) {
+  const { store } = useStore();
+  const { openInTab } = useSettingsStore();
+
   const title = useMemo(() => parseTitle(task.title), [task.title]);
-  return (
-    <Link
-      to={"/"}
-      search={{ uid: task.id, storeDate }}
-      className="group cursor-pointer"
+
+  const content = (
+    <div
+      className={cn(
+        "group cursor-pointer rounded-lg border border-border/50 bg-card transition-all duration-200 hover:border-border hover:bg-card/90 hover:shadow-md",
+        "border-l-4",
+        getStatusBorderColor(task.status),
+      )}
     >
-      <div
-        className={cn(
-          "cursor-pointer rounded-lg border border-border/50 bg-card transition-all duration-200 hover:border-border hover:bg-card/90 hover:shadow-md",
-          "border-l-4",
-          getStatusBorderColor(task.status),
-        )}
-      >
-        <div className="px-4 py-3">
-          <div className="flex items-start gap-3">
-            <div className="flex-1 space-y-1 overflow-hidden">
-              <GitBadge
-                git={task.git}
-                className="max-w-full text-muted-foreground/80 text-xs"
-              />
-              <h3 className="line-clamp-2 flex-1 font-medium text-foreground leading-relaxed transition-colors duration-200 group-hover:text-foreground/80">
-                {title}
-              </h3>
-            </div>
-            <div className="mt-0.5 shrink-0">
-              <TaskStatusIcon status={task.status} />
-            </div>
+      <div className="px-4 py-3">
+        <div className="flex items-start gap-3">
+          <div className="flex-1 space-y-1 overflow-hidden">
+            <GitBadge
+              git={task.git}
+              worktree={worktree}
+              className="max-w-full text-muted-foreground/80 text-xs"
+            />
+            <h3 className="line-clamp-2 flex-1 font-medium text-foreground leading-relaxed transition-colors duration-200 group-hover:text-foreground/80">
+              {title}
+            </h3>
+          </div>
+          <div className="mt-0.5 shrink-0">
+            <TaskStatusIcon status={task.status} />
           </div>
         </div>
       </div>
+    </div>
+  );
+
+  const openTaskInPanel = useCallback(() => {
+    if (!openInTab) {
+      return;
+    }
+    const messages = store.query(catalog.queries.makeMessagesQuery(task.id));
+
+    vscodeHost.openTaskInPanel({
+      ...task,
+      createdAt: task.createdAt.toISOString(),
+      updatedAt: task.updatedAt.toISOString(),
+      messages: messages.map((m) => m.data),
+    });
+  }, [task.id, task.createdAt, task.updatedAt, task, store.query, openInTab]);
+
+  if (worktree) {
+    return <div onClick={openTaskInPanel}>{content}</div>;
+  }
+
+  return (
+    <Link to={"/"} search={{ uid: task.id, storeDate }}>
+      {content}
     </Link>
   );
 }
@@ -351,7 +376,8 @@ function TaskRow({ task, storeDate }: { task: Task; storeDate: number }) {
 function GitBadge({
   className,
   git,
-}: { git: Task["git"]; className?: string }) {
+  worktree,
+}: { git: Task["git"]; worktree?: string; className?: string }) {
   if (!git?.origin) return null;
 
   return (
@@ -361,47 +387,13 @@ function GitBadge({
     >
       <GitBranch className="shrink-0" />
       <span className="truncate">{git.branch}</span>
+      {worktree && (
+        <>
+          <ListTreeIcon className="ml-1 shrink-0" />
+          <span className="truncate">{worktree}</span>
+        </>
+      )}
     </Badge>
-  );
-}
-
-function OpenInTabButton() {
-  const { t } = useTranslation();
-  const { openInTab } = useSettingsStore();
-
-  const handleOpenInTab = async () => {
-    await vscodeHost.openPochiInNewTab();
-  };
-
-  if (!openInTab) {
-    return <div className="w-6" />;
-  }
-
-  return (
-    <HoverCard>
-      <HoverCardTrigger asChild>
-        <span>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleOpenInTab}
-            className="button-focus relative mr-2 h-6 w-6 p-0"
-          >
-            <span className="size-4">
-              <SquareArrowOutUpRightIcon className="size-4.5" />
-            </span>
-          </Button>
-        </span>
-      </HoverCardTrigger>
-      <HoverCardContent
-        side="top"
-        align="end"
-        sideOffset={6}
-        className="!w-auto max-w-sm bg-background px-3 py-1.5 text-xs"
-      >
-        {t("chat.openInTab")}
-      </HoverCardContent>
-    </HoverCard>
   );
 }
 
