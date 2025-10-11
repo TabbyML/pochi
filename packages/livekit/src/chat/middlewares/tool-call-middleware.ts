@@ -349,7 +349,7 @@ function processAssistant(
     )
     .map(
       (x) =>
-        `<api-request name="${x.toolName}">${convertToolCallInput(x)}</api-request>`,
+        `<api-request name="${x.toolName}">${convertToolCallInput(x.input)}</api-request>`,
     );
 
   const toolContent = `<api-section>
