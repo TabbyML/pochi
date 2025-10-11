@@ -2,6 +2,8 @@
 import { CompletionProvider } from "@/code-completion";
 // biome-ignore lint/style/useImportType: needed for initialization
 import { AuthEvents } from "@/lib/auth-events";
+// biome-ignore lint/style/useImportType: needed for initialization
+import { NESProvider } from "@/nes";
 import { signal } from "@preact/signals-core";
 import { injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
@@ -31,6 +33,7 @@ export class StatusBarItem implements vscode.Disposable {
     private readonly pochiConfiguration: PochiConfiguration,
     private readonly authEvents: AuthEvents,
     private readonly inlineCompletionProvider: CompletionProvider,
+    private readonly nesProvider: NESProvider,
   ) {
     this.initialize();
   }
@@ -52,6 +55,11 @@ export class StatusBarItem implements vscode.Disposable {
     });
     this.disposables.push({
       dispose: this.inlineCompletionProvider.isFetching.subscribe(() => {
+        this.update();
+      }),
+    });
+    this.disposables.push({
+      dispose: this.nesProvider.fetching.subscribe(() => {
         this.update();
       }),
     });
@@ -82,7 +90,10 @@ export class StatusBarItem implements vscode.Disposable {
     // User logged-in
 
     if (
-      this.pochiConfiguration.advancedSettings.value.inlineCompletion?.disabled
+      this.pochiConfiguration.advancedSettings.value.inlineCompletion
+        ?.disabled &&
+      !this.pochiConfiguration.advancedSettings.value.nextEditSuggestion
+        ?.enabled
     ) {
       return "disabled";
     }
@@ -101,7 +112,10 @@ export class StatusBarItem implements vscode.Disposable {
 
     // Subscription is valid
 
-    if (this.inlineCompletionProvider.isFetching.value) {
+    if (
+      this.inlineCompletionProvider.isFetching.value ||
+      this.nesProvider.fetching.value
+    ) {
       return "loading";
     }
     // Normal case
