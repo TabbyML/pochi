@@ -440,14 +440,9 @@ export class CommandManager implements vscode.Disposable {
       ),
 
       vscode.commands.registerCommand(
-        "pochi.openInPanel",
-        async (scm: vscode.SourceControl | string, uid?: string) => {
-          let cwd: string | undefined;
-          if (typeof scm === "string") {
-            cwd = scm;
-          } else {
-            cwd = scm.rootUri?.fsPath;
-          }
+        "pochi.createTaskInPanel",
+        async (scm: vscode.SourceControl) => {
+          const cwd = scm?.rootUri?.fsPath;
 
           if (!cwd) {
             throw new Error(
@@ -466,7 +461,6 @@ export class CommandManager implements vscode.Disposable {
           PochiWebviewPanel.createOrShow(
             workspaceContainer,
             this.context.extensionUri,
-            uid,
           );
         },
       ),

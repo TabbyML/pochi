@@ -221,7 +221,7 @@ const VSCodeHostStub = {
     return "test-machine-id";
   },
 
-  openPochiInNewTab: async (): Promise<void> => {},
+  openTaskInPanel: async (): Promise<void> => {},
 
   bridgeStoreEvent: async (): Promise<void> => {},
 } satisfies VSCodeHostApi;

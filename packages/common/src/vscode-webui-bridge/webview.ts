@@ -17,6 +17,7 @@ import type {
 } from "./index";
 import type { DisplayModel } from "./types/model";
 import type { PochiCredentials } from "./types/pochi";
+import type { TaskData, TaskDataParams } from "./types/task";
 
 export interface VSCodeHostApi {
   readResourceURI(): Promise<ResourceURI>;
@@ -271,7 +272,7 @@ export interface VSCodeHostApi {
     ThreadSignalSerialization<Record<string, UserInfo>>
   >;
 
-  openPochiInNewTab(): Promise<void>;
+  openTaskInPanel(task: TaskData): Promise<void>;
 
   bridgeStoreEvent(
     webviewKind: "sidebar" | "pane",
@@ -283,7 +284,7 @@ export interface WebviewHostApi {
   /**
    * @param params - Existing task id or new task params.
    */
-  openTask(params: TaskIdParams | NewTaskParams): void;
+  openTask(params: TaskIdParams | NewTaskParams | TaskDataParams): void;
 
   openTaskList(): void;
 

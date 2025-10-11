@@ -155,6 +155,26 @@ export const events = {
       updatedAt: Schema.Date,
     }),
   }),
+  taskSync: Events.synced({
+    name: "v1.TaskSync",
+    schema: Schema.Struct({
+      id: Schema.String,
+      shareId: Schema.optional(Schema.String),
+      cwd: Schema.optional(Schema.String),
+      isPublicShared: Schema.Boolean,
+      title: Schema.optional(Schema.String),
+      parentId: Schema.optional(Schema.String),
+      status: TaskStatus,
+      todos: Todos,
+      git: Schema.optional(Git),
+      gitRoot: Schema.optional(Schema.String),
+      totalTokens: Schema.optional(Schema.Number),
+      error: Schema.optional(TaskError),
+      createdAt: Schema.Date,
+      updatedAt: Schema.Date,
+      messages: Schema.Array(DBMessage),
+    }),
+  }),
   chatStreamStarted: Events.synced({
     name: "v1.ChatStreamStarted",
     schema: Schema.Struct({
@@ -266,6 +286,51 @@ const materializers = State.SQLite.materializers(events, {
         updatedAt,
       })
       .where({ id }),
+  ],
+  "v1.TaskSync": ({
+    id,
+    shareId,
+    cwd,
+    isPublicShared,
+    title,
+    parentId,
+    status,
+    todos,
+    git,
+    gitRoot,
+    totalTokens,
+    error,
+    createdAt,
+    updatedAt,
+    messages,
+  }) => [
+    tables.tasks
+      .insert({
+        id,
+        shareId,
+        cwd,
+        isPublicShared,
+        title,
+        parentId,
+        status,
+        todos,
+        git,
+        gitRoot,
+        totalTokens,
+        error,
+        createdAt,
+        updatedAt,
+      })
+      .onConflict("id", "replace"),
+    ...messages.map((message) =>
+      tables.messages
+        .insert({
+          id: message.id,
+          taskId: id,
+          data: message,
+        })
+        .onConflict("id", "replace"),
+    ),
   ],
   "v1.ChatStreamStarted": ({
     id,
