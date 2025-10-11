@@ -6,6 +6,7 @@ import type { Message } from "@getpochi/livekit";
 import type { FileUIPart } from "ai";
 import type React from "react";
 import { useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { useAutoApproveGuard, useToolCallLifeCycle } from "../lib/chat-state";
 
 type UseChatReturn = Pick<UseChatHelpers<Message>, "sendMessage" | "stop">;
@@ -39,6 +40,7 @@ export function useChatSubmit({
 }: UseChatSubmitProps) {
   const autoApproveGuard = useAutoApproveGuard();
   const { executingToolCalls, previewingToolCalls } = useToolCallLifeCycle();
+  const { t } = useTranslation();
   const isExecuting = executingToolCalls.length > 0;
   const isPreviewing = (previewingToolCalls?.length ?? 0) > 0;
 
@@ -131,7 +133,7 @@ export function useChatSubmit({
       if (files.length > 0) {
         try {
           const uploadedAttachments = await upload();
-          const parts = prepareMessageParts(text, uploadedAttachments);
+          const parts = prepareMessageParts(text, uploadedAttachments, t);
 
           await sendMessage({
             parts,
@@ -144,8 +146,9 @@ export function useChatSubmit({
         }
       } else if (allMessages.length > 0) {
         clearUploadError();
+        const parts = prepareMessageParts(text, [], t);
         await sendMessage({
-          text,
+          parts,
         });
         autoApproveGuard.current = "auto";
       }
@@ -163,6 +166,7 @@ export function useChatSubmit({
       newCompactTaskPending,
       queuedMessages,
       setQueuedMessages,
+      t,
     ],
   );
 
@@ -172,19 +176,28 @@ export function useChatSubmit({
   };
 }
 
-function prepareMessageParts(input: string, files: FileUIPart[]) {
+function prepareMessageParts(
+  input: string,
+  files: FileUIPart[],
+  t: ReturnType<typeof useTranslation>["t"],
+) {
   const parts: Message["parts"] = [...files];
-  const isPublicUrl = files.every((x) => x.url.startsWith("http"));
-  if (isPublicUrl) {
+  if (files.length > 0) {
     parts.push({
       type: "text",
       text: prompts.createSystemReminder(
-        `Attached files: ${files.map((file) => file.url).join(", ")}`,
+        `Attached files: ${files.map(getFilePrompt).join(", ")}`,
       ),
     });
   }
-  if (input) {
-    parts.push({ type: "text", text: input });
-  }
+  parts.push({ type: "text", text: input || t("chat.pleaseCheckFiles") });
   return parts;
+}
+
+function getFilePrompt(file: FileUIPart, index: number): string {
+  const filename = file.filename || `file-${index}`;
+  if (file.url.startsWith("http")) {
+    return `[${filename}](${file.url})`;
+  }
+  return filename;
 }

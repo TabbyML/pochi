@@ -26,7 +26,8 @@
     "queuedMessages": "Queued Messages ({{count}})",
     "openInTab": "Open in Tab",
     "copyImage": "Copy Image",
-    "openImage": "Open Image"
+    "openImage": "Open Image",
+    "pleaseCheckFiles": "Please check these files."
   },
   "language": {
     "switcherTooltip": "Choose your preferred language with Pochi"
