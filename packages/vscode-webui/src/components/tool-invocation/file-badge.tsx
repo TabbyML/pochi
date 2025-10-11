@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 import { addLineBreak } from "@/lib/utils/file";
 import { vscodeHost } from "@/lib/vscode";
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from "react-i18next";
 import type { ToolCallCheckpoint } from "../message/message-list";
 import { EditSummary } from "./edit-summary";
 import { FileIcon } from "./file-icon/file-icon";
@@ -37,7 +37,7 @@ export const FileBadge: React.FC<FileBadgeProps> = ({
   fallbackGlobPattern,
 }) => {
   const { t } = useTranslation();
-  
+
   const lineRange = startLine
     ? endLine && startLine !== endLine
       ? `:${startLine}-${endLine}`
@@ -47,7 +47,7 @@ export const FileBadge: React.FC<FileBadgeProps> = ({
   const defaultOnClick = async () => {
     if (changes?.origin && changes?.modified) {
       const showDiffSuccess = await vscodeHost.showCheckpointDiff(
-        `${path} ${t('fileBadge.modifiedByPochi')}`,
+        `${path} ${t("fileBadge.modifiedByPochi")}`,
         {
           origin: changes.origin,
           modified: changes.modified,
@@ -72,7 +72,7 @@ export const FileBadge: React.FC<FileBadgeProps> = ({
 
     vscodeHost.openFile(path, options);
   };
-  
+
   return (
     <span
       onClick={(e) => {

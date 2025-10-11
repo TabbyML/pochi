@@ -85,7 +85,9 @@ export const WorkflowMentionList = forwardRef<
         <ScrollArea viewportClassname="max-h-[300px] px-2">
           {items.length === 0 ? (
             <div className="px-2 py-3 text-muted-foreground text-xs">
-              {query ? t('workflowMentionList.noWorkflowsFound') : t('workflowMentionList.typeToSearchWorkflows')}
+              {query
+                ? t("workflowMentionList.noWorkflowsFound")
+                : t("workflowMentionList.typeToSearchWorkflows")}
             </div>
           ) : (
             <div className="grid gap-0.5">

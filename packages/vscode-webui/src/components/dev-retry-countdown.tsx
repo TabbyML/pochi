@@ -22,9 +22,17 @@ export function DevRetryCountdown({
         <span>{status}</span>
         {pendingApproval?.name === "retry" ? (
           <div>
-            <span>{t('devRetryCountdown.attempts')} {pendingApproval.attempts}</span> /{" "}
-            <span>{t('devRetryCountdown.countdown')} {pendingApproval.countdown}</span> /{" "}
-            <span>{t('devRetryCountdown.delay')} {pendingApproval.delay}</span>
+            <span>
+              {t("devRetryCountdown.attempts")} {pendingApproval.attempts}
+            </span>{" "}
+            /{" "}
+            <span>
+              {t("devRetryCountdown.countdown")} {pendingApproval.countdown}
+            </span>{" "}
+            /{" "}
+            <span>
+              {t("devRetryCountdown.delay")} {pendingApproval.delay}
+            </span>
           </div>
         ) : undefined}
       </span>

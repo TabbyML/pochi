@@ -11,7 +11,7 @@ export const NewProblems: React.FC<{
   newProblems: string;
 }> = ({ newProblems }) => {
   const { t } = useTranslation();
-  
+
   return (
     <div className="my-2 ml-1 flex flex-col">
       <CodeBlock className="" language="log" value={newProblems} />
@@ -24,7 +24,7 @@ export const NewProblems: React.FC<{
 
 export const NewProblemsIcon: React.FC = () => {
   const { t } = useTranslation();
-  
+
   return (
     <Tooltip>
       <TooltipTrigger asChild>

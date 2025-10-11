@@ -79,7 +79,7 @@ export function DevModeButton({ messages, todos }: DevModeButtonProps) {
   const getCheckpintCommand = useCallback(async () => {
     const checkpointPath = await vscodeHost.readCheckpointPath();
     if (!checkpointPath) {
-      return t('devModeButton.noCheckpointAvailable');
+      return t("devModeButton.noCheckpointAvailable");
     }
     const workspaceFolder = await vscodeHost.readCurrentWorkspace();
     return `alias pgit="git --git-dir=\\"${checkpointPath}\\" --work-tree=\\"${workspaceFolder}\\""`;
@@ -92,7 +92,7 @@ export function DevModeButton({ messages, todos }: DevModeButtonProps) {
           variant="ghost"
           size="icon"
           className="button-focus h-6 w-6 p-0"
-          title={t('devModeButton.title')}
+          title={t("devModeButton.title")}
         >
           <Gavel className="size-4" />
         </Button>
@@ -105,17 +105,20 @@ export function DevModeButton({ messages, todos }: DevModeButtonProps) {
         >
           <CopyMenuItem
             fetchContent={getMessagesContent}
-            text={t('devModeButton.copyMessages')}
+            text={t("devModeButton.copyMessages")}
           />
           <CopyMenuItem
             fetchContent={getCoreMessagesContent}
-            text={t('devModeButton.copyCoreMessages')}
+            text={t("devModeButton.copyCoreMessages")}
           />
           <CopyMenuItem
             fetchContent={getCheckpintCommand}
-            text={t('devModeButton.copyCheckpointCommand')}
+            text={t("devModeButton.copyCheckpointCommand")}
           />
-          <CopyMenuItem fetchContent={getTodosContent} text={t('devModeButton.copyTodos')} />
+          <CopyMenuItem
+            fetchContent={getTodosContent}
+            text={t("devModeButton.copyTodos")}
+          />
           <OpenDevStore />
         </DropdownMenuContent>
       </DropdownMenuPortal>
@@ -136,7 +139,7 @@ function OpenDevStore() {
     return (
       <DropdownMenuItem onClick={onClick}>
         <StoreIcon className="inline" />
-        <span className="ml-2">{t('devModeButton.openStore')}</span>
+        <span className="ml-2">{t("devModeButton.openStore")}</span>
       </DropdownMenuItem>
     );
   }

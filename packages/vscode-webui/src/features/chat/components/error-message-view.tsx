@@ -22,7 +22,7 @@ export function ErrorMessageView({
         if (e.message === PochiApiErrors.ReachedCreditLimit) {
           return (
             <span>
-              {t('errorMessageView.reachedCreditLimit')}{" "}
+              {t("errorMessageView.reachedCreditLimit")}{" "}
               <a
                 href="https://app.getpochi.com/profile"
                 target="_blank"
@@ -30,7 +30,7 @@ export function ErrorMessageView({
                 className="!underline py-1"
               >
                 <ExternalLinkIcon className="mx-0.5 inline size-4" />
-                {t('errorMessageView.seeMore')}
+                {t("errorMessageView.seeMore")}
               </a>
             </span>
           );
@@ -39,7 +39,7 @@ export function ErrorMessageView({
         if (e.message === PochiApiErrors.ReachedOrgCreditLimit) {
           return (
             <span>
-              {t('errorMessageView.teamReachedCreditLimit')}{" "}
+              {t("errorMessageView.teamReachedCreditLimit")}{" "}
               <a
                 href="https://app.getpochi.com/team"
                 target="_blank"
@@ -47,7 +47,7 @@ export function ErrorMessageView({
                 className="!underline py-1"
               >
                 <ExternalLinkIcon className="mx-0.5 inline size-4" />
-                {t('errorMessageView.seeMore')}
+                {t("errorMessageView.seeMore")}
               </a>
             </span>
           );
@@ -56,7 +56,7 @@ export function ErrorMessageView({
         if (e.message === PochiApiErrors.RequireSubscription) {
           return (
             <span>
-              {t('errorMessageView.requireSubscription')}{" "}
+              {t("errorMessageView.requireSubscription")}{" "}
               <a
                 href="https://app.getpochi.com/profile"
                 target="_blank"
@@ -64,7 +64,7 @@ export function ErrorMessageView({
                 className="!underline py-1"
               >
                 <ExternalLinkIcon className="mx-0.5 inline size-4" />
-                {t('errorMessageView.subscribe')}
+                {t("errorMessageView.subscribe")}
               </a>
             </span>
           );
@@ -73,7 +73,7 @@ export function ErrorMessageView({
         if (e.message === PochiApiErrors.RequireOrgSubscription) {
           return (
             <span>
-              {t('errorMessageView.requireOrgSubscription')}{" "}
+              {t("errorMessageView.requireOrgSubscription")}{" "}
               <a
                 href="https://app.getpochi.com/team"
                 target="_blank"
@@ -81,7 +81,7 @@ export function ErrorMessageView({
                 className="!underline py-1"
               >
                 <ExternalLinkIcon className="mx-0.5 inline size-4" />
-                {t('errorMessageView.subscribe')}
+                {t("errorMessageView.subscribe")}
               </a>
             </span>
           );
@@ -90,16 +90,16 @@ export function ErrorMessageView({
         if (e.message === PochiApiErrors.RequirePayment) {
           return (
             <span>
-              {t('errorMessageView.requirePayment')}{" "}
+              {t("errorMessageView.requirePayment")}{" "}
               <a
                 href="https://app.getpochi.com/profile"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="!underline py-1"
               >
-                {t('errorMessageView.makePayment')}
+                {t("errorMessageView.makePayment")}
               </a>{" "}
-              {t('errorMessageView.toContinueUsingPochi')}
+              {t("errorMessageView.toContinueUsingPochi")}
             </span>
           );
         }
@@ -107,16 +107,16 @@ export function ErrorMessageView({
         if (e.message === PochiApiErrors.RequireOrgPayment) {
           return (
             <span>
-              {t('errorMessageView.requireOrgPayment')}{" "}
+              {t("errorMessageView.requireOrgPayment")}{" "}
               <a
                 href="https://app.getpochi.com/team"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="!underline py-1"
               >
-                {t('errorMessageView.makePayment')}
+                {t("errorMessageView.makePayment")}
               </a>{" "}
-              {t('errorMessageView.toContinueUsingPochi')}
+              {t("errorMessageView.toContinueUsingPochi")}
             </span>
           );
         }

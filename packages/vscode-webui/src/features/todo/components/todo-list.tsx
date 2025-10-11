@@ -154,14 +154,18 @@ function TodoListHeader({ children }: TodoListHeaderProps) {
         <span className="h-6 truncate font-semibold transition-opacity group-focus-within:opacity-80 group-hover:opacity-80">
           {inProgressTodo ? (
             disableInProgressTodoTitle ? (
-              <span>{t('todoList.todos')}</span>
+              <span>{t("todoList.todos")}</span>
             ) : (
               <span className="animated-gradient-text">
                 {inProgressTodo.content}
               </span>
             )
           ) : (
-            <span>{pendingTodosNum > 0 ? t('todoList.todos') : t('todoList.allDone')}</span>
+            <span>
+              {pendingTodosNum > 0
+                ? t("todoList.todos")
+                : t("todoList.allDone")}
+            </span>
           )}
         </span>
       </button>

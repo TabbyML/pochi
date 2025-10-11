@@ -49,7 +49,7 @@ function Chat({ user, uid, prompt }: ChatProps) {
   const todosRef = useRef<Todo[] | undefined>(undefined);
 
   const defaultUser = {
-    name: t('chatPage.defaultUserName'),
+    name: t("chatPage.defaultUserName"),
     image: `https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(store.clientId)}&scale=120`,
   };
 

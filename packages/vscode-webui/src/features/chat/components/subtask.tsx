@@ -13,7 +13,7 @@ export const SubtaskHeader: React.FC<{
   className?: string;
 }> = ({ subtask, className }) => {
   const { t } = useTranslation();
-  
+
   return (
     <div className={cn("px-2 pb-0", className)}>
       <Link
@@ -22,7 +22,7 @@ export const SubtaskHeader: React.FC<{
         replace={true}
         className={cn(buttonVariants({ variant: "ghost" }), "gap-1")}
       >
-        <ChevronLeft className="mr-1.5 size-4" /> {t('subtask.back')}
+        <ChevronLeft className="mr-1.5 size-4" /> {t("subtask.back")}
       </Link>
     </div>
   );
@@ -57,7 +57,7 @@ export const CompleteSubtaskButton: React.FC<{
 
   return (
     <Button className="flex-1 rounded-sm" onClick={onCompleteSubtask}>
-      {t('subtask.complete')}
+      {t("subtask.complete")}
     </Button>
   );
 };

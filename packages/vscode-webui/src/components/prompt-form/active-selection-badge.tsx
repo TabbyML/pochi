@@ -25,7 +25,7 @@ export const ActiveSelectionBadge: React.FC<ActiveSelectionBadgeProps> = ({
 
     if (activeSelection.notebookCell) {
       const cellIndex = activeSelection.notebookCell.cellIndex + 1;
-      return `${filename} • ${t('activeSelectionBadge.cell')} ${cellIndex}`;
+      return `${filename} • ${t("activeSelectionBadge.cell")} ${cellIndex}`;
     }
 
     return filename;
@@ -69,7 +69,7 @@ export const ActiveSelectionBadge: React.FC<ActiveSelectionBadgeProps> = ({
             onClick={onClick}
           >
             <Plus className="size-3" />
-            {t('activeSelectionBadge.addContext')}
+            {t("activeSelectionBadge.addContext")}
           </Button>
         )}
       </div>

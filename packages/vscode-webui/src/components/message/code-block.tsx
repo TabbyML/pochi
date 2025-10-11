@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { useCopyToClipboard } from "@/lib/hooks/use-copy-to-clipboard";
 import { CheckIcon, CodeIcon, CopyIcon, ImageIcon } from "lucide-react";
 import { type FC, memo, useState } from "react";
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from "react-i18next";
 
 import {
   Tooltip,
@@ -109,14 +109,18 @@ const CodeBlock: FC<CodeBlockProps> = memo(
               {language === "mermaid" && (
                 <MenuButton
                   onClick={() => setShowMermaidPreview(!showMermaidPreview)}
-                  tooltip={showMermaidPreview ? t('codeBlock.showCode') : t('codeBlock.showDiagram')}
+                  tooltip={
+                    showMermaidPreview
+                      ? t("codeBlock.showCode")
+                      : t("codeBlock.showDiagram")
+                  }
                 >
                   {showMermaidPreview ? <CodeIcon /> : <ImageIcon />}
                 </MenuButton>
               )}
-              <MenuButton onClick={onCopy} tooltip={t('codeBlock.copy')}>
+              <MenuButton onClick={onCopy} tooltip={t("codeBlock.copy")}>
                 {isCopied ? <CheckIcon /> : <CopyIcon />}
-                <span className="sr-only">{t('codeBlock.copy')}</span>
+                <span className="sr-only">{t("codeBlock.copy")}</span>
               </MenuButton>
             </div>
           </div>

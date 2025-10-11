@@ -322,7 +322,7 @@ function CompactPartToolTip({
       </TooltipTrigger>
       <TooltipContent sideOffset={2} side="right">
         <p className="m-0 w-48">
-          {t('messageList.compactedConversationTooltip')}
+          {t("messageList.compactedConversationTooltip")}
         </p>
       </TooltipContent>
     </Tooltip>
