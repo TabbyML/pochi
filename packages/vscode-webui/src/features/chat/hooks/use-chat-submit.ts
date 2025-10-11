@@ -3,7 +3,7 @@ import type { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
 import type { UseChatHelpers } from "@ai-sdk/react";
 import { getLogger, prompts } from "@getpochi/common";
 import type { Message } from "@getpochi/livekit";
-import { isAutoApproveToolName, isUserInputToolName } from "@getpochi/tools";
+import { isAutoExecuteToolName } from "@getpochi/tools";
 import type { FileUIPart } from "ai";
 import type React from "react";
 import { useCallback } from "react";
@@ -55,10 +55,7 @@ export function useChatSubmit({
 
   const abortPreviewingToolCalls = useCallback(() => {
     for (const toolCall of previewingToolCalls || []) {
-      if (
-        !isUserInputToolName(toolCall.toolName) &&
-        !isAutoApproveToolName(toolCall.toolName)
-      ) {
+      if (!isAutoExecuteToolName(toolCall.toolName)) {
         toolCall.abort();
       }
     }

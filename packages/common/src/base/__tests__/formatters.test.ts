@@ -1,6 +1,5 @@
 import type { UIMessage } from 'ai';
 import { clone } from 'remeda';
-import { isAutoApproveTool, isUserInputToolPart } from '@getpochi/tools';
 import { describe, expect, it, vi } from 'vitest';
 import { formatters } from '../formatters';
 
@@ -9,7 +8,6 @@ vi.mock('@getpochi/tools', async (importOriginal) => {
   const original = await importOriginal<typeof import('@getpochi/tools')>();
   return {
     ...original,
-    isAutoApproveTool: vi.fn(),
     isUserInputToolPart: vi.fn(),
   };
 });
@@ -105,47 +103,6 @@ describe('formatters', () => {
       expect(formatted[0].parts).toHaveLength(2);
       expect((formatted[0].parts[0] as any).state).toBe('output-available');
       expect((formatted[0].parts[1] as any).state).toBe('input-available');
-    });
-
-    it('should mark a non-auto-approved tool as cancelled', () => {
-      vi.mocked(isAutoApproveTool).mockReturnValue(false);
-      vi.mocked(isUserInputToolPart).mockReturnValue(false);
-
-      const messages: UIMessage[] = [
-        {
-          id: 'assistant-1',
-          role: 'assistant',
-          parts: [createToolPart('testTool', 'input-available')],
-        },
-        // Add a subsequent message to ensure the tool call is resolved
-        { id: 'user-final', role: 'user', parts: [{ type: 'text', text: 'go' }] },
-      ];
-
-      const formatted = formatters.ui(clone(messages));
-      const toolPart = formatted[0].parts[0] as any;
-
-      expect(toolPart.state).toBe('output-available');
-      expect(toolPart.output).toEqual({ error: 'User cancelled the tool call.' });
-    });
-
-    it('should mark an auto-approved tool as successful', () => {
-      vi.mocked(isAutoApproveTool).mockReturnValue(true);
-      vi.mocked(isUserInputToolPart).mockReturnValue(false);
-
-      const messages: UIMessage[] = [
-        {
-          id: 'assistant-1',
-          role: 'assistant',
-          parts: [createToolPart('testTool', 'input-available')],
-        },
-        { id: 'user-final', role: 'user', parts: [{ type: 'text', text: 'go' }] },
-      ];
-
-      const formatted = formatters.ui(clone(messages));
-      const toolPart = formatted[0].parts[0] as any;
-
-      expect(toolPart.state).toBe('output-available');
-      expect(toolPart.output).toEqual({ success: true });
     });
   });
 
