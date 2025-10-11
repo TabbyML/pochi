@@ -1,4 +1,5 @@
 import type { Store } from "@livestore/livestore";
+import type { JSONValue } from "ai";
 import z from "zod";
 import { StoreBlobProtocol } from ".";
 import { events } from "./livestore";
@@ -29,7 +30,16 @@ export async function processContentOutput(
       content: await Promise.all(content),
     };
   }
-  return output;
+
+  return {
+    content: [
+      {
+        type: "json",
+        // @ts-expect-error
+        data: toJSONValue(output?.content),
+      },
+    ],
+  };
 }
 
 const ContentOutput = z.object({
@@ -155,4 +165,8 @@ export function makeDownloadFunction(store: Store) {
   };
 
   return downloadFn;
+}
+
+function toJSONValue(value: unknown): JSONValue {
+  return value === undefined ? null : (value as JSONValue);
 }
