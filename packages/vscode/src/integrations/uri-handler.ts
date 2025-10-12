@@ -209,7 +209,7 @@ class RagdollUriHandler implements vscode.UriHandler, vscode.Disposable {
         await vscode.commands.executeCommand(
           "pochi.createProject",
           event,
-          this.currentWorkspaceUri,
+          newWorkspaceUri.fsPath,
         );
       }
     }
