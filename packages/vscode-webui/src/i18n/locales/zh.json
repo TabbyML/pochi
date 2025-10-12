@@ -251,8 +251,6 @@
     "copy": "复制"
   },
   "messageList": {
-    "defaultUserName": "用户",
-    "defaultAssistantName": "Pochi",
     "compactedConversationTooltip": "从此处开始，对话已被压缩以减少令牌使用量"
   },
   "markdown": {

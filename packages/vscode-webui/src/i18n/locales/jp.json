@@ -252,8 +252,6 @@
     "copy": "コピー"
   },
   "messageList": {
-    "defaultUserName": "ユーザー",
-    "defaultAssistantName": "Pochi",
     "compactedConversationTooltip": "トークン使用量を削減するため、この時点から会話が圧縮されています"
   },
   "markdown": {
