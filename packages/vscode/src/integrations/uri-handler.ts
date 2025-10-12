@@ -180,7 +180,7 @@ class RagdollUriHandler implements vscode.UriHandler, vscode.Disposable {
     await this.workspaceJobQueue.push({
       workspaceUri: newWorkspaceUri.toString(),
       command: "pochi.createProject",
-      args: [event, this.currentWorkspaceUri?.fsPath],
+      args: [event, newWorkspaceUri?.fsPath],
       expiresAt: Date.now() + 1000 * 60,
     });
 
@@ -209,7 +209,7 @@ class RagdollUriHandler implements vscode.UriHandler, vscode.Disposable {
         await vscode.commands.executeCommand(
           "pochi.createProject",
           event,
-          this.currentWorkspaceUri,
+          newWorkspaceUri.fsPath,
         );
       }
     }

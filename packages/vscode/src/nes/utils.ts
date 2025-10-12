@@ -6,9 +6,9 @@ export function applyEdit(original: string, changes: TextContentChange[]) {
   });
   let text = "";
   let index = 0;
-  for (const changes of sortedChanges) {
-    text += original.slice(index, changes.rangeOffset) + changes.text;
-    index = changes.rangeOffset + changes.rangeLength;
+  for (const change of sortedChanges) {
+    text += original.slice(index, change.rangeOffset) + change.text;
+    index = change.rangeOffset + change.rangeLength;
   }
   text += original.slice(index);
   return text;

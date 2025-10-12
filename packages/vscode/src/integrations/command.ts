@@ -190,7 +190,15 @@ export class CommandManager implements vscode.Disposable {
                   progress,
                   vscode.Uri.parse(cwd),
                   params.githubTemplateUrl,
-                  { uid: params.uid, prompt: params.prompt },
+                  {
+                    uid: params.uid,
+                    prompt: params.prompt,
+                    files: params.attachments?.map((attachment) => ({
+                      contentType: attachment.contentType || "file",
+                      name: attachment.name || "",
+                      url: attachment.url,
+                    })),
+                  },
                   params.uid,
                 );
               } catch (error) {

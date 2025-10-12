@@ -1,8 +1,11 @@
 import { type ToolCallLifeCycle, useToolCallLifeCycle } from "@/features/chat";
 import type { Chat } from "@ai-sdk/react";
+import { getLogger } from "@getpochi/common";
 import type { Message } from "@getpochi/livekit";
 import { isToolUIPart } from "ai";
 import { useEffect } from "react";
+
+const logger = getLogger("UseAddCompleteToolCalls");
 
 interface UseAddCompleteToolCallsProps {
   messages: Message[];
@@ -42,6 +45,14 @@ export function useAddCompleteToolCalls({
       if (toolCall.status !== "complete") continue;
       if (isToolStateCall(lastMessage, toolCall.toolCallId)) {
         const result = overrideResult(toolCall.complete);
+        logger.debug(
+          {
+            tool: toolCall.toolName,
+            toolCallId: toolCall.toolCallId,
+            output: result,
+          },
+          "Tool call completed",
+        );
         addToolResult({
           // @ts-expect-error
           tool: toolCall.toolName,

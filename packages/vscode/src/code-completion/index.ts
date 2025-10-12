@@ -84,11 +84,7 @@ export class CompletionProvider
     private readonly editorOptionsProvider: EditorOptionsProvider,
     private readonly client: CodeCompletionClient,
   ) {
-    if (
-      !pochiConfiguration.advancedSettings.value.nextEditSuggestion?.enabled
-    ) {
-      this.initialize();
-    }
+    this.initialize();
   }
 
   private initialize() {
@@ -119,7 +115,14 @@ export class CompletionProvider
     }
     const { disabled, disabledLanguages } =
       this.pochiConfiguration.advancedSettings.value.inlineCompletion ?? {};
-    if (disabled || disabledLanguages?.includes(document.languageId)) {
+    const nesEnabled =
+      this.pochiConfiguration.advancedSettings.value.nextEditSuggestion
+        ?.enabled;
+    if (
+      disabled ||
+      disabledLanguages?.includes(document.languageId) ||
+      nesEnabled
+    ) {
       return null;
     }
 

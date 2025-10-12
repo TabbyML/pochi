@@ -82,7 +82,9 @@ const envPlugin = EnvironmentPlugin({
 export default defineConfig({
   plugins: [
     envPlugin,
-    tsconfigPaths(),
+    tsconfigPaths({
+      ignoreConfigErrors: true,
+    }),
     TanStackRouterVite({ autoCodeSplitting: true }),
     viteReact({
       babel: {
