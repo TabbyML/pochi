@@ -104,7 +104,9 @@
       "write": "写入",
       "execute": "执行",
       "mcp": "MCP",
-      "retry": "重试"
+      "retry": "重试",
+      "subtaskOffhand": "子任务 - 自动",
+      "subtaskManual": "子任务 - 手动"
     },
     "customAgents": {
       "title": "自定义代理",

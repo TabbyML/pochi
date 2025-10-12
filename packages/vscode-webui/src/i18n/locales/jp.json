@@ -104,7 +104,9 @@
       "write": "書き込み",
       "execute": "実行",
       "mcp": "MCP",
-      "retry": "再試行"
+      "retry": "再試行",
+      "subtaskOffhand": "サブタスク - 自動",
+      "subtaskManual": "サブタスク - 手動"
     },
     "customAgents": {
       "title": "カスタムエージェント",

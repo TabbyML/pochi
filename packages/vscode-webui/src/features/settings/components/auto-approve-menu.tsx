@@ -232,7 +232,9 @@ export function AutoApproveMenu({ isSubTask }: { isSubTask: boolean }) {
                 <span className="ml-1.5 flex items-center gap-2 font-semibold">
                   <SquareChevronRightIcon className="size-4 shrink-0" />
                   <span className="whitespace-nowrap text-foreground text-sm">
-                    {subtaskOffhand ? "Subtask - Offhand" : "Subtask - Manual"}
+                    {subtaskOffhand
+                      ? t("settings.autoApprove.subtaskOffhand")
+                      : t("settings.autoApprove.subtaskManual")}
                   </span>
                 </span>
               </label>

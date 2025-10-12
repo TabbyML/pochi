@@ -104,7 +104,9 @@
       "write": "쓰기",
       "execute": "실행",
       "mcp": "MCP",
-      "retry": "재시도"
+      "retry": "재시도",
+      "subtaskOffhand": "하위 작업 - 자동",
+      "subtaskManual": "하위 작업 - 수동"
     },
     "customAgents": {
       "title": "커스텀 에이전트",

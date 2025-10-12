@@ -106,7 +106,9 @@
       "write": "Write",
       "execute": "Execute",
       "mcp": "MCP",
-      "retry": "Retry"
+      "retry": "Retry",
+      "subtaskOffhand": "Subtask - Offhand",
+      "subtaskManual": "Subtask - Manual"
     },
     "customAgents": {
       "title": "Custom Agents",
@@ -318,5 +320,10 @@
     "attempts": "Attempts:",
     "countdown": "Countdown:",
     "delay": "Delay:"
+  },
+  "editNotebook": {
+    "editing": "Editing ",
+    "cell": "Cell",
+    "cellId": "Cell ID: "
   }
 }
