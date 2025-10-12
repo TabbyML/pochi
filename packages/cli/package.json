@@ -1,6 +1,6 @@
 {
   "name": "@getpochi/cli",
-  "version": "0.5.80",
+  "version": "0.5.81",
   "type": "module",
   "bin": {
     "pochi": "src/cli.ts"
