@@ -1,10 +1,10 @@
 import type { PendingApproval } from "@/features/approval";
 import type { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
+import { prepareMessageParts } from "@/lib/message-utils";
 import type { UseChatHelpers } from "@ai-sdk/react";
-import { getLogger, prompts } from "@getpochi/common";
+import { getLogger } from "@getpochi/common";
 import type { Message } from "@getpochi/livekit";
 import { isAutoSuccessToolName } from "@getpochi/tools";
-import type { FileUIPart } from "ai";
 import type React from "react";
 import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
@@ -183,30 +183,4 @@ export function useChatSubmit({
     handleSubmit,
     handleStop,
   };
-}
-
-function prepareMessageParts(
-  input: string,
-  files: FileUIPart[],
-  t: ReturnType<typeof useTranslation>["t"],
-) {
-  const parts: Message["parts"] = [...files];
-  if (files.length > 0) {
-    parts.push({
-      type: "text",
-      text: prompts.createSystemReminder(
-        `Attached files: ${files.map(getFilePrompt).join(", ")}`,
-      ),
-    });
-  }
-  parts.push({ type: "text", text: input || t("chat.pleaseCheckFiles") });
-  return parts;
-}
-
-function getFilePrompt(file: FileUIPart, index: number): string {
-  const filename = file.filename || `file-${index}`;
-  if (file.url.startsWith("http")) {
-    return `[${filename}](${file.url})`;
-  }
-  return filename;
 }
