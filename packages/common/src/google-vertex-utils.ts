@@ -11,7 +11,12 @@ declare global {
 
 function createPatchedFetchForFinetune(accessToken?: string | undefined) {
   function patchString(str: string) {
-    return str.replace("/publishers/google/models", "/endpoints");
+    const matches = str.match(/models\/([^:]+)/);
+    const modelId = matches ? matches[1] : undefined;
+    if (modelId && isEndpointModelId(modelId)) {
+      return str.replace("/publishers/google/models", "/endpoints");
+    }
+    return str;
   }
 
   return (requestInfo: Request | URL | string, requestInit?: RequestInit) => {
@@ -69,9 +74,7 @@ export function createVertexModel(vertex: GoogleVertexModel, modelId: string) {
         privateKeyId: service_account_key.private_key_id,
         privateKey: service_account_key.private_key,
       },
-      fetch: isEndpointModelId(modelId)
-        ? createPatchedFetchForFinetune()
-        : undefined,
+      fetch: createPatchedFetchForFinetune(),
     })(modelId);
   }
 
@@ -81,9 +84,7 @@ export function createVertexModel(vertex: GoogleVertexModel, modelId: string) {
       project: projectId,
       location,
       baseURL: getBaseURL(location, projectId),
-      fetch: isEndpointModelId(modelId)
-        ? createPatchedFetchForFinetune(accessToken)
-        : undefined,
+      fetch: createPatchedFetchForFinetune(accessToken),
     })(modelId);
   }
 
