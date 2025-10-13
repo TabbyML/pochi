@@ -90,10 +90,26 @@ function StoreWithCommitHook({ children }: { children: React.ReactNode }) {
   }, [store]);
 
   useEffect(() => {
-    taskSyncEmitter.on("taskSync", (data) => {
-      // @ts-ignore
-      store.commit(catalog.events.taskSync(data));
+    if (globalThis.POCHI_WEBVIEW_KIND !== "pane") {
+      return;
+    }
+    const unsubscribe = taskSyncEmitter.on("taskSync", (task) => {
+      store.commit(
+        catalog.events.taskSync({
+          ...task,
+          shareId: task.shareId ?? undefined,
+          cwd: task.cwd ?? undefined,
+          title: task.title ?? undefined,
+          parentId: task.parentId ?? undefined,
+          git: task.git ?? undefined,
+          totalTokens: task.totalTokens ?? undefined,
+          error: task.error ?? undefined,
+          createdAt: new Date(task.createdAt),
+          updatedAt: new Date(task.updatedAt),
+        }),
+      );
     });
+    return () => unsubscribe();
   }, [store]);
 
   if (globalThis.POCHI_WEBVIEW_KIND === "sidebar") {

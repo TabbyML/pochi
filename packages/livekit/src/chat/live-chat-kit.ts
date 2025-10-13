@@ -1,4 +1,4 @@
-import { getLogger } from "@getpochi/common";
+import { type GitStatus, getLogger } from "@getpochi/common";
 
 import type { CustomAgent } from "@getpochi/tools";
 import type { Store } from "@livestore/livestore";
@@ -54,7 +54,6 @@ export class LiveChatKit<
   protected readonly store: Store;
   readonly chat: T;
   private readonly transport: FlexibleChatTransport;
-  private readonly getters: PrepareRequestGetters;
 
   readonly spawn: () => Promise<string>;
 
@@ -73,7 +72,6 @@ export class LiveChatKit<
   }: LiveChatKitOptions<T>) {
     this.taskId = taskId;
     this.store = store;
-    this.getters = getters;
     this.transport = new FlexibleChatTransport({
       store,
       onStart: this.onStart,
@@ -181,8 +179,8 @@ export class LiveChatKit<
   async init(
     cwd: string | undefined,
     promptOrParts?: string | Message["parts"],
+    git?: GitStatus,
   ) {
-    const environment = await this.getters.getEnvironment?.({ messages: [] });
     const parts =
       typeof promptOrParts === "string"
         ? [{ type: "text", text: promptOrParts }]
@@ -199,7 +197,7 @@ export class LiveChatKit<
               parts,
             }
           : undefined,
-        git: toTaskGitInfo(environment?.workspace.gitStatus),
+        git: toTaskGitInfo(git),
       }),
     );
 
@@ -276,14 +274,12 @@ export class LiveChatKit<
         getModel,
       });
 
-      const { gitStatus } = environment?.workspace || {};
-
       store.commit(
         events.chatStreamStarted({
           id: this.taskId,
           data: lastMessage,
           todos: environment?.todos || [],
-          git: toTaskGitInfo(gitStatus),
+          git: toTaskGitInfo(environment?.workspace.gitStatus),
           updatedAt: new Date(),
         }),
       );

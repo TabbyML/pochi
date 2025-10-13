@@ -23,8 +23,7 @@ export const readEnvironment = async (
 
   const customRules = await collectCustomRules(cwd);
   const systemInfo = getSystemInfo(cwd);
-  const gitStatusReader = new GitStatusReader({ cwd });
-  const gitStatus = await gitStatusReader.readGitStatus();
+  const gitStatus = await readGitStatus(cwd);
 
   const environment: Environment = {
     currentTime: new Date().toString(),
@@ -43,4 +42,9 @@ export const readEnvironment = async (
   };
 
   return environment;
+};
+
+export const readGitStatus = async (cwd: string) => {
+  const gitStatusReader = new GitStatusReader({ cwd });
+  return await gitStatusReader.readGitStatus();
 };

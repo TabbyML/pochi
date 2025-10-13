@@ -289,6 +289,7 @@ const materializers = State.SQLite.materializers(events, {
   ],
   "v1.TaskSync": ({ messages, ...task }) => [
     tables.tasks.insert(task).onConflict("id", "replace"),
+    tables.messages.delete().where("taskId", "=", task.id),
     ...messages.map((message) =>
       tables.messages
         .insert({
