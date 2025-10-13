@@ -1,6 +1,6 @@
 import type { ThreadAbortSignalSerialization } from "@quilted/threads";
 import type { ThreadSignalSerialization } from "@quilted/threads/signals";
-import type { Environment } from "../base";
+import type { Environment, GitStatus } from "../base";
 import type { UserInfo } from "../configuration";
 import type {
   CaptureEvent,
@@ -42,6 +42,8 @@ export interface VSCodeHostApi {
   ): Promise<void>;
 
   readEnvironment(isSubTask?: boolean): Promise<Environment>;
+
+  readGitStatus(): Promise<GitStatus | undefined>;
 
   previewToolCall(
     toolName: string,

@@ -176,7 +176,7 @@ export class LiveChatKit<
     };
   }
 
-  async init(
+  init(
     cwd: string | undefined,
     promptOrParts?: string | Message["parts"],
     git?: GitStatus,
