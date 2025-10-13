@@ -19,14 +19,21 @@ import { usePochiCredentials } from "./lib/hooks/use-pochi-credentials";
 import { setActiveStore, vscodeHost } from "./lib/vscode";
 import LiveStoreWorker from "./livestore.worker.ts?worker&inline";
 
-const adapter =
-  globalThis.POCHI_WEBVIEW_KIND === "sidebar"
-    ? makePersistedAdapter({
-        storage: { type: "opfs" },
-        worker: LiveStoreWorker,
-        sharedWorker: LiveStoreSharedWorker,
-      })
-    : makeInMemoryAdapter();
+const adapter = (() => {
+  if (!globalThis.POCHI_LIVEKIT_ADAPTER) {
+    globalThis.POCHI_LIVEKIT_ADAPTER =
+      globalThis.POCHI_WEBVIEW_KIND === "sidebar"
+        ? makePersistedAdapter({
+            storage: { type: "opfs" },
+            worker: LiveStoreWorker,
+            sharedWorker: LiveStoreSharedWorker,
+          })
+        : makeInMemoryAdapter();
+  }
+  return globalThis.POCHI_LIVEKIT_ADAPTER as ReturnType<
+    typeof makePersistedAdapter
+  >;
+})();
 
 interface StoreDateContextType {
   storeDate: Date;
