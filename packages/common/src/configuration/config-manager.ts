@@ -29,7 +29,7 @@ function prop(data: unknown, ...keys: ReadonlyArray<PropertyKey>): unknown {
 }
 
 // current only allow workspace to override mcp setting
-const AllowedWorkspaceConfigKeys = ["mcp"] as const;
+const AllowedWorkspaceConfigKeys = ["mcp", "providers"] as const;
 
 const configFileName = isDev ? "dev-config.jsonc" : "config.jsonc";
 
@@ -76,11 +76,8 @@ class PochiConfigManager {
       const workspaceValue = prop(
         this.workspaceConfigFile?.config.value || {},
         key,
-      ) as PochiConfig[typeof key];
-      const userValue = prop(
-        this.userConfigFile.config.value,
-        key,
-      ) as PochiConfig[typeof key];
+      );
+      const userValue = prop(this.userConfigFile.config.value, key);
       // must be shallow merge, because mcp is a record of record, we want to merge the inner record instead of override it
       mergedValue[key] = merge(userValue, workspaceValue ?? {});
     }
