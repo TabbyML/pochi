@@ -69,7 +69,9 @@ export function createVertexModel(vertex: GoogleVertexModel, modelId: string) {
         privateKeyId: service_account_key.private_key_id,
         privateKey: service_account_key.private_key,
       },
-      fetch: createPatchedFetchForFinetune(),
+      fetch: isEndpointModelId(modelId)
+        ? createPatchedFetchForFinetune()
+        : undefined,
     })(modelId);
   }
 
@@ -79,7 +81,9 @@ export function createVertexModel(vertex: GoogleVertexModel, modelId: string) {
       project: projectId,
       location,
       baseURL: getBaseURL(location, projectId),
-      fetch: createPatchedFetchForFinetune(accessToken),
+      fetch: isEndpointModelId(modelId)
+        ? createPatchedFetchForFinetune(accessToken)
+        : undefined,
     })(modelId);
   }
 
@@ -123,4 +127,9 @@ export function createVertexModel(vertex: GoogleVertexModel, modelId: string) {
   }
 
   return undefined as never;
+}
+
+function isEndpointModelId(modelId: string): boolean {
+  // endpoint model is all numberic
+  return /^\d+$/.test(modelId);
 }
