@@ -30,11 +30,12 @@ export async function processContentOutput(
     };
   }
 
-  try {
-    return JSON.parse(JSON.stringify(output));
-  } catch {
-    return output;
+  if (typeof output === "object" && output !== null && "toolResult" in output) {
+    const { toolResult, ...rest } = output as { toolResult: unknown };
+    return rest;
   }
+
+  return output;
 }
 
 const ContentOutput = z.object({

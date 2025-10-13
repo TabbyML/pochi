@@ -339,6 +339,7 @@ export class TaskRunner {
         // @ts-expect-error
         tool: toolName,
         toolCallId: toolCall.toolCallId,
+        // @ts-expect-error
         output: toolResult,
       });
 
