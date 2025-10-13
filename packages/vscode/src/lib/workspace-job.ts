@@ -3,7 +3,7 @@ import { inject, injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
 
 export interface WorkspaceJob {
-  // should get from vscode.Uri.toString()
+  // should get from vscode.Uri.fsPath
   workspaceUri: string;
 
   // registered command id
