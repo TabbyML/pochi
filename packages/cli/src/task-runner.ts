@@ -203,6 +203,7 @@ export class TaskRunner {
     } catch (e) {
       const error = toError(e);
       logger.trace("Failed:", error);
+      this.chatKit.markAsFailed(error);
     }
   }
 

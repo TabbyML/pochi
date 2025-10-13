@@ -139,6 +139,14 @@ export const events = {
       ),
     }),
   }),
+  taskFailed: Events.synced({
+    name: "v1.TaskFailed",
+    schema: Schema.Struct({
+      id: Schema.String,
+      error: TaskError,
+      updatedAt: Schema.Date,
+    }),
+  }),
   chatStreamStarted: Events.synced({
     name: "v1.ChatStreamStarted",
     schema: Schema.Struct({
@@ -230,6 +238,15 @@ const materializers = State.SQLite.materializers(events, {
           }),
         ]
       : []),
+  ],
+  "v1.TaskFailed": ({ id, error, updatedAt }) => [
+    tables.tasks
+      .update({
+        status: "failed",
+        error,
+        updatedAt,
+      })
+      .where({ id }),
   ],
   "v1.ChatStreamStarted": ({ id, data, todos, git, title, updatedAt }) => [
     tables.tasks

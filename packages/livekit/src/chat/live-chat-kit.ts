@@ -224,6 +224,16 @@ export class LiveChatKit<
     );
   };
 
+  markAsFailed = (error: Error) => {
+    this.store.commit(
+      events.taskFailed({
+        id: this.taskId,
+        error: toTaskError(error),
+        updatedAt: new Date(),
+      }),
+    );
+  };
+
   private readonly onStart: OnStartCallback = async ({
     messages,
     environment,
