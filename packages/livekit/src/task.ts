@@ -1,4 +1,5 @@
 import { isAbortError } from "@ai-sdk/provider-utils";
+import type { GitStatus } from "@getpochi/common";
 import {
   APICallError,
   type FinishReason,
@@ -7,7 +8,7 @@ import {
   isToolUIPart,
 } from "ai";
 import type { tables } from "./livestore/schema";
-import type { Message } from "./types";
+import type { Message, Task } from "./types";
 
 export function toTaskStatus(
   message: Message,
@@ -93,3 +94,15 @@ export function toTaskError(
 
   return internalError(error.message);
 }
+
+export type TaskGitInfo = NonNullable<Task["git"]> | undefined;
+
+export const toTaskGitInfo = (gitStatus: GitStatus): TaskGitInfo => {
+  if (!gitStatus) return undefined;
+  return {
+    origin: gitStatus.origin,
+    branch: gitStatus.currentBranch,
+    worktree: gitStatus.worktree,
+    gitdir: gitStatus.gitdir,
+  };
+};

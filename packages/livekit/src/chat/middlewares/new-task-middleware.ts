@@ -7,18 +7,14 @@ import { type CustomAgent, newTaskInputSchema } from "@getpochi/tools";
 import type { Store } from "@livestore/livestore";
 import { InvalidToolInputError } from "ai";
 import { events } from "../../livestore/schema";
+import type { TaskGitInfo } from "../../task";
 
 export function createNewTaskMiddleware(
   store: Store,
   cwd: string | undefined,
   parentTaskId: string,
+  git: TaskGitInfo,
   customAgents?: CustomAgent[],
-  gitStatus?: {
-    branch: string;
-    origin?: string;
-    gitRoot: string;
-    worktree: string;
-  },
 ): LanguageModelV2Middleware {
   return {
     middlewareVersion: "v2",
@@ -116,7 +112,7 @@ export function createNewTaskMiddleware(
                       },
                     ],
                   },
-                  git: gitStatus,
+                  git,
                 }),
               );
 

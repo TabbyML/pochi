@@ -92,13 +92,15 @@ export const Environment = z.object({
           recentCommits: z
             .array(z.string())
             .describe("A list of recent git commits."),
-          gitRoot: z
+          gitdir: z
             .string()
-            .describe("The root directory of the git repository."),
+            .describe(
+              "The path to the .git directory that contains the repository data (not containing the .git directory itself).",
+            ),
           worktree: z
             .string()
             .describe(
-              "The current worktree the cwd is in. Same as gitRoot unless using git worktrees.",
+              "The current worktree the cwd is in. Same as gitdir unless using git worktrees.",
             ),
         })
         .optional()

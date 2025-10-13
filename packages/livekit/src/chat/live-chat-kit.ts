@@ -6,7 +6,7 @@ import type { ChatInit, ChatOnErrorCallback, ChatOnFinishCallback } from "ai";
 import type z from "zod/v4";
 import { makeMessagesQuery, makeTaskQuery } from "../livestore/queries";
 import { events, tables } from "../livestore/schema";
-import { toTaskError, toTaskStatus } from "../task";
+import { toTaskError, toTaskGitInfo, toTaskStatus } from "../task";
 import type { Message } from "../types";
 import { scheduleGenerateTitleJob } from "./background-job";
 import {
@@ -171,14 +171,7 @@ export class LiveChatKit<
               },
             ],
           },
-          git: gitStatus
-            ? {
-                origin: gitStatus.origin,
-                branch: gitStatus.currentBranch,
-                worktree: gitStatus.worktree,
-              }
-            : undefined,
-          gitRoot: gitStatus?.gitRoot,
+          git: toTaskGitInfo(gitStatus),
         }),
       );
       return taskId;
@@ -206,14 +199,7 @@ export class LiveChatKit<
               parts,
             }
           : undefined,
-        git: environment?.workspace.gitStatus
-          ? {
-              origin: environment.workspace.gitStatus.origin,
-              branch: environment.workspace.gitStatus.currentBranch,
-              worktree: environment.workspace.gitStatus.worktree,
-            }
-          : undefined,
-        gitRoot: environment?.workspace.gitStatus?.gitRoot,
+        git: toTaskGitInfo(environment?.workspace.gitStatus),
       }),
     );
 
@@ -272,14 +258,7 @@ export class LiveChatKit<
             id: this.taskId,
             cwd: environment?.info.cwd,
             createdAt: new Date(),
-            git: environment?.workspace.gitStatus
-              ? {
-                  origin: environment.workspace.gitStatus.origin,
-                  branch: environment.workspace.gitStatus.currentBranch,
-                  worktree: environment.workspace.gitStatus.worktree,
-                }
-              : undefined,
-            gitRoot: environment?.workspace.gitStatus?.gitRoot,
+            git: toTaskGitInfo(environment?.workspace.gitStatus),
           }),
         );
       }
@@ -304,14 +283,7 @@ export class LiveChatKit<
           id: this.taskId,
           data: lastMessage,
           todos: environment?.todos || [],
-          git: gitStatus
-            ? {
-                origin: gitStatus.origin,
-                branch: gitStatus.currentBranch,
-                worktree: gitStatus.worktree,
-              }
-            : undefined,
-          gitRoot: gitStatus?.gitRoot,
+          git: toTaskGitInfo(gitStatus),
           updatedAt: new Date(),
         }),
       );

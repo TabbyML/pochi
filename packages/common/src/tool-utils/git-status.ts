@@ -132,7 +132,7 @@ export class GitStatusReader {
       recentCommits,
       userName,
       userEmail,
-      gitRoot,
+      gitdir,
       worktree,
     ] = await Promise.all([
       this.execGit("remote get-url origin").catch(() => undefined),
@@ -162,7 +162,7 @@ export class GitStatusReader {
       recentCommits,
       userName,
       userEmail,
-      gitRoot: gitRoot.replace(/[\/\\]\.git$/, ""),
+      gitdir: gitdir.replace(/[\/\\]\.git$/, ""),
       worktree,
     };
   }

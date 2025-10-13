@@ -24,6 +24,7 @@ import {
 import { pickBy } from "remeda";
 import type z from "zod/v4";
 import { makeDownloadFunction } from "../store-blob";
+import { toTaskGitInfo } from "../task";
 import type { Message, Metadata, RequestData } from "../types";
 import { makeRepairToolCall } from "./llm";
 import { parseMcpToolSet } from "./mcp-utils";
@@ -117,15 +118,8 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
           this.store,
           environment?.info.cwd,
           chatId,
+          toTaskGitInfo(environment?.workspace.gitStatus),
           customAgents,
-          environment?.workspace.gitStatus
-            ? {
-                origin: environment.workspace.gitStatus.origin,
-                branch: environment.workspace.gitStatus.currentBranch,
-                gitRoot: environment.workspace.gitStatus.gitRoot,
-                worktree: environment.workspace.gitStatus.worktree,
-              }
-            : undefined,
         ),
       );
     }

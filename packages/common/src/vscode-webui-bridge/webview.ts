@@ -17,7 +17,7 @@ import type {
 } from "./index";
 import type { DisplayModel } from "./types/model";
 import type { PochiCredentials } from "./types/pochi";
-import type { TaskData, TaskDataParams } from "./types/task";
+import type { TaskDataParams } from "./types/task";
 
 export interface VSCodeHostApi {
   readResourceURI(): Promise<ResourceURI>;
@@ -272,7 +272,9 @@ export interface VSCodeHostApi {
     ThreadSignalSerialization<Record<string, UserInfo>>
   >;
 
-  openTaskInPanel(task: TaskData): Promise<void>;
+  openTaskInPanel(
+    task: unknown /** @link packages/vscode-webui/src/livestore-provider.tsx#TaskSyncData */,
+  ): Promise<void>;
 
   bridgeStoreEvent(
     webviewKind: "sidebar" | "pane",

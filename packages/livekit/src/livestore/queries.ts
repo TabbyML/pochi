@@ -27,7 +27,7 @@ export const tasks$ = queryDb(
 export const makeTasksQuery = (cwd: string) =>
   queryDb(
     {
-      query: sql`select * from tasks where parentId is null and (cwd = '${cwd}' or gitRoot = '${cwd}') order by updatedAt desc`,
+      query: sql`select * from tasks where parentId is null and (cwd = '${cwd}' or git->>'$.gitdir' = '${cwd}') order by updatedAt desc`,
       schema: Schema.Array(tables.tasks.rowSchema),
     },
     {

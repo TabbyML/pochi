@@ -90,7 +90,10 @@ export class PochiWebviewPanel
       logger.info(`Revealed existing Pochi panel: ${sessionId}`);
       if (task) {
         logger.info(`Opening task ${task.id} in existing panel`);
-        existingPanel?.webviewHost?.openTask({ uid: task.id, task });
+        existingPanel?.webviewHost?.openTask({
+          uid: task.id,
+          task,
+        });
       }
       return;
     }

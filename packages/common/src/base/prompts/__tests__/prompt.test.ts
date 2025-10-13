@@ -50,7 +50,7 @@ test("environment", () => {
               '02b50f727 feat(chat): add environment property to prepareRequestBody',
               '962185adb feat(webui): add new task link and pending component',
             ],
-            gitRoot: '/Users/username/repo',
+            gitdir: '/Users/username/repo',
             worktree: '/Users/username/repo',
           },
           terminals: [

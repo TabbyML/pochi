@@ -49,9 +49,22 @@ const TaskError = Schema.Union(
 );
 
 const Git = Schema.Struct({
+  /**
+   * The remote URL of the repository
+   */
   origin: Schema.optional(Schema.String),
-  branch: Schema.String,
+  /**
+   * The path to the .git directory path that contains the repository data (not containing the .git directory itself)
+   */
+  gitdir: Schema.String,
+  /**
+   * The path to the working tree of the current task cwd
+   */
   worktree: Schema.String,
+  /**
+   * The current branch name of the worktree
+   */
+  branch: Schema.String,
 });
 
 export const tables = {
@@ -76,7 +89,6 @@ export const tables = {
         nullable: true,
         schema: Git,
       }),
-      gitRoot: State.SQLite.text({ nullable: true }),
       totalTokens: State.SQLite.integer({ nullable: true }),
       error: State.SQLite.json({ schema: TaskError, nullable: true }),
       createdAt: State.SQLite.integer({ schema: Schema.DateFromNumber }),
@@ -95,10 +107,6 @@ export const tables = {
       {
         name: "idx-cwd",
         columns: ["cwd"],
-      },
-      {
-        name: "idx-gitRoot",
-        columns: ["gitRoot"],
       },
     ],
   }),
@@ -128,23 +136,38 @@ export const tables = {
   }),
 };
 
+const taskInitFields = {
+  id: Schema.String,
+  parentId: Schema.optional(Schema.String),
+  cwd: Schema.optional(Schema.String),
+  createdAt: Schema.Date,
+  git: Schema.optional(Git),
+};
+
+const taskFullFields = {
+  ...taskInitFields,
+  shareId: Schema.optional(Schema.String),
+  isPublicShared: Schema.Boolean,
+  title: Schema.optional(Schema.String),
+  status: TaskStatus,
+  todos: Todos,
+  totalTokens: Schema.optional(Schema.Number),
+  error: Schema.optional(TaskError),
+  updatedAt: Schema.Date,
+};
+
 // Events describe data changes (https://docs.livestore.dev/reference/events)
 export const events = {
   taskInited: Events.synced({
     name: "v1.TaskInited",
     schema: Schema.Struct({
-      id: Schema.String,
-      parentId: Schema.optional(Schema.String),
-      cwd: Schema.optional(Schema.String),
-      createdAt: Schema.Date,
+      ...taskInitFields,
       initMessage: Schema.optional(
         Schema.Struct({
           id: Schema.String,
           parts: Schema.Array(DBUIPart),
         }),
       ),
-      git: Schema.optional(Git),
-      gitRoot: Schema.optional(Schema.String),
     }),
   }),
   taskFailed: Events.synced({
@@ -158,20 +181,7 @@ export const events = {
   taskSync: Events.synced({
     name: "v1.TaskSync",
     schema: Schema.Struct({
-      id: Schema.String,
-      shareId: Schema.optional(Schema.String),
-      cwd: Schema.optional(Schema.String),
-      isPublicShared: Schema.Boolean,
-      title: Schema.optional(Schema.String),
-      parentId: Schema.optional(Schema.String),
-      status: TaskStatus,
-      todos: Todos,
-      git: Schema.optional(Git),
-      gitRoot: Schema.optional(Schema.String),
-      totalTokens: Schema.optional(Schema.Number),
-      error: Schema.optional(TaskError),
-      createdAt: Schema.Date,
-      updatedAt: Schema.Date,
+      ...taskFullFields,
       messages: Schema.Array(DBMessage),
     }),
   }),
@@ -185,7 +195,6 @@ export const events = {
       // use updateTitle instead
       title: Schema.optional(Schema.String),
       git: Schema.optional(Git),
-      gitRoot: Schema.optional(Schema.String),
       updatedAt: Schema.Date,
     }),
   }),
@@ -245,15 +254,7 @@ export const events = {
 
 // Materializers are used to map events to state (https://docs.livestore.dev/reference/state/materializers)
 const materializers = State.SQLite.materializers(events, {
-  "v1.TaskInited": ({
-    id,
-    parentId,
-    createdAt,
-    cwd,
-    initMessage,
-    git,
-    gitRoot,
-  }) => [
+  "v1.TaskInited": ({ id, parentId, createdAt, cwd, initMessage, git }) => [
     tables.tasks.insert({
       id,
       status: initMessage ? "pending-model" : "pending-input",
@@ -262,7 +263,6 @@ const materializers = State.SQLite.materializers(events, {
       cwd,
       updatedAt: createdAt,
       git,
-      gitRoot,
     }),
     ...(initMessage
       ? [
@@ -287,66 +287,24 @@ const materializers = State.SQLite.materializers(events, {
       })
       .where({ id }),
   ],
-  "v1.TaskSync": ({
-    id,
-    shareId,
-    cwd,
-    isPublicShared,
-    title,
-    parentId,
-    status,
-    todos,
-    git,
-    gitRoot,
-    totalTokens,
-    error,
-    createdAt,
-    updatedAt,
-    messages,
-  }) => [
-    tables.tasks
-      .insert({
-        id,
-        shareId,
-        cwd,
-        isPublicShared,
-        title,
-        parentId,
-        status,
-        todos,
-        git,
-        gitRoot,
-        totalTokens,
-        error,
-        createdAt,
-        updatedAt,
-      })
-      .onConflict("id", "replace"),
+  "v1.TaskSync": ({ messages, ...task }) => [
+    tables.tasks.insert(task).onConflict("id", "replace"),
     ...messages.map((message) =>
       tables.messages
         .insert({
           id: message.id,
-          taskId: id,
+          taskId: task.id,
           data: message,
         })
         .onConflict("id", "replace"),
     ),
   ],
-  "v1.ChatStreamStarted": ({
-    id,
-    data,
-    todos,
-    git,
-    gitRoot,
-    title,
-    updatedAt,
-  }) => [
+  "v1.ChatStreamStarted": ({ id, data, todos, git, title, updatedAt }) => [
     tables.tasks
       .update({
         status: "pending-model",
         todos,
         git,
-        gitRoot,
         title,
         updatedAt,
       })

@@ -38,7 +38,7 @@ import {
 } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { MdOutlineErrorOutline } from "react-icons/md";
-import { useStoreDate } from "../livestore-provider";
+import { type TaskSyncData, useStoreDate } from "../livestore-provider";
 
 export const Route = createFileRoute("/tasks")({
   validateSearch: (search: Record<string, unknown>): { page?: number } => {
@@ -356,10 +356,8 @@ function TaskRow({
 
     vscodeHost.openTaskInPanel({
       ...task,
-      createdAt: task.createdAt.toISOString(),
-      updatedAt: task.updatedAt.toISOString(),
       messages: messages.map((m) => m.data),
-    });
+    } as TaskSyncData);
   }, [task.id, task.createdAt, task.updatedAt, task, store.query, openInTab]);
 
   if (worktree) {

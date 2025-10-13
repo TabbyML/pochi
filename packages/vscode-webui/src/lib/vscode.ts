@@ -3,11 +3,11 @@ import type {
   VSCodeHostApi,
   WebviewHostApi,
 } from "@getpochi/common/vscode-webui-bridge";
-import { type Message, catalog } from "@getpochi/livekit";
 import type { Store } from "@livestore/livestore";
 import { ThreadNestedWindow } from "@quilted/threads";
 import * as R from "remeda";
 import type { WebviewApi } from "vscode-webview";
+import { type TaskSyncData, taskSyncEmitter } from "../livestore-provider";
 import { queryClient } from "./query-client";
 
 const logger = getLogger("vscode");
@@ -96,24 +96,7 @@ function createVSCodeHost(): VSCodeHostApi {
           if (globalThis.POCHI_WEBVIEW_KIND === "pane" && "task" in params) {
             // wait for store to be ready
             await new Promise((resolve) => setTimeout(resolve, 100));
-
-            store?.commit(
-              catalog.events.taskSync({
-                ...params.task,
-                shareId: params.task.shareId ?? undefined,
-                gitRoot: params.task.gitRoot ?? undefined,
-                cwd: params.task.cwd ?? undefined,
-                title: params.task.title ?? undefined,
-                parentId: params.task.parentId ?? undefined,
-                error: params.task.error ?? undefined,
-                totalTokens: params.task.totalTokens ?? undefined,
-                todos: params.task.todos ?? [],
-                git: params.task.git ?? undefined,
-                createdAt: new Date(params.task.createdAt),
-                updatedAt: new Date(params.task.updatedAt),
-                messages: params.task.messages as unknown as readonly Message[],
-              }),
-            );
+            taskSyncEmitter.emit("taskSync", params.task as TaskSyncData);
           }
           window.router.navigate({
             to: "/",

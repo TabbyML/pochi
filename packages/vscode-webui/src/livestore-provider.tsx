@@ -1,5 +1,5 @@
 import { encodeStoreId } from "@getpochi/common/store-id-utils";
-import { catalog } from "@getpochi/livekit";
+import { type Message, type Task, catalog } from "@getpochi/livekit";
 import {
   makeInMemoryAdapter,
   makePersistedAdapter,
@@ -10,6 +10,7 @@ import {
   LiveStoreProvider as LiveStoreProviderImpl,
   useStore,
 } from "@livestore/react";
+import Emittery from "emittery";
 import * as jose from "jose";
 import { Loader2 } from "lucide-react";
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
@@ -36,6 +37,10 @@ interface StoreDateContextType {
 const StoreDateContext = createContext<StoreDateContextType | undefined>(
   undefined,
 );
+
+export type TaskSyncData = Task & { messages: Message[] };
+
+export const taskSyncEmitter = new Emittery<{ taskSync: TaskSyncData }>();
 
 export function useStoreDate() {
   const context = useContext(StoreDateContext);
@@ -78,12 +83,19 @@ export function LiveStoreProvider({ children }: { children: React.ReactNode }) {
 function StoreWithCommitHook({ children }: { children: React.ReactNode }) {
   const { store } = useStore();
   useEffect(() => {
-    console.log("Setting active store", store);
     setActiveStore(store);
     return () => {
       setActiveStore(null);
     };
   }, [store]);
+
+  useEffect(() => {
+    taskSyncEmitter.on("taskSync", (data) => {
+      // @ts-ignore
+      store.commit(catalog.events.taskSync(data));
+    });
+  }, [store]);
+
   if (globalThis.POCHI_WEBVIEW_KIND === "sidebar") {
     return children;
   }
