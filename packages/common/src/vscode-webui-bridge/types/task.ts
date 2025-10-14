@@ -27,8 +27,14 @@ export interface TaskDataParams<T extends TaskData = TaskData> {
  */
 export interface TaskData {
   id: string;
-  cwd?: string;
+  cwd?: string | null;
   git?: {
     worktreeGitdir?: string;
-  };
+  } | null;
 }
+
+export const getTaskWorktreeName = (
+  task: TaskData | undefined,
+): string | undefined => {
+  return task?.git?.worktreeGitdir?.split(/[\/\\]/).pop();
+};

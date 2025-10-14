@@ -1,10 +1,11 @@
 import { AuthEvents } from "@/lib/auth-events";
 import { WorkspaceScope } from "@/lib/workspace-scoped";
 import { getLogger } from "@getpochi/common";
-import type {
-  ResourceURI,
-  TaskData,
-  VSCodeHostApi,
+import {
+  type ResourceURI,
+  type TaskData,
+  type VSCodeHostApi,
+  getTaskWorktreeName,
 } from "@getpochi/common/vscode-webui-bridge";
 import type { DependencyContainer } from "tsyringe";
 import * as vscode from "vscode";
@@ -98,7 +99,7 @@ export class PochiWebviewPanel
       return;
     }
 
-    const worktreeName = task?.git?.worktreeGitdir?.split(/[\/\\]/).pop();
+    const worktreeName = getTaskWorktreeName(task);
 
     // Create a new panel
     const panel = vscode.window.createWebviewPanel(
