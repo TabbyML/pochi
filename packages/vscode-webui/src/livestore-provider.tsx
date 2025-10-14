@@ -104,6 +104,7 @@ function StoreWithCommitHook({ children }: { children: React.ReactNode }) {
           git: task.git ?? undefined,
           totalTokens: task.totalTokens ?? undefined,
           error: task.error ?? undefined,
+          modelId: task.modelId ?? undefined,
           createdAt: new Date(task.createdAt),
           updatedAt: new Date(task.updatedAt),
         }),
