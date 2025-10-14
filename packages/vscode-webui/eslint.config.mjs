@@ -20,39 +20,18 @@ export default [
     },
     rules: {
       'i18next/no-literal-string': ['error', {
-        markupOnly: true, // 只检查 JSX 标记中的字符串
-        ignoreAttribute: [
-          'className', 'style', 'key', 'id', 'data-*', 'aria-*', 'role', 
-          'type', 'name', 'value', 'placeholder', 'alt', 'title', 'href', 
-          'src', 'for', 'htmlFor', 'width', 'height', 'viewBox', 'fill',
-          'stroke', 'strokeWidth', 'strokeLinecap', 'strokeLinejoin'
-        ],
-        ignoreCallee: [
-          'console.log', 'console.error', 'console.warn', 'console.info', 
-          'console.debug', 'require', 'import', 'setTimeout', 'setInterval'
-        ],
-        ignoreProperty: [
-          'displayName', 'propTypes', 'defaultProps', 'contextTypes'
-        ],
+        mode: 'jsx-text-only', // only check jsx
         words: {
           exclude: [
-            // HTML 标签
-            'div', 'span', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 
-            'button', 'input', 'textarea', 'select', 'option', 'label', 
-            'form', 'table', 'tr', 'td', 'th', 'thead', 'tbody', 'tfoot', 
-            'ul', 'ol', 'li', 'nav', 'header', 'footer', 'main', 'section', 
-            'article', 'aside', 'figure', 'figcaption', 'img', 'a', 'strong', 
-            'em', 'code', 'pre', 'blockquote', 'hr', 'br',
-            // 常见的技术术语和单位
-            'px', 'rem', 'em', '%', 'vh', 'vw', 'auto', 'none', 'inherit',
-            'KB', 'MB', 'GB', 'ms', 's', 'min', 'h',
-            // 常见的状态和方向
-            'left', 'right', 'top', 'bottom', 'center', 'start', 'end',
-            'true', 'false', 'null', 'undefined',
-            // 常见符号和单字符
-            '@', '/', '\\', '|', '-', '_', '+', '=', ':', ';', ',', '.', 
-            '?', '!', '#', '$', '%', '&', '*', '(', ')', '[', ']', '{', '}',
-            '<', '>', '"', "'", '`', '~', '^'
+            // Numbers and common symbols
+            '^\\d+$', // Pure numbers
+            '^[0-9.,]+$', // Numbers with decimals and commas
+            // Single character symbols
+            '^[@/\\\\|\\-_+=:;,.?!#$%&*()\\[\\]{}<>"\'`~^]$',
+            // Common technical terms
+            '^(px|rem|em|%|vh|vw|auto|none|inherit|KB|MB|GB|ms|s|min|h)$',
+            // Boolean and null values
+            '^(true|false|null|undefined)$'
           ]
         }
       }]
@@ -61,7 +40,7 @@ export default [
   {
     files: ['**/*.test.{js,jsx,ts,tsx}', '**/*.spec.{js,jsx,ts,tsx}', '**/*.story.{js,jsx,ts,tsx}', '**/*.stories.{js,jsx,ts,tsx}'],
     rules: {
-      'i18next/no-literal-string': 'off' // 在测试和故事文件中禁用此规则
+      'i18next/no-literal-string': 'off' 
     }
   }
 ];
