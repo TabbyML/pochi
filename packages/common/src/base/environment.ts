@@ -92,10 +92,13 @@ export const Environment = z.object({
           recentCommits: z
             .array(z.string())
             .describe("A list of recent git commits."),
-          worktreeGitdir: z
-            .string()
-            .optional()
-            .describe("The gitdir path stored in worktree .git file."),
+          worktree: z
+            .object({
+              gitdir: z
+                .string()
+                .describe("The gitdir path stored in worktree .git file."),
+            })
+            .optional(),
         })
         .optional()
         .describe("Git information for the current workspace."),

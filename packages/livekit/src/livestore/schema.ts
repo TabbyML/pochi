@@ -53,10 +53,14 @@ const Git = Schema.Struct({
    * The remote URL of the repository
    */
   origin: Schema.optional(Schema.String),
-  /**
-   * The gitdir path stored in worktree .git file.
-   */
-  worktreeGitdir: Schema.optional(Schema.String),
+  worktree: Schema.optional(
+    Schema.Struct({
+      /**
+       * The gitdir path stored in worktree .git file.
+       */
+      gitdir: Schema.String,
+    }),
+  ),
   /**
    * The current branch name of the worktree
    */

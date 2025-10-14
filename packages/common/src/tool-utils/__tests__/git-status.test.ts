@@ -64,7 +64,7 @@ describe("GitStatusReader", () => {
       recentCommits: ["abc1234 feat: new feature", "def5678 fix: a bug"],
       userName: "Test User",
       userEmail: "test@example.com",
-      worktreeGitdir: "/test/repo/.git/worktrees/feature-branch",
+      worktree: {gitdir: "/test/repo/.git/worktrees/feature-branch"},
     });
   });
 

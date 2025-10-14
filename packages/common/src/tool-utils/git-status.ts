@@ -162,8 +162,10 @@ export class GitStatusReader {
       recentCommits,
       userName,
       userEmail,
-      worktreeGitdir:
-        this.cwd === worktreeDir && worktreeGitdir ? worktreeGitdir : undefined,
+      worktree:
+        this.cwd === worktreeDir && worktreeGitdir
+          ? { gitdir: worktreeGitdir }
+          : undefined,
     };
   }
 

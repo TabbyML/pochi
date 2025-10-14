@@ -29,12 +29,12 @@ export interface TaskData {
   id: string;
   cwd?: string | null;
   git?: {
-    worktreeGitdir?: string;
+    worktree?: { gitdir?: string } | null;
   } | null;
 }
 
 export const getTaskWorktreeName = (
   task: TaskData | undefined,
 ): string | undefined => {
-  return task?.git?.worktreeGitdir?.split(/[\/\\]/).pop();
+  return task?.git?.worktree?.gitdir?.split(/[\/\\]/).pop();
 };
