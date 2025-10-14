@@ -1688,7 +1688,7 @@ Let’s start! 🧡
 
 
 # Weekly Update
-URL: /developer-updates/2025-10-10-weekly-update-7
+URL: /developer-updates/2025-10-14-weekly-update-7
 
 ***
 
@@ -1779,9 +1779,7 @@ dist/
 
 ### 🐛 Bug fixes
 
-* **Command Execution Queue Handling:** Commands in VS Code now run sequentially in isolated queues in order to prevent race conditions and improve error handling. **[#528](https://github.com/TabbyML/pochi/issues/528)**
-
-* **CLI Message Deduplication:** Messages are now printed once, avoiding duplicates when streaming output. This saves you the hassle of skimming through verbose logs or overlapping text when reviewing results from the CLI. **[#512](https://github.com/TabbyML/pochi/issues/512)**
+* **Command Queue Stability:** Fixed race conditions between queued and other requests (particularly during preview operations) to improve execution consistency and error handling. **[#528](https://github.com/TabbyML/pochi/issues/528)**
 
 
 # Developer Updates
@@ -1806,9 +1804,9 @@ Here you will find highlights on features, enhancements, and bug fixes, plus ins
 
   --- */}
 
-## [Weekly Update #7](./2025-10-10-weekly-update-7)
+## [Weekly Update #7](./2025-10-14-weekly-update-7)
 
-#### Oct 10, 2025
+#### Oct 14, 2025
 
 # Weekly Update #7
 
@@ -1895,9 +1893,7 @@ dist/
 
 ### 🐛 Bug fixes
 
-* **Command Execution Queue Handling:** Commands in VS Code now run sequentially in isolated queues in order to prevent race conditions and improve error handling. **[#528](https://github.com/TabbyML/pochi/issues/528)**
-
-* **CLI Message Deduplication:** Messages are now printed once, avoiding duplicates when streaming output. This saves you the hassle of skimming through verbose logs or overlapping text when reviewing results from the CLI. **[#512](https://github.com/TabbyML/pochi/issues/512)**
+* **Command Queue Stability:** Fixed race conditions between queued and other requests (particularly during preview operations) to improve execution consistency and error handling. **[#528](https://github.com/TabbyML/pochi/issues/528)**
 
 ***
 
