@@ -31,7 +31,8 @@ export const makeTasksQuery = (cwd: string) =>
       schema: Schema.Array(tables.tasks.rowSchema),
     },
     {
-      label: "tasks",
+      label: "tasks.cwd",
+      deps: [cwd],
     },
   );
 
