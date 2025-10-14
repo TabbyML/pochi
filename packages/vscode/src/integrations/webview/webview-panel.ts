@@ -98,7 +98,7 @@ export class PochiWebviewPanel
       return;
     }
 
-    const worktreeName = cwd?.split(/[\/\\]/).pop();
+    const worktreeName = task?.git?.worktreeGitdir?.split(/[\/\\]/).pop();
 
     // Create a new panel
     const panel = vscode.window.createWebviewPanel(

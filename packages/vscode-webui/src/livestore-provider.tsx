@@ -40,7 +40,7 @@ const StoreDateContext = createContext<StoreDateContextType | undefined>(
 
 export type TaskSyncData = Task & { messages: Message[] };
 
-export const taskSyncEmitter = new Emittery<{ taskSync: TaskSyncData }>();
+export const taskSyncEvent = new Emittery<{ taskSync: TaskSyncData }>();
 
 export function useStoreDate() {
   const context = useContext(StoreDateContext);
@@ -93,7 +93,7 @@ function StoreWithCommitHook({ children }: { children: React.ReactNode }) {
     if (globalThis.POCHI_WEBVIEW_KIND !== "pane") {
       return;
     }
-    const unsubscribe = taskSyncEmitter.on("taskSync", (task) => {
+    const unsubscribe = taskSyncEvent.on("taskSync", (task) => {
       store.commit(
         catalog.events.taskSync({
           ...task,

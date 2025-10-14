@@ -54,13 +54,9 @@ const Git = Schema.Struct({
    */
   origin: Schema.optional(Schema.String),
   /**
-   * The path to the .git directory path that contains the repository data (not containing the .git directory itself)
+   * The gitdir path stored in worktree .git file.
    */
-  gitdir: Schema.String,
-  /**
-   * The path to the working tree of the current task cwd
-   */
-  worktree: Schema.String,
+  worktreeGitdir: Schema.optional(Schema.String),
   /**
    * The current branch name of the worktree
    */
@@ -141,11 +137,11 @@ const taskInitFields = {
   parentId: Schema.optional(Schema.String),
   cwd: Schema.optional(Schema.String),
   createdAt: Schema.Date,
-  git: Schema.optional(Git),
 };
 
 const taskFullFields = {
   ...taskInitFields,
+  git: Schema.optional(Git),
   shareId: Schema.optional(Schema.String),
   isPublicShared: Schema.Boolean,
   title: Schema.optional(Schema.String),
@@ -254,7 +250,7 @@ export const events = {
 
 // Materializers are used to map events to state (https://docs.livestore.dev/reference/state/materializers)
 const materializers = State.SQLite.materializers(events, {
-  "v1.TaskInited": ({ id, parentId, createdAt, cwd, initMessage, git }) => [
+  "v1.TaskInited": ({ id, parentId, createdAt, cwd, initMessage }) => [
     tables.tasks.insert({
       id,
       status: initMessage ? "pending-model" : "pending-input",
@@ -262,7 +258,6 @@ const materializers = State.SQLite.materializers(events, {
       createdAt,
       cwd,
       updatedAt: createdAt,
-      git,
     }),
     ...(initMessage
       ? [

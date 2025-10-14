@@ -1,5 +1,4 @@
-import { type GitStatus, getLogger } from "@getpochi/common";
-
+import { getLogger } from "@getpochi/common";
 import type { CustomAgent } from "@getpochi/tools";
 import type { Store } from "@livestore/livestore";
 import type { ChatInit, ChatOnErrorCallback, ChatOnFinishCallback } from "ai";
@@ -137,8 +136,6 @@ export class LiveChatKit<
       const taskId = crypto.randomUUID();
       const { messages } = this.chat;
       const model = createModel({ llm: getters.getLLM() });
-      const gitStatus = (await getters.getEnvironment?.({ messages }))
-        ?.workspace.gitStatus;
       const summary = await compactTask({
         store: this.store,
         taskId,
@@ -169,18 +166,13 @@ export class LiveChatKit<
               },
             ],
           },
-          git: toTaskGitInfo(gitStatus),
         }),
       );
       return taskId;
     };
   }
 
-  init(
-    cwd: string | undefined,
-    promptOrParts?: string | Message["parts"],
-    git?: GitStatus,
-  ) {
+  init(cwd: string | undefined, promptOrParts?: string | Message["parts"]) {
     const parts =
       typeof promptOrParts === "string"
         ? [{ type: "text", text: promptOrParts }]
@@ -197,7 +189,6 @@ export class LiveChatKit<
               parts,
             }
           : undefined,
-        git: toTaskGitInfo(git),
       }),
     );
 
@@ -256,7 +247,6 @@ export class LiveChatKit<
             id: this.taskId,
             cwd: environment?.info.cwd,
             createdAt: new Date(),
-            git: toTaskGitInfo(environment?.workspace.gitStatus),
           }),
         );
       }

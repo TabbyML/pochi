@@ -22,7 +22,13 @@ export interface TaskDataParams<T extends TaskData = TaskData> {
   task: T;
 }
 
+/**
+ * only include fields that are used in the webview and node process
+ */
 export interface TaskData {
   id: string;
   cwd?: string;
+  git?: {
+    worktreeGitdir?: string;
+  };
 }

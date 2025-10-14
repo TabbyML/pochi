@@ -5,7 +5,6 @@ import { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
 import { useCurrentWorkspace } from "@/lib/hooks/use-current-workspace";
 import { useCustomAgent } from "@/lib/hooks/use-custom-agents";
 import { prepareMessageParts } from "@/lib/message-utils";
-import { vscodeHost } from "@/lib/vscode";
 import { useChat } from "@ai-sdk/react";
 import { formatters } from "@getpochi/common";
 import type { UserInfo } from "@getpochi/common/configuration";
@@ -129,9 +128,7 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
       } else {
         partsOrString = prompt;
       }
-      vscodeHost.readGitStatus().then((gitStatus) => {
-        chatKit.init(currentWorkspace ?? undefined, partsOrString, gitStatus);
-      });
+      chatKit.init(currentWorkspace ?? undefined, partsOrString);
     }
   }, [currentWorkspace, isFetchingWorkspace, prompt, chatKit, files, t]);
 

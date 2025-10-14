@@ -1,7 +1,6 @@
 import type { ThreadAbortSignalSerialization } from "@quilted/threads";
 import type { ThreadSignalSerialization } from "@quilted/threads/signals";
-import type { Environment, GitStatus } from "../base";
-
+import type { Environment } from "../base";
 import type { UserInfo } from "../configuration";
 import type {
   CaptureEvent,
@@ -48,9 +47,6 @@ const VSCodeHostStub = {
   },
   readEnvironment: (_isSubTask?: boolean): Promise<Environment> => {
     return Promise.resolve({} as Environment);
-  },
-  readGitStatus: (): Promise<GitStatus | undefined> => {
-    return Promise.resolve(undefined);
   },
   previewToolCall: (
     _toolName: string,

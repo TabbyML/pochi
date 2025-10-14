@@ -7,7 +7,7 @@ import type { Store } from "@livestore/livestore";
 import { ThreadNestedWindow } from "@quilted/threads";
 import * as R from "remeda";
 import type { WebviewApi } from "vscode-webview";
-import { type TaskSyncData, taskSyncEmitter } from "../livestore-provider";
+import { type TaskSyncData, taskSyncEvent } from "../livestore-provider";
 import { queryClient } from "./query-client";
 
 const logger = getLogger("vscode");
@@ -58,7 +58,6 @@ function createVSCodeHost(): VSCodeHostApi {
         "getWorkspaceState",
         "setWorkspaceState",
         "readEnvironment",
-        "readGitStatus",
         "executeToolCall",
         "listFilesInWorkspace",
         "listAutoCompleteCandidates",
@@ -97,7 +96,7 @@ function createVSCodeHost(): VSCodeHostApi {
           if (globalThis.POCHI_WEBVIEW_KIND === "pane" && "task" in params) {
             // wait for store to be ready
             await new Promise((resolve) => setTimeout(resolve, 100));
-            taskSyncEmitter.emit("taskSync", params.task as TaskSyncData);
+            taskSyncEvent.emit("taskSync", params.task as TaskSyncData);
           }
           window.router.navigate({
             to: "/",

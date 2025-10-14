@@ -24,7 +24,7 @@ import {
   lastAssistantMessageIsCompleteWithToolCalls,
 } from "ai";
 import type z from "zod/v4";
-import { readEnvironment, readGitStatus } from "./lib/read-environment";
+import { readEnvironment } from "./lib/read-environment";
 import { StepCount } from "./lib/step-count";
 import { Chat } from "./livekit";
 import { executeToolCall } from "./tools";
@@ -172,9 +172,7 @@ export class TaskRunner {
           parts: options.parts,
         });
       } else {
-        readGitStatus(options.cwd).then((git) => {
-          this.chatKit.init(options.cwd, options.parts, git);
-        });
+        this.chatKit.init(options.cwd, options.parts);
       }
     }
 

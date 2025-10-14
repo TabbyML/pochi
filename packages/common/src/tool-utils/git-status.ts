@@ -1,4 +1,6 @@
 import { exec } from "node:child_process";
+import { readFile, stat } from "node:fs/promises";
+import { join } from "node:path";
 import { promisify } from "node:util";
 import { type GitStatus, getLogger } from "../base";
 import { parseGitOriginUrl } from "../git-utils";
@@ -132,8 +134,8 @@ export class GitStatusReader {
       recentCommits,
       userName,
       userEmail,
-      gitdir,
-      worktree,
+      worktreeGitdir,
+      worktreeDir,
     ] = await Promise.all([
       this.execGit("remote get-url origin").catch(() => undefined),
       this.execGit("rev-parse --abbrev-ref HEAD").catch(() => "unknown"),
@@ -144,9 +146,7 @@ export class GitStatusReader {
         .catch(() => []),
       this.execGit("config user.name").catch(() => undefined),
       this.execGit("config user.email").catch(() => undefined),
-      this.execGit("rev-parse --path-format=absolute --git-common-dir").catch(
-        () => "",
-      ),
+      parseWorktreeGitdir(this.cwd),
       this.execGit("rev-parse --path-format=absolute --show-toplevel").catch(
         () => "",
       ),
@@ -162,8 +162,8 @@ export class GitStatusReader {
       recentCommits,
       userName,
       userEmail,
-      gitdir: gitdir.replace(/[\/\\]\.git$/, ""),
-      worktree,
+      worktreeGitdir:
+        this.cwd === worktreeDir && worktreeGitdir ? worktreeGitdir : undefined,
     };
   }
 
@@ -186,5 +186,20 @@ export class GitStatusReader {
       logger.error("Error reading Git status", error);
       return undefined;
     }
+  }
+}
+
+async function parseWorktreeGitdir(cwd: string): Promise<string | undefined> {
+  try {
+    const gitFilePath = join(cwd, ".git");
+    const fileStat = await stat(gitFilePath);
+    if (!fileStat.isFile()) {
+      return undefined;
+    }
+    const content = await readFile(gitFilePath, "utf8");
+    const match = content.trim().match(/^gitdir:\s*(.+)$/);
+    return match ? match[1] : undefined;
+  } catch (error) {
+    return undefined;
   }
 }

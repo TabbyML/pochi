@@ -242,16 +242,6 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     return environment;
   };
 
-  readGitStatus = async (): Promise<GitStatus | undefined> => {
-    if (!this.cwd) {
-      return;
-    }
-    const gitStatusReader = new GitStatusReader({
-      cwd: this.cwd,
-    });
-    return gitStatusReader.readGitStatus();
-  };
-
   readActiveTabs = async (): Promise<
     ThreadSignalSerialization<Array<{ filepath: string; isDir: boolean }>>
   > => {

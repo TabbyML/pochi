@@ -102,7 +102,6 @@ export const toTaskGitInfo = (gitStatus: GitStatus): TaskGitInfo => {
   return {
     origin: gitStatus.origin,
     branch: gitStatus.currentBranch,
-    worktree: gitStatus.worktree,
-    gitdir: gitStatus.gitdir,
+    worktreeGitdir: gitStatus.worktreeGitdir,
   };
 };
