@@ -58,6 +58,7 @@ function createVSCodeHost(): VSCodeHostApi {
         "setWorkspaceState",
         "readEnvironment",
         "executeToolCall",
+        "executeBashCommand",
         "listFilesInWorkspace",
         "listAutoCompleteCandidates",
         "readActiveTabs",

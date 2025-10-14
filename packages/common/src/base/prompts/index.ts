@@ -60,7 +60,12 @@ function parseInlineCompact(text: string) {
   };
 }
 
-function createWorkflowPrompt(id: string, path: string, content: string) {
+function createWorkflowPrompt(
+  id: string,
+  path: string,
+  content: string,
+  allowedTools: string | string[] | undefined,
+) {
   // Remove extra newlines from the content
   let processedContent = content.replace(/\n+/g, "\n");
   // Escape '<' to avoid </workflow> being interpreted as a closing tag
@@ -68,5 +73,15 @@ function createWorkflowPrompt(id: string, path: string, content: string) {
   processedContent = processedContent.replace(workflowTagRegex, (match) => {
     return match.replace("<", "&lt;");
   });
-  return `<workflow id="${id}" path="${path}">${processedContent}</workflow>`;
+
+  const toolString = Array.isArray(allowedTools)
+    ? allowedTools.join(",")
+    : allowedTools;
+
+  const attrs = [`id="${id}"`, `path="${path}"`];
+  if (toolString) {
+    attrs.push(`allowed-tools="${toolString}"`);
+  }
+
+  return `<workflow ${attrs.join(" ")}>${processedContent}</workflow>`;
 }

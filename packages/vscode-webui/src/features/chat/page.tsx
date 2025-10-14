@@ -5,6 +5,7 @@ import { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
 import { useCurrentWorkspace } from "@/lib/hooks/use-current-workspace";
 import { useCustomAgent } from "@/lib/hooks/use-custom-agents";
 import { prepareMessageParts } from "@/lib/message-utils";
+import { vscodeHost } from "@/lib/vscode";
 import { useChat } from "@ai-sdk/react";
 import { formatters } from "@getpochi/common";
 import type { UserInfo } from "@getpochi/common/configuration";
@@ -13,6 +14,7 @@ import type { Message } from "@getpochi/livekit";
 import { useLiveChatKit } from "@getpochi/livekit/react";
 import type { Todo } from "@getpochi/tools";
 import { useStore } from "@livestore/react";
+import { ThreadAbortSignal } from "@quilted/threads";
 import { useRouter } from "@tanstack/react-router";
 import {
   type FileUIPart,
@@ -53,7 +55,6 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
   const { t } = useTranslation();
   const { store } = useStore();
   const todosRef = useRef<Todo[] | undefined>(undefined);
-
   const defaultUser = {
     name: "You",
     image: `https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(store.clientId)}&scale=120`,
@@ -72,10 +73,12 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
   const { data: currentWorkspace, isFetching: isFetchingWorkspace } =
     useCurrentWorkspace();
   const isWorkspaceActive = !!currentWorkspace;
+
   const getters = useLiveChatKitGetters({
     todos: todosRef,
     isSubTask: !!subtask,
   });
+
   const chatKit = useLiveChatKit({
     taskId: uid,
     getters,
@@ -98,6 +101,11 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
       return lastAssistantMessageIsCompleteWithToolCalls(x);
     },
     onOverrideMessages,
+    onExecuteBashCommand: (command: string, signal: AbortSignal) =>
+      vscodeHost.executeBashCommand(
+        command,
+        ThreadAbortSignal.serialize(signal),
+      ),
   });
 
   const messagesContainerRef = useRef<HTMLDivElement>(null);

@@ -47,7 +47,6 @@ export const WorkflowMentionList = forwardRef<
   ) => {
     const [selectedIndex, setSelectedIndex] = useState(0);
     const items = useMentionItems(initialItems, query, fetchItems);
-
     // Reset selected index when items change to prevent out-of-bounds access
     useEffect(() => {
       if (selectedIndex >= items.length) {

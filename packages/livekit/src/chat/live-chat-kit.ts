@@ -1,4 +1,4 @@
-import { getLogger } from "@getpochi/common";
+import { getLogger, prompts } from "@getpochi/common";
 
 import type { CustomAgent } from "@getpochi/tools";
 import type { Store } from "@livestore/livestore";
@@ -15,7 +15,13 @@ import {
   type PrepareRequestGetters,
 } from "./flexible-chat-transport";
 import { compactTask } from "./llm";
+import {
+  type BashCommandExecutor,
+  executeBashCommands,
+  parseWorkflowsFromMessage,
+} from "./llm/bash-command-execute";
 import { createModel } from "./models";
+// import { parseWorkflowFrontmatter as commonParseWorkflowFrontmatter } from "@getpochi/common/tool-utils";
 
 const logger = getLogger("LiveChatKit");
 
@@ -39,6 +45,7 @@ export type LiveChatKitOptions<T> = {
 
   customAgent?: CustomAgent;
   outputSchema?: z.ZodAny;
+  onExecuteBashCommand?: BashCommandExecutor;
 } & Omit<
   ChatInit<Message>,
   "id" | "messages" | "generateId" | "onFinish" | "onError" | "transport"
@@ -68,6 +75,7 @@ export class LiveChatKit<
     isCli,
     customAgent,
     outputSchema,
+    onExecuteBashCommand,
     ...chatInit
   }: LiveChatKitOptions<T>) {
     this.taskId = taskId;
@@ -130,6 +138,28 @@ export class LiveChatKit<
       }
       if (onOverrideMessages) {
         await onOverrideMessages({ messages });
+      }
+
+      if (lastMessage?.role === "user") {
+        const workflowInfo = parseWorkflowsFromMessage(lastMessage);
+        if (workflowInfo.length) {
+          let results: string[] = [];
+          for (const { content, allowedTools } of workflowInfo) {
+            const outputs = await executeBashCommands(
+              content,
+              allowedTools,
+              abortSignal,
+              onExecuteBashCommand,
+            );
+            results = results.concat(outputs.map((x) => x.output));
+          }
+          if (results.length) {
+            messages[messages.length - 1].parts.push({
+              type: "text",
+              text: prompts.createSystemReminder(results.join("/")),
+            });
+          }
+        }
       }
     };
 

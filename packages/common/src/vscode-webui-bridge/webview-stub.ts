@@ -69,6 +69,12 @@ const VSCodeHostStub = {
   ): Promise<unknown> => {
     return Promise.resolve(undefined);
   },
+  executeBashCommand: (
+    _command: string,
+    _abortSignal: ThreadAbortSignalSerialization,
+  ): Promise<{ output: string; error?: string }> => {
+    return Promise.resolve({} as { output: string; error?: string });
+  },
   listFilesInWorkspace: (): Promise<{ filepath: string; isDir: boolean }[]> => {
     return Promise.resolve([{ filepath: "test", isDir: false }]);
   },
