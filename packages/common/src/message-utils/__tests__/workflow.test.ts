@@ -1,9 +1,9 @@
 import type { UIMessage } from "ai";
-import { describe, expect, it, vi } from "vitest";
-import { executeWorkflowBashCommands } from "../workflow";
+import { describe, expect, it } from "vitest";
+import { extractWorkflowBashCommands, isWorkflowTextPart } from "../workflow";
 
-describe("executeWorkflowBashCommands", () => {
-  it("should extract and execute bash commands from a workflow", async () => {
+describe("extractWorkflowBashCommands", () => {
+  it("should extract bash commands from a workflow", () => {
     const message: UIMessage = {
       id: "1",
       role: "user",
@@ -21,33 +21,12 @@ Create a git commit.
       ],
     };
 
-    const bashCommandExecutor = vi.fn(async (command: string) => {
-      if (command === "git status") {
-        return { output: "git status output" };
-      }
-      if (command === "git diff HEAD") {
-        return { output: "git diff HEAD output" };
-      }
-      return { output: "" };
-    });
+    const commands = extractWorkflowBashCommands(message);
 
-    const abortController = new AbortController();
-    const results = await executeWorkflowBashCommands(
-      message,
-      bashCommandExecutor,
-      abortController.signal,
-    );
-
-    expect(bashCommandExecutor).toHaveBeenCalledTimes(2);
-    expect(bashCommandExecutor).toHaveBeenCalledWith("git status", expect.any(Object));
-    expect(bashCommandExecutor).toHaveBeenCalledWith("git diff HEAD", expect.any(Object));
-    expect(results).toEqual([
-      { command: "git status", output: "git status output" },
-      { command: "git diff HEAD", output: "git diff HEAD output" },
-    ]);
+    expect(commands).toEqual(["git status", "git diff HEAD"]);
   });
 
-  it("should handle messages with no workflows", async () => {
+  it("should handle messages with no workflows", () => {
     const message: UIMessage = {
       id: "1",
       role: "user",
@@ -59,19 +38,12 @@ Create a git commit.
       ],
     };
 
-    const bashCommandExecutor = vi.fn();
-    const abortController = new AbortController();
-    const results = await executeWorkflowBashCommands(
-      message,
-      bashCommandExecutor,
-      abortController.signal,
-    );
+    const commands = extractWorkflowBashCommands(message);
 
-    expect(bashCommandExecutor).not.toHaveBeenCalled();
-    expect(results).toEqual([]);
+    expect(commands).toEqual([]);
   });
 
-  it("should handle workflows with no bash commands", async () => {
+  it("should handle workflows with no bash commands", () => {
     const message: UIMessage = {
       id: "1",
       role: "user",
@@ -85,15 +57,71 @@ This workflow has no bash commands.
       ],
     };
 
-    const bashCommandExecutor = vi.fn();
-    const abortController = new AbortController();
-    const results = await executeWorkflowBashCommands(
-      message,
-      bashCommandExecutor,
-      abortController.signal,
-    );
+    const commands = extractWorkflowBashCommands(message);
 
-    expect(bashCommandExecutor).not.toHaveBeenCalled();
-    expect(results).toEqual([]);
+    expect(commands).toEqual([]);
+  });
+
+  it("should handle multiple workflow parts", () => {
+    const message: UIMessage = {
+      id: "1",
+      role: "user",
+      parts: [
+        {
+          type: "text",
+          text: `<workflow>First command: !\`command1\`</workflow>`,
+        },
+        {
+          type: "text",
+          text: "Some text in between",
+        },
+        {
+          type: "text",
+          text: `<workflow>Second command: !\`command2\`</workflow>`,
+        },
+      ],
+    };
+
+    const commands = extractWorkflowBashCommands(message);
+    expect(commands).toEqual(["command1", "command2"]);
   });
 });
+
+describe("isWorkflowTextPart", () => {
+  it("should return true for a text part containing a workflow", () => {
+    const part = {
+      type: "text" as const,
+      text: `<workflow>some content</workflow>`,
+    };
+    expect(isWorkflowTextPart(part)).toBe(true);
+  });
+
+  it("should return false for a text part without a workflow", () => {
+    const part = {
+      type: "text" as const,
+      text: "just some text",
+    };
+    expect(isWorkflowTextPart(part)).toBe(false);
+  });
+
+  it("should return false for a non-text part", () => {
+    const part = {
+      type: "tool-call" as const,
+      toolName: "test",
+      args: {},
+    };
+    // @ts-expect-error - testing invalid part type
+    expect(isWorkflowTextPart(part)).toBe(false);
+  });
+
+  it("should handle complex workflow tags", () => {
+    const part = {
+      type: "text" as const,
+      text: `<workflow id="test-workflow" path=".pochi/workflows/test.md">
+This workflow has no bash commands.
+</workflow>`,
+    };
+    expect(isWorkflowTextPart(part)).toBe(true);
+  });
+});
+

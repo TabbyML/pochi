@@ -1,10 +1,7 @@
 import { exec } from "node:child_process";
 import { getLogger, prompts } from "@getpochi/common";
 import type { McpHub } from "@getpochi/common/mcp-utils";
-import {
-  executeWorkflowBashCommands,
-  isWorkflowTextPart,
-} from "@getpochi/common/message-utils";
+import { extractWorkflowBashCommands } from "@getpochi/common/message-utils";
 import {
   isAssistantMessageWithEmptyParts,
   isAssistantMessageWithNoToolCalls,
@@ -400,30 +397,47 @@ function createOnOverrideMessages(cwd: string) {
   };
 }
 
-async function appendWorkflowBashOutputs(cwd: string, lastMessage: UIMessage) {
-  const bashCommandResults = await executeWorkflowBashCommands(
-    lastMessage,
-    (command: string, signal?: AbortSignal) => {
-      return new Promise((resolve) => {
-        exec(command, { cwd, signal }, (error, stdout, stderr) => {
-          if (error) {
-            resolve({ output: stdout, error: stderr || error.message });
-          } else {
-            resolve({ output: stdout });
-          }
-        });
-      });
-    },
-  );
+async function appendWorkflowBashOutputs(cwd: string, message: UIMessage) {
+  if (message.role !== "user") return;
+
+  const commands = extractWorkflowBashCommands(message);
+  if (!commands.length) return [];
+
+  const bashCommandResults: {
+    command: string;
+    output: string;
+    error?: string;
+  }[] = [];
+  for (const command of commands) {
+    try {
+      const { output, error } = await executeBashCommand(cwd, command);
+      bashCommandResults.push({ command, output, error });
+    } catch (e) {
+      const error = e instanceof Error ? e.message : String(e);
+      bashCommandResults.push({ command, output: "", error });
+      // The AbortError is a specific error that should stop the whole process.
+      if (e instanceof Error && e.name === "AbortError") {
+        break;
+      }
+    }
+  }
 
   if (bashCommandResults.length) {
-    const reminderPart = prompts.createBashOutputsReminder(bashCommandResults);
-    const workflowPartIndex = lastMessage.parts.findIndex(isWorkflowTextPart);
-    const indexToInsert = workflowPartIndex === -1 ? 0 : workflowPartIndex;
-    lastMessage.parts = [
-      ...lastMessage.parts.slice(0, indexToInsert),
-      reminderPart,
-      ...lastMessage.parts.slice(indexToInsert),
-    ];
+    prompts.injectBashOutputs(message, bashCommandResults);
   }
+}
+
+function executeBashCommand(
+  cwd: string,
+  command: string,
+): Promise<{ output: string; error?: string }> {
+  return new Promise((resolve) => {
+    exec(command, { cwd }, (error, stdout, stderr) => {
+      if (error) {
+        resolve({ output: stdout, error: stderr || error.message });
+      } else {
+        resolve({ output: stdout });
+      }
+    });
+  });
 }

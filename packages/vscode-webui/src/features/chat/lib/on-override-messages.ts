@@ -1,9 +1,6 @@
 import { vscodeHost } from "@/lib/vscode";
 import { prompts } from "@getpochi/common";
-import {
-  executeWorkflowBashCommands,
-  isWorkflowTextPart,
-} from "@getpochi/common/message-utils";
+import { extractWorkflowBashCommands } from "@getpochi/common/message-utils";
 import type { Message } from "@getpochi/livekit";
 import { ThreadAbortSignal } from "@quilted/threads";
 
@@ -64,24 +61,35 @@ async function appendWorkflowBashOutputs(
 ) {
   if (message.role !== "user") return;
 
-  const bashCommandResults = await executeWorkflowBashCommands(
-    message,
-    (command: string, signal?: AbortSignal) =>
-      vscodeHost.executeBashCommand(
-        command,
-        ThreadAbortSignal.serialize(signal as AbortSignal),
-      ),
-    abortSignal,
-  );
+  const commands = extractWorkflowBashCommands(message);
+  if (!commands.length) return [];
 
+  const bashCommandResults: {
+    command: string;
+    output: string;
+    error?: string;
+  }[] = [];
+  for (const command of commands) {
+    if (abortSignal?.aborted) {
+      break;
+    }
+
+    try {
+      const { output, error } = await vscodeHost.executeBashCommand(
+        command,
+        ThreadAbortSignal.serialize(abortSignal),
+      );
+      bashCommandResults.push({ command, output, error });
+    } catch (e) {
+      const error = e instanceof Error ? e.message : String(e);
+      bashCommandResults.push({ command, output: "", error });
+      // The AbortError is a specific error that should stop the whole process.
+      if (e instanceof Error && e.name === "AbortError") {
+        break;
+      }
+    }
+  }
   if (bashCommandResults.length) {
-    const reminderPart = prompts.createBashOutputsReminder(bashCommandResults);
-    const workflowPartIndex = message.parts.findIndex(isWorkflowTextPart);
-    const indexToInsert = workflowPartIndex === -1 ? 0 : workflowPartIndex;
-    message.parts = [
-      ...message.parts.slice(0, indexToInsert),
-      reminderPart,
-      ...message.parts.slice(indexToInsert),
-    ];
+    prompts.injectBashOutputs(message, bashCommandResults);
   }
 }
