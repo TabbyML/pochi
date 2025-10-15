@@ -156,7 +156,7 @@ export class LiveChatKit<
           if (results.length) {
             messages[messages.length - 1].parts.push({
               type: "text",
-              text: prompts.createSystemReminder(results.join("/")),
+              text: prompts.createSystemReminder(results.join("\n")),
             });
           }
         }

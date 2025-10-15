@@ -83,4 +83,29 @@ Prompt.
       model: undefined,
     });
   });
+
+  it("should parse allowed-tools field correctly", async () => {
+    const content = `---
+allowed-tools: Bash(git add:*), Bash(git status:*)
+---
+This is a workflow with allowed tools.`;
+    const result = await parseWorkflowFrontmatter(content);
+    expect(result).toEqual({
+      model: undefined,
+      allowedTools: "Bash(git add:*), Bash(git status:*)",
+    });
+  });
+
+  it("should parse both model and allowed-tools fields", async () => {
+    const content = `---
+model: gpt-4
+allowed-tools: Bash(git add:*), Bash(git status:*)
+---
+This is a workflow with model and allowed tools.`;
+    const result = await parseWorkflowFrontmatter(content);
+    expect(result).toEqual({
+      model: "gpt-4",
+      allowedTools: "Bash(git add:*), Bash(git status:*)",
+    });
+  });
 });

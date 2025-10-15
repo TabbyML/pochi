@@ -1,6 +1,10 @@
-import matter from "gray-matter";
+import { remark } from "remark";
+import remarkFrontmatter from "remark-frontmatter";
+import { matter } from "vfile-matter";
 import z from "zod/v4";
 import { toErrorMessage } from "../base";
+
+type VFile = Parameters<typeof matter>[0];
 
 const WorkflowFrontmatter = z.object({
   model: z.string().optional(),
@@ -10,40 +14,14 @@ const WorkflowFrontmatter = z.object({
 /**
  * Parse a workflow file frontmatter
  */
-export function parseWorkflowFrontmatter(content: string | null): {
-  model: string | undefined;
-  allowedTools: string | undefined;
-  error?: string;
-  message?: string;
-} {
-  if (!content) return { model: undefined, allowedTools: undefined };
-
+export async function parseWorkflowFrontmatter(content: string | null) {
+  if (!content) return { model: undefined };
+  let vfile: VFile;
   try {
-    const { data } = matter(content);
-
-    if (Object.keys(data).length === 0) {
-      return {
-        model: undefined,
-        allowedTools: undefined,
-      };
-    }
-
-    const parseResult = WorkflowFrontmatter.safeParse(data);
-    if (!parseResult.success) {
-      return {
-        model: undefined,
-        allowedTools: undefined,
-        error: "validationError",
-        message: z.prettifyError(parseResult.error),
-      };
-    }
-
-    const frontmatterData = parseResult.data;
-
-    return {
-      model: frontmatterData.model,
-      allowedTools: frontmatterData["allowed-tools"],
-    };
+    vfile = await remark()
+      .use(remarkFrontmatter, [{ type: "yaml", marker: "-" }])
+      .use(() => (_tree, file) => matter(file))
+      .process(content);
   } catch (error) {
     return {
       model: undefined,
@@ -52,4 +30,28 @@ export function parseWorkflowFrontmatter(content: string | null): {
       message: toErrorMessage(error),
     };
   }
+
+  if (!vfile.data.matter || Object.keys(vfile.data.matter).length === 0) {
+    return {
+      model: undefined,
+      allowedTools: undefined,
+    };
+  }
+
+  const parseResult = WorkflowFrontmatter.safeParse(vfile.data.matter);
+  if (!parseResult.success) {
+    return {
+      model: undefined,
+      allowedTools: undefined,
+      error: "validationError",
+      message: z.prettifyError(parseResult.error),
+    };
+  }
+
+  const frontmatterData = parseResult.data;
+
+  return {
+    model: frontmatterData.model,
+    allowedTools: frontmatterData["allowed-tools"],
+  };
 }

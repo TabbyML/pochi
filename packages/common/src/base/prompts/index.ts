@@ -64,7 +64,7 @@ function createWorkflowPrompt(
   id: string,
   path: string,
   content: string,
-  allowedTools: string | string[] | undefined,
+  allowedTools: string | undefined,
 ) {
   // Remove extra newlines from the content
   let processedContent = content.replace(/\n+/g, "\n");
@@ -74,13 +74,9 @@ function createWorkflowPrompt(
     return match.replace("<", "&lt;");
   });
 
-  const toolString = Array.isArray(allowedTools)
-    ? allowedTools.join(",")
-    : allowedTools;
-
   const attrs = [`id="${id}"`, `path="${path}"`];
-  if (toolString) {
-    attrs.push(`allowed-tools="${toolString}"`);
+  if (allowedTools) {
+    attrs.push(`allowed-tools="${allowedTools}"`);
   }
 
   return `<workflow ${attrs.join(" ")}>${processedContent}</workflow>`;
