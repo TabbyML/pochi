@@ -1,7 +1,10 @@
 import { exec } from "node:child_process";
 import { getLogger, prompts } from "@getpochi/common";
 import type { McpHub } from "@getpochi/common/mcp-utils";
-import { executeWorkflowBashCommands } from "@getpochi/common/message-utils";
+import {
+  executeWorkflowBashCommands,
+  isWorkflowTextPart,
+} from "@getpochi/common/message-utils";
 import {
   isAssistantMessageWithEmptyParts,
   isAssistantMessageWithNoToolCalls,
@@ -413,5 +416,14 @@ async function appendWorkflowBashOutputs(cwd: string, lastMessage: UIMessage) {
     },
   );
 
-  prompts.injectBashOutputs(lastMessage, bashCommandResults);
+  if (bashCommandResults.length) {
+    const reminderPart = prompts.createBashOutputsReminder(bashCommandResults);
+    const workflowPartIndex = lastMessage.parts.findIndex(isWorkflowTextPart);
+    const indexToInsert = workflowPartIndex === -1 ? 0 : workflowPartIndex;
+    lastMessage.parts = [
+      ...lastMessage.parts.slice(0, indexToInsert),
+      reminderPart,
+      ...lastMessage.parts.slice(indexToInsert),
+    ];
+  }
 }

@@ -1,6 +1,9 @@
 import { vscodeHost } from "@/lib/vscode";
 import { prompts } from "@getpochi/common";
-import { executeWorkflowBashCommands } from "@getpochi/common/message-utils";
+import {
+  executeWorkflowBashCommands,
+  isWorkflowTextPart,
+} from "@getpochi/common/message-utils";
 import type { Message } from "@getpochi/livekit";
 import { ThreadAbortSignal } from "@quilted/threads";
 
@@ -71,5 +74,14 @@ async function appendWorkflowBashOutputs(
     abortSignal,
   );
 
-  prompts.injectBashOutputs(message, bashCommandResults);
+  if (bashCommandResults.length) {
+    const reminderPart = prompts.createBashOutputsReminder(bashCommandResults);
+    const workflowPartIndex = message.parts.findIndex(isWorkflowTextPart);
+    const indexToInsert = workflowPartIndex === -1 ? 0 : workflowPartIndex;
+    message.parts = [
+      ...message.parts.slice(0, indexToInsert),
+      reminderPart,
+      ...message.parts.slice(indexToInsert),
+    ];
+  }
 }

@@ -1,7 +1,7 @@
+import type { TextUIPart } from "ai";
 import { createCompactPrompt } from "./compact";
 import { createEnvironmentPrompt, injectEnvironment } from "./environment";
 import { generateTitle } from "./generate-title";
-import { injectBashOutputs } from "./inject-bash-ouputs";
 import { createSystemPrompt } from "./system";
 
 export const prompts = {
@@ -17,7 +17,7 @@ export const prompts = {
   parseInlineCompact,
   generateTitle,
   workflow: createWorkflowPrompt,
-  injectBashOutputs,
+  createBashOutputsReminder,
 };
 
 function createSystemReminder(content: string) {
@@ -71,4 +71,29 @@ function createWorkflowPrompt(id: string, path: string, content: string) {
     return match.replace("<", "&lt;");
   });
   return `<workflow id="${id}" path="${path}">${processedContent}</workflow>`;
+}
+
+function createBashOutputsReminder(
+  outputs: {
+    command: string;
+    output: string;
+    error?: string | undefined;
+  }[],
+) {
+  const bashCommandOutputs = outputs.map(({ command, output, error }) => {
+    let result = `$ ${command}`;
+    if (output) {
+      result += `\n${output}`;
+    }
+    if (error) {
+      result += `\nERROR: ${error}`;
+    }
+    return result;
+  });
+  return {
+    type: "text",
+    text: prompts.createSystemReminder(
+      `Bash command outputs:\n${bashCommandOutputs.join("\n\n")}`,
+    ),
+  } satisfies TextUIPart;
 }
