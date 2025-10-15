@@ -767,7 +767,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       return;
     }
     const workspaceContainer = workspaceScoped(task.cwd);
-    PochiWebviewPanel.createOrShow(
+    await PochiWebviewPanel.createOrShow(
       workspaceContainer,
       this.context.extensionUri,
       task,

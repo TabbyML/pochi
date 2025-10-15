@@ -1,11 +1,12 @@
 import { AuthEvents } from "@/lib/auth-events";
 import { WorkspaceScope } from "@/lib/workspace-scoped";
 import { getLogger } from "@getpochi/common";
-import {
-  type ResourceURI,
-  type TaskData,
-  type VSCodeHostApi,
-  getTaskWorktreeName,
+import { getWorktreeName } from "@getpochi/common/git-utils";
+import { parseWorktreeGitdir } from "@getpochi/common/tool-utils";
+import type {
+  ResourceURI,
+  TaskData,
+  VSCodeHostApi,
 } from "@getpochi/common/vscode-webui-bridge";
 import type { DependencyContainer } from "tsyringe";
 import * as vscode from "vscode";
@@ -77,12 +78,16 @@ export class PochiWebviewPanel
     };
   }
 
-  public static createOrShow(
+  public static async createOrShow(
     workspaceContainer: DependencyContainer,
     extensionUri: vscode.Uri,
     task?: TaskData,
-  ): void {
+  ): Promise<void> {
     const cwd = workspaceContainer.resolve(WorkspaceScope).cwd;
+    if (!cwd) {
+      logger.warn("No workspace folder found, cannot open Pochi panel");
+      return;
+    }
     const sessionId = `editor-${cwd}`;
 
     if (PochiWebviewPanel.panels.has(sessionId)) {
@@ -99,7 +104,9 @@ export class PochiWebviewPanel
       return;
     }
 
-    const worktreeName = getTaskWorktreeName(task);
+    const gitDir =
+      task?.git?.worktree?.gitdir ?? (await parseWorktreeGitdir(cwd));
+    const worktreeName = getWorktreeName(gitDir);
 
     // Create a new panel
     const panel = vscode.window.createWebviewPanel(

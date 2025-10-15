@@ -458,7 +458,7 @@ export class CommandManager implements vscode.Disposable {
             return;
           }
           const workspaceContainer = workspaceScoped(cwd);
-          PochiWebviewPanel.createOrShow(
+          await PochiWebviewPanel.createOrShow(
             workspaceContainer,
             this.context.extensionUri,
           );

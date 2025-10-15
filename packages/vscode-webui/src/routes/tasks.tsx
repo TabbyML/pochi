@@ -21,8 +21,8 @@ import { useSettingsStore } from "@/features/settings";
 import { useCurrentWorkspace } from "@/lib/hooks/use-current-workspace";
 import { cn } from "@/lib/utils";
 import { vscodeHost } from "@/lib/vscode";
+import { getWorktreeName } from "@getpochi/common/git-utils";
 import { parseTitle } from "@getpochi/common/message-utils";
-import { getTaskWorktreeName } from "@getpochi/common/vscode-webui-bridge";
 import { type Task, catalog } from "@getpochi/livekit";
 import { useStore } from "@livestore/react";
 import { Link, createFileRoute, useRouter } from "@tanstack/react-router";
@@ -213,7 +213,7 @@ function Tasks() {
                   key={task.id}
                   task={task}
                   storeDate={storeDate.getTime()}
-                  worktree={getTaskWorktreeName(task)}
+                  worktree={getWorktreeName(task.git?.worktree?.gitdir)}
                 />
               ))}
             </div>

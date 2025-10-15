@@ -40,7 +40,30 @@ const StoreDateContext = createContext<StoreDateContextType | undefined>(
 
 export type TaskSyncData = Task & { messages: Message[] };
 
-export const taskSyncEvent = new Emittery<{ taskSync: TaskSyncData }>();
+export const taskSync = {
+  event: new Emittery<{ taskSync: TaskSyncData }>(),
+  emit: async (task: TaskSyncData) => {
+    await taskSync.ready();
+    await taskSync.event.emit("taskSync", task);
+  },
+  ready: () => {
+    return new Promise<void>((resolve) => {
+      if (taskSync.event.listenerCount("taskSync") > 0) {
+        resolve();
+      } else {
+        const unsubscribe = taskSync.event.on(Emittery.listenerAdded, () => {
+          if (taskSync.event.listenerCount("taskSync") > 0) {
+            resolve();
+            unsubscribe();
+          }
+        });
+      }
+    });
+  },
+  on: (listener: (task: TaskSyncData) => void) => {
+    return taskSync.event.on("taskSync", listener);
+  },
+};
 
 export function useStoreDate() {
   const context = useContext(StoreDateContext);
@@ -82,20 +105,24 @@ export function LiveStoreProvider({ children }: { children: React.ReactNode }) {
 // https://github.com/livestorejs/livestore/pull/514
 function StoreWithCommitHook({ children }: { children: React.ReactNode }) {
   const { store } = useStore();
-  useEffect(() => {
-    setActiveStore(store);
-    return () => {
-      setActiveStore(null);
-    };
-  }, [store]);
+
+  if (globalThis.POCHI_WEBVIEW_KIND === "sidebar") {
+    useEffect(() => {
+      setActiveStore(store);
+      return () => {
+        setActiveStore(null);
+      };
+    }, [store]);
+    return children;
+  }
 
   useEffect(() => {
-    if (globalThis.POCHI_WEBVIEW_KIND !== "pane") {
+    if (globalThis.POCHI_WEBVIEW_KIND !== "pane" || !store) {
       return;
     }
-    const unsubscribe = taskSyncEvent.on("taskSync", (task) => {
+    const unsubscribe = taskSync.on((task) => {
       store.commit(
-        catalog.events.taskSync({
+        catalog.events.taskSynced({
           ...task,
           shareId: task.shareId ?? undefined,
           cwd: task.cwd ?? undefined,
@@ -108,13 +135,10 @@ function StoreWithCommitHook({ children }: { children: React.ReactNode }) {
           updatedAt: new Date(task.updatedAt),
         }),
       );
+      store.manualRefresh();
     });
     return () => unsubscribe();
   }, [store]);
-
-  if (globalThis.POCHI_WEBVIEW_KIND === "sidebar") {
-    return children;
-  }
 
   const storeWithProxy = useMemo(() => {
     return new Proxy(store, {

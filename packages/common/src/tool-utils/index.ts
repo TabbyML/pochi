@@ -10,7 +10,11 @@ export {
 export { listFiles, listWorkspaceFiles } from "./list-files";
 export { globFiles } from "./glob-files";
 export { getSystemInfo } from "./system-info";
-export { GitStatusReader, type GitStatusReaderOptions } from "./git-status";
+export {
+  GitStatusReader,
+  type GitStatusReaderOptions,
+  parseWorktreeGitdir,
+} from "./git-status";
 export {
   collectCustomRules,
   WorkspaceRulesFilePaths,

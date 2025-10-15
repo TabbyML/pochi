@@ -7,7 +7,7 @@ import type { Store } from "@livestore/livestore";
 import { ThreadNestedWindow } from "@quilted/threads";
 import * as R from "remeda";
 import type { WebviewApi } from "vscode-webview";
-import { type TaskSyncData, taskSyncEvent } from "../livestore-provider";
+import { type TaskSyncData, taskSync } from "../livestore-provider";
 import { queryClient } from "./query-client";
 
 const logger = getLogger("vscode");
@@ -94,9 +94,7 @@ function createVSCodeHost(): VSCodeHostApi {
       exports: {
         async openTask(params) {
           if (globalThis.POCHI_WEBVIEW_KIND === "pane" && "task" in params) {
-            // wait for store to be ready
-            await new Promise((resolve) => setTimeout(resolve, 100));
-            taskSyncEvent.emit("taskSync", params.task as TaskSyncData);
+            await taskSync.emit(params.task as TaskSyncData);
           }
           window.router.navigate({
             to: "/",

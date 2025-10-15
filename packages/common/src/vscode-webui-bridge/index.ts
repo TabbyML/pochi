@@ -20,7 +20,6 @@ export type {
   TaskDataParams,
   TaskData,
 } from "./types/task";
-export { getTaskWorktreeName } from "./types/task";
 export type {
   VSCodeLmModel,
   VSCodeLmRequestCallback,

@@ -191,7 +191,9 @@ export class GitStatusReader {
   }
 }
 
-async function parseWorktreeGitdir(cwd: string): Promise<string | undefined> {
+export async function parseWorktreeGitdir(
+  cwd: string,
+): Promise<string | undefined> {
   try {
     const gitFilePath = join(cwd, ".git");
     const fileStat = await stat(gitFilePath);
