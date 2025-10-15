@@ -24,7 +24,7 @@ function extractBashCommands(content: string): string[] {
 
 export type BashCommandExecutor = (
   command: string,
-  abortSignal: AbortSignal,
+  abortSignal?: AbortSignal,
 ) => Promise<{ output: string; error?: string }>;
 
 function extractWorkflowBashCommands(message: UIMessage): string[] {
@@ -51,14 +51,14 @@ function extractWorkflowBashCommands(message: UIMessage): string[] {
 export async function executeWorkflowBashCommands(
   message: UIMessage,
   bashCommandExecutor: BashCommandExecutor,
-  abortSignal: AbortSignal,
+  abortSignal?: AbortSignal,
 ): Promise<{ command: string; output: string; error?: string }[]> {
   const commands = extractWorkflowBashCommands(message);
   if (!commands.length) return [];
 
   const results: { command: string; output: string; error?: string }[] = [];
   for (const command of commands) {
-    if (abortSignal.aborted) {
+    if (abortSignal?.aborted) {
       break;
     }
 

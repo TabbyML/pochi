@@ -63,10 +63,10 @@ async function appendWorkflowBashOutputs(
 
   const bashCommandResults = await executeWorkflowBashCommands(
     message,
-    (command: string, signal: AbortSignal) =>
+    (command: string, signal?: AbortSignal) =>
       vscodeHost.executeBashCommand(
         command,
-        ThreadAbortSignal.serialize(signal),
+        ThreadAbortSignal.serialize(signal as AbortSignal),
       ),
     abortSignal,
   );
