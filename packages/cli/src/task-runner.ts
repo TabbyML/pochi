@@ -1,5 +1,7 @@
+import { exec } from "node:child_process";
 import { getLogger, prompts } from "@getpochi/common";
 import type { McpHub } from "@getpochi/common/mcp-utils";
+import { executeWorkflowBashCommands } from "@getpochi/common/message-utils";
 import {
   isAssistantMessageWithEmptyParts,
   isAssistantMessageWithNoToolCalls,
@@ -19,6 +21,7 @@ import { type Todo, isUserInputToolPart } from "@getpochi/tools";
 import type { CustomAgent } from "@getpochi/tools";
 import type { Store } from "@livestore/livestore";
 import {
+  type UIMessage,
   getToolName,
   isToolUIPart,
   lastAssistantMessageIsCompleteWithToolCalls,
@@ -144,6 +147,7 @@ export class TaskRunner {
       isSubTask: options.isSubTask,
       customAgent: options.customAgent,
       outputSchema: options.outputSchema,
+      onOverrideMessages: createOnOverrideMessages(this.cwd),
       getters: {
         getLLM: () => options.llm,
         getEnvironment: async () => ({
@@ -380,4 +384,42 @@ function toError(e: unknown): Error {
     return new Error(e);
   }
   return new Error(JSON.stringify(e));
+}
+
+function createOnOverrideMessages(cwd: string) {
+  return async function onOverrideMessages({
+    messages,
+  }: { messages: Message[] }) {
+    const lastMessage = messages.at(-1);
+    if (lastMessage?.role === "user") {
+      appendWorkflowBashOutputs(cwd, lastMessage);
+    }
+  };
+}
+
+async function appendWorkflowBashOutputs(cwd: string, lastMessage: UIMessage) {
+  const bashCommandResults = await executeWorkflowBashCommands(
+    lastMessage,
+    (command: string, signal?: AbortSignal) => {
+      return new Promise((resolve) => {
+        exec(command, { cwd, signal }, (error, stdout) => {
+          if (error) {
+            resolve({ output: stdout, error: error.message });
+          } else {
+            resolve({ output: stdout });
+          }
+        });
+      });
+    },
+  );
+
+  if (bashCommandResults.length) {
+    const bashCommandOutputs = bashCommandResults.map((x) => x.output);
+    lastMessage.parts.push({
+      type: "text",
+      text: prompts.createSystemReminder(
+        `Bash command outputs:\n${bashCommandOutputs.join("\n")}`,
+      ),
+    });
+  }
 }
