@@ -86,17 +86,19 @@ export function LiveStoreProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <StoreDateContext.Provider value={storeDateContextValue}>
-      <LiveStoreProviderImpl
-        schema={catalog.schema}
-        adapter={adapter}
-        renderLoading={Loading}
-        disableDevtools={true}
-        batchUpdates={batchUpdates}
-        syncPayload={syncPayload}
-        storeId={storeId}
-      >
-        <StoreWithCommitHook>{children}</StoreWithCommitHook>
-      </LiveStoreProviderImpl>
+      {storeId && (
+        <LiveStoreProviderImpl
+          schema={catalog.schema}
+          adapter={adapter}
+          renderLoading={Loading}
+          disableDevtools={true}
+          batchUpdates={batchUpdates}
+          syncPayload={syncPayload}
+          storeId={storeId}
+        >
+          <StoreWithCommitHook>{children}</StoreWithCommitHook>
+        </LiveStoreProviderImpl>
+      )}
     </StoreDateContext.Provider>
   );
 }
@@ -169,8 +171,12 @@ function StoreWithCommitHook({ children }: { children: React.ReactNode }) {
 }
 
 function useStoreId(jwt: string | null, date: string) {
-  const { data: machineId = "default" } = useMachineId();
+  const { data: machineId } = useMachineId();
   const sub = (jwt ? jose.decodeJwt(jwt).sub : undefined) ?? "anonymous";
+
+  if (!machineId) {
+    return undefined;
+  }
 
   return encodeStoreId({ sub, machineId, date });
 }
