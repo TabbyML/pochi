@@ -1,3 +1,4 @@
+import { getLogger } from "@getpochi/common";
 import { encodeStoreId } from "@getpochi/common/store-id-utils";
 import { catalog } from "@getpochi/livekit";
 import {
@@ -18,6 +19,8 @@ import { useMachineId } from "./lib/hooks/use-machine-id";
 import { usePochiCredentials } from "./lib/hooks/use-pochi-credentials";
 import { setActiveStore, vscodeHost } from "./lib/vscode";
 import LiveStoreWorker from "./livestore.worker.ts?worker&inline";
+
+const logger = getLogger("LiveStoreProvider");
 
 const adapter =
   globalThis.POCHI_WEBVIEW_KIND === "sidebar"
@@ -46,9 +49,31 @@ export function useStoreDate() {
 }
 
 export function LiveStoreProvider({ children }: { children: React.ReactNode }) {
-  const { jwt } = usePochiCredentials();
+  const { jwt, isPending } = usePochiCredentials();
+  const { data: machineId } = useMachineId();
+  if (isPending || !machineId) return null;
+  return (
+    <LiveStoreProviderInner jwt={jwt} machineId={machineId}>
+      {children}
+    </LiveStoreProviderInner>
+  );
+}
+
+function LiveStoreProviderInner({
+  jwt,
+  machineId,
+  children,
+}: {
+  jwt: string | null;
+  machineId: string;
+  children: React.ReactNode;
+}) {
   const [storeDate, setStoreDate] = useState(new Date());
-  const storeId = useStoreId(jwt, storeDate.toLocaleDateString("en-US"));
+  const storeId = useStoreId(
+    jwt,
+    machineId,
+    storeDate.toLocaleDateString("en-US"),
+  );
   const syncPayload = useMemo(() => ({ jwt }), [jwt]);
 
   const storeDateContextValue = useMemo(
@@ -56,6 +81,7 @@ export function LiveStoreProvider({ children }: { children: React.ReactNode }) {
     [storeDate],
   );
 
+  logger.debug("LiveStoreProvider re-rendered");
   return (
     <StoreDateContext.Provider value={storeDateContextValue}>
       <LiveStoreProviderImpl
@@ -115,8 +141,7 @@ function StoreWithCommitHook({ children }: { children: React.ReactNode }) {
   );
 }
 
-function useStoreId(jwt: string | null, date: string) {
-  const { data: machineId = "default" } = useMachineId();
+function useStoreId(jwt: string | null, machineId: string, date: string) {
   const sub = (jwt ? jose.decodeJwt(jwt).sub : undefined) ?? "anonymous";
 
   return encodeStoreId({ sub, machineId, date });
