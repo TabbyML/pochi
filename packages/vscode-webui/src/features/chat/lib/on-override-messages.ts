@@ -1,8 +1,12 @@
 import { vscodeHost } from "@/lib/vscode";
 import { prompts } from "@getpochi/common";
-import { executeWorkflowBashCommands } from "@getpochi/common/message-utils";
+import {
+  executeWorkflowBashCommands,
+  isWorkflowTextPart,
+} from "@getpochi/common/message-utils";
 import type { Message } from "@getpochi/livekit";
 import { ThreadAbortSignal } from "@quilted/threads";
+import type { TextUIPart } from "ai";
 
 /**
  * Handles the onOverrideMessages event by appending a checkpoint to the last message.
@@ -72,12 +76,30 @@ async function appendWorkflowBashOutputs(
   );
 
   if (bashCommandResults.length) {
-    const bashCommandOutputs = bashCommandResults.map((x) => x.output);
-    message.parts.push({
+    const bashCommandOutputs = bashCommandResults.map(
+      ({ command, output, error }) => {
+        let result = `$ ${command}`;
+        if (output) {
+          result += `\n${output}`;
+        }
+        if (error) {
+          result += `\nERROR: ${error}`;
+        }
+        return result;
+      },
+    );
+    const reminderPart = {
       type: "text",
       text: prompts.createSystemReminder(
-        `Bash command outputs:\n${bashCommandOutputs.join("\n")}`,
+        `Bash command outputs:\n${bashCommandOutputs.join("\n\n")}`,
       ),
-    });
+    } satisfies TextUIPart;
+    const workflowPartIndex = message.parts.findIndex(isWorkflowTextPart);
+    const indexToInsert = workflowPartIndex === -1 ? 0 : workflowPartIndex;
+    message.parts = [
+      ...message.parts.slice(0, indexToInsert),
+      reminderPart,
+      ...message.parts.slice(indexToInsert),
+    ];
   }
 }

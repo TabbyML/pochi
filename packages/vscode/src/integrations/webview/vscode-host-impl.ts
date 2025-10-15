@@ -1,6 +1,6 @@
-import { spawn } from "node:child_process";
 import * as os from "node:os";
 import path from "node:path";
+import { executeCommandWithNode } from "@/integrations/terminal/execute-command-with-node";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { CustomAgentManager } from "@/lib/custom-agent";
 import {
@@ -770,43 +770,28 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     abortSignal: ThreadAbortSignalSerialization,
   ): Promise<{ output: string; error?: string }> => {
     const signal = new ThreadAbortSignal(abortSignal);
-    return new Promise((resolve, reject) => {
-      if (!this.cwd) {
-        return reject(new Error("No workspace folder found."));
-      }
+    if (!this.cwd) {
+      return { output: "", error: "No workspace folder found." };
+    }
 
-      const child = spawn(command, {
-        shell: true,
+    let capturedOutput = "";
+    try {
+      const { output } = await executeCommandWithNode({
+        command,
         cwd: this.cwd,
-        signal: signal as AbortSignal,
+        abortSignal: signal as AbortSignal,
+        timeout: 120,
+        onData: (data) => {
+          capturedOutput = data.output;
+        },
       });
-
-      let output = "";
-      let error = "";
-
-      child.stdout.on("data", (data: Buffer) => {
-        output += data.toString();
-      });
-
-      child.stderr.on("data", (data: Buffer) => {
-        error += data.toString();
-      });
-
-      child.on("error", (err: Error) => {
-        reject(err);
-      });
-
-      child.on("close", (code: number) => {
-        if (code !== 0) {
-          resolve({
-            output,
-            error: error || `Command failed with exit code ${code}`,
-          });
-        } else {
-          resolve({ output });
-        }
-      });
-    });
+      return { output };
+    } catch (err: unknown) {
+      // err is likely an ExecutionError
+      // We return the output captured so far, and the error message.
+      const message = err instanceof Error ? err.message : String(err);
+      return { output: capturedOutput, error: message };
+    }
   };
 
   readCustomAgents = async (): Promise<

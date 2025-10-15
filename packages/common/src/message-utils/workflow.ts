@@ -22,19 +22,20 @@ function extractBashCommands(content: string): string[] {
   return commands;
 }
 
+const tag = "workflow";
+const workflowRegex = new RegExp(`<${tag}([^>]*)>(.*?)<\/${tag}>`, "gs");
+
 export type BashCommandExecutor = (
   command: string,
   abortSignal?: AbortSignal,
 ) => Promise<{ output: string; error?: string }>;
 
 function extractWorkflowBashCommands(message: UIMessage): string[] {
-  const tag = "workflow";
-  const regex = new RegExp(`<${tag}([^>]*)>(.*?)<\/${tag}>`, "gs");
   const workflowContents: string[] = [];
 
   for (const part of message.parts) {
     if (part.type === "text") {
-      const matches = part.text.matchAll(regex);
+      const matches = part.text.matchAll(workflowRegex);
       for (const match of matches) {
         const content = match[2];
         workflowContents.push(content);
@@ -46,6 +47,10 @@ function extractWorkflowBashCommands(message: UIMessage): string[] {
     commands = commands.concat(extractBashCommands(x));
   }
   return commands;
+}
+
+export function isWorkflowTextPart(part: UIMessage["parts"][number]) {
+  return part.type === "text" && workflowRegex.test(part.text);
 }
 
 export async function executeWorkflowBashCommands(

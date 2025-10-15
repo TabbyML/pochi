@@ -1,7 +1,10 @@
 import { exec } from "node:child_process";
 import { getLogger, prompts } from "@getpochi/common";
 import type { McpHub } from "@getpochi/common/mcp-utils";
-import { executeWorkflowBashCommands } from "@getpochi/common/message-utils";
+import {
+  executeWorkflowBashCommands,
+  isWorkflowTextPart,
+} from "@getpochi/common/message-utils";
 import {
   isAssistantMessageWithEmptyParts,
   isAssistantMessageWithNoToolCalls,
@@ -21,6 +24,7 @@ import { type Todo, isUserInputToolPart } from "@getpochi/tools";
 import type { CustomAgent } from "@getpochi/tools";
 import type { Store } from "@livestore/livestore";
 import {
+  type TextUIPart,
   type UIMessage,
   getToolName,
   isToolUIPart,
@@ -402,9 +406,9 @@ async function appendWorkflowBashOutputs(cwd: string, lastMessage: UIMessage) {
     lastMessage,
     (command: string, signal?: AbortSignal) => {
       return new Promise((resolve) => {
-        exec(command, { cwd, signal }, (error, stdout) => {
+        exec(command, { cwd, signal }, (error, stdout, stderr) => {
           if (error) {
-            resolve({ output: stdout, error: error.message });
+            resolve({ output: stdout, error: stderr || error.message });
           } else {
             resolve({ output: stdout });
           }
@@ -414,12 +418,30 @@ async function appendWorkflowBashOutputs(cwd: string, lastMessage: UIMessage) {
   );
 
   if (bashCommandResults.length) {
-    const bashCommandOutputs = bashCommandResults.map((x) => x.output);
-    lastMessage.parts.push({
+    const bashCommandOutputs = bashCommandResults.map(
+      ({ command, output, error }) => {
+        let result = `$ ${command}`;
+        if (output) {
+          result += `\n${output}`;
+        }
+        if (error) {
+          result += `\nERROR: ${error}`;
+        }
+        return result;
+      },
+    );
+    const reminderPart = {
       type: "text",
       text: prompts.createSystemReminder(
-        `Bash command outputs:\n${bashCommandOutputs.join("\n")}`,
+        `Bash command outputs:\n${bashCommandOutputs.join("\n\n")}`,
       ),
-    });
+    } satisfies TextUIPart;
+    const workflowPartIndex = lastMessage.parts.findIndex(isWorkflowTextPart);
+    const indexToInsert = workflowPartIndex === -1 ? 0 : workflowPartIndex;
+    lastMessage.parts = [
+      ...lastMessage.parts.slice(0, indexToInsert),
+      reminderPart,
+      ...lastMessage.parts.slice(indexToInsert),
+    ];
   }
 }
