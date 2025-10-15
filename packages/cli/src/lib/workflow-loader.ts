@@ -88,7 +88,7 @@ export async function replaceWorkflowReferences(
       // Replace only the workflow reference, preserving surrounding text
       result = result.replace(
         `/${id}`,
-        prompts.workflow(id, getWorkflowPath(id), content, undefined),
+        prompts.workflow(id, getWorkflowPath(id), content),
       );
     } else {
       missingWorkflows.push(id);
@@ -101,7 +101,7 @@ export async function replaceWorkflowReferences(
 export async function parseWorkflowFrontmatter(id: string) {
   const content = await loadWorkflow(id, process.cwd());
   if (content === null) {
-    return { model: undefined, allowedTools: undefined };
+    return { model: undefined };
   }
   return commonParseWorkflowFrontmatter(content);
 }

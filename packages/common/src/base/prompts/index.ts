@@ -60,12 +60,7 @@ function parseInlineCompact(text: string) {
   };
 }
 
-function createWorkflowPrompt(
-  id: string,
-  path: string,
-  content: string,
-  allowedTools: string | undefined,
-) {
+function createWorkflowPrompt(id: string, path: string, content: string) {
   // Remove extra newlines from the content
   let processedContent = content.replace(/\n+/g, "\n");
   // Escape '<' to avoid </workflow> being interpreted as a closing tag
@@ -75,9 +70,6 @@ function createWorkflowPrompt(
   });
 
   const attrs = [`id="${id}"`, `path="${path}"`];
-  if (allowedTools) {
-    attrs.push(`allowed-tools="${allowedTools}"`);
-  }
 
   return `<workflow ${attrs.join(" ")}>${processedContent}</workflow>`;
 }

@@ -8,7 +8,6 @@ type VFile = Parameters<typeof matter>[0];
 
 const WorkflowFrontmatter = z.object({
   model: z.string().optional(),
-  "allowed-tools": z.string().optional(),
 });
 
 /**
@@ -25,7 +24,6 @@ export async function parseWorkflowFrontmatter(content: string | null) {
   } catch (error) {
     return {
       model: undefined,
-      allowedTools: undefined,
       error: "parseError",
       message: toErrorMessage(error),
     };
@@ -34,7 +32,6 @@ export async function parseWorkflowFrontmatter(content: string | null) {
   if (!vfile.data.matter || Object.keys(vfile.data.matter).length === 0) {
     return {
       model: undefined,
-      allowedTools: undefined,
     };
   }
 
@@ -42,7 +39,6 @@ export async function parseWorkflowFrontmatter(content: string | null) {
   if (!parseResult.success) {
     return {
       model: undefined,
-      allowedTools: undefined,
       error: "validationError",
       message: z.prettifyError(parseResult.error),
     };
@@ -52,6 +48,5 @@ export async function parseWorkflowFrontmatter(content: string | null) {
 
   return {
     model: frontmatterData.model,
-    allowedTools: frontmatterData["allowed-tools"],
   };
 }

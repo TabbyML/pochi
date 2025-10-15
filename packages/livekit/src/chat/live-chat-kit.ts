@@ -18,7 +18,7 @@ import { compactTask } from "./llm";
 import {
   type BashCommandExecutor,
   executeBashCommands,
-  parseWorkflowsFromMessage,
+  extractWorkflowContents,
 } from "./llm/bash-command-execute";
 import { createModel } from "./models";
 // import { parseWorkflowFrontmatter as commonParseWorkflowFrontmatter } from "@getpochi/common/tool-utils";
@@ -141,13 +141,12 @@ export class LiveChatKit<
       }
 
       if (lastMessage?.role === "user") {
-        const workflowInfo = parseWorkflowsFromMessage(lastMessage);
-        if (workflowInfo.length) {
+        const workflowContents = extractWorkflowContents(lastMessage);
+        if (workflowContents.length) {
           let results: string[] = [];
-          for (const { content, allowedTools } of workflowInfo) {
+          for (const content of workflowContents) {
             const outputs = await executeBashCommands(
               content,
-              allowedTools,
               abortSignal,
               onExecuteBashCommand,
             );
@@ -156,7 +155,9 @@ export class LiveChatKit<
           if (results.length) {
             messages[messages.length - 1].parts.push({
               type: "text",
-              text: prompts.createSystemReminder(results.join("\n")),
+              text: prompts.createSystemReminder(
+                `Bash command outputs:\n${results.join("\n")}`,
+              ),
             });
           }
         }
