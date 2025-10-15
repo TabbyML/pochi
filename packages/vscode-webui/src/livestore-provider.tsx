@@ -12,7 +12,14 @@ import {
 } from "@livestore/react";
 import * as jose from "jose";
 import { Loader2 } from "lucide-react";
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { unstable_batchedUpdates as batchUpdates } from "react-dom";
 import { useMachineId } from "./lib/hooks/use-machine-id";
 import { usePochiCredentials } from "./lib/hooks/use-pochi-credentials";
@@ -49,7 +56,19 @@ export function LiveStoreProvider({ children }: { children: React.ReactNode }) {
   const { jwt } = usePochiCredentials();
   const [storeDate, setStoreDate] = useState(new Date());
   const storeId = useStoreId(jwt, storeDate.toLocaleDateString("en-US"));
-  const syncPayload = useMemo(() => ({ jwt }), [jwt]);
+
+  // FIXME(kweizh): apply the official solution after this is fixed:
+  // https://github.com/livestorejs/livestore/issues/571
+  //
+  // Create a stable object wrapper for JWT to prevent LiveStore errors
+  // when JWT changes. The wrapper object reference stays the same,
+  // only the jwt property inside is updated.
+  const syncPayloadRef = useRef<{ jwt: string | null }>({ jwt });
+
+  // Update the JWT value inside the stable wrapper when it changes
+  useEffect(() => {
+    syncPayloadRef.current.jwt = jwt;
+  }, [jwt]);
 
   const storeDateContextValue = useMemo(
     () => ({ storeDate, setStoreDate }),
@@ -64,7 +83,7 @@ export function LiveStoreProvider({ children }: { children: React.ReactNode }) {
         renderLoading={Loading}
         disableDevtools={true}
         batchUpdates={batchUpdates}
-        syncPayload={syncPayload}
+        syncPayload={syncPayloadRef.current}
         storeId={storeId}
       >
         <StoreWithCommitHook>{children}</StoreWithCommitHook>
