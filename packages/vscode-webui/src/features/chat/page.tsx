@@ -55,6 +55,7 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
   const { t } = useTranslation();
   const { store } = useStore();
   const todosRef = useRef<Todo[] | undefined>(undefined);
+
   const defaultUser = {
     name: "You",
     image: `https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(store.clientId)}&scale=120`,
@@ -73,12 +74,10 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
   const { data: currentWorkspace, isFetching: isFetchingWorkspace } =
     useCurrentWorkspace();
   const isWorkspaceActive = !!currentWorkspace;
-
   const getters = useLiveChatKitGetters({
     todos: todosRef,
     isSubTask: !!subtask,
   });
-
   const chatKit = useLiveChatKit({
     taskId: uid,
     getters,

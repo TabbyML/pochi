@@ -68,8 +68,5 @@ function createWorkflowPrompt(id: string, path: string, content: string) {
   processedContent = processedContent.replace(workflowTagRegex, (match) => {
     return match.replace("<", "&lt;");
   });
-
-  const attrs = [`id="${id}"`, `path="${path}"`];
-
-  return `<workflow ${attrs.join(" ")}>${processedContent}</workflow>`;
+  return `<workflow id="${id}" path="${path}">${processedContent}</workflow>`;
 }

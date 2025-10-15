@@ -19,9 +19,8 @@ import {
   type BashCommandExecutor,
   executeBashCommands,
   extractWorkflowContents,
-} from "./llm/bash-command-execute";
+} from "./llm/execute-bash-command";
 import { createModel } from "./models";
-// import { parseWorkflowFrontmatter as commonParseWorkflowFrontmatter } from "@getpochi/common/tool-utils";
 
 const logger = getLogger("LiveChatKit");
 
