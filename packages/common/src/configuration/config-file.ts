@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import * as fs from "node:fs";
 import * as fsPromise from "node:fs/promises";
 import * as path from "node:path";
@@ -95,7 +96,14 @@ export class PochiConfigFile {
       });
       content = JSONC.applyEdits(content, edits);
 
+      // writeFile is not atomic,
+      // the writing of multiple instance of pochi in the same time would break the config
+      // so we use rename to make sure the config remains valid during write
+      //
+      // the caveat is only the last writer wins, but it's acceptable
+      const tmp = `${this.configFilePath}.${randomUUID()}.tmp`;
       await fsPromise.writeFile(this.configFilePath, content);
+      await fsPromise.rename(tmp, this.configFilePath);
     } catch (err) {
       logger.error("Failed to save config file", err);
     }
