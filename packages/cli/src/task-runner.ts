@@ -1,10 +1,7 @@
 import { exec } from "node:child_process";
 import { getLogger, prompts } from "@getpochi/common";
 import type { McpHub } from "@getpochi/common/mcp-utils";
-import {
-  executeWorkflowBashCommands,
-  isWorkflowTextPart,
-} from "@getpochi/common/message-utils";
+import { executeWorkflowBashCommands } from "@getpochi/common/message-utils";
 import {
   isAssistantMessageWithEmptyParts,
   isAssistantMessageWithNoToolCalls,
@@ -24,7 +21,6 @@ import { type Todo, isUserInputToolPart } from "@getpochi/tools";
 import type { CustomAgent } from "@getpochi/tools";
 import type { Store } from "@livestore/livestore";
 import {
-  type TextUIPart,
   type UIMessage,
   getToolName,
   isToolUIPart,
@@ -396,7 +392,7 @@ function createOnOverrideMessages(cwd: string) {
   }: { messages: Message[] }) {
     const lastMessage = messages.at(-1);
     if (lastMessage?.role === "user") {
-      appendWorkflowBashOutputs(cwd, lastMessage);
+      await appendWorkflowBashOutputs(cwd, lastMessage);
     }
   };
 }
@@ -417,31 +413,5 @@ async function appendWorkflowBashOutputs(cwd: string, lastMessage: UIMessage) {
     },
   );
 
-  if (bashCommandResults.length) {
-    const bashCommandOutputs = bashCommandResults.map(
-      ({ command, output, error }) => {
-        let result = `$ ${command}`;
-        if (output) {
-          result += `\n${output}`;
-        }
-        if (error) {
-          result += `\nERROR: ${error}`;
-        }
-        return result;
-      },
-    );
-    const reminderPart = {
-      type: "text",
-      text: prompts.createSystemReminder(
-        `Bash command outputs:\n${bashCommandOutputs.join("\n\n")}`,
-      ),
-    } satisfies TextUIPart;
-    const workflowPartIndex = lastMessage.parts.findIndex(isWorkflowTextPart);
-    const indexToInsert = workflowPartIndex === -1 ? 0 : workflowPartIndex;
-    lastMessage.parts = [
-      ...lastMessage.parts.slice(0, indexToInsert),
-      reminderPart,
-      ...lastMessage.parts.slice(indexToInsert),
-    ];
-  }
+  prompts.injectBashOutputs(lastMessage, bashCommandResults);
 }
