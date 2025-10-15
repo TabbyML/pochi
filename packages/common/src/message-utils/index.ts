@@ -8,3 +8,4 @@ export {
   isAssistantMessageWithOutputError,
 } from "./assistant-message";
 export { mergeTodos, findTodos } from "./todo";
+export { executeWorkflowBashCommands } from "./workflow";
