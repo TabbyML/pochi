@@ -4,7 +4,6 @@ import * as SyncBackend from "@livestore/sync-cf/cf-worker";
 
 export class SyncBackendDO extends SyncBackend.makeDurableObject({
   onPush: async (_message, { storeId, payload }) => {
-    // Once connection is confirmed, we extend trust of JWT by 7 days as clock tolerance.
     if (!(await verifyStoreId(payload, storeId))) {
       throw new Error("Unauthorized");
     }
