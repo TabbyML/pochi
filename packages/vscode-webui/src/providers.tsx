@@ -23,7 +23,8 @@ export const Providers: React.FC<{ children: React.ReactNode }> = ({
 
               const cacheQuery =
                 query.queryKey[0] === "session" ||
-                query.queryKey[0] === "mcpConnectTools";
+                query.queryKey[0] === "mcpConnectTools" ||
+                query.queryKey[0] === "thirdPartyMcpConfigs";
 
               return isSuccess && cacheQuery;
             },
