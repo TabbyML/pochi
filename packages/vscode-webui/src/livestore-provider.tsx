@@ -1,6 +1,6 @@
 import { getLogger } from "@getpochi/common";
 import { encodeStoreId } from "@getpochi/common/store-id-utils";
-import { type Message, type Task, catalog } from "@getpochi/livekit";
+import { catalog } from "@getpochi/livekit";
 import {
   makeInMemoryAdapter,
   makePersistedAdapter,
@@ -11,13 +11,13 @@ import {
   LiveStoreProvider as LiveStoreProviderImpl,
   useStore,
 } from "@livestore/react";
-import Emittery from "emittery";
 import * as jose from "jose";
 import { Loader2 } from "lucide-react";
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { unstable_batchedUpdates as batchUpdates } from "react-dom";
 import { useMachineId } from "./lib/hooks/use-machine-id";
 import { usePochiCredentials } from "./lib/hooks/use-pochi-credentials";
+import { taskSync } from "./lib/task-sync-event";
 import { setActiveStore, vscodeHost } from "./lib/vscode";
 import LiveStoreWorker from "./livestore.worker.ts?worker&inline";
 
@@ -40,33 +40,6 @@ interface StoreDateContextType {
 const StoreDateContext = createContext<StoreDateContextType | undefined>(
   undefined,
 );
-
-export type TaskSyncData = Task & { messages: Message[] };
-
-export const taskSync = {
-  event: new Emittery<{ taskSync: TaskSyncData }>(),
-  emit: async (task: TaskSyncData) => {
-    await taskSync.ready();
-    await taskSync.event.emit("taskSync", task);
-  },
-  ready: () => {
-    return new Promise<void>((resolve) => {
-      if (taskSync.event.listenerCount("taskSync") > 0) {
-        resolve();
-      } else {
-        const unsubscribe = taskSync.event.on(Emittery.listenerAdded, () => {
-          if (taskSync.event.listenerCount("taskSync") > 0) {
-            resolve();
-            unsubscribe();
-          }
-        });
-      }
-    });
-  },
-  on: (listener: (task: TaskSyncData) => void) => {
-    return taskSync.event.on("taskSync", listener);
-  },
-};
 
 export function useStoreDate() {
   const context = useContext(StoreDateContext);
