@@ -141,5 +141,6 @@ export const authClient = createAuthClient();
 
 function isJWTExpiring(jwt: string) {
   const { exp } = jose.decodeJwt(jwt);
-  return exp ? Date.now() >= (exp - 5 * 60) * 1000 : true;
+  // Should refresh JWT token if it's expiring in the next 48 hours
+  return exp ? Date.now() >= (exp - 60 * 60 * 48) * 1000 : true;
 }
