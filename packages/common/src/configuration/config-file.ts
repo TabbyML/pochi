@@ -59,9 +59,13 @@ export class PochiConfigFile {
         triggerAt: "end",
       },
     );
-    fs.watch(this.configFilePath, { persistent: false }, () =>
-      debouncer.call(),
-    );
+    const configDir = path.dirname(this.configFilePath);
+    const configFileName = path.basename(this.configFilePath);
+    fs.watch(configDir, { persistent: false }, (_eventType, filename) => {
+      if (filename === configFileName) {
+        debouncer.call();
+      }
+    });
   }
 
   private async ensureFileExists() {
@@ -102,7 +106,7 @@ export class PochiConfigFile {
       //
       // the caveat is only the last writer wins, but it's acceptable
       const tmp = `${this.configFilePath}.${randomUUID()}.tmp`;
-      await fsPromise.writeFile(this.configFilePath, content);
+      await fsPromise.writeFile(tmp, content);
       await fsPromise.rename(tmp, this.configFilePath);
     } catch (err) {
       logger.error("Failed to save config file", err);
