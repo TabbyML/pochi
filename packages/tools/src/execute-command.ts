@@ -10,8 +10,8 @@ IMPORTANT: This tool is for terminal operations like git, npm, docker, etc. DO N
 Before executing the command, please follow these steps:
 
 1. Directory Verification:
-   - If the command will create new directories or files, first use \`ls\` to verify the parent directory exists and is the correct location
-   - For example, before running "mkdir foo/bar", first use \`ls foo\` to check that "foo" exists and is the intended parent directory
+   - If the command will create new directories or files, first use listFiles to verify the parent directory exists and is the correct location
+   - For example, before running "mkdir foo/bar", first use listFiles to check that "foo" exists and is the intended parent directory
 
 2. Command Execution:
    - Always quote file paths that contain spaces with double quotes (e.g., cd "path with spaces/file.txt")
