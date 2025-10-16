@@ -439,20 +439,31 @@ export class CommandManager implements vscode.Disposable {
         },
       ),
 
-      vscode.commands.registerCommand("pochi.openInPanel", async () => {
-        // FIXME(zhanba): pass cwd from command argument
-        const cwd = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
-        if (!cwd) {
-          throw new Error(
-            "Cannot open Pochi panel without a workspace folder.",
+      vscode.commands.registerCommand(
+        "pochi.createTaskInPanel",
+        async (scm: vscode.SourceControl) => {
+          const cwd = scm?.rootUri?.fsPath;
+
+          if (!cwd) {
+            throw new Error(
+              "Cannot open Pochi panel without a workspace folder.",
+            );
+          }
+
+          const workspaceFolder =
+            vscode.workspace.workspaceFolders?.[0].uri.fsPath;
+          // only open new panel if current scm is worktree
+          if (workspaceFolder === cwd) {
+            vscode.commands.executeCommand("pochi.webui.navigate.newTask");
+            return;
+          }
+          const workspaceContainer = workspaceScoped(cwd);
+          await PochiWebviewPanel.createOrShow(
+            workspaceContainer,
+            this.context.extensionUri,
           );
-        }
-        const workspaceContainer = workspaceScoped(cwd);
-        PochiWebviewPanel.createOrShow(
-          workspaceContainer,
-          this.context.extensionUri,
-        );
-      }),
+        },
+      ),
 
       vscode.commands.registerCommand(
         "pochi.nextEditSuggestion.accept",

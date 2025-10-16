@@ -1,7 +1,6 @@
 import type { ThreadAbortSignalSerialization } from "@quilted/threads";
 import type { ThreadSignalSerialization } from "@quilted/threads/signals";
 import type { Environment } from "../base";
-
 import type { UserInfo } from "../configuration";
 import type {
   CaptureEvent,
@@ -221,7 +220,7 @@ const VSCodeHostStub = {
     return "test-machine-id";
   },
 
-  openPochiInNewTab: async (): Promise<void> => {},
+  openTaskInPanel: async (): Promise<void> => {},
 
   bridgeStoreEvent: async (): Promise<void> => {},
 } satisfies VSCodeHostApi;

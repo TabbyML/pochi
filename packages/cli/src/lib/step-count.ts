@@ -16,6 +16,20 @@ export function stepToString(stepInfo: StepInfo): string {
   return `Round ${stepInfo.step}`;
 }
 
+export class MaxRoundReachedError extends Error {
+  constructor(readonly maxRounds: number) {
+    super(`Task aborted: maximum number of rounds reached (${maxRounds}).`);
+    this.name = "AbortError";
+  }
+}
+
+export class MaxRetryReachedError extends Error {
+  constructor(readonly maxRetries: number) {
+    super(`Task aborted: maximum number of retries reached (${maxRetries}).`);
+    this.name = "AbortError";
+  }
+}
+
 /**
  * A step of the runner loop.
  * The runner loads the task, processes messages, then sends results to the server.
@@ -40,7 +54,7 @@ export class StepCount implements StepInfo {
 
   throwIfReachedMaxSteps() {
     if (this.step >= this.maxSteps) {
-      throw new Error(`Reached max rounds (${this.maxSteps}).`);
+      throw new MaxRoundReachedError(this.maxSteps);
     }
   }
 
@@ -52,7 +66,7 @@ export class StepCount implements StepInfo {
 
   throwIfReachedMaxRetries() {
     if (this.retry >= this.maxRetries) {
-      throw new Error(`Reached max retries (${this.maxRetries}).`);
+      throw new MaxRetryReachedError(this.maxRetries);
     }
   }
 

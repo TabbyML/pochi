@@ -121,7 +121,7 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
   const { pendingApproval, retry } = approvalAndRetry;
 
   useEffect(() => {
-    if (prompt && !chatKit.inited) {
+    if (prompt && !chatKit.inited && !isFetchingWorkspace) {
       let partsOrString: Message["parts"] | string;
       if (files?.length) {
         partsOrString = prepareMessageParts(prompt, files, t);
@@ -130,7 +130,7 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
       }
       chatKit.init(currentWorkspace ?? undefined, partsOrString);
     }
-  }, [currentWorkspace, prompt, chatKit, files, t]);
+  }, [currentWorkspace, isFetchingWorkspace, prompt, chatKit, files, t]);
 
   useSetSubtaskModel({ isSubTask: !!subtask, customAgent });
 

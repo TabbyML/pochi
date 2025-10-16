@@ -4,7 +4,6 @@ import {
   ContextMenuItem,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
-import { useStoreBlobUrl } from "@/lib/store-blob";
 import { cn } from "@/lib/utils";
 import { isVSCodeEnvironment, vscodeHost } from "@/lib/vscode";
 import type React from "react";
@@ -34,7 +33,7 @@ const imageUrlToBase64 = async (url: string) => {
 };
 
 export function CopyableImage({
-  src,
+  src: url,
   alt,
   className,
   mimeType,
@@ -42,7 +41,6 @@ export function CopyableImage({
   ...props
 }: CopyableImageProps) {
   const { t } = useTranslation();
-  const url = useStoreBlobUrl(src ?? "");
 
   if (!url) return null;
 
