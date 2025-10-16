@@ -39,7 +39,8 @@ import {
 } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { MdOutlineErrorOutline } from "react-icons/md";
-import { type TaskSyncData, useStoreDate } from "../livestore-provider";
+import { useStoreDate } from "../livestore-provider";
+import { type TaskSyncData } from "../lib/task-sync-event";
 
 export const Route = createFileRoute("/tasks")({
   validateSearch: (search: Record<string, unknown>): { page?: number } => {
