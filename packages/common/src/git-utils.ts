@@ -115,3 +115,9 @@ export function parseGitOriginUrl(originUrl: string): GitRepositoryInfo | null {
 
   return null;
 }
+
+export const getWorktreeName = (
+  worktreeDir: string | undefined,
+): string | undefined => {
+  return worktreeDir?.split(/[\/\\]/).pop();
+};

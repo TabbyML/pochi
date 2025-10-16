@@ -1,12 +1,11 @@
 import { getLogger } from "@getpochi/common";
-
 import type { CustomAgent } from "@getpochi/tools";
 import type { Store } from "@livestore/livestore";
 import type { ChatInit, ChatOnErrorCallback, ChatOnFinishCallback } from "ai";
 import type z from "zod/v4";
 import { makeMessagesQuery, makeTaskQuery } from "../livestore/queries";
 import { events, tables } from "../livestore/schema";
-import { toTaskError, toTaskStatus } from "../task";
+import { toTaskError, toTaskGitInfo, toTaskStatus } from "../task";
 import type { Message } from "../types";
 import { scheduleGenerateTitleJob } from "./background-job";
 import {
@@ -224,6 +223,16 @@ export class LiveChatKit<
     );
   };
 
+  markAsFailed = (error: Error) => {
+    this.store.commit(
+      events.taskFailed({
+        id: this.taskId,
+        error: toTaskError(error),
+        updatedAt: new Date(),
+      }),
+    );
+  };
+
   private readonly onStart: OnStartCallback = async ({
     messages,
     environment,
@@ -255,19 +264,12 @@ export class LiveChatKit<
         getModel,
       });
 
-      const { gitStatus } = environment?.workspace || {};
-
       store.commit(
         events.chatStreamStarted({
           id: this.taskId,
           data: lastMessage,
           todos: environment?.todos || [],
-          git: gitStatus
-            ? {
-                origin: gitStatus.origin,
-                branch: gitStatus.currentBranch,
-              }
-            : undefined,
+          git: toTaskGitInfo(environment?.workspace.gitStatus),
           updatedAt: new Date(),
         }),
       );

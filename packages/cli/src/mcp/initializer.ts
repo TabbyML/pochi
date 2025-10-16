@@ -25,12 +25,15 @@ export async function initializeMcp(program: Command) {
     const readyConnections = connections.filter(
       (conn) => conn.status === "ready",
     ).length;
+    const stoppedConnections = connections.filter(
+      (conn) => conn.status === "stopped",
+    ).length;
     const errorConnections = connections.filter(
       (conn) => conn.status === "error",
     ).length;
 
     // Wait for ALL non-error connections to be ready
-    if (readyConnections >= connections.length) {
+    if (readyConnections + stoppedConnections >= connections.length) {
       break;
     }
 

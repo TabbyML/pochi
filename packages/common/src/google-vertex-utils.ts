@@ -11,7 +11,12 @@ declare global {
 
 function createPatchedFetchForFinetune(accessToken?: string | undefined) {
   function patchString(str: string) {
-    return str.replace("/publishers/google/models", "/endpoints");
+    const matches = str.match(/models\/([^:]+)/);
+    const modelId = matches ? matches[1] : undefined;
+    if (modelId && isEndpointModelId(modelId)) {
+      return str.replace("/publishers/google/models", "/endpoints");
+    }
+    return str;
   }
 
   return (requestInfo: Request | URL | string, requestInit?: RequestInit) => {
@@ -123,4 +128,9 @@ export function createVertexModel(vertex: GoogleVertexModel, modelId: string) {
   }
 
   return undefined as never;
+}
+
+function isEndpointModelId(modelId: string): boolean {
+  // endpoint model is all numberic
+  return /^\d+$/.test(modelId);
 }

@@ -29,6 +29,12 @@ export async function processContentOutput(
       content: await Promise.all(content),
     };
   }
+
+  if (typeof output === "object" && output !== null && "toolResult" in output) {
+    const { toolResult, ...rest } = output as { toolResult: unknown };
+    return rest;
+  }
+
   return output;
 }
 

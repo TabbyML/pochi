@@ -1,4 +1,4 @@
-import { queryDb } from "@livestore/livestore";
+import { Schema, queryDb, sql } from "@livestore/livestore";
 import { tables } from "./schema";
 
 export const makeTaskQuery = (taskId: string) =>
@@ -26,11 +26,10 @@ export const tasks$ = queryDb(
 
 export const makeTasksQuery = (cwd: string) =>
   queryDb(
-    () =>
-      tables.tasks
-        .where("parentId", "=", null)
-        .where("cwd", "=", cwd)
-        .orderBy("updatedAt", "desc"),
+    {
+      query: sql`select * from tasks where parentId is null and (cwd = '${cwd}' or git->>'$.worktree.gitdir' like '${cwd}/.git/worktrees%') order by updatedAt desc`,
+      schema: Schema.Array(tables.tasks.rowSchema),
+    },
     {
       label: "tasks.cwd",
       deps: [cwd],

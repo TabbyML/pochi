@@ -2,6 +2,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { GitStatusReader } from "../git-status";
 
 const execMocks = vi.hoisted(() => new Map<string, string>());
+const fsMocks = vi.hoisted(() => ({
+  stat: vi.fn(),
+  readFile: vi.fn(),
+}));
 
 vi.mock("node:child_process", () => ({
   exec: vi.fn((command: string, _, callback) => {
@@ -14,9 +18,19 @@ vi.mock("node:child_process", () => ({
   }),
 }));
 
+vi.mock("node:fs/promises", async (importOriginal) => {
+  const original = await importOriginal<typeof import("node:fs/promises")>();
+  return {
+    ...original,
+    stat: fsMocks.stat,
+    readFile: fsMocks.readFile,
+  };
+});
+
 describe("GitStatusReader", () => {
   afterEach(() => {
     execMocks.clear();
+    vi.resetAllMocks();
   });
 
   it("should correctly read and parse git status", async () => {
@@ -33,6 +47,11 @@ describe("GitStatusReader", () => {
     );
     execMocks.set("config user.name", "Test User");
     execMocks.set("config user.email", "test@example.com");
+    execMocks.set("rev-parse --path-format=absolute --git-common-dir", "/test/repo/.git");
+    execMocks.set("rev-parse --path-format=absolute --show-toplevel", "/test/repo");
+
+    fsMocks.stat.mockResolvedValue({ isFile: () => true });
+    fsMocks.readFile.mockResolvedValue("gitdir: /test/repo/.git/worktrees/feature-branch");
 
     const reader = new GitStatusReader({ cwd: "/test/repo" });
     const status = await reader.readGitStatus();
@@ -45,6 +64,7 @@ describe("GitStatusReader", () => {
       recentCommits: ["abc1234 feat: new feature", "def5678 fix: a bug"],
       userName: "Test User",
       userEmail: "test@example.com",
+      worktree: {gitdir: "/test/repo/.git/worktrees/feature-branch"},
     });
   });
 
