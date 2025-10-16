@@ -12,7 +12,6 @@ export class SyncBackendDO extends SyncBackend.makeDurableObject({
     await stub.signalKeepAlive(storeId);
   },
   onPull: async (_message, { storeId, payload }) => {
-    // Once connection is confirmed, we extend trust of JWT by 7 days as clock tolerance.
     if (!(await verifyStoreId(payload, storeId))) {
       throw new Error("Unauthorized");
     }
