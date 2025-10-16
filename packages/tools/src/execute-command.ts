@@ -5,13 +5,21 @@ const toolDef = {
   description:
     `Executes a given bash command in a persistent shell session with optional timeout, ensuring proper handling and security measures.
 
+IMPORTANT: This tool is for terminal operations like git, npm, docker, etc. DO NOT use it for file operations (reading, writing, editing, searching, finding files) - use the specialized tools for this instead.
+
 Before executing the command, please follow these steps:
 
 1. Directory Verification:
-   - If the command will create new directories or files, first use the listFiles tool to verify the parent directory exists and is the correct location
-   - For example, before running "mkdir foo/bar", first use listFiles to check that "foo" exists and is the intended parent directory
+   - If the command will create new directories or files, first use \`ls\` to verify the parent directory exists and is the correct location
+   - For example, before running "mkdir foo/bar", first use \`ls foo\` to check that "foo" exists and is the intended parent directory
 
 2. Command Execution:
+   - Always quote file paths that contain spaces with double quotes (e.g., cd "path with spaces/file.txt")
+   - Examples of proper quoting:
+     - cd "/Users/name/My Documents" (correct)
+     - cd /Users/name/My Documents (incorrect - will fail)
+     - python "/path/with spaces/script.py" (correct)
+     - python /path/with spaces/script.py (incorrect - will fail)
    - After ensuring proper quoting, execute the command.
    - Capture the output of the command.
 
@@ -19,13 +27,17 @@ Usage notes:
 - The command argument is required.
 - You can specify an optional timeout in seconds (up to 300s / 5 minutes). If not specified, commands will timeout after 60s (1 minute).
 - If the output exceeds 30000 characters, output will be truncated before being returned to you.
-- When issuing multiple commands, use the ';' or '&&' operator to separate them. DO NOT use newlines (newlines are ok in quoted strings).
+- When issuing multiple commands:
+  - If the commands are independent and can run in parallel, make multiple executeCommand tool calls in a single message
+  - If the commands depend on each other and must run sequentially, use a single executeCommand call with '&&' to chain them together (e.g., \`git add . && git commit -m "message" && git push\`)
+  - Use ';' only when you need to run commands sequentially but don't care if earlier commands fail
+  - DO NOT use newlines to separate commands (newlines are ok in quoted strings)
 - You shall avoid use the markdown code block syntax (backtick, '\`') in your command, as it will be interpreted as a command substitution.
 - Before using this tool, you must first think about the context provided in <system-reminder> to understand the user's environment and tailor your commands to ensure they are compatible with their system. You must also consider if the command you need to run should be executed in a specific directory rather than the current working directory, and properly set the \`cwd\` if necessary.
 
 # Committing changes with git
 
-When the user asks you to create a new git commit, follow these steps carefully:
+Only create commits when requested by the user. If unclear, ask first. When the user asks you to create a new git commit, follow these steps carefully:
 
 1. You have the capability to call multiple tools in a single response. When multiple independent pieces of information are requested, batch your tool calls together for optimal performance. ALWAYS run the following bash commands in parallel, each using the executeCommand tool:
   - Run a git status command to see all untracked files.

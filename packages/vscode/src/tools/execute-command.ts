@@ -15,9 +15,6 @@ import {
 
 const logger = getLogger("ExecuteCommand");
 
-// Ensure there's a unique and isolated queue per command executed in the tool.
-let executeCommandQueue = Promise.resolve();
-
 export const executeCommand: ToolFunctionType<
   ClientTools["executeCommand"]
 > = async (
@@ -41,36 +38,34 @@ export const executeCommand: ToolFunctionType<
     isTruncated: false,
   });
 
-  executeCommandQueue = executeCommandQueue.then(() =>
-    waitForWebviewSubscription().then(() =>
-      executeCommandImpl({
-        command,
-        cwd,
-        timeout: timeout ?? defaultTimeout,
-        abortSignal,
-        onData: (data) => {
-          output.value = {
-            content: data.output,
-            status: "running",
-            isTruncated: data.isTruncated,
-          };
-        },
+  waitForWebviewSubscription().then(() =>
+    executeCommandImpl({
+      command,
+      cwd,
+      timeout: timeout ?? defaultTimeout,
+      abortSignal,
+      onData: (data) => {
+        output.value = {
+          content: data.output,
+          status: "running",
+          isTruncated: data.isTruncated,
+        };
+      },
+    })
+      .then(({ output: commandOutput, isTruncated }) => {
+        output.value = {
+          content: commandOutput,
+          status: "completed",
+          isTruncated,
+        };
       })
-        .then(({ output: commandOutput, isTruncated }) => {
-          output.value = {
-            content: commandOutput,
-            status: "completed",
-            isTruncated,
-          };
-        })
-        .catch((error) => {
-          output.value = {
-            ...output.value,
-            status: "completed",
-            error: error.message,
-          };
-        }),
-    ),
+      .catch((error) => {
+        output.value = {
+          ...output.value,
+          status: "completed",
+          error: error.message,
+        };
+      }),
   );
 
   // biome-ignore lint/suspicious/noExplicitAny: pass thread signal
