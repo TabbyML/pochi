@@ -43,7 +43,3 @@ export function extractWorkflowBashCommands(message: UIMessage): string[] {
   }
   return commands;
 }
-
-export function isWorkflowTextPart(part: UIMessage["parts"][number]) {
-  return part.type === "text" && workflowRegex.test(part.text);
-}

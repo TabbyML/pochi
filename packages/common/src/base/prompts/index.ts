@@ -1,8 +1,7 @@
-import type { TextUIPart, UIMessage } from "ai";
-import { isWorkflowTextPart } from "../../message-utils";
 import { createCompactPrompt } from "./compact";
 import { createEnvironmentPrompt, injectEnvironment } from "./environment";
 import { generateTitle } from "./generate-title";
+import { injectBashOutputs } from "./inject-bash-outputs";
 import { createSystemPrompt } from "./system";
 
 export const prompts = {
@@ -72,39 +71,4 @@ function createWorkflowPrompt(id: string, path: string, content: string) {
     return match.replace("<", "&lt;");
   });
   return `<workflow id="${id}" path="${path}">${processedContent}</workflow>`;
-}
-
-function injectBashOutputs(
-  message: UIMessage,
-  outputs: {
-    command: string;
-    output: string;
-    error?: string | undefined;
-  }[],
-) {
-  const bashCommandOutputs = outputs.map(({ command, output, error }) => {
-    let result = `$ ${command}`;
-    if (output) {
-      result += `\n${output}`;
-    }
-    if (error) {
-      result += `\nERROR: ${error}`;
-    }
-    return result;
-  });
-
-  const reminderPart = {
-    type: "text",
-    text: createSystemReminder(
-      `Bash command outputs:\n${bashCommandOutputs.join("\n\n")}`,
-    ),
-  } satisfies TextUIPart;
-
-  const workflowPartIndex = message.parts.findIndex(isWorkflowTextPart);
-  const indexToInsert = workflowPartIndex === -1 ? 0 : workflowPartIndex;
-  message.parts = [
-    ...message.parts.slice(0, indexToInsert),
-    reminderPart,
-    ...message.parts.slice(indexToInsert),
-  ];
 }

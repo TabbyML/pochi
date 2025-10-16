@@ -780,7 +780,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         command,
         cwd: this.cwd,
         abortSignal: signal as AbortSignal,
-        timeout: 120,
+        timeout: 10,
         onData: (data) => {
           capturedOutput = data.output;
         },
