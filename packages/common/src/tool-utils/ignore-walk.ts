@@ -318,7 +318,7 @@ export async function ignoreWalk({
   useGitignore = true,
   usePochiignore = true,
 }: IgnoreWalkOptions): Promise<FileResult[]> {
-  logger.debug(
+  logger.trace(
     `Starting traversal from ${dir} with limit ${MaxScanItems}, recursive: ${recursive}`,
   );
 
@@ -359,7 +359,7 @@ export async function ignoreWalk({
     }
   }
 
-  logger.debug(
+  logger.trace(
     `Completed traversal. Found ${state.scannedFileResults.length} items. Processed approximately ${state.fileScannedCount} entries.`,
   );
 
