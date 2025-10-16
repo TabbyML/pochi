@@ -9,6 +9,11 @@ export function setBlobUrl(key: string, data: Blob) {
 }
 
 export function useStoreBlobUrl(inputUrl: string): string | null {
+  // Do not handle data uri
+  if (inputUrl.startsWith("data:")) {
+    return inputUrl;
+  }
+
   const value = blobs.get(inputUrl);
   if (value) {
     return value;
