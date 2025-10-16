@@ -8,7 +8,7 @@ import { ThreadNestedWindow } from "@quilted/threads";
 import * as R from "remeda";
 import type { WebviewApi } from "vscode-webview";
 import { queryClient } from "./query-client";
-import { taskSync, type TaskSyncData } from "./task-sync-event";
+import { type TaskSyncData, taskSync } from "./task-sync-event";
 
 const logger = getLogger("vscode");
 
