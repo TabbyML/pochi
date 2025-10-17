@@ -34,6 +34,7 @@ export type LiveChatKitOptions<T> = {
 
   onOverrideMessages?: (options: {
     messages: Message[];
+    abortSignal: AbortSignal;
   }) => void | Promise<void>;
 
   customAgent?: CustomAgent;
@@ -128,7 +129,7 @@ export class LiveChatKit<
         }
       }
       if (onOverrideMessages) {
-        await onOverrideMessages({ messages });
+        await onOverrideMessages({ messages, abortSignal });
       }
     };
 

@@ -48,7 +48,10 @@ function makeCustomAgentToolDescription(customAgents?: CustomAgent[]) {
 
   return `When using the newTask tool, you may specify a agentType parameter to select which agent type to use.
 Available agent types and the tools they have access to:
-${(customAgents ?? []).map((agent) => `- ${agent.name}: ${agent.description}`).join("\n")}
+
+${(customAgents ?? [])
+  .map((agent) => `### ${agent.name}\n${agent.description.trim()}`)
+  .join("\n\n")}
 `;
 }
 
@@ -89,7 +92,7 @@ When NOT to use the newTask tool:
 - Other tasks that are not related to the agent descriptions above
 
 Usage notes:
-1. Launch multiple \`newTask\` tools concurrently whenever possible to maximize performance; to do that, use a single message with multiple tool uses
+1. Launch multiple agents tools concurrently whenever possible to maximize performance; to do that, use a single message with multiple tool uses
 2. When the agent is done, it will return a single message back to you. The result returned by the agent is not visible to the user. To show the user the result, you should send a text message back to the user with a concise summary of the result.
 3. Each agent invocation is stateless. You will not be able to send additional messages to the agent, nor will the agent be able to communicate with you outside of its final report. Therefore, your prompt should contain a highly detailed task description for the agent to perform autonomously and you should specify exactly what information the agent should return back to you in its final and only message to you.
 4. The agent's outputs should generally be trusted

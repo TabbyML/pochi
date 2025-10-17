@@ -1,6 +1,7 @@
 import { createCompactPrompt } from "./compact";
 import { createEnvironmentPrompt, injectEnvironment } from "./environment";
 import { generateTitle } from "./generate-title";
+import { injectBashOutputs } from "./inject-bash-outputs";
 import { createSystemPrompt } from "./system";
 
 export const prompts = {
@@ -16,6 +17,7 @@ export const prompts = {
   parseInlineCompact,
   generateTitle,
   workflow: createWorkflowPrompt,
+  injectBashOutputs,
 };
 
 function createSystemReminder(content: string) {

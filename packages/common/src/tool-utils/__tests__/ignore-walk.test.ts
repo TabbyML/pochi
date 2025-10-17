@@ -140,4 +140,179 @@ describe("ignoreWalk", () => {
     const results = await ignoreWalk({ dir: "/workspace" });
     expect(results).toEqual([]);
   });
+
+  it("should not accumulate ignore rules across sibling directories", async () => {
+    // Test that ignore rules from one directory don't leak into sibling directories
+    // This is a regression test for the bug where currentIg was mutated instead of cloned
+    
+    const testMockFs = {
+      "/workspace": [
+        createMockDirent("file1.ts", false),
+        createMockDirent("dir1", true),
+        createMockDirent("dir2", true),
+      ],
+      "/workspace/dir1": [
+        createMockDirent("file-in-dir1.ts", false),
+        createMockDirent("secret.txt", false),
+      ],
+      "/workspace/dir2": [
+        createMockDirent("file-in-dir2.ts", false),
+        createMockDirent("secret.txt", false), // Should NOT be ignored
+      ],
+    };
+
+    // @ts-ignore
+    vi.mocked(fs.readdir).mockImplementation(async (path) => {
+      return testMockFs[path as keyof typeof testMockFs] || [];
+    });
+
+    vi.mocked(fs.readFile).mockImplementation(async (path) => {
+      // Only dir1 has a .gitignore that ignores secret.txt
+      if (path === "/workspace/dir1/.gitignore") {
+        return "secret.txt";
+      }
+      return "";
+    });
+
+    const results = await ignoreWalk({ dir: "/workspace" });
+    const relativePaths = results.map((r) => r.relativePath).sort();
+
+    // secret.txt should be ignored in dir1 but NOT in dir2
+    expect(relativePaths).toEqual([
+      "dir1",
+      "dir1/file-in-dir1.ts",
+      "dir2",
+      "dir2/file-in-dir2.ts",
+      "dir2/secret.txt", // This should be present!
+      "file1.ts",
+    ]);
+  });
+
+  it("should not accumulate ignore rules across nested directories", async () => {
+    // Test that ignore rules from parent directories are inherited correctly
+    // but don't leak back to parent or accumulate incorrectly
+    
+    const testMockFs = {
+      "/workspace": [
+        createMockDirent("root.ts", false),
+        createMockDirent("temp.log", false),
+        createMockDirent("level1", true),
+      ],
+      "/workspace/level1": [
+        createMockDirent("level1.ts", false),
+        createMockDirent("temp.log", false),
+        createMockDirent("build", true),
+        createMockDirent("level2", true),
+      ],
+      "/workspace/level1/build": [
+        createMockDirent("output.js", false),
+      ],
+      "/workspace/level1/level2": [
+        createMockDirent("level2.ts", false),
+        createMockDirent("build", true), // Different build dir
+      ],
+      "/workspace/level1/level2/build": [
+        createMockDirent("output2.js", false),
+      ],
+    };
+
+    // @ts-ignore
+    vi.mocked(fs.readdir).mockImplementation(async (path) => {
+      return testMockFs[path as keyof typeof testMockFs] || [];
+    });
+
+    vi.mocked(fs.readFile).mockImplementation(async (path) => {
+      if (path === "/workspace/.gitignore") {
+        return "temp.log";
+      }
+      if (path === "/workspace/level1/.gitignore") {
+        return "build/";
+      }
+      return "";
+    });
+
+    const results = await ignoreWalk({ dir: "/workspace" });
+    const relativePaths = results.map((r) => r.relativePath).sort();
+
+    // Expected behavior:
+    // - temp.log ignored everywhere (from root .gitignore)
+    // - build/ in level1 ignored (from level1 .gitignore)
+    // - build/ in level2 also ignored (inherits from level1 .gitignore)
+    expect(relativePaths).toEqual([
+      "level1",
+      "level1/level1.ts",
+      "level1/level2",
+      "level1/level2/level2.ts",
+      "root.ts",
+    ]);
+
+    // Ensure temp.log is not in results
+    expect(relativePaths).not.toContain("temp.log");
+    expect(relativePaths).not.toContain("level1/temp.log");
+    
+    // Ensure build directories are not in results
+    expect(relativePaths).not.toContain("level1/build");
+    expect(relativePaths).not.toContain("level1/level2/build");
+  });
+
+  it("should handle complex ignore rule inheritance correctly", async () => {
+    // Test that each directory gets its own ignore context
+    // without pollution from previously processed directories
+    
+    const testMockFs = {
+      "/workspace": [
+        createMockDirent("dirA", true),
+        createMockDirent("dirB", true),
+        createMockDirent("dirC", true),
+      ],
+      "/workspace/dirA": [
+        createMockDirent("fileA.ts", false),
+        createMockDirent("ignore-in-A.txt", false),
+      ],
+      "/workspace/dirB": [
+        createMockDirent("fileB.ts", false),
+        createMockDirent("ignore-in-A.txt", false), // Should NOT be ignored
+        createMockDirent("ignore-in-B.txt", false),
+      ],
+      "/workspace/dirC": [
+        createMockDirent("fileC.ts", false),
+        createMockDirent("ignore-in-A.txt", false), // Should NOT be ignored
+        createMockDirent("ignore-in-B.txt", false), // Should NOT be ignored
+      ],
+    };
+
+    // @ts-ignore
+    vi.mocked(fs.readdir).mockImplementation(async (path) => {
+      return testMockFs[path as keyof typeof testMockFs] || [];
+    });
+
+    vi.mocked(fs.readFile).mockImplementation(async (path) => {
+      if (path === "/workspace/dirA/.gitignore") {
+        return "ignore-in-A.txt";
+      }
+      if (path === "/workspace/dirB/.gitignore") {
+        return "ignore-in-B.txt";
+      }
+      // dirC has no .gitignore
+      return "";
+    });
+
+    const results = await ignoreWalk({ dir: "/workspace" });
+    const relativePaths = results.map((r) => r.relativePath).sort();
+
+    // Each directory should have its own ignore rules
+    // ignore-in-A.txt should only be ignored in dirA
+    // ignore-in-B.txt should only be ignored in dirB
+    expect(relativePaths).toEqual([
+      "dirA",
+      "dirA/fileA.ts",
+      "dirB",
+      "dirB/fileB.ts",
+      "dirB/ignore-in-A.txt",
+      "dirC",
+      "dirC/fileC.ts",
+      "dirC/ignore-in-A.txt",
+      "dirC/ignore-in-B.txt",
+    ]);
+  });
 });

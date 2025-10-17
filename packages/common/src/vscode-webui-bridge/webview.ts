@@ -156,6 +156,11 @@ export interface VSCodeHostApi {
 
   readCustomAgents(): Promise<ThreadSignalSerialization<CustomAgentFile[]>>;
 
+  executeBashCommand: (
+    command: string,
+    abortSignal: ThreadAbortSignalSerialization,
+  ) => Promise<{ output: string; error?: string }>;
+
   readMinionId(): Promise<string | null>;
 
   /**

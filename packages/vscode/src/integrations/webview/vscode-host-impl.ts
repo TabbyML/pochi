@@ -1,5 +1,6 @@
 import * as os from "node:os";
 import path from "node:path";
+import { executeCommandWithNode } from "@/integrations/terminal/execute-command-with-node";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { CustomAgentManager } from "@/lib/custom-agent";
 import {
@@ -772,6 +773,35 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       this.context.extensionUri,
       task,
     );
+  };
+
+  executeBashCommand = async (
+    command: string,
+    abortSignal: ThreadAbortSignalSerialization,
+  ): Promise<{ output: string; error?: string }> => {
+    const signal = new ThreadAbortSignal(abortSignal);
+    if (!this.cwd) {
+      return { output: "", error: "No workspace folder found." };
+    }
+
+    let capturedOutput = "";
+    try {
+      const { output } = await executeCommandWithNode({
+        command,
+        cwd: this.cwd,
+        abortSignal: signal as AbortSignal,
+        timeout: 10,
+        onData: (data) => {
+          capturedOutput = data.output;
+        },
+      });
+      return { output };
+    } catch (err: unknown) {
+      // err is likely an ExecutionError
+      // We return the output captured so far, and the error message.
+      const message = err instanceof Error ? err.message : String(err);
+      return { output: capturedOutput, error: message };
+    }
   };
 
   readCustomAgents = async (): Promise<
