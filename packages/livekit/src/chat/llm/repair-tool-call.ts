@@ -18,7 +18,7 @@ export const makeRepairToolCall: (
       return null; // do not attempt to fix invalid tool names
     }
 
-    const tools = createClientTools({});
+    const tools = createClientTools();
     const tool = tools[toolCall.toolName as keyof typeof tools];
 
     const { object: repairedArgs } = await generateObject({

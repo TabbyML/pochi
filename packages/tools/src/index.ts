@@ -91,7 +91,7 @@ export const ToolsByPermission = {
 
 export const ServerToolApproved = "<server-tool-approved>";
 
-const createCliTools = (options: CreateToolOptions) => ({
+const createCliTools = (options?: CreateToolOptions) => ({
   applyDiff,
   askFollowupQuestion,
   attemptCompletion,
@@ -99,12 +99,12 @@ const createCliTools = (options: CreateToolOptions) => ({
   globFiles,
   listFiles,
   multiApplyDiff,
-  readFile: createReadFileTool(options.supportedMimeTypes),
+  readFile: createReadFileTool(options?.supportedMimeTypes),
   searchFiles,
   todoWrite,
   writeToFile,
   editNotebook,
-  newTask: createNewTaskTool(options.customAgents),
+  newTask: createNewTaskTool(options?.customAgents),
 });
 
 export interface CreateToolOptions {
@@ -112,7 +112,7 @@ export interface CreateToolOptions {
   supportedMimeTypes?: string[];
 }
 
-export const createClientTools = (options: CreateToolOptions) => {
+export const createClientTools = (options?: CreateToolOptions) => {
   return {
     ...createCliTools(options),
     startBackgroundJob,
