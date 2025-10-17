@@ -29,7 +29,6 @@ import { StepCount } from "./lib/step-count";
 import { Chat } from "./livekit";
 import { executeToolCall } from "./tools";
 import type { ToolCallOptions } from "./types";
-import type { RequestData } from "../../livekit/src/types";
 
 export interface RunnerOptions {
   /**
@@ -99,7 +98,7 @@ const logger = getLogger("TaskRunner");
 export class TaskRunner {
   private store: Store;
   private cwd: string;
-  private llm: RequestData["llm"];
+  private llm: LLMRequestData;
   private toolCallOptions: ToolCallOptions;
   private stepCount: StepCount;
 
