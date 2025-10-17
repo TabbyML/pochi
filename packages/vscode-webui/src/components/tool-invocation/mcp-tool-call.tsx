@@ -3,6 +3,7 @@ import { Switch } from "@/components/ui/switch";
 import { useStoreBlobUrl } from "@/lib/store-blob";
 import { getToolName } from "ai";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { CopyableImage } from "../ui/copyable-image";
 import { ScrollArea } from "../ui/scroll-area";
 import { Separator } from "../ui/separator";
@@ -54,6 +55,7 @@ export const McpToolCall: React.FC<ToolProps<any>> = ({
   tool,
   isExecuting,
 }) => {
+  const { t } = useTranslation();
   const toolName = getToolName(tool);
   const { input } = tool;
   const [previewImageLink, setPreviewImageLink] = useState(true);
@@ -67,7 +69,7 @@ export const McpToolCall: React.FC<ToolProps<any>> = ({
     <>
       <StatusIcon isExecuting={isExecuting} tool={tool} />
       <span className="ml-2">
-        Calling
+        {t("toolInvocation.calling")}
         <HighlightedText>{toolName}</HighlightedText>
       </span>
     </>
@@ -80,7 +82,7 @@ export const McpToolCall: React.FC<ToolProps<any>> = ({
           {/* Request Section */}
           <div className="border-[var(--vscode-widget-border)] border-b bg-[var(--vscode-editorGroupHeader-tabsBackground)] px-4 py-2">
             <span className="font-medium text-[var(--vscode-editor-foreground)] text-sm">
-              Request
+              {t("toolInvocation.request")}
             </span>
           </div>
           <CodeBlock
@@ -95,7 +97,7 @@ export const McpToolCall: React.FC<ToolProps<any>> = ({
             <>
               <div className="flex items-center justify-between border-[var(--vscode-widget-border)] border-t border-b bg-[var(--vscode-editorGroupHeader-tabsBackground)] px-4 py-2">
                 <span className="font-medium text-[var(--vscode-editor-foreground)] text-sm">
-                  Response
+                  {t("toolInvocation.response")}
                 </span>
                 {hasTextContent(result) && (
                   <DisplayModeToggle
@@ -191,6 +193,7 @@ function ImageResult({
   data,
   mimeType,
 }: { type: "image"; data: string; mimeType: string }) {
+  const { t } = useTranslation();
   const blobUrl = new URL(data);
   const url = useStoreBlobUrl(data);
   const previewSuffix = blobUrl.pathname.slice(0, 8);
@@ -203,7 +206,7 @@ function ImageResult({
   return (
     <CopyableImage
       src={url}
-      alt="MCP tool response snapshot"
+      alt={t("toolInvocation.imgAlt")}
       className="h-auto w-full shadow-sm"
       mimeType={mimeType}
       filename={filename}
@@ -220,6 +223,8 @@ function DisplayModeToggle({
   previewImageLink,
   onToggle,
 }: DisplayModeToggleProps) {
+  const { t } = useTranslation();
+
   return (
     <div className="flex items-center gap-2">
       <Switch
@@ -227,7 +232,9 @@ function DisplayModeToggle({
         onCheckedChange={onToggle}
         className="data-[state=checked]:bg-[var(--vscode-button-background)] data-[state=unchecked]:bg-[var(--vscode-widget-border)]"
       />
-      <span className="text-[var(--vscode-foreground)] text-xs">Preview</span>
+      <span className="text-[var(--vscode-foreground)] text-xs">
+        {t("toolInvocation.preview")}
+      </span>
     </div>
   );
 }

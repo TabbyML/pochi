@@ -1,6 +1,7 @@
 import type { PendingApproval } from "@/features/approval";
 import { useIsDevMode } from "@/features/settings";
 import { Bug } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface DevRetryCountdownProps {
   pendingApproval: PendingApproval | null | undefined;
@@ -11,6 +12,7 @@ export function DevRetryCountdown({
   pendingApproval,
   status,
 }: DevRetryCountdownProps) {
+  const { t } = useTranslation();
   const [isDevMode] = useIsDevMode();
   if (!isDevMode) return null;
   return (
@@ -20,9 +22,17 @@ export function DevRetryCountdown({
         <span>{status}</span>
         {pendingApproval?.name === "retry" ? (
           <div>
-            <span>Attempts: {pendingApproval.attempts}</span> /{" "}
-            <span>Countdown: {pendingApproval.countdown}</span> /{" "}
-            <span>Delay: {pendingApproval.delay}</span>
+            <span>
+              {t("devRetryCountdown.attempts")} {pendingApproval.attempts}
+            </span>{" "}
+            /{" "}
+            <span>
+              {t("devRetryCountdown.countdown")} {pendingApproval.countdown}
+            </span>{" "}
+            /{" "}
+            <span>
+              {t("devRetryCountdown.delay")} {pendingApproval.delay}
+            </span>
           </div>
         ) : undefined}
       </span>

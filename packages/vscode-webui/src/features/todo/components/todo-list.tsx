@@ -14,6 +14,7 @@ import {
   useMemo,
   useState,
 } from "react";
+import { useTranslation } from "react-i18next";
 
 const collapsibleSectionVariants = {
   open: {
@@ -102,6 +103,7 @@ interface TodoListHeaderProps {
 }
 
 function TodoListHeader({ children }: TodoListHeaderProps) {
+  const { t } = useTranslation();
   const {
     todos,
     isCollapsed,
@@ -152,14 +154,18 @@ function TodoListHeader({ children }: TodoListHeaderProps) {
         <span className="h-6 truncate font-semibold transition-opacity group-focus-within:opacity-80 group-hover:opacity-80">
           {inProgressTodo ? (
             disableInProgressTodoTitle ? (
-              <span>TODOs</span>
+              <span>{t("todoList.todos")}</span>
             ) : (
               <span className="animated-gradient-text">
                 {inProgressTodo.content}
               </span>
             )
           ) : (
-            <span>{pendingTodosNum > 0 ? "TODOs" : "🎉 All done!"}</span>
+            <span>
+              {pendingTodosNum > 0
+                ? t("todoList.todos")
+                : t("todoList.allDone")}
+            </span>
           )}
         </span>
       </button>
