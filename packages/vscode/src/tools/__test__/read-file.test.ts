@@ -83,10 +83,13 @@ describe("readFile Tool", () => {
       { toolCallId: "test-call-id-123", messages: [], cwd: testSuiteRootTempDir.fsPath },
     );
 
-    assert.strictEqual(
-      result.content,
-      "1 | Line 1\n2 | Line 2\n3 | Line 3\n4 | Line 4\n5 | Line 5",
-    );
+    assert.ok(result.type === "text" || !result.type);
+    if (result.type === "text" || !result.type) {
+      assert.strictEqual(
+        result.content,
+        "1 | Line 1\n2 | Line 2\n3 | Line 3\n4 | Line 4\n5 | Line 5",
+      );
+    }
     assert.strictEqual(result.isTruncated, false);
   });
 
@@ -101,10 +104,13 @@ describe("readFile Tool", () => {
       { toolCallId: "test-call-id-123", messages: [], cwd: testSuiteRootTempDir.fsPath },
     );
 
-    assert.strictEqual(
-      result.content,
-      "2 | Line 2\n3 | Line 3\n4 | Line 4",
-    );
+    assert.ok(result.type === "text" || !result.type);
+    if (result.type === "text" || !result.type) {
+      assert.strictEqual(
+        result.content,
+        "2 | Line 2\n3 | Line 3\n4 | Line 4",
+      );
+    }
     assert.strictEqual(result.isTruncated, false);
   });
 
@@ -119,10 +125,13 @@ describe("readFile Tool", () => {
       { toolCallId: "test-call-id-123", messages: [], cwd: testSuiteRootTempDir.fsPath },
     );
 
-    assert.strictEqual(
-      result.content,
-      "3 | Line 3\n4 | Line 4\n5 | Line 5",
-    );
+    assert.ok(result.type === "text" || !result.type);
+    if (result.type === "text" || !result.type) {
+      assert.strictEqual(
+        result.content,
+        "3 | Line 3\n4 | Line 4\n5 | Line 5",
+      );
+    }
     assert.strictEqual(result.isTruncated, false);
   });
 
@@ -137,10 +146,13 @@ describe("readFile Tool", () => {
       { toolCallId: "test-call-id-123", messages: [], cwd: testSuiteRootTempDir.fsPath },
     );
 
-    assert.strictEqual(
-      result.content,
-      "1 | Line 1\n2 | Line 2\n3 | Line 3",
-    );
+    assert.ok(result.type === "text" || !result.type);
+    if (result.type === "text" || !result.type) {
+      assert.strictEqual(
+        result.content,
+        "1 | Line 1\n2 | Line 2\n3 | Line 3",
+      );
+    }
     assert.strictEqual(result.isTruncated, false);
   });
 
@@ -197,10 +209,13 @@ describe("readFile Tool", () => {
     );
 
     assert.strictEqual(result.isTruncated, true);
-    assert.ok(
-      Buffer.byteLength(result.content, "utf-8") <= 1_048_576,
-      "Content should be truncated to 1MB"
-    );
+    assert.ok(result.type === "text" || !result.type);
+    if (result.type === "text" || !result.type) {
+      assert.ok(
+        Buffer.byteLength(result.content, "utf-8") <= 1_048_576,
+        "Content should be truncated to 1MB"
+      );
+    }
   });
 
   it("should handle empty files", async () => {
@@ -213,7 +228,10 @@ describe("readFile Tool", () => {
       { toolCallId: "test-call-id-123", messages: [], cwd: testSuiteRootTempDir.fsPath },
     );
 
-    assert.strictEqual(result.content, "1 | ");
+    assert.ok(result.type === "text" || !result.type);
+    if (result.type === "text" || !result.type) {
+      assert.strictEqual(result.content, "1 | ");
+    }
     assert.strictEqual(result.isTruncated, false);
   });
 
@@ -228,10 +246,13 @@ describe("readFile Tool", () => {
       { toolCallId: "test-call-id-123", messages: [], cwd: testSuiteRootTempDir.fsPath },
     );
 
-    assert.strictEqual(
-      result.content,
-      "1 | Special chars: áéíóú ñ 你好 😊 \n2 |  Second line"
-    );
+    assert.ok(result.type === "text" || !result.type);
+    if (result.type === "text" || !result.type) {
+      assert.strictEqual(
+        result.content,
+        "1 | Special chars: áéíóú ñ 你好 😊 \n2 |  Second line"
+      );
+    }
     assert.strictEqual(result.isTruncated, false);
   });
 
@@ -275,10 +296,13 @@ describe("readFile Tool", () => {
       { toolCallId: "test-call-id-123", messages: [], cwd: testSuiteRootTempDir.fsPath },
     );
 
-    assert.strictEqual(
-      result.content,
-      "1 | Absolute path test\n2 | Line 2\n3 | Line 3"
-    );
+    assert.ok(result.type === "text" || !result.type);
+    if (result.type === "text" || !result.type) {
+      assert.strictEqual(
+        result.content,
+        "1 | Absolute path test\n2 | Line 2\n3 | Line 3"
+      );
+    }
     assert.strictEqual(result.isTruncated, false);
   });
 });
