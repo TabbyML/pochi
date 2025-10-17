@@ -66,89 +66,35 @@ const logger = getLogger("Pochi");
 logger.debug(`pochi v${packageJson.version}`);
 
 // Exit codes for signal handling
-const EXIT_CODE_SIGINT = 130;
-const EXIT_CODE_SIGTERM = 143;
-
-// Timeout constants
-const SHUTDOWN_SYNC_TIMEOUT = "1 second";
 const NORMAL_SYNC_TIMEOUT = "2 second";
 
 // Set up graceful shutdown for SIGINT and SIGTERM
-let activeStore: Store | undefined;
-let activeRenderer: OutputRenderer | undefined;
-let activeJsonRenderer: JsonRenderer | undefined;
-let activeMcpHub: { dispose: () => void } | undefined;
 let activeAbortController: AbortController | undefined;
 let isShuttingDown = false;
 
-/**
- * Cleanup resources and prepare for shutdown
- */
-const cleanupResources = async (
-  store?: Store,
-  renderer?: OutputRenderer,
-  jsonRenderer?: JsonRenderer,
-  mcpHub?: { dispose: () => void },
-  syncTimeout: Duration.DurationInput = NORMAL_SYNC_TIMEOUT,
-) => {
-  // Clean up renderers
-  renderer?.shutdown();
-  jsonRenderer?.shutdown();
-
-  // Clean up MCP Hub
-  if (mcpHub) {
-    mcpHub.dispose();
-  }
-
-  // Wait for store sync
-  if (store) {
-    await waitForSync(store, syncTimeout).catch(console.error);
-  }
-};
-
-const handleShutdown = async (signal: "SIGINT" | "SIGTERM") => {
+process.on("SIGINT", () => {
   if (isShuttingDown) return;
   isShuttingDown = true;
-
-  try {
-    // First, abort any running tasks to set proper error status
-    if (activeAbortController && !activeAbortController.signal.aborted) {
-      activeAbortController.abort(
-        new Error(`Process interrupted by ${signal}`),
-      );
-    }
-
-    // Use shared cleanup function
-    await cleanupResources(
-      activeStore,
-      activeRenderer,
-      activeJsonRenderer,
-      activeMcpHub,
-      SHUTDOWN_SYNC_TIMEOUT,
-    );
-
-    // Clear active references to prevent double cleanup
-    activeRenderer = undefined;
-    activeJsonRenderer = undefined;
-    activeMcpHub = undefined;
-    activeAbortController = undefined;
-
-    // Exit with appropriate code
-    const exitCode = signal === "SIGINT" ? EXIT_CODE_SIGINT : EXIT_CODE_SIGTERM;
-    if (activeStore) {
-      await shutdownStoreAndExit(activeStore, exitCode);
-    } else {
-      process.exit(exitCode);
-    }
-  } catch (error) {
-    logger.error(`Error during shutdown: ${error}`);
-    const exitCode = signal === "SIGINT" ? EXIT_CODE_SIGINT : EXIT_CODE_SIGTERM;
-    process.exit(exitCode);
+  
+  if (activeAbortController && !activeAbortController.signal.aborted) {
+    activeAbortController.abort(new Error("Process interrupted by SIGINT"));
   }
-};
+  
+  // Force exit immediately with SIGINT code
+  process.exit(130);
+});
 
-process.on("SIGINT", () => handleShutdown("SIGINT"));
-process.on("SIGTERM", () => handleShutdown("SIGTERM"));
+process.on("SIGTERM", () => {
+  if (isShuttingDown) return;
+  isShuttingDown = true;
+  
+  if (activeAbortController && !activeAbortController.signal.aborted) {
+    activeAbortController.abort(new Error("Process interrupted by SIGTERM"));
+  }
+  
+  // Force exit immediately with SIGTERM code
+  process.exit(143);
+});
 
 const parsePositiveInt = (input: string): number => {
   if (!input) {
@@ -215,7 +161,6 @@ const program = new Command()
   )
   .action(async (options) => {
     const store = await createStore();
-    activeStore = store;
     const { uid, prompt, attachments } = await parseTaskInput(options, program);
 
     const parts: Message["parts"] = [];
@@ -272,7 +217,6 @@ const program = new Command()
 
     // Create MCP Hub for accessing MCP server tools (only if MCP is enabled)
     const mcpHub = options.mcp ? await initializeMcp(program) : undefined;
-    activeMcpHub = mcpHub;
 
     // Create AbortController for task cancellation
     const abortController = new AbortController();
@@ -302,23 +246,16 @@ const program = new Command()
       jsonRenderer = new JsonRenderer(store, runner.state);
     }
 
-    // Set active references after all objects are created
+    // Set active abort controller after all objects are created
     activeAbortController = abortController;
-    activeRenderer = renderer;
-    if (jsonRenderer) {
-      activeJsonRenderer = jsonRenderer;
-    }
 
     await runner.run();
 
-    // Use shared cleanup function for normal completion
-    await cleanupResources(
-      store,
-      renderer,
-      jsonRenderer,
-      mcpHub,
-      NORMAL_SYNC_TIMEOUT,
-    );
+    // Cleanup resources after task completion
+    renderer.shutdown();
+    jsonRenderer?.shutdown();
+    mcpHub?.dispose();
+    await waitForSync(store, NORMAL_SYNC_TIMEOUT);
 
     await shutdownStoreAndExit(store);
   });
