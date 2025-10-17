@@ -24,7 +24,6 @@ import { useApprovalAndRetry } from "../approval";
 import { useSelectedModels } from "../settings";
 import { ChatArea } from "./components/chat-area";
 import { ChatToolbar } from "./components/chat-toolbar";
-import { ErrorMessageView } from "./components/error-message-view";
 import { SubtaskHeader } from "./components/subtask";
 import { useScrollToBottom } from "./hooks/use-scroll-to-bottom";
 import { useSetSubtaskModel } from "./hooks/use-set-subtask-model";
@@ -177,8 +176,9 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
         user={user || defaultUser}
         messagesContainerRef={messagesContainerRef}
       />
-      <div className="flex flex-col px-4">
-        <ErrorMessageView error={displayError} />
+      {/* Leave more space for errors as errors / approval button are absolutely positioned */}
+      {displayError && <div className="h-12" />}
+      <div className="relative flex flex-col px-4">
         {!isWorkspaceActive ? (
           <WorkspaceRequiredPlaceholder
             isFetching={isFetchingWorkspace}

@@ -31,6 +31,7 @@ import { useInlineCompactTask } from "../hooks/use-inline-compact-task";
 import { useNewCompactTask } from "../hooks/use-new-compact-task";
 import type { SubtaskInfo } from "../hooks/use-subtask-info";
 import { ChatInputForm } from "./chat-input-form";
+import { ErrorMessageView } from "./error-message-view";
 import { CompleteSubtaskButton } from "./subtask";
 
 interface ChatToolbarProps {
@@ -186,13 +187,16 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
 
   return (
     <>
-      <CompleteSubtaskButton subtask={subtask} messages={messages} />
-      <ApprovalButton
-        pendingApproval={pendingApproval}
-        retry={retry}
-        allowAddToolResult={allowAddToolResult}
-        isSubTask={isSubTask}
-      />
+      <div className="-translate-y-full -top-2 absolute left-0 w-full px-4">
+        <ErrorMessageView error={displayError} />
+        <CompleteSubtaskButton subtask={subtask} messages={messages} />
+        <ApprovalButton
+          pendingApproval={pendingApproval}
+          retry={retry}
+          allowAddToolResult={allowAddToolResult}
+          isSubTask={isSubTask}
+        />
+      </div>
       {todos && todos.length > 0 && (
         <TodoList todos={todos} className="mt-2">
           <TodoList.Header />
