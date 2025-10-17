@@ -236,7 +236,6 @@ const program = new Command()
         : undefined,
     });
 
-    // Create renderers before setting activeAbortController to avoid race condition
     const renderer = new OutputRenderer(runner.state);
     let jsonRenderer: JsonRenderer | undefined;
     if (options.streamJson) {
