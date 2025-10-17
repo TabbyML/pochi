@@ -70,6 +70,7 @@ let activeStore: Store | undefined;
 let activeRenderer: OutputRenderer | undefined;
 let activeJsonRenderer: JsonRenderer | undefined;
 let activeMcpHub: { dispose: () => void } | undefined;
+let activeAbortController: AbortController | undefined;
 let isShuttingDown = false;
 
 const handleShutdown = async (signal: "SIGINT" | "SIGTERM") => {
@@ -77,11 +78,23 @@ const handleShutdown = async (signal: "SIGINT" | "SIGTERM") => {
   isShuttingDown = true;
 
   try {
+    // First, abort any running tasks to set proper error status
+    if (activeAbortController && !activeAbortController.signal.aborted) {
+      activeAbortController.abort(
+        new Error(`Process interrupted by ${signal}`),
+      );
+    }
+
+    // Clean up renderers
     activeRenderer?.shutdown();
     activeJsonRenderer?.shutdown();
+
+    // Clean up MCP Hub
     activeMcpHub?.dispose?.();
-    await waitForSync(activeStore, "1 second").catch(() => {});
+
+    // Wait for store sync before shutdown
     if (activeStore) {
+      await waitForSync(activeStore, "1 second").catch(() => {});
       await shutdownStoreAndExit(activeStore, signal === "SIGINT" ? 130 : 143);
     } else {
       process.exit(signal === "SIGINT" ? 130 : 143);
@@ -218,6 +231,10 @@ const program = new Command()
     const mcpHub = options.mcp ? await initializeMcp(program) : undefined;
     activeMcpHub = mcpHub;
 
+    // Create AbortController for task cancellation
+    const abortController = new AbortController();
+    activeAbortController = abortController;
+
     const runner = new TaskRunner({
       uid,
       store,
@@ -230,6 +247,7 @@ const program = new Command()
       onSubTaskCreated,
       customAgents,
       mcpHub,
+      abortSignal: abortController.signal,
       outputSchema: options.experimentalOutputSchema
         ? parseOutputSchema(options.experimentalOutputSchema)
         : undefined,
