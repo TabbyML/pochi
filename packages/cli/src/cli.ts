@@ -65,6 +65,14 @@ import { checkForUpdates, registerUpgradeCommand } from "./upgrade";
 const logger = getLogger("Pochi");
 logger.debug(`pochi v${packageJson.version}`);
 
+// Exit codes for signal handling
+const EXIT_CODE_SIGINT = 130;
+const EXIT_CODE_SIGTERM = 143;
+
+// Timeout constants
+const SHUTDOWN_SYNC_TIMEOUT = "1 second";
+const NORMAL_SYNC_TIMEOUT = "2 second";
+
 // Set up graceful shutdown for SIGINT and SIGTERM
 let activeStore: Store | undefined;
 let activeRenderer: OutputRenderer | undefined;
@@ -72,6 +80,31 @@ let activeJsonRenderer: JsonRenderer | undefined;
 let activeMcpHub: { dispose: () => void } | undefined;
 let activeAbortController: AbortController | undefined;
 let isShuttingDown = false;
+
+/**
+ * Cleanup resources and prepare for shutdown
+ */
+const cleanupResources = async (
+  store?: Store,
+  renderer?: OutputRenderer,
+  jsonRenderer?: JsonRenderer,
+  mcpHub?: { dispose: () => void },
+  syncTimeout: Duration.DurationInput = NORMAL_SYNC_TIMEOUT,
+) => {
+  // Clean up renderers
+  renderer?.shutdown();
+  jsonRenderer?.shutdown();
+
+  // Clean up MCP Hub
+  if (mcpHub) {
+    mcpHub.dispose();
+  }
+
+  // Wait for store sync
+  if (store) {
+    await waitForSync(store, syncTimeout).catch(console.error);
+  }
+};
 
 const handleShutdown = async (signal: "SIGINT" | "SIGTERM") => {
   if (isShuttingDown) return;
@@ -85,22 +118,32 @@ const handleShutdown = async (signal: "SIGINT" | "SIGTERM") => {
       );
     }
 
-    // Clean up renderers
-    activeRenderer?.shutdown();
-    activeJsonRenderer?.shutdown();
+    // Use shared cleanup function
+    await cleanupResources(
+      activeStore,
+      activeRenderer,
+      activeJsonRenderer,
+      activeMcpHub,
+      SHUTDOWN_SYNC_TIMEOUT,
+    );
 
-    // Clean up MCP Hub
-    activeMcpHub?.dispose?.();
+    // Clear active references to prevent double cleanup
+    activeRenderer = undefined;
+    activeJsonRenderer = undefined;
+    activeMcpHub = undefined;
+    activeAbortController = undefined;
 
-    // Wait for store sync before shutdown
+    // Exit with appropriate code
+    const exitCode = signal === "SIGINT" ? EXIT_CODE_SIGINT : EXIT_CODE_SIGTERM;
     if (activeStore) {
-      await waitForSync(activeStore, "1 second").catch(() => {});
-      await shutdownStoreAndExit(activeStore, signal === "SIGINT" ? 130 : 143);
+      await shutdownStoreAndExit(activeStore, exitCode);
     } else {
-      process.exit(signal === "SIGINT" ? 130 : 143);
+      process.exit(exitCode);
     }
-  } catch {
-    process.exit(signal === "SIGINT" ? 130 : 143);
+  } catch (error) {
+    logger.error(`Error during shutdown: ${error}`);
+    const exitCode = signal === "SIGINT" ? EXIT_CODE_SIGINT : EXIT_CODE_SIGTERM;
+    process.exit(exitCode);
   }
 };
 
@@ -233,7 +276,6 @@ const program = new Command()
 
     // Create AbortController for task cancellation
     const abortController = new AbortController();
-    activeAbortController = abortController;
 
     const runner = new TaskRunner({
       uid,
@@ -253,24 +295,31 @@ const program = new Command()
         : undefined,
     });
 
+    // Create renderers before setting activeAbortController to avoid race condition
     const renderer = new OutputRenderer(runner.state);
-    activeRenderer = renderer;
     let jsonRenderer: JsonRenderer | undefined;
     if (options.streamJson) {
       jsonRenderer = new JsonRenderer(store, runner.state);
+    }
+
+    // Set active references after all objects are created
+    activeAbortController = abortController;
+    activeRenderer = renderer;
+    if (jsonRenderer) {
       activeJsonRenderer = jsonRenderer;
     }
 
     await runner.run();
 
-    renderer.shutdown();
-    if (mcpHub) {
-      mcpHub.dispose();
-    }
-    if (jsonRenderer) {
-      jsonRenderer.shutdown();
-    }
-    await waitForSync(store, "2 second").catch(console.error);
+    // Use shared cleanup function for normal completion
+    await cleanupResources(
+      store,
+      renderer,
+      jsonRenderer,
+      mcpHub,
+      NORMAL_SYNC_TIMEOUT,
+    );
+
     await shutdownStoreAndExit(store);
   });
 
