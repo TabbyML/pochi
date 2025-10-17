@@ -8,6 +8,7 @@ import { ThreadNestedWindow } from "@quilted/threads";
 import * as R from "remeda";
 import type { WebviewApi } from "vscode-webview";
 import { queryClient } from "./query-client";
+import { type TaskSyncData, taskSync } from "./task-sync-event";
 
 const logger = getLogger("vscode");
 
@@ -58,6 +59,7 @@ function createVSCodeHost(): VSCodeHostApi {
         "setWorkspaceState",
         "readEnvironment",
         "executeToolCall",
+        "executeBashCommand",
         "listFilesInWorkspace",
         "listAutoCompleteCandidates",
         "readActiveTabs",
@@ -87,11 +89,14 @@ function createVSCodeHost(): VSCodeHostApi {
         "readUserStorage",
         "readCustomAgents",
         "readMachineId",
-        "openPochiInNewTab",
+        "openTaskInPanel",
         "bridgeStoreEvent",
       ],
       exports: {
-        openTask(params) {
+        async openTask(params) {
+          if (globalThis.POCHI_WEBVIEW_KIND === "pane" && "task" in params) {
+            await taskSync.emit(params.task as TaskSyncData);
+          }
           window.router.navigate({
             to: "/",
             search: {

@@ -51,12 +51,12 @@ const suggestionTriggerPlugin = new Plugin({
           autoCompletePluginKey.getState(state)?.active ||
           isMentionExtensionActive(state)
         ) {
-          return false;
+          return true;
         }
 
         const { $from: $position } = state.selection;
         const match = getCurrentWordMatch($position);
-        if (!match) return false;
+        if (!match) return true;
 
         // If we have a match, we trigger the suggestion.
         event.preventDefault();
@@ -298,13 +298,23 @@ export const AutoCompleteExtension = Extension.create<
               storage.component.destroy();
               storage.component = null;
             }
+            const transaction = this.editor.view.state.tr;
             this.editor.view.dispatch(
-              this.editor.view.state.tr.setMeta("autoCompleteClose", true),
+              transaction.setMeta("autoCompleteClose", true),
             );
+            this.editor.view.dispatch(transaction.setMeta("forceUpdate", true));
           };
 
           return {
-            onStart: (props: SuggestionProps<AutoCompleteSuggestionItem>) => {
+            onStart: async (
+              props: SuggestionProps<AutoCompleteSuggestionItem>,
+            ) => {
+              const items = await fetchItems(props.query);
+              if (!items.length) {
+                destroyMention();
+                return;
+              }
+
               createMention(props);
             },
             onUpdate: (props: SuggestionProps<AutoCompleteSuggestionItem>) => {
@@ -316,9 +326,6 @@ export const AutoCompleteExtension = Extension.create<
             onKeyDown: (props: SuggestionKeyDownProps): boolean => {
               if (props.event.key === "Escape") {
                 destroyMention();
-                this.editor.view.dispatch(
-                  this.editor.view.state.tr.setMeta("autoCompleteCancel", true),
-                );
                 return true;
               }
               return storage.component?.ref?.onKeyDown(props) ?? false;
@@ -369,9 +376,6 @@ function createHintPlugin(options: {
     state: {
       init: () => ({ active: false }),
       apply: (tr, value) => {
-        if (tr.getMeta("autoCompleteCancel")) {
-          return { active: true };
-        }
         if (tr.docChanged) {
           return { active: true };
         }

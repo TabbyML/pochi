@@ -1,5 +1,6 @@
 import * as os from "node:os";
 import path from "node:path";
+import { executeCommandWithNode } from "@/integrations/terminal/execute-command-with-node";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { CustomAgentManager } from "@/lib/custom-agent";
 import {
@@ -20,7 +21,7 @@ import { PostHog } from "@/lib/posthog";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { UserStorage } from "@/lib/user-storage";
 // biome-ignore lint/style/useImportType: needed for dependency injection
-import { WorkspaceScope } from "@/lib/workspace-scoped";
+import { WorkspaceScope, workspaceScoped } from "@/lib/workspace-scoped";
 import { applyDiff, previewApplyDiff } from "@/tools/apply-diff";
 import { editNotebook } from "@/tools/edit-notebook";
 import { executeCommand } from "@/tools/execute-command";
@@ -52,6 +53,7 @@ import { getVendor } from "@getpochi/common/vendor";
 import type {
   CustomAgentFile,
   PochiCredentials,
+  TaskData,
 } from "@getpochi/common/vscode-webui-bridge";
 import type {
   CaptureEvent,
@@ -99,6 +101,7 @@ import {
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { TerminalState } from "../terminal/terminal-state";
 import { commitStore } from "./base";
+import { PochiWebviewPanel } from "./webview-panel";
 
 const logger = getLogger("VSCodeHostImpl");
 
@@ -760,8 +763,45 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     return ThreadSignal.serialize(this.userStorage.users);
   };
 
-  openPochiInNewTab = async (): Promise<void> => {
-    await vscode.commands.executeCommand("pochi.openInPanel");
+  openTaskInPanel = async (task: TaskData): Promise<void> => {
+    if (!task.cwd) {
+      return;
+    }
+    const workspaceContainer = workspaceScoped(task.cwd);
+    await PochiWebviewPanel.createOrShow(
+      workspaceContainer,
+      this.context.extensionUri,
+      task,
+    );
+  };
+
+  executeBashCommand = async (
+    command: string,
+    abortSignal: ThreadAbortSignalSerialization,
+  ): Promise<{ output: string; error?: string }> => {
+    const signal = new ThreadAbortSignal(abortSignal);
+    if (!this.cwd) {
+      return { output: "", error: "No workspace folder found." };
+    }
+
+    let capturedOutput = "";
+    try {
+      const { output } = await executeCommandWithNode({
+        command,
+        cwd: this.cwd,
+        abortSignal: signal as AbortSignal,
+        timeout: 10,
+        onData: (data) => {
+          capturedOutput = data.output;
+        },
+      });
+      return { output };
+    } catch (err: unknown) {
+      // err is likely an ExecutionError
+      // We return the output captured so far, and the error message.
+      const message = err instanceof Error ? err.message : String(err);
+      return { output: capturedOutput, error: message };
+    }
   };
 
   readCustomAgents = async (): Promise<

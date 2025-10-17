@@ -194,17 +194,9 @@ function ImageResult({
   mimeType,
 }: { type: "image"; data: string; mimeType: string }) {
   const { t } = useTranslation();
-  let url: string | null;
-  let previewSuffix: string;
-  try {
-    const blobUrl = new URL(data);
-    url = useStoreBlobUrl(data);
-    previewSuffix = blobUrl.pathname.slice(0, 8);
-  } catch (err) {
-    // Likely to be base64.
-    url = `data:${mimeType};base64,${data}`;
-    previewSuffix = data.slice(0, 8);
-  }
+  const blobUrl = new URL(data);
+  const url = useStoreBlobUrl(data);
+  const previewSuffix = blobUrl.pathname.slice(0, 8);
 
   const extension = mimeType.split("/")[1] || "png";
   const filename = `mcp-image-preview-${previewSuffix}.${extension}`;

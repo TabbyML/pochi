@@ -27,6 +27,7 @@ import type z from "zod/v4";
 import { readEnvironment } from "./lib/read-environment";
 import { StepCount } from "./lib/step-count";
 import { Chat } from "./livekit";
+import { createOnOverrideMessages } from "./on-override-messages";
 import { executeToolCall } from "./tools";
 import type { ToolCallOptions } from "./types";
 
@@ -144,6 +145,7 @@ export class TaskRunner {
       isSubTask: options.isSubTask,
       customAgent: options.customAgent,
       outputSchema: options.outputSchema,
+      onOverrideMessages: createOnOverrideMessages(this.cwd),
       getters: {
         getLLM: () => options.llm,
         getEnvironment: async () => ({
@@ -203,6 +205,7 @@ export class TaskRunner {
     } catch (e) {
       const error = toError(e);
       logger.trace("Failed:", error);
+      this.chatKit.markAsFailed(error);
     }
   }
 

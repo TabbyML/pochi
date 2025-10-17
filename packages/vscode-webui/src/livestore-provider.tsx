@@ -1,3 +1,4 @@
+import { getLogger } from "@getpochi/common";
 import { encodeStoreId } from "@getpochi/common/store-id-utils";
 import { catalog } from "@getpochi/livekit";
 import {
@@ -16,8 +17,11 @@ import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { unstable_batchedUpdates as batchUpdates } from "react-dom";
 import { useMachineId } from "./lib/hooks/use-machine-id";
 import { usePochiCredentials } from "./lib/hooks/use-pochi-credentials";
+import { taskSync } from "./lib/task-sync-event";
 import { setActiveStore, vscodeHost } from "./lib/vscode";
 import LiveStoreWorker from "./livestore.worker.ts?worker&inline";
+
+const logger = getLogger("LiveStoreProvider");
 
 const adapter =
   globalThis.POCHI_WEBVIEW_KIND === "sidebar"
@@ -46,9 +50,31 @@ export function useStoreDate() {
 }
 
 export function LiveStoreProvider({ children }: { children: React.ReactNode }) {
-  const { jwt } = usePochiCredentials();
+  const { jwt, isPending } = usePochiCredentials();
+  const { data: machineId } = useMachineId();
+  if (isPending || !machineId) return null;
+  return (
+    <LiveStoreProviderInner jwt={jwt} machineId={machineId}>
+      {children}
+    </LiveStoreProviderInner>
+  );
+}
+
+function LiveStoreProviderInner({
+  jwt,
+  machineId,
+  children,
+}: {
+  jwt: string | null;
+  machineId: string;
+  children: React.ReactNode;
+}) {
   const [storeDate, setStoreDate] = useState(new Date());
-  const storeId = useStoreId(jwt, storeDate.toLocaleDateString("en-US"));
+  const storeId = useStoreId(
+    jwt,
+    machineId,
+    storeDate.toLocaleDateString("en-US"),
+  );
   const syncPayload = useMemo(() => ({ jwt }), [jwt]);
 
   const storeDateContextValue = useMemo(
@@ -56,6 +82,7 @@ export function LiveStoreProvider({ children }: { children: React.ReactNode }) {
     [storeDate],
   );
 
+  logger.debug("LiveStoreProvider re-rendered");
   return (
     <StoreDateContext.Provider value={storeDateContextValue}>
       <LiveStoreProviderImpl
@@ -77,6 +104,7 @@ export function LiveStoreProvider({ children }: { children: React.ReactNode }) {
 // https://github.com/livestorejs/livestore/pull/514
 function StoreWithCommitHook({ children }: { children: React.ReactNode }) {
   const { store } = useStore();
+
   if (globalThis.POCHI_WEBVIEW_KIND === "sidebar") {
     useEffect(() => {
       setActiveStore(store);
@@ -86,6 +114,30 @@ function StoreWithCommitHook({ children }: { children: React.ReactNode }) {
     }, [store]);
     return children;
   }
+
+  useEffect(() => {
+    if (globalThis.POCHI_WEBVIEW_KIND !== "pane" || !store) {
+      return;
+    }
+    const unsubscribe = taskSync.on((task) => {
+      store.commit(
+        catalog.events.taskSynced({
+          ...task,
+          shareId: task.shareId ?? undefined,
+          cwd: task.cwd ?? undefined,
+          title: task.title ?? undefined,
+          parentId: task.parentId ?? undefined,
+          git: task.git ?? undefined,
+          totalTokens: task.totalTokens ?? undefined,
+          error: task.error ?? undefined,
+          createdAt: new Date(task.createdAt),
+          updatedAt: new Date(task.updatedAt),
+        }),
+      );
+      store.manualRefresh();
+    });
+    return () => unsubscribe();
+  }, [store]);
 
   const storeWithProxy = useMemo(() => {
     return new Proxy(store, {
@@ -115,8 +167,7 @@ function StoreWithCommitHook({ children }: { children: React.ReactNode }) {
   );
 }
 
-function useStoreId(jwt: string | null, date: string) {
-  const { data: machineId = "default" } = useMachineId();
+function useStoreId(jwt: string | null, machineId: string, date: string) {
   const sub = (jwt ? jose.decodeJwt(jwt).sub : undefined) ?? "anonymous";
 
   return encodeStoreId({ sub, machineId, date });

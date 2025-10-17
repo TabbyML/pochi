@@ -1,7 +1,6 @@
 import type { ThreadAbortSignalSerialization } from "@quilted/threads";
 import type { ThreadSignalSerialization } from "@quilted/threads/signals";
 import type { Environment } from "../base";
-
 import type { UserInfo } from "../configuration";
 import type {
   CaptureEvent,
@@ -68,6 +67,12 @@ const VSCodeHostStub = {
     },
   ): Promise<unknown> => {
     return Promise.resolve(undefined);
+  },
+  executeBashCommand: (
+    _command: string,
+    _abortSignal: ThreadAbortSignalSerialization,
+  ): Promise<{ output: string; error?: string }> => {
+    return Promise.resolve({} as { output: string; error?: string });
   },
   listFilesInWorkspace: (): Promise<{ filepath: string; isDir: boolean }[]> => {
     return Promise.resolve([{ filepath: "test", isDir: false }]);
@@ -221,7 +226,7 @@ const VSCodeHostStub = {
     return "test-machine-id";
   },
 
-  openPochiInNewTab: async (): Promise<void> => {},
+  openTaskInPanel: async (): Promise<void> => {},
 
   bridgeStoreEvent: async (): Promise<void> => {},
 } satisfies VSCodeHostApi;

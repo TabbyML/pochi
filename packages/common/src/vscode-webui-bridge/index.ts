@@ -14,7 +14,12 @@ export type {
 } from "./types/execution";
 export type { ResourceURI } from "./types/common";
 export type { SessionState, WorkspaceState } from "./types/session";
-export type { TaskIdParams, NewTaskParams } from "./types/task-params";
+export type {
+  TaskIdParams,
+  NewTaskParams,
+  TaskDataParams,
+  TaskData,
+} from "./types/task";
 export type {
   VSCodeLmModel,
   VSCodeLmRequestCallback,

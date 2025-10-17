@@ -70,7 +70,7 @@ parse_os_info() {
       if [ "$arch" == "x86_64" ]; then
         echo "linux-x64"
       elif [ "$arch" == "aarch64" ]; then
-        echo "linux-arm"
+        echo "linux-arm64"
       else
         error "Releases for architectures other than x64 and arm are not currently supported."
         return 1

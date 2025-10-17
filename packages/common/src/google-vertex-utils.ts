@@ -11,7 +11,12 @@ declare global {
 
 function createPatchedFetchForFinetune(accessToken?: string | undefined) {
   function patchString(str: string) {
-    return str.replace("/publishers/google/models", "/endpoints");
+    const matches = str.match(/models\/([^:]+)/);
+    const modelId = matches ? matches[1] : undefined;
+    if (modelId && isEndpointModelId(modelId)) {
+      return str.replace("/publishers/google/models", "/endpoints");
+    }
+    return str;
   }
 
   return (requestInfo: Request | URL | string, requestInit?: RequestInit) => {
@@ -84,7 +89,7 @@ export function createVertexModel(vertex: GoogleVertexModel, modelId: string) {
   }
 
   if ("issueUrl" in vertex) {
-    const { issueUrl, modelUrl } = vertex;
+    const { issueUrl, modelUrl, timeout } = vertex;
     return createVertexWithoutCredentials({
       project: "placeholder",
       location: "placeholder",
@@ -117,10 +122,19 @@ export function createVertexModel(vertex: GoogleVertexModel, modelId: string) {
 
         const headers = new Headers(requestInit?.headers);
         headers.append("Authorization", `Bearer ${accessToken}`);
-        return fetch(`${modelUrl}/${lastSegment}`, { ...requestInit, headers });
+        return fetch(`${modelUrl}/${lastSegment}`, {
+          ...requestInit,
+          headers,
+          signal: AbortSignal.timeout(timeout),
+        });
       },
     })(modelId);
   }
 
   return undefined as never;
+}
+
+function isEndpointModelId(modelId: string): boolean {
+  // endpoint model is all numberic
+  return /^\d+$/.test(modelId);
 }

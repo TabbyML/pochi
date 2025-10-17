@@ -42,7 +42,9 @@ function RouteComponent() {
 
   const { setStoreDate } = useStoreDate();
   useEffect(() => {
-    setStoreDate(storeDate ? new Date(storeDate) : new Date());
+    if (storeDate) {
+      setStoreDate(new Date(storeDate));
+    }
   }, [storeDate, setStoreDate]);
 
   if (!users?.pochi && modelList.length === 0) {

@@ -1,7 +1,11 @@
 import { AuthEvents } from "@/lib/auth-events";
+import { WorkspaceScope } from "@/lib/workspace-scoped";
 import { getLogger } from "@getpochi/common";
+import { getWorktreeName } from "@getpochi/common/git-utils";
+import { parseWorktreeGitdir } from "@getpochi/common/tool-utils";
 import type {
   ResourceURI,
+  TaskData,
   VSCodeHostApi,
 } from "@getpochi/common/vscode-webui-bridge";
 import type { DependencyContainer } from "tsyringe";
@@ -33,7 +37,6 @@ export class PochiWebviewPanel
 {
   private static readonly viewType = "pochiPanel";
   private static panels = new Map<string, PochiWebviewPanel>();
-  private static panelCounter = 0;
 
   private readonly panel: vscode.WebviewPanel;
 
@@ -75,17 +78,40 @@ export class PochiWebviewPanel
     };
   }
 
-  public static createOrShow(
+  public static async createOrShow(
     workspaceContainer: DependencyContainer,
     extensionUri: vscode.Uri,
-  ): void {
-    // Generate unique session ID
-    const sessionId = `editor-${Date.now()}-${++PochiWebviewPanel.panelCounter}`;
+    task?: TaskData,
+  ): Promise<void> {
+    const cwd = workspaceContainer.resolve(WorkspaceScope).cwd;
+    if (!cwd) {
+      logger.warn("No workspace folder found, cannot open Pochi panel");
+      return;
+    }
+    const sessionId = `editor-${cwd}`;
+
+    if (PochiWebviewPanel.panels.has(sessionId)) {
+      const existingPanel = PochiWebviewPanel.panels.get(sessionId);
+      existingPanel?.panel.reveal();
+      logger.info(`Revealed existing Pochi panel: ${sessionId}`);
+      if (task) {
+        logger.info(`Opening task ${task.id} in existing panel`);
+        existingPanel?.webviewHost?.openTask({
+          uid: task.id,
+          task,
+        });
+      }
+      return;
+    }
+
+    const gitDir =
+      task?.git?.worktree?.gitdir ?? (await parseWorktreeGitdir(cwd));
+    const worktreeName = getWorktreeName(gitDir);
 
     // Create a new panel
     const panel = vscode.window.createWebviewPanel(
       PochiWebviewPanel.viewType,
-      "Pochi",
+      `Pochi${worktreeName ? ` - ${worktreeName}` : ""}`,
       vscode.ViewColumn.Active,
       {
         enableScripts: true,
@@ -116,6 +142,13 @@ export class PochiWebviewPanel
     );
 
     PochiWebviewPanel.panels.set(sessionId, pochiPanel);
+
+    if (task) {
+      pochiPanel.onWebviewReady(() => {
+        logger.info(`Webview ready, opening task ${task.id} in new panel`);
+        pochiPanel.webviewHost?.openTask({ uid: task.id, task });
+      });
+    }
 
     logger.info(`Created new Pochi panel: ${sessionId}`);
   }

@@ -5,7 +5,7 @@ import { useUserStorage } from "./use-user-storage";
 
 /** @useSignals this comment is needed to enable signals in this hook */
 export const usePochiCredentials = () => {
-  const { data, refetch } = useQuery({
+  const { data, refetch, isPending } = useQuery({
     queryKey: ["pochiCredentials"],
     queryFn: fetchPochiCredentials,
     // Every 1 minutes
@@ -23,8 +23,9 @@ export const usePochiCredentials = () => {
     () => ({
       token: data?.token || null,
       jwt: data?.jwt || null,
+      isPending,
     }),
-    [data?.token, data?.jwt],
+    [data?.token, data?.jwt, isPending],
   );
 };
 

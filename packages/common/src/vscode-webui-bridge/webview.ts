@@ -17,6 +17,7 @@ import type {
 } from "./index";
 import type { DisplayModel } from "./types/model";
 import type { PochiCredentials } from "./types/pochi";
+import type { TaskDataParams } from "./types/task";
 
 export interface VSCodeHostApi {
   readResourceURI(): Promise<ResourceURI>;
@@ -155,6 +156,11 @@ export interface VSCodeHostApi {
 
   readCustomAgents(): Promise<ThreadSignalSerialization<CustomAgentFile[]>>;
 
+  executeBashCommand: (
+    command: string,
+    abortSignal: ThreadAbortSignalSerialization,
+  ) => Promise<{ output: string; error?: string }>;
+
   readMinionId(): Promise<string | null>;
 
   /**
@@ -271,7 +277,9 @@ export interface VSCodeHostApi {
     ThreadSignalSerialization<Record<string, UserInfo>>
   >;
 
-  openPochiInNewTab(): Promise<void>;
+  openTaskInPanel(
+    task: unknown /** @link packages/vscode-webui/src/livestore-provider.tsx#TaskSyncData */,
+  ): Promise<void>;
 
   bridgeStoreEvent(
     webviewKind: "sidebar" | "pane",
@@ -283,7 +291,7 @@ export interface WebviewHostApi {
   /**
    * @param params - Existing task id or new task params.
    */
-  openTask(params: TaskIdParams | NewTaskParams): void;
+  openTask(params: TaskIdParams | NewTaskParams | TaskDataParams): void;
 
   openTaskList(): void;
 

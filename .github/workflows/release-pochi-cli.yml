@@ -55,6 +55,7 @@ jobs:
           REPO_OWNER=${{ github.repository_owner }}
 
           DARWIN_ARM_SHA=$(sha256sum packages/cli/dist/pochi-mac-arm64.tar.gz | awk '{ print $1 }')
+          LINUX_ARM_SHA=$(sha256sum packages/cli/dist/pochi-linux-arm64.tar.gz | awk '{ print $1 }')
           LINUX_X86_SHA=$(sha256sum packages/cli/dist/pochi-linux-x64.tar.gz | awk '{ print $1 }')
 
           git config --global user.name "github-actions[bot]"
@@ -75,6 +76,7 @@ jobs:
             FILE=$1
             sed -i "s/version \"$OLD_VERSION\"/version \"$VERSION\"/" "$FILE"
             sed -i '/pochi-mac-arm64.tar.gz/!b;n;s/sha256 = .*/sha256 = "'$DARWIN_ARM_SHA'"/' "$FILE"
+            sed -i '/pochi-linux-arm64.tar.gz/!b;n;s/sha256 = .*/sha256 = "'$LINUX_ARM_SHA'"/' "$FILE"
             sed -i '/pochi-linux-x64.tar.gz/!b;n;s/sha256 = .*/sha256 = "'$LINUX_X86_SHA'"/' "$FILE"
           }
 

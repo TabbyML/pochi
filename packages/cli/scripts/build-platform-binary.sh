@@ -20,4 +20,5 @@ build() {
 clean
 build bun-mac-arm64 mac-arm64
 build bun-linux-x64 linux-x64
+build bun-linux-arm64 linux-arm64
 build bun-windows-x64 windows-x64

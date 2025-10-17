@@ -41,7 +41,8 @@ function mapStoreBlob(store: Store, o: unknown): unknown {
     const url = new URL(o);
     const blob = store.query(catalog.queries.makeBlobQuery(url.pathname));
     if (!blob) throw new Error(`Store blob not found at "${url.pathname}"`);
-    return Buffer.from(blob.data).toString("base64");
+    const base64 = Buffer.from(blob.data).toString("base64");
+    return `data:${blob.mimeType};base64,${base64}`;
   }
 
   if (R.isArray(o)) {

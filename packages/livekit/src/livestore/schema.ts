@@ -49,7 +49,21 @@ const TaskError = Schema.Union(
 );
 
 const Git = Schema.Struct({
+  /**
+   * The remote URL of the repository
+   */
   origin: Schema.optional(Schema.String),
+  worktree: Schema.optional(
+    Schema.Struct({
+      /**
+       * The gitdir path stored in worktree .git file.
+       */
+      gitdir: Schema.String,
+    }),
+  ),
+  /**
+   * The current branch name of the worktree
+   */
   branch: Schema.String,
 });
 
@@ -122,21 +136,53 @@ export const tables = {
   }),
 };
 
+const taskInitFields = {
+  id: Schema.String,
+  parentId: Schema.optional(Schema.String),
+  cwd: Schema.optional(Schema.String),
+  createdAt: Schema.Date,
+};
+
+const taskFullFields = {
+  ...taskInitFields,
+  git: Schema.optional(Git),
+  shareId: Schema.optional(Schema.String),
+  isPublicShared: Schema.Boolean,
+  title: Schema.optional(Schema.String),
+  status: TaskStatus,
+  todos: Todos,
+  totalTokens: Schema.optional(Schema.Number),
+  error: Schema.optional(TaskError),
+  updatedAt: Schema.Date,
+};
+
 // Events describe data changes (https://docs.livestore.dev/reference/events)
 export const events = {
   taskInited: Events.synced({
     name: "v1.TaskInited",
     schema: Schema.Struct({
-      id: Schema.String,
-      parentId: Schema.optional(Schema.String),
-      cwd: Schema.optional(Schema.String),
-      createdAt: Schema.Date,
+      ...taskInitFields,
       initMessage: Schema.optional(
         Schema.Struct({
           id: Schema.String,
           parts: Schema.Array(DBUIPart),
         }),
       ),
+    }),
+  }),
+  taskFailed: Events.synced({
+    name: "v1.TaskFailed",
+    schema: Schema.Struct({
+      id: Schema.String,
+      error: TaskError,
+      updatedAt: Schema.Date,
+    }),
+  }),
+  taskSynced: Events.synced({
+    name: "v1.TaskSynced",
+    schema: Schema.Struct({
+      ...taskFullFields,
+      messages: Schema.Array(DBMessage),
     }),
   }),
   chatStreamStarted: Events.synced({
@@ -230,6 +276,28 @@ const materializers = State.SQLite.materializers(events, {
           }),
         ]
       : []),
+  ],
+  "v1.TaskFailed": ({ id, error, updatedAt }) => [
+    tables.tasks
+      .update({
+        status: "failed",
+        error,
+        updatedAt,
+      })
+      .where({ id }),
+  ],
+  "v1.TaskSynced": ({ messages, ...task }) => [
+    tables.tasks.insert(task).onConflict("id", "replace"),
+    tables.messages.delete().where("taskId", "=", task.id),
+    ...messages.map((message) =>
+      tables.messages
+        .insert({
+          id: message.id,
+          taskId: task.id,
+          data: message,
+        })
+        .onConflict("id", "replace"),
+    ),
   ],
   "v1.ChatStreamStarted": ({ id, data, todos, git, title, updatedAt }) => [
     tables.tasks

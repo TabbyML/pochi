@@ -9,9 +9,12 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useMcp } from "@/lib/hooks/use-mcp";
+import {
+  type McpConfigPath,
+  useThirdPartyMcp,
+} from "@/lib/hooks/use-third-party-mcp";
 import { cn } from "@/lib/utils";
 import { getFileName } from "@/lib/utils/file";
-import { vscodeHost } from "@/lib/vscode";
 import type { McpServerConnection } from "@getpochi/common/mcp-utils";
 import {
   ChevronsUpDown,
@@ -22,7 +25,7 @@ import {
   PencilIcon,
   RotateCw,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { EmptySectionPlaceholder, SubSection } from "../ui/section";
 import { ToolBadge, ToolBadgeList } from "../ui/tool-badge";
@@ -34,11 +37,6 @@ interface RecommendedMcpServer {
   githubUrl: string;
   command: string;
   args: string[];
-}
-interface McpConfigPath {
-  name: string;
-  description: string;
-  path: string;
 }
 
 const recommendedMcpServers: RecommendedMcpServer[] = [
@@ -52,56 +50,6 @@ const recommendedMcpServers: RecommendedMcpServer[] = [
     args: ["@upstash/context7-mcp"],
   },
 ];
-
-function useThirdPartyMcp() {
-  const [isLoading, setIsLoading] = useState(true);
-  const [availableConfigs, setAvailableConfigs] = useState<McpConfigPath[]>([]);
-  const [importFromAllConfigs, setImportFromAllConfigs] =
-    useState<() => Promise<void>>();
-  const [importFromConfig, setImportFromConfig] =
-    useState<(config: McpConfigPath) => Promise<void>>();
-  const [openConfig, setOpenConfig] =
-    useState<(config: McpConfigPath) => Promise<void>>();
-
-  useEffect(() => {
-    let isCancelled = false;
-    const fetchConfigs = async () => {
-      setIsLoading(true);
-      try {
-        const {
-          availableConfigs,
-          importFromAllConfigs: doImportAll,
-          importFromConfig: doImportSingle,
-          openConfig: doOpenConfig,
-        } = await vscodeHost.fetchAvailableThirdPartyMcpConfigs();
-        if (!isCancelled) {
-          setAvailableConfigs(availableConfigs);
-          setImportFromAllConfigs(() => doImportAll);
-          setImportFromConfig(() => doImportSingle);
-          setOpenConfig(() => doOpenConfig);
-        }
-      } catch (e) {
-        console.error("Failed to fetch third party mcp configs", e);
-      } finally {
-        if (!isCancelled) {
-          setIsLoading(false);
-        }
-      }
-    };
-    fetchConfigs();
-    return () => {
-      isCancelled = true;
-    };
-  }, []);
-
-  return {
-    isLoading,
-    availableConfigs,
-    importFromAllConfigs,
-    importFromConfig,
-    openConfig,
-  };
-}
 
 const ImportMcp: React.FC<{
   availableConfigs: McpConfigPath[];
@@ -275,8 +223,9 @@ export const McpSection: React.FC = () => {
     </TooltipProvider>
   );
 
-  const isLoading = isLoadingConnections || isLoadingThirdParty;
   const hasConnections = Object.keys(connections).length > 0;
+  const isLoading =
+    isLoadingConnections || (!hasConnections && isLoadingThirdParty);
   const hasAvailableConfigs =
     !isLoading && availableConfigs && availableConfigs.length > 0;
 
