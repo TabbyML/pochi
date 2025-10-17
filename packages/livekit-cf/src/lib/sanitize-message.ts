@@ -13,7 +13,7 @@ export function sanitizeMessage(message: Message): Message {
       if (part.type === "tool-readFile" && part.output) {
         const output = part.output;
 
-        if ("type" in output && output.type === "image") {
+        if ("type" in output && output.type === "media") {
           return {
             ...part,
             output: {
