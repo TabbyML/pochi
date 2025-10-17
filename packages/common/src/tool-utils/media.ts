@@ -15,51 +15,41 @@ const imageExtensionToMimeType: Record<string, string> = {
   ".heic": "image/heic",
 };
 
-export const MaxImageSizeBytes = 20 * 1024 * 1024;
+const MaxMediaSizeBytes = 20 * 1024 * 1024; // 20MB
 
-export type ImageContentResult = {
-  type: "image";
+type MediaContentResult = {
+  type: "media";
   data: string;
   mimeType: string;
   isTruncated: boolean;
 };
 
-export function getImageMimeType(filePath: string): string | undefined {
-  const extension = path.extname(filePath).toLowerCase();
-  return imageExtensionToMimeType[extension];
-}
-
-export function isSupportedImageFile(filePath: string): boolean {
-  return getImageMimeType(filePath) !== undefined;
-}
-
-export function bufferToBase64(buffer: Uint8Array): string {
-  return Buffer.from(buffer).toString("base64");
-}
-
-export function buildImageContent(
+export function readMediaFile(
   filePath: string,
   fileBuffer: Uint8Array,
-  supportedMimeTypes?: string[],
-): ImageContentResult | undefined {
-  const mimeType = getImageMimeType(filePath);
-  if (!mimeType) return undefined;
+  supportedMimeTypes: string[],
+): MediaContentResult {
+  const extension = path.extname(filePath).toLowerCase();
+  const mimeType = imageExtensionToMimeType[extension];
+  if (!mimeType) {
+    throw new Error(`Unsupported image file extension: ${extension}`);
+  }
 
-  if (supportedMimeTypes && !supportedMimeTypes.includes(mimeType)) {
-    return undefined;
+  if (!supportedMimeTypes.includes(mimeType)) {
+    throw new Error(`MIME type ${mimeType} is not supported.`);
   }
 
   let data = fileBuffer;
   let isTruncated = false;
 
-  if (fileBuffer.byteLength > MaxImageSizeBytes) {
-    data = fileBuffer.slice(0, MaxImageSizeBytes);
+  if (fileBuffer.byteLength > MaxMediaSizeBytes) {
+    data = fileBuffer.slice(0, MaxMediaSizeBytes);
     isTruncated = true;
   }
 
   return {
-    type: "image" as const,
-    data: bufferToBase64(data),
+    type: "media" as const,
+    data: Buffer.from(data).toString("base64"),
     mimeType,
     isTruncated,
   };

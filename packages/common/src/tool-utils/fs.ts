@@ -21,7 +21,7 @@ const BUFFER_MAX_LEN = 512;
  * @param buffer The buffer to check.
  * @returns `true` if the buffer likely contains plain text, `false` otherwise.
  */
-function isPlainText(buffer: Uint8Array): boolean {
+export function isPlainText(buffer: Uint8Array): boolean {
   const bufferData = buffer.slice(0, BUFFER_MAX_LEN);
   const bytesRead = bufferData.length;
 

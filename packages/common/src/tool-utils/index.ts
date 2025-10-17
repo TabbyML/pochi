@@ -6,6 +6,7 @@ export {
   selectFileContent,
   resolvePath,
   isFileExists,
+  isPlainText,
 } from "./fs";
 export { listFiles, listWorkspaceFiles } from "./list-files";
 export { globFiles } from "./glob-files";
@@ -37,10 +38,4 @@ export {
   editNotebookCell,
   serializeNotebook,
 } from "./notebook-utils";
-export {
-  MaxImageSizeBytes,
-  buildImageContent,
-  bufferToBase64,
-  getImageMimeType,
-  isSupportedImageFile,
-} from "./media";
+export { readMediaFile } from "./media";

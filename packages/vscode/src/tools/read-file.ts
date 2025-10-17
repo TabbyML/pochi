@@ -1,8 +1,8 @@
 import {
-  buildImageContent,
+  isPlainText,
+  readMediaFile,
   resolvePath,
   selectFileContent,
-  validateTextFile,
 } from "@getpochi/common/tool-utils";
 
 import type { ClientTools, ToolFunctionType } from "@getpochi/tools";
@@ -17,18 +17,15 @@ export const readFile: ToolFunctionType<ClientTools["readFile"]> = async (
 
   const fileBuffer = await vscode.workspace.fs.readFile(fileUri);
 
-  if (supportedMimeTypes && supportedMimeTypes.length > 0) {
-    const imageContent = buildImageContent(
-      resolvedPath,
-      fileBuffer,
-      supportedMimeTypes,
-    );
-    if (imageContent) {
-      return imageContent;
-    }
+  const isPlainTextFile = isPlainText(fileBuffer);
+
+  if (supportedMimeTypes && supportedMimeTypes.length > 0 && !isPlainTextFile) {
+    return readMediaFile(resolvedPath, fileBuffer, supportedMimeTypes);
   }
 
-  validateTextFile(fileBuffer);
+  if (!isPlainTextFile) {
+    throw new Error("Read binary files is not supported.");
+  }
 
   const fileContent = fileBuffer.toString();
   const addLineNumbers = !!process.env.VSCODE_TEST_OPTIONS;

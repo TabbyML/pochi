@@ -29,6 +29,7 @@ import { StepCount } from "./lib/step-count";
 import { Chat } from "./livekit";
 import { executeToolCall } from "./tools";
 import type { ToolCallOptions } from "./types";
+import type { RequestData } from "../../livekit/src/types";
 
 export interface RunnerOptions {
   /**
@@ -98,6 +99,7 @@ const logger = getLogger("TaskRunner");
 export class TaskRunner {
   private store: Store;
   private cwd: string;
+  private llm: RequestData["llm"];
   private toolCallOptions: ToolCallOptions;
   private stepCount: StepCount;
 
@@ -116,6 +118,7 @@ export class TaskRunner {
 
   constructor(options: RunnerOptions) {
     this.cwd = options.cwd;
+    this.llm = options.llm;
     this.toolCallOptions = {
       rg: options.rg,
       customAgents: options.customAgents,
@@ -333,7 +336,13 @@ export class TaskRunner {
 
       const toolResult = await processContentOutput(
         this.store,
-        await executeToolCall(toolCall, this.toolCallOptions, this.cwd),
+        await executeToolCall(
+          toolCall,
+          this.toolCallOptions,
+          this.cwd,
+          undefined,
+          this.llm.supportedMimeTypes,
+        ),
       );
 
       await this.chatKit.chat.addToolResult({

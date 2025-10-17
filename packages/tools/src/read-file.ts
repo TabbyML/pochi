@@ -11,17 +11,17 @@ const TextOutputSchema = z.object({
     ),
 });
 
-const ImageOutputSchema = z.object({
-  type: z.literal("image"),
-  data: z.string().describe("The base64-encoded image data"),
-  mimeType: z.string().describe("The MIME type of the image"),
-  isTruncated: z.boolean().describe("Whether the image is truncated"),
+const MediaOutputSchema = z.object({
+  type: z.literal("media"),
+  data: z.string().describe("The base64-encoded media data"),
+  mimeType: z.string().describe("The MIME type of the media"),
+  isTruncated: z.boolean().describe("Whether the media is truncated"),
 });
 
 export const createReadFileTool = (supportedMimeTypes?: string[]) =>
   defineClientTool({
     description: `Request to read the contents of a file at the specified path. Use this when you need to examine the contents of an existing file you do not know the contents of, for example to analyze code, review text files, extract information from configuration files.
-${supportedMimeTypes && supportedMimeTypes.length > 0 ? `Also supports reading media files with the following mime types: ${supportedMimeTypes.join(", ")}.` : ""}`,
+${supportedMimeTypes && supportedMimeTypes.length > 0 ? `Also supports reading media files (e.g. image, audio, video) with the following mime types: ${supportedMimeTypes.join(", ")}.` : ""}`,
     inputSchema: z.object({
       path: z
         .string()
@@ -42,13 +42,13 @@ ${supportedMimeTypes && supportedMimeTypes.length > 0 ? `Also supports reading m
         ),
     }),
     outputSchema: z
-      .union([TextOutputSchema, ImageOutputSchema])
-      .describe("The file content as either text or image output."),
+      .union([TextOutputSchema, MediaOutputSchema])
+      .describe("The file content as either text or media output."),
     toModelOutput(output) {
       return {
         type: "content",
         value:
-          output.type === "image"
+          output.type === "media"
             ? [
                 {
                   type: "media",
@@ -58,7 +58,7 @@ ${supportedMimeTypes && supportedMimeTypes.length > 0 ? `Also supports reading m
               ]
             : [
                 {
-                  type: "text" as const,
+                  type: "text",
                   text: output.content,
                 },
               ],

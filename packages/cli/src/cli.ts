@@ -345,6 +345,7 @@ async function createLLMConfigWithVendors(
           modelId,
           getCredentials: vendor.getCredentials,
         }),
+      supportedMimeTypes: options.supportedMimeTypes,
     } satisfies LLMRequestData;
   }
 }
@@ -365,6 +366,7 @@ async function createLLMConfigWithPochi(
           modelId: model,
           getCredentials: vendor.getCredentials,
         }),
+      supportedMimeTypes: pochiModelOptions.supportedMimeTypes,
     };
   }
 }
@@ -396,6 +398,7 @@ async function createLLMConfigWithProviders(
         modelSetting.contextWindow ?? constants.DefaultContextWindow,
       maxOutputTokens:
         modelSetting.maxTokens ?? constants.DefaultMaxOutputTokens,
+      supportedMimeTypes: modelSetting.supportedMimeTypes,
     };
   }
 
@@ -409,6 +412,7 @@ async function createLLMConfigWithProviders(
       maxOutputTokens:
         modelSetting.maxTokens ?? constants.DefaultMaxOutputTokens,
       useToolCallMiddleware: modelSetting.useToolCallMiddleware,
+      supportedMimeTypes: modelSetting.supportedMimeTypes,
     };
   }
 
@@ -428,6 +432,7 @@ async function createLLMConfigWithProviders(
       maxOutputTokens:
         modelSetting.maxTokens ?? constants.DefaultMaxOutputTokens,
       useToolCallMiddleware: modelSetting.useToolCallMiddleware,
+      supportedMimeTypes: modelSetting.supportedMimeTypes,
     };
   }
 
