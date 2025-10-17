@@ -75,11 +75,11 @@ let isShuttingDown = false;
 process.on("SIGINT", () => {
   if (isShuttingDown) return;
   isShuttingDown = true;
-  
+
   if (activeAbortController && !activeAbortController.signal.aborted) {
     activeAbortController.abort(new Error("Process interrupted by SIGINT"));
   }
-  
+
   // Force exit immediately with SIGINT code
   process.exit(130);
 });
@@ -87,11 +87,11 @@ process.on("SIGINT", () => {
 process.on("SIGTERM", () => {
   if (isShuttingDown) return;
   isShuttingDown = true;
-  
+
   if (activeAbortController && !activeAbortController.signal.aborted) {
     activeAbortController.abort(new Error("Process interrupted by SIGTERM"));
   }
-  
+
   // Force exit immediately with SIGTERM code
   process.exit(143);
 });
