@@ -42,7 +42,7 @@ describe("collectCustomRules", () => {
       throw new Error("File not found");
     });
     
-    vi.mocked(stat).mockImplementation(async (filePath) => {
+    vi.mocked(stat).mockImplementation(async (_filePath) => {
       return {
         isFile: () => true,
         isDirectory: () => false,
@@ -65,7 +65,7 @@ describe("collectCustomRules", () => {
       throw new Error("File not found");
     });
     
-    vi.mocked(stat).mockImplementation(async (filePath) => {
+    vi.mocked(stat).mockImplementation(async (_filePath) => {
       return {
         isFile: () => true,
         isDirectory: () => false,
@@ -92,7 +92,7 @@ describe("collectCustomRules", () => {
       throw new Error("Read error");
     });
     
-    vi.mocked(stat).mockImplementation(async (filePath) => {
+    vi.mocked(stat).mockImplementation(async (_filePath) => {
       return {
         isFile: () => true,
         isDirectory: () => false,
@@ -107,7 +107,7 @@ describe("collectCustomRules", () => {
   it("should return an empty string if no rules are found", async () => {
     vi.mocked(readFile).mockRejectedValue(new Error("File not found"));
     
-    vi.mocked(stat).mockImplementation(async (filePath) => {
+    vi.mocked(stat).mockImplementation(async (_filePath) => {
       return {
         isFile: () => true,
         isDirectory: () => false,
