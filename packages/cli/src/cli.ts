@@ -75,7 +75,7 @@ let isShuttingDown = false;
 const handleShutdown = async (signal: "SIGINT" | "SIGTERM") => {
   if (isShuttingDown) return;
   isShuttingDown = true;
-  
+
   try {
     activeRenderer?.shutdown();
     activeJsonRenderer?.shutdown();
