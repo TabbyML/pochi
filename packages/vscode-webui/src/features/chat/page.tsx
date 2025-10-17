@@ -64,7 +64,11 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
 
   const task = store.useQuery(catalog.queries.makeTaskQuery(uid));
   const subtask = useSubtaskInfo(uid, task?.parentId);
-  const { isLoading: isModelsLoading, selectedModel } = useSelectedModels({
+  const {
+    isLoading: isModelsLoading,
+    selectedModel,
+    updateSelectedModelId,
+  } = useSelectedModels({
     isSubTask: !!subtask,
   });
   const { customAgent } = useCustomAgent(subtask?.agent);
@@ -76,6 +80,13 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
     todos: todosRef,
     isSubTask: !!subtask,
   });
+
+  useEffect(() => {
+    if (task?.modelId && !isModelsLoading) {
+      updateSelectedModelId(task.modelId);
+    }
+  }, [task?.modelId, updateSelectedModelId, isModelsLoading]);
+
   const chatKit = useLiveChatKit({
     taskId: uid,
     getters,

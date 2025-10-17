@@ -338,6 +338,7 @@ async function createLLMConfigWithVendors(
       );
     }
     return {
+      id: `${vendorId}/${modelId}`,
       type: "vendor",
       useToolCallMiddleware: options.useToolCallMiddleware,
       getModel: () =>
@@ -358,6 +359,7 @@ async function createLLMConfigWithPochi(
   if (pochiModelOptions) {
     const vendorId = "pochi";
     return {
+      id: `${vendorId}/${model}`,
       type: "vendor",
       useToolCallMiddleware: pochiModelOptions.useToolCallMiddleware,
       getModel: () =>
@@ -389,6 +391,7 @@ async function createLLMConfigWithProviders(
 
   if (modelProvider.kind === "ai-gateway") {
     return {
+      id: `${providerId}/${modelId}`,
       type: "ai-gateway",
       modelId,
       apiKey: modelProvider.apiKey,
@@ -401,6 +404,7 @@ async function createLLMConfigWithProviders(
 
   if (modelProvider.kind === "google-vertex-tuning") {
     return {
+      id: `${providerId}/${modelId}`,
       type: "google-vertex-tuning",
       modelId,
       vertex: modelProvider.vertex,
@@ -419,6 +423,7 @@ async function createLLMConfigWithProviders(
     modelProvider.kind === "anthropic"
   ) {
     return {
+      id: `${providerId}/${modelId}`,
       type: modelProvider.kind || "openai",
       modelId,
       baseURL: modelProvider.baseURL,
