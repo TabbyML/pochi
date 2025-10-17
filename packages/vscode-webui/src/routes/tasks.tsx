@@ -38,10 +38,10 @@ import {
   Zap,
 } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { MdOutlineErrorOutline } from "react-icons/md";
 import type { TaskSyncData } from "../lib/task-sync-event";
 import { useStoreDate } from "../livestore-provider";
-import { useTranslation } from "react-i18next";
 
 export const Route = createFileRoute("/tasks")({
   validateSearch: (search: Record<string, unknown>): { page?: number } => {
