@@ -89,7 +89,7 @@ export function createVertexModel(vertex: GoogleVertexModel, modelId: string) {
   }
 
   if ("issueUrl" in vertex) {
-    const { issueUrl, modelUrl } = vertex;
+    const { issueUrl, modelUrl, timeout } = vertex;
     return createVertexWithoutCredentials({
       project: "placeholder",
       location: "placeholder",
@@ -122,7 +122,11 @@ export function createVertexModel(vertex: GoogleVertexModel, modelId: string) {
 
         const headers = new Headers(requestInit?.headers);
         headers.append("Authorization", `Bearer ${accessToken}`);
-        return fetch(`${modelUrl}/${lastSegment}`, { ...requestInit, headers });
+        return fetch(`${modelUrl}/${lastSegment}`, {
+          ...requestInit,
+          headers,
+          signal: AbortSignal.timeout(timeout),
+        });
       },
     })(modelId);
   }

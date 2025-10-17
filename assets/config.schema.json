@@ -303,11 +303,17 @@
                       "modelUrl": {
                         "default": "",
                         "type": "string"
+                      },
+                      "timeout": {
+                        "description": "Timeout in milliseconds when requesting model api",
+                        "default": 900000,
+                        "type": "number"
                       }
                     },
                     "required": [
                       "issueUrl",
-                      "modelUrl"
+                      "modelUrl",
+                      "timeout"
                     ],
                     "additionalProperties": false
                   }
