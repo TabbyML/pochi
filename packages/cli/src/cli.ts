@@ -65,9 +65,6 @@ import { checkForUpdates, registerUpgradeCommand } from "./upgrade";
 const logger = getLogger("Pochi");
 logger.debug(`pochi v${packageJson.version}`);
 
-// Exit codes for signal handling
-const NORMAL_SYNC_TIMEOUT = "2 second";
-
 // Set up graceful shutdown for SIGINT and SIGTERM
 let activeAbortController: AbortController | undefined;
 let isShuttingDown = false;
@@ -253,10 +250,13 @@ const program = new Command()
 
     // Cleanup resources after task completion
     renderer.shutdown();
-    jsonRenderer?.shutdown();
-    mcpHub?.dispose();
-    await waitForSync(store, NORMAL_SYNC_TIMEOUT);
-
+    if (mcpHub) {
+      mcpHub.dispose();
+    }
+    if (jsonRenderer) {
+      jsonRenderer.shutdown();
+    }
+    await waitForSync(store, "2 second").catch(console.error);
     await shutdownStoreAndExit(store);
   });
 
