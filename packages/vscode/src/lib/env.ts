@@ -52,25 +52,71 @@ function getWorkflowsDirectoryUri(cwd: string) {
 }
 
 export async function collectRuleFiles(cwd: string): Promise<RuleFile[]> {
-  const ruleFiles: RuleFile[] = [];
-  // Add global rules
+  const allRuleFiles = new Map<string, RuleFile>();
+  const filesToProcess: string[] = [];
+
+  // 1. Add initial seed files
+  // Global rules
   for (const rule of GlobalRules) {
-    if (await isFileExists(vscode.Uri.file(rule.filePath))) {
-      ruleFiles.push({
-        filepath: rule.filePath,
-        label: rule.label,
-      });
+    const uri = vscode.Uri.file(rule.filePath);
+    if (uri.path.endsWith(".md") && (await isFileExists(uri))) {
+      if (!allRuleFiles.has(rule.filePath)) {
+        allRuleFiles.set(rule.filePath, {
+          filepath: rule.filePath,
+          label: rule.label,
+        });
+        filesToProcess.push(rule.filePath);
+      }
     }
   }
+  // Workspace rules
   for (const uri of getWorkspaceRulesFileUris(cwd)) {
-    if (await isFileExists(uri)) {
-      ruleFiles.push({
-        filepath: uri.fsPath,
-        relativeFilepath: vscode.workspace.asRelativePath(uri),
-      });
+    if (uri.path.endsWith(".md") && (await isFileExists(uri))) {
+      if (!allRuleFiles.has(uri.fsPath)) {
+        allRuleFiles.set(uri.fsPath, {
+          filepath: uri.fsPath,
+          relativeFilepath: vscode.workspace.asRelativePath(uri),
+        });
+        filesToProcess.push(uri.fsPath);
+      }
     }
   }
-  return ruleFiles;
+
+  // 2. Process files recursively (iteratively)
+  const visited = new Set<string>();
+  while (filesToProcess.length > 0) {
+    const filePath = filesToProcess.shift();
+    if (!filePath || visited.has(filePath)) {
+      continue;
+    }
+    visited.add(filePath);
+
+    const content = await readFileContent(filePath);
+    if (!content) {
+      continue;
+    }
+
+    const dir = path.dirname(filePath);
+    const importRegex = /^@\s*([./\\\w-]+.md)$/gm;
+
+    let match = importRegex.exec(content);
+    while (match !== null) {
+      const importPath = path.resolve(dir, match[1]);
+      if (!allRuleFiles.has(importPath)) {
+        const importUri = vscode.Uri.file(importPath);
+        const relativePath = vscode.workspace.asRelativePath(importUri);
+        allRuleFiles.set(importPath, {
+          filepath: importPath,
+          relativeFilepath: relativePath,
+          label: relativePath, // Use relative path as label for imported files
+        });
+        filesToProcess.push(importPath);
+      }
+      match = importRegex.exec(content);
+    }
+  }
+
+  return Array.from(allRuleFiles.values());
 }
 
 /**

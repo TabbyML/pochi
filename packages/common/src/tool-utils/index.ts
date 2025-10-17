@@ -19,6 +19,7 @@ export {
   collectCustomRules,
   WorkspaceRulesFilePaths,
   GlobalRules,
+  collectAllRuleFiles,
 } from "./custom-rules";
 export { MaxTerminalOutputSize } from "./limits";
 export {
