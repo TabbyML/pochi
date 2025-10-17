@@ -65,6 +65,35 @@ import { checkForUpdates, registerUpgradeCommand } from "./upgrade";
 const logger = getLogger("Pochi");
 logger.debug(`pochi v${packageJson.version}`);
 
+// Set up graceful shutdown for SIGINT and SIGTERM
+let activeStore: Store | undefined;
+let activeRenderer: OutputRenderer | undefined;
+let activeJsonRenderer: JsonRenderer | undefined;
+let activeMcpHub: { dispose: () => void } | undefined;
+let isShuttingDown = false;
+
+const handleShutdown = async (signal: "SIGINT" | "SIGTERM") => {
+  if (isShuttingDown) return;
+  isShuttingDown = true;
+  
+  try {
+    activeRenderer?.shutdown();
+    activeJsonRenderer?.shutdown();
+    activeMcpHub?.dispose?.();
+    await waitForSync(activeStore, "1 second").catch(() => {});
+    if (activeStore) {
+      await shutdownStoreAndExit(activeStore, signal === "SIGINT" ? 130 : 143);
+    } else {
+      process.exit(signal === "SIGINT" ? 130 : 143);
+    }
+  } catch {
+    process.exit(signal === "SIGINT" ? 130 : 143);
+  }
+};
+
+process.on("SIGINT", () => handleShutdown("SIGINT"));
+process.on("SIGTERM", () => handleShutdown("SIGTERM"));
+
 const parsePositiveInt = (input: string): number => {
   if (!input) {
     return program.error(
@@ -130,6 +159,7 @@ const program = new Command()
   )
   .action(async (options) => {
     const store = await createStore();
+    activeStore = store;
     const { uid, prompt, attachments } = await parseTaskInput(options, program);
 
     const parts: Message["parts"] = [];
@@ -186,6 +216,7 @@ const program = new Command()
 
     // Create MCP Hub for accessing MCP server tools (only if MCP is enabled)
     const mcpHub = options.mcp ? await initializeMcp(program) : undefined;
+    activeMcpHub = mcpHub;
 
     const runner = new TaskRunner({
       uid,
@@ -205,9 +236,11 @@ const program = new Command()
     });
 
     const renderer = new OutputRenderer(runner.state);
+    activeRenderer = renderer;
     let jsonRenderer: JsonRenderer | undefined;
     if (options.streamJson) {
       jsonRenderer = new JsonRenderer(store, runner.state);
+      activeJsonRenderer = jsonRenderer;
     }
 
     await runner.run();
