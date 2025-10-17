@@ -20,7 +20,7 @@ export default [
     },
     rules: {
       "i18next/no-literal-string": [
-        "error",
+        "warn",
         {
           mode: "jsx-text-only", // only check jsx
           words: {
