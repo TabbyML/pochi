@@ -97,20 +97,22 @@ export async function collectRuleFiles(cwd: string): Promise<RuleFile[]> {
     }
 
     const dir = path.dirname(filePath);
-    const importRegex = /^@\s*([./\\\w-]+.md)$/gm;
+    const importRegex = /^@([./\\\w-]+.md)$/gm;
 
     let match = importRegex.exec(content);
     while (match !== null) {
       const importPath = path.resolve(dir, match[1]);
-      if (!allRuleFiles.has(importPath)) {
-        const importUri = vscode.Uri.file(importPath);
-        const relativePath = vscode.workspace.asRelativePath(importUri);
-        allRuleFiles.set(importPath, {
-          filepath: importPath,
-          relativeFilepath: relativePath,
-          label: relativePath, // Use relative path as label for imported files
-        });
-        filesToProcess.push(importPath);
+      const importUri = vscode.Uri.file(importPath);
+      if (await isFileExists(importUri)) {
+        if (!allRuleFiles.has(importPath)) {
+          const relativePath = vscode.workspace.asRelativePath(importUri);
+          allRuleFiles.set(importPath, {
+            filepath: importPath,
+            relativeFilepath: relativePath,
+            label: relativePath, // Use relative path as label for imported files
+          });
+          filesToProcess.push(importPath);
+        }
       }
       match = importRegex.exec(content);
     }

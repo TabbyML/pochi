@@ -11,7 +11,7 @@ vi.mock("node:os", () => ({
   homedir: mockHomedir,
 }));
 
-import { collectCustomRules } from "../custom-rules";
+import { collectAllRuleFiles, collectCustomRules } from "../custom-rules";
 
 describe("collectCustomRules", () => {
   const cwd = "/workspace";
@@ -42,7 +42,6 @@ describe("collectCustomRules", () => {
       throw new Error("File not found");
     });
     
-    // Mock stat to return that all files are files (not directories)
     vi.mocked(stat).mockImplementation(async (filePath) => {
       return {
         isFile: () => true,
@@ -66,7 +65,6 @@ describe("collectCustomRules", () => {
       throw new Error("File not found");
     });
     
-    // Mock stat to return that the file is a file (not a directory)
     vi.mocked(stat).mockImplementation(async (filePath) => {
       return {
         isFile: () => true,
@@ -94,7 +92,6 @@ describe("collectCustomRules", () => {
       throw new Error("Read error");
     });
     
-    // Mock stat to return that the file is a file (not a directory)
     vi.mocked(stat).mockImplementation(async (filePath) => {
       return {
         isFile: () => true,
@@ -110,7 +107,6 @@ describe("collectCustomRules", () => {
   it("should return an empty string if no rules are found", async () => {
     vi.mocked(readFile).mockRejectedValue(new Error("File not found"));
     
-    // Mock stat to return that files are files (not directories)
     vi.mocked(stat).mockImplementation(async (filePath) => {
       return {
         isFile: () => true,
@@ -121,5 +117,128 @@ describe("collectCustomRules", () => {
     const rules = await collectCustomRules(cwd, [], false, false);
 
     expect(rules).toBe("");
+  });
+});
+
+describe("collectAllRuleFiles", () => {
+  const cwd = "/workspace";
+
+  beforeEach(() => {
+    vi.mocked(readFile).mockClear();
+    vi.mocked(stat).mockClear();
+
+    vi.mocked(stat).mockImplementation(async (path) => {
+      if (typeof path === "string" && path.endsWith(".md")) {
+        return { isFile: () => true } as any;
+      }
+      throw new Error(`File not found: ${path}`);
+    });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("should collect a single rule file", async () => {
+    const customRulePath = `${cwd}/custom.md`;
+    vi.mocked(readFile).mockResolvedValue("");
+
+    const files = await collectAllRuleFiles(cwd, { customRuleFiles: [customRulePath], includeDefaultRules: false, includeGlobalRules: false });
+
+    expect(files).toHaveLength(1);
+    expect(files[0].filePath).toBe(customRulePath);
+  });
+
+  it("should collect rules from imported files", async () => {
+    const mainRulePath = `${cwd}/main.md`;
+    const importedRulePath = `${cwd}/imported.md`;
+
+    vi.mocked(readFile).mockImplementation(async (path) => {
+      if (path === mainRulePath) {
+        return "@imported.md";
+      }
+      if (path === importedRulePath) {
+        return "imported rule content";
+      }
+      return "";
+    });
+
+    const files = await collectAllRuleFiles(cwd, { customRuleFiles: [mainRulePath], includeDefaultRules: false, includeGlobalRules: false });
+
+    expect(files).toHaveLength(2);
+    expect(files.map((f) => f.filePath)).toContain(mainRulePath);
+    expect(files.map((f) => f.filePath)).toContain(importedRulePath);
+  });
+
+  it("should handle nested imports", async () => {
+    const mainRulePath = `${cwd}/main.md`;
+    const importedRulePath = `${cwd}/imported.md`;
+    const nestedRulePath = `${cwd}/nested.md`;
+
+    vi.mocked(readFile).mockImplementation(async (path) => {
+      if (path === mainRulePath) return "@imported.md";
+      if (path === importedRulePath) return "@nested.md";
+      if (path === nestedRulePath) return "nested content";
+      return "";
+    });
+
+    const files = await collectAllRuleFiles(cwd, { customRuleFiles: [mainRulePath], includeDefaultRules: false, includeGlobalRules: false });
+
+    expect(files).toHaveLength(3);
+    expect(files.map((f) => f.filePath)).toContain(mainRulePath);
+    expect(files.map((f) => f.filePath)).toContain(importedRulePath);
+    expect(files.map((f) => f.filePath)).toContain(nestedRulePath);
+  });
+
+  it("should handle circular imports gracefully", async () => {
+    const mainRulePath = `${cwd}/main.md`;
+    const importedRulePath = `${cwd}/imported.md`;
+
+    vi.mocked(readFile).mockImplementation(async (path) => {
+      if (path === mainRulePath) return "@imported.md";
+      if (path === importedRulePath) return "@main.md";
+      return "";
+    });
+
+    const files = await collectAllRuleFiles(cwd, { customRuleFiles: [mainRulePath], includeDefaultRules: false, includeGlobalRules: false });
+
+    expect(files).toHaveLength(2);
+    expect(files.map((f) => f.filePath)).toContain(mainRulePath);
+    expect(files.map((f) => f.filePath)).toContain(importedRulePath);
+  });
+
+  it("should ignore non-existent imported files", async () => {
+    const mainRulePath = `${cwd}/main.md`;
+
+    vi.mocked(readFile).mockImplementation(async (path) => {
+      if (path === mainRulePath) return "@non-existent.md";
+      throw new Error("File not found");
+    });
+
+    vi.mocked(stat).mockImplementation(async (path) => {
+      if (path === mainRulePath) {
+        return { isFile: () => true } as any;
+      }
+      throw new Error(`File not found: ${path}`);
+    });
+
+    const files = await collectAllRuleFiles(cwd, { customRuleFiles: [mainRulePath], includeDefaultRules: false, includeGlobalRules: false });
+
+    expect(files).toHaveLength(1);
+    expect(files[0].filePath).toBe(mainRulePath);
+  });
+
+  it("should not import non-markdown files", async () => {
+    const mainRulePath = `${cwd}/main.md`;
+
+    vi.mocked(readFile).mockImplementation(async (path) => {
+      if (path === mainRulePath) return "@imported.txt";
+      return "";
+    });
+
+    const files = await collectAllRuleFiles(cwd, { customRuleFiles: [mainRulePath], includeDefaultRules: false, includeGlobalRules: false });
+
+    expect(files).toHaveLength(1);
+    expect(files[0].filePath).toBe(mainRulePath);
   });
 });

@@ -85,19 +85,15 @@ export async function collectAllRuleFiles(
     }
 
     const dir = path.dirname(filePath);
-    const importRegex = /^@\s*([./\\\w-]+.md)$/gm;
+    const importRegex = /^@([./\\\w-]+.md)$/gm;
 
     let match = importRegex.exec(content);
     while (match !== null) {
       const importPath = path.resolve(dir, match[1]);
-      if (!allRuleFiles.has(importPath)) {
-        const relativePath = path.relative(cwd, importPath);
-        allRuleFiles.set(importPath, {
-          filePath: importPath,
-          label: relativePath,
-        });
-        filesToProcess.push(importPath);
-      }
+      await addSeedFile({
+        filePath: importPath,
+        label: path.relative(cwd, importPath),
+      });
       match = importRegex.exec(content);
     }
   }
