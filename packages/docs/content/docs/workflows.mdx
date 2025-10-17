@@ -33,39 +33,6 @@ Please help create a PR for the current staging changes, following these guideli
 When creating PR with markdown description, pay attention to escape backticks, otherwise it will be executed as command substitution in the shell.
 ```
 
-#### Bash Command Execution
-
-Pochi workflows can execute arbitrary bash commands, which significantly extends their power and flexibility. To embed a command, use a `!` prefix followed by the command enclosed in backticks.
-
-Here is an example of how to use bash commands to get information about the current branch and recent commits:
-
-```markdown
-## Context
-- Current branch: !`git rev-parse --abbrev-ref HEAD`
-- Recent commits: !`git log -n 5 --oneline`
-
-## Task
-Based on the current branch and recent commits, provide a summary of the recent changes.
-
-```
-
-When Pochi encounters bash commands in a workflow, it executes them sequentially. The output (both `stdout` and `stderr`) of each command is captured. This collected output is then provided as context in the prompt, which looks like this:
-
-```markdown
-Bash command outputs:
-$ git rev-parse --abbrev-ref HEAD
-feat/new-feature
-
-$ git log -n 5 --oneline
-a1b2c3d4e commit_message_1
-b2c3d4e5f commit_message_2
-c3d4e5f6a commit_message_3
-d4e5f6a7b commit_message_4
-e5f6a7b8c commit_message_5
-```
-
-This mechanism allows the model to use the dynamic output from commands as context to perform subsequent steps in the workflow.
-
 ### Usage
 
 Once your workflows are set up, using them is straightforward:
