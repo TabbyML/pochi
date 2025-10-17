@@ -3,6 +3,7 @@ import {
   pochiConfig,
   watchPochiConfigKeys,
 } from "@getpochi/common/configuration";
+import type { CustomModelSetting } from "@getpochi/common/configuration";
 import { getVendors } from "@getpochi/common/vendor";
 import type { DisplayModel } from "@getpochi/common/vscode-webui-bridge";
 import { type Signal, signal } from "@preact/signals-core";
@@ -43,6 +44,7 @@ export class ModelList implements vscode.Disposable {
               modelId,
               options,
               getCredentials: vendor.getCredentials,
+              supportedMimeTypes: options.supportedMimeTypes,
             });
           }
         } catch (e) {
@@ -55,7 +57,11 @@ export class ModelList implements vscode.Disposable {
     const providers = pochiConfig.value.providers;
     if (providers) {
       for (const [providerId, provider] of Object.entries(providers)) {
-        const { models, name: providerName, ...rest } = provider;
+        const {
+          models,
+          name: providerName,
+          ...rest
+        } = provider as CustomModelSetting;
         if (models) {
           for (const [
             modelId,
@@ -69,6 +75,7 @@ export class ModelList implements vscode.Disposable {
               modelId,
               options,
               provider: rest,
+              supportedMimeTypes: options.supportedMimeTypes,
             });
           }
         }

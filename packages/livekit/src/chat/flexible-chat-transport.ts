@@ -146,6 +146,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
           isSubTask: !!this.isSubTask,
           isCli: !!this.isCli,
           customAgents,
+          supportedMimeTypes: llm.supportedMimeTypes,
         }),
         ...(mcpTools || {}),
       },

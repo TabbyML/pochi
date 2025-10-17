@@ -26,6 +26,10 @@ const BaseModelSettings = z.object({
         .boolean()
         .optional()
         .describe("Whether to use tool call middleware"),
+      supportedMimeTypes: z
+        .array(z.string())
+        .optional()
+        .describe("The supported mime types model can handle"),
     }),
   ),
 });

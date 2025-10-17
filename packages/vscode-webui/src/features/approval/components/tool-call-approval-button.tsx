@@ -3,7 +3,11 @@ import { useCallback, useEffect, useMemo } from "react"; // useMemo is now in th
 
 import { Button } from "@/components/ui/button";
 import { useAutoApproveGuard, useToolCallLifeCycle } from "@/features/chat";
-import { useSubtaskOffhand, useToolAutoApproval } from "@/features/settings";
+import {
+  useSelectedModels,
+  useSubtaskOffhand,
+  useToolAutoApproval,
+} from "@/features/settings";
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
 import { useNavigate } from "@tanstack/react-router";
 import { getToolName } from "ai";
@@ -22,6 +26,7 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
   const navigate = useNavigate();
   const autoApproveGuard = useAutoApproveGuard();
   const { getToolCallLifeCycle } = useToolCallLifeCycle();
+  const { selectedModel } = useSelectedModels();
   const [lifecycles, tools] = useMemo(
     () =>
       "tools" in pendingApproval
@@ -95,7 +100,9 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
         }
         return;
       }
-      lifecycle.execute(tools[i].input);
+      lifecycle.execute(tools[i].input, {
+        supportedMimeTypes: selectedModel?.supportedMimeTypes,
+      });
     }
   }, [
     tools,
@@ -104,6 +111,7 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
     manualRunSubtask,
     pendingApproval,
     subtaskOffhand,
+    selectedModel,
   ]);
 
   const onReject = useCallback(() => {

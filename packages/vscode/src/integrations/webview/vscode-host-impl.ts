@@ -325,6 +325,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         toolCallId: string;
         abortSignal: ThreadAbortSignalSerialization;
         nonInteractive?: boolean;
+        supportedMimeTypes?: string[];
       },
     ) => {
       let tool: ToolFunctionType<Tool> | undefined;
@@ -357,6 +358,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
           toolCallId: options.toolCallId,
           nonInteractive: options.nonInteractive,
           cwd: this.cwd,
+          supportedMimeTypes: options.supportedMimeTypes,
         }),
       );
 

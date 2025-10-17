@@ -44,6 +44,10 @@ const RequestData = z.object({
         .boolean()
         .optional()
         .describe("Whether to use tool call middleware"),
+      supportedMimeTypes: z
+        .array(z.string())
+        .optional()
+        .describe("The supported mime types model can handle"),
     }),
     z.object({
       type: z.literal("openai-responses"),
@@ -56,6 +60,10 @@ const RequestData = z.object({
         .boolean()
         .optional()
         .describe("Whether to use tool call middleware"),
+      supportedMimeTypes: z
+        .array(z.string())
+        .optional()
+        .describe("The supported mime types model can handle"),
     }),
     z.object({
       type: z.literal("anthropic"),
@@ -68,6 +76,10 @@ const RequestData = z.object({
         .boolean()
         .optional()
         .describe("Whether to use tool call middleware"),
+      supportedMimeTypes: z
+        .array(z.string())
+        .optional()
+        .describe("The supported mime types model can handle"),
     }),
     z.object({
       type: z.literal("google-vertex-tuning"),
@@ -79,6 +91,10 @@ const RequestData = z.object({
         .boolean()
         .optional()
         .describe("Whether to use tool call middleware"),
+      supportedMimeTypes: z
+        .array(z.string())
+        .optional()
+        .describe("The supported mime types model can handle"),
     }),
     z.object({
       type: z.literal("ai-gateway"),
@@ -90,6 +106,10 @@ const RequestData = z.object({
         .boolean()
         .optional()
         .describe("Whether to use tool call middleware"),
+      supportedMimeTypes: z
+        .array(z.string())
+        .optional()
+        .describe("The supported mime types model can handle"),
     }),
     z.object({
       type: z.literal("vendor"),
@@ -98,6 +118,10 @@ const RequestData = z.object({
         .optional()
         .describe("Whether to use tool call middleware"),
       getModel: z.custom<() => LanguageModelV2>(),
+      supportedMimeTypes: z
+        .array(z.string())
+        .optional()
+        .describe("The supported mime types model can handle"),
     }),
   ]),
   mcpToolSet: z

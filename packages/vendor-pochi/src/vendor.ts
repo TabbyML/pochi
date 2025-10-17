@@ -52,6 +52,9 @@ export class Pochi extends VendorBase {
             contextWindow: x.contextWindow,
             useToolCallMiddleware: x.id.includes("google/"),
             label: x.costType === "basic" ? "swift" : "super",
+            supportedMimeTypes: x.id.includes("google/")
+              ? ["image/png", "image/jpeg", "image/gif"]
+              : undefined,
           } satisfies ModelOptions,
         ]),
       );

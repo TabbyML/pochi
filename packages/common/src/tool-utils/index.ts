@@ -37,3 +37,10 @@ export {
   editNotebookCell,
   serializeNotebook,
 } from "./notebook-utils";
+export {
+  MaxImageSizeBytes,
+  buildImageContent,
+  bufferToBase64,
+  getImageMimeType,
+  isSupportedImageFile,
+} from "./media";

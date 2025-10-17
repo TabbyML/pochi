@@ -143,6 +143,7 @@ interface ContentProcessingOptions {
 }
 
 interface ProcessedContent {
+  type: "text";
   content: string;
   isTruncated: boolean;
 }
@@ -174,7 +175,7 @@ export function selectFileContent(
     isTruncated = true;
   }
 
-  return { content, isTruncated };
+  return { type: "text" as const, content, isTruncated };
 }
 
 /**

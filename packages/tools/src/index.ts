@@ -15,7 +15,6 @@ import { globFiles } from "./glob-files";
 import { listFiles } from "./list-files";
 import { multiApplyDiff } from "./multi-apply-diff";
 import { type CustomAgent, createNewTaskTool } from "./new-task";
-import { readFile } from "./read-file";
 import { searchFiles } from "./search-files";
 import { todoWrite } from "./todo-write";
 export { Todo } from "./todo-write";
@@ -26,6 +25,7 @@ export type {
 import { editNotebook } from "./edit-notebook";
 import { killBackgroundJob } from "./kill-background-job";
 import { readBackgroundJobOutput } from "./read-background-job-output";
+import { createReadFileTool } from "./read-file";
 import { startBackgroundJob } from "./start-background-job";
 import { writeToFile } from "./write-to-file";
 
@@ -91,7 +91,7 @@ export const ToolsByPermission = {
 
 export const ServerToolApproved = "<server-tool-approved>";
 
-const createCliTools = (customAgents?: CustomAgent[]) => ({
+const createCliTools = (options: CreateToolOptions) => ({
   applyDiff,
   askFollowupQuestion,
   attemptCompletion,
@@ -99,17 +99,22 @@ const createCliTools = (customAgents?: CustomAgent[]) => ({
   globFiles,
   listFiles,
   multiApplyDiff,
-  readFile,
+  readFile: createReadFileTool(options.supportedMimeTypes),
   searchFiles,
   todoWrite,
   writeToFile,
   editNotebook,
-  newTask: createNewTaskTool(customAgents),
+  newTask: createNewTaskTool(options.customAgents),
 });
 
-export const createClientTools = (customAgents?: CustomAgent[]) => {
+export interface CreateToolOptions {
+  customAgents?: CustomAgent[];
+  supportedMimeTypes?: string[];
+}
+
+export const createClientTools = (options: CreateToolOptions) => {
   return {
-    ...createCliTools(customAgents),
+    ...createCliTools(options),
     startBackgroundJob,
     readBackgroundJobOutput,
     killBackgroundJob,
@@ -118,12 +123,13 @@ export const createClientTools = (customAgents?: CustomAgent[]) => {
 
 export type ClientTools = ReturnType<typeof createClientTools>;
 
-export const selectClientTools = (options: {
-  isSubTask: boolean;
-  isCli: boolean;
-  customAgents?: CustomAgent[];
-}) => {
-  const cliTools = createCliTools(options.customAgents);
+export const selectClientTools = (
+  options: {
+    isSubTask: boolean;
+    isCli: boolean;
+  } & CreateToolOptions,
+) => {
+  const cliTools = createCliTools(options);
   if (options.isCli) {
     if (options.isSubTask) {
       const { newTask, ...rest } = cliTools;
@@ -134,7 +140,7 @@ export const selectClientTools = (options: {
     return cliTools;
   }
 
-  const clientTools = createClientTools(options.customAgents);
+  const clientTools = createClientTools(options);
 
   if (options?.isSubTask) {
     const { newTask, ...rest } = clientTools;

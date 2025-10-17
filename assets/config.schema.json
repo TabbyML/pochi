@@ -84,6 +84,13 @@
                     "useToolCallMiddleware": {
                       "description": "Whether to use tool call middleware",
                       "type": "boolean"
+                    },
+                    "supportedMimeTypes": {
+                      "description": "The supported mime types model can handle",
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
                     }
                   },
                   "additionalProperties": false
@@ -137,6 +144,13 @@
                     "useToolCallMiddleware": {
                       "description": "Whether to use tool call middleware",
                       "type": "boolean"
+                    },
+                    "supportedMimeTypes": {
+                      "description": "The supported mime types model can handle",
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
                     }
                   },
                   "additionalProperties": false
@@ -191,6 +205,13 @@
                     "useToolCallMiddleware": {
                       "description": "Whether to use tool call middleware",
                       "type": "boolean"
+                    },
+                    "supportedMimeTypes": {
+                      "description": "The supported mime types model can handle",
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
                     }
                   },
                   "additionalProperties": false
@@ -245,6 +266,13 @@
                     "useToolCallMiddleware": {
                       "description": "Whether to use tool call middleware",
                       "type": "boolean"
+                    },
+                    "supportedMimeTypes": {
+                      "description": "The supported mime types model can handle",
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
                     }
                   },
                   "additionalProperties": false
@@ -351,6 +379,13 @@
                     "useToolCallMiddleware": {
                       "description": "Whether to use tool call middleware",
                       "type": "boolean"
+                    },
+                    "supportedMimeTypes": {
+                      "description": "The supported mime types model can handle",
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
                     }
                   },
                   "additionalProperties": false
