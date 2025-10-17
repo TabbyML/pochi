@@ -7,8 +7,8 @@ import type { Store } from "@livestore/livestore";
 import { ThreadNestedWindow } from "@quilted/threads";
 import * as R from "remeda";
 import type { WebviewApi } from "vscode-webview";
-import { type TaskSyncData, taskSync } from "../livestore-provider";
 import { queryClient } from "./query-client";
+import { type TaskSyncData, taskSync } from "./task-sync-event";
 
 const logger = getLogger("vscode");
 

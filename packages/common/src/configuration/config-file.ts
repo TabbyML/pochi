@@ -1,5 +1,7 @@
+import { randomUUID } from "node:crypto";
 import * as fs from "node:fs";
 import * as fsPromise from "node:fs/promises";
+import * as os from "node:os";
 import * as path from "node:path";
 import { type Signal, signal } from "@preact/signals-core";
 import * as JSONC from "jsonc-parser/esm";
@@ -58,9 +60,13 @@ export class PochiConfigFile {
         triggerAt: "end",
       },
     );
-    fs.watch(this.configFilePath, { persistent: false }, () =>
-      debouncer.call(),
-    );
+    const configDir = path.dirname(this.configFilePath);
+    const configFileName = path.basename(this.configFilePath);
+    fs.watch(configDir, { persistent: false }, (_eventType, filename) => {
+      if (filename === configFileName) {
+        debouncer.call();
+      }
+    });
   }
 
   private async ensureFileExists() {
@@ -95,7 +101,18 @@ export class PochiConfigFile {
       });
       content = JSONC.applyEdits(content, edits);
 
-      await fsPromise.writeFile(this.configFilePath, content);
+      // writeFile is not atomic,
+      // the writing of multiple instance of pochi in the same time would break the config
+      // so we use rename to make sure the config remains valid during write
+      //
+      // the caveat is only the last writer wins, but it's acceptable
+      // Using system temp directory and random UUID for unique temporary file name
+      const tmp = path.join(
+        os.tmpdir(),
+        `${path.basename(this.configFilePath)}.${randomUUID()}.tmp`,
+      );
+      await fsPromise.writeFile(tmp, content);
+      await fsPromise.rename(tmp, this.configFilePath);
     } catch (err) {
       logger.error("Failed to save config file", err);
     }

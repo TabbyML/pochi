@@ -39,7 +39,10 @@ GITHUB ACTION RULES
 - When making changes, ensure they are appropriate for the repository and follow existing patterns
 - Be mindful of repository permissions and only make changes that are requested
 - Use git commands appropriately for version control operations
-- Consider the impact of your changes on CI/CD pipelines and other workflows`;
+- Consider the impact of your changes on CI/CD pipelines and other workflows
+- When viewing comments on a GitHub PR, you should run the following commands:
+  * gh api repos/foo/bar/pulls/123/comments
+  * gh pr view --comments`;
 }
 
 function getCommunicationGuidelinesSection(): string {

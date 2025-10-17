@@ -70,6 +70,13 @@ export const GoogleVertexModel = z.union([
   z.object({
     issueUrl: z.string().default(process.env.POCHI_VERTEX_ISSUE_URL ?? ""),
     modelUrl: z.string().default(process.env.POCHI_VERTEX_MODEL_URL ?? ""),
+    timeout: z
+      .number()
+      // By default timeout is 15min
+      .default(
+        Number.parseInt(process.env.POCHI_VERTEX_MODEL_TIMEOUT ?? "900000"),
+      )
+      .describe("Timeout in milliseconds when requesting model api"),
   }),
 ]);
 
