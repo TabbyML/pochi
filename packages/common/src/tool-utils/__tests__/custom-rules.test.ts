@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { readFile, stat } from "node:fs/promises";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { home, mockHomedir } = vi.hoisted(() => {
@@ -18,6 +18,7 @@ describe("collectCustomRules", () => {
 
   beforeEach(() => {
     vi.mocked(readFile).mockClear();
+    vi.mocked(stat).mockClear();
   });
 
   afterEach(() => {
@@ -40,6 +41,14 @@ describe("collectCustomRules", () => {
       }
       throw new Error("File not found");
     });
+    
+    // Mock stat to return that all files are files (not directories)
+    vi.mocked(stat).mockImplementation(async (filePath) => {
+      return {
+        isFile: () => true,
+        isDirectory: () => false,
+      } as any;
+    });
 
     const rules = await collectCustomRules(cwd, [`${cwd}/custom.md`]);
 
@@ -55,6 +64,14 @@ describe("collectCustomRules", () => {
         return "custom rule";
       }
       throw new Error("File not found");
+    });
+    
+    // Mock stat to return that the file is a file (not a directory)
+    vi.mocked(stat).mockImplementation(async (filePath) => {
+      return {
+        isFile: () => true,
+        isDirectory: () => false,
+      } as any;
     });
 
     const rules = await collectCustomRules(
@@ -76,6 +93,14 @@ describe("collectCustomRules", () => {
       }
       throw new Error("Read error");
     });
+    
+    // Mock stat to return that the file is a file (not a directory)
+    vi.mocked(stat).mockImplementation(async (filePath) => {
+      return {
+        isFile: () => true,
+        isDirectory: () => false,
+      } as any;
+    });
 
     const rules = await collectCustomRules(cwd, [`${cwd}/custom.md`]);
 
@@ -84,10 +109,17 @@ describe("collectCustomRules", () => {
 
   it("should return an empty string if no rules are found", async () => {
     vi.mocked(readFile).mockRejectedValue(new Error("File not found"));
+    
+    // Mock stat to return that files are files (not directories)
+    vi.mocked(stat).mockImplementation(async (filePath) => {
+      return {
+        isFile: () => true,
+        isDirectory: () => false,
+      } as any;
+    });
 
     const rules = await collectCustomRules(cwd, [], false, false);
 
     expect(rules).toBe("");
   });
 });
-
