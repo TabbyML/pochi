@@ -93,6 +93,7 @@ export const tables = {
       error: State.SQLite.json({ schema: TaskError, nullable: true }),
       createdAt: State.SQLite.integer({ schema: Schema.DateFromNumber }),
       updatedAt: State.SQLite.integer({ schema: Schema.DateFromNumber }),
+      modelId: State.SQLite.text({ nullable: true }),
     },
     indexes: [
       {
@@ -141,6 +142,7 @@ const taskInitFields = {
   parentId: Schema.optional(Schema.String),
   cwd: Schema.optional(Schema.String),
   createdAt: Schema.Date,
+  modelId: Schema.optional(Schema.String),
 };
 
 const taskFullFields = {
@@ -196,6 +198,7 @@ export const events = {
       title: Schema.optional(Schema.String),
       git: Schema.optional(Git),
       updatedAt: Schema.Date,
+      modelId: Schema.optional(Schema.String),
     }),
   }),
   chatStreamFinished: Events.synced({
@@ -299,7 +302,15 @@ const materializers = State.SQLite.materializers(events, {
         .onConflict("id", "replace"),
     ),
   ],
-  "v1.ChatStreamStarted": ({ id, data, todos, git, title, updatedAt }) => [
+  "v1.ChatStreamStarted": ({
+    id,
+    data,
+    todos,
+    git,
+    title,
+    updatedAt,
+    modelId,
+  }) => [
     tables.tasks
       .update({
         status: "pending-model",
@@ -307,6 +318,7 @@ const materializers = State.SQLite.materializers(events, {
         git,
         title,
         updatedAt,
+        modelId,
       })
       .where({ id }),
     tables.messages

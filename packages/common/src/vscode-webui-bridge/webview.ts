@@ -74,6 +74,7 @@ export interface VSCodeHostApi {
       toolCallId: string;
       abortSignal: ThreadAbortSignalSerialization;
       nonInteractive?: boolean;
+      contentType?: string[];
     },
   ): Promise<unknown>;
 
@@ -155,6 +156,11 @@ export interface VSCodeHostApi {
   readCurrentWorkspace(): Promise<string | null>;
 
   readCustomAgents(): Promise<ThreadSignalSerialization<CustomAgentFile[]>>;
+
+  executeBashCommand: (
+    command: string,
+    abortSignal: ThreadAbortSignalSerialization,
+  ) => Promise<{ output: string; error?: string }>;
 
   readMinionId(): Promise<string | null>;
 
