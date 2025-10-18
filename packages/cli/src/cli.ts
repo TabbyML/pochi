@@ -65,33 +65,43 @@ import { checkForUpdates, registerUpgradeCommand } from "./upgrade";
 const logger = getLogger("Pochi");
 logger.debug(`pochi v${packageJson.version}`);
 
-// Set up graceful shutdown for SIGINT and SIGTERM
-let activeAbortController: AbortController | undefined;
-let isShuttingDown = false;
+/**
+ * Creates an AbortController with graceful shutdown handlers for SIGINT and SIGTERM.
+ * The handlers are automatically cleaned up when the controller is aborted.
+ * @returns An AbortController that will be aborted on process termination signals
+ */
+function createAbortControllerWithGracefulShutdown(): AbortController {
+  const abortController = new AbortController();
+  let isShuttingDown = false;
 
-process.on("SIGINT", () => {
-  if (isShuttingDown) return;
-  isShuttingDown = true;
+  const handleShutdown = (signal: string, exitCode: number) => {
+    return () => {
+      if (isShuttingDown) return;
+      isShuttingDown = true;
 
-  if (activeAbortController && !activeAbortController.signal.aborted) {
-    activeAbortController.abort(new Error("Process interrupted by SIGINT"));
-  }
+      if (!abortController.signal.aborted) {
+        abortController.abort(new Error(`Process interrupted by ${signal}`));
+      }
 
-  // Force exit immediately with SIGINT code
-  process.exit(130);
-});
+      // Force exit immediately with appropriate code
+      process.exit(exitCode);
+    };
+  };
 
-process.on("SIGTERM", () => {
-  if (isShuttingDown) return;
-  isShuttingDown = true;
+  const sigintHandler = handleShutdown("SIGINT", 130);
+  const sigtermHandler = handleShutdown("SIGTERM", 143);
 
-  if (activeAbortController && !activeAbortController.signal.aborted) {
-    activeAbortController.abort(new Error("Process interrupted by SIGTERM"));
-  }
+  process.on("SIGINT", sigintHandler);
+  process.on("SIGTERM", sigtermHandler);
 
-  // Force exit immediately with SIGTERM code
-  process.exit(143);
-});
+  // Clean up handlers when the controller is aborted
+  abortController.signal.addEventListener("abort", () => {
+    process.off("SIGINT", sigintHandler);
+    process.off("SIGTERM", sigtermHandler);
+  });
+
+  return abortController;
+}
 
 const parsePositiveInt = (input: string): number => {
   if (!input) {
@@ -215,8 +225,8 @@ const program = new Command()
     // Create MCP Hub for accessing MCP server tools (only if MCP is enabled)
     const mcpHub = options.mcp ? await initializeMcp(program) : undefined;
 
-    // Create AbortController for task cancellation
-    const abortController = new AbortController();
+    // Create AbortController for task cancellation with graceful shutdown
+    const abortController = createAbortControllerWithGracefulShutdown();
 
     const runner = new TaskRunner({
       uid,
@@ -241,9 +251,6 @@ const program = new Command()
     if (options.streamJson) {
       jsonRenderer = new JsonRenderer(store, runner.state);
     }
-
-    // Set active abort controller after all objects are created
-    activeAbortController = abortController;
 
     await runner.run();
 
