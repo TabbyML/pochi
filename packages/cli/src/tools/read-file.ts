@@ -25,7 +25,7 @@ export const readFile =
     }
 
     if (!isPlainTextFile) {
-      throw new Error("Read binary files is not supported.");
+      throw new Error("Reading binary files is not supported.");
     }
 
     const fileContent = fileBuffer.toString();

@@ -45,23 +45,22 @@ ${supportedMimeTypes && supportedMimeTypes.length > 0 ? `Also supports reading m
       .union([TextOutputSchema, MediaOutputSchema])
       .describe("The file content as either text or media output."),
     toModelOutput(output) {
+      if (output.type === "media") {
+        return {
+          type: "content",
+          value: [
+            {
+              type: "media",
+              data: output.data,
+              mediaType: output.mimeType,
+            },
+          ],
+        };
+      }
+
       return {
-        type: "content",
-        value:
-          output.type === "media"
-            ? [
-                {
-                  type: "media",
-                  data: output.data,
-                  mediaType: output.mimeType,
-                },
-              ]
-            : [
-                {
-                  type: "text",
-                  text: output.content,
-                },
-              ],
+        type: "text",
+        value: output.content,
       };
     },
   });
