@@ -112,7 +112,7 @@ function useLLM({
             modelId: model.modelId,
             getCredentials: model.getCredentials,
           }),
-        supportedMimeTypes: model.supportedMimeTypes,
+        contentType: model.contentType,
       };
     }
 
@@ -127,7 +127,7 @@ function useLLM({
         contextWindow:
           model.options.contextWindow ?? constants.DefaultContextWindow,
         useToolCallMiddleware: model.options.useToolCallMiddleware,
-        supportedMimeTypes: model.supportedMimeTypes,
+        contentType: model.contentType,
       };
     }
 
@@ -141,7 +141,7 @@ function useLLM({
         contextWindow:
           model.options.contextWindow ?? constants.DefaultContextWindow,
         useToolCallMiddleware: model.options.useToolCallMiddleware,
-        supportedMimeTypes: model.supportedMimeTypes,
+        contentType: model.contentType,
       };
     }
 
@@ -161,7 +161,7 @@ function useLLM({
         contextWindow:
           model.options.contextWindow ?? constants.DefaultContextWindow,
         useToolCallMiddleware: model.options.useToolCallMiddleware,
-        supportedMimeTypes: model.supportedMimeTypes,
+        contentType: model.contentType,
       };
     }
 

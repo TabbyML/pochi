@@ -52,7 +52,7 @@ export class Pochi extends VendorBase {
             contextWindow: x.contextWindow,
             useToolCallMiddleware: x.id.includes("google/"),
             label: x.costType === "basic" ? "swift" : "super",
-            supportedMimeTypes: x.id.includes("google/")
+            contentType: x.id.includes("google/")
               ? [
                   // https://ai.google.dev/gemini-api/docs/image-understanding#supported-formats
                   "image/png",

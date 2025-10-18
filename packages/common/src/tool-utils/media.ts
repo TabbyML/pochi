@@ -12,14 +12,14 @@ type MediaContentResult = {
 export function readMediaFile(
   filePath: string,
   fileBuffer: Uint8Array,
-  supportedMimeTypes: string[],
+  contentType: string[],
 ): MediaContentResult {
   const mimeType = mime.getType(filePath);
   if (!mimeType) {
     throw new Error(`Unsupported media file ${filePath}`);
   }
 
-  if (!isSupportedMimeType(mimeType, supportedMimeTypes)) {
+  if (!isSupportedMimeType(mimeType, contentType)) {
     throw new Error(`MIME type ${mimeType} is not supported.`);
   }
 
@@ -41,9 +41,9 @@ export function readMediaFile(
 
 const isSupportedMimeType = (
   mimeType: string,
-  supportedMimeTypes: string[],
+  contentType: string[],
 ): boolean => {
-  const normalizedTypes = supportedMimeTypes.map((type) => type.toLowerCase());
+  const normalizedTypes = contentType.map((type) => type.toLowerCase());
 
   // Check for exact match
   if (normalizedTypes.includes(mimeType)) {

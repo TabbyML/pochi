@@ -340,7 +340,7 @@ export class TaskRunner {
           this.toolCallOptions,
           this.cwd,
           undefined,
-          this.llm.supportedMimeTypes,
+          this.llm.contentType,
         ),
       );
 

@@ -18,10 +18,10 @@ const MediaOutputSchema = z.object({
   isTruncated: z.boolean().describe("Whether the media is truncated"),
 });
 
-export const createReadFileTool = (supportedMimeTypes?: string[]) =>
+export const createReadFileTool = (contentType?: string[]) =>
   defineClientTool({
     description: `Request to read the contents of a file at the specified path. Use this when you need to examine the contents of an existing file you do not know the contents of, for example to analyze code, review text files, extract information from configuration files.
-${supportedMimeTypes && supportedMimeTypes.length > 0 ? `Also supports reading media files (e.g. image, audio, video) with the following mime types: ${supportedMimeTypes.join(", ")}.` : ""}`,
+${contentType && contentType.length > 0 ? `Also supports reading media files (e.g. image, audio, video) with the following mime types: ${contentType.join(", ")}.` : ""}`,
     inputSchema: z.object({
       path: z
         .string()

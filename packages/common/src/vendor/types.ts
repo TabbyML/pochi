@@ -4,7 +4,7 @@ export const ModelOptions = z.object({
   label: z.string().optional(),
   contextWindow: z.number().optional(),
   useToolCallMiddleware: z.boolean().optional(),
-  supportedMimeTypes: z.array(z.string()).optional(),
+  contentType: z.array(z.string()).optional(),
 });
 
 export type ModelOptions = z.infer<typeof ModelOptions>;

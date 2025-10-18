@@ -44,7 +44,7 @@ export class ModelList implements vscode.Disposable {
               modelId,
               options,
               getCredentials: vendor.getCredentials,
-              supportedMimeTypes: options.supportedMimeTypes,
+              contentType: options.contentType,
             });
           }
         } catch (e) {
@@ -75,7 +75,7 @@ export class ModelList implements vscode.Disposable {
               modelId,
               options,
               provider: rest,
-              supportedMimeTypes: options.supportedMimeTypes,
+              contentType: options.contentType,
             });
           }
         }

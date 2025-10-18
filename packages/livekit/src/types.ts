@@ -44,7 +44,7 @@ const RequestData = z.object({
         .boolean()
         .optional()
         .describe("Whether to use tool call middleware"),
-      supportedMimeTypes: z
+      contentType: z
         .array(z.string())
         .optional()
         .describe("The supported mime types model can handle"),
@@ -60,7 +60,7 @@ const RequestData = z.object({
         .boolean()
         .optional()
         .describe("Whether to use tool call middleware"),
-      supportedMimeTypes: z
+      contentType: z
         .array(z.string())
         .optional()
         .describe("The supported mime types model can handle"),
@@ -76,7 +76,7 @@ const RequestData = z.object({
         .boolean()
         .optional()
         .describe("Whether to use tool call middleware"),
-      supportedMimeTypes: z
+      contentType: z
         .array(z.string())
         .optional()
         .describe("The supported mime types model can handle"),
@@ -91,7 +91,7 @@ const RequestData = z.object({
         .boolean()
         .optional()
         .describe("Whether to use tool call middleware"),
-      supportedMimeTypes: z
+      contentType: z
         .array(z.string())
         .optional()
         .describe("The supported mime types model can handle"),
@@ -106,7 +106,7 @@ const RequestData = z.object({
         .boolean()
         .optional()
         .describe("Whether to use tool call middleware"),
-      supportedMimeTypes: z
+      contentType: z
         .array(z.string())
         .optional()
         .describe("The supported mime types model can handle"),
@@ -118,7 +118,7 @@ const RequestData = z.object({
         .optional()
         .describe("Whether to use tool call middleware"),
       getModel: z.custom<() => LanguageModelV2>(),
-      supportedMimeTypes: z
+      contentType: z
         .array(z.string())
         .optional()
         .describe("The supported mime types model can handle"),

@@ -10,7 +10,7 @@ import * as vscode from "vscode";
 
 export const readFile: ToolFunctionType<ClientTools["readFile"]> = async (
   { path, startLine, endLine },
-  { cwd, supportedMimeTypes },
+  { cwd, contentType },
 ) => {
   const resolvedPath = resolvePath(path, cwd);
   const fileUri = vscode.Uri.file(resolvedPath);
@@ -19,8 +19,8 @@ export const readFile: ToolFunctionType<ClientTools["readFile"]> = async (
 
   const isPlainTextFile = isPlainText(fileBuffer);
 
-  if (supportedMimeTypes && supportedMimeTypes.length > 0 && !isPlainTextFile) {
-    return readMediaFile(resolvedPath, fileBuffer, supportedMimeTypes);
+  if (contentType && contentType.length > 0 && !isPlainTextFile) {
+    return readMediaFile(resolvedPath, fileBuffer, contentType);
   }
 
   if (!isPlainTextFile) {

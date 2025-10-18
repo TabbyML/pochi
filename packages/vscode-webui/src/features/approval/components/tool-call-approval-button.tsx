@@ -101,7 +101,7 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
         return;
       }
       lifecycle.execute(tools[i].input, {
-        supportedMimeTypes: selectedModel?.supportedMimeTypes,
+        contentType: selectedModel?.contentType,
       });
     }
   }, [

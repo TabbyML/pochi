@@ -99,7 +99,7 @@ const createCliTools = (options?: CreateToolOptions) => ({
   globFiles,
   listFiles,
   multiApplyDiff,
-  readFile: createReadFileTool(options?.supportedMimeTypes),
+  readFile: createReadFileTool(options?.contentType),
   searchFiles,
   todoWrite,
   writeToFile,
@@ -109,7 +109,7 @@ const createCliTools = (options?: CreateToolOptions) => ({
 
 export interface CreateToolOptions {
   customAgents?: CustomAgent[];
-  supportedMimeTypes?: string[];
+  contentType?: string[];
 }
 
 export const createClientTools = (options?: CreateToolOptions) => {

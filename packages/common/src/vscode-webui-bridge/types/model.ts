@@ -10,7 +10,7 @@ export type DisplayModel =
       modelId: string;
       options: ModelOptions;
       getCredentials: () => Promise<unknown>;
-      supportedMimeTypes?: string[];
+      contentType?: string[];
     }
   | {
       id: string;
@@ -19,7 +19,7 @@ export type DisplayModel =
       modelId: string;
       options: ModelOptions & { maxTokens?: number };
       provider: RemoveModelsField<CustomModelSetting>;
-      supportedMimeTypes?: string[];
+      contentType?: string[];
     };
 
 type RemoveModelsField<Type> = {

@@ -11,7 +11,7 @@ export type ToolFunctionType<T extends Tool> = (
   options: ToolCallOptions & {
     nonInteractive?: boolean;
     cwd: string;
-    supportedMimeTypes?: string[];
+    contentType?: string[];
   },
 ) => PromiseLike<InferToolOutput<T>> | InferToolOutput<T>;
 

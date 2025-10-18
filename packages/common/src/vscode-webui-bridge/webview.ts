@@ -74,7 +74,7 @@ export interface VSCodeHostApi {
       toolCallId: string;
       abortSignal: ThreadAbortSignalSerialization;
       nonInteractive?: boolean;
-      supportedMimeTypes?: string[];
+      contentType?: string[];
     },
   ): Promise<unknown>;
 
