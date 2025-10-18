@@ -26,6 +26,7 @@ import { ChatArea } from "./components/chat-area";
 import { ChatToolbar } from "./components/chat-toolbar";
 import { ErrorMessageView } from "./components/error-message-view";
 import { SubtaskHeader } from "./components/subtask";
+import { useRestoreTaskModel } from "./hooks/use-restore-task-model";
 import { useScrollToBottom } from "./hooks/use-scroll-to-bottom";
 import { useSetSubtaskModel } from "./hooks/use-set-subtask-model";
 import { useAddSubtaskResult } from "./hooks/use-subtask-completed";
@@ -81,11 +82,7 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
     isSubTask: !!subtask,
   });
 
-  useEffect(() => {
-    if (task?.modelId && !isModelsLoading) {
-      updateSelectedModelId(task.modelId);
-    }
-  }, [task?.modelId, updateSelectedModelId, isModelsLoading]);
+  useRestoreTaskModel(task, isModelsLoading, updateSelectedModelId);
 
   const chatKit = useLiveChatKit({
     taskId: uid,
