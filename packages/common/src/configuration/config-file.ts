@@ -114,7 +114,7 @@ export class PochiConfigFile {
       await fsPromise.writeFile(tmp, content);
       await fsPromise.rename(tmp, this.configFilePath);
     } catch (err) {
-      logger.error("Failed to save config file", err);
+      logger.error("Failed to save config file", JSON.stringify(err));
     }
   }
 
