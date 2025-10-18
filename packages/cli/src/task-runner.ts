@@ -106,6 +106,7 @@ export class TaskRunner {
   private cwd: string;
   private toolCallOptions: ToolCallOptions;
   private stepCount: StepCount;
+  private abortSignal?: AbortSignal;
 
   private todos: Todo[] = [];
   private chatKit: LiveChatKit<Chat>;
@@ -122,6 +123,7 @@ export class TaskRunner {
 
   constructor(options: RunnerOptions) {
     this.cwd = options.cwd;
+    this.abortSignal = options.abortSignal;
     this.toolCallOptions = {
       rg: options.rg,
       customAgents: options.customAgents,
@@ -198,6 +200,11 @@ export class TaskRunner {
       logger.trace("Start step loop.");
       this.stepCount.reset();
       while (true) {
+        // Check if we should exit due to abort signal
+        if (this.abortSignal?.aborted) {
+          break;
+        }
+        
         const stepResult = await this.step();
         if (stepResult === "finished") {
           break;
