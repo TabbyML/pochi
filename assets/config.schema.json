@@ -260,11 +260,11 @@
                     "type": "object",
                     "properties": {
                       "serviceAccountKey": {
-                        "default": "<unset>",
+                        "default": "",
                         "type": "string"
                       },
                       "location": {
-                        "default": "<unset>",
+                        "default": "",
                         "type": "string"
                       }
                     },
@@ -278,15 +278,15 @@
                     "type": "object",
                     "properties": {
                       "accessToken": {
-                        "default": "<unset>",
+                        "default": "",
                         "type": "string"
                       },
                       "projectId": {
-                        "default": "<unset>",
+                        "default": "",
                         "type": "string"
                       },
                       "location": {
-                        "default": "<unset>",
+                        "default": "",
                         "type": "string"
                       }
                     },
@@ -301,11 +301,11 @@
                     "type": "object",
                     "properties": {
                       "issueUrl": {
-                        "default": "<unset>",
+                        "default": "",
                         "type": "string"
                       },
                       "modelUrl": {
-                        "default": "<unset>",
+                        "default": "",
                         "type": "string"
                       },
                       "timeout": {

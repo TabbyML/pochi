@@ -61,7 +61,7 @@ export function createVertexModel(vertex: GoogleVertexModel, modelId: string) {
   const getBaseURL = (location: string, projectId: string) =>
     `https://${location}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${location}/publishers/google`;
 
-  if ("serviceAccountKey" in vertex) {
+  if ("serviceAccountKey" in vertex && vertex.serviceAccountKey) {
     const service_account_key = JSON.parse(vertex.serviceAccountKey);
     const location = vertex.location;
     const project = service_account_key.project_id;
@@ -78,7 +78,7 @@ export function createVertexModel(vertex: GoogleVertexModel, modelId: string) {
     })(modelId);
   }
 
-  if ("accessToken" in vertex) {
+  if ("accessToken" in vertex && vertex.accessToken) {
     const { location, projectId, accessToken } = vertex;
     return createVertexWithoutCredentials({
       project: projectId,
@@ -88,7 +88,7 @@ export function createVertexModel(vertex: GoogleVertexModel, modelId: string) {
     })(modelId);
   }
 
-  if ("issueUrl" in vertex) {
+  if ("issueUrl" in vertex && vertex.issueUrl) {
     const { issueUrl, modelUrl, timeout } = vertex;
     return createVertexWithoutCredentials({
       project: "placeholder",
