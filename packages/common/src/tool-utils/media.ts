@@ -6,7 +6,6 @@ type MediaContentResult = {
   type: "media";
   data: string;
   mimeType: string;
-  isTruncated: boolean;
 };
 
 export function readMediaFile(
@@ -23,19 +22,14 @@ export function readMediaFile(
     throw new Error(`MIME type ${mimeType} is not supported.`);
   }
 
-  let data = fileBuffer;
-  let isTruncated = false;
-
   if (fileBuffer.byteLength > MaxMediaSizeBytes) {
-    data = fileBuffer.slice(0, MaxMediaSizeBytes);
-    isTruncated = true;
+    throw new Error(`Media file ${filePath} is too large. Max size is 20 MB.`);
   }
 
   return {
     type: "media" as const,
-    data: Buffer.from(data).toString("base64"),
+    data: Buffer.from(fileBuffer).toString("base64"),
     mimeType,
-    isTruncated,
   };
 }
 

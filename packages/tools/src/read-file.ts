@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { defineClientTool } from "./types";
 
-const TextOutputSchema = z.object({
+const TextOutput = z.object({
   type: z.literal("text").optional(),
   content: z.string(),
   isTruncated: z
@@ -11,11 +11,10 @@ const TextOutputSchema = z.object({
     ),
 });
 
-const MediaOutputSchema = z.object({
+export const MediaOutput = z.object({
   type: z.literal("media"),
   data: z.string().describe("The base64-encoded media data"),
   mimeType: z.string().describe("The MIME type of the media"),
-  isTruncated: z.boolean().describe("Whether the media is truncated"),
 });
 
 export const createReadFileTool = (contentType?: string[]) =>
@@ -42,25 +41,6 @@ ${contentType && contentType.length > 0 ? `Also supports reading media files (e.
         ),
     }),
     outputSchema: z
-      .union([TextOutputSchema, MediaOutputSchema])
+      .union([TextOutput, MediaOutput])
       .describe("The file content as either text or media output."),
-    toModelOutput(output) {
-      if (output.type === "media") {
-        return {
-          type: "content",
-          value: [
-            {
-              type: "media",
-              data: output.data,
-              mediaType: output.mimeType,
-            },
-          ],
-        };
-      }
-
-      return {
-        type: "json",
-        value: output,
-      };
-    },
   });

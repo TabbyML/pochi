@@ -208,7 +208,7 @@ describe("readFile Tool", () => {
       { toolCallId: "test-call-id-123", messages: [], cwd: testSuiteRootTempDir.fsPath },
     );
 
-    assert.strictEqual(result.isTruncated, true);
+    assert.strictEqual(result.type !== "media" && result.isTruncated, true);
     assert.ok(result.type === "text" || !result.type);
     if (result.type === "text" || !result.type) {
       assert.ok(

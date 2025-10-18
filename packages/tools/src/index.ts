@@ -18,6 +18,7 @@ import { type CustomAgent, createNewTaskTool } from "./new-task";
 import { searchFiles } from "./search-files";
 import { todoWrite } from "./todo-write";
 export { Todo } from "./todo-write";
+export { MediaOutput } from "./read-file";
 export type {
   ToolFunctionType,
   PreviewToolFunctionType,

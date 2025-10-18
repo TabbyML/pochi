@@ -10,11 +10,23 @@ export function sanitizeMessage(message: Message): Message {
   return {
     ...message,
     parts: message.parts.map((part) => {
-      if (part.type === "tool-readFile" && part.output?.content) {
+      if (part.type === "tool-readFile" && part.output) {
+        const output = part.output;
+
+        if ("type" in output && output.type === "media") {
+          return {
+            ...part,
+            output: {
+              ...output,
+              data: RedactedMessage,
+            },
+          };
+        }
+
         return {
           ...part,
           output: {
-            ...part.output,
+            ...output,
             content: RedactedMessage,
           },
         };
