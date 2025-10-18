@@ -59,8 +59,8 @@ ${supportedMimeTypes && supportedMimeTypes.length > 0 ? `Also supports reading m
       }
 
       return {
-        type: "text",
-        value: output.content,
+        type: "json",
+        value: output,
       };
     },
   });
