@@ -204,7 +204,7 @@ export class TaskRunner {
         if (this.abortSignal?.aborted) {
           break;
         }
-        
+
         const stepResult = await this.step();
         if (stepResult === "finished") {
           break;

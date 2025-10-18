@@ -289,15 +289,20 @@ export class LiveChatKit<
 
     if (isAbort) {
       // Check if this is a user-initiated interruption (SIGINT/SIGTERM)
-      const isUserInterruption = this.abortSignal?.reason instanceof Error && 
-        (this.abortSignal.reason.message.includes("Process interrupted by SIGINT") ||
-         this.abortSignal.reason.message.includes("Process interrupted by SIGTERM"));
-      
+      const isUserInterruption =
+        this.abortSignal?.reason instanceof Error &&
+        (this.abortSignal.reason.message.includes(
+          "Process interrupted by SIGINT",
+        ) ||
+          this.abortSignal.reason.message.includes(
+            "Process interrupted by SIGTERM",
+          ));
+
       // Only show AbortError for non-user interruptions
       if (!isUserInterruption) {
         return this.onError(abortError);
       }
-      
+
       // For user interruptions, exit gracefully without showing error
       return;
     }
