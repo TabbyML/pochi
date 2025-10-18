@@ -55,21 +55,25 @@ const AnthropicModelSettings = ExtendedModelSettings.extend({
   kind: z.literal("anthropic"),
 });
 
+const Unset = "<unset>";
+
 export const GoogleVertexModel = z.union([
   z.object({
     serviceAccountKey: z
       .string()
-      .default(process.env.POCHI_VERTEX_SERVICE_ACCOUNT_KEY ?? ""),
-    location: z.string(),
+      .default(process.env.POCHI_VERTEX_SERVICE_ACCOUNT_KEY ?? Unset),
+    location: z.string().default(process.env.POCHI_VERTEX_LOCATION ?? Unset),
   }),
   z.object({
-    accessToken: z.string(),
-    projectId: z.string(),
-    location: z.string(),
+    accessToken: z
+      .string()
+      .default(process.env.POCHI_VERTEX_ACCESS_TOKEN ?? Unset),
+    projectId: z.string().default(process.env.POCHI_VERTEX_PROJECT_ID ?? Unset),
+    location: z.string().default(process.env.POCHI_VERTEX_LOCATION ?? Unset),
   }),
   z.object({
-    issueUrl: z.string().default(process.env.POCHI_VERTEX_ISSUE_URL ?? ""),
-    modelUrl: z.string().default(process.env.POCHI_VERTEX_MODEL_URL ?? ""),
+    issueUrl: z.string().default(process.env.POCHI_VERTEX_ISSUE_URL ?? Unset),
+    modelUrl: z.string().default(process.env.POCHI_VERTEX_MODEL_URL ?? Unset),
     timeout: z
       .number()
       // By default timeout is 15min
