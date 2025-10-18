@@ -65,6 +65,8 @@ import { checkForUpdates, registerUpgradeCommand } from "./upgrade";
 const logger = getLogger("Pochi");
 logger.debug(`pochi v${packageJson.version}`);
 
+let ExitCode: number | undefined;
+
 /**
  * Creates an AbortController with graceful shutdown handlers for SIGINT and SIGTERM.
  * The handlers are automatically cleaned up when the controller is aborted.
@@ -83,8 +85,8 @@ function createAbortControllerWithGracefulShutdown(): AbortController {
         abortController.abort(new Error(`Process interrupted by ${signal}`));
       }
 
-      // Force exit immediately with appropriate code
-      process.exit(exitCode);
+      // Record intended exit code for graceful shutdown
+      ExitCode = exitCode;
     };
   };
 
@@ -263,7 +265,7 @@ const program = new Command()
       jsonRenderer.shutdown();
     }
     await waitForSync(store, "2 second").catch(console.error);
-    await shutdownStoreAndExit(store);
+    await shutdownStoreAndExit(store, ExitCode ?? 0);
   });
 
 const otherOptionsGroup = "Others:";
