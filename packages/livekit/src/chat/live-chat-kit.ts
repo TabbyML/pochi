@@ -54,6 +54,7 @@ export class LiveChatKit<
   protected readonly store: Store;
   readonly chat: T;
   private readonly transport: FlexibleChatTransport;
+  private readonly abortSignal?: AbortSignal;
 
   readonly spawn: () => Promise<string>;
 
@@ -72,6 +73,7 @@ export class LiveChatKit<
   }: LiveChatKitOptions<T>) {
     this.taskId = taskId;
     this.store = store;
+    this.abortSignal = abortSignal;
     this.transport = new FlexibleChatTransport({
       store,
       onStart: this.onStart,
@@ -286,7 +288,18 @@ export class LiveChatKit<
     abortError.name = "AbortError";
 
     if (isAbort) {
-      return this.onError(abortError);
+      // Check if this is a user-initiated interruption (SIGINT/SIGTERM)
+      const isUserInterruption = this.abortSignal?.reason instanceof Error && 
+        (this.abortSignal.reason.message.includes("Process interrupted by SIGINT") ||
+         this.abortSignal.reason.message.includes("Process interrupted by SIGTERM"));
+      
+      // Only show AbortError for non-user interruptions
+      if (!isUserInterruption) {
+        return this.onError(abortError);
+      }
+      
+      // For user interruptions, exit gracefully without showing error
+      return;
     }
 
     if (isError) return; // handled in onError already.
