@@ -277,6 +277,10 @@ export class TaskRunner {
     }
 
     if (task.status === "failed") {
+      // Do not retry on abort — exit gracefully on first Ctrl+C
+      if (task.error?.kind === "AbortError") {
+        return "finished";
+      }
       if (task.error?.kind === "APICallError" && !task.error.isRetryable) {
         return "finished";
       }
