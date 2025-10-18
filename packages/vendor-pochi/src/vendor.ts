@@ -53,7 +53,36 @@ export class Pochi extends VendorBase {
             useToolCallMiddleware: x.id.includes("google/"),
             label: x.costType === "basic" ? "swift" : "super",
             supportedMimeTypes: x.id.includes("google/")
-              ? ["image/*", "video/*", "application/pdf"]
+              ? [
+                  // https://ai.google.dev/gemini-api/docs/image-understanding#supported-formats
+                  "image/png",
+                  "image/jpeg",
+                  "image/webp",
+                  "image/heic",
+                  "image/heif",
+
+                  // https://ai.google.dev/gemini-api/docs/video-understanding#supported-formats
+                  "video/mp4",
+                  "video/mpeg",
+                  "video/mov",
+                  "video/avi",
+                  "video/x-flv",
+                  "video/mpg",
+                  "video/webm",
+                  "video/wmv",
+                  "video/3gpp",
+
+                  // https://ai.google.dev/gemini-api/docs/audio#supported-formats
+                  "audio/wav",
+                  "audio/mp3",
+                  "audio/aiff",
+                  "audio/aac",
+                  "audio/ogg",
+                  "audio/flac",
+
+                  // https://ai.google.dev/gemini-api/docs/document-processing#document-types
+                  "application/pdf",
+                ]
               : undefined,
           } satisfies ModelOptions,
         ]),

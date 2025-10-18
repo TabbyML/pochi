@@ -1,52 +1,4 @@
-import * as path from "node:path";
-
-const imageExtensionToMimeType: Record<string, string> = {
-  ".png": "image/png",
-  ".jpg": "image/jpeg",
-  ".jpeg": "image/jpeg",
-  ".gif": "image/gif",
-  ".webp": "image/webp",
-  ".bmp": "image/bmp",
-  ".tif": "image/tiff",
-  ".tiff": "image/tiff",
-  ".ico": "image/vnd.microsoft.icon",
-  ".avif": "image/avif",
-  ".heic": "image/heic",
-};
-
-const videoExtensionToMimeType: Record<string, string> = {
-  ".mp4": "video/mp4",
-  ".webm": "video/webm",
-  ".avi": "video/x-msvideo",
-  ".mov": "video/quicktime",
-  ".mkv": "video/x-matroska",
-  ".flv": "video/x-flv",
-  ".wmv": "video/x-ms-wmv",
-  ".m4v": "video/x-m4v",
-  ".mpg": "video/mpeg",
-  ".mpeg": "video/mpeg",
-};
-
-const audioExtensionToMimeType: Record<string, string> = {
-  ".mp3": "audio/mpeg",
-  ".wav": "audio/wav",
-  ".ogg": "audio/ogg",
-  ".aac": "audio/aac",
-  ".flac": "audio/flac",
-  ".m4a": "audio/mp4",
-  ".wma": "audio/x-ms-wma",
-};
-
-const documentExtensionToMimeType: Record<string, string> = {
-  ".pdf": "application/pdf",
-};
-
-const mediaExtensionToMimeType: Record<string, string> = {
-  ...imageExtensionToMimeType,
-  ...videoExtensionToMimeType,
-  ...audioExtensionToMimeType,
-  ...documentExtensionToMimeType,
-};
+import mime from "mime";
 
 const MaxMediaSizeBytes = 20 * 1024 * 1024; // 20MB
 
@@ -62,10 +14,9 @@ export function readMediaFile(
   fileBuffer: Uint8Array,
   supportedMimeTypes: string[],
 ): MediaContentResult {
-  const extension = path.extname(filePath).toLowerCase();
-  const mimeType = mediaExtensionToMimeType[extension];
+  const mimeType = mime.getType(filePath);
   if (!mimeType) {
-    throw new Error(`Unsupported media file extension: ${extension}`);
+    throw new Error(`Unsupported media file ${filePath}`);
   }
 
   if (!isSupportedMimeType(mimeType, supportedMimeTypes)) {
