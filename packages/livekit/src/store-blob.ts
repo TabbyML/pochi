@@ -1,3 +1,4 @@
+import { MediaOutput } from "@getpochi/tools";
 import type { Store } from "@livestore/livestore";
 import z from "zod";
 import { StoreBlobProtocol } from ".";
@@ -11,22 +12,30 @@ export async function processContentOutput(
 ) {
   const parsed = ContentOutput.safeParse(output);
   if (parsed.success) {
-    const content = parsed.data.content.map(async (item) => {
-      if (item.type === "text") {
+    if ("content" in parsed.data) {
+      const content = parsed.data.content.map(async (item) => {
+        if (item.type === "text") {
+          return item;
+        }
+        if (item.type === "image") {
+          return {
+            type: "image",
+            mimeType: item.mimeType,
+            data: await findBlobUrl(store, item.mimeType, item.data, signal),
+          };
+        }
         return item;
-      }
-      if (item.type === "image") {
-        return {
-          type: "image",
-          mimeType: item.mimeType,
-          data: await findBlobUrl(store, item.mimeType, item.data, signal),
-        };
-      }
-      return item;
-    });
+      });
+      return {
+        ...parsed.data,
+        content: await Promise.all(content),
+      };
+    }
+
+    const item = parsed.data;
     return {
-      ...parsed.data,
-      content: await Promise.all(content),
+      ...item,
+      data: await findBlobUrl(store, item.mimeType, item.data, signal),
     };
   }
 
@@ -38,21 +47,57 @@ export async function processContentOutput(
   return output;
 }
 
-const ContentOutput = z.object({
-  content: z.array(
-    z.discriminatedUnion("type", [
-      z.object({
-        type: z.literal("text"),
-        text: z.string(),
-      }),
-      z.object({
-        type: z.literal("image"),
-        mimeType: z.string(),
-        data: z.string(),
-      }),
-    ]),
-  ),
-});
+const ContentOutput = z.union([
+  z.object({
+    content: z.array(
+      z.discriminatedUnion("type", [
+        z.object({
+          type: z.literal("text"),
+          text: z.string(),
+        }),
+        z.object({
+          type: z.literal("image"),
+          mimeType: z.string(),
+          data: z.string(),
+        }),
+      ]),
+    ),
+  }),
+  MediaOutput,
+]);
+
+function toBase64(bytes: Uint8Array) {
+  const binString = Array.from(bytes, (byte) =>
+    String.fromCodePoint(byte),
+  ).join("");
+  const base64 = btoa(binString);
+  return base64;
+}
+
+export function findBlob(
+  store: Store,
+  url: URL,
+  mediaType: string,
+): { data: string; mediaType: string } | undefined {
+  if (url.protocol === StoreBlobProtocol) {
+    const blob = store.query(makeBlobQuery(url.pathname));
+    if (blob) {
+      return {
+        data: toBase64(blob.data),
+        mediaType: blob.mimeType,
+      };
+    }
+  } else {
+    return {
+      // @ts-ignore: promise is resolved in flexible-chat-transport. we keep the string type to make toModelOutput type happy.
+      data: fetch(url)
+        .then((x) => x.blob())
+        .then((blob) => blob.arrayBuffer())
+        .then((data) => toBase64(new Uint8Array(data))),
+      mediaType,
+    };
+  }
+}
 
 export async function fileToUri(
   store: Store,

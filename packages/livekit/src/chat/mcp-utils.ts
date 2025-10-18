@@ -3,8 +3,8 @@ import type { McpTool } from "@getpochi/tools";
 import type { Store } from "@livestore/livestore";
 import type { JSONValue } from "ai";
 import z from "zod";
-import { StoreBlobProtocol } from "..";
-import { makeBlobQuery } from "../livestore/queries";
+
+import { findBlob } from "../store-blob";
 
 export function parseMcpToolSet(
   store: Store,
@@ -98,37 +98,4 @@ function parseMcpTool(store: Store, _name: string, mcpTool: McpTool): Tool {
 
 function toJSONValue(value: unknown): JSONValue {
   return value === undefined ? null : (value as JSONValue);
-}
-
-function toBase64(bytes: Uint8Array) {
-  const binString = Array.from(bytes, (byte) =>
-    String.fromCodePoint(byte),
-  ).join("");
-  const base64 = btoa(binString);
-  return base64;
-}
-
-function findBlob(
-  store: Store,
-  url: URL,
-  mediaType: string,
-): { data: string; mediaType: string } | undefined {
-  if (url.protocol === StoreBlobProtocol) {
-    const blob = store.query(makeBlobQuery(url.pathname));
-    if (blob) {
-      return {
-        data: toBase64(blob.data),
-        mediaType: blob.mimeType,
-      };
-    }
-  } else {
-    return {
-      // @ts-ignore: promise is resolved in flexible-chat-transport. we keep the string type to make toModelOutput type happy.
-      data: fetch(url)
-        .then((x) => x.blob())
-        .then((blob) => blob.arrayBuffer())
-        .then((data) => toBase64(new Uint8Array(data))),
-      mediaType,
-    };
-  }
 }

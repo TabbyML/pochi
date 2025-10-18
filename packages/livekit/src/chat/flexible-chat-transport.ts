@@ -4,6 +4,7 @@ import { constants, formatters, prompts } from "@getpochi/common";
 import * as R from "remeda";
 
 import {
+  type ClientTools,
   type CustomAgent,
   type McpTool,
   overrideCustomAgentTools,
@@ -19,11 +20,12 @@ import {
   convertToModelMessages,
   isToolUIPart,
   streamText,
+  tool,
   wrapLanguageModel,
 } from "ai";
 import { pickBy } from "remeda";
 import type z from "zod/v4";
-import { makeDownloadFunction } from "../store-blob";
+import { findBlob, makeDownloadFunction } from "../store-blob";
 import type { Message, Metadata, RequestData } from "../types";
 import { makeRepairToolCall } from "./llm";
 import { parseMcpToolSet } from "./mcp-utils";
@@ -146,6 +148,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
           isSubTask: !!this.isSubTask,
           isCli: !!this.isCli,
           customAgents,
+          contentType: llm.contentType,
         }),
         ...(mcpTools || {}),
       },
@@ -156,6 +159,9 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
         return true;
       },
     );
+    if (tools.readFile) {
+      tools.readFile = handleReadFileOutput(this.store, tools.readFile);
+    }
 
     const preparedMessages = await prepareMessages(messages, environment);
     const modelMessages = (await resolvePromise(
@@ -271,4 +277,32 @@ async function resolvePromise(o: unknown): Promise<unknown> {
   }
 
   return resolved;
+}
+
+function handleReadFileOutput(store: Store, readFile: ClientTools["readFile"]) {
+  return tool({
+    ...readFile,
+    toModelOutput: (output) => {
+      if (output.type === "media") {
+        const blob = findBlob(store, new URL(output.data), output.mimeType);
+        if (!blob) {
+          return { type: "text", value: "Failed to load media." };
+        }
+        return {
+          type: "content",
+          value: [
+            {
+              type: "media",
+              ...blob,
+            },
+          ],
+        };
+      }
+
+      return {
+        type: "json",
+        value: output,
+      };
+    },
+  });
 }

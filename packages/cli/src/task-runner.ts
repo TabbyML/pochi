@@ -99,6 +99,7 @@ const logger = getLogger("TaskRunner");
 export class TaskRunner {
   private store: Store;
   private cwd: string;
+  private llm: LLMRequestData;
   private toolCallOptions: ToolCallOptions;
   private stepCount: StepCount;
 
@@ -117,6 +118,7 @@ export class TaskRunner {
 
   constructor(options: RunnerOptions) {
     this.cwd = options.cwd;
+    this.llm = options.llm;
     this.toolCallOptions = {
       rg: options.rg,
       customAgents: options.customAgents,
@@ -335,7 +337,13 @@ export class TaskRunner {
 
       const toolResult = await processContentOutput(
         this.store,
-        await executeToolCall(toolCall, this.toolCallOptions, this.cwd),
+        await executeToolCall(
+          toolCall,
+          this.toolCallOptions,
+          this.cwd,
+          undefined,
+          this.llm.contentType,
+        ),
       );
 
       await this.chatKit.chat.addToolResult({

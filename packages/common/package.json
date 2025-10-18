@@ -44,6 +44,7 @@
     "hono": "catalog:",
     "ignore": "^7.0.5",
     "jsonc-parser": "catalog:",
+    "mime": "^4.1.0",
     "minimatch": "^10.0.1",
     "rehype": "^13.0.2",
     "remark": "^15.0.1",
