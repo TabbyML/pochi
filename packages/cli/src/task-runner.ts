@@ -92,6 +92,11 @@ export interface RunnerOptions {
   mcpHub?: McpHub;
 
   outputSchema?: z.ZodAny;
+
+  /**
+   * AbortSignal to cancel the task execution.
+   */
+  abortSignal?: AbortSignal;
 }
 
 const logger = getLogger("TaskRunner");
@@ -102,6 +107,7 @@ export class TaskRunner {
   private llm: LLMRequestData;
   private toolCallOptions: ToolCallOptions;
   private stepCount: StepCount;
+  private abortSignal?: AbortSignal;
 
   private todos: Todo[] = [];
   private chatKit: LiveChatKit<Chat>;
@@ -118,6 +124,7 @@ export class TaskRunner {
 
   constructor(options: RunnerOptions) {
     this.cwd = options.cwd;
+    this.abortSignal = options.abortSignal;
     this.llm = options.llm;
     this.toolCallOptions = {
       rg: options.rg,
@@ -147,6 +154,7 @@ export class TaskRunner {
       isSubTask: options.isSubTask,
       customAgent: options.customAgent,
       outputSchema: options.outputSchema,
+      abortSignal: options.abortSignal,
       onOverrideMessages: createOnOverrideMessages(this.cwd),
       getters: {
         getLLM: () => options.llm,
@@ -194,6 +202,11 @@ export class TaskRunner {
       logger.trace("Start step loop.");
       this.stepCount.reset();
       while (true) {
+        // Check if we should exit due to abort signal
+        if (this.abortSignal?.aborted) {
+          break;
+        }
+
         const stepResult = await this.step();
         if (stepResult === "finished") {
           break;
@@ -273,6 +286,10 @@ export class TaskRunner {
     }
 
     if (task.status === "failed") {
+      // Do not retry on abort — exit gracefully on first Ctrl+C
+      if (task.error?.kind === "AbortError") {
+        return "finished";
+      }
       if (task.error?.kind === "APICallError" && !task.error.isRetryable) {
         return "finished";
       }
