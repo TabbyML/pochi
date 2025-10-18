@@ -154,6 +154,7 @@ export class LiveChatKit<
         events.taskInited({
           id: taskId,
           cwd: this.task?.cwd || undefined,
+          modelId: this.task?.modelId || undefined,
           createdAt: new Date(),
           initMessage: {
             id: crypto.randomUUID(),
@@ -259,7 +260,8 @@ export class LiveChatKit<
         throw new Error("Task not found");
       }
 
-      const getModel = () => createModel({ llm: getters.getLLM() });
+      const llm = getters.getLLM();
+      const getModel = () => createModel({ llm });
       scheduleGenerateTitleJob({
         taskId: this.taskId,
         store,
@@ -274,6 +276,7 @@ export class LiveChatKit<
           todos: environment?.todos || [],
           git: toTaskGitInfo(environment?.workspace.gitStatus),
           updatedAt: new Date(),
+          modelId: llm.id,
         }),
       );
     }

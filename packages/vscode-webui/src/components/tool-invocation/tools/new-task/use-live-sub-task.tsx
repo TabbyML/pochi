@@ -123,6 +123,7 @@ export function useLiveSubTask(
             abortController.current.signal,
           ),
           nonInteractive: true,
+          contentType: customAgentModel?.contentType,
         },
       );
 

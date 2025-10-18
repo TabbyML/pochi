@@ -60,7 +60,11 @@ class RagdollUriHandler implements vscode.UriHandler, vscode.Disposable {
       );
     } else if (eventParam) {
       await this.safeExecute(() => {
-        const decodedEvent = JSON.parse(decodeURIComponent(eventParam));
+        const decodedEvent = JSON.parse(
+          decodeURIComponent(
+            Buffer.from(eventParam, "base64url").toString("utf8"),
+          ),
+        );
         const event = WebsiteTaskCreateEvent.parse(decodedEvent);
         return this.handleNewProjectTask(event);
       }, "Failed to process task event");
