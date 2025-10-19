@@ -1,6 +1,7 @@
 import type { Command } from "@commander-js/extra-typings";
 import { pochiConfig } from "@getpochi/common/configuration";
 import chalk from "chalk";
+import Table from "cli-table3";
 
 export function registerMcpListCommand(parentCommand: Command) {
   parentCommand
@@ -29,69 +30,25 @@ export function registerMcpListCommand(parentCommand: Command) {
         ([, config]) => config.disabledTools && config.disabledTools.length > 0,
       );
 
-      // Calculate column widths for proper alignment
-      const maxNameLength = Math.max(
-        ...sortedServerEntries.map(([name]) => name.length),
-        12, // minimum for "NAME" header
-      );
-      const statusWidth = 8; // "STATUS" header length
-      const transportWidth = 12; // "TRANSPORT" header length
-
-      // Calculate max details width if we have disabled tools column
-      let maxDetailsLength = 8; // minimum for "DETAILS" header
+      // Create table headers based on whether we have disabled tools
+      const headers = ["NAME", "STATUS", "TRANSPORT", "DETAILS"];
       if (hasDisabledTools) {
-        for (const [, serverConfig] of sortedServerEntries) {
-          let details = "";
-          if ("url" in serverConfig) {
-            details = serverConfig.url;
-            if (
-              serverConfig.headers &&
-              Object.keys(serverConfig.headers).length > 0
-            ) {
-              details += ` (headers: ${Object.keys(serverConfig.headers).join(", ")})`;
-            }
-          } else {
-            details = `${serverConfig.command} ${serverConfig.args.join(" ")}`;
-            if (serverConfig.cwd) {
-              details += ` (cwd: ${serverConfig.cwd})`;
-            }
-            if (serverConfig.env && Object.keys(serverConfig.env).length > 0) {
-              details += ` (env: ${Object.keys(serverConfig.env).join(", ")})`;
-            }
-          }
-          maxDetailsLength = Math.max(maxDetailsLength, details.length);
-        }
+        headers.push("DISABLED TOOLS");
       }
 
-      const disabledToolsWidth = hasDisabledTools ? 15 : 0; // "DISABLED TOOLS" header length
+      // Create table with proper styling
+      const table = new Table({
+        head: headers.map(header => chalk.bold(header)),
+        style: {
+          head: [],
+          border: ['gray'],
+          compact: false
+        },
+        colWidths: hasDisabledTools ? [20, 10, 12, 40, 20] : [20, 10, 12, 50],
+        wordWrap: true
+      });
 
-      // Print table header with consistent spacing
-      const nameHeader = "NAME".padEnd(maxNameLength);
-      const statusHeader = "STATUS".padEnd(statusWidth);
-      const transportHeader = "TRANSPORT".padEnd(transportWidth);
-      const disabledToolsHeader = hasDisabledTools
-        ? "DISABLED TOOLS".padEnd(disabledToolsWidth)
-        : "";
-
-      let headerLine: string;
-      if (hasDisabledTools) {
-        const detailsHeader = "DETAILS".padEnd(maxDetailsLength);
-        headerLine = `${chalk.bold(nameHeader)} ${chalk.bold(statusHeader)} ${chalk.bold(transportHeader)} ${chalk.bold(detailsHeader)} ${chalk.bold(disabledToolsHeader)}`;
-      } else {
-        headerLine = `${chalk.bold(nameHeader)} ${chalk.bold(statusHeader)} ${chalk.bold(transportHeader)} ${chalk.bold("DETAILS")}`;
-      }
-      console.log(headerLine);
-
-      // Print separator line
-      const separatorLength =
-        maxNameLength +
-        statusWidth +
-        transportWidth +
-        (hasDisabledTools ? maxDetailsLength : 20) + // min width for DETAILS when no disabled tools
-        (hasDisabledTools ? disabledToolsWidth : 0) +
-        (hasDisabledTools ? 5 : 3); // spaces between columns
-      const separator = "-".repeat(separatorLength);
-      console.log(`${chalk.gray(separator)}`);
+      // Add rows to the table
       for (const [serverName, serverConfig] of sortedServerEntries) {
         const statusText = serverConfig.disabled ? "❌" : "✓";
         const statusColored = serverConfig.disabled
@@ -102,8 +59,20 @@ export function registerMcpListCommand(parentCommand: Command) {
         let details = "";
         if ("url" in serverConfig) {
           details = serverConfig.url;
+          if (
+            serverConfig.headers &&
+            Object.keys(serverConfig.headers).length > 0
+          ) {
+            details += `\n(headers: ${Object.keys(serverConfig.headers).join(", ")})`;
+          }
         } else {
           details = `${serverConfig.command} ${serverConfig.args.join(" ")}`;
+          if (serverConfig.cwd) {
+            details += `\n(cwd: ${serverConfig.cwd})`;
+          }
+          if (serverConfig.env && Object.keys(serverConfig.env).length > 0) {
+            details += `\n(env: ${Object.keys(serverConfig.env).join(", ")})`;
+          }
         }
 
         const disabledToolsText =
@@ -111,29 +80,22 @@ export function registerMcpListCommand(parentCommand: Command) {
             ? serverConfig.disabledTools.join(", ")
             : "-";
 
-        // Format columns with proper padding
-        const namePadded = serverName.padEnd(maxNameLength);
-        // The ❌ character takes up two cells in the terminal
-        const statusVisualWidthAdjustment = serverConfig.disabled ? 1 : 0;
-        const statusPadded = statusColored.padEnd(
-          statusWidth +
-            (statusColored.length - statusText.length) -
-            statusVisualWidthAdjustment,
-        );
-        const transportPadded = transport.padEnd(transportWidth);
-        const disabledToolsPadded = hasDisabledTools
-          ? disabledToolsText.padEnd(disabledToolsWidth)
-          : "";
+        // Create row data
+        const rowData = [
+          serverName,
+          statusColored,
+          transport,
+          chalk.blue(details)
+        ];
 
-        let outputLine: string;
         if (hasDisabledTools) {
-          const detailsPadded = details.padEnd(maxDetailsLength);
-          outputLine = `${namePadded} ${statusPadded} ${transportPadded} ${chalk.blue(detailsPadded)} ${chalk.gray(disabledToolsPadded)}`;
-        } else {
-          outputLine = `${namePadded} ${statusPadded} ${transportPadded} ${chalk.blue(details)}`;
+          rowData.push(chalk.gray(disabledToolsText));
         }
 
-        console.log(outputLine);
+        table.push(rowData);
       }
+
+      // Display the table
+      console.log(table.toString());
     });
 }
