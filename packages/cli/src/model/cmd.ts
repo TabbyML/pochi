@@ -23,8 +23,6 @@ function formatContextWindow(size: number): string {
   return formatSize();
 }
 
-
-
 export function registerModelCommand(program: Command) {
   const modelCommand = program
     .command("model")
@@ -74,14 +72,18 @@ function displayModels(vendorId: string, models: Record<string, ModelOptions>) {
 
   // Create table with proper styling
   const table = new Table({
-    head: [chalk.bold("MODEL ID"), chalk.bold("CONTEXT"), chalk.bold("FEATURES")],
+    head: [
+      chalk.bold("MODEL ID"),
+      chalk.bold("CONTEXT"),
+      chalk.bold("FEATURES"),
+    ],
     style: {
       head: [],
-      border: ['gray'],
-      compact: false
+      border: ["gray"],
+      compact: false,
     },
     colWidths: [40, 12, 15],
-    wordWrap: true
+    wordWrap: true,
   });
 
   // Add rows to the table
@@ -92,11 +94,7 @@ function displayModels(vendorId: string, models: Record<string, ModelOptions>) {
 
     const features = modelInfo.useToolCallMiddleware ? "ReAct ✓" : "-";
 
-    table.push([
-      modelId,
-      chalk.cyan(contextWindow),
-      chalk.green(features)
-    ]);
+    table.push([modelId, chalk.cyan(contextWindow), chalk.green(features)]);
   }
 
   // Display the table
@@ -127,14 +125,18 @@ function displayProviderModels(
 
   // Create table with proper styling
   const table = new Table({
-    head: [chalk.bold("MODEL ID"), chalk.bold("CONTEXT"), chalk.bold("FEATURES")],
+    head: [
+      chalk.bold("MODEL ID"),
+      chalk.bold("CONTEXT"),
+      chalk.bold("FEATURES"),
+    ],
     style: {
       head: [],
-      border: ['gray'],
-      compact: false
+      border: ["gray"],
+      compact: false,
     },
     colWidths: [40, 12, 15],
-    wordWrap: true
+    wordWrap: true,
   });
 
   // Add rows to the table
@@ -145,11 +147,7 @@ function displayProviderModels(
 
     const features = modelInfo.useToolCallMiddleware ? "ReAct ✓" : "-";
 
-    table.push([
-      modelId,
-      chalk.cyan(contextWindow),
-      chalk.green(features)
-    ]);
+    table.push([modelId, chalk.cyan(contextWindow), chalk.green(features)]);
   }
 
   // Display the table

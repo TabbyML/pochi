@@ -38,14 +38,14 @@ export function registerMcpListCommand(parentCommand: Command) {
 
       // Create table with proper styling
       const table = new Table({
-        head: headers.map(header => chalk.bold(header)),
+        head: headers.map((header) => chalk.bold(header)),
         style: {
           head: [],
-          border: ['gray'],
-          compact: false
+          border: ["gray"],
+          compact: false,
         },
         colWidths: hasDisabledTools ? [20, 10, 12, 40, 20] : [20, 10, 12, 50],
-        wordWrap: true
+        wordWrap: true,
       });
 
       // Add rows to the table
@@ -85,7 +85,7 @@ export function registerMcpListCommand(parentCommand: Command) {
           serverName,
           statusColored,
           transport,
-          chalk.blue(details)
+          chalk.blue(details),
         ];
 
         if (hasDisabledTools) {
