@@ -164,7 +164,7 @@ export class LiveChatKit<
 
               {
                 type: "text",
-                text: "I've summarized the task and start a new task with the summary. Please analysis the current status, and use askFollowUpQuestion with me to confirm the next steps",
+                text: "I've summarized the task and start a new task with the summary. Please analysis the current status, and use askFollowupQuestion with me to confirm the next steps",
               },
             ],
           },
