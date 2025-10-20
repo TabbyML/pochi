@@ -78,12 +78,9 @@ export function Mermaid({ chart }: { chart: string }): ReactElement {
         );
         setSvg(svg);
       } catch (error) {
-        // eslint-disable-next-line no-console -- show error
         console.error("Error while rendering mermaid", error);
       }
     }
-
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- when chart code changes, we need to re-render
   }, [chart, isVisible, id]);
 
   // biome-ignore lint/security/noDangerouslySetInnerHtml: inject svg

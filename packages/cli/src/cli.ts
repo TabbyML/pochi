@@ -1,10 +1,8 @@
 #!/usr/bin/env bun
-
-// Override global console to stderr
-import "./logger";
-
 // Workaround for https://github.com/oven-sh/bun/issues/18145
 import "@livestore/wa-sqlite/dist/wa-sqlite.node.wasm" with { type: "file" };
+
+import "./logger";
 
 // Register the vendor
 import "@getpochi/vendor-pochi";
