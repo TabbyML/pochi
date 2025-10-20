@@ -26,8 +26,8 @@ export function ReasoningPartUI({
   );
 
   const headline = useMemo(
-    () => headlineFromMarkdown || "Thinking ...",
-    [headlineFromMarkdown],
+    () => headlineFromMarkdown || t("reasoning.thinking"),
+    [headlineFromMarkdown, t],
   );
   const finishHeadline = t("reasoning.thoughtFor", { count: part.text.length });
   const title = (
