@@ -62,7 +62,10 @@
       "copilotDisabled": "Copilot models are disabled. Turn on the switch to enable them.",
       "noModelsFound": "No models found",
       "customModelsTooltip": "Manage your custom models.",
-      "viewPricing": "View Pochi pricing"
+      "viewPricing": "View Pochi pricing",
+      "pochi": "Pochi",
+      "byok": "BYOK",
+      "thirdParty": "Third-party"
     },
     "tools": {
       "title": "Tools",
