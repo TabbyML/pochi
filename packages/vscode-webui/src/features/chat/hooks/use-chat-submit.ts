@@ -4,7 +4,7 @@ import { prepareMessageParts } from "@/lib/message-utils";
 import type { UseChatHelpers } from "@ai-sdk/react";
 import { getLogger } from "@getpochi/common";
 import type { Message } from "@getpochi/livekit";
-import { isAutoSuccessToolName } from "@getpochi/tools";
+
 import type React from "react";
 import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
@@ -42,10 +42,9 @@ export function useChatSubmit({
   setQueuedMessages,
 }: UseChatSubmitProps) {
   const autoApproveGuard = useAutoApproveGuard();
-  const { executingToolCalls, previewingToolCalls } = useToolCallLifeCycle();
+  const { executingToolCalls, previewingToolCalls, isExecuting, isPreviewing } =
+    useToolCallLifeCycle();
   const { t } = useTranslation();
-  const isExecuting = executingToolCalls.length > 0;
-  const isPreviewing = (previewingToolCalls?.length ?? 0) > 0;
 
   const abortExecutingToolCalls = useCallback(() => {
     for (const toolCall of executingToolCalls) {
@@ -55,9 +54,7 @@ export function useChatSubmit({
 
   const abortPreviewingToolCalls = useCallback(() => {
     for (const toolCall of previewingToolCalls || []) {
-      if (!isAutoSuccessToolName(toolCall.toolName)) {
-        toolCall.abort();
-      }
+      toolCall.abort();
     }
   }, [previewingToolCalls]);
 

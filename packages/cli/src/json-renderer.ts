@@ -1,8 +1,12 @@
+import { Console } from "node:console";
 import { type Message, StoreBlobProtocol, catalog } from "@getpochi/livekit";
 import type { Store } from "@livestore/livestore";
 import * as R from "remeda";
 import type { NodeChatState } from "./livekit/chat.node";
 import type { TaskRunner } from "./task-runner";
+
+// JsonRenderer shall output stdout
+const console = new Console(process.stdout);
 
 export class JsonRenderer {
   private outputMessageIds = new Set<string>();

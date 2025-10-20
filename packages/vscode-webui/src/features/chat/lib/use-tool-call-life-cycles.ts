@@ -1,3 +1,4 @@
+import { isAutoSuccessToolName } from "@getpochi/tools";
 import { useStore } from "@livestore/react";
 import { useCallback, useMemo, useRef, useState } from "react";
 import type { ToolCallLifeCycleKey } from "./chat-state/types";
@@ -39,9 +40,10 @@ export function useToolCallLifeCycles(abortSignal: AbortSignal) {
     const previewing = [];
     for (const lifecycle of toolCallLifeCycles.values()) {
       if (
-        lifecycle.status === "init" ||
-        lifecycle.status === "pending" ||
-        lifecycle.status === "ready"
+        (lifecycle.status === "init" ||
+          lifecycle.status === "pending" ||
+          lifecycle.status === "ready") &&
+        !isAutoSuccessToolName(lifecycle.toolName)
       ) {
         previewing.push(lifecycle);
       }

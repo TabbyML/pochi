@@ -7,7 +7,7 @@ Please help create a PR for the current changes, following these guidelines:
 ## Branch Management
 1. **Check if new branch is needed:**
    - If the current branch name is unrelated to the changes (e.g., working on new changes in a pre-existing feature branch), check if a PR already exists for this branch using `gh pr list --head <branch-name>`
-   - If a PR exists on the current branch, use `askFollowUpQuestion` to confirm with the user whether to:
+   - If a PR exists on the current branch, use `askFollowupQuestion` to confirm with the user whether to:
      - Create a new branch for these changes, OR
      - Add commits to the existing PR
    - If creating a new branch, generate a descriptive branch name based on the git diff/changes

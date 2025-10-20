@@ -47,5 +47,8 @@
     "semver": "^7.6.3",
     "tabtab": "^3.0.2",
     "zod": "catalog:"
+  },
+  "dependencies": {
+    "cli-table3": "^0.6.5"
   }
 }
