@@ -13,7 +13,7 @@
     "tsc": "tsc --noEmit",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
-    "lint:i18n": "eslint src/ --ext .js,.jsx,.ts,.tsx --format stylish"
+    "check:i18n": "eslint src/ --ext .js,.jsx,.ts,.tsx --format stylish"
   },
   "dependencies": {
     "@ai-sdk/react": "catalog:",

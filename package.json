@@ -1,11 +1,12 @@
 {
   "name": "@getpochi/monorepo",
   "scripts": {
-    "check": "npm-run-all check:default check:test check:ast-grep",
+    "check": "npm-run-all check:default check:test check:ast-grep check:i18n",
     "fix": "npm-run-all 'check:default -- --write' 'check:test -- --write'",
     "check:ast-grep": "ast-grep scan",
     "check:default": "biome check .",
     "check:test": "biome check --config-path=./biome.test.json .",
+    "check:i18n": "cd packages/vscode-webui && bun check:i18n",
     "test": "turbo test",
     "test:coverage": "turbo test:coverage",
     "tsc": "turbo tsc",
