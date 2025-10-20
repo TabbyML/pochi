@@ -136,14 +136,16 @@ export const MessageList: React.FC<{
             )}
           </div>
         ))}
-        <div className="py-2">
-          <Loader2
-            className={cn(
-              "mx-auto size-6",
-              debouncedIsLoading && showLoader ? "animate-spin" : "invisible",
-            )}
-          />
-        </div>
+        {showLoader && (
+          <div className="py-2">
+            <Loader2
+              className={cn(
+                "mx-auto size-6",
+                debouncedIsLoading ? "animate-spin" : "invisible",
+              )}
+            />
+          </div>
+        )}
       </ScrollArea>
     </BackgroundJobContextProvider>
   );
