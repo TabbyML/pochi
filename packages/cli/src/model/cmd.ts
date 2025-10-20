@@ -4,6 +4,7 @@ import type { CustomModelSetting } from "@getpochi/common/configuration";
 import type { ModelOptions } from "@getpochi/common/vendor";
 import { getVendors } from "@getpochi/common/vendor";
 import chalk from "chalk";
+import Table from "cli-table3";
 
 // Format context window size for better readability
 function formatContextWindow(size: number): string {
@@ -19,14 +20,7 @@ function formatContextWindow(size: number): string {
     return size.toString();
   };
 
-  return `C ${chalk.cyan(formatSize())}`;
-}
-
-function formatToolCall(useToolCallMiddleware: boolean) {
-  if (useToolCallMiddleware) {
-    return `\tReAct ${chalk.green("✓")}`;
-  }
-  return "";
+  return formatSize();
 }
 
 export function registerModelCommand(program: Command) {
@@ -76,21 +70,35 @@ function displayModels(vendorId: string, models: Record<string, ModelOptions>) {
     a.localeCompare(b),
   );
 
-  for (const [modelId, modelInfo] of sortedModelEntries) {
-    // Display model ID with proper alignment
-    const padding = " ".repeat(
-      Math.max(0, 35 - (modelInfo?.contextWindow ? modelId.length : 0)),
-    );
+  // Create table with proper styling
+  const table = new Table({
+    head: [
+      chalk.bold("MODEL ID"),
+      chalk.bold("CONTEXT"),
+      chalk.bold("FEATURES"),
+    ],
+    style: {
+      head: [],
+      border: ["gray"],
+      compact: false,
+    },
+    colWidths: [40, 12, 15],
+    wordWrap: true,
+  });
 
-    // Display context window size
+  // Add rows to the table
+  for (const [modelId, modelInfo] of sortedModelEntries) {
     const contextWindow = modelInfo.contextWindow
       ? formatContextWindow(modelInfo.contextWindow)
-      : "";
+      : "-";
 
-    console.log(
-      `  ${modelId}${padding}${contextWindow}${formatToolCall(!!modelInfo.useToolCallMiddleware)}`,
-    );
+    const features = modelInfo.useToolCallMiddleware ? "ReAct ✓" : "-";
+
+    table.push([modelId, chalk.cyan(contextWindow), chalk.green(features)]);
   }
+
+  // Display the table
+  console.log(table.toString());
   console.log();
 }
 
@@ -115,20 +123,34 @@ function displayProviderModels(
     a.localeCompare(b),
   );
 
-  for (const [modelId, modelInfo] of sortedModelEntries) {
-    // Display model ID with proper alignment
-    const padding = " ".repeat(
-      Math.max(0, 35 - (modelInfo?.contextWindow ? modelId.length : 0)),
-    );
+  // Create table with proper styling
+  const table = new Table({
+    head: [
+      chalk.bold("MODEL ID"),
+      chalk.bold("CONTEXT"),
+      chalk.bold("FEATURES"),
+    ],
+    style: {
+      head: [],
+      border: ["gray"],
+      compact: false,
+    },
+    colWidths: [40, 12, 15],
+    wordWrap: true,
+  });
 
-    // Display context window size
+  // Add rows to the table
+  for (const [modelId, modelInfo] of sortedModelEntries) {
     const contextWindow = modelInfo.contextWindow
       ? formatContextWindow(modelInfo.contextWindow)
-      : "";
+      : "-";
 
-    console.log(
-      `  ${modelId}${padding}${contextWindow}${formatToolCall(!!modelInfo.useToolCallMiddleware)}`,
-    );
+    const features = modelInfo.useToolCallMiddleware ? "ReAct ✓" : "-";
+
+    table.push([modelId, chalk.cyan(contextWindow), chalk.green(features)]);
   }
+
+  // Display the table
+  console.log(table.toString());
   console.log();
 }

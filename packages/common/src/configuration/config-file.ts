@@ -112,7 +112,8 @@ export class PochiConfigFile {
         `${path.basename(this.configFilePath)}.${randomUUID()}.tmp`,
       );
       await fsPromise.writeFile(tmp, content);
-      await fsPromise.rename(tmp, this.configFilePath);
+      await fsPromise.copyFile(tmp, this.configFilePath);
+      await fsPromise.unlink(tmp);
     } catch (err) {
       logger.error("Failed to save config file", err);
     }

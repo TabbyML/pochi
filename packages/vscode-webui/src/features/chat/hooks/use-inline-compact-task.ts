@@ -13,7 +13,7 @@ export const useInlineCompactTask = ({
     setIsPending(true);
     try {
       await sendMessage({
-        text: "I've summarized the task and please analysis the current status, and use askFollowUpQuestion with me to confirm the next steps",
+        text: "I've summarized the task and please analysis the current status, and use askFollowupQuestion with me to confirm the next steps",
         metadata: {
           kind: "user",
           compact: true,
