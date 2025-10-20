@@ -177,7 +177,7 @@ ${environmentInfo}
           {t("share.copyLink")}
           {!shareId && (
             <span className="ml-2 text-muted-foreground text-xs">
-              (Share first)
+              {t("share.shareFirst")}
             </span>
           )}
         </DropdownMenuItem>
@@ -194,7 +194,7 @@ ${environmentInfo}
           {t("share.shareSupport")}
           {!shareId && (
             <span className="ml-2 text-muted-foreground text-xs">
-              (Share first)
+              {t("share.shareFirst")}
             </span>
           )}
         </DropdownMenuItem>

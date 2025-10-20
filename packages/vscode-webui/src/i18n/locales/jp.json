@@ -146,7 +146,8 @@
     "joinDiscord": "Discord に参加",
     "ok": "OK",
     "setPublic": "リンクを知っている人なら誰でも",
-    "setPrivate": "あなただけ"
+    "setPrivate": "あなただけ",
+    "shareFirst": "（最初に共有）"
   },
   "signInPage": {
     "welcome": "Pochi へようこそ",
