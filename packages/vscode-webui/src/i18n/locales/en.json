@@ -341,5 +341,10 @@
     "sessionId": "Session ID (storeId)",
     "jwt": "JWT",
     "submit": "Submit"
+  },
+  "pagination": {
+    "previous": "Previous",
+    "next": "Next",
+    "morePages": "More pages"
   }
 }

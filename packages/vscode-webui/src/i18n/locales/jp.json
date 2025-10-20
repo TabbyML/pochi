@@ -345,5 +345,10 @@
     "sessionId": "セッション ID (storeId)",
     "jwt": "JWT",
     "submit": "送信"
+  },
+  "pagination": {
+    "previous": "前へ",
+    "next": "次へ",
+    "morePages": "その他のページ"
   }
 }
