@@ -326,5 +326,23 @@
     "attempts": "尝试次数：",
     "countdown": "倒计时：",
     "delay": "延迟："
+  },
+  "editNotebook": {
+    "editing": "编辑中 ",
+    "cell": "单元格",
+    "cellId": "单元格 ID: "
+  },
+  "dev": {
+    "loading": "加载中",
+    "storeId": "存储 ID",
+    "liveStoreVersion": "LiveStore 版本",
+    "liveStoreVersionPrefix": "v",
+    "openDevTools": "打开开发工具",
+    "task": "任务",
+    "messages": "消息",
+    "enterSessionInfo": "输入会话信息",
+    "sessionId": "会话 ID (storeId)",
+    "jwt": "JWT",
+    "submit": "提交"
   }
 }

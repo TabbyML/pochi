@@ -322,5 +322,23 @@
     "attempts": "시도 횟수:",
     "countdown": "카운트다운:",
     "delay": "지연:"
+  },
+  "editNotebook": {
+    "editing": "편집 중 ",
+    "cell": "셀",
+    "cellId": "셀 ID: "
+  },
+  "dev": {
+    "loading": "로딩 중",
+    "storeId": "스토어 ID",
+    "liveStoreVersion": "LiveStore 버전",
+    "liveStoreVersionPrefix": "v",
+    "openDevTools": "개발 도구 열기",
+    "task": "작업",
+    "messages": "메시지",
+    "enterSessionInfo": "세션 정보 입력",
+    "sessionId": "세션 ID (storeId)",
+    "jwt": "JWT",
+    "submit": "제출"
   }
 }

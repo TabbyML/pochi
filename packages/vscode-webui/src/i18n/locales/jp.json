@@ -327,5 +327,23 @@
     "attempts": "試行回数：",
     "countdown": "カウントダウン：",
     "delay": "遅延："
+  },
+  "editNotebook": {
+    "editing": "編集中 ",
+    "cell": "セル",
+    "cellId": "セル ID: "
+  },
+  "dev": {
+    "loading": "読み込み中",
+    "storeId": "ストア ID",
+    "liveStoreVersion": "LiveStore バージョン",
+    "liveStoreVersionPrefix": "v",
+    "openDevTools": "開発ツールを開く",
+    "task": "タスク",
+    "messages": "メッセージ",
+    "enterSessionInfo": "セッション情報を入力",
+    "sessionId": "セッション ID (storeId)",
+    "jwt": "JWT",
+    "submit": "送信"
   }
 }

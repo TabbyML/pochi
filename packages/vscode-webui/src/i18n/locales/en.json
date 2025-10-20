@@ -328,5 +328,18 @@
     "editing": "Editing ",
     "cell": "Cell",
     "cellId": "Cell ID: "
+  },
+  "dev": {
+    "loading": "Loading",
+    "storeId": "Store ID",
+    "liveStoreVersion": "LiveStore Version",
+    "liveStoreVersionPrefix": "v",
+    "openDevTools": "Open DevTools",
+    "task": "Task",
+    "messages": "Messages",
+    "enterSessionInfo": "Enter Session Info",
+    "sessionId": "Session ID (storeId)",
+    "jwt": "JWT",
+    "submit": "Submit"
   }
 }

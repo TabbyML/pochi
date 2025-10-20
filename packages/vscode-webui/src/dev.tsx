@@ -6,6 +6,7 @@ import { LiveStoreProvider, useStore } from "@livestore/react";
 import { type FormEvent, useState } from "react";
 import { unstable_batchedUpdates as batchUpdates } from "react-dom";
 import ReactDOM from "react-dom/client";
+import { useTranslation } from "react-i18next";
 import LiveStoreWorker from "./livestore.worker.ts?worker";
 
 const adapter = makePersistedAdapter({
@@ -30,7 +31,10 @@ function App() {
     <LiveStoreProvider
       schema={catalog.schema}
       adapter={adapter}
-      renderLoading={() => <>Loading</>}
+      renderLoading={() => {
+        const { t } = useTranslation();
+        return <>{t("dev.loading")}</>;
+      }}
       batchUpdates={batchUpdates}
       syncPayload={{ jwt }}
       storeId={storeId}
@@ -42,14 +46,20 @@ function App() {
 
 function Content() {
   const { store } = useStore();
+  const { t } = useTranslation();
   const tasks = store.useQuery(catalog.queries.tasks$);
   const devtoolsLink = `/_livestore/web/${store.storeId}/${store.clientId}/${store.sessionId}/default`;
   return (
     <div>
-      <p>Store ID: {store.storeId}</p>
-      <p>LiveStore Version: v{liveStoreVersion}</p>
+      <p>
+        {t("dev.storeId")}: {store.storeId}
+      </p>
+      <p>
+        {t("dev.liveStoreVersion")}: {t("dev.liveStoreVersionPrefix")}
+        {liveStoreVersion}
+      </p>
       <a href={devtoolsLink} target="_blank" rel="noreferrer">
-        Open DevTools
+        {t("dev.openDevTools")}
       </a>
       {tasks.map((task) => (
         <RenderTask key={task.id} task={task} />
@@ -60,15 +70,16 @@ function Content() {
 
 function RenderTask({ task }: { task: Task }) {
   const { store } = useStore();
+  const { t } = useTranslation();
   const messages = store.useQuery(catalog.queries.makeMessagesQuery(task.id));
   return (
     <details open>
       <summary>
-        <strong>Task:</strong> {task.title} - <em>{task.id}</em>
+        <strong>{t("dev.task")}:</strong> {task.title} - <em>{task.id}</em>
       </summary>
       <div style={{ paddingLeft: "2em" }}>
         <pre>{JSON.stringify(task, null, 2)}</pre>
-        <h4>Messages</h4>
+        <h4>{t("dev.messages")}</h4>
         {messages.map((message) => (
           <RenderMessage key={message.id} message={message.data as Message} />
         ))}
@@ -97,6 +108,7 @@ function AuthForm({
   storeId: string | null;
   jwt: string | null;
 }) {
+  const { t } = useTranslation();
   const [storeId, setStoreId] = useState(initialStoreId || crypto.randomUUID());
   const [jwt, setJwt] = useState(initialJwt || "");
 
@@ -110,11 +122,11 @@ function AuthForm({
 
   return (
     <div>
-      <h1>Enter Session Info</h1>
+      <h1>{t("dev.enterSessionInfo")}</h1>
       <form onSubmit={handleSubmit}>
         <div>
           <label>
-            Session ID (storeId):
+            {t("dev.sessionId")}:
             <input
               type="text"
               value={storeId}
@@ -125,7 +137,7 @@ function AuthForm({
         </div>
         <div>
           <label>
-            JWT:
+            {t("dev.jwt")}:
             <textarea
               value={jwt}
               onChange={(e) => setJwt(e.target.value)}
@@ -133,7 +145,7 @@ function AuthForm({
             />
           </label>
         </div>
-        <button type="submit">Submit</button>
+        <button type="submit">{t("dev.submit")}</button>
       </form>
     </div>
   );
