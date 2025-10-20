@@ -11,6 +11,7 @@ import { funnel } from "remeda";
 import * as runExclusive from "run-exclusive";
 import { app } from "./app";
 import type { Env as ClientEnv } from "./types";
+import { makeMessagesQuery } from "../../../../livekit/src/livestore/queries";
 
 // Scoped by storeId
 export class LiveStoreClientDO
@@ -144,9 +145,52 @@ export class LiveStoreClientDO
     const { webhook } = this;
     if (webhook) {
       await Promise.all(
-        updatedTasks.map((task) =>
-          webhook.onTaskUpdated(task).catch(console.error),
-        ),
+        updatedTasks.map((task) => {
+          let completionInfo: string | undefined = undefined;
+          let followup = undefined;
+          if (task.status === "completed") {
+            const messages = store.query(makeMessagesQuery(task.id));
+            // Find the last tool-attemptCompletion part
+            for (let i = messages.length - 1; i >= 0; i--) {
+              const message = messages[i];
+              if (message.data.role === "assistant" && message.data.parts) {
+                for (let j = message.data.parts.length - 1; j >= 0; j--) {
+                  const part = message.data.parts[j] as {
+                    type?: string;
+                    state?: string;
+                    input?: unknown;
+                  };
+                  if (
+                    part.type === "tool-attemptCompletion" &&
+                    part.state === "input-available"
+                  ) {
+                    completionInfo =
+                      (part.input as { result?: string } | undefined)?.result ||
+                      undefined;
+                    break;
+                  }
+                  if (
+                    part.type === "tool-askFollowupQuestion" &&
+                    part.state === "input-available"
+                  ) {
+                    followup = part.input as
+                      | { question: string; followup?: string[] }
+                      | undefined;
+                    break;
+                  }
+                }
+                if (completionInfo !== undefined || followup !== undefined)
+                  break;
+              }
+            }
+          }
+          webhook
+            .onTaskUpdated(task, {
+              completionInfo,
+              followup,
+            })
+            .catch(console.error);
+        }),
       );
     }
 
