@@ -1,10 +1,14 @@
 import type { TaskThreadSource } from "@/components/task-thread";
+import { useTodos } from "@/features/todo";
 import type { Message } from "@getpochi/livekit";
+import type { Todo } from "@getpochi/tools";
+import { useRef } from "react";
 import type { ToolProps } from "../../types";
 
 export function useInlinedSubTask(
   tool: ToolProps<"newTask">["tool"],
 ): TaskThreadSource | undefined {
+  const todosRef = useRef<Todo[] | undefined>(undefined);
   if (tool.state === "input-streaming") {
     return undefined;
   }
@@ -14,8 +18,14 @@ export function useInlinedSubTask(
     return undefined;
   }
 
+  const { todos } = useTodos({
+    initialTodos: subtask.todos,
+    messages: subtask.messages as Message[],
+    todosRef,
+  });
+
   return {
     messages: (subtask?.messages as Message[]) ?? [],
-    todos: subtask?.todos ?? [],
+    todos,
   };
 }
