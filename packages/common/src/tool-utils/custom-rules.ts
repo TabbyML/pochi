@@ -1,6 +1,6 @@
-import { readFile, stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import path from "node:path";
+import { isFileExists } from "./fs";
 
 export const WorkspaceRulesFilePaths = ["README.pochi.md", "AGENTS.md"];
 
@@ -17,6 +17,7 @@ export const GlobalRules = [
 
 export async function collectAllRuleFiles(
   cwd: string,
+  readFileContent: (filePath: string) => Promise<string | null>,
   options: {
     customRuleFiles?: string[];
     includeDefaultRules?: boolean;
@@ -28,80 +29,66 @@ export async function collectAllRuleFiles(
     includeGlobalRules = true,
     customRuleFiles = [],
   } = options;
+
   const allRuleFiles = new Map<string, { filePath: string; label: string }>();
-  const filesToProcess: string[] = [];
-
-  const addSeedFile = async (rule: { filePath: string; label: string }) => {
-    // Check if the file exists, is a file (not a directory), and is a markdown file
-    try {
-      const stats = await stat(rule.filePath);
-      if (stats.isFile() && rule.filePath.endsWith(".md")) {
-        if (!allRuleFiles.has(rule.filePath)) {
-          allRuleFiles.set(rule.filePath, rule);
-          filesToProcess.push(rule.filePath);
-        }
-      }
-    } catch {
-      // File doesn't exist or other error, ignore
-    }
-  };
-
-  // 1. Add initial seed files
-  if (includeGlobalRules) {
-    for (const rule of GlobalRules) {
-      await addSeedFile(rule);
-    }
-  }
-  if (includeDefaultRules) {
-    for (const fileName of WorkspaceRulesFilePaths) {
-      const filePath = path.join(cwd, fileName);
-      await addSeedFile({
-        filePath,
-        label: fileName,
-      });
-    }
-  }
-  for (const rulePath of customRuleFiles) {
-    await addSeedFile({
-      filePath: rulePath,
-      label: path.relative(cwd, rulePath),
-    });
-  }
-
-  // 2. Process files recursively (iteratively)
   const visited = new Set<string>();
-  while (filesToProcess.length > 0) {
-    const filePath = filesToProcess.shift();
-    if (!filePath || visited.has(filePath)) {
-      continue;
+
+  const processFile = async (filePath: string, isGlobal: boolean) => {
+    if (visited.has(filePath)) {
+      return;
     }
+
+    if (!filePath.endsWith(".md") || !(await isFileExists(filePath))) {
+      return;
+    }
+
     visited.add(filePath);
 
     let content = "";
     try {
-      content = await readFile(filePath, "utf-8");
+      content = (await readFileContent(filePath)) ?? "";
+      // Only add the file to the list after it has been successfully read.
+      if (!allRuleFiles.has(filePath)) {
+        const label = isGlobal
+          ? filePath.replace(homedir(), "~")
+          : path.relative(cwd, filePath);
+        allRuleFiles.set(filePath, { filePath, label });
+      }
     } catch {
-      continue;
+      // If we can't read the file, it's not a valid rule file, so we return and don't process its imports.
+      return;
     }
 
     const dir = path.dirname(filePath);
-    const importRegex = /^@([./\\\w-]+.md)$/gm;
-
-    let match = importRegex.exec(content);
-    while (match !== null) {
+    const importRegex = /@([./\\\w-]+.md)/gm;
+    for (const match of content.matchAll(importRegex)) {
       const importPath = path.resolve(dir, match[1]);
-      await addSeedFile({
-        filePath: importPath,
-        label: path.relative(cwd, importPath),
-      });
-      match = importRegex.exec(content);
+      await processFile(importPath, isGlobal);
+    }
+  };
+
+  // 1. Process global rules
+  if (includeGlobalRules) {
+    for (const rule of GlobalRules) {
+      await processFile(rule.filePath, true);
     }
   }
 
-  return Array.from(allRuleFiles.values());
-}
+  // 2. Process default workspace rules
+  if (includeDefaultRules) {
+    for (const fileName of WorkspaceRulesFilePaths) {
+      const filePath = path.join(cwd, fileName);
+      await processFile(filePath, false);
+    }
+  }
 
-/**
+  // 3. Process custom rule files
+  for (const rulePath of customRuleFiles) {
+    await processFile(rulePath, false);
+  }
+
+  return Array.from(allRuleFiles.values());
+} /**
  * Collects custom rules from README.pochi.md and specified custom rule files.
  *
  * @param cwd Current working directory
@@ -111,13 +98,14 @@ export async function collectAllRuleFiles(
  */
 export async function collectCustomRules(
   cwd: string,
+  readFileContent: (filePath: string) => Promise<string | null>,
   customRuleFiles: string[] = [],
   includeDefaultRules = true,
   includeGlobalRules = true,
 ): Promise<string> {
   let rules = "";
 
-  const allRules = await collectAllRuleFiles(cwd, {
+  const allRules = await collectAllRuleFiles(cwd, readFileContent, {
     customRuleFiles,
     includeDefaultRules,
     includeGlobalRules,
@@ -126,7 +114,7 @@ export async function collectCustomRules(
   // Read all rule files
   for (const rule of allRules) {
     try {
-      const content = await readFile(rule.filePath, "utf-8");
+      const content = (await readFileContent(rule.filePath)) ?? "";
       if (content.trim().length > 0) {
         rules += `# Rules from ${rule.label}\n${content}\n`;
       }

@@ -1,16 +1,16 @@
 import path from "node:path";
 import { getLogger } from "@getpochi/common";
 import {
-  GlobalRules,
   WorkspaceRulesFilePaths,
-  collectCustomRules as collectCustomRulesImpl,
+  collectAllRuleFiles as commonCollectAllRuleFiles,
+  collectCustomRules as commonCollectCustomRules,
   getSystemInfo as getSystemInfoImpl,
   parseWorkflowFrontmatter,
 } from "@getpochi/common/tool-utils";
 import type { RuleFile } from "@getpochi/common/vscode-webui-bridge";
 import { uniqueBy } from "remeda";
 import * as vscode from "vscode";
-import { isFileExists, readFileContent } from "./fs";
+import { readFileContent } from "./fs";
 
 // Path constants - using arrays for consistency
 const WorkflowsDirPath = [".pochi", "workflows"];
@@ -52,73 +52,10 @@ function getWorkflowsDirectoryUri(cwd: string) {
 }
 
 export async function collectRuleFiles(cwd: string): Promise<RuleFile[]> {
-  const allRuleFiles = new Map<string, RuleFile>();
-  const filesToProcess: string[] = [];
-
-  // 1. Add initial seed files
-  // Global rules
-  for (const rule of GlobalRules) {
-    const uri = vscode.Uri.file(rule.filePath);
-    if (uri.path.endsWith(".md") && (await isFileExists(uri))) {
-      if (!allRuleFiles.has(rule.filePath)) {
-        allRuleFiles.set(rule.filePath, {
-          filepath: rule.filePath,
-          label: rule.label,
-        });
-        filesToProcess.push(rule.filePath);
-      }
-    }
-  }
-  // Workspace rules
-  for (const uri of getWorkspaceRulesFileUris(cwd)) {
-    if (uri.path.endsWith(".md") && (await isFileExists(uri))) {
-      if (!allRuleFiles.has(uri.fsPath)) {
-        allRuleFiles.set(uri.fsPath, {
-          filepath: uri.fsPath,
-          relativeFilepath: vscode.workspace.asRelativePath(uri),
-        });
-        filesToProcess.push(uri.fsPath);
-      }
-    }
-  }
-
-  // 2. Process files recursively (iteratively)
-  const visited = new Set<string>();
-  while (filesToProcess.length > 0) {
-    const filePath = filesToProcess.shift();
-    if (!filePath || visited.has(filePath)) {
-      continue;
-    }
-    visited.add(filePath);
-
-    const content = await readFileContent(filePath);
-    if (!content) {
-      continue;
-    }
-
-    const dir = path.dirname(filePath);
-    const importRegex = /^@([./\\\w-]+.md)$/gm;
-
-    let match = importRegex.exec(content);
-    while (match !== null) {
-      const importPath = path.resolve(dir, match[1]);
-      const importUri = vscode.Uri.file(importPath);
-      if (await isFileExists(importUri)) {
-        if (!allRuleFiles.has(importPath)) {
-          const relativePath = vscode.workspace.asRelativePath(importUri);
-          allRuleFiles.set(importPath, {
-            filepath: importPath,
-            relativeFilepath: relativePath,
-            label: relativePath, // Use relative path as label for imported files
-          });
-          filesToProcess.push(importPath);
-        }
-      }
-      match = importRegex.exec(content);
-    }
-  }
-
-  return Array.from(allRuleFiles.values());
+  return (await commonCollectAllRuleFiles(cwd, readFileContent)).map((x) => ({
+    filepath: x.filePath,
+    label: x.label,
+  }));
 }
 
 /**
@@ -134,7 +71,12 @@ export async function collectCustomRules(
 ): Promise<string> {
   // Use the shared implementation with default rules enabled
   // The common function will handle adding README.pochi.md from cwd
-  return await collectCustomRulesImpl(cwd, customRuleFiles, true);
+  return await commonCollectCustomRules(
+    cwd,
+    readFileContent,
+    customRuleFiles,
+    true,
+  );
 }
 
 /**
