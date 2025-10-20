@@ -133,7 +133,7 @@ export interface ToolCallLifeCycle {
    * @param args - Tool call arguments
    * @param options - Execution options including model selection
    */
-  execute(args: unknown): void;
+  execute(args: unknown, options?: { contentType?: string[] }): void;
 
   /**
    * Abort the currently executing tool call.
@@ -268,7 +268,7 @@ export class ManagedToolCallLifeCycle
     }
   }
 
-  execute(args: unknown) {
+  execute(args: unknown, options?: { contentType?: string[] }) {
     const abortController = new AbortController();
     const abortSignal = AbortSignal.any([
       abortController.signal,
@@ -282,6 +282,7 @@ export class ManagedToolCallLifeCycle
       executePromise = vscodeHost.executeToolCall(this.toolName, args, {
         toolCallId: this.toolCallId,
         abortSignal: ThreadAbortSignal.serialize(abortSignal),
+        contentType: options?.contentType,
       });
     }
 

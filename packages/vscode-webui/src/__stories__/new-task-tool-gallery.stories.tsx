@@ -38,20 +38,6 @@ export default meta;
 type Story = StoryObj<typeof ToolsGallery>;
 type NewTaskProp = ToolProps<"newTask">;
 
-const newTaskProps: NewTaskProp["tool"] = {
-  state: "output-available",
-  toolCallId: "tool_new_task_1",
-  type: "tool-newTask",
-  input: {
-    description: "Find the relevant file to update for the user's request",
-    prompt:
-      "The user wants to add a new tool to the storybook gallery. Find the relevant file to update.",
-  },
-  output: {
-    result: "This is a great day",
-  },
-};
-
 // Mock data for TaskThreadSource stories
 const mockMessages: Message[] = [
   {
@@ -100,6 +86,29 @@ const mockMessages: Message[] = [
         ],
       }) satisfies Message,
   ),
+  {
+    id: "msg-final",
+    metadata: {
+      kind: "assistant",
+      totalTokens: 150,
+      finishReason: "tool-calls",
+    },
+    role: "assistant",
+    parts: [
+      {
+        type: "step-start",
+      },
+      {
+        type: "tool-attemptCompletion",
+        toolCallId: "call_49e745ede4b84732aec16ddc",
+        state: "input-available",
+        input: {
+          result:
+            "Successfully created 3 todo items using a new task and marked all of them as completed. The todo items covered project structure setup, user authentication implementation, and comprehensive testing - all set to completed status.",
+        },
+      },
+    ],
+  },
 ];
 
 const mockTodos: Todo[] = [
@@ -141,24 +150,81 @@ const mockTaskThreadSourceEmpty = {
   isLoading: false,
 };
 
+const newTaskProps1: NewTaskProp["tool"] = {
+  state: "output-available",
+  toolCallId: "tool_new_task_1",
+  type: "tool-newTask",
+  input: {
+    description: "Find the relevant file to update for the user's request",
+    prompt:
+      "The user wants to add a new tool to the storybook gallery. Find the relevant file to update.",
+    _transient: {
+      task: { ...mockTaskThreadSource, clientTaskId: "transient-task-1" },
+    },
+  },
+  output: {
+    result: "This is a great day",
+  },
+};
+
+const newTaskProps2: NewTaskProp["tool"] = {
+  state: "output-available",
+  toolCallId: "tool_new_task_1",
+  type: "tool-newTask",
+  input: {
+    description: "Find the relevant file to update for the user's request",
+    prompt:
+      "The user wants to add a new tool to the storybook gallery. Find the relevant file to update.",
+    _transient: {
+      task: {
+        ...mockTaskThreadSourceLoading,
+        clientTaskId: "transient-task-2",
+      },
+    },
+  },
+  output: {
+    result: "This is a great day",
+  },
+};
+
+const newTaskProps3: NewTaskProp["tool"] = {
+  state: "output-available",
+  toolCallId: "tool_new_task_1",
+  type: "tool-newTask",
+  input: {
+    description: "Find the relevant file to update for the user's request",
+    prompt:
+      "The user wants to add a new tool to the storybook gallery. Find the relevant file to update.",
+    _transient: {
+      task: {
+        ...mockTaskThreadSourceEmpty,
+        clientTaskId: "transient-task-3",
+      },
+    },
+  },
+  output: {
+    result: "This is a great day",
+  },
+};
+
 export const Variants: Story = {
   args: {
     tools: [
       {
-        ...newTaskProps,
-        toolCallId: `${newTaskProps.toolCallId}-completed`,
+        ...newTaskProps1,
+        toolCallId: `${newTaskProps1.toolCallId}-completed`,
         // @ts-expect-error - Adding custom prop for Storybook
         taskThreadSource: mockTaskThreadSource,
       },
       {
-        ...newTaskProps,
-        toolCallId: `${newTaskProps.toolCallId}-loading`,
+        ...newTaskProps2,
+        toolCallId: `${newTaskProps2.toolCallId}-loading`,
         // @ts-expect-error - Adding custom prop for Storybook
         taskThreadSource: mockTaskThreadSourceLoading,
       },
       {
-        ...newTaskProps,
-        toolCallId: `${newTaskProps.toolCallId}-empty`,
+        ...newTaskProps3,
+        toolCallId: `${newTaskProps3.toolCallId}-empty`,
         // @ts-expect-error - Adding custom prop for Storybook
         taskThreadSource: mockTaskThreadSourceEmpty,
       },

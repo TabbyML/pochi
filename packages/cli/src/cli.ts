@@ -1,4 +1,8 @@
 #!/usr/bin/env bun
+
+// Override global console to stderr
+import "./logger";
+
 // Workaround for https://github.com/oven-sh/bun/issues/18145
 import "@livestore/wa-sqlite/dist/wa-sqlite.node.wasm" with { type: "file" };
 
@@ -338,6 +342,7 @@ async function createLLMConfigWithVendors(
       );
     }
     return {
+      id: `${vendorId}/${modelId}`,
       type: "vendor",
       useToolCallMiddleware: options.useToolCallMiddleware,
       getModel: () =>
@@ -345,6 +350,7 @@ async function createLLMConfigWithVendors(
           modelId,
           getCredentials: vendor.getCredentials,
         }),
+      contentType: options.contentType,
     } satisfies LLMRequestData;
   }
 }
@@ -358,6 +364,7 @@ async function createLLMConfigWithPochi(
   if (pochiModelOptions) {
     const vendorId = "pochi";
     return {
+      id: `${vendorId}/${model}`,
       type: "vendor",
       useToolCallMiddleware: pochiModelOptions.useToolCallMiddleware,
       getModel: () =>
@@ -365,6 +372,7 @@ async function createLLMConfigWithPochi(
           modelId: model,
           getCredentials: vendor.getCredentials,
         }),
+      contentType: pochiModelOptions.contentType,
     };
   }
 }
@@ -389,6 +397,7 @@ async function createLLMConfigWithProviders(
 
   if (modelProvider.kind === "ai-gateway") {
     return {
+      id: `${providerId}/${modelId}`,
       type: "ai-gateway",
       modelId,
       apiKey: modelProvider.apiKey,
@@ -396,11 +405,13 @@ async function createLLMConfigWithProviders(
         modelSetting.contextWindow ?? constants.DefaultContextWindow,
       maxOutputTokens:
         modelSetting.maxTokens ?? constants.DefaultMaxOutputTokens,
+      contentType: modelSetting.contentType,
     };
   }
 
   if (modelProvider.kind === "google-vertex-tuning") {
     return {
+      id: `${providerId}/${modelId}`,
       type: "google-vertex-tuning",
       modelId,
       vertex: modelProvider.vertex,
@@ -409,6 +420,7 @@ async function createLLMConfigWithProviders(
       maxOutputTokens:
         modelSetting.maxTokens ?? constants.DefaultMaxOutputTokens,
       useToolCallMiddleware: modelSetting.useToolCallMiddleware,
+      contentType: modelSetting.contentType,
     };
   }
 
@@ -419,6 +431,7 @@ async function createLLMConfigWithProviders(
     modelProvider.kind === "anthropic"
   ) {
     return {
+      id: `${providerId}/${modelId}`,
       type: modelProvider.kind || "openai",
       modelId,
       baseURL: modelProvider.baseURL,
@@ -428,6 +441,7 @@ async function createLLMConfigWithProviders(
       maxOutputTokens:
         modelSetting.maxTokens ?? constants.DefaultMaxOutputTokens,
       useToolCallMiddleware: modelSetting.useToolCallMiddleware,
+      contentType: modelSetting.contentType,
     };
   }
 

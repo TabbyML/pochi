@@ -42,6 +42,7 @@ export const MessageList: React.FC<{
   containerRef?: React.RefObject<HTMLDivElement | null>;
   showUserAvatar?: boolean;
   className?: string;
+  showLoader?: boolean;
 }> = ({
   messages: renderMessages,
   isLoading,
@@ -50,6 +51,7 @@ export const MessageList: React.FC<{
   containerRef,
   showUserAvatar = true,
   className,
+  showLoader = true,
 }) => {
   const [debouncedIsLoading, setDebouncedIsLoading] = useDebounceState(
     isLoading,
@@ -135,14 +137,16 @@ export const MessageList: React.FC<{
             )}
           </div>
         ))}
-        <div className="py-2">
-          <Loader2
-            className={cn(
-              "mx-auto size-6",
-              debouncedIsLoading ? "animate-spin" : "invisible",
-            )}
-          />
-        </div>
+        {showLoader && (
+          <div className="py-2">
+            <Loader2
+              className={cn(
+                "mx-auto size-6",
+                debouncedIsLoading ? "animate-spin" : "invisible",
+              )}
+            />
+          </div>
+        )}
       </ScrollArea>
     </BackgroundJobContextProvider>
   );

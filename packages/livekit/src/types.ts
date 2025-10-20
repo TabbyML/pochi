@@ -34,6 +34,7 @@ const RequestData = z.object({
   environment: Environment.optional(),
   llm: z.discriminatedUnion("type", [
     z.object({
+      id: z.string(),
       type: z.literal("openai"),
       modelId: z.string(),
       baseURL: z.string().optional(),
@@ -44,8 +45,13 @@ const RequestData = z.object({
         .boolean()
         .optional()
         .describe("Whether to use tool call middleware"),
+      contentType: z
+        .array(z.string())
+        .optional()
+        .describe("The supported mime types model can handle"),
     }),
     z.object({
+      id: z.string(),
       type: z.literal("openai-responses"),
       modelId: z.string(),
       baseURL: z.string().optional(),
@@ -56,8 +62,13 @@ const RequestData = z.object({
         .boolean()
         .optional()
         .describe("Whether to use tool call middleware"),
+      contentType: z
+        .array(z.string())
+        .optional()
+        .describe("The supported mime types model can handle"),
     }),
     z.object({
+      id: z.string(),
       type: z.literal("anthropic"),
       modelId: z.string(),
       baseURL: z.string().optional(),
@@ -68,8 +79,13 @@ const RequestData = z.object({
         .boolean()
         .optional()
         .describe("Whether to use tool call middleware"),
+      contentType: z
+        .array(z.string())
+        .optional()
+        .describe("The supported mime types model can handle"),
     }),
     z.object({
+      id: z.string(),
       type: z.literal("google-vertex-tuning"),
       modelId: z.string(),
       vertex: GoogleVertexModel,
@@ -79,8 +95,13 @@ const RequestData = z.object({
         .boolean()
         .optional()
         .describe("Whether to use tool call middleware"),
+      contentType: z
+        .array(z.string())
+        .optional()
+        .describe("The supported mime types model can handle"),
     }),
     z.object({
+      id: z.string(),
       type: z.literal("ai-gateway"),
       modelId: z.string(),
       apiKey: z.string().optional(),
@@ -90,14 +111,23 @@ const RequestData = z.object({
         .boolean()
         .optional()
         .describe("Whether to use tool call middleware"),
+      contentType: z
+        .array(z.string())
+        .optional()
+        .describe("The supported mime types model can handle"),
     }),
     z.object({
+      id: z.string(),
       type: z.literal("vendor"),
       useToolCallMiddleware: z
         .boolean()
         .optional()
         .describe("Whether to use tool call middleware"),
       getModel: z.custom<() => LanguageModelV2>(),
+      contentType: z
+        .array(z.string())
+        .optional()
+        .describe("The supported mime types model can handle"),
     }),
   ]),
   mcpToolSet: z

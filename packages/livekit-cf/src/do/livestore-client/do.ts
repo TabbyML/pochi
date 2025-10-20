@@ -44,7 +44,7 @@ export class LiveStoreClientDO
 
     await this.onTasksUpdateThrottled.call();
     await this.state.storage.setAlarm(Date.now() + 15_000);
-    // await this.subscribeToStore();
+    await this.subscribeToStoreUpdates();
   }
 
   async fetch(request: Request): Promise<Response> {
@@ -96,16 +96,15 @@ export class LiveStoreClientDO
     return store;
   }
 
-  // private async subscribeToStoreUpdates() {
-  //   const store = await this.getStore();
-  //   // Make sure to only subscribe once
-  //   if (this.storeSubscription === undefined) {
-  //     this.storeSubscription = store.subscribe(catalog.queries.tasks$, {
-  //       // FIXME(meng): implement this with store.events stream when it's ready
-  //       onUpdate: (tasks) => this.onTasksUpdateThrottled.call(tasks),
-  //     });
-  //   }
-  // }
+  private async subscribeToStoreUpdates() {
+    await this.getStore();
+    // // Make sure to only subscribe once
+    // if (this.storeSubscription === undefined) {
+    //   this.storeSubscription = store.subscribe(catalog.queries.tasks$, {
+    //     // FIXME(meng): implement this with store.events stream when it's ready
+    //     onUpdate: (tasks) => this.onTasksUpdateThrottled.call(tasks),
+    //   });
+  }
 
   alarm(_alarmInfo?: AlarmInvocationInfo): void | Promise<void> {}
 

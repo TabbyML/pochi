@@ -26,6 +26,10 @@ const BaseModelSettings = z.object({
         .boolean()
         .optional()
         .describe("Whether to use tool call middleware"),
+      contentType: z
+        .array(z.string())
+        .optional()
+        .describe("The supported mime types model can handle"),
     }),
   ),
 });
@@ -60,12 +64,14 @@ export const GoogleVertexModel = z.union([
     serviceAccountKey: z
       .string()
       .default(process.env.POCHI_VERTEX_SERVICE_ACCOUNT_KEY ?? ""),
-    location: z.string(),
+    location: z.string().default(process.env.POCHI_VERTEX_LOCATION ?? ""),
   }),
   z.object({
-    accessToken: z.string(),
-    projectId: z.string(),
-    location: z.string(),
+    accessToken: z
+      .string()
+      .default(process.env.POCHI_VERTEX_ACCESS_TOKEN ?? ""),
+    projectId: z.string().default(process.env.POCHI_VERTEX_PROJECT_ID ?? ""),
+    location: z.string().default(process.env.POCHI_VERTEX_LOCATION ?? ""),
   }),
   z.object({
     issueUrl: z.string().default(process.env.POCHI_VERTEX_ISSUE_URL ?? ""),
