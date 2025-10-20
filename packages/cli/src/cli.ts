@@ -53,7 +53,10 @@ import {
 
 import type { FileUIPart } from "ai";
 import { JsonRenderer } from "./json-renderer";
-import { shutdownStoreAndExit, createAbortControllerWithGracefulShutdown } from "./lib/shutdown";
+import {
+  createAbortControllerWithGracefulShutdown,
+  shutdownStoreAndExit,
+} from "./lib/shutdown";
 import { createStore } from "./livekit/store";
 import { initializeMcp, registerMcpCommand } from "./mcp";
 import { registerModelCommand } from "./model";
