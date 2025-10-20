@@ -1,4 +1,5 @@
 import { useContext } from "react";
+
 import { ChatContext, type ChatState } from "./types";
 
 function useChatState(): ChatState {
@@ -24,11 +25,16 @@ export function useToolCallLifeCycle() {
     previewingToolCalls,
     completeToolCalls,
   } = useChatState();
+
+  const isExecuting = executingToolCalls.length > 0;
+  const isPreviewing = previewingToolCalls.length > 0;
   return {
     getToolCallLifeCycle,
     executingToolCalls,
     previewingToolCalls,
     completeToolCalls,
+    isExecuting,
+    isPreviewing,
   };
 }
 
