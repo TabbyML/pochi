@@ -9,9 +9,9 @@ import type { CfTypes } from "@livestore/sync-cf/common";
 import moment from "moment";
 import { funnel } from "remeda";
 import * as runExclusive from "run-exclusive";
+import { makeMessagesQuery } from "../../../../livekit/src/livestore/queries";
 import { app } from "./app";
 import type { Env as ClientEnv } from "./types";
-import { makeMessagesQuery } from "../../../../livekit/src/livestore/queries";
 
 // Scoped by storeId
 export class LiveStoreClientDO
