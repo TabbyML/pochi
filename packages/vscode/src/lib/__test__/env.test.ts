@@ -91,6 +91,35 @@ describe("env.ts", () => {
 
     // Mock the common module functions
     const commonStub = {
+      collectAllRuleFiles: async (cwd: string, readFileContent: (filePath: string) => Promise<string | null>) => {
+        const files: { filePath: string, label: string }[] = [];
+        const visited = new Set<string>();
+
+        const processFile = async (filePath: string, label: string) => {
+          if (visited.has(filePath)) {
+            return;
+          }
+          visited.add(filePath);
+
+          try {
+            const content = await readFileContent(filePath);
+            if (content !== null) {
+              files.push({ filePath, label });
+              const importRegex = /@([./\\\w-]+.md)/gm;
+              for (const match of content.matchAll(importRegex)) {
+                const importPath = nodePath.resolve(nodePath.dirname(filePath), match[1]);
+                await processFile(importPath, match[1]);
+              }
+            }
+          } catch {}
+        };
+
+        // Start processing from the main README file.
+        const mainReadmePath = nodePath.join(cwd, "README.pochi.md");
+        await processFile(mainReadmePath, "README.pochi.md");
+
+        return files;
+      },
       getSystemInfo: (cwd?: string) => {
         const platform = process.platform;
         const homedir = mockOsHomedirStub();
@@ -104,7 +133,7 @@ describe("env.ts", () => {
           homedir,
         };
       },
-      collectCustomRules: async (cwd: string, customRuleFiles: string[] = [], includeDefaultRules: boolean = true) => {
+      collectCustomRules: async (cwd: string, readFileContent: (filePath: string) => Promise<string | null>, customRuleFiles: string[] = [], includeDefaultRules: boolean = true) => {
         // Mock implementation that properly reads files using VSCode APIs for test compatibility
         let rules = "";
         const allRuleFiles = [...customRuleFiles];
@@ -117,9 +146,7 @@ describe("env.ts", () => {
         // Read all rule files using VSCode APIs (which work in test environment)
         for (const rulePath of allRuleFiles) {
           try {
-            const fileUri = vscode.Uri.file(rulePath);
-            const fileContent = await vscode.workspace.fs.readFile(fileUri);
-            const content = Buffer.from(fileContent).toString("utf8");
+            const content = await readFileContent(rulePath);
             if (content && content.trim().length > 0) {
               const fileName = nodePath.basename(rulePath);
               rules += `# Rules from ${fileName}\n${content}\n`;
@@ -761,4 +788,3 @@ describe("env.ts", () => {
     });
   });
 });
-
