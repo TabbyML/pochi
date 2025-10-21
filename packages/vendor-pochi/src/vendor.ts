@@ -16,6 +16,7 @@ import { jwtClient } from "better-auth/client/plugins";
 import { createAuthClient as createAuthClientImpl } from "better-auth/react";
 import { hc } from "hono/client";
 import * as jose from "jose";
+import { getContentTypesForModel } from "./content-type";
 import { getPochiCredentials, updatePochiCredentials } from "./credentials";
 import type { PochiApi, PochiApiClient } from "./pochi-api";
 import { makeWebFetch, makeWebSearch } from "./tools";
@@ -50,40 +51,9 @@ export class Pochi extends VendorBase {
           x.id,
           {
             contextWindow: x.contextWindow,
-            useToolCallMiddleware: x.id.includes("google/"),
+            useToolCallMiddleware: x.id.includes("google"),
             label: x.costType === "basic" ? "swift" : "super",
-            contentType: x.id.includes("google/")
-              ? [
-                  // https://ai.google.dev/gemini-api/docs/image-understanding#supported-formats
-                  "image/png",
-                  "image/jpeg",
-                  "image/webp",
-                  "image/heic",
-                  "image/heif",
-
-                  // https://ai.google.dev/gemini-api/docs/video-understanding#supported-formats
-                  "video/mp4",
-                  "video/mpeg",
-                  "video/mov",
-                  "video/avi",
-                  "video/x-flv",
-                  "video/mpg",
-                  "video/webm",
-                  "video/wmv",
-                  "video/3gpp",
-
-                  // https://ai.google.dev/gemini-api/docs/audio#supported-formats
-                  "audio/wav",
-                  "audio/mp3",
-                  "audio/aiff",
-                  "audio/aac",
-                  "audio/ogg",
-                  "audio/flac",
-
-                  // https://ai.google.dev/gemini-api/docs/document-processing#document-types
-                  "application/pdf",
-                ]
-              : undefined,
+            contentType: getContentTypesForModel(x.id),
           } satisfies ModelOptions,
         ]),
       );
