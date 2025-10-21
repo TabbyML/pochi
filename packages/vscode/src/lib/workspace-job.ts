@@ -1,4 +1,5 @@
 import { getLogger } from "@/lib/logger";
+import * as runExclusive from "run-exclusive";
 import { inject, injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
 
@@ -49,7 +50,7 @@ export class WorkspaceJobQueue implements vscode.Disposable {
     return vscode.workspace.workspaceFolders?.[0]?.uri;
   }
 
-  private async run() {
+  private run = runExclusive.build(async () => {
     const jobs = this.context.globalState.get<WorkspaceJob[]>(
       WorkspaceJobQueue.GlobalStateKey,
       [],
@@ -77,7 +78,7 @@ export class WorkspaceJobQueue implements vscode.Disposable {
       logger.debug(`Running job ${JSON.stringify(job)}.`);
       await vscode.commands.executeCommand(job.command, ...job.args);
     }
-  }
+  });
 
   dispose() {
     clearInterval(this.runner);

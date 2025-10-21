@@ -2,8 +2,10 @@ import { minimatch } from "minimatch";
 import { type ILogObjMeta, type IMeta, Logger } from "tslog";
 import { isVSCodeEnvironment } from "../env-utils";
 
+const type = typeof process?.stderr !== "undefined" ? "hidden" : "pretty";
+
 const mainLogger = new Logger({
-  type: "hidden",
+  type,
 });
 
 function stringToLogLevel(level: string) {

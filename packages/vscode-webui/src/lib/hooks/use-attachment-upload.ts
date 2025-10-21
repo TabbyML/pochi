@@ -127,6 +127,7 @@ export function useAttachmentUpload(options?: UseAttachmentUploadOptions) {
   };
 
   const upload = async (): Promise<FileUIPart[]> => {
+    if (isUploading) return [];
     if (!files.length) {
       return [];
     }
@@ -171,6 +172,7 @@ export function useAttachmentUpload(options?: UseAttachmentUploadOptions) {
   const cancelUpload = () => {
     if (abortController.current) {
       abortController.current.abort();
+      clearFiles();
     }
   };
 

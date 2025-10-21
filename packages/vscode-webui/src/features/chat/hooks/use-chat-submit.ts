@@ -75,15 +75,21 @@ export function useChatSubmit({
       abortPreviewingToolCalls();
     }
 
+    if (isUploading) {
+      cancelUpload();
+    }
+
     if (isExecuting) {
       abortExecutingToolCalls();
-    } else if (isUploading) {
-      cancelUpload();
-    } else if (isLoading) {
+    }
+
+    if (pendingApproval?.name === "retry") {
+      pendingApproval.stopCountdown();
+    }
+
+    if (isLoading) {
       stopChat();
       return true;
-    } else if (pendingApproval?.name === "retry") {
-      pendingApproval.stopCountdown();
     }
   }, [
     newCompactTaskPending,
