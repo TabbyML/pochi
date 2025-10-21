@@ -1797,13 +1797,13 @@ We’ve given Pochi new tricks.
 
 Workflows can now execute Bash commands, `readFile` tool supports images, and markdown rendering is faster and cleaner with `streamdown.ai`.
 
-A few quieter upgrades slipped in too, like modular rules and better Git subtree support.
+A few quieter upgrades slipped in too: modular rules, Git subtree support, and a new Linux ARM64 release.
 
 Let’s get on with it!
 
 ### 🚀 Features
 
-* **Bash Commands in Workflows** You can now execute Bash commands directly inside Pochi workflows using the ! prefix.This allows workflows to pull live system or repository context, like `git status` or `uname -a`, and feed the results into the model before running your task. <break />
+* **Bash Commands in Workflows** You can now execute Bash commands directly inside Pochi workflows using the `!` prefix. This allows workflows to pull live system or repository context, like `git status` or `uname -a`, and feed the results into the model before running your task. <break />
   For example:
 
 ```bash
@@ -1815,13 +1815,13 @@ Pochi automatically runs these commands and includes their outputs in the model�
 
 <div class="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg">![Bash commands](./images/bash-commands.png)</div>
 
-* **Git Worktree Integration:** You can now open and manage tasks from different Git worktrees directly in Pochi. Each worktree appears as its own context in the `Source Control` panel and can be opened in a dedicated Pochi tab. This is ideal if you’re working across multiple branches or release environments without leaving your main workspace. **[#226](https://github.com/TabbyML/pochi/issues/226)** , **[#533](https://github.com/TabbyML/pochi/issues/533)**
+* **Git Worktree Integration:** You can now open and manage tasks from different Git worktrees directly in Pochi. Each worktree appears as its own context in the `Source Control` panel and can be opened in a dedicated Pochi tab. This is ideal if you’re working across multiple branches or release environments without leaving your main workspace. **[#226](https://github.com/TabbyML/pochi/issues/226)**, **[#533](https://github.com/TabbyML/pochi/issues/533)**
 
 <div class="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg">![Git Worktree Integration](./images/git-worktree-integration.png)</div>
 
 ### ✨ Enhancements
 
-* **Faster Markdown Rendering with `streamdown.ai`:**  We’ve replaced `react-markdown` with `streamdown.ai` in the VS Code web UI. This upgrade improves performance, adds streaming markdown rendering, and ensures better support for rich content (like math, code blocks, and workflows). **[#401](https://github.com/TabbyML/pochi/issues/401)**
+* **Faster Markdown Rendering with `streamdown.ai`:**  We’ve replaced `react-markdown` with `streamdown.ai` in the VS Code web UI. This upgrade improves performance, adds streaming-based markdown rendering, and ensures better support for rich content (like math, code blocks, and workflows). **[#401](https://github.com/TabbyML/pochi/issues/401)**
 
 * **Image Support in `readFile` Tool:**  The `readFile` tool now supports reading image file inputs for multimodal models such as Gemini and Anthropic.  Pochi automatically detects file types and encodes images as `base64` for models that can interpret visual data. **[#539](https://github.com/TabbyML/pochi/issues/539)**, **[#569](https://github.com/TabbyML/pochi/issues/569)**
 
@@ -1893,13 +1893,13 @@ We’ve given Pochi new tricks.
 
 Workflows can now execute Bash commands, `readFile` tool supports images, and markdown rendering is faster and cleaner with `streamdown.ai`.
 
-A few quieter upgrades slipped in too, like modular rules and better Git subtree support.
+A few quieter upgrades slipped in too: modular rules, Git subtree support, and a new Linux ARM64 release.
 
 Let’s get on with it!
 
 ### 🚀 Features
 
-* **Bash Commands in Workflows** You can now execute Bash commands directly inside Pochi workflows using the ! prefix.This allows workflows to pull live system or repository context, like `git status` or `uname -a`, and feed the results into the model before running your task. <break />
+* **Bash Commands in Workflows** You can now execute Bash commands directly inside Pochi workflows using the `!` prefix. This allows workflows to pull live system or repository context, like `git status` or `uname -a`, and feed the results into the model before running your task. <break />
   For example:
 
 ```bash
@@ -1911,13 +1911,13 @@ Pochi automatically runs these commands and includes their outputs in the model�
 
 <div class="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg">![Bash commands](./images/bash-commands.png)</div>
 
-* **Git Worktree Integration:** You can now open and manage tasks from different Git worktrees directly in Pochi. Each worktree appears as its own context in the `Source Control` panel and can be opened in a dedicated Pochi tab. This is ideal if you’re working across multiple branches or release environments without leaving your main workspace. **[#226](https://github.com/TabbyML/pochi/issues/226)** , **[#533](https://github.com/TabbyML/pochi/issues/533)**
+* **Git Worktree Integration:** You can now open and manage tasks from different Git worktrees directly in Pochi. Each worktree appears as its own context in the `Source Control` panel and can be opened in a dedicated Pochi tab. This is ideal if you’re working across multiple branches or release environments without leaving your main workspace. **[#226](https://github.com/TabbyML/pochi/issues/226)**, **[#533](https://github.com/TabbyML/pochi/issues/533)**
 
 <div class="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg">![Git Worktree Integration](./images/git-worktree-integration.png)</div>
 
 ### ✨ Enhancements
 
-* **Faster Markdown Rendering with `streamdown.ai`:**  We’ve replaced `react-markdown` with `streamdown.ai` in the VS Code web UI. This upgrade improves performance, adds streaming markdown rendering, and ensures better support for rich content (like math, code blocks, and workflows). **[#401](https://github.com/TabbyML/pochi/issues/401)**
+* **Faster Markdown Rendering with `streamdown.ai`:**  We’ve replaced `react-markdown` with `streamdown.ai` in the VS Code web UI. This upgrade improves performance, adds streaming-based markdown rendering, and ensures better support for rich content (like math, code blocks, and workflows). **[#401](https://github.com/TabbyML/pochi/issues/401)**
 
 * **Image Support in `readFile` Tool:**  The `readFile` tool now supports reading image file inputs for multimodal models such as Gemini and Anthropic.  Pochi automatically detects file types and encodes images as `base64` for models that can interpret visual data. **[#539](https://github.com/TabbyML/pochi/issues/539)**, **[#569](https://github.com/TabbyML/pochi/issues/569)**
 
