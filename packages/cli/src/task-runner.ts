@@ -91,6 +91,11 @@ export interface RunnerOptions {
    */
   mcpHub?: McpHub;
 
+  /**
+   * AbortSignal for cancelling the task execution
+   */
+  abortSignal?: AbortSignal;
+
   outputSchema?: z.ZodAny;
 }
 
@@ -147,6 +152,7 @@ export class TaskRunner {
       isSubTask: options.isSubTask,
       customAgent: options.customAgent,
       outputSchema: options.outputSchema,
+      abortSignal: options.abortSignal,
       onOverrideMessages: createOnOverrideMessages(this.cwd),
       getters: {
         getLLM: () => options.llm,
