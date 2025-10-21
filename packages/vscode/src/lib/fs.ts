@@ -1,4 +1,4 @@
-import { join } from "node:path";
+import path, { join } from "node:path";
 import * as diff from "diff";
 import * as vscode from "vscode";
 
@@ -47,36 +47,6 @@ export async function readFileContent(
   }
 }
 
-/**
- * Generic directory reader with filtering
- */
-export async function readDirectoryFiles(
-  directoryUri: vscode.Uri,
-  fileFilter: (name: string, type: vscode.FileType) => boolean,
-): Promise<string[]> {
-  try {
-    const stat = await vscode.workspace.fs.stat(directoryUri);
-    if (stat.type !== vscode.FileType.Directory) {
-      return [];
-    }
-
-    const entries = await vscode.workspace.fs.readDirectory(directoryUri);
-    const files: string[] = [];
-
-    for (const [name, type] of entries) {
-      if (fileFilter(name, type)) {
-        const fileUri = vscode.Uri.joinPath(directoryUri, name);
-        const relativePath = vscode.workspace.asRelativePath(fileUri);
-        files.push(relativePath);
-      }
-    }
-
-    return files;
-  } catch (error) {
-    return [];
-  }
-}
-
 export const vscodeRipgrepPath = join(
   vscode.env.appRoot,
   "node_modules",
@@ -85,3 +55,13 @@ export const vscodeRipgrepPath = join(
   "bin",
   "rg",
 );
+
+export const asRelativePath = (
+  uri: vscode.Uri | string,
+  cwd: string,
+): string => {
+  if (typeof uri === "string") {
+    return path.relative(cwd, uri);
+  }
+  return path.relative(cwd, uri.fsPath);
+};

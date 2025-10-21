@@ -10,7 +10,7 @@ import {
 import type { RuleFile } from "@getpochi/common/vscode-webui-bridge";
 import { uniqueBy } from "remeda";
 import * as vscode from "vscode";
-import { readFileContent } from "./fs";
+import { asRelativePath, readFileContent } from "./fs";
 
 // Path constants - using arrays for consistency
 const WorkflowsDirPath = [".pochi", "workflows"];
@@ -147,7 +147,7 @@ export async function collectWorkflows(
             if (isGlobal) {
               file = absolutePath.replace(systemInfo.homedir, "~");
             } else {
-              file = vscode.workspace.asRelativePath(fileUri);
+              file = asRelativePath(fileUri, cwd);
             }
 
             return {
@@ -185,7 +185,7 @@ export async function detectThirdPartyRules(cwd: string): Promise<string[]> {
     );
     try {
       await vscode.workspace.fs.stat(legacyRulesUri);
-      cursorRulePaths.push(vscode.workspace.asRelativePath(legacyRulesUri));
+      cursorRulePaths.push(asRelativePath(legacyRulesUri, cwd));
     } catch {
       // File doesn't exist, continue
     }
@@ -220,9 +220,7 @@ export async function detectThirdPartyRules(cwd: string): Promise<string[]> {
                           ruleType === vscode.FileType.File &&
                           ruleName.endsWith(".mdc")
                         ) {
-                          cursorRulePaths.push(
-                            vscode.workspace.asRelativePath(ruleUri),
-                          );
+                          cursorRulePaths.push(asRelativePath(ruleUri, cwd));
                         } else if (ruleType === vscode.FileType.Directory) {
                           // Recursively check subdirectories for nested rules
                           await findMdcFiles(ruleUri);

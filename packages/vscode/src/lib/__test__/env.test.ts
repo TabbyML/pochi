@@ -170,27 +170,6 @@ describe("env.ts", () => {
           return null;
         }
       },
-      readDirectoryFiles: async (directoryUri: vscode.Uri, fileFilter: (name: string, type: any) => boolean) => {
-        try {
-          const stat = await vscode.workspace.fs.stat(directoryUri);
-          if (stat.type !== vscode.FileType.Directory) {
-            return [];
-          }
-
-          const entries = await vscode.workspace.fs.readDirectory(directoryUri);
-          const files: string[] = [];
-
-          for (const [name, type] of entries) {
-            if (fileFilter(name, type)) {
-              files.push(name);
-            }
-          }
-
-          return files;
-        } catch (error) {
-          return [];
-        }
-      },
       getWorkspaceFolder: () => {
         if (!currentTestWorkspaceFolders || currentTestWorkspaceFolders.length === 0) {
           throw new Error("No workspace folder found. Please open a workspace.");

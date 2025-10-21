@@ -12,7 +12,7 @@ import {
   getSystemInfo,
   getWorkspaceRulesFileUri,
 } from "@/lib/env";
-import { isFileExists } from "@/lib/fs";
+import { asRelativePath, isFileExists } from "@/lib/fs";
 import { getLogger } from "@/lib/logger";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { ModelList } from "@/lib/model-list";
@@ -287,7 +287,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       recursive: true,
     });
     return results.map((item) => ({
-      filepath: vscode.workspace.asRelativePath(item.filepath),
+      filepath: asRelativePath(item.filepath, this.cwd ?? ""),
       isDir: item.isDir,
     }));
   };
