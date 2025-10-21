@@ -9,10 +9,10 @@ export class WebhookDelivery {
   async onTaskUpdated(
     task: Task,
     result?: {
-      completionInfo?: string;
+      completion?: string;
       followup?: {
         question: string;
-        followup?: string[];
+        choices?: string[];
       };
     },
   ) {

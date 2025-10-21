@@ -145,7 +145,7 @@ export class LiveStoreClientDO
     if (webhook) {
       await Promise.all(
         updatedTasks.map((task) => {
-          let completionInfo: string | undefined = undefined;
+          let completion: string | undefined = undefined;
           let followup = undefined;
           if (task.status === "completed") {
             const messages = store.query(
@@ -165,7 +165,7 @@ export class LiveStoreClientDO
                     part.type === "tool-attemptCompletion" &&
                     part.state === "input-available"
                   ) {
-                    completionInfo =
+                    completion =
                       (part.input as { result?: string } | undefined)?.result ||
                       undefined;
                     break;
@@ -175,20 +175,24 @@ export class LiveStoreClientDO
                     part.state === "input-available"
                   ) {
                     followup = part.input as
-                      | { question: string; followup?: string[] }
+                      | { question: string; followUp?: string[] }
                       | undefined;
                     break;
                   }
                 }
-                if (completionInfo !== undefined || followup !== undefined)
-                  break;
+                if (completion !== undefined || followup !== undefined) break;
               }
             }
           }
           webhook
             .onTaskUpdated(task, {
-              completionInfo,
-              followup,
+              completion,
+              followup: followup
+                ? {
+                    question: followup.question,
+                    choices: followup.followUp,
+                  }
+                : undefined,
             })
             .catch(console.error);
         }),
