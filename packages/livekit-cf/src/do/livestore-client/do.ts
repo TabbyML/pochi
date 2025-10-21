@@ -9,7 +9,6 @@ import type { CfTypes } from "@livestore/sync-cf/common";
 import moment from "moment";
 import { funnel } from "remeda";
 import * as runExclusive from "run-exclusive";
-import { makeMessagesQuery } from "../../../../livekit/src/livestore/queries";
 import { app } from "./app";
 import type { Env as ClientEnv } from "./types";
 
@@ -149,7 +148,9 @@ export class LiveStoreClientDO
           let completionInfo: string | undefined = undefined;
           let followup = undefined;
           if (task.status === "completed") {
-            const messages = store.query(makeMessagesQuery(task.id));
+            const messages = store.query(
+              catalog.queries.makeMessagesQuery(task.id),
+            );
             // Find the last tool-attemptCompletion part
             for (let i = messages.length - 1; i >= 0; i--) {
               const message = messages[i];
