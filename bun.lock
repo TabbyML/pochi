@@ -446,6 +446,7 @@
     "better-auth@1.2.9": "patches/better-auth@1.2.9.patch",
     "silver-fleece@1.2.1": "patches/silver-fleece@1.2.1.patch",
     "jsonc-parser@3.3.1": "patches/jsonc-parser@3.3.1.patch",
+    "tslog@4.9.3": "patches/tslog@4.9.3.patch",
   },
   "catalog": {
     "@ai-sdk/anthropic": "^2.0.23",

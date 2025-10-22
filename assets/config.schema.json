@@ -343,11 +343,11 @@
                         "const": "model-url"
                       },
                       "issueUrl": {
-                        "default": "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token",
+                        "default": "",
                         "type": "string"
                       },
                       "modelUrl": {
-                        "default": "https://aiplatform.googleapis.com/v1/projects/yhhou-preview-test/locations/global/publishers/google/models",
+                        "default": "",
                         "type": "string"
                       },
                       "timeout": {

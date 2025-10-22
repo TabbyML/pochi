@@ -92,6 +92,7 @@
     "ai@5.0.59": "patches/ai@5.0.59.patch",
     "@ai-sdk/google-vertex@3.0.34": "patches/@ai-sdk%2Fgoogle-vertex@3.0.34.patch",
     "@livestore/livestore@0.4.0-dev.10": "patches/@livestore%2Flivestore@0.4.0-dev.10.patch",
-    "@livestore/utils@0.4.0-dev.10": "patches/@livestore%2Futils@0.4.0-dev.10.patch"
+    "@livestore/utils@0.4.0-dev.10": "patches/@livestore%2Futils@0.4.0-dev.10.patch",
+    "tslog@4.9.3": "patches/tslog@4.9.3.patch"
   }
 }
