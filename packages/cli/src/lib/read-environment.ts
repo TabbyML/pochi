@@ -1,3 +1,4 @@
+import fs from "node:fs/promises";
 import type { Environment } from "@getpochi/common";
 import {
   GitStatusReader,
@@ -6,7 +7,6 @@ import {
   listWorkspaceFiles,
 } from "@getpochi/common/tool-utils";
 import type { RunnerOptions } from "../task-runner";
-
 /**
  * Read the environment for the task runner
  */
@@ -21,7 +21,10 @@ export const readEnvironment = async (
     maxItems: 500,
   });
 
-  const customRules = await collectCustomRules(cwd);
+  const readFileContent = async (filePath: string) =>
+    await fs.readFile(filePath, "utf-8");
+
+  const customRules = await collectCustomRules(cwd, readFileContent);
   const systemInfo = getSystemInfo(cwd);
   const gitStatusReader = new GitStatusReader({ cwd });
   const gitStatus = await gitStatusReader.readGitStatus();

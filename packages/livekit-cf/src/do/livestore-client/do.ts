@@ -144,9 +144,58 @@ export class LiveStoreClientDO
     const { webhook } = this;
     if (webhook) {
       await Promise.all(
-        updatedTasks.map((task) =>
-          webhook.onTaskUpdated(task).catch(console.error),
-        ),
+        updatedTasks.map((task) => {
+          let completion: string | undefined = undefined;
+          let followup = undefined;
+          if (task.status === "completed") {
+            const messages = store.query(
+              catalog.queries.makeMessagesQuery(task.id),
+            );
+            // Find the last tool-attemptCompletion part
+            for (let i = messages.length - 1; i >= 0; i--) {
+              const message = messages[i];
+              if (message.data.role === "assistant" && message.data.parts) {
+                for (let j = message.data.parts.length - 1; j >= 0; j--) {
+                  const part = message.data.parts[j] as {
+                    type?: string;
+                    state?: string;
+                    input?: unknown;
+                  };
+                  if (
+                    part.type === "tool-attemptCompletion" &&
+                    part.state === "input-available"
+                  ) {
+                    completion =
+                      (part.input as { result?: string } | undefined)?.result ||
+                      undefined;
+                    break;
+                  }
+                  if (
+                    part.type === "tool-askFollowupQuestion" &&
+                    part.state === "input-available"
+                  ) {
+                    followup = part.input as
+                      | { question: string; followUp?: string[] }
+                      | undefined;
+                    break;
+                  }
+                }
+                if (completion !== undefined || followup !== undefined) break;
+              }
+            }
+          }
+          webhook
+            .onTaskUpdated(task, {
+              completion,
+              followup: followup
+                ? {
+                    question: followup.question,
+                    choices: followup.followUp,
+                  }
+                : undefined,
+            })
+            .catch(console.error);
+        }),
       );
     }
 

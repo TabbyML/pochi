@@ -2,14 +2,10 @@ import { minimatch } from "minimatch";
 import { type ILogObjMeta, type IMeta, Logger } from "tslog";
 import { isVSCodeEnvironment } from "../env-utils";
 
-const isConsoleLogDisabled = () => {
-  return (
-    typeof process !== "undefined" && !!process.env.POCHI_LOG_DISABLE_CONSOLE
-  );
-};
+const type = typeof process?.stderr !== "undefined" ? "hidden" : "pretty";
 
 const mainLogger = new Logger({
-  type: isVSCodeEnvironment() || isConsoleLogDisabled() ? "hidden" : "pretty",
+  type,
 });
 
 function stringToLogLevel(level: string) {

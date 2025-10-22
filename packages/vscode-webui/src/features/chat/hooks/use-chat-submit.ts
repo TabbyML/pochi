@@ -63,7 +63,6 @@ export function useChatSubmit({
     files,
     isUploading,
     upload,
-    cancelUpload,
     clearError: clearUploadError,
   } = attachmentUpload;
 
@@ -77,8 +76,6 @@ export function useChatSubmit({
 
     if (isExecuting) {
       abortExecutingToolCalls();
-    } else if (isUploading) {
-      cancelUpload();
     } else if (isLoading) {
       stopChat();
       return true;
@@ -89,12 +86,10 @@ export function useChatSubmit({
     newCompactTaskPending,
     isExecuting,
     isPreviewing,
-    isUploading,
     isLoading,
     pendingApproval,
     abortExecutingToolCalls,
     abortPreviewingToolCalls,
-    cancelUpload,
     stopChat,
   ]);
 
@@ -108,8 +103,8 @@ export function useChatSubmit({
 
       logger.debug("handleSubmit");
 
-      // Compacting is not allowed to be stopped.
-      if (newCompactTaskPending) return;
+      // Uploading / Compacting is not allowed to be stopped.
+      if (newCompactTaskPending || isUploading) return;
 
       const allMessages = [...queuedMessages];
       // Clear queued messages after adding them to allMessages
@@ -138,7 +133,7 @@ export function useChatSubmit({
         try {
           logger.debug("Uploading files...");
           const uploadedAttachments = await upload();
-          const parts = prepareMessageParts(text, uploadedAttachments, t);
+          const parts = prepareMessageParts(t, text, uploadedAttachments);
           logger.debug("Sending message with files");
 
           await sendMessage({
@@ -152,7 +147,7 @@ export function useChatSubmit({
         }
       } else if (allMessages.length > 0) {
         clearUploadError();
-        const parts = prepareMessageParts(text, [], t);
+        const parts = prepareMessageParts(t, text, []);
         await sendMessage({
           parts,
         });
@@ -172,6 +167,7 @@ export function useChatSubmit({
       newCompactTaskPending,
       queuedMessages,
       setQueuedMessages,
+      isUploading,
       t,
     ],
   );
