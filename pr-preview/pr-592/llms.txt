@@ -1795,9 +1795,7 @@ URL: /developer-updates/2025-10-21-weekly-update-8
 
 We’ve given Pochi new tricks.
 
-Workflows can now execute Bash commands, `readFile` tool supports images, and markdown rendering is faster and cleaner with `streamdown.ai`.
-
-A few quieter upgrades slipped in too: modular rules, Git subtree support, and a new Linux ARM64 release.
+Workflows can now execute Bash commands, `readFile` tool handles multimedia inputs, and markdown rendering is faster and cleaner with `streamdown.ai`.
 
 Let’s get on with it!
 
@@ -1819,7 +1817,7 @@ Pochi automatically runs these commands and includes their outputs in the model�
 
 * **Faster Markdown Rendering with `streamdown.ai`:**  We’ve replaced `react-markdown` with `streamdown.ai` in the VS Code web UI. This upgrade improves performance, adds streaming-based markdown rendering, and ensures better support for rich content (like math, code blocks, and workflows). **[#401](https://github.com/TabbyML/pochi/issues/401)**
 
-* **Extended Multimedia Support in `readFile` Tool:**  The `readFile` tool now supports reading multimedia files, including images, audio, and video, for multimodal models such as Gemini and Anthropic. Pochi automatically detects file types and encodes the content in `base64` for models that can interpret visual data. **[#539](https://github.com/TabbyML/pochi/issues/539)**, **[#569](https://github.com/TabbyML/pochi/issues/569)**
+* **Extended Multimedia Support in `readFile` Tool:**  The `readFile` tool now supports reading multimedia files, including images, audio, and video, for multimodal models. Pochi automatically detects file types and encodes the content in `base64` for models that can interpret visual and auditory data. **[#539](https://github.com/TabbyML/pochi/issues/539)**, **[#569](https://github.com/TabbyML/pochi/issues/569)**
 
 <div
   className="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg"
@@ -1883,9 +1881,7 @@ Here you will find highlights on features, enhancements, and bug fixes, plus ins
 
 We’ve given Pochi new tricks.
 
-Workflows can now execute Bash commands, `readFile` tool supports images, and markdown rendering is faster and cleaner with `streamdown.ai`.
-
-A few quieter upgrades slipped in too: modular rules, Git subtree support, and a new Linux ARM64 release.
+Workflows can now execute Bash commands, `readFile` tool handles multimedia inputs, and markdown rendering is faster and cleaner with `streamdown.ai`.
 
 Let’s get on with it!
 
@@ -1907,7 +1903,7 @@ Pochi automatically runs these commands and includes their outputs in the model�
 
 * **Faster Markdown Rendering with `streamdown.ai`:**  We’ve replaced `react-markdown` with `streamdown.ai` in the VS Code web UI. This upgrade improves performance, adds streaming-based markdown rendering, and ensures better support for rich content (like math, code blocks, and workflows). **[#401](https://github.com/TabbyML/pochi/issues/401)**
 
-* **Extended Multimedia Support in `readFile` Tool:**  The `readFile` tool now supports reading multimedia files, including images, audio, and video, for multimodal models such as Gemini and Anthropic. Pochi automatically detects file types and encodes the content in `base64` for models that can interpret visual data. **[#539](https://github.com/TabbyML/pochi/issues/539)**, **[#569](https://github.com/TabbyML/pochi/issues/569)**
+* **Extended Multimedia Support in `readFile` Tool:**  The `readFile` tool now supports reading multimedia files, including images, audio, and video, for multimodal models. Pochi automatically detects file types and encodes the content in `base64` for models that can interpret visual and auditory data. **[#539](https://github.com/TabbyML/pochi/issues/539)**, **[#569](https://github.com/TabbyML/pochi/issues/569)**
 
 <div
   className="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg"
