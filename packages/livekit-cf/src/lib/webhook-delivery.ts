@@ -1,4 +1,5 @@
 import type { Task } from "@getpochi/livekit";
+import type { WebhookEventPayload } from "@getpochi/vendor-pochi/pochi-api";
 
 export class WebhookDelivery {
   constructor(
@@ -16,19 +17,21 @@ export class WebhookDelivery {
       };
     },
   ) {
+    const payload: WebhookEventPayload = {
+      event: "task.updated",
+      data: {
+        storeId: this.storeId,
+        task,
+        result,
+      },
+    };
+
     const response = await fetch(this.url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        event: "task.updated",
-        data: {
-          storeId: this.storeId,
-          task,
-          result,
-        },
-      }),
+      body: JSON.stringify(payload),
       signal: AbortSignal.timeout(1500),
     });
     if (!response.ok) {
