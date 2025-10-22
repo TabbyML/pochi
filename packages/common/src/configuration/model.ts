@@ -59,14 +59,16 @@ const AnthropicModelSettings = ExtendedModelSettings.extend({
   kind: z.literal("anthropic"),
 });
 
-export const GoogleVertexModel = z.union([
+export const GoogleVertexModel = z.discriminatedUnion("type", [
   z.object({
+    type: z.literal("service-account"),
     serviceAccountKey: z
       .string()
       .default(process.env.POCHI_VERTEX_SERVICE_ACCOUNT_KEY ?? ""),
     location: z.string().default(process.env.POCHI_VERTEX_LOCATION ?? ""),
   }),
   z.object({
+    type: z.literal("access-token"),
     accessToken: z
       .string()
       .default(process.env.POCHI_VERTEX_ACCESS_TOKEN ?? ""),
@@ -74,6 +76,7 @@ export const GoogleVertexModel = z.union([
     location: z.string().default(process.env.POCHI_VERTEX_LOCATION ?? ""),
   }),
   z.object({
+    type: z.literal("model-url"),
     issueUrl: z.string().default(process.env.POCHI_VERTEX_ISSUE_URL ?? ""),
     modelUrl: z.string().default(process.env.POCHI_VERTEX_MODEL_URL ?? ""),
     timeout: z

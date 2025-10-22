@@ -50,30 +50,37 @@ export class WorkspaceJobQueue implements vscode.Disposable {
   }
 
   private async run() {
-    const jobs = this.context.globalState.get<WorkspaceJob[]>(
+    const allJobs = this.context.globalState.get<WorkspaceJob[]>(
       WorkspaceJobQueue.GlobalStateKey,
       [],
     );
 
-    logger.trace(`Running workspace job queue with ${jobs.length} jobs.`);
+    logger.trace(`Running workspace job queue with ${allJobs.length} jobs.`);
 
-    // extract the current workspace job
-    const currentWorkspaceJob = jobs.filter(
-      (job) => job.workspaceUri === this.currentWorkspaceUri?.fsPath,
-    );
+    const currentWorkspaceJobs: WorkspaceJob[] = [];
+    const remainingJobs: WorkspaceJob[] = [];
+    const now = Date.now();
+    const currentWorkspaceFsPath = this.currentWorkspaceUri?.fsPath;
 
-    // update registry with the rest of the jobs
+    for (const job of allJobs) {
+      if (job.expiresAt <= now) {
+        logger.debug(`Job ${JSON.stringify(job)} expired.`);
+        // Expired jobs are ignored and not added to remainingJobs or currentWorkspaceJobs
+      } else if (job.workspaceUri === currentWorkspaceFsPath) {
+        currentWorkspaceJobs.push(job);
+      } else {
+        remainingJobs.push(job);
+      }
+    }
+
+    // Update global state with remaining jobs (those not expired and not for the current workspace)
     await this.context.globalState.update(
       WorkspaceJobQueue.GlobalStateKey,
-      jobs.filter((job) => currentWorkspaceJob.indexOf(job) === -1),
+      remainingJobs,
     );
 
-    // run the jobs
-    for (const job of currentWorkspaceJob) {
-      if (job.expiresAt <= Date.now()) {
-        logger.debug(`Job ${JSON.stringify(job)} expired.`);
-        continue;
-      }
+    // Run the current workspace jobs
+    for (const job of currentWorkspaceJobs) {
       logger.debug(`Running job ${JSON.stringify(job)}.`);
       await vscode.commands.executeCommand(job.command, ...job.args);
     }

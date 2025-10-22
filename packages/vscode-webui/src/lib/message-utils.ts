@@ -4,9 +4,9 @@ import type { FileUIPart } from "ai";
 import type { useTranslation } from "react-i18next";
 
 export function prepareMessageParts(
+  t: ReturnType<typeof useTranslation>["t"],
   prompt: string,
   files: FileUIPart[],
-  t: ReturnType<typeof useTranslation>["t"],
 ) {
   const parts: Message["parts"] = [...files];
   if (files.length > 0) {

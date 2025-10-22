@@ -6,7 +6,16 @@ export class WebhookDelivery {
     private readonly url: string,
   ) {}
 
-  async onTaskUpdated(task: Task) {
+  async onTaskUpdated(
+    task: Task,
+    result?: {
+      completion?: string;
+      followup?: {
+        question: string;
+        choices?: string[];
+      };
+    },
+  ) {
     const response = await fetch(this.url, {
       method: "POST",
       headers: {
@@ -17,6 +26,7 @@ export class WebhookDelivery {
         data: {
           storeId: this.storeId,
           task,
+          result,
         },
       }),
       signal: AbortSignal.timeout(1500),

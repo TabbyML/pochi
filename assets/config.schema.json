@@ -287,6 +287,10 @@
                   {
                     "type": "object",
                     "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "service-account"
+                      },
                       "serviceAccountKey": {
                         "default": "",
                         "type": "string"
@@ -297,6 +301,7 @@
                       }
                     },
                     "required": [
+                      "type",
                       "serviceAccountKey",
                       "location"
                     ],
@@ -305,6 +310,10 @@
                   {
                     "type": "object",
                     "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "access-token"
+                      },
                       "accessToken": {
                         "default": "",
                         "type": "string"
@@ -319,6 +328,7 @@
                       }
                     },
                     "required": [
+                      "type",
                       "accessToken",
                       "projectId",
                       "location"
@@ -328,12 +338,16 @@
                   {
                     "type": "object",
                     "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "model-url"
+                      },
                       "issueUrl": {
-                        "default": "",
+                        "default": "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token",
                         "type": "string"
                       },
                       "modelUrl": {
-                        "default": "",
+                        "default": "https://aiplatform.googleapis.com/v1/projects/yhhou-preview-test/locations/global/publishers/google/models",
                         "type": "string"
                       },
                       "timeout": {
@@ -343,6 +357,7 @@
                       }
                     },
                     "required": [
+                      "type",
                       "issueUrl",
                       "modelUrl",
                       "timeout"

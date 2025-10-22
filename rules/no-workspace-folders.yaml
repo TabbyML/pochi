@@ -1,7 +1,9 @@
 id: no-workspace-folders
 language: tsx
 rule:
-  pattern: $$$.workspaceFolders
+  any:
+    - pattern: $$$.workspaceFolders
+    - pattern: $$$.asRelativePath
 message: "Do not access workspace.workspaceFolders directly. Use the workspace helpers instead."
 severity: error
 ignores:
@@ -10,5 +12,6 @@ ignores:
   - "packages/vscode/src/integrations/command.ts"
   - "packages/vscode/src/integrations/uri-handler.ts"
   - "packages/vscode/src/lib/workspace-job.ts"
+  - "packages/vscode/src/nes/contexts.ts"
 files:
   - "packages/vscode/src/**/*.ts"
