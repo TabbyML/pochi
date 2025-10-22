@@ -28,10 +28,6 @@ For example:
 
 <div class="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg">![Bash commands](./images/bash-commands.png)</div>
 
-- **Git Worktree Integration:** You can now open and manage tasks from different Git worktrees directly in Pochi. Each worktree appears as its own context in the `Source Control` panel and can be opened in a dedicated Pochi tab. This is ideal if you’re working across multiple branches or release environments without leaving your main workspace. **[#226](https://github.com/TabbyML/pochi/issues/226)**, **[#533](https://github.com/TabbyML/pochi/issues/533)**
-
-<div class="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg">![Git Worktree Integration](./images/git-worktree-integration.png)</div>
-
 
 ### ✨ Enhancements
 
@@ -39,12 +35,7 @@ For example:
 - **Faster Markdown Rendering with `streamdown.ai`:**  We’ve replaced `react-markdown` with `streamdown.ai` in the VS Code web UI. This upgrade improves performance, adds streaming-based markdown rendering, and ensures better support for rich content (like math, code blocks, and workflows). **[#401](https://github.com/TabbyML/pochi/issues/401)**
 
 
-- **Image Support in `readFile` Tool:**  The `readFile` tool now supports reading image file inputs for multimodal models such as Gemini and Anthropic.  Pochi automatically detects file types and encodes images as `base64` for models that can interpret visual data. **[#539](https://github.com/TabbyML/pochi/issues/539)**, **[#569](https://github.com/TabbyML/pochi/issues/569)**
-
-<div class="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg">![Image Support in `readFile` Tool](./images/readfile-image.png)</div>
-
-
-- **Modular Rules with `@import` Syntax:** You can now split and organize large rule files by importing other markdown files using the `@` prefix (e.g. `@./rules/api-guidelines.md`). Pochi will stitch them together, managing complex configurations for your multi-agent or multi-project setups. **[#540](https://github.com/TabbyML/pochi/issues/540)**
+- **Extended Multimedia Support in `readFile` Tool:**  The `readFile` tool now supports reading multimedia files, including images, audio, and video, for multimodal models such as Gemini and Anthropic. Pochi automatically detects file types and encodes the content in `base64` for models that can interpret visual data. **[#539](https://github.com/TabbyML/pochi/issues/539)**, **[#569](https://github.com/TabbyML/pochi/issues/569)**
 
 
 <div
@@ -59,7 +50,7 @@ className="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg"
   }}
 >
   <iframe
-    src="https://drive.google.com/file/d/18s3_3KyoA02aUefK7zmMJirWljW_QOFF/preview"
+    src="https://drive.google.com/file/d/1q-ghZRyqMIhuOFA-k5E8xRbYRvdXZdSC/preview"
     style={{
       position: "absolute",
       top: 0,
@@ -70,9 +61,8 @@ className="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg"
       borderRadius: "8px",
     }}
     allowFullScreen
-    title="Modular rules"
+    title="`readfile`tool demo"
   />
 </div>
-
 
 - **Added Linux ARM64 Release:** Pochi is now available for Linux ARM64 systems, improving compatibility for developers running on Raspberry Pi or ARM-based environments. **[#543](https://github.com/TabbyML/pochi/issues/543)**
