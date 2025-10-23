@@ -190,7 +190,7 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
   );
 
   return (
-    <div className="flex h-screen flex-col">
+    <div className="mx-auto flex h-screen max-w-5xl flex-col">
       {subtask && (
         <SubtaskHeader
           subtask={subtask}
