@@ -224,6 +224,7 @@ const LLMFormatOps: FormatOp[] = [
   removeMessagesWithoutTextOrToolCall,
   resolvePendingToolCalls,
   stripKnownXMLTags,
+  // stripCustomAgentTag,
   removeToolCallResultMetadata,
   removeToolCallArgumentMetadata,
   removeToolCallArgumentTransientData,

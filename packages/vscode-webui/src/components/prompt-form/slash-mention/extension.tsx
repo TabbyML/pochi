@@ -11,7 +11,7 @@ import {
  * A React component to render a workflow node in the editor.
  * Displays the workflow with a / symbol in a highlighted style.
  */
-export const WorkflowComponent = (props: NodeViewProps) => {
+export const SlashComponent = (props: NodeViewProps) => {
   const { node } = props;
   const { id } = node.attrs;
 
@@ -25,39 +25,46 @@ export const WorkflowComponent = (props: NodeViewProps) => {
 };
 
 // Create a unique plugin key for workflow suggestions
-export const workflowMentionPluginKey = new PluginKey(
-  "workflowMentionPluginKey",
-);
+export const SlashMentionPluginKey = new PluginKey("workflowMentionPluginKey");
 
 /**
  * A custom TipTap extension to handle workflows (like /workflow-name).
  */
-export const PromptFormWorkflowExtension = Mention.extend({
-  name: "workflowMention",
+export const PromptFormSlashExtension = Mention.extend({
+  name: "slashMention",
   addNodeView() {
-    return ReactNodeViewRenderer(WorkflowComponent);
+    return ReactNodeViewRenderer(SlashComponent);
   },
 
   renderText({ node }) {
-    const { id, path, content } = node.attrs;
-    const workflowContent: string = content || "error loading workflow";
-    return prompts.workflow(id, path, workflowContent);
+    const { type, id, path, rawData } = node.attrs;
+    if (type === "workflow") {
+      const loadedContent: string = rawData.content || `error loading ${type}`;
+      console.log(rawData);
+      return prompts.workflow(id, path, loadedContent);
+    }
+    if (type === "custom-agent") {
+      return prompts.customAgent(id, path);
+    }
+    return "";
   },
 
   addAttributes() {
     return {
+      type: {
+        default: "",
+      },
       id: {
+        default: "",
+      },
+      label: {
         default: "",
       },
       path: {
         default: "",
       },
-      // the content of the workflow file
-      content: {
-        default: "",
-      },
-      frontmatter: {
-        defualt: {},
+      rawData: {
+        default: {},
       },
     };
   },

@@ -1,5 +1,8 @@
 import { debounceWithCachedValue } from "@/lib/debounce";
-import { fuzzySearchFiles, fuzzySearchWorkflows } from "@/lib/fuzzy-search";
+import {
+  fuzzySearchFiles,
+  fuzzySearchSlashCandidates,
+} from "@/lib/fuzzy-search";
 import { useActiveTabs } from "@/lib/hooks/use-active-tabs";
 import { vscodeHost } from "@/lib/vscode";
 import Document from "@tiptap/extension-document";
@@ -28,6 +31,8 @@ import "./prompt-form.css";
 import { useSelectedModels } from "@/features/settings";
 import { cn } from "@/lib/utils";
 import { resolveModelFromId } from "@/lib/utils/resolve-model-from-id";
+import { isValidCustomAgentFile } from "@getpochi/common/vscode-webui-bridge";
+import { threadSignal } from "@quilted/threads/signals";
 import {
   type SuggestionMatch,
   type Trigger,
@@ -37,16 +42,17 @@ import { ArrowRightToLine } from "lucide-react";
 import { ScrollArea } from "../ui/scroll-area";
 import { AutoCompleteExtension } from "./auto-completion/extension";
 import type { MentionListActions } from "./shared";
+import {
+  PromptFormSlashExtension,
+  SlashMentionPluginKey,
+} from "./slash-mention/extension";
+import {
+  type SlashCandidate,
+  SlashMentionList,
+  type SlashMentionListProps,
+  type WorkflowData,
+} from "./slash-mention/mention-list";
 import { SubmitHistoryExtension } from "./submit-history-extension";
-import {
-  PromptFormWorkflowExtension,
-  workflowMentionPluginKey,
-} from "./workflow-mention/extension";
-import {
-  type WorkflowItem,
-  type WorkflowListProps,
-  WorkflowMentionList,
-} from "./workflow-mention/mention-list";
 
 const newLineCharacter = "\n";
 
@@ -139,7 +145,7 @@ export function FormEditor({
   const [isDragOver, setIsDragOver] = useState(false);
 
   const onSelectWorkflow = useCallback(
-    (workflow: WorkflowItem) => {
+    (workflow: WorkflowData) => {
       const foundModel = resolveModelFromId(workflow.frontmatter.model, models);
       if (foundModel) {
         updateSelectedModelId(foundModel.id);
@@ -163,7 +169,7 @@ export function FormEditor({
             char: "@",
             pluginKey: fileMentionPluginKey,
             items: async ({ query }: { query: string }) => {
-              const data = await debouncedListWorkspaceFiles();
+              const data = await debouncedListFiles();
               if (!data) return [];
 
               return fuzzySearchFiles(query, {
@@ -180,7 +186,7 @@ export function FormEditor({
 
               // Fetch items function for MentionList
               const fetchItems = async (query?: string) => {
-                const data = await debouncedListWorkspaceFiles();
+                const data = await debouncedListFiles();
                 if (!data) return [];
 
                 return fuzzySearchFiles(query, {
@@ -265,35 +271,33 @@ export function FormEditor({
           },
         }),
         // Use the already configured PromptFormWorkflowExtension
-        PromptFormWorkflowExtension.configure({
+        PromptFormSlashExtension.configure({
           suggestion: {
             char: "/",
-            pluginKey: workflowMentionPluginKey,
+            pluginKey: SlashMentionPluginKey,
             items: async ({ query }: { query: string }) => {
-              const data = await debouncedListWorkflows();
+              const data = await debouncedListSlashCommand();
+              console.log(data);
               if (!data) return [];
 
-              const workflowResults = fuzzySearchWorkflows(
-                query,
-                data.workflows,
-              );
+              const results = fuzzySearchSlashCandidates(query, data.options);
 
-              return workflowResults;
+              return results;
             },
             render: () => {
               let component: ReactRenderer<
                 MentionListActions,
-                WorkflowListProps
+                SlashMentionListProps
               >;
               let popup: Array<{ destroy: () => void; hide: () => void }>;
 
               // Fetch items function for WorkflowList
               const fetchItems = async (query?: string) => {
-                const data = await debouncedListWorkflows();
+                const data = await debouncedListSlashCommand();
                 if (!data) return [];
-                const workflowResults = fuzzySearchWorkflows(
+                const workflowResults = fuzzySearchSlashCandidates(
                   query,
-                  data.workflows,
+                  data.options,
                 );
                 return workflowResults;
               };
@@ -317,7 +321,7 @@ export function FormEditor({
                     clientRect?: () => DOMRect;
                   };
 
-                  component = new ReactRenderer(WorkflowMentionList, {
+                  component = new ReactRenderer(SlashMentionList, {
                     props: {
                       ...props,
                       fetchItems,
@@ -621,7 +625,7 @@ export function FormEditor({
   );
 }
 
-const debouncedListWorkspaceFiles = debounceWithCachedValue(
+const debouncedListFiles = debounceWithCachedValue(
   async () => {
     const files = await vscodeHost.listFilesInWorkspace();
     return {
@@ -634,11 +638,32 @@ const debouncedListWorkspaceFiles = debounceWithCachedValue(
   },
 );
 
-export const debouncedListWorkflows = debounceWithCachedValue(
+export const debouncedListSlashCommand = debounceWithCachedValue(
   async () => {
-    const workflows = await vscodeHost.listWorkflows();
+    const [workflows, customAgents] = await Promise.all([
+      vscodeHost.listWorkflows(),
+      threadSignal(await vscodeHost.readCustomAgents()),
+    ]);
+    const options: SlashCandidate[] = [
+      ...workflows.map((x) => ({
+        type: "workflow" as const,
+        id: x.id,
+        label: x.id,
+        path: x.path,
+        rawData: x,
+      })),
+      ...customAgents.value
+        .filter((x) => isValidCustomAgentFile(x))
+        .map((x) => ({
+          type: "custom-agent" as const,
+          id: x.name,
+          label: x.name,
+          path: x.filePath,
+          rawData: x,
+        })),
+    ];
     return {
-      workflows,
+      options,
     };
   },
   1000 * 60,

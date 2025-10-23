@@ -43,7 +43,7 @@ async function readAgentsFromDir(dir: string): Promise<CustomAgentFile[]> {
 export async function loadAgents(
   workingDirectory?: string,
   includeSystemAgents = true,
-): Promise<CustomAgent[]> {
+): Promise<ValidCustomAgentFile[]> {
   try {
     const allAgents: CustomAgentFile[] = [];
 
@@ -80,4 +80,8 @@ export async function loadAgents(
     logger.error("Failed to load custom agents", error);
     return [];
   }
+}
+
+export function getModelFromCustomAgent(agent: CustomAgent | undefined) {
+  return agent?.model;
 }
