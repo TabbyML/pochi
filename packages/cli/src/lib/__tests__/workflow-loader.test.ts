@@ -1,8 +1,16 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi, type Mock } from "vitest";
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import * as os from "node:os";
 import { loadWorkflows } from "../workflow-loader";
+
+vi.mock("node:os", async (importOriginal) => {
+  const originalOs = await importOriginal<typeof import("node:os")>();
+  return {
+    ...originalOs,
+    homedir: vi.fn(),
+  };
+});
 
 describe("workflow-loader", () => {
   let tempDir: string;
@@ -19,13 +27,13 @@ describe("workflow-loader", () => {
     const globalWorkflowsDir = path.join(globalTempDir, ".pochi", "workflows");
     await fs.mkdir(globalWorkflowsDir, { recursive: true });
 
-    vi.spyOn(os, "homedir").mockReturnValue(globalTempDir);
+    (os.homedir as Mock).mockReturnValue(globalTempDir);
   });
 
   afterEach(async () => {
     await fs.rm(tempDir, { recursive: true, force: true });
     await fs.rm(globalTempDir, { recursive: true, force: true });
-    vi.restoreAllMocks();
+
   });
 
   describe("loadWorkflows", () => {
@@ -106,4 +114,3 @@ describe("workflow-loader", () => {
     });
   });
 });
-
