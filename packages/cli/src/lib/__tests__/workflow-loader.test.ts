@@ -8,7 +8,7 @@ vi.mock("node:os", async (importOriginal) => {
   const originalOs = await importOriginal<typeof import("node:os")>();
   return {
     ...originalOs,
-    homedir: vi.fn(),
+    homedir: vi.fn().mockReturnValue(""),
   };
 });
 
