@@ -40,7 +40,6 @@ export const PromptFormSlashExtension = Mention.extend({
     const { type, id, path, rawData } = node.attrs;
     if (type === "workflow") {
       const loadedContent: string = rawData.content || `error loading ${type}`;
-      console.log(rawData);
       return prompts.workflow(id, path, loadedContent);
     }
     if (type === "custom-agent") {

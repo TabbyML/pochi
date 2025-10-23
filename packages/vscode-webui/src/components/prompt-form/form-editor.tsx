@@ -277,7 +277,6 @@ export function FormEditor({
             pluginKey: SlashMentionPluginKey,
             items: async ({ query }: { query: string }) => {
               const data = await debouncedListSlashCommand();
-              console.log(data);
               if (!data) return [];
 
               const results = fuzzySearchSlashCandidates(query, data.options);

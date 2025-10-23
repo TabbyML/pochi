@@ -50,13 +50,25 @@ export async function loadAgents(
     // Load project agents if working directory is provided
     if (workingDirectory) {
       const projectAgentsDir = path.join(workingDirectory, ".pochi", "agents");
-      allAgents.push(...(await readAgentsFromDir(projectAgentsDir)));
+      const projectAgents = await readAgentsFromDir(projectAgentsDir);
+      allAgents.push(
+        ...projectAgents.map((x) => ({
+          ...x,
+          filePath: path.relative(workingDirectory, x.filePath),
+        })),
+      );
     }
 
     // Load system agents
     if (includeSystemAgents) {
       const systemAgentsDir = path.join(os.homedir(), ".pochi", "agents");
-      allAgents.push(...(await readAgentsFromDir(systemAgentsDir)));
+      const systemAgents = await readAgentsFromDir(systemAgentsDir);
+      allAgents.push(
+        ...systemAgents.map((x) => ({
+          ...x,
+          filePath: x.filePath.replace(os.homedir(), "~"),
+        })),
+      );
     }
 
     // Filter out invalid agents for CLI usage

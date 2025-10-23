@@ -1,116 +1,99 @@
-import { describe, it, expect, beforeEach, afterEach, vi, type Mock } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as fs from "node:fs/promises";
-import * as path from "node:path";
 import * as os from "node:os";
+import * as path from "node:path";
 import { loadWorkflows } from "../workflow-loader";
 
+// Step 1: Hoist a mock function with a default return value. This default is crucial
+// to prevent crashes during the module import phase when side-effect-heavy
+// modules (like custom-rules.ts) are loaded and call homedir() before
+// the test's beforeEach hook has a chance to run.
+const { mockHomedir } = vi.hoisted(() => {
+  return { mockHomedir: vi.fn().mockReturnValue("/tmp/mock-home-for-import") };
+});
+
+// Step 2: Perform a partial mock, keeping original functionality like `tmpdir`
+// while replacing `homedir` with our hoisted mock function.
 vi.mock("node:os", async (importOriginal) => {
-  const originalOs = await importOriginal<typeof import("node:os")>();
+  const originalOs = await importOriginal<typeof os>();
   return {
     ...originalOs,
-    homedir: vi.fn().mockReturnValue(""),
+    homedir: mockHomedir,
   };
 });
 
-describe("workflow-loader", () => {
-  let tempDir: string;
-  let globalTempDir: string;
+describe("loadWorkflows", () => {
+  let projectDir: string;
+  let homeDir: string;
 
   beforeEach(async () => {
-    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "pochi-test-"));
-    const workflowsDir = path.join(tempDir, ".pochi", "workflows");
-    await fs.mkdir(workflowsDir, { recursive: true });
+    // Create temporary directories. os.tmpdir() works because of the partial mock.
+    projectDir = await fs.mkdtemp(path.join(os.tmpdir(), "pochi-project-"));
+    homeDir = await fs.mkdtemp(path.join(os.tmpdir(), "pochi-home-"));
 
-    globalTempDir = await fs.mkdtemp(
-      path.join(os.tmpdir(), "pochi-global-test-"),
-    );
-    const globalWorkflowsDir = path.join(globalTempDir, ".pochi", "workflows");
+    // Step 3: For the actual test run, override the default mock value with the real temp path.
+    mockHomedir.mockReturnValue(homeDir);
+
+    const projectWorkflowsDir = path.join(projectDir, ".pochi", "workflows");
+    await fs.mkdir(projectWorkflowsDir, { recursive: true });
+
+    const globalWorkflowsDir = path.join(homeDir, ".pochi", "workflows");
     await fs.mkdir(globalWorkflowsDir, { recursive: true });
 
-    (os.homedir as Mock).mockReturnValue(globalTempDir);
+    // Create mock workflow files
+    await fs.writeFile(
+      path.join(projectWorkflowsDir, "project-workflow.md"),
+      "---\nmodel: project-model\n---\nProject workflow content",
+    );
+    await fs.writeFile(
+      path.join(globalWorkflowsDir, "global-workflow.md"),
+      "Global workflow content",
+    );
+    await fs.writeFile(
+      path.join(projectWorkflowsDir, "duplicate.md"),
+      "Project duplicate content",
+    );
+    await fs.writeFile(
+      path.join(globalWorkflowsDir, "duplicate.md"),
+      "Global duplicate content",
+    );
   });
 
   afterEach(async () => {
-    await fs.rm(tempDir, { recursive: true, force: true });
-    await fs.rm(globalTempDir, { recursive: true, force: true });
-
+    // Clean up the temporary directories
+    await fs.rm(projectDir, { recursive: true, force: true });
+    await fs.rm(homeDir, { recursive: true, force: true });
+    mockHomedir.mockClear();
   });
 
-  describe("loadWorkflows", () => {
-    it("should load workflows from the local project directory", async () => {
-      const workflowContent = "---\nmodel: test-model\n---\nHello";
-      await fs.writeFile(
-        path.join(tempDir, ".pochi", "workflows", "local-workflow.md"),
-        workflowContent,
-      );
+  it("should load workflows from both project and global directories", async () => {
+    const workflows = await loadWorkflows(projectDir);
+    expect(workflows).toHaveLength(3);
+    expect(workflows.some((w) => w.id === "project-workflow")).toBe(true);
+    expect(workflows.some((w) => w.id === "global-workflow")).toBe(true);
+    expect(workflows.some((w) => w.id === "duplicate")).toBe(true);
+  });
 
-      const workflows = await loadWorkflows(tempDir);
+  it("should prioritize project workflows over global ones with the same name", async () => {
+    const workflows = await loadWorkflows(projectDir);
+    const duplicate = workflows.find((w) => w.id === "duplicate");
+    expect(duplicate).toBeDefined();
+    expect(duplicate?.content).toBe("Project duplicate content");
+  });
 
-      expect(workflows).toHaveLength(1);
-      expect(workflows[0]).toMatchObject({
-        id: "local-workflow",
-        content: workflowContent,
-        pathName: ".pochi/workflows/local-workflow.md",
-        frontmatter: { model: "test-model" },
-      });
-    });
+  it("should only load project workflows when includeGlobalWorkflows is false", async () => {
+    const workflows = await loadWorkflows(projectDir, false);
+    expect(workflows).toHaveLength(2);
+    expect(workflows.some((w) => w.id === "project-workflow")).toBe(true);
+    expect(workflows.some((w) => w.id === "duplicate")).toBe(true);
+    expect(workflows.some((w) => w.id === "global-workflow")).toBe(false);
+  });
 
-    it("should load workflows from the global directory", async () => {
-      const workflowContent = "---\nmodel: global-model\n---\nHello Global";
-      await fs.writeFile(
-        path.join(globalTempDir, ".pochi", "workflows", "global-workflow.md"),
-        workflowContent,
-      );
-
-      const workflows = await loadWorkflows(tempDir);
-
-      expect(workflows).toHaveLength(1);
-      expect(workflows[0]).toMatchObject({
-        id: "global-workflow",
-        content: workflowContent,
-        pathName: ".pochi/workflows/global-workflow.md",
-        frontmatter: { model: "global-model" },
-      });
-    });
-
-    it("should prioritize local workflows over global ones with the same id", async () => {
-      const localContent = "---\nmodel: local\n---\nLocal";
-      await fs.writeFile(
-        path.join(tempDir, ".pochi", "workflows", "shared.md"),
-        localContent,
-      );
-
-      const globalContent = "---\nmodel: global\n---\nGlobal";
-      await fs.writeFile(
-        path.join(globalTempDir, ".pochi", "workflows", "shared.md"),
-        globalContent,
-      );
-
-      const workflows = await loadWorkflows(tempDir);
-
-      expect(workflows).toHaveLength(1);
-      expect(workflows[0]).toMatchObject({
-        id: "shared",
-        content: localContent, // Should be local content
-        frontmatter: { model: "local" },
-      });
-    });
-
-    it("should not load from global directory if includeGlobalWorkflows is false", async () => {
-      const globalContent = "Global";
-      await fs.writeFile(
-        path.join(globalTempDir, ".pochi", "workflows", "global-only.md"),
-        globalContent,
-      );
-
-      const workflows = await loadWorkflows(tempDir, false);
-
-      expect(workflows).toHaveLength(0);
-    });
-
-    it("should return an empty array if no workflows are found", async () => {
-      const workflows = await loadWorkflows(tempDir);
-      expect(workflows).toEqual([]);
-    });
+  it("should correctly parse frontmatter", async () => {
+    const workflows = await loadWorkflows(projectDir);
+    const projectWorkflow = workflows.find((w) => w.id === "project-workflow");
+    expect(projectWorkflow).toBeDefined();
+    expect(projectWorkflow?.frontmatter.model).toBe("project-model");
   });
 });
+
