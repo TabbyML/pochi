@@ -496,8 +496,8 @@ export class CommandManager implements vscode.Disposable {
             | { kind: vscode.QuickPickItemKind.Separator; label: string }
           > = nonMainWorktrees.map((worktree) => ({
             label: `$(git-branch) ${worktree.branch || "(detached)"}`,
-            description: worktree.path,
-            detail: worktree.commit.substring(0, 7),
+            // description: worktree.path,
+            detail: worktree.path,
             worktree,
           }));
 
