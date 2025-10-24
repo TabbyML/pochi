@@ -130,9 +130,15 @@
       },
       {
         "command": "pochi.createTaskInPanel",
-        "title": "Open in Pochi",
+        "title": "New Task in Pochi",
         "category": "Pochi",
         "icon": "$(window)"
+      },
+      {
+        "command": "pochi.createTaskOnWorktree",
+        "title": "New Task on Worktree",
+        "category": "Pochi",
+        "icon": "$(git-branch)"
       }
     ],
     "menus": {

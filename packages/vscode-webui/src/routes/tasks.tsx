@@ -201,8 +201,15 @@ function Tasks() {
   };
 
   return (
-    <div className="flex h-screen w-full flex-col">
+    <div className="flex h-screen w-screen flex-col">
       {/* Main content area with scroll */}
+      <div className="w-full px-4 py-3">
+        <a href="command:pochi.createTaskOnWorktree" className="block w-full">
+          <Button variant="outline" className="w-full">
+            New Task
+          </Button>
+        </a>
+      </div>
       {tasks.length === 0 ? (
         <EmptyTaskPlaceholder date={storeDate} />
       ) : (
