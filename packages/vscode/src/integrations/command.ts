@@ -2,6 +2,7 @@ import {
   applyQuickFixes,
   calcEditedRangeAfterAccept,
 } from "@/code-completion/auto-code-actions";
+import { WorktreeManager } from "@/integrations/git/worktree";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { PochiWebviewPanel, PochiWebviewSidebar } from "@/integrations/webview";
 import type { AuthClient } from "@/lib/auth-client";
@@ -458,6 +459,111 @@ export class CommandManager implements vscode.Disposable {
             return;
           }
           const workspaceContainer = workspaceScoped(cwd);
+          await PochiWebviewPanel.createOrShow(
+            workspaceContainer,
+            this.context.extensionUri,
+          );
+        },
+      ),
+
+      vscode.commands.registerCommand(
+        "pochi.createTaskOnWorktree",
+        async () => {
+          const workspaceFolder =
+            vscode.workspace.workspaceFolders?.[0].uri.fsPath;
+          if (!workspaceFolder) {
+            return;
+          }
+
+          const worktreeManager = new WorktreeManager(workspaceFolder);
+          const worktrees = await worktreeManager.getWorktrees();
+
+          // Filter out main worktree
+          const nonMainWorktrees = worktrees.filter(
+            (worktree) => !worktree.isMain,
+          );
+
+          // Create quickpick items from non-main worktrees
+          const items: Array<
+            | {
+                label: string;
+                description?: string;
+                detail?: string;
+                worktree?: (typeof nonMainWorktrees)[0];
+                kind?: vscode.QuickPickItemKind;
+                isCreateNew?: boolean;
+              }
+            | { kind: vscode.QuickPickItemKind.Separator; label: string }
+          > = nonMainWorktrees.map((worktree) => ({
+            label: `$(git-branch) ${worktree.branch || "(detached)"}`,
+            description: worktree.path,
+            detail: worktree.commit.substring(0, 7),
+            worktree,
+          }));
+
+          // Add separator and create new worktree option
+          if (items.length > 0) {
+            items.push({
+              kind: vscode.QuickPickItemKind.Separator,
+              label: "",
+            });
+          }
+
+          items.push({
+            label: "$(plus) Create worktree",
+            detail: "Create a new worktree for new Pochi task",
+            isCreateNew: true,
+          });
+
+          // Show quickpick to user
+          const selected = await vscode.window.showQuickPick(items, {
+            placeHolder: "Select a worktree for new Pochi task",
+            matchOnDescription: true,
+            matchOnDetail: true,
+          });
+
+          if (!selected) {
+            // User cancelled
+            return;
+          }
+
+          let targetWorktree: (typeof nonMainWorktrees)[0] | undefined;
+
+          if ("isCreateNew" in selected && selected.isCreateNew) {
+            // Trigger git.createWorktree command
+            try {
+              await vscode.commands.executeCommand("git.createWorktree");
+
+              // Get worktrees again to find the new one
+              const updatedWorktrees = await worktreeManager.getWorktrees();
+
+              // Find the new worktree by comparing with previous worktrees
+              const newWorktree = updatedWorktrees.find(
+                (updated) =>
+                  !worktrees.some((original) => original.path === updated.path),
+              );
+
+              if (!newWorktree) {
+                return;
+              }
+
+              targetWorktree = newWorktree;
+            } catch (error) {
+              logger.error("Failed to create worktree:", error);
+              return;
+            }
+          } else if ("worktree" in selected && selected.worktree) {
+            targetWorktree = selected.worktree;
+          }
+
+          if (!targetWorktree) {
+            return;
+          }
+
+          // Create workspace container for the selected worktree
+          const workspaceContainer = workspaceScoped(targetWorktree.path);
+
+          // Create or show panel for this worktree
           await PochiWebviewPanel.createOrShow(
             workspaceContainer,
             this.context.extensionUri,
