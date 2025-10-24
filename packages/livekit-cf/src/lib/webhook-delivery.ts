@@ -1,5 +1,5 @@
 import type { Task } from "@getpochi/livekit";
-import type { WebhookEventPayload } from "@getpochi/vendor-pochi/pochi-api";
+import type { WebhookEventPayload } from "@getpochi/vendor-pochi/edge";
 
 export class WebhookDelivery {
   constructor(

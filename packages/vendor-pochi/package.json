@@ -5,8 +5,7 @@
   "type": "module",
   "exports": {
     ".": "./src/node.ts",
-    "./edge": "./src/edge.ts",
-    "./pochi-api": "./src/pochi-api.ts"
+    "./edge": "./src/edge.ts"
   },
   "scripts": {
     "tsc": "tsc --noEmit"
