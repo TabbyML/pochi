@@ -1,12 +1,12 @@
 import { useToolCallLifeCycle } from "@/features/chat";
 import { getToolName } from "ai";
 import { useCallback, useMemo } from "react";
+import { ModelEdits, UserEdits } from "../code-edits";
 import { FileBadge } from "../file-badge";
 import { NewProblems, NewProblemsIcon } from "../new-problems";
 import { StatusIcon } from "../status-icon";
 import { ExpandableToolContainer } from "../tool-container";
 import type { ToolProps } from "../types";
-import { UserEdits } from "../user-edits";
 
 export const applyDiffTool: React.FC<ToolProps<"applyDiff">> = ({
   tool,
@@ -55,6 +55,11 @@ export const applyDiffTool: React.FC<ToolProps<"applyDiff">> = ({
   );
 
   const details = [];
+
+  if (result?.edits) {
+    details.push(<ModelEdits key="model-edits" edits={result.edits} />);
+  }
+
   if (result?.newProblems) {
     details.push(
       <NewProblems key="new-problems" newProblems={result?.newProblems} />,
@@ -65,12 +70,12 @@ export const applyDiffTool: React.FC<ToolProps<"applyDiff">> = ({
     details.push(<UserEdits key="user-edits" userEdits={result?.userEdits} />);
   }
 
-  const detail = details.length > 0 ? <>{details}</> : undefined;
+  const expandableDetail = details.length > 0 ? <>{details}</> : undefined;
 
   return (
     <ExpandableToolContainer
       title={title}
-      expandableDetail={detail}
+      expandableDetail={expandableDetail}
       expandableDetailIcon={result?.newProblems && <NewProblemsIcon />}
     />
   );
