@@ -12,6 +12,11 @@ export const EditFileOutputSchema = z.object({
     .boolean()
     .describe("Indicates whether the file was successfully written."),
 
+  edits: z
+    .string()
+    .describe("The diff representing the edits made to the file.")
+    .optional(),
+
   userEdits: z
     .string()
     .describe(

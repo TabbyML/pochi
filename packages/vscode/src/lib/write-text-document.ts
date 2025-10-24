@@ -71,11 +71,13 @@ export async function writeTextDocument(
   );
 
   const editSummary = getEditSummary(preEditContent, postSaveContent);
+  const edits = createPrettyPatch(path, preEditContent, postSaveContent);
 
   logger.debug(
     `Wrote to ${path}, content length: ${postSaveContent.length}, edit summary: +${editSummary.added} -${editSummary.removed}`,
   );
   return {
+    edits,
     autoFormattingEdits,
     newProblems,
     _meta: { editSummary },
