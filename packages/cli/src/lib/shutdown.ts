@@ -7,13 +7,9 @@ import type { Store } from "@livestore/livestore";
  */
 export function createAbortControllerWithGracefulShutdown(): AbortController {
   const abortController = new AbortController();
-  let isShuttingDown = false;
 
   const handleShutdown = (signal: string, _exitCode: number) => {
     return () => {
-      if (isShuttingDown) return;
-      isShuttingDown = true;
-
       if (!abortController.signal.aborted) {
         abortController.abort(new Error(`Process interrupted by ${signal}`));
       }
