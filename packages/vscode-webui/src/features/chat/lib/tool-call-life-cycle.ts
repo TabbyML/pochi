@@ -227,13 +227,11 @@ export class ManagedToolCallLifeCycle
       return this.checkState("Preview", "init");
     })();
     const previewToolCall = (abortSignal: AbortSignal) => {
-      if (globalThis.POCHI_WEBVIEW_KIND === "pane") {
-        return Promise.resolve(undefined);
-      }
       return vscodeHost.previewToolCall(this.toolName, args, {
         state: convertState(state),
         toolCallId: this.toolCallId,
         abortSignal: ThreadAbortSignal.serialize(abortSignal),
+        nonInteractive: globalThis.POCHI_WEBVIEW_KIND === "pane",
       });
     };
 

@@ -50,6 +50,7 @@ export interface VSCodeHostApi {
       toolCallId: string;
       state: "partial-call" | "call" | "result";
       abortSignal?: ThreadAbortSignalSerialization;
+      nonInteractive?: boolean;
     },
   ): Promise<
     | {
