@@ -28,6 +28,7 @@ export function useChatStatus({
   const isSubmitDisabled =
     isBusyCore ||
     !isModelValid ||
+    isUploadingAttachments ||
     (!isLoading &&
       isInputEmpty &&
       isFilesEmpty &&

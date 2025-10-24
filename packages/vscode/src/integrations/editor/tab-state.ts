@@ -1,3 +1,6 @@
+import { asRelativePath } from "@/lib/fs";
+// biome-ignore lint/style/useImportType: needed for dependency injection
+import { WorkspaceScope } from "@/lib/workspace-scoped";
 import { signal } from "@preact/signals-core";
 import { injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
@@ -19,13 +22,15 @@ export type FileSelection = {
 @singleton()
 export class TabState implements vscode.Disposable {
   // Signal containing the current active tabs
-  activeTabs = signal(listOpenTabs());
+  activeTabs = signal([] as { filepath: string; isDir: boolean }[]);
 
-  activeSelection = signal(getActiveSelection());
+  activeSelection = signal<FileSelection | undefined>();
 
   private disposables: vscode.Disposable[] = [];
 
-  constructor() {
+  constructor(private readonly workspaceScope: WorkspaceScope) {
+    this.activeSelection.value = getActiveSelection(this.workspaceScope.cwd);
+    this.activeTabs.value = listOpenTabs(this.workspaceScope.cwd);
     this.setupEventListeners();
   }
 
@@ -62,12 +67,12 @@ export class TabState implements vscode.Disposable {
    */
   private onTabChanged = () => {
     // Update the existing signal value instead of creating a new signal
-    this.activeTabs.value = listOpenTabs();
-    this.activeSelection.value = getActiveSelection();
+    this.activeTabs.value = listOpenTabs(this.workspaceScope.cwd);
+    this.activeSelection.value = getActiveSelection(this.workspaceScope.cwd);
   };
 
   private onSelectionChanged = () => {
-    this.activeSelection.value = getActiveSelection();
+    this.activeSelection.value = getActiveSelection(this.workspaceScope.cwd);
   };
 
   /**
@@ -81,13 +86,14 @@ export class TabState implements vscode.Disposable {
   }
 }
 
-function getActiveSelection(): FileSelection | undefined {
+function getActiveSelection(cwd: string | null): FileSelection | undefined {
+  if (!cwd) {
+    return undefined;
+  }
   const activeEditor = vscode.window.activeTextEditor;
   if (activeEditor?.document && activeEditor.document.uri.scheme === "file") {
     const selection = activeEditor.selection;
-    const relativePath = vscode.workspace.asRelativePath(
-      activeEditor.document.uri,
-    );
+    const relativePath = asRelativePath(activeEditor.document.uri, cwd);
     return {
       filepath: relativePath,
       range: {
@@ -107,7 +113,7 @@ function getActiveSelection(): FileSelection | undefined {
   const activeNotebookEditor = vscode.window.activeNotebookEditor;
   if (activeNotebookEditor?.notebook) {
     const notebook = activeNotebookEditor.notebook;
-    const relativePath = vscode.workspace.asRelativePath(notebook.uri);
+    const relativePath = asRelativePath(notebook.uri, cwd);
 
     // Get the active cell selection
     const activeCell = activeNotebookEditor.selection?.start;
@@ -153,16 +159,19 @@ function getActiveSelection(): FileSelection | undefined {
   return undefined;
 }
 
-function listOpenTabs(): { filepath: string; isDir: boolean }[] {
+function listOpenTabs(
+  cwd: string | null,
+): { filepath: string; isDir: boolean }[] {
+  if (!cwd) {
+    return [];
+  }
   const currentOpenTabFiles: { filepath: string; isDir: boolean }[] = [];
   const processedFilepaths = new Set<string>(); // To ensure uniqueness by final relative filepath
 
   // Prioritize active editor
   const activeEditor = vscode.window.activeTextEditor;
   if (activeEditor?.document) {
-    const relativePath = vscode.workspace.asRelativePath(
-      activeEditor.document.uri,
-    );
+    const relativePath = asRelativePath(activeEditor.document.uri, cwd);
     if (!processedFilepaths.has(relativePath)) {
       currentOpenTabFiles.push({ filepath: relativePath, isDir: false });
       processedFilepaths.add(relativePath);
@@ -187,7 +196,7 @@ function listOpenTabs(): { filepath: string; isDir: boolean }[] {
       // Other tab input types like vscode.TabInputWebview or vscode.TabInputTerminal are generally not considered file-backed code editors.
 
       if (uri) {
-        const relativePath = vscode.workspace.asRelativePath(uri);
+        const relativePath = asRelativePath(uri, cwd);
         if (!processedFilepaths.has(relativePath)) {
           currentOpenTabFiles.push({ filepath: relativePath, isDir: false });
           processedFilepaths.add(relativePath);

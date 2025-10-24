@@ -161,17 +161,19 @@ export function AttachmentPreviewList({
                   )}
                 </div>
               </HoverCardTrigger>
-              <button
-                type="button"
-                onClick={() => onRemove(index)}
-                className={cn(
-                  "-top-2 -right-2 absolute flex h-5 w-5 items-center justify-center rounded-full p-0.5 text-xs",
-                  "bg-secondary text-secondary-foreground opacity-70 transition-opacity hover:opacity-100",
-                )}
-                aria-label={t("attachmentPreview.removeAttachment")}
-              >
-                <X className="size-3.5" />
-              </button>
+              {!isUploading && (
+                <button
+                  type="button"
+                  onClick={() => onRemove(index)}
+                  className={cn(
+                    "-top-2 -right-2 absolute flex h-5 w-5 items-center justify-center rounded-full p-0.5 text-xs",
+                    "bg-secondary text-secondary-foreground opacity-70 transition-opacity hover:opacity-100",
+                  )}
+                  aria-label={t("attachmentPreview.removeAttachment")}
+                >
+                  <X className="size-3.5" />
+                </button>
+              )}
             </div>
             {isPdf ? (
               <HoverCardContent className="w-auto max-w-xs p-2">

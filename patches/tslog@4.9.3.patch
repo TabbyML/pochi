@@ -1,0 +1,14 @@
+diff --git a/dist/esm/runtime/nodejs/index.js b/dist/esm/runtime/nodejs/index.js
+index f25f17cf956694896d0c326f212c75507dd2b1d4..fef47062d503212eabb1b2929f7f6498095d9bc8 100644
+--- a/dist/esm/runtime/nodejs/index.js
++++ b/dist/esm/runtime/nodejs/index.js
+@@ -2,6 +2,9 @@ import { hostname } from "os";
+ import { normalize as fileNormalize } from "path";
+ import { types, formatWithOptions } from "util";
+ import { formatTemplate } from "../../formatTemplate.js";
++import { Console } from "node:console";
++const console = new Console(process.stderr)
++
+ export default {
+     getCallerStackFrame,
+     getErrorTrace,
