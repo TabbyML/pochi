@@ -105,19 +105,24 @@ export function createVertexModel(vertex: GoogleVertexModel, modelId: string) {
               ? input.toString()
               : input.url;
         const lastSegment = url.split("/").at(-1);
-        const resp = await fetch(issueUrl, {
-          headers: {
-            "Metadata-Flavor": "Google",
-          },
-        });
+
         let accessToken: string;
-        if (resp.headers.get("content-type") === "application/json") {
-          const { access_token } = (await resp.json()) as {
-            access_token: string;
-          };
-          accessToken = access_token;
-        } else {
-          accessToken = await resp.text();
+        try {
+          const resp = await fetch(issueUrl, {
+            headers: {
+              "Metadata-Flavor": "Google",
+            },
+          });
+          if (resp.headers.get("content-type") === "application/json") {
+            const { access_token } = (await resp.json()) as {
+              access_token: string;
+            };
+            accessToken = access_token;
+          } else {
+            accessToken = await resp.text();
+          }
+        } catch (err) {
+          return new Response("Failed to fetch token", { status: 401 });
         }
 
         const headers = new Headers(requestInit?.headers);

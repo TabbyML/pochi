@@ -1,5 +1,9 @@
+import { Console } from "node:console";
 import type { CommandUnknownOpts } from "@commander-js/extra-typings";
 import { initializeShellCompletion } from "./tree";
+
+// Shell Completion shall output to stdout
+const console = new Console(process.stdout);
 
 export function handleShellCompletion(
   program: CommandUnknownOpts,

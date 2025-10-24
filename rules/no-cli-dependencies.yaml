@@ -1,0 +1,15 @@
+id: no-cli-dependencies
+language: json
+rule:
+  kind: object
+  inside:
+    kind: pair
+    has:
+      field: key
+      regex: dependencies
+files:
+- packages/cli/package.json
+message: |
+  Do not add dependencies to packages/cli/package.json.
+  We released the bundled cli.js in npm, it has no runtime dependencies.
+severity: error

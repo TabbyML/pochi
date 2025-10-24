@@ -292,11 +292,9 @@
                         "const": "service-account"
                       },
                       "serviceAccountKey": {
-                        "default": "",
                         "type": "string"
                       },
                       "location": {
-                        "default": "",
                         "type": "string"
                       }
                     },
@@ -315,15 +313,12 @@
                         "const": "access-token"
                       },
                       "accessToken": {
-                        "default": "",
                         "type": "string"
                       },
                       "projectId": {
-                        "default": "",
                         "type": "string"
                       },
                       "location": {
-                        "default": "",
                         "type": "string"
                       }
                     },
@@ -343,16 +338,13 @@
                         "const": "model-url"
                       },
                       "issueUrl": {
-                        "default": "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token",
                         "type": "string"
                       },
                       "modelUrl": {
-                        "default": "https://aiplatform.googleapis.com/v1/projects/yhhou-preview-test/locations/global/publishers/google/models",
                         "type": "string"
                       },
                       "timeout": {
                         "description": "Timeout in milliseconds when requesting model api",
-                        "default": 900000,
                         "type": "number"
                       }
                     },

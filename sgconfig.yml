@@ -2,3 +2,5 @@ ruleDirs:
   - rules
 languageGlobs:
   tsx: ["*.ts", "*.tsx"]
+  json: ["*.json"]
+
