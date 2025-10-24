@@ -12,12 +12,16 @@ const logger = getLogger("writeToFileTool");
 
 export const previewWriteToFile: PreviewToolFunctionType<
   ClientTools["writeToFile"]
-> = async (args, { state, toolCallId, abortSignal, cwd }) => {
+> = async (args, { state, toolCallId, abortSignal, cwd, nonInteractive }) => {
   const { path, content } = args || {};
   if (path === undefined || content === undefined) return;
 
   try {
     const processedContent = fixCodeGenerationOutput(content);
+
+    if (nonInteractive) {
+      return;
+    }
 
     const diffView = await DiffView.getOrCreate(toolCallId, path, cwd);
     await diffView.update(

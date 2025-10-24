@@ -18,7 +18,7 @@ const logger = getLogger("multiApplyDiffTool");
  */
 export const previewMultiApplyDiff: PreviewToolFunctionType<
   ClientTools["multiApplyDiff"]
-> = async (args, { toolCallId, state, abortSignal, cwd }) => {
+> = async (args, { toolCallId, state, abortSignal, cwd, nonInteractive }) => {
   const { path, edits } = args || {};
   if (!args || !path || !edits || edits.length === 0) {
     return;
@@ -32,6 +32,10 @@ export const previewMultiApplyDiff: PreviewToolFunctionType<
     validateTextFile(fileBuffer);
     const fileContent = fileBuffer.toString();
     const updatedContent = await processMultipleDiffs(fileContent, edits);
+
+    if (nonInteractive) {
+      return;
+    }
 
     const diffView = await DiffView.getOrCreate(toolCallId, path, cwd);
     await diffView.update(
