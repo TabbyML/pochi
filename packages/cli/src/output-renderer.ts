@@ -267,7 +267,7 @@ function renderToolPart(part: ToolUIPart<UITools>): {
     };
   }
   return {
-    text: `Tool ${getToolName(part)}`,
+    text: `🛠️ Tool ${getToolName(part)}`,
     stop: hasError ? "fail" : "succeed",
     error: errorText,
   };

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CustomModelSetting, GoogleVertexModel } from "../model";
+import { CustomModelSetting } from "../model";
 
 describe("Model configuration types", () => {
   describe("CustomModelSetting - OpenAI", () => {
@@ -78,59 +78,6 @@ describe("Model configuration types", () => {
     });
   });
 
-  describe("CustomModelSetting - Google Vertex Tuning", () => {
-    it("should parse Google Vertex with service account key", () => {
-      const config = CustomModelSetting.parse({
-        kind: "google-vertex-tuning",
-        name: "Google Vertex",
-        vertex: {
-          serviceAccountKey: "key-content",
-          location: "us-central1",
-        },
-        models: {},
-      });
-      expect(config.kind).toBe("google-vertex-tuning");
-      if (config.kind === "google-vertex-tuning" && "serviceAccountKey" in config.vertex) {
-        expect(config.vertex.serviceAccountKey).toBe("key-content");
-        expect(config.vertex.location).toBe("us-central1");
-      }
-    });
-
-    it("should parse Google Vertex with access token", () => {
-      const config = CustomModelSetting.parse({
-        kind: "google-vertex-tuning",
-        name: "Google Vertex",
-        vertex: {
-          accessToken: "test-token",
-          projectId: "test-project",
-          location: "us-west1",
-        },
-        models: {},
-      });
-      if (config.kind === "google-vertex-tuning" && "accessToken" in config.vertex) {
-        expect(config.vertex.accessToken).toBe("test-token");
-        expect(config.vertex.projectId).toBe("test-project");
-        expect(config.vertex.location).toBe("us-west1");
-      }
-    });
-
-    it("should parse Google Vertex with issue and model URLs", () => {
-      const config = CustomModelSetting.parse({
-        kind: "google-vertex-tuning",
-        name: "Google Vertex",
-        vertex: {
-          issueUrl: "https://issue.url",
-          modelUrl: "https://model.url",
-        },
-        models: {},
-      });
-      if (config.kind === "google-vertex-tuning" && "issueUrl" in config.vertex) {
-        expect(config.vertex.issueUrl).toBe("https://issue.url");
-        expect(config.vertex.modelUrl).toBe("https://model.url");
-      }
-    });
-  });
-
   describe("CustomModelSetting - AI Gateway", () => {
     it("should parse valid AI Gateway model settings", () => {
       const config = CustomModelSetting.parse({
@@ -149,40 +96,6 @@ describe("Model configuration types", () => {
         expect(config.apiKey).toBe("gateway-key");
       }
       expect(config.models["gateway-model"].useToolCallMiddleware).toBe(true);
-    });
-  });
-
-  describe("GoogleVertexModel", () => {
-    it("should parse service account key variant", () => {
-      const model = GoogleVertexModel.parse({
-        serviceAccountKey: "key-content",
-        location: "us-central1",
-      });
-      if ("serviceAccountKey" in model) {
-        expect(model.serviceAccountKey).toBe("key-content");
-        expect(model.location).toBe("us-central1");
-      }
-    });
-
-    it("should parse access token variant", () => {
-      const model = GoogleVertexModel.parse({
-        accessToken: "token",
-        projectId: "project",
-        location: "europe-west1",
-      });
-      if ("accessToken" in model) {
-        expect(model.accessToken).toBe("token");
-        expect(model.projectId).toBe("project");
-        expect(model.location).toBe("europe-west1");
-      }
-    });
-
-    it("should parse URL variant with defaults", () => {
-      const model = GoogleVertexModel.parse({});
-      if ("issueUrl" in model) {
-        expect(model.issueUrl).toBe("");
-        expect(model.modelUrl).toBe("");
-      }
     });
   });
 

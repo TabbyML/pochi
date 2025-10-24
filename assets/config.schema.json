@@ -287,16 +287,19 @@
                   {
                     "type": "object",
                     "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "service-account"
+                      },
                       "serviceAccountKey": {
-                        "default": "",
                         "type": "string"
                       },
                       "location": {
-                        "default": "",
                         "type": "string"
                       }
                     },
                     "required": [
+                      "type",
                       "serviceAccountKey",
                       "location"
                     ],
@@ -305,20 +308,22 @@
                   {
                     "type": "object",
                     "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "access-token"
+                      },
                       "accessToken": {
-                        "default": "",
                         "type": "string"
                       },
                       "projectId": {
-                        "default": "",
                         "type": "string"
                       },
                       "location": {
-                        "default": "",
                         "type": "string"
                       }
                     },
                     "required": [
+                      "type",
                       "accessToken",
                       "projectId",
                       "location"
@@ -328,21 +333,23 @@
                   {
                     "type": "object",
                     "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "model-url"
+                      },
                       "issueUrl": {
-                        "default": "",
                         "type": "string"
                       },
                       "modelUrl": {
-                        "default": "",
                         "type": "string"
                       },
                       "timeout": {
                         "description": "Timeout in milliseconds when requesting model api",
-                        "default": 900000,
                         "type": "number"
                       }
                     },
                     "required": [
+                      "type",
                       "issueUrl",
                       "modelUrl",
                       "timeout"

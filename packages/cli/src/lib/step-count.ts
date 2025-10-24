@@ -70,9 +70,14 @@ export class StepCount implements StepInfo {
     }
   }
 
-  nextRetry() {
+  async nextRetry() {
     this.throwIfReachedMaxRetries();
+
+    const baseRetryWaitMs = 3000;
     this.retry++;
+    await new Promise((resolve) =>
+      setTimeout(resolve, baseRetryWaitMs * 2 ** this.retry),
+    );
   }
 
   toString() {
