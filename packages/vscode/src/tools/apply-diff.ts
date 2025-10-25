@@ -18,7 +18,7 @@ const logger = getLogger("applyDiffTool");
  */
 export const previewApplyDiff: PreviewToolFunctionType<
   ClientTools["applyDiff"]
-> = async (args, { toolCallId, state, abortSignal, cwd }) => {
+> = async (args, { toolCallId, state, abortSignal, cwd, nonInteractive }) => {
   const { path, searchContent, replaceContent, expectedReplacements } =
     args || {};
   if (
@@ -45,6 +45,10 @@ export const previewApplyDiff: PreviewToolFunctionType<
       replaceContent,
       expectedReplacements,
     );
+
+    if (nonInteractive) {
+      return;
+    }
 
     const diffView = await DiffView.getOrCreate(toolCallId, path, cwd);
     await diffView.update(

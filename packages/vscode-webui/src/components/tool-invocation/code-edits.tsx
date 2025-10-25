@@ -12,3 +12,16 @@ export const UserEdits: React.FC<{
     </div>
   );
 };
+
+export const ModelEdits: React.FC<{
+  edits: string;
+}> = ({ edits }) => {
+  return (
+    <div className="my-2 ml-1 flex flex-col">
+      <CodeBlock className="" language="diff" value={edits} />
+      <p className="mt-1 self-center text-xs italic">
+        Pochi have made the above edits
+      </p>
+    </div>
+  );
+};

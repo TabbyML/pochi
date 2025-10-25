@@ -22,5 +22,6 @@ export type PreviewToolFunctionType<T extends Tool> = (
     state: "partial-call" | "call" | "result";
     abortSignal?: AbortSignal;
     cwd: string;
+    nonInteractive?: boolean;
   },
 ) => Promise<undefined>;
