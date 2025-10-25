@@ -15,7 +15,7 @@ import { vscodeHost } from "@/lib/vscode";
 import { fuzzySearchStrings } from "@/lib/fuzzy-search";
 import { fileMentionPluginKey } from "../context-mention/extension";
 import type { MentionListActions } from "../shared";
-import { workflowMentionPluginKey } from "../workflow-mention/extension";
+import { SlashMentionPluginKey } from "../slash-mention/extension";
 import {
   type AutoCompleteListProps,
   AutoCompleteMentionList,
@@ -340,7 +340,7 @@ export const AutoCompleteExtension = Extension.create<
 
 function isMentionExtensionActive(state: EditorState) {
   const fileMentionState = fileMentionPluginKey.getState(state);
-  const workflowMentionState = workflowMentionPluginKey.getState(state);
+  const workflowMentionState = SlashMentionPluginKey.getState(state);
   return fileMentionState?.active || workflowMentionState?.active;
 }
 

@@ -1,4 +1,9 @@
-export const KnownTags = ["file", "workflow", "compact"] as const;
+export const KnownTags = [
+  "file",
+  "workflow",
+  "compact",
+  "custom-agent",
+] as const;
 export const CompactTaskMinTokens = 50_000;
 
 export const WorkspaceWorkflowPathSegments = [".pochi", "workflows"];

@@ -26,4 +26,10 @@ export type CaptureEvent =
         uid: string;
         text: string;
       };
+    }
+  | {
+      event: "selectCustomAgent";
+      properties: {
+        customAgentName: string;
+      };
     };

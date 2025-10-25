@@ -17,6 +17,7 @@ export const prompts = {
   parseInlineCompact,
   generateTitle,
   workflow: createWorkflowPrompt,
+  customAgent: createCustomAgentPrompt,
   injectBashOutputs,
 };
 
@@ -71,4 +72,18 @@ function createWorkflowPrompt(id: string, path: string, content: string) {
     return match.replace("<", "&lt;");
   });
   return `<workflow id="${id}" path="${path}">${processedContent}</workflow>`;
+}
+
+function createCustomAgentPrompt(id: string, path: string) {
+  // Remove extra newlines from the id
+  let processedAgentName = id.replace(/\n+/g, "\n");
+  // Escape '<' to avoid </workflow> being interpreted as a closing tag
+  const customAgentTagRegex = /<\/?custom-agent\b[^>]*>/g;
+  processedAgentName = processedAgentName.replace(
+    customAgentTagRegex,
+    (match) => {
+      return match.replace("<", "&lt;");
+    },
+  );
+  return `<custom-agent id="${id}" path="${path}">${processedAgentName}</custom-agent>`;
 }

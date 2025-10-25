@@ -1,8 +1,19 @@
 import * as fs from "node:fs/promises";
 import { homedir } from "node:os";
 import * as path from "node:path";
-import { constants, prompts } from "@getpochi/common";
-import { parseWorkflowFrontmatter as commonParseWorkflowFrontmatter } from "@getpochi/common/tool-utils";
+import { constants } from "@getpochi/common";
+import {
+  isFileExists,
+  parseWorkflowFrontmatter,
+} from "@getpochi/common/tool-utils";
+import { uniqueBy } from "remeda";
+
+export interface Workflow {
+  id: string;
+  pathName: string;
+  content: string;
+  frontmatter: { model?: string };
+}
 
 function getWorkflowPath(id: string) {
   // Construct the workflow file path
@@ -10,98 +21,62 @@ function getWorkflowPath(id: string) {
   return path.join(workflowsDir, `${id}.md`);
 }
 
-/**
- * Loads workflow content from a workflow file
- * @param id The name of the workflow (without .md extension)
- * @param cwd The current working directory
- * @returns The content of the workflow file, or null if not found
- */
-async function loadWorkflow(
-  id: string,
-  cwd: string,
-  includeGlobalWorkflow = true,
-): Promise<string | null> {
-  const workflowFilePaths = [path.join(cwd, getWorkflowPath(id))];
-  if (includeGlobalWorkflow) {
-    workflowFilePaths.push(path.join(homedir(), getWorkflowPath(id)));
-  }
+async function readWorkflowsFromDir(dir: string): Promise<Workflow[]> {
+  const workflows: Workflow[] = [];
+  try {
+    if (!(await isFileExists(dir))) {
+      return workflows;
+    }
 
-  for (const filePath of workflowFilePaths) {
-    try {
-      // Check if the file exists and read its content
-      const content = await fs.readFile(filePath, "utf-8");
-      if (content) {
-        return content;
+    const files = await fs.readdir(dir);
+    for (const fileName of files) {
+      if (fileName.endsWith(".md")) {
+        const id = fileName.replace(/\.md$/, "");
+        const filePath = path.join(dir, fileName);
+        try {
+          const content = await fs.readFile(filePath, "utf-8");
+          const frontmatter = await parseWorkflowFrontmatter(content);
+          workflows.push({
+            id,
+            pathName: getWorkflowPath(id),
+            content,
+            frontmatter: { model: frontmatter.model },
+          });
+        } catch (e) {
+          // ignore file read errors
+        }
       }
-    } catch (error) {
-      // File doesn't exist or cannot be read
     }
+  } catch (error) {
+    // ignore readdir errors
   }
-
-  return null;
+  return workflows;
 }
 
-/**
- * Checks if a prompt contains a workflow reference (starts with /)
- * @param prompt The prompt to check
- * @returns True if the prompt contains a workflow reference, false otherwise
- */
-export function containsWorkflowReference(prompt: string): boolean {
-  return /\/\w+[\w-]*/.test(prompt);
-}
-
-/**
- * Extracts all workflow names from a prompt
- * @param prompt The prompt to extract workflow names from
- * @returns Array of workflow names found in the prompt
- */
-export function extractWorkflowNames(prompt: string): string[] {
-  const workflowRegex = /(\/\w+[\w-]*)/g;
-  const matches = prompt.match(workflowRegex);
-  if (!matches) return [];
-
-  return matches.map((match) => match.substring(1)); // Remove the leading "/"
-}
-/**
- * Replaces workflow references in a prompt with their content
- * @param prompt The prompt containing workflow references
- * @param cwd The current working directory
- * @returns The prompt with workflow references replaced by their content
- */
-export async function replaceWorkflowReferences(
-  prompt: string,
+export async function loadWorkflows(
   cwd: string,
-): Promise<{ prompt: string; missingWorkflows: string[] }> {
-  const workflowNames = extractWorkflowNames(prompt);
+  includeGlobalWorkflows = true,
+): Promise<Workflow[]> {
+  const allWorkflows: Workflow[] = [];
 
-  if (workflowNames.length === 0) {
-    return { prompt, missingWorkflows: [] };
+  const projectWorkflowsDir = path.join(
+    cwd,
+    ...constants.WorkspaceWorkflowPathSegments,
+  );
+  allWorkflows.push(...(await readWorkflowsFromDir(projectWorkflowsDir)));
+
+  if (includeGlobalWorkflows) {
+    const globalWorkflowsDir = path.join(
+      homedir(),
+      ...constants.WorkspaceWorkflowPathSegments,
+    );
+    allWorkflows.push(...(await readWorkflowsFromDir(globalWorkflowsDir)));
   }
 
-  let result = prompt;
-  const missingWorkflows: string[] = [];
-
-  // Process each workflow reference
-  for (const id of workflowNames) {
-    const content = await loadWorkflow(id, cwd);
-    if (content !== null) {
-      // Replace only the workflow reference, preserving surrounding text
-      result = result.replace(
-        `/${id}`,
-        prompts.workflow(id, getWorkflowPath(id), content),
-      );
-    } else {
-      missingWorkflows.push(id);
-    }
-  }
-
-  return { prompt: result, missingWorkflows };
+  return uniqueBy(allWorkflows, (workflow: Workflow) => workflow.id);
 }
 
-export async function parseWorkflowFrontmatter(id: string) {
-  const content = await loadWorkflow(id, process.cwd());
-  if (content === null) {
-    return { model: undefined };
-  }
-  return commonParseWorkflowFrontmatter(content);
+export function getModelFromWorkflow(workflow: Workflow | undefined) {
+  if (!workflow) return undefined;
+  return workflow.frontmatter.model;
 }

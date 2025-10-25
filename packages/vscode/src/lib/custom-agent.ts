@@ -100,11 +100,24 @@ export class CustomAgentManager implements vscode.Disposable {
       const allAgents: CustomAgentFile[] = [];
       if (this.cwd) {
         const projectAgentsDir = path.join(this.cwd, ".pochi", "agents");
-        allAgents.push(...(await readAgentsFromDir(projectAgentsDir)));
+        const cwd = this.cwd;
+        const projectAgents = await readAgentsFromDir(projectAgentsDir);
+        allAgents.push(
+          ...projectAgents.map((x) => ({
+            ...x,
+            filePath: path.relative(cwd, x.filePath),
+          })),
+        );
       }
-      const systemAgentsDir = path.join(os.homedir(), ".pochi", "agents");
 
-      allAgents.push(...(await readAgentsFromDir(systemAgentsDir)));
+      const systemAgentsDir = path.join(os.homedir(), ".pochi", "agents");
+      const systemAgents = await readAgentsFromDir(systemAgentsDir);
+      allAgents.push(
+        ...systemAgents.map((x) => ({
+          ...x,
+          filePath: x.filePath.replace(os.homedir(), "~"),
+        })),
+      );
 
       this.agents.value = uniqueBy(allAgents, (agent) => agent.name);
       logger.debug(`Loaded ${allAgents.length} custom agents`);
