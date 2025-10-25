@@ -73,7 +73,7 @@ export const ModelSection = () => {
                 localStorageKey="pochi-models-section"
                 title={
                   <div className="flex items-center gap-0.5 py-1 font-semibold text-foreground/80 text-sm">
-                    Pochi
+                    {t("settings.models.pochi")}
                   </div>
                 }
                 variant="compact"
@@ -121,7 +121,7 @@ export const ModelSection = () => {
                 localStorageKey="byok-models-section"
                 title={
                   <div className="flex items-center gap-0.5 py-1 font-semibold text-foreground/80 text-sm">
-                    BYOK
+                    {t("settings.models.byok")}
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -175,7 +175,7 @@ export const ModelSection = () => {
             localStorageKey="vendor-models-section"
             title={
               <div className="flex items-center gap-0.5 py-1 font-semibold text-foreground/80 text-sm">
-                Third-party
+                {t("settings.models.thirdParty")}
               </div>
             }
             variant="compact"

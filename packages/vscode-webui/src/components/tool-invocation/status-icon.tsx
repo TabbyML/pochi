@@ -17,6 +17,7 @@ import {
   Pause,
   X,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface StatusIconProps {
   tool: ToolUIPart;
@@ -25,6 +26,7 @@ interface StatusIconProps {
 }
 
 export function StatusIcon({ tool, isExecuting, className }: StatusIconProps) {
+  const { t } = useTranslation();
   const [isDevMode] = useIsDevMode();
   const { isCopied, copyToClipboard } = useCopyToClipboard({ timeout: 2000 });
   let error: string | undefined;
@@ -54,7 +56,7 @@ export function StatusIcon({ tool, isExecuting, className }: StatusIconProps) {
       ) : (
         <FilesIcon className="inline" size={12} />
       )}
-      <span className="ml-2 text-sm">Copy Tool Result</span>
+      <span className="ml-2 text-sm">{t("statusIcon.copyToolResult")}</span>
     </span>
   );
 

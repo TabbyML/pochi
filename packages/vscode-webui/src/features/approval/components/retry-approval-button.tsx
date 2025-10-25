@@ -4,6 +4,7 @@ import { useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useAutoApproveGuard } from "@/features/chat";
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
+import { useTranslation } from "react-i18next";
 import type { PendingRetryApproval } from "../hooks/use-pending-retry-approval";
 
 interface RetryApprovalButtonProps {
@@ -15,6 +16,7 @@ export const RetryApprovalButton: React.FC<RetryApprovalButtonProps> = ({
   pendingApproval,
   retry,
 }) => {
+  const { t } = useTranslation();
   useEffect(() => {
     if (pendingApproval.countdown === 0) {
       doRetry();
@@ -44,12 +46,14 @@ export const RetryApprovalButton: React.FC<RetryApprovalButtonProps> = ({
       <Button onClick={onAccept}>
         {pendingApproval.attempts !== undefined &&
         pendingApproval.countdown !== undefined
-          ? `Continue in ${pendingApproval.countdown}s`
-          : "Continue"}
+          ? t("toolInvocation.continueInSeconds", {
+              seconds: pendingApproval.countdown,
+            })
+          : t("toolInvocation.continue")}
       </Button>
       {pendingApproval.countdown !== undefined && (
         <Button onClick={pendingApproval.stopCountdown} variant="secondary">
-          {"Cancel"}
+          {t("toolInvocation.cancel")}
         </Button>
       )}
     </>

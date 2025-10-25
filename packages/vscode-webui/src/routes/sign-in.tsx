@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { LogInIcon, TerminalIcon } from "lucide-react";
 import { useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { z } from "zod";
 
 const searchSchema = z.object({
@@ -16,6 +17,7 @@ export const Route = createFileRoute("/sign-in")({
 });
 
 function SignInPage() {
+  const { t } = useTranslation();
   const { navigate } = useRouter();
   const { redirect } = Route.useSearch();
   const { users } = useUserStorage();
@@ -31,13 +33,12 @@ function SignInPage() {
     <div className="flex h-screen select-none flex-col items-center justify-center p-5 text-center text-gray-600 dark:text-gray-300">
       <h2 className="mb-2 flex items-center gap-3 font-semibold text-2xl text-gray-800 dark:text-gray-100">
         <TerminalIcon className="animate-[spin_6s_linear_infinite]" />
-        Welcome to Pochi
+        {t("signInPage.welcome")}
       </h2>
       <p className="mb-4 leading-relaxed">
-        To use Pochi, you need to sign in with your account.
+        {t("signInPage.description")}
         <br />
-        This allows Pochi to securely access your information and provide
-        personalized assistance.
+        {t("signInPage.securityNote")}
       </p>
       <a
         className={cn(buttonVariants({ variant: "ghost" }), "mb-4")}
@@ -45,7 +46,7 @@ function SignInPage() {
         target="_blank"
         rel="noopener noreferrer"
       >
-        <LogInIcon className="mr-2 size-4" /> Sign In
+        <LogInIcon className="mr-2 size-4" /> {t("signInPage.signInButton")}
       </a>
 
       <div className="absolute bottom-6">
@@ -55,7 +56,7 @@ function SignInPage() {
           target="_blank"
           rel="noopener noreferrer"
         >
-          Need help? View documentation
+          {t("signInPage.needHelp")}
         </a>
       </div>
     </div>

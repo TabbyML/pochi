@@ -3,6 +3,7 @@ import { Folder } from "lucide-react";
 import iconTheme from "./vs-seti-icon-theme.json";
 import "./seti-icons.css";
 import { type Theme, useTheme } from "@/components/theme-provider";
+import { useTranslation } from "react-i18next";
 
 interface IconData {
   file: string;
@@ -72,6 +73,7 @@ const File: React.FC<{
   className?: string;
   defaultIconClassName?: string;
 }> = ({ className, path, theme, defaultIconClassName }) => {
+  const { t } = useTranslation();
   const iconId = getIconForFile(path, theme);
 
   return (
@@ -80,7 +82,7 @@ const File: React.FC<{
         [defaultIconClassName ?? ""]: iconId === "_default",
       })}
       title={path}
-      aria-label={`File: ${path}`}
+      aria-label={t("fileIcon.fileAriaLabel", { path })}
     />
   );
 };
