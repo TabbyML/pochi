@@ -273,7 +273,9 @@
   },
   "mentionList": {
     "noResultsFound": "結果が見つかりません",
-    "typeToSearch": "入力して検索..."
+    "typeToSearch": "入力して検索...",
+    "workflow": "ワークフロー",
+    "agent": "エージェント"
   },
   "subtask": {
     "back": "戻る",

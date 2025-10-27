@@ -272,7 +272,9 @@
   },
   "mentionList": {
     "noResultsFound": "未找到结果",
-    "typeToSearch": "输入以搜索..."
+    "typeToSearch": "输入以搜索...",
+    "workflow": "工作流",
+    "agent": "代理"
   },
   "subtask": {
     "back": "返回",
