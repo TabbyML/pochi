@@ -7,7 +7,7 @@ import {
   catalog,
   processContentOutput,
 } from "@getpochi/livekit";
-import type { ClientTools } from "@getpochi/tools";
+import type { ClientTools, PreviewReturnType } from "@getpochi/tools";
 import type { Store } from "@livestore/livestore";
 import { ThreadAbortSignal } from "@quilted/threads";
 import {
@@ -18,16 +18,6 @@ import type { InferToolInput, ToolUIPart } from "ai";
 import Emittery from "emittery";
 import type { ToolCallLifeCycleKey } from "./chat-state/types";
 
-type PreviewReturnType =
-  | { error: string }
-  | {
-      success: boolean;
-      _meta?: {
-        edits?: string;
-        editSummary?: { added: number; removed: number };
-      };
-    }
-  | undefined;
 type ExecuteCommandReturnType = {
   output: ThreadSignalSerialization<ExecuteCommandResult>;
   detach: () => void;

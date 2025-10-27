@@ -22,6 +22,7 @@ export { MediaOutput } from "./read-file";
 export type {
   ToolFunctionType,
   PreviewToolFunctionType,
+  PreviewReturnType,
 } from "./types";
 import { editNotebook } from "./edit-notebook";
 import { killBackgroundJob } from "./kill-background-job";
