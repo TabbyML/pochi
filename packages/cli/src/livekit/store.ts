@@ -60,7 +60,6 @@ async function getPochiCredentials() {
 
 async function getStoreId(jwt: string | null) {
   const sub = (jwt ? jose.decodeJwt(jwt).sub : undefined) ?? "anonymous";
-  const date = new Date().toLocaleDateString("en-US");
 
-  return encodeStoreId({ sub, machineId: await machineId(), date });
+  return encodeStoreId({ sub, machineId: await machineId() });
 }

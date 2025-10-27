@@ -93,7 +93,7 @@ export default defineConfig({
     }),
     tailwindcss(),
     livestoreDevtoolsPlugin({
-      schemaPath: "../livekit/src/livestore/schema.ts",
+      schemaPath: "../livekit/src/livestore/default-schema.ts",
     }),
     analyzer({
       enabled: !!process.env.VITE_BUNDLE_ANALYZER,

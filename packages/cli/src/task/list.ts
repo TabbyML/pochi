@@ -1,5 +1,5 @@
 import type { Command } from "@commander-js/extra-typings";
-import { type Task, catalog } from "@getpochi/livekit";
+import { type Task, taskCatalog } from "@getpochi/livekit";
 import select from "@inquirer/select";
 import chalk from "chalk";
 import { shutdownStoreAndExit } from "../lib/shutdown";
@@ -25,7 +25,7 @@ export function registerTaskListCommand(taskCommand: Command) {
 
       try {
         const allTasks = store.query(
-          catalog.queries.makeTasksQuery(process.cwd()),
+          taskCatalog.queries.makeTasksQuery(process.cwd()),
         );
         const sortedTasks = [...allTasks].sort(
           (a, b) => b.updatedAt.getTime() - a.updatedAt.getTime(),

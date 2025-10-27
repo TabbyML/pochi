@@ -13,7 +13,7 @@ import {
 } from "@livestore/react";
 import * as jose from "jose";
 import { Loader2 } from "lucide-react";
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 import { unstable_batchedUpdates as batchUpdates } from "react-dom";
 import { useMachineId } from "./lib/hooks/use-machine-id";
 import { usePochiCredentials } from "./lib/hooks/use-pochi-credentials";
@@ -31,23 +31,6 @@ const adapter =
         sharedWorker: LiveStoreSharedWorker,
       })
     : makeInMemoryAdapter();
-
-interface StoreDateContextType {
-  storeDate: Date;
-  setStoreDate: (date: Date) => void;
-}
-
-const StoreDateContext = createContext<StoreDateContextType | undefined>(
-  undefined,
-);
-
-export function useStoreDate() {
-  const context = useContext(StoreDateContext);
-  if (context === undefined) {
-    throw new Error("useStoreDate must be used within a LiveStoreProvider");
-  }
-  return context;
-}
 
 export function LiveStoreProvider({ children }: { children: React.ReactNode }) {
   const { jwt, isPending } = usePochiCredentials();
@@ -69,34 +52,22 @@ function LiveStoreProviderInner({
   machineId: string;
   children: React.ReactNode;
 }) {
-  const [storeDate, setStoreDate] = useState(new Date());
-  const storeId = useStoreId(
-    jwt,
-    machineId,
-    storeDate.toLocaleDateString("en-US"),
-  );
+  const storeId = useStoreId(jwt, machineId);
   const syncPayload = useMemo(() => ({ jwt }), [jwt]);
-
-  const storeDateContextValue = useMemo(
-    () => ({ storeDate, setStoreDate }),
-    [storeDate],
-  );
 
   logger.debug("LiveStoreProvider re-rendered");
   return (
-    <StoreDateContext.Provider value={storeDateContextValue}>
-      <LiveStoreProviderImpl
-        schema={catalog.schema}
-        adapter={adapter}
-        renderLoading={Loading}
-        disableDevtools={true}
-        batchUpdates={batchUpdates}
-        syncPayload={syncPayload}
-        storeId={storeId}
-      >
-        <StoreWithCommitHook>{children}</StoreWithCommitHook>
-      </LiveStoreProviderImpl>
-    </StoreDateContext.Provider>
+    <LiveStoreProviderImpl
+      schema={catalog.schema}
+      adapter={adapter}
+      renderLoading={Loading}
+      disableDevtools={true}
+      batchUpdates={batchUpdates}
+      syncPayload={syncPayload}
+      storeId={storeId}
+    >
+      <StoreWithCommitHook>{children}</StoreWithCommitHook>
+    </LiveStoreProviderImpl>
   );
 }
 
@@ -168,10 +139,10 @@ function StoreWithCommitHook({ children }: { children: React.ReactNode }) {
   );
 }
 
-function useStoreId(jwt: string | null, machineId: string, date: string) {
+function useStoreId(jwt: string | null, machineId: string) {
   const sub = (jwt ? jose.decodeJwt(jwt).sub : undefined) ?? "anonymous";
 
-  return encodeStoreId({ sub, machineId, date });
+  return encodeStoreId({ sub, machineId });
 }
 
 function Loading() {

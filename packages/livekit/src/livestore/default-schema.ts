@@ -1,71 +1,14 @@
 import { Events, Schema, State, makeSchema } from "@livestore/livestore";
-
-const DBTextUIPart = Schema.Struct({
-  type: Schema.Literal("text"),
-  text: Schema.String,
-  state: Schema.optional(Schema.Literal("streaming", "done")),
-});
-
-const DBUIPart = Schema.Union(DBTextUIPart, Schema.Unknown);
-
-const DBMessage = Schema.Struct({
-  id: Schema.String,
-  role: Schema.Literal("user", "assistant", "system"),
-  parts: Schema.Array(DBUIPart),
-});
-
-const Todo = Schema.Struct({
-  id: Schema.String,
-  content: Schema.String,
-  status: Schema.Literal("pending", "in-progress", "completed", "cancelled"),
-  priority: Schema.Literal("low", "medium", "high"),
-});
-
-const Todos = Schema.Array(Todo);
-
-const TaskStatus = Schema.Literal(
-  "completed",
-  "pending-input",
-  "failed",
-  "pending-tool",
-  "pending-model",
-);
-
-const TaskError = Schema.Union(
-  Schema.Struct({
-    kind: Schema.Literal("InternalError"),
-    message: Schema.String,
-  }),
-  Schema.Struct({
-    kind: Schema.Literal("APICallError"),
-    isRetryable: Schema.Boolean,
-    message: Schema.String,
-    requestBodyValues: Schema.Unknown,
-  }),
-  Schema.Struct({
-    kind: Schema.Literal("AbortError"),
-    message: Schema.String,
-  }),
-);
-
-const Git = Schema.Struct({
-  /**
-   * The remote URL of the repository
-   */
-  origin: Schema.optional(Schema.String),
-  worktree: Schema.optional(
-    Schema.Struct({
-      /**
-       * The gitdir path stored in worktree .git file.
-       */
-      gitdir: Schema.String,
-    }),
-  ),
-  /**
-   * The current branch name of the worktree
-   */
-  branch: Schema.String,
-});
+import {
+  DBMessage,
+  DBUIPart,
+  Git,
+  TaskError,
+  TaskStatus,
+  Todos,
+  taskFullFields,
+  taskInitFields,
+} from "./types";
 
 export const tables = {
   tasks: State.SQLite.table({
@@ -111,7 +54,6 @@ export const tables = {
       },
     ],
   }),
-  // Many to one relationship with tasks
   messages: State.SQLite.table({
     name: "messages",
     columns: {
@@ -137,28 +79,6 @@ export const tables = {
   }),
 };
 
-const taskInitFields = {
-  id: Schema.String,
-  parentId: Schema.optional(Schema.String),
-  cwd: Schema.optional(Schema.String),
-  createdAt: Schema.Date,
-  modelId: Schema.optional(Schema.String),
-};
-
-const taskFullFields = {
-  ...taskInitFields,
-  git: Schema.optional(Git),
-  shareId: Schema.optional(Schema.String),
-  isPublicShared: Schema.Boolean,
-  title: Schema.optional(Schema.String),
-  status: TaskStatus,
-  todos: Todos,
-  totalTokens: Schema.optional(Schema.Number),
-  error: Schema.optional(TaskError),
-  updatedAt: Schema.Date,
-};
-
-// Events describe data changes (https://docs.livestore.dev/reference/events)
 export const events = {
   taskInited: Events.synced({
     name: "v1.TaskInited",
@@ -255,7 +175,6 @@ export const events = {
   }),
 };
 
-// Materializers are used to map events to state (https://docs.livestore.dev/reference/state/materializers)
 const materializers = State.SQLite.materializers(events, {
   "v1.TaskInited": ({ id, parentId, createdAt, cwd, initMessage }) => [
     tables.tasks.insert({
