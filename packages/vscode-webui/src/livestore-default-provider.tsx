@@ -10,7 +10,7 @@ import { useMemo } from "react";
 import { unstable_batchedUpdates as batchUpdates } from "react-dom";
 import { useMachineId } from "./lib/hooks/use-machine-id";
 import { usePochiCredentials } from "./lib/hooks/use-pochi-credentials";
-import LiveStoreWorker from "./livestore.worker.ts?worker&inline";
+import LiveStoreWorker from "./livestore.default.worker.ts?worker&inline";
 
 const logger = getLogger("LiveStoreProvider");
 
@@ -20,7 +20,9 @@ const adapter = makePersistedAdapter({
   sharedWorker: LiveStoreSharedWorker,
 });
 
-export function LiveStoreProvider({ children }: { children: React.ReactNode }) {
+export function LiveStoreDefaultProvider({
+  children,
+}: { children: React.ReactNode }) {
   const { jwt, isPending } = usePochiCredentials();
   const { data: machineId } = useMachineId();
   if (isPending || !machineId) return null;

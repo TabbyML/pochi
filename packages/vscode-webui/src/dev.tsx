@@ -7,7 +7,7 @@ import { type FormEvent, useState } from "react";
 import { unstable_batchedUpdates as batchUpdates } from "react-dom";
 import ReactDOM from "react-dom/client";
 import { useTranslation } from "react-i18next";
-import LiveStoreWorker from "./livestore.worker.ts?worker";
+import LiveStoreWorker from "./livestore.default.worker.ts?worker";
 
 const adapter = makePersistedAdapter({
   storage: { type: "opfs" },

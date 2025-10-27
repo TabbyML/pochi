@@ -123,7 +123,7 @@ export default defineConfig({
           runtime: `window.__assetsPath(${JSON.stringify(filename)})`,
         };
       }
-      if (hostId === "livestore.worker.js") {
+      if (hostId.endsWith(".worker.js")) {
         return {
           runtime: `self.__assetsPath(${JSON.stringify(filename)})`,
         };

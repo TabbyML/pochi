@@ -18,8 +18,7 @@ import { setActiveStore, vscodeHost } from "@/lib/vscode";
 import { getWorktreeName } from "@getpochi/common/git-utils";
 import { parseTitle } from "@getpochi/common/message-utils";
 import { type Task, taskCatalog } from "@getpochi/livekit";
-import { makeInMemoryAdapter } from "@livestore/adapter-web";
-import { LiveStoreProvider, useStore } from "@livestore/react";
+import { useStore } from "@livestore/react";
 import { Link, createFileRoute, useRouter } from "@tanstack/react-router";
 import {
   Brain,
@@ -33,9 +32,9 @@ import {
   Zap,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo } from "react";
-import { unstable_batchedUpdates as batchUpdates } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { MdOutlineErrorOutline } from "react-icons/md";
+import { LiveStoreTaskProvider } from "../livestore-task-provider";
 
 export const Route = createFileRoute("/tasks")({
   validateSearch: (search: Record<string, unknown>): { page?: number } => {
@@ -158,8 +157,6 @@ const getPaginationItems = (
   return items;
 };
 
-const inMemoryAdapter = makeInMemoryAdapter();
-
 function App() {
   const { data: currentWorkspace, isFetching: isFetchingWorkspace } =
     useCurrentWorkspace();
@@ -176,14 +173,9 @@ function App() {
   }
 
   return (
-    <LiveStoreProvider
-      schema={taskCatalog.schema}
-      adapter={inMemoryAdapter}
-      renderLoading={(_) => <></>}
-      batchUpdates={batchUpdates}
-    >
+    <LiveStoreTaskProvider>
       <Tasks />
-    </LiveStoreProvider>
+    </LiveStoreTaskProvider>
   );
 }
 
