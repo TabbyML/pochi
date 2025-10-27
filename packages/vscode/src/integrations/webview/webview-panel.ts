@@ -16,21 +16,6 @@ import { VSCodeHostImpl } from "./vscode-host-impl";
 
 const logger = getLogger("PochiWebviewPanel");
 
-/**
- * EDITOR TAB WEBVIEW PANEL
- *
- * This class manages Pochi webviews that open as editor tabs/panels.
- * It uses vscode.window.createWebviewPanel to create independent tabs
- * that can be opened, closed, and moved by users.
- *
- * Key characteristics:
- * - Opens as editor tabs (like file editors)
- * - Uses session ID: "editor-{timestamp}-{counter}"
- * - Managed by VS Code's WebviewPanel system
- * - Multiple instances allowed per VS Code window
- * - Can be opened via "Open in Editor" command from sidebar
- * - Each panel has independent state and lifecycle
- */
 export class PochiWebviewPanel
   extends WebviewBase
   implements vscode.Disposable
@@ -38,7 +23,7 @@ export class PochiWebviewPanel
   private static readonly viewType = "pochiPanel";
   private static panels = new Map<string, PochiWebviewPanel>();
 
-  private readonly panel: vscode.WebviewPanel;
+  public readonly panel: vscode.WebviewPanel;
 
   constructor(
     panel: vscode.WebviewPanel,
@@ -76,6 +61,19 @@ export class PochiWebviewPanel
     return async (): Promise<ResourceURI> => {
       return this.buildResourceURI(this.panel.webview);
     };
+  }
+
+  public static setTitle(sessionId: string, title: string): void {
+    if (PochiWebviewPanel.panels.has(sessionId)) {
+      const existingPanel = PochiWebviewPanel.panels.get(sessionId);
+      if (existingPanel) {
+        existingPanel.panel.title = title;
+      }
+    }
+  }
+
+  public static getPanel(sessionId: string): PochiWebviewPanel | undefined {
+    return PochiWebviewPanel.panels.get(sessionId);
   }
 
   public static async createOrShow(

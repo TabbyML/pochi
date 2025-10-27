@@ -51,17 +51,15 @@ import {
 } from "@getpochi/common/tool-utils";
 import { getVendor } from "@getpochi/common/vendor";
 import type {
-  CustomAgentFile,
-  PochiCredentials,
-  TaskData,
-} from "@getpochi/common/vscode-webui-bridge";
-import type {
   CaptureEvent,
+  CustomAgentFile,
   DisplayModel,
+  PochiCredentials,
   ResourceURI,
   RuleFile,
   SaveCheckpointOptions,
   SessionState,
+  TaskData,
   VSCodeHostApi,
   WorkspaceState,
 } from "@getpochi/common/vscode-webui-bridge";
@@ -778,6 +776,136 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       this.context.extensionUri,
       task,
     );
+  };
+
+  updatePanelTitle = async (title: string): Promise<void> => {
+    if (!this.cwd) {
+      return;
+    }
+    const sessionId = `editor-${this.cwd}`;
+    PochiWebviewPanel.setTitle(sessionId, title);
+  };
+
+  showDiff = async (base = "origin/main"): Promise<void> => {
+    if (!this.cwd) {
+      return;
+    }
+
+    let capturedOutput = "";
+    const result: { filepath: string; before: string; after: string }[] = [];
+    try {
+      const { output } = await executeCommandWithNode({
+        command: `git diff --name-status ${base}...HEAD`,
+        cwd: this.cwd,
+        timeout: 30,
+        onData: (data) => {
+          capturedOutput = data.output;
+        },
+      });
+
+      if (!output) {
+        vscode.window.showInformationMessage("No changes to display.");
+        return;
+      }
+      const changedFiles = output
+        .trim()
+        .split("\n")
+        .map((line: string) => {
+          const [status, filepath] = line.split("\t");
+          return { status, filepath: filepath.trim() };
+        });
+
+      if (changedFiles.length === 0) {
+        vscode.window.showInformationMessage("No changes to display.");
+        return;
+      }
+
+      const sessionId = `editor-${this.cwd}`;
+      const panel = PochiWebviewPanel.getPanel(sessionId);
+      const activeColumn = panel?.panel.viewColumn;
+
+      let targetColumn = vscode.ViewColumn.Beside;
+      if (activeColumn) {
+        targetColumn =
+          activeColumn === vscode.ViewColumn.One
+            ? vscode.ViewColumn.Two
+            : vscode.ViewColumn.One;
+      }
+
+      for (const { status, filepath } of changedFiles) {
+        let beforeContent = "";
+        let afterContent = "";
+        if (status === "A") {
+          const { output } = await executeCommandWithNode({
+            command: `cat ${filepath}`,
+            cwd: this.cwd,
+            timeout: 30,
+          });
+          afterContent = output;
+        } else if (status === "D") {
+          const { output } = await executeCommandWithNode({
+            command: `git show ${base}:${filepath}`,
+            cwd: this.cwd,
+            timeout: 30,
+          });
+          beforeContent = output;
+        } else {
+          const { output: before } = await executeCommandWithNode({
+            command: `git show ${base}:${filepath}`,
+            cwd: this.cwd,
+            timeout: 30,
+          });
+          beforeContent = before;
+          const { output: after } = await executeCommandWithNode({
+            command: `cat ${filepath}`,
+            cwd: this.cwd,
+            timeout: 30,
+          });
+          afterContent = after;
+        }
+
+        result.push({
+          filepath,
+          before: beforeContent,
+          after: afterContent,
+        });
+      }
+
+      // Workaround: Focus the target column before calling 'vscode.changes'
+      const dummyDoc = await vscode.workspace.openTextDocument({
+        content: "",
+        language: "text",
+      });
+      await vscode.window.showTextDocument(dummyDoc, {
+        viewColumn: targetColumn,
+        preview: true,
+        preserveFocus: false,
+      });
+
+      await vscode.commands.executeCommand(
+        "vscode.changes",
+        // FIXME title
+        "change",
+        result.map((file) => [
+          vscode.Uri.joinPath(vscode.Uri.parse(this.cwd ?? ""), file.filepath),
+          DiffChangesContentProvider.decode({
+            filepath: file.filepath,
+            content: file.after,
+            cwd: this.cwd ?? "",
+          }),
+          vscode.Uri.joinPath(vscode.Uri.parse(this.cwd ?? ""), file.filepath),
+        ]),
+        {
+          viewColumn: targetColumn,
+        },
+      );
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e);
+      vscode.window.showErrorMessage(
+        `Failed to get diff: ${message}\n${capturedOutput}`,
+      );
+      return;
+    }
   };
 
   executeBashCommand = async (

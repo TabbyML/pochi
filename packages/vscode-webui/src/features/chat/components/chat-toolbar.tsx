@@ -21,7 +21,14 @@ import type { UseChatHelpers } from "@ai-sdk/react";
 import { constants } from "@getpochi/common";
 import type { Message, Task } from "@getpochi/livekit";
 import type { Todo } from "@getpochi/tools";
-import { PaperclipIcon, SendHorizonal, StopCircleIcon } from "lucide-react";
+import {
+  GitBranch,
+  GitCompare,
+  PaperclipIcon,
+  SendHorizonal,
+  StopCircleIcon,
+  Terminal,
+} from "lucide-react";
 import type React from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -32,6 +39,8 @@ import { useNewCompactTask } from "../hooks/use-new-compact-task";
 import type { SubtaskInfo } from "../hooks/use-subtask-info";
 import { ChatInputForm } from "./chat-input-form";
 import { CompleteSubtaskButton } from "./subtask";
+import { getWorktreeName } from "@getpochi/common/git-utils";
+import { vscodeHost } from "@/lib/vscode";
 
 interface ChatToolbarProps {
   task?: Task;
@@ -183,7 +192,8 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     () => JSON.stringify(messages, null, 2),
     [messages],
   );
-
+  const gitDir = task?.git?.worktree?.gitdir;
+  const worktreeName = getWorktreeName(gitDir);
   return (
     <>
       <CompleteSubtaskButton subtask={subtask} messages={messages} />
@@ -244,6 +254,60 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
             isValid={!!selectedModel}
             onChange={updateSelectedModelId}
           />
+          {/* todo openInTab */}
+          {/* todo worktreeName condition */}
+          {/* {!!worktreeName && ( */}
+          <div className="flex h-full items-center gap-1 text-xs text-muted-foreground">
+            <GitBranch className="size-4" />
+            <span>{worktreeName}</span>
+            <HoverCard>
+              <HoverCardTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="button-focus h-6 w-6 p-0"
+                  onClick={() => {
+                    // vscodeHost.showDiff(gitDir);
+                    vscodeHost.showDiff();
+                  }}
+                >
+                  <GitCompare className="size-4" />
+                </Button>
+              </HoverCardTrigger>
+              <HoverCardContent
+                side="top"
+                align="center"
+                sideOffset={6}
+                className="!w-auto max-w-sm bg-background px-3 py-1.5 text-xs"
+              >
+                {/* todo i18n */}
+                Diff worktree with origin/main
+              </HoverCardContent>
+            </HoverCard>
+            <HoverCard>
+              <HoverCardTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="button-focus h-6 w-6 p-0"
+                  onClick={() => {
+                    // todo: open in integrated terminal
+                  }}
+                >
+                  <Terminal className="size-4" />
+                </Button>
+              </HoverCardTrigger>
+              <HoverCardContent
+                side="top"
+                align="center"
+                sideOffset={6}
+                className="!w-auto max-w-sm bg-background px-3 py-1.5 text-xs"
+              >
+                Open in integrated terminal
+              </HoverCardContent>
+            </HoverCard>
+          </div>
+          {/* )} */}
         </div>
 
         <div className="flex shrink-0 items-center gap-1">

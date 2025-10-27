@@ -283,6 +283,10 @@ export interface VSCodeHostApi {
     webviewKind: "sidebar" | "pane",
     event: unknown,
   ): Promise<void>;
+
+  updatePanelTitle(title: string): Promise<void>;
+
+  showDiff(base?: string): Promise<void>;
 }
 
 export interface WebviewHostApi {
