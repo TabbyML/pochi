@@ -285,7 +285,6 @@ export class McpConnection implements Disposable {
                 }
                 return await tool.execute(args, options);
               } catch (error) {
-                this.logger.warn(`Error while executing tool ${name}`, error);
                 this.handleError(error);
                 throw error;
               }

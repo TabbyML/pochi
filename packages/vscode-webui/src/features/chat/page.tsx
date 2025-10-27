@@ -132,7 +132,7 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
     if (prompt && !chatKit.inited && !isFetchingWorkspace) {
       let partsOrString: Message["parts"] | string;
       if (files?.length) {
-        partsOrString = prepareMessageParts(prompt, files, t);
+        partsOrString = prepareMessageParts(t, prompt, files);
       } else {
         partsOrString = prompt;
       }

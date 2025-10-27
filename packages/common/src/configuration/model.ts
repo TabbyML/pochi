@@ -59,32 +59,46 @@ const AnthropicModelSettings = ExtendedModelSettings.extend({
   kind: z.literal("anthropic"),
 });
 
-export const GoogleVertexModel = z.union([
-  z.object({
-    serviceAccountKey: z
-      .string()
-      .default(process.env.POCHI_VERTEX_SERVICE_ACCOUNT_KEY ?? ""),
-    location: z.string().default(process.env.POCHI_VERTEX_LOCATION ?? ""),
-  }),
-  z.object({
-    accessToken: z
-      .string()
-      .default(process.env.POCHI_VERTEX_ACCESS_TOKEN ?? ""),
-    projectId: z.string().default(process.env.POCHI_VERTEX_PROJECT_ID ?? ""),
-    location: z.string().default(process.env.POCHI_VERTEX_LOCATION ?? ""),
-  }),
-  z.object({
-    issueUrl: z.string().default(process.env.POCHI_VERTEX_ISSUE_URL ?? ""),
-    modelUrl: z.string().default(process.env.POCHI_VERTEX_MODEL_URL ?? ""),
-    timeout: z
-      .number()
-      // By default timeout is 15min
-      .default(
-        Number.parseInt(process.env.POCHI_VERTEX_MODEL_TIMEOUT ?? "900000"),
-      )
-      .describe("Timeout in milliseconds when requesting model api"),
-  }),
-]);
+export const GoogleVertexModel = z
+  .discriminatedUnion("type", [
+    z.object({
+      type: z.literal("service-account"),
+      serviceAccountKey: z.string(),
+      location: z.string(),
+    }),
+    z.object({
+      type: z.literal("access-token"),
+      accessToken: z.string(),
+      projectId: z.string(),
+      location: z.string(),
+    }),
+    z.object({
+      type: z.literal("model-url"),
+      issueUrl: z.string(),
+      modelUrl: z.string(),
+      timeout: z
+        .number()
+        .describe("Timeout in milliseconds when requesting model api"),
+    }),
+  ])
+  .prefault(() => ({
+    type:
+      (process.env.POCHI_VERTEX_TYPE as
+        | "service-account"
+        | "model-url"
+        | "access-token"
+        | undefined) ?? "model-url",
+    serviceAccountKey: process.env.POCHI_VERTEX_SERVICE_ACCOUNT_KEY ?? "",
+    accessToken: process.env.POCHI_VERTEX_ACCESS_TOKEN ?? "",
+    projectId: process.env.POCHI_VERTEX_PROJECT_ID ?? "",
+    location: process.env.POCHI_VERTEX_LOCATION ?? "",
+    issueUrl: process.env.POCHI_VERTEX_ISSUE_URL ?? "",
+    modelUrl: process.env.POCHI_VERTEX_MODEL_URL ?? "",
+    // By default timeout is 15min
+    timeout: Number.parseInt(
+      process.env.POCHI_VERTEX_MODEL_TIMEOUT ?? "900000",
+    ),
+  }));
 
 export type GoogleVertexModel = z.infer<typeof GoogleVertexModel>;
 

@@ -61,7 +61,7 @@ export function createVertexModel(vertex: GoogleVertexModel, modelId: string) {
   const getBaseURL = (location: string, projectId: string) =>
     `https://${location}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${location}/publishers/google`;
 
-  if ("serviceAccountKey" in vertex && vertex.serviceAccountKey) {
+  if (vertex.type === "service-account") {
     const service_account_key = JSON.parse(vertex.serviceAccountKey);
     const location = vertex.location;
     const project = service_account_key.project_id;
@@ -78,7 +78,7 @@ export function createVertexModel(vertex: GoogleVertexModel, modelId: string) {
     })(modelId);
   }
 
-  if ("accessToken" in vertex && vertex.accessToken) {
+  if (vertex.type === "access-token") {
     const { location, projectId, accessToken } = vertex;
     return createVertexWithoutCredentials({
       project: projectId,
@@ -88,7 +88,7 @@ export function createVertexModel(vertex: GoogleVertexModel, modelId: string) {
     })(modelId);
   }
 
-  if ("issueUrl" in vertex && vertex.issueUrl) {
+  if (vertex.type === "model-url") {
     const { issueUrl, modelUrl, timeout } = vertex;
     return createVertexWithoutCredentials({
       project: "placeholder",
@@ -105,19 +105,24 @@ export function createVertexModel(vertex: GoogleVertexModel, modelId: string) {
               ? input.toString()
               : input.url;
         const lastSegment = url.split("/").at(-1);
-        const resp = await fetch(issueUrl, {
-          headers: {
-            "Metadata-Flavor": "Google",
-          },
-        });
+
         let accessToken: string;
-        if (resp.headers.get("content-type") === "application/json") {
-          const { access_token } = (await resp.json()) as {
-            access_token: string;
-          };
-          accessToken = access_token;
-        } else {
-          accessToken = await resp.text();
+        try {
+          const resp = await fetch(issueUrl, {
+            headers: {
+              "Metadata-Flavor": "Google",
+            },
+          });
+          if (resp.headers.get("content-type") === "application/json") {
+            const { access_token } = (await resp.json()) as {
+              access_token: string;
+            };
+            accessToken = access_token;
+          } else {
+            accessToken = await resp.text();
+          }
+        } catch (err) {
+          return new Response("Failed to fetch token", { status: 401 });
         }
 
         const headers = new Headers(requestInit?.headers);

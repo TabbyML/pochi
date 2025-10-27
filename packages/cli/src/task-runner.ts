@@ -205,7 +205,7 @@ export class TaskRunner {
           break;
         }
         if (stepResult === "retry") {
-          this.stepCount.nextRetry();
+          await this.stepCount.nextRetry();
         } else {
           this.stepCount.nextStep();
         }

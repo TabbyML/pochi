@@ -91,6 +91,35 @@ describe("env.ts", () => {
 
     // Mock the common module functions
     const commonStub = {
+      collectAllRuleFiles: async (cwd: string, readFileContent: (filePath: string) => Promise<string | null>) => {
+        const files: { filePath: string, label: string }[] = [];
+        const visited = new Set<string>();
+
+        const processFile = async (filePath: string, label: string) => {
+          if (visited.has(filePath)) {
+            return;
+          }
+          visited.add(filePath);
+
+          try {
+            const content = await readFileContent(filePath);
+            if (content !== null) {
+              files.push({ filePath, label });
+              const importRegex = /@([./\\\w-]+.md)/gm;
+              for (const match of content.matchAll(importRegex)) {
+                const importPath = nodePath.resolve(nodePath.dirname(filePath), match[1]);
+                await processFile(importPath, match[1]);
+              }
+            }
+          } catch {}
+        };
+
+        // Start processing from the main README file.
+        const mainReadmePath = nodePath.join(cwd, "README.pochi.md");
+        await processFile(mainReadmePath, "README.pochi.md");
+
+        return files;
+      },
       getSystemInfo: (cwd?: string) => {
         const platform = process.platform;
         const homedir = mockOsHomedirStub();
@@ -104,7 +133,7 @@ describe("env.ts", () => {
           homedir,
         };
       },
-      collectCustomRules: async (cwd: string, customRuleFiles: string[] = [], includeDefaultRules: boolean = true) => {
+      collectCustomRules: async (cwd: string, readFileContent: (filePath: string) => Promise<string | null>, customRuleFiles: string[] = [], includeDefaultRules: boolean = true) => {
         // Mock implementation that properly reads files using VSCode APIs for test compatibility
         let rules = "";
         const allRuleFiles = [...customRuleFiles];
@@ -117,9 +146,7 @@ describe("env.ts", () => {
         // Read all rule files using VSCode APIs (which work in test environment)
         for (const rulePath of allRuleFiles) {
           try {
-            const fileUri = vscode.Uri.file(rulePath);
-            const fileContent = await vscode.workspace.fs.readFile(fileUri);
-            const content = Buffer.from(fileContent).toString("utf8");
+            const content = await readFileContent(rulePath);
             if (content && content.trim().length > 0) {
               const fileName = nodePath.basename(rulePath);
               rules += `# Rules from ${fileName}\n${content}\n`;
@@ -141,27 +168,6 @@ describe("env.ts", () => {
           return Buffer.from(fileContent).toString("utf8");
         } catch (error) {
           return null;
-        }
-      },
-      readDirectoryFiles: async (directoryUri: vscode.Uri, fileFilter: (name: string, type: any) => boolean) => {
-        try {
-          const stat = await vscode.workspace.fs.stat(directoryUri);
-          if (stat.type !== vscode.FileType.Directory) {
-            return [];
-          }
-
-          const entries = await vscode.workspace.fs.readDirectory(directoryUri);
-          const files: string[] = [];
-
-          for (const [name, type] of entries) {
-            if (fileFilter(name, type)) {
-              files.push(name);
-            }
-          }
-
-          return files;
-        } catch (error) {
-          return [];
         }
       },
       getWorkspaceFolder: () => {
@@ -385,6 +391,128 @@ describe("env.ts", () => {
       const rules = await env.collectCustomRules(testWorkspaceUri.fsPath, [customRuleNonExistent]);
       assert.ok(rules.includes(wsRuleContent));
       assert.ok(!rules.includes(nodePath.basename(customRuleNonExistent)));
+    });
+  });
+
+  describe("collectRuleFiles", () => {
+    let workspaceReadmeUri: vscode.Uri;
+
+    beforeEach(async () => {
+      workspaceReadmeUri = vscode.Uri.joinPath(testWorkspaceUri, "README.pochi.md");
+    });
+
+    it("should collect rules from imported files", async () => {
+      // Create main workspace README with import statement
+      const mainRuleContent = "main rule content\n@imported-rule.md";
+      await createFile(workspaceReadmeUri, mainRuleContent);
+      
+      // Create imported rule file
+      const importedRuleUri = vscode.Uri.joinPath(testWorkspaceUri, "imported-rule.md");
+      const importedRuleContent = "imported rule content";
+      await createFile(importedRuleUri, importedRuleContent);
+
+      const ruleFiles = await env.collectRuleFiles(testWorkspaceUri.fsPath);
+      
+      // Should have both the main file and the imported file
+      assert.strictEqual(ruleFiles.length, 2, "Should have 2 rule files");
+      
+      // Check that both files are included
+      const mainFile = ruleFiles.find(f => f.filepath === workspaceReadmeUri.fsPath);
+      const importedFile = ruleFiles.find(f => f.filepath === importedRuleUri.fsPath);
+      
+      assert.ok(mainFile, "Main rule file should be included");
+      assert.ok(importedFile, "Imported rule file should be included");
+      
+      // Check that the imported file has the correct label
+      if (importedFile && "label" in importedFile) {
+        assert.strictEqual(importedFile.label, "imported-rule.md");
+      }
+    });
+
+    it("should handle nested imports", async () => {
+      // Create main workspace README with import statement
+      const mainRuleContent = "main rule content\n@imported-rule.md";
+      await createFile(workspaceReadmeUri, mainRuleContent);
+      
+      // Create imported rule file with another import
+      const importedRuleUri = vscode.Uri.joinPath(testWorkspaceUri, "imported-rule.md");
+      const importedRuleContent = "imported rule content\n@nested-rule.md";
+      await createFile(importedRuleUri, importedRuleContent);
+      
+      // Create nested rule file
+      const nestedRuleUri = vscode.Uri.joinPath(testWorkspaceUri, "nested-rule.md");
+      const nestedRuleContent = "nested rule content";
+      await createFile(nestedRuleUri, nestedRuleContent);
+
+      const ruleFiles = await env.collectRuleFiles(testWorkspaceUri.fsPath);
+      
+      // Should have all three files
+      assert.strictEqual(ruleFiles.length, 3, "Should have 3 rule files");
+      
+      // Check that all files are included
+      const mainFile = ruleFiles.find(f => f.filepath === workspaceReadmeUri.fsPath);
+      const importedFile = ruleFiles.find(f => f.filepath === importedRuleUri.fsPath);
+      const nestedFile = ruleFiles.find(f => f.filepath === nestedRuleUri.fsPath);
+      
+      assert.ok(mainFile, "Main rule file should be included");
+      assert.ok(importedFile, "Imported rule file should be included");
+      assert.ok(nestedFile, "Nested rule file should be included");
+    });
+
+    it("should handle circular imports gracefully", async () => {
+      // Create main workspace README with import statement
+      const mainRuleContent = "main rule content\n@imported-rule.md";
+      await createFile(workspaceReadmeUri, mainRuleContent);
+      
+      // Create imported rule file that imports back to main
+      const importedRuleUri = vscode.Uri.joinPath(testWorkspaceUri, "imported-rule.md");
+      const importedRuleContent = "imported rule content\n@README.pochi.md";
+      await createFile(importedRuleUri, importedRuleContent);
+
+      const ruleFiles = await env.collectRuleFiles(testWorkspaceUri.fsPath);
+      
+      // Should have both files without infinite loop
+      assert.strictEqual(ruleFiles.length, 2, "Should have 2 rule files");
+      
+      // Check that both files are included
+      const mainFile = ruleFiles.find(f => f.filepath === workspaceReadmeUri.fsPath);
+      const importedFile = ruleFiles.find(f => f.filepath === importedRuleUri.fsPath);
+      
+      assert.ok(mainFile, "Main rule file should be included");
+      assert.ok(importedFile, "Imported rule file should be included");
+    });
+
+    it("should ignore non-existent imported files", async () => {
+      // Create main workspace README with import statement to non-existent file
+      const mainRuleContent = "main rule content\n@non-existent-rule.md";
+      await createFile(workspaceReadmeUri, mainRuleContent);
+
+      const ruleFiles = await env.collectRuleFiles(testWorkspaceUri.fsPath);
+      
+      // Should only have the main file
+      assert.strictEqual(ruleFiles.length, 1, "Should have 1 rule file");
+      
+      const mainFile = ruleFiles.find(f => f.filepath === workspaceReadmeUri.fsPath);
+      assert.ok(mainFile, "Main rule file should be included");
+    });
+
+    it("should ignore non-markdown imported files", async () => {
+      // Create main workspace README with import statement to non-md file
+      const mainRuleContent = "main rule content\n@imported-rule.txt";
+      await createFile(workspaceReadmeUri, mainRuleContent);
+      
+      // Create imported rule file with wrong extension
+      const importedRuleUri = vscode.Uri.joinPath(testWorkspaceUri, "imported-rule.txt");
+      const importedRuleContent = "imported rule content";
+      await createFile(importedRuleUri, importedRuleContent);
+
+      const ruleFiles = await env.collectRuleFiles(testWorkspaceUri.fsPath);
+      
+      // Should only have the main file since imported file is not .md
+      assert.strictEqual(ruleFiles.length, 1, "Should have 1 rule file");
+      
+      const mainFile = ruleFiles.find(f => f.filepath === workspaceReadmeUri.fsPath);
+      assert.ok(mainFile, "Main rule file should be included");
     });
   });
 

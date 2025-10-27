@@ -44,7 +44,7 @@ export class LiveStoreClientDO
 
     await this.onTasksUpdateThrottled.call();
     await this.state.storage.setAlarm(Date.now() + 15_000);
-    // await this.subscribeToStore();
+    await this.subscribeToStoreUpdates();
   }
 
   async fetch(request: Request): Promise<Response> {
@@ -96,16 +96,15 @@ export class LiveStoreClientDO
     return store;
   }
 
-  // private async subscribeToStoreUpdates() {
-  //   const store = await this.getStore();
-  //   // Make sure to only subscribe once
-  //   if (this.storeSubscription === undefined) {
-  //     this.storeSubscription = store.subscribe(catalog.queries.tasks$, {
-  //       // FIXME(meng): implement this with store.events stream when it's ready
-  //       onUpdate: (tasks) => this.onTasksUpdateThrottled.call(tasks),
-  //     });
-  //   }
-  // }
+  private async subscribeToStoreUpdates() {
+    await this.getStore();
+    // // Make sure to only subscribe once
+    // if (this.storeSubscription === undefined) {
+    //   this.storeSubscription = store.subscribe(catalog.queries.tasks$, {
+    //     // FIXME(meng): implement this with store.events stream when it's ready
+    //     onUpdate: (tasks) => this.onTasksUpdateThrottled.call(tasks),
+    //   });
+  }
 
   alarm(_alarmInfo?: AlarmInvocationInfo): void | Promise<void> {}
 
@@ -145,9 +144,58 @@ export class LiveStoreClientDO
     const { webhook } = this;
     if (webhook) {
       await Promise.all(
-        updatedTasks.map((task) =>
-          webhook.onTaskUpdated(task).catch(console.error),
-        ),
+        updatedTasks.map((task) => {
+          let completion: string | undefined = undefined;
+          let followup = undefined;
+          if (task.status === "completed") {
+            const messages = store.query(
+              catalog.queries.makeMessagesQuery(task.id),
+            );
+            // Find the last tool-attemptCompletion part
+            for (let i = messages.length - 1; i >= 0; i--) {
+              const message = messages[i];
+              if (message.data.role === "assistant" && message.data.parts) {
+                for (let j = message.data.parts.length - 1; j >= 0; j--) {
+                  const part = message.data.parts[j] as {
+                    type?: string;
+                    state?: string;
+                    input?: unknown;
+                  };
+                  if (
+                    part.type === "tool-attemptCompletion" &&
+                    part.state === "input-available"
+                  ) {
+                    completion =
+                      (part.input as { result?: string } | undefined)?.result ||
+                      undefined;
+                    break;
+                  }
+                  if (
+                    part.type === "tool-askFollowupQuestion" &&
+                    part.state === "input-available"
+                  ) {
+                    followup = part.input as
+                      | { question: string; followUp?: string[] }
+                      | undefined;
+                    break;
+                  }
+                }
+                if (completion !== undefined || followup !== undefined) break;
+              }
+            }
+          }
+          webhook
+            .onTaskUpdated(task, {
+              completion,
+              followup: followup
+                ? {
+                    question: followup.question,
+                    choices: followup.followUp,
+                  }
+                : undefined,
+            })
+            .catch(console.error);
+        }),
       );
     }
 
