@@ -190,6 +190,7 @@ function Tasks() {
   const { storeDate, setStoreDate } = useStoreDate();
   const { data: cwd = "default" } = useCurrentWorkspace();
   const tasks = store.useQuery(catalog.queries.makeTasksQuery(cwd as string));
+  const { t } = useTranslation();
   const totalPages = Math.ceil(tasks.length / limit);
   const paginatedTasks = tasks.slice((page - 1) * limit, page * limit);
 
@@ -207,7 +208,7 @@ function Tasks() {
       <div className="w-full px-4 py-3">
         <a href="command:pochi.createTaskOnWorktree" className="block w-full">
           <Button variant="outline" className="w-full">
-            New Task
+            {t("tasksPage.emptyState.createButton")}
           </Button>
         </a>
       </div>
@@ -250,7 +251,6 @@ function Tasks() {
 }
 
 function EmptyTaskPlaceholder({ date }: { date: Date }) {
-  const { navigate } = useRouter();
   const { t } = useTranslation();
 
   return (
@@ -262,19 +262,6 @@ function EmptyTaskPlaceholder({ date }: { date: Date }) {
       <p className="mb-4 leading-relaxed">
         {t("tasksPage.emptyState.description")}
       </p>
-      <Button
-        onClick={() =>
-          navigate({
-            to: "/",
-            search: { uid: crypto.randomUUID() },
-          })
-        }
-        variant="ghost"
-        className="mb-20"
-      >
-        <Zap className="size-4" />
-        {t("tasksPage.emptyState.createButton")}
-      </Button>
     </div>
   );
 }

@@ -161,7 +161,7 @@
     "emptyState": {
       "title": "No tasks found for {{date}}",
       "description": "Create a new task to get started with Pochi",
-      "createButton": "Create New Task"
+      "createButton": "New Task"
     },
     "status": {
       "streaming": "Streaming",
