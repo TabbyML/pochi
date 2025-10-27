@@ -109,7 +109,7 @@
       "retry": "Retry"
     },
     "customAgents": {
-      "title": "Custom Agents",
+      "title": "Agents",
       "loading": "Loading custom agents ...",
       "empty": "No custom agents found, Create agent files in .pochi/agents/ in your workspace",
       "errors": {

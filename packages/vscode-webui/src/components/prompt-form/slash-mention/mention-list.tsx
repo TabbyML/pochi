@@ -158,7 +158,7 @@ const CandidateItemView = memo(function SlashCandidateItemView({
         </span>
       </div>
       <span className="text-muted-foreground text-xs">
-        {data.type === "workflow" ? "workflow" : "custom agent"}
+        {data.type === "workflow" ? "workflow" : "agent"}
       </span>
     </div>
   );

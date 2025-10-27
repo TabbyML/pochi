@@ -644,13 +644,6 @@ export const debouncedListSlashCommand = debounceWithCachedValue(
       threadSignal(await vscodeHost.readCustomAgents()),
     ]);
     const options: SlashCandidate[] = [
-      ...workflows.map((x) => ({
-        type: "workflow" as const,
-        id: x.id,
-        label: x.id,
-        path: x.path,
-        rawData: x,
-      })),
       ...customAgents.value
         .filter((x) => isValidCustomAgentFile(x))
         .map((x) => ({
@@ -660,6 +653,13 @@ export const debouncedListSlashCommand = debounceWithCachedValue(
           path: x.filePath,
           rawData: x,
         })),
+      ...workflows.map((x) => ({
+        type: "workflow" as const,
+        id: x.id,
+        label: x.id,
+        path: x.path,
+        rawData: x,
+      })),
     ];
     return {
       options,

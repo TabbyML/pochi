@@ -77,7 +77,7 @@ function createWorkflowPrompt(id: string, path: string, content: string) {
 function createCustomAgentPrompt(id: string, path: string) {
   // Remove extra newlines from the id
   let processedAgentName = id.replace(/\n+/g, "\n");
-  // Escape '<' to avoid </workflow> being interpreted as a closing tag
+  // Escape '<' to avoid </custom-agent> being interpreted as a closing tag
   const customAgentTagRegex = /<\/?custom-agent\b[^>]*>/g;
   processedAgentName = processedAgentName.replace(
     customAgentTagRegex,
@@ -85,5 +85,5 @@ function createCustomAgentPrompt(id: string, path: string) {
       return match.replace("<", "&lt;");
     },
   );
-  return `<custom-agent id="${id}" path="${path}">${processedAgentName}</custom-agent>`;
+  return `<custom-agent id="${id}" path="${path}">newTask:${processedAgentName}</custom-agent>`;
 }

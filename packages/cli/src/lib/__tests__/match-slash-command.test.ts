@@ -139,7 +139,7 @@ describe("match-slash-command", () => {
         customAgents,
       });
       expect(result).toBe(
-        'Please use <custom-agent id="test-agent" path=".pochi/agents/test-agent.md">test-agent</custom-agent> for this task'
+        'Please use <custom-agent id="test-agent" path=".pochi/agents/test-agent.md">newTask:test-agent</custom-agent> for this task'
       );
     });
 
@@ -150,7 +150,7 @@ describe("match-slash-command", () => {
         customAgents,
       });
       expect(result).toBe(
-        'Use <workflow id="test-workflow" path=".pochi/workflows/test-workflow.md">This is a test workflow</workflow> and then <custom-agent id="test-agent" path=".pochi/agents/test-agent.md">test-agent</custom-agent>',
+        'Use <workflow id="test-workflow" path=".pochi/workflows/test-workflow.md">This is a test workflow</workflow> and then <custom-agent id="test-agent" path=".pochi/agents/test-agent.md">newTask:test-agent</custom-agent>',
       );
     });
   });
