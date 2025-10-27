@@ -276,10 +276,6 @@
     "noResultsFound": "No results found",
     "typeToSearch": "Type to search..."
   },
-  "workflowMentionList": {
-    "noWorkflowsFound": "No workflows found",
-    "typeToSearchWorkflows": "Type to search workflows..."
-  },
   "subtask": {
     "back": "Back",
     "complete": "Complete"

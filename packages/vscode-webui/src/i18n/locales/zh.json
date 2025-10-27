@@ -274,10 +274,6 @@
     "noResultsFound": "未找到结果",
     "typeToSearch": "输入以搜索..."
   },
-  "workflowMentionList": {
-    "noWorkflowsFound": "未找到工作流",
-    "typeToSearchWorkflows": "输入以搜索工作流..."
-  },
   "subtask": {
     "back": "返回",
     "complete": "完成"

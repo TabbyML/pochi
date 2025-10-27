@@ -275,10 +275,6 @@
     "noResultsFound": "結果が見つかりません",
     "typeToSearch": "入力して検索..."
   },
-  "workflowMentionList": {
-    "noWorkflowsFound": "ワークフローが見つかりません",
-    "typeToSearchWorkflows": "入力してワークフローを検索..."
-  },
   "subtask": {
     "back": "戻る",
     "complete": "完了"
