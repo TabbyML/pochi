@@ -510,14 +510,14 @@ export class CommandManager implements vscode.Disposable {
           }
 
           items.push({
-            label: "$(plus) Create worktree",
-            detail: "Create a new worktree for new Pochi task",
+            label: "$(plus) Create Git worktree",
+            detail: "Start task in a new Git worktree",
             isCreateNew: true,
           });
 
           // Show quickpick to user
           const selected = await vscode.window.showQuickPick(items, {
-            placeHolder: "Select a worktree for new Pochi task",
+            placeHolder: "Choose a Git worktree for this task",
             matchOnDescription: true,
             matchOnDetail: true,
           });
