@@ -44,15 +44,19 @@ import type { Store } from "@livestore/livestore";
 import { handleShellCompletion } from "./completion";
 import { findRipgrep } from "./lib/find-ripgrep";
 import { loadAgents } from "./lib/load-agents";
-import {
-  containsWorkflowReference,
-  extractWorkflowNames,
-  parseWorkflowFrontmatter,
-  replaceWorkflowReferences,
-} from "./lib/workflow-loader";
+import { type Workflow, loadWorkflows } from "./lib/workflow-loader";
 
+import type {
+  CustomAgentFile,
+  ValidCustomAgentFile,
+} from "@getpochi/common/vscode-webui-bridge";
 import type { FileUIPart } from "ai";
 import { JsonRenderer } from "./json-renderer";
+import {
+  containsSlashCommandReference,
+  getModelFromSlashCommand,
+  replaceSlashCommandReferences,
+} from "./lib/match-slash-command";
 import { shutdownStoreAndExit } from "./lib/shutdown";
 import { createStore } from "./livekit/store";
 import { initializeMcp, registerMcpCommand } from "./mcp";
@@ -130,7 +134,19 @@ const program = new Command()
   )
   .action(async (options) => {
     const store = await createStore();
-    const { uid, prompt, attachments } = await parseTaskInput(options, program);
+
+    // Load custom agents
+    const customAgents = await loadAgents(process.cwd());
+    const workflows = await loadWorkflows(process.cwd());
+
+    const { uid, prompt, attachments } = await parseTaskInput(
+      options,
+      program,
+      {
+        customAgents: customAgents,
+        workflows,
+      },
+    );
 
     const parts: Message["parts"] = [];
     if (attachments && attachments.length > 0) {
@@ -162,7 +178,6 @@ const program = new Command()
       parts.push({ type: "text", text: prompt });
     }
 
-    const llm = await createLLMConfig(program, options);
     const rg = findRipgrep();
     if (!rg) {
       return program.error(
@@ -181,11 +196,13 @@ const program = new Command()
       renderer.renderSubTask(runner);
     };
 
-    // Load custom agents
-    const customAgents = await loadAgents(process.cwd());
-
     // Create MCP Hub for accessing MCP server tools (only if MCP is enabled)
     const mcpHub = options.mcp ? await initializeMcp(program) : undefined;
+
+    const llm = await createLLMConfig(program, options, {
+      workflows,
+      customAgents,
+    });
 
     const runner = new TaskRunner({
       uid,
@@ -265,7 +282,14 @@ program.parse(process.argv);
 type Program = typeof program;
 type ProgramOpts = ReturnType<(typeof program)["opts"]>;
 
-async function parseTaskInput(options: ProgramOpts, program: Program) {
+async function parseTaskInput(
+  options: ProgramOpts,
+  program: Program,
+  slashCommandContext: {
+    workflows: Workflow[];
+    customAgents: CustomAgentFile[];
+  },
+) {
   const uid = process.env.POCHI_TASK_ID || crypto.randomUUID();
 
   let prompt = options.prompt?.trim() || "";
@@ -288,10 +312,10 @@ async function parseTaskInput(options: ProgramOpts, program: Program) {
   }
 
   // Check if the prompt contains workflow references
-  if (containsWorkflowReference(prompt)) {
-    const { prompt: updatedPrompt } = await replaceWorkflowReferences(
+  if (containsSlashCommandReference(prompt)) {
+    const { prompt: updatedPrompt } = await replaceSlashCommandReferences(
       prompt,
-      process.cwd(),
+      slashCommandContext,
     );
     prompt = updatedPrompt;
   }
@@ -302,8 +326,14 @@ async function parseTaskInput(options: ProgramOpts, program: Program) {
 async function createLLMConfig(
   program: Program,
   options: ProgramOpts,
+  slashCommandContext: {
+    workflows: Workflow[];
+    customAgents: ValidCustomAgentFile[];
+  },
 ): Promise<LLMRequestData> {
-  const model = (await getModelFromWorkflow(options)) || options.model;
+  const model =
+    (await getModelFromSlashCommand(options.prompt, slashCommandContext)) ||
+    options.model;
 
   const llm =
     (await createLLMConfigWithVendors(program, model)) ||
@@ -476,24 +506,6 @@ async function waitForSync(
 
 function assertUnreachable(_x: never): never {
   throw new Error("Didn't expect to get here");
-}
-
-async function getModelFromWorkflow(
-  options: ProgramOpts,
-): Promise<string | undefined> {
-  const prompt = options.prompt;
-  if (prompt && containsWorkflowReference(prompt)) {
-    const workflowNames = extractWorkflowNames(prompt);
-    if (workflowNames.length > 0) {
-      const { model: workflowModel } = await parseWorkflowFrontmatter(
-        workflowNames[0],
-      );
-      // If a model is found in the workflow, use it.
-      if (workflowModel) {
-        return workflowModel;
-      }
-    }
-  }
 }
 
 function parseOutputSchema(outputSchema: string): z.ZodAny {

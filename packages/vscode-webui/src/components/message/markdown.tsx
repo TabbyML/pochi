@@ -366,6 +366,12 @@ export function MessageMarkdown({
           <FileBadge label={id.replaceAll("user-content-", "/")} path={path} />
         );
       },
+      "custom-agent": (props: WorkflowComponentProps) => {
+        const { id, path } = props;
+        return (
+          <FileBadge label={id.replaceAll("user-content-", "/")} path={path} />
+        );
+      },
       code: (props) => <MemoCode {...props} />,
       a({ href, children, ...props }) {
         const openLink = useCallback(() => {
@@ -447,6 +453,7 @@ export function MessageMarkdown({
                     attributes: {
                       ...defaultSchema.attributes,
                       workflow: ["path", "id"],
+                      "custom-agent": ["path", "id"],
                       ...mathSanitizeConfig.attributes,
                     },
                   },

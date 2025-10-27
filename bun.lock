@@ -158,6 +158,7 @@
         "@getpochi/common": "workspace:*",
         "@getpochi/livekit": "workspace:*",
         "@getpochi/tools": "workspace:*",
+        "@getpochi/vendor-pochi": "workspace:*",
         "@livestore/adapter-cloudflare": "catalog:",
         "@livestore/livestore": "catalog:",
         "@livestore/peer-deps": "catalog:",
