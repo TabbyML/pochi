@@ -8,7 +8,6 @@ import * as jose from "jose";
 import { Loader2 } from "lucide-react";
 import { useMemo } from "react";
 import { unstable_batchedUpdates as batchUpdates } from "react-dom";
-import { useMachineId } from "./lib/hooks/use-machine-id";
 import { usePochiCredentials } from "./lib/hooks/use-pochi-credentials";
 import LiveStoreWorker from "./livestore.default.worker.ts?worker&inline";
 
@@ -21,13 +20,13 @@ const adapter = makePersistedAdapter({
 });
 
 export function LiveStoreDefaultProvider({
+  taskId,
   children,
-}: { children: React.ReactNode }) {
+}: { taskId: string; children: React.ReactNode }) {
   const { jwt, isPending } = usePochiCredentials();
-  const { data: machineId } = useMachineId();
-  if (isPending || !machineId) return null;
+  if (isPending) return null;
   return (
-    <LiveStoreProviderInner jwt={jwt} machineId={machineId}>
+    <LiveStoreProviderInner jwt={jwt} taskId={taskId}>
       {children}
     </LiveStoreProviderInner>
   );
@@ -35,14 +34,14 @@ export function LiveStoreDefaultProvider({
 
 function LiveStoreProviderInner({
   jwt,
-  machineId,
+  taskId,
   children,
 }: {
   jwt: string | null;
-  machineId: string;
+  taskId: string;
   children: React.ReactNode;
 }) {
-  const storeId = useStoreId(jwt, machineId);
+  const storeId = useStoreId(jwt, taskId);
   const syncPayload = useMemo(() => ({ jwt }), [jwt]);
 
   logger.debug("LiveStoreProvider re-rendered");
@@ -61,10 +60,10 @@ function LiveStoreProviderInner({
   );
 }
 
-function useStoreId(jwt: string | null, machineId: string) {
+function useStoreId(jwt: string | null, taskId: string) {
   const sub = (jwt ? jose.decodeJwt(jwt).sub : undefined) ?? "anonymous";
 
-  return encodeStoreId({ sub, machineId });
+  return encodeStoreId({ sub, taskId });
 }
 
 function Loading() {

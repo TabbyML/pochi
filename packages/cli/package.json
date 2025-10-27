@@ -42,7 +42,6 @@
     "commander": "^14.0.0",
     "jose": "catalog:",
     "listr2": "^9.0.3",
-    "node-machine-id": "catalog:",
     "ora": "^8.2.0",
     "remeda": "catalog:",
     "semver": "^7.6.3",

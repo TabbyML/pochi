@@ -23,8 +23,6 @@ export interface VSCodeHostApi {
 
   readPochiCredentials(): Promise<PochiCredentials | null>;
 
-  readMachineId(): Promise<string>;
-
   getSessionState<K extends keyof SessionState>(
     keys?: K[],
   ): Promise<Pick<SessionState, K>>;

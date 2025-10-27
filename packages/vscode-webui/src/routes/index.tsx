@@ -45,7 +45,7 @@ function RouteComponent() {
   const key = `task-${uid}`;
 
   return (
-    <LiveStoreDefaultProvider>
+    <LiveStoreDefaultProvider taskId={uid}>
       <ChatPage
         key={key}
         user={users?.pochi}

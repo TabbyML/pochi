@@ -78,7 +78,6 @@ import {
   type ThreadSignalSerialization,
 } from "@quilted/threads/signals";
 import type { Tool } from "ai";
-import { machineId } from "node-machine-id";
 import { keys } from "remeda";
 import * as runExclusive from "run-exclusive";
 import { Lifecycle, inject, injectable, scoped } from "tsyringe";
@@ -156,15 +155,6 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     } catch (err) {
       return null;
     }
-  };
-
-  readMachineId = async (): Promise<string> => {
-    const id = await machineId();
-    if (this.context.extensionMode === vscode.ExtensionMode.Production) {
-      return id;
-    }
-
-    return `dev-${id}`;
   };
 
   // These methods are overridden in the wrapper created by BaseWebview.createVSCodeHostWrapper()
