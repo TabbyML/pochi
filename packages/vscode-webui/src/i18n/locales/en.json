@@ -274,7 +274,9 @@
   },
   "mentionList": {
     "noResultsFound": "No results found",
-    "typeToSearch": "Type to search..."
+    "typeToSearch": "Type to search...",
+    "workflow": "workflow",
+    "agent": "agent"
   },
   "subtask": {
     "back": "Back",
