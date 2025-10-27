@@ -6,7 +6,7 @@ import "@/components/prompt-form/prompt-form.css";
 import { WelcomeScreen } from "@/components/welcome-screen";
 import { useModelList } from "@/lib/hooks/use-model-list";
 import { useUserStorage } from "@/lib/hooks/use-user-storage";
-import { LiveStoreProvider } from "../livestore-provider";
+import { LiveStoreDefaultProvider } from "../livestore-default-provider";
 
 // Corresponds to the FileUIPart type in the ai/react library
 const fileUIPartSchema = z.object({
@@ -45,7 +45,7 @@ function RouteComponent() {
   const key = `task-${uid}`;
 
   return (
-    <LiveStoreProvider>
+    <LiveStoreDefaultProvider>
       <ChatPage
         key={key}
         user={users?.pochi}
@@ -53,6 +53,6 @@ function RouteComponent() {
         prompt={prompt}
         files={uiFiles}
       />
-    </LiveStoreProvider>
+    </LiveStoreDefaultProvider>
   );
 }
