@@ -77,10 +77,9 @@ export async function writeTextDocument(
     `Wrote to ${path}, content length: ${postSaveContent.length}, edit summary: +${editSummary.added} -${editSummary.removed}`,
   );
   return {
-    edits,
     autoFormattingEdits,
     newProblems,
-    _meta: { editSummary },
+    _meta: { edits, editSummary },
   };
 }
 
@@ -109,7 +108,7 @@ async function waitForDiagnostic(abortSignal?: AbortSignal) {
   });
 }
 
-function getEditSummary(original: string, modified: string) {
+export function getEditSummary(original: string, modified: string) {
   const diffs = diff.diffLines(original, modified);
   let added = 0;
   let removed = 0;

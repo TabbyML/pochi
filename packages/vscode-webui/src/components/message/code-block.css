@@ -9,6 +9,7 @@ pre[class*="language-"] {
 pre.has-diff {
   display: inline-block;
   width: fit-content;
+  min-width: 100%;
 }
 
 .line.diff.add {

@@ -1,12 +1,15 @@
 import { DiffView } from "@/integrations/editor/diff-view";
+import { createPrettyPatch } from "@/lib/fs";
 import { getLogger } from "@/lib/logger";
-import { writeTextDocument } from "@/lib/write-text-document";
+import { getEditSummary, writeTextDocument } from "@/lib/write-text-document";
 import { fixCodeGenerationOutput } from "@getpochi/common/message-utils";
+import { resolvePath } from "@getpochi/common/tool-utils";
 import type {
   ClientTools,
   PreviewToolFunctionType,
   ToolFunctionType,
 } from "@getpochi/tools";
+import * as vscode from "vscode";
 
 const logger = getLogger("writeToFileTool");
 
@@ -14,13 +17,21 @@ export const previewWriteToFile: PreviewToolFunctionType<
   ClientTools["writeToFile"]
 > = async (args, { state, toolCallId, abortSignal, cwd, nonInteractive }) => {
   const { path, content } = args || {};
-  if (path === undefined || content === undefined) return;
+  if (path === undefined || content === undefined)
+    return { error: "Invalid arguments for previewing writeToFile tool." };
 
   try {
     const processedContent = fixCodeGenerationOutput(content);
 
     if (nonInteractive) {
-      return;
+      const resolvedPath = resolvePath(path, cwd);
+      const fileUri = vscode.Uri.file(resolvedPath);
+
+      const fileBuffer = await vscode.workspace.fs.readFile(fileUri);
+      const fileContent = fileBuffer.toString();
+      const editSummary = getEditSummary(fileContent, processedContent);
+      const edits = createPrettyPatch(path, fileContent, processedContent);
+      return { success: true, _meta: { edits, editSummary } };
     }
 
     const diffView = await DiffView.getOrCreate(toolCallId, path, cwd);
@@ -29,6 +40,7 @@ export const previewWriteToFile: PreviewToolFunctionType<
       state !== "partial-call",
       abortSignal,
     );
+    return { success: true };
   } catch (error) {
     if (state === "call") {
       DiffView.revertAndClose(toolCallId);

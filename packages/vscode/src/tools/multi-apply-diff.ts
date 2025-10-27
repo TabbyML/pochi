@@ -1,7 +1,7 @@
 import { DiffView } from "@/integrations/editor/diff-view";
-import { ensureFileDirectoryExists } from "@/lib/fs";
+import { createPrettyPatch, ensureFileDirectoryExists } from "@/lib/fs";
 import { getLogger } from "@/lib/logger";
-import { writeTextDocument } from "@/lib/write-text-document";
+import { getEditSummary, writeTextDocument } from "@/lib/write-text-document";
 import { processMultipleDiffs } from "@getpochi/common/diff-utils";
 import { resolvePath, validateTextFile } from "@getpochi/common/tool-utils";
 import type { ClientTools } from "@getpochi/tools";
@@ -21,7 +21,7 @@ export const previewMultiApplyDiff: PreviewToolFunctionType<
 > = async (args, { toolCallId, state, abortSignal, cwd, nonInteractive }) => {
   const { path, edits } = args || {};
   if (!args || !path || !edits || edits.length === 0) {
-    return;
+    return { error: "Invalid arguments for previewing multiApplyDiff tool." };
   }
 
   try {
@@ -34,7 +34,9 @@ export const previewMultiApplyDiff: PreviewToolFunctionType<
     const updatedContent = await processMultipleDiffs(fileContent, edits);
 
     if (nonInteractive) {
-      return;
+      const editSummary = getEditSummary(fileContent, updatedContent);
+      const edits = createPrettyPatch(path, fileContent, updatedContent);
+      return { success: true, _meta: { edits, editSummary } };
     }
 
     const diffView = await DiffView.getOrCreate(toolCallId, path, cwd);
@@ -43,6 +45,7 @@ export const previewMultiApplyDiff: PreviewToolFunctionType<
       state !== "partial-call",
       abortSignal,
     );
+    return { success: true };
   } catch (error) {
     if (state === "call") {
       DiffView.revertAndClose(toolCallId);

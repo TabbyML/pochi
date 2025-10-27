@@ -24,4 +24,4 @@ export type PreviewToolFunctionType<T extends Tool> = (
     cwd: string;
     nonInteractive?: boolean;
   },
-) => Promise<undefined>;
+) => Promise<Partial<InferToolOutput<T>>> | Partial<InferToolOutput<T>>;

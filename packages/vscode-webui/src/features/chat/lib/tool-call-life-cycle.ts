@@ -18,7 +18,16 @@ import type { InferToolInput, ToolUIPart } from "ai";
 import Emittery from "emittery";
 import type { ToolCallLifeCycleKey } from "./chat-state/types";
 
-type PreviewReturnType = { error: string } | undefined;
+type PreviewReturnType =
+  | { error: string }
+  | {
+      success: boolean;
+      _meta?: {
+        edits?: string;
+        editSummary?: { added: number; removed: number };
+      };
+    }
+  | undefined;
 type ExecuteCommandReturnType = {
   output: ThreadSignalSerialization<ExecuteCommandResult>;
   detach: () => void;
@@ -60,6 +69,7 @@ type ToolCallState =
       previewJob: Promise<PreviewReturnType>;
       abort: AbortFunctionType;
       abortSignal: AbortSignal;
+      previewResult?: PreviewReturnType;
     }
   | {
       // Represents the preview runs at toolCall.state === "call"
@@ -67,11 +77,13 @@ type ToolCallState =
       previewJob: Promise<PreviewReturnType>;
       abort: AbortFunctionType;
       abortSignal: AbortSignal;
+      previewResult?: PreviewReturnType;
     }
   | {
       type: "ready";
       abort: AbortFunctionType;
       abortSignal: AbortSignal;
+      previewResult?: PreviewReturnType;
     }
   | {
       type: "execute";
@@ -109,6 +121,8 @@ export interface ToolCallLifeCycle {
    * Returns undefined if not in streaming state.
    */
   readonly streamingResult: StreamingResult | undefined;
+
+  readonly previewResult: PreviewReturnType | undefined;
 
   /**
    * Completion result and reason.
@@ -179,6 +193,14 @@ export class ManagedToolCallLifeCycle
       : undefined;
   }
 
+  get previewResult() {
+    return this.state.type === "init" ||
+      this.state.type === "pending" ||
+      this.state.type === "ready"
+      ? this.state.previewResult
+      : undefined;
+  }
+
   get complete() {
     const complete = this.checkState("Result", "complete");
     return {
@@ -201,11 +223,26 @@ export class ManagedToolCallLifeCycle
 
   private previewReady(args: unknown, state: ToolUIPart["state"]) {
     const { abortSignal } = this.checkState("Preview", "ready");
-    vscodeHost.previewToolCall(this.toolName, args, {
-      state: convertState(state),
-      toolCallId: this.toolCallId,
-      abortSignal: ThreadAbortSignal.serialize(abortSignal),
-    });
+    vscodeHost
+      .previewToolCall(this.toolName, args, {
+        state: convertState(state),
+        toolCallId: this.toolCallId,
+        abortSignal: ThreadAbortSignal.serialize(abortSignal),
+        nonInteractive: globalThis.POCHI_WEBVIEW_KIND === "pane",
+      })
+      .then((result) => {
+        this.transitTo("ready", {
+          type: "ready",
+          abort:
+            this.state.type === "ready" ||
+            this.state.type === "pending" ||
+            this.state.type === "init"
+              ? this.state.abort
+              : () => {},
+          abortSignal,
+          previewResult: result,
+        });
+      });
   }
 
   private previewInit(args: unknown, state: ToolUIPart["state"]) {
@@ -242,11 +279,22 @@ export class ManagedToolCallLifeCycle
         previewJob,
         abortSignal,
         abort,
+        previewResult:
+          this.state.type === "init" ? this.state.previewResult : undefined,
+      });
+      previewJob.then((result) => {
+        this.transitTo("init", {
+          type: "init",
+          previewJob,
+          abort,
+          abortSignal,
+          previewResult: result,
+        });
       });
     } else if (state === "input-available") {
       previewJob = previewJob.then(() => previewToolCall(abortSignal));
       previewJob.then((result) => {
-        if (result?.error) {
+        if (result && "error" in result && result?.error) {
           logger.debug("Tool call preview rejected:", result.error);
           this.transitTo("pending", {
             type: "complete",
@@ -258,6 +306,7 @@ export class ManagedToolCallLifeCycle
             type: "ready",
             abort,
             abortSignal,
+            previewResult: result,
           });
         }
       });
@@ -266,6 +315,8 @@ export class ManagedToolCallLifeCycle
         previewJob,
         abort,
         abortSignal,
+        previewResult:
+          this.state.type === "init" ? this.state.previewResult : undefined,
       });
     }
   }

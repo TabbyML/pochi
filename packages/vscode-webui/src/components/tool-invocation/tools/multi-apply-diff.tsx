@@ -42,6 +42,13 @@ export const multiApplyDiffTool: React.FC<ToolProps<"multiApplyDiff">> = ({
       ? tool.output
       : undefined;
 
+  const previewInfo =
+    lifecycle.previewResult &&
+    "success" in lifecycle.previewResult &&
+    lifecycle.previewResult.success
+      ? lifecycle.previewResult._meta
+      : undefined;
+
   const title = (
     <>
       <StatusIcon isExecuting={isExecuting} tool={tool} />
@@ -52,7 +59,7 @@ export const multiApplyDiffTool: React.FC<ToolProps<"multiApplyDiff">> = ({
           className="ml-1"
           path={path}
           onClick={shouldPreview ? handleClick : undefined}
-          editSummary={result?._meta?.editSummary}
+          editSummary={result?._meta?.editSummary ?? previewInfo?.editSummary}
           changes={result?.success ? changes : undefined}
         />
       )}
@@ -61,8 +68,16 @@ export const multiApplyDiffTool: React.FC<ToolProps<"multiApplyDiff">> = ({
 
   const details = [];
 
-  if (result?.edits) {
-    details.push(<ModelEdits key="model-edits" edits={result.edits} />);
+  const displayEdits = result?._meta?.edits || previewInfo?.edits;
+
+  if (displayEdits) {
+    details.push(
+      <ModelEdits
+        key="model-edits"
+        edits={displayEdits}
+        isPreview={result?._meta?.edits === undefined}
+      />,
+    );
   }
 
   if (result?.newProblems) {

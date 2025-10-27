@@ -1,7 +1,7 @@
 import { DiffView } from "@/integrations/editor/diff-view";
-import { ensureFileDirectoryExists } from "@/lib/fs";
+import { createPrettyPatch, ensureFileDirectoryExists } from "@/lib/fs";
 import { getLogger } from "@/lib/logger";
-import { writeTextDocument } from "@/lib/write-text-document";
+import { getEditSummary, writeTextDocument } from "@/lib/write-text-document";
 import { parseDiffAndApply } from "@getpochi/common/diff-utils";
 import { resolvePath, validateTextFile } from "@getpochi/common/tool-utils";
 import type { ClientTools } from "@getpochi/tools";
@@ -27,7 +27,7 @@ export const previewApplyDiff: PreviewToolFunctionType<
     searchContent === undefined ||
     replaceContent === undefined
   ) {
-    return;
+    return { error: "Invalid arguments for previewing applyDiff tool." };
   }
 
   try {
@@ -47,7 +47,9 @@ export const previewApplyDiff: PreviewToolFunctionType<
     );
 
     if (nonInteractive) {
-      return;
+      const editSummary = getEditSummary(fileContent, updatedContent);
+      const edits = createPrettyPatch(path, fileContent, updatedContent);
+      return { success: true, _meta: { edits, editSummary } };
     }
 
     const diffView = await DiffView.getOrCreate(toolCallId, path, cwd);
@@ -56,6 +58,7 @@ export const previewApplyDiff: PreviewToolFunctionType<
       state !== "partial-call",
       abortSignal,
     );
+    return { success: true };
   } catch (error) {
     if (state === "call") {
       DiffView.revertAndClose(toolCallId);
