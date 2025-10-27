@@ -3,8 +3,8 @@ import type { CustomAgent } from "@getpochi/tools";
 import type { Store } from "@livestore/livestore";
 import type { ChatInit, ChatOnErrorCallback, ChatOnFinishCallback } from "ai";
 import type z from "zod/v4";
-import { events, tables } from "../livestore/default-schema";
 import { makeMessagesQuery, makeTaskQuery } from "../livestore/default-queries";
+import { events, tables } from "../livestore/default-schema";
 import { toTaskError, toTaskGitInfo, toTaskStatus } from "../task";
 
 import type { Message } from "../types";

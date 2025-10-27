@@ -5,10 +5,11 @@ import { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
 import { useCurrentWorkspace } from "@/lib/hooks/use-current-workspace";
 import { useCustomAgent } from "@/lib/hooks/use-custom-agents";
 import { prepareMessageParts } from "@/lib/message-utils";
+import { vscodeHost } from "@/lib/vscode";
 import { useChat } from "@ai-sdk/react";
 import { formatters } from "@getpochi/common";
 import type { UserInfo } from "@getpochi/common/configuration";
-import { type Task, catalog } from "@getpochi/livekit";
+import { type Task, catalog, taskCatalog } from "@getpochi/livekit";
 import type { Message } from "@getpochi/livekit";
 import { useLiveChatKit } from "@getpochi/livekit/react";
 import type { Todo } from "@getpochi/tools";
@@ -64,6 +65,23 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
   useAbortBeforeNavigation(chatAbortController.current);
 
   const task = store.useQuery(catalog.queries.makeTaskQuery(uid));
+  useEffect(() => {
+    if (task) {
+      vscodeHost.onTaskUpdated(
+        taskCatalog.events.tastUpdated({
+          ...task,
+          title: task.title || undefined,
+          parentId: task.parentId || undefined,
+          cwd: task.cwd || undefined,
+          modelId: task.modelId || undefined,
+          error: task.error || undefined,
+          git: task.git || undefined,
+          shareId: task.shareId || undefined,
+          totalTokens: task.totalTokens || undefined,
+        }),
+      );
+    }
+  }, [task]);
   const subtask = useSubtaskInfo(uid, task?.parentId);
   const {
     isLoading: isModelsLoading,

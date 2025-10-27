@@ -1,36 +1,24 @@
 import { getLogger } from "@getpochi/common";
 import { encodeStoreId } from "@getpochi/common/store-id-utils";
 import { catalog } from "@getpochi/livekit";
-import {
-  makeInMemoryAdapter,
-  makePersistedAdapter,
-} from "@livestore/adapter-web";
+import { makePersistedAdapter } from "@livestore/adapter-web";
 import LiveStoreSharedWorker from "@livestore/adapter-web/shared-worker?sharedworker&inline";
-import {
-  LiveStoreContext,
-  LiveStoreProvider as LiveStoreProviderImpl,
-  useStore,
-} from "@livestore/react";
+import { LiveStoreProvider as LiveStoreProviderImpl } from "@livestore/react";
 import * as jose from "jose";
 import { Loader2 } from "lucide-react";
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import { unstable_batchedUpdates as batchUpdates } from "react-dom";
 import { useMachineId } from "./lib/hooks/use-machine-id";
 import { usePochiCredentials } from "./lib/hooks/use-pochi-credentials";
-import { taskSync } from "./lib/task-sync-event";
-import { setActiveStore, vscodeHost } from "./lib/vscode";
 import LiveStoreWorker from "./livestore.worker.ts?worker&inline";
 
 const logger = getLogger("LiveStoreProvider");
 
-const adapter =
-  globalThis.POCHI_WEBVIEW_KIND === "sidebar"
-    ? makePersistedAdapter({
-        storage: { type: "opfs" },
-        worker: LiveStoreWorker,
-        sharedWorker: LiveStoreSharedWorker,
-      })
-    : makeInMemoryAdapter();
+const adapter = makePersistedAdapter({
+  storage: { type: "opfs" },
+  worker: LiveStoreWorker,
+  sharedWorker: LiveStoreSharedWorker,
+});
 
 export function LiveStoreProvider({ children }: { children: React.ReactNode }) {
   const { jwt, isPending } = usePochiCredentials();
@@ -66,76 +54,8 @@ function LiveStoreProviderInner({
       syncPayload={syncPayload}
       storeId={storeId}
     >
-      <StoreWithCommitHook>{children}</StoreWithCommitHook>
-    </LiveStoreProviderImpl>
-  );
-}
-
-// FIXME(meng): this is largely a hack, we shall migrate to LiveStore events api once its ready
-// https://github.com/livestorejs/livestore/pull/514
-function StoreWithCommitHook({ children }: { children: React.ReactNode }) {
-  const { store } = useStore();
-
-  if (globalThis.POCHI_WEBVIEW_KIND === "sidebar") {
-    useEffect(() => {
-      setActiveStore(store);
-      return () => {
-        setActiveStore(null);
-      };
-    }, [store]);
-    return children;
-  }
-
-  useEffect(() => {
-    if (globalThis.POCHI_WEBVIEW_KIND !== "pane" || !store) {
-      return;
-    }
-    const unsubscribe = taskSync.on((task) => {
-      store.commit(
-        catalog.events.taskSynced({
-          ...task,
-          shareId: task.shareId ?? undefined,
-          cwd: task.cwd ?? undefined,
-          title: task.title ?? undefined,
-          parentId: task.parentId ?? undefined,
-          git: task.git ?? undefined,
-          totalTokens: task.totalTokens ?? undefined,
-          error: task.error ?? undefined,
-          modelId: task.modelId ?? undefined,
-          createdAt: new Date(task.createdAt),
-          updatedAt: new Date(task.updatedAt),
-        }),
-      );
-      store.manualRefresh();
-    });
-    return () => unsubscribe();
-  }, [store]);
-
-  const storeWithProxy = useMemo(() => {
-    return new Proxy(store, {
-      get(target, prop, receiver) {
-        const result = Reflect.get(target, prop, receiver);
-        if (prop === "commit") {
-          const commitWithHook = (...args: unknown[]) => {
-            if (args.length !== 1) {
-              throw new Error("Commit expects exactly one argument in LiveKit");
-            }
-            vscodeHost.bridgeStoreEvent(globalThis.POCHI_WEBVIEW_KIND, args[0]);
-            result(...args);
-          };
-          return commitWithHook;
-        }
-        return result;
-      },
-    });
-  }, [store]);
-
-  return (
-    <LiveStoreContext.Provider
-      value={{ stage: "running", store: storeWithProxy }}
-    >
       {children}
-    </LiveStoreContext.Provider>
+    </LiveStoreProviderImpl>
   );
 }
 

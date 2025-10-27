@@ -5,7 +5,6 @@ import { getWorktreeName } from "@getpochi/common/git-utils";
 import { parseWorktreeGitdir } from "@getpochi/common/tool-utils";
 import type {
   ResourceURI,
-  TaskData,
   VSCodeHostApi,
 } from "@getpochi/common/vscode-webui-bridge";
 import type { DependencyContainer } from "tsyringe";
@@ -81,7 +80,7 @@ export class PochiWebviewPanel
   public static async createOrShow(
     workspaceContainer: DependencyContainer,
     extensionUri: vscode.Uri,
-    task?: TaskData,
+    uid?: string,
   ): Promise<void> {
     const cwd = workspaceContainer.resolve(WorkspaceScope).cwd;
     if (!cwd) {
@@ -94,18 +93,16 @@ export class PochiWebviewPanel
       const existingPanel = PochiWebviewPanel.panels.get(sessionId);
       existingPanel?.panel.reveal();
       logger.info(`Revealed existing Pochi panel: ${sessionId}`);
-      if (task) {
-        logger.info(`Opening task ${task.id} in existing panel`);
+      logger.info(`Opening task ${uid} in existing panel`);
+      if (uid) {
         existingPanel?.webviewHost?.openTask({
-          uid: task.id,
-          task,
+          uid,
         });
       }
       return;
     }
 
-    const gitDir =
-      task?.git?.worktree?.gitdir ?? (await parseWorktreeGitdir(cwd));
+    const gitDir = await parseWorktreeGitdir(cwd);
     const worktreeName = getWorktreeName(gitDir);
 
     // Create a new panel
@@ -143,10 +140,10 @@ export class PochiWebviewPanel
 
     PochiWebviewPanel.panels.set(sessionId, pochiPanel);
 
-    if (task) {
+    if (uid) {
       pochiPanel.onWebviewReady(() => {
-        logger.info(`Webview ready, opening task ${task.id} in new panel`);
-        pochiPanel.webviewHost?.openTask({ uid: task.id, task });
+        logger.info(`Webview ready, opening task ${uid} in new panel`);
+        pochiPanel.webviewHost?.openTask({ uid });
       });
     }
 

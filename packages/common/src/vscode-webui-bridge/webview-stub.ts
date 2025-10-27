@@ -228,7 +228,7 @@ const VSCodeHostStub = {
 
   openTaskInPanel: async (): Promise<void> => {},
 
-  bridgeStoreEvent: async (): Promise<void> => {},
+  onTaskUpdated: async (): Promise<void> => {},
 } satisfies VSCodeHostApi;
 
 export function createVscodeHostStub(overrides?: Partial<VSCodeHostApi>) {

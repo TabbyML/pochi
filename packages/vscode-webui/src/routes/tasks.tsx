@@ -14,6 +14,7 @@ import { WorkspaceRequiredPlaceholder } from "@/components/workspace-required-pl
 import { useSettingsStore } from "@/features/settings";
 import { useCurrentWorkspace } from "@/lib/hooks/use-current-workspace";
 import { cn } from "@/lib/utils";
+import { setActiveStore, vscodeHost } from "@/lib/vscode";
 import { getWorktreeName } from "@getpochi/common/git-utils";
 import { parseTitle } from "@getpochi/common/message-utils";
 import { type Task, taskCatalog } from "@getpochi/livekit";
@@ -31,7 +32,7 @@ import {
   Wrench,
   Zap,
 } from "lucide-react";
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { unstable_batchedUpdates as batchUpdates } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { MdOutlineErrorOutline } from "react-icons/md";
@@ -206,6 +207,13 @@ function Tasks() {
     });
   };
 
+  useEffect(() => {
+    setActiveStore(store);
+    return () => {
+      setActiveStore(null);
+    };
+  }, [store]);
+
   return (
     <div className="flex h-screen w-screen flex-col">
       {/* Main content area with scroll */}
@@ -344,7 +352,6 @@ const getStatusBorderColor = (status: string): string => {
 };
 
 function TaskRow({ task, worktree }: { task: Task; worktree?: string }) {
-  const { store } = useStore();
   const { openInTab } = useSettingsStore();
 
   const title = useMemo(() => parseTitle(task.title), [task.title]);
@@ -377,17 +384,14 @@ function TaskRow({ task, worktree }: { task: Task; worktree?: string }) {
     </div>
   );
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
   const openTaskInPanel = useCallback(() => {
-    // if (!openInTab) {
-    //   return;
-    // }
-    // const messages = store.query(catalog.queries.makeMessagesQuery(task.id));
-    // vscodeHost.openTaskInPanel({
-    //   ...task,
-    //   messages: messages.map((m) => m.data),
-    // } as TaskSyncData);
-  }, [task.id, task.createdAt, task.updatedAt, task, store.query, openInTab]);
+    if (!openInTab) {
+      return;
+    }
+    if (task.cwd) {
+      vscodeHost.openTaskInPanel(task.cwd, task.id);
+    }
+  }, [task.id, task.cwd, openInTab]);
 
   if (worktree) {
     return <div onClick={openTaskInPanel}>{content}</div>;

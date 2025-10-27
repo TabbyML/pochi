@@ -1,8 +1,8 @@
 import type { LanguageModelV2 } from "@ai-sdk/provider";
 import { getLogger } from "@getpochi/common";
 import type { Store } from "@livestore/livestore";
-import { events } from "../../livestore/default-schema";
 import { makeTaskQuery } from "../../livestore/default-queries";
+import { events } from "../../livestore/default-schema";
 
 import type { Message } from "../../types";
 import { generateTaskTitle } from "../llm/generate-task-title";

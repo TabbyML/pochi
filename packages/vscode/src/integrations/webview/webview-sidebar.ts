@@ -9,7 +9,7 @@ import { inject, injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { PochiConfiguration } from "../configuration";
-import { WebviewBase, commitStore } from "./base";
+import { WebviewBase, taskUpdated } from "./base";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { VSCodeHostImpl } from "./vscode-host-impl";
 
@@ -104,9 +104,9 @@ export class PochiWebviewSidebar
         this.webviewHostReady.fire(this.webviewHost);
       }
 
-      const { commitStoreEvent } = thread.imports;
+      const { commitTaskUpdated } = thread.imports;
       this.disposables.push(
-        commitStore.event(({ event }) => commitStoreEvent(event)),
+        taskUpdated.event(({ event }) => commitTaskUpdated(event)),
       );
     });
   }
