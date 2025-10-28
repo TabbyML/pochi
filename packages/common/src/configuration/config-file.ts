@@ -91,7 +91,8 @@ export class PochiConfigFile {
         )?.trim() || "{}";
 
       // Apply changes.
-      content = fleece.patch(content, this.cfg.value);
+      const current = JSON.parse(JSON.stringify(this.cfg.value)); // remove keys with undefined values
+      content = fleece.patch(content, current);
 
       // Formatting.
       const edits = JSONC.format(content, undefined, {
