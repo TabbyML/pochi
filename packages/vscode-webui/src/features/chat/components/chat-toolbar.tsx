@@ -284,8 +284,9 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
                   sideOffset={6}
                   className="!w-auto max-w-sm bg-background px-3 py-1.5 text-xs"
                 >
-                  {/* todo i18n */}
-                  Diff worktree with origin/main
+                  {t("chat.chatToolbar.diffWorktreeWith", {
+                    branch: "origin/main",
+                  })}
                 </HoverCardContent>
               </HoverCard>
               <HoverCard>
@@ -313,7 +314,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
                   sideOffset={6}
                   className="!w-auto max-w-sm bg-background px-3 py-1.5 text-xs"
                 >
-                  Open in integrated terminal
+                  {t("chat.chatToolbar.openInTerminal")}
                 </HoverCardContent>
               </HoverCard>
             </div>

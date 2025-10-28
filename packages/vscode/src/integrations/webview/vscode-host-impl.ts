@@ -289,7 +289,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         ? { viewColumn: terminalViewColumn }
         : undefined,
     });
-    terminal.show();
+    terminal.show(false);
   };
 
   readMinionId = async (): Promise<string | null> => {
@@ -859,7 +859,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       const { output } = await executeCommandWithNode({
         command: `git diff --name-status ${base}...HEAD`,
         cwd: this.cwd,
-        timeout: 30,
+        timeout: 10,
         onData: (data) => {
           capturedOutput = data.output;
         },
@@ -891,27 +891,27 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
           const { output } = await executeCommandWithNode({
             command: `cat ${filepath}`,
             cwd: this.cwd,
-            timeout: 30,
+            timeout: 10,
           });
           afterContent = output;
         } else if (status === "D") {
           const { output } = await executeCommandWithNode({
             command: `git show ${base}:${filepath}`,
             cwd: this.cwd,
-            timeout: 30,
+            timeout: 10,
           });
           beforeContent = output;
         } else {
           const { output: before } = await executeCommandWithNode({
             command: `git show ${base}:${filepath}`,
             cwd: this.cwd,
-            timeout: 30,
+            timeout: 10,
           });
           beforeContent = before;
           const { output: after } = await executeCommandWithNode({
             command: `cat ${filepath}`,
             cwd: this.cwd,
-            timeout: 30,
+            timeout: 10,
           });
           afterContent = after;
         }
@@ -936,8 +936,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
 
       await vscode.commands.executeCommand(
         "vscode.changes",
-        // FIXME title
-        "change",
+        `Changes${base ? ` vs ${base}` : ""}`,
         result.map((file) => [
           vscode.Uri.joinPath(vscode.Uri.parse(this.cwd ?? ""), file.filepath),
           DiffChangesContentProvider.decode({
