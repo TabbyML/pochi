@@ -200,6 +200,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   );
 
   const isOpenInTab = globalThis.POCHI_WEBVIEW_KIND === "pane";
+  const comparisonBranch = "origin/main";
 
   return (
     <>
@@ -272,7 +273,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
                     size="icon"
                     className="button-focus h-6 w-6 p-0"
                     onClick={() => {
-                      vscodeHost.showWorktreeDiff();
+                      vscodeHost.showWorktreeDiff(comparisonBranch);
                     }}
                   >
                     <GitCompare className="size-4" />
@@ -285,7 +286,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
                   className="!w-auto max-w-sm bg-background px-3 py-1.5 text-xs"
                 >
                   {t("chat.chatToolbar.diffWorktreeWith", {
-                    branch: "origin/main",
+                    branch: comparisonBranch,
                   })}
                 </HoverCardContent>
               </HoverCard>
