@@ -34,6 +34,7 @@ export type {
   InvalidCustomAgentFile,
   ValidCustomAgentFile,
 } from "./types/custom-agent";
+export type { GitWorktree } from "./types/git";
 export { isValidCustomAgentFile } from "./types/custom-agent";
 
 const isPochiDev = process.env.POCHI_LOCAL_SERVER === "true";

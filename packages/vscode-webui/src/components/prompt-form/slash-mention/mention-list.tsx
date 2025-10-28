@@ -10,6 +10,7 @@ import {
   useImperativeHandle,
   useState,
 } from "react";
+import { useTranslation } from "react-i18next";
 import type { MentionListActions } from "../shared";
 import {
   useMentionItems,
@@ -46,21 +47,21 @@ export interface SlashMentionListProps {
   command: (item: SlashCandidate) => void;
   query?: string;
   fetchItems?: (query?: string) => Promise<SlashCandidate[]>;
-  onSelect?: (workflow: SlashCandidate) => void;
+  onSelect?: (data: SlashCandidate) => void;
 }
 
 /**
- * A React component for the workflow dropdown list.
+ * A React component for the slash dropdown list.
  * Displays when a user types '/...' and suggestions are fetched.
- * Reads the file content when a workflow is selected.
+ * Reads the file content when a slash command candidate is selected.
  */
 export const SlashMentionList = forwardRef<
   MentionListActions,
   SlashMentionListProps
 >(({ items: initialItems, command, query, fetchItems, onSelect }, ref) => {
+  const { t } = useTranslation();
   const [selectedIndex, setSelectedIndex] = useState(0);
   const items = useMentionItems(initialItems, query, fetchItems);
-
   // Reset selected index when items change to prevent out-of-bounds access
   useEffect(() => {
     if (selectedIndex >= items.length) {
@@ -106,7 +107,9 @@ export const SlashMentionList = forwardRef<
       <ScrollArea viewportClassname="max-h-[300px] px-2">
         {items.length === 0 ? (
           <div className="px-2 py-3 text-muted-foreground text-xs">
-            {query ? "No workflows found" : "Type to search workflows..."}
+            {query
+              ? t("mentionList.noResultsFound")
+              : t("mentionList.typeToSearch")}
           </div>
         ) : (
           <div className="grid gap-0.5">
@@ -141,6 +144,7 @@ const CandidateItemView = memo(function SlashCandidateItemView({
   data,
   ...rest
 }: CandidateItemViewProps) {
+  const { t } = useTranslation();
   const ref = useScrollIntoView(isSelected);
 
   return (
@@ -158,7 +162,9 @@ const CandidateItemView = memo(function SlashCandidateItemView({
         </span>
       </div>
       <span className="text-muted-foreground text-xs">
-        {data.type === "workflow" ? "workflow" : "agent"}
+        {data.type === "workflow"
+          ? t("mentionList.workflow")
+          : t("mentionList.agent")}
       </span>
     </div>
   );

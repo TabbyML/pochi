@@ -1,3 +1,4 @@
+import type { PreviewReturnType } from "@getpochi/tools";
 import type { ThreadAbortSignalSerialization } from "@quilted/threads";
 import type { ThreadSignalSerialization } from "@quilted/threads/signals";
 import type { Environment } from "../base";
@@ -5,6 +6,7 @@ import type { UserInfo } from "../configuration";
 import type {
   CaptureEvent,
   CustomAgentFile,
+  GitWorktree,
   McpStatus,
   NewTaskParams,
   ResourceURI,
@@ -38,7 +40,10 @@ export interface VSCodeHostApi {
     value: WorkspaceState[K],
   ): Promise<void>;
 
-  readEnvironment(isSubTask?: boolean): Promise<Environment>;
+  readEnvironment(options: {
+    isSubTask?: boolean;
+    webviewKind: "sidebar" | "pane";
+  }): Promise<Environment>;
 
   previewToolCall(
     toolName: string,
@@ -47,13 +52,9 @@ export interface VSCodeHostApi {
       toolCallId: string;
       state: "partial-call" | "call" | "result";
       abortSignal?: ThreadAbortSignalSerialization;
+      nonInteractive?: boolean;
     },
-  ): Promise<
-    | {
-        error: string;
-      }
-    | undefined
-  >;
+  ): Promise<PreviewReturnType>;
 
   /**
    * Execute a tool call.
@@ -282,6 +283,8 @@ export interface VSCodeHostApi {
   }): Promise<void>;
 
   onTaskUpdated(taskData: unknown): Promise<void>;
+
+  readWorktrees(): Promise<ThreadSignalSerialization<GitWorktree[]>>;
 }
 
 export interface WebviewHostApi {

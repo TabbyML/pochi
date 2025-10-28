@@ -8,6 +8,7 @@ import {
   useImperativeHandle,
   useState,
 } from "react";
+import { useTranslation } from "react-i18next";
 import type { MentionListActions } from "../shared";
 import {
   useMentionItems,
@@ -35,9 +36,9 @@ export interface MentionListProps {
  */
 export const MentionList = forwardRef<MentionListActions, MentionListProps>(
   ({ items: initialItems, command, query, fetchItems }, ref) => {
+    const { t } = useTranslation();
     const [selectedIndex, setSelectedIndex] = useState(0);
     const items = useMentionItems(initialItems, query, fetchItems);
-
     // Reset selected index when items change to prevent out-of-bounds access
     useEffect(() => {
       if (selectedIndex >= items.length) {
@@ -66,7 +67,9 @@ export const MentionList = forwardRef<MentionListActions, MentionListProps>(
         <ScrollArea viewportClassname="max-h-[300px] px-2">
           {items.length === 0 ? (
             <div className="px-2 py-1.5 text-muted-foreground text-xs">
-              {query ? "No results found" : "Type to search..."}
+              {query
+                ? t("mentionList.noResultsFound")
+                : t("mentionList.typeToSearch")}
             </div>
           ) : (
             <div className="grid gap-0.5">

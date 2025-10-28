@@ -174,7 +174,8 @@
     "datePicker": {
       "selectDate": "날짜 선택",
       "today": "오늘"
-    }
+    },
+    "worktreeNotExist": "워크트리가 존재하지 않습니다"
   },
   "toolInvocation": {
     "taskCompleted": "작업 완료",
@@ -273,7 +274,9 @@
   },
   "mentionList": {
     "noResultsFound": "결과를 찾을 수 없습니다",
-    "typeToSearch": "입력하여 검색..."
+    "typeToSearch": "입력하여 검색...",
+    "workflow": "워크플로",
+    "agent": "에이전트"
   },
   "subtask": {
     "back": "뒤로",

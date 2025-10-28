@@ -6,6 +6,7 @@ import type {
   CaptureEvent,
   CustomAgentFile,
   DisplayModel,
+  GitWorktree,
   McpStatus,
   PochiCredentials,
   ResourceURI,
@@ -45,7 +46,10 @@ const VSCodeHostStub = {
   ): Promise<void> => {
     return Promise.resolve();
   },
-  readEnvironment: (_isSubTask?: boolean): Promise<Environment> => {
+  readEnvironment: (_options: {
+    isSubTask?: boolean;
+    webviewKind: "sidebar" | "pane";
+  }): Promise<Environment> => {
     return Promise.resolve({} as Environment);
   },
   previewToolCall: (
@@ -225,6 +229,12 @@ const VSCodeHostStub = {
   openTaskInPanel: async (): Promise<void> => {},
 
   onTaskUpdated: async (): Promise<void> => {},
+
+  readWorktrees: async (): Promise<
+    ThreadSignalSerialization<GitWorktree[]>
+  > => {
+    return Promise.resolve({} as ThreadSignalSerialization<GitWorktree[]>);
+  },
 } satisfies VSCodeHostApi;
 
 export function createVscodeHostStub(overrides?: Partial<VSCodeHostApi>) {

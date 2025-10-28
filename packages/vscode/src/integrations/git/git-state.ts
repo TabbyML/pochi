@@ -43,6 +43,13 @@ export class GitStateMonitor implements vscode.Disposable {
   public readonly onDidChangeGitState: vscode.Event<GitStateChangeEvent> =
     this.#onDidChangeGitState.event;
 
+  /**
+   * Event fired when repository change, such as add or remove repositories and worktrees
+   */
+  readonly #onDidRepositoryChange = new vscode.EventEmitter<void>();
+  public readonly onDidRepositoryChange: vscode.Event<void> =
+    this.#onDidRepositoryChange.event;
+
   constructor() {
     this.disposables.push(this.#onDidChangeGitState);
     this.initialize();
@@ -106,6 +113,7 @@ export class GitStateMonitor implements vscode.Disposable {
 
   private async handleRepositoryOpened(repository: Repository): Promise<void> {
     try {
+      this.#onDidRepositoryChange.fire();
       const repoKey = repository.rootUri.toString();
       logger.debug(`Repository opened: ${repoKey}`);
 
@@ -126,6 +134,7 @@ export class GitStateMonitor implements vscode.Disposable {
 
   private handleRepositoryClosed(repository: Repository): void {
     try {
+      this.#onDidRepositoryChange.fire();
       const repoKey = repository.rootUri.toString();
       logger.debug(`Repository closed: ${repoKey}`);
 

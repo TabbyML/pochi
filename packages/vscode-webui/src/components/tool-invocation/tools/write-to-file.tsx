@@ -2,12 +2,12 @@ import { useToolCallLifeCycle } from "@/features/chat";
 import { getToolName } from "ai";
 import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { ModelEdits, UserEdits } from "../code-edits";
 import { FileBadge } from "../file-badge";
 import { NewProblems, NewProblemsIcon } from "../new-problems";
 import { StatusIcon } from "../status-icon";
 import { ExpandableToolContainer } from "../tool-container";
 import type { ToolProps } from "../types";
-import { UserEdits } from "../user-edits";
 
 export const writeToFileTool: React.FC<ToolProps<"writeToFile">> = ({
   tool,
@@ -39,6 +39,13 @@ export const writeToFileTool: React.FC<ToolProps<"writeToFile">> = ({
       ? tool.output
       : undefined;
 
+  const previewInfo =
+    lifecycle.previewResult &&
+    "success" in lifecycle.previewResult &&
+    lifecycle.previewResult.success
+      ? lifecycle.previewResult?._meta
+      : undefined;
+
   const title = (
     <>
       <StatusIcon isExecuting={isExecuting} tool={tool} />
@@ -49,7 +56,7 @@ export const writeToFileTool: React.FC<ToolProps<"writeToFile">> = ({
           className="ml-1"
           path={path}
           onClick={shouldPreview ? handleClick : undefined}
-          editSummary={result?._meta?.editSummary}
+          editSummary={result?._meta?.editSummary ?? previewInfo?.editSummary}
           changes={result?.success ? changes : undefined}
         />
       )}
@@ -57,6 +64,19 @@ export const writeToFileTool: React.FC<ToolProps<"writeToFile">> = ({
   );
 
   const details = [];
+
+  const displayEdit = result?._meta?.edit || previewInfo?.edit;
+
+  if (displayEdit) {
+    details.push(
+      <ModelEdits
+        key="model-edits"
+        edit={displayEdit}
+        isPreview={result?._meta?.edit === undefined}
+      />,
+    );
+  }
+
   if (result?.newProblems) {
     details.push(
       <NewProblems key="new-problems" newProblems={result?.newProblems} />,
@@ -67,12 +87,12 @@ export const writeToFileTool: React.FC<ToolProps<"writeToFile">> = ({
     details.push(<UserEdits key="user-edits" userEdits={result?.userEdits} />);
   }
 
-  const detail = details.length > 0 ? <>{details}</> : undefined;
+  const expandableDetail = details.length > 0 ? <>{details}</> : undefined;
 
   return (
     <ExpandableToolContainer
       title={title}
-      expandableDetail={detail}
+      expandableDetail={expandableDetail}
       expandableDetailIcon={result?.newProblems && <NewProblemsIcon />}
     />
   );

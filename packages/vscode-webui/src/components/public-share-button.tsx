@@ -66,7 +66,9 @@ export function PublicShareButton({
     menuItemRef.current = "support";
     e.preventDefault();
     const version = await vscodeHost.readExtensionVersion();
-    const environment = await vscodeHost.readEnvironment();
+    const environment = await vscodeHost.readEnvironment({
+      webviewKind: globalThis.POCHI_WEBVIEW_KIND,
+    });
     const shareUrl = `${getServerBaseUrl()}/share/${shareId}`;
 
     const environmentInfo = prompts.environment(environment, undefined);

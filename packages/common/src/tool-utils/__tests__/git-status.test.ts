@@ -47,7 +47,7 @@ describe("GitStatusReader", () => {
     );
     execMocks.set("config user.name", "Test User");
     execMocks.set("config user.email", "test@example.com");
-    execMocks.set("rev-parse --path-format=absolute --git-common-dir", "/test/repo/.git");
+    execMocks.set("rev-parse --absolute-git-dir", "/test/repo/.git/worktrees/feature-branch");
     execMocks.set("rev-parse --path-format=absolute --show-toplevel", "/test/repo");
 
     fsMocks.stat.mockResolvedValue({ isFile: () => true });

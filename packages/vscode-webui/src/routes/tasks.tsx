@@ -10,9 +10,15 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination"; // Import pagination components
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { WorkspaceRequiredPlaceholder } from "@/components/workspace-required-placeholder";
 import { useSettingsStore } from "@/features/settings";
 import { useCurrentWorkspace } from "@/lib/hooks/use-current-workspace";
+import { useWorktrees } from "@/lib/hooks/use-worktrees";
 import { cn } from "@/lib/utils";
 import { setActiveStore, vscodeHost } from "@/lib/vscode";
 import { getWorktreeName } from "@getpochi/common/git-utils";
@@ -188,6 +194,8 @@ function Tasks() {
   const tasks = store.useQuery(
     taskCatalog.queries.makeTasksQuery(cwd as string),
   );
+  const { t } = useTranslation();
+  const worktrees = useWorktrees();
   const totalPages = Math.ceil(tasks.length / limit);
   const paginatedTasks = tasks.slice((page - 1) * limit, page * limit);
 
@@ -209,10 +217,10 @@ function Tasks() {
   return (
     <div className="flex h-screen w-screen flex-col">
       {/* Main content area with scroll */}
-      <div className="w-full px-4 py-3">
+      <div className="w-full px-4 pt-3">
         <a href="command:pochi.createTaskOnWorktree" className="block w-full">
-          <Button variant="outline" className="w-full">
-            New Task
+          <Button variant="default" className="w-full">
+            {t("tasksPage.emptyState.createButton")}
           </Button>
         </a>
       </div>
@@ -222,13 +230,22 @@ function Tasks() {
         <div className="min-h-0 flex-1">
           <ScrollArea className="h-full">
             <div className="flex flex-col gap-4 p-4 pb-6">
-              {paginatedTasks.map((task) => (
-                <TaskRow
-                  key={task.id}
-                  task={task}
-                  worktree={getWorktreeName(task.git?.worktree?.gitdir)}
-                />
-              ))}
+              {paginatedTasks.map((task) => {
+                const isWorktreeExist =
+                  task.git?.worktree && worktrees
+                    ? worktrees.some((wt) => wt.path === task.cwd)
+                    : undefined;
+
+                return (
+                  <TaskRow
+                    key={task.id}
+                    task={task}
+                    worktreeName={getWorktreeName(task.git?.worktree?.gitdir)}
+                    gitDir={task.git?.worktree?.gitdir}
+                    isWorktreeExist={isWorktreeExist}
+                  />
+                );
+              })}
             </div>
           </ScrollArea>
         </div>
@@ -253,7 +270,6 @@ function Tasks() {
 }
 
 function EmptyTaskPlaceholder({ date }: { date: Date }) {
-  const { navigate } = useRouter();
   const { t } = useTranslation();
 
   return (
@@ -265,19 +281,6 @@ function EmptyTaskPlaceholder({ date }: { date: Date }) {
       <p className="mb-4 leading-relaxed">
         {t("tasksPage.emptyState.description")}
       </p>
-      <Button
-        onClick={() =>
-          navigate({
-            to: "/",
-            search: { uid: crypto.randomUUID() },
-          })
-        }
-        variant="ghost"
-        className="mb-20"
-      >
-        <Zap className="size-4" />
-        {t("tasksPage.emptyState.createButton")}
-      </Button>
     </div>
   );
 }
@@ -343,7 +346,17 @@ const getStatusBorderColor = (status: string): string => {
   }
 };
 
-function TaskRow({ task, worktree }: { task: Task; worktree?: string }) {
+function TaskRow({
+  task,
+  worktreeName,
+  isWorktreeExist,
+  gitDir,
+}: {
+  task: Task;
+  worktreeName?: string;
+  isWorktreeExist?: boolean;
+  gitDir?: string;
+}) {
   const { openInTab } = useSettingsStore();
 
   const title = useMemo(() => parseTitle(task.title), [task.title]);
@@ -361,8 +374,9 @@ function TaskRow({ task, worktree }: { task: Task; worktree?: string }) {
           <div className="flex-1 space-y-1 overflow-hidden">
             <GitBadge
               git={task.git}
-              worktree={worktree}
+              worktreeName={worktreeName}
               className="max-w-full text-muted-foreground/80 text-xs"
+              isWorktreeExist={isWorktreeExist}
             />
             <h3 className="line-clamp-2 flex-1 font-medium text-foreground leading-relaxed transition-colors duration-200 group-hover:text-foreground/80">
               {title}
@@ -389,7 +403,7 @@ function TaskRow({ task, worktree }: { task: Task; worktree?: string }) {
     }
   }, [task.cwd, task.id, task.parentId, openInTab]);
 
-  if (worktree) {
+  if (gitDir) {
     return <div onClick={openTaskInPanel}>{content}</div>;
   }
 
@@ -403,8 +417,15 @@ function TaskRow({ task, worktree }: { task: Task; worktree?: string }) {
 function GitBadge({
   className,
   git,
-  worktree,
-}: { git: Task["git"]; worktree?: string; className?: string }) {
+  worktreeName,
+  isWorktreeExist,
+}: {
+  git: Task["git"];
+  worktreeName?: string;
+  className?: string;
+  isWorktreeExist?: boolean;
+}) {
+  const { t } = useTranslation();
   if (!git?.origin) return null;
 
   return (
@@ -414,10 +435,22 @@ function GitBadge({
     >
       <GitBranch className="shrink-0" />
       <span className="truncate">{git.branch}</span>
-      {worktree && (
+      {worktreeName && (
         <>
           <ListTreeIcon className="ml-1 shrink-0" />
-          <span className="truncate">{worktree}</span>
+          <span className="truncate">{worktreeName}</span>
+          {isWorktreeExist === false && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="ml-1 inline-flex">
+                  <MdOutlineErrorOutline className="size-4 text-yellow-500" />
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="top" sideOffset={4}>
+                <span>{t("tasksPage.worktreeNotExist")}</span>
+              </TooltipContent>
+            </Tooltip>
+          )}
         </>
       )}
     </Badge>

@@ -173,7 +173,8 @@
     "datePicker": {
       "selectDate": "选择日期",
       "today": "今天"
-    }
+    },
+    "worktreeNotExist": "工作树不存在"
   },
   "toolInvocation": {
     "taskCompleted": "任务完成",
@@ -272,7 +273,9 @@
   },
   "mentionList": {
     "noResultsFound": "未找到结果",
-    "typeToSearch": "输入以搜索..."
+    "typeToSearch": "输入以搜索...",
+    "workflow": "工作流",
+    "agent": "代理"
   },
   "subtask": {
     "back": "返回",

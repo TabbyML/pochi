@@ -89,6 +89,7 @@ function createVSCodeHost(): VSCodeHostApi {
         "readCustomAgents",
         "openTaskInPanel",
         "onTaskUpdated",
+        "readWorktrees",
       ],
       exports: {
         async openTask(params) {

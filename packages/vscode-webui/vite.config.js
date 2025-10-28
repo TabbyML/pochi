@@ -85,7 +85,13 @@ export default defineConfig({
     tsconfigPaths({
       ignoreConfigErrors: true,
     }),
-    TanStackRouterVite({ autoCodeSplitting: true }),
+    TanStackRouterVite({
+      autoCodeSplitting: true,
+      routeTreeFileHeader: [
+        "// @ts-nocheck",
+        "// noinspection JSUnusedGlobalSymbols",
+      ],
+    }),
     viteReact({
       babel: {
         plugins: [["module:@preact/signals-react-transform"]],

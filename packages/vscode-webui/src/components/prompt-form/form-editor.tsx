@@ -51,7 +51,6 @@ import {
   type SlashCandidate,
   SlashMentionList,
   type SlashMentionListProps,
-  type WorkflowData,
 } from "./slash-mention/mention-list";
 import { SubmitHistoryExtension } from "./submit-history-extension";
 
@@ -146,9 +145,15 @@ export function FormEditor({
   // State for drag overlay UI
   const [isDragOver, setIsDragOver] = useState(false);
 
-  const onSelectWorkflow = useCallback(
-    (workflow: WorkflowData) => {
-      const foundModel = resolveModelFromId(workflow.frontmatter.model, models);
+  const onSelectSlashCandidate = useCallback(
+    (data: SlashCandidate) => {
+      let model: string | undefined;
+      if (data.type === "workflow") {
+        model = data.rawData.frontmatter.model;
+      } else if (data.type === "custom-agent") {
+        model = data.rawData.model;
+      }
+      const foundModel = resolveModelFromId(model, models);
       if (foundModel) {
         updateSelectedModelId(foundModel.id);
       }
@@ -326,7 +331,7 @@ export function FormEditor({
                     props: {
                       ...props,
                       fetchItems,
-                      onSelectWorkflow,
+                      onSelect: onSelectSlashCandidate,
                     },
                     editor: props.editor,
                   });

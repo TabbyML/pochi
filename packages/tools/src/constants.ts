@@ -33,6 +33,10 @@ export const EditFileOutputSchema = z.object({
 
   _meta: z
     .object({
+      edit: z
+        .string()
+        .describe("The diff representing the edits made to the file.")
+        .optional(),
       editSummary: z
         .object({
           added: z.number().describe("Number of lines added to the file."),

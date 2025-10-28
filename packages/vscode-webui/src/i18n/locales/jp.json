@@ -174,7 +174,8 @@
     "datePicker": {
       "selectDate": "日付を選択",
       "today": "今日"
-    }
+    },
+    "worktreeNotExist": "ワークツリーが存在しません"
   },
   "toolInvocation": {
     "taskCompleted": "タスク完了",
@@ -273,7 +274,9 @@
   },
   "mentionList": {
     "noResultsFound": "結果が見つかりません",
-    "typeToSearch": "入力して検索..."
+    "typeToSearch": "入力して検索...",
+    "workflow": "ワークフロー",
+    "agent": "エージェント"
   },
   "subtask": {
     "back": "戻る",
