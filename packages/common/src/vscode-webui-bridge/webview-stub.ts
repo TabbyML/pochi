@@ -46,7 +46,10 @@ const VSCodeHostStub = {
   ): Promise<void> => {
     return Promise.resolve();
   },
-  readEnvironment: (_isSubTask?: boolean): Promise<Environment> => {
+  readEnvironment: (_options: {
+    isSubTask?: boolean;
+    webviewKind: "sidebar" | "pane";
+  }): Promise<Environment> => {
     return Promise.resolve({} as Environment);
   },
   previewToolCall: (

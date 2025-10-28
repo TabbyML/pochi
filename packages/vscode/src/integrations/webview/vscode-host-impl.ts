@@ -203,7 +203,12 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     return this.context.workspaceState.update(key, value);
   };
 
-  readEnvironment = async (isSubTask = false): Promise<Environment> => {
+  readEnvironment = async (options: {
+    isSubTask?: boolean;
+    webviewKind: "sidebar" | "pane";
+  }): Promise<Environment> => {
+    const isSubTask = options.isSubTask ?? false;
+    const webviewKind = options.webviewKind;
     const { files, isTruncated } = this.cwd
       ? await listWorkspaceFiles({
           cwd: this.cwd,
@@ -221,6 +226,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     if (this.cwd) {
       const gitStatusReader = new GitStatusReader({
         cwd: this.cwd,
+        webviewKind,
       });
       gitStatus = await gitStatusReader.readGitStatus();
     }

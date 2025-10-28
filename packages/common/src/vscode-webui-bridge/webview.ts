@@ -43,7 +43,10 @@ export interface VSCodeHostApi {
     value: WorkspaceState[K],
   ): Promise<void>;
 
-  readEnvironment(isSubTask?: boolean): Promise<Environment>;
+  readEnvironment(options: {
+    isSubTask?: boolean;
+    webviewKind: "sidebar" | "pane";
+  }): Promise<Environment>;
 
   previewToolCall(
     toolName: string,

@@ -5,6 +5,7 @@ import { parseGitOriginUrl } from "../git-utils";
 
 export interface GitStatusReaderOptions {
   cwd: string;
+  webviewKind?: "sidebar" | "pane";
 }
 
 const logger = getLogger("GitStatus");
@@ -32,9 +33,11 @@ const execGit = async (cwd: string, command: string): Promise<string> => {
 
 export class GitStatusReader {
   private readonly cwd: string;
+  private readonly webviewKind: "sidebar" | "pane";
 
   constructor(options: GitStatusReaderOptions) {
     this.cwd = options.cwd;
+    this.webviewKind = options.webviewKind ?? "pane";
   }
 
   private async execGit(command: string): Promise<string> {
@@ -166,7 +169,9 @@ export class GitStatusReader {
       userName,
       userEmail,
       worktree:
-        this.cwd === worktreeDir && worktreeGitdir
+        this.webviewKind === "pane" &&
+        this.cwd === worktreeDir &&
+        worktreeGitdir
           ? { gitdir: worktreeGitdir }
           : undefined,
     };

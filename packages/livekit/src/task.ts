@@ -10,11 +10,6 @@ import {
 import type { tables } from "./livestore/schema";
 import type { Message, Task } from "./types";
 
-declare namespace globalThis {
-  // biome-ignore lint/style/noVar: <explanation>
-  var POCHI_WEBVIEW_KIND: "sidebar" | "pane";
-}
-
 export function toTaskStatus(
   message: Message,
   finishReason?: FinishReason,
@@ -107,10 +102,6 @@ export const toTaskGitInfo = (gitStatus: GitStatus): TaskGitInfo => {
   return {
     origin: gitStatus.origin,
     branch: gitStatus.currentBranch,
-    worktree:
-      "POCHI_WEBVIEW_KIND" in globalThis &&
-      globalThis.POCHI_WEBVIEW_KIND === "pane"
-        ? gitStatus.worktree
-        : undefined,
+    worktree: gitStatus.worktree,
   };
 };
