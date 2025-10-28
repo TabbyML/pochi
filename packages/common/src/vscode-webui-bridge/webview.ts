@@ -285,9 +285,9 @@ export interface VSCodeHostApi {
     event: unknown,
   ): Promise<void>;
 
-  showWorktreeDiff(base?: string): Promise<void>;
+  diff(base?: string): Promise<boolean>;
 
-  newTerminal(webviewKind: "sidebar" | "pane"): Promise<void>;
+  createTerminal(webviewKind: "sidebar" | "pane"): Promise<void>;
 }
 
 export interface WebviewHostApi {

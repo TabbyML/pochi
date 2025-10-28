@@ -230,9 +230,11 @@ const VSCodeHostStub = {
 
   bridgeStoreEvent: async (): Promise<void> => {},
 
-  showWorktreeDiff: async (_base?: string): Promise<void> => {},
+  diff: async (_base?: string): Promise<boolean> => {
+    return false;
+  },
 
-  newTerminal: async (_webviewKind: "sidebar" | "pane"): Promise<void> => {},
+  createTerminal: async (_webviewKind: "sidebar" | "pane"): Promise<void> => {},
 } satisfies VSCodeHostApi;
 
 export function createVscodeHostStub(overrides?: Partial<VSCodeHostApi>) {

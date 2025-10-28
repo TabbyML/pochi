@@ -12,7 +12,7 @@ import {
   getSystemInfo,
   getWorkspaceRulesFileUri,
 } from "@/lib/env";
-import { asRelativePath, isFileExists } from "@/lib/fs";
+import { asRelativePath, isFileExists, readFileContent } from "@/lib/fs";
 import { getLogger } from "@/lib/logger";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { ModelList } from "@/lib/model-list";
@@ -38,7 +38,11 @@ import { searchFiles } from "@/tools/search-files";
 import { startBackgroundJob } from "@/tools/start-background-job";
 import { todoWrite } from "@/tools/todo-write";
 import { previewWriteToFile, writeToFile } from "@/tools/write-to-file";
-import type { Environment, GitStatus } from "@getpochi/common";
+import {
+  type Environment,
+  type GitStatus,
+  toErrorMessage,
+} from "@getpochi/common";
 import type { UserInfo } from "@getpochi/common/configuration";
 import type { McpStatus } from "@getpochi/common/mcp-utils";
 // biome-ignore lint/style/useImportType: needed for dependency injection
@@ -82,6 +86,7 @@ import type { Tool } from "ai";
 import { machineId } from "node-machine-id";
 import { keys } from "remeda";
 import * as runExclusive from "run-exclusive";
+import simpleGit from "simple-git";
 import { Lifecycle, inject, injectable, scoped } from "tsyringe";
 import * as vscode from "vscode";
 // biome-ignore lint/style/useImportType: needed for dependency injection
@@ -268,7 +273,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     return this.cwd;
   };
 
-  newTerminal = async (webviewKind: "sidebar" | "pane"): Promise<void> => {
+  createTerminal = async (webviewKind: "sidebar" | "pane"): Promise<void> => {
     if (!this.cwd) return;
     const terminalViewColumn =
       webviewKind === "pane" ? this.getBesideViewColumnForPanel() : undefined;
@@ -834,27 +839,15 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     return currentColumn + 1;
   }
 
-  showWorktreeDiff = async (base = "origin/main"): Promise<void> => {
+  diff = async (base = "origin/main") => {
     if (!this.cwd) {
-      return;
+      return false;
     }
 
-    let capturedOutput = "";
+    const git = simpleGit(this.cwd);
     const result: { filepath: string; before: string; after: string }[] = [];
     try {
-      const { output } = await executeCommandWithNode({
-        command: `git diff --name-status ${base}...HEAD`,
-        cwd: this.cwd,
-        timeout: 10,
-        onData: (data) => {
-          capturedOutput = data.output;
-        },
-      });
-
-      if (!output) {
-        vscode.window.showInformationMessage("No changes to display.");
-        return;
-      }
+      const output = await git.raw(["diff", "--name-status", `${base}...HEAD`]);
       const changedFiles = output
         .trim()
         .split("\n")
@@ -864,8 +857,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         });
 
       if (changedFiles.length === 0) {
-        vscode.window.showInformationMessage("No changes to display.");
-        return;
+        return false;
       }
 
       const targetViewColumn = this.getBesideViewColumnForPanel();
@@ -874,32 +866,13 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         let beforeContent = "";
         let afterContent = "";
         if (status === "A") {
-          const { output } = await executeCommandWithNode({
-            command: `cat ${filepath}`,
-            cwd: this.cwd,
-            timeout: 10,
-          });
-          afterContent = output;
+          const fileContent = await readFileContent(filepath);
+          afterContent = fileContent ?? "";
         } else if (status === "D") {
-          const { output } = await executeCommandWithNode({
-            command: `git show ${base}:${filepath}`,
-            cwd: this.cwd,
-            timeout: 10,
-          });
-          beforeContent = output;
+          beforeContent = await git.raw(["show", `${base}:${filepath}`]);
         } else {
-          const { output: before } = await executeCommandWithNode({
-            command: `git show ${base}:${filepath}`,
-            cwd: this.cwd,
-            timeout: 10,
-          });
-          beforeContent = before;
-          const { output: after } = await executeCommandWithNode({
-            command: `cat ${filepath}`,
-            cwd: this.cwd,
-            timeout: 10,
-          });
-          afterContent = after;
+          beforeContent = await git.raw(["show", `${base}:${filepath}`]);
+          afterContent = (await readFileContent(filepath)) ?? "";
         }
 
         result.push({
@@ -920,6 +893,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         preserveFocus: false,
       });
 
+      // show changes
       await vscode.commands.executeCommand(
         "vscode.changes",
         `Changes${base ? ` vs ${base}` : ""}`,
@@ -936,12 +910,12 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
           viewColumn: targetViewColumn,
         },
       );
+      return true;
     } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : String(e);
       vscode.window.showErrorMessage(
-        `Failed to get diff: ${message}\n${capturedOutput}`,
+        `Failed to get diff: ${toErrorMessage(e)}`,
       );
-      return;
+      return false;
     }
   };
 

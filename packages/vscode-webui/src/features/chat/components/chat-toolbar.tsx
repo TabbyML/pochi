@@ -27,6 +27,7 @@ import type { Todo } from "@getpochi/tools";
 import {
   GitBranch,
   GitCompare,
+  Loader2,
   PaperclipIcon,
   SendHorizonal,
   StopCircleIcon,
@@ -76,6 +77,8 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
 
   const [input, setInput] = useState("");
   const [queuedMessages, setQueuedMessages] = useState<string[]>([]);
+  const [isDiffPending, setIsDiffPending] = useState(false);
+  const [isDiffFailed, setIsDiffFailed] = useState(false);
 
   // Initialize task with prompt if provided and task doesn't exist yet
   const { todos } = useTodos({
@@ -155,6 +158,22 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     if (message.trim()) {
       setQueuedMessages((prev) => [...prev, message]);
       setInput("");
+    }
+  };
+
+  const handleDiff = async () => {
+    try {
+      setIsDiffPending(true);
+      setIsDiffFailed(false);
+      const isDiffSuccess = await vscodeHost.diff();
+      setIsDiffFailed(!isDiffSuccess);
+    } catch {
+      setIsDiffFailed(true);
+    } finally {
+      setIsDiffPending(false);
+      setTimeout(() => {
+        setIsDiffFailed(false);
+      }, 2000);
     }
   };
 
@@ -273,31 +292,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
                     size="icon"
                     className="button-focus h-6 w-6 p-0"
                     onClick={() => {
-                      vscodeHost.showWorktreeDiff(comparisonBranch);
-                    }}
-                  >
-                    <GitCompare className="size-4" />
-                  </Button>
-                </HoverCardTrigger>
-                <HoverCardContent
-                  side="top"
-                  align="center"
-                  sideOffset={6}
-                  className="!w-auto max-w-sm bg-background px-3 py-1.5 text-xs"
-                >
-                  {t("chat.chatToolbar.diffWorktreeWith", {
-                    branch: comparisonBranch,
-                  })}
-                </HoverCardContent>
-              </HoverCard>
-              <HoverCard>
-                <HoverCardTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="button-focus h-6 w-6 p-0"
-                    onClick={() => {
-                      vscodeHost.newTerminal(globalThis.POCHI_WEBVIEW_KIND);
+                      vscodeHost.createTerminal(globalThis.POCHI_WEBVIEW_KIND);
                     }}
                   >
                     <Terminal className="size-4" />
@@ -310,6 +305,38 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
                   className="!w-auto max-w-sm bg-background px-3 py-1.5 text-xs"
                 >
                   {t("chat.chatToolbar.openInTerminal")}
+                </HoverCardContent>
+              </HoverCard>
+              <HoverCard>
+                <HoverCardTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="button-focus h-6 w-6 p-0"
+                    onClick={handleDiff}
+                    disabled={isDiffPending}
+                  >
+                    {isDiffPending ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <GitCompare className="size-4" />
+                    )}
+                  </Button>
+                </HoverCardTrigger>
+                {isDiffFailed && (
+                  <span className="text-muted-foreground text-xs">
+                    {t("checkpointUI.noChangesDetected")}
+                  </span>
+                )}
+                <HoverCardContent
+                  side="top"
+                  align="center"
+                  sideOffset={6}
+                  className="!w-auto max-w-sm bg-background px-3 py-1.5 text-xs"
+                >
+                  {t("chat.chatToolbar.diffWorktreeWith", {
+                    branch: comparisonBranch,
+                  })}
                 </HoverCardContent>
               </HoverCard>
             </div>

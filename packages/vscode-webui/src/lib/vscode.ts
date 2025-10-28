@@ -91,8 +91,8 @@ function createVSCodeHost(): VSCodeHostApi {
         "readMachineId",
         "openTaskInPanel",
         "bridgeStoreEvent",
-        "showWorktreeDiff",
-        "newTerminal",
+        "diff",
+        "createTerminal",
       ],
       exports: {
         async openTask(params) {
