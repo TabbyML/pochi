@@ -6,7 +6,6 @@ import {
   TaskError,
   TaskStatus,
   Todos,
-  taskFullFields,
   taskInitFields,
 } from "./types";
 
@@ -98,13 +97,6 @@ export const events = {
       id: Schema.String,
       error: TaskError,
       updatedAt: Schema.Date,
-    }),
-  }),
-  taskSynced: Events.synced({
-    name: "v1.TaskSynced",
-    schema: Schema.Struct({
-      ...taskFullFields,
-      messages: Schema.Array(DBMessage),
     }),
   }),
   chatStreamStarted: Events.synced({
@@ -207,19 +199,6 @@ const materializers = State.SQLite.materializers(events, {
         updatedAt,
       })
       .where({ id }),
-  ],
-  "v1.TaskSynced": ({ messages, ...task }) => [
-    tables.tasks.insert(task).onConflict("id", "replace"),
-    tables.messages.delete().where("taskId", "=", task.id),
-    ...messages.map((message) =>
-      tables.messages
-        .insert({
-          id: message.id,
-          taskId: task.id,
-          data: message,
-        })
-        .onConflict("id", "replace"),
-    ),
   ],
   "v1.ChatStreamStarted": ({
     id,
