@@ -95,12 +95,10 @@ export class PochiWebviewPanel
       existingPanel?.panel.reveal();
       logger.info(`Revealed existing Pochi panel: ${sessionId}`);
       logger.info(`Opening task ${uid} in existing panel`);
-      if (uid) {
-        existingPanel?.webviewHost?.openTask({
-          uid,
-          parentId,
-        });
-      }
+      existingPanel?.webviewHost?.openTask({
+        uid,
+        parentId,
+      });
       return;
     }
 
@@ -142,12 +140,10 @@ export class PochiWebviewPanel
 
     PochiWebviewPanel.panels.set(sessionId, pochiPanel);
 
-    if (uid) {
-      pochiPanel.onWebviewReady(() => {
-        logger.info(`Webview ready, opening task ${uid} in new panel`);
-        pochiPanel.webviewHost?.openTask({ uid, parentId });
-      });
-    }
+    pochiPanel.onWebviewReady(() => {
+      logger.info(`Webview ready, opening task ${uid} in new panel`);
+      pochiPanel.webviewHost?.openTask({ uid, parentId });
+    });
 
     logger.info(`Created new Pochi panel: ${sessionId}`);
   }

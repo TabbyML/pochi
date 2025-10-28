@@ -48,8 +48,8 @@ export const previewApplyDiff: PreviewToolFunctionType<
 
     if (nonInteractive) {
       const editSummary = getEditSummary(fileContent, updatedContent);
-      const edits = createPrettyPatch(path, fileContent, updatedContent);
-      return { success: true, _meta: { edits, editSummary } };
+      const edit = createPrettyPatch(path, fileContent, updatedContent);
+      return { success: true, _meta: { edit, editSummary } };
     }
 
     const diffView = await DiffView.getOrCreate(toolCallId, path, cwd);

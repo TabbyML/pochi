@@ -15,14 +15,6 @@ export interface NewTaskParams {
   uid: undefined;
 }
 
-export interface TaskDataParams<T extends TaskData = TaskData> {
-  uid: string;
-  /**
-   * @link packages/vscode-webui/src/livestore-provider.tsx#TaskSyncData
-   */
-  task: T;
-}
-
 /**
  * only include fields that are used in the webview and node process
  */
