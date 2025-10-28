@@ -531,26 +531,35 @@ export class CommandManager implements vscode.Disposable {
 
           if ("isCreateNew" in selected && selected.isCreateNew) {
             // Trigger git.createWorktree command
-            try {
-              await vscode.commands.executeCommand("git.createWorktree");
+            await vscode.commands.executeCommand("git.createWorktree");
 
-              // Get worktrees again to find the new one
-              const updatedWorktrees = await worktreeManager.getWorktrees();
+            // Get worktrees again to find the new one
+            const updatedWorktrees = await worktreeManager.getWorktrees();
 
-              // Find the new worktree by comparing with previous worktrees
-              const newWorktree = updatedWorktrees.find(
-                (updated) =>
-                  !worktrees.some((original) => original.path === updated.path),
-              );
+            // Find the new worktree by comparing with previous worktrees
+            const newWorktree = updatedWorktrees.find(
+              (updated) =>
+                !worktrees.some((original) => original.path === updated.path),
+            );
 
-              if (!newWorktree) {
-                return;
-              }
-
-              targetWorktree = newWorktree;
-            } catch (error) {
-              logger.error("Failed to create worktree:", error);
+            if (!newWorktree) {
               return;
+            }
+
+            targetWorktree = newWorktree;
+
+            // Execute setupScript after creating worktree
+            const setupScript = pochiConfig.value.worktree?.setupScript;
+            if (setupScript) {
+              logger.info(
+                `Executing setupScript: ${setupScript} in ${targetWorktree.path}`,
+              );
+              const terminal = vscode.window.createTerminal({
+                name: "Setup Pochi Worktree",
+                cwd: targetWorktree.path,
+              });
+              terminal.sendText(setupScript);
+              terminal.show();
             }
           } else if ("worktree" in selected && selected.worktree) {
             targetWorktree = selected.worktree;

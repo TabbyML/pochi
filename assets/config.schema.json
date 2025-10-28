@@ -505,6 +505,16 @@
           }
         ]
       }
+    },
+    "worktree": {
+      "type": "object",
+      "properties": {
+        "setupScript": {
+          "description": "Script to run after worktree creation",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
     }
   },
   "additionalProperties": false

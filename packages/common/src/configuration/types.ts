@@ -40,5 +40,13 @@ export function makePochiConfig(strict = false) {
     vendors: looseRecord(VendorConfig.nullable(), strict).optional(),
     providers: looseRecord(CustomModelSetting, strict).optional(),
     mcp: looseRecord(McpServerConfig, strict).optional(),
+    worktree: z
+      .object({
+        setupScript: z
+          .string()
+          .optional()
+          .describe("Script to run after worktree creation"),
+      })
+      .optional(),
   });
 }

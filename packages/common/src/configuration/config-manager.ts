@@ -28,8 +28,8 @@ function prop(data: unknown, ...keys: ReadonlyArray<PropertyKey>): unknown {
   return output;
 }
 
-// current only allow workspace to override mcp setting
-const AllowedWorkspaceConfigKeys = ["mcp", "providers"] as const;
+// current allowed workspace to override user config
+const AllowedWorkspaceConfigKeys = ["mcp", "providers", "worktree"] as const;
 
 const configFileName = isDev ? "dev-config.jsonc" : "config.jsonc";
 
