@@ -52,6 +52,7 @@ import {
 import { getVendor } from "@getpochi/common/vendor";
 import type {
   CustomAgentFile,
+  GitWorktree,
   PochiCredentials,
   TaskData,
 } from "@getpochi/common/vscode-webui-bridge";
@@ -93,6 +94,8 @@ import { DiffChangesContentProvider } from "../editor/diff-changes-content-provi
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { type FileSelection, TabState } from "../editor/tab-state";
 // biome-ignore lint/style/useImportType: needed for dependency injection
+import { WorktreeManager } from "../git/worktree";
+// biome-ignore lint/style/useImportType: needed for dependency injection
 import { ThirdMcpImporter } from "../mcp/third-party-mcp";
 import {
   convertUrl,
@@ -127,6 +130,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     private readonly workspaceScope: WorkspaceScope,
     private readonly checkpointService: CheckpointService,
     private readonly customAgentManager: CustomAgentManager,
+    private readonly worktreeManager: WorktreeManager,
   ) {}
 
   private get cwd() {
@@ -822,6 +826,12 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     // Ignore messages from the sidebar WebView as they're synced already.
     if (webviewType === "sidebar") return;
     commitStore.fire({ event });
+  };
+
+  readWorktrees = async (): Promise<
+    ThreadSignalSerialization<GitWorktree[]>
+  > => {
+    return ThreadSignal.serialize(this.worktreeManager.worktrees);
   };
 
   dispose() {

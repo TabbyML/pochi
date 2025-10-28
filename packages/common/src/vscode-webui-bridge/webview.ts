@@ -6,6 +6,7 @@ import type { UserInfo } from "../configuration";
 import type {
   CaptureEvent,
   CustomAgentFile,
+  GitWorktree,
   McpStatus,
   NewTaskParams,
   ResourceURI,
@@ -283,6 +284,8 @@ export interface VSCodeHostApi {
     webviewKind: "sidebar" | "pane",
     event: unknown,
   ): Promise<void>;
+
+  readWorktrees(): Promise<ThreadSignalSerialization<GitWorktree[]>>;
 }
 
 export interface WebviewHostApi {

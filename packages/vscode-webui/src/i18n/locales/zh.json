@@ -173,7 +173,8 @@
     "datePicker": {
       "selectDate": "选择日期",
       "today": "今天"
-    }
+    },
+    "worktreeNotExist": "工作树不存在"
   },
   "toolInvocation": {
     "taskCompleted": "任务完成",
