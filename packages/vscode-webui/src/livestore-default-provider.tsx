@@ -20,13 +20,13 @@ const adapter = makePersistedAdapter({
 });
 
 export function LiveStoreDefaultProvider({
-  taskId,
+  storeTaskId,
   children,
-}: { taskId: string; children: React.ReactNode }) {
+}: { storeTaskId: string; children: React.ReactNode }) {
   const { jwt, isPending } = usePochiCredentials();
   if (isPending) return null;
   return (
-    <LiveStoreProviderInner jwt={jwt} taskId={taskId}>
+    <LiveStoreProviderInner jwt={jwt} storeTaskId={storeTaskId}>
       {children}
     </LiveStoreProviderInner>
   );
@@ -34,14 +34,14 @@ export function LiveStoreDefaultProvider({
 
 function LiveStoreProviderInner({
   jwt,
-  taskId,
+  storeTaskId,
   children,
 }: {
   jwt: string | null;
-  taskId: string;
+  storeTaskId: string;
   children: React.ReactNode;
 }) {
-  const storeId = useStoreId(jwt, taskId);
+  const storeId = useStoreId(jwt, storeTaskId);
   const syncPayload = useMemo(() => ({ jwt }), [jwt]);
 
   logger.debug("LiveStoreProvider re-rendered");

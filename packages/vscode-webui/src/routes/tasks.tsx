@@ -381,9 +381,13 @@ function TaskRow({ task, worktree }: { task: Task; worktree?: string }) {
       return;
     }
     if (task.cwd) {
-      vscodeHost.openTaskInPanel(task.cwd, task.id);
+      vscodeHost.openTaskInPanel({
+        cwd: task.cwd,
+        id: task.id,
+        parentId: task.parentId || undefined,
+      });
     }
-  }, [task.id, task.cwd, openInTab]);
+  }, [task.cwd, task.id, task.parentId, openInTab]);
 
   if (worktree) {
     return <div onClick={openTaskInPanel}>{content}</div>;

@@ -96,6 +96,7 @@ function createVSCodeHost(): VSCodeHostApi {
             to: "/",
             search: {
               uid: params.uid || crypto.randomUUID(),
+              parentUid: "parentId" in params ? params.parentId : undefined,
               prompt: "prompt" in params ? params.prompt : undefined,
               files: "files" in params ? params.files : undefined,
             },

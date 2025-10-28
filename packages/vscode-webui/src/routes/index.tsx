@@ -17,6 +17,7 @@ const fileUIPartSchema = z.object({
 
 const searchSchema = z.object({
   uid: z.string().catch(() => crypto.randomUUID()),
+  parentUid: z.string().optional(),
   prompt: z.string().optional(),
   files: z.array(fileUIPartSchema).optional(),
 });
@@ -27,7 +28,7 @@ export const Route = createFileRoute("/")({
 });
 
 function RouteComponent() {
-  const { uid, prompt, files } = Route.useSearch();
+  const { uid, prompt, files, parentUid } = Route.useSearch();
   const uiFiles = files?.map((file) => ({
     type: "file" as const,
     filename: file.name,
@@ -43,9 +44,10 @@ function RouteComponent() {
   }
 
   const key = `task-${uid}`;
+  const storeTaskId = parentUid || uid;
 
   return (
-    <LiveStoreDefaultProvider taskId={uid}>
+    <LiveStoreDefaultProvider storeTaskId={storeTaskId}>
       <ChatPage
         key={key}
         user={users?.pochi}

@@ -754,7 +754,11 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     return ThreadSignal.serialize(this.userStorage.users);
   };
 
-  openTaskInPanel = async (cwd: string, taskId: string): Promise<void> => {
+  openTaskInPanel = async ({
+    cwd,
+    id,
+    parentId,
+  }: { cwd: string; id: string; parentId?: string }): Promise<void> => {
     if (!cwd) {
       return;
     }
@@ -762,7 +766,8 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     await PochiWebviewPanel.createOrShow(
       workspaceContainer,
       this.context.extensionUri,
-      taskId,
+      parentId,
+      id,
     );
   };
 

@@ -32,7 +32,7 @@ import type { ToolProps } from "../../types";
 export function useLiveSubTask(
   { tool, isExecuting }: Pick<ToolProps<"newTask">, "tool" | "isExecuting">,
   toolCallStatusRegistry: ToolCallStatusRegistry,
-): TaskThreadSource {
+): TaskThreadSource & { parentId: string } {
   const lifecycle = useToolCallLifeCycle().getToolCallLifeCycle({
     toolName: getToolName(tool),
     toolCallId: tool.toolCallId,
@@ -339,7 +339,12 @@ export function useLiveSubTask(
     return () => unsubscribe();
   }, [toolCallStatusRegistry, lifecycle.streamingResult, status]);
 
+  if (!task?.parentId) {
+    throw new Error("Sub task must have parentId");
+  }
+
   return {
+    parentId: task?.parentId,
     messages,
     todos,
     isLoading,

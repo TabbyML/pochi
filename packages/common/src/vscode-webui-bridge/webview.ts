@@ -275,7 +275,11 @@ export interface VSCodeHostApi {
     ThreadSignalSerialization<Record<string, UserInfo>>
   >;
 
-  openTaskInPanel(cwd: string, taskId: string): Promise<void>;
+  openTaskInPanel(options: {
+    id: string;
+    cwd: string;
+    parentId: string | undefined;
+  }): Promise<void>;
 
   onTaskUpdated(taskData: unknown): Promise<void>;
 }
