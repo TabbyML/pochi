@@ -65,14 +65,14 @@ export const writeToFileTool: React.FC<ToolProps<"writeToFile">> = ({
 
   const details = [];
 
-  const displayEdits = result?._meta?.edits || previewInfo?.edits;
+  const displayEdit = result?._meta?.edit || previewInfo?.edit;
 
-  if (displayEdits) {
+  if (displayEdit) {
     details.push(
       <ModelEdits
         key="model-edits"
-        edits={displayEdits}
-        isPreview={result?._meta?.edits === undefined}
+        edit={displayEdit}
+        isPreview={result?._meta?.edit === undefined}
       />,
     );
   }

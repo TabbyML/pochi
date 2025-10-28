@@ -17,12 +17,12 @@ export const UserEdits: React.FC<{
 };
 
 export const ModelEdits: React.FC<{
-  edits: string;
+  edit: string;
   isPreview?: boolean;
-}> = ({ edits, isPreview = false }) => {
+}> = ({ edit, isPreview = false }) => {
   return (
     <div className="my-2 ml-1 flex flex-col">
-      <CodeBlock className="" language="diff" value={edits} />
+      <CodeBlock className="" language="diff" value={edit} />
       <p className="mt-1 self-center text-xs italic">
         {isPreview
           ? "Pochi will make the above edits"
