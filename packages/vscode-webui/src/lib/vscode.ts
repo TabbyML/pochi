@@ -88,11 +88,10 @@ function createVSCodeHost(): VSCodeHostApi {
         "readUserStorage",
         "readCustomAgents",
         "openTaskInPanel",
-        "bridgeStoreEvent",
-        "diff",
-        "createTerminal",
         "onTaskUpdated",
         "readWorktrees",
+        "diff",
+        "createTerminal",
       ],
       exports: {
         async openTask(params) {

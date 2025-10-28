@@ -283,17 +283,13 @@ export interface VSCodeHostApi {
     parentId: string | undefined;
   }): Promise<void>;
 
-  bridgeStoreEvent(
-    webviewKind: "sidebar" | "pane",
-    event: unknown,
-  ): Promise<void>;
+  onTaskUpdated(taskData: unknown): Promise<void>;
+
+  readWorktrees(): Promise<ThreadSignalSerialization<GitWorktree[]>>;
 
   diff(base?: string): Promise<boolean>;
 
   createTerminal(webviewKind: "sidebar" | "pane"): Promise<void>;
-  onTaskUpdated(taskData: unknown): Promise<void>;
-
-  readWorktrees(): Promise<ThreadSignalSerialization<GitWorktree[]>>;
 }
 
 export interface WebviewHostApi {
