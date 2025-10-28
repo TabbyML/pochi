@@ -296,16 +296,10 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
                     size="icon"
                     className="button-focus h-6 w-6 p-0"
                     onClick={() => {
-                      vscodeHost.newTerminal(isOpenInTab);
+                      vscodeHost.newTerminal(globalThis.POCHI_WEBVIEW_KIND);
                     }}
                   >
-                    {/* <a
-                      href="command:vscode.openInIntegratedTerminal"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    > */}
                     <Terminal className="size-4" />
-                    {/* </a> */}
                   </Button>
                 </HoverCardTrigger>
                 <HoverCardContent

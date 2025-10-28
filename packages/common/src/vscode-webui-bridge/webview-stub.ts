@@ -230,8 +230,6 @@ const VSCodeHostStub = {
 
   bridgeStoreEvent: async (): Promise<void> => {},
 
-  updatePanelTitle: async (): Promise<void> => {},
-
   showWorktreeDiff: async (_base?: string): Promise<void> => {},
 
   newTerminal: async (): Promise<void> => {},

@@ -28,7 +28,6 @@ import { ErrorMessageView } from "./components/error-message-view";
 import { SubtaskHeader } from "./components/subtask";
 import { useRestoreTaskModel } from "./hooks/use-restore-task-model";
 import { useScrollToBottom } from "./hooks/use-scroll-to-bottom";
-import { useSetPanelTitle } from "./hooks/use-set-panel-title";
 import { useSetSubtaskModel } from "./hooks/use-set-subtask-model";
 import { useAddSubtaskResult } from "./hooks/use-subtask-completed";
 import { useSubtaskInfo } from "./hooks/use-subtask-info";
@@ -108,8 +107,6 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
     },
     onOverrideMessages,
   });
-
-  useSetPanelTitle(task);
 
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   // Use the unified image upload hook

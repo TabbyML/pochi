@@ -21,7 +21,7 @@ export const editNotebookTool: React.FC<ToolProps<"editNotebook">> = ({
     if (path) {
       vscodeHost.openFile(path, {
         cellId,
-        isTaskOpenInTab: globalThis.POCHI_WEBVIEW_KIND === "pane",
+        webviewKind: globalThis.POCHI_WEBVIEW_KIND,
       });
     }
   }, [path, cellId]);

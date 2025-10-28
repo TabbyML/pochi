@@ -92,7 +92,6 @@ function createVSCodeHost(): VSCodeHostApi {
         "openTaskInPanel",
         "bridgeStoreEvent",
         "showWorktreeDiff",
-        "updatePanelTitle",
         "newTerminal",
       ],
       exports: {

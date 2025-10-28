@@ -40,7 +40,6 @@ import { todoWrite } from "@/tools/todo-write";
 import { previewWriteToFile, writeToFile } from "@/tools/write-to-file";
 import type { Environment, GitStatus } from "@getpochi/common";
 import type { UserInfo } from "@getpochi/common/configuration";
-import { getWorktreeName } from "@getpochi/common/git-utils";
 import type { McpStatus } from "@getpochi/common/mcp-utils";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { McpHub } from "@getpochi/common/mcp-utils";
@@ -50,7 +49,6 @@ import {
   ignoreWalk,
   isPlainTextFile,
   listWorkspaceFiles,
-  parseWorktreeGitdir,
 } from "@getpochi/common/tool-utils";
 import { getVendor } from "@getpochi/common/vendor";
 import type {
@@ -270,11 +268,10 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     return this.cwd;
   };
 
-  newTerminal = async (isTaskOpenInTab: boolean): Promise<void> => {
+  newTerminal = async (webviewKind: "sidebar" | "pane"): Promise<void> => {
     if (!this.cwd) return;
-    const terminalViewColumn = isTaskOpenInTab
-      ? this.getBesideViewColumnForPanelTask()
-      : undefined;
+    const terminalViewColumn =
+      webviewKind === "pane" ? this.getBesideViewColumnForPanel() : undefined;
     const terminal = vscode.window.createTerminal({
       cwd: this.cwd,
       shellPath: getShellPath(),
@@ -464,12 +461,13 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       base64Data?: string;
       fallbackGlobPattern?: string;
       cellId?: string;
-      isTaskOpenInTab?: boolean;
+      webviewKind?: "sidebar" | "pane";
     },
   ) => {
-    const targetColumn = options?.isTaskOpenInTab
-      ? this.getBesideViewColumnForPanelTask()
-      : undefined;
+    const targetViewColumn =
+      options?.webviewKind === "pane"
+        ? this.getBesideViewColumnForPanel()
+        : undefined;
 
     // Expand ~ to home directory if present
     let resolvedPath = filePath;
@@ -497,7 +495,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
             "vscode.openWith",
             fileUri,
             "jupyter-notebook",
-            targetColumn,
+            targetViewColumn,
           );
 
           if (options?.cellId) {
@@ -527,7 +525,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
           await vscode.commands.executeCommand(
             "vscode.open",
             fileUri,
-            targetColumn,
+            targetViewColumn,
           );
         } else {
           const start = options?.start ?? 1;
@@ -535,7 +533,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
           vscode.window.showTextDocument(fileUri, {
             selection: new vscode.Range(start - 1, 0, end - 1, 0),
             preserveFocus: options?.preserveFocus,
-            viewColumn: targetColumn,
+            viewColumn: targetViewColumn,
           });
         }
       }
@@ -555,7 +553,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
           await vscode.commands.executeCommand(
             "vscode.open",
             tempFile,
-            targetColumn,
+            targetViewColumn,
           );
         } catch (error) {
           logger.error(`Failed to open file from base64 data: ${error}`);
@@ -575,7 +573,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
           await vscode.commands.executeCommand(
             "vscode.open",
             result[0],
-            targetColumn,
+            targetViewColumn,
           );
         }
       }
@@ -822,18 +820,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     );
   };
 
-  updatePanelTitle = async (task: TaskData, title: string): Promise<void> => {
-    if (!this.cwd) {
-      return;
-    }
-
-    const gitDir =
-      task?.git?.worktree?.gitdir ?? (await parseWorktreeGitdir(this.cwd));
-    const worktreeName = getWorktreeName(gitDir);
-    PochiWebviewPanel.setTitle(this.cwd, worktreeName, title);
-  };
-
-  private getBesideViewColumnForPanelTask(): vscode.ViewColumn {
+  private getBesideViewColumnForPanel(): vscode.ViewColumn {
     const sessionId = `editor-${this.cwd}`;
     const panel = PochiWebviewPanel.getPanel(sessionId);
     const currentColumn = panel?.panel.viewColumn;
@@ -882,7 +869,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         return;
       }
 
-      const targetColumn = this.getBesideViewColumnForPanelTask();
+      const targetViewColumn = this.getBesideViewColumnForPanel();
 
       for (const { status, filepath } of changedFiles) {
         let beforeContent = "";
@@ -929,7 +916,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         language: "text",
       });
       await vscode.window.showTextDocument(dummyDoc, {
-        viewColumn: targetColumn,
+        viewColumn: targetViewColumn,
         preview: true,
         preserveFocus: false,
       });
@@ -947,7 +934,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
           vscode.Uri.joinPath(vscode.Uri.parse(this.cwd ?? ""), file.filepath),
         ]),
         {
-          viewColumn: targetColumn,
+          viewColumn: targetViewColumn,
         },
       );
     } catch (e: unknown) {
