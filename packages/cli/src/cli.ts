@@ -57,12 +57,14 @@ import {
   getModelFromSlashCommand,
   replaceSlashCommandReferences,
 } from "./lib/match-slash-command";
-import { shutdownStoreAndExit } from "./lib/shutdown";
+import {
+  createAbortControllerWithGracefulShutdown,
+  shutdownStoreAndExit,
+} from "./lib/shutdown";
 import { createStore } from "./livekit/store";
 import { initializeMcp, registerMcpCommand } from "./mcp";
 import { registerModelCommand } from "./model";
 import { OutputRenderer } from "./output-renderer";
-import { registerTaskCommand } from "./task";
 import { TaskRunner } from "./task-runner";
 import { checkForUpdates, registerUpgradeCommand } from "./upgrade";
 
@@ -133,8 +135,6 @@ const program = new Command()
     "Disable MCP (Model Context Protocol) integration completely.",
   )
   .action(async (options) => {
-    const store = await createStore();
-
     // Load custom agents
     const customAgents = await loadAgents(process.cwd());
     const workflows = await loadWorkflows(process.cwd());
@@ -147,6 +147,8 @@ const program = new Command()
         workflows,
       },
     );
+
+    const store = await createStore(uid);
 
     const parts: Message["parts"] = [];
     if (attachments && attachments.length > 0) {
@@ -199,6 +201,9 @@ const program = new Command()
     // Create MCP Hub for accessing MCP server tools (only if MCP is enabled)
     const mcpHub = options.mcp ? await initializeMcp(program) : undefined;
 
+    // Create AbortController for task cancellation with graceful shutdown
+    const abortController = createAbortControllerWithGracefulShutdown();
+
     const llm = await createLLMConfig(program, options, {
       workflows,
       customAgents,
@@ -216,6 +221,7 @@ const program = new Command()
       onSubTaskCreated,
       customAgents,
       mcpHub,
+      abortSignal: abortController.signal,
       outputSchema: options.experimentalOutputSchema
         ? parseOutputSchema(options.experimentalOutputSchema)
         : undefined,
@@ -229,6 +235,7 @@ const program = new Command()
 
     await runner.run();
 
+    // Cleanup resources after task completion
     renderer.shutdown();
     if (mcpHub) {
       mcpHub.dispose();
@@ -261,7 +268,6 @@ program
 program.hook("preAction", async (_thisCommand) => {
   await Promise.all([
     checkForUpdates().catch(() => {}),
-    waitForSync().catch(console.error),
     setPochiConfigWorkspacePath(process.cwd()).catch(() => {}),
   ]);
 });
@@ -269,7 +275,6 @@ program.hook("preAction", async (_thisCommand) => {
 registerAuthCommand(program);
 registerModelCommand(program);
 registerMcpCommand(program);
-registerTaskCommand(program);
 registerUpgradeCommand(program);
 
 if (process.argv[2] === "--completion") {
@@ -475,13 +480,12 @@ async function createLLMConfigWithProviders(
 }
 
 async function waitForSync(
-  inputStore?: Store,
+  store: Store,
   timeoutDuration: Duration.DurationInput = "1 second",
 ) {
   if (!process.env.POCHI_LIVEKIT_SYNC_ON) {
     return;
   }
-  const store = inputStore || (await createStore());
 
   await Effect.gen(function* (_) {
     while (true) {
@@ -498,10 +502,6 @@ async function waitForSync(
       }
     }
   }).pipe(Effect.runPromise);
-
-  if (!inputStore) {
-    await store.shutdown();
-  }
 }
 
 function assertUnreachable(_x: never): never {

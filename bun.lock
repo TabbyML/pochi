@@ -47,7 +47,6 @@
         "commander": "^14.0.0",
         "jose": "catalog:",
         "listr2": "^9.0.3",
-        "node-machine-id": "catalog:",
         "ora": "^8.2.0",
         "remeda": "catalog:",
         "semver": "^7.6.3",
@@ -277,7 +276,6 @@
         "jszip": "^3.10.1",
         "linkify-it": "^5.0.0",
         "lru-cache": "^11.1.0",
-        "node-machine-id": "catalog:",
         "object-hash": "^3.0.0",
         "posthog-node": "^4.17.2",
         "project-name-generator": "^2.1.9",
@@ -486,7 +484,6 @@
     "kysely": "^0.27.6",
     "lucide-react": "^0.542.0",
     "moment": "^2.30.1",
-    "node-machine-id": "^1.1.12",
     "react": "^19.1.0",
     "react-icons": "^5.5.0",
     "remeda": "^2.21.3",
@@ -3032,8 +3029,6 @@
     "node-fetch": ["node-fetch@2.7.0", "", { "dependencies": { "whatwg-url": "^5.0.0" }, "peerDependencies": { "encoding": "^0.1.0" }, "optionalPeers": ["encoding"] }, "sha512-c4FRfUm/dbcWZ7U+1Wq0AwCyFL+3nt2bEw05wfxSz+DWpWsitgmSgYmy2dQdWyKC1694ELPqMs/YzUSNozLt8A=="],
 
     "node-gyp-build-optional-packages": ["node-gyp-build-optional-packages@5.2.2", "https://registry.npmmirror.com/node-gyp-build-optional-packages/-/node-gyp-build-optional-packages-5.2.2.tgz", { "dependencies": { "detect-libc": "^2.0.1" }, "bin": { "node-gyp-build-optional-packages": "bin.js", "node-gyp-build-optional-packages-optional": "optional.js", "node-gyp-build-optional-packages-test": "build-test.js" } }, "sha512-s+w+rBWnpTMwSFbaE0UXsRlg7hU4FjekKU4eyAih5T8nJuNZT1nNsskXpxmeqSK9UzkBl6UgRlnKc8hz8IEqOw=="],
-
-    "node-machine-id": ["node-machine-id@1.1.12", "", {}, "sha512-QNABxbrPa3qEIfrE6GOJ7BYIuignnJw7iQ2YPbc3Nla1HzRJjXzZOiikfF8m7eAMfichLt3M4VgLOetqgDmgGQ=="],
 
     "node-pty": ["node-pty@1.0.0", "https://registry.npmmirror.com/node-pty/-/node-pty-1.0.0.tgz", { "dependencies": { "nan": "^2.17.0" } }, "sha512-wtBMWWS7dFZm/VgqElrTvtfMq4GzJ6+edFI0Y0zyzygUSZMgZdraDUMUhCIvkjhJjme15qWmbyJbtAx4ot4uZA=="],
 

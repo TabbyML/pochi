@@ -6,7 +6,7 @@ import { safeParseJSON } from "@ai-sdk/provider-utils";
 import { type CustomAgent, newTaskInputSchema } from "@getpochi/tools";
 import type { Store } from "@livestore/livestore";
 import { InvalidToolInputError } from "ai";
-import { events } from "../../livestore/schema";
+import { events } from "../../livestore/default-schema";
 
 export function createNewTaskMiddleware(
   store: Store,

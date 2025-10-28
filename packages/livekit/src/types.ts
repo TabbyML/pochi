@@ -7,7 +7,7 @@ import { GoogleVertexModel } from "@getpochi/common/configuration";
 import { type ClientTools, McpTool } from "@getpochi/tools";
 import type { InferUITools, UIMessage } from "ai";
 import z from "zod/v4";
-import type { tables } from "./livestore/schema";
+import type { tables } from "./livestore/default-schema";
 
 export type Metadata =
   | {

@@ -81,7 +81,7 @@
       {
         "command": "pochi.webui.navigate.taskList",
         "title": "Show All Tasks",
-        "icon": "$(history)",
+        "icon": "$(code)",
         "category": "Pochi"
       },
       {
@@ -189,11 +189,6 @@
         }
       ],
       "view/title": [
-        {
-          "command": "pochi.webui.navigate.newTask",
-          "when": "view == pochiSidebar",
-          "group": "navigation@0"
-        },
         {
           "command": "pochi.webui.navigate.taskList",
           "when": "view == pochiSidebar",
@@ -509,7 +504,6 @@
     "jszip": "^3.10.1",
     "linkify-it": "^5.0.0",
     "lru-cache": "^11.1.0",
-    "node-machine-id": "catalog:",
     "object-hash": "^3.0.0",
     "posthog-node": "^4.17.2",
     "project-name-generator": "^2.1.9",

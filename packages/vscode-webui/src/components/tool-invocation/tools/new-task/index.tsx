@@ -30,7 +30,8 @@ export const newTaskTool: React.FC<NewTaskToolProps> = ({
   const agent = tool.input?.agentType;
   const description = tool.input?.description ?? "";
 
-  let taskSource = taskThreadSource;
+  let taskSource: (TaskThreadSource & { parentId?: string }) | undefined =
+    taskThreadSource;
 
   const subTaskToolCallStatusRegistry = useRef(new ToolCallStatusRegistry());
   const inlinedTaskSource = useInlinedSubTask(tool);
@@ -67,11 +68,12 @@ export const newTaskTool: React.FC<NewTaskToolProps> = ({
           <div>
             <StatusIcon tool={tool} isExecuting={isExecuting} />
             <Badge variant="secondary" className={cn("my-0.5 mr-1 ml-2 py-0")}>
-              {uid && isVSCodeEnvironment() ? (
+              {uid && taskSource?.parentId && isVSCodeEnvironment() ? (
                 <Link
                   to="/"
                   search={{
                     uid,
+                    parentUid: taskSource.parentId,
                   }}
                   replace={true}
                   viewTransition

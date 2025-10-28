@@ -12,20 +12,16 @@
       "*.test.ts",
       "*.story.tsx",
       "assets/*",
-
       "private/packages/label-studio/data",
       "private/packages/website/src/components/ui/*.tsx",
       "private/packages/server/migrations/*.ts",
       "private/packages/server/src/lib/tool-call-middleware/relaxed-json.ts",
       "private/packages/db/src/schema.d.ts",
       "private/packages/server/scripts/migrate-db-schema.ts",
-
       "packages/vscode/.vscode-test",
       "packages/vscode/out",
-      "packages/vscode/src/nes/git/git.d.ts",
-
+      "packages/vscode/src/integrations/git/git.d.ts",
       "packages/docs/**",
-
       "**/.wrangler",
       "**/node_modules/**"
     ]

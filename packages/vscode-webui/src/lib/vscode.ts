@@ -8,7 +8,6 @@ import { ThreadNestedWindow } from "@quilted/threads";
 import * as R from "remeda";
 import type { WebviewApi } from "vscode-webview";
 import { queryClient } from "./query-client";
-import { type TaskSyncData, taskSync } from "./task-sync-event";
 
 const logger = getLogger("vscode");
 
@@ -88,21 +87,20 @@ function createVSCodeHost(): VSCodeHostApi {
         "readModelList",
         "readUserStorage",
         "readCustomAgents",
-        "readMachineId",
         "openTaskInPanel",
         "bridgeStoreEvent",
         "diff",
         "createTerminal",
+        "onTaskUpdated",
+        "readWorktrees",
       ],
       exports: {
         async openTask(params) {
-          if (globalThis.POCHI_WEBVIEW_KIND === "pane" && "task" in params) {
-            await taskSync.emit(params.task as TaskSyncData);
-          }
           window.router.navigate({
             to: "/",
             search: {
               uid: params.uid || crypto.randomUUID(),
+              parentUid: "parentId" in params ? params.parentId : undefined,
               prompt: "prompt" in params ? params.prompt : undefined,
               files: "files" in params ? params.files : undefined,
             },
@@ -132,7 +130,7 @@ function createVSCodeHost(): VSCodeHostApi {
           return window.document.hasFocus();
         },
 
-        async commitStoreEvent(event: unknown) {
+        async commitTaskUpdated(event: unknown) {
           if (globalThis.POCHI_WEBVIEW_KIND === "pane") return;
           if (R.isObjectType(event)) {
             const dateFields = ["createdAt", "updatedAt"];

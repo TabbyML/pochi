@@ -179,7 +179,8 @@
     "datePicker": {
       "selectDate": "Select date",
       "today": "Today"
-    }
+    },
+    "worktreeNotExist": "Worktree does not exist"
   },
   "toolInvocation": {
     "taskCompleted": "Task Completed",

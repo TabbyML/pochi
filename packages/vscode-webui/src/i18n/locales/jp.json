@@ -178,7 +178,8 @@
     "datePicker": {
       "selectDate": "日付を選択",
       "today": "今日"
-    }
+    },
+    "worktreeNotExist": "ワークツリーが存在しません"
   },
   "toolInvocation": {
     "taskCompleted": "タスク完了",

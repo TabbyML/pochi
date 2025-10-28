@@ -99,7 +99,7 @@ export default defineConfig({
     }),
     tailwindcss(),
     livestoreDevtoolsPlugin({
-      schemaPath: "../livekit/src/livestore/schema.ts",
+      schemaPath: "../livekit/src/livestore/default-schema.ts",
     }),
     analyzer({
       enabled: !!process.env.VITE_BUNDLE_ANALYZER,
@@ -129,7 +129,7 @@ export default defineConfig({
           runtime: `window.__assetsPath(${JSON.stringify(filename)})`,
         };
       }
-      if (hostId === "livestore.worker.js") {
+      if (hostId.endsWith(".worker.js")) {
         return {
           runtime: `self.__assetsPath(${JSON.stringify(filename)})`,
         };

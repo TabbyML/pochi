@@ -1,5 +1,11 @@
+// biome-ignore lint/style/useImportType: needed for dependency injection
+import { GitStateMonitor } from "@/integrations/git/git-state";
 import { getLogger } from "@/lib/logger";
+import { toErrorMessage } from "@getpochi/common";
+import { signal } from "@preact/signals-core";
 import simpleGit from "simple-git";
+import { injectable, singleton } from "tsyringe";
+import * as vscode from "vscode";
 
 const logger = getLogger("WorktreeManager");
 
@@ -10,11 +16,51 @@ interface GitWorktree {
   isMain: boolean;
 }
 
-export class WorktreeManager {
+@singleton()
+@injectable()
+export class WorktreeManager implements vscode.Disposable {
+  private readonly disposables: vscode.Disposable[] = [];
+  worktrees = signal<GitWorktree[]>([]);
+
   private git: ReturnType<typeof simpleGit>;
 
-  constructor(cwd: string) {
-    this.git = simpleGit(cwd);
+  constructor(private readonly gitStateMonitor: GitStateMonitor) {
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
+    this.git = simpleGit(workspaceFolder);
+    this.init();
+  }
+
+  private async init() {
+    if (!(await this.isGitRepository())) {
+      return;
+    }
+    const worktrees = await this.getWorktrees();
+    this.worktrees.value = worktrees;
+    logger.info(
+      `Initialized WorktreeManager with ${worktrees.length} worktrees.`,
+    );
+    this.disposables.push(
+      this.gitStateMonitor.onDidRepositoryChange(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        const updatedWorktrees = await this.getWorktrees();
+        logger.info(
+          `Worktrees updated to ${updatedWorktrees.length} worktrees.`,
+        );
+        this.worktrees.value = updatedWorktrees;
+      }),
+    );
+  }
+
+  async isGitRepository(): Promise<boolean> {
+    try {
+      const isRepo = await this.git.checkIsRepo();
+      return isRepo;
+    } catch (error) {
+      logger.error(
+        `Failed to check if directory is a Git repository: ${toErrorMessage(error)}`,
+      );
+      return false;
+    }
   }
 
   async getWorktrees(): Promise<GitWorktree[]> {
@@ -22,7 +68,7 @@ export class WorktreeManager {
       const result = await this.git.raw(["worktree", "list", "--porcelain"]);
       return this.parseWorktreePorcelain(result);
     } catch (error) {
-      logger.error("Failed to get worktrees:", error);
+      logger.error(`Failed to get worktrees: ${toErrorMessage(error)}`);
       return [];
     }
   }
@@ -76,5 +122,13 @@ export class WorktreeManager {
     }
 
     return worktrees;
+  }
+
+  dispose() {
+    // @ts-ignore
+    this.git = undefined;
+    for (const disposable of this.disposables) {
+      disposable.dispose();
+    }
   }
 }
