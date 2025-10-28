@@ -174,7 +174,8 @@
     "datePicker": {
       "selectDate": "날짜 선택",
       "today": "오늘"
-    }
+    },
+    "worktreeNotExist": "워크트리가 존재하지 않습니다"
   },
   "toolInvocation": {
     "taskCompleted": "작업 완료",

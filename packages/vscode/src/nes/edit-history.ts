@@ -3,9 +3,9 @@ import { getLogger } from "@/lib/logger";
 import { LRUCache } from "lru-cache";
 import { injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
-import { DocumentSelector } from "./constants";
 // biome-ignore lint/style/useImportType: needed for dependency injection
-import { GitStateMonitor } from "./git/git-state";
+import { GitStateMonitor } from "../integrations/git/git-state";
+import { DocumentSelector } from "./constants";
 import type { TextContentChange } from "./types";
 
 const logger = getLogger("NES.EditHistory");

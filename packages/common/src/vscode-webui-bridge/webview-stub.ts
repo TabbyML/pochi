@@ -6,6 +6,7 @@ import type {
   CaptureEvent,
   CustomAgentFile,
   DisplayModel,
+  GitWorktree,
   McpStatus,
   PochiCredentials,
   ResourceURI,
@@ -229,6 +230,12 @@ const VSCodeHostStub = {
   openTaskInPanel: async (): Promise<void> => {},
 
   bridgeStoreEvent: async (): Promise<void> => {},
+
+  readWorktrees: async (): Promise<
+    ThreadSignalSerialization<GitWorktree[]>
+  > => {
+    return Promise.resolve({} as ThreadSignalSerialization<GitWorktree[]>);
+  },
 } satisfies VSCodeHostApi;
 
 export function createVscodeHostStub(overrides?: Partial<VSCodeHostApi>) {

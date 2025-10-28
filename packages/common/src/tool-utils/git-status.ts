@@ -1,6 +1,4 @@
 import { exec } from "node:child_process";
-import { readFile, stat } from "node:fs/promises";
-import { join } from "node:path";
 import { promisify } from "node:util";
 import { type GitStatus, getLogger } from "../base";
 import { parseGitOriginUrl } from "../git-utils";
@@ -11,31 +9,36 @@ export interface GitStatusReaderOptions {
 
 const logger = getLogger("GitStatus");
 
+const execPromise = promisify(exec);
+
+/**
+ * Execute a git command and return the output
+ * Returns empty string if command fails or repository not found
+ */
+const execGit = async (cwd: string, command: string): Promise<string> => {
+  if (!cwd) {
+    throw new Error("No working directory specified");
+  }
+
+  try {
+    const { stdout } = await execPromise(`git ${command}`, {
+      cwd,
+    });
+    return stdout.trim();
+  } catch {
+    return "";
+  }
+};
+
 export class GitStatusReader {
-  private readonly execPromise = promisify(exec);
   private readonly cwd: string;
 
   constructor(options: GitStatusReaderOptions) {
     this.cwd = options.cwd;
   }
 
-  /**
-   * Execute a git command and return the output
-   * Returns empty string if command fails or repository not found
-   */
   private async execGit(command: string): Promise<string> {
-    if (!this.cwd) {
-      throw new Error("No working directory specified");
-    }
-
-    try {
-      const { stdout } = await this.execPromise(`git ${command}`, {
-        cwd: this.cwd,
-      });
-      return stdout.trim();
-    } catch {
-      return "";
-    }
+    return execGit(this.cwd, command);
   }
 
   /**
@@ -195,14 +198,12 @@ export async function parseWorktreeGitdir(
   cwd: string,
 ): Promise<string | undefined> {
   try {
-    const gitFilePath = join(cwd, ".git");
-    const fileStat = await stat(gitFilePath);
-    if (!fileStat.isFile()) {
-      return undefined;
-    }
-    const content = await readFile(gitFilePath, "utf8");
-    const match = content.trim().match(/^gitdir:\s*(.+)$/);
-    return match ? match[1] : undefined;
+    /**
+     * for main worktree, gitdir is .git directory
+     * for other worktrees, gitdir is stored in .git file as: `gitdir: /path/to/git/dir`, the real path is like `/path/to/repo/.git/worktrees/<worktree-name>`
+     */
+    const gitdir = await execGit(cwd, "rev-parse --absolute-git-dir");
+    return gitdir;
   } catch (error) {
     return undefined;
   }

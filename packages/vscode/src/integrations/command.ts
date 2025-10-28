@@ -2,6 +2,7 @@ import {
   applyQuickFixes,
   calcEditedRangeAfterAccept,
 } from "@/code-completion/auto-code-actions";
+// biome-ignore lint/style/useImportType: needed for dependency injection
 import { WorktreeManager } from "@/integrations/git/worktree";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { PochiWebviewPanel, PochiWebviewSidebar } from "@/integrations/webview";
@@ -27,6 +28,7 @@ import {
 import { McpHub } from "@getpochi/common/mcp-utils";
 import { getVendor } from "@getpochi/common/vendor";
 import type {
+  GitWorktree,
   NewTaskParams,
   TaskIdParams,
 } from "@getpochi/common/vscode-webui-bridge";
@@ -55,6 +57,7 @@ export class CommandManager implements vscode.Disposable {
     @inject("vscode.ExtensionContext")
     private readonly context: vscode.ExtensionContext,
     private readonly nesDecorationManager: NESDecorationManager,
+    private readonly worktreeManager: WorktreeManager,
   ) {
     this.registerCommands();
   }
@@ -469,19 +472,10 @@ export class CommandManager implements vscode.Disposable {
       vscode.commands.registerCommand(
         "pochi.createTaskOnWorktree",
         async () => {
-          const workspaceFolder =
-            vscode.workspace.workspaceFolders?.[0].uri.fsPath;
-          if (!workspaceFolder) {
+          if ((await this.worktreeManager.isGitRepository()) === false) {
             return;
           }
-
-          const worktreeManager = new WorktreeManager(workspaceFolder);
-          const worktrees = await worktreeManager.getWorktrees();
-
-          // Filter out main worktree
-          const nonMainWorktrees = worktrees.filter(
-            (worktree) => !worktree.isMain,
-          );
+          const worktrees = await this.worktreeManager.getWorktrees();
 
           // Create quickpick items from non-main worktrees
           const items: Array<
@@ -489,12 +483,12 @@ export class CommandManager implements vscode.Disposable {
                 label: string;
                 description?: string;
                 detail?: string;
-                worktree?: (typeof nonMainWorktrees)[0];
+                worktree?: GitWorktree;
                 kind?: vscode.QuickPickItemKind;
                 isCreateNew?: boolean;
               }
             | { kind: vscode.QuickPickItemKind.Separator; label: string }
-          > = nonMainWorktrees.map((worktree) => ({
+          > = worktrees.map((worktree) => ({
             label: `$(git-branch) ${worktree.branch || "(detached)"}`,
             // description: worktree.path,
             detail: worktree.path,
@@ -527,7 +521,7 @@ export class CommandManager implements vscode.Disposable {
             return;
           }
 
-          let targetWorktree: (typeof nonMainWorktrees)[0] | undefined;
+          let targetWorktree: GitWorktree | undefined;
 
           if ("isCreateNew" in selected && selected.isCreateNew) {
             // Trigger git.createWorktree command
@@ -535,7 +529,8 @@ export class CommandManager implements vscode.Disposable {
               await vscode.commands.executeCommand("git.createWorktree");
 
               // Get worktrees again to find the new one
-              const updatedWorktrees = await worktreeManager.getWorktrees();
+              const updatedWorktrees =
+                await this.worktreeManager.getWorktrees();
 
               // Find the new worktree by comparing with previous worktrees
               const newWorktree = updatedWorktrees.find(
