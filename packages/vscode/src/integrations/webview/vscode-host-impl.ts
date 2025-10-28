@@ -822,8 +822,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
 
   private getBesideViewColumnForPanel(): vscode.ViewColumn {
     const sessionId = `editor-${this.cwd}`;
-    const panel = PochiWebviewPanel.getPanel(sessionId);
-    const currentColumn = panel?.panel.viewColumn;
+    const currentColumn = PochiWebviewPanel.getPanelViewColumn(sessionId);
     if (currentColumn === undefined) {
       return vscode.ViewColumn.Active;
     }
