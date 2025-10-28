@@ -63,11 +63,17 @@ export class PochiWebviewPanel
     };
   }
 
-  public static setTitle(sessionId: string, title: string): void {
+  public static setTitle(
+    cwd: string,
+    worktreeName: string | undefined,
+    title: string,
+  ): void {
+    const sessionId = `editor-${cwd}`;
     if (PochiWebviewPanel.panels.has(sessionId)) {
       const existingPanel = PochiWebviewPanel.panels.get(sessionId);
       if (existingPanel) {
-        existingPanel.panel.title = title;
+        const newTitle = `Pochi${worktreeName ? ` - ${worktreeName}` : ""} - ${title}`;
+        existingPanel.panel.title = newTitle;
       }
     }
   }

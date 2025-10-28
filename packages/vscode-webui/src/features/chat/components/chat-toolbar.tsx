@@ -17,8 +17,11 @@ import { AutoApproveMenu } from "@/features/settings";
 import { TodoList, useTodos } from "@/features/todo";
 import { useAddCompleteToolCalls } from "@/lib/hooks/use-add-complete-tool-calls";
 import type { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
+import { useCurrentWorkspace } from "@/lib/hooks/use-current-workspace";
+import { vscodeHost } from "@/lib/vscode";
 import type { UseChatHelpers } from "@ai-sdk/react";
 import { constants } from "@getpochi/common";
+import { getWorktreeName } from "@getpochi/common/git-utils";
 import type { Message, Task } from "@getpochi/livekit";
 import type { Todo } from "@getpochi/tools";
 import {
@@ -39,8 +42,6 @@ import { useNewCompactTask } from "../hooks/use-new-compact-task";
 import type { SubtaskInfo } from "../hooks/use-subtask-info";
 import { ChatInputForm } from "./chat-input-form";
 import { CompleteSubtaskButton } from "./subtask";
-import { getWorktreeName } from "@getpochi/common/git-utils";
-import { vscodeHost } from "@/lib/vscode";
 
 interface ChatToolbarProps {
   task?: Task;
@@ -90,6 +91,11 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     isLoading: isModelsLoading,
     updateSelectedModelId,
   } = useSelectedModels({ isSubTask });
+
+  const { data: currentWorkspace } = useCurrentWorkspace();
+
+  const gitdir = task?.git?.worktree?.gitdir || currentWorkspace;
+  const worktreeName = gitdir ? getWorktreeName(gitdir) : undefined;
 
   // Use the unified attachment upload hook
   const {
@@ -192,8 +198,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     () => JSON.stringify(messages, null, 2),
     [messages],
   );
-  const gitDir = task?.git?.worktree?.gitdir;
-  const worktreeName = getWorktreeName(gitDir);
+
   const isOpenInTab = globalThis.POCHI_WEBVIEW_KIND === "pane";
 
   return (
@@ -257,7 +262,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
             onChange={updateSelectedModelId}
           />
           {isOpenInTab && (
-            <div className="flex h-full items-center gap-1 text-xs text-muted-foreground">
+            <div className="flex h-full items-center gap-1 text-muted-foreground text-xs">
               <GitBranch className="size-4" />
               <span>{worktreeName}</span>
               <HoverCard>
@@ -267,7 +272,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
                     size="icon"
                     className="button-focus h-6 w-6 p-0"
                     onClick={() => {
-                      vscodeHost.showDiff();
+                      vscodeHost.showWorktreeDiff();
                     }}
                   >
                     <GitCompare className="size-4" />
@@ -290,10 +295,16 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
                     size="icon"
                     className="button-focus h-6 w-6 p-0"
                     onClick={() => {
-                      // todo: open in integrated terminal
+                      vscodeHost.newTerminal(isOpenInTab);
                     }}
                   >
+                    {/* <a
+                      href="command:vscode.openInIntegratedTerminal"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    > */}
                     <Terminal className="size-4" />
+                    {/* </a> */}
                   </Button>
                 </HoverCardTrigger>
                 <HoverCardContent

@@ -62,8 +62,10 @@ export const FileBadge: React.FC<FileBadgeProps> = ({
       start?: number;
       end?: number;
       fallbackGlobPattern?: string;
+      isTaskOpenInTab?: boolean;
     } = {
       fallbackGlobPattern: fallbackGlobPattern,
+      isTaskOpenInTab: globalThis.POCHI_WEBVIEW_KIND === "pane",
     };
     if (startLine) {
       options.start = startLine;

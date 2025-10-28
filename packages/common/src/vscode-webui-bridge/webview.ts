@@ -18,7 +18,7 @@ import type {
 } from "./index";
 import type { DisplayModel } from "./types/model";
 import type { PochiCredentials } from "./types/pochi";
-import type { TaskDataParams } from "./types/task";
+import type { TaskData, TaskDataParams } from "./types/task";
 
 export interface VSCodeHostApi {
   readResourceURI(): Promise<ResourceURI>;
@@ -147,6 +147,7 @@ export interface VSCodeHostApi {
       base64Data?: string;
       fallbackGlobPattern?: string;
       cellId?: string;
+      isTaskOpenInTab?: boolean;
     },
   ): void;
 
@@ -284,9 +285,11 @@ export interface VSCodeHostApi {
     event: unknown,
   ): Promise<void>;
 
-  updatePanelTitle(title: string): Promise<void>;
+  updatePanelTitle(task: TaskData, title: string): Promise<void>;
 
-  showDiff(base?: string): Promise<void>;
+  showWorktreeDiff(base?: string): Promise<void>;
+
+  newTerminal(isTaskOpenInTab: boolean): Promise<void>;
 }
 
 export interface WebviewHostApi {

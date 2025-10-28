@@ -40,14 +40,17 @@ import { todoWrite } from "@/tools/todo-write";
 import { previewWriteToFile, writeToFile } from "@/tools/write-to-file";
 import type { Environment, GitStatus } from "@getpochi/common";
 import type { UserInfo } from "@getpochi/common/configuration";
+import { getWorktreeName } from "@getpochi/common/git-utils";
 import type { McpStatus } from "@getpochi/common/mcp-utils";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { McpHub } from "@getpochi/common/mcp-utils";
 import {
   GitStatusReader,
+  getShellPath,
   ignoreWalk,
   isPlainTextFile,
   listWorkspaceFiles,
+  parseWorktreeGitdir,
 } from "@getpochi/common/tool-utils";
 import { getVendor } from "@getpochi/common/vendor";
 import type {
@@ -267,6 +270,28 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     return this.cwd;
   };
 
+  newTerminal = async (isTaskOpenInTab: boolean): Promise<void> => {
+    if (!this.cwd) return;
+    const terminalViewColumn = isTaskOpenInTab
+      ? this.getBesideViewColumnForPanelTask()
+      : undefined;
+    const terminal = vscode.window.createTerminal({
+      cwd: this.cwd,
+      shellPath: getShellPath(),
+      env: {
+        PAGER: "cat",
+        GIT_COMMITTER_NAME: "Pochi",
+        GIT_COMMITTER_EMAIL: "noreply@getpochi.com",
+      },
+      hideFromUser: false,
+      isTransient: false,
+      location: terminalViewColumn
+        ? { viewColumn: terminalViewColumn }
+        : undefined,
+    });
+    terminal.show();
+  };
+
   readMinionId = async (): Promise<string | null> => {
     return process.env.POCHI_MINION_ID || null;
   };
@@ -439,8 +464,13 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       base64Data?: string;
       fallbackGlobPattern?: string;
       cellId?: string;
+      isTaskOpenInTab?: boolean;
     },
   ) => {
+    const targetColumn = options?.isTaskOpenInTab
+      ? this.getBesideViewColumnForPanelTask()
+      : undefined;
+
     // Expand ~ to home directory if present
     let resolvedPath = filePath;
     if (filePath.startsWith("~/")) {
@@ -467,6 +497,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
             "vscode.openWith",
             fileUri,
             "jupyter-notebook",
+            targetColumn,
           );
 
           if (options?.cellId) {
@@ -493,13 +524,18 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
 
         const isPlainText = await isPlainTextFile(fileUri.fsPath);
         if (!isPlainText) {
-          await vscode.commands.executeCommand("vscode.open", fileUri);
+          await vscode.commands.executeCommand(
+            "vscode.open",
+            fileUri,
+            targetColumn,
+          );
         } else {
           const start = options?.start ?? 1;
           const end = options?.end ?? start;
           vscode.window.showTextDocument(fileUri, {
             selection: new vscode.Range(start - 1, 0, end - 1, 0),
             preserveFocus: options?.preserveFocus,
+            viewColumn: targetColumn,
           });
         }
       }
@@ -516,7 +552,11 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
             tempFile,
             Buffer.from(options?.base64Data ?? "", "base64"),
           );
-          await vscode.commands.executeCommand("vscode.open", tempFile);
+          await vscode.commands.executeCommand(
+            "vscode.open",
+            tempFile,
+            targetColumn,
+          );
         } catch (error) {
           logger.error(`Failed to open file from base64 data: ${error}`);
         }
@@ -532,7 +572,11 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         logger.info("found file by glob pattern", result[0]);
 
         if (result.length > 0) {
-          await vscode.commands.executeCommand("vscode.open", result[0]);
+          await vscode.commands.executeCommand(
+            "vscode.open",
+            result[0],
+            targetColumn,
+          );
         }
       }
     }
@@ -778,15 +822,33 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     );
   };
 
-  updatePanelTitle = async (title: string): Promise<void> => {
+  updatePanelTitle = async (task: TaskData, title: string): Promise<void> => {
     if (!this.cwd) {
       return;
     }
-    const sessionId = `editor-${this.cwd}`;
-    PochiWebviewPanel.setTitle(sessionId, title);
+
+    const gitDir =
+      task?.git?.worktree?.gitdir ?? (await parseWorktreeGitdir(this.cwd));
+    const worktreeName = getWorktreeName(gitDir);
+    PochiWebviewPanel.setTitle(this.cwd, worktreeName, title);
   };
 
-  showDiff = async (base = "origin/main"): Promise<void> => {
+  private getBesideViewColumnForPanelTask(): vscode.ViewColumn {
+    const sessionId = `editor-${this.cwd}`;
+    const panel = PochiWebviewPanel.getPanel(sessionId);
+    const currentColumn = panel?.panel.viewColumn;
+    if (currentColumn === undefined) {
+      return vscode.ViewColumn.Active;
+    }
+    // If the current view column is the last one, open beside to the left.
+    // Otherwise, open beside to the right.
+    if (currentColumn >= vscode.ViewColumn.Nine) {
+      return vscode.ViewColumn.Eight;
+    }
+    return currentColumn + 1;
+  }
+
+  showWorktreeDiff = async (base = "origin/main"): Promise<void> => {
     if (!this.cwd) {
       return;
     }
@@ -820,17 +882,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         return;
       }
 
-      const sessionId = `editor-${this.cwd}`;
-      const panel = PochiWebviewPanel.getPanel(sessionId);
-      const activeColumn = panel?.panel.viewColumn;
-
-      let targetColumn = vscode.ViewColumn.Beside;
-      if (activeColumn) {
-        targetColumn =
-          activeColumn === vscode.ViewColumn.One
-            ? vscode.ViewColumn.Two
-            : vscode.ViewColumn.One;
-      }
+      const targetColumn = this.getBesideViewColumnForPanelTask();
 
       for (const { status, filepath } of changedFiles) {
         let beforeContent = "";

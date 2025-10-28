@@ -19,7 +19,10 @@ export const editNotebookTool: React.FC<ToolProps<"editNotebook">> = ({
 
   const handleClick = useCallback(() => {
     if (path) {
-      vscodeHost.openFile(path, { cellId });
+      vscodeHost.openFile(path, {
+        cellId,
+        isTaskOpenInTab: globalThis.POCHI_WEBVIEW_KIND === "pane",
+      });
     }
   }, [path, cellId]);
 

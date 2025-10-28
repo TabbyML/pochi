@@ -232,7 +232,9 @@ const VSCodeHostStub = {
 
   updatePanelTitle: async (): Promise<void> => {},
 
-  showDiff: async (_base?: string): Promise<void> => {},
+  showWorktreeDiff: async (_base?: string): Promise<void> => {},
+
+  newTerminal: async (): Promise<void> => {},
 } satisfies VSCodeHostApi;
 
 export function createVscodeHostStub(overrides?: Partial<VSCodeHostApi>) {
