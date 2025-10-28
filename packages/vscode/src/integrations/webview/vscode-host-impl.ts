@@ -58,14 +58,13 @@ import { getVendor } from "@getpochi/common/vendor";
 import type {
   CaptureEvent,
   CustomAgentFile,
-  GitWorktree,
   DisplayModel,
+  GitWorktree,
   PochiCredentials,
   ResourceURI,
   RuleFile,
   SaveCheckpointOptions,
   SessionState,
-  TaskData,
   VSCodeHostApi,
   WorkspaceState,
 } from "@getpochi/common/vscode-webui-bridge";
