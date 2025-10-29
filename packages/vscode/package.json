@@ -25,7 +25,9 @@
   ],
   "icon": "assets/icons/logo128.png",
   "main": "./dist/extension.js",
-  "activationEvents": ["onStartupFinished"],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
   "contributes": {
     "authentication": [
       {
@@ -70,12 +72,6 @@
       {
         "command": "pochi.editWorkspaceRules",
         "title": "Edit Workspace Rules",
-        "category": "Pochi"
-      },
-      {
-        "command": "pochi.webui.navigate.newTask",
-        "title": "New Task",
-        "icon": "$(add)",
         "category": "Pochi"
       },
       {
@@ -168,10 +164,6 @@
           "title": "Pochi: Login with Token"
         },
         {
-          "command": "pochi.webui.navigate.newTask",
-          "when": "false"
-        },
-        {
           "command": "pochi.webui.navigate.taskList",
           "when": "false"
         },
@@ -185,6 +177,22 @@
         },
         {
           "command": "pochi.mcp.toggleToolEnabled",
+          "when": "false"
+        },
+        {
+          "command": "pochi.createTaskOnWorktree",
+          "when": "false"
+        },
+        {
+          "command": "pochi.createTaskInPanel",
+          "when": "false"
+        },
+        {
+          "command": "pochi.editWorkspaceRules",
+          "when": "false"
+        },
+        {
+          "command": "pochi.mcp.addServer",
           "when": "false"
         }
       ],
@@ -313,7 +321,10 @@
                                     "description": "The Google Cloud location (e.g., 'us-central1')."
                                   }
                                 },
-                                "required": ["serviceAccountKey", "location"]
+                                "required": [
+                                  "serviceAccountKey",
+                                  "location"
+                                ]
                               },
                               {
                                 "title": "Access Token",
@@ -353,7 +364,11 @@
                             "description": "A custom prompt template to use for inline completion."
                           }
                         },
-                        "required": ["type", "vertex", "model"]
+                        "required": [
+                          "type",
+                          "vertex",
+                          "model"
+                        ]
                       }
                     ]
                   }
@@ -408,7 +423,10 @@
                                     "description": "The Google Cloud location (e.g., 'us-central1')."
                                   }
                                 },
-                                "required": ["serviceAccountKey", "location"]
+                                "required": [
+                                  "serviceAccountKey",
+                                  "location"
+                                ]
                               },
                               {
                                 "title": "Access Token",
@@ -440,7 +458,11 @@
                             "description": "The ID of the model to use."
                           }
                         },
-                        "required": ["type", "vertex", "model"]
+                        "required": [
+                          "type",
+                          "vertex",
+                          "model"
+                        ]
                       }
                     ]
                   }
