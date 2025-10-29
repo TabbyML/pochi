@@ -815,16 +815,17 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   openTaskInPanel = async ({
     cwd,
     id,
-    parentId,
-  }: { cwd: string; id: string; parentId?: string }): Promise<void> => {
+    storeId,
+  }: { cwd: string; id: string; storeId?: string }): Promise<void> => {
     if (!cwd) {
       return;
     }
+
     const workspaceContainer = workspaceScoped(cwd);
     await PochiWebviewPanel.createOrShow(
       workspaceContainer,
       this.context.extensionUri,
-      parentId,
+      storeId,
       id,
     );
   };

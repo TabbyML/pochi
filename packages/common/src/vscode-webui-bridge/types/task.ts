@@ -6,7 +6,7 @@ export type FileUIPart = {
 
 export interface TaskIdParams {
   uid: string;
-  parentId?: string;
+  storeId?: string;
   prompt?: string;
   files?: FileUIPart[];
 }

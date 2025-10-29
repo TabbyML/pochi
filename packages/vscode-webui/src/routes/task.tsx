@@ -1,11 +1,14 @@
-import { ChatPage } from "@/features/chat";
-import { createFileRoute } from "@tanstack/react-router";
-import { z } from "zod";
-
 import "@/components/prompt-form/prompt-form.css";
+
 import { WelcomeScreen } from "@/components/welcome-screen";
+import { ChatPage } from "@/features/chat";
 import { useModelList } from "@/lib/hooks/use-model-list";
+import { usePochiCredentials } from "@/lib/hooks/use-pochi-credentials";
 import { useUserStorage } from "@/lib/hooks/use-user-storage";
+import { encodeStoreId } from "@getpochi/common/store-id-utils";
+import { createFileRoute } from "@tanstack/react-router";
+import * as jose from "jose";
+import { z } from "zod";
 import { LiveStoreDefaultProvider } from "../livestore-default-provider";
 
 // Corresponds to the FileUIPart type in the ai/react library
@@ -17,7 +20,7 @@ const fileUIPartSchema = z.object({
 
 const searchSchema = z.object({
   uid: z.string().catch(() => crypto.randomUUID()),
-  parentUid: z.string().optional(),
+  storeId: z.string().optional(),
   prompt: z.string().optional(),
   files: z.array(fileUIPartSchema).optional(),
 });
@@ -28,7 +31,7 @@ export const Route = createFileRoute("/task")({
 });
 
 function RouteComponent() {
-  const { uid, prompt, files, parentUid } = Route.useSearch();
+  const { uid, prompt, files, storeId } = Route.useSearch();
   const uiFiles = files?.map((file) => ({
     type: "file" as const,
     filename: file.name,
@@ -38,16 +41,19 @@ function RouteComponent() {
 
   const { users } = useUserStorage();
   const { modelList = [] } = useModelList(true);
+  const { jwt, isPending } = usePochiCredentials();
 
   if (!users?.pochi && modelList.length === 0) {
     return <WelcomeScreen user={users?.pochi} />;
   }
 
   const key = `task-${uid}`;
-  const storeTaskId = parentUid || uid;
+  const computedStoreId = storeId || computeStoreId(jwt, uid);
+
+  if (isPending) return null;
 
   return (
-    <LiveStoreDefaultProvider storeTaskId={storeTaskId}>
+    <LiveStoreDefaultProvider jwt={jwt} storeId={computedStoreId}>
       <ChatPage
         key={key}
         user={users?.pochi}
@@ -57,4 +63,15 @@ function RouteComponent() {
       />
     </LiveStoreDefaultProvider>
   );
+}
+
+function computeStoreId(jwt: string | null, taskId: string) {
+  const sub = (jwt ? jose.decodeJwt(jwt).sub : undefined) ?? "anonymous";
+
+  const storeId = {
+    sub,
+    taskId,
+  };
+
+  return encodeStoreId(storeId);
 }

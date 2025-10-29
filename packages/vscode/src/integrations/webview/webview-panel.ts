@@ -80,7 +80,7 @@ export class PochiWebviewPanel
   public static async createOrShow(
     workspaceContainer: DependencyContainer,
     extensionUri: vscode.Uri,
-    parentId?: string,
+    storeId?: string,
     uid?: string,
   ): Promise<void> {
     const cwd = workspaceContainer.resolve(WorkspaceScope).cwd;
@@ -97,7 +97,7 @@ export class PochiWebviewPanel
       logger.info(`Opening task ${uid} in existing panel`);
       existingPanel?.webviewHost?.openTask({
         uid,
-        parentId,
+        storeId,
       });
       return;
     }
@@ -142,7 +142,7 @@ export class PochiWebviewPanel
 
     pochiPanel.onWebviewReady(() => {
       logger.info(`Webview ready, opening task ${uid} in new panel`);
-      pochiPanel.webviewHost?.openTask({ uid, parentId });
+      pochiPanel.webviewHost?.openTask({ uid, storeId });
     });
 
     logger.info(`Created new Pochi panel: ${sessionId}`);

@@ -18,14 +18,17 @@ import {
 import { WorkspaceRequiredPlaceholder } from "@/components/workspace-required-placeholder";
 import { useSettingsStore } from "@/features/settings";
 import { useCurrentWorkspace } from "@/lib/hooks/use-current-workspace";
+import { usePochiCredentials } from "@/lib/hooks/use-pochi-credentials";
 import { useWorktrees } from "@/lib/hooks/use-worktrees";
 import { cn } from "@/lib/utils";
 import { setActiveStore, vscodeHost } from "@/lib/vscode";
 import { getWorktreeName } from "@getpochi/common/git-utils";
 import { parseTitle } from "@getpochi/common/message-utils";
+import { encodeStoreId } from "@getpochi/common/store-id-utils";
 import { type Task, taskCatalog } from "@getpochi/livekit";
 import { useStore } from "@livestore/react";
 import { Link, createFileRoute, useRouter } from "@tanstack/react-router";
+import * as jose from "jose";
 import {
   Brain,
   CheckCircle2,
@@ -358,6 +361,7 @@ function TaskRow({
   gitDir?: string;
 }) {
   const { openInTab } = useSettingsStore();
+  const { jwt } = usePochiCredentials();
 
   const title = useMemo(() => parseTitle(task.title), [task.title]);
 
@@ -390,6 +394,8 @@ function TaskRow({
     </div>
   );
 
+  const storeId = computeStoreId(jwt, task.parentId || task.id);
+
   const openTaskInPanel = useCallback(() => {
     if (!openInTab) {
       return;
@@ -398,10 +404,10 @@ function TaskRow({
       vscodeHost.openTaskInPanel({
         cwd: task.cwd,
         id: task.id,
-        parentId: task.parentId || undefined,
+        storeId,
       });
     }
-  }, [task.cwd, task.id, task.parentId, openInTab]);
+  }, [task.cwd, task.id, storeId, openInTab]);
 
   if (gitDir) {
     return <div onClick={openTaskInPanel}>{content}</div>;
@@ -455,4 +461,15 @@ function GitBadge({
       )}
     </Badge>
   );
+}
+
+function computeStoreId(jwt: string | null, taskId: string) {
+  const sub = (jwt ? jose.decodeJwt(jwt).sub : undefined) ?? "anonymous";
+
+  const storeId = {
+    sub,
+    taskId,
+  };
+
+  return encodeStoreId(storeId);
 }
