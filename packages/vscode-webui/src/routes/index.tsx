@@ -28,7 +28,6 @@ import { encodeStoreId } from "@getpochi/common/store-id-utils";
 import { type Task, taskCatalog } from "@getpochi/livekit";
 import { useStore } from "@livestore/react";
 import { Link, createFileRoute, useRouter } from "@tanstack/react-router";
-import * as jose from "jose";
 import {
   Brain,
   CheckCircle2,
@@ -394,7 +393,7 @@ function TaskRow({
     </div>
   );
 
-  const storeId = computeStoreId(jwt, task.parentId || task.id);
+  const storeId = encodeStoreId(jwt, task.parentId || task.id);
 
   const openTaskInPanel = useCallback(() => {
     if (!openInTab) {
@@ -461,15 +460,4 @@ function GitBadge({
       )}
     </Badge>
   );
-}
-
-function computeStoreId(jwt: string | null, taskId: string) {
-  const sub = (jwt ? jose.decodeJwt(jwt).sub : undefined) ?? "anonymous";
-
-  const storeId = {
-    sub,
-    taskId,
-  };
-
-  return encodeStoreId(storeId);
 }

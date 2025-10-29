@@ -7,7 +7,6 @@ import { usePochiCredentials } from "@/lib/hooks/use-pochi-credentials";
 import { useUserStorage } from "@/lib/hooks/use-user-storage";
 import { encodeStoreId } from "@getpochi/common/store-id-utils";
 import { createFileRoute } from "@tanstack/react-router";
-import * as jose from "jose";
 import { z } from "zod";
 import { LiveStoreDefaultProvider } from "../livestore-default-provider";
 
@@ -48,7 +47,7 @@ function RouteComponent() {
   }
 
   const key = `task-${uid}`;
-  const computedStoreId = storeId || computeStoreId(jwt, uid);
+  const computedStoreId = storeId || encodeStoreId(jwt, uid);
 
   if (isPending) return null;
 
@@ -63,15 +62,4 @@ function RouteComponent() {
       />
     </LiveStoreDefaultProvider>
   );
-}
-
-function computeStoreId(jwt: string | null, taskId: string) {
-  const sub = (jwt ? jose.decodeJwt(jwt).sub : undefined) ?? "anonymous";
-
-  const storeId = {
-    sub,
-    taskId,
-  };
-
-  return encodeStoreId(storeId);
 }
