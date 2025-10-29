@@ -25,9 +25,7 @@
   ],
   "icon": "assets/icons/logo128.png",
   "main": "./dist/extension.js",
-  "activationEvents": [
-    "onStartupFinished"
-  ],
+  "activationEvents": ["onStartupFinished"],
   "contributes": {
     "authentication": [
       {
@@ -321,10 +319,7 @@
                                     "description": "The Google Cloud location (e.g., 'us-central1')."
                                   }
                                 },
-                                "required": [
-                                  "serviceAccountKey",
-                                  "location"
-                                ]
+                                "required": ["serviceAccountKey", "location"]
                               },
                               {
                                 "title": "Access Token",
@@ -364,11 +359,7 @@
                             "description": "A custom prompt template to use for inline completion."
                           }
                         },
-                        "required": [
-                          "type",
-                          "vertex",
-                          "model"
-                        ]
+                        "required": ["type", "vertex", "model"]
                       }
                     ]
                   }
@@ -423,10 +414,7 @@
                                     "description": "The Google Cloud location (e.g., 'us-central1')."
                                   }
                                 },
-                                "required": [
-                                  "serviceAccountKey",
-                                  "location"
-                                ]
+                                "required": ["serviceAccountKey", "location"]
                               },
                               {
                                 "title": "Access Token",
@@ -458,11 +446,7 @@
                             "description": "The ID of the model to use."
                           }
                         },
-                        "required": [
-                          "type",
-                          "vertex",
-                          "model"
-                        ]
+                        "required": ["type", "vertex", "model"]
                       }
                     ]
                   }
