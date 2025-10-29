@@ -7,7 +7,7 @@ const ModelId = "654670113898758144";
 export function createPochiModel() {
   const vertexModel = createVertexWithoutCredentials({
     baseURL:
-      "http://api-gateway.getpochi.com/https/us-central1-aiplatform.googleapis.com/v1/projects/gen-lang-client-0005535210/locations/us-central1/publishers/google",
+      "https://api-gateway.getpochi.com/https/us-central1-aiplatform.googleapis.com/v1/projects/gen-lang-client-0005535210/locations/us-central1/publishers/google",
     fetch: async (
       requestInfo: Request | URL | string,
       requestInit?: RequestInit,
