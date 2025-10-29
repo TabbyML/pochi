@@ -94,7 +94,7 @@ function createVSCodeHost(): VSCodeHostApi {
       exports: {
         async openTask(params) {
           window.router.navigate({
-            to: "/",
+            to: "/task",
             search: {
               uid: params.uid || crypto.randomUUID(),
               parentUid: "parentId" in params ? params.parentId : undefined,
@@ -107,7 +107,7 @@ function createVSCodeHost(): VSCodeHostApi {
 
         openTaskList() {
           window.router.navigate({
-            to: "/tasks",
+            to: "/",
             replace: true,
           });
         },

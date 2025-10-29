@@ -76,7 +76,7 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
   const manualRunSubtask = useCallback(
     (subtaskUid: string) => {
       navigate({
-        to: "/",
+        to: "/task",
         search: {
           uid: subtaskUid,
         },

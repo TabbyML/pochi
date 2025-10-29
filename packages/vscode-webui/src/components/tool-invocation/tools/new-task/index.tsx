@@ -70,7 +70,7 @@ export const newTaskTool: React.FC<NewTaskToolProps> = ({
             <Badge variant="secondary" className={cn("my-0.5 mr-1 ml-2 py-0")}>
               {uid && taskSource?.parentId && isVSCodeEnvironment() ? (
                 <Link
-                  to="/"
+                  to="/task"
                   search={{
                     uid,
                     parentUid: taskSource.parentId,
