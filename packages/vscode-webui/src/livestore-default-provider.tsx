@@ -63,7 +63,12 @@ function LiveStoreProviderInner({
 function useStoreId(jwt: string | null, taskId: string) {
   const sub = (jwt ? jose.decodeJwt(jwt).sub : undefined) ?? "anonymous";
 
-  return encodeStoreId({ sub, taskId });
+  const storeId = {
+    sub,
+    taskId,
+  };
+
+  return encodeStoreId(storeId);
 }
 
 function Loading() {

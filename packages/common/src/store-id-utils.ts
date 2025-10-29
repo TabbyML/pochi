@@ -3,7 +3,6 @@ import z from "zod/v4";
 
 export const StoreId = z.object({
   sub: z.string(),
-  taskId: z.string(),
 });
 
 export type StoreId = z.infer<typeof StoreId>;

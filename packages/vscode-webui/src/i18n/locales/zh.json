@@ -26,7 +26,11 @@
     "queuedMessages": "排队中的消息 ({{count}})",
     "copyImage": "复制图片",
     "openImage": "打开图片",
-    "pleaseCheckFiles": "请检查这些文件。"
+    "pleaseCheckFiles": "请检查这些文件。",
+    "chatToolbar": {
+      "diffWorktreeWith": "将工作树与 {{branch}} 进行比较",
+      "openInTerminal": "在集成终端中打开"
+    }
   },
   "language": {
     "switcherTooltip": "选择您在 Pochi 中的首选语言"

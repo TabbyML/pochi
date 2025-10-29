@@ -17,11 +17,22 @@ import { AutoApproveMenu } from "@/features/settings";
 import { TodoList, useTodos } from "@/features/todo";
 import { useAddCompleteToolCalls } from "@/lib/hooks/use-add-complete-tool-calls";
 import type { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
+import { useCurrentWorkspace } from "@/lib/hooks/use-current-workspace";
+import { vscodeHost } from "@/lib/vscode";
 import type { UseChatHelpers } from "@ai-sdk/react";
 import { constants } from "@getpochi/common";
+import { getWorktreeName } from "@getpochi/common/git-utils";
 import type { Message, Task } from "@getpochi/livekit";
 import type { Todo } from "@getpochi/tools";
-import { PaperclipIcon, SendHorizonal, StopCircleIcon } from "lucide-react";
+import {
+  GitBranch,
+  GitCompare,
+  Loader2,
+  PaperclipIcon,
+  SendHorizonal,
+  StopCircleIcon,
+  Terminal,
+} from "lucide-react";
 import type React from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -66,6 +77,8 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
 
   const [input, setInput] = useState("");
   const [queuedMessages, setQueuedMessages] = useState<string[]>([]);
+  const [isDiffPending, setIsDiffPending] = useState(false);
+  const [isDiffFailed, setIsDiffFailed] = useState(false);
 
   // Initialize task with prompt if provided and task doesn't exist yet
   const { todos } = useTodos({
@@ -81,6 +94,11 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     isLoading: isModelsLoading,
     updateSelectedModelId,
   } = useSelectedModels({ isSubTask });
+
+  const { data: currentWorkspace } = useCurrentWorkspace();
+
+  const gitdir = task?.git?.worktree?.gitdir || currentWorkspace;
+  const worktreeName = gitdir ? getWorktreeName(gitdir) : undefined;
 
   // Use the unified attachment upload hook
   const {
@@ -143,6 +161,22 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     }
   };
 
+  const handleDiff = async () => {
+    try {
+      setIsDiffPending(true);
+      setIsDiffFailed(false);
+      const isDiffSuccess = await vscodeHost.diff();
+      setIsDiffFailed(!isDiffSuccess);
+    } catch {
+      setIsDiffFailed(true);
+    } finally {
+      setIsDiffPending(false);
+      setTimeout(() => {
+        setIsDiffFailed(false);
+      }, 2000);
+    }
+  };
+
   useEffect(() => {
     const isReady =
       status === "ready" &&
@@ -183,6 +217,9 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     () => JSON.stringify(messages, null, 2),
     [messages],
   );
+
+  const isOpenInTab = globalThis.POCHI_WEBVIEW_KIND === "pane";
+  const comparisonBranch = "origin/main";
 
   return (
     <>
@@ -244,6 +281,66 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
             isValid={!!selectedModel}
             onChange={updateSelectedModelId}
           />
+          {isOpenInTab && (
+            <div className="flex h-full items-center gap-1 text-muted-foreground text-xs">
+              <GitBranch className="size-4" />
+              <span>{worktreeName}</span>
+              <HoverCard>
+                <HoverCardTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="button-focus h-6 w-6 p-0"
+                    onClick={() => {
+                      vscodeHost.createTerminal(globalThis.POCHI_WEBVIEW_KIND);
+                    }}
+                  >
+                    <Terminal className="size-4" />
+                  </Button>
+                </HoverCardTrigger>
+                <HoverCardContent
+                  side="top"
+                  align="center"
+                  sideOffset={6}
+                  className="!w-auto max-w-sm bg-background px-3 py-1.5 text-xs"
+                >
+                  {t("chat.chatToolbar.openInTerminal")}
+                </HoverCardContent>
+              </HoverCard>
+              <HoverCard>
+                <HoverCardTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="button-focus h-6 w-6 p-0"
+                    onClick={handleDiff}
+                    disabled={isDiffPending}
+                  >
+                    {isDiffPending ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <GitCompare className="size-4" />
+                    )}
+                  </Button>
+                </HoverCardTrigger>
+                {isDiffFailed && (
+                  <span className="text-muted-foreground text-xs">
+                    {t("checkpointUI.noChangesDetected")}
+                  </span>
+                )}
+                <HoverCardContent
+                  side="top"
+                  align="center"
+                  sideOffset={6}
+                  className="!w-auto max-w-sm bg-background px-3 py-1.5 text-xs"
+                >
+                  {t("chat.chatToolbar.diffWorktreeWith", {
+                    branch: comparisonBranch,
+                  })}
+                </HoverCardContent>
+              </HoverCard>
+            </div>
+          )}
         </div>
 
         <div className="flex shrink-0 items-center gap-1">

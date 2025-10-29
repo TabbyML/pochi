@@ -148,6 +148,7 @@ export interface VSCodeHostApi {
       base64Data?: string;
       fallbackGlobPattern?: string;
       cellId?: string;
+      webviewKind?: "sidebar" | "pane";
     },
   ): void;
 
@@ -285,6 +286,10 @@ export interface VSCodeHostApi {
   onTaskUpdated(taskData: unknown): Promise<void>;
 
   readWorktrees(): Promise<ThreadSignalSerialization<GitWorktree[]>>;
+
+  diff(base?: string): Promise<boolean>;
+
+  createTerminal(webviewKind: "sidebar" | "pane"): Promise<void>;
 }
 
 export interface WebviewHostApi {

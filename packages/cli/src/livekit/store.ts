@@ -59,6 +59,10 @@ async function getPochiCredentials() {
 
 async function getStoreId(jwt: string | null, taskId: string) {
   const sub = (jwt ? jose.decodeJwt(jwt).sub : undefined) ?? "anonymous";
+  const storeId = {
+    sub,
+    taskId,
+  };
 
-  return encodeStoreId({ sub, taskId });
+  return encodeStoreId(storeId);
 }

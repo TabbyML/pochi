@@ -47,7 +47,7 @@
         {
           "id": "pochi",
           "title": "Pochi",
-          "icon": "assets/icons/terminal.svg"
+          "icon": "$(code)"
         }
       ]
     },

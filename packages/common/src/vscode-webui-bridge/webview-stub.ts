@@ -235,6 +235,12 @@ const VSCodeHostStub = {
   > => {
     return Promise.resolve({} as ThreadSignalSerialization<GitWorktree[]>);
   },
+
+  diff: async (_base?: string): Promise<boolean> => {
+    return false;
+  },
+
+  createTerminal: async (_webviewKind: "sidebar" | "pane"): Promise<void> => {},
 } satisfies VSCodeHostApi;
 
 export function createVscodeHostStub(overrides?: Partial<VSCodeHostApi>) {

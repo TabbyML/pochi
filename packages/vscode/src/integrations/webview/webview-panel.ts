@@ -148,6 +148,13 @@ export class PochiWebviewPanel
     logger.info(`Created new Pochi panel: ${sessionId}`);
   }
 
+  public static getPanelViewColumn(
+    sessionId: string,
+  ): vscode.ViewColumn | undefined {
+    const panel = PochiWebviewPanel.panels.get(sessionId);
+    return panel?.panel.viewColumn;
+  }
+
   dispose(): void {
     PochiWebviewPanel.panels.delete(this.sessionId);
     super.dispose();
