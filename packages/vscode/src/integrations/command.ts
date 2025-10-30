@@ -456,6 +456,7 @@ export class CommandManager implements vscode.Disposable {
         "pochi.createTaskOnWorktree",
         async () => {
           if ((await this.worktreeManager.isGitRepository()) === false) {
+            this.createTaskOnWorkspace();
             return;
           }
           const worktrees = await this.worktreeManager.getWorktrees();
@@ -563,6 +564,28 @@ export class CommandManager implements vscode.Disposable {
           this.nesDecorationManager.reject();
         },
       ),
+
+      vscode.commands.registerCommand(
+        "pochi.createTerminal",
+        (cwd?: string) => {
+          vscode.window.createTerminal({ cwd }).show();
+        },
+      ),
+    );
+  }
+
+  createTaskOnWorkspace() {
+    const cwd = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+    if (!cwd) {
+      vscode.window.showErrorMessage(
+        "Cannot create Pochi task without a workspace folder.",
+      );
+      return;
+    }
+    const workspaceContainer = workspaceScoped(cwd);
+    PochiWebviewPanel.createOrShow(
+      workspaceContainer,
+      this.context.extensionUri,
     );
   }
 

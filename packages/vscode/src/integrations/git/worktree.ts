@@ -2,19 +2,13 @@
 import { GitStateMonitor } from "@/integrations/git/git-state";
 import { getLogger } from "@/lib/logger";
 import { toErrorMessage } from "@getpochi/common";
+import type { GitWorktree } from "@getpochi/common/vscode-webui-bridge";
 import { signal } from "@preact/signals-core";
 import simpleGit from "simple-git";
 import { injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
 
 const logger = getLogger("WorktreeManager");
-
-interface GitWorktree {
-  path: string;
-  branch?: string;
-  commit: string;
-  isMain: boolean;
-}
 
 @singleton()
 @injectable()

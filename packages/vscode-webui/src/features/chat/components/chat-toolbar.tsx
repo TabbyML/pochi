@@ -48,6 +48,7 @@ import { useNewCompactTask } from "../hooks/use-new-compact-task";
 import type { SubtaskInfo } from "../hooks/use-subtask-info";
 import { ChatInputForm } from "./chat-input-form";
 import { CompleteSubtaskButton } from "./subtask";
+import { useWorktrees } from "@/lib/hooks/use-worktrees";
 
 interface ChatToolbarProps {
   task?: Task;
@@ -75,6 +76,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   onUpdateIsPublicShared,
 }) => {
   const { t } = useTranslation();
+  const worktrees = useWorktrees();
 
   const { messages, sendMessage, addToolResult, status } = chat;
   const isLoading = status === "streaming" || status === "submitted";
@@ -102,8 +104,18 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
 
   const { data: currentWorkspace } = useCurrentWorkspace();
 
-  const gitdir = task?.git?.worktree?.gitdir || currentWorkspace;
-  const worktreeName = gitdir ? getWorktreeName(gitdir) : undefined;
+  // if we are open current workspace in tab
+  const isOpenCurrentWorkspace =
+    currentWorkspace?.workspaceFolder &&
+    currentWorkspace.cwd === currentWorkspace.workspaceFolder;
+
+  const isWorktreeExists = worktrees?.some(
+    (wt) => wt.path === currentWorkspace?.cwd,
+  );
+
+  const worktreeName = task?.git?.worktree?.gitdir
+    ? getWorktreeName(task?.git?.worktree?.gitdir)
+    : currentWorkspace?.cwd?.split(/[\\|/]/).pop(); // Fallback to folder name
 
   // Use the unified attachment upload hook
   const {
@@ -170,7 +182,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     try {
       setIsDiffPending(true);
       setIsDiffFailed(false);
-      const isDiffSuccess = await vscodeHost.diff();
+      const isDiffSuccess = await vscodeHost.showDiff();
       setIsDiffFailed(!isDiffSuccess);
     } catch {
       setIsDiffFailed(true);

@@ -152,7 +152,10 @@ export interface VSCodeHostApi {
     },
   ): void;
 
-  readCurrentWorkspace(): Promise<string | null>;
+  readCurrentWorkspace(): Promise<{
+    cwd: string | null;
+    workspaceFolder: string | null;
+  }>;
 
   readCustomAgents(): Promise<ThreadSignalSerialization<CustomAgentFile[]>>;
 
@@ -283,9 +286,7 @@ export interface VSCodeHostApi {
 
   readWorktrees(): Promise<ThreadSignalSerialization<GitWorktree[]>>;
 
-  diff(base?: string): Promise<boolean>;
-
-  createTerminal(webviewKind: "sidebar" | "pane"): Promise<void>;
+  showDiff(base?: string): Promise<boolean>;
 
   createWorktree(): Promise<GitWorktree | null>;
 }

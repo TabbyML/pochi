@@ -19,7 +19,7 @@ import type {
 
 const VSCodeHostStub = {
   readCurrentWorkspace: async () => {
-    return Promise.resolve(null);
+    return Promise.resolve({ cwd: null, workspaceFolder: null });
   },
   readResourceURI: (): Promise<ResourceURI> => {
     return Promise.resolve({} as ResourceURI);
@@ -236,11 +236,9 @@ const VSCodeHostStub = {
     return Promise.resolve({} as ThreadSignalSerialization<GitWorktree[]>);
   },
 
-  diff: async (_base?: string): Promise<boolean> => {
+  showDiff: async (_base?: string): Promise<boolean> => {
     return false;
   },
-
-  createTerminal: async (_webviewKind: "sidebar" | "pane"): Promise<void> => {},
 
   createWorktree: async (): Promise<GitWorktree | null> => {
     return Promise.resolve({} as GitWorktree);

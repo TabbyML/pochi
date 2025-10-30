@@ -116,10 +116,20 @@ export function parseGitOriginUrl(originUrl: string): GitRepositoryInfo | null {
   return null;
 }
 
+/**
+ * parse worktree name from worktree gitdir path like /path/to/repo/.git/worktrees/worktree-name
+ * @param worktreeDir
+ * @returns
+ */
 export const getWorktreeName = (
   worktreeDir: string | undefined,
 ): string | undefined => {
-  return worktreeDir?.endsWith(".git")
-    ? undefined
-    : worktreeDir?.split(/[\/\\]/).pop();
+  if (!worktreeDir) {
+    return undefined;
+  }
+  const reg = /\.git\/worktrees\/([^\/]+)/;
+  const match = worktreeDir?.match(reg);
+  if (match?.[1]) {
+    return match[1];
+  }
 };
