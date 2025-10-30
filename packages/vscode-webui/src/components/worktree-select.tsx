@@ -115,14 +115,14 @@ export function WorktreeSelect({
                       />
                       <div>
                         <div
-                          className={cn({
+                          className={cn("truncate", {
                             "font-semibold": isSelected,
                           })}
                         >
                           {getWorktreeName(item.branch) ??
                             getWorktreeName(item.path)}
                         </div>
-                        <div className="text-muted-foreground text-xs">
+                        <div className="truncate text-muted-foreground text-xs">
                           {item.path}
                         </div>
                       </div>

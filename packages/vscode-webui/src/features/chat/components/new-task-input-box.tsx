@@ -61,6 +61,14 @@ export const NewTaskInputBox: React.FC<Props> = ({ cwd, attachmentUpload }) => {
     string | undefined
   >(cwd);
 
+  const isInputEmpty = !input.trim();
+  const isFilesEmpty = files.length === 0;
+  const isSubmitDisabled =
+    isModelsLoading ||
+    !selectedModel ||
+    isUploadingAttachments ||
+    (isInputEmpty && isFilesEmpty);
+
   const handleSubmit = useCallback(
     async (e?: React.FormEvent<HTMLFormElement>) => {
       e?.preventDefault();
@@ -218,7 +226,7 @@ export const NewTaskInputBox: React.FC<Props> = ({ cwd, attachmentUpload }) => {
             </HoverCardContent>
           </HoverCard>
           <SubmitStopButton
-            isSubmitDisabled={isUploadingAttachments || isModelsLoading}
+            isSubmitDisabled={isSubmitDisabled}
             showStopButton={false}
             onSubmit={handleSubmit}
           />
