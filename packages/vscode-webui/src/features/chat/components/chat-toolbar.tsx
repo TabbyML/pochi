@@ -251,14 +251,6 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   const isOpenInTab = globalThis.POCHI_WEBVIEW_KIND === "pane";
   const comparisonBranch = "origin/main";
 
-  console.log(
-    "RERENDER ChatToolbar",
-    isOpenInTab,
-    isOpenCurrentWorkspace,
-    worktreeName,
-    isWorktreeExists,
-  );
-
   return (
     <>
       <CompleteSubtaskButton subtask={subtask} messages={messages} />
