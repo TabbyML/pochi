@@ -4,6 +4,7 @@ import { getLogger } from "@getpochi/common";
 import { getWorktreeName } from "@getpochi/common/git-utils";
 import { parseWorktreeGitdir } from "@getpochi/common/tool-utils";
 import type {
+  NewTaskParams,
   ResourceURI,
   TaskIdParams,
   VSCodeHostApi,
@@ -81,7 +82,7 @@ export class PochiWebviewPanel
   public static async createOrShow(
     workspaceContainer: DependencyContainer,
     extensionUri: vscode.Uri,
-    taskIdParams?: TaskIdParams,
+    taskIdParams?: TaskIdParams | NewTaskParams,
   ): Promise<void> {
     const cwd = workspaceContainer.resolve(WorkspaceScope).cwd;
     if (!cwd) {
@@ -89,6 +90,7 @@ export class PochiWebviewPanel
       return;
     }
     const uid = taskIdParams?.uid;
+    // @ts-expect-error
     const storeId = taskIdParams?.storeId;
 
     const sessionId = `editor-${cwd}`;
@@ -146,6 +148,7 @@ export class PochiWebviewPanel
       logger.info(`Webview ready, opening task ${uid} in new panel`);
       pochiPanel.webviewHost?.openTask({
         ...taskIdParams,
+        uid: taskIdParams?.uid,
       });
     });
 
