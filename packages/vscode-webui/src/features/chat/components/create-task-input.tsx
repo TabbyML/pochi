@@ -21,7 +21,7 @@ import {
   StopCircleIcon,
 } from "lucide-react";
 import type React from "react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ChatInputForm } from "./chat-input-form";
 
@@ -64,10 +64,12 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
   const [selectedWorktree, setSelectedWorktree] = useState<
     GitWorktree | undefined
   >();
+  const worktreeInited = useRef(false);
 
   useEffect(() => {
-    if (worktreesData.isLoading) return;
+    if (worktreesData.isLoading || worktreeInited.current) return;
     const matchedWorktree = worktreesData.data?.find((wt) => wt.path === cwd);
+    worktreeInited.current = true;
     setSelectedWorktree(matchedWorktree);
   }, [cwd, worktreesData.data, worktreesData.isLoading]);
 
