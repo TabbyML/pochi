@@ -1,7 +1,7 @@
 import { AuthEvents } from "@/lib/auth-events";
 import { WorkspaceScope } from "@/lib/workspace-scoped";
 import { getLogger } from "@getpochi/common";
-import { getWorktreeName } from "@getpochi/common/git-utils";
+import { getWorktreeNameFromGitDir } from "@getpochi/common/git-utils";
 import { parseWorktreeGitdir } from "@getpochi/common/tool-utils";
 import type {
   NewTaskParams,
@@ -105,7 +105,7 @@ export class PochiWebviewPanel
     }
 
     const gitDir = await parseWorktreeGitdir(cwd);
-    const worktreeName = getWorktreeName(gitDir);
+    const worktreeName = getWorktreeNameFromGitDir(gitDir);
 
     // Create a new panel
     const panel = vscode.window.createWebviewPanel(

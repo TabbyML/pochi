@@ -13,6 +13,7 @@ import { useSelectedModels } from "@/features/settings";
 import type { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
 import { useWorktrees } from "@/lib/hooks/use-worktrees";
 import { vscodeHost } from "@/lib/vscode";
+import type { GitWorktree } from "@getpochi/common/vscode-webui-bridge";
 import {
   GitFork,
   PaperclipIcon,
@@ -20,7 +21,7 @@ import {
   StopCircleIcon,
 } from "lucide-react";
 import type React from "react";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ChatInputForm } from "./chat-input-form";
 
@@ -60,9 +61,15 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
 
   const worktreesData = useWorktrees();
   const [isInWorktree, setIsInWorktree] = useState(false);
-  const [selectedWorktreePath, setSelectedWorktreePath] = useState<
-    string | undefined
-  >(cwd);
+  const [selectedWorktree, setSelectedWorktree] = useState<
+    GitWorktree | undefined
+  >();
+
+  useEffect(() => {
+    if (worktreesData.isLoading) return;
+    const matchedWorktree = worktreesData.data?.find((wt) => wt.path === cwd);
+    setSelectedWorktree(matchedWorktree);
+  }, [cwd, worktreesData.data, worktreesData.isLoading]);
 
   const isInputEmpty = !input.trim();
   const isFilesEmpty = files.length === 0;
@@ -87,7 +94,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
       if (files.length > 0) {
         const uploadedAttachments = await upload();
         vscodeHost.openTaskInPanel({
-          cwd: isInWorktree ? selectedWorktreePath || cwd : cwd,
+          cwd: isInWorktree ? selectedWorktree?.path || cwd : cwd,
           uid: crypto.randomUUID(),
           storeId: undefined,
           prompt: content,
@@ -101,7 +108,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
       } else if (content.length > 0) {
         clearUploadError();
         vscodeHost.openTaskInPanel({
-          cwd: isInWorktree ? selectedWorktreePath || cwd : cwd,
+          cwd: isInWorktree ? selectedWorktree?.path || cwd : cwd,
           uid: crypto.randomUUID(),
           storeId: undefined,
           prompt: content,
@@ -115,7 +122,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
       clearUploadError,
       isUploadingAttachments,
       upload,
-      selectedWorktreePath,
+      selectedWorktree?.path,
       cwd,
       isInWorktree,
     ],
@@ -194,9 +201,9 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
               <WorktreeSelect
                 worktrees={worktreesData.data ?? []}
                 isLoading={worktreesData.isLoading}
-                value={selectedWorktreePath}
+                value={selectedWorktree}
                 onChange={(v) => {
-                  setSelectedWorktreePath(v);
+                  setSelectedWorktree(v);
                 }}
               />
             )}

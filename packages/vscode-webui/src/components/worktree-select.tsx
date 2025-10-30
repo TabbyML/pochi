@@ -11,8 +11,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { getWorktreeNameFromWorktreePath } from "@/lib/utils/file";
 import { vscodeHost } from "@/lib/vscode";
-import { getWorktreeName } from "@getpochi/common/git-utils";
 import type { GitWorktree } from "@getpochi/common/vscode-webui-bridge";
 import { DropdownMenuPortal } from "@radix-ui/react-dropdown-menu";
 import { useQueryClient } from "@tanstack/react-query";
@@ -21,11 +21,21 @@ import { useTranslation } from "react-i18next";
 
 interface WorktreeSelectProps {
   worktrees: GitWorktree[];
-  value: string | undefined;
-  onChange: (v: string) => void;
+  value: GitWorktree | undefined;
+  onChange: (v: GitWorktree) => void;
   isLoading?: boolean;
   triggerClassName?: string;
 }
+
+const getWorktreeName = (worktree: GitWorktree | undefined) => {
+  if (!worktree) {
+    return;
+  }
+  if (worktree.isMain) {
+    return worktree.branch || "main";
+  }
+  return getWorktreeNameFromWorktreePath(worktree.path);
+};
 
 export function WorktreeSelect({
   worktrees,
@@ -44,7 +54,7 @@ export function WorktreeSelect({
           queryKey: ["worktrees"],
         });
         setTimeout(() => {
-          onChange(newWorktree.path);
+          onChange(newWorktree);
         });
       }
     } catch (e) {
@@ -97,11 +107,11 @@ export function WorktreeSelect({
             >
               <div>
                 {worktrees?.map((item: GitWorktree) => {
-                  const isSelected = item.path === value;
+                  const isSelected = item.path === value?.path;
                   return (
                     <DropdownMenuItem
                       onClick={(e: React.MouseEvent) => {
-                        onChange(item.path);
+                        onChange(item);
                         e.stopPropagation();
                       }}
                       key={item.path}
@@ -119,8 +129,7 @@ export function WorktreeSelect({
                             "font-semibold": isSelected,
                           })}
                         >
-                          {getWorktreeName(item.branch) ??
-                            getWorktreeName(item.path)}
+                          {getWorktreeName(item)}
                         </div>
                         <div className="truncate text-muted-foreground text-xs">
                           {item.path}
