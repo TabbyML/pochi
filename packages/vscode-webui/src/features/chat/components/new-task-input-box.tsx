@@ -45,7 +45,6 @@ export const NewTaskInputBox: React.FC<Props> = ({ attachmentUpload }) => {
   // Use the unified attachment upload hook
   const {
     files,
-    upload,
     isUploading: isUploadingAttachments,
     fileInputRef,
     removeFile,
@@ -74,15 +73,15 @@ export const NewTaskInputBox: React.FC<Props> = ({ attachmentUpload }) => {
 
       if (files.length > 0) {
         try {
-          const uploadedAttachments = await upload();
+          // const uploadedAttachments = await upload();
           // const parts = prepareMessageParts(t, text, uploadedAttachments);
-
           // await sendMessage({
           //   parts,
           // });
+          // return parts;
         } catch (error) {
           // Error is already handled by the hook
-          return;
+          // return;
         }
       } else if (content.length > 0) {
         clearUploadError();
@@ -92,7 +91,7 @@ export const NewTaskInputBox: React.FC<Props> = ({ attachmentUpload }) => {
         // });
       }
     },
-    [files.length, input, upload, clearUploadError, isUploadingAttachments],
+    [files.length, input, clearUploadError, isUploadingAttachments],
   );
 
   return (
