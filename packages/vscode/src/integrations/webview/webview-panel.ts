@@ -82,18 +82,14 @@ export class PochiWebviewPanel
   public static async createOrShow(
     workspaceContainer: DependencyContainer,
     extensionUri: vscode.Uri,
-    taskIdParams?: TaskIdParams | NewTaskParams,
+    params?: TaskIdParams | NewTaskParams,
   ): Promise<void> {
     const cwd = workspaceContainer.resolve(WorkspaceScope).cwd;
     if (!cwd) {
       logger.warn("No workspace folder found, cannot open Pochi panel");
       return;
     }
-    const uid = taskIdParams?.uid;
-    const storeId =
-      taskIdParams && "storeId" in taskIdParams
-        ? taskIdParams.storeId
-        : undefined;
+    const uid = params?.uid;
 
     const sessionId = `editor-${cwd}`;
     if (PochiWebviewPanel.panels.has(sessionId)) {
@@ -102,8 +98,8 @@ export class PochiWebviewPanel
       logger.info(`Revealed existing Pochi panel: ${sessionId}`);
       logger.info(`Opening task ${uid} in existing panel`);
       existingPanel?.webviewHost?.openTask({
+        ...params,
         uid,
-        storeId,
       });
       return;
     }
@@ -149,8 +145,8 @@ export class PochiWebviewPanel
     pochiPanel.onWebviewReady(() => {
       logger.info(`Webview ready, opening task ${uid} in new panel`);
       pochiPanel.webviewHost?.openTask({
-        ...taskIdParams,
-        uid: taskIdParams?.uid,
+        ...params,
+        uid,
       });
     });
 
