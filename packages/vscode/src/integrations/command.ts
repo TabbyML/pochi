@@ -448,9 +448,6 @@ export class CommandManager implements vscode.Disposable {
           await PochiWebviewPanel.createOrShow(
             workspaceContainer,
             this.context.extensionUri,
-            {
-              uid: crypto.randomUUID(),
-            },
           );
         },
       ),
@@ -549,9 +546,6 @@ export class CommandManager implements vscode.Disposable {
           await PochiWebviewPanel.createOrShow(
             workspaceContainer,
             this.context.extensionUri,
-            {
-              uid: crypto.randomUUID(),
-            },
           );
         },
       ),
