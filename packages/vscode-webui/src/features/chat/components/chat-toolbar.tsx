@@ -34,12 +34,9 @@ import type { Message, Task } from "@getpochi/livekit";
 import type { Todo } from "@getpochi/tools";
 import {
   GitBranch,
-  GitCompare,
-  Loader2,
   PaperclipIcon,
   SendHorizonal,
   StopCircleIcon,
-  Terminal,
 } from "lucide-react";
 import type React from "react";
 import { useEffect, useMemo, useState } from "react";
@@ -326,25 +323,16 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
                     vscodeHost.createTerminal(globalThis.POCHI_WEBVIEW_KIND);
                   }}
                 >
-                  <Terminal className="mr-2 size-4" />
                   <span>{t("chat.chatToolbar.openInTerminal")}</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={handleDiff} disabled={isDiffPending}>
-                  {isDiffPending ? (
-                    <Loader2 className="mr-2 size-4 animate-spin" />
-                  ) : (
-                    <GitCompare className="mr-2 size-4" />
-                  )}
                   <span>
-                    {t("chat.chatToolbar.diffWorktreeWith", {
-                      branch: comparisonBranch,
-                    })}
+                    {isDiffFailed
+                      ? t("checkpointUI.noChangesDetected")
+                      : t("chat.chatToolbar.diffWorktreeWith", {
+                          branch: comparisonBranch,
+                        })}
                   </span>
-                  {isDiffFailed && (
-                    <span className="ml-auto pl-2 text-muted-foreground text-xs">
-                      {t("checkpointUI.noChangesDetected")}
-                    </span>
-                  )}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
