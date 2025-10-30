@@ -15,7 +15,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { WorkspaceRequiredPlaceholder } from "@/components/workspace-required-placeholder";
-import { NewTaskInputBox } from "@/features/chat";
+import { CreateTaskInput } from "@/features/chat";
 import { useSettingsStore } from "@/features/settings";
 import { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
 import { useCurrentWorkspace } from "@/lib/hooks/use-current-workspace";
@@ -222,7 +222,7 @@ function Tasks() {
     <div className="flex h-screen w-screen flex-col">
       {/* Main content area with scroll */}
       <div className="w-full px-4 pt-3">
-        <NewTaskInputBox
+        <CreateTaskInput
           cwd={cwd as string}
           attachmentUpload={attachmentUpload}
         />
@@ -403,7 +403,7 @@ function TaskRow({
     if (task.cwd) {
       vscodeHost.openTaskInPanel({
         cwd: task.cwd,
-        id: task.id,
+        uid: task.id,
         storeId,
       });
     }

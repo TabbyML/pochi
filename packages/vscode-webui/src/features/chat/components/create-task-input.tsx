@@ -24,14 +24,17 @@ import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ChatInputForm } from "./chat-input-form";
 
-interface Props {
+interface CreateTaskInputProps {
   cwd: string;
   attachmentUpload: ReturnType<typeof useAttachmentUpload>;
 }
 
 const noop = () => {};
 
-export const NewTaskInputBox: React.FC<Props> = ({ cwd, attachmentUpload }) => {
+export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
+  cwd,
+  attachmentUpload,
+}) => {
   const { t } = useTranslation();
   const [input, setInput] = useState("");
   const {
@@ -85,7 +88,7 @@ export const NewTaskInputBox: React.FC<Props> = ({ cwd, attachmentUpload }) => {
         const uploadedAttachments = await upload();
         vscodeHost.openTaskInPanel({
           cwd: isInWorktree ? selectedWorktreePath || cwd : cwd,
-          id: crypto.randomUUID(),
+          uid: crypto.randomUUID(),
           storeId: undefined,
           prompt: content,
           files: uploadedAttachments.map((x) => ({
@@ -99,7 +102,7 @@ export const NewTaskInputBox: React.FC<Props> = ({ cwd, attachmentUpload }) => {
         clearUploadError();
         vscodeHost.openTaskInPanel({
           cwd: isInWorktree ? selectedWorktreePath || cwd : cwd,
-          id: crypto.randomUUID(),
+          uid: crypto.randomUUID(),
           storeId: undefined,
           prompt: content,
         });

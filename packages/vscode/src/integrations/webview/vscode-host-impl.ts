@@ -59,13 +59,13 @@ import type {
   CaptureEvent,
   CustomAgentFile,
   DisplayModel,
-  FileUIPart,
   GitWorktree,
   PochiCredentials,
   ResourceURI,
   RuleFile,
   SaveCheckpointOptions,
   SessionState,
+  TaskIdParams,
   VSCodeHostApi,
   WorkspaceState,
 } from "@getpochi/common/vscode-webui-bridge";
@@ -815,18 +815,11 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
 
   openTaskInPanel = async ({
     cwd,
-    id,
+    uid,
     storeId,
     prompt,
     files,
-  }: {
-    cwd: string;
-    id: string;
-    storeId?: string;
-    parentId?: string;
-    prompt?: string;
-    files?: FileUIPart[];
-  }): Promise<void> => {
+  }: TaskIdParams & { cwd: string }): Promise<void> => {
     if (!cwd) {
       return;
     }
@@ -836,7 +829,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       workspaceContainer,
       this.context.extensionUri,
       {
-        uid: id,
+        uid,
         storeId,
         prompt,
         files,
