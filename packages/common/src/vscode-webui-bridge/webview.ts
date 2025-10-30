@@ -19,6 +19,7 @@ import type {
 } from "./index";
 import type { DisplayModel } from "./types/model";
 import type { PochiCredentials } from "./types/pochi";
+import type { FileUIPart } from "./types/task";
 
 export interface VSCodeHostApi {
   readResourceURI(): Promise<ResourceURI>;
@@ -281,6 +282,8 @@ export interface VSCodeHostApi {
     id: string;
     cwd: string;
     storeId: string | undefined;
+    prompt?: string;
+    files?: FileUIPart[];
   }): Promise<void>;
 
   onTaskUpdated(taskData: unknown): Promise<void>;

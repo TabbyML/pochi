@@ -15,6 +15,7 @@ export type {
 export type { ResourceURI } from "./types/common";
 export type { SessionState, WorkspaceState } from "./types/session";
 export type {
+  FileUIPart,
   TaskIdParams,
   NewTaskParams,
   TaskData,

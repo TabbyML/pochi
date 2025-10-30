@@ -59,6 +59,7 @@ import type {
   CaptureEvent,
   CustomAgentFile,
   DisplayModel,
+  FileUIPart,
   GitWorktree,
   PochiCredentials,
   ResourceURI,
@@ -816,7 +817,16 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     cwd,
     id,
     storeId,
-  }: { cwd: string; id: string; storeId?: string }): Promise<void> => {
+    prompt,
+    files,
+  }: {
+    cwd: string;
+    id: string;
+    storeId?: string;
+    parentId?: string;
+    prompt?: string;
+    files?: FileUIPart[];
+  }): Promise<void> => {
     if (!cwd) {
       return;
     }
@@ -825,8 +835,12 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     await PochiWebviewPanel.createOrShow(
       workspaceContainer,
       this.context.extensionUri,
-      storeId,
-      id,
+      {
+        uid: id,
+        storeId,
+        prompt,
+        files,
+      },
     );
   };
 

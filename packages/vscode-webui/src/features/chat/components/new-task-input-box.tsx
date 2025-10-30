@@ -12,7 +12,7 @@ import { WorktreeSelect } from "@/components/worktree-select";
 import { useSelectedModels } from "@/features/settings";
 import type { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
 import { useWorktrees } from "@/lib/hooks/use-worktrees";
-import type { GitWorktree } from "@getpochi/common/vscode-webui-bridge";
+import { vscodeHost } from "@/lib/vscode";
 import {
   GitFork,
   PaperclipIcon,
@@ -25,15 +25,15 @@ import { useTranslation } from "react-i18next";
 import { ChatInputForm } from "./chat-input-form";
 
 interface Props {
+  cwd: string;
   attachmentUpload: ReturnType<typeof useAttachmentUpload>;
 }
 
 const noop = () => {};
 
-export const NewTaskInputBox: React.FC<Props> = ({ attachmentUpload }) => {
+export const NewTaskInputBox: React.FC<Props> = ({ cwd, attachmentUpload }) => {
   const { t } = useTranslation();
   const [input, setInput] = useState("");
-
   const {
     groupedModels,
     selectedModel,
@@ -45,6 +45,7 @@ export const NewTaskInputBox: React.FC<Props> = ({ attachmentUpload }) => {
   // Use the unified attachment upload hook
   const {
     files,
+    upload,
     isUploading: isUploadingAttachments,
     fileInputRef,
     removeFile,
@@ -55,8 +56,10 @@ export const NewTaskInputBox: React.FC<Props> = ({ attachmentUpload }) => {
   } = attachmentUpload;
 
   const worktreesData = useWorktrees();
-  const [isLaunchInWorktree, setIsLaunchInWorktree] = useState(false);
-  const [selectedWorktree, setSelectedWorktree] = useState<GitWorktree>();
+  const [isInWorktree, setIsInWorktree] = useState(false);
+  const [selectedWorktreePath, setSelectedWorktreePath] = useState<
+    string | undefined
+  >(cwd);
 
   const handleSubmit = useCallback(
     async (e?: React.FormEvent<HTMLFormElement>) => {
@@ -66,32 +69,45 @@ export const NewTaskInputBox: React.FC<Props> = ({ attachmentUpload }) => {
       if (isUploadingAttachments) return;
 
       const content = input.trim();
-      const text = content;
 
       // Disallow empty submissions
-      if (text.length === 0 && files.length === 0) return;
+      if (content.length === 0 && files.length === 0) return;
 
       if (files.length > 0) {
-        try {
-          // const uploadedAttachments = await upload();
-          // const parts = prepareMessageParts(t, text, uploadedAttachments);
-          // await sendMessage({
-          //   parts,
-          // });
-          // return parts;
-        } catch (error) {
-          // Error is already handled by the hook
-          // return;
-        }
+        const uploadedAttachments = await upload();
+        vscodeHost.openTaskInPanel({
+          cwd: isInWorktree ? selectedWorktreePath || cwd : cwd,
+          id: crypto.randomUUID(),
+          storeId: undefined,
+          prompt: content,
+          files: uploadedAttachments.map((x) => ({
+            contentType: x.mediaType,
+            name: x.filename ?? "attachment",
+            url: x.url,
+          })),
+        });
+        setInput("");
       } else if (content.length > 0) {
         clearUploadError();
-        // const parts = prepareMessageParts(t, text, []);
-        // await sendMessage({
-        //   parts,
-        // });
+        vscodeHost.openTaskInPanel({
+          cwd: isInWorktree ? selectedWorktreePath || cwd : cwd,
+          id: crypto.randomUUID(),
+          storeId: undefined,
+          prompt: content,
+        });
+        setInput("");
       }
     },
-    [files.length, input, clearUploadError, isUploadingAttachments],
+    [
+      files.length,
+      input,
+      clearUploadError,
+      isUploadingAttachments,
+      upload,
+      selectedWorktreePath,
+      cwd,
+      isInWorktree,
+    ],
   );
 
   return (
@@ -146,8 +162,8 @@ export const NewTaskInputBox: React.FC<Props> = ({ attachmentUpload }) => {
                 <div className="flex items-center gap-1">
                   <Switch
                     id="worktree-switch"
-                    checked={isLaunchInWorktree}
-                    onCheckedChange={setIsLaunchInWorktree}
+                    checked={isInWorktree}
+                    onCheckedChange={setIsInWorktree}
                   />
                   <Label htmlFor="worktree-switch" className="cursor-pointer">
                     <GitFork className="size-4" />
@@ -163,16 +179,13 @@ export const NewTaskInputBox: React.FC<Props> = ({ attachmentUpload }) => {
                 {t("chat.createTaskInWorktree")}
               </HoverCardContent>
             </HoverCard>
-            {isLaunchInWorktree && (
+            {isInWorktree && (
               <WorktreeSelect
                 worktrees={worktreesData.data ?? []}
                 isLoading={worktreesData.isLoading}
-                value={selectedWorktree}
+                value={selectedWorktreePath}
                 onChange={(v) => {
-                  const selected = worktreesData.data?.find(
-                    (w) => w.path === v,
-                  );
-                  setSelectedWorktree(selected);
+                  setSelectedWorktreePath(v);
                 }}
               />
             )}

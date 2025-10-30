@@ -21,7 +21,7 @@ import { useTranslation } from "react-i18next";
 
 interface WorktreeSelectProps {
   worktrees: GitWorktree[];
-  value: GitWorktree | undefined;
+  value: string | undefined;
   onChange: (v: string) => void;
   isLoading?: boolean;
   triggerClassName?: string;
@@ -77,8 +77,7 @@ export function WorktreeSelect({
                   !value && "text-muted-foreground",
                 )}
               >
-                {getWorktreeName(value?.path) ??
-                  t("worktreeSelect.selectWorktree")}
+                {getWorktreeName(value) ?? t("worktreeSelect.selectWorktree")}
               </span>
               <ChevronDownIcon
                 className={cn(
@@ -98,7 +97,7 @@ export function WorktreeSelect({
             >
               <div>
                 {worktrees?.map((item: GitWorktree) => {
-                  const isSelected = item.path === value?.path;
+                  const isSelected = item.path === value;
                   return (
                     <DropdownMenuItem
                       onClick={(e: React.MouseEvent) => {

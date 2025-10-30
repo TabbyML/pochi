@@ -5,6 +5,7 @@ import { getWorktreeName } from "@getpochi/common/git-utils";
 import { parseWorktreeGitdir } from "@getpochi/common/tool-utils";
 import type {
   ResourceURI,
+  TaskIdParams,
   VSCodeHostApi,
 } from "@getpochi/common/vscode-webui-bridge";
 import type { DependencyContainer } from "tsyringe";
@@ -80,8 +81,7 @@ export class PochiWebviewPanel
   public static async createOrShow(
     workspaceContainer: DependencyContainer,
     extensionUri: vscode.Uri,
-    storeId?: string,
-    uid?: string,
+    taskIdParams: TaskIdParams,
   ): Promise<void> {
     const cwd = workspaceContainer.resolve(WorkspaceScope).cwd;
     if (!cwd) {
@@ -89,7 +89,7 @@ export class PochiWebviewPanel
       return;
     }
     const sessionId = `editor-${cwd}`;
-
+    const { uid, storeId } = taskIdParams;
     if (PochiWebviewPanel.panels.has(sessionId)) {
       const existingPanel = PochiWebviewPanel.panels.get(sessionId);
       existingPanel?.panel.reveal();
@@ -142,7 +142,7 @@ export class PochiWebviewPanel
 
     pochiPanel.onWebviewReady(() => {
       logger.info(`Webview ready, opening task ${uid} in new panel`);
-      pochiPanel.webviewHost?.openTask({ uid, storeId });
+      pochiPanel.webviewHost?.openTask(taskIdParams);
     });
 
     logger.info(`Created new Pochi panel: ${sessionId}`);

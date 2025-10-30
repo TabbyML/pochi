@@ -222,12 +222,10 @@ function Tasks() {
     <div className="flex h-screen w-screen flex-col">
       {/* Main content area with scroll */}
       <div className="w-full px-4 pt-3">
-        {/* <a href="command:pochi.createTaskOnWorktree" className="block w-full">
-          <Button variant="default" className="w-full">
-            {t("tasksPage.emptyState.createButton")}
-          </Button>
-        </a> */}
-        <NewTaskInputBox attachmentUpload={attachmentUpload} />
+        <NewTaskInputBox
+          cwd={cwd as string}
+          attachmentUpload={attachmentUpload}
+        />
       </div>
       {tasks.length === 0 ? (
         <EmptyTaskPlaceholder date={new Date()} />
