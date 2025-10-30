@@ -15,7 +15,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { WorkspaceRequiredPlaceholder } from "@/components/workspace-required-placeholder";
-import { NewTaskInputBox } from "@/features/chat/components/new-task-input-box";
+import { NewTaskInputBox } from "@/features/chat";
 import { useSettingsStore } from "@/features/settings";
 import { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
 import { useCurrentWorkspace } from "@/lib/hooks/use-current-workspace";
@@ -197,7 +197,6 @@ function Tasks() {
   const tasks = store.useQuery(
     taskCatalog.queries.makeTasksQuery(cwd as string),
   );
-  const { t } = useTranslation();
   const { data: worktrees } = useWorktrees();
   const totalPages = Math.ceil(tasks.length / limit);
   const paginatedTasks = tasks.slice((page - 1) * limit, page * limit);

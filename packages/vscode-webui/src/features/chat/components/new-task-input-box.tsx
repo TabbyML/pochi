@@ -12,7 +12,6 @@ import { WorktreeSelect } from "@/components/worktree-select";
 import { useSelectedModels } from "@/features/settings";
 import type { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
 import { useWorktrees } from "@/lib/hooks/use-worktrees";
-import { prepareMessageParts } from "@/lib/message-utils";
 import type { GitWorktree } from "@getpochi/common/vscode-webui-bridge";
 import {
   GitFork,
@@ -76,7 +75,7 @@ export const NewTaskInputBox: React.FC<Props> = ({ attachmentUpload }) => {
       if (files.length > 0) {
         try {
           const uploadedAttachments = await upload();
-          const parts = prepareMessageParts(t, text, uploadedAttachments);
+          // const parts = prepareMessageParts(t, text, uploadedAttachments);
 
           // await sendMessage({
           //   parts,
@@ -87,13 +86,13 @@ export const NewTaskInputBox: React.FC<Props> = ({ attachmentUpload }) => {
         }
       } else if (content.length > 0) {
         clearUploadError();
-        const parts = prepareMessageParts(t, text, []);
+        // const parts = prepareMessageParts(t, text, []);
         // await sendMessage({
         //   parts,
         // });
       }
     },
-    [files.length, input, upload, clearUploadError, isUploadingAttachments, t],
+    [files.length, input, upload, clearUploadError, isUploadingAttachments],
   );
 
   return (
