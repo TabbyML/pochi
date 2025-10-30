@@ -90,8 +90,8 @@ function createVSCodeHost(): VSCodeHostApi {
         "openTaskInPanel",
         "onTaskUpdated",
         "readWorktrees",
-        "diff",
-        "createTerminal",
+        "showDiff",
+        "createWorktree",
       ],
       exports: {
         async openTask(params) {

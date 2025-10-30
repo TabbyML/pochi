@@ -152,7 +152,10 @@ export interface VSCodeHostApi {
     },
   ): void;
 
-  readCurrentWorkspace(): Promise<string | null>;
+  readCurrentWorkspace(): Promise<{
+    cwd: string | null;
+    workspaceFolder: string | null;
+  }>;
 
   readCustomAgents(): Promise<ThreadSignalSerialization<CustomAgentFile[]>>;
 
@@ -277,19 +280,15 @@ export interface VSCodeHostApi {
     ThreadSignalSerialization<Record<string, UserInfo>>
   >;
 
-  openTaskInPanel(options: {
-    id: string;
-    cwd: string;
-    storeId: string | undefined;
-  }): Promise<void>;
+  openTaskInPanel(options: TaskIdParams & { cwd: string }): Promise<void>;
 
   onTaskUpdated(taskData: unknown): Promise<void>;
 
   readWorktrees(): Promise<ThreadSignalSerialization<GitWorktree[]>>;
 
-  diff(base?: string): Promise<boolean>;
+  showDiff(base?: string): Promise<boolean>;
 
-  createTerminal(webviewKind: "sidebar" | "pane"): Promise<void>;
+  createWorktree(): Promise<GitWorktree | null>;
 }
 
 export interface WebviewHostApi {

@@ -1,5 +1,4 @@
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
   Pagination,
   PaginationContent,
@@ -16,13 +15,15 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { WorkspaceRequiredPlaceholder } from "@/components/workspace-required-placeholder";
+import { CreateTaskInput } from "@/features/chat";
 import { useSettingsStore } from "@/features/settings";
+import { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
 import { useCurrentWorkspace } from "@/lib/hooks/use-current-workspace";
 import { usePochiCredentials } from "@/lib/hooks/use-pochi-credentials";
 import { useWorktrees } from "@/lib/hooks/use-worktrees";
 import { cn } from "@/lib/utils";
 import { setActiveStore, vscodeHost } from "@/lib/vscode";
-import { getWorktreeName } from "@getpochi/common/git-utils";
+import { getWorktreeNameFromGitDir } from "@getpochi/common/git-utils";
 import { parseTitle } from "@getpochi/common/message-utils";
 import { encodeStoreId } from "@getpochi/common/store-id-utils";
 import { type Task, taskCatalog } from "@getpochi/livekit";
@@ -192,12 +193,10 @@ function Tasks() {
   const router = useRouter();
   const { page = 1 } = Route.useSearch();
   const { store } = useStore();
-  const { data: cwd = "default" } = useCurrentWorkspace();
-  const tasks = store.useQuery(
-    taskCatalog.queries.makeTasksQuery(cwd as string),
-  );
-  const { t } = useTranslation();
-  const worktrees = useWorktrees();
+  const { data: currentWorkspace } = useCurrentWorkspace();
+  const cwd = currentWorkspace?.cwd || "default";
+  const tasks = store.useQuery(taskCatalog.queries.makeTasksQuery(cwd));
+  const { data: worktrees } = useWorktrees();
   const totalPages = Math.ceil(tasks.length / limit);
   const paginatedTasks = tasks.slice((page - 1) * limit, page * limit);
 
@@ -216,20 +215,18 @@ function Tasks() {
     };
   }, [store]);
 
+  const attachmentUpload = useAttachmentUpload();
+
   return (
     <div className="flex h-screen w-screen flex-col">
       {/* Main content area with scroll */}
       <div className="w-full px-4 pt-3">
-        <a href="command:pochi.createTaskOnWorktree" className="block w-full">
-          <Button variant="default" className="w-full">
-            {t("tasksPage.emptyState.createButton")}
-          </Button>
-        </a>
+        <CreateTaskInput cwd={cwd} attachmentUpload={attachmentUpload} />
       </div>
       {tasks.length === 0 ? (
         <EmptyTaskPlaceholder date={new Date()} />
       ) : (
-        <div className="min-h-0 flex-1">
+        <div className="min-h-0 flex-1 pt-4">
           <ScrollArea className="h-full">
             <div className="flex flex-col gap-4 p-4 pb-6">
               {paginatedTasks.map((task) => {
@@ -242,7 +239,9 @@ function Tasks() {
                   <TaskRow
                     key={task.id}
                     task={task}
-                    worktreeName={getWorktreeName(task.git?.worktree?.gitdir)}
+                    worktreeName={getWorktreeNameFromGitDir(
+                      task.git?.worktree?.gitdir,
+                    )}
                     gitDir={task.git?.worktree?.gitdir}
                     isWorktreeExist={isWorktreeExist}
                   />
@@ -402,7 +401,7 @@ function TaskRow({
     if (task.cwd) {
       vscodeHost.openTaskInPanel({
         cwd: task.cwd,
-        id: task.id,
+        uid: task.id,
         storeId,
       });
     }

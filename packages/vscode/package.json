@@ -310,6 +310,10 @@
                                 "title": "Service Account Key",
                                 "type": "object",
                                 "properties": {
+                                  "type": {
+                                    "type": "string",
+                                    "const": "service-account"
+                                  },
                                   "serviceAccountKey": {
                                     "type": "string",
                                     "description": "The service account key JSON for authentication."
@@ -319,12 +323,20 @@
                                     "description": "The Google Cloud location (e.g., 'us-central1')."
                                   }
                                 },
-                                "required": ["serviceAccountKey", "location"]
+                                "required": [
+                                  "type",
+                                  "serviceAccountKey",
+                                  "location"
+                                ]
                               },
                               {
                                 "title": "Access Token",
                                 "type": "object",
                                 "properties": {
+                                  "type": {
+                                    "type": "string",
+                                    "const": "access-token"
+                                  },
                                   "accessToken": {
                                     "type": "string",
                                     "description": "A short-lived access token for authentication."
@@ -339,9 +351,35 @@
                                   }
                                 },
                                 "required": [
+                                  "type",
                                   "accessToken",
                                   "projectId",
                                   "location"
+                                ]
+                              },
+                              {
+                                "title": "Model URL",
+                                "type": "object",
+                                "properties": {
+                                  "type": {
+                                    "type": "string",
+                                    "const": "model-url"
+                                  },
+                                  "issueUrl": {
+                                    "type": "string"
+                                  },
+                                  "modelUrl": {
+                                    "type": "string"
+                                  },
+                                  "timeout": {
+                                    "type": "number"
+                                  }
+                                },
+                                "required": [
+                                  "type",
+                                  "issueUrl",
+                                  "modelUrl",
+                                  "timeout"
                                 ]
                               }
                             ]
@@ -405,6 +443,10 @@
                                 "title": "Service Account Key",
                                 "type": "object",
                                 "properties": {
+                                  "type": {
+                                    "type": "string",
+                                    "const": "service-account"
+                                  },
                                   "serviceAccountKey": {
                                     "type": "string",
                                     "description": "The service account key JSON for authentication."
@@ -414,12 +456,20 @@
                                     "description": "The Google Cloud location (e.g., 'us-central1')."
                                   }
                                 },
-                                "required": ["serviceAccountKey", "location"]
+                                "required": [
+                                  "type",
+                                  "serviceAccountKey",
+                                  "location"
+                                ]
                               },
                               {
                                 "title": "Access Token",
                                 "type": "object",
                                 "properties": {
+                                  "type": {
+                                    "type": "string",
+                                    "const": "access-token"
+                                  },
                                   "accessToken": {
                                     "type": "string",
                                     "description": "A short-lived access token for authentication."
@@ -434,9 +484,35 @@
                                   }
                                 },
                                 "required": [
+                                  "type",
                                   "accessToken",
                                   "projectId",
                                   "location"
+                                ]
+                              },
+                              {
+                                "title": "Model URL",
+                                "type": "object",
+                                "properties": {
+                                  "type": {
+                                    "type": "string",
+                                    "const": "model-url"
+                                  },
+                                  "issueUrl": {
+                                    "type": "string"
+                                  },
+                                  "modelUrl": {
+                                    "type": "string"
+                                  },
+                                  "timeout": {
+                                    "type": "number"
+                                  }
+                                },
+                                "required": [
+                                  "type",
+                                  "issueUrl",
+                                  "modelUrl",
+                                  "timeout"
                                 ]
                               }
                             ]
@@ -490,6 +566,7 @@
     "release": "bunx bumpp --tag=vscode@%s"
   },
   "dependencies": {
+    "@ai-sdk/google-vertex": "catalog:",
     "@getpochi/common": "workspace:*",
     "@getpochi/vendor-claude-code": "workspace:*",
     "@getpochi/vendor-codex": "workspace:*",
