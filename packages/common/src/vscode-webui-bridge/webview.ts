@@ -290,6 +290,8 @@ export interface VSCodeHostApi {
   diff(base?: string): Promise<boolean>;
 
   createTerminal(webviewKind: "sidebar" | "pane"): Promise<void>;
+
+  createWorktree(): Promise<GitWorktree | null>;
 }
 
 export interface WebviewHostApi {

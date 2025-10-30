@@ -969,6 +969,27 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     return ThreadSignal.serialize(this.worktreeManager.worktrees);
   };
 
+  createWorktree = async () => {
+    if ((await this.worktreeManager.isGitRepository()) === false) {
+      return null;
+    }
+    const worktrees = await this.worktreeManager.getWorktrees();
+    await vscode.commands.executeCommand("git.createWorktree");
+
+    // Get worktrees again to find the new one
+    const updatedWorktrees = await this.worktreeManager.getWorktrees();
+    // Find the new worktree by comparing with previous worktrees
+    const newWorktree = updatedWorktrees.find(
+      (updated) =>
+        !worktrees.some((original) => original.path === updated.path),
+    );
+    if (newWorktree) {
+      return newWorktree;
+    }
+
+    return null;
+  };
+
   dispose() {
     for (const disposable of this.disposables) {
       disposable.dispose();

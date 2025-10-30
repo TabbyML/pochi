@@ -92,6 +92,7 @@ function createVSCodeHost(): VSCodeHostApi {
         "readWorktrees",
         "diff",
         "createTerminal",
+        "createWorktree",
       ],
       exports: {
         async openTask(params) {

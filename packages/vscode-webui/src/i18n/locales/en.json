@@ -30,7 +30,8 @@
     "chatToolbar": {
       "diffWorktreeWith": "Diff worktree with {{branch}}",
       "openInTerminal": "Open in integrated terminal"
-    }
+    },
+    "createTaskInWorktree": "Create task in a separate Git worktree"
   },
   "language": {
     "switcherTooltip": "Choose your preferred language with Pochi"
@@ -53,6 +54,11 @@
     "custom": "Custom",
     "super": "Super",
     "swift": "Swift"
+  },
+  "worktreeSelect": {
+    "selectWorktree": "Select Worktree",
+    "createWorktree": "Create Git worktree",
+    "createWorktreeDescription": "Start task in a new Git worktree"
   },
   "settings": {
     "account": {

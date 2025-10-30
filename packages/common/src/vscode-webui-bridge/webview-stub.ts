@@ -241,6 +241,10 @@ const VSCodeHostStub = {
   },
 
   createTerminal: async (_webviewKind: "sidebar" | "pane"): Promise<void> => {},
+
+  createWorktree: async (): Promise<GitWorktree | null> => {
+    return Promise.resolve({} as GitWorktree);
+  },
 } satisfies VSCodeHostApi;
 
 export function createVscodeHostStub(overrides?: Partial<VSCodeHostApi>) {

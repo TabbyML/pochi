@@ -8,6 +8,7 @@ import type { useApprovalAndRetry } from "@/features/approval";
 import type { UseChatHelpers } from "@ai-sdk/react";
 import type { Message } from "@getpochi/livekit";
 
+import type { ReactNode } from "@tanstack/react-router";
 import { QueuedMessages } from "./queued-messages";
 
 interface ChatInputFormProps {
@@ -24,6 +25,7 @@ interface ChatInputFormProps {
   queuedMessages: string[];
   onRemoveQueuedMessage: (index: number) => void;
   isSubTask: boolean;
+  children?: ReactNode;
 }
 
 export function ChatInputForm({
@@ -40,6 +42,7 @@ export function ChatInputForm({
   queuedMessages,
   onRemoveQueuedMessage,
   isSubTask,
+  children,
 }: ChatInputFormProps) {
   const editorRef = useRef<Editor | null>(null);
 
@@ -69,6 +72,7 @@ export function ChatInputForm({
           onRemove={onRemoveQueuedMessage}
         />
       )}
+      {children}
     </FormEditor>
   );
 }
