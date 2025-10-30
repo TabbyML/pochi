@@ -186,7 +186,7 @@ export function calculateSolution(
       text: c.text,
     };
   });
-  const editableRegionTextAfterChange = applyEdit(
+  const { text: editableRegionTextAfterChange } = applyEdit(
     editableRegionText,
     convertedChanges,
   );

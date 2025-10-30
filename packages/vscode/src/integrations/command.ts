@@ -69,14 +69,11 @@ export class CommandManager implements vscode.Disposable {
     openTaskParams: TaskIdParams | NewTaskParams,
     requestId?: string,
   ) {
-    await vscode.commands.executeCommand("pochiSidebar.focus");
-
     if (githubTemplateUrl) {
       await prepareProject(workspaceUri, githubTemplateUrl, progress);
     }
 
-    const webviewHost = await this.pochiWebviewSidebar.retrieveWebviewHost();
-    webviewHost.openTask(openTaskParams);
+    this.openTaskOnWorkspaceFolder(openTaskParams);
 
     if (requestId) {
       await this.newProjectRegistry.set(requestId, workspaceUri);
@@ -226,9 +223,7 @@ export class CommandManager implements vscode.Disposable {
           async (progress) => {
             progress.report({ message: "Pochi: Opening task..." });
             await vscode.commands.executeCommand("pochiSidebar.focus");
-            const webviewHost =
-              await this.pochiWebviewSidebar.retrieveWebviewHost();
-            webviewHost.openTask({ uid });
+            this.openTaskOnWorkspaceFolder({ uid });
           },
         );
       }),
@@ -456,7 +451,7 @@ export class CommandManager implements vscode.Disposable {
         "pochi.createTaskOnWorktree",
         async () => {
           if ((await this.worktreeManager.isGitRepository()) === false) {
-            this.createTaskOnWorkspace();
+            this.openTaskOnWorkspaceFolder();
             return;
           }
           const worktrees = await this.worktreeManager.getWorktrees();
@@ -574,7 +569,7 @@ export class CommandManager implements vscode.Disposable {
     );
   }
 
-  createTaskOnWorkspace() {
+  openTaskOnWorkspaceFolder(params?: TaskIdParams | NewTaskParams) {
     const cwd = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
     if (!cwd) {
       vscode.window.showErrorMessage(
@@ -586,6 +581,7 @@ export class CommandManager implements vscode.Disposable {
     PochiWebviewPanel.createOrShow(
       workspaceContainer,
       this.context.extensionUri,
+      params,
     );
   }
 
