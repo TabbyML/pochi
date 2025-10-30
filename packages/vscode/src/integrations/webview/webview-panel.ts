@@ -90,8 +90,10 @@ export class PochiWebviewPanel
       return;
     }
     const uid = taskIdParams?.uid;
-    // @ts-expect-error
-    const storeId = taskIdParams?.storeId;
+    const storeId =
+      taskIdParams && "storeId" in taskIdParams
+        ? taskIdParams.storeId
+        : undefined;
 
     const sessionId = `editor-${cwd}`;
     if (PochiWebviewPanel.panels.has(sessionId)) {
