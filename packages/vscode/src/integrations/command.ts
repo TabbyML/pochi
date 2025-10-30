@@ -234,16 +234,6 @@ export class CommandManager implements vscode.Disposable {
       }),
 
       vscode.commands.registerCommand(
-        "pochi.webui.navigate.newTask",
-        async () => {
-          await vscode.commands.executeCommand("pochiSidebar.focus");
-          const webviewHost =
-            await this.pochiWebviewSidebar.retrieveWebviewHost();
-          webviewHost.openTask({ uid: undefined });
-        },
-      ),
-
-      vscode.commands.registerCommand(
         "pochi.webui.navigate.taskList",
         async () => {
           await vscode.commands.executeCommand("pochiSidebar.focus");
@@ -454,13 +444,6 @@ export class CommandManager implements vscode.Disposable {
             );
           }
 
-          const workspaceFolder =
-            vscode.workspace.workspaceFolders?.[0].uri.fsPath;
-          // only open new panel if current scm is worktree
-          if (workspaceFolder === cwd) {
-            vscode.commands.executeCommand("pochi.webui.navigate.newTask");
-            return;
-          }
           const workspaceContainer = workspaceScoped(cwd);
           await PochiWebviewPanel.createOrShow(
             workspaceContainer,

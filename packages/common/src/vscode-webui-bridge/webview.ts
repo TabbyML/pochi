@@ -280,7 +280,7 @@ export interface VSCodeHostApi {
   openTaskInPanel(options: {
     id: string;
     cwd: string;
-    parentId: string | undefined;
+    storeId: string | undefined;
   }): Promise<void>;
 
   onTaskUpdated(taskData: unknown): Promise<void>;

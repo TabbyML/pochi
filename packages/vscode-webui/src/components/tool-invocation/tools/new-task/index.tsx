@@ -8,6 +8,7 @@ import {
 } from "@/features/chat";
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
 import { isVSCodeEnvironment } from "@/lib/vscode";
+import { useStore } from "@livestore/react";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { StatusIcon } from "../../status-icon";
@@ -29,6 +30,7 @@ export const newTaskTool: React.FC<NewTaskToolProps> = ({
   const uid = tool.input?._meta?.uid;
   const agent = tool.input?.agentType;
   const description = tool.input?.description ?? "";
+  const { store } = useStore();
 
   let taskSource: (TaskThreadSource & { parentId?: string }) | undefined =
     taskThreadSource;
@@ -73,7 +75,7 @@ export const newTaskTool: React.FC<NewTaskToolProps> = ({
                   to="/task"
                   search={{
                     uid,
-                    parentUid: taskSource.parentId,
+                    storeId: store.storeId,
                   }}
                   replace={true}
                   viewTransition

@@ -73,12 +73,6 @@
         "category": "Pochi"
       },
       {
-        "command": "pochi.webui.navigate.newTask",
-        "title": "New Task",
-        "icon": "$(add)",
-        "category": "Pochi"
-      },
-      {
         "command": "pochi.webui.navigate.taskList",
         "title": "Show All Tasks",
         "icon": "$(code)",
@@ -168,10 +162,6 @@
           "title": "Pochi: Login with Token"
         },
         {
-          "command": "pochi.webui.navigate.newTask",
-          "when": "false"
-        },
-        {
           "command": "pochi.webui.navigate.taskList",
           "when": "false"
         },
@@ -185,6 +175,22 @@
         },
         {
           "command": "pochi.mcp.toggleToolEnabled",
+          "when": "false"
+        },
+        {
+          "command": "pochi.createTaskOnWorktree",
+          "when": "false"
+        },
+        {
+          "command": "pochi.createTaskInPanel",
+          "when": "false"
+        },
+        {
+          "command": "pochi.editWorkspaceRules",
+          "when": "false"
+        },
+        {
+          "command": "pochi.mcp.addServer",
           "when": "false"
         }
       ],
