@@ -850,7 +850,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         .split("\n")
         .map((line: string) => {
           const [status, filepath] = line.split("\t");
-          return { status, filepath: filepath.trim() };
+          return { status: status.trim(), filepath: filepath.trim() };
         });
 
       if (changedFiles.length === 0) {
@@ -860,16 +860,17 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       const targetViewColumn = this.getBesideViewColumnForPanel();
 
       for (const { status, filepath } of changedFiles) {
+        const fsPath = path.join(this.cwd, filepath);
         let beforeContent = "";
         let afterContent = "";
         if (status === "A") {
-          const fileContent = await readFileContent(filepath);
+          const fileContent = await readFileContent(fsPath);
           afterContent = fileContent ?? "";
         } else if (status === "D") {
           beforeContent = await git.raw(["show", `${base}:${filepath}`]);
         } else {
           beforeContent = await git.raw(["show", `${base}:${filepath}`]);
-          afterContent = (await readFileContent(filepath)) ?? "";
+          afterContent = (await readFileContent(fsPath)) ?? "";
         }
 
         result.push({
@@ -898,10 +899,14 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
           vscode.Uri.joinPath(vscode.Uri.parse(this.cwd ?? ""), file.filepath),
           DiffChangesContentProvider.decode({
             filepath: file.filepath,
+            content: file.before,
+            cwd: this.cwd ?? "",
+          }),
+          DiffChangesContentProvider.decode({
+            filepath: file.filepath,
             content: file.after,
             cwd: this.cwd ?? "",
           }),
-          vscode.Uri.joinPath(vscode.Uri.parse(this.cwd ?? ""), file.filepath),
         ]),
         {
           viewColumn: targetViewColumn,
