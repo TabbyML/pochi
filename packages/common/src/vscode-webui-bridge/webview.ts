@@ -40,6 +40,10 @@ export interface VSCodeHostApi {
     value: WorkspaceState[K],
   ): Promise<void>;
 
+  getGlobalState(key: string, defaultValue?: unknown): Promise<unknown>;
+
+  setGlobalState(key: string, value: unknown): Promise<void>;
+
   readEnvironment(options: {
     isSubTask?: boolean;
     webviewKind: "sidebar" | "pane";

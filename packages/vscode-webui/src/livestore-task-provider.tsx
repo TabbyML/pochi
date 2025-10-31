@@ -1,3 +1,4 @@
+import { isDev } from "@getpochi/common/vscode-webui-bridge";
 import { taskCatalog } from "@getpochi/livekit";
 import { makePersistedAdapter } from "@livestore/adapter-web";
 import LiveStoreSharedWorker from "@livestore/adapter-web/shared-worker?sharedworker&inline";
@@ -16,6 +17,7 @@ export function LiveStoreTaskProvider({
 }: { children: React.ReactNode }) {
   return (
     <LiveStoreProvider
+      storeId={isDev ? "dev-tasks" : "tasks"}
       schema={taskCatalog.schema}
       adapter={adapter}
       renderLoading={(_) => <></>}

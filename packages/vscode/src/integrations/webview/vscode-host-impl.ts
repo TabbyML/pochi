@@ -196,6 +196,17 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     return this.context.workspaceState.update(key, value);
   };
 
+  getGlobalState = async (
+    key: string,
+    defaultValue?: unknown,
+  ): Promise<unknown> => {
+    return this.context.globalState.get(key, defaultValue);
+  };
+
+  setGlobalState = async (key: string, value: unknown): Promise<void> => {
+    this.context.globalState.update(key, value);
+  };
+
   readEnvironment = async (options: {
     isSubTask?: boolean;
     webviewKind: "sidebar" | "pane";

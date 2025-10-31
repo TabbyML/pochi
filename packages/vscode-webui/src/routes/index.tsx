@@ -16,7 +16,6 @@ import {
 } from "@/components/ui/tooltip";
 import { WorkspaceRequiredPlaceholder } from "@/components/workspace-required-placeholder";
 import { CreateTaskInput } from "@/features/chat";
-import { useSettingsStore } from "@/features/settings";
 import { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
 import { useCurrentWorkspace } from "@/lib/hooks/use-current-workspace";
 import { usePochiCredentials } from "@/lib/hooks/use-pochi-credentials";
@@ -358,7 +357,6 @@ function TaskRow({
   isWorktreeExist?: boolean;
   gitDir?: string;
 }) {
-  const { openInTab } = useSettingsStore();
   const { jwt } = usePochiCredentials();
 
   const title = useMemo(() => parseTitle(task.title), [task.title]);
@@ -395,9 +393,6 @@ function TaskRow({
   const storeId = encodeStoreId(jwt, task.parentId || task.id);
 
   const openTaskInPanel = useCallback(() => {
-    if (!openInTab) {
-      return;
-    }
     if (task.cwd) {
       vscodeHost.openTaskInPanel({
         cwd: task.cwd,
@@ -405,7 +400,7 @@ function TaskRow({
         storeId,
       });
     }
-  }, [task.cwd, task.id, storeId, openInTab]);
+  }, [task.cwd, task.id, storeId]);
 
   if (gitDir) {
     return <div onClick={openTaskInPanel}>{content}</div>;

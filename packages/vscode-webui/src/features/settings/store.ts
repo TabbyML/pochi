@@ -1,7 +1,12 @@
+import { vscodeHost } from "@/lib/vscode";
 import type { DisplayModel } from "@getpochi/common/vscode-webui-bridge";
 import type { ToolsByPermission } from "@getpochi/tools";
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import {
+  type StateStorage,
+  createJSONStorage,
+  persist,
+} from "zustand/middleware";
 
 export type AutoApprove = Record<
   Exclude<keyof typeof ToolsByPermission, "default">,
@@ -30,8 +35,6 @@ export interface SettingsState {
 
   enablePochiModels: boolean;
 
-  openInTab: boolean;
-
   toggleSubtaskOffhand: () => void;
   updateAutoApproveSettings: (data: Partial<AutoApprove>) => void;
   updateSubtaskAutoApproveSettings: (data: Partial<AutoApprove>) => void;
@@ -42,9 +45,22 @@ export interface SettingsState {
   updateIsDevMode: (value: boolean) => void;
 
   updateEnablePochiModels: (value: boolean) => void;
-
-  updateOpenInTab: (value: boolean) => void;
 }
+
+const GlobalStateStorage: StateStorage = {
+  async getItem(name) {
+    const value = await vscodeHost.getGlobalState(name, null);
+    return value as string | null;
+  },
+
+  async setItem(name: string, value: string | null) {
+    await vscodeHost.setGlobalState(name, value);
+  },
+
+  async removeItem(name) {
+    await vscodeHost.setGlobalState(name, null);
+  },
+};
 
 export const useSettingsStore = create<SettingsState>()(
   persist(
@@ -79,8 +95,6 @@ export const useSettingsStore = create<SettingsState>()(
       isDevMode: false,
 
       enablePochiModels: false,
-
-      openInTab: false,
 
       toggleSubtaskOffhand: () =>
         set((state) => ({
@@ -117,11 +131,10 @@ export const useSettingsStore = create<SettingsState>()(
 
       updateEnablePochiModels: (value: boolean) =>
         set(() => ({ enablePochiModels: value })),
-
-      updateOpenInTab: (value: boolean) => set(() => ({ openInTab: value })),
     }),
     {
       name: "ragdoll-settings-storage",
+      storage: createJSONStorage(() => GlobalStateStorage),
       partialize: (state) =>
         Object.fromEntries(
           Object.entries(state).filter(([_, v]) => typeof v !== "function"),
