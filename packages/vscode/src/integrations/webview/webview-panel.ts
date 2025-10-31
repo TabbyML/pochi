@@ -160,7 +160,7 @@ export class PochiWebviewPanel
     return panel?.panel.viewColumn;
   }
 
-  public static openTask(sessionId: string) {
+  public static reset(sessionId: string) {
     const panel = PochiWebviewPanel.panels.get(sessionId);
     panel?.webviewHost?.openTask({ uid: undefined });
   }
