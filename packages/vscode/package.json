@@ -137,7 +137,7 @@
         "icon": "$(go-to-file)"
       },
       {
-        "command": "pochi.clearTaskMessages",
+        "command": "pochi.resetTaskPanel",
         "title": "Clear",
         "category": "Pochi",
         "icon": "$(clear-all)"
@@ -175,7 +175,7 @@
           "group": "navigation"
         },
         {
-          "command": "pochi.clearTaskMessages",
+          "command": "pochi.resetTaskPanel",
           "when": "true",
           "group": "navigation"
         }
@@ -223,6 +223,10 @@
         },
         {
           "command": "pochi.mcp.addServer",
+          "when": "false"
+        },
+        {
+          "command": "pochi.resetTaskPanel",
           "when": "false"
         }
       ],
