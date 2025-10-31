@@ -194,6 +194,7 @@ function Tasks() {
   const { store } = useStore();
   const { data: currentWorkspace } = useCurrentWorkspace();
   const cwd = currentWorkspace?.cwd || "default";
+  const workspaceFolder = currentWorkspace?.workspaceFolder;
   const tasks = store.useQuery(taskCatalog.queries.makeTasksQuery(cwd));
   const { data: worktrees } = useWorktrees();
   const totalPages = Math.ceil(tasks.length / limit);
@@ -220,7 +221,11 @@ function Tasks() {
     <div className="flex h-screen w-screen flex-col">
       {/* Main content area with scroll */}
       <div className="w-full px-4 pt-3">
-        <CreateTaskInput cwd={cwd} attachmentUpload={attachmentUpload} />
+        <CreateTaskInput
+          cwd={cwd}
+          workspaceFolder={workspaceFolder}
+          attachmentUpload={attachmentUpload}
+        />
       </div>
       {tasks.length === 0 ? (
         <EmptyTaskPlaceholder />
