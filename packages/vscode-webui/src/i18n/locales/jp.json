@@ -163,7 +163,7 @@
   },
   "tasksPage": {
     "emptyState": {
-      "title": "{{date}} のタスクが見つかりません",
+      "title": "タスクが見つかりません",
       "description": "Pochi を始めるために新しいタスクを作成してください",
       "createButton": "新しいタスクを作成"
     },

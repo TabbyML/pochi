@@ -163,7 +163,7 @@
   },
   "tasksPage": {
     "emptyState": {
-      "title": "{{date}}에 대한 작업을 찾을 수 없습니다",
+      "title": "작업을 찾을 수 없습니다",
       "description": "Pochi를 시작하려면 새 작업을 만드세요",
       "createButton": "새 작업 만들기"
     },

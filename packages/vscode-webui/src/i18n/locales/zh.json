@@ -162,7 +162,7 @@
   },
   "tasksPage": {
     "emptyState": {
-      "title": "未找到 {{date}} 的任务",
+      "title": "未找到任务",
       "description": "创建一个新任务以开始使用 Pochi",
       "createButton": "创建新任务"
     },
