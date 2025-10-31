@@ -16,10 +16,11 @@ import { vscodeHost } from "@/lib/vscode";
 import type { GitWorktree } from "@getpochi/common/vscode-webui-bridge";
 import { DropdownMenuPortal } from "@radix-ui/react-dropdown-menu";
 import { useQueryClient } from "@tanstack/react-query";
-import { CheckIcon, ChevronDownIcon, PlusIcon } from "lucide-react";
+import { CheckIcon, FolderGit2, PlusIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 interface WorktreeSelectProps {
+  cwd: string;
   worktrees: GitWorktree[];
   value: GitWorktree | undefined;
   onChange: (v: GitWorktree) => void;
@@ -38,6 +39,7 @@ const getWorktreeName = (worktree: GitWorktree | undefined) => {
 };
 
 export function WorktreeSelect({
+  cwd,
   worktrees,
   value,
   onChange,
@@ -62,6 +64,7 @@ export function WorktreeSelect({
     }
   };
 
+  const isMainWorkspace = value?.path === cwd;
   return (
     <LoadingWrapper
       loading={isLoading}
@@ -77,7 +80,7 @@ export function WorktreeSelect({
             <Button
               variant="ghost"
               className={cn(
-                "!gap-0.5 !px-1 button-focus h-6 max-w-full items-center py-0 font-normal",
+                "!px-1 button-focus h-6 max-w-full items-center py-0 font-normal",
                 triggerClassName,
               )}
             >
@@ -87,11 +90,14 @@ export function WorktreeSelect({
                   !value && "text-muted-foreground",
                 )}
               >
-                {getWorktreeName(value) ?? t("worktreeSelect.selectWorktree")}
+                {isMainWorkspace
+                  ? "\b"
+                  : (getWorktreeName(value) ??
+                    t("worktreeSelect.selectWorktree"))}
               </span>
-              <ChevronDownIcon
+              <FolderGit2
                 className={cn(
-                  "size-4 shrink-0 transition-colors duration-200",
+                  "size-4 shrink-0 scale-110 transition-colors duration-200",
                   !value && "text-muted-foreground",
                 )}
               />

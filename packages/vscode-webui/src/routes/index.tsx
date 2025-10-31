@@ -188,7 +188,7 @@ function App() {
 }
 
 function Tasks() {
-  const limit = 20;
+  const limit = 15;
   const router = useRouter();
   const { page = 1 } = Route.useSearch();
   const { store } = useStore();
