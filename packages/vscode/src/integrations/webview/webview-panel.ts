@@ -160,6 +160,11 @@ export class PochiWebviewPanel
     return panel?.panel.viewColumn;
   }
 
+  public static reset(sessionId: string) {
+    const panel = PochiWebviewPanel.panels.get(sessionId);
+    panel?.webviewHost?.openTask({ uid: undefined });
+  }
+
   dispose(): void {
     PochiWebviewPanel.panels.delete(this.sessionId);
     super.dispose();

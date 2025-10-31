@@ -116,6 +116,12 @@
         "icon": "$(go-to-file)"
       },
       {
+        "command": "pochi.resetTaskPanel",
+        "title": "Clear",
+        "category": "Pochi",
+        "icon": "$(clear-all)"
+      },
+      {
         "command": "pochi.openCustomModelSettings",
         "title": "Open Custom Model Settings",
         "category": "Pochi"
@@ -145,6 +151,11 @@
         {
           "command": "pochi.openFileFromDiff",
           "when": "resourceScheme == 'pochi-diff-changes'",
+          "group": "navigation"
+        },
+        {
+          "command": "pochi.resetTaskPanel",
+          "when": "true",
           "group": "navigation"
         }
       ],
@@ -191,6 +202,10 @@
         },
         {
           "command": "pochi.mcp.addServer",
+          "when": "false"
+        },
+        {
+          "command": "pochi.resetTaskPanel",
           "when": "false"
         }
       ],
