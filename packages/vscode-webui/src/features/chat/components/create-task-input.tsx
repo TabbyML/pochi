@@ -6,22 +6,16 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
+
 import { WorktreeSelect } from "@/components/worktree-select";
 import { useSelectedModels } from "@/features/settings";
 import type { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
 import { useWorktrees } from "@/lib/hooks/use-worktrees";
 import { vscodeHost } from "@/lib/vscode";
 import type { GitWorktree } from "@getpochi/common/vscode-webui-bridge";
-import {
-  GitFork,
-  PaperclipIcon,
-  SendHorizonal,
-  StopCircleIcon,
-} from "lucide-react";
+import { PaperclipIcon } from "lucide-react";
 import type React from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ChatInputForm } from "./chat-input-form";
 
@@ -60,26 +54,17 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
   } = attachmentUpload;
 
   const worktreesData = useWorktrees();
-  const [isWorktreeActive, setIsWorktreeActive] = useState(false);
-  const [selectedWorktree, setSelectedWorktree] = useState<
-    GitWorktree | undefined
-  >();
-  const worktreeInited = useRef(false);
-
+  const [userSelect, setUserSelect] = useState<GitWorktree | undefined>();
+  const selectedWorktree = userSelect || worktreesData.data?.[0];
   useEffect(() => {
-    if (worktreesData.isLoading || worktreeInited.current) return;
-    const matchedWorktree = worktreesData.data?.find((wt) => wt.path === cwd);
-    worktreeInited.current = true;
-    setSelectedWorktree(matchedWorktree);
-  }, [cwd, worktreesData.data, worktreesData.isLoading]);
-
-  const isInputEmpty = !input.trim();
-  const isFilesEmpty = files.length === 0;
-  const isSubmitDisabled =
-    isModelsLoading ||
-    !selectedModel ||
-    isUploadingAttachments ||
-    (isInputEmpty && isFilesEmpty);
+    if (userSelect) {
+      setUserSelect(
+        worktreesData.data?.find(
+          (worktree) => worktree.path === userSelect.path,
+        ),
+      );
+    }
+  }, [worktreesData.data, userSelect]);
 
   const handleSubmit = useCallback(
     async (e?: React.FormEvent<HTMLFormElement>) => {
@@ -96,7 +81,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
       if (files.length > 0) {
         const uploadedAttachments = await upload();
         vscodeHost.openTaskInPanel({
-          cwd: isWorktreeActive ? selectedWorktree?.path || cwd : cwd,
+          cwd: selectedWorktree?.path || cwd,
           uid: crypto.randomUUID(),
           storeId: undefined,
           prompt: content,
@@ -106,15 +91,17 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
             url: x.url,
           })),
         });
+
         setInput("");
       } else if (content.length > 0) {
         clearUploadError();
         vscodeHost.openTaskInPanel({
-          cwd: isWorktreeActive ? selectedWorktree?.path || cwd : cwd,
+          cwd: selectedWorktree?.path || cwd,
           uid: crypto.randomUUID(),
           storeId: undefined,
           prompt: content,
         });
+
         setInput("");
       }
     },
@@ -126,7 +113,6 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
       upload,
       selectedWorktree?.path,
       cwd,
-      isWorktreeActive,
     ],
   );
 
@@ -176,43 +162,18 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
             isValid={!!selectedModel}
             onChange={updateSelectedModelId}
           />
-          <div className="flex items-center gap-1 overflow-x-hidden truncate">
-            <HoverCard>
-              <HoverCardTrigger asChild>
-                <div className="flex items-center gap-1">
-                  <Switch
-                    id="worktree-switch"
-                    checked={isWorktreeActive}
-                    onCheckedChange={setIsWorktreeActive}
-                  />
-                  <Label htmlFor="worktree-switch" className="cursor-pointer">
-                    <GitFork className="size-4" />
-                  </Label>
-                </div>
-              </HoverCardTrigger>
-              <HoverCardContent
-                side="top"
-                align="center"
-                sideOffset={6}
-                className="!w-auto max-w-sm bg-background px-3 py-1.5 text-xs"
-              >
-                {t("chat.createTaskInWorktree")}
-              </HoverCardContent>
-            </HoverCard>
-            {isWorktreeActive && (
-              <WorktreeSelect
-                worktrees={worktreesData.data ?? []}
-                isLoading={worktreesData.isLoading}
-                value={selectedWorktree}
-                onChange={(v) => {
-                  setSelectedWorktree(v);
-                }}
-              />
-            )}
-          </div>
         </div>
 
-        <div className="flex shrink-0 items-center gap-1">
+        <div className="mr-1 flex shrink-0 items-center gap-1">
+          <WorktreeSelect
+            cwd={cwd}
+            worktrees={worktreesData.data ?? []}
+            isLoading={worktreesData.isLoading}
+            value={selectedWorktree}
+            onChange={(v) => {
+              setUserSelect(v);
+            }}
+          />
           <HoverCard>
             <HoverCardTrigger asChild>
               <span>
@@ -237,44 +198,8 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
               {t("chat.attachmentTooltip")}
             </HoverCardContent>
           </HoverCard>
-          <SubmitStopButton
-            isSubmitDisabled={isSubmitDisabled}
-            showStopButton={false}
-            onSubmit={handleSubmit}
-          />
         </div>
       </div>
     </>
-  );
-};
-
-interface SubmitStopButtonProps {
-  isSubmitDisabled: boolean;
-  showStopButton: boolean;
-  onSubmit: () => void;
-}
-
-const SubmitStopButton: React.FC<SubmitStopButtonProps> = ({
-  isSubmitDisabled,
-  showStopButton,
-  onSubmit,
-}) => {
-  return (
-    <Button
-      type="button"
-      variant="ghost"
-      size="icon"
-      disabled={isSubmitDisabled}
-      className="button-focus h-6 w-6 p-0"
-      onClick={() => {
-        onSubmit();
-      }}
-    >
-      {showStopButton ? (
-        <StopCircleIcon className="size-4" />
-      ) : (
-        <SendHorizonal className="size-4" />
-      )}
-    </Button>
   );
 };

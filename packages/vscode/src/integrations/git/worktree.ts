@@ -33,15 +33,15 @@ export class WorktreeManager implements vscode.Disposable {
     logger.info(
       `Initialized WorktreeManager with ${worktrees.length} worktrees.`,
     );
+    const onWorktreeChanged = async () => {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      const updatedWorktrees = await this.getWorktrees();
+      logger.info(`Worktrees updated to ${updatedWorktrees.length} worktrees.`);
+      this.worktrees.value = updatedWorktrees;
+    };
     this.disposables.push(
-      this.gitStateMonitor.onDidRepositoryChange(async () => {
-        await new Promise((resolve) => setTimeout(resolve, 500));
-        const updatedWorktrees = await this.getWorktrees();
-        logger.info(
-          `Worktrees updated to ${updatedWorktrees.length} worktrees.`,
-        );
-        this.worktrees.value = updatedWorktrees;
-      }),
+      this.gitStateMonitor.onDidRepositoryChange(onWorktreeChanged),
+      this.gitStateMonitor.onDidChangeGitState(onWorktreeChanged),
     );
   }
 
