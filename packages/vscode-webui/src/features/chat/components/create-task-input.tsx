@@ -57,12 +57,24 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
 
   const worktreesData = useWorktrees();
   const [userSelect, setUserSelect] = useState<GitWorktree | undefined>();
-  const selectedWorktree = userSelect || worktreesData.data?.[0];
 
   const isOpenCurrentWorkspace = !!workspaceFolder && cwd === workspaceFolder;
   const isOpenMainWorkspace =
     isOpenCurrentWorkspace &&
     worktreesData.data?.find((x) => x.isMain)?.path === cwd;
+
+  const selectedWorktree = useMemo(() => {
+    if (isOpenCurrentWorkspace && !isOpenMainWorkspace) {
+      return worktreesData.data?.find((x) => x.path === cwd);
+    }
+    return userSelect || worktreesData.data?.[0];
+  }, [
+    userSelect,
+    worktreesData.data,
+    cwd,
+    isOpenCurrentWorkspace,
+    isOpenMainWorkspace,
+  ]);
 
   useEffect(() => {
     if (userSelect) {
