@@ -172,7 +172,7 @@ function App() {
     return;
   }
 
-  if (!currentWorkspace) {
+  if (!currentWorkspace?.cwd) {
     return (
       <div className="flex h-screen w-full flex-col items-center justify-center">
         <WorkspaceRequiredPlaceholder isFetching={isFetchingWorkspace} />
@@ -181,7 +181,7 @@ function App() {
   }
 
   return (
-    <LiveStoreTaskProvider>
+    <LiveStoreTaskProvider cwd={currentWorkspace.cwd}>
       <Tasks />
     </LiveStoreTaskProvider>
   );

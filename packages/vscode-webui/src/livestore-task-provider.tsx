@@ -13,11 +13,13 @@ const adapter = makePersistedAdapter({
 });
 
 export function LiveStoreTaskProvider({
+  cwd,
   children,
-}: { children: React.ReactNode }) {
+}: { children: React.ReactNode; cwd: string }) {
+  const storeId = sanitizeStoreId(isDev ? `dev-tasks-${cwd}` : `tasks-${cwd}`);
   return (
     <LiveStoreProvider
-      storeId={isDev ? "dev-tasks" : "tasks"}
+      storeId={storeId}
       schema={taskCatalog.schema}
       adapter={adapter}
       renderLoading={(_) => <></>}
@@ -26,4 +28,9 @@ export function LiveStoreTaskProvider({
       {children}
     </LiveStoreProvider>
   );
+}
+
+// Only alphanumeric characters, underscores, and hyphens are allowed.
+function sanitizeStoreId(str: string) {
+  return str.replace(/[^a-zA-Z0-9_-]/g, "-");
 }
