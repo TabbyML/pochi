@@ -25,7 +25,9 @@
   ],
   "icon": "assets/icons/logo128.png",
   "main": "./dist/extension.js",
-  "activationEvents": ["onStartupFinished"],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
   "contributes": {
     "authentication": [
       {
@@ -122,7 +124,7 @@
       },
       {
         "command": "pochi.createTaskInPanel",
-        "title": "New Task in Pochi",
+        "title": "Open Worktree in Pochi",
         "category": "Pochi",
         "icon": "$(window)"
       },
@@ -137,8 +139,8 @@
       "scm/sourceControl": [
         {
           "command": "pochi.createTaskInPanel",
-          "group": "worktree@999",
-          "when": "scmProviderContext == worktree"
+          "group": "1_worktree@-1",
+          "when": "scmProvider == git && scmProviderContext == worktree"
         }
       ],
       "editor/title": [
@@ -397,7 +399,11 @@
                             "description": "A custom prompt template to use for inline completion."
                           }
                         },
-                        "required": ["type", "vertex", "model"]
+                        "required": [
+                          "type",
+                          "vertex",
+                          "model"
+                        ]
                       }
                     ]
                   }
@@ -522,7 +528,11 @@
                             "description": "The ID of the model to use."
                           }
                         },
-                        "required": ["type", "vertex", "model"]
+                        "required": [
+                          "type",
+                          "vertex",
+                          "model"
+                        ]
                       }
                     ]
                   }
