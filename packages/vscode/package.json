@@ -116,6 +116,12 @@
         "icon": "$(go-to-file)"
       },
       {
+        "command": "pochi.clearTaskMessages",
+        "title": "Clear",
+        "category": "Pochi",
+        "icon": "$(clear-all)"
+      },
+      {
         "command": "pochi.openCustomModelSettings",
         "title": "Open Custom Model Settings",
         "category": "Pochi"
@@ -145,6 +151,11 @@
         {
           "command": "pochi.openFileFromDiff",
           "when": "resourceScheme == 'pochi-diff-changes'",
+          "group": "navigation"
+        },
+        {
+          "command": "pochi.clearTaskMessages",
+          "when": "true",
           "group": "navigation"
         }
       ],
