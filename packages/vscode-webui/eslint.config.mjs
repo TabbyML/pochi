@@ -25,12 +25,7 @@ export default [
           mode: "jsx-only", // limit to JSX text and attributes to reduce noise
           // Only check user-facing attributes; ignore design/technical attrs like className/variant/size/id
           "jsx-attributes": {
-            include: [
-              "^title$",
-              "^alt$",
-              "^placeholder$",
-              "^label$",
-            ],
+            include: ["^title$", "^alt$", "^placeholder$", "^label$"],
           },
           // Ignore developer-oriented strings passed to specific utility calls
           callees: {
