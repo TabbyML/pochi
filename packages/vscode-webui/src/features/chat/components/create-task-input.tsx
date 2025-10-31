@@ -60,7 +60,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
   } = attachmentUpload;
 
   const worktreesData = useWorktrees();
-  const [isInWorktree, setIsInWorktree] = useState(false);
+  const [isWorktreeActive, setIsWorktreeActive] = useState(false);
   const [selectedWorktree, setSelectedWorktree] = useState<
     GitWorktree | undefined
   >();
@@ -96,7 +96,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
       if (files.length > 0) {
         const uploadedAttachments = await upload();
         vscodeHost.openTaskInPanel({
-          cwd: isInWorktree ? selectedWorktree?.path || cwd : cwd,
+          cwd: isWorktreeActive ? selectedWorktree?.path || cwd : cwd,
           uid: crypto.randomUUID(),
           storeId: undefined,
           prompt: content,
@@ -110,7 +110,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
       } else if (content.length > 0) {
         clearUploadError();
         vscodeHost.openTaskInPanel({
-          cwd: isInWorktree ? selectedWorktree?.path || cwd : cwd,
+          cwd: isWorktreeActive ? selectedWorktree?.path || cwd : cwd,
           uid: crypto.randomUUID(),
           storeId: undefined,
           prompt: content,
@@ -126,7 +126,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
       upload,
       selectedWorktree?.path,
       cwd,
-      isInWorktree,
+      isWorktreeActive,
     ],
   );
 
@@ -182,8 +182,8 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
                 <div className="flex items-center gap-1">
                   <Switch
                     id="worktree-switch"
-                    checked={isInWorktree}
-                    onCheckedChange={setIsInWorktree}
+                    checked={isWorktreeActive}
+                    onCheckedChange={setIsWorktreeActive}
                   />
                   <Label htmlFor="worktree-switch" className="cursor-pointer">
                     <GitFork className="size-4" />
@@ -199,7 +199,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
                 {t("chat.createTaskInWorktree")}
               </HoverCardContent>
             </HoverCard>
-            {isInWorktree && (
+            {isWorktreeActive && (
               <WorktreeSelect
                 worktrees={worktreesData.data ?? []}
                 isLoading={worktreesData.isLoading}

@@ -243,6 +243,12 @@ const VSCodeHostStub = {
   createWorktree: async (): Promise<GitWorktree | null> => {
     return Promise.resolve({} as GitWorktree);
   },
+
+  getGlobalState: async (): Promise<unknown> => {
+    return null;
+  },
+
+  setGlobalState: async (): Promise<void> => {},
 } satisfies VSCodeHostApi;
 
 export function createVscodeHostStub(overrides?: Partial<VSCodeHostApi>) {

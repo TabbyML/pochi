@@ -169,7 +169,7 @@
   },
   "tasksPage": {
     "emptyState": {
-      "title": "No tasks found for {{date}}",
+      "title": "No tasks found",
       "description": "Create a new task to get started with Pochi",
       "createButton": "New Task"
     },

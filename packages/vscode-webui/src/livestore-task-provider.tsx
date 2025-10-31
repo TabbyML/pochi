@@ -1,3 +1,4 @@
+import { isDev } from "@getpochi/common/vscode-webui-bridge";
 import { taskCatalog } from "@getpochi/livekit";
 import { makePersistedAdapter } from "@livestore/adapter-web";
 import LiveStoreSharedWorker from "@livestore/adapter-web/shared-worker?sharedworker&inline";
@@ -12,10 +13,13 @@ const adapter = makePersistedAdapter({
 });
 
 export function LiveStoreTaskProvider({
+  cwd,
   children,
-}: { children: React.ReactNode }) {
+}: { children: React.ReactNode; cwd: string }) {
+  const storeId = sanitizeStoreId(isDev ? `dev-tasks-${cwd}` : `tasks-${cwd}`);
   return (
     <LiveStoreProvider
+      storeId={storeId}
       schema={taskCatalog.schema}
       adapter={adapter}
       renderLoading={(_) => <></>}
@@ -24,4 +28,9 @@ export function LiveStoreTaskProvider({
       {children}
     </LiveStoreProvider>
   );
+}
+
+// Only alphanumeric characters, underscores, and hyphens are allowed.
+function sanitizeStoreId(str: string) {
+  return str.replace(/[^a-zA-Z0-9_-]/g, "-");
 }

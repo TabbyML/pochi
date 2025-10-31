@@ -56,6 +56,8 @@ function createVSCodeHost(): VSCodeHostApi {
         "setSessionState",
         "getWorkspaceState",
         "setWorkspaceState",
+        "getGlobalState",
+        "setGlobalState",
         "readEnvironment",
         "executeToolCall",
         "executeBashCommand",

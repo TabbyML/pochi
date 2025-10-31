@@ -16,7 +16,6 @@ import {
 } from "@/components/ui/tooltip";
 import { WorkspaceRequiredPlaceholder } from "@/components/workspace-required-placeholder";
 import { CreateTaskInput } from "@/features/chat";
-import { useSettingsStore } from "@/features/settings";
 import { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
 import { useCurrentWorkspace } from "@/lib/hooks/use-current-workspace";
 import { usePochiCredentials } from "@/lib/hooks/use-pochi-credentials";
@@ -173,7 +172,7 @@ function App() {
     return;
   }
 
-  if (!currentWorkspace) {
+  if (!currentWorkspace?.cwd) {
     return (
       <div className="flex h-screen w-full flex-col items-center justify-center">
         <WorkspaceRequiredPlaceholder isFetching={isFetchingWorkspace} />
@@ -182,7 +181,7 @@ function App() {
   }
 
   return (
-    <LiveStoreTaskProvider>
+    <LiveStoreTaskProvider cwd={currentWorkspace.cwd}>
       <Tasks />
     </LiveStoreTaskProvider>
   );
@@ -224,7 +223,7 @@ function Tasks() {
         <CreateTaskInput cwd={cwd} attachmentUpload={attachmentUpload} />
       </div>
       {tasks.length === 0 ? (
-        <EmptyTaskPlaceholder date={new Date()} />
+        <EmptyTaskPlaceholder />
       ) : (
         <div className="min-h-0 flex-1 pt-4">
           <ScrollArea className="h-full">
@@ -270,14 +269,14 @@ function Tasks() {
   );
 }
 
-function EmptyTaskPlaceholder({ date }: { date: Date }) {
+function EmptyTaskPlaceholder() {
   const { t } = useTranslation();
 
   return (
     <div className="flex h-full select-none flex-col items-center justify-center p-5 text-center text-gray-500 dark:text-gray-300">
       <h2 className="mb-2 flex items-center gap-3 font-semibold text-2xl text-gray-700 dark:text-gray-100">
         <TerminalIcon />
-        {t("tasksPage.emptyState.title", { date: date.toLocaleDateString() })}
+        {t("tasksPage.emptyState.title")}
       </h2>
       <p className="mb-4 leading-relaxed">
         {t("tasksPage.emptyState.description")}
@@ -358,7 +357,6 @@ function TaskRow({
   isWorktreeExist?: boolean;
   gitDir?: string;
 }) {
-  const { openInTab } = useSettingsStore();
   const { jwt } = usePochiCredentials();
 
   const title = useMemo(() => parseTitle(task.title), [task.title]);
@@ -395,9 +393,6 @@ function TaskRow({
   const storeId = encodeStoreId(jwt, task.parentId || task.id);
 
   const openTaskInPanel = useCallback(() => {
-    if (!openInTab) {
-      return;
-    }
     if (task.cwd) {
       vscodeHost.openTaskInPanel({
         cwd: task.cwd,
@@ -405,7 +400,7 @@ function TaskRow({
         storeId,
       });
     }
-  }, [task.cwd, task.id, storeId, openInTab]);
+  }, [task.cwd, task.id, storeId]);
 
   if (gitDir) {
     return <div onClick={openTaskInPanel}>{content}</div>;
