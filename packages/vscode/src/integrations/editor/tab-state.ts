@@ -67,12 +67,32 @@ export class TabState implements vscode.Disposable {
    */
   private onTabChanged = () => {
     // Update the existing signal value instead of creating a new signal
-    this.activeTabs.value = listOpenTabs(this.workspaceScope.cwd);
-    this.activeSelection.value = getActiveSelection(this.workspaceScope.cwd);
+    const newOpenTabs = listOpenTabs(this.workspaceScope.cwd);
+    this.activeTabs.value = newOpenTabs;
+
+    const newSelection = getActiveSelection(this.workspaceScope.cwd);
+    if (newSelection) {
+      this.activeSelection.value = newSelection;
+    } else if (this.activeSelection.value) {
+      // newSelection is undefined, but there was a previous selection.
+      // Check if the file for the previous selection is still open.
+      const lastSelectedFilepath = this.activeSelection.value.filepath;
+      const isFileStillOpen = newOpenTabs.some(
+        (tab) => tab.filepath === lastSelectedFilepath,
+      );
+      if (!isFileStillOpen) {
+        // The file was likely closed, so clear the selection.
+        this.activeSelection.value = undefined;
+      }
+      // If the file is still open, we preserve the selection (e.g. when focusing a webview).
+    }
   };
 
   private onSelectionChanged = () => {
-    this.activeSelection.value = getActiveSelection(this.workspaceScope.cwd);
+    const newSelection = getActiveSelection(this.workspaceScope.cwd);
+    if (newSelection !== undefined) {
+      this.activeSelection.value = newSelection;
+    }
   };
 
   /**
