@@ -27,6 +27,17 @@
   "main": "./dist/extension.js",
   "activationEvents": ["onStartupFinished"],
   "contributes": {
+    "customEditors": [
+      {
+        "viewType": "pochi.taskEditor",
+        "displayName": "Pochi Task",
+        "selector": [
+          {
+            "filenamePattern": "/pochi/task/**"
+          }
+        ]
+      }
+    ],
     "authentication": [
       {
         "label": "Pochi",

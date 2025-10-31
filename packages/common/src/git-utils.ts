@@ -133,3 +133,10 @@ export const getWorktreeNameFromGitDir = (
     return match[1];
   }
 };
+
+export const getWorktreeNameFromWorktreePath = (
+  worktreePath?: string | null,
+) => {
+  if (!worktreePath) return undefined;
+  return worktreePath.split(/[\\|/]/).pop();
+};

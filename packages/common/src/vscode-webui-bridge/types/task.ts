@@ -12,7 +12,7 @@ export interface TaskIdParams {
 }
 
 export interface NewTaskParams {
-  uid: undefined;
+  uid?: undefined;
 }
 
 /**

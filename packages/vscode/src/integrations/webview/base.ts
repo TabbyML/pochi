@@ -17,6 +17,7 @@ import { Thread } from "@quilted/threads";
 import * as vscode from "vscode";
 import type { PochiConfiguration } from "../configuration";
 import type { VSCodeHostImpl } from "./vscode-host-impl";
+import type { TaskParams } from "./webview-panel";
 
 const logger = getLogger("WebviewBase");
 
@@ -39,7 +40,7 @@ const LogoPathSegments = ["assets", "icons", "logo128.png"];
  * - Session management integration
  */
 export abstract class WebviewBase implements vscode.Disposable {
-  protected webviewHost?: WebviewHostApi;
+  webviewHost?: WebviewHostApi;
   protected disposables: vscode.Disposable[] = [];
   protected webviewReadyCallbacks: (() => void)[] = [];
   protected sessionState: SessionState = {};
@@ -68,7 +69,7 @@ export abstract class WebviewBase implements vscode.Disposable {
   /**
    * Get the logo icon path for VS Code UI
    */
-  protected static getLogoIconPath(
+  static getLogoIconPath(
     extensionUri: vscode.Uri,
   ): vscode.Uri | { light: vscode.Uri; dark: vscode.Uri } {
     return vscode.Uri.joinPath(extensionUri, ...LogoPathSegments);
@@ -77,6 +78,7 @@ export abstract class WebviewBase implements vscode.Disposable {
   protected getHtmlForWebview(
     webview: vscode.Webview,
     kind: "sidebar" | "pane",
+    taskParams?: TaskParams,
   ): string {
     const isProd =
       this.context.extensionMode === vscode.ExtensionMode.Production;
@@ -98,6 +100,7 @@ export abstract class WebviewBase implements vscode.Disposable {
       window.POCHI_CORS_PROXY_PORT = "${getCorsProxyPort()}";
       window.POCHI_LOG = "${this.pochiConfiguration.advancedSettings.value.webviewLogLevel || ""}";
       window.POCHI_WEBVIEW_KIND = "${kind}";
+      ${taskParams ? `window.POCHI_TASK_PARAMS = ${JSON.stringify(taskParams)};` : ""}
     </script>`;
 
     if (isProd) {

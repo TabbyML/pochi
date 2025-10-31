@@ -60,10 +60,25 @@ declare module "@tanstack/react-router" {
   }
 }
 
+if (window.POCHI_WEBVIEW_KIND === "pane") {
+  const params = window.POCHI_TASK_PARAMS;
+  if (params) {
+    router.navigate({
+      to: "/task",
+      // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+      search: params as any,
+    });
+  }
+}
+
 function InnerApp() {
   const { isLoading } = useUserStorage();
 
-  if (isLoading && isVSCodeEnvironment()) {
+  if (
+    isLoading &&
+    isVSCodeEnvironment() &&
+    window.POCHI_WEBVIEW_KIND !== "pane"
+  ) {
     return (
       <div className="flex h-screen w-screen items-center justify-center">
         <Loader2 className="animate-spin" />
