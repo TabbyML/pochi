@@ -432,8 +432,12 @@ function GitBadge({
       variant="outline"
       className={cn("border-none p-0 text-foreground", className)}
     >
-      <GitBranch className="shrink-0" />
-      <span className="truncate">{git.branch}</span>
+      {git.branch && git.branch !== worktreeName && (
+        <>
+          <GitBranch className="shrink-0" />
+          <span className="truncate">{git.branch}</span>
+        </>
+      )}
       {worktreeName && (
         <>
           <ListTreeIcon className="ml-1 shrink-0" />
