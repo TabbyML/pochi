@@ -94,7 +94,7 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
   const autoApproveGuard = useAutoApproveGuard();
   const { data: currentWorkspace, isFetching: isFetchingWorkspace } =
     useCurrentWorkspace();
-  const isWorkspaceActive = !!currentWorkspace;
+  const isWorkspaceActive = !!currentWorkspace?.cwd;
   const getters = useLiveChatKitGetters({
     todos: todosRef,
     isSubTask: !!subtask,
@@ -154,7 +154,7 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
       } else {
         partsOrString = prompt;
       }
-      chatKit.init(currentWorkspace ?? undefined, partsOrString);
+      chatKit.init(currentWorkspace?.cwd ?? undefined, partsOrString);
     }
   }, [currentWorkspace, isFetchingWorkspace, prompt, chatKit, files, t]);
 
@@ -190,7 +190,7 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
   );
 
   return (
-    <div className="flex h-screen flex-col">
+    <div className="mx-auto flex h-screen max-w-6xl flex-col">
       {subtask && (
         <SubtaskHeader
           subtask={subtask}

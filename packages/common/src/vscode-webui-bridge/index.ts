@@ -17,7 +17,6 @@ export type { SessionState, WorkspaceState } from "./types/session";
 export type {
   TaskIdParams,
   NewTaskParams,
-  TaskDataParams,
   TaskData,
 } from "./types/task";
 export type {

@@ -17,7 +17,7 @@ export const SubtaskHeader: React.FC<{
   return (
     <div className={cn("px-2 pb-0", className)}>
       <Link
-        to="/"
+        to="/task"
         search={{ uid: subtask.parentUid }}
         replace={true}
         className={cn(buttonVariants({ variant: "ghost" }), "gap-1")}
@@ -42,7 +42,7 @@ export const CompleteSubtaskButton: React.FC<{
       return null;
     }
     navigate({
-      to: "/",
+      to: "/task",
       search: {
         uid: subtask.parentUid,
       },

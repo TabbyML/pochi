@@ -47,7 +47,7 @@
         {
           "id": "pochi",
           "title": "Pochi",
-          "icon": "assets/icons/terminal.svg"
+          "icon": "$(code)"
         }
       ]
     },
@@ -70,12 +70,6 @@
       {
         "command": "pochi.editWorkspaceRules",
         "title": "Edit Workspace Rules",
-        "category": "Pochi"
-      },
-      {
-        "command": "pochi.webui.navigate.newTask",
-        "title": "New Task",
-        "icon": "$(add)",
         "category": "Pochi"
       },
       {
@@ -128,7 +122,7 @@
       },
       {
         "command": "pochi.createTaskInPanel",
-        "title": "New Task in Pochi",
+        "title": "Open Worktree in Pochi",
         "category": "Pochi",
         "icon": "$(window)"
       },
@@ -143,8 +137,8 @@
       "scm/sourceControl": [
         {
           "command": "pochi.createTaskInPanel",
-          "group": "worktree@999",
-          "when": "scmProviderContext == worktree"
+          "group": "1_worktree@-1",
+          "when": "scmProvider == git && scmProviderContext == worktree"
         }
       ],
       "editor/title": [
@@ -168,10 +162,6 @@
           "title": "Pochi: Login with Token"
         },
         {
-          "command": "pochi.webui.navigate.newTask",
-          "when": "false"
-        },
-        {
           "command": "pochi.webui.navigate.taskList",
           "when": "false"
         },
@@ -185,6 +175,22 @@
         },
         {
           "command": "pochi.mcp.toggleToolEnabled",
+          "when": "false"
+        },
+        {
+          "command": "pochi.createTaskOnWorktree",
+          "when": "false"
+        },
+        {
+          "command": "pochi.createTaskInPanel",
+          "when": "false"
+        },
+        {
+          "command": "pochi.editWorkspaceRules",
+          "when": "false"
+        },
+        {
+          "command": "pochi.mcp.addServer",
           "when": "false"
         }
       ],
@@ -304,6 +310,10 @@
                                 "title": "Service Account Key",
                                 "type": "object",
                                 "properties": {
+                                  "type": {
+                                    "type": "string",
+                                    "const": "service-account"
+                                  },
                                   "serviceAccountKey": {
                                     "type": "string",
                                     "description": "The service account key JSON for authentication."
@@ -313,12 +323,20 @@
                                     "description": "The Google Cloud location (e.g., 'us-central1')."
                                   }
                                 },
-                                "required": ["serviceAccountKey", "location"]
+                                "required": [
+                                  "type",
+                                  "serviceAccountKey",
+                                  "location"
+                                ]
                               },
                               {
                                 "title": "Access Token",
                                 "type": "object",
                                 "properties": {
+                                  "type": {
+                                    "type": "string",
+                                    "const": "access-token"
+                                  },
                                   "accessToken": {
                                     "type": "string",
                                     "description": "A short-lived access token for authentication."
@@ -333,9 +351,35 @@
                                   }
                                 },
                                 "required": [
+                                  "type",
                                   "accessToken",
                                   "projectId",
                                   "location"
+                                ]
+                              },
+                              {
+                                "title": "Model URL",
+                                "type": "object",
+                                "properties": {
+                                  "type": {
+                                    "type": "string",
+                                    "const": "model-url"
+                                  },
+                                  "issueUrl": {
+                                    "type": "string"
+                                  },
+                                  "modelUrl": {
+                                    "type": "string"
+                                  },
+                                  "timeout": {
+                                    "type": "number"
+                                  }
+                                },
+                                "required": [
+                                  "type",
+                                  "issueUrl",
+                                  "modelUrl",
+                                  "timeout"
                                 ]
                               }
                             ]
@@ -399,6 +443,10 @@
                                 "title": "Service Account Key",
                                 "type": "object",
                                 "properties": {
+                                  "type": {
+                                    "type": "string",
+                                    "const": "service-account"
+                                  },
                                   "serviceAccountKey": {
                                     "type": "string",
                                     "description": "The service account key JSON for authentication."
@@ -408,12 +456,20 @@
                                     "description": "The Google Cloud location (e.g., 'us-central1')."
                                   }
                                 },
-                                "required": ["serviceAccountKey", "location"]
+                                "required": [
+                                  "type",
+                                  "serviceAccountKey",
+                                  "location"
+                                ]
                               },
                               {
                                 "title": "Access Token",
                                 "type": "object",
                                 "properties": {
+                                  "type": {
+                                    "type": "string",
+                                    "const": "access-token"
+                                  },
                                   "accessToken": {
                                     "type": "string",
                                     "description": "A short-lived access token for authentication."
@@ -428,9 +484,35 @@
                                   }
                                 },
                                 "required": [
+                                  "type",
                                   "accessToken",
                                   "projectId",
                                   "location"
+                                ]
+                              },
+                              {
+                                "title": "Model URL",
+                                "type": "object",
+                                "properties": {
+                                  "type": {
+                                    "type": "string",
+                                    "const": "model-url"
+                                  },
+                                  "issueUrl": {
+                                    "type": "string"
+                                  },
+                                  "modelUrl": {
+                                    "type": "string"
+                                  },
+                                  "timeout": {
+                                    "type": "number"
+                                  }
+                                },
+                                "required": [
+                                  "type",
+                                  "issueUrl",
+                                  "modelUrl",
+                                  "timeout"
                                 ]
                               }
                             ]
@@ -484,6 +566,7 @@
     "release": "bunx bumpp --tag=vscode@%s"
   },
   "dependencies": {
+    "@ai-sdk/google-vertex": "catalog:",
     "@getpochi/common": "workspace:*",
     "@getpochi/vendor-claude-code": "workspace:*",
     "@getpochi/vendor-codex": "workspace:*",
@@ -496,6 +579,7 @@
     "@quilted/threads": "catalog:",
     "@vscode-logging/logger": "^2.0.0",
     "ai": "catalog:",
+    "canvaskit-wasm": "^0.40.0",
     "diff": "^7.0.0",
     "fast-deep-equal": "^3.1.3",
     "fast-levenshtein": "^3.0.0",
@@ -534,6 +618,7 @@
     "semver": "^7.7.1",
     "sinon": "^20.0.0",
     "tsconfig-paths": "^4.2.0",
+    "vscode-textmate": "^9.2.1",
     "xvfb-maybe": "^0.2.1"
   },
   "vsce": {

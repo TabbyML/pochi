@@ -10,11 +10,10 @@ import { catalog } from "@getpochi/livekit";
 import { makeAdapter } from "@livestore/adapter-node";
 import { type LiveStoreSchema, createStorePromise } from "@livestore/livestore";
 import { makeWsSync } from "@livestore/sync-cf/client";
-import * as jose from "jose";
 
 export async function createStore(taskId: string) {
   const { jwt = null } = (await getPochiCredentials()) || {};
-  const storeId = await getStoreId(jwt, taskId);
+  const storeId = encodeStoreId(jwt, taskId);
   const enableSync = !!process.env.POCHI_LIVEKIT_SYNC_ON;
   const adapter = makeAdapter({
     storage: enableSync
@@ -55,10 +54,4 @@ async function getPochiCredentials() {
     .getCredentials()
     .catch(() => null)) as PochiCredentials | null;
   return credentials;
-}
-
-async function getStoreId(jwt: string | null, taskId: string) {
-  const sub = (jwt ? jose.decodeJwt(jwt).sub : undefined) ?? "anonymous";
-
-  return encodeStoreId({ sub, taskId });
 }

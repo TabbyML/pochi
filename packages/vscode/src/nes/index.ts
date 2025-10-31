@@ -64,6 +64,8 @@ export class NESProvider implements vscode.Disposable {
     this.inlineCompletionProvider.initialize(this, this.nesDecorationManager);
     this.editorListener.initialize(this, this.nesDecorationManager);
     this.disposables.push(this.inlineCompletionProvider, this.editorListener);
+
+    this.nesDecorationManager.initialize();
   }
 
   async provideNES(

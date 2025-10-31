@@ -18,7 +18,7 @@ import { PostHog } from "@/lib/posthog";
 import { workspaceScoped } from "@/lib/workspace-scoped";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { NESDecorationManager } from "@/nes/decoration-manager";
-import type { WebsiteTaskCreateEvent } from "@getpochi/common";
+import { type WebsiteTaskCreateEvent, toErrorMessage } from "@getpochi/common";
 import {
   type CustomModelSetting,
   type McpServerConfig,
@@ -69,14 +69,11 @@ export class CommandManager implements vscode.Disposable {
     openTaskParams: TaskIdParams | NewTaskParams,
     requestId?: string,
   ) {
-    await vscode.commands.executeCommand("pochiSidebar.focus");
-
     if (githubTemplateUrl) {
       await prepareProject(workspaceUri, githubTemplateUrl, progress);
     }
 
-    const webviewHost = await this.pochiWebviewSidebar.retrieveWebviewHost();
-    webviewHost.openTask(openTaskParams);
+    this.openTaskOnWorkspaceFolder(openTaskParams);
 
     if (requestId) {
       await this.newProjectRegistry.set(requestId, workspaceUri);
@@ -226,22 +223,10 @@ export class CommandManager implements vscode.Disposable {
           async (progress) => {
             progress.report({ message: "Pochi: Opening task..." });
             await vscode.commands.executeCommand("pochiSidebar.focus");
-            const webviewHost =
-              await this.pochiWebviewSidebar.retrieveWebviewHost();
-            webviewHost.openTask({ uid });
+            this.openTaskOnWorkspaceFolder({ uid });
           },
         );
       }),
-
-      vscode.commands.registerCommand(
-        "pochi.webui.navigate.newTask",
-        async () => {
-          await vscode.commands.executeCommand("pochiSidebar.focus");
-          const webviewHost =
-            await this.pochiWebviewSidebar.retrieveWebviewHost();
-          webviewHost.openTask({ uid: undefined });
-        },
-      ),
 
       vscode.commands.registerCommand(
         "pochi.webui.navigate.taskList",
@@ -454,13 +439,6 @@ export class CommandManager implements vscode.Disposable {
             );
           }
 
-          const workspaceFolder =
-            vscode.workspace.workspaceFolders?.[0].uri.fsPath;
-          // only open new panel if current scm is worktree
-          if (workspaceFolder === cwd) {
-            vscode.commands.executeCommand("pochi.webui.navigate.newTask");
-            return;
-          }
           const workspaceContainer = workspaceScoped(cwd);
           await PochiWebviewPanel.createOrShow(
             workspaceContainer,
@@ -473,6 +451,7 @@ export class CommandManager implements vscode.Disposable {
         "pochi.createTaskOnWorktree",
         async () => {
           if ((await this.worktreeManager.isGitRepository()) === false) {
+            this.openTaskOnWorkspaceFolder();
             return;
           }
           const worktrees = await this.worktreeManager.getWorktrees();
@@ -543,6 +522,7 @@ export class CommandManager implements vscode.Disposable {
               }
 
               targetWorktree = newWorktree;
+              setupWorktree(targetWorktree.path);
             } catch (error) {
               logger.error("Failed to create worktree:", error);
               return;
@@ -579,6 +559,29 @@ export class CommandManager implements vscode.Disposable {
           this.nesDecorationManager.reject();
         },
       ),
+
+      vscode.commands.registerCommand(
+        "pochi.createTerminal",
+        (cwd?: string) => {
+          vscode.window.createTerminal({ cwd }).show();
+        },
+      ),
+    );
+  }
+
+  openTaskOnWorkspaceFolder(params?: TaskIdParams | NewTaskParams) {
+    const cwd = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+    if (!cwd) {
+      vscode.window.showErrorMessage(
+        "Cannot create Pochi task without a workspace folder.",
+      );
+      return;
+    }
+    const workspaceContainer = workspaceScoped(cwd);
+    PochiWebviewPanel.createOrShow(
+      workspaceContainer,
+      this.context.extensionUri,
+      params,
     );
   }
 
@@ -636,5 +639,49 @@ export class CommandManager implements vscode.Disposable {
       disposable.dispose();
     }
     this.disposables = [];
+  }
+}
+
+/**
+ * execute init.sh in *nix system or init.ps1 in windows to setup worktree
+ */
+async function setupWorktree(worktree: string): Promise<boolean> {
+  const setupLogger = getLogger("setupWorktree");
+  const isWindows = process.platform === "win32";
+  const initScript = isWindows ? ".pochi/init.ps1" : ".pochi/init.sh";
+
+  // Check if script exists
+  const scriptUri = vscode.Uri.joinPath(vscode.Uri.file(worktree), initScript);
+  const isFileExists = await vscode.workspace.fs.stat(scriptUri).then(
+    () => true,
+    () => false,
+  );
+  if (!isFileExists) {
+    setupLogger.debug(`Init script not found: ${initScript}`);
+    return false;
+  }
+
+  try {
+    const terminal = vscode.window.createTerminal({
+      name: "Setup Pochi Worktree",
+      cwd: worktree,
+    });
+
+    // Use proper shell execution
+    const command = isWindows
+      ? `powershell -ExecutionPolicy Bypass -File ./${initScript}`
+      : `sh ./${initScript}`;
+
+    terminal.sendText(command);
+    terminal.show(true);
+
+    setupLogger.info(`Worktree setup initiated for: ${worktree}`);
+    return true;
+  } catch (error) {
+    setupLogger.error("Failed to setup worktree:", error);
+    vscode.window.showErrorMessage(
+      `Failed to setup worktree: ${toErrorMessage(error)}`,
+    );
+    return false;
   }
 }

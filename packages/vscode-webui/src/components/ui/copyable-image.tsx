@@ -67,6 +67,7 @@ export function CopyableImage({
       filename || `image-preview-${Date.now()}.${extension}`;
     vscodeHost.openFile(finalFilename, {
       base64Data: data,
+      webviewKind: globalThis.POCHI_WEBVIEW_KIND,
     });
   };
 

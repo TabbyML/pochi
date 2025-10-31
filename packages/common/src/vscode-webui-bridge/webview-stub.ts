@@ -19,7 +19,7 @@ import type {
 
 const VSCodeHostStub = {
   readCurrentWorkspace: async () => {
-    return Promise.resolve(null);
+    return Promise.resolve({ cwd: null, workspaceFolder: null });
   },
   readResourceURI: (): Promise<ResourceURI> => {
     return Promise.resolve({} as ResourceURI);
@@ -235,6 +235,20 @@ const VSCodeHostStub = {
   > => {
     return Promise.resolve({} as ThreadSignalSerialization<GitWorktree[]>);
   },
+
+  showDiff: async (_base?: string): Promise<boolean> => {
+    return false;
+  },
+
+  createWorktree: async (): Promise<GitWorktree | null> => {
+    return Promise.resolve({} as GitWorktree);
+  },
+
+  getGlobalState: async (): Promise<unknown> => {
+    return null;
+  },
+
+  setGlobalState: async (): Promise<void> => {},
 } satisfies VSCodeHostApi;
 
 export function createVscodeHostStub(overrides?: Partial<VSCodeHostApi>) {

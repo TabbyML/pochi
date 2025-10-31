@@ -9,16 +9,16 @@
 // Import Routes
 
 import { Route as rootRoute } from './routes/__root'
-import { Route as TasksImport } from './routes/tasks'
+import { Route as TaskImport } from './routes/task'
 import { Route as SignInImport } from './routes/sign-in'
 import { Route as SettingsImport } from './routes/settings'
 import { Route as IndexImport } from './routes/index'
 
 // Create/Update Routes
 
-const TasksRoute = TasksImport.update({
-  id: '/tasks',
-  path: '/tasks',
+const TaskRoute = TaskImport.update({
+  id: '/task',
+  path: '/task',
   getParentRoute: () => rootRoute,
 } as any)
 
@@ -65,11 +65,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SignInImport
       parentRoute: typeof rootRoute
     }
-    '/tasks': {
-      id: '/tasks'
-      path: '/tasks'
-      fullPath: '/tasks'
-      preLoaderRoute: typeof TasksImport
+    '/task': {
+      id: '/task'
+      path: '/task'
+      fullPath: '/task'
+      preLoaderRoute: typeof TaskImport
       parentRoute: typeof rootRoute
     }
   }
@@ -81,14 +81,14 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/settings': typeof SettingsRoute
   '/sign-in': typeof SignInRoute
-  '/tasks': typeof TasksRoute
+  '/task': typeof TaskRoute
 }
 
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/settings': typeof SettingsRoute
   '/sign-in': typeof SignInRoute
-  '/tasks': typeof TasksRoute
+  '/task': typeof TaskRoute
 }
 
 export interface FileRoutesById {
@@ -96,15 +96,15 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/settings': typeof SettingsRoute
   '/sign-in': typeof SignInRoute
-  '/tasks': typeof TasksRoute
+  '/task': typeof TaskRoute
 }
 
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/settings' | '/sign-in' | '/tasks'
+  fullPaths: '/' | '/settings' | '/sign-in' | '/task'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/settings' | '/sign-in' | '/tasks'
-  id: '__root__' | '/' | '/settings' | '/sign-in' | '/tasks'
+  to: '/' | '/settings' | '/sign-in' | '/task'
+  id: '__root__' | '/' | '/settings' | '/sign-in' | '/task'
   fileRoutesById: FileRoutesById
 }
 
@@ -112,14 +112,14 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   SettingsRoute: typeof SettingsRoute
   SignInRoute: typeof SignInRoute
-  TasksRoute: typeof TasksRoute
+  TaskRoute: typeof TaskRoute
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   SettingsRoute: SettingsRoute,
   SignInRoute: SignInRoute,
-  TasksRoute: TasksRoute,
+  TaskRoute: TaskRoute,
 }
 
 export const routeTree = rootRoute
@@ -135,7 +135,7 @@ export const routeTree = rootRoute
         "/",
         "/settings",
         "/sign-in",
-        "/tasks"
+        "/task"
       ]
     },
     "/": {
@@ -147,8 +147,8 @@ export const routeTree = rootRoute
     "/sign-in": {
       "filePath": "sign-in.tsx"
     },
-    "/tasks": {
-      "filePath": "tasks.tsx"
+    "/task": {
+      "filePath": "task.tsx"
     }
   }
 }

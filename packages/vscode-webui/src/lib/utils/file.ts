@@ -163,3 +163,10 @@ export const addLineBreak = (text: string) => {
     (match) => `${match}\u200B`,
   );
 };
+
+export const getWorktreeNameFromWorktreePath = (
+  worktreePath?: string | null,
+) => {
+  if (!worktreePath) return undefined;
+  return worktreePath.split(/[\\|/]/).pop();
+};

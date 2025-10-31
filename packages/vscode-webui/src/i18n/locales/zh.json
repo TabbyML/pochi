@@ -26,7 +26,12 @@
     "queuedMessages": "排队中的消息 ({{count}})",
     "copyImage": "复制图片",
     "openImage": "打开图片",
-    "pleaseCheckFiles": "请检查这些文件。"
+    "pleaseCheckFiles": "请检查这些文件。",
+    "chatToolbar": {
+      "diffWorktreeWith": "将工作树与 {{branch}} 进行比较",
+      "openInTerminal": "在集成终端中打开"
+    },
+    "createTaskInWorktree": "在单独的 Git worktree 中创建任务"
   },
   "language": {
     "switcherTooltip": "选择您在 Pochi 中的首选语言"
@@ -157,7 +162,7 @@
   },
   "tasksPage": {
     "emptyState": {
-      "title": "未找到 {{date}} 的任务",
+      "title": "未找到任务",
       "description": "创建一个新任务以开始使用 Pochi",
       "createButton": "创建新任务"
     },

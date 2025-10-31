@@ -26,7 +26,12 @@
     "queuedMessages": "キュー内のメッセージ ({{count}})",
     "copyImage": "画像をコピー",
     "openImage": "画像を開く",
-    "pleaseCheckFiles": "これらのファイルを確認してください。"
+    "pleaseCheckFiles": "これらのファイルを確認してください。",
+    "chatToolbar": {
+      "diffWorktreeWith": "ワークツリーを {{branch}} と比較",
+      "openInTerminal": "統合ターミナルで開く"
+    },
+    "createTaskInWorktree": "別のGitワークツリーでタスクを作成します"
   },
   "language": {
     "switcherTooltip": "Pochi で使用する言語を選択してください"
@@ -158,7 +163,7 @@
   },
   "tasksPage": {
     "emptyState": {
-      "title": "{{date}} のタスクが見つかりません",
+      "title": "タスクが見つかりません",
       "description": "Pochi を始めるために新しいタスクを作成してください",
       "createButton": "新しいタスクを作成"
     },

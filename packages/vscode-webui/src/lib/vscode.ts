@@ -56,6 +56,8 @@ function createVSCodeHost(): VSCodeHostApi {
         "setSessionState",
         "getWorkspaceState",
         "setWorkspaceState",
+        "getGlobalState",
+        "setGlobalState",
         "readEnvironment",
         "executeToolCall",
         "executeBashCommand",
@@ -90,14 +92,16 @@ function createVSCodeHost(): VSCodeHostApi {
         "openTaskInPanel",
         "onTaskUpdated",
         "readWorktrees",
+        "showDiff",
+        "createWorktree",
       ],
       exports: {
         async openTask(params) {
           window.router.navigate({
-            to: "/",
+            to: "/task",
             search: {
               uid: params.uid || crypto.randomUUID(),
-              parentUid: "parentId" in params ? params.parentId : undefined,
+              storeId: "storeId" in params ? params.storeId : undefined,
               prompt: "prompt" in params ? params.prompt : undefined,
               files: "files" in params ? params.files : undefined,
             },
@@ -107,7 +111,7 @@ function createVSCodeHost(): VSCodeHostApi {
 
         openTaskList() {
           window.router.navigate({
-            to: "/tasks",
+            to: "/",
             replace: true,
           });
         },

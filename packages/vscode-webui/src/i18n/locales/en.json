@@ -26,7 +26,12 @@
     "queuedMessages": "Queued Messages ({{count}})",
     "copyImage": "Copy Image",
     "openImage": "Open Image",
-    "pleaseCheckFiles": "Please check these files."
+    "pleaseCheckFiles": "Please check these files.",
+    "chatToolbar": {
+      "diffWorktreeWith": "Diff worktree with {{branch}}",
+      "openInTerminal": "Open in integrated terminal"
+    },
+    "createTaskInWorktree": "Create task in a separate Git worktree"
   },
   "language": {
     "switcherTooltip": "Choose your preferred language with Pochi"
@@ -49,6 +54,11 @@
     "custom": "Custom",
     "super": "Super",
     "swift": "Swift"
+  },
+  "worktreeSelect": {
+    "selectWorktree": "Select Worktree",
+    "createWorktree": "Create Git worktree",
+    "createWorktreeDescription": "Start task in a new Git worktree"
   },
   "settings": {
     "account": {
@@ -159,7 +169,7 @@
   },
   "tasksPage": {
     "emptyState": {
-      "title": "No tasks found for {{date}}",
+      "title": "No tasks found",
       "description": "Create a new task to get started with Pochi",
       "createButton": "New Task"
     },

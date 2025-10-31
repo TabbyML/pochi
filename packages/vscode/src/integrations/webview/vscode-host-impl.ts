@@ -12,7 +12,7 @@ import {
   getSystemInfo,
   getWorkspaceRulesFileUri,
 } from "@/lib/env";
-import { asRelativePath, isFileExists } from "@/lib/fs";
+import { asRelativePath, isFileExists, readFileContent } from "@/lib/fs";
 import { getLogger } from "@/lib/logger";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { ModelList } from "@/lib/model-list";
@@ -38,7 +38,11 @@ import { searchFiles } from "@/tools/search-files";
 import { startBackgroundJob } from "@/tools/start-background-job";
 import { todoWrite } from "@/tools/todo-write";
 import { previewWriteToFile, writeToFile } from "@/tools/write-to-file";
-import type { Environment, GitStatus } from "@getpochi/common";
+import {
+  type Environment,
+  type GitStatus,
+  toErrorMessage,
+} from "@getpochi/common";
 import type { UserInfo } from "@getpochi/common/configuration";
 import type { McpStatus } from "@getpochi/common/mcp-utils";
 // biome-ignore lint/style/useImportType: needed for dependency injection
@@ -51,17 +55,16 @@ import {
 } from "@getpochi/common/tool-utils";
 import { getVendor } from "@getpochi/common/vendor";
 import type {
+  CaptureEvent,
   CustomAgentFile,
+  DisplayModel,
   GitWorktree,
   PochiCredentials,
-} from "@getpochi/common/vscode-webui-bridge";
-import type {
-  CaptureEvent,
-  DisplayModel,
   ResourceURI,
   RuleFile,
   SaveCheckpointOptions,
   SessionState,
+  TaskIdParams,
   VSCodeHostApi,
   WorkspaceState,
 } from "@getpochi/common/vscode-webui-bridge";
@@ -82,6 +85,7 @@ import {
 import type { Tool } from "ai";
 import { keys } from "remeda";
 import * as runExclusive from "run-exclusive";
+import simpleGit from "simple-git";
 import { Lifecycle, inject, injectable, scoped } from "tsyringe";
 import * as vscode from "vscode";
 // biome-ignore lint/style/useImportType: needed for dependency injection
@@ -192,6 +196,17 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     return this.context.workspaceState.update(key, value);
   };
 
+  getGlobalState = async (
+    key: string,
+    defaultValue?: unknown,
+  ): Promise<unknown> => {
+    return this.context.globalState.get(key, defaultValue);
+  };
+
+  setGlobalState = async (key: string, value: unknown): Promise<void> => {
+    this.context.globalState.update(key, value);
+  };
+
   readEnvironment = async (options: {
     isSubTask?: boolean;
     webviewKind: "sidebar" | "pane";
@@ -264,8 +279,15 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     };
   };
 
-  readCurrentWorkspace = async (): Promise<string | null> => {
-    return this.cwd;
+  readCurrentWorkspace = async (): Promise<{
+    cwd: string | null;
+    workspaceFolder: string | null;
+  }> => {
+    return {
+      cwd: this.cwd,
+      workspaceFolder:
+        vscode.workspace.workspaceFolders?.[0].uri.fsPath ?? null,
+    };
   };
 
   readMinionId = async (): Promise<string | null> => {
@@ -440,8 +462,14 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       base64Data?: string;
       fallbackGlobPattern?: string;
       cellId?: string;
+      webviewKind?: "sidebar" | "pane";
     },
   ) => {
+    const targetViewColumn =
+      options?.webviewKind === "pane"
+        ? this.getBesideViewColumnForPanel()
+        : undefined;
+
     // Expand ~ to home directory if present
     let resolvedPath = filePath;
     if (filePath.startsWith("~/")) {
@@ -468,6 +496,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
             "vscode.openWith",
             fileUri,
             "jupyter-notebook",
+            targetViewColumn,
           );
 
           if (options?.cellId) {
@@ -494,13 +523,18 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
 
         const isPlainText = await isPlainTextFile(fileUri.fsPath);
         if (!isPlainText) {
-          await vscode.commands.executeCommand("vscode.open", fileUri);
+          await vscode.commands.executeCommand(
+            "vscode.open",
+            fileUri,
+            targetViewColumn,
+          );
         } else {
           const start = options?.start ?? 1;
           const end = options?.end ?? start;
           vscode.window.showTextDocument(fileUri, {
             selection: new vscode.Range(start - 1, 0, end - 1, 0),
             preserveFocus: options?.preserveFocus,
+            viewColumn: targetViewColumn,
           });
         }
       }
@@ -517,7 +551,11 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
             tempFile,
             Buffer.from(options?.base64Data ?? "", "base64"),
           );
-          await vscode.commands.executeCommand("vscode.open", tempFile);
+          await vscode.commands.executeCommand(
+            "vscode.open",
+            tempFile,
+            targetViewColumn,
+          );
         } catch (error) {
           logger.error(`Failed to open file from base64 data: ${error}`);
         }
@@ -533,7 +571,11 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         logger.info("found file by glob pattern", result[0]);
 
         if (result.length > 0) {
-          await vscode.commands.executeCommand("vscode.open", result[0]);
+          await vscode.commands.executeCommand(
+            "vscode.open",
+            result[0],
+            targetViewColumn,
+          );
         }
       }
     }
@@ -769,19 +811,125 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
 
   openTaskInPanel = async ({
     cwd,
-    id,
-    parentId,
-  }: { cwd: string; id: string; parentId?: string }): Promise<void> => {
+    uid,
+    storeId,
+    prompt,
+    files,
+  }: TaskIdParams & { cwd: string }): Promise<void> => {
     if (!cwd) {
       return;
     }
+
     const workspaceContainer = workspaceScoped(cwd);
     await PochiWebviewPanel.createOrShow(
       workspaceContainer,
       this.context.extensionUri,
-      parentId,
-      id,
+      {
+        uid,
+        storeId,
+        prompt,
+        files,
+      },
     );
+  };
+
+  private getBesideViewColumnForPanel(): vscode.ViewColumn {
+    const sessionId = `editor-${this.cwd}`;
+    const currentColumn = PochiWebviewPanel.getPanelViewColumn(sessionId);
+    if (currentColumn === undefined) {
+      return vscode.ViewColumn.Active;
+    }
+    // If the current view column is the last one, open beside to the left.
+    // Otherwise, open beside to the right.
+    if (currentColumn >= vscode.ViewColumn.Nine) {
+      return vscode.ViewColumn.Eight;
+    }
+    return currentColumn + 1;
+  }
+
+  showDiff = async (base = "origin/main") => {
+    if (!this.cwd) {
+      return false;
+    }
+
+    const git = simpleGit(this.cwd);
+    const result: { filepath: string; before: string; after: string }[] = [];
+    try {
+      const output = await git.raw(["diff", "--name-status", base]);
+      const changedFiles = output
+        .trim()
+        .split("\n")
+        .map((line: string) => {
+          const [status, filepath] = line.split("\t");
+          return { status: status.trim(), filepath: filepath.trim() };
+        });
+
+      if (changedFiles.length === 0) {
+        return false;
+      }
+
+      const targetViewColumn = this.getBesideViewColumnForPanel();
+
+      for (const { status, filepath } of changedFiles) {
+        const fsPath = path.join(this.cwd, filepath);
+        let beforeContent = "";
+        let afterContent = "";
+        if (status === "A") {
+          const fileContent = await readFileContent(fsPath);
+          afterContent = fileContent ?? "";
+        } else if (status === "D") {
+          beforeContent = await git.raw(["show", `${base}:${filepath}`]);
+        } else {
+          beforeContent = await git.raw(["show", `${base}:${filepath}`]);
+          afterContent = (await readFileContent(fsPath)) ?? "";
+        }
+
+        result.push({
+          filepath,
+          before: beforeContent,
+          after: afterContent,
+        });
+      }
+
+      // Workaround: Focus the target column before calling 'vscode.changes'
+      const dummyDoc = await vscode.workspace.openTextDocument({
+        content: "",
+        language: "text",
+      });
+      await vscode.window.showTextDocument(dummyDoc, {
+        viewColumn: targetViewColumn,
+        preview: true,
+        preserveFocus: false,
+      });
+
+      // show changes
+      await vscode.commands.executeCommand(
+        "vscode.changes",
+        `Changes${base ? ` vs ${base}` : ""}`,
+        result.map((file) => [
+          vscode.Uri.joinPath(vscode.Uri.parse(this.cwd ?? ""), file.filepath),
+          DiffChangesContentProvider.decode({
+            filepath: file.filepath,
+            content: file.before,
+            cwd: this.cwd ?? "",
+          }),
+          DiffChangesContentProvider.decode({
+            filepath: file.filepath,
+            content: file.after,
+            cwd: this.cwd ?? "",
+          }),
+        ]),
+        {
+          viewColumn: targetViewColumn,
+        },
+      );
+      return true;
+    } catch (e: unknown) {
+      vscode.window.showErrorMessage(
+        `Failed to get diff: ${toErrorMessage(e)}`,
+      );
+      return false;
+    }
   };
 
   executeBashCommand = async (
@@ -827,6 +975,27 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     ThreadSignalSerialization<GitWorktree[]>
   > => {
     return ThreadSignal.serialize(this.worktreeManager.worktrees);
+  };
+
+  createWorktree = async () => {
+    if ((await this.worktreeManager.isGitRepository()) === false) {
+      return null;
+    }
+    const worktrees = await this.worktreeManager.getWorktrees();
+    await vscode.commands.executeCommand("git.createWorktree");
+
+    // Get worktrees again to find the new one
+    const updatedWorktrees = await this.worktreeManager.getWorktrees();
+    // Find the new worktree by comparing with previous worktrees
+    const newWorktree = updatedWorktrees.find(
+      (updated) =>
+        !worktrees.some((original) => original.path === updated.path),
+    );
+    if (newWorktree) {
+      return newWorktree;
+    }
+
+    return null;
   };
 
   dispose() {

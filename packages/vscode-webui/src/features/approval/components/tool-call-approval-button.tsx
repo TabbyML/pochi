@@ -10,6 +10,7 @@ import {
   useToolAutoApproval,
 } from "@/features/settings";
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
+import { useStore } from "@livestore/react";
 import { useNavigate } from "@tanstack/react-router";
 import { getToolName } from "ai";
 import type { PendingToolCallApproval } from "../hooks/use-pending-tool-call-approval";
@@ -73,16 +74,19 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
   const abortText =
     ToolAbortText[pendingApproval.name] || t("toolInvocation.stop");
 
+  const { store } = useStore();
+
   const manualRunSubtask = useCallback(
     (subtaskUid: string) => {
       navigate({
-        to: "/",
+        to: "/task",
         search: {
           uid: subtaskUid,
+          storeId: store.storeId,
         },
       });
     },
-    [navigate],
+    [navigate, store.storeId],
   );
 
   const { subtaskOffhand } = useSubtaskOffhand();

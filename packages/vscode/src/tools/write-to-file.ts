@@ -30,8 +30,8 @@ export const previewWriteToFile: PreviewToolFunctionType<
       const fileBuffer = await vscode.workspace.fs.readFile(fileUri);
       const fileContent = fileBuffer.toString();
       const editSummary = getEditSummary(fileContent, processedContent);
-      const edits = createPrettyPatch(path, fileContent, processedContent);
-      return { success: true, _meta: { edits, editSummary } };
+      const edit = createPrettyPatch(path, fileContent, processedContent);
+      return { success: true, _meta: { edit, editSummary } };
     }
 
     const diffView = await DiffView.getOrCreate(toolCallId, path, cwd);

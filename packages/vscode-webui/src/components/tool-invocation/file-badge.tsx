@@ -62,14 +62,15 @@ export const FileBadge: React.FC<FileBadgeProps> = ({
       start?: number;
       end?: number;
       fallbackGlobPattern?: string;
+      webviewKind: "sidebar" | "pane";
     } = {
       fallbackGlobPattern: fallbackGlobPattern,
+      webviewKind: globalThis.POCHI_WEBVIEW_KIND,
     };
     if (startLine) {
       options.start = startLine;
       options.end = endLine;
     }
-
     vscodeHost.openFile(path, options);
   };
 

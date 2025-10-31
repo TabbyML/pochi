@@ -2,19 +2,13 @@
 import { GitStateMonitor } from "@/integrations/git/git-state";
 import { getLogger } from "@/lib/logger";
 import { toErrorMessage } from "@getpochi/common";
+import type { GitWorktree } from "@getpochi/common/vscode-webui-bridge";
 import { signal } from "@preact/signals-core";
 import simpleGit from "simple-git";
 import { injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
 
 const logger = getLogger("WorktreeManager");
-
-interface GitWorktree {
-  path: string;
-  branch?: string;
-  commit: string;
-  isMain: boolean;
-}
 
 @singleton()
 @injectable()
@@ -39,15 +33,15 @@ export class WorktreeManager implements vscode.Disposable {
     logger.info(
       `Initialized WorktreeManager with ${worktrees.length} worktrees.`,
     );
+    const onWorktreeChanged = async () => {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      const updatedWorktrees = await this.getWorktrees();
+      logger.info(`Worktrees updated to ${updatedWorktrees.length} worktrees.`);
+      this.worktrees.value = updatedWorktrees;
+    };
     this.disposables.push(
-      this.gitStateMonitor.onDidRepositoryChange(async () => {
-        await new Promise((resolve) => setTimeout(resolve, 500));
-        const updatedWorktrees = await this.getWorktrees();
-        logger.info(
-          `Worktrees updated to ${updatedWorktrees.length} worktrees.`,
-        );
-        this.worktrees.value = updatedWorktrees;
-      }),
+      this.gitStateMonitor.onDidRepositoryChange(onWorktreeChanged),
+      this.gitStateMonitor.onDidChangeGitState(onWorktreeChanged),
     );
   }
 

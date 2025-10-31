@@ -71,7 +71,7 @@ export async function writeTextDocument(
   );
 
   const editSummary = getEditSummary(preEditContent, postSaveContent);
-  const edits = createPrettyPatch(path, preEditContent, postSaveContent);
+  const editDiff = createPrettyPatch(path, preEditContent, postSaveContent);
 
   logger.debug(
     `Wrote to ${path}, content length: ${postSaveContent.length}, edit summary: +${editSummary.added} -${editSummary.removed}`,
@@ -79,7 +79,7 @@ export async function writeTextDocument(
   return {
     autoFormattingEdits,
     newProblems,
-    _meta: { edits, editSummary },
+    _meta: { edit: editDiff, editSummary },
   };
 }
 

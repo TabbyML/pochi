@@ -40,6 +40,10 @@ export interface VSCodeHostApi {
     value: WorkspaceState[K],
   ): Promise<void>;
 
+  getGlobalState(key: string, defaultValue?: unknown): Promise<unknown>;
+
+  setGlobalState(key: string, value: unknown): Promise<void>;
+
   readEnvironment(options: {
     isSubTask?: boolean;
     webviewKind: "sidebar" | "pane";
@@ -148,10 +152,14 @@ export interface VSCodeHostApi {
       base64Data?: string;
       fallbackGlobPattern?: string;
       cellId?: string;
+      webviewKind?: "sidebar" | "pane";
     },
   ): void;
 
-  readCurrentWorkspace(): Promise<string | null>;
+  readCurrentWorkspace(): Promise<{
+    cwd: string | null;
+    workspaceFolder: string | null;
+  }>;
 
   readCustomAgents(): Promise<ThreadSignalSerialization<CustomAgentFile[]>>;
 
@@ -276,15 +284,15 @@ export interface VSCodeHostApi {
     ThreadSignalSerialization<Record<string, UserInfo>>
   >;
 
-  openTaskInPanel(options: {
-    id: string;
-    cwd: string;
-    parentId: string | undefined;
-  }): Promise<void>;
+  openTaskInPanel(options: TaskIdParams & { cwd: string }): Promise<void>;
 
   onTaskUpdated(taskData: unknown): Promise<void>;
 
   readWorktrees(): Promise<ThreadSignalSerialization<GitWorktree[]>>;
+
+  showDiff(base?: string): Promise<boolean>;
+
+  createWorktree(): Promise<GitWorktree | null>;
 }
 
 export interface WebviewHostApi {

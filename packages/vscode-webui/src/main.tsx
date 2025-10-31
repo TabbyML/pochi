@@ -22,10 +22,6 @@ import reportWebVitals from "./reportWebVitals.ts";
 
 const hashHistory = createHashHistory();
 
-if (window.POCHI_WEBVIEW_KIND === "sidebar") {
-  hashHistory.push("/tasks");
-}
-
 // Create a new router instance
 const router = createRouter({
   routeTree,

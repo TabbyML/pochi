@@ -4,13 +4,13 @@ import { vscodeHost } from "../vscode";
 
 /** @useSignals */
 export const useWorktrees = () => {
-  const { data } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ["worktrees"],
     queryFn: fetchWorktrees,
     staleTime: Number.POSITIVE_INFINITY,
   });
 
-  return data?.value;
+  return { data: data?.value, isLoading };
 };
 
 async function fetchWorktrees() {
