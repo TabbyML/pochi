@@ -32,6 +32,7 @@ import { createMcpHub } from "./integrations/mcp";
 import { StatusBarItem } from "./integrations/status-bar-item";
 import { TerminalLinkProvider } from "./integrations/terminal-link-provider";
 import { PochiWebviewSidebar } from "./integrations/webview";
+import { PochiTaskEditorProvider } from "./integrations/webview/webview-panel";
 import { type AuthClient, createAuthClient } from "./lib/auth-client";
 import { FileLogger } from "./lib/file-logger";
 import { getLogger } from "./lib/logger";
@@ -48,6 +49,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
   // Container will dispose all the registered instances when itself is disposed
   context.subscriptions.push(container);
+  context.subscriptions.push(PochiTaskEditorProvider.register(context));
   context.subscriptions.push(createWorkspaceConfigWatcher(cwd));
   if (!process.env.POCHI_TEST) {
     context.subscriptions.push(startCorsProxy());

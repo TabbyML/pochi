@@ -27,11 +27,13 @@ import { useAddCompleteToolCalls } from "@/lib/hooks/use-add-complete-tool-calls
 import type { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
 import { useCurrentWorkspace } from "@/lib/hooks/use-current-workspace";
 import { useWorktrees } from "@/lib/hooks/use-worktrees";
-import { getWorktreeNameFromWorktreePath } from "@/lib/utils/file";
 import { vscodeHost } from "@/lib/vscode";
 import type { UseChatHelpers } from "@ai-sdk/react";
 import { constants } from "@getpochi/common";
-import { getWorktreeNameFromGitDir } from "@getpochi/common/git-utils";
+import {
+  getWorktreeNameFromGitDir,
+  getWorktreeNameFromWorktreePath,
+} from "@getpochi/common/git-utils";
 import type { Message, Task } from "@getpochi/livekit";
 import type { Todo } from "@getpochi/tools";
 import {

@@ -5,7 +5,7 @@ import {
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { WorktreeManager } from "@/integrations/git/worktree";
 // biome-ignore lint/style/useImportType: needed for dependency injection
-import { PochiWebviewPanel, PochiWebviewSidebar } from "@/integrations/webview";
+import { PochiWebviewSidebar } from "@/integrations/webview";
 import type { AuthClient } from "@/lib/auth-client";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { AuthEvents } from "@/lib/auth-events";
@@ -15,7 +15,6 @@ import { getLogger, showOutputPanel } from "@/lib/logger";
 import { NewProjectRegistry, prepareProject } from "@/lib/new-project";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { PostHog } from "@/lib/posthog";
-import { workspaceScoped } from "@/lib/workspace-scoped";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { NESDecorationManager } from "@/nes/decoration-manager";
 import { type WebsiteTaskCreateEvent, toErrorMessage } from "@getpochi/common";
@@ -38,6 +37,7 @@ import * as vscode from "vscode";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { type PochiAdvanceSettings, PochiConfiguration } from "./configuration";
 import { DiffChangesContentProvider } from "./editor/diff-changes-content-provider";
+import { PochiTaskEditorProvider } from "./webview/webview-panel";
 
 const logger = getLogger("CommandManager");
 
@@ -54,8 +54,6 @@ export class CommandManager implements vscode.Disposable {
     private readonly mcpHub: McpHub,
     private readonly pochiConfiguration: PochiConfiguration,
     private readonly posthog: PostHog,
-    @inject("vscode.ExtensionContext")
-    private readonly context: vscode.ExtensionContext,
     private readonly nesDecorationManager: NESDecorationManager,
     private readonly worktreeManager: WorktreeManager,
   ) {
@@ -439,11 +437,9 @@ export class CommandManager implements vscode.Disposable {
             );
           }
 
-          const workspaceContainer = workspaceScoped(cwd);
-          await PochiWebviewPanel.createOrShow(
-            workspaceContainer,
-            this.context.extensionUri,
-          );
+          PochiTaskEditorProvider.openTaskInEditor({
+            cwd,
+          });
         },
       ),
 
@@ -535,14 +531,10 @@ export class CommandManager implements vscode.Disposable {
             return;
           }
 
-          // Create workspace container for the selected worktree
-          const workspaceContainer = workspaceScoped(targetWorktree.path);
-
           // Create or show panel for this worktree
-          await PochiWebviewPanel.createOrShow(
-            workspaceContainer,
-            this.context.extensionUri,
-          );
+          PochiTaskEditorProvider.openTaskInEditor({
+            cwd: targetWorktree.path,
+          });
         },
       ),
 
@@ -577,12 +569,10 @@ export class CommandManager implements vscode.Disposable {
       );
       return;
     }
-    const workspaceContainer = workspaceScoped(cwd);
-    PochiWebviewPanel.createOrShow(
-      workspaceContainer,
-      this.context.extensionUri,
-      params,
-    );
+    PochiTaskEditorProvider.openTaskInEditor({
+      ...params,
+      cwd,
+    });
   }
 
   private async ensureDefaultCustomModelSettings() {

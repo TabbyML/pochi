@@ -11,8 +11,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import { getWorktreeNameFromWorktreePath } from "@/lib/utils/file";
 import { vscodeHost } from "@/lib/vscode";
+import { getWorktreeNameFromWorktreePath } from "@getpochi/common/git-utils";
 import type { GitWorktree } from "@getpochi/common/vscode-webui-bridge";
 import { DropdownMenuPortal } from "@radix-ui/react-dropdown-menu";
 import { useQueryClient } from "@tanstack/react-query";
