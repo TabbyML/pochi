@@ -65,8 +65,7 @@ if (window.POCHI_WEBVIEW_KIND === "pane") {
   if (params) {
     router.navigate({
       to: "/task",
-      // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-      search: params as any,
+      search: params,
     });
   }
 }

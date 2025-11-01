@@ -64,7 +64,7 @@ import type {
   RuleFile,
   SaveCheckpointOptions,
   SessionState,
-  TaskIdParams,
+  TaskPanelParams,
   VSCodeHostApi,
   WorkspaceState,
 } from "@getpochi/common/vscode-webui-bridge";
@@ -779,24 +779,8 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     return ThreadSignal.serialize(this.userStorage.users);
   };
 
-  openTaskInPanel = async ({
-    cwd,
-    uid,
-    storeId,
-    prompt,
-    files,
-  }: TaskIdParams & { cwd: string }): Promise<void> => {
-    if (!cwd) {
-      return;
-    }
-
-    PochiTaskEditorProvider.openTaskInEditor({
-      cwd,
-      uid,
-      storeId,
-      prompt,
-      files,
-    });
+  openTaskInPanel = async (params: TaskPanelParams): Promise<void> => {
+    await PochiTaskEditorProvider.openTaskInEditor(params);
   };
 
   showDiff = async (base = "origin/main") => {

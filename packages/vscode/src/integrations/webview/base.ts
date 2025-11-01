@@ -6,6 +6,7 @@ import { getCorsProxyPort } from "@getpochi/common/cors-proxy";
 import type {
   ResourceURI,
   SessionState,
+  TaskPanelParams,
   VSCodeHostApi,
   WebviewHostApi,
 } from "@getpochi/common/vscode-webui-bridge";
@@ -17,7 +18,6 @@ import { Thread } from "@quilted/threads";
 import * as vscode from "vscode";
 import type { PochiConfiguration } from "../configuration";
 import type { VSCodeHostImpl } from "./vscode-host-impl";
-import type { TaskParams } from "./webview-panel";
 
 const logger = getLogger("WebviewBase");
 
@@ -69,16 +69,14 @@ export abstract class WebviewBase implements vscode.Disposable {
   /**
    * Get the logo icon path for VS Code UI
    */
-  static getLogoIconPath(
-    extensionUri: vscode.Uri,
-  ): vscode.Uri | { light: vscode.Uri; dark: vscode.Uri } {
+  static getLogoIconPath(extensionUri: vscode.Uri): vscode.Uri {
     return vscode.Uri.joinPath(extensionUri, ...LogoPathSegments);
   }
 
   protected getHtmlForWebview(
     webview: vscode.Webview,
     kind: "sidebar" | "pane",
-    taskParams?: TaskParams,
+    taskParams?: TaskPanelParams,
   ): string {
     const isProd =
       this.context.extensionMode === vscode.ExtensionMode.Production;

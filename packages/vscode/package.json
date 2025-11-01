@@ -38,6 +38,16 @@
         ]
       }
     ],
+    "languages": [
+      {
+        "id": "pochi-task",
+        "filenamePatterns": ["/pochi/task/**"],
+        "icon": {
+          "light": "assets/icons/logo128.png",
+          "dark": "assets/icons/logo128.png"
+        }
+      }
+    ],
     "authentication": [
       {
         "label": "Pochi",

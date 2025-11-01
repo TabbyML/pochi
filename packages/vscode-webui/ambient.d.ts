@@ -1,12 +1,7 @@
-declare namespace globalThis {
-  // biome-ignore lint/style/noVar: <explanation>
+import type { TaskPanelParams } from "@getpochi/common/vscode-webui-bridge";
+
+declare global {
   var POCHI_WEBVIEW_KIND: "sidebar" | "pane";
 
-  // biome-ignore lint/style/noVar: <explanation>
-  var POCHI_TASK_PARAMS: TaskParams | undefined;
-
-  interface TaskParams {
-    cwd: string;
-    uid?: string;
-  }
+  var POCHI_TASK_PARAMS: TaskPanelParams | undefined;
 }
