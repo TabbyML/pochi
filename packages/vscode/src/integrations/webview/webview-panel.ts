@@ -134,12 +134,7 @@ export class PochiTaskEditorProvider
         ...params,
         uid: params.uid ?? crypto.randomUUID(),
       });
-      await vscode.commands.executeCommand(
-        "vscode.openWith",
-        uri,
-        PochiTaskEditorProvider.viewType,
-        { preview: false, viewColumn: getPochiTaskColumn() },
-      );
+      await openPochiTask(uri);
     } catch (error) {
       const errorMessage = toErrorMessage(error);
       vscode.window.showErrorMessage(
@@ -242,20 +237,41 @@ function setAutoLockGroupsConfig() {
   );
 }
 
-/**
- * find the first column that have pochi task editors, or return next column of active editor
- * @returns
- */
-function getPochiTaskColumn(): vscode.ViewColumn {
+async function openPochiTask(uri: vscode.Uri) {
+  // if we have pochi task opened already, we open new task in same column
   for (const group of vscode.window.tabGroups.all) {
     for (const tab of group.tabs) {
       if (tab.input instanceof vscode.TabInputCustom) {
         if (tab.input.viewType === PochiTaskEditorProvider.viewType) {
-          return group.viewColumn;
+          await openTaskInColumn(uri, group.viewColumn);
+          return;
         }
       }
     }
   }
 
-  return vscode.ViewColumn.Beside;
+  // otherwise, we open new pochi task in a new first column
+
+  // First, focus the very first editor group.
+  await vscode.commands.executeCommand(
+    "workbench.action.focusFirstEditorGroup",
+  );
+
+  // Then, create a new editor group to the left of the currently focused one (which is the first one).
+  // This new group will become the new first group and will be active.
+  await vscode.commands.executeCommand("workbench.action.newGroupLeft");
+
+  await openTaskInColumn(uri, vscode.ViewColumn.One);
+}
+
+async function openTaskInColumn(
+  uri: vscode.Uri,
+  viewColumn: vscode.ViewColumn,
+) {
+  await vscode.commands.executeCommand(
+    "vscode.openWith",
+    uri,
+    PochiTaskEditorProvider.viewType,
+    { preview: false, viewColumn },
+  );
 }
