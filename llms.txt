@@ -1849,6 +1849,60 @@ Pochi automatically runs these commands and includes their outputs in the model�
 * **Added Linux ARM64 Release:** Pochi is now available for Linux ARM64 systems, improving compatibility for developers running on Raspberry Pi or ARM-based environments. **[#543](https://github.com/TabbyML/pochi/issues/543)**
 
 
+# Weekly Update
+URL: /developer-updates/2025-11-01-weekly-update-9
+
+***
+
+## title: Weekly Update #9
+
+# Weekly Update #9
+
+### TL;DR
+
+**Custom Agent** gets even better ⚡ + **i18n** upgrades for global users 🌏! And major Chat Sidebar UX upgrades are coming soon! 🚀
+
+### 🚀 Features
+
+* **Custom Agent with Slash Section:** You can now invoke **custom agents directly through slash commands** in the VS Code chat sidebar — just like how you trigger workflows. **[#567](https://github.com/TabbyML/pochi/issues/567)**
+
+This change unifies how agents and workflows are invoked, creating a more intuitive and consistent experience for interacting with Pochi’s capabilities.
+
+<div
+  className="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg"
+  style={{
+  position: "relative",
+  paddingBottom: "53.7%",
+  marginBottom: 20,
+  height: 0,
+  overflow: "hidden",
+  maxWidth: "100%",
+}}
+>
+  <iframe
+    src="https://drive.google.com/file/d/1fTfCldtoy54Oma5Szzhcramus77FjSNF/preview"
+    style={{
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: "100%",
+    height: "100%",
+    border: "none",
+    borderRadius: "8px",
+  }}
+    allowFullScreen
+    title="`readfile`tool demo"
+  />
+</div>
+
+* **Chat UI i18n:** We are bringing full **internationalization** to the chat UI!✨ Hardcoded strings are being replaced with our i18n system (powered by `i18next`), paving the way for a localized experience in English, Chinese, Japanese, and Korean. **[#201](https://github.com/TabbyML/pochi/issues/201)**
+
+### ✨ Preview
+
+We’re actively working on a series of UX improvements to the VS Code chat sidebar, aimed at making Pochi more seamless and intuitive to use.
+Stay tuned for the upcoming update!
+
+
 # Developer Updates
 URL: /developer-updates
 Weekly update notes from Pochi developers
@@ -1870,6 +1924,58 @@ Here you will find highlights on features, enhancements, and bug fixes, plus ins
   ### Sep 22, 2025
 
   --- */}
+
+## [Weekly Update #9](./2025-11-01-weekly-update-9)
+
+#### Oct 21, 2025
+
+# Weekly Update #9
+
+### TL;DR
+
+**Custom Agent** gets even better ⚡ + **i18n** upgrades for global users 🌏! And major Chat Sidebar UX upgrades are coming soon! 🚀
+
+### 🚀 Features
+
+* **Custom Agent with Slash Section:** You can now invoke **custom agents directly through slash commands** in the VS Code chat sidebar — just like how you trigger workflows. **[#567](https://github.com/TabbyML/pochi/issues/567)**
+
+This change unifies how agents and workflows are invoked, creating a more intuitive and consistent experience for interacting with Pochi’s capabilities.
+
+<div
+  className="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg"
+  style={{
+  position: "relative",
+  paddingBottom: "53.7%",
+  marginBottom: 20,
+  height: 0,
+  overflow: "hidden",
+  maxWidth: "100%",
+}}
+>
+  <iframe
+    src="https://drive.google.com/file/d/1fTfCldtoy54Oma5Szzhcramus77FjSNF/preview"
+    style={{
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: "100%",
+    height: "100%",
+    border: "none",
+    borderRadius: "8px",
+  }}
+    allowFullScreen
+    title="`readfile`tool demo"
+  />
+</div>
+
+* **Chat UI i18n:** We are bringing full **internationalization** to the chat UI!✨ Hardcoded strings are being replaced with our i18n system (powered by `i18next`), paving the way for a localized experience in English, Chinese, Japanese, and Korean. **[#201](https://github.com/TabbyML/pochi/issues/201)**
+
+### ✨ Preview
+
+We’re actively working on a series of UX improvements to the VS Code chat sidebar, aimed at making Pochi more seamless and intuitive to use.
+Stay tuned for the upcoming update!
+
+***
 
 ## [Weekly Update #8](./2025-10-21-weekly-update-8)
 
