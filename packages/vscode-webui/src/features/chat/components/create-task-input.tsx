@@ -59,12 +59,12 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
   const [userSelect, setUserSelect] = useState<GitWorktree | undefined>();
 
   const isOpenCurrentWorkspace = !!workspaceFolder && cwd === workspaceFolder;
-  const isOpenMainWorkspace =
+  const isOpenMainWorktree =
     isOpenCurrentWorkspace &&
     worktreesData.data?.find((x) => x.isMain)?.path === cwd;
 
   const selectedWorktree = useMemo(() => {
-    if (isOpenCurrentWorkspace && !isOpenMainWorkspace) {
+    if (isOpenCurrentWorkspace && !isOpenMainWorktree) {
       return worktreesData.data?.find((x) => x.path === cwd);
     }
     return userSelect || worktreesData.data?.[0];
@@ -73,7 +73,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
     worktreesData.data,
     cwd,
     isOpenCurrentWorkspace,
-    isOpenMainWorkspace,
+    isOpenMainWorktree,
   ]);
 
   useEffect(() => {
@@ -87,11 +87,11 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
   }, [worktreesData.data, userSelect]);
 
   const worktreeOptions = useMemo(() => {
-    if (isOpenMainWorkspace) {
+    if (isOpenMainWorktree) {
       return worktreesData.data ?? [];
     }
     return worktreesData.data?.filter((x) => x.path === workspaceFolder) ?? [];
-  }, [isOpenMainWorkspace, worktreesData.data, workspaceFolder]);
+  }, [isOpenMainWorktree, worktreesData.data, workspaceFolder]);
 
   const handleSubmit = useCallback(
     async (e?: React.FormEvent<HTMLFormElement>) => {
@@ -196,7 +196,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
             cwd={cwd}
             worktrees={worktreeOptions}
             isLoading={worktreesData.isLoading}
-            showCreateWorktree={isOpenMainWorkspace}
+            showCreateWorktree={isOpenMainWorktree}
             value={selectedWorktree}
             onChange={(v) => {
               setUserSelect(v);
