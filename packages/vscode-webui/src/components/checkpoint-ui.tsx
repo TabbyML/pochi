@@ -8,6 +8,7 @@ import {
   Loader2,
 } from "lucide-react";
 
+import { useIsDevMode } from "@/features/settings";
 import { cn } from "@/lib/utils";
 import type { DataParts } from "@getpochi/livekit";
 import { useState } from "react";
@@ -23,6 +24,7 @@ export const CheckpointUI: React.FC<{
   hideBorderOnHover?: boolean;
 }> = ({ checkpoint, isLoading, className, hideBorderOnHover = true }) => {
   const { t } = useTranslation();
+  const [isDevMode] = useIsDevMode();
   const [currentAction, setCurrentAction] = useState<ActionType>();
   const [showActionSuccessIcon, setShowActionSuccessIcon] = useState(false);
 
@@ -180,7 +182,7 @@ export const CheckpointUI: React.FC<{
             onClick={() => handleCheckpointAction("restore")}
             className="hidden h-5 items-center gap-1 rounded-md px-1 py-0.5 text-xs hover:bg-transparent group-hover:flex dark:hover:bg-transparent"
           >
-            {getRestoreText()}
+            {getRestoreText()} {isDevMode && `(${checkpoint.commit})`}
           </Button>
           <span className="group-hover:hidden">{getIcon()}</span>
         </span>
