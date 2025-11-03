@@ -25,9 +25,7 @@
   ],
   "icon": "assets/icons/logo128.png",
   "main": "./dist/extension.js",
-  "activationEvents": [
-    "onStartupFinished"
-  ],
+  "activationEvents": ["onStartupFinished"],
   "contributes": {
     "customEditors": [
       {
@@ -43,9 +41,7 @@
     "languages": [
       {
         "id": "pochi-task",
-        "filenamePatterns": [
-          "/pochi/task/**"
-        ],
+        "filenamePatterns": ["/pochi/task/**"],
         "icon": {
           "light": "assets/icons/logo128.png",
           "dark": "assets/icons/logo128.png"
@@ -437,11 +433,7 @@
                             "description": "A custom prompt template to use for inline completion."
                           }
                         },
-                        "required": [
-                          "type",
-                          "vertex",
-                          "model"
-                        ]
+                        "required": ["type", "vertex", "model"]
                       }
                     ]
                   }
@@ -566,11 +558,7 @@
                             "description": "The ID of the model to use."
                           }
                         },
-                        "required": [
-                          "type",
-                          "vertex",
-                          "model"
-                        ]
+                        "required": ["type", "vertex", "model"]
                       }
                     ]
                   }
