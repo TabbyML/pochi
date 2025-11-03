@@ -35,6 +35,7 @@ export class PochiWebviewPanel
   implements vscode.Disposable
 {
   private readonly panel: vscode.WebviewPanel;
+  private readonly uri: vscode.Uri;
 
   constructor(
     panel: vscode.WebviewPanel,
@@ -44,9 +45,11 @@ export class PochiWebviewPanel
     pochiConfiguration: PochiConfiguration,
     vscodeHost: VSCodeHostImpl,
     taskParams: TaskPanelParams,
+    uri: vscode.Uri,
   ) {
     super(sessionId, context, events, pochiConfiguration, vscodeHost);
     this.panel = panel;
+    this.uri = uri;
 
     // Set webview options
     this.panel.webview.options = {
@@ -79,6 +82,8 @@ export class PochiWebviewPanel
   dispose(): void {
     super.dispose();
     this.panel.dispose();
+
+    PochiTaskEditorProvider.panels.delete(this.uri.toString());
   }
 }
 
@@ -87,7 +92,7 @@ export class PochiTaskEditorProvider
 {
   static readonly viewType = "pochi.taskEditor";
   static readonly scheme = "pochi-task";
-  private static panels = new Map<string, PochiWebviewPanel>();
+  static panels = new Map<string, PochiWebviewPanel>();
 
   public static register(context: vscode.ExtensionContext): vscode.Disposable {
     const provider = new PochiTaskEditorProvider(context);
@@ -181,7 +186,7 @@ export class PochiTaskEditorProvider
         );
         return;
       }
-      const panel = await this.setupWebview(webviewPanel, params);
+      const panel = await this.setupWebview(webviewPanel, params, document.uri);
       PochiTaskEditorProvider.panels.set(document.uri.toString(), panel);
     } catch (error) {
       const errorMessage = toErrorMessage(error);
@@ -195,6 +200,7 @@ export class PochiTaskEditorProvider
   private async setupWebview(
     webviewPanel: vscode.WebviewPanel,
     params: TaskPanelParams,
+    documentUri: vscode.Uri,
   ): Promise<PochiWebviewPanel> {
     const cwd = params.cwd;
     const uid = params.uid;
@@ -220,10 +226,10 @@ export class PochiTaskEditorProvider
       pochiConfiguration,
       vscodeHost,
       params,
+      documentUri,
     );
 
     logger.debug(`Opened Pochi task editor: cwd=${cwd}, uid=${uid}`);
-
     return pochiPanel;
   }
 }
