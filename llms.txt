@@ -1927,7 +1927,7 @@ Here you will find highlights on features, enhancements, and bug fixes, plus ins
 
 ## [Weekly Update #9](./2025-11-01-weekly-update-9)
 
-#### Oct 21, 2025
+#### Nov 01, 2025
 
 # Weekly Update #9
 
