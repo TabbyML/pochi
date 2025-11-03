@@ -416,6 +416,19 @@ export class CommandManager implements vscode.Disposable {
         }
       }),
 
+      vscode.commands.registerCommand("pochi.resetTaskPanel", async () => {
+        const activeTab = vscode.window.tabGroups.activeTabGroup.activeTab;
+        logger.debug("resetTaskPanel", { activeTab });
+        if (
+          activeTab &&
+          activeTab.input instanceof vscode.TabInputCustom &&
+          activeTab.input.viewType === PochiTaskEditorProvider.viewType
+        ) {
+          const uriString = activeTab.input.uri.toString();
+          PochiTaskEditorProvider.reset(uriString);
+        }
+      }),
+
       vscode.commands.registerCommand(
         "pochi.openCustomModelSettings",
         async () => {

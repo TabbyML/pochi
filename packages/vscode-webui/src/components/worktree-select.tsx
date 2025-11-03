@@ -22,6 +22,7 @@ import { useTranslation } from "react-i18next";
 interface WorktreeSelectProps {
   cwd: string;
   worktrees: GitWorktree[];
+  showCreateWorktree?: boolean;
   value: GitWorktree | undefined;
   onChange: (v: GitWorktree) => void;
   isLoading?: boolean;
@@ -44,6 +45,7 @@ export function WorktreeSelect({
   value,
   onChange,
   isLoading,
+  showCreateWorktree,
   triggerClassName,
 }: WorktreeSelectProps) {
   const { t } = useTranslation();
@@ -145,21 +147,25 @@ export function WorktreeSelect({
                   );
                 })}
               </div>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={onCreateWorkTree}
-                className="cursor-pointer py-2 pl-2"
-              >
-                <PlusIcon className="mr-2 shrink-0" />
-                <div>
-                  <div className="font-semibold">
-                    {t("worktreeSelect.createWorktree")}
-                  </div>
-                  <div className="text-muted-foreground text-xs">
-                    {t("worktreeSelect.createWorktreeDescription")}
-                  </div>
-                </div>
-              </DropdownMenuItem>
+              {showCreateWorktree && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={onCreateWorkTree}
+                    className="cursor-pointer py-2 pl-2"
+                  >
+                    <PlusIcon className="mr-2 shrink-0" />
+                    <div>
+                      <div className="font-semibold">
+                        {t("worktreeSelect.createWorktree")}
+                      </div>
+                      <div className="text-muted-foreground text-xs">
+                        {t("worktreeSelect.createWorktreeDescription")}
+                      </div>
+                    </div>
+                  </DropdownMenuItem>
+                </>
+              )}
             </DropdownMenuContent>
           </DropdownMenuPortal>
         </DropdownMenu>

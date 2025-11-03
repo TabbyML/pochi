@@ -15,12 +15,13 @@ import { vscodeHost } from "@/lib/vscode";
 import type { GitWorktree } from "@getpochi/common/vscode-webui-bridge";
 import { PaperclipIcon } from "lucide-react";
 import type React from "react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ChatInputForm } from "./chat-input-form";
 
 interface CreateTaskInputProps {
   cwd: string;
+  workspaceFolder: string | null | undefined;
   attachmentUpload: ReturnType<typeof useAttachmentUpload>;
 }
 
@@ -28,6 +29,7 @@ const noop = () => {};
 
 export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
   cwd,
+  workspaceFolder,
   attachmentUpload,
 }) => {
   const { t } = useTranslation();
@@ -55,7 +57,25 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
 
   const worktreesData = useWorktrees();
   const [userSelect, setUserSelect] = useState<GitWorktree | undefined>();
-  const selectedWorktree = userSelect || worktreesData.data?.[0];
+
+  const isOpenCurrentWorkspace = !!workspaceFolder && cwd === workspaceFolder;
+  const isOpenMainWorktree =
+    isOpenCurrentWorkspace &&
+    worktreesData.data?.find((x) => x.isMain)?.path === cwd;
+
+  const selectedWorktree = useMemo(() => {
+    if (isOpenCurrentWorkspace && !isOpenMainWorktree) {
+      return worktreesData.data?.find((x) => x.path === cwd);
+    }
+    return userSelect || worktreesData.data?.[0];
+  }, [
+    userSelect,
+    worktreesData.data,
+    cwd,
+    isOpenCurrentWorkspace,
+    isOpenMainWorktree,
+  ]);
+
   useEffect(() => {
     if (userSelect) {
       setUserSelect(
@@ -65,6 +85,13 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
       );
     }
   }, [worktreesData.data, userSelect]);
+
+  const worktreeOptions = useMemo(() => {
+    if (isOpenMainWorktree) {
+      return worktreesData.data ?? [];
+    }
+    return worktreesData.data?.filter((x) => x.path === workspaceFolder) ?? [];
+  }, [isOpenMainWorktree, worktreesData.data, workspaceFolder]);
 
   const handleSubmit = useCallback(
     async (e?: React.FormEvent<HTMLFormElement>) => {
@@ -167,8 +194,9 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
         <div className="mr-1 flex shrink-0 items-center gap-1">
           <WorktreeSelect
             cwd={cwd}
-            worktrees={worktreesData.data ?? []}
+            worktrees={worktreeOptions}
             isLoading={worktreesData.isLoading}
+            showCreateWorktree={isOpenMainWorktree}
             value={selectedWorktree}
             onChange={(v) => {
               setUserSelect(v);

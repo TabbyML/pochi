@@ -74,6 +74,7 @@ import type {
   ToolFunctionType,
 } from "@getpochi/tools";
 import { createClientTools } from "@getpochi/tools";
+import { computed } from "@preact/signals-core";
 import {
   ThreadAbortSignal,
   type ThreadAbortSignalSerialization,
@@ -242,11 +243,19 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         isTruncated,
         gitStatus,
         activeTabs: this.tabState.activeTabs.value.map((tab) => ({
-          filepath: tab.filepath,
+          filepath: asRelativePath(tab.filepath, this.cwd ?? ""),
           isActive:
             tab.filepath === this.tabState.activeSelection.value?.filepath,
         })),
-        activeSelection: this.tabState.activeSelection.value,
+        activeSelection: this.tabState.activeSelection.value
+          ? {
+              ...this.tabState.activeSelection.value,
+              filepath: asRelativePath(
+                this.tabState.activeSelection.value.filepath,
+                this.cwd ?? "",
+              ),
+            }
+          : undefined,
         terminals: this.terminalState.visibleTerminals.value,
       },
       info: {
@@ -261,7 +270,14 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   readActiveTabs = async (): Promise<
     ThreadSignalSerialization<Array<{ filepath: string; isDir: boolean }>>
   > => {
-    return ThreadSignal.serialize(this.tabState.activeTabs);
+    return ThreadSignal.serialize(
+      computed(() =>
+        this.tabState.activeTabs.value.map((tab) => ({
+          filepath: asRelativePath(tab.filepath, this.cwd ?? ""),
+          isDir: tab.isDir,
+        })),
+      ),
+    );
   };
 
   readActiveSelection = async (): Promise<
