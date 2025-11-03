@@ -421,11 +421,11 @@ export class CommandManager implements vscode.Disposable {
         logger.debug("resetTaskPanel", { activeTab });
         if (
           activeTab &&
-          activeTab.input instanceof vscode.TabInputWebview &&
-          activeTab.input.viewType === "mainThreadWebview-pochiPanel"
+          activeTab.input instanceof vscode.TabInputCustom &&
+          activeTab.input.viewType === "pochi.taskEditor"
         ) {
-          // todo get cwd and openTask
-          // const vebviewHost = PochiWebviewPanel.reset()
+          const uriString = activeTab.input.uri.toString();
+          PochiTaskEditorProvider.reset(uriString);
         }
       }),
 

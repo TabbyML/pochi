@@ -87,6 +87,7 @@ export class PochiTaskEditorProvider
 {
   static readonly viewType = "pochi.taskEditor";
   static readonly scheme = "pochi-task";
+  private static panels = new Map<string, PochiWebviewPanel>();
 
   public static register(context: vscode.ExtensionContext): vscode.Disposable {
     const provider = new PochiTaskEditorProvider(context);
@@ -144,6 +145,13 @@ export class PochiTaskEditorProvider
     }
   }
 
+  public static async reset(uriString: string) {
+    const panel = PochiTaskEditorProvider.panels.get(uriString);
+    if (panel) {
+      panel.webviewHost?.openTask({ uid: undefined });
+    }
+  }
+
   constructor(private readonly context: vscode.ExtensionContext) {}
 
   // emitter and its event
@@ -173,8 +181,8 @@ export class PochiTaskEditorProvider
         );
         return;
       }
-
-      await this.setupWebview(webviewPanel, params);
+      const panel = await this.setupWebview(webviewPanel, params);
+      PochiTaskEditorProvider.panels.set(document.uri.toString(), panel);
     } catch (error) {
       const errorMessage = toErrorMessage(error);
       vscode.window.showErrorMessage(
