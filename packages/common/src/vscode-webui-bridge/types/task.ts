@@ -11,8 +11,16 @@ export interface TaskIdParams {
   files?: FileUIPart[];
 }
 
+export interface TaskPanelParams extends TaskIdParams {
+  cwd: string;
+}
+
 export interface NewTaskParams {
-  uid: undefined;
+  uid?: undefined;
+}
+
+export interface NewTaskPanelParams extends NewTaskParams {
+  cwd: string;
 }
 
 /**
