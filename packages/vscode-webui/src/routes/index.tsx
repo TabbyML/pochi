@@ -437,12 +437,13 @@ function GitBadge({
       variant="outline"
       className={cn("border-none p-0 text-foreground", className)}
     >
-      {git.branch && git.branch !== worktreeName && (
-        <>
-          <GitBranch className="shrink-0" />
-          <span className="truncate">{git.branch}</span>
-        </>
-      )}
+      {git.branch &&
+        !isBranchNameSameAsWorktreeName(git.branch, worktreeName) && (
+          <>
+            <GitBranch className="shrink-0" />
+            <span className="truncate">{git.branch}</span>
+          </>
+        )}
       {worktreeName && (
         <>
           <ListTreeIcon className="ml-1 shrink-0" />
@@ -463,4 +464,25 @@ function GitBadge({
       )}
     </Badge>
   );
+}
+
+function isBranchNameSameAsWorktreeName(
+  branch: string | undefined,
+  worktreeName: string | undefined,
+): boolean {
+  if (!branch || !worktreeName) return false;
+  const sanitizedBranch = sanitizeBranchName(branch, "-");
+  return sanitizedBranch.split("/").join("-") === worktreeName;
+}
+
+function sanitizeBranchName(name: string, whitespaceChar: string): string {
+  return name
+    ? name
+        .trim()
+        .replace(/^-+/, "")
+        .replace(
+          /^\.|\/\.|\.\.|~|\^|:|\/$|\.lock$|\.lock\/|\\|\*|\s|^\s*$|\.$|\[|\]$/g,
+          whitespaceChar,
+        )
+    : name;
 }
