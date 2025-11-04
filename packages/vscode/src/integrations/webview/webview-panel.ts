@@ -170,7 +170,6 @@ export class PochiTaskEditorProvider
         // open a new panel
         PochiTaskEditorProvider.openTaskInEditor({
           cwd: query.cwd,
-          uid: crypto.randomUUID(),
         });
       }
     } catch (error) {
