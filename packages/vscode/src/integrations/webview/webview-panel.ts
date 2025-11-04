@@ -140,7 +140,7 @@ export class PochiTaskEditorProvider
         ...params,
         uid: params.uid ?? crypto.randomUUID(),
       });
-      await openPochiTask(uri);
+      await openTaskInColumn(uri);
     } catch (error) {
       const errorMessage = toErrorMessage(error);
       vscode.window.showErrorMessage(
@@ -251,17 +251,24 @@ function setAutoLockGroupsConfig() {
   );
 }
 
-async function openPochiTask(uri: vscode.Uri) {
+async function getPochiTaskColumn(): Promise<vscode.ViewColumn> {
   // if we have pochi task opened already, we open new task in same column
   for (const group of vscode.window.tabGroups.all) {
     for (const tab of group.tabs) {
       if (tab.input instanceof vscode.TabInputCustom) {
         if (tab.input.viewType === PochiTaskEditorProvider.viewType) {
-          await openTaskInColumn(uri, group.viewColumn);
-          return;
+          return group.viewColumn;
         }
       }
     }
+  }
+
+  // else if we have multiple groups and the first group is empty, we can reuse it
+  if (
+    vscode.window.tabGroups.all.length > 1 &&
+    vscode.window.tabGroups.all[0].tabs.length === 0
+  ) {
+    return vscode.ViewColumn.One;
   }
 
   // otherwise, we open new pochi task in a new first column
@@ -275,13 +282,11 @@ async function openPochiTask(uri: vscode.Uri) {
   // This new group will become the new first group and will be active.
   await vscode.commands.executeCommand("workbench.action.newGroupLeft");
 
-  await openTaskInColumn(uri, vscode.ViewColumn.One);
+  return vscode.ViewColumn.One;
 }
 
-async function openTaskInColumn(
-  uri: vscode.Uri,
-  viewColumn: vscode.ViewColumn,
-) {
+async function openTaskInColumn(uri: vscode.Uri) {
+  const viewColumn = await getPochiTaskColumn();
   await vscode.commands.executeCommand(
     "vscode.openWith",
     uri,
