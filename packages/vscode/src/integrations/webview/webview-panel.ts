@@ -150,10 +150,35 @@ export class PochiTaskEditorProvider
     }
   }
 
-  public static async reset(uriString: string) {
-    const panel = PochiTaskEditorProvider.panels.get(uriString);
-    if (panel) {
-      panel.webviewHost?.openTask({ uid: undefined });
+  public static async reset(uri: vscode.Uri) {
+    try {
+      const panel = PochiTaskEditorProvider.panels.get(uri.toString());
+
+      if (panel) {
+        const query = JSON.parse(
+          decodeURIComponent(uri.query),
+        ) as TaskPanelParams;
+
+        if (!query?.cwd) {
+          vscode.window.showErrorMessage(
+            "Failed to reset Pochi task: missing parameters",
+          );
+          return;
+        }
+        // close current panel
+        panel.dispose();
+        // open a new panel
+        PochiTaskEditorProvider.openTaskInEditor({
+          cwd: query.cwd,
+          uid: crypto.randomUUID(),
+        });
+      }
+    } catch (error) {
+      const errorMessage = toErrorMessage(error);
+      vscode.window.showErrorMessage(
+        `Failed to reset Pochi task: ${errorMessage}`,
+      );
+      logger.error(`Failed to reset Pochi task: ${errorMessage}`, error);
     }
   }
 

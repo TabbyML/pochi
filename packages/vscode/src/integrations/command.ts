@@ -424,8 +424,7 @@ export class CommandManager implements vscode.Disposable {
           activeTab.input instanceof vscode.TabInputCustom &&
           activeTab.input.viewType === PochiTaskEditorProvider.viewType
         ) {
-          const uriString = activeTab.input.uri.toString();
-          PochiTaskEditorProvider.reset(uriString);
+          PochiTaskEditorProvider.reset(activeTab.input.uri);
         }
       }),
 
