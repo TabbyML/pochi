@@ -471,18 +471,6 @@ function isBranchNameSameAsWorktreeName(
   worktreeName: string | undefined,
 ): boolean {
   if (!branch || !worktreeName) return false;
-  const sanitizedBranch = sanitizeBranchName(branch, "-");
-  return sanitizedBranch.split("/").join("-") === worktreeName;
-}
-
-function sanitizeBranchName(name: string, whitespaceChar: string): string {
-  return name
-    ? name
-        .trim()
-        .replace(/^-+/, "")
-        .replace(
-          /^\.|\/\.|\.\.|~|\^|:|\/$|\.lock$|\.lock\/|\\|\*|\s|^\s*$|\.$|\[|\]$/g,
-          whitespaceChar,
-        )
-    : name;
+  // https://github.com/microsoft/vscode/blob/9092ce3427fdd0f677333394fb10156616090fb5/extensions/git/src/commands.ts#L3512
+  return branch.replace(/\//g, "-") === worktreeName;
 }
