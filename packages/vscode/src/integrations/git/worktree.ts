@@ -57,6 +57,27 @@ export class WorktreeManager implements vscode.Disposable {
     }
   }
 
+  async createWorktree(): Promise<GitWorktree | null> {
+    if ((await this.isGitRepository()) === false) {
+      return null;
+    }
+    const worktrees = await this.getWorktrees();
+    await vscode.commands.executeCommand("git.createWorktree");
+
+    // Get worktrees again to find the new one
+    const updatedWorktrees = await this.getWorktrees();
+    // Find the new worktree by comparing with previous worktrees
+    const newWorktree = updatedWorktrees.find(
+      (updated) =>
+        !worktrees.some((original) => original.path === updated.path),
+    );
+    if (newWorktree) {
+      setupWorktree(newWorktree.path);
+      return newWorktree;
+    }
+    return null;
+  }
+
   async getWorktrees(): Promise<GitWorktree[]> {
     try {
       const result = await this.git.raw(["worktree", "list", "--porcelain"]);
@@ -124,5 +145,48 @@ export class WorktreeManager implements vscode.Disposable {
     for (const disposable of this.disposables) {
       disposable.dispose();
     }
+  }
+}
+
+/**
+ * execute init.sh in *nix system or init.ps1 in windows to setup worktree
+ */
+export async function setupWorktree(worktree: string): Promise<boolean> {
+  const isWindows = process.platform === "win32";
+  const initScript = isWindows ? ".pochi/init.ps1" : ".pochi/init.sh";
+
+  // Check if script exists
+  const scriptUri = vscode.Uri.joinPath(vscode.Uri.file(worktree), initScript);
+  const isFileExists = await vscode.workspace.fs.stat(scriptUri).then(
+    () => true,
+    () => false,
+  );
+  if (!isFileExists) {
+    logger.debug(`Init script not found: ${initScript}`);
+    return false;
+  }
+
+  try {
+    const terminal = vscode.window.createTerminal({
+      name: "Setup Pochi Worktree",
+      cwd: worktree,
+    });
+
+    // Use proper shell execution
+    const command = isWindows
+      ? `powershell -ExecutionPolicy Bypass -File ./${initScript}`
+      : `sh ./${initScript}`;
+
+    terminal.sendText(command);
+    terminal.show(true);
+
+    logger.info(`Worktree setup initiated for: ${worktree}`);
+    return true;
+  } catch (error) {
+    logger.error("Failed to setup worktree:", error);
+    vscode.window.showErrorMessage(
+      `Failed to setup worktree: ${toErrorMessage(error)}`,
+    );
+    return false;
   }
 }
