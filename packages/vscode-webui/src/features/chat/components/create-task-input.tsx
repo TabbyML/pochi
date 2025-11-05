@@ -15,7 +15,7 @@ import { vscodeHost } from "@/lib/vscode";
 import type { GitWorktree } from "@getpochi/common/vscode-webui-bridge";
 import { PaperclipIcon } from "lucide-react";
 import type React from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ChatInputForm } from "./chat-input-form";
 
@@ -75,16 +75,6 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
     isOpenCurrentWorkspace,
     isOpenMainWorktree,
   ]);
-
-  useEffect(() => {
-    if (userSelect) {
-      setUserSelect(
-        worktreesData.data?.find(
-          (worktree) => worktree.path === userSelect.path,
-        ),
-      );
-    }
-  }, [worktreesData.data, userSelect]);
 
   const worktreeOptions = useMemo(() => {
     if (isOpenMainWorktree) {

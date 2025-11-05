@@ -29,6 +29,7 @@ import {
 } from "./context-mention/mention-list";
 import "./prompt-form.css";
 import { useSelectedModels } from "@/features/settings";
+import { useLatest } from "@/lib/hooks/use-latest";
 import { cn } from "@/lib/utils";
 import { resolveModelFromId } from "@/lib/utils/resolve-model-from-id";
 import { isValidCustomAgentFile } from "@getpochi/common/vscode-webui-bridge";
@@ -145,21 +146,18 @@ export function FormEditor({
   // State for drag overlay UI
   const [isDragOver, setIsDragOver] = useState(false);
 
-  const onSelectSlashCandidate = useCallback(
-    (data: SlashCandidate) => {
-      let model: string | undefined;
-      if (data.type === "workflow") {
-        model = data.rawData.frontmatter.model;
-      } else if (data.type === "custom-agent") {
-        model = data.rawData.model;
-      }
-      const foundModel = resolveModelFromId(model, models);
-      if (foundModel) {
-        updateSelectedModelId(foundModel.id);
-      }
-    },
-    [models, updateSelectedModelId],
-  );
+  const onSelectSlashCandidate = useLatest((data: SlashCandidate) => {
+    let model: string | undefined;
+    if (data.type === "workflow") {
+      model = data.rawData.frontmatter.model;
+    } else if (data.type === "custom-agent") {
+      model = data.rawData.model;
+    }
+    const foundModel = resolveModelFromId(model, models);
+    if (foundModel) {
+      updateSelectedModelId(foundModel.id);
+    }
+  });
 
   const editor = useEditor(
     {
@@ -331,7 +329,7 @@ export function FormEditor({
                     props: {
                       ...props,
                       fetchItems,
-                      onSelect: onSelectSlashCandidate,
+                      onSelect: onSelectSlashCandidate.current,
                     },
                     editor: props.editor,
                   });

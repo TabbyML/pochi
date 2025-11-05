@@ -30,6 +30,19 @@ export function isPlainText(buffer: Uint8Array): boolean {
     return true;
   }
 
+  // --- Magic Number Detection for common binary formats ---
+  // PDF check: Starts with `%PDF-`
+  if (
+    bytesRead >= 5 &&
+    bufferData[0] === 0x25 && // %
+    bufferData[1] === 0x50 && // P
+    bufferData[2] === 0x44 && // D
+    bufferData[3] === 0x46 && // F
+    bufferData[4] === 0x2d // -
+  ) {
+    return false;
+  }
+
   // --- BOM Detection ---
   // Check for Byte Order Marks (BOMs) which are strong indicators of text files.
   // UTF-16 BE: 0xFE 0xFF
@@ -80,7 +93,7 @@ export function isPlainText(buffer: Uint8Array): boolean {
       }
     }
 
-    // Check for UTF-16 BE pattern (e.g., <null>D<null>A<null>V)
+    // Check for UTF-16 BE pattern (e.g., <null>D<null>А<null>V)
     // Even-indexed bytes are zero, odd-indexed bytes are non-zero.
     if (couldBeUTF16BE) {
       if (i % 2 === 1) {

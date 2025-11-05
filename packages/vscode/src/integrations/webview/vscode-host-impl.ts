@@ -762,7 +762,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
           vscode.Uri.joinPath(vscode.Uri.parse(this.cwd ?? ""), file.filepath),
           DiffChangesContentProvider.decode({
             filepath: file.filepath,
-            content: file.after,
+            content: file.before,
             cwd: this.cwd ?? "",
           }),
           vscode.Uri.joinPath(vscode.Uri.parse(this.cwd ?? ""), file.filepath),
