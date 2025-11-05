@@ -3,8 +3,6 @@ import {
   calcEditedRangeAfterAccept,
 } from "@/code-completion/auto-code-actions";
 // biome-ignore lint/style/useImportType: needed for dependency injection
-import { WorktreeManager } from "@/integrations/git/worktree";
-// biome-ignore lint/style/useImportType: needed for dependency injection
 import { PochiWebviewSidebar } from "@/integrations/webview";
 import type { AuthClient } from "@/lib/auth-client";
 // biome-ignore lint/style/useImportType: needed for dependency injection
@@ -54,7 +52,6 @@ export class CommandManager implements vscode.Disposable {
     private readonly pochiConfiguration: PochiConfiguration,
     private readonly posthog: PostHog,
     private readonly nesDecorationManager: NESDecorationManager,
-    private readonly worktreeManager: WorktreeManager,
   ) {
     this.registerCommands();
   }
