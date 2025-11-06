@@ -109,44 +109,43 @@ export function WorktreeSelect({
             <DropdownMenuContent
               onCloseAutoFocus={(e) => e.preventDefault()}
               side="bottom"
-              align="start"
-              alignOffset={6}
-              className="dropdown-menu max-h-[32vh] min-w-[18rem] animate-in overflow-y-auto overflow-x-hidden rounded-md border bg-background p-2 text-popover-foreground shadow"
+              align="end"
+              alignOffset={-6}
+              className="dropdown-menu max-h-[32vh] min-w-[18rem] max-w-[80vw] animate-in overflow-y-auto overflow-x-hidden rounded-md border bg-background p-2 text-popover-foreground shadow"
             >
-              <div>
-                {worktrees?.map((item: GitWorktree) => {
-                  const isSelected = item.path === value?.path;
-                  return (
-                    <DropdownMenuItem
-                      onClick={(e: React.MouseEvent) => {
-                        onChange(item);
-                        e.stopPropagation();
-                      }}
-                      key={item.path}
-                      className="cursor-pointer py-2 pl-2"
-                    >
-                      <CheckIcon
-                        className={cn(
-                          "mr-2 shrink-0",
-                          isSelected ? "opacity-100" : "opacity-0",
-                        )}
-                      />
-                      <div>
-                        <div
-                          className={cn("truncate", {
-                            "font-semibold": isSelected,
-                          })}
-                        >
-                          {getWorktreeName(item)}
-                        </div>
-                        <div className="truncate text-muted-foreground text-xs">
-                          {item.path}
-                        </div>
+              {worktrees?.map((item: GitWorktree) => {
+                const isSelected = item.path === value?.path;
+                return (
+                  <DropdownMenuItem
+                    onClick={(e: React.MouseEvent) => {
+                      onChange(item);
+                      e.stopPropagation();
+                    }}
+                    key={item.path}
+                    className="cursor-pointer py-2 pl-2"
+                    title={item.path}
+                  >
+                    <CheckIcon
+                      className={cn(
+                        "mr-2 shrink-0",
+                        isSelected ? "opacity-100" : "opacity-0",
+                      )}
+                    />
+                    <div className="overflow-x-hidden">
+                      <div
+                        className={cn("truncate", {
+                          "font-semibold": isSelected,
+                        })}
+                      >
+                        {getWorktreeName(item)}
                       </div>
-                    </DropdownMenuItem>
-                  );
-                })}
-              </div>
+                      <div className="truncate text-muted-foreground text-xs">
+                        {item.path}
+                      </div>
+                    </div>
+                  </DropdownMenuItem>
+                );
+              })}
               {showCreateWorktree && (
                 <>
                   <DropdownMenuSeparator />
