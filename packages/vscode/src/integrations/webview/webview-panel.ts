@@ -126,7 +126,7 @@ export class PochiTaskEditorProvider
     });
   }
 
-  public static async openTaskInEditor(
+  public static async openTaskEditor(
     params: TaskPanelParams | NewTaskPanelParams,
   ) {
     try {
@@ -144,6 +144,22 @@ export class PochiTaskEditorProvider
     }
   }
 
+  public static async closeTaskEditor(uri: vscode.Uri) {
+    for (const group of vscode.window.tabGroups.all) {
+      for (const tab of group.tabs) {
+        if (
+          tab.input instanceof vscode.TabInputCustom &&
+          tab.input.viewType === PochiTaskEditorProvider.viewType &&
+          tab.input.uri.toString() === uri.toString()
+        ) {
+          await vscode.window.tabGroups.close(tab);
+          logger.debug(`Closed Pochi task editor: ${uri.toString()}`);
+          return;
+        }
+      }
+    }
+  }
+
   public static async reset(uri: vscode.Uri) {
     try {
       const query = JSON.parse(
@@ -156,15 +172,13 @@ export class PochiTaskEditorProvider
         );
         return;
       }
-      // close current panel
-      await vscode.commands.executeCommand(
-        "workbench.action.closeActiveEditor",
-      );
 
       // open a new panel
-      PochiTaskEditorProvider.openTaskInEditor({
+      await PochiTaskEditorProvider.openTaskEditor({
         cwd: query.cwd,
       });
+      // close current panel
+      await PochiTaskEditorProvider.closeTaskEditor(uri);
     } catch (error) {
       const errorMessage = toErrorMessage(error);
       vscode.window.showErrorMessage(

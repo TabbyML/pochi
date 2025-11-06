@@ -807,7 +807,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   };
 
   openTaskInPanel = async (params: TaskPanelParams): Promise<void> => {
-    await PochiTaskEditorProvider.openTaskInEditor(params);
+    await PochiTaskEditorProvider.openTaskEditor(params);
   };
 
   showDiff = async (base = "origin/main"): Promise<boolean> => {
