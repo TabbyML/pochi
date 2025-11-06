@@ -115,17 +115,15 @@ export abstract class WebviewBase implements vscode.Disposable {
       ]).toString();
 
       const assetLoaderScript = `<script nonce="${nonce}" type="module">
-      window.__assetsPath = (path) => {
-        if (path === "wa-sqlite.wasm") {
-          return "${sqliteWasmUri}";
-        }
-        // Handle KaTeX font files
-        if (path.match(/KaTeX_.*\\.(woff2?|woff|ttf|otf|eot)$/)) {
-          return "${webviewDistBaseUri}/" + path;
-        }
-        return path;
-      }
-      window.__workerAssetsPathScript = 'self.__assetsPath = (path) => { if (path === "wa-sqlite.wasm") { return "${sqliteWasmUri}"; }};';
+        window.__assetsPath = (path) => {
+          if (path === "wa-sqlite.wasm") {
+            return "${sqliteWasmUri}";
+          }
+          return path;
+        };
+
+        window.__workerAssetsPathScript =
+          'self.__assetsPath = (path) => { if (path === "wa-sqlite.wasm") { return "${sqliteWasmUri}"; } };';
       </script>`;
 
       const scriptUri = getUri(webview, this.context.extensionUri, [
@@ -156,9 +154,38 @@ export abstract class WebviewBase implements vscode.Disposable {
       ];
       const cspHeader = `<meta http-equiv="Content-Security-Policy" content="${csp.join("; ")}">`;
 
+      const fixKatexFontsScript = `<script nonce="${nonce}" type="module">
+        const katexBase = "${webviewDistBaseUri}";
+        const rewriteFonts = () => {
+          for (const sheet of Array.from(document.styleSheets)) {
+            let rules;
+            try {
+              rules = sheet.cssRules;
+            } catch {
+              continue;
+            }
+            for (const rule of Array.from(rules)) {
+              if (!(rule instanceof CSSFontFaceRule)) continue;
+              if (!rule.style.fontFamily || !rule.style.fontFamily.includes("KaTeX")) continue;
+
+              const match = rule.style.src && rule.style.src.match(/KaTeX_[^"')]+/);
+              if (!match) continue;
+
+              rule.style.src = 'url("' + katexBase + "/" + match[0] + '") format("woff2")';
+            }
+          }
+        };
+
+        if (document.readyState === "complete") {
+          rewriteFonts();
+        } else {
+          window.addEventListener("load", rewriteFonts, { once: true });
+        }
+      </script>`;
+
       return this.buildHtml(
         [cspHeader, style, setiFontStyle],
-        [assetLoaderScript, injectGlobalVars, script],
+        [assetLoaderScript, fixKatexFontsScript, injectGlobalVars, script],
       );
     }
 

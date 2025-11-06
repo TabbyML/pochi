@@ -20,8 +20,8 @@ for (const file of filesToCopy) {
   console.log(`Copied ${sourcePath} to ${destPath}`);
 }
 
-// Copy KaTeX fonts directory
-const fontPattern = /^KaTeX_.*\.(woff2?|woff|ttf|otf|eot)$/i;
+// Copy KaTeX fonts directory (only .woff2 format)
+const fontPattern = /^KaTeX_.*\.woff2$/i;
 
 for (const fontFile of fs.readdirSync(sourceBaseDir)) {
   if (!fontPattern.test(fontFile)) continue;
