@@ -27,7 +27,7 @@ import { parseTitle } from "@getpochi/common/message-utils";
 import { encodeStoreId } from "@getpochi/common/store-id-utils";
 import { type Task, taskCatalog } from "@getpochi/livekit";
 import { useStore } from "@livestore/react";
-import { Link, createFileRoute, useRouter } from "@tanstack/react-router";
+import { createFileRoute, useRouter } from "@tanstack/react-router";
 import {
   Brain,
   CheckCircle2,
@@ -246,7 +246,6 @@ function Tasks() {
                     worktreeName={getWorktreeNameFromGitDir(
                       task.git?.worktree?.gitdir,
                     )}
-                    gitDir={task.git?.worktree?.gitdir}
                     isWorktreeExist={isWorktreeExist}
                   />
                 );
@@ -355,12 +354,10 @@ function TaskRow({
   task,
   worktreeName,
   isWorktreeExist,
-  gitDir,
 }: {
   task: Task;
   worktreeName?: string;
   isWorktreeExist?: boolean;
-  gitDir?: string;
 }) {
   const { jwt } = usePochiCredentials();
 
@@ -407,15 +404,7 @@ function TaskRow({
     }
   }, [task.cwd, task.id, storeId]);
 
-  if (gitDir) {
-    return <div onClick={openTaskInPanel}>{content}</div>;
-  }
-
-  return (
-    <Link to={"/task"} search={{ uid: task.id }}>
-      {content}
-    </Link>
-  );
+  return <div onClick={openTaskInPanel}>{content}</div>;
 }
 
 function GitBadge({

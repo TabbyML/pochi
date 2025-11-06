@@ -35,7 +35,6 @@ export class PochiWebviewPanel
   implements vscode.Disposable
 {
   private readonly panel: vscode.WebviewPanel;
-  private readonly uri: vscode.Uri;
 
   constructor(
     panel: vscode.WebviewPanel,
@@ -45,11 +44,9 @@ export class PochiWebviewPanel
     pochiConfiguration: PochiConfiguration,
     vscodeHost: VSCodeHostImpl,
     taskParams: TaskPanelParams,
-    uri: vscode.Uri,
   ) {
     super(sessionId, context, events, pochiConfiguration, vscodeHost);
     this.panel = panel;
-    this.uri = uri;
 
     // Set webview options
     this.panel.webview.options = {
@@ -82,8 +79,6 @@ export class PochiWebviewPanel
   dispose(): void {
     super.dispose();
     this.panel.dispose();
-
-    PochiTaskEditorProvider.panels.delete(this.uri.toString());
   }
 }
 
@@ -92,7 +87,6 @@ export class PochiTaskEditorProvider
 {
   static readonly viewType = "pochi.taskEditor";
   static readonly scheme = "pochi-task";
-  static panels = new Map<string, PochiWebviewPanel>();
 
   public static register(context: vscode.ExtensionContext): vscode.Disposable {
     const provider = new PochiTaskEditorProvider(context);
@@ -152,26 +146,25 @@ export class PochiTaskEditorProvider
 
   public static async reset(uri: vscode.Uri) {
     try {
-      const panel = PochiTaskEditorProvider.panels.get(uri.toString());
+      const query = JSON.parse(
+        decodeURIComponent(uri.query),
+      ) as TaskPanelParams;
 
-      if (panel) {
-        const query = JSON.parse(
-          decodeURIComponent(uri.query),
-        ) as TaskPanelParams;
-
-        if (!query?.cwd) {
-          vscode.window.showErrorMessage(
-            "Failed to reset Pochi task: missing parameters",
-          );
-          return;
-        }
-        // close current panel
-        panel.dispose();
-        // open a new panel
-        PochiTaskEditorProvider.openTaskInEditor({
-          cwd: query.cwd,
-        });
+      if (!query?.cwd) {
+        vscode.window.showErrorMessage(
+          "Failed to reset Pochi task: missing parameters",
+        );
+        return;
       }
+      // close current panel
+      await vscode.commands.executeCommand(
+        "workbench.action.closeActiveEditor",
+      );
+
+      // open a new panel
+      PochiTaskEditorProvider.openTaskInEditor({
+        cwd: query.cwd,
+      });
     } catch (error) {
       const errorMessage = toErrorMessage(error);
       vscode.window.showErrorMessage(
@@ -210,8 +203,7 @@ export class PochiTaskEditorProvider
         );
         return;
       }
-      const panel = await this.setupWebview(webviewPanel, params, document.uri);
-      PochiTaskEditorProvider.panels.set(document.uri.toString(), panel);
+      await this.setupWebview(webviewPanel, params);
     } catch (error) {
       const errorMessage = toErrorMessage(error);
       vscode.window.showErrorMessage(
@@ -224,7 +216,6 @@ export class PochiTaskEditorProvider
   private async setupWebview(
     webviewPanel: vscode.WebviewPanel,
     params: TaskPanelParams,
-    documentUri: vscode.Uri,
   ): Promise<PochiWebviewPanel> {
     const cwd = params.cwd;
     const uid = params.uid;
@@ -250,7 +241,6 @@ export class PochiTaskEditorProvider
       pochiConfiguration,
       vscodeHost,
       params,
-      documentUri,
     );
 
     logger.debug(`Opened Pochi task editor: cwd=${cwd}, uid=${uid}`);
@@ -276,11 +266,26 @@ function setAutoLockGroupsConfig() {
 }
 
 async function getPochiTaskColumn(): Promise<vscode.ViewColumn> {
+  // If there's only one group and it's empty, lock and use the first column
+  if (
+    vscode.window.tabGroups.all.length === 1 &&
+    vscode.window.tabGroups.all[0].tabs.length === 0
+  ) {
+    await vscode.commands.executeCommand(
+      "workbench.action.focusFirstEditorGroup",
+    );
+    await vscode.commands.executeCommand("workbench.action.lockEditorGroup");
+    return vscode.ViewColumn.One;
+  }
+
   // if we have pochi task opened already, we open new task in same column
   for (const group of vscode.window.tabGroups.all) {
     for (const tab of group.tabs) {
       if (tab.input instanceof vscode.TabInputCustom) {
         if (tab.input.viewType === PochiTaskEditorProvider.viewType) {
+          logger.debug(
+            `Pochi task found in group ${group.viewColumn}. Reusing column.`,
+          );
           return group.viewColumn;
         }
       }

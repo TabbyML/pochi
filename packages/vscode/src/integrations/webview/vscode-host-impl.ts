@@ -810,7 +810,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     await PochiTaskEditorProvider.openTaskInEditor(params);
   };
 
-  showDiff = async (base = "origin/main") => {
+  showDiff = async (base = "origin/main"): Promise<boolean> => {
     if (!this.cwd) {
       return false;
     }
@@ -819,6 +819,9 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     const result: { filepath: string; before: string; after: string }[] = [];
     try {
       const output = await git.raw(["diff", "--name-status", base]);
+      if (output.trim().length === 0) {
+        return false;
+      }
       const changedFiles = output
         .trim()
         .split("\n")
