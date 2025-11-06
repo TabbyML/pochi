@@ -4,34 +4,16 @@ import { ChatContextProvider } from "@/features/chat";
 import { cn } from "@/lib/utils";
 import { formatters } from "@getpochi/common";
 import { type ResizeEvent, ShareEvent } from "@getpochi/common/share-utils";
-import { type Message, catalog } from "@getpochi/livekit";
-import { makeInMemoryAdapter } from "@livestore/adapter-web";
-import { LiveStoreProvider } from "@livestore/react";
+import type { Message } from "@getpochi/livekit";
 import { createChannel } from "bidc";
 import { Loader2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { unstable_batchedUpdates as batchUpdates } from "react-dom";
 import { ErrorMessageView } from "../chat/components/error-message-view";
 import { TodoList } from "../todo";
 
 type BIDCChannel = ReturnType<typeof createChannel>;
 
-const inMemoryAdapter = makeInMemoryAdapter();
-
 export function SharePage() {
-  return (
-    <LiveStoreProvider
-      schema={catalog.schema}
-      adapter={inMemoryAdapter}
-      renderLoading={(_) => <></>}
-      batchUpdates={batchUpdates}
-    >
-      <SharePageInner />
-    </LiveStoreProvider>
-  );
-}
-
-function SharePageInner() {
   const [channel, setChannel] = useState<BIDCChannel | undefined>();
   const shareData = isStorePathname()
     ? useCFShareData()
