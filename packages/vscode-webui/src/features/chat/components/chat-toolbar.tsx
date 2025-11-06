@@ -37,9 +37,14 @@ import {
 import type { Message, Task } from "@getpochi/livekit";
 import type { Todo } from "@getpochi/tools";
 import {
+  Check,
+  CircleSlashIcon,
+  FileDiffIcon,
   GitBranch,
+  Loader2,
   PaperclipIcon,
   SendHorizonal,
+  SquareTerminal,
   StopCircleIcon,
 } from "lucide-react";
 import type React from "react";
@@ -89,6 +94,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   const [queuedMessages, setQueuedMessages] = useState<string[]>([]);
   const [isDiffPending, setIsDiffPending] = useState(false);
   const [isDiffFailed, setIsDiffFailed] = useState(false);
+  const [isDiffSuccess, setIsDiffSuccess] = useState(false);
 
   const [isWorktreeExists, setIsWorktreeExists] = useState(false);
 
@@ -197,14 +203,20 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     try {
       setIsDiffPending(true);
       setIsDiffFailed(false);
-      const isDiffSuccess = await vscodeHost.showDiff();
-      setIsDiffFailed(!isDiffSuccess);
+      setIsDiffSuccess(false);
+      const result = await vscodeHost.showDiff();
+      if (result) {
+        setIsDiffSuccess(true);
+      } else {
+        setIsDiffFailed(true);
+      }
     } catch {
       setIsDiffFailed(true);
     } finally {
       setIsDiffPending(false);
       setTimeout(() => {
         setIsDiffFailed(false);
+        setIsDiffSuccess(false);
       }, 2000);
     }
   };
@@ -339,7 +351,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
-                  className="bg-background"
+                  className="w-64 bg-background"
                   side="top"
                   align="end"
                 >
@@ -349,6 +361,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem>
+                    <SquareTerminal className="size-4" />
                     <a
                       href={`command:pochi.createTerminal?${encodeURIComponent(JSON.stringify([currentWorkspace?.cwd]))}`}
                       target="_blank"
@@ -360,13 +373,27 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
                   <DropdownMenuItem
                     onClick={handleDiff}
                     disabled={isDiffPending}
+                    onSelect={(e) => e.preventDefault()}
                   >
+                    {isDiffPending ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : isDiffSuccess ? (
+                      <Check className="size-4 text-emerald-700 dark:text-emerald-300" />
+                    ) : isDiffFailed ? (
+                      <CircleSlashIcon className="size-4" />
+                    ) : (
+                      <FileDiffIcon className="size-4" />
+                    )}
                     <span>
-                      {isDiffFailed
-                        ? t("checkpointUI.noChangesDetected")
-                        : t("chat.chatToolbar.diffWorktreeWith", {
-                            branch: comparisonBranch,
-                          })}
+                      {isDiffPending
+                        ? t("checkpointUI.opening")
+                        : isDiffSuccess
+                          ? t("checkpointUI.success")
+                          : isDiffFailed
+                            ? t("checkpointUI.noChangesDetected")
+                            : t("chat.chatToolbar.diffWorktreeWith", {
+                                branch: comparisonBranch,
+                              })}
                     </span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>

@@ -715,6 +715,11 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       checkpoint: { origin: string; modified?: string },
       displayPath?: string,
     ) => {
+      logger.debug(
+        `Showing checkpoint diff: from ${checkpoint.origin} to ${
+          checkpoint.modified ?? "HEAD"
+        }`,
+      );
       const changedFiles = await this.checkpointService.getCheckpointChanges(
         checkpoint.origin,
         checkpoint.modified,
@@ -807,10 +812,10 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   };
 
   openTaskInPanel = async (params: TaskPanelParams): Promise<void> => {
-    await PochiTaskEditorProvider.openTaskInEditor(params);
+    await PochiTaskEditorProvider.openTaskEditor(params);
   };
 
-  showDiff = async (base = "origin/main") => {
+  showDiff = async (base = "origin/main"): Promise<boolean> => {
     if (!this.cwd) {
       return false;
     }
@@ -819,6 +824,9 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     const result: { filepath: string; before: string; after: string }[] = [];
     try {
       const output = await git.raw(["diff", "--name-status", base]);
+      if (output.trim().length === 0) {
+        return false;
+      }
       const changedFiles = output
         .trim()
         .split("\n")
@@ -935,24 +943,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   };
 
   createWorktree = async () => {
-    if ((await this.worktreeManager.isGitRepository()) === false) {
-      return null;
-    }
-    const worktrees = await this.worktreeManager.getWorktrees();
-    await vscode.commands.executeCommand("git.createWorktree");
-
-    // Get worktrees again to find the new one
-    const updatedWorktrees = await this.worktreeManager.getWorktrees();
-    // Find the new worktree by comparing with previous worktrees
-    const newWorktree = updatedWorktrees.find(
-      (updated) =>
-        !worktrees.some((original) => original.path === updated.path),
-    );
-    if (newWorktree) {
-      return newWorktree;
-    }
-
-    return null;
+    return await this.worktreeManager.createWorktree();
   };
 
   dispose() {

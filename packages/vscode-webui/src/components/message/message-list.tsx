@@ -282,22 +282,18 @@ const getToolCallCheckpoint = (
     (p) => isToolUIPart(p) && p.toolCallId === part.toolCallId,
   );
 
-  const beforeCheckpoint = findCheckpointPart(allParts);
-  const afterCheckpoint = findCheckpointPart(allParts.slice(currentIndex + 1));
+  const beforeCheckpoint = allParts
+    .slice(0, currentIndex)
+    .findLast((p) => p.type === "data-checkpoint");
+  const afterCheckpoint = allParts
+    .slice(currentIndex + 1)
+    .find((p) => p.type === "data-checkpoint");
 
   return {
     origin: beforeCheckpoint?.data.commit,
     modified: afterCheckpoint?.data.commit,
   };
 };
-
-function findCheckpointPart(parts: Message["parts"]) {
-  for (const x of parts) {
-    if (x.type === "data-checkpoint") {
-      return x;
-    }
-  }
-}
 
 function findCompactPart(message: Message): TextUIPart | undefined {
   for (const x of message.parts) {

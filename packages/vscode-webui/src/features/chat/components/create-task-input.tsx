@@ -182,16 +182,18 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
         </div>
 
         <div className="mr-1 flex shrink-0 items-center gap-1">
-          <WorktreeSelect
-            cwd={cwd}
-            worktrees={worktreeOptions}
-            isLoading={worktreesData.isLoading}
-            showCreateWorktree={isOpenMainWorktree}
-            value={selectedWorktree}
-            onChange={(v) => {
-              setUserSelect(v);
-            }}
-          />
+          {worktreeOptions.length > 0 && (
+            <WorktreeSelect
+              cwd={cwd}
+              worktrees={worktreeOptions}
+              isLoading={worktreesData.isLoading}
+              showCreateWorktree={isOpenMainWorktree}
+              value={selectedWorktree}
+              onChange={(v) => {
+                setUserSelect(v);
+              }}
+            />
+          )}
           <HoverCard>
             <HoverCardTrigger asChild>
               <span>

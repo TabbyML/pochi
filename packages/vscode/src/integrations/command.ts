@@ -3,8 +3,6 @@ import {
   calcEditedRangeAfterAccept,
 } from "@/code-completion/auto-code-actions";
 // biome-ignore lint/style/useImportType: needed for dependency injection
-import { WorktreeManager } from "@/integrations/git/worktree";
-// biome-ignore lint/style/useImportType: needed for dependency injection
 import { PochiWebviewSidebar } from "@/integrations/webview";
 import type { AuthClient } from "@/lib/auth-client";
 // biome-ignore lint/style/useImportType: needed for dependency injection
@@ -17,7 +15,7 @@ import { NewProjectRegistry, prepareProject } from "@/lib/new-project";
 import { PostHog } from "@/lib/posthog";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { NESDecorationManager } from "@/nes/decoration-manager";
-import { type WebsiteTaskCreateEvent, toErrorMessage } from "@getpochi/common";
+import type { WebsiteTaskCreateEvent } from "@getpochi/common";
 import {
   type CustomModelSetting,
   type McpServerConfig,
@@ -27,7 +25,6 @@ import {
 import { McpHub } from "@getpochi/common/mcp-utils";
 import { getVendor } from "@getpochi/common/vendor";
 import type {
-  GitWorktree,
   NewTaskParams,
   TaskIdParams,
 } from "@getpochi/common/vscode-webui-bridge";
@@ -55,7 +52,6 @@ export class CommandManager implements vscode.Disposable {
     private readonly pochiConfiguration: PochiConfiguration,
     private readonly posthog: PostHog,
     private readonly nesDecorationManager: NESDecorationManager,
-    private readonly worktreeManager: WorktreeManager,
   ) {
     this.registerCommands();
   }
@@ -449,103 +445,8 @@ export class CommandManager implements vscode.Disposable {
             );
           }
 
-          PochiTaskEditorProvider.openTaskInEditor({
+          PochiTaskEditorProvider.openTaskEditor({
             cwd,
-          });
-        },
-      ),
-
-      vscode.commands.registerCommand(
-        "pochi.createTaskOnWorktree",
-        async () => {
-          if ((await this.worktreeManager.isGitRepository()) === false) {
-            this.openTaskOnWorkspaceFolder();
-            return;
-          }
-          const worktrees = await this.worktreeManager.getWorktrees();
-
-          // Create quickpick items from non-main worktrees
-          const items: Array<
-            | {
-                label: string;
-                description?: string;
-                detail?: string;
-                worktree?: GitWorktree;
-                kind?: vscode.QuickPickItemKind;
-                isCreateNew?: boolean;
-              }
-            | { kind: vscode.QuickPickItemKind.Separator; label: string }
-          > = worktrees.map((worktree) => ({
-            label: `$(git-branch) ${worktree.branch || "(detached)"}`,
-            // description: worktree.path,
-            detail: worktree.path,
-            worktree,
-          }));
-
-          // Add separator and create new worktree option
-          if (items.length > 0) {
-            items.push({
-              kind: vscode.QuickPickItemKind.Separator,
-              label: "",
-            });
-          }
-
-          items.push({
-            label: "$(plus) Create Git worktree",
-            detail: "Start task in a new Git worktree",
-            isCreateNew: true,
-          });
-
-          // Show quickpick to user
-          const selected = await vscode.window.showQuickPick(items, {
-            placeHolder: "Choose a Git worktree for this task",
-            matchOnDescription: true,
-            matchOnDetail: true,
-          });
-
-          if (!selected) {
-            // User cancelled
-            return;
-          }
-
-          let targetWorktree: GitWorktree | undefined;
-
-          if ("isCreateNew" in selected && selected.isCreateNew) {
-            // Trigger git.createWorktree command
-            try {
-              await vscode.commands.executeCommand("git.createWorktree");
-
-              // Get worktrees again to find the new one
-              const updatedWorktrees =
-                await this.worktreeManager.getWorktrees();
-
-              // Find the new worktree by comparing with previous worktrees
-              const newWorktree = updatedWorktrees.find(
-                (updated) =>
-                  !worktrees.some((original) => original.path === updated.path),
-              );
-
-              if (!newWorktree) {
-                return;
-              }
-
-              targetWorktree = newWorktree;
-              setupWorktree(targetWorktree.path);
-            } catch (error) {
-              logger.error("Failed to create worktree:", error);
-              return;
-            }
-          } else if ("worktree" in selected && selected.worktree) {
-            targetWorktree = selected.worktree;
-          }
-
-          if (!targetWorktree) {
-            return;
-          }
-
-          // Create or show panel for this worktree
-          PochiTaskEditorProvider.openTaskInEditor({
-            cwd: targetWorktree.path,
           });
         },
       ),
@@ -581,7 +482,7 @@ export class CommandManager implements vscode.Disposable {
       );
       return;
     }
-    PochiTaskEditorProvider.openTaskInEditor({
+    PochiTaskEditorProvider.openTaskEditor({
       ...params,
       cwd,
     });
@@ -641,49 +542,5 @@ export class CommandManager implements vscode.Disposable {
       disposable.dispose();
     }
     this.disposables = [];
-  }
-}
-
-/**
- * execute init.sh in *nix system or init.ps1 in windows to setup worktree
- */
-async function setupWorktree(worktree: string): Promise<boolean> {
-  const setupLogger = getLogger("setupWorktree");
-  const isWindows = process.platform === "win32";
-  const initScript = isWindows ? ".pochi/init.ps1" : ".pochi/init.sh";
-
-  // Check if script exists
-  const scriptUri = vscode.Uri.joinPath(vscode.Uri.file(worktree), initScript);
-  const isFileExists = await vscode.workspace.fs.stat(scriptUri).then(
-    () => true,
-    () => false,
-  );
-  if (!isFileExists) {
-    setupLogger.debug(`Init script not found: ${initScript}`);
-    return false;
-  }
-
-  try {
-    const terminal = vscode.window.createTerminal({
-      name: "Setup Pochi Worktree",
-      cwd: worktree,
-    });
-
-    // Use proper shell execution
-    const command = isWindows
-      ? `powershell -ExecutionPolicy Bypass -File ./${initScript}`
-      : `sh ./${initScript}`;
-
-    terminal.sendText(command);
-    terminal.show(true);
-
-    setupLogger.info(`Worktree setup initiated for: ${worktree}`);
-    return true;
-  } catch (error) {
-    setupLogger.error("Failed to setup worktree:", error);
-    vscode.window.showErrorMessage(
-      `Failed to setup worktree: ${toErrorMessage(error)}`,
-    );
-    return false;
   }
 }

@@ -152,12 +152,6 @@
         "title": "Open Worktree in Pochi",
         "category": "Pochi",
         "icon": "$(window)"
-      },
-      {
-        "command": "pochi.createTaskOnWorktree",
-        "title": "New Task on Worktree",
-        "category": "Pochi",
-        "icon": "$(git-branch)"
       }
     ],
     "menus": {
@@ -207,10 +201,6 @@
         },
         {
           "command": "pochi.mcp.toggleToolEnabled",
-          "when": "false"
-        },
-        {
-          "command": "pochi.createTaskOnWorktree",
           "when": "false"
         },
         {
