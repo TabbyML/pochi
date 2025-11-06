@@ -715,6 +715,11 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       checkpoint: { origin: string; modified?: string },
       displayPath?: string,
     ) => {
+      logger.debug(
+        `Showing checkpoint diff: from ${checkpoint.origin} to ${
+          checkpoint.modified ?? "HEAD"
+        }`,
+      );
       const changedFiles = await this.checkpointService.getCheckpointChanges(
         checkpoint.origin,
         checkpoint.modified,
