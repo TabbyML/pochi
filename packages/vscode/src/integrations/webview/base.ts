@@ -115,15 +115,13 @@ export abstract class WebviewBase implements vscode.Disposable {
       ]).toString();
 
       const assetLoaderScript = `<script nonce="${nonce}" type="module">
-        window.__assetsPath = (path) => {
-          if (path === "wa-sqlite.wasm") {
-            return "${sqliteWasmUri}";
-          }
-          return path;
-        };
-
-        window.__workerAssetsPathScript =
-          'self.__assetsPath = (path) => { if (path === "wa-sqlite.wasm") { return "${sqliteWasmUri}"; } };';
+      window.__assetsPath = (path) => {
+        if (path === "wa-sqlite.wasm") {
+          return "${sqliteWasmUri}";
+        }
+        return path;
+      }
+      window.__workerAssetsPathScript = 'self.__assetsPath = (path) => { if (path === "wa-sqlite.wasm") { return "${sqliteWasmUri}"; }};';
       </script>`;
 
       const scriptUri = getUri(webview, this.context.extensionUri, [
