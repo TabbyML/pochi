@@ -283,9 +283,6 @@ async function getPochiTaskColumn(): Promise<vscode.ViewColumn> {
     for (const tab of group.tabs) {
       if (tab.input instanceof vscode.TabInputCustom) {
         if (tab.input.viewType === PochiTaskEditorProvider.viewType) {
-          logger.debug(
-            `Pochi task found in group ${group.viewColumn}. Reusing column.`,
-          );
           return group.viewColumn;
         }
       }
