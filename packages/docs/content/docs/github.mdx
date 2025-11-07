@@ -18,12 +18,12 @@ Use Pochi's AI assistant directly in your GitHub repository by commenting on pul
 
 1. Log in to your Pochi account and go to **API Keys** from your user menu
 
-![User button overview](../assets/images/api-overview.png)
+![User button overview](/images/api-overview.png)
 
 2. Create a new API key with a descriptive name
 3. Copy the generated key (it's only shown once)
 
-![API page interface](../assets/images/api-page-interface.png)
+![API page interface](/images/api-page-interface.png)
 
 4. Add it to your GitHub repository as a secret named `POCHI_API_KEY`. See [GitHub's official guide](https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-secrets) for detailed steps:
    - Go to **Settings** → **Secrets and variables** → **Actions**
@@ -76,7 +76,7 @@ Notes:
 
 Comment on a PR with `/pochi` followed by your request, e.g. `/pochi review this code`, `/pochi explain the changes in this PR`, `/pochi suggest improvements`.
 
-![Comment example](../assets/images/github-comment.png)
+![Comment example](/images/github-comment.png)
 
 Once triggered:
 
@@ -84,9 +84,9 @@ Once triggered:
 - A progress comment is updated every 15 seconds
 - When finished, it posts the final result and reacts with 🚀 (success) or −1 (failure)
 
-![Progress example](../assets/images/github-progress.png)
+![Progress example](/images/github-progress.png)
 
-![Actions run example](../assets/images/github-action-run.png)
+![Actions run example](/images/github-action-run.png)
 
 Permission requirement: Only users with write/admin permission can trigger execution. Otherwise, an error will be posted as a comment.
 
