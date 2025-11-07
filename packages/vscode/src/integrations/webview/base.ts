@@ -108,6 +108,12 @@ export abstract class WebviewBase implements vscode.Disposable {
         "dist",
         "wa-sqlite.wasm",
       ]);
+      const webviewDistBaseUri = getUri(webview, this.context.extensionUri, [
+        "assets",
+        "webview-ui",
+        "dist",
+      ]).toString();
+
       const assetLoaderScript = `<script nonce="${nonce}" type="module">
       window.__assetsPath = (path) => {
         if (path === "wa-sqlite.wasm") {
@@ -140,15 +146,44 @@ export abstract class WebviewBase implements vscode.Disposable {
         `media-src ${webview.cspSource} https://* blob: data:`,
         `script-src 'nonce-${nonce}' 'unsafe-eval'`,
         `style-src ${webview.cspSource} 'unsafe-inline'`,
-        `font-src ${webview.cspSource}`,
+        `font-src ${webview.cspSource} data:`,
         `connect-src ${getServerBaseUrl()} ${getSyncBaseUrl()} ${getSyncBaseUrl().replace("http", "ws")} https://*.vscode-cdn.net https://* http://*:* data: blob:`,
         "worker-src data: blob:",
       ];
       const cspHeader = `<meta http-equiv="Content-Security-Policy" content="${csp.join("; ")}">`;
 
+      const fixKatexFontsScript = `<script nonce="${nonce}" type="module">
+        const katexBase = "${webviewDistBaseUri}";
+        const rewriteFonts = () => {
+          for (const sheet of Array.from(document.styleSheets)) {
+            let rules;
+            try {
+              rules = sheet.cssRules;
+            } catch {
+              continue;
+            }
+            for (const rule of Array.from(rules)) {
+              if (!(rule instanceof CSSFontFaceRule)) continue;
+              if (!rule.style.fontFamily || !rule.style.fontFamily.includes("KaTeX")) continue;
+
+              const match = rule.style.src && rule.style.src.match(/KaTeX_[^"')]+/);
+              if (!match) continue;
+
+              rule.style.src = 'url("' + katexBase + "/" + match[0] + '") format("woff2")';
+            }
+          }
+        };
+
+        if (document.readyState === "complete") {
+          rewriteFonts();
+        } else {
+          window.addEventListener("load", rewriteFonts, { once: true });
+        }
+      </script>`;
+
       return this.buildHtml(
         [cspHeader, style, setiFontStyle],
-        [assetLoaderScript, injectGlobalVars, script],
+        [assetLoaderScript, fixKatexFontsScript, injectGlobalVars, script],
       );
     }
 
@@ -160,6 +195,9 @@ export abstract class WebviewBase implements vscode.Disposable {
 
     const scriptUri = vscode.Uri.parse(`${devWebUIHttpBaseUrl}/src/main.tsx`);
     const script = `<script type="module" src="${scriptUri}"></script>`;
+
+    // inject a <base> tag pointing at the dev server so every /@fs/... (and other relative asset URL) resolves to http://localhost:4112/
+    const devBaseTag = `<base href="${devWebUIHttpBaseUrl}/">`;
 
     const reactRefresh = /*html*/ `
       <script type="module">
@@ -179,14 +217,14 @@ export abstract class WebviewBase implements vscode.Disposable {
       `media-src ${devWebUIHttpBaseUrl} ${devWebUIHttpBaseUrlIp} https://* blob: data:`,
       `script-src 'nonce-${nonce}' ${devWebUIHttpBaseUrl} ${devWebUIHttpBaseUrlIp} '${reactRefreshHash}' 'unsafe-eval'`,
       `style-src ${webview.cspSource} 'self' 'unsafe-inline'`,
-      `font-src ${webview.cspSource}`,
+      `font-src ${devWebUIHttpBaseUrl} ${devWebUIHttpBaseUrlIp} ${webview.cspSource} data:`,
       `connect-src ${devWebUIHttpBaseUrl} ${devWebUIHttpBaseUrlIp} ${devWebUIWsBaseUrl} ${devWebUIWsBaseUrlIp} ${getServerBaseUrl()} ${getSyncBaseUrl()} ${getSyncBaseUrl().replace("http", "ws")} https://* http://*:* data: blob:`,
       `worker-src ${devWebUIHttpBaseUrl} blob:`,
     ];
     const cspHeader = `<meta http-equiv="Content-Security-Policy" content="${csp.join("; ")}">`;
 
     return this.buildHtml(
-      [cspHeader, setiFontStyle],
+      [cspHeader, devBaseTag, setiFontStyle],
       [injectGlobalVars, reactRefresh, script],
     );
   }
