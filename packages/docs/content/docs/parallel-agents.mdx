@@ -62,16 +62,24 @@ There are two ways to create a new Worktree,
 </div>
 
 2. Create from VSCode Repository management
+
 You can first create a new worktree in VSCode Source Control Panel. Then manually link this worktree to a branch, and open this worktree in Pochi.
-
-
 <div align="center">
-![Create Worktree](../assets/images/create-worktree.png)
+  <img
+    src="/images/create-worktree.png"
+    alt="Create Worktree"
+    style={{ width: "50%", height: "auto" }}
+  />
 </div>
 
 <div align="center">
-![Open Worktree in Pochi](../assets/images/worktree-pochi.png)
+  <img
+    src="/images/worktree-pochi.png"
+    alt="Open Worktree in Pochi"
+    style={{ width: "50%", height: "auto" }}
+  />
 </div>
+
 
 In both cases, Pochi will create and check out the branch at the specified disk path as a worktree. You can then perform any action as if it were a standard Git repository, as an independent dev environment in each worktree.
 
@@ -81,7 +89,11 @@ In both cases, Pochi will create and check out the branch at the specified disk 
 Now we are ready to initiate tasks in each worktree to let them run in parallel. You'd see that once a task is initiated, Pochi opens a new tab for each task, and you can switch between different tabs to monitor the progress of each task.
 
 <div align="center">
-![Parallel Tasks](../assets/images/parallel-tasks.png)
+  <img
+    src="/images/parallel-tasks.png"
+    alt="Run Parallel Tasks"
+    style={{ width: "60%", height: "auto" }}
+  />
 </div>
 
 
@@ -89,10 +101,14 @@ Now we are ready to initiate tasks in each worktree to let them run in parallel.
 
 When you click on the task, Pochi will open the specific task, allowing you to interact with it.
 
-
 <div align="center">
-![Interact with Tasks](../assets/images/task-interaction.png)
+  <img
+    src="/images/task-interaction.png"
+    alt="Interact with Tasks"
+    style={{ width: "60%", height: "auto" }}
+  />
 </div>
+
 
 
 For instance, the task `fix-issue-654` is now complete. We can review the modifications by selecting `Diff worktree with origin/main`, and Pochi will open a tab showing all the files changes.
