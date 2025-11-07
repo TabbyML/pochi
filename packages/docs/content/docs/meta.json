@@ -18,6 +18,7 @@
     "permissions",
     "share",
     "queued-messages",
+    "parallel-agents",
     "---Customize---",
     "models",
     "rules",
