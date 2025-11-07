@@ -873,6 +873,109 @@ Ollama is a tool that allows you to run large language models locally on your ma
 ```
 
 
+# Parallel Agents
+URL: /parallel-agents
+Run multiple AI agents concurrently to accelerate development and tackle complex tasks.
+***
+
+title: "Parallel Agents"
+description: "Run multiple AI agents concurrently to accelerate development and tackle complex tasks."
+icon: "GitMerge"
+----------------
+
+# Parallel Agents
+
+Most coding assistants can handle one task at a time. But real projects often need multiple agents exploring, refactoring, and developing different features in parallel - across different branches or experiments.
+That's why we built **Parallel Agents**.
+
+**Parallel Agents** let you run multiple Pochi agents concurrently, each inside its own Git worktree - isolated but synchronized with the same repository.
+Each agent can explore the code base, develop different PRs, or test different ideas in parallel without interfering with each other, while you can check their works and manage them in Pochi extensions.
+
+Pochi Parallel Agents has the following features:
+
+* **Worktree Integration:** Leverage the Git worktree feature to gain an isolated env, did not recreate the wheel again.
+* **Multi-to-Multi Execution:**  Tasks from Pochi could run in different worktree or the same one.
+* **Task Management:** All tasks can be managed on the Pochi sidebar.
+* **Integrated UX:** Review agents' works and open the terminal from one click.
+* **VSCode Native:** Create new Agents directly from the Repository manage view from VSCode.
+
+## Demo and Real World Use Cases
+
+Let's go through the features of **Parallel Agents** by showing the real world workflow while we are developing Pochi.
+For the following demo, we will work on those two issues:
+
+1. [https://github.com/TabbyML/pochi/issues/619](https://github.com/TabbyML/pochi/issues/619)
+2. [https://github.com/TabbyML/pochi/issues/654](https://github.com/TabbyML/pochi/issues/654)
+
+Meanwhile, we'll explore together how worktree feature is implemented.
+
+We could operate on the default worktree directly; however, since those two issues are independent, we prefer to create a separate worktree for each.
+
+### Creating Worktree
+
+There are two ways to create a new Worktree,
+
+1. Create from Pochi sidebar directly
+
+<div
+  style={{
+  position: "relative",
+  paddingBottom: "53.7%",
+  height: 0,
+  overflow: "hidden",
+  maxWidth: "100%",
+}}
+>
+  <iframe
+    src="https://drive.google.com/file/d/1HgO1JdMswvFOKhSwRQCU3pFOIv2lKRbB/preview"
+    style={{
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: "100%",
+    height: "100%",
+    border: "none",
+    borderRadius: "8px",
+  }}
+    allowFullScreen
+    title="Create Pochi Tasks"
+  />
+</div>
+
+2. Create from VSCode Repository management
+   You can first create a new worktree in VSCode Source Control Panel. Then manually link this worktree to a branch, and open this worktree in Pochi.
+
+<div align="center">
+  ![Create Worktree](../assets/images/create-worktree.png)
+</div>
+
+<div align="center">
+  ![Open Worktree in Pochi](../assets/images/worktree-pochi.png)
+</div>
+
+In both cases, Pochi will create and check out the branch at the specified disk path as a worktree. You can then perform any action as if it were a standard Git repository, as an independent dev environment in each worktree.
+
+### Create Task in Pochi
+
+Now we are ready to initiate tasks in each worktree to let them run in parallel. You'd see that once a task is initiated, Pochi opens a new tab for each task, and you can switch between different tabs to monitor the progress of each task.
+
+<div align="center">
+  ![Parallel Tasks](../assets/images/parallel-tasks.png)
+</div>
+
+### Interaction with Tasks
+
+When you click on the task, Pochi will open the specific task, allowing you to interact with it.
+
+<div align="center">
+  ![Interact with Tasks](../assets/images/task-interaction.png)
+</div>
+
+For instance, the task `fix-issue-654` is now complete. We can review the modifications by selecting `Diff worktree with origin/main`, and Pochi will open a tab showing all the files changes.
+
+Or choose `Open in Integrated Terminal` to launch the terminal within this worktree for command execution.
+
+
 # Permissions
 URL: /permissions
 Manage Pochi's auto-approval settings
