@@ -3,10 +3,27 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
+    "prebuild": "fumadocs-mdx",
     "build": "next build && next-image-export-optimizer",
     "dev": "next dev",
     "start": "next start",
     "postinstall": "fumadocs-mdx"
+  },
+  "turbo": {
+    "tasks": {
+      "build": {
+        "dependsOn": [
+          "^build",
+          "tsc"
+        ],
+        "outputs": [
+          ".next/**",
+          ".source/**",
+          "public/**",
+          "out/**"
+        ]
+      }
+    }
   },
   "dependencies": {
     "@orama/orama": "^3.1.11",
