@@ -47,18 +47,45 @@ export interface SettingsState {
   updateEnablePochiModels: (value: boolean) => void;
 }
 
-const GlobalStateStorage: StateStorage = {
+const settingsStorageName = "ragdoll-settings-storage";
+
+export const GlobalStateStorage: StateStorage & {
+  persist: (data: Partial<SettingsState>) => Promise<void>;
+} = {
   async getItem(name) {
     const value = await vscodeHost.getGlobalState(name, null);
     return value as string | null;
   },
 
   async setItem(name: string, value: string | null) {
-    await vscodeHost.setGlobalState(name, value);
+    if (globalThis.POCHI_WEBVIEW_KIND === "sidebar") {
+      await vscodeHost.setGlobalState(name, value);
+    }
   },
 
   async removeItem(name) {
     await vscodeHost.setGlobalState(name, null);
+  },
+
+  async persist(data: Partial<SettingsState>) {
+    try {
+      const currentGlobalState = (await vscodeHost.getGlobalState(
+        settingsStorageName,
+      )) as string | null;
+      if (!currentGlobalState) return;
+
+      const currentData = JSON.parse(currentGlobalState);
+      const nextStore = JSON.stringify({
+        ...currentData,
+        state: {
+          ...currentData.state,
+          ...data,
+        },
+      });
+      await vscodeHost.setGlobalState(settingsStorageName, nextStore);
+    } catch (e) {
+      // ignore
+    }
   },
 };
 
@@ -133,12 +160,26 @@ export const useSettingsStore = create<SettingsState>()(
         set(() => ({ enablePochiModels: value })),
     }),
     {
-      name: "ragdoll-settings-storage",
+      name: settingsStorageName,
       storage: createJSONStorage(() => GlobalStateStorage),
       partialize: (state) =>
         Object.fromEntries(
           Object.entries(state).filter(([_, v]) => typeof v !== "function"),
         ),
+      merge(persistedState, currentState) {
+        return {
+          ...currentState,
+          ...(persistedState as object),
+          // ensure subtask's autoApproveSettings inherits from global state
+          subtaskAutoApproveSettings:
+            (persistedState as SettingsState)?.autoApproveSettings ??
+            currentState.autoApproveSettings,
+          // ensure subtask's autoApproveActive inherits from global state
+          subtaskAutoApproveActive:
+            (persistedState as SettingsState)?.autoApproveActive ??
+            currentState.autoApproveSettings,
+        };
+      },
       version: 1,
       migrate: (persistedState: unknown) => {
         if (

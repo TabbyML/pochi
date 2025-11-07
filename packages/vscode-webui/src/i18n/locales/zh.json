@@ -115,7 +115,8 @@
       "mcp": "MCP",
       "retry": "重试",
       "subtaskOffhand": "子任务 - 自动",
-      "subtaskManual": "子任务 - 手动"
+      "subtaskManual": "子任务 - 手动",
+      "applyChangesToDefault": "将更改应用于默认设置"
     },
     "customAgents": {
       "title": "代理",

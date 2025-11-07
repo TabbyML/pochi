@@ -115,7 +115,8 @@
       "mcp": "MCP",
       "retry": "재시도",
       "subtaskOffhand": "하위 작업 - 자동",
-      "subtaskManual": "하위 작업 - 수동"
+      "subtaskManual": "하위 작업 - 수동",
+      "applyChangesToDefault": "기본값에 변경 사항 적용"
     },
     "customAgents": {
       "title": "에이전트",

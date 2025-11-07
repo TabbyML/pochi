@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/hover-card";
 
 import { WorktreeSelect } from "@/components/worktree-select";
-import { useSelectedModels } from "@/features/settings";
+import { useSelectedModels, useSettingsStore } from "@/features/settings";
 import type { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
 import { useWorktrees } from "@/lib/hooks/use-worktrees";
 import { vscodeHost } from "@/lib/vscode";
@@ -83,6 +83,10 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
     return worktreesData.data?.filter((x) => x.path === workspaceFolder) ?? [];
   }, [isOpenMainWorktree, worktreesData.data, workspaceFolder]);
 
+  const onFocus = () => {
+    useSettingsStore.persist.rehydrate();
+  };
+
   const handleSubmit = useCallback(
     async (e?: React.FormEvent<HTMLFormElement>) => {
       e?.preventDefault();
@@ -148,6 +152,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
         isSubTask={false}
         onQueueMessage={noop}
         onRemoveQueuedMessage={noop}
+        onFocus={onFocus}
       >
         {files.length > 0 && (
           <div className="px-3">

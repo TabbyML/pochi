@@ -121,7 +121,8 @@
       "mcp": "MCP",
       "retry": "Retry",
       "subtaskOffhand": "Subtask - Offhand",
-      "subtaskManual": "Subtask - Manual"
+      "subtaskManual": "Subtask - Manual",
+      "applyChangesToDefault": "Apply changes to default"
     },
     "customAgents": {
       "title": "Agents",

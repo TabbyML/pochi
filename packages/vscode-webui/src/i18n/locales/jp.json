@@ -115,7 +115,8 @@
       "mcp": "MCP",
       "retry": "再試行",
       "subtaskOffhand": "サブタスク - 自動",
-      "subtaskManual": "サブタスク - 手動"
+      "subtaskManual": "サブタスク - 手動",
+      "applyChangesToDefault": "デフォルトに変更を適用"
     },
     "customAgents": {
       "title": "エージェント",

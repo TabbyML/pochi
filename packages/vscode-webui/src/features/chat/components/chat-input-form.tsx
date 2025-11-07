@@ -18,6 +18,7 @@ interface ChatInputFormProps {
   onQueueMessage: (message: string) => void;
   isLoading: boolean;
   onPaste: (event: ClipboardEvent) => void;
+  onFocus?: (event: FocusEvent) => void;
   pendingApproval: ReturnType<typeof useApprovalAndRetry>["pendingApproval"];
   status: UseChatHelpers<Message>["status"];
   onFileDrop?: (files: File[]) => boolean;
@@ -35,6 +36,7 @@ export function ChatInputForm({
   onQueueMessage,
   isLoading,
   onPaste,
+  onFocus,
   pendingApproval,
   status,
   onFileDrop,
@@ -59,6 +61,7 @@ export function ChatInputForm({
       onFileDrop={onFileDrop}
       messageContent={messageContent}
       isSubTask={isSubTask}
+      onFocus={onFocus}
     >
       <ActiveSelectionBadge
         onClick={() => {

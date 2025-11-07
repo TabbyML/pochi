@@ -108,6 +108,7 @@ interface FormEditorProps {
   onPaste?: (e: ClipboardEvent) => void;
   enableSubmitHistory?: boolean;
   onFileDrop?: (files: File[]) => boolean;
+  onFocus?: (event: FocusEvent) => void;
   messageContent?: string;
   isSubTask: boolean;
 }
@@ -123,6 +124,7 @@ export function FormEditor({
   editorRef,
   autoFocus = true,
   onPaste,
+  onFocus,
   enableSubmitHistory = true,
   onFileDrop,
   messageContent = "",
@@ -482,6 +484,9 @@ export function FormEditor({
       },
       onPaste: (e) => {
         onPaste?.(e);
+      },
+      onFocus(props) {
+        onFocus?.(props.event);
       },
     },
     [],
