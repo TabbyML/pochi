@@ -14,11 +14,14 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { WelcomeScreen } from "@/components/welcome-screen";
 import { WorkspaceRequiredPlaceholder } from "@/components/workspace-required-placeholder";
 import { CreateTaskInput } from "@/features/chat";
 import { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
 import { useCurrentWorkspace } from "@/lib/hooks/use-current-workspace";
+import { useModelList } from "@/lib/hooks/use-model-list";
 import { usePochiCredentials } from "@/lib/hooks/use-pochi-credentials";
+import { useUserStorage } from "@/lib/hooks/use-user-storage";
 import { useWorktrees } from "@/lib/hooks/use-worktrees";
 import { cn } from "@/lib/utils";
 import { setActiveStore, vscodeHost } from "@/lib/vscode";
@@ -168,8 +171,16 @@ const getPaginationItems = (
 function App() {
   const { data: currentWorkspace, isFetching: isFetchingWorkspace } =
     useCurrentWorkspace();
-  if (isFetchingWorkspace) {
+
+  const { users, isLoading: isUserLoading } = useUserStorage();
+  const { modelList = [], isLoading: isModelListLoading } = useModelList(true);
+
+  if (isFetchingWorkspace || isUserLoading || isModelListLoading) {
     return;
+  }
+
+  if (!users?.pochi && modelList.length === 0) {
+    return <WelcomeScreen user={users?.pochi} />;
   }
 
   if (!currentWorkspace?.cwd) {
