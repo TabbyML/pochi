@@ -107,7 +107,7 @@ export async function runPochi(githubManager: GitHubManager): Promise<void> {
       env: {
         ...process.env,
         POCHI_CUSTOM_INSTRUCTIONS: instruction,
-        POCHI_SESSION_TOKEN: config.token,
+        POCHI_API_KEY: config.token,
       },
     });
 

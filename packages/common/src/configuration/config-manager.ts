@@ -52,14 +52,14 @@ class PochiConfigManager {
 
   constructor() {
     this.userConfigFile = new PochiConfigFile(UserConfigFilePath);
-    if (process.env.POCHI_SESSION_TOKEN) {
+    if (process.env.POCHI_API_KEY) {
       this.userConfigFile.config.value = mergeDeep(
         this.userConfigFile.config.value,
         {
           vendors: {
             pochi: {
               credentials: {
-                token: process.env.POCHI_SESSION_TOKEN,
+                token: process.env.POCHI_API_KEY,
               },
             },
           },
