@@ -193,10 +193,14 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
         }
 
         if (!task?.cwd) return;
+
+        const storeId = encodeStoreId(jwt, task.parentId || task.id);
         const isTaskPanelVisible = await vscodeHost.isTaskPanelVisible({
           cwd: task?.cwd,
           uid: task?.id,
+          storeId,
         });
+
         if (isTaskPanelVisible) {
           return;
         }
@@ -230,10 +234,9 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
           );
           if (result === t("notification.task.action.viewDetail") && task.cwd) {
             // do navigation
-            const storeId = encodeStoreId(jwt, task.parentId || task.id);
             vscodeHost.openTaskInPanel({
-              uid: task.id,
               cwd: task.cwd,
+              uid: task.id,
               storeId,
             });
           }
