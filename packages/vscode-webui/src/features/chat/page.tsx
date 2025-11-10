@@ -228,7 +228,7 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
             },
             t("notification.task.action.viewDetail"),
           );
-          if (result === "View detail" && task.cwd) {
+          if (result === t("notification.task.action.viewDetail") && task.cwd) {
             // do navigation
             const storeId = encodeStoreId(jwt, task.parentId || task.id);
             vscodeHost.openTaskInPanel({
