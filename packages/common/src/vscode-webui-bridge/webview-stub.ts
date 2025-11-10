@@ -228,6 +228,8 @@ const VSCodeHostStub = {
 
   openTaskInPanel: async (): Promise<void> => {},
 
+  isTaskPanelVisible: async (): Promise<boolean> => false,
+
   onTaskUpdated: async (): Promise<void> => {},
 
   readWorktrees: async (): Promise<

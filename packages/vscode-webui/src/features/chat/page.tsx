@@ -4,11 +4,13 @@ import { usePendingModelAutoStart } from "@/features/retry";
 import { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
 import { useCurrentWorkspace } from "@/lib/hooks/use-current-workspace";
 import { useCustomAgent } from "@/lib/hooks/use-custom-agents";
+import { usePochiCredentials } from "@/lib/hooks/use-pochi-credentials";
 import { prepareMessageParts } from "@/lib/message-utils";
 import { vscodeHost } from "@/lib/vscode";
 import { useChat } from "@ai-sdk/react";
 import { formatters } from "@getpochi/common";
 import type { UserInfo } from "@getpochi/common/configuration";
+import { encodeStoreId } from "@getpochi/common/store-id-utils";
 import { type Task, catalog, taskCatalog } from "@getpochi/livekit";
 import type { Message } from "@getpochi/livekit";
 import { useLiveChatKit } from "@getpochi/livekit/react";
@@ -55,6 +57,7 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
   const { t } = useTranslation();
   const { store } = useStore();
   const todosRef = useRef<Todo[] | undefined>(undefined);
+  const isInitialTaskUpdate = useRef(true);
 
   const defaultUser = {
     name: t("chatPage.defaultUserName"),
@@ -82,6 +85,7 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
       );
     }
   }, [task]);
+
   const subtask = useSubtaskInfo(uid, task?.parentId);
   const {
     isLoading: isModelsLoading,
@@ -132,6 +136,9 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
 
   const chat = useChat({
     chat: chatKit.chat,
+    onFinish: () => {
+      console.log("finish");
+    },
   });
 
   const { messages, sendMessage, status } = chat;
@@ -143,6 +150,11 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
     showApproval: !isLoading && !isModelsLoading && !!selectedModel,
     isSubTask: !!subtask,
   });
+
+  // const [visible, setVisible] = useState(false)
+  // useEffect(() => {
+  //   window.addEventListener('')
+  // }, [])
 
   const { pendingApproval, retry } = approvalAndRetry;
 
@@ -169,6 +181,68 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
     task,
     retry,
   });
+
+  const { jwt } = usePochiCredentials();
+  useEffect(() => {
+    isInitialTaskUpdate.current = true;
+    const unsubscribe = store.subscribe(catalog.queries.makeTaskQuery(uid), {
+      onUpdate: async (task) => {
+        if (isInitialTaskUpdate.current) {
+          isInitialTaskUpdate.current = false;
+          return;
+        }
+
+        if (!task?.cwd) return;
+        const isTaskPanelVisible = await vscodeHost.isTaskPanelVisible({
+          cwd: task?.cwd,
+          uid: task?.id,
+        });
+        if (isTaskPanelVisible) {
+          return;
+        }
+
+        if (
+          task?.status === "pending-input" ||
+          task?.status === "completed" ||
+          (task?.status === "failed" && pendingApproval?.name !== "retry")
+        ) {
+          let renderMessage = "";
+          switch (task.status) {
+            case "pending-input":
+              renderMessage = t("notification.task.status.pendingInput");
+              break;
+            case "completed":
+              renderMessage = t("notification.task.status.completed");
+              break;
+            case "failed":
+              renderMessage = t("notification.task.status.failed");
+              break;
+            default:
+              break;
+          }
+
+          const result = await vscodeHost.showInformationMessage(
+            renderMessage,
+            {
+              modal: false,
+            },
+            t("notification.task.action.viewDetail"),
+          );
+          if (result === "View detail" && task.cwd) {
+            // do navigation
+            const storeId = encodeStoreId(jwt, task.parentId || task.id);
+            vscodeHost.openTaskInPanel({
+              uid: task.id,
+              cwd: task.cwd,
+              storeId,
+            });
+          }
+        }
+      },
+    });
+
+    return () => unsubscribe();
+  }, [uid, store.subscribe, pendingApproval, jwt, t]);
 
   useAddSubtaskResult({ ...chat });
 

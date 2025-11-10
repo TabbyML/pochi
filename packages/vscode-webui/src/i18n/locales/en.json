@@ -189,6 +189,18 @@
     },
     "worktreeNotExist": "Worktree does not exist"
   },
+  "notification": {
+    "task": {
+      "status": {
+        "pendingInput": "Your input is needed to continue this task.",
+        "completed": "Task completed successfully.",
+        "failed": "Task failed."
+      },
+      "action": {
+        "viewDetail": "View Details"
+      }
+    }
+  },
   "toolInvocation": {
     "taskCompleted": "Task Completed",
     "reading": "Reading ",

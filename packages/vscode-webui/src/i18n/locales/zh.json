@@ -182,6 +182,18 @@
     },
     "worktreeNotExist": "工作树不存在"
   },
+  "notification": {
+    "task": {
+      "status": {
+        "pendingInput": "Your input is needed to continue this task.",
+        "completed": "Task completed successfully.",
+        "failed": "Task failed."
+      },
+      "action": {
+        "viewDetail": "View Details"
+      }
+    }
+  },
   "toolInvocation": {
     "taskCompleted": "任务完成",
     "reading": "正在读取 ",

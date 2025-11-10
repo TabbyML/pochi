@@ -284,7 +284,9 @@ export interface VSCodeHostApi {
     ThreadSignalSerialization<Record<string, UserInfo>>
   >;
 
-  openTaskInPanel(options: TaskIdParams & { cwd: string }): Promise<void>;
+  openTaskInPanel(params: TaskIdParams & { cwd: string }): Promise<void>;
+
+  isTaskPanelVisible(params: TaskIdParams & { cwd: string }): Promise<boolean>;
 
   onTaskUpdated(taskData: unknown): Promise<void>;
 

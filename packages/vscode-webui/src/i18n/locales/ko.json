@@ -183,6 +183,18 @@
     },
     "worktreeNotExist": "워크트리가 존재하지 않습니다"
   },
+  "notification": {
+    "task": {
+      "status": {
+        "pendingInput": "Your input is needed to continue this task.",
+        "completed": "Task completed successfully.",
+        "failed": "Task failed."
+      },
+      "action": {
+        "viewDetail": "View Details"
+      }
+    }
+  },
   "toolInvocation": {
     "taskCompleted": "작업 완료",
     "reading": "읽는 중 ",

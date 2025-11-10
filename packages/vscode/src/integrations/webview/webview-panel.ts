@@ -160,6 +160,28 @@ export class PochiTaskEditorProvider
     }
   }
 
+  public static async isTaskEditorVisible(params: TaskPanelParams) {
+    try {
+      if (!params.uid) return false;
+      const uri = PochiTaskEditorProvider.createTaskUri(params);
+      for (const group of vscode.window.tabGroups.all) {
+        for (const tab of group.tabs) {
+          if (
+            tab.input instanceof vscode.TabInputCustom &&
+            tab.input.viewType === PochiTaskEditorProvider.viewType &&
+            tab.input.uri.toString() === uri.toString() &&
+            tab.isActive
+          ) {
+            return true;
+          }
+        }
+      }
+      return false;
+    } catch (error) {
+      return false;
+    }
+  }
+
   public static async closeTaskEditor(uri: vscode.Uri) {
     for (const group of vscode.window.tabGroups.all) {
       for (const tab of group.tabs) {
