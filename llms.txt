@@ -2006,16 +2006,14 @@ We’re actively working on a series of UX improvements to the VS Code chat side
 Stay tuned for the upcoming update!
 
 
-# Weekly Update
-URL: /developer-updates/2025-11-11-weekly-update-10
+# Launching Parallel Agents
+URL: /developer-updates/2025-11-11-launch-parallel-agent
 
 ***
 
-## title: Weekly Update #10
+## title: Launching Parallel Agents
 
-# Weekly Update #10
-
-### Parallel Agents
+# Launching Parallel Agents
 
 Teams rarely work on a single task at a time. You might be part-way through a feature when a bug report arrives, someone needs a small refactor reviewed, or a documentation fix is pending. Most tools and workflows force these tasks to share one working state.
 
@@ -2096,13 +2094,11 @@ Here you will find highlights on features, enhancements, and bug fixes, plus ins
 
   --- */}
 
-## [Weekly Update #10](./2025-11-01-weekly-update-10)
+## [Launching Parallel Agents](./2025-11-11-launch-parallel-agent)
 
 #### Nov 11, 2025
 
-# Weekly Update #10
-
-### Parallel Agents
+# Launching Parallel Agents
 
 Teams rarely work on a single task at a time. You might be part-way through a feature when a bug report arrives, someone needs a small refactor reviewed, or a documentation fix is pending. Most tools and workflows force these tasks to share one working state.
 
