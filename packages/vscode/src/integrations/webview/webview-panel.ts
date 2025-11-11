@@ -82,21 +82,29 @@ export class PochiWebviewPanel
   }
 }
 
+export class PochiTaskDocument implements vscode.CustomDocument {
+  constructor(
+    public uri: vscode.Uri,
+    public params?: TaskPanelParams,
+  ) {}
+
+  dispose(): void {
+    // No cleanup needed for the document itself.
+  }
+}
+
 export class PochiTaskEditorProvider
-  implements vscode.CustomTextEditorProvider, vscode.TextDocumentContentProvider
+  implements vscode.CustomReadonlyEditorProvider<PochiTaskDocument>
 {
   static readonly viewType = "pochi.taskEditor";
   static readonly scheme = "pochi-task";
 
+  // only use for task params caching during opening
+  private static readonly taskParamsCache = new Map<string, TaskPanelParams>();
+
   public static register(context: vscode.ExtensionContext): vscode.Disposable {
     const provider = new PochiTaskEditorProvider(context);
     const disposables: vscode.Disposable[] = [];
-    disposables.push(
-      vscode.workspace.registerTextDocumentContentProvider(
-        PochiTaskEditorProvider.scheme,
-        provider,
-      ),
-    );
 
     disposables.push(
       vscode.window.registerCustomEditorProvider(
@@ -106,6 +114,7 @@ export class PochiTaskEditorProvider
           webviewOptions: {
             retainContextWhenHidden: true,
           },
+          supportsMultipleEditorsPerDocument: false,
         },
       ),
     );
@@ -115,14 +124,17 @@ export class PochiTaskEditorProvider
     return vscode.Disposable.from(...disposables);
   }
 
-  public static createTaskUri(params: TaskPanelParams): vscode.Uri {
+  public static createTaskUri(params: {
+    cwd: string;
+    uid: string;
+  }): vscode.Uri {
     const worktreeName = getWorktreeNameFromWorktreePath(params.cwd);
     return vscode.Uri.from({
       scheme: PochiTaskEditorProvider.scheme,
       path: `/pochi/task/Pochi - ${worktreeName ?? "main"} - ${
         params.uid.split("-")[0]
       }`,
-      query: JSON.stringify(params),
+      query: JSON.stringify({ cwd: params.cwd, uid: params.uid }), // keep query string stable for identification
     });
   }
 
@@ -130,10 +142,12 @@ export class PochiTaskEditorProvider
     params: TaskPanelParams | NewTaskPanelParams,
   ) {
     try {
-      const uri = PochiTaskEditorProvider.createTaskUri({
+      const taskParams = {
         ...params,
         uid: params.uid ?? crypto.randomUUID(),
-      });
+      };
+      const uri = PochiTaskEditorProvider.createTaskUri(taskParams);
+      PochiTaskEditorProvider.taskParamsCache.set(uri.toString(), taskParams);
       await openTaskInColumn(uri);
     } catch (error) {
       const errorMessage = toErrorMessage(error);
@@ -160,11 +174,28 @@ export class PochiTaskEditorProvider
     }
   }
 
+  public static parseTaskUri(
+    uri: vscode.Uri,
+  ): { cwd: string; uid: string } | null {
+    try {
+      const query = JSON.parse(decodeURIComponent(uri.query)) as {
+        cwd: string;
+        uid: string;
+      };
+
+      if (!query?.cwd || !query?.uid) {
+        return null;
+      }
+
+      return query;
+    } catch {
+      return null;
+    }
+  }
+
   public static async reset(uri: vscode.Uri) {
     try {
-      const query = JSON.parse(
-        decodeURIComponent(uri.query),
-      ) as TaskPanelParams;
+      const query = PochiTaskEditorProvider.parseTaskUri(uri);
 
       if (!query?.cwd) {
         vscode.window.showErrorMessage(
@@ -190,34 +221,32 @@ export class PochiTaskEditorProvider
 
   constructor(private readonly context: vscode.ExtensionContext) {}
 
-  // emitter and its event
-  onDidChangeEmitter = new vscode.EventEmitter<vscode.Uri>();
-  onDidChange = this.onDidChangeEmitter.event;
-  provideTextDocumentContent(
-    _uri: vscode.Uri,
+  openCustomDocument(
+    uri: vscode.Uri,
+    _openContext: vscode.CustomDocumentOpenContext,
     _token: vscode.CancellationToken,
-  ): vscode.ProviderResult<string> {
-    return "Pochi Task";
+  ): PochiTaskDocument | Thenable<PochiTaskDocument> {
+    const params = PochiTaskEditorProvider.taskParamsCache.get(uri.toString());
+    return new PochiTaskDocument(uri, params);
   }
 
-  async resolveCustomTextEditor(
-    document: vscode.TextDocument,
+  async resolveCustomEditor(
+    document: PochiTaskDocument,
     webviewPanel: vscode.WebviewPanel,
     _token: vscode.CancellationToken,
   ): Promise<void> {
     try {
-      const params = document.uri.query
-        ? (JSON.parse(
-            decodeURIComponent(document.uri.query),
-          ) as TaskPanelParams)
-        : undefined;
-      if (!params) {
-        vscode.window.showErrorMessage(
-          "Failed to open Pochi task: missing parameters",
+      const params = document.params;
+      const uriParams = PochiTaskEditorProvider.parseTaskUri(document.uri);
+      if (!uriParams) {
+        throw new Error(
+          `Failed to open Pochi task: invalid parameters for ${document.uri.toString()}`,
         );
-        return;
       }
-      await this.setupWebview(webviewPanel, params);
+      await this.setupWebview(webviewPanel, {
+        ...(params ?? {}),
+        ...uriParams,
+      });
     } catch (error) {
       const errorMessage = toErrorMessage(error);
       vscode.window.showErrorMessage(
