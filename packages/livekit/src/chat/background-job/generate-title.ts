@@ -39,7 +39,6 @@ async function process({
   }
 
   const newTitle = await generateTaskTitle({
-    store,
     taskId,
     title: task.title,
     messages,

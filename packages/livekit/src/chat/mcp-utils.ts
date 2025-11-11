@@ -1,20 +1,18 @@
 import { type Tool, jsonSchema, tool } from "@ai-sdk/provider-utils";
 import type { McpTool } from "@getpochi/tools";
-import type { Store } from "@livestore/livestore";
 import type { JSONValue } from "ai";
 import z from "zod";
 
 import { findBlob } from "../store-blob";
 
 export function parseMcpToolSet(
-  store: Store,
   mcpToolSet: Record<string, McpTool> | undefined,
 ): Record<string, Tool> | undefined {
   return mcpToolSet
     ? Object.fromEntries(
         Object.entries(mcpToolSet).map(([name, tool]) => [
           name,
-          parseMcpTool(store, name, tool),
+          parseMcpTool(name, tool),
         ]),
       )
     : undefined;
@@ -41,7 +39,7 @@ const ContentOutput = z.union([
   }),
 ]);
 
-function parseMcpTool(store: Store, _name: string, mcpTool: McpTool): Tool {
+function parseMcpTool(_name: string, mcpTool: McpTool): Tool {
   return tool({
     description: mcpTool.description,
     inputSchema: jsonSchema(mcpTool.inputSchema.jsonSchema),
@@ -76,7 +74,7 @@ function parseMcpTool(store: Store, _name: string, mcpTool: McpTool): Tool {
             return item;
           }
 
-          const blob = findBlob(store, new URL(item.data), item.mimeType);
+          const blob = findBlob(new URL(item.data), item.mimeType);
           if (!blob) {
             return {
               type: "text" as const,

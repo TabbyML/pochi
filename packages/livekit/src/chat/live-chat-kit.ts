@@ -117,7 +117,6 @@ export class LiveChatKit<
         try {
           const model = createModel({ llm: getters.getLLM() });
           await compactTask({
-            store: this.store,
             taskId: this.taskId,
             model,
             messages,
@@ -139,7 +138,6 @@ export class LiveChatKit<
       const { messages } = this.chat;
       const model = createModel({ llm: getters.getLLM() });
       const summary = await compactTask({
-        store: this.store,
         taskId,
         model,
         messages,

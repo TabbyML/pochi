@@ -106,19 +106,6 @@ store
   })
   .get("/tasks/:taskId/html", async (c) => {
     return c.env.ASSETS.fetch(c.req.raw);
-  })
-  .get("/blobs/:blobId", async (c) => {
-    const store = await c.env.getStore();
-    const blob = store.query(
-      catalog.queries.makeBlobQuery(c.req.param("blobId")),
-    );
-    if (!blob) {
-      throw new HTTPException(404, { message: "Blob not found" });
-    }
-    return c.body(blob.data, 200, {
-      "content-type": blob.mimeType,
-      "cache-control": "public, max-age=31536000, immutable",
-    });
   });
 
 export const app = new Hono<{ Bindings: Env }>();

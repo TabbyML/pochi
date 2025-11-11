@@ -9,11 +9,7 @@ import {
 } from "@getpochi/common/message-utils";
 import { findTodos, mergeTodos } from "@getpochi/common/message-utils";
 
-import {
-  type LLMRequestData,
-  type Message,
-  processContentOutput,
-} from "@getpochi/livekit";
+import type { LLMRequestData, Message } from "@getpochi/livekit";
 import { LiveChatKit } from "@getpochi/livekit/node";
 import { type Todo, isUserInputToolPart } from "@getpochi/tools";
 import type { CustomAgent } from "@getpochi/tools";
@@ -102,7 +98,6 @@ export interface RunnerOptions {
 const logger = getLogger("TaskRunner");
 
 export class TaskRunner {
-  private store: Store;
   private cwd: string;
   private llm: LLMRequestData;
   private toolCallOptions: ToolCallOptions;
@@ -143,7 +138,6 @@ export class TaskRunner {
       },
     };
     this.stepCount = new StepCount(options.maxSteps, options.maxRetries);
-    this.store = options.store;
     this.chatKit = new LiveChatKit<Chat>({
       taskId: options.uid,
       store: options.store,
@@ -345,15 +339,12 @@ export class TaskRunner {
         )}`,
       );
 
-      const toolResult = await processContentOutput(
-        this.store,
-        await executeToolCall(
-          toolCall,
-          this.toolCallOptions,
-          this.cwd,
-          undefined,
-          this.llm.contentType,
-        ),
+      const toolResult = await executeToolCall(
+        toolCall,
+        this.toolCallOptions,
+        this.cwd,
+        undefined,
+        this.llm.contentType,
       );
 
       await this.chatKit.chat.addToolResult({
