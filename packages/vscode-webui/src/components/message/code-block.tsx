@@ -1,6 +1,12 @@
 import { Button } from "@/components/ui/button";
 import { useCopyToClipboard } from "@/lib/hooks/use-copy-to-clipboard";
-import { CheckIcon, CodeIcon, CopyIcon, ImageIcon } from "lucide-react";
+import {
+  CheckIcon,
+  CodeIcon,
+  CopyIcon,
+  ImageIcon,
+  WrapText,
+} from "lucide-react";
 import { type FC, memo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -27,15 +33,24 @@ interface MenuButtonProps {
   onClick: () => void;
   children: React.ReactNode;
   tooltip: string;
+  active?: boolean;
 }
 
-const MenuButton: FC<MenuButtonProps> = ({ onClick, children, tooltip }) => (
+const MenuButton: FC<MenuButtonProps> = ({
+  onClick,
+  children,
+  tooltip,
+  active,
+}) => (
   <Tooltip>
     <TooltipTrigger asChild>
       <Button
         size="icon"
         variant="ghost"
-        className="size-6 p-0 text-xs focus-visible:ring-1 focus-visible:ring-slate-700 focus-visible:ring-offset-0"
+        className={cn(
+          "size-6 p-0 text-xs focus-visible:ring-1 focus-visible:ring-slate-700 focus-visible:ring-offset-0",
+          { "bg-accent text-accent-foreground": active },
+        )}
         onClick={onClick}
       >
         {children}
@@ -52,6 +67,7 @@ interface CodeRendererProps {
   value: string;
   theme: string | undefined;
   showMermaidPreview: boolean;
+  wrap: boolean;
 }
 
 const CodeRenderer: FC<CodeRendererProps> = ({
@@ -59,6 +75,7 @@ const CodeRenderer: FC<CodeRendererProps> = ({
   value,
   theme,
   showMermaidPreview,
+  wrap,
 }) => {
   const languageForSyntax = (
     language === "toml" ? "bash" : language
@@ -73,7 +90,10 @@ const CodeRenderer: FC<CodeRendererProps> = ({
       language={languageForSyntax}
       value={value}
       theme={theme}
-      preClassName="not-prose bg-transparent [&>code]:!bg-transparent text-sm"
+      preClassName={cn(
+        "not-prose bg-transparent [&>code]:!bg-transparent text-sm",
+        { "whitespace-pre-wrap break-words": wrap },
+      )}
       className="mx-3 mb-1"
     />
   );
@@ -85,6 +105,7 @@ const CodeBlock: FC<CodeBlockProps> = memo(
     const [showMermaidPreview, setShowMermaidPreview] = useState(
       language === "mermaid",
     );
+    const [wrap, setWrap] = useState(false);
     const { theme } = useTheme();
     const { isCopied, copyToClipboard } = useCopyToClipboard({
       timeout: 2000,
@@ -118,6 +139,14 @@ const CodeBlock: FC<CodeBlockProps> = memo(
                   {showMermaidPreview ? <CodeIcon /> : <ImageIcon />}
                 </MenuButton>
               )}
+              <MenuButton
+                onClick={() => setWrap(!wrap)}
+                tooltip={t("codeBlock.toggleLineWrap")}
+                active={wrap}
+              >
+                {" "}
+                <WrapText />
+              </MenuButton>
               <MenuButton onClick={onCopy} tooltip={t("codeBlock.copy")}>
                 {isCopied ? <CheckIcon /> : <CopyIcon />}
                 <span className="sr-only">{t("codeBlock.copy")}</span>
@@ -131,6 +160,7 @@ const CodeBlock: FC<CodeBlockProps> = memo(
             value={value}
             theme={theme}
             showMermaidPreview={showMermaidPreview}
+            wrap={wrap}
           />
         </div>
       </div>

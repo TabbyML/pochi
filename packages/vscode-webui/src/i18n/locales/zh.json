@@ -259,7 +259,8 @@
   "codeBlock": {
     "showCode": "显示代码",
     "showDiagram": "显示图表",
-    "copy": "复制"
+    "copy": "复制",
+    "toggleLineWrap": "切换换行"
   },
   "messageList": {
     "compactedConversationTooltip": "从此处开始，对话已被压缩以减少令牌使用量"

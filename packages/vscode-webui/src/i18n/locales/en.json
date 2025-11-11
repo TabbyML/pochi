@@ -266,7 +266,8 @@
   "codeBlock": {
     "showCode": "Show code",
     "showDiagram": "Show diagram",
-    "copy": "Copy"
+    "copy": "Copy",
+    "toggleLineWrap": "Toggle line wrap"
   },
   "messageList": {
     "compactedConversationTooltip": "Conversation has been compacted from this point onward to reduce token usage"

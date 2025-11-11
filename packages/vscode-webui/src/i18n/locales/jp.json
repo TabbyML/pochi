@@ -260,7 +260,8 @@
   "codeBlock": {
     "showCode": "コードを表示",
     "showDiagram": "図を表示",
-    "copy": "コピー"
+    "copy": "コピー",
+    "toggleLineWrap": "行の折り返しを切り替える"
   },
   "messageList": {
     "compactedConversationTooltip": "トークン使用量を削減するため、この時点から会話が圧縮されています"
