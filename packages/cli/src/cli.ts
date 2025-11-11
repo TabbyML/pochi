@@ -21,7 +21,7 @@ import "@getpochi/vendor-qwen-code/edge";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { Command, Option } from "@commander-js/extra-typings";
-import { constants, getLogger } from "@getpochi/common";
+import { constants, getLogger, prompts } from "@getpochi/common";
 import {
   pochiConfig,
   setPochiConfigWorkspacePath,
@@ -164,8 +164,15 @@ const program = new Command()
             }),
           );
           parts.push({
+            type: "text",
+            text: prompts.createSystemReminder(
+              `Attached file: ${path.relative(process.cwd(), absolutePath)}`,
+            ),
+          });
+          parts.push({
             type: "file",
             mediaType: mimeType,
+            filename: path.basename(absolutePath),
             url: dataUrl,
           } satisfies FileUIPart);
         } catch (error) {
