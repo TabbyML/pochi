@@ -14,6 +14,7 @@ import type {
   SaveCheckpointOptions,
   SessionState,
   TaskIdParams,
+  TaskPanelParams,
   UserEditsDiff,
   WorkspaceState,
 } from "./index";
@@ -284,9 +285,9 @@ export interface VSCodeHostApi {
     ThreadSignalSerialization<Record<string, UserInfo>>
   >;
 
-  openTaskInPanel(params: TaskIdParams & { cwd: string }): Promise<void>;
+  openTaskInPanel(params: TaskPanelParams): Promise<void>;
 
-  isTaskPanelVisible(params: TaskIdParams & { cwd: string }): Promise<boolean>;
+  isTaskPanelVisible(params: TaskPanelParams): Promise<boolean>;
 
   onTaskUpdated(taskData: unknown): Promise<void>;
 
