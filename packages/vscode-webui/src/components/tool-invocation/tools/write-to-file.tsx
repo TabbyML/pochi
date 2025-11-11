@@ -66,13 +66,7 @@ export const writeToFileTool: React.FC<ToolProps<"writeToFile">> = ({
   const details = [];
 
   if (result?._meta?.edit) {
-    details.push(
-      <ModelEdits
-        key="model-edits"
-        edit={result?._meta?.edit}
-        isPreview={false}
-      />,
-    );
+    details.push(<ModelEdits key="model-edits" edit={result?._meta?.edit} />);
   }
 
   if (result?.newProblems) {
@@ -88,7 +82,7 @@ export const writeToFileTool: React.FC<ToolProps<"writeToFile">> = ({
   const expandableDetail = details.length > 0 ? <>{details}</> : undefined;
 
   const detail = previewInfo?.edit ? (
-    <ModelEdits edit={previewInfo.edit} isPreview={true} />
+    <ModelEdits edit={previewInfo.edit} />
   ) : null;
 
   return (
