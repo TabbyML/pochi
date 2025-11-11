@@ -2,7 +2,9 @@ import type React from "react";
 
 import type { PendingApproval } from "@/features/approval";
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
-import { useEffect } from "react";
+import type { Task } from "@getpochi/livekit";
+import { useCallback, useEffect } from "react";
+import { useSendTaskNotification } from "../../chat/lib/use-send-task-notification";
 import { RetryApprovalButton } from "./retry-approval-button";
 import { ToolCallApprovalButton } from "./tool-call-approval-button";
 
@@ -11,6 +13,7 @@ interface ApprovalButtonProps {
   retry: (error: Error) => void;
   allowAddToolResult: boolean;
   isSubTask: boolean;
+  task?: Task;
 }
 
 export const ApprovalButton: React.FC<ApprovalButtonProps> = ({
@@ -18,6 +21,7 @@ export const ApprovalButton: React.FC<ApprovalButtonProps> = ({
   pendingApproval,
   retry,
   isSubTask,
+  task,
 }) => {
   const shouldShowApprovalButton = pendingApproval && allowAddToolResult;
 
@@ -30,6 +34,12 @@ export const ApprovalButton: React.FC<ApprovalButtonProps> = ({
     setShowApprovalButton(!!shouldShowApprovalButton);
   }, [setShowApprovalButton, shouldShowApprovalButton]);
 
+  const { sendNotification } = useSendTaskNotification();
+
+  const sendTaskNotification = useCallback(() => {
+    sendNotification(task);
+  }, [task, sendNotification]);
+
   if (!showApprovalButton || !shouldShowApprovalButton) {
     return null;
   }
@@ -37,11 +47,16 @@ export const ApprovalButton: React.FC<ApprovalButtonProps> = ({
   return (
     <div className="flex select-none gap-3 [&>button]:flex-1 [&>button]:rounded-sm">
       {pendingApproval.name === "retry" ? (
-        <RetryApprovalButton pendingApproval={pendingApproval} retry={retry} />
+        <RetryApprovalButton
+          sendTaskNotification={sendTaskNotification}
+          pendingApproval={pendingApproval}
+          retry={retry}
+        />
       ) : (
         <ToolCallApprovalButton
           pendingApproval={pendingApproval}
           isSubTask={isSubTask}
+          sendTaskNotification={sendTaskNotification}
         />
       )}
     </div>

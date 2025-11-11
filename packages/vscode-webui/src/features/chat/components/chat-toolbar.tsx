@@ -193,6 +193,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
         retry={retry}
         allowAddToolResult={allowAddToolResult}
         isSubTask={isSubTask}
+        task={task}
       />
       {todos && todos.length > 0 && (
         <TodoList todos={todos} className="mt-2">

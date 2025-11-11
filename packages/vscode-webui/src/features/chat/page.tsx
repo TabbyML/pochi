@@ -5,13 +5,11 @@ import { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
 import { useCurrentWorkspace } from "@/lib/hooks/use-current-workspace";
 import { useCustomAgent } from "@/lib/hooks/use-custom-agents";
 import { useLatest } from "@/lib/hooks/use-latest";
-import { usePochiCredentials } from "@/lib/hooks/use-pochi-credentials";
 import { prepareMessageParts } from "@/lib/message-utils";
 import { vscodeHost } from "@/lib/vscode";
 import { useChat } from "@ai-sdk/react";
 import { formatters } from "@getpochi/common";
 import type { UserInfo } from "@getpochi/common/configuration";
-import { encodeStoreId } from "@getpochi/common/store-id-utils";
 import { type Task, catalog, taskCatalog } from "@getpochi/livekit";
 import type { Message } from "@getpochi/livekit";
 import { useLiveChatKit } from "@getpochi/livekit/react";
@@ -39,6 +37,7 @@ import { useSubtaskInfo } from "./hooks/use-subtask-info";
 import { useAutoApproveGuard, useChatAbortController } from "./lib/chat-state";
 import { onOverrideMessages } from "./lib/on-override-messages";
 import { useLiveChatKitGetters } from "./lib/use-live-chat-kit-getters";
+import { useSendTaskNotification } from "./lib/use-send-task-notification";
 
 export function ChatPage(props: ChatProps) {
   return (
@@ -59,6 +58,8 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
   const { t } = useTranslation();
   const { store } = useStore();
   const todosRef = useRef<Todo[] | undefined>(undefined);
+  const { sendTaskNotificationGuard, sendNotification } =
+    useSendTaskNotification();
 
   const defaultUser = {
     name: t("chatPage.defaultUserName"),
@@ -175,20 +176,20 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
     retry,
   });
 
-  const { jwt } = usePochiCredentials();
-
   // FIXME(jueliang): Avoid using useLatest whenever possible
-  const sendNotification = useLatest(async () => {
-    if (!task?.id || !task?.cwd) return;
+  const sendTaskNotification = useLatest(async () => {
+    if (!task?.id || !task?.cwd) {
+      sendTaskNotificationGuard.current = false;
+      return;
+    }
 
-    const storeId = encodeStoreId(jwt, task.parentId || task.id);
     const isTaskPanelVisible = await vscodeHost.isTaskPanelVisible({
       cwd: task.cwd,
       uid: task.id,
-      storeId,
     });
 
     if (isTaskPanelVisible) {
+      sendTaskNotificationGuard.current = false;
       return;
     }
 
@@ -198,55 +199,29 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
       approvalAndRetry.pendingApproval.attempts !== undefined &&
       approvalAndRetry.pendingApproval.countdown !== undefined
     ) {
+      sendTaskNotificationGuard.current = false;
       return;
     }
 
-    if (
-      (task.status === "pending-tool" && autoApproveGuard.current !== "auto") ||
-      task.status === "completed" ||
-      task.status === "failed"
-    ) {
-      let renderMessage = "";
-      switch (task.status) {
-        case "pending-tool":
-          renderMessage = t("notification.task.status.pendingTool");
-          break;
-        case "completed":
-          renderMessage = t("notification.task.status.completed");
-          break;
-        case "failed":
-          renderMessage = t("notification.task.status.failed");
-          break;
-        default:
-          break;
-      }
+    if (task.status === "pending-tool") {
+      sendTaskNotificationGuard.current = true;
+      return;
+    }
 
-      const result = await vscodeHost.showInformationMessage(
-        renderMessage,
-        {
-          modal: false,
-        },
-        t("notification.task.action.viewDetail"),
-      );
-      if (result === t("notification.task.action.viewDetail") && task.cwd) {
-        // do navigation
-        vscodeHost.openTaskInPanel({
-          cwd: task.cwd,
-          uid: task.id,
-          storeId,
-        });
-      }
+    if (task.status === "completed" || task.status === "failed") {
+      sendTaskNotificationGuard.current = true;
+      sendNotification(task);
     }
   });
 
   const prevTaskStatus = useRef(task?.status);
   useEffect(() => {
     if (task?.status !== prevTaskStatus.current) {
-      sendNotification.current();
+      sendTaskNotification.current();
     }
 
     prevTaskStatus.current = task?.status;
-  }, [task, sendNotification]);
+  }, [task, sendTaskNotification]);
 
   useAddSubtaskResult({ ...chat });
 

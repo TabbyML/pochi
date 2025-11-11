@@ -68,6 +68,7 @@ export function FixedStateChatContextProvider({
 }: FixedStateChatContextProviderProps) {
   const autoApproveGuard = useRef("stop" as const);
   const abortController = useRef(new AbortController());
+  const sendTaskNotificationGuard = useRef(false);
 
   const [toolCallLifeCycles, setToolCallLifeCycles] = useState<
     Map<string, FixedStateToolCallLifeCycle>
@@ -129,6 +130,7 @@ export function FixedStateChatContextProvider({
     getToolCallLifeCycle,
     executingToolCalls,
     completeToolCalls,
+    sendTaskNotificationGuard,
   };
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;

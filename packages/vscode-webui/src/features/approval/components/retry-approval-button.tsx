@@ -10,11 +10,13 @@ import type { PendingRetryApproval } from "../hooks/use-pending-retry-approval";
 interface RetryApprovalButtonProps {
   pendingApproval: PendingRetryApproval;
   retry: (error: Error) => void;
+  sendTaskNotification: () => void;
 }
 
 export const RetryApprovalButton: React.FC<RetryApprovalButtonProps> = ({
   pendingApproval,
   retry,
+  sendTaskNotification,
 }) => {
   const { t } = useTranslation();
   useEffect(() => {
@@ -38,6 +40,12 @@ export const RetryApprovalButton: React.FC<RetryApprovalButtonProps> = ({
   useEffect(() => {
     setShowRetry(true);
   }, [setShowRetry]);
+
+  useEffect(() => {
+    if (showRetry) {
+      sendTaskNotification();
+    }
+  }, [showRetry, sendTaskNotification]);
 
   if (!showRetry) return null;
 

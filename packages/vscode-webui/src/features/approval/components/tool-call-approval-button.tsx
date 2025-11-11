@@ -16,12 +16,14 @@ import { getToolName } from "ai";
 import type { PendingToolCallApproval } from "../hooks/use-pending-tool-call-approval";
 
 interface ToolCallApprovalButtonProps {
+  sendTaskNotification: () => void;
   pendingApproval: PendingToolCallApproval;
   isSubTask: boolean;
 }
 
 // Component
 export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
+  sendTaskNotification,
   pendingApproval,
   isSubTask,
 }) => {
@@ -174,6 +176,12 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
   }, [lifecycles]);
 
   const showAccept = !isAutoApproved && isReady;
+
+  useEffect(() => {
+    if (showAccept) {
+      sendTaskNotification();
+    }
+  }, [showAccept, sendTaskNotification]);
 
   if (showAccept) {
     return (
