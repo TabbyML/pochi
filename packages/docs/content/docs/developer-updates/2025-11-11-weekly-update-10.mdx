@@ -9,15 +9,15 @@ Teams rarely work on a single task at a time. You might be part-way through a fe
 
 So you end up switching branches, stashing and popping changes, resetting your workspace, and trying to hold the original task in your head. This is context switching, and it’s one of the biggest hidden costs in software development.
 
-We released Parallel Agents to remove that cost. Each agent runs in its own Git worktree, which isolates the task’s state from the rest of your work.
+We released **Parallel Agents** to remove that cost. Each agent runs in its own Git worktree, which isolates the task’s state from the rest of your work.
 
 <div class="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg">![Parallel Agent](./images/parallel-agents-changelog.png)</div>
 
 A great example would be to run the same task with different models to pick the best response. Won’t that be a faster and much better experience - all within the same timeframe? 
 
-This is different from Cursor or GitHub Copilot Chat, which operate inside a single editor tab. In those tools, you’re effectively working in one tab at a time: switching tasks means switching the state of the same working directory and the same conversation.
+This is different from other existing solutions, which operate inside a single editor tab. In those tools, you’re effectively working in one tab at a time: switching tasks means switching the state of the same working directory and the same conversation.
 
-On the other hand, Parallel Agents in Pochi keep tasks fully isolated by running each one in its own Git worktree. You can keep multiple tasks active at once and switch between them without stashing or losing context. 
+On the other hand, **Parallel Agents** in Pochi keep tasks fully isolated by running each one in its own Git worktree. You can keep multiple tasks active at once and switch between them without stashing or losing context. 
 
 ## How to use?
 
@@ -26,7 +26,7 @@ On the other hand, Parallel Agents in Pochi keep tasks fully isolated by running
 
 ## When to use Parallel Agents
 
-Parallel Agents are most useful when you want to avoid breaking focus on ongoing work: quick bugfixes during feature development, long-running refactors that you want to keep separate, documentation changes that happen alongside coding, or letting an AI assistant explore broader changes in a sandbox. 
+**Parallel Agents** are most useful when you want to avoid breaking focus on ongoing work: quick bugfixes during feature development, long-running refactors that you want to keep separate, documentation changes that happen alongside coding, or letting an AI assistant explore broader changes in a sandbox. 
 
 On the other hand, if a change is meant to be reviewed and merged as a single unit, keeping it on one branch remains simpler.
 
