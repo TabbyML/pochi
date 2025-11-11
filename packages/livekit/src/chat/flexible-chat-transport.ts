@@ -25,7 +25,7 @@ import {
 } from "ai";
 import { pickBy } from "remeda";
 import type z from "zod/v4";
-import { findBlob } from "../store-blob";
+import { remoteUriToBase64 } from "../remote-file";
 import type { Message, Metadata, RequestData } from "../types";
 import { makeRepairToolCall } from "./llm";
 import { parseMcpToolSet } from "./mcp-utils";
@@ -282,7 +282,7 @@ function handleReadFileOutput(readFile: ClientTools["readFile"]) {
     ...readFile,
     toModelOutput: (output) => {
       if (output.type === "media") {
-        const blob = findBlob(new URL(output.data), output.mimeType);
+        const blob = remoteUriToBase64(new URL(output.data), output.mimeType);
         if (!blob) {
           return { type: "text", value: "Failed to load media." };
         }

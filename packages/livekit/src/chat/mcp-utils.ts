@@ -3,7 +3,7 @@ import type { McpTool } from "@getpochi/tools";
 import type { JSONValue } from "ai";
 import z from "zod";
 
-import { findBlob } from "../store-blob";
+import { remoteUriToBase64 } from "../remote-file";
 
 export function parseMcpToolSet(
   mcpToolSet: Record<string, McpTool> | undefined,
@@ -74,7 +74,7 @@ function parseMcpTool(_name: string, mcpTool: McpTool): Tool {
             return item;
           }
 
-          const blob = findBlob(new URL(item.data), item.mimeType);
+          const blob = remoteUriToBase64(new URL(item.data), item.mimeType);
           if (!blob) {
             return {
               type: "text" as const,

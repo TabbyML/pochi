@@ -6,7 +6,7 @@ function toBase64(bytes: Uint8Array) {
   return base64;
 }
 
-export function findBlob(
+export function remoteUriToBase64(
   url: URL,
   mediaType: string,
 ): { data: string; mediaType: string } | undefined {
