@@ -20,7 +20,7 @@ export default [
     },
     rules: {
       "i18next/no-literal-string": [
-        "warn",
+        "error",
         {
           mode: "jsx-text-only", // only check jsx
           words: {
@@ -30,6 +30,10 @@ export default [
               "^[0-9.,]+$", // Numbers with decimals and commas
               // Single character symbols
               "^[@/\\\\|\\-_+=:;,.?!#$%&*()\\[\\]{}<>\"'`~^]$",
+              // Cursor and special UI characters
+              "^▍$",
+              // Bullet points and list markers
+              "^•$",
               // Common technical terms
               "^(px|rem|em|%|vh|vw|auto|none|inherit|KB|MB|GB|ms|s|min|h)$",
               // Boolean and null values

@@ -8,6 +8,7 @@ import type { useApprovalAndRetry } from "@/features/approval";
 import type { UseChatHelpers } from "@ai-sdk/react";
 import type { Message } from "@getpochi/livekit";
 
+import type { ReactNode } from "@tanstack/react-router";
 import { QueuedMessages } from "./queued-messages";
 
 interface ChatInputFormProps {
@@ -17,6 +18,7 @@ interface ChatInputFormProps {
   onQueueMessage: (message: string) => void;
   isLoading: boolean;
   onPaste: (event: ClipboardEvent) => void;
+  onFocus?: (event: FocusEvent) => void;
   pendingApproval: ReturnType<typeof useApprovalAndRetry>["pendingApproval"];
   status: UseChatHelpers<Message>["status"];
   onFileDrop?: (files: File[]) => boolean;
@@ -24,6 +26,7 @@ interface ChatInputFormProps {
   queuedMessages: string[];
   onRemoveQueuedMessage: (index: number) => void;
   isSubTask: boolean;
+  children?: ReactNode;
 }
 
 export function ChatInputForm({
@@ -33,6 +36,7 @@ export function ChatInputForm({
   onQueueMessage,
   isLoading,
   onPaste,
+  onFocus,
   pendingApproval,
   status,
   onFileDrop,
@@ -40,6 +44,7 @@ export function ChatInputForm({
   queuedMessages,
   onRemoveQueuedMessage,
   isSubTask,
+  children,
 }: ChatInputFormProps) {
   const editorRef = useRef<Editor | null>(null);
 
@@ -56,6 +61,7 @@ export function ChatInputForm({
       onFileDrop={onFileDrop}
       messageContent={messageContent}
       isSubTask={isSubTask}
+      onFocus={onFocus}
     >
       <ActiveSelectionBadge
         onClick={() => {
@@ -69,6 +75,7 @@ export function ChatInputForm({
           onRemove={onRemoveQueuedMessage}
         />
       )}
+      {children}
     </FormEditor>
   );
 }

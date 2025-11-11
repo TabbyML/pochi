@@ -8,9 +8,11 @@ import {
   Loader2,
 } from "lucide-react";
 
+import { useIsDevMode } from "@/features/settings";
 import { cn } from "@/lib/utils";
 import type { DataParts } from "@getpochi/livekit";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "./ui/button";
 
 type ActionType = "compare" | "restore";
@@ -21,6 +23,8 @@ export const CheckpointUI: React.FC<{
   className?: string;
   hideBorderOnHover?: boolean;
 }> = ({ checkpoint, isLoading, className, hideBorderOnHover = true }) => {
+  const { t } = useTranslation();
+  const [isDevMode] = useIsDevMode();
   const [currentAction, setCurrentAction] = useState<ActionType>();
   const [showActionSuccessIcon, setShowActionSuccessIcon] = useState(false);
 
@@ -82,12 +86,12 @@ export const CheckpointUI: React.FC<{
 
   const getRestoreText = () => {
     if (isPending && currentAction === "restore") {
-      return "Restoring...";
+      return t("checkpointUI.restoring");
     }
     if (showActionSuccessIcon && currentAction === "restore") {
-      return "Success";
+      return t("checkpointUI.success");
     }
-    return "Restore";
+    return t("checkpointUI.restore");
   };
 
   const getCompareIcon = () => {
@@ -106,12 +110,14 @@ export const CheckpointUI: React.FC<{
 
   const getCompareText = () => {
     if (isPending && currentAction === "compare") {
-      return "Opening...";
+      return t("checkpointUI.opening");
     }
     if (showActionSuccessIcon && currentAction === "compare") {
-      return actionResult === true ? "Success" : "No changes detected";
+      return actionResult === true
+        ? t("checkpointUI.success")
+        : t("checkpointUI.noChangesDetected");
     }
-    return "Compare";
+    return t("checkpointUI.compare");
   };
 
   /**
@@ -176,7 +182,7 @@ export const CheckpointUI: React.FC<{
             onClick={() => handleCheckpointAction("restore")}
             className="hidden h-5 items-center gap-1 rounded-md px-1 py-0.5 text-xs hover:bg-transparent group-hover:flex dark:hover:bg-transparent"
           >
-            {getRestoreText()}
+            {getRestoreText()} {isDevMode && `(${checkpoint.commit})`}
           </Button>
           <span className="group-hover:hidden">{getIcon()}</span>
         </span>

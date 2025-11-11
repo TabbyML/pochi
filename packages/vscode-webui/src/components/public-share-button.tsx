@@ -66,7 +66,9 @@ export function PublicShareButton({
     menuItemRef.current = "support";
     e.preventDefault();
     const version = await vscodeHost.readExtensionVersion();
-    const environment = await vscodeHost.readEnvironment();
+    const environment = await vscodeHost.readEnvironment({
+      webviewKind: globalThis.POCHI_WEBVIEW_KIND,
+    });
     const shareUrl = `${getServerBaseUrl()}/share/${shareId}`;
 
     const environmentInfo = prompts.environment(environment, undefined);
@@ -177,7 +179,7 @@ ${environmentInfo}
           {t("share.copyLink")}
           {!shareId && (
             <span className="ml-2 text-muted-foreground text-xs">
-              (Share first)
+              {t("share.shareFirst")}
             </span>
           )}
         </DropdownMenuItem>
@@ -194,7 +196,7 @@ ${environmentInfo}
           {t("share.shareSupport")}
           {!shareId && (
             <span className="ml-2 text-muted-foreground text-xs">
-              (Share first)
+              {t("share.shareFirst")}
             </span>
           )}
         </DropdownMenuItem>

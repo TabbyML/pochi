@@ -1,5 +1,8 @@
 import { debounceWithCachedValue } from "@/lib/debounce";
-import { fuzzySearchFiles, fuzzySearchWorkflows } from "@/lib/fuzzy-search";
+import {
+  fuzzySearchFiles,
+  fuzzySearchSlashCandidates,
+} from "@/lib/fuzzy-search";
 import { useActiveTabs } from "@/lib/hooks/use-active-tabs";
 import { vscodeHost } from "@/lib/vscode";
 import Document from "@tiptap/extension-document";
@@ -26,27 +29,31 @@ import {
 } from "./context-mention/mention-list";
 import "./prompt-form.css";
 import { useSelectedModels } from "@/features/settings";
+import { useLatest } from "@/lib/hooks/use-latest";
 import { cn } from "@/lib/utils";
 import { resolveModelFromId } from "@/lib/utils/resolve-model-from-id";
+import { isValidCustomAgentFile } from "@getpochi/common/vscode-webui-bridge";
+import { threadSignal } from "@quilted/threads/signals";
 import {
   type SuggestionMatch,
   type Trigger,
   findSuggestionMatch,
 } from "@tiptap/suggestion";
 import { ArrowRightToLine } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { ScrollArea } from "../ui/scroll-area";
 import { AutoCompleteExtension } from "./auto-completion/extension";
 import type { MentionListActions } from "./shared";
+import {
+  PromptFormSlashExtension,
+  SlashMentionPluginKey,
+} from "./slash-mention/extension";
+import {
+  type SlashCandidate,
+  SlashMentionList,
+  type SlashMentionListProps,
+} from "./slash-mention/mention-list";
 import { SubmitHistoryExtension } from "./submit-history-extension";
-import {
-  PromptFormWorkflowExtension,
-  workflowMentionPluginKey,
-} from "./workflow-mention/extension";
-import {
-  type WorkflowItem,
-  type WorkflowListProps,
-  WorkflowMentionList,
-} from "./workflow-mention/mention-list";
 
 const newLineCharacter = "\n";
 
@@ -101,6 +108,7 @@ interface FormEditorProps {
   onPaste?: (e: ClipboardEvent) => void;
   enableSubmitHistory?: boolean;
   onFileDrop?: (files: File[]) => boolean;
+  onFocus?: (event: FocusEvent) => void;
   messageContent?: string;
   isSubTask: boolean;
 }
@@ -116,11 +124,13 @@ export function FormEditor({
   editorRef,
   autoFocus = true,
   onPaste,
+  onFocus,
   enableSubmitHistory = true,
   onFileDrop,
   messageContent = "",
   isSubTask,
 }: FormEditorProps) {
+  const { t } = useTranslation();
   const { updateSelectedModelId, models } = useSelectedModels({ isSubTask });
   const internalFormRef = useRef<HTMLFormElement>(null);
   const formRef = externalFormRef || internalFormRef;
@@ -138,15 +148,18 @@ export function FormEditor({
   // State for drag overlay UI
   const [isDragOver, setIsDragOver] = useState(false);
 
-  const onSelectWorkflow = useCallback(
-    (workflow: WorkflowItem) => {
-      const foundModel = resolveModelFromId(workflow.frontmatter.model, models);
-      if (foundModel) {
-        updateSelectedModelId(foundModel.id);
-      }
-    },
-    [models, updateSelectedModelId],
-  );
+  const onSelectSlashCandidate = useLatest((data: SlashCandidate) => {
+    let model: string | undefined;
+    if (data.type === "workflow") {
+      model = data.rawData.frontmatter.model;
+    } else if (data.type === "custom-agent") {
+      model = data.rawData.model;
+    }
+    const foundModel = resolveModelFromId(model, models);
+    if (foundModel) {
+      updateSelectedModelId(foundModel.id);
+    }
+  });
 
   const editor = useEditor(
     {
@@ -155,7 +168,7 @@ export function FormEditor({
         Paragraph,
         Text,
         Placeholder.configure({
-          placeholder: "Ask anything ...",
+          placeholder: t("formEditor.placeholder"),
         }),
         CustomEnterKeyHandler(formRef, onQueueSubmit),
         PromptFormMentionExtension.configure({
@@ -163,7 +176,7 @@ export function FormEditor({
             char: "@",
             pluginKey: fileMentionPluginKey,
             items: async ({ query }: { query: string }) => {
-              const data = await debouncedListWorkspaceFiles();
+              const data = await debouncedListFiles();
               if (!data) return [];
 
               return fuzzySearchFiles(query, {
@@ -180,7 +193,7 @@ export function FormEditor({
 
               // Fetch items function for MentionList
               const fetchItems = async (query?: string) => {
-                const data = await debouncedListWorkspaceFiles();
+                const data = await debouncedListFiles();
                 if (!data) return [];
 
                 return fuzzySearchFiles(query, {
@@ -265,35 +278,32 @@ export function FormEditor({
           },
         }),
         // Use the already configured PromptFormWorkflowExtension
-        PromptFormWorkflowExtension.configure({
+        PromptFormSlashExtension.configure({
           suggestion: {
             char: "/",
-            pluginKey: workflowMentionPluginKey,
+            pluginKey: SlashMentionPluginKey,
             items: async ({ query }: { query: string }) => {
-              const data = await debouncedListWorkflows();
+              const data = await debouncedListSlashCommand();
               if (!data) return [];
 
-              const workflowResults = fuzzySearchWorkflows(
-                query,
-                data.workflows,
-              );
+              const results = fuzzySearchSlashCandidates(query, data.options);
 
-              return workflowResults;
+              return results;
             },
             render: () => {
               let component: ReactRenderer<
                 MentionListActions,
-                WorkflowListProps
+                SlashMentionListProps
               >;
               let popup: Array<{ destroy: () => void; hide: () => void }>;
 
               // Fetch items function for WorkflowList
               const fetchItems = async (query?: string) => {
-                const data = await debouncedListWorkflows();
+                const data = await debouncedListSlashCommand();
                 if (!data) return [];
-                const workflowResults = fuzzySearchWorkflows(
+                const workflowResults = fuzzySearchSlashCandidates(
                   query,
-                  data.workflows,
+                  data.options,
                 );
                 return workflowResults;
               };
@@ -317,11 +327,11 @@ export function FormEditor({
                     clientRect?: () => DOMRect;
                   };
 
-                  component = new ReactRenderer(WorkflowMentionList, {
+                  component = new ReactRenderer(SlashMentionList, {
                     props: {
                       ...props,
                       fetchItems,
-                      onSelectWorkflow,
+                      onSelect: onSelectSlashCandidate.current,
                     },
                     editor: props.editor,
                   });
@@ -475,6 +485,9 @@ export function FormEditor({
       onPaste: (e) => {
         onPaste?.(e);
       },
+      onFocus(props) {
+        onFocus?.(props.event);
+      },
     },
     [],
   );
@@ -601,8 +614,9 @@ export function FormEditor({
       >
         {isAutoCompleteHintVisible && (
           <div className="flex items-center text-muted-foreground text-xs">
-            Use Tab <ArrowRightToLine className="mr-1.5 ml-0.5 size-4" /> to see
-            suggestions
+            {t("formEditor.autoCompleteHintPrefix")}{" "}
+            <ArrowRightToLine className="mr-1.5 ml-0.5 size-4" />{" "}
+            {t("formEditor.autoCompleteHintSuffix")}
           </div>
         )}
       </div>
@@ -612,7 +626,7 @@ export function FormEditor({
         <div className="pointer-events-none absolute inset-0 z-50 flex items-center justify-center rounded-sm border-2 border-zinc-500 border-dashed dark:bg-zinc-500/30">
           <div className="rounded-md border bg-white px-4 py-2 shadow-lg dark:border-gray-700 dark:bg-gray-800">
             <p className="font-medium text-sm text-zinc-900 dark:text-zinc-100">
-              Drop files here to attach them to your message
+              {t("formEditor.dropFilesMessage")}
             </p>
           </div>
         </div>
@@ -621,7 +635,7 @@ export function FormEditor({
   );
 }
 
-const debouncedListWorkspaceFiles = debounceWithCachedValue(
+const debouncedListFiles = debounceWithCachedValue(
   async () => {
     const files = await vscodeHost.listFilesInWorkspace();
     return {
@@ -634,11 +648,32 @@ const debouncedListWorkspaceFiles = debounceWithCachedValue(
   },
 );
 
-export const debouncedListWorkflows = debounceWithCachedValue(
+export const debouncedListSlashCommand = debounceWithCachedValue(
   async () => {
-    const workflows = await vscodeHost.listWorkflows();
+    const [workflows, customAgents] = await Promise.all([
+      vscodeHost.listWorkflows(),
+      threadSignal(await vscodeHost.readCustomAgents()),
+    ]);
+    const options: SlashCandidate[] = [
+      ...customAgents.value
+        .filter((x) => isValidCustomAgentFile(x))
+        .map((x) => ({
+          type: "custom-agent" as const,
+          id: x.name,
+          label: x.name,
+          path: x.filePath,
+          rawData: x,
+        })),
+      ...workflows.map((x) => ({
+        type: "workflow" as const,
+        id: x.id,
+        label: x.id,
+        path: x.path,
+        rawData: x,
+      })),
+    ];
     return {
-      workflows,
+      options,
     };
   },
   1000 * 60,

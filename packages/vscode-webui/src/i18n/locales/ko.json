@@ -26,7 +26,12 @@
     "queuedMessages": "대기 중인 메시지 ({{count}})",
     "copyImage": "이미지 복사",
     "openImage": "이미지 열기",
-    "pleaseCheckFiles": "이 파일들을 확인해 주세요."
+    "pleaseCheckFiles": "이 파일들을 확인해 주세요。",
+    "chatToolbar": {
+      "diffWorktreeWith": "{{branch}}와(과) 워크트리 비교",
+      "openInTerminal": "통합 터미널에서 열기"
+    },
+    "createTaskInWorktree": "별도의 Git 워크트리에서 작업 생성"
   },
   "language": {
     "switcherTooltip": "Pochi에서 사용할 기본 언어를 선택하세요"
@@ -62,7 +67,10 @@
       "copilotDisabled": "Copilot 모델이 비활성화되었습니다. 활성화하려면 스위치를 켜세요.",
       "noModelsFound": "모델을 찾을 수 없습니다",
       "customModelsTooltip": "사용자 정의 모델을 관리하세요.",
-      "viewPricing": "Pochi 가격 보기"
+      "viewPricing": "Pochi 가격 보기",
+      "pochi": "Pochi",
+      "byok": "BYOK",
+      "thirdParty": "서드파티"
     },
     "tools": {
       "title": "도구",
@@ -105,10 +113,13 @@
       "write": "쓰기",
       "execute": "실행",
       "mcp": "MCP",
-      "retry": "재시도"
+      "retry": "재시도",
+      "subtaskOffhand": "하위 작업 - 자동",
+      "subtaskManual": "하위 작업 - 수동",
+      "applyChangesToDefault": "기본값에 변경 사항 적용"
     },
     "customAgents": {
-      "title": "커스텀 에이전트",
+      "title": "에이전트",
       "loading": "커스텀 에이전트 로딩 중...",
       "empty": "커스텀 에이전트들을 찾을 수 없습니다. 워크스페이스의 .pochi/agents/ 디렉터리에 에이전트 파일을 생성하세요",
       "errors": {
@@ -136,11 +147,209 @@
   "share": {
     "copyLink": "링크 복사",
     "shareSupport": "지원팀과 공유",
-    "shareSupportTitle": "Pochi 팀과 작업이 공유되었습니다",
-    "shareSupportDetails": "이 작업과 관련 디버그 정보가 전송되었습니다. 지원이 필요하시면 Discord 서버에 참여하시고 이 ID를 참조해 주세요: {{shareId}}.",
+    "shareSupportTitle": "작업이 Pochi 팀과 공유되었습니다",
+    "shareSupportDetails": "이 작업과 관련 디버그 정보가 전송되었습니다. 지원을 받으려면 Discord 서버에 참여하고 이 ID를 참조하세요: {{shareId}}.",
     "joinDiscord": "Discord 참여",
     "ok": "확인",
-    "setPublic": "링크가 있는 모든 사람",
-    "setPrivate": "나만"
+    "setPublic": "링크를 아는 모든 사람",
+    "setPrivate": "나만",
+    "shareFirst": "（먼저 공유）"
+  },
+  "signInPage": {
+    "welcome": "Pochi에 오신 것을 환영합니다",
+    "description": "Pochi를 사용하려면 계정으로 로그인해야 합니다.",
+    "securityNote": "이를 통해 Pochi가 귀하의 정보에 안전하게 액세스하고 개인화된 지원을 제공할 수 있습니다.",
+    "signInButton": "로그인",
+    "needHelp": "도움이 필요하신가요? 문서 보기"
+  },
+  "tasksPage": {
+    "emptyState": {
+      "title": "작업을 찾을 수 없습니다",
+      "description": "Pochi를 시작하려면 새 작업을 만드세요",
+      "createButton": "새 작업 만들기"
+    },
+    "status": {
+      "streaming": "스트리밍 중",
+      "pendingTool": "도구 대기 중",
+      "pendingInput": "입력 대기 중",
+      "completed": "완료됨",
+      "failed": "실패",
+      "pendingModel": "모델 대기 중",
+      "unknown": "알 수 없는 상태: {{status}}"
+    },
+    "datePicker": {
+      "selectDate": "날짜 선택",
+      "today": "오늘"
+    },
+    "worktreeNotExist": "워크트리가 존재하지 않습니다"
+  },
+  "toolInvocation": {
+    "taskCompleted": "작업 완료",
+    "reading": "읽는 중 ",
+    "writing": "쓰는 중 ",
+    "continue": "계속",
+    "cancel": "취소",
+    "continueInSeconds": "{{seconds}}초 후 계속",
+    "save": "저장",
+    "run": "실행",
+    "accept": "승인",
+    "reject": "거부",
+    "stop": "중지",
+    "preview": "미리보기",
+    "calling": "호출 중",
+    "request": "요청",
+    "response": "응답",
+    "imgAlt": "MCP 도구 응답 스냅샷",
+    "applyingDiffTo": "다음에 차이점 적용 중: ",
+    "applyingDiffsTo": "다음에 차이점들 적용 중: ",
+    "in": "에서",
+    "executeCommand": "다음 명령을 실행합니다",
+    "for": "대상",
+    "searching": "검색 중",
+    "searchingFor": "검색 중:",
+    "matchCount_one": "{{count}}개 일치",
+    "matchCount_other": "{{count}}개 일치",
+    "matched": "매치됨",
+    "resultsTruncated": ", 결과가 잘림",
+    "stopBackgroundJob": "다음 백그라운드 작업을 중지합니다",
+    "result_one": "{{count}}개 결과",
+    "result_other": "{{count}}개 결과",
+    "readBackground": "백그라운드 작업 출력 읽는 중",
+    "withRegexFilter": "정규식 필터 사용",
+    "backgroundExecute": "다음 명령을 백그라운드에서 실행합니다",
+    "updatingToDos": "할 일 업데이트 중"
+  },
+  "reasoning": {
+    "thinking": "생각 중 ...",
+    "thoughtFor": "{{count}}자에 대해 생각했습니다"
+  },
+  "attachmentPreview": {
+    "removeAttachment": "첨부 파일 제거",
+    "uploading": "업로드 중..."
+  },
+  "checkpointUI": {
+    "restoring": "복원 중...",
+    "success": "성공",
+    "restore": "복원",
+    "opening": "열고 있습니다...",
+    "noChangesDetected": "변경 사항이 감지되지 않았습니다",
+    "compare": "비교"
+  },
+  "welcomeScreen": {
+    "title": "시작하기",
+    "description": "Pochi에서 제공하는 모델에 액세스하고 풍부한 팀 기능을 활용하려면 로그인하거나, 원하는 모델을 사용하려면 자신의 키를 가져오세요.",
+    "bringYourOwnKey": "자신의 키 가져오기",
+    "signIn": "로그인"
+  },
+  "fileIcon": {
+    "fileAriaLabel": "파일: {{path}}"
+  },
+  "statusIcon": {
+    "copyToolResult": "도구 결과 복사"
+  },
+  "newProblems": {
+    "aboveProblemsDetected": "위의 문제들이 변경 후 감지되었습니다",
+    "problemsDetectedTooltip": "변경 후 문제가 감지됨"
+  },
+  "userEdits": {
+    "youHaveMadeAboveEdits": "위의 편집을 수행했습니다"
+  },
+  "fileBadge": {
+    "modifiedByPochi": "(Pochi에 의해 수정됨)"
+  },
+  "codeBlock": {
+    "showCode": "코드 보기",
+    "showDiagram": "다이어그램 보기",
+    "copy": "복사"
+  },
+  "messageList": {
+    "compactedConversationTooltip": "토큰 사용량을 줄이기 위해 이 지점부터 대화가 압축되었습니다"
+  },
+  "markdown": {
+    "codeOmitted": "... {{language}} 코드 생략됨 ( {{bytes}} 바이트 ) ..."
+  },
+  "formEditor": {
+    "placeholder": "무엇이든 물어보세요...",
+    "autoCompleteHintPrefix": "Tab 키로",
+    "autoCompleteHintSuffix": "제안 보기",
+    "dropFilesMessage": "파일을 여기에 드롭하여 메시지에 첨부하세요"
+  },
+  "activeSelectionBadge": {
+    "cell": "셀",
+    "addContext": "컨텍스트 추가"
+  },
+  "mentionList": {
+    "noResultsFound": "결과를 찾을 수 없습니다",
+    "typeToSearch": "입력하여 검색...",
+    "workflow": "워크플로",
+    "agent": "에이전트"
+  },
+  "subtask": {
+    "back": "뒤로",
+    "complete": "완료"
+  },
+  "errorMessageView": {
+    "reachedCreditLimit": "지출 한도에 도달했습니다.",
+    "seeMore": "더 보기",
+    "teamReachedCreditLimit": "팀이 지출 한도에 도달했습니다.",
+    "requireSubscription": "모든 무료 크레딧을 사용했습니다. 계속하려면 Pochi를 구독하세요.",
+    "subscribe": "구독",
+    "requireOrgSubscription": "팀이 아직 구독하지 않았습니다. 계속하려면 Pochi를 구독하세요.",
+    "requirePayment": "미지불 청구서가 있습니다.",
+    "makePayment": "결제하기",
+    "toContinueUsingPochi": "Pochi를 계속 사용하려면",
+    "requireOrgPayment": "팀에 미지불 청구서가 있습니다."
+  },
+  "chatPage": {
+    "defaultUserName": "당신"
+  },
+  "todoList": {
+    "todos": "할 일",
+    "allDone": "🎉 모두 완료!"
+  },
+  "commandExecutionPanel": {
+    "copied": "복사됨!",
+    "copyCommand": "명령 복사",
+    "collapse": "접기",
+    "expand": "펼치기",
+    "openJob": "작업 {{displayId}} 열기",
+    "stop": "중지"
+  },
+  "devModeButton": {
+    "title": "개발 모드",
+    "copyMessages": "메시지 복사",
+    "copyCoreMessages": "핵심 메시지 복사",
+    "copyCheckpointCommand": "체크포인트 명령 복사",
+    "copyTodos": "할 일 복사",
+    "noCheckpointAvailable": "사용 가능한 체크포인트가 없습니다",
+    "openStore": "스토어 열기"
+  },
+  "devRetryCountdown": {
+    "attempts": "시도 횟수:",
+    "countdown": "카운트다운:",
+    "delay": "지연:"
+  },
+  "editNotebook": {
+    "editing": "편집 중 ",
+    "cell": "셀",
+    "cellId": "셀 ID: "
+  },
+  "dev": {
+    "loading": "로딩 중",
+    "storeId": "스토어 ID",
+    "liveStoreVersion": "LiveStore 버전",
+    "liveStoreVersionPrefix": "v",
+    "openDevTools": "개발 도구 열기",
+    "task": "작업",
+    "messages": "메시지",
+    "enterSessionInfo": "세션 정보 입력",
+    "sessionId": "세션 ID (storeId)",
+    "jwt": "JWT",
+    "submit": "제출"
+  },
+  "pagination": {
+    "previous": "이전",
+    "next": "다음",
+    "morePages": "더 많은 페이지"
   }
 }

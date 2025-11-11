@@ -3,7 +3,7 @@ import {
   calcEditedRangeAfterAccept,
 } from "@/code-completion/auto-code-actions";
 // biome-ignore lint/style/useImportType: needed for dependency injection
-import { PochiWebviewPanel, PochiWebviewSidebar } from "@/integrations/webview";
+import { PochiWebviewSidebar } from "@/integrations/webview";
 import type { AuthClient } from "@/lib/auth-client";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { AuthEvents } from "@/lib/auth-events";
@@ -13,7 +13,6 @@ import { getLogger, showOutputPanel } from "@/lib/logger";
 import { NewProjectRegistry, prepareProject } from "@/lib/new-project";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { PostHog } from "@/lib/posthog";
-import { workspaceScoped } from "@/lib/workspace-scoped";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { NESDecorationManager } from "@/nes/decoration-manager";
 import type { WebsiteTaskCreateEvent } from "@getpochi/common";
@@ -35,6 +34,7 @@ import * as vscode from "vscode";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { type PochiAdvanceSettings, PochiConfiguration } from "./configuration";
 import { DiffChangesContentProvider } from "./editor/diff-changes-content-provider";
+import { PochiTaskEditorProvider } from "./webview/webview-panel";
 
 const logger = getLogger("CommandManager");
 
@@ -51,8 +51,6 @@ export class CommandManager implements vscode.Disposable {
     private readonly mcpHub: McpHub,
     private readonly pochiConfiguration: PochiConfiguration,
     private readonly posthog: PostHog,
-    @inject("vscode.ExtensionContext")
-    private readonly context: vscode.ExtensionContext,
     private readonly nesDecorationManager: NESDecorationManager,
   ) {
     this.registerCommands();
@@ -65,14 +63,11 @@ export class CommandManager implements vscode.Disposable {
     openTaskParams: TaskIdParams | NewTaskParams,
     requestId?: string,
   ) {
-    await vscode.commands.executeCommand("pochiSidebar.focus");
-
     if (githubTemplateUrl) {
       await prepareProject(workspaceUri, githubTemplateUrl, progress);
     }
 
-    const webviewHost = await this.pochiWebviewSidebar.retrieveWebviewHost();
-    webviewHost.openTask(openTaskParams);
+    this.openTaskOnWorkspaceFolder(openTaskParams);
 
     if (requestId) {
       await this.newProjectRegistry.set(requestId, workspaceUri);
@@ -222,22 +217,10 @@ export class CommandManager implements vscode.Disposable {
           async (progress) => {
             progress.report({ message: "Pochi: Opening task..." });
             await vscode.commands.executeCommand("pochiSidebar.focus");
-            const webviewHost =
-              await this.pochiWebviewSidebar.retrieveWebviewHost();
-            webviewHost.openTask({ uid });
+            this.openTaskOnWorkspaceFolder({ uid });
           },
         );
       }),
-
-      vscode.commands.registerCommand(
-        "pochi.webui.navigate.newTask",
-        async () => {
-          await vscode.commands.executeCommand("pochiSidebar.focus");
-          const webviewHost =
-            await this.pochiWebviewSidebar.retrieveWebviewHost();
-          webviewHost.openTask({ uid: undefined });
-        },
-      ),
 
       vscode.commands.registerCommand(
         "pochi.webui.navigate.taskList",
@@ -429,6 +412,18 @@ export class CommandManager implements vscode.Disposable {
         }
       }),
 
+      vscode.commands.registerCommand("pochi.resetTaskPanel", async () => {
+        const activeTab = vscode.window.tabGroups.activeTabGroup.activeTab;
+        logger.debug("resetTaskPanel", { activeTab });
+        if (
+          activeTab &&
+          activeTab.input instanceof vscode.TabInputCustom &&
+          activeTab.input.viewType === PochiTaskEditorProvider.viewType
+        ) {
+          PochiTaskEditorProvider.reset(activeTab.input.uri);
+        }
+      }),
+
       vscode.commands.registerCommand(
         "pochi.openCustomModelSettings",
         async () => {
@@ -450,18 +445,9 @@ export class CommandManager implements vscode.Disposable {
             );
           }
 
-          const workspaceFolder =
-            vscode.workspace.workspaceFolders?.[0].uri.fsPath;
-          // only open new panel if current scm is worktree
-          if (workspaceFolder === cwd) {
-            vscode.commands.executeCommand("pochi.webui.navigate.newTask");
-            return;
-          }
-          const workspaceContainer = workspaceScoped(cwd);
-          await PochiWebviewPanel.createOrShow(
-            workspaceContainer,
-            this.context.extensionUri,
-          );
+          PochiTaskEditorProvider.openTaskEditor({
+            cwd,
+          });
         },
       ),
 
@@ -478,7 +464,28 @@ export class CommandManager implements vscode.Disposable {
           this.nesDecorationManager.reject();
         },
       ),
+
+      vscode.commands.registerCommand(
+        "pochi.createTerminal",
+        (cwd?: string) => {
+          vscode.window.createTerminal({ cwd }).show();
+        },
+      ),
     );
+  }
+
+  openTaskOnWorkspaceFolder(params?: TaskIdParams | NewTaskParams) {
+    const cwd = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+    if (!cwd) {
+      vscode.window.showErrorMessage(
+        "Cannot create Pochi task without a workspace folder.",
+      );
+      return;
+    }
+    PochiTaskEditorProvider.openTaskEditor({
+      ...params,
+      cwd,
+    });
   }
 
   private async ensureDefaultCustomModelSettings() {

@@ -1,3 +1,4 @@
+import type { PreviewReturnType } from "@getpochi/tools";
 import type { ThreadAbortSignalSerialization } from "@quilted/threads";
 import type { ThreadSignalSerialization } from "@quilted/threads/signals";
 import type { Environment } from "../base";
@@ -5,6 +6,7 @@ import type { UserInfo } from "../configuration";
 import type {
   CaptureEvent,
   CustomAgentFile,
+  GitWorktree,
   McpStatus,
   NewTaskParams,
   ResourceURI,
@@ -17,14 +19,11 @@ import type {
 } from "./index";
 import type { DisplayModel } from "./types/model";
 import type { PochiCredentials } from "./types/pochi";
-import type { TaskDataParams } from "./types/task";
 
 export interface VSCodeHostApi {
   readResourceURI(): Promise<ResourceURI>;
 
   readPochiCredentials(): Promise<PochiCredentials | null>;
-
-  readMachineId(): Promise<string>;
 
   getSessionState<K extends keyof SessionState>(
     keys?: K[],
@@ -41,7 +40,14 @@ export interface VSCodeHostApi {
     value: WorkspaceState[K],
   ): Promise<void>;
 
-  readEnvironment(isSubTask?: boolean): Promise<Environment>;
+  getGlobalState(key: string, defaultValue?: unknown): Promise<unknown>;
+
+  setGlobalState(key: string, value: unknown): Promise<void>;
+
+  readEnvironment(options: {
+    isSubTask?: boolean;
+    webviewKind: "sidebar" | "pane";
+  }): Promise<Environment>;
 
   previewToolCall(
     toolName: string,
@@ -50,13 +56,9 @@ export interface VSCodeHostApi {
       toolCallId: string;
       state: "partial-call" | "call" | "result";
       abortSignal?: ThreadAbortSignalSerialization;
+      nonInteractive?: boolean;
     },
-  ): Promise<
-    | {
-        error: string;
-      }
-    | undefined
-  >;
+  ): Promise<PreviewReturnType>;
 
   /**
    * Execute a tool call.
@@ -150,10 +152,14 @@ export interface VSCodeHostApi {
       base64Data?: string;
       fallbackGlobPattern?: string;
       cellId?: string;
+      webviewKind?: "sidebar" | "pane";
     },
   ): void;
 
-  readCurrentWorkspace(): Promise<string | null>;
+  readCurrentWorkspace(): Promise<{
+    cwd: string | null;
+    workspaceFolder: string | null;
+  }>;
 
   readCustomAgents(): Promise<ThreadSignalSerialization<CustomAgentFile[]>>;
 
@@ -278,21 +284,22 @@ export interface VSCodeHostApi {
     ThreadSignalSerialization<Record<string, UserInfo>>
   >;
 
-  openTaskInPanel(
-    task: unknown /** @link packages/vscode-webui/src/livestore-provider.tsx#TaskSyncData */,
-  ): Promise<void>;
+  openTaskInPanel(options: TaskIdParams & { cwd: string }): Promise<void>;
 
-  bridgeStoreEvent(
-    webviewKind: "sidebar" | "pane",
-    event: unknown,
-  ): Promise<void>;
+  onTaskUpdated(taskData: unknown): Promise<void>;
+
+  readWorktrees(): Promise<ThreadSignalSerialization<GitWorktree[]>>;
+
+  showDiff(base?: string): Promise<boolean>;
+
+  createWorktree(): Promise<GitWorktree | null>;
 }
 
 export interface WebviewHostApi {
   /**
    * @param params - Existing task id or new task params.
    */
-  openTask(params: TaskIdParams | NewTaskParams | TaskDataParams): void;
+  openTask(params: TaskIdParams | NewTaskParams): void;
 
   openTaskList(): void;
 
@@ -302,5 +309,5 @@ export interface WebviewHostApi {
 
   isFocused(): Promise<boolean>;
 
-  commitStoreEvent(event: unknown): Promise<void>;
+  commitTaskUpdated(event: unknown): Promise<void>;
 }

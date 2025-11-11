@@ -12,7 +12,7 @@ import {
   getSystemInfo,
   getWorkspaceRulesFileUri,
 } from "@/lib/env";
-import { asRelativePath, isFileExists } from "@/lib/fs";
+import { asRelativePath, isFileExists, readFileContent } from "@/lib/fs";
 import { getLogger } from "@/lib/logger";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { ModelList } from "@/lib/model-list";
@@ -21,7 +21,7 @@ import { PostHog } from "@/lib/posthog";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { UserStorage } from "@/lib/user-storage";
 // biome-ignore lint/style/useImportType: needed for dependency injection
-import { WorkspaceScope, workspaceScoped } from "@/lib/workspace-scoped";
+import { WorkspaceScope } from "@/lib/workspace-scoped";
 import { applyDiff, previewApplyDiff } from "@/tools/apply-diff";
 import { editNotebook } from "@/tools/edit-notebook";
 import { executeCommand } from "@/tools/execute-command";
@@ -38,7 +38,11 @@ import { searchFiles } from "@/tools/search-files";
 import { startBackgroundJob } from "@/tools/start-background-job";
 import { todoWrite } from "@/tools/todo-write";
 import { previewWriteToFile, writeToFile } from "@/tools/write-to-file";
-import type { Environment, GitStatus } from "@getpochi/common";
+import {
+  type Environment,
+  type GitStatus,
+  toErrorMessage,
+} from "@getpochi/common";
 import type { UserInfo } from "@getpochi/common/configuration";
 import type { McpStatus } from "@getpochi/common/mcp-utils";
 // biome-ignore lint/style/useImportType: needed for dependency injection
@@ -51,25 +55,26 @@ import {
 } from "@getpochi/common/tool-utils";
 import { getVendor } from "@getpochi/common/vendor";
 import type {
-  CustomAgentFile,
-  PochiCredentials,
-  TaskData,
-} from "@getpochi/common/vscode-webui-bridge";
-import type {
   CaptureEvent,
+  CustomAgentFile,
   DisplayModel,
+  GitWorktree,
+  PochiCredentials,
   ResourceURI,
   RuleFile,
   SaveCheckpointOptions,
   SessionState,
+  TaskPanelParams,
   VSCodeHostApi,
   WorkspaceState,
 } from "@getpochi/common/vscode-webui-bridge";
 import type {
+  PreviewReturnType,
   PreviewToolFunctionType,
   ToolFunctionType,
 } from "@getpochi/tools";
 import { createClientTools } from "@getpochi/tools";
+import { computed } from "@preact/signals-core";
 import {
   ThreadAbortSignal,
   type ThreadAbortSignalSerialization,
@@ -79,9 +84,9 @@ import {
   type ThreadSignalSerialization,
 } from "@quilted/threads/signals";
 import type { Tool } from "ai";
-import { machineId } from "node-machine-id";
 import { keys } from "remeda";
 import * as runExclusive from "run-exclusive";
+import simpleGit from "simple-git";
 import { Lifecycle, inject, injectable, scoped } from "tsyringe";
 import * as vscode from "vscode";
 // biome-ignore lint/style/useImportType: needed for dependency injection
@@ -92,6 +97,8 @@ import { DiffChangesContentProvider } from "../editor/diff-changes-content-provi
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { type FileSelection, TabState } from "../editor/tab-state";
 // biome-ignore lint/style/useImportType: needed for dependency injection
+import { WorktreeManager } from "../git/worktree";
+// biome-ignore lint/style/useImportType: needed for dependency injection
 import { ThirdMcpImporter } from "../mcp/third-party-mcp";
 import {
   convertUrl,
@@ -100,8 +107,8 @@ import {
 } from "../terminal-link-provider/url-utils";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { TerminalState } from "../terminal/terminal-state";
-import { commitStore } from "./base";
-import { PochiWebviewPanel } from "./webview-panel";
+import { taskUpdated } from "./base";
+import { PochiTaskEditorProvider } from "./webview-panel";
 
 const logger = getLogger("VSCodeHostImpl");
 
@@ -126,6 +133,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     private readonly workspaceScope: WorkspaceScope,
     private readonly checkpointService: CheckpointService,
     private readonly customAgentManager: CustomAgentManager,
+    private readonly worktreeManager: WorktreeManager,
   ) {}
 
   private get cwd() {
@@ -159,15 +167,6 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     }
   };
 
-  readMachineId = async (): Promise<string> => {
-    const id = await machineId();
-    if (this.context.extensionMode === vscode.ExtensionMode.Production) {
-      return id;
-    }
-
-    return `dev-${id}`;
-  };
-
   // These methods are overridden in the wrapper created by BaseWebview.createVSCodeHostWrapper()
   // They are only here to satisfy the VSCodeHostApi interface
   getSessionState = async <K extends keyof SessionState>(
@@ -198,7 +197,23 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     return this.context.workspaceState.update(key, value);
   };
 
-  readEnvironment = async (isSubTask = false): Promise<Environment> => {
+  getGlobalState = async (
+    key: string,
+    defaultValue?: unknown,
+  ): Promise<unknown> => {
+    return this.context.globalState.get(key, defaultValue);
+  };
+
+  setGlobalState = async (key: string, value: unknown): Promise<void> => {
+    this.context.globalState.update(key, value);
+  };
+
+  readEnvironment = async (options: {
+    isSubTask?: boolean;
+    webviewKind: "sidebar" | "pane";
+  }): Promise<Environment> => {
+    const isSubTask = options.isSubTask ?? false;
+    const webviewKind = options.webviewKind;
     const { files, isTruncated } = this.cwd
       ? await listWorkspaceFiles({
           cwd: this.cwd,
@@ -216,6 +231,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     if (this.cwd) {
       const gitStatusReader = new GitStatusReader({
         cwd: this.cwd,
+        webviewKind,
       });
       gitStatus = await gitStatusReader.readGitStatus();
     }
@@ -227,11 +243,19 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         isTruncated,
         gitStatus,
         activeTabs: this.tabState.activeTabs.value.map((tab) => ({
-          filepath: tab.filepath,
+          filepath: asRelativePath(tab.filepath, this.cwd ?? ""),
           isActive:
             tab.filepath === this.tabState.activeSelection.value?.filepath,
         })),
-        activeSelection: this.tabState.activeSelection.value,
+        activeSelection: this.tabState.activeSelection.value
+          ? {
+              ...this.tabState.activeSelection.value,
+              filepath: asRelativePath(
+                this.tabState.activeSelection.value.filepath,
+                this.cwd ?? "",
+              ),
+            }
+          : undefined,
         terminals: this.terminalState.visibleTerminals.value,
       },
       info: {
@@ -246,7 +270,14 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   readActiveTabs = async (): Promise<
     ThreadSignalSerialization<Array<{ filepath: string; isDir: boolean }>>
   > => {
-    return ThreadSignal.serialize(this.tabState.activeTabs);
+    return ThreadSignal.serialize(
+      computed(() =>
+        this.tabState.activeTabs.value.map((tab) => ({
+          filepath: asRelativePath(tab.filepath, this.cwd ?? ""),
+          isDir: tab.isDir,
+        })),
+      ),
+    );
   };
 
   readActiveSelection = async (): Promise<
@@ -264,8 +295,15 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     };
   };
 
-  readCurrentWorkspace = async (): Promise<string | null> => {
-    return this.cwd;
+  readCurrentWorkspace = async (): Promise<{
+    cwd: string | null;
+    workspaceFolder: string | null;
+  }> => {
+    return {
+      cwd: this.cwd,
+      workspaceFolder:
+        vscode.workspace.workspaceFolders?.[0].uri.fsPath ?? null,
+    };
   };
 
   readMinionId = async (): Promise<string | null> => {
@@ -397,6 +435,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         toolCallId: string;
         state: "partial-call" | "call" | "result";
         abortSignal?: ThreadAbortSignalSerialization;
+        nonInteractive?: boolean;
       },
     ) => {
       const tool = ToolPreviewMap[toolName];
@@ -418,12 +457,13 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         ? new ThreadAbortSignal(options.abortSignal)
         : undefined;
 
-      return await safeCall<undefined>(
+      return await safeCall<PreviewReturnType>(
         // biome-ignore lint/suspicious/noExplicitAny: external call without type information
         tool(args as any, {
           ...options,
           abortSignal,
           cwd: this.cwd,
+          nonInteractive: options.nonInteractive,
         }),
       );
     },
@@ -438,6 +478,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       base64Data?: string;
       fallbackGlobPattern?: string;
       cellId?: string;
+      webviewKind?: "sidebar" | "pane";
     },
   ) => {
     // Expand ~ to home directory if present
@@ -674,6 +715,11 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       checkpoint: { origin: string; modified?: string },
       displayPath?: string,
     ) => {
+      logger.debug(
+        `Showing checkpoint diff: from ${checkpoint.origin} to ${
+          checkpoint.modified ?? "HEAD"
+        }`,
+      );
       const changedFiles = await this.checkpointService.getCheckpointChanges(
         checkpoint.origin,
         checkpoint.modified,
@@ -721,7 +767,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
           vscode.Uri.joinPath(vscode.Uri.parse(this.cwd ?? ""), file.filepath),
           DiffChangesContentProvider.decode({
             filepath: file.filepath,
-            content: file.after,
+            content: file.before,
             cwd: this.cwd ?? "",
           }),
           vscode.Uri.joinPath(vscode.Uri.parse(this.cwd ?? ""), file.filepath),
@@ -765,16 +811,90 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     return ThreadSignal.serialize(this.userStorage.users);
   };
 
-  openTaskInPanel = async (task: TaskData): Promise<void> => {
-    if (!task.cwd) {
-      return;
+  openTaskInPanel = async (params: TaskPanelParams): Promise<void> => {
+    await PochiTaskEditorProvider.openTaskEditor(params);
+  };
+
+  showDiff = async (base = "origin/main"): Promise<boolean> => {
+    if (!this.cwd) {
+      return false;
     }
-    const workspaceContainer = workspaceScoped(task.cwd);
-    await PochiWebviewPanel.createOrShow(
-      workspaceContainer,
-      this.context.extensionUri,
-      task,
-    );
+
+    const git = simpleGit(this.cwd);
+    const result: { filepath: string; before: string; after: string }[] = [];
+    try {
+      const output = await git.raw(["diff", "--name-status", base]);
+      if (output.trim().length === 0) {
+        return false;
+      }
+      const changedFiles = output
+        .trim()
+        .split("\n")
+        .map((line: string) => {
+          const [status, filepath] = line.split("\t");
+          return { status: status.trim(), filepath: filepath.trim() };
+        });
+
+      if (changedFiles.length === 0) {
+        return false;
+      }
+
+      for (const { status, filepath } of changedFiles) {
+        const fsPath = path.join(this.cwd, filepath);
+        let beforeContent = "";
+        let afterContent = "";
+        if (status === "A") {
+          const fileContent = await readFileContent(fsPath);
+          afterContent = fileContent ?? "";
+        } else if (status === "D") {
+          beforeContent = await git.raw(["show", `${base}:${filepath}`]);
+        } else {
+          beforeContent = await git.raw(["show", `${base}:${filepath}`]);
+          afterContent = (await readFileContent(fsPath)) ?? "";
+        }
+
+        result.push({
+          filepath,
+          before: beforeContent,
+          after: afterContent,
+        });
+      }
+
+      // Workaround: Focus the target column before calling 'vscode.changes'
+      const dummyDoc = await vscode.workspace.openTextDocument({
+        content: "",
+        language: "text",
+      });
+      await vscode.window.showTextDocument(dummyDoc, {
+        preview: true,
+        preserveFocus: false,
+      });
+
+      // show changes
+      await vscode.commands.executeCommand(
+        "vscode.changes",
+        `Changes${base ? ` vs ${base}` : ""}`,
+        result.map((file) => [
+          vscode.Uri.joinPath(vscode.Uri.parse(this.cwd ?? ""), file.filepath),
+          DiffChangesContentProvider.decode({
+            filepath: file.filepath,
+            content: file.before,
+            cwd: this.cwd ?? "",
+          }),
+          DiffChangesContentProvider.decode({
+            filepath: file.filepath,
+            content: file.after,
+            cwd: this.cwd ?? "",
+          }),
+        ]),
+      );
+      return true;
+    } catch (e: unknown) {
+      vscode.window.showErrorMessage(
+        `Failed to get diff: ${toErrorMessage(e)}`,
+      );
+      return false;
+    }
   };
 
   executeBashCommand = async (
@@ -812,13 +932,18 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     return ThreadSignal.serialize(this.customAgentManager.agents);
   };
 
-  bridgeStoreEvent = async (
-    webviewType: "sidebar" | "pane",
-    event: unknown,
-  ): Promise<void> => {
-    // Ignore messages from the sidebar WebView as they're synced already.
-    if (webviewType === "sidebar") return;
-    commitStore.fire({ event });
+  onTaskUpdated = async (taskData: unknown): Promise<void> => {
+    taskUpdated.fire({ event: taskData });
+  };
+
+  readWorktrees = async (): Promise<
+    ThreadSignalSerialization<GitWorktree[]>
+  > => {
+    return ThreadSignal.serialize(this.worktreeManager.worktrees);
+  };
+
+  createWorktree = async () => {
+    return await this.worktreeManager.createWorktree();
   };
 
   dispose() {

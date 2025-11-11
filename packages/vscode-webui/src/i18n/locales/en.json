@@ -26,7 +26,12 @@
     "queuedMessages": "Queued Messages ({{count}})",
     "copyImage": "Copy Image",
     "openImage": "Open Image",
-    "pleaseCheckFiles": "Please check these files."
+    "pleaseCheckFiles": "Please check these files.",
+    "chatToolbar": {
+      "diffWorktreeWith": "Diff worktree with {{branch}}",
+      "openInTerminal": "Open in integrated terminal"
+    },
+    "createTaskInWorktree": "Create task in a separate Git worktree"
   },
   "language": {
     "switcherTooltip": "Choose your preferred language with Pochi"
@@ -50,6 +55,11 @@
     "super": "Super",
     "swift": "Swift"
   },
+  "worktreeSelect": {
+    "selectWorktree": "Select Worktree",
+    "createWorktree": "Create Git worktree",
+    "createWorktreeDescription": "Start task in a new Git worktree"
+  },
   "settings": {
     "account": {
       "signIn": "Sign-In for Pochi models",
@@ -62,7 +72,10 @@
       "copilotDisabled": "Copilot models are disabled. Turn on the switch to enable them.",
       "noModelsFound": "No models found",
       "customModelsTooltip": "Manage your custom models.",
-      "viewPricing": "View Pochi pricing"
+      "viewPricing": "View Pochi pricing",
+      "pochi": "Pochi",
+      "byok": "BYOK",
+      "thirdParty": "Third-party"
     },
     "tools": {
       "title": "Tools",
@@ -106,10 +119,13 @@
       "write": "Write",
       "execute": "Execute",
       "mcp": "MCP",
-      "retry": "Retry"
+      "retry": "Retry",
+      "subtaskOffhand": "Subtask - Offhand",
+      "subtaskManual": "Subtask - Manual",
+      "applyChangesToDefault": "Apply changes to default"
     },
     "customAgents": {
-      "title": "Custom Agents",
+      "title": "Agents",
       "loading": "Loading custom agents ...",
       "empty": "No custom agents found, Create agent files in .pochi/agents/ in your workspace",
       "errors": {
@@ -142,6 +158,204 @@
     "joinDiscord": "Join Discord",
     "ok": "OK",
     "setPublic": "Anyone with link",
-    "setPrivate": "Only you"
+    "setPrivate": "Only you",
+    "shareFirst": "(Share first)"
+  },
+  "signInPage": {
+    "welcome": "Welcome to Pochi",
+    "description": "To use Pochi, you need to sign in with your account.",
+    "securityNote": "This allows Pochi to securely access your information and provide personalized assistance.",
+    "signInButton": "Sign In",
+    "needHelp": "Need help? View documentation"
+  },
+  "tasksPage": {
+    "emptyState": {
+      "title": "No tasks found",
+      "description": "Create a new task to get started with Pochi",
+      "createButton": "New Task"
+    },
+    "status": {
+      "streaming": "Streaming",
+      "pendingTool": "Pending Tool",
+      "pendingInput": "Pending Input",
+      "completed": "Completed",
+      "failed": "Failed",
+      "pendingModel": "Pending Model",
+      "unknown": "Unknown Status: {{status}}"
+    },
+    "datePicker": {
+      "selectDate": "Select date",
+      "today": "Today"
+    },
+    "worktreeNotExist": "Worktree does not exist"
+  },
+  "toolInvocation": {
+    "taskCompleted": "Task Completed",
+    "reading": "Reading ",
+    "writing": "Writing ",
+    "continue": "Continue",
+    "cancel": "Cancel",
+    "continueInSeconds": "Continue in {{seconds}}s",
+    "save": "Save",
+    "run": "Run",
+    "accept": "Accept",
+    "reject": "Reject",
+    "stop": "Stop",
+    "preview": "Preview",
+    "calling": "Calling",
+    "request": "Request",
+    "response": "Response",
+    "imgAlt": "MCP tool response snapshot",
+    "applyingDiffTo": "Applying diff to ",
+    "applyingDiffsTo": "Applying diffs to ",
+    "in": "in",
+    "executeCommand": "I will execute the following command",
+    "for": "for",
+    "searching": "Searching",
+    "searchingFor": "Searching for:",
+    "matchCount_one": "{{count}} match",
+    "matchCount_other": "{{count}} matches",
+    "matched": " matched",
+    "resultsTruncated": ", results truncated",
+    "stopBackgroundJob": "I will stop the following background job",
+    "result_one": "{{count}} result",
+    "result_other": "{{count}} results",
+    "readBackground": "Reading background job output",
+    "withRegexFilter": "with regex filter",
+    "backgroundExecute": "I will execute the following command in the background",
+    "updatingToDos": "Updating todos"
+  },
+  "reasoning": {
+    "thinking": "Thinking ...",
+    "thoughtFor": "Thought for {{count}} characters"
+  },
+  "attachmentPreview": {
+    "removeAttachment": "Remove attachment",
+    "uploading": "Uploading..."
+  },
+  "checkpointUI": {
+    "restoring": "Restoring...",
+    "success": "Success",
+    "restore": "Restore",
+    "opening": "Opening...",
+    "noChangesDetected": "No changes detected",
+    "compare": "Compare"
+  },
+  "welcomeScreen": {
+    "title": "Get Started",
+    "description": "Sign in to access models provided by Pochi and take advantage of a rich set of team features, or bring your own key to use any model you prefer.",
+    "bringYourOwnKey": "Bring Your Own Key",
+    "signIn": "Sign In"
+  },
+  "fileIcon": {
+    "fileAriaLabel": "File: {{path}}"
+  },
+  "statusIcon": {
+    "copyToolResult": "Copy Tool Result"
+  },
+  "newProblems": {
+    "aboveProblemsDetected": "Above problems have been detected after the change",
+    "problemsDetectedTooltip": "Problems detected after change"
+  },
+  "userEdits": {
+    "youHaveMadeAboveEdits": "You have made the above edits"
+  },
+  "fileBadge": {
+    "modifiedByPochi": "(Modified by Pochi)"
+  },
+  "codeBlock": {
+    "showCode": "Show code",
+    "showDiagram": "Show diagram",
+    "copy": "Copy"
+  },
+  "messageList": {
+    "compactedConversationTooltip": "Conversation has been compacted from this point onward to reduce token usage"
+  },
+  "markdown": {
+    "codeOmitted": "... {{language}} code omitted ( {{bytes}} bytes ) ..."
+  },
+  "formEditor": {
+    "placeholder": "Ask anything ...",
+    "autoCompleteHintPrefix": "Use Tab",
+    "autoCompleteHintSuffix": "to see suggestions",
+    "dropFilesMessage": "Drop files here to attach them to your message"
+  },
+  "activeSelectionBadge": {
+    "cell": "Cell",
+    "addContext": "Add Context"
+  },
+  "mentionList": {
+    "noResultsFound": "No results found",
+    "typeToSearch": "Type to search...",
+    "workflow": "workflow",
+    "agent": "agent"
+  },
+  "subtask": {
+    "back": "Back",
+    "complete": "Complete"
+  },
+  "errorMessageView": {
+    "reachedCreditLimit": "You have reached the spending limit.",
+    "seeMore": "See more",
+    "teamReachedCreditLimit": "Your team has reached the spending limit.",
+    "requireSubscription": "You've used all your free credits. To continue, please subscribe to Pochi.",
+    "subscribe": "Subscribe",
+    "requireOrgSubscription": "Your team does not have a subscription yet. To continue, please subscribe to Pochi.",
+    "requirePayment": "You have unpaid invoices. Please",
+    "makePayment": "make a payment",
+    "toContinueUsingPochi": "to continue using Pochi",
+    "requireOrgPayment": "Your team have unpaid invoices. Please"
+  },
+  "chatPage": {
+    "defaultUserName": "You"
+  },
+  "todoList": {
+    "todos": "TODOs",
+    "allDone": "🎉 All done!"
+  },
+  "commandExecutionPanel": {
+    "copied": "Copied!",
+    "copyCommand": "Copy command",
+    "collapse": "Collapse",
+    "expand": "Expand",
+    "openJob": "Open job {{displayId}}",
+    "stop": "STOP"
+  },
+  "devModeButton": {
+    "title": "Dev mode",
+    "copyMessages": "Copy Messages",
+    "copyCoreMessages": "Copy Core Messages",
+    "copyCheckpointCommand": "Copy Checkpoint Command",
+    "copyTodos": "Copy TODOs",
+    "noCheckpointAvailable": "No checkpoint available",
+    "openStore": "Open Store"
+  },
+  "devRetryCountdown": {
+    "attempts": "Attempts:",
+    "countdown": "Countdown:",
+    "delay": "Delay:"
+  },
+  "editNotebook": {
+    "editing": "Editing ",
+    "cell": "Cell",
+    "cellId": "Cell ID: "
+  },
+  "dev": {
+    "loading": "Loading",
+    "storeId": "Store ID",
+    "liveStoreVersion": "LiveStore Version",
+    "liveStoreVersionPrefix": "v",
+    "openDevTools": "Open DevTools",
+    "task": "Task",
+    "messages": "Messages",
+    "enterSessionInfo": "Enter Session Info",
+    "sessionId": "Session ID (storeId)",
+    "jwt": "JWT",
+    "submit": "Submit"
+  },
+  "pagination": {
+    "previous": "Previous",
+    "next": "Next",
+    "morePages": "More pages"
   }
 }

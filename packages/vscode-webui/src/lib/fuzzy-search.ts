@@ -33,29 +33,29 @@ export function fuzzySearchStrings(needle: string, haystack: string[]) {
 /**
  * Fuzzy search function for workflow objects with name and content properties
  */
-export function fuzzySearchWorkflows<T extends { id: string }>(
+export function fuzzySearchSlashCandidates<T extends { id: string }>(
   needle: string | undefined,
-  workflows: T[],
+  data: T[],
   limit: number = MaxResult,
 ): T[] {
-  if (!workflows || !Array.isArray(workflows)) {
+  if (!data || !Array.isArray(data)) {
     return [];
   }
 
   if (!needle) {
-    return workflows.slice(0, limit);
+    return data.slice(0, limit);
   }
 
   // Create a haystack of workflow names for searching
-  const haystack = workflows.map((w) => w.id);
+  const haystack = data.map((w) => w.id);
   const [_, info, order] = uf.search(haystack, needle);
 
   if (!order) return [];
 
   const results = [];
   for (const i of order) {
-    const workflow = workflows[info.idx[i]];
-    results.push(workflow);
+    const item = data[info.idx[i]];
+    results.push(item);
   }
 
   return results;

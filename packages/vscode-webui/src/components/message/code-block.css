@@ -5,3 +5,21 @@ pre[class*="language-"] {
   @apply text-sm!;
   background-color: transparent;
 }
+
+pre.has-diff {
+  display: inline-block;
+  width: fit-content;
+  min-width: 100%;
+}
+
+.line.diff.add {
+  width: 100%;
+  display: inline-block;
+  background-color: var(--vscode-diffEditor-insertedLineBackground);
+}
+
+.line.diff.remove {
+  width: 100%;
+  display: inline-block;
+  background-color: var(--vscode-diffEditor-removedLineBackground);
+}

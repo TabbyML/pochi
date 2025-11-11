@@ -1,5 +1,6 @@
 import type React from "react";
 import { useCallback, useEffect, useMemo } from "react"; // useMemo is now in the hook
+import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
 import { useAutoApproveGuard, useToolCallLifeCycle } from "@/features/chat";
@@ -9,6 +10,7 @@ import {
   useToolAutoApproval,
 } from "@/features/settings";
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
+import { useStore } from "@livestore/react";
 import { useNavigate } from "@tanstack/react-router";
 import { getToolName } from "ai";
 import type { PendingToolCallApproval } from "../hooks/use-pending-tool-call-approval";
@@ -23,6 +25,7 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
   pendingApproval,
   isSubTask,
 }) => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const autoApproveGuard = useAutoApproveGuard();
   const { getToolCallLifeCycle } = useToolCallLifeCycle();
@@ -52,10 +55,10 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
   );
 
   const ToolAcceptText: Record<string, string> = {
-    writeToFile: "Save",
-    executeCommand: "Run",
-    todoWrite: "Continue",
-    newTask: "Run",
+    writeToFile: t("toolInvocation.save"),
+    executeCommand: t("toolInvocation.run"),
+    todoWrite: t("toolInvocation.continue"),
+    newTask: t("toolInvocation.run"),
   };
 
   const ToolRejectText: Record<string, string> = {
@@ -64,20 +67,26 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
 
   const ToolAbortText: Record<string, string> = {};
 
-  const acceptText = ToolAcceptText[pendingApproval.name] || "Accept";
-  const rejectText = ToolRejectText[pendingApproval.name] || "Reject";
-  const abortText = ToolAbortText[pendingApproval.name] || "Stop";
+  const acceptText =
+    ToolAcceptText[pendingApproval.name] || t("toolInvocation.accept");
+  const rejectText =
+    ToolRejectText[pendingApproval.name] || t("toolInvocation.reject");
+  const abortText =
+    ToolAbortText[pendingApproval.name] || t("toolInvocation.stop");
+
+  const { store } = useStore();
 
   const manualRunSubtask = useCallback(
     (subtaskUid: string) => {
       navigate({
-        to: "/",
+        to: "/task",
         search: {
           uid: subtaskUid,
+          storeId: store.storeId,
         },
       });
     },
-    [navigate],
+    [navigate, store.storeId],
   );
 
   const { subtaskOffhand } = useSubtaskOffhand();

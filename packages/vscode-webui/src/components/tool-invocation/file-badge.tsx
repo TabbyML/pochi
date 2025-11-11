@@ -1,6 +1,7 @@
 import { cn } from "@/lib/utils";
 import { addLineBreak } from "@/lib/utils/file";
 import { vscodeHost } from "@/lib/vscode";
+import { useTranslation } from "react-i18next";
 import type { ToolCallCheckpoint } from "../message/message-list";
 import { EditSummary } from "./edit-summary";
 import { FileIcon } from "./file-icon/file-icon";
@@ -35,6 +36,8 @@ export const FileBadge: React.FC<FileBadgeProps> = ({
   changes,
   fallbackGlobPattern,
 }) => {
+  const { t } = useTranslation();
+
   const lineRange = startLine
     ? endLine && startLine !== endLine
       ? `:${startLine}-${endLine}`
@@ -44,7 +47,7 @@ export const FileBadge: React.FC<FileBadgeProps> = ({
   const defaultOnClick = async () => {
     if (changes?.origin && changes?.modified) {
       const showDiffSuccess = await vscodeHost.showCheckpointDiff(
-        `${path} (Modified by Pochi)`,
+        `${path} ${t("fileBadge.modifiedByPochi")}`,
         {
           origin: changes.origin,
           modified: changes.modified,
@@ -59,16 +62,18 @@ export const FileBadge: React.FC<FileBadgeProps> = ({
       start?: number;
       end?: number;
       fallbackGlobPattern?: string;
+      webviewKind: "sidebar" | "pane";
     } = {
       fallbackGlobPattern: fallbackGlobPattern,
+      webviewKind: globalThis.POCHI_WEBVIEW_KIND,
     };
     if (startLine) {
       options.start = startLine;
       options.end = endLine;
     }
-
     vscodeHost.openFile(path, options);
   };
+
   return (
     <span
       onClick={(e) => {

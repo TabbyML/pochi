@@ -92,19 +92,19 @@ describe("PochiConfigManager", () => {
       const userMcp = {
         "server1": { command: "node", args: ["server1.js"] },
       };
-      
+
       const workspaceMcp = {
         "server2": { command: "node", args: ["server2.js"] },
       };
-      
+
       expect(Object.keys(userMcp)).toContain("server1");
       expect(Object.keys(workspaceMcp)).toContain("server2");
     });
   });
 
-  describe("POCHI_SESSION_TOKEN environment variable", () => {
+  describe("POCHI_API_KEY environment variable", () => {
     it("should inject session token from environment", () => {
-      const hasToken = !!process.env.POCHI_SESSION_TOKEN;
+      const hasToken = !!process.env.POCHI_API_KEY;
       expect(typeof hasToken).toBe("boolean");
     });
 
@@ -179,10 +179,10 @@ describe("PochiConfigManager", () => {
 
     it("should build effective targets array", () => {
       const effectiveTargets: Array<"user" | "workspace"> = [];
-      
+
       effectiveTargets.push("user");
       expect(effectiveTargets).toContain("user");
-      
+
       effectiveTargets.push("workspace");
       expect(effectiveTargets).toContain("workspace");
     });
@@ -207,10 +207,10 @@ describe("PochiConfigManager", () => {
     it("should isolate workspace configs per workspace", () => {
       const workspace1 = "/path/to/workspace1";
       const workspace2 = "/path/to/workspace2";
-      
+
       const path1 = path.join(workspace1, pochiConfigRelativePath);
       const path2 = path.join(workspace2, pochiConfigRelativePath);
-      
+
       expect(path1).not.toBe(path2);
     });
 
@@ -219,7 +219,7 @@ describe("PochiConfigManager", () => {
         .access(testWorkspaceConfigPath)
         .then(() => true)
         .catch(() => false);
-      
+
       expect(typeof exists).toBe("boolean");
     });
   });
@@ -245,36 +245,36 @@ describe("PochiConfigManager", () => {
   describe("config file existence check", () => {
     it("should check workspace config file existence before loading", async () => {
       const nonExistentPath = path.join(testDir, "nonexistent", ".pochi", "config.jsonc");
-      
+
       const exists = await fsPromise
         .access(nonExistentPath)
         .then(() => true)
         .catch(() => false);
-      
+
       expect(exists).toBe(false);
     });
 
     it("should detect existing workspace config file", async () => {
       await fsPromise.writeFile(testWorkspaceConfigPath, "{}");
-      
+
       const exists = await fsPromise
         .access(testWorkspaceConfigPath)
         .then(() => true)
         .catch(() => false);
-      
+
       expect(exists).toBe(true);
     });
 
     it("should use fsPromise.access to check file existence", async () => {
       await fsPromise.writeFile(testWorkspaceConfigPath, "{}");
-      
+
       let error: any = null;
       try {
         await fsPromise.access(testWorkspaceConfigPath);
       } catch (err) {
         error = err;
       }
-      
+
       expect(error).toBeNull();
     });
   });
@@ -285,7 +285,7 @@ describe("PochiConfigManager", () => {
       const mockCallback = () => {
         callbackCalled = true;
       };
-      
+
       mockCallback();
       expect(callbackCalled).toBe(true);
     });
@@ -333,39 +333,39 @@ describe("PochiConfigManager", () => {
   describe("effective config targets", () => {
     it("should determine effective targets based on value presence", () => {
       const effectiveTargets: Array<"user" | "workspace"> = [];
-      
+
       const hasWorkspaceValue = false;
       if (hasWorkspaceValue) {
         effectiveTargets.push("workspace");
       }
-      
+
       const hasUserValue = true;
       if (hasUserValue) {
         effectiveTargets.push("user");
       }
-      
+
       expect(effectiveTargets).toEqual(["user"]);
     });
 
     it("should include workspace in targets when value exists", () => {
       const targets: Array<"user" | "workspace"> = [];
       const workspaceValue = { test: "value" };
-      
+
       if (workspaceValue !== undefined) {
         targets.push("workspace");
       }
-      
+
       expect(targets).toContain("workspace");
     });
 
     it("should include user in targets when value exists", () => {
       const targets: Array<"user" | "workspace"> = [];
       const userValue = { test: "value" };
-      
+
       if (userValue !== undefined) {
         targets.push("user");
       }
-      
+
       expect(targets).toContain("user");
     });
   });
@@ -374,7 +374,7 @@ describe("PochiConfigManager", () => {
     it("should use different config filenames for dev and prod", () => {
       const devConfig = "dev-config.jsonc";
       const prodConfig = "config.jsonc";
-      
+
       expect(devConfig).not.toBe(prodConfig);
     });
   });
@@ -383,12 +383,12 @@ describe("PochiConfigManager", () => {
     it("should check if workspace config file exists", async () => {
       const workspacePath = testWorkspaceDir;
       await fsPromise.writeFile(testWorkspaceConfigPath, "{}");
-      
+
       const exists = await fsPromise
         .access(path.join(workspacePath, pochiConfigRelativePath))
         .then(() => true)
         .catch(() => false);
-      
+
       expect(exists).toBe(true);
     });
 
@@ -433,7 +433,7 @@ describe("PochiConfigManager", () => {
     it("should return user config file path for user target", () => {
       const target: "user" | "workspace" = "user";
       const expectedPath = path.join(os.homedir(), pochiConfigRelativePath);
-      
+
       if (target === "user") {
         expect(expectedPath).toContain(os.homedir());
       }
@@ -443,7 +443,7 @@ describe("PochiConfigManager", () => {
       const target: "user" | "workspace" = "workspace";
       const workspacePath = "/test/workspace";
       const expectedPath = path.join(workspacePath, pochiConfigRelativePath);
-      
+
       if (target === "workspace") {
         expect(expectedPath).toContain(workspacePath);
       }
@@ -460,7 +460,7 @@ describe("PochiConfigManager", () => {
             return "unknown";
         }
       };
-      
+
       expect(evaluateTarget("user")).toBe("user-path");
       expect(evaluateTarget("workspace")).toBe("workspace-path");
     });
@@ -508,7 +508,7 @@ describe("PochiConfigManager", () => {
     it("should call getPochiConfigFilePath for user target", async () => {
       const { getPochiConfigFilePath } = await import("../config-manager");
       const filePath = getPochiConfigFilePath("user");
-      
+
       expect(filePath).toBeDefined();
       expect(filePath).toContain(os.homedir());
       expect(filePath).toContain(".pochi");
@@ -517,7 +517,7 @@ describe("PochiConfigManager", () => {
     it("should call getPochiConfigFilePath for workspace target", async () => {
       const { getPochiConfigFilePath } = await import("../config-manager");
       const filePath = getPochiConfigFilePath("workspace");
-      
+
       // Workspace path might be undefined if not set
       expect(filePath === undefined || typeof filePath === "string").toBe(true);
     });
@@ -525,7 +525,7 @@ describe("PochiConfigManager", () => {
     it("should call getVendorConfig with vendor id", async () => {
       const { getVendorConfig } = await import("../config-manager");
       const vendorConfig = getVendorConfig("pochi");
-      
+
       // Vendor config might be undefined if not configured
       expect(vendorConfig === undefined || typeof vendorConfig === "object").toBe(true);
     });
@@ -533,40 +533,40 @@ describe("PochiConfigManager", () => {
     it("should access pochiConfig.value", async () => {
       const { pochiConfig } = await import("../config-manager");
       const configValue = pochiConfig.value;
-      
+
       expect(configValue).toBeDefined();
       expect(typeof configValue).toBe("object");
     });
 
     it("should call watchPochiConfigKeys", async () => {
       const { watchPochiConfigKeys } = await import("../config-manager");
-      
+
       let callbackCalled = false;
       const unsubscribe = watchPochiConfigKeys(["mcp"], () => {
         callbackCalled = true;
       });
-      
+
       // Cleanup
       if (unsubscribe) {
         unsubscribe();
       }
-      
+
       // Callback is called immediately with untracked
       expect(callbackCalled).toBe(true);
     });
 
     it("should handle updatePochiConfig return value", async () => {
       const { updatePochiConfig } = await import("../config-manager");
-      
+
       // This will fail if user config doesn't exist, which is expected in tests
       const result = await updatePochiConfig({}, "user").catch(() => false);
-      
+
       expect(typeof result).toBe("boolean");
     });
 
     it("should handle updateVendorConfig", async () => {
       const { updateVendorConfig } = await import("../config-manager");
-      
+
       // This will update vendor config - catch any errors
       try {
         await updateVendorConfig("test-vendor", null, "user");
@@ -649,7 +649,7 @@ describe("PochiConfigManager", () => {
     it("should determine filename based on isDev flag", () => {
       const devFilename = "dev-config.jsonc";
       const prodFilename = "config.jsonc";
-      
+
       expect(devFilename).toContain("dev-");
       expect(prodFilename).not.toContain("dev-");
     });
@@ -663,7 +663,7 @@ describe("PochiConfigManager", () => {
     it("should join workspace path with relative config path", () => {
       const workspacePath = "/test/workspace";
       const expectedPath = path.join(workspacePath, pochiConfigRelativePath);
-      
+
       expect(expectedPath).toContain(workspacePath);
       expect(expectedPath).toContain(pochiConfigRelativePath);
     });
@@ -673,13 +673,13 @@ describe("PochiConfigManager", () => {
     it("should use home directory", () => {
       const homeDir = os.homedir();
       const userConfigPath = path.join(homeDir, pochiConfigRelativePath);
-      
+
       expect(userConfigPath).toContain(homeDir);
     });
 
     it("should include pochi config relative path", () => {
       const userConfigPath = path.join(os.homedir(), pochiConfigRelativePath);
-      
+
       expect(userConfigPath).toContain(".pochi");
     });
   });
@@ -706,11 +706,11 @@ describe("PochiConfigManager", () => {
     it("should iterate over allowed keys", () => {
       const allowedKeys = ["mcp"];
       const keys: string[] = [];
-      
+
       for (const key of allowedKeys) {
         keys.push(key);
       }
-      
+
       expect(keys).toEqual(["mcp"]);
     });
 
@@ -718,7 +718,7 @@ describe("PochiConfigManager", () => {
       const obj1 = { a: 1 };
       const obj2 = { b: 2 };
       const merged = { ...obj1, ...obj2 };
-      
+
       expect(merged).toEqual({ a: 1, b: 2 });
     });
   });

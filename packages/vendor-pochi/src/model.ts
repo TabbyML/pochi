@@ -6,7 +6,6 @@ import {
 import {
   EventSourceParserStream,
   convertToBase64,
-  extractResponseHeaders,
 } from "@ai-sdk/provider-utils";
 import type { CreateModelOptions } from "@getpochi/common/vendor/edge";
 import {
@@ -80,12 +79,18 @@ export function createPochiModel({
       );
 
       if (!resp.ok || !resp.body) {
+        // Convert Hono ClientResponse headers to standard Headers format
+        const responseHeaders: Record<string, string> = {};
+        resp.headers.forEach((value, key) => {
+          responseHeaders[key] = value;
+        });
+
         throw new APICallError({
           message: `Failed to fetch: ${resp.status} ${resp.statusText}`,
           statusCode: resp.status,
           url: apiClient.api.chat.stream.$url().toString(),
           requestBodyValues: data,
-          responseHeaders: extractResponseHeaders(resp),
+          responseHeaders,
         });
       }
 

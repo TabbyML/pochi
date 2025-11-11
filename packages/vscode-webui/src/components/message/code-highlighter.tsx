@@ -2,8 +2,13 @@ import { cn } from "@/lib/utils";
 import { createJavaScriptRegexEngine } from "@shikijs/engine-javascript";
 import darkPlus from "@shikijs/themes/dark-plus";
 import lightPlus from "@shikijs/themes/light-plus";
+import type { Element } from "hast";
 import { type HTMLAttributes, useEffect, useRef, useState } from "react";
-import { type ThemeRegistration, createHighlighterCore } from "shiki/core";
+import {
+  type ShikiTransformer,
+  type ThemeRegistration,
+  createHighlighterCore,
+} from "shiki/core";
 import { useTheme } from "../theme-provider";
 import {
   type BundledLanguage,
@@ -17,7 +22,30 @@ type CodeBlockProps = HTMLAttributes<HTMLDivElement> & {
   theme: string | undefined;
 };
 
-const PRE_TAG_REGEX = /<pre(\s|>)/;
+export function shikiDiffNotation(): ShikiTransformer {
+  return {
+    name: "shiki-diff-notation",
+    code(node: Element) {
+      this.addClassToHast(this.pre, "has-diff");
+      const lines = node.children.filter(
+        (node) => node.type === "element",
+      ) as Element[];
+      for (const line of lines) {
+        for (const child of line.children) {
+          if (child.type !== "element") continue;
+          const text = child.children[0];
+          if (text.type !== "text") continue;
+          if (text.value.startsWith("+")) {
+            this.addClassToHast(line, "diff add");
+          }
+          if (text.value.startsWith("-")) {
+            this.addClassToHast(line, "diff remove");
+          }
+        }
+      }
+    },
+  };
+}
 
 class HighlighterManager {
   private lightHighlighter: Awaited<
@@ -128,18 +156,33 @@ class HighlighterManager {
     const light = this.lightHighlighter?.codeToHtml(code, {
       lang,
       theme: "light-plus",
+      transformers: lang === "diff" ? [shikiDiffNotation()] : [],
     });
 
     const dark = this.darkHighlighter?.codeToHtml(code, {
       lang,
       theme: "dark-plus",
+      transformers: lang === "diff" ? [shikiDiffNotation()] : [],
     });
 
     const addPreClass = (html: string) => {
       if (!preClassName) {
         return html;
       }
-      return html.replace(PRE_TAG_REGEX, `<pre class="${preClassName}"$1`);
+      return (
+        html
+          // Append to existing class attribute (handles single/double quotes)
+          .replace(
+            /<pre([^>]*?)\sclass=(["'])(.*?)\2/g,
+            (_m, attrs, q, classes) =>
+              `<pre${attrs} class=${q}${classes} ${preClassName}${q}`,
+          )
+          // Add class attribute when none exists
+          .replace(
+            /<pre((?![^>]*\sclass=)[^>]*?)>/g,
+            `<pre$1 class="${preClassName}">`,
+          )
+      );
     };
 
     return [

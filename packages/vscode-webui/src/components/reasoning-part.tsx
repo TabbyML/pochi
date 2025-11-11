@@ -4,6 +4,7 @@ import { MessageMarkdown } from "@/components/message/markdown";
 import { cn, tw } from "@/lib/utils";
 import type { ReasoningUIPart } from "ai";
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { ExpandableToolContainer } from "./tool-invocation/tool-container";
 
 interface ReasoningPartUIProps {
@@ -17,6 +18,7 @@ export function ReasoningPartUI({
   part,
   isLoading,
 }: ReasoningPartUIProps) {
+  const { t } = useTranslation();
   const iconClass = tw`text-blue-700 dark:text-blue-300`;
   const headlineFromMarkdown = useMemo(
     () => extractThinkingHeadline(part.text),
@@ -24,10 +26,10 @@ export function ReasoningPartUI({
   );
 
   const headline = useMemo(
-    () => headlineFromMarkdown || "Thinking ...",
-    [headlineFromMarkdown],
+    () => headlineFromMarkdown || t("reasoning.thinking"),
+    [headlineFromMarkdown, t],
   );
-  const finishHeadline = `Thought for ${part.text.length} characters`;
+  const finishHeadline = t("reasoning.thoughtFor", { count: part.text.length });
   const title = (
     <span className="flex items-center gap-2">
       {isLoading ? (

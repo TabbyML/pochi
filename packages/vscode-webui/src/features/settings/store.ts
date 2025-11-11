@@ -1,7 +1,12 @@
+import { vscodeHost } from "@/lib/vscode";
 import type { DisplayModel } from "@getpochi/common/vscode-webui-bridge";
 import type { ToolsByPermission } from "@getpochi/tools";
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import {
+  type StateStorage,
+  createJSONStorage,
+  persist,
+} from "zustand/middleware";
 
 export type AutoApprove = Record<
   Exclude<keyof typeof ToolsByPermission, "default">,
@@ -30,8 +35,6 @@ export interface SettingsState {
 
   enablePochiModels: boolean;
 
-  openInTab: boolean;
-
   toggleSubtaskOffhand: () => void;
   updateAutoApproveSettings: (data: Partial<AutoApprove>) => void;
   updateSubtaskAutoApproveSettings: (data: Partial<AutoApprove>) => void;
@@ -42,9 +45,49 @@ export interface SettingsState {
   updateIsDevMode: (value: boolean) => void;
 
   updateEnablePochiModels: (value: boolean) => void;
-
-  updateOpenInTab: (value: boolean) => void;
 }
+
+const settingsStorageName = "ragdoll-settings-storage";
+
+export const GlobalStateStorage: StateStorage & {
+  persist: (data: Partial<SettingsState>) => Promise<void>;
+} = {
+  async getItem(name) {
+    const value = await vscodeHost.getGlobalState(name, null);
+    return value as string | null;
+  },
+
+  async setItem(name: string, value: string | null) {
+    if (globalThis.POCHI_WEBVIEW_KIND === "sidebar") {
+      await vscodeHost.setGlobalState(name, value);
+    }
+  },
+
+  async removeItem(name) {
+    await vscodeHost.setGlobalState(name, null);
+  },
+
+  async persist(data: Partial<SettingsState>) {
+    try {
+      const currentGlobalState = (await vscodeHost.getGlobalState(
+        settingsStorageName,
+      )) as string | null;
+      if (!currentGlobalState) return;
+
+      const currentData = JSON.parse(currentGlobalState);
+      const nextStore = JSON.stringify({
+        ...currentData,
+        state: {
+          ...currentData.state,
+          ...data,
+        },
+      });
+      await vscodeHost.setGlobalState(settingsStorageName, nextStore);
+    } catch (e) {
+      // ignore
+    }
+  },
+};
 
 export const useSettingsStore = create<SettingsState>()(
   persist(
@@ -79,8 +122,6 @@ export const useSettingsStore = create<SettingsState>()(
       isDevMode: false,
 
       enablePochiModels: false,
-
-      openInTab: false,
 
       toggleSubtaskOffhand: () =>
         set((state) => ({
@@ -117,15 +158,28 @@ export const useSettingsStore = create<SettingsState>()(
 
       updateEnablePochiModels: (value: boolean) =>
         set(() => ({ enablePochiModels: value })),
-
-      updateOpenInTab: (value: boolean) => set(() => ({ openInTab: value })),
     }),
     {
-      name: "ragdoll-settings-storage",
+      name: settingsStorageName,
+      storage: createJSONStorage(() => GlobalStateStorage),
       partialize: (state) =>
         Object.fromEntries(
           Object.entries(state).filter(([_, v]) => typeof v !== "function"),
         ),
+      merge(persistedState, currentState) {
+        return {
+          ...currentState,
+          ...(persistedState as object),
+          // ensure subtask's autoApproveSettings inherits from global state
+          subtaskAutoApproveSettings:
+            (persistedState as SettingsState)?.autoApproveSettings ??
+            currentState.autoApproveSettings,
+          // ensure subtask's autoApproveActive inherits from global state
+          subtaskAutoApproveActive:
+            (persistedState as SettingsState)?.autoApproveActive ??
+            currentState.autoApproveSettings,
+        };
+      },
       version: 1,
       migrate: (persistedState: unknown) => {
         if (

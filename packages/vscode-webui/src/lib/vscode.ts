@@ -8,7 +8,6 @@ import { ThreadNestedWindow } from "@quilted/threads";
 import * as R from "remeda";
 import type { WebviewApi } from "vscode-webview";
 import { queryClient } from "./query-client";
-import { type TaskSyncData, taskSync } from "./task-sync-event";
 
 const logger = getLogger("vscode");
 
@@ -57,6 +56,8 @@ function createVSCodeHost(): VSCodeHostApi {
         "setSessionState",
         "getWorkspaceState",
         "setWorkspaceState",
+        "getGlobalState",
+        "setGlobalState",
         "readEnvironment",
         "executeToolCall",
         "executeBashCommand",
@@ -88,19 +89,19 @@ function createVSCodeHost(): VSCodeHostApi {
         "readModelList",
         "readUserStorage",
         "readCustomAgents",
-        "readMachineId",
         "openTaskInPanel",
-        "bridgeStoreEvent",
+        "onTaskUpdated",
+        "readWorktrees",
+        "showDiff",
+        "createWorktree",
       ],
       exports: {
         async openTask(params) {
-          if (globalThis.POCHI_WEBVIEW_KIND === "pane" && "task" in params) {
-            await taskSync.emit(params.task as TaskSyncData);
-          }
           window.router.navigate({
-            to: "/",
+            to: "/task",
             search: {
               uid: params.uid || crypto.randomUUID(),
+              storeId: "storeId" in params ? params.storeId : undefined,
               prompt: "prompt" in params ? params.prompt : undefined,
               files: "files" in params ? params.files : undefined,
             },
@@ -110,7 +111,7 @@ function createVSCodeHost(): VSCodeHostApi {
 
         openTaskList() {
           window.router.navigate({
-            to: "/tasks",
+            to: "/",
             replace: true,
           });
         },
@@ -130,7 +131,7 @@ function createVSCodeHost(): VSCodeHostApi {
           return window.document.hasFocus();
         },
 
-        async commitStoreEvent(event: unknown) {
+        async commitTaskUpdated(event: unknown) {
           if (globalThis.POCHI_WEBVIEW_KIND === "pane") return;
           if (R.isObjectType(event)) {
             const dateFields = ["createdAt", "updatedAt"];

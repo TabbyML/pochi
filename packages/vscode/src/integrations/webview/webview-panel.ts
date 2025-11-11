@@ -1,14 +1,13 @@
 import { AuthEvents } from "@/lib/auth-events";
-import { WorkspaceScope } from "@/lib/workspace-scoped";
-import { getLogger } from "@getpochi/common";
-import { getWorktreeName } from "@getpochi/common/git-utils";
-import { parseWorktreeGitdir } from "@getpochi/common/tool-utils";
+import { workspaceScoped } from "@/lib/workspace-scoped";
+import { getLogger, toErrorMessage } from "@getpochi/common";
+import { getWorktreeNameFromWorktreePath } from "@getpochi/common/git-utils";
 import type {
+  NewTaskPanelParams,
   ResourceURI,
-  TaskData,
+  TaskPanelParams,
   VSCodeHostApi,
 } from "@getpochi/common/vscode-webui-bridge";
-import type { DependencyContainer } from "tsyringe";
 import * as vscode from "vscode";
 import { PochiConfiguration } from "../configuration";
 import { WebviewBase } from "./base";
@@ -35,9 +34,6 @@ export class PochiWebviewPanel
   extends WebviewBase
   implements vscode.Disposable
 {
-  private static readonly viewType = "pochiPanel";
-  private static panels = new Map<string, PochiWebviewPanel>();
-
   private readonly panel: vscode.WebviewPanel;
 
   constructor(
@@ -47,6 +43,7 @@ export class PochiWebviewPanel
     events: AuthEvents,
     pochiConfiguration: PochiConfiguration,
     vscodeHost: VSCodeHostImpl,
+    taskParams: TaskPanelParams,
   ) {
     super(sessionId, context, events, pochiConfiguration, vscodeHost);
     this.panel = panel;
@@ -62,6 +59,7 @@ export class PochiWebviewPanel
     this.panel.webview.html = this.getHtmlForWebview(
       this.panel.webview,
       "pane",
+      taskParams,
     );
     this.setupAuthEventListeners();
 
@@ -78,84 +76,261 @@ export class PochiWebviewPanel
     };
   }
 
-  public static async createOrShow(
-    workspaceContainer: DependencyContainer,
-    extensionUri: vscode.Uri,
-    task?: TaskData,
-  ): Promise<void> {
-    const cwd = workspaceContainer.resolve(WorkspaceScope).cwd;
-    if (!cwd) {
-      logger.warn("No workspace folder found, cannot open Pochi panel");
-      return;
-    }
-    const sessionId = `editor-${cwd}`;
+  dispose(): void {
+    super.dispose();
+    this.panel.dispose();
+  }
+}
 
-    if (PochiWebviewPanel.panels.has(sessionId)) {
-      const existingPanel = PochiWebviewPanel.panels.get(sessionId);
-      existingPanel?.panel.reveal();
-      logger.info(`Revealed existing Pochi panel: ${sessionId}`);
-      if (task) {
-        logger.info(`Opening task ${task.id} in existing panel`);
-        existingPanel?.webviewHost?.openTask({
-          uid: task.id,
-          task,
-        });
+export class PochiTaskEditorProvider
+  implements vscode.CustomTextEditorProvider, vscode.TextDocumentContentProvider
+{
+  static readonly viewType = "pochi.taskEditor";
+  static readonly scheme = "pochi-task";
+
+  public static register(context: vscode.ExtensionContext): vscode.Disposable {
+    const provider = new PochiTaskEditorProvider(context);
+    const disposables: vscode.Disposable[] = [];
+    disposables.push(
+      vscode.workspace.registerTextDocumentContentProvider(
+        PochiTaskEditorProvider.scheme,
+        provider,
+      ),
+    );
+
+    disposables.push(
+      vscode.window.registerCustomEditorProvider(
+        PochiTaskEditorProvider.viewType,
+        provider,
+        {
+          webviewOptions: {
+            retainContextWhenHidden: true,
+          },
+        },
+      ),
+    );
+
+    setAutoLockGroupsConfig();
+
+    return vscode.Disposable.from(...disposables);
+  }
+
+  public static createTaskUri(params: TaskPanelParams): vscode.Uri {
+    const worktreeName = getWorktreeNameFromWorktreePath(params.cwd);
+    return vscode.Uri.from({
+      scheme: PochiTaskEditorProvider.scheme,
+      path: `/pochi/task/Pochi - ${worktreeName ?? "main"} - ${
+        params.uid.split("-")[0]
+      }`,
+      query: JSON.stringify(params),
+    });
+  }
+
+  public static async openTaskEditor(
+    params: TaskPanelParams | NewTaskPanelParams,
+  ) {
+    try {
+      const uri = PochiTaskEditorProvider.createTaskUri({
+        ...params,
+        uid: params.uid ?? crypto.randomUUID(),
+      });
+      await openTaskInColumn(uri);
+    } catch (error) {
+      const errorMessage = toErrorMessage(error);
+      vscode.window.showErrorMessage(
+        `Failed to open Pochi task: ${errorMessage}`,
+      );
+      logger.error(`Failed to open Pochi task: ${errorMessage}`, error);
+    }
+  }
+
+  public static async closeTaskEditor(uri: vscode.Uri) {
+    for (const group of vscode.window.tabGroups.all) {
+      for (const tab of group.tabs) {
+        if (
+          tab.input instanceof vscode.TabInputCustom &&
+          tab.input.viewType === PochiTaskEditorProvider.viewType &&
+          tab.input.uri.toString() === uri.toString()
+        ) {
+          await vscode.window.tabGroups.close(tab);
+          logger.debug(`Closed Pochi task editor: ${uri.toString()}`);
+          return;
+        }
       }
-      return;
     }
+  }
 
-    const gitDir =
-      task?.git?.worktree?.gitdir ?? (await parseWorktreeGitdir(cwd));
-    const worktreeName = getWorktreeName(gitDir);
+  public static async reset(uri: vscode.Uri) {
+    try {
+      const query = JSON.parse(
+        decodeURIComponent(uri.query),
+      ) as TaskPanelParams;
 
-    // Create a new panel
-    const panel = vscode.window.createWebviewPanel(
-      PochiWebviewPanel.viewType,
-      `Pochi${worktreeName ? ` - ${worktreeName}` : ""}`,
-      vscode.ViewColumn.Active,
-      {
-        enableScripts: true,
-        retainContextWhenHidden: true,
-        localResourceRoots: [extensionUri],
-      },
-    );
+      if (!query?.cwd) {
+        vscode.window.showErrorMessage(
+          "Failed to reset Pochi task: missing parameters",
+        );
+        return;
+      }
 
-    // Set icon
-    panel.iconPath = WebviewBase.getLogoIconPath(extensionUri);
+      // open a new panel
+      await PochiTaskEditorProvider.openTaskEditor({
+        cwd: query.cwd,
+      });
+      // close current panel
+      await PochiTaskEditorProvider.closeTaskEditor(uri);
+    } catch (error) {
+      const errorMessage = toErrorMessage(error);
+      vscode.window.showErrorMessage(
+        `Failed to reset Pochi task: ${errorMessage}`,
+      );
+      logger.error(`Failed to reset Pochi task: ${errorMessage}`, error);
+    }
+  }
 
-    // Get dependencies from container
-    const context = workspaceContainer.resolve<vscode.ExtensionContext>(
-      "vscode.ExtensionContext",
-    );
+  constructor(private readonly context: vscode.ExtensionContext) {}
+
+  // emitter and its event
+  onDidChangeEmitter = new vscode.EventEmitter<vscode.Uri>();
+  onDidChange = this.onDidChangeEmitter.event;
+  provideTextDocumentContent(
+    _uri: vscode.Uri,
+    _token: vscode.CancellationToken,
+  ): vscode.ProviderResult<string> {
+    return "Pochi Task";
+  }
+
+  async resolveCustomTextEditor(
+    document: vscode.TextDocument,
+    webviewPanel: vscode.WebviewPanel,
+    _token: vscode.CancellationToken,
+  ): Promise<void> {
+    try {
+      const params = document.uri.query
+        ? (JSON.parse(
+            decodeURIComponent(document.uri.query),
+          ) as TaskPanelParams)
+        : undefined;
+      if (!params) {
+        vscode.window.showErrorMessage(
+          "Failed to open Pochi task: missing parameters",
+        );
+        return;
+      }
+      await this.setupWebview(webviewPanel, params);
+    } catch (error) {
+      const errorMessage = toErrorMessage(error);
+      vscode.window.showErrorMessage(
+        `Failed to open Pochi task: ${errorMessage}`,
+      );
+      logger.error(`Failed to open Pochi task: ${errorMessage}`, error);
+    }
+  }
+
+  private async setupWebview(
+    webviewPanel: vscode.WebviewPanel,
+    params: TaskPanelParams,
+  ): Promise<PochiWebviewPanel> {
+    const cwd = params.cwd;
+    const uid = params.uid;
+    const workspaceContainer = workspaceScoped(cwd);
+
     const events = workspaceContainer.resolve(AuthEvents);
     const pochiConfiguration = workspaceContainer.resolve(PochiConfiguration);
     const vscodeHost = workspaceContainer.resolve(VSCodeHostImpl);
 
-    // Create panel instance
+    webviewPanel.webview.options = {
+      enableScripts: true,
+      enableCommandUris: true,
+      localResourceRoots: [this.context.extensionUri],
+    };
+
+    const sessionId = `editor-${cwd}-${uid}`;
+
     const pochiPanel = new PochiWebviewPanel(
-      panel,
+      webviewPanel,
       sessionId,
-      context,
+      this.context,
       events,
       pochiConfiguration,
       vscodeHost,
+      params,
     );
 
-    PochiWebviewPanel.panels.set(sessionId, pochiPanel);
+    logger.debug(`Opened Pochi task editor: cwd=${cwd}, uid=${uid}`);
+    return pochiPanel;
+  }
+}
 
-    if (task) {
-      pochiPanel.onWebviewReady(() => {
-        logger.info(`Webview ready, opening task ${task.id} in new panel`);
-        pochiPanel.webviewHost?.openTask({ uid: task.id, task });
-      });
+function setAutoLockGroupsConfig() {
+  const autoLockGroupsConfig =
+    vscode.workspace.getConfiguration("workbench.editor");
+
+  const result =
+    autoLockGroupsConfig.inspect<Record<string, boolean>>("autoLockGroups");
+
+  autoLockGroupsConfig.update(
+    "autoLockGroups",
+    {
+      ...(result?.globalValue ?? {}),
+      [PochiTaskEditorProvider.viewType]: true,
+    },
+    vscode.ConfigurationTarget.Global,
+  );
+}
+
+async function getPochiTaskColumn(): Promise<vscode.ViewColumn> {
+  // If there's only one group and it's empty, lock and use the first column
+  if (
+    vscode.window.tabGroups.all.length === 1 &&
+    vscode.window.tabGroups.all[0].tabs.length === 0
+  ) {
+    await vscode.commands.executeCommand(
+      "workbench.action.focusFirstEditorGroup",
+    );
+    await vscode.commands.executeCommand("workbench.action.lockEditorGroup");
+    return vscode.ViewColumn.One;
+  }
+
+  // if we have pochi task opened already, we open new task in same column
+  for (const group of vscode.window.tabGroups.all) {
+    for (const tab of group.tabs) {
+      if (tab.input instanceof vscode.TabInputCustom) {
+        if (tab.input.viewType === PochiTaskEditorProvider.viewType) {
+          return group.viewColumn;
+        }
+      }
     }
-
-    logger.info(`Created new Pochi panel: ${sessionId}`);
   }
 
-  dispose(): void {
-    PochiWebviewPanel.panels.delete(this.sessionId);
-    super.dispose();
-    this.panel.dispose();
+  // else if we have multiple groups and the first group is empty, we can reuse it
+  if (
+    vscode.window.tabGroups.all.length > 1 &&
+    vscode.window.tabGroups.all[0].tabs.length === 0
+  ) {
+    return vscode.ViewColumn.One;
   }
+
+  // otherwise, we open new pochi task in a new first column
+
+  // First, focus the very first editor group.
+  await vscode.commands.executeCommand(
+    "workbench.action.focusFirstEditorGroup",
+  );
+
+  // Then, create a new editor group to the left of the currently focused one (which is the first one).
+  // This new group will become the new first group and will be active.
+  await vscode.commands.executeCommand("workbench.action.newGroupLeft");
+
+  return vscode.ViewColumn.One;
+}
+
+async function openTaskInColumn(uri: vscode.Uri) {
+  const viewColumn = await getPochiTaskColumn();
+  await vscode.commands.executeCommand(
+    "vscode.openWith",
+    uri,
+    PochiTaskEditorProvider.viewType,
+    { preview: false, viewColumn },
+  );
 }

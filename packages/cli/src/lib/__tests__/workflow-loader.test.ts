@@ -1,108 +1,99 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as fs from "node:fs/promises";
-import * as path from "node:path";
 import * as os from "node:os";
-import { containsWorkflowReference, extractWorkflowNames, replaceWorkflowReferences } from "../workflow-loader";
+import * as path from "node:path";
+import { loadWorkflows } from "../workflow-loader";
 
-describe("workflow-loader", () => {
-  let tempDir: string;
-  let globalTempDir: string;
+// Step 1: Hoist a mock function with a default return value. This default is crucial
+// to prevent crashes during the module import phase when side-effect-heavy
+// modules (like custom-rules.ts) are loaded and call homedir() before
+// the test's beforeEach hook has a chance to run.
+const { mockHomedir } = vi.hoisted(() => {
+  return { mockHomedir: vi.fn().mockReturnValue("/tmp/mock-home-for-import") };
+});
+
+// Step 2: Perform a partial mock, keeping original functionality like `tmpdir`
+// while replacing `homedir` with our hoisted mock function.
+vi.mock("node:os", async (importOriginal) => {
+  const originalOs = await importOriginal<typeof os>();
+  return {
+    ...originalOs,
+    homedir: mockHomedir,
+  };
+});
+
+describe("loadWorkflows", () => {
+  let projectDir: string;
+  let homeDir: string;
 
   beforeEach(async () => {
-    // Create a temporary directory for testing
-    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "pochi-test-"));
-    
-    // Create .pochi/workflows directory structure
-    const workflowsDir = path.join(tempDir, ".pochi", "workflows");
-    await fs.mkdir(workflowsDir, { recursive: true });
+    // Create temporary directories. os.tmpdir() works because of the partial mock.
+    projectDir = await fs.mkdtemp(path.join(os.tmpdir(), "pochi-project-"));
+    homeDir = await fs.mkdtemp(path.join(os.tmpdir(), "pochi-home-"));
 
-    // Create a temporary global directory for testing
-    globalTempDir = await fs.mkdtemp(path.join(os.tmpdir(), "pochi-global-test-"));
-    
-    // Create global .pochi/workflows directory structure
-    const globalWorkflowsDir = path.join(globalTempDir, ".pochi", "workflows");
+    // Step 3: For the actual test run, override the default mock value with the real temp path.
+    mockHomedir.mockReturnValue(homeDir);
+
+    const projectWorkflowsDir = path.join(projectDir, ".pochi", "workflows");
+    await fs.mkdir(projectWorkflowsDir, { recursive: true });
+
+    const globalWorkflowsDir = path.join(homeDir, ".pochi", "workflows");
     await fs.mkdir(globalWorkflowsDir, { recursive: true });
+
+    // Create mock workflow files
+    await fs.writeFile(
+      path.join(projectWorkflowsDir, "project-workflow.md"),
+      "---\nmodel: project-model\n---\nProject workflow content",
+    );
+    await fs.writeFile(
+      path.join(globalWorkflowsDir, "global-workflow.md"),
+      "Global workflow content",
+    );
+    await fs.writeFile(
+      path.join(projectWorkflowsDir, "duplicate.md"),
+      "Project duplicate content",
+    );
+    await fs.writeFile(
+      path.join(globalWorkflowsDir, "duplicate.md"),
+      "Global duplicate content",
+    );
   });
 
   afterEach(async () => {
     // Clean up the temporary directories
-    await fs.rm(tempDir, { recursive: true, force: true });
-    await fs.rm(globalTempDir, { recursive: true, force: true });
+    await fs.rm(projectDir, { recursive: true, force: true });
+    await fs.rm(homeDir, { recursive: true, force: true });
+    mockHomedir.mockClear();
   });
 
-  describe("containsWorkflowReference", () => {
-    it("should return true for prompts containing workflow references", () => {
-      expect(containsWorkflowReference("/create-pr")).toBe(true);
-      expect(containsWorkflowReference("/workflow-name")).toBe(true);
-      expect(containsWorkflowReference("please /create-pr")).toBe(true);
-      expect(containsWorkflowReference("/create-pr use feat semantic convention")).toBe(true);
-    });
-
-    it("should return false for regular prompts", () => {
-      expect(containsWorkflowReference("Create a PR")).toBe(false);
-      expect(containsWorkflowReference("This is a prompt")).toBe(false);
-      expect(containsWorkflowReference("")).toBe(false);
-    });
+  it("should load workflows from both project and global directories", async () => {
+    const workflows = await loadWorkflows(projectDir);
+    expect(workflows).toHaveLength(3);
+    expect(workflows.some((w) => w.id === "project-workflow")).toBe(true);
+    expect(workflows.some((w) => w.id === "global-workflow")).toBe(true);
+    expect(workflows.some((w) => w.id === "duplicate")).toBe(true);
   });
 
-  describe("extractWorkflowNames", () => {
-    it("should extract workflow names from references", () => {
-      expect(extractWorkflowNames("/create-pr")).toEqual(["create-pr"]);
-      expect(extractWorkflowNames("/workflow-name")).toEqual(["workflow-name"]);
-      expect(extractWorkflowNames("please /create-pr")).toEqual(["create-pr"]);
-      expect(extractWorkflowNames("/create-pr use /test-workflow convention")).toEqual(["create-pr", "test-workflow"]);
-    });
-
-    it("should return empty array for prompts without workflow references", () => {
-      expect(extractWorkflowNames("Create a PR")).toEqual([]);
-      expect(extractWorkflowNames("")).toEqual([]);
-    });
+  it("should prioritize project workflows over global ones with the same name", async () => {
+    const workflows = await loadWorkflows(projectDir);
+    const duplicate = workflows.find((w) => w.id === "duplicate");
+    expect(duplicate).toBeDefined();
+    expect(duplicate?.content).toBe("Project duplicate content");
   });
 
-  describe("replaceWorkflowReferences", () => {
-    it("should replace workflow references with content", async () => {
-      const workflowContent = "This is a test workflow";
-      const workflowPath = path.join(tempDir, ".pochi", "workflows", "test-workflow.md");
-      await fs.writeFile(workflowPath, workflowContent);
+  it("should only load project workflows when includeGlobalWorkflows is false", async () => {
+    const workflows = await loadWorkflows(projectDir, false);
+    expect(workflows).toHaveLength(2);
+    expect(workflows.some((w) => w.id === "project-workflow")).toBe(true);
+    expect(workflows.some((w) => w.id === "duplicate")).toBe(true);
+    expect(workflows.some((w) => w.id === "global-workflow")).toBe(false);
+  });
 
-      const prompt = "Please use /test-workflow for this task";
-      const { prompt: result, missingWorkflows } = await replaceWorkflowReferences(prompt, tempDir);
-      
-      expect(result).toBe(`Please use <workflow id="test-workflow" path="${path.relative(tempDir, workflowPath)}">This is a test workflow</workflow> for this task`);
-      expect(missingWorkflows).toEqual([]);
-    });
-
-    it("should handle multiple workflow references", async () => {
-      const workflowContent1 = "Workflow 1 content";
-      const workflowContent2 = "Workflow 2 content";
-      
-      const workflowPath1 = path.join(tempDir, ".pochi", "workflows", "workflow1.md");
-      const workflowPath2 = path.join(tempDir, ".pochi", "workflows", "workflow2.md");
-      
-      await fs.writeFile(workflowPath1, workflowContent1);
-      await fs.writeFile(workflowPath2, workflowContent2);
-
-      const prompt = "Use /workflow1 and then /workflow2";
-      const { prompt: result, missingWorkflows } = await replaceWorkflowReferences(prompt, tempDir);
-      
-      expect(result).toBe(`Use <workflow id="workflow1" path="${path.relative(tempDir, workflowPath1)}">Workflow 1 content</workflow> and then <workflow id="workflow2" path="${path.relative(tempDir, workflowPath2)}">Workflow 2 content</workflow>`);
-      expect(missingWorkflows).toEqual([]);
-    });
-
-    it("should track missing workflows", async () => {
-      const prompt = "Please use /non-1-existent for this task";
-      const { prompt: result, missingWorkflows } = await replaceWorkflowReferences(prompt, tempDir);
-      
-      expect(result).toBe(prompt); // Should remain unchanged
-      expect(missingWorkflows).toEqual(["non-1-existent"]);
-    });
-
-    it("should handle prompts without workflow references", async () => {
-      const prompt = "This is a regular prompt without workflows";
-      const { prompt: result, missingWorkflows } = await replaceWorkflowReferences(prompt, tempDir);
-      
-      expect(result).toBe(prompt);
-      expect(missingWorkflows).toEqual([]);
-    });
+  it("should correctly parse frontmatter", async () => {
+    const workflows = await loadWorkflows(projectDir);
+    const projectWorkflow = workflows.find((w) => w.id === "project-workflow");
+    expect(projectWorkflow).toBeDefined();
+    expect(projectWorkflow?.frontmatter.model).toBe("project-model");
   });
 });
+

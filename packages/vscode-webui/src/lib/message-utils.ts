@@ -8,14 +8,13 @@ export function prepareMessageParts(
   prompt: string,
   files: FileUIPart[],
 ) {
-  const parts: Message["parts"] = [...files];
-  if (files.length > 0) {
+  const parts: Message["parts"] = [];
+  for (const x of files) {
     parts.push({
       type: "text",
-      text: prompts.createSystemReminder(
-        `Attached files: ${files.map(getFilePrompt).join(", ")}`,
-      ),
+      text: prompts.createSystemReminder(`Attached file: ${x.filename}`),
     });
+    parts.push(x);
   }
   parts.push({ type: "text", text: prompt || t("chat.pleaseCheckFiles") });
   return parts;

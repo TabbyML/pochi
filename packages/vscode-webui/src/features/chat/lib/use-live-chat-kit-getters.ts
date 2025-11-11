@@ -39,7 +39,10 @@ export function useLiveChatKitGetters({
 
   const getEnvironment = useCallback(
     async ({ messages }: { messages: readonly Message[] }) => {
-      const environment = await vscodeHost.readEnvironment(isSubTask);
+      const environment = await vscodeHost.readEnvironment({
+        isSubTask,
+        webviewKind: globalThis.POCHI_WEBVIEW_KIND,
+      });
 
       let userEdits: UserEditsDiff[] | undefined;
       const lastCheckpointHash = findSecondLastCheckpointFromMessages(messages);

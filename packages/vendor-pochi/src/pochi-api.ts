@@ -27,6 +27,31 @@ export const ListModelsResponse = z.array(
 );
 export type ListModelsResponse = z.infer<typeof ListModelsResponse>;
 
+/**
+ * Webhook event payload for task.updated event
+ * The task field uses the Task type from @getpochi/livekit package
+ */
+export const WebhookEventPayload = z.object({
+  event: z.literal("task.updated"),
+  data: z.object({
+    storeId: z.string(),
+    task: z.custom<import("@getpochi/livekit").Task>(),
+    result: z
+      .object({
+        completion: z.string().optional(),
+        followup: z
+          .object({
+            question: z.string(),
+            choices: z.array(z.string()).optional(),
+          })
+          .optional(),
+      })
+      .optional(),
+  }),
+});
+
+export type WebhookEventPayload = z.infer<typeof WebhookEventPayload>;
+
 const stub = new Hono()
   .post("/api/chat/stream", zValidator("json", ModelGatewayRequest))
   .post("/api/chat", zValidator("json", z.any()))

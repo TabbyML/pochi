@@ -18,6 +18,7 @@ import { CodeBlock } from "./code-block";
 import { customStripTagsPlugin } from "./custom-strip-tags-plugin";
 import "./markdown.css";
 import { useReplaceJobIdsInContent } from "@/features/chat";
+import { useTranslation } from "react-i18next";
 import type { ExtraProps, Options } from "react-markdown";
 
 const mathSanitizeConfig = {
@@ -148,10 +149,11 @@ function BlockCodeComponent({
   language = "",
 }: BlockCodeComponentProps) {
   const controlsConfig = useContext(ControlsContext);
+  const { t } = useTranslation();
 
   let value = String(children).replace(/\n$/, "");
   if (!shouldShowControls(controlsConfig, "code") && value.length > 512) {
-    value = `... ${language} code omitted ( ${value.length} bytes ) ...`;
+    value = t("markdown.codeOmitted", { language, bytes: value.length });
   }
   return (
     <CodeBlock
@@ -364,6 +366,12 @@ export function MessageMarkdown({
           <FileBadge label={id.replaceAll("user-content-", "/")} path={path} />
         );
       },
+      "custom-agent": (props: WorkflowComponentProps) => {
+        const { id, path } = props;
+        return (
+          <FileBadge label={id.replaceAll("user-content-", "/")} path={path} />
+        );
+      },
       code: (props) => <MemoCode {...props} />,
       a({ href, children, ...props }) {
         const openLink = useCallback(() => {
@@ -445,6 +453,7 @@ export function MessageMarkdown({
                     attributes: {
                       ...defaultSchema.attributes,
                       workflow: ["path", "id"],
+                      "custom-agent": ["path", "id"],
                       ...mathSanitizeConfig.attributes,
                     },
                   },

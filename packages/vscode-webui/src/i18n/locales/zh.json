@@ -26,7 +26,12 @@
     "queuedMessages": "排队中的消息 ({{count}})",
     "copyImage": "复制图片",
     "openImage": "打开图片",
-    "pleaseCheckFiles": "请检查这些文件。"
+    "pleaseCheckFiles": "请检查这些文件。",
+    "chatToolbar": {
+      "diffWorktreeWith": "将工作树与 {{branch}} 进行比较",
+      "openInTerminal": "在集成终端中打开"
+    },
+    "createTaskInWorktree": "在单独的 Git worktree 中创建任务"
   },
   "language": {
     "switcherTooltip": "选择您在 Pochi 中的首选语言"
@@ -62,7 +67,10 @@
       "copilotDisabled": "Copilot 模型已禁用。请打开开关以启用它们。",
       "noModelsFound": "未找到模型",
       "customModelsTooltip": "管理您的自定义模型。",
-      "viewPricing": "查看 Pochi 价格"
+      "viewPricing": "查看 Pochi 价格",
+      "pochi": "Pochi",
+      "byok": "自带密钥",
+      "thirdParty": "第三方"
     },
     "tools": {
       "title": "工具",
@@ -105,10 +113,13 @@
       "write": "写入",
       "execute": "执行",
       "mcp": "MCP",
-      "retry": "重试"
+      "retry": "重试",
+      "subtaskOffhand": "子任务 - 自动",
+      "subtaskManual": "子任务 - 手动",
+      "applyChangesToDefault": "将更改应用于默认设置"
     },
     "customAgents": {
-      "title": "自定义代理",
+      "title": "代理",
       "loading": "加载自定义代理中...",
       "empty": "未找到自定义代理。在工作区的 .pochi/agents/ 目录中创建代理文件",
       "errors": {
@@ -136,10 +147,213 @@
     "copyLink": "复制链接",
     "shareSupport": "与支持团队分享",
     "shareSupportTitle": "任务已与 Pochi 团队分享",
-    "shareSupportDetails": "此任务和相关调试信息已发送。如需支持，请加入我们的 Discord 服务器并引用此问题 ID：{{shareId}}。",
+    "shareSupportDetails": "此任务和相关调试信息已发送。如需支持，请加入我们的 Discord 服务器并引用此 ID：{{shareId}}。",
     "joinDiscord": "加入 Discord",
     "ok": "确定",
     "setPublic": "任何有链接的人",
-    "setPrivate": "仅自己可见"
+    "setPrivate": "仅您",
+    "shareFirst": "（请先分享）"
+  },
+  "signInPage": {
+    "welcome": "欢迎使用 Pochi",
+    "description": "要使用 Pochi，您需要使用您的账户登录。",
+    "securityNote": "这允许 Pochi 安全地访问您的信息并提供个性化协助。",
+    "signInButton": "登录",
+    "needHelp": "需要帮助？查看文档"
+  },
+  "tasksPage": {
+    "emptyState": {
+      "title": "未找到任务",
+      "description": "创建一个新任务以开始使用 Pochi",
+      "createButton": "创建新任务"
+    },
+    "status": {
+      "streaming": "流式处理中",
+      "pendingTool": "等待工具",
+      "pendingInput": "等待输入",
+      "completed": "已完成",
+      "failed": "失败",
+      "pendingModel": "等待模型",
+      "unknown": "未知状态：{{status}}"
+    },
+    "datePicker": {
+      "selectDate": "选择日期",
+      "today": "今天"
+    },
+    "worktreeNotExist": "工作树不存在"
+  },
+  "toolInvocation": {
+    "taskCompleted": "任务完成",
+    "reading": "正在读取 ",
+    "writing": "正在写入 ",
+    "continue": "继续",
+    "cancel": "取消",
+    "continueInSeconds": "{{seconds}}秒后继续",
+    "save": "保存",
+    "run": "运行",
+    "accept": "接受",
+    "reject": "拒绝",
+    "stop": "停止",
+    "preview": "预览",
+    "calling": "正在调用",
+    "request": "请求",
+    "response": "响应",
+    "imgAlt": "MCP工具响应快照",
+    "applyingDiffTo": "正在应用差异到 ",
+    "applyingDiffsTo": "正在应用差异到 ",
+    "in": "在",
+    "executeCommand": "我将执行以下命令",
+    "for": "匹配",
+    "searching": "搜索中",
+    "searchingFor": "搜索：",
+    "matchCount_one": "{{count}}个匹配",
+    "matchCount_other": "{{count}}个匹配",
+    "matched": "个已匹配",
+    "resultsTruncated": "，结果已截断",
+    "stopBackgroundJob": "我将停止以下后台任务",
+    "result_one": "{{count}}个结果",
+    "result_other": "{{count}}个结果",
+    "readBackground": "正在读取后台任务输出",
+    "withRegexFilter": "使用正则表达式过滤器",
+    "backgroundExecute": "我将在后台执行以下命令",
+    "updatingToDos": "更新待办事项中"
+  },
+  "reasoning": {
+    "thinking": "思考中 ...",
+    "thoughtFor": "思考了 {{count}} 个字符"
+  },
+  "attachmentPreview": {
+    "removeAttachment": "移除附件",
+    "uploading": "上传中..."
+  },
+  "checkpointUI": {
+    "restoring": "恢复中...",
+    "success": "成功",
+    "restore": "恢复",
+    "opening": "打开中...",
+    "noChangesDetected": "未检测到更改",
+    "compare": "比较"
+  },
+  "welcomeScreen": {
+    "title": "开始使用",
+    "description": "登录以访问 Pochi 提供的模型并利用丰富的团队功能，或者使用您自己的密钥来使用任何您喜欢的模型。",
+    "bringYourOwnKey": "使用自己的密钥",
+    "signIn": "登录"
+  },
+  "fileIcon": {
+    "fileAriaLabel": "文件：{{path}}"
+  },
+  "statusIcon": {
+    "copyToolResult": "复制工具结果"
+  },
+  "newProblems": {
+    "aboveProblemsDetected": "上述问题在更改后被检测到",
+    "problemsDetectedTooltip": "更改后检测到问题"
+  },
+  "userEdits": {
+    "youHaveMadeAboveEdits": "您已进行了上述编辑"
+  },
+  "fileBadge": {
+    "modifiedByPochi": "（由 Pochi 修改）"
+  },
+  "codeBlock": {
+    "showCode": "显示代码",
+    "showDiagram": "显示图表",
+    "copy": "复制"
+  },
+  "messageList": {
+    "compactedConversationTooltip": "从此处开始，对话已被压缩以减少令牌使用量"
+  },
+  "markdown": {
+    "codeOmitted": "... {{language}} 代码已省略 ( {{bytes}} 字节 ) ..."
+  },
+  "formEditor": {
+    "placeholder": "询问任何问题...",
+    "autoCompleteHintPrefix": "使用 Tab 键",
+    "autoCompleteHintSuffix": "查看建议",
+    "dropFilesMessage": "将文件拖拽到此处以附加到您的消息中"
+  },
+  "activeSelectionBadge": {
+    "cell": "单元格",
+    "addContext": "添加上下文"
+  },
+  "mentionList": {
+    "noResultsFound": "未找到结果",
+    "typeToSearch": "输入以搜索...",
+    "workflow": "工作流",
+    "agent": "代理"
+  },
+  "subtask": {
+    "back": "返回",
+    "complete": "完成"
+  },
+  "errorMessageView": {
+    "reachedCreditLimit": "您已达到消费限额。",
+    "seeMore": "查看更多",
+    "teamReachedCreditLimit": "您的团队已达到消费限额。",
+    "requireSubscription": "您已用完所有免费积分。要继续使用，请订阅 Pochi。",
+    "subscribe": "订阅",
+    "requireOrgSubscription": "您的团队尚未订阅。要继续使用，请订阅 Pochi。",
+    "requirePayment": "您有未付款的发票。请",
+    "makePayment": "付款",
+    "toContinueUsingPochi": "以继续使用 Pochi",
+    "requireOrgPayment": "您的团队有未付款的发票。请"
+  },
+  "chatPage": {
+    "defaultUserName": "您"
+  },
+  "todoList": {
+    "todos": "待办事项",
+    "allDone": "🎉 全部完成！"
+  },
+  "commandExecutionPanel": {
+    "copied": "已复制！",
+    "copyCommand": "复制命令",
+    "collapse": "收起",
+    "expand": "展开",
+    "openJob": "打开任务 {{displayId}}",
+    "stop": "停止"
+  },
+  "liveSubTask": {
+    "unexpectedParentToolCallState": "意外的父工具调用状态",
+    "subTaskFailedMaxRetry": "子任务执行失败，已达到最大重试次数。",
+    "subTaskFailedMaxStep": "子任务执行失败，已达到最大步骤数。"
+  },
+  "devModeButton": {
+    "title": "开发模式",
+    "copyMessages": "复制消息",
+    "copyCoreMessages": "复制核心消息",
+    "copyCheckpointCommand": "复制检查点命令",
+    "copyTodos": "复制待办事项",
+    "noCheckpointAvailable": "没有可用的检查点",
+    "openStore": "打开存储"
+  },
+  "devRetryCountdown": {
+    "attempts": "尝试次数：",
+    "countdown": "倒计时：",
+    "delay": "延迟："
+  },
+  "editNotebook": {
+    "editing": "编辑中 ",
+    "cell": "单元格",
+    "cellId": "单元格 ID: "
+  },
+  "dev": {
+    "loading": "加载中",
+    "storeId": "存储 ID",
+    "liveStoreVersion": "LiveStore 版本",
+    "liveStoreVersionPrefix": "v",
+    "openDevTools": "打开开发工具",
+    "task": "任务",
+    "messages": "消息",
+    "enterSessionInfo": "输入会话信息",
+    "sessionId": "会话 ID (storeId)",
+    "jwt": "JWT",
+    "submit": "提交"
+  },
+  "pagination": {
+    "previous": "上一页",
+    "next": "下一页",
+    "morePages": "更多页面"
   }
 }

@@ -34,8 +34,6 @@ class RagdollUriHandler implements vscode.UriHandler, vscode.Disposable {
   }
 
   private async handleUriImpl(uri: vscode.Uri) {
-    await vscode.commands.executeCommand("pochiSidebar.focus");
-
     /**
      * Supported URI formats:
      * - vscode://tabbyml.pochi/?token=<device_link_token> - Device link authentication

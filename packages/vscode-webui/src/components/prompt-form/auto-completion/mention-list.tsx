@@ -8,6 +8,7 @@ import {
   useImperativeHandle,
   useState,
 } from "react";
+import { useTranslation } from "react-i18next";
 import type { MentionListActions } from "../shared";
 import { useMentionItems, useScrollIntoView } from "../shared";
 
@@ -31,6 +32,7 @@ export const AutoCompleteMentionList = forwardRef<
   MentionListActions,
   AutoCompleteListProps
 >(({ items: initialItems, command, query, fetchItems }, ref) => {
+  const { t } = useTranslation();
   const [selectedIndex, setSelectedIndex] = useState(0);
   const items = useMentionItems(initialItems, query, fetchItems);
 
@@ -83,7 +85,9 @@ export const AutoCompleteMentionList = forwardRef<
       <ScrollArea viewportClassname="max-h-[300px] px-2">
         {items.length === 0 ? (
           <div className="px-2 py-1.5 text-muted-foreground text-xs">
-            {query ? "No results found" : "Type to search..."}
+            {query
+              ? t("mentionList.noResultsFound")
+              : t("mentionList.typeToSearch")}
           </div>
         ) : (
           <div className="grid gap-0.5">

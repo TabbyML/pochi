@@ -5,6 +5,8 @@ import type {
   Tool,
   ToolCallOptions,
 } from "ai";
+import type { z } from "zod";
+import type { EditFileOutputSchema } from "./constants";
 
 export type ToolFunctionType<T extends Tool> = (
   input: InferToolInput<T>,
@@ -15,6 +17,11 @@ export type ToolFunctionType<T extends Tool> = (
   },
 ) => PromiseLike<InferToolOutput<T>> | InferToolOutput<T>;
 
+export type PreviewReturnType =
+  | { error: string }
+  | z.infer<typeof EditFileOutputSchema>
+  | undefined;
+
 export type PreviewToolFunctionType<T extends Tool> = (
   args: Partial<InferToolInput<T>> | null,
   options: {
@@ -22,5 +29,6 @@ export type PreviewToolFunctionType<T extends Tool> = (
     state: "partial-call" | "call" | "result";
     abortSignal?: AbortSignal;
     cwd: string;
+    nonInteractive?: boolean;
   },
-) => Promise<undefined>;
+) => Promise<PreviewReturnType>;

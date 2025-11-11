@@ -2,8 +2,8 @@ import { MediaOutput } from "@getpochi/tools";
 import type { Store } from "@livestore/livestore";
 import z from "zod";
 import { StoreBlobProtocol } from ".";
-import { events } from "./livestore";
-import { makeBlobQuery } from "./livestore/queries";
+import { catalog } from ".";
+import { makeBlobQuery } from "./livestore/default-queries";
 
 export async function processContentOutput(
   store: Store,
@@ -117,7 +117,7 @@ export async function fileToUri(
   }
 
   store.commit(
-    events.blobInserted({
+    catalog.events.blobInserted({
       checksum,
       data,
       createdAt: new Date(),

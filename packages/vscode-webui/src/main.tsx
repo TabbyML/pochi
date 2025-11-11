@@ -60,10 +60,25 @@ declare module "@tanstack/react-router" {
   }
 }
 
+// In the "pane" webview, navigate to the task page on load.
+// Avoid setting window.location.hash globally because other scripts may modify it.
+if (window.POCHI_WEBVIEW_KIND === "pane") {
+  const params = window.POCHI_TASK_PARAMS;
+  if (params) {
+    router.navigate({
+      to: "/task",
+      search: params,
+    });
+  }
+}
+
 function InnerApp() {
   const { isLoading } = useUserStorage();
 
   if (isLoading && isVSCodeEnvironment()) {
+    if (window.POCHI_WEBVIEW_KIND === "pane") {
+      return null;
+    }
     return (
       <div className="flex h-screen w-screen items-center justify-center">
         <Loader2 className="animate-spin" />

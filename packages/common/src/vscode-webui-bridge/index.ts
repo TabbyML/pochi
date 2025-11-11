@@ -17,7 +17,8 @@ export type { SessionState, WorkspaceState } from "./types/session";
 export type {
   TaskIdParams,
   NewTaskParams,
-  TaskDataParams,
+  TaskPanelParams,
+  NewTaskPanelParams,
   TaskData,
 } from "./types/task";
 export type {
@@ -34,6 +35,7 @@ export type {
   InvalidCustomAgentFile,
   ValidCustomAgentFile,
 } from "./types/custom-agent";
+export type { GitWorktree } from "./types/git";
 export { isValidCustomAgentFile } from "./types/custom-agent";
 
 const isPochiDev = process.env.POCHI_LOCAL_SERVER === "true";

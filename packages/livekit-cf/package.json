@@ -13,6 +13,7 @@
     "@getpochi/livekit": "workspace:*",
     "@getpochi/common": "workspace:*",
     "@getpochi/tools": "workspace:*",
+    "@getpochi/vendor-pochi": "workspace:*",
     "hono": "catalog:",
     "jose": "catalog:",
     "zod": "catalog:",

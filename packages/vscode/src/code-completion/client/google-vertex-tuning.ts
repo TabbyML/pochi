@@ -31,11 +31,14 @@ export class CodeCompletionGoogleVertexTuningClient
     if (model && vertex) {
       this.vertexModel = createVertexModel(vertex, model);
     } else {
+      this.vertexModel = undefined;
+    }
+    if (!this.vertexModel) {
       logger.error(
         "Google Vertex tuning model is not properly configured. Code completion will not work.",
       );
-      this.vertexModel = undefined;
     }
+
     this.systemPrompt = config.systemPrompt?.trim() || DefaultSystemPrompt;
     this.promptTemplate =
       config.promptTemplate?.trim() || DefaultPromptTemplate;

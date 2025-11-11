@@ -26,7 +26,12 @@
     "queuedMessages": "キュー内のメッセージ ({{count}})",
     "copyImage": "画像をコピー",
     "openImage": "画像を開く",
-    "pleaseCheckFiles": "これらのファイルを確認してください。"
+    "pleaseCheckFiles": "これらのファイルを確認してください。",
+    "chatToolbar": {
+      "diffWorktreeWith": "ワークツリーを {{branch}} と比較",
+      "openInTerminal": "統合ターミナルで開く"
+    },
+    "createTaskInWorktree": "別のGitワークツリーでタスクを作成します"
   },
   "language": {
     "switcherTooltip": "Pochi で使用する言語を選択してください"
@@ -62,7 +67,10 @@
       "copilotDisabled": "Copilot モデルは無効です。有効にするにはスイッチをオンにしてください。",
       "noModelsFound": "モデルが見つかりません",
       "customModelsTooltip": "カスタムモデルを管理します。",
-      "viewPricing": "Pochi の価格を見る"
+      "viewPricing": "Pochi の価格を見る",
+      "pochi": "Pochi",
+      "byok": "BYOK",
+      "thirdParty": "サードパーティ"
     },
     "tools": {
       "title": "ツール",
@@ -105,10 +113,13 @@
       "write": "書き込み",
       "execute": "実行",
       "mcp": "MCP",
-      "retry": "再試行"
+      "retry": "再試行",
+      "subtaskOffhand": "サブタスク - 自動",
+      "subtaskManual": "サブタスク - 手動",
+      "applyChangesToDefault": "デフォルトに変更を適用"
     },
     "customAgents": {
-      "title": "カスタムエージェント",
+      "title": "エージェント",
       "loading": "カスタムエージェントを読み込み中...",
       "empty": "カスタムエージェントが見つかりません。ワークスペースの .pochi/agents/ ディレクトリにエージェントファイルを作成してください",
       "errors": {
@@ -141,6 +152,209 @@
     "joinDiscord": "Discord に参加",
     "ok": "OK",
     "setPublic": "リンクを知っている人なら誰でも",
-    "setPrivate": "あなただけ"
+    "setPrivate": "あなただけ",
+    "shareFirst": "（最初に共有）"
+  },
+  "signInPage": {
+    "welcome": "Pochi へようこそ",
+    "description": "Pochi を使用するには、アカウントでサインインする必要があります。",
+    "securityNote": "これにより、Pochi があなたの情報に安全にアクセスし、パーソナライズされたサポートを提供できます。",
+    "signInButton": "サインイン",
+    "needHelp": "ヘルプが必要ですか？ドキュメントを表示"
+  },
+  "tasksPage": {
+    "emptyState": {
+      "title": "タスクが見つかりません",
+      "description": "Pochi を始めるために新しいタスクを作成してください",
+      "createButton": "新しいタスクを作成"
+    },
+    "status": {
+      "streaming": "ストリーミング中",
+      "pendingTool": "ツール待機中",
+      "pendingInput": "入力待機中",
+      "completed": "完了",
+      "failed": "失敗",
+      "pendingModel": "モデル待機中",
+      "unknown": "不明なステータス：{{status}}"
+    },
+    "datePicker": {
+      "selectDate": "日付を選択",
+      "today": "今日"
+    },
+    "worktreeNotExist": "ワークツリーが存在しません"
+  },
+  "toolInvocation": {
+    "taskCompleted": "タスク完了",
+    "reading": "読み込み中 ",
+    "writing": "書き込み中 ",
+    "continue": "続行",
+    "cancel": "キャンセル",
+    "continueInSeconds": "{{seconds}}秒後に続行",
+    "save": "保存",
+    "run": "実行",
+    "accept": "承認",
+    "reject": "拒否",
+    "stop": "停止",
+    "preview": "プレビュー",
+    "calling": "呼び出し中",
+    "request": "リクエスト",
+    "response": "レスポンス",
+    "imgAlt": "MCPツールレスポンススナップショット",
+    "applyingDiffTo": "差分を適用中：",
+    "applyingDiffsTo": "複数の差分を適用中：",
+    "in": "の",
+    "executeCommand": "以下のコマンドを実行します",
+    "for": "で",
+    "searching": "検索中",
+    "searchingFor": "検索中：",
+    "matchCount_one": "{{count}}件一致",
+    "matchCount_other": "{{count}}件一致",
+    "matched": "マッチ",
+    "resultsTruncated": "、結果が切り詰められました",
+    "stopBackgroundJob": "以下のバックグラウンドジョブを停止します",
+    "result_one": "{{count}}件の結果",
+    "result_other": "{{count}}件の結果",
+    "readBackground": "バックグラウンドジョブ出力を読み込み中",
+    "withRegexFilter": "正規表現フィルター付き",
+    "backgroundExecute": "以下のコマンドをバックグラウンドで実行します",
+    "updatingToDos": "TODOを更新中"
+  },
+  "reasoning": {
+    "thinking": "考え中 ...",
+    "thoughtFor": "{{count}}文字について考えました"
+  },
+  "attachmentPreview": {
+    "removeAttachment": "添付ファイルを削除",
+    "uploading": "アップロード中..."
+  },
+  "checkpointUI": {
+    "restoring": "復元中...",
+    "success": "成功",
+    "restore": "復元",
+    "opening": "開いています...",
+    "noChangesDetected": "変更が検出されませんでした",
+    "compare": "比較"
+  },
+  "welcomeScreen": {
+    "title": "はじめに",
+    "description": "Pochi が提供するモデルにアクセスし、豊富なチーム機能を活用するためにサインインするか、お好みのモデルを使用するために独自のキーをお持ちください。",
+    "bringYourOwnKey": "独自のキーを持参",
+    "signIn": "サインイン"
+  },
+  "fileIcon": {
+    "fileAriaLabel": "ファイル：{{path}}"
+  },
+  "statusIcon": {
+    "copyToolResult": "ツール結果をコピー"
+  },
+  "newProblems": {
+    "aboveProblemsDetected": "上記の問題が変更後に検出されました",
+    "problemsDetectedTooltip": "変更後に問題が検出されました"
+  },
+  "userEdits": {
+    "youHaveMadeAboveEdits": "上記の編集を行いました"
+  },
+  "fileBadge": {
+    "modifiedByPochi": "（Pochi により変更）"
+  },
+  "codeBlock": {
+    "showCode": "コードを表示",
+    "showDiagram": "図を表示",
+    "copy": "コピー"
+  },
+  "messageList": {
+    "compactedConversationTooltip": "トークン使用量を削減するため、この時点から会話が圧縮されています"
+  },
+  "markdown": {
+    "codeOmitted": "... {{language}} コードが省略されました ( {{bytes}} バイト ) ..."
+  },
+  "formEditor": {
+    "placeholder": "何でも聞いてください...",
+    "autoCompleteHintPrefix": "Tabキーで",
+    "autoCompleteHintSuffix": "候補を表示",
+    "dropFilesMessage": "ファイルをここにドロップしてメッセージに添付"
+  },
+  "activeSelectionBadge": {
+    "cell": "セル",
+    "addContext": "コンテキストを追加"
+  },
+  "mentionList": {
+    "noResultsFound": "結果が見つかりません",
+    "typeToSearch": "入力して検索...",
+    "workflow": "ワークフロー",
+    "agent": "エージェント"
+  },
+  "subtask": {
+    "back": "戻る",
+    "complete": "完了"
+  },
+  "errorMessageView": {
+    "reachedCreditLimit": "支出限度額に達しました。",
+    "seeMore": "詳細を見る",
+    "teamReachedCreditLimit": "チームが支出限度額に達しました。",
+    "requireSubscription": "無料クレジットをすべて使い切りました。続行するには、Pochiにサブスクライブしてください。",
+    "subscribe": "サブスクライブ",
+    "requireOrgSubscription": "チームはまだサブスクリプションを持っていません。続行するには、Pochiにサブスクライブしてください。",
+    "requirePayment": "未払いの請求書があります。",
+    "makePayment": "支払いを行う",
+    "toContinueUsingPochi": "Pochiを引き続き使用するために",
+    "requireOrgPayment": "チームに未払いの請求書があります。"
+  },
+  "chatPage": {
+    "defaultUserName": "あなた"
+  },
+  "todoList": {
+    "todos": "TODO",
+    "allDone": "🎉 すべて完了！"
+  },
+  "commandExecutionPanel": {
+    "copied": "コピーしました！",
+    "copyCommand": "コマンドをコピー",
+    "collapse": "折りたたむ",
+    "expand": "展開",
+    "openJob": "ジョブ {{displayId}} を開く",
+    "stop": "停止"
+  },
+  "liveSubTask": {
+    "unexpectedParentToolCallState": "予期しない親ツール呼び出し状態",
+    "subTaskFailedMaxRetry": "サブタスクの実行に失敗しました。最大再試行回数に達しました。",
+    "subTaskFailedMaxStep": "サブタスクの実行に失敗しました。最大ステップ数に達しました。"
+  },
+  "devModeButton": {
+    "title": "開発モード",
+    "copyMessages": "メッセージをコピー",
+    "copyCoreMessages": "コアメッセージをコピー",
+    "copyCheckpointCommand": "チェックポイントコマンドをコピー",
+    "copyTodos": "TODOをコピー",
+    "noCheckpointAvailable": "利用可能なチェックポイントがありません",
+    "openStore": "ストアを開く"
+  },
+  "devRetryCountdown": {
+    "attempts": "試行回数：",
+    "countdown": "カウントダウン：",
+    "delay": "遅延："
+  },
+  "editNotebook": {
+    "editing": "編集中 ",
+    "cell": "セル",
+    "cellId": "セル ID: "
+  },
+  "dev": {
+    "loading": "読み込み中",
+    "storeId": "ストア ID",
+    "liveStoreVersion": "LiveStore バージョン",
+    "liveStoreVersionPrefix": "v",
+    "openDevTools": "開発ツールを開く",
+    "task": "タスク",
+    "messages": "メッセージ",
+    "enterSessionInfo": "セッション情報を入力",
+    "sessionId": "セッション ID (storeId)",
+    "jwt": "JWT",
+    "submit": "送信"
+  },
+  "pagination": {
+    "previous": "前へ",
+    "next": "次へ",
+    "morePages": "その他のページ"
   }
 }

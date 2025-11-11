@@ -2,12 +2,15 @@ import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { UserInfo } from "@getpochi/common/configuration";
 import { LogInIcon, SettingsIcon } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface Props {
   user: UserInfo | undefined;
 }
 
 export const WelcomeScreen = ({ user }: Props) => {
+  const { t } = useTranslation();
+
   return (
     <div className="flex h-screen flex-col items-center justify-center">
       {/* Main Content - Scrollable */}
@@ -16,12 +19,12 @@ export const WelcomeScreen = ({ user }: Props) => {
           {/* Title and Description */}
           <div className="space-y-3 sm:space-y-4">
             <div className="flex items-center justify-center gap-2">
-              <h1 className="font-bold text-3xl sm:text-4xl">Get Started</h1>
+              <h1 className="font-bold text-3xl sm:text-4xl">
+                {t("welcomeScreen.title")}
+              </h1>
             </div>
             <p className="mx-auto max-w-lg text-base text-muted-foreground leading-relaxed sm:text-lg">
-              Sign in to access models provided by Pochi and take advantage of a
-              rich set of team features, or bring your own key to use any model
-              you prefer.
+              {t("welcomeScreen.description")}
             </p>
           </div>
 
@@ -41,7 +44,7 @@ export const WelcomeScreen = ({ user }: Props) => {
                 rel="noopener noreferrer"
               >
                 <SettingsIcon className="size-4" />
-                Bring Your Own Key
+                {t("welcomeScreen.bringYourOwnKey")}
               </a>
               {!user && (
                 <a
@@ -55,7 +58,7 @@ export const WelcomeScreen = ({ user }: Props) => {
                   rel="noopener noreferrer"
                 >
                   <LogInIcon className="size-4" />
-                  Sign In
+                  {t("welcomeScreen.signIn")}
                 </a>
               )}
             </div>

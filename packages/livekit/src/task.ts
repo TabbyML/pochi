@@ -7,7 +7,7 @@ import {
   NoSuchToolError,
   isToolUIPart,
 } from "ai";
-import type { tables } from "./livestore/schema";
+import type { tables } from "./livestore/default-schema";
 import type { Message, Task } from "./types";
 
 export function toTaskStatus(

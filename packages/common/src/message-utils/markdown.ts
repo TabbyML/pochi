@@ -24,7 +24,10 @@ export function parseMarkdown(content: string) {
     function processNode(node: Parent) {
       if (node.children) {
         for (const child of node.children) {
-          if (child.type === "element" && child.tagName === "workflow") {
+          if (
+            child.type === "element" &&
+            (child.tagName === "workflow" || child.tagName === "custom-agent")
+          ) {
             const _child = child as unknown as Text;
             _child.type = "text";
             _child.value = `/${child.properties.id}`;

@@ -5,7 +5,9 @@ import type * as vscode from "vscode";
 import { PochiConfiguration } from "../../integrations/configuration";
 import type { NESContextSegments } from "../contexts";
 import type { NESResponseItem } from "../types";
-import { NESGoogleVertexTuningClient } from "./google-vertex-tuning";
+import { NESChatModelClient } from "./chat-model-client";
+import { createGoogleVertexTuningModel } from "./google-vertex-tuning";
+import { createPochiModel } from "./pochi";
 import type { NESClientProvider, ProviderConfig } from "./type";
 
 const logger = getLogger("NES.Client");
@@ -36,8 +38,22 @@ export class NESClient {
         "Using Google Vertex Tuning next edit suggestion provider: ",
         providerConfig,
       );
-      return new NESGoogleVertexTuningClient(providerConfig);
+
+      const model = createGoogleVertexTuningModel(providerConfig);
+      if (model) {
+        return new NESChatModelClient(model);
+      }
+      logger.error(
+        "Google Vertex tuning model is not properly configured. Next edit suggestion will not work.",
+      );
+      return undefined;
     }
+
+    if (providerConfig?.type === "pochi") {
+      const model = createPochiModel();
+      return new NESChatModelClient(model);
+    }
+
     return undefined;
   }
 
