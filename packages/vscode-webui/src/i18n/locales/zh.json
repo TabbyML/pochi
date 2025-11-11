@@ -185,9 +185,9 @@
   "notification": {
     "task": {
       "status": {
-        "pendingTool": "Your input is needed to continue this task.",
-        "completed": "Task completed successfully.",
-        "failed": "Task failed."
+        "pendingTool": "Pochi 正试图进行一个需要您批准的工具调用。",
+        "completed": "Pochi 已完成此项任务。",
+        "failed": "Pochi 遇到了错误，请查看。"
       },
       "action": {
         "viewDetail": "View Details"

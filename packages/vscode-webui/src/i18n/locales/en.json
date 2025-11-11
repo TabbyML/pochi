@@ -192,9 +192,9 @@
   "notification": {
     "task": {
       "status": {
-        "pendingTool": "Your input is needed to continue this task.",
-        "completed": "Task completed successfully.",
-        "failed": "Task failed."
+        "pendingTool": "Pochi is trying to make a tool call that requires your approval.",
+        "completed": "Pochi has completed the task.",
+        "failed": "Pochi is running into error, please take a look."
       },
       "action": {
         "viewDetail": "View Details"
