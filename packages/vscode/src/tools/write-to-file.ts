@@ -1,5 +1,5 @@
 import { DiffView } from "@/integrations/editor/diff-view";
-import { createPrettyPatch } from "@/lib/fs";
+import { createPrettyPatch, isFileExists } from "@/lib/fs";
 import { getLogger } from "@/lib/logger";
 import { getEditSummary, writeTextDocument } from "@/lib/write-text-document";
 import { fixCodeGenerationOutput } from "@getpochi/common/message-utils";
@@ -27,8 +27,10 @@ export const previewWriteToFile: PreviewToolFunctionType<
       const resolvedPath = resolvePath(path, cwd);
       const fileUri = vscode.Uri.file(resolvedPath);
 
-      const fileBuffer = await vscode.workspace.fs.readFile(fileUri);
-      const fileContent = fileBuffer.toString();
+      const fileExists = await isFileExists(fileUri);
+      const fileContent = fileExists
+        ? (await vscode.workspace.fs.readFile(fileUri)).toString()
+        : "";
       const editSummary = getEditSummary(fileContent, processedContent);
       const edit = createPrettyPatch(path, fileContent, processedContent);
       return { success: true, _meta: { edit, editSummary } };
