@@ -4,6 +4,7 @@ import { usePendingModelAutoStart } from "@/features/retry";
 import { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
 import { useCurrentWorkspace } from "@/lib/hooks/use-current-workspace";
 import { useCustomAgent } from "@/lib/hooks/use-custom-agents";
+import { useLatest } from "@/lib/hooks/use-latest";
 import { usePochiCredentials } from "@/lib/hooks/use-pochi-credentials";
 import { prepareMessageParts } from "@/lib/message-utils";
 import { vscodeHost } from "@/lib/vscode";
@@ -23,6 +24,7 @@ import {
 } from "ai";
 import { useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
+import { useUpdateEffect } from "react-use";
 import { useApprovalAndRetry } from "../approval";
 import { useSelectedModels } from "../settings";
 import { ChatArea } from "./components/chat-area";
@@ -57,7 +59,6 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
   const { t } = useTranslation();
   const { store } = useStore();
   const todosRef = useRef<Todo[] | undefined>(undefined);
-  const isInitialTaskUpdate = useRef(true);
 
   const defaultUser = {
     name: t("chatPage.defaultUserName"),
@@ -136,9 +137,6 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
 
   const chat = useChat({
     chat: chatKit.chat,
-    onFinish: () => {
-      console.log("finish");
-    },
   });
 
   const { messages, sendMessage, status } = chat;
@@ -150,11 +148,6 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
     showApproval: !isLoading && !isModelsLoading && !!selectedModel,
     isSubTask: !!subtask,
   });
-
-  // const [visible, setVisible] = useState(false)
-  // useEffect(() => {
-  //   window.addEventListener('')
-  // }, [])
 
   const { pendingApproval, retry } = approvalAndRetry;
 
@@ -183,69 +176,78 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
   });
 
   const { jwt } = usePochiCredentials();
-  useEffect(() => {
-    isInitialTaskUpdate.current = true;
-    const unsubscribe = store.subscribe(catalog.queries.makeTaskQuery(uid), {
-      onUpdate: async (task) => {
-        if (isInitialTaskUpdate.current) {
-          isInitialTaskUpdate.current = false;
-          return;
-        }
 
-        if (!task?.cwd) return;
+  const approvalAndRetryRef = useRef(approvalAndRetry);
 
-        const storeId = encodeStoreId(jwt, task.parentId || task.id);
-        const isTaskPanelVisible = await vscodeHost.isTaskPanelVisible({
-          cwd: task?.cwd,
-          uid: task?.id,
-          storeId,
-        });
+  // FIXME(jueliang): Avoid using useLatest whenever possible
+  const sendNotifocation = useLatest(async () => {
+    if (!task?.id || !task?.cwd) return;
 
-        if (isTaskPanelVisible) {
-          return;
-        }
+    const approvalAndRetry = approvalAndRetryRef.current;
 
-        if (
-          task?.status === "pending-input" ||
-          task?.status === "completed" ||
-          (task?.status === "failed" && pendingApproval?.name !== "retry")
-        ) {
-          let renderMessage = "";
-          switch (task.status) {
-            case "pending-input":
-              renderMessage = t("notification.task.status.pendingInput");
-              break;
-            case "completed":
-              renderMessage = t("notification.task.status.completed");
-              break;
-            case "failed":
-              renderMessage = t("notification.task.status.failed");
-              break;
-            default:
-              break;
-          }
-
-          const result = await vscodeHost.showInformationMessage(
-            renderMessage,
-            {
-              modal: false,
-            },
-            t("notification.task.action.viewDetail"),
-          );
-          if (result === t("notification.task.action.viewDetail") && task.cwd) {
-            // do navigation
-            vscodeHost.openTaskInPanel({
-              cwd: task.cwd,
-              uid: task.id,
-              storeId,
-            });
-          }
-        }
-      },
+    const storeId = encodeStoreId(jwt, task.parentId || task.id);
+    const isTaskPanelVisible = await vscodeHost.isTaskPanelVisible({
+      cwd: task.cwd,
+      uid: task.id,
+      storeId,
     });
 
-    return () => unsubscribe();
-  }, [uid, store.subscribe, pendingApproval, jwt, t]);
+    if (isTaskPanelVisible) {
+      return;
+    }
+
+    // auto retry
+    if (
+      approvalAndRetry.pendingApproval?.name === "retry" &&
+      approvalAndRetry.pendingApproval.attempts !== undefined &&
+      approvalAndRetry.pendingApproval.countdown !== undefined
+    ) {
+      return;
+    }
+
+    if (
+      (task.status === "pending-tool" && autoApproveGuard.current !== "auto") ||
+      task.status === "completed" ||
+      task.status === "failed"
+    ) {
+      let renderMessage = "";
+      switch (task.status) {
+        case "pending-tool":
+          renderMessage = t("notification.task.status.pendingTool");
+          break;
+        case "completed":
+          renderMessage = t("notification.task.status.completed");
+          break;
+        case "failed":
+          renderMessage = t("notification.task.status.failed");
+          break;
+        default:
+          break;
+      }
+
+      const result = await vscodeHost.showInformationMessage(
+        renderMessage,
+        {
+          modal: false,
+        },
+        t("notification.task.action.viewDetail"),
+      );
+      if (result === t("notification.task.action.viewDetail") && task.cwd) {
+        // do navigation
+        vscodeHost.openTaskInPanel({
+          cwd: task.cwd,
+          uid: task.id,
+          storeId,
+        });
+      }
+    }
+  });
+
+  useUpdateEffect(() => {
+    if (task) {
+      sendNotifocation.current();
+    }
+  }, [task?.status, task?.id, task?.cwd]);
 
   useAddSubtaskResult({ ...chat });
 

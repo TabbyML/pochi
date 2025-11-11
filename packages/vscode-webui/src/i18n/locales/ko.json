@@ -186,7 +186,7 @@
   "notification": {
     "task": {
       "status": {
-        "pendingInput": "Your input is needed to continue this task.",
+        "pendingTool": "Your input is needed to continue this task.",
         "completed": "Task completed successfully.",
         "failed": "Task failed."
       },
