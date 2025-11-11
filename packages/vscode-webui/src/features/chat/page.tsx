@@ -24,7 +24,7 @@ import {
 } from "ai";
 import { useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { useUpdateEffect } from "react-use";
+
 import { useApprovalAndRetry } from "../approval";
 import { useSelectedModels } from "../settings";
 import { ChatArea } from "./components/chat-area";
@@ -177,13 +177,9 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
 
   const { jwt } = usePochiCredentials();
 
-  const approvalAndRetryRef = useRef(approvalAndRetry);
-
   // FIXME(jueliang): Avoid using useLatest whenever possible
-  const sendNotifocation = useLatest(async () => {
+  const sendNotification = useLatest(async () => {
     if (!task?.id || !task?.cwd) return;
-
-    const approvalAndRetry = approvalAndRetryRef.current;
 
     const storeId = encodeStoreId(jwt, task.parentId || task.id);
     const isTaskPanelVisible = await vscodeHost.isTaskPanelVisible({
@@ -243,11 +239,14 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
     }
   });
 
-  useUpdateEffect(() => {
-    if (task) {
-      sendNotifocation.current();
+  const prevTaskStatus = useRef(task?.status);
+  useEffect(() => {
+    if (task?.status !== prevTaskStatus.current) {
+      sendNotification.current();
     }
-  }, [task?.status, task?.id, task?.cwd]);
+
+    prevTaskStatus.current = task?.status;
+  }, [task, sendNotification]);
 
   useAddSubtaskResult({ ...chat });
 
