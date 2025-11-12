@@ -24,6 +24,41 @@ import { VendorId } from "./types";
 
 const logger = getLogger("PochiVendor");
 
+async function fetchWithRetry<T>(
+  fn: () => Promise<T>,
+  options: {
+    maxRetries?: number;
+    initialDelay?: number;
+    maxDelay?: number;
+    delayMultiplier?: number;
+  } = {},
+): Promise<T> {
+  const {
+    maxRetries = 3,
+    initialDelay = 1000,
+    maxDelay = 10000,
+    delayMultiplier = 2,
+  } = options;
+
+  let lastError: Error | undefined;
+  let delay = initialDelay;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+
+      if (attempt < maxRetries) {
+        await new Promise((resolve) => setTimeout(resolve, delay));
+        delay = Math.min(delay * delayMultiplier, maxDelay);
+      }
+    }
+  }
+
+  throw lastError;
+}
+
 export class Pochi extends VendorBase {
   private cachedModels?: Record<string, ModelOptions>;
 
@@ -40,12 +75,19 @@ export class Pochi extends VendorBase {
   override async fetchModels(): Promise<Record<string, ModelOptions>> {
     if (!this.cachedModels) {
       const apiClient: PochiApiClient = hc<PochiApi>(getServerBaseUrl());
-      const data = await apiClient.api.models
-        .$get()
-        .then((x) => x.json())
-        .catch(() => {
-          return []; // Return an empty array on error
-        });
+      const data = await fetchWithRetry(
+        async () => {
+          const response = await apiClient.api.models.$get();
+          return response.json();
+        },
+        {
+          maxRetries: 3,
+          initialDelay: 1000,
+        },
+      ).catch((error: Error) => {
+        logger.error(`Failed to fetch models: ${error.message}`);
+        return []; // Return an empty array on error
+      });
       this.cachedModels = Object.fromEntries(
         data.map((x) => [
           x.id,
