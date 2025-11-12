@@ -42,9 +42,9 @@ export class LiveStoreClientDO
       this.webhook = new WebhookDelivery(this.storeId, this.env.WEBHOOK_URL);
     }
 
+    await this.subscribeToStoreUpdates();
     await this.onTasksUpdateThrottled.call();
     await this.state.storage.setAlarm(Date.now() + 15_000);
-    await this.subscribeToStoreUpdates();
   }
 
   async fetch(request: Request): Promise<Response> {
@@ -106,7 +106,9 @@ export class LiveStoreClientDO
     //   });
   }
 
-  alarm(_alarmInfo?: AlarmInvocationInfo): void | Promise<void> {}
+  alarm(_alarmInfo?: AlarmInvocationInfo): void | Promise<void> {
+    this.onTasksUpdateThrottled.call();
+  }
 
   async syncUpdateRpc(payload: unknown) {
     await handleSyncUpdateRpc(payload);
