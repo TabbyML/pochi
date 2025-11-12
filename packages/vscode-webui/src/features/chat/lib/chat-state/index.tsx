@@ -2,7 +2,7 @@ import { useContext } from "react";
 
 import { ChatContext, type ChatState } from "./types";
 
-export function useChatState(): ChatState {
+function useChatState(): ChatState {
   const context = useContext(ChatContext);
   if (context === undefined) {
     throw new Error("useChatState must be used within a ChatContextProvider");
