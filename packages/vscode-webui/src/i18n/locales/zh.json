@@ -182,18 +182,6 @@
     },
     "worktreeNotExist": "工作树不存在"
   },
-  "notification": {
-    "task": {
-      "status": {
-        "pendingTool": "Pochi 正试图进行一个需要您批准的工具调用。",
-        "completed": "Pochi 已完成此项任务。",
-        "failed": "Pochi 遇到了错误，请查看。"
-      },
-      "action": {
-        "viewDetail": "查看详情"
-      }
-    }
-  },
   "toolInvocation": {
     "taskCompleted": "任务完成",
     "reading": "正在读取 ",

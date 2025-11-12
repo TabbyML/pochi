@@ -183,18 +183,6 @@
     },
     "worktreeNotExist": "ワークツリーが存在しません"
   },
-  "notification": {
-    "task": {
-      "status": {
-        "pendingTool": "Pochiはあなたの承認が必要なツール呼び出しを試みています",
-        "completed": "Pochiはタスクを完了しました",
-        "failed": "Pochiでエラーが発生しています。確認してください"
-      },
-      "action": {
-        "viewDetail": "詳細を表示"
-      }
-    }
-  },
   "toolInvocation": {
     "taskCompleted": "タスク完了",
     "reading": "読み込み中 ",

@@ -189,18 +189,6 @@
     },
     "worktreeNotExist": "Worktree does not exist"
   },
-  "notification": {
-    "task": {
-      "status": {
-        "pendingTool": "Pochi is trying to make a tool call that requires your approval.",
-        "completed": "Pochi has completed the task.",
-        "failed": "Pochi is running into error, please take a look."
-      },
-      "action": {
-        "viewDetail": "View Details"
-      }
-    }
-  },
   "toolInvocation": {
     "taskCompleted": "Task Completed",
     "reading": "Reading ",
