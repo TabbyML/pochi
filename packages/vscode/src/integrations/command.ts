@@ -492,7 +492,7 @@ export class CommandManager implements vscode.Disposable {
             activeTab.input.uri,
           );
           if (params?.cwd) {
-            showWorktreeDiff(params.cwd);
+            await showWorktreeDiff(params.cwd);
           }
         }
       }),

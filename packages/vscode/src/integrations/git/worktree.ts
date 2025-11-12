@@ -218,6 +218,7 @@ export async function showWorktreeDiff(
   try {
     const output = await git.raw(["diff", "--name-status", base]);
     if (output.trim().length === 0) {
+      vscode.window.showInformationMessage("No changes found.");
       return false;
     }
     const changedFiles = output
@@ -229,6 +230,7 @@ export async function showWorktreeDiff(
       });
 
     if (changedFiles.length === 0) {
+      vscode.window.showInformationMessage("No changes found.");
       return false;
     }
 
