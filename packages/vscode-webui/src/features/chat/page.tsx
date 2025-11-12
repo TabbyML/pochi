@@ -147,12 +147,16 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
   const { pendingApproval, retry } = approvalAndRetry;
 
   useEffect(() => {
-    if (prompt && !chatKit.inited && !isFetchingWorkspace) {
+    if (
+      (prompt || !!files?.length) &&
+      !chatKit.inited &&
+      !isFetchingWorkspace
+    ) {
       let partsOrString: Message["parts"] | string;
       if (files?.length) {
-        partsOrString = prepareMessageParts(t, prompt, files);
+        partsOrString = prepareMessageParts(t, prompt || "", files);
       } else {
-        partsOrString = prompt;
+        partsOrString = prompt || "";
       }
       chatKit.init(currentWorkspace?.cwd ?? undefined, partsOrString);
     }
