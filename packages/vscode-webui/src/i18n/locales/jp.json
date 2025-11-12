@@ -26,7 +26,7 @@
     "queuedMessages": "キュー内のメッセージ ({{count}})",
     "copyImage": "画像をコピー",
     "openImage": "画像を開く",
-    "pleaseCheckFiles": "これらのファイルを確認してください。",
+    "pleaseCheckFiles": "これらの添付ファイルを確認してください。",
     "chatToolbar": {
       "diffWorktreeWith": "ワークツリーを {{branch}} と比較",
       "openInTerminal": "統合ターミナルで開く"

@@ -26,7 +26,7 @@
     "queuedMessages": "대기 중인 메시지 ({{count}})",
     "copyImage": "이미지 복사",
     "openImage": "이미지 열기",
-    "pleaseCheckFiles": "이 파일들을 확인해 주세요。",
+    "pleaseCheckFiles": "이 첨부 파일들을 확인해 주세요.",
     "chatToolbar": {
       "diffWorktreeWith": "{{branch}}와(과) 워크트리 비교",
       "openInTerminal": "통합 터미널에서 열기"

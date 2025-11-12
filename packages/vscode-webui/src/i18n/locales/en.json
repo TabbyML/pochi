@@ -26,7 +26,7 @@
     "queuedMessages": "Queued Messages ({{count}})",
     "copyImage": "Copy Image",
     "openImage": "Open Image",
-    "pleaseCheckFiles": "Please check these files.",
+    "pleaseCheckFiles": "Please check these attachments.",
     "chatToolbar": {
       "diffWorktreeWith": "Diff worktree with {{branch}}",
       "openInTerminal": "Open in integrated terminal"
