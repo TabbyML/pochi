@@ -12,8 +12,6 @@ export interface ChatState {
   executingToolCalls: ToolCallLifeCycle[];
   previewingToolCalls: ToolCallLifeCycle[];
   completeToolCalls: ToolCallLifeCycle[];
-  // true: be able to send task notification
-  sendTaskNotificationGuard: React.RefObject<boolean>;
 }
 
 export interface ToolCallLifeCycleKey {

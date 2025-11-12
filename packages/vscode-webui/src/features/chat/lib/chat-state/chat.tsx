@@ -9,7 +9,6 @@ interface ChatContextProviderProps {
 export function ChatContextProvider({ children }: ChatContextProviderProps) {
   const autoApproveGuard = useRef<"auto" | "manual" | "stop">("stop");
   const abortController = useRef(new AbortController());
-  const sendTaskNotificationGuard = useRef(false);
 
   const {
     executingToolCalls,
@@ -25,7 +24,6 @@ export function ChatContextProvider({ children }: ChatContextProviderProps) {
     executingToolCalls,
     previewingToolCalls,
     completeToolCalls,
-    sendTaskNotificationGuard,
   };
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;
