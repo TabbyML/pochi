@@ -5,14 +5,7 @@ import { PreviewTool } from "@/components/preview-tool";
 import { PublicShareButton } from "@/components/public-share-button";
 import { TokenUsage } from "@/components/token-usage";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+
 import {
   HoverCard,
   HoverCardContent,
@@ -25,28 +18,11 @@ import { AutoApproveMenu } from "@/features/settings";
 import { TodoList, useTodos } from "@/features/todo";
 import { useAddCompleteToolCalls } from "@/lib/hooks/use-add-complete-tool-calls";
 import type { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
-import { useCurrentWorkspace } from "@/lib/hooks/use-current-workspace";
-import { useWorktrees } from "@/lib/hooks/use-worktrees";
-import { vscodeHost } from "@/lib/vscode";
 import type { UseChatHelpers } from "@ai-sdk/react";
 import { constants } from "@getpochi/common";
-import {
-  getWorktreeNameFromGitDir,
-  getWorktreeNameFromWorktreePath,
-} from "@getpochi/common/git-utils";
 import type { Message, Task } from "@getpochi/livekit";
 import type { Todo } from "@getpochi/tools";
-import {
-  Check,
-  CircleSlashIcon,
-  FileDiffIcon,
-  GitBranch,
-  Loader2,
-  PaperclipIcon,
-  SendHorizonal,
-  SquareTerminal,
-  StopCircleIcon,
-} from "lucide-react";
+import { PaperclipIcon, SendHorizonal, StopCircleIcon } from "lucide-react";
 import type React from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -84,7 +60,6 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   onUpdateIsPublicShared,
 }) => {
   const { t } = useTranslation();
-  const { data: worktrees, isLoading: isWorktreesLoading } = useWorktrees();
 
   const { messages, sendMessage, addToolResult, status } = chat;
   const isLoading = status === "streaming" || status === "submitted";
@@ -92,11 +67,6 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
 
   const [input, setInput] = useState("");
   const [queuedMessages, setQueuedMessages] = useState<string[]>([]);
-  const [isDiffPending, setIsDiffPending] = useState(false);
-  const [isDiffFailed, setIsDiffFailed] = useState(false);
-  const [isDiffSuccess, setIsDiffSuccess] = useState(false);
-
-  const [isWorktreeExists, setIsWorktreeExists] = useState(false);
 
   // Initialize task with prompt if provided and task doesn't exist yet
   const { todos } = useTodos({
@@ -112,31 +82,6 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     isLoading: isModelsLoading,
     updateSelectedModelId,
   } = useSelectedModels({ isSubTask });
-
-  const { data: currentWorkspace, isLoading: isCurrentWorkspaceLoading } =
-    useCurrentWorkspace();
-
-  // if we are open current workspace in tab
-  const isOpenCurrentWorkspace =
-    currentWorkspace?.workspaceFolder &&
-    currentWorkspace.cwd === currentWorkspace.workspaceFolder;
-
-  useEffect(() => {
-    if (isCurrentWorkspaceLoading || isWorktreesLoading) return;
-    const isWorktreeExists = worktrees?.some(
-      (wt) => wt.path === currentWorkspace?.cwd,
-    );
-    setIsWorktreeExists(!!isWorktreeExists);
-  }, [
-    isCurrentWorkspaceLoading,
-    isWorktreesLoading,
-    worktrees,
-    currentWorkspace?.cwd,
-  ]);
-
-  const worktreeName = task?.git?.worktree?.gitdir
-    ? getWorktreeNameFromGitDir(task?.git?.worktree?.gitdir)
-    : getWorktreeNameFromWorktreePath(currentWorkspace?.cwd); // Fallback to folder name
 
   // Use the unified attachment upload hook
   const {
@@ -199,28 +144,6 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     }
   };
 
-  const handleDiff = async () => {
-    try {
-      setIsDiffPending(true);
-      setIsDiffFailed(false);
-      setIsDiffSuccess(false);
-      const result = await vscodeHost.showDiff();
-      if (result) {
-        setIsDiffSuccess(true);
-      } else {
-        setIsDiffFailed(true);
-      }
-    } catch {
-      setIsDiffFailed(true);
-    } finally {
-      setIsDiffPending(false);
-      setTimeout(() => {
-        setIsDiffFailed(false);
-        setIsDiffSuccess(false);
-      }, 2000);
-    }
-  };
-
   useEffect(() => {
     const isReady =
       status === "ready" &&
@@ -261,9 +184,6 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     () => JSON.stringify(messages, null, 2),
     [messages],
   );
-
-  const isOpenInTab = globalThis.POCHI_WEBVIEW_KIND === "pane";
-  const comparisonBranch = "origin/main";
 
   return (
     <>
@@ -336,69 +256,6 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
               selectedModel={selectedModel}
             />
           )}
-          {isOpenInTab &&
-            !isOpenCurrentWorkspace &&
-            isWorktreeExists &&
-            !!worktreeName && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="button-focus h-6 w-6 p-0"
-                  >
-                    <GitBranch className="size-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  className="w-64 bg-background"
-                  side="top"
-                  align="end"
-                >
-                  <DropdownMenuLabel className="flex items-center gap-2 text-muted-foreground text-xs">
-                    <GitBranch className="size-4" />
-                    <span>{worktreeName}</span>
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem>
-                    <SquareTerminal className="size-4" />
-                    <a
-                      href={`command:pochi.createTerminal?${encodeURIComponent(JSON.stringify([currentWorkspace?.cwd]))}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      <span>{t("chat.chatToolbar.openInTerminal")}</span>
-                    </a>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={handleDiff}
-                    disabled={isDiffPending}
-                    onSelect={(e) => e.preventDefault()}
-                  >
-                    {isDiffPending ? (
-                      <Loader2 className="size-4 animate-spin" />
-                    ) : isDiffSuccess ? (
-                      <Check className="size-4 text-emerald-700 dark:text-emerald-300" />
-                    ) : isDiffFailed ? (
-                      <CircleSlashIcon className="size-4" />
-                    ) : (
-                      <FileDiffIcon className="size-4" />
-                    )}
-                    <span>
-                      {isDiffPending
-                        ? t("checkpointUI.opening")
-                        : isDiffSuccess
-                          ? t("checkpointUI.success")
-                          : isDiffFailed
-                            ? t("checkpointUI.noChangesDetected")
-                            : t("chat.chatToolbar.diffWorktreeWith", {
-                                branch: comparisonBranch,
-                              })}
-                    </span>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
           <DevModeButton messages={messages} todos={todos} />
           {!isSubTask && (
             <PublicShareButton

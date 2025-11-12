@@ -236,10 +236,6 @@ const VSCodeHostStub = {
     return Promise.resolve({} as ThreadSignalSerialization<GitWorktree[]>);
   },
 
-  showDiff: async (_base?: string): Promise<boolean> => {
-    return false;
-  },
-
   createWorktree: async (): Promise<GitWorktree | null> => {
     return Promise.resolve({} as GitWorktree);
   },

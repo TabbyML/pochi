@@ -290,8 +290,6 @@ export interface VSCodeHostApi {
 
   readWorktrees(): Promise<ThreadSignalSerialization<GitWorktree[]>>;
 
-  showDiff(base?: string): Promise<boolean>;
-
   createWorktree(): Promise<GitWorktree | null>;
 }
 

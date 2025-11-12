@@ -34,8 +34,8 @@ import * as vscode from "vscode";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { type PochiAdvanceSettings, PochiConfiguration } from "./configuration";
 import { DiffChangesContentProvider } from "./editor/diff-changes-content-provider";
+import { showWorktreeDiff } from "./git/worktree";
 import { PochiTaskEditorProvider } from "./webview/webview-panel";
-
 const logger = getLogger("CommandManager");
 
 @injectable()
@@ -412,15 +412,15 @@ export class CommandManager implements vscode.Disposable {
         }
       }),
 
-      vscode.commands.registerCommand("pochi.resetTaskPanel", async () => {
+      vscode.commands.registerCommand("pochi.newTaskPanel", async () => {
         const activeTab = vscode.window.tabGroups.activeTabGroup.activeTab;
-        logger.debug("resetTaskPanel", { activeTab });
+        logger.debug("newTaskPanel", { activeTab });
         if (
           activeTab &&
           activeTab.input instanceof vscode.TabInputCustom &&
           activeTab.input.viewType === PochiTaskEditorProvider.viewType
         ) {
-          PochiTaskEditorProvider.reset(activeTab.input.uri);
+          PochiTaskEditorProvider.createNewTask(activeTab.input.uri);
         }
       }),
 
@@ -465,12 +465,37 @@ export class CommandManager implements vscode.Disposable {
         },
       ),
 
-      vscode.commands.registerCommand(
-        "pochi.createTerminal",
-        (cwd?: string) => {
-          vscode.window.createTerminal({ cwd }).show();
-        },
-      ),
+      vscode.commands.registerCommand("pochi.openTerminal", async () => {
+        const activeTab = vscode.window.tabGroups.activeTabGroup.activeTab;
+        if (
+          activeTab &&
+          activeTab.input instanceof vscode.TabInputCustom &&
+          activeTab.input.viewType === PochiTaskEditorProvider.viewType
+        ) {
+          const params = PochiTaskEditorProvider.parseTaskUri(
+            activeTab.input.uri,
+          );
+          if (params?.cwd) {
+            vscode.window.createTerminal({ cwd: params.cwd }).show();
+          }
+        }
+      }),
+
+      vscode.commands.registerCommand("pochi.diffWorktree", async () => {
+        const activeTab = vscode.window.tabGroups.activeTabGroup.activeTab;
+        if (
+          activeTab &&
+          activeTab.input instanceof vscode.TabInputCustom &&
+          activeTab.input.viewType === PochiTaskEditorProvider.viewType
+        ) {
+          const params = PochiTaskEditorProvider.parseTaskUri(
+            activeTab.input.uri,
+          );
+          if (params?.cwd) {
+            showWorktreeDiff(params.cwd);
+          }
+        }
+      }),
     );
   }
 

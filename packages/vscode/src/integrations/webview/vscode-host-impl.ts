@@ -12,7 +12,7 @@ import {
   getSystemInfo,
   getWorkspaceRulesFileUri,
 } from "@/lib/env";
-import { asRelativePath, isFileExists, readFileContent } from "@/lib/fs";
+import { asRelativePath, isFileExists } from "@/lib/fs";
 import { getLogger } from "@/lib/logger";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { ModelList } from "@/lib/model-list";
@@ -38,11 +38,7 @@ import { searchFiles } from "@/tools/search-files";
 import { startBackgroundJob } from "@/tools/start-background-job";
 import { todoWrite } from "@/tools/todo-write";
 import { previewWriteToFile, writeToFile } from "@/tools/write-to-file";
-import {
-  type Environment,
-  type GitStatus,
-  toErrorMessage,
-} from "@getpochi/common";
+import type { Environment, GitStatus } from "@getpochi/common";
 import type { UserInfo } from "@getpochi/common/configuration";
 import type { McpStatus } from "@getpochi/common/mcp-utils";
 // biome-ignore lint/style/useImportType: needed for dependency injection
@@ -86,7 +82,6 @@ import {
 import type { Tool } from "ai";
 import { keys } from "remeda";
 import * as runExclusive from "run-exclusive";
-import simpleGit from "simple-git";
 import { Lifecycle, inject, injectable, scoped } from "tsyringe";
 import * as vscode from "vscode";
 // biome-ignore lint/style/useImportType: needed for dependency injection
@@ -813,88 +808,6 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
 
   openTaskInPanel = async (params: TaskPanelParams): Promise<void> => {
     await PochiTaskEditorProvider.openTaskEditor(params);
-  };
-
-  showDiff = async (base = "origin/main"): Promise<boolean> => {
-    if (!this.cwd) {
-      return false;
-    }
-
-    const git = simpleGit(this.cwd);
-    const result: { filepath: string; before: string; after: string }[] = [];
-    try {
-      const output = await git.raw(["diff", "--name-status", base]);
-      if (output.trim().length === 0) {
-        return false;
-      }
-      const changedFiles = output
-        .trim()
-        .split("\n")
-        .map((line: string) => {
-          const [status, filepath] = line.split("\t");
-          return { status: status.trim(), filepath: filepath.trim() };
-        });
-
-      if (changedFiles.length === 0) {
-        return false;
-      }
-
-      for (const { status, filepath } of changedFiles) {
-        const fsPath = path.join(this.cwd, filepath);
-        let beforeContent = "";
-        let afterContent = "";
-        if (status === "A") {
-          const fileContent = await readFileContent(fsPath);
-          afterContent = fileContent ?? "";
-        } else if (status === "D") {
-          beforeContent = await git.raw(["show", `${base}:${filepath}`]);
-        } else {
-          beforeContent = await git.raw(["show", `${base}:${filepath}`]);
-          afterContent = (await readFileContent(fsPath)) ?? "";
-        }
-
-        result.push({
-          filepath,
-          before: beforeContent,
-          after: afterContent,
-        });
-      }
-
-      // Workaround: Focus the target column before calling 'vscode.changes'
-      const dummyDoc = await vscode.workspace.openTextDocument({
-        content: "",
-        language: "text",
-      });
-      await vscode.window.showTextDocument(dummyDoc, {
-        preview: true,
-        preserveFocus: false,
-      });
-
-      // show changes
-      await vscode.commands.executeCommand(
-        "vscode.changes",
-        `Changes${base ? ` vs ${base}` : ""}`,
-        result.map((file) => [
-          vscode.Uri.joinPath(vscode.Uri.parse(this.cwd ?? ""), file.filepath),
-          DiffChangesContentProvider.decode({
-            filepath: file.filepath,
-            content: file.before,
-            cwd: this.cwd ?? "",
-          }),
-          DiffChangesContentProvider.decode({
-            filepath: file.filepath,
-            content: file.after,
-            cwd: this.cwd ?? "",
-          }),
-        ]),
-      );
-      return true;
-    } catch (e: unknown) {
-      vscode.window.showErrorMessage(
-        `Failed to get diff: ${toErrorMessage(e)}`,
-      );
-      return false;
-    }
   };
 
   executeBashCommand = async (
