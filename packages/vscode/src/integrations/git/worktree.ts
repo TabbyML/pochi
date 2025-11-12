@@ -10,6 +10,7 @@ import * as vscode from "vscode";
 import path from "node:path";
 import { readFileContent } from "@/lib/fs";
 import { DiffChangesContentProvider } from "../editor/diff-changes-content-provider";
+import { getWorktreeNameFromWorktreePath } from "@getpochi/common/git-utils";
 
 const logger = getLogger("WorktreeManager");
 
@@ -25,6 +26,16 @@ export class WorktreeManager implements vscode.Disposable {
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
     this.git = simpleGit(workspaceFolder);
     this.init();
+  }
+
+  public getWorktreeDisplayName(cwd: string): string | undefined {
+    const worktree = this.worktrees.value.find((wt) => wt.path === cwd);
+    if (!worktree) {
+      return getWorktreeNameFromWorktreePath(cwd);
+    }
+    return worktree.isMain
+      ? worktree.branch
+      : getWorktreeNameFromWorktreePath(cwd);
   }
 
   private async init() {

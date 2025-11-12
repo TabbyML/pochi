@@ -1,7 +1,6 @@
 import { AuthEvents } from "@/lib/auth-events";
 import { workspaceScoped } from "@/lib/workspace-scoped";
 import { getLogger, toErrorMessage } from "@getpochi/common";
-import { getWorktreeNameFromWorktreePath } from "@getpochi/common/git-utils";
 import type {
   NewTaskPanelParams,
   ResourceURI,
@@ -12,6 +11,8 @@ import * as vscode from "vscode";
 import { PochiConfiguration } from "../configuration";
 import { WebviewBase } from "./base";
 import { VSCodeHostImpl } from "./vscode-host-impl";
+import { container } from "tsyringe";
+import { WorktreeManager } from "../git/worktree";
 
 const logger = getLogger("PochiWebviewPanel");
 
@@ -128,10 +129,10 @@ export class PochiTaskEditorProvider
     cwd: string;
     uid: string;
   }): vscode.Uri {
-    const worktreeName = getWorktreeNameFromWorktreePath(params.cwd);
-    const displayName = `${worktreeName ?? "main"} - ${
-      params.uid.split("-")[0]
-    }`;
+    const worktreeName = container
+      .resolve(WorktreeManager)
+      .getWorktreeDisplayName(params.cwd);
+    const displayName = `⎇ ${worktreeName ?? "main"} - ${params.uid.split("-")[0]} `;
     return vscode.Uri.from({
       scheme: PochiTaskEditorProvider.scheme,
       path: `/pochi/task/${displayName}`,
