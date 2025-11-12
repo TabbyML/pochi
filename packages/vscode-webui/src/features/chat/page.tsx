@@ -57,7 +57,6 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
   const { t } = useTranslation();
   const { store } = useStore();
   const todosRef = useRef<Todo[] | undefined>(undefined);
-  const { sendNotification } = useSendTaskNotification();
 
   const defaultUser = {
     name: t("chatPage.defaultUserName"),
@@ -106,6 +105,8 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
 
   useRestoreTaskModel(task, isModelsLoading, updateSelectedModelId);
 
+  const { sendNotification } = useSendTaskNotification();
+
   const chatKit = useLiveChatKit({
     taskId: uid,
     getters,
@@ -128,6 +129,11 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
       return lastAssistantMessageIsCompleteWithToolCalls(x);
     },
     onOverrideMessages,
+    onStreamFinish(data) {
+      if (data.status === "completed") {
+        sendNotification("completed", { uid, cwd: data.cwd });
+      }
+    },
   });
 
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -173,20 +179,6 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
     task,
     retry,
   });
-
-  const prevTaskStatus = useRef(task?.status);
-  // send notification after task has completed
-  useEffect(() => {
-    if (
-      task &&
-      task.status !== prevTaskStatus.current &&
-      task.status === "completed"
-    ) {
-      sendNotification("completed", { uid: task.id, cwd: task.cwd });
-    }
-
-    prevTaskStatus.current = task?.status;
-  }, [task, sendNotification]);
 
   useAddSubtaskResult({ ...chat });
 

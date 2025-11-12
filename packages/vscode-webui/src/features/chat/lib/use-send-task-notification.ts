@@ -6,7 +6,7 @@ export function useSendTaskNotification() {
   const sendNotification = useCallback(
     async (
       kind: "failed" | "completed" | "pending-tool",
-      openTaskParams: { uid: string; cwd: string | null },
+      openTaskParams: { uid: string; cwd: string | null | undefined },
     ) => {
       if (!openTaskParams.cwd) return;
 

@@ -7,7 +7,7 @@ import { makeMessagesQuery, makeTaskQuery } from "../livestore/default-queries";
 import { events, tables } from "../livestore/default-schema";
 import { toTaskError, toTaskGitInfo, toTaskStatus } from "../task";
 
-import type { Message } from "../types";
+import type { Message, Task } from "../types";
 import { scheduleGenerateTitleJob } from "./background-job";
 import {
   FlexibleChatTransport,
@@ -37,6 +37,7 @@ export type LiveChatKitOptions<T> = {
     messages: Message[];
     abortSignal: AbortSignal;
   }) => void | Promise<void>;
+  onStreamFinish?: (data: Pick<Task, "id" | "cwd" | "status">) => void;
 
   customAgent?: CustomAgent;
   outputSchema?: z.ZodAny;
@@ -55,7 +56,7 @@ export class LiveChatKit<
   protected readonly store: Store;
   readonly chat: T;
   private readonly transport: FlexibleChatTransport;
-
+  onStreamFinish?: (data: Pick<Task, "id" | "cwd" | "status">) => void;
   readonly spawn: () => Promise<string>;
 
   constructor({
@@ -69,10 +70,12 @@ export class LiveChatKit<
     isCli,
     customAgent,
     outputSchema,
+    onStreamFinish,
     ...chatInit
   }: LiveChatKitOptions<T>) {
     this.taskId = taskId;
     this.store = store;
+    this.onStreamFinish = onStreamFinish;
     this.transport = new FlexibleChatTransport({
       store,
       onStart: this.onStart,
@@ -298,15 +301,21 @@ export class LiveChatKit<
       return this.onError(abortError);
     }
 
+    const status = toTaskStatus(message, message.metadata?.finishReason);
     store.commit(
       events.chatStreamFinished({
         id: this.taskId,
-        status: toTaskStatus(message, message.metadata?.finishReason),
+        status,
         data: message,
         totalTokens: message.metadata.totalTokens,
         updatedAt: new Date(),
       }),
     );
+    this.onStreamFinish?.({
+      id: this.taskId,
+      cwd: this.task?.cwd ?? null,
+      status,
+    });
   };
 
   private readonly onError: ChatOnErrorCallback = (error) => {

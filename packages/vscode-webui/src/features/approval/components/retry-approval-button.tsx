@@ -6,7 +6,7 @@ import { useAutoApproveGuard } from "@/features/chat";
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
 import type { Task } from "@getpochi/livekit";
 import { useTranslation } from "react-i18next";
-import { useSendTaskNotification } from "src/features/chat/lib/use-send-task-notification";
+import { useSendTaskNotification } from "../../chat/lib/use-send-task-notification";
 import type { PendingRetryApproval } from "../hooks/use-pending-retry-approval";
 
 interface RetryApprovalButtonProps {
