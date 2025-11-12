@@ -7,12 +7,12 @@ import type {
   TaskPanelParams,
   VSCodeHostApi,
 } from "@getpochi/common/vscode-webui-bridge";
+import { container } from "tsyringe";
 import * as vscode from "vscode";
 import { PochiConfiguration } from "../configuration";
+import { WorktreeManager } from "../git/worktree";
 import { WebviewBase } from "./base";
 import { VSCodeHostImpl } from "./vscode-host-impl";
-import { container } from "tsyringe";
-import { WorktreeManager } from "../git/worktree";
 
 const logger = getLogger("PochiWebviewPanel");
 

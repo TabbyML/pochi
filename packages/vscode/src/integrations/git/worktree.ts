@@ -1,16 +1,16 @@
+import path from "node:path";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { GitStateMonitor } from "@/integrations/git/git-state";
+import { readFileContent } from "@/lib/fs";
 import { getLogger } from "@/lib/logger";
 import { toErrorMessage } from "@getpochi/common";
+import { getWorktreeNameFromWorktreePath } from "@getpochi/common/git-utils";
 import type { GitWorktree } from "@getpochi/common/vscode-webui-bridge";
 import { signal } from "@preact/signals-core";
 import simpleGit from "simple-git";
 import { injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
-import path from "node:path";
-import { readFileContent } from "@/lib/fs";
 import { DiffChangesContentProvider } from "../editor/diff-changes-content-provider";
-import { getWorktreeNameFromWorktreePath } from "@getpochi/common/git-utils";
 
 const logger = getLogger("WorktreeManager");
 
