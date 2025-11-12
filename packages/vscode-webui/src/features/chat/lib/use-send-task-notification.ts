@@ -1,28 +1,32 @@
 import { vscodeHost } from "@/lib/vscode";
-import type { Task } from "@getpochi/livekit";
+import type { TaskPanelParams } from "@getpochi/common/vscode-webui-bridge";
 import { useCallback } from "react";
-import { useTranslation } from "react-i18next";
-import { useChatState } from "./chat-state";
 
 export function useSendTaskNotification() {
-  const { t } = useTranslation();
-  const { sendTaskNotificationGuard } = useChatState();
-
   const sendNotification = useCallback(
-    async (task: Task | undefined) => {
-      if (!task) return;
-      if (!sendTaskNotificationGuard.current) return;
+    async (
+      kind: "failed" | "completed" | "pending-tool",
+      openTaskParams: { uid: string; cwd: string | null },
+    ) => {
+      if (!openTaskParams.cwd) return;
+
+      if (
+        await vscodeHost.isTaskPanelVisible(openTaskParams as TaskPanelParams)
+      ) {
+        return;
+      }
 
       let renderMessage = "";
-      switch (task.status) {
+      switch (kind) {
         case "pending-tool":
-          renderMessage = t("notification.task.status.pendingTool");
+          renderMessage =
+            "Pochi is trying to make a tool call that requires your approval.";
           break;
         case "completed":
-          renderMessage = t("notification.task.status.completed");
+          renderMessage = "Pochi has completed the task.";
           break;
         case "failed":
-          renderMessage = t("notification.task.status.failed");
+          renderMessage = "Pochi is running into error, please take a look.";
           break;
         default:
           break;
@@ -33,21 +37,16 @@ export function useSendTaskNotification() {
         {
           modal: false,
         },
-        t("notification.task.action.viewDetail"),
+        "View Details",
       );
-      if (result === t("notification.task.action.viewDetail") && task.cwd) {
-        // do navigation
-        vscodeHost.openTaskInPanel({
-          cwd: task.cwd,
-          uid: task.id,
-        });
+      if (result === "View Details") {
+        vscodeHost.openTaskInPanel(openTaskParams as TaskPanelParams);
       }
     },
-    [sendTaskNotificationGuard, t],
+    [],
   );
 
   return {
-    sendTaskNotificationGuard,
     sendNotification,
   };
 }

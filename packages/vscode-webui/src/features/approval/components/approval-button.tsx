@@ -3,8 +3,7 @@ import type React from "react";
 import type { PendingApproval } from "@/features/approval";
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
 import type { Task } from "@getpochi/livekit";
-import { useCallback, useEffect } from "react";
-import { useSendTaskNotification } from "../../chat/lib/use-send-task-notification";
+import { useEffect } from "react";
 import { RetryApprovalButton } from "./retry-approval-button";
 import { ToolCallApprovalButton } from "./tool-call-approval-button";
 
@@ -34,12 +33,6 @@ export const ApprovalButton: React.FC<ApprovalButtonProps> = ({
     setShowApprovalButton(!!shouldShowApprovalButton);
   }, [setShowApprovalButton, shouldShowApprovalButton]);
 
-  const { sendNotification } = useSendTaskNotification();
-
-  const sendTaskNotification = useCallback(() => {
-    sendNotification(task);
-  }, [task, sendNotification]);
-
   if (!showApprovalButton || !shouldShowApprovalButton) {
     return null;
   }
@@ -48,7 +41,7 @@ export const ApprovalButton: React.FC<ApprovalButtonProps> = ({
     <div className="flex select-none gap-3 [&>button]:flex-1 [&>button]:rounded-sm">
       {pendingApproval.name === "retry" ? (
         <RetryApprovalButton
-          sendTaskNotification={sendTaskNotification}
+          task={task}
           pendingApproval={pendingApproval}
           retry={retry}
         />
@@ -56,7 +49,7 @@ export const ApprovalButton: React.FC<ApprovalButtonProps> = ({
         <ToolCallApprovalButton
           pendingApproval={pendingApproval}
           isSubTask={isSubTask}
-          sendTaskNotification={sendTaskNotification}
+          task={task}
         />
       )}
     </div>

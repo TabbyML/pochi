@@ -4,7 +4,6 @@ import { usePendingModelAutoStart } from "@/features/retry";
 import { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
 import { useCurrentWorkspace } from "@/lib/hooks/use-current-workspace";
 import { useCustomAgent } from "@/lib/hooks/use-custom-agents";
-import { useLatest } from "@/lib/hooks/use-latest";
 import { prepareMessageParts } from "@/lib/message-utils";
 import { vscodeHost } from "@/lib/vscode";
 import { useChat } from "@ai-sdk/react";
@@ -58,8 +57,7 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
   const { t } = useTranslation();
   const { store } = useStore();
   const todosRef = useRef<Todo[] | undefined>(undefined);
-  const { sendTaskNotificationGuard, sendNotification } =
-    useSendTaskNotification();
+  const { sendNotification } = useSendTaskNotification();
 
   const defaultUser = {
     name: t("chatPage.defaultUserName"),
@@ -176,52 +174,19 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
     retry,
   });
 
-  // FIXME(jueliang): Avoid using useLatest whenever possible
-  const sendTaskNotification = useLatest(async () => {
-    if (!task?.id || !task?.cwd) {
-      sendTaskNotificationGuard.current = false;
-      return;
-    }
-
-    const isTaskPanelVisible = await vscodeHost.isTaskPanelVisible({
-      cwd: task.cwd,
-      uid: task.id,
-    });
-
-    if (isTaskPanelVisible) {
-      sendTaskNotificationGuard.current = false;
-      return;
-    }
-
-    // auto retry
-    if (
-      approvalAndRetry.pendingApproval?.name === "retry" &&
-      approvalAndRetry.pendingApproval.attempts !== undefined &&
-      approvalAndRetry.pendingApproval.countdown !== undefined
-    ) {
-      sendTaskNotificationGuard.current = false;
-      return;
-    }
-
-    if (task.status === "pending-tool") {
-      sendTaskNotificationGuard.current = true;
-      return;
-    }
-
-    if (task.status === "completed" || task.status === "failed") {
-      sendTaskNotificationGuard.current = true;
-      sendNotification(task);
-    }
-  });
-
   const prevTaskStatus = useRef(task?.status);
+  // send notification after task has completed
   useEffect(() => {
-    if (task?.status !== prevTaskStatus.current) {
-      sendTaskNotification.current();
+    if (
+      task &&
+      task.status !== prevTaskStatus.current &&
+      task.status === "completed"
+    ) {
+      sendNotification("completed", { uid: task.id, cwd: task.cwd });
     }
 
     prevTaskStatus.current = task?.status;
-  }, [task, sendTaskNotification]);
+  }, [task, sendNotification]);
 
   useAddSubtaskResult({ ...chat });
 
