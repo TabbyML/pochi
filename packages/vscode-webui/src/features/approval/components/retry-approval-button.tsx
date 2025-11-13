@@ -13,12 +13,14 @@ interface RetryApprovalButtonProps {
   pendingApproval: PendingRetryApproval;
   retry: (error: Error) => void;
   task: Task | undefined;
+  isSubTask: boolean;
 }
 
 export const RetryApprovalButton: React.FC<RetryApprovalButtonProps> = ({
   pendingApproval,
   retry,
   task,
+  isSubTask,
 }) => {
   const { t } = useTranslation();
 
@@ -47,19 +49,25 @@ export const RetryApprovalButton: React.FC<RetryApprovalButtonProps> = ({
   }, [setShowRetry]);
 
   useEffect(() => {
+    const uid = isSubTask ? task?.parentId : task?.id;
     if (
-      task?.id &&
       showRetry &&
-      task.status === "failed" &&
+      uid &&
+      task?.status === "failed" &&
       (pendingApproval.attempts === undefined ||
         pendingApproval.countdown === undefined)
     ) {
-      sendNotification("failed", { cwd: task.cwd, uid: task.id });
+      sendNotification("failed", {
+        cwd: task.cwd,
+        uid,
+      });
     }
   }, [
     showRetry,
     sendNotification,
     pendingApproval,
+    isSubTask,
+    task?.parentId,
     task?.id,
     task?.cwd,
     task?.status,

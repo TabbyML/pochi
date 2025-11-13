@@ -181,10 +181,20 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
   const showAccept = !isAutoApproved && isReady;
 
   useEffect(() => {
-    if (showAccept && task?.cwd && task?.id) {
-      sendNotification("pending-tool", { cwd: task.cwd, uid: task.id });
+    if (showAccept) {
+      const uid = isSubTask ? task?.parentId : task?.id;
+      if (uid) {
+        sendNotification("pending-tool", { cwd: task?.cwd, uid });
+      }
     }
-  }, [showAccept, sendNotification, task?.cwd, task?.id]);
+  }, [
+    showAccept,
+    sendNotification,
+    isSubTask,
+    task?.parentId,
+    task?.cwd,
+    task?.id,
+  ]);
 
   if (showAccept) {
     return (

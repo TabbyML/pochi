@@ -43,6 +43,7 @@ export const ApprovalButton: React.FC<ApprovalButtonProps> = ({
         <RetryApprovalButton
           task={task}
           pendingApproval={pendingApproval}
+          isSubTask={isSubTask}
           retry={retry}
         />
       ) : (
