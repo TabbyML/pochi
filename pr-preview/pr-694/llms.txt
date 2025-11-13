@@ -2153,7 +2153,7 @@ This week brings smart task notifications, modular `@import` rules, and a PDF ha
 
 ### 🔥 Preview
 
-We’re also preparing an upgrade to our tab completion system to make suggestions feel faster and more intuitive. More details coming soon.
+We’re also preparing an upgrade to our tab completion system to make suggestions feel faster and more intuitive. More details coming soon!
 
 
 # Developer Updates
@@ -2256,7 +2256,7 @@ This week brings smart task notifications, modular `@import` rules, and a PDF ha
 
 ### 🔥 Preview
 
-We’re also preparing an upgrade to our tab completion system to make suggestions feel faster and more intuitive. More details coming soon.
+We’re also preparing an upgrade to our tab completion system to make suggestions feel faster and more intuitive. More details coming soon!
 
 ***
 
