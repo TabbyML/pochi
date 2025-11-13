@@ -31,7 +31,7 @@ import { createModel } from "@getpochi/common/vendor/edge";
 import {
   type LLMRequestData,
   type Message,
-  fileToRemoteUri,
+  fileToUri,
 } from "@getpochi/livekit";
 import { type Duration, Effect, Stream } from "@livestore/utils/effect";
 import chalk from "chalk";
@@ -157,7 +157,8 @@ const program = new Command()
           const absolutePath = path.resolve(process.cwd(), attachmentPath);
           const buffer = await fs.readFile(absolutePath);
           const mimeType = getMimeType(attachmentPath);
-          const dataUrl = await fileToRemoteUri(
+          const dataUrl = await fileToUri(
+            store,
             new File([buffer], attachmentPath, {
               type: mimeType,
             }),
@@ -247,7 +248,7 @@ const program = new Command()
       mcpHub.dispose();
     }
     if (jsonRenderer) {
-      await jsonRenderer.shutdown();
+      jsonRenderer.shutdown();
     }
     await waitForSync(store, "2 second").catch(console.error);
     await shutdownStoreAndExit(store);

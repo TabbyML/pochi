@@ -48,7 +48,6 @@
         "listr2": "^9.0.3",
         "ora": "^8.2.0",
         "remeda": "catalog:",
-        "run-exclusive": "catalog:",
         "semver": "^7.6.3",
         "tabtab": "^3.0.2",
         "zod": "catalog:",

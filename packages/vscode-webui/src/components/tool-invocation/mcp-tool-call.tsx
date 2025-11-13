@@ -1,5 +1,6 @@
 import { CodeBlock, MessageMarkdown } from "@/components/message";
 import { Switch } from "@/components/ui/switch";
+import { useStoreBlobUrl } from "@/lib/store-blob";
 import { getToolName } from "ai";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -193,15 +194,18 @@ function ImageResult({
   mimeType,
 }: { type: "image"; data: string; mimeType: string }) {
   const { t } = useTranslation();
-  const url = new URL(data);
-  const previewSuffix = url.pathname.slice(0, 8);
+  const blobUrl = new URL(data);
+  const url = useStoreBlobUrl(data);
+  const previewSuffix = blobUrl.pathname.slice(0, 8);
 
   const extension = mimeType.split("/")[1] || "png";
   const filename = `mcp-image-preview-${previewSuffix}.${extension}`;
 
+  if (!url) return;
+
   return (
     <CopyableImage
-      src={data}
+      src={url}
       alt={t("toolInvocation.imgAlt")}
       className="h-auto w-full shadow-sm"
       mimeType={mimeType}

@@ -1,7 +1,12 @@
 import { vscodeHost } from "@/lib/vscode";
 import { getLogger } from "@getpochi/common";
 import type { ExecuteCommandResult } from "@getpochi/common/vscode-webui-bridge";
-import { type Message, type Task, catalog } from "@getpochi/livekit";
+import {
+  type Message,
+  type Task,
+  catalog,
+  processContentOutput,
+} from "@getpochi/livekit";
 import type { ClientTools, PreviewReturnType } from "@getpochi/tools";
 import type { Store } from "@livestore/livestore";
 import { ThreadAbortSignal } from "@quilted/threads";
@@ -329,6 +334,7 @@ export class ManagedToolCallLifeCycle
       .catch((err) => ({
         error: `Failed to execute tool: ${err.message}`,
       }))
+      .then((result) => processContentOutput(this.store, result, abortSignal))
       .then((result) => {
         this.onExecuteDone(result);
       });
