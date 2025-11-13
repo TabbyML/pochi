@@ -1,0 +1,81 @@
+---
+title: Weekly Update #10
+---
+
+# Weekly Update #10
+
+### TL;DR
+
+This week brings smart task notifications, modular `@import` rules, and a PDF handling fix in `readFile`. Also, a refreshed tab completion upgrade is on the way!
+
+
+### 🚀 Features
+- **Smart Task Notifications:** Pochi now shows real-time notifications when a task needs your input, completes, or fails. Notifications include a “View Details” button to jump directly into the task, and are automatically suppressed when the task panel is already open to avoid duplicates. **[#670](https://github.com/TabbyML/pochi/pull/670)**
+
+<div
+className="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg"
+  style={{
+    position: "relative",
+    paddingBottom: "53.7%",
+    marginBottom: 20,
+    height: 0,
+    overflow: "hidden",
+    maxWidth: "100%",
+  }}
+>
+  <iframe
+    src="https://drive.google.com/file/d/1ytoU6d11rd-Sv-jQsqLmOvI_WxKqqwzO/preview"
+    style={{
+      position: "absolute",
+      top: 0,
+      left: 0,
+      width: "100%",
+      height: "100%",
+      border: "none",
+      borderRadius: "8px",
+    }}
+    allowFullScreen
+    title="`readfile`tool demo"
+  />
+</div>
+
+### ✨ Enhancements
+
+- **Modular Rules with `@import` Syntax:** You can now split and organize large rule files by importing other markdown files using the `@` prefix (e.g. `@./rules/api-guidelines.md`). Pochi will stitch them together, managing complex configurations for your multi-agent or multi-project setups. **[#540](https://github.com/TabbyML/pochi/issues/540)** 
+
+<div
+className="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg"
+  style={{
+    position: "relative",
+    paddingBottom: "53.7%",
+    marginBottom: 20,
+    height: 0,
+    overflow: "hidden",
+    maxWidth: "100%",
+  }}
+>
+  <iframe
+    src="https://drive.google.com/file/d/18s3_3KyoA02aUefK7zmMJirWljW_QOFF/preview"
+    style={{
+      position: "absolute",
+      top: 0,
+      left: 0,
+      width: "100%",
+      height: "100%",
+      border: "none",
+      borderRadius: "8px",
+    }}
+    allowFullScreen
+    title="Modular rules"
+  />
+</div>
+
+
+### 🐛 Bug fixes
+
+- **PDF Handling in `readFile`:** Resolved a bug that caused `readFile` to return binary contents for PDF files. **[#591](https://github.com/TabbyML/pochi/issues/591)**
+
+
+### 🔥 Preview
+
+We’re also preparing an upgrade to our tab completion system to make suggestions feel faster and more intuitive. More details coming soon.
