@@ -24,7 +24,7 @@ import { VendorId } from "./types";
 
 const logger = getLogger("PochiVendor");
 
-async function fetchWithRetry<T>(
+async function withRetry<T>(
   fn: () => Promise<T>,
   options: {
     maxRetries?: number;
@@ -75,7 +75,7 @@ export class Pochi extends VendorBase {
   override async fetchModels(): Promise<Record<string, ModelOptions>> {
     if (!this.cachedModels) {
       const apiClient: PochiApiClient = hc<PochiApi>(getServerBaseUrl());
-      const data = await fetchWithRetry(
+      const data = await withRetry(
         async () => {
           const response = await apiClient.api.models.$get();
           return response.json();
