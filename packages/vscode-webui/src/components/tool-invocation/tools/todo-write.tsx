@@ -1,6 +1,6 @@
-import { TodoList } from "@/features/todo";
-import type { Todo } from "@getpochi/tools";
+import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
+import { filter, isNonNullish } from "remeda";
 import { StatusIcon } from "../status-icon";
 import { ExpandableToolContainer } from "../tool-container";
 import type { ToolProps } from "../types";
@@ -10,7 +10,8 @@ export const todoWriteTool: React.FC<ToolProps<"todoWrite">> = ({
   isExecuting,
 }) => {
   const { t } = useTranslation();
-  const todos = tool.input?.todos?.filter((x) => !!x?.id) ?? [];
+  const todos = filter(tool.input?.todos ?? [], isNonNullish);
+
   const title = (
     <>
       <StatusIcon isExecuting={isExecuting} tool={tool} />
@@ -18,11 +19,23 @@ export const todoWriteTool: React.FC<ToolProps<"todoWrite">> = ({
       {t("toolInvocation.updatingToDos")}
     </>
   );
-  const expandableDetail = todos?.length ? (
-    <TodoList todos={todos as Todo[]} disableCollapse className="mt-2">
-      <TodoList.Items viewportClassname="max-h-48" />
-    </TodoList>
-  ) : null;
+
+  const expandableDetail = (
+    <div className="flex flex-col px-2 py-1">
+      {todos
+        .filter((x) => !!x?.status && x.status !== "cancelled")
+        .map((todo) => (
+          <span
+            key={todo.id}
+            className={cn("text-sm", {
+              "line-through": todo.status === "completed",
+            })}
+          >
+            • {todo.content}
+          </span>
+        ))}
+    </div>
+  );
 
   return (
     <ExpandableToolContainer
