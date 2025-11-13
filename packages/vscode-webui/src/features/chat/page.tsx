@@ -23,7 +23,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 
 import { useApprovalAndRetry } from "../approval";
-import { useSelectedModels } from "../settings";
+import { useSelectedModels, useSettingsStore } from "../settings";
 import { ChatArea } from "./components/chat-area";
 import { ChatToolbar } from "./components/chat-toolbar";
 import { ErrorMessageView } from "./components/error-message-view";
@@ -57,7 +57,7 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
   const { t } = useTranslation();
   const { store } = useStore();
   const todosRef = useRef<Todo[] | undefined>(undefined);
-
+  const { inheritSubtaskAutoApproveSettings } = useSettingsStore();
   const defaultUser = {
     name: t("chatPage.defaultUserName"),
     image: `https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(store.clientId)}&scale=120`,
@@ -67,6 +67,8 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
   useAbortBeforeNavigation(chatAbortController.current);
 
   const task = store.useQuery(catalog.queries.makeTaskQuery(uid));
+  const subtask = useSubtaskInfo(uid, task?.parentId);
+
   useEffect(() => {
     if (task) {
       vscodeHost.onTaskUpdated(
@@ -85,7 +87,13 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
     }
   }, [task]);
 
-  const subtask = useSubtaskInfo(uid, task?.parentId);
+  // inherit autoApproveSettings from parent task
+  useEffect(() => {
+    if (task?.parentId) {
+      inheritSubtaskAutoApproveSettings();
+    }
+  }, [task?.parentId, inheritSubtaskAutoApproveSettings]);
+
   const {
     isLoading: isModelsLoading,
     selectedModel,

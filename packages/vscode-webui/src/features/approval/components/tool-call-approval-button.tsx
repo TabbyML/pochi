@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { useAutoApproveGuard, useToolCallLifeCycle } from "@/features/chat";
 import {
   useSelectedModels,
-  useSettingsStore,
   useSubtaskOffhand,
   useToolAutoApproval,
 } from "@/features/settings";
@@ -33,7 +32,6 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
   const { t } = useTranslation();
   const { sendNotification } = useSendTaskNotification();
   const navigate = useNavigate();
-  const { resetSubtaskAutoApproveSettings } = useSettingsStore();
   const autoApproveGuard = useAutoApproveGuard();
   const { getToolCallLifeCycle } = useToolCallLifeCycle();
   const { selectedModel } = useSelectedModels();
@@ -85,8 +83,6 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
 
   const manualRunSubtask = useCallback(
     (subtaskUid: string) => {
-      resetSubtaskAutoApproveSettings();
-
       navigate({
         to: "/task",
         search: {
@@ -95,7 +91,7 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
         },
       });
     },
-    [navigate, store.storeId, resetSubtaskAutoApproveSettings],
+    [navigate, store.storeId],
   );
 
   const { subtaskOffhand } = useSubtaskOffhand();
