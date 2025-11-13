@@ -9,21 +9,12 @@ import { NESCache } from "./cache";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { NESClient } from "./client";
 import { DocumentSelector } from "./constants";
-import {
-  type NESContext,
-  calculateNESContextHash,
-  extractNESContextSegments,
-} from "./contexts";
+import { type NESRequestContext, buildNESRequestContext } from "./contexts";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { NESDecorationManager } from "./decoration-manager";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { EditHistoryTracker } from "./edit-history";
-import {
-  type NESSolution,
-  asInlineCompletionItem,
-  calculateSolution,
-  isEmptySolution,
-} from "./solution";
+import { type NESSolution, calculateSolution } from "./solution";
 import type { NESResponseItem } from "./types";
 
 const logger = getLogger("NES.Provider");
@@ -39,7 +30,7 @@ export class NESProvider implements vscode.Disposable {
 
   readonly fetching = signal<
     | {
-        hash: string;
+        context: NESRequestContext;
         tokenSource: vscode.CancellationTokenSource;
       }
     | undefined
@@ -88,14 +79,13 @@ export class NESProvider implements vscode.Disposable {
       return undefined;
     }
 
-    const context: NESContext = {
+    const context = buildNESRequestContext({
       document,
       selection,
       editHistory,
-    };
-    const hash = calculateNESContextHash(context);
+    });
 
-    if (this.fetching.value?.hash === hash) {
+    if (this.fetching.value?.context.hash === context.hash) {
       logger.debug("Request is already ongoing with the same context");
       return;
     }
@@ -108,7 +98,7 @@ export class NESProvider implements vscode.Disposable {
     const tokenSource = new vscode.CancellationTokenSource();
     const token = tokenSource.token;
     this.fetching.value = {
-      hash,
+      context,
       tokenSource,
     };
 
@@ -131,17 +121,16 @@ export class NESProvider implements vscode.Disposable {
       let responseItem: NESResponseItem | undefined = undefined;
 
       // Check cache or make new request
-      const cached = this.cache.get(hash);
+      const cached = this.cache.get(context.hash);
       if (cached) {
         logger.debug("Cache hit", cached);
         responseItem = cached;
       } else {
         const result = await this.client.fetchCompletion(
-          extractNESContextSegments(context),
+          context.promptSegments,
           token,
         );
         if (result) {
-          this.cache.set(hash, result);
           logger.debug("Result received", result);
           responseItem = result;
         } else {
@@ -152,10 +141,15 @@ export class NESProvider implements vscode.Disposable {
       if (responseItem) {
         const solution = calculateSolution(context, responseItem);
         logger.debug("Calculated solution", {
-          changes: solution.changes,
-          editableRegion: solution.editableRegion,
+          edit: solution?.edit,
         });
-        return isEmptySolution(solution) ? undefined : solution;
+
+        if (solution) {
+          this.cache.set(context.hash, responseItem);
+          logger.debug("Result cached", responseItem);
+        }
+
+        return solution;
       }
 
       return undefined;
@@ -166,7 +160,7 @@ export class NESProvider implements vscode.Disposable {
         logger.debug("Failed to fetch completion", error);
       }
     } finally {
-      if (this.fetching.value?.hash === hash) {
+      if (this.fetching.value?.context.hash === context.hash) {
         this.fetching.value.tokenSource.dispose();
         this.fetching.value = undefined;
       }
@@ -233,14 +227,15 @@ class NESInlineCompletionProvider
         new vscode.Selection(position, position),
       );
       if (solution) {
-        const inlineCompletionItem = asInlineCompletionItem(solution);
-        if (inlineCompletionItem) {
-          logger.debug(
-            `Show result as InlineCompletionItem, insertText: ${inlineCompletionItem.insertText}`,
-          );
-          return new vscode.InlineCompletionList([inlineCompletionItem]);
-        }
-        if (this.nesDecorationManager) {
+        if (solution.edit.type === "inline-completion") {
+          const inlineCompletionItem = solution.edit.inlineCompletionItem;
+          if (inlineCompletionItem) {
+            logger.debug(
+              `Show result as InlineCompletionItem, insertText: ${inlineCompletionItem.insertText}`,
+            );
+            return new vscode.InlineCompletionList([inlineCompletionItem]);
+          }
+        } else if (this.nesDecorationManager) {
           logger.debug("Show result as decorations");
           const editor = vscode.window.activeTextEditor;
           if (editor && editor.document === document) {

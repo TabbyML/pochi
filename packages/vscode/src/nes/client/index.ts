@@ -3,7 +3,7 @@ import { injectable, singleton } from "tsyringe";
 import type * as vscode from "vscode";
 // biome-ignore lint/style/useImportType:
 import { PochiConfiguration } from "../../integrations/configuration";
-import type { NESContextSegments } from "../contexts";
+import type { NESPromptSegments } from "../contexts";
 import type { NESResponseItem } from "../types";
 import { NESChatModelClient } from "./chat-model-client";
 import { createGoogleVertexTuningModel } from "./google-vertex-tuning";
@@ -58,7 +58,7 @@ export class NESClient {
   }
 
   async fetchCompletion(
-    segments: NESContextSegments,
+    segments: NESPromptSegments,
     token?: vscode.CancellationToken | undefined,
   ): Promise<NESResponseItem | undefined> {
     if (!this.provider) {

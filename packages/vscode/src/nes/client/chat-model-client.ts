@@ -2,7 +2,7 @@ import { formatPlaceholders } from "@/code-completion/utils/strings";
 import type { LanguageModelV2 } from "@ai-sdk/provider";
 import { getLogger } from "@getpochi/common";
 import { type CallSettings, type Prompt, generateText } from "ai";
-import type { NESContextSegments } from "../contexts";
+import type { NESPromptSegments } from "../contexts";
 import type { NESResponseItem } from "../types";
 import type { NESClientProvider, ProviderConfig } from "./type";
 
@@ -19,7 +19,7 @@ export class NESChatModelClient implements NESClientProvider {
   constructor(private readonly model: LanguageModelV2) {}
 
   async fetchCompletion(params: {
-    segments: NESContextSegments;
+    segments: NESPromptSegments;
     abortSignal?: AbortSignal | undefined;
   }): Promise<NESResponseItem | undefined> {
     if (!this.model) {
@@ -70,16 +70,17 @@ export class NESChatModelClient implements NESClientProvider {
 }
 
 function extractResult(text: string) {
-  const startIndex =
-    text.indexOf("<|editable_region_start|>") +
-    "<|editable_region_start|>".length;
-  if (startIndex === -1) {
+  const startTagIndex = text.indexOf("<|editable_region_start|>");
+  if (startTagIndex === -1) {
     return undefined;
   }
 
-  const endIndex = text.indexOf("<|editable_region_end|>");
+  const resultRegionStart = startTagIndex + "<|editable_region_start|>".length;
+  const endTagIndex = text.indexOf("<|editable_region_end|>");
   const extracted =
-    endIndex === -1 ? text.slice(startIndex) : text.slice(startIndex, endIndex);
+    endTagIndex === -1
+      ? text.slice(resultRegionStart)
+      : text.slice(resultRegionStart, endTagIndex);
   return extracted.replace("<|user_cursor_is_here|>", "");
 }
 

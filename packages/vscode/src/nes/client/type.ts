@@ -1,10 +1,10 @@
 import type { PochiAdvanceSettings } from "@/integrations/configuration";
-import type { NESContextSegments } from "../contexts";
+import type { NESPromptSegments } from "../contexts";
 import type { NESResponseItem } from "../types";
 
 export interface NESClientProvider {
   fetchCompletion(params: {
-    segments: NESContextSegments;
+    segments: NESPromptSegments;
     abortSignal?: AbortSignal | undefined;
   }): Promise<NESResponseItem | undefined>;
 }

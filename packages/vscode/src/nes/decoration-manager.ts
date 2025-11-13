@@ -1,4 +1,3 @@
-import { StaticTextDocument } from "@/code-completion/utils/static-text-document";
 import { isMultiLine } from "@/code-completion/utils/strings";
 import { getLogger } from "@/lib/logger";
 import { injectable, singleton } from "tsyringe";
@@ -7,9 +6,7 @@ import * as vscode from "vscode";
 import { CanvasRenderer } from "./code-renderer/canvas-renderer";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { TextmateThemer } from "./code-renderer/textmate-themer";
-import { EditableRegionPrefixLine } from "./constants";
 import type { NESSolution } from "./solution";
-import { applyEdit } from "./utils";
 
 const logger = getLogger("NES.DecorationManager");
 
@@ -92,7 +89,15 @@ export class NESDecorationManager implements vscode.Disposable {
   }
 
   async show(editor: vscode.TextEditor, solution: NESSolution) {
-    const { changes, editableRegion } = solution;
+    const { target, change: combinedChange, edit } = solution;
+    if (edit.type !== "text-changes") {
+      logger.debug(
+        `Skipped showing decorations because edit type is not text-changes. (received ${edit.type})`,
+      );
+      return;
+    }
+
+    const { changes } = edit;
 
     this.current = { editor, solution };
     vscode.commands.executeCommand(
@@ -109,37 +114,21 @@ export class NESDecorationManager implements vscode.Disposable {
 
     if (changes.some((c) => isMultiLine(c.text))) {
       // If there are multi-line changes, show a image decoration to preview all changes.
-      const editableRegionPostion = editor.document.validatePosition(
-        cursorPosition.translate(
-          -EditableRegionPrefixLine,
-          Number.MAX_SAFE_INTEGER,
-        ),
-      );
-
-      const { text: editedText, editedRanges } = applyEdit(
-        editor.document.getText(),
-        changes,
-      );
-      const editedDocument = new StaticTextDocument(
-        editor.document.uri,
-        "",
-        0,
-        editedText,
-      );
       const themedDocument = await this.textmateThemer.theme(
-        editedText.split("\n"),
+        target.getText().split("\n"),
         editor.document.languageId,
       );
-      const tokens = themedDocument.tokens.slice(
-        editableRegionPostion.line,
-        editableRegionPostion.line + editableRegion.after.split("\n").length,
+      const tokenLines = themedDocument.tokenLines.slice(
+        combinedChange.range.start.line,
+        combinedChange.range.start.line +
+          combinedChange.text.split("\n").length,
       );
 
-      const editedDocumentRanges = editedRanges.map(
+      const editedDocumentRanges = edit.editedRanges.map(
         (range) =>
           new vscode.Range(
-            editedDocument.positionAt(range.offset),
-            editedDocument.positionAt(range.offset + range.length),
+            target.positionAt(range.offset),
+            target.positionAt(range.offset + range.length),
           ),
       );
       const charDecorationRanges = editedDocumentRanges.flatMap((range) => {
@@ -150,9 +139,9 @@ export class NESDecorationManager implements vscode.Disposable {
           const end =
             line === range.end.line
               ? range.end.character
-              : editedDocument.lineAt(line).range.end.character;
+              : target.lineAt(line).range.end.character;
           ranges.push({
-            line: line - editableRegionPostion.line,
+            line: line - combinedChange.range.start.line,
             start,
             end,
           });
@@ -169,7 +158,7 @@ export class NESDecorationManager implements vscode.Disposable {
         colorMap: themedDocument.colorMap,
         foreground: themedDocument.foreground,
         background: 0, // use transparent
-        tokens,
+        tokenLines,
 
         lineDecorations: [],
         charDecorations: charDecorationRanges.map((range) => {
@@ -194,7 +183,10 @@ export class NESDecorationManager implements vscode.Disposable {
       logger.trace("Image:", dataUrl);
 
       const imageDecoration: vscode.DecorationOptions = {
-        range: new vscode.Range(editableRegionPostion, editableRegionPostion),
+        range: new vscode.Range(
+          combinedChange.range.start,
+          combinedChange.range.start,
+        ),
         renderOptions: {
           before: {
             ...this.imageDecorationOptions.before,
@@ -256,15 +248,19 @@ export class NESDecorationManager implements vscode.Disposable {
       return;
     }
     const { editor, solution } = this.current;
+    const { edit } = solution;
+    if (edit.type !== "text-changes") {
+      return;
+    }
     await editor.edit((editBuilder) => {
-      for (const change of solution.changes) {
+      for (const change of edit.changes) {
         editBuilder.replace(change.range, change.text);
       }
     });
     this.hide();
 
     // Move cursor to the end of the last change
-    const lastChange = solution.changes[solution.changes.length - 1];
+    const lastChange = edit.changes[edit.changes.length - 1];
     const cursorPosition = editor.document.positionAt(
       lastChange.rangeOffset + lastChange.text.length,
     );

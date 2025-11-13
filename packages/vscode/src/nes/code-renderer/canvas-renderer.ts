@@ -32,13 +32,13 @@ export class CanvasRenderer implements vscode.Disposable {
 
   async render(input: DecoratedDocument): Promise<Uint8Array | undefined> {
     if (!this.canvasKit || !this.fontProvider) {
-      logger.debug("Not inited.");
+      logger.debug("Not initiated.");
       return undefined;
     }
     const canvasKit = this.canvasKit;
     const fontProvider = this.fontProvider;
 
-    if (input.tokens.length < 1) {
+    if (input.tokenLines.length < 1) {
       return undefined;
     }
 
@@ -50,7 +50,7 @@ export class CanvasRenderer implements vscode.Disposable {
     const backgroundColor = tokenColorMap[input.background];
 
     const paragraphs: Paragraph[] = [];
-    for (const line of input.tokens) {
+    for (const tokenLine of input.tokenLines) {
       const pb = canvasKit.ParagraphBuilder.MakeFromFontProvider(
         new canvasKit.ParagraphStyle({
           textStyle: {
@@ -62,7 +62,7 @@ export class CanvasRenderer implements vscode.Disposable {
         }),
         fontProvider,
       );
-      for (const token of line) {
+      for (const token of tokenLine) {
         const color =
           token.foreground !== undefined
             ? tokenColorMap[token.foreground]

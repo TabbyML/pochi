@@ -12,7 +12,7 @@ export interface ThemedDocument {
   colorMap: ColorMap;
   foreground: number; // color map index
   background: number; // color map index
-  tokens: ThemedToken[][];
+  tokenLines: ThemedToken[][];
 }
 
 export interface DecoratedDocument {
@@ -23,7 +23,7 @@ export interface DecoratedDocument {
   colorMap: ColorMap;
   foreground: number; // color map index
   background: number; // color map index
-  tokens: ThemedToken[][];
+  tokenLines: ThemedToken[][];
 
   lineDecorations: {
     start: number; // line number

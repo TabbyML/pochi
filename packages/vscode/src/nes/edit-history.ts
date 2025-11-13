@@ -7,6 +7,7 @@ import * as vscode from "vscode";
 import { GitStateMonitor } from "../integrations/git/git-state";
 import { DocumentSelector } from "./constants";
 import type { TextContentChange } from "./types";
+import { createTextDocumentSnapshot } from "./utils";
 
 const logger = getLogger("NES.EditHistory");
 
@@ -191,7 +192,7 @@ export class TextDocumentEditHistoryTracker implements vscode.Disposable {
   }
 
   getEditSteps(): readonly TextDocumentEditStep[] {
-    return this.history;
+    return [...this.history];
   }
 
   dispose() {
@@ -203,6 +204,11 @@ export class TextDocumentEditHistoryTracker implements vscode.Disposable {
     this.history = [];
   }
 }
+
+// A SingleEdit represents a single edit action.
+// A SingleEdit may contain multiple change ranges, e.g. renaming a variable, auto formatting, or using multi-cursor.
+// Change ranges should not be overlapping with each other.
+type SingleEdit = readonly TextContentChange[];
 
 // An edit step represents a group of SingleEdit that are continuing edit actions.
 export class TextDocumentEditStep {
@@ -248,20 +254,6 @@ export class TextDocumentEditStep {
       return lastRanges.some((r) => isEditRangeContinuing(r, e.range));
     });
   }
-}
-
-// A SingleEdit represents a single edit action.
-// A SingleEdit may contain multiple change ranges, e.g. renaming a variable, auto formatting, or using multi-cursor.
-// Change ranges should not be overlapping with each other.
-type SingleEdit = readonly TextContentChange[];
-
-function createTextDocumentSnapshot(document: vscode.TextDocument) {
-  return new StaticTextDocument(
-    document.uri,
-    "", // languageId should not be used in document history
-    0, // version should not be used
-    document.getText(),
-  );
 }
 
 function calculateRangeAfterEdit(edit: TextContentChange): vscode.Range {
