@@ -27,11 +27,11 @@ export class Codex extends VendorBase {
 
   override async fetchModels(): Promise<Record<string, ModelOptions>> {
     return {
-      "gpt-5": {
+      "gpt-5.1": {
         contextWindow: 200_000,
         useToolCallMiddleware: true,
       },
-      "gpt-5-codex": {
+      "gpt-5.1-codex": {
         contextWindow: 200_000,
         useToolCallMiddleware: true,
       },

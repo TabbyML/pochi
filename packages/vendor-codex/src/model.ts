@@ -92,7 +92,7 @@ function createCodexResponsesModel(
     fetch: customFetch as typeof fetch,
   });
 
-  return openai.responses(modelId || "gpt-5");
+  return openai.responses(modelId || "gpt-5.1-codex");
 }
 
 function createProxyFetch(getCredentials: () => Promise<unknown>) {
@@ -135,7 +135,7 @@ export function createEdgeCodexModel({
       baseURL: "https://chatgpt.com/backend-api/codex",
       apiKey: "placeholder",
       fetch: customFetch as typeof fetch,
-    }).responses(modelId || "gpt-5"),
+    }).responses(modelId || "gpt-5.1-codex"),
     middleware: {
       middlewareVersion: "v2",
       async transformParams({ params }) {

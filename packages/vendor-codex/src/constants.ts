@@ -9,7 +9,7 @@ export const OAuthConfig = {
   cancelPath: "/cancel",
 } as const;
 
-export const DefaultCodexInstructions = `You are Codex, based on GPT-5. You are running as a coding agent in the Codex CLI on a user's computer.
+export const DefaultCodexInstructions = `You are Codex, based on GPT-5.1. You are running as a coding agent in the Codex CLI on a user's computer.
 
 ## General
 
