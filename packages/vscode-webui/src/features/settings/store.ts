@@ -46,7 +46,7 @@ export interface SettingsState {
 
   updateEnablePochiModels: (value: boolean) => void;
 
-  inheritSubtaskAutoApproveSettings: () => void;
+  initSubtaskAutoApproveSettings: () => void;
 }
 
 const settingsStorageName = "ragdoll-settings-storage";
@@ -156,7 +156,7 @@ export const useSettingsStore = create<SettingsState>()(
           },
         })),
 
-      inheritSubtaskAutoApproveSettings: () =>
+      initSubtaskAutoApproveSettings: () =>
         set((state) => ({
           subtaskAutoApproveActive: state.autoApproveActive,
           subtaskAutoApproveSettings: {

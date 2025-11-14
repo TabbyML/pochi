@@ -57,7 +57,7 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
   const { t } = useTranslation();
   const { store } = useStore();
   const todosRef = useRef<Todo[] | undefined>(undefined);
-  const { inheritSubtaskAutoApproveSettings } = useSettingsStore();
+  const { initSubtaskAutoApproveSettings } = useSettingsStore();
   const defaultUser = {
     name: t("chatPage.defaultUserName"),
     image: `https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(store.clientId)}&scale=120`,
@@ -68,6 +68,7 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
 
   const task = store.useQuery(catalog.queries.makeTaskQuery(uid));
   const subtask = useSubtaskInfo(uid, task?.parentId);
+  const isSubTask = !!subtask;
 
   useEffect(() => {
     if (task) {
@@ -89,17 +90,17 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
 
   // inherit autoApproveSettings from parent task
   useEffect(() => {
-    if (task?.parentId) {
-      inheritSubtaskAutoApproveSettings();
+    if (isSubTask) {
+      initSubtaskAutoApproveSettings();
     }
-  }, [task?.parentId, inheritSubtaskAutoApproveSettings]);
+  }, [isSubTask, initSubtaskAutoApproveSettings]);
 
   const {
     isLoading: isModelsLoading,
     selectedModel,
     updateSelectedModelId,
   } = useSelectedModels({
-    isSubTask: !!subtask,
+    isSubTask,
   });
   const { customAgent } = useCustomAgent(subtask?.agent);
   const autoApproveGuard = useAutoApproveGuard();
@@ -108,7 +109,7 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
   const isWorkspaceActive = !!currentWorkspace?.cwd;
   const getters = useLiveChatKitGetters({
     todos: todosRef,
-    isSubTask: !!subtask,
+    isSubTask,
   });
 
   useRestoreTaskModel(task, isModelsLoading, updateSelectedModelId);
@@ -118,7 +119,7 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
   const chatKit = useLiveChatKit({
     taskId: uid,
     getters,
-    isSubTask: !!subtask,
+    isSubTask,
     customAgent,
     abortSignal: chatAbortController.current.signal,
     sendAutomaticallyWhen: (x) => {
@@ -159,7 +160,7 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
   const approvalAndRetry = useApprovalAndRetry({
     ...chat,
     showApproval: !isLoading && !isModelsLoading && !!selectedModel,
-    isSubTask: !!subtask,
+    isSubTask,
   });
 
   const { pendingApproval, retry } = approvalAndRetry;
@@ -180,7 +181,7 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
     }
   }, [currentWorkspace, isFetchingWorkspace, prompt, chatKit, files, t]);
 
-  useSetSubtaskModel({ isSubTask: !!subtask, customAgent });
+  useSetSubtaskModel({ isSubTask, customAgent });
 
   usePendingModelAutoStart({
     enabled:
@@ -240,7 +241,7 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
             compact={chatKit.spawn}
             approvalAndRetry={approvalAndRetry}
             attachmentUpload={attachmentUpload}
-            isSubTask={!!subtask}
+            isSubTask={isSubTask}
             subtask={subtask}
             displayError={displayError}
             onUpdateIsPublicShared={chatKit.updateIsPublicShared}
