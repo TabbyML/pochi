@@ -1,7 +1,7 @@
 import { DefaultCodexInstructions } from "./constants";
 
 export function transformToCodexFormat(request: Record<string, unknown>) {
-  const model = (request.model as string) || "gpt-5";
+  const model = (request.model as string) || "gpt-5.1-codex";
   const instructions = DefaultCodexInstructions;
   const input =
     (request.input as Array<{ role: string; content: unknown }>) || [];
