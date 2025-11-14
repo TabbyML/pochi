@@ -2118,7 +2118,7 @@ We added modular `@import` rules and fixed PDF handling in `readFile`. Behind th
 
 ### 🐛 Bug fixes
 
-* **PDF Handling in `readFile`:** Resolved a bug that caused `readFile` to return binary contents for PDF files. **[#591](https://github.com/TabbyML/pochi/issues/591)**
+* **PDF Handling in `readFile`:** Resolved a bug that caused `readFile` to return PDF files as plain text. **[#591](https://github.com/TabbyML/pochi/issues/591)**
 
 ### 🔥 Preview
 
@@ -2219,7 +2219,7 @@ We added modular `@import` rules and fixed PDF handling in `readFile`. Behind th
 
 ### 🐛 Bug fixes
 
-* **PDF Handling in `readFile`:** Resolved a bug that caused `readFile` to return binary contents for PDF files. **[#591](https://github.com/TabbyML/pochi/issues/591)**
+* **PDF Handling in `readFile`:** Resolved a bug that caused `readFile` to return PDF files as plain text. **[#591](https://github.com/TabbyML/pochi/issues/591)**
 
 ### 🔥 Preview
 
