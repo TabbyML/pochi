@@ -140,7 +140,10 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
     onOverrideMessages,
     onStreamFinish(data) {
       if (data.status === "completed") {
-        sendNotification("completed", { uid, cwd: data.cwd });
+        const taskUid = isSubTask ? task?.parentId : uid;
+        if (taskUid) {
+          sendNotification("completed", { uid: taskUid, cwd: data.cwd });
+        }
       }
     },
   });
