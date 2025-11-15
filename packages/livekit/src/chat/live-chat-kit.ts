@@ -39,7 +39,7 @@ export type LiveChatKitOptions<T> = {
   }) => void | Promise<void>;
   onStreamStart?: () => void;
   onStreamFinish?: (
-    data: Pick<Task, "id" | "cwd" | "status"> & { message: Message },
+    data: Pick<Task, "id" | "cwd" | "status"> & { messages: Message[] },
   ) => void;
   onStreamFailed?: (data: {
     error: Error;
@@ -66,7 +66,9 @@ export class LiveChatKit<
   private readonly transport: FlexibleChatTransport;
   onStreamStart?: () => void;
   onStreamFinish?: (
-    data: Pick<Task, "id" | "cwd" | "status"> & { message: Message },
+    data: Pick<Task, "id" | "cwd" | "status"> & {
+      messages: Message[];
+    },
   ) => void;
   onStreamFailed?: (data: {
     cwd: string | null;
@@ -335,12 +337,11 @@ export class LiveChatKit<
         updatedAt: new Date(),
       }),
     );
-
     this.onStreamFinish?.({
       id: this.taskId,
       cwd: this.task?.cwd ?? null,
       status,
-      message,
+      messages: [...this.chat.messages],
     });
   };
 

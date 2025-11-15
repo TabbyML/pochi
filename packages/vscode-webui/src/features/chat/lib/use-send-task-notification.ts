@@ -7,7 +7,7 @@ export function useSendTaskNotification() {
 
   const sendNotification = useCallback(
     async (
-      kind: "failed" | "completed" | "pending-tool",
+      kind: "failed" | "completed" | "pending-tool" | "pending-input",
       openTaskParams: { uid: string; cwd: string | null | undefined },
     ) => {
       clearTimeout(timer.current);
@@ -26,6 +26,9 @@ export function useSendTaskNotification() {
           case "pending-tool":
             renderMessage =
               "Pochi is trying to make a tool call that requires your approval.";
+            break;
+          case "pending-input":
+            renderMessage = "Pochi is waiting for your input to continue.";
             break;
           case "completed":
             renderMessage = "Pochi has completed the task.";

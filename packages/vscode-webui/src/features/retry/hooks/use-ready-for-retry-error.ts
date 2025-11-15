@@ -24,28 +24,32 @@ export function useMixinReadyForRetryError(
   error?: Error,
 ): Error | undefined {
   const readyForRetryError = useMemo(() => {
-    const lastMessage = messages.at(-1);
-    if (!lastMessage) return;
-    if (lastMessage.role === "user") return new ReadyForRetryError();
-    if (isAssistantMessageWithEmptyParts(lastMessage)) {
-      return new ReadyForRetryError();
-    }
-
-    if (
-      isAssistantMessageWithPartialToolCalls(lastMessage) ||
-      isAssistantMessageWithOutputError(lastMessage)
-    ) {
-      return new ReadyForRetryError();
-    }
-
-    if (lastAssistantMessageIsCompleteWithToolCalls({ messages })) {
-      return new ReadyForRetryError("tool-calls");
-    }
-
-    if (isAssistantMessageWithNoToolCalls(lastMessage)) {
-      return new ReadyForRetryError("no-tool-calls");
-    }
+    return getReadyForRetryError(messages);
   }, [messages]);
 
   return error || readyForRetryError;
+}
+
+export function getReadyForRetryError(messages: Message[]) {
+  const lastMessage = messages.at(-1);
+  if (!lastMessage) return;
+  if (lastMessage.role === "user") return new ReadyForRetryError();
+  if (isAssistantMessageWithEmptyParts(lastMessage)) {
+    return new ReadyForRetryError();
+  }
+
+  if (
+    isAssistantMessageWithPartialToolCalls(lastMessage) ||
+    isAssistantMessageWithOutputError(lastMessage)
+  ) {
+    return new ReadyForRetryError();
+  }
+
+  if (lastAssistantMessageIsCompleteWithToolCalls({ messages })) {
+    return new ReadyForRetryError("tool-calls");
+  }
+
+  if (isAssistantMessageWithNoToolCalls(lastMessage)) {
+    return new ReadyForRetryError("no-tool-calls");
+  }
 }

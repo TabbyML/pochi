@@ -27,6 +27,7 @@ import { useLatest } from "@/lib/hooks/use-latest";
 import { useMcp } from "@/lib/hooks/use-mcp";
 import { PochiApiErrors } from "@getpochi/vendor-pochi/edge";
 import { useApprovalAndRetry } from "../approval";
+import { getReadyForRetryError } from "../retry/hooks/use-ready-for-retry-error";
 import {
   useAutoApprove,
   useSelectedModels,
@@ -142,13 +143,17 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
   const { retryCount } = useRetryCount();
 
   const onStreamFinish = useLatest(
-    (data: Pick<Task, "id" | "cwd" | "status"> & { message: Message }) => {
-      const message = data.message;
+    (
+      data: Pick<Task, "id" | "cwd" | "status"> & {
+        messages: Message[];
+      },
+    ) => {
+      const lastMessage = data.messages.at(-1);
       const taskUid = isSubTask ? task?.parentId : uid;
-      if (!taskUid) return;
+      if (!taskUid || !lastMessage) return;
 
       if (data.status === "pending-tool") {
-        const pendingToolCallApproval = getPendingToolcallApproval(message);
+        const pendingToolCallApproval = getPendingToolcallApproval(lastMessage);
         if (pendingToolCallApproval) {
           const autoApproved = isToolAutoApproved({
             autoApproveActive,
@@ -160,6 +165,13 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
           if (!autoApproved) {
             sendNotification("pending-tool", { uid: taskUid, cwd: data.cwd });
           }
+        }
+      }
+
+      if (data.status === "pending-input") {
+        const readyForRetryError = getReadyForRetryError(messages);
+        if (readyForRetryError) {
+          sendNotification("pending-input", { uid: taskUid, cwd: data.cwd });
         }
       }
 
