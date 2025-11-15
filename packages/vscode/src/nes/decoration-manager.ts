@@ -6,8 +6,8 @@ import { CanvasRenderer } from "./code-renderer/canvas-renderer";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { TextmateThemer } from "./code-renderer/textmate-themer";
 import type { NESSolutionItem } from "./solution/item";
-import { getLines, toPositionRange } from "./utils";
 import type { LineNumberRange } from "./types";
+import { getLines, toPositionRange } from "./utils";
 
 const logger = getLogger("NES.DecorationManager");
 
@@ -144,7 +144,6 @@ export class NESDecorationManager implements vscode.Disposable {
     ) {
       // If there are adding-line changes, show a image decoration to preview all changes.
       const editorRenderOptions = getEditorRenderOptions(editor);
-      console.log(editorRenderOptions);
 
       const linesToRender: string[] = [];
       const linesToRenderOffsetMap: number[][] = [];

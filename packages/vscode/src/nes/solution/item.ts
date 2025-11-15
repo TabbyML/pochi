@@ -1,6 +1,7 @@
 import { isBlank } from "@/code-completion/utils/strings";
 import { getLogger } from "@/lib/logger";
 import * as vscode from "vscode";
+import { linesDiffComputers } from "vscode-diff";
 import type { NESRequestContext } from "../contexts";
 import type { CodeDiff, RangeMapping, TextChange, TextEdit } from "../types";
 import {
@@ -13,7 +14,6 @@ import {
   toCodeDiff,
   toOffsetRange,
 } from "../utils";
-import { linesDiffComputers } from "vscode-diff";
 
 const logger = getLogger("NES.Solution.Item");
 

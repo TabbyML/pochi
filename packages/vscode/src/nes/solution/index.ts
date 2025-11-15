@@ -1,6 +1,6 @@
 import { getLogger } from "@/lib/logger";
-import { NESSolutionItem, type NESSolutionItemSource } from "./item";
 import type { NESRequestContext } from "../contexts";
+import { NESSolutionItem, type NESSolutionItemSource } from "./item";
 import { isRevertingRecentEdits } from "./item-filters";
 
 const logger = getLogger("NES.Solution");

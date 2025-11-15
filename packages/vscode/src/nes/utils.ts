@@ -1,7 +1,7 @@
 import { StaticTextDocument } from "@/code-completion/utils/static-text-document";
 import * as vscode from "vscode";
-import type { CodeDiff, LineNumberRange, OffsetRange, TextEdit } from "./types";
 import type { LinesDiff } from "vscode-diff";
+import type { CodeDiff, LineNumberRange, OffsetRange, TextEdit } from "./types";
 
 // Position & Range
 
