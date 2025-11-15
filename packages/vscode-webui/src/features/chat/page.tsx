@@ -25,7 +25,6 @@ import { useTranslation } from "react-i18next";
 import { useLatest } from "@/lib/hooks/use-latest";
 import { useMcp } from "@/lib/hooks/use-mcp";
 import { useApprovalAndRetry } from "../approval";
-import { getReadyForRetryError } from "../retry/utils/ready-for-retry-error";
 import {
   useAutoApprove,
   useSelectedModels,
@@ -33,7 +32,6 @@ import {
 } from "../settings";
 import {
   getPendingToolcallApproval,
-  getToolCallLIfeCycles,
   isToolAutoApproved,
 } from "../settings/hooks/use-tool-auto-approval";
 import { ChatArea } from "./components/chat-area";
@@ -49,7 +47,6 @@ import {
   useAutoApproveGuard,
   useChatAbortController,
   useRetryCount,
-  useToolCallLifeCycle,
 } from "./lib/chat-state";
 import { onOverrideMessages } from "./lib/on-override-messages";
 import { useLiveChatKitGetters } from "./lib/use-live-chat-kit-getters";
@@ -131,7 +128,7 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
 
   useRestoreTaskModel(task, isModelsLoading, updateSelectedModelId);
 
-  const { sendNotification } = useSendTaskNotification();
+  const { sendNotification, clearNotification } = useSendTaskNotification();
 
   const { toolset } = useMcp();
 
@@ -141,8 +138,6 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
   });
 
   const { retryCount } = useRetryCount();
-
-  const { getToolCallLifeCycle } = useToolCallLifeCycle();
 
   const onStreamFinish = useLatest(
     (data: Pick<Task, "id" | "cwd" | "status"> & { message: Message }) => {
@@ -159,14 +154,8 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
             toolset,
             pendingApproval: pendingToolCallApproval,
           });
-          const lifecycles = getToolCallLIfeCycles(
-            pendingToolCallApproval,
-            getToolCallLifeCycle,
-          );
-          const isReady = lifecycles.every(
-            (x) => !["complete", "dispose"].includes(x.status),
-          );
-          if (!autoApproved && isReady) {
+
+          if (!autoApproved) {
             sendNotification("pending-tool", { uid: taskUid, cwd: data.cwd });
           }
         }
@@ -178,34 +167,23 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
     },
   );
 
-  const onStreamFailed = useLatest(
-    ({
-      messages,
-      cwd,
-    }: { messages: Message[]; error: Error; cwd: string | null }) => {
-      const taskUid = isSubTask ? task?.parentId : uid;
-      if (!taskUid) return;
+  const onStreamFailed = useLatest(({ cwd }: { cwd: string | null }) => {
+    const taskUid = isSubTask ? task?.parentId : uid;
+    if (!taskUid) return;
 
-      const readyForRetryError = getReadyForRetryError(messages);
-
-      if (!readyForRetryError) {
-        return;
-      }
-
-      const retryLimit =
-        autoApproveActive && autoApproveSettings.retry
-          ? autoApproveSettings.maxRetryLimit
-          : 0;
-      if (
-        !retryCount ||
-        (retryCount &&
-          retryCount.count !== undefined &&
-          retryCount.count >= retryLimit)
-      ) {
-        sendNotification("failed", { uid: taskUid, cwd });
-      }
-    },
-  );
+    const retryLimit =
+      autoApproveActive && autoApproveSettings.retry
+        ? autoApproveSettings.maxRetryLimit
+        : 0;
+    if (
+      !retryCount ||
+      (retryCount &&
+        retryCount.count !== undefined &&
+        retryCount.count >= retryLimit)
+    ) {
+      sendNotification("failed", { uid: taskUid, cwd });
+    }
+  });
 
   const chatKit = useLiveChatKit({
     taskId: uid,
@@ -229,6 +207,9 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
       return lastAssistantMessageIsCompleteWithToolCalls(x);
     },
     onOverrideMessages,
+    onStreamStart() {
+      clearNotification();
+    },
     onStreamFinish(data) {
       onStreamFinish.current(data);
     },

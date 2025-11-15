@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 
 import { useAutoApproveGuard } from "@/features/chat";
 import type { Task } from "@getpochi/livekit";
-import { ReadyForRetryError } from "../utils/ready-for-retry-error";
+import { ReadyForRetryError } from "./use-ready-for-retry-error";
 
 interface UseEventAutoStartOptions {
   task?: Task;

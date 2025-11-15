@@ -1,6 +1,4 @@
 import type { PendingToolCallApproval } from "@/features/approval";
-import type { ToolCallLifeCycle } from "@/features/chat";
-import type { ToolCallLifeCycleKey } from "@/features/chat";
 import { useMcp } from "@/lib/hooks/use-mcp";
 import type { McpStatus } from "@getpochi/common/mcp-utils";
 import type { Message } from "@getpochi/livekit";
@@ -119,25 +117,4 @@ export const isToolAutoApproved = ({
   }
 
   return isToolApproved(pendingApproval.tool);
-};
-
-export const getToolCallLIfeCycles = (
-  pendingApproval: PendingToolCallApproval,
-  getToolCallLifeCycle: (key: ToolCallLifeCycleKey) => ToolCallLifeCycle,
-) => {
-  const lifecycles =
-    "tools" in pendingApproval
-      ? pendingApproval.tools.map((tool) =>
-          getToolCallLifeCycle({
-            toolName: getToolName(tool),
-            toolCallId: tool.toolCallId,
-          }),
-        )
-      : [
-          getToolCallLifeCycle({
-            toolName: getToolName(pendingApproval.tool),
-            toolCallId: pendingApproval.tool.toolCallId,
-          }),
-        ];
-  return lifecycles;
 };

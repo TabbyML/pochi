@@ -1,52 +1,62 @@
 import { vscodeHost } from "@/lib/vscode";
 import type { TaskPanelParams } from "@getpochi/common/vscode-webui-bridge";
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 
 export function useSendTaskNotification() {
+  const timer = useRef<number | undefined>(undefined);
+
   const sendNotification = useCallback(
     async (
       kind: "failed" | "completed" | "pending-tool",
       openTaskParams: { uid: string; cwd: string | null | undefined },
     ) => {
-      if (!openTaskParams.cwd) return;
+      clearTimeout(timer.current);
 
-      if (
-        await vscodeHost.isTaskPanelVisible(openTaskParams as TaskPanelParams)
-      ) {
-        return;
-      }
+      timer.current = window.setTimeout(async () => {
+        if (!openTaskParams.cwd) return;
 
-      let renderMessage = "";
-      switch (kind) {
-        case "pending-tool":
-          renderMessage =
-            "Pochi is trying to make a tool call that requires your approval.";
-          break;
-        case "completed":
-          renderMessage = "Pochi has completed the task.";
-          break;
-        case "failed":
-          renderMessage = "Pochi is running into error, please take a look.";
-          break;
-        default:
-          break;
-      }
+        if (
+          await vscodeHost.isTaskPanelVisible(openTaskParams as TaskPanelParams)
+        ) {
+          return;
+        }
 
-      const result = await vscodeHost.showInformationMessage(
-        renderMessage,
-        {
-          modal: false,
-        },
-        "View Details",
-      );
-      if (result === "View Details") {
-        vscodeHost.openTaskInPanel(openTaskParams as TaskPanelParams);
-      }
+        let renderMessage = "";
+        switch (kind) {
+          case "pending-tool":
+            renderMessage =
+              "Pochi is trying to make a tool call that requires your approval.";
+            break;
+          case "completed":
+            renderMessage = "Pochi has completed the task.";
+            break;
+          case "failed":
+            renderMessage = "Pochi is running into error, please take a look.";
+            break;
+          default:
+            break;
+        }
+        const result = await vscodeHost.showInformationMessage(
+          renderMessage,
+          {
+            modal: false,
+          },
+          "View Details",
+        );
+        if (result === "View Details") {
+          vscodeHost.openTaskInPanel(openTaskParams as TaskPanelParams);
+        }
+      }, 500);
     },
     [],
   );
 
+  const clearNotification = useCallback(() => {
+    clearTimeout(timer.current);
+  }, []);
+
   return {
     sendNotification,
+    clearNotification,
   };
 }

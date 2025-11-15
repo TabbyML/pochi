@@ -3,7 +3,7 @@ import { prompts } from "@getpochi/common";
 import { prepareLastMessageForRetry } from "@getpochi/common/message-utils";
 import type { Message } from "@getpochi/livekit";
 import { useCallback } from "react";
-import { ReadyForRetryError } from "../utils/ready-for-retry-error";
+import { ReadyForRetryError } from "./use-ready-for-retry-error";
 
 export function useRetry({
   messages,
