@@ -170,7 +170,17 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
 
       if (data.status === "pending-input") {
         const readyForRetryError = getReadyForRetryError(messages);
-        if (readyForRetryError) {
+        if (!readyForRetryError) return;
+
+        const retryLimit =
+          autoApproveActive && autoApproveSettings.retry
+            ? autoApproveSettings.maxRetryLimit
+            : 0;
+
+        if (
+          retryLimit === 0 ||
+          (retryCount?.count !== undefined && retryCount.count >= retryLimit)
+        ) {
           sendNotification("pending-input", { uid: taskUid, cwd: data.cwd });
         }
       }
