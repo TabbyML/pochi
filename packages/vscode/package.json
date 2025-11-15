@@ -645,6 +645,7 @@
     "simple-git": "^3.28.0",
     "stats-logscale": "^1.0.9",
     "tsyringe": "^4.10.0",
+    "vscode-diff": "^3.0.1",
     "zod": "catalog:"
   },
   "devDependencies": {

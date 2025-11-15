@@ -1,4 +1,3 @@
-import { isMultiLine } from "@/code-completion/utils/strings";
 import { getLogger } from "@/lib/logger";
 import { injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
@@ -6,7 +5,9 @@ import * as vscode from "vscode";
 import { CanvasRenderer } from "./code-renderer/canvas-renderer";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { TextmateThemer } from "./code-renderer/textmate-themer";
-import type { NESSolution } from "./solution";
+import type { NESSolutionItem } from "./solution/item";
+import { getLines, toPositionRange } from "./utils";
+import type { LineNumberRange } from "./types";
 
 const logger = getLogger("NES.DecorationManager");
 
@@ -48,10 +49,28 @@ export class NESDecorationManager implements vscode.Disposable {
   };
 
   // Insertion decoration
-  // add ghost text after the current cursor position
+  // add new text with green background after the removed text
   private insertionDecorationType =
     vscode.window.createTextEditorDecorationType({});
   private insertionDecorationOptions = {
+    after: {
+      backgroundColor: new vscode.ThemeColor(
+        "inlineEdit.modifiedChangedTextBackground",
+      ),
+      border: "2px solid",
+      borderRadius: "2px",
+      margin: "0 0 0 2px",
+      borderColor: new vscode.ThemeColor(
+        "inlineEdit.tabWillAcceptModifiedBorder",
+      ),
+    },
+  };
+
+  // Cursor Insertion decoration
+  // add ghost text after the current cursor position
+  private cursorInsertionDecorationType =
+    vscode.window.createTextEditorDecorationType({});
+  private cursorInsertionDecorationOptions = {
     after: {
       color: new vscode.ThemeColor("editorGhostText.foreground"),
       fontStyle: "italic",
@@ -74,10 +93,24 @@ export class NESDecorationManager implements vscode.Disposable {
     after: {},
   };
 
+  // Insertion mark decoration
+  // mark a position where insertion is previewd in image decoration
+  private insertionMarkDecorationType =
+    vscode.window.createTextEditorDecorationType({
+      backgroundColor: new vscode.ThemeColor(
+        "inlineEdit.modifiedChangedTextBackground",
+      ),
+      border: "2px solid",
+      borderRadius: "2px",
+      borderColor: new vscode.ThemeColor(
+        "inlineEdit.tabWillAcceptModifiedBorder",
+      ),
+    });
+
   private current:
     | {
         editor: vscode.TextEditor;
-        solution: NESSolution;
+        solution: NESSolutionItem;
       }
     | undefined = undefined;
 
@@ -88,49 +121,64 @@ export class NESDecorationManager implements vscode.Disposable {
     ]);
   }
 
-  async show(editor: vscode.TextEditor, solution: NESSolution) {
-    const { target, change: combinedChange, edit } = solution;
-    if (edit.type !== "text-changes") {
-      logger.debug(
-        `Skipped showing decorations because edit type is not text-changes. (received ${edit.type})`,
-      );
-      return;
-    }
-
-    const { changes } = edit;
-
-    this.current = { editor, solution };
-    vscode.commands.executeCommand(
-      "setContext",
-      "pochiNextEditSuggestionVisible",
-      true,
-    );
+  async show(editor: vscode.TextEditor, solution: NESSolutionItem) {
+    const { context, target, diff } = solution;
+    logger.debug("Will show decoration: ", {
+      diff,
+      original: context.documentContext.document.getText(),
+      target: target.getText(),
+    });
 
     const cursorPosition = editor.selection.active;
 
     const replacements: vscode.DecorationOptions[] = [];
     const insertions: vscode.DecorationOptions[] = [];
+    const cursorInsertions: vscode.DecorationOptions[] = [];
     const images: vscode.DecorationOptions[] = [];
+    const insertionMarks: vscode.DecorationOptions[] = [];
 
-    if (changes.some((c) => isMultiLine(c.text))) {
-      // If there are multi-line changes, show a image decoration to preview all changes.
+    if (
+      diff.changes.some(
+        (c) =>
+          c.modified.end - c.modified.start > c.original.end - c.original.start,
+      )
+    ) {
+      // If there are adding-line changes, show a image decoration to preview all changes.
       const themedDocument = await this.textmateThemer.theme(
-        target.getText().split("\n"),
+        getLines(target),
         editor.document.languageId,
       );
+
+      const lineRangeToRender = diff.changes.reduce<
+        LineNumberRange | undefined
+      >((acc, curr) => {
+        if (!acc) {
+          return curr.modified;
+        }
+        return {
+          start: Math.min(acc.start, curr.modified.start),
+          end: Math.max(acc.end, curr.modified.end),
+        };
+      }, undefined);
+
+      if (
+        !lineRangeToRender ||
+        lineRangeToRender.end <= lineRangeToRender.start
+      ) {
+        logger.debug("Cannot get lineRangeToRender: ", { diff });
+        return;
+      }
+
       const tokenLines = themedDocument.tokenLines.slice(
-        combinedChange.range.start.line,
-        combinedChange.range.start.line +
-          combinedChange.text.split("\n").length,
+        lineRangeToRender.start,
+        lineRangeToRender.end,
       );
 
-      const editedDocumentRanges = edit.editedRanges.map(
-        (range) =>
-          new vscode.Range(
-            target.positionAt(range.offset),
-            target.positionAt(range.offset + range.length),
-          ),
-      );
+      const editedDocumentRanges = diff.changes.flatMap((lineChange) => {
+        return lineChange.innerChanges.map((change) => {
+          return change.modified;
+        });
+      });
       const charDecorationRanges = editedDocumentRanges.flatMap((range) => {
         const ranges: { line: number; start: number; end: number }[] = [];
         let line = range.start.line;
@@ -141,7 +189,7 @@ export class NESDecorationManager implements vscode.Disposable {
               ? range.end.character
               : target.lineAt(line).range.end.character;
           ranges.push({
-            line: line - combinedChange.range.start.line,
+            line: line - lineRangeToRender.start,
             start,
             end,
           });
@@ -184,8 +232,10 @@ export class NESDecorationManager implements vscode.Disposable {
 
       const imageDecoration: vscode.DecorationOptions = {
         range: new vscode.Range(
-          combinedChange.range.start,
-          combinedChange.range.start,
+          lineRangeToRender.start,
+          0,
+          lineRangeToRender.start,
+          0,
         ),
         renderOptions: {
           before: {
@@ -196,49 +246,91 @@ export class NESDecorationManager implements vscode.Disposable {
         },
       };
       images.push(imageDecoration);
-    }
 
-    for (const change of changes) {
-      if (
-        change.range.end.isEqual(cursorPosition) &&
-        !isMultiLine(change.text) &&
-        editor.document.getText(change.range) ===
-          change.text.slice(0, change.rangeLength)
-      ) {
-        const decoration = {
-          range: new vscode.Range(cursorPosition, cursorPosition),
-          renderOptions: {
-            after: {
-              ...this.insertionDecorationOptions.after,
-              contentText: change.text.slice(change.rangeLength),
-            },
-          },
-        };
-        insertions.push(decoration);
-      } else {
-        const decoration = {
-          range: change.range,
-          renderOptions:
-            change.text.length > 0 && !isMultiLine(change.text)
-              ? {
-                  after: {
-                    ...this.replacementDecorationOptions.after,
-                    contentText: change.text,
-                  },
-                }
-              : {},
-        };
-        if (change.rangeLength === 0) {
-          insertions.push(decoration);
-        } else {
-          replacements.push(decoration);
+      for (const lineChange of diff.changes) {
+        for (const change of lineChange.innerChanges) {
+          if (change.original.isEmpty) {
+            const decoration = {
+              range: change.original,
+              renderOptions: {},
+            };
+            insertionMarks.push(decoration);
+          } else {
+            const decoration = {
+              range: change.original,
+              renderOptions: {},
+            };
+            replacements.push(decoration);
+          }
+        }
+      }
+    } else {
+      for (const lineChange of diff.changes) {
+        for (const change of lineChange.innerChanges) {
+          const originalText = editor.document.getText(change.original);
+          const targetText = target.getText(change.modified);
+          if (
+            change.original.end.isEqual(cursorPosition) &&
+            targetText.startsWith(originalText)
+          ) {
+            const decoration = {
+              range: new vscode.Range(cursorPosition, cursorPosition),
+              renderOptions: {
+                after: {
+                  ...this.cursorInsertionDecorationOptions.after,
+                  contentText: targetText.slice(originalText.length),
+                },
+              },
+            };
+            cursorInsertions.push(decoration);
+          } else if (change.original.isEmpty) {
+            const decoration = {
+              range: change.original,
+              renderOptions: {
+                after: {
+                  ...this.insertionDecorationOptions.after,
+                  contentText: targetText,
+                },
+              },
+            };
+            insertions.push(decoration);
+          } else {
+            const decoration = {
+              range: change.original,
+              renderOptions:
+                targetText.length > 0
+                  ? {
+                      after: {
+                        ...this.replacementDecorationOptions.after,
+                        contentText: targetText,
+                      },
+                    }
+                  : {},
+            };
+            replacements.push(decoration);
+          }
         }
       }
     }
 
+    if (editor.document.version !== context.documentContext.document.version) {
+      logger.debug("Document changed, skip updating decoration.");
+      return;
+    }
+
     editor.setDecorations(this.replacementDecorationType, replacements);
     editor.setDecorations(this.insertionDecorationType, insertions);
+    editor.setDecorations(this.cursorInsertionDecorationType, cursorInsertions);
     editor.setDecorations(this.imageDecorationType, images);
+    editor.setDecorations(this.insertionMarkDecorationType, insertionMarks);
+
+    this.current = { editor, solution };
+    vscode.commands.executeCommand(
+      "setContext",
+      "pochiNextEditSuggestionVisible",
+      true,
+    );
+    logger.debug("Decoration updated.");
   }
 
   async accept() {
@@ -248,23 +340,34 @@ export class NESDecorationManager implements vscode.Disposable {
       return;
     }
     const { editor, solution } = this.current;
-    const { edit } = solution;
-    if (edit.type !== "text-changes") {
-      return;
-    }
     await editor.edit((editBuilder) => {
-      for (const change of edit.changes) {
-        editBuilder.replace(change.range, change.text);
+      for (const change of solution.textEdit.changes) {
+        editBuilder.replace(
+          toPositionRange(change.range, editor.document),
+          change.text,
+        );
       }
     });
     this.hide();
 
-    // Move cursor to the end of the last change
-    const lastChange = edit.changes[edit.changes.length - 1];
-    const cursorPosition = editor.document.positionAt(
-      lastChange.rangeOffset + lastChange.text.length,
-    );
-    editor.selection = new vscode.Selection(cursorPosition, cursorPosition);
+    // Move cursor to the end of the edited range
+    const reducedEditedRange = solution.diff.changes.reduce<
+      vscode.Range | undefined
+    >((acc, curr) => {
+      const editedRange = curr.innerChanges.reduce<vscode.Range | undefined>(
+        (a, c) => {
+          return a ? a.union(c.modified) : c.modified;
+        },
+        undefined,
+      );
+      return acc ? (editedRange ? acc.union(editedRange) : acc) : editedRange;
+    }, undefined);
+    if (reducedEditedRange) {
+      editor.selection = new vscode.Selection(
+        reducedEditedRange.end,
+        reducedEditedRange.end,
+      );
+    }
   }
 
   reject() {
@@ -285,7 +388,9 @@ export class NESDecorationManager implements vscode.Disposable {
     const { editor } = this.current;
     editor.setDecorations(this.replacementDecorationType, []);
     editor.setDecorations(this.insertionDecorationType, []);
+    editor.setDecorations(this.cursorInsertionDecorationType, []);
     editor.setDecorations(this.imageDecorationType, []);
+    editor.setDecorations(this.insertionMarkDecorationType, []);
     this.current = undefined;
     vscode.commands.executeCommand(
       "setContext",

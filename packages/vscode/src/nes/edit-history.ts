@@ -1,4 +1,3 @@
-import { StaticTextDocument } from "@/code-completion/utils/static-text-document";
 import { getLogger } from "@/lib/logger";
 import { LRUCache } from "lru-cache";
 import { injectable, singleton } from "tsyringe";
@@ -6,8 +5,14 @@ import * as vscode from "vscode";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { GitStateMonitor } from "../integrations/git/git-state";
 import { DocumentSelector } from "./constants";
-import type { TextContentChange } from "./types";
-import { createTextDocumentSnapshot } from "./utils";
+import type { OffsetRange, TextEdit } from "./types";
+import {
+  applyEdit,
+  createTextDocumentSnapshot,
+  createTextDocumentWithEmptyText,
+  createTextDocumentWithNewText,
+  isRangeContacted,
+} from "./utils";
 
 const logger = getLogger("NES.EditHistory");
 
@@ -117,7 +122,7 @@ export class TextDocumentEditHistoryTracker implements vscode.Disposable {
   constructor(private readonly textDocument: vscode.TextDocument) {
     this.baseSnapshot =
       textDocument.getText().length > DocumentSizeThresholdToDisableHistory
-        ? new StaticTextDocument(textDocument.uri, "", 0, "") // empty document
+        ? createTextDocumentWithEmptyText(textDocument)
         : createTextDocumentSnapshot(textDocument);
 
     this.disposables.push(
@@ -141,32 +146,35 @@ export class TextDocumentEditHistoryTracker implements vscode.Disposable {
       return;
     }
 
-    const edit: SingleEdit = event.contentChanges;
-    if (edit.length === 0) {
+    const edit: TextEdit = {
+      changes: event.contentChanges.map((c) => {
+        return {
+          range: { start: c.rangeOffset, end: c.rangeOffset + c.rangeLength },
+          text: c.text,
+        };
+      }),
+    };
+
+    if (edit.changes.length === 0) {
       return;
     }
 
-    const patchSize = edit.reduce((acc, change) => {
+    const editSize = edit.changes.reduce((acc, change) => {
       return acc + change.text.length;
     }, 0);
-    if (patchSize > EditSizeThresholdToResetHistory) {
+    if (editSize > EditSizeThresholdToResetHistory) {
       this.reset();
       return;
     }
 
     if (this.history.length > 0) {
       const lastStep = this.history[this.history.length - 1];
-      if (lastStep.isContinuingEdit(edit)) {
-        lastStep.appendEdit(edit, event.document);
-      } else {
-        this.history.push(
-          new TextDocumentEditStep(lastStep.getAfter(), event.document, [edit]),
-        );
+      const appended = lastStep.appendEdit(edit);
+      if (!appended) {
+        this.history.push(new TextDocumentEditStep(lastStep.getAfter(), edit));
       }
     } else {
-      this.history.push(
-        new TextDocumentEditStep(this.baseSnapshot, event.document, [edit]),
-      );
+      this.history.push(new TextDocumentEditStep(this.baseSnapshot, edit));
     }
 
     if (this.history.length > MaxEditHistoryStepsPerDocument) {
@@ -178,7 +186,7 @@ export class TextDocumentEditHistoryTracker implements vscode.Disposable {
   reset() {
     this.baseSnapshot =
       this.textDocument.getText().length > DocumentSizeThresholdToDisableHistory
-        ? new StaticTextDocument(this.textDocument.uri, "", 0, "") // empty document
+        ? createTextDocumentWithEmptyText(this.textDocument)
         : createTextDocumentSnapshot(this.textDocument);
     this.history = [];
   }
@@ -196,7 +204,9 @@ export class TextDocumentEditHistoryTracker implements vscode.Disposable {
   }
 
   dispose() {
-    logger.debug(`Disposing edit history tracker for ${this.textDocument.uri}`);
+    logger.debug(
+      `Disposing edit history tracker for ${this.textDocument.uri.toString()}`,
+    );
     for (const disposable of this.disposables) {
       disposable.dispose();
     }
@@ -205,24 +215,18 @@ export class TextDocumentEditHistoryTracker implements vscode.Disposable {
   }
 }
 
-// A SingleEdit represents a single edit action.
-// A SingleEdit may contain multiple change ranges, e.g. renaming a variable, auto formatting, or using multi-cursor.
-// Change ranges should not be overlapping with each other.
-type SingleEdit = readonly TextContentChange[];
-
-// An edit step represents a group of SingleEdit that are continuing edit actions.
+// An TextDocumentEditStep represents a group of TextEdit that are continuing edit actions.
 export class TextDocumentEditStep {
   private readonly before: vscode.TextDocument;
+  private readonly edits: TextEdit[] = [];
+
   private after: vscode.TextDocument;
-  private readonly edits: SingleEdit[] = [];
-  constructor(
-    base: vscode.TextDocument,
-    edited: vscode.TextDocument,
-    edits: SingleEdit[],
-  ) {
+  private lastEditedRanges: OffsetRange[] | undefined = undefined;
+
+  constructor(base: vscode.TextDocument, initialEdit: TextEdit) {
     this.before = createTextDocumentSnapshot(base);
-    this.after = createTextDocumentSnapshot(edited);
-    this.edits.push(...edits);
+    this.after = createTextDocumentSnapshot(base);
+    this.appendEdit(initialEdit);
   }
 
   getBefore() {
@@ -233,50 +237,31 @@ export class TextDocumentEditStep {
     return this.after;
   }
 
-  getEdits(): readonly SingleEdit[] {
-    return this.edits;
+  getEdits(): readonly TextEdit[] {
+    return [...this.edits];
   }
 
-  appendEdit(newEdit: SingleEdit, edited: vscode.TextDocument) {
-    this.after = createTextDocumentSnapshot(edited);
+  // return true if appended as continuing edit.
+  // return false if the edit is not continuing edit, in which case it is not appended.
+  appendEdit(newEdit: TextEdit): boolean {
+    if (!this.isContinuingEdit(newEdit)) {
+      return false;
+    }
+    const { text, editedRanges } = applyEdit(this.after.getText(), newEdit);
     this.edits.push(newEdit);
+    this.after = createTextDocumentWithNewText(this.after, text);
+    this.lastEditedRanges = editedRanges;
+    return true;
   }
 
   // check if the newEdit is a continuing edit action. e.g. typing more characters or deleting more characters.
-  isContinuingEdit(newEdit: SingleEdit) {
-    if (this.edits.length === 0) {
-      return false;
+  private isContinuingEdit(newEdit: TextEdit) {
+    const lastEditedRanges = this.lastEditedRanges;
+    if (lastEditedRanges === undefined) {
+      return true;
     }
-    const lastRanges = this.edits[this.edits.length - 1].map((e) =>
-      calculateRangeAfterEdit(e),
-    );
-    return newEdit.every((e) => {
-      return lastRanges.some((r) => isEditRangeContinuing(r, e.range));
+    return newEdit.changes.every((c) => {
+      return lastEditedRanges.some((r) => isRangeContacted(r, c.range));
     });
   }
-}
-
-function calculateRangeAfterEdit(edit: TextContentChange): vscode.Range {
-  const range = edit.range;
-  const lines = edit.text.split("\n");
-  const lastLine = lines[lines.length - 1];
-  const newRange = new vscode.Range(
-    new vscode.Position(range.start.line, range.start.character),
-    new vscode.Position(
-      range.start.line + lines.length - 1,
-      lines.length === 1
-        ? range.start.character + lastLine.length
-        : lastLine.length,
-    ),
-  );
-  return newRange;
-}
-
-function isEditRangeContinuing(last: vscode.Range, current: vscode.Range) {
-  return (
-    last.start.isEqual(current.start) ||
-    last.end.isEqual(current.end) ||
-    last.start.isEqual(current.end) ||
-    last.end.isEqual(current.start)
-  );
 }
