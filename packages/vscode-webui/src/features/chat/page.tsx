@@ -16,6 +16,7 @@ import type { Todo } from "@getpochi/tools";
 import { useStore } from "@livestore/react";
 import { useRouter } from "@tanstack/react-router";
 import {
+  APICallError,
   type FileUIPart,
   lastAssistantMessageIsCompleteWithToolCalls,
 } from "ai";
@@ -24,6 +25,7 @@ import { useTranslation } from "react-i18next";
 
 import { useLatest } from "@/lib/hooks/use-latest";
 import { useMcp } from "@/lib/hooks/use-mcp";
+import { PochiApiErrors } from "@getpochi/vendor-pochi/edge";
 import { useApprovalAndRetry } from "../approval";
 import {
   useAutoApprove,
@@ -167,23 +169,39 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
     },
   );
 
-  const onStreamFailed = useLatest(({ cwd }: { cwd: string | null }) => {
-    const taskUid = isSubTask ? task?.parentId : uid;
-    if (!taskUid) return;
+  const onStreamFailed = useLatest(
+    ({ error, cwd }: { error: Error; cwd: string | null }) => {
+      const taskUid = isSubTask ? task?.parentId : uid;
+      if (!taskUid) return;
 
-    const retryLimit =
-      autoApproveActive && autoApproveSettings.retry
-        ? autoApproveSettings.maxRetryLimit
-        : 0;
-    if (
-      !retryCount ||
-      (retryCount &&
-        retryCount.count !== undefined &&
-        retryCount.count >= retryLimit)
-    ) {
-      sendNotification("failed", { uid: taskUid, cwd });
-    }
-  });
+      let autoApprove = autoApproveGuard.current === "auto";
+      if (error && Object.values(PochiApiErrors).includes(error.message)) {
+        autoApprove = false;
+      }
+
+      if (
+        error &&
+        APICallError.isInstance(error) &&
+        error.isRetryable === false
+      ) {
+        autoApprove = false;
+      }
+
+      const retryLimit =
+        autoApproveActive && autoApproveSettings.retry && autoApprove
+          ? autoApproveSettings.maxRetryLimit
+          : 0;
+
+      if (
+        !retryCount ||
+        (retryCount &&
+          retryCount.count !== undefined &&
+          retryCount.count >= retryLimit)
+      ) {
+        sendNotification("failed", { uid: taskUid, cwd });
+      }
+    },
+  );
 
   const chatKit = useLiveChatKit({
     taskId: uid,
