@@ -31,6 +31,11 @@ import {
   useSelectedModels,
   useSettingsStore,
 } from "../settings";
+import {
+  getPendingToolcallApproval,
+  getToolCallLIfeCycles,
+  isToolAutoApproved,
+} from "../settings/hooks/use-tool-auto-approval";
 import { ChatArea } from "./components/chat-area";
 import { ChatToolbar } from "./components/chat-toolbar";
 import { ErrorMessageView } from "./components/error-message-view";
@@ -47,11 +52,6 @@ import {
   useToolCallLifeCycle,
 } from "./lib/chat-state";
 import { onOverrideMessages } from "./lib/on-override-messages";
-import {
-  getPendingToolcallApproval,
-  getToolCallLIfeCycles,
-  isToolAutoApproved,
-} from "./lib/pending-tool-call-approval";
 import { useLiveChatKitGetters } from "./lib/use-live-chat-kit-getters";
 import { useSendTaskNotification } from "./lib/use-send-task-notification";
 
