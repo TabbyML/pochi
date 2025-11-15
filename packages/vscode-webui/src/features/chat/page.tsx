@@ -193,10 +193,8 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
           : 0;
 
       if (
-        !retryCount ||
-        (retryCount &&
-          retryCount.count !== undefined &&
-          retryCount.count >= retryLimit)
+        retryLimit === 0 ||
+        (retryCount?.count !== undefined && retryCount.count >= retryLimit)
       ) {
         sendNotification("failed", { uid: taskUid, cwd });
       }
