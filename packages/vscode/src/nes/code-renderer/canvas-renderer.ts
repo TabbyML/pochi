@@ -59,6 +59,7 @@ export class CanvasRenderer implements vscode.Disposable {
           },
           textAlign: canvasKit.TextAlign.Left,
           maxLines: 1,
+          replaceTabCharacters: true,
         }),
         fontProvider,
       );
@@ -82,6 +83,8 @@ export class CanvasRenderer implements vscode.Disposable {
 
         const textStyle = new canvasKit.TextStyle({
           color,
+          fontFamilies: ["Droid Sans Mono"],
+          fontSize: input.fontSize,
           fontStyle: {
             weight,
             slant,
@@ -107,7 +110,8 @@ export class CanvasRenderer implements vscode.Disposable {
       0,
     );
     const lineHeight =
-      input.lineHeight >= 8 ? input.lineHeight : paragraphs[0].getHeight();
+      (input.lineHeight >= 8 ? input.lineHeight : paragraphs[0].getHeight()) +
+      1;
     const docHeight = paragraphs.length * lineHeight;
 
     const canvasWidth = Math.ceil(docWidth + input.padding * 2);

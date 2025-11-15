@@ -87,7 +87,7 @@ function extractResult(text: string, segments: NESPromptSegments) {
   }
 
   const afterEndTagText = `${segments.suffix}\n\`\`\``;
-  if (text.endsWith(afterEndTagText)) {
+  if (text.trimEnd().endsWith(afterEndTagText)) {
     // Unexpected output end
     return undefined;
   }

@@ -88,7 +88,6 @@ export class NESDecorationManager implements vscode.Disposable {
       borderColor: new vscode.ThemeColor("widget.border"),
       color: new vscode.ThemeColor("widget.shadow"),
       border: "2px solid",
-      margin: "0 0 0 500px; position: absolute; z-index: 10000",
     },
     after: {},
   };
@@ -144,8 +143,31 @@ export class NESDecorationManager implements vscode.Disposable {
       )
     ) {
       // If there are adding-line changes, show a image decoration to preview all changes.
+      const editorRenderOptions = getEditorRenderOptions(editor);
+      console.log(editorRenderOptions);
+
+      const linesToRender: string[] = [];
+      const linesToRenderOffsetMap: number[][] = [];
+
+      // Convert tabs to spaces
+      for (const line of getLines(target)) {
+        const tabSize = editorRenderOptions.tabSize;
+        linesToRender.push(line.replace(/\t/g, " ".repeat(tabSize)));
+        const offsetMap: number[] = [];
+        let offset = 0;
+        for (let i = 0; i <= line.length; i++) {
+          offsetMap[i] = offset;
+          if (line[i] === "\t") {
+            offset += tabSize;
+          } else {
+            offset += 1;
+          }
+        }
+        linesToRenderOffsetMap.push(offsetMap);
+      }
+
       const themedDocument = await this.textmateThemer.theme(
-        getLines(target),
+        linesToRender,
         editor.document.languageId,
       );
 
@@ -188,11 +210,12 @@ export class NESDecorationManager implements vscode.Disposable {
             line === range.end.line
               ? range.end.character
               : target.lineAt(line).range.end.character;
-          ranges.push({
+          const charRange = {
             line: line - lineRangeToRender.start,
-            start,
-            end,
-          });
+            start: linesToRenderOffsetMap[line][start],
+            end: linesToRenderOffsetMap[line][end],
+          };
+          ranges.push(charRange);
           line++;
         }
         return ranges;
@@ -200,8 +223,8 @@ export class NESDecorationManager implements vscode.Disposable {
 
       const imageRenderingInput = {
         padding: 5,
-        fontSize: 14,
-        lineHeight: 0,
+        fontSize: editorRenderOptions.fontSize,
+        lineHeight: editorRenderOptions.lineHeight,
 
         colorMap: themedDocument.colorMap,
         foreground: themedDocument.foreground,
@@ -230,16 +253,24 @@ export class NESDecorationManager implements vscode.Disposable {
       logger.debug("Created image for decoration.");
       logger.trace("Image:", dataUrl);
 
+      let longestLineChars = 0;
+      for (let i = lineRangeToRender.start; i < lineRangeToRender.end; i++) {
+        const line = editor.document.lineAt(i);
+        longestLineChars = Math.max(longestLineChars, line.text.length);
+      }
+      const imageDecorationPostion =
+        longestLineChars <= 80
+          ? new vscode.Position(lineRangeToRender.start, 0)
+          : new vscode.Position(lineRangeToRender.end, 0);
+      const margin = buildMarginCss(
+        longestLineChars <= 80 ? longestLineChars + 4 : 0,
+      );
       const imageDecoration: vscode.DecorationOptions = {
-        range: new vscode.Range(
-          lineRangeToRender.start,
-          0,
-          lineRangeToRender.start,
-          0,
-        ),
+        range: new vscode.Range(imageDecorationPostion, imageDecorationPostion),
         renderOptions: {
           before: {
             ...this.imageDecorationOptions.before,
+            margin: margin,
             contentIconPath: vscode.Uri.parse(dataUrl),
           },
           after: {},
@@ -405,4 +436,16 @@ export class NESDecorationManager implements vscode.Disposable {
     }
     this.disposables = [];
   }
+}
+
+function getEditorRenderOptions(editor: vscode.TextEditor) {
+  const config = vscode.workspace.getConfiguration("editor");
+  const fontSize = config.get<number>("fontSize", 14);
+  const lineHeight = config.get<number>("lineHeight", 0);
+  const tabSize = (editor.options.tabSize as number | undefined) || 4;
+  return { fontSize, lineHeight, tabSize };
+}
+
+function buildMarginCss(left: number) {
+  return `-5px 0 0 ${left}ch; position: absolute; z-index: 10000`;
 }
