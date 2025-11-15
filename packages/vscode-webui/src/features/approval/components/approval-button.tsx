@@ -40,17 +40,11 @@ export const ApprovalButton: React.FC<ApprovalButtonProps> = ({
   return (
     <div className="flex select-none gap-3 [&>button]:flex-1 [&>button]:rounded-sm">
       {pendingApproval.name === "retry" ? (
-        <RetryApprovalButton
-          task={task}
-          pendingApproval={pendingApproval}
-          isSubTask={isSubTask}
-          retry={retry}
-        />
+        <RetryApprovalButton pendingApproval={pendingApproval} retry={retry} />
       ) : (
         <ToolCallApprovalButton
           pendingApproval={pendingApproval}
           isSubTask={isSubTask}
-          task={task}
         />
       )}
     </div>

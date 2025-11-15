@@ -1,4 +1,4 @@
-import { createContext } from "react";
+import { type Dispatch, type SetStateAction, createContext } from "react";
 import type { ToolCallLifeCycle } from "../tool-call-life-cycle";
 
 export interface ChatState {
@@ -12,7 +12,11 @@ export interface ChatState {
   executingToolCalls: ToolCallLifeCycle[];
   previewingToolCalls: ToolCallLifeCycle[];
   completeToolCalls: ToolCallLifeCycle[];
+  retryCount: RetryCount | undefined;
+  setRetryCount: Dispatch<SetStateAction<RetryCount | undefined>>;
 }
+
+export type RetryCount = { error: Error; count: number };
 
 export interface ToolCallLifeCycleKey {
   toolName: string;

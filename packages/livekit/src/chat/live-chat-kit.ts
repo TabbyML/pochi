@@ -37,7 +37,14 @@ export type LiveChatKitOptions<T> = {
     messages: Message[];
     abortSignal: AbortSignal;
   }) => void | Promise<void>;
-  onStreamFinish?: (data: Pick<Task, "id" | "cwd" | "status">) => void;
+  onStreamFinish?: (
+    data: Pick<Task, "id" | "cwd" | "status"> & { message: Message },
+  ) => void;
+  onStreamFailed?: (data: {
+    error: Error;
+    messages: Message[];
+    cwd: string | null;
+  }) => void;
 
   customAgent?: CustomAgent;
   outputSchema?: z.ZodAny;
@@ -56,7 +63,14 @@ export class LiveChatKit<
   protected readonly store: Store;
   readonly chat: T;
   private readonly transport: FlexibleChatTransport;
-  onStreamFinish?: (data: Pick<Task, "id" | "cwd" | "status">) => void;
+  onStreamFinish?: (
+    data: Pick<Task, "id" | "cwd" | "status"> & { message: Message },
+  ) => void;
+  onStreamFailed?: (data: {
+    cwd: string | null;
+    error: Error;
+    messages: Message[];
+  }) => void;
   readonly spawn: () => Promise<string>;
 
   constructor({
@@ -71,11 +85,13 @@ export class LiveChatKit<
     customAgent,
     outputSchema,
     onStreamFinish,
+    onStreamFailed,
     ...chatInit
   }: LiveChatKitOptions<T>) {
     this.taskId = taskId;
     this.store = store;
     this.onStreamFinish = onStreamFinish;
+    this.onStreamFailed = onStreamFailed;
     this.transport = new FlexibleChatTransport({
       store,
       onStart: this.onStart,
@@ -313,16 +329,19 @@ export class LiveChatKit<
         updatedAt: new Date(),
       }),
     );
+
     this.onStreamFinish?.({
       id: this.taskId,
       cwd: this.task?.cwd ?? null,
       status,
+      message,
     });
   };
 
   private readonly onError: ChatOnErrorCallback = (error) => {
     logger.error("onError", error);
     const lastMessage = this.chat.messages.at(-1) || null;
+
     this.store.commit(
       events.chatStreamFailed({
         id: this.taskId,
@@ -331,5 +350,10 @@ export class LiveChatKit<
         updatedAt: new Date(),
       }),
     );
+    this.onStreamFailed?.({
+      cwd: this.task?.cwd ?? null,
+      error,
+      messages: [...this.chat.messages],
+    });
   };
 }
