@@ -1,5 +1,6 @@
 import type { PendingToolCallApproval } from "@/features/approval";
 import type { ToolCallLifeCycle } from "@/features/chat";
+import type { ToolCallLifeCycleKey } from "@/features/chat";
 import { useMcp } from "@/lib/hooks/use-mcp";
 import type { McpStatus } from "@getpochi/common/mcp-utils";
 import type { Message } from "@getpochi/livekit";
@@ -9,7 +10,6 @@ import {
   isUserInputToolPart,
 } from "@getpochi/tools";
 import { type ToolUIPart, type UITools, getToolName, isToolUIPart } from "ai";
-import type { ToolCallLifeCycleKey } from "src/features/chat/lib/chat-state/types";
 import type { AutoApprove } from "../store";
 import { useAutoApprove } from "./use-auto-approve";
 

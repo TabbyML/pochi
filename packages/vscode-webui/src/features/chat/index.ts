@@ -8,6 +8,8 @@ export {
   useRetryCount,
 } from "./lib/chat-state";
 
+export type { ToolCallLifeCycleKey } from "./lib/chat-state/types";
+
 export { useSendMessage, useHandleChatEvents } from "./lib/chat-events";
 export { useLiveChatKitGetters } from "./lib/use-live-chat-kit-getters";
 export {

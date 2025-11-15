@@ -20,7 +20,6 @@ export const ApprovalButton: React.FC<ApprovalButtonProps> = ({
   pendingApproval,
   retry,
   isSubTask,
-  task,
 }) => {
   const shouldShowApprovalButton = pendingApproval && allowAddToolResult;
 
