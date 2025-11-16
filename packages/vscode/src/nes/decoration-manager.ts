@@ -253,16 +253,23 @@ export class NESDecorationManager implements vscode.Disposable {
       logger.trace("Image:", dataUrl);
 
       let longestLineChars = 0;
-      for (let i = lineRangeToRender.start; i < lineRangeToRender.end; i++) {
+      const longestLineCharsThreshold = 80;
+      for (
+        let i = lineRangeToRender.start - 1;
+        i < lineRangeToRender.end + 1;
+        i++
+      ) {
         const line = editor.document.lineAt(i);
         longestLineChars = Math.max(longestLineChars, line.text.length);
       }
       const imageDecorationPostion =
-        longestLineChars <= 80
+        longestLineChars <= longestLineCharsThreshold
           ? new vscode.Position(lineRangeToRender.start, 0)
           : new vscode.Position(lineRangeToRender.end, 0);
       const margin = buildMarginCss(
-        longestLineChars <= 80 ? longestLineChars + 4 : 0,
+        longestLineChars <= longestLineCharsThreshold
+          ? longestLineChars + 4
+          : 0,
       );
       const imageDecoration: vscode.DecorationOptions = {
         range: new vscode.Range(imageDecorationPostion, imageDecorationPostion),
