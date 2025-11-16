@@ -1,8 +1,7 @@
 import { useAutoApproveGuard } from "@/features/chat";
 import { useRetryCount } from "@/features/chat";
+import { isRetryableError } from "@/features/retry";
 import { useAutoApprove } from "@/features/settings";
-import { PochiApiErrors } from "@getpochi/vendor-pochi/edge";
-import { APICallError } from "ai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 // fibonacci sequence starting from 1, 2, 3, 5, 8...
@@ -52,11 +51,7 @@ export function usePendingRetryApproval({
 }) {
   const autoApproveGuard = useAutoApproveGuard();
 
-  if (error && Object.values(PochiApiErrors).includes(error.message)) {
-    autoApproveGuard.current = "stop";
-  }
-
-  if (error && APICallError.isInstance(error) && error.isRetryable === false) {
+  if (error && !isRetryableError(error)) {
     autoApproveGuard.current = "stop";
   }
 

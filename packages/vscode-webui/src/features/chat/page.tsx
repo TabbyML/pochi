@@ -1,6 +1,6 @@
 import { WorkspaceRequiredPlaceholder } from "@/components/workspace-required-placeholder";
 import { ChatContextProvider, useHandleChatEvents } from "@/features/chat";
-import { usePendingModelAutoStart } from "@/features/retry";
+import { isRetryableError, usePendingModelAutoStart } from "@/features/retry";
 import { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
 import { useCurrentWorkspace } from "@/lib/hooks/use-current-workspace";
 import { useCustomAgent } from "@/lib/hooks/use-custom-agents";
@@ -16,7 +16,6 @@ import type { Todo } from "@getpochi/tools";
 import { useStore } from "@livestore/react";
 import { useRouter } from "@tanstack/react-router";
 import {
-  APICallError,
   type FileUIPart,
   lastAssistantMessageIsCompleteWithToolCalls,
 } from "ai";
@@ -25,7 +24,6 @@ import { useTranslation } from "react-i18next";
 
 import { useLatest } from "@/lib/hooks/use-latest";
 import { useMcp } from "@/lib/hooks/use-mcp";
-import { PochiApiErrors } from "@getpochi/vendor-pochi/edge";
 import { useApprovalAndRetry } from "../approval";
 import { getReadyForRetryError } from "../retry/hooks/use-ready-for-retry-error";
 import {
@@ -197,15 +195,7 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
       if (!taskUid) return;
 
       let autoApprove = autoApproveGuard.current === "auto";
-      if (error && Object.values(PochiApiErrors).includes(error.message)) {
-        autoApprove = false;
-      }
-
-      if (
-        error &&
-        APICallError.isInstance(error) &&
-        error.isRetryable === false
-      ) {
+      if (error && !isRetryableError(error)) {
         autoApprove = false;
       }
 
