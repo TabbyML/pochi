@@ -23,10 +23,10 @@ export class NESClient {
 
   constructor(private readonly pochiConfiguration: PochiConfiguration) {
     this.provider = this.createProvider(
-      pochiConfiguration.advancedSettings.value.nextEditSuggestion?.provider,
+      pochiConfiguration.advancedSettings.value.tabCompletion?.provider,
     );
     this.pochiConfiguration.advancedSettings.subscribe((value) => {
-      this.provider = this.createProvider(value.nextEditSuggestion?.provider);
+      this.provider = this.createProvider(value.tabCompletion?.provider);
     });
   }
 
@@ -49,12 +49,8 @@ export class NESClient {
       return undefined;
     }
 
-    if (providerConfig?.type === "pochi") {
-      const model = createPochiModel();
-      return new NESChatModelClient(model);
-    }
-
-    return undefined;
+    const model = createPochiModel();
+    return new NESChatModelClient(model);
   }
 
   async fetchCompletion(

@@ -367,7 +367,7 @@ export class NESDecorationManager implements vscode.Disposable {
     this.current = { editor, solution };
     vscode.commands.executeCommand(
       "setContext",
-      "pochiNextEditSuggestionVisible",
+      "pochiTabCompletionVisible",
       true,
     );
     logger.debug("Decoration updated.");
@@ -434,7 +434,7 @@ export class NESDecorationManager implements vscode.Disposable {
     this.current = undefined;
     vscode.commands.executeCommand(
       "setContext",
-      "pochiNextEditSuggestionVisible",
+      "pochiTabCompletionVisible",
       false,
     );
   }

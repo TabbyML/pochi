@@ -43,12 +43,6 @@ export class NESProvider implements vscode.Disposable {
     private readonly nesDecorationManager: NESDecorationManager,
   ) {
     this.initialize();
-
-    if (pochiConfiguration.advancedSettings.value.nextEditSuggestion?.enabled) {
-      logger.info(
-        "Next Edit Suggestion is enabled. This feature is experimental.",
-      );
-    }
   }
 
   private initialize() {
@@ -63,11 +57,19 @@ export class NESProvider implements vscode.Disposable {
     document: vscode.TextDocument,
     selection: vscode.Selection,
   ): Promise<NESSolution | undefined> {
-    const enabled =
-      this.pochiConfiguration.advancedSettings.value.nextEditSuggestion
-        ?.enabled;
-    if (!enabled) {
-      logger.debug("NES is not enabled.");
+    const disabled =
+      this.pochiConfiguration.advancedSettings.value.tabCompletion?.disabled;
+    if (disabled) {
+      logger.debug("NES is disabled.");
+      return undefined;
+    }
+
+    const conflictDetected =
+      this.pochiConfiguration.githubCopilotCodeCompletionEnabled.value;
+    if (conflictDetected) {
+      logger.debug(
+        "NES is unavailable due to conflict with GitHub Copilot NES.",
+      );
       return undefined;
     }
 

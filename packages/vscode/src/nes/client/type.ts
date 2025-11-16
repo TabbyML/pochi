@@ -10,5 +10,5 @@ export interface NESClientProvider {
 }
 
 export type ProviderConfig = NonNullable<
-  NonNullable<PochiAdvanceSettings["nextEditSuggestion"]>["provider"]
+  NonNullable<PochiAdvanceSettings["tabCompletion"]>["provider"]
 >;
