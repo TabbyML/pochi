@@ -1,6 +1,6 @@
-import { type ReactNode, useRef } from "react";
+import { type ReactNode, useRef, useState } from "react";
 import { useToolCallLifeCycles } from "../use-tool-call-life-cycles";
-import { ChatContext, type ChatState } from "./types";
+import { ChatContext, type ChatState, type RetryCount } from "./types";
 
 interface ChatContextProviderProps {
   children: ReactNode;
@@ -9,7 +9,9 @@ interface ChatContextProviderProps {
 export function ChatContextProvider({ children }: ChatContextProviderProps) {
   const autoApproveGuard = useRef<"auto" | "manual" | "stop">("stop");
   const abortController = useRef(new AbortController());
-
+  const [retryCount, setRetryCount] = useState<RetryCount | undefined>(
+    undefined,
+  );
   const {
     executingToolCalls,
     previewingToolCalls,
@@ -24,6 +26,8 @@ export function ChatContextProvider({ children }: ChatContextProviderProps) {
     executingToolCalls,
     previewingToolCalls,
     completeToolCalls,
+    retryCount,
+    setRetryCount,
   };
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;

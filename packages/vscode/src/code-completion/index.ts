@@ -41,8 +41,7 @@ import {
 } from "./utils/errors";
 import { extractNonReservedWordList, isBlank } from "./utils/strings";
 import "./utils/array"; // for mapAsync
-// biome-ignore lint/style/useImportType: needed for dependency injection
-import { PochiConfiguration } from "@/integrations/configuration";
+// import { PochiConfiguration } from "@/integrations/configuration";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { CodeCompletionClient } from "./client";
 import { DocumentSelector } from "./constants";
@@ -71,10 +70,12 @@ export class CompletionProvider
 
   readonly latencyIssue = signal<LatencyIssue | undefined>(undefined);
   readonly isFetching = signal<boolean>(false);
+
+  // FIXME(zhiming): requirePayment is not used for now. Instead, we should handle gateway server returned http code 429
   readonly requirePayment = signal<boolean>(false);
 
   constructor(
-    private readonly pochiConfiguration: PochiConfiguration,
+    // private readonly pochiConfiguration: PochiConfiguration,
     private readonly textDocumentReader: TextDocumentReader,
     private readonly workspaceContextProvider: WorkspaceContextProvider,
     private readonly gitContextProvider: GitContextProvider,
@@ -113,11 +114,12 @@ export class CompletionProvider
     if (token?.isCancellationRequested) {
       return null;
     }
-    const { disabled, disabledLanguages } =
-      this.pochiConfiguration.advancedSettings.value.inlineCompletion ?? {};
-    const nesEnabled =
-      this.pochiConfiguration.advancedSettings.value.nextEditSuggestion
-        ?.enabled;
+
+    // FIXME(zhiming): FIM completion is disabled for now.
+    // Add it back as a tab completion model in the next version.
+    const disabled = true;
+    const disabledLanguages: string[] = [];
+    const nesEnabled = true;
     if (
       disabled ||
       disabledLanguages?.includes(document.languageId) ||

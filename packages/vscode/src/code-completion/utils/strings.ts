@@ -226,7 +226,3 @@ export function getLanguageCommentChar(language: string): string {
       return "//"; // Default to // for other languages
   }
 }
-
-export function isMultiLine(text: string) {
-  return text.split("\n").length > 1;
-}

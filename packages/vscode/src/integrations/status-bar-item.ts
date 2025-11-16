@@ -22,9 +22,8 @@ export class StatusBarItem implements vscode.Disposable {
   readonly status = signal<
     | "initializing"
     | "logged-out"
-    | "payment-required"
     | "disabled"
-    | "disabled-language"
+    | "conflict-detected"
     | "ready"
     | "loading"
   >("initializing");
@@ -43,82 +42,73 @@ export class StatusBarItem implements vscode.Disposable {
 
     this.update();
 
-    this.disposables.push({
-      dispose: this.pochiConfiguration.advancedSettings.subscribe(() => {
-        this.update();
-      }),
-    });
-    this.disposables.push({
-      dispose: this.authEvents.isLoggedIn.subscribe(() => {
-        this.update();
-      }),
-    });
-    this.disposables.push({
-      dispose: this.inlineCompletionProvider.isFetching.subscribe(() => {
-        this.update();
-      }),
-    });
-    this.disposables.push({
-      dispose: this.nesProvider.fetching.subscribe(() => {
-        this.update();
-      }),
-    });
     this.disposables.push(
+      {
+        dispose: this.pochiConfiguration.advancedSettings.subscribe(() => {
+          this.update();
+        }),
+      },
+      {
+        dispose:
+          this.pochiConfiguration.githubCopilotCodeCompletionEnabled.subscribe(
+            () => {
+              this.update();
+            },
+          ),
+      },
+      {
+        dispose: this.authEvents.isLoggedIn.subscribe(() => {
+          this.update();
+        }),
+      },
+      {
+        dispose: this.inlineCompletionProvider.isFetching.subscribe(() => {
+          this.update();
+        }),
+      },
+      {
+        dispose: this.nesProvider.fetching.subscribe(() => {
+          this.update();
+        }),
+      },
       vscode.window.onDidChangeActiveTextEditor(() => {
         this.update();
       }),
+      {
+        dispose: this.status.subscribe((status) => {
+          this.updateVisibility(status);
+          this.renderStatus(status);
+        }),
+      },
     );
-    this.disposables.push({
-      dispose: this.status.subscribe((status) => {
-        this.updateVisibility(status);
-        this.renderStatus(status);
-      }),
-    });
   }
 
   private update() {
-    this.status.value = this.calcStatus();
+    this.status.value = this.calculateStatus();
   }
 
-  private calcStatus() {
+  private calculateStatus() {
     if (this.authEvents.isLoggedIn.value === undefined) {
       return "initializing";
     }
     if (this.authEvents.isLoggedIn.value === false) {
       return "logged-out";
     }
-    // User logged-in
 
-    if (
-      this.pochiConfiguration.advancedSettings.value.inlineCompletion
-        ?.disabled &&
-      !this.pochiConfiguration.advancedSettings.value.nextEditSuggestion
-        ?.enabled
-    ) {
+    const tabCompletionConfig =
+      this.pochiConfiguration.advancedSettings.value.tabCompletion;
+
+    if (tabCompletionConfig?.disabled) {
       return "disabled";
     }
-    if (
-      vscode.window.activeTextEditor &&
-      this.pochiConfiguration.advancedSettings.value.inlineCompletion?.disabledLanguages?.includes(
-        vscode.window.activeTextEditor.document.languageId,
-      )
-    ) {
-      return "disabled-language";
-    }
-    // Inline completion is enabled
-    if (this.inlineCompletionProvider.requirePayment.value) {
-      return "payment-required";
+
+    if (this.pochiConfiguration.githubCopilotCodeCompletionEnabled.value) {
+      return "conflict-detected";
     }
 
-    // Subscription is valid
-
-    if (
-      this.inlineCompletionProvider.isFetching.value ||
-      this.nesProvider.fetching.value
-    ) {
+    if (this.nesProvider.fetching.value) {
       return "loading";
     }
-    // Normal case
 
     return "ready";
   }
@@ -142,40 +132,26 @@ export class StatusBarItem implements vscode.Disposable {
 
       case "logged-out":
         this.statusBarItem.text = "$(warning) Pochi";
-        this.statusBarItem.tooltip = "Please sign in to use code completion.";
+        this.statusBarItem.tooltip = "Please sign in to use Tab Completion.";
         this.statusBarItem.backgroundColor = new vscode.ThemeColor(
           "statusBarItem.warningBackground",
         );
         this.statusBarItem.command = "pochi.openLoginPage";
         break;
 
-      case "payment-required":
-        this.statusBarItem.text = "$(warning) Pochi";
-        this.statusBarItem.tooltip =
-          "Your freebie usage has been rate limited. Consider upgrading your subscription.";
-        this.statusBarItem.backgroundColor = new vscode.ThemeColor(
-          "statusBarItem.warningBackground",
-        );
-        this.statusBarItem.command = {
-          title: "Open Profile",
-          command: "pochi.openWebsite",
-          arguments: ["/profile"],
-        };
-        break;
-
       case "disabled":
         this.statusBarItem.text = "$(dash) Pochi";
-        this.statusBarItem.tooltip = "Code completion is disabled.";
+        this.statusBarItem.tooltip = "Tab Completion is disabled.";
         this.statusBarItem.backgroundColor = undefined;
-        this.statusBarItem.command = "pochi.inlineCompletion.toggleEnabled";
+        this.statusBarItem.command = "pochi.tabCompletion.toggleEnabled";
         break;
 
-      case "disabled-language":
-        this.statusBarItem.text = "$(dash) Pochi";
-        this.statusBarItem.tooltip = `Code completion is disabled for ${vscode.window.activeTextEditor?.document.languageId ?? "current language"}.`;
+      case "conflict-detected":
+        this.statusBarItem.text = "$(warning) Pochi";
+        this.statusBarItem.tooltip =
+          "Tab Completion is not available due to conflict with GitHub Copilot Code Completion.";
         this.statusBarItem.backgroundColor = undefined;
-        this.statusBarItem.command =
-          "pochi.inlineCompletion.toggleLanguageEnabled";
+        this.statusBarItem.command = "pochi.tabCompletion.resolveConflicts";
         break;
 
       case "loading":
@@ -187,9 +163,9 @@ export class StatusBarItem implements vscode.Disposable {
 
       case "ready":
         this.statusBarItem.text = "$(check) Pochi";
-        this.statusBarItem.tooltip = "Code completion is enabled.";
+        this.statusBarItem.tooltip = "Tab Completion is enabled.";
         this.statusBarItem.backgroundColor = undefined;
-        this.statusBarItem.command = "pochi.inlineCompletion.toggleEnabled";
+        this.statusBarItem.command = "pochi.tabCompletion.toggleEnabled";
         break;
     }
   }

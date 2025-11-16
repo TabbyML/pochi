@@ -29,3 +29,12 @@ export const makeSubTaskQuery = (taskId: string) =>
     label: "subTasks",
     deps: [taskId],
   });
+
+export const makeBlobQuery = (checksum: string) =>
+  queryDb(
+    () => tables.blobs.where("checksum", "=", checksum).first(undefined),
+    {
+      label: "blobs",
+      deps: [checksum],
+    },
+  );

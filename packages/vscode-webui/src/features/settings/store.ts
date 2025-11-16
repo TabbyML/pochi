@@ -45,9 +45,17 @@ export interface SettingsState {
   updateIsDevMode: (value: boolean) => void;
 
   updateEnablePochiModels: (value: boolean) => void;
+
+  initSubtaskAutoApproveSettings: () => void;
 }
 
 const settingsStorageName = "ragdoll-settings-storage";
+
+const excludeFields = [
+  "autoApproveActive",
+  "subtaskAutoApproveActive",
+  "subtaskAutoApproveSettings",
+];
 
 export const GlobalStateStorage: StateStorage & {
   persist: (data: Partial<SettingsState>) => Promise<void>;
@@ -148,6 +156,14 @@ export const useSettingsStore = create<SettingsState>()(
           },
         })),
 
+      initSubtaskAutoApproveSettings: () =>
+        set((state) => ({
+          subtaskAutoApproveActive: state.autoApproveActive,
+          subtaskAutoApproveSettings: {
+            ...state.autoApproveSettings,
+          },
+        })),
+
       updateAutoApproveActive: (value: boolean) =>
         set(() => ({ autoApproveActive: value })),
 
@@ -164,20 +180,15 @@ export const useSettingsStore = create<SettingsState>()(
       storage: createJSONStorage(() => GlobalStateStorage),
       partialize: (state) =>
         Object.fromEntries(
-          Object.entries(state).filter(([_, v]) => typeof v !== "function"),
+          Object.entries(state).filter(
+            ([k, v]) => !excludeFields.includes(k) && typeof v !== "function",
+          ),
         ),
       merge(persistedState, currentState) {
         return {
           ...currentState,
           ...(persistedState as object),
-          // ensure subtask's autoApproveSettings inherits from global state
-          subtaskAutoApproveSettings:
-            (persistedState as SettingsState)?.autoApproveSettings ??
-            currentState.autoApproveSettings,
-          // ensure subtask's autoApproveActive inherits from global state
-          subtaskAutoApproveActive:
-            (persistedState as SettingsState)?.autoApproveActive ??
-            currentState.autoApproveSettings,
+          autoApproveActive: true,
         };
       },
       version: 1,

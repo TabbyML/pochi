@@ -129,6 +129,8 @@ export function FixedStateChatContextProvider({
     getToolCallLifeCycle,
     executingToolCalls,
     completeToolCalls,
+    retryCount: undefined,
+    setRetryCount: () => {},
   };
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;

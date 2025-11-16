@@ -122,7 +122,7 @@
       "retry": "Retry",
       "subtaskOffhand": "Subtask - Offhand",
       "subtaskManual": "Subtask - Manual",
-      "applyChangesToDefault": "Apply changes to default"
+      "applyChangesToGlobal": "Save changes"
     },
     "customAgents": {
       "title": "Agents",

@@ -23,6 +23,8 @@ export interface NESPromptSegments {
   editableRegionPrefix: string;
   editableRegionSuffix: string;
   suffix: string;
+  editableRegionStart: number;
+  editableRegionEnd: number;
 }
 
 export interface NESRequestContext {
@@ -97,6 +99,9 @@ function extractNESContextPromptSegments(
   const suffix = context.document.getText(
     new vscode.Range(editableRegionEnd, documentSuffixEnd),
   );
+  const editableRegionStartOffset =
+    context.document.offsetAt(editableRegionStart);
+  const editableRegionEndOffset = context.document.offsetAt(editableRegionEnd);
 
   return {
     edits,
@@ -105,6 +110,8 @@ function extractNESContextPromptSegments(
     editableRegionPrefix,
     editableRegionSuffix,
     suffix,
+    editableRegionStart: editableRegionStartOffset,
+    editableRegionEnd: editableRegionEndOffset,
   };
 }
 

@@ -10,27 +10,22 @@ import {
   useToolAutoApproval,
 } from "@/features/settings";
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
-import type { Task } from "@getpochi/livekit";
 import { useStore } from "@livestore/react";
 import { useNavigate } from "@tanstack/react-router";
 import { getToolName } from "ai";
-import { useSendTaskNotification } from "../../chat/lib/use-send-task-notification";
 import type { PendingToolCallApproval } from "../hooks/use-pending-tool-call-approval";
 
 interface ToolCallApprovalButtonProps {
   pendingApproval: PendingToolCallApproval;
   isSubTask: boolean;
-  task: Task | undefined;
 }
 
 // Component
 export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
   pendingApproval,
   isSubTask,
-  task,
 }) => {
   const { t } = useTranslation();
-  const { sendNotification } = useSendTaskNotification();
   const navigate = useNavigate();
   const autoApproveGuard = useAutoApproveGuard();
   const { getToolCallLifeCycle } = useToolCallLifeCycle();
@@ -179,12 +174,6 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
   }, [lifecycles]);
 
   const showAccept = !isAutoApproved && isReady;
-
-  useEffect(() => {
-    if (showAccept && task?.cwd && task?.id) {
-      sendNotification("pending-tool", { cwd: task.cwd, uid: task.id });
-    }
-  }, [showAccept, sendNotification, task?.cwd, task?.id]);
 
   if (showAccept) {
     return (

@@ -3,6 +3,7 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
+import { useStoreBlobUrl } from "@/lib/store-blob";
 import { cn } from "@/lib/utils";
 import type { FileUIPart } from "ai";
 import { FileIcon as LucideFileIcon, VideoIcon } from "lucide-react";
@@ -19,7 +20,7 @@ export function MessageAttachments({ attachments }: MessageAttachmentsProps) {
   return (
     <div className="my-2 flex flex-wrap gap-2">
       {attachments.map((attachment, index) => {
-        const { url } = attachment;
+        const url = useStoreBlobUrl(attachment.url);
         if (!url) return;
 
         const isImage = attachment.mediaType?.startsWith("image/");

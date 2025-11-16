@@ -5,6 +5,7 @@ export {
   ToolCallStatusRegistry,
   useAutoApproveGuard,
   useToolCallLifeCycle,
+  useRetryCount,
 } from "./lib/chat-state";
 
 export { useSendMessage, useHandleChatEvents } from "./lib/chat-events";

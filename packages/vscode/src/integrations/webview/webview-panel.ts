@@ -122,6 +122,8 @@ export class PochiTaskEditorProvider
 
     setAutoLockGroupsConfig();
 
+    disposables.push(autoCleanTabGroupLock());
+
     return vscode.Disposable.from(...disposables);
   }
 
@@ -388,4 +390,36 @@ async function openTaskInColumn(uri: vscode.Uri) {
     PochiTaskEditorProvider.viewType,
     { preview: false, viewColumn },
   );
+}
+
+function autoCleanTabGroupLock() {
+  return vscode.window.tabGroups.onDidChangeTabs((event) => {
+    // if we have more than one tab group, do nothing. vscode will close tab group when it has no tab
+    if (vscode.window.tabGroups.all.length > 1) {
+      return;
+    }
+
+    // if the tab group still have pochi tab, do nothing
+    if (
+      vscode.window.tabGroups.all[0].tabs.filter(
+        (tab) =>
+          tab.input instanceof vscode.TabInputCustom &&
+          tab.input.viewType === PochiTaskEditorProvider.viewType,
+      ).length > 0
+    ) {
+      return;
+    }
+
+    // if closed tabs contain pochi tab, unlock this tab group
+    if (
+      event.closed.length > 0 &&
+      event.closed.some(
+        (tab) =>
+          tab.input instanceof vscode.TabInputCustom &&
+          tab.input.viewType === PochiTaskEditorProvider.viewType,
+      )
+    ) {
+      vscode.commands.executeCommand("workbench.action.unlockEditorGroup");
+    }
+  });
 }

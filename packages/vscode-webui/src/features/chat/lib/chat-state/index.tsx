@@ -38,6 +38,14 @@ export function useToolCallLifeCycle() {
   };
 }
 
+export function useRetryCount() {
+  const { retryCount, setRetryCount } = useChatState();
+  return {
+    retryCount,
+    setRetryCount,
+  };
+}
+
 export { ChatContextProvider } from "./chat";
 export {
   ToolCallStatusRegistry,

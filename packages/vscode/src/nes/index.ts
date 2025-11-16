@@ -14,7 +14,7 @@ import { type NESRequestContext, buildNESRequestContext } from "./contexts";
 import { NESDecorationManager } from "./decoration-manager";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { EditHistoryTracker } from "./edit-history";
-import { type NESSolution, calculateSolution } from "./solution";
+import { NESSolution } from "./solution";
 import type { NESResponseItem } from "./types";
 
 const logger = getLogger("NES.Provider");
@@ -43,12 +43,6 @@ export class NESProvider implements vscode.Disposable {
     private readonly nesDecorationManager: NESDecorationManager,
   ) {
     this.initialize();
-
-    if (pochiConfiguration.advancedSettings.value.nextEditSuggestion?.enabled) {
-      logger.info(
-        "Next Edit Suggestion is enabled. This feature is experimental.",
-      );
-    }
   }
 
   private initialize() {
@@ -63,11 +57,17 @@ export class NESProvider implements vscode.Disposable {
     document: vscode.TextDocument,
     selection: vscode.Selection,
   ): Promise<NESSolution | undefined> {
-    const enabled =
-      this.pochiConfiguration.advancedSettings.value.nextEditSuggestion
-        ?.enabled;
-    if (!enabled) {
-      logger.debug("NES is not enabled.");
+    const disabled =
+      this.pochiConfiguration.advancedSettings.value.tabCompletion?.disabled;
+    if (disabled) {
+      logger.debug("NES is disabled.");
+      return undefined;
+    }
+
+    const conflictDetected =
+      this.pochiConfiguration.githubCopilotCodeCompletionEnabled.value;
+    if (conflictDetected) {
+      logger.debug("NES is unavailable due to conflict with GitHub Copilot.");
       return undefined;
     }
 
@@ -139,16 +139,12 @@ export class NESProvider implements vscode.Disposable {
       }
 
       if (responseItem) {
-        const solution = calculateSolution(context, responseItem);
-        logger.debug("Calculated solution", {
-          edit: solution?.edit,
-        });
-
-        if (solution) {
+        const solution = new NESSolution(context);
+        const added = solution.addItem(responseItem);
+        if (added) {
           this.cache.set(context.hash, responseItem);
           logger.debug("Result cached", responseItem);
         }
-
         return solution;
       }
 
@@ -207,6 +203,8 @@ class NESInlineCompletionProvider
     context?: vscode.InlineCompletionContext | undefined,
     token?: vscode.CancellationToken | undefined,
   ): Promise<vscode.InlineCompletionList | undefined> {
+    this.nesDecorationManager?.dismiss();
+
     if (token?.isCancellationRequested) {
       return undefined;
     }
@@ -222,24 +220,31 @@ class NESInlineCompletionProvider
       logger.debug(
         `Trigger NES from InlineCompletionProvider, document: ${document.uri.toString()}`,
       );
+      const version = document.version;
       const solution = await this.nesProvider.provideNES(
         document,
         new vscode.Selection(position, position),
       );
-      if (solution) {
-        if (solution.edit.type === "inline-completion") {
-          const inlineCompletionItem = solution.edit.inlineCompletionItem;
-          if (inlineCompletionItem) {
-            logger.debug(
-              `Show result as InlineCompletionItem, insertText: ${inlineCompletionItem.insertText}`,
-            );
-            return new vscode.InlineCompletionList([inlineCompletionItem]);
-          }
-        } else if (this.nesDecorationManager) {
-          logger.debug("Show result as decorations");
+      if (solution && solution.items.length > 0) {
+        // FIXME(zhiming): multi-choice not supported
+        const solutionItem = solution.items[0];
+        if (solutionItem.inlineCompletionItem) {
+          logger.debug(
+            `Show result as InlineCompletionItem, insertText: ${solutionItem.inlineCompletionItem.insertText}`,
+          );
+          return new vscode.InlineCompletionList([
+            solutionItem.inlineCompletionItem,
+          ]);
+        }
+        if (this.nesDecorationManager) {
           const editor = vscode.window.activeTextEditor;
-          if (editor && editor.document === document) {
-            this.nesDecorationManager.show(editor, solution);
+          if (
+            editor &&
+            editor.document === document &&
+            editor.document.version === version
+          ) {
+            logger.debug("Show result as decorations");
+            this.nesDecorationManager.show(editor, solutionItem);
           }
         }
       }
@@ -268,36 +273,47 @@ class NESEditorListener implements vscode.Disposable {
     this.nesProvider = nesProvider;
     this.nesDecorationManager = nesDecorationManager;
     this.disposables.push(
-      vscode.window.onDidChangeActiveTextEditor((editor) => {
-        logger.trace("ActiveTextEditorChange event", editor);
+      vscode.window.onDidChangeActiveTextEditor(() => {
         this.nesDecorationManager?.dismiss();
       }),
       vscode.window.onDidChangeTextEditorSelection(async (event) => {
-        if (
-          !vscode.languages.match(DocumentSelector, event.textEditor.document)
-        ) {
+        const document = event.textEditor.document;
+        if (!vscode.languages.match(DocumentSelector, document)) {
           return;
         }
-        logger.trace("TextEditorSelectionChange event", event);
         this.nesDecorationManager?.dismiss();
         if (
           (event.kind === vscode.TextEditorSelectionChangeKind.Mouse ||
             event.kind === vscode.TextEditorSelectionChangeKind.Keyboard) &&
           event.selections.length > 0 &&
-          event.selections.every((s) => !s.isEmpty)
+          event.selections.every((r) => document.getText(r).trim().length > 3)
         ) {
           // Trigger when user selects a range with mouse or keyboard
           if (this.nesProvider) {
             logger.debug(
-              `Trigger NES from TextEditorSelectionChange, document: ${event.textEditor.document.uri.toString()}`,
+              `Trigger NES from TextEditorSelectionChange, document: ${document.uri.toString()}`,
             );
+            const version = document.version;
             const solution = await this.nesProvider.provideNES(
-              event.textEditor.document,
+              document,
               event.selections[0],
             );
-            if (solution && this.nesDecorationManager) {
-              logger.debug("Show result as decorations");
-              this.nesDecorationManager.show(event.textEditor, solution);
+            if (
+              solution &&
+              solution.items.length > 0 &&
+              this.nesDecorationManager
+            ) {
+              const editor = vscode.window.activeTextEditor;
+              if (
+                editor &&
+                editor.document === document &&
+                editor.document.version === version
+              ) {
+                logger.debug("Show result as decorations");
+                // FIXME(zhiming): multi-choice not supported
+                const solutionItem = solution.items[0];
+                this.nesDecorationManager.show(event.textEditor, solutionItem);
+              }
             }
           }
         }

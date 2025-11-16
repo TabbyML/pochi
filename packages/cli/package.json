@@ -45,7 +45,6 @@
     "remeda": "catalog:",
     "semver": "^7.6.3",
     "tabtab": "^3.0.2",
-    "zod": "catalog:",
-    "run-exclusive": "catalog:"
+    "zod": "catalog:"
   }
 }
