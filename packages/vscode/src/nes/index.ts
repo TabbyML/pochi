@@ -300,7 +300,7 @@ class NESEditorListener implements vscode.Disposable {
             );
             if (
               solution &&
-              solution.items.length > 1 &&
+              solution.items.length > 0 &&
               this.nesDecorationManager
             ) {
               const editor = vscode.window.activeTextEditor;

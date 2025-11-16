@@ -11,7 +11,7 @@ import {
   createTextDocumentSnapshot,
   createTextDocumentWithEmptyText,
   createTextDocumentWithNewText,
-  isRangeContacted,
+  isRangeConnected,
 } from "./utils";
 
 const logger = getLogger("NES.EditHistory");
@@ -215,7 +215,7 @@ export class TextDocumentEditHistoryTracker implements vscode.Disposable {
   }
 }
 
-// An TextDocumentEditStep represents a group of TextEdit that are continuing edit actions.
+// A TextDocumentEditStep represents a group of TextEdit that are continuing edit actions.
 export class TextDocumentEditStep {
   private readonly before: vscode.TextDocument;
   private readonly edits: TextEdit[] = [];
@@ -261,7 +261,7 @@ export class TextDocumentEditStep {
       return true;
     }
     return newEdit.changes.every((c) => {
-      return lastEditedRanges.some((r) => isRangeContacted(r, c.range));
+      return lastEditedRanges.some((r) => isRangeConnected(r, c.range));
     });
   }
 }

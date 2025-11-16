@@ -105,7 +105,11 @@ function extractResult(text: string, segments: NESPromptSegments) {
     segments.editableRegionPrefix +
     segments.editableRegionSuffix +
     segments.suffix;
-  if (result.split("\n").length > 3 && contextText.includes(result)) {
+  const duplicationCheckLinesThreshold = 3;
+  if (
+    result.split("\n").length > duplicationCheckLinesThreshold &&
+    contextText.includes(result)
+  ) {
     // Duplication detected
     return undefined;
   }

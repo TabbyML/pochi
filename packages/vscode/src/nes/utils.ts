@@ -70,13 +70,6 @@ export function toPositionRange(
   );
 }
 
-export function isLineStartPosition(
-  position: vscode.Position,
-  _document: vscode.TextDocument,
-): boolean {
-  return position.character === 0;
-}
-
 export function isLineEndPosition(
   position: vscode.Position,
   document: vscode.TextDocument,
@@ -85,7 +78,7 @@ export function isLineEndPosition(
   return position.character === textLine.text.length;
 }
 
-export function isRangeContacted(a: OffsetRange, b: OffsetRange) {
+export function isRangeConnected(a: OffsetRange, b: OffsetRange) {
   return (
     a.start === b.start ||
     a.start === b.end ||
@@ -102,27 +95,13 @@ export function toCodeDiff(diffResult: LinesDiff): CodeDiff {
       return {
         original: toZeroBasedLineNumberRange(change.original),
         modified: toZeroBasedLineNumberRange(change.modified),
-        innerChanges: change.innerChanges?.map((c) => {
-          return {
-            original: toZeroBasedPositionRange(c.originalRange),
-            modified: toZeroBasedPositionRange(c.modifiedRange),
-          };
-        }) ?? [
-          {
-            original: new vscode.Range(
-              change.original.startLineNumber,
-              0,
-              change.original.endLineNumberExclusive - 1,
-              0,
-            ),
-            modified: new vscode.Range(
-              change.modified.startLineNumber,
-              0,
-              change.modified.endLineNumberExclusive - 1,
-              0,
-            ),
-          },
-        ],
+        innerChanges:
+          change.innerChanges?.map((c) => {
+            return {
+              original: toZeroBasedPositionRange(c.originalRange),
+              modified: toZeroBasedPositionRange(c.modifiedRange),
+            };
+          }) ?? [],
       };
     }),
   };

@@ -6,7 +6,7 @@ import { CanvasRenderer } from "./code-renderer/canvas-renderer";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { TextmateThemer } from "./code-renderer/textmate-themer";
 import type { NESSolutionItem } from "./solution/item";
-import type { LineNumberRange } from "./types";
+import type { CodeDiff, LineNumberRange } from "./types";
 import { getLines, toPositionRange } from "./utils";
 
 const logger = getLogger("NES.DecorationManager");
@@ -93,7 +93,7 @@ export class NESDecorationManager implements vscode.Disposable {
   };
 
   // Insertion mark decoration
-  // mark a position where insertion is previewd in image decoration
+  // mark a position where insertion is previewed in image decoration
   private insertionMarkDecorationType =
     vscode.window.createTextEditorDecorationType({
       backgroundColor: new vscode.ThemeColor(
@@ -136,12 +136,7 @@ export class NESDecorationManager implements vscode.Disposable {
     const images: vscode.DecorationOptions[] = [];
     const insertionMarks: vscode.DecorationOptions[] = [];
 
-    if (
-      diff.changes.some(
-        (c) =>
-          c.modified.end - c.modified.start > c.original.end - c.original.start,
-      )
-    ) {
+    if (shouldUseImageDecoration(diff, target)) {
       // If there are adding-line changes, show a image decoration to preview all changes.
       const editorRenderOptions = getEditorRenderOptions(editor);
 
@@ -156,10 +151,12 @@ export class NESDecorationManager implements vscode.Disposable {
         let offset = 0;
         for (let i = 0; i <= line.length; i++) {
           offsetMap[i] = offset;
-          if (line[i] === "\t") {
-            offset += tabSize;
-          } else {
-            offset += 1;
+          if (i < line.length) {
+            if (line[i] === "\t") {
+              offset += tabSize;
+            } else {
+              offset += 1;
+            }
           }
         }
         linesToRenderOffsetMap.push(offsetMap);
@@ -220,6 +217,7 @@ export class NESDecorationManager implements vscode.Disposable {
         return ranges;
       });
 
+      // Render image preview
       const imageRenderingInput = {
         padding: 5,
         fontSize: editorRenderOptions.fontSize,
@@ -252,13 +250,15 @@ export class NESDecorationManager implements vscode.Disposable {
       logger.debug("Created image for decoration.");
       logger.trace("Image:", dataUrl);
 
+      // Check the longest line to determine the position of the image decoration.
       let longestLineChars = 0;
       const longestLineCharsThreshold = 80;
-      for (
-        let i = lineRangeToRender.start - 1;
-        i < lineRangeToRender.end + 1;
-        i++
-      ) {
+      const minLineToCheck = Math.max(0, lineRangeToRender.start - 1);
+      const maxLineToCheck = Math.min(
+        editor.document.lineCount - 1,
+        lineRangeToRender.end + 1,
+      );
+      for (let i = minLineToCheck; i <= maxLineToCheck; i++) {
         const line = editor.document.lineAt(i);
         longestLineChars = Math.max(longestLineChars, line.text.length);
       }
@@ -271,6 +271,8 @@ export class NESDecorationManager implements vscode.Disposable {
           ? longestLineChars + 4
           : 0,
       );
+
+      // Create the image decoration
       const imageDecoration: vscode.DecorationOptions = {
         range: new vscode.Range(imageDecorationPostion, imageDecorationPostion),
         renderOptions: {
@@ -284,6 +286,7 @@ export class NESDecorationManager implements vscode.Disposable {
       };
       images.push(imageDecoration);
 
+      // Create replacement decorations and insertion marks
       for (const lineChange of diff.changes) {
         for (const change of lineChange.innerChanges) {
           if (change.original.isEmpty) {
@@ -454,4 +457,28 @@ function getEditorRenderOptions(editor: vscode.TextEditor) {
 
 function buildMarginCss(left: number) {
   return `-5px 0 0 ${left}ch; position: absolute; z-index: 10000`;
+}
+
+function shouldUseImageDecoration(
+  diff: CodeDiff,
+  target: vscode.TextDocument,
+): boolean {
+  return diff.changes.some((change) => {
+    if (
+      change.modified.end - change.modified.start >
+      change.original.end - change.original.start
+    ) {
+      // Add lines
+      return true;
+    }
+    if (
+      change.innerChanges.some(
+        (c) => target.getText(c.modified).split("\n").length > 1,
+      )
+    ) {
+      // Has multi-line insertion
+      return true;
+    }
+    return false;
+  });
 }
