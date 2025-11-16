@@ -67,9 +67,7 @@ export class NESProvider implements vscode.Disposable {
     const conflictDetected =
       this.pochiConfiguration.githubCopilotCodeCompletionEnabled.value;
     if (conflictDetected) {
-      logger.debug(
-        "NES is unavailable due to conflict with GitHub Copilot NES.",
-      );
+      logger.debug("NES is unavailable due to conflict with GitHub Copilot.");
       return undefined;
     }
 

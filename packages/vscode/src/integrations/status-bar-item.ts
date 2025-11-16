@@ -149,7 +149,7 @@ export class StatusBarItem implements vscode.Disposable {
       case "conflict-detected":
         this.statusBarItem.text = "$(warning) Pochi";
         this.statusBarItem.tooltip =
-          "Tab Completion is not available due to conflict with Github Copilot Next edit suggestions.";
+          "Tab Completion is not available due to conflict with GitHub Copilot Code Completion.";
         this.statusBarItem.backgroundColor = undefined;
         this.statusBarItem.command = "pochi.tabCompletion.resolveConflicts";
         break;

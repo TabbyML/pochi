@@ -213,7 +213,9 @@ function getGithubCopilotCodeCompletionEnabled() {
     .getConfiguration("github.copilot")
     .get<Record<string, boolean>>("enable", {});
   if (Object.keys(copilotEnabled).length === 0) {
-    return true;
+    // Check if Copilot extension is installed and active
+    const copilotExtension = vscode.extensions.getExtension("github.copilot");
+    return copilotExtension?.isActive ?? false;
   }
   return Object.values(copilotEnabled).some((v) => v);
 }

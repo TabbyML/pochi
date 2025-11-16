@@ -345,7 +345,7 @@ export class CommandManager implements vscode.Disposable {
             return;
           }
           const selection = await vscode.window.showWarningMessage(
-            "Pochi Tab Completion is unavailable due to conflict with **GitHub Copilot Next Edit Suggestions**. You can disable conflicting features to use Pochi Tab Completion.",
+            "Pochi Tab Completion is unavailable due to conflict with **GitHub Copilot Code Completion**. You can disable conflicting features to use Pochi Tab Completion.",
             "Disable Conflicting Features",
             "Disable Pochi Tab Completion",
           );
@@ -364,13 +364,13 @@ export class CommandManager implements vscode.Disposable {
         "pochi.tabCompletion.toggleEnabled",
         async (enabled?: boolean | undefined) => {
           const current = this.pochiConfiguration.advancedSettings.value;
-          const target =
+          const disabled =
             enabled === undefined ? !current.tabCompletion?.disabled : !enabled;
           const newSettings = {
             ...current,
             tabCompletion: {
               ...current.tabCompletion,
-              disabled: target,
+              disabled,
             },
           };
           this.pochiConfiguration.advancedSettings.value = newSettings;
