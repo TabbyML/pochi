@@ -1,4 +1,5 @@
 import * as fs from "node:fs/promises";
+import * as os from "node:os";
 import * as path from "node:path";
 import { getLogger } from "@/lib/logger";
 import type {
@@ -278,9 +279,9 @@ export class CanvasRenderer implements vscode.Disposable {
 }
 
 function resolveLineHeight(fontSize: number, config: number) {
-  const fixLineHeight = 6;
+  const ratio = os.platform() === "darwin" ? 1.5 : 1.35;
   if (config <= 0) {
-    return fontSize + fixLineHeight;
+    return fontSize * ratio;
   }
   if (config < 8) {
     return fontSize * config;
