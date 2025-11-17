@@ -1,6 +1,7 @@
 import { cn } from "@/lib/utils";
+import type { Todo } from "@getpochi/tools";
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { filter, isNonNullish } from "remeda";
 import { StatusIcon } from "../status-icon";
 import { ExpandableToolContainer } from "../tool-container";
 import type { ToolProps } from "../types";
@@ -10,7 +11,25 @@ export const todoWriteTool: React.FC<ToolProps<"todoWrite">> = ({
   isExecuting,
 }) => {
   const { t } = useTranslation();
-  const todos = filter(tool.input?.todos ?? [], isNonNullish);
+  const todos = useMemo(() => {
+    let value = tool.input?.todos;
+
+    if (typeof value === "string") {
+      try {
+        value = JSON.parse(value) as Todo[];
+      } catch (e) {
+        value = [];
+      }
+    }
+
+    if (Array.isArray(value)) {
+      return value.filter((x) => {
+        return !!x && "id" in x && "content" in x;
+      }) as Todo[];
+    }
+
+    return [];
+  }, [tool.input?.todos]);
 
   const title = (
     <>
