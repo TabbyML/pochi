@@ -103,6 +103,8 @@ export class PochiTaskEditorProvider
   // only use for task params caching during opening
   private static readonly taskParamsCache = new Map<string, TaskPanelParams>();
 
+  private static readonly activePanels = new Map<string, vscode.WebviewPanel>();
+
   public static register(context: vscode.ExtensionContext): vscode.Disposable {
     const provider = new PochiTaskEditorProvider(context);
     const disposables: vscode.Disposable[] = [];
@@ -166,22 +168,18 @@ export class PochiTaskEditorProvider
     try {
       if (!params.uid) return false;
       const uri = PochiTaskEditorProvider.createTaskUri(params);
-      for (const group of vscode.window.tabGroups.all) {
-        for (const tab of group.tabs) {
-          if (
-            tab.input instanceof vscode.TabInputCustom &&
-            tab.input.viewType === PochiTaskEditorProvider.viewType &&
-            tab.input.uri.toString() === uri.toString() &&
-            tab.isActive
-          ) {
-            return true;
-          }
-        }
+      const panel = PochiTaskEditorProvider.activePanels.get(uri.toString());
+      if (panel) {
+        return panel.visible;
       }
       return false;
     } catch (error) {
       return false;
     }
+  }
+
+  public static isWindowVisible(): boolean {
+    return vscode.window.state.focused;
   }
 
   public static async closeTaskEditor(uri: vscode.Uri) {
@@ -267,6 +265,13 @@ export class PochiTaskEditorProvider
           `Failed to open Pochi task: invalid parameters for ${document.uri.toString()}`,
         );
       }
+
+      const uriString = document.uri.toString();
+      PochiTaskEditorProvider.activePanels.set(uriString, webviewPanel);
+      webviewPanel.onDidDispose(() => {
+        PochiTaskEditorProvider.activePanels.delete(uriString);
+      });
+
       await this.setupWebview(webviewPanel, {
         ...(params ?? {}),
         ...uriParams,
