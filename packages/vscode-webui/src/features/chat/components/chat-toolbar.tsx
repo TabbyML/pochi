@@ -149,6 +149,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
       status === "ready" &&
       !isExecuting &&
       !isBusyCore &&
+      !!selectedModel &&
       (!pendingApproval || pendingApproval.name === "retry");
 
     if (isReady && queuedMessages.length > 0) {
@@ -158,6 +159,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     status,
     isExecuting,
     isBusyCore,
+    selectedModel,
     queuedMessages.length,
     pendingApproval,
     handleSubmit,
