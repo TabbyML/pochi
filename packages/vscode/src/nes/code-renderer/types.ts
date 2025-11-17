@@ -15,7 +15,9 @@ export interface ThemedDocument {
   tokenLines: ThemedToken[][];
 }
 
-export interface DecoratedDocument {
+export interface RenderImageInput {
+  scale: number;
+
   padding: number;
   fontSize: number;
   lineHeight: number;
@@ -37,4 +39,10 @@ export interface DecoratedDocument {
     borderColor?: string; // css color
     background?: string; // css color
   }[];
+}
+
+export interface RenderImageOutput {
+  image: Uint8Array;
+  width: number;
+  height: number;
 }

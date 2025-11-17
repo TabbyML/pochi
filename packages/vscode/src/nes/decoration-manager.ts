@@ -218,7 +218,10 @@ export class NESDecorationManager implements vscode.Disposable {
       });
 
       // Render image preview
+      const imageScale = 4;
       const imageRenderingInput = {
+        scale: imageScale,
+
         padding: 5,
         fontSize: editorRenderOptions.fontSize,
         lineHeight: editorRenderOptions.lineHeight,
@@ -240,11 +243,17 @@ export class NESDecorationManager implements vscode.Disposable {
 
       logger.debug("Creating image for decoration.");
       logger.trace("Image rendering input:", imageRenderingInput);
-      const image = await this.canvasRenderer.render(imageRenderingInput);
-      if (!image) {
+      const imageRenderingOutput =
+        await this.canvasRenderer.render(imageRenderingInput);
+      if (!imageRenderingOutput) {
         logger.debug("Failed to create image for decoration.");
         return undefined;
       }
+      const {
+        image,
+        width: imageWidth,
+        height: imageHeight,
+      } = imageRenderingOutput;
       const base64Image = Buffer.from(image).toString("base64");
       const dataUrl = `data:image/png;base64,${base64Image}`;
       logger.debug("Created image for decoration.");
@@ -266,11 +275,15 @@ export class NESDecorationManager implements vscode.Disposable {
         longestLineChars <= longestLineCharsThreshold
           ? new vscode.Position(lineRangeToRender.start, 0)
           : new vscode.Position(lineRangeToRender.end, 0);
-      const margin = buildMarginCss(
-        longestLineChars <= longestLineCharsThreshold
-          ? longestLineChars + 4
-          : 0,
-      );
+      const margin = buildMarginCss({
+        leftMargin:
+          longestLineChars <= longestLineCharsThreshold
+            ? longestLineChars + 4
+            : 0,
+        imageScale: 1 / imageScale,
+        imageWidth,
+        imageHeight,
+      });
 
       // Create the image decoration
       const imageDecoration: vscode.DecorationOptions = {
@@ -455,8 +468,13 @@ function getEditorRenderOptions(editor: vscode.TextEditor) {
   return { fontSize, lineHeight, tabSize };
 }
 
-function buildMarginCss(left: number) {
-  return `-5px 0 0 ${left}ch; position: absolute; z-index: 10000`;
+function buildMarginCss(params: {
+  leftMargin: number;
+  imageScale: number;
+  imageWidth: number;
+  imageHeight: number;
+}) {
+  return `-5px 0 0 ${params.leftMargin}ch; position: absolute; z-index: 10000; transform-origin: 0 0; transform: scale(${params.imageScale});`;
 }
 
 function shouldUseImageDecoration(
