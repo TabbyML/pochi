@@ -18,6 +18,7 @@ export function ErrorMessageView({
   return (
     <ErrorMessage
       error={debouncedError}
+      collapsible
       formatter={(e) => {
         if (e.message === PochiApiErrors.ReachedCreditLimit) {
           return (

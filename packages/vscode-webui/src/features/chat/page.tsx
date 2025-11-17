@@ -327,7 +327,7 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
         messagesContainerRef={messagesContainerRef}
       />
       {/* Leave more space for errors as errors / approval button are absolutely positioned */}
-      {displayError && <div className="h-12" />}
+      {displayError && <div className="h-[4.5rem]" />}
       <div className="relative flex flex-col px-4">
         {!isWorkspaceActive ? (
           <WorkspaceRequiredPlaceholder
