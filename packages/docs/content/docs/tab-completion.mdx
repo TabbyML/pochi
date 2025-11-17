@@ -12,8 +12,16 @@ Pochi uses a state-of-the-art model that adapts to your coding patterns in real 
 drawing on recent edits, diagnostics, and surrounding context to generate helpful,
 relevant completions right in your editor.
 
+The suggestion can be rendered as a diff preview, showing exactly what changes will be made to your code.
+
 <div align="center">
-![Tab completion showing inline suggestions](../assets/images/completion.png)
+![Tab Completion showing suggestion via diff](../assets/images/tab-completion-diff.png)
+</div>
+
+Alternatively, suggestions can appear as ghost text inline with your code.
+
+<div align="center">
+![Tab Completion showing suggestion via ghost text](../assets/images/tab-completion-ghost-text.png)
 </div>
 
 ### Multi-Language Support
@@ -31,7 +39,7 @@ Works across popular programming languages including:
 
 ### Basic Usage
 1. Start typing your code
-2. Pochi will show inline suggestions in gray text
+2. Pochi will show edit suggestions
 3. Press `Tab` to accept the suggestion
 4. Press `Escape` to dismiss the suggestion
 
@@ -40,37 +48,23 @@ Works across popular programming languages including:
 |-----|--------|
 | `Tab` | Accept the current suggestion |
 | `Escape` | Dismiss the suggestion |
-| `Ctrl/Cmd + →` | Accept word by word |
 | `Alt + ]` | Next suggestion (if multiple available) |
 | `Alt + [` | Previous suggestion (if multiple available) |
 
 
-## Tab Completion Model Settings
+## Feature Conflicts
 
-You can customize the code completion provider in your VS Code settings, allowing you to switch between different models, including those running on your local machine.
+Pochi's Tab Completion feature may conflict with other extensions that provide code completions, such as GitHub Copilot. If you encounter issues, you can disable conflicting features to use Pochi Tab Completion.
 
-By default, Pochi uses its own hosted code completion model. Alternatively, you can configure Pochi to use any OpenAI-compatible server that provides a Fill-in-the-Middle (FIM) completion model.
+<div align="center">
+![Resolve Conflicts](../assets/images/tab-completion-resolve-conflicts.png)
+</div>
 
-Here is an example configuration for a local OpenAI-compatible server running `qwen3-coder-30b-a3b` on port 8000:
+## Tab Completion Model
 
-```json
-  "pochi.advanced": {
-    "inlineCompletion": {
-      "provider": {
-        "type": "openai",
-        "baseURL": "http://127.0.0.1:8000/v1",
-        "apiKey": "",
-        "model": "qwen3-coder-30b-a3b",
-        "promptTemplate": "<|fim_prefix|>{{prefix}}<|fim_suffix|>{{suffix}}<|fim_middle|>"
-      }
-    }
-  },
-```
+Pochi uses its own hosted, state-of-the-art tab completion model optimized for speed and accuracy. 
 
-- **baseURL**: The base URL of the OpenAI-compatible server.
-- **apiKey**: The API key for the server. If not set, Pochi will use the `POCHI_CODE_COMPLETION_OPENAI_API_KEY` environment variable. This can be left empty if the server does not require an API key.
-- **model**: The name of the FIM completion model to use.
-- **promptTemplate**: The prompt template for FIM completion. It must include `{{prefix}}` and `{{suffix}}` placeholders.
+We are actively working on allowing you to customize Tab Completion providers in VS Code settings. In future versions, you'll be able to use different models, including those running on your local machine.
 
 ---
 
