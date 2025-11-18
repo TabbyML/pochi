@@ -161,7 +161,11 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
           });
 
           if (!autoApproved) {
-            sendNotification("pending-tool", { uid: taskUid, cwd: data.cwd });
+            sendNotification("pending-tool", {
+              uid: taskUid,
+              cwd: data.cwd,
+              isSubTask,
+            });
           }
         }
       }
@@ -179,12 +183,20 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
           retryLimit === 0 ||
           (retryCount?.count !== undefined && retryCount.count >= retryLimit)
         ) {
-          sendNotification("pending-input", { uid: taskUid, cwd: data.cwd });
+          sendNotification("pending-input", {
+            uid: taskUid,
+            cwd: data.cwd,
+            isSubTask,
+          });
         }
       }
 
       if (data.status === "completed") {
-        sendNotification("completed", { uid: taskUid, cwd: data.cwd });
+        sendNotification("completed", {
+          uid: taskUid,
+          cwd: data.cwd,
+          isSubTask,
+        });
       }
     },
   );
@@ -208,7 +220,7 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
         retryLimit === 0 ||
         (retryCount?.count !== undefined && retryCount.count >= retryLimit)
       ) {
-        sendNotification("failed", { uid: taskUid, cwd });
+        sendNotification("failed", { uid: taskUid, cwd, isSubTask });
       }
     },
   );
