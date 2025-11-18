@@ -350,15 +350,7 @@ async function getPochiTaskColumn(cwd: string): Promise<vscode.ViewColumn> {
   }
 
   // if we have pochi task with same cwd already opened, we open new task in same column
-  const firstSameWorktreeTaskColumn = vscode.window.tabGroups.all.find(
-    (group) =>
-      group.tabs.some(
-        (tab) =>
-          tab.input instanceof vscode.TabInputCustom &&
-          tab.input.viewType === PochiTaskEditorProvider.viewType &&
-          PochiTaskEditorProvider.parseTaskUri(tab.input.uri)?.cwd === cwd,
-      ),
-  )?.viewColumn;
+  const firstSameWorktreeTaskColumn = getSameWorktreeTaskColumn(cwd);
 
   if (firstSameWorktreeTaskColumn) {
     return firstSameWorktreeTaskColumn;
@@ -430,4 +422,15 @@ function autoCleanTabGroupLock() {
       vscode.commands.executeCommand("workbench.action.unlockEditorGroup");
     }
   });
+}
+
+function getSameWorktreeTaskColumn(cwd: string) {
+  return vscode.window.tabGroups.all.find((group) =>
+    group.tabs.some(
+      (tab) =>
+        tab.input instanceof vscode.TabInputCustom &&
+        tab.input.viewType === PochiTaskEditorProvider.viewType &&
+        PochiTaskEditorProvider.parseTaskUri(tab.input.uri)?.cwd === cwd,
+    ),
+  )?.viewColumn;
 }
