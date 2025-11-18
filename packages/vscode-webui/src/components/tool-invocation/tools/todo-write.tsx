@@ -1,8 +1,6 @@
 import { cn } from "@/lib/utils";
-import { Todo } from "@getpochi/tools";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { z } from "zod";
 import { StatusIcon } from "../status-icon";
 import { ExpandableToolContainer } from "../tool-container";
 import type { ToolProps } from "../types";
@@ -14,11 +12,7 @@ export const todoWriteTool: React.FC<ToolProps<"todoWrite">> = ({
   const { t } = useTranslation();
   const todos = useMemo(() => {
     if (tool.state === "input-available" || tool.state === "output-available") {
-      const parsed = z.array(Todo).safeParse(tool.input?.todos);
-
-      if (parsed.success) {
-        return parsed.data.filter((x) => x.status !== "cancelled");
-      }
+      return tool.input.todos.filter((x) => x.status !== "cancelled");
     }
 
     return [];
@@ -32,7 +26,7 @@ export const todoWriteTool: React.FC<ToolProps<"todoWrite">> = ({
     </>
   );
 
-  const expandableDetail = todos?.length ? (
+  const expandableDetail = todos.length ? (
     <div className="flex flex-col px-2 py-1">
       {todos.map((todo) => (
         <span
