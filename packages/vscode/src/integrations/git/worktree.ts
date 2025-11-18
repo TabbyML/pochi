@@ -33,9 +33,7 @@ export class WorktreeManager implements vscode.Disposable {
     if (!worktree) {
       return getWorktreeNameFromWorktreePath(cwd);
     }
-    return worktree.isMain
-      ? worktree.branch
-      : getWorktreeNameFromWorktreePath(cwd);
+    return worktree.isMain ? "main" : getWorktreeNameFromWorktreePath(cwd);
   }
 
   private async init() {

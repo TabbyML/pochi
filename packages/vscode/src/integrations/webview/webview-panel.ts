@@ -102,6 +102,7 @@ export class PochiTaskEditorProvider
 
   // only use for task params caching during opening
   private static readonly taskParamsCache = new Map<string, TaskPanelParams>();
+  public static activeTabs = new Set<string>();
 
   public static register(context: vscode.ExtensionContext): vscode.Disposable {
     const provider = new PochiTaskEditorProvider(context);
@@ -123,6 +124,7 @@ export class PochiTaskEditorProvider
     setAutoLockGroupsConfig();
 
     disposables.push(autoCleanTabGroupLock());
+    disposables.push(updateActiveTabs());
 
     return vscode.Disposable.from(...disposables);
   }
@@ -165,20 +167,9 @@ export class PochiTaskEditorProvider
   public static async isTaskEditorVisible(params: TaskPanelParams) {
     try {
       if (!params.uid) return false;
+
       const uri = PochiTaskEditorProvider.createTaskUri(params);
-      for (const group of vscode.window.tabGroups.all) {
-        for (const tab of group.tabs) {
-          if (
-            tab.input instanceof vscode.TabInputCustom &&
-            tab.input.viewType === PochiTaskEditorProvider.viewType &&
-            tab.input.uri.toString() === uri.toString() &&
-            tab.isActive
-          ) {
-            return true;
-          }
-        }
-      }
-      return false;
+      return PochiTaskEditorProvider.activeTabs.has(uri.toString());
     } catch (error) {
       return false;
     }
@@ -267,6 +258,7 @@ export class PochiTaskEditorProvider
           `Failed to open Pochi task: invalid parameters for ${document.uri.toString()}`,
         );
       }
+
       await this.setupWebview(webviewPanel, {
         ...(params ?? {}),
         ...uriParams,
@@ -317,6 +309,25 @@ export class PochiTaskEditorProvider
     logger.debug(`Opened Pochi task editor: cwd=${cwd}, uid=${uid}`);
     return pochiPanel;
   }
+}
+
+function updateActiveTabs() {
+  return vscode.window.tabGroups.onDidChangeTabs(() => {
+    const tabGroups = vscode.window.tabGroups.all;
+    const activeTabs: string[] = [];
+    for (const group of tabGroups) {
+      const tab = group.activeTab;
+      if (
+        tab &&
+        tab.input instanceof vscode.TabInputCustom &&
+        tab.input.viewType === PochiTaskEditorProvider.viewType
+      ) {
+        activeTabs.push(tab.input.uri.toString());
+      }
+    }
+
+    PochiTaskEditorProvider.activeTabs = new Set(activeTabs);
+  });
 }
 
 function setAutoLockGroupsConfig() {

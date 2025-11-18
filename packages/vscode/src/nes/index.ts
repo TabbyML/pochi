@@ -56,7 +56,12 @@ export class NESProvider implements vscode.Disposable {
   async provideNES(
     document: vscode.TextDocument,
     selection: vscode.Selection,
+    token?: vscode.CancellationToken | undefined,
   ): Promise<NESSolution | undefined> {
+    if (token?.isCancellationRequested) {
+      return;
+    }
+
     const disabled =
       this.pochiConfiguration.advancedSettings.value.tabCompletion?.disabled;
     if (disabled) {
@@ -85,33 +90,32 @@ export class NESProvider implements vscode.Disposable {
       editHistory,
     });
 
-    if (this.fetching.value?.context.hash === context.hash) {
-      logger.debug("Request is already ongoing with the same context");
-      return;
-    }
-
     // Cancel the ongoing request if not matched
     if (this.fetching.value) {
       this.fetching.value.tokenSource.cancel();
       this.fetching.value.tokenSource.dispose();
     }
     const tokenSource = new vscode.CancellationTokenSource();
-    const token = tokenSource.token;
-    this.fetching.value = {
+    if (token) {
+      token.onCancellationRequested(() => tokenSource.cancel());
+    }
+    const cancellationToken = tokenSource.token;
+    const fetching = {
       context,
       tokenSource,
     };
+    this.fetching.value = fetching;
 
     try {
       // Debounce
       const delay = 100; // ms
       await new Promise((resolve, reject) => {
         const timer = setTimeout(resolve, delay);
-        if (token.isCancellationRequested) {
+        if (cancellationToken.isCancellationRequested) {
           clearTimeout(timer);
           reject(new AbortError());
         } else {
-          token.onCancellationRequested(() => {
+          cancellationToken.onCancellationRequested(() => {
             clearTimeout(timer);
             reject(new AbortError());
           });
@@ -156,7 +160,7 @@ export class NESProvider implements vscode.Disposable {
         logger.debug("Failed to fetch completion", error);
       }
     } finally {
-      if (this.fetching.value?.context.hash === context.hash) {
+      if (this.fetching.value === fetching) {
         this.fetching.value.tokenSource.dispose();
         this.fetching.value = undefined;
       }
@@ -182,6 +186,7 @@ class NESInlineCompletionProvider
   private disposables: vscode.Disposable[] = [];
   private nesProvider: NESProvider | undefined;
   private nesDecorationManager: NESDecorationManager | undefined;
+  private cancellationTokenSource: vscode.CancellationTokenSource | undefined;
 
   initialize(
     nesProvider: NESProvider,
@@ -203,6 +208,15 @@ class NESInlineCompletionProvider
     context?: vscode.InlineCompletionContext | undefined,
     token?: vscode.CancellationToken | undefined,
   ): Promise<vscode.InlineCompletionList | undefined> {
+    logger.trace(
+      `Function provideInlineCompletionItems called, document: ${document.uri.toString()}`,
+      { document, position, context, token },
+    );
+    if (this.cancellationTokenSource) {
+      this.cancellationTokenSource.cancel();
+      this.cancellationTokenSource.dispose();
+      this.cancellationTokenSource = undefined;
+    }
     this.nesDecorationManager?.dismiss();
 
     if (token?.isCancellationRequested) {
@@ -217,14 +231,29 @@ class NESInlineCompletionProvider
     }
 
     if (this.nesProvider) {
+      const tokenSource = new vscode.CancellationTokenSource();
+      if (token) {
+        token.onCancellationRequested(() => tokenSource.cancel());
+      }
+      this.cancellationTokenSource = tokenSource;
+
       logger.debug(
         `Trigger NES from InlineCompletionProvider, document: ${document.uri.toString()}`,
       );
       const version = document.version;
+      const selection = new vscode.Selection(position, position);
       const solution = await this.nesProvider.provideNES(
         document,
-        new vscode.Selection(position, position),
+        selection,
+        tokenSource.token,
       );
+
+      if (this.cancellationTokenSource !== tokenSource) {
+        return undefined;
+      }
+      tokenSource.dispose();
+      this.cancellationTokenSource = undefined;
+
       if (solution && solution.items.length > 0) {
         // FIXME(zhiming): multi-choice not supported
         const solutionItem = solution.items[0];
@@ -241,10 +270,14 @@ class NESInlineCompletionProvider
           if (
             editor &&
             editor.document === document &&
-            editor.document.version === version
+            editor.document.version === version &&
+            editor.selections[0].isEqual(selection)
+            // FIXME(zhiming): use context hash to ensure context not changed
           ) {
             logger.debug("Show result as decorations");
             this.nesDecorationManager.show(editor, solutionItem);
+          } else {
+            logger.debug("Will not show result as the context has changed.");
           }
         }
       }
@@ -265,6 +298,7 @@ class NESEditorListener implements vscode.Disposable {
   private disposables: vscode.Disposable[] = [];
   private nesProvider: NESProvider | undefined;
   private nesDecorationManager: NESDecorationManager | undefined;
+  private cancellationTokenSource: vscode.CancellationTokenSource | undefined;
 
   initialize(
     nesProvider: NESProvider,
@@ -281,7 +315,14 @@ class NESEditorListener implements vscode.Disposable {
         if (!vscode.languages.match(DocumentSelector, document)) {
           return;
         }
+
+        if (this.cancellationTokenSource) {
+          this.cancellationTokenSource.cancel();
+          this.cancellationTokenSource.dispose();
+          this.cancellationTokenSource = undefined;
+        }
         this.nesDecorationManager?.dismiss();
+
         if (
           (event.kind === vscode.TextEditorSelectionChangeKind.Mouse ||
             event.kind === vscode.TextEditorSelectionChangeKind.Keyboard) &&
@@ -290,14 +331,26 @@ class NESEditorListener implements vscode.Disposable {
         ) {
           // Trigger when user selects a range with mouse or keyboard
           if (this.nesProvider) {
+            const tokenSource = new vscode.CancellationTokenSource();
+            this.cancellationTokenSource = tokenSource;
+
             logger.debug(
               `Trigger NES from TextEditorSelectionChange, document: ${document.uri.toString()}`,
             );
             const version = document.version;
+            const selection = event.selections[0];
             const solution = await this.nesProvider.provideNES(
               document,
-              event.selections[0],
+              selection,
+              tokenSource.token,
             );
+
+            if (this.cancellationTokenSource !== tokenSource) {
+              return undefined;
+            }
+            tokenSource.dispose();
+            this.cancellationTokenSource = undefined;
+
             if (
               solution &&
               solution.items.length > 0 &&
@@ -307,12 +360,18 @@ class NESEditorListener implements vscode.Disposable {
               if (
                 editor &&
                 editor.document === document &&
-                editor.document.version === version
+                editor.document.version === version &&
+                editor.selections[0].isEqual(selection)
+                // FIXME(zhiming): use context hash to ensure context not changed
               ) {
                 logger.debug("Show result as decorations");
                 // FIXME(zhiming): multi-choice not supported
                 const solutionItem = solution.items[0];
                 this.nesDecorationManager.show(event.textEditor, solutionItem);
+              } else {
+                logger.debug(
+                  "Will not show result as the context has changed.",
+                );
               }
             }
           }

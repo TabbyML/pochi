@@ -136,11 +136,10 @@ export function useChatSubmit({
           const parts = prepareMessageParts(t, text, uploadedAttachments);
           logger.debug("Sending message with files");
 
+          autoApproveGuard.current = "auto";
           await sendMessage({
             parts,
           });
-
-          autoApproveGuard.current = "auto";
         } catch (error) {
           // Error is already handled by the hook
           return;
@@ -148,10 +147,11 @@ export function useChatSubmit({
       } else if (allMessages.length > 0) {
         clearUploadError();
         const parts = prepareMessageParts(t, text, []);
+
+        autoApproveGuard.current = "auto";
         await sendMessage({
           parts,
         });
-        autoApproveGuard.current = "auto";
       }
     },
     [

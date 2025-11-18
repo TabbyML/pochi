@@ -24,6 +24,7 @@ import { useTranslation } from "react-i18next";
 
 import { useLatest } from "@/lib/hooks/use-latest";
 import { useMcp } from "@/lib/hooks/use-mcp";
+import { cn } from "@/lib/utils";
 import { useApprovalAndRetry } from "../approval";
 import { getReadyForRetryError } from "../retry/hooks/use-ready-for-retry-error";
 import {
@@ -37,7 +38,6 @@ import {
 } from "../settings/hooks/use-tool-auto-approval";
 import { ChatArea } from "./components/chat-area";
 import { ChatToolbar } from "./components/chat-toolbar";
-import { ErrorMessageView } from "./components/error-message-view";
 import { SubtaskHeader } from "./components/subtask";
 import { useRestoreTaskModel } from "./hooks/use-restore-task-model";
 import { useScrollToBottom } from "./hooks/use-scroll-to-bottom";
@@ -326,9 +326,12 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
         isLoading={isLoading}
         user={user || defaultUser}
         messagesContainerRef={messagesContainerRef}
+        className={cn({
+          // Leave more space for errors as errors / approval button are absolutely positioned
+          "pb-14": !!displayError,
+        })}
       />
-      <div className="flex flex-col px-4">
-        <ErrorMessageView error={displayError} />
+      <div className="relative flex flex-col px-4">
         {!isWorkspaceActive ? (
           <WorkspaceRequiredPlaceholder
             isFetching={isFetchingWorkspace}

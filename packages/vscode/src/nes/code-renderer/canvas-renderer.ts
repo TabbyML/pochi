@@ -1,4 +1,5 @@
 import * as fs from "node:fs/promises";
+import * as os from "node:os";
 import * as path from "node:path";
 import { getLogger } from "@/lib/logger";
 import type {
@@ -10,7 +11,7 @@ import CanvasKitInit from "canvaskit-wasm";
 import { inject, injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
 import { isBold, isItalic, isStrikethrough, isUnderline } from "./font";
-import type { DecoratedDocument } from "./types";
+import type { RenderImageInput, RenderImageOutput } from "./types";
 
 const logger = getLogger("NES.CanvasRenderer");
 
@@ -30,7 +31,9 @@ export class CanvasRenderer implements vscode.Disposable {
     this.fontProvider = await this.createFontProvider();
   }
 
-  async render(input: DecoratedDocument): Promise<Uint8Array | undefined> {
+  async render(
+    input: RenderImageInput,
+  ): Promise<RenderImageOutput | undefined> {
     if (!this.canvasKit || !this.fontProvider) {
       logger.debug("Not initiated.");
       return undefined;
@@ -109,20 +112,23 @@ export class CanvasRenderer implements vscode.Disposable {
       (w, p) => Math.max(w, p.getMaxIntrinsicWidth()),
       0,
     );
-    const lineHeight =
-      (input.lineHeight >= 8 ? input.lineHeight : paragraphs[0].getHeight()) +
-      1;
+    const lineHeightBase = paragraphs[0].getHeight();
+    const lineHeight = resolveLineHeight(input.fontSize, input.lineHeight);
+    const lineHeightOffset = (lineHeight - lineHeightBase) / 2 - 1;
     const docHeight = paragraphs.length * lineHeight;
 
     const canvasWidth = Math.ceil(docWidth + input.padding * 2);
     const canvasHeight = Math.ceil(docHeight + input.padding * 2);
+    const surfaceWidth = Math.ceil(canvasWidth * input.scale);
+    const surfaceHeight = Math.ceil(canvasHeight * input.scale);
 
-    const surface = canvasKit.MakeSurface(canvasWidth, canvasHeight);
+    const surface = canvasKit.MakeSurface(surfaceWidth, surfaceHeight);
     if (!surface) {
       logger.debug("Failed to create surface.");
       return undefined;
     }
     const canvas = surface.getCanvas();
+    canvas.scale(input.scale, input.scale);
 
     // draw background
     const backgroundPaint = new canvasKit.Paint();
@@ -149,13 +155,16 @@ export class CanvasRenderer implements vscode.Disposable {
         const rect = item.rect;
         return canvasKit.XYWHRect(
           rect[0] + input.padding,
-          rect[1] + input.padding + lineHeight * decoration.line,
-          rect[2],
-          rect[3],
+          rect[1] +
+            input.padding +
+            lineHeight * decoration.line +
+            lineHeightOffset,
+          rect[2] - rect[0],
+          rect[3] - rect[1],
         );
       });
 
-      const borderRadius = 2;
+      const borderRadius = 1;
 
       const bgColor = decoration.background;
       if (bgColor) {
@@ -192,7 +201,7 @@ export class CanvasRenderer implements vscode.Disposable {
       canvas.drawParagraph(
         paragraphs[i],
         input.padding,
-        input.padding + lineHeight * i,
+        input.padding + lineHeight * i + lineHeightOffset,
       );
     }
 
@@ -206,7 +215,15 @@ export class CanvasRenderer implements vscode.Disposable {
       paragraph.delete();
     }
 
-    return encoded ?? undefined;
+    if (encoded) {
+      return {
+        image: encoded,
+        width: surfaceWidth,
+        height: surfaceHeight,
+      };
+    }
+
+    return undefined;
   }
 
   private async createCanvasKit() {
@@ -259,4 +276,15 @@ export class CanvasRenderer implements vscode.Disposable {
   dispose() {
     this.fontProvider?.delete();
   }
+}
+
+function resolveLineHeight(fontSize: number, config: number) {
+  const ratio = os.platform() === "darwin" ? 1.5 : 1.35;
+  if (config <= 0) {
+    return fontSize * ratio;
+  }
+  if (config < 8) {
+    return fontSize * config;
+  }
+  return config;
 }

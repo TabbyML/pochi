@@ -118,6 +118,6 @@ function extractResult(text: string, segments: NESPromptSegments) {
 }
 
 const SystemPromptTemplate =
-  "You are an AI coding assistant that helps with code completion and editing. You will be given a code snippet with an editable region marked.\nYour task is to complete or modify the code within that region based on the following events that happened in past.\nYou should not undo or revert the edits. \n\nUser edits:\n\n```diff\n{{edits}}\n```\n";
+  "You are an AI coding assistant that helps with code completion and editing. You will be given a code snippet with an editable region marked.\nYour task is to complete or modify the code within that region based on the following events that happened in past. \nNOTE: DO NOT undo or revert the user edits. \n\nUser edits:\n\n```diff\n{{edits}}\n```\n";
 const UserPromptTemplate =
   "```{{filepath}}\n{{prefix}}<|editable_region_start|>{{editableRegionPrefix}}<|user_cursor_is_here|>{{editableRegionSuffix}}<|editable_region_end|>{{suffix}}\n```";

@@ -1,9 +1,88 @@
 import { describe, expect, test } from "vitest";
 import {
+  getWorktreeNameFromGitDir,
+  getWorktreeNameFromWorktreePath,
   parseGitOriginUrl,
 } from "../git-utils";
 
 describe("git-utils", () => {
+  describe("getWorktreeNameFromGitDir", () => {
+    test("should extract worktree name from git worktree path", () => {
+      const gitDir = "/path/to/repo/.git/worktrees/feature-branch";
+      const result = getWorktreeNameFromGitDir(gitDir);
+      
+      expect(result).toBe("feature-branch");
+    });
+
+    test("should handle worktree paths with multiple slashes", () => {
+      const gitDir = "/Users/user/projects/repo/.git/worktrees/my-worktree";
+      const result = getWorktreeNameFromGitDir(gitDir);
+      
+      expect(result).toBe("my-worktree");
+    });
+
+    test("should return 'main' for non-worktree git directories", () => {
+      const gitDir = "/path/to/repo/.git";
+      const result = getWorktreeNameFromGitDir(gitDir);
+      
+      expect(result).toBe("main");
+    });
+
+    test("should return 'main' for invalid worktree paths", () => {
+      const gitDir = "/path/to/repo/.git/some/other/path";
+      const result = getWorktreeNameFromGitDir(gitDir);
+      
+      expect(result).toBe("main");
+    });
+
+    test("should return undefined for undefined input", () => {
+      const result = getWorktreeNameFromGitDir(undefined);
+      
+      expect(result).toBeUndefined();
+    });
+
+    test("should return undefined for empty string", () => {
+      const result = getWorktreeNameFromGitDir("");
+      
+      expect(result).toBeUndefined();
+    });
+  });
+
+  describe("getWorktreeNameFromWorktreePath", () => {
+    test("should extract worktree name from path with forward slashes", () => {
+      const path = "/path/to/worktrees/feature-branch";
+      const result = getWorktreeNameFromWorktreePath(path);
+      
+      expect(result).toBe("feature-branch");
+    });
+
+    test("should extract worktree name from path with backslashes", () => {
+      const path = "C:\\path\\to\\worktrees\\feature-branch";
+      const result = getWorktreeNameFromWorktreePath(path);
+      
+      expect(result).toBe("feature-branch");
+    });
+
+    test("should return undefined for null input", () => {
+      const result = getWorktreeNameFromWorktreePath(null);
+      
+      expect(result).toBeUndefined();
+    });
+
+    test("should return undefined for undefined input", () => {
+      const result = getWorktreeNameFromWorktreePath(undefined);
+      
+      expect(result).toBeUndefined();
+    });
+
+    test("should handle path with no slashes", () => {
+      const path = "worktree-name";
+      const result = getWorktreeNameFromWorktreePath(path);
+      
+      expect(result).toBe("worktree-name");
+    });
+  });
+
   describe("parseGitOriginUrl", () => {
     test("should parse GitHub HTTPS URLs", () => {
       const url = "https://github.com/TabbyML/tabby";
@@ -116,4 +195,3 @@ describe("git-utils", () => {
     });
   });
 });
-
