@@ -257,7 +257,6 @@ export class NESDecorationManager implements vscode.Disposable {
       const base64Image = Buffer.from(image).toString("base64");
       const dataUrl = `data:image/png;base64,${base64Image}`;
       logger.debug("Created image for decoration.");
-      logger.trace("Image:", dataUrl);
 
       // Check the longest line to determine the position of the image decoration.
       let longestLineChars = 0;
