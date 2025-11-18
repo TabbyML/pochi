@@ -336,7 +336,7 @@ function setAutoLockGroupsConfig() {
   );
 }
 
-async function getPochiTaskColumn(): Promise<vscode.ViewColumn> {
+async function getPochiTaskColumn(cwd: string): Promise<vscode.ViewColumn> {
   // If there's only one group and it's empty, lock and use the first column
   if (
     vscode.window.tabGroups.all.length === 1 &&
@@ -349,15 +349,19 @@ async function getPochiTaskColumn(): Promise<vscode.ViewColumn> {
     return vscode.ViewColumn.One;
   }
 
-  // if we have pochi task opened already, we open new task in same column
-  for (const group of vscode.window.tabGroups.all) {
-    for (const tab of group.tabs) {
-      if (tab.input instanceof vscode.TabInputCustom) {
-        if (tab.input.viewType === PochiTaskEditorProvider.viewType) {
-          return group.viewColumn;
-        }
-      }
-    }
+  // if we have pochi task with same cwd already opened, we open new task in same column
+  const firstSameWorktreeTaskColumn = vscode.window.tabGroups.all.find(
+    (group) =>
+      group.tabs.some(
+        (tab) =>
+          tab.input instanceof vscode.TabInputCustom &&
+          tab.input.viewType === PochiTaskEditorProvider.viewType &&
+          PochiTaskEditorProvider.parseTaskUri(tab.input.uri)?.cwd === cwd,
+      ),
+  )?.viewColumn;
+
+  if (firstSameWorktreeTaskColumn) {
+    return firstSameWorktreeTaskColumn;
   }
 
   // else if we have multiple groups and the first group is empty, we can reuse it
@@ -383,7 +387,11 @@ async function getPochiTaskColumn(): Promise<vscode.ViewColumn> {
 }
 
 async function openTaskInColumn(uri: vscode.Uri) {
-  const viewColumn = await getPochiTaskColumn();
+  const params = PochiTaskEditorProvider.parseTaskUri(uri);
+  if (!params) {
+    throw new Error(`Failed to parse task URI: ${uri.toString()}`);
+  }
+  const viewColumn = await getPochiTaskColumn(params.cwd);
   await vscode.commands.executeCommand(
     "vscode.openWith",
     uri,
