@@ -131,22 +131,22 @@ export class LiveStoreClientDO
 
     if (!updatedTasks.length) return;
 
-    updatedTasks.map((task) => {
-      if (!task.shareId) {
-        store.commit(
-          catalog.events.updateShareId({
-            id: task.id,
-            shareId: `p-${task.id.replaceAll("-", "")}`,
-            updatedAt: new Date(),
-          }),
-        );
-      }
-    });
-
     const { webhook } = this;
     if (webhook) {
       await Promise.all(
         updatedTasks.map((task) => {
+          // Ensure shareId is set
+          const shareId = task.shareId || `p-${task.id.replaceAll("-", "")}`;
+          if (!task.shareId) {
+            store.commit(
+              catalog.events.updateShareId({
+                id: task.id,
+                shareId,
+                updatedAt: new Date(),
+              }),
+            );
+          }
+
           let completion: string | undefined = undefined;
           let followup = undefined;
           if (task.status === "completed") {
@@ -187,15 +187,18 @@ export class LiveStoreClientDO
             }
           }
           webhook
-            .onTaskUpdated(task, {
-              completion,
-              followup: followup
-                ? {
-                    question: followup.question,
-                    choices: followup.followUp,
-                  }
-                : undefined,
-            })
+            .onTaskUpdated(
+              { ...task, shareId },
+              {
+                completion,
+                followup: followup
+                  ? {
+                      question: followup.question,
+                      choices: followup.followUp,
+                    }
+                  : undefined,
+              },
+            )
             .catch(console.error);
         }),
       );
