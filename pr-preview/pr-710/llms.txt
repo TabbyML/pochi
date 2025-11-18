@@ -1237,12 +1237,7 @@ Works across popular programming languages including:
 
 ## Using Tab Completion
 
-### Basic Usage
-
-1. Start typing your code
-2. Pochi will show edit suggestions
-3. Press `Tab` to accept the suggestion
-4. Press `Escape` to dismiss the suggestion
+Just start typing. Pochi will surface suggestions automatically. The more you use it, the more it understands your codebase, thus suggesting better edits.
 
 ### Keyboard Shortcuts
 
