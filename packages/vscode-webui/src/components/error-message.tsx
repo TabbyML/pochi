@@ -9,12 +9,14 @@ interface ErrorMessageProps {
   error: { message: string } | undefined;
   formatter?: (e: { message: string }) => ReactNode;
   collapsible?: boolean;
+  viewportClassname?: string;
 }
 
 export const ErrorMessage: React.FC<ErrorMessageProps> = ({
   error,
   formatter,
   collapsible = false,
+  viewportClassname,
 }) => {
   const [isDevMode] = useIsDevMode();
   const [isExpanded, setIsExpanded] = useState(false);
@@ -91,7 +93,10 @@ export const ErrorMessage: React.FC<ErrorMessageProps> = ({
                 "cursor-help": isDevMode && (!collapsible || !hasOverflow),
                 "pr-8": collapsible && hasOverflow,
               })}
-              viewportClassname="max-h-16"
+              viewportClassname={cn(
+                "max-h-[max(1.5rem,calc(100vh-38rem))]",
+                viewportClassname,
+              )}
               onClick={
                 isDevMode && (!collapsible || !hasOverflow)
                   ? () => console.error(error)
