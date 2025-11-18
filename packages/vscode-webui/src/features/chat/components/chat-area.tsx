@@ -9,6 +9,7 @@ interface ChatAreaProps {
   isLoading: boolean;
   user?: { name: string; image?: string | null };
   messagesContainerRef: React.RefObject<HTMLDivElement | null>;
+  className?: string;
 }
 
 export function ChatArea({
@@ -16,6 +17,7 @@ export function ChatArea({
   isLoading,
   user,
   messagesContainerRef,
+  className,
 }: ChatAreaProps) {
   const resourceUri = useResourceURI();
   return (
@@ -31,6 +33,7 @@ export function ChatArea({
         }}
         isLoading={isLoading}
         containerRef={messagesContainerRef}
+        className={className}
       />
     </>
   );

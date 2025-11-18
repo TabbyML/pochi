@@ -191,15 +191,17 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   return (
     <>
       <div className="-translate-y-full -top-2 absolute left-0 w-full px-4">
-        <ErrorMessageView error={displayError} />
-        <CompleteSubtaskButton subtask={subtask} messages={messages} />
-        <ApprovalButton
-          pendingApproval={pendingApproval}
-          retry={retry}
-          allowAddToolResult={allowAddToolResult}
-          isSubTask={isSubTask}
-          task={task}
-        />
+        <div className="bg-background">
+          <ErrorMessageView error={displayError} />
+          <CompleteSubtaskButton subtask={subtask} messages={messages} />
+          <ApprovalButton
+            pendingApproval={pendingApproval}
+            retry={retry}
+            allowAddToolResult={allowAddToolResult}
+            isSubTask={isSubTask}
+            task={task}
+          />
+        </div>
       </div>
       {todos && todos.length > 0 && (
         <TodoList todos={todos} className="mt-2">

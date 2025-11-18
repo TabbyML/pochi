@@ -24,6 +24,7 @@ import { useTranslation } from "react-i18next";
 
 import { useLatest } from "@/lib/hooks/use-latest";
 import { useMcp } from "@/lib/hooks/use-mcp";
+import { cn } from "@/lib/utils";
 import { useApprovalAndRetry } from "../approval";
 import { getReadyForRetryError } from "../retry/hooks/use-ready-for-retry-error";
 import {
@@ -325,9 +326,11 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
         isLoading={isLoading}
         user={user || defaultUser}
         messagesContainerRef={messagesContainerRef}
+        className={cn({
+          // Leave more space for errors as errors / approval button are absolutely positioned
+          "pb-14": !!displayError,
+        })}
       />
-      {/* Leave more space for errors as errors / approval button are absolutely positioned */}
-      {displayError && <div className="h-[4.5rem]" />}
       <div className="relative flex flex-col px-4">
         {!isWorkspaceActive ? (
           <WorkspaceRequiredPlaceholder

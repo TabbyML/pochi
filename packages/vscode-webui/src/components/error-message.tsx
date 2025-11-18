@@ -23,7 +23,6 @@ export const ErrorMessage: React.FC<ErrorMessageProps> = ({
 
   const errorMessage = error?.message;
 
-  // 计算是否溢出的函数
   const checkOverflow = useCallback(() => {
     if (collapsible && contentRef.current) {
       const lineHeight = Number.parseFloat(
@@ -107,7 +106,7 @@ export const ErrorMessage: React.FC<ErrorMessageProps> = ({
           <button
             type="button"
             onClick={handleToggle}
-            className="absolute top-1 right-2 text-error transition-opacity hover:opacity-80"
+            className="absolute top-1.5 right-2 transition-opacity hover:opacity-80"
             aria-label={isExpanded ? "Collapse" : "Expand"}
           >
             {isExpanded ? (

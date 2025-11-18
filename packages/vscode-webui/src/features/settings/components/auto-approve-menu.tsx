@@ -169,7 +169,7 @@ export function AutoApproveMenu({ isSubTask }: { isSubTask: boolean }) {
       <PopoverTrigger asChild>
         <div
           className={cn(
-            "relative mt-2 flex cursor-pointer select-none items-center justify-between py-2.5",
+            "relative flex cursor-pointer select-none items-center justify-between py-2.5",
           )}
         >
           <div className="flex w-full overflow-x-hidden">
