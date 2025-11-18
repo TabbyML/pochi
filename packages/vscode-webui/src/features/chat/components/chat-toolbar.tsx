@@ -191,7 +191,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   return (
     <>
       <div className="-translate-y-full -top-2 absolute left-0 w-full px-4 pt-1">
-        <div className="bg-background">
+        <div className="flex w-full flex-col bg-background">
           <ErrorMessageView error={displayError} />
           <CompleteSubtaskButton subtask={subtask} messages={messages} />
           <ApprovalButton
