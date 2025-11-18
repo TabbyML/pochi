@@ -12,24 +12,17 @@ export const todoWriteTool: React.FC<ToolProps<"todoWrite">> = ({
   isExecuting,
 }) => {
   const { t } = useTranslation();
-
   const todos = useMemo(() => {
-    let value = tool.input?.todos;
-    if (typeof value === "string") {
-      try {
-        value = JSON.parse(value) as Todo[];
-      } catch (e) {
-        value = [];
-      }
-    }
-    const parsed = z.array(Todo).safeParse(value);
+    if (tool.state === "input-available" || tool.state === "output-available") {
+      const parsed = z.array(Todo).safeParse(tool.input?.todos);
 
-    if (parsed.success) {
-      return parsed.data;
+      if (parsed.success) {
+        return parsed.data.filter((x) => x.status !== "cancelled");
+      }
     }
 
     return [];
-  }, [tool.input?.todos]);
+  }, [tool]);
 
   const title = (
     <>
@@ -39,22 +32,20 @@ export const todoWriteTool: React.FC<ToolProps<"todoWrite">> = ({
     </>
   );
 
-  const expandableDetail = (
+  const expandableDetail = todos?.length ? (
     <div className="flex flex-col px-2 py-1">
-      {todos
-        .filter((x) => !!x?.status && x.status !== "cancelled")
-        .map((todo) => (
-          <span
-            key={todo.id}
-            className={cn("text-sm", {
-              "line-through": todo.status === "completed",
-            })}
-          >
-            • {todo.content}
-          </span>
-        ))}
+      {todos.map((todo) => (
+        <span
+          key={todo.id}
+          className={cn("text-sm", {
+            "line-through": todo.status === "completed",
+          })}
+        >
+          • {todo.content}
+        </span>
+      ))}
     </div>
-  );
+  ) : undefined;
 
   return (
     <ExpandableToolContainer
