@@ -66,8 +66,30 @@ export async function generateMetadata(props: {
   const page = source.getPage(params.slug);
   if (!page) notFound();
 
+  const title = formatTitle(page.data.title);
+  const description = page.data.description || "";
+  const image = page.data.image || "/og-image/default-og-image.png";
+
   return {
-    title: formatTitle(page.data.title),
-    description: page.data.description,
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      type: "article",
+      images: [
+        {
+          url: image,
+          width: 1200,
+          height: 630,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [image],
+    },
   };
 }
