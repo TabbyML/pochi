@@ -1,6 +1,6 @@
 ---
-title: 'NES Series (Part 1): The Edit Model Behind Pochi’s Tab Completion'
-description: "Learn how to use Pochi to automate GitHub Actions, PR reviews, CI/CD, and more."
+title: 'NES Series (Part 1): The Edit Model Behind Tab Completion'
+description: "Inside the engineering behind how we trained our next edit model"
 image: "/og-image/nes-part-1-og-image.png"
 ---
 
@@ -8,16 +8,16 @@ image: "/og-image/nes-part-1-og-image.png"
 
 ![NES Cover Image](./images/cover-nes.png)
 
-Today, we’re launching something we’ve been quietly excited about for weeks: Next Edit Suggestion, or simply put, NES. It’s an upgrade to Tab completion, designed to predict the next change your code needs, wherever it lives. 
-
-NES keeps offering the next edit, then the one after that, and then the one after that. You can walk through these changes across all your files, tapping `Tab` and stacking up saved keystrokes (and time!) with every acceptance.
-
-![NES Demo](./images/nes-demo-blog.gif)
-
+In this post, we’re introducing our internal edit model, the foundation behind Next Edit Suggestion (NES). It’s an upgrade to Tab completion, designed to predict the next change your code needs, wherever it lives.
 
 Technically this is much harder to achieve, since NES considers the entire file plus your recent edit history and predicts how your code is likely to evolve: where the next change should happen, and what that change should be. 
 
-Other tools have versions of this idea, but models have evolved a lot, and so has our understanding of how people actually write code. So we bring you our own take on Pochi’s NES: a bit different, a bit more opinionated.  This is the first post in our "Next Edit Suggestion" series, where we’ll share how we trained, evaluated, and optimized our internal Next Edit model in Pochi.
+Other editors have explored versions of next-edit prediction, but models have evolved a lot, and so has our understanding of how people actually write code.
+
+
+As an open-source team, we want to share this work transparently. This is the first post in our "Next Edit Suggestion" series, where we walk you through how we trained the underlying model to how it powers real-time editing inside the extension.
+
+![NES Demo](./images/nes-demo-blog.gif)
 
 ## How We Train the Edit Model
 
@@ -44,7 +44,7 @@ In the image above, the developer makes the first edit allowing the model to cap
 
 NES infers the transformation pattern (capitalization in this case) and applies it consistently as the next edit sequence. 
 
-To support this training format, we used **[CommitPackFT](https://huggingface.co/datasets/lurf21/NextEditPrediction)** and **[Zeta](https://huggingface.co/datasets/zed-industries/zeta)** as data sources. We normalized this unified dataset into the same Zeta-derived edit-markup format as described above and applied filtering to remove non-sequential edits using a small in-context model (GPT-4.1 mini).
+To support this training format, we used **[CommitPackFT](https://huggingface.co/datasets/bigcode/commitpackft)** and **[Zeta](https://huggingface.co/datasets/zed-industries/zeta)** as data sources. We normalized this unified dataset into the same Zeta-derived edit-markup format as described above and applied filtering to remove non-sequential edits using a small in-context model (GPT-4.1 mini).
 
 ## Choosing the Base Model for NES 
 
