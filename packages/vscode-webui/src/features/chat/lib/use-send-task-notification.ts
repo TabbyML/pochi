@@ -8,7 +8,11 @@ export function useSendTaskNotification() {
   const sendNotification = useCallback(
     async (
       kind: "failed" | "completed" | "pending-tool" | "pending-input",
-      openTaskParams: { uid: string; cwd: string | null | undefined },
+      openTaskParams: {
+        uid: string;
+        cwd: string | null | undefined;
+        isSubTask?: boolean;
+      },
     ) => {
       clearTimeout(timer.current);
 
@@ -31,7 +35,9 @@ export function useSendTaskNotification() {
             renderMessage = "Pochi is waiting for your input to continue.";
             break;
           case "completed":
-            renderMessage = "Pochi has completed the task.";
+            renderMessage = openTaskParams.isSubTask
+              ? "Pochi has completed the sub task."
+              : "Pochi has completed the task.";
             break;
           case "failed":
             renderMessage = "Pochi is running into error, please take a look.";
