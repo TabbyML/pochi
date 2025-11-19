@@ -2143,6 +2143,98 @@ We added modular `@import` rules and fixed PDF handling in `readFile`. Behind th
 * We’re also preparing an upgrade to our tab completion system to make suggestions feel faster and more intuitive. More details coming soon!
 
 
+# NES Series (Part 1): The Edit Model Behind Tab Completion
+URL: /developer-updates/how-we-created-nes-model
+Inside the engineering behind how we trained our next edit model
+***
+
+title: 'NES Series (Part 1): The Edit Model Behind Tab Completion'
+description: "Inside the engineering behind how we trained our next edit model"
+image: "/og-image/nes-part-1-og-image.png"
+------------------------------------------
+
+# NES Series (Part 1): The Edit Model Behind Pochi’s Tab Completion
+
+In this post, we’re introducing our internal edit model, the foundation behind Next Edit Suggestion (NES). It’s an upgrade to Tab completion, designed to predict the next change your code needs, wherever it lives.
+
+Technically this is much harder to achieve, since NES considers the entire file plus your recent edit history and predicts how your code is likely to evolve: where the next change should happen, and what that change should be.
+
+![NES Cover Image](./images/cover-nes.png)
+
+Other editors have explored versions of next-edit prediction, but models have evolved a lot, and so has our understanding of how people actually write code.
+
+As an open-source team, we want to share this work transparently. This is the first post in our "Next Edit Suggestion" series, where we walk you through how we trained the underlying model to how it powers real-time editing inside the extension.
+
+![NES Demo](./images/nes-demo-blog.gif)
+
+## How We Train the Edit Model
+
+When we decided to build NES, one of the first pressing questions on our mind was: What kind of data actually teaches a model to make good edits?
+
+It turned out that real developer intent is surprisingly hard to capture. As anyone who’s peeked at real commits knows, developer edits are messy. Pull requests bundle unrelated changes, commit histories jump around, and the sequences of edits often skip the small, incremental steps engineers actually take when exploring or fixing code.
+
+### The Training Process
+
+To train an edit model, we format each example using special edit tokens. These tokens tell the model:
+
+* What part of the file is editable
+* The user’s cursor position
+* What the user has edited so far
+* What the next edit should be inside that region only
+
+Unlike chat-style models that generate free-form text, NES is trained to predict the next code edit inside the editable region.
+
+Below is an example of how NES predicts the next edit:
+
+![SFT conversion image](./images/sft-conversion-image.png)
+
+In the image above, the developer makes the first edit allowing the model to capture the intent of the user. The `editable_region` markers define everything between them as the editable zone. The `user_cursor_is_here` token shows the model where the user is currently editing.
+
+NES infers the transformation pattern (capitalization in this case) and applies it consistently as the next edit sequence.
+
+To support this training format, we used **[CommitPackFT](https://huggingface.co/datasets/bigcode/commitpackft)** and **[Zeta](https://huggingface.co/datasets/zed-industries/zeta)** as data sources. We normalized this unified dataset into the same Zeta-derived edit-markup format as described above and applied filtering to remove non-sequential edits using a small in-context model (GPT-4.1 mini).
+
+## Choosing the Base Model for NES
+
+With the training format and dataset finalized, the next major decision was choosing what base model to fine-tune. Initially, we considered both open-source and managed models, but ultimately chose Gemini 2.5 Flash Lite for two main reasons:
+
+* **Easy serving:** Running an OSS model would require us to manage its inference and scalability in production. For a feature as latency-sensitive as Next Edit, these operational pieces matter as much as the model weights themselves. Using a managed model helped us avoid all these operational overheads.
+
+* **Simple supervised-fine-tuning:** We fine-tuned NES using **[Google’s Gemini Supervised Fine-Tuning (SFT) API](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/gemini-use-supervised-tuning)**, with no training loop to maintain, no GPU provisioning, and at the same price as the regular Gemini inference API. Under the hood, Flash Lite uses LoRA (Low-Rank Adaptation), which means we update only a small set of parameters rather than the full model. This keeps NES lightweight and preserves the base model’s broader coding ability.
+
+Overall, in practice, using Flash Lite gave us model quality comparable to strong open-source baselines, with the obvious advantage of far lower operational costs. We can  , keeping the model stable across versions.
+
+### Why this matters for you
+
+Using Flash Lite directly improves the user experience in the editor. As a user, you can expect faster responses and likely lower compute cost (which can translate into cheaper product).
+
+And since fine-tuning is lightweight, we can roll out frequent improvements, providing a more robust service with less risk of downtime, scaling issues, or version drift; meaning greater reliability for everyone.
+
+## How we evaluated the model
+
+We evaluated our edit model using a single metric: LLM-as-a-Judge, powered by **Gemini 2.5 Pro**. This judge model evaluates whether a predicted edit is semantically correct, logically consistent with recent edits, and appropriate for the given context. This is unlike token-level comparisons and makes it far closer to how a human engineer would judge an edit.
+
+In practice, this gave us an evaluation process that is scalable, automated, and far more sensitive to intent than simple string matching. It allowed us to run large evaluation suites continuously as we retrain and improve the model.
+
+## Enhancing Context at Inference
+
+Training and evaluation only define what the model knows in theory. To make Next Edit Suggestions feel alive inside the editor, the model needs to understand what you are doing right now. So at inference time, we give the model more than just the current file snapshot. We also send:
+
+1. Your recent edit history
+   Wrapped in `<|edit_history|>`, this gives the model a short story of your current flow: what changed, in what order, and what direction the code seems to be moving.
+
+2. Additional semantic context
+   Added via `<|additional_context|>`, this might include type signatures, documentation, or relevant parts of the broader codebase. It’s the kind of stuff you would mentally reference before making the next edit.
+
+Here’s a small example image showing the full inference-time context with the edit history, additional context, and the live editable region which the NES model receives:
+
+![Additional context while predicting the next edit](./images/additional-context-image.png)
+
+NES combines these inputs to infer the user’s intent from earlier edits and predict the next edit inside the editable region only.
+
+In this post, we’ve focused on how the model is trained and evaluated. In the next post, we’ll go deeper into how these dynamic contexts are constructed, ranked, and streamed into the model to drive real-time, context-aware edit predictions.
+
+
 # Developer Updates
 URL: /developer-updates
 Weekly update notes from Pochi developers
@@ -2164,6 +2256,93 @@ Here you will find highlights on features, enhancements, and bug fixes, plus ins
   ### Sep 22, 2025
 
   --- */}
+
+## [NES Series (Part 1): The Edit Model Behind Tab Completion](./how-we-created-nes-model)
+
+#### Nov 19, 2025
+
+# NES Series (Part 1): The Edit Model Behind Pochi’s Tab Completion
+
+In this post, we’re introducing our internal edit model, the foundation behind Next Edit Suggestion (NES). It’s an upgrade to Tab completion, designed to predict the next change your code needs, wherever it lives.
+
+Technically this is much harder to achieve, since NES considers the entire file plus your recent edit history and predicts how your code is likely to evolve: where the next change should happen, and what that change should be.
+
+![NES Cover Image](./images/cover-nes.png)
+
+Other editors have explored versions of next-edit prediction, but models have evolved a lot, and so has our understanding of how people actually write code.
+
+As an open-source team, we want to share this work transparently. This is the first post in our "Next Edit Suggestion" series, where we walk you through how we trained the underlying model to how it powers real-time editing inside the extension.
+
+![NES Demo](./images/nes-demo-blog.gif)
+
+## How We Train the Edit Model
+
+When we decided to build NES, one of the first pressing questions on our mind was: What kind of data actually teaches a model to make good edits?
+
+It turned out that real developer intent is surprisingly hard to capture. As anyone who’s peeked at real commits knows, developer edits are messy. Pull requests bundle unrelated changes, commit histories jump around, and the sequences of edits often skip the small, incremental steps engineers actually take when exploring or fixing code.
+
+### The Training Process
+
+To train an edit model, we format each example using special edit tokens. These tokens tell the model:
+
+* What part of the file is editable
+* The user’s cursor position
+* What the user has edited so far
+* What the next edit should be inside that region only
+
+Unlike chat-style models that generate free-form text, NES is trained to predict the next code edit inside the editable region.
+
+Below is an example of how NES predicts the next edit:
+
+![SFT conversion image](./images/sft-conversion-image.png)
+
+In the image above, the developer makes the first edit allowing the model to capture the intent of the user. The `editable_region` markers define everything between them as the editable zone. The `user_cursor_is_here` token shows the model where the user is currently editing.
+
+NES infers the transformation pattern (capitalization in this case) and applies it consistently as the next edit sequence.
+
+To support this training format, we used **[CommitPackFT](https://huggingface.co/datasets/bigcode/commitpackft)** and **[Zeta](https://huggingface.co/datasets/zed-industries/zeta)** as data sources. We normalized this unified dataset into the same Zeta-derived edit-markup format as described above and applied filtering to remove non-sequential edits using a small in-context model (GPT-4.1 mini).
+
+## Choosing the Base Model for NES
+
+With the training format and dataset finalized, the next major decision was choosing what base model to fine-tune. Initially, we considered both open-source and managed models, but ultimately chose Gemini 2.5 Flash Lite for two main reasons:
+
+* **Easy serving:** Running an OSS model would require us to manage its inference and scalability in production. For a feature as latency-sensitive as Next Edit, these operational pieces matter as much as the model weights themselves. Using a managed model helped us avoid all these operational overheads.
+
+* **Simple supervised-fine-tuning:** We fine-tuned NES using **[Google’s Gemini Supervised Fine-Tuning (SFT) API](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/gemini-use-supervised-tuning)**, with no training loop to maintain, no GPU provisioning, and at the same price as the regular Gemini inference API. Under the hood, Flash Lite uses LoRA (Low-Rank Adaptation), which means we update only a small set of parameters rather than the full model. This keeps NES lightweight and preserves the base model’s broader coding ability.
+
+Overall, in practice, using Flash Lite gave us model quality comparable to strong open-source baselines, with the obvious advantage of far lower operational costs. We can  , keeping the model stable across versions.
+
+### Why this matters for you
+
+Using Flash Lite directly improves the user experience in the editor. As a user, you can expect faster responses and likely lower compute cost (which can translate into cheaper product).
+
+And since fine-tuning is lightweight, we can roll out frequent improvements, providing a more robust service with less risk of downtime, scaling issues, or version drift; meaning greater reliability for everyone.
+
+## How we evaluated the model
+
+We evaluated our edit model using a single metric: LLM-as-a-Judge, powered by **Gemini 2.5 Pro**. This judge model evaluates whether a predicted edit is semantically correct, logically consistent with recent edits, and appropriate for the given context. This is unlike token-level comparisons and makes it far closer to how a human engineer would judge an edit.
+
+In practice, this gave us an evaluation process that is scalable, automated, and far more sensitive to intent than simple string matching. It allowed us to run large evaluation suites continuously as we retrain and improve the model.
+
+## Enhancing Context at Inference
+
+Training and evaluation only define what the model knows in theory. To make Next Edit Suggestions feel alive inside the editor, the model needs to understand what you are doing right now. So at inference time, we give the model more than just the current file snapshot. We also send:
+
+1. Your recent edit history
+   Wrapped in `<|edit_history|>`, this gives the model a short story of your current flow: what changed, in what order, and what direction the code seems to be moving.
+
+2. Additional semantic context
+   Added via `<|additional_context|>`, this might include type signatures, documentation, or relevant parts of the broader codebase. It’s the kind of stuff you would mentally reference before making the next edit.
+
+Here’s a small example image showing the full inference-time context with the edit history, additional context, and the live editable region which the NES model receives:
+
+![Additional context while predicting the next edit](./images/additional-context-image.png)
+
+NES combines these inputs to infer the user’s intent from earlier edits and predict the next edit inside the editable region only.
+
+In this post, we’ve focused on how the model is trained and evaluated. In the next post, we’ll go deeper into how these dynamic contexts are constructed, ranked, and streamed into the model to drive real-time, context-aware edit predictions.
+
+***
 
 ## [Weekly Update #10](./2025-11-13-weekly-update-10)
 
@@ -2959,98 +3138,6 @@ With Handy installed, let's try the workflow.
 ## Conclusion
 
 By combining Handy and Pochi, you've created a fast and efficient voice-powered programming environment. This setup gives you a modern, hands-free way to translate your ideas into code while keeping the entire transcription pipeline on your device.
-
-
-# NES Series (Part 1): The Edit Model Behind Pochi’s Tab Completion
-URL: /tutorials/how-we-created-nes-model
-Learn how to use Pochi to automate GitHub Actions, PR reviews, CI/CD, and more.
-***
-
-title: 'NES Series (Part 1): The Edit Model Behind Pochi’s Tab Completion'
-description: "Learn how to use Pochi to automate GitHub Actions, PR reviews, CI/CD, and more."
-image: "/og-image/nes-part-1-og-image.png"
-------------------------------------------
-
-# NES Series (Part 1): The Edit Model Behind Pochi’s Tab Completion
-
-![NES Cover Image](./images/cover-nes.png)
-
-Today, we’re launching something we’ve been quietly excited about for weeks: Next Edit Suggestion, or simply put, NES. It’s an upgrade to Tab completion, designed to predict the next change your code needs, wherever it lives.
-
-NES keeps offering the next edit, then the one after that, and then the one after that. You can walk through these changes across all your files, tapping `Tab` and stacking up saved keystrokes (and time!) with every acceptance.
-
-![NES Demo](./images/nes-demo-blog.gif)
-
-Technically this is much harder to achieve, since NES considers the entire file plus your recent edit history and predicts how your code is likely to evolve: where the next change should happen, and what that change should be.
-
-Other tools have versions of this idea, but models have evolved a lot, and so has our understanding of how people actually write code. So we bring you our own take on Pochi’s NES: a bit different, a bit more opinionated.  This is the first post in our "Next Edit Suggestion" series, where we’ll share how we trained, evaluated, and optimized our internal Next Edit model in Pochi.
-
-## How We Train the Edit Model
-
-When we decided to build NES, one of the first pressing questions on our mind was: What kind of data actually teaches a model to make good edits?
-
-It turned out that real developer intent is surprisingly hard to capture. As anyone who’s peeked at real commits knows, developer edits are messy. Pull requests bundle unrelated changes, commit histories jump around, and the sequences of edits often skip the small, incremental steps engineers actually take when exploring or fixing code.
-
-### The Training Process
-
-To train an edit model, we format each example using special edit tokens. These tokens tell the model:
-
-* What part of the file is editable
-* The user’s cursor position
-* What the user has edited so far
-* What the next edit should be inside that region only
-
-Unlike chat-style models that generate free-form text, NES is trained to predict the next code edit inside the editable region.
-
-Below is an example of how NES predicts the next edit:
-
-![SFT conversion image](./images/sft-conversion-image.png)
-
-In the image above, the developer makes the first edit allowing the model to capture the intent of the user. The `editable_region` markers define everything between them as the editable zone. The `user_cursor_is_here` token shows the model where the user is currently editing.
-
-NES infers the transformation pattern (capitalization in this case) and applies it consistently as the next edit sequence.
-
-To support this training format, we used **[CommitPackFT](https://huggingface.co/datasets/lurf21/NextEditPrediction)** and **[Zeta](https://huggingface.co/datasets/zed-industries/zeta)** as data sources. We normalized this unified dataset into the same Zeta-derived edit-markup format as described above and applied filtering to remove non-sequential edits using a small in-context model (GPT-4.1 mini).
-
-## Choosing the Base Model for NES
-
-With the training format and dataset finalized, the next major decision was choosing what base model to fine-tune. Initially, we considered both open-source and managed models, but ultimately chose Gemini 2.5 Flash Lite for two main reasons:
-
-* **Easy serving:** Running an OSS model would require us to manage its inference and scalability in production. For a feature as latency-sensitive as Next Edit, these operational pieces matter as much as the model weights themselves. Using a managed model helped us avoid all these operational overheads.
-
-* **Simple supervised-fine-tuning:** We fine-tuned NES using **[Google’s Gemini Supervised Fine-Tuning (SFT) API](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/gemini-use-supervised-tuning)**, with no training loop to maintain, no GPU provisioning, and at the same price as the regular Gemini inference API. Under the hood, Flash Lite uses LoRA (Low-Rank Adaptation), which means we update only a small set of parameters rather than the full model. This keeps NES lightweight and preserves the base model’s broader coding ability.
-
-Overall, in practice, using Flash Lite gave us model quality comparable to strong open-source baselines, with the obvious advantage of far lower operational costs. We can  , keeping the model stable across versions.
-
-### Why this matters for you
-
-Using Flash Lite directly improves the user experience in the editor. As a user, you can expect faster responses and likely lower compute cost (which can translate into cheaper product).
-
-And since fine-tuning is lightweight, we can roll out frequent improvements, providing a more robust service with less risk of downtime, scaling issues, or version drift; meaning greater reliability for everyone.
-
-## How we evaluated the model
-
-We evaluated our edit model using a single metric: LLM-as-a-Judge, powered by **Gemini 2.5 Pro**. This judge model evaluates whether a predicted edit is semantically correct, logically consistent with recent edits, and appropriate for the given context. This is unlike token-level comparisons and makes it far closer to how a human engineer would judge an edit.
-
-In practice, this gave us an evaluation process that is scalable, automated, and far more sensitive to intent than simple string matching. It allowed us to run large evaluation suites continuously as we retrain and improve the model.
-
-## Enhancing Context at Inference
-
-Training and evaluation only define what the model knows in theory. To make Next Edit Suggestions feel alive inside the editor, the model needs to understand what you are doing right now. So at inference time, we give the model more than just the current file snapshot. We also send:
-
-1. Your recent edit history
-   Wrapped in `<|edit_history|>`, this gives the model a short story of your current flow: what changed, in what order, and what direction the code seems to be moving.
-
-2. Additional semantic context
-   Added via `<|additional_context|>`, this might include type signatures, documentation, or relevant parts of the broader codebase. It’s the kind of stuff you would mentally reference before making the next edit.
-
-Here’s a small example image showing the full inference-time context with the edit history, additional context, and the live editable region which the NES model receives:
-
-![Additional context while predicting the next edit](./images/additional-context-image.png)
-
-NES combines these inputs to infer the user’s intent from earlier edits and predict the next edit inside the editable region only.
-
-In this post, we’ve focused on how the model is trained and evaluated. In the next post, we’ll go deeper into how these dynamic contexts are constructed, ranked, and streamed into the model to drive real-time, context-aware edit predictions.
 
 
 # Tutorials
@@ -4128,10 +4215,13 @@ Try adding Pochi to your repository today with just one YAML file, and see how q
 
 # Build a Custom MCP Server to Query Supabase
 URL: /tutorials/supabase-mcp-server
-
+Build a custom MCP server in Pochi that lets you run natural language SQL queries on your Supabase database.
 ***
 
-## title: 'Build a Custom MCP Server to Query Supabase'
+title: 'Build a Custom MCP Server to Query Supabase'
+description: "Build a custom MCP server in Pochi that lets you run natural language SQL queries on your Supabase database."
+image: "/og-image/mcp-server-supabase-og-image.png"
+---------------------------------------------------
 
 # Build a Custom MCP Server to Query Supabase
 
