@@ -3053,10 +3053,13 @@ And remember, this is a two-way conversation. If you ever feel that Pochi's plan
 
 # Build Your Own AI Teammate with Pochi in GitHub Actions
 URL: /tutorials/pochi-github-actions
-
+Learn how to use Pochi to automate GitHub Actions, PR reviews, CI/CD, and more.
 ***
 
-## title: 'Build Your Own AI Teammate with Pochi in GitHub Actions'
+title: 'Build Your Own AI Teammate with Pochi in GitHub Actions'
+description: "Learn how to use Pochi to automate GitHub Actions, PR reviews, CI/CD, and more."
+image: "/og-image/github-actions-with-pochi-architecture-og-image.png"
+----------------------------------------------------------------------
 
 # Build Your Own AI Teammate with Pochi in GitHub Actions
 
