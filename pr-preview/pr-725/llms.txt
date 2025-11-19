@@ -2963,10 +2963,13 @@ By combining Handy and Pochi, you've created a fast and efficient voice-powered 
 
 # NES Series (Part 1): The Edit Model Behind Pochi’s Tab Completion
 URL: /tutorials/how-we-created-nes-model
-
+Learn how to use Pochi to automate GitHub Actions, PR reviews, CI/CD, and more.
 ***
 
-## title: 'NES Series (Part 1): The Edit Model Behind Pochi’s Tab Completion'
+title: 'NES Series (Part 1): The Edit Model Behind Pochi’s Tab Completion'
+description: "Learn how to use Pochi to automate GitHub Actions, PR reviews, CI/CD, and more."
+image: "/og-image/nes-part-1-og-image.png"
+------------------------------------------
 
 # NES Series (Part 1): The Edit Model Behind Pochi’s Tab Completion
 
