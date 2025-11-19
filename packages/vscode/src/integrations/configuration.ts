@@ -24,6 +24,9 @@ export class PochiConfiguration implements vscode.Disposable {
 
   readonly advancedSettings = signal(getPochiAdvanceSettings());
   readonly autoSaveDisabled = signal(getAutoSaveDisabled());
+  readonly githubCopilotCodeCompletionEnabled = signal(
+    getGithubCopilotCodeCompletionEnabled(),
+  );
 
   constructor() {
     this.disposables.push(
@@ -36,16 +39,32 @@ export class PochiConfiguration implements vscode.Disposable {
         if (e.affectsConfiguration("files.autoSave")) {
           this.autoSaveDisabled.value = getAutoSaveDisabled();
         }
+
+        if (e.affectsConfiguration("github.copilot")) {
+          this.githubCopilotCodeCompletionEnabled.value =
+            getGithubCopilotCodeCompletionEnabled();
+        }
       }),
     );
 
-    this.disposables.push({
-      dispose: this.advancedSettings.subscribe((value) => {
-        if (!deepEqual(value, getPochiAdvanceSettings())) {
-          updatePochiAdvanceSettings(value);
-        }
-      }),
-    });
+    this.disposables.push(
+      {
+        dispose: this.advancedSettings.subscribe((value) => {
+          if (!deepEqual(value, getPochiAdvanceSettings())) {
+            updatePochiAdvanceSettings(value);
+          }
+        }),
+      },
+      {
+        dispose: this.githubCopilotCodeCompletionEnabled.subscribe(
+          (enabled) => {
+            if (enabled !== getGithubCopilotCodeCompletionEnabled()) {
+              updateGithubCopilotCodeCompletionEnabled(enabled);
+            }
+          },
+        ),
+      },
+    );
   }
 
   async updateCustomModelSettings(
@@ -142,9 +161,9 @@ const PochiAdvanceSettings = z.object({
         .optional(),
     })
     .optional(),
-  nextEditSuggestion: z
+  tabCompletion: z
     .object({
-      enabled: z.boolean().optional(),
+      disabled: z.boolean().optional(),
       provider: z
         .discriminatedUnion("type", [
           z.object({
@@ -187,6 +206,35 @@ function getAutoSaveDisabled() {
     .get<string>("autoSave", "off");
 
   return autoSave === "off";
+}
+
+function getGithubCopilotCodeCompletionEnabled() {
+  const copilotEnabled = vscode.workspace
+    .getConfiguration("github.copilot")
+    .get<Record<string, boolean>>("enable", {});
+  if (Object.keys(copilotEnabled).length === 0) {
+    // Check if Copilot extension is installed and active
+    const copilotExtension = vscode.extensions.getExtension("github.copilot");
+    return copilotExtension?.isActive ?? false;
+  }
+  return Object.values(copilotEnabled).some((v) => v);
+}
+
+async function updateGithubCopilotCodeCompletionEnabled(enabled: boolean) {
+  const copilotEnabled = vscode.workspace
+    .getConfiguration("github.copilot")
+    .get<Record<string, boolean>>("enable", {});
+  const target: Record<string, boolean> = {};
+  if (Object.keys(copilotEnabled).length === 0) {
+    target["*"] = enabled;
+  } else {
+    for (const key in copilotEnabled) {
+      target[key] = enabled;
+    }
+  }
+  return await vscode.workspace
+    .getConfiguration("github.copilot")
+    .update("enable", target, true);
 }
 
 /**

@@ -1,12 +1,16 @@
+import path from "node:path";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { GitStateMonitor } from "@/integrations/git/git-state";
+import { readFileContent } from "@/lib/fs";
 import { getLogger } from "@/lib/logger";
 import { toErrorMessage } from "@getpochi/common";
+import { getWorktreeNameFromWorktreePath } from "@getpochi/common/git-utils";
 import type { GitWorktree } from "@getpochi/common/vscode-webui-bridge";
 import { signal } from "@preact/signals-core";
 import simpleGit from "simple-git";
 import { injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
+import { DiffChangesContentProvider } from "../editor/diff-changes-content-provider";
 
 const logger = getLogger("WorktreeManager");
 
@@ -22,6 +26,14 @@ export class WorktreeManager implements vscode.Disposable {
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
     this.git = simpleGit(workspaceFolder);
     this.init();
+  }
+
+  public getWorktreeDisplayName(cwd: string): string | undefined {
+    const worktree = this.worktrees.value.find((wt) => wt.path === cwd);
+    if (!worktree) {
+      return getWorktreeNameFromWorktreePath(cwd);
+    }
+    return worktree.isMain ? "main" : getWorktreeNameFromWorktreePath(cwd);
   }
 
   private async init() {
@@ -187,6 +199,94 @@ export async function setupWorktree(worktree: string): Promise<boolean> {
     vscode.window.showErrorMessage(
       `Failed to setup worktree: ${toErrorMessage(error)}`,
     );
+    return false;
+  }
+}
+
+export async function showWorktreeDiff(
+  cwd: string,
+  base = "origin/main",
+): Promise<boolean> {
+  if (!cwd) {
+    return false;
+  }
+
+  const git = simpleGit(cwd);
+  const result: { filepath: string; before: string; after: string }[] = [];
+  try {
+    const output = await git.raw(["diff", "--name-status", base]);
+    if (output.trim().length === 0) {
+      vscode.window.showInformationMessage("No changes found.");
+      return false;
+    }
+    const changedFiles = output
+      .trim()
+      .split("\n")
+      .map((line: string) => {
+        const [status, filepath] = line.split("\t");
+        return { status: status.trim(), filepath: filepath.trim() };
+      });
+
+    if (changedFiles.length === 0) {
+      vscode.window.showInformationMessage("No changes found.");
+      return false;
+    }
+
+    for (const { status, filepath } of changedFiles) {
+      const fsPath = path.join(cwd, filepath);
+      let beforeContent = "";
+      let afterContent = "";
+      if (status === "A") {
+        const fileContent = await readFileContent(fsPath);
+        afterContent = fileContent ?? "";
+      } else if (status === "D") {
+        beforeContent = await git.raw(["show", `${base}:${filepath}`]);
+      } else {
+        beforeContent = await git.raw(["show", `${base}:${filepath}`]);
+        afterContent = (await readFileContent(fsPath)) ?? "";
+      }
+
+      result.push({
+        filepath,
+        before: beforeContent,
+        after: afterContent,
+      });
+    }
+
+    // Workaround: Focus the target column before calling 'vscode.changes'
+    const dummyDoc = await vscode.workspace.openTextDocument({
+      content: "",
+      language: "text",
+    });
+    await vscode.window.showTextDocument(dummyDoc, {
+      preview: true,
+      preserveFocus: false,
+    });
+
+    // show changes
+    const worktreeName = path.basename(cwd);
+    const title = `Changes: ${base} ↔ ${worktreeName}`;
+
+    await vscode.commands.executeCommand(
+      "vscode.changes",
+      title,
+      result.map((file) => [
+        vscode.Uri.joinPath(vscode.Uri.file(cwd), file.filepath),
+        DiffChangesContentProvider.decode({
+          filepath: file.filepath,
+          content: file.before,
+          cwd,
+        }),
+        DiffChangesContentProvider.decode({
+          filepath: file.filepath,
+          content: file.after,
+          cwd,
+        }),
+      ]),
+    );
+    return true;
+  } catch (e: unknown) {
+    vscode.window.showErrorMessage(`Failed to get diff: ${toErrorMessage(e)}`);
     return false;
   }
 }

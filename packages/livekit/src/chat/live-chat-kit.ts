@@ -7,7 +7,7 @@ import { makeMessagesQuery, makeTaskQuery } from "../livestore/default-queries";
 import { events, tables } from "../livestore/default-schema";
 import { toTaskError, toTaskGitInfo, toTaskStatus } from "../task";
 
-import type { Message } from "../types";
+import type { Message, Task } from "../types";
 import { scheduleGenerateTitleJob } from "./background-job";
 import {
   FlexibleChatTransport,
@@ -37,6 +37,15 @@ export type LiveChatKitOptions<T> = {
     messages: Message[];
     abortSignal: AbortSignal;
   }) => void | Promise<void>;
+  onStreamStart?: () => void;
+  onStreamFinish?: (
+    data: Pick<Task, "id" | "cwd" | "status"> & { messages: Message[] },
+  ) => void;
+  onStreamFailed?: (data: {
+    error: Error;
+    messages: Message[];
+    cwd: string | null;
+  }) => void;
 
   customAgent?: CustomAgent;
   outputSchema?: z.ZodAny;
@@ -55,7 +64,17 @@ export class LiveChatKit<
   protected readonly store: Store;
   readonly chat: T;
   private readonly transport: FlexibleChatTransport;
-
+  onStreamStart?: () => void;
+  onStreamFinish?: (
+    data: Pick<Task, "id" | "cwd" | "status"> & {
+      messages: Message[];
+    },
+  ) => void;
+  onStreamFailed?: (data: {
+    cwd: string | null;
+    error: Error;
+    messages: Message[];
+  }) => void;
   readonly spawn: () => Promise<string>;
 
   constructor({
@@ -69,10 +88,16 @@ export class LiveChatKit<
     isCli,
     customAgent,
     outputSchema,
+    onStreamStart,
+    onStreamFinish,
+    onStreamFailed,
     ...chatInit
   }: LiveChatKitOptions<T>) {
     this.taskId = taskId;
     this.store = store;
+    this.onStreamStart = onStreamStart;
+    this.onStreamFinish = onStreamFinish;
+    this.onStreamFailed = onStreamFailed;
     this.transport = new FlexibleChatTransport({
       store,
       onStart: this.onStart,
@@ -278,6 +303,8 @@ export class LiveChatKit<
           modelId: llm.id,
         }),
       );
+
+      this.onStreamStart?.();
     }
   };
 
@@ -300,20 +327,28 @@ export class LiveChatKit<
       return this.onError(abortError);
     }
 
+    const status = toTaskStatus(message, message.metadata?.finishReason);
     store.commit(
       events.chatStreamFinished({
         id: this.taskId,
-        status: toTaskStatus(message, message.metadata?.finishReason),
+        status,
         data: message,
         totalTokens: message.metadata.totalTokens,
         updatedAt: new Date(),
       }),
     );
+    this.onStreamFinish?.({
+      id: this.taskId,
+      cwd: this.task?.cwd ?? null,
+      status,
+      messages: [...this.chat.messages],
+    });
   };
 
   private readonly onError: ChatOnErrorCallback = (error) => {
     logger.error("onError", error);
     const lastMessage = this.chat.messages.at(-1) || null;
+
     this.store.commit(
       events.chatStreamFailed({
         id: this.taskId,
@@ -322,5 +357,10 @@ export class LiveChatKit<
         updatedAt: new Date(),
       }),
     );
+    this.onStreamFailed?.({
+      cwd: this.task?.cwd ?? null,
+      error,
+      messages: [...this.chat.messages],
+    });
   };
 }

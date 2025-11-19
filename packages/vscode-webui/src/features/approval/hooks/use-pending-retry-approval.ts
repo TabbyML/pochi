@@ -1,7 +1,7 @@
 import { useAutoApproveGuard } from "@/features/chat";
+import { useRetryCount } from "@/features/chat";
+import { isRetryableError } from "@/features/retry";
 import { useAutoApprove } from "@/features/settings";
-import { PochiApiErrors } from "@getpochi/vendor-pochi/edge";
-import { APICallError } from "ai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 // fibonacci sequence starting from 1, 2, 3, 5, 8...
@@ -17,11 +17,6 @@ function getRetryDelay(attempts: number, limit: number) {
     return undefined;
   }
   return fib(attempts + 2);
-}
-
-interface RetryCount {
-  error: Error;
-  count: number;
 }
 
 export interface PendingRetryApproval {
@@ -56,11 +51,7 @@ export function usePendingRetryApproval({
 }) {
   const autoApproveGuard = useAutoApproveGuard();
 
-  if (error && Object.values(PochiApiErrors).includes(error.message)) {
-    autoApproveGuard.current = "stop";
-  }
-
-  if (error && APICallError.isInstance(error) && error.isRetryable === false) {
+  if (error && !isRetryableError(error)) {
     autoApproveGuard.current = "stop";
   }
 
@@ -69,9 +60,7 @@ export function usePendingRetryApproval({
     isSubTask,
   });
 
-  const [retryCount, setRetryCount] = useState<RetryCount | undefined>(
-    undefined,
-  );
+  const { retryCount, setRetryCount } = useRetryCount();
 
   // allowed retry times
   const limit = useMemo(() => {
@@ -101,21 +90,21 @@ export function usePendingRetryApproval({
         count: 1,
       };
     });
-  }, [error]);
+  }, [error, setRetryCount]);
 
   useEffect(() => {
     // reset retry count when status is ok and no error
     if (status === "ready" && error === undefined) {
       setRetryCount(undefined);
     }
-  }, [status, error]);
+  }, [status, error, setRetryCount]);
 
   useEffect(() => {
     // reset retry count when settings updated to enable auto-retry
     if (limit > 0) {
       setRetryCount(undefined);
     }
-  }, [limit]);
+  }, [limit, setRetryCount]);
 
   const pendingRetry = useMemo((): PendingRetry | undefined => {
     if (status === "streaming" || status === "submitted") {

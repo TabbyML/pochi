@@ -42,9 +42,9 @@ export class LiveStoreClientDO
       this.webhook = new WebhookDelivery(this.storeId, this.env.WEBHOOK_URL);
     }
 
+    await this.subscribeToStoreUpdates();
     await this.onTasksUpdateThrottled.call();
     await this.state.storage.setAlarm(Date.now() + 15_000);
-    await this.subscribeToStoreUpdates();
   }
 
   async fetch(request: Request): Promise<Response> {
@@ -106,7 +106,9 @@ export class LiveStoreClientDO
     //   });
   }
 
-  alarm(_alarmInfo?: AlarmInvocationInfo): void | Promise<void> {}
+  alarm(_alarmInfo?: AlarmInvocationInfo): void | Promise<void> {
+    this.onTasksUpdateThrottled.call();
+  }
 
   async syncUpdateRpc(payload: unknown) {
     await handleSyncUpdateRpc(payload);
@@ -129,22 +131,22 @@ export class LiveStoreClientDO
 
     if (!updatedTasks.length) return;
 
-    updatedTasks.map((task) => {
-      if (!task.shareId) {
-        store.commit(
-          catalog.events.updateShareId({
-            id: task.id,
-            shareId: `p-${task.id.replaceAll("-", "")}`,
-            updatedAt: new Date(),
-          }),
-        );
-      }
-    });
-
     const { webhook } = this;
     if (webhook) {
       await Promise.all(
         updatedTasks.map((task) => {
+          // Ensure shareId is set
+          const shareId = task.shareId || `p-${task.id.replaceAll("-", "")}`;
+          if (!task.shareId) {
+            store.commit(
+              catalog.events.updateShareId({
+                id: task.id,
+                shareId,
+                updatedAt: new Date(),
+              }),
+            );
+          }
+
           let completion: string | undefined = undefined;
           let followup = undefined;
           if (task.status === "completed") {
@@ -185,15 +187,18 @@ export class LiveStoreClientDO
             }
           }
           webhook
-            .onTaskUpdated(task, {
-              completion,
-              followup: followup
-                ? {
-                    question: followup.question,
-                    choices: followup.followUp,
-                  }
-                : undefined,
-            })
+            .onTaskUpdated(
+              { ...task, shareId },
+              {
+                completion,
+                followup: followup
+                  ? {
+                      question: followup.question,
+                      choices: followup.followUp,
+                    }
+                  : undefined,
+              },
+            )
             .catch(console.error);
         }),
       );

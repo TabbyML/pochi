@@ -91,16 +91,16 @@ export class TextmateThemer implements vscode.Disposable {
     const defaultResult: ThemedDocument = {
       background: 1,
       foreground: 2,
-      tokens: lines.map((line) => [{ text: line }]),
+      tokenLines: lines.map((line) => [{ text: line }]),
       colorMap: [null, DefaultBackground, DefaultForeground] as ColorMap,
     };
 
     if (!this.textmate || !this.registry || !this.themeColors) {
-      logger.debug("Not inited.");
+      logger.debug("Not initiated.");
       return defaultResult;
     }
 
-    const scopeName = findGrammarScopName(languageId);
+    const scopeName = findGrammarScopeName(languageId);
     if (!scopeName) {
       logger.debug(`Grammar for languageId "${languageId}" not found.`);
       return defaultResult;
@@ -158,7 +158,7 @@ export class TextmateThemer implements vscode.Disposable {
       colorMap,
       foreground: colorMap.indexOf(this.themeColors.foreground),
       background: colorMap.indexOf(this.themeColors.background),
-      tokens: result,
+      tokenLines: result,
     };
   }
 
@@ -168,7 +168,7 @@ export class TextmateThemer implements vscode.Disposable {
   }
 }
 
-function findGrammarScopName(languageId: string): string | undefined {
+function findGrammarScopeName(languageId: string): string | undefined {
   for (const ext of vscode.extensions.all) {
     const contrib = ext.packageJSON?.contributes;
     if (!contrib || !Array.isArray(contrib.grammars)) {

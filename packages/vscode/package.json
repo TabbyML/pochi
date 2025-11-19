@@ -1,6 +1,6 @@
 {
   "name": "pochi",
-  "version": "0.11.0-dev",
+  "version": "0.13.0-dev",
   "description": "Pochi is your AI powered team mate. Now available in research preview.",
   "displayName": "Pochi (Research Preview)",
   "publisher": "TabbyML",
@@ -137,10 +137,22 @@
         "icon": "$(go-to-file)"
       },
       {
-        "command": "pochi.resetTaskPanel",
-        "title": "Clear",
+        "command": "pochi.newTaskPanel",
+        "title": "New Task",
         "category": "Pochi",
-        "icon": "$(clear-all)"
+        "icon": "$(add)"
+      },
+      {
+        "command": "pochi.openTerminal",
+        "title": "Open Terminal",
+        "category": "Pochi",
+        "icon": "$(terminal)"
+      },
+      {
+        "command": "pochi.diffWorktree",
+        "title": "Review Changes",
+        "category": "Pochi",
+        "icon": "$(diff-multiple)"
       },
       {
         "command": "pochi.openCustomModelSettings",
@@ -169,7 +181,17 @@
           "group": "navigation"
         },
         {
-          "command": "pochi.resetTaskPanel",
+          "command": "pochi.newTaskPanel",
+          "when": "resourceScheme == 'pochi-task'",
+          "group": "navigation"
+        },
+        {
+          "command": "pochi.openTerminal",
+          "when": "resourceScheme == 'pochi-task'",
+          "group": "navigation"
+        },
+        {
+          "command": "pochi.diffWorktree",
           "when": "resourceScheme == 'pochi-task'",
           "group": "navigation"
         }
@@ -216,7 +238,7 @@
           "when": "false"
         },
         {
-          "command": "pochi.resetTaskPanel",
+          "command": "pochi.newTaskPanel",
           "when": "false"
         }
       ],
@@ -240,14 +262,14 @@
         "mac": "cmd+l"
       },
       {
-        "command": "pochi.nextEditSuggestion.accept",
+        "command": "pochi.tabCompletion.accept",
         "key": "tab",
-        "when": "editorTextFocus && pochiNextEditSuggestionVisible"
+        "when": "editorTextFocus && pochiTabCompletionVisible"
       },
       {
-        "command": "pochi.nextEditSuggestion.reject",
+        "command": "pochi.tabCompletion.reject",
         "key": "escape",
-        "when": "editorTextFocus && pochiNextEditSuggestionVisible"
+        "when": "editorTextFocus && pochiTabCompletionVisible"
       }
     ],
     "configuration": [
@@ -259,191 +281,21 @@
             "default": {},
             "additionalProperties": false,
             "properties": {
-              "inlineCompletion": {
+              "tabCompletion": {
                 "default": {},
                 "additionalProperties": false,
                 "properties": {
                   "disabled": {
                     "type": "boolean",
                     "default": false,
-                    "description": "Enable inline completion feature in Pochi."
-                  },
-                  "disabledLanguages": {
-                    "type": "array",
-                    "default": [],
-                    "items": {
-                      "type": "string"
-                    },
-                    "description": "List of languages where inline completion is disabled."
+                    "description": "Disable Tab Completion."
                   },
                   "provider": {
                     "type": "object",
                     "default": {
                       "type": "pochi"
                     },
-                    "description": "The inline completion provider to use.",
-                    "oneOf": [
-                      {
-                        "additionalProperties": false,
-                        "properties": {
-                          "type": {
-                            "type": "string",
-                            "const": "pochi"
-                          }
-                        }
-                      },
-                      {
-                        "additionalProperties": false,
-                        "properties": {
-                          "type": {
-                            "type": "string",
-                            "const": "openai"
-                          },
-                          "baseURL": {
-                            "type": "string",
-                            "default": "",
-                            "description": "The base URL for OpenAI API requests."
-                          },
-                          "apiKey": {
-                            "type": "string",
-                            "default": "",
-                            "description": "The API key for OpenAI API requests. If not set, will use the POCHI_CODE_COMPLETION_OPENAI_API_KEY environment variable."
-                          },
-                          "model": {
-                            "type": "string",
-                            "default": "",
-                            "description": "The OpenAI model to use for inline completion."
-                          },
-                          "promptTemplate": {
-                            "type": "string",
-                            "default": "",
-                            "description": "The prompt template to use for inline completion. If not set, will use the default template."
-                          }
-                        }
-                      },
-                      {
-                        "additionalProperties": false,
-                        "properties": {
-                          "type": {
-                            "type": "string",
-                            "const": "google-vertex-tuning"
-                          },
-                          "vertex": {
-                            "type": "object",
-                            "description": "Google Vertex AI credentials.",
-                            "oneOf": [
-                              {
-                                "title": "Service Account Key",
-                                "type": "object",
-                                "properties": {
-                                  "type": {
-                                    "type": "string",
-                                    "const": "service-account"
-                                  },
-                                  "serviceAccountKey": {
-                                    "type": "string",
-                                    "description": "The service account key JSON for authentication."
-                                  },
-                                  "location": {
-                                    "type": "string",
-                                    "description": "The Google Cloud location (e.g., 'us-central1')."
-                                  }
-                                },
-                                "required": [
-                                  "type",
-                                  "serviceAccountKey",
-                                  "location"
-                                ]
-                              },
-                              {
-                                "title": "Access Token",
-                                "type": "object",
-                                "properties": {
-                                  "type": {
-                                    "type": "string",
-                                    "const": "access-token"
-                                  },
-                                  "accessToken": {
-                                    "type": "string",
-                                    "description": "A short-lived access token for authentication."
-                                  },
-                                  "projectId": {
-                                    "type": "string",
-                                    "description": "The Google Cloud Project ID."
-                                  },
-                                  "location": {
-                                    "type": "string",
-                                    "description": "The Google Cloud location (e.g., 'us-central1')."
-                                  }
-                                },
-                                "required": [
-                                  "type",
-                                  "accessToken",
-                                  "projectId",
-                                  "location"
-                                ]
-                              },
-                              {
-                                "title": "Model URL",
-                                "type": "object",
-                                "properties": {
-                                  "type": {
-                                    "type": "string",
-                                    "const": "model-url"
-                                  },
-                                  "issueUrl": {
-                                    "type": "string"
-                                  },
-                                  "modelUrl": {
-                                    "type": "string"
-                                  },
-                                  "timeout": {
-                                    "type": "number"
-                                  }
-                                },
-                                "required": [
-                                  "type",
-                                  "issueUrl",
-                                  "modelUrl",
-                                  "timeout"
-                                ]
-                              }
-                            ]
-                          },
-                          "model": {
-                            "type": "string",
-                            "description": "The ID of the model to use."
-                          },
-                          "systemPrompt": {
-                            "type": "string",
-                            "description": "An optional system prompt for inline completion."
-                          },
-                          "promptTemplate": {
-                            "type": "string",
-                            "description": "A custom prompt template to use for inline completion."
-                          }
-                        },
-                        "required": ["type", "vertex", "model"]
-                      }
-                    ]
-                  }
-                }
-              },
-              "nextEditSuggestion": {
-                "default": {},
-                "additionalProperties": false,
-                "properties": {
-                  "enabled": {
-                    "type": "boolean",
-                    "default": false,
-                    "description": "Enable next edit suggestion."
-                  },
-                  "provider": {
-                    "type": "object",
-                    "default": {
-                      "type": "pochi"
-                    },
-                    "description": "The next edit suggestion provider to use.",
+                    "description": "The Tab Completion provider to use.",
                     "oneOf": [
                       {
                         "additionalProperties": false,
@@ -623,6 +475,7 @@
     "simple-git": "^3.28.0",
     "stats-logscale": "^1.0.9",
     "tsyringe": "^4.10.0",
+    "vscode-diff": "^3.0.1",
     "zod": "catalog:"
   },
   "devDependencies": {

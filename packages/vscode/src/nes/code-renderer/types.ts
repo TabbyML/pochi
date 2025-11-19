@@ -12,10 +12,12 @@ export interface ThemedDocument {
   colorMap: ColorMap;
   foreground: number; // color map index
   background: number; // color map index
-  tokens: ThemedToken[][];
+  tokenLines: ThemedToken[][];
 }
 
-export interface DecoratedDocument {
+export interface RenderImageInput {
+  scale: number;
+
   padding: number;
   fontSize: number;
   lineHeight: number;
@@ -23,7 +25,7 @@ export interface DecoratedDocument {
   colorMap: ColorMap;
   foreground: number; // color map index
   background: number; // color map index
-  tokens: ThemedToken[][];
+  tokenLines: ThemedToken[][];
 
   lineDecorations: {
     start: number; // line number
@@ -37,4 +39,10 @@ export interface DecoratedDocument {
     borderColor?: string; // css color
     background?: string; // css color
   }[];
+}
+
+export interface RenderImageOutput {
+  image: Uint8Array;
+  width: number;
+  height: number;
 }

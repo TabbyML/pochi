@@ -3,7 +3,7 @@ import { injectable, singleton } from "tsyringe";
 import type * as vscode from "vscode";
 // biome-ignore lint/style/useImportType:
 import { PochiConfiguration } from "../../integrations/configuration";
-import type { NESContextSegments } from "../contexts";
+import type { NESPromptSegments } from "../contexts";
 import type { NESResponseItem } from "../types";
 import { NESChatModelClient } from "./chat-model-client";
 import { createGoogleVertexTuningModel } from "./google-vertex-tuning";
@@ -23,10 +23,10 @@ export class NESClient {
 
   constructor(private readonly pochiConfiguration: PochiConfiguration) {
     this.provider = this.createProvider(
-      pochiConfiguration.advancedSettings.value.nextEditSuggestion?.provider,
+      pochiConfiguration.advancedSettings.value.tabCompletion?.provider,
     );
     this.pochiConfiguration.advancedSettings.subscribe((value) => {
-      this.provider = this.createProvider(value.nextEditSuggestion?.provider);
+      this.provider = this.createProvider(value.tabCompletion?.provider);
     });
   }
 
@@ -49,16 +49,12 @@ export class NESClient {
       return undefined;
     }
 
-    if (providerConfig?.type === "pochi") {
-      const model = createPochiModel();
-      return new NESChatModelClient(model);
-    }
-
-    return undefined;
+    const model = createPochiModel();
+    return new NESChatModelClient(model);
   }
 
   async fetchCompletion(
-    segments: NESContextSegments,
+    segments: NESPromptSegments,
     token?: vscode.CancellationToken | undefined,
   ): Promise<NESResponseItem | undefined> {
     if (!this.provider) {

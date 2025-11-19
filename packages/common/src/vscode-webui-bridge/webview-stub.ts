@@ -228,16 +228,14 @@ const VSCodeHostStub = {
 
   openTaskInPanel: async (): Promise<void> => {},
 
+  isTaskPanelVisible: async (): Promise<boolean> => false,
+
   onTaskUpdated: async (): Promise<void> => {},
 
   readWorktrees: async (): Promise<
     ThreadSignalSerialization<GitWorktree[]>
   > => {
     return Promise.resolve({} as ThreadSignalSerialization<GitWorktree[]>);
-  },
-
-  showDiff: async (_base?: string): Promise<boolean> => {
-    return false;
   },
 
   createWorktree: async (): Promise<GitWorktree | null> => {

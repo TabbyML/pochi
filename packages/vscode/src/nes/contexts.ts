@@ -10,24 +10,43 @@ import {
 } from "./constants";
 import type { TextDocumentEditStep } from "./edit-history";
 
-export interface NESContext {
+export interface NESDocumentContext {
   readonly document: vscode.TextDocument;
   readonly selection: vscode.Selection;
   readonly editHistory: readonly TextDocumentEditStep[];
 }
 
-export interface NESContextSegments {
+export interface NESPromptSegments {
   edits: string[];
   filepath: string;
   prefix: string;
   editableRegionPrefix: string;
   editableRegionSuffix: string;
   suffix: string;
+  editableRegionStart: number;
+  editableRegionEnd: number;
 }
 
-export function extractNESContextSegments(
-  context: NESContext,
-): NESContextSegments {
+export interface NESRequestContext {
+  documentContext: NESDocumentContext;
+  hash: string;
+  promptSegments: NESPromptSegments;
+}
+
+// FIXME(zhiming): refactor to class
+export function buildNESRequestContext(
+  documentContext: NESDocumentContext,
+): NESRequestContext {
+  return {
+    documentContext,
+    hash: calculateNESContextHash(documentContext),
+    promptSegments: extractNESContextPromptSegments(documentContext),
+  };
+}
+
+function extractNESContextPromptSegments(
+  context: NESDocumentContext,
+): NESPromptSegments {
   const filepath = vscode.workspace.asRelativePath(context.document.uri);
 
   const edits = context.editHistory.map((step) => {
@@ -80,6 +99,9 @@ export function extractNESContextSegments(
   const suffix = context.document.getText(
     new vscode.Range(editableRegionEnd, documentSuffixEnd),
   );
+  const editableRegionStartOffset =
+    context.document.offsetAt(editableRegionStart);
+  const editableRegionEndOffset = context.document.offsetAt(editableRegionEnd);
 
   return {
     edits,
@@ -88,10 +110,12 @@ export function extractNESContextSegments(
     editableRegionPrefix,
     editableRegionSuffix,
     suffix,
+    editableRegionStart: editableRegionStartOffset,
+    editableRegionEnd: editableRegionEndOffset,
   };
 }
 
-export function calculateNESContextHash(context: NESContext): string {
+function calculateNESContextHash(context: NESDocumentContext): string {
   return hashObject({
     document: {
       uri: context.document.uri.toString(),

@@ -32,10 +32,10 @@ import { getServerBaseUrl } from "@getpochi/common/vscode-webui-bridge";
 import { inject, injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
 // biome-ignore lint/style/useImportType: needed for dependency injection
-import { type PochiAdvanceSettings, PochiConfiguration } from "./configuration";
+import { PochiConfiguration } from "./configuration";
 import { DiffChangesContentProvider } from "./editor/diff-changes-content-provider";
+import { showWorktreeDiff } from "./git/worktree";
 import { PochiTaskEditorProvider } from "./webview/webview-panel";
-
 const logger = getLogger("CommandManager");
 
 @injectable()
@@ -337,57 +337,42 @@ export class CommandManager implements vscode.Disposable {
       ),
 
       vscode.commands.registerCommand(
-        "pochi.inlineCompletion.toggleEnabled",
+        "pochi.tabCompletion.resolveConflicts",
         async () => {
-          const current = this.pochiConfiguration.advancedSettings.value;
-          const newSettings = {
-            ...current,
-            inlineCompletion: {
-              ...current.inlineCompletion,
-              disabled: !current.inlineCompletion?.disabled,
-            },
-          };
-          this.pochiConfiguration.advancedSettings.value = newSettings;
+          const githubCopilotCodeCompletionEnabled =
+            this.pochiConfiguration.githubCopilotCodeCompletionEnabled.value;
+          if (!githubCopilotCodeCompletionEnabled) {
+            return;
+          }
+          const selection = await vscode.window.showWarningMessage(
+            "Pochi Tab Completion is unavailable due to conflict with **GitHub Copilot Code Completion**. You can disable conflicting features to use Pochi Tab Completion.",
+            "Disable Conflicting Features",
+            "Disable Pochi Tab Completion",
+          );
+          if (selection === "Disable Conflicting Features") {
+            this.pochiConfiguration.githubCopilotCodeCompletionEnabled.value = false;
+          } else if (selection === "Disable Pochi Tab Completion") {
+            vscode.commands.executeCommand(
+              "pochi.tabCompletion.toggleEnabled",
+              false,
+            );
+          }
         },
       ),
 
       vscode.commands.registerCommand(
-        "pochi.inlineCompletion.toggleLanguageEnabled",
-        async (language?: string | undefined) => {
-          const languageId =
-            language ?? vscode.window.activeTextEditor?.document.languageId;
-
-          if (!languageId) {
-            return;
-          }
-
+        "pochi.tabCompletion.toggleEnabled",
+        async (enabled?: boolean | undefined) => {
           const current = this.pochiConfiguration.advancedSettings.value;
-          let newSettings: PochiAdvanceSettings;
-          if (
-            current.inlineCompletion?.disabledLanguages?.includes(languageId)
-          ) {
-            newSettings = {
-              ...current,
-              inlineCompletion: {
-                ...current.inlineCompletion,
-                disabledLanguages:
-                  current.inlineCompletion.disabledLanguages.filter(
-                    (lang) => lang !== languageId,
-                  ),
-              },
-            };
-          } else {
-            newSettings = {
-              ...current,
-              inlineCompletion: {
-                ...current.inlineCompletion,
-                disabledLanguages: [
-                  ...(current.inlineCompletion?.disabledLanguages ?? []),
-                  languageId,
-                ],
-              },
-            };
-          }
+          const disabled =
+            enabled === undefined ? !current.tabCompletion?.disabled : !enabled;
+          const newSettings = {
+            ...current,
+            tabCompletion: {
+              ...current.tabCompletion,
+              disabled,
+            },
+          };
           this.pochiConfiguration.advancedSettings.value = newSettings;
         },
       ),
@@ -412,15 +397,15 @@ export class CommandManager implements vscode.Disposable {
         }
       }),
 
-      vscode.commands.registerCommand("pochi.resetTaskPanel", async () => {
+      vscode.commands.registerCommand("pochi.newTaskPanel", async () => {
         const activeTab = vscode.window.tabGroups.activeTabGroup.activeTab;
-        logger.debug("resetTaskPanel", { activeTab });
+        logger.debug("newTaskPanel", { activeTab });
         if (
           activeTab &&
           activeTab.input instanceof vscode.TabInputCustom &&
           activeTab.input.viewType === PochiTaskEditorProvider.viewType
         ) {
-          PochiTaskEditorProvider.reset(activeTab.input.uri);
+          PochiTaskEditorProvider.createNewTask(activeTab.input.uri);
         }
       }),
 
@@ -452,25 +437,50 @@ export class CommandManager implements vscode.Disposable {
       ),
 
       vscode.commands.registerCommand(
-        "pochi.nextEditSuggestion.accept",
+        "pochi.tabCompletion.accept",
         async () => {
           this.nesDecorationManager.accept();
         },
       ),
 
       vscode.commands.registerCommand(
-        "pochi.nextEditSuggestion.reject",
+        "pochi.tabCompletion.reject",
         async () => {
           this.nesDecorationManager.reject();
         },
       ),
 
-      vscode.commands.registerCommand(
-        "pochi.createTerminal",
-        (cwd?: string) => {
-          vscode.window.createTerminal({ cwd }).show();
-        },
-      ),
+      vscode.commands.registerCommand("pochi.openTerminal", async () => {
+        const activeTab = vscode.window.tabGroups.activeTabGroup.activeTab;
+        if (
+          activeTab &&
+          activeTab.input instanceof vscode.TabInputCustom &&
+          activeTab.input.viewType === PochiTaskEditorProvider.viewType
+        ) {
+          const params = PochiTaskEditorProvider.parseTaskUri(
+            activeTab.input.uri,
+          );
+          if (params?.cwd) {
+            vscode.window.createTerminal({ cwd: params.cwd }).show();
+          }
+        }
+      }),
+
+      vscode.commands.registerCommand("pochi.diffWorktree", async () => {
+        const activeTab = vscode.window.tabGroups.activeTabGroup.activeTab;
+        if (
+          activeTab &&
+          activeTab.input instanceof vscode.TabInputCustom &&
+          activeTab.input.viewType === PochiTaskEditorProvider.viewType
+        ) {
+          const params = PochiTaskEditorProvider.parseTaskUri(
+            activeTab.input.uri,
+          );
+          if (params?.cwd) {
+            await showWorktreeDiff(params.cwd);
+          }
+        }
+      }),
     );
   }
 

@@ -132,6 +132,7 @@ export const getWorktreeNameFromGitDir = (
   if (match?.[1]) {
     return match[1];
   }
+  return "main";
 };
 
 export const getWorktreeNameFromWorktreePath = (

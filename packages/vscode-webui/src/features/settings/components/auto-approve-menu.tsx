@@ -100,7 +100,6 @@ export function AutoApproveMenu({ isSubTask }: { isSubTask: boolean }) {
     if (isSaving) return;
     setIsSaving(true);
     await GlobalStateStorage.persist({
-      autoApproveActive,
       autoApproveSettings,
       subtaskOffhand,
     });
@@ -109,7 +108,6 @@ export function AutoApproveMenu({ isSubTask }: { isSubTask: boolean }) {
       setIsDirty(false);
       // After persisting, the current state is the new "initial" state
       setInitialSettings({
-        autoApproveActive,
         autoApproveSettings,
         subtaskOffhand,
       });
@@ -133,54 +131,45 @@ export function AutoApproveMenu({ isSubTask }: { isSubTask: boolean }) {
 
   const [isDirty, setIsDirty] = useState(false);
   type SettingsSnapshot = {
-    autoApproveActive: boolean;
     autoApproveSettings: AutoApprove;
     subtaskOffhand: boolean;
   };
   const [initialSettings, setInitialSettings] =
-    useState<SettingsSnapshot | null>(null);
+    useState<SettingsSnapshot | null>({
+      autoApproveSettings,
+      subtaskOffhand,
+    });
+
+  const onOpenChange = (open: boolean) => {
+    if (isSubTask) return;
+
+    // If the initialSettings are not correctly loaded, establish default settings
+    if (open && !initialSettings?.autoApproveSettings) {
+      setInitialSettings({
+        autoApproveSettings,
+        subtaskOffhand,
+      });
+    }
+  };
 
   useEffect(() => {
     if (isSubTask || !initialSettings) return;
 
     const currentSnapshot = {
-      autoApproveActive,
       autoApproveSettings,
       subtaskOffhand,
     };
     const hasChanges =
       JSON.stringify(currentSnapshot) !== JSON.stringify(initialSettings);
     setIsDirty(hasChanges);
-  }, [
-    autoApproveActive,
-    autoApproveSettings,
-    subtaskOffhand,
-    initialSettings,
-    isSubTask,
-  ]);
-
-  const onOpenChange = (open: boolean) => {
-    if (isSubTask) return;
-
-    if (open) {
-      setInitialSettings({
-        autoApproveActive,
-        autoApproveSettings,
-        subtaskOffhand,
-      });
-    } else {
-      // When closing, just reset dirty tracking. Unsaved changes remain in the store.
-      setInitialSettings(null);
-      setIsDirty(false);
-    }
-  };
+  }, [autoApproveSettings, subtaskOffhand, initialSettings, isSubTask]);
 
   return (
     <Popover onOpenChange={onOpenChange}>
       <PopoverTrigger asChild>
         <div
           className={cn(
-            "relative mt-2 flex cursor-pointer select-none items-center justify-between py-2.5",
+            "relative flex cursor-pointer select-none items-center justify-between py-2.5",
           )}
         >
           <div className="flex w-full overflow-x-hidden">
@@ -225,17 +214,17 @@ export function AutoApproveMenu({ isSubTask }: { isSubTask: boolean }) {
         {isDirty && !isSubTask && (
           <Button
             type="button"
-            variant="outline"
             size="sm"
             onClick={handlePersistSettings}
             disabled={isSaving}
-            className="mb-3"
+            className="mb-4"
           >
-            {isSaving ? (
-              <CheckIcon className="size-4" />
-            ) : (
-              t("settings.autoApprove.applyChangesToDefault")
+            {isSaving && (
+              <span>
+                <CheckIcon className="size-4" />
+              </span>
             )}
+            <span>{t("settings.autoApprove.applyChangesToGlobal")}</span>
           </Button>
         )}
         <div className="grid grid-cols-1 gap-2.5 [@media(min-width:400px)]:grid-cols-2">

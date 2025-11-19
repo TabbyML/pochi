@@ -1,6 +1,6 @@
 import { WorkspaceRequiredPlaceholder } from "@/components/workspace-required-placeholder";
 import { ChatContextProvider, useHandleChatEvents } from "@/features/chat";
-import { usePendingModelAutoStart } from "@/features/retry";
+import { isRetryableError, usePendingModelAutoStart } from "@/features/retry";
 import { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
 import { useCurrentWorkspace } from "@/lib/hooks/use-current-workspace";
 import { useCustomAgent } from "@/lib/hooks/use-custom-agents";
@@ -21,20 +21,37 @@ import {
 } from "ai";
 import { useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
+
+import { useLatest } from "@/lib/hooks/use-latest";
+import { useMcp } from "@/lib/hooks/use-mcp";
+import { cn } from "@/lib/utils";
 import { useApprovalAndRetry } from "../approval";
-import { useSelectedModels } from "../settings";
+import { getReadyForRetryError } from "../retry/hooks/use-ready-for-retry-error";
+import {
+  useAutoApprove,
+  useSelectedModels,
+  useSettingsStore,
+} from "../settings";
+import {
+  getPendingToolcallApproval,
+  isToolAutoApproved,
+} from "../settings/hooks/use-tool-auto-approval";
 import { ChatArea } from "./components/chat-area";
 import { ChatToolbar } from "./components/chat-toolbar";
-import { ErrorMessageView } from "./components/error-message-view";
 import { SubtaskHeader } from "./components/subtask";
 import { useRestoreTaskModel } from "./hooks/use-restore-task-model";
 import { useScrollToBottom } from "./hooks/use-scroll-to-bottom";
 import { useSetSubtaskModel } from "./hooks/use-set-subtask-model";
 import { useAddSubtaskResult } from "./hooks/use-subtask-completed";
 import { useSubtaskInfo } from "./hooks/use-subtask-info";
-import { useAutoApproveGuard, useChatAbortController } from "./lib/chat-state";
+import {
+  useAutoApproveGuard,
+  useChatAbortController,
+  useRetryCount,
+} from "./lib/chat-state";
 import { onOverrideMessages } from "./lib/on-override-messages";
 import { useLiveChatKitGetters } from "./lib/use-live-chat-kit-getters";
+import { useSendTaskNotification } from "./lib/use-send-task-notification";
 
 export function ChatPage(props: ChatProps) {
   return (
@@ -55,7 +72,7 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
   const { t } = useTranslation();
   const { store } = useStore();
   const todosRef = useRef<Todo[] | undefined>(undefined);
-
+  const { initSubtaskAutoApproveSettings } = useSettingsStore();
   const defaultUser = {
     name: t("chatPage.defaultUserName"),
     image: `https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(store.clientId)}&scale=120`,
@@ -65,6 +82,9 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
   useAbortBeforeNavigation(chatAbortController.current);
 
   const task = store.useQuery(catalog.queries.makeTaskQuery(uid));
+  const subtask = useSubtaskInfo(uid, task?.parentId);
+  const isSubTask = !!subtask;
+
   useEffect(() => {
     if (task) {
       vscodeHost.onTaskUpdated(
@@ -82,13 +102,20 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
       );
     }
   }, [task]);
-  const subtask = useSubtaskInfo(uid, task?.parentId);
+
+  // inherit autoApproveSettings from parent task
+  useEffect(() => {
+    if (isSubTask) {
+      initSubtaskAutoApproveSettings();
+    }
+  }, [isSubTask, initSubtaskAutoApproveSettings]);
+
   const {
     isLoading: isModelsLoading,
     selectedModel,
     updateSelectedModelId,
   } = useSelectedModels({
-    isSubTask: !!subtask,
+    isSubTask,
   });
   const { customAgent } = useCustomAgent(subtask?.agent);
   const autoApproveGuard = useAutoApproveGuard();
@@ -97,15 +124,111 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
   const isWorkspaceActive = !!currentWorkspace?.cwd;
   const getters = useLiveChatKitGetters({
     todos: todosRef,
-    isSubTask: !!subtask,
+    isSubTask,
   });
 
   useRestoreTaskModel(task, isModelsLoading, updateSelectedModelId);
 
+  const { sendNotification, clearNotification } = useSendTaskNotification();
+
+  const { toolset } = useMcp();
+
+  const { autoApproveActive, autoApproveSettings } = useAutoApprove({
+    autoApproveGuard: autoApproveGuard.current === "auto",
+    isSubTask,
+  });
+
+  const { retryCount } = useRetryCount();
+
+  const onStreamFinish = useLatest(
+    (
+      data: Pick<Task, "id" | "cwd" | "status"> & {
+        messages: Message[];
+      },
+    ) => {
+      const lastMessage = data.messages.at(-1);
+      const taskUid = isSubTask ? task?.parentId : uid;
+      if (!taskUid || !lastMessage) return;
+
+      if (data.status === "pending-tool") {
+        const pendingToolCallApproval = getPendingToolcallApproval(lastMessage);
+        if (pendingToolCallApproval) {
+          const autoApproved = isToolAutoApproved({
+            autoApproveActive,
+            autoApproveSettings,
+            toolset,
+            pendingApproval: pendingToolCallApproval,
+          });
+
+          if (!autoApproved) {
+            sendNotification("pending-tool", {
+              uid: taskUid,
+              cwd: data.cwd,
+              isSubTask,
+            });
+          }
+        }
+      }
+
+      if (data.status === "pending-input") {
+        const readyForRetryError = getReadyForRetryError(messages);
+        if (!readyForRetryError) return;
+
+        const retryLimit =
+          autoApproveActive && autoApproveSettings.retry
+            ? autoApproveSettings.maxRetryLimit
+            : 0;
+
+        if (
+          retryLimit === 0 ||
+          (retryCount?.count !== undefined && retryCount.count >= retryLimit)
+        ) {
+          sendNotification("pending-input", {
+            uid: taskUid,
+            cwd: data.cwd,
+            isSubTask,
+          });
+        }
+      }
+
+      if (data.status === "completed") {
+        sendNotification("completed", {
+          uid: taskUid,
+          cwd: data.cwd,
+          isSubTask,
+        });
+      }
+    },
+  );
+
+  const onStreamFailed = useLatest(
+    ({ error, cwd }: { error: Error; cwd: string | null }) => {
+      const taskUid = isSubTask ? task?.parentId : uid;
+      if (!taskUid) return;
+
+      let autoApprove = autoApproveGuard.current === "auto";
+      if (error && !isRetryableError(error)) {
+        autoApprove = false;
+      }
+
+      const retryLimit =
+        autoApproveActive && autoApproveSettings.retry && autoApprove
+          ? autoApproveSettings.maxRetryLimit
+          : 0;
+
+      if (
+        retryLimit === 0 ||
+        (retryCount?.count !== undefined && retryCount.count >= retryLimit)
+      ) {
+        sendNotification("failed", { uid: taskUid, cwd, isSubTask });
+      }
+    },
+  );
+
   const chatKit = useLiveChatKit({
     taskId: uid,
     getters,
-    isSubTask: !!subtask,
+    isSubTask,
     customAgent,
     abortSignal: chatAbortController.current.signal,
     sendAutomaticallyWhen: (x) => {
@@ -124,6 +247,15 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
       return lastAssistantMessageIsCompleteWithToolCalls(x);
     },
     onOverrideMessages,
+    onStreamStart() {
+      clearNotification();
+    },
+    onStreamFinish(data) {
+      onStreamFinish.current(data);
+    },
+    onStreamFailed(data) {
+      onStreamFailed.current(data);
+    },
   });
 
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -141,24 +273,28 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
   const approvalAndRetry = useApprovalAndRetry({
     ...chat,
     showApproval: !isLoading && !isModelsLoading && !!selectedModel,
-    isSubTask: !!subtask,
+    isSubTask,
   });
 
   const { pendingApproval, retry } = approvalAndRetry;
 
   useEffect(() => {
-    if (prompt && !chatKit.inited && !isFetchingWorkspace) {
+    if (
+      (prompt || !!files?.length) &&
+      !chatKit.inited &&
+      !isFetchingWorkspace
+    ) {
       let partsOrString: Message["parts"] | string;
       if (files?.length) {
-        partsOrString = prepareMessageParts(t, prompt, files);
+        partsOrString = prepareMessageParts(t, prompt || "", files);
       } else {
-        partsOrString = prompt;
+        partsOrString = prompt || "";
       }
       chatKit.init(currentWorkspace?.cwd ?? undefined, partsOrString);
     }
   }, [currentWorkspace, isFetchingWorkspace, prompt, chatKit, files, t]);
 
-  useSetSubtaskModel({ isSubTask: !!subtask, customAgent });
+  useSetSubtaskModel({ isSubTask, customAgent });
 
   usePendingModelAutoStart({
     enabled:
@@ -202,9 +338,12 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
         isLoading={isLoading}
         user={user || defaultUser}
         messagesContainerRef={messagesContainerRef}
+        className={cn({
+          // Leave more space for errors as errors / approval button are absolutely positioned
+          "pb-14": !!displayError,
+        })}
       />
-      <div className="flex flex-col px-4">
-        <ErrorMessageView error={displayError} />
+      <div className="relative flex flex-col px-4">
         {!isWorkspaceActive ? (
           <WorkspaceRequiredPlaceholder
             isFetching={isFetchingWorkspace}
@@ -218,7 +357,7 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
             compact={chatKit.spawn}
             approvalAndRetry={approvalAndRetry}
             attachmentUpload={attachmentUpload}
-            isSubTask={!!subtask}
+            isSubTask={isSubTask}
             subtask={subtask}
             displayError={displayError}
             onUpdateIsPublicShared={chatKit.updateIsPublicShared}

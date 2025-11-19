@@ -2,7 +2,7 @@ import { formatPlaceholders } from "@/code-completion/utils/strings";
 import type { LanguageModelV2 } from "@ai-sdk/provider";
 import { getLogger } from "@getpochi/common";
 import { type CallSettings, type Prompt, generateText } from "ai";
-import type { NESContextSegments } from "../contexts";
+import type { NESPromptSegments } from "../contexts";
 import type { NESResponseItem } from "../types";
 import type { NESClientProvider, ProviderConfig } from "./type";
 
@@ -19,7 +19,7 @@ export class NESChatModelClient implements NESClientProvider {
   constructor(private readonly model: LanguageModelV2) {}
 
   async fetchCompletion(params: {
-    segments: NESContextSegments;
+    segments: NESPromptSegments;
     abortSignal?: AbortSignal | undefined;
   }): Promise<NESResponseItem | undefined> {
     if (!this.model) {
@@ -58,10 +58,20 @@ export class NESChatModelClient implements NESClientProvider {
       return undefined;
     }
 
-    const extractedResult = extractResult(result.text);
+    const extractedResult = extractResult(result.text, params.segments);
     if (extractedResult) {
       return {
-        text: extractedResult,
+        textEdit: {
+          changes: [
+            {
+              range: {
+                start: params.segments.editableRegionStart,
+                end: params.segments.editableRegionEnd,
+              },
+              text: extractedResult,
+            },
+          ],
+        },
       };
     }
 
@@ -69,21 +79,45 @@ export class NESChatModelClient implements NESClientProvider {
   }
 }
 
-function extractResult(text: string) {
-  const startIndex =
-    text.indexOf("<|editable_region_start|>") +
-    "<|editable_region_start|>".length;
-  if (startIndex === -1) {
+function extractResult(text: string, segments: NESPromptSegments) {
+  const startTagIndex = text.indexOf("<|editable_region_start|>");
+  if (startTagIndex === -1) {
+    // No start tag found
     return undefined;
   }
 
-  const endIndex = text.indexOf("<|editable_region_end|>");
-  const extracted =
-    endIndex === -1 ? text.slice(startIndex) : text.slice(startIndex, endIndex);
-  return extracted.replace("<|user_cursor_is_here|>", "");
+  const unexpectedEnd = "\n\n```";
+  if (text.trimEnd().endsWith(unexpectedEnd)) {
+    // Unexpected output end
+    return undefined;
+  }
+
+  const resultRegionStart = startTagIndex + "<|editable_region_start|>".length;
+  const endTagIndex = text.indexOf("<|editable_region_end|>");
+  let result =
+    endTagIndex === -1
+      ? text.slice(resultRegionStart)
+      : text.slice(resultRegionStart, endTagIndex);
+  result = result.replace("<|user_cursor_is_here|>", "");
+
+  const contextText =
+    segments.prefix +
+    segments.editableRegionPrefix +
+    segments.editableRegionSuffix +
+    segments.suffix;
+  const duplicationCheckLinesThreshold = 3;
+  if (
+    result.split("\n").length > duplicationCheckLinesThreshold &&
+    contextText.includes(result)
+  ) {
+    // Duplication detected
+    return undefined;
+  }
+
+  return result;
 }
 
 const SystemPromptTemplate =
-  "You are an AI coding assistant that helps with code completion and editing. You will be given a code snippet with an editable region marked.\nYour task is to complete or modify the code within that region based on the following events that happened in past:\n\nUser edits:\n\n```diff\n{{edits}}\n```\n";
+  "You are an AI coding assistant that helps with code completion and editing. You will be given a code snippet with an editable region marked.\nYour task is to complete or modify the code within that region based on the following events that happened in past. \nNOTE: DO NOT undo or revert the user edits. \n\nUser edits:\n\n```diff\n{{edits}}\n```\n";
 const UserPromptTemplate =
   "```{{filepath}}\n{{prefix}}<|editable_region_start|>{{editableRegionPrefix}}<|user_cursor_is_here|>{{editableRegionSuffix}}<|editable_region_end|>{{suffix}}\n```";

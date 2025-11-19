@@ -94,6 +94,9 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
       // Uploading / Compacting is not allowed to be stopped.
       if (isUploadingAttachments) return;
 
+      // If no valid model is selected, submission is not allowed.
+      if (!selectedModel) return;
+
       const content = input.trim();
 
       // Disallow empty submissions
@@ -127,6 +130,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
       }
     },
     [
+      selectedModel,
       files.length,
       input,
       clearUploadError,

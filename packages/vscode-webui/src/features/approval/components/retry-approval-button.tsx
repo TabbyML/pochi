@@ -17,6 +17,7 @@ export const RetryApprovalButton: React.FC<RetryApprovalButtonProps> = ({
   retry,
 }) => {
   const { t } = useTranslation();
+
   useEffect(() => {
     if (pendingApproval.countdown === 0) {
       doRetry();

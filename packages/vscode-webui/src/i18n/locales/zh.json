@@ -26,7 +26,7 @@
     "queuedMessages": "排队中的消息 ({{count}})",
     "copyImage": "复制图片",
     "openImage": "打开图片",
-    "pleaseCheckFiles": "请检查这些文件。",
+    "pleaseCheckFiles": "请检查这些附件。",
     "chatToolbar": {
       "diffWorktreeWith": "将工作树与 {{branch}} 进行比较",
       "openInTerminal": "在集成终端中打开"
@@ -116,7 +116,7 @@
       "retry": "重试",
       "subtaskOffhand": "子任务 - 自动",
       "subtaskManual": "子任务 - 手动",
-      "applyChangesToDefault": "将更改应用于默认设置"
+      "applyChangesToGlobal": "保存更改"
     },
     "customAgents": {
       "title": "代理",
@@ -259,7 +259,8 @@
   "codeBlock": {
     "showCode": "显示代码",
     "showDiagram": "显示图表",
-    "copy": "复制"
+    "copy": "复制",
+    "toggleLineWrap": "切换换行"
   },
   "messageList": {
     "compactedConversationTooltip": "从此处开始，对话已被压缩以减少令牌使用量"

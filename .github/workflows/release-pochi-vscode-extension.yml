@@ -34,14 +34,25 @@ jobs:
           version=$(echo ${{ github.ref_name }} | sed 's/vscode@//')
           echo "version_number=$version" >> $GITHUB_OUTPUT
 
-          # Check if this is a pre-release (contains -alpha, -beta, or -rc)
-          if echo "$version" | grep -q -e '-alpha\.' -e '-beta\.' -e '-rc\.' ; then
-            echo "is_prerelease=true" >> $GITHUB_OUTPUT
-            echo "This is a pre-release version: $version"
+          # Determine if release should be marked as pre-release
+          is_prerelease=false
+
+          # Check if this is a pre-release (contains -alpha, -beta, or -rc, with or without trailing qualifiers)
+          if echo "$version" | grep -Eq -- '-(alpha|beta|rc)(\.|$)'; then
+            is_prerelease=true
+            echo "This is a pre-release version: $version (pre-release suffix detected)"
           else
-            echo "is_prerelease=false" >> $GITHUB_OUTPUT
-            echo "This is a stable release version: $version"
+            base_version="${version%%-*}"
+            minor=$(echo "$base_version" | cut -d '.' -f 2)
+            if [[ "$minor" =~ ^[0-9]+$ ]] && [ $((minor % 2)) -eq 1 ]; then
+              is_prerelease=true
+              echo "This is a pre-release version: $version (odd minor version detected)"
+            else
+              echo "This is a stable release version: $version"
+            fi
           fi
+          echo "is_prerelease=$is_prerelease" >> $GITHUB_OUTPUT
+
 
       - name: Build VSIX
         run: |

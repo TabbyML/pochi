@@ -106,6 +106,10 @@ const program = new Command()
     "Stream the output in JSON format. This is useful for parsing the output in scripts.",
   )
   .option(
+    "-x, --output-result",
+    "Output the result from attemptCompletion to stdout. This is useful for scripts that need to capture the final result.",
+  )
+  .option(
     "--max-steps <number>",
     "Set the maximum number of steps for a task. The task will stop if it exceeds this limit.",
     parsePositiveInt,
@@ -127,7 +131,7 @@ const program = new Command()
   .option(
     "-m, --model <model>",
     "Specify the model to be used for the task.",
-    "qwen/qwen3-coder",
+    "google/gemini-2.5-flash",
   )
   .optionsGroup("MCP:")
   .option(
@@ -237,7 +241,11 @@ const program = new Command()
     const renderer = new OutputRenderer(runner.state);
     let jsonRenderer: JsonRenderer | undefined;
     if (options.streamJson) {
-      jsonRenderer = new JsonRenderer(store, runner.state);
+      jsonRenderer = new JsonRenderer(store, runner.state, { mode: "full" });
+    } else if (options.outputResult) {
+      jsonRenderer = new JsonRenderer(store, runner.state, {
+        mode: "result-only",
+      });
     }
 
     await runner.run();

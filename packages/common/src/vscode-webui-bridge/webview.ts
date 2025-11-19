@@ -14,6 +14,7 @@ import type {
   SaveCheckpointOptions,
   SessionState,
   TaskIdParams,
+  TaskPanelParams,
   UserEditsDiff,
   WorkspaceState,
 } from "./index";
@@ -284,13 +285,13 @@ export interface VSCodeHostApi {
     ThreadSignalSerialization<Record<string, UserInfo>>
   >;
 
-  openTaskInPanel(options: TaskIdParams & { cwd: string }): Promise<void>;
+  openTaskInPanel(params: TaskPanelParams): Promise<void>;
+
+  isTaskPanelVisible(params: TaskPanelParams): Promise<boolean>;
 
   onTaskUpdated(taskData: unknown): Promise<void>;
 
   readWorktrees(): Promise<ThreadSignalSerialization<GitWorktree[]>>;
-
-  showDiff(base?: string): Promise<boolean>;
 
   createWorktree(): Promise<GitWorktree | null>;
 }
