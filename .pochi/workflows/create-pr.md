@@ -1,5 +1,5 @@
 ---
-model: qwen/qwen3-coder
+model: google/gemini-2.5-flash
 ---
 
 Please help create a PR for the current changes, following these guidelines:

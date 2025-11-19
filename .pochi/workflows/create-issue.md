@@ -1,5 +1,5 @@
 ---
-model: google/gemini-2.5-pro
+model: google/gemini-3-pro
 ---
 
 1. Please conduct a thorough search of the codebase on relevant code snippets to help implement the feature / debug the issue.
