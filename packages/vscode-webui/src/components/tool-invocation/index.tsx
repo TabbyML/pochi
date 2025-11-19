@@ -1,5 +1,4 @@
 import { useToolCallLifeCycle } from "@/features/chat";
-import { useIsDevMode } from "@/features/settings";
 import { cn } from "@/lib/utils";
 import type { Message, UITools } from "@getpochi/livekit";
 import { type ToolUIPart, getToolName } from "ai";
@@ -43,10 +42,6 @@ export function ToolInvocationPart({
   });
   const isExecuting = lifecycle.status.startsWith("execute");
   const C = Tools[toolName];
-  const [isDevMode] = useIsDevMode();
-  if (toolName === "todoWrite" && !isDevMode) {
-    return null; // Skip rendering the todoWrite tool in non-dev mode
-  }
 
   return (
     <div className={cn("flex flex-col gap-1", className)}>
