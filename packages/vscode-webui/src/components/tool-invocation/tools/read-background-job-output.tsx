@@ -43,12 +43,11 @@ export const ReadBackgroundJobOutputTool: React.FC<
 
 export const ReadBackgroundJobOutputToolSummary: React.FC<
   ToolProps<"readBackgroundJobOutput">
-> = ({ tool, isExecuting }) => {
+> = ({ tool }) => {
   const { t } = useTranslation();
   const { regex } = tool.input || {};
   const title = (
     <>
-      <StatusIcon isExecuting={isExecuting} tool={tool} />
       <span className="ml-2">{t("toolInvocation.readBackground")}</span>
       {regex && (
         <>

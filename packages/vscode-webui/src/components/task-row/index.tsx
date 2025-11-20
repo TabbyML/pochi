@@ -9,8 +9,8 @@ import { cn } from "@/lib/utils";
 import { vscodeHost } from "@/lib/vscode";
 import { parseTitle } from "@getpochi/common/message-utils";
 import { encodeStoreId } from "@getpochi/common/store-id-utils";
-import type { Message, Task, UITools } from "@getpochi/livekit";
-import { type ToolUIPart, getToolName } from "ai";
+import type { Task, UITools } from "@getpochi/livekit";
+import type { ToolUIPart } from "ai";
 import {
   CheckCircle2,
   Edit3,
@@ -21,24 +21,7 @@ import {
 import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { MdOutlineErrorOutline } from "react-icons/md";
-import { McpToolCallSummary } from "./tool-invocation/mcp-tool-call";
-import { applyDiffToolSummary } from "./tool-invocation/tools/apply-diff";
-import { AskFollowupQuestionTool } from "./tool-invocation/tools/ask-followup-question";
-import { AttemptCompletionTool } from "./tool-invocation/tools/attempt-completion";
-import { editNotebookToolSummary } from "./tool-invocation/tools/edit-notebook";
-import { executeCommandToolSummary } from "./tool-invocation/tools/execute-command";
-import { globFilesToolSummary } from "./tool-invocation/tools/glob-files";
-import { KillBackgroundJobToolSummary } from "./tool-invocation/tools/kill-background-job";
-import { listFilesToolSummary } from "./tool-invocation/tools/list-files";
-import { multiApplyDiffToolSummary } from "./tool-invocation/tools/multi-apply-diff";
-import { newTaskToolSummary } from "./tool-invocation/tools/new-task";
-import { ReadBackgroundJobOutputToolSummary } from "./tool-invocation/tools/read-background-job-output";
-import { readFileToolSummary } from "./tool-invocation/tools/read-file";
-import { searchFilesToolSummary } from "./tool-invocation/tools/search-files";
-import { StartBackgroundJobToolSummary } from "./tool-invocation/tools/start-background-job";
-import { todoWriteToolSummary } from "./tool-invocation/tools/todo-write";
-import { writeToFileToolSummary } from "./tool-invocation/tools/write-to-file";
-import type { ToolProps } from "./tool-invocation/types";
+import { ToolCallLite } from "./tool-call-lite";
 
 export function TaskRow({
   task,
@@ -155,35 +138,15 @@ const getStatusBorderColor = (status: string): string => {
   }
 };
 
-const emptyMessages: Message[] = [];
 function PendingToolCallView({
   tools,
-  isExecuting,
 }: {
   tools: ToolUIPart<UITools>[];
   isExecuting: boolean;
 }) {
-  const tool = tools[0];
-  const toolName = getToolName(tool);
-  const C = Tools[toolName];
-
   return (
     <div className={cn("flex items-center gap-1 text-muted-foreground")}>
-      {C ? (
-        <C
-          tool={tool}
-          isLoading={false}
-          isExecuting={isExecuting}
-          messages={emptyMessages}
-        />
-      ) : (
-        <McpToolCallSummary
-          messages={emptyMessages}
-          tool={tool}
-          isLoading={false}
-          isExecuting={isExecuting}
-        />
-      )}
+      <ToolCallLite tools={tools} />
       {/* {tools.length > 1 && <span>More</span>} */}
     </div>
   );
@@ -245,24 +208,3 @@ function isBranchNameSameAsWorktreeName(
   // https://github.com/microsoft/vscode/blob/9092ce3427fdd0f677333394fb10156616090fb5/extensions/git/src/commands.ts#L3512
   return branch.replace(/\//g, "-") === worktreeName;
 }
-
-// biome-ignore lint/suspicious/noExplicitAny: matching all tools
-const Tools: Record<string, React.FC<ToolProps<any>>> = {
-  attemptCompletion: AttemptCompletionTool,
-  readFile: readFileToolSummary,
-  writeToFile: writeToFileToolSummary,
-  applyDiff: applyDiffToolSummary,
-  multiApplyDiff: multiApplyDiffToolSummary,
-  askFollowupQuestion: AskFollowupQuestionTool,
-  executeCommand: executeCommandToolSummary,
-  startBackgroundJob: StartBackgroundJobToolSummary,
-  readBackgroundJobOutput: ReadBackgroundJobOutputToolSummary,
-  killBackgroundJob: KillBackgroundJobToolSummary,
-  searchFiles: searchFilesToolSummary,
-  listFiles: listFilesToolSummary,
-  globFiles: globFilesToolSummary,
-  todoWrite: todoWriteToolSummary,
-  editNotebook: editNotebookToolSummary,
-  // @ts-ignore
-  newTask: newTaskToolSummary,
-};

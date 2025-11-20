@@ -23,20 +23,7 @@ export const Todo = Schema.Struct({
 
 export const Todos = Schema.Array(Todo);
 
-export const ToolCall = Schema.Struct({
-  toolCallId: Schema.String,
-  type: Schema.String,
-  state: Schema.Literal(
-    "input-streaming",
-    "input-available",
-    "output-available",
-    "output-error",
-  ),
-  input: Schema.Unknown,
-  output: Schema.optional(Schema.Unknown),
-  errorText: Schema.optional(Schema.String),
-  providerExecuted: Schema.optional(Schema.Boolean),
-});
+export const ToolCall = Schema.Unknown;
 export const ToolCalls = Schema.Array(ToolCall);
 
 export const TaskStatus = Schema.Literal(
