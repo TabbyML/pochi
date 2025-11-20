@@ -8,6 +8,7 @@ import { ThreadNestedWindow } from "@quilted/threads";
 import * as R from "remeda";
 import type { WebviewApi } from "vscode-webview";
 import { queryClient } from "./query-client";
+import Emittery from "emittery";
 
 const logger = getLogger("vscode");
 
@@ -148,6 +149,10 @@ function createVSCodeHost(): VSCodeHostApi {
           // @ts-expect-error
           store?.commit(event);
         },
+
+        onFileChanged(filePath: string) {
+          fileChangeEvent.emit("fileChanged", filePath);
+        },
       },
     },
   );
@@ -156,3 +161,5 @@ function createVSCodeHost(): VSCodeHostApi {
 }
 
 export const vscodeHost = createVSCodeHost();
+
+export const fileChangeEvent = new Emittery<{ fileChanged: string }>();

@@ -672,8 +672,8 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
 
   restoreCheckpoint = runExclusive.build(
     this.checkpointGroup,
-    async (commitHash: string): Promise<void> => {
-      await this.checkpointService.restoreCheckpoint(commitHash);
+    async (commitHash: string, files?: string[]): Promise<void> => {
+      await this.checkpointService.restoreCheckpoint(commitHash, files);
     },
   );
 
@@ -683,13 +683,13 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
 
   diffWithCheckpoint = runExclusive.build(
     this.checkpointGroup,
-    async (fromCheckpoint: string) => {
+    async (fromCheckpoint: string, files?: string[]) => {
       try {
         // Get changes using existing method
-        const changes =
-          await this.checkpointService.getCheckpointUserEditsDiff(
-            fromCheckpoint,
-          );
+        const changes = await this.checkpointService.getCheckpointFileEdits(
+          fromCheckpoint,
+          files,
+        );
         if (!changes || changes.length === 0) {
           return null;
         }

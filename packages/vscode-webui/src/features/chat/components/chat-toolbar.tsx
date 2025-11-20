@@ -1,5 +1,6 @@
 import { AttachmentPreviewList } from "@/components/attachment-preview-list";
 import { DevModeButton } from "@/components/dev-mode-button";
+import { DiffSummary } from "@/components/diff-summary";
 import { ModelSelect } from "@/components/model-select";
 import { PreviewTool } from "@/components/preview-tool";
 import { PublicShareButton } from "@/components/public-share-button";
@@ -34,6 +35,7 @@ import type { SubtaskInfo } from "../hooks/use-subtask-info";
 import { ChatInputForm } from "./chat-input-form";
 import { ErrorMessageView } from "./error-message-view";
 import { CompleteSubtaskButton } from "./subtask";
+import { useTaskChangedFiles } from "../lib/use-task-changed-files";
 
 interface ChatToolbarProps {
   task?: Task;
@@ -68,6 +70,22 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
 
   const [input, setInput] = useState("");
   const [queuedMessages, setQueuedMessages] = useState<string[]>([]);
+
+  // Demo data for diff summary
+  // const [demoFiles] = useState([
+  //   { path: "file1.md", additions: 2, deletions: 1 },
+  //   { path: "file2.js", additions: 4, deletions: 1 },
+  //   { path: "file3.ts", additions: 2, deletions: 1 },
+  //   { path: "file4.html", additions: 2, deletions: 1 },
+  //   { path: "file5.css", additions: 2, deletions: 1 },
+  //   { path: "README.md", additions: 2, deletions: 0 },
+  //   { path: "sddd", additions: 2, deletions: 0 },
+  //   { path: "README.md", additions: 2, deletions: 0 },
+  //   { path: "README.md", additions: 2, deletions: 0 },
+  // ]);
+
+  const { changedFiles, showFileChanges, revertFileChanges } =
+    useTaskChangedFiles(messages);
 
   // Initialize task with prompt if provided and task doesn't exist yet
   const { todos } = useTodos({
@@ -209,6 +227,13 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
           <TodoList.Items viewportClassname="max-h-48" />
         </TodoList>
       )}
+      {/* Demo Diff Summary */}
+      <DiffSummary
+        files={changedFiles}
+        onRevert={revertFileChanges}
+        onRevertAll={revertFileChanges}
+        onViewDiff={showFileChanges}
+      />
       <AutoApproveMenu isSubTask={isSubTask} />
       {files.length > 0 && (
         <AttachmentPreviewList

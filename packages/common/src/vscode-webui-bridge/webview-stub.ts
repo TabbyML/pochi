@@ -12,7 +12,7 @@ import type {
   ResourceURI,
   RuleFile,
   SessionState,
-  UserEditsDiff,
+  FileDiff,
   VSCodeHostApi,
   WorkspaceState,
 } from "./index";
@@ -172,7 +172,10 @@ const VSCodeHostStub = {
   saveCheckpoint: async (): Promise<string | null> => {
     return "";
   },
-  restoreCheckpoint: async (): Promise<void> => {
+  restoreCheckpoint: async (
+    _commitHash: string,
+    _files?: string[],
+  ): Promise<void> => {
     return Promise.resolve();
   },
   readCheckpointPath: async (): Promise<string | undefined> => {
@@ -180,7 +183,7 @@ const VSCodeHostStub = {
   },
   diffWithCheckpoint: async (
     _fromCheckpoint: string,
-  ): Promise<UserEditsDiff[] | null> => {
+  ): Promise<FileDiff[] | null> => {
     return Promise.resolve(null);
   },
   showCheckpointDiff: async (): Promise<boolean> => {

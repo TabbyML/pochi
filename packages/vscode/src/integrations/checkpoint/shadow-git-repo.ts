@@ -243,19 +243,30 @@ export class ShadowGitRepo implements vscode.Disposable {
     }
   }
 
-  async reset(commitHash: string) {
+  async reset(commitHash: string, files?: string[]) {
     try {
       if (!this.git) {
         throw new Error("Git instance is not initialized");
       }
       // For bare repository with worktree, use --work-tree flag
-      await this.git.raw([
-        "--work-tree",
-        this.workspaceDir,
-        "reset",
-        "--hard",
-        commitHash,
-      ]);
+      if (files && files.length > 0) {
+        await this.git.raw([
+          "--work-tree",
+          this.workspaceDir,
+          "checkout",
+          commitHash,
+          "--",
+          ...files,
+        ]);
+      } else {
+        await this.git.raw([
+          "--work-tree",
+          this.workspaceDir,
+          "reset",
+          "--hard",
+          commitHash,
+        ]);
+      }
     } catch (error) {
       const errorMessage = toErrorMessage(error);
       logger.error(
@@ -289,16 +300,24 @@ export class ShadowGitRepo implements vscode.Disposable {
     }
   }
 
-  async getDiff(from: string, to?: string): Promise<GitDiff[]> {
+  async getDiff(
+    from: string,
+    to?: string,
+    files?: string[],
+  ): Promise<GitDiff[]> {
     const diffRange = to ? `${from}..${to}` : from;
     // For bare repository with worktree, use --work-tree flag like in reset method
-    const diffSummaryOutput = await this.git.raw([
+    let command = [
       "--work-tree",
       this.workspaceDir,
       "diff",
       "--name-status",
       diffRange,
-    ]);
+    ];
+    if (files) {
+      command = [...command, "--", ...files];
+    }
+    const diffSummaryOutput = await this.git.raw(command);
 
     // Parse the diff output manually since we're using raw command
     const diffSummary = this.parseDiffOutput(diffSummaryOutput);
