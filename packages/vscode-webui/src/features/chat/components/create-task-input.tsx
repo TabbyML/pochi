@@ -10,6 +10,7 @@ import {
 import { WorktreeSelect } from "@/components/worktree-select";
 import { useSelectedModels, useSettingsStore } from "@/features/settings";
 import type { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
+import { useTaskInputDraft } from "@/lib/hooks/use-task-input-draft";
 import { useWorktrees } from "@/lib/hooks/use-worktrees";
 import { vscodeHost } from "@/lib/vscode";
 import type { GitWorktree } from "@getpochi/common/vscode-webui-bridge";
@@ -33,7 +34,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
   attachmentUpload,
 }) => {
   const { t } = useTranslation();
-  const [input, setInput] = useState("");
+  const { draft: input, setDraft: setInput, clearDraft } = useTaskInputDraft();
   const {
     groupedModels,
     selectedModel,
@@ -116,7 +117,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
           })),
         });
 
-        setInput("");
+        clearDraft();
       } else if (content.length > 0) {
         clearUploadError();
         vscodeHost.openTaskInPanel({
@@ -126,7 +127,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
           prompt: content,
         });
 
-        setInput("");
+        clearDraft();
       }
     },
     [
@@ -138,6 +139,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
       upload,
       selectedWorktree?.path,
       cwd,
+      clearDraft,
     ],
   );
 
