@@ -54,29 +54,3 @@ export const listFilesTool: React.FC<ToolProps<"listFiles">> = ({
 
   return <ExpandableToolContainer title={title} expandableDetail={resultEl} />;
 };
-
-export const listFilesToolSummary: React.FC<ToolProps<"listFiles">> = ({
-  tool,
-  isExecuting,
-}) => {
-  const { t } = useTranslation();
-  const { path } = tool.input || {};
-  const isDirectory = useMemo(() => {
-    return isFolder(path ?? "");
-  }, [path]);
-
-  const title = (
-    <>
-      <StatusIcon isExecuting={isExecuting} tool={tool} />
-      <span className="ml-2" />
-      {t("toolInvocation.reading")}{" "}
-      <FileBadge
-        className="!bg-transparent ml-1 border-none"
-        path={path ?? ""}
-        isDirectory={isDirectory}
-      />
-    </>
-  );
-
-  return <ExpandableToolContainer title={title} />;
-};

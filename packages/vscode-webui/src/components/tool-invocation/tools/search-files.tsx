@@ -55,31 +55,3 @@ export const searchFilesTool: React.FC<ToolProps<"searchFiles">> = ({
 
   return <ExpandableToolContainer title={title} expandableDetail={resultEl} />;
 };
-
-export const searchFilesToolSummary: React.FC<ToolProps<"searchFiles">> = ({
-  tool,
-  isExecuting,
-}) => {
-  const { t } = useTranslation();
-  const { path, regex, filePattern } = tool.input || {};
-
-  const searchCondition = (
-    <>
-      <HighlightedText>{regex}</HighlightedText> {t("toolInvocation.in")}{" "}
-      <HighlightedText>{path}</HighlightedText>
-      {filePattern && <HighlightedText>{filePattern}</HighlightedText>}
-    </>
-  );
-
-  const title = (
-    <>
-      <StatusIcon isExecuting={isExecuting} tool={tool} />
-      <span className="ml-2" />
-      <span>
-        {t("toolInvocation.searchingFor")} {searchCondition}
-      </span>
-    </>
-  );
-
-  return <ExpandableToolContainer title={title} />;
-};

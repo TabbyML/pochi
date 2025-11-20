@@ -58,9 +58,8 @@ export function TaskRow({
             </h3>
             <div className="text-muted-foreground">
               {!!task.pendingToolCalls?.length && (
-                <PendingToolCallView
+                <ToolCallLite
                   tools={task.pendingToolCalls as Array<ToolUIPart<UITools>>}
-                  isExecuting
                 />
               )}
             </div>
@@ -137,20 +136,6 @@ const getStatusBorderColor = (status: string): string => {
       return "border-l-muted-foreground/50";
   }
 };
-
-function PendingToolCallView({
-  tools,
-}: {
-  tools: ToolUIPart<UITools>[];
-  isExecuting: boolean;
-}) {
-  return (
-    <div className={cn("flex items-center gap-1 text-muted-foreground")}>
-      <ToolCallLite tools={tools} />
-      {/* {tools.length > 1 && <span>More</span>} */}
-    </div>
-  );
-}
 
 function GitBadge({
   className,

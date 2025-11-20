@@ -204,6 +204,7 @@
     "applyingDiffsTo": "다음에 차이점들 적용 중: ",
     "in": "에서",
     "executeCommand": "다음 명령을 실행합니다",
+    "executingCommand": "명령 실행 중",
     "for": "대상",
     "searching": "검색 중",
     "searchingFor": "검색 중:",
@@ -212,12 +213,16 @@
     "matched": "매치됨",
     "resultsTruncated": ", 결과가 잘림",
     "stopBackgroundJob": "다음 백그라운드 작업을 중지합니다",
+    "stoppingBackgroundJob": "백그라운드 작업 중지 중",
     "result_one": "{{count}}개 결과",
     "result_other": "{{count}}개 결과",
     "readBackground": "백그라운드 작업 출력 읽는 중",
     "withRegexFilter": "정규식 필터 사용",
     "backgroundExecute": "다음 명령을 백그라운드에서 실행합니다",
-    "updatingToDos": "할 일 업데이트 중"
+    "backgroundExecuting": "백그라운드에서 명령 실행 중",
+    "updatingToDos": "할 일 업데이트 중",
+    "editing": "편집하는 중 ",
+    "moreTools": ", 그리고 {{count}}개의 다른 도구들"
   },
   "reasoning": {
     "thinking": "생각 중 ...",

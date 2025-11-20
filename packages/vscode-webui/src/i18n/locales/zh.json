@@ -203,6 +203,7 @@
     "applyingDiffsTo": "正在应用差异到 ",
     "in": "在",
     "executeCommand": "我将执行以下命令",
+    "executingCommand": "正在执行命令",
     "for": "匹配",
     "searching": "搜索中",
     "searchingFor": "搜索：",
@@ -211,12 +212,16 @@
     "matched": "个已匹配",
     "resultsTruncated": "，结果已截断",
     "stopBackgroundJob": "我将停止以下后台任务",
+    "stoppingBackgroundJob": "正在停止后台任务",
     "result_one": "{{count}}个结果",
     "result_other": "{{count}}个结果",
     "readBackground": "正在读取后台任务输出",
     "withRegexFilter": "使用正则表达式过滤器",
     "backgroundExecute": "我将在后台执行以下命令",
-    "updatingToDos": "更新待办事项中"
+    "backgroundExecuting": "正在后台执行命令",
+    "updatingToDos": "更新待办事项中",
+    "editing": "正在编辑 ",
+    "moreTools": "，以及另外 {{count}} 个工具"
   },
   "reasoning": {
     "thinking": "思考中 ...",

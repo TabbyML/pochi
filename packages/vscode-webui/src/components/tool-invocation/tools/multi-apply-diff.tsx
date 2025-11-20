@@ -97,23 +97,3 @@ export const multiApplyDiffTool: React.FC<ToolProps<"multiApplyDiff">> = ({
     />
   );
 };
-
-export const multiApplyDiffToolSummary: React.FC<
-  ToolProps<"multiApplyDiff">
-> = ({ tool, isExecuting }) => {
-  const { t } = useTranslation();
-  const { path } = tool.input || {};
-
-  const title = (
-    <>
-      <StatusIcon isExecuting={isExecuting} tool={tool} />
-      <span className="ml-2" />
-      {t("toolInvocation.applyingDiffsTo")}
-      {path && (
-        <FileBadge className="!bg-transparent ml-1 border-none" path={path} />
-      )}
-    </>
-  );
-
-  return <ExpandableToolContainer title={title} />;
-};

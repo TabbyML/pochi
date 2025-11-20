@@ -204,6 +204,7 @@
     "applyingDiffsTo": "複数の差分を適用中：",
     "in": "の",
     "executeCommand": "以下のコマンドを実行します",
+    "executingCommand": "コマンドを実行中",
     "for": "で",
     "searching": "検索中",
     "searchingFor": "検索中：",
@@ -212,12 +213,16 @@
     "matched": "マッチ",
     "resultsTruncated": "、結果が切り詰められました",
     "stopBackgroundJob": "以下のバックグラウンドジョブを停止します",
+    "stoppingBackgroundJob": "バックグラウンドジョブを停止中",
     "result_one": "{{count}}件の結果",
     "result_other": "{{count}}件の結果",
     "readBackground": "バックグラウンドジョブ出力を読み込み中",
     "withRegexFilter": "正規表現フィルター付き",
     "backgroundExecute": "以下のコマンドをバックグラウンドで実行します",
-    "updatingToDos": "TODOを更新中"
+    "backgroundExecuting": "バックグラウンドでコマンドを実行中",
+    "updatingToDos": "TODOを更新中",
+    "editing": "編集しています ",
+    "moreTools": "、他{{count}}個のツール"
   },
   "reasoning": {
     "thinking": "考え中 ...",

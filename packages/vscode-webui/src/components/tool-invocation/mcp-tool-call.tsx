@@ -74,7 +74,6 @@ export const McpToolCall: React.FC<ToolProps<any>> = ({
       </span>
     </>
   );
-
   return (
     <ExpandableToolContainer
       title={title}
@@ -239,24 +238,3 @@ function DisplayModeToggle({
     </div>
   );
 }
-
-// biome-ignore lint/suspicious/noExplicitAny: MCP matches any.
-export const McpToolCallSummary: React.FC<ToolProps<any>> = ({
-  tool,
-  isExecuting,
-}) => {
-  const { t } = useTranslation();
-  const toolName = getToolName(tool);
-
-  const title = (
-    <>
-      <StatusIcon isExecuting={isExecuting} tool={tool} />
-      <span className="ml-2">
-        {t("toolInvocation.calling")}
-        <HighlightedText>{toolName}</HighlightedText>
-      </span>
-    </>
-  );
-
-  return <ExpandableToolContainer title={title} />;
-};

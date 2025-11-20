@@ -210,6 +210,7 @@
     "applyingDiffsTo": "Applying diffs to ",
     "in": "in",
     "executeCommand": "I will execute the following command",
+    "executingCommand": "Executing command",
     "for": "for",
     "searching": "Searching",
     "searchingFor": "Searching for:",
@@ -218,12 +219,17 @@
     "matched": " matched",
     "resultsTruncated": ", results truncated",
     "stopBackgroundJob": "I will stop the following background job",
+    "stoppingBackgroundJob": "Stopping background job",
     "result_one": "{{count}} result",
     "result_other": "{{count}} results",
     "readBackground": "Reading background job output",
     "withRegexFilter": "with regex filter",
     "backgroundExecute": "I will execute the following command in the background",
-    "updatingToDos": "Updating todos"
+    "backgroundExecuting": "Executing command in background",
+    "updatingToDos": "Updating todos",
+    "editing": "Editing ",
+    "moreTools_one": ", and {{count}} more tool",
+    "moreTools_other": ", and {{count}} more tools"
   },
   "reasoning": {
     "thinking": "Thinking ...",

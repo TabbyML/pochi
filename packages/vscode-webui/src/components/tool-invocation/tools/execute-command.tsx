@@ -72,30 +72,3 @@ export const executeCommandTool: React.FC<ToolProps<"executeCommand">> = ({
     />
   );
 };
-
-export const executeCommandToolSummary: React.FC<
-  ToolProps<"executeCommand">
-> = ({ tool, isExecuting }) => {
-  const { t } = useTranslation();
-
-  // todo command?
-  const { cwd } = tool.input || {};
-  const cwdNode = cwd ? (
-    <span>
-      {" "}
-      {t("toolInvocation.in")} <HighlightedText>{cwd}</HighlightedText>
-    </span>
-  ) : null;
-  const text = t("toolInvocation.executeCommand");
-  const title = (
-    <>
-      <StatusIcon isExecuting={isExecuting} tool={tool} />
-      <span className="ml-2">
-        {text}
-        {cwdNode}
-      </span>
-    </>
-  );
-
-  return <ExpandableToolContainer title={title} />;
-};

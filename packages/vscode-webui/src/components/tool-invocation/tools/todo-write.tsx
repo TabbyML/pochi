@@ -48,20 +48,3 @@ export const todoWriteTool: React.FC<ToolProps<"todoWrite">> = ({
     />
   );
 };
-
-export const todoWriteToolSummary: React.FC<ToolProps<"todoWrite">> = ({
-  tool,
-  isExecuting,
-}) => {
-  const { t } = useTranslation();
-
-  const title = (
-    <>
-      <StatusIcon isExecuting={isExecuting} tool={tool} />
-      <span className="ml-2" />
-      {t("toolInvocation.updatingToDos")}
-    </>
-  );
-
-  return <ExpandableToolContainer title={title} />;
-};

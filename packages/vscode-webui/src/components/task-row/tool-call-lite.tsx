@@ -30,8 +30,6 @@ export function ToolCallLite({ tools }: Props) {
         />
       );
       break;
-    case "tool-askFollowupQuestion":
-      break;
     case "tool-executeCommand":
       detail = <ExecuteCommandTool tool={tool} />;
       break;
@@ -62,7 +60,9 @@ export function ToolCallLite({ tools }: Props) {
     case "tool-newTask":
       detail = <NewTaskTool tool={tool} />;
       break;
+    case "tool-askFollowupQuestion":
     case "tool-attemptCompletion":
+      detail = null;
       break;
     default:
       detail = <McpTool tool={tool} />;
@@ -70,12 +70,13 @@ export function ToolCallLite({ tools }: Props) {
   }
 
   return detail ? (
-    <div className="flex items-center">
-      <Loader2 className="size-4 shrink-0" />
+    <div className="flex w-full flex-nowrap items-center overflow-x-hidden">
+      <Loader2 className="size-4 shrink-0 animate-spin" />
       {detail}
-      {/* todo text and i18n */}
       {tools.length > 1 && (
-        <span>{`, and ${tools.length - 1} more tools`}</span>
+        <span>
+          {t("toolInvocation.moreTools", { count: tools.length - 1 })}
+        </span>
       )}
     </div>
   ) : null;
@@ -94,7 +95,6 @@ function getLabelFromTool(
       return t("toolInvocation.applyingDiffTo");
     case "tool-multiApplyDiff":
       return t("toolInvocation.applyingDiffsTo");
-    // case
     default:
       return "";
   }
@@ -131,7 +131,6 @@ const ExecuteCommandTool = ({
 }: ToolCallLiteViewProps<"executeCommand">) => {
   const { t } = useTranslation();
 
-  // todo command?
   const { cwd } = tool.input || {};
   const cwdNode = cwd ? (
     <span>
@@ -139,8 +138,8 @@ const ExecuteCommandTool = ({
       {t("toolInvocation.in")} <HighlightedText>{cwd}</HighlightedText>
     </span>
   ) : null;
-  // todo modify the text
-  const text = t("toolInvocation.executeCommand");
+
+  const text = t("toolInvocation.executingCommand");
   return (
     <>
       <span className="ml-2">
@@ -163,8 +162,7 @@ const StartBackgroundJobTool = ({
       {t("toolInvocation.in")} <HighlightedText>{cwd}</HighlightedText>
     </span>
   ) : null;
-  // todo modify the text
-  const text = t("toolInvocation.backgroundExecute");
+  const text = t("toolInvocation.backgroundExecuting");
   return (
     <>
       <span className="ml-2">
@@ -196,8 +194,9 @@ const ReadBackgroundJobTool = ({
 
 const KillBackgroundJobTool = () => {
   const { t } = useTranslation();
-  // todo modify text
-  return <span className="ml-2">{t("toolInvocation.stopBackgroundJob")}</span>;
+  return (
+    <span className="ml-2">{t("toolInvocation.stoppingBackgroundJob")}</span>
+  );
 };
 
 const SearchFilesTool = ({ tool }: ToolCallLiteViewProps<"searchFiles">) => {
@@ -273,6 +272,7 @@ const TodoWriteTool = () => {
 };
 
 const EditNotebookTool = ({ tool }: ToolCallLiteViewProps<"editNotebook">) => {
+  const { t } = useTranslation();
   const { path, cellId } = tool.input || {};
 
   // Parse cellId to determine if it's an index or actual ID
@@ -284,8 +284,7 @@ const EditNotebookTool = ({ tool }: ToolCallLiteViewProps<"editNotebook">) => {
   return (
     <>
       <span className="ml-2" />
-      {/* todo i18n */}
-      {"Editing "}
+      {t("toolInvocation.editing")}
       {path && (
         <>
           <FileBadge className="ml-1" path={path} />
@@ -306,7 +305,7 @@ const NewTaskTool = ({ tool }: ToolCallLiteViewProps<"newTask">) => {
     <div>
       <span className={cn("flex items-center gap-2")}>
         <div>
-          {toolTitle}
+          <span className="ml-2 font-semibold italic">{toolTitle}</span>
           <span className="ml-2">{description}</span>
         </div>
       </span>
@@ -330,11 +329,7 @@ const McpTool = ({ tool }: ToolCallLiteViewProps<any>) => {
 };
 
 function FileBadge({ path, className }: { path: string; className?: string }) {
-  return (
-    <span className="overflow-x-hidden">
-      <span className={cn("truncate", className)}>{path}</span>
-    </span>
-  );
+  return <span className={cn("truncate", className)}>{path}</span>;
 }
 
 function HighlightedText({

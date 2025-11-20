@@ -40,24 +40,3 @@ export const ReadBackgroundJobOutputTool: React.FC<
     />
   );
 };
-
-export const ReadBackgroundJobOutputToolSummary: React.FC<
-  ToolProps<"readBackgroundJobOutput">
-> = ({ tool }) => {
-  const { t } = useTranslation();
-  const { regex } = tool.input || {};
-  const title = (
-    <>
-      <span className="ml-2">{t("toolInvocation.readBackground")}</span>
-      {regex && (
-        <>
-          {" "}
-          {t("toolInvocation.withRegexFilter")}:{" "}
-          <HighlightedText>{regex}</HighlightedText>
-        </>
-      )}
-    </>
-  );
-
-  return <ExpandableToolContainer title={title} />;
-};
