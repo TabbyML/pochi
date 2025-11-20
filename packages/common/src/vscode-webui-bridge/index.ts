@@ -8,7 +8,7 @@ export type { PochiCredentials } from "./types/pochi";
 
 export type { McpStatus } from "../mcp-utils";
 export type {
-  UserEditsDiff,
+  FileDiff,
   ExecuteCommandResult,
   SaveCheckpointOptions,
 } from "./types/execution";

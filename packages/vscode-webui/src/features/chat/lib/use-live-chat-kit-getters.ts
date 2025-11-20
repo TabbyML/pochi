@@ -15,7 +15,7 @@ import { constants, type Environment } from "@getpochi/common";
 import { createModel } from "@getpochi/common/vendor/edge";
 import type {
   DisplayModel,
-  UserEditsDiff,
+  FileDiff,
 } from "@getpochi/common/vscode-webui-bridge";
 import type { LLMRequestData, Message } from "@getpochi/livekit";
 import type { Todo } from "@getpochi/tools";
@@ -44,7 +44,7 @@ export function useLiveChatKitGetters({
         webviewKind: globalThis.POCHI_WEBVIEW_KIND,
       });
 
-      let userEdits: UserEditsDiff[] | undefined;
+      let userEdits: FileDiff[] | undefined;
       const lastCheckpointHash = findSecondLastCheckpointFromMessages(messages);
       if (lastCheckpointHash) {
         userEdits =

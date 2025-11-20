@@ -1,5 +1,6 @@
 import { diffLines } from "diff";
 import type { GitDiff } from "./types";
+import type { FileDiff } from "@getpochi/common/vscode-webui-bridge";
 
 export class Deferred<T> {
   promise: Promise<T>;
@@ -12,6 +13,12 @@ export class Deferred<T> {
       this.reject = reject;
     });
   }
+}
+
+interface DiffResult {
+  content: string;
+  added: number;
+  removed: number;
 }
 
 /**
@@ -28,9 +35,11 @@ export class Deferred<T> {
 export function generateInlineDiffContent(
   before: string,
   after: string,
-): string {
+): DiffResult {
   const diffResult = diffLines(before, after);
   const inlineContent = [];
+  let added = 0;
+  let removed = 0;
 
   for (const part of diffResult) {
     const lines = part.value.split("\n");
@@ -41,8 +50,10 @@ export function generateInlineDiffContent(
 
     for (const line of lines) {
       if (part.added) {
+        added++;
         inlineContent.push(`+ ${line}`);
       } else if (part.removed) {
+        removed++;
         inlineContent.push(`- ${line}`);
       } else {
         // Unchanged line
@@ -51,23 +62,23 @@ export function generateInlineDiffContent(
     }
   }
 
-  return inlineContent.join("\n");
+  return { content: inlineContent.join("\n"), added, removed };
 }
 
 /**
- * Filters git changes and converts them to UserEditsDiff format
+ * Filters git changes and converts them to FileDiff format
  *
  * Filters out binary files and files exceeding size limits, then generates
  * structured diff data with inline diff content for each valid file.
  *
  * @param changes - Array of git diff changes
  * @param maxSizeLimit - Maximum allowed size for diff content in bytes (default 8KB)
- * @returns Array of UserEditsDiff objects, or null if no valid changes
+ * @returns Array of FileDiff objects, or null if no valid changes
  */
 export function processGitChangesToUserEdits(
   changes: GitDiff[],
   maxSizeLimit = 8 * 1024,
-): Array<{ filepath: string; diff: string }> | null {
+): Array<FileDiff> | null {
   // Filter out binary files and files that exceed size limits
   const filteredChanges = filterGitChanges(changes, maxSizeLimit);
 
@@ -76,10 +87,15 @@ export function processGitChangesToUserEdits(
   }
 
   // Generate structured diff data
-  const userEdits = filteredChanges.map((change) => ({
-    filepath: change.filepath,
-    diff: generateInlineDiffContent(change.before, change.after),
-  }));
+  const userEdits = filteredChanges.map((change) => {
+    const diff = generateInlineDiffContent(change.before, change.after);
+    return {
+      filepath: change.filepath,
+      diff: diff.content,
+      added: diff.added,
+      removed: diff.removed,
+    };
+  });
 
   return userEdits;
 }

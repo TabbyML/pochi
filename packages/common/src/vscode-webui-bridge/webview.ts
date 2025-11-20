@@ -15,7 +15,7 @@ import type {
   SessionState,
   TaskIdParams,
   TaskPanelParams,
-  UserEditsDiff,
+  FileDiff,
   WorkspaceState,
 } from "./index";
 import type { DisplayModel } from "./types/model";
@@ -230,18 +230,23 @@ export interface VSCodeHostApi {
 
   /**
    * Restores the checkpoint to the latest commit or a specific commit hash.
-   * @param commitHash - The commit hash to restore to. If not provided, restores to the latest checkpoint.
+   * @param commitHash - The commit hash to restore to.
+   * @param files - Optional list of files to restore. If provided, only these files will be restored.
    */
-  restoreCheckpoint(commitHash?: string): Promise<void>;
+  restoreCheckpoint(commitHash: string, files?: string[]): Promise<void>;
 
   readCheckpointPath(): Promise<string | undefined>;
 
   /**
    * Reads user edits since the last checkpoint as diff stats.
    * @param fromCheckpoint - checkpoint hash to compare from.
+   * @param files - Optional list of files to compare. If provided, only these files will be compared.
    * @returns A promise that resolves to an array of file diff stats, or null if no edits.
    */
-  diffWithCheckpoint(fromCheckpoint: string): Promise<UserEditsDiff[] | null>;
+  diffWithCheckpoint(
+    fromCheckpoint: string,
+    files?: string[],
+  ): Promise<FileDiff[] | null>;
 
   /**
    * Shows the code diff between two checkpoints.
@@ -313,4 +318,6 @@ export interface WebviewHostApi {
   commitTaskUpdated(event: unknown): Promise<void>;
 
   setTaskRead(taskId: string | string[], read: boolean): Promise<void>;
+
+  onFileChanged(filePath: string): void;
 }

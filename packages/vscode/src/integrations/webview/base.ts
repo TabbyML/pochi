@@ -258,6 +258,14 @@ export abstract class WebviewBase implements vscode.Disposable {
     );
   }
 
+  protected setupFileWatcher(): void {
+    this.disposables.push(
+      vscode.workspace.onDidSaveTextDocument(async (event) => {
+        this.webviewHost?.onFileChanged(event.uri.fsPath);
+      }),
+    );
+  }
+
   protected async createWebviewThread(
     webview: vscode.Webview,
   ): Promise<Thread<WebviewHostApi, VSCodeHostApi>> {
@@ -314,6 +322,7 @@ export abstract class WebviewBase implements vscode.Disposable {
           "isFocused",
           "commitTaskUpdated",
           "setTaskRead",
+          "onFileChanged",
         ],
       },
     );
