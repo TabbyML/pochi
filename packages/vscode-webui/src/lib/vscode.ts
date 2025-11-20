@@ -13,7 +13,7 @@ const logger = getLogger("vscode");
 
 let vscodeApi: WebviewApi<unknown> | undefined | null = undefined;
 
-function getVSCodeApi() {
+export function getVSCodeApi() {
   if (vscodeApi) {
     return vscodeApi;
   }
