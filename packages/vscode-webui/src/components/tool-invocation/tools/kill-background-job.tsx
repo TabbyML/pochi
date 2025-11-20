@@ -29,3 +29,18 @@ export const KillBackgroundJobTool: React.FC<
     />
   );
 };
+
+export const KillBackgroundJobToolSummary: React.FC<
+  ToolProps<"killBackgroundJob">
+> = ({ tool, isExecuting }) => {
+  const { t } = useTranslation();
+
+  const title = (
+    <>
+      <StatusIcon isExecuting={isExecuting} tool={tool} />
+      <span className="ml-2">{t("toolInvocation.stopBackgroundJob")}</span>
+    </>
+  );
+
+  return <ExpandableToolContainer title={title} />;
+};

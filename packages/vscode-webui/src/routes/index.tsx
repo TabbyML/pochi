@@ -1,4 +1,3 @@
-import { Badge } from "@/components/ui/badge";
 import {
   Pagination,
   PaginationContent,
@@ -9,42 +8,24 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination"; // Import pagination components
 import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { WelcomeScreen } from "@/components/welcome-screen";
 import { WorkspaceRequiredPlaceholder } from "@/components/workspace-required-placeholder";
 import { CreateTaskInput } from "@/features/chat";
 import { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
 import { useCurrentWorkspace } from "@/lib/hooks/use-current-workspace";
 import { useModelList } from "@/lib/hooks/use-model-list";
-import { usePochiCredentials } from "@/lib/hooks/use-pochi-credentials";
 import { useUserStorage } from "@/lib/hooks/use-user-storage";
 import { useWorktrees } from "@/lib/hooks/use-worktrees";
-import { cn } from "@/lib/utils";
-import { setActiveStore, vscodeHost } from "@/lib/vscode";
+import { setActiveStore } from "@/lib/vscode";
 import { getWorktreeNameFromGitDir } from "@getpochi/common/git-utils";
-import { parseTitle } from "@getpochi/common/message-utils";
-import { encodeStoreId } from "@getpochi/common/store-id-utils";
-import { type Task, taskCatalog } from "@getpochi/livekit";
+
+import { TaskRow } from "@/components/task-row";
+import { taskCatalog } from "@getpochi/livekit";
 import { useStore } from "@livestore/react";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
-import {
-  Brain,
-  CheckCircle2,
-  Edit3,
-  GitBranch,
-  HelpCircle,
-  ListTreeIcon,
-  TerminalIcon,
-  Wrench,
-  Zap,
-} from "lucide-react";
-import { useCallback, useEffect, useMemo } from "react";
+import { TerminalIcon } from "lucide-react";
+import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { MdOutlineErrorOutline } from "react-icons/md";
 import { LiveStoreTaskProvider } from "../livestore-task-provider";
 
 export const Route = createFileRoute("/")({
@@ -298,179 +279,4 @@ function EmptyTaskPlaceholder() {
       </p>
     </div>
   );
-}
-
-const TaskStatusIcon = ({ status }: { status: string }) => {
-  const { t } = useTranslation();
-  const iconProps = { className: "size-5 text-muted-foreground" };
-  switch (status) {
-    case "streaming":
-      return (
-        <Zap {...iconProps} aria-label={t("tasksPage.status.streaming")} />
-      );
-    case "pending-tool":
-      return (
-        <Wrench {...iconProps} aria-label={t("tasksPage.status.pendingTool")} />
-      );
-    case "pending-input":
-      return (
-        <Edit3 {...iconProps} aria-label={t("tasksPage.status.pendingInput")} />
-      );
-    case "completed":
-      return (
-        <CheckCircle2
-          {...iconProps}
-          aria-label={t("tasksPage.status.completed")}
-        />
-      );
-    case "failed":
-      return (
-        <MdOutlineErrorOutline
-          {...iconProps}
-          aria-label={t("tasksPage.status.failed")}
-        />
-      );
-    case "pending-model":
-      return (
-        <Brain {...iconProps} aria-label={t("tasksPage.status.pendingModel")} />
-      );
-    default:
-      return (
-        <HelpCircle
-          {...iconProps}
-          aria-label={t("tasksPage.status.unknown", { status })}
-        />
-      );
-  }
-};
-
-const getStatusBorderColor = (status: string): string => {
-  switch (status) {
-    case "streaming":
-      return "border-l-muted-foreground/60";
-    case "pending-tool":
-      return "border-l-muted-foreground/60";
-    case "pending-input":
-      return "border-l-muted-foreground/60";
-    case "completed":
-      return "border-l-muted-foreground/30";
-    case "failed":
-      return "border-l-muted-foreground/80";
-    default:
-      return "border-l-muted-foreground/50";
-  }
-};
-
-function TaskRow({
-  task,
-  worktreeName,
-  isWorktreeExist,
-}: {
-  task: Task;
-  worktreeName?: string;
-  isWorktreeExist?: boolean;
-}) {
-  const { jwt } = usePochiCredentials();
-
-  const title = useMemo(() => parseTitle(task.title), [task.title]);
-
-  const content = (
-    <div
-      className={cn(
-        "group cursor-pointer rounded-lg border border-border/50 bg-card transition-all duration-200 hover:border-border hover:bg-card/90 hover:shadow-md",
-        "border-l-4",
-        getStatusBorderColor(task.status),
-      )}
-    >
-      <div className="px-4 py-3">
-        <div className="flex items-start gap-3">
-          <div className="flex-1 space-y-1 overflow-hidden">
-            <GitBadge
-              git={task.git}
-              worktreeName={worktreeName}
-              className="max-w-full text-muted-foreground/80 text-xs"
-              isWorktreeExist={isWorktreeExist}
-            />
-            <h3 className="line-clamp-2 flex-1 font-medium text-foreground leading-relaxed transition-colors duration-200 group-hover:text-foreground/80">
-              {title}
-            </h3>
-          </div>
-          <div className="mt-0.5 shrink-0">
-            <TaskStatusIcon status={task.status} />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-
-  const storeId = encodeStoreId(jwt, task.parentId || task.id);
-
-  const openTaskInPanel = useCallback(() => {
-    if (task.cwd) {
-      vscodeHost.openTaskInPanel({
-        cwd: task.cwd,
-        uid: task.id,
-        storeId,
-      });
-    }
-  }, [task.cwd, task.id, storeId]);
-
-  return <div onClick={openTaskInPanel}>{content}</div>;
-}
-
-function GitBadge({
-  className,
-  git,
-  worktreeName,
-  isWorktreeExist,
-}: {
-  git: Task["git"];
-  worktreeName?: string;
-  className?: string;
-  isWorktreeExist?: boolean;
-}) {
-  const { t } = useTranslation();
-  if (!git?.origin) return null;
-
-  return (
-    <Badge
-      variant="outline"
-      className={cn("border-none p-0 text-foreground", className)}
-    >
-      {git.branch &&
-        !isBranchNameSameAsWorktreeName(git.branch, worktreeName) && (
-          <>
-            <GitBranch className="shrink-0" />
-            <span className="truncate">{git.branch}</span>
-          </>
-        )}
-      {worktreeName && (
-        <>
-          <ListTreeIcon className="ml-1 shrink-0" />
-          <span className="truncate">{worktreeName}</span>
-          {isWorktreeExist === false && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className="ml-1 inline-flex">
-                  <MdOutlineErrorOutline className="size-4 text-yellow-500" />
-                </span>
-              </TooltipTrigger>
-              <TooltipContent side="top" sideOffset={4}>
-                <span>{t("tasksPage.worktreeNotExist")}</span>
-              </TooltipContent>
-            </Tooltip>
-          )}
-        </>
-      )}
-    </Badge>
-  );
-}
-
-function isBranchNameSameAsWorktreeName(
-  branch: string | undefined,
-  worktreeName: string | undefined,
-): boolean {
-  if (!branch || !worktreeName) return false;
-  // https://github.com/microsoft/vscode/blob/9092ce3427fdd0f677333394fb10156616090fb5/extensions/git/src/commands.ts#L3512
-  return branch.replace(/\//g, "-") === worktreeName;
 }

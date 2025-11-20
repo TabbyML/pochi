@@ -6,6 +6,7 @@ import {
   TaskError,
   TaskStatus,
   Todos,
+  ToolCalls,
   taskInitFields,
 } from "./types";
 
@@ -30,6 +31,10 @@ export const tables = {
       git: State.SQLite.json({
         nullable: true,
         schema: Git,
+      }),
+      pendingToolCalls: State.SQLite.json({
+        nullable: true,
+        schema: ToolCalls,
       }),
       totalTokens: State.SQLite.integer({ nullable: true }),
       error: State.SQLite.json({ schema: TaskError, nullable: true }),

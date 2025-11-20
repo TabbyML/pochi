@@ -87,24 +87,6 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
 
   const isNewTaskWithContent = !!prompt || !!files?.length;
 
-  useEffect(() => {
-    if (task) {
-      vscodeHost.onTaskUpdated(
-        taskCatalog.events.tastUpdated({
-          ...task,
-          title: task.title || undefined,
-          parentId: task.parentId || undefined,
-          cwd: task.cwd || undefined,
-          modelId: task.modelId || undefined,
-          error: task.error || undefined,
-          git: task.git || undefined,
-          shareId: task.shareId || undefined,
-          totalTokens: task.totalTokens || undefined,
-        }),
-      );
-    }
-  }, [task]);
-
   // inherit autoApproveSettings from parent task
   useEffect(() => {
     if (isSubTask) {
@@ -281,6 +263,35 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
   const { pendingApproval, retry } = approvalAndRetry;
 
   useEffect(() => {
+    const pendingToolApproval =
+      pendingApproval && pendingApproval.name !== "retry"
+        ? pendingApproval
+        : null;
+    const pendingToolCalls = pendingToolApproval
+      ? "tool" in pendingToolApproval
+        ? [pendingToolApproval.tool]
+        : pendingToolApproval.tools
+      : undefined;
+
+    if (task) {
+      vscodeHost.onTaskUpdated(
+        taskCatalog.events.tastUpdated({
+          ...task,
+          title: task.title || undefined,
+          parentId: task.parentId || undefined,
+          cwd: task.cwd || undefined,
+          modelId: task.modelId || undefined,
+          error: task.error || undefined,
+          git: task.git || undefined,
+          shareId: task.shareId || undefined,
+          totalTokens: task.totalTokens || undefined,
+          pendingToolCalls,
+        }),
+      );
+    }
+  }, [pendingApproval, task]);
+
+  useEffect(() => {
     if (
       (prompt || !!files?.length) &&
       !chatKit.inited &&
@@ -315,7 +326,6 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
     isLoading,
     pendingApprovalName: pendingApproval?.name,
   });
-
   // Display errors with priority: 1. autoDismissError, 2. uploadImageError, 3. error pending retry approval
   const displayError = isLoading
     ? undefined

@@ -3,7 +3,7 @@ import { getToolName } from "ai";
 import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { ModelEdits, UserEdits } from "../code-edits";
-import { FileBadge } from "../file-badge";
+import { FileBadge, SimplifiedFileBadge } from "../file-badge";
 import { NewProblems, NewProblemsIcon } from "../new-problems";
 import { StatusIcon } from "../status-icon";
 import { ExpandableToolContainer } from "../tool-container";
@@ -93,4 +93,24 @@ export const writeToFileTool: React.FC<ToolProps<"writeToFile">> = ({
       detail={detail}
     />
   );
+};
+
+export const writeToFileToolSummary: React.FC<ToolProps<"writeToFile">> = ({
+  tool,
+  isExecuting,
+}) => {
+  const { t } = useTranslation();
+
+  const { path } = tool.input || {};
+
+  const title = (
+    <>
+      <StatusIcon isExecuting={isExecuting} tool={tool} />
+      <span className="ml-2" />
+      {t("toolInvocation.writing")}
+      {path && <SimplifiedFileBadge className="ml-1" path={path} />}
+    </>
+  );
+
+  return <ExpandableToolContainer title={title} />;
 };

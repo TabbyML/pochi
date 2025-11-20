@@ -26,21 +26,18 @@ export const Todos = Schema.Array(Todo);
 export const ToolCall = Schema.Struct({
   toolCallId: Schema.String,
   type: Schema.String,
-  status: Schema.Literal(
+  state: Schema.Literal(
     "input-streaming",
     "input-available",
     "output-available",
     "output-error",
   ),
   input: Schema.Unknown,
-  output: Schema.optional(
-    Schema.Struct({
-      success: Schema.Boolean,
-    }),
-  ),
+  output: Schema.optional(Schema.Unknown),
   errorText: Schema.optional(Schema.String),
   providerExecuted: Schema.optional(Schema.Boolean),
 });
+export const ToolCalls = Schema.Array(ToolCall);
 
 export const TaskStatus = Schema.Literal(
   "completed",
@@ -102,8 +99,8 @@ export const taskFullFields = {
   title: Schema.optional(Schema.String),
   status: TaskStatus,
   todos: Todos,
+  pendingToolCalls: Schema.optional(ToolCalls),
   totalTokens: Schema.optional(Schema.Number),
   error: Schema.optional(TaskError),
   updatedAt: Schema.Date,
-  pendingToolCall: Schema.optional(ToolCall),
 };

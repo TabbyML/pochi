@@ -119,3 +119,27 @@ function useShowMessageList(completed: boolean) {
   const [value, setValue] = useState(false);
   return [value, setValue, setValue] as const;
 }
+
+export const newTaskToolSummary: React.FC<NewTaskToolProps> = ({
+  tool,
+  isExecuting,
+}) => {
+  const description = tool.input?.description ?? "";
+
+  const agentType = tool.input?.agentType;
+  const toolTitle = agentType ?? "Subtask";
+
+  return (
+    <div>
+      <ToolTitle>
+        <span className={cn("flex items-center gap-2")}>
+          <div>
+            <StatusIcon tool={tool} isExecuting={isExecuting} />
+            {toolTitle}
+            <span className="ml-2">{description}</span>
+          </div>
+        </span>
+      </ToolTitle>
+    </div>
+  );
+};

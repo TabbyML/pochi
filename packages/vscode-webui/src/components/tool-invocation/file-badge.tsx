@@ -94,3 +94,15 @@ export const FileBadge: React.FC<FileBadgeProps> = ({
     </span>
   );
 };
+
+export const SimplifiedFileBadge: React.FC<FileBadgeProps> = ({
+  className,
+  ...props
+}) => {
+  return (
+    <FileBadge
+      className={cn("!bg-transparent border-none", className)}
+      {...props}
+    />
+  );
+};

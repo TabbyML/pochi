@@ -42,3 +42,32 @@ export const editNotebookTool: React.FC<ToolProps<"editNotebook">> = ({
 
   return <ExpandableToolContainer title={title} />;
 };
+
+export const editNotebookToolSummary: React.FC<ToolProps<"editNotebook">> = ({
+  tool,
+  isExecuting,
+}) => {
+  const { path, cellId } = tool.input || {};
+
+  // Parse cellId to determine if it's an index or actual ID
+  const cellIndex = Number.parseInt(cellId || "", 10);
+  const cellLabel = !Number.isNaN(cellIndex)
+    ? `Cell ${cellIndex + 1}`
+    : `Cell ID: ${cellId}`;
+
+  const title = (
+    <>
+      <StatusIcon isExecuting={isExecuting} tool={tool} />
+      <span className="ml-2" />
+      {"Editing "}
+      {path && (
+        <>
+          <FileBadge className="!bg-transparent ml-1 border-none" path={path} />
+          <span className="ml-1 text-muted-foreground">({cellLabel})</span>
+        </>
+      )}
+    </>
+  );
+
+  return <ExpandableToolContainer title={title} />;
+};

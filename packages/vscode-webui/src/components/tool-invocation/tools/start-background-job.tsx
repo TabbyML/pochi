@@ -42,3 +42,29 @@ export const StartBackgroundJobTool: React.FC<
     />
   );
 };
+
+export const StartBackgroundJobToolSummary: React.FC<
+  ToolProps<"startBackgroundJob">
+> = ({ tool, isExecuting }) => {
+  const { t } = useTranslation();
+  const { cwd } = tool.input || {};
+
+  const cwdNode = cwd ? (
+    <span>
+      {" "}
+      {t("toolInvocation.in")} <HighlightedText>{cwd}</HighlightedText>
+    </span>
+  ) : null;
+  const text = t("toolInvocation.backgroundExecute");
+  const title = (
+    <>
+      <StatusIcon isExecuting={isExecuting} tool={tool} />
+      <span className="ml-2">
+        {text}
+        {cwdNode}
+      </span>
+    </>
+  );
+
+  return <ExpandableToolContainer title={title} />;
+};

@@ -94,3 +94,24 @@ export const applyDiffTool: React.FC<ToolProps<"applyDiff">> = ({
     />
   );
 };
+
+export const applyDiffToolSummary: React.FC<ToolProps<"applyDiff">> = ({
+  tool,
+  isExecuting,
+}) => {
+  const { t } = useTranslation();
+  const { path } = tool.input || {};
+
+  const title = (
+    <>
+      <StatusIcon isExecuting={isExecuting} tool={tool} />
+      <span className="ml-2" />
+      {t("toolInvocation.applyingDiffTo")}
+      {path && (
+        <FileBadge className="!bg-transparent ml-1 border-none" path={path} />
+      )}
+    </>
+  );
+
+  return <ExpandableToolContainer title={title} />;
+};

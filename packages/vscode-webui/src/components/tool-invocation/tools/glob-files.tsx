@@ -69,3 +69,35 @@ export const globFilesTool: React.FC<ToolProps<"globFiles">> = ({
 
   return <ExpandableToolContainer title={title} expandableDetail={resultEl} />;
 };
+
+export const globFilesToolSummary: React.FC<ToolProps<"globFiles">> = ({
+  tool,
+  isExecuting,
+}) => {
+  const { t } = useTranslation();
+  const { path, globPattern } = tool.input || {};
+
+  const searchCondition = (
+    <>
+      {t("toolInvocation.in")} <HighlightedText>{path}</HighlightedText>
+      {globPattern && (
+        <>
+          {t("toolInvocation.for")}{" "}
+          <HighlightedText>{globPattern}</HighlightedText>
+        </>
+      )}
+    </>
+  );
+
+  const title = (
+    <>
+      <StatusIcon isExecuting={isExecuting} tool={tool} />
+      <span className="ml-2" />
+      <span>
+        {t("toolInvocation.searching")} {searchCondition}
+      </span>
+    </>
+  );
+
+  return <ExpandableToolContainer title={title} />;
+};
