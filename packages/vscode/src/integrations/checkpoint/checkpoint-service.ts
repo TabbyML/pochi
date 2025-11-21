@@ -170,6 +170,7 @@ export class CheckpointService implements vscode.Disposable {
       throw new Error("Shadow Git repository not initialized");
     }
     try {
+      await this.shadowGit.stageAll(); // Ensure all changes are staged, including untracked files
       const changes = await this.shadowGit.getDiff(from, undefined, files);
       const result = processGitChangesToUserEdits(changes);
       logger.debug(
