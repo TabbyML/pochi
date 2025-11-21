@@ -12,10 +12,11 @@ import { encodeStoreId } from "@getpochi/common/store-id-utils";
 import type { Task, UITools } from "@getpochi/livekit";
 import type { ToolUIPart } from "ai";
 import {
-  CheckCircle2,
+  CheckCircle,
   Edit3,
   GitBranch,
   HelpCircle,
+  Info,
   ListTreeIcon,
 } from "lucide-react";
 import { useCallback, useMemo } from "react";
@@ -96,22 +97,20 @@ const TaskStatusIcon = ({ status }: { status: string }) => {
     case "pending-input":
     case "pending-model":
       return (
-        <Edit3 {...iconProps} aria-label={t("tasksPage.status.pendingInput")} />
+        <Edit3
+          className="size-4.5 text-muted-foreground"
+          aria-label={t("tasksPage.status.pendingInput")}
+        />
       );
     case "completed":
       return (
-        <CheckCircle2
+        <CheckCircle
           {...iconProps}
           aria-label={t("tasksPage.status.completed")}
         />
       );
     case "failed":
-      return (
-        <MdOutlineErrorOutline
-          {...iconProps}
-          aria-label={t("tasksPage.status.failed")}
-        />
-      );
+      return <Info {...iconProps} aria-label={t("tasksPage.status.failed")} />;
     default:
       return (
         <HelpCircle
@@ -125,6 +124,7 @@ const TaskStatusIcon = ({ status }: { status: string }) => {
 const getStatusBorderColor = (status: string): string => {
   switch (status) {
     case "streaming":
+    case "pending-model":
     case "pending-tool":
     case "pending-input":
       return "border-l-muted-foreground/60";
