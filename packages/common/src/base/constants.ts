@@ -10,5 +10,4 @@ export const WorkspaceWorkflowPathSegments = [".pochi", "workflows"];
 
 export const DefaultContextWindow = 100_000;
 export const DefaultMaxOutputTokens = 4096;
-
 export const PochiTaskIdHeader = "x-pochi-task-id";
