@@ -18,6 +18,7 @@ import { Thread } from "@quilted/threads";
 import * as vscode from "vscode";
 import type { PochiConfiguration } from "../configuration";
 import type { VSCodeHostImpl } from "./vscode-host-impl";
+import { asRelativePath } from "@/lib/fs";
 
 const logger = getLogger("WebviewBase");
 
@@ -258,10 +259,12 @@ export abstract class WebviewBase implements vscode.Disposable {
     );
   }
 
-  protected setupFileWatcher(): void {
+  protected setupFileWatcher(cwd: string): void {
     this.disposables.push(
       vscode.workspace.onDidSaveTextDocument(async (event) => {
-        this.webviewHost?.onFileChanged(event.uri.fsPath);
+        if (event.uri.fsPath.startsWith(cwd)) {
+          this.webviewHost?.onFileChanged(asRelativePath(event.uri, cwd));
+        }
       }),
     );
   }

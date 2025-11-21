@@ -10,7 +10,7 @@ export interface TaskChangedFile {
   removed: number;
 }
 
-export const useTaskChangedFilesState = () => {
+const useTaskChangedFilesState = () => {
   const [changedFiles, setChangedFiles] = useState<TaskChangedFile[]>([]);
 
   const addChangedFile = useCallback((fileDiff: TaskChangedFile) => {
@@ -124,10 +124,10 @@ export const useTaskChangedFiles = (messages: Message[]) => {
           origin: checkpoints[0],
           modified: checkpoints.at(-1),
         },
-        filePath,
+        filePath ? [filePath] : changedFiles.map((f) => f.filepath),
       );
     },
-    [checkpoints],
+    [checkpoints, changedFiles],
   );
 
   const revertFileChanges = useCallback(

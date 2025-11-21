@@ -171,7 +171,11 @@ export class CheckpointService implements vscode.Disposable {
     }
     try {
       const changes = await this.shadowGit.getDiff(from, undefined, files);
-      return processGitChangesToUserEdits(changes);
+      const result = processGitChangesToUserEdits(changes);
+      logger.debug(
+        `Git diff for commit hash ${from} for files: ${files ?? "all"} ${JSON.stringify(changes)} ${JSON.stringify(result)}`,
+      );
+      return result;
     } catch (error) {
       const errorMessage = toErrorMessage(error);
       logger.error(

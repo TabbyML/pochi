@@ -708,7 +708,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     async (
       title: string,
       checkpoint: { origin: string; modified?: string },
-      displayPath?: string,
+      displayPaths?: string[],
     ) => {
       logger.debug(
         `Showing checkpoint diff: from ${checkpoint.origin} to ${
@@ -730,10 +730,19 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         return false;
       }
 
-      if (displayPath) {
-        const changedFile = changedFiles.filter(
-          (file) => file.filepath === displayPath,
-        )[0];
+      const displayFiles = displayPaths
+        ? changedFiles.filter(
+            (file) => file.filepath && displayPaths.includes(file.filepath),
+          )
+        : changedFiles;
+
+      if (displayFiles.length === 0) {
+        return false;
+      }
+
+      if (displayFiles.length === 1) {
+        const changedFile = displayFiles[0];
+
         await vscode.commands.executeCommand(
           "vscode.diff",
           DiffChangesContentProvider.decode({
@@ -758,7 +767,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       await vscode.commands.executeCommand(
         "vscode.changes",
         title,
-        changedFiles.map((file) => [
+        displayFiles.map((file) => [
           vscode.Uri.joinPath(vscode.Uri.parse(this.cwd ?? ""), file.filepath),
           DiffChangesContentProvider.decode({
             filepath: file.filepath,
