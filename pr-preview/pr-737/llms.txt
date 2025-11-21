@@ -2223,7 +2223,7 @@ We shipped Next Edit Suggestions (one of our biggest upgrades so far), along wit
     borderRadius: "8px",
   }}
     allowFullScreen
-    title="Task notifications"
+    title="Line Wrap Toggle in Code Blocks:"
   />
 </div>
 
@@ -2423,7 +2423,7 @@ We shipped Next Edit Suggestions (one of our biggest upgrades so far), along wit
     borderRadius: "8px",
   }}
     allowFullScreen
-    title="Task notifications"
+    title="Line Wrap Toggle in Code Blocks:"
   />
 </div>
 
