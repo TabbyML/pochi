@@ -85,6 +85,8 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
   const subtask = useSubtaskInfo(uid, task?.parentId);
   const isSubTask = !!subtask;
 
+  const isNewTaskWithContent = !!prompt || !!files?.length;
+
   useEffect(() => {
     if (task) {
       vscodeHost.onTaskUpdated(
@@ -342,6 +344,7 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
           // Leave more space for errors as errors / approval button are absolutely positioned
           "pb-14": !!displayError,
         })}
+        hideEmptyPlaceholder={isNewTaskWithContent}
       />
       <div className="relative flex flex-col px-4">
         {!isWorkspaceActive ? (

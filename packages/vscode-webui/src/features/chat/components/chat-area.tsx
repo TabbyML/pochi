@@ -10,6 +10,7 @@ interface ChatAreaProps {
   user?: { name: string; image?: string | null };
   messagesContainerRef: React.RefObject<HTMLDivElement | null>;
   className?: string;
+  hideEmptyPlaceholder?: boolean;
 }
 
 export function ChatArea({
@@ -18,11 +19,14 @@ export function ChatArea({
   user,
   messagesContainerRef,
   className,
+  hideEmptyPlaceholder,
 }: ChatAreaProps) {
   const resourceUri = useResourceURI();
   return (
     <>
-      {messages.length === 0 && <EmptyChatPlaceholder />}
+      {!hideEmptyPlaceholder && messages.length === 0 && (
+        <EmptyChatPlaceholder />
+      )}
       {messages.length > 0 && <div className="h-4" />}
       <MessageList
         messages={messages}
