@@ -31,9 +31,9 @@ const collapsibleSectionVariants = {
 
 export interface DiffSummaryProps {
   files: TaskChangedFile[];
-  onRevert?: (filePath: string) => void;
-  onRevertAll?: () => void;
-  onViewDiff?: (filePath?: string) => void;
+  onRevert: (filePath: string) => void;
+  onRevertAll: () => void;
+  onViewDiff: (filePath?: string) => void;
   className?: string;
 }
 
@@ -90,7 +90,7 @@ export function DiffSummary({
           <Button
             variant="outline"
             size="xs"
-            onClick={onRevertAll}
+            onClick={() => onRevertAll()}
             className="h-7 gap-1.5"
           >
             <Undo2 className="size-3.5" />
@@ -101,7 +101,7 @@ export function DiffSummary({
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => onViewDiff?.()}
+                onClick={() => onViewDiff()}
                 className="h-7 w-7"
               >
                 <FileDiffIcon className="size-3.5" />
@@ -131,7 +131,7 @@ export function DiffSummary({
                       <FileIcon path={file.filepath} className="shrink-0" />
                       <button
                         type="button"
-                        onClick={() => onViewDiff?.(file.filepath)}
+                        onClick={() => onViewDiff(file.filepath)}
                         className="truncate font-medium text-sm"
                         title="View diff"
                       >
@@ -153,7 +153,7 @@ export function DiffSummary({
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => onRevert?.(file.filepath)}
+                              onClick={() => onRevert(file.filepath)}
                               className="h-5 w-5"
                             >
                               <Undo2 className="size-3.5" />
@@ -166,7 +166,7 @@ export function DiffSummary({
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => onViewDiff?.(file.filepath)}
+                              onClick={() => onViewDiff(file.filepath)}
                               className="h-5 w-5"
                             >
                               <FileDiffIcon className="size-3.5" />

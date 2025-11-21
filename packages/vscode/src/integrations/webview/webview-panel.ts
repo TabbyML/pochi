@@ -63,6 +63,7 @@ export class PochiWebviewPanel
       taskParams,
     );
     this.setupAuthEventListeners();
+    this.setupFileWatcher(taskParams.cwd);
 
     // Listen to panel events
     this.panel.onDidDispose(() => this.dispose(), null, this.disposables);

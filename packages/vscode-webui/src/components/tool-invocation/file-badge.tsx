@@ -52,7 +52,7 @@ export const FileBadge: React.FC<FileBadgeProps> = ({
           origin: changes.origin,
           modified: changes.modified,
         },
-        path,
+        [path],
       );
       if (showDiffSuccess) {
         return;

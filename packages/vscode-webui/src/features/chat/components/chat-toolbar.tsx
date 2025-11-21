@@ -71,19 +71,6 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   const [input, setInput] = useState("");
   const [queuedMessages, setQueuedMessages] = useState<string[]>([]);
 
-  // Demo data for diff summary
-  // const [demoFiles] = useState([
-  //   { path: "file1.md", additions: 2, deletions: 1 },
-  //   { path: "file2.js", additions: 4, deletions: 1 },
-  //   { path: "file3.ts", additions: 2, deletions: 1 },
-  //   { path: "file4.html", additions: 2, deletions: 1 },
-  //   { path: "file5.css", additions: 2, deletions: 1 },
-  //   { path: "README.md", additions: 2, deletions: 0 },
-  //   { path: "sddd", additions: 2, deletions: 0 },
-  //   { path: "README.md", additions: 2, deletions: 0 },
-  //   { path: "README.md", additions: 2, deletions: 0 },
-  // ]);
-
   const { changedFiles, showFileChanges, revertFileChanges } =
     useTaskChangedFiles(messages);
 
