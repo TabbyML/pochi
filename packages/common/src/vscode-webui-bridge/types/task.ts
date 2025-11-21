@@ -23,11 +23,6 @@ export interface NewTaskPanelParams extends NewTaskParams {
   cwd: string;
 }
 
-export interface TaskUriQueryParams {
-  cwd: string;
-  uid: string;
-}
-
 /**
  * only include fields that are used in the webview and node process
  */

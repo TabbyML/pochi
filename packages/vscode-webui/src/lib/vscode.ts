@@ -65,7 +65,6 @@ function createVSCodeHost(): VSCodeHostApi {
         "listFilesInWorkspace",
         "listAutoCompleteCandidates",
         "readActiveTabs",
-        "readVisibleTaskPanels",
         "readActiveSelection",
         "readCurrentWorkspace",
         "previewToolCall",
@@ -135,21 +134,6 @@ function createVSCodeHost(): VSCodeHostApi {
 
         async commitTaskUpdated(event: unknown) {
           if (globalThis.POCHI_WEBVIEW_KIND === "pane") return;
-
-          // Handle task read status changes (non-persistent)
-          if (
-            R.isObjectType(event) &&
-            "name" in event &&
-            event.name === "taskReadStatusChanged"
-          ) {
-            const { taskId, isRead } = event as unknown as {
-              taskId: string;
-              isRead: boolean;
-            };
-            useTaskReadStatusStore.getState().setTaskReadStatus(taskId, isRead);
-            return;
-          }
-
           if (R.isObjectType(event)) {
             const dateFields = ["createdAt", "updatedAt"];
             for (const field of dateFields) {
@@ -164,6 +148,11 @@ function createVSCodeHost(): VSCodeHostApi {
           }
           // @ts-expect-error
           store?.commit(event);
+        },
+
+        async setTaskRead(taskId, read) {
+          if (globalThis.POCHI_WEBVIEW_KIND === "pane") return;
+          useTaskReadStatusStore.getState().setTaskReadStatus(taskId, read);
         },
       },
     },

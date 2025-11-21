@@ -313,6 +313,7 @@ export abstract class WebviewBase implements vscode.Disposable {
           "onAuthChanged",
           "isFocused",
           "commitTaskUpdated",
+          "setTaskRead",
         ],
       },
     );
