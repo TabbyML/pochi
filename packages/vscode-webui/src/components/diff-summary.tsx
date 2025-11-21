@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { motion } from "motion/react";
 import { useState } from "react";
-import type { TaskChangedFile } from "src/features/chat/lib/use-task-changed-files";
+import type { TaskChangedFile } from "@/features/chat/lib/use-task-changed-files";
 
 const collapsibleSectionVariants = {
   open: {
