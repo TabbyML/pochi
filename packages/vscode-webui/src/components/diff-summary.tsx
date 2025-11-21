@@ -7,7 +7,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import type { TaskChangedFile } from "@/features/chat/lib/use-task-changed-files";
+import { type TaskChangedFile } from "@/features/chat";
 import { cn } from "@/lib/utils";
 import {
   ChevronDown,
