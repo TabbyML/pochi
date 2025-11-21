@@ -1,4 +1,5 @@
 import type { AuthEvents } from "@/lib/auth-events";
+import { asRelativePath } from "@/lib/fs";
 import { getNonce } from "@/lib/get-nonce";
 import { getUri } from "@/lib/get-uri";
 import { getLogger } from "@getpochi/common";
@@ -18,7 +19,6 @@ import { Thread } from "@quilted/threads";
 import * as vscode from "vscode";
 import type { PochiConfiguration } from "../configuration";
 import type { VSCodeHostImpl } from "./vscode-host-impl";
-import { asRelativePath } from "@/lib/fs";
 
 const logger = getLogger("WebviewBase");
 

@@ -4,8 +4,8 @@ import * as path from "node:path";
 import { WorkspaceScope } from "@/lib/workspace-scoped";
 import { getLogger, toErrorMessage } from "@getpochi/common";
 import type {
-  SaveCheckpointOptions,
   FileDiff,
+  SaveCheckpointOptions,
 } from "@getpochi/common/vscode-webui-bridge";
 import { Lifecycle, inject, injectable, scoped } from "tsyringe";
 import type * as vscode from "vscode";

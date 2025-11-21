@@ -1,8 +1,8 @@
 import { fileChangeEvent, vscodeHost } from "@/lib/vscode";
 import type { Message } from "@getpochi/livekit";
+import { isToolUIPart } from "ai";
 import { useCallback, useEffect, useState } from "react";
 import { useToolCallLifeCycle } from "./chat-state";
-import { isToolUIPart } from "ai";
 
 export interface TaskChangedFile {
   filepath: string;
