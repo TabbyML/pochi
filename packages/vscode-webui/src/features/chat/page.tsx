@@ -262,7 +262,6 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
 
   const { pendingApproval, retry } = approvalAndRetry;
 
-  // Update task in LiveStore when pendingApproval or task changes
   useEffect(() => {
     const pendingToolApproval =
       pendingApproval && pendingApproval.name !== "retry"
