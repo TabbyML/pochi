@@ -89,6 +89,13 @@ export const useTaskChangedFiles = (messages: Message[]) => {
       if (checkpoints.length < 1) {
         return;
       }
+
+      await new Promise<void>((resolve) =>
+        setTimeout(() => {
+          resolve();
+        }, 100),
+      );
+
       const diffResult = await vscodeHost.diffWithCheckpoint(checkpoints[0], [
         filepath,
       ]);
