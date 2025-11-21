@@ -187,7 +187,12 @@
       "selectDate": "Select date",
       "today": "Today"
     },
-    "worktreeNotExist": "Worktree does not exist"
+    "worktreeNotExist": "Worktree does not exist",
+    "newTask": "New Task",
+    "deleted": "Deleted",
+    "tasksCount": "{{count}} tasks",
+    "showDeletedWorktrees": "Show {{count}} deleted worktrees",
+    "hideDeletedWorktrees": "Hide {{count}} deleted worktrees"
   },
   "toolInvocation": {
     "taskCompleted": "Task Completed",
