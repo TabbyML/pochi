@@ -1,7 +1,9 @@
 // Type for user edits with diff information
-export type UserEditsDiff = {
+export type FileDiff = {
   filepath: string;
   diff: string;
+  added: number;
+  removed: number;
 };
 
 export type ExecuteCommandResult = {

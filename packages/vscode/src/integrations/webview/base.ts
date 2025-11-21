@@ -1,4 +1,5 @@
 import type { AuthEvents } from "@/lib/auth-events";
+import { asRelativePath } from "@/lib/fs";
 import { getNonce } from "@/lib/get-nonce";
 import { getUri } from "@/lib/get-uri";
 import { getLogger } from "@getpochi/common";
@@ -258,6 +259,16 @@ export abstract class WebviewBase implements vscode.Disposable {
     );
   }
 
+  protected setupFileWatcher(cwd: string): void {
+    this.disposables.push(
+      vscode.workspace.onDidSaveTextDocument(async (event) => {
+        if (event.uri.fsPath.startsWith(cwd)) {
+          this.webviewHost?.onFileChanged(asRelativePath(event.uri, cwd));
+        }
+      }),
+    );
+  }
+
   protected async createWebviewThread(
     webview: vscode.Webview,
   ): Promise<Thread<WebviewHostApi, VSCodeHostApi>> {
@@ -313,6 +324,7 @@ export abstract class WebviewBase implements vscode.Disposable {
           "onAuthChanged",
           "isFocused",
           "commitTaskUpdated",
+          "onFileChanged",
         ],
       },
     );

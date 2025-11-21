@@ -1,5 +1,6 @@
 import { AttachmentPreviewList } from "@/components/attachment-preview-list";
 import { DevModeButton } from "@/components/dev-mode-button";
+import { DiffSummary } from "@/components/diff-summary";
 import { ModelSelect } from "@/components/model-select";
 import { PreviewTool } from "@/components/preview-tool";
 import { PublicShareButton } from "@/components/public-share-button";
@@ -31,6 +32,7 @@ import { useChatSubmit } from "../hooks/use-chat-submit";
 import { useInlineCompactTask } from "../hooks/use-inline-compact-task";
 import { useNewCompactTask } from "../hooks/use-new-compact-task";
 import type { SubtaskInfo } from "../hooks/use-subtask-info";
+import { useTaskChangedFiles } from "../lib/use-task-changed-files";
 import { ChatInputForm } from "./chat-input-form";
 import { ErrorMessageView } from "./error-message-view";
 import { CompleteSubtaskButton } from "./subtask";
@@ -68,6 +70,9 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
 
   const [input, setInput] = useState("");
   const [queuedMessages, setQueuedMessages] = useState<string[]>([]);
+
+  const { changedFiles, showFileChanges, revertFileChanges } =
+    useTaskChangedFiles(messages);
 
   // Initialize task with prompt if provided and task doesn't exist yet
   const { todos } = useTodos({
@@ -209,6 +214,13 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
           <TodoList.Items viewportClassname="max-h-48" />
         </TodoList>
       )}
+      {/* Demo Diff Summary */}
+      <DiffSummary
+        files={changedFiles}
+        onRevert={revertFileChanges}
+        onRevertAll={revertFileChanges}
+        onViewDiff={showFileChanges}
+      />
       <AutoApproveMenu isSubTask={isSubTask} />
       {files.length > 0 && (
         <AttachmentPreviewList

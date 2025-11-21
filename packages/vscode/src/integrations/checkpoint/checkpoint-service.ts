@@ -4,8 +4,8 @@ import * as path from "node:path";
 import { WorkspaceScope } from "@/lib/workspace-scoped";
 import { getLogger, toErrorMessage } from "@getpochi/common";
 import type {
+  FileDiff,
   SaveCheckpointOptions,
-  UserEditsDiff,
 } from "@getpochi/common/vscode-webui-bridge";
 import { Lifecycle, inject, injectable, scoped } from "tsyringe";
 import type * as vscode from "vscode";
@@ -108,7 +108,10 @@ export class CheckpointService implements vscode.Disposable {
    * @param commitHash The commit hash to restore the checkpoint from.
    * @returns A promise that resolves when the checkpoint is restored.
    */
-  restoreCheckpoint = async (commitHash: string): Promise<void> => {
+  restoreCheckpoint = async (
+    commitHash: string,
+    files?: string[],
+  ): Promise<void> => {
     logger.trace(`Restoring checkpoint for commit hash: ${commitHash}`);
     await this.ensureInitialized();
 
@@ -117,7 +120,7 @@ export class CheckpointService implements vscode.Disposable {
     }
 
     try {
-      await this.shadowGit.reset(commitHash);
+      await this.shadowGit.reset(commitHash, files);
     } catch (error) {
       const errorMessage = toErrorMessage(error);
       logger.error(
@@ -158,21 +161,26 @@ export class CheckpointService implements vscode.Disposable {
     }
   };
 
-  getCheckpointUserEditsDiff = async (
+  getCheckpointFileEdits = async (
     from: string,
-    to?: string,
-  ): Promise<UserEditsDiff[] | null> => {
+    files?: string[],
+  ): Promise<FileDiff[] | null> => {
     await this.ensureInitialized();
     if (!this.shadowGit) {
       throw new Error("Shadow Git repository not initialized");
     }
     try {
-      const changes = await this.shadowGit.getDiff(from, to);
-      return processGitChangesToUserEdits(changes);
+      await this.shadowGit.stageAll(); // Ensure all changes are staged, including untracked files
+      const changes = await this.shadowGit.getDiff(from, undefined, files);
+      const result = processGitChangesToUserEdits(changes);
+      logger.debug(
+        `Git diff for commit hash ${from} for files: ${files ?? "all"} ${JSON.stringify(changes)} ${JSON.stringify(result)}`,
+      );
+      return result;
     } catch (error) {
       const errorMessage = toErrorMessage(error);
       logger.error(
-        `Failed to get user edits for commit hash: ${from} to: ${to}: ${errorMessage}`,
+        `Failed to get user edits for commit hash: ${from}${files ? ` for files: ${files}` : ""}: ${errorMessage}`,
         { error },
       );
       return null;
