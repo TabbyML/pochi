@@ -6,10 +6,10 @@ import type {
 } from "@getpochi/common/vscode-webui-bridge";
 import type { Store } from "@livestore/livestore";
 import { ThreadNestedWindow } from "@quilted/threads";
+import Emittery from "emittery";
 import * as R from "remeda";
 import type { WebviewApi } from "vscode-webview";
 import { queryClient } from "./query-client";
-import Emittery from "emittery";
 
 const logger = getLogger("vscode");
 

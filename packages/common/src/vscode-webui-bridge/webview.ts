@@ -6,6 +6,7 @@ import type { UserInfo } from "../configuration";
 import type {
   CaptureEvent,
   CustomAgentFile,
+  FileDiff,
   GitWorktree,
   McpStatus,
   NewTaskParams,
@@ -15,7 +16,6 @@ import type {
   SessionState,
   TaskIdParams,
   TaskPanelParams,
-  FileDiff,
   WorkspaceState,
 } from "./index";
 import type { DisplayModel } from "./types/model";

@@ -7,6 +7,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import type { TaskChangedFile } from "@/features/chat/lib/use-task-changed-files";
 import { cn } from "@/lib/utils";
 import {
   ChevronDown,
@@ -16,7 +17,6 @@ import {
 } from "lucide-react";
 import { motion } from "motion/react";
 import { useState } from "react";
-import type { TaskChangedFile } from "@/features/chat/lib/use-task-changed-files";
 
 const collapsibleSectionVariants = {
   open: {

@@ -1,6 +1,6 @@
+import type { FileDiff } from "@getpochi/common/vscode-webui-bridge";
 import { diffLines } from "diff";
 import type { GitDiff } from "./types";
-import type { FileDiff } from "@getpochi/common/vscode-webui-bridge";
 
 export class Deferred<T> {
   promise: Promise<T>;

@@ -32,10 +32,10 @@ import { useChatSubmit } from "../hooks/use-chat-submit";
 import { useInlineCompactTask } from "../hooks/use-inline-compact-task";
 import { useNewCompactTask } from "../hooks/use-new-compact-task";
 import type { SubtaskInfo } from "../hooks/use-subtask-info";
+import { useTaskChangedFiles } from "../lib/use-task-changed-files";
 import { ChatInputForm } from "./chat-input-form";
 import { ErrorMessageView } from "./error-message-view";
 import { CompleteSubtaskButton } from "./subtask";
-import { useTaskChangedFiles } from "../lib/use-task-changed-files";
 
 interface ChatToolbarProps {
   task?: Task;
