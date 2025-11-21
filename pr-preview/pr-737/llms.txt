@@ -2160,7 +2160,7 @@ We shipped Next Edit Suggestions (one of our biggest upgrades so far), along wit
 
 ### 🚀 Features
 
-* **Next Edit Suggestions (NES):** We’ve introduced our internal edit model powering Next Edit Suggestion (NES). It is an upgrade to Tab Completion that predicts the next change your code needs, wherever it lives. It learns from your recent edits, understands how your file is evolving, and auto-surfaces likely follow-up edits. <br /> <br />We’ve published a deep-dive on how we trained and evaluated the edit model, and how it powers inference. You can read more **[here](./how-we-created-nes-model.mdx)**.
+* **Next Edit Suggestions (NES):** We’ve introduced our internal edit model powering Next Edit Suggestion (NES). It is an upgrade to Tab Completion that predicts the next change your code needs, wherever it lives. It learns from your recent edits, understands how your file is evolving, and auto-surfaces likely follow-up edits. <br /> <br />We’ve published a deep-dive on how we trained and evaluated the edit model, and how it powers Pochi's experience. You can read more **[here](./how-we-created-nes-model.mdx)**.
 
 <div class="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg">![NES Demo](./images/nes-demo-blog.gif)</div>
 
@@ -2193,12 +2193,12 @@ We shipped Next Edit Suggestions (one of our biggest upgrades so far), along wit
   />
 </div>
 
-* **Gemini 3 Support:** We’ve also added support for Gemini 3 Pro alongside 2.5. The UI for model selection, pricing, and routing has been updated accordingly.
+* **Gemini 3 Support:** We’ve added support for Gemini 3 Pro alongside 2.5 Pro. The UI for model selection is updated and ready for you to take over!
   <div class="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg">![Gemini 3 Support](./images/gemini-3pro-support.png)</div>
 
 ### ✨ Enhancements
 
-* **Line Wrap Toggle in Code Blocks:** We added a line wrap toggle to the code block component in the VS Code extension. This way, long lines inside diffs and model edits are now way easier to read, especially when reviewing wide changes or generated code.
+* **Line Wrap Toggle in Code Blocks:** We added a line wrap toggle to the code block component in the VS Code extension. This way, long lines inside diffs and model edits are now way easier to read, especially when reviewing wide changes across generated code.
 
 <div
   className="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg"
@@ -2360,7 +2360,7 @@ We shipped Next Edit Suggestions (one of our biggest upgrades so far), along wit
 
 ### 🚀 Features
 
-* **Next Edit Suggestions (NES):** We’ve introduced our internal edit model powering Next Edit Suggestion (NES). It is an upgrade to Tab Completion that predicts the next change your code needs, wherever it lives. It learns from your recent edits, understands how your file is evolving, and auto-surfaces likely follow-up edits. <br /> <br />We’ve published a deep-dive on how we trained and evaluated the edit model, and how it powers inference. You can read more **[here](./how-we-created-nes-model.mdx)**.
+* **Next Edit Suggestions (NES):** We’ve introduced our internal edit model powering Next Edit Suggestion (NES). It is an upgrade to Tab Completion that predicts the next change your code needs, wherever it lives. It learns from your recent edits, understands how your file is evolving, and auto-surfaces likely follow-up edits. <br /> <br />We’ve published a deep-dive on how we trained and evaluated the edit model, and how it powers Pochi's experience. You can read more **[here](./how-we-created-nes-model.mdx)**.
 
 <div class="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg">![NES Demo](./images/nes-demo-blog.gif)</div>
 
@@ -2393,12 +2393,12 @@ We shipped Next Edit Suggestions (one of our biggest upgrades so far), along wit
   />
 </div>
 
-* **Gemini 3 Support:** We’ve also added support for Gemini 3 Pro alongside 2.5. The UI for model selection, pricing, and routing has been updated accordingly.
+* **Gemini 3 Support:** We’ve added support for Gemini 3 Pro alongside 2.5 Pro. The UI for model selection is updated and ready for you to take over!
   <div class="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg">![Gemini 3 Support](./images/gemini-3pro-support.png)</div>
 
 ### ✨ Enhancements
 
-* **Line Wrap Toggle in Code Blocks:** We added a line wrap toggle to the code block component in the VS Code extension. This way, long lines inside diffs and model edits are now way easier to read, especially when reviewing wide changes or generated code.
+* **Line Wrap Toggle in Code Blocks:** We added a line wrap toggle to the code block component in the VS Code extension. This way, long lines inside diffs and model edits are now way easier to read, especially when reviewing wide changes across generated code.
 
 <div
   className="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg"
