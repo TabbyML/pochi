@@ -61,6 +61,7 @@ import type {
   SaveCheckpointOptions,
   SessionState,
   TaskPanelParams,
+  TaskUriQueryParams,
   VSCodeHostApi,
   WorkspaceState,
 } from "@getpochi/common/vscode-webui-bridge";
@@ -275,11 +276,23 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     );
   };
 
+  readVisibleTaskPanels = async (): Promise<
+    ThreadSignalSerialization<TaskUriQueryParams[]>
+  > => {
+    return ThreadSignal.serialize(this.tabState.visibleTaskPanelTabs);
+  };
+
   readActiveSelection = async (): Promise<
     ThreadSignalSerialization<FileSelection | undefined>
   > => {
     return ThreadSignal.serialize(this.tabState.activeSelection);
   };
+
+  // readActiveTaskPanel = async (): Promise<
+  //   ThreadSignalSerialization<ITaskPanel | undefined>
+  // > => {
+  //   return ThreadSignal.serialize(this.taskPanelState.activeTaskPanel);
+  // };
 
   readVisibleTerminals = async () => {
     return {

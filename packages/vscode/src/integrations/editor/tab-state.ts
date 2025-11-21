@@ -1,3 +1,4 @@
+import type { TaskUriQueryParams } from "@getpochi/common/vscode-webui-bridge";
 import { signal } from "@preact/signals-core";
 import { injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
@@ -24,11 +25,15 @@ export class TabState implements vscode.Disposable {
 
   activeSelection = signal<FileSelection | undefined>();
 
+  // Signal containing the visible task panels
+  visibleTaskPanelTabs = signal<TaskUriQueryParams[]>([]);
+
   private disposables: vscode.Disposable[] = [];
 
   constructor() {
     this.activeSelection.value = getActiveSelection();
     this.activeTabs.value = listOpenTabs();
+    this.visibleTaskPanelTabs.value = listVisibleTaskPanelTabs();
     this.setupEventListeners();
   }
 
@@ -67,6 +72,9 @@ export class TabState implements vscode.Disposable {
     // Update the existing signal value instead of creating a new signal
     const newOpenTabs = listOpenTabs();
     this.activeTabs.value = newOpenTabs;
+
+    const newVisibleTaskPanelTabs = listVisibleTaskPanelTabs();
+    this.visibleTaskPanelTabs.value = newVisibleTaskPanelTabs;
 
     const newSelection = getActiveSelection();
     if (newSelection) {
@@ -216,4 +224,25 @@ function listOpenTabs(): { filepath: string; isDir: boolean }[] {
     }
   }
   return currentOpenTabFiles;
+}
+
+function listVisibleTaskPanelTabs(): TaskUriQueryParams[] {
+  const tabGroups = vscode.window.tabGroups.all;
+  const activeTaskPanelTab: TaskUriQueryParams[] = [];
+  for (const group of tabGroups) {
+    const tab = group.activeTab;
+    if (
+      tab &&
+      tab.input instanceof vscode.TabInputCustom &&
+      tab.input.viewType === PochiTaskEditorProvider.viewType
+    ) {
+      try {
+        const query: TaskUriQueryParams = JSON.parse(tab.input.uri.query);
+        activeTaskPanelTab.push(query);
+      } catch (e) {
+        // ignore
+      }
+    }
+  }
+  return activeTaskPanelTab;
 }

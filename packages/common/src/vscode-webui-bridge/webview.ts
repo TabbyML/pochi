@@ -15,6 +15,7 @@ import type {
   SessionState,
   TaskIdParams,
   TaskPanelParams,
+  TaskUriQueryParams,
   UserEditsDiff,
   WorkspaceState,
 } from "./index";
@@ -119,6 +120,10 @@ export interface VSCodeHostApi {
    */
   readActiveTabs(): Promise<
     ThreadSignalSerialization<Array<{ filepath: string; isDir: boolean }>>
+  >;
+
+  readVisibleTaskPanels(): Promise<
+    ThreadSignalSerialization<Array<TaskUriQueryParams>>
   >;
 
   readActiveSelection(): Promise<

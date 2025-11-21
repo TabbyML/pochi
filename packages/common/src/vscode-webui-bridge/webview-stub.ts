@@ -12,6 +12,7 @@ import type {
   ResourceURI,
   RuleFile,
   SessionState,
+  TaskUriQueryParams,
   UserEditsDiff,
   VSCodeHostApi,
   WorkspaceState,
@@ -104,6 +105,13 @@ const VSCodeHostStub = {
       {} as ThreadSignalSerialization<
         Array<{ filepath: string; isDir: boolean }>
       >,
+    );
+  },
+  readVisibleTaskPanels: (): Promise<
+    ThreadSignalSerialization<TaskUriQueryParams[]>
+  > => {
+    return Promise.resolve(
+      {} as ThreadSignalSerialization<TaskUriQueryParams[]>,
     );
   },
   readActiveSelection: (): Promise<

@@ -28,10 +28,12 @@ export function TaskRow({
   task,
   worktreeName,
   isWorktreeExist,
+  isRead,
 }: {
   task: Task;
   worktreeName?: string;
   isWorktreeExist?: boolean;
+  isRead?: boolean;
 }) {
   const { jwt } = usePochiCredentials();
 
@@ -54,8 +56,11 @@ export function TaskRow({
               className="max-w-full text-muted-foreground/80 text-xs"
               isWorktreeExist={isWorktreeExist}
             />
-            <h3 className="line-clamp-2 flex-1 font-medium text-foreground leading-relaxed transition-colors duration-200 group-hover:text-foreground/80">
-              {title}
+            <h3 className="line-clamp-2 flex flex-1 items-center font-medium text-foreground leading-relaxed transition-colors duration-200 group-hover:text-foreground/80">
+              <span className="truncate">{title}</span>
+              {isRead ? null : (
+                <div className="ml-2 h-2 w-2 shrink-0 rounded-full bg-primary" />
+              )}
             </h3>
             <div className="text-muted-foreground">
               {!!task.pendingToolCalls?.length && (

@@ -11,6 +11,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { WelcomeScreen } from "@/components/welcome-screen";
 import { WorkspaceRequiredPlaceholder } from "@/components/workspace-required-placeholder";
 import { CreateTaskInput } from "@/features/chat";
+import { useTaskReadStatusStore } from "@/features/chat";
 import { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
 import { useCurrentWorkspace } from "@/lib/hooks/use-current-workspace";
 import { useModelList } from "@/lib/hooks/use-model-list";
@@ -189,6 +190,7 @@ function Tasks() {
   const workspaceFolder = currentWorkspace?.workspaceFolder;
   const tasks = store.useQuery(taskCatalog.queries.makeTasksQuery(cwd));
   const { data: worktrees } = useWorktrees();
+  const unreadTaskIds = useTaskReadStatusStore((state) => state.unreadTaskIds);
   const totalPages = Math.ceil(tasks.length / limit);
   const paginatedTasks = tasks.slice((page - 1) * limit, page * limit);
 
@@ -230,6 +232,7 @@ function Tasks() {
                   task.git?.worktree && worktrees
                     ? worktrees.some((wt) => wt.path === task.cwd)
                     : undefined;
+                const isRead = !unreadTaskIds.has(task.id);
 
                 return (
                   <TaskRow
@@ -239,6 +242,7 @@ function Tasks() {
                       task.git?.worktree?.gitdir,
                     )}
                     isWorktreeExist={isWorktreeExist}
+                    isRead={isRead}
                   />
                 );
               })}

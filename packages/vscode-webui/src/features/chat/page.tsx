@@ -44,6 +44,7 @@ import { useScrollToBottom } from "./hooks/use-scroll-to-bottom";
 import { useSetSubtaskModel } from "./hooks/use-set-subtask-model";
 import { useAddSubtaskResult } from "./hooks/use-subtask-completed";
 import { useSubtaskInfo } from "./hooks/use-subtask-info";
+import { useUpdateReadStatus } from "./hooks/use-update-read-status";
 import {
   useAutoApproveGuard,
   useChatAbortController,
@@ -262,6 +263,7 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
 
   const { pendingApproval, retry } = approvalAndRetry;
 
+  // Update task in LiveStore when pendingApproval or task changes
   useEffect(() => {
     const pendingToolApproval =
       pendingApproval && pendingApproval.name !== "retry"
@@ -290,6 +292,8 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
       );
     }
   }, [pendingApproval, task]);
+
+  useUpdateReadStatus({ task, isSubTask });
 
   useEffect(() => {
     if (
