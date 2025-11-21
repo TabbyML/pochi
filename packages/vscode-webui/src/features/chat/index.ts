@@ -22,4 +22,7 @@ export type { ToolCallLifeCycle } from "./lib/tool-call-life-cycle";
 export { ChatPage } from "./page";
 
 export { CreateTaskInput } from "./components/create-task-input";
-export { useTaskChangedFiles, type TaskChangedFile } from "./lib/use-task-changed-files";
+export {
+  useTaskChangedFiles,
+  type TaskChangedFile,
+} from "./lib/use-task-changed-files";
