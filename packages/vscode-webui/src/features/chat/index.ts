@@ -24,3 +24,7 @@ export { ChatPage } from "./page";
 export { CreateTaskInput } from "./components/create-task-input";
 
 export { useTaskReadStatusStore } from "./store";
+export {
+  useTaskChangedFiles,
+  type TaskChangedFile,
+} from "./lib/use-task-changed-files";
