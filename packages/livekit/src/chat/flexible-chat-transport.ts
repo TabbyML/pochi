@@ -1,6 +1,6 @@
 import { getErrorMessage } from "@ai-sdk/provider";
 import type { Environment } from "@getpochi/common";
-import { constants, formatters, prompts } from "@getpochi/common";
+import { formatters, prompts } from "@getpochi/common";
 import * as R from "remeda";
 
 import {
@@ -172,8 +172,10 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
       ),
     )) as ModelMessage[];
     const stream = streamText({
-      headers: {
-        [constants.PochiTaskIdHeader]: chatId,
+      providerOptions: {
+        pochi: {
+          taskId: chatId,
+        },
       },
       system: prompts.system(
         environment?.info?.customRules,
