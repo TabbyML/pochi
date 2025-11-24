@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <img alt="Visual Studio Marketplace Version" src="https://img.shields.io/visual-studio-marketplace/v/tabbyml.pochi">
+  <a href="https://marketplace.visualstudio.com/items?itemName=TabbyML.pochi"><img alt="Visual Studio Marketplace Version" src="https://img.shields.io/visual-studio-marketplace/v/tabbyml.pochi"></a>
   <a href="https://codecov.io/github/TabbyML/pochi"><img src="https://codecov.io/github/TabbyML/pochi/graph/badge.svg?token=VV9JGSXAWI" alt="Codecov" /></a>
 </p>
 
