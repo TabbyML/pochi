@@ -1,9 +1,4 @@
 import { Badge } from "@/components/ui/badge";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { usePochiCredentials } from "@/lib/hooks/use-pochi-credentials";
 import { cn } from "@/lib/utils";
 import { vscodeHost } from "@/lib/vscode";
@@ -11,17 +6,8 @@ import { parseTitle } from "@getpochi/common/message-utils";
 import { encodeStoreId } from "@getpochi/common/store-id-utils";
 import type { Task, UITools } from "@getpochi/livekit";
 import type { ToolUIPart } from "ai";
-import {
-  CheckCircle,
-  Edit3,
-  GitBranch,
-  HelpCircle,
-  Info,
-  ListTreeIcon,
-} from "lucide-react";
+import { GitBranch } from "lucide-react";
 import { useCallback, useMemo } from "react";
-import { useTranslation } from "react-i18next";
-import { MdOutlineErrorOutline } from "react-icons/md";
 import { ToolCallLite } from "./tool-call-lite";
 
 export function TaskRow({
@@ -77,16 +63,18 @@ export function TaskRow({
                 <div className="ml-2 h-2 w-2 shrink-0 rounded-full bg-primary" />
               )}
             </h3>
-            <div className="text-muted-foreground">
-              {!!task.pendingToolCalls?.length && (
+            <div className="h-6 text-muted-foreground text-sm">
+              {task.pendingToolCalls?.length ? (
                 <ToolCallLite
                   tools={task.pendingToolCalls as Array<ToolUIPart<UITools>>}
                 />
+              ) : (
+                <TaskStatusView task={task} />
               )}
             </div>
           </div>
-          <div className="mt-0.5 shrink-0">
-            <TaskStatusIcon status={task.status} />
+          <div className="mt-0.5 shrink-0 text-muted-foreground text-sm">
+            {formatTimeAgo(task.updatedAt)}
           </div>
         </div>
       </div>
@@ -108,39 +96,6 @@ export function TaskRow({
   return <div onClick={openTaskInPanel}>{content}</div>;
 }
 
-const TaskStatusIcon = ({ status }: { status: string }) => {
-  const { t } = useTranslation();
-  const iconProps = { className: "size-5 text-muted-foreground" };
-  switch (status) {
-    case "streaming":
-    case "pending-tool":
-    case "pending-input":
-    case "pending-model":
-      return (
-        <Edit3
-          className="size-4.5 text-muted-foreground"
-          aria-label={t("tasksPage.status.pendingInput")}
-        />
-      );
-    case "completed":
-      return (
-        <CheckCircle
-          {...iconProps}
-          aria-label={t("tasksPage.status.completed")}
-        />
-      );
-    case "failed":
-      return <Info {...iconProps} aria-label={t("tasksPage.status.failed")} />;
-    default:
-      return (
-        <HelpCircle
-          {...iconProps}
-          aria-label={t("tasksPage.status.unknown", { status })}
-        />
-      );
-  }
-};
-
 const getStatusBorderColor = (status: string): string => {
   switch (status) {
     case "streaming":
@@ -160,56 +115,92 @@ const getStatusBorderColor = (status: string): string => {
 function GitBadge({
   className,
   git,
-  worktreeName,
-  isWorktreeExist,
 }: {
   git: Task["git"];
   worktreeName?: string;
   className?: string;
   isWorktreeExist?: boolean;
 }) {
-  const { t } = useTranslation();
   if (!git?.origin) return null;
 
   return (
     <Badge
       variant="outline"
-      className={cn("border-none p-0 text-foreground", className)}
+      className={cn("border-transparent p-0 text-foreground", className)}
     >
-      {git.branch &&
-        !isBranchNameSameAsWorktreeName(git.branch, worktreeName) && (
-          <>
-            <GitBranch className="shrink-0" />
-            <span className="truncate">{git.branch}</span>
-          </>
-        )}
-      {worktreeName && (
+      {git.branch && (
         <>
-          <ListTreeIcon className="ml-1 shrink-0" />
-          <span className="truncate">{worktreeName}</span>
-          {isWorktreeExist === false && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className="ml-1 inline-flex">
-                  <MdOutlineErrorOutline className="size-4 text-yellow-500" />
-                </span>
-              </TooltipTrigger>
-              <TooltipContent side="top" sideOffset={4}>
-                <span>{t("tasksPage.worktreeNotExist")}</span>
-              </TooltipContent>
-            </Tooltip>
-          )}
+          <GitBranch className="shrink-0" />
+          <span className="truncate">{git.branch}</span>
         </>
       )}
     </Badge>
   );
 }
 
-function isBranchNameSameAsWorktreeName(
-  branch: string | undefined,
-  worktreeName: string | undefined,
-): boolean {
-  if (!branch || !worktreeName) return false;
-  // https://github.com/microsoft/vscode/blob/9092ce3427fdd0f677333394fb10156616090fb5/extensions/git/src/commands.ts#L3512
-  return branch.replace(/\//g, "-") === worktreeName;
+function TaskStatusView({ task }: { task: Task }) {
+  switch (task.status) {
+    case "pending-input":
+    case "pending-model":
+    case "pending-tool": {
+      return (
+        <span className="flex items-center gap-2">
+          {/* eslint-disable-next-line i18next/no-literal-string */}
+          <span>Planning next moves...</span>
+        </span>
+      );
+    }
+    case "failed":
+      return "Error encountered";
+    default: {
+      const duration = formatDuration(task.createdAt, task.updatedAt);
+      return `Finished in ${duration}`;
+    }
+  }
+}
+
+function formatDuration(
+  createdAt: Date | string | number,
+  updatedAt: Date | string | number,
+): string {
+  const created = new Date(createdAt).getTime();
+  const updated = new Date(updatedAt).getTime();
+  const diffMs = updated - created;
+
+  const diffSeconds = Math.floor(diffMs / 1000);
+  const diffMinutes = Math.floor(diffMs / (1000 * 60));
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffSeconds < 60) {
+    return `${diffSeconds}s`;
+  }
+  if (diffMinutes < 60) {
+    return `${diffMinutes}min`;
+  }
+  if (diffHours < 24) {
+    return `${diffHours}h`;
+  }
+  return `${diffDays}d`;
+}
+
+function formatTimeAgo(updatedAt: Date | string | number): string {
+  const now = Date.now();
+  const updated = new Date(updatedAt).getTime();
+  const diffMs = now - updated;
+
+  const diffMinutes = Math.floor(diffMs / (1000 * 60));
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffMinutes < 5) {
+    return "now";
+  }
+  if (diffMinutes < 60) {
+    return `${diffMinutes}min`;
+  }
+  if (diffHours < 24) {
+    return `${diffHours}h`;
+  }
+  return `${diffDays}d`;
 }

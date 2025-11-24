@@ -70,8 +70,8 @@ export function ToolCallLite({ tools }: Props) {
   }
 
   return detail ? (
-    <div className="flex w-full flex-nowrap items-center overflow-x-hidden">
-      <Loader2 className="size-4 shrink-0 animate-spin" />
+    <div className="flex w-full flex-nowrap items-center overflow-x-hidden whitespace-nowrap">
+      <Loader2 className="size-3.5 shrink-0 animate-spin" />
       {detail}
       {tools.length > 1 && (
         <span>
@@ -120,7 +120,7 @@ const LabelAndFilePathView = ({
   return (
     <>
       <span className="ml-2" />
-      {label}
+      <span className="whitespace-nowrap">{label}</span>
       {path && <FileBadge className="ml-1" path={path} />}
     </>
   );

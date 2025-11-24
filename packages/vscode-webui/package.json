@@ -87,7 +87,6 @@
     "react-day-picker": "^9.10.0",
     "react-dom": "^19.1.0",
     "react-i18next": "^15.7.3",
-    "react-icons": "catalog:",
     "react-markdown": "^10.1.0",
     "react-use": "^17.6.0",
     "rehype-sanitize": "^6.0.0",
