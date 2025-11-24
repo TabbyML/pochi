@@ -7,3 +7,4 @@ coverage:
       default:
         target: 75%
         threshold: 0%
+  max_report_age: off
