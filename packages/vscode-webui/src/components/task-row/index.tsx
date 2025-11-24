@@ -39,6 +39,13 @@ export function TaskRow({
 
   const title = useMemo(() => parseTitle(task.title), [task.title]);
 
+  // const added = task.added ?? 0;
+  // const removed = task.removed ?? 0;
+  // const showAddedBadge = added > 0 || removed > 0;
+  const added = 83;
+  const removed = 6;
+  const showAddedBadge = true;
+
   const content = (
     <div
       className={cn(
@@ -50,12 +57,24 @@ export function TaskRow({
       <div className="px-4 py-3">
         <div className="flex items-start gap-3">
           <div className="flex-1 space-y-1 overflow-hidden">
-            <GitBadge
-              git={task.git}
-              worktreeName={worktreeName}
-              className="max-w-full text-muted-foreground/80 text-xs"
-              isWorktreeExist={isWorktreeExist}
-            />
+            <div className="flex items-center gap-2">
+              <GitBadge
+                git={task.git}
+                worktreeName={worktreeName}
+                className="max-w-full text-muted-foreground/80 text-xs"
+                isWorktreeExist={isWorktreeExist}
+              />
+              {showAddedBadge && (
+                <div className="inline-flex items-center gap-1.5 rounded-sm border border-muted-foreground/50 px-1.5 py-0.5 font-medium text-xs">
+                  <span className="text-green-600 dark:text-green-500">
+                    +{added}
+                  </span>
+                  <span className="text-red-600 dark:text-red-500">
+                    -{removed}
+                  </span>
+                </div>
+              )}
+            </div>
             <h3 className="line-clamp-2 flex flex-1 items-center font-medium text-foreground leading-relaxed transition-colors duration-200 group-hover:text-foreground/80">
               <span className="truncate">{title}</span>
               {isRead ? null : (

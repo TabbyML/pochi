@@ -286,6 +286,8 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
           shareId: task.shareId || undefined,
           totalTokens: task.totalTokens || undefined,
           pendingToolCalls,
+          added: task.added || undefined,
+          removed: task.removed || undefined,
         }),
       );
     }

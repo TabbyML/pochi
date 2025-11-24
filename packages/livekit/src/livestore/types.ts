@@ -87,6 +87,8 @@ export const taskFullFields = {
   status: TaskStatus,
   todos: Todos,
   pendingToolCalls: Schema.optional(ToolCalls),
+  added: Schema.optional(Schema.Number),
+  removed: Schema.optional(Schema.Number),
   totalTokens: Schema.optional(Schema.Number),
   error: Schema.optional(TaskError),
   updatedAt: Schema.Date,

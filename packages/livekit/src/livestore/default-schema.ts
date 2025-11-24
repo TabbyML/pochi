@@ -36,6 +36,12 @@ export const tables = {
         nullable: true,
         schema: ToolCalls,
       }),
+      added: State.SQLite.integer({
+        nullable: true,
+      }),
+      removed: State.SQLite.integer({
+        nullable: true,
+      }),
       totalTokens: State.SQLite.integer({ nullable: true }),
       error: State.SQLite.json({ schema: TaskError, nullable: true }),
       createdAt: State.SQLite.integer({ schema: Schema.DateFromNumber }),

@@ -210,7 +210,6 @@ function Tasks() {
   }, [store]);
 
   const attachmentUpload = useAttachmentUpload();
-
   return (
     <div className="flex h-screen w-screen flex-col">
       {/* Main content area with scroll */}
