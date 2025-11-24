@@ -99,6 +99,8 @@ async function ensureOutputSchema(
       providerOptions: {
         pochi: {
           taskId,
+          version: globalThis.POCHI_CLIENT,
+          useCase: "output-schema",
         },
       },
       model,

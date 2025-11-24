@@ -95,6 +95,7 @@ export abstract class WebviewBase implements vscode.Disposable {
 
     const nonce = getNonce();
     const injectGlobalVars = `<script type="module" nonce="${nonce}">
+      window.POCHI_CLIENT = "Pochi/${this.context.extension.packageJSON.version}"
       window.POCHI_CORS_PROXY_PORT = "${getCorsProxyPort()}";
       window.POCHI_LOG = "${this.pochiConfiguration.advancedSettings.value.webviewLogLevel || ""}";
       window.POCHI_WEBVIEW_KIND = "${kind}";

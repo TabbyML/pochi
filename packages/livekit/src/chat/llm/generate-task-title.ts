@@ -116,6 +116,8 @@ async function generateTitle(
     providerOptions: {
       pochi: {
         taskId,
+        version: globalThis.POCHI_CLIENT,
+        useCase: "generate-task-title",
       },
     },
     model,

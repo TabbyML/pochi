@@ -7,7 +7,7 @@ import {
   EventSourceParserStream,
   convertToBase64,
 } from "@ai-sdk/provider-utils";
-import { constants } from "@getpochi/common";
+import { constants, PochiProviderOptions } from "@getpochi/common";
 import type { CreateModelOptions } from "@getpochi/common/vendor/edge";
 import {
   type PochiCredentials,
@@ -32,12 +32,17 @@ export function createPochiModel({
       providerOptions,
       ...options
     }) => {
-      const headers =
-        typeof providerOptions?.pochi?.taskId === "string"
-          ? {
-              [constants.PochiTaskIdHeader]: providerOptions.pochi.taskId,
-            }
-          : undefined;
+      const headers: Record<string, string> = {};
+      const parsedOptions = PochiProviderOptions.safeParse(
+        providerOptions?.pochi,
+      );
+      if (parsedOptions.success) {
+        headers[constants.PochiTaskIdHeader] = parsedOptions.data.taskId;
+        headers[constants.PochiClientHeader] = parsedOptions.data.client;
+        headers[constants.PochiRequestUseCaseHeader] =
+          parsedOptions.data.useCase;
+      }
+
       const apiClient = createApiClient(getCredentials);
       const resp = await apiClient.api.chat.$post(
         {
@@ -69,12 +74,17 @@ export function createPochiModel({
       providerOptions,
     }) => {
       const apiClient = createApiClient(getCredentials);
-      const headers =
-        typeof providerOptions?.pochi?.taskId === "string"
-          ? {
-              [constants.PochiTaskIdHeader]: providerOptions.pochi.taskId,
-            }
-          : undefined;
+      const headers: Record<string, string> = {};
+      const parsedOptions = PochiProviderOptions.safeParse(
+        providerOptions?.pochi,
+      );
+      if (parsedOptions.success) {
+        headers[constants.PochiTaskIdHeader] = parsedOptions.data.taskId;
+        headers[constants.PochiClientHeader] = parsedOptions.data.client;
+        headers[constants.PochiRequestUseCaseHeader] =
+          parsedOptions.data.useCase;
+      }
+
       const data = {
         model: modelId,
         callOptions: {

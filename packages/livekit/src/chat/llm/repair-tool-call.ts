@@ -24,6 +24,8 @@ export const makeRepairToolCall: (
       providerOptions: {
         pochi: {
           taskId,
+          version: globalThis.POCHI_CLIENT,
+          useCase: "repair-tool-call",
         },
       },
       model,

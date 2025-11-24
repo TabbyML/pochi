@@ -76,6 +76,8 @@ async function createSummary(
     providerOptions: {
       pochi: {
         taskId,
+        version: globalThis.POCHI_CLIENT,
+        useCase: "compact-task",
       },
     },
     model,
