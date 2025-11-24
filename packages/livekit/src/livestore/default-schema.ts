@@ -3,6 +3,7 @@ import {
   DBMessage,
   DBUIPart,
   Git,
+  LineChanges,
   TaskError,
   TaskStatus,
   Todos,
@@ -36,11 +37,9 @@ export const tables = {
         nullable: true,
         schema: ToolCalls,
       }),
-      added: State.SQLite.integer({
+      lineChanges: State.SQLite.json({
         nullable: true,
-      }),
-      removed: State.SQLite.integer({
-        nullable: true,
+        schema: LineChanges,
       }),
       totalTokens: State.SQLite.integer({ nullable: true }),
       error: State.SQLite.json({ schema: TaskError, nullable: true }),

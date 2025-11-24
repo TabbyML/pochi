@@ -39,9 +39,8 @@ export function TaskRow({
 
   const title = useMemo(() => parseTitle(task.title), [task.title]);
 
-  const added = task.added ?? 0;
-  const removed = task.removed ?? 0;
-  const showAddedBadge = added > 0 || removed > 0;
+  const showLineChangesBadge =
+    !!task.lineChanges?.added || !!task.lineChanges?.removed;
 
   const content = (
     <div
@@ -61,13 +60,13 @@ export function TaskRow({
                 className="max-w-full text-muted-foreground/80 text-xs"
                 isWorktreeExist={isWorktreeExist}
               />
-              {showAddedBadge && (
+              {showLineChangesBadge && (
                 <div className="inline-flex items-center gap-1.5 rounded-sm border border-muted-foreground/50 px-1.5 py-0.5 font-medium text-xs">
                   <span className="text-green-600 dark:text-green-500">
-                    +{added}
+                    +{task.lineChanges?.added || 0}
                   </span>
                   <span className="text-red-600 dark:text-red-500">
-                    -{removed}
+                    -{task.lineChanges?.removed || 0}
                   </span>
                 </div>
               )}
