@@ -6,6 +6,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import {
@@ -211,22 +212,6 @@ export function AutoApproveMenu({ isSubTask }: { isSubTask: boolean }) {
         className="[@media(min-width:400px)]:w-[400px]"
         side="top"
       >
-        {isDirty && !isSubTask && (
-          <Button
-            type="button"
-            size="sm"
-            onClick={handlePersistSettings}
-            disabled={isSaving}
-            className="mb-4"
-          >
-            {isSaving && (
-              <span>
-                <CheckIcon className="size-4" />
-              </span>
-            )}
-            <span>{t("settings.autoApprove.applyChangesToGlobal")}</span>
-          </Button>
-        )}
         <div className="grid grid-cols-1 gap-2.5 [@media(min-width:400px)]:grid-cols-2">
           {coreActionSettings.map((setting) => (
             <div key={setting.id} className="flex items-center">
@@ -250,73 +235,91 @@ export function AutoApproveMenu({ isSubTask }: { isSubTask: boolean }) {
               </label>
             </div>
           ))}
-
-          {/* Max Attempts Section - Always visible */}
-          <div className="mt-1 border-gray-200/30 border-t pt-2 [@media(min-width:400px)]:col-span-2">
-            <div className="flex h-7 items-center pl-1">
-              <Checkbox
-                id="retry-actions-trigger-dialog"
-                checked={autoApproveSettings.retry}
-                onCheckedChange={(checked) =>
-                  handleCoreActionToggle("retry", !!checked)
-                }
-              />
-              <label
-                className="flex cursor-pointer items-center gap-3 px-3"
-                htmlFor={
-                  autoApproveSettings.retry
-                    ? "retry-actions-max-attempts"
-                    : "retry-actions-trigger-dialog"
-                }
-              >
-                <span className="ml-3.5 flex items-center gap-2 font-semibold">
-                  <RotateCcw className="size-4 shrink-0" />
-                  <span className="whitespace-nowrap text-foreground text-sm">
-                    {autoApproveSettings.retry
-                      ? `${t("settings.autoApprove.maxAttempts")}:`
-                      : t("settings.autoApprove.retryActions")}
-                  </span>
-                </span>
-              </label>
-              {autoApproveSettings.retry && (
-                <Input
-                  id="retry-actions-max-attempts"
-                  type="number"
-                  min="1"
-                  max="10"
-                  value={currentMaxRetry}
-                  onChange={(e) => handleRetryLimitChange(e.target.value)}
-                  onBlur={handleRetryLimitBlur}
-                  className="h-7 w-full text-xs [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                  onClick={(e) => e.stopPropagation()}
-                />
-              )}
-            </div>
-
-            {!isSubTask && (
-              <div className="mt-1 flex h-7 items-center">
-                <Switch
-                  id="subtask-toggle-offhand"
-                  checked={subtaskOffhand}
-                  onCheckedChange={toggleSubtaskOffhand}
-                />
-                <label
-                  className="flex cursor-pointer items-center gap-3 px-3"
-                  htmlFor={"subtask-toggle-offhand"}
-                >
-                  <span className="ml-1.5 flex items-center gap-2 font-semibold">
-                    <SquareChevronRightIcon className="size-4 shrink-0" />
-                    <span className="whitespace-nowrap text-foreground text-sm">
-                      {subtaskOffhand
-                        ? t("settings.autoApprove.subtaskOffhand")
-                        : t("settings.autoApprove.subtaskManual")}
-                    </span>
-                  </span>
-                </label>
-              </div>
-            )}
-          </div>
         </div>
+        <Separator className="my-3" />
+        {/* Max Attempts Section */}
+        <div className="flex h-7 items-center pl-1">
+          <Checkbox
+            id="retry-actions-trigger-dialog"
+            checked={autoApproveSettings.retry}
+            onCheckedChange={(checked) =>
+              handleCoreActionToggle("retry", !!checked)
+            }
+          />
+          <label
+            className="flex cursor-pointer items-center gap-3 pr-3"
+            htmlFor={
+              autoApproveSettings.retry
+                ? "retry-actions-max-attempts"
+                : "retry-actions-trigger-dialog"
+            }
+          >
+            <span className="ml-3.5 flex items-center gap-2 font-semibold">
+              <RotateCcw className="size-4 shrink-0" />
+              <span className="whitespace-nowrap text-foreground text-sm">
+                {autoApproveSettings.retry
+                  ? `${t("settings.autoApprove.maxAttempts")}:`
+                  : t("settings.autoApprove.retryActions")}
+              </span>
+            </span>
+          </label>
+          {autoApproveSettings.retry && (
+            <Input
+              id="retry-actions-max-attempts"
+              type="number"
+              min="1"
+              max="10"
+              value={currentMaxRetry}
+              onChange={(e) => handleRetryLimitChange(e.target.value)}
+              onBlur={handleRetryLimitBlur}
+              className="h-7 w-full text-xs [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+              onClick={(e) => e.stopPropagation()}
+            />
+          )}
+        </div>
+
+        {!isSubTask && (
+          <div className="mt-1 flex h-7 items-center">
+            <Switch
+              id="subtask-toggle-offhand"
+              checked={subtaskOffhand}
+              onCheckedChange={toggleSubtaskOffhand}
+            />
+            <label
+              className="flex cursor-pointer items-center gap-3"
+              htmlFor={"subtask-toggle-offhand"}
+            >
+              <span className="ml-1.5 flex items-center gap-2 font-semibold">
+                <SquareChevronRightIcon className="size-4 shrink-0" />
+                <span className="whitespace-nowrap text-foreground text-sm">
+                  {subtaskOffhand
+                    ? t("settings.autoApprove.subtaskOffhand")
+                    : t("settings.autoApprove.subtaskManual")}
+                </span>
+              </span>
+            </label>
+          </div>
+        )}
+        {isDirty && !isSubTask && (
+          <>
+            <Separator className="my-3" />
+            <div className="flex justify-end">
+              <Button
+                type="button"
+                size="sm"
+                onClick={handlePersistSettings}
+                disabled={isSaving}
+              >
+                {isSaving && (
+                  <span>
+                    <CheckIcon className="size-4" />
+                  </span>
+                )}
+                <span>{t("settings.autoApprove.applyChangesToGlobal")}</span>
+              </Button>
+            </div>
+          </>
+        )}
       </PopoverContent>
     </Popover>
   );
