@@ -39,12 +39,9 @@ export function TaskRow({
 
   const title = useMemo(() => parseTitle(task.title), [task.title]);
 
-  // const added = task.added ?? 0;
-  // const removed = task.removed ?? 0;
-  // const showAddedBadge = added > 0 || removed > 0;
-  const added = 83;
-  const removed = 6;
-  const showAddedBadge = true;
+  const added = task.added ?? 0;
+  const removed = task.removed ?? 0;
+  const showAddedBadge = added > 0 || removed > 0;
 
   const content = (
     <div
