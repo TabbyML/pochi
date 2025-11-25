@@ -78,6 +78,7 @@ export class LiveChatKit<
     messages: Message[];
   }) => void;
   readonly spawn: () => Promise<string>;
+  private lastStepStartTimestamp: number | undefined;
 
   constructor({
     taskId,
@@ -311,6 +312,8 @@ export class LiveChatKit<
         }),
       );
 
+      this.lastStepStartTimestamp = Date.now();
+
       this.onStreamStart?.();
     }
   };
@@ -342,14 +345,24 @@ export class LiveChatKit<
         data: message,
         totalTokens: message.metadata.totalTokens,
         updatedAt: new Date(),
+        lastStepDuration: this.lastStepStartTimestamp
+          ? Date.now() - this.lastStepStartTimestamp
+          : null,
       }),
     );
+
+    this.clearLastStepTimestamp();
+
     this.onStreamFinish?.({
       id: this.taskId,
       cwd: this.task?.cwd ?? null,
       status,
       messages: [...this.chat.messages],
     });
+  };
+
+  private clearLastStepTimestamp = () => {
+    this.lastStepStartTimestamp = undefined;
   };
 
   private readonly onError: ChatOnErrorCallback = (error) => {
@@ -362,8 +375,14 @@ export class LiveChatKit<
         error: toTaskError(error),
         data: lastMessage,
         updatedAt: new Date(),
+        lastStepDuration: this.lastStepStartTimestamp
+          ? Date.now() - this.lastStepStartTimestamp
+          : null,
       }),
     );
+
+    this.clearLastStepTimestamp();
+
     this.onStreamFailed?.({
       cwd: this.task?.cwd ?? null,
       error,

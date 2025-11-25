@@ -42,6 +42,7 @@ export const tables = {
         schema: LineChanges,
       }),
       totalTokens: State.SQLite.integer({ nullable: true }),
+      lastStepDuration: State.SQLite.integer({ nullable: true }),
       error: State.SQLite.json({ schema: TaskError, nullable: true }),
       createdAt: State.SQLite.integer({ schema: Schema.DateFromNumber }),
       updatedAt: State.SQLite.integer({ schema: Schema.DateFromNumber }),
@@ -131,6 +132,7 @@ export const events = {
       totalTokens: Schema.NullOr(Schema.Number),
       status: TaskStatus,
       updatedAt: Schema.Date,
+      lastStepDuration: Schema.NullOr(Schema.Number),
     }),
   }),
   chatStreamFailed: Events.synced({
@@ -140,6 +142,7 @@ export const events = {
       error: TaskError,
       data: Schema.NullOr(DBMessage),
       updatedAt: Schema.Date,
+      lastStepDuration: Schema.NullOr(Schema.Number),
     }),
   }),
   updateShareId: Events.synced({
@@ -245,7 +248,14 @@ const materializers = State.SQLite.materializers(events, {
       })
       .onConflict("id", "replace"),
   ],
-  "v1.ChatStreamFinished": ({ id, data, totalTokens, status, updatedAt }) => [
+  "v1.ChatStreamFinished": ({
+    id,
+    data,
+    totalTokens,
+    status,
+    updatedAt,
+    lastStepDuration,
+  }) => [
     tables.tasks
       .update({
         totalTokens,
@@ -253,6 +263,7 @@ const materializers = State.SQLite.materializers(events, {
         updatedAt,
         // Clear error if the stream is finished
         error: null,
+        lastStepDuration,
       })
       .where({ id }),
     tables.messages
@@ -263,12 +274,13 @@ const materializers = State.SQLite.materializers(events, {
       })
       .onConflict("id", "replace"),
   ],
-  "v1.ChatStreamFailed": ({ id, error, updatedAt, data }) => [
+  "v1.ChatStreamFailed": ({ id, error, updatedAt, data, lastStepDuration }) => [
     tables.tasks
       .update({
         status: "failed",
         error,
         updatedAt,
+        lastStepDuration,
       })
       .where({ id }),
     ...(data
