@@ -33,3 +33,24 @@ export interface TaskData {
     worktree?: { gitdir?: string } | null;
   } | null;
 }
+
+export type ChangedFileContent =
+  | {
+      type: "text";
+      text: string;
+    }
+  | {
+      type: "checkpoint";
+      commit: string;
+    }
+  | null;
+
+export interface TaskChangedFile {
+  filepath: string;
+  added: number;
+  removed: number;
+  content: ChangedFileContent;
+  isCreated?: boolean;
+  isDeleted?: boolean;
+  state: "accepted" | "reverted" | "pending" | "userEdited";
+}

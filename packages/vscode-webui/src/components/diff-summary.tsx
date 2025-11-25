@@ -7,16 +7,19 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import type { TaskChangedFile } from "@/features/chat";
+import { useTaskChangedFiles } from "@/features/chat";
 import { cn } from "@/lib/utils";
+import { vscodeHost } from "@/lib/vscode";
+import type { Message } from "@getpochi/livekit";
 import {
+  Check,
   ChevronDown,
   ChevronRight,
   FileDiff as FileDiffIcon,
-  Undo2,
+  Undo,
 } from "lucide-react";
 import { motion } from "motion/react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 const collapsibleSectionVariants = {
   open: {
@@ -30,26 +33,42 @@ const collapsibleSectionVariants = {
 };
 
 export interface DiffSummaryProps {
-  files: TaskChangedFile[];
-  onRevert: (filePath: string) => void;
-  onRevertAll: () => void;
-  onViewDiff: (filePath?: string) => void;
+  messages: Message[];
+  taskId: string;
   className?: string;
+  actionEnabled: boolean;
 }
 
 export function DiffSummary({
-  files,
-  onRevert,
-  onRevertAll,
-  onViewDiff,
+  messages,
+  taskId,
   className,
+  actionEnabled,
 }: DiffSummaryProps) {
+  const {
+    changedFiles,
+    showFileChanges,
+    revertFileChanges,
+    acceptChangedFile,
+  } = useTaskChangedFiles(taskId, messages, actionEnabled);
+
   const [collapsed, setCollapsed] = useState(true);
 
-  const totalAdditions = files.reduce((sum, file) => sum + file.added, 0);
-  const totalDeletions = files.reduce((sum, file) => sum + file.removed, 0);
+  const displayFiles = useMemo(
+    () => changedFiles.filter((file) => file.state === "pending"),
+    [changedFiles],
+  );
 
-  if (files.length === 0) {
+  const totalAdditions = displayFiles.reduce(
+    (sum, file) => sum + file.added,
+    0,
+  );
+  const totalDeletions = displayFiles.reduce(
+    (sum, file) => sum + file.removed,
+    0,
+  );
+
+  if (displayFiles.length === 0) {
     return null;
   }
 
@@ -75,7 +94,8 @@ export function DiffSummary({
             <ChevronDown className="size-4" />
           )}
           <span>
-            {files.length} file{files.length !== 1 ? "s" : ""} changed
+            {displayFiles.length} file{displayFiles.length !== 1 ? "s" : ""}{" "}
+            changed
           </span>
           <EditSummary
             editSummary={{ added: totalAdditions, removed: totalDeletions }}
@@ -88,12 +108,21 @@ export function DiffSummary({
           onClick={(e) => e.stopPropagation()}
         >
           <Button
-            variant="outline"
+            disabled={actionEnabled === false}
+            variant="default"
             size="xs"
-            onClick={() => onRevertAll()}
+            onClick={() => acceptChangedFile()}
             className="h-7 gap-1.5"
           >
-            <Undo2 className="size-3.5" />
+            Keep
+          </Button>
+          <Button
+            disabled={actionEnabled === false}
+            variant="outline"
+            size="xs"
+            onClick={() => revertFileChanges()}
+            className="h-7 gap-1.5"
+          >
             Undo
           </Button>
           <Tooltip>
@@ -101,7 +130,7 @@ export function DiffSummary({
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => onViewDiff()}
+                onClick={() => showFileChanges()}
                 className="h-7 w-7"
               >
                 <FileDiffIcon className="size-3.5" />
@@ -121,18 +150,24 @@ export function DiffSummary({
       >
         <ScrollArea viewportClassname="max-h-[160px]" type="auto">
           <div className="divide-y divide-border">
-            {files.map((file) => {
+            {displayFiles.map((file) => {
               const fileName = file.filepath.split("/").pop() || file.filepath;
 
               return (
-                <div key={file.filepath}>
+                <div
+                  key={file.filepath}
+                  onClick={() => {
+                    vscodeHost.openFile(file.filepath);
+                  }}
+                >
                   <div className="group flex items-center justify-between gap-2 px-3 py-1.5 hover:bg-border/30">
                     <div className="flex min-w-0 flex-1 items-center gap-2">
                       <FileIcon path={file.filepath} className="shrink-0" />
                       <button
                         type="button"
-                        onClick={() => onViewDiff(file.filepath)}
-                        className="truncate font-medium text-sm"
+                        className={cn("truncate font-medium text-sm", {
+                          "line-through": file.isDeleted,
+                        })}
                         title="View diff"
                       >
                         {fileName}
@@ -151,22 +186,43 @@ export function DiffSummary({
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <Button
+                              disabled={actionEnabled === false}
                               variant="ghost"
                               size="icon"
-                              onClick={() => onRevert(file.filepath)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                acceptChangedFile(file.filepath);
+                              }}
                               className="h-5 w-5"
                             >
-                              <Undo2 className="size-3.5" />
+                              <Check className="size-3.5" />
                             </Button>
                           </TooltipTrigger>
-                          <TooltipContent>Undo changes</TooltipContent>
+                          <TooltipContent>Keep</TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              disabled={actionEnabled === false}
+                              variant="ghost"
+                              size="icon"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                revertFileChanges(file.filepath);
+                              }}
+                              className="h-5 w-5"
+                            >
+                              <Undo className="size-3.5" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Undo</TooltipContent>
                         </Tooltip>
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => onViewDiff(file.filepath)}
+                              onClick={() => showFileChanges(file.filepath)}
                               className="h-5 w-5"
                             >
                               <FileDiffIcon className="size-3.5" />

@@ -263,7 +263,10 @@ export abstract class WebviewBase implements vscode.Disposable {
     this.disposables.push(
       vscode.workspace.onDidSaveTextDocument(async (event) => {
         if (event.uri.fsPath.startsWith(cwd)) {
-          this.webviewHost?.onFileChanged(asRelativePath(event.uri, cwd));
+          this.webviewHost?.onFileChanged(
+            asRelativePath(event.uri, cwd),
+            event.getText(),
+          );
         }
       }),
     );

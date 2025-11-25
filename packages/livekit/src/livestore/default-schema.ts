@@ -175,6 +175,14 @@ export const events = {
       data: Schema.Uint8Array,
     }),
   }),
+  lineChangesUpdated: Events.synced({
+    name: "v1.LineChangesUpdated",
+    schema: Schema.Struct({
+      id: Schema.String,
+      lineChanges: LineChanges,
+      updatedAt: Schema.Date,
+    }),
+  }),
 };
 
 const materializers = State.SQLite.materializers(events, {
@@ -290,6 +298,13 @@ const materializers = State.SQLite.materializers(events, {
         createdAt,
       })
       .onConflict("checksum", "ignore"),
+  "v1.LineChangesUpdated": ({ id, lineChanges, updatedAt }) =>
+    tables.tasks
+      .update({
+        lineChanges,
+        updatedAt,
+      })
+      .where({ id }),
 });
 
 const state = State.SQLite.makeState({ tables, materializers });

@@ -1,21 +1,33 @@
 import { vscodeHost } from "@/lib/vscode";
 import { prompts } from "@getpochi/common";
 import { extractWorkflowBashCommands } from "@getpochi/common/message-utils";
-import type { Message } from "@getpochi/livekit";
+import type { FileDiff } from "@getpochi/common/vscode-webui-bridge";
+import { type Message, catalog, taskCatalog } from "@getpochi/livekit";
+import type { Store } from "@livestore/livestore";
 import { ThreadAbortSignal } from "@quilted/threads";
+import { getTaskChangedFileStoreHook } from "./use-task-changed-files";
 
 /**
  * Handles the onOverrideMessages event by appending a checkpoint to the last message.
  * This ensures that each request has a checkpoint for potential rollbacks.
  */
 export async function onOverrideMessages({
+  store,
+  taskId,
   messages,
   abortSignal,
-}: { messages: Message[]; abortSignal: AbortSignal }) {
+}: {
+  store: Store;
+  taskId: string;
+  messages: Message[];
+  abortSignal: AbortSignal;
+}) {
   const lastMessage = messages.at(-1);
   if (lastMessage) {
-    await appendCheckpoint(lastMessage);
+    const ckpt = await appendCheckpoint(lastMessage);
     await appendWorkflowBashOutputs(lastMessage, abortSignal);
+    if (!ckpt) return;
+    await updateTaskChanges(store, taskId, messages);
   }
 }
 
@@ -49,6 +61,7 @@ async function appendCheckpoint(message: Message) {
       commit: ckpt,
     },
   });
+  return ckpt;
 }
 
 /**
@@ -91,5 +104,102 @@ async function appendWorkflowBashOutputs(
   }
   if (bashCommandResults.length) {
     prompts.injectBashOutputs(message, bashCommandResults);
+  }
+}
+
+async function updateTaskChanges(
+  store: Store,
+  taskId: string,
+  messages: Message[],
+) {
+  const checkpoints = messages
+    .flatMap((m) => m.parts.filter((p) => p.type === "data-checkpoint"))
+    .map((p) => p.data.commit);
+
+  if (checkpoints.length < 1) {
+    return;
+  }
+
+  const firstCheckpoint = checkpoints[0];
+  const fileDiffResult = await vscodeHost.diffWithCheckpoint(firstCheckpoint);
+  updateTaskLineChanges(store, taskId, fileDiffResult);
+  await updateChangedFileStore(taskId, fileDiffResult, firstCheckpoint);
+}
+
+async function updateTaskLineChanges(
+  store: Store,
+  taskId: string,
+  fileDiffResult: FileDiff[] | null,
+) {
+  const totalAdditions =
+    fileDiffResult?.reduce((sum, file) => sum + file.added, 0) ?? 0;
+  const totalDeletions =
+    fileDiffResult?.reduce((sum, file) => sum + file.removed, 0) ?? 0;
+
+  const task = store.query(catalog.queries.makeTaskQuery(taskId));
+
+  if (task) {
+    const updatedAt = new Date();
+    store.commit(
+      catalog.events.lineChangesUpdated({
+        id: taskId,
+        lineChanges: {
+          added: totalAdditions,
+          removed: totalDeletions,
+        },
+        updatedAt,
+      }),
+    );
+    vscodeHost.onTaskUpdated(
+      taskCatalog.events.tastUpdated({
+        ...task,
+        title: task.title || undefined,
+        parentId: task.parentId || undefined,
+        cwd: task.cwd || undefined,
+        modelId: task.modelId || undefined,
+        error: task.error || undefined,
+        git: task.git || undefined,
+        shareId: task.shareId || undefined,
+        totalTokens: task.totalTokens || undefined,
+        pendingToolCalls: task.pendingToolCalls || undefined,
+        lineChanges: {
+          added: totalAdditions,
+          removed: totalDeletions,
+        },
+        updatedAt,
+      }),
+    );
+  }
+}
+
+async function updateChangedFileStore(
+  taskId: string,
+  fileDiffResult: FileDiff[] | null,
+  firstCheckpoint: string,
+) {
+  const store = getTaskChangedFileStoreHook(taskId);
+  const { changedFiles, addChangedFile } = store.getState();
+
+  for (const fileDiff of fileDiffResult || []) {
+    const currentFile = changedFiles.find(
+      (f) => f.filepath === fileDiff.filepath,
+    );
+
+    // first time seeing this file change
+    if (!currentFile) {
+      addChangedFile({
+        filepath: fileDiff.filepath,
+        added: fileDiff.added,
+        removed: fileDiff.removed,
+        content: { type: "checkpoint", commit: firstCheckpoint },
+        isCreated: fileDiff.isCreated,
+        isDeleted: fileDiff.isDeleted,
+        state: "pending",
+      });
+    }
+  }
+  const updatedChangedFiles = await vscodeHost.diffChangedFiles(changedFiles);
+  for (const updatedFile of updatedChangedFiles) {
+    addChangedFile(updatedFile);
   }
 }

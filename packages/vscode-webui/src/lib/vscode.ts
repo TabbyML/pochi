@@ -86,6 +86,9 @@ function createVSCodeHost(): VSCodeHostApi {
         "readExtensionVersion",
         "readAutoSaveDisabled",
         "diffWithCheckpoint",
+        "diffChangedFiles",
+        "showChangedFiles",
+        "restoreChangedFiles",
         "showInformationMessage",
         "readVisibleTerminals",
         "readModelList",
@@ -156,8 +159,8 @@ function createVSCodeHost(): VSCodeHostApi {
           useTaskReadStatusStore.getState().setTaskReadStatus(taskId, read);
         },
 
-        onFileChanged(filePath: string) {
-          fileChangeEvent.emit("fileChanged", filePath);
+        onFileChanged(filePath: string, content: string) {
+          fileChangeEvent.emit("fileChanged", { filepath: filePath, content });
         },
       },
     },
@@ -168,4 +171,6 @@ function createVSCodeHost(): VSCodeHostApi {
 
 export const vscodeHost = createVSCodeHost();
 
-export const fileChangeEvent = new Emittery<{ fileChanged: string }>();
+export const fileChangeEvent = new Emittery<{
+  fileChanged: { filepath: string; content: string };
+}>();

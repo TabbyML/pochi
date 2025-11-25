@@ -34,6 +34,8 @@ export type LiveChatKitOptions<T> = {
   chatClass: new (options: ChatInit<Message>) => T;
 
   onOverrideMessages?: (options: {
+    store: Store;
+    taskId: string;
     messages: Message[];
     abortSignal: AbortSignal;
   }) => void | Promise<void>;
@@ -155,7 +157,12 @@ export class LiveChatKit<
         }
       }
       if (onOverrideMessages) {
-        await onOverrideMessages({ messages, abortSignal });
+        await onOverrideMessages({
+          store: this.store,
+          taskId: this.taskId,
+          messages,
+          abortSignal,
+        });
       }
     };
 

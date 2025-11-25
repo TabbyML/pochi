@@ -1,4 +1,5 @@
 import { mkdir } from "node:fs/promises";
+import * as fs from "node:fs/promises";
 import * as path from "node:path";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { WorkspaceScope } from "@/lib/workspace-scoped";
@@ -6,6 +7,7 @@ import { getLogger, toErrorMessage } from "@getpochi/common";
 import type {
   FileDiff,
   SaveCheckpointOptions,
+  TaskChangedFile,
 } from "@getpochi/common/vscode-webui-bridge";
 import { Lifecycle, inject, injectable, scoped } from "tsyringe";
 import type * as vscode from "vscode";
@@ -130,6 +132,35 @@ export class CheckpointService implements vscode.Disposable {
     }
   };
 
+  restoreChangedFiles = async (files: TaskChangedFile[]): Promise<void> => {
+    await this.ensureInitialized();
+    if (!this.shadowGit) {
+      throw new Error("Shadow Git repository not initialized");
+    }
+
+    try {
+      for (const file of files) {
+        if (file.content?.type === "checkpoint") {
+          if (file.isCreated) {
+            await fs.rm(path.join(this.cwd, file.filepath), { force: true });
+          } else {
+            await this.shadowGit.reset(file.content.commit, [file.filepath]);
+          }
+        } else if (file.content?.type === "text") {
+          await fs.writeFile(
+            path.join(this.cwd, file.filepath),
+            file.content.text,
+            "utf8",
+          );
+        }
+      }
+    } catch (error) {
+      const errorMessage = toErrorMessage(error);
+      logger.error(`Failed to restore changed files: ${errorMessage}`);
+      throw new Error(`Failed to restore changed files: ${errorMessage}`);
+    }
+  };
+
   async getShadowGitPath() {
     if (!this.context.storageUri) {
       throw new Error("Extension storage URI is not available");
@@ -185,6 +216,97 @@ export class CheckpointService implements vscode.Disposable {
       );
       return null;
     }
+  };
+
+  diffChangedFiles = async (
+    changedFiles: TaskChangedFile[],
+  ): Promise<TaskChangedFile[]> => {
+    await this.ensureInitialized();
+    if (!this.shadowGit) {
+      throw new Error("Shadow Git repository not initialized");
+    }
+
+    const result: TaskChangedFile[] = [];
+    for (const file of changedFiles) {
+      let changes: GitDiff[] = [];
+      if (file.content?.type === "checkpoint") {
+        changes = await this.shadowGit.getDiff(file.content.commit, undefined, [
+          file.filepath,
+        ]);
+      } else if (file.content?.type === "text") {
+        const content = file.content.text;
+        let afterContent = null;
+        try {
+          afterContent = await fs.readFile(
+            path.join(this.cwd, file.filepath),
+            "utf8",
+          );
+        } catch (error) {}
+        changes = [
+          {
+            filepath: file.filepath,
+            before: content,
+            after: afterContent,
+          },
+        ];
+      }
+
+      const diff = processGitChangesToUserEdits(changes);
+      if (diff && diff.length > 0) {
+        const firstDiff = diff[0];
+        if (firstDiff.added || firstDiff.removed) {
+          result.push({
+            ...file,
+            filepath: file.filepath,
+            added: firstDiff.added,
+            removed: firstDiff.removed,
+            isCreated: firstDiff.isCreated,
+            isDeleted: firstDiff.isDeleted,
+            state: "pending",
+          });
+        } else {
+          result.push(file);
+        }
+      }
+    }
+
+    return result;
+  };
+
+  getChangedFilesChanges = async (
+    changedFiles: TaskChangedFile[],
+  ): Promise<GitDiff[]> => {
+    await this.ensureInitialized();
+    if (!this.shadowGit) {
+      throw new Error("Shadow Git repository not initialized");
+    }
+
+    const changes: GitDiff[] = [];
+    for (const file of changedFiles) {
+      if (file.content?.type === "checkpoint") {
+        const diffResult = await this.shadowGit.getDiff(
+          file.content.commit,
+          undefined,
+          [file.filepath],
+        );
+        changes.push(diffResult[0]);
+      } else if (file.content?.type === "text") {
+        const content = file.content.text;
+        let afterContent = null;
+        try {
+          afterContent = await fs.readFile(
+            path.join(this.cwd, file.filepath),
+            "utf8",
+          );
+        } catch (error) {}
+        changes.push({
+          filepath: file.filepath,
+          before: content,
+          after: afterContent,
+        });
+      }
+    }
+    return changes;
   };
 
   dispose() {

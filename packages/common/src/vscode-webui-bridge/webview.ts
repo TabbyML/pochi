@@ -14,6 +14,7 @@ import type {
   RuleFile,
   SaveCheckpointOptions,
   SessionState,
+  TaskChangedFile,
   TaskIdParams,
   TaskPanelParams,
   WorkspaceState,
@@ -235,6 +236,8 @@ export interface VSCodeHostApi {
    */
   restoreCheckpoint(commitHash: string, files?: string[]): Promise<void>;
 
+  restoreChangedFiles(files: TaskChangedFile[]): Promise<void>;
+
   readCheckpointPath(): Promise<string | undefined>;
 
   /**
@@ -264,6 +267,10 @@ export interface VSCodeHostApi {
     },
     displayPaths?: string[],
   ): Promise<boolean>;
+
+  diffChangedFiles(changedFiles: TaskChangedFile[]): Promise<TaskChangedFile[]>;
+
+  showChangedFiles(files: TaskChangedFile[]): Promise<boolean>;
 
   readExtensionVersion(): Promise<string>;
 
@@ -319,5 +326,5 @@ export interface WebviewHostApi {
 
   setTaskRead(taskId: string | string[], read: boolean): Promise<void>;
 
-  onFileChanged(filePath: string): void;
+  onFileChanged(filePath: string, content: string): void;
 }

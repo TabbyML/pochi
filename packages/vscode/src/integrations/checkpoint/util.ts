@@ -88,12 +88,17 @@ export function processGitChangesToUserEdits(
 
   // Generate structured diff data
   const userEdits = filteredChanges.map((change) => {
-    const diff = generateInlineDiffContent(change.before, change.after);
+    const diff = generateInlineDiffContent(
+      change.before ?? "",
+      change.after ?? "",
+    );
     return {
       filepath: change.filepath,
       diff: diff.content,
       added: diff.added,
       removed: diff.removed,
+      isCreated: change.before === null,
+      isDeleted: change.after === null,
     };
   });
 
@@ -115,10 +120,11 @@ export function filterGitChanges(
 
   return changes.filter((change) => {
     const isBinary =
-      change.before.includes(nullbyte) || change.after.includes(nullbyte);
+      (change.before ?? "").includes(nullbyte) ||
+      (change.after ?? "").includes(nullbyte);
     const isTooLarge =
-      Buffer.byteLength(change.before, "utf8") > maxSizeLimit ||
-      Buffer.byteLength(change.after, "utf8") > maxSizeLimit;
+      Buffer.byteLength(change.before ?? "", "utf8") > maxSizeLimit ||
+      Buffer.byteLength(change.after ?? "", "utf8") > maxSizeLimit;
     return !isBinary && !isTooLarge;
   });
 }

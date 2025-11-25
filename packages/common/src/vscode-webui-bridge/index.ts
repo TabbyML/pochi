@@ -20,6 +20,8 @@ export type {
   TaskPanelParams,
   NewTaskPanelParams,
   TaskData,
+  TaskChangedFile,
+  ChangedFileContent,
 } from "./types/task";
 export type {
   VSCodeLmModel,

@@ -60,6 +60,7 @@ import type {
   RuleFile,
   SaveCheckpointOptions,
   SessionState,
+  TaskChangedFile,
   TaskPanelParams,
   VSCodeHostApi,
   WorkspaceState,
@@ -86,6 +87,7 @@ import { Lifecycle, inject, injectable, scoped } from "tsyringe";
 import * as vscode from "vscode";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { CheckpointService } from "../checkpoint/checkpoint-service";
+import type { GitDiff } from "../checkpoint/types";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { PochiConfiguration } from "../configuration";
 import { DiffChangesContentProvider } from "../editor/diff-changes-content-provider";
@@ -677,6 +679,13 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     },
   );
 
+  restoreChangedFiles = runExclusive.build(
+    this.checkpointGroup,
+    async (files: TaskChangedFile[]): Promise<void> => {
+      await this.checkpointService.restoreChangedFiles(files);
+    },
+  );
+
   readCheckpointPath = async (): Promise<string | undefined> => {
     return this.checkpointService.getShadowGitPath();
   };
@@ -736,48 +745,26 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
           )
         : changedFiles;
 
-      if (displayFiles.length === 0) {
+      return await showDiff(displayFiles, title, this.cwd);
+    },
+  );
+
+  diffChangedFiles = runExclusive.build(
+    this.checkpointGroup,
+    async (files: TaskChangedFile[]) => {
+      return this.checkpointService.diffChangedFiles(files);
+    },
+  );
+
+  showChangedFiles = runExclusive.build(
+    this.checkpointGroup,
+    async (files: TaskChangedFile[]) => {
+      const changes =
+        await this.checkpointService.getChangedFilesChanges(files);
+      if (!this.cwd) {
         return false;
       }
-
-      if (displayFiles.length === 1) {
-        const changedFile = displayFiles[0];
-
-        await vscode.commands.executeCommand(
-          "vscode.diff",
-          DiffChangesContentProvider.decode({
-            filepath: changedFile.filepath,
-            content: changedFile.before,
-            cwd: this.cwd,
-          }),
-          DiffChangesContentProvider.decode({
-            filepath: changedFile.filepath,
-            content: changedFile.after,
-            cwd: this.cwd,
-          }),
-          title,
-          {
-            preview: true,
-            preserveFocus: true,
-          },
-        );
-        return true;
-      }
-
-      await vscode.commands.executeCommand(
-        "vscode.changes",
-        title,
-        displayFiles.map((file) => [
-          vscode.Uri.joinPath(vscode.Uri.parse(this.cwd ?? ""), file.filepath),
-          DiffChangesContentProvider.decode({
-            filepath: file.filepath,
-            content: file.before,
-            cwd: this.cwd ?? "",
-          }),
-          vscode.Uri.joinPath(vscode.Uri.parse(this.cwd ?? ""), file.filepath),
-        ]),
-      );
-      return true;
+      return await showDiff(changes, "Changed Files", this.cwd);
     },
   );
 
@@ -917,3 +904,48 @@ const ToolPreviewMap: Record<
   applyDiff: previewApplyDiff,
   multiApplyDiff: previewMultiApplyDiff,
 };
+
+async function showDiff(displayFiles: GitDiff[], title: string, cwd: string) {
+  if (displayFiles.length === 0) {
+    return false;
+  }
+
+  if (displayFiles.length === 1) {
+    const changedFile = displayFiles[0];
+
+    await vscode.commands.executeCommand(
+      "vscode.diff",
+      DiffChangesContentProvider.decode({
+        filepath: changedFile.filepath,
+        content: changedFile.before ?? "",
+        cwd: cwd,
+      }),
+      DiffChangesContentProvider.decode({
+        filepath: changedFile.filepath,
+        content: changedFile.after ?? "",
+        cwd: cwd,
+      }),
+      title,
+      {
+        preview: true,
+        preserveFocus: true,
+      },
+    );
+    return true;
+  }
+
+  await vscode.commands.executeCommand(
+    "vscode.changes",
+    title,
+    displayFiles.map((file) => [
+      vscode.Uri.joinPath(vscode.Uri.parse(cwd ?? ""), file.filepath),
+      DiffChangesContentProvider.decode({
+        filepath: file.filepath,
+        content: file.before ?? "",
+        cwd: cwd ?? "",
+      }),
+      vscode.Uri.joinPath(vscode.Uri.parse(cwd ?? ""), file.filepath),
+    ]),
+  );
+  return true;
+}

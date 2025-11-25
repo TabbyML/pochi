@@ -13,6 +13,7 @@ import type {
   ResourceURI,
   RuleFile,
   SessionState,
+  TaskChangedFile,
   VSCodeHostApi,
   WorkspaceState,
 } from "./index";
@@ -178,6 +179,9 @@ const VSCodeHostStub = {
   ): Promise<void> => {
     return Promise.resolve();
   },
+  restoreChangedFiles: async (_files: TaskChangedFile[]): Promise<void> => {
+    return Promise.resolve();
+  },
   readCheckpointPath: async (): Promise<string | undefined> => {
     return Promise.resolve(undefined);
   },
@@ -187,6 +191,16 @@ const VSCodeHostStub = {
     return Promise.resolve(null);
   },
   showCheckpointDiff: async (): Promise<boolean> => {
+    return Promise.resolve(true);
+  },
+  diffChangedFiles: async (
+    _changedFiles: TaskChangedFile[],
+  ): Promise<TaskChangedFile[]> => {
+    return Promise.resolve([]);
+  },
+  showChangedFiles: async (
+    _changedFiles: TaskChangedFile[],
+  ): Promise<boolean> => {
     return Promise.resolve(true);
   },
   readExtensionVersion: () => {

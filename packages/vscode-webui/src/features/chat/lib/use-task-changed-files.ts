@@ -1,67 +1,158 @@
 import { fileChangeEvent, vscodeHost } from "@/lib/vscode";
+import type { TaskChangedFile } from "@getpochi/common/vscode-webui-bridge";
 import type { Message } from "@getpochi/livekit";
-import { isToolUIPart } from "ai";
 import { useCallback, useEffect, useState } from "react";
-import { useToolCallLifeCycle } from "./chat-state";
+import { create, useStore } from "zustand";
+import { persist } from "zustand/middleware";
 
-export interface TaskChangedFile {
-  filepath: string;
-  added: number;
-  removed: number;
+export type ChangedFileContent =
+  | {
+      type: "text";
+      text: string;
+    }
+  | {
+      type: "checkpoint";
+      commit: string;
+    }
+  | null;
+
+interface ChangedFileStore {
+  changedFiles: TaskChangedFile[];
+  addChangedFile: (fileDiff: TaskChangedFile) => void;
+  // when file is undefined, accept all changed files
+  acceptChangedFile: (file: {
+    filepath?: string;
+    content: ChangedFileContent;
+  }) => void;
+  // when filepath is undefined, revert all changed files
+  revertChangedFile: (filepath?: string) => void;
+  updateChangedFileChanges: (file: {
+    added: number;
+    removed: number;
+    filepath: string;
+  }) => void;
+  removeChangedFile: (filepath: string) => void;
+  updateChangedFileContent: (filepath: string, content: string) => void;
 }
 
-const useTaskChangedFilesState = () => {
-  const [changedFiles, setChangedFiles] = useState<TaskChangedFile[]>([]);
+const createChangedFileStore = (taskId: string) =>
+  create(
+    persist<ChangedFileStore>(
+      (set) => {
+        return {
+          changedFiles: [],
+          addChangedFile: (fileDiff: TaskChangedFile) => {
+            set((state) => {
+              const hasExisting = state.changedFiles.some(
+                (f) => f.filepath === fileDiff.filepath,
+              );
+              if (hasExisting) {
+                return {
+                  changedFiles: state.changedFiles.map((f) =>
+                    f.filepath === fileDiff.filepath ? fileDiff : f,
+                  ),
+                };
+              }
+              return {
+                changedFiles: [...state.changedFiles, fileDiff],
+              };
+            });
+          },
 
-  const addChangedFile = useCallback((fileDiff: TaskChangedFile) => {
-    setChangedFiles((files) => [
-      ...files.filter((f) => f.filepath !== fileDiff.filepath),
-      fileDiff,
-    ]);
-  }, []);
+          acceptChangedFile: (file: {
+            filepath?: string;
+            content: ChangedFileContent;
+          }) => {
+            set((state) => ({
+              changedFiles: file.filepath
+                ? state.changedFiles.map((f) =>
+                    f.filepath === file.filepath
+                      ? { ...f, state: "accepted", content: file.content }
+                      : f,
+                  )
+                : state.changedFiles.map((f) => ({
+                    ...f,
+                    state: "accepted",
+                    content: file.content,
+                  })),
+            }));
+          },
 
-  const removeChangedFile = useCallback((filepath?: string) => {
-    if (filepath) {
-      setChangedFiles((files) => files.filter((f) => f.filepath !== filepath));
-    } else {
-      setChangedFiles([]);
-    }
-  }, []);
+          revertChangedFile: (filepath?: string) => {
+            set((state) => ({
+              changedFiles: filepath
+                ? state.changedFiles.map((f) =>
+                    f.filepath === filepath ? { ...f, state: "reverted" } : f,
+                  )
+                : state.changedFiles.map((f) => ({ ...f, state: "reverted" })),
+            }));
+          },
 
-  return {
-    changedFiles,
-    addChangedFile,
-    removeChangedFile,
-  };
+          updateChangedFileChanges: (file: {
+            added: number;
+            removed: number;
+            filepath: string;
+          }) => {
+            set((state) => ({
+              changedFiles: state.changedFiles.map((f) =>
+                f.filepath === file.filepath
+                  ? { ...f, added: file.added, removed: file.removed }
+                  : f,
+              ),
+            }));
+          },
+
+          removeChangedFile: (filepath: string) => {
+            set((state) => {
+              return {
+                changedFiles: state.changedFiles.filter(
+                  (f) => f.filepath !== filepath,
+                ),
+              };
+            });
+          },
+
+          updateChangedFileContent: (filepath: string, content: string) => {
+            set((state) => ({
+              changedFiles: state.changedFiles.map((f) =>
+                f.filepath === filepath
+                  ? {
+                      ...f,
+                      state: "userEdited",
+                      content: { type: "text", text: content },
+                    }
+                  : f,
+              ),
+            }));
+          },
+        };
+      },
+      { name: `changed-file-store-${taskId}` },
+    ),
+  );
+
+const taskStores = new Map<string, ReturnType<typeof createChangedFileStore>>();
+export const getTaskChangedFileStoreHook = (taskId: string) => {
+  if (taskStores.has(taskId)) {
+    return taskStores.get(taskId) as ReturnType<typeof createChangedFileStore>;
+  }
+  const storeHook = createChangedFileStore(taskId);
+  taskStores.set(taskId, storeHook);
+  return storeHook;
 };
 
-function getToolPath(message: Message, toolCallId: string): string | null {
-  if (message.role !== "assistant") {
-    return null;
-  }
-
-  for (const part of message.parts) {
-    if (
-      isToolUIPart(part) &&
-      part.toolCallId === toolCallId &&
-      (part.type === "tool-applyDiff" ||
-        part.type === "tool-multiApplyDiff" ||
-        part.type === "tool-writeToFile") &&
-      part.state === "input-available"
-    ) {
-      return part.input.path;
-    }
-  }
-
-  return null;
-}
-
-export const useTaskChangedFiles = (messages: Message[]) => {
-  const { changedFiles, addChangedFile, removeChangedFile } =
-    useTaskChangedFilesState();
+export const useTaskChangedFiles = (
+  taskId: string,
+  messages: Message[],
+  actionEnabled: boolean,
+) => {
+  const {
+    changedFiles,
+    acceptChangedFile: acceptChangedFileInternal,
+    revertChangedFile,
+    updateChangedFileContent,
+  } = useStore(getTaskChangedFileStoreHook(taskId));
   const [checkpoints, setCheckpoints] = useState<string[]>([]);
-
-  const { completeToolCalls } = useToolCallLifeCycle();
 
   useEffect(() => {
     const checkpoints = messages
@@ -71,61 +162,30 @@ export const useTaskChangedFiles = (messages: Message[]) => {
   }, [messages]);
 
   useEffect(() => {
-    if (completeToolCalls.length === 0) return;
-    const lastMessage = messages.at(messages.length - 1);
-    if (!lastMessage) return;
-
-    for (const toolCall of completeToolCalls) {
-      if (toolCall.status !== "complete") continue;
-      const path = getToolPath(lastMessage, toolCall.toolCallId);
-      if (path) {
-        addFile(path);
-      }
-    }
-  }, [messages, completeToolCalls]);
-
-  const addFile = useCallback(
-    async (filepath: string) => {
-      if (checkpoints.length < 1) {
-        return;
-      }
-
-      const diffResult = await vscodeHost.diffWithCheckpoint(checkpoints[0], [
-        filepath,
-      ]);
-
-      if (!diffResult || diffResult.length < 1) {
-        return;
-      }
-
-      const fileDiff = diffResult[0];
-      addChangedFile(fileDiff);
-    },
-    [checkpoints, addChangedFile],
-  );
-
-  useEffect(() => {
-    const unsubscribe = fileChangeEvent.on("fileChanged", (filepath) => {
-      if (changedFiles.some((cf) => cf.filepath === filepath)) {
-        removeChangedFile(filepath);
-      }
-    });
+    const unsubscribe = fileChangeEvent.on(
+      "fileChanged",
+      ({ filepath, content }) => {
+        if (
+          changedFiles.some((cf) => cf.filepath === filepath) &&
+          actionEnabled
+        ) {
+          updateChangedFileContent(filepath, content);
+        }
+      },
+    );
 
     return () => unsubscribe();
-  }, [changedFiles, removeChangedFile]);
+  }, [changedFiles, updateChangedFileContent, actionEnabled]);
 
   const showFileChanges = useCallback(
     async (filePath?: string) => {
       if (checkpoints.length < 2) {
         return;
       }
-      await vscodeHost.showCheckpointDiff(
-        "File Changes",
-        {
-          origin: checkpoints[0],
-          modified: checkpoints.at(-1),
-        },
-        filePath ? [filePath] : changedFiles.map((f) => f.filepath),
+      await vscodeHost.showChangedFiles(
+        filePath
+          ? changedFiles.filter((f) => f.filepath === filePath)
+          : changedFiles,
       );
     },
     [checkpoints, changedFiles],
@@ -136,14 +196,40 @@ export const useTaskChangedFiles = (messages: Message[]) => {
       if (checkpoints.length < 1) {
         return;
       }
-      await vscodeHost.restoreCheckpoint(
-        checkpoints[0],
-        file ? [file] : changedFiles.map((f) => f.filepath),
+      const targetFiles = file
+        ? changedFiles.filter((f) => f.filepath === file)
+        : changedFiles;
+
+      await vscodeHost.restoreChangedFiles(
+        targetFiles.map((f) =>
+          f.content
+            ? f
+            : { ...f, content: { type: "checkpoint", commit: checkpoints[0] } },
+        ),
       );
-      removeChangedFile(file);
+      revertChangedFile(file);
     },
-    [checkpoints, changedFiles, removeChangedFile],
+    [checkpoints, changedFiles, revertChangedFile],
   );
 
-  return { changedFiles, addFile, showFileChanges, revertFileChanges };
+  const acceptChangedFile = useCallback(
+    (filepath?: string) => {
+      const latestCheckpoint = checkpoints.at(-1);
+      if (!latestCheckpoint) {
+        return;
+      }
+      acceptChangedFileInternal({
+        filepath,
+        content: { type: "checkpoint", commit: latestCheckpoint },
+      });
+    },
+    [checkpoints, acceptChangedFileInternal],
+  );
+
+  return {
+    changedFiles,
+    showFileChanges,
+    revertFileChanges,
+    acceptChangedFile,
+  };
 };

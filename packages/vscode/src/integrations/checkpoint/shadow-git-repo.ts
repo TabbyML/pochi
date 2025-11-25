@@ -319,32 +319,67 @@ export class ShadowGitRepo implements vscode.Disposable {
     }
     const diffSummaryOutput = await this.git.raw(command);
 
-    // Parse the diff output manually since we're using raw command
-    const diffSummary = this.parseDiffOutput(diffSummaryOutput);
-    const result = [];
-    for (const file of diffSummary.files) {
-      const filepath = file.file;
-      const absolutePath = path.join(this.workspaceDir, filepath);
+    const parsedDiffs = this.parseDiffOutput(diffSummaryOutput);
+    const result: GitDiff[] = [];
 
-      let beforeContent = "";
-      try {
-        beforeContent = await this.git.show([`${from}:${filepath}`]);
-      } catch (_) {
-        // file didn't exist in older commit => remains empty
-      }
+    for (const diffEntry of parsedDiffs) {
+      const { status, filepath, oldFilepath } = diffEntry;
+      let beforeContent: string | null = null;
+      let afterContent: string | null = null;
 
-      let afterContent = "";
-      if (to) {
-        try {
-          afterContent = await this.git.show([`${to}:${filepath}`]);
-        } catch (_) {
-          // file didn't exist
+      if (status === "A") {
+        // Added file
+        if (to) {
+          // If 'to' commit is specified, get content from 'to'
+          try {
+            afterContent = await this.git.show([`${to}:${filepath}`]);
+          } catch (_) {
+            /* file might not exist in 'to' (e.g. if 'to' is also an old commit where it wasn't added yet) */
+          }
+        } else {
+          // If 'to' is not specified, get content from current working directory
+          try {
+            afterContent = await fs.readFile(
+              path.join(this.workspaceDir, filepath),
+              "utf8",
+            );
+          } catch (_) {
+            /* file might be deleted from working tree after status was taken */
+          }
         }
-      } else {
+      } else if (status === "D") {
+        // Deleted file
         try {
-          afterContent = await fs.readFile(absolutePath, "utf8");
+          beforeContent = await this.git.show([`${from}:${filepath}`]);
         } catch (_) {
-          // file might be deleted
+          /* file didn't exist in 'from' */
+        }
+      } else if (status === "M" || status === "R" || status === "C") {
+        // Modified, Renamed or Copied file
+        const effectiveOldFilepath = oldFilepath || filepath; // For rename/copy, use oldFilepath for beforeContent
+        try {
+          beforeContent = await this.git.show([
+            `${from}:${effectiveOldFilepath}`,
+          ]);
+        } catch (_) {
+          /* file didn't exist in 'from' */
+        }
+
+        if (to) {
+          try {
+            afterContent = await this.git.show([`${to}:${filepath}`]);
+          } catch (_) {
+            /* file didn't exist in 'to' */
+          }
+        } else {
+          try {
+            afterContent = await fs.readFile(
+              path.join(this.workspaceDir, filepath),
+              "utf8",
+            );
+          } catch (_) {
+            /* file might be deleted from working tree after status was taken */
+          }
         }
       }
 
@@ -352,24 +387,29 @@ export class ShadowGitRepo implements vscode.Disposable {
         filepath,
         before: beforeContent,
         after: afterContent,
+        status,
       });
     }
     return result;
   }
 
-  private parseDiffOutput(diffOutput: string): {
-    files: Array<{ file: string }>;
-  } {
+  private parseDiffOutput(
+    diffOutput: string,
+  ): Array<{ status: string; filepath: string; oldFilepath?: string }> {
     const lines = diffOutput
       .trim()
       .split("\n")
       .filter((line) => line.trim());
-    const files = lines.map((line) => {
-      // Parse git diff --name-status output format: "STATUS\tfilename"
+    return lines.map((line) => {
       const parts = line.split("\t");
-      return { file: parts[1] || parts[0] }; // fallback to full line if no tab
+      const status = parts[0].trim();
+      if (status.startsWith("R") || status.startsWith("C")) {
+        // Renamed or Copied file
+        return { status: status[0], oldFilepath: parts[1], filepath: parts[2] };
+      }
+      // For other statuses, filepath is parts[1]
+      return { status: status[0], filepath: parts[1] };
     });
-    return { files };
   }
 
   dispose() {
