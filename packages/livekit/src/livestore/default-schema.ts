@@ -42,7 +42,7 @@ export const tables = {
         schema: LineChanges,
       }),
       totalTokens: State.SQLite.integer({ nullable: true }),
-      lastStepDurationMs: State.SQLite.integer({
+      lastStepDuration: State.SQLite.integer({
         nullable: true,
         schema: Schema.DurationFromMillis,
       }),
@@ -135,7 +135,7 @@ export const events = {
       totalTokens: Schema.NullOr(Schema.Number),
       status: TaskStatus,
       updatedAt: Schema.Date,
-      duration: Schema.NullOr(Schema.DurationFromMillis),
+      duration: Schema.optional(Schema.DurationFromMillis),
     }),
   }),
   chatStreamFailed: Events.synced({
@@ -145,7 +145,7 @@ export const events = {
       error: TaskError,
       data: Schema.NullOr(DBMessage),
       updatedAt: Schema.Date,
-      duration: Schema.NullOr(Schema.DurationFromMillis),
+      duration: Schema.optional(Schema.DurationFromMillis),
     }),
   }),
   updateShareId: Events.synced({
@@ -266,7 +266,7 @@ const materializers = State.SQLite.materializers(events, {
         updatedAt,
         // Clear error if the stream is finished
         error: null,
-        lastStepDurationMs: duration ?? undefined,
+        lastStepDuration: duration ?? undefined,
       })
       .where({ id }),
     tables.messages
@@ -283,7 +283,7 @@ const materializers = State.SQLite.materializers(events, {
         status: "failed",
         error,
         updatedAt,
-        lastStepDurationMs: duration ?? undefined,
+        lastStepDuration: duration ?? undefined,
       })
       .where({ id }),
     ...(data

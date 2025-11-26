@@ -5,6 +5,7 @@ import type {
   WebviewHostApi,
 } from "@getpochi/common/vscode-webui-bridge";
 import type { Store } from "@livestore/livestore";
+import { Duration, Option } from "@livestore/utils/effect";
 import { ThreadNestedWindow } from "@quilted/threads";
 import Emittery from "emittery";
 import * as R from "remeda";
@@ -147,6 +148,14 @@ function createVSCodeHost(): VSCodeHostApi {
                 R.isString(event.args[field])
               ) {
                 event.args[field] = new Date(event.args[field]);
+              }
+            }
+
+            const durationFields = ["lastStepDuration"];
+            for (const field of durationFields) {
+              if ("args" in event && R.isPlainObject(event.args)) {
+                const value = Duration.decodeUnknown(event.args[field]);
+                event.args[field] = Option.getOrThrow(value);
               }
             }
           }

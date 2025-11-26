@@ -287,7 +287,7 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
           totalTokens: task.totalTokens || undefined,
           pendingToolCalls,
           lineChanges: task.lineChanges || undefined,
-          lastStepDurationMs: task.lastStepDurationMs || undefined,
+          lastStepDuration: task.lastStepDuration || undefined,
         }),
       );
     }

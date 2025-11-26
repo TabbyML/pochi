@@ -348,7 +348,7 @@ export class LiveChatKit<
         updatedAt: new Date(),
         duration: this.lastStepStartTimestamp
           ? Duration.millis(Date.now() - this.lastStepStartTimestamp)
-          : null,
+          : undefined,
       }),
     );
 
@@ -378,7 +378,7 @@ export class LiveChatKit<
         updatedAt: new Date(),
         duration: this.lastStepStartTimestamp
           ? Duration.millis(Date.now() - this.lastStepStartTimestamp)
-          : null,
+          : undefined,
       }),
     );
 
