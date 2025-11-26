@@ -5,7 +5,7 @@ import {
   collectAllRuleFiles as commonCollectAllRuleFiles,
   collectCustomRules as commonCollectCustomRules,
   getSystemInfo as getSystemInfoImpl,
-  parseWorkflowFrontmatter,
+  parseWorkflow,
 } from "@getpochi/common/tool-utils";
 import type { RuleFile } from "@getpochi/common/vscode-webui-bridge";
 import { uniqueBy } from "remeda";
@@ -137,8 +137,8 @@ export async function collectWorkflows(
             const fileUri = vscode.Uri.joinPath(workflowsDir, name);
             const absolutePath = fileUri.fsPath;
 
-            const content = await readFileContent(absolutePath);
-            const frontmatter = await parseWorkflowFrontmatter(content);
+            const fileContent = await readFileContent(absolutePath);
+            const { frontmatter, content } = await parseWorkflow(fileContent);
             // e.g., "workflow1.md" -> "workflow1"
             const fileName = name.replace(/\.md$/i, "");
 
@@ -153,7 +153,7 @@ export async function collectWorkflows(
             return {
               id: fileName,
               path: file,
-              content: content || "",
+              content,
               frontmatter,
             };
           }),

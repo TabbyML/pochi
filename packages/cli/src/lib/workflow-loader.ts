@@ -2,10 +2,7 @@ import * as fs from "node:fs/promises";
 import { homedir } from "node:os";
 import * as path from "node:path";
 import { constants } from "@getpochi/common";
-import {
-  isFileExists,
-  parseWorkflowFrontmatter,
-} from "@getpochi/common/tool-utils";
+import { isFileExists, parseWorkflow } from "@getpochi/common/tool-utils";
 import { uniqueBy } from "remeda";
 
 export interface Workflow {
@@ -34,13 +31,13 @@ async function readWorkflowsFromDir(dir: string): Promise<Workflow[]> {
         const id = fileName.replace(/\.md$/, "");
         const filePath = path.join(dir, fileName);
         try {
-          const content = await fs.readFile(filePath, "utf-8");
-          const frontmatter = await parseWorkflowFrontmatter(content);
+          const fileContent = await fs.readFile(filePath, "utf-8");
+          const { frontmatter, content } = await parseWorkflow(fileContent);
           workflows.push({
             id,
             pathName: getWorkflowPath(id),
             content,
-            frontmatter: { model: frontmatter.model },
+            frontmatter,
           });
         } catch (e) {
           // ignore file read errors

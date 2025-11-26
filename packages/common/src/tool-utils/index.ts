@@ -29,7 +29,7 @@ export {
   buildShellCommand,
 } from "./shell";
 export { parseAgentFile } from "./agent-parser";
-export { parseWorkflowFrontmatter } from "./workflow-parser";
+export { parseWorkflow } from "./workflow-parser";
 export {
   type NotebookCell,
   type NotebookContent,

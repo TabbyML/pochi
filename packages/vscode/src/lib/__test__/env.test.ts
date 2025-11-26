@@ -745,7 +745,7 @@ describe("env.ts", () => {
       assert.strictEqual(workflow.id, "duplicate-workflow", "Workflow ID should be correct");
       
       // Check that the content is from the workspace workflow
-      assert.strictEqual(workflow.content, workspaceWorkflowContent, "Should use the content from the workspace workflow");
+      assert.strictEqual(workflow.content, "# Workspace Version\n\nThis is the workspace version\n", "Should use the content from the workspace workflow");
 
       // Check that the path is the workspace path, not the global one
       assert.ok(!workflow.path.startsWith("~"), "Path should be the workspace path, not global");
