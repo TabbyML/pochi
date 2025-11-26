@@ -1,4 +1,4 @@
-import { expect } from "chai";
+import * as assert from "assert";
 import { deduplicateSnippets, type CodeSnippet } from "../code-snippets";
 
 describe("deduplicateSnippets", () => {
@@ -14,7 +14,7 @@ function calculateProduct(a: number, b: number): number {
 const result = calculateSum(5, 10);`;
 
   it("should return an empty array if no snippets are provided", () => {
-    expect(deduplicateSnippets([])).to.deep.equal([]);
+    assert.deepStrictEqual(deduplicateSnippets([]), []);
   });
 
   it("should return the same snippet if only one is provided", () => {
@@ -25,7 +25,7 @@ const result = calculateSum(5, 10);`;
       offset: 0,
       score: 1,
     };
-    expect(deduplicateSnippets([snippet])).to.deep.equal([snippet]);
+    assert.deepStrictEqual(deduplicateSnippets([snippet]), [snippet]);
   });
 
   it("should not merge snippets from different files", () => {
@@ -46,9 +46,10 @@ const result = calculateSum(5, 10);`;
     const result = deduplicateSnippets([snippet1, snippet2]).sort((a, b) =>
       a.filepath.localeCompare(b.filepath),
     );
-    expect(result).to.deep.equal([snippet1, snippet2].sort((a, b) =>
-      a.filepath.localeCompare(b.filepath),
-    ));
+    assert.deepStrictEqual(
+      result,
+      [snippet1, snippet2].sort((a, b) => a.filepath.localeCompare(b.filepath)),
+    );
   });
 
   it("should handle non-overlapping snippets in the same file", () => {
@@ -67,9 +68,9 @@ const result = calculateSum(5, 10);`;
       score: 0.9,
     };
     const result = deduplicateSnippets([snippet1, snippet2]);
-    expect(result.length).to.equal(2);
-    expect(result[0]).to.deep.equal(snippet2);
-    expect(result[1]).to.deep.equal(snippet1);
+    assert.strictEqual(result.length, 2);
+    assert.deepStrictEqual(result[0], snippet2);
+    assert.deepStrictEqual(result[1], snippet1);
   });
   
   it("should merge overlapping snippets in the same file", () => {
@@ -88,10 +89,10 @@ const result = calculateSum(5, 10);`;
       score: 0.9,
     };
     const result = deduplicateSnippets([snippet1, snippet2]);
-    expect(result.length).to.equal(1);
-    expect(result[0].text).to.equal(document.substring(0, 61));
-    expect(result[0].offset).to.equal(0);
-    expect(result[0].score).to.equal(0.9);
+    assert.strictEqual(result.length, 1);
+    assert.strictEqual(result[0].text, document.substring(0, 61));
+    assert.strictEqual(result[0].offset, 0);
+    assert.strictEqual(result[0].score, 0.9);
   });
 
   it("should handle multiple overlapping snippets", () => {
@@ -118,10 +119,10 @@ const result = calculateSum(5, 10);`;
     };
 
     const result = deduplicateSnippets([snippet1, snippet2, snippet3]);
-    expect(result.length).to.equal(1);
-    expect(result[0].text).to.equal(document.substring(0, 118));
-    expect(result[0].offset).to.equal(0);
-    expect(result[0].score).to.equal(0.9);
+    assert.strictEqual(result.length, 1);
+    assert.strictEqual(result[0].text, document.substring(0, 118));
+    assert.strictEqual(result[0].offset, 0);
+    assert.strictEqual(result[0].score, 0.9);
   });
 
   it("should sort snippets by score in descending order", () => {
@@ -147,9 +148,9 @@ const result = calculateSum(5, 10);`;
       score: 0.7,
     };
     const result = deduplicateSnippets([snippet1, snippet2, snippet3]);
-    expect(result[0]).to.deep.equal(snippet2);
-    expect(result[1]).to.deep.equal(snippet3);
-    expect(result[2]).to.deep.equal(snippet1);
+    assert.deepStrictEqual(result[0], snippet2);
+    assert.deepStrictEqual(result[1], snippet3);
+    assert.deepStrictEqual(result[2], snippet1);
   });
 
 });

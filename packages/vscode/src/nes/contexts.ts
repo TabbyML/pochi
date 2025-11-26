@@ -1,6 +1,10 @@
+import { DeclarationSnippetsProvider } from "@/code-completion/context-provider";
+import { cropTextToMaxChars } from "@/code-completion/utils/strings";
 import { createPatch } from "diff";
 import hashObject from "object-hash";
+import { container } from "tsyringe";
 import * as vscode from "vscode";
+import { type CodeSnippet, deduplicateSnippets } from "./code-snippets";
 import {
   DocumentPrefixLine,
   DocumentSelector,
@@ -9,10 +13,6 @@ import {
   EditableRegionSuffixLine,
 } from "./constants";
 import type { TextDocumentEditStep } from "./edit-history";
-import { deduplicateSnippets, type CodeSnippet } from "./code-snippets";
-import { container } from "tsyringe";
-import { DeclarationSnippetsProvider } from "@/code-completion/context-provider";
-import { cropTextToMaxChars } from "@/code-completion/utils/strings";
 
 export interface NESDocumentContext {
   readonly document: vscode.TextDocument;
@@ -139,7 +139,6 @@ async function extractNESContextPromptSegments(
       );
     }
   } catch (error) {
-    console.log(error);
     // ignore errors
   }
 
