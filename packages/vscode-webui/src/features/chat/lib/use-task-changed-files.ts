@@ -26,12 +26,6 @@ interface ChangedFileStore {
   }) => void;
   // when filepath is undefined, revert all changed files
   revertChangedFile: (filepath?: string) => void;
-  updateChangedFileChanges: (file: {
-    added: number;
-    removed: number;
-    filepath: string;
-  }) => void;
-  removeChangedFile: (filepath: string) => void;
   updateChangedFileContent: (filepath: string, content: string) => void;
 }
 
@@ -86,30 +80,6 @@ const createChangedFileStore = (taskId: string) =>
                   )
                 : state.changedFiles.map((f) => ({ ...f, state: "reverted" })),
             }));
-          },
-
-          updateChangedFileChanges: (file: {
-            added: number;
-            removed: number;
-            filepath: string;
-          }) => {
-            set((state) => ({
-              changedFiles: state.changedFiles.map((f) =>
-                f.filepath === file.filepath
-                  ? { ...f, added: file.added, removed: file.removed }
-                  : f,
-              ),
-            }));
-          },
-
-          removeChangedFile: (filepath: string) => {
-            set((state) => {
-              return {
-                changedFiles: state.changedFiles.filter(
-                  (f) => f.filepath !== filepath,
-                ),
-              };
-            });
           },
 
           updateChangedFileContent: (filepath: string, content: string) => {
