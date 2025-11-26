@@ -16,8 +16,7 @@ interface VscodeState {
 
 /**
  * Hook to persist task input draft content across page navigation
- * Uses VSCode's built-in state management API when available,
- * falls back to localStorage in non-VSCode environments
+ * Uses VSCode's built-in state management API
  */
 export function useTaskInputDraft() {
   const vscodeApi = getVSCodeApi() as WebviewApi<VscodeState> | null;
@@ -26,28 +25,11 @@ export function useTaskInputDraft() {
     if (typeof window === "undefined") return "";
 
     try {
-      // Try VSCode state API first
       if (vscodeApi) {
         const state = vscodeApi.getState() as VscodeState | undefined;
         const stored = state?.taskInputDraft;
         if (stored) {
-          // Optional: Clear drafts older than 24 hours
-          const hoursSinceLastEdit =
-            (Date.now() - stored.timestamp) / (1000 * 60 * 60);
-          if (hoursSinceLastEdit < 24) {
-            return stored.content;
-          }
-        }
-      } else {
-        // Fallback to localStorage for non-VSCode environments
-        const stored = localStorage.getItem("pochi-create-task-input-draft");
-        if (stored) {
-          const parsed = JSON.parse(stored) as TaskInputDraft;
-          const hoursSinceLastEdit =
-            (Date.now() - parsed.timestamp) / (1000 * 60 * 60);
-          if (hoursSinceLastEdit < 24) {
-            return parsed.content;
-          }
+          return stored.content;
         }
       }
     } catch (error) {
@@ -59,7 +41,7 @@ export function useTaskInputDraft() {
 
   // Save draft whenever it changes
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    if (typeof window === "undefined" || !vscodeApi) return;
 
     try {
       if (draft.trim()) {
@@ -68,29 +50,17 @@ export function useTaskInputDraft() {
           timestamp: Date.now(),
         };
 
-        if (vscodeApi) {
-          // Use VSCode state API
-          const currentState = (vscodeApi.getState() as VscodeState) || {};
-          vscodeApi.setState({
-            ...currentState,
-            taskInputDraft: data,
-          });
-        } else {
-          // Fallback to localStorage
-          localStorage.setItem(
-            "pochi-create-task-input-draft",
-            JSON.stringify(data),
-          );
-        }
+        // Use VSCode state API
+        const currentState = (vscodeApi.getState() as VscodeState) || {};
+        vscodeApi.setState({
+          ...currentState,
+          taskInputDraft: data,
+        });
       } else {
         // Clear draft if empty
-        if (vscodeApi) {
-          const currentState = (vscodeApi.getState() as VscodeState) || {};
-          const { taskInputDraft, ...rest } = currentState;
-          vscodeApi.setState(rest);
-        } else {
-          localStorage.removeItem("pochi-create-task-input-draft");
-        }
+        const currentState = (vscodeApi.getState() as VscodeState) || {};
+        const { taskInputDraft, ...rest } = currentState;
+        vscodeApi.setState(rest);
       }
     } catch (error) {
       logger.error("Failed to save draft:", error);
@@ -99,16 +69,12 @@ export function useTaskInputDraft() {
 
   const clearDraft = () => {
     setDraft("");
-    if (typeof window === "undefined") return;
+    if (typeof window === "undefined" || !vscodeApi) return;
 
     try {
-      if (vscodeApi) {
-        const currentState = (vscodeApi.getState() as VscodeState) || {};
-        const { taskInputDraft, ...rest } = currentState;
-        vscodeApi.setState(rest);
-      } else {
-        localStorage.removeItem("pochi-create-task-input-draft");
-      }
+      const currentState = (vscodeApi.getState() as VscodeState) || {};
+      const { taskInputDraft, ...rest } = currentState;
+      vscodeApi.setState(rest);
     } catch (error) {
       logger.error("Failed to clear draft:", error);
     }
