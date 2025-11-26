@@ -361,5 +361,12 @@
     "previous": "上一页",
     "next": "下一页",
     "morePages": "更多页面"
+  },
+  "diffSummary": {
+    "filesChanged_one": "{{count}} 个文件已更改",
+    "filesChanged_other": "{{count}} 个文件已更改",
+    "keep": "保留",
+    "undo": "撤销",
+    "viewChanges": "查看更改"
   }
 }

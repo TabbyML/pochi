@@ -357,5 +357,12 @@
     "previous": "이전",
     "next": "다음",
     "morePages": "더 많은 페이지"
+  },
+  "diffSummary": {
+    "filesChanged_one": "{{count}}개 파일 변경됨",
+    "filesChanged_other": "{{count}}개 파일 변경됨",
+    "keep": "유지",
+    "undo": "실행 취소",
+    "viewChanges": "변경 사항 보기"
   }
 }

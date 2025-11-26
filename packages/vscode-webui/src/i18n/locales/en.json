@@ -364,5 +364,12 @@
     "previous": "Previous",
     "next": "Next",
     "morePages": "More pages"
+  },
+  "diffSummary": {
+    "filesChanged_one": "{{count}} file changed",
+    "filesChanged_other": "{{count}} files changed",
+    "keep": "Keep",
+    "undo": "Undo",
+    "viewChanges": "View changes"
   }
 }

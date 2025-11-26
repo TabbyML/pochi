@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { motion } from "motion/react";
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 const collapsibleSectionVariants = {
   open: {
@@ -45,6 +46,7 @@ export function DiffSummary({
   className,
   actionEnabled,
 }: DiffSummaryProps) {
+  const { t } = useTranslation();
   const {
     changedFiles,
     showFileChanges,
@@ -94,8 +96,7 @@ export function DiffSummary({
             <ChevronDown className="size-4" />
           )}
           <span>
-            {displayFiles.length} file{displayFiles.length !== 1 ? "s" : ""}{" "}
-            changed
+            {t("diffSummary.filesChanged", { count: displayFiles.length })}
           </span>
           <EditSummary
             editSummary={{ added: totalAdditions, removed: totalDeletions }}
@@ -114,7 +115,7 @@ export function DiffSummary({
             onClick={() => acceptChangedFile()}
             className="h-7 gap-1.5"
           >
-            Keep
+            {t("diffSummary.keep")}
           </Button>
           <Button
             disabled={actionEnabled === false}
@@ -123,7 +124,7 @@ export function DiffSummary({
             onClick={() => revertFileChanges()}
             className="h-7 gap-1.5"
           >
-            Undo
+            {t("diffSummary.undo")}
           </Button>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -136,7 +137,7 @@ export function DiffSummary({
                 <FileDiffIcon className="size-3.5" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>View changes</TooltipContent>
+            <TooltipContent>{t("diffSummary.viewChanges")}</TooltipContent>
           </Tooltip>
         </div>
       </div>
@@ -168,7 +169,6 @@ export function DiffSummary({
                         className={cn("truncate font-medium text-sm", {
                           "line-through": file.deleted,
                         })}
-                        title="View diff"
                       >
                         {fileName}
                       </button>
@@ -198,7 +198,9 @@ export function DiffSummary({
                               <Check className="size-3.5" />
                             </Button>
                           </TooltipTrigger>
-                          <TooltipContent>Keep</TooltipContent>
+                          <TooltipContent>
+                            {t("diffSummary.keep")}
+                          </TooltipContent>
                         </Tooltip>
                         <Tooltip>
                           <TooltipTrigger asChild>
@@ -215,7 +217,9 @@ export function DiffSummary({
                               <Undo className="size-3.5" />
                             </Button>
                           </TooltipTrigger>
-                          <TooltipContent>Undo</TooltipContent>
+                          <TooltipContent>
+                            {t("diffSummary.undo")}
+                          </TooltipContent>
                         </Tooltip>
                         <Tooltip>
                           <TooltipTrigger asChild>
@@ -228,7 +232,9 @@ export function DiffSummary({
                               <FileDiffIcon className="size-3.5" />
                             </Button>
                           </TooltipTrigger>
-                          <TooltipContent>View changes</TooltipContent>
+                          <TooltipContent>
+                            {t("diffSummary.viewChanges")}
+                          </TooltipContent>
                         </Tooltip>
                       </div>
                     </div>

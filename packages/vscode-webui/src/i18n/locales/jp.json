@@ -362,5 +362,12 @@
     "previous": "前へ",
     "next": "次へ",
     "morePages": "その他のページ"
+  },
+  "diffSummary": {
+    "filesChanged_one": "{{count}} ファイル変更",
+    "filesChanged_other": "{{count}} ファイル変更",
+    "keep": "保持",
+    "undo": "元に戻す",
+    "viewChanges": "変更を表示"
   }
 }
