@@ -231,8 +231,11 @@ export class CheckpointService implements vscode.Disposable {
         changes = await this.shadowGit.getDiff(file.content.commit, undefined, [
           file.filepath,
         ]);
-      } else if (file.content?.type === "text") {
-        const content = file.content.text;
+      } else {
+        let content = null;
+        if (file.content?.type === "text") {
+          content = file.content.text;
+        }
         let afterContent = null;
         try {
           afterContent = await fs.readFile(
@@ -250,6 +253,9 @@ export class CheckpointService implements vscode.Disposable {
       }
 
       const diff = processGitChangesToUserEdits(changes);
+
+      logger.debug(`update diff for changed file: ${JSON.stringify(diff)}`);
+
       if (diff && diff.length > 0) {
         const firstDiff = diff[0];
         if (firstDiff.added || firstDiff.removed) {
@@ -287,8 +293,11 @@ export class CheckpointService implements vscode.Disposable {
           [file.filepath],
         );
         changes.push(diffResult[0]);
-      } else if (file.content?.type === "text") {
-        const content = file.content.text;
+      } else {
+        let content = "";
+        if (file.content?.type === "text") {
+          content = file.content.text;
+        }
         let afterContent = null;
         try {
           afterContent = await fs.readFile(

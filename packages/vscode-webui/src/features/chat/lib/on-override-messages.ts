@@ -1,7 +1,10 @@
 import { vscodeHost } from "@/lib/vscode";
 import { prompts } from "@getpochi/common";
 import { extractWorkflowBashCommands } from "@getpochi/common/message-utils";
-import type { FileDiff } from "@getpochi/common/vscode-webui-bridge";
+import type {
+  FileDiff,
+  TaskChangedFile,
+} from "@getpochi/common/vscode-webui-bridge";
 import { type Message, catalog } from "@getpochi/livekit";
 import type { Store } from "@livestore/livestore";
 import { ThreadAbortSignal } from "@quilted/threads";
@@ -159,8 +162,9 @@ async function updateChangedFileStore(
   firstCheckpoint: string,
 ) {
   const store = getTaskChangedFileStoreHook(taskId);
-  const { changedFiles, addChangedFile } = store.getState();
+  const { changedFiles, setChangedFile } = store.getState();
 
+  const updatedChangedFiles: TaskChangedFile[] = [];
   for (const fileDiff of fileDiffResult || []) {
     const currentFile = changedFiles.find(
       (f) => f.filepath === fileDiff.filepath,
@@ -168,7 +172,7 @@ async function updateChangedFileStore(
 
     // first time seeing this file change
     if (!currentFile) {
-      addChangedFile({
+      updatedChangedFiles.push({
         filepath: fileDiff.filepath,
         added: fileDiff.added,
         removed: fileDiff.removed,
@@ -180,8 +184,7 @@ async function updateChangedFileStore(
       });
     }
   }
-  const updatedChangedFiles = await vscodeHost.diffChangedFiles(changedFiles);
-  for (const updatedFile of updatedChangedFiles) {
-    addChangedFile(updatedFile);
-  }
+  const diffResult = await vscodeHost.diffChangedFiles(changedFiles);
+  updatedChangedFiles.push(...diffResult);
+  setChangedFile(updatedChangedFiles);
 }

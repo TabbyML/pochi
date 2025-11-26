@@ -19,7 +19,7 @@ import {
   Undo,
 } from "lucide-react";
 import { motion } from "motion/react";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 const collapsibleSectionVariants = {
@@ -48,7 +48,7 @@ export function DiffSummary({
 }: DiffSummaryProps) {
   const { t } = useTranslation();
   const {
-    changedFiles,
+    visibleChangedFiles,
     showFileChanges,
     revertFileChanges,
     acceptChangedFile,
@@ -56,21 +56,16 @@ export function DiffSummary({
 
   const [collapsed, setCollapsed] = useState(true);
 
-  const displayFiles = useMemo(
-    () => changedFiles.filter((file) => file.state === "pending"),
-    [changedFiles],
-  );
-
-  const totalAdditions = displayFiles.reduce(
+  const totalAdditions = visibleChangedFiles.reduce(
     (sum, file) => sum + file.added,
     0,
   );
-  const totalDeletions = displayFiles.reduce(
+  const totalDeletions = visibleChangedFiles.reduce(
     (sum, file) => sum + file.removed,
     0,
   );
 
-  if (displayFiles.length === 0) {
+  if (visibleChangedFiles.length === 0) {
     return null;
   }
 
@@ -96,7 +91,9 @@ export function DiffSummary({
             <ChevronDown className="size-4" />
           )}
           <span>
-            {t("diffSummary.filesChanged", { count: displayFiles.length })}
+            {t("diffSummary.filesChanged", {
+              count: visibleChangedFiles.length,
+            })}
           </span>
           <EditSummary
             editSummary={{ added: totalAdditions, removed: totalDeletions }}
@@ -151,7 +148,7 @@ export function DiffSummary({
       >
         <ScrollArea viewportClassname="max-h-[160px]" type="auto">
           <div className="divide-y divide-border">
-            {displayFiles.map((file) => {
+            {visibleChangedFiles.map((file) => {
               const fileName = file.filepath.split("/").pop() || file.filepath;
 
               return (

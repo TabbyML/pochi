@@ -1,5 +1,6 @@
 import type { FileDiff } from "@getpochi/common/vscode-webui-bridge";
 import { diffLines } from "diff";
+import { isNonNullish } from "remeda";
 import type { GitDiff } from "./types";
 
 export class Deferred<T> {
@@ -87,20 +88,26 @@ export function processGitChangesToUserEdits(
   }
 
   // Generate structured diff data
-  const userEdits = filteredChanges.map<FileDiff>((change) => {
-    const diff = generateInlineDiffContent(
-      change.before ?? "",
-      change.after ?? "",
-    );
-    return {
-      filepath: change.filepath,
-      diff: diff.content,
-      added: diff.added,
-      removed: diff.removed,
-      created: change.before === null,
-      deleted: change.after === null,
-    };
-  });
+  const userEdits = filteredChanges
+    .map<FileDiff | undefined>((change) => {
+      if (change.before === null && change.after === null) {
+        return undefined;
+      }
+
+      const diff = generateInlineDiffContent(
+        change.before ?? "",
+        change.after ?? "",
+      );
+      return {
+        filepath: change.filepath,
+        diff: diff.content,
+        added: diff.added,
+        removed: diff.removed,
+        created: change.before === null,
+        deleted: change.after === null,
+      };
+    })
+    .filter(isNonNullish);
 
   return userEdits;
 }
