@@ -112,8 +112,21 @@ export function createPochiModel({
           responseHeaders[key] = value;
         });
 
+        let message = `Failed to fetch: ${resp.status} ${resp.statusText}`;
+
+        if (
+          resp.status >= 400 &&
+          resp.status < 600 &&
+          responseHeaders["content-type"]?.includes("text/plain")
+        ) {
+          const errorMessage = await resp.text();
+          if (errorMessage) {
+            message = errorMessage;
+          }
+        }
+
         throw new APICallError({
-          message: `Failed to fetch: ${resp.status} ${resp.statusText}`,
+          message,
           statusCode: resp.status,
           url: apiClient.api.chat.stream.$url().toString(),
           requestBodyValues: data,
