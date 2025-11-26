@@ -42,7 +42,10 @@ export const tables = {
         schema: LineChanges,
       }),
       totalTokens: State.SQLite.integer({ nullable: true }),
-      lastStepDuration: State.SQLite.integer({ nullable: true }),
+      lastStepDurationMs: State.SQLite.integer({
+        nullable: true,
+        schema: Schema.DurationFromMillis,
+      }),
       error: State.SQLite.json({ schema: TaskError, nullable: true }),
       createdAt: State.SQLite.integer({ schema: Schema.DateFromNumber }),
       updatedAt: State.SQLite.integer({ schema: Schema.DateFromNumber }),
@@ -132,7 +135,7 @@ export const events = {
       totalTokens: Schema.NullOr(Schema.Number),
       status: TaskStatus,
       updatedAt: Schema.Date,
-      lastStepDuration: Schema.NullOr(Schema.Number),
+      duration: Schema.NullOr(Schema.DurationFromMillis),
     }),
   }),
   chatStreamFailed: Events.synced({
@@ -142,7 +145,7 @@ export const events = {
       error: TaskError,
       data: Schema.NullOr(DBMessage),
       updatedAt: Schema.Date,
-      lastStepDuration: Schema.NullOr(Schema.Number),
+      duration: Schema.NullOr(Schema.DurationFromMillis),
     }),
   }),
   updateShareId: Events.synced({
@@ -254,7 +257,7 @@ const materializers = State.SQLite.materializers(events, {
     totalTokens,
     status,
     updatedAt,
-    lastStepDuration,
+    duration,
   }) => [
     tables.tasks
       .update({
@@ -263,7 +266,7 @@ const materializers = State.SQLite.materializers(events, {
         updatedAt,
         // Clear error if the stream is finished
         error: null,
-        lastStepDuration,
+        lastStepDurationMs: duration ?? undefined,
       })
       .where({ id }),
     tables.messages
@@ -274,13 +277,13 @@ const materializers = State.SQLite.materializers(events, {
       })
       .onConflict("id", "replace"),
   ],
-  "v1.ChatStreamFailed": ({ id, error, updatedAt, data, lastStepDuration }) => [
+  "v1.ChatStreamFailed": ({ id, error, updatedAt, data, duration }) => [
     tables.tasks
       .update({
         status: "failed",
         error,
         updatedAt,
-        lastStepDuration,
+        lastStepDurationMs: duration ?? undefined,
       })
       .where({ id }),
     ...(data

@@ -1,6 +1,7 @@
 import { getLogger } from "@getpochi/common";
 import type { CustomAgent } from "@getpochi/tools";
 import type { Store } from "@livestore/livestore";
+import { Duration } from "@livestore/utils/effect";
 import type { ChatInit, ChatOnErrorCallback, ChatOnFinishCallback } from "ai";
 import type z from "zod/v4";
 import { makeMessagesQuery, makeTaskQuery } from "../livestore/default-queries";
@@ -345,8 +346,8 @@ export class LiveChatKit<
         data: message,
         totalTokens: message.metadata.totalTokens,
         updatedAt: new Date(),
-        lastStepDuration: this.lastStepStartTimestamp
-          ? Date.now() - this.lastStepStartTimestamp
+        duration: this.lastStepStartTimestamp
+          ? Duration.millis(Date.now() - this.lastStepStartTimestamp)
           : null,
       }),
     );
@@ -375,8 +376,8 @@ export class LiveChatKit<
         error: toTaskError(error),
         data: lastMessage,
         updatedAt: new Date(),
-        lastStepDuration: this.lastStepStartTimestamp
-          ? Date.now() - this.lastStepStartTimestamp
+        duration: this.lastStepStartTimestamp
+          ? Duration.millis(Date.now() - this.lastStepStartTimestamp)
           : null,
       }),
     );
