@@ -34,7 +34,6 @@ export interface TaskData {
   } | null;
 }
 
-// if the content is null, it means the file was created
 export type ChangedFileContent =
   | {
       type: "text";
@@ -43,14 +42,14 @@ export type ChangedFileContent =
   | {
       type: "checkpoint";
       commit: string;
-    }
-  | null;
+    };
 
 export interface TaskChangedFile {
   filepath: string;
   added: number;
   removed: number;
-  content: ChangedFileContent;
+  // if the content is null, it means the file was created
+  content: ChangedFileContent | null;
   deleted?: boolean;
   state: "accepted" | "reverted" | "pending" | "userEdited";
 }
