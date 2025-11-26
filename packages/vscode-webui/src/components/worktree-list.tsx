@@ -143,24 +143,22 @@ export function WorktreeList({
       {activeGroups.map((group) => (
         <WorktreeSection key={group.path} group={group} />
       ))}
-
       {deletedGroups.length > 0 && (
         <>
-          <div className="flex items-center py-2">
+          <div className="group flex items-center py-2">
             <div className="h-px flex-1 bg-border" />
             <Button
               variant="ghost"
               size="sm"
-              className="mx-2 h-auto py-0 text-muted-foreground text-xs hover:bg-transparent"
+              className="mx-2 h-auto gap-2 py-0 text-muted-foreground text-xs hover:bg-transparent"
               onClick={() => setShowDeleted(!showDeleted)}
             >
-              {showDeleted
-                ? t("tasksPage.hideDeletedWorktrees", {
-                    count: deletedGroups.length,
-                  })
-                : t("tasksPage.showDeletedWorktrees", {
-                    count: deletedGroups.length,
-                  })}
+              <Trash2 className="size-3" />
+              <span className="w-0 overflow-hidden whitespace-nowrap transition-all group-hover:w-auto">
+                {showDeleted
+                  ? "Hide deleted worktrees"
+                  : "Show deleted worktrees"}
+              </span>
             </Button>
             <div className="h-px flex-1 bg-border" />
           </div>
@@ -210,7 +208,9 @@ function WorktreeSection({
             </div>
           </CollapsibleTrigger>
         ) : (
-          <span className="font-semibold">{group.name}</span>
+          <div className="flex items-center">
+            <span className="font-semibold">{group.name}</span>
+          </div>
         )}
 
         <div className="flex items-center gap-1">
@@ -343,19 +343,11 @@ function WorktreeSection({
               group.tasks.map((task) => {
                 const isRead = !unreadTaskIds.has(task.id);
 
-                return (
-                  <TaskRow
-                    key={task.id}
-                    task={task}
-                    worktreeName={group.name}
-                    isWorktreeExist={!group.isDeleted}
-                    isRead={isRead}
-                  />
-                );
+                return <TaskRow key={task.id} task={task} isRead={isRead} />;
               })
             ) : (
-              <div className="py-2 text-muted-foreground text-sm italic">
-                {t("tasksPage.emptyState.description")}
+              <div className="py-4 text-center text-muted-foreground text-xs">
+                No tasks
               </div>
             )}
           </div>

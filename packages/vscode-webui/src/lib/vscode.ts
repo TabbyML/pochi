@@ -99,9 +99,6 @@ function createVSCodeHost(): VSCodeHostApi {
         "onTaskUpdated",
         "readWorktrees",
         "createWorktree",
-        "openWorktreeInTerminal",
-        "showWorktreeDiff",
-        "deleteWorktree",
       ],
       exports: {
         async openTask(params) {

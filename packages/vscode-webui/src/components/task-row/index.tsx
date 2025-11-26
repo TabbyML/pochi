@@ -1,4 +1,9 @@
-import { Badge } from "@/components/ui/badge";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { usePochiCredentials } from "@/lib/hooks/use-pochi-credentials";
 import { cn } from "@/lib/utils";
 import { vscodeHost } from "@/lib/vscode";
@@ -8,25 +13,19 @@ import type { Task, UITools } from "@getpochi/livekit";
 import type { ToolUIPart } from "ai";
 import { GitBranch } from "lucide-react";
 import { useCallback, useMemo } from "react";
+import { EditSummary } from "../tool-invocation/edit-summary";
 import { ToolCallLite } from "./tool-call-lite";
 
 export function TaskRow({
   task,
-  worktreeName,
-  isWorktreeExist,
   isRead,
 }: {
   task: Task;
-  worktreeName?: string;
-  isWorktreeExist?: boolean;
   isRead?: boolean;
 }) {
   const { jwt } = usePochiCredentials();
 
   const title = useMemo(() => parseTitle(task.title), [task.title]);
-
-  const showLineChangesBadge =
-    !!task.lineChanges?.added || !!task.lineChanges?.removed;
 
   const content = (
     <div
@@ -36,45 +35,40 @@ export function TaskRow({
         getStatusBorderColor(task.status),
       )}
     >
-      <div className="px-4 py-3">
+      <div className="px-2 py-1">
         <div className="flex items-start gap-3">
           <div className="flex-1 space-y-1 overflow-hidden">
             <div className="flex items-center gap-2">
-              <GitBadge
-                git={task.git}
-                worktreeName={worktreeName}
-                className="max-w-full text-muted-foreground/80 text-xs"
-                isWorktreeExist={isWorktreeExist}
-              />
-              {showLineChangesBadge && (
-                <div className="inline-flex items-center gap-1.5 rounded-sm border border-muted-foreground/50 px-1.5 py-0.5 font-medium text-xs">
-                  <span className="text-green-600 dark:text-green-500">
-                    +{task.lineChanges?.added || 0}
-                  </span>
-                  <span className="text-red-600 dark:text-red-500">
-                    -{task.lineChanges?.removed || 0}
-                  </span>
+              <h3 className="line-clamp-2 flex flex-1 items-center font-medium text-foreground leading-relaxed transition-colors duration-200 group-hover:text-foreground/80">
+                <span className="truncate">{title}</span>
+                {isRead ? null : (
+                  <div className="ml-2 h-2 w-2 shrink-0 rounded-full bg-primary" />
+                )}
+              </h3>
+              <div className="flex shrink-0 items-center gap-2">
+                <GitBadge git={task.git} />
+                <div className="text-muted-foreground text-sm">
+                  {formatTimeAgo(task.updatedAt)}
                 </div>
-              )}
+              </div>
             </div>
-            <h3 className="line-clamp-2 flex flex-1 items-center font-medium text-foreground leading-relaxed transition-colors duration-200 group-hover:text-foreground/80">
-              <span className="truncate">{title}</span>
-              {isRead ? null : (
-                <div className="ml-2 h-2 w-2 shrink-0 rounded-full bg-primary" />
-              )}
-            </h3>
             <div className="h-6 text-muted-foreground text-sm">
-              {task.pendingToolCalls?.length ? (
-                <ToolCallLite
-                  tools={task.pendingToolCalls as Array<ToolUIPart<UITools>>}
-                />
-              ) : (
-                <TaskStatusView task={task} />
-              )}
+              <div className="flex items-center gap-2">
+                {task.lineChanges && (
+                  <EditSummary
+                    editSummary={task.lineChanges}
+                    className="mx-0"
+                  />
+                )}
+                {task.pendingToolCalls?.length ? (
+                  <ToolCallLite
+                    tools={task.pendingToolCalls as Array<ToolUIPart<UITools>>}
+                  />
+                ) : (
+                  <TaskStatusView task={task} />
+                )}
+              </div>
             </div>
-          </div>
-          <div className="mt-0.5 shrink-0 text-muted-foreground text-sm">
-            {formatTimeAgo(task.updatedAt)}
           </div>
         </div>
       </div>
@@ -113,28 +107,25 @@ const getStatusBorderColor = (status: string): string => {
 };
 
 function GitBadge({
-  className,
   git,
 }: {
   git: Task["git"];
-  worktreeName?: string;
-  className?: string;
-  isWorktreeExist?: boolean;
 }) {
-  if (!git?.origin) return null;
+  if (!git?.origin || !git?.branch) return null;
 
   return (
-    <Badge
-      variant="outline"
-      className={cn("border-transparent p-0 text-foreground", className)}
-    >
-      {git.branch && (
-        <>
-          <GitBranch className="shrink-0" />
-          <span className="truncate">{git.branch}</span>
-        </>
-      )}
-    </Badge>
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className="text-muted-foreground/80">
+            <GitBranch className="h-4 w-4" />
+          </div>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>{git.branch}</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }
 
