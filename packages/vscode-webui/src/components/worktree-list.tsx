@@ -1,16 +1,31 @@
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useTaskReadStatusStore } from "@/features/chat";
 import { useWorktrees } from "@/lib/hooks/use-worktrees";
-import { vscodeHost } from "@/lib/vscode";
 import { getWorktreeNameFromWorktreePath } from "@getpochi/common/git-utils";
 import type { Task } from "@getpochi/livekit";
-import { ChevronDown, ChevronRight, Plus, Trash2 } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronRight,
+  GitCompare,
+  Plus,
+  Terminal,
+  Trash2,
+} from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as R from "remeda";
@@ -21,17 +36,14 @@ interface WorktreeGroup {
   path: string;
   tasks: Task[];
   isDeleted: boolean;
+  isMain: boolean;
   createdAt?: number;
 }
 
 export function WorktreeList({
   tasks,
-  cwd,
-  workspaceFolder,
 }: {
   tasks: Task[];
-  cwd: string;
-  workspaceFolder?: string | null;
 }) {
   const { t } = useTranslation();
   const { data: worktrees } = useWorktrees();
@@ -83,9 +95,11 @@ export function WorktreeList({
         const wt = worktreeMap.get(group.path);
         let name = "unknown";
         let isDeleted = true;
+        let isMain = false;
 
         if (wt) {
           isDeleted = false;
+          isMain = wt.isMain;
           if (wt.isMain) {
             name = "main";
           } else {
@@ -99,6 +113,7 @@ export function WorktreeList({
           ...group,
           name,
           isDeleted,
+          isMain,
         };
       }),
       R.sort((a, b) => {
@@ -124,14 +139,9 @@ export function WorktreeList({
   const deletedGroups = groups.filter((g) => g.isDeleted);
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-1">
       {activeGroups.map((group) => (
-        <WorktreeSection
-          key={group.path}
-          group={group}
-          cwd={cwd}
-          workspaceFolder={workspaceFolder}
-        />
+        <WorktreeSection key={group.path} group={group} />
       ))}
 
       {deletedGroups.length > 0 && (
@@ -157,12 +167,7 @@ export function WorktreeList({
 
           {showDeleted &&
             deletedGroups.map((group) => (
-              <WorktreeSection
-                key={group.path}
-                group={group}
-                cwd={cwd}
-                workspaceFolder={workspaceFolder}
-              />
+              <WorktreeSection key={group.path} group={group} />
             ))}
         </>
       )}
@@ -174,57 +179,165 @@ function WorktreeSection({
   group,
 }: {
   group: WorktreeGroup;
-  cwd: string;
-  workspaceFolder?: string | null;
 }) {
   const { t } = useTranslation();
   // Default expanded for existing worktrees, collapsed for deleted
   const [isExpanded, setIsExpanded] = useState(!group.isDeleted);
+  const [isHovered, setIsHovered] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const unreadTaskIds = useTaskReadStatusStore((state) => state.unreadTaskIds);
+
   return (
     <Collapsible
       open={isExpanded}
       onOpenChange={setIsExpanded}
-      className="rounded-lg border bg-card text-card-foreground shadow-sm"
+      className="mb-2 rounded-lg border shadow-sm"
     >
-      <div className="flex items-center justify-between px-3 py-2">
-        <CollapsibleTrigger asChild>
-          <div className="flex cursor-pointer select-none items-center gap-2">
-            {isExpanded ? (
-              <ChevronDown className="size-4" />
-            ) : (
-              <ChevronRight className="size-4" />
-            )}
-            <span className="font-semibold">{group.name}</span>
-            {group.isDeleted && (
-              <Badge variant="destructive" className="ml-2">
-                <Trash2 className="mr-1 size-3" />
-                {t("tasksPage.deleted")}
-              </Badge>
-            )}
-          </div>
-        </CollapsibleTrigger>
-        <div className="flex items-center gap-2">
+      <div
+        className="flex items-center justify-between px-3 py-1"
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+      >
+        {group.isDeleted ? (
+          <CollapsibleTrigger asChild>
+            <div className="flex cursor-pointer select-none items-center gap-2">
+              {isExpanded ? (
+                <ChevronDown className="size-4" />
+              ) : (
+                <ChevronRight className="size-4" />
+              )}
+              <span className="font-semibold">{group.name}</span>
+            </div>
+          </CollapsibleTrigger>
+        ) : (
+          <span className="font-semibold">{group.name}</span>
+        )}
+
+        <div className="flex items-center gap-1">
+          {!group.isDeleted && isHovered && (
+            <>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0"
+                    asChild
+                  >
+                    <a
+                      href={`command:pochi.worktree.openDiff?${encodeURIComponent(JSON.stringify([group.path]))}`}
+                    >
+                      <GitCompare className="size-4" />
+                    </a>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {t("tasksPage.openWorktreeDiff")}
+                </TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0"
+                    asChild
+                  >
+                    <a
+                      href={`command:pochi.worktree.openTerminal?${encodeURIComponent(JSON.stringify([group.path]))}`}
+                    >
+                      <Terminal className="size-4" />
+                    </a>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {t("tasksPage.openWorktreeInTerminal")}
+                </TooltipContent>
+              </Tooltip>
+              {!group.isMain && (
+                <Popover
+                  open={showDeleteConfirm}
+                  onOpenChange={setShowDeleteConfirm}
+                >
+                  <Tooltip>
+                    <PopoverTrigger asChild>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0"
+                        >
+                          <Trash2 className="size-4" />
+                        </Button>
+                      </TooltipTrigger>
+                    </PopoverTrigger>
+                    <TooltipContent>
+                      {t("tasksPage.deleteWorktree")}
+                    </TooltipContent>
+                  </Tooltip>
+                  <PopoverContent className="w-80">
+                    <div className="flex flex-col gap-3">
+                      <div className="space-y-2">
+                        <h4 className="font-medium leading-none">
+                          {t("tasksPage.deleteWorktreeTitle")}
+                        </h4>
+                        <p className="text-muted-foreground text-sm">
+                          {t("tasksPage.deleteWorktreeConfirm", {
+                            name: group.name,
+                          })}
+                        </p>
+                      </div>
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setShowDeleteConfirm(false)}
+                        >
+                          {t("tasksPage.cancel")}
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          asChild
+                          onClick={() => setShowDeleteConfirm(false)}
+                        >
+                          <a
+                            href={`command:pochi.worktree.delete?${encodeURIComponent(JSON.stringify([group.path]))}`}
+                          >
+                            {t("tasksPage.delete")}
+                          </a>
+                        </Button>
+                      </div>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              )}
+            </>
+          )}
           {!group.isDeleted && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 w-8 p-0"
-              onClick={() => {
-                vscodeHost.openTaskInPanel({
-                  cwd: group.path,
-                  uid: crypto.randomUUID(),
-                });
-              }}
-            >
-              <Plus className="size-4" />
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0"
+                  asChild
+                >
+                  <a
+                    href={`command:pochi.worktree.newTask?${encodeURIComponent(JSON.stringify([group.path]))}`}
+                  >
+                    <Plus className="size-4" />
+                  </a>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{t("tasksPage.newTask")}</TooltipContent>
+            </Tooltip>
           )}
         </div>
       </div>
 
       <CollapsibleContent>
-        <div className="border-t p-4">
+        <div className="max-h-[200px] overflow-auto border-t px-1 py-2">
           <div className="flex flex-col gap-2">
             {group.tasks.length > 0 ? (
               group.tasks.map((task) => {

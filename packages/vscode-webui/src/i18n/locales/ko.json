@@ -181,7 +181,19 @@
       "selectDate": "날짜 선택",
       "today": "오늘"
     },
-    "worktreeNotExist": "워크트리가 존재하지 않습니다"
+    "worktreeNotExist": "워크트리가 존재하지 않습니다",
+    "newTask": "새 작업",
+    "deleted": "삭제됨",
+    "tasksCount": "{{count}}개 작업",
+    "showDeletedWorktrees": "{{count}}개의 삭제된 워크트리 표시",
+    "hideDeletedWorktrees": "{{count}}개의 삭제된 워크트리 숨기기",
+    "openWorktreeDiff": "변경 사항 보기",
+    "openWorktreeInTerminal": "터미널에서 워크트리 열기",
+    "deleteWorktree": "워크트리 삭제",
+    "deleteWorktreeTitle": "워크트리 삭제",
+    "deleteWorktreeConfirm": "워크트리 \"{{name}}\"을(를) 삭제하시겠습니까?",
+    "cancel": "취소",
+    "delete": "삭제"
   },
   "toolInvocation": {
     "taskCompleted": "작업 완료",

@@ -181,7 +181,19 @@
       "selectDate": "日付を選択",
       "today": "今日"
     },
-    "worktreeNotExist": "ワークツリーが存在しません"
+    "worktreeNotExist": "ワークツリーが存在しません",
+    "newTask": "新しいタスク",
+    "deleted": "削除済み",
+    "tasksCount": "{{count}} 件のタスク",
+    "showDeletedWorktrees": "{{count}} 件の削除されたワークツリーを表示",
+    "hideDeletedWorktrees": "{{count}} 件の削除されたワークツリーを非表示",
+    "openWorktreeDiff": "変更を確認",
+    "openWorktreeInTerminal": "ターミナルでワークツリーを開く",
+    "deleteWorktree": "ワークツリーを削除",
+    "deleteWorktreeTitle": "ワークツリーを削除",
+    "deleteWorktreeConfirm": "ワークツリー \"{{name}}\" を削除してもよろしいですか？",
+    "cancel": "キャンセル",
+    "delete": "削除"
   },
   "toolInvocation": {
     "taskCompleted": "タスク完了",

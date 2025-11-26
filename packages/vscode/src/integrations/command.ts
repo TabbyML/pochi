@@ -34,7 +34,8 @@ import * as vscode from "vscode";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { PochiConfiguration } from "./configuration";
 import { DiffChangesContentProvider } from "./editor/diff-changes-content-provider";
-import { showWorktreeDiff } from "./git/worktree";
+// biome-ignore lint/style/useImportType: needed for dependency injection
+import { WorktreeManager, showWorktreeDiff } from "./git/worktree";
 import { PochiTaskEditorProvider } from "./webview/webview-panel";
 const logger = getLogger("CommandManager");
 
@@ -52,6 +53,7 @@ export class CommandManager implements vscode.Disposable {
     private readonly pochiConfiguration: PochiConfiguration,
     private readonly posthog: PostHog,
     private readonly nesDecorationManager: NESDecorationManager,
+    private readonly worktreeManager: WorktreeManager,
   ) {
     this.registerCommands();
   }
@@ -481,6 +483,44 @@ export class CommandManager implements vscode.Disposable {
           }
         }
       }),
+
+      vscode.commands.registerCommand(
+        "pochi.worktree.openDiff",
+        async (worktreePath: string) => {
+          if (worktreePath) {
+            await showWorktreeDiff(worktreePath);
+          }
+        },
+      ),
+
+      vscode.commands.registerCommand(
+        "pochi.worktree.openTerminal",
+        async (worktreePath: string) => {
+          if (worktreePath) {
+            vscode.window.createTerminal({ cwd: worktreePath }).show();
+          }
+        },
+      ),
+
+      vscode.commands.registerCommand(
+        "pochi.worktree.delete",
+        async (worktreePath: string) => {
+          if (worktreePath) {
+            await this.worktreeManager.deleteWorktree(worktreePath);
+          }
+        },
+      ),
+
+      vscode.commands.registerCommand(
+        "pochi.worktree.newTask",
+        async (worktreePath: string) => {
+          if (worktreePath) {
+            PochiTaskEditorProvider.openTaskEditor({
+              cwd: worktreePath,
+            });
+          }
+        },
+      ),
     );
   }
 

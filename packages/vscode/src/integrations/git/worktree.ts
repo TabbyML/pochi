@@ -90,6 +90,34 @@ export class WorktreeManager implements vscode.Disposable {
     return null;
   }
 
+  async deleteWorktree(worktreePath: string): Promise<void> {
+    if ((await this.isGitRepository()) === false) {
+      return;
+    }
+
+    const worktree = this.worktrees.value.find(
+      (wt) => wt.path === worktreePath,
+    );
+    if (!worktree) {
+      vscode.window.showErrorMessage(`Worktree not found: ${worktreePath}`);
+      return;
+    }
+
+    if (worktree.isMain) {
+      vscode.window.showErrorMessage("Cannot delete the main worktree.");
+      return;
+    }
+
+    try {
+      await this.git.raw(["worktree", "remove", worktreePath]);
+    } catch (error) {
+      logger.error(`Failed to delete worktree: ${toErrorMessage(error)}`);
+      vscode.window.showErrorMessage(
+        `Failed to delete worktree: ${toErrorMessage(error)}`,
+      );
+    }
+  }
+
   async getWorktrees(): Promise<GitWorktree[]> {
     try {
       const result = await this.git.raw(["worktree", "list", "--porcelain"]);

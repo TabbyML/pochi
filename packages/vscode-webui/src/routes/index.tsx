@@ -86,11 +86,7 @@ function Tasks() {
         <div className="min-h-0 flex-1 pt-4">
           <ScrollArea className="h-full">
             <div className="flex flex-col gap-4 p-4 pb-6">
-              <WorktreeList
-                tasks={[...tasks]}
-                cwd={cwd}
-                workspaceFolder={workspaceFolder || undefined}
-              />
+              <WorktreeList tasks={[...tasks]} />
             </div>
           </ScrollArea>
         </div>

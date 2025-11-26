@@ -180,7 +180,19 @@
       "selectDate": "选择日期",
       "today": "今天"
     },
-    "worktreeNotExist": "工作树不存在"
+    "worktreeNotExist": "工作树不存在",
+    "newTask": "新任务",
+    "deleted": "已删除",
+    "tasksCount": "{{count}} 个任务",
+    "showDeletedWorktrees": "显示 {{count}} 个已删除的工作树",
+    "hideDeletedWorktrees": "隐藏 {{count}} 个已删除的工作树",
+    "openWorktreeDiff": "查看更改",
+    "openWorktreeInTerminal": "在终端中打开工作树",
+    "deleteWorktree": "删除工作树",
+    "deleteWorktreeTitle": "删除工作树",
+    "deleteWorktreeConfirm": "确定要删除工作树 \"{{name}}\" 吗？",
+    "cancel": "取消",
+    "delete": "删除"
   },
   "toolInvocation": {
     "taskCompleted": "任务完成",

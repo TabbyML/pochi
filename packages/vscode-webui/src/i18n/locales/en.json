@@ -192,7 +192,14 @@
     "deleted": "Deleted",
     "tasksCount": "{{count}} tasks",
     "showDeletedWorktrees": "Show {{count}} deleted worktrees",
-    "hideDeletedWorktrees": "Hide {{count}} deleted worktrees"
+    "hideDeletedWorktrees": "Hide {{count}} deleted worktrees",
+    "openWorktreeDiff": "Review changes",
+    "openWorktreeInTerminal": "Open worktree in terminal",
+    "deleteWorktree": "Delete worktree",
+    "deleteWorktreeTitle": "Delete worktree",
+    "deleteWorktreeConfirm": "Are you sure you want to delete the worktree \"{{name}}\"?",
+    "cancel": "Cancel",
+    "delete": "Delete"
   },
   "toolInvocation": {
     "taskCompleted": "Task Completed",
