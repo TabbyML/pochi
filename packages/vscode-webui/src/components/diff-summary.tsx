@@ -21,6 +21,7 @@ import {
 import { motion } from "motion/react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { formatPathForDisplay } from "./prompt-form/utils";
 
 const collapsibleSectionVariants = {
   open: {
@@ -149,7 +150,9 @@ export function DiffSummary({
         <ScrollArea viewportClassname="max-h-[160px]" type="auto">
           <div className="divide-y divide-border">
             {visibleChangedFiles.map((file) => {
-              const fileName = file.filepath.split("/").pop() || file.filepath;
+              const { basename, displayPath } = formatPathForDisplay(
+                file.filepath,
+              );
 
               return (
                 <div
@@ -163,11 +166,17 @@ export function DiffSummary({
                       <FileIcon path={file.filepath} className="shrink-0" />
                       <button
                         type="button"
-                        className={cn("truncate font-medium text-sm", {
-                          "line-through": file.deleted,
-                        })}
+                        className={cn(
+                          "flex flex-nowrap items-center gap-2 truncate whitespace-nowrap font-medium text-sm",
+                          {
+                            "line-through": file.deleted,
+                          },
+                        )}
                       >
-                        {fileName}
+                        <span className="truncate">{basename}</span>
+                        <span className="flex-1 truncate text-muted-foreground text-xs">
+                          {displayPath}
+                        </span>
                       </button>
                     </div>
 
