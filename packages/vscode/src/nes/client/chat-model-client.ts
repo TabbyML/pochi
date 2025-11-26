@@ -30,9 +30,7 @@ export class NESChatModelClient implements NESClientProvider {
     const requestId = this.requestId;
 
     const request: CallSettings & Prompt = {
-      system: formatPlaceholders(SystemPromptTemplate, {
-        edits: params.segments.edits.join("\n\n"),
-      }),
+      system: buildSystemPromptTemplate(params.segments),
       prompt: formatPlaceholders(UserPromptTemplate, {
         filepath: params.segments.filepath,
         prefix: params.segments.prefix,
@@ -117,7 +115,31 @@ function extractResult(text: string, segments: NESPromptSegments) {
   return result;
 }
 
+function buildSystemPromptTemplate(segments: NESPromptSegments) {
+  let prompt = formatPlaceholders(SystemPromptTemplate, {
+    edits: segments.edits.join("\n\n"),
+  });
+  if (segments.codeSnippets && segments.codeSnippets.length > 0) {
+    const codeSnippets = segments.codeSnippets
+      .map((codeSnippet) => {
+        return formatPlaceholders("```{{filepath}}\n{{text}}\n```\n\n", {
+          filepath: codeSnippet.filepath,
+          text: codeSnippet.text,
+        });
+      })
+      .join("");
+    prompt += formatPlaceholders(SystemPromptTemplateExtends.codeSnippets, {
+      codeSnippets,
+    });
+  }
+  return prompt;
+}
+
 const SystemPromptTemplate =
   "You are an AI coding assistant that helps with code completion and editing. You will be given a code snippet with an editable region marked.\nYour task is to complete or modify the code within that region based on the following events that happened in past. \nNOTE: DO NOT undo or revert the user edits. \n\nUser edits:\n\n```diff\n{{edits}}\n```\n";
+const SystemPromptTemplateExtends = {
+  codeSnippets:
+    "\n\nThese are code snippets from other files, which might provide context or examples relevant to the current task: \n\n{{codeSnippets}}\n",
+};
 const UserPromptTemplate =
   "```{{filepath}}\n{{prefix}}<|editable_region_start|>{{editableRegionPrefix}}<|user_cursor_is_here|>{{editableRegionSuffix}}<|editable_region_end|>{{suffix}}\n```";

@@ -9,6 +9,10 @@ import {
   EditableRegionSuffixLine,
 } from "./constants";
 import type { TextDocumentEditStep } from "./edit-history";
+import { deduplicateSnippets, type CodeSnippet } from "./code-snippets";
+import { container } from "tsyringe";
+import { DeclarationSnippetsProvider } from "@/code-completion/context-provider";
+import { cropTextToMaxChars } from "@/code-completion/utils/strings";
 
 export interface NESDocumentContext {
   readonly document: vscode.TextDocument;
@@ -18,6 +22,8 @@ export interface NESDocumentContext {
 
 export interface NESPromptSegments {
   edits: string[];
+  codeSnippets?: CodeSnippet[];
+
   filepath: string;
   prefix: string;
   editableRegionPrefix: string;
@@ -34,19 +40,19 @@ export interface NESRequestContext {
 }
 
 // FIXME(zhiming): refactor to class
-export function buildNESRequestContext(
+export async function buildNESRequestContext(
   documentContext: NESDocumentContext,
-): NESRequestContext {
+): Promise<NESRequestContext> {
   return {
     documentContext,
     hash: calculateNESContextHash(documentContext),
-    promptSegments: extractNESContextPromptSegments(documentContext),
+    promptSegments: await extractNESContextPromptSegments(documentContext),
   };
 }
 
-function extractNESContextPromptSegments(
+async function extractNESContextPromptSegments(
   context: NESDocumentContext,
-): NESPromptSegments {
+): Promise<NESPromptSegments> {
   const filepath = vscode.workspace.asRelativePath(context.document.uri);
 
   const edits = context.editHistory.map((step) => {
@@ -103,8 +109,49 @@ function extractNESContextPromptSegments(
     context.document.offsetAt(editableRegionStart);
   const editableRegionEndOffset = context.document.offsetAt(editableRegionEnd);
 
+  // related code snippets
+  let codeSnippets: CodeSnippet[] = [];
+  const declarationSnippetsProvider = container.resolve(
+    DeclarationSnippetsProvider,
+  );
+  try {
+    const declarations = await declarationSnippetsProvider.collect(
+      {
+        uri: context.document.uri,
+        range: new vscode.Range(documentPrefixStart, documentSuffixEnd),
+      },
+      5, // max snippets
+      true,
+      undefined,
+    );
+    if (declarations) {
+      codeSnippets.push(
+        ...declarations.map((snippet) => {
+          return {
+            kind: "declaration" as const,
+            language: snippet.language,
+            text: snippet.text,
+            filepath: vscode.workspace.asRelativePath(snippet.uri),
+            offset: snippet.offset,
+            score: 1,
+          };
+        }),
+      );
+    }
+  } catch (error) {
+    console.log(error);
+    // ignore errors
+  }
+
+  codeSnippets = deduplicateSnippets(codeSnippets);
+  codeSnippets = codeSnippets.map((snippet) => ({
+    ...snippet,
+    text: cropTextToMaxChars(snippet.text, 2000),
+  }));
+
   return {
     edits,
+    codeSnippets,
     filepath,
     prefix,
     editableRegionPrefix,

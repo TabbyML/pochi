@@ -197,6 +197,7 @@ export interface CompletionExtraContexts {
   editorOptions?: EditorOptionsContext;
 }
 
+// FIXME(zhiming): refactor to reuse CodeSnippet in nes/code-snippets
 interface CodeSnippets {
   filepath: string;
   language: string;
@@ -247,6 +248,7 @@ function mergeText(
   return first + croppedSecond;
 }
 
+// FIXME(zhiming): refactor to reuse dedup in nes/code-snippets
 function deduplicateSnippets(snippets: CodeSnippets[]): CodeSnippets[] {
   return snippets.reduce((acc, current) => {
     const next: CodeSnippets[] = [];

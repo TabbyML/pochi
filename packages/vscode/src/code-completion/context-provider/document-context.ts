@@ -16,6 +16,10 @@ export interface TextDocumentRangeContext {
    * The text in the range of the document if the range is provided.
    */
   text: string;
+  /**
+   * The character offset from the beginning of the document.
+   */
+  offset: number;
 }
 
 const logger = getLogger("CodeCompletion.TextDocumentReader");
@@ -50,6 +54,7 @@ export class TextDocumentReader {
         language: targetDocument.languageId,
         range: range,
         text: targetDocument.getText(range),
+        offset: range ? targetDocument.offsetAt(range.start) : 0,
       };
       logger.trace("Read context from text document.", context);
     }

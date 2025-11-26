@@ -84,7 +84,7 @@ export class NESProvider implements vscode.Disposable {
       return undefined;
     }
 
-    const context = buildNESRequestContext({
+    const context = await buildNESRequestContext({
       document,
       selection,
       editHistory,
