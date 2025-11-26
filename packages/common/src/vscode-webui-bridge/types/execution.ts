@@ -4,8 +4,8 @@ export type FileDiff = {
   diff: string;
   added: number;
   removed: number;
-  isCreated?: boolean;
-  isDeleted?: boolean;
+  created?: boolean;
+  deleted?: boolean;
 };
 
 export type ExecuteCommandResult = {

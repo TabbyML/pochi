@@ -166,7 +166,7 @@ export function DiffSummary({
                       <button
                         type="button"
                         className={cn("truncate font-medium text-sm", {
-                          "line-through": file.isDeleted,
+                          "line-through": file.deleted,
                         })}
                         title="View diff"
                       >

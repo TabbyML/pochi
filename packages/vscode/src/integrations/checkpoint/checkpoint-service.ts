@@ -140,12 +140,10 @@ export class CheckpointService implements vscode.Disposable {
 
     try {
       for (const file of files) {
-        if (file.content?.type === "checkpoint") {
-          if (file.isCreated) {
-            await fs.rm(path.join(this.cwd, file.filepath), { force: true });
-          } else {
-            await this.shadowGit.reset(file.content.commit, [file.filepath]);
-          }
+        if (file.content === null) {
+          await fs.rm(path.join(this.cwd, file.filepath), { force: true });
+        } else if (file.content?.type === "checkpoint") {
+          await this.shadowGit.reset(file.content.commit, [file.filepath]);
         } else if (file.content?.type === "text") {
           await fs.writeFile(
             path.join(this.cwd, file.filepath),
@@ -260,8 +258,7 @@ export class CheckpointService implements vscode.Disposable {
             filepath: file.filepath,
             added: firstDiff.added,
             removed: firstDiff.removed,
-            isCreated: firstDiff.isCreated,
-            isDeleted: firstDiff.isDeleted,
+            deleted: firstDiff.deleted,
             state: "pending",
           });
         } else {

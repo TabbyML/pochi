@@ -87,7 +87,7 @@ export function processGitChangesToUserEdits(
   }
 
   // Generate structured diff data
-  const userEdits = filteredChanges.map((change) => {
+  const userEdits = filteredChanges.map<FileDiff>((change) => {
     const diff = generateInlineDiffContent(
       change.before ?? "",
       change.after ?? "",
@@ -97,8 +97,8 @@ export function processGitChangesToUserEdits(
       diff: diff.content,
       added: diff.added,
       removed: diff.removed,
-      isCreated: change.before === null,
-      isDeleted: change.after === null,
+      created: change.before === null,
+      deleted: change.after === null,
     };
   });
 

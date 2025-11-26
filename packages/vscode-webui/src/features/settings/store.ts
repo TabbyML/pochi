@@ -127,7 +127,7 @@ export const useSettingsStore = create<SettingsState>()(
         autoRunSubtask: false,
       },
 
-      isDevMode: true,
+      isDevMode: false,
 
       enablePochiModels: false,
 

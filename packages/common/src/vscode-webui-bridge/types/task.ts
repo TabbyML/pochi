@@ -34,6 +34,7 @@ export interface TaskData {
   } | null;
 }
 
+// if the content is null, it means the file was created
 export type ChangedFileContent =
   | {
       type: "text";
@@ -50,7 +51,6 @@ export interface TaskChangedFile {
   added: number;
   removed: number;
   content: ChangedFileContent;
-  isCreated?: boolean;
-  isDeleted?: boolean;
+  deleted?: boolean;
   state: "accepted" | "reverted" | "pending" | "userEdited";
 }
