@@ -5,6 +5,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { useTaskReadStatusStore } from "@/features/chat";
 import { useWorktrees } from "@/lib/hooks/use-worktrees";
 import { vscodeHost } from "@/lib/vscode";
 import { getWorktreeNameFromWorktreePath } from "@getpochi/common/git-utils";
@@ -179,7 +180,7 @@ function WorktreeSection({
   const { t } = useTranslation();
   // Default expanded for existing worktrees, collapsed for deleted
   const [isExpanded, setIsExpanded] = useState(!group.isDeleted);
-
+  const unreadTaskIds = useTaskReadStatusStore((state) => state.unreadTaskIds);
   return (
     <Collapsible
       open={isExpanded}
@@ -226,14 +227,19 @@ function WorktreeSection({
         <div className="border-t p-4">
           <div className="flex flex-col gap-2">
             {group.tasks.length > 0 ? (
-              group.tasks.map((task) => (
-                <TaskRow
-                  key={task.id}
-                  task={task}
-                  worktreeName={group.name}
-                  isWorktreeExist={!group.isDeleted}
-                />
-              ))
+              group.tasks.map((task) => {
+                const isRead = !unreadTaskIds.has(task.id);
+
+                return (
+                  <TaskRow
+                    key={task.id}
+                    task={task}
+                    worktreeName={group.name}
+                    isWorktreeExist={!group.isDeleted}
+                    isRead={isRead}
+                  />
+                );
+              })
             ) : (
               <div className="py-2 text-muted-foreground text-sm italic">
                 {t("tasksPage.emptyState.description")}

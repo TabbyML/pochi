@@ -3,7 +3,6 @@ import { WelcomeScreen } from "@/components/welcome-screen";
 import { WorkspaceRequiredPlaceholder } from "@/components/workspace-required-placeholder";
 import { WorktreeList } from "@/components/worktree-list";
 import { CreateTaskInput } from "@/features/chat";
-import { useTaskReadStatusStore } from "@/features/chat";
 import { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
 import { useCurrentWorkspace } from "@/lib/hooks/use-current-workspace";
 import { useModelList } from "@/lib/hooks/use-model-list";
@@ -63,7 +62,6 @@ function Tasks() {
   const workspaceFolder = currentWorkspace?.workspaceFolder;
   // Fetch all tasks
   const tasks = store.useQuery(taskCatalog.queries.makeTasksQuery(cwd));
-  const unreadTaskIds = useTaskReadStatusStore((state) => state.unreadTaskIds);
 
   useEffect(() => {
     setActiveStore(store);
