@@ -156,8 +156,8 @@ export function WorktreeList({
               <Trash2 className="size-3" />
               <span className="w-0 overflow-hidden whitespace-nowrap transition-all group-hover:w-auto">
                 {showDeleted
-                  ? "Hide deleted worktrees"
-                  : "Show deleted worktrees"}
+                  ? t("tasksPage.hideDeletedWorktrees")
+                  : t("tasksPage.showDeletedWorktrees")}
               </span>
             </Button>
             <div className="h-px flex-1 bg-border" />
@@ -347,7 +347,7 @@ function WorktreeSection({
               })
             ) : (
               <div className="py-4 text-center text-muted-foreground text-xs">
-                No tasks
+                {t("tasksPage.emptyState.description")}
               </div>
             )}
           </div>
