@@ -175,8 +175,8 @@ export const events = {
       data: Schema.Uint8Array,
     }),
   }),
-  lineChangesUpdated: Events.synced({
-    name: "v1.LineChangesUpdated",
+  updateLineChanges: Events.synced({
+    name: "v1.updateLineChanges",
     schema: Schema.Struct({
       id: Schema.String,
       lineChanges: LineChanges,
@@ -298,7 +298,7 @@ const materializers = State.SQLite.materializers(events, {
         createdAt,
       })
       .onConflict("checksum", "ignore"),
-  "v1.LineChangesUpdated": ({ id, lineChanges, updatedAt }) =>
+  "v1.updateLineChanges": ({ id, lineChanges, updatedAt }) =>
     tables.tasks
       .update({
         lineChanges,

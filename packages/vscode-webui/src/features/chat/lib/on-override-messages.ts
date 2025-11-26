@@ -141,7 +141,7 @@ async function updateTaskLineChanges(
   if (task) {
     const updatedAt = new Date();
     store.commit(
-      catalog.events.lineChangesUpdated({
+      catalog.events.updateLineChanges({
         id: taskId,
         lineChanges: {
           added: totalAdditions,
