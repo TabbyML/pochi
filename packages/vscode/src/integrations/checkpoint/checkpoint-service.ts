@@ -254,11 +254,13 @@ export class CheckpointService implements vscode.Disposable {
 
       const diff = processGitChangesToUserEdits(changes);
 
-      logger.debug(`update diff for changed file: ${JSON.stringify(diff)}`);
+      logger.debug(
+        `update diff for changed file: ${JSON.stringify(diff)} state=${file.state}`,
+      );
 
       if (diff && diff.length > 0) {
         const firstDiff = diff[0];
-        if (firstDiff.added || firstDiff.removed) {
+        if (firstDiff.added || firstDiff.removed || firstDiff.deleted) {
           result.push({
             ...file,
             filepath: file.filepath,
@@ -270,6 +272,8 @@ export class CheckpointService implements vscode.Disposable {
         } else {
           result.push(file);
         }
+      } else {
+        result.push(file);
       }
     }
 
