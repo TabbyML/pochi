@@ -48,7 +48,6 @@ export function setActiveStore(newStore: Store | null): void {
 }
 
 function createVSCodeHost(): VSCodeHostApi {
-  console.log("creatingVSCodeHost", globalThis.POCHI_WEBVIEW_KIND);
   const vscode = getVSCodeApi();
 
   const thread = new ThreadNestedWindow<VSCodeHostApi, WebviewHostApi>(

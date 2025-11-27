@@ -14,6 +14,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useTaskReadStatusStore } from "@/lib/hooks/use-task-read-status-store";
 import { useWorktrees } from "@/lib/hooks/use-worktrees";
 import { cn } from "@/lib/utils";
 import { getWorktreeNameFromWorktreePath } from "@getpochi/common/git-utils";
@@ -30,7 +31,6 @@ import { useTranslation } from "react-i18next";
 import * as R from "remeda";
 import { TaskRow } from "./task-row";
 import { ScrollArea } from "./ui/scroll-area";
-import { useTaskReadStatusStore } from "@/lib/hooks/use-task-read-status-store";
 
 interface WorktreeGroup {
   name: string;
