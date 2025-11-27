@@ -165,7 +165,7 @@
   "tasksPage": {
     "emptyState": {
       "title": "작업을 찾을 수 없습니다",
-      "description": "Pochi를 시작하려면 새 작업을 만드세요",
+      "description": "사용 가능한 작업이 없습니다",
       "createButton": "새 작업 만들기"
     },
     "status": {

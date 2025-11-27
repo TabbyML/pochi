@@ -22,7 +22,6 @@ import {
   ChevronDown,
   ChevronRight,
   GitCompare,
-  Plus,
   Terminal,
   Trash2,
 } from "lucide-react";
@@ -30,6 +29,7 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as R from "remeda";
 import { TaskRow } from "./task-row";
+import { ScrollArea } from "./ui/scroll-area";
 
 interface WorktreeGroup {
   name: string;
@@ -211,7 +211,7 @@ function WorktreeSection({
             </div>
           </CollapsibleTrigger>
         ) : (
-          <div className="flex items-center">
+          <div className="flex items-center truncate">
             <span className="font-semibold">{group.name}</span>
           </div>
         )}
@@ -317,7 +317,7 @@ function WorktreeSection({
               )}
             </>
           )}
-          {!group.isDeleted && (
+          {/* {!group.isDeleted && (
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
@@ -335,26 +335,28 @@ function WorktreeSection({
               </TooltipTrigger>
               <TooltipContent>{t("tasksPage.newTask")}</TooltipContent>
             </Tooltip>
-          )}
+          )} */}
         </div>
       </div>
 
       <CollapsibleContent>
-        <div className="max-h-[200px] overflow-auto border-t px-1 py-2">
-          <div className="flex flex-col gap-2">
-            {group.tasks.length > 0 ? (
-              group.tasks.map((task) => {
-                const isRead = !unreadTaskIds.has(task.id);
+        <ScrollArea viewportClassname="max-h-[200px] border-t px-1 py-1">
+          {group.tasks.length > 0 ? (
+            group.tasks.map((task) => {
+              const isRead = !unreadTaskIds.has(task.id);
 
-                return <TaskRow key={task.id} task={task} isRead={isRead} />;
-              })
-            ) : (
-              <div className="py-4 text-center text-muted-foreground text-xs">
-                {t("tasksPage.emptyState.description")}
-              </div>
-            )}
-          </div>
-        </div>
+              return (
+                <div key={task.id} className="py-0.5">
+                  <TaskRow task={task} isRead={isRead} />
+                </div>
+              );
+            })
+          ) : (
+            <div className="py-1 text-center text-muted-foreground text-xs">
+              {t("tasksPage.emptyState.description")}
+            </div>
+          )}
+        </ScrollArea>
       </CollapsibleContent>
     </Collapsible>
   );

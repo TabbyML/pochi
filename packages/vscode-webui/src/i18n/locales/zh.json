@@ -164,7 +164,7 @@
   "tasksPage": {
     "emptyState": {
       "title": "未找到任务",
-      "description": "创建一个新任务以开始使用 Pochi",
+      "description": "无可用任务",
       "createButton": "创建新任务"
     },
     "status": {

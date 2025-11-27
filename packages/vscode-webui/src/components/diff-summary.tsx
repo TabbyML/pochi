@@ -16,11 +16,11 @@ import {
   ChevronDown,
   ChevronRight,
   FileDiff as FileDiffIcon,
-  Undo,
 } from "lucide-react";
 import { motion } from "motion/react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { VscDiffMultiple, VscDiscard } from "react-icons/vsc";
 import { formatPathForDisplay } from "./prompt-form/utils";
 
 const collapsibleSectionVariants = {
@@ -132,7 +132,7 @@ export function DiffSummary({
                 onClick={() => showFileChanges()}
                 className="h-7 w-7"
               >
-                <FileDiffIcon className="size-3.5" />
+                <VscDiffMultiple className="size-3.5" />
               </Button>
             </TooltipTrigger>
             <TooltipContent>{t("diffSummary.viewChanges")}</TooltipContent>
@@ -220,7 +220,7 @@ export function DiffSummary({
                               }}
                               className="h-5 w-5"
                             >
-                              <Undo className="size-3.5" />
+                              <VscDiscard className="size-3.5" />
                             </Button>
                           </TooltipTrigger>
                           <TooltipContent>
