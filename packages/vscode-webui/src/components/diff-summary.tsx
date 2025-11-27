@@ -7,10 +7,9 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { useTaskChangedFiles } from "@/features/chat";
+import type { useTaskChangedFiles } from "@/features/chat";
 import { cn } from "@/lib/utils";
 import { vscodeHost } from "@/lib/vscode";
-import type { Message } from "@getpochi/livekit";
 import {
   Check,
   ChevronDown,
@@ -34,26 +33,21 @@ const collapsibleSectionVariants = {
   },
 };
 
-export interface DiffSummaryProps {
-  messages: Message[];
-  taskId: string;
-  className?: string;
+export interface DiffSummaryProps
+  extends ReturnType<typeof useTaskChangedFiles> {
   actionEnabled: boolean;
+  className?: string;
 }
 
 export function DiffSummary({
-  messages,
-  taskId,
-  className,
+  visibleChangedFiles,
+  showFileChanges,
+  revertFileChanges,
+  acceptChangedFile,
   actionEnabled,
+  className,
 }: DiffSummaryProps) {
   const { t } = useTranslation();
-  const {
-    visibleChangedFiles,
-    showFileChanges,
-    revertFileChanges,
-    acceptChangedFile,
-  } = useTaskChangedFiles(taskId, messages, actionEnabled);
 
   const [collapsed, setCollapsed] = useState(true);
 
@@ -105,7 +99,7 @@ export function DiffSummary({
             variant="default"
             size="xs"
             onClick={() => acceptChangedFile()}
-            className="h-7 gap-1.5"
+            className="h-6 gap-1.5"
           >
             {t("diffSummary.keep")}
           </Button>
@@ -114,7 +108,7 @@ export function DiffSummary({
             variant="outline"
             size="xs"
             onClick={() => revertFileChanges()}
-            className="h-7 gap-1.5"
+            className="h-6 gap-1.5"
           >
             {t("diffSummary.undo")}
           </Button>

@@ -223,14 +223,14 @@ function TodoListItems({
         variants={collapsibleSectionVariants}
         className="overflow-hidden"
       >
-        <div className="flex flex-col gap-1">
+        <div className="flex flex-col gap-0.5">
           <AnimatePresence mode="popLayout">
             {displayTodos.map((todo, idx) => (
               <motion.div
                 id={`todo-item-${todo.id}`}
                 key={todo.id}
                 className={cn(
-                  "flex items-start space-x-2.5 rounded-sm p-1 transition-colors",
+                  "flex items-start space-x-2.5 rounded-sm px-1 py-0.5 transition-colors",
                   "hover:bg-accent/5",
                 )}
                 variants={todoItemVariants}
