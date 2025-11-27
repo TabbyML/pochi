@@ -49,11 +49,7 @@ export const StartBackgroundJobTool: React.FC<
           <BackgroundJobPanel backgroundJobId={backgroundJobId} />
         ) : command ? (
           <CommandPanelContainer
-            icon={
-              <div className="flex size-[16px] items-center justify-between">
-                <TerminalIcon className="size-4" />
-              </div>
-            }
+            icon={<TerminalIcon className="mt-[2px] size-4 flex-shrink-0" />}
             title={command}
             actions={<CopyCommandButton command={command} />}
           />

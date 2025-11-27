@@ -130,7 +130,7 @@ const BackgroundJobIdButton: FC<{
 };
 
 export const CommandPanelContainer: FC<{
-  icon?: React.ReactNode;
+  icon: React.ReactNode;
   title: React.ReactNode;
   expanded?: boolean;
   actions?: React.ReactNode;
