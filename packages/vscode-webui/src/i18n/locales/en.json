@@ -199,7 +199,12 @@
     "deleteWorktreeTitle": "Delete worktree",
     "deleteWorktreeConfirm": "Are you sure you want to delete the worktree \"{{name}}\"?",
     "cancel": "Cancel",
-    "delete": "Delete"
+    "delete": "Delete",
+    "taskStatus": {
+      "planning": "Planning next moves ...",
+      "error": "Error encountered",
+      "finished": "Finished in {{duration}}"
+    }
   },
   "toolInvocation": {
     "taskCompleted": "Task Completed",

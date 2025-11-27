@@ -193,7 +193,12 @@
     "deleteWorktreeTitle": "워크트리 삭제",
     "deleteWorktreeConfirm": "워크트리 \"{{name}}\"을(를) 삭제하시겠습니까?",
     "cancel": "취소",
-    "delete": "삭제"
+    "delete": "삭제",
+    "taskStatus": {
+      "planning": "다음 작업 계획 중...",
+      "error": "오류 발생",
+      "finished": "{{duration}} 만에 완료"
+    }
   },
   "toolInvocation": {
     "taskCompleted": "작업 완료",

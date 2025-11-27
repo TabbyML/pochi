@@ -1,9 +1,3 @@
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { usePochiCredentials } from "@/lib/hooks/use-pochi-credentials";
 import { cn } from "@/lib/utils";
 import { vscodeHost } from "@/lib/vscode";
@@ -13,6 +7,8 @@ import type { Task, UITools } from "@getpochi/livekit";
 import type { ToolUIPart } from "ai";
 import { GitBranch } from "lucide-react";
 import { useCallback, useMemo } from "react";
+import { useTranslation } from "react-i18next";
+import type { useTranslation as UseTranslation } from "react-i18next";
 import { EditSummary } from "../tool-invocation/edit-summary";
 import { ToolCallLite } from "./tool-call-lite";
 
@@ -24,6 +20,7 @@ export function TaskRow({
   isRead?: boolean;
 }) {
   const { jwt } = usePochiCredentials();
+  const { t } = useTranslation();
 
   const title = useMemo(() => parseTitle(task.title), [task.title]);
 
@@ -46,26 +43,30 @@ export function TaskRow({
                 )}
               </h3>
               <div className="flex shrink-0 items-center gap-2">
-                <GitBadge git={task.git} />
                 <div className="text-muted-foreground text-sm">
                   {formatTimeAgo(task.updatedAt)}
                 </div>
               </div>
             </div>
             <div className="h-6 text-muted-foreground text-sm">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center justify-between gap-2 overflow-hidden">
+                <div className="flex items-center gap-2 overflow-hidden">
+                  <GitBadge git={task.git} />
+                  {task.pendingToolCalls?.length ? (
+                    <ToolCallLite
+                      tools={
+                        task.pendingToolCalls as Array<ToolUIPart<UITools>>
+                      }
+                    />
+                  ) : (
+                    <TaskStatusView task={task} t={t} />
+                  )}
+                </div>
                 {task.lineChanges && (
                   <EditSummary
                     editSummary={task.lineChanges}
-                    className="mx-0"
+                    className="mx-0 shrink-0 text-sm"
                   />
-                )}
-                {task.pendingToolCalls?.length ? (
-                  <ToolCallLite
-                    tools={task.pendingToolCalls as Array<ToolUIPart<UITools>>}
-                  />
-                ) : (
-                  <TaskStatusView task={task} />
                 )}
               </div>
             </div>
@@ -114,37 +115,35 @@ function GitBadge({
   if (!git?.origin || !git?.branch) return null;
 
   return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <div className="text-muted-foreground/80">
-            <GitBranch className="h-4 w-4" />
-          </div>
-        </TooltipTrigger>
-        <TooltipContent>
-          <p>{git.branch}</p>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+    <div className="inline-flex items-center gap-1 text-muted-foreground/80 text-sm">
+      <GitBranch className="h-4 w-4 shrink-0" />
+      <span className="truncate">{git.branch}</span>
+    </div>
   );
 }
 
-function TaskStatusView({ task }: { task: Task }) {
+function TaskStatusView({
+  task,
+  t,
+}: {
+  task: Task;
+  t: ReturnType<typeof UseTranslation>["t"];
+}) {
   switch (task.status) {
     case "pending-input":
     case "pending-model":
     case "pending-tool": {
       return (
         <span className="flex items-center gap-2">
-          <span>Planning next moves ...</span>
+          <span>{t("tasksPage.taskStatus.planning")}</span>
         </span>
       );
     }
     case "failed":
-      return "Error encountered";
+      return t("tasksPage.taskStatus.error");
     default: {
       const duration = formatDuration(task.createdAt, task.updatedAt);
-      return `Finished in ${duration}`;
+      return t("tasksPage.taskStatus.finished", { duration });
     }
   }
 }

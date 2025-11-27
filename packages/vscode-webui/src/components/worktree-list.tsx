@@ -224,7 +224,7 @@ function WorktreeSection({
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-8 w-8 p-0"
+                    className="h-6 w-6 p-0"
                     asChild
                   >
                     <a
@@ -243,7 +243,7 @@ function WorktreeSection({
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-8 w-8 p-0"
+                    className="h-6 w-6 p-0"
                     asChild
                   >
                     <a
@@ -268,7 +268,7 @@ function WorktreeSection({
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-8 w-8 p-0"
+                          className="h-6 w-6 p-0"
                         >
                           <Trash2 className="size-4" />
                         </Button>
@@ -323,7 +323,7 @@ function WorktreeSection({
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-8 w-8 p-0"
+                  className="h-6 w-6 p-0"
                   asChild
                 >
                   <a

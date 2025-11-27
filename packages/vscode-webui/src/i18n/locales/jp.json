@@ -193,7 +193,12 @@
     "deleteWorktreeTitle": "ワークツリーを削除",
     "deleteWorktreeConfirm": "ワークツリー \"{{name}}\" を削除してもよろしいですか？",
     "cancel": "キャンセル",
-    "delete": "削除"
+    "delete": "削除",
+    "taskStatus": {
+      "planning": "次の動作を計画中...",
+      "error": "エラーが発生しました",
+      "finished": "{{duration}} で完了"
+    }
   },
   "toolInvocation": {
     "taskCompleted": "タスク完了",
