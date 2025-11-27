@@ -8,7 +8,7 @@ import type {
 import { type Message, catalog } from "@getpochi/livekit";
 import type { Store } from "@livestore/livestore";
 import { ThreadAbortSignal } from "@quilted/threads";
-import { getTaskChangedFileStoreHook } from "./use-task-changed-files";
+import { getTaskChangedFileStore } from "./use-task-changed-files";
 
 /**
  * Handles the onOverrideMessages event by appending a checkpoint to the last message.
@@ -29,8 +29,10 @@ export async function onOverrideMessages({
   if (lastMessage) {
     const ckpt = await appendCheckpoint(lastMessage);
     await appendWorkflowBashOutputs(lastMessage, abortSignal);
-    if (!ckpt) return;
-    await updateTaskChanges(store, taskId, messages);
+
+    if (ckpt && lastMessage.role === "assistant") {
+      await updateTaskChanges(store, taskId, messages);
+    }
   }
 }
 
@@ -161,7 +163,7 @@ async function updateChangedFileStore(
   fileDiffResult: FileDiff[] | null,
   firstCheckpoint: string,
 ) {
-  const store = getTaskChangedFileStoreHook(taskId);
+  const store = getTaskChangedFileStore(taskId);
   const { changedFiles, setChangedFile } = store.getState();
 
   const updatedChangedFiles: TaskChangedFile[] = [];
