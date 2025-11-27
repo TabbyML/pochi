@@ -25,6 +25,7 @@ import { useTranslation } from "react-i18next";
 import { useLatest } from "@/lib/hooks/use-latest";
 import { useMcp } from "@/lib/hooks/use-mcp";
 import { cn } from "@/lib/utils";
+import { Duration } from "@livestore/utils/effect";
 import { useApprovalAndRetry } from "../approval";
 import { getReadyForRetryError } from "../retry/hooks/use-ready-for-retry-error";
 import {
@@ -287,7 +288,10 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
           totalTokens: task.totalTokens || undefined,
           pendingToolCalls,
           lineChanges: task.lineChanges || undefined,
-          lastStepDuration: task.lastStepDuration || undefined,
+          // @ts-expect-error
+          lastStepDuration: task.lastStepDuration
+            ? Duration.toMillis(task.lastStepDuration)
+            : undefined,
         }),
       );
     }
