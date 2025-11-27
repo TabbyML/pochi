@@ -121,14 +121,14 @@ async function updateTaskChanges(
     .flatMap((m) => m.parts.filter((p) => p.type === "data-checkpoint"))
     .map((p) => p.data.commit);
 
-  if (checkpoints.length < 1) {
+  const lastCheckpoint = checkpoints.at(-1);
+  if (!lastCheckpoint) {
     return;
   }
 
-  const firstCheckpoint = checkpoints[0];
-  const fileDiffResult = await vscodeHost.diffWithCheckpoint(firstCheckpoint);
+  const fileDiffResult = await vscodeHost.diffWithCheckpoint(lastCheckpoint);
   updateTaskLineChanges(store, taskId, fileDiffResult);
-  await updateChangedFileStore(taskId, fileDiffResult, firstCheckpoint);
+  await updateChangedFileStore(taskId, fileDiffResult, lastCheckpoint);
 }
 
 async function updateTaskLineChanges(
