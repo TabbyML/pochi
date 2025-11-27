@@ -386,9 +386,9 @@ export class NESDecorationManager implements vscode.Disposable {
   }
 
   async accept() {
-    logger.debug("Accepting the current edit suggestion");
+    logger.trace("Accepting the current edit suggestion");
     if (!this.current) {
-      logger.debug("No current edit suggestion to accept");
+      logger.trace("No current edit suggestion to accept");
       return;
     }
     const { editor, solution } = this.current;
@@ -423,18 +423,18 @@ export class NESDecorationManager implements vscode.Disposable {
   }
 
   reject() {
-    logger.debug("Rejecting the current edit suggestion");
+    logger.trace("Rejecting the current edit suggestion");
     this.hide();
   }
 
   dismiss() {
-    logger.debug("Dismissing the current edit suggestion");
+    logger.trace("Dismissing the current edit suggestion");
     this.hide();
   }
 
   private hide() {
     if (!this.current) {
-      logger.debug("No current edit suggestion to hide");
+      logger.trace("No current edit suggestion to hide");
       return;
     }
     const { editor } = this.current;
