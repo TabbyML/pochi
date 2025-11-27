@@ -274,7 +274,7 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
         : pendingToolApproval.tools
       : undefined;
 
-    if (task) {
+    if (task?.title) {
       vscodeHost.onTaskUpdated(
         Schema.encodeSync(taskCatalog.events.tastUpdated.schema)(
           taskCatalog.events.tastUpdated({
