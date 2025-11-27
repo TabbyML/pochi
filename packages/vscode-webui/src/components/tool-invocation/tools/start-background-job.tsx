@@ -1,3 +1,4 @@
+import { TerminalIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import {
   BackgroundJobPanel,
@@ -48,6 +49,11 @@ export const StartBackgroundJobTool: React.FC<
           <BackgroundJobPanel backgroundJobId={backgroundJobId} />
         ) : command ? (
           <CommandPanelContainer
+            icon={
+              <div className="flex size-[16px] items-center justify-between">
+                <TerminalIcon className="size-4" />
+              </div>
+            }
             title={command}
             actions={<CopyCommandButton command={command} />}
           />
