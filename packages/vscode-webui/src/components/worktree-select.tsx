@@ -82,7 +82,7 @@ export function WorktreeSelect({
             <Button
               variant="ghost"
               className={cn(
-                "!px-1 button-focus h-6 max-w-full items-center py-0 font-normal",
+                "!px-1 button-focus h-6 max-w-[40vw] items-center py-0 font-normal",
                 triggerClassName,
               )}
             >
