@@ -25,13 +25,16 @@ export async function onOverrideMessages({
   messages: Message[];
   abortSignal: AbortSignal;
 }) {
+  const checkpoints = messages
+    .flatMap((m) => m.parts.filter((p) => p.type === "data-checkpoint"))
+    .map((p) => p.data.commit);
   const lastMessage = messages.at(-1);
   if (lastMessage) {
     const ckpt = await appendCheckpoint(lastMessage);
     await appendWorkflowBashOutputs(lastMessage, abortSignal);
-
-    if (ckpt && lastMessage.role === "assistant") {
-      await updateTaskChanges(store, taskId, messages);
+    const lastCheckpoint = checkpoints.at(-1);
+    if (ckpt && lastMessage.role === "assistant" && lastCheckpoint) {
+      await updateTaskChanges(store, taskId, lastCheckpoint);
     }
   }
 }
@@ -115,17 +118,8 @@ async function appendWorkflowBashOutputs(
 async function updateTaskChanges(
   store: Store,
   taskId: string,
-  messages: Message[],
+  lastCheckpoint: string,
 ) {
-  const checkpoints = messages
-    .flatMap((m) => m.parts.filter((p) => p.type === "data-checkpoint"))
-    .map((p) => p.data.commit);
-
-  const lastCheckpoint = checkpoints.at(-1);
-  if (!lastCheckpoint) {
-    return;
-  }
-
   const fileDiffResult = await vscodeHost.diffWithCheckpoint(lastCheckpoint);
   updateTaskLineChanges(store, taskId, fileDiffResult);
   await updateChangedFileStore(taskId, fileDiffResult, lastCheckpoint);
