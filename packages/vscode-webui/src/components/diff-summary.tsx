@@ -142,7 +142,7 @@ export function DiffSummary({
         className="overflow-hidden"
       >
         <ScrollArea viewportClassname="max-h-[160px]" type="auto">
-          <div className="divide-y divide-border">
+          <div>
             {visibleChangedFiles.map((file) => {
               const { basename, displayPath } = formatPathForDisplay(
                 file.filepath,
@@ -155,7 +155,7 @@ export function DiffSummary({
                     vscodeHost.openFile(file.filepath);
                   }}
                 >
-                  <div className="group flex items-center justify-between gap-2 px-3 py-1.5 hover:bg-border/30">
+                  <div className="group flex items-center justify-between gap-2 px-3 py-0.5 hover:bg-border/30">
                     <div className="flex min-w-0 flex-1 items-center gap-2">
                       <FileIcon path={file.filepath} className="shrink-0" />
                       <button

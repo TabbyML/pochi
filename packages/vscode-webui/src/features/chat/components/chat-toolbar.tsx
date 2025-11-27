@@ -205,7 +205,11 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
           />
         </div>
       </div>
-      <div className="mt-1.5 rounded-md border border-border">
+      <div
+        className={cn("mt-1.5 rounded-md ", {
+          "border border-border": todos.length > 0,
+        })}
+      >
         {todos && todos.length > 0 && (
           <TodoList todos={todos}>
             <TodoList.Header />
