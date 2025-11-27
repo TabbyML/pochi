@@ -71,17 +71,11 @@ export function DiffSummary({
   }
 
   return (
-    <div
-      className={cn(
-        "overflow-hidden rounded-md border border-border",
-        className,
-      )}
-    >
+    <div className={cn("overflow-hidden rounded-md", className)}>
       {/* Header */}
       <div
         className={cn(
           "flex cursor-pointer items-center justify-between border-border px-3 py-1.5 hover:bg-border/30",
-          !collapsed && "border-b",
         )}
         onClick={() => setCollapsed(!collapsed)}
       >

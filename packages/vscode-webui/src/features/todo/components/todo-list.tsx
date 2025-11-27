@@ -89,10 +89,7 @@ function TodoListRoot({
 
   return (
     <TodoListContext.Provider value={contextValue}>
-      <div className={className}>
-        <div className="todo-border -mx-4 h-0 border-t" />
-        {children}
-      </div>
+      <div className={className}>{children}</div>
     </TodoListContext.Provider>
   );
 }
@@ -211,7 +208,13 @@ function TodoListItems({
 
   return (
     <ScrollArea
-      className={cn("px-1 pb-2", className)}
+      className={cn(
+        "px-1",
+        {
+          "pb-2": !isCollapsed,
+        },
+        className,
+      )}
       viewportClassname={viewportClassname}
     >
       <motion.div

@@ -19,6 +19,7 @@ import { AutoApproveMenu } from "@/features/settings";
 import { TodoList, useTodos } from "@/features/todo";
 import { useAddCompleteToolCalls } from "@/lib/hooks/use-add-complete-tool-calls";
 import type { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
+import { cn } from "@/lib/utils";
 import type { UseChatHelpers } from "@ai-sdk/react";
 import { constants } from "@getpochi/common";
 import type { Message, Task } from "@getpochi/livekit";
@@ -204,17 +205,22 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
           />
         </div>
       </div>
-      {todos && todos.length > 0 && (
-        <TodoList todos={todos} className="mt-2">
-          <TodoList.Header />
-          <TodoList.Items viewportClassname="max-h-48" />
-        </TodoList>
-      )}
-      <DiffSummary
-        messages={messages}
-        taskId={task?.id as string}
-        actionEnabled={!isLoading && !isExecuting}
-      />
+      <div className="mt-1.5 rounded-md border border-border">
+        {todos && todos.length > 0 && (
+          <TodoList todos={todos}>
+            <TodoList.Header />
+            <TodoList.Items viewportClassname="max-h-48" />
+          </TodoList>
+        )}
+        <DiffSummary
+          messages={messages}
+          taskId={task?.id as string}
+          actionEnabled={!isLoading && !isExecuting}
+          className={cn({
+            "border-border border-t": todos.length > 0,
+          })}
+        />
+      </div>
       <AutoApproveMenu isSubTask={isSubTask} />
       {files.length > 0 && (
         <AttachmentPreviewList
