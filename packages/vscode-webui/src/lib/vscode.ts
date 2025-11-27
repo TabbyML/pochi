@@ -4,11 +4,11 @@ import type {
   VSCodeHostApi,
   WebviewHostApi,
 } from "@getpochi/common/vscode-webui-bridge";
+import { taskCatalog } from "@getpochi/livekit";
 import type { Store } from "@livestore/livestore";
-import { Duration } from "@livestore/utils/effect";
+import { Schema } from "@livestore/utils/effect";
 import { ThreadNestedWindow } from "@quilted/threads";
 import Emittery from "emittery";
-import * as R from "remeda";
 import type { WebviewApi } from "vscode-webview";
 import { queryClient } from "./query-client";
 
@@ -137,33 +137,12 @@ function createVSCodeHost(): VSCodeHostApi {
           return window.document.hasFocus();
         },
 
-        async commitTaskUpdated(event: unknown) {
+        async commitTaskUpdated(inputArgs: unknown) {
           if (globalThis.POCHI_WEBVIEW_KIND === "pane") return;
-          if (R.isObjectType(event)) {
-            const dateFields = ["createdAt", "updatedAt"];
-            for (const field of dateFields) {
-              if (
-                "args" in event &&
-                R.isPlainObject(event.args) &&
-                R.isString(event.args[field])
-              ) {
-                event.args[field] = new Date(event.args[field]);
-              }
-            }
-
-            const durationFields = ["lastStepDuration"];
-            for (const field of durationFields) {
-              if (
-                "args" in event &&
-                R.isPlainObject(event.args) &&
-                R.isNumber(event.args[field])
-              ) {
-                event.args[field] = Duration.decode(event.args[field]);
-              }
-            }
-          }
-          // @ts-expect-error
-          store?.commit(event);
+          const args = Schema.decodeUnknownSync(
+            taskCatalog.events.tastUpdated.schema,
+          )(inputArgs);
+          store?.commit(taskCatalog.events.tastUpdated(args));
         },
 
         async setTaskRead(taskId, read) {

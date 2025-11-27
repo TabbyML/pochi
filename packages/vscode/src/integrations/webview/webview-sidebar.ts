@@ -111,10 +111,11 @@ export class PochiWebviewSidebar
         taskUpdated.event(({ event }) => commitTaskUpdated(event)),
 
         taskUpdated.event(({ event }) => {
-          const data = event as unknown as {
-            args: { id: string; parentId: string | null; cwd: string | null };
+          const taskData = event as unknown as {
+            id: string;
+            parentId: string | null;
+            cwd: string | null;
           };
-          const taskData = data?.args;
           const uid = taskData?.parentId || taskData?.id;
           return setTaskRead(uid, isTaskPanelVisible(taskData));
         }),

@@ -25,7 +25,7 @@ import { useTranslation } from "react-i18next";
 import { useLatest } from "@/lib/hooks/use-latest";
 import { useMcp } from "@/lib/hooks/use-mcp";
 import { cn } from "@/lib/utils";
-import { Duration } from "@livestore/utils/effect";
+import { Schema } from "@livestore/utils/effect";
 import { useApprovalAndRetry } from "../approval";
 import { getReadyForRetryError } from "../retry/hooks/use-ready-for-retry-error";
 import {
@@ -276,23 +276,22 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
 
     if (task) {
       vscodeHost.onTaskUpdated(
-        taskCatalog.events.tastUpdated({
-          ...task,
-          title: task.title || undefined,
-          parentId: task.parentId || undefined,
-          cwd: task.cwd || undefined,
-          modelId: task.modelId || undefined,
-          error: task.error || undefined,
-          git: task.git || undefined,
-          shareId: task.shareId || undefined,
-          totalTokens: task.totalTokens || undefined,
-          pendingToolCalls,
-          lineChanges: task.lineChanges || undefined,
-          // @ts-expect-error
-          lastStepDuration: task.lastStepDuration
-            ? Duration.toMillis(task.lastStepDuration)
-            : undefined,
-        }),
+        Schema.encodeSync(taskCatalog.events.tastUpdated.schema)(
+          taskCatalog.events.tastUpdated({
+            ...task,
+            title: task.title || undefined,
+            parentId: task.parentId || undefined,
+            cwd: task.cwd || undefined,
+            modelId: task.modelId || undefined,
+            error: task.error || undefined,
+            git: task.git || undefined,
+            shareId: task.shareId || undefined,
+            totalTokens: task.totalTokens || undefined,
+            pendingToolCalls,
+            lineChanges: task.lineChanges || undefined,
+            lastStepDuration: task.lastStepDuration || undefined,
+          }).args,
+        ),
       );
     }
   }, [pendingApproval, task]);
