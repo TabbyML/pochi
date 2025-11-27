@@ -55,6 +55,10 @@ export class WorkspaceJobQueue implements vscode.Disposable {
       [],
     );
 
+    if (allJobs.length === 0) {
+      return;
+    }
+
     logger.trace(`Running workspace job queue with ${allJobs.length} jobs.`);
 
     const currentWorkspaceJobs: WorkspaceJob[] = [];

@@ -7,20 +7,19 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { useTaskChangedFiles } from "@/features/chat";
+import type { useTaskChangedFiles } from "@/features/chat";
 import { cn } from "@/lib/utils";
 import { vscodeHost } from "@/lib/vscode";
-import type { Message } from "@getpochi/livekit";
 import {
   Check,
   ChevronDown,
   ChevronRight,
   FileDiff as FileDiffIcon,
-  Undo,
 } from "lucide-react";
 import { motion } from "motion/react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { VscDiffMultiple, VscDiscard } from "react-icons/vsc";
 import { formatPathForDisplay } from "./prompt-form/utils";
 
 const collapsibleSectionVariants = {
@@ -34,26 +33,21 @@ const collapsibleSectionVariants = {
   },
 };
 
-export interface DiffSummaryProps {
-  messages: Message[];
-  taskId: string;
-  className?: string;
+export interface DiffSummaryProps
+  extends ReturnType<typeof useTaskChangedFiles> {
   actionEnabled: boolean;
+  className?: string;
 }
 
 export function DiffSummary({
-  messages,
-  taskId,
-  className,
+  visibleChangedFiles,
+  showFileChanges,
+  revertFileChanges,
+  acceptChangedFile,
   actionEnabled,
+  className,
 }: DiffSummaryProps) {
   const { t } = useTranslation();
-  const {
-    visibleChangedFiles,
-    showFileChanges,
-    revertFileChanges,
-    acceptChangedFile,
-  } = useTaskChangedFiles(taskId, messages, actionEnabled);
 
   const [collapsed, setCollapsed] = useState(true);
 
@@ -71,17 +65,11 @@ export function DiffSummary({
   }
 
   return (
-    <div
-      className={cn(
-        "overflow-hidden rounded-md border border-border",
-        className,
-      )}
-    >
+    <div className={cn("overflow-hidden rounded-md", className)}>
       {/* Header */}
       <div
         className={cn(
           "flex cursor-pointer items-center justify-between border-border px-3 py-1.5 hover:bg-border/30",
-          !collapsed && "border-b",
         )}
         onClick={() => setCollapsed(!collapsed)}
       >
@@ -111,7 +99,7 @@ export function DiffSummary({
             variant="default"
             size="xs"
             onClick={() => acceptChangedFile()}
-            className="h-7 gap-1.5"
+            className="h-6 gap-1.5"
           >
             {t("diffSummary.keep")}
           </Button>
@@ -120,7 +108,7 @@ export function DiffSummary({
             variant="outline"
             size="xs"
             onClick={() => revertFileChanges()}
-            className="h-7 gap-1.5"
+            className="h-6 gap-1.5"
           >
             {t("diffSummary.undo")}
           </Button>
@@ -132,7 +120,7 @@ export function DiffSummary({
                 onClick={() => showFileChanges()}
                 className="h-7 w-7"
               >
-                <FileDiffIcon className="size-3.5" />
+                <VscDiffMultiple className="size-3.5" />
               </Button>
             </TooltipTrigger>
             <TooltipContent>{t("diffSummary.viewChanges")}</TooltipContent>
@@ -148,7 +136,7 @@ export function DiffSummary({
         className="overflow-hidden"
       >
         <ScrollArea viewportClassname="max-h-[160px]" type="auto">
-          <div className="divide-y divide-border">
+          <div>
             {visibleChangedFiles.map((file) => {
               const { basename, displayPath } = formatPathForDisplay(
                 file.filepath,
@@ -161,7 +149,7 @@ export function DiffSummary({
                     vscodeHost.openFile(file.filepath);
                   }}
                 >
-                  <div className="group flex items-center justify-between gap-2 px-3 py-1.5 hover:bg-border/30">
+                  <div className="group flex items-center justify-between gap-2 px-3 py-0.5 hover:bg-border/30">
                     <div className="flex min-w-0 flex-1 items-center gap-2">
                       <FileIcon path={file.filepath} className="shrink-0" />
                       <button
@@ -220,7 +208,7 @@ export function DiffSummary({
                               }}
                               className="h-5 w-5"
                             >
-                              <Undo className="size-3.5" />
+                              <VscDiscard className="size-3.5" />
                             </Button>
                           </TooltipTrigger>
                           <TooltipContent>

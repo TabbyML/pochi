@@ -76,13 +76,13 @@ export class NESProvider implements vscode.Disposable {
       return undefined;
     }
 
-    logger.debug("Begin provide NES");
-
     const editHistory = this.editHistoryTracker.getEditSteps(document);
     if (!editHistory || editHistory.length === 0) {
       logger.debug("The current document is not being edited.");
       return undefined;
     }
+
+    logger.debug("Begin provide NES");
 
     const context = await buildNESRequestContext({
       document,
@@ -135,7 +135,8 @@ export class NESProvider implements vscode.Disposable {
           token,
         );
         if (result) {
-          logger.debug("Result received", result);
+          logger.debug("Result received");
+          logger.trace("Result: ", result);
           responseItem = result;
         } else {
           logger.debug("No result received");
@@ -147,7 +148,7 @@ export class NESProvider implements vscode.Disposable {
         const added = solution.addItem(responseItem);
         if (added) {
           this.cache.set(context.hash, responseItem);
-          logger.debug("Result cached", responseItem);
+          logger.debug("Result cached");
         }
         return solution;
       }
@@ -237,7 +238,7 @@ class NESInlineCompletionProvider
       }
       this.cancellationTokenSource = tokenSource;
 
-      logger.debug(
+      logger.trace(
         `Trigger NES from InlineCompletionProvider, document: ${document.uri.toString()}`,
       );
       const version = document.version;
@@ -334,7 +335,7 @@ class NESEditorListener implements vscode.Disposable {
             const tokenSource = new vscode.CancellationTokenSource();
             this.cancellationTokenSource = tokenSource;
 
-            logger.debug(
+            logger.trace(
               `Trigger NES from TextEditorSelectionChange, document: ${document.uri.toString()}`,
             );
             const version = document.version;

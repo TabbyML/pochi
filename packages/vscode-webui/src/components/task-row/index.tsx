@@ -5,7 +5,7 @@ import { parseTitle } from "@getpochi/common/message-utils";
 import { encodeStoreId } from "@getpochi/common/store-id-utils";
 import type { Task, UITools } from "@getpochi/livekit";
 import type { ToolUIPart } from "ai";
-import { GitBranch } from "lucide-react";
+import { GitBranch, Loader2 } from "lucide-react";
 import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import type { useTranslation as UseTranslation } from "react-i18next";
@@ -28,7 +28,7 @@ export function TaskRow({
     <div
       className={cn(
         "group cursor-pointer rounded-lg border border-border/50 bg-card transition-all duration-200 hover:border-border hover:bg-card/90 hover:shadow-md",
-        "border-l-4",
+        "border-l-2",
         getStatusBorderColor(task.status),
       )}
     >
@@ -44,29 +44,27 @@ export function TaskRow({
               </h3>
               <div className="flex shrink-0 items-center gap-2">
                 <div className="text-muted-foreground text-sm">
-                  {formatTimeAgo(task.updatedAt)}
+                  {formatTimeAgo(task.createdAt)}
                 </div>
               </div>
             </div>
             <div className="h-6 text-muted-foreground text-sm">
               <div className="flex items-center justify-between gap-2 overflow-hidden">
-                <div className="flex items-center gap-2 overflow-hidden">
+                <div className="flex flex-1 items-center gap-2 overflow-hidden">
                   <GitBadge git={task.git} />
-                  {task.pendingToolCalls?.length ? (
-                    <ToolCallLite
-                      tools={
-                        task.pendingToolCalls as Array<ToolUIPart<UITools>>
-                      }
+                  {task.lineChanges && (
+                    <EditSummary
+                      editSummary={task.lineChanges}
+                      className="mx-0 flex shrink-0 items-center text-sm"
                     />
-                  ) : (
-                    <TaskStatusView task={task} t={t} />
                   )}
                 </div>
-                {task.lineChanges && (
-                  <EditSummary
-                    editSummary={task.lineChanges}
-                    className="mx-0 shrink-0 text-sm"
+                {task.pendingToolCalls?.length ? (
+                  <ToolCallLite
+                    tools={task.pendingToolCalls as Array<ToolUIPart<UITools>>}
                   />
+                ) : (
+                  <TaskStatusView task={task} t={t} />
                 )}
               </div>
             </div>
@@ -116,7 +114,7 @@ function GitBadge({
 
   return (
     <div className="inline-flex items-center gap-1 text-muted-foreground/80 text-sm">
-      <GitBranch className="h-4 w-4 shrink-0" />
+      <GitBranch className="size-3 shrink-0" />
       <span className="truncate">{git.branch}</span>
     </div>
   );
@@ -135,33 +133,52 @@ function TaskStatusView({
     case "pending-tool": {
       return (
         <span className="flex items-center gap-2">
+          <Loader2 className="size-3.5 shrink-0 animate-spin" />
           <span>{t("tasksPage.taskStatus.planning")}</span>
         </span>
       );
     }
     case "failed":
-      return t("tasksPage.taskStatus.error");
+      return (
+        <span className="flex flex-nowrap items-center gap-1 truncate whitespace-nowrap">
+          {task.error?.message ? (
+            <>
+              <span>{t("tasksPage.taskStatus.errorPrefix")}</span>
+              <span className="truncate">{task.error?.message}</span>
+            </>
+          ) : (
+            <span>{t("tasksPage.taskStatus.fallbackError")}</span>
+          )}
+        </span>
+      );
     default: {
-      const duration = formatDuration(task.createdAt, task.updatedAt);
-      return t("tasksPage.taskStatus.finished", { duration });
+      const duration = formatDuration(task);
+      return (
+        <span className="whitespace-nowrap">
+          {t("tasksPage.taskStatus.finished", { duration })}
+        </span>
+      );
     }
   }
 }
 
-function formatDuration(
-  createdAt: Date | string | number,
-  updatedAt: Date | string | number,
-): string {
+function formatDuration(task: Task): string {
+  const { lastStepDuration, createdAt, updatedAt } = task;
+  const durationMs =
+    lastStepDuration && lastStepDuration.value._tag === "Millis"
+      ? lastStepDuration.value.millis
+      : undefined;
+
   const created = new Date(createdAt).getTime();
   const updated = new Date(updatedAt).getTime();
-  const diffMs = updated - created;
+  const diffMs = durationMs ?? updated - created;
 
-  const diffSeconds = Math.floor(diffMs / 1000);
+  const diffSeconds = (diffMs / 1000).toFixed(1);
   const diffMinutes = Math.floor(diffMs / (1000 * 60));
   const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
-  if (diffSeconds < 60) {
+  if (Number.parseFloat(diffSeconds) < 60) {
     return `${diffSeconds}s`;
   }
   if (diffMinutes < 60) {
@@ -173,9 +190,9 @@ function formatDuration(
   return `${diffDays}d`;
 }
 
-function formatTimeAgo(updatedAt: Date | string | number): string {
+function formatTimeAgo(createdAt: Date | string | number): string {
   const now = Date.now();
-  const updated = new Date(updatedAt).getTime();
+  const updated = new Date(createdAt).getTime();
   const diffMs = now - updated;
 
   const diffMinutes = Math.floor(diffMs / (1000 * 60));

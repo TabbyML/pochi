@@ -94,6 +94,7 @@ export const taskFullFields = {
   pendingToolCalls: Schema.optional(ToolCalls),
   totalTokens: Schema.optional(Schema.Number),
   lineChanges: Schema.optional(LineChanges),
+  lastStepDuration: Schema.optional(Schema.DurationFromMillis),
   error: Schema.optional(TaskError),
   updatedAt: Schema.Date,
 };

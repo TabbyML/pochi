@@ -1,5 +1,10 @@
+import { TerminalIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { BackgroundJobPanel } from "../command-execution-panel";
+import {
+  BackgroundJobPanel,
+  CommandPanelContainer,
+  CopyCommandButton,
+} from "../command-execution-panel";
 import { HighlightedText } from "../highlight-text";
 import { StatusIcon } from "../status-icon";
 import { ExpandableToolContainer } from "../tool-container";
@@ -10,6 +15,11 @@ export const StartBackgroundJobTool: React.FC<
 > = ({ tool, isExecuting }) => {
   const { t } = useTranslation();
   const { cwd } = tool.input || {};
+
+  const command =
+    tool.state === "input-available" || tool.state === "output-available"
+      ? tool.input.command
+      : undefined;
 
   const backgroundJobId =
     tool.state === "output-available" ? tool.output.backgroundJobId : undefined;
@@ -37,6 +47,12 @@ export const StartBackgroundJobTool: React.FC<
       detail={
         backgroundJobId ? (
           <BackgroundJobPanel backgroundJobId={backgroundJobId} />
+        ) : command ? (
+          <CommandPanelContainer
+            icon={<TerminalIcon className="mt-[2px] size-4 flex-shrink-0" />}
+            title={command}
+            actions={<CopyCommandButton command={command} />}
+          />
         ) : null
       }
     />

@@ -88,7 +88,7 @@ const createChangedFileStore = (taskId: string) =>
   );
 
 const taskStores = new Map<string, ReturnType<typeof createChangedFileStore>>();
-export const getTaskChangedFileStoreHook = (taskId: string) => {
+export const getTaskChangedFileStore = (taskId: string) => {
   if (taskStores.has(taskId)) {
     return taskStores.get(taskId) as ReturnType<typeof createChangedFileStore>;
   }
@@ -107,7 +107,7 @@ export const useTaskChangedFiles = (
     acceptChangedFile: acceptChangedFileInternal,
     revertChangedFile,
     updateChangedFileContent,
-  } = useStore(getTaskChangedFileStoreHook(taskId));
+  } = useStore(getTaskChangedFileStore(taskId));
   const [checkpoints, setCheckpoints] = useState<string[]>([]);
 
   const visibleChangedFiles = useMemo(

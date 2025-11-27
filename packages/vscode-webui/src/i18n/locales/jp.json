@@ -165,7 +165,7 @@
   "tasksPage": {
     "emptyState": {
       "title": "タスクが見つかりません",
-      "description": "Pochi を始めるために新しいタスクを作成してください",
+      "description": "利用可能なタスクはありません",
       "createButton": "新しいタスクを作成"
     },
     "status": {
@@ -195,8 +195,9 @@
     "cancel": "キャンセル",
     "delete": "削除",
     "taskStatus": {
-      "planning": "次の動作を計画中...",
-      "error": "エラーが発生しました",
+      "planning": "次の動作を計画中",
+      "errorPrefix": "エラー：",
+      "fallbackError": "エラーが発生しました",
       "finished": "{{duration}} で完了"
     }
   },

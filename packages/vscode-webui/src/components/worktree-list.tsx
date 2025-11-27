@@ -14,15 +14,15 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { useTaskReadStatusStore } from "@/features/chat";
+import { useTaskReadStatusStore } from "@/lib/hooks/use-task-read-status-store";
 import { useWorktrees } from "@/lib/hooks/use-worktrees";
+import { cn } from "@/lib/utils";
 import { getWorktreeNameFromWorktreePath } from "@getpochi/common/git-utils";
 import type { Task } from "@getpochi/livekit";
 import {
   ChevronDown,
   ChevronRight,
   GitCompare,
-  Plus,
   Terminal,
   Trash2,
 } from "lucide-react";
@@ -30,6 +30,7 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as R from "remeda";
 import { TaskRow } from "./task-row";
+import { ScrollArea } from "./ui/scroll-area";
 
 interface WorktreeGroup {
   name: string;
@@ -189,10 +190,10 @@ function WorktreeSection({
     <Collapsible
       open={isExpanded}
       onOpenChange={setIsExpanded}
-      className="mb-2 rounded-lg border shadow-sm"
+      className="mb-2"
     >
       <div
-        className="flex items-center justify-between px-3 py-1"
+        className="group flex h-6 items-center gap-2 px-1"
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => {
           setIsHovered(false);
@@ -201,23 +202,30 @@ function WorktreeSection({
       >
         {group.isDeleted ? (
           <CollapsibleTrigger asChild>
-            <div className="flex cursor-pointer select-none items-center gap-2">
+            <div className="flex cursor-pointer select-none items-center gap-2 truncate font-medium text-sm">
               {isExpanded ? (
                 <ChevronDown className="size-4" />
               ) : (
                 <ChevronRight className="size-4" />
               )}
-              <span className="font-semibold">{group.name}</span>
+              <span>{group.name}</span>
             </div>
           </CollapsibleTrigger>
         ) : (
-          <div className="flex items-center">
-            <span className="font-semibold">{group.name}</span>
+          <div className="flex items-center truncate font-bold">
+            <span>{group.name}</span>
           </div>
         )}
 
-        <div className="flex items-center gap-1">
-          {!group.isDeleted && isHovered && (
+        <div
+          className={cn(
+            "flex items-center gap-1 transition-opacity duration-200",
+            !isHovered && !showDeleteConfirm
+              ? "pointer-events-none opacity-0"
+              : "opacity-100",
+          )}
+        >
+          {!group.isDeleted && (
             <>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -317,7 +325,7 @@ function WorktreeSection({
               )}
             </>
           )}
-          {!group.isDeleted && (
+          {/* {!group.isDeleted && (
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
@@ -335,26 +343,28 @@ function WorktreeSection({
               </TooltipTrigger>
               <TooltipContent>{t("tasksPage.newTask")}</TooltipContent>
             </Tooltip>
-          )}
+          )} */}
         </div>
       </div>
 
       <CollapsibleContent>
-        <div className="max-h-[200px] overflow-auto border-t px-1 py-2">
-          <div className="flex flex-col gap-2">
-            {group.tasks.length > 0 ? (
-              group.tasks.map((task) => {
-                const isRead = !unreadTaskIds.has(task.id);
+        <ScrollArea viewportClassname="max-h-[230px] px-1 py-1">
+          {group.tasks.length > 0 ? (
+            group.tasks.map((task) => {
+              const isRead = !unreadTaskIds.has(task.id);
 
-                return <TaskRow key={task.id} task={task} isRead={isRead} />;
-              })
-            ) : (
-              <div className="py-4 text-center text-muted-foreground text-xs">
-                {t("tasksPage.emptyState.description")}
-              </div>
-            )}
-          </div>
-        </div>
+              return (
+                <div key={task.id} className="py-0.5">
+                  <TaskRow task={task} isRead={isRead} />
+                </div>
+              );
+            })
+          ) : (
+            <div className="py-1 text-muted-foreground text-xs">
+              {t("tasksPage.emptyState.description")}
+            </div>
+          )}
+        </ScrollArea>
       </CollapsibleContent>
     </Collapsible>
   );

@@ -171,7 +171,7 @@
   "tasksPage": {
     "emptyState": {
       "title": "No tasks found",
-      "description": "Create a new task to get started with Pochi",
+      "description": "No tasks available",
       "createButton": "New Task"
     },
     "status": {
@@ -201,8 +201,9 @@
     "cancel": "Cancel",
     "delete": "Delete",
     "taskStatus": {
-      "planning": "Planning next moves ...",
-      "error": "Error encountered",
+      "planning": "Planning next moves",
+      "errorPrefix": "Error:",
+      "fallbackError": "Error encountered",
       "finished": "Finished in {{duration}}"
     }
   },

@@ -8,7 +8,7 @@ import type {
 import { type Message, catalog } from "@getpochi/livekit";
 import type { Store } from "@livestore/livestore";
 import { ThreadAbortSignal } from "@quilted/threads";
-import { getTaskChangedFileStoreHook } from "./use-task-changed-files";
+import { getTaskChangedFileStore } from "./use-task-changed-files";
 
 /**
  * Handles the onOverrideMessages event by appending a checkpoint to the last message.
@@ -25,12 +25,17 @@ export async function onOverrideMessages({
   messages: Message[];
   abortSignal: AbortSignal;
 }) {
+  const checkpoints = messages
+    .flatMap((m) => m.parts.filter((p) => p.type === "data-checkpoint"))
+    .map((p) => p.data.commit);
   const lastMessage = messages.at(-1);
   if (lastMessage) {
     const ckpt = await appendCheckpoint(lastMessage);
     await appendWorkflowBashOutputs(lastMessage, abortSignal);
-    if (!ckpt) return;
-    await updateTaskChanges(store, taskId, messages);
+    const lastCheckpoint = checkpoints.at(-1);
+    if (ckpt && lastMessage.role === "assistant" && lastCheckpoint) {
+      await updateTaskChanges(store, taskId, lastCheckpoint);
+    }
   }
 }
 
@@ -113,20 +118,11 @@ async function appendWorkflowBashOutputs(
 async function updateTaskChanges(
   store: Store,
   taskId: string,
-  messages: Message[],
+  lastCheckpoint: string,
 ) {
-  const checkpoints = messages
-    .flatMap((m) => m.parts.filter((p) => p.type === "data-checkpoint"))
-    .map((p) => p.data.commit);
-
-  if (checkpoints.length < 1) {
-    return;
-  }
-
-  const firstCheckpoint = checkpoints[0];
-  const fileDiffResult = await vscodeHost.diffWithCheckpoint(firstCheckpoint);
+  const fileDiffResult = await vscodeHost.diffWithCheckpoint(lastCheckpoint);
   updateTaskLineChanges(store, taskId, fileDiffResult);
-  await updateChangedFileStore(taskId, fileDiffResult, firstCheckpoint);
+  await updateChangedFileStore(taskId, fileDiffResult, lastCheckpoint);
 }
 
 async function updateTaskLineChanges(
@@ -161,7 +157,7 @@ async function updateChangedFileStore(
   fileDiffResult: FileDiff[] | null,
   firstCheckpoint: string,
 ) {
-  const store = getTaskChangedFileStoreHook(taskId);
+  const store = getTaskChangedFileStore(taskId);
   const { changedFiles, setChangedFile } = store.getState();
 
   const updatedChangedFiles: TaskChangedFile[] = [];

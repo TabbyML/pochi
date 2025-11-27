@@ -13,12 +13,13 @@ import {
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
 import { ApprovalButton, type useApprovalAndRetry } from "@/features/approval";
-import { useAutoApproveGuard } from "@/features/chat";
+import { useAutoApproveGuard, useTaskChangedFiles } from "@/features/chat";
 import { useSelectedModels } from "@/features/settings";
 import { AutoApproveMenu } from "@/features/settings";
 import { TodoList, useTodos } from "@/features/todo";
 import { useAddCompleteToolCalls } from "@/lib/hooks/use-add-complete-tool-calls";
 import type { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
+import { cn } from "@/lib/utils";
 import type { UseChatHelpers } from "@ai-sdk/react";
 import { constants } from "@getpochi/common";
 import type { Message, Task } from "@getpochi/livekit";
@@ -189,6 +190,13 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     [messages],
   );
 
+  const diffSummaryActionEnabled = !isLoading && !isExecuting;
+  const useTaskChangedFilesHelpers = useTaskChangedFiles(
+    task?.id as string,
+    messages,
+    diffSummaryActionEnabled,
+  );
+
   return (
     <>
       <div className="-translate-y-full -top-2 absolute left-0 w-full px-4 pt-1">
@@ -204,17 +212,24 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
           />
         </div>
       </div>
-      {todos && todos.length > 0 && (
-        <TodoList todos={todos} className="mt-2">
-          <TodoList.Header />
-          <TodoList.Items viewportClassname="max-h-48" />
-        </TodoList>
+      {(todos.length > 0 ||
+        useTaskChangedFilesHelpers.changedFiles.length > 0) && (
+        <div className={cn("mt-1.5 rounded-md border border-border")}>
+          {todos.length > 0 && (
+            <TodoList todos={todos}>
+              <TodoList.Header />
+              <TodoList.Items viewportClassname="max-h-48" />
+            </TodoList>
+          )}
+          <DiffSummary
+            {...useTaskChangedFilesHelpers}
+            actionEnabled={diffSummaryActionEnabled}
+            className={cn({
+              "border-border border-t": todos.length > 0,
+            })}
+          />
+        </div>
       )}
-      <DiffSummary
-        messages={messages}
-        taskId={task?.id as string}
-        actionEnabled={!isLoading && !isExecuting}
-      />
       <AutoApproveMenu isSubTask={isSubTask} />
       {files.length > 0 && (
         <AttachmentPreviewList

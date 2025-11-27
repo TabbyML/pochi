@@ -70,9 +70,9 @@ export function ToolCallLite({ tools }: Props) {
   }
 
   return detail ? (
-    <div className="flex w-full flex-nowrap items-center overflow-x-hidden whitespace-nowrap">
+    <div className="flex flex-nowrap items-center overflow-x-hidden whitespace-nowrap">
       <Loader2 className="size-3.5 shrink-0 animate-spin" />
-      {detail}
+      <div className="flex flex-nowrap items-center truncate">{detail}</div>
       {tools.length > 1 && (
         <span>
           {t("toolInvocation.moreTools", { count: tools.length - 1 })}
@@ -120,7 +120,7 @@ const LabelAndFilePathView = ({
   return (
     <>
       <span className="ml-2" />
-      <span className="whitespace-nowrap">{label}</span>
+      <span className="truncate whitespace-nowrap">{label}</span>
       {path && <FileBadge className="ml-1" path={path} />}
     </>
   );
@@ -165,7 +165,7 @@ const StartBackgroundJobTool = ({
   const text = t("toolInvocation.backgroundExecuting");
   return (
     <>
-      <span className="ml-2">
+      <span className="ml-2 truncate">
         {text}
         {cwdNode}
       </span>

@@ -28,6 +28,23 @@ export class WorktreeManager implements vscode.Disposable {
     this.init();
   }
 
+  async getDefaultBranch() {
+    try {
+      const ref = await this.git.raw([
+        "symbolic-ref",
+        "refs/remotes/origin/HEAD",
+      ]);
+      const match = ref.match(/^refs\/remotes\/origin\/(.+)$/);
+      if (match) {
+        return match[1];
+      }
+      return "origin/main";
+    } catch (error) {
+      logger.error(`Failed to get default branch: ${toErrorMessage(error)}`);
+      return "origin/main";
+    }
+  }
+
   public getWorktreeDisplayName(cwd: string): string | undefined {
     const worktree = this.worktrees.value.find((wt) => wt.path === cwd);
     if (!worktree) {
@@ -42,13 +59,15 @@ export class WorktreeManager implements vscode.Disposable {
     }
     const worktrees = await this.getWorktrees();
     this.worktrees.value = worktrees;
-    logger.info(
+    logger.debug(
       `Initialized WorktreeManager with ${worktrees.length} worktrees.`,
     );
     const onWorktreeChanged = async () => {
       await new Promise((resolve) => setTimeout(resolve, 500));
       const updatedWorktrees = await this.getWorktrees();
-      logger.info(`Worktrees updated to ${updatedWorktrees.length} worktrees.`);
+      logger.trace(
+        `Worktrees updated to ${updatedWorktrees.length} worktrees.`,
+      );
       this.worktrees.value = updatedWorktrees;
     };
     this.disposables.push(
@@ -109,7 +128,7 @@ export class WorktreeManager implements vscode.Disposable {
     }
 
     try {
-      await this.git.raw(["worktree", "remove", worktreePath]);
+      await this.git.raw(["worktree", "remove", "--force", worktreePath]);
     } catch (error) {
       logger.error(`Failed to delete worktree: ${toErrorMessage(error)}`);
       vscode.window.showErrorMessage(
@@ -118,10 +137,17 @@ export class WorktreeManager implements vscode.Disposable {
     }
   }
 
+  async showWorktreeDiff(cwd: string) {
+    const baseBranch = await this.getDefaultBranch();
+    await showWorktreeDiff(cwd, baseBranch);
+  }
+
   async getWorktrees(): Promise<GitWorktree[]> {
     try {
       const result = await this.git.raw(["worktree", "list", "--porcelain"]);
-      return this.parseWorktreePorcelain(result);
+      return this.parseWorktreePorcelain(result).filter(
+        (wt) => wt.prunable === undefined,
+      );
     } catch (error) {
       logger.error(`Failed to get worktrees: ${toErrorMessage(error)}`);
       return [];
@@ -157,6 +183,9 @@ export class WorktreeManager implements vscode.Disposable {
       } else if (line === "detached") {
         // Detached HEAD state - no branch
         currentWorktree.branch = undefined;
+      } else if (line.startsWith("prunable ")) {
+        // Prunable worktree with reason
+        currentWorktree.prunable = line.substring("prunable ".length);
       } else if (line === "") {
         // Empty line separates worktrees
         if (currentWorktree.path) {
@@ -220,7 +249,7 @@ export async function setupWorktree(worktree: string): Promise<boolean> {
     terminal.sendText(command);
     terminal.show(true);
 
-    logger.info(`Worktree setup initiated for: ${worktree}`);
+    logger.debug(`Worktree setup initiated for: ${worktree}`);
     return true;
   } catch (error) {
     logger.error("Failed to setup worktree:", error);
@@ -231,7 +260,7 @@ export async function setupWorktree(worktree: string): Promise<boolean> {
   }
 }
 
-export async function showWorktreeDiff(
+async function showWorktreeDiff(
   cwd: string,
   base = "origin/main",
 ): Promise<boolean> {

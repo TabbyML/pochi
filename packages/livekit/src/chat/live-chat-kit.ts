@@ -1,6 +1,7 @@
 import { getLogger } from "@getpochi/common";
 import type { CustomAgent } from "@getpochi/tools";
 import type { Store } from "@livestore/livestore";
+import { Duration } from "@livestore/utils/effect";
 import type { ChatInit, ChatOnErrorCallback, ChatOnFinishCallback } from "ai";
 import type z from "zod/v4";
 import { makeMessagesQuery, makeTaskQuery } from "../livestore/default-queries";
@@ -78,6 +79,7 @@ export class LiveChatKit<
     messages: Message[];
   }) => void;
   readonly spawn: () => Promise<string>;
+  private lastStepStartTimestamp: number | undefined;
 
   constructor({
     taskId,
@@ -311,6 +313,8 @@ export class LiveChatKit<
         }),
       );
 
+      this.lastStepStartTimestamp = Date.now();
+
       this.onStreamStart?.();
     }
   };
@@ -342,14 +346,24 @@ export class LiveChatKit<
         data: message,
         totalTokens: message.metadata.totalTokens,
         updatedAt: new Date(),
+        duration: this.lastStepStartTimestamp
+          ? Duration.millis(Date.now() - this.lastStepStartTimestamp)
+          : undefined,
       }),
     );
+
+    this.clearLastStepTimestamp();
+
     this.onStreamFinish?.({
       id: this.taskId,
       cwd: this.task?.cwd ?? null,
       status,
       messages: [...this.chat.messages],
     });
+  };
+
+  private clearLastStepTimestamp = () => {
+    this.lastStepStartTimestamp = undefined;
   };
 
   private readonly onError: ChatOnErrorCallback = (error) => {
@@ -362,8 +376,14 @@ export class LiveChatKit<
         error: toTaskError(error),
         data: lastMessage,
         updatedAt: new Date(),
+        duration: this.lastStepStartTimestamp
+          ? Duration.millis(Date.now() - this.lastStepStartTimestamp)
+          : undefined,
       }),
     );
+
+    this.clearLastStepTimestamp();
+
     this.onStreamFailed?.({
       cwd: this.task?.cwd ?? null,
       error,

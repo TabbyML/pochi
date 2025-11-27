@@ -272,8 +272,6 @@ export class CheckpointService implements vscode.Disposable {
         } else {
           result.push(file);
         }
-      } else {
-        result.push(file);
       }
     }
 

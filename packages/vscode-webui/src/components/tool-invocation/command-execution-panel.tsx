@@ -29,7 +29,7 @@ import { useTranslation } from "react-i18next";
 import { ScrollArea } from "../ui/scroll-area";
 import { XTerm } from "./xterm";
 
-const CopyCommandButton: FC<{ command: string }> = ({ command }) => {
+export const CopyCommandButton: FC<{ command: string }> = ({ command }) => {
   const { t } = useTranslation();
   const { isCopied, copyToClipboard } = useCopyToClipboard({
     timeout: 2000,
@@ -129,7 +129,7 @@ const BackgroundJobIdButton: FC<{
   );
 };
 
-const CommandPanelContainer: FC<{
+export const CommandPanelContainer: FC<{
   icon: React.ReactNode;
   title: React.ReactNode;
   expanded?: boolean;

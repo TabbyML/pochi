@@ -49,7 +49,7 @@ export interface SettingsState {
   initSubtaskAutoApproveSettings: () => void;
 }
 
-const settingsStorageName = "ragdoll-settings-storage";
+const SettingsStorageName = "ragdoll-settings-storage";
 
 const excludeFields = [
   "autoApproveActive",
@@ -65,32 +65,35 @@ export const GlobalStateStorage: StateStorage & {
     return value as string | null;
   },
 
-  async setItem(name: string, value: string | null) {
-    if (globalThis.POCHI_WEBVIEW_KIND === "sidebar") {
+  setItem: async (name: string, value: string | null) => {
+    if (
+      globalThis.POCHI_WEBVIEW_KIND === "sidebar" &&
+      useSettingsStore.persist.hasHydrated()
+    ) {
       await vscodeHost.setGlobalState(name, value);
     }
   },
 
-  async removeItem(name) {
+  removeItem: async (name) => {
     await vscodeHost.setGlobalState(name, null);
   },
 
   async persist(data: Partial<SettingsState>) {
     try {
       const currentGlobalState = (await vscodeHost.getGlobalState(
-        settingsStorageName,
+        SettingsStorageName,
       )) as string | null;
       if (!currentGlobalState) return;
 
       const currentData = JSON.parse(currentGlobalState);
-      const nextStore = JSON.stringify({
+      const nextState = JSON.stringify({
         ...currentData,
         state: {
           ...currentData.state,
           ...data,
         },
       });
-      await vscodeHost.setGlobalState(settingsStorageName, nextStore);
+      await vscodeHost.setGlobalState(SettingsStorageName, nextState);
     } catch (e) {
       // ignore
     }
@@ -176,7 +179,7 @@ export const useSettingsStore = create<SettingsState>()(
         set(() => ({ enablePochiModels: value })),
     }),
     {
-      name: settingsStorageName,
+      name: SettingsStorageName,
       storage: createJSONStorage(() => GlobalStateStorage),
       partialize: (state) =>
         Object.fromEntries(
