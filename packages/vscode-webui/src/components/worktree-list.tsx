@@ -194,7 +194,10 @@ function WorktreeSection({
       <div
         className="flex items-center justify-between px-3 py-1"
         onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
+        onMouseLeave={() => {
+          setIsHovered(false);
+          setShowDeleteConfirm(false);
+        }}
       >
         {group.isDeleted ? (
           <CollapsibleTrigger asChild>
@@ -275,7 +278,7 @@ function WorktreeSection({
                       {t("tasksPage.deleteWorktree")}
                     </TooltipContent>
                   </Tooltip>
-                  <PopoverContent className="w-80">
+                  <PopoverContent className="w-80" sideOffset={0}>
                     <div className="flex flex-col gap-3">
                       <div className="space-y-2">
                         <h4 className="font-medium leading-none">
