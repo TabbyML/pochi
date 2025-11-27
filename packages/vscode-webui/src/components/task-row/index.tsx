@@ -142,19 +142,22 @@ function TaskStatusView({
     case "failed":
       return t("tasksPage.taskStatus.error");
     default: {
-      const duration = formatDuration(task.createdAt, task.updatedAt);
+      const duration = formatDuration(task);
       return t("tasksPage.taskStatus.finished", { duration });
     }
   }
 }
 
-function formatDuration(
-  createdAt: Date | string | number,
-  updatedAt: Date | string | number,
-): string {
+function formatDuration(task: Task): string {
+  const { lastStepDuration, createdAt, updatedAt } = task;
+  const durationMs =
+    lastStepDuration && lastStepDuration.value._tag === "Millis"
+      ? lastStepDuration.value.millis
+      : undefined;
+
   const created = new Date(createdAt).getTime();
   const updated = new Date(updatedAt).getTime();
-  const diffMs = updated - created;
+  const diffMs = durationMs ?? updated - created;
 
   const diffSeconds = Math.floor(diffMs / 1000);
   const diffMinutes = Math.floor(diffMs / (1000 * 60));
