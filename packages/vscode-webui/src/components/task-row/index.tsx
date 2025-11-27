@@ -140,11 +140,11 @@ function TaskStatusView({
     }
     case "failed":
       return (
-        <span className="flex flex-nowrap items-center gap-1">
+        <span className="flex flex-nowrap items-center gap-1 truncate whitespace-nowrap">
           {task.error?.message ? (
             <>
               <span>{t("tasksPage.taskStatus.errorPrefix")}</span>
-              {task.error?.message}
+              <span className="truncate">{task.error?.message}</span>
             </>
           ) : (
             <span>{t("tasksPage.taskStatus.fallbackError")}</span>
