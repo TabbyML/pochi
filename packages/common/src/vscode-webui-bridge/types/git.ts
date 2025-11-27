@@ -3,4 +3,5 @@ export interface GitWorktree {
   branch?: string;
   commit: string;
   isMain: boolean;
+  prunable?: string;
 }

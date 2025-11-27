@@ -35,7 +35,7 @@ import * as vscode from "vscode";
 import { PochiConfiguration } from "./configuration";
 import { DiffChangesContentProvider } from "./editor/diff-changes-content-provider";
 // biome-ignore lint/style/useImportType: needed for dependency injection
-import { WorktreeManager, showWorktreeDiff } from "./git/worktree";
+import { WorktreeManager } from "./git/worktree";
 import { PochiTaskEditorProvider } from "./webview/webview-panel";
 const logger = getLogger("CommandManager");
 
@@ -479,7 +479,7 @@ export class CommandManager implements vscode.Disposable {
             activeTab.input.uri,
           );
           if (params?.cwd) {
-            await showWorktreeDiff(params.cwd);
+            await this.worktreeManager.showWorktreeDiff(params.cwd);
           }
         }
       }),
@@ -488,7 +488,7 @@ export class CommandManager implements vscode.Disposable {
         "pochi.worktree.openDiff",
         async (worktreePath: string) => {
           if (worktreePath) {
-            await showWorktreeDiff(worktreePath);
+            await this.worktreeManager.showWorktreeDiff(worktreePath);
           }
         },
       ),
