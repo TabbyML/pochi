@@ -136,8 +136,7 @@ function TaskStatusView({ task }: { task: Task }) {
     case "pending-tool": {
       return (
         <span className="flex items-center gap-2">
-          {/* eslint-disable-next-line i18next/no-literal-string */}
-          <span>Planning next moves...</span>
+          <span>Planning next moves ...</span>
         </span>
       );
     }
