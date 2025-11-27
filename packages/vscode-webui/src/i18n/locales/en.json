@@ -201,7 +201,7 @@
     "cancel": "Cancel",
     "delete": "Delete",
     "taskStatus": {
-      "planning": "Planning next moves ...",
+      "planning": "Planning next moves",
       "error": "Error encountered",
       "finished": "Finished in {{duration}}"
     }

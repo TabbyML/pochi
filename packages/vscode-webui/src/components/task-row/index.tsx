@@ -5,7 +5,7 @@ import { parseTitle } from "@getpochi/common/message-utils";
 import { encodeStoreId } from "@getpochi/common/store-id-utils";
 import type { Task, UITools } from "@getpochi/livekit";
 import type { ToolUIPart } from "ai";
-import { GitBranch } from "lucide-react";
+import { GitBranch, Loader2 } from "lucide-react";
 import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import type { useTranslation as UseTranslation } from "react-i18next";
@@ -135,6 +135,7 @@ function TaskStatusView({
     case "pending-tool": {
       return (
         <span className="flex items-center gap-2">
+          <Loader2 className="size-3.5 shrink-0 animate-spin" />
           <span>{t("tasksPage.taskStatus.planning")}</span>
         </span>
       );
