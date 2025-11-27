@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/tooltip";
 import { useTaskReadStatusStore } from "@/features/chat";
 import { useWorktrees } from "@/lib/hooks/use-worktrees";
+import { cn } from "@/lib/utils";
 import { getWorktreeNameFromWorktreePath } from "@getpochi/common/git-utils";
 import type { Task } from "@getpochi/livekit";
 import {
@@ -189,10 +190,10 @@ function WorktreeSection({
     <Collapsible
       open={isExpanded}
       onOpenChange={setIsExpanded}
-      className="mb-2 rounded-lg border shadow-sm"
+      className="mb-2"
     >
       <div
-        className="flex items-center justify-between px-3 py-1"
+        className="group flex h-6 items-center gap-2 px-1"
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => {
           setIsHovered(false);
@@ -201,23 +202,30 @@ function WorktreeSection({
       >
         {group.isDeleted ? (
           <CollapsibleTrigger asChild>
-            <div className="flex cursor-pointer select-none items-center gap-2">
+            <div className="flex cursor-pointer select-none items-center gap-2 truncate font-medium text-sm">
               {isExpanded ? (
                 <ChevronDown className="size-4" />
               ) : (
                 <ChevronRight className="size-4" />
               )}
-              <span className="font-semibold">{group.name}</span>
+              <span>{group.name}</span>
             </div>
           </CollapsibleTrigger>
         ) : (
-          <div className="flex items-center truncate">
-            <span className="font-semibold">{group.name}</span>
+          <div className="flex items-center truncate font-bold">
+            <span>{group.name}</span>
           </div>
         )}
 
-        <div className="flex items-center gap-1">
-          {!group.isDeleted && isHovered && (
+        <div
+          className={cn(
+            "flex items-center gap-1 transition-opacity duration-200",
+            !isHovered && !showDeleteConfirm
+              ? "pointer-events-none opacity-0"
+              : "opacity-100",
+          )}
+        >
+          {!group.isDeleted && (
             <>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -340,7 +348,7 @@ function WorktreeSection({
       </div>
 
       <CollapsibleContent>
-        <ScrollArea viewportClassname="max-h-[200px] border-t px-1 py-1">
+        <ScrollArea viewportClassname="max-h-[230px] px-1 py-1">
           {group.tasks.length > 0 ? (
             group.tasks.map((task) => {
               const isRead = !unreadTaskIds.has(task.id);
@@ -352,7 +360,7 @@ function WorktreeSection({
               );
             })
           ) : (
-            <div className="py-1 text-center text-muted-foreground text-xs">
+            <div className="py-1 text-muted-foreground text-xs">
               {t("tasksPage.emptyState.description")}
             </div>
           )}

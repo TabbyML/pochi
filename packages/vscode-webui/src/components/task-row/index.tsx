@@ -28,7 +28,7 @@ export function TaskRow({
     <div
       className={cn(
         "group cursor-pointer rounded-lg border border-border/50 bg-card transition-all duration-200 hover:border-border hover:bg-card/90 hover:shadow-md",
-        "border-l-4",
+        "border-l-2",
         getStatusBorderColor(task.status),
       )}
     >
