@@ -159,12 +159,12 @@ function formatDuration(task: Task): string {
   const updated = new Date(updatedAt).getTime();
   const diffMs = durationMs ?? updated - created;
 
-  const diffSeconds = Math.floor(diffMs / 1000);
+  const diffSeconds = (diffMs / 1000).toFixed(1);
   const diffMinutes = Math.floor(diffMs / (1000 * 60));
   const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
-  if (diffSeconds < 60) {
+  if (Number.parseFloat(diffSeconds) < 60) {
     return `${diffSeconds}s`;
   }
   if (diffMinutes < 60) {
