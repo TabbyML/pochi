@@ -196,7 +196,8 @@
     "delete": "削除",
     "taskStatus": {
       "planning": "次の動作を計画中",
-      "error": "エラーが発生しました",
+      "errorPrefix": "エラー：",
+      "fallbackError": "エラーが発生しました",
       "finished": "{{duration}} で完了"
     }
   },

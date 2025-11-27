@@ -70,7 +70,7 @@ export function ToolCallLite({ tools }: Props) {
   }
 
   return detail ? (
-    <div className="flex w-full flex-nowrap items-center overflow-x-hidden whitespace-nowrap">
+    <div className="flex flex-nowrap items-center overflow-x-hidden whitespace-nowrap">
       <Loader2 className="size-3.5 shrink-0 animate-spin" />
       {detail}
       {tools.length > 1 && (

@@ -195,7 +195,8 @@
     "delete": "删除",
     "taskStatus": {
       "planning": "正在规划下一步操作",
-      "error": "遇到错误",
+      "errorPrefix": "错误：",
+      "fallbackError": "遇到错误",
       "finished": "已完成，耗时 {{duration}}"
     }
   },

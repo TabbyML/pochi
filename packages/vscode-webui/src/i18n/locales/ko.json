@@ -196,7 +196,8 @@
     "delete": "삭제",
     "taskStatus": {
       "planning": "다음 작업 계획 중",
-      "error": "오류 발생",
+      "errorPrefix": "오류:",
+      "fallbackError": "오류 발생",
       "finished": "{{duration}} 만에 완료"
     }
   },

@@ -44,29 +44,27 @@ export function TaskRow({
               </h3>
               <div className="flex shrink-0 items-center gap-2">
                 <div className="text-muted-foreground text-sm">
-                  {formatTimeAgo(task.updatedAt)}
+                  {formatTimeAgo(task.createdAt)}
                 </div>
               </div>
             </div>
             <div className="h-6 text-muted-foreground text-sm">
               <div className="flex items-center justify-between gap-2 overflow-hidden">
-                <div className="flex items-center gap-2 overflow-hidden">
+                <div className="flex flex-1 items-center gap-2 overflow-hidden">
                   <GitBadge git={task.git} />
-                  {task.pendingToolCalls?.length ? (
-                    <ToolCallLite
-                      tools={
-                        task.pendingToolCalls as Array<ToolUIPart<UITools>>
-                      }
+                  {task.lineChanges && (
+                    <EditSummary
+                      editSummary={task.lineChanges}
+                      className="mx-0 flex shrink-0 items-center text-sm"
                     />
-                  ) : (
-                    <TaskStatusView task={task} t={t} />
                   )}
                 </div>
-                {task.lineChanges && (
-                  <EditSummary
-                    editSummary={task.lineChanges}
-                    className="mx-0 shrink-0 text-sm"
+                {task.pendingToolCalls?.length ? (
+                  <ToolCallLite
+                    tools={task.pendingToolCalls as Array<ToolUIPart<UITools>>}
                   />
+                ) : (
+                  <TaskStatusView task={task} t={t} />
                 )}
               </div>
             </div>
@@ -116,7 +114,7 @@ function GitBadge({
 
   return (
     <div className="inline-flex items-center gap-1 text-muted-foreground/80 text-sm">
-      <GitBranch className="h-4 w-4 shrink-0" />
+      <GitBranch className="size-3 shrink-0" />
       <span className="truncate">{git.branch}</span>
     </div>
   );
@@ -141,10 +139,25 @@ function TaskStatusView({
       );
     }
     case "failed":
-      return t("tasksPage.taskStatus.error");
+      return (
+        <span className="flex flex-nowrap items-center gap-1">
+          {task.error?.message ? (
+            <>
+              <span>{t("tasksPage.taskStatus.errorPrefix")}</span>
+              {task.error?.message}
+            </>
+          ) : (
+            <span>{t("tasksPage.taskStatus.fallbackError")}</span>
+          )}
+        </span>
+      );
     default: {
       const duration = formatDuration(task);
-      return t("tasksPage.taskStatus.finished", { duration });
+      return (
+        <span className="whitespace-nowrap">
+          {t("tasksPage.taskStatus.finished", { duration })}
+        </span>
+      );
     }
   }
 }
@@ -177,9 +190,9 @@ function formatDuration(task: Task): string {
   return `${diffDays}d`;
 }
 
-function formatTimeAgo(updatedAt: Date | string | number): string {
+function formatTimeAgo(createdAt: Date | string | number): string {
   const now = Date.now();
-  const updated = new Date(updatedAt).getTime();
+  const updated = new Date(createdAt).getTime();
   const diffMs = now - updated;
 
   const diffMinutes = Math.floor(diffMs / (1000 * 60));

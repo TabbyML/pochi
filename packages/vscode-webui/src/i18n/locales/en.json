@@ -202,7 +202,8 @@
     "delete": "Delete",
     "taskStatus": {
       "planning": "Planning next moves",
-      "error": "Error encountered",
+      "errorPrefix": "Error:",
+      "fallbackError": "Error encountered",
       "finished": "Finished in {{duration}}"
     }
   },
