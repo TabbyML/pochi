@@ -19,6 +19,7 @@ import type {
   TaskPanelParams,
   WorkspaceState,
 } from "./index";
+import type { DiffCheckpointOptions } from "./types/git";
 import type { DisplayModel } from "./types/model";
 import type { PochiCredentials } from "./types/pochi";
 
@@ -249,6 +250,7 @@ export interface VSCodeHostApi {
   diffWithCheckpoint(
     fromCheckpoint: string,
     files?: string[],
+    options?: DiffCheckpointOptions,
   ): Promise<FileDiff[] | null>;
 
   /**
@@ -270,7 +272,7 @@ export interface VSCodeHostApi {
 
   diffChangedFiles(changedFiles: TaskChangedFile[]): Promise<TaskChangedFile[]>;
 
-  showChangedFiles(files: TaskChangedFile[]): Promise<boolean>;
+  showChangedFiles(files: TaskChangedFile[], title: string): Promise<boolean>;
 
   readExtensionVersion(): Promise<string>;
 

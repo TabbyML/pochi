@@ -48,8 +48,10 @@ export function useLiveChatKitGetters({
       const lastCheckpointHash = findSecondLastCheckpointFromMessages(messages);
       if (lastCheckpointHash) {
         userEdits =
-          (await vscodeHost.diffWithCheckpoint(lastCheckpointHash)) ??
-          undefined;
+          (await vscodeHost.diffWithCheckpoint(lastCheckpointHash, undefined, {
+            maxSizeLimit: 8 * 1024,
+            inlineDiff: true,
+          })) ?? undefined;
       }
 
       return {

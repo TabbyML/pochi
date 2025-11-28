@@ -5,3 +5,8 @@ export interface GitWorktree {
   isMain: boolean;
   prunable?: string;
 }
+
+export interface DiffCheckpointOptions {
+  maxSizeLimit?: number;
+  inlineDiff?: boolean;
+}

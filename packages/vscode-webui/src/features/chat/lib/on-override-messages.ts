@@ -1,10 +1,7 @@
 import { vscodeHost } from "@/lib/vscode";
 import { prompts } from "@getpochi/common";
 import { extractWorkflowBashCommands } from "@getpochi/common/message-utils";
-import type {
-  FileDiff,
-  TaskChangedFile,
-} from "@getpochi/common/vscode-webui-bridge";
+import type { TaskChangedFile } from "@getpochi/common/vscode-webui-bridge";
 import { type Message, catalog } from "@getpochi/livekit";
 import type { Store } from "@livestore/livestore";
 import { ThreadAbortSignal } from "@quilted/threads";
@@ -32,9 +29,17 @@ export async function onOverrideMessages({
   if (lastMessage) {
     const ckpt = await appendCheckpoint(lastMessage);
     await appendWorkflowBashOutputs(lastMessage, abortSignal);
+
+    const firstCheckpoint = checkpoints.at(0);
+    if (firstCheckpoint) {
+      // side bar diff edits
+      await updateTaskLineChanges(store, taskId, firstCheckpoint);
+    }
+
     const lastCheckpoint = checkpoints.at(-1);
     if (ckpt && lastMessage.role === "assistant" && lastCheckpoint) {
-      await updateTaskChanges(store, taskId, lastCheckpoint);
+      // diff summary in chat view
+      await updateChangedFiles(taskId, lastCheckpoint);
     }
   }
 }
@@ -115,21 +120,12 @@ async function appendWorkflowBashOutputs(
   }
 }
 
-async function updateTaskChanges(
-  store: Store,
-  taskId: string,
-  lastCheckpoint: string,
-) {
-  const fileDiffResult = await vscodeHost.diffWithCheckpoint(lastCheckpoint);
-  updateTaskLineChanges(store, taskId, fileDiffResult);
-  await updateChangedFileStore(taskId, fileDiffResult, lastCheckpoint);
-}
-
 async function updateTaskLineChanges(
   store: Store,
   taskId: string,
-  fileDiffResult: FileDiff[] | null,
+  firstCheckpoint: string,
 ) {
+  const fileDiffResult = await vscodeHost.diffWithCheckpoint(firstCheckpoint);
   const totalAdditions =
     fileDiffResult?.reduce((sum, file) => sum + file.added, 0) ?? 0;
   const totalDeletions =
@@ -152,11 +148,8 @@ async function updateTaskLineChanges(
   }
 }
 
-async function updateChangedFileStore(
-  taskId: string,
-  fileDiffResult: FileDiff[] | null,
-  firstCheckpoint: string,
-) {
+async function updateChangedFiles(taskId: string, lastCheckpoint: string) {
+  const fileDiffResult = await vscodeHost.diffWithCheckpoint(lastCheckpoint);
   const store = getTaskChangedFileStore(taskId);
   const { changedFiles, setChangedFile } = store.getState();
 
@@ -174,7 +167,7 @@ async function updateChangedFileStore(
         removed: fileDiff.removed,
         content: fileDiff.created
           ? null
-          : { type: "checkpoint", commit: firstCheckpoint },
+          : { type: "checkpoint", commit: lastCheckpoint },
         deleted: fileDiff.deleted,
         state: "pending",
       });

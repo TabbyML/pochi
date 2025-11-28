@@ -147,6 +147,7 @@ export const useTaskChangedFiles = (
         filePath
           ? visibleChangedFiles.filter((f) => f.filepath === filePath)
           : visibleChangedFiles,
+        filePath ? `Changes in ${filePath}` : "Changed Files",
       );
     },
     [checkpoints, visibleChangedFiles],
