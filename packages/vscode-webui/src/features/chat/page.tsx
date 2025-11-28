@@ -234,6 +234,7 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
     onOverrideMessages,
     onStreamStart() {
       clearNotification();
+      vscodeHost.onTaskRunning(uid);
     },
     onStreamFinish(data) {
       onStreamFinish.current(data);

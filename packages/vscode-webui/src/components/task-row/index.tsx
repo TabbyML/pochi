@@ -3,24 +3,23 @@ import { cn } from "@/lib/utils";
 import { vscodeHost } from "@/lib/vscode";
 import { parseTitle } from "@getpochi/common/message-utils";
 import { encodeStoreId } from "@getpochi/common/store-id-utils";
+import type { TaskState } from "@getpochi/common/vscode-webui-bridge";
 import type { Task, UITools } from "@getpochi/livekit";
 import type { ToolUIPart } from "ai";
 import { GitBranch, Loader2 } from "lucide-react";
 import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import type { useTranslation as UseTranslation } from "react-i18next";
 import { EditSummary } from "../tool-invocation/edit-summary";
 import { ToolCallLite } from "./tool-call-lite";
 
 export function TaskRow({
   task,
-  isRead,
+  state,
 }: {
   task: Task;
-  isRead?: boolean;
+  state?: TaskState;
 }) {
   const { jwt } = usePochiCredentials();
-  const { t } = useTranslation();
 
   const title = useMemo(() => parseTitle(task.title), [task.title]);
 
@@ -38,7 +37,7 @@ export function TaskRow({
             <div className="flex items-center gap-2">
               <h3 className="line-clamp-2 flex flex-1 items-center font-medium text-foreground leading-relaxed transition-colors duration-200 group-hover:text-foreground/80">
                 <span className="truncate">{title}</span>
-                {isRead ? null : (
+                {state?.unread && (
                   <div className="ml-2 h-2 w-2 shrink-0 rounded-full bg-primary" />
                 )}
               </h3>
@@ -59,12 +58,12 @@ export function TaskRow({
                     />
                   )}
                 </div>
-                {task.pendingToolCalls?.length ? (
+                {state?.running && task.pendingToolCalls?.length ? (
                   <ToolCallLite
                     tools={task.pendingToolCalls as Array<ToolUIPart<UITools>>}
                   />
                 ) : (
-                  <TaskStatusView task={task} t={t} />
+                  <TaskStatusView task={task} state={state} />
                 )}
               </div>
             </div>
@@ -122,19 +121,26 @@ function GitBadge({
 
 function TaskStatusView({
   task,
-  t,
+  state,
 }: {
   task: Task;
-  t: ReturnType<typeof UseTranslation>["t"];
+  state?: TaskState;
 }) {
+  const { t } = useTranslation();
   switch (task.status) {
     case "pending-input":
     case "pending-model":
     case "pending-tool": {
       return (
         <span className="flex items-center gap-2">
-          <Loader2 className="size-3.5 shrink-0 animate-spin" />
-          <span>{t("tasksPage.taskStatus.planning")}</span>
+          {state?.running && (
+            <Loader2 className="size-3.5 shrink-0 animate-spin" />
+          )}
+          <span>
+            {state?.running
+              ? t("tasksPage.taskStatus.planning")
+              : t("tasksPage.taskStatus.paused")}
+          </span>
         </span>
       );
     }

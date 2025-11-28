@@ -1,7 +1,8 @@
-import { taskUpdated } from "@/lib/task-events";
+import { taskRunning, taskUpdated } from "@/lib/task-events";
 import { getLogger } from "@getpochi/common";
 import type { TaskStates } from "@getpochi/common/vscode-webui-bridge";
 import { signal } from "@preact/signals-core";
+import * as R from "remeda";
 import { injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
 import { PochiTaskEditorProvider } from "../webview/webview-panel";
@@ -30,84 +31,81 @@ export class PochiTaskState implements vscode.Disposable {
 
     // Set up task update detection
     this.disposables.push(taskUpdated.event(this.onTaskUpdated));
+    this.disposables.push(taskRunning.event(this.onTaskRunning));
   }
 
   private onTabChanged = () => {
     const tabGroups = vscode.window.tabGroups.all;
-    const activeTaskUids = new Set<string>();
-    const newState = { ...this.state.value };
-    let hasChanges = false;
+    const newState: TaskStates = {};
 
     for (const group of tabGroups) {
-      const tab = group.activeTab;
-      if (
-        tab &&
-        tab.input instanceof vscode.TabInputCustom &&
-        tab.input.uri.scheme === PochiTaskEditorProvider.scheme
-      ) {
-        const params = PochiTaskEditorProvider.parseTaskUri(tab.input.uri);
-        if (params) {
-          activeTaskUids.add(params.uid);
-          if (!newState[params.uid]) {
-            newState[params.uid] = {};
-            hasChanges = true;
-          }
+      for (const tab of group.tabs) {
+        const uid = getTaskUid(tab);
+        if (!uid) continue;
+        if (this.state.value[uid]) {
+          newState[uid] = this.state.value[uid];
+        } else {
+          newState[uid] = {};
         }
       }
-    }
 
-    for (const uid in newState) {
-      const isActive = activeTaskUids.has(uid);
-      const currentTaskState = newState[uid];
-
-      // If task becomes active, unread should be false.
-      const newUnread = isActive ? false : currentTaskState.unread;
-
-      if (
-        currentTaskState.active !== isActive ||
-        currentTaskState.unread !== newUnread
-      ) {
-        newState[uid] = {
-          ...currentTaskState,
-          active: isActive,
-          unread: newUnread,
-        };
-        hasChanges = true;
+      const activeUid = group.activeTab
+        ? getTaskUid(group.activeTab)
+        : undefined;
+      if (activeUid) {
+        newState[activeUid].active = true;
+        newState[activeUid].unread = false;
       }
     }
 
-    logger.trace("Updating task states.", {
-      oldState: this.state.value,
-      newState,
-    });
-
-    if (hasChanges) {
-      this.state.value = newState;
-    }
+    this.saveState(newState);
   };
 
   private onTaskUpdated = ({ event }: { event: unknown }) => {
     const taskData = event as {
       id: string;
-      parentId: string | null;
+      status?: string;
     };
-    const uid = taskData.parentId || taskData.id;
+    const uid = taskData.id;
 
     if (!uid) return;
 
-    const currentState = this.state.value[uid] || {};
-    const isUnread = !currentState.active;
+    const newState = R.clone(this.state.value);
+    const current = newState[uid] || {};
 
-    if (currentState.unread !== isUnread) {
-      this.state.value = {
-        ...this.state.value,
-        [uid]: {
-          ...currentState,
-          unread: isUnread,
-        },
-      };
+    // If status indicates the task is no longer running, clear the running flag
+    if (
+      taskData.status &&
+      !["pending-tool", "pending-model"].includes(taskData.status)
+    ) {
+      logger.trace(
+        `Task ${uid} is no longer running (status: ${taskData.status})`,
+      );
+      current.running = false;
     }
+
+    newState[uid] = current;
+    this.saveState(newState);
   };
+
+  private onTaskRunning = ({ taskId }: { taskId: string }) => {
+    const newState = R.clone(this.state.value);
+    const current = newState[taskId] || {};
+    logger.trace(`Task ${taskId} is now running`);
+    current.running = true;
+    newState[taskId] = current;
+    this.saveState(newState);
+  };
+
+  private saveState(newState: TaskStates) {
+    if (!R.isDeepEqual(this.state.value, newState)) {
+      logger.trace("Updating task states.", {
+        oldState: this.state.value,
+        newState,
+      });
+      this.state.value = newState;
+    }
+  }
 
   /**
    * Release all resources held by this class
@@ -118,6 +116,17 @@ export class PochiTaskState implements vscode.Disposable {
     }
     this.disposables = [];
   }
+}
+
+function getTaskUid(tab: vscode.Tab): string | undefined {
+  if (
+    tab.input instanceof vscode.TabInputCustom &&
+    tab.input.uri.scheme === PochiTaskEditorProvider.scheme
+  ) {
+    const params = PochiTaskEditorProvider.parseTaskUri(tab.input.uri);
+    return params?.uid;
+  }
+  return undefined;
 }
 
 function createTaskStates(): TaskStates {
