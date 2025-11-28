@@ -253,6 +253,8 @@ const VSCodeHostStub = {
 
   onTaskUpdated: async (): Promise<void> => {},
 
+  onTaskRunning: async (_taskId: string): Promise<void> => {},
+
   readWorktrees: async (): Promise<
     ThreadSignalSerialization<GitWorktree[]>
   > => {

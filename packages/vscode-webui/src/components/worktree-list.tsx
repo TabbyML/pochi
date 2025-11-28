@@ -357,11 +357,9 @@ function WorktreeSection({
         <ScrollArea viewportClassname="max-h-[230px] px-1 py-1">
           {group.tasks.length > 0 ? (
             group.tasks.map((task) => {
-              const isRead = !pochiTasks[task.id]?.unread;
-
               return (
                 <div key={task.id} className="py-0.5">
-                  <TaskRow task={task} isRead={isRead} />
+                  <TaskRow task={task} state={pochiTasks[task.id]} />
                 </div>
               );
             })

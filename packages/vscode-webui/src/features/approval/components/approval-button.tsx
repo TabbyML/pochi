@@ -16,6 +16,7 @@ interface ApprovalButtonProps {
 }
 
 export const ApprovalButton: React.FC<ApprovalButtonProps> = ({
+  task,
   allowAddToolResult,
   pendingApproval,
   retry,
@@ -42,6 +43,7 @@ export const ApprovalButton: React.FC<ApprovalButtonProps> = ({
         <RetryApprovalButton pendingApproval={pendingApproval} retry={retry} />
       ) : (
         <ToolCallApprovalButton
+          taskId={task?.id}
           pendingApproval={pendingApproval}
           isSubTask={isSubTask}
         />

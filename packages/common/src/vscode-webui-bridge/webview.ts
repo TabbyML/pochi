@@ -308,6 +308,8 @@ export interface VSCodeHostApi {
 
   onTaskUpdated(taskData: unknown): Promise<void>;
 
+  onTaskRunning(taskId: string): Promise<void>;
+
   readWorktrees(): Promise<ThreadSignalSerialization<GitWorktree[]>>;
 
   createWorktree(): Promise<GitWorktree | null>;

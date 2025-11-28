@@ -98,6 +98,7 @@ function createVSCodeHost(): VSCodeHostApi {
         "openTaskInPanel",
         "isTaskPanelVisible",
         "onTaskUpdated",
+        "onTaskRunning",
         "readWorktrees",
         "createWorktree",
         "readPochiTasks",

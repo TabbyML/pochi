@@ -18,7 +18,7 @@ import { getLogger } from "@/lib/logger";
 import { ModelList } from "@/lib/model-list";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { PostHog } from "@/lib/posthog";
-import { taskUpdated } from "@/lib/task-events";
+import { taskRunning, taskUpdated } from "@/lib/task-events";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { UserStorage } from "@/lib/user-storage";
 // biome-ignore lint/style/useImportType: needed for dependency injection
@@ -861,6 +861,10 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
 
   onTaskUpdated = async (taskData: unknown): Promise<void> => {
     taskUpdated.fire({ event: taskData });
+  };
+
+  onTaskRunning = async (taskId: string): Promise<void> => {
+    taskRunning.fire({ taskId });
   };
 
   readWorktrees = async (): Promise<

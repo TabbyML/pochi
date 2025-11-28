@@ -57,6 +57,7 @@ export interface TaskChangedFile {
 export interface TaskState {
   unread?: boolean;
   active?: boolean;
+  running?: boolean;
 }
 
 export type TaskStates = Record<string, TaskState>;
