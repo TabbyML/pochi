@@ -6,6 +6,7 @@ import { useModelList } from "@/lib/hooks/use-model-list";
 import { usePochiCredentials } from "@/lib/hooks/use-pochi-credentials";
 import { useUserStorage } from "@/lib/hooks/use-user-storage";
 import { encodeStoreId } from "@getpochi/common/store-id-utils";
+import type { Message } from "@getpochi/livekit";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { LiveStoreDefaultProvider } from "../livestore-default-provider";
@@ -23,6 +24,10 @@ const searchSchema = z.object({
   prompt: z.string().optional(),
   files: z.array(fileUIPartSchema).optional(),
   displayId: z.number().optional(),
+  initMessages: z
+    .string()
+    .optional()
+    .describe("JSON string containing an array of messages"),
 });
 
 export const Route = createFileRoute("/task")({
@@ -31,13 +36,23 @@ export const Route = createFileRoute("/task")({
 });
 
 function RouteComponent() {
-  const { uid, prompt, files, storeId, displayId } = Route.useSearch();
+  const { uid, prompt, files, storeId, displayId, initMessages } =
+    Route.useSearch();
   const uiFiles = files?.map((file) => ({
     type: "file" as const,
     filename: file.name,
     mediaType: file.contentType,
     url: file.url,
   }));
+
+  let parsedInitMessages: Message[] | undefined = undefined;
+  if (initMessages) {
+    try {
+      parsedInitMessages = JSON.parse(initMessages) as Message[];
+    } catch (e) {
+      // ignore json error
+    }
+  }
 
   const { users } = useUserStorage();
   const { modelList = [] } = useModelList(true);
@@ -61,6 +76,7 @@ function RouteComponent() {
         prompt={prompt}
         files={uiFiles}
         displayId={displayId}
+        initMessages={parsedInitMessages}
       />
     </LiveStoreDefaultProvider>
   );

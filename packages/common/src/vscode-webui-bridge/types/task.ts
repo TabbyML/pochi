@@ -11,6 +11,10 @@ export interface TaskIdParams {
   // for open task from website
   prompt?: string;
   files?: FileUIPart[];
+  /**
+   * JSON string representing an array of messages to init the task.
+   */
+  initMessages?: string;
 }
 
 export interface TaskPanelParams extends TaskIdParams {
