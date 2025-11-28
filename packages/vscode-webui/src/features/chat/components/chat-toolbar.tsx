@@ -225,7 +225,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
             {...useTaskChangedFilesHelpers}
             actionEnabled={diffSummaryActionEnabled}
             className={cn({
-              "border-border border-t": todos.length > 0,
+              "rounded-t-none border-border border-t": todos.length > 0,
             })}
           />
         </div>
