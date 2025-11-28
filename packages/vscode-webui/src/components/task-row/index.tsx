@@ -132,11 +132,11 @@ function TaskStatusView({
     case "pending-model":
     case "pending-tool": {
       return (
-        <span className="flex items-center gap-2">
+        <span className="flex items-center gap-2 overflow-x-hidden whitespace-nowrap">
           {state?.running && (
             <Loader2 className="size-3.5 shrink-0 animate-spin" />
           )}
-          <span>
+          <span className="truncate">
             {state?.running
               ? t("tasksPage.taskStatus.planning")
               : t("tasksPage.taskStatus.paused")}
@@ -146,7 +146,7 @@ function TaskStatusView({
     }
     case "failed":
       return (
-        <span className="flex flex-nowrap items-center gap-1 truncate whitespace-nowrap">
+        <span className="flex flex-nowrap items-center gap-1 overflow-x-hidden truncate whitespace-nowrap">
           {task.error?.message ? (
             <>
               <span>{t("tasksPage.taskStatus.errorPrefix")}</span>
@@ -160,7 +160,7 @@ function TaskStatusView({
     default: {
       const duration = formatDuration(task);
       return (
-        <span className="whitespace-nowrap">
+        <span className="overflow-x-hidden truncate whitespace-nowrap">
           {t("tasksPage.taskStatus.finished", { duration })}
         </span>
       );
