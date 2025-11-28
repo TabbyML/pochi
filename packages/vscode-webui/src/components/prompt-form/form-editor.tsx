@@ -181,7 +181,7 @@ export function FormEditor({
 
               return fuzzySearchFiles(query, {
                 files: data.files,
-                activeTabs: activeTabsRef.current,
+                activeTabs: getActiveTabsInCwd(activeTabsRef.current),
               });
             },
             render: () => {
@@ -198,7 +198,7 @@ export function FormEditor({
 
                 return fuzzySearchFiles(query, {
                   files: data.files,
-                  activeTabs: activeTabsRef.current,
+                  activeTabs: getActiveTabsInCwd(activeTabsRef.current),
                 });
               };
 
@@ -681,3 +681,12 @@ export const debouncedListSlashCommand = debounceWithCachedValue(
     leading: true,
   },
 );
+
+const getActiveTabsInCwd = (
+  activeTabs: {
+    filepath: string;
+    isDir: boolean;
+  }[],
+) => {
+  return activeTabs.filter((x) => !x.filepath.startsWith("../"));
+};
