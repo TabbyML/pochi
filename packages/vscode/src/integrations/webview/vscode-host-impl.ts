@@ -18,6 +18,7 @@ import { getLogger } from "@/lib/logger";
 import { ModelList } from "@/lib/model-list";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { PostHog } from "@/lib/posthog";
+import { taskUpdated } from "@/lib/task-events";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { UserStorage } from "@/lib/user-storage";
 // biome-ignore lint/style/useImportType: needed for dependency injection
@@ -62,6 +63,7 @@ import type {
   SessionState,
   TaskChangedFile,
   TaskPanelParams,
+  TaskStates,
   VSCodeHostApi,
   WorkspaceState,
 } from "@getpochi/common/vscode-webui-bridge";
@@ -92,6 +94,8 @@ import type { GitDiff } from "../checkpoint/types";
 import { PochiConfiguration } from "../configuration";
 import { DiffChangesContentProvider } from "../editor/diff-changes-content-provider";
 // biome-ignore lint/style/useImportType: needed for dependency injection
+import { PochiTaskState } from "../editor/pochi-task-state";
+// biome-ignore lint/style/useImportType: needed for dependency injection
 import { type FileSelection, TabState } from "../editor/tab-state";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { WorktreeManager } from "../git/worktree";
@@ -104,7 +108,6 @@ import {
 } from "../terminal-link-provider/url-utils";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { TerminalState } from "../terminal/terminal-state";
-import { taskUpdated } from "./base";
 import { PochiTaskEditorProvider } from "./webview-panel";
 
 const logger = getLogger("VSCodeHostImpl");
@@ -131,6 +134,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     private readonly checkpointService: CheckpointService,
     private readonly customAgentManager: CustomAgentManager,
     private readonly worktreeManager: WorktreeManager,
+    private readonly pochiTaskState: PochiTaskState,
   ) {}
 
   private get cwd() {
@@ -275,6 +279,10 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         })),
       ),
     );
+  };
+
+  readPochiTasks = async (): Promise<ThreadSignalSerialization<TaskStates>> => {
+    return ThreadSignal.serialize(this.pochiTaskState.state);
   };
 
   readActiveSelection = async (): Promise<

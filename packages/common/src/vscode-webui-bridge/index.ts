@@ -22,6 +22,8 @@ export type {
   TaskData,
   TaskChangedFile,
   ChangedFileContent,
+  TaskState,
+  TaskStates,
 } from "./types/task";
 export type {
   VSCodeLmModel,
