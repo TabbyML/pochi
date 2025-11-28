@@ -43,7 +43,7 @@ export class PochiTaskState implements vscode.Disposable {
         const uid = getTaskUid(tab);
         if (!uid) continue;
         if (this.state.value[uid]) {
-          newState[uid] = this.state.value[uid];
+          newState[uid] = { ...this.state.value[uid], active: false };
         } else {
           newState[uid] = {};
         }
