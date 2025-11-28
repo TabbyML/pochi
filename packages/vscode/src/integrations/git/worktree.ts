@@ -17,6 +17,7 @@ const logger = getLogger("WorktreeManager");
 @singleton()
 @injectable()
 export class WorktreeManager implements vscode.Disposable {
+  private maxWorktrees = 10;
   private readonly disposables: vscode.Disposable[] = [];
   worktrees = signal<GitWorktree[]>([]);
 
@@ -93,6 +94,14 @@ export class WorktreeManager implements vscode.Disposable {
       return null;
     }
     const worktrees = await this.getWorktrees();
+
+    if (worktrees.length >= this.maxWorktrees) {
+      vscode.window.showErrorMessage(
+        `Cannot create more than ${this.maxWorktrees} worktrees.`,
+      );
+      return null;
+    }
+
     await vscode.commands.executeCommand("git.createWorktree");
 
     // Get worktrees again to find the new one

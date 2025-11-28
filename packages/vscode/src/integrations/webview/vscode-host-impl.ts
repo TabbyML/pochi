@@ -54,6 +54,7 @@ import { getVendor } from "@getpochi/common/vendor";
 import type {
   CaptureEvent,
   CustomAgentFile,
+  DiffCheckpointOptions,
   DisplayModel,
   GitWorktree,
   PochiCredentials,
@@ -700,12 +701,17 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
 
   diffWithCheckpoint = runExclusive.build(
     this.checkpointGroup,
-    async (fromCheckpoint: string, files?: string[]) => {
+    async (
+      fromCheckpoint: string,
+      files?: string[],
+      options?: DiffCheckpointOptions,
+    ) => {
       try {
         // Get changes using existing method
         const changes = await this.checkpointService.getCheckpointFileEdits(
           fromCheckpoint,
           files,
+          options,
         );
         if (!changes || changes.length === 0) {
           return null;
@@ -766,13 +772,13 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
 
   showChangedFiles = runExclusive.build(
     this.checkpointGroup,
-    async (files: TaskChangedFile[]) => {
+    async (files: TaskChangedFile[], title: string) => {
       const changes =
         await this.checkpointService.getChangedFilesChanges(files);
       if (!this.cwd) {
         return false;
       }
-      return await showDiff(changes, "Changed Files", this.cwd);
+      return await showDiff(changes, title, this.cwd);
     },
   );
 

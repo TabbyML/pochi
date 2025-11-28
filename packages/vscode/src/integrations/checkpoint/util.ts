@@ -1,4 +1,7 @@
-import type { FileDiff } from "@getpochi/common/vscode-webui-bridge";
+import type {
+  DiffCheckpointOptions,
+  FileDiff,
+} from "@getpochi/common/vscode-webui-bridge";
 import { diffLines } from "diff";
 import { isNonNullish } from "remeda";
 import type { GitDiff } from "./types";
@@ -23,7 +26,7 @@ interface DiffResult {
 }
 
 /**
- * Generates inline diff content based on original file with diff blocks
+ * Generates diff content based on original file with diff blocks
  *
  * This creates a unified view showing the complete file content with inline
  * diff markers (+ for additions, - for deletions, unchanged lines as-is).
@@ -33,9 +36,10 @@ interface DiffResult {
  * @param after - Modified file content
  * @returns Formatted diff string with inline markers
  */
-export function generateInlineDiffContent(
+export function generateDiffContent(
   before: string,
   after: string,
+  inlineDiff?: boolean,
 ): DiffResult {
   const diffResult = diffLines(before, after);
   const inlineContent = [];
@@ -52,13 +56,19 @@ export function generateInlineDiffContent(
     for (const line of lines) {
       if (part.added) {
         added++;
-        inlineContent.push(`+ ${line}`);
+        if (inlineDiff) {
+          inlineContent.push(`+ ${line}`);
+        }
       } else if (part.removed) {
         removed++;
-        inlineContent.push(`- ${line}`);
+        if (inlineDiff) {
+          inlineContent.push(`- ${line}`);
+        }
       } else {
-        // Unchanged line
-        inlineContent.push(line);
+        if (inlineDiff) {
+          // Unchanged line
+          inlineContent.push(line);
+        }
       }
     }
   }
@@ -76,12 +86,12 @@ export function generateInlineDiffContent(
  * @param maxSizeLimit - Maximum allowed size for diff content in bytes (default 8KB)
  * @returns Array of FileDiff objects, or null if no valid changes
  */
-export function processGitChangesToUserEdits(
+export function processGitChangesToFileEdits(
   changes: GitDiff[],
-  maxSizeLimit = 8 * 1024,
+  options?: DiffCheckpointOptions,
 ): Array<FileDiff> | null {
   // Filter out binary files and files that exceed size limits
-  const filteredChanges = filterGitChanges(changes, maxSizeLimit);
+  const filteredChanges = filterGitChanges(changes, options?.maxSizeLimit);
 
   if (filteredChanges.length === 0) {
     return null;
@@ -94,9 +104,10 @@ export function processGitChangesToUserEdits(
         return undefined;
       }
 
-      const diff = generateInlineDiffContent(
+      const diff = generateDiffContent(
         change.before ?? "",
         change.after ?? "",
+        options?.inlineDiff,
       );
       return {
         filepath: change.filepath,
@@ -121,7 +132,7 @@ export function processGitChangesToUserEdits(
  */
 export function filterGitChanges(
   changes: GitDiff[],
-  maxSizeLimit = 8 * 1024,
+  maxSizeLimit?: number,
 ): GitDiff[] {
   const nullbyte = "\u0000";
 
@@ -129,9 +140,13 @@ export function filterGitChanges(
     const isBinary =
       (change.before ?? "").includes(nullbyte) ||
       (change.after ?? "").includes(nullbyte);
-    const isTooLarge =
-      Buffer.byteLength(change.before ?? "", "utf8") > maxSizeLimit ||
-      Buffer.byteLength(change.after ?? "", "utf8") > maxSizeLimit;
+
+    let isTooLarge = false;
+    if (maxSizeLimit) {
+      isTooLarge =
+        Buffer.byteLength(change.before ?? "", "utf8") > maxSizeLimit ||
+        Buffer.byteLength(change.after ?? "", "utf8") > maxSizeLimit;
+    }
     return !isBinary && !isTooLarge;
   });
 }

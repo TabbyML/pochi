@@ -5,6 +5,7 @@ import * as path from "node:path";
 import { WorkspaceScope } from "@/lib/workspace-scoped";
 import { getLogger, toErrorMessage } from "@getpochi/common";
 import type {
+  DiffCheckpointOptions,
   FileDiff,
   SaveCheckpointOptions,
   TaskChangedFile,
@@ -16,7 +17,7 @@ import type { GitDiff } from "./types";
 import {
   Deferred,
   filterGitChanges,
-  processGitChangesToUserEdits,
+  processGitChangesToFileEdits,
 } from "./util";
 
 const logger = getLogger("CheckpointService");
@@ -179,7 +180,7 @@ export class CheckpointService implements vscode.Disposable {
     }
     try {
       const changes = await this.shadowGit.getDiff(from, to);
-      return filterGitChanges(changes, 48 * 1024); // 48 KB
+      return filterGitChanges(changes);
     } catch (error) {
       const errorMessage = toErrorMessage(error);
       logger.error(
@@ -193,6 +194,7 @@ export class CheckpointService implements vscode.Disposable {
   getCheckpointFileEdits = async (
     from: string,
     files?: string[],
+    options?: DiffCheckpointOptions,
   ): Promise<FileDiff[] | null> => {
     await this.ensureInitialized();
     if (!this.shadowGit) {
@@ -201,7 +203,7 @@ export class CheckpointService implements vscode.Disposable {
     try {
       await this.shadowGit.stageAll(); // Ensure all changes are staged, including untracked files
       const changes = await this.shadowGit.getDiff(from, undefined, files);
-      const result = processGitChangesToUserEdits(changes);
+      const result = processGitChangesToFileEdits(changes, options);
       logger.debug(
         `Git diff for commit hash ${from} for files: ${files ?? "all"} ${JSON.stringify(changes)} ${JSON.stringify(result)}`,
       );
@@ -252,7 +254,7 @@ export class CheckpointService implements vscode.Disposable {
         ];
       }
 
-      const diff = processGitChangesToUserEdits(changes);
+      const diff = processGitChangesToFileEdits(changes);
 
       logger.debug(
         `update diff for changed file: ${JSON.stringify(diff)} state=${file.state}`,
