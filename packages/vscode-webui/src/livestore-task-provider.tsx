@@ -13,10 +13,10 @@ const adapter = makePersistedAdapter({
 });
 
 export function LiveStoreTaskProvider({
-  cwd,
+  // cwd,
   children,
 }: { children: React.ReactNode; cwd: string }) {
-  const storeId = sanitizeStoreId(isDev ? `dev-tasks-${cwd}` : `tasks-${cwd}`);
+  const storeId = sanitizeStoreId(isDev ? "tasks" : "tasks");
   return (
     <LiveStoreProvider
       storeId={storeId}
