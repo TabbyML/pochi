@@ -9,7 +9,7 @@ import { Schema } from "@livestore/utils/effect";
 import { ThreadNestedWindow } from "@quilted/threads";
 import Emittery from "emittery";
 import type { WebviewApi } from "vscode-webview";
-import { useTaskReadStatusStore } from "./hooks/use-task-read-status-store";
+
 import { queryClient } from "./query-client";
 
 const logger = getLogger("vscode");
@@ -143,11 +143,6 @@ function createVSCodeHost(): VSCodeHostApi {
             taskCatalog.events.tastUpdated.schema,
           )(inputArgs);
           store?.commit(taskCatalog.events.tastUpdated(args));
-        },
-
-        async setTaskRead(taskId, read) {
-          if (globalThis.POCHI_WEBVIEW_KIND === "pane") return;
-          useTaskReadStatusStore.getState().setTaskReadStatus(taskId, read);
         },
 
         onFileChanged(filePath: string, content: string) {

@@ -53,3 +53,11 @@ export interface TaskChangedFile {
   deleted?: boolean;
   state: "accepted" | "reverted" | "pending" | "userEdited";
 }
+
+export interface TaskState {
+  unread?: boolean;
+  running?: boolean;
+  active?: boolean;
+}
+
+export type TaskStates = Record<string, TaskState>;

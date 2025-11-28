@@ -14,6 +14,7 @@ import type {
   RuleFile,
   SessionState,
   TaskChangedFile,
+  TaskStates,
   VSCodeHostApi,
   WorkspaceState,
 } from "./index";
@@ -106,6 +107,9 @@ const VSCodeHostStub = {
         Array<{ filepath: string; isDir: boolean }>
       >,
     );
+  },
+  readPochiTasks: (): Promise<ThreadSignalSerialization<TaskStates>> => {
+    return Promise.resolve({} as ThreadSignalSerialization<TaskStates>);
   },
   readActiveSelection: (): Promise<
     ThreadSignalSerialization<

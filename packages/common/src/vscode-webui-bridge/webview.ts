@@ -17,6 +17,7 @@ import type {
   TaskChangedFile,
   TaskIdParams,
   TaskPanelParams,
+  TaskStates,
   WorkspaceState,
 } from "./index";
 import type { DisplayModel } from "./types/model";
@@ -121,6 +122,8 @@ export interface VSCodeHostApi {
   readActiveTabs(): Promise<
     ThreadSignalSerialization<Array<{ filepath: string; isDir: boolean }>>
   >;
+
+  readPochiTasks(): Promise<ThreadSignalSerialization<TaskStates>>;
 
   readActiveSelection(): Promise<
     ThreadSignalSerialization<
@@ -323,8 +326,6 @@ export interface WebviewHostApi {
   isFocused(): Promise<boolean>;
 
   commitTaskUpdated(event: unknown): Promise<void>;
-
-  setTaskRead(taskId: string | string[], read: boolean): Promise<void>;
 
   onFileChanged(filePath: string, content: string): void;
 }

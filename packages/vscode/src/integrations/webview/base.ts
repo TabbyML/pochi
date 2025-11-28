@@ -328,7 +328,6 @@ export abstract class WebviewBase implements vscode.Disposable {
           "onAuthChanged",
           "isFocused",
           "commitTaskUpdated",
-          "setTaskRead",
           "onFileChanged",
         ],
       },
@@ -397,5 +396,3 @@ export abstract class WebviewBase implements vscode.Disposable {
     this.disposables.length = 0;
   }
 }
-
-export const taskUpdated = new vscode.EventEmitter<{ event: unknown }>();

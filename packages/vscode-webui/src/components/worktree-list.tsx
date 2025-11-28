@@ -14,7 +14,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { useTaskReadStatusStore } from "@/lib/hooks/use-task-read-status-store";
+import { usePochiTasks } from "@/lib/hooks/use-pochi-tasks";
 import { useWorktrees } from "@/lib/hooks/use-worktrees";
 import { cn } from "@/lib/utils";
 import { getWorktreeNameFromWorktreePath } from "@getpochi/common/git-utils";
@@ -186,7 +186,7 @@ function WorktreeSection({
   const [isExpanded, setIsExpanded] = useState(!group.isDeleted);
   const [isHovered, setIsHovered] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const unreadTaskIds = useTaskReadStatusStore((state) => state.unreadTaskIds);
+  const pochiTasks = usePochiTasks();
 
   return (
     <Collapsible
@@ -357,7 +357,7 @@ function WorktreeSection({
         <ScrollArea viewportClassname="max-h-[230px] px-1 py-1">
           {group.tasks.length > 0 ? (
             group.tasks.map((task) => {
-              const isRead = !unreadTaskIds.has(task.id);
+              const isRead = !pochiTasks[task.id]?.unread;
 
               return (
                 <div key={task.id} className="py-0.5">

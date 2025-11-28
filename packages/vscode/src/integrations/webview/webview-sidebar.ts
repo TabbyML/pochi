@@ -1,5 +1,6 @@
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { AuthEvents } from "@/lib/auth-events";
+import { taskUpdated } from "@/lib/task-events";
 import type {
   ResourceURI,
   VSCodeHostApi,
@@ -9,10 +10,9 @@ import { inject, injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { PochiConfiguration } from "../configuration";
-import { WebviewBase, taskUpdated } from "./base";
+import { WebviewBase } from "./base";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { VSCodeHostImpl } from "./vscode-host-impl";
-import { PochiTaskEditorProvider } from "./webview-panel";
 
 /**
  * This class manages the Pochi webview that appears in the VS Code sidebar.
@@ -105,30 +105,10 @@ export class PochiWebviewSidebar
         this.webviewHostReady.fire(this.webviewHost);
       }
 
-      const { commitTaskUpdated, setTaskRead } = thread.imports;
+      const { commitTaskUpdated } = thread.imports;
 
       this.disposables.push(
         taskUpdated.event(({ event }) => commitTaskUpdated(event)),
-
-        taskUpdated.event(({ event }) => {
-          const taskData = event as unknown as {
-            id: string;
-            parentId: string | null;
-            cwd: string | null;
-          };
-          const uid = taskData?.parentId || taskData?.id;
-          return setTaskRead(uid, isTaskPanelVisible(taskData));
-        }),
-      );
-
-      this.disposables.push(
-        vscode.window.tabGroups.onDidChangeTabs(() => {
-          const visibleTabs = listVisibleTaskPanelTabs();
-          setTaskRead(
-            visibleTabs.map((x) => x.uid),
-            true,
-          );
-        }),
       );
     });
   }
@@ -137,44 +117,4 @@ export class PochiWebviewSidebar
     super.dispose();
     this.webviewHostReady.dispose();
   }
-}
-
-function listVisibleTaskPanelTabs(): {
-  uid: string;
-  cwd: string;
-}[] {
-  const tabGroups = vscode.window.tabGroups.all;
-  const activeTaskPanelTab: {
-    uid: string;
-    cwd: string;
-  }[] = [];
-  for (const group of tabGroups) {
-    const tab = group.activeTab;
-    if (
-      tab &&
-      tab.input instanceof vscode.TabInputCustom &&
-      tab.input.viewType === PochiTaskEditorProvider.viewType
-    ) {
-      try {
-        const query: {
-          uid: string;
-          cwd: string;
-        } = JSON.parse(tab.input.uri.query);
-        activeTaskPanelTab.push(query);
-      } catch (e) {
-        // ignore
-      }
-    }
-  }
-  return activeTaskPanelTab;
-}
-
-function isTaskPanelVisible({
-  parentId,
-  id,
-  cwd,
-}: { parentId: string | null; id: string; cwd: string | null }) {
-  const uid = parentId || id;
-  const tabs = listVisibleTaskPanelTabs();
-  return tabs.findIndex((x) => x.uid === uid && x.cwd === cwd) > -1;
 }
