@@ -1,10 +1,10 @@
 import { taskUpdated } from "@/lib/task-events";
+import { getLogger } from "@getpochi/common";
 import type { TaskStates } from "@getpochi/common/vscode-webui-bridge";
 import { signal } from "@preact/signals-core";
 import { injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
 import { PochiTaskEditorProvider } from "../webview/webview-panel";
-import { getLogger } from "@getpochi/common";
 
 const logger = getLogger("PochiTaskState");
 
