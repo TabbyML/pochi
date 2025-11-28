@@ -32,7 +32,11 @@ export class GitStateMonitor implements vscode.Disposable {
 
   private gitExtension: GitExtension | undefined;
   private gitAPI: API | undefined;
-  private repositories = new Map<string, GitRepositoryState>();
+  private repositoryState = new Map<string, GitRepositoryState>();
+
+  get repositories(): string[] {
+    return Array.from(this.repositoryState.keys());
+  }
 
   readonly #onDidChangeGitState =
     new vscode.EventEmitter<GitStateChangeEvent>();
@@ -148,7 +152,7 @@ export class GitStateMonitor implements vscode.Disposable {
       }
 
       // Remove repository state
-      this.repositories.delete(repoKey);
+      this.repositoryState.delete(repoKey);
     } catch (error) {
       logger.debug("Failed to handle repository closed event:", error);
     }
@@ -159,10 +163,10 @@ export class GitStateMonitor implements vscode.Disposable {
   ): Promise<void> {
     try {
       const repoKey = repository.rootUri.toString();
-      const previousState = this.repositories.get(repoKey);
+      const previousState = this.repositoryState.get(repoKey);
       const currentState = this.buildRepositoryState(repository);
 
-      this.repositories.set(repoKey, currentState);
+      this.repositoryState.set(repoKey, currentState);
 
       if (
         previousState &&
@@ -208,7 +212,7 @@ export class GitStateMonitor implements vscode.Disposable {
     for (const disposable of this.disposables) {
       disposable.dispose();
     }
-    this.repositories.clear();
+    this.repositoryState.clear();
 
     logger.debug("Git state monitor disposed");
   }

@@ -14,10 +14,12 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useCurrentWorkspace } from "@/lib/hooks/use-current-workspace";
 import { usePochiTasks } from "@/lib/hooks/use-pochi-tasks";
 import { useWorktrees } from "@/lib/hooks/use-worktrees";
 import { cn } from "@/lib/utils";
 import { getWorktreeNameFromWorktreePath } from "@getpochi/common/git-utils";
+import type { GitWorktree } from "@getpochi/common/vscode-webui-bridge";
 import type { Task } from "@getpochi/livekit";
 import {
   ChevronDown,
@@ -47,13 +49,30 @@ export function WorktreeList({
   tasks: Task[];
 }) {
   const { t } = useTranslation();
-  const { data: worktrees } = useWorktrees();
+  const { data: currentWorkspace, isLoading: isLoadingCurrentWorkspace } =
+    useCurrentWorkspace();
+  const { data: worktrees, isLoading: isLoadingWorktrees } = useWorktrees();
   const [showDeleted, setShowDeleted] = useState(false);
 
   const groups = useMemo(() => {
-    const worktreeMap = new Map(worktrees?.map((wt) => [wt.path, wt]));
+    if (isLoadingWorktrees || isLoadingCurrentWorkspace) {
+      return [];
+    }
+
+    const defaultWorktree: GitWorktree = {
+      commit: "",
+      path: currentWorkspace?.workspaceFolder ?? "",
+      isMain: true,
+    };
+
+    const allWorktrees =
+      worktrees === undefined || worktrees.length === 0
+        ? [defaultWorktree]
+        : worktrees;
+
+    const worktreeMap = new Map(allWorktrees.map((wt) => [wt.path, wt]));
     const worktreeIndexMap = new Map(
-      worktrees?.map((wt, index) => [wt.path, index]),
+      allWorktrees.map((wt, index) => [wt.path, index]),
     );
 
     // 1. Group tasks by cwd (worktree path)
@@ -77,7 +96,7 @@ export function WorktreeList({
 
     // 2. Create groups for worktrees without tasks
     const worktreeGroups = R.pipe(
-      worktrees || [],
+      allWorktrees,
       R.filter((wt) => !taskGroups[wt.path]),
       R.map((wt) => ({
         path: wt.path,
@@ -134,7 +153,13 @@ export function WorktreeList({
         return a.name.localeCompare(b.name);
       }),
     );
-  }, [tasks, worktrees]);
+  }, [
+    tasks,
+    worktrees,
+    isLoadingWorktrees,
+    isLoadingCurrentWorkspace,
+    currentWorkspace,
+  ]);
 
   const activeGroups = groups.filter((g) => !g.isDeleted);
   const deletedGroups = groups.filter((g) => g.isDeleted);
