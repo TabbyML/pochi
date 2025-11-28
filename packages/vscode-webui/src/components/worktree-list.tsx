@@ -190,7 +190,7 @@ function WorktreeSection({
     <Collapsible
       open={isExpanded}
       onOpenChange={setIsExpanded}
-      className="mb-2"
+      className="mb-3"
     >
       <div
         className="group flex h-6 items-center gap-2 px-1"
