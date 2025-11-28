@@ -56,7 +56,6 @@ export interface TaskChangedFile {
 
 export interface TaskState {
   unread?: boolean;
-  running?: boolean;
   active?: boolean;
 }
 
