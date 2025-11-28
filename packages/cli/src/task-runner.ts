@@ -182,7 +182,7 @@ export class TaskRunner {
           parts: options.parts,
         });
       } else {
-        this.chatKit.init(options.cwd, options.parts);
+        this.chatKit.init(options.cwd, { parts: options.parts });
       }
     }
 

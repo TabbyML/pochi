@@ -67,9 +67,10 @@ interface ChatProps {
   user?: UserInfo;
   prompt?: string;
   files?: FileUIPart[];
+  initMessages?: Message[];
 }
 
-function Chat({ user, uid, prompt, files }: ChatProps) {
+function Chat({ user, uid, prompt, files, initMessages }: ChatProps) {
   const { t } = useTranslation();
   const { store } = useStore();
   const todosRef = useRef<Todo[] | undefined>(undefined);
@@ -299,19 +300,30 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
 
   useEffect(() => {
     if (
-      (prompt || !!files?.length) &&
+      (initMessages || prompt || !!files?.length) &&
       !chatKit.inited &&
       !isFetchingWorkspace
     ) {
-      let partsOrString: Message["parts"] | string;
-      if (files?.length) {
-        partsOrString = prepareMessageParts(t, prompt || "", files);
+      const cwd = currentWorkspace?.cwd ?? undefined;
+      if (initMessages) {
+        chatKit.init(cwd, { messages: initMessages });
+      } else if (files?.length) {
+        chatKit.init(cwd, {
+          parts: prepareMessageParts(t, prompt || "", files),
+        });
       } else {
-        partsOrString = prompt || "";
+        chatKit.init(cwd, { prompt: prompt || "" });
       }
-      chatKit.init(currentWorkspace?.cwd ?? undefined, partsOrString);
     }
-  }, [currentWorkspace, isFetchingWorkspace, prompt, chatKit, files, t]);
+  }, [
+    currentWorkspace,
+    isFetchingWorkspace,
+    prompt,
+    chatKit,
+    files,
+    t,
+    initMessages,
+  ]);
 
   useSetSubtaskModel({ isSubTask, customAgent });
 
@@ -373,7 +385,7 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
             chat={chat}
             task={task}
             todosRef={todosRef}
-            compact={chatKit.spawn}
+            compact={chatKit.compact}
             approvalAndRetry={approvalAndRetry}
             attachmentUpload={attachmentUpload}
             isSubTask={isSubTask}
