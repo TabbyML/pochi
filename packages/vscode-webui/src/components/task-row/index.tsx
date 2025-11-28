@@ -113,7 +113,7 @@ function GitBadge({
   if (!git?.origin || !git?.branch) return null;
 
   return (
-    <div className="inline-flex items-center gap-1 text-muted-foreground/80 text-sm">
+    <div className="flex min-w-0 items-center gap-1 text-muted-foreground/80 text-sm">
       <GitBranch className="size-3 shrink-0" />
       <span className="truncate">{git.branch}</span>
     </div>
