@@ -4,6 +4,9 @@ import { signal } from "@preact/signals-core";
 import { injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
 import { PochiTaskEditorProvider } from "../webview/webview-panel";
+import { getLogger } from "@getpochi/common";
+
+const logger = getLogger("PochiTaskState");
 
 @injectable()
 @singleton()
@@ -32,6 +35,8 @@ export class PochiTaskState implements vscode.Disposable {
   private onTabChanged = () => {
     const tabGroups = vscode.window.tabGroups.all;
     const activeTaskUids = new Set<string>();
+    const newState = { ...this.state.value };
+    let hasChanges = false;
 
     for (const group of tabGroups) {
       const tab = group.activeTab;
@@ -43,12 +48,13 @@ export class PochiTaskState implements vscode.Disposable {
         const params = PochiTaskEditorProvider.parseTaskUri(tab.input.uri);
         if (params) {
           activeTaskUids.add(params.uid);
+          if (!newState[params.uid]) {
+            newState[params.uid] = {};
+            hasChanges = true;
+          }
         }
       }
     }
-
-    const newState = { ...this.state.value };
-    let hasChanges = false;
 
     for (const uid in newState) {
       const isActive = activeTaskUids.has(uid);
@@ -69,6 +75,11 @@ export class PochiTaskState implements vscode.Disposable {
         hasChanges = true;
       }
     }
+
+    logger.trace("Updating task states.", {
+      oldState: this.state.value,
+      newState,
+    });
 
     if (hasChanges) {
       this.state.value = newState;
