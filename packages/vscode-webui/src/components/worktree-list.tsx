@@ -174,6 +174,8 @@ export function WorktreeList({
   );
 }
 
+const WorktreePrefix = "⎇";
+
 function WorktreeSection({
   group,
 }: {
@@ -208,12 +210,16 @@ function WorktreeSection({
               ) : (
                 <ChevronRight className="size-4" />
               )}
-              <span>{group.name}</span>
+              <span>
+                {WorktreePrefix} {group.name}
+              </span>
             </div>
           </CollapsibleTrigger>
         ) : (
           <div className="flex items-center truncate font-bold">
-            <span>{group.name}</span>
+            <span>
+              {WorktreePrefix} {group.name}
+            </span>
           </div>
         )}
 
