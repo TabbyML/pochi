@@ -5,6 +5,7 @@ import { readFileContent } from "@/lib/fs";
 import { getLogger } from "@/lib/logger";
 import { toErrorMessage } from "@getpochi/common";
 import { getWorktreeNameFromWorktreePath } from "@getpochi/common/git-utils";
+import { isPlainTextFile } from "@getpochi/common/tool-utils";
 import type { GitWorktree } from "@getpochi/common/vscode-webui-bridge";
 import { signal } from "@preact/signals-core";
 import simpleGit from "simple-git";
@@ -153,10 +154,17 @@ export class WorktreeManager implements vscode.Disposable {
 
   async getWorktrees(): Promise<GitWorktree[]> {
     try {
+      const vscodeRepos = this.gitStateMonitor.repositories.map(
+        (uri) => vscode.Uri.parse(uri).fsPath,
+      );
       const result = await this.git.raw(["worktree", "list", "--porcelain"]);
-      return this.parseWorktreePorcelain(result).filter(
+      const worktrees = this.parseWorktreePorcelain(result).filter(
         (wt) => wt.prunable === undefined,
       );
+      // keep the worktree order and number same as vscode
+      return vscodeRepos
+        .map((repoPath) => worktrees.find((wt) => wt.path === repoPath))
+        .filter((wt): wt is GitWorktree => wt !== undefined);
     } catch (error) {
       logger.error(`Failed to get worktrees: ${toErrorMessage(error)}`);
       return [];
@@ -302,9 +310,12 @@ async function showWorktreeDiff(
       const fsPath = path.join(cwd, filepath);
       let beforeContent = "";
       let afterContent = "";
+      const isPlainText = await isPlainTextFile(fsPath);
+      if (!isPlainText) {
+        continue;
+      }
       if (status === "A") {
-        const fileContent = await readFileContent(fsPath);
-        afterContent = fileContent ?? "";
+        afterContent = (await readFileContent(fsPath)) ?? "";
       } else if (status === "D") {
         beforeContent = await git.raw(["show", `${base}:${filepath}`]);
       } else {
