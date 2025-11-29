@@ -2254,7 +2254,7 @@ URL: /developer-updates/2025-11-28-weekly-update-12
 This weeks update is packed with improvements to task visibility, worktree workflows, and NES accuracy. We also made foundational changes to how tasks are stored, which sets us up for upcoming GitHub and multi-worktree features.
 
 <Callout type="info" title="Breaking Change: Task list reset in v0.16.0">
-  We introduced a breaking change in v0.16.0 that may result in the loss of the task list after upgrading. No action is needed, new tasks will behave normally going forward.
+  We introduced a breaking change in v0.16.0 that may result in the loss of the task list after upgrading. No action is needed as new tasks will behave normally going forward.
 </Callout>
 
 ### ✨ Enhancements
@@ -2289,10 +2289,10 @@ This weeks update is packed with improvements to task visibility, worktree workf
 </div>
 
 * **Tasks grouped by worktree:** Pochi automatically groups tasks by their associated Git worktree with active worktrees at the top and deleted worktrees collapsed into a dedicated section. Each worktree shows its own tasks, status, and metadata which makes it much easier to manage parallel workstreams and multiple agents. **[#676](https://github.com/TabbyML/pochi/issues/676)**
-  <div class="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg">![Tasks grouped by worktree](./images/tasks-grouped-by-worktree.png)</div>
+  <div class="w-3/6 md:ml-8 *:shadow-xl/30 *:rounded-lg">![Tasks grouped by worktree](./images/tasks-grouped-by-worktree.png)</div>
 
 * **Diff Summary on Task List Item:** Task rows now display git diff summaries (e.g. `+23 -5`) so you can instantly see the size and impact of each task’s changes across multiple worktrees. **[#674](https://github.com/TabbyML/pochi/issues/674)**
-  <div class="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg">![Diff Summary on Task List Item](./images/diff-summary-on-task-list-item.png)</div>
+  <div class="w-3/6 md:ml-8 *:shadow-xl/30 *:rounded-lg">![Diff Summary on Task List Item](./images/diff-summary-on-task-list-item.png)</div>
 
 * **Worktree-aware task tabs:** Pochi now opens tasks from the same Git worktree in the same VS Code tab group, and tasks from different worktrees in separate tab groups. This keeps parallel branches visually separated while you work. **[#677](https://github.com/TabbyML/pochi/issues/677)**
 
@@ -2484,7 +2484,7 @@ Here you will find highlights on features, enhancements, and bug fixes, plus ins
 This weeks update is packed with improvements to task visibility, worktree workflows, and NES accuracy. We also made foundational changes to how tasks are stored, which sets us up for upcoming GitHub and multi-worktree features.
 
 <Callout type="info" title="Breaking Change: Task list reset in v0.16.0">
-  We introduced a breaking change in v0.16.0 that may result in the loss of the task list after upgrading. No action is needed, new tasks will behave normally going forward.
+  We introduced a breaking change in v0.16.0 that may result in the loss of the task list after upgrading. No action is needed as new tasks will behave normally going forward.
 </Callout>
 
 ### ✨ Enhancements
@@ -2519,10 +2519,10 @@ This weeks update is packed with improvements to task visibility, worktree workf
 </div>
 
 * **Tasks grouped by worktree:** Pochi automatically groups tasks by their associated Git worktree with active worktrees at the top and deleted worktrees collapsed into a dedicated section. Each worktree shows its own tasks, status, and metadata which makes it much easier to manage parallel workstreams and multiple agents. **[#676](https://github.com/TabbyML/pochi/issues/676)**
-  <div class="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg">![Tasks grouped by worktree](./images/tasks-grouped-by-worktree.png)</div>
+  <div class="w-3/6 md:ml-8 *:shadow-xl/30 *:rounded-lg">![Tasks grouped by worktree](./images/tasks-grouped-by-worktree.png)</div>
 
 * **Diff Summary on Task List Item:** Task rows now display git diff summaries (e.g. `+23 -5`) so you can instantly see the size and impact of each task’s changes across multiple worktrees. **[#674](https://github.com/TabbyML/pochi/issues/674)**
-  <div class="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg">![Diff Summary on Task List Item](./images/diff-summary-on-task-list-item.png)</div>
+  <div class="w-3/6 md:ml-8 *:shadow-xl/30 *:rounded-lg">![Diff Summary on Task List Item](./images/diff-summary-on-task-list-item.png)</div>
 
 * **Worktree-aware task tabs:** Pochi now opens tasks from the same Git worktree in the same VS Code tab group, and tasks from different worktrees in separate tab groups. This keeps parallel branches visually separated while you work. **[#677](https://github.com/TabbyML/pochi/issues/677)**
 
