@@ -106,7 +106,7 @@ export class WorktreeManager implements vscode.Disposable {
     await vscode.commands.executeCommand("git.createWorktree");
 
     // Get worktrees again to find the new one
-    const updatedWorktrees = await this.getWorktrees();
+    const updatedWorktrees = await this.getWorktrees(true);
     // Find the new worktree by comparing with previous worktrees
     const newWorktree = updatedWorktrees.find(
       (updated) =>
@@ -152,14 +152,16 @@ export class WorktreeManager implements vscode.Disposable {
     await showWorktreeDiff(cwd, baseBranch);
   }
 
-  async getWorktrees(): Promise<GitWorktree[]> {
+  async getWorktrees(skipVSCodeFilter?: boolean): Promise<GitWorktree[]> {
     try {
-      const vscodeRepos = this.gitStateMonitor.repositories.map(
-        (uri) => vscode.Uri.parse(uri).fsPath,
-      );
       const result = await this.git.raw(["worktree", "list", "--porcelain"]);
       const worktrees = this.parseWorktreePorcelain(result).filter(
         (wt) => wt.prunable === undefined,
+      );
+      if (skipVSCodeFilter) return worktrees;
+
+      const vscodeRepos = this.gitStateMonitor.repositories.map(
+        (uri) => vscode.Uri.parse(uri).fsPath,
       );
       // keep the worktree order and number same as vscode
       return vscodeRepos
