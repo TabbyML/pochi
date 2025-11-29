@@ -105,6 +105,9 @@ export class WorktreeManager implements vscode.Disposable {
 
     await vscode.commands.executeCommand("git.createWorktree");
 
+    // FIXME(zhanba): Wait for a moment to let Git finish creating the worktree
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
     // Get worktrees again to find the new one
     const updatedWorktrees = await this.getWorktrees();
     // Find the new worktree by comparing with previous worktrees
