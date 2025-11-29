@@ -2254,13 +2254,12 @@ URL: /developer-updates/2025-11-28-weekly-update-12
 This weeks update is packed with improvements to task visibility, worktree workflows, and NES accuracy. We also made foundational changes to how tasks are stored, which sets us up for upcoming GitHub and multi-worktree features.
 
 <Callout type="info" title="Breaking Change: Task list reset in v0.16.0">
-  This release includes internal changes to task state management and storage. As a result, existing tasks from previous versions cannot be migrated, and your task list will be cleared after upgrading to v0.16.0.
-  No action is needed as new tasks will behave normally going forward.
+  We introduced a breaking change in v0.16.0 that may result in the loss of the task list after upgrading. No action is needed, new tasks will behave normally going forward.
 </Callout>
 
 ### ✨ Enhancements
 
-* **Improved Visibility into Task Execution:** Tasks now display real-time execution details, including active tool calls, subtasks, and streaming progress to make task behavior easier to understand at a glance. This brings much clearer visibility into what Pochi is doing while a task runs.
+* **Improved Visibility into Task Execution:** Tasks now display real-time execution details, including active tool calls, subtasks, and streaming progress to make task behavior easier to understand at a glance. This brings much clearer visibility into what Pochi is doing while a task runs. **[#675](https://github.com/TabbyML/pochi/issues/675)**
 
 <div
   className="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg"
@@ -2289,13 +2288,13 @@ This weeks update is packed with improvements to task visibility, worktree workf
   />
 </div>
 
-* **Diff Summary on Task List Item:** Task rows now display git diff summaries (e.g. `+23 -5`) so you can instantly see the size and impact of each task’s changes across multiple worktrees.
-  <div class="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg">![Diff Summary on Task List Item](./images/diff-summary-on-task-list-item.png)</div>
-
-* **Tasks grouped by worktree:** Pochi automatically groups tasks by their associated Git worktree with active worktrees at the top and deleted worktrees collapsed into a dedicated section. Each worktree shows its own tasks, status, and metadata which makes it much easier to manage parallel workstreams and multiple agents.
+* **Tasks grouped by worktree:** Pochi automatically groups tasks by their associated Git worktree with active worktrees at the top and deleted worktrees collapsed into a dedicated section. Each worktree shows its own tasks, status, and metadata which makes it much easier to manage parallel workstreams and multiple agents. **[#676](https://github.com/TabbyML/pochi/issues/676)**
   <div class="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg">![Tasks grouped by worktree](./images/tasks-grouped-by-worktree.png)</div>
 
-* **Worktree-aware task tabs:** Pochi now opens tasks from the same Git worktree in the same VS Code tab group, and tasks from different worktrees in separate tab groups. This keeps parallel branches visually separated while you work.
+* **Diff Summary on Task List Item:** Task rows now display git diff summaries (e.g. `+23 -5`) so you can instantly see the size and impact of each task’s changes across multiple worktrees. **[#674](https://github.com/TabbyML/pochi/issues/674)**
+  <div class="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg">![Diff Summary on Task List Item](./images/diff-summary-on-task-list-item.png)</div>
+
+* **Worktree-aware task tabs:** Pochi now opens tasks from the same Git worktree in the same VS Code tab group, and tasks from different worktrees in separate tab groups. This keeps parallel branches visually separated while you work. **[#677](https://github.com/TabbyML/pochi/issues/677)**
 
 <div
   className="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg"
@@ -2324,7 +2323,7 @@ This weeks update is packed with improvements to task visibility, worktree workf
   />
 </div>
 
-* **Unread Task Indicators:** We added unread indicators to the task list so you never miss when a background task finishes or fails. Tasks that complete while you’re looking elsewhere now show a small dot until you open them, making it much easier to track updates.
+* **Unread Task Indicators:** We added unread indicators to the task list so you never miss when a background task finishes or fails. Tasks that complete while you’re looking elsewhere now show a small dot until you open them, making it much easier to track updates. **[#673](https://github.com/TabbyML/pochi/issues/673)**
 
 <div
   className="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg"
@@ -2353,7 +2352,7 @@ This weeks update is packed with improvements to task visibility, worktree workf
   />
 </div>
 
-* **Enhanced NES prompting with additional local code context:** NES now includes richer local code context in its prompt, improving accuracy for predictions that depend on nearby functions, variables, or imports.
+* **Enhanced NES prompting with additional local code context:** NES now includes richer local code context in its prompt, improving accuracy for predictions that depend on nearby functions, variables, or imports. **[#727](https://github.com/TabbyML/pochi/issues/727)**
 
 ### 🔥 Preview
 
@@ -2485,13 +2484,12 @@ Here you will find highlights on features, enhancements, and bug fixes, plus ins
 This weeks update is packed with improvements to task visibility, worktree workflows, and NES accuracy. We also made foundational changes to how tasks are stored, which sets us up for upcoming GitHub and multi-worktree features.
 
 <Callout type="info" title="Breaking Change: Task list reset in v0.16.0">
-  This release includes internal changes to task state management and storage. As a result, existing tasks from previous versions cannot be migrated, and your task list will be cleared after upgrading to v0.16.0.
-  No action is needed as new tasks will behave normally going forward.
+  We introduced a breaking change in v0.16.0 that may result in the loss of the task list after upgrading. No action is needed, new tasks will behave normally going forward.
 </Callout>
 
 ### ✨ Enhancements
 
-* **Improved Visibility into Task Execution:** Tasks now display real-time execution details, including active tool calls, subtasks, and streaming progress to make task behavior easier to understand at a glance. This brings much clearer visibility into what Pochi is doing while a task runs.
+* **Improved Visibility into Task Execution:** Tasks now display real-time execution details, including active tool calls, subtasks, and streaming progress to make task behavior easier to understand at a glance. This brings much clearer visibility into what Pochi is doing while a task runs. **[#675](https://github.com/TabbyML/pochi/issues/675)**
 
 <div
   className="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg"
@@ -2520,13 +2518,13 @@ This weeks update is packed with improvements to task visibility, worktree workf
   />
 </div>
 
-* **Diff Summary on Task List Item:** Task rows now display git diff summaries (e.g. `+23 -5`) so you can instantly see the size and impact of each task’s changes across multiple worktrees.
-  <div class="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg">![Diff Summary on Task List Item](./images/diff-summary-on-task-list-item.png)</div>
-
-* **Tasks grouped by worktree:** Pochi automatically groups tasks by their associated Git worktree with active worktrees at the top and deleted worktrees collapsed into a dedicated section. Each worktree shows its own tasks, status, and metadata which makes it much easier to manage parallel workstreams and multiple agents.
+* **Tasks grouped by worktree:** Pochi automatically groups tasks by their associated Git worktree with active worktrees at the top and deleted worktrees collapsed into a dedicated section. Each worktree shows its own tasks, status, and metadata which makes it much easier to manage parallel workstreams and multiple agents. **[#676](https://github.com/TabbyML/pochi/issues/676)**
   <div class="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg">![Tasks grouped by worktree](./images/tasks-grouped-by-worktree.png)</div>
 
-* **Worktree-aware task tabs:** Pochi now opens tasks from the same Git worktree in the same VS Code tab group, and tasks from different worktrees in separate tab groups. This keeps parallel branches visually separated while you work.
+* **Diff Summary on Task List Item:** Task rows now display git diff summaries (e.g. `+23 -5`) so you can instantly see the size and impact of each task’s changes across multiple worktrees. **[#674](https://github.com/TabbyML/pochi/issues/674)**
+  <div class="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg">![Diff Summary on Task List Item](./images/diff-summary-on-task-list-item.png)</div>
+
+* **Worktree-aware task tabs:** Pochi now opens tasks from the same Git worktree in the same VS Code tab group, and tasks from different worktrees in separate tab groups. This keeps parallel branches visually separated while you work. **[#677](https://github.com/TabbyML/pochi/issues/677)**
 
 <div
   className="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg"
@@ -2555,7 +2553,7 @@ This weeks update is packed with improvements to task visibility, worktree workf
   />
 </div>
 
-* **Unread Task Indicators:** We added unread indicators to the task list so you never miss when a background task finishes or fails. Tasks that complete while you’re looking elsewhere now show a small dot until you open them, making it much easier to track updates.
+* **Unread Task Indicators:** We added unread indicators to the task list so you never miss when a background task finishes or fails. Tasks that complete while you’re looking elsewhere now show a small dot until you open them, making it much easier to track updates. **[#673](https://github.com/TabbyML/pochi/issues/673)**
 
 <div
   className="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg"
@@ -2584,7 +2582,7 @@ This weeks update is packed with improvements to task visibility, worktree workf
   />
 </div>
 
-* **Enhanced NES prompting with additional local code context:** NES now includes richer local code context in its prompt, improving accuracy for predictions that depend on nearby functions, variables, or imports.
+* **Enhanced NES prompting with additional local code context:** NES now includes richer local code context in its prompt, improving accuracy for predictions that depend on nearby functions, variables, or imports. **[#727](https://github.com/TabbyML/pochi/issues/727)**
 
 ### 🔥 Preview
 
