@@ -5,6 +5,7 @@ export class WebhookDelivery {
   constructor(
     private readonly storeId: string,
     private readonly url: string,
+    private readonly secret: string,
   ) {}
 
   async onTaskUpdated(
@@ -30,6 +31,7 @@ export class WebhookDelivery {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        Authorization: `Bearer ${this.secret}`,
       },
       body: JSON.stringify(payload),
       signal: AbortSignal.timeout(1500),
