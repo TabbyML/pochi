@@ -38,8 +38,12 @@ export class LiveStoreClientDO
 
   async signalKeepAlive(storeId: string): Promise<void> {
     this.storeId = storeId;
-    if (this.env.WEBHOOK_URL && !this.webhook) {
-      this.webhook = new WebhookDelivery(this.storeId, this.env.WEBHOOK_URL);
+    if (this.env.WEBHOOK_URL && this.env.WEBHOOK_SECRET && !this.webhook) {
+      this.webhook = new WebhookDelivery(
+        this.storeId,
+        this.env.WEBHOOK_URL,
+        this.env.WEBHOOK_SECRET,
+      );
     }
 
     await this.subscribeToStoreUpdates();
