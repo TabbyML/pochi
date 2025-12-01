@@ -181,15 +181,6 @@ function renderToolPart(part: ToolUIPart<UITools>): {
     };
   }
 
-  if (part.type === "tool-multiApplyDiff") {
-    const { path = "unknown", edits = [] } = part.input || {};
-    return {
-      text: `🔧 Applying ${edits.length} edits to ${chalk.bold(path)}`,
-      stop: hasError ? "fail" : "succeed",
-      error: errorText,
-    };
-  }
-
   // Search and listing tools
   if (part.type === "tool-listFiles") {
     const { path = ".", recursive = false } = part.input || {};

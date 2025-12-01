@@ -29,10 +29,6 @@ import { executeCommand } from "@/tools/execute-command";
 import { globFiles } from "@/tools/glob-files";
 import { killBackgroundJob } from "@/tools/kill-background-job";
 import { listFiles as listFilesTool } from "@/tools/list-files";
-import {
-  multiApplyDiff,
-  previewMultiApplyDiff,
-} from "@/tools/multi-apply-diff";
 import { readBackgroundJobOutput } from "@/tools/read-background-job-output";
 import { readFile } from "@/tools/read-file";
 import { searchFiles } from "@/tools/search-files";
@@ -909,7 +905,6 @@ const ToolMap: Record<
   writeToFile,
   applyDiff,
   todoWrite,
-  multiApplyDiff,
   editNotebook,
 };
 
@@ -920,7 +915,6 @@ const ToolPreviewMap: Record<
 > = {
   writeToFile: previewWriteToFile,
   applyDiff: previewApplyDiff,
-  multiApplyDiff: previewMultiApplyDiff,
 };
 
 async function showDiff(displayFiles: GitDiff[], title: string, cwd: string) {
