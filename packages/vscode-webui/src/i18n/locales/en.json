@@ -264,7 +264,9 @@
     "restore": "Restore",
     "opening": "Opening...",
     "noChangesDetected": "No changes detected",
-    "compare": "Compare"
+    "compare": "Compare",
+    "fork": "Fork",
+    "forking": "forking"
   },
   "welcomeScreen": {
     "title": "Get Started",

@@ -43,6 +43,7 @@ export const MessageList: React.FC<{
   showUserAvatar?: boolean;
   className?: string;
   showLoader?: boolean;
+  forkTask?: (commitId: string) => Promise<void>;
 }> = ({
   messages: renderMessages,
   isLoading,
@@ -52,6 +53,7 @@ export const MessageList: React.FC<{
   showUserAvatar = true,
   className,
   showLoader = true,
+  forkTask,
 }) => {
   const [debouncedIsLoading, setDebouncedIsLoading] = useDebounceState(
     isLoading,
@@ -123,6 +125,7 @@ export const MessageList: React.FC<{
                     isLoading={isLoading}
                     isExecuting={isExecuting}
                     messages={renderMessages}
+                    forkTask={forkTask}
                   />
                 ))}
               </div>
@@ -133,6 +136,7 @@ export const MessageList: React.FC<{
               <SeparatorWithCheckpoint
                 message={m}
                 isLoading={isLoading || isExecuting}
+                forkTask={forkTask}
               />
             )}
           </div>
@@ -174,6 +178,7 @@ function Part({
   isLoading,
   isExecuting,
   messages,
+  forkTask,
 }: {
   role: Message["role"];
   partIndex: number;
@@ -182,6 +187,7 @@ function Part({
   isLoading: boolean;
   isExecuting: boolean;
   messages: Message[];
+  forkTask?: (commitId: string) => Promise<void>;
 }) {
   const paddingClass = partIndex === 0 ? "" : "mt-2";
   if (part.type === "text") {
@@ -208,6 +214,7 @@ function Part({
         <CheckpointUI
           checkpoint={part.data}
           isLoading={isLoading || isExecuting}
+          forkTask={forkTask}
         />
       );
     }
@@ -247,7 +254,8 @@ function TextPartUI({
 const SeparatorWithCheckpoint: React.FC<{
   message: Message;
   isLoading: boolean;
-}> = ({ message, isLoading }) => {
+  forkTask?: (commitId: string) => Promise<void>;
+}> = ({ message, isLoading, forkTask }) => {
   const sep = <Separator className="mt-1 mb-2" />;
   if (message.role === "assistant") return sep;
   const part = message.parts.at(-1);
@@ -259,6 +267,7 @@ const SeparatorWithCheckpoint: React.FC<{
           isLoading={isLoading}
           hideBorderOnHover={false}
           className="max-w-full"
+          forkTask={forkTask}
         />
       </div>
     );

@@ -256,7 +256,9 @@
     "restore": "복원",
     "opening": "열고 있습니다...",
     "noChangesDetected": "변경 사항이 감지되지 않았습니다",
-    "compare": "비교"
+    "compare": "비교",
+    "fork": "포크하기",
+    "forking": "포크 중..."
   },
   "welcomeScreen": {
     "title": "시작하기",

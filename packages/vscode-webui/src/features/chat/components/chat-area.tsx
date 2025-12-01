@@ -11,6 +11,7 @@ interface ChatAreaProps {
   messagesContainerRef: React.RefObject<HTMLDivElement | null>;
   className?: string;
   hideEmptyPlaceholder?: boolean;
+  forkTask?: (commitId: string) => Promise<void>;
 }
 
 export function ChatArea({
@@ -20,6 +21,7 @@ export function ChatArea({
   messagesContainerRef,
   className,
   hideEmptyPlaceholder,
+  forkTask,
 }: ChatAreaProps) {
   const resourceUri = useResourceURI();
   return (
@@ -38,6 +40,7 @@ export function ChatArea({
         isLoading={isLoading}
         containerRef={messagesContainerRef}
         className={className}
+        forkTask={forkTask}
       />
     </>
   );
