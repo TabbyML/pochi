@@ -2257,6 +2257,37 @@ This weeks update is packed with improvements to task visibility, worktree workf
   We introduced a breaking change in v0.16.0 that may result in the loss of the task list after upgrading. No action is needed as new tasks will behave normally going forward.
 </Callout>
 
+### 🚀 Features
+
+* **Diff Summary Panel for Task Changes:** We added a diff summary panel inside each task, showing all file edits made during execution. You can now review per-file additions/deletions, inspect the total change summary, and undo changes directly from the panel itself. **[#728](https://github.com/TabbyML/pochi/issues/728)**
+
+<div
+  className="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg"
+  style={{
+  position: "relative",
+  paddingBottom: "53.7%",
+  marginBottom: 20,
+  height: 0,
+  overflow: "hidden",
+  maxWidth: "100%",
+}}
+>
+  <iframe
+    src="https://drive.google.com/file/d/11Z1go6JzvuQ-uOijAyOd8cZ0lmVd4zBx/preview"
+    style={{
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: "100%",
+    height: "100%",
+    border: "none",
+    borderRadius: "8px",
+  }}
+    allowFullScreen
+    title="Diff Summary Panel for Task Changes"
+  />
+</div>
+
 ### ✨ Enhancements
 
 * **Improved Visibility into Task Execution:** Tasks now display real-time execution details, including active tool calls, subtasks, and streaming progress to make task behavior easier to understand at a glance. This brings much clearer visibility into what Pochi is doing while a task runs. **[#675](https://github.com/TabbyML/pochi/issues/675)**
@@ -2486,6 +2517,37 @@ This weeks update is packed with improvements to task visibility, worktree workf
 <Callout type="info" title="Breaking Change: Task list reset in v0.16.0">
   We introduced a breaking change in v0.16.0 that may result in the loss of the task list after upgrading. No action is needed as new tasks will behave normally going forward.
 </Callout>
+
+### 🚀 Features
+
+* **Diff Summary Panel for Task Changes:** We added a diff summary panel inside each task, showing all file edits made during execution. You can now review per-file additions/deletions, inspect the total change summary, and undo changes directly from the panel itself. **[#728](https://github.com/TabbyML/pochi/issues/728)**
+
+<div
+  className="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg"
+  style={{
+  position: "relative",
+  paddingBottom: "53.7%",
+  marginBottom: 20,
+  height: 0,
+  overflow: "hidden",
+  maxWidth: "100%",
+}}
+>
+  <iframe
+    src="https://drive.google.com/file/d/11Z1go6JzvuQ-uOijAyOd8cZ0lmVd4zBx/preview"
+    style={{
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: "100%",
+    height: "100%",
+    border: "none",
+    borderRadius: "8px",
+  }}
+    allowFullScreen
+    title="Diff Summary Panel for Task Changes"
+  />
+</div>
 
 ### ✨ Enhancements
 
