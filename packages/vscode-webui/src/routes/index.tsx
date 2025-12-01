@@ -7,6 +7,7 @@ import { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
 import { useCurrentWorkspace } from "@/lib/hooks/use-current-workspace";
 import { useModelList } from "@/lib/hooks/use-model-list";
 import { useUserStorage } from "@/lib/hooks/use-user-storage";
+import { useOptimisticWorktreeDelete } from "@/lib/hooks/use-worktrees";
 import { setActiveStore } from "@/lib/vscode";
 import type { GitWorktree } from "@getpochi/common/vscode-webui-bridge";
 import { taskCatalog } from "@getpochi/livekit";
@@ -77,7 +78,11 @@ function Tasks() {
     GitWorktree | undefined
   >();
 
+  const { deleteWorktree, deletingWorktreePaths } =
+    useOptimisticWorktreeDelete();
+
   const onDeleteWorktree = (wt: string) => {
+    deleteWorktree(wt);
     if (userSelectedWorktree?.path === wt) {
       setUserSelectedWorktree(undefined);
     }
@@ -92,6 +97,7 @@ function Tasks() {
           attachmentUpload={attachmentUpload}
           userSelectedWorktree={userSelectedWorktree}
           setUserSelectedWorktree={setUserSelectedWorktree}
+          deletingWorktreePaths={deletingWorktreePaths}
         />
       </div>
       {tasks.length === 0 ? (
@@ -100,7 +106,11 @@ function Tasks() {
         <div className="min-h-0 flex-1 pt-4">
           <ScrollArea className="h-full">
             <div className="flex flex-col gap-4 px-4 pb-6">
-              <WorktreeList tasks={tasks} onDeleteWorktree={onDeleteWorktree} />
+              <WorktreeList
+                deletingWorktreePaths={deletingWorktreePaths}
+                tasks={tasks}
+                onDeleteWorktree={onDeleteWorktree}
+              />
             </div>
           </ScrollArea>
         </div>

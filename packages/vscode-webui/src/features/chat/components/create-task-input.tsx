@@ -26,6 +26,7 @@ interface CreateTaskInputProps {
   attachmentUpload: ReturnType<typeof useAttachmentUpload>;
   userSelectedWorktree: GitWorktree | undefined;
   setUserSelectedWorktree: (v: GitWorktree | undefined) => void;
+  deletingWorktreePaths: Set<string>;
 }
 
 const noop = () => {};
@@ -36,6 +37,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
   attachmentUpload,
   userSelectedWorktree,
   setUserSelectedWorktree,
+  deletingWorktreePaths,
 }) => {
   const { t } = useTranslation();
   const { draft: input, setDraft: setInput, clearDraft } = useTaskInputDraft();
@@ -61,20 +63,24 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
   } = attachmentUpload;
 
   const worktreesData = useWorktrees();
+  const worktrees = useMemo(() => {
+    return worktreesData.data?.filter(
+      (x) => !deletingWorktreePaths.has(x.path),
+    );
+  }, [worktreesData, deletingWorktreePaths]);
 
   const isOpenCurrentWorkspace = !!workspaceFolder && cwd === workspaceFolder;
   const isOpenMainWorktree =
-    isOpenCurrentWorkspace &&
-    worktreesData.data?.find((x) => x.isMain)?.path === cwd;
+    isOpenCurrentWorkspace && worktrees?.find((x) => x.isMain)?.path === cwd;
 
   const selectedWorktree = useMemo(() => {
     if (isOpenCurrentWorkspace && !isOpenMainWorktree) {
-      return worktreesData.data?.find((x) => x.path === cwd);
+      return worktrees?.find((x) => x.path === cwd);
     }
-    return userSelectedWorktree || worktreesData.data?.[0];
+    return userSelectedWorktree || worktrees?.[0];
   }, [
     userSelectedWorktree,
-    worktreesData.data,
+    worktrees,
     cwd,
     isOpenCurrentWorkspace,
     isOpenMainWorktree,
@@ -82,10 +88,10 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
 
   const worktreeOptions = useMemo(() => {
     if (isOpenMainWorktree) {
-      return worktreesData.data ?? [];
+      return worktrees ?? [];
     }
-    return worktreesData.data?.filter((x) => x.path === workspaceFolder) ?? [];
-  }, [isOpenMainWorktree, worktreesData.data, workspaceFolder]);
+    return worktrees?.filter((x) => x.path === workspaceFolder) ?? [];
+  }, [isOpenMainWorktree, worktrees, workspaceFolder]);
 
   const onFocus = () => {
     useSettingsStore.persist.rehydrate();
