@@ -255,7 +255,9 @@
     "restore": "恢复",
     "opening": "打开中...",
     "noChangesDetected": "未检测到更改",
-    "compare": "比较"
+    "compare": "比较",
+    "fork": "新建分支",
+    "forking": "创建中..."
   },
   "welcomeScreen": {
     "title": "开始使用",

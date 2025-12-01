@@ -256,7 +256,9 @@
     "restore": "復元",
     "opening": "開いています...",
     "noChangesDetected": "変更が検出されませんでした",
-    "compare": "比較"
+    "compare": "比較",
+    "fork": "フォーク",
+    "forking": "フォーク中..."
   },
   "welcomeScreen": {
     "title": "はじめに",

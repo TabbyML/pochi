@@ -19,7 +19,7 @@ import {
   type FileUIPart,
   lastAssistantMessageIsCompleteWithToolCalls,
 } from "ai";
-import { useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 
 import { useLatest } from "@/lib/hooks/use-latest";
@@ -69,6 +69,7 @@ interface ChatProps {
   files?: FileUIPart[];
   displayId?: number;
   initMessages?: Message[];
+  disableAutoStart?: boolean;
 }
 
 function Chat({
@@ -78,6 +79,7 @@ function Chat({
   files,
   displayId,
   initMessages,
+  disableAutoStart,
 }: ChatProps) {
   const { t } = useTranslation();
   const { store } = useStore();
@@ -346,7 +348,8 @@ function Chat({
       status === "ready" &&
       messages.length === 1 &&
       !isModelsLoading &&
-      !!selectedModel,
+      !!selectedModel &&
+      !disableAutoStart,
     task,
     retry,
   });
@@ -369,6 +372,15 @@ function Chat({
     isLoading || isModelsLoading || !selectedModel ? undefined : sendMessage,
   );
 
+  const forkTask = useCallback(
+    async (commitId: string) => {
+      if (task?.cwd) {
+        await forkTaskFromCheckPoint(messages, commitId, task.cwd);
+      }
+    },
+    [messages, task?.cwd],
+  );
+
   return (
     <div className="mx-auto flex h-screen max-w-6xl flex-col">
       {subtask && (
@@ -387,6 +399,7 @@ function Chat({
           "pb-14": !!displayError,
         })}
         hideEmptyPlaceholder={isNewTaskWithContent}
+        forkTask={task?.cwd ? forkTask : undefined}
       />
       <div className="relative flex flex-col px-4">
         {!isWorkspaceActive ? (
@@ -432,4 +445,44 @@ function fromTaskError(task?: Task) {
   if (task?.error) {
     return new Error(task.error.message);
   }
+}
+
+async function forkTaskFromCheckPoint(
+  messages: Message[],
+  commitId: string,
+  cwd: string,
+) {
+  const messageIndex = messages.findIndex((message) =>
+    message.parts.find(
+      (part) =>
+        part.type === "data-checkpoint" && part.data.commit === commitId,
+    ),
+  );
+  if (messageIndex < 0) {
+    throw new Error(
+      `Failed to fork task due to missing checkpoint for commitId ${commitId}`,
+    );
+  }
+
+  const initMessages = messages.slice(0, messageIndex);
+
+  const message = messages[messageIndex];
+  const partIndex = message.parts.findIndex(
+    (part) => part.type === "data-checkpoint" && part.data.commit === commitId,
+  );
+  initMessages.push({
+    ...message,
+    parts: message.parts.slice(0, partIndex),
+  });
+
+  // Restore checkpoint
+  await vscodeHost.restoreCheckpoint(commitId);
+  // Create new task
+  await vscodeHost.openTaskInPanel({
+    cwd,
+    uid: crypto.randomUUID(),
+    storeId: undefined,
+    initMessages: JSON.stringify(initMessages),
+    disableAutoStart: true,
+  });
 }
