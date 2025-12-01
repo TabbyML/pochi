@@ -8,11 +8,12 @@ import { useCurrentWorkspace } from "@/lib/hooks/use-current-workspace";
 import { useModelList } from "@/lib/hooks/use-model-list";
 import { useUserStorage } from "@/lib/hooks/use-user-storage";
 import { setActiveStore } from "@/lib/vscode";
+import type { GitWorktree } from "@getpochi/common/vscode-webui-bridge";
 import { taskCatalog } from "@getpochi/livekit";
 import { useStore } from "@livestore/react";
 import { createFileRoute } from "@tanstack/react-router";
 import { TerminalIcon } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { LiveStoreTaskProvider } from "../livestore-task-provider";
 
@@ -71,6 +72,17 @@ function Tasks() {
   }, [store]);
 
   const attachmentUpload = useAttachmentUpload();
+
+  const [userSelectedWorktree, setUserSelectedWorktree] = useState<
+    GitWorktree | undefined
+  >();
+
+  const onDeleteWorktree = (wt: string) => {
+    if (userSelectedWorktree?.path === wt) {
+      setUserSelectedWorktree(undefined);
+    }
+  };
+
   return (
     <div className="flex h-screen w-screen flex-col">
       <div className="w-full px-4 pt-3">
@@ -78,6 +90,8 @@ function Tasks() {
           cwd={cwd}
           workspaceFolder={workspaceFolder}
           attachmentUpload={attachmentUpload}
+          userSelectedWorktree={userSelectedWorktree}
+          setUserSelectedWorktree={setUserSelectedWorktree}
         />
       </div>
       {tasks.length === 0 ? (
@@ -86,7 +100,7 @@ function Tasks() {
         <div className="min-h-0 flex-1 pt-4">
           <ScrollArea className="h-full">
             <div className="flex flex-col gap-4 px-4 pb-6">
-              <WorktreeList tasks={[...tasks]} />
+              <WorktreeList tasks={tasks} onDeleteWorktree={onDeleteWorktree} />
             </div>
           </ScrollArea>
         </div>

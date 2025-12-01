@@ -101,6 +101,7 @@ function createVSCodeHost(): VSCodeHostApi {
         "onTaskRunning",
         "readWorktrees",
         "createWorktree",
+        "deleteWorktree",
         "readPochiTasks",
       ],
       exports: {

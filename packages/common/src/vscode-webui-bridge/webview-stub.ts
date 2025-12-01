@@ -265,6 +265,8 @@ const VSCodeHostStub = {
     return Promise.resolve({} as GitWorktree);
   },
 
+  deleteWorktree: async (): Promise<boolean> => false,
+
   getGlobalState: async (): Promise<unknown> => {
     return null;
   },

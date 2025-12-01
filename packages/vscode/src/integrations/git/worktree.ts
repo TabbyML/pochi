@@ -125,9 +125,9 @@ export class WorktreeManager implements vscode.Disposable {
     return null;
   }
 
-  async deleteWorktree(worktreePath: string): Promise<void> {
+  async deleteWorktree(worktreePath: string): Promise<boolean> {
     if ((await this.isGitRepository()) === false) {
-      return;
+      return false;
     }
 
     const worktree = this.worktrees.value.find(
@@ -135,23 +135,26 @@ export class WorktreeManager implements vscode.Disposable {
     );
     if (!worktree) {
       vscode.window.showErrorMessage(`Worktree not found: ${worktreePath}`);
-      return;
+      return false;
     }
 
     if (worktree.isMain) {
       vscode.window.showErrorMessage("Cannot delete the main worktree.");
-      return;
+      return false;
     }
 
     try {
       await this.git.raw(["worktree", "remove", "--force", worktreePath]);
       this.worktreeInfoProvider.delete(worktreePath);
+      return true;
     } catch (error) {
       logger.error(`Failed to delete worktree: ${toErrorMessage(error)}`);
       vscode.window.showErrorMessage(
         `Failed to delete worktree: ${toErrorMessage(error)}`,
       );
     }
+
+    return false;
   }
 
   async showWorktreeDiff(cwd: string) {

@@ -18,6 +18,7 @@ import { useCurrentWorkspace } from "@/lib/hooks/use-current-workspace";
 import { usePochiTasks } from "@/lib/hooks/use-pochi-tasks";
 import { useWorktrees } from "@/lib/hooks/use-worktrees";
 import { cn } from "@/lib/utils";
+import { vscodeHost } from "@/lib/vscode";
 import { getWorktreeNameFromWorktreePath } from "@getpochi/common/git-utils";
 import {
   type GitWorktree,
@@ -31,7 +32,7 @@ import {
   Terminal,
   Trash2,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as R from "remeda";
 import { TaskRow } from "./task-row";
@@ -48,14 +49,18 @@ interface WorktreeGroup {
 
 export function WorktreeList({
   tasks,
+  onDeleteWorktree,
 }: {
-  tasks: Task[];
+  tasks: readonly Task[];
+  onDeleteWorktree: (worktreePath: string) => void;
 }) {
   const { t } = useTranslation();
   const { data: currentWorkspace, isLoading: isLoadingCurrentWorkspace } =
     useCurrentWorkspace();
   const { data: worktrees, isLoading: isLoadingWorktrees } = useWorktrees();
   const [showDeleted, setShowDeleted] = useState(false);
+  const { deletingPaths, deleteWorktree } =
+    useOptimisticWorktreeDelete(worktrees);
 
   const groups = useMemo(() => {
     if (isLoadingWorktrees || isLoadingCurrentWorkspace) {
@@ -164,13 +169,38 @@ export function WorktreeList({
     currentWorkspace,
   ]);
 
-  const activeGroups = groups.filter((g) => !g.isDeleted);
-  const deletedGroups = groups.filter((g) => g.isDeleted);
+  // Apply optimistic deletion: filter out items being deleted
+  const optimisticGroups = useMemo(() => {
+    return groups
+      .map((g) => {
+        if (deletingPaths.has(g.path)) {
+          // If has tasks, mark as deleted; otherwise filter out
+          if (g.tasks.length > 0) {
+            return { ...g, isDeleted: true };
+          }
+          return null;
+        }
+        return g;
+      })
+      .filter((x): x is WorktreeGroup => x !== null);
+  }, [groups, deletingPaths]);
+
+  const activeGroups = optimisticGroups.filter((g) => !g.isDeleted);
+  const deletedGroups = optimisticGroups.filter((g) => g.isDeleted);
+
+  const handleDeleteWorktree = (worktreePath: string) => {
+    deleteWorktree(worktreePath);
+    onDeleteWorktree(worktreePath);
+  };
 
   return (
     <div className="flex flex-col gap-1">
       {activeGroups.map((group) => (
-        <WorktreeSection key={group.path} group={group} />
+        <WorktreeSection
+          key={group.path}
+          group={group}
+          onDeleteGroup={handleDeleteWorktree}
+        />
       ))}
       {deletedGroups.length > 0 && (
         <>
@@ -204,8 +234,10 @@ export function WorktreeList({
 
 function WorktreeSection({
   group,
+  onDeleteGroup,
 }: {
   group: WorktreeGroup;
+  onDeleteGroup?: (worktreePath: string) => void;
 }) {
   const { t } = useTranslation();
   // Default expanded for existing worktrees, collapsed for deleted
@@ -337,14 +369,13 @@ function WorktreeSection({
                         <Button
                           variant="destructive"
                           size="sm"
-                          asChild
-                          onClick={() => setShowDeleteConfirm(false)}
+                          type="button"
+                          onClick={() => {
+                            setShowDeleteConfirm(false);
+                            onDeleteGroup?.(group.path);
+                          }}
                         >
-                          <a
-                            href={`command:pochi.worktree.delete?${encodeURIComponent(JSON.stringify([group.path]))}`}
-                          >
-                            {t("tasksPage.delete")}
-                          </a>
+                          {t("tasksPage.delete")}
                         </Button>
                       </div>
                     </div>
@@ -394,4 +425,79 @@ function WorktreeSection({
       </CollapsibleContent>
     </Collapsible>
   );
+}
+
+function useOptimisticWorktreeDelete(worktrees: GitWorktree[] | undefined) {
+  const [deletingMap, setDeletingMap] = useState<Map<string, number>>(
+    new Map(),
+  );
+
+  // Clean up deletingMap after successful deletion or when path reappears (new worktree created)
+  useEffect(() => {
+    if (deletingMap.size === 0) return;
+
+    const currentWorktreePaths = new Set(worktrees?.map((wt) => wt.path) || []);
+    let hasChanges = false;
+    const updatedMap = new Map(deletingMap);
+
+    for (const [path, timestamp] of deletingMap) {
+      const stillExists = currentWorktreePaths.has(path);
+
+      if (!stillExists) {
+        // Path no longer exists - deletion completed successfully
+        updatedMap.delete(path);
+        hasChanges = true;
+      } else if (timestamp > 0) {
+        // Only check elapsed time if timestamp was set (after deletion promise resolved)
+        const elapsedTime = Date.now() - timestamp;
+        if (elapsedTime > 5000) {
+          // If still exists after 5 seconds, assume it's a new worktree or deletion failed
+          updatedMap.delete(path);
+          hasChanges = true;
+        }
+      }
+    }
+
+    if (hasChanges) {
+      setDeletingMap(updatedMap);
+    }
+  }, [worktrees, deletingMap]);
+
+  const deleteWorktree = (wt: string) => {
+    // Mark as deleting immediately (with timestamp 0 as placeholder)
+    setDeletingMap((prev) => new Map(prev).set(wt, 0));
+
+    vscodeHost
+      .deleteWorktree(wt)
+      .then((success) => {
+        if (success) {
+          // Start 5-second timer after successful deletion
+          setDeletingMap((prev) => new Map(prev).set(wt, Date.now()));
+        } else {
+          // If deletion failed, immediately remove from deleting state
+          setDeletingMap((prev) => {
+            const next = new Map(prev);
+            next.delete(wt);
+            return next;
+          });
+        }
+      })
+      .catch((error) => {
+        console.error("Failed to delete worktree:", error);
+        // Remove from deleting state on error
+        setDeletingMap((prev) => {
+          const next = new Map(prev);
+          next.delete(wt);
+          return next;
+        });
+      });
+  };
+
+  // Convert Map to Set for backward compatibility
+  const deletingPaths = useMemo(
+    () => new Set(deletingMap.keys()),
+    [deletingMap],
+  );
+
+  return { deletingPaths, deleteWorktree };
 }

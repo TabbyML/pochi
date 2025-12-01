@@ -872,6 +872,10 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     return await this.worktreeManager.createWorktree();
   };
 
+  deleteWorktree = async (worktreePath: string): Promise<boolean> => {
+    return await this.worktreeManager.deleteWorktree(worktreePath);
+  };
+
   dispose() {
     for (const disposable of this.disposables) {
       disposable.dispose();

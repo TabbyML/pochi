@@ -16,7 +16,7 @@ import { vscodeHost } from "@/lib/vscode";
 import type { GitWorktree } from "@getpochi/common/vscode-webui-bridge";
 import { PaperclipIcon } from "lucide-react";
 import type React from "react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { ChatInputForm } from "./chat-input-form";
 
@@ -24,6 +24,8 @@ interface CreateTaskInputProps {
   cwd: string;
   workspaceFolder: string | null | undefined;
   attachmentUpload: ReturnType<typeof useAttachmentUpload>;
+  userSelectedWorktree: GitWorktree | undefined;
+  setUserSelectedWorktree: (v: GitWorktree | undefined) => void;
 }
 
 const noop = () => {};
@@ -32,6 +34,8 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
   cwd,
   workspaceFolder,
   attachmentUpload,
+  userSelectedWorktree,
+  setUserSelectedWorktree,
 }) => {
   const { t } = useTranslation();
   const { draft: input, setDraft: setInput, clearDraft } = useTaskInputDraft();
@@ -57,7 +61,6 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
   } = attachmentUpload;
 
   const worktreesData = useWorktrees();
-  const [userSelect, setUserSelect] = useState<GitWorktree | undefined>();
 
   const isOpenCurrentWorkspace = !!workspaceFolder && cwd === workspaceFolder;
   const isOpenMainWorktree =
@@ -68,9 +71,9 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
     if (isOpenCurrentWorkspace && !isOpenMainWorktree) {
       return worktreesData.data?.find((x) => x.path === cwd);
     }
-    return userSelect || worktreesData.data?.[0];
+    return userSelectedWorktree || worktreesData.data?.[0];
   }, [
-    userSelect,
+    userSelectedWorktree,
     worktreesData.data,
     cwd,
     isOpenCurrentWorkspace,
@@ -199,7 +202,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
               showCreateWorktree={isOpenMainWorktree}
               value={selectedWorktree}
               onChange={(v) => {
-                setUserSelect(v);
+                setUserSelectedWorktree(v);
               }}
             />
           )}

@@ -313,6 +313,8 @@ export interface VSCodeHostApi {
   readWorktrees(): Promise<ThreadSignalSerialization<GitWorktree[]>>;
 
   createWorktree(): Promise<GitWorktree | null>;
+
+  deleteWorktree(worktreePath: string): Promise<boolean>;
 }
 
 export interface WebviewHostApi {

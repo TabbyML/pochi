@@ -501,15 +501,6 @@ export class CommandManager implements vscode.Disposable {
       ),
 
       vscode.commands.registerCommand(
-        "pochi.worktree.delete",
-        async (worktreePath: string) => {
-          if (worktreePath) {
-            await this.worktreeManager.deleteWorktree(worktreePath);
-          }
-        },
-      ),
-
-      vscode.commands.registerCommand(
         "pochi.worktree.newTask",
         async (worktreePath: string) => {
           if (worktreePath) {
