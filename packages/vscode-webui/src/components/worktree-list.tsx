@@ -48,7 +48,6 @@ import {
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as R from "remeda";
-import LoadingWrapper from "./loading-wrapper";
 import { TaskRow } from "./task-row";
 import { ScrollArea } from "./ui/scroll-area";
 
@@ -335,23 +334,37 @@ function WorktreeSection({
           setShowDeleteConfirm(false);
         }}
       >
+        {/* worktree name & branch */}
         <div className="flex h-6 items-center gap-2">
-          {group.isDeleted ? (
-            <CollapsibleTrigger asChild>
-              <div className="flex flex-1 cursor-pointer select-none items-center gap-2 truncate font-medium text-sm">
-                {isExpanded ? (
-                  <ChevronDown className="size-4" />
-                ) : (
-                  <ChevronRight className="size-4" />
-                )}
-                <span>{prefixWorktreeName(group.name)}</span>
+          <div className="flex flex-1 items-center gap-3 overflow-x-hidden">
+            {group.isDeleted ? (
+              <CollapsibleTrigger asChild>
+                <div className="flex w-full flex-1 cursor-pointer select-none items-center gap-2 font-medium text-sm">
+                  {isExpanded ? (
+                    <ChevronDown className="size-4 shrink-0" />
+                  ) : (
+                    <ChevronRight className="size-4 shrink-0" />
+                  )}
+                  <span className="truncate">
+                    {prefixWorktreeName(group.name)}
+                  </span>
+                </div>
+              </CollapsibleTrigger>
+            ) : (
+              <div className="flex items-center font-bold">
+                <span className="truncate">
+                  {prefixWorktreeName(group.name)}
+                </span>
               </div>
-            </CollapsibleTrigger>
-          ) : (
-            <div className="flex flex-1 items-center truncate font-bold">
-              <span>{prefixWorktreeName(group.name)}</span>
-            </div>
-          )}
+            )}
+            {!!group.branch &&
+              !isBranchNameSameAsWorktreeName(group.branch, group.name) && (
+                <span className="flex flex-1 items-center gap-1 truncate text-sm">
+                  <GitBranch className="size-3 shrink-0" />
+                  <span className="truncate">{group.branch}</span>
+                </span>
+              )}
+          </div>
 
           <div
             className={cn(
@@ -462,16 +475,8 @@ function WorktreeSection({
             )}
           </div>
         </div>
+        {/* PR status */}
         <div className="mt-1 flex flex-nowrap items-center gap-5 overflow-x-hidden">
-          <LoadingWrapper loading={isLoadingWorktrees}>
-            {!!group.branch &&
-              !isBranchNameSameAsWorktreeName(group.branch, group.name) && (
-                <span className="flex max-w-[40vw] items-center gap-2 text-sm">
-                  <GitBranch className="size-3 shrink-0" />
-                  <span className="truncate">{group.branch}</span>
-                </span>
-              )}
-          </LoadingWrapper>
           {/* TODO: Integrate with actual PR data from GitHub */}
           <div className={cn("shrink-0")}>
             {group.prNumber && group.prStatus === "open" ? (
