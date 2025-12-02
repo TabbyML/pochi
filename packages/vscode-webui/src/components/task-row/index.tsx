@@ -42,7 +42,7 @@ export function TaskRow({
                 )}
               </h3>
               <div className="flex shrink-0 items-center gap-2">
-                <div className="text-muted-foreground text-sm">
+                <div className="text-sm italic">
                   {formatTimeAgo(task.createdAt)}
                 </div>
               </div>
