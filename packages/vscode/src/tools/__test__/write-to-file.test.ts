@@ -73,7 +73,7 @@ describe("writeToFile Tool", () => {
   });
 
   describe("writeToFile", () => {
-    it("should create a new file in non-interactive mode", async () => {
+    it("should create a new file", async () => {
       const filePath = _path.join(
         currentTestTempDirRelativePath,
         "new-file.txt",
@@ -90,7 +90,6 @@ describe("writeToFile Tool", () => {
           toolCallId: "test-call-id-123",
           messages: [],
           cwd: testSuiteRootTempDir.fsPath,
-          nonInteractive: true,
         },
       );
 
@@ -99,7 +98,7 @@ describe("writeToFile Tool", () => {
       assert.strictEqual(fileContent.toString(), content);
     });
 
-    it("should overwrite existing file in non-interactive mode", async () => {
+    it("should overwrite existing file", async () => {
       const filePath = _path.join(
         currentTestTempDirRelativePath,
         "existing-file.txt",
@@ -119,7 +118,6 @@ describe("writeToFile Tool", () => {
           toolCallId: "test-call-id-123",
           messages: [],
           cwd: testSuiteRootTempDir.fsPath,
-          nonInteractive: true,
         },
       );
 
@@ -147,7 +145,6 @@ describe("writeToFile Tool", () => {
           toolCallId: "test-call-id-123",
           messages: [],
           cwd: testSuiteRootTempDir.fsPath,
-          nonInteractive: true,
         },
       );
 
@@ -156,7 +153,7 @@ describe("writeToFile Tool", () => {
       assert.strictEqual(fileContent.toString(), content);
     });
 
-    it("should handle absolute paths in non-interactive mode", async () => {
+    it("should handle absolute paths", async () => {
       const absoluteFilePath = _path.join(
         currentTestTempDirUri.fsPath,
         "absolute-path-file.txt",
@@ -173,7 +170,6 @@ describe("writeToFile Tool", () => {
           toolCallId: "test-call-id-123",
           messages: [],
           cwd: testSuiteRootTempDir.fsPath,
-          nonInteractive: true,
         },
       );
 
@@ -182,7 +178,7 @@ describe("writeToFile Tool", () => {
       assert.strictEqual(fileContent.toString(), content);
     });
 
-    it("should preserve line endings in non-interactive mode", async () => {
+    it("should preserve line endings", async () => {
       const filePath = _path.join(
         currentTestTempDirRelativePath,
         "line-endings.txt",
@@ -199,7 +195,6 @@ describe("writeToFile Tool", () => {
           toolCallId: "test-call-id-123",
           messages: [],
           cwd: testSuiteRootTempDir.fsPath,
-          nonInteractive: true,
         },
       );
 
@@ -210,7 +205,7 @@ describe("writeToFile Tool", () => {
       assert.ok(fileContent.toString().includes("Line 3"));
     });
 
-    it("should handle empty content in non-interactive mode", async () => {
+    it("should handle empty content", async () => {
       const filePath = _path.join(
         currentTestTempDirRelativePath,
         "empty-file.txt",
@@ -227,7 +222,6 @@ describe("writeToFile Tool", () => {
           toolCallId: "test-call-id-123",
           messages: [],
           cwd: testSuiteRootTempDir.fsPath,
-          nonInteractive: true,
         },
       );
 
@@ -237,7 +231,7 @@ describe("writeToFile Tool", () => {
       assert.strictEqual(fileContent.toString().length, 0);
     });
 
-    it("should include edit metadata in non-interactive mode", async () => {
+    it("should include edit metadata", async () => {
       const filePath = _path.join(
         currentTestTempDirRelativePath,
         "metadata-file.txt",
@@ -257,7 +251,6 @@ describe("writeToFile Tool", () => {
           toolCallId: "test-call-id-123",
           messages: [],
           cwd: testSuiteRootTempDir.fsPath,
-          nonInteractive: true,
         },
       );
 
@@ -269,7 +262,7 @@ describe("writeToFile Tool", () => {
       assert.ok(result._meta.editSummary.removed > 0);
     });
 
-    it("should handle Unicode content in non-interactive mode", async () => {
+    it("should handle Unicode content", async () => {
       const filePath = _path.join(
         currentTestTempDirRelativePath,
         "unicode-file.txt",
@@ -286,7 +279,6 @@ describe("writeToFile Tool", () => {
           toolCallId: "test-call-id-123",
           messages: [],
           cwd: testSuiteRootTempDir.fsPath,
-          nonInteractive: true,
         },
       );
 
@@ -297,7 +289,7 @@ describe("writeToFile Tool", () => {
   });
 
   describe("previewWriteToFile", () => {
-    it("should preview creating a new file in non-interactive mode", async () => {
+    it("should preview creating a new file", async () => {
       const filePath = _path.join(
         currentTestTempDirRelativePath,
         "preview-new-file.txt",
@@ -313,7 +305,6 @@ describe("writeToFile Tool", () => {
           state: "call",
           toolCallId: "test-call-id-123",
           cwd: testSuiteRootTempDir.fsPath,
-          nonInteractive: true,
         },
       );
 
@@ -324,7 +315,7 @@ describe("writeToFile Tool", () => {
       assert.ok("_meta" in result && result._meta?.editSummary);
     });
 
-    it("should preview overwriting an existing file in non-interactive mode", async () => {
+    it("should preview overwriting an existing file", async () => {
       const filePath = _path.join(
         currentTestTempDirRelativePath,
         "preview-existing-file.txt",
@@ -344,7 +335,6 @@ describe("writeToFile Tool", () => {
           state: "call",
           toolCallId: "test-call-id-123",
           cwd: testSuiteRootTempDir.fsPath,
-          nonInteractive: true,
         },
       );
 
@@ -358,7 +348,7 @@ describe("writeToFile Tool", () => {
       assert.strictEqual(fileContent.toString(), originalContent);
     });
 
-    it("should preview with correct edit summary for new file in non-interactive mode", async () => {
+    it("should preview with correct edit summary for new file", async () => {
       const filePath = _path.join(
         currentTestTempDirRelativePath,
         "preview-new-with-summary.txt",
@@ -374,7 +364,6 @@ describe("writeToFile Tool", () => {
           state: "call",
           toolCallId: "test-call-id-123",
           cwd: testSuiteRootTempDir.fsPath,
-          nonInteractive: true,
         },
       );
 
@@ -388,7 +377,7 @@ describe("writeToFile Tool", () => {
       }
     });
 
-    it("should preview with correct edit summary for modified file in non-interactive mode", async () => {
+    it("should preview with correct edit summary for modified file", async () => {
       const filePath = _path.join(
         currentTestTempDirRelativePath,
         "preview-modified-with-summary.txt",
@@ -408,7 +397,6 @@ describe("writeToFile Tool", () => {
           state: "call",
           toolCallId: "test-call-id-123",
           cwd: testSuiteRootTempDir.fsPath,
-          nonInteractive: true,
         },
       );
 
@@ -422,7 +410,7 @@ describe("writeToFile Tool", () => {
       }
     });
 
-    it("should return error when path is undefined in non-interactive mode", async () => {
+    it("should return error when path is undefined", async () => {
       const result = await previewWriteToFileWithMock(
         {
           path: undefined,
@@ -432,7 +420,6 @@ describe("writeToFile Tool", () => {
           state: "call",
           toolCallId: "test-call-id-123",
           cwd: testSuiteRootTempDir.fsPath,
-          nonInteractive: true,
         },
       );
 
@@ -444,7 +431,7 @@ describe("writeToFile Tool", () => {
       );
     });
 
-    it("should return error when content is undefined in non-interactive mode", async () => {
+    it("should return error when content is undefined", async () => {
       const result = await previewWriteToFileWithMock(
         {
           path: "test.txt",
@@ -454,7 +441,6 @@ describe("writeToFile Tool", () => {
           state: "call",
           toolCallId: "test-call-id-123",
           cwd: testSuiteRootTempDir.fsPath,
-          nonInteractive: true,
         },
       );
 
@@ -486,7 +472,6 @@ describe("writeToFile Tool", () => {
           state: "call",
           toolCallId: "test-call-id-123",
           cwd: testSuiteRootTempDir.fsPath,
-          nonInteractive: true,
         },
       );
 

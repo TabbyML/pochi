@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export const EditFileResultPrompt =
   `You may see the following fields in the result:
-- userEdits: If the user makes any edits, this field will contain a diff between your edit and their changes.
+- userEdits: If the user makes any edits, this field will contain a diff between your edit and their changes. When this field presents, UNLESS user explicitly asks, you are FORBIDDEN to make any further edits to the file, consider the file as FINAL. use askFollowupQuestion tool if you need clarifying anything.
 - autoFormattingEdits: If the auto-formatter makes any changes, this field will contain a diff against the file content after your edits and any user edits have been applied.
 - newProblems: If any new problems are found after the edit, this field will contain information about them.
 `.trim();

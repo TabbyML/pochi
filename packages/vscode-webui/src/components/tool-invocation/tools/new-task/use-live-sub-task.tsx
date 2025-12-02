@@ -122,7 +122,6 @@ export function useLiveSubTask(
           abortSignal: ThreadAbortSignal.serialize(
             abortController.current.signal,
           ),
-          nonInteractive: true,
           contentType: customAgentModel?.contentType,
         },
       );

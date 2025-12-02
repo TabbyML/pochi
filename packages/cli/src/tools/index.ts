@@ -8,7 +8,6 @@ import { editNotebook } from "./edit-notebook";
 import { executeCommand } from "./execute-command";
 import { globFiles } from "./glob-files";
 import { listFiles } from "./list-files";
-import { multiApplyDiff } from "./multi-apply-diff";
 import { newTask } from "./new-task";
 import { readFile } from "./read-file";
 import { searchFiles } from "./search-files";
@@ -25,7 +24,6 @@ const ToolMap: Record<
   editNotebook,
   globFiles,
   listFiles,
-  multiApplyDiff,
   newTask,
   todoWrite,
   writeToFile,

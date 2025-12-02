@@ -65,7 +65,7 @@ export function DiffSummary({
   }
 
   return (
-    <div className={cn("overflow-hidden rounded-md", className)}>
+    <div className={cn("overflow-hidden rounded-sm", className)}>
       {/* Header */}
       <div
         className={cn(

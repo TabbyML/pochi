@@ -29,10 +29,6 @@ import { executeCommand } from "@/tools/execute-command";
 import { globFiles } from "@/tools/glob-files";
 import { killBackgroundJob } from "@/tools/kill-background-job";
 import { listFiles as listFilesTool } from "@/tools/list-files";
-import {
-  multiApplyDiff,
-  previewMultiApplyDiff,
-} from "@/tools/multi-apply-diff";
 import { readBackgroundJobOutput } from "@/tools/read-background-job-output";
 import { readFile } from "@/tools/read-file";
 import { searchFiles } from "@/tools/search-files";
@@ -369,7 +365,6 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       options: {
         toolCallId: string;
         abortSignal: ThreadAbortSignalSerialization;
-        nonInteractive?: boolean;
         contentType?: string[];
       },
     ) => {
@@ -401,7 +396,6 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
           abortSignal,
           messages: [],
           toolCallId: options.toolCallId,
-          nonInteractive: options.nonInteractive,
           cwd: this.cwd,
           contentType: options.contentType,
         }),
@@ -441,7 +435,6 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         toolCallId: string;
         state: "partial-call" | "call" | "result";
         abortSignal?: ThreadAbortSignalSerialization;
-        nonInteractive?: boolean;
       },
     ) => {
       const tool = ToolPreviewMap[toolName];
@@ -469,7 +462,6 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
           ...options,
           abortSignal,
           cwd: this.cwd,
-          nonInteractive: options.nonInteractive,
         }),
       );
     },
@@ -909,7 +901,6 @@ const ToolMap: Record<
   writeToFile,
   applyDiff,
   todoWrite,
-  multiApplyDiff,
   editNotebook,
 };
 
@@ -920,7 +911,6 @@ const ToolPreviewMap: Record<
 > = {
   writeToFile: previewWriteToFile,
   applyDiff: previewApplyDiff,
-  multiApplyDiff: previewMultiApplyDiff,
 };
 
 async function showDiff(displayFiles: GitDiff[], title: string, cwd: string) {

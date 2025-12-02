@@ -88,7 +88,6 @@ describe("applyDiff Tool", () => {
         toolCallId: "test-call-id-123",
         messages: [],
         cwd: testSuiteRootTempDir.fsPath,
-        nonInteractive: true,
       },
     );
 
@@ -115,7 +114,6 @@ describe("applyDiff Tool", () => {
         toolCallId: "test-call-id-123",
         messages: [],
         cwd: testSuiteRootTempDir.fsPath,
-        nonInteractive: true,
       },
     );
 
@@ -126,4 +124,3 @@ describe("applyDiff Tool", () => {
     );
   });
 });
-
