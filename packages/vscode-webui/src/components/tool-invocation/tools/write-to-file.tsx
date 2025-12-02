@@ -2,7 +2,7 @@ import { useToolCallLifeCycle } from "@/features/chat";
 import { getToolName } from "ai";
 import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { ModelEdits, UserEdits } from "../code-edits";
+import { ModelEdits } from "../code-edits";
 import { FileBadge } from "../file-badge";
 import { NewProblems, NewProblemsIcon } from "../new-problems";
 import { StatusIcon } from "../status-icon";
@@ -73,10 +73,6 @@ export const writeToFileTool: React.FC<ToolProps<"writeToFile">> = ({
     details.push(
       <NewProblems key="new-problems" newProblems={result?.newProblems} />,
     );
-  }
-
-  if (result?.userEdits) {
-    details.push(<UserEdits key="user-edits" userEdits={result?.userEdits} />);
   }
 
   const expandableDetail = details.length > 0 ? <>{details}</> : undefined;
