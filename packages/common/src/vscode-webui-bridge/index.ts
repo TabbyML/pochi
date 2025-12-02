@@ -39,9 +39,14 @@ export type {
   InvalidCustomAgentFile,
   ValidCustomAgentFile,
 } from "./types/custom-agent";
-export { WorktreeData } from "./types/git";
+export { GitWorktreeInfo } from "./types/git";
 export type { GitWorktree, DiffCheckpointOptions } from "./types/git";
 export { isValidCustomAgentFile } from "./types/custom-agent";
+export {
+  prefixTaskDisplayId,
+  prefixWorktreeName,
+  getTaskDisplayTitle,
+} from "./task-utils";
 
 const isPochiDev = process.env.POCHI_LOCAL_SERVER === "true";
 const isSyncDev = process.env.POCHI_LOCAL_SYNC_SERVER === "true";

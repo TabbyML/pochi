@@ -1,7 +1,9 @@
 import { vscodeHost } from "@/lib/vscode";
 import { getWorktreeNameFromWorktreePath } from "@getpochi/common/git-utils";
-import { getTaskDisplayTitle } from "@getpochi/common/task-utils";
-import type { TaskPanelParams } from "@getpochi/common/vscode-webui-bridge";
+import {
+  type TaskPanelParams,
+  getTaskDisplayTitle,
+} from "@getpochi/common/vscode-webui-bridge";
 import { useCallback, useRef } from "react";
 
 export function useSendTaskNotification() {

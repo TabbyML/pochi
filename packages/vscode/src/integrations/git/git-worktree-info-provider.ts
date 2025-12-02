@@ -1,25 +1,25 @@
 import { toErrorMessage } from "@getpochi/common";
-import { WorktreeData } from "@getpochi/common/vscode-webui-bridge";
+import { GitWorktreeInfo } from "@getpochi/common/vscode-webui-bridge";
 import { inject, injectable, singleton } from "tsyringe";
 import type * as vscode from "vscode";
 
 @injectable()
 @singleton()
-export class WorktreeDataStore {
+export class GitWorktreeInfoProvider {
   constructor(
     @inject("vscode.ExtensionContext")
     private readonly context: vscode.ExtensionContext,
   ) {}
 
-  get(worktreePath: string): WorktreeData | undefined {
-    const raw = this.context.workspaceState.get<WorktreeData>(worktreePath);
+  get(worktreePath: string): GitWorktreeInfo | undefined {
+    const raw = this.context.globalState.get<GitWorktreeInfo>(worktreePath);
     return raw;
   }
 
-  set(worktreePath: string, data: WorktreeData) {
+  set(worktreePath: string, data: GitWorktreeInfo) {
     try {
-      const parsed = WorktreeData.parse(data);
-      this.context.workspaceState.update(worktreePath, parsed);
+      const parsed = GitWorktreeInfo.parse(data);
+      this.context.globalState.update(worktreePath, parsed);
       return parsed;
     } catch (error) {
       throw new Error(
@@ -32,25 +32,25 @@ export class WorktreeDataStore {
     const existing = this.get(worktreePath);
     if (!existing) {
       return this.set(worktreePath, {
-        nextIncrementalId: 1,
+        nextDisplayId: 1,
         github: {},
       });
     }
     return existing;
   }
 
-  getIncrementalId(worktreePath: string): number {
+  getNextDisplayId(worktreePath: string): number {
     let data = this.get(worktreePath);
     if (!data) {
       data = this.initialize(worktreePath);
     }
-    const id = data.nextIncrementalId;
-    data.nextIncrementalId += 1;
+    const id = data.nextDisplayId;
+    data.nextDisplayId += 1;
     this.set(worktreePath, data);
     return id;
   }
 
   delete(worktreePath: string) {
-    this.context.workspaceState.update(worktreePath, undefined);
+    this.context.globalState.update(worktreePath, undefined);
   }
 }

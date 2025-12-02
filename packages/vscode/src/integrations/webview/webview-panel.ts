@@ -1,18 +1,18 @@
 import { AuthEvents } from "@/lib/auth-events";
 import { workspaceScoped } from "@/lib/workspace-scoped";
 import { getLogger, toErrorMessage } from "@getpochi/common";
-import { getTaskDisplayTitle } from "@getpochi/common/task-utils";
-import type {
-  NewTaskPanelParams,
-  ResourceURI,
-  TaskPanelParams,
-  VSCodeHostApi,
+import {
+  type NewTaskPanelParams,
+  type ResourceURI,
+  type TaskPanelParams,
+  type VSCodeHostApi,
+  getTaskDisplayTitle,
 } from "@getpochi/common/vscode-webui-bridge";
 import { container } from "tsyringe";
 import * as vscode from "vscode";
 import { PochiConfiguration } from "../configuration";
+import { GitWorktreeInfoProvider } from "../git/git-worktree-info-provider";
 import { WorktreeManager } from "../git/worktree";
-import { WorktreeDataStore } from "../git/worktree-state";
 import { WebviewBase } from "./base";
 import { VSCodeHostImpl } from "./vscode-host-impl";
 
@@ -174,8 +174,8 @@ export class PochiTaskEditorProvider
               ...params,
               uid: crypto.randomUUID(),
               displayId: container
-                .resolve(WorktreeDataStore)
-                .getIncrementalId(params.cwd),
+                .resolve(GitWorktreeInfoProvider)
+                .getNextDisplayId(params.cwd),
             };
       const uri = PochiTaskEditorProvider.createTaskUri(taskParams);
       PochiTaskEditorProvider.taskParamsCache.set(uri.toString(), taskParams);

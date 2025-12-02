@@ -19,8 +19,10 @@ import { usePochiTasks } from "@/lib/hooks/use-pochi-tasks";
 import { useWorktrees } from "@/lib/hooks/use-worktrees";
 import { cn } from "@/lib/utils";
 import { getWorktreeNameFromWorktreePath } from "@getpochi/common/git-utils";
-import { prefixWorktreeName } from "@getpochi/common/task-utils";
-import type { GitWorktree } from "@getpochi/common/vscode-webui-bridge";
+import {
+  type GitWorktree,
+  prefixWorktreeName,
+} from "@getpochi/common/vscode-webui-bridge";
 import type { Task } from "@getpochi/livekit";
 import {
   ChevronDown,

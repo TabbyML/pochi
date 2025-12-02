@@ -3,7 +3,7 @@ import * as sinon from "sinon";
 import { describe, it, beforeEach, afterEach } from "mocha";
 import type { GitWorktree } from "@getpochi/common/vscode-webui-bridge";
 import { WorktreeManager } from "../worktree";
-import type { WorktreeDataStore } from "../worktree-state";
+import type { GitWorktreeInfoProvider } from "../git-worktree-info-provider";
 
 describe("WorktreeManager", () => {
   describe("getWorktreeDisplayName", () => {
@@ -17,8 +17,8 @@ describe("WorktreeManager", () => {
         onDidChangeGitState: sinon.stub().returns({ dispose: () => {} }),
       };
 
-      // Create a stub for WorktreeDataStore
-      const worktreeDataStoreStub: WorktreeDataStore = {
+      // Create a stub for GitWorktreeInfoProvider
+      const worktreeDataStoreStub: GitWorktreeInfoProvider = {
         initialize: sinon.stub(),
         get: sinon.stub().returns(undefined),
         delete: sinon.stub(),
@@ -139,8 +139,8 @@ describe("WorktreeManager", () => {
         onDidChangeGitState: sinon.stub().returns({ dispose: () => {} }),
       };
 
-      // Create a stub for WorktreeDataStore
-      const worktreeDataStoreStub: WorktreeDataStore = {
+      // Create a stub for GitWorktreeInfoProvider
+      const worktreeDataStoreStub: GitWorktreeInfoProvider = {
         initialize: sinon.stub(),
         get: sinon.stub().returns(undefined),
         delete: sinon.stub(),

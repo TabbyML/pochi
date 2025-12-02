@@ -3,8 +3,10 @@ import { cn } from "@/lib/utils";
 import { vscodeHost } from "@/lib/vscode";
 import { parseTitle } from "@getpochi/common/message-utils";
 import { encodeStoreId } from "@getpochi/common/store-id-utils";
-import { prefixTaskDisplayId } from "@getpochi/common/task-utils";
-import type { TaskState } from "@getpochi/common/vscode-webui-bridge";
+import {
+  type TaskState,
+  prefixTaskDisplayId,
+} from "@getpochi/common/vscode-webui-bridge";
 import type { Task, UITools } from "@getpochi/livekit";
 import type { ToolUIPart } from "ai";
 import { GitBranch, Loader2 } from "lucide-react";
