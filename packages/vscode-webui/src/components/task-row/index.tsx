@@ -37,11 +37,11 @@ export function TaskRow({
       <div className="px-2 py-1">
         <div className="flex items-start gap-3">
           <div className="flex-1 space-y-1 overflow-hidden">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
               {task.displayId && (
-                <div className="flex shrink-0 items-center justify-center pt-[1px] font-bold font-mono text-foreground/90 group-hover:text-foreground/70">
+                <span className="flex shrink-0 items-center justify-center text-foreground/80 group-hover:text-foreground/60">
                   {prefixTaskDisplayId(task.displayId)}
-                </div>
+                </span>
               )}
               <div className="line-clamp-2 flex flex-1 items-center font-medium text-foreground leading-relaxed transition-colors duration-200 group-hover:text-foreground/80">
                 <div className="truncate">{title}</div>
@@ -50,9 +50,7 @@ export function TaskRow({
                 )}
               </div>
               <div className="flex shrink-0 items-center gap-2">
-                <div className="text-sm italic">
-                  {formatTimeAgo(task.createdAt)}
-                </div>
+                <div className="text-sm">{formatTimeAgo(task.createdAt)}</div>
               </div>
             </div>
             <div className="h-6 text-muted-foreground text-sm">
