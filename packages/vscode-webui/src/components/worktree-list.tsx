@@ -267,7 +267,7 @@ export function WorktreeList({
           isLoadingWorktrees={isLoadingWorktrees}
           key={group.path}
           group={group}
-          onDeleteGroup={handleDeleteWorktree}
+          onDeleteGroup={onDeleteWorktree}
         />
       ))}
       {deletedGroups.length > 0 && (
@@ -475,20 +475,22 @@ function WorktreeSection({
           </div>
         </div>
         {/* PR status */}
-        <div className="mt-1 flex flex-nowrap items-center gap-5 overflow-x-hidden">
-          {/* TODO: Integrate with actual PR data from GitHub */}
-          <div className={cn("shrink-0")}>
-            {group.prNumber && group.prStatus === "open" ? (
-              <PrStatusDisplay
-                prNumber={group.prNumber}
-                prUrl={group.prUrl ?? ""}
-                prChecks={group.prChecks}
-              />
-            ) : (
-              <CreatePrDropdown branch={group.branch} />
-            )}
-          </div>{" "}
-        </div>
+        {!group.isDeleted && (
+          <div className="mt-1 flex flex-nowrap items-center gap-5 overflow-x-hidden">
+            {/* TODO: Integrate with actual PR data from GitHub */}
+            <div className={cn("shrink-0")}>
+              {group.prNumber && group.prStatus === "open" ? (
+                <PrStatusDisplay
+                  prNumber={group.prNumber}
+                  prUrl={group.prUrl ?? ""}
+                  prChecks={group.prChecks}
+                />
+              ) : (
+                <CreatePrDropdown branch={group.branch} />
+              )}
+            </div>{" "}
+          </div>
+        )}
       </div>
 
       <CollapsibleContent>
