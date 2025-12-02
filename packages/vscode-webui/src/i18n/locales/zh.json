@@ -273,9 +273,6 @@
     "aboveProblemsDetected": "上述问题在更改后被检测到",
     "problemsDetectedTooltip": "更改后检测到问题"
   },
-  "userEdits": {
-    "youHaveMadeAboveEdits": "您已进行了上述编辑"
-  },
   "fileBadge": {
     "modifiedByPochi": "（由 Pochi 修改）"
   },

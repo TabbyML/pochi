@@ -282,9 +282,6 @@
     "aboveProblemsDetected": "Above problems have been detected after the change",
     "problemsDetectedTooltip": "Problems detected after change"
   },
-  "userEdits": {
-    "youHaveMadeAboveEdits": "You have made the above edits"
-  },
   "fileBadge": {
     "modifiedByPochi": "(Modified by Pochi)"
   },
