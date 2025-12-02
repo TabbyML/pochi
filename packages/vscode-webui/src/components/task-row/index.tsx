@@ -39,16 +39,16 @@ export function TaskRow({
           <div className="flex-1 space-y-1 overflow-hidden">
             <div className="flex items-center gap-2">
               {task.displayId && (
-                <span className="flex shrink-0 items-center justify-center rounded bg-muted px-1 font-bold font-mono text-foreground/80 text-sm">
+                <div className="flex shrink-0 items-center justify-center pt-[1px] font-bold font-mono text-foreground/90 group-hover:text-foreground/70">
                   {prefixTaskDisplayId(task.displayId)}
-                </span>
+                </div>
               )}
-              <h3 className="line-clamp-2 flex flex-1 items-center font-medium text-foreground leading-relaxed transition-colors duration-200 group-hover:text-foreground/80">
-                <span className="truncate">{title}</span>
+              <div className="line-clamp-2 flex flex-1 items-center font-medium text-foreground leading-relaxed transition-colors duration-200 group-hover:text-foreground/80">
+                <div className="truncate">{title}</div>
                 {state?.unread && (
                   <div className="ml-2 h-2 w-2 shrink-0 rounded-full bg-primary" />
                 )}
-              </h3>
+              </div>
               <div className="flex shrink-0 items-center gap-2">
                 <div className="text-sm italic">
                   {formatTimeAgo(task.createdAt)}
