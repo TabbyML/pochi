@@ -55,6 +55,21 @@
     "super": "加強",
     "swift": "極速"
   },
+  "worktreeSelect": {
+    "selectWorktree": "ワークツリーを選択",
+    "createWorktree": "Git ワークツリーを作成",
+    "createWorktreeDescription": "新しい Git ワークツリーでタスクを開始"
+  },
+  "worktree": {
+    "createPr": "PR を作成",
+    "createDraftPr": "ドラフト PR を作成",
+    "createPrManually": "手動で PR を作成",
+    "prNumber": "PR #{{number}}",
+    "merge": "マージ",
+    "readyToMerge": "マージ準備完了",
+    "checksInProgress": "チェック実行中",
+    "checksFailed": "チェック失敗"
+  },
   "settings": {
     "account": {
       "signIn": "Pochi モデルにサインイン",

@@ -60,6 +60,16 @@
     "createWorktree": "Create Git worktree",
     "createWorktreeDescription": "Start task in a new Git worktree"
   },
+  "worktree": {
+    "createPr": "Create PR",
+    "createDraftPr": "Create draft PR",
+    "createPrManually": "Create PR manually",
+    "prNumber": "PR #{{number}}",
+    "merge": "Merge",
+    "readyToMerge": "Ready to merge",
+    "checksInProgress": "Checks in progress",
+    "checksFailed": "Checks failed"
+  },
   "settings": {
     "account": {
       "signIn": "Sign-In for Pochi models",

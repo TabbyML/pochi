@@ -55,6 +55,21 @@
     "super": "加强",
     "swift": "极速"
   },
+  "worktreeSelect": {
+    "selectWorktree": "选择工作树",
+    "createWorktree": "创建 Git 工作树",
+    "createWorktreeDescription": "在新的 Git 工作树中启动任务"
+  },
+  "worktree": {
+    "createPr": "创建 PR",
+    "createDraftPr": "创建草稿 PR",
+    "createPrManually": "手动创建 PR",
+    "prNumber": "PR #{{number}}",
+    "merge": "合并",
+    "readyToMerge": "准备合并",
+    "checksInProgress": "检查进行中",
+    "checksFailed": "检查失败"
+  },
   "settings": {
     "account": {
       "signIn": "登录获取 Pochi 模型",
