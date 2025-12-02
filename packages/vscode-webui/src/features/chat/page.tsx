@@ -67,9 +67,10 @@ interface ChatProps {
   user?: UserInfo;
   prompt?: string;
   files?: FileUIPart[];
+  displayId?: number;
 }
 
-function Chat({ user, uid, prompt, files }: ChatProps) {
+function Chat({ user, uid, prompt, files, displayId }: ChatProps) {
   const { t } = useTranslation();
   const { store } = useStore();
   const todosRef = useRef<Todo[] | undefined>(undefined);
@@ -133,7 +134,8 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
     ) => {
       const lastMessage = data.messages.at(-1);
       const taskUid = isSubTask ? task?.parentId : uid;
-      if (!taskUid || !lastMessage) return;
+      const cwd = data.cwd;
+      if (!taskUid || !lastMessage || !cwd) return;
 
       if (data.status === "pending-tool") {
         const pendingToolCallApproval = getPendingToolcallApproval(lastMessage);
@@ -148,8 +150,9 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
           if (!autoApproved) {
             sendNotification("pending-tool", {
               uid: taskUid,
-              cwd: data.cwd,
+              cwd,
               isSubTask,
+              displayId,
             });
           }
         }
@@ -170,8 +173,9 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
         ) {
           sendNotification("pending-input", {
             uid: taskUid,
-            cwd: data.cwd,
+            cwd,
             isSubTask,
+            displayId,
           });
         }
       }
@@ -179,8 +183,9 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
       if (data.status === "completed") {
         sendNotification("completed", {
           uid: taskUid,
-          cwd: data.cwd,
+          cwd,
           isSubTask,
+          displayId,
         });
       }
     },
@@ -189,7 +194,7 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
   const onStreamFailed = useLatest(
     ({ error, cwd }: { error: Error; cwd: string | null }) => {
       const taskUid = isSubTask ? task?.parentId : uid;
-      if (!taskUid) return;
+      if (!taskUid || !cwd) return;
 
       let autoApprove = autoApproveGuard.current === "auto";
       if (error && !isRetryableError(error)) {
@@ -205,13 +210,14 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
         retryLimit === 0 ||
         (retryCount?.count !== undefined && retryCount.count >= retryLimit)
       ) {
-        sendNotification("failed", { uid: taskUid, cwd, isSubTask });
+        sendNotification("failed", { uid: taskUid, cwd, isSubTask, displayId });
       }
     },
   );
 
   const chatKit = useLiveChatKit({
     taskId: uid,
+    displayId,
     getters,
     isSubTask,
     customAgent,
@@ -280,6 +286,7 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
         Schema.encodeSync(taskCatalog.events.tastUpdated.schema)(
           taskCatalog.events.tastUpdated({
             ...task,
+            displayId: task.displayId || undefined,
             title: task.title || undefined,
             parentId: task.parentId || undefined,
             cwd: task.cwd || undefined,

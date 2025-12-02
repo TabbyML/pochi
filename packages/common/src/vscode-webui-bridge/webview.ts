@@ -9,13 +9,12 @@ import type {
   FileDiff,
   GitWorktree,
   McpStatus,
-  NewTaskParams,
+  NewTaskPanelParams,
   ResourceURI,
   RuleFile,
   SaveCheckpointOptions,
   SessionState,
   TaskChangedFile,
-  TaskIdParams,
   TaskPanelParams,
   TaskStates,
   WorkspaceState,
@@ -300,7 +299,10 @@ export interface VSCodeHostApi {
     ThreadSignalSerialization<Record<string, UserInfo>>
   >;
 
-  openTaskInPanel(params: TaskPanelParams): Promise<void>;
+  /**
+   * create or open a task in a new panel
+   */
+  openTaskInPanel(params: TaskPanelParams | NewTaskPanelParams): Promise<void>;
 
   isTaskPanelVisible(params: TaskPanelParams): Promise<boolean>;
 
@@ -314,11 +316,6 @@ export interface VSCodeHostApi {
 }
 
 export interface WebviewHostApi {
-  /**
-   * @param params - Existing task id or new task params.
-   */
-  openTask(params: TaskIdParams | NewTaskParams): void;
-
   openTaskList(): void;
 
   openSettings(): void;

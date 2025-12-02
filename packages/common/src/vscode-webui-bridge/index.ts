@@ -39,6 +39,7 @@ export type {
   InvalidCustomAgentFile,
   ValidCustomAgentFile,
 } from "./types/custom-agent";
+export { WorktreeData } from "./types/git";
 export type { GitWorktree, DiffCheckpointOptions } from "./types/git";
 export { isValidCustomAgentFile } from "./types/custom-agent";
 

@@ -12,6 +12,8 @@ import simpleGit from "simple-git";
 import { injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
 import { DiffChangesContentProvider } from "../editor/diff-changes-content-provider";
+// biome-ignore lint/style/useImportType: needed for dependency injection
+import { WorktreeDataStore } from "./worktree-state";
 
 const logger = getLogger("WorktreeManager");
 
@@ -24,7 +26,10 @@ export class WorktreeManager implements vscode.Disposable {
 
   private git: ReturnType<typeof simpleGit>;
 
-  constructor(private readonly gitStateMonitor: GitStateMonitor) {
+  constructor(
+    private readonly gitStateMonitor: GitStateMonitor,
+    private readonly worktreeDataStore: WorktreeDataStore,
+  ) {
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
     this.git = simpleGit(workspaceFolder);
     this.init();
@@ -113,6 +118,7 @@ export class WorktreeManager implements vscode.Disposable {
         !worktrees.some((original) => original.path === updated.path),
     );
     if (newWorktree) {
+      this.worktreeDataStore.initialize(newWorktree.path);
       setupWorktree(newWorktree.path);
       return newWorktree;
     }
@@ -139,6 +145,7 @@ export class WorktreeManager implements vscode.Disposable {
 
     try {
       await this.git.raw(["worktree", "remove", "--force", worktreePath]);
+      this.worktreeDataStore.delete(worktreePath);
     } catch (error) {
       logger.error(`Failed to delete worktree: ${toErrorMessage(error)}`);
       vscode.window.showErrorMessage(
@@ -155,9 +162,12 @@ export class WorktreeManager implements vscode.Disposable {
   async getWorktrees(skipVSCodeFilter?: boolean): Promise<GitWorktree[]> {
     try {
       const result = await this.git.raw(["worktree", "list", "--porcelain"]);
-      const worktrees = this.parseWorktreePorcelain(result).filter(
-        (wt) => wt.prunable === undefined,
-      );
+      const worktrees = this.parseWorktreePorcelain(result)
+        .filter((wt) => wt.prunable === undefined)
+        .map<GitWorktree>((wt) => {
+          const storedData = this.worktreeDataStore.get(wt.path);
+          return { ...wt, data: storedData };
+        });
       if (skipVSCodeFilter) return worktrees;
 
       const vscodeRepos = this.gitStateMonitor.repositories.map(

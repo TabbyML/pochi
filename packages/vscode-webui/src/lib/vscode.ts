@@ -104,19 +104,6 @@ function createVSCodeHost(): VSCodeHostApi {
         "readPochiTasks",
       ],
       exports: {
-        async openTask(params) {
-          window.router.navigate({
-            to: "/task",
-            search: {
-              uid: params.uid || crypto.randomUUID(),
-              storeId: "storeId" in params ? params.storeId : undefined,
-              prompt: "prompt" in params ? params.prompt : undefined,
-              files: "files" in params ? params.files : undefined,
-            },
-            replace: true,
-          });
-        },
-
         openTaskList() {
           window.router.navigate({
             to: "/",

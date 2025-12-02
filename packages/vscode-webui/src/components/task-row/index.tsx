@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils";
 import { vscodeHost } from "@/lib/vscode";
 import { parseTitle } from "@getpochi/common/message-utils";
 import { encodeStoreId } from "@getpochi/common/store-id-utils";
+import { prefixTaskDisplayId } from "@getpochi/common/task-utils";
 import type { TaskState } from "@getpochi/common/vscode-webui-bridge";
 import type { Task, UITools } from "@getpochi/livekit";
 import type { ToolUIPart } from "ai";
@@ -35,6 +36,11 @@ export function TaskRow({
         <div className="flex items-start gap-3">
           <div className="flex-1 space-y-1 overflow-hidden">
             <div className="flex items-center gap-2">
+              {task.displayId && (
+                <span className="flex shrink-0 items-center justify-center rounded bg-muted px-1 font-bold font-mono text-foreground/80 text-sm">
+                  {prefixTaskDisplayId(task.displayId)}
+                </span>
+              )}
               <h3 className="line-clamp-2 flex flex-1 items-center font-medium text-foreground leading-relaxed transition-colors duration-200 group-hover:text-foreground/80">
                 <span className="truncate">{title}</span>
                 {state?.unread && (
@@ -80,10 +86,11 @@ export function TaskRow({
       vscodeHost.openTaskInPanel({
         cwd: task.cwd,
         uid: task.id,
+        displayId: task.displayId ?? undefined,
         storeId,
       });
     }
-  }, [task.cwd, task.id, storeId]);
+  }, [task.cwd, task.id, task.displayId, storeId]);
 
   return <div onClick={openTaskInPanel}>{content}</div>;
 }

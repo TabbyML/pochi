@@ -1,9 +1,39 @@
+import z from "zod/v4";
+
+export const WorktreeData = z.object({
+  nextIncrementalId: z.number().min(1),
+  github: z.object({
+    pullRequest: z
+      .object({
+        url: z.string().describe("the URL of the PR"),
+        taskId: z
+          .string()
+          .optional()
+          .describe("the task that created this PR, if any"),
+        status: z.enum(["open", "closed", "merged"]),
+        checks: z
+          .array(
+            z.object({
+              name: z.string().describe("the name of the check"),
+              state: z.string().describe("the state of the check"),
+              url: z.string().describe("the URL of the check"),
+            }),
+          )
+          .optional(),
+      })
+      .optional(),
+  }),
+});
+
+export type WorktreeData = z.infer<typeof WorktreeData>;
+
 export interface GitWorktree {
   path: string;
   branch?: string;
   commit: string;
   isMain: boolean;
   prunable?: string;
+  data?: WorktreeData;
 }
 
 export interface DiffCheckpointOptions {

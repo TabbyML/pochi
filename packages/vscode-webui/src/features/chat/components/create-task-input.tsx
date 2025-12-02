@@ -107,7 +107,6 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
         const uploadedAttachments = await upload();
         vscodeHost.openTaskInPanel({
           cwd: selectedWorktree?.path || cwd,
-          uid: crypto.randomUUID(),
           storeId: undefined,
           prompt: content,
           files: uploadedAttachments.map((x) => ({
@@ -122,7 +121,6 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
         clearUploadError();
         vscodeHost.openTaskInPanel({
           cwd: selectedWorktree?.path || cwd,
-          uid: crypto.randomUUID(),
           storeId: undefined,
           prompt: content,
         });

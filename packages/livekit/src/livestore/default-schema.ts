@@ -50,6 +50,7 @@ export const tables = {
       createdAt: State.SQLite.integer({ schema: Schema.DateFromNumber }),
       updatedAt: State.SQLite.integer({ schema: Schema.DateFromNumber }),
       modelId: State.SQLite.text({ nullable: true }),
+      displayId: State.SQLite.integer({ nullable: true }),
     },
     indexes: [
       {
@@ -125,6 +126,7 @@ export const events = {
       git: Schema.optional(Git),
       updatedAt: Schema.Date,
       modelId: Schema.optional(Schema.String),
+      displayId: Schema.optional(Schema.Number),
     }),
   }),
   chatStreamFinished: Events.synced({
@@ -232,6 +234,7 @@ const materializers = State.SQLite.materializers(events, {
     title,
     updatedAt,
     modelId,
+    displayId,
   }) => [
     tables.tasks
       .update({
@@ -241,6 +244,7 @@ const materializers = State.SQLite.materializers(events, {
         title,
         updatedAt,
         modelId,
+        displayId,
       })
       .where({ id }),
     tables.messages

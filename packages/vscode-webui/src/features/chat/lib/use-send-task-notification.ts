@@ -1,4 +1,6 @@
 import { vscodeHost } from "@/lib/vscode";
+import { getWorktreeNameFromWorktreePath } from "@getpochi/common/git-utils";
+import { getTaskDisplayTitle } from "@getpochi/common/task-utils";
 import type { TaskPanelParams } from "@getpochi/common/vscode-webui-bridge";
 import { useCallback, useRef } from "react";
 
@@ -8,20 +10,12 @@ export function useSendTaskNotification() {
   const sendNotification = useCallback(
     async (
       kind: "failed" | "completed" | "pending-tool" | "pending-input",
-      openTaskParams: {
-        uid: string;
-        cwd: string | null | undefined;
-        isSubTask?: boolean;
-      },
+      openTaskParams: TaskPanelParams & { isSubTask?: boolean },
     ) => {
       clearTimeout(timer.current);
 
       timer.current = window.setTimeout(async () => {
-        if (!openTaskParams.cwd) return;
-
-        if (
-          await vscodeHost.isTaskPanelVisible(openTaskParams as TaskPanelParams)
-        ) {
+        if (await vscodeHost.isTaskPanelVisible(openTaskParams)) {
           return;
         }
 
@@ -45,15 +39,22 @@ export function useSendTaskNotification() {
           default:
             break;
         }
+        const { cwd, displayId, uid } = openTaskParams;
+        const taskTitle = getTaskDisplayTitle({
+          worktreeName: getWorktreeNameFromWorktreePath(cwd) ?? "main",
+          displayId,
+          uid,
+        });
+        const buttonText = "View Details";
         const result = await vscodeHost.showInformationMessage(
-          renderMessage,
+          `[${taskTitle}] ${renderMessage}`,
           {
             modal: false,
           },
-          "View Details",
+          buttonText,
         );
-        if (result === "View Details") {
-          vscodeHost.openTaskInPanel(openTaskParams as TaskPanelParams);
+        if (result === buttonText) {
+          vscodeHost.openTaskInPanel(openTaskParams);
         }
       }, 500);
     },

@@ -19,6 +19,7 @@ import { usePochiTasks } from "@/lib/hooks/use-pochi-tasks";
 import { useWorktrees } from "@/lib/hooks/use-worktrees";
 import { cn } from "@/lib/utils";
 import { getWorktreeNameFromWorktreePath } from "@getpochi/common/git-utils";
+import { prefixWorktreeName } from "@getpochi/common/task-utils";
 import type { GitWorktree } from "@getpochi/common/vscode-webui-bridge";
 import type { Task } from "@getpochi/livekit";
 import {
@@ -199,8 +200,6 @@ export function WorktreeList({
   );
 }
 
-const WorktreePrefix = "⎇";
-
 function WorktreeSection({
   group,
 }: {
@@ -235,16 +234,12 @@ function WorktreeSection({
               ) : (
                 <ChevronRight className="size-4" />
               )}
-              <span>
-                {WorktreePrefix} {group.name}
-              </span>
+              <span>{prefixWorktreeName(group.name)}</span>
             </div>
           </CollapsibleTrigger>
         ) : (
           <div className="flex items-center truncate font-bold">
-            <span>
-              {WorktreePrefix} {group.name}
-            </span>
+            <span>{prefixWorktreeName(group.name)}</span>
           </div>
         )}
 

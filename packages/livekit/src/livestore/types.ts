@@ -97,4 +97,5 @@ export const taskFullFields = {
   lastStepDuration: Schema.optional(Schema.DurationFromMillis),
   error: Schema.optional(TaskError),
   updatedAt: Schema.Date,
+  displayId: Schema.optional(Schema.Number),
 };

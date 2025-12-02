@@ -19,7 +19,8 @@
     "./store-id-utils": "./src/store-id-utils.ts",
     "./share-utils": "./src/share-utils.ts",
     "./google-vertex-utils": "./src/google-vertex-utils.ts",
-    "./cors-proxy": "./src/cors-proxy/index.ts"
+    "./cors-proxy": "./src/cors-proxy/index.ts",
+    "./task-utils": "./src/task-utils.ts"
   },
   "scripts": {
     "tsc": "tsc",

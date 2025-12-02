@@ -7,16 +7,20 @@ export type FileUIPart = {
 export interface TaskIdParams {
   uid: string;
   storeId?: string;
+
+  // for open task from website
   prompt?: string;
   files?: FileUIPart[];
 }
 
 export interface TaskPanelParams extends TaskIdParams {
   cwd: string;
+  displayId?: number;
 }
 
 export interface NewTaskParams {
-  uid?: undefined;
+  prompt?: string;
+  files?: FileUIPart[];
 }
 
 export interface NewTaskPanelParams extends NewTaskParams {

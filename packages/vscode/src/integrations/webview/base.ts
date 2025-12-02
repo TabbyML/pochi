@@ -322,7 +322,6 @@ export abstract class WebviewBase implements vscode.Disposable {
       {
         exports: vscodeHostApi,
         imports: [
-          "openTask",
           "openTaskList",
           "openSettings",
           "onAuthChanged",

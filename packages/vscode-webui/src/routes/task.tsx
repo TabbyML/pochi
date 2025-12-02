@@ -22,6 +22,7 @@ const searchSchema = z.object({
   storeId: z.string().optional(),
   prompt: z.string().optional(),
   files: z.array(fileUIPartSchema).optional(),
+  displayId: z.number().optional(),
 });
 
 export const Route = createFileRoute("/task")({
@@ -30,7 +31,7 @@ export const Route = createFileRoute("/task")({
 });
 
 function RouteComponent() {
-  const { uid, prompt, files, storeId } = Route.useSearch();
+  const { uid, prompt, files, storeId, displayId } = Route.useSearch();
   const uiFiles = files?.map((file) => ({
     type: "file" as const,
     filename: file.name,
@@ -59,6 +60,7 @@ function RouteComponent() {
         uid={uid}
         prompt={prompt}
         files={uiFiles}
+        displayId={displayId}
       />
     </LiveStoreDefaultProvider>
   );
