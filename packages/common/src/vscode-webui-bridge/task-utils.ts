@@ -1,8 +1,7 @@
 const WorktreePrefix = "⎇";
-const TaskDisplayIdPrefix = "∙";
 export const prefixWorktreeName = (name: string) => `${WorktreePrefix} ${name}`;
 export const prefixTaskDisplayId = (displayId: number) =>
-  `${TaskDisplayIdPrefix}${String(displayId).padStart(3, "0")}`;
+  `${String(displayId).padStart(3, "0")}`;
 
 export const getTaskDisplayTitle = (params: {
   worktreeName: string;
@@ -10,5 +9,5 @@ export const getTaskDisplayTitle = (params: {
   displayId?: number;
 }) => {
   const { worktreeName, uid, displayId } = params;
-  return `${prefixWorktreeName(worktreeName)}${displayId ? prefixTaskDisplayId(displayId) : ` - ${uid.split("-")[0]} `}`;
+  return `${prefixWorktreeName(worktreeName)}${displayId ? ` - ${prefixTaskDisplayId(displayId)}` : ` - ${uid.split("-")[0]} `}`;
 };
