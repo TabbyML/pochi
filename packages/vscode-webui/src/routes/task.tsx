@@ -27,7 +27,7 @@ const searchSchema = z.object({
     .string()
     .optional()
     .describe("JSON string containing an array of messages"),
-  disableAutoStart: z.boolean().optional(),
+  disablePendingModelAutoStart: z.boolean().optional(),
 });
 
 export const Route = createFileRoute("/task")({
@@ -36,8 +36,14 @@ export const Route = createFileRoute("/task")({
 });
 
 function RouteComponent() {
-  const { uid, prompt, files, storeId, initMessages, disableAutoStart } =
-    Route.useSearch();
+  const {
+    uid,
+    prompt,
+    files,
+    storeId,
+    initMessages,
+    disablePendingModelAutoStart,
+  } = Route.useSearch();
   const uiFiles = files?.map((file) => ({
     type: "file" as const,
     filename: file.name,
@@ -76,7 +82,7 @@ function RouteComponent() {
         prompt={prompt}
         files={uiFiles}
         initMessages={parsedInitMessages}
-        disableAutoStart={disableAutoStart}
+        disablePendingModelAutoStart={disablePendingModelAutoStart}
       />
     </LiveStoreDefaultProvider>
   );

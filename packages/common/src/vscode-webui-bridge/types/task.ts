@@ -16,7 +16,7 @@ export interface TaskIdParams {
   /**
    * Disable auto start for the task
    */
-  disableAutoStart?: boolean;
+  disablePendingModelAutoStart?: boolean;
 }
 
 export interface TaskPanelParams extends TaskIdParams {

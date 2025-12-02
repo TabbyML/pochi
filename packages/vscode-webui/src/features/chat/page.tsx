@@ -68,7 +68,7 @@ interface ChatProps {
   prompt?: string;
   files?: FileUIPart[];
   initMessages?: Message[];
-  disableAutoStart?: boolean;
+  disablePendingModelAutoStart?: boolean;
 }
 
 function Chat({
@@ -77,7 +77,7 @@ function Chat({
   prompt,
   files,
   initMessages,
-  disableAutoStart,
+  disablePendingModelAutoStart,
 }: ChatProps) {
   const { t } = useTranslation();
   const { store } = useStore();
@@ -341,7 +341,7 @@ function Chat({
       messages.length === 1 &&
       !isModelsLoading &&
       !!selectedModel &&
-      !disableAutoStart,
+      !disablePendingModelAutoStart,
     task,
     retry,
   });
@@ -475,6 +475,6 @@ async function forkTaskFromCheckPoint(
     uid: crypto.randomUUID(),
     storeId: undefined,
     initMessages: JSON.stringify(initMessages),
-    disableAutoStart: true,
+    disablePendingModelAutoStart: true,
   });
 }
