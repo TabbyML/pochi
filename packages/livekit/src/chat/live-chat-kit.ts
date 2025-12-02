@@ -57,20 +57,6 @@ export type LiveChatKitOptions<T> = {
   "id" | "messages" | "generateId" | "onFinish" | "onError" | "transport"
 >;
 
-type InitOptions = {
-  status?: "pending-input" | "pending-model" | undefined;
-} & (
-  | {
-      prompt?: string;
-    }
-  | {
-      parts?: Message["parts"];
-    }
-  | {
-      messages?: Message[];
-    }
-);
-
 export class LiveChatKit<
   T extends {
     messages: Message[];
@@ -92,7 +78,7 @@ export class LiveChatKit<
     error: Error;
     messages: Message[];
   }) => void;
-  readonly compact: () => Promise<string>;
+  readonly spawn: () => Promise<string>;
   private lastStepStartTimestamp: number | undefined;
 
   constructor({
@@ -182,53 +168,64 @@ export class LiveChatKit<
       }
     };
 
-    this.compact = async () => {
+    this.spawn = async () => {
+      const taskId = crypto.randomUUID();
       const { messages } = this.chat;
       const model = createModel({ llm: getters.getLLM() });
       const summary = await compactTask({
         store: this.store,
-        taskId: this.taskId,
+        taskId,
         model,
         messages,
+        abortSignal,
       });
       if (!summary) {
         throw new Error("Failed to compact task");
       }
-      return summary;
+
+      this.store.commit(
+        events.taskInited({
+          id: taskId,
+          cwd: this.task?.cwd || undefined,
+          modelId: this.task?.modelId || undefined,
+          createdAt: new Date(),
+          initMessage: {
+            id: crypto.randomUUID(),
+            parts: [
+              {
+                type: "text",
+                text: summary,
+              },
+
+              {
+                type: "text",
+                text: "I've summarized the task and start a new task with the summary. Please analysis the current status, and use askFollowupQuestion with me to confirm the next steps",
+              },
+            ],
+          },
+        }),
+      );
+      return taskId;
     };
   }
 
-  init(cwd: string | undefined, options?: InitOptions | undefined) {
-    let initMessages: Message[] | undefined = undefined;
-    if (options) {
-      if ("messages" in options && options.messages) {
-        initMessages = options.messages;
-      } else if ("parts" in options && options.parts) {
-        initMessages = [
-          {
-            id: crypto.randomUUID(),
-            role: "user",
-            parts: options.parts,
-          },
-        ];
-      } else if ("prompt" in options && options.prompt) {
-        initMessages = [
-          {
-            id: crypto.randomUUID(),
-            role: "user",
-            parts: [{ type: "text", text: options.prompt }],
-          },
-        ];
-      }
-    }
+  init(cwd: string | undefined, promptOrParts?: string | Message["parts"]) {
+    const parts =
+      typeof promptOrParts === "string"
+        ? [{ type: "text", text: promptOrParts }]
+        : promptOrParts;
 
     this.store.commit(
       events.taskInited({
         id: this.taskId,
         cwd,
         createdAt: new Date(),
-        initMessages,
-        initStatus: options?.status,
+        initMessage: parts
+          ? {
+              id: crypto.randomUUID(),
+              parts,
+            }
+          : undefined,
       }),
     );
 

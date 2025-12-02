@@ -102,7 +102,6 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   });
 
   const { newCompactTask, newCompactTaskPending } = useNewCompactTask({
-    task,
     compact,
   });
 

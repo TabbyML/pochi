@@ -101,18 +101,15 @@ export function createNewTaskMiddleware(
                   cwd,
                   parentId: parentTaskId,
                   createdAt: new Date(),
-                  initMessages: [
-                    {
-                      id: crypto.randomUUID(),
-                      role: "user",
-                      parts: [
-                        {
-                          type: "text",
-                          text: args.prompt,
-                        },
-                      ],
-                    },
-                  ],
+                  initMessage: {
+                    id: crypto.randomUUID(),
+                    parts: [
+                      {
+                        type: "text",
+                        text: args.prompt,
+                      },
+                    ],
+                  },
                 }),
               );
 

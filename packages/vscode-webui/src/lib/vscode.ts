@@ -112,8 +112,6 @@ function createVSCodeHost(): VSCodeHostApi {
               storeId: "storeId" in params ? params.storeId : undefined,
               prompt: "prompt" in params ? params.prompt : undefined,
               files: "files" in params ? params.files : undefined,
-              initMessages:
-                "initMessages" in params ? params.initMessages : undefined,
             },
             replace: true,
           });

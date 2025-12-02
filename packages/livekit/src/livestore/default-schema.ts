@@ -1,6 +1,7 @@
 import { Events, Schema, State, makeSchema } from "@livestore/livestore";
 import {
   DBMessage,
+  DBUIPart,
   Git,
   LineChanges,
   TaskError,
@@ -96,8 +97,12 @@ export const events = {
     name: "v1.TaskInited",
     schema: Schema.Struct({
       ...taskInitFields,
-      initMessages: Schema.optional(Schema.Array(DBMessage)),
-      initStatus: Schema.optional(TaskStatus),
+      initMessage: Schema.optional(
+        Schema.Struct({
+          id: Schema.String,
+          parts: Schema.Array(DBUIPart),
+        }),
+      ),
     }),
   }),
   taskFailed: Events.synced({
@@ -187,33 +192,28 @@ export const events = {
 };
 
 const materializers = State.SQLite.materializers(events, {
-  "v1.TaskInited": ({
-    id,
-    parentId,
-    createdAt,
-    cwd,
-    initMessages,
-    initStatus,
-  }) => [
+  "v1.TaskInited": ({ id, parentId, createdAt, cwd, initMessage }) => [
     tables.tasks.insert({
       id,
-      status:
-        initStatus ??
-        (initMessages && initMessages.length > 0
-          ? "pending-model"
-          : "pending-input"),
+      status: initMessage ? "pending-model" : "pending-input",
       parentId,
       createdAt,
       cwd,
       updatedAt: createdAt,
     }),
-    ...(initMessages?.map((message) => {
-      return tables.messages.insert({
-        id: message.id,
-        taskId: id,
-        data: message,
-      });
-    }) ?? []),
+    ...(initMessage
+      ? [
+          tables.messages.insert({
+            id: initMessage.id,
+            taskId: id,
+            data: {
+              id: initMessage.id,
+              role: "user",
+              parts: initMessage.parts,
+            },
+          }),
+        ]
+      : []),
   ],
   "v1.TaskFailed": ({ id, error, updatedAt }) => [
     tables.tasks
