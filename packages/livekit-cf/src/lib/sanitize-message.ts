@@ -46,6 +46,24 @@ export function sanitizeMessage(message: Message): Message {
         };
       }
 
+      if (
+        part.type === "tool-multiApplyDiff" &&
+        part.input?.edits &&
+        part.input.edits.length > 0
+      ) {
+        return {
+          ...part,
+          input: {
+            ...part.input,
+            edits: part.input.edits.map((edit: unknown) => ({
+              ...(edit as Record<string, unknown>),
+              searchContent: RedactedMessage,
+              replaceContent: RedactedMessage,
+            })),
+          },
+        };
+      }
+
       return part;
     }) as Message["parts"],
   };
