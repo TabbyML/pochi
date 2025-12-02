@@ -24,7 +24,10 @@ export class LayoutManager implements vscode.Disposable {
         "workbench.action.focusFirstEditorGroup",
       );
     } else {
-      await this.saveLayout();
+      if (shouldSaveLayout()) {
+        await this.saveLayout();
+      }
+
       await applyLayout(layout);
       await vscode.commands.executeCommand("workbench.action.closeSidebar");
       await vscode.commands.executeCommand(
@@ -40,6 +43,7 @@ export class LayoutManager implements vscode.Disposable {
   async saveLayout() {
     const groups = getSortedCurrentTabGroups().map((group) => {
       return {
+        activeTabIndex: group.tabs.findIndex((tab) => tab.isActive),
         tabInputs: group.tabs.map((tab) => getTabInputSource(tab)),
       };
     });
@@ -129,6 +133,7 @@ interface EditorGroupLayout {
 
 interface Layout {
   groups: {
+    activeTabIndex: number;
     tabInputs: TabInput[];
   }[];
   editorGroupLayout: EditorGroupLayout;
@@ -218,11 +223,8 @@ function isSameTabInput(a: TabInput, b: TabInput) {
 function getTaskFocusLayout(task: TaskParams): Layout {
   const allTabs = getSortedCurrentTabGroups().flatMap((group) => group.tabs);
 
-  const pochiTaskGroup = { tabInputs: [] as TabInput[] };
-  const editorsGroup = { tabInputs: [] as TabInput[] };
-  const terminalGroup = { tabInputs: [] as TabInput[] };
-
   // Pochi Task Group
+  const pochiTaskGroup = { activeTabIndex: 0, tabInputs: [] as TabInput[] };
   // add focus task as the first tab
   const uri = PochiTaskEditorProvider.createTaskUri(task);
   const activeTaskTab = allTabs.find(
@@ -239,6 +241,7 @@ function getTaskFocusLayout(task: TaskParams): Layout {
   );
 
   // Terminal Group
+  const terminalGroup = { activeTabIndex: 0, tabInputs: [] as TabInput[] };
   // add task cwd as the first tab
   const terminals = vscode.window.terminals.filter(
     (terminal) =>
@@ -268,15 +271,15 @@ function getTaskFocusLayout(task: TaskParams): Layout {
   );
 
   // Editor Group
+  const editorsGroup = { activeTabIndex: -1, tabInputs: [] as TabInput[] };
   // add all other tabs
+  const otherTabs = allTabs.filter(
+    (tab) =>
+      !isPochiTaskTab(tab) && !(tab.input instanceof vscode.TabInputTerminal),
+  );
+  editorsGroup.activeTabIndex = otherTabs.findIndex((tab) => tab.isActive);
   editorsGroup.tabInputs.push(
-    ...allTabs
-      .filter(
-        (tab) =>
-          !isPochiTaskTab(tab) &&
-          !(tab.input instanceof vscode.TabInputTerminal),
-      )
-      .map((tab) => getTabInputSource(tab)),
+    ...otherTabs.map((tab) => getTabInputSource(tab)),
   );
 
   const editorGroupLayout: EditorGroupLayout = {
@@ -347,7 +350,62 @@ function isCurrentLayoutMatched(layout: Layout) {
       return false;
     }
   }
+
   return true;
+}
+
+function shouldSaveLayout() {
+  // do not save layout if current layout:
+  // - has 3 groups
+  // - first group is all pochi task
+  // - third group is all terminals
+
+  const current = getSortedCurrentTabGroups();
+  if (current.length === 3) {
+    const firstGroup = current[0];
+    const thirdGroup = current[2];
+    if (
+      firstGroup.tabs.every((tab) => isPochiTaskTab(tab)) &&
+      thirdGroup.tabs.every(
+        (tab) => tab.input instanceof vscode.TabInputTerminal,
+      )
+    ) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+async function focusEditorGroup(groupIndex: number) {
+  const toCommandId = (index: number): string | undefined => {
+    switch (index) {
+      case 0:
+        return "workbench.action.focusFirstEditorGroup";
+      case 1:
+        return "workbench.action.focusSecondEditorGroup";
+      case 2:
+        return "workbench.action.focusThirdEditorGroup";
+      case 3:
+        return "workbench.action.focusFourthEditorGroup";
+      case 4:
+        return "workbench.action.focusFifthEditorGroup";
+      case 5:
+        return "workbench.action.focusSixthEditorGroup";
+      case 6:
+        return "workbench.action.focusSeventhEditorGroup";
+      case 7:
+        return "workbench.action.focusEighthEditorGroup";
+    }
+    return undefined;
+  };
+  const command =
+    toCommandId(groupIndex) ?? "workbench.action.focusEighthEditorGroup";
+  await vscode.commands.executeCommand(command);
+  const moves = Math.max(0, groupIndex - 7);
+  for (let i = 0; i < moves; i++) {
+    await vscode.commands.executeCommand("workbench.action.focusNextGroup");
+  }
 }
 
 async function applyLayout(layout: Layout) {
@@ -422,160 +480,278 @@ async function applyLayout(layout: Layout) {
     await vscode.commands.executeCommand("workbench.action.newGroupRight");
   }
 
-  // loop through groups
-  for (let i = 0; i < layout.groups.length; i++) {
-    // focus current group
-    if (i === 0) {
-      await vscode.commands.executeCommand(
-        "workbench.action.focusFirstEditorGroup",
-      );
-    } else {
-      await vscode.commands.executeCommand("workbench.action.focusNextGroup");
-    }
-
-    // move tabs across groups
-    const totalTabsToProcess = getSortedCurrentTabGroups()[i].tabs.length;
-
-    for (let j = 0; j < totalTabsToProcess; j++) {
-      // focus the first editor in the group as current
-      await vscode.commands.executeCommand(
-        "workbench.action.firstEditorInGroup",
-      );
-      const currentGroup = getSortedCurrentTabGroups()[i];
-      const currentTab = currentGroup.tabs[0];
-      const isLastTab = currentGroup.tabs.length === 1;
-      const target = findTarget(currentTab);
-      if (target === "panel") {
-        // move to panel
-        await vscode.commands.executeCommand(
-          "workbench.action.terminal.moveToTerminalPanel",
-        );
-        if (isLastTab) {
-          // keep placeholder group
-          await vscode.commands.executeCommand(
-            "workbench.action.newGroupRight",
-          );
-        }
-      } else if (target > i) {
-        // move to next group (target - i) times
-        const steps = target - i;
-        for (let k = 0; k < steps; k++) {
-          await vscode.commands.executeCommand(
-            "workbench.action.moveEditorToNextGroup",
-          );
-        }
-        // focus back
-        if (isLastTab) {
-          for (let k = 0; k < steps - 1; k++) {
-            await vscode.commands.executeCommand(
-              "workbench.action.focusPreviousGroup",
-            );
-          }
-          // keep placeholder group
-          await vscode.commands.executeCommand("workbench.action.newGroupLeft");
-        } else {
-          for (let k = 0; k < steps; k++) {
-            await vscode.commands.executeCommand(
-              "workbench.action.focusPreviousGroup",
-            );
-          }
-        }
-      } else if (target < i) {
-        // move to previous group (i - target) times
-        const steps = i - target;
-        for (let k = 0; k < steps; k++) {
-          await vscode.commands.executeCommand(
-            "workbench.action.moveEditorToPreviousGroup",
-          );
-        }
-        // focus back
-        if (isLastTab) {
-          for (let k = 0; k < steps - 1; k++) {
-            await vscode.commands.executeCommand(
-              "workbench.action.focusNextGroup",
-            );
-          }
-          // keep placeholder group
-          await vscode.commands.executeCommand(
-            "workbench.action.newGroupRight",
-          );
-        } else {
-          for (let k = 0; k < steps; k++) {
-            await vscode.commands.executeCommand(
-              "workbench.action.focusNextGroup",
-            );
-          }
-        }
-      } else {
-        // move to last in the same group
-        await vscode.commands.executeCommand("moveActiveEditor", {
-          to: "right",
-          value: Number.MAX_SAFE_INTEGER,
-        });
-      }
-    }
-  }
-
   // apply groups size
   await vscode.commands.executeCommand(
     "vscode.setEditorLayout",
     layout.editorGroupLayout,
   );
 
-  // loop through groups again to sort tabs
+  // loop through groups
   for (let i = 0; i < layout.groups.length; i++) {
     // focus current group
-    if (i === 0) {
-      await vscode.commands.executeCommand(
-        "workbench.action.focusFirstEditorGroup",
-      );
-    } else {
-      await vscode.commands.executeCommand("workbench.action.focusNextGroup");
-    }
+    await focusEditorGroup(i);
 
-    for (let j = layout.groups[i].tabInputs.length - 1; j >= 0; j--) {
-      const input = layout.groups[i].tabInputs[j];
-      if (input.type === "CreateTerminal") {
-        // create terminal
-        vscode.window
-          .createTerminal({
-            cwd: input.cwd,
-            location: { viewColumn: vscode.ViewColumn.Active },
-          })
-          .show(false);
-        // move to first in the same group
-        await vscode.commands.executeCommand("moveActiveEditor", {
-          to: "left",
-          value: Number.MAX_SAFE_INTEGER,
-        });
-      } else if (input.type === "MoveTerminal") {
-        // move terminal
-        input.terminal.show(false); // focus
-        await vscode.commands.executeCommand(
-          "workbench.action.terminal.moveToEditor",
-        );
-        // move to first in the same group
-        await vscode.commands.executeCommand("moveActiveEditor", {
-          to: "left",
-          value: Number.MAX_SAFE_INTEGER,
-        });
-      } else {
-        const current = getSortedCurrentTabGroups()[i].tabs;
-        const tabIndex = current.findIndex((tab) =>
-          isSameTabInput(input, getTabInputSource(tab)),
-        );
-        if (tabIndex >= 0) {
+    // move tabs across groups
+    const totalTabsToProcess = getSortedCurrentTabGroups()[i].tabs.length;
+    let currentTabIndex = 0;
+    for (let j = 0; j < totalTabsToProcess; j++) {
+      const currentGroup = getSortedCurrentTabGroups()[i];
+      const currentTab = currentGroup.tabs[currentTabIndex];
+      const isLastTab = currentGroup.tabs.length === 1;
+      const target = findTarget(currentTab);
+      if (target === i) {
+        // no need to move, check next tab
+        currentTabIndex++;
+        continue;
+      }
+      if (target === "panel") {
+        if (isLastTab) {
+          // keep a placeholder group
           await vscode.commands.executeCommand(
-            "workbench.action.openEditorAtIndex",
-            tabIndex,
+            "workbench.action.newGroupRight",
           );
-          // move to first in the same group
-          await vscode.commands.executeCommand("moveActiveEditor", {
-            to: "left",
-            value: Number.MAX_SAFE_INTEGER,
-          });
+          await focusEditorGroup(i);
         }
+        // focus current tab
+        await vscode.commands.executeCommand(
+          "workbench.action.openEditorAtIndex",
+          currentTabIndex,
+        );
+        // move to panel
+        await vscode.commands.executeCommand(
+          "workbench.action.terminal.moveToTerminalPanel",
+        );
+      } else if (target < i) {
+        if (isLastTab) {
+          // keep a placeholder group
+          await vscode.commands.executeCommand(
+            "workbench.action.newGroupRight",
+          );
+          await focusEditorGroup(i);
+        }
+        // focus current tab
+        await vscode.commands.executeCommand(
+          "workbench.action.openEditorAtIndex",
+          currentTabIndex,
+        );
+        // move to target group
+        await vscode.commands.executeCommand("moveActiveEditor", {
+          to: "position",
+          by: "group",
+          value: target + 1,
+        });
+        // focus back to current group
+        await focusEditorGroup(i);
+      } else if (target > i) {
+        let targetIndexFixed = target;
+        if (isLastTab) {
+          // keep a placeholder group
+          await vscode.commands.executeCommand("workbench.action.newGroupLeft");
+          await focusEditorGroup(i);
+          targetIndexFixed += 1;
+        }
+        // focus current tab
+        await vscode.commands.executeCommand(
+          "workbench.action.openEditorAtIndex",
+          currentTabIndex,
+        );
+        // move to target group
+        await vscode.commands.executeCommand("moveActiveEditor", {
+          to: "position",
+          by: "group",
+          value: targetIndexFixed + 1,
+        });
+        // focus back to current group
+        await focusEditorGroup(i);
       }
     }
   }
+
+  // loop through groups again
+  for (let i = 0; i < layout.groups.length; i++) {
+    // focus current group
+    await focusEditorGroup(i);
+
+    // sort group tabs
+    const current = getSortedCurrentTabGroups()[i].tabs;
+    const tabInputs = layout.groups[i].tabInputs;
+    const moves = minimalMovesToMatch(current, tabInputs, (a, b) =>
+      isSameTabInput(b, getTabInputSource(a)),
+    );
+    for (const move of moves) {
+      await vscode.commands.executeCommand(
+        "workbench.action.openEditorAtIndex",
+        move.from,
+      );
+      await vscode.commands.executeCommand("moveActiveEditor", {
+        to: "position",
+        by: "tab",
+        value: move.to + 1,
+      });
+    }
+
+    // process terminals
+    for (let j = 0; j < tabInputs.length; j++) {
+      const input = tabInputs[j];
+      if (input.type === "CreateTerminal") {
+        if (j === 0) {
+          // create terminal
+          await vscode.window
+            .createTerminal({
+              cwd: input.cwd,
+              location: { viewColumn: vscode.ViewColumn.Active },
+            })
+            .show(false);
+          // move to first
+          await vscode.commands.executeCommand("moveActiveEditor", {
+            to: "first",
+            by: "tab",
+          });
+        } else {
+          // focus j - 1
+          await vscode.commands.executeCommand(
+            "workbench.action.openEditorAtIndex",
+            j - 1,
+          );
+          // create terminal
+          await vscode.window
+            .createTerminal({
+              cwd: input.cwd,
+              location: { viewColumn: vscode.ViewColumn.Active },
+            })
+            .show(false);
+        }
+      } else if (input.type === "MoveTerminal") {
+        if (j === 0) {
+          // move terminal
+          input.terminal.show(false); // focus
+          await vscode.commands.executeCommand(
+            "workbench.action.terminal.moveToEditor",
+          );
+          // move to first
+          await vscode.commands.executeCommand("moveActiveEditor", {
+            to: "first",
+            by: "tab",
+          });
+        } else {
+          // focus j - 1
+          await vscode.commands.executeCommand(
+            "workbench.action.openEditorAtIndex",
+            j - 1,
+          );
+          // move terminal
+          input.terminal.show(false); // focus
+          await vscode.commands.executeCommand(
+            "workbench.action.terminal.moveToEditor",
+          );
+        }
+      }
+    }
+
+    // apply groups size
+    await vscode.commands.executeCommand(
+      "vscode.setEditorLayout",
+      layout.editorGroupLayout,
+    );
+
+    // apply focus
+    if (layout.groups[i].activeTabIndex >= 0) {
+      await vscode.commands.executeCommand(
+        "workbench.action.openEditorAtIndex",
+        layout.groups[i].activeTabIndex,
+      );
+    }
+
+    // check tab type and apply locks
+    if (
+      getSortedCurrentTabGroups()[i].tabs.every(
+        (tab) =>
+          isPochiTaskTab(tab) || tab.input instanceof vscode.TabInputTerminal,
+      )
+    ) {
+      await vscode.commands.executeCommand("workbench.action.lockEditorGroup");
+    } else {
+      await vscode.commands.executeCommand(
+        "workbench.action.unlockEditorGroup",
+      );
+    }
+  }
+}
+
+/**
+ * Sort an array A to match the "like" order of array B using the minimal number of single-element moves.
+ *
+ * Rules:
+ * - Elements present in B appear in the final array in the order they appear in B.
+ *   If A contains multiple items that "equal" the same B-item (by Fn), they are matched in A's original order.
+ * - Elements of A that are not present in B are placed after all B-matched items (preserving their original relative order).
+ * - The returned sequence of moves has minimal length (i.e., minimal number of moved elements).
+ */
+
+interface Move {
+  from: number;
+  to: number;
+}
+
+function minimalMovesToMatch<TA, TB>(
+  arrA: readonly TA[],
+  arrB: readonly TB[],
+  Fn: (a: TA, b: TB) => boolean,
+): Move[] {
+  const aInB: TA[] = [];
+  const aNotInB: TA[] = [];
+  const bUsed = new Array(arrB.length).fill(false);
+
+  for (const a of arrA) {
+    let found = false;
+    for (let i = 0; i < arrB.length; i++) {
+      if (!bUsed[i] && Fn(a, arrB[i])) {
+        aInB.push(a);
+        bUsed[i] = true;
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      aNotInB.push(a);
+    }
+  }
+
+  const sortedAInB = aInB.sort((a1, a2) => {
+    const index1 = arrB.findIndex((b) => Fn(a1, b));
+    const index2 = arrB.findIndex((b) => Fn(a2, b));
+    return index1 - index2;
+  });
+
+  const target = [...sortedAInB, ...aNotInB];
+
+  // Find the longest common subsequence between A and target.
+  // These are the elements that do not need to move.
+  const lcs: TA[] = [];
+  let targetIndex = 0;
+  for (let i = 0; i < arrA.length && targetIndex < target.length; i++) {
+    if (arrA[i] === target[targetIndex]) {
+      lcs.push(arrA[i]);
+      targetIndex++;
+    }
+  }
+
+  const toMove = new Set(arrA.filter((item) => !lcs.includes(item)));
+  const moves: Move[] = [];
+  const currentA = [...arrA];
+  for (let i = 0; i < arrA.length; i++) {
+    const originalItem = arrA[i];
+    if (toMove.has(originalItem)) {
+      const fromIndex = currentA.indexOf(originalItem);
+      const toIndex = target.indexOf(originalItem);
+
+      const [movedItem] = currentA.splice(fromIndex, 1);
+      currentA.splice(toIndex, 0, movedItem);
+
+      if (fromIndex !== toIndex) {
+        moves.push({ from: fromIndex, to: toIndex });
+      }
+    }
+  }
+  return moves;
 }
