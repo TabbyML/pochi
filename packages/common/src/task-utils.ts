@@ -2,7 +2,7 @@ const WorktreePrefix = "⎇";
 const TaskDisplayIdPrefix = "∙";
 export const prefixWorktreeName = (name: string) => `${WorktreePrefix} ${name}`;
 export const prefixTaskDisplayId = (displayId: number) =>
-  `${TaskDisplayIdPrefix}${displayId}`;
+  `${TaskDisplayIdPrefix}${String(displayId).padStart(3, "0")}`;
 
 export const getTaskDisplayTitle = (params: {
   worktreeName: string;
