@@ -1,4 +1,3 @@
-import { DiffView } from "@/integrations/editor/diff-view";
 import { createPrettyPatch, isFileExists } from "@/lib/fs";
 import { getLogger } from "@/lib/logger";
 import { getEditSummary, writeTextDocument } from "@/lib/write-text-document";
@@ -15,40 +14,23 @@ const logger = getLogger("writeToFileTool");
 
 export const previewWriteToFile: PreviewToolFunctionType<
   ClientTools["writeToFile"]
-> = async (args, { state, toolCallId, abortSignal, cwd, nonInteractive }) => {
+> = async (args, { cwd }) => {
   const { path, content } = args || {};
   if (path === undefined || content === undefined)
     return { error: "Invalid arguments for previewing writeToFile tool." };
 
-  try {
-    const processedContent = fixCodeGenerationOutput(content);
+  const processedContent = fixCodeGenerationOutput(content);
 
-    if (nonInteractive) {
-      const resolvedPath = resolvePath(path, cwd);
-      const fileUri = vscode.Uri.file(resolvedPath);
+  const resolvedPath = resolvePath(path, cwd);
+  const fileUri = vscode.Uri.file(resolvedPath);
 
-      const fileExists = await isFileExists(fileUri);
-      const fileContent = fileExists
-        ? (await vscode.workspace.fs.readFile(fileUri)).toString()
-        : "";
-      const editSummary = getEditSummary(fileContent, processedContent);
-      const edit = createPrettyPatch(path, fileContent, processedContent);
-      return { success: true, _meta: { edit, editSummary } };
-    }
-
-    const diffView = await DiffView.getOrCreate(toolCallId, path, cwd);
-    await diffView.update(
-      processedContent,
-      state !== "partial-call",
-      abortSignal,
-    );
-    return { success: true };
-  } catch (error) {
-    if (state === "call") {
-      DiffView.revertAndClose(toolCallId);
-    }
-    throw error;
-  }
+  const fileExists = await isFileExists(fileUri);
+  const fileContent = fileExists
+    ? (await vscode.workspace.fs.readFile(fileUri)).toString()
+    : "";
+  const editSummary = getEditSummary(fileContent, processedContent);
+  const edit = createPrettyPatch(path, fileContent, processedContent);
+  return { success: true, _meta: { edit, editSummary } };
 };
 
 /**
@@ -57,30 +39,16 @@ export const previewWriteToFile: PreviewToolFunctionType<
  */
 export const writeToFile: ToolFunctionType<ClientTools["writeToFile"]> = async (
   { path, content },
-  { toolCallId, abortSignal, nonInteractive, cwd },
+  { abortSignal, cwd },
 ) => {
-  try {
-    const processedContent = fixCodeGenerationOutput(content);
+  const processedContent = fixCodeGenerationOutput(content);
 
-    if (nonInteractive) {
-      const edits = await writeTextDocument(
-        path,
-        processedContent,
-        cwd,
-        abortSignal,
-      );
-      logger.debug(
-        `Successfully wrote content to ${path} in non-interactive mode`,
-      );
-      return { success: true, ...edits };
-    }
-
-    const diffView = await DiffView.getOrCreate(toolCallId, path, cwd);
-    await diffView.update(processedContent, true);
-    const edits = await diffView.saveChanges(path, processedContent);
-    return { success: true, ...edits };
-  } catch (error) {
-    DiffView.revertAndClose(toolCallId);
-    throw error;
-  }
+  const edits = await writeTextDocument(
+    path,
+    processedContent,
+    cwd,
+    abortSignal,
+  );
+  logger.debug(`Successfully wrote content to ${path}`);
+  return { success: true, ...edits };
 };

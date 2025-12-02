@@ -60,7 +60,6 @@ export interface VSCodeHostApi {
       toolCallId: string;
       state: "partial-call" | "call" | "result";
       abortSignal?: ThreadAbortSignalSerialization;
-      nonInteractive?: boolean;
     },
   ): Promise<PreviewReturnType>;
 
@@ -79,7 +78,6 @@ export interface VSCodeHostApi {
     options: {
       toolCallId: string;
       abortSignal: ThreadAbortSignalSerialization;
-      nonInteractive?: boolean;
       contentType?: string[];
     },
   ): Promise<unknown>;

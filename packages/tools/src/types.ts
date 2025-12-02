@@ -11,7 +11,6 @@ import type { EditFileOutputSchema } from "./constants";
 export type ToolFunctionType<T extends Tool> = (
   input: InferToolInput<T>,
   options: ToolCallOptions & {
-    nonInteractive?: boolean;
     cwd: string;
     contentType?: string[];
   },
@@ -29,6 +28,5 @@ export type PreviewToolFunctionType<T extends Tool> = (
     state: "partial-call" | "call" | "result";
     abortSignal?: AbortSignal;
     cwd: string;
-    nonInteractive?: boolean;
   },
 ) => Promise<PreviewReturnType>;

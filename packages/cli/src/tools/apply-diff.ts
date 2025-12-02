@@ -4,9 +4,6 @@ import { resolvePath, validateTextFile } from "@getpochi/common/tool-utils";
 import type { ClientTools, ToolFunctionType } from "@getpochi/tools";
 import { ensureFileDirectoryExists } from "../lib/fs";
 
-/**
- * Apply a diff to a file using DiffView
- */
 export const applyDiff =
   (): ToolFunctionType<ClientTools["applyDiff"]> =>
   async (

@@ -365,7 +365,6 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       options: {
         toolCallId: string;
         abortSignal: ThreadAbortSignalSerialization;
-        nonInteractive?: boolean;
         contentType?: string[];
       },
     ) => {
@@ -397,7 +396,6 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
           abortSignal,
           messages: [],
           toolCallId: options.toolCallId,
-          nonInteractive: options.nonInteractive,
           cwd: this.cwd,
           contentType: options.contentType,
         }),
@@ -437,7 +435,6 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         toolCallId: string;
         state: "partial-call" | "call" | "result";
         abortSignal?: ThreadAbortSignalSerialization;
-        nonInteractive?: boolean;
       },
     ) => {
       const tool = ToolPreviewMap[toolName];
@@ -465,7 +462,6 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
           ...options,
           abortSignal,
           cwd: this.cwd,
-          nonInteractive: options.nonInteractive,
         }),
       );
     },
