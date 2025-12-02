@@ -2506,7 +2506,7 @@ Here you will find highlights on features, enhancements, and bug fixes, plus ins
 
 ## [Weekly Update #12](./2025-11-28-weekly-update-12)
 
-#### Nov 21, 2025
+#### Nov 28, 2025
 
 # Weekly Update #12
 
