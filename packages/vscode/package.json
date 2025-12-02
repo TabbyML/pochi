@@ -149,12 +149,6 @@
         "icon": "$(terminal)"
       },
       {
-        "command": "pochi.diffWorktree",
-        "title": "Review Changes",
-        "category": "Pochi",
-        "icon": "$(diff-multiple)"
-      },
-      {
         "command": "pochi.openCustomModelSettings",
         "title": "Open Custom Model Settings",
         "category": "Pochi"
@@ -187,11 +181,6 @@
         },
         {
           "command": "pochi.openTerminal",
-          "when": "resourceScheme == 'pochi-task'",
-          "group": "navigation"
-        },
-        {
-          "command": "pochi.diffWorktree",
           "when": "resourceScheme == 'pochi-task'",
           "group": "navigation"
         }

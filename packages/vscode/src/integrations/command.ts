@@ -468,22 +468,6 @@ export class CommandManager implements vscode.Disposable {
         }
       }),
 
-      vscode.commands.registerCommand("pochi.diffWorktree", async () => {
-        const activeTab = vscode.window.tabGroups.activeTabGroup.activeTab;
-        if (
-          activeTab &&
-          activeTab.input instanceof vscode.TabInputCustom &&
-          activeTab.input.viewType === PochiTaskEditorProvider.viewType
-        ) {
-          const params = PochiTaskEditorProvider.parseTaskUri(
-            activeTab.input.uri,
-          );
-          if (params?.cwd) {
-            await this.worktreeManager.showWorktreeDiff(params.cwd);
-          }
-        }
-      }),
-
       vscode.commands.registerCommand(
         "pochi.worktree.openDiff",
         async (worktreePath: string) => {
