@@ -31,10 +31,10 @@ import {
 } from "@getpochi/common/vscode-webui-bridge";
 import type { Task } from "@getpochi/livekit";
 import {
-  CheckCircle2,
+  Check,
   ChevronDown,
   ChevronRight,
-  Circle,
+  CircleDot,
   ExternalLink,
   GitBranch,
   GitCompare,
@@ -43,7 +43,7 @@ import {
   Loader2,
   Terminal,
   Trash2,
-  XCircle,
+  X,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -306,7 +306,6 @@ export function WorktreeList({
 
 function WorktreeSection({
   group,
-  isLoadingWorktrees,
   onDeleteGroup,
 }: {
   group: WorktreeGroup;
@@ -575,25 +574,24 @@ function PrStatusDisplay({
   prChecks?: PrCheck[];
 }) {
   const { t } = useTranslation();
-  const [showChecks, setShowChecks] = useState(false);
 
   // Helper function to get check icon
   const getCheckIcon = (state: string) => {
     switch (state) {
       case "success":
       case "completed":
-        return <CheckCircle2 className="size-3" />;
+        return <Check className="size-4" />;
       case "failure":
       case "failed":
       case "error":
-        return <XCircle className="size-3" />;
+        return <X className="size-4" />;
       case "pending":
       case "queued":
-        return <Circle className="size-3" />;
+        return <CircleDot className="size-4" />;
       case "in_progress":
-        return <Loader2 className="size-3 animate-spin" />;
+        return <Loader2 className="size-4 animate-spin" />;
       default:
-        return <Circle className="size-3" />;
+        return <CircleDot className="size-4" />;
     }
   };
 
@@ -626,7 +624,7 @@ function PrStatusDisplay({
       : false;
 
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex items-center gap-2">
       <Button
         variant="ghost"
         size="sm"
@@ -649,36 +647,27 @@ function PrStatusDisplay({
       {hasFailedChecks && (
         <span className="text-xs">{t("worktree.checksFailed")}</span>
       )}
-      {/* Dropdown button for checks */}
+      {/* Display checks inline */}
       {prChecks && prChecks.length > 0 && (
-        <Popover open={showChecks} onOpenChange={setShowChecks}>
-          <PopoverTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-auto w-4 p-0 hover:bg-transparent"
-            >
-              <ChevronDown className="size-3" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-72 p-2" align="start" sideOffset={4}>
-            <div className="space-y-1">
-              {prChecks.map((check, index) => (
+        <div className="ml-2 flex items-center gap-1">
+          {prChecks.map((check, index) => (
+            <Tooltip key={index}>
+              <TooltipTrigger asChild>
                 <a
-                  key={index}
                   href={check.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-2 rounded p-1.5 text-sm hover:bg-accent"
+                  className="inline-flex"
                 >
                   {getCheckIcon(check.state)}
-                  <span className="flex-1 truncate">{check.name}</span>
-                  <ExternalLink className="size-3" />
                 </a>
-              ))}
-            </div>
-          </PopoverContent>
-        </Popover>
+              </TooltipTrigger>
+              <TooltipContent>
+                <span className="text-xs">{check.name}</span>
+              </TooltipContent>
+            </Tooltip>
+          ))}
+        </div>
       )}
     </div>
   );
