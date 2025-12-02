@@ -3,7 +3,6 @@ import type React from "react";
 import { useTranslation } from "react-i18next";
 
 import { ReasoningPartUI } from "@/components/reasoning-part.tsx";
-import { ToolInvocationPart } from "@/components/tool-invocation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
@@ -11,6 +10,7 @@ import {
   BackgroundJobContextProvider,
   useToolCallLifeCycle,
 } from "@/features/chat";
+import { ToolInvocationPart } from "@/features/tools";
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
 import { cn } from "@/lib/utils";
 import { isVSCodeEnvironment, vscodeHost } from "@/lib/vscode";

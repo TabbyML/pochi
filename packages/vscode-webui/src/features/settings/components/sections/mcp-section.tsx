@@ -1,4 +1,3 @@
-import { FileIcon } from "@/components/tool-invocation/file-icon/file-icon";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
@@ -8,6 +7,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { FileIcon } from "@/features/tools";
 import { useMcp } from "@/lib/hooks/use-mcp";
 import {
   type McpConfigPath,

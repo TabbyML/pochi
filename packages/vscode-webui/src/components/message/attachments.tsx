@@ -3,11 +3,11 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
+import { FileIcon } from "@/features/tools";
 import { useStoreBlobUrl } from "@/lib/store-blob";
 import { cn } from "@/lib/utils";
 import type { FileUIPart } from "ai";
 import { FileIcon as LucideFileIcon, VideoIcon } from "lucide-react";
-import { FileIcon } from "../tool-invocation/file-icon/file-icon";
 import { CopyableImage } from "../ui/copyable-image";
 
 interface MessageAttachmentsProps {

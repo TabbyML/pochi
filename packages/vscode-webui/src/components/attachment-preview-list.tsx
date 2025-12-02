@@ -1,9 +1,9 @@
-import { FileIcon } from "@/components/tool-invocation/file-icon/file-icon";
 import {
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
+import { FileIcon } from "@/features/tools";
 import { cn } from "@/lib/utils";
 import { Loader2, Play, Video, X } from "lucide-react";
 import { useEffect, useState } from "react";

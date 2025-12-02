@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
 
-import { McpToolCall } from "../tool-invocation/mcp-tool-call";
+import { McpToolCall } from "@/features/tools";
 
 const meta: Meta<typeof McpToolCall> = {
   component: McpToolCall,

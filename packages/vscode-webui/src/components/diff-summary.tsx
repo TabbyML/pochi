@@ -1,5 +1,3 @@
-import { EditSummary } from "@/components/tool-invocation/edit-summary";
-import { FileIcon } from "@/components/tool-invocation/file-icon/file-icon";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -8,6 +6,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import type { useTaskChangedFiles } from "@/features/chat";
+import { EditSummary, FileIcon } from "@/features/tools";
 import { cn } from "@/lib/utils";
 import { vscodeHost } from "@/lib/vscode";
 import {

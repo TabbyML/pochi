@@ -1,6 +1,6 @@
-import { FileList } from "@/components/tool-invocation/file-list";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { FileList } from "@/features/tools";
 import { useRules } from "@/lib/hooks/use-rules";
 import { useThirdPartyRules } from "@/lib/hooks/use-third-party-rules";
 import { vscodeHost } from "@/lib/vscode";

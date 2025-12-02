@@ -1,3 +1,4 @@
+import { EditSummary } from "@/features/tools";
 import { usePochiCredentials } from "@/lib/hooks/use-pochi-credentials";
 import { cn } from "@/lib/utils";
 import { vscodeHost } from "@/lib/vscode";
@@ -12,7 +13,6 @@ import type { ToolUIPart } from "ai";
 import { GitBranch, Loader2 } from "lucide-react";
 import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { EditSummary } from "../tool-invocation/edit-summary";
 import { ToolCallLite } from "./tool-call-lite";
 
 export function TaskRow({
