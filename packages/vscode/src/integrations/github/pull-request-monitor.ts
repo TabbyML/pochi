@@ -7,6 +7,8 @@ import { signal } from "@preact/signals-core";
 import { injectable, singleton } from "tsyringe";
 import type * as vscode from "vscode";
 // biome-ignore lint/style/useImportType: needed for dependency injection
+import { GitStateMonitor } from "../git/git-state";
+// biome-ignore lint/style/useImportType: needed for dependency injection
 import { GitWorktreeInfoProvider } from "../git/git-worktree-info-provider";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { WorktreeManager } from "../git/worktree";
@@ -27,6 +29,7 @@ export class GithubPullRequestMonitor implements vscode.Disposable {
   constructor(
     private readonly worktreeManager: WorktreeManager,
     private readonly worktreeInfoProvider: GitWorktreeInfoProvider,
+    private readonly gitStateMonitor: GitStateMonitor,
   ) {
     this.init();
   }
@@ -36,8 +39,22 @@ export class GithubPullRequestMonitor implements vscode.Disposable {
     if (!this.ghCliCheck.value.authorized) {
       return;
     }
-    const worktrees = this.worktreeManager.worktrees.value;
-    await this.checkWorktreesPrInfo(worktrees);
+
+    await this.checkWorktreesPrInfo();
+    this.disposables.push(
+      this.gitStateMonitor.onDidChangeGitState((e) => {
+        if (e.type === "branch-changed") {
+          this.checkWorktreesPrInfo();
+        }
+      }),
+    );
+    this.disposables.push(
+      this.gitStateMonitor.onDidRepositoryChange((e) => {
+        if (e.type === "repository-changed" && e.change === "added") {
+          this.checkWorktreesPrInfo();
+        }
+      }),
+    );
     this.startPolling();
   }
 
@@ -72,7 +89,8 @@ export class GithubPullRequestMonitor implements vscode.Disposable {
     });
   }
 
-  async checkWorktreesPrInfo(worktrees: GitWorktree[]) {
+  async checkWorktreesPrInfo() {
+    const worktrees = this.worktreeManager.worktrees.value;
     for (const worktree of worktrees) {
       await this.checkWorktreePrInfo(worktree);
     }
@@ -184,7 +202,7 @@ const getGithubPr = async (
         color: false,
       });
     } catch (error: unknown) {
-      logger.error(
+      logger.trace(
         `Error fetching PR with command "${command}": ${toErrorMessage(error)}`,
       );
       return null;
