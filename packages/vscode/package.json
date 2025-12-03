@@ -189,6 +189,11 @@
           "command": "pochi.openTerminal",
           "when": "resourceScheme == 'pochi-task'",
           "group": "navigation"
+        },
+        {
+          "command": "pochi.toggleTaskFocusLayout",
+          "when": "resourceScheme == 'pochi-task'",
+          "group": "navigation"
         }
       ],
       "commandPalette": [
