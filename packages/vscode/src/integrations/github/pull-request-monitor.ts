@@ -6,17 +6,17 @@ import type {
 import { signal } from "@preact/signals-core";
 import { injectable, singleton } from "tsyringe";
 import type * as vscode from "vscode";
+// biome-ignore lint/style/useImportType: needed for dependency injection
+import { GitWorktreeInfoProvider } from "../git/git-worktree-info-provider";
+// biome-ignore lint/style/useImportType: needed for dependency injection
+import { WorktreeManager } from "../git/worktree";
 import { executeCommandWithNode } from "../terminal/execute-command-with-node";
-// biome-ignore lint/style/useImportType: needed for dependency injection
-import { GitWorktreeInfoProvider } from "./git-worktree-info-provider";
-// biome-ignore lint/style/useImportType: needed for dependency injection
-import { WorktreeManager } from "./worktree";
 
 const logger = getLogger("GithubPR");
 
 @singleton()
 @injectable()
-export class GithubPrInfoMonitor implements vscode.Disposable {
+export class GithubPullRequestMonitor implements vscode.Disposable {
   private readonly disposables: vscode.Disposable[] = [];
 
   ghCliCheck = signal<{ installed: boolean; authorized: boolean }>({
@@ -50,7 +50,11 @@ export class GithubPrInfoMonitor implements vscode.Disposable {
       let hasUpdates = false;
       for (const worktree of worktrees) {
         const currentInfo = this.worktreeInfoProvider.get(worktree.path);
-        if (currentInfo?.github.pullRequest?.status === "open") {
+        if (
+          !currentInfo ||
+          !currentInfo.github.pullRequest ||
+          currentInfo?.github.pullRequest?.status === "open"
+        ) {
           const updated = await this.fetchWorktreePrInfo(worktree);
           if (updated) {
             hasUpdates = true;
@@ -104,7 +108,10 @@ export class GithubPrInfoMonitor implements vscode.Disposable {
       const currentInfo = this.worktreeInfoProvider.get(worktree.path);
       const currentPrInfo = currentInfo?.github?.pullRequest;
       if (JSON.stringify(currentPrInfo) !== JSON.stringify(prInfo)) {
-        this.worktreeInfoProvider.updateGithubPrInfo(worktree.path, prInfo);
+        this.worktreeInfoProvider.updateGithubPullRequest(
+          worktree.path,
+          prInfo,
+        );
         return prInfo;
       }
     }

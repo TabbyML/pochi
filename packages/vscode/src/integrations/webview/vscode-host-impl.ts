@@ -96,9 +96,9 @@ import { PochiTaskState } from "../editor/pochi-task-state";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { type FileSelection, TabState } from "../editor/tab-state";
 // biome-ignore lint/style/useImportType: needed for dependency injection
-import { GithubPrInfoMonitor } from "../git/github";
-// biome-ignore lint/style/useImportType: needed for dependency injection
 import { WorktreeManager } from "../git/worktree";
+// biome-ignore lint/style/useImportType: needed for dependency injection
+import { GithubPullRequestMonitor } from "../github/pull-request-monitor";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { ThirdMcpImporter } from "../mcp/third-party-mcp";
 import {
@@ -135,7 +135,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     private readonly customAgentManager: CustomAgentManager,
     private readonly worktreeManager: WorktreeManager,
     private readonly pochiTaskState: PochiTaskState,
-    private readonly githubPrInfoMonitor: GithubPrInfoMonitor,
+    private readonly githubPullRequestMonitor: GithubPullRequestMonitor,
   ) {}
 
   private get cwd() {
@@ -875,7 +875,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   }> => {
     return {
       worktrees: ThreadSignal.serialize(this.worktreeManager.worktrees),
-      ghCli: ThreadSignal.serialize(this.githubPrInfoMonitor.ghCliCheck),
+      ghCli: ThreadSignal.serialize(this.githubPullRequestMonitor.ghCliCheck),
       gitOriginUrl: await this.worktreeManager.getOriginUrl(),
     };
   };
