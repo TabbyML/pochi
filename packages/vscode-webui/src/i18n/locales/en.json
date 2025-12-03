@@ -64,6 +64,8 @@
     "createPr": "Create PR",
     "createDraftPr": "Create draft PR",
     "createPrManually": "Create PR manually",
+    "installGhCli": "Please install GitHub CLI to create PRs",
+    "authGhCli": "Please run `gh auth login` to authenticate GitHub CLI",
     "prNumber": "PR #{{number}}",
     "merge": "Merge",
     "readyToMerge": "Ready to merge",

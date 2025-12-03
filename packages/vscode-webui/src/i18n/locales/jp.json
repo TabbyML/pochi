@@ -64,6 +64,8 @@
     "createPr": "PR を作成",
     "createDraftPr": "ドラフト PR を作成",
     "createPrManually": "手動で PR を作成",
+    "installGhCli": "PR を作成するには GitHub CLI をインストールしてください",
+    "authGhCli": "GitHub CLI を認証するには `gh auth login` を実行してください",
     "prNumber": "PR #{{number}}",
     "merge": "マージ",
     "readyToMerge": "マージ準備完了",

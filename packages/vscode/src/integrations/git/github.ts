@@ -167,7 +167,7 @@ const getGithubPr = async (
   try {
     // Get PR information for the given branch using gh cli
     let result: { output: string; isTruncated: boolean };
-    const command = `gh pr view ${branch} --json number,state,mergedAt,closedAt,url`;
+    const command = `gh pr view ${branch} --json number,state,mergedAt,closedAt`;
     logger.trace(`Executing command to fetch PR: ${command}`);
     try {
       result = await executeCommandWithNode({
@@ -239,7 +239,6 @@ const getGithubPr = async (
 
     return {
       id: prData.number,
-      url: prData.url,
       status,
       checks: checks.map((check) => ({
         name: check.name,

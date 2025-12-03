@@ -64,6 +64,8 @@
     "createPr": "PR 생성",
     "createDraftPr": "초안 PR 생성",
     "createPrManually": "수동으로 PR 생성",
+    "installGhCli": "PR을 생성하려면 GitHub CLI를 설치하세요",
+    "authGhCli": "GitHub CLI를 인증하려면 `gh auth login`을 실행하세요",
     "prNumber": "PR #{{number}}",
     "merge": "병합",
     "readyToMerge": "병합 준비 완료",

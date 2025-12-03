@@ -88,6 +88,7 @@ export function WorktreeList({
     useCurrentWorkspace();
   const {
     worktrees,
+    ghCli,
     gitOriginUrl,
     isLoading: isLoadingWorktrees,
   } = useWorktrees();
@@ -230,6 +231,7 @@ export function WorktreeList({
           group={group}
           onDeleteGroup={onDeleteWorktree}
           gitOriginUrl={gitOriginUrl}
+          ghCli={ghCli}
         />
       ))}
       {deletedGroups.length > 0 && (
@@ -258,6 +260,7 @@ export function WorktreeList({
                 isLoadingWorktrees={isLoadingWorktrees}
                 key={group.path}
                 group={group}
+                ghCli={ghCli}
                 gitOriginUrl={gitOriginUrl}
               />
             ))}
@@ -270,11 +273,13 @@ export function WorktreeList({
 function WorktreeSection({
   group,
   onDeleteGroup,
+  ghCli,
   gitOriginUrl,
 }: {
   group: WorktreeGroup;
   isLoadingWorktrees: boolean;
   onDeleteGroup?: (worktreePath: string) => void;
+  ghCli?: { installed: boolean; authorized: boolean };
   gitOriginUrl?: string | null;
 }) {
   const { t } = useTranslation();
@@ -285,6 +290,20 @@ function WorktreeSection({
   const pochiTasks = usePochiTasks();
 
   const pullRequest = group.data?.github?.pullRequest;
+
+  const prUrl = useMemo(() => {
+    if (!gitOriginUrl || !pullRequest?.id) return "#";
+    const info = parseGitOriginUrl(gitOriginUrl);
+    if (!info) return "#";
+
+    if (info.platform === "gitlab") {
+      return `${info.webUrl}/-/merge_requests/${pullRequest.id}`;
+    }
+    if (info.platform === "bitbucket") {
+      return `${info.webUrl}/pull-requests/${pullRequest.id}`;
+    }
+    return `${info.webUrl}/pull/${pullRequest.id}`;
+  }, [gitOriginUrl, pullRequest?.id]);
 
   return (
     <Collapsible
@@ -449,7 +468,7 @@ function WorktreeSection({
               {pullRequest && pullRequest.status === "open" ? (
                 <PrStatusDisplay
                   prNumber={pullRequest.id}
-                  prUrl={pullRequest.url}
+                  prUrl={prUrl}
                   prChecks={pullRequest.checks}
                 />
               ) : (
@@ -457,6 +476,7 @@ function WorktreeSection({
                   worktreePath={group.path}
                   branch={group.branch}
                   gitOriginUrl={gitOriginUrl}
+                  ghCli={ghCli}
                 />
               )}
             </div>{" "}
@@ -490,9 +510,20 @@ function CreatePrDropdown({
   worktreePath,
   branch,
   gitOriginUrl,
-}: { branch?: string; worktreePath: string; gitOriginUrl?: string | null }) {
+  ghCli,
+}: {
+  branch?: string;
+  worktreePath: string;
+  gitOriginUrl?: string | null;
+  ghCli?: { installed: boolean; authorized: boolean };
+}) {
   const { t } = useTranslation();
   const { selectedModel } = useSelectedModels();
+
+  const isGhCliReady = ghCli?.installed && ghCli?.authorized;
+  const tooltipMessage = !ghCli?.installed
+    ? t("worktree.installGhCli")
+    : t("worktree.authGhCli");
 
   const onCreatePr = (isDraft?: boolean) => {
     if (!selectedModel) {
@@ -527,15 +558,23 @@ function CreatePrDropdown({
   return (
     <div className="flex items-center">
       {/* Left button - Direct PR creation */}
-      <Button
-        variant="ghost"
-        size="sm"
-        className="!px-1 -ml-1 h-6 gap-1 rounded-r-none border-r-0"
-        onClick={() => onCreatePr()}
-      >
-        <GitPullRequestCreate className="size-4" />
-        <span className="text-xs">{t("worktree.createPr")}</span>
-      </Button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className="inline-flex">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="!px-1 -ml-1 h-6 gap-1 rounded-r-none border-r-0"
+              onClick={() => onCreatePr()}
+              disabled={!isGhCliReady}
+            >
+              <GitPullRequestCreate className="size-4" />
+              <span className="text-xs">{t("worktree.createPr")}</span>
+            </Button>
+          </span>
+        </TooltipTrigger>
+        {!isGhCliReady && <TooltipContent>{tooltipMessage}</TooltipContent>}
+      </Tooltip>
       {/* Right button - Dropdown menu */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -548,7 +587,10 @@ function CreatePrDropdown({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="text-xs">
-          <DropdownMenuItem onClick={() => onCreatePr(true)}>
+          <DropdownMenuItem
+            onClick={() => onCreatePr(true)}
+            disabled={!isGhCliReady}
+          >
             <GitPullRequestDraft className="size-3" />
             {t("worktree.createDraftPr")}
           </DropdownMenuItem>
