@@ -560,10 +560,16 @@ function CreatePrDropdown({
         </Tooltip>
         <DropdownMenuContent align="start" className="text-xs" side="right">
           <DropdownMenuItem
-            onClick={() => onCreatePr(true)}
+            onClick={() => onCreatePr()}
             disabled={!isGhCliReady}
           >
             {t("worktree.createPr")}
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => onCreatePr(true)}
+            disabled={!isGhCliReady}
+          >
+            {t("worktree.createDraftPr")}
           </DropdownMenuItem>
           <DropdownMenuItem asChild disabled={!manualPrUrl}>
             <a href={manualPrUrl} target="_blank" rel="noopener noreferrer">
