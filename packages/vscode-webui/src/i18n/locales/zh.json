@@ -68,9 +68,9 @@
     "authGhCli": "请运行 `gh auth login` 以验证 GitHub CLI",
     "prNumber": "PR #{{number}}",
     "merge": "合并",
-    "readyToMerge": "准备合并",
-    "checksInProgress": "检查进行中",
-    "checksFailed": "检查失败"
+    "allChecksPassed": "所有检查已通过",
+    "allChecksFailed": "所有检查已失败",
+    "checksStatus": "{{passed}}/{{total}} 检查已通过"
   },
   "settings": {
     "account": {

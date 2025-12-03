@@ -68,9 +68,9 @@
     "authGhCli": "Please run `gh auth login` to authenticate GitHub CLI",
     "prNumber": "PR #{{number}}",
     "merge": "Merge",
-    "readyToMerge": "Ready to merge",
-    "checksInProgress": "Checks in progress",
-    "checksFailed": "Checks failed"
+    "allChecksPassed": "All checks have passed",
+    "allChecksFailed": "All checks have failed",
+    "checksStatus": "{{passed}}/{{total}} checks have passed"
   },
   "settings": {
     "account": {

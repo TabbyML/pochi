@@ -11,6 +11,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
+import {
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -548,7 +553,7 @@ function CreatePrDropdown({
               <Button
                 variant="ghost"
                 size="sm"
-                className="!px-1 -ml-1 h-6 gap-1 rounded-r-none border-r-0"
+                className="h-6 w-6 gap-1"
                 disabled={!isGhCliReady}
               >
                 <GitPullRequest className="size-3.5" />
@@ -557,7 +562,11 @@ function CreatePrDropdown({
           </TooltipTrigger>
           {!isGhCliReady && <TooltipContent>{tooltipMessage}</TooltipContent>}
         </Tooltip>
-        <DropdownMenuContent align="start" className="text-xs" side="right">
+        <DropdownMenuContent
+          align="start"
+          className="bg-background text-xs"
+          side="right"
+        >
           <DropdownMenuItem
             onClick={() => onCreatePr()}
             disabled={!isGhCliReady}
@@ -598,79 +607,95 @@ function PrStatusDisplay({
     switch (state) {
       case "success":
       case "completed":
-        return <Check className="size-3" />;
+        return <Check className="size-3.5" />;
       case "failure":
       case "failed":
       case "error":
-        return <X className="size-3" />;
+        return <X className="size-3.5" />;
       default:
-        return <Loader2 className="size-3 scale-85 animate-spin" />;
+        return <Loader2 className="size-3.5 scale-85 animate-spin" />;
     }
   };
 
-  // Check if all checks are passed
-  const allChecksPassed = prChecks
-    ? prChecks.every(
-        (check) => check.state === "success" || check.state === "completed",
-      )
-    : false;
-
-  const hasPendingChecks =
+  const passedCheckCount =
     prChecks && prChecks.length > 0
-      ? prChecks.some(
-          (check) =>
-            check.state === "pending" ||
-            check.state === "in_progress" ||
-            check.state === "queued",
-        )
-      : false;
+      ? prChecks.filter(
+          (check) => check.state === "success" || check.state === "completed",
+        ).length
+      : 0;
 
-  const hasFailedChecks =
+  const failedCheckCount =
     prChecks && prChecks.length > 0
-      ? prChecks.some(
+      ? prChecks.filter(
           (check) =>
             check.state === "failure" ||
             check.state === "failed" ||
             check.state === "error",
-        )
-      : false;
+        ).length
+      : 0;
+
+  const allChecksPassed = prChecks && passedCheckCount === prChecks.length;
+  const allChecksFailed = prChecks && failedCheckCount === prChecks.length;
+
+  const getChecksStatusText = () => {
+    if (allChecksPassed) {
+      return t("worktree.allChecksPassed");
+    }
+    if (allChecksFailed) {
+      return t("worktree.allChecksFailed");
+    }
+    return t("worktree.checksStatus", {
+      passed: passedCheckCount,
+      total: prChecks?.length || 0,
+    });
+  };
 
   return (
-    <a href={prUrl} target="_blank" rel="noopener noreferrer">
-      <div className="flex items-center gap-0.5">
-        <span className="mr-0.5 text-xs">#{prNumber}</span>
-        {allChecksPassed && (
-          <span className="text-xs">{t("worktree.readyToMerge")}</span>
-        )}
-        {hasPendingChecks && !hasFailedChecks && (
-          <span className="text-xs">{t("worktree.checksInProgress")}</span>
-        )}
-        {hasFailedChecks && (
-          <span className="text-xs">{t("worktree.checksFailed")}</span>
-        )}
-        {/* Display checks inline */}
-        {prChecks && prChecks.length > 0 && (
-          <div className="ml-1 flex items-center gap-0.5">
-            {prChecks.map((check, index) => (
-              <Tooltip key={index}>
-                <TooltipTrigger asChild>
-                  <a
-                    href={check.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex"
-                  >
-                    {getCheckIcon(check.state)}
-                  </a>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <span className="text-xs">{check.name}</span>
-                </TooltipContent>
-              </Tooltip>
-            ))}
-          </div>
-        )}
-      </div>
-    </a>
+    <div className="flex items-center gap-0.5">
+      <a
+        href={prUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center"
+      >
+        <span className="mr-1 text-xs">#{prNumber}</span>
+      </a>
+      {prChecks && prChecks.length > 0 && (
+        <div className="flex items-center gap-1">
+          <HoverCard openDelay={200} closeDelay={100}>
+            <HoverCardTrigger asChild>
+              <span className="cursor-pointer text-xs">
+                {getChecksStatusText()}
+              </span>
+            </HoverCardTrigger>
+            <HoverCardContent
+              className="w-auto min-w-[120px] max-w-[70vw] bg-background p-1"
+              side="bottom"
+              align="start"
+              sideOffset={2}
+            >
+              <ScrollArea viewportClassname="max-h-32">
+                <div className="flex flex-col gap-0.5">
+                  {prChecks.map((check, index) => (
+                    <a
+                      key={index}
+                      href={check.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-muted/50"
+                    >
+                      <span className="flex-shrink-0">
+                        {getCheckIcon(check.state)}
+                      </span>
+                      <span className="truncate">{check.name}</span>
+                    </a>
+                  ))}
+                </div>
+              </ScrollArea>
+            </HoverCardContent>
+          </HoverCard>
+        </div>
+      )}
+    </div>
   );
 }
