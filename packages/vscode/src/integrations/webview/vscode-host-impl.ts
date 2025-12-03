@@ -96,6 +96,8 @@ import { PochiTaskState } from "../editor/pochi-task-state";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { type FileSelection, TabState } from "../editor/tab-state";
 // biome-ignore lint/style/useImportType: needed for dependency injection
+import { GithubPrInfoMonitor } from "../git/github";
+// biome-ignore lint/style/useImportType: needed for dependency injection
 import { WorktreeManager } from "../git/worktree";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { ThirdMcpImporter } from "../mcp/third-party-mcp";
@@ -133,6 +135,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     private readonly customAgentManager: CustomAgentManager,
     private readonly worktreeManager: WorktreeManager,
     private readonly pochiTaskState: PochiTaskState,
+    private readonly githubPrInfoMonitor: GithubPrInfoMonitor,
   ) {}
 
   private get cwd() {
@@ -862,10 +865,19 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     taskRunning.fire({ taskId });
   };
 
-  readWorktrees = async (): Promise<
-    ThreadSignalSerialization<GitWorktree[]>
-  > => {
-    return ThreadSignal.serialize(this.worktreeManager.worktrees);
+  readWorktrees = async (): Promise<{
+    worktrees: ThreadSignalSerialization<GitWorktree[]>;
+    ghCli: ThreadSignalSerialization<{
+      installed: boolean;
+      authorized: boolean;
+    }>;
+    gitOriginUrl: string | null;
+  }> => {
+    return {
+      worktrees: ThreadSignal.serialize(this.worktreeManager.worktrees),
+      ghCli: ThreadSignal.serialize(this.githubPrInfoMonitor.ghCliCheck),
+      gitOriginUrl: await this.worktreeManager.getOriginUrl(),
+    };
   };
 
   createWorktree = async () => {

@@ -50,6 +50,21 @@ export class GitWorktreeInfoProvider {
     return id;
   }
 
+  updateGithubPrInfo(
+    worktreePath: string,
+    prInfo: GitWorktreeInfo["github"]["pullRequest"],
+  ) {
+    let data = this.get(worktreePath);
+    if (!data) {
+      data = {
+        nextDisplayId: 1,
+        github: {},
+      };
+    }
+    data.github.pullRequest = prInfo;
+    this.set(worktreePath, data);
+  }
+
   delete(worktreePath: string) {
     this.context.globalState.update(worktreePath, undefined);
   }

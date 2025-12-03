@@ -64,18 +64,19 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
 
   const worktreesData = useWorktrees();
   const worktrees = useMemo(() => {
-    return worktreesData.data?.filter(
-      (x) => !deletingWorktreePaths.has(x.path),
+    return worktreesData.worktrees?.filter(
+      (x: GitWorktree) => !deletingWorktreePaths.has(x.path),
     );
   }, [worktreesData, deletingWorktreePaths]);
 
   const isOpenCurrentWorkspace = !!workspaceFolder && cwd === workspaceFolder;
   const isOpenMainWorktree =
-    isOpenCurrentWorkspace && worktrees?.find((x) => x.isMain)?.path === cwd;
+    isOpenCurrentWorkspace &&
+    worktrees?.find((x: GitWorktree) => x.isMain)?.path === cwd;
 
   const selectedWorktree = useMemo(() => {
     if (isOpenCurrentWorkspace && !isOpenMainWorktree) {
-      return worktrees?.find((x) => x.path === cwd);
+      return worktrees?.find((x: GitWorktree) => x.path === cwd);
     }
     return userSelectedWorktree || worktrees?.[0];
   }, [
@@ -90,7 +91,9 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
     if (isOpenMainWorktree) {
       return worktrees ?? [];
     }
-    return worktrees?.filter((x) => x.path === workspaceFolder) ?? [];
+    return (
+      worktrees?.filter((x: GitWorktree) => x.path === workspaceFolder) ?? []
+    );
   }, [isOpenMainWorktree, worktrees, workspaceFolder]);
 
   const onFocus = () => {

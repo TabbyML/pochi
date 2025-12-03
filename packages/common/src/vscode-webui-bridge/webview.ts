@@ -310,7 +310,14 @@ export interface VSCodeHostApi {
 
   onTaskRunning(taskId: string): Promise<void>;
 
-  readWorktrees(): Promise<ThreadSignalSerialization<GitWorktree[]>>;
+  readWorktrees(): Promise<{
+    worktrees: ThreadSignalSerialization<GitWorktree[]>;
+    ghCli: ThreadSignalSerialization<{
+      installed: boolean;
+      authorized: boolean;
+    }>;
+    gitOriginUrl: string | null;
+  }>;
 
   createWorktree(): Promise<GitWorktree | null>;
 

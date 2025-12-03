@@ -11,16 +11,25 @@ export const useWorktrees = () => {
     staleTime: Number.POSITIVE_INFINITY,
   });
 
-  return { data: data?.value, isLoading };
+  return {
+    worktrees: data?.worktrees.value,
+    ghCli: data?.ghCli.value,
+    gitOriginUrl: data?.gitOriginUrl,
+    isLoading,
+  };
 };
 
 async function fetchWorktrees() {
   const result = await vscodeHost.readWorktrees();
-  return threadSignal(result);
+  return {
+    worktrees: threadSignal(result.worktrees),
+    ghCli: threadSignal(result.ghCli),
+    gitOriginUrl: result.gitOriginUrl,
+  };
 }
 
 export function useOptimisticWorktreeDelete() {
-  const { data: worktrees } = useWorktrees();
+  const { worktrees } = useWorktrees();
   const [deletingMap, setDeletingMap] = useState<Map<string, number>>(
     new Map(),
   );

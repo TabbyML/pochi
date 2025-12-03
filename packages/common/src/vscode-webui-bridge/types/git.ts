@@ -6,6 +6,7 @@ export const GitWorktreeInfo = z.object({
   github: z.object({
     pullRequest: z
       .object({
+        url: z.string().describe("the URL of the pull request"),
         id: z.number().describe("the ID of the pull request"),
         status: z.enum(["open", "closed", "merged"]),
         checks: z

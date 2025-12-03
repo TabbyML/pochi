@@ -35,23 +35,6 @@ export class WorktreeManager implements vscode.Disposable {
     this.init();
   }
 
-  async getDefaultBranch() {
-    try {
-      const ref = await this.git.raw([
-        "symbolic-ref",
-        "refs/remotes/origin/HEAD",
-      ]);
-      const match = ref.match(/^refs\/remotes\/origin\/(.+)$/);
-      if (match) {
-        return match[1];
-      }
-      return "origin/main";
-    } catch (error) {
-      logger.error(`Failed to get default branch: ${toErrorMessage(error)}`);
-      return "origin/main";
-    }
-  }
-
   public getWorktreeDisplayName(cwd: string): string | undefined {
     const worktree = this.worktrees.value.find((wt) => wt.path === cwd);
     if (!worktree) {
@@ -64,18 +47,10 @@ export class WorktreeManager implements vscode.Disposable {
     if (!(await this.isGitRepository())) {
       return;
     }
-    const worktrees = await this.getWorktrees();
-    this.worktrees.value = worktrees;
-    logger.debug(
-      `Initialized WorktreeManager with ${worktrees.length} worktrees.`,
-    );
+    await this.updateWorktrees();
     const onWorktreeChanged = async () => {
       await new Promise((resolve) => setTimeout(resolve, 500));
-      const updatedWorktrees = await this.getWorktrees();
-      logger.trace(
-        `Worktrees updated to ${updatedWorktrees.length} worktrees.`,
-      );
-      this.worktrees.value = updatedWorktrees;
+      await this.updateWorktrees();
     };
     this.disposables.push(
       this.gitStateMonitor.onDidRepositoryChange(onWorktreeChanged),
@@ -162,6 +137,10 @@ export class WorktreeManager implements vscode.Disposable {
     await showWorktreeDiff(cwd, baseBranch);
   }
 
+  async updateWorktrees() {
+    this.worktrees.value = await this.getWorktrees();
+  }
+
   async getWorktrees(skipVSCodeFilter?: boolean): Promise<GitWorktree[]> {
     try {
       const result = await this.git.raw(["worktree", "list", "--porcelain"]);
@@ -238,6 +217,33 @@ export class WorktreeManager implements vscode.Disposable {
     }
 
     return worktrees;
+  }
+
+  private async getDefaultBranch() {
+    try {
+      const ref = await this.git.raw([
+        "symbolic-ref",
+        "refs/remotes/origin/HEAD",
+      ]);
+      const match = ref.match(/^refs\/remotes\/origin\/(.+)$/);
+      if (match) {
+        return match[1];
+      }
+      return "origin/main";
+    } catch (error) {
+      logger.error(`Failed to get default branch: ${toErrorMessage(error)}`);
+      return "origin/main";
+    }
+  }
+
+  async getOriginUrl(): Promise<string | null> {
+    try {
+      const url = await this.git.raw(["config", "--get", "remote.origin.url"]);
+      return url.trim();
+    } catch (error) {
+      logger.error(`Failed to get origin URL: ${toErrorMessage(error)}`);
+      return null;
+    }
   }
 
   dispose() {

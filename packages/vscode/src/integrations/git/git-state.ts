@@ -15,6 +15,13 @@ export interface GitRepositoryState {
 
 export interface GitStateChangeEvent {
   type: "branch-changed";
+  repository: string;
+}
+
+export interface GitRepositoryChangeEvent {
+  type: "repository-changed";
+  repository: string;
+  change: "added" | "removed";
 }
 
 /**
@@ -50,8 +57,9 @@ export class GitStateMonitor implements vscode.Disposable {
   /**
    * Event fired when repository change, such as add or remove repositories and worktrees
    */
-  readonly #onDidRepositoryChange = new vscode.EventEmitter<void>();
-  public readonly onDidRepositoryChange: vscode.Event<void> =
+  readonly #onDidRepositoryChange =
+    new vscode.EventEmitter<GitRepositoryChangeEvent>();
+  public readonly onDidRepositoryChange: vscode.Event<GitRepositoryChangeEvent> =
     this.#onDidRepositoryChange.event;
 
   constructor() {
@@ -117,7 +125,11 @@ export class GitStateMonitor implements vscode.Disposable {
 
   private async handleRepositoryOpened(repository: Repository): Promise<void> {
     try {
-      this.#onDidRepositoryChange.fire();
+      this.#onDidRepositoryChange.fire({
+        type: "repository-changed",
+        repository: repository.rootUri.fsPath,
+        change: "added",
+      });
       const repoKey = repository.rootUri.toString();
       logger.debug(`Repository opened: ${repoKey}`);
 
@@ -138,7 +150,11 @@ export class GitStateMonitor implements vscode.Disposable {
 
   private handleRepositoryClosed(repository: Repository): void {
     try {
-      this.#onDidRepositoryChange.fire();
+      this.#onDidRepositoryChange.fire({
+        type: "repository-changed",
+        repository: repository.rootUri.fsPath,
+        change: "removed",
+      });
       const repoKey = repository.rootUri.toString();
       logger.debug(`Repository closed: ${repoKey}`);
 
@@ -174,6 +190,7 @@ export class GitStateMonitor implements vscode.Disposable {
       ) {
         this.#onDidChangeGitState.fire({
           type: "branch-changed",
+          repository: repository.rootUri.fsPath,
         });
 
         logger.debug(

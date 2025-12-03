@@ -27,7 +27,10 @@ import { useWorktrees } from "@/lib/hooks/use-worktrees";
 import { cn } from "@/lib/utils";
 import { vscodeHost } from "@/lib/vscode";
 import { prompts } from "@getpochi/common";
-import { getWorktreeNameFromWorktreePath } from "@getpochi/common/git-utils";
+import {
+  getWorktreeNameFromWorktreePath,
+  parseGitOriginUrl,
+} from "@getpochi/common/git-utils";
 import {
   type GitWorktree,
   prefixWorktreeName,
@@ -68,11 +71,7 @@ interface WorktreeGroup {
   isMain: boolean;
   createdAt?: number;
   branch?: string;
-  // PR related fields (to be populated from GitHub API)
-  prNumber?: number;
-  prUrl?: string;
-  prStatus?: "open" | "closed" | "merged";
-  prChecks?: PrCheck[];
+  data: GitWorktree["data"];
 }
 
 export function WorktreeList({
@@ -87,7 +86,11 @@ export function WorktreeList({
   const { t } = useTranslation();
   const { data: currentWorkspace, isLoading: isLoadingCurrentWorkspace } =
     useCurrentWorkspace();
-  const { data: worktrees, isLoading: isLoadingWorktrees } = useWorktrees();
+  const {
+    worktrees,
+    gitOriginUrl,
+    isLoading: isLoadingWorktrees,
+  } = useWorktrees();
   const [showDeleted, setShowDeleted] = useState(false);
 
   const groups = useMemo(() => {
@@ -171,6 +174,7 @@ export function WorktreeList({
           isDeleted,
           isMain,
           branch: wt?.branch,
+          data: wt?.data,
         };
       }),
       R.sort((a, b) => {
@@ -217,60 +221,15 @@ export function WorktreeList({
   const activeGroups = optimisticGroups.filter((g) => !g.isDeleted);
   const deletedGroups = optimisticGroups.filter((g) => g.isDeleted);
 
-  // TODO: Remove mock data - Add mock PR data for testing
-  const activeGroupsWithMock = activeGroups.map((group, index) => {
-    if (index === 1) {
-      // Second worktree: open PR with all checks passed
-      return {
-        ...group,
-        prNumber: 3,
-        prUrl: "https://github.com/TabbyML/pochi/pull/3",
-        prStatus: "open" as const,
-        prChecks: [
-          { name: "CI", state: "success", url: "https://github.com" },
-          { name: "Lint", state: "success", url: "https://github.com" },
-          { name: "Test", state: "success", url: "https://github.com" },
-        ],
-      };
-    }
-    if (index === 2) {
-      // Third worktree: open PR with checks in progress
-      return {
-        ...group,
-        prNumber: 5,
-        prUrl: "https://github.com/TabbyML/pochi/pull/5",
-        prStatus: "open" as const,
-        prChecks: [
-          { name: "CI", state: "pending", url: "https://github.com" },
-          { name: "Lint", state: "success", url: "https://github.com" },
-          { name: "Test", state: "in_progress", url: "https://github.com" },
-        ],
-      };
-    }
-    if (index === 3) {
-      // Fourth worktree: open PR with failed checks
-      return {
-        ...group,
-        prNumber: 7,
-        prUrl: "https://github.com/TabbyML/pochi/pull/7",
-        prStatus: "open" as const,
-        prChecks: [
-          { name: "CI", state: "failure", url: "https://github.com" },
-          { name: "Lint", state: "success", url: "https://github.com" },
-          { name: "Test", state: "failure", url: "https://github.com" },
-        ],
-      };
-    }
-    return group;
-  });
   return (
     <div className="flex flex-col gap-1">
-      {activeGroupsWithMock.map((group) => (
+      {activeGroups.map((group) => (
         <WorktreeSection
           isLoadingWorktrees={isLoadingWorktrees}
           key={group.path}
           group={group}
           onDeleteGroup={onDeleteWorktree}
+          gitOriginUrl={gitOriginUrl}
         />
       ))}
       {deletedGroups.length > 0 && (
@@ -299,6 +258,7 @@ export function WorktreeList({
                 isLoadingWorktrees={isLoadingWorktrees}
                 key={group.path}
                 group={group}
+                gitOriginUrl={gitOriginUrl}
               />
             ))}
         </>
@@ -310,10 +270,12 @@ export function WorktreeList({
 function WorktreeSection({
   group,
   onDeleteGroup,
+  gitOriginUrl,
 }: {
   group: WorktreeGroup;
   isLoadingWorktrees: boolean;
   onDeleteGroup?: (worktreePath: string) => void;
+  gitOriginUrl?: string | null;
 }) {
   const { t } = useTranslation();
   // Default expanded for existing worktrees, collapsed for deleted
@@ -321,6 +283,8 @@ function WorktreeSection({
   const [isHovered, setIsHovered] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const pochiTasks = usePochiTasks();
+
+  const pullRequest = group.data?.github?.pullRequest;
 
   return (
     <Collapsible
@@ -482,16 +446,17 @@ function WorktreeSection({
           <div className="mt-1 flex flex-nowrap items-center gap-5 overflow-x-hidden">
             {/* TODO: Integrate with actual PR data from GitHub */}
             <div className={cn("shrink-0")}>
-              {group.prNumber && group.prStatus === "open" ? (
+              {pullRequest && pullRequest.status === "open" ? (
                 <PrStatusDisplay
-                  prNumber={group.prNumber}
-                  prUrl={group.prUrl ?? ""}
-                  prChecks={group.prChecks}
+                  prNumber={pullRequest.id}
+                  prUrl={pullRequest.url}
+                  prChecks={pullRequest.checks}
                 />
               ) : (
                 <CreatePrDropdown
                   worktreePath={group.path}
                   branch={group.branch}
+                  gitOriginUrl={gitOriginUrl}
                 />
               )}
             </div>{" "}
@@ -523,7 +488,9 @@ function WorktreeSection({
 // Component A: Split button for creating PRs
 function CreatePrDropdown({
   worktreePath,
-}: { branch?: string; worktreePath: string }) {
+  branch,
+  gitOriginUrl,
+}: { branch?: string; worktreePath: string; gitOriginUrl?: string | null }) {
   const { t } = useTranslation();
   const { selectedModel } = useSelectedModels();
 
@@ -539,6 +506,23 @@ function CreatePrDropdown({
       prompt,
     });
   };
+
+  const manualPrUrl = useMemo(() => {
+    if (!gitOriginUrl || !branch) return undefined;
+    const info = parseGitOriginUrl(gitOriginUrl);
+    if (!info) return undefined;
+
+    switch (info.platform) {
+      case "github":
+        return `${info.webUrl}/compare/${branch}?expand=1`;
+      case "gitlab":
+        return `${info.webUrl}/-/merge_requests/new?merge_request[source_branch]=${branch}`;
+      case "bitbucket":
+        return `${info.webUrl}/pull-requests/new?source=${branch}`;
+      default:
+        return info.webUrl;
+    }
+  }, [gitOriginUrl, branch]);
 
   return (
     <div className="flex items-center">
@@ -568,9 +552,11 @@ function CreatePrDropdown({
             <GitPullRequestDraft className="size-3" />
             {t("worktree.createDraftPr")}
           </DropdownMenuItem>
-          <DropdownMenuItem>
-            <ExternalLink className="size-3" />
-            {t("worktree.createPrManually")}
+          <DropdownMenuItem asChild disabled={!manualPrUrl}>
+            <a href={manualPrUrl} target="_blank" rel="noopener noreferrer">
+              <ExternalLink className="size-3" />
+              {t("worktree.createPrManually")}
+            </a>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -611,12 +597,11 @@ function PrStatusDisplay({
   };
 
   // Check if all checks are passed
-  const allChecksPassed =
-    prChecks && prChecks.length > 0
-      ? prChecks.every(
-          (check) => check.state === "success" || check.state === "completed",
-        )
-      : false;
+  const allChecksPassed = prChecks
+    ? prChecks.every(
+        (check) => check.state === "success" || check.state === "completed",
+      )
+    : false;
 
   const hasPendingChecks =
     prChecks && prChecks.length > 0
