@@ -13,6 +13,7 @@ export class LayoutManager implements vscode.Disposable {
   async toggleTaskFocusLayout(task: TaskParams) {
     const layout = getTaskFocusLayout(task);
     if (isCurrentLayoutMatched(layout)) {
+      PochiTaskEditorProvider.attachToSameWorktree = true;
       await this.restoreLayout();
 
       await vscode.commands.executeCommand("workbench.action.focusSideBar");
@@ -24,6 +25,7 @@ export class LayoutManager implements vscode.Disposable {
         "workbench.action.focusFirstEditorGroup",
       );
     } else {
+      PochiTaskEditorProvider.attachToSameWorktree = false;
       if (shouldSaveLayout()) {
         await this.saveLayout();
       }

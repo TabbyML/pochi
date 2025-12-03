@@ -106,6 +106,7 @@ export class PochiTaskEditorProvider
   // only use for task params caching during opening
   private static readonly taskParamsCache = new Map<string, TaskPanelParams>();
   public static activeTabs = new Set<string>();
+  public static attachToSameWorktree = true;
 
   public static register(context: vscode.ExtensionContext): vscode.Disposable {
     const provider = new PochiTaskEditorProvider(context);
@@ -373,7 +374,9 @@ function setAutoLockGroupsConfig() {
   );
 }
 
-async function getPochiTaskColumn(cwd: string): Promise<vscode.ViewColumn> {
+async function getPochiTaskColumn(
+  attachWorktree?: string,
+): Promise<vscode.ViewColumn> {
   // If there's only one group and it's empty, lock and use the first column
   if (
     vscode.window.tabGroups.all.length === 1 &&
@@ -387,10 +390,12 @@ async function getPochiTaskColumn(cwd: string): Promise<vscode.ViewColumn> {
   }
 
   // if we have pochi task with same cwd already opened, we open new task in same column
-  const firstSameWorktreeTaskColumn = getSameWorktreeTaskColumn(cwd);
+  const taskColumn = attachWorktree
+    ? getSameWorktreeTaskColumn(attachWorktree)
+    : getFirstPochiTaskColumn();
 
-  if (firstSameWorktreeTaskColumn) {
-    return firstSameWorktreeTaskColumn;
+  if (taskColumn) {
+    return taskColumn;
   }
 
   // else if we have multiple groups and the first group is empty, we can reuse it
@@ -420,7 +425,9 @@ async function openTaskInColumn(uri: vscode.Uri) {
   if (!params) {
     throw new Error(`Failed to parse task URI: ${uri.toString()}`);
   }
-  const viewColumn = await getPochiTaskColumn(params.cwd);
+  const viewColumn = await getPochiTaskColumn(
+    PochiTaskEditorProvider.attachToSameWorktree ? params.cwd : undefined,
+  );
   await vscode.commands.executeCommand(
     "vscode.openWith",
     uri,
@@ -470,4 +477,18 @@ function getSameWorktreeTaskColumn(cwd: string) {
         PochiTaskEditorProvider.parseTaskUri(tab.input.uri)?.cwd === cwd,
     ),
   )?.viewColumn;
+}
+
+function getFirstPochiTaskColumn() {
+  for (const group of vscode.window.tabGroups.all) {
+    for (const tab of group.tabs) {
+      if (
+        tab.input instanceof vscode.TabInputCustom &&
+        tab.input.viewType === PochiTaskEditorProvider.viewType
+      ) {
+        return group.viewColumn;
+      }
+    }
+  }
+  return undefined;
 }
