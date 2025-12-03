@@ -313,6 +313,7 @@ function isCurrentLayoutMatched(layout: Layout) {
   const current = getSortedCurrentTabGroups();
   const target = layout.groups;
   if (current.length !== target.length) {
+    console.log(1);
     return false;
   }
 
@@ -326,6 +327,7 @@ function isCurrentLayoutMatched(layout: Layout) {
       );
 
       if (targetGroupIndex >= 0 && targetGroupIndex !== i) {
+        console.log(2);
         return false;
       }
     }
@@ -337,6 +339,7 @@ function isCurrentLayoutMatched(layout: Layout) {
       (tabInput) => tabInput.type === "CreateTerminal",
     );
     if (createTerminalInputs.length > 0) {
+      console.log(3);
       return false;
     }
 
@@ -347,6 +350,7 @@ function isCurrentLayoutMatched(layout: Layout) {
       (tab) => tab.input instanceof vscode.TabInputTerminal,
     );
     if (moveTerminalInputs.length > currentTerminals.length) {
+      console.log(4);
       return false;
     }
   }
@@ -477,6 +481,9 @@ async function applyLayout(layout: Layout) {
   // if current groups is less than target
   while (getSortedCurrentTabGroups().length < layout.groups.length) {
     // create placeholder for next groups
+    await vscode.commands.executeCommand(
+      "workbench.action.focusLastEditorGroup",
+    );
     await vscode.commands.executeCommand("workbench.action.newGroupRight");
   }
 
@@ -518,6 +525,7 @@ async function applyLayout(layout: Layout) {
           currentTabIndex,
         );
         // move to panel
+        console.log("moveToTerminalPanel");
         await vscode.commands.executeCommand(
           "workbench.action.terminal.moveToTerminalPanel",
         );
@@ -625,9 +633,14 @@ async function applyLayout(layout: Layout) {
         if (j === 0) {
           // move terminal
           input.terminal.show(false); // focus
-          await vscode.commands.executeCommand(
-            "workbench.action.terminal.moveToEditor",
-          );
+          const activeTab = vscode.window.tabGroups.activeTabGroup.activeTab;
+          if (activeTab && activeTab.input instanceof vscode.TabInputTerminal) {
+            // FIXME
+          } else {
+            await vscode.commands.executeCommand(
+              "workbench.action.terminal.moveToEditor",
+            );
+          }
           // move to first
           await vscode.commands.executeCommand("moveActiveEditor", {
             to: "first",
