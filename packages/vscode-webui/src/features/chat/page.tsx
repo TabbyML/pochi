@@ -480,8 +480,6 @@ async function forkTaskFromCheckPoint(
   // Create new task
   await vscodeHost.openTaskInPanel({
     cwd,
-    uid: crypto.randomUUID(),
-    storeId: undefined,
     initMessages: JSON.stringify(initMessages),
     disablePendingModelAutoStart: true,
   });
