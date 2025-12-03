@@ -20,10 +20,13 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useSelectedModels } from "@/features/settings";
 import { useCurrentWorkspace } from "@/lib/hooks/use-current-workspace";
 import { usePochiTasks } from "@/lib/hooks/use-pochi-tasks";
 import { useWorktrees } from "@/lib/hooks/use-worktrees";
 import { cn } from "@/lib/utils";
+import { vscodeHost } from "@/lib/vscode";
+import { prompts } from "@getpochi/common";
 import { getWorktreeNameFromWorktreePath } from "@getpochi/common/git-utils";
 import {
   type GitWorktree,
@@ -486,7 +489,10 @@ function WorktreeSection({
                   prChecks={group.prChecks}
                 />
               ) : (
-                <CreatePrDropdown branch={group.branch} />
+                <CreatePrDropdown
+                  worktreePath={group.path}
+                  branch={group.branch}
+                />
               )}
             </div>{" "}
           </div>
@@ -515,8 +521,24 @@ function WorktreeSection({
 }
 
 // Component A: Split button for creating PRs
-function CreatePrDropdown({ branch }: { branch?: string }) {
+function CreatePrDropdown({
+  worktreePath,
+}: { branch?: string; worktreePath: string }) {
   const { t } = useTranslation();
+  const { selectedModel } = useSelectedModels();
+
+  const onCreatePr = (isDraft?: boolean) => {
+    if (!selectedModel) {
+      // FIXME toast tips?
+      return;
+    }
+    const prompt = prompts.createPr(isDraft);
+    vscodeHost.openTaskInPanel({
+      cwd: worktreePath,
+      storeId: undefined,
+      prompt,
+    });
+  };
 
   return (
     <div className="flex items-center">
@@ -525,6 +547,7 @@ function CreatePrDropdown({ branch }: { branch?: string }) {
         variant="ghost"
         size="sm"
         className="!px-1 -ml-1 h-6 gap-1 rounded-r-none border-r-0"
+        onClick={() => onCreatePr()}
       >
         <GitPullRequestCreate className="size-4" />
         <span className="text-xs">{t("worktree.createPr")}</span>
@@ -541,23 +564,13 @@ function CreatePrDropdown({ branch }: { branch?: string }) {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="text-xs">
-          <DropdownMenuItem asChild>
-            <a
-              href={`command:pochi.pr.createDraft?${encodeURIComponent(JSON.stringify([branch]))}`}
-              className="gap-1.5"
-            >
-              <GitPullRequestDraft className="size-3" />
-              {t("worktree.createDraftPr")}
-            </a>
+          <DropdownMenuItem onClick={() => onCreatePr(true)}>
+            <GitPullRequestDraft className="size-3" />
+            {t("worktree.createDraftPr")}
           </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <a
-              href={`command:pochi.pr.createManually?${encodeURIComponent(JSON.stringify([branch]))}`}
-              className="gap-1.5"
-            >
-              <ExternalLink className="size-3" />
-              {t("worktree.createPrManually")}
-            </a>
+          <DropdownMenuItem>
+            <ExternalLink className="size-3" />
+            {t("worktree.createPrManually")}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

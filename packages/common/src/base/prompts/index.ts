@@ -1,8 +1,10 @@
 import { createCompactPrompt } from "./compact";
+import { createPr } from "./create-pr";
 import { createEnvironmentPrompt, injectEnvironment } from "./environment";
 import { generateTitle } from "./generate-title";
 import { injectBashOutputs } from "./inject-bash-outputs";
 import { createSystemPrompt } from "./system";
+import { createWorkflowPrompt } from "./workflow";
 
 export const prompts = {
   system: createSystemPrompt,
@@ -19,6 +21,7 @@ export const prompts = {
   workflow: createWorkflowPrompt,
   customAgent: createCustomAgentPrompt,
   injectBashOutputs,
+  createPr,
 };
 
 function createSystemReminder(content: string) {
@@ -61,17 +64,6 @@ function parseInlineCompact(text: string) {
   return {
     summary: match[1],
   };
-}
-
-function createWorkflowPrompt(id: string, path: string, content: string) {
-  // Remove extra newlines from the content
-  let processedContent = content.replace(/\n+/g, "\n");
-  // Escape '<' to avoid </workflow> being interpreted as a closing tag
-  const workflowTagRegex = /<\/?workflow\b[^>]*>/g;
-  processedContent = processedContent.replace(workflowTagRegex, (match) => {
-    return match.replace("<", "&lt;");
-  });
-  return `<workflow id="${id}" path="${path}">${processedContent}</workflow>`;
 }
 
 function createCustomAgentPrompt(id: string, path: string) {
