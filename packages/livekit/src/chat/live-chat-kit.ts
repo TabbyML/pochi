@@ -59,9 +59,7 @@ export type LiveChatKitOptions<T> = {
   "id" | "messages" | "generateId" | "onFinish" | "onError" | "transport"
 >;
 
-type InitOptions = {
-  status?: "pending-input" | "pending-model" | undefined;
-} & (
+type InitOptions =
   | {
       prompt?: string;
     }
@@ -70,8 +68,7 @@ type InitOptions = {
     }
   | {
       messages?: Message[];
-    }
-);
+    };
 
 export class LiveChatKit<
   T extends {
@@ -233,7 +230,6 @@ export class LiveChatKit<
         cwd,
         createdAt: new Date(),
         initMessages,
-        initStatus: options?.status,
       }),
     );
 
