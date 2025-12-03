@@ -41,11 +41,8 @@ import {
   ChevronDown,
   ChevronRight,
   CircleDot,
-  ExternalLink,
-  GitBranch,
   GitCompare,
-  GitPullRequestCreate,
-  GitPullRequestDraft,
+  GitPullRequest,
   Loader2,
   Terminal,
   Trash2,
@@ -321,7 +318,7 @@ function WorktreeSection({
       >
         {/* worktree name & branch */}
         <div className="flex h-6 items-center gap-2">
-          <div className="flex flex-1 items-center gap-3 overflow-x-hidden">
+          <div className="flex items-center gap-2 overflow-x-hidden">
             {group.isDeleted ? (
               <CollapsibleTrigger asChild>
                 <div className="flex w-full flex-1 cursor-pointer select-none items-center gap-2 font-medium text-sm">
@@ -342,18 +339,28 @@ function WorktreeSection({
                 </span>
               </div>
             )}
-            {!!group.branch &&
-              !isBranchNameSameAsWorktreeName(group.branch, group.name) && (
-                <span className="flex flex-1 items-center gap-1 truncate text-sm">
-                  <GitBranch className="size-3 shrink-0" />
-                  <span className="truncate">{group.branch}</span>
-                </span>
-              )}
+          </div>
+
+          <div className="mt-[1px]">
+            {pullRequest ? (
+              <PrStatusDisplay
+                prNumber={pullRequest.id}
+                prUrl={prUrl}
+                prChecks={pullRequest.checks}
+              />
+            ) : (
+              <CreatePrDropdown
+                worktreePath={group.path}
+                branch={group.branch}
+                gitOriginUrl={gitOriginUrl}
+                ghCli={ghCli}
+              />
+            )}
           </div>
 
           <div
             className={cn(
-              "flex items-center gap-1 transition-opacity duration-200",
+              "ml-auto flex items-center gap-1 transition-opacity duration-200",
               !isHovered && !showDeleteConfirm
                 ? "pointer-events-none opacity-0"
                 : "opacity-100",
@@ -460,28 +467,6 @@ function WorktreeSection({
             )}
           </div>
         </div>
-        {/* PR status */}
-        {!group.isDeleted && (
-          <div className="mt-1 flex flex-nowrap items-center gap-5 overflow-x-hidden">
-            {/* TODO: Integrate with actual PR data from GitHub */}
-            <div className={cn("shrink-0")}>
-              {pullRequest && pullRequest.status === "open" ? (
-                <PrStatusDisplay
-                  prNumber={pullRequest.id}
-                  prUrl={prUrl}
-                  prChecks={pullRequest.checks}
-                />
-              ) : (
-                <CreatePrDropdown
-                  worktreePath={group.path}
-                  branch={group.branch}
-                  gitOriginUrl={gitOriginUrl}
-                  ghCli={ghCli}
-                />
-              )}
-            </div>{" "}
-          </div>
-        )}
       </div>
 
       <CollapsibleContent>
@@ -557,46 +542,31 @@ function CreatePrDropdown({
 
   return (
     <div className="flex items-center">
-      {/* Left button - Direct PR creation */}
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <span className="inline-flex">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="!px-1 -ml-1 h-6 gap-1 rounded-r-none border-r-0"
-              onClick={() => onCreatePr()}
-              disabled={!isGhCliReady}
-            >
-              <GitPullRequestCreate className="size-4" />
-              <span className="text-xs">{t("worktree.createPr")}</span>
-            </Button>
-          </span>
-        </TooltipTrigger>
-        {!isGhCliReady && <TooltipContent>{tooltipMessage}</TooltipContent>}
-      </Tooltip>
-      {/* Right button - Dropdown menu */}
       <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-6 w-5 rounded-l-none px-0"
-          >
-            <ChevronDown className="size-3" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="text-xs">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="!px-1 -ml-1 h-6 gap-1 rounded-r-none border-r-0"
+                disabled={!isGhCliReady}
+              >
+                <GitPullRequest className="size-3.5" />
+              </Button>
+            </DropdownMenuTrigger>
+          </TooltipTrigger>
+          {!isGhCliReady && <TooltipContent>{tooltipMessage}</TooltipContent>}
+        </Tooltip>
+        <DropdownMenuContent align="start" className="text-xs" side="right">
           <DropdownMenuItem
             onClick={() => onCreatePr(true)}
             disabled={!isGhCliReady}
           >
-            <GitPullRequestDraft className="size-3" />
-            {t("worktree.createDraftPr")}
+            {t("worktree.createPr")}
           </DropdownMenuItem>
           <DropdownMenuItem asChild disabled={!manualPrUrl}>
             <a href={manualPrUrl} target="_blank" rel="noopener noreferrer">
-              <ExternalLink className="size-3" />
               {t("worktree.createPrManually")}
             </a>
           </DropdownMenuItem>
@@ -666,60 +636,41 @@ function PrStatusDisplay({
       : false;
 
   return (
-    <div className="flex items-center gap-2">
-      <Button
-        variant="ghost"
-        size="sm"
-        className="!px-1 h-auto gap-0.5 hover:bg-transparent"
-        asChild
-      >
-        <a href={prUrl} target="_blank" rel="noopener noreferrer">
-          <span className="font-medium text-xs">
-            {t("worktree.prNumber", { number: prNumber })}
-          </span>
-          <ExternalLink className="size-3" />
-        </a>
-      </Button>
-      {allChecksPassed && (
-        <span className="text-xs">{t("worktree.readyToMerge")}</span>
-      )}
-      {hasPendingChecks && !hasFailedChecks && (
-        <span className="text-xs">{t("worktree.checksInProgress")}</span>
-      )}
-      {hasFailedChecks && (
-        <span className="text-xs">{t("worktree.checksFailed")}</span>
-      )}
-      {/* Display checks inline */}
-      {prChecks && prChecks.length > 0 && (
-        <div className="ml-2 flex items-center gap-1">
-          {prChecks.map((check, index) => (
-            <Tooltip key={index}>
-              <TooltipTrigger asChild>
-                <a
-                  href={check.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex"
-                >
-                  {getCheckIcon(check.state)}
-                </a>
-              </TooltipTrigger>
-              <TooltipContent>
-                <span className="text-xs">{check.name}</span>
-              </TooltipContent>
-            </Tooltip>
-          ))}
-        </div>
-      )}
-    </div>
+    <a href={prUrl} target="_blank" rel="noopener noreferrer">
+      <div className="flex items-center gap-0.5">
+        <span className="mr-0.5 text-xs">#{prNumber}</span>
+        {allChecksPassed && (
+          <span className="text-xs">{t("worktree.readyToMerge")}</span>
+        )}
+        {hasPendingChecks && !hasFailedChecks && (
+          <span className="text-xs">{t("worktree.checksInProgress")}</span>
+        )}
+        {hasFailedChecks && (
+          <span className="text-xs">{t("worktree.checksFailed")}</span>
+        )}
+        {/* Display checks inline */}
+        {prChecks && prChecks.length > 0 && (
+          <div className="ml-2 flex items-center gap-1">
+            {prChecks.map((check, index) => (
+              <Tooltip key={index}>
+                <TooltipTrigger asChild>
+                  <a
+                    href={check.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex"
+                  >
+                    {getCheckIcon(check.state)}
+                  </a>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <span className="text-xs">{check.name}</span>
+                </TooltipContent>
+              </Tooltip>
+            ))}
+          </div>
+        )}
+      </div>
+    </a>
   );
-}
-
-function isBranchNameSameAsWorktreeName(
-  branch: string | undefined,
-  worktreeName: string | undefined,
-): boolean {
-  if (!branch || !worktreeName) return false;
-  // https://github.com/microsoft/vscode/blob/9092ce3427fdd0f677333394fb10156616090fb5/extensions/git/src/commands.ts#L3512
-  return branch.replace(/\//g, "-") === worktreeName;
 }
