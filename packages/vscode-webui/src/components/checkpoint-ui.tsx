@@ -116,7 +116,7 @@ export const CheckpointUI: React.FC<{
         <Check className="size-4 text-emerald-700 dark:text-emerald-300" />
       );
     }
-    return <GitBranchPlus className="size-4" />;
+    return <GitBranchPlus className="size-3" />;
   };
 
   const getForkText = () => {
@@ -221,18 +221,18 @@ export const CheckpointUI: React.FC<{
           </Button>
 
           {forkTask && (
-            <>
+            <div className="ml-1 flex items-center">
               <span className="hidden group-hover:flex">{getForkIcon()}</span>
               <Button
                 size="sm"
                 variant="ghost"
                 disabled={isPending}
                 onClick={() => handleCheckpointAction("fork")}
-                className="hidden h-5 items-center gap-1 rounded-md px-1 py-0.5 text-xs hover:bg-transparent group-hover:flex dark:hover:bg-transparent"
+                className="ml-[1px] hidden h-5 items-center gap-1 rounded-md px-1 py-0.5 text-xs hover:bg-transparent group-hover:flex dark:hover:bg-transparent"
               >
                 {getForkText()}
               </Button>
-            </>
+            </div>
           )}
 
           <span className="group-hover:hidden">{getIcon()}</span>
