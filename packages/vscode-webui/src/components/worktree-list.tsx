@@ -480,7 +480,7 @@ function WorktreeSection({
               );
             })
           ) : (
-            <div className="py-1 text-muted-foreground text-xs">
+            <div className="py-0.5 text-muted-foreground text-xs">
               {t("tasksPage.emptyState.description")}
             </div>
           )}
