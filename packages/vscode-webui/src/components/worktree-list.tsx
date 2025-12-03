@@ -40,7 +40,6 @@ import {
   Check,
   ChevronDown,
   ChevronRight,
-  CircleDot,
   GitCompare,
   GitPullRequest,
   Loader2,
@@ -599,18 +598,13 @@ function PrStatusDisplay({
     switch (state) {
       case "success":
       case "completed":
-        return <Check className="size-4" />;
+        return <Check className="size-3" />;
       case "failure":
       case "failed":
       case "error":
-        return <X className="size-4" />;
-      case "pending":
-      case "queued":
-        return <CircleDot className="size-4" />;
-      case "in_progress":
-        return <Loader2 className="size-4 animate-spin" />;
+        return <X className="size-3" />;
       default:
-        return <CircleDot className="size-4" />;
+        return <Loader2 className="size-3 scale-85 animate-spin" />;
     }
   };
 
@@ -656,7 +650,7 @@ function PrStatusDisplay({
         )}
         {/* Display checks inline */}
         {prChecks && prChecks.length > 0 && (
-          <div className="ml-2 flex items-center gap-1">
+          <div className="ml-1 flex items-center gap-0.5">
             {prChecks.map((check, index) => (
               <Tooltip key={index}>
                 <TooltipTrigger asChild>
