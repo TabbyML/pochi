@@ -13,6 +13,7 @@ import * as vscode from "vscode";
 import { PochiConfiguration } from "../configuration";
 import { GitWorktreeInfoProvider } from "../git/git-worktree-info-provider";
 import { WorktreeManager } from "../git/worktree";
+import { getViewColumnForTask } from "../layout";
 import { WebviewBase } from "./base";
 import { VSCodeHostImpl } from "./vscode-host-impl";
 
@@ -106,7 +107,6 @@ export class PochiTaskEditorProvider
   // only use for task params caching during opening
   private static readonly taskParamsCache = new Map<string, TaskPanelParams>();
   public static activeTabs = new Set<string>();
-  public static attachToSameWorktree = true;
 
   public static register(context: vscode.ExtensionContext): vscode.Disposable {
     const provider = new PochiTaskEditorProvider(context);
@@ -374,60 +374,12 @@ function setAutoLockGroupsConfig() {
   );
 }
 
-async function getPochiTaskColumn(
-  attachWorktree?: string,
-): Promise<vscode.ViewColumn> {
-  // If there's only one group and it's empty, lock and use the first column
-  if (
-    vscode.window.tabGroups.all.length === 1 &&
-    vscode.window.tabGroups.all[0].tabs.length === 0
-  ) {
-    await vscode.commands.executeCommand(
-      "workbench.action.focusFirstEditorGroup",
-    );
-    await vscode.commands.executeCommand("workbench.action.lockEditorGroup");
-    return vscode.ViewColumn.One;
-  }
-
-  // if we have pochi task with same cwd already opened, we open new task in same column
-  const taskColumn = attachWorktree
-    ? getSameWorktreeTaskColumn(attachWorktree)
-    : getFirstPochiTaskColumn();
-
-  if (taskColumn) {
-    return taskColumn;
-  }
-
-  // else if we have multiple groups and the first group is empty, we can reuse it
-  if (
-    vscode.window.tabGroups.all.length > 1 &&
-    vscode.window.tabGroups.all[0].tabs.length === 0
-  ) {
-    return vscode.ViewColumn.One;
-  }
-
-  // otherwise, we open new pochi task in a new first column
-
-  // First, focus the very first editor group.
-  await vscode.commands.executeCommand(
-    "workbench.action.focusFirstEditorGroup",
-  );
-
-  // Then, create a new editor group to the left of the currently focused one (which is the first one).
-  // This new group will become the new first group and will be active.
-  await vscode.commands.executeCommand("workbench.action.newGroupLeft");
-
-  return vscode.ViewColumn.One;
-}
-
 async function openTaskInColumn(uri: vscode.Uri) {
   const params = PochiTaskEditorProvider.parseTaskUri(uri);
   if (!params) {
     throw new Error(`Failed to parse task URI: ${uri.toString()}`);
   }
-  const viewColumn = await getPochiTaskColumn(
-    PochiTaskEditorProvider.attachToSameWorktree ? params.cwd : undefined,
-  );
+  const viewColumn = await getViewColumnForTask(params);
   await vscode.commands.executeCommand(
     "vscode.openWith",
     uri,
@@ -466,29 +418,4 @@ function autoCleanTabGroupLock() {
       vscode.commands.executeCommand("workbench.action.unlockEditorGroup");
     }
   });
-}
-
-function getSameWorktreeTaskColumn(cwd: string) {
-  return vscode.window.tabGroups.all.find((group) =>
-    group.tabs.some(
-      (tab) =>
-        tab.input instanceof vscode.TabInputCustom &&
-        tab.input.viewType === PochiTaskEditorProvider.viewType &&
-        PochiTaskEditorProvider.parseTaskUri(tab.input.uri)?.cwd === cwd,
-    ),
-  )?.viewColumn;
-}
-
-function getFirstPochiTaskColumn() {
-  for (const group of vscode.window.tabGroups.all) {
-    for (const tab of group.tabs) {
-      if (
-        tab.input instanceof vscode.TabInputCustom &&
-        tab.input.viewType === PochiTaskEditorProvider.viewType
-      ) {
-        return group.viewColumn;
-      }
-    }
-  }
-  return undefined;
 }
