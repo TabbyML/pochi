@@ -40,6 +40,7 @@ import { WorktreeManager } from "./git/worktree";
 import {
   LayoutManager,
   getSortedCurrentTabGroups,
+  getViewColumnForTerminals,
   isPochiTaskTab,
 } from "./layout";
 import { PochiTaskEditorProvider } from "./webview/webview-panel";
@@ -470,7 +471,9 @@ export class CommandManager implements vscode.Disposable {
             activeTab.input.uri,
           );
           if (params?.cwd) {
-            vscode.window.createTerminal({ cwd: params.cwd }).show();
+            const viewColumn = getViewColumnForTerminals();
+            const location = viewColumn ? { viewColumn } : undefined;
+            vscode.window.createTerminal({ cwd: params.cwd, location }).show();
           }
         }
       }),
@@ -488,7 +491,11 @@ export class CommandManager implements vscode.Disposable {
         "pochi.worktree.openTerminal",
         async (worktreePath: string) => {
           if (worktreePath) {
-            vscode.window.createTerminal({ cwd: worktreePath }).show();
+            const viewColumn = getViewColumnForTerminals();
+            const location = viewColumn ? { viewColumn } : undefined;
+            vscode.window
+              .createTerminal({ cwd: worktreePath, location })
+              .show();
           }
         },
       ),

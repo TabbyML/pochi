@@ -40,7 +40,7 @@ export class LayoutManager implements vscode.Disposable {
     }
   }
 
-  async saveLayout() {
+  private async saveLayout() {
     const groups = getSortedCurrentTabGroups().map((group) => {
       return {
         activeTabIndex: group.tabs.findIndex((tab) => tab.isActive),
@@ -56,7 +56,7 @@ export class LayoutManager implements vscode.Disposable {
     };
   }
 
-  async restoreLayout() {
+  private async restoreLayout() {
     const layout = this.savedLayout;
     if (layout) {
       this.savedLayout = undefined;
@@ -165,6 +165,19 @@ export function getSortedCurrentTabGroups() {
   return vscode.window.tabGroups.all.toSorted(
     (a, b) => a.viewColumn - b.viewColumn,
   );
+}
+
+export function getViewColumnForTerminals(): vscode.ViewColumn | undefined {
+  const current = getSortedCurrentTabGroups();
+
+  // find the last group that is all terminals
+  const groupIndex = current.findLastIndex((group) =>
+    group.tabs.every((tab) => tab.input instanceof vscode.TabInputTerminal),
+  );
+  if (groupIndex >= 0) {
+    return (groupIndex + 1) as vscode.ViewColumn;
+  }
+  return undefined;
 }
 
 function getTabInputSource(tab: vscode.Tab): TabInputSource {
@@ -328,26 +341,6 @@ function isCurrentLayoutMatched(layout: Layout) {
       if (targetGroupIndex >= 0 && targetGroupIndex !== i) {
         return false;
       }
-    }
-  }
-
-  // no CreateTerminal input, and check all MoveTerminal input (not exactly, but best effort)
-  for (let i = 0; i < target.length; i++) {
-    const createTerminalInputs = target[i].tabInputs.filter(
-      (tabInput) => tabInput.type === "CreateTerminal",
-    );
-    if (createTerminalInputs.length > 0) {
-      return false;
-    }
-
-    const moveTerminalInputs = target[i].tabInputs.filter(
-      (tabInput) => tabInput.type === "MoveTerminal",
-    );
-    const currentTerminals = current[i].tabs.filter(
-      (tab) => tab.input instanceof vscode.TabInputTerminal,
-    );
-    if (moveTerminalInputs.length > currentTerminals.length) {
-      return false;
     }
   }
 
