@@ -4,6 +4,7 @@ import type {
   GitWorktreeInfo,
 } from "@getpochi/common/vscode-webui-bridge";
 import { signal } from "@preact/signals-core";
+import { funnel } from "remeda";
 import { injectable, singleton } from "tsyringe";
 import type * as vscode from "vscode";
 // biome-ignore lint/style/useImportType: needed for dependency injection
@@ -35,18 +36,18 @@ export class GithubPullRequestMonitor implements vscode.Disposable {
   }
 
   async init() {
-    await this.checkWorktreesPrInfo();
+    this.thorttledCheckWorktreesPrInfo.call();
     this.disposables.push(
       this.gitStateMonitor.onDidChangeGitState((e) => {
         if (e.type === "branch-changed") {
-          this.checkWorktreesPrInfo();
+          this.thorttledCheckWorktreesPrInfo.call();
         }
       }),
     );
     this.disposables.push(
       this.gitStateMonitor.onDidRepositoryChange((e) => {
         if (e.type === "repository-changed" && e.change === "added") {
-          this.checkWorktreesPrInfo();
+          this.thorttledCheckWorktreesPrInfo.call();
         }
       }),
     );
@@ -55,13 +56,18 @@ export class GithubPullRequestMonitor implements vscode.Disposable {
 
   private startPolling() {
     const interval = setInterval(async () => {
-      await this.checkWorktreesPrInfo();
+      this.thorttledCheckWorktreesPrInfo.call();
     }, 30 * 1000);
 
     this.disposables.push({
       dispose: () => clearInterval(interval),
     });
   }
+
+  thorttledCheckWorktreesPrInfo = funnel(() => this.checkWorktreesPrInfo(), {
+    minGapMs: 10_000,
+    triggerAt: "both",
+  });
 
   async checkWorktreesPrInfo() {
     this.ghCliCheck.value = await checkGithubCli();
@@ -212,7 +218,7 @@ const getGithubPr = async (
         color: false,
       });
     } catch (error: unknown) {
-      logger.warn(
+      logger.trace(
         `Error fetching PR checks with command "${checksCommand}": ${toErrorMessage(error)}`,
       );
       // If checks fail, continue with empty checks array
