@@ -144,7 +144,15 @@ export class CheckpointService implements vscode.Disposable {
         if (file.content === null) {
           await fs.rm(path.join(this.cwd, file.filepath), { force: true });
         } else if (file.content?.type === "checkpoint") {
-          await this.shadowGit.reset(file.content.commit, [file.filepath]);
+          const exists = await this.checkFileExistsInCheckpoint(
+            file.content.commit,
+            file.filepath,
+          );
+          if (exists) {
+            await this.shadowGit.reset(file.content.commit, [file.filepath]);
+          } else {
+            await fs.rm(path.join(this.cwd, file.filepath), { force: true });
+          }
         } else if (file.content?.type === "text") {
           await fs.writeFile(
             path.join(this.cwd, file.filepath),
@@ -317,6 +325,32 @@ export class CheckpointService implements vscode.Disposable {
       }
     }
     return changes;
+  };
+
+  checkFileExistsInCheckpoint = async (
+    commitHash: string,
+    filepath: string,
+  ): Promise<boolean> => {
+    await this.ensureInitialized();
+    if (!this.shadowGit) {
+      throw new Error("Shadow Git repository not initialized");
+    }
+
+    try {
+      const exists = await this.shadowGit.fileExistsInCommit(
+        commitHash,
+        filepath,
+      );
+      return exists;
+    } catch (error) {
+      const errorMessage = toErrorMessage(error);
+      logger.error(
+        `Failed to check if file exists in checkpoint for commit hash: ${commitHash}, filepath: ${filepath}: ${errorMessage}`,
+      );
+      throw new Error(
+        `Failed to check file existence in checkpoint: ${errorMessage}`,
+      );
+    }
   };
 
   dispose() {

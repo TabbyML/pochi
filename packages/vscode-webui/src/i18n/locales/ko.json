@@ -380,6 +380,7 @@
     "filesChanged_other": "{{count}}개 파일 변경됨",
     "keep": "유지",
     "undo": "실행 취소",
-    "viewChanges": "변경 사항 보기"
+    "viewChanges": "변경 사항 보기",
+    "openFile": "파일 열기"
   }
 }

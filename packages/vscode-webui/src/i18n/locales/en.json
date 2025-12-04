@@ -388,6 +388,7 @@
     "filesChanged_other": "{{count}} files changed",
     "keep": "Keep",
     "undo": "Undo",
-    "viewChanges": "View changes"
+    "viewChanges": "View changes",
+    "openFile": "Open file"
   }
 }

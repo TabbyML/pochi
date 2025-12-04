@@ -384,6 +384,7 @@
     "filesChanged_other": "{{count}} 个文件已更改",
     "keep": "保留",
     "undo": "撤销",
-    "viewChanges": "查看更改"
+    "viewChanges": "查看更改",
+    "openFile": "打开文件"
   }
 }

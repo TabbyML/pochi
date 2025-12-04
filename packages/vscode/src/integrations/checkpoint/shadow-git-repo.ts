@@ -412,6 +412,18 @@ export class ShadowGitRepo implements vscode.Disposable {
     });
   }
 
+  async fileExistsInCommit(
+    commitHash: string,
+    filepath: string,
+  ): Promise<boolean> {
+    try {
+      await this.git.show([`${commitHash}:${filepath}`]);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   dispose() {
     this.git = undefined as unknown as SimpleGit; // Clear the git instance
   }
