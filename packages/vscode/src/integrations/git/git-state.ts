@@ -16,6 +16,8 @@ export interface GitRepositoryState {
 export interface GitStateChangeEvent {
   type: "branch-changed";
   repository: string;
+  previousBranch?: string;
+  currentBranch?: string;
 }
 
 export interface GitRepositoryChangeEvent {
@@ -191,6 +193,8 @@ export class GitStateMonitor implements vscode.Disposable {
         this.#onDidChangeGitState.fire({
           type: "branch-changed",
           repository: repository.rootUri.fsPath,
+          previousBranch: previousState.currentBranch.name,
+          currentBranch: currentState.currentBranch.name,
         });
 
         logger.debug(

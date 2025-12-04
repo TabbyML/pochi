@@ -36,18 +36,24 @@ export class GithubPullRequestMonitor implements vscode.Disposable {
   }
 
   async init() {
-    this.thorttledCheckWorktreesPrInfo.call();
+    this.queueCheck();
     this.disposables.push(
-      this.gitStateMonitor.onDidChangeGitState((e) => {
-        if (e.type === "branch-changed") {
-          this.thorttledCheckWorktreesPrInfo.call();
+      this.gitStateMonitor.onDidChangeGitState(async (e) => {
+        if (e.type === "branch-changed" && e.currentBranch !== undefined) {
+          this.worktreeInfoProvider.updateGithubPullRequest(
+            e.repository,
+            undefined,
+          );
+          await this.worktreeManager.updateWorktrees();
+          this.queueCheck(e.repository);
         }
       }),
     );
     this.disposables.push(
-      this.gitStateMonitor.onDidRepositoryChange((e) => {
+      this.gitStateMonitor.onDidRepositoryChange(async (e) => {
         if (e.type === "repository-changed" && e.change === "added") {
-          this.thorttledCheckWorktreesPrInfo.call();
+          await this.worktreeManager.updateWorktrees();
+          this.queueCheck(e.repository);
         }
       }),
     );
@@ -55,8 +61,8 @@ export class GithubPullRequestMonitor implements vscode.Disposable {
   }
 
   private startPolling() {
-    const interval = setInterval(async () => {
-      this.thorttledCheckWorktreesPrInfo.call();
+    const interval = setInterval(() => {
+      this.queueCheck();
     }, 30 * 1000);
 
     this.disposables.push({
@@ -64,34 +70,75 @@ export class GithubPullRequestMonitor implements vscode.Disposable {
     });
   }
 
-  thorttledCheckWorktreesPrInfo = funnel(() => this.checkWorktreesPrInfo(), {
-    minGapMs: 10_000,
+  private pathsToCheck = new Set<string>();
+  private checkAllPending = false;
+
+  private queueCheck(path?: string) {
+    if (path) {
+      this.pathsToCheck.add(path);
+    } else {
+      this.checkAllPending = true;
+    }
+    this.throttledProcessQueue.call();
+  }
+
+  throttledProcessQueue = funnel(() => this.processQueue(), {
+    minGapMs: 1_000,
     triggerAt: "both",
   });
 
-  async checkWorktreesPrInfo() {
+  private async processQueue() {
+    const checkAll = this.checkAllPending;
+    const paths = new Set(this.pathsToCheck);
+
+    this.checkAllPending = false;
+    this.pathsToCheck.clear();
+
+    if (checkAll) {
+      await this.checkWorktreesPrInfo();
+    } else if (paths.size > 0) {
+      await this.checkWorktreesPrInfo(paths);
+    }
+  }
+
+  async checkWorktreesPrInfo(targetPaths?: Set<string>) {
     this.ghCliCheck.value = await checkGithubCli();
     if (!this.ghCliCheck.value.authorized) {
       return;
     }
     const worktrees = this.worktreeManager.worktrees.value;
-    let hasUpdates = false;
-    for (const worktree of worktrees) {
-      const currentInfo = this.worktreeInfoProvider.get(worktree.path);
-      if (
-        !currentInfo ||
-        !currentInfo.github.pullRequest ||
-        currentInfo?.github.pullRequest?.status === "open"
-      ) {
-        const updated = await this.fetchWorktreePrInfo(worktree);
-        if (updated) {
-          hasUpdates = true;
-        }
-      }
-    }
 
-    if (hasUpdates) {
-      await this.worktreeManager.updateWorktrees();
+    const worktreesToCheck = targetPaths
+      ? worktrees.filter((w) => targetPaths.has(w.path))
+      : worktrees;
+
+    await Promise.all(
+      worktreesToCheck.map(async (worktree) => {
+        const currentInfo = this.worktreeInfoProvider.get(worktree.path);
+        if (
+          !currentInfo ||
+          !currentInfo.github.pullRequest ||
+          currentInfo?.github.pullRequest?.status === "open"
+        ) {
+          const updated = await this.fetchWorktreePrInfo(worktree);
+          if (updated) {
+            this.updateWorktreeSignal(worktree.path);
+          }
+        }
+      }),
+    );
+  }
+
+  private updateWorktreeSignal(path: string) {
+    const currentWorktrees = this.worktreeManager.worktrees.value;
+    const index = currentWorktrees.findIndex((w) => w.path === path);
+    if (index !== -1) {
+      const newWorktrees = [...currentWorktrees];
+      newWorktrees[index] = {
+        ...newWorktrees[index],
+        data: this.worktreeInfoProvider.get(path),
+      };
+      this.worktreeManager.worktrees.value = newWorktrees;
     }
   }
 
@@ -109,18 +156,19 @@ export class GithubPullRequestMonitor implements vscode.Disposable {
         prInfo ? JSON.stringify(prInfo) : "no PR"
       }`,
     );
-    if (prInfo) {
-      const currentInfo = this.worktreeInfoProvider.get(worktree.path);
-      const currentPrInfo = currentInfo?.github?.pullRequest;
-      if (JSON.stringify(currentPrInfo) !== JSON.stringify(prInfo)) {
-        this.worktreeInfoProvider.updateGithubPullRequest(
-          worktree.path,
-          prInfo,
-        );
-        return prInfo;
-      }
+
+    const currentInfo = this.worktreeInfoProvider.get(worktree.path);
+    const currentPrInfo = currentInfo?.github?.pullRequest;
+    const newPrInfo = prInfo ?? undefined;
+
+    if (JSON.stringify(currentPrInfo) !== JSON.stringify(newPrInfo)) {
+      this.worktreeInfoProvider.updateGithubPullRequest(
+        worktree.path,
+        newPrInfo,
+      );
+      return true;
     }
-    return;
+    return false;
   }
 
   dispose() {
@@ -177,38 +225,36 @@ const getGithubPr = async (
   cwd: string = process.cwd(),
 ): Promise<NonNullable<GitWorktreeInfo["github"]["pullRequest"]> | null> => {
   try {
-    // Get PR information for the given branch using gh cli
-    let result: { output: string; isTruncated: boolean };
-    const command = `gh pr view ${branch} --json number,state,mergedAt,closedAt`;
-    logger.trace(`Executing command to fetch PR: ${command}`);
-    try {
-      result = await executeCommandWithNode({
-        command,
-        cwd,
-        timeout: 30, // 30 seconds timeout
-        color: false,
-      });
-    } catch (error: unknown) {
-      logger.trace(
-        `Error fetching PR with command "${command}": ${toErrorMessage(error)}`,
-      );
-      return null;
-    }
+    const fetchPr = async () => {
+      const command = `gh pr list --head "${branch}" --state open --limit 1 --json number,state,mergedAt,closedAt`;
+      logger.trace(`Executing command to fetch PR: ${command}`);
+      try {
+        const result = await executeCommandWithNode({
+          command,
+          cwd,
+          timeout: 30,
+          color: false,
+        });
+        const prs = JSON.parse(result.output.trim());
+        return prs[0] || null;
+      } catch (error: unknown) {
+        logger.trace(
+          `Error fetching PR with command "${command}": ${toErrorMessage(error)}`,
+        );
+        return null;
+      }
+    };
 
-    logger.trace("result.output:", result.output);
-
-    // The executeCommandWithNode returns { output: string; isTruncated: boolean }
-    // We need to parse the output to get the PR data
-    const prData = JSON.parse(result.output.trim());
+    const prData = await fetchPr();
 
     if (!prData || !prData.number) {
       logger.trace(`No PR found for branch: ${branch}`);
-      return null; // No PR found for this branch
+      return null;
     }
 
     // Get check statuses for the PR
     let checkResult: { output: string; isTruncated: boolean };
-    const checksCommand = `gh pr checks ${branch} --json name,state,link`;
+    const checksCommand = `gh pr checks ${prData.number} --json name,state,link`;
     logger.trace(`Executing command to fetch PR checks: ${checksCommand}`);
     try {
       checkResult = await executeCommandWithNode({
@@ -225,7 +271,7 @@ const getGithubPr = async (
       checkResult = { output: "[]", isTruncated: false };
     }
 
-    logger.trace("result.output:", result.output);
+    logger.trace("checkResult.output:", checkResult.output);
 
     interface CheckStatus {
       name: string;
