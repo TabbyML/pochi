@@ -174,9 +174,7 @@ export class PochiTaskEditorProvider
           : {
               ...params,
               uid: crypto.randomUUID(),
-              displayId: container
-                .resolve(GitWorktreeInfoProvider)
-                .getNextDisplayId(params.cwd),
+              displayId: getNextDisplayId(params.cwd),
             };
       const uri = PochiTaskEditorProvider.createTaskUri(taskParams);
       PochiTaskEditorProvider.taskParamsCache.set(uri.toString(), taskParams);
@@ -336,6 +334,15 @@ export class PochiTaskEditorProvider
     logger.debug(`Opened Pochi task editor: cwd=${cwd}, uid=${uid}`);
     return pochiPanel;
   }
+}
+
+function getNextDisplayId(cwd: string) {
+  const worktreeManager = container.resolve(WorktreeManager);
+  const mainWorktreeCwd = worktreeManager.worktrees.value.find(
+    (wt) => wt.isMain,
+  )?.path;
+  const worktreeInfoProvider = container.resolve(GitWorktreeInfoProvider);
+  return worktreeInfoProvider.getNextDisplayId(mainWorktreeCwd ?? cwd);
 }
 
 function updateActiveTabs() {
