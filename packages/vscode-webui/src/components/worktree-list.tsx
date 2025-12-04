@@ -515,9 +515,11 @@ function CreatePrDropdown({
   const { selectedModel } = useSelectedModels();
 
   const isGhCliReady = ghCli?.installed && ghCli?.authorized;
-  const tooltipMessage = !ghCli?.installed
-    ? t("worktree.installGhCli")
-    : t("worktree.authGhCli");
+  const ghTooltipMessage = !isGhCliReady
+    ? !ghCli?.installed
+      ? t("worktree.installGhCli")
+      : t("worktree.authGhCli")
+    : undefined;
 
   const onCreatePr = (isDraft?: boolean) => {
     if (!selectedModel) {
@@ -555,35 +557,61 @@ function CreatePrDropdown({
         <Tooltip>
           <TooltipTrigger asChild>
             <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 w-6 gap-1"
-                disabled={!isGhCliReady}
-              >
+              <Button variant="ghost" size="sm" className="h-6 w-6 gap-1">
                 <GitPullRequest className="size-3.5" />
               </Button>
             </DropdownMenuTrigger>
           </TooltipTrigger>
-          {!isGhCliReady && <TooltipContent>{tooltipMessage}</TooltipContent>}
+          <TooltipContent>{t("worktree.createPr")}</TooltipContent>
         </Tooltip>
         <DropdownMenuContent
           align="start"
           className="bg-background text-xs"
           side="right"
+          onCloseAutoFocus={(e) => e.preventDefault()}
         >
-          <DropdownMenuItem
-            onClick={() => onCreatePr()}
-            disabled={!isGhCliReady}
-          >
-            {t("worktree.createPr")}
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={() => onCreatePr(true)}
-            disabled={!isGhCliReady}
-          >
-            {t("worktree.createDraftPr")}
-          </DropdownMenuItem>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span>
+                <DropdownMenuItem
+                  onSelect={(e) => {
+                    if (!isGhCliReady) {
+                      e.preventDefault();
+                    } else {
+                      onCreatePr();
+                    }
+                  }}
+                  className={cn(
+                    !isGhCliReady && "cursor-not-allowed opacity-50",
+                  )}
+                >
+                  {t("worktree.createPr")}
+                </DropdownMenuItem>
+              </span>
+            </TooltipTrigger>
+            {!isGhCliReady && (
+              <TooltipContent>{ghTooltipMessage}</TooltipContent>
+            )}
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <DropdownMenuItem
+                onSelect={(e) => {
+                  if (!isGhCliReady) {
+                    e.preventDefault();
+                  } else {
+                    onCreatePr(true);
+                  }
+                }}
+                className={cn(!isGhCliReady && "cursor-not-allowed opacity-50")}
+              >
+                {t("worktree.createDraftPr")}
+              </DropdownMenuItem>
+            </TooltipTrigger>
+            {!isGhCliReady && (
+              <TooltipContent>{ghTooltipMessage}</TooltipContent>
+            )}
+          </Tooltip>
           <DropdownMenuItem asChild disabled={!manualPrUrl}>
             <a href={manualPrUrl} target="_blank" rel="noopener noreferrer">
               {t("worktree.createPrManually")}
