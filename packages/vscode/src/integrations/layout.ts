@@ -1,3 +1,4 @@
+import { listWorkspaceFiles } from "@getpochi/common/tool-utils";
 import * as vscode from "vscode";
 import { PochiTaskEditorProvider } from "./webview/webview-panel";
 
@@ -27,7 +28,7 @@ export function getSortedCurrentTabGroups() {
   );
 }
 
-export async function applyPochiLayout() {
+export async function applyPochiLayout(params: { cwd: string | undefined }) {
   // store the current focus tab
   const userFocusTab = vscode.window.tabGroups.activeTabGroup.activeTab;
   const userActiveTerminal = vscode.window.activeTerminal;
@@ -211,6 +212,12 @@ export async function applyPochiLayout() {
   // Re-active the user active terminal
   if (userActiveTerminal) {
     userActiveTerminal.show();
+  }
+
+  // If no editors in editor group, open a default text file
+  if (getSortedCurrentTabGroups()[1].tabs.length === 0) {
+    const defaultTextDocument = await findDefaultTextDocument(params.cwd);
+    vscode.window.showTextDocument(defaultTextDocument, vscode.ViewColumn.Two);
   }
 
   // Re-focus the user focus tab
@@ -415,4 +422,135 @@ function isSameTabInput(
       a.original.toString() === b.original.toString() &&
       a.modified.toString() === b.modified.toString())
   );
+}
+
+async function findDefaultTextDocument(
+  cwd: string | undefined,
+): Promise<vscode.TextDocument> {
+  const openNewUntitledFile = async () => {
+    return await vscode.workspace.openTextDocument({
+      content: "",
+      language: "plaintext",
+    });
+  };
+
+  if (!cwd) {
+    return await openNewUntitledFile();
+  }
+
+  const cwdUri = vscode.Uri.file(cwd);
+  const { files } = await listWorkspaceFiles({ cwd });
+  if (files.length > 0) {
+    const defaultFilesRank = [
+      // Project description
+      "README.md",
+      "readme.md",
+      "README.txt",
+      "readme.txt",
+      "README",
+      "readme",
+      "package.json",
+      // Common entry points
+      "index.html",
+      "index.htm",
+      "index.js",
+      "index.ts",
+      "main.js",
+      "main.ts",
+      "app.js",
+      "app.ts",
+      "src/index.js",
+      "src/index.ts",
+      "src/main.js",
+      "src/main.ts",
+      "src/app.js",
+      "src/app.ts",
+      "main.py",
+      "app.py",
+      "src/main.py",
+      "app/main.py",
+      "main.go",
+      "src/main.go",
+      "lib/main.rs",
+      "src/main.rs",
+      "src/lib.rs",
+      "index.php",
+      "src/index.php",
+      "public/index.php",
+      "Program.cs",
+      "Startup.cs",
+      "main.swift",
+      "Package.swift",
+      "Dockerfile",
+    ];
+
+    for (const defaultFile of defaultFilesRank) {
+      if (files.includes(defaultFile)) {
+        const fileUri = vscode.Uri.joinPath(cwdUri, defaultFile);
+        return await vscode.workspace.openTextDocument(fileUri);
+      }
+    }
+
+    const textFileExtensions = [
+      ".md",
+      ".txt",
+      ".js",
+      ".jsx",
+      ".ts",
+      ".tsx",
+      ".c",
+      ".cpp",
+      ".h",
+      ".hpp",
+      ".cs",
+      ".java",
+      ".py",
+      ".rb",
+      ".go",
+      ".rs",
+      ".swift",
+      ".kt",
+      ".kts",
+      ".scala",
+      ".groovy",
+      ".php",
+      ".lua",
+      ".r",
+      ".dart",
+      ".sh",
+      ".bash",
+      ".zsh",
+      ".ps1",
+      ".sql",
+      ".html",
+      ".htm",
+      ".css",
+      ".scss",
+      ".sass",
+      ".less",
+      ".vue",
+      ".svelte",
+      ".json",
+      ".xml",
+      ".yml",
+      ".yaml",
+      ".toml",
+      ".ini",
+      ".cfg",
+    ];
+    for (const file of files) {
+      if (textFileExtensions.some((ext) => file.endsWith(ext))) {
+        const fileUri = vscode.Uri.joinPath(cwdUri, file);
+        return await vscode.workspace.openTextDocument(fileUri);
+      }
+    }
+
+    // Default to the first file in the list
+    if (files.length > 0) {
+      const fileUri = vscode.Uri.joinPath(cwdUri, files[0]);
+      return await vscode.workspace.openTextDocument(fileUri);
+    }
+  }
+
+  return await openNewUntitledFile();
 }

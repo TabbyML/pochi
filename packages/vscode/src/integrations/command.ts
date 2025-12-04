@@ -535,9 +535,28 @@ export class CommandManager implements vscode.Disposable {
         },
       ),
 
-      vscode.commands.registerCommand("pochi.applyPochiLayout", async () => {
-        await applyPochiLayout();
-      }),
+      vscode.commands.registerCommand(
+        "pochi.applyPochiLayout",
+        async (...args) => {
+          let cwd: string | undefined = undefined;
+          // Parse args
+          const arg0 = args.shift();
+          if (arg0 instanceof vscode.Uri) {
+            const workspace = vscode.workspace.getWorkspaceFolder(arg0);
+            if (workspace) {
+              cwd = workspace.uri.fsPath;
+            }
+          }
+          // Use workspace
+          if (!cwd) {
+            const workspaceFolders = vscode.workspace.workspaceFolders;
+            if (workspaceFolders && workspaceFolders.length > 0) {
+              cwd = workspaceFolders[0].uri.fsPath;
+            }
+          }
+          await applyPochiLayout({ cwd });
+        },
+      ),
     );
   }
 
