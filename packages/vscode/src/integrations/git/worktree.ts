@@ -54,7 +54,6 @@ export class WorktreeManager implements vscode.Disposable {
     };
     this.disposables.push(
       this.gitStateMonitor.onDidRepositoryChange(onWorktreeChanged),
-      this.gitStateMonitor.onDidChangeGitState(onWorktreeChanged),
     );
   }
 
