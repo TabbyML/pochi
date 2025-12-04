@@ -14,7 +14,7 @@ import { GitWorktreeInfoProvider } from "../git/git-worktree-info-provider";
 import { WorktreeManager } from "../git/worktree";
 import { executeCommandWithNode } from "../terminal/execute-command-with-node";
 
-const logger = getLogger("GithubPR");
+const logger = getLogger("GithubPullRequestMonitor");
 
 @singleton()
 @injectable()
@@ -35,11 +35,6 @@ export class GithubPullRequestMonitor implements vscode.Disposable {
   }
 
   async init() {
-    this.ghCliCheck.value = await checkGithubCli();
-    if (!this.ghCliCheck.value.authorized) {
-      return;
-    }
-
     await this.checkWorktreesPrInfo();
     this.disposables.push(
       this.gitStateMonitor.onDidChangeGitState((e) => {
@@ -60,28 +55,7 @@ export class GithubPullRequestMonitor implements vscode.Disposable {
 
   private startPolling() {
     const interval = setInterval(async () => {
-      if (!this.ghCliCheck.value.authorized) {
-        return;
-      }
-      const worktrees = this.worktreeManager.worktrees.value;
-      let hasUpdates = false;
-      for (const worktree of worktrees) {
-        const currentInfo = this.worktreeInfoProvider.get(worktree.path);
-        if (
-          !currentInfo ||
-          !currentInfo.github.pullRequest ||
-          currentInfo?.github.pullRequest?.status === "open"
-        ) {
-          const updated = await this.fetchWorktreePrInfo(worktree);
-          if (updated) {
-            hasUpdates = true;
-          }
-        }
-      }
-
-      if (hasUpdates) {
-        await this.worktreeManager.updateWorktrees();
-      }
+      await this.checkWorktreesPrInfo();
     }, 30 * 1000);
 
     this.disposables.push({
@@ -90,21 +64,28 @@ export class GithubPullRequestMonitor implements vscode.Disposable {
   }
 
   async checkWorktreesPrInfo() {
-    const worktrees = this.worktreeManager.worktrees.value;
-    for (const worktree of worktrees) {
-      await this.checkWorktreePrInfo(worktree);
+    this.ghCliCheck.value = await checkGithubCli();
+    if (!this.ghCliCheck.value.authorized) {
+      return;
     }
-    await this.worktreeManager.updateWorktrees();
-  }
+    const worktrees = this.worktreeManager.worktrees.value;
+    let hasUpdates = false;
+    for (const worktree of worktrees) {
+      const currentInfo = this.worktreeInfoProvider.get(worktree.path);
+      if (
+        !currentInfo ||
+        !currentInfo.github.pullRequest ||
+        currentInfo?.github.pullRequest?.status === "open"
+      ) {
+        const updated = await this.fetchWorktreePrInfo(worktree);
+        if (updated) {
+          hasUpdates = true;
+        }
+      }
+    }
 
-  async checkWorktreePrInfo(worktree: GitWorktree) {
-    const currentInfo = this.worktreeInfoProvider.get(worktree.path);
-    if (
-      !currentInfo ||
-      !currentInfo.github.pullRequest ||
-      currentInfo.github.pullRequest.status === "open"
-    ) {
-      await this.fetchWorktreePrInfo(worktree);
+    if (hasUpdates) {
+      await this.worktreeManager.updateWorktrees();
     }
   }
 
@@ -117,7 +98,7 @@ export class GithubPullRequestMonitor implements vscode.Disposable {
       return;
     }
     const prInfo = await getGithubPr(worktree.branch, worktree.path);
-    logger.debug(
+    logger.trace(
       `Fetched PR info for worktree ${worktree.path} (branch: ${worktree.branch}): ${
         prInfo ? JSON.stringify(prInfo) : "no PR"
       }`,
