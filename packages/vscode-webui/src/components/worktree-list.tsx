@@ -670,7 +670,10 @@ function PrStatusDisplay({
   const allChecksPassed = prChecks && passedCheckCount === prChecks.length;
   const allChecksFailed = prChecks && failedCheckCount === prChecks.length;
 
-  const getChecksStatusText = () => {
+  const getChecksStatusText = (short = false) => {
+    if (short) {
+      return `${passedCheckCount}/${prChecks?.length || 0}`;
+    }
     if (allChecksPassed) {
       return t("worktree.allChecksPassed");
     }
@@ -697,7 +700,12 @@ function PrStatusDisplay({
         <HoverCard openDelay={200} closeDelay={100}>
           <HoverCardTrigger asChild>
             <span className="cursor-pointer truncate whitespace-nowrap text-xs">
-              {getChecksStatusText()}
+              <span className="hidden truncate whitespace-nowrap min-[300px]:inline">
+                {getChecksStatusText()}
+              </span>
+              <span className="truncate whitespace-nowrap min-[300px]:hidden">
+                {getChecksStatusText(true)}
+              </span>
             </span>
           </HoverCardTrigger>
           <HoverCardContent
