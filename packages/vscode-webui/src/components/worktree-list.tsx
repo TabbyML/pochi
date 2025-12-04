@@ -5,6 +5,17 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
+import {
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -14,28 +25,44 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useSelectedModels } from "@/features/settings";
 import { useCurrentWorkspace } from "@/lib/hooks/use-current-workspace";
 import { usePochiTasks } from "@/lib/hooks/use-pochi-tasks";
 import { useWorktrees } from "@/lib/hooks/use-worktrees";
 import { cn } from "@/lib/utils";
-import { getWorktreeNameFromWorktreePath } from "@getpochi/common/git-utils";
+import { vscodeHost } from "@/lib/vscode";
+import { prompts } from "@getpochi/common";
+import {
+  getWorktreeNameFromWorktreePath,
+  parseGitOriginUrl,
+} from "@getpochi/common/git-utils";
 import {
   type GitWorktree,
   prefixWorktreeName,
 } from "@getpochi/common/vscode-webui-bridge";
 import type { Task } from "@getpochi/livekit";
 import {
+  Check,
   ChevronDown,
   ChevronRight,
   GitCompare,
+  GitPullRequest,
+  Loader2,
   Terminal,
   Trash2,
+  X,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as R from "remeda";
 import { TaskRow } from "./task-row";
 import { ScrollArea } from "./ui/scroll-area";
+
+interface PrCheck {
+  name: string;
+  state: string;
+  url: string;
+}
 
 interface WorktreeGroup {
   name: string;
@@ -44,6 +71,8 @@ interface WorktreeGroup {
   isDeleted: boolean;
   isMain: boolean;
   createdAt?: number;
+  branch?: string;
+  data: GitWorktree["data"];
 }
 
 export function WorktreeList({
@@ -58,7 +87,12 @@ export function WorktreeList({
   const { t } = useTranslation();
   const { data: currentWorkspace, isLoading: isLoadingCurrentWorkspace } =
     useCurrentWorkspace();
-  const { data: worktrees, isLoading: isLoadingWorktrees } = useWorktrees();
+  const {
+    worktrees,
+    ghCli,
+    gitOriginUrl,
+    isLoading: isLoadingWorktrees,
+  } = useWorktrees();
   const [showDeleted, setShowDeleted] = useState(false);
 
   const groups = useMemo(() => {
@@ -141,6 +175,8 @@ export function WorktreeList({
           name,
           isDeleted,
           isMain,
+          branch: wt?.branch,
+          data: wt?.data,
         };
       }),
       R.sort((a, b) => {
@@ -187,17 +223,16 @@ export function WorktreeList({
   const activeGroups = optimisticGroups.filter((g) => !g.isDeleted);
   const deletedGroups = optimisticGroups.filter((g) => g.isDeleted);
 
-  const handleDeleteWorktree = (worktreePath: string) => {
-    onDeleteWorktree(worktreePath);
-  };
-
   return (
     <div className="flex flex-col gap-1">
       {activeGroups.map((group) => (
         <WorktreeSection
+          isLoadingWorktrees={isLoadingWorktrees}
           key={group.path}
           group={group}
-          onDeleteGroup={handleDeleteWorktree}
+          onDeleteGroup={onDeleteWorktree}
+          gitOriginUrl={gitOriginUrl}
+          ghCli={ghCli}
         />
       ))}
       {deletedGroups.length > 0 && (
@@ -222,7 +257,13 @@ export function WorktreeList({
 
           {showDeleted &&
             deletedGroups.map((group) => (
-              <WorktreeSection key={group.path} group={group} />
+              <WorktreeSection
+                isLoadingWorktrees={isLoadingWorktrees}
+                key={group.path}
+                group={group}
+                ghCli={ghCli}
+                gitOriginUrl={gitOriginUrl}
+              />
             ))}
         </>
       )}
@@ -233,9 +274,14 @@ export function WorktreeList({
 function WorktreeSection({
   group,
   onDeleteGroup,
+  ghCli,
+  gitOriginUrl,
 }: {
   group: WorktreeGroup;
+  isLoadingWorktrees: boolean;
   onDeleteGroup?: (worktreePath: string) => void;
+  ghCli?: { installed: boolean; authorized: boolean };
+  gitOriginUrl?: string | null;
 }) {
   const { t } = useTranslation();
   // Default expanded for existing worktrees, collapsed for deleted
@@ -244,6 +290,22 @@ function WorktreeSection({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const pochiTasks = usePochiTasks();
 
+  const pullRequest = group.data?.github?.pullRequest;
+
+  const prUrl = useMemo(() => {
+    if (!gitOriginUrl || !pullRequest?.id) return "#";
+    const info = parseGitOriginUrl(gitOriginUrl);
+    if (!info) return "#";
+
+    if (info.platform === "gitlab") {
+      return `${info.webUrl}/-/merge_requests/${pullRequest.id}`;
+    }
+    if (info.platform === "bitbucket") {
+      return `${info.webUrl}/pull-requests/${pullRequest.id}`;
+    }
+    return `${info.webUrl}/pull/${pullRequest.id}`;
+  }, [gitOriginUrl, pullRequest?.id]);
+
   return (
     <Collapsible
       open={isExpanded}
@@ -251,156 +313,163 @@ function WorktreeSection({
       className="mb-3"
     >
       <div
-        className="group flex h-6 items-center gap-2 px-1"
+        className="group px-1"
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => {
           setIsHovered(false);
           setShowDeleteConfirm(false);
         }}
       >
-        {group.isDeleted ? (
-          <CollapsibleTrigger asChild>
-            <div className="flex cursor-pointer select-none items-center gap-2 truncate font-medium text-sm">
-              {isExpanded ? (
-                <ChevronDown className="size-4" />
-              ) : (
-                <ChevronRight className="size-4" />
-              )}
-              <span>{prefixWorktreeName(group.name)}</span>
-            </div>
-          </CollapsibleTrigger>
-        ) : (
-          <div className="flex items-center truncate font-bold">
-            <span>{prefixWorktreeName(group.name)}</span>
+        {/* worktree name & branch */}
+        <div className="flex h-6 items-center gap-2">
+          <div className="flex items-center gap-2 overflow-x-hidden">
+            {group.isDeleted ? (
+              <CollapsibleTrigger asChild>
+                <div className="flex w-full flex-1 cursor-pointer select-none items-center gap-2 font-medium text-sm">
+                  {isExpanded ? (
+                    <ChevronDown className="size-4 shrink-0" />
+                  ) : (
+                    <ChevronRight className="size-4 shrink-0" />
+                  )}
+                  <span className="truncate">
+                    {prefixWorktreeName(group.name)}
+                  </span>
+                </div>
+              </CollapsibleTrigger>
+            ) : (
+              <div className="flex items-center font-bold">
+                <span className="truncate">
+                  {prefixWorktreeName(group.name)}
+                </span>
+              </div>
+            )}
           </div>
-        )}
 
-        <div
-          className={cn(
-            "flex items-center gap-1 transition-opacity duration-200",
-            !isHovered && !showDeleteConfirm
-              ? "pointer-events-none opacity-0"
-              : "opacity-100",
-          )}
-        >
-          {!group.isDeleted && (
-            <>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 w-6 p-0"
-                    asChild
-                  >
-                    <a
-                      href={`command:pochi.worktree.openDiff?${encodeURIComponent(JSON.stringify([group.path]))}`}
+          <div className="mt-[1px]">
+            {pullRequest ? (
+              <PrStatusDisplay
+                prNumber={pullRequest.id}
+                prUrl={prUrl}
+                prChecks={pullRequest.checks}
+              />
+            ) : (
+              <CreatePrDropdown
+                worktreePath={group.path}
+                branch={group.branch}
+                gitOriginUrl={gitOriginUrl}
+                ghCli={ghCli}
+              />
+            )}
+          </div>
+
+          <div
+            className={cn(
+              "ml-auto flex items-center gap-1 transition-opacity duration-200",
+              !isHovered && !showDeleteConfirm
+                ? "pointer-events-none opacity-0"
+                : "opacity-100",
+            )}
+          >
+            {!group.isDeleted && (
+              <>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0"
+                      asChild
                     >
-                      <GitCompare className="size-4" />
-                    </a>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {t("tasksPage.openWorktreeDiff")}
-                </TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 w-6 p-0"
-                    asChild
-                  >
-                    <a
-                      href={`command:pochi.worktree.openTerminal?${encodeURIComponent(JSON.stringify([group.path]))}`}
+                      <a
+                        href={`command:pochi.worktree.openDiff?${encodeURIComponent(JSON.stringify([group.path]))}`}
+                      >
+                        <GitCompare className="size-4" />
+                      </a>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {t("tasksPage.openWorktreeDiff")}
+                  </TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0"
+                      asChild
                     >
-                      <Terminal className="size-4" />
-                    </a>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {t("tasksPage.openWorktreeInTerminal")}
-                </TooltipContent>
-              </Tooltip>
-              {!group.isMain && (
-                <Popover
-                  open={showDeleteConfirm}
-                  onOpenChange={setShowDeleteConfirm}
-                >
-                  <Tooltip>
-                    <PopoverTrigger asChild>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-6 w-6 p-0"
-                        >
-                          <Trash2 className="size-4" />
-                        </Button>
-                      </TooltipTrigger>
-                    </PopoverTrigger>
-                    <TooltipContent>
-                      {t("tasksPage.deleteWorktree")}
-                    </TooltipContent>
-                  </Tooltip>
-                  <PopoverContent className="w-80" sideOffset={0}>
-                    <div className="flex flex-col gap-3">
-                      <div className="space-y-2">
-                        <h4 className="font-medium leading-none">
-                          {t("tasksPage.deleteWorktreeTitle")}
-                        </h4>
-                        <p className="text-muted-foreground text-sm">
-                          {t("tasksPage.deleteWorktreeConfirm", {
-                            name: group.name,
-                          })}
-                        </p>
-                      </div>
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setShowDeleteConfirm(false)}
-                        >
-                          {t("tasksPage.cancel")}
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          type="button"
-                          onClick={() => {
-                            setShowDeleteConfirm(false);
-                            onDeleteGroup?.(group.path);
-                          }}
-                        >
-                          {t("tasksPage.delete")}
-                        </Button>
-                      </div>
-                    </div>
-                  </PopoverContent>
-                </Popover>
-              )}
-            </>
-          )}
-          {/* {!group.isDeleted && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 w-6 p-0"
-                  asChild
-                >
-                  <a
-                    href={`command:pochi.worktree.newTask?${encodeURIComponent(JSON.stringify([group.path]))}`}
+                      <a
+                        href={`command:pochi.worktree.openTerminal?${encodeURIComponent(JSON.stringify([group.path]))}`}
+                      >
+                        <Terminal className="size-4" />
+                      </a>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {t("tasksPage.openWorktreeInTerminal")}
+                  </TooltipContent>
+                </Tooltip>
+                {!group.isMain && (
+                  <Popover
+                    open={showDeleteConfirm}
+                    onOpenChange={setShowDeleteConfirm}
                   >
-                    <Plus className="size-4" />
-                  </a>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>{t("tasksPage.newTask")}</TooltipContent>
-            </Tooltip>
-          )} */}
+                    <Tooltip>
+                      <PopoverTrigger asChild>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0"
+                          >
+                            <Trash2 className="size-4" />
+                          </Button>
+                        </TooltipTrigger>
+                      </PopoverTrigger>
+                      <TooltipContent>
+                        {t("tasksPage.deleteWorktree")}
+                      </TooltipContent>
+                    </Tooltip>
+                    <PopoverContent className="w-80" sideOffset={0}>
+                      <div className="flex flex-col gap-3">
+                        <div className="space-y-2">
+                          <h4 className="font-medium leading-none">
+                            {t("tasksPage.deleteWorktreeTitle")}
+                          </h4>
+                          <p className="text-muted-foreground text-sm">
+                            {t("tasksPage.deleteWorktreeConfirm", {
+                              name: group.name,
+                            })}
+                          </p>
+                        </div>
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setShowDeleteConfirm(false)}
+                          >
+                            {t("tasksPage.cancel")}
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            type="button"
+                            onClick={() => {
+                              setShowDeleteConfirm(false);
+                              onDeleteGroup?.(group.path);
+                            }}
+                          >
+                            {t("tasksPage.delete")}
+                          </Button>
+                        </div>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                )}
+              </>
+            )}
+          </div>
         </div>
       </div>
 
@@ -415,12 +484,218 @@ function WorktreeSection({
               );
             })
           ) : (
-            <div className="py-1 text-muted-foreground text-xs">
+            <div className="py-0.5 text-muted-foreground text-xs">
               {t("tasksPage.emptyState.description")}
             </div>
           )}
         </ScrollArea>
       </CollapsibleContent>
     </Collapsible>
+  );
+}
+
+// Component A: Split button for creating PRs
+function CreatePrDropdown({
+  worktreePath,
+  branch,
+  gitOriginUrl,
+  ghCli,
+}: {
+  branch?: string;
+  worktreePath: string;
+  gitOriginUrl?: string | null;
+  ghCli?: { installed: boolean; authorized: boolean };
+}) {
+  const { t } = useTranslation();
+  const { selectedModel } = useSelectedModels();
+
+  const isGhCliReady = ghCli?.installed && ghCli?.authorized;
+  const tooltipMessage = !ghCli?.installed
+    ? t("worktree.installGhCli")
+    : t("worktree.authGhCli");
+
+  const onCreatePr = (isDraft?: boolean) => {
+    if (!selectedModel) {
+      // FIXME toast tips?
+      return;
+    }
+    const prompt = prompts.createPr(isDraft);
+    vscodeHost.openTaskInPanel({
+      cwd: worktreePath,
+      storeId: undefined,
+      prompt,
+    });
+  };
+
+  const manualPrUrl = useMemo(() => {
+    if (!gitOriginUrl || !branch) return undefined;
+    const info = parseGitOriginUrl(gitOriginUrl);
+    if (!info) return undefined;
+
+    switch (info.platform) {
+      case "github":
+        return `${info.webUrl}/compare/${branch}?expand=1`;
+      case "gitlab":
+        return `${info.webUrl}/-/merge_requests/new?merge_request[source_branch]=${branch}`;
+      case "bitbucket":
+        return `${info.webUrl}/pull-requests/new?source=${branch}`;
+      default:
+        return info.webUrl;
+    }
+  }, [gitOriginUrl, branch]);
+
+  return (
+    <div className="flex items-center">
+      <DropdownMenu>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 gap-1"
+                disabled={!isGhCliReady}
+              >
+                <GitPullRequest className="size-3.5" />
+              </Button>
+            </DropdownMenuTrigger>
+          </TooltipTrigger>
+          {!isGhCliReady && <TooltipContent>{tooltipMessage}</TooltipContent>}
+        </Tooltip>
+        <DropdownMenuContent
+          align="start"
+          className="bg-background text-xs"
+          side="right"
+        >
+          <DropdownMenuItem
+            onClick={() => onCreatePr()}
+            disabled={!isGhCliReady}
+          >
+            {t("worktree.createPr")}
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => onCreatePr(true)}
+            disabled={!isGhCliReady}
+          >
+            {t("worktree.createDraftPr")}
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild disabled={!manualPrUrl}>
+            <a href={manualPrUrl} target="_blank" rel="noopener noreferrer">
+              {t("worktree.createPrManually")}
+            </a>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
+}
+
+// Component B: Display PR status with merge button
+function PrStatusDisplay({
+  prNumber,
+  prUrl,
+  prChecks,
+}: {
+  prNumber: number;
+  prUrl: string;
+  prChecks?: PrCheck[];
+}) {
+  const { t } = useTranslation();
+
+  // Helper function to get check icon
+  const getCheckIcon = (state: string) => {
+    switch (state) {
+      case "success":
+      case "completed":
+        return <Check className="size-3.5" />;
+      case "failure":
+      case "failed":
+      case "error":
+        return <X className="size-3.5" />;
+      default:
+        return <Loader2 className="size-3.5 scale-85 animate-spin" />;
+    }
+  };
+
+  const passedCheckCount =
+    prChecks && prChecks.length > 0
+      ? prChecks.filter(
+          (check) => check.state === "success" || check.state === "completed",
+        ).length
+      : 0;
+
+  const failedCheckCount =
+    prChecks && prChecks.length > 0
+      ? prChecks.filter(
+          (check) =>
+            check.state === "failure" ||
+            check.state === "failed" ||
+            check.state === "error",
+        ).length
+      : 0;
+
+  const allChecksPassed = prChecks && passedCheckCount === prChecks.length;
+  const allChecksFailed = prChecks && failedCheckCount === prChecks.length;
+
+  const getChecksStatusText = () => {
+    if (allChecksPassed) {
+      return t("worktree.allChecksPassed");
+    }
+    if (allChecksFailed) {
+      return t("worktree.allChecksFailed");
+    }
+    return t("worktree.checksStatus", {
+      passed: passedCheckCount,
+      total: prChecks?.length || 0,
+    });
+  };
+
+  return (
+    <div className="flex items-center gap-0.5">
+      <a
+        href={prUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center"
+      >
+        <span className="mr-1 text-xs">#{prNumber}</span>
+      </a>
+      {prChecks && prChecks.length > 0 && (
+        <div className="flex items-center gap-1">
+          <HoverCard openDelay={200} closeDelay={100}>
+            <HoverCardTrigger asChild>
+              <span className="cursor-pointer text-xs">
+                {getChecksStatusText()}
+              </span>
+            </HoverCardTrigger>
+            <HoverCardContent
+              className="w-auto min-w-[120px] max-w-[70vw] bg-background p-1"
+              side="bottom"
+              align="start"
+              sideOffset={2}
+            >
+              <ScrollArea viewportClassname="max-h-32">
+                <div className="flex flex-col gap-0.5">
+                  {prChecks.map((check, index) => (
+                    <a
+                      key={index}
+                      href={check.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-muted/50"
+                    >
+                      <span className="flex-shrink-0">
+                        {getCheckIcon(check.state)}
+                      </span>
+                      <span className="truncate">{check.name}</span>
+                    </a>
+                  ))}
+                </div>
+              </ScrollArea>
+            </HoverCardContent>
+          </HoverCard>
+        </div>
+      )}
+    </div>
   );
 }

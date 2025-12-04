@@ -55,6 +55,23 @@
     "super": "가강",
     "swift": "극속"
   },
+  "worktreeSelect": {
+    "selectWorktree": "워크트리 선택",
+    "createWorktree": "Git 워크트리 생성",
+    "createWorktreeDescription": "새 Git 워크트리에서 작업 시작"
+  },
+  "worktree": {
+    "createPr": "PR 생성",
+    "createDraftPr": "초안 PR 생성",
+    "createPrManually": "수동으로 PR 생성",
+    "installGhCli": "PR을 생성하려면 GitHub CLI를 설치하세요",
+    "authGhCli": "GitHub CLI를 인증하려면 `gh auth login`을 실행하세요",
+    "prNumber": "PR #{{number}}",
+    "merge": "병합",
+    "allChecksPassed": "모든 검사가 통과되었습니다",
+    "allChecksFailed": "모든 검사가 실패했습니다",
+    "checksStatus": "{{passed}}/{{total}} 검사가 통과되었습니다"
+  },
   "settings": {
     "account": {
       "signIn": "Pochi 모델 로그인",
@@ -380,6 +397,7 @@
     "filesChanged_other": "{{count}}개 파일 변경됨",
     "keep": "유지",
     "undo": "실행 취소",
-    "viewChanges": "변경 사항 보기"
+    "viewChanges": "변경 사항 보기",
+    "openFile": "파일 열기"
   }
 }

@@ -17,9 +17,8 @@ export function LiveStoreTaskProvider({
   children,
 }: { children: React.ReactNode; cwd: string }) {
   const { origin } = location;
-  const storeId = sanitizeStoreId(
-    isDev ? `dev-${origin}-tasks` : `${origin}-tasks`,
-  );
+  const storeName = origin.startsWith("http://") ? `${origin}-tasks` : "tasks";
+  const storeId = sanitizeStoreId(isDev ? `dev-${storeName}` : storeName);
   return (
     <LiveStoreProvider
       storeId={storeId}

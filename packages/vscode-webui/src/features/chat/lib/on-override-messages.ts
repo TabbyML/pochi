@@ -39,7 +39,7 @@ export async function onOverrideMessages({
     const lastCheckpoint = checkpoints.at(-1);
     if (ckpt && lastMessage.role === "assistant" && lastCheckpoint) {
       // diff summary in chat view
-      await updateChangedFiles(taskId, lastCheckpoint);
+      await updateChangedFiles(taskId, lastCheckpoint, lastMessage);
     }
   }
 }
@@ -148,32 +148,46 @@ async function updateTaskLineChanges(
   }
 }
 
-async function updateChangedFiles(taskId: string, lastCheckpoint: string) {
-  const fileDiffResult = await vscodeHost.diffWithCheckpoint(lastCheckpoint);
+async function updateChangedFiles(
+  taskId: string,
+  lastCheckpoint: string,
+  lastMessage: Message,
+) {
+  // recent changed file since last checkpoint
+  const recentChangedFiles = lastMessage.parts
+    .slice(
+      lastMessage.parts.findIndex(
+        (p) => p.type === "data-checkpoint" && p.data.commit === lastCheckpoint,
+      ) + 1,
+    )
+    .filter(
+      (p) =>
+        (p.type === "tool-applyDiff" ||
+          p.type === "tool-multiApplyDiff" ||
+          p.type === "tool-writeToFile") &&
+        p.state === "output-available",
+    )
+    .map((p) => p.input.path);
+
   const store = getTaskChangedFileStore(taskId);
   const { changedFiles, setChangedFile } = store.getState();
 
-  const updatedChangedFiles: TaskChangedFile[] = [];
-  for (const fileDiff of fileDiffResult || []) {
-    const currentFile = changedFiles.find(
-      (f) => f.filepath === fileDiff.filepath,
-    );
+  const updatedChangedFiles: TaskChangedFile[] = [...changedFiles];
+  for (const filePath of recentChangedFiles) {
+    const currentFile = changedFiles.find((f) => f.filepath === filePath);
 
     // first time seeing this file change
     if (!currentFile) {
       updatedChangedFiles.push({
-        filepath: fileDiff.filepath,
-        added: fileDiff.added,
-        removed: fileDiff.removed,
-        content: fileDiff.created
-          ? null
-          : { type: "checkpoint", commit: lastCheckpoint },
-        deleted: fileDiff.deleted,
+        filepath: filePath,
+        added: 0,
+        removed: 0,
+        content: { type: "checkpoint", commit: lastCheckpoint },
+        deleted: false,
         state: "pending",
       });
     }
   }
-  const diffResult = await vscodeHost.diffChangedFiles(changedFiles);
-  updatedChangedFiles.push(...diffResult);
-  setChangedFile(updatedChangedFiles);
+  const diffResult = await vscodeHost.diffChangedFiles(updatedChangedFiles);
+  setChangedFile(diffResult);
 }

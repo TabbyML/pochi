@@ -23,13 +23,15 @@ export const CheckpointUI: React.FC<{
   isLoading: boolean;
   className?: string;
   hideBorderOnHover?: boolean;
-  forkTask?: (commitId: string) => Promise<void>;
+  forkTask?: (commitId: string, messageId?: string) => Promise<void>;
+  restoreMessageId?: string;
 }> = ({
   checkpoint,
   isLoading,
   className,
   hideBorderOnHover = true,
   forkTask,
+  restoreMessageId,
 }) => {
   const { t } = useTranslation();
   const [isDevMode] = useIsDevMode();
@@ -44,6 +46,7 @@ export const CheckpointUI: React.FC<{
     mutationFn: async (params: {
       action: ActionType;
       commitId: string;
+      messageId?: string;
     }) => {
       const actions = {
         compare: () =>
@@ -53,7 +56,7 @@ export const CheckpointUI: React.FC<{
         restore: () => vscodeHost.restoreCheckpoint(params.commitId),
         fork: async () => {
           if (forkTask) {
-            await forkTask(params.commitId);
+            await forkTask(params.commitId, params.messageId);
           }
         },
       };
@@ -80,6 +83,7 @@ export const CheckpointUI: React.FC<{
     executeAction({
       action,
       commitId: checkpoint.commit,
+      messageId: restoreMessageId,
     });
   };
 
@@ -116,7 +120,7 @@ export const CheckpointUI: React.FC<{
         <Check className="size-4 text-emerald-700 dark:text-emerald-300" />
       );
     }
-    return <GitBranchPlus className="size-4" />;
+    return <GitBranchPlus className="size-3" />;
   };
 
   const getForkText = () => {
@@ -221,18 +225,18 @@ export const CheckpointUI: React.FC<{
           </Button>
 
           {forkTask && (
-            <>
+            <div className="ml-1 flex items-center">
               <span className="hidden group-hover:flex">{getForkIcon()}</span>
               <Button
                 size="sm"
                 variant="ghost"
                 disabled={isPending}
                 onClick={() => handleCheckpointAction("fork")}
-                className="hidden h-5 items-center gap-1 rounded-md px-1 py-0.5 text-xs hover:bg-transparent group-hover:flex dark:hover:bg-transparent"
+                className="ml-[1px] hidden h-5 items-center gap-1 rounded-md px-1 py-0.5 text-xs hover:bg-transparent group-hover:flex dark:hover:bg-transparent"
               >
                 {getForkText()}
               </Button>
-            </>
+            </div>
           )}
 
           <span className="group-hover:hidden">{getIcon()}</span>

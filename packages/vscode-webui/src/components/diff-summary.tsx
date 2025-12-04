@@ -9,16 +9,11 @@ import type { useTaskChangedFiles } from "@/features/chat";
 import { EditSummary, FileIcon } from "@/features/tools";
 import { cn } from "@/lib/utils";
 import { vscodeHost } from "@/lib/vscode";
-import {
-  Check,
-  ChevronDown,
-  ChevronRight,
-  FileDiff as FileDiffIcon,
-} from "lucide-react";
+import { Check, ChevronDown, ChevronRight } from "lucide-react";
 import { motion } from "motion/react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { VscDiffMultiple, VscDiscard } from "react-icons/vsc";
+import { VscDiffMultiple, VscDiscard, VscGoToFile } from "react-icons/vsc";
 import { formatPathForDisplay } from "./prompt-form/utils";
 
 const collapsibleSectionVariants = {
@@ -145,10 +140,10 @@ export function DiffSummary({
                 <div
                   key={file.filepath}
                   onClick={() => {
-                    vscodeHost.openFile(file.filepath);
+                    showFileChanges(file.filepath);
                   }}
                 >
-                  <div className="group flex items-center justify-between gap-2 px-3 py-0.5 hover:bg-border/30">
+                  <div className="group flex cursor-pointer items-center justify-between gap-2 px-3 py-0.5 hover:bg-border/30">
                     <div className="flex min-w-0 flex-1 items-center gap-2">
                       <FileIcon path={file.filepath} className="shrink-0" />
                       <button
@@ -219,14 +214,17 @@ export function DiffSummary({
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => showFileChanges(file.filepath)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                vscodeHost.openFile(file.filepath);
+                              }}
                               className="h-5 w-5"
                             >
-                              <FileDiffIcon className="size-3.5" />
+                              <VscGoToFile className="size-3.5" />
                             </Button>
                           </TooltipTrigger>
                           <TooltipContent>
-                            {t("diffSummary.viewChanges")}
+                            {t("diffSummary.openFile")}
                           </TooltipContent>
                         </Tooltip>
                       </div>

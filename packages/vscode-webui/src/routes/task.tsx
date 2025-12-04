@@ -37,6 +37,17 @@ export const Route = createFileRoute("/task")({
 });
 
 function RouteComponent() {
+  const searchParams = Route.useSearch();
+
+  let globalParams: typeof window.POCHI_TASK_PARAMS | undefined = undefined;
+  if (
+    window.POCHI_WEBVIEW_KIND === "pane" &&
+    window.POCHI_TASK_PARAMS &&
+    window.POCHI_TASK_PARAMS.uid === searchParams.uid
+  ) {
+    globalParams = window.POCHI_TASK_PARAMS;
+  }
+
   const {
     uid,
     prompt,
@@ -45,7 +56,8 @@ function RouteComponent() {
     displayId,
     initMessages,
     disablePendingModelAutoStart,
-  } = Route.useSearch();
+  } = globalParams ?? searchParams;
+
   const uiFiles = files?.map((file) => ({
     type: "file" as const,
     filename: file.name,

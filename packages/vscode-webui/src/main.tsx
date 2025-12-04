@@ -67,7 +67,8 @@ if (window.POCHI_WEBVIEW_KIND === "pane") {
   if (params) {
     router.navigate({
       to: "/task",
-      search: params,
+      // Pass uid only, other params will be parsed after route
+      search: { uid: params.uid },
     });
   }
 }

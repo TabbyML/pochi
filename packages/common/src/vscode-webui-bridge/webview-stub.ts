@@ -255,10 +255,24 @@ const VSCodeHostStub = {
 
   onTaskRunning: async (_taskId: string): Promise<void> => {},
 
-  readWorktrees: async (): Promise<
-    ThreadSignalSerialization<GitWorktree[]>
-  > => {
-    return Promise.resolve({} as ThreadSignalSerialization<GitWorktree[]>);
+  readWorktrees: async (): Promise<{
+    worktrees: ThreadSignalSerialization<GitWorktree[]>;
+    ghCli: ThreadSignalSerialization<{
+      installed: boolean;
+      authorized: boolean;
+    }>;
+    gitOriginUrl: string | null;
+  }> => {
+    return Promise.resolve(
+      {} as {
+        worktrees: ThreadSignalSerialization<GitWorktree[]>;
+        ghCli: ThreadSignalSerialization<{
+          installed: boolean;
+          authorized: boolean;
+        }>;
+        gitOriginUrl: string | null;
+      },
+    );
   },
 
   createWorktree: async (): Promise<GitWorktree | null> => {

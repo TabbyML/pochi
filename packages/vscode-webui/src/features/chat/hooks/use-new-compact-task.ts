@@ -41,8 +41,6 @@ export const useNewCompactTask = ({
       // open new task
       vscodeHost.openTaskInPanel({
         cwd,
-        uid: crypto.randomUUID(),
-        storeId: undefined,
         initMessages: JSON.stringify(initMessages),
       });
     },

@@ -11,7 +11,7 @@ interface ChatAreaProps {
   messagesContainerRef: React.RefObject<HTMLDivElement | null>;
   className?: string;
   hideEmptyPlaceholder?: boolean;
-  forkTask?: (commitId: string) => Promise<void>;
+  forkTask?: (commitId: string, messageId?: string) => Promise<void>;
 }
 
 export function ChatArea({

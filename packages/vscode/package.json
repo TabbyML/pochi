@@ -143,8 +143,8 @@
         "icon": "$(add)"
       },
       {
-        "command": "pochi.toggleTaskFocusLayout",
-        "title": "Toggle Task Focus Layout",
+        "command": "pochi.applyPochiLayout",
+        "title": "Pochi Layout",
         "category": "Pochi",
         "icon": "$(layout)"
       },
@@ -191,7 +191,7 @@
           "group": "navigation"
         },
         {
-          "command": "pochi.toggleTaskFocusLayout",
+          "command": "pochi.applyPochiLayout",
           "when": "resourceScheme == 'pochi-task'",
           "group": "navigation"
         }

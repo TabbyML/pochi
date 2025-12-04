@@ -98,6 +98,8 @@ import { type FileSelection, TabState } from "../editor/tab-state";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { WorktreeManager } from "../git/worktree";
 // biome-ignore lint/style/useImportType: needed for dependency injection
+import { GithubPullRequestMonitor } from "../github/pull-request-monitor";
+// biome-ignore lint/style/useImportType: needed for dependency injection
 import { ThirdMcpImporter } from "../mcp/third-party-mcp";
 import {
   convertUrl,
@@ -133,6 +135,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     private readonly customAgentManager: CustomAgentManager,
     private readonly worktreeManager: WorktreeManager,
     private readonly pochiTaskState: PochiTaskState,
+    private readonly githubPullRequestMonitor: GithubPullRequestMonitor,
   ) {}
 
   private get cwd() {
@@ -862,10 +865,19 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     taskRunning.fire({ taskId });
   };
 
-  readWorktrees = async (): Promise<
-    ThreadSignalSerialization<GitWorktree[]>
-  > => {
-    return ThreadSignal.serialize(this.worktreeManager.worktrees);
+  readWorktrees = async (): Promise<{
+    worktrees: ThreadSignalSerialization<GitWorktree[]>;
+    ghCli: ThreadSignalSerialization<{
+      installed: boolean;
+      authorized: boolean;
+    }>;
+    gitOriginUrl: string | null;
+  }> => {
+    return {
+      worktrees: ThreadSignal.serialize(this.worktreeManager.worktrees),
+      ghCli: ThreadSignal.serialize(this.githubPullRequestMonitor.ghCliCheck),
+      gitOriginUrl: await this.worktreeManager.getOriginUrl(),
+    };
   };
 
   createWorktree = async () => {

@@ -373,9 +373,9 @@ function Chat({
   );
 
   const forkTask = useCallback(
-    async (commitId: string) => {
+    async (commitId: string, messageId?: string) => {
       if (task?.cwd) {
-        await forkTaskFromCheckPoint(messages, commitId, task.cwd);
+        await forkTaskFromCheckPoint(messages, commitId, task.cwd, messageId);
       }
     },
     [messages, task?.cwd],
@@ -451,37 +451,45 @@ async function forkTaskFromCheckPoint(
   messages: Message[],
   commitId: string,
   cwd: string,
+  messageId?: string,
 ) {
-  const messageIndex = messages.findIndex((message) =>
-    message.parts.find(
+  const initMessages: Message[] = [];
+  if (!messageId) {
+    const messageIndex = messages.findIndex((message) =>
+      message.parts.find(
+        (part) =>
+          part.type === "data-checkpoint" && part.data.commit === commitId,
+      ),
+    );
+    if (messageIndex < 0) {
+      throw new Error(
+        `Failed to fork task due to missing checkpoint for commitId ${commitId}`,
+      );
+    }
+
+    initMessages.push(...messages.slice(0, messageIndex));
+
+    const message = messages[messageIndex];
+    const partIndex = message.parts.findIndex(
       (part) =>
         part.type === "data-checkpoint" && part.data.commit === commitId,
-    ),
-  );
-  if (messageIndex < 0) {
-    throw new Error(
-      `Failed to fork task due to missing checkpoint for commitId ${commitId}`,
     );
+    initMessages.push({
+      ...message,
+      parts: message.parts.slice(0, partIndex),
+    });
+  } else {
+    const messageIndex = messages.findIndex(
+      (message) => message.id === messageId,
+    );
+    initMessages.push(...messages.slice(0, messageIndex + 1));
   }
-
-  const initMessages = messages.slice(0, messageIndex);
-
-  const message = messages[messageIndex];
-  const partIndex = message.parts.findIndex(
-    (part) => part.type === "data-checkpoint" && part.data.commit === commitId,
-  );
-  initMessages.push({
-    ...message,
-    parts: message.parts.slice(0, partIndex),
-  });
 
   // Restore checkpoint
   await vscodeHost.restoreCheckpoint(commitId);
   // Create new task
   await vscodeHost.openTaskInPanel({
     cwd,
-    uid: crypto.randomUUID(),
-    storeId: undefined,
     initMessages: JSON.stringify(initMessages),
     disablePendingModelAutoStart: true,
   });

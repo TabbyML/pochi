@@ -55,6 +55,23 @@
     "super": "加強",
     "swift": "極速"
   },
+  "worktreeSelect": {
+    "selectWorktree": "ワークツリーを選択",
+    "createWorktree": "Git ワークツリーを作成",
+    "createWorktreeDescription": "新しい Git ワークツリーでタスクを開始"
+  },
+  "worktree": {
+    "createPr": "PR を作成",
+    "createDraftPr": "ドラフト PR を作成",
+    "createPrManually": "手動で PR を作成",
+    "installGhCli": "PR を作成するには GitHub CLI をインストールしてください",
+    "authGhCli": "GitHub CLI を認証するには `gh auth login` を実行してください",
+    "prNumber": "PR #{{number}}",
+    "merge": "マージ",
+    "allChecksPassed": "すべてのチェックが通過しました",
+    "allChecksFailed": "すべてのチェックが失敗しました",
+    "checksStatus": "{{passed}}/{{total}} チェックが通過しました"
+  },
   "settings": {
     "account": {
       "signIn": "Pochi モデルにサインイン",
@@ -385,6 +402,7 @@
     "filesChanged_other": "{{count}} ファイル変更",
     "keep": "保持",
     "undo": "元に戻す",
-    "viewChanges": "変更を表示"
+    "viewChanges": "変更を表示",
+    "openFile": "ファイルを開く"
   }
 }
