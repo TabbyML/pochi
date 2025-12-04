@@ -350,7 +350,7 @@ function WorktreeSection({
             )}
           </div>
 
-          <div className="mt-[1px]">
+          <div className="mt-[1px] flex-1 overflow-x-hidden">
             {pullRequest ? (
               <PrStatusDisplay
                 prNumber={pullRequest.id}
@@ -694,40 +694,38 @@ function PrStatusDisplay({
         <span className="mr-1 text-xs">#{prNumber}</span>
       </a>
       {prChecks && prChecks.length > 0 && (
-        <div className="flex items-center gap-1">
-          <HoverCard openDelay={200} closeDelay={100}>
-            <HoverCardTrigger asChild>
-              <span className="cursor-pointer text-xs">
-                {getChecksStatusText()}
-              </span>
-            </HoverCardTrigger>
-            <HoverCardContent
-              className="w-auto min-w-[120px] max-w-[70vw] bg-background p-1"
-              side="bottom"
-              align="start"
-              sideOffset={2}
-            >
-              <ScrollArea viewportClassname="max-h-32">
-                <div className="flex flex-col gap-0.5">
-                  {prChecks.map((check, index) => (
-                    <a
-                      key={index}
-                      href={check.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-muted/50"
-                    >
-                      <span className="flex-shrink-0">
-                        {getCheckIcon(check.state)}
-                      </span>
-                      <span className="truncate">{check.name}</span>
-                    </a>
-                  ))}
-                </div>
-              </ScrollArea>
-            </HoverCardContent>
-          </HoverCard>
-        </div>
+        <HoverCard openDelay={200} closeDelay={100}>
+          <HoverCardTrigger asChild>
+            <span className="cursor-pointer truncate whitespace-nowrap text-xs">
+              {getChecksStatusText()}
+            </span>
+          </HoverCardTrigger>
+          <HoverCardContent
+            className="w-auto min-w-[120px] max-w-[70vw] bg-background p-1"
+            side="bottom"
+            align="start"
+            sideOffset={2}
+          >
+            <ScrollArea viewportClassname="max-h-32">
+              <div className="flex flex-col gap-0.5">
+                {prChecks.map((check, index) => (
+                  <a
+                    key={index}
+                    href={check.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-muted/50"
+                  >
+                    <span className="flex-shrink-0">
+                      {getCheckIcon(check.state)}
+                    </span>
+                    <span className="truncate">{check.name}</span>
+                  </a>
+                ))}
+              </div>
+            </ScrollArea>
+          </HoverCardContent>
+        </HoverCard>
       )}
     </div>
   );
