@@ -585,9 +585,7 @@ function CreatePrDropdown({
               </span>
             </TooltipTrigger>
             {!isGhCliReady && (
-              <TooltipContent align="end" side="right">
-                {ghTooltipMessage}
-              </TooltipContent>
+              <TooltipContent>{ghTooltipMessage}</TooltipContent>
             )}
           </Tooltip>
           <Tooltip>
@@ -606,9 +604,7 @@ function CreatePrDropdown({
               </DropdownMenuItem>
             </TooltipTrigger>
             {!isGhCliReady && (
-              <TooltipContent align="end" side="right">
-                {ghTooltipMessage}
-              </TooltipContent>
+              <TooltipContent>{ghTooltipMessage}</TooltipContent>
             )}
           </Tooltip>
           <DropdownMenuItem asChild disabled={!manualPrUrl}>
