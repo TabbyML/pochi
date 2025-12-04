@@ -23,13 +23,15 @@ export const CheckpointUI: React.FC<{
   isLoading: boolean;
   className?: string;
   hideBorderOnHover?: boolean;
-  forkTask?: (commitId: string) => Promise<void>;
+  forkTask?: (commitId: string, messageId?: string) => Promise<void>;
+  restoreMessageId?: string;
 }> = ({
   checkpoint,
   isLoading,
   className,
   hideBorderOnHover = true,
   forkTask,
+  restoreMessageId,
 }) => {
   const { t } = useTranslation();
   const [isDevMode] = useIsDevMode();
@@ -44,6 +46,7 @@ export const CheckpointUI: React.FC<{
     mutationFn: async (params: {
       action: ActionType;
       commitId: string;
+      messageId?: string;
     }) => {
       const actions = {
         compare: () =>
@@ -53,7 +56,7 @@ export const CheckpointUI: React.FC<{
         restore: () => vscodeHost.restoreCheckpoint(params.commitId),
         fork: async () => {
           if (forkTask) {
-            await forkTask(params.commitId);
+            await forkTask(params.commitId, params.messageId);
           }
         },
       };
@@ -80,6 +83,7 @@ export const CheckpointUI: React.FC<{
     executeAction({
       action,
       commitId: checkpoint.commit,
+      messageId: restoreMessageId,
     });
   };
 

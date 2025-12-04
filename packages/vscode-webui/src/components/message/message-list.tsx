@@ -43,7 +43,7 @@ export const MessageList: React.FC<{
   showUserAvatar?: boolean;
   className?: string;
   showLoader?: boolean;
-  forkTask?: (commitId: string) => Promise<void>;
+  forkTask?: (commitId: string, messageId?: string) => Promise<void>;
 }> = ({
   messages: renderMessages,
   isLoading,
@@ -134,7 +134,9 @@ export const MessageList: React.FC<{
             </div>
             {messageIndex < renderMessages.length - 1 && (
               <SeparatorWithCheckpoint
+                messageIndex={messageIndex}
                 message={m}
+                nextMessage={renderMessages[messageIndex + 1]}
                 isLoading={isLoading || isExecuting}
                 forkTask={forkTask}
               />
@@ -252,13 +254,30 @@ function TextPartUI({
 }
 
 const SeparatorWithCheckpoint: React.FC<{
+  messageIndex: number;
   message: Message;
+  nextMessage: Message;
   isLoading: boolean;
-  forkTask?: (commitId: string) => Promise<void>;
-}> = ({ message, isLoading, forkTask }) => {
+  forkTask?: (commitId: string, messageId?: string) => Promise<void>;
+}> = ({ messageIndex, message, nextMessage, isLoading, forkTask }) => {
   const sep = <Separator className="mt-1 mb-2" />;
-  if (message.role === "assistant") return sep;
-  const part = message.parts.at(-1);
+  let checkpointMessage: Message | null = null;
+  let restoreMessageId: string | undefined = undefined;
+  if (messageIndex === 0 && message.role === "user") {
+    checkpointMessage = message;
+  }
+
+  if (
+    !checkpointMessage &&
+    message.role === "assistant" &&
+    nextMessage.role === "user"
+  ) {
+    checkpointMessage = nextMessage;
+    restoreMessageId = message.id;
+  }
+  if (!checkpointMessage) return sep;
+
+  const part = checkpointMessage.parts.at(-1);
   if (part && part.type === "data-checkpoint" && isVSCodeEnvironment()) {
     return (
       <div className="mt-1 mb-2">
@@ -268,6 +287,7 @@ const SeparatorWithCheckpoint: React.FC<{
           hideBorderOnHover={false}
           className="max-w-full"
           forkTask={forkTask}
+          restoreMessageId={restoreMessageId}
         />
       </div>
     );
