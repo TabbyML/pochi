@@ -1,0 +1,29 @@
+name: Deploy Livekit CF
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+
+      - run: bun install --frozen-lockfile
+
+      - name: Build vscode-webui share
+        run: bun run build:share
+        working-directory: packages/vscode-webui
+
+      - name: Build share
+        run: bun run build:share
+        working-directory: packages/livekit-cf
+
+      - name: Deploy app
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: packages/livekit-cf
