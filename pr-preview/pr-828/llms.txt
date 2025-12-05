@@ -2409,6 +2409,19 @@ A small step closer to a more transparent, predictable coding agent.
 
 * **GitHub PR Workflow:** Pochi now understands Pull Requests per worktree. You can create PRs directly from the sidebar, and each worktree shows its associated PR, status (checks running, ready to merge, failed), and a breakdown of CI/Lint/Test results with quick links. PR state persists across sessions and stays linked to your worktree. **[#747](https://github.com/TabbyML/pochi/issues/747)**
 
+  <video
+    controls
+    style={{
+      width: "100%",
+      borderRadius: "8px",
+      boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+      }}
+  >
+    <source src="https://assets.docs.getpochi.com/github-pr.mp4" type="video/mp4" />
+
+    Your browser does not support the video tag.
+  </video>
+
 * **Fork a task:** You can now fork any task when things go off-track. If an agent drifts, a tool call fails, or you want to try a different direction, hit Fork to spin up a new task starting from the same point in the conversation. The original stays untouched. <br />
 
   <video
@@ -2443,9 +2456,22 @@ A small step closer to a more transparent, predictable coding agent.
 
 * **Auto Layout:** We added a new “Pochi Layout” toggle that instantly arranges your VS Code workspace into an optimized 3-pane layout: the Pochi task view on the left, code/diffs on the upper right, and terminals in a separate bottom-right tab group. This keeps terminal output isolated, prevents accidental layout shifts, and makes long-running tasks much easier to follow. **[#733](https://github.com/TabbyML/pochi/issues/733)**
 
+  <video
+    controls
+    style={{
+          width: "100%",
+          borderRadius: "8px",
+          boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+          }}
+  >
+    <source src="https://assets.docs.getpochi.com/pochi-auto-layout.mp4" type="video/mp4" />
+
+    Your browser does not support the video tag.
+  </video>
+
 ### ✨ Enhancements
 
-* **Incremental Task IDs:** Tasks now receive a simple incremental ID (#001, #002, …) that is shared across all worktrees within the same Git repository. This makes tasks easier to reference while still preserving grouping by worktree in the UI. **[#746](https://github.com/TabbyML/pochi/issues/746)**
+* **Incremental Task IDs:** Tasks now receive a simple incremental ID (`#001`, `#002`, …) that is shared across all worktrees within the same Git repository. This makes tasks easier to reference while still preserving grouping by worktree in the UI. **[#746](https://github.com/TabbyML/pochi/issues/746)**
   <div class="w-3/6 md:ml-8 *:shadow-xl/30 *:rounded-lg">![Auto increment](./images/auto-increment.png)</div>
 
 * **Optimistic Worktree Deletion:** Deleting a worktree now updates instantly in the UI, making the worktree disappears immediately without waiting for the backend to confirm. This makes task management feel faster and keeps the sidebar in sync with your intent.
@@ -2597,6 +2623,19 @@ A small step closer to a more transparent, predictable coding agent.
 
 * **GitHub PR Workflow:** Pochi now understands Pull Requests per worktree. You can create PRs directly from the sidebar, and each worktree shows its associated PR, status (checks running, ready to merge, failed), and a breakdown of CI/Lint/Test results with quick links. PR state persists across sessions and stays linked to your worktree. **[#747](https://github.com/TabbyML/pochi/issues/747)**
 
+  <video
+    controls
+    style={{
+      width: "100%",
+      borderRadius: "8px",
+      boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+      }}
+  >
+    <source src="https://assets.docs.getpochi.com/github-pr.mp4" type="video/mp4" />
+
+    Your browser does not support the video tag.
+  </video>
+
 * **Fork a task:** You can now fork any task when things go off-track. If an agent drifts, a tool call fails, or you want to try a different direction, hit Fork to spin up a new task starting from the same point in the conversation. The original stays untouched. <br />
 
   <video
@@ -2631,9 +2670,22 @@ A small step closer to a more transparent, predictable coding agent.
 
 * **Auto Layout:** We added a new “Pochi Layout” toggle that instantly arranges your VS Code workspace into an optimized 3-pane layout: the Pochi task view on the left, code/diffs on the upper right, and terminals in a separate bottom-right tab group. This keeps terminal output isolated, prevents accidental layout shifts, and makes long-running tasks much easier to follow. **[#733](https://github.com/TabbyML/pochi/issues/733)**
 
+  <video
+    controls
+    style={{
+          width: "100%",
+          borderRadius: "8px",
+          boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+          }}
+  >
+    <source src="https://assets.docs.getpochi.com/pochi-auto-layout.mp4" type="video/mp4" />
+
+    Your browser does not support the video tag.
+  </video>
+
 ### ✨ Enhancements
 
-* **Incremental Task IDs:** Tasks now receive a simple incremental ID (#001, #002, …) that is shared across all worktrees within the same Git repository. This makes tasks easier to reference while still preserving grouping by worktree in the UI. **[#746](https://github.com/TabbyML/pochi/issues/746)**
+* **Incremental Task IDs:** Tasks now receive a simple incremental ID (`#001`, `#002`, …) that is shared across all worktrees within the same Git repository. This makes tasks easier to reference while still preserving grouping by worktree in the UI. **[#746](https://github.com/TabbyML/pochi/issues/746)**
   <div class="w-3/6 md:ml-8 *:shadow-xl/30 *:rounded-lg">![Auto increment](./images/auto-increment.png)</div>
 
 * **Optimistic Worktree Deletion:** Deleting a worktree now updates instantly in the UI, making the worktree disappears immediately without waiting for the backend to confirm. This makes task management feel faster and keeps the sidebar in sync with your intent.
