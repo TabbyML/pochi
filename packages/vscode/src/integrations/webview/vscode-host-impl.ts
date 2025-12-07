@@ -822,6 +822,13 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     return PochiTaskEditorProvider.isTaskEditorVisible(params);
   };
 
+  sendTaskNotification = async (
+    kind: "failed" | "completed" | "pending-tool" | "pending-input",
+    params: TaskPanelParams & { isSubTask?: boolean },
+  ) => {
+    // todo impl
+  };
+
   executeBashCommand = async (
     command: string,
     abortSignal: ThreadAbortSignalSerialization,

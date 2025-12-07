@@ -251,6 +251,8 @@ const VSCodeHostStub = {
 
   isTaskPanelVisible: async (): Promise<boolean> => false,
 
+  sendTaskNotification: async (): Promise<string | undefined> => undefined,
+
   onTaskUpdated: async (): Promise<void> => {},
 
   onTaskRunning: async (_taskId: string): Promise<void> => {},
