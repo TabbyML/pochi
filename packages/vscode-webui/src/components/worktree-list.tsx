@@ -357,7 +357,7 @@ function WorktreeSection({
                 prUrl={prUrl}
                 prChecks={pullRequest.checks}
               />
-            ) : hasEdit ? (
+            ) : hasEdit && !group.isDeleted ? (
               <CreatePrDropdown
                 worktreePath={group.path}
                 branch={group.branch}
