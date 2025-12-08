@@ -2,11 +2,15 @@ import path from "node:path";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { GitStateMonitor } from "@/integrations/git/git-state";
 import { readFileContent } from "@/lib/fs";
+import { generateBranchName } from "@/lib/generate-branch-name";
 import { getLogger } from "@/lib/logger";
 import { toErrorMessage } from "@getpochi/common";
 import { getWorktreeNameFromWorktreePath } from "@getpochi/common/git-utils";
 import { isPlainTextFile } from "@getpochi/common/tool-utils";
-import type { GitWorktree } from "@getpochi/common/vscode-webui-bridge";
+import type {
+  CreateWorktreeOptions,
+  GitWorktree,
+} from "@getpochi/common/vscode-webui-bridge";
 import { signal } from "@preact/signals-core";
 import simpleGit from "simple-git";
 import { injectable, singleton } from "tsyringe";
@@ -24,6 +28,7 @@ export class WorktreeManager implements vscode.Disposable {
   private readonly disposables: vscode.Disposable[] = [];
   worktrees = signal<GitWorktree[]>([]);
 
+  private workspaceFolder: string | undefined;
   private git: ReturnType<typeof simpleGit>;
 
   constructor(
@@ -31,6 +36,7 @@ export class WorktreeManager implements vscode.Disposable {
     private readonly worktreeInfoProvider: GitWorktreeInfoProvider,
   ) {
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
+    this.workspaceFolder = workspaceFolder;
     this.git = simpleGit(workspaceFolder);
     this.init();
   }
@@ -69,7 +75,9 @@ export class WorktreeManager implements vscode.Disposable {
     }
   }
 
-  async createWorktree(): Promise<GitWorktree | null> {
+  async createWorktree(
+    options?: CreateWorktreeOptions,
+  ): Promise<GitWorktree | null> {
     if ((await this.isGitRepository()) === false) {
       return null;
     }
@@ -82,16 +90,106 @@ export class WorktreeManager implements vscode.Disposable {
       return null;
     }
 
-    await vscode.commands.executeCommand("git.createWorktree");
+    if (options?.generateBranchName) {
+      const workspaceFolder = this.workspaceFolder;
+      if (!workspaceFolder) {
+        logger.debug(
+          "Failed to create worktree due to cannot find workspaceFolder.",
+        );
+        return null;
+      }
+      const repository = this.gitStateMonitor.repositories.find(
+        (repo) => repo.rootUri.fsPath === workspaceFolder,
+      );
+      if (!repository) {
+        logger.debug(
+          "Failed to create worktree due to cannot find repository.",
+        );
+        return null;
+      }
+
+      const existingBranches = await this.getBranches();
+
+      let branchName: string | undefined = undefined;
+      try {
+        // Generate branch name
+        branchName = await generateBranchName({
+          prompt: options.generateBranchName.prompt,
+          files: options.generateBranchName.files,
+          existingBranches,
+        });
+      } catch (e) {
+        logger.debug("Failed to generate branch name", e);
+        // Generate branch name failed
+      }
+      if (branchName && existingBranches.includes(branchName)) {
+        // Branch name exists
+        branchName = undefined;
+      }
+      if (!branchName) {
+        // Fallback to timestamp YYYYMMDD-HHMMSS
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = (now.getMonth() + 1).toString().padStart(2, "0");
+        const day = now.getDate().toString().padStart(2, "0");
+        const hours = now.getHours().toString().padStart(2, "0");
+        const minutes = now.getMinutes().toString().padStart(2, "0");
+        const seconds = now.getSeconds().toString().padStart(2, "0");
+        branchName = `branch/${year}${month}${day}-${hours}${minutes}${seconds}`;
+      }
+
+      const worktreeName = branchName.replace(/\//g, "-");
+      const worktreeParentPath =
+        worktrees.length > 0
+          ? path.dirname(worktrees[0].path)
+          : `${workspaceFolder.replace(/[/\\]+$/, "")}.worktree`;
+
+      if (
+        "createWorktree" in repository &&
+        typeof repository.createWorktree === "function"
+      ) {
+        try {
+          await repository.createWorktree({
+            path: path.join(worktreeParentPath, worktreeName),
+            branch: branchName,
+            commitish: "HEAD",
+          });
+          logger.debug(`Created worktree ${branchName}`);
+        } catch (e) {
+          logger.debug("Failed to create worktree", e);
+          return null;
+        }
+      } else {
+        try {
+          await this.git.raw([
+            "worktree",
+            "add",
+            "-b",
+            branchName,
+            path.join(worktreeParentPath, worktreeName),
+            "HEAD",
+          ]);
+          logger.debug(`Created worktree ${branchName} using raw command`);
+        } catch (e) {
+          logger.debug("Failed to create worktree using raw command", e);
+          return null;
+        }
+      }
+    } else {
+      // User interactive
+      await vscode.commands.executeCommand("git.createWorktree");
+    }
 
     // Get worktrees again to find the new one
     const updatedWorktrees = await this.getWorktrees(true);
     // Find the new worktree by comparing with previous worktrees
-    const newWorktree = updatedWorktrees.find(
+    const newWorktree: GitWorktree | undefined = updatedWorktrees.find(
       (updated) =>
         !worktrees.some((original) => original.path === updated.path),
     );
     if (newWorktree) {
+      logger.debug(`New worktree created at: ${newWorktree.path}`);
+      this.updateWorktrees();
       this.worktreeInfoProvider.initialize(newWorktree.path);
       setupWorktree(newWorktree.path);
       return newWorktree;
@@ -152,7 +250,7 @@ export class WorktreeManager implements vscode.Disposable {
       if (skipVSCodeFilter) return worktrees;
 
       const vscodeRepos = this.gitStateMonitor.repositories.map(
-        (uri) => vscode.Uri.parse(uri).fsPath,
+        (repo) => repo.rootUri.fsPath,
       );
       // keep the worktree order and number same as vscode
       return vscodeRepos
@@ -233,6 +331,11 @@ export class WorktreeManager implements vscode.Disposable {
       logger.error(`Failed to get default branch: ${toErrorMessage(error)}`);
       return "origin/main";
     }
+  }
+
+  private async getBranches() {
+    const { all } = await this.git.branch();
+    return all;
   }
 
   async getOriginUrl(): Promise<string | null> {

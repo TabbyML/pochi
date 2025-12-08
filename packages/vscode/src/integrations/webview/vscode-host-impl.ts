@@ -50,6 +50,7 @@ import {
 import { getVendor } from "@getpochi/common/vendor";
 import {
   type CaptureEvent,
+  type CreateWorktreeOptions,
   type CustomAgentFile,
   type DiffCheckpointOptions,
   type DisplayModel,
@@ -931,8 +932,8 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     };
   };
 
-  createWorktree = async () => {
-    return await this.worktreeManager.createWorktree();
+  createWorktree = async (options: CreateWorktreeOptions) => {
+    return await this.worktreeManager.createWorktree(options);
   };
 
   deleteWorktree = async (worktreePath: string): Promise<boolean> => {

@@ -40,7 +40,11 @@ export type {
   ValidCustomAgentFile,
 } from "./types/custom-agent";
 export { GitWorktreeInfo } from "./types/git";
-export type { GitWorktree, DiffCheckpointOptions } from "./types/git";
+export type {
+  GitWorktree,
+  DiffCheckpointOptions,
+  CreateWorktreeOptions,
+} from "./types/git";
 export { isValidCustomAgentFile } from "./types/custom-agent";
 export {
   prefixTaskDisplayId,

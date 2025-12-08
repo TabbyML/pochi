@@ -43,8 +43,8 @@ export class GitStateMonitor implements vscode.Disposable {
   private gitAPI: API | undefined;
   private repositoryState = new Map<string, GitRepositoryState>();
 
-  get repositories(): string[] {
-    return Array.from(this.repositoryState.keys());
+  get repositories(): Repository[] {
+    return this.gitAPI?.repositories ?? [];
   }
 
   readonly #onDidChangeGitState =

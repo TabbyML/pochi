@@ -19,7 +19,7 @@ import type {
   TaskStates,
   WorkspaceState,
 } from "./index";
-import type { DiffCheckpointOptions } from "./types/git";
+import type { CreateWorktreeOptions, DiffCheckpointOptions } from "./types/git";
 import type { DisplayModel } from "./types/model";
 import type { PochiCredentials } from "./types/pochi";
 
@@ -322,7 +322,7 @@ export interface VSCodeHostApi {
     gitOriginUrl: string | null;
   }>;
 
-  createWorktree(): Promise<GitWorktree | null>;
+  createWorktree(options?: CreateWorktreeOptions): Promise<GitWorktree | null>;
 
   deleteWorktree(worktreePath: string): Promise<boolean>;
 }

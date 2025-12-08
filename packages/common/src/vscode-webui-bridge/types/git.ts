@@ -33,6 +33,17 @@ export interface GitWorktree {
   data?: GitWorktreeInfo;
 }
 
+export interface CreateWorktreeOptions {
+  generateBranchName?: {
+    prompt: string;
+    files?: {
+      name: string;
+      contentType: string;
+      url: string;
+    }[];
+  };
+}
+
 export interface DiffCheckpointOptions {
   /**
    * Maximum size limit (in bytes) for files to be included in the diff. Files exceeding this limit will be skipped.
