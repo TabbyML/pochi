@@ -6,17 +6,17 @@ image: "/og-image/nes-part-1-og-image.png"
 
 # NES Part 2: Real-Time Context Management in Your Code Editor
 
-In Part 1, we covered how we trained our  NES model, including topics such as the special tokens we use, the LoRA-based fine-tuning on Gemini Flash Lite, and how we utilized a judge LLM to evaluate the model. In case you missed it, you can read the full blog **[here](./how-we-created-nes-model/)**.
+In [Part 1](./how-we-created-nes-model/), we covered how we trained our **NES model**, including topics such as the special tokens we use, the LoRA-based fine-tuning on Gemini Flash Lite, and how we utilized a judge LLM to evaluate the model.
 
 However, the end experience is far more than just building a good model. To make NES feel “intent-aware” inside your editor, we needed to give the model the right context at the right moment.
 
 ![NES Cover Image](./images/cover-nes-part-2.png)
 
 
-In part 2, we’ll talk about that runtime system, or to be precise, how Pochi manages, ranks, and streams real-time edit context.  This is the core that helps NES to understand your intent and predict the next meaningful change. 
+In part 2, we’ll talk about that **runtime system**, or to be precise, how Pochi manages, ranks, and streams real-time edit context.  This is the core that helps NES to understand your intent and predict the next meaningful change. 
 
 ## Why Context Management Matters
-To start, let’s understand what context management is. In our case, it’s the layer between when a user starts typing and when the model is called with a well-formed prompt.   During that in-between phase, the system gathers and prepares all the relevant context the LLM needs before we make a model request. <br/>
+To start, let’s understand what context management is. In our case, it’s the layer between when a user starts typing and when the model is called with a well-formed prompt. During that in-between phase, the system gathers and prepares all the relevant context the LLM needs before we make a model request. <br/>
 
 As to why it matters, imagine simply sending the entire file to the model on every keystroke. Not only will the model become slower and noisier, but you’d get unstable predictions and over 20 model calls per second, rendering the whole experience unusable. 
 
@@ -113,4 +113,4 @@ We all understand real coding experience involves a lot of short, focused typing
 
 One of the reasons NES feels fast is because everything that isn’t the latest user intent is thrown away immediately. This cancellation of stale predictions is one of the biggest reasons Pochi’s NES feels so smooth and accurate. <br/>
 
-More on this in our upcoming Part 3 post.  Stay tuned.
+More on this in our upcoming Part 3 post.  Stay tuned!
