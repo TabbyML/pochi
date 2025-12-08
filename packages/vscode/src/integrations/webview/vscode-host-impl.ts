@@ -850,7 +850,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       default:
         break;
     }
-    const { cwd, displayId, uid, storeId } = params;
+    const { cwd, displayId, uid } = params;
     const taskTitle = getTaskDisplayTitle({
       worktreeName: getWorktreeNameFromWorktreePath(cwd) ?? "main",
       displayId,
@@ -866,7 +866,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     );
     if (result === buttonText) {
       this.openTaskInPanel({
-        uid: storeId || uid,
+        uid,
         cwd,
         displayId,
       });
