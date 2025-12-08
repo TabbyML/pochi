@@ -5,6 +5,7 @@ import type { TaskChangedFile } from "@getpochi/common/vscode-webui-bridge";
 import { type Message, catalog } from "@getpochi/livekit";
 import type { Store } from "@livestore/livestore";
 import { ThreadAbortSignal } from "@quilted/threads";
+import { unique } from "remeda";
 import { getTaskChangedFileStore } from "./use-task-changed-files";
 
 /**
@@ -154,20 +155,23 @@ async function updateChangedFiles(
   lastMessage: Message,
 ) {
   // recent changed file since last checkpoint
-  const recentChangedFiles = lastMessage.parts
-    .slice(
-      lastMessage.parts.findIndex(
-        (p) => p.type === "data-checkpoint" && p.data.commit === lastCheckpoint,
-      ) + 1,
-    )
-    .filter(
-      (p) =>
-        (p.type === "tool-applyDiff" ||
-          p.type === "tool-multiApplyDiff" ||
-          p.type === "tool-writeToFile") &&
-        p.state === "output-available",
-    )
-    .map((p) => p.input.path);
+  const recentChangedFiles = unique(
+    lastMessage.parts
+      .slice(
+        lastMessage.parts.findIndex(
+          (p) =>
+            p.type === "data-checkpoint" && p.data.commit === lastCheckpoint,
+        ) + 1,
+      )
+      .filter(
+        (p) =>
+          (p.type === "tool-applyDiff" ||
+            p.type === "tool-multiApplyDiff" ||
+            p.type === "tool-writeToFile") &&
+          p.state === "output-available",
+      )
+      .map((p) => p.input.path),
+  );
 
   const store = getTaskChangedFileStore(taskId);
   const { changedFiles, setChangedFile } = store.getState();
