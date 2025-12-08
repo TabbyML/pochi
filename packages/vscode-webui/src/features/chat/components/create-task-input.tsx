@@ -16,7 +16,7 @@ import { vscodeHost } from "@/lib/vscode";
 import type { GitWorktree } from "@getpochi/common/vscode-webui-bridge";
 import { PaperclipIcon } from "lucide-react";
 import type React from "react";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ChatInputForm } from "./chat-input-form";
 
@@ -100,9 +100,16 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
     useSettingsStore.persist.rehydrate();
   };
 
-  const handleSubmit = useCallback(
-    async (e?: React.FormEvent<HTMLFormElement>) => {
+  const [isCreatingTask, setIsCreatingTask] = useState(false);
+
+  const handleSubmitImpl = useCallback(
+    async (
+      e?: React.FormEvent<HTMLFormElement>,
+      shouldCreateWorktree?: boolean,
+    ) => {
       e?.preventDefault();
+
+      if (isCreatingTask) return;
 
       // Uploading / Compacting is not allowed to be stopped.
       if (isUploadingAttachments) return;
@@ -115,42 +122,81 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
       // Disallow empty submissions
       if (content.length === 0 && files.length === 0) return;
 
+      // Set isCreatingTask state true
+      // Show loading and freeze input
+      setIsCreatingTask(true);
+
       if (files.length > 0) {
         const uploadedAttachments = await upload();
+        const uploadedFiles = uploadedAttachments.map((x) => ({
+          contentType: x.mediaType,
+          name: x.filename ?? "attachment",
+          url: x.url,
+        }));
+
+        const worktree = shouldCreateWorktree
+          ? await vscodeHost.createWorktree({
+              generateBranchName: {
+                prompt: content,
+                files: uploadedFiles,
+              },
+            })
+          : selectedWorktree;
         vscodeHost.openTaskInPanel({
-          cwd: selectedWorktree?.path || cwd,
+          cwd: worktree?.path || cwd,
           storeId: undefined,
           prompt: content,
-          files: uploadedAttachments.map((x) => ({
-            contentType: x.mediaType,
-            name: x.filename ?? "attachment",
-            url: x.url,
-          })),
+          files: uploadedFiles,
         });
-
-        clearDraft();
       } else if (content.length > 0) {
         clearUploadError();
+
+        const worktree = shouldCreateWorktree
+          ? await vscodeHost.createWorktree({
+              generateBranchName: {
+                prompt: content,
+              },
+            })
+          : selectedWorktree;
         vscodeHost.openTaskInPanel({
-          cwd: selectedWorktree?.path || cwd,
+          cwd: worktree?.path || cwd,
           storeId: undefined,
           prompt: content,
         });
-
-        clearDraft();
       }
+
+      // Set isCreatingTask state false
+      // Hide loading and unfreeze input
+      setIsCreatingTask(false);
+      // Clear input content after unfreeze
+      setTimeout(clearDraft, 50);
     },
     [
-      selectedModel,
-      files.length,
-      input,
-      clearUploadError,
-      isUploadingAttachments,
-      upload,
-      selectedWorktree?.path,
       cwd,
+      input,
+      files,
+      upload,
+      selectedModel,
+      selectedWorktree,
+      isCreatingTask,
+      isUploadingAttachments,
+      clearUploadError,
       clearDraft,
     ],
+  );
+
+  const handleSubmit = useCallback(
+    async (e: React.FormEvent<HTMLFormElement>) => {
+      handleSubmitImpl(e, false);
+    },
+    [handleSubmitImpl],
+  );
+
+  const handleCtrlSubmit = useCallback(
+    async (e: React.FormEvent<HTMLFormElement>) => {
+      handleSubmitImpl(e, true);
+    },
+    [handleSubmitImpl],
   );
 
   return (
@@ -159,14 +205,15 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
         input={input}
         setInput={setInput}
         onSubmit={handleSubmit}
-        isLoading={false}
+        onCtrlSubmit={handleCtrlSubmit}
+        isLoading={isCreatingTask}
+        editable={!isCreatingTask}
         onPaste={handlePasteAttachment}
         status="ready"
         onFileDrop={handleFileDrop}
         queuedMessages={[]}
         pendingApproval={undefined}
         isSubTask={false}
-        onQueueMessage={noop}
         onRemoveQueuedMessage={noop}
         onFocus={onFocus}
       >

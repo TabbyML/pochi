@@ -26,7 +26,7 @@ import type { Message, Task } from "@getpochi/livekit";
 import type { Todo } from "@getpochi/tools";
 import { PaperclipIcon, SendHorizonal, StopCircleIcon } from "lucide-react";
 import type React from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useChatStatus } from "../hooks/use-chat-status";
 import { useChatSubmit } from "../hooks/use-chat-submit";
@@ -141,12 +141,18 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     setQueuedMessages,
   });
 
-  const handleQueueMessage = (message: string) => {
-    if (message.trim()) {
-      setQueuedMessages((prev) => [...prev, message]);
-      setInput("");
-    }
-  };
+  const handleQueueMessage = useCallback(
+    async (e?: React.FormEvent<HTMLFormElement>) => {
+      e?.preventDefault();
+
+      const message = input;
+      if (message.trim()) {
+        setQueuedMessages((prev) => [...prev, message]);
+        setInput("");
+      }
+    },
+    [input],
+  );
 
   useEffect(() => {
     const isReady =
@@ -243,7 +249,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
         input={input}
         setInput={setInput}
         onSubmit={handleSubmit}
-        onQueueMessage={handleQueueMessage}
+        onCtrlSubmit={handleQueueMessage}
         isLoading={isLoading || isExecuting}
         onPaste={handlePasteAttachment}
         pendingApproval={pendingApproval}

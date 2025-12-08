@@ -16,6 +16,7 @@ const meta = {
   args: {
     setInput: fn(),
     onSubmit: fn(),
+    onCtrlSubmit: fn(),
     onError: fn(),
     onPaste: fn(),
   },

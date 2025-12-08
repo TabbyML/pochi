@@ -183,7 +183,7 @@ export class WorktreeManager implements vscode.Disposable {
     // Get worktrees again to find the new one
     const updatedWorktrees = await this.getWorktrees(true);
     // Find the new worktree by comparing with previous worktrees
-    const newWorktree: GitWorktree | undefined = updatedWorktrees.find(
+    const newWorktree: GitWorktree | undefined = updatedWorktrees.findLast(
       (updated) =>
         !worktrees.some((original) => original.path === updated.path),
     );

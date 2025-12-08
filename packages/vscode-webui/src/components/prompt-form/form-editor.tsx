@@ -60,7 +60,6 @@ const newLineCharacter = "\n";
 // Custom keyboard shortcuts extension that handles Enter key behavior
 function CustomEnterKeyHandler(
   formRef: React.RefObject<HTMLFormElement | null>,
-  onQueueSubmit?: (message: string) => void,
 ) {
   return Extension.create({
     addKeyboardShortcuts() {
@@ -74,17 +73,15 @@ function CustomEnterKeyHandler(
           ]);
         },
         "Mod-Enter": () => {
-          if (onQueueSubmit) {
-            const message = this.editor.getText();
-            if (message.trim()) {
-              onQueueSubmit(message);
-              return true;
-            }
+          if (formRef.current) {
+            formRef.current.setAttribute("submitAction", "ctrlEnter");
+            formRef.current.requestSubmit();
           }
-          return false;
+          return true;
         },
         Enter: () => {
           if (formRef.current) {
+            formRef.current.setAttribute("submitAction", "enter");
             formRef.current.requestSubmit();
           }
           return true;
@@ -98,8 +95,9 @@ interface FormEditorProps {
   input: string;
   setInput: (text: string) => void;
   onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
-  onQueueSubmit?: (message: string) => void;
+  onCtrlSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
   isLoading: boolean;
+  editable?: boolean;
   formRef?: React.RefObject<HTMLFormElement>;
   editorRef?: React.MutableRefObject<Editor | null>;
   autoFocus?: boolean;
@@ -117,8 +115,9 @@ export function FormEditor({
   input,
   setInput,
   onSubmit,
-  onQueueSubmit,
+  onCtrlSubmit,
   isLoading,
+  editable,
   children,
   formRef: externalFormRef,
   editorRef,
@@ -170,7 +169,7 @@ export function FormEditor({
         Placeholder.configure({
           placeholder: t("formEditor.placeholder"),
         }),
-        CustomEnterKeyHandler(formRef, onQueueSubmit),
+        CustomEnterKeyHandler(formRef),
         PromptFormMentionExtension.configure({
           suggestion: {
             char: "@",
@@ -493,6 +492,12 @@ export function FormEditor({
   );
 
   useEffect(() => {
+    if (editable !== undefined) {
+      editor?.setEditable(editable);
+    }
+  }, [editor, editable]);
+
+  useEffect(() => {
     if (editorRef) {
       editorRef.current = editor;
     }
@@ -575,9 +580,14 @@ export function FormEditor({
       if (enableSubmitHistory && editor && !editor.isDestroyed) {
         editor.commands.addToSubmitHistory(JSON.stringify(editor.getJSON()));
       }
-      onSubmit(e);
+      const submitAction = e.currentTarget.getAttribute("submitAction");
+      if (submitAction === "ctrlEnter") {
+        onCtrlSubmit(e);
+      } else {
+        onSubmit(e);
+      }
     },
-    [enableSubmitHistory, editor, onSubmit],
+    [enableSubmitHistory, editor, onSubmit, onCtrlSubmit],
   );
 
   return (

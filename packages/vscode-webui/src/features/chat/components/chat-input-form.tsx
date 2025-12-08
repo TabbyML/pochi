@@ -15,8 +15,9 @@ interface ChatInputFormProps {
   input: string;
   setInput: (input: string) => void;
   onSubmit: (e: React.FormEvent<HTMLFormElement>) => Promise<void>;
-  onQueueMessage: (message: string) => void;
+  onCtrlSubmit: (e: React.FormEvent<HTMLFormElement>) => Promise<void>;
   isLoading: boolean;
+  editable?: boolean;
   onPaste: (event: ClipboardEvent) => void;
   onFocus?: (event: FocusEvent) => void;
   pendingApproval: ReturnType<typeof useApprovalAndRetry>["pendingApproval"];
@@ -33,8 +34,9 @@ export function ChatInputForm({
   input,
   setInput,
   onSubmit,
-  onQueueMessage,
+  onCtrlSubmit,
   isLoading,
+  editable,
   onPaste,
   onFocus,
   pendingApproval,
@@ -53,8 +55,9 @@ export function ChatInputForm({
       input={input}
       setInput={setInput}
       onSubmit={onSubmit}
-      onQueueSubmit={onQueueMessage}
+      onCtrlSubmit={onCtrlSubmit}
       isLoading={isLoading}
+      editable={editable}
       editorRef={editorRef}
       onPaste={onPaste}
       enableSubmitHistory={true}
