@@ -1,6 +1,6 @@
 {
   "name": "pochi",
-  "version": "0.17.0-dev",
+  "version": "0.19.0-dev",
   "description": "Pochi is your AI powered team mate. Now available in research preview.",
   "displayName": "Pochi (Research Preview)",
   "publisher": "TabbyML",
@@ -25,7 +25,9 @@
   ],
   "icon": "assets/icons/logo128.png",
   "main": "./dist/extension.js",
-  "activationEvents": ["onStartupFinished"],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
   "contributes": {
     "customEditors": [
       {
@@ -41,7 +43,9 @@
     "languages": [
       {
         "id": "pochi-task",
-        "filenamePatterns": ["/pochi/task/**"],
+        "filenamePatterns": [
+          "/pochi/task/**"
+        ],
         "icon": {
           "light": "assets/icons/logo128.png",
           "dark": "assets/icons/logo128.png"
@@ -400,7 +404,11 @@
                             "description": "The ID of the model to use."
                           }
                         },
-                        "required": ["type", "vertex", "model"]
+                        "required": [
+                          "type",
+                          "vertex",
+                          "model"
+                        ]
                       }
                     ]
                   }
