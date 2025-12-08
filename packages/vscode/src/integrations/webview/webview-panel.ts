@@ -106,7 +106,6 @@ export class PochiTaskEditorProvider
 
   // only use for task params caching during opening
   private static readonly taskParamsCache = new Map<string, TaskPanelParams>();
-  public static activeTabs = new Set<string>();
 
   public static register(context: vscode.ExtensionContext): vscode.Disposable {
     const provider = new PochiTaskEditorProvider(context);
@@ -128,7 +127,6 @@ export class PochiTaskEditorProvider
     setAutoLockGroupsConfig();
 
     disposables.push(autoCleanTabGroupLock());
-    disposables.push(updateActiveTabs());
 
     return vscode.Disposable.from(...disposables);
   }
@@ -332,25 +330,6 @@ function getNextDisplayId(cwd: string) {
   )?.path;
   const worktreeInfoProvider = container.resolve(GitWorktreeInfoProvider);
   return worktreeInfoProvider.getNextDisplayId(mainWorktreeCwd ?? cwd);
-}
-
-function updateActiveTabs() {
-  return vscode.window.tabGroups.onDidChangeTabs(() => {
-    const tabGroups = vscode.window.tabGroups.all;
-    const activeTabs: string[] = [];
-    for (const group of tabGroups) {
-      const tab = group.activeTab;
-      if (
-        tab &&
-        tab.input instanceof vscode.TabInputCustom &&
-        tab.input.viewType === PochiTaskEditorProvider.viewType
-      ) {
-        activeTabs.push(tab.input.uri.toString());
-      }
-    }
-
-    PochiTaskEditorProvider.activeTabs = new Set(activeTabs);
-  });
 }
 
 function setAutoLockGroupsConfig() {
