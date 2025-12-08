@@ -20,6 +20,7 @@ interface ToolCallApprovalButtonProps {
   pendingApproval: PendingToolCallApproval;
   isSubTask: boolean;
   taskId?: string;
+  parentUid?: string;
 }
 
 // Component
@@ -27,6 +28,7 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
   taskId,
   pendingApproval,
   isSubTask,
+  parentUid,
 }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -115,8 +117,10 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
       lifecycle.execute(tools[i].input, {
         contentType: selectedModel?.contentType,
       });
-      if (taskId) {
-        vscodeHost.onTaskRunning(taskId);
+
+      const uid = parentUid || taskId;
+      if (uid) {
+        vscodeHost.onTaskRunning(uid);
       }
     }
   }, [
@@ -128,6 +132,7 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
     subtaskOffhand,
     selectedModel,
     taskId,
+    parentUid,
   ]);
 
   const onReject = useCallback(() => {

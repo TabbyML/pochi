@@ -37,6 +37,7 @@ import { todoWrite } from "@/tools/todo-write";
 import { previewWriteToFile, writeToFile } from "@/tools/write-to-file";
 import type { Environment, GitStatus } from "@getpochi/common";
 import type { UserInfo } from "@getpochi/common/configuration";
+import { getWorktreeNameFromWorktreePath } from "@getpochi/common/git-utils";
 import type { McpStatus } from "@getpochi/common/mcp-utils";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { McpHub } from "@getpochi/common/mcp-utils";
@@ -47,23 +48,24 @@ import {
   listWorkspaceFiles,
 } from "@getpochi/common/tool-utils";
 import { getVendor } from "@getpochi/common/vendor";
-import type {
-  CaptureEvent,
-  CustomAgentFile,
-  DiffCheckpointOptions,
-  DisplayModel,
-  GitWorktree,
-  NewTaskPanelParams,
-  PochiCredentials,
-  ResourceURI,
-  RuleFile,
-  SaveCheckpointOptions,
-  SessionState,
-  TaskChangedFile,
-  TaskPanelParams,
-  TaskStates,
-  VSCodeHostApi,
-  WorkspaceState,
+import {
+  type CaptureEvent,
+  type CustomAgentFile,
+  type DiffCheckpointOptions,
+  type DisplayModel,
+  type GitWorktree,
+  type NewTaskPanelParams,
+  type PochiCredentials,
+  type ResourceURI,
+  type RuleFile,
+  type SaveCheckpointOptions,
+  type SessionState,
+  type TaskChangedFile,
+  type TaskPanelParams,
+  type TaskStates,
+  type VSCodeHostApi,
+  type WorkspaceState,
+  getTaskDisplayTitle,
 } from "@getpochi/common/vscode-webui-bridge";
 import type {
   PreviewReturnType,
@@ -818,15 +820,57 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     await PochiTaskEditorProvider.openTaskEditor(params);
   };
 
-  isTaskPanelVisible = async (params: TaskPanelParams): Promise<boolean> => {
-    return PochiTaskEditorProvider.isTaskEditorVisible(params);
-  };
-
   sendTaskNotification = async (
     kind: "failed" | "completed" | "pending-tool" | "pending-input",
     params: TaskPanelParams & { isSubTask?: boolean },
   ) => {
-    // todo impl
+    const taskStates = this.pochiTaskState.state.value;
+    const targetTaskState = taskStates[params.uid];
+    if (targetTaskState?.active) {
+      return;
+    }
+
+    let renderMessage = "";
+    switch (kind) {
+      case "pending-tool":
+        renderMessage =
+          "Pochi is trying to make a tool call that requires your approval.";
+        break;
+      case "pending-input":
+        renderMessage = "Pochi is waiting for your input to continue.";
+        break;
+      case "completed":
+        renderMessage = params.isSubTask
+          ? "Pochi has completed the sub task."
+          : "Pochi has completed the task.";
+        break;
+      case "failed":
+        renderMessage = "Pochi is running into error, please take a look.";
+        break;
+      default:
+        break;
+    }
+    const { cwd, displayId, uid, storeId } = params;
+    const taskTitle = getTaskDisplayTitle({
+      worktreeName: getWorktreeNameFromWorktreePath(cwd) ?? "main",
+      displayId,
+      uid,
+    });
+    const buttonText = "View Details";
+    const result = await this.showInformationMessage(
+      `[${taskTitle}] ${renderMessage}`,
+      {
+        modal: false,
+      },
+      buttonText,
+    );
+    if (result === buttonText) {
+      this.openTaskInPanel({
+        uid: storeId || uid,
+        cwd,
+        displayId,
+      });
+    }
   };
 
   executeBashCommand = async (

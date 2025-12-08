@@ -46,6 +46,7 @@ export const ApprovalButton: React.FC<ApprovalButtonProps> = ({
           taskId={task?.id}
           pendingApproval={pendingApproval}
           isSubTask={isSubTask}
+          parentUid={task?.parentId ?? undefined}
         />
       )}
     </div>

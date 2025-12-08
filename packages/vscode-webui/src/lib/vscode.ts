@@ -96,7 +96,6 @@ function createVSCodeHost(): VSCodeHostApi {
         "readUserStorage",
         "readCustomAgents",
         "openTaskInPanel",
-        "isTaskPanelVisible",
         "sendTaskNotification",
         "onTaskUpdated",
         "onTaskRunning",

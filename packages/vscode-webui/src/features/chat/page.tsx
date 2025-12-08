@@ -95,6 +95,11 @@ function Chat({
 
   const task = store.useQuery(catalog.queries.makeTaskQuery(uid));
   const subtask = useSubtaskInfo(uid, task?.parentId);
+  const topDisplayId = task?.parentId
+    ? (store.useQuery(catalog.queries.makeTaskQuery(task.parentId))
+        ?.displayId ?? displayId)
+    : displayId;
+
   const isSubTask = !!subtask;
 
   const isNewTaskWithContent = !!prompt || !!files?.length;
@@ -143,9 +148,9 @@ function Chat({
       },
     ) => {
       const lastMessage = data.messages.at(-1);
-      const taskUid = isSubTask ? task?.parentId : uid;
+      const topTaskUid = isSubTask ? task?.parentId : uid;
       const cwd = data.cwd;
-      if (!taskUid || !lastMessage || !cwd) return;
+      if (!topTaskUid || !lastMessage || !cwd) return;
 
       if (data.status === "pending-tool") {
         const pendingToolCallApproval = getPendingToolcallApproval(lastMessage);
@@ -159,10 +164,10 @@ function Chat({
 
           if (!autoApproved) {
             sendNotification("pending-tool", {
-              uid: taskUid,
+              uid: topTaskUid,
               cwd,
+              displayId: topDisplayId,
               isSubTask,
-              displayId,
             });
           }
         }
@@ -182,20 +187,20 @@ function Chat({
           (retryCount?.count !== undefined && retryCount.count >= retryLimit)
         ) {
           sendNotification("pending-input", {
-            uid: taskUid,
+            uid: topTaskUid,
             cwd,
+            displayId: topDisplayId,
             isSubTask,
-            displayId,
           });
         }
       }
 
       if (data.status === "completed") {
         sendNotification("completed", {
-          uid: taskUid,
+          uid: topTaskUid,
           cwd,
+          displayId: topDisplayId,
           isSubTask,
-          displayId,
         });
       }
     },
@@ -203,8 +208,8 @@ function Chat({
 
   const onStreamFailed = useLatest(
     ({ error, cwd }: { error: Error; cwd: string | null }) => {
-      const taskUid = isSubTask ? task?.parentId : uid;
-      if (!taskUid || !cwd) return;
+      const topTaskUid = isSubTask ? task?.parentId : uid;
+      if (!topTaskUid || !cwd) return;
 
       let autoApprove = autoApproveGuard.current === "auto";
       if (error && !isRetryableError(error)) {
@@ -220,7 +225,12 @@ function Chat({
         retryLimit === 0 ||
         (retryCount?.count !== undefined && retryCount.count >= retryLimit)
       ) {
-        sendNotification("failed", { uid: taskUid, cwd, isSubTask, displayId });
+        sendNotification("failed", {
+          uid: topTaskUid,
+          cwd,
+          displayId: topDisplayId,
+          isSubTask,
+        });
       }
     },
   );
@@ -250,7 +260,7 @@ function Chat({
     onOverrideMessages,
     onStreamStart() {
       clearNotification();
-      vscodeHost.onTaskRunning(uid);
+      vscodeHost.onTaskRunning(task?.parentId || uid);
     },
     onStreamFinish(data) {
       onStreamFinish.current(data);

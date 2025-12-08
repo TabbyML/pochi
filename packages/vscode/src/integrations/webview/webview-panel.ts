@@ -188,17 +188,6 @@ export class PochiTaskEditorProvider
     }
   }
 
-  public static async isTaskEditorVisible(params: TaskPanelParams) {
-    try {
-      if (!params.uid) return false;
-
-      const uri = PochiTaskEditorProvider.createTaskUri(params);
-      return PochiTaskEditorProvider.activeTabs.has(uri.toString());
-    } catch (error) {
-      return false;
-    }
-  }
-
   public static async closeTaskEditor(uri: vscode.Uri) {
     for (const group of vscode.window.tabGroups.all) {
       for (const tab of group.tabs) {

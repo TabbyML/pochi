@@ -304,12 +304,10 @@ export interface VSCodeHostApi {
    */
   openTaskInPanel(params: TaskPanelParams | NewTaskPanelParams): Promise<void>;
 
-  isTaskPanelVisible(params: TaskPanelParams): Promise<boolean>;
-
   sendTaskNotification(
     kind: "failed" | "completed" | "pending-tool" | "pending-input",
-    params: TaskPanelParams & { isSubTask: boolean },
-  ): Promise<string | undefined>;
+    params: TaskPanelParams & { isSubTask?: boolean },
+  ): Promise<void>;
 
   onTaskUpdated(taskData: unknown): Promise<void>;
 
