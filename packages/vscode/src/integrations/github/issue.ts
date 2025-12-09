@@ -10,9 +10,9 @@ import { executeCommandWithNode } from "../terminal/execute-command-with-node";
 
 const logger = getLogger("GithubIssues");
 
-const PAGE_SIZE = 50;
-const POLL_INTERVAL_MS = 60 * 1000; // 1 minute
-const ONE_YEAR_AGO_MS = 365 * 24 * 60 * 60 * 1000;
+const PageSize = 50;
+const PollIntervalMS = 60 * 1000; // 1 minute
+const OneYearAgoMS = 365 * 24 * 60 * 60 * 1000;
 
 @singleton()
 @injectable()
@@ -55,7 +55,7 @@ export class GithubIssues implements vscode.Disposable {
           `Performing initial issue check for main worktree: ${mainWorktreePath}`,
         );
         // For initial check, get only open issues from the last year
-        const oneYearAgo = new Date(Date.now() - ONE_YEAR_AGO_MS);
+        const oneYearAgo = new Date(Date.now() - OneYearAgoMS);
         const updatedAt = oneYearAgo.toISOString();
 
         // Fetch all open issues with pagination
@@ -106,7 +106,7 @@ export class GithubIssues implements vscode.Disposable {
         allIssues.push(...issues);
 
         // If we got fewer issues than the page size, we've reached the end
-        hasMore = issues.length === PAGE_SIZE;
+        hasMore = issues.length === PageSize;
         page++;
 
         const currentIssuesData =
@@ -172,7 +172,7 @@ export class GithubIssues implements vscode.Disposable {
         return [];
       }
 
-      let command = `gh api "/repos/${repoFullName}/issues?state=${state}&per_page=${PAGE_SIZE}&page=${page}" --jq '.[] | {number, title, url: url, state}'`;
+      let command = `gh api "/repos/${repoFullName}/issues?state=${state}&per_page=${PageSize}&page=${page}" --jq '.[] | {number, title, url: url, state}'`;
 
       if (updatedAt) {
         // For date filtering, we need to use search API instead of issues API
@@ -183,7 +183,7 @@ export class GithubIssues implements vscode.Disposable {
         searchQuery += ` updated:>=${updatedAt}`;
         searchQuery += " sort:updated-desc";
 
-        command = `gh api "/search/issues?q=${encodeURIComponent(searchQuery)}&per_page=${PAGE_SIZE}&page=${page}" --jq '.items[] | {number: .number, title: .title, url: .html_url, state: .state}'`;
+        command = `gh api "/search/issues?q=${encodeURIComponent(searchQuery)}&per_page=${PageSize}&page=${page}" --jq '.items[] | {number: .number, title: .title, url: .html_url, state: .state}'`;
       }
       logger.trace(`Fetching issues page ${page}: ${command}`);
 
@@ -269,7 +269,7 @@ export class GithubIssues implements vscode.Disposable {
 
     this.pollingTimeout = setTimeout(() => {
       this.checkForIssues();
-    }, POLL_INTERVAL_MS);
+    }, PollIntervalMS);
   }
 
   queryIssues = async (query?: string): Promise<GithubIssue[]> => {
