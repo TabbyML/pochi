@@ -2,7 +2,7 @@ import path from "node:path";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { GitStateMonitor } from "@/integrations/git/git-state";
 import { readFileContent } from "@/lib/fs";
-import { generateBranchName } from "@/lib/generate-branch-name";
+import { generateBranchName } from "@/lib/generate-branch-name"; // FIXME(zhiming): import this causes worktree.test.ts failed to start
 import { getLogger } from "@/lib/logger";
 import { toErrorMessage } from "@getpochi/common";
 import { getWorktreeNameFromWorktreePath } from "@getpochi/common/git-utils";
