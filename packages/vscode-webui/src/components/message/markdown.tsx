@@ -1,3 +1,4 @@
+import { FileBadge } from "@/features/tools";
 import { CustomHtmlTags } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { isKnownProgrammingLanguage } from "@/lib/utils/languages";
@@ -13,7 +14,6 @@ import {
 } from "react";
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import { ControlsContext, Streamdown } from "streamdown";
-import { FileBadge } from "../tool-invocation/file-badge";
 import { CodeBlock } from "./code-block";
 import { customStripTagsPlugin } from "./custom-strip-tags-plugin";
 import "./markdown.css";

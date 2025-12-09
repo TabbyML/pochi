@@ -55,6 +55,23 @@
     "super": "가강",
     "swift": "극속"
   },
+  "worktreeSelect": {
+    "selectWorktree": "워크트리 선택",
+    "createWorktree": "Git 워크트리 생성",
+    "createWorktreeDescription": "새 Git 워크트리에서 작업 시작"
+  },
+  "worktree": {
+    "createPr": "PR 생성",
+    "createDraftPr": "초안 PR 생성",
+    "createPrManually": "수동으로 PR 생성",
+    "installGhCli": "PR을 생성하려면 GitHub CLI를 설치하세요",
+    "authGhCli": "GitHub CLI를 인증하려면 `gh auth login`을 실행하세요",
+    "prNumber": "PR #{{number}}",
+    "merge": "병합",
+    "allChecksPassed": "모든 검사가 통과되었습니다",
+    "allChecksFailed": "모든 검사가 실패했습니다",
+    "checksStatus": "{{passed}}/{{total}} 검사가 통과되었습니다"
+  },
   "settings": {
     "account": {
       "signIn": "Pochi 모델 로그인",
@@ -165,7 +182,7 @@
   "tasksPage": {
     "emptyState": {
       "title": "작업을 찾을 수 없습니다",
-      "description": "Pochi를 시작하려면 새 작업을 만드세요",
+      "description": "사용 가능한 작업이 없습니다",
       "createButton": "새 작업 만들기"
     },
     "status": {
@@ -181,7 +198,25 @@
       "selectDate": "날짜 선택",
       "today": "오늘"
     },
-    "worktreeNotExist": "워크트리가 존재하지 않습니다"
+    "worktreeNotExist": "워크트리가 존재하지 않습니다",
+    "newTask": "새 작업",
+    "deleted": "삭제됨",
+    "tasksCount": "{{count}}개 작업",
+    "showDeletedWorktrees": "삭제된 워크트리 표시",
+    "hideDeletedWorktrees": "삭제된 워크트리 숨기기",
+    "openWorktreeDiff": "변경 사항 보기",
+    "openWorktreeInTerminal": "터미널에서 워크트리 열기",
+    "deleteWorktree": "워크트리 삭제",
+    "deleteWorktreeTitle": "워크트리 삭제",
+    "deleteWorktreeConfirm": "워크트리 \"{{name}}\"을(를) 삭제하시겠습니까?",
+    "cancel": "취소",
+    "delete": "삭제",
+    "taskStatus": {
+      "planning": "다음 작업 계획 중",
+      "errorPrefix": "오류:",
+      "fallbackError": "오류 발생",
+      "finished": "{{duration}} 만에 완료"
+    }
   },
   "toolInvocation": {
     "taskCompleted": "작업 완료",
@@ -204,6 +239,7 @@
     "applyingDiffsTo": "다음에 차이점들 적용 중: ",
     "in": "에서",
     "executeCommand": "다음 명령을 실행합니다",
+    "executingCommand": "명령 실행 중",
     "for": "대상",
     "searching": "검색 중",
     "searchingFor": "검색 중:",
@@ -212,12 +248,16 @@
     "matched": "매치됨",
     "resultsTruncated": ", 결과가 잘림",
     "stopBackgroundJob": "다음 백그라운드 작업을 중지합니다",
+    "stoppingBackgroundJob": "백그라운드 작업 중지 중",
     "result_one": "{{count}}개 결과",
     "result_other": "{{count}}개 결과",
     "readBackground": "백그라운드 작업 출력 읽는 중",
     "withRegexFilter": "정규식 필터 사용",
     "backgroundExecute": "다음 명령을 백그라운드에서 실행합니다",
-    "updatingToDos": "할 일 업데이트 중"
+    "backgroundExecuting": "백그라운드에서 명령 실행 중",
+    "updatingToDos": "할 일 업데이트 중",
+    "editing": "편집하는 중 ",
+    "moreTools": ", 그리고 {{count}}개의 다른 도구들"
   },
   "reasoning": {
     "thinking": "생각 중 ...",
@@ -233,7 +273,9 @@
     "restore": "복원",
     "opening": "열고 있습니다...",
     "noChangesDetected": "변경 사항이 감지되지 않았습니다",
-    "compare": "비교"
+    "compare": "비교",
+    "fork": "포크하기",
+    "forking": "포크 중..."
   },
   "welcomeScreen": {
     "title": "시작하기",
@@ -250,9 +292,6 @@
   "newProblems": {
     "aboveProblemsDetected": "위의 문제들이 변경 후 감지되었습니다",
     "problemsDetectedTooltip": "변경 후 문제가 감지됨"
-  },
-  "userEdits": {
-    "youHaveMadeAboveEdits": "위의 편집을 수행했습니다"
   },
   "fileBadge": {
     "modifiedByPochi": "(Pochi에 의해 수정됨)"
@@ -352,5 +391,13 @@
     "previous": "이전",
     "next": "다음",
     "morePages": "더 많은 페이지"
+  },
+  "diffSummary": {
+    "filesChanged_one": "{{count}}개 파일 변경됨",
+    "filesChanged_other": "{{count}}개 파일 변경됨",
+    "keep": "유지",
+    "undo": "실행 취소",
+    "viewChanges": "변경 사항 보기",
+    "openFile": "파일 열기"
   }
 }

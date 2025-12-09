@@ -3,6 +3,7 @@ import * as sinon from "sinon";
 import { describe, it, beforeEach, afterEach } from "mocha";
 import type { GitWorktree } from "@getpochi/common/vscode-webui-bridge";
 import { WorktreeManager } from "../worktree";
+import type { GitWorktreeInfoProvider } from "../git-worktree-info-provider";
 
 describe("WorktreeManager", () => {
   describe("getWorktreeDisplayName", () => {
@@ -16,8 +17,15 @@ describe("WorktreeManager", () => {
         onDidChangeGitState: sinon.stub().returns({ dispose: () => {} }),
       };
 
+      // Create a stub for GitWorktreeInfoProvider
+      const worktreeDataStoreStub: GitWorktreeInfoProvider = {
+        initialize: sinon.stub(),
+        get: sinon.stub().returns(undefined),
+        delete: sinon.stub(),
+      } as any;
+
       // Create worktreeManager instance with stubbed dependencies
-      worktreeManager = new WorktreeManager(gitStateMonitorStub);
+      worktreeManager = new WorktreeManager(gitStateMonitorStub, worktreeDataStoreStub);
     });
 
     afterEach(() => {
@@ -131,7 +139,14 @@ describe("WorktreeManager", () => {
         onDidChangeGitState: sinon.stub().returns({ dispose: () => {} }),
       };
 
-      worktreeManager = new WorktreeManager(gitStateMonitorStub);
+      // Create a stub for GitWorktreeInfoProvider
+      const worktreeDataStoreStub: GitWorktreeInfoProvider = {
+        initialize: sinon.stub(),
+        get: sinon.stub().returns(undefined),
+        delete: sinon.stub(),
+      } as any;
+
+      worktreeManager = new WorktreeManager(gitStateMonitorStub, worktreeDataStoreStub);
     });
 
     afterEach(() => {
@@ -208,6 +223,32 @@ branch refs/heads/master
 
       assert.strictEqual(result.length, 1);
       assert.strictEqual(result[0].isMain, true);
+    });
+
+    it("should parse prunable worktree correctly", () => {
+      const output = `worktree /path/to/repo
+HEAD abc123
+branch refs/heads/main
+
+worktree /path/to/worktrees/old-feature
+HEAD def456
+branch refs/heads/old-feature
+prunable gitdir file points to non-existent location
+
+`;
+
+      // @ts-ignore - accessing private method for testing
+      const result = worktreeManager.parseWorktreePorcelain(output);
+
+      assert.strictEqual(result.length, 2);
+      assert.strictEqual(result[0].isMain, true);
+      assert.strictEqual(result[0].prunable, undefined);
+      assert.strictEqual(result[1].isMain, false);
+      assert.strictEqual(result[1].path, "/path/to/worktrees/old-feature");
+      assert.strictEqual(
+        result[1].prunable,
+        "gitdir file points to non-existent location",
+      );
     });
   });
 });

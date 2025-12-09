@@ -5,24 +5,31 @@ import { readFileContent } from "@/lib/fs";
 import { getLogger } from "@/lib/logger";
 import { toErrorMessage } from "@getpochi/common";
 import { getWorktreeNameFromWorktreePath } from "@getpochi/common/git-utils";
+import { isPlainTextFile } from "@getpochi/common/tool-utils";
 import type { GitWorktree } from "@getpochi/common/vscode-webui-bridge";
 import { signal } from "@preact/signals-core";
 import simpleGit from "simple-git";
 import { injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
 import { DiffChangesContentProvider } from "../editor/diff-changes-content-provider";
+// biome-ignore lint/style/useImportType: needed for dependency injection
+import { GitWorktreeInfoProvider } from "./git-worktree-info-provider";
 
 const logger = getLogger("WorktreeManager");
 
 @singleton()
 @injectable()
 export class WorktreeManager implements vscode.Disposable {
+  private maxWorktrees = 10;
   private readonly disposables: vscode.Disposable[] = [];
   worktrees = signal<GitWorktree[]>([]);
 
   private git: ReturnType<typeof simpleGit>;
 
-  constructor(private readonly gitStateMonitor: GitStateMonitor) {
+  constructor(
+    private readonly gitStateMonitor: GitStateMonitor,
+    private readonly worktreeInfoProvider: GitWorktreeInfoProvider,
+  ) {
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
     this.git = simpleGit(workspaceFolder);
     this.init();
@@ -40,20 +47,13 @@ export class WorktreeManager implements vscode.Disposable {
     if (!(await this.isGitRepository())) {
       return;
     }
-    const worktrees = await this.getWorktrees();
-    this.worktrees.value = worktrees;
-    logger.info(
-      `Initialized WorktreeManager with ${worktrees.length} worktrees.`,
-    );
+    await this.updateWorktrees();
     const onWorktreeChanged = async () => {
       await new Promise((resolve) => setTimeout(resolve, 500));
-      const updatedWorktrees = await this.getWorktrees();
-      logger.info(`Worktrees updated to ${updatedWorktrees.length} worktrees.`);
-      this.worktrees.value = updatedWorktrees;
+      await this.updateWorktrees();
     };
     this.disposables.push(
       this.gitStateMonitor.onDidRepositoryChange(onWorktreeChanged),
-      this.gitStateMonitor.onDidChangeGitState(onWorktreeChanged),
     );
   }
 
@@ -74,26 +74,90 @@ export class WorktreeManager implements vscode.Disposable {
       return null;
     }
     const worktrees = await this.getWorktrees();
+
+    if (worktrees.length >= this.maxWorktrees) {
+      vscode.window.showErrorMessage(
+        `Cannot create more than ${this.maxWorktrees} worktrees.`,
+      );
+      return null;
+    }
+
     await vscode.commands.executeCommand("git.createWorktree");
 
     // Get worktrees again to find the new one
-    const updatedWorktrees = await this.getWorktrees();
+    const updatedWorktrees = await this.getWorktrees(true);
     // Find the new worktree by comparing with previous worktrees
     const newWorktree = updatedWorktrees.find(
       (updated) =>
         !worktrees.some((original) => original.path === updated.path),
     );
     if (newWorktree) {
+      this.worktreeInfoProvider.initialize(newWorktree.path);
       setupWorktree(newWorktree.path);
       return newWorktree;
     }
     return null;
   }
 
-  async getWorktrees(): Promise<GitWorktree[]> {
+  async deleteWorktree(worktreePath: string): Promise<boolean> {
+    if ((await this.isGitRepository()) === false) {
+      return false;
+    }
+
+    const worktree = this.worktrees.value.find(
+      (wt) => wt.path === worktreePath,
+    );
+    if (!worktree) {
+      vscode.window.showErrorMessage(`Worktree not found: ${worktreePath}`);
+      return false;
+    }
+
+    if (worktree.isMain) {
+      vscode.window.showErrorMessage("Cannot delete the main worktree.");
+      return false;
+    }
+
+    try {
+      await this.git.raw(["worktree", "remove", "--force", worktreePath]);
+      this.worktreeInfoProvider.delete(worktreePath);
+      return true;
+    } catch (error) {
+      logger.error(`Failed to delete worktree: ${toErrorMessage(error)}`);
+      vscode.window.showErrorMessage(
+        `Failed to delete worktree: ${toErrorMessage(error)}`,
+      );
+    }
+
+    return false;
+  }
+
+  async showWorktreeDiff(cwd: string) {
+    const baseBranch = await this.getDefaultBranch();
+    await showWorktreeDiff(cwd, baseBranch);
+  }
+
+  async updateWorktrees() {
+    this.worktrees.value = await this.getWorktrees();
+  }
+
+  async getWorktrees(skipVSCodeFilter?: boolean): Promise<GitWorktree[]> {
     try {
       const result = await this.git.raw(["worktree", "list", "--porcelain"]);
-      return this.parseWorktreePorcelain(result);
+      const worktrees = this.parseWorktreePorcelain(result)
+        .filter((wt) => wt.prunable === undefined)
+        .map<GitWorktree>((wt) => {
+          const storedData = this.worktreeInfoProvider.get(wt.path);
+          return { ...wt, data: storedData };
+        });
+      if (skipVSCodeFilter) return worktrees;
+
+      const vscodeRepos = this.gitStateMonitor.repositories.map(
+        (uri) => vscode.Uri.parse(uri).fsPath,
+      );
+      // keep the worktree order and number same as vscode
+      return vscodeRepos
+        .map((repoPath) => worktrees.find((wt) => wt.path === repoPath))
+        .filter((wt): wt is GitWorktree => wt !== undefined);
     } catch (error) {
       logger.error(`Failed to get worktrees: ${toErrorMessage(error)}`);
       return [];
@@ -129,6 +193,9 @@ export class WorktreeManager implements vscode.Disposable {
       } else if (line === "detached") {
         // Detached HEAD state - no branch
         currentWorktree.branch = undefined;
+      } else if (line.startsWith("prunable ")) {
+        // Prunable worktree with reason
+        currentWorktree.prunable = line.substring("prunable ".length);
       } else if (line === "") {
         // Empty line separates worktrees
         if (currentWorktree.path) {
@@ -149,6 +216,33 @@ export class WorktreeManager implements vscode.Disposable {
     }
 
     return worktrees;
+  }
+
+  private async getDefaultBranch() {
+    try {
+      const ref = await this.git.raw([
+        "symbolic-ref",
+        "refs/remotes/origin/HEAD",
+      ]);
+      const match = ref.match(/^refs\/remotes\/origin\/(.+)$/);
+      if (match) {
+        return match[1];
+      }
+      return "origin/main";
+    } catch (error) {
+      logger.error(`Failed to get default branch: ${toErrorMessage(error)}`);
+      return "origin/main";
+    }
+  }
+
+  async getOriginUrl(): Promise<string | null> {
+    try {
+      const url = await this.git.raw(["config", "--get", "remote.origin.url"]);
+      return url.trim();
+    } catch (error) {
+      logger.error(`Failed to get origin URL: ${toErrorMessage(error)}`);
+      return null;
+    }
   }
 
   dispose() {
@@ -192,7 +286,7 @@ export async function setupWorktree(worktree: string): Promise<boolean> {
     terminal.sendText(command);
     terminal.show(true);
 
-    logger.info(`Worktree setup initiated for: ${worktree}`);
+    logger.debug(`Worktree setup initiated for: ${worktree}`);
     return true;
   } catch (error) {
     logger.error("Failed to setup worktree:", error);
@@ -203,7 +297,7 @@ export async function setupWorktree(worktree: string): Promise<boolean> {
   }
 }
 
-export async function showWorktreeDiff(
+async function showWorktreeDiff(
   cwd: string,
   base = "origin/main",
 ): Promise<boolean> {
@@ -236,9 +330,12 @@ export async function showWorktreeDiff(
       const fsPath = path.join(cwd, filepath);
       let beforeContent = "";
       let afterContent = "";
+      const isPlainText = await isPlainTextFile(fsPath);
+      if (!isPlainText) {
+        continue;
+      }
       if (status === "A") {
-        const fileContent = await readFileContent(fsPath);
-        afterContent = fileContent ?? "";
+        afterContent = (await readFileContent(fsPath)) ?? "";
       } else if (status === "D") {
         beforeContent = await git.raw(["show", `${base}:${filepath}`]);
       } else {

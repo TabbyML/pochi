@@ -10,12 +10,13 @@ import {
 import { WorktreeSelect } from "@/components/worktree-select";
 import { useSelectedModels, useSettingsStore } from "@/features/settings";
 import type { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
+import { useTaskInputDraft } from "@/lib/hooks/use-task-input-draft";
 import { useWorktrees } from "@/lib/hooks/use-worktrees";
 import { vscodeHost } from "@/lib/vscode";
 import type { GitWorktree } from "@getpochi/common/vscode-webui-bridge";
 import { PaperclipIcon } from "lucide-react";
 import type React from "react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { ChatInputForm } from "./chat-input-form";
 
@@ -23,6 +24,9 @@ interface CreateTaskInputProps {
   cwd: string;
   workspaceFolder: string | null | undefined;
   attachmentUpload: ReturnType<typeof useAttachmentUpload>;
+  userSelectedWorktree: GitWorktree | undefined;
+  setUserSelectedWorktree: (v: GitWorktree | undefined) => void;
+  deletingWorktreePaths: Set<string>;
 }
 
 const noop = () => {};
@@ -31,9 +35,12 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
   cwd,
   workspaceFolder,
   attachmentUpload,
+  userSelectedWorktree,
+  setUserSelectedWorktree,
+  deletingWorktreePaths,
 }) => {
   const { t } = useTranslation();
-  const [input, setInput] = useState("");
+  const { draft: input, setDraft: setInput, clearDraft } = useTaskInputDraft();
   const {
     groupedModels,
     selectedModel,
@@ -56,21 +63,25 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
   } = attachmentUpload;
 
   const worktreesData = useWorktrees();
-  const [userSelect, setUserSelect] = useState<GitWorktree | undefined>();
+  const worktrees = useMemo(() => {
+    return worktreesData.worktrees?.filter(
+      (x: GitWorktree) => !deletingWorktreePaths.has(x.path),
+    );
+  }, [worktreesData, deletingWorktreePaths]);
 
   const isOpenCurrentWorkspace = !!workspaceFolder && cwd === workspaceFolder;
   const isOpenMainWorktree =
     isOpenCurrentWorkspace &&
-    worktreesData.data?.find((x) => x.isMain)?.path === cwd;
+    worktrees?.find((x: GitWorktree) => x.isMain)?.path === cwd;
 
   const selectedWorktree = useMemo(() => {
     if (isOpenCurrentWorkspace && !isOpenMainWorktree) {
-      return worktreesData.data?.find((x) => x.path === cwd);
+      return worktrees?.find((x: GitWorktree) => x.path === cwd);
     }
-    return userSelect || worktreesData.data?.[0];
+    return userSelectedWorktree || worktrees?.[0];
   }, [
-    userSelect,
-    worktreesData.data,
+    userSelectedWorktree,
+    worktrees,
     cwd,
     isOpenCurrentWorkspace,
     isOpenMainWorktree,
@@ -78,10 +89,12 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
 
   const worktreeOptions = useMemo(() => {
     if (isOpenMainWorktree) {
-      return worktreesData.data ?? [];
+      return worktrees ?? [];
     }
-    return worktreesData.data?.filter((x) => x.path === workspaceFolder) ?? [];
-  }, [isOpenMainWorktree, worktreesData.data, workspaceFolder]);
+    return (
+      worktrees?.filter((x: GitWorktree) => x.path === workspaceFolder) ?? []
+    );
+  }, [isOpenMainWorktree, worktrees, workspaceFolder]);
 
   const onFocus = () => {
     useSettingsStore.persist.rehydrate();
@@ -106,7 +119,6 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
         const uploadedAttachments = await upload();
         vscodeHost.openTaskInPanel({
           cwd: selectedWorktree?.path || cwd,
-          uid: crypto.randomUUID(),
           storeId: undefined,
           prompt: content,
           files: uploadedAttachments.map((x) => ({
@@ -116,17 +128,16 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
           })),
         });
 
-        setInput("");
+        clearDraft();
       } else if (content.length > 0) {
         clearUploadError();
         vscodeHost.openTaskInPanel({
           cwd: selectedWorktree?.path || cwd,
-          uid: crypto.randomUUID(),
           storeId: undefined,
           prompt: content,
         });
 
-        setInput("");
+        clearDraft();
       }
     },
     [
@@ -138,6 +149,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
       upload,
       selectedWorktree?.path,
       cwd,
+      clearDraft,
     ],
   );
 
@@ -199,7 +211,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
               showCreateWorktree={isOpenMainWorktree}
               value={selectedWorktree}
               onChange={(v) => {
-                setUserSelect(v);
+                setUserSelectedWorktree(v);
               }}
             />
           )}

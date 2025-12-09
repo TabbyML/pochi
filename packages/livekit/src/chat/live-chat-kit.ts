@@ -1,6 +1,7 @@
 import { getLogger } from "@getpochi/common";
 import type { CustomAgent } from "@getpochi/tools";
 import type { Store } from "@livestore/livestore";
+import { Duration } from "@livestore/utils/effect";
 import type { ChatInit, ChatOnErrorCallback, ChatOnFinishCallback } from "ai";
 import type z from "zod/v4";
 import { makeMessagesQuery, makeTaskQuery } from "../livestore/default-queries";
@@ -21,6 +22,8 @@ const logger = getLogger("LiveChatKit");
 
 export type LiveChatKitOptions<T> = {
   taskId: string;
+  displayId?: number;
+
   abortSignal?: AbortSignal;
 
   // Request related getters
@@ -34,6 +37,8 @@ export type LiveChatKitOptions<T> = {
   chatClass: new (options: ChatInit<Message>) => T;
 
   onOverrideMessages?: (options: {
+    store: Store;
+    taskId: string;
     messages: Message[];
     abortSignal: AbortSignal;
   }) => void | Promise<void>;
@@ -54,6 +59,17 @@ export type LiveChatKitOptions<T> = {
   "id" | "messages" | "generateId" | "onFinish" | "onError" | "transport"
 >;
 
+type InitOptions =
+  | {
+      prompt?: string;
+    }
+  | {
+      parts?: Message["parts"];
+    }
+  | {
+      messages?: Message[];
+    };
+
 export class LiveChatKit<
   T extends {
     messages: Message[];
@@ -61,6 +77,7 @@ export class LiveChatKit<
   },
 > {
   protected readonly taskId: string;
+  protected readonly displayId?: number;
   protected readonly store: Store;
   readonly chat: T;
   private readonly transport: FlexibleChatTransport;
@@ -75,10 +92,12 @@ export class LiveChatKit<
     error: Error;
     messages: Message[];
   }) => void;
-  readonly spawn: () => Promise<string>;
+  readonly compact: () => Promise<string>;
+  private lastStepStartTimestamp: number | undefined;
 
   constructor({
     taskId,
+    displayId,
     abortSignal,
     store,
     chatClass,
@@ -94,6 +113,7 @@ export class LiveChatKit<
     ...chatInit
   }: LiveChatKitOptions<T>) {
     this.taskId = taskId;
+    this.displayId = displayId;
     this.store = store;
     this.onStreamStart = onStreamStart;
     this.onStreamFinish = onStreamFinish;
@@ -155,68 +175,61 @@ export class LiveChatKit<
         }
       }
       if (onOverrideMessages) {
-        await onOverrideMessages({ messages, abortSignal });
+        await onOverrideMessages({
+          store: this.store,
+          taskId: this.taskId,
+          messages,
+          abortSignal,
+        });
       }
     };
 
-    this.spawn = async () => {
-      const taskId = crypto.randomUUID();
+    this.compact = async () => {
       const { messages } = this.chat;
       const model = createModel({ llm: getters.getLLM() });
       const summary = await compactTask({
         store: this.store,
-        taskId,
+        taskId: this.taskId,
         model,
         messages,
-        abortSignal,
       });
       if (!summary) {
         throw new Error("Failed to compact task");
       }
-
-      this.store.commit(
-        events.taskInited({
-          id: taskId,
-          cwd: this.task?.cwd || undefined,
-          modelId: this.task?.modelId || undefined,
-          createdAt: new Date(),
-          initMessage: {
-            id: crypto.randomUUID(),
-            parts: [
-              {
-                type: "text",
-                text: summary,
-              },
-
-              {
-                type: "text",
-                text: "I've summarized the task and start a new task with the summary. Please analysis the current status, and use askFollowupQuestion with me to confirm the next steps",
-              },
-            ],
-          },
-        }),
-      );
-      return taskId;
+      return summary;
     };
   }
 
-  init(cwd: string | undefined, promptOrParts?: string | Message["parts"]) {
-    const parts =
-      typeof promptOrParts === "string"
-        ? [{ type: "text", text: promptOrParts }]
-        : promptOrParts;
+  init(cwd: string | undefined, options?: InitOptions | undefined) {
+    let initMessages: Message[] | undefined = undefined;
+    if (options) {
+      if ("messages" in options && options.messages) {
+        initMessages = options.messages;
+      } else if ("parts" in options && options.parts) {
+        initMessages = [
+          {
+            id: crypto.randomUUID(),
+            role: "user",
+            parts: options.parts,
+          },
+        ];
+      } else if ("prompt" in options && options.prompt) {
+        initMessages = [
+          {
+            id: crypto.randomUUID(),
+            role: "user",
+            parts: [{ type: "text", text: options.prompt }],
+          },
+        ];
+      }
+    }
 
     this.store.commit(
       events.taskInited({
         id: this.taskId,
         cwd,
         createdAt: new Date(),
-        initMessage: parts
-          ? {
-              id: crypto.randomUUID(),
-              parts,
-            }
-          : undefined,
+        initMessages,
       }),
     );
 
@@ -301,8 +314,11 @@ export class LiveChatKit<
           git: toTaskGitInfo(environment?.workspace.gitStatus),
           updatedAt: new Date(),
           modelId: llm.id,
+          displayId: this.displayId,
         }),
       );
+
+      this.lastStepStartTimestamp = Date.now();
 
       this.onStreamStart?.();
     }
@@ -335,14 +351,24 @@ export class LiveChatKit<
         data: message,
         totalTokens: message.metadata.totalTokens,
         updatedAt: new Date(),
+        duration: this.lastStepStartTimestamp
+          ? Duration.millis(Date.now() - this.lastStepStartTimestamp)
+          : undefined,
       }),
     );
+
+    this.clearLastStepTimestamp();
+
     this.onStreamFinish?.({
       id: this.taskId,
       cwd: this.task?.cwd ?? null,
       status,
       messages: [...this.chat.messages],
     });
+  };
+
+  private clearLastStepTimestamp = () => {
+    this.lastStepStartTimestamp = undefined;
   };
 
   private readonly onError: ChatOnErrorCallback = (error) => {
@@ -355,8 +381,14 @@ export class LiveChatKit<
         error: toTaskError(error),
         data: lastMessage,
         updatedAt: new Date(),
+        duration: this.lastStepStartTimestamp
+          ? Duration.millis(Date.now() - this.lastStepStartTimestamp)
+          : undefined,
       }),
     );
+
+    this.clearLastStepTimestamp();
+
     this.onStreamFailed?.({
       cwd: this.task?.cwd ?? null,
       error,

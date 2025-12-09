@@ -55,6 +55,23 @@
     "super": "加強",
     "swift": "極速"
   },
+  "worktreeSelect": {
+    "selectWorktree": "ワークツリーを選択",
+    "createWorktree": "Git ワークツリーを作成",
+    "createWorktreeDescription": "新しい Git ワークツリーでタスクを開始"
+  },
+  "worktree": {
+    "createPr": "PR を作成",
+    "createDraftPr": "ドラフト PR を作成",
+    "createPrManually": "手動で PR を作成",
+    "installGhCli": "PR を作成するには GitHub CLI をインストールしてください",
+    "authGhCli": "GitHub CLI を認証するには `gh auth login` を実行してください",
+    "prNumber": "PR #{{number}}",
+    "merge": "マージ",
+    "allChecksPassed": "すべてのチェックが通過しました",
+    "allChecksFailed": "すべてのチェックが失敗しました",
+    "checksStatus": "{{passed}}/{{total}} チェックが通過しました"
+  },
   "settings": {
     "account": {
       "signIn": "Pochi モデルにサインイン",
@@ -165,7 +182,7 @@
   "tasksPage": {
     "emptyState": {
       "title": "タスクが見つかりません",
-      "description": "Pochi を始めるために新しいタスクを作成してください",
+      "description": "利用可能なタスクはありません",
       "createButton": "新しいタスクを作成"
     },
     "status": {
@@ -181,7 +198,25 @@
       "selectDate": "日付を選択",
       "today": "今日"
     },
-    "worktreeNotExist": "ワークツリーが存在しません"
+    "worktreeNotExist": "ワークツリーが存在しません",
+    "newTask": "新しいタスク",
+    "deleted": "削除済み",
+    "tasksCount": "{{count}} 件のタスク",
+    "showDeletedWorktrees": "削除されたワークツリーを表示",
+    "hideDeletedWorktrees": "削除されたワークツリーを非表示",
+    "openWorktreeDiff": "変更を確認",
+    "openWorktreeInTerminal": "ターミナルでワークツリーを開く",
+    "deleteWorktree": "ワークツリーを削除",
+    "deleteWorktreeTitle": "ワークツリーを削除",
+    "deleteWorktreeConfirm": "ワークツリー \"{{name}}\" を削除してもよろしいですか？",
+    "cancel": "キャンセル",
+    "delete": "削除",
+    "taskStatus": {
+      "planning": "次の動作を計画中",
+      "errorPrefix": "エラー：",
+      "fallbackError": "エラーが発生しました",
+      "finished": "{{duration}} で完了"
+    }
   },
   "toolInvocation": {
     "taskCompleted": "タスク完了",
@@ -204,6 +239,7 @@
     "applyingDiffsTo": "複数の差分を適用中：",
     "in": "の",
     "executeCommand": "以下のコマンドを実行します",
+    "executingCommand": "コマンドを実行中",
     "for": "で",
     "searching": "検索中",
     "searchingFor": "検索中：",
@@ -212,12 +248,16 @@
     "matched": "マッチ",
     "resultsTruncated": "、結果が切り詰められました",
     "stopBackgroundJob": "以下のバックグラウンドジョブを停止します",
+    "stoppingBackgroundJob": "バックグラウンドジョブを停止中",
     "result_one": "{{count}}件の結果",
     "result_other": "{{count}}件の結果",
     "readBackground": "バックグラウンドジョブ出力を読み込み中",
     "withRegexFilter": "正規表現フィルター付き",
     "backgroundExecute": "以下のコマンドをバックグラウンドで実行します",
-    "updatingToDos": "TODOを更新中"
+    "backgroundExecuting": "バックグラウンドでコマンドを実行中",
+    "updatingToDos": "TODOを更新中",
+    "editing": "編集しています ",
+    "moreTools": "、他{{count}}個のツール"
   },
   "reasoning": {
     "thinking": "考え中 ...",
@@ -233,7 +273,9 @@
     "restore": "復元",
     "opening": "開いています...",
     "noChangesDetected": "変更が検出されませんでした",
-    "compare": "比較"
+    "compare": "比較",
+    "fork": "フォーク",
+    "forking": "フォーク中..."
   },
   "welcomeScreen": {
     "title": "はじめに",
@@ -250,9 +292,6 @@
   "newProblems": {
     "aboveProblemsDetected": "上記の問題が変更後に検出されました",
     "problemsDetectedTooltip": "変更後に問題が検出されました"
-  },
-  "userEdits": {
-    "youHaveMadeAboveEdits": "上記の編集を行いました"
   },
   "fileBadge": {
     "modifiedByPochi": "（Pochi により変更）"
@@ -357,5 +396,13 @@
     "previous": "前へ",
     "next": "次へ",
     "morePages": "その他のページ"
+  },
+  "diffSummary": {
+    "filesChanged_one": "{{count}} ファイル変更",
+    "filesChanged_other": "{{count}} ファイル変更",
+    "keep": "保持",
+    "undo": "元に戻す",
+    "viewChanges": "変更を表示",
+    "openFile": "ファイルを開く"
   }
 }

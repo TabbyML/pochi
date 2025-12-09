@@ -15,7 +15,6 @@ import { vscodeHost } from "@/lib/vscode";
 import { getWorktreeNameFromWorktreePath } from "@getpochi/common/git-utils";
 import type { GitWorktree } from "@getpochi/common/vscode-webui-bridge";
 import { DropdownMenuPortal } from "@radix-ui/react-dropdown-menu";
-import { useQueryClient } from "@tanstack/react-query";
 import { CheckIcon, FolderGit2, PlusIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
@@ -49,17 +48,13 @@ export function WorktreeSelect({
   triggerClassName,
 }: WorktreeSelectProps) {
   const { t } = useTranslation();
-  const queryClient = useQueryClient();
   const onCreateWorkTree = async () => {
     try {
       const newWorktree = await vscodeHost.createWorktree();
       if (newWorktree) {
-        await queryClient.invalidateQueries({
-          queryKey: ["worktrees"],
-        });
         setTimeout(() => {
           onChange(newWorktree);
-        });
+        }, 1000);
       }
     } catch (e) {
       // ignore
@@ -82,7 +77,7 @@ export function WorktreeSelect({
             <Button
               variant="ghost"
               className={cn(
-                "!px-1 button-focus h-6 max-w-full items-center py-0 font-normal",
+                "!px-1 button-focus h-6 max-w-[40vw] items-center py-0 font-normal",
                 triggerClassName,
               )}
             >

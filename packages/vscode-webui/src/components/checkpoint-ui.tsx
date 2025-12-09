@@ -4,6 +4,7 @@ import {
   Check,
   CircleSlashIcon,
   FileDiffIcon,
+  GitBranchPlus,
   GitCommitHorizontal,
   Loader2,
 } from "lucide-react";
@@ -15,14 +16,23 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "./ui/button";
 
-type ActionType = "compare" | "restore";
+type ActionType = "compare" | "restore" | "fork";
 
 export const CheckpointUI: React.FC<{
   checkpoint: DataParts["checkpoint"];
   isLoading: boolean;
   className?: string;
   hideBorderOnHover?: boolean;
-}> = ({ checkpoint, isLoading, className, hideBorderOnHover = true }) => {
+  forkTask?: (commitId: string, messageId?: string) => Promise<void>;
+  restoreMessageId?: string;
+}> = ({
+  checkpoint,
+  isLoading,
+  className,
+  hideBorderOnHover = true,
+  forkTask,
+  restoreMessageId,
+}) => {
   const { t } = useTranslation();
   const [isDevMode] = useIsDevMode();
   const [currentAction, setCurrentAction] = useState<ActionType>();
@@ -36,6 +46,7 @@ export const CheckpointUI: React.FC<{
     mutationFn: async (params: {
       action: ActionType;
       commitId: string;
+      messageId?: string;
     }) => {
       const actions = {
         compare: () =>
@@ -43,6 +54,11 @@ export const CheckpointUI: React.FC<{
             origin: params.commitId,
           }),
         restore: () => vscodeHost.restoreCheckpoint(params.commitId),
+        fork: async () => {
+          if (forkTask) {
+            await forkTask(params.commitId, params.messageId);
+          }
+        },
       };
 
       const results = await Promise.all([
@@ -67,6 +83,7 @@ export const CheckpointUI: React.FC<{
     executeAction({
       action,
       commitId: checkpoint.commit,
+      messageId: restoreMessageId,
     });
   };
 
@@ -92,6 +109,28 @@ export const CheckpointUI: React.FC<{
       return t("checkpointUI.success");
     }
     return t("checkpointUI.restore");
+  };
+
+  const getForkIcon = () => {
+    if (isPending && currentAction === "fork") {
+      return <Loader2 className="size-3 animate-spin" />;
+    }
+    if (showActionSuccessIcon && currentAction === "fork") {
+      return (
+        <Check className="size-4 text-emerald-700 dark:text-emerald-300" />
+      );
+    }
+    return <GitBranchPlus className="size-3" />;
+  };
+
+  const getForkText = () => {
+    if (isPending && currentAction === "fork") {
+      return t("checkpointUI.forking");
+    }
+    if (showActionSuccessIcon && currentAction === "restore") {
+      return t("checkpointUI.success");
+    }
+    return t("checkpointUI.fork");
   };
 
   const getCompareIcon = () => {
@@ -184,6 +223,22 @@ export const CheckpointUI: React.FC<{
           >
             {getRestoreText()} {isDevMode && `(${checkpoint.commit})`}
           </Button>
+
+          {forkTask && (
+            <div className="ml-1 flex items-center">
+              <span className="hidden group-hover:flex">{getForkIcon()}</span>
+              <Button
+                size="sm"
+                variant="ghost"
+                disabled={isPending}
+                onClick={() => handleCheckpointAction("fork")}
+                className="ml-[1px] hidden h-5 items-center gap-1 rounded-md px-1 py-0.5 text-xs hover:bg-transparent group-hover:flex dark:hover:bg-transparent"
+              >
+                {getForkText()}
+              </Button>
+            </div>
+          )}
+
           <span className="group-hover:hidden">{getIcon()}</span>
         </span>
         <Border

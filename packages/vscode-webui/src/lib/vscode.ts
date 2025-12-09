@@ -3,17 +3,20 @@ import type {
   VSCodeHostApi,
   WebviewHostApi,
 } from "@getpochi/common/vscode-webui-bridge";
+import { taskCatalog } from "@getpochi/livekit";
 import type { Store } from "@livestore/livestore";
+import { Schema } from "@livestore/utils/effect";
 import { ThreadNestedWindow } from "@quilted/threads";
-import * as R from "remeda";
+import Emittery from "emittery";
 import type { WebviewApi } from "vscode-webview";
+
 import { queryClient } from "./query-client";
 
 const logger = getLogger("vscode");
 
 let vscodeApi: WebviewApi<unknown> | undefined | null = undefined;
 
-function getVSCodeApi() {
+export function getVSCodeApi() {
   if (vscodeApi) {
     return vscodeApi;
   }
@@ -84,31 +87,24 @@ function createVSCodeHost(): VSCodeHostApi {
         "readExtensionVersion",
         "readAutoSaveDisabled",
         "diffWithCheckpoint",
+        "diffChangedFiles",
+        "showChangedFiles",
+        "restoreChangedFiles",
         "showInformationMessage",
         "readVisibleTerminals",
         "readModelList",
         "readUserStorage",
         "readCustomAgents",
         "openTaskInPanel",
-        "isTaskPanelVisible",
+        "sendTaskNotification",
         "onTaskUpdated",
+        "onTaskRunning",
         "readWorktrees",
         "createWorktree",
+        "deleteWorktree",
+        "readPochiTasks",
       ],
       exports: {
-        async openTask(params) {
-          window.router.navigate({
-            to: "/task",
-            search: {
-              uid: params.uid || crypto.randomUUID(),
-              storeId: "storeId" in params ? params.storeId : undefined,
-              prompt: "prompt" in params ? params.prompt : undefined,
-              files: "files" in params ? params.files : undefined,
-            },
-            replace: true,
-          });
-        },
-
         openTaskList() {
           window.router.navigate({
             to: "/",
@@ -131,22 +127,16 @@ function createVSCodeHost(): VSCodeHostApi {
           return window.document.hasFocus();
         },
 
-        async commitTaskUpdated(event: unknown) {
+        async commitTaskUpdated(inputArgs: unknown) {
           if (globalThis.POCHI_WEBVIEW_KIND === "pane") return;
-          if (R.isObjectType(event)) {
-            const dateFields = ["createdAt", "updatedAt"];
-            for (const field of dateFields) {
-              if (
-                "args" in event &&
-                R.isPlainObject(event.args) &&
-                R.isString(event.args[field])
-              ) {
-                event.args[field] = new Date(event.args[field]);
-              }
-            }
-          }
-          // @ts-expect-error
-          store?.commit(event);
+          const args = Schema.decodeUnknownSync(
+            taskCatalog.events.tastUpdated.schema,
+          )(inputArgs);
+          store?.commit(taskCatalog.events.tastUpdated(args));
+        },
+
+        onFileChanged(filePath: string, content: string) {
+          fileChangeEvent.emit("fileChanged", { filepath: filePath, content });
         },
       },
     },
@@ -156,3 +146,7 @@ function createVSCodeHost(): VSCodeHostApi {
 }
 
 export const vscodeHost = createVSCodeHost();
+
+export const fileChangeEvent = new Emittery<{
+  fileChanged: { filepath: string; content: string };
+}>();

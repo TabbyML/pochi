@@ -1,6 +1,6 @@
 {
   "name": "pochi",
-  "version": "0.13.0-dev",
+  "version": "0.19.0-dev",
   "description": "Pochi is your AI powered team mate. Now available in research preview.",
   "displayName": "Pochi (Research Preview)",
   "publisher": "TabbyML",
@@ -143,16 +143,16 @@
         "icon": "$(add)"
       },
       {
+        "command": "pochi.applyPochiLayout",
+        "title": "Pochi Layout",
+        "category": "Pochi",
+        "icon": "$(layout)"
+      },
+      {
         "command": "pochi.openTerminal",
         "title": "Open Terminal",
         "category": "Pochi",
         "icon": "$(terminal)"
-      },
-      {
-        "command": "pochi.diffWorktree",
-        "title": "Review Changes",
-        "category": "Pochi",
-        "icon": "$(diff-multiple)"
       },
       {
         "command": "pochi.openCustomModelSettings",
@@ -191,7 +191,7 @@
           "group": "navigation"
         },
         {
-          "command": "pochi.diffWorktree",
+          "command": "pochi.applyPochiLayout",
           "when": "resourceScheme == 'pochi-task'",
           "group": "navigation"
         }

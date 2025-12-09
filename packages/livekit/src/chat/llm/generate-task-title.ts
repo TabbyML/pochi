@@ -1,5 +1,5 @@
 import type { LanguageModelV2 } from "@ai-sdk/provider";
-import { constants, formatters, getLogger, prompts } from "@getpochi/common";
+import { formatters, getLogger, prompts } from "@getpochi/common";
 import type { Store } from "@livestore/livestore";
 import { convertToModelMessages, generateText } from "ai";
 import { makeDownloadFunction } from "../../store-blob";
@@ -113,8 +113,12 @@ async function generateTitle(
   ];
 
   const resp = await generateText({
-    headers: {
-      [constants.PochiTaskIdHeader]: taskId,
+    providerOptions: {
+      pochi: {
+        taskId,
+        version: globalThis.POCHI_CLIENT,
+        useCase: "generate-task-title",
+      },
     },
     model,
     prompt: convertToModelMessages(

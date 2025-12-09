@@ -10,6 +10,8 @@ interface ChatAreaProps {
   user?: { name: string; image?: string | null };
   messagesContainerRef: React.RefObject<HTMLDivElement | null>;
   className?: string;
+  hideEmptyPlaceholder?: boolean;
+  forkTask?: (commitId: string, messageId?: string) => Promise<void>;
 }
 
 export function ChatArea({
@@ -18,11 +20,15 @@ export function ChatArea({
   user,
   messagesContainerRef,
   className,
+  hideEmptyPlaceholder,
+  forkTask,
 }: ChatAreaProps) {
   const resourceUri = useResourceURI();
   return (
     <>
-      {messages.length === 0 && <EmptyChatPlaceholder />}
+      {!hideEmptyPlaceholder && messages.length === 0 && (
+        <EmptyChatPlaceholder />
+      )}
       {messages.length > 0 && <div className="h-4" />}
       <MessageList
         messages={messages}
@@ -34,6 +40,7 @@ export function ChatArea({
         isLoading={isLoading}
         containerRef={messagesContainerRef}
         className={className}
+        forkTask={forkTask}
       />
     </>
   );

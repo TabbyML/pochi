@@ -1,5 +1,5 @@
-import { FileIcon } from "@/components/tool-invocation/file-icon/file-icon";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { FileIcon } from "@/features/tools";
 import {
   forwardRef,
   memo,

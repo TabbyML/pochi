@@ -22,17 +22,21 @@ export const executeCommandWithNode = async ({
   timeout,
   abortSignal,
   onData,
+  color = true,
 }: ExecuteCommandOptions) => {
   const shellCommand = buildShellCommand(command);
   const options = {
     cwd,
     env: {
       ...process.env,
-      PAGER: "cat",
-      COLORTERM: "truecolor",
-      TERM: "xterm-256color",
-      FORCE_COLOR: "1",
-      CLICOLOR_FORCE: "1",
+      ...(color
+        ? {
+            COLORTERM: "truecolor",
+            TERM: "xterm-256color",
+            FORCE_COLOR: "1",
+            CLICOLOR_FORCE: "1",
+          }
+        : {}),
     },
   };
 

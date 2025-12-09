@@ -69,6 +69,7 @@ import { TaskRunner } from "./task-runner";
 import { checkForUpdates, registerUpgradeCommand } from "./upgrade";
 
 const logger = getLogger("Pochi");
+globalThis.POCHI_CLIENT = `PochiCli/${packageJson.version}`;
 logger.debug(`pochi v${packageJson.version}`);
 
 const parsePositiveInt = (input: string): number => {

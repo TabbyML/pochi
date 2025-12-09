@@ -8,7 +8,7 @@ export type { PochiCredentials } from "./types/pochi";
 
 export type { McpStatus } from "../mcp-utils";
 export type {
-  UserEditsDiff,
+  FileDiff,
   ExecuteCommandResult,
   SaveCheckpointOptions,
 } from "./types/execution";
@@ -20,6 +20,10 @@ export type {
   TaskPanelParams,
   NewTaskPanelParams,
   TaskData,
+  TaskChangedFile,
+  ChangedFileContent,
+  TaskState,
+  TaskStates,
 } from "./types/task";
 export type {
   VSCodeLmModel,
@@ -35,8 +39,14 @@ export type {
   InvalidCustomAgentFile,
   ValidCustomAgentFile,
 } from "./types/custom-agent";
-export type { GitWorktree } from "./types/git";
+export { GitWorktreeInfo } from "./types/git";
+export type { GitWorktree, DiffCheckpointOptions } from "./types/git";
 export { isValidCustomAgentFile } from "./types/custom-agent";
+export {
+  prefixTaskDisplayId,
+  prefixWorktreeName,
+  getTaskDisplayTitle,
+} from "./task-utils";
 
 const isPochiDev = process.env.POCHI_LOCAL_SERVER === "true";
 const isSyncDev = process.env.POCHI_LOCAL_SYNC_SERVER === "true";

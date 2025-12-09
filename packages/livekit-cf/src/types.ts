@@ -10,6 +10,7 @@ export type Env = {
   ENVIRONMENT: "dev" | "prod" | undefined;
   ASSETS: CfTypes.Fetcher;
   WEBHOOK_URL?: string;
+  WEBHOOK_SECRET?: string;
   CACHE: CfTypes.KVNamespace;
 };
 

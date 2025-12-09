@@ -108,7 +108,7 @@ describe("message-utils", () => {
             "state": "done"
           },
           {
-            "type": "tool-multiApplyDiff",
+            "type": "tool-ApplyDiff",
             "toolCallId": "call_f7351b9b454add77",
             "state": "output-error",
             "input": "unknown",

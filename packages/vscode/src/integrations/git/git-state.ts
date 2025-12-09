@@ -15,6 +15,15 @@ export interface GitRepositoryState {
 
 export interface GitStateChangeEvent {
   type: "branch-changed";
+  repository: string;
+  previousBranch?: string;
+  currentBranch?: string;
+}
+
+export interface GitRepositoryChangeEvent {
+  type: "repository-changed";
+  repository: string;
+  change: "added" | "removed";
 }
 
 /**
@@ -32,7 +41,11 @@ export class GitStateMonitor implements vscode.Disposable {
 
   private gitExtension: GitExtension | undefined;
   private gitAPI: API | undefined;
-  private repositories = new Map<string, GitRepositoryState>();
+  private repositoryState = new Map<string, GitRepositoryState>();
+
+  get repositories(): string[] {
+    return Array.from(this.repositoryState.keys());
+  }
 
   readonly #onDidChangeGitState =
     new vscode.EventEmitter<GitStateChangeEvent>();
@@ -46,8 +59,9 @@ export class GitStateMonitor implements vscode.Disposable {
   /**
    * Event fired when repository change, such as add or remove repositories and worktrees
    */
-  readonly #onDidRepositoryChange = new vscode.EventEmitter<void>();
-  public readonly onDidRepositoryChange: vscode.Event<void> =
+  readonly #onDidRepositoryChange =
+    new vscode.EventEmitter<GitRepositoryChangeEvent>();
+  public readonly onDidRepositoryChange: vscode.Event<GitRepositoryChangeEvent> =
     this.#onDidRepositoryChange.event;
 
   constructor() {
@@ -113,7 +127,11 @@ export class GitStateMonitor implements vscode.Disposable {
 
   private async handleRepositoryOpened(repository: Repository): Promise<void> {
     try {
-      this.#onDidRepositoryChange.fire();
+      this.#onDidRepositoryChange.fire({
+        type: "repository-changed",
+        repository: repository.rootUri.fsPath,
+        change: "added",
+      });
       const repoKey = repository.rootUri.toString();
       logger.debug(`Repository opened: ${repoKey}`);
 
@@ -134,7 +152,11 @@ export class GitStateMonitor implements vscode.Disposable {
 
   private handleRepositoryClosed(repository: Repository): void {
     try {
-      this.#onDidRepositoryChange.fire();
+      this.#onDidRepositoryChange.fire({
+        type: "repository-changed",
+        repository: repository.rootUri.fsPath,
+        change: "removed",
+      });
       const repoKey = repository.rootUri.toString();
       logger.debug(`Repository closed: ${repoKey}`);
 
@@ -148,7 +170,7 @@ export class GitStateMonitor implements vscode.Disposable {
       }
 
       // Remove repository state
-      this.repositories.delete(repoKey);
+      this.repositoryState.delete(repoKey);
     } catch (error) {
       logger.debug("Failed to handle repository closed event:", error);
     }
@@ -159,10 +181,10 @@ export class GitStateMonitor implements vscode.Disposable {
   ): Promise<void> {
     try {
       const repoKey = repository.rootUri.toString();
-      const previousState = this.repositories.get(repoKey);
+      const previousState = this.repositoryState.get(repoKey);
       const currentState = this.buildRepositoryState(repository);
 
-      this.repositories.set(repoKey, currentState);
+      this.repositoryState.set(repoKey, currentState);
 
       if (
         previousState &&
@@ -170,6 +192,9 @@ export class GitStateMonitor implements vscode.Disposable {
       ) {
         this.#onDidChangeGitState.fire({
           type: "branch-changed",
+          repository: repository.rootUri.fsPath,
+          previousBranch: previousState.currentBranch.name,
+          currentBranch: currentState.currentBranch.name,
         });
 
         logger.debug(
@@ -208,7 +233,7 @@ export class GitStateMonitor implements vscode.Disposable {
     for (const disposable of this.disposables) {
       disposable.dispose();
     }
-    this.repositories.clear();
+    this.repositoryState.clear();
 
     logger.debug("Git state monitor disposed");
   }

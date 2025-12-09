@@ -218,7 +218,6 @@ export class ManagedToolCallLifeCycle
         state: convertState(state),
         toolCallId: this.toolCallId,
         abortSignal: ThreadAbortSignal.serialize(abortSignal),
-        nonInteractive: globalThis.POCHI_WEBVIEW_KIND === "pane",
       })
       .then((result) => {
         this.transitTo("ready", {
@@ -258,7 +257,6 @@ export class ManagedToolCallLifeCycle
         state: convertState(state),
         toolCallId: this.toolCallId,
         abortSignal: ThreadAbortSignal.serialize(abortSignal),
-        nonInteractive: globalThis.POCHI_WEBVIEW_KIND === "pane",
       });
     };
 
@@ -326,7 +324,6 @@ export class ManagedToolCallLifeCycle
         toolCallId: this.toolCallId,
         abortSignal: ThreadAbortSignal.serialize(abortSignal),
         contentType: options?.contentType,
-        nonInteractive: globalThis.POCHI_WEBVIEW_KIND === "pane",
       });
     }
 

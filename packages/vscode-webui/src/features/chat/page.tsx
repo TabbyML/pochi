@@ -19,12 +19,13 @@ import {
   type FileUIPart,
   lastAssistantMessageIsCompleteWithToolCalls,
 } from "ai";
-import { useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 
 import { useLatest } from "@/lib/hooks/use-latest";
 import { useMcp } from "@/lib/hooks/use-mcp";
 import { cn } from "@/lib/utils";
+import { Schema } from "@livestore/utils/effect";
 import { useApprovalAndRetry } from "../approval";
 import { getReadyForRetryError } from "../retry/hooks/use-ready-for-retry-error";
 import {
@@ -66,9 +67,20 @@ interface ChatProps {
   user?: UserInfo;
   prompt?: string;
   files?: FileUIPart[];
+  displayId?: number;
+  initMessages?: Message[];
+  disablePendingModelAutoStart?: boolean;
 }
 
-function Chat({ user, uid, prompt, files }: ChatProps) {
+function Chat({
+  user,
+  uid,
+  prompt,
+  files,
+  displayId,
+  initMessages,
+  disablePendingModelAutoStart,
+}: ChatProps) {
   const { t } = useTranslation();
   const { store } = useStore();
   const todosRef = useRef<Todo[] | undefined>(undefined);
@@ -83,25 +95,14 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
 
   const task = store.useQuery(catalog.queries.makeTaskQuery(uid));
   const subtask = useSubtaskInfo(uid, task?.parentId);
+  const topDisplayId = task?.parentId
+    ? (store.useQuery(catalog.queries.makeTaskQuery(task.parentId))
+        ?.displayId ?? displayId)
+    : displayId;
+
   const isSubTask = !!subtask;
 
-  useEffect(() => {
-    if (task) {
-      vscodeHost.onTaskUpdated(
-        taskCatalog.events.tastUpdated({
-          ...task,
-          title: task.title || undefined,
-          parentId: task.parentId || undefined,
-          cwd: task.cwd || undefined,
-          modelId: task.modelId || undefined,
-          error: task.error || undefined,
-          git: task.git || undefined,
-          shareId: task.shareId || undefined,
-          totalTokens: task.totalTokens || undefined,
-        }),
-      );
-    }
-  }, [task]);
+  const isNewTaskWithContent = !!prompt || !!files?.length;
 
   // inherit autoApproveSettings from parent task
   useEffect(() => {
@@ -147,8 +148,9 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
       },
     ) => {
       const lastMessage = data.messages.at(-1);
-      const taskUid = isSubTask ? task?.parentId : uid;
-      if (!taskUid || !lastMessage) return;
+      const topTaskUid = isSubTask ? task?.parentId : uid;
+      const cwd = data.cwd;
+      if (!topTaskUid || !lastMessage || !cwd) return;
 
       if (data.status === "pending-tool") {
         const pendingToolCallApproval = getPendingToolcallApproval(lastMessage);
@@ -162,8 +164,9 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
 
           if (!autoApproved) {
             sendNotification("pending-tool", {
-              uid: taskUid,
-              cwd: data.cwd,
+              uid: topTaskUid,
+              cwd,
+              displayId: topDisplayId,
               isSubTask,
             });
           }
@@ -184,8 +187,9 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
           (retryCount?.count !== undefined && retryCount.count >= retryLimit)
         ) {
           sendNotification("pending-input", {
-            uid: taskUid,
-            cwd: data.cwd,
+            uid: topTaskUid,
+            cwd,
+            displayId: topDisplayId,
             isSubTask,
           });
         }
@@ -193,8 +197,9 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
 
       if (data.status === "completed") {
         sendNotification("completed", {
-          uid: taskUid,
-          cwd: data.cwd,
+          uid: topTaskUid,
+          cwd,
+          displayId: topDisplayId,
           isSubTask,
         });
       }
@@ -203,8 +208,8 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
 
   const onStreamFailed = useLatest(
     ({ error, cwd }: { error: Error; cwd: string | null }) => {
-      const taskUid = isSubTask ? task?.parentId : uid;
-      if (!taskUid) return;
+      const topTaskUid = isSubTask ? task?.parentId : uid;
+      if (!topTaskUid || !cwd) return;
 
       let autoApprove = autoApproveGuard.current === "auto";
       if (error && !isRetryableError(error)) {
@@ -220,13 +225,19 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
         retryLimit === 0 ||
         (retryCount?.count !== undefined && retryCount.count >= retryLimit)
       ) {
-        sendNotification("failed", { uid: taskUid, cwd, isSubTask });
+        sendNotification("failed", {
+          uid: topTaskUid,
+          cwd,
+          displayId: topDisplayId,
+          isSubTask,
+        });
       }
     },
   );
 
   const chatKit = useLiveChatKit({
     taskId: uid,
+    displayId,
     getters,
     isSubTask,
     customAgent,
@@ -249,6 +260,7 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
     onOverrideMessages,
     onStreamStart() {
       clearNotification();
+      vscodeHost.onTaskRunning(task?.parentId || uid);
     },
     onStreamFinish(data) {
       onStreamFinish.current(data);
@@ -279,20 +291,65 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
   const { pendingApproval, retry } = approvalAndRetry;
 
   useEffect(() => {
+    const pendingToolApproval =
+      pendingApproval && pendingApproval.name !== "retry"
+        ? pendingApproval
+        : null;
+    const pendingToolCalls = pendingToolApproval
+      ? "tool" in pendingToolApproval
+        ? [pendingToolApproval.tool]
+        : pendingToolApproval.tools
+      : undefined;
+
+    if (task?.title) {
+      vscodeHost.onTaskUpdated(
+        Schema.encodeSync(taskCatalog.events.tastUpdated.schema)(
+          taskCatalog.events.tastUpdated({
+            ...task,
+            displayId: task.displayId || undefined,
+            title: task.title || undefined,
+            parentId: task.parentId || undefined,
+            cwd: task.cwd || undefined,
+            modelId: task.modelId || undefined,
+            error: task.error || undefined,
+            git: task.git || undefined,
+            shareId: task.shareId || undefined,
+            totalTokens: task.totalTokens || undefined,
+            pendingToolCalls,
+            lineChanges: task.lineChanges || undefined,
+            lastStepDuration: task.lastStepDuration || undefined,
+          }).args,
+        ),
+      );
+    }
+  }, [pendingApproval, task]);
+
+  useEffect(() => {
     if (
-      (prompt || !!files?.length) &&
+      (initMessages || prompt || !!files?.length) &&
       !chatKit.inited &&
       !isFetchingWorkspace
     ) {
-      let partsOrString: Message["parts"] | string;
-      if (files?.length) {
-        partsOrString = prepareMessageParts(t, prompt || "", files);
+      const cwd = currentWorkspace?.cwd ?? undefined;
+      if (initMessages) {
+        chatKit.init(cwd, { messages: initMessages });
+      } else if (files?.length) {
+        chatKit.init(cwd, {
+          parts: prepareMessageParts(t, prompt || "", files),
+        });
       } else {
-        partsOrString = prompt || "";
+        chatKit.init(cwd, { prompt: prompt || "" });
       }
-      chatKit.init(currentWorkspace?.cwd ?? undefined, partsOrString);
     }
-  }, [currentWorkspace, isFetchingWorkspace, prompt, chatKit, files, t]);
+  }, [
+    currentWorkspace,
+    isFetchingWorkspace,
+    prompt,
+    chatKit,
+    files,
+    t,
+    initMessages,
+  ]);
 
   useSetSubtaskModel({ isSubTask, customAgent });
 
@@ -301,7 +358,8 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
       status === "ready" &&
       messages.length === 1 &&
       !isModelsLoading &&
-      !!selectedModel,
+      !!selectedModel &&
+      !disablePendingModelAutoStart,
     task,
     retry,
   });
@@ -313,7 +371,6 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
     isLoading,
     pendingApprovalName: pendingApproval?.name,
   });
-
   // Display errors with priority: 1. autoDismissError, 2. uploadImageError, 3. error pending retry approval
   const displayError = isLoading
     ? undefined
@@ -323,6 +380,15 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
 
   useHandleChatEvents(
     isLoading || isModelsLoading || !selectedModel ? undefined : sendMessage,
+  );
+
+  const forkTask = useCallback(
+    async (commitId: string, messageId?: string) => {
+      if (task?.cwd) {
+        await forkTaskFromCheckPoint(messages, commitId, task.cwd, messageId);
+      }
+    },
+    [messages, task?.cwd],
   );
 
   return (
@@ -342,6 +408,8 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
           // Leave more space for errors as errors / approval button are absolutely positioned
           "pb-14": !!displayError,
         })}
+        hideEmptyPlaceholder={isNewTaskWithContent}
+        forkTask={task?.cwd ? forkTask : undefined}
       />
       <div className="relative flex flex-col px-4">
         {!isWorkspaceActive ? (
@@ -354,7 +422,7 @@ function Chat({ user, uid, prompt, files }: ChatProps) {
             chat={chat}
             task={task}
             todosRef={todosRef}
-            compact={chatKit.spawn}
+            compact={chatKit.compact}
             approvalAndRetry={approvalAndRetry}
             attachmentUpload={attachmentUpload}
             isSubTask={isSubTask}
@@ -387,4 +455,52 @@ function fromTaskError(task?: Task) {
   if (task?.error) {
     return new Error(task.error.message);
   }
+}
+
+async function forkTaskFromCheckPoint(
+  messages: Message[],
+  commitId: string,
+  cwd: string,
+  messageId?: string,
+) {
+  const initMessages: Message[] = [];
+  if (!messageId) {
+    const messageIndex = messages.findIndex((message) =>
+      message.parts.find(
+        (part) =>
+          part.type === "data-checkpoint" && part.data.commit === commitId,
+      ),
+    );
+    if (messageIndex < 0) {
+      throw new Error(
+        `Failed to fork task due to missing checkpoint for commitId ${commitId}`,
+      );
+    }
+
+    initMessages.push(...messages.slice(0, messageIndex));
+
+    const message = messages[messageIndex];
+    const partIndex = message.parts.findIndex(
+      (part) =>
+        part.type === "data-checkpoint" && part.data.commit === commitId,
+    );
+    initMessages.push({
+      ...message,
+      parts: message.parts.slice(0, partIndex),
+    });
+  } else {
+    const messageIndex = messages.findIndex(
+      (message) => message.id === messageId,
+    );
+    initMessages.push(...messages.slice(0, messageIndex + 1));
+  }
+
+  // Restore checkpoint
+  await vscodeHost.restoreCheckpoint(commitId);
+  // Create new task
+  await vscodeHost.openTaskInPanel({
+    cwd,
+    initMessages: JSON.stringify(initMessages),
+    disablePendingModelAutoStart: true,
+  });
 }

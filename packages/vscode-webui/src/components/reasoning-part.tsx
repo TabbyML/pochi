@@ -1,11 +1,11 @@
 import { Dot, Lightbulb } from "lucide-react";
 
 import { MessageMarkdown } from "@/components/message/markdown";
+import { ExpandableToolContainer } from "@/features/tools";
 import { cn, tw } from "@/lib/utils";
 import type { ReasoningUIPart } from "ai";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { ExpandableToolContainer } from "./tool-invocation/tool-container";
 
 interface ReasoningPartUIProps {
   isLoading: boolean;

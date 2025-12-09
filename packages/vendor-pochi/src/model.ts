@@ -7,13 +7,13 @@ import {
   EventSourceParserStream,
   convertToBase64,
 } from "@ai-sdk/provider-utils";
+import { constants, PochiProviderOptions } from "@getpochi/common";
 import type { CreateModelOptions } from "@getpochi/common/vendor/edge";
 import {
   type PochiCredentials,
   getServerBaseUrl,
 } from "@getpochi/common/vscode-webui-bridge";
 import { hc } from "hono/client";
-import * as R from "remeda";
 import type { PochiApi, PochiApiClient } from "./pochi-api";
 
 export function createPochiModel({
@@ -26,7 +26,23 @@ export function createPochiModel({
     modelId: modelId || "<default>",
     // FIXME(meng): fill supported urls based on modelId.
     supportedUrls: {},
-    doGenerate: async ({ headers, abortSignal, prompt, ...options }) => {
+    doGenerate: async ({
+      abortSignal,
+      prompt,
+      providerOptions,
+      ...options
+    }) => {
+      const headers: Record<string, string> = {};
+      const parsedOptions = PochiProviderOptions.safeParse(
+        providerOptions?.pochi,
+      );
+      if (parsedOptions.success) {
+        headers[constants.PochiTaskIdHeader] = parsedOptions.data.taskId;
+        headers[constants.PochiClientHeader] = parsedOptions.data.client;
+        headers[constants.PochiRequestUseCaseHeader] =
+          parsedOptions.data.useCase;
+      }
+
       const apiClient = createApiClient(getCredentials);
       const resp = await apiClient.api.chat.$post(
         {
@@ -39,7 +55,7 @@ export function createPochiModel({
           },
         },
         {
-          headers: headers ? R.mapValues(headers, (x) => x || "") : undefined,
+          headers,
           init: {
             signal: abortSignal,
           },
@@ -55,9 +71,20 @@ export function createPochiModel({
       abortSignal,
       stopSequences,
       tools,
-      headers,
+      providerOptions,
     }) => {
       const apiClient = createApiClient(getCredentials);
+      const headers: Record<string, string> = {};
+      const parsedOptions = PochiProviderOptions.safeParse(
+        providerOptions?.pochi,
+      );
+      if (parsedOptions.success) {
+        headers[constants.PochiTaskIdHeader] = parsedOptions.data.taskId;
+        headers[constants.PochiClientHeader] = parsedOptions.data.client;
+        headers[constants.PochiRequestUseCaseHeader] =
+          parsedOptions.data.useCase;
+      }
+
       const data = {
         model: modelId,
         callOptions: {
@@ -71,7 +98,7 @@ export function createPochiModel({
           json: data,
         },
         {
-          headers: headers ? R.mapValues(headers, (x) => x || "") : undefined,
+          headers,
           init: {
             signal: abortSignal,
           },
@@ -85,8 +112,21 @@ export function createPochiModel({
           responseHeaders[key] = value;
         });
 
+        let message = `Failed to fetch: ${resp.status} ${resp.statusText}`;
+
+        if (
+          resp.status >= 400 &&
+          resp.status < 600 &&
+          responseHeaders["content-type"]?.includes("text/plain")
+        ) {
+          const errorMessage = await resp.text();
+          if (errorMessage) {
+            message = errorMessage;
+          }
+        }
+
         throw new APICallError({
-          message: `Failed to fetch: ${resp.status} ${resp.statusText}`,
+          message,
           statusCode: resp.status,
           url: apiClient.api.chat.stream.$url().toString(),
           requestBodyValues: data,

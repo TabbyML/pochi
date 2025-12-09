@@ -69,4 +69,5 @@ ${EditFileResultPrompt}`.trim(),
   outputSchema: EditFileOutputSchema, // Assuming similar output structure for now
 };
 
-export const multiApplyDiff = defineClientTool(toolDef);
+const multiApplyDiff = defineClientTool(toolDef);
+export type multiApplyDiff = typeof multiApplyDiff;

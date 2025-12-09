@@ -55,6 +55,23 @@
     "super": "加强",
     "swift": "极速"
   },
+  "worktreeSelect": {
+    "selectWorktree": "选择工作树",
+    "createWorktree": "创建 Git 工作树",
+    "createWorktreeDescription": "在新的 Git 工作树中启动任务"
+  },
+  "worktree": {
+    "createPr": "创建 PR",
+    "createDraftPr": "创建草稿 PR",
+    "createPrManually": "手动创建 PR",
+    "installGhCli": "请安装 GitHub CLI 以创建 PR",
+    "authGhCli": "请运行 `gh auth login` 以验证 GitHub CLI",
+    "prNumber": "PR #{{number}}",
+    "merge": "合并",
+    "allChecksPassed": "所有检查已通过",
+    "allChecksFailed": "所有检查已失败",
+    "checksStatus": "{{passed}}/{{total}} 检查已通过"
+  },
   "settings": {
     "account": {
       "signIn": "登录获取 Pochi 模型",
@@ -164,7 +181,7 @@
   "tasksPage": {
     "emptyState": {
       "title": "未找到任务",
-      "description": "创建一个新任务以开始使用 Pochi",
+      "description": "无可用任务",
       "createButton": "创建新任务"
     },
     "status": {
@@ -180,7 +197,25 @@
       "selectDate": "选择日期",
       "today": "今天"
     },
-    "worktreeNotExist": "工作树不存在"
+    "worktreeNotExist": "工作树不存在",
+    "newTask": "新任务",
+    "deleted": "已删除",
+    "tasksCount": "{{count}} 个任务",
+    "showDeletedWorktrees": "显示已删除的工作树",
+    "hideDeletedWorktrees": "隐藏已删除的工作树",
+    "openWorktreeDiff": "查看更改",
+    "openWorktreeInTerminal": "在终端中打开工作树",
+    "deleteWorktree": "删除工作树",
+    "deleteWorktreeTitle": "删除工作树",
+    "deleteWorktreeConfirm": "确定要删除工作树 \"{{name}}\" 吗？",
+    "cancel": "取消",
+    "delete": "删除",
+    "taskStatus": {
+      "planning": "正在规划下一步操作",
+      "errorPrefix": "错误：",
+      "fallbackError": "遇到错误",
+      "finished": "已完成，耗时 {{duration}}"
+    }
   },
   "toolInvocation": {
     "taskCompleted": "任务完成",
@@ -203,6 +238,7 @@
     "applyingDiffsTo": "正在应用差异到 ",
     "in": "在",
     "executeCommand": "我将执行以下命令",
+    "executingCommand": "正在执行命令",
     "for": "匹配",
     "searching": "搜索中",
     "searchingFor": "搜索：",
@@ -211,12 +247,16 @@
     "matched": "个已匹配",
     "resultsTruncated": "，结果已截断",
     "stopBackgroundJob": "我将停止以下后台任务",
+    "stoppingBackgroundJob": "正在停止后台任务",
     "result_one": "{{count}}个结果",
     "result_other": "{{count}}个结果",
     "readBackground": "正在读取后台任务输出",
     "withRegexFilter": "使用正则表达式过滤器",
     "backgroundExecute": "我将在后台执行以下命令",
-    "updatingToDos": "更新待办事项中"
+    "backgroundExecuting": "正在后台执行命令",
+    "updatingToDos": "更新待办事项中",
+    "editing": "正在编辑 ",
+    "moreTools": "，以及另外 {{count}} 个工具"
   },
   "reasoning": {
     "thinking": "思考中 ...",
@@ -232,7 +272,9 @@
     "restore": "恢复",
     "opening": "打开中...",
     "noChangesDetected": "未检测到更改",
-    "compare": "比较"
+    "compare": "比较",
+    "fork": "新建分支任务",
+    "forking": "创建中..."
   },
   "welcomeScreen": {
     "title": "开始使用",
@@ -249,9 +291,6 @@
   "newProblems": {
     "aboveProblemsDetected": "上述问题在更改后被检测到",
     "problemsDetectedTooltip": "更改后检测到问题"
-  },
-  "userEdits": {
-    "youHaveMadeAboveEdits": "您已进行了上述编辑"
   },
   "fileBadge": {
     "modifiedByPochi": "（由 Pochi 修改）"
@@ -356,5 +395,13 @@
     "previous": "上一页",
     "next": "下一页",
     "morePages": "更多页面"
+  },
+  "diffSummary": {
+    "filesChanged_one": "{{count}} 个文件已更改",
+    "filesChanged_other": "{{count}} 个文件已更改",
+    "keep": "保留",
+    "undo": "撤销",
+    "viewChanges": "查看更改",
+    "openFile": "打开文件"
   }
 }

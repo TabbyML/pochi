@@ -6,18 +6,20 @@ import type { UserInfo } from "../configuration";
 import type {
   CaptureEvent,
   CustomAgentFile,
+  FileDiff,
   GitWorktree,
   McpStatus,
-  NewTaskParams,
+  NewTaskPanelParams,
   ResourceURI,
   RuleFile,
   SaveCheckpointOptions,
   SessionState,
-  TaskIdParams,
+  TaskChangedFile,
   TaskPanelParams,
-  UserEditsDiff,
+  TaskStates,
   WorkspaceState,
 } from "./index";
+import type { DiffCheckpointOptions } from "./types/git";
 import type { DisplayModel } from "./types/model";
 import type { PochiCredentials } from "./types/pochi";
 
@@ -57,7 +59,6 @@ export interface VSCodeHostApi {
       toolCallId: string;
       state: "partial-call" | "call" | "result";
       abortSignal?: ThreadAbortSignalSerialization;
-      nonInteractive?: boolean;
     },
   ): Promise<PreviewReturnType>;
 
@@ -76,7 +77,6 @@ export interface VSCodeHostApi {
     options: {
       toolCallId: string;
       abortSignal: ThreadAbortSignalSerialization;
-      nonInteractive?: boolean;
       contentType?: string[];
     },
   ): Promise<unknown>;
@@ -120,6 +120,8 @@ export interface VSCodeHostApi {
   readActiveTabs(): Promise<
     ThreadSignalSerialization<Array<{ filepath: string; isDir: boolean }>>
   >;
+
+  readPochiTasks(): Promise<ThreadSignalSerialization<TaskStates>>;
 
   readActiveSelection(): Promise<
     ThreadSignalSerialization<
@@ -230,24 +232,32 @@ export interface VSCodeHostApi {
 
   /**
    * Restores the checkpoint to the latest commit or a specific commit hash.
-   * @param commitHash - The commit hash to restore to. If not provided, restores to the latest checkpoint.
+   * @param commitHash - The commit hash to restore to.
+   * @param files - Optional list of files to restore. If provided, only these files will be restored.
    */
-  restoreCheckpoint(commitHash?: string): Promise<void>;
+  restoreCheckpoint(commitHash: string, files?: string[]): Promise<void>;
+
+  restoreChangedFiles(files: TaskChangedFile[]): Promise<void>;
 
   readCheckpointPath(): Promise<string | undefined>;
 
   /**
    * Reads user edits since the last checkpoint as diff stats.
    * @param fromCheckpoint - checkpoint hash to compare from.
+   * @param files - Optional list of files to compare. If provided, only these files will be compared.
    * @returns A promise that resolves to an array of file diff stats, or null if no edits.
    */
-  diffWithCheckpoint(fromCheckpoint: string): Promise<UserEditsDiff[] | null>;
+  diffWithCheckpoint(
+    fromCheckpoint: string,
+    files?: string[],
+    options?: DiffCheckpointOptions,
+  ): Promise<FileDiff[] | null>;
 
   /**
    * Shows the code diff between two checkpoints.
    * @param title - The title of the diff view.
    * @param checkpoint - An object containing the origin and modified checkpoint commits.
-   * @param displayPath - The file path to display in the diff view. If not provided, the diff will be shown for all files.
+   * @param displayPaths - The file path to display in the diff view. If not provided, the diff will be shown for all files.
    * @return A promise that resolves to a boolean indicating whether the diff was shown successfully.
    * If there is no diff, it resolves to false.
    */
@@ -257,8 +267,12 @@ export interface VSCodeHostApi {
       origin: string;
       modified?: string;
     },
-    displayPath?: string,
+    displayPaths?: string[],
   ): Promise<boolean>;
+
+  diffChangedFiles(changedFiles: TaskChangedFile[]): Promise<TaskChangedFile[]>;
+
+  showChangedFiles(files: TaskChangedFile[], title: string): Promise<boolean>;
 
   readExtensionVersion(): Promise<string>;
 
@@ -285,23 +299,35 @@ export interface VSCodeHostApi {
     ThreadSignalSerialization<Record<string, UserInfo>>
   >;
 
-  openTaskInPanel(params: TaskPanelParams): Promise<void>;
+  /**
+   * create or open a task in a new panel
+   */
+  openTaskInPanel(params: TaskPanelParams | NewTaskPanelParams): Promise<void>;
 
-  isTaskPanelVisible(params: TaskPanelParams): Promise<boolean>;
+  sendTaskNotification(
+    kind: "failed" | "completed" | "pending-tool" | "pending-input",
+    params: TaskPanelParams & { isSubTask?: boolean },
+  ): Promise<void>;
 
   onTaskUpdated(taskData: unknown): Promise<void>;
 
-  readWorktrees(): Promise<ThreadSignalSerialization<GitWorktree[]>>;
+  onTaskRunning(taskId: string): Promise<void>;
+
+  readWorktrees(): Promise<{
+    worktrees: ThreadSignalSerialization<GitWorktree[]>;
+    ghCli: ThreadSignalSerialization<{
+      installed: boolean;
+      authorized: boolean;
+    }>;
+    gitOriginUrl: string | null;
+  }>;
 
   createWorktree(): Promise<GitWorktree | null>;
+
+  deleteWorktree(worktreePath: string): Promise<boolean>;
 }
 
 export interface WebviewHostApi {
-  /**
-   * @param params - Existing task id or new task params.
-   */
-  openTask(params: TaskIdParams | NewTaskParams): void;
-
   openTaskList(): void;
 
   openSettings(): void;
@@ -311,4 +337,6 @@ export interface WebviewHostApi {
   isFocused(): Promise<boolean>;
 
   commitTaskUpdated(event: unknown): Promise<void>;
+
+  onFileChanged(filePath: string, content: string): void;
 }

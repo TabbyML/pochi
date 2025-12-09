@@ -10,6 +10,7 @@ import {
   useToolAutoApproval,
 } from "@/features/settings";
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
+import { vscodeHost } from "@/lib/vscode";
 import { useStore } from "@livestore/react";
 import { useNavigate } from "@tanstack/react-router";
 import { getToolName } from "ai";
@@ -18,12 +19,16 @@ import type { PendingToolCallApproval } from "../hooks/use-pending-tool-call-app
 interface ToolCallApprovalButtonProps {
   pendingApproval: PendingToolCallApproval;
   isSubTask: boolean;
+  taskId?: string;
+  parentUid?: string;
 }
 
 // Component
 export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
+  taskId,
   pendingApproval,
   isSubTask,
+  parentUid,
 }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -112,6 +117,11 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
       lifecycle.execute(tools[i].input, {
         contentType: selectedModel?.contentType,
       });
+
+      const uid = parentUid || taskId;
+      if (uid) {
+        vscodeHost.onTaskRunning(uid);
+      }
     }
   }, [
     tools,
@@ -121,6 +131,8 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
     pendingApproval,
     subtaskOffhand,
     selectedModel,
+    taskId,
+    parentUid,
   ]);
 
   const onReject = useCallback(() => {

@@ -60,6 +60,18 @@
     "createWorktree": "Create Git worktree",
     "createWorktreeDescription": "Start task in a new Git worktree"
   },
+  "worktree": {
+    "createPr": "Create PR",
+    "createDraftPr": "Create draft PR",
+    "createPrManually": "Create PR manually",
+    "installGhCli": "Please install GitHub CLI to create PRs",
+    "authGhCli": "Please run `gh auth login` to authenticate GitHub CLI",
+    "prNumber": "PR #{{number}}",
+    "merge": "Merge",
+    "allChecksPassed": "All checks have passed",
+    "allChecksFailed": "All checks have failed",
+    "checksStatus": "{{passed}}/{{total}} checks have passed"
+  },
   "settings": {
     "account": {
       "signIn": "Sign-In for Pochi models",
@@ -171,7 +183,7 @@
   "tasksPage": {
     "emptyState": {
       "title": "No tasks found",
-      "description": "Create a new task to get started with Pochi",
+      "description": "No tasks available",
       "createButton": "New Task"
     },
     "status": {
@@ -187,7 +199,26 @@
       "selectDate": "Select date",
       "today": "Today"
     },
-    "worktreeNotExist": "Worktree does not exist"
+    "worktreeNotExist": "Worktree does not exist",
+    "newTask": "New Task",
+    "deleted": "Deleted",
+    "tasksCount": "{{count}} tasks",
+    "showDeletedWorktrees": "Show deleted worktrees",
+    "hideDeletedWorktrees": "Hide deleted worktrees",
+    "openWorktreeDiff": "Review changes",
+    "openWorktreeInTerminal": "Open worktree in terminal",
+    "deleteWorktree": "Delete worktree",
+    "deleteWorktreeTitle": "Delete worktree",
+    "deleteWorktreeConfirm": "Are you sure you want to delete the worktree \"{{name}}\"?",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "taskStatus": {
+      "planning": "Planning next moves",
+      "paused": "Task is paused",
+      "errorPrefix": "Error:",
+      "fallbackError": "Error encountered",
+      "finished": "Finished in {{duration}}"
+    }
   },
   "toolInvocation": {
     "taskCompleted": "Task Completed",
@@ -210,6 +241,7 @@
     "applyingDiffsTo": "Applying diffs to ",
     "in": "in",
     "executeCommand": "I will execute the following command",
+    "executingCommand": "Executing command",
     "for": "for",
     "searching": "Searching",
     "searchingFor": "Searching for:",
@@ -218,12 +250,17 @@
     "matched": " matched",
     "resultsTruncated": ", results truncated",
     "stopBackgroundJob": "I will stop the following background job",
+    "stoppingBackgroundJob": "Stopping background job",
     "result_one": "{{count}} result",
     "result_other": "{{count}} results",
     "readBackground": "Reading background job output",
     "withRegexFilter": "with regex filter",
     "backgroundExecute": "I will execute the following command in the background",
-    "updatingToDos": "Updating todos"
+    "backgroundExecuting": "Executing command in background",
+    "updatingToDos": "Updating todos",
+    "editing": "Editing ",
+    "moreTools_one": ", and {{count}} more tool",
+    "moreTools_other": ", and {{count}} more tools"
   },
   "reasoning": {
     "thinking": "Thinking ...",
@@ -239,7 +276,9 @@
     "restore": "Restore",
     "opening": "Opening...",
     "noChangesDetected": "No changes detected",
-    "compare": "Compare"
+    "compare": "Compare",
+    "fork": "Fork",
+    "forking": "Forking"
   },
   "welcomeScreen": {
     "title": "Get Started",
@@ -256,9 +295,6 @@
   "newProblems": {
     "aboveProblemsDetected": "Above problems have been detected after the change",
     "problemsDetectedTooltip": "Problems detected after change"
-  },
-  "userEdits": {
-    "youHaveMadeAboveEdits": "You have made the above edits"
   },
   "fileBadge": {
     "modifiedByPochi": "(Modified by Pochi)"
@@ -358,5 +394,13 @@
     "previous": "Previous",
     "next": "Next",
     "morePages": "More pages"
+  },
+  "diffSummary": {
+    "filesChanged_one": "{{count}} file changed",
+    "filesChanged_other": "{{count}} files changed",
+    "keep": "Keep",
+    "undo": "Undo",
+    "viewChanges": "View changes",
+    "openFile": "Open file"
   }
 }

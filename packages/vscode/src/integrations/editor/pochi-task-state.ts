@@ -1,0 +1,152 @@
+import { taskRunning, taskUpdated } from "@/lib/task-events";
+import { getLogger } from "@getpochi/common";
+import type { TaskStates } from "@getpochi/common/vscode-webui-bridge";
+import { signal } from "@preact/signals-core";
+import * as R from "remeda";
+import { injectable, singleton } from "tsyringe";
+import * as vscode from "vscode";
+import { PochiTaskEditorProvider } from "../webview/webview-panel";
+
+const logger = getLogger("PochiTaskState");
+
+@injectable()
+@singleton()
+export class PochiTaskState implements vscode.Disposable {
+  private disposables: vscode.Disposable[] = [];
+  state = signal<TaskStates>({});
+
+  constructor() {
+    this.state.value = createTaskStates();
+    this.setupEventListeners();
+  }
+
+  /**
+   * Set up listeners for tab changes and active editor changes
+   */
+  private setupEventListeners() {
+    // Set up tab change detection
+    this.disposables.push(
+      vscode.window.tabGroups.onDidChangeTabs(this.onTabChanged),
+    );
+
+    // Set up task update detection
+    this.disposables.push(taskUpdated.event(this.onTaskUpdated));
+    this.disposables.push(taskRunning.event(this.onTaskRunning));
+  }
+
+  private onTabChanged = () => {
+    const tabGroups = vscode.window.tabGroups.all;
+    const newState: TaskStates = {};
+
+    for (const group of tabGroups) {
+      for (const tab of group.tabs) {
+        const uid = getTaskUid(tab);
+        if (!uid) continue;
+        if (this.state.value[uid]) {
+          newState[uid] = { ...this.state.value[uid], active: false };
+        } else {
+          newState[uid] = {};
+        }
+      }
+
+      const activeUid = group.activeTab
+        ? getTaskUid(group.activeTab)
+        : undefined;
+      if (activeUid) {
+        newState[activeUid].active = true;
+        newState[activeUid].unread = false;
+      }
+    }
+
+    this.saveState(newState);
+  };
+
+  private onTaskUpdated = ({ event }: { event: unknown }) => {
+    const taskData = event as {
+      id: string;
+      parentId?: string;
+      status?: string;
+    };
+    const uid = taskData.id;
+    const topTaskUid = taskData.parentId || taskData.id;
+
+    if (!topTaskUid) return;
+
+    const newState = R.clone(this.state.value);
+    const current = newState[topTaskUid] || {};
+    current.unread = !current.active;
+
+    // If status indicates the task is no longer running, clear the running flag
+    if (
+      taskData.status &&
+      !["pending-tool", "pending-model"].includes(taskData.status)
+    ) {
+      logger.trace(
+        `Task ${uid} is no longer running (status: ${taskData.status})`,
+      );
+      current.running = false;
+    }
+
+    newState[topTaskUid] = current;
+    this.saveState(newState);
+  };
+
+  private onTaskRunning = ({ taskId }: { taskId: string }) => {
+    const newState = R.clone(this.state.value);
+    const current = newState[taskId] || {};
+    logger.trace(`Task ${taskId} is now running`);
+    current.running = true;
+    newState[taskId] = current;
+    this.saveState(newState);
+  };
+
+  private saveState(newState: TaskStates) {
+    if (!R.isDeepEqual(this.state.value, newState)) {
+      logger.trace("Updating task states.", {
+        oldState: this.state.value,
+        newState,
+      });
+      this.state.value = newState;
+    }
+  }
+
+  /**
+   * Release all resources held by this class
+   */
+  dispose() {
+    for (const disposable of this.disposables) {
+      disposable.dispose();
+    }
+    this.disposables = [];
+  }
+}
+
+function getTaskUid(tab: vscode.Tab): string | undefined {
+  if (
+    tab.input instanceof vscode.TabInputCustom &&
+    tab.input.uri.scheme === PochiTaskEditorProvider.scheme
+  ) {
+    const params = PochiTaskEditorProvider.parseTaskUri(tab.input.uri);
+    return params?.uid;
+  }
+  return undefined;
+}
+
+function createTaskStates(): TaskStates {
+  const state: TaskStates = {};
+
+  for (const tabGroup of vscode.window.tabGroups.all) {
+    for (const tab of tabGroup.tabs) {
+      if (
+        tab.input instanceof vscode.TabInputCustom &&
+        tab.input.uri.scheme === PochiTaskEditorProvider.scheme
+      ) {
+        const params = PochiTaskEditorProvider.parseTaskUri(tab.input.uri);
+        if (params) {
+          state[params.uid] = {};
+        }
+      }
+    }
+  }
+  return state;
+}

@@ -102,7 +102,7 @@ export function SharePage() {
                 <div className="col-span-1">
                   <TodoList
                     todos={todos}
-                    className="[&>.todo-border]:!hidden px-4 md:px-0"
+                    className="px-4 md:px-0"
                     disableCollapse
                     disableInProgressTodoTitle
                   >

@@ -9,6 +9,8 @@ on:
 
   merge_group:
 
+  workflow_dispatch:
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
 
@@ -35,5 +37,6 @@ jobs:
       - run: bun test:coverage
       - name: Upload results to Codecov
         uses: codecov/codecov-action@v5
+        if: ${{ !contains(github.ref, 'gh-readonly-queue/') }}
         with:
           token: ${{ secrets.CODECOV_TOKEN }}

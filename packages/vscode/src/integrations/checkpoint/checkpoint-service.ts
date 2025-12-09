@@ -1,11 +1,14 @@
 import { mkdir } from "node:fs/promises";
+import * as fs from "node:fs/promises";
 import * as path from "node:path";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { WorkspaceScope } from "@/lib/workspace-scoped";
 import { getLogger, toErrorMessage } from "@getpochi/common";
 import type {
+  DiffCheckpointOptions,
+  FileDiff,
   SaveCheckpointOptions,
-  UserEditsDiff,
+  TaskChangedFile,
 } from "@getpochi/common/vscode-webui-bridge";
 import { Lifecycle, inject, injectable, scoped } from "tsyringe";
 import type * as vscode from "vscode";
@@ -14,7 +17,7 @@ import type { GitDiff } from "./types";
 import {
   Deferred,
   filterGitChanges,
-  processGitChangesToUserEdits,
+  processGitChangesToFileEdits,
 } from "./util";
 
 const logger = getLogger("CheckpointService");
@@ -108,7 +111,10 @@ export class CheckpointService implements vscode.Disposable {
    * @param commitHash The commit hash to restore the checkpoint from.
    * @returns A promise that resolves when the checkpoint is restored.
    */
-  restoreCheckpoint = async (commitHash: string): Promise<void> => {
+  restoreCheckpoint = async (
+    commitHash: string,
+    files?: string[],
+  ): Promise<void> => {
     logger.trace(`Restoring checkpoint for commit hash: ${commitHash}`);
     await this.ensureInitialized();
 
@@ -117,13 +123,48 @@ export class CheckpointService implements vscode.Disposable {
     }
 
     try {
-      await this.shadowGit.reset(commitHash);
+      await this.shadowGit.reset(commitHash, files);
     } catch (error) {
       const errorMessage = toErrorMessage(error);
       logger.error(
         `Failed to restore checkpoint for commit hash: ${commitHash}: ${errorMessage}`,
       );
       throw new Error(`Failed to restore checkpoint: ${errorMessage}`);
+    }
+  };
+
+  restoreChangedFiles = async (files: TaskChangedFile[]): Promise<void> => {
+    await this.ensureInitialized();
+    if (!this.shadowGit) {
+      throw new Error("Shadow Git repository not initialized");
+    }
+
+    try {
+      for (const file of files) {
+        if (file.content === null) {
+          await fs.rm(path.join(this.cwd, file.filepath), { force: true });
+        } else if (file.content?.type === "checkpoint") {
+          const exists = await this.checkFileExistsInCheckpoint(
+            file.content.commit,
+            file.filepath,
+          );
+          if (exists) {
+            await this.shadowGit.reset(file.content.commit, [file.filepath]);
+          } else {
+            await fs.rm(path.join(this.cwd, file.filepath), { force: true });
+          }
+        } else if (file.content?.type === "text") {
+          await fs.writeFile(
+            path.join(this.cwd, file.filepath),
+            file.content.text,
+            "utf8",
+          );
+        }
+      }
+    } catch (error) {
+      const errorMessage = toErrorMessage(error);
+      logger.error(`Failed to restore changed files: ${errorMessage}`);
+      throw new Error(`Failed to restore changed files: ${errorMessage}`);
     }
   };
 
@@ -147,7 +188,7 @@ export class CheckpointService implements vscode.Disposable {
     }
     try {
       const changes = await this.shadowGit.getDiff(from, to);
-      return filterGitChanges(changes, 48 * 1024); // 48 KB
+      return filterGitChanges(changes);
     } catch (error) {
       const errorMessage = toErrorMessage(error);
       logger.error(
@@ -158,24 +199,157 @@ export class CheckpointService implements vscode.Disposable {
     }
   };
 
-  getCheckpointUserEditsDiff = async (
+  getCheckpointFileEdits = async (
     from: string,
-    to?: string,
-  ): Promise<UserEditsDiff[] | null> => {
+    files?: string[],
+    options?: DiffCheckpointOptions,
+  ): Promise<FileDiff[] | null> => {
     await this.ensureInitialized();
     if (!this.shadowGit) {
       throw new Error("Shadow Git repository not initialized");
     }
     try {
-      const changes = await this.shadowGit.getDiff(from, to);
-      return processGitChangesToUserEdits(changes);
+      await this.shadowGit.stageAll(); // Ensure all changes are staged, including untracked files
+      const changes = await this.shadowGit.getDiff(from, undefined, files);
+      const result = processGitChangesToFileEdits(changes, options);
+      logger.debug(
+        `Git diff for commit hash ${from} for files: ${files ?? "all"} ${JSON.stringify(changes)} ${JSON.stringify(result)}`,
+      );
+      return result;
     } catch (error) {
       const errorMessage = toErrorMessage(error);
       logger.error(
-        `Failed to get user edits for commit hash: ${from} to: ${to}: ${errorMessage}`,
+        `Failed to get user edits for commit hash: ${from}${files ? ` for files: ${files}` : ""}: ${errorMessage}`,
         { error },
       );
       return null;
+    }
+  };
+
+  diffChangedFiles = async (
+    changedFiles: TaskChangedFile[],
+  ): Promise<TaskChangedFile[]> => {
+    await this.ensureInitialized();
+    if (!this.shadowGit) {
+      throw new Error("Shadow Git repository not initialized");
+    }
+
+    const result: TaskChangedFile[] = [];
+    for (const file of changedFiles) {
+      let changes: GitDiff[] = [];
+      if (file.content?.type === "checkpoint") {
+        changes = await this.shadowGit.getDiff(file.content.commit, undefined, [
+          file.filepath,
+        ]);
+      } else {
+        let content = null;
+        if (file.content?.type === "text") {
+          content = file.content.text;
+        }
+        let afterContent = null;
+        try {
+          afterContent = await fs.readFile(
+            path.join(this.cwd, file.filepath),
+            "utf8",
+          );
+        } catch (error) {}
+        changes = [
+          {
+            filepath: file.filepath,
+            before: content,
+            after: afterContent,
+          },
+        ];
+      }
+
+      const diff = processGitChangesToFileEdits(changes);
+
+      logger.debug(
+        `update diff for changed file: ${JSON.stringify(diff)} state=${file.state}`,
+      );
+
+      if (diff && diff.length > 0) {
+        const firstDiff = diff[0];
+        if (firstDiff.added || firstDiff.removed || firstDiff.deleted) {
+          result.push({
+            ...file,
+            filepath: file.filepath,
+            added: firstDiff.added,
+            removed: firstDiff.removed,
+            deleted: firstDiff.deleted,
+            state: "pending",
+          });
+        } else {
+          result.push(file);
+        }
+      }
+    }
+
+    return result;
+  };
+
+  getChangedFilesChanges = async (
+    changedFiles: TaskChangedFile[],
+  ): Promise<GitDiff[]> => {
+    await this.ensureInitialized();
+    if (!this.shadowGit) {
+      throw new Error("Shadow Git repository not initialized");
+    }
+
+    const changes: GitDiff[] = [];
+    for (const file of changedFiles) {
+      if (file.content?.type === "checkpoint") {
+        const diffResult = await this.shadowGit.getDiff(
+          file.content.commit,
+          undefined,
+          [file.filepath],
+        );
+        changes.push(diffResult[0]);
+      } else {
+        let content = "";
+        if (file.content?.type === "text") {
+          content = file.content.text;
+        }
+        let afterContent = null;
+        try {
+          afterContent = await fs.readFile(
+            path.join(this.cwd, file.filepath),
+            "utf8",
+          );
+        } catch (error) {}
+        changes.push({
+          filepath: file.filepath,
+          before: content,
+          after: afterContent,
+        });
+      }
+    }
+    return changes;
+  };
+
+  checkFileExistsInCheckpoint = async (
+    commitHash: string,
+    filepath: string,
+  ): Promise<boolean> => {
+    await this.ensureInitialized();
+    if (!this.shadowGit) {
+      throw new Error("Shadow Git repository not initialized");
+    }
+
+    try {
+      const exists = await this.shadowGit.fileExistsInCommit(
+        commitHash,
+        filepath,
+      );
+      return exists;
+    } catch (error) {
+      const errorMessage = toErrorMessage(error);
+      logger.error(
+        `Failed to check if file exists in checkpoint for commit hash: ${commitHash}, filepath: ${filepath}: ${errorMessage}`,
+      );
+      throw new Error(
+        `Failed to check file existence in checkpoint: ${errorMessage}`,
+      );
     }
   };
 

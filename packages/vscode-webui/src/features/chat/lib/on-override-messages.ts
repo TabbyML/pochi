@@ -1,21 +1,47 @@
 import { vscodeHost } from "@/lib/vscode";
 import { prompts } from "@getpochi/common";
 import { extractWorkflowBashCommands } from "@getpochi/common/message-utils";
-import type { Message } from "@getpochi/livekit";
+import type { TaskChangedFile } from "@getpochi/common/vscode-webui-bridge";
+import { type Message, catalog } from "@getpochi/livekit";
+import type { Store } from "@livestore/livestore";
 import { ThreadAbortSignal } from "@quilted/threads";
+import { unique } from "remeda";
+import { getTaskChangedFileStore } from "./use-task-changed-files";
 
 /**
  * Handles the onOverrideMessages event by appending a checkpoint to the last message.
  * This ensures that each request has a checkpoint for potential rollbacks.
  */
 export async function onOverrideMessages({
+  store,
+  taskId,
   messages,
   abortSignal,
-}: { messages: Message[]; abortSignal: AbortSignal }) {
+}: {
+  store: Store;
+  taskId: string;
+  messages: Message[];
+  abortSignal: AbortSignal;
+}) {
+  const checkpoints = messages
+    .flatMap((m) => m.parts.filter((p) => p.type === "data-checkpoint"))
+    .map((p) => p.data.commit);
   const lastMessage = messages.at(-1);
   if (lastMessage) {
-    await appendCheckpoint(lastMessage);
+    const ckpt = await appendCheckpoint(lastMessage);
     await appendWorkflowBashOutputs(lastMessage, abortSignal);
+
+    const firstCheckpoint = checkpoints.at(0);
+    if (firstCheckpoint) {
+      // side bar diff edits
+      await updateTaskLineChanges(store, taskId, firstCheckpoint);
+    }
+
+    const lastCheckpoint = checkpoints.at(-1);
+    if (ckpt && lastMessage.role === "assistant" && lastCheckpoint) {
+      // diff summary in chat view
+      await updateChangedFiles(taskId, lastCheckpoint, lastMessage);
+    }
   }
 }
 
@@ -49,6 +75,7 @@ async function appendCheckpoint(message: Message) {
       commit: ckpt,
     },
   });
+  return ckpt;
 }
 
 /**
@@ -92,4 +119,79 @@ async function appendWorkflowBashOutputs(
   if (bashCommandResults.length) {
     prompts.injectBashOutputs(message, bashCommandResults);
   }
+}
+
+async function updateTaskLineChanges(
+  store: Store,
+  taskId: string,
+  firstCheckpoint: string,
+) {
+  const fileDiffResult = await vscodeHost.diffWithCheckpoint(firstCheckpoint);
+  const totalAdditions =
+    fileDiffResult?.reduce((sum, file) => sum + file.added, 0) ?? 0;
+  const totalDeletions =
+    fileDiffResult?.reduce((sum, file) => sum + file.removed, 0) ?? 0;
+
+  const task = store.query(catalog.queries.makeTaskQuery(taskId));
+
+  if (task) {
+    const updatedAt = new Date();
+    store.commit(
+      catalog.events.updateLineChanges({
+        id: taskId,
+        lineChanges: {
+          added: totalAdditions,
+          removed: totalDeletions,
+        },
+        updatedAt,
+      }),
+    );
+  }
+}
+
+async function updateChangedFiles(
+  taskId: string,
+  lastCheckpoint: string,
+  lastMessage: Message,
+) {
+  // recent changed file since last checkpoint
+  const recentChangedFiles = unique(
+    lastMessage.parts
+      .slice(
+        lastMessage.parts.findIndex(
+          (p) =>
+            p.type === "data-checkpoint" && p.data.commit === lastCheckpoint,
+        ) + 1,
+      )
+      .filter(
+        (p) =>
+          (p.type === "tool-applyDiff" ||
+            p.type === "tool-multiApplyDiff" ||
+            p.type === "tool-writeToFile") &&
+          p.state === "output-available",
+      )
+      .map((p) => p.input.path),
+  );
+
+  const store = getTaskChangedFileStore(taskId);
+  const { changedFiles, setChangedFile } = store.getState();
+
+  const updatedChangedFiles: TaskChangedFile[] = [...changedFiles];
+  for (const filePath of recentChangedFiles) {
+    const currentFile = changedFiles.find((f) => f.filepath === filePath);
+
+    // first time seeing this file change
+    if (!currentFile) {
+      updatedChangedFiles.push({
+        filepath: filePath,
+        added: 0,
+        removed: 0,
+        content: { type: "checkpoint", commit: lastCheckpoint },
+        deleted: false,
+        state: "pending",
+      });
+    }
+  }
+  const diffResult = await vscodeHost.diffChangedFiles(updatedChangedFiles);
+  setChangedFile(diffResult);
 }

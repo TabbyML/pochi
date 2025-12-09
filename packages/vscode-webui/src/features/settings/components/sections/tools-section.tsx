@@ -3,11 +3,12 @@ import { useTranslation } from "react-i18next";
 import { Section, SubSection } from "../ui/section";
 import { ToolBadgeList } from "../ui/tool-badge";
 import { McpSection, PochiTools } from "./mcp-section";
+
 export const ToolsSection: React.FC = () => {
   const { t } = useTranslation();
-  const toolsData = Object.entries(ToolDescriptions).map(
-    ([id, description]) => ({ id, description }),
-  );
+  const toolsData = Object.entries(ToolDescriptions)
+    .filter((x) => x[0] !== "multiApplyDiff")
+    .map(([id, description]) => ({ id, description }));
 
   const renderToolsContent = () => {
     return <ToolBadgeList tools={toolsData} />;

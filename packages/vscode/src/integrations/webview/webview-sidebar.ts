@@ -1,5 +1,6 @@
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { AuthEvents } from "@/lib/auth-events";
+import { taskUpdated } from "@/lib/task-events";
 import type {
   ResourceURI,
   VSCodeHostApi,
@@ -9,7 +10,7 @@ import { inject, injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { PochiConfiguration } from "../configuration";
-import { WebviewBase, taskUpdated } from "./base";
+import { WebviewBase } from "./base";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { VSCodeHostImpl } from "./vscode-host-impl";
 
@@ -105,6 +106,7 @@ export class PochiWebviewSidebar
       }
 
       const { commitTaskUpdated } = thread.imports;
+
       this.disposables.push(
         taskUpdated.event(({ event }) => commitTaskUpdated(event)),
       );

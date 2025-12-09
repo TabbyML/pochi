@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <img alt="Visual Studio Marketplace Version" src="https://img.shields.io/visual-studio-marketplace/v/tabbyml.pochi">
+  <a href="https://marketplace.visualstudio.com/items?itemName=TabbyML.pochi"><img alt="Visual Studio Marketplace Version" src="https://img.shields.io/visual-studio-marketplace/v/tabbyml.pochi"></a>
   <a href="https://codecov.io/github/TabbyML/pochi"><img src="https://codecov.io/github/TabbyML/pochi/graph/badge.svg?token=VV9JGSXAWI" alt="Codecov" /></a>
 </p>
 
@@ -37,7 +37,7 @@ Pochi's workflow is built on these principles:
 
 ## 💬 Community & Support
 
-Interested in contributing or just engaging with the team? We welcome your input through our [Discord Community](http://getpochi.com/discord)! Feel free to share feedback, report bugs, and suggest features there!
+Interested in contributing or just engaging with the team? We welcome your input through our [Discord Community](https://getpochi.com/discord)! Feel free to share feedback, report bugs, and suggest features there!
 
 ## 📄 License
 

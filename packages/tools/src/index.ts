@@ -13,7 +13,7 @@ import { attemptCompletion } from "./attempt-completion";
 import { executeCommand } from "./execute-command";
 import { globFiles } from "./glob-files";
 import { listFiles } from "./list-files";
-import { multiApplyDiff } from "./multi-apply-diff";
+import type { multiApplyDiff } from "./multi-apply-diff";
 import { type CustomAgent, createNewTaskTool } from "./new-task";
 import { searchFiles } from "./search-files";
 import { todoWrite } from "./todo-write";
@@ -79,7 +79,6 @@ export const ToolsByPermission = {
   write: [
     "writeToFile",
     "applyDiff",
-    "multiApplyDiff",
     "editNotebook",
   ] satisfies ToolName[] as string[],
   execute: [
@@ -100,7 +99,6 @@ const createCliTools = (options?: CreateToolOptions) => ({
   executeCommand,
   globFiles,
   listFiles,
-  multiApplyDiff,
   readFile: createReadFileTool(options?.contentType),
   searchFiles,
   todoWrite,
@@ -123,7 +121,9 @@ export const createClientTools = (options?: CreateToolOptions) => {
   };
 };
 
-export type ClientTools = ReturnType<typeof createClientTools>;
+export type ClientTools = ReturnType<typeof createClientTools> & {
+  multiApplyDiff: multiApplyDiff;
+};
 
 export const selectClientTools = (
   options: {

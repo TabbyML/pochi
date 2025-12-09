@@ -1,9 +1,9 @@
-import { FileList } from "@/components/tool-invocation/file-list";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { FileList } from "@/features/tools";
 import { cn } from "@/lib/utils";
 
 import {

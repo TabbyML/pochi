@@ -1,4 +1,4 @@
-import { FileBadge } from "@/components/tool-invocation/file-badge";
+import { FileBadge } from "@/features/tools";
 import { useActiveSelection } from "@/lib/hooks/use-active-selection";
 import { cn } from "@/lib/utils";
 import { Plus } from "lucide-react";

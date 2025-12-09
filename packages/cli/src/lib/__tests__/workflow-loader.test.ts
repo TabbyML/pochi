@@ -78,7 +78,7 @@ describe("loadWorkflows", () => {
     const workflows = await loadWorkflows(projectDir);
     const duplicate = workflows.find((w) => w.id === "duplicate");
     expect(duplicate).toBeDefined();
-    expect(duplicate?.content).toBe("Project duplicate content");
+    expect(duplicate?.content).toBe("Project duplicate content\n");
   });
 
   it("should only load project workflows when includeGlobalWorkflows is false", async () => {
@@ -96,4 +96,3 @@ describe("loadWorkflows", () => {
     expect(projectWorkflow?.frontmatter.model).toBe("project-model");
   });
 });
-
