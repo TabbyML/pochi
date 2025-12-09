@@ -35,6 +35,8 @@ import * as vscode from "vscode";
 import { PochiConfiguration } from "./configuration";
 import { DiffChangesContentProvider } from "./editor/diff-changes-content-provider";
 // biome-ignore lint/style/useImportType: needed for dependency injection
+import { GitWorktreeInfoProvider } from "./git/git-worktree-info-provider";
+// biome-ignore lint/style/useImportType: needed for dependency injection
 import { WorktreeManager } from "./git/worktree";
 import {
   applyPochiLayout,
@@ -60,6 +62,7 @@ export class CommandManager implements vscode.Disposable {
     private readonly posthog: PostHog,
     private readonly nesDecorationManager: NESDecorationManager,
     private readonly worktreeManager: WorktreeManager,
+    private readonly worktreeInfoProvider: GitWorktreeInfoProvider,
   ) {
     this.registerCommands();
   }
@@ -215,6 +218,44 @@ export class CommandManager implements vscode.Disposable {
           );
         },
       ),
+
+      vscode.commands.registerCommand("pochi.clearGithubInfo", async () => {
+        try {
+          // Find the main worktree
+          const worktrees = this.worktreeManager.worktrees.value;
+          const mainWorktree = worktrees.find((wt) => wt.isMain);
+
+          if (!mainWorktree) {
+            logger.warn("No main worktree found to clear GitHub info");
+            vscode.window.showWarningMessage(
+              "No main worktree found to clear GitHub info",
+            );
+            return;
+          }
+
+          // Clear the GitHub data for the main worktree
+          this.worktreeInfoProvider.updateGithubIssues(mainWorktree.path, {
+            lastCheckDate: undefined,
+            data: [],
+          });
+
+          // Also clear pull request data if it exists
+          this.worktreeInfoProvider.updateGithubPullRequest(
+            mainWorktree.path,
+            undefined,
+          );
+
+          logger.info(
+            `Cleared GitHub info for main worktree: ${mainWorktree.path}`,
+          );
+          vscode.window.showInformationMessage(
+            "GitHub info cleared successfully",
+          );
+        } catch (error) {
+          logger.error(`Failed to clear GitHub info: ${error}`);
+          vscode.window.showErrorMessage("Failed to clear GitHub info");
+        }
+      }),
 
       vscode.commands.registerCommand("pochi.openTask", async (uid: string) => {
         vscode.window.withProgress(

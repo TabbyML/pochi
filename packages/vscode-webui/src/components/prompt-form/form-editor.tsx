@@ -5,6 +5,7 @@ import {
 } from "@/lib/fuzzy-search";
 import { useActiveTabs } from "@/lib/hooks/use-active-tabs";
 import { vscodeHost } from "@/lib/vscode";
+import type { GithubIssue } from "@getpochi/common/vscode-webui-bridge";
 import Document from "@tiptap/extension-document";
 import History from "@tiptap/extension-history";
 import Paragraph from "@tiptap/extension-paragraph";
@@ -27,6 +28,10 @@ import {
   MentionList,
   type MentionListProps,
 } from "./context-mention/mention-list";
+import {
+  PromptFormIssueMentionExtension,
+  issueMentionPluginKey,
+} from "./issue-mention/extension";
 import "./prompt-form.css";
 import { useSelectedModels } from "@/features/settings";
 import { useLatest } from "@/lib/hooks/use-latest";
@@ -273,6 +278,109 @@ export function FormEditor({
                 ...config,
                 allowSpaces: isFileMentionComposingRef.current,
               });
+            },
+          },
+        }),
+        // Use the already configured PromptFormIssueMentionExtension for issue mentions
+        PromptFormIssueMentionExtension.configure({
+          suggestion: {
+            char: "#",
+            pluginKey: issueMentionPluginKey,
+            items: async ({ query }: { query: string }) => {
+              const issues = await debouncedQueryGithubIssues(query);
+              if (!issues) return [];
+              return issues.map((issue) => ({
+                filepath: issue.id.toString(),
+                isDir: false,
+                type: "issue",
+                url: issue.title,
+              }));
+            },
+            render: () => {
+              let component: ReactRenderer<
+                MentionListActions,
+                MentionListProps
+              >;
+              let popup: Array<{ destroy: () => void; hide: () => void }>;
+
+              // Fetch items function for MentionList
+              const fetchItems = async (query?: string) => {
+                const issues = await debouncedQueryGithubIssues(query ?? "");
+                if (!issues) return [];
+                return issues.map((issue) => ({
+                  filepath: issue.id.toString(),
+                  isDir: false,
+                  type: "issue" as const,
+                  url: issue.title,
+                }));
+              };
+
+              const updateIsComposingRef = (v: boolean) => {
+                isFileMentionComposingRef.current = v;
+              };
+
+              const destroyMention = () => {
+                popup[0].destroy();
+                component.destroy();
+                updateIsComposingRef(false);
+              };
+
+              return {
+                onStart: (props) => {
+                  updateIsComposingRef(props.editor.view.composing);
+                  const tiptapProps = props as {
+                    editor: unknown;
+                    clientRect?: () => DOMRect;
+                  };
+
+                  component = new ReactRenderer(MentionList, {
+                    props: {
+                      ...props,
+                      fetchItems,
+                    },
+                    editor: props.editor,
+                  });
+
+                  if (!tiptapProps.clientRect) {
+                    return;
+                  }
+
+                  // @ts-ignore - accessing extensionManager and methods
+                  const customExtension =
+                    props.editor.extensionManager?.extensions.find(
+                      // @ts-ignore - extension type
+                      (extension) =>
+                        extension.name === "custom-enter-key-handler",
+                    );
+
+                  popup = tippy("body", {
+                    getReferenceClientRect: tiptapProps.clientRect,
+                    appendTo: () => document.body,
+                    content: component.element,
+                    showOnCreate: true,
+                    interactive: true,
+                    trigger: "manual",
+                    placement: "top-start",
+                    offset: [0, 6],
+                    maxWidth: "none",
+                  });
+                },
+                onUpdate: (props) => {
+                  updateIsComposingRef(props.editor.view.composing);
+                  component.updateProps(props);
+                },
+                onExit: () => {
+                  destroyMention();
+                },
+                onKeyDown: (props) => {
+                  if (props.event.key === "Escape") {
+                    destroyMention();
+                    return true;
+                  }
+
+                  return component.ref?.onKeyDown(props) ?? false;
+                },
+              };
             },
           },
         }),
@@ -653,6 +761,22 @@ const debouncedListFiles = debounceWithCachedValue(
     };
   },
   1000 * 60, // 1 minute
+  {
+    leading: true,
+  },
+);
+
+const debouncedQueryGithubIssues = debounceWithCachedValue(
+  async (query: string) => {
+    try {
+      const issues = await vscodeHost.queryGithubIssues(query);
+      return issues;
+    } catch (error) {
+      console.error("Failed to query github issues", error);
+      return [] as GithubIssue[];
+    }
+  },
+  500,
   {
     leading: true,
   },

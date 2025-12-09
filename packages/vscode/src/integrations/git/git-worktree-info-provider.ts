@@ -63,6 +63,26 @@ export class GitWorktreeInfoProvider {
     return pullRequest;
   }
 
+  getGithubIssues(
+    worktreePath: string,
+  ): GitWorktreeInfo["github"]["issues"] | undefined {
+    const data = this.get(worktreePath);
+    return data?.github.issues;
+  }
+
+  updateGithubIssues(
+    worktreePath: string,
+    issues: GitWorktreeInfo["github"]["issues"],
+  ) {
+    let data = this.get(worktreePath);
+    if (!data) {
+      data = this.initialize(worktreePath);
+    }
+    data.github.issues = issues;
+    this.set(worktreePath, data);
+    return issues;
+  }
+
   delete(worktreePath: string) {
     this.context.globalState.update(worktreePath, undefined);
   }

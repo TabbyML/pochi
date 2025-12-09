@@ -7,37 +7,37 @@ import {
 } from "@tiptap/react";
 
 /**
- * A React component to render a mention node in the editor.
- * Displays the mention with an @ symbol in a highlighted style.
+ * A React component to render an issue mention node in the editor.
+ * Displays the mention with a # symbol in a highlighted style.
  */
-export const MentionComponent = (props: NodeViewProps) => {
+export const IssueMentionComponent = (props: NodeViewProps) => {
   const { node } = props;
-  const { filepath, type } = node.attrs;
+  const { filepath } = node.attrs;
 
   return (
     <NodeViewWrapper as="span" className="rounded-sm px-1">
       <span className="space-x-0.5 rounded bg-muted box-decoration-clone px-1.5 py-0.5 align-middle font-medium text-foreground text-sm">
-        {type === "issue" ? `#${filepath}` : filepath}
+        #{filepath}
       </span>
     </NodeViewWrapper>
   );
 };
 
-export const fileMentionPluginKey = new PluginKey("fileMentionPluginKey");
+export const issueMentionPluginKey = new PluginKey("issueMentionPluginKey");
 
 /**
- * A custom TipTap extension to handle mentions (like @name).
+ * A custom TipTap extension to handle issue mentions (like #123).
  */
-export const PromptFormMentionExtension = Mention.extend({
-  name: "fileMention",
+export const PromptFormIssueMentionExtension = Mention.extend({
+  name: "issueMention",
   // Uses ReactNodeViewRenderer for custom node rendering
   addNodeView() {
-    return ReactNodeViewRenderer(MentionComponent);
+    return ReactNodeViewRenderer(IssueMentionComponent);
   },
 
   // When exported as plain text, use XML tag format
   renderText({ node }) {
-    return `<file>${node.attrs.filepath}</file>`;
+    return `<issue>${node.attrs.filepath}</issue>`;
   },
 
   // Defines custom attributes for the mention node
@@ -50,7 +50,7 @@ export const PromptFormMentionExtension = Mention.extend({
         default: "",
       },
       type: {
-        default: "file",
+        default: "issue",
       },
       url: {
         default: "",

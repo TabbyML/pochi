@@ -1,5 +1,12 @@
 import z from "zod/v4";
 
+export const GithubIssue = z.object({
+  id: z.number(),
+  title: z.string(),
+  url: z.string(),
+  state: z.enum(["open", "closed"]),
+});
+
 // Persisted in global storage by worktree.
 export const GitWorktreeInfo = z.object({
   nextDisplayId: z.number().min(1),
@@ -19,6 +26,12 @@ export const GitWorktreeInfo = z.object({
           .optional(),
       })
       .optional(),
+    issues: z
+      .object({
+        lastCheckDate: z.string().optional(),
+        data: z.array(GithubIssue),
+      })
+      .optional(),
   }),
 });
 
@@ -32,6 +45,8 @@ export interface GitWorktree {
   prunable?: string;
   data?: GitWorktreeInfo;
 }
+
+export type GithubIssue = z.infer<typeof GithubIssue>;
 
 export interface CreateWorktreeOptions {
   generateBranchName?: {
