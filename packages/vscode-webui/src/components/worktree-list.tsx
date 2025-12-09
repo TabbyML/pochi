@@ -52,7 +52,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as R from "remeda";
 import { TaskRow } from "./task-row";
@@ -79,10 +79,14 @@ export function WorktreeList({
   tasks,
   onDeleteWorktree,
   deletingWorktreePaths,
+  onLoadMore,
+  hasMore,
 }: {
   tasks: readonly Task[];
   deletingWorktreePaths: Set<string>;
   onDeleteWorktree: (worktreePath: string) => void;
+  onLoadMore: () => void;
+  hasMore: boolean;
 }) {
   const { t } = useTranslation();
   const { data: currentWorkspace, isLoading: isLoadingCurrentWorkspace } =
@@ -94,6 +98,34 @@ export function WorktreeList({
     isLoading: isLoadingWorktrees,
   } = useWorktrees();
   const [showDeleted, setShowDeleted] = useState(false);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  // 使用 Intersection Observer 监听 sentinel 元素
+  useEffect(() => {
+    if (!sentinelRef.current || !hasMore) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries;
+        if (entry.isIntersecting) {
+          onLoadMore();
+        }
+      },
+      {
+        root: null,
+        rootMargin: "100px",
+        threshold: 0.1,
+      },
+    );
+
+    observer.observe(sentinelRef.current);
+
+    return () => {
+      if (sentinelRef.current) {
+        observer.unobserve(sentinelRef.current);
+      }
+    };
+  }, [hasMore, onLoadMore]);
 
   const groups = useMemo(() => {
     if (isLoadingWorktrees || isLoadingCurrentWorkspace) {
@@ -267,6 +299,15 @@ export function WorktreeList({
             ))}
         </>
       )}
+      {/* 全局的加载更多 sentinel */}
+      {hasMore && (
+        <div
+          ref={sentinelRef}
+          className="flex items-center justify-center py-4"
+        >
+          <div className="text-muted-foreground text-xs">Loading more...</div>
+        </div>
+      )}
     </div>
   );
 }
@@ -289,6 +330,14 @@ function WorktreeSection({
   const [isHovered, setIsHovered] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const pochiTasks = usePochiTasks();
+
+  // 对 tasks 按 createdAt 降序排序
+  const sortedTasks = useMemo(() => {
+    return [...group.tasks].sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    );
+  }, [group.tasks]);
 
   const pullRequest = group.data?.github?.pullRequest;
   const hasEdit = group.tasks.some(
@@ -480,8 +529,8 @@ function WorktreeSection({
 
       <CollapsibleContent>
         <ScrollArea viewportClassname="max-h-[230px] px-1 py-1">
-          {group.tasks.length > 0 ? (
-            group.tasks.map((task) => {
+          {sortedTasks.length > 0 ? (
+            sortedTasks.map((task) => {
               return (
                 <div key={task.id} className="py-0.5">
                   <TaskRow task={task} state={pochiTasks[task.id]} />

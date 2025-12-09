@@ -62,8 +62,39 @@ function Tasks() {
   const { data: currentWorkspace } = useCurrentWorkspace();
   const cwd = currentWorkspace?.cwd || "default";
   const workspaceFolder = currentWorkspace?.workspaceFolder;
-  // Fetch all tasks
-  const tasks = store.useQuery(taskCatalog.queries.makeTasksQuery(cwd));
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const { deleteWorktree, deletingWorktreePaths } =
+    useOptimisticWorktreeDelete();
+
+  // 将 Set 转换为数组
+  const excludedPaths = Array.from(deletingWorktreePaths);
+
+  // Fetch paginated tasks with filtering
+  const tasks = store.useQuery(
+    taskCatalog.queries.makeTasksQuery(cwd, currentPage, 10, excludedPaths),
+  );
+
+  // 累积的 tasks 状态
+  const [accumulatedTasks, setAccumulatedTasks] = useState<typeof tasks>([]);
+
+  // 当 tasks 数据变化时，合并到累积的 tasks 中
+  useEffect(() => {
+    if (tasks.length > 0) {
+      setAccumulatedTasks((prev) => {
+        // 简单的去重合并：基于 task.id
+        const taskIds = new Set(prev.map((t) => t.id));
+        const newTasks = tasks.filter((t) => !taskIds.has(t.id));
+        return [...prev, ...newTasks];
+      });
+    }
+  }, [tasks]);
+
+  // 重置累积的 tasks 当 cwd 变化时
+  useEffect(() => {
+    setAccumulatedTasks([]);
+    setCurrentPage(1);
+  }, [cwd]);
 
   useEffect(() => {
     setActiveStore(store);
@@ -78,14 +109,16 @@ function Tasks() {
     GitWorktree | undefined
   >();
 
-  const { deleteWorktree, deletingWorktreePaths } =
-    useOptimisticWorktreeDelete();
-
   const onDeleteWorktree = (wt: string) => {
     deleteWorktree(wt);
     if (userSelectedWorktree?.path === wt) {
       setUserSelectedWorktree(undefined);
     }
+  };
+
+  // 加载更多函数
+  const loadMore = () => {
+    setCurrentPage((prev) => prev + 1);
   };
 
   return (
@@ -100,7 +133,7 @@ function Tasks() {
           deletingWorktreePaths={deletingWorktreePaths}
         />
       </div>
-      {tasks.length === 0 ? (
+      {accumulatedTasks.length === 0 && tasks.length === 0 ? (
         <EmptyTaskPlaceholder />
       ) : (
         <div className="min-h-0 flex-1 pt-4">
@@ -108,8 +141,10 @@ function Tasks() {
             <div className="flex flex-col gap-4 px-4 pb-6">
               <WorktreeList
                 deletingWorktreePaths={deletingWorktreePaths}
-                tasks={tasks}
+                tasks={accumulatedTasks}
                 onDeleteWorktree={onDeleteWorktree}
+                onLoadMore={loadMore}
+                hasMore={tasks.length === 10} // 如果当前页有10条记录，可能还有更多
               />
             </div>
           </ScrollArea>
