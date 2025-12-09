@@ -2,12 +2,18 @@ import * as assert from "node:assert";
 import * as sinon from "sinon";
 import { describe, it, beforeEach, afterEach } from "mocha";
 import type { GitWorktree } from "@getpochi/common/vscode-webui-bridge";
-import { WorktreeManager } from "../worktree";
+import proxyquire from "proxyquire";
+import path from "node:path";
 import type { GitWorktreeInfoProvider } from "../git-worktree-info-provider";
+
+const generateBranchNameStub = sinon.stub();
+const { WorktreeManager } = proxyquire("../worktree", {
+  "@/lib/generate-branch-name": { generateBranchName: generateBranchNameStub },
+});
 
 describe("WorktreeManager", () => {
   describe("getWorktreeDisplayName", () => {
-    let worktreeManager: WorktreeManager;
+    let worktreeManager: any;
     let gitStateMonitorStub: any;
 
     beforeEach(() => {
@@ -130,7 +136,7 @@ describe("WorktreeManager", () => {
   });
 
   describe("parseWorktreePorcelain", () => {
-    let worktreeManager: WorktreeManager;
+    let worktreeManager: any;
     let gitStateMonitorStub: any;
 
     beforeEach(() => {
@@ -249,6 +255,164 @@ prunable gitdir file points to non-existent location
         result[1].prunable,
         "gitdir file points to non-existent location",
       );
+    });
+  });
+
+  describe("prepareBranchNameAndWorktreePath", () => {
+    let worktreeManager: any;
+    let gitStateMonitorStub: any;
+
+    beforeEach(() => {
+      gitStateMonitorStub = {
+        onDidRepositoryChange: sinon.stub().returns({ dispose: () => {} }),
+        onDidChangeGitState: sinon.stub().returns({ dispose: () => {} }),
+      };
+
+      const worktreeDataStoreStub: GitWorktreeInfoProvider = {
+        initialize: sinon.stub(),
+        get: sinon.stub().returns(undefined),
+        delete: sinon.stub(),
+      } as any;
+
+      worktreeManager = new WorktreeManager(gitStateMonitorStub, worktreeDataStoreStub);
+
+      worktreeManager.git = {
+        branch: sinon.stub().resolves({ all: ["main", "feature-1"] }),
+        raw: sinon.stub(),
+      };
+    });
+
+    afterEach(() => {
+      worktreeManager.dispose();
+      sinon.restore();
+    });
+
+    it("should generate branch name and worktree path correctly", async () => {
+      generateBranchNameStub.resolves("new-feature");
+      const workspaceFolder = "/path/to/repo";
+      const mainWorktree: GitWorktree = {
+        path: "/path/to/repo",
+        commit: "abc123",
+        branch: "master",
+        isMain: true,
+      };
+      const featureWorktree1: GitWorktree = {
+        path: "/path/to/worktrees/feature-1",
+        commit: "def456",
+        branch: "feature-1",
+        isMain: false,
+      };
+      const worktrees = [mainWorktree, featureWorktree1];
+
+      const result = await worktreeManager.prepareBranchNameAndWorktreePath({
+        workspaceFolder,
+        worktrees,
+        prompt: "create new feature",
+      });
+
+      assert.deepStrictEqual(result, {
+        branchName: "new-feature",
+        worktreePath: "/path/to/worktrees/new-feature",
+      });
+      assert.ok(generateBranchNameStub.calledOnce);
+    });
+
+    it("should append timestamp if branch name exists", async () => {
+      generateBranchNameStub.resolves("feature-1"); // Exists in gitStub.branch
+      const workspaceFolder = "/path/to/repo";
+      const mainWorktree: GitWorktree = {
+        path: "/path/to/repo",
+        commit: "abc123",
+        branch: "master",
+        isMain: true,
+      };
+      const featureWorktree1: GitWorktree = {
+        path: "/path/to/worktrees/feature-1",
+        commit: "def456",
+        branch: "feature-1",
+        isMain: false,
+      };
+      const worktrees = [mainWorktree, featureWorktree1];
+
+      const result = await worktreeManager.prepareBranchNameAndWorktreePath({
+        workspaceFolder,
+        worktrees,
+        prompt: "create feature 1",
+      });
+
+      assert.ok(result.branchName.startsWith("feature-1-"));
+      assert.ok(result.worktreePath.startsWith("/path/to/worktrees/feature-1-"));
+    });
+
+    it("should fallback to timestamp if generation returns undefined", async () => {
+      generateBranchNameStub.resolves(undefined);
+      const workspaceFolder = "/path/to/repo";
+      const mainWorktree: GitWorktree = {
+        path: "/path/to/repo",
+        commit: "abc123",
+        branch: "master",
+        isMain: true,
+      };
+      const featureWorktree1: GitWorktree = {
+        path: "/path/to/worktrees/feature-1",
+        commit: "def456",
+        branch: "feature-1",
+        isMain: false,
+      };
+      const worktrees = [mainWorktree, featureWorktree1];
+
+      const result = await worktreeManager.prepareBranchNameAndWorktreePath({
+        workspaceFolder,
+        worktrees,
+        prompt: "create feature",
+      });
+
+      assert.ok(result.branchName.startsWith("branch/"));
+      assert.ok(result.worktreePath.startsWith("/path/to/worktrees/branch-"));
+    });
+
+    it("should fallback to timestamp if generation fails", async () => {
+      generateBranchNameStub.rejects(new Error("Failed"));
+      const workspaceFolder = "/path/to/repo";
+      const mainWorktree: GitWorktree = {
+        path: "/path/to/repo",
+        commit: "abc123",
+        branch: "master",
+        isMain: true,
+      };
+      const featureWorktree1: GitWorktree = {
+        path: "/path/to/worktrees/feature-1",
+        commit: "def456",
+        branch: "feature-1",
+        isMain: false,
+      };
+      const worktrees = [mainWorktree, featureWorktree1];
+
+      const result = await worktreeManager.prepareBranchNameAndWorktreePath({
+        workspaceFolder,
+        worktrees,
+        prompt: "create feature",
+      });
+
+      assert.ok(result.branchName.startsWith("branch/"));
+      assert.ok(result.worktreePath.startsWith("/path/to/worktrees/branch-"));
+    });
+
+    it("should use workspace folder parent for worktree path if no worktrees", async () => {
+      generateBranchNameStub.resolves("new-feature");
+      const workspaceFolder = "/path/to/repo";
+      const worktrees: GitWorktree[] = [];
+
+      const result = await worktreeManager.prepareBranchNameAndWorktreePath({
+        workspaceFolder,
+        worktrees,
+        prompt: "create new feature",
+      });
+      
+      const expectedParent = "/path/to/repo.worktree";
+      const expectedPath = path.join(expectedParent, "new-feature");
+      
+      assert.strictEqual(result.worktreePath, expectedPath);
     });
   });
 });
