@@ -14,7 +14,24 @@
         "kind": "none",
         "isDefault": true
       },
-      "isBackground": true
+      "isBackground": true,
+      "problemMatcher": [
+        {
+          "pattern": [
+            {
+              "regexp": ".",
+              "file": 1,
+              "location": 2,
+              "message": 3
+            }
+          ],
+          "background": {
+            "activeOnStart": true,
+            "beginsPattern": "npm-run-all",
+            "endsPattern": "ready in \\d+ ms"
+          }
+        }
+      ]
     },
     {
       "type": "shell",
@@ -27,7 +44,24 @@
         "kind": "none",
         "isDefault": true
       },
-      "isBackground": true
+      "isBackground": true,
+      "problemMatcher": [
+        {
+          "pattern": [
+            {
+              "regexp": ".",
+              "file": 1,
+              "location": 2,
+              "message": 3
+            }
+          ],
+          "background": {
+            "activeOnStart": true,
+            "beginsPattern": "npm-run-all",
+            "endsPattern": "ready in \\d+ ms"
+          }
+        }
+      ]
     },
     {
       "type": "shell",
@@ -40,7 +74,24 @@
         "kind": "none",
         "isDefault": true
       },
-      "isBackground": true
+      "isBackground": true,
+      "problemMatcher": [
+        {
+          "pattern": [
+            {
+              "regexp": ".",
+              "file": 1,
+              "location": 2,
+              "message": 3
+            }
+          ],
+          "background": {
+            "activeOnStart": true,
+            "beginsPattern": "npm-run-all",
+            "endsPattern": "ready in \\d+ ms"
+          }
+        }
+      ]
     },
     {
       "type": "shell",
@@ -132,7 +183,7 @@
           "background": {
             "activeOnStart": true,
             "beginsPattern": "npm-run-all",
-            "endsPattern": "to show help"
+            "endsPattern": "ready in \\d+ ms"
           }
         }
       ]
