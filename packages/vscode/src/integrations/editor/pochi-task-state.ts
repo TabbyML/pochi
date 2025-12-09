@@ -68,13 +68,12 @@ export class PochiTaskState implements vscode.Disposable {
       status?: string;
     };
     const uid = taskData.id;
-    const topTaskUid = taskData.parentId || taskData.id;
+    const rootTaskId = taskData.parentId || taskData.id;
 
-    if (!topTaskUid) return;
+    if (!rootTaskId) return;
 
     const newState = R.clone(this.state.value);
-    const current = newState[topTaskUid] || {};
-    current.unread = !current.active;
+    const current = newState[rootTaskId] || {};
 
     // If status indicates the task is no longer running, clear the running flag
     if (
@@ -85,9 +84,12 @@ export class PochiTaskState implements vscode.Disposable {
         `Task ${uid} is no longer running (status: ${taskData.status})`,
       );
       current.running = false;
+
+      // Only change unread to be true (if current.active = false) when running ends
+      current.unread = !current.active;
     }
 
-    newState[topTaskUid] = current;
+    newState[rootTaskId] = current;
     this.saveState(newState);
   };
 
