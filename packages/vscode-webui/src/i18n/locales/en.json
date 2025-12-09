@@ -402,5 +402,8 @@
     "undo": "Undo",
     "viewChanges": "View changes",
     "openFile": "Open file"
+  },
+  "forkTask": {
+    "forkedTaskTitle": "Forked from {{taskTitle}}"
   }
 }

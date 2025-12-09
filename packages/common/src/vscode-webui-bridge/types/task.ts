@@ -15,6 +15,9 @@ export interface TaskIdParams {
    * JSON string representing an array of messages to init the task.
    */
   initMessages?: string;
+
+  initTitle?: string;
+
   /**
    * Disable auto start for the task
    */

@@ -59,7 +59,10 @@ export type LiveChatKitOptions<T> = {
   "id" | "messages" | "generateId" | "onFinish" | "onError" | "transport"
 >;
 
-type InitOptions =
+type InitOptions = {
+  initTitle?: string;
+  displayId?: number;
+} & (
   | {
       prompt?: string;
     }
@@ -68,7 +71,8 @@ type InitOptions =
     }
   | {
       messages?: Message[];
-    };
+    }
+);
 
 export class LiveChatKit<
   T extends {
@@ -229,6 +233,8 @@ export class LiveChatKit<
         id: this.taskId,
         cwd,
         createdAt: new Date(),
+        initTitle: options?.initTitle,
+        displayId: options?.displayId,
         initMessages,
       }),
     );

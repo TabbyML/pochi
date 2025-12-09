@@ -399,5 +399,8 @@
     "undo": "실행 취소",
     "viewChanges": "변경 사항 보기",
     "openFile": "파일 열기"
+  },
+  "forkTask": {
+    "forkedTaskTitle": "포크됨 원본: {{taskTitle}}"
   }
 }

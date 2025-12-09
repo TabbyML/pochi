@@ -99,6 +99,8 @@ export const events = {
     schema: Schema.Struct({
       ...taskInitFields,
       initMessages: Schema.optional(Schema.Array(DBMessage)),
+      initTitle: Schema.optional(Schema.String),
+      displayId: Schema.optional(Schema.Number),
       // @deprecated
       // use initMessages instead
       initMessage: Schema.optional(
@@ -204,6 +206,8 @@ const materializers = State.SQLite.materializers(events, {
     cwd,
     initMessage,
     initMessages,
+    initTitle,
+    displayId,
   }) => [
     tables.tasks.insert({
       id,
@@ -217,6 +221,8 @@ const materializers = State.SQLite.materializers(events, {
       parentId,
       createdAt,
       cwd,
+      title: initTitle,
+      displayId,
       updatedAt: createdAt,
     }),
     ...(initMessages?.map((message) => {

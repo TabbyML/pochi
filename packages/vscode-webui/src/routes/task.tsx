@@ -28,6 +28,7 @@ const searchSchema = z.object({
     .string()
     .optional()
     .describe("JSON string containing an array of messages"),
+  initTitle: z.string().optional(),
   disablePendingModelAutoStart: z.boolean().optional(),
 });
 
@@ -55,6 +56,7 @@ function RouteComponent() {
     storeId,
     displayId,
     initMessages,
+    initTitle,
     disablePendingModelAutoStart,
   } = globalParams ?? searchParams;
 
@@ -97,6 +99,7 @@ function RouteComponent() {
         files={uiFiles}
         displayId={displayId}
         initMessages={parsedInitMessages}
+        initTitle={initTitle}
         disablePendingModelAutoStart={disablePendingModelAutoStart}
       />
     </LiveStoreDefaultProvider>

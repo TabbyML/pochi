@@ -69,6 +69,7 @@ interface ChatProps {
   files?: FileUIPart[];
   displayId?: number;
   initMessages?: Message[];
+  initTitle?: string;
   disablePendingModelAutoStart?: boolean;
 }
 
@@ -79,6 +80,7 @@ function Chat({
   files,
   displayId,
   initMessages,
+  initTitle,
   disablePendingModelAutoStart,
 }: ChatProps) {
   const { t } = useTranslation();
@@ -332,13 +334,15 @@ function Chat({
     ) {
       const cwd = currentWorkspace?.cwd ?? undefined;
       if (initMessages) {
-        chatKit.init(cwd, { messages: initMessages });
+        chatKit.init(cwd, { initTitle, displayId, messages: initMessages });
       } else if (files?.length) {
         chatKit.init(cwd, {
+          initTitle,
+          displayId,
           parts: prepareMessageParts(t, prompt || "", files),
         });
       } else {
-        chatKit.init(cwd, { prompt: prompt || "" });
+        chatKit.init(cwd, { initTitle, displayId, prompt: prompt || "" });
       }
     }
   }, [
@@ -349,6 +353,8 @@ function Chat({
     files,
     t,
     initMessages,
+    initTitle,
+    displayId,
   ]);
 
   useSetSubtaskModel({ isSubTask, customAgent });
@@ -384,11 +390,17 @@ function Chat({
 
   const forkTask = useCallback(
     async (commitId: string, messageId?: string) => {
-      if (task?.cwd) {
-        await forkTaskFromCheckPoint(messages, commitId, task.cwd, messageId);
+      if (task?.cwd && task.title) {
+        await forkTaskFromCheckPoint(
+          messages,
+          commitId,
+          task.cwd,
+          t("forkTask.forkedTaskTitle", { taskTitle: task.title }),
+          messageId,
+        );
       }
     },
-    [messages, task?.cwd],
+    [messages, task?.cwd, task?.title, t],
   );
 
   return (
@@ -461,6 +473,7 @@ async function forkTaskFromCheckPoint(
   messages: Message[],
   commitId: string,
   cwd: string,
+  title: string,
   messageId?: string,
 ) {
   const initMessages: Message[] = [];
@@ -500,6 +513,7 @@ async function forkTaskFromCheckPoint(
   // Create new task
   await vscodeHost.openTaskInPanel({
     cwd,
+    initTitle: title,
     initMessages: JSON.stringify(initMessages),
     disablePendingModelAutoStart: true,
   });

@@ -403,5 +403,8 @@
     "undo": "撤销",
     "viewChanges": "查看更改",
     "openFile": "打开文件"
+  },
+  "forkTask": {
+    "forkedTaskTitle": "任务分支自：{{taskTitle}}"
   }
 }
