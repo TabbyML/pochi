@@ -13,6 +13,7 @@ const logger = getLogger("GithubIssues");
 const PageSize = 50;
 const PollIntervalMS = 60 * 1000; // 1 minute
 const OneYearAgoMS = 365 * 24 * 60 * 60 * 1000;
+const MaxIssues = 3000;
 
 @singleton()
 @injectable()
@@ -28,7 +29,7 @@ export class GithubIssues implements vscode.Disposable {
   }
 
   private async init() {
-    await this.worktreeManager.isInitialized.promise;
+    await this.worktreeManager.inited.promise;
     logger.debug("Initializing GithubIssues integration");
 
     // Start initial check
@@ -117,6 +118,10 @@ export class GithubIssues implements vscode.Disposable {
           currentIssues,
           allIssues,
         );
+
+        if (updatedIssues.length >= MaxIssues) {
+          hasMore = false;
+        }
 
         if (hasMore) {
           this.worktreeInfoProvider.updateGithubIssues(worktreePath, {

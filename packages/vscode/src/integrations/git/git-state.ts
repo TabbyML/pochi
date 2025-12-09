@@ -1,7 +1,7 @@
+import { Deferred } from "@/lib/defered";
 import { getLogger } from "@getpochi/common";
 import { injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
-import { Deferred } from "../checkpoint/util";
 import type { API, GitExtension, Repository } from "./git";
 
 const logger = getLogger("GitStateMonitor");
@@ -65,7 +65,7 @@ export class GitStateMonitor implements vscode.Disposable {
   public readonly onDidRepositoryChange: vscode.Event<GitRepositoryChangeEvent> =
     this.#onDidRepositoryChange.event;
 
-  public isInitialized = new Deferred<void>();
+  inited = new Deferred<void>();
 
   constructor() {
     this.disposables.push(this.#onDidChangeGitState);
@@ -126,7 +126,7 @@ export class GitStateMonitor implements vscode.Disposable {
         await this.handleRepositoryOpened(repository);
       }
 
-      this.isInitialized.resolve();
+      this.inited.resolve();
 
       logger.debug("Git state monitor initialized successfully");
     } catch (error) {
