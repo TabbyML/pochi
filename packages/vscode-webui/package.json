@@ -25,7 +25,7 @@
     "@getpochi/vendor-github-copilot": "workspace:*",
     "@getpochi/vendor-pochi": "workspace:*",
     "@getpochi/vendor-qwen-code": "workspace:*",
-    "@leeoniya/ufuzzy": "^1.0.18",
+    "@leeoniya/ufuzzy": "catalog:",
     "@livestore/adapter-web": "catalog:",
     "@livestore/common": "catalog:",
     "@livestore/livestore": "catalog:",
