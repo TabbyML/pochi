@@ -78,7 +78,7 @@
     "typescript": "^5.7.2",
     "vitest": "^3.2.4"
   },
-  "packageManager": "bun@1.3.0",
+  "packageManager": "bun@1.3.4",
   "trustedDependencies": ["@ast-grep/cli"],
   "patchedDependencies": {
     "better-auth@1.2.9": "patches/better-auth@1.2.9.patch",
