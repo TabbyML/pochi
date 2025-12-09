@@ -2505,7 +2505,7 @@ image: "/og-image/nes-part-2-og-image.png"
 
 # NES Series (Part 2): Real-Time Context Management in Your Code Editor
 
-In [Part 1](./how-we-created-nes-model/), we covered how we trained our **NES model**, including topics such as the special tokens we use, the LoRA-based fine-tuning on Gemini Flash Lite, and how we utilized a judge LLM to evaluate the model.
+In [Part 1](https://docs.getpochi.com/developer-updates/how-we-created-nes-model/), we covered how we trained our **NES model**, including topics such as the special tokens we use, the LoRA-based fine-tuning on Gemini Flash Lite, and how we utilized a judge LLM to evaluate the model.
 
 However, the end experience is far more than just building a good model. To make NES feel “intent-aware” inside your editor, we needed to give the model the right context at the right moment.
 
@@ -2737,7 +2737,7 @@ Here you will find highlights on features, enhancements, and bug fixes, plus ins
 
 # NES Series (Part 2): Real-Time Context Management in Your Code Editor
 
-In [Part 1](./how-we-created-nes-model/), we covered how we trained our **NES model**, including topics such as the special tokens we use, the LoRA-based fine-tuning on Gemini Flash Lite, and how we utilized a judge LLM to evaluate the model.
+In [Part 1](https://docs.getpochi.com/developer-updates/how-we-created-nes-model/), we covered how we trained our **NES model**, including topics such as the special tokens we use, the LoRA-based fine-tuning on Gemini Flash Lite, and how we utilized a judge LLM to evaluate the model.
 
 However, the end experience is far more than just building a good model. To make NES feel “intent-aware” inside your editor, we needed to give the model the right context at the right moment.
 
