@@ -92,7 +92,7 @@ function Tasks() {
 
   // 重置累积的 tasks 当 cwd 变化时
   useEffect(() => {
-    console.log("cwd changed, resetting accumulated tasks");
+    console.log("cwd changed, resetting accumulated tasks", cwd);
     setAccumulatedTasks([]);
     setCurrentPage(1);
   }, [cwd]);
