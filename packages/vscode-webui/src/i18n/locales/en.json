@@ -325,7 +325,8 @@
     "noResultsFound": "No results found",
     "typeToSearch": "Type to search...",
     "workflow": "workflow",
-    "agent": "agent"
+    "agent": "agent",
+    "useHashForIssues": "use # to search for github issues"
   },
   "subtask": {
     "back": "Back",

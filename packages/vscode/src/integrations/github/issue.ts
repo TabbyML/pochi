@@ -1,5 +1,6 @@
 import { getLogger, toErrorMessage } from "@getpochi/common";
 import type { GithubIssue } from "@getpochi/common/vscode-webui-bridge";
+import uFuzzy from "@leeoniya/ufuzzy";
 import { injectable, singleton } from "tsyringe";
 import type * as vscode from "vscode";
 // biome-ignore lint/style/useImportType: needed for dependency injection
@@ -9,6 +10,16 @@ import { WorktreeManager } from "../git/worktree";
 import { executeCommandWithNode } from "../terminal/execute-command-with-node";
 
 const logger = getLogger("GithubIssues");
+
+const uf = new uFuzzy({
+  unicode: true,
+  intraMode: 1,
+  interSplit: "[^\\p{L}\\d']+",
+  intraSplit: "\\p{Ll}\\p{Lu}",
+  intraBound: "\\p{L}\\d|\\d\\p{L}|\\p{Ll}\\p{Lu}",
+  intraChars: "[\\p{L}\\d']",
+  intraContr: "'\\p{L}{1,2}\\b",
+});
 
 const PageSize = 50;
 const PollIntervalMS = 60 * 1000; // 1 minute
@@ -295,25 +306,35 @@ export class GithubIssues implements vscode.Disposable {
         return [];
       }
 
-      // If no query, return all issues
+      const issues = issuesData.data;
+
       if (!query) {
-        return issuesData.data;
+        return issues.slice(0, 10);
       }
 
       // Check for fuzzy match by issue ID (substring match)
       const queryAsNumber = Number(query);
       let idMatches: GithubIssue[] = [];
       if (!Number.isNaN(queryAsNumber)) {
-        idMatches = issuesData.data.filter((issue) =>
+        idMatches = issues.filter((issue) =>
           issue.id.toString().includes(queryAsNumber.toString()),
         );
       }
 
-      // Filter by keyword (case-insensitive search in title)
-      const lowerQuery = query.toLowerCase();
-      const titleMatches = issuesData.data.filter((issue) =>
-        issue.title.toLowerCase().includes(lowerQuery),
-      );
+      // Filter by fuzzy search in title
+      const haystack = issues.map((issue) => issue.title);
+      const [idxs, info, order] = uf.search(haystack, query, 1);
+
+      const titleMatches: GithubIssue[] = [];
+      if (order && info) {
+        for (const i of order) {
+          titleMatches.push(issues[info.idx[i]]);
+        }
+      } else if (idxs) {
+        for (const i of idxs) {
+          titleMatches.push(issues[i]);
+        }
+      }
 
       // Combine ID matches and title matches, prioritize ID matches, then return first 10
       const allMatches = [

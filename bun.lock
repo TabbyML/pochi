@@ -266,6 +266,7 @@
         "@getpochi/vendor-github-copilot": "workspace:*",
         "@getpochi/vendor-pochi": "workspace:*",
         "@getpochi/vendor-qwen-code": "workspace:*",
+        "@leeoniya/ufuzzy": "^1.0.19",
         "@orama/orama": "^3.1.11",
         "@preact/signals-core": "catalog:",
         "@quilted/threads": "catalog:",
@@ -931,7 +932,7 @@
 
     "@kwsites/promise-deferred": ["@kwsites/promise-deferred@1.1.1", "", {}, "sha512-GaHYm+c0O9MjZRu0ongGBRbinu8gVAMd2UZjji6jVmqKtZluZnptXGWhz1E8j8D2HJ3f/yMxKAUC0b+57wncIw=="],
 
-    "@leeoniya/ufuzzy": ["@leeoniya/ufuzzy@1.0.18", "", {}, "sha512-5D54A86/VaPvJVf7UWJgy+UyhDtstUxq0iQd8UOZ2TG3NjV2oSoa9m4qW3VsotDD6dH2SNHDQwSPq+IAuudnag=="],
+    "@leeoniya/ufuzzy": ["@leeoniya/ufuzzy@1.0.19", "https://registry.npmmirror.com/@leeoniya/ufuzzy/-/ufuzzy-1.0.19.tgz", {}, "sha512-0pikDeYt0IHEUPza5RTCDXc/17S1pTrYnReEMp8Aa6k1ovzw5QdZLwicW8TjljwEZRb6oYag0xmALohrcq/yOQ=="],
 
     "@levischuck/tiny-cbor": ["@levischuck/tiny-cbor@0.2.11", "", {}, "sha512-llBRm4dT4Z89aRsm6u2oEZ8tfwL/2l6BwpZ7JcyieouniDECM5AqNgr/y08zalEIvW3RSK4upYyybDcmjXqAow=="],
 

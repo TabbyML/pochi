@@ -31,6 +31,7 @@ export interface MentionListProps {
   }) => void;
   query?: string;
   fetchItems?: (query?: string) => Promise<MentionItem[]>;
+  checkHasIssues?: () => Promise<boolean>;
 }
 
 /**
@@ -38,10 +39,21 @@ export interface MentionListProps {
  * Displays when a user types '@...' and suggestions are fetched.
  */
 export const MentionList = forwardRef<MentionListActions, MentionListProps>(
-  ({ items: initialItems, command, query, fetchItems }, ref) => {
+  (
+    { items: initialItems, command, query, fetchItems, checkHasIssues },
+    ref,
+  ) => {
     const { t } = useTranslation();
     const [selectedIndex, setSelectedIndex] = useState(0);
     const items = useMentionItems(initialItems, query, fetchItems);
+    const [hasIssues, setHasIssues] = useState(false);
+
+    useEffect(() => {
+      if (checkHasIssues) {
+        checkHasIssues().then(setHasIssues);
+      }
+    }, [checkHasIssues]);
+
     // Reset selected index when items change to prevent out-of-bounds access
     useEffect(() => {
       if (selectedIndex >= items.length) {
@@ -67,6 +79,14 @@ export const MentionList = forwardRef<MentionListActions, MentionListProps>(
 
     return (
       <div className="relative flex w-[80vw] flex-col overflow-hidden py-1 sm:w-[600px]">
+        {hasIssues && (
+          <div className="mx-2 mb-1 px-2 py-1.5 text-muted-foreground text-xs">
+            {t(
+              "mentionList.useHashForIssues",
+              "use # to search for github issues",
+            )}
+          </div>
+        )}
         <ScrollArea viewportClassname="max-h-[300px] px-2">
           {items.length === 0 ? (
             <div className="px-2 py-1.5 text-muted-foreground text-xs">

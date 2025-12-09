@@ -1,4 +1,4 @@
-import { debounceWithCachedValue } from "@/lib/debounce";
+import { asyncDebounce, debounceWithCachedValue } from "@/lib/debounce";
 import {
   fuzzySearchFiles,
   fuzzySearchSlashCandidates,
@@ -212,6 +212,11 @@ export function FormEditor({
                 });
               };
 
+              const checkHasIssues = async () => {
+                const issues = await debouncedQueryGithubIssues();
+                return !!(issues && issues.length > 0);
+              };
+
               const updateIsComposingRef = (v: boolean) => {
                 isFileMentionComposingRef.current = v;
               };
@@ -234,6 +239,7 @@ export function FormEditor({
                     props: {
                       ...props,
                       fetchItems,
+                      checkHasIssues,
                     },
                     editor: props.editor,
                   });
@@ -781,21 +787,15 @@ const debouncedListFiles = debounceWithCachedValue(
   },
 );
 
-const debouncedQueryGithubIssues = debounceWithCachedValue(
-  async (query?: string) => {
-    try {
-      const issues = await vscodeHost.queryGithubIssues(query);
-      return issues;
-    } catch (error) {
-      console.error("Failed to query github issues", error);
-      return [] as GithubIssue[];
-    }
-  },
-  500,
-  {
-    leading: true,
-  },
-);
+const debouncedQueryGithubIssues = asyncDebounce(async (query?: string) => {
+  try {
+    const issues = await vscodeHost.queryGithubIssues(query);
+    return issues;
+  } catch (error) {
+    console.error("Failed to query github issues", error);
+    return [] as GithubIssue[];
+  }
+}, 500);
 
 export const debouncedListSlashCommand = debounceWithCachedValue(
   async () => {
