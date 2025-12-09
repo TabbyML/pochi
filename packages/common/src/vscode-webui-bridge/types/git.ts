@@ -28,7 +28,9 @@ export const GitWorktreeInfo = z.object({
       .optional(),
     issues: z
       .object({
-        lastCheckDate: z.string().optional(),
+        updatedAt: z.string().optional(),
+        processedAt: z.string().optional(),
+        pageOffset: z.number().optional(),
         data: z.array(GithubIssue),
       })
       .optional(),

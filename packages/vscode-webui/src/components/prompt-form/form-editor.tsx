@@ -32,6 +32,7 @@ import {
   PromptFormIssueMentionExtension,
   issueMentionPluginKey,
 } from "./issue-mention/extension";
+
 import "./prompt-form.css";
 import { useSelectedModels } from "@/features/settings";
 import { useLatest } from "@/lib/hooks/use-latest";
@@ -48,6 +49,10 @@ import { ArrowRightToLine } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { ScrollArea } from "../ui/scroll-area";
 import { AutoCompleteExtension } from "./auto-completion/extension";
+import {
+  IssueMentionList,
+  type IssueMentionListProps,
+} from "./issue-mention/mention-list";
 import type { MentionListActions } from "./shared";
 import {
   PromptFormSlashExtension,
@@ -148,6 +153,7 @@ export function FormEditor({
   }, [activeTabs]);
   const isFileMentionComposingRef = useRef(false);
   const isCommandMentionComposingRef = useRef(false);
+  const isIssueMentionComposingRef = useRef(false);
 
   // State for drag overlay UI
   const [isDragOver, setIsDragOver] = useState(false);
@@ -274,49 +280,52 @@ export function FormEditor({
               };
             },
             findSuggestionMatch: (config: Trigger): SuggestionMatch => {
-              return findSuggestionMatch({
+              const match = findSuggestionMatch({
                 ...config,
                 allowSpaces: isFileMentionComposingRef.current,
               });
+              if (match?.query.startsWith("#")) {
+                return null;
+              }
+              return match;
             },
           },
         }),
         // Use the already configured PromptFormIssueMentionExtension for issue mentions
         PromptFormIssueMentionExtension.configure({
           suggestion: {
-            char: "#",
+            char: "@#",
+            allowSpaces: true,
             pluginKey: issueMentionPluginKey,
-            items: async ({ query }: { query: string }) => {
+            items: async ({ query }: { query?: string }) => {
               const issues = await debouncedQueryGithubIssues(query);
               if (!issues) return [];
               return issues.map((issue) => ({
-                filepath: issue.id.toString(),
-                isDir: false,
-                type: "issue",
-                url: issue.title,
+                id: issue.id.toString(),
+                title: issue.title,
+                url: issue.url,
               }));
             },
             render: () => {
               let component: ReactRenderer<
                 MentionListActions,
-                MentionListProps
+                IssueMentionListProps
               >;
               let popup: Array<{ destroy: () => void; hide: () => void }>;
 
               // Fetch items function for MentionList
               const fetchItems = async (query?: string) => {
-                const issues = await debouncedQueryGithubIssues(query ?? "");
+                const issues = await debouncedQueryGithubIssues(query);
                 if (!issues) return [];
                 return issues.map((issue) => ({
-                  filepath: issue.id.toString(),
-                  isDir: false,
-                  type: "issue" as const,
-                  url: issue.title,
+                  id: issue.id.toString(),
+                  title: issue.title,
+                  url: issue.url,
                 }));
               };
 
               const updateIsComposingRef = (v: boolean) => {
-                isFileMentionComposingRef.current = v;
+                isIssueMentionComposingRef.current = v;
               };
 
               const destroyMention = () => {
@@ -333,7 +342,7 @@ export function FormEditor({
                     clientRect?: () => DOMRect;
                   };
 
-                  component = new ReactRenderer(MentionList, {
+                  component = new ReactRenderer(IssueMentionList, {
                     props: {
                       ...props,
                       fetchItems,
@@ -381,6 +390,12 @@ export function FormEditor({
                   return component.ref?.onKeyDown(props) ?? false;
                 },
               };
+            },
+            findSuggestionMatch: (config: Trigger): SuggestionMatch => {
+              return findSuggestionMatch({
+                ...config,
+                allowSpaces: isIssueMentionComposingRef.current,
+              });
             },
           },
         }),
@@ -767,7 +782,7 @@ const debouncedListFiles = debounceWithCachedValue(
 );
 
 const debouncedQueryGithubIssues = debounceWithCachedValue(
-  async (query: string) => {
+  async (query?: string) => {
     try {
       const issues = await vscodeHost.queryGithubIssues(query);
       return issues;

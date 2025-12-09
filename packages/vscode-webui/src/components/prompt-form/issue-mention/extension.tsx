@@ -12,12 +12,15 @@ import {
  */
 export const IssueMentionComponent = (props: NodeViewProps) => {
   const { node } = props;
-  const { filepath } = node.attrs;
+  const { id, title } = node.attrs;
 
   return (
     <NodeViewWrapper as="span" className="rounded-sm px-1">
-      <span className="space-x-0.5 rounded bg-muted box-decoration-clone px-1.5 py-0.5 align-middle font-medium text-foreground text-sm">
-        #{filepath}
+      <span
+        title={title}
+        className="space-x-0.5 rounded bg-muted box-decoration-clone px-1.5 py-0.5 align-middle font-medium text-foreground text-sm"
+      >
+        #{id}
       </span>
     </NodeViewWrapper>
   );
@@ -37,7 +40,7 @@ export const PromptFormIssueMentionExtension = Mention.extend({
 
   // When exported as plain text, use XML tag format
   renderText({ node }) {
-    return `<issue>${node.attrs.filepath}</issue>`;
+    return `<issue id="${node.attrs.id}" url="${node.attrs.url}" title="${node.attrs.title}">#${node.attrs.id}</issue>`;
   },
 
   // Defines custom attributes for the mention node
@@ -46,11 +49,8 @@ export const PromptFormIssueMentionExtension = Mention.extend({
       id: {
         default: null,
       },
-      filepath: {
+      title: {
         default: "",
-      },
-      type: {
-        default: "issue",
       },
       url: {
         default: "",

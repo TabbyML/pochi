@@ -1,4 +1,4 @@
-import { FileBadge } from "@/features/tools";
+import { FileBadge, IssueBadge } from "@/features/tools";
 import { CustomHtmlTags } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { isKnownProgrammingLanguage } from "@/lib/utils/languages";
@@ -222,6 +222,13 @@ interface WorkflowComponentProps {
   children: string;
 }
 
+interface IssueComponentProps {
+  id: string;
+  url: string;
+  title: string;
+  children: string;
+}
+
 function escapeMarkdown(text: string): string {
   return text.replace(/[\\`*_{}\[\]()#+\-.!|<]/g, "\\$&");
 }
@@ -372,6 +379,12 @@ export function MessageMarkdown({
           <FileBadge label={id.replaceAll("user-content-", "/")} path={path} />
         );
       },
+      issue: (props: IssueComponentProps) => {
+        const { id, url, title } = props;
+        // Remove the user-content- prefix added by the markdown sanitizer
+        const cleanId = id.replace("user-content-", "");
+        return <IssueBadge id={cleanId} url={url} title={title} />;
+      },
       code: (props) => <MemoCode {...props} />,
       a({ href, children, ...props }) {
         const openLink = useCallback(() => {
@@ -454,6 +467,7 @@ export function MessageMarkdown({
                       ...defaultSchema.attributes,
                       workflow: ["path", "id"],
                       "custom-agent": ["path", "id"],
+                      issue: ["id", "url", "title"],
                       ...mathSanitizeConfig.attributes,
                     },
                   },

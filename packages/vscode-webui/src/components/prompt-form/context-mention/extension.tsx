@@ -12,12 +12,12 @@ import {
  */
 export const MentionComponent = (props: NodeViewProps) => {
   const { node } = props;
-  const { filepath, type } = node.attrs;
+  const { filepath } = node.attrs;
 
   return (
     <NodeViewWrapper as="span" className="rounded-sm px-1">
       <span className="space-x-0.5 rounded bg-muted box-decoration-clone px-1.5 py-0.5 align-middle font-medium text-foreground text-sm">
-        {type === "issue" ? `#${filepath}` : filepath}
+        {filepath}
       </span>
     </NodeViewWrapper>
   );
@@ -47,12 +47,6 @@ export const PromptFormMentionExtension = Mention.extend({
         default: null,
       },
       filepath: {
-        default: "",
-      },
-      type: {
-        default: "file",
-      },
-      url: {
         default: "",
       },
     };

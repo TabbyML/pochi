@@ -37,22 +37,9 @@ export class GithubIssues implements vscode.Disposable {
 
   private async checkForIssues() {
     try {
-      const worktrees = this.worktreeManager.worktrees.value;
-      logger.debug(
-        `Found ${worktrees.length} worktrees, checking for main worktree`,
-      );
-
-      for (const wt of worktrees) {
-        logger.debug(`Worktree: ${wt.path}, isMain: ${wt.isMain}`);
-      }
-
-      const mainWorktree = worktrees.find((wt) => wt.isMain);
-
+      const mainWorktree = this.worktreeManager.getMainWorktree();
       if (!mainWorktree) {
-        logger.warn(
-          `No main worktree found among ${worktrees.length} worktrees, skipping issue check`,
-        );
-        this.scheduleNextCheck();
+        logger.error("No main worktree found, skipping issue check");
         return;
       }
 
@@ -60,59 +47,34 @@ export class GithubIssues implements vscode.Disposable {
       const currentIssuesData =
         this.worktreeInfoProvider.getGithubIssues(mainWorktreePath);
 
-      const lastCheckDate = currentIssuesData?.lastCheckDate;
-      const isInitialCheck = !lastCheckDate;
-
-      logger.trace(
-        `Checking for issues (initial: ${isInitialCheck}) for main worktree: ${mainWorktreePath}`,
-      );
+      const updatedAt = currentIssuesData?.updatedAt;
+      const isInitialCheck = !updatedAt;
 
       if (isInitialCheck) {
+        logger.debug(
+          `Performing initial issue check for main worktree: ${mainWorktreePath}`,
+        );
         // For initial check, get only open issues from the last year
         const oneYearAgo = new Date(Date.now() - ONE_YEAR_AGO_MS);
-        const dateFilter = oneYearAgo.toISOString().split("T")[0];
+        const updatedAt = oneYearAgo.toISOString();
 
         // Fetch all open issues with pagination
-        const allOpenIssues = await this.fetchAllIssues(
+        await this.fetchAllIssues(
           mainWorktreePath,
-          dateFilter,
+          updatedAt,
           "open",
-        );
-
-        // Update storage with new data
-        const now = new Date().toISOString().split("T")[0];
-        this.worktreeInfoProvider.updateGithubIssues(mainWorktreePath, {
-          lastCheckDate: now,
-          data: allOpenIssues,
-        });
-
-        logger.trace(
-          `Initial issue check completed. Total open issues: ${allOpenIssues.length}`,
+          currentIssuesData?.pageOffset,
         );
       } else {
-        // For subsequent checks, get all issues (open and closed) that have been updated since last check
-        const allUpdatedIssues = await this.fetchAllIssues(
-          mainWorktreePath,
-          lastCheckDate,
-          "all",
-        );
-
-        // Process the updated issues: remove closed issues from current list and add new open issues
-        const currentIssues = currentIssuesData?.data ?? [];
-        const updatedIssues = this.processUpdatedIssues(
-          currentIssues,
-          allUpdatedIssues,
-        );
-
-        // Update storage with new data
-        const now = new Date().toISOString().split("T")[0];
-        this.worktreeInfoProvider.updateGithubIssues(mainWorktreePath, {
-          lastCheckDate: now,
-          data: updatedIssues,
-        });
-
         logger.trace(
-          `Subsequent issue check completed. Total issues: ${updatedIssues.length}, Updated since last check: ${allUpdatedIssues.length}`,
+          `Subsequent issue check: updatedAt >= ${updatedAt}, pageOffset = ${currentIssuesData.pageOffset}`,
+        );
+        // For subsequent checks, get all issues (open and closed) that have been updated since last check
+        await this.fetchAllIssues(
+          mainWorktreePath,
+          updatedAt,
+          "all",
+          currentIssuesData.pageOffset,
         );
       }
     } catch (error) {
@@ -124,11 +86,12 @@ export class GithubIssues implements vscode.Disposable {
 
   private async fetchAllIssues(
     worktreePath: string,
-    dateFilter?: string,
+    updatedAt?: string,
     state: "open" | "all" = "open",
+    pageOffset?: number,
   ): Promise<GithubIssue[]> {
     const allIssues: GithubIssue[] = [];
-    let page = 1;
+    let page = pageOffset ?? 1;
     let hasMore = true;
 
     while (hasMore) {
@@ -136,7 +99,7 @@ export class GithubIssues implements vscode.Disposable {
         const issues = await this.fetchIssuesPage(
           worktreePath,
           page,
-          dateFilter,
+          updatedAt,
           state,
         );
 
@@ -145,6 +108,36 @@ export class GithubIssues implements vscode.Disposable {
         // If we got fewer issues than the page size, we've reached the end
         hasMore = issues.length === PAGE_SIZE;
         page++;
+
+        const currentIssuesData =
+          this.worktreeInfoProvider.getGithubIssues(worktreePath);
+        // Process the updated issues: remove closed issues from current list and add new open issues
+        const currentIssues = currentIssuesData?.data ?? [];
+        const updatedIssues = this.processUpdatedIssues(
+          currentIssues,
+          allIssues,
+        );
+
+        if (hasMore) {
+          this.worktreeInfoProvider.updateGithubIssues(worktreePath, {
+            pageOffset: page,
+            data: updatedIssues,
+          });
+          logger.trace(
+            `Updated issues for worktree ${worktreePath}, page ${page}, total issues: ${updatedIssues.length}`,
+          );
+        } else {
+          const now = new Date().toISOString();
+          this.worktreeInfoProvider.updateGithubIssues(worktreePath, {
+            updatedAt: currentIssuesData?.processedAt ?? now,
+            processedAt: now,
+            pageOffset: 0,
+            data: updatedIssues,
+          });
+          logger.trace(
+            `Completed fetching issues for worktree ${worktreePath}, total issues: ${updatedIssues.length}`,
+          );
+        }
       } catch (error) {
         logger.warn(
           `Failed to fetch issues page ${page}: ${toErrorMessage(error)}`,
@@ -159,11 +152,10 @@ export class GithubIssues implements vscode.Disposable {
   private async fetchIssuesPage(
     worktreePath: string,
     page: number,
-    dateFilter?: string,
+    updatedAt?: string,
     state: "open" | "all" = "open",
   ): Promise<GithubIssue[]> {
     try {
-      // First get the repository information in a Windows-compatible way
       const repoInfoCommand = `gh repo view --json nameWithOwner --jq '.nameWithOwner'`;
       const repoInfoResult = await executeCommandWithNode({
         command: repoInfoCommand,
@@ -182,13 +174,13 @@ export class GithubIssues implements vscode.Disposable {
 
       let command = `gh api "/repos/${repoFullName}/issues?state=${state}&per_page=${PAGE_SIZE}&page=${page}" --jq '.[] | {number, title, url: url, state}'`;
 
-      if (dateFilter) {
+      if (updatedAt) {
         // For date filtering, we need to use search API instead of issues API
         let searchQuery = `repo:${repoFullName} type:issue`;
         if (state === "open") {
           searchQuery += " is:open";
         }
-        searchQuery += ` updated:>=${dateFilter}`;
+        searchQuery += ` updated:>=${updatedAt}`;
         searchQuery += " sort:updated-desc";
 
         command = `gh api "/search/issues?q=${encodeURIComponent(searchQuery)}&per_page=${PAGE_SIZE}&page=${page}" --jq '.items[] | {number: .number, title: .title, url: .html_url, state: .state}'`;

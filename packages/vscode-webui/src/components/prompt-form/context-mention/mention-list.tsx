@@ -1,6 +1,5 @@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { FileIcon } from "@/features/tools";
-import { GitPullRequestIcon } from "lucide-react";
 import {
   forwardRef,
   memo,
@@ -22,8 +21,6 @@ import { formatPathForDisplay } from "../utils";
 export interface MentionItem {
   isDir: boolean;
   filepath: string;
-  type?: "file" | "issue";
-  url?: string;
 }
 
 export interface MentionListProps {
@@ -31,8 +28,6 @@ export interface MentionListProps {
   command: (item: {
     id: string;
     filepath: string;
-    type?: string;
-    url?: string;
   }) => void;
   query?: string;
   fetchItems?: (query?: string) => Promise<MentionItem[]>;
@@ -56,16 +51,7 @@ export const MentionList = forwardRef<MentionListActions, MentionListProps>(
 
     const handleSelect = useCallback(
       (item: MentionItem) => {
-        if (item.type === "issue") {
-          command({
-            id: item.filepath,
-            filepath: item.filepath,
-            type: "issue",
-            url: item.url,
-          });
-        } else {
-          command({ id: item.filepath, filepath: item.filepath });
-        }
+        command({ id: item.filepath, filepath: item.filepath });
       },
       [command],
     );
@@ -124,28 +110,6 @@ const MentionItemView = memo(function MentionItemView({
 }: MentionItemViewProps) {
   const ref = useScrollIntoView(isSelected);
   const { basename, displayPath } = formatPathForDisplay(data.filepath);
-
-  if (data.type === "issue") {
-    return (
-      <div
-        className={`flex cursor-pointer flex-nowrap items-center gap-1 overflow-hidden rounded-md px-2 py-1.5 text-sm ${
-          isSelected ? "bg-accent text-accent-foreground" : "hover:bg-muted/50"
-        }`}
-        {...rest}
-        ref={ref}
-      >
-        <div className="flex size-4 shrink-0 items-center justify-center">
-          <GitPullRequestIcon className="size-3.5" />
-        </div>
-        <span className="mr-2 ml-1 truncate whitespace-nowrap font-medium ">
-          #{data.filepath}
-        </span>
-        <span className="flex-1 truncate text-muted-foreground text-xs">
-          {data.url}
-        </span>
-      </div>
-    );
-  }
 
   return (
     <div

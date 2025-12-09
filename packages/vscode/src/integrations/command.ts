@@ -221,22 +221,18 @@ export class CommandManager implements vscode.Disposable {
 
       vscode.commands.registerCommand("pochi.clearGithubInfo", async () => {
         try {
-          // Find the main worktree
-          const worktrees = this.worktreeManager.worktrees.value;
-          const mainWorktree = worktrees.find((wt) => wt.isMain);
+          const mainWorktree = this.worktreeManager.getMainWorktree();
 
           if (!mainWorktree) {
-            logger.warn("No main worktree found to clear GitHub info");
-            vscode.window.showWarningMessage(
-              "No main worktree found to clear GitHub info",
-            );
             return;
           }
 
           // Clear the GitHub data for the main worktree
           this.worktreeInfoProvider.updateGithubIssues(mainWorktree.path, {
-            lastCheckDate: undefined,
             data: [],
+            updatedAt: undefined,
+            processedAt: undefined,
+            pageOffset: undefined,
           });
 
           // Also clear pull request data if it exists

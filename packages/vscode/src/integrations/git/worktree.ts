@@ -67,6 +67,10 @@ export class WorktreeManager implements vscode.Disposable {
     this.isInitialized.resolve();
   }
 
+  getMainWorktree() {
+    return this.worktrees.value.find((wt) => wt.isMain);
+  }
+
   async isGitRepository(): Promise<boolean> {
     try {
       const isRepo = await this.git.checkIsRepo();
