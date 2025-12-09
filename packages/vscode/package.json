@@ -491,6 +491,7 @@
     "@vscode/test-electron": "^2.5.2",
     "@vscode/vsce": "^3.3.2",
     "esbuild-register": "^3.6.0",
+    "extensionless": "^2.0.2",
     "node-pty": "^1.0.0",
     "ovsx": "^0.10.2",
     "proxyquire": "^2.1.3",
