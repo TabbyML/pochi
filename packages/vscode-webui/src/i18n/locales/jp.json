@@ -211,6 +211,7 @@
     "deleteWorktreeConfirm": "ワークツリー \"{{name}}\" を削除してもよろしいですか？",
     "cancel": "キャンセル",
     "delete": "削除",
+    "loadingMore": "さらに読み込む...",
     "taskStatus": {
       "planning": "次の動作を計画中",
       "errorPrefix": "エラー：",

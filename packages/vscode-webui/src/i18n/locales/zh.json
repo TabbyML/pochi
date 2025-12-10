@@ -210,6 +210,7 @@
     "deleteWorktreeConfirm": "确定要删除工作树 \"{{name}}\" 吗？",
     "cancel": "取消",
     "delete": "删除",
+    "loadingMore": "加载中...",
     "taskStatus": {
       "planning": "正在规划下一步操作",
       "errorPrefix": "错误：",
