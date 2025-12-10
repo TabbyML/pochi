@@ -299,7 +299,7 @@ function WorktreeSection({
 
   const hasMore = useMemo(
     () => accumulatedTasks.length < (countResult[0]?.total || 0),
-    [tasks, countResult],
+    [accumulatedTasks, countResult],
   );
   // 当 tasks 数据变化时，合并到累积的 tasks 中
   useEffect(() => {
