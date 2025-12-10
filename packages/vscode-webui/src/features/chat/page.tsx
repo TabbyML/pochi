@@ -422,6 +422,7 @@ function Chat({
         })}
         hideEmptyPlaceholder={isNewTaskWithContent}
         forkTask={task?.cwd ? forkTask : undefined}
+        hideCheckPoint={isSubTask}
       />
       <div className="relative flex flex-col px-4">
         {!isWorkspaceActive ? (

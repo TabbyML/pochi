@@ -110,6 +110,7 @@ export const TaskThread: React.FC<{
             isLoading={isLoading}
             containerRef={undefined}
             showLoader={false}
+            hideCheckPoint={true}
           />
         </ScrollArea>
       )}
