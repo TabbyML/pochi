@@ -304,7 +304,7 @@ function WorktreeSection({
     [accumulatedTasks, countResult],
   );
   useEffect(() => {
-    console.log('total tasks changed', totalTaskCount[0].total);
+    console.log("total tasks changed", totalTaskCount[0].total);
     setCurrentPage(1);
     setAccumulatedTasks([]);
   }, [totalTaskCount[0].total]);
