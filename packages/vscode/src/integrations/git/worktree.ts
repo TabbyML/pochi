@@ -181,8 +181,10 @@ export class WorktreeManager implements vscode.Disposable {
   }
 
   async updateWorktrees() {
-    logger.debug("Updating worktrees...");
     this.worktrees.value = await this.getWorktrees();
+    logger.debug(
+      `Updating worktrees to ${this.worktrees.value.length} worktrees`,
+    );
   }
 
   async getWorktrees(skipVSCodeFilter?: boolean): Promise<GitWorktree[]> {
@@ -197,8 +199,9 @@ export class WorktreeManager implements vscode.Disposable {
       if (skipVSCodeFilter) return worktrees;
 
       const vscodeRepos = this.gitStateMonitor.repositories.map(
-        (repo) => repo.rootUri.fsPath,
+        (uri) => vscode.Uri.parse(uri).fsPath,
       );
+      logger.info(`VSCode Repositories: ${vscodeRepos}`);
       // keep the worktree order and number same as vscode
       return vscodeRepos
         .map((repoPath) => worktrees.find((wt) => wt.path === repoPath))
@@ -353,9 +356,7 @@ export class WorktreeManager implements vscode.Disposable {
     commitish: string;
   }) {
     const { workspaceFolder, worktreePath, branchName, commitish } = params;
-    const repository = this.gitStateMonitor.repositories.find(
-      (repo) => repo.rootUri.fsPath === workspaceFolder,
-    );
+    const repository = this.gitStateMonitor.getRepository(workspaceFolder);
 
     if (
       repository &&

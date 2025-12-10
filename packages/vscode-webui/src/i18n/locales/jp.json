@@ -407,6 +407,11 @@
     "openFile": "ファイルを開く"
   },
   "forkTask": {
-    "forkedTaskTitle": "フォーク 元: {{taskTitle}}"
+    "forkedTaskTitle": "フォーク 元: {{taskTitle}}",
+    "subTaskSummary": {
+      "noOutput": "✘ 出力がありません",
+      "completed": "✔ タスク完了",
+      "error": "✘ エラーが発生しました"
+    }
   }
 }

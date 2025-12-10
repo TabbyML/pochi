@@ -402,6 +402,11 @@
     "openFile": "파일 열기"
   },
   "forkTask": {
-    "forkedTaskTitle": "포크됨 원본: {{taskTitle}}"
+    "forkedTaskTitle": "포크됨 원본: {{taskTitle}}",
+    "subTaskSummary": {
+      "noOutput": "✘ 사용 가능한 출력 없음",
+      "completed": "✔ 작업 완료",
+      "error": "✘ 오류 발생"
+    }
   }
 }

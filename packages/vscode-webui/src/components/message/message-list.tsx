@@ -44,6 +44,7 @@ export const MessageList: React.FC<{
   className?: string;
   showLoader?: boolean;
   forkTask?: (commitId: string, messageId?: string) => Promise<void>;
+  hideCheckPoint?: boolean;
 }> = ({
   messages: renderMessages,
   isLoading,
@@ -54,6 +55,7 @@ export const MessageList: React.FC<{
   className,
   showLoader = true,
   forkTask,
+  hideCheckPoint,
 }) => {
   const [debouncedIsLoading, setDebouncedIsLoading] = useDebounceState(
     isLoading,
@@ -126,6 +128,7 @@ export const MessageList: React.FC<{
                     isExecuting={isExecuting}
                     messages={renderMessages}
                     forkTask={forkTask}
+                    hideCheckPoint={hideCheckPoint}
                   />
                 ))}
               </div>
@@ -139,6 +142,7 @@ export const MessageList: React.FC<{
                 nextMessage={renderMessages[messageIndex + 1]}
                 isLoading={isLoading || isExecuting}
                 forkTask={forkTask}
+                hideCheckPoint={hideCheckPoint}
               />
             )}
           </div>
@@ -181,6 +185,7 @@ function Part({
   isExecuting,
   messages,
   forkTask,
+  hideCheckPoint,
 }: {
   role: Message["role"];
   partIndex: number;
@@ -190,6 +195,7 @@ function Part({
   isExecuting: boolean;
   messages: Message[];
   forkTask?: (commitId: string) => Promise<void>;
+  hideCheckPoint?: boolean;
 }) {
   const paddingClass = partIndex === 0 ? "" : "mt-2";
   if (part.type === "text") {
@@ -211,7 +217,7 @@ function Part({
   }
 
   if (part.type === "data-checkpoint") {
-    if (role === "assistant" && isVSCodeEnvironment()) {
+    if (role === "assistant" && isVSCodeEnvironment() && !hideCheckPoint) {
       return (
         <CheckpointUI
           checkpoint={part.data}
@@ -259,8 +265,18 @@ const SeparatorWithCheckpoint: React.FC<{
   nextMessage: Message;
   isLoading: boolean;
   forkTask?: (commitId: string, messageId?: string) => Promise<void>;
-}> = ({ messageIndex, message, nextMessage, isLoading, forkTask }) => {
+  hideCheckPoint?: boolean;
+}> = ({
+  messageIndex,
+  message,
+  nextMessage,
+  isLoading,
+  forkTask,
+  hideCheckPoint,
+}) => {
   const sep = <Separator className="mt-1 mb-2" />;
+  if (hideCheckPoint) return sep;
+
   let checkpointMessage: Message | null = null;
   let restoreMessageId: string | undefined = undefined;
   if (messageIndex === 0 && message.role === "user") {

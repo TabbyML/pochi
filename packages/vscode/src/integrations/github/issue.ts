@@ -40,6 +40,7 @@ export class GithubIssues implements vscode.Disposable {
   }
 
   private async init() {
+    // wait all worktree loaded so we can get main worktree to fetch issues
     await this.worktreeManager.inited.promise;
     logger.debug("Initializing GithubIssues integration");
 
