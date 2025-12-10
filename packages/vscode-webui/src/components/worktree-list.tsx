@@ -347,7 +347,7 @@ function WorktreeSection({
         observer.unobserve(sentinelRef.current);
       }
     };
-  }, [hasMore, loadMore]);
+  }, [hasMore]);
 
   const pullRequest = group.data?.github?.pullRequest;
   const hasEdit = accumulatedTasks.some(
