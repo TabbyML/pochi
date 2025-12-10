@@ -14,7 +14,7 @@ import { taskCatalog } from "@getpochi/livekit";
 import { useStore } from "@livestore/react";
 import { createFileRoute } from "@tanstack/react-router";
 import { TerminalIcon } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { LiveStoreTaskProvider } from "../livestore-task-provider";
 
@@ -62,40 +62,13 @@ function Tasks() {
   const { data: currentWorkspace } = useCurrentWorkspace();
   const cwd = currentWorkspace?.cwd || "default";
   const workspaceFolder = currentWorkspace?.workspaceFolder;
-  const [currentPage, setCurrentPage] = useState(1);
 
-  const { deleteWorktree, deletingWorktreePaths } =
+  const { deleteWorktree, deletingWorktreePaths, stablePaths } =
     useOptimisticWorktreeDelete();
 
-  // 将 Set 转换为数组
-  const excludedPaths = Array.from(deletingWorktreePaths);
-
-  // Fetch paginated tasks with filtering
-  const tasks = store.useQuery(
-    taskCatalog.queries.makeTasksQuery(cwd, currentPage, 10, excludedPaths),
+  const allTaskCount = store.useQuery(
+    taskCatalog.queries.makeTasksCountQuery(cwd),
   );
-
-  // 累积的 tasks 状态
-  const [accumulatedTasks, setAccumulatedTasks] = useState<typeof tasks>([]);
-
-  // 当 tasks 数据变化时，合并到累积的 tasks 中
-  useEffect(() => {
-    if (tasks.length > 0) {
-      setAccumulatedTasks((prev) => {
-        // 简单的去重合并：基于 task.id
-        const taskIds = new Set(prev.map((t) => t.id));
-        const newTasks = tasks.filter((t) => !taskIds.has(t.id));
-        return [...prev, ...newTasks];
-      });
-    }
-  }, [tasks]);
-
-  // 重置累积的 tasks 当 cwd 变化时
-  useEffect(() => {
-    console.log("cwd changed, resetting accumulated tasks", cwd);
-    setAccumulatedTasks([]);
-    setCurrentPage(1);
-  }, [cwd]);
 
   useEffect(() => {
     setActiveStore(store);
@@ -117,11 +90,6 @@ function Tasks() {
     }
   };
 
-  // 加载更多函数
-  const loadMore = () => {
-    setCurrentPage((prev) => prev + 1);
-  };
-
   return (
     <div className="flex h-screen w-screen flex-col">
       <div className="w-full px-4 pt-3">
@@ -134,18 +102,18 @@ function Tasks() {
           deletingWorktreePaths={deletingWorktreePaths}
         />
       </div>
-      {accumulatedTasks.length === 0 && tasks.length === 0 ? (
+      {}
+      {allTaskCount[0]?.total == 0 ? (
         <EmptyTaskPlaceholder />
       ) : (
         <div className="min-h-0 flex-1 pt-4">
           <ScrollArea className="h-full">
             <div className="flex flex-col gap-4 px-4 pb-6">
               <WorktreeList
+                cwd={cwd}
                 deletingWorktreePaths={deletingWorktreePaths}
-                tasks={accumulatedTasks}
+                stableWorktreePaths={stablePaths}
                 onDeleteWorktree={onDeleteWorktree}
-                onLoadMore={loadMore}
-                hasMore={tasks.length === 10} // 如果当前页有10条记录，可能还有更多
               />
             </div>
           </ScrollArea>

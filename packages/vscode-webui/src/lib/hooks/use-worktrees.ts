@@ -33,6 +33,7 @@ export function useOptimisticWorktreeDelete() {
   const [deletingMap, setDeletingMap] = useState<Map<string, number>>(
     new Map(),
   );
+  const [stablePaths, setStablePaths] = useState<Set<string>>(new Set());
 
   // Clean up deletingMap after successful deletion or when path reappears (new worktree created)
   useEffect(() => {
@@ -41,7 +42,7 @@ export function useOptimisticWorktreeDelete() {
     const currentWorktreePaths = new Set(worktrees?.map((wt) => wt.path) || []);
     let hasChanges = false;
     const updatedMap = new Map(deletingMap);
-
+    const updatedStablePaths: string[] = [];
     for (const [path, timestamp] of deletingMap) {
       const stillExists = currentWorktreePaths.has(path);
 
@@ -56,6 +57,8 @@ export function useOptimisticWorktreeDelete() {
           // If still exists after 5 seconds, assume it's a new worktree or deletion failed
           updatedMap.delete(path);
           hasChanges = true;
+        }else {
+          updatedStablePaths.push(path);
         }
       }
     }
@@ -63,6 +66,9 @@ export function useOptimisticWorktreeDelete() {
     if (hasChanges) {
       setDeletingMap(updatedMap);
     }
+
+    setStablePaths(new Set(updatedStablePaths));
+
   }, [worktrees, deletingMap]);
 
   const deleteWorktree = (wt: string) => {
@@ -100,5 +106,5 @@ export function useOptimisticWorktreeDelete() {
     [deletingMap],
   );
 
-  return { deletingWorktreePaths, deleteWorktree };
+  return { deletingWorktreePaths, deleteWorktree, stablePaths };
 }

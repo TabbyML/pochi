@@ -40,7 +40,7 @@ import {
   type GitWorktree,
   prefixWorktreeName,
 } from "@getpochi/common/vscode-webui-bridge";
-import type { Task } from "@getpochi/livekit";
+import { taskCatalog } from "@getpochi/livekit";
 import {
   Check,
   ChevronDown,
@@ -57,6 +57,7 @@ import { useTranslation } from "react-i18next";
 import * as R from "remeda";
 import { TaskRow } from "./task-row";
 import { ScrollArea } from "./ui/scroll-area";
+import { useStore } from "@livestore/react";
 
 interface PrCheck {
   name: string;
@@ -67,7 +68,6 @@ interface PrCheck {
 interface WorktreeGroup {
   name: string;
   path: string;
-  tasks: Task[];
   isDeleted: boolean;
   isMain: boolean;
   createdAt?: number;
@@ -76,17 +76,15 @@ interface WorktreeGroup {
 }
 
 export function WorktreeList({
-  tasks,
+  cwd,
   onDeleteWorktree,
   deletingWorktreePaths,
-  onLoadMore,
-  hasMore,
+  stableWorktreePaths,
 }: {
-  tasks: readonly Task[];
+  cwd: string;
   deletingWorktreePaths: Set<string>;
+  stableWorktreePaths: Set<string>;
   onDeleteWorktree: (worktreePath: string) => void;
-  onLoadMore: () => void;
-  hasMore: boolean;
 }) {
   const { t } = useTranslation();
   const { data: currentWorkspace, isLoading: isLoadingCurrentWorkspace } =
@@ -98,34 +96,6 @@ export function WorktreeList({
     isLoading: isLoadingWorktrees,
   } = useWorktrees();
   const [showDeleted, setShowDeleted] = useState(false);
-  const sentinelRef = useRef<HTMLDivElement>(null);
-
-  // 使用 Intersection Observer 监听 sentinel 元素
-  useEffect(() => {
-    if (!sentinelRef.current || !hasMore) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const [entry] = entries;
-        if (entry.isIntersecting) {
-          onLoadMore();
-        }
-      },
-      {
-        root: null,
-        rootMargin: "100px",
-        threshold: 0.1,
-      },
-    );
-
-    observer.observe(sentinelRef.current);
-
-    return () => {
-      if (sentinelRef.current) {
-        observer.unobserve(sentinelRef.current);
-      }
-    };
-  }, [hasMore, onLoadMore]);
 
   const groups = useMemo(() => {
     if (isLoadingWorktrees || isLoadingCurrentWorkspace) {
@@ -145,44 +115,23 @@ export function WorktreeList({
 
     const worktreeMap = new Map(allWorktrees.map((wt) => [wt.path, wt]));
     const worktreeIndexMap = new Map(
-      allWorktrees.map((wt, index) => [wt.path, index]),
-    );
-
-    // 1. Group tasks by cwd (worktree path)
-    const taskGroups = R.pipe(
-      tasks,
-      R.filter((task) => !!task.cwd),
-      R.groupBy((task) => task.cwd as string),
-      R.mapValues((tasks, path) => {
-        const latestTask = R.pipe(
-          tasks,
-          R.sortBy([(task) => new Date(task.createdAt).getTime(), "desc"]),
-          R.first(),
-        );
-        return {
-          path,
-          tasks,
-          createdAt: latestTask ? new Date(latestTask.createdAt).getTime() : 0,
-        };
-      }),
+      allWorktrees.map((wt, index) => [wt.path, index])
     );
 
     // 2. Create groups for worktrees without tasks
     const worktreeGroups = R.pipe(
       allWorktrees,
-      R.filter((wt) => !taskGroups[wt.path]),
       R.map((wt) => ({
         path: wt.path,
-        tasks: [],
         createdAt: 0,
       })),
       R.groupBy((g) => g.path),
-      R.mapValues((groups) => groups[0]),
+      R.mapValues((groups) => groups[0])
     );
 
     // 3. Merge and resolve names/isDeleted
     return R.pipe(
-      { ...taskGroups, ...worktreeGroups },
+      worktreeGroups,
       R.values(),
       R.map((group): WorktreeGroup => {
         const wt = worktreeMap.get(group.path);
@@ -226,10 +175,9 @@ export function WorktreeList({
         }
 
         return a.name.localeCompare(b.name);
-      }),
+      })
     );
   }, [
-    tasks,
     worktrees,
     isLoadingWorktrees,
     isLoadingCurrentWorkspace,
@@ -241,11 +189,8 @@ export function WorktreeList({
     return groups
       .map((g) => {
         if (deletingWorktreePaths.has(g.path)) {
-          // If has tasks, mark as deleted; otherwise filter out
-          if (g.tasks.length > 0) {
-            return { ...g, isDeleted: true };
-          }
-          return null;
+          // mark deleted
+          return { ...g, isDeleted: true };
         }
         return g;
       })
@@ -265,6 +210,8 @@ export function WorktreeList({
           onDeleteGroup={onDeleteWorktree}
           gitOriginUrl={gitOriginUrl}
           ghCli={ghCli}
+          cwd={cwd}
+          excludedPaths={Array.from(deletingWorktreePaths)}
         />
       ))}
       {deletedGroups.length > 0 && (
@@ -295,55 +242,118 @@ export function WorktreeList({
                 group={group}
                 ghCli={ghCli}
                 gitOriginUrl={gitOriginUrl}
+                cwd={cwd}
+                excludedPaths={Array.from(stableWorktreePaths)}
               />
             ))}
         </>
       )}
-      {/* 全局的加载更多 sentinel */}
-      {hasMore && (
-        <div
-          ref={sentinelRef}
-          className="flex items-center justify-center py-4"
-        >
-          <div className="text-muted-foreground text-xs">Loading more...</div>
-        </div>
-      )}
     </div>
   );
 }
+const pageSize = 10;
 
 function WorktreeSection({
+  cwd,
   group,
   onDeleteGroup,
   ghCli,
   gitOriginUrl,
+  excludedPaths = [],
 }: {
+  cwd: string;
   group: WorktreeGroup;
   isLoadingWorktrees: boolean;
   onDeleteGroup?: (worktreePath: string) => void;
   ghCli?: { installed: boolean; authorized: boolean };
   gitOriginUrl?: string | null;
+  excludedPaths?: string[];
 }) {
   const { t } = useTranslation();
+  const { store } = useStore();
+
   // Default expanded for existing worktrees, collapsed for deleted
   const [isExpanded, setIsExpanded] = useState(!group.isDeleted);
   const [isHovered, setIsHovered] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const pochiTasks = usePochiTasks();
+  const loading = useRef(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
 
-  // 对 tasks 按 createdAt 降序排序
-  const sortedTasks = useMemo(() => {
-    return [...group.tasks].sort(
-      (a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+  // Fetch paginated tasks with filtering
+  const tasks = store.useQuery(
+    taskCatalog.queries.makeTasksQuery(
+      cwd,
+      currentPage,
+      pageSize,
+      excludedPaths
+    )
+  );
+
+  // Fetch total count
+  const countResult = store.useQuery(
+    taskCatalog.queries.makeTasksCountQuery(cwd, excludedPaths)
+  );
+
+  // 累积的 tasks 状态
+  const [accumulatedTasks, setAccumulatedTasks] = useState<typeof tasks>([]);
+
+  const hasMore = useMemo(
+    () => accumulatedTasks.length < (countResult[0]?.total || 0),
+    [tasks, countResult]
+  );
+  // 当 tasks 数据变化时，合并到累积的 tasks 中
+  useEffect(() => {
+    if (tasks.length > 0) {
+      setAccumulatedTasks((prev) => {
+        // 简单的去重合并：基于 task.id
+        const taskIds = new Set(prev.map((t) => t.id));
+        const newTasks = tasks.filter((t) => !taskIds.has(t.id));
+        const result = [...prev, ...newTasks];
+        return result;
+      });
+    }
+    loading.current = false;
+  }, [tasks]);
+  const loadMore = () => {
+    if (loading.current) return;
+    loading.current = true;
+    setCurrentPage((prev) => prev + 1);
+  };
+
+  const pochiTasks = usePochiTasks();
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  // 使用 Intersection Observer 监听 sentinel 元素
+  useEffect(() => {
+    if (!sentinelRef.current || !hasMore) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries;
+        if (entry.isIntersecting) {
+          loadMore();
+        }
+      },
+      {
+        root: null,
+        rootMargin: "100px",
+        threshold: 0.1,
+      }
     );
-  }, [group.tasks]);
+
+    observer.observe(sentinelRef.current);
+
+    return () => {
+      if (sentinelRef.current) {
+        observer.unobserve(sentinelRef.current);
+      }
+    };
+  }, [hasMore, loadMore]);
 
   const pullRequest = group.data?.github?.pullRequest;
-  const hasEdit = group.tasks.some(
+  const hasEdit = accumulatedTasks.some(
     (task) =>
       task.lineChanges &&
-      (task.lineChanges?.added !== 0 || task.lineChanges?.removed !== 0),
+      (task.lineChanges?.added !== 0 || task.lineChanges?.removed !== 0)
   );
 
   const prUrl = useMemo(() => {
@@ -421,7 +431,7 @@ function WorktreeSection({
               "ml-auto flex items-center gap-1 transition-opacity duration-200",
               !isHovered && !showDeleteConfirm
                 ? "pointer-events-none opacity-0"
-                : "opacity-100",
+                : "opacity-100"
             )}
           >
             {!group.isDeleted && (
@@ -529,8 +539,8 @@ function WorktreeSection({
 
       <CollapsibleContent>
         <ScrollArea viewportClassname="max-h-[230px] px-1 py-1">
-          {sortedTasks.length > 0 ? (
-            sortedTasks.map((task) => {
+          {accumulatedTasks.length > 0 ? (
+            accumulatedTasks.map((task) => {
               return (
                 <div key={task.id} className="py-0.5">
                   <TaskRow task={task} state={pochiTasks[task.id]} />
@@ -540,6 +550,16 @@ function WorktreeSection({
           ) : (
             <div className="py-0.5 text-muted-foreground text-xs">
               {t("tasksPage.emptyState.description")}
+            </div>
+          )}
+          {hasMore && (
+            <div
+              ref={sentinelRef}
+              className="flex items-center justify-center py-4"
+            >
+              <div className="text-muted-foreground text-xs">
+                Loading more...
+              </div>
             </div>
           )}
         </ScrollArea>
@@ -631,7 +651,7 @@ function CreatePrDropdown({
                     }
                   }}
                   className={cn(
-                    !isGhCliReady && "cursor-not-allowed opacity-50",
+                    !isGhCliReady && "cursor-not-allowed opacity-50"
                   )}
                 >
                   {t("worktree.createPr")}
@@ -702,7 +722,7 @@ function PrStatusDisplay({
   const passedCheckCount =
     prChecks && prChecks.length > 0
       ? prChecks.filter(
-          (check) => check.state === "success" || check.state === "completed",
+          (check) => check.state === "success" || check.state === "completed"
         ).length
       : 0;
 
@@ -712,7 +732,7 @@ function PrStatusDisplay({
           (check) =>
             check.state === "failure" ||
             check.state === "failed" ||
-            check.state === "error",
+            check.state === "error"
         ).length
       : 0;
 
