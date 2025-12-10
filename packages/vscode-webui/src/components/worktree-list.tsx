@@ -304,19 +304,23 @@ function WorktreeSection({
     [accumulatedTasks, countResult],
   );
   useEffect(() => {
+    console.log('total tasks changed', totalTaskCount[0].total);
     setCurrentPage(1);
     setAccumulatedTasks([]);
   }, [totalTaskCount[0].total]);
   // 当 tasks 数据变化时，合并到累积的 tasks 中
   useEffect(() => {
-      setAccumulatedTasks((prev) => {
-        // 简单的去重合并：基于 task.id
-        const taskIds = new Set(prev.map((t) => t.id));
-        const newTasks = (tasks || []).filter((t) => !taskIds.has(t.id));
-        const result = [...prev, ...newTasks];
-        result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-        return result;
-      });
+    setAccumulatedTasks((prev) => {
+      // 简单的去重合并：基于 task.id
+      const taskIds = new Set(prev.map((t) => t.id));
+      const newTasks = (tasks || []).filter((t) => !taskIds.has(t.id));
+      const result = [...prev, ...newTasks];
+      result.sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      );
+      return result;
+    });
     loading.current = false;
   }, [tasks]);
   const loadMore = useCallback(() => {
