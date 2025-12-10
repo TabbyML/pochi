@@ -40,7 +40,8 @@ import {
   type GitWorktree,
   prefixWorktreeName,
 } from "@getpochi/common/vscode-webui-bridge";
-import type { Task } from "@getpochi/livekit";
+import { taskCatalog } from "@getpochi/livekit";
+import { useStore } from "@livestore/react";
 import {
   Check,
   ChevronDown,
@@ -48,16 +49,16 @@ import {
   GitCompare,
   GitPullRequest,
   Loader2,
-  Plus,
   Terminal,
   Trash2,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as R from "remeda";
 import { TaskRow } from "./task-row";
 import { ScrollArea } from "./ui/scroll-area";
+import { Skeleton } from "./ui/skeleton";
 
 interface PrCheck {
   name: string;
@@ -68,7 +69,6 @@ interface PrCheck {
 interface WorktreeGroup {
   name: string;
   path: string;
-  tasks: Task[];
   isDeleted: boolean;
   isMain: boolean;
   createdAt?: number;
@@ -77,17 +77,13 @@ interface WorktreeGroup {
 }
 
 export function WorktreeList({
-  tasks,
-  onDeleteWorktree,
+  cwd,
   deletingWorktreePaths,
-  onLoadMore,
-  hasMore,
+  onDeleteWorktree,
 }: {
-  tasks: readonly Task[];
+  cwd: string;
   deletingWorktreePaths: Set<string>;
   onDeleteWorktree: (worktreePath: string) => void;
-  onLoadMore: () => void;
-  hasMore: boolean;
 }) {
   const { t } = useTranslation();
   const { data: currentWorkspace, isLoading: isLoadingCurrentWorkspace } =
@@ -99,34 +95,6 @@ export function WorktreeList({
     isLoading: isLoadingWorktrees,
   } = useWorktrees();
   const [showDeleted, setShowDeleted] = useState(false);
-  const sentinelRef = useRef<HTMLDivElement>(null);
-
-  // 使用 Intersection Observer 监听 sentinel 元素
-  useEffect(() => {
-    if (!sentinelRef.current || !hasMore) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const [entry] = entries;
-        if (entry.isIntersecting) {
-          onLoadMore();
-        }
-      },
-      {
-        root: null,
-        rootMargin: "100px",
-        threshold: 0.1,
-      },
-    );
-
-    observer.observe(sentinelRef.current);
-
-    return () => {
-      if (sentinelRef.current) {
-        observer.unobserve(sentinelRef.current);
-      }
-    };
-  }, [hasMore, onLoadMore]);
 
   const groups = useMemo(() => {
     if (isLoadingWorktrees || isLoadingCurrentWorkspace) {
@@ -149,32 +117,11 @@ export function WorktreeList({
       allWorktrees.map((wt, index) => [wt.path, index]),
     );
 
-    // 1. Group tasks by cwd (worktree path)
-    const taskGroups = R.pipe(
-      tasks,
-      R.filter((task) => !!task.cwd),
-      R.groupBy((task) => task.cwd as string),
-      R.mapValues((tasks, path) => {
-        const latestTask = R.pipe(
-          tasks,
-          R.sortBy([(task) => new Date(task.createdAt).getTime(), "desc"]),
-          R.first(),
-        );
-        return {
-          path,
-          tasks,
-          createdAt: latestTask ? new Date(latestTask.createdAt).getTime() : 0,
-        };
-      }),
-    );
-
     // 2. Create groups for worktrees without tasks
     const worktreeGroups = R.pipe(
       allWorktrees,
-      R.filter((wt) => !taskGroups[wt.path]),
       R.map((wt) => ({
         path: wt.path,
-        tasks: [],
         createdAt: 0,
       })),
       R.groupBy((g) => g.path),
@@ -183,7 +130,7 @@ export function WorktreeList({
 
     // 3. Merge and resolve names/isDeleted
     return R.pipe(
-      { ...taskGroups, ...worktreeGroups },
+      worktreeGroups,
       R.values(),
       R.map((group): WorktreeGroup => {
         const wt = worktreeMap.get(group.path);
@@ -195,7 +142,7 @@ export function WorktreeList({
           isDeleted = false;
           isMain = wt.isMain;
           if (wt.isMain) {
-            name = "workspace";
+            name = "main";
           } else {
             name = getWorktreeNameFromWorktreePath(wt.path) || "unknown";
           }
@@ -230,7 +177,6 @@ export function WorktreeList({
       }),
     );
   }, [
-    tasks,
     worktrees,
     isLoadingWorktrees,
     isLoadingCurrentWorkspace,
@@ -242,11 +188,8 @@ export function WorktreeList({
     return groups
       .map((g) => {
         if (deletingWorktreePaths.has(g.path)) {
-          // If has tasks, mark as deleted; otherwise filter out
-          if (g.tasks.length > 0) {
-            return { ...g, isDeleted: true };
-          }
-          return null;
+          // mark deleted
+          return { ...g, isDeleted: true };
         }
         return g;
       })
@@ -266,6 +209,7 @@ export function WorktreeList({
           onDeleteGroup={onDeleteWorktree}
           gitOriginUrl={gitOriginUrl}
           gh={gh}
+          cwd={cwd}
         />
       ))}
       {deletedGroups.length > 0 && (
@@ -296,29 +240,24 @@ export function WorktreeList({
                 group={group}
                 gh={gh}
                 gitOriginUrl={gitOriginUrl}
+                cwd={cwd}
               />
             ))}
         </>
       )}
-      {/* 全局的加载更多 sentinel */}
-      {hasMore && (
-        <div
-          ref={sentinelRef}
-          className="flex items-center justify-center py-4"
-        >
-          <div className="text-muted-foreground text-xs">Loading more...</div>
-        </div>
-      )}
     </div>
   );
 }
+const pageSize = 5;
 
 function WorktreeSection({
+  cwd,
   group,
   onDeleteGroup,
   gh,
   gitOriginUrl,
 }: {
+  cwd: string;
   group: WorktreeGroup;
   isLoadingWorktrees: boolean;
   onDeleteGroup?: (worktreePath: string) => void;
@@ -326,21 +265,74 @@ function WorktreeSection({
   gitOriginUrl?: string | null;
 }) {
   const { t } = useTranslation();
+  const { store } = useStore();
+
   // Default expanded for existing worktrees, collapsed for deleted
   const [isExpanded, setIsExpanded] = useState(!group.isDeleted);
   const [isHovered, setIsHovered] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const pochiTasks = usePochiTabs();
+  const loading = useRef(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(true);
+  const [pageLength, setPageLength] = useState(0);
+  // Fetch paginated tasks with filtering
+  const tasks = store.useQuery(
+    taskCatalog.queries.makeTasksQuery(cwd, pageLength + pageSize, group.path),
+  );
 
-  // 对 tasks 按 createdAt 降序排序
-  const sortedTasks = useMemo(() => {
-    return [...group.tasks].sort(
-      (a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+  const countResult = store.useQuery(
+    taskCatalog.queries.makeTasksCountQuery(cwd, group.path),
+  );
+  const hasMore = useMemo(
+    () => countResult.length > 0 && countResult[0].total > tasks.length,
+    [countResult, tasks],
+  );
+
+  useEffect(() => {
+    if (tasks.length) {
+      loading.current = false;
+    }
+  }, [tasks]);
+
+  const loadMore = useCallback(() => {
+    if (loading.current || !hasMore) return;
+    loading.current = true;
+    setPageLength(tasks.length);
+  }, [tasks, hasMore]);
+
+  const pochiTasks = usePochiTabs();
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  // use Intersection Observer to monitor sentinel element
+  useEffect(() => {
+    if (!sentinelRef.current || !hasMore) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries;
+        if (entry.isIntersecting) {
+          loadMore();
+        }
+      },
+      {
+        root: null,
+        rootMargin: "100px",
+        threshold: 0.1,
+      },
     );
-  }, [group.tasks]);
+
+    observer.observe(sentinelRef.current);
+
+    return () => {
+      if (sentinelRef.current) {
+        observer.unobserve(sentinelRef.current);
+      }
+    };
+  }, [hasMore, loadMore]);
 
   const pullRequest = group.data?.github?.pullRequest;
+  const hasEdit = tasks.some(
+    (task) =>
+      task.lineChanges &&
+      (task.lineChanges?.added !== 0 || task.lineChanges?.removed !== 0),
+  );
 
   const prUrl = useMemo(() => {
     if (!gitOriginUrl || !pullRequest?.id) return "#";
@@ -372,33 +364,37 @@ function WorktreeSection({
       >
         {/* worktree name & branch */}
         <div className="flex h-6 items-center gap-2">
-          {group.isDeleted ? (
-            <CollapsibleTrigger asChild>
-              <div className="flex w-full flex-1 cursor-pointer select-none items-center gap-2 font-medium text-sm">
-                {isExpanded ? (
-                  <ChevronDown className="size-4 shrink-0" />
-                ) : (
-                  <ChevronRight className="size-4 shrink-0" />
-                )}
+          <div className="flex items-center gap-2 overflow-x-hidden">
+            {group.isDeleted ? (
+              <CollapsibleTrigger asChild>
+                <div className="flex w-full flex-1 cursor-pointer select-none items-center gap-2 font-medium text-sm">
+                  {isExpanded ? (
+                    <ChevronDown className="size-4 shrink-0" />
+                  ) : (
+                    <ChevronRight className="size-4 shrink-0" />
+                  )}
+                  <span className="truncate">
+                    {prefixWorktreeName(group.name)}
+                  </span>
+                </div>
+              </CollapsibleTrigger>
+            ) : (
+              <div className="flex items-center font-bold">
                 <span className="truncate">
                   {prefixWorktreeName(group.name)}
                 </span>
               </div>
-            </CollapsibleTrigger>
-          ) : (
-            <span className="items-center truncate font-bold">
-              {prefixWorktreeName(group.name)}
-            </span>
-          )}
+            )}
+          </div>
 
-          <div className="mt-[1px] flex-1">
+          <div className="mt-[1px] flex-1 overflow-x-hidden">
             {pullRequest ? (
               <PrStatusDisplay
                 prNumber={pullRequest.id}
                 prUrl={prUrl}
                 prChecks={pullRequest.checks}
               />
-            ) : !group.isDeleted ? (
+            ) : hasEdit && !group.isDeleted ? (
               <CreatePrDropdown
                 worktreePath={group.path}
                 branch={group.branch}
@@ -418,23 +414,6 @@ function WorktreeSection({
           >
             {!group.isDeleted && (
               <>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 w-6 p-0"
-                      asChild
-                    >
-                      <a
-                        href={`command:pochi.worktree.newTask?${encodeURIComponent(JSON.stringify([group.path]))}`}
-                      >
-                        <Plus className="size-4" />
-                      </a>
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>{t("tasksPage.newTask")}</TooltipContent>
-                </Tooltip>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
@@ -481,15 +460,13 @@ function WorktreeSection({
                     <Tooltip>
                       <PopoverTrigger asChild>
                         <TooltipTrigger asChild>
-                          <span>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-6 w-6 p-0"
-                            >
-                              <Trash2 className="size-4" />
-                            </Button>
-                          </span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0"
+                          >
+                            <Trash2 className="size-4" />
+                          </Button>
                         </TooltipTrigger>
                       </PopoverTrigger>
                       <TooltipContent>
@@ -537,11 +514,10 @@ function WorktreeSection({
           </div>
         </div>
       </div>
-
       <CollapsibleContent>
         <ScrollArea viewportClassname="max-h-[230px] px-1 py-1">
-          {sortedTasks.length > 0 ? (
-            sortedTasks.map((task) => {
+          {tasks.length > 0 ? (
+            tasks.map((task) => {
               return (
                 <div key={task.id} className="py-0.5">
                   <TaskRow task={task} state={pochiTasks[task.id]} />
@@ -551,6 +527,16 @@ function WorktreeSection({
           ) : (
             <div className="py-0.5 text-muted-foreground text-xs">
               {t("tasksPage.emptyState.description")}
+            </div>
+          )}
+          {hasMore && (
+            <div
+              ref={sentinelRef}
+              className="flex items-center justify-center py-4"
+            >
+              <Skeleton className="w-full p-2 text-center">
+                {t("tasksPage.loadingMore")}
+              </Skeleton>
             </div>
           )}
         </ScrollArea>
@@ -612,70 +598,74 @@ function CreatePrDropdown({
   }, [gitOriginUrl, branch]);
 
   return (
-    <DropdownMenu>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-6 w-6 shrink-0 gap-1"
-            >
-              <GitPullRequest className="size-3.5" />
-            </Button>
-          </DropdownMenuTrigger>
-        </TooltipTrigger>
-        <TooltipContent>{t("worktree.createPr")}</TooltipContent>
-      </Tooltip>
-      <DropdownMenuContent
-        align="start"
-        className="bg-background text-xs"
-        side="right"
-        onCloseAutoFocus={(e) => e.preventDefault()}
-      >
+    <div className="flex items-center">
+      <DropdownMenu>
         <Tooltip>
           <TooltipTrigger asChild>
-            <span>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-6 w-6 gap-1">
+                <GitPullRequest className="size-3.5" />
+              </Button>
+            </DropdownMenuTrigger>
+          </TooltipTrigger>
+          <TooltipContent>{t("worktree.createPr")}</TooltipContent>
+        </Tooltip>
+        <DropdownMenuContent
+          align="start"
+          className="bg-background text-xs"
+          side="right"
+          onCloseAutoFocus={(e) => e.preventDefault()}
+        >
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span>
+                <DropdownMenuItem
+                  onSelect={(e) => {
+                    if (!isGhCliReady) {
+                      e.preventDefault();
+                    } else {
+                      onCreatePr();
+                    }
+                  }}
+                  className={cn(
+                    !isGhCliReady && "cursor-not-allowed opacity-50",
+                  )}
+                >
+                  {t("worktree.createPr")}
+                </DropdownMenuItem>
+              </span>
+            </TooltipTrigger>
+            {!isGhCliReady && (
+              <TooltipContent>{ghTooltipMessage}</TooltipContent>
+            )}
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
               <DropdownMenuItem
                 onSelect={(e) => {
                   if (!isGhCliReady) {
                     e.preventDefault();
                   } else {
-                    onCreatePr();
+                    onCreatePr(true);
                   }
                 }}
                 className={cn(!isGhCliReady && "cursor-not-allowed opacity-50")}
               >
-                {t("worktree.createPr")}
+                {t("worktree.createDraftPr")}
               </DropdownMenuItem>
-            </span>
-          </TooltipTrigger>
-          {!isGhCliReady && <TooltipContent>{ghTooltipMessage}</TooltipContent>}
-        </Tooltip>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <DropdownMenuItem
-              onSelect={(e) => {
-                if (!isGhCliReady) {
-                  e.preventDefault();
-                } else {
-                  onCreatePr(true);
-                }
-              }}
-              className={cn(!isGhCliReady && "cursor-not-allowed opacity-50")}
-            >
-              {t("worktree.createDraftPr")}
-            </DropdownMenuItem>
-          </TooltipTrigger>
-          {!isGhCliReady && <TooltipContent>{ghTooltipMessage}</TooltipContent>}
-        </Tooltip>
-        <DropdownMenuItem asChild disabled={!manualPrUrl}>
-          <a href={manualPrUrl} target="_blank" rel="noopener noreferrer">
-            {t("worktree.createPrManually")}
-          </a>
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+            </TooltipTrigger>
+            {!isGhCliReady && (
+              <TooltipContent>{ghTooltipMessage}</TooltipContent>
+            )}
+          </Tooltip>
+          <DropdownMenuItem asChild disabled={!manualPrUrl}>
+            <a href={manualPrUrl} target="_blank" rel="noopener noreferrer">
+              {t("worktree.createPrManually")}
+            </a>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
   );
 }
 

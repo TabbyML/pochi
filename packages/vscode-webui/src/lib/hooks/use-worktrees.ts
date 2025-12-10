@@ -41,7 +41,6 @@ export function useOptimisticWorktreeDelete() {
     const currentWorktreePaths = new Set(worktrees?.map((wt) => wt.path) || []);
     let hasChanges = false;
     const updatedMap = new Map(deletingMap);
-
     for (const [path, timestamp] of deletingMap) {
       const stillExists = currentWorktreePaths.has(path);
 
@@ -63,6 +62,7 @@ export function useOptimisticWorktreeDelete() {
     if (hasChanges) {
       setDeletingMap(updatedMap);
     }
+
   }, [worktrees, deletingMap]);
 
   const deleteWorktree = (wt: string) => {
