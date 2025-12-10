@@ -103,7 +103,7 @@ function Tasks() {
         />
       </div>
       {}
-      {allTaskCount[0]?.total == 0 ? (
+      {allTaskCount[0]?.total === 0 ? (
         <EmptyTaskPlaceholder />
       ) : (
         <div className="min-h-0 flex-1 pt-4">
