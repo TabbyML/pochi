@@ -53,7 +53,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as R from "remeda";
 import { TaskRow } from "./task-row";
@@ -314,11 +314,11 @@ function WorktreeSection({
     }
     loading.current = false;
   }, [tasks]);
-  const loadMore = () => {
+  const loadMore = useCallback(() => {
     if (loading.current) return;
     loading.current = true;
     setCurrentPage((prev) => prev + 1);
-  };
+  }, []);
 
   const pochiTasks = usePochiTasks();
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -347,7 +347,7 @@ function WorktreeSection({
         observer.unobserve(sentinelRef.current);
       }
     };
-  }, [hasMore]);
+  }, [hasMore, loadMore]);
 
   const pullRequest = group.data?.github?.pullRequest;
   const hasEdit = accumulatedTasks.some(
