@@ -278,7 +278,9 @@ function WorktreeSection({
   const loading = useRef(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
-
+  const totalTaskCount = store.useQuery(
+    taskCatalog.queries.makeTasksCountQuery(cwd, excludedPaths),
+  );
   // Fetch paginated tasks with filtering
   const tasks = store.useQuery(
     taskCatalog.queries.makeTasksQuery(
@@ -301,17 +303,20 @@ function WorktreeSection({
     () => accumulatedTasks.length < (countResult[0]?.total || 0),
     [accumulatedTasks, countResult],
   );
+  useEffect(() => {
+    setCurrentPage(1);
+    setAccumulatedTasks([]);
+  }, [totalTaskCount[0].total]);
   // 当 tasks 数据变化时，合并到累积的 tasks 中
   useEffect(() => {
-    if (tasks.length > 0) {
       setAccumulatedTasks((prev) => {
         // 简单的去重合并：基于 task.id
         const taskIds = new Set(prev.map((t) => t.id));
-        const newTasks = tasks.filter((t) => !taskIds.has(t.id));
+        const newTasks = (tasks || []).filter((t) => !taskIds.has(t.id));
         const result = [...prev, ...newTasks];
+        result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
         return result;
       });
-    }
     loading.current = false;
   }, [tasks]);
   const loadMore = useCallback(() => {
