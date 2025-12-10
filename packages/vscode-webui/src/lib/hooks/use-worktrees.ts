@@ -57,7 +57,7 @@ export function useOptimisticWorktreeDelete() {
           // If still exists after 5 seconds, assume it's a new worktree or deletion failed
           updatedMap.delete(path);
           hasChanges = true;
-        }else {
+        } else {
           updatedStablePaths.push(path);
         }
       }
@@ -68,7 +68,6 @@ export function useOptimisticWorktreeDelete() {
     }
 
     setStablePaths(new Set(updatedStablePaths));
-
   }, [worktrees, deletingMap]);
 
   const deleteWorktree = (wt: string) => {

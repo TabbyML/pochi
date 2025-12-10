@@ -28,7 +28,7 @@ export const makeTasksQuery = (
     LIMIT ${pageSize} 
     OFFSET ${offset}
   `;
-  
+
   return queryDb(
     {
       // 返回 tasks 数组

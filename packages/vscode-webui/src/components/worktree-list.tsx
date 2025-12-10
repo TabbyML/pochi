@@ -41,6 +41,7 @@ import {
   prefixWorktreeName,
 } from "@getpochi/common/vscode-webui-bridge";
 import { taskCatalog } from "@getpochi/livekit";
+import { useStore } from "@livestore/react";
 import {
   Check,
   ChevronDown,
@@ -57,7 +58,6 @@ import { useTranslation } from "react-i18next";
 import * as R from "remeda";
 import { TaskRow } from "./task-row";
 import { ScrollArea } from "./ui/scroll-area";
-import { useStore } from "@livestore/react";
 
 interface PrCheck {
   name: string;
@@ -115,7 +115,7 @@ export function WorktreeList({
 
     const worktreeMap = new Map(allWorktrees.map((wt) => [wt.path, wt]));
     const worktreeIndexMap = new Map(
-      allWorktrees.map((wt, index) => [wt.path, index])
+      allWorktrees.map((wt, index) => [wt.path, index]),
     );
 
     // 2. Create groups for worktrees without tasks
@@ -126,7 +126,7 @@ export function WorktreeList({
         createdAt: 0,
       })),
       R.groupBy((g) => g.path),
-      R.mapValues((groups) => groups[0])
+      R.mapValues((groups) => groups[0]),
     );
 
     // 3. Merge and resolve names/isDeleted
@@ -175,7 +175,7 @@ export function WorktreeList({
         }
 
         return a.name.localeCompare(b.name);
-      })
+      }),
     );
   }, [
     worktrees,
@@ -285,13 +285,13 @@ function WorktreeSection({
       cwd,
       currentPage,
       pageSize,
-      excludedPaths
-    )
+      excludedPaths,
+    ),
   );
 
   // Fetch total count
   const countResult = store.useQuery(
-    taskCatalog.queries.makeTasksCountQuery(cwd, excludedPaths)
+    taskCatalog.queries.makeTasksCountQuery(cwd, excludedPaths),
   );
 
   // 累积的 tasks 状态
@@ -299,7 +299,7 @@ function WorktreeSection({
 
   const hasMore = useMemo(
     () => accumulatedTasks.length < (countResult[0]?.total || 0),
-    [tasks, countResult]
+    [tasks, countResult],
   );
   // 当 tasks 数据变化时，合并到累积的 tasks 中
   useEffect(() => {
@@ -337,7 +337,7 @@ function WorktreeSection({
         root: null,
         rootMargin: "100px",
         threshold: 0.1,
-      }
+      },
     );
 
     observer.observe(sentinelRef.current);
@@ -353,7 +353,7 @@ function WorktreeSection({
   const hasEdit = accumulatedTasks.some(
     (task) =>
       task.lineChanges &&
-      (task.lineChanges?.added !== 0 || task.lineChanges?.removed !== 0)
+      (task.lineChanges?.added !== 0 || task.lineChanges?.removed !== 0),
   );
 
   const prUrl = useMemo(() => {
@@ -431,7 +431,7 @@ function WorktreeSection({
               "ml-auto flex items-center gap-1 transition-opacity duration-200",
               !isHovered && !showDeleteConfirm
                 ? "pointer-events-none opacity-0"
-                : "opacity-100"
+                : "opacity-100",
             )}
           >
             {!group.isDeleted && (
@@ -651,7 +651,7 @@ function CreatePrDropdown({
                     }
                   }}
                   className={cn(
-                    !isGhCliReady && "cursor-not-allowed opacity-50"
+                    !isGhCliReady && "cursor-not-allowed opacity-50",
                   )}
                 >
                   {t("worktree.createPr")}
@@ -722,7 +722,7 @@ function PrStatusDisplay({
   const passedCheckCount =
     prChecks && prChecks.length > 0
       ? prChecks.filter(
-          (check) => check.state === "success" || check.state === "completed"
+          (check) => check.state === "success" || check.state === "completed",
         ).length
       : 0;
 
@@ -732,7 +732,7 @@ function PrStatusDisplay({
           (check) =>
             check.state === "failure" ||
             check.state === "failed" ||
-            check.state === "error"
+            check.state === "error",
         ).length
       : 0;
 

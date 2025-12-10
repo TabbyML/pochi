@@ -14,7 +14,7 @@ import { taskCatalog } from "@getpochi/livekit";
 import { useStore } from "@livestore/react";
 import { createFileRoute } from "@tanstack/react-router";
 import { TerminalIcon } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { LiveStoreTaskProvider } from "../livestore-task-provider";
 
