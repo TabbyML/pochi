@@ -945,6 +945,9 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   };
 
   queryGithubIssues = async (query?: string): Promise<GithubIssue[]> => {
+    if (this.githubPullRequestMonitor.ghCliCheck.value.authorized === false) {
+      return [];
+    }
     return await this.githubIssues.queryIssues(query);
   };
 
