@@ -7,7 +7,7 @@ import { generateBranchName } from "@/lib/generate-branch-name";
 import { getLogger } from "@/lib/logger";
 import { toErrorMessage } from "@getpochi/common";
 import { getWorktreeNameFromWorktreePath } from "@getpochi/common/git-utils";
-import { isPlainTextFile } from "@getpochi/common/tool-utils";
+import { isPlainText } from "@getpochi/common/tool-utils";
 import type {
   CreateWorktreeOptions,
   GitWorktree,
@@ -474,21 +474,34 @@ async function showWorktreeDiff(
       return false;
     }
 
+    const isFileExistInBase = (filepath: string) =>
+      git.raw(["ls-tree", "-r", base, "--", filepath]).then(
+        (res) => res.trim().length > 0,
+        () => false,
+      );
+
     for (const { status, filepath } of changedFiles) {
       const fsPath = path.join(cwd, filepath);
       let beforeContent = "";
       let afterContent = "";
-      const isPlainText = await isPlainTextFile(fsPath);
-      if (!isPlainText) {
-        continue;
-      }
       if (status === "A") {
         afterContent = (await readFileContent(fsPath)) ?? "";
       } else if (status === "D") {
-        beforeContent = await git.raw(["show", `${base}:${filepath}`]);
-      } else {
-        beforeContent = await git.raw(["show", `${base}:${filepath}`]);
+        if (await isFileExistInBase(filepath)) {
+          beforeContent = await git.raw(["show", `${base}:${filepath}`]);
+        }
+      } else if (status === "M") {
+        if (await isFileExistInBase(filepath)) {
+          beforeContent = await git.raw(["show", `${base}:${filepath}`]);
+        }
         afterContent = (await readFileContent(fsPath)) ?? "";
+      }
+
+      if (
+        !isPlainText(Buffer.from(beforeContent)) ||
+        !isPlainText(Buffer.from(afterContent))
+      ) {
+        continue;
       }
 
       result.push({
