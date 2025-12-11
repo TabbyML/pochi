@@ -25,6 +25,7 @@ const PageSize = 50;
 const PollIntervalMS = 60 * 1000; // 1 minute
 const OneYearAgoMS = 365 * 24 * 60 * 60 * 1000;
 const MaxIssues = 3000;
+const QueryLimit = 50;
 
 @singleton()
 @injectable()
@@ -198,7 +199,7 @@ export class GithubIssues implements vscode.Disposable {
           searchQuery += " is:open";
         }
         searchQuery += ` updated:>=${updatedAt}`;
-        searchQuery += " sort:updated-desc";
+        searchQuery += " sort:created-desc";
 
         command = `gh api "/search/issues?q=${encodeURIComponent(searchQuery)}&per_page=${PageSize}&page=${page}" --jq '.items[] | {number: .number, title: .title, url: .html_url, state: .state}'`;
       }
@@ -276,7 +277,7 @@ export class GithubIssues implements vscode.Disposable {
       }
     }
 
-    return filteredIssues;
+    return filteredIssues.sort((a, b) => b.id - a.id);
   }
 
   private scheduleNextCheck() {
@@ -310,7 +311,7 @@ export class GithubIssues implements vscode.Disposable {
       const issues = issuesData.data;
 
       if (!query) {
-        return issues.slice(0, 10);
+        return issues.slice(0, QueryLimit);
       }
 
       // Check for fuzzy match by issue ID (substring match)
@@ -346,7 +347,7 @@ export class GithubIssues implements vscode.Disposable {
         ),
       ];
 
-      return allMatches.slice(0, 10);
+      return allMatches.slice(0, QueryLimit);
     } catch (error) {
       logger.warn(`Failed to query issues: ${toErrorMessage(error)}`);
       return [];
