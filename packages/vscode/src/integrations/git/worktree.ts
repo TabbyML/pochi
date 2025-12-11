@@ -136,7 +136,6 @@ export class WorktreeManager implements vscode.Disposable {
     if (newWorktree) {
       logger.debug(`New worktree created at: ${newWorktree.path}`);
       this.updateWorktrees();
-      this.worktreeInfoProvider.initialize(newWorktree.path);
       setupWorktree(newWorktree.path);
       return newWorktree;
     }

@@ -136,7 +136,7 @@ export class GithubIssues implements vscode.Disposable {
         }
 
         if (hasMore) {
-          this.worktreeInfoProvider.updateGithubIssues(worktreePath, {
+          await this.worktreeInfoProvider.updateGithubIssues(worktreePath, {
             pageOffset: page,
             data: updatedIssues,
           });
@@ -145,7 +145,7 @@ export class GithubIssues implements vscode.Disposable {
           );
         } else {
           const now = new Date().toISOString();
-          this.worktreeInfoProvider.updateGithubIssues(worktreePath, {
+          await this.worktreeInfoProvider.updateGithubIssues(worktreePath, {
             updatedAt: currentIssuesData?.processedAt ?? now,
             processedAt: now,
             pageOffset: 0,
