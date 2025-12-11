@@ -2504,13 +2504,13 @@ URL: /developer-updates/2025-12-12-weekly-update-14
 
 ### TL;DR
 
-This release introduces pair of upgrades aimed at making Pochi feel even more native to your development flow: GitHub Issue integration embedded right into task input, and a new Cmd/Ctrl + Enter shortcut to spin up worktrees easily.
+This release introduces pair of upgrades aimed at making Pochi feel even more native to your development flow: GitHub Issue integration embedded right into task input, and a new `Cmd`/`Ctrl` + `Enter` shortcut to spin up worktrees easily.
 
 ### 🚀 Features
 
-* **GitHub Issue Integration in Task Input & PR Flow:** You can now connect tasks directly to GitHub Issues. Typing `@#` opens an inline issue selector where you can search by issue ID, keyword, or scroll the dropdown list.<br />
+* **GitHub Issue Integration in Task Input:** You can now connect tasks directly to GitHub Issues. Typing `@#` opens an inline issue selector where you can search by issue ID, keyword, or scroll the dropdown list.<br />
 
-  All newly created issues are accessible within a minute. Once selected, issues appear as markdown badges and are sent as enriched context to the model. **[#833](https://github.com/TabbyML/pochi/issues/833)**
+  All newly created issues are accessible within a minute. Once selected, issues appear as markdown badges and are sent as enriched context to the model. **[#833](https://github.com/TabbyML/pochi/issues/823)**
 
   <video
     controls
@@ -2789,13 +2789,13 @@ Here you will find highlights on features, enhancements, and bug fixes, plus ins
 
 ### TL;DR
 
-This release introduces pair of upgrades aimed at making Pochi feel even more native to your development flow: GitHub Issue integration embedded right into task input, and a new Cmd/Ctrl + Enter shortcut to spin up worktrees easily.
+This release introduces pair of upgrades aimed at making Pochi feel even more native to your development flow: GitHub Issue integration embedded right into task input, and a new `Cmd`/`Ctrl` + `Enter` shortcut to spin up worktrees easily.
 
 ### 🚀 Features
 
-* **GitHub Issue Integration in Task Input & PR Flow:** You can now connect tasks directly to GitHub Issues. Typing `@#` opens an inline issue selector where you can search by issue ID, keyword, or scroll the dropdown list.<br />
+* **GitHub Issue Integration in Task Input:** You can now connect tasks directly to GitHub Issues. Typing `@#` opens an inline issue selector where you can search by issue ID, keyword, or scroll the dropdown list.<br />
 
-  All newly created issues are accessible within a minute. Once selected, issues appear as markdown badges and are sent as enriched context to the model. **[#833](https://github.com/TabbyML/pochi/issues/833)**
+  All newly created issues are accessible within a minute. Once selected, issues appear as markdown badges and are sent as enriched context to the model. **[#833](https://github.com/TabbyML/pochi/issues/823)**
 
   <video
     controls
