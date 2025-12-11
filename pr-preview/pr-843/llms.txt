@@ -2493,6 +2493,58 @@ A small step closer to a more transparent, predictable coding agent.
 * We’re working on multi-worktree task execution (run tasks in parallel across branches or models) and GitHub/Linear issue linking that lets Pochi automatically attach, track, and close issues as part of your workflow.
 
 
+# Weekly Update
+URL: /developer-updates/2025-12-12-weekly-update-14
+
+***
+
+## title: Weekly Update #14
+
+# Weekly Update #14
+
+### TL;DR
+
+This release introduces pair of upgrades aimed at making Pochi feel even more native to your development flow: GitHub Issue integration embedded right into task input, and a new `Cmd`/`Ctrl` + `Enter` shortcut to spin up worktrees easily.
+
+### 🚀 Features
+
+* **GitHub Issue Integration in Task Input:** You can now connect tasks directly to GitHub Issues. Typing `@#` opens an inline issue selector where you can search by issue ID, keyword, or scroll the dropdown list.<br />
+
+  All newly created issues are accessible within a minute. Once selected, issues appear as markdown badges and are sent as enriched context to the model.
+
+  **Note:** This feature requires GitHub CLI to be installed and authenticated. **[#833](https://github.com/TabbyML/pochi/issues/823)**
+
+  <video
+    controls
+    style={{
+      width: "100%",
+      borderRadius: "8px",
+      boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+      }}
+  >
+    <source src="https://assets.docs.getpochi.com/connect-to-github-issue.mp4" type="video/mp4" />
+
+    Your browser does not support the video tag.
+  </video>
+
+* **Create a New Worktree + Task with `Cmd`/`Ctrl` + `Enter`:** You can now start a brand-new worktree and task instantly using `Cmd`+`Enter` (macOS) or `Ctrl`+`Enter` (Windows/Linux). When you submit a prompt with this shortcut, Pochi automatically creates a new worktree with an auto-generated branch name (based on the task description, falling back to a timestamp when needed) and launches a new task inside it. <br />
+
+  The shortcut also works when submitting messages with file or image attachments. In existing tasks, `Cmd`/`Ctrl`+`Enter` continues to queue messages as before. **[#822](https://github.com/TabbyML/pochi/issues/822)** <br />
+
+  <video
+    controls
+    style={{
+    width: "100%",
+    borderRadius: "8px",
+    boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+  }}
+  >
+    <source src="https://assets.docs.getpochi.com/create-worktree-with-command-click.mp4" type="video/mp4" />
+
+    Your browser does not support the video tag.
+  </video>
+
+
 # NES Series (Part 2): Real-Time Context Management in Your Code Editor
 URL: /developer-updates/context-management-in-your-editor
 Learn how Pochi's NES model manages, ranks, and streams real-time edit context
@@ -2810,6 +2862,56 @@ Related Papers:
 1. [SWE-RL: Advancing LLM Reasoning via Reinforcement Learning on Open Software Evolution](https://arxiv.org/abs/2502.18449)
 2. [Kimi-Dev: Agentless Training as Skill Prior for SWE-Agents](https://arxiv.org/abs/2509.23045)
 3. [CWM: An Open-Weights LLM for Research on Code Generation with World Models](https://arxiv.org/abs/2510.02387)
+
+***
+
+## [Weekly Update #14](./2025-12-12-weekly-update-14)
+
+#### Dec 12, 2025
+
+# Weekly Update #14
+
+### TL;DR
+
+This release introduces pair of upgrades aimed at making Pochi feel even more native to your development flow: GitHub Issue integration embedded right into task input, and a new `Cmd`/`Ctrl` + `Enter` shortcut to spin up worktrees easily.
+
+### 🚀 Features
+
+* **GitHub Issue Integration in Task Input:** You can now connect tasks directly to GitHub Issues. Typing `@#` opens an inline issue selector where you can search by issue ID, keyword, or scroll the dropdown list.<br />
+
+  All newly created issues are accessible within a minute. Once selected, issues appear as markdown badges and are sent as enriched context to the model.
+
+  **Note:** This feature requires GitHub CLI to be installed and authenticated. **[#833](https://github.com/TabbyML/pochi/issues/823)**
+
+  <video
+    controls
+    style={{
+      width: "100%",
+      borderRadius: "8px",
+      boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+      }}
+  >
+    <source src="https://assets.docs.getpochi.com/connect-to-github-issue.mp4" type="video/mp4" />
+
+    Your browser does not support the video tag.
+  </video>
+
+* **Create a New Worktree + Task with `Cmd`/`Ctrl` + `Enter`:** You can now start a brand-new worktree and task instantly using `Cmd`+`Enter` (macOS) or `Ctrl`+`Enter` (Windows/Linux). When you submit a prompt with this shortcut, Pochi automatically creates a new worktree with an auto-generated branch name (based on the task description, falling back to a timestamp when needed) and launches a new task inside it. <br />
+
+  The shortcut also works when submitting messages with file or image attachments. In existing tasks, `Cmd`/`Ctrl`+`Enter` continues to queue messages as before. **[#822](https://github.com/TabbyML/pochi/issues/822)** <br />
+
+  <video
+    controls
+    style={{
+    width: "100%",
+    borderRadius: "8px",
+    boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+  }}
+  >
+    <source src="https://assets.docs.getpochi.com/create-worktree-with-command-click.mp4" type="video/mp4" />
+
+    Your browser does not support the video tag.
+  </video>
 
 ***
 
