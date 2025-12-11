@@ -406,11 +406,6 @@
     "openFile": "打开文件"
   },
   "forkTask": {
-    "forkedTaskTitle": "任务分支自：{{taskTitle}}",
-    "subTaskSummary": {
-      "noOutput": "✘ 无可用输出",
-      "completed": "✔ 任务完成",
-      "error": "✘ 遇到错误"
-    }
+    "forkedTaskTitle": "任务分支自：{{taskTitle}}"
   }
 }
