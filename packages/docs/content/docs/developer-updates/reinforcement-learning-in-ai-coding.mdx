@@ -1,7 +1,7 @@
 ---
 title: 'Closing the Loop: How Reinforcement Learning is Changing AI Coding'
 description: "Developers are trying to make LLMs write code, but few are teaching them how to engineer"
-image: "/og-image/rl-ai-coding-og-image.png"
+image: "/og-image/rl-blog-og-image.png"
 ---
 
 # Closing the Loop: How Reinforcement Learning is Changing AI Coding
@@ -10,7 +10,7 @@ image: "/og-image/rl-ai-coding-og-image.png"
 
 Using SFT teaches models how to write code, but it is RL that is necessary to teach them what works. On the other hand, introducing RL in software engineerings brings its own specific challenges:  data availability, signal sparsity, and state tracking. In this post, we’ll break down how recent works address these challenges. 
 
-![Reinforcement Learning is Changing AI Coding Cover Image](./images/rl-ai-coding-cover-image.png)
+![Reinforcement Learning is Changing AI Coding Cover Image](./images/rl-blog-cover-image.png)
 
 
 So far, the focus of RL driven improvements had been based on competitive coding. For example, in LeetCode-style tasks, the model works in a closed loop. It generally receives a clear problem statement and in turn, it generates a single, self-contained solution. 
@@ -36,6 +36,9 @@ In order to learn trial and error, the standard RL requires an agent to interact
 Meta proved that you can bypass the online bottleneck by using the massive offline history of Github. In its recent work on **SWE-RL** they talked through this approach instead of setting up a live sandbox for every training step. 
 
 But offline data lacks a reward signal. For every historical Pull Request, you cannot easily go back in time and execute tests. SWE-RL solves this by creating a process proxy reward. They calculate the fine grained text similarity  between the generated patch and the actual developer ground truth solution instead of just checking if the code runs. 
+
+![Process proxy reward](./images/swe-process-proxy-reward.png)
+
 
 Depending on how closely the generated format matches the human solution, the model receives a continuous reward. On the other hand, if the model generates an invalid patch format, it receives a penalty. This demonstrates that even before touching a compiler, you can teach a model complex engineering behaviours like navigating file structures and adhering to project conventions using static history. 
 
@@ -68,6 +71,7 @@ This forces the model to internalise a Code World Model. By the time the model e
 
 Consequently, the RL stage becomes a process of Goal Alignment. It uses sparse result rewards like passing tests simply to guide a model.  It already understands execution physics to select the specific path that satisfies the verification requirement.
 
+![Goal Alignment](./images/goal-alignment.png)
 
 
 ## Takeaway: Moving Toward Verifiable Agents
