@@ -2512,7 +2512,7 @@ This release introduces pair of upgrades aimed at making Pochi feel even more na
 
   All newly created issues are accessible within a minute. Once selected, issues appear as markdown badges and are sent as enriched context to the model.
 
-  **Note:** This feature requires GitHub CLI to be installed and authenticated.) **[#833](https://github.com/TabbyML/pochi/issues/823)**
+  **Note:** This feature requires GitHub CLI to be installed and authenticated. **[#833](https://github.com/TabbyML/pochi/issues/823)**
 
   <video
     controls
@@ -2799,7 +2799,7 @@ This release introduces pair of upgrades aimed at making Pochi feel even more na
 
   All newly created issues are accessible within a minute. Once selected, issues appear as markdown badges and are sent as enriched context to the model.
 
-  **Note:** This feature requires GitHub CLI to be installed and authenticated.) **[#833](https://github.com/TabbyML/pochi/issues/823)**
+  **Note:** This feature requires GitHub CLI to be installed and authenticated. **[#833](https://github.com/TabbyML/pochi/issues/823)**
 
   <video
     controls
