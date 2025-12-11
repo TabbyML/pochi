@@ -697,9 +697,24 @@ export function FormEditor({
 
   // Auto focus when document is focused.
   useEffect(() => {
-    window.addEventListener("focus", focusEditor);
+    const handleFocus = () => {
+      setTimeout(() => {
+        const activeElement = document.activeElement;
+        if (
+          activeElement &&
+          (activeElement.tagName === "BUTTON" ||
+            activeElement.tagName === "A" ||
+            activeElement.closest('[data-slot="tooltip-trigger"]') ||
+            activeElement.closest('[data-slot="popover-trigger"]'))
+        ) {
+          return;
+        }
+        focusEditor();
+      }, 0);
+    };
+    window.addEventListener("focus", handleFocus);
     return () => {
-      window.removeEventListener("focus", focusEditor);
+      window.removeEventListener("focus", handleFocus);
     };
   }, [focusEditor]);
 
