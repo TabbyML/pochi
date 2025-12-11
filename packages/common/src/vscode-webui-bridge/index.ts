@@ -42,6 +42,7 @@ export type {
 export { GitWorktreeInfo } from "./types/git";
 export type {
   GitWorktree,
+  GithubIssue,
   DiffCheckpointOptions,
   CreateWorktreeOptions,
 } from "./types/git";

@@ -12,6 +12,7 @@ interface ChatAreaProps {
   className?: string;
   hideEmptyPlaceholder?: boolean;
   forkTask?: (commitId: string, messageId?: string) => Promise<void>;
+  hideCheckPoint?: boolean;
 }
 
 export function ChatArea({
@@ -22,6 +23,7 @@ export function ChatArea({
   className,
   hideEmptyPlaceholder,
   forkTask,
+  hideCheckPoint,
 }: ChatAreaProps) {
   const resourceUri = useResourceURI();
   return (
@@ -41,6 +43,7 @@ export function ChatArea({
         containerRef={messagesContainerRef}
         className={className}
         forkTask={forkTask}
+        hideCheckPoint={hideCheckPoint}
       />
     </>
   );

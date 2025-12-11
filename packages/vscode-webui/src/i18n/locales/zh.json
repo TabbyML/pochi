@@ -321,7 +321,8 @@
     "noResultsFound": "未找到结果",
     "typeToSearch": "输入以搜索...",
     "workflow": "工作流",
-    "agent": "代理"
+    "agent": "代理",
+    "useHashForIssues": "使用 # 搜索 Github issue"
   },
   "subtask": {
     "back": "返回",

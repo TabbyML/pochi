@@ -55,6 +55,7 @@ import {
   type DiffCheckpointOptions,
   type DisplayModel,
   type GitWorktree,
+  type GithubIssue,
   type NewTaskPanelParams,
   type PochiCredentials,
   type ResourceURI,
@@ -101,6 +102,8 @@ import { type FileSelection, TabState } from "../editor/tab-state";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { WorktreeManager } from "../git/worktree";
 // biome-ignore lint/style/useImportType: needed for dependency injection
+import { GithubIssues } from "../github/issue";
+// biome-ignore lint/style/useImportType: needed for dependency injection
 import { GithubPullRequestMonitor } from "../github/pull-request-monitor";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { ThirdMcpImporter } from "../mcp/third-party-mcp";
@@ -139,6 +142,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     private readonly worktreeManager: WorktreeManager,
     private readonly pochiTaskState: PochiTaskState,
     private readonly githubPullRequestMonitor: GithubPullRequestMonitor,
+    private readonly githubIssues: GithubIssues,
   ) {}
 
   private get cwd() {
@@ -938,6 +942,13 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
 
   deleteWorktree = async (worktreePath: string): Promise<boolean> => {
     return await this.worktreeManager.deleteWorktree(worktreePath);
+  };
+
+  queryGithubIssues = async (query?: string): Promise<GithubIssue[]> => {
+    if (this.githubPullRequestMonitor.ghCliCheck.value.authorized === false) {
+      return [];
+    }
+    return await this.githubIssues.queryIssues(query);
   };
 
   dispose() {

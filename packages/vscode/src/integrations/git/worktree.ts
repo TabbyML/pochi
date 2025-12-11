@@ -1,12 +1,13 @@
 import path from "node:path";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { GitStateMonitor } from "@/integrations/git/git-state";
+import { Deferred } from "@/lib/defered";
 import { readFileContent } from "@/lib/fs";
 import { generateBranchName } from "@/lib/generate-branch-name";
 import { getLogger } from "@/lib/logger";
 import { toErrorMessage } from "@getpochi/common";
 import { getWorktreeNameFromWorktreePath } from "@getpochi/common/git-utils";
-import { isPlainTextFile } from "@getpochi/common/tool-utils";
+import { isPlainText } from "@getpochi/common/tool-utils";
 import type {
   CreateWorktreeOptions,
   GitWorktree,
@@ -27,6 +28,7 @@ export class WorktreeManager implements vscode.Disposable {
   private maxWorktrees = 10;
   private readonly disposables: vscode.Disposable[] = [];
   worktrees = signal<GitWorktree[]>([]);
+  inited = new Deferred<void>();
 
   private workspaceFolder: string | undefined;
   private git: ReturnType<typeof simpleGit>;
@@ -53,6 +55,7 @@ export class WorktreeManager implements vscode.Disposable {
     if (!(await this.isGitRepository())) {
       return;
     }
+    await this.gitStateMonitor.inited.promise;
     await this.updateWorktrees();
     const onWorktreeChanged = async () => {
       await new Promise((resolve) => setTimeout(resolve, 500));
@@ -61,6 +64,11 @@ export class WorktreeManager implements vscode.Disposable {
     this.disposables.push(
       this.gitStateMonitor.onDidRepositoryChange(onWorktreeChanged),
     );
+    this.inited.resolve();
+  }
+
+  getMainWorktree() {
+    return this.worktrees.value.find((wt) => wt.isMain);
   }
 
   async isGitRepository(): Promise<boolean> {
@@ -128,7 +136,6 @@ export class WorktreeManager implements vscode.Disposable {
     if (newWorktree) {
       logger.debug(`New worktree created at: ${newWorktree.path}`);
       this.updateWorktrees();
-      this.worktreeInfoProvider.initialize(newWorktree.path);
       setupWorktree(newWorktree.path);
       return newWorktree;
     }
@@ -174,6 +181,9 @@ export class WorktreeManager implements vscode.Disposable {
 
   async updateWorktrees() {
     this.worktrees.value = await this.getWorktrees();
+    logger.debug(
+      `Updating worktrees to ${this.worktrees.value.length} worktrees`,
+    );
   }
 
   async getWorktrees(skipVSCodeFilter?: boolean): Promise<GitWorktree[]> {
@@ -188,8 +198,9 @@ export class WorktreeManager implements vscode.Disposable {
       if (skipVSCodeFilter) return worktrees;
 
       const vscodeRepos = this.gitStateMonitor.repositories.map(
-        (repo) => repo.rootUri.fsPath,
+        (uri) => vscode.Uri.parse(uri).fsPath,
       );
+      logger.info(`VSCode Repositories: ${vscodeRepos}`);
       // keep the worktree order and number same as vscode
       return vscodeRepos
         .map((repoPath) => worktrees.find((wt) => wt.path === repoPath))
@@ -344,9 +355,7 @@ export class WorktreeManager implements vscode.Disposable {
     commitish: string;
   }) {
     const { workspaceFolder, worktreePath, branchName, commitish } = params;
-    const repository = this.gitStateMonitor.repositories.find(
-      (repo) => repo.rootUri.fsPath === workspaceFolder,
-    );
+    const repository = this.gitStateMonitor.getRepository(workspaceFolder);
 
     if (
       repository &&
@@ -465,21 +474,34 @@ async function showWorktreeDiff(
       return false;
     }
 
+    const isFileExistInBase = (filepath: string) =>
+      git.raw(["ls-tree", "-r", base, "--", filepath]).then(
+        (res) => res.trim().length > 0,
+        () => false,
+      );
+
     for (const { status, filepath } of changedFiles) {
       const fsPath = path.join(cwd, filepath);
       let beforeContent = "";
       let afterContent = "";
-      const isPlainText = await isPlainTextFile(fsPath);
-      if (!isPlainText) {
-        continue;
-      }
       if (status === "A") {
         afterContent = (await readFileContent(fsPath)) ?? "";
       } else if (status === "D") {
-        beforeContent = await git.raw(["show", `${base}:${filepath}`]);
-      } else {
-        beforeContent = await git.raw(["show", `${base}:${filepath}`]);
+        if (await isFileExistInBase(filepath)) {
+          beforeContent = await git.raw(["show", `${base}:${filepath}`]);
+        }
+      } else if (status === "M") {
+        if (await isFileExistInBase(filepath)) {
+          beforeContent = await git.raw(["show", `${base}:${filepath}`]);
+        }
         afterContent = (await readFileContent(fsPath)) ?? "";
+      }
+
+      if (
+        !isPlainText(Buffer.from(beforeContent)) ||
+        !isPlainText(Buffer.from(afterContent))
+      ) {
+        continue;
       }
 
       result.push({

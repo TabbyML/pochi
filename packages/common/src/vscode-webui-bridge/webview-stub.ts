@@ -8,6 +8,7 @@ import type {
   DisplayModel,
   FileDiff,
   GitWorktree,
+  GithubIssue,
   McpStatus,
   PochiCredentials,
   ResourceURI,
@@ -280,6 +281,8 @@ const VSCodeHostStub = {
   },
 
   deleteWorktree: async (): Promise<boolean> => false,
+
+  queryGithubIssues: async (): Promise<GithubIssue[]> => [],
 
   getGlobalState: async (): Promise<unknown> => {
     return null;

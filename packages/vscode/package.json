@@ -164,6 +164,11 @@
         "title": "Open Worktree in Pochi",
         "category": "Pochi",
         "icon": "$(window)"
+      },
+      {
+        "command": "pochi.clearGithubInfo",
+        "title": "Clear GitHub Info",
+        "category": "Pochi"
       }
     ],
     "menus": {
@@ -240,6 +245,10 @@
         {
           "command": "pochi.newTaskPanel",
           "when": "false"
+        },
+        {
+          "command": "pochi.clearGithubInfo",
+          "title": "Pochi: Clear GitHub Info"
         }
       ],
       "view/title": [
@@ -452,6 +461,7 @@
     "@getpochi/vendor-github-copilot": "workspace:*",
     "@getpochi/vendor-pochi": "workspace:*",
     "@getpochi/vendor-qwen-code": "workspace:*",
+    "@leeoniya/ufuzzy": "catalog:",
     "@orama/orama": "^3.1.11",
     "@preact/signals-core": "catalog:",
     "@quilted/threads": "catalog:",

@@ -3,6 +3,7 @@ export type { ToolProps } from "./components/types";
 export { FileIcon } from "./components/file-icon";
 export { FileList } from "./components/file-list";
 export { FileBadge } from "./components/file-badge";
+export { IssueBadge } from "./components/issue-badge";
 export { EditSummary } from "./components/edit-summary";
 export { McpToolCall } from "./components/mcp-tool-call";
 export { ToolCallLite } from "./components/tool-call-lite";

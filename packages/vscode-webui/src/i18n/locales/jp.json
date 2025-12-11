@@ -322,7 +322,8 @@
     "noResultsFound": "結果が見つかりません",
     "typeToSearch": "入力して検索...",
     "workflow": "ワークフロー",
-    "agent": "エージェント"
+    "agent": "エージェント",
+    "useHashForIssues": "# を使用して GitHub の Issue を検索"
   },
   "subtask": {
     "back": "戻る",

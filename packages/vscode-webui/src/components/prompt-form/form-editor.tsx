@@ -1,10 +1,11 @@
-import { debounceWithCachedValue } from "@/lib/debounce";
+import { asyncDebounce, debounceWithCachedValue } from "@/lib/debounce";
 import {
   fuzzySearchFiles,
   fuzzySearchSlashCandidates,
 } from "@/lib/fuzzy-search";
 import { useActiveTabs } from "@/lib/hooks/use-active-tabs";
 import { vscodeHost } from "@/lib/vscode";
+import type { GithubIssue } from "@getpochi/common/vscode-webui-bridge";
 import Document from "@tiptap/extension-document";
 import History from "@tiptap/extension-history";
 import Paragraph from "@tiptap/extension-paragraph";
@@ -27,6 +28,11 @@ import {
   MentionList,
   type MentionListProps,
 } from "./context-mention/mention-list";
+import {
+  PromptFormIssueMentionExtension,
+  issueMentionPluginKey,
+} from "./issue-mention/extension";
+
 import "./prompt-form.css";
 import { useSelectedModels } from "@/features/settings";
 import { useLatest } from "@/lib/hooks/use-latest";
@@ -43,6 +49,10 @@ import { ArrowRightToLine } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { ScrollArea } from "../ui/scroll-area";
 import { AutoCompleteExtension } from "./auto-completion/extension";
+import {
+  IssueMentionList,
+  type IssueMentionListProps,
+} from "./issue-mention/mention-list";
 import type { MentionListActions } from "./shared";
 import {
   PromptFormSlashExtension,
@@ -143,6 +153,7 @@ export function FormEditor({
   }, [activeTabs]);
   const isFileMentionComposingRef = useRef(false);
   const isCommandMentionComposingRef = useRef(false);
+  const isIssueMentionComposingRef = useRef(false);
 
   // State for drag overlay UI
   const [isDragOver, setIsDragOver] = useState(false);
@@ -201,6 +212,11 @@ export function FormEditor({
                 });
               };
 
+              const checkHasIssues = async () => {
+                const issues = await debouncedQueryGithubIssues();
+                return !!(issues && issues.length > 0);
+              };
+
               const updateIsComposingRef = (v: boolean) => {
                 isFileMentionComposingRef.current = v;
               };
@@ -220,6 +236,119 @@ export function FormEditor({
                   };
 
                   component = new ReactRenderer(MentionList, {
+                    props: {
+                      ...props,
+                      fetchItems,
+                      checkHasIssues,
+                    },
+                    editor: props.editor,
+                  });
+
+                  if (!tiptapProps.clientRect) {
+                    return;
+                  }
+
+                  // @ts-ignore - accessing extensionManager and methods
+                  const customExtension =
+                    props.editor.extensionManager?.extensions.find(
+                      // @ts-ignore - extension type
+                      (extension) =>
+                        extension.name === "custom-enter-key-handler",
+                    );
+
+                  popup = tippy("body", {
+                    getReferenceClientRect: tiptapProps.clientRect,
+                    appendTo: () => document.body,
+                    content: component.element,
+                    showOnCreate: true,
+                    interactive: true,
+                    trigger: "manual",
+                    placement: "top-start",
+                    offset: [0, 6],
+                    maxWidth: "none",
+                  });
+                },
+                onUpdate: (props) => {
+                  updateIsComposingRef(props.editor.view.composing);
+                  component.updateProps(props);
+                },
+                onExit: () => {
+                  destroyMention();
+                },
+                onKeyDown: (props) => {
+                  if (props.event.key === "Escape") {
+                    destroyMention();
+                    return true;
+                  }
+
+                  return component.ref?.onKeyDown(props) ?? false;
+                },
+              };
+            },
+            findSuggestionMatch: (config: Trigger): SuggestionMatch => {
+              const match = findSuggestionMatch({
+                ...config,
+                allowSpaces: isFileMentionComposingRef.current,
+              });
+              if (match?.query.startsWith("#")) {
+                return null;
+              }
+              return match;
+            },
+          },
+        }),
+        // Use the already configured PromptFormIssueMentionExtension for issue mentions
+        PromptFormIssueMentionExtension.configure({
+          suggestion: {
+            char: "@#",
+            allowSpaces: true,
+            pluginKey: issueMentionPluginKey,
+            items: async ({ query }: { query?: string }) => {
+              const issues = await debouncedQueryGithubIssues(query);
+              if (!issues) return [];
+              return issues.map((issue) => ({
+                id: issue.id.toString(),
+                title: issue.title,
+                url: issue.url,
+              }));
+            },
+            render: () => {
+              let component: ReactRenderer<
+                MentionListActions,
+                IssueMentionListProps
+              >;
+              let popup: Array<{ destroy: () => void; hide: () => void }>;
+
+              // Fetch items function for MentionList
+              const fetchItems = async (query?: string) => {
+                const issues = await debouncedQueryGithubIssues(query);
+                if (!issues) return [];
+                return issues.map((issue) => ({
+                  id: issue.id.toString(),
+                  title: issue.title,
+                  url: issue.url,
+                }));
+              };
+
+              const updateIsComposingRef = (v: boolean) => {
+                isIssueMentionComposingRef.current = v;
+              };
+
+              const destroyMention = () => {
+                popup[0].destroy();
+                component.destroy();
+                updateIsComposingRef(false);
+              };
+
+              return {
+                onStart: (props) => {
+                  updateIsComposingRef(props.editor.view.composing);
+                  const tiptapProps = props as {
+                    editor: unknown;
+                    clientRect?: () => DOMRect;
+                  };
+
+                  component = new ReactRenderer(IssueMentionList, {
                     props: {
                       ...props,
                       fetchItems,
@@ -271,7 +400,7 @@ export function FormEditor({
             findSuggestionMatch: (config: Trigger): SuggestionMatch => {
               return findSuggestionMatch({
                 ...config,
-                allowSpaces: isFileMentionComposingRef.current,
+                allowSpaces: isIssueMentionComposingRef.current,
               });
             },
           },
@@ -657,6 +786,16 @@ const debouncedListFiles = debounceWithCachedValue(
     leading: true,
   },
 );
+
+const debouncedQueryGithubIssues = asyncDebounce(async (query?: string) => {
+  try {
+    const issues = await vscodeHost.queryGithubIssues(query);
+    return issues;
+  } catch (error) {
+    console.error("Failed to query github issues", error);
+    return [] as GithubIssue[];
+  }
+}, 500);
 
 export const debouncedListSlashCommand = debounceWithCachedValue(
   async () => {

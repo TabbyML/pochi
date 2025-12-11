@@ -1,6 +1,7 @@
 import { mkdir } from "node:fs/promises";
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
+import { Deferred } from "@/lib/defered";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { WorkspaceScope } from "@/lib/workspace-scoped";
 import { getLogger, toErrorMessage } from "@getpochi/common";
@@ -14,11 +15,7 @@ import { Lifecycle, inject, injectable, scoped } from "tsyringe";
 import type * as vscode from "vscode";
 import { ShadowGitRepo } from "./shadow-git-repo";
 import type { GitDiff } from "./types";
-import {
-  Deferred,
-  filterGitChanges,
-  processGitChangesToFileEdits,
-} from "./util";
+import { filterGitChanges, processGitChangesToFileEdits } from "./util";
 
 const logger = getLogger("CheckpointService");
 
