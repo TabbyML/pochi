@@ -405,11 +405,6 @@
     "openFile": "Open file"
   },
   "forkTask": {
-    "forkedTaskTitle": "Forked from {{taskTitle}}",
-    "subTaskSummary": {
-      "noOutput": "✘ No Output Available",
-      "completed": "✔ Task Completed",
-      "error": "✘ Error Encountered"
-    }
+    "forkedTaskTitle": "Forked from {{taskTitle}}"
   }
 }

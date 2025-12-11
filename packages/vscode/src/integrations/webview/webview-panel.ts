@@ -172,7 +172,7 @@ export class PochiTaskEditorProvider
           : {
               ...params,
               uid: crypto.randomUUID(),
-              displayId: getNextDisplayId(params.cwd),
+              displayId: await getNextDisplayId(params.cwd),
             };
       const uri = PochiTaskEditorProvider.createTaskUri(taskParams);
       PochiTaskEditorProvider.taskParamsCache.set(uri.toString(), taskParams);
@@ -323,13 +323,13 @@ export class PochiTaskEditorProvider
   }
 }
 
-function getNextDisplayId(cwd: string) {
+async function getNextDisplayId(cwd: string) {
   const worktreeManager = container.resolve(WorktreeManager);
   const mainWorktreeCwd = worktreeManager.worktrees.value.find(
     (wt) => wt.isMain,
   )?.path;
   const worktreeInfoProvider = container.resolve(GitWorktreeInfoProvider);
-  return worktreeInfoProvider.getNextDisplayId(mainWorktreeCwd ?? cwd);
+  return await worktreeInfoProvider.getNextDisplayId(mainWorktreeCwd ?? cwd);
 }
 
 function setAutoLockGroupsConfig() {
