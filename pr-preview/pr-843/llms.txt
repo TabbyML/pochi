@@ -2733,7 +2733,7 @@ Here you will find highlights on features, enhancements, and bug fixes, plus ins
 
 ## [Closing the Loop: How Reinforcement Learning is Changing AI Coding](./reinforcement-learning-in-ai-coding)
 
-#### Dec 09, 2025
+#### Dec 12, 2025
 
 # Closing the Loop: How Reinforcement Learning is Changing AI Coding
 
