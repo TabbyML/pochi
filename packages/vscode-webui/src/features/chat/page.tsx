@@ -51,7 +51,6 @@ import {
   useChatAbortController,
   useRetryCount,
 } from "./lib/chat-state";
-import { convertSubtaskMessages } from "./lib/convert-subtask-messages";
 import { onOverrideMessages } from "./lib/on-override-messages";
 import { useLiveChatKitGetters } from "./lib/use-live-chat-kit-getters";
 import { useSendTaskNotification } from "./lib/use-send-task-notification";
@@ -519,7 +518,7 @@ async function forkTaskFromCheckPoint(
   await vscodeHost.openTaskInPanel({
     cwd,
     initTitle: t("forkTask.forkedTaskTitle", { taskTitle: title }),
-    initMessages: JSON.stringify(convertSubtaskMessages(initMessages, t)),
+    initMessages: JSON.stringify(initMessages),
     disablePendingModelAutoStart: true,
   });
 }

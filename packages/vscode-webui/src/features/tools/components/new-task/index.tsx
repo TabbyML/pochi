@@ -39,7 +39,7 @@ export const newTaskTool: React.FC<NewTaskToolProps> = ({
   const inlinedTaskSource = useInlinedSubTask(tool);
   if (inlinedTaskSource) {
     taskSource = inlinedTaskSource;
-  } else if (uid) {
+  } else if (uid && isVSCodeEnvironment()) {
     taskSource = useLiveSubTask(
       { tool, isExecuting },
       subTaskToolCallStatusRegistry.current,
