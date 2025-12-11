@@ -2739,7 +2739,7 @@ Here you will find highlights on features, enhancements, and bug fixes, plus ins
 
 ### TL;DR
 
-Using SFT teaches models how to write code, but it is RL that is necessary to teach them what works. On the other hand, introducing RL in software engineerings brings its own specific challenges:  data availability, signal sparsity, and state tracking. In this post, we’ll break down how recent works address these challenges.
+Using SFT teaches models how to write code, but it is RL that is necessary to teach them what works. On the other hand, introducing RL in software engineering brings its own specific challenges:  data availability, signal sparsity, and state tracking. In this post, we’ll break down how recent works address these challenges.
 
 ![Reinforcement Learning is Changing AI Coding Cover Image](./images/rl-blog-cover-image.png)
 
@@ -2749,7 +2749,7 @@ This means there are no dependencies involved, no files systems to navigate, and
 
 However, the field of Software Engineering (SWE) in real-world is fundamentally different. It is a stateful, multi-turn interactive problem. A day-to-day involves much more than just writing the correct functions. You often need to navigate a file system, check up on dependency graphs, run the proper tests, and interpret logs in case of errors. This implies, an agent effectively needs to maintain coherence across a long horizon of interactions.
 
-Which is why RL is an ideal candidate for SWE since agent actions produce verifiable results. At the same time, it also introduces challenges that are not present in single-turn tasks. For eg:
+Which is why RL is an ideal candidate for SWE since agent actions produce verifiable results. At the same time, it also introduces challenges that are not present in single-turn tasks. For example,
 
 * **Data Availability:** We cannot easily simulate millions of environmental interactions like we can with math problems.
 * **Signal Sparsity:** Often, success signals appear at the very end of a long sequence of edits.
@@ -2803,7 +2803,7 @@ This progression from **SWE-RL (offline proxy rewards)** to **Kimi-Dev (decompos
 
 We are seeing a shift from generic reasoning to specialized engineering. Future models will be more than just smart. They will be grounded in repository history, capable of self-verification through test writing, and possess an explicit internal model of runtime state.
 
-At TabbyML we view these developments as the foundation for Verifiable Engineering. The future value of AI in software development lies in building agents that understand and respect the state of your system.
+At TabbyML we view these developments as the foundation for **Verifiable Engineering**. The future value of AI in software development lies in building agents that understand and respect the state of your system.
 
 Related Papers:
 
@@ -4010,7 +4010,7 @@ image: "/og-image/rl-blog-og-image.png"
 
 ### TL;DR
 
-Using SFT teaches models how to write code, but it is RL that is necessary to teach them what works. On the other hand, introducing RL in software engineerings brings its own specific challenges:  data availability, signal sparsity, and state tracking. In this post, we’ll break down how recent works address these challenges.
+Using SFT teaches models how to write code, but it is RL that is necessary to teach them what works. On the other hand, introducing RL in software engineering brings its own specific challenges:  data availability, signal sparsity, and state tracking. In this post, we’ll break down how recent works address these challenges.
 
 ![Reinforcement Learning is Changing AI Coding Cover Image](./images/rl-blog-cover-image.png)
 
@@ -4020,7 +4020,7 @@ This means there are no dependencies involved, no files systems to navigate, and
 
 However, the field of Software Engineering (SWE) in real-world is fundamentally different. It is a stateful, multi-turn interactive problem. A day-to-day involves much more than just writing the correct functions. You often need to navigate a file system, check up on dependency graphs, run the proper tests, and interpret logs in case of errors. This implies, an agent effectively needs to maintain coherence across a long horizon of interactions.
 
-Which is why RL is an ideal candidate for SWE since agent actions produce verifiable results. At the same time, it also introduces challenges that are not present in single-turn tasks. For eg:
+Which is why RL is an ideal candidate for SWE since agent actions produce verifiable results. At the same time, it also introduces challenges that are not present in single-turn tasks. For example,
 
 * **Data Availability:** We cannot easily simulate millions of environmental interactions like we can with math problems.
 * **Signal Sparsity:** Often, success signals appear at the very end of a long sequence of edits.
@@ -4074,7 +4074,7 @@ This progression from **SWE-RL (offline proxy rewards)** to **Kimi-Dev (decompos
 
 We are seeing a shift from generic reasoning to specialized engineering. Future models will be more than just smart. They will be grounded in repository history, capable of self-verification through test writing, and possess an explicit internal model of runtime state.
 
-At TabbyML we view these developments as the foundation for Verifiable Engineering. The future value of AI in software development lies in building agents that understand and respect the state of your system.
+At TabbyML we view these developments as the foundation for **Verifiable Engineering**. The future value of AI in software development lies in building agents that understand and respect the state of your system.
 
 Related Papers:
 
