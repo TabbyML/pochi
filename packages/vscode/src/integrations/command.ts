@@ -597,6 +597,14 @@ export class CommandManager implements vscode.Disposable {
           await applyPochiLayout({ cwd });
         },
       ),
+
+      // For test
+      vscode.commands.registerCommand("pochi.openUri", async () => {
+        const uri = await vscode.window.showInputBox();
+        if (uri) {
+          await vscode.window.showTextDocument(vscode.Uri.parse(uri));
+        }
+      }),
     );
   }
 

@@ -57,7 +57,7 @@ ${EditFileResultPrompt}`,
     path: z
       .string()
       .describe(
-        "The path of the file to modify (relative to the current working directory, or an absolute path).",
+        "The path of the file to modify (relative to the current working directory, or an absolute path). Or a `pochi` scheme file like `pochi:///001/plan.md`.",
       ),
     searchContent: z.string().describe("The text to replace."),
     replaceContent: z.string().describe("The text to replace it with."),

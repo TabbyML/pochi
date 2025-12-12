@@ -25,7 +25,7 @@
   ],
   "icon": "assets/icons/logo128.png",
   "main": "./dist/extension.js",
-  "activationEvents": ["onStartupFinished"],
+  "activationEvents": ["onStartupFinished", "onFileSystem:pochi"],
   "contributes": {
     "customEditors": [
       {
@@ -168,6 +168,11 @@
       {
         "command": "pochi.clearGithubInfo",
         "title": "Clear GitHub Info",
+        "category": "Pochi"
+      },
+      {
+        "command": "pochi.openUri",
+        "title": "Open Uri",
         "category": "Pochi"
       }
     ],

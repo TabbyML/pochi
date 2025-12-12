@@ -26,8 +26,13 @@ export const previewApplyDiff: PreviewToolFunctionType<
     return { error: "Invalid arguments for previewing applyDiff tool." };
   }
 
-  const resolvedPath = resolvePath(path, cwd);
-  const fileUri = vscode.Uri.file(resolvedPath);
+  let fileUri: vscode.Uri;
+  if (path.startsWith("pochi://")) {
+    fileUri = vscode.Uri.parse(path);
+  } else {
+    const resolvedPath = resolvePath(path, cwd);
+    fileUri = vscode.Uri.file(resolvedPath);
+  }
 
   const fileBuffer = await vscode.workspace.fs.readFile(fileUri);
   validateTextFile(fileBuffer);
@@ -50,8 +55,14 @@ export const applyDiff: ToolFunctionType<ClientTools["applyDiff"]> = async (
   { path, searchContent, replaceContent, expectedReplacements },
   { abortSignal, cwd },
 ) => {
-  const resolvedPath = resolvePath(path, cwd);
-  const fileUri = vscode.Uri.file(resolvedPath);
+  let fileUri: vscode.Uri;
+  if (path.startsWith("pochi://")) {
+    fileUri = vscode.Uri.parse(path);
+  } else {
+    const resolvedPath = resolvePath(path, cwd);
+    fileUri = vscode.Uri.file(resolvedPath);
+  }
+
   await ensureFileDirectoryExists(fileUri);
 
   const fileBuffer = await vscode.workspace.fs.readFile(fileUri);
