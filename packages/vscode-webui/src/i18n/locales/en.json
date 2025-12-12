@@ -212,6 +212,7 @@
     "deleteWorktreeConfirm": "Are you sure you want to delete the worktree \"{{name}}\"?",
     "cancel": "Cancel",
     "delete": "Delete",
+    "loadingMore": "Loading more...",
     "taskStatus": {
       "planning": "Planning next moves",
       "paused": "Task is paused",

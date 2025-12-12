@@ -77,13 +77,11 @@ interface WorktreeGroup {
 
 export function WorktreeList({
   cwd,
-  onDeleteWorktree,
   deletingWorktreePaths,
-  stableWorktreePaths,
+  onDeleteWorktree,
 }: {
   cwd: string;
   deletingWorktreePaths: Set<string>;
-  stableWorktreePaths: Set<string>;
   onDeleteWorktree: (worktreePath: string) => void;
 }) {
   const { t } = useTranslation();
@@ -211,7 +209,7 @@ export function WorktreeList({
           gitOriginUrl={gitOriginUrl}
           ghCli={ghCli}
           cwd={cwd}
-          excludedPaths={Array.from(deletingWorktreePaths)}
+          branch={group.branch}
         />
       ))}
       {deletedGroups.length > 0 && (
@@ -243,7 +241,7 @@ export function WorktreeList({
                 ghCli={ghCli}
                 gitOriginUrl={gitOriginUrl}
                 cwd={cwd}
-                excludedPaths={Array.from(stableWorktreePaths)}
+                branch={group.branch}
               />
             ))}
         </>
@@ -259,7 +257,7 @@ function WorktreeSection({
   onDeleteGroup,
   ghCli,
   gitOriginUrl,
-  excludedPaths = [],
+  branch,
 }: {
   cwd: string;
   group: WorktreeGroup;
@@ -267,7 +265,7 @@ function WorktreeSection({
   onDeleteGroup?: (worktreePath: string) => void;
   ghCli?: { installed: boolean; authorized: boolean };
   gitOriginUrl?: string | null;
-  excludedPaths?: string[];
+  branch?: string;
 }) {
   const { t } = useTranslation();
   const { store } = useStore();
@@ -279,24 +277,18 @@ function WorktreeSection({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const totalTaskCount = store.useQuery(
-    taskCatalog.queries.makeTasksCountQuery(cwd, excludedPaths),
+    taskCatalog.queries.makeTasksCountQuery(cwd, branch),
   );
   // Fetch paginated tasks with filtering
   const tasks = store.useQuery(
-    taskCatalog.queries.makeTasksQuery(
-      cwd,
-      currentPage,
-      pageSize,
-      excludedPaths,
-    ),
+    taskCatalog.queries.makeTasksQuery(cwd, currentPage, pageSize, branch),
   );
 
   // Fetch total count
   const countResult = store.useQuery(
-    taskCatalog.queries.makeTasksCountQuery(cwd, excludedPaths),
+    taskCatalog.queries.makeTasksCountQuery(cwd, branch),
   );
 
-  // 累积的 tasks 状态
   const [accumulatedTasks, setAccumulatedTasks] = useState<typeof tasks>([]);
 
   const hasMore = useMemo(
@@ -304,14 +296,13 @@ function WorktreeSection({
     [accumulatedTasks, countResult],
   );
   useEffect(() => {
-    console.log("total tasks changed", totalTaskCount[0].total);
     setCurrentPage(1);
     setAccumulatedTasks([]);
   }, [totalTaskCount[0].total]);
-  // 当 tasks 数据变化时，合并到累积的 tasks 中
+  // Fetch more tasks when scrolling to the bottom
   useEffect(() => {
     setAccumulatedTasks((prev) => {
-      // 简单的去重合并：基于 task.id
+      // merge the new tasks with the accumulated tasks
       const taskIds = new Set(prev.map((t) => t.id));
       const newTasks = (tasks || []).filter((t) => !taskIds.has(t.id));
       const result = [...prev, ...newTasks];
@@ -331,7 +322,7 @@ function WorktreeSection({
 
   const pochiTasks = usePochiTasks();
   const sentinelRef = useRef<HTMLDivElement>(null);
-  // 使用 Intersection Observer 监听 sentinel 元素
+  // use Intersection Observer to monitor sentinel element
   useEffect(() => {
     if (!sentinelRef.current || !hasMore) return;
 
@@ -567,7 +558,7 @@ function WorktreeSection({
               className="flex items-center justify-center py-4"
             >
               <div className="text-muted-foreground text-xs">
-                Loading more...
+                {t("tasksPage.loadingMore")}
               </div>
             </div>
           )}

@@ -5,25 +5,20 @@ export const makeTasksQuery = (
   cwd: string,
   page = 1,
   pageSize = 10,
-  excludedPaths: string[] = [],
+  branch = "",
 ) => {
   const offset = (page - 1) * pageSize;
-  // 构建排除路径的条件
-  let excludeCondition = "";
-  if (excludedPaths.length > 0) {
-    // 为每个路径创建排除条件：排除 cwd 匹配的路径，也排除 git worktree 目录匹配的路径
-    const excludeConditions = excludedPaths.flatMap((path) => [
-      `cwd != '${path}'`,
-      `git->>'$.worktree.gitdir' not like '${path}/.git/worktrees/%'`,
-    ]);
-    excludeCondition = `and (${excludeConditions.join(" and ")})`;
+
+  let branchCondition = "";
+  if (branch) {
+    branchCondition = `and (git->>'$.branch' = '${branch}')`;
   }
 
   const queryStr = `
     SELECT * FROM tasks 
     WHERE parentId is null 
       and (cwd = '${cwd}' or git->>'$.worktree.gitdir' like '${cwd}/.git/worktrees%') 
-      ${excludeCondition}
+      ${branchCondition}
     ORDER BY createdAt desc 
     LIMIT ${pageSize} 
     OFFSET ${offset}
@@ -37,25 +32,15 @@ export const makeTasksQuery = (
     },
     {
       label: "tasks.cwd.paginated",
-      deps: [cwd, page, pageSize, ...excludedPaths],
+      deps: [cwd, page, pageSize, branch],
     },
   );
 };
 
-// 新增：获取总数的查询
-export const makeTasksCountQuery = (
-  cwd: string,
-  excludedPaths: string[] = [],
-) => {
-  // 构建排除路径的条件
-  let excludeCondition = "";
-  if (excludedPaths.length > 0) {
-    // 为每个路径创建排除条件：排除 cwd 匹配的路径，也排除 git worktree 目录匹配的路径
-    const excludeConditions = excludedPaths.flatMap((path) => [
-      `cwd != '${path}'`,
-      `git->>'$.worktree.gitdir' not like '${path}/.git/worktrees/%'`,
-    ]);
-    excludeCondition = `and (${excludeConditions.join(" and ")})`;
+export const makeTasksCountQuery = (cwd: string, branch = "") => {
+  let branchCondition = "";
+  if (branch) {
+    branchCondition = `and (git->>'$.branch' = '${branch}')`;
   }
 
   return queryDb(
@@ -64,13 +49,13 @@ export const makeTasksCountQuery = (
         SELECT COUNT(*) as total FROM tasks 
         WHERE parentId is null 
           and (cwd = '${cwd}' or git->>'$.worktree.gitdir' like '${cwd}/.git/worktrees%') 
-          ${excludeCondition}
+          ${branchCondition}
       `,
       schema: Schema.Array(Schema.Struct({ total: Schema.Number })),
     },
     {
       label: "tasks.cwd.count",
-      deps: [cwd, ...excludedPaths],
+      deps: [cwd, branch],
     },
   );
 };
