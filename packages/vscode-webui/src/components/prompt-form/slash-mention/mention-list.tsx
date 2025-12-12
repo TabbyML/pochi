@@ -103,7 +103,7 @@ export const SlashMentionList = forwardRef<
   useImperativeHandle(ref, () => keyboardNavigation);
 
   return (
-    <div className="relative flex w-[240px] max-w-full flex-col overflow-hidden py-1">
+    <div className="relative flex w-[80vw] max-w-[240px] flex-col overflow-hidden py-1 sm:w-[240px]">
       <ScrollArea viewportClassname="max-h-[300px] px-2">
         {items.length === 0 ? (
           <div className="px-2 py-3 text-muted-foreground text-xs">

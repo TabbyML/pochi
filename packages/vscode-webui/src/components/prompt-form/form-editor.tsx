@@ -767,9 +767,9 @@ export function FormEditor({
         })}
       >
         {isAutoCompleteHintVisible && (
-          <div className="flex items-center text-muted-foreground text-xs">
+          <div className="flex flex-nowrap items-center truncate whitespace-nowrap text-muted-foreground text-xs">
             {t("formEditor.autoCompleteHintPrefix")}{" "}
-            <ArrowRightToLine className="mr-1.5 ml-0.5 size-4" />{" "}
+            <ArrowRightToLine className="mr-1.5 ml-0.5 size-4 shrink-0" />{" "}
             {t("formEditor.autoCompleteHintSuffix")}
           </div>
         )}
