@@ -419,13 +419,15 @@ function WorktreeSection({
                     <Tooltip>
                       <PopoverTrigger asChild>
                         <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0"
-                          >
-                            <Trash2 className="size-4" />
-                          </Button>
+                          <span>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0"
+                            >
+                              <Trash2 className="size-4" />
+                            </Button>
+                          </span>
                         </TooltipTrigger>
                       </PopoverTrigger>
                       <TooltipContent>
