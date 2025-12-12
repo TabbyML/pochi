@@ -5,20 +5,20 @@ export const makeTasksQuery = (
   cwd: string,
   page = 1,
   pageSize = 10,
-  branch = "",
+  path = "",
 ) => {
   const offset = (page - 1) * pageSize;
 
-  let branchCondition = "";
-  if (branch) {
-    branchCondition = `and (git->>'$.branch' = '${branch}')`;
+  let filterCondition = "";
+  if (path) {
+    filterCondition = `and (git->>'$.worktree.gitdir' = '${path}/.git')`;
   }
 
   const queryStr = `
     SELECT * FROM tasks 
     WHERE parentId is null 
       and (cwd = '${cwd}' or git->>'$.worktree.gitdir' like '${cwd}/.git/worktrees%') 
-      ${branchCondition}
+      ${filterCondition}
     ORDER BY createdAt desc 
     LIMIT ${pageSize} 
     OFFSET ${offset}
@@ -32,15 +32,15 @@ export const makeTasksQuery = (
     },
     {
       label: "tasks.cwd.paginated",
-      deps: [cwd, page, pageSize, branch],
+      deps: [cwd, page, pageSize, path],
     },
   );
 };
 
-export const makeTasksCountQuery = (cwd: string, branch = "") => {
-  let branchCondition = "";
-  if (branch) {
-    branchCondition = `and (git->>'$.branch' = '${branch}')`;
+export const makeTasksCountQuery = (cwd: string, path = "") => {
+  let filterCondition = "";
+  if (path) {
+    filterCondition = `and (git->>'$.worktree.gitdir' = '${path}/.git')`;
   }
 
   return queryDb(
@@ -49,13 +49,13 @@ export const makeTasksCountQuery = (cwd: string, branch = "") => {
         SELECT COUNT(*) as total FROM tasks 
         WHERE parentId is null 
           and (cwd = '${cwd}' or git->>'$.worktree.gitdir' like '${cwd}/.git/worktrees%') 
-          ${branchCondition}
+          ${filterCondition}
       `,
       schema: Schema.Array(Schema.Struct({ total: Schema.Number })),
     },
     {
       label: "tasks.cwd.count",
-      deps: [cwd, branch],
+      deps: [cwd, path],
     },
   );
 };

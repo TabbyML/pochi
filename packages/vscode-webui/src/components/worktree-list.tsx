@@ -200,6 +200,7 @@ export function WorktreeList({
 
   return (
     <div className="flex flex-col gap-1">
+      <br />
       {activeGroups.map((group) => (
         <WorktreeSection
           isLoadingWorktrees={isLoadingWorktrees}
@@ -209,7 +210,6 @@ export function WorktreeList({
           gitOriginUrl={gitOriginUrl}
           ghCli={ghCli}
           cwd={cwd}
-          branch={group.branch}
         />
       ))}
       {deletedGroups.length > 0 && (
@@ -241,7 +241,6 @@ export function WorktreeList({
                 ghCli={ghCli}
                 gitOriginUrl={gitOriginUrl}
                 cwd={cwd}
-                branch={group.branch}
               />
             ))}
         </>
@@ -257,7 +256,6 @@ function WorktreeSection({
   onDeleteGroup,
   ghCli,
   gitOriginUrl,
-  branch,
 }: {
   cwd: string;
   group: WorktreeGroup;
@@ -265,7 +263,6 @@ function WorktreeSection({
   onDeleteGroup?: (worktreePath: string) => void;
   ghCli?: { installed: boolean; authorized: boolean };
   gitOriginUrl?: string | null;
-  branch?: string;
 }) {
   const { t } = useTranslation();
   const { store } = useStore();
@@ -277,16 +274,16 @@ function WorktreeSection({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const totalTaskCount = store.useQuery(
-    taskCatalog.queries.makeTasksCountQuery(cwd, branch),
+    taskCatalog.queries.makeTasksCountQuery(cwd, group.path),
   );
   // Fetch paginated tasks with filtering
   const tasks = store.useQuery(
-    taskCatalog.queries.makeTasksQuery(cwd, currentPage, pageSize, branch),
+    taskCatalog.queries.makeTasksQuery(cwd, currentPage, pageSize, group.path),
   );
 
   // Fetch total count
   const countResult = store.useQuery(
-    taskCatalog.queries.makeTasksCountQuery(cwd, branch),
+    taskCatalog.queries.makeTasksCountQuery(cwd, group.path),
   );
 
   const [accumulatedTasks, setAccumulatedTasks] = useState<typeof tasks>([]);
@@ -298,7 +295,7 @@ function WorktreeSection({
   useEffect(() => {
     setCurrentPage(1);
     setAccumulatedTasks([]);
-  }, [totalTaskCount[0].total]);
+  }, [totalTaskCount[0].total, group.path]);
   // Fetch more tasks when scrolling to the bottom
   useEffect(() => {
     setAccumulatedTasks((prev) => {
