@@ -56,17 +56,15 @@ To keep up with the latest updates, visit our **[changelog](https://docs.getpoch
 
 - **Open the Pochi Sidebar**: Click on the Pochi icon in the activity bar to open the chat interface.
 
--  **Start Chatting**: Start a conversation with Pochi to ask questions, get code suggestions, or give it a task to work on.
+- **Start Chatting**: Start a conversation with Pochi to ask questions, get code suggestions, or give it a task to work on.
 
 ## Community & Support
 
 Interested in contributing or just engaging with the team? We welcome your inputs:
 
-- [Slack Community](http://links.tabbyml.com/join-slack): Ideal if you need help with building customizations or infrastructure.
-
+- [Discord](https://getpochi.com/discord): Ideal if you need help with building customizations or infrastructure.
+  
 - [GitHub Issues](https://github.com/TabbyML/pochi/issues): To report bugs and errors you encounter using Pochi.
-
-- [Discord](https://getpochi.com/discord): Share your applications and hanging out with the community.
 
 - [Twitter](https://x.com/getpochi): To engage with others in the space.
 
