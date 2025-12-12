@@ -211,7 +211,7 @@
     "deleteWorktreeConfirm": "워크트리 \"{{name}}\"을(를) 삭제하시겠습니까?",
     "cancel": "취소",
     "delete": "삭제",
-    "loadingMore": "더 많은 항목 로딩 중...",
+    "loadingMore": "더 불러오는 중...",
     "taskStatus": {
       "planning": "다음 작업 계획 중",
       "errorPrefix": "오류:",

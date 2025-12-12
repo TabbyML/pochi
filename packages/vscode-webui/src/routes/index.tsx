@@ -63,7 +63,7 @@ function Tasks() {
   const cwd = currentWorkspace?.cwd || "default";
   const workspaceFolder = currentWorkspace?.workspaceFolder;
 
-  const { deleteWorktree, deletingWorktreePaths, stablePaths } =
+  const { deleteWorktree, deletingWorktreePaths } =
     useOptimisticWorktreeDelete();
 
   const allTaskCount = store.useQuery(
@@ -112,7 +112,6 @@ function Tasks() {
               <WorktreeList
                 cwd={cwd}
                 deletingWorktreePaths={deletingWorktreePaths}
-                stableWorktreePaths={stablePaths}
                 onDeleteWorktree={onDeleteWorktree}
               />
             </div>
