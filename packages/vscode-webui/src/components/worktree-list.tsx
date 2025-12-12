@@ -295,7 +295,7 @@ function WorktreeSection({
   useEffect(() => {
     setCurrentPage(1);
     setAccumulatedTasks([]);
-  }, [totalTaskCount[0].total, group.path]);
+  }, []);
   // Fetch more tasks when scrolling to the bottom
   useEffect(() => {
     setAccumulatedTasks((prev) => {
