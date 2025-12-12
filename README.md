@@ -32,17 +32,17 @@ Pochi's workflow is built on these principles:
 
 ## Features
 
-- **Tab Completion**: Get intelligent, context-aware completions powered by Pochi’s internal trained model. It adapts to your coding patterns in real-time, using recent edits, diagnostics, and surrounding context to generate accurate, relevant suggestions as you type.
+- [x] **Tab Completion**: Get intelligent, context-aware completions powered by Pochi’s internal trained model. It adapts to your coding patterns in real-time, using recent edits, diagnostics, and surrounding context to generate accurate, relevant suggestions as you type.
 
-- **Bring Your Own Model**: Pochi supports custom AI models, including your own fine-tuned or self-hosted models. Fully control the model, the data, and the compute costs.
+- [x] **Bring Your Own Model**: Pochi supports custom AI models, including your own fine-tuned or self-hosted models. Fully control the model, the data, and the compute costs.
 
-- **Tool Usage**: Pochi has access to a set of tools that allow it to interact with your development environment, such as reading and writing files, executing commands, and searching your codebase.
+- [x] **Tool Usage**: Pochi has access to a set of tools that allow it to interact with your development environment, such as reading and writing files, executing commands, and searching your codebase.
 
-- **Parallel Agents:** Keep tasks fully isolated by running each one in its own Git worktree. You can keep multiple tasks active at once and switch between them without stashing or losing context.
+- [x] **Parallel Agents:** Keep tasks fully isolated by running each one in its own Git worktree. You can keep multiple tasks active at once and switch between them without stashing or losing context.
 
-- **Deep GitHub Integration**: Get your GitHub issues implemented by connecting them to Pochi tasks and create PRs directly from the sidebar with a breakdown of CI/Lint/Test results. Also, use Pochi directly in your GitHub repository by commenting on pull requests to perform code reviews, explain changes, and suggest improvements.
+- [x] **Deep GitHub Integration**: Get your GitHub issues implemented by connecting them to Pochi tasks and create PRs directly from the sidebar with a breakdown of CI/Lint/Test results. Also, use Pochi directly in your GitHub repository by commenting on pull requests to perform code reviews, explain changes, and suggest improvements.
 
-- **Auto Compact**:  Keep long conversations efficient by compacting in the current task or start a new task with the summary when your token usage grows large
+- [x] **Auto Compact**:  Keep long conversations efficient by compacting in the current task or start a new task with the summary when your token usage grows large
 
 ## Documentation
 
