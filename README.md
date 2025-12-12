@@ -17,16 +17,7 @@
 
 **[Pochi](https://www.tabbyml.com/agent)** is an AI agent designed for software development. It operates within your IDE, using a toolkit of commands to execute complex tasks, from code generation to project-wide refactoring.
 
-
-<img
-  src="https://assets.docs.getpochi.com/readme-pochi.png"
-  alt="Connect to GitHub issue"
-  style={{
-    width: "100%",
-    borderRadius: "8px",
-    boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
-  }}
-/>
+<img width="4320" height="2694" alt="readme-pochi" src="https://github.com/user-attachments/assets/d67f52ea-b9fd-40a6-b04b-2619ce1aa102" />
 
 
 ## How it works?
@@ -69,7 +60,7 @@ To keep up with the latest updates, visit our **[changelog](https://docs.getpoch
 
 ## Community & Support
 
-Interested in contributing or just engaging with the team? We welcome your inputs: through our [Discord Community](https://getpochi.com/discord)! Feel free to share feedback, report bugs, and suggest features there!
+Interested in contributing or just engaging with the team? We welcome your inputs:
 
 - [Slack Community](http://links.tabbyml.com/join-slack): Ideal if you need help with building customizations or infrastructure.
 
