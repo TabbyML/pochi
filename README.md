@@ -13,32 +13,72 @@
   Install from <a href="https://marketplace.visualstudio.com/items?itemName=TabbyML.pochi"><strong>VS Code Marketplace</strong></a> or <a href="https://open-vsx.org/extension/TabbyML/pochi"><strong>Open VSX Registry</strong></a>
 </p>
 
-**Pochi** is an AI agent designed for software development. It operates within your IDE, using a toolkit of commands to execute complex tasks, from code generation to project-wide refactoring.
+## Pochi: Open-Source AI Code Agent as Your Full-Stack Teammate
 
-## 📖 What is Pochi?
+**[Pochi](https://www.tabbyml.com/agent)** is an AI agent designed for software development. It operates within your IDE, using a toolkit of commands to execute complex tasks, from code generation to project-wide refactoring.
+
+
+<img
+  src="https://assets.docs.getpochi.com/readme-pochi.png"
+  alt="Connect to GitHub issue"
+  style={{
+    width: "100%",
+    borderRadius: "8px",
+    boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+  }}
+/>
+
+
+## How it works?
 
 Pochi's workflow is built on these principles:
 
-*   **Agent-Based Workflow**: You assign a task, and Pochi works autonomously to complete it. It can read files, execute commands, and apply changes to your codebase.
-*   **Flexible & Extensible**: Pochi's functionality is centered around a **Bring Your Own Key (BYOK)** model. This allows you to connect any supported LLM provider, giving you full control over the agent's "brain," your data privacy, and operational costs. No account is required to use the BYOK model.
-*   **Cloud Services**: For teams that need collaborative features, we offer account-based services like shared task list, group billing. These services are optional and build upon the core functionality.
+- **Agent-Based Workflow**: You assign a task, and Pochi works autonomously to complete it. It can read files, execute commands, and apply changes to your codebase.
 
-## ✨ Features
+- **Flexible & Extensible**: Pochi's functionality is centered around a **Bring Your Own Key (BYOK)** model. This allows you to connect any supported LLM provider, giving you full control over the agent's "brain," your data privacy, and operational costs. No account is required to use the BYOK model.
 
-*   **Code Completion**: Get intelligent, context-aware code completions as you type.
-*   **Bring Your Own Model**: Pochi supports custom AI models, so you can use your own fine-tuned models for specific tasks.
-*   **Tool Usage**: Pochi has access to a set of tools that allow it to interact with your development environment, such as reading and writing files, executing commands, and searching your codebase.
+- **Cloud Services**: For teams that need collaborative features, we offer account-based services like shared task list, group billing. These services are optional and build upon the core functionality.
 
-## 🚀 Getting Started
+## Features
 
-1.  **Install the Extension**: Install the Pochi extension from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=TabbyML.pochi).
-2.  **Open the Pochi Sidebar**: Click on the Pochi icon in the activity bar to open the chat interface.
-3.  **Start Chatting**: Start a conversation with Pochi to ask questions, get code suggestions, or give it a task to work on.
+- **Tab Completion**: Get intelligent, context-aware completions powered by Pochi’s internally trained model.It adapts to your coding patterns in real time, using recent edits, diagnostics, and surrounding context to generate accurate, relevant suggestions as you type.e.
 
-## 💬 Community & Support
+- **Bring Your Own Model**: Pochi supports custom AI models including your own fine-tuned or self-hosted models. Fully control the model, your data, and your compute costs.
 
-Interested in contributing or just engaging with the team? We welcome your input through our [Discord Community](https://getpochi.com/discord)! Feel free to share feedback, report bugs, and suggest features there!
+- **Tool Usage**: Pochi has access to a set of tools that allow it to interact with your development environment, such as reading and writing files, executing commands, and searching your codebase.
 
-## 📄 License
+- **Parallel Agents:** Keep tasks fully isolated by running each one in its own Git worktree. You can keep multiple tasks active at once and switch between them without stashing or losing context.
+
+- **Deep GitHub Integration**: Get your GitHub issues implemented by connecting them to Pochi tasks and create PRs directly from the sidebar with a breakdown of CI/Lint/Test results. Also use Pochi directly in your GitHub repository by commenting on pull requests to perform code reviews, explain changes, and suggest improvements.
+
+- **Auto Compact**:  Keep long conversations efficient by compacting in the current task or start a new task with the summary when your token usage grows large
+
+## Documentation
+
+For full documentation, visit **[docs.getpochi.com](https://docs.getpochi.com/)**
+
+To keep up with the latest updates, visit our **[changelog](https://docs.getpochi.com/developer-updates/)**
+
+## Getting Started
+
+- **Install the Extension**: Install the Pochi extension from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=TabbyML.pochi).
+
+- **Open the Pochi Sidebar**: Click on the Pochi icon in the activity bar to open the chat interface.
+
+-  **Start Chatting**: Start a conversation with Pochi to ask questions, get code suggestions, or give it a task to work on.
+
+## Community & Support
+
+Interested in contributing or just engaging with the team? We welcome your inputs: through our [Discord Community](https://getpochi.com/discord)! Feel free to share feedback, report bugs, and suggest features there!
+
+- [Slack Community](http://links.tabbyml.com/join-slack): Ideal if you need help with building customizations or infrastructure.
+
+- [GitHub Issues](https://github.com/TabbyML/pochi/issues): To report bugs and errors you encounter using Pochi.
+
+- [Discord](https://getpochi.com/discord): Share your applications and hanging out with the community.
+
+- [Twitter](https://x.com/getpochi): To engage with others in the space.
+
+## License
 
 This project is licensed under the terms of the [Apache 2.0 License](./LICENSE).
