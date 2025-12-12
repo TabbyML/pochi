@@ -62,7 +62,6 @@ export function useOptimisticWorktreeDelete() {
     if (hasChanges) {
       setDeletingMap(updatedMap);
     }
-
   }, [worktrees, deletingMap]);
 
   const deleteWorktree = (wt: string) => {
