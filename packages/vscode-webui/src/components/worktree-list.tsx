@@ -273,9 +273,6 @@ function WorktreeSection({
   const loading = useRef(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
-  const totalTaskCount = store.useQuery(
-    taskCatalog.queries.makeTasksCountQuery(cwd, group.path),
-  );
   // Fetch paginated tasks with filtering
   const tasks = store.useQuery(
     taskCatalog.queries.makeTasksQuery(cwd, currentPage, pageSize, group.path),
