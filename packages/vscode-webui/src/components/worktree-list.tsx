@@ -40,7 +40,8 @@ import {
   type GitWorktree,
   prefixWorktreeName,
 } from "@getpochi/common/vscode-webui-bridge";
-import type { Task } from "@getpochi/livekit";
+import { taskCatalog } from "@getpochi/livekit";
+import { useStore } from "@livestore/react";
 import {
   Check,
   ChevronDown,
@@ -52,7 +53,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as R from "remeda";
 import { TaskRow } from "./task-row";
@@ -67,7 +68,6 @@ interface PrCheck {
 interface WorktreeGroup {
   name: string;
   path: string;
-  tasks: Task[];
   isDeleted: boolean;
   isMain: boolean;
   createdAt?: number;
@@ -76,11 +76,11 @@ interface WorktreeGroup {
 }
 
 export function WorktreeList({
-  tasks,
-  onDeleteWorktree,
+  cwd,
   deletingWorktreePaths,
+  onDeleteWorktree,
 }: {
-  tasks: readonly Task[];
+  cwd: string;
   deletingWorktreePaths: Set<string>;
   onDeleteWorktree: (worktreePath: string) => void;
 }) {
@@ -116,32 +116,11 @@ export function WorktreeList({
       allWorktrees.map((wt, index) => [wt.path, index]),
     );
 
-    // 1. Group tasks by cwd (worktree path)
-    const taskGroups = R.pipe(
-      tasks,
-      R.filter((task) => !!task.cwd),
-      R.groupBy((task) => task.cwd as string),
-      R.mapValues((tasks, path) => {
-        const latestTask = R.pipe(
-          tasks,
-          R.sortBy([(task) => new Date(task.createdAt).getTime(), "desc"]),
-          R.first(),
-        );
-        return {
-          path,
-          tasks,
-          createdAt: latestTask ? new Date(latestTask.createdAt).getTime() : 0,
-        };
-      }),
-    );
-
     // 2. Create groups for worktrees without tasks
     const worktreeGroups = R.pipe(
       allWorktrees,
-      R.filter((wt) => !taskGroups[wt.path]),
       R.map((wt) => ({
         path: wt.path,
-        tasks: [],
         createdAt: 0,
       })),
       R.groupBy((g) => g.path),
@@ -150,7 +129,7 @@ export function WorktreeList({
 
     // 3. Merge and resolve names/isDeleted
     return R.pipe(
-      { ...taskGroups, ...worktreeGroups },
+      worktreeGroups,
       R.values(),
       R.map((group): WorktreeGroup => {
         const wt = worktreeMap.get(group.path);
@@ -197,7 +176,6 @@ export function WorktreeList({
       }),
     );
   }, [
-    tasks,
     worktrees,
     isLoadingWorktrees,
     isLoadingCurrentWorkspace,
@@ -209,11 +187,8 @@ export function WorktreeList({
     return groups
       .map((g) => {
         if (deletingWorktreePaths.has(g.path)) {
-          // If has tasks, mark as deleted; otherwise filter out
-          if (g.tasks.length > 0) {
-            return { ...g, isDeleted: true };
-          }
-          return null;
+          // mark deleted
+          return { ...g, isDeleted: true };
         }
         return g;
       })
@@ -225,6 +200,7 @@ export function WorktreeList({
 
   return (
     <div className="flex flex-col gap-1">
+      <br />
       {activeGroups.map((group) => (
         <WorktreeSection
           isLoadingWorktrees={isLoadingWorktrees}
@@ -233,6 +209,7 @@ export function WorktreeList({
           onDeleteGroup={onDeleteWorktree}
           gitOriginUrl={gitOriginUrl}
           ghCli={ghCli}
+          cwd={cwd}
         />
       ))}
       {deletedGroups.length > 0 && (
@@ -263,6 +240,7 @@ export function WorktreeList({
                 group={group}
                 ghCli={ghCli}
                 gitOriginUrl={gitOriginUrl}
+                cwd={cwd}
               />
             ))}
         </>
@@ -270,13 +248,16 @@ export function WorktreeList({
     </div>
   );
 }
+const pageSize = 10;
 
 function WorktreeSection({
+  cwd,
   group,
   onDeleteGroup,
   ghCli,
   gitOriginUrl,
 }: {
+  cwd: string;
   group: WorktreeGroup;
   isLoadingWorktrees: boolean;
   onDeleteGroup?: (worktreePath: string) => void;
@@ -284,14 +265,86 @@ function WorktreeSection({
   gitOriginUrl?: string | null;
 }) {
   const { t } = useTranslation();
+  const { store } = useStore();
+
   // Default expanded for existing worktrees, collapsed for deleted
   const [isExpanded, setIsExpanded] = useState(!group.isDeleted);
   const [isHovered, setIsHovered] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const loading = useRef(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  // Fetch paginated tasks with filtering
+  const tasks = store.useQuery(
+    taskCatalog.queries.makeTasksQuery(cwd, currentPage, pageSize, group.path),
+  );
+
+  // Fetch total count
+  const countResult = store.useQuery(
+    taskCatalog.queries.makeTasksCountQuery(cwd, group.path),
+  );
+
+  const [accumulatedTasks, setAccumulatedTasks] = useState<typeof tasks>([]);
+
+  const hasMore = useMemo(
+    () => accumulatedTasks.length < (countResult[0]?.total || 0),
+    [accumulatedTasks, countResult],
+  );
+  useEffect(() => {
+    setCurrentPage(1);
+    setAccumulatedTasks([]);
+  }, []);
+  // Fetch more tasks when scrolling to the bottom
+  useEffect(() => {
+    setAccumulatedTasks((prev) => {
+      // merge the new tasks with the accumulated tasks
+      const taskIds = new Set(prev.map((t) => t.id));
+      const newTasks = (tasks || []).filter((t) => !taskIds.has(t.id));
+      const result = [...prev, ...newTasks];
+      result.sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      );
+      return result;
+    });
+    loading.current = false;
+  }, [tasks]);
+  const loadMore = useCallback(() => {
+    if (loading.current) return;
+    loading.current = true;
+    setCurrentPage((prev) => prev + 1);
+  }, []);
+
   const pochiTasks = usePochiTasks();
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  // use Intersection Observer to monitor sentinel element
+  useEffect(() => {
+    if (!sentinelRef.current || !hasMore) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries;
+        if (entry.isIntersecting) {
+          loadMore();
+        }
+      },
+      {
+        root: null,
+        rootMargin: "100px",
+        threshold: 0.1,
+      },
+    );
+
+    observer.observe(sentinelRef.current);
+
+    return () => {
+      if (sentinelRef.current) {
+        observer.unobserve(sentinelRef.current);
+      }
+    };
+  }, [hasMore, loadMore]);
 
   const pullRequest = group.data?.github?.pullRequest;
-  const hasEdit = group.tasks.some(
+  const hasEdit = accumulatedTasks.some(
     (task) =>
       task.lineChanges &&
       (task.lineChanges?.added !== 0 || task.lineChanges?.removed !== 0),
@@ -478,8 +531,8 @@ function WorktreeSection({
 
       <CollapsibleContent>
         <ScrollArea viewportClassname="max-h-[230px] px-1 py-1">
-          {group.tasks.length > 0 ? (
-            group.tasks.map((task) => {
+          {accumulatedTasks.length > 0 ? (
+            accumulatedTasks.map((task) => {
               return (
                 <div key={task.id} className="py-0.5">
                   <TaskRow task={task} state={pochiTasks[task.id]} />
@@ -489,6 +542,16 @@ function WorktreeSection({
           ) : (
             <div className="py-0.5 text-muted-foreground text-xs">
               {t("tasksPage.emptyState.description")}
+            </div>
+          )}
+          {hasMore && (
+            <div
+              ref={sentinelRef}
+              className="flex items-center justify-center py-4"
+            >
+              <div className="text-muted-foreground text-xs">
+                {t("tasksPage.loadingMore")}
+              </div>
             </div>
           )}
         </ScrollArea>
