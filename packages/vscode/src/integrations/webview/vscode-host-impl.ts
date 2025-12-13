@@ -490,6 +490,14 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       webviewKind?: "sidebar" | "pane";
     },
   ) => {
+    if (filePath.startsWith("pochi://")) {
+      await vscode.commands.executeCommand(
+        "vscode.open",
+        vscode.Uri.parse(filePath),
+      );
+      return;
+    }
+
     // Expand ~ to home directory if present
     let resolvedPath = filePath;
     if (filePath.startsWith("~/")) {
