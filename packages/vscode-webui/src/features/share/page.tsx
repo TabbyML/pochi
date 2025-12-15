@@ -15,9 +15,11 @@ type BIDCChannel = ReturnType<typeof createChannel>;
 
 export function SharePage() {
   const [channel, setChannel] = useState<BIDCChannel | undefined>();
-  const shareData = isStorePathname()
-    ? useCFShareData()
-    : useShareData(channel);
+
+  const shareData = useShareData({
+    isStorePathname: isStorePathname(),
+    channel: isStorePathname() ? undefined : channel,
+  });
 
   const isChannelCreated = useRef(false);
 
@@ -119,21 +121,14 @@ export function SharePage() {
   );
 }
 
-function useShareData(channel: BIDCChannel | undefined) {
+function useShareData({
+  isStorePathname,
+  channel,
+}: { channel?: BIDCChannel | undefined; isStorePathname: boolean }) {
   const [data, setData] = useState<ShareEvent>();
-  useEffect(() => {
-    if (!channel) return;
-    channel.receive((data) => {
-      setData(ShareEvent.parse(data));
-    });
-  }, [channel]);
-  return data;
-}
 
-function useCFShareData() {
-  const api = location.pathname.replace("/html", "/json");
-  const [data, setData] = useState<ShareEvent>();
-  useEffect(() => {
+  const fetchCfShareData = useCallback(() => {
+    const api = location.pathname.replace("/html", "/json");
     const token = getTokenFromHash();
     fetch(
       api,
@@ -153,7 +148,23 @@ function useCFShareData() {
       .catch((err) => {
         console.error("Failed to fetch share data", err);
       });
-  }, [api]);
+  }, []);
+
+  const subscribeChannelData = useCallback(() => {
+    if (!channel) return;
+    channel.receive((data) => {
+      setData(ShareEvent.parse(data));
+    });
+  }, [channel]);
+
+  useEffect(() => {
+    if (isStorePathname) {
+      fetchCfShareData();
+    } else {
+      subscribeChannelData();
+    }
+  }, [isStorePathname, fetchCfShareData, subscribeChannelData]);
+
   return data;
 }
 

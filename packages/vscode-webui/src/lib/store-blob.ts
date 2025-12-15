@@ -9,6 +9,7 @@ export function setBlobUrl(key: string, data: Blob) {
 }
 
 export function useStoreBlobUrl(inputUrl: string): string | null {
+  const { store } = useStore();
   // Do not handle data uri
   if (inputUrl.startsWith("data:")) {
     return inputUrl;
@@ -22,7 +23,6 @@ export function useStoreBlobUrl(inputUrl: string): string | null {
   const url = new URL(inputUrl);
   if (url.protocol !== StoreBlobProtocol) return inputUrl;
   if (isVSCodeEnvironment()) {
-    const { store } = useStore();
     const data = store.query(catalog.queries.makeBlobQuery(url.pathname));
     if (!data) return null;
     const blob = new Blob([data.data], {

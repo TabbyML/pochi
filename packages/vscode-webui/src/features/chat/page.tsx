@@ -97,10 +97,9 @@ function Chat({
 
   const task = store.useQuery(catalog.queries.makeTaskQuery(uid));
   const subtask = useSubtaskInfo(uid, task?.parentId);
-  const topDisplayId = task?.parentId
-    ? (store.useQuery(catalog.queries.makeTaskQuery(task.parentId))
-        ?.displayId ?? displayId)
-    : displayId;
+  const topDisplayId =
+    store.useQuery(catalog.queries.makeTaskQuery(task?.parentId ?? ""))
+      ?.displayId ?? displayId;
 
   const isSubTask = !!subtask;
 

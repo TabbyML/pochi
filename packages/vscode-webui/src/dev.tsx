@@ -16,6 +16,8 @@ const adapter = makePersistedAdapter({
 });
 
 function App() {
+  const { t } = useTranslation();
+
   if (typeof window === "undefined") {
     return null;
   }
@@ -32,7 +34,6 @@ function App() {
       schema={catalog.schema}
       adapter={adapter}
       renderLoading={() => {
-        const { t } = useTranslation();
         return <>{t("dev.loading")}</>;
       }}
       batchUpdates={batchUpdates}
