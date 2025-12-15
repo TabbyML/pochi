@@ -225,6 +225,7 @@
   "toolInvocation": {
     "taskCompleted": "작업 완료",
     "createWalkthrough": "워크스루 생성",
+    "updateWalkthrough": "워크스루 업데이트",
     "reading": "읽는 중 ",
     "writing": "쓰는 중 ",
     "continue": "계속",
