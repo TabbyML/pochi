@@ -14,7 +14,12 @@ import ReactDOM from "react-dom/client";
 import { routeTree } from "./routeTree.gen";
 
 import "./styles.css";
-import { Loader2 } from "lucide-react";
+import { AlertCircle, Loader2, RefreshCw } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "./components/ui/tooltip";
 import { useUserStorage } from "./lib/hooks/use-user-storage.ts";
 import { isVSCodeEnvironment, vscodeHost } from "./lib/vscode";
 import { Providers } from "./providers.tsx";
@@ -31,6 +36,40 @@ const router = createRouter({
   defaultStructuralSharing: true,
   defaultPreloadStaleTime: 0,
   history: hashHistory,
+  defaultErrorComponent: ({ error }) => {
+    return (
+      <div className="flex h-screen w-screen flex-col items-center justify-center gap-4 bg-background p-4">
+        {/* eslint-disable i18next/no-literal-string */}
+        <div className="flex max-w-md flex-col items-center text-center">
+          <h1 className="mb-8 flex items-center gap-2 font-semibold text-2xl tracking-tight">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <AlertCircle
+                  className="size-5 shrink-0 cursor-help text-yellow-500"
+                  strokeWidth={2}
+                />
+              </TooltipTrigger>
+              <TooltipContent
+                side="top"
+                className="max-w-md whitespace-pre-wrap break-words"
+              >
+                {error.message || String(error)}
+              </TooltipContent>
+            </Tooltip>
+            <span>Something went wrong</span>
+          </h1>
+          <a
+            href="command:workbench.action.reloadWindow"
+            className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-2 font-medium text-primary-foreground shadow-lg transition-all hover:scale-105 hover:bg-primary/90 hover:shadow-xl"
+          >
+            <RefreshCw className="size-4" />
+            Reload Window
+          </a>
+        </div>
+        {/* eslint-enable i18next/no-literal-string */}
+      </div>
+    );
+  },
 });
 
 declare global {
