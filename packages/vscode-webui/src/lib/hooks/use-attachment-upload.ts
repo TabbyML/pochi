@@ -151,9 +151,6 @@ export function useAttachmentUpload(options?: UseAttachmentUploadOptions) {
 
       const uploadedAttachments = await Promise.all(uploadPromises);
 
-      // Clear files after successful upload
-      clearFiles();
-
       return uploadedAttachments;
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") {

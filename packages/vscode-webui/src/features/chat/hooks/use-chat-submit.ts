@@ -63,6 +63,7 @@ export function useChatSubmit({
     files,
     isUploading,
     upload,
+    clearFiles,
     clearError: clearUploadError,
   } = attachmentUpload;
 
@@ -136,6 +137,7 @@ export function useChatSubmit({
           const parts = prepareMessageParts(t, text, uploadedAttachments);
           logger.debug("Sending message with files");
 
+          clearFiles();
           autoApproveGuard.current = "auto";
           await sendMessage({
             parts,
@@ -169,6 +171,7 @@ export function useChatSubmit({
       setQueuedMessages,
       isUploading,
       t,
+      clearFiles,
     ],
   );
 
