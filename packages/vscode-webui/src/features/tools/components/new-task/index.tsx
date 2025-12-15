@@ -34,7 +34,7 @@ export const newTaskTool: React.FC<NewTaskToolProps> = (props) => {
     taskSource = inlinedTaskSource;
   }
 
-  if (!inlinedTaskSource && uid) {
+  if (!inlinedTaskSource && uid && isVSCodeEnvironment()) {
     return <LiveSubTaskToolView {...props} uid={uid} />;
   }
 
