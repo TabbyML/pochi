@@ -223,6 +223,7 @@
   },
   "toolInvocation": {
     "taskCompleted": "任务完成",
+    "createWalkthrough": "创建 Walkthrough",
     "reading": "正在读取 ",
     "writing": "正在写入 ",
     "continue": "继续",

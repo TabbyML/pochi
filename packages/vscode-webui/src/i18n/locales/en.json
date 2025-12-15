@@ -226,6 +226,7 @@
   },
   "toolInvocation": {
     "taskCompleted": "Task Completed",
+    "createWalkthrough": "Create Walkthrough",
     "reading": "Reading ",
     "writing": "Writing ",
     "continue": "Continue",
