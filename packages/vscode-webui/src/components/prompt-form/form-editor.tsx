@@ -697,9 +697,24 @@ export function FormEditor({
 
   // Auto focus when document is focused.
   useEffect(() => {
-    window.addEventListener("focus", focusEditor);
+    const handleFocus = () => {
+      setTimeout(() => {
+        const activeElement = document.activeElement;
+        if (
+          activeElement &&
+          (activeElement.tagName === "BUTTON" ||
+            activeElement.tagName === "A" ||
+            activeElement.closest('[data-slot="tooltip-trigger"]') ||
+            activeElement.closest('[data-slot="popover-trigger"]'))
+        ) {
+          return;
+        }
+        focusEditor();
+      }, 0);
+    };
+    window.addEventListener("focus", handleFocus);
     return () => {
-      window.removeEventListener("focus", focusEditor);
+      window.removeEventListener("focus", handleFocus);
     };
   }, [focusEditor]);
 
@@ -752,9 +767,9 @@ export function FormEditor({
         })}
       >
         {isAutoCompleteHintVisible && (
-          <div className="flex items-center text-muted-foreground text-xs">
+          <div className="flex flex-nowrap items-center truncate whitespace-nowrap text-muted-foreground text-xs">
             {t("formEditor.autoCompleteHintPrefix")}{" "}
-            <ArrowRightToLine className="mr-1.5 ml-0.5 size-4" />{" "}
+            <ArrowRightToLine className="mr-1.5 ml-0.5 size-4 shrink-0" />{" "}
             {t("formEditor.autoCompleteHintSuffix")}
           </div>
         )}

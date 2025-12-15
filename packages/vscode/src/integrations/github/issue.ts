@@ -25,6 +25,7 @@ const PageSize = 50;
 const PollIntervalMS = 60 * 1000; // 1 minute
 const OneYearAgoMS = 365 * 24 * 60 * 60 * 1000;
 const MaxIssues = 3000;
+const QueryLimit = 50;
 
 @singleton()
 @injectable()
@@ -40,6 +41,7 @@ export class GithubIssues implements vscode.Disposable {
   }
 
   private async init() {
+    // wait all worktree loaded so we can get main worktree to fetch issues
     await this.worktreeManager.inited.promise;
     logger.debug("Initializing GithubIssues integration");
 
@@ -135,7 +137,7 @@ export class GithubIssues implements vscode.Disposable {
         }
 
         if (hasMore) {
-          this.worktreeInfoProvider.updateGithubIssues(worktreePath, {
+          await this.worktreeInfoProvider.updateGithubIssues(worktreePath, {
             pageOffset: page,
             data: updatedIssues,
           });
@@ -144,7 +146,7 @@ export class GithubIssues implements vscode.Disposable {
           );
         } else {
           const now = new Date().toISOString();
-          this.worktreeInfoProvider.updateGithubIssues(worktreePath, {
+          await this.worktreeInfoProvider.updateGithubIssues(worktreePath, {
             updatedAt: currentIssuesData?.processedAt ?? now,
             processedAt: now,
             pageOffset: 0,
@@ -197,7 +199,7 @@ export class GithubIssues implements vscode.Disposable {
           searchQuery += " is:open";
         }
         searchQuery += ` updated:>=${updatedAt}`;
-        searchQuery += " sort:updated-desc";
+        searchQuery += " sort:created-desc";
 
         command = `gh api "/search/issues?q=${encodeURIComponent(searchQuery)}&per_page=${PageSize}&page=${page}" --jq '.items[] | {number: .number, title: .title, url: .html_url, state: .state}'`;
       }
@@ -275,7 +277,7 @@ export class GithubIssues implements vscode.Disposable {
       }
     }
 
-    return filteredIssues;
+    return filteredIssues.sort((a, b) => b.id - a.id);
   }
 
   private scheduleNextCheck() {
@@ -309,7 +311,7 @@ export class GithubIssues implements vscode.Disposable {
       const issues = issuesData.data;
 
       if (!query) {
-        return issues.slice(0, 10);
+        return issues.slice(0, QueryLimit);
       }
 
       // Check for fuzzy match by issue ID (substring match)
@@ -345,7 +347,7 @@ export class GithubIssues implements vscode.Disposable {
         ),
       ];
 
-      return allMatches.slice(0, 10);
+      return allMatches.slice(0, QueryLimit);
     } catch (error) {
       logger.warn(`Failed to query issues: ${toErrorMessage(error)}`);
       return [];

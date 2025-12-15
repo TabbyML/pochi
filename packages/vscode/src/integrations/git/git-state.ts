@@ -44,8 +44,9 @@ export class GitStateMonitor implements vscode.Disposable {
   private gitAPI: API | undefined;
   private repositoryState = new Map<string, GitRepositoryState>();
 
-  get repositories(): Repository[] {
-    return this.gitAPI?.repositories ?? [];
+  // repo list with same order as vscode git extension
+  get repositories(): string[] {
+    return Array.from(this.repositoryState.keys());
   }
 
   readonly #onDidChangeGitState =
@@ -70,6 +71,12 @@ export class GitStateMonitor implements vscode.Disposable {
   constructor() {
     this.disposables.push(this.#onDidChangeGitState);
     this.initialize();
+  }
+
+  getRepository(path: string) {
+    return this.gitAPI?.repositories.find(
+      (repo) => repo.rootUri.fsPath === path,
+    );
   }
 
   /**
@@ -103,6 +110,7 @@ export class GitStateMonitor implements vscode.Disposable {
         logger.debug("Failed to get Git API");
         return;
       }
+      await this.gitApiReady();
 
       // Listen for repository open/close events
       this.disposables.push(
@@ -117,7 +125,6 @@ export class GitStateMonitor implements vscode.Disposable {
         ),
       );
 
-      await this.gitApiReady();
       // Initialize existing repositories
       for (const repository of this.gitAPI.repositories) {
         logger.debug(

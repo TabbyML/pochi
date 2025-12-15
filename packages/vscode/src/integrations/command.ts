@@ -228,15 +228,18 @@ export class CommandManager implements vscode.Disposable {
           }
 
           // Clear the GitHub data for the main worktree
-          this.worktreeInfoProvider.updateGithubIssues(mainWorktree.path, {
-            data: [],
-            updatedAt: undefined,
-            processedAt: undefined,
-            pageOffset: undefined,
-          });
+          await this.worktreeInfoProvider.updateGithubIssues(
+            mainWorktree.path,
+            {
+              data: [],
+              updatedAt: undefined,
+              processedAt: undefined,
+              pageOffset: undefined,
+            },
+          );
 
           // Also clear pull request data if it exists
-          this.worktreeInfoProvider.updateGithubPullRequest(
+          await this.worktreeInfoProvider.updateGithubPullRequest(
             mainWorktree.path,
             undefined,
           );

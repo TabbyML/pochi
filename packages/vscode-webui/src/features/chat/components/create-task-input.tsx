@@ -10,11 +10,12 @@ import {
 import { WorktreeSelect } from "@/components/worktree-select";
 import { useSelectedModels, useSettingsStore } from "@/features/settings";
 import type { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
+import { useDebounceState } from "@/lib/hooks/use-debounce-state";
 import { useTaskInputDraft } from "@/lib/hooks/use-task-input-draft";
 import { useWorktrees } from "@/lib/hooks/use-worktrees";
 import { vscodeHost } from "@/lib/vscode";
 import type { GitWorktree } from "@getpochi/common/vscode-webui-bridge";
-import { PaperclipIcon } from "lucide-react";
+import { Loader2, PaperclipIcon } from "lucide-react";
 import type React from "react";
 import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -52,6 +53,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
   // Use the unified attachment upload hook
   const {
     files,
+    clearFiles,
     upload,
     isUploading: isUploadingAttachments,
     fileInputRef,
@@ -102,6 +104,9 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
 
   const [isCreatingTask, setIsCreatingTask] = useState(false);
 
+  const [debouncedIsCreatingTask, setDebouncedIsCreatingTask] =
+    useDebounceState(isCreatingTask, 300);
+
   const handleSubmitImpl = useCallback(
     async (
       e?: React.FormEvent<HTMLFormElement>,
@@ -125,6 +130,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
       // Set isCreatingTask state true
       // Show loading and freeze input
       setIsCreatingTask(true);
+      setDebouncedIsCreatingTask(true);
 
       if (files.length > 0) {
         const uploadedAttachments = await upload();
@@ -148,6 +154,8 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
           prompt: content,
           files: uploadedFiles,
         });
+
+        clearFiles();
       } else if (content.length > 0) {
         clearUploadError();
 
@@ -168,6 +176,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
       // Set isCreatingTask state false
       // Hide loading and unfreeze input
       setIsCreatingTask(false);
+      setDebouncedIsCreatingTask(false);
       // Clear input content after unfreeze
       setTimeout(clearDraft, 50);
     },
@@ -182,6 +191,8 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
       isUploadingAttachments,
       clearUploadError,
       clearDraft,
+      clearFiles,
+      setDebouncedIsCreatingTask,
     ],
   );
 
@@ -286,6 +297,11 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
               {t("chat.attachmentTooltip")}
             </HoverCardContent>
           </HoverCard>
+          {!!debouncedIsCreatingTask && (
+            <span className="p-1">
+              <Loader2 className="size-4 animate-spin" />
+            </span>
+          )}
         </div>
       </div>
     </>

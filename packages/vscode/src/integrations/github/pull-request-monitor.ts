@@ -40,7 +40,7 @@ export class GithubPullRequestMonitor implements vscode.Disposable {
     this.disposables.push(
       this.gitStateMonitor.onDidChangeGitState(async (e) => {
         if (e.type === "branch-changed" && e.currentBranch !== undefined) {
-          this.worktreeInfoProvider.updateGithubPullRequest(
+          await this.worktreeInfoProvider.updateGithubPullRequest(
             e.repository,
             undefined,
           );
@@ -162,7 +162,7 @@ export class GithubPullRequestMonitor implements vscode.Disposable {
     const newPrInfo = prInfo ?? undefined;
 
     if (JSON.stringify(currentPrInfo) !== JSON.stringify(newPrInfo)) {
-      this.worktreeInfoProvider.updateGithubPullRequest(
+      await this.worktreeInfoProvider.updateGithubPullRequest(
         worktree.path,
         newPrInfo,
       );

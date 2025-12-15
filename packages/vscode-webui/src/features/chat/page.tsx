@@ -26,6 +26,7 @@ import { useLatest } from "@/lib/hooks/use-latest";
 import { useMcp } from "@/lib/hooks/use-mcp";
 import { cn } from "@/lib/utils";
 import { Schema } from "@livestore/utils/effect";
+import type { TFunction } from "i18next";
 import { useApprovalAndRetry } from "../approval";
 import { getReadyForRetryError } from "../retry/hooks/use-ready-for-retry-error";
 import {
@@ -392,14 +393,15 @@ function Chat({
       if (task?.cwd && task.title) {
         await forkTaskFromCheckPoint(
           messages,
+          t,
           commitId,
           task.cwd,
-          t("forkTask.forkedTaskTitle", { taskTitle: task.title }),
+          task.title,
           messageId,
         );
       }
     },
-    [messages, task?.cwd, task?.title, t],
+    [messages, task, t],
   );
 
   return (
@@ -421,6 +423,7 @@ function Chat({
         })}
         hideEmptyPlaceholder={isNewTaskWithContent}
         forkTask={task?.cwd ? forkTask : undefined}
+        hideCheckPoint={isSubTask}
       />
       <div className="relative flex flex-col px-4">
         {!isWorkspaceActive ? (
@@ -470,6 +473,7 @@ function fromTaskError(task?: Task) {
 
 async function forkTaskFromCheckPoint(
   messages: Message[],
+  t: TFunction<"translation", undefined>,
   commitId: string,
   cwd: string,
   title: string,
@@ -512,7 +516,7 @@ async function forkTaskFromCheckPoint(
   // Create new task
   await vscodeHost.openTaskInPanel({
     cwd,
-    initTitle: title,
+    initTitle: t("forkTask.forkedTaskTitle", { taskTitle: title }),
     initMessages: JSON.stringify(initMessages),
     disablePendingModelAutoStart: true,
   });
