@@ -113,12 +113,6 @@ export class CommentController implements vscode.Disposable {
           return [];
         }
 
-        const ranges: vscode.Range[] = [];
-        for (let i = 0; i < document.lineCount; i++) {
-          ranges.push(
-            new vscode.Range(i, 0, i, document.lineAt(i).text.length),
-          );
-        }
         return [new vscode.Range(0, 0, document.lineCount, 0)];
       },
     };
