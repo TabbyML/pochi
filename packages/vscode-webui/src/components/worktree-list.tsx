@@ -289,6 +289,19 @@ function WorktreeSection({
   const [isHovered, setIsHovered] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const pochiTasks = usePochiTasks();
+  
+  // Pagination state: initially show 10 tasks
+  const INITIAL_TASK_COUNT = 10;
+  const LOAD_MORE_COUNT = 20;
+  const [displayedTaskCount, setDisplayedTaskCount] = useState(INITIAL_TASK_COUNT);
+  
+  // Get tasks to display based on pagination
+  const displayedTasks = useMemo(() => {
+    return group.tasks.slice(0, displayedTaskCount);
+  }, [group.tasks, displayedTaskCount]);
+  
+  const hasMoreTasks = displayedTaskCount < group.tasks.length;
+  const remainingTaskCount = group.tasks.length - displayedTaskCount;
 
   const pullRequest = group.data?.github?.pullRequest;
   const hasEdit = group.tasks.some(
@@ -296,6 +309,10 @@ function WorktreeSection({
       task.lineChanges &&
       (task.lineChanges?.added !== 0 || task.lineChanges?.removed !== 0),
   );
+  
+  const handleLoadMore = () => {
+    setDisplayedTaskCount((prev) => prev + LOAD_MORE_COUNT);
+  };
 
   const prUrl = useMemo(() => {
     if (!gitOriginUrl || !pullRequest?.id) return "#";
@@ -479,13 +496,27 @@ function WorktreeSection({
       <CollapsibleContent>
         <ScrollArea viewportClassname="max-h-[230px] px-1 py-1">
           {group.tasks.length > 0 ? (
-            group.tasks.map((task) => {
-              return (
-                <div key={task.id} className="py-0.5">
-                  <TaskRow task={task} state={pochiTasks[task.id]} />
+            <>
+              {displayedTasks.map((task) => {
+                return (
+                  <div key={task.id} className="py-0.5">
+                    <TaskRow task={task} state={pochiTasks[task.id]} />
+                  </div>
+                );
+              })}
+              {hasMoreTasks && (
+                <div className="py-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full text-muted-foreground text-xs hover:text-foreground"
+                    onClick={handleLoadMore}
+                  >
+                    Load {Math.min(LOAD_MORE_COUNT, remainingTaskCount)} more tasks ({remainingTaskCount} remaining)
+                  </Button>
                 </div>
-              );
-            })
+              )}
+            </>
           ) : (
             <div className="py-0.5 text-muted-foreground text-xs">
               {t("tasksPage.emptyState.description")}
