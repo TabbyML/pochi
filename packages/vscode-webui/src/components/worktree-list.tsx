@@ -289,17 +289,18 @@ function WorktreeSection({
   const [isHovered, setIsHovered] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const pochiTasks = usePochiTasks();
-  
+
   // Pagination state: initially show 10 tasks
   const INITIAL_TASK_COUNT = 10;
   const LOAD_MORE_COUNT = 20;
-  const [displayedTaskCount, setDisplayedTaskCount] = useState(INITIAL_TASK_COUNT);
-  
+  const [displayedTaskCount, setDisplayedTaskCount] =
+    useState(INITIAL_TASK_COUNT);
+
   // Get tasks to display based on pagination
   const displayedTasks = useMemo(() => {
     return group.tasks.slice(0, displayedTaskCount);
   }, [group.tasks, displayedTaskCount]);
-  
+
   const hasMoreTasks = displayedTaskCount < group.tasks.length;
   const remainingTaskCount = group.tasks.length - displayedTaskCount;
 
@@ -309,7 +310,7 @@ function WorktreeSection({
       task.lineChanges &&
       (task.lineChanges?.added !== 0 || task.lineChanges?.removed !== 0),
   );
-  
+
   const handleLoadMore = () => {
     setDisplayedTaskCount((prev) => prev + LOAD_MORE_COUNT);
   };
@@ -512,7 +513,8 @@ function WorktreeSection({
                     className="w-full text-muted-foreground text-xs hover:text-foreground"
                     onClick={handleLoadMore}
                   >
-                    Load {Math.min(LOAD_MORE_COUNT, remainingTaskCount)} more tasks ({remainingTaskCount} remaining)
+                    Load {Math.min(LOAD_MORE_COUNT, remainingTaskCount)} more
+                    tasks ({remainingTaskCount} remaining)
                   </Button>
                 </div>
               )}

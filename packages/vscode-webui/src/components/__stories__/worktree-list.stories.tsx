@@ -1,9 +1,9 @@
-import type { Meta, StoryObj } from "@storybook/react";
-import type { Task } from "@getpochi/livekit";
 import type { GitWorktree } from "@getpochi/common/vscode-webui-bridge";
-import { WorktreeList } from "../worktree-list";
+import type { Task } from "@getpochi/livekit";
+import type { Meta, StoryObj } from "@storybook/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
+import { WorktreeList } from "../worktree-list";
 
 // Create a QueryClient for Storybook
 const queryClient = new QueryClient({
@@ -60,7 +60,7 @@ const withMockedQueries = (Story: () => ReactNode) => {
     ghCli: { value: mockGhCli },
     gitOriginUrl: "https://github.com/test/project.git",
   });
-  
+
   queryClient.setQueryData(["currentWorkspace"], mockCurrentWorkspace);
 
   return (
@@ -146,18 +146,14 @@ export const MainWorktreeWithTasks: Story = {
         "/Users/test/project",
         { added: 120, removed: 30 },
       ),
-      createMockTask(
-        "task-2",
-        "Fix navigation bug",
-        "/Users/test/project",
-        { added: 15, removed: 8 },
-      ),
-      createMockTask(
-        "task-3",
-        "Update documentation",
-        "/Users/test/project",
-        { added: 50, removed: 10 },
-      ),
+      createMockTask("task-2", "Fix navigation bug", "/Users/test/project", {
+        added: 15,
+        removed: 8,
+      }),
+      createMockTask("task-3", "Update documentation", "/Users/test/project", {
+        added: 50,
+        removed: 10,
+      }),
     ],
     deletingWorktreePaths: new Set(),
     onDeleteWorktree: (path) => console.log("Delete worktree:", path),
@@ -178,12 +174,10 @@ export const MainWorktreeWithTasks: Story = {
 export const MultipleWorktrees: Story = {
   args: {
     tasks: [
-      createMockTask(
-        "task-1",
-        "Main branch task",
-        "/Users/test/project",
-        { added: 50, removed: 20 },
-      ),
+      createMockTask("task-1", "Main branch task", "/Users/test/project", {
+        added: 50,
+        removed: 20,
+      }),
       createMockTask(
         "task-2",
         "Feature branch task 1",
@@ -353,12 +347,10 @@ export const NoLineChanges: Story = {
 export const DeletingWorktree: Story = {
   args: {
     tasks: [
-      createMockTask(
-        "task-1",
-        "Main task",
-        "/Users/test/project",
-        { added: 50, removed: 20 },
-      ),
+      createMockTask("task-1", "Main task", "/Users/test/project", {
+        added: 50,
+        removed: 20,
+      }),
       createMockTask(
         "task-2",
         "Task in worktree being deleted",
@@ -387,12 +379,10 @@ export const DeletingWorktree: Story = {
 export const Interactive: Story = {
   args: {
     tasks: [
-      createMockTask(
-        "task-1",
-        "Main branch task",
-        "/Users/test/project",
-        { added: 50, removed: 20 },
-      ),
+      createMockTask("task-1", "Main branch task", "/Users/test/project", {
+        added: 50,
+        removed: 20,
+      }),
       createMockTask(
         "task-2",
         "Feature task",
