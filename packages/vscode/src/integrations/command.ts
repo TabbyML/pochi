@@ -29,6 +29,12 @@ import { getServerBaseUrl } from "@getpochi/common/vscode-webui-bridge";
 import { inject, injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
 // biome-ignore lint/style/useImportType: needed for dependency injection
+import {
+  type Comment,
+  CommentController,
+  type Thread,
+} from "./comment-controller";
+// biome-ignore lint/style/useImportType: needed for dependency injection
 import { PochiConfiguration } from "./configuration";
 import { DiffChangesContentProvider } from "./editor/diff-changes-content-provider";
 // biome-ignore lint/style/useImportType: needed for dependency injection
@@ -61,6 +67,7 @@ export class CommandManager implements vscode.Disposable {
     private readonly nesDecorationManager: NESDecorationManager,
     private readonly worktreeManager: WorktreeManager,
     private readonly worktreeInfoProvider: GitWorktreeInfoProvider,
+    private readonly commentController: CommentController,
   ) {
     this.registerCommands();
   }
@@ -594,6 +601,54 @@ export class CommandManager implements vscode.Disposable {
             }
           }
           await applyPochiLayout({ cwd });
+        },
+      ),
+
+      vscode.commands.registerCommand(
+        "pochi.comments.deleteThread",
+        async (thread?: Thread) => {
+          if (thread) {
+            await this.commentController.deleteThread(thread);
+          }
+        },
+      ),
+
+      vscode.commands.registerCommand(
+        "pochi.comments.addComment",
+        async (commentReply?: vscode.CommentReply | undefined) => {
+          if (commentReply) {
+            await this.commentController.addComment(commentReply);
+          }
+        },
+      ),
+
+      vscode.commands.registerCommand(
+        "pochi.comments.deleteComment",
+        async (comment?: Comment, thread?: Thread) => {
+          if (comment && thread) {
+            await this.commentController.deleteComment(comment, thread);
+          }
+        },
+      ),
+
+      vscode.commands.registerCommand(
+        "pochi.comments.startEditComment",
+        async (comment: Comment, thread: Thread) => {
+          await this.commentController.startEditComment(comment, thread);
+        },
+      ),
+
+      vscode.commands.registerCommand(
+        "pochi.comments.saveEditComment",
+        async (comment: Comment) => {
+          await this.commentController.saveEditComment(comment);
+        },
+      ),
+
+      vscode.commands.registerCommand(
+        "pochi.comments.cancelEditComment",
+        async (comment: Comment) => {
+          await this.commentController.cancelEditComment(comment);
         },
       ),
 
