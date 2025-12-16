@@ -289,6 +289,8 @@ const VSCodeHostStub = {
   },
 
   setGlobalState: async (): Promise<void> => {},
+
+  setPochiLayoutKeybindingContext: async (): Promise<void> => {},
 } satisfies VSCodeHostApi;
 
 export function createVscodeHostStub(overrides?: Partial<VSCodeHostApi>) {

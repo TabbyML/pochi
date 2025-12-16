@@ -100,6 +100,7 @@
       "title": "高级设置",
       "developerMode": "开发者模式",
       "enablePochiModels": "启用 Pochi 模型",
+      "enablePochiLayoutKeybinding": "使用 Ctrl+` 切换 Pochi 布局",
       "clearStorage": "清除存储",
       "language": "语言",
       "languageDescription": "选择您的首选语言"

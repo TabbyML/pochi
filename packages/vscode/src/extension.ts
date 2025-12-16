@@ -28,6 +28,7 @@ import { CommandManager } from "./integrations/command";
 import { DiffChangesContentProvider } from "./integrations/editor/diff-changes-content-provider";
 import { DiffOriginContentProvider } from "./integrations/editor/diff-origin-content-provider";
 import { WorktreeManager } from "./integrations/git/worktree";
+import { initPochiLayoutKeybindingContext } from "./integrations/layout";
 import { createMcpHub } from "./integrations/mcp";
 import { StatusBarItem } from "./integrations/status-bar-item";
 import { TerminalLinkProvider } from "./integrations/terminal-link-provider";
@@ -46,6 +47,9 @@ const logger = getLogger("Extension");
 // Your extension is activated the very first time the command is executed
 export async function activate(context: vscode.ExtensionContext) {
   const cwd = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
+
+  // Initialize the Pochi layout keybinding context from global state
+  await initPochiLayoutKeybindingContext(context);
 
   // Container will dispose all the registered instances when itself is disposed
   context.subscriptions.push(container);

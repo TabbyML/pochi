@@ -1,6 +1,61 @@
+import { getLogger } from "@/lib/logger";
 import { listWorkspaceFiles } from "@getpochi/common/tool-utils";
 import * as vscode from "vscode";
 import { PochiTaskEditorProvider } from "./webview/webview-panel";
+
+const logger = getLogger("Layout");
+
+/**
+ * Sets the Pochi layout keybinding context value.
+ * This utility function centralizes the logic for setting the context.
+ */
+export async function setPochiLayoutKeybindingContext(
+  enabled: boolean,
+): Promise<void> {
+  await vscode.commands.executeCommand(
+    "setContext",
+    "pochi.enablePochiLayoutKeybinding",
+    enabled,
+  );
+}
+
+/**
+ * Initialize the Pochi layout keybinding context from persisted global state.
+ * This ensures the keybinding context is set correctly even before the webview loads.
+ */
+export async function initPochiLayoutKeybindingContext(
+  context: vscode.ExtensionContext,
+): Promise<void> {
+  try {
+    const settingsStorageName = "ragdoll-settings-storage";
+    const settingsData = context.globalState.get<string>(settingsStorageName);
+
+    if (settingsData) {
+      const parsed = JSON.parse(settingsData);
+      const enablePochiLayoutKeybinding =
+        parsed?.state?.enablePochiLayoutKeybinding ?? false;
+
+      await setPochiLayoutKeybindingContext(enablePochiLayoutKeybinding);
+
+      logger.debug(
+        `Initialized pochi.enablePochiLayoutKeybinding context: ${enablePochiLayoutKeybinding}`,
+      );
+    } else {
+      // Default to false if no settings exist yet
+      await setPochiLayoutKeybindingContext(false);
+      logger.debug(
+        "Initialized pochi.enablePochiLayoutKeybinding context: false (default)",
+      );
+    }
+  } catch (error) {
+    logger.error(
+      "Failed to initialize Pochi layout keybinding context:",
+      error,
+    );
+    // Set to false as a safe default
+    await setPochiLayoutKeybindingContext(false);
+  }
+}
 
 const PochiLayout = {
   orientation: 0, // Left-right
@@ -32,6 +87,9 @@ export async function applyPochiLayout(params: { cwd: string | undefined }) {
   // store the current focus tab
   const userFocusTab = vscode.window.tabGroups.activeTabGroup.activeTab;
   const userActiveTerminal = vscode.window.activeTerminal;
+
+  // Open primary sidebar (for Pochi webview)
+  await vscode.commands.executeCommand("pochiSidebar.focus");
 
   // Make all groups horizontal, so we can move them left/right, then join groups if needed
   await vscode.commands.executeCommand("workbench.action.evenEditorWidths");
@@ -245,13 +303,12 @@ export async function applyPochiLayout(params: { cwd: string | undefined }) {
     }
   }
 
-  // Close primary sidebar, secondary sidebar, and bottom panel
-  await vscode.commands.executeCommand("workbench.action.closeSidebar");
+  // close secondary sidebar and bottom panel
   await vscode.commands.executeCommand("workbench.action.closeAuxiliaryBar");
   await vscode.commands.executeCommand("workbench.action.closePanel");
 }
 
-function isCurrentLayoutDerivedFromPochiLayout(): boolean {
+export function isCurrentLayoutDerivedFromPochiLayout(): boolean {
   const current = getSortedCurrentTabGroups();
   if (current.length < 3) {
     return false;

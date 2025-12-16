@@ -61,6 +61,7 @@ function createVSCodeHost(): VSCodeHostApi {
         "setWorkspaceState",
         "getGlobalState",
         "setGlobalState",
+        "setPochiLayoutKeybindingContext",
         "readEnvironment",
         "executeToolCall",
         "executeBashCommand",
