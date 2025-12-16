@@ -42,6 +42,7 @@ import {
   applyPochiLayout,
   getSortedCurrentTabGroups,
   getViewColumnForTerminal,
+  isCurrentLayoutDerivedFromPochiLayout,
   isPochiTaskTab,
 } from "./layout";
 import { PochiTaskEditorProvider } from "./webview/webview-panel";
@@ -512,13 +513,11 @@ export class CommandManager implements vscode.Disposable {
             taskUri = activeTab.input.uri;
           }
         }
-        // No task found
-        if (taskUri === undefined) {
-          vscode.window.createTerminal().show();
-          return;
-        }
+
         // Open terminal for task
-        const params = PochiTaskEditorProvider.parseTaskUri(taskUri);
+        const params = taskUri
+          ? PochiTaskEditorProvider.parseTaskUri(taskUri)
+          : undefined;
         const viewColumn = getViewColumnForTerminal();
         const location = viewColumn ? { viewColumn } : undefined;
         vscode.window.createTerminal({ cwd: params?.cwd, location }).show();
@@ -587,6 +586,19 @@ export class CommandManager implements vscode.Disposable {
             }
           }
           await applyPochiLayout({ cwd });
+        },
+      ),
+
+      vscode.commands.registerCommand(
+        "pochi.openPochiLayoutOrTerminal",
+        async (...args) => {
+          logger.debug("openPochiLayoutOrTerminal", { args });
+          // Check if Pochi layout is already applied
+          if (isCurrentLayoutDerivedFromPochiLayout()) {
+            vscode.commands.executeCommand("pochi.openTerminal", ...args);
+          } else {
+            vscode.commands.executeCommand("pochi.applyPochiLayout", ...args);
+          }
         },
       ),
     );

@@ -14,6 +14,7 @@ import * as JSONC from "jsonc-parser/esm";
 import { injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
 import z from "zod";
+import { setPochiLayoutKeybindingContext } from "./layout-keybinding";
 
 const logger = getLogger("PochiConfiguration");
 
@@ -34,6 +35,9 @@ export class PochiConfiguration implements vscode.Disposable {
         if (e.affectsConfiguration("pochi.advanced")) {
           const settings = getPochiAdvanceSettings();
           this.advancedSettings.value = settings;
+
+          const enabled = settings.enablePochiLayoutKeybinding ?? false;
+          setPochiLayoutKeybindingContext(enabled);
         }
 
         if (e.affectsConfiguration("files.autoSave")) {
@@ -179,6 +183,7 @@ const PochiAdvanceSettings = z.object({
     })
     .optional(),
   webviewLogLevel: z.string().optional(),
+  enablePochiLayoutKeybinding: z.boolean().optional(),
 });
 
 export type PochiAdvanceSettings = z.infer<typeof PochiAdvanceSettings>;
