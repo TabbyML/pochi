@@ -125,7 +125,7 @@ export interface VSCodeHostApi {
     ThreadSignalSerialization<Array<{ filepath: string; isDir: boolean }>>
   >;
 
-  readPochiTasks(): Promise<ThreadSignalSerialization<TaskStates>>;
+  readPochiTabs(): Promise<ThreadSignalSerialization<TaskStates>>;
 
   readActiveSelection(): Promise<
     ThreadSignalSerialization<

@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/tooltip";
 import { useSelectedModels } from "@/features/settings";
 import { useCurrentWorkspace } from "@/lib/hooks/use-current-workspace";
-import { usePochiTasks } from "@/lib/hooks/use-pochi-tasks";
+import { usePochiTabs } from "@/lib/hooks/use-pochi-tabs";
 import { useWorktrees } from "@/lib/hooks/use-worktrees";
 import { cn } from "@/lib/utils";
 import { vscodeHost } from "@/lib/vscode";
@@ -288,7 +288,7 @@ function WorktreeSection({
   const [isExpanded, setIsExpanded] = useState(!group.isDeleted);
   const [isHovered, setIsHovered] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const pochiTasks = usePochiTasks();
+  const pochiTasks = usePochiTabs();
 
   // Pagination state: initially show 10 tasks
   const INITIAL_TASK_COUNT = 10;

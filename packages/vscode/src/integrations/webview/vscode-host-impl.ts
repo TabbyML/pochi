@@ -289,7 +289,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     );
   };
 
-  readPochiTasks = async (): Promise<ThreadSignalSerialization<TaskStates>> => {
+  readPochiTabs = async (): Promise<ThreadSignalSerialization<TaskStates>> => {
     return ThreadSignal.serialize(this.pochiTaskState.state);
   };
 
