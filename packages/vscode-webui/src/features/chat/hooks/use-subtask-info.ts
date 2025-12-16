@@ -21,20 +21,21 @@ export function useSubtaskInfo(
   parentUid?: string | null,
 ): SubtaskInfo | undefined {
   const { store } = useStore();
-  if (!parentUid) return undefined;
   const parentTaskMessages = store.useQuery(
-    catalog.queries.makeMessagesQuery(parentUid),
+    catalog.queries.makeMessagesQuery(parentUid ?? ""),
   );
   const newtaskTool = parentTaskMessages
     .flatMap((m) => (m.data as Message).parts)
     .find((p) => p.type === "tool-newTask" && p.input?._meta?.uid === uid) as
     | NewTaskTool
     | undefined;
-  if (!newtaskTool) return undefined;
-  const agent = newtaskTool.input?.agentType;
-  const description = newtaskTool.input?.description;
+  const agent = newtaskTool?.input?.agentType;
+  const description = newtaskTool?.input?.description;
   const isSubTask = !!parentUid;
   const { subtaskOffhand } = useSubtaskOffhand();
+
+  if (!parentUid) return undefined;
+  if (!newtaskTool) return undefined;
 
   return {
     uid,
