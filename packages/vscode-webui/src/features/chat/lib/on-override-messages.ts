@@ -1,3 +1,4 @@
+import { getTaskChangedFileStore } from "@/lib/hooks/use-task-changed-files";
 import { vscodeHost } from "@/lib/vscode";
 import { prompts } from "@getpochi/common";
 import { extractWorkflowBashCommands } from "@getpochi/common/message-utils";
@@ -6,7 +7,6 @@ import { type Message, catalog } from "@getpochi/livekit";
 import type { Store } from "@livestore/livestore";
 import { ThreadAbortSignal } from "@quilted/threads";
 import { unique } from "remeda";
-import { getTaskChangedFileStore } from "./use-task-changed-files";
 
 /**
  * Handles the onOverrideMessages event by appending a checkpoint to the last message.
