@@ -102,9 +102,9 @@ import { type FileSelection, TabState } from "../editor/tab-state";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { WorktreeManager } from "../git/worktree";
 // biome-ignore lint/style/useImportType: needed for dependency injection
-import { GithubIssues } from "../github/issue";
+import { GithubIssueState } from "../github/github-issue-state";
 // biome-ignore lint/style/useImportType: needed for dependency injection
-import { GithubPullRequestMonitor } from "../github/pull-request-monitor";
+import { GithubPullRequestState } from "../github/github-pull-request-state";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { ThirdMcpImporter } from "../mcp/third-party-mcp";
 import {
@@ -141,8 +141,8 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     private readonly customAgentManager: CustomAgentManager,
     private readonly worktreeManager: WorktreeManager,
     private readonly pochiTaskState: PochiTaskState,
-    private readonly githubPullRequestMonitor: GithubPullRequestMonitor,
-    private readonly githubIssues: GithubIssues,
+    private readonly githubPullRequestState: GithubPullRequestState,
+    private readonly githubIssueState: GithubIssueState,
   ) {}
 
   private get cwd() {
@@ -931,7 +931,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   }> => {
     return {
       worktrees: ThreadSignal.serialize(this.worktreeManager.worktrees),
-      ghCli: ThreadSignal.serialize(this.githubPullRequestMonitor.ghCliCheck),
+      ghCli: ThreadSignal.serialize(this.githubPullRequestState.gh),
       gitOriginUrl: await this.worktreeManager.getOriginUrl(),
     };
   };
@@ -945,10 +945,10 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   };
 
   queryGithubIssues = async (query?: string): Promise<GithubIssue[]> => {
-    if (this.githubPullRequestMonitor.ghCliCheck.value.authorized === false) {
+    if (this.githubPullRequestState.gh.value.authorized === false) {
       return [];
     }
-    return await this.githubIssues.queryIssues(query);
+    return await this.githubIssueState.queryIssues(query);
   };
 
   dispose() {

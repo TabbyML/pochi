@@ -15,14 +15,14 @@ import { GitWorktreeInfoProvider } from "../git/git-worktree-info-provider";
 import { WorktreeManager } from "../git/worktree";
 import { executeCommandWithNode } from "../terminal/execute-command-with-node";
 
-const logger = getLogger("GithubPullRequestMonitor");
+const logger = getLogger("GithubPullRequestState");
 
 @singleton()
 @injectable()
-export class GithubPullRequestMonitor implements vscode.Disposable {
+export class GithubPullRequestState implements vscode.Disposable {
   private readonly disposables: vscode.Disposable[] = [];
 
-  ghCliCheck = signal<{ installed: boolean; authorized: boolean }>({
+  gh = signal<{ installed: boolean; authorized: boolean }>({
     installed: false,
     authorized: false,
   });
@@ -102,8 +102,8 @@ export class GithubPullRequestMonitor implements vscode.Disposable {
   }
 
   async checkWorktreesPrInfo(targetPaths?: Set<string>) {
-    this.ghCliCheck.value = await checkGithubCli();
-    if (!this.ghCliCheck.value.authorized) {
+    this.gh.value = await checkGithubCli();
+    if (!this.gh.value.authorized) {
       return;
     }
     const worktrees = this.worktreeManager.worktrees.value;
@@ -143,7 +143,7 @@ export class GithubPullRequestMonitor implements vscode.Disposable {
   }
 
   async fetchWorktreePrInfo(worktree: GitWorktree) {
-    if (!this.ghCliCheck.value.authorized) {
+    if (!this.gh.value.authorized) {
       return;
     }
 
