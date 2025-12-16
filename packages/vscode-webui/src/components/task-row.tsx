@@ -1,6 +1,10 @@
 import { EditSummary } from "@/features/tools";
 import { ToolCallLite } from "@/features/tools";
 import { usePochiCredentials } from "@/lib/hooks/use-pochi-credentials";
+import {
+  getTaskChangedFileStore,
+  waitForTaskStoreReady,
+} from "@/lib/hooks/use-task-changed-files";
 import { cn } from "@/lib/utils";
 import { vscodeHost } from "@/lib/vscode";
 import { parseTitle } from "@getpochi/common/message-utils";
@@ -81,7 +85,7 @@ export function TaskRow({
 
   const storeId = encodeStoreId(jwt, task.parentId || task.id);
 
-  const openTaskInPanel = useCallback(() => {
+  const openTaskInPanel = useCallback(async () => {
     if (task.cwd) {
       vscodeHost.openTaskInPanel({
         cwd: task.cwd,
@@ -89,6 +93,18 @@ export function TaskRow({
         displayId: task.displayId ?? undefined,
         storeId,
       });
+
+      // Wait for migration from localStorage and hydration from VS Code global state
+      await waitForTaskStoreReady(task.id);
+
+      const store = getTaskChangedFileStore(task.id);
+      const changedFiles = store
+        .getState()
+        .changedFiles.filter((f) => f.state === "pending");
+
+      if (changedFiles.length > 0) {
+        vscodeHost.showChangedFiles(changedFiles, "Changed Files");
+      }
     }
   }, [task.cwd, task.id, task.displayId, storeId]);
 

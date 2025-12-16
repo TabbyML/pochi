@@ -5,8 +5,8 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import type { useTaskChangedFiles } from "@/features/chat";
 import { EditSummary, FileIcon } from "@/features/tools";
+import type { useTaskChangedFiles } from "@/lib/hooks/use-task-changed-files";
 import { cn } from "@/lib/utils";
 import { vscodeHost } from "@/lib/vscode";
 import { Check, ChevronDown, ChevronRight } from "lucide-react";
