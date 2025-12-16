@@ -73,9 +73,7 @@ export class GitState implements vscode.Disposable {
   }
 
   getRepository(path: string) {
-    return this.gitAPI?.repositories.find(
-      (repo) => repo.rootUri.fsPath === path,
-    );
+    return this.git?.repositories.find((repo) => repo.rootUri.fsPath === path);
   }
 
   /**
