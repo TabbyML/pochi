@@ -30,16 +30,16 @@ export class WorktreeManager implements vscode.Disposable {
   worktrees = signal<GitWorktree[]>([]);
   inited = new Deferred<void>();
 
-  private workspaceFolder: string | undefined;
+  private workspacePath: string | undefined;
   private git: ReturnType<typeof simpleGit>;
 
   constructor(
     private readonly gitState: GitState,
     private readonly worktreeInfoProvider: GitWorktreeInfoProvider,
   ) {
-    const workspaceFolder = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
-    this.workspaceFolder = workspaceFolder;
-    this.git = simpleGit(workspaceFolder);
+    const workspacePath = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
+    this.workspacePath = workspacePath;
+    this.git = simpleGit(workspacePath);
     this.init();
   }
 
@@ -100,16 +100,16 @@ export class WorktreeManager implements vscode.Disposable {
 
     if (options?.generateBranchName) {
       // Generate branch name and create worktree
-      const workspaceFolder = this.workspaceFolder;
-      if (!workspaceFolder) {
+      const workspacePath = this.workspacePath;
+      if (!workspacePath) {
         logger.debug(
-          "Failed to create worktree due to cannot find workspaceFolder.",
+          "Failed to create worktree due to cannot find workspacePath.",
         );
         return null;
       }
       const { worktreePath, branchName } =
         await this.prepareBranchNameAndWorktreePath({
-          workspaceFolder,
+          workspacePath,
           worktrees,
           prompt: options.generateBranchName.prompt,
           files: options.generateBranchName.files,
@@ -118,7 +118,7 @@ export class WorktreeManager implements vscode.Disposable {
       await this.createWorktreeImpl({
         worktreePath,
         branchName,
-        workspaceFolder,
+        workspacePath,
         commitish: "HEAD",
       });
     } else {
@@ -298,12 +298,12 @@ export class WorktreeManager implements vscode.Disposable {
   }
 
   private async prepareBranchNameAndWorktreePath(params: {
-    workspaceFolder: string;
+    workspacePath: string;
     worktrees: GitWorktree[];
     prompt: NonNullable<CreateWorktreeOptions["generateBranchName"]>["prompt"];
     files?: NonNullable<CreateWorktreeOptions["generateBranchName"]>["files"];
   }) {
-    const { workspaceFolder, worktrees, prompt, files } = params;
+    const { workspacePath, worktrees, prompt, files } = params;
     const existingBranches = await this.getBranches();
 
     let branchName: string | undefined = undefined;
@@ -340,7 +340,7 @@ export class WorktreeManager implements vscode.Disposable {
     const nonMainWorktree = worktrees.find((w) => !w.isMain);
     const worktreeParentPath = nonMainWorktree
       ? path.dirname(nonMainWorktree.path)
-      : `${workspaceFolder.replace(/[/\\]+$/, "")}.worktree`;
+      : `${workspacePath.replace(/[/\\]+$/, "")}.worktree`;
 
     return {
       branchName,
@@ -349,13 +349,13 @@ export class WorktreeManager implements vscode.Disposable {
   }
 
   private async createWorktreeImpl(params: {
-    workspaceFolder: string;
+    workspacePath: string;
     worktreePath: string;
     branchName: string;
     commitish: string;
   }) {
-    const { workspaceFolder, worktreePath, branchName, commitish } = params;
-    const repository = this.gitState.getRepository(workspaceFolder);
+    const { workspacePath, worktreePath, branchName, commitish } = params;
+    const repository = this.gitState.getRepository(workspacePath);
 
     if (
       repository &&
