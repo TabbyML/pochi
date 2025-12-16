@@ -103,7 +103,7 @@ export function WorktreeList({
 
     const defaultWorktree: GitWorktree = {
       commit: "",
-      path: currentWorkspace?.workspaceFolder ?? "",
+      path: currentWorkspace?.workspacePath ?? "",
       isMain: true,
     };
 

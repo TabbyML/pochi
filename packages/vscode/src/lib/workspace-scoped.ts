@@ -9,8 +9,12 @@ export class WorkspaceScope {
   // cwd === null means no workspace is currently open.
   constructor(
     readonly cwd: string | null,
-    readonly isMain: boolean,
+    readonly workspacePath: string | null,
   ) {}
+
+  get isMainWorkspace() {
+    return this.cwd === this.workspacePath && this.cwd !== null;
+  }
 }
 
 export function workspaceScoped(cwd: string): DependencyContainer {
@@ -25,7 +29,7 @@ export function workspaceScoped(cwd: string): DependencyContainer {
   childContainer.register(WorkspaceScope, {
     useValue: new WorkspaceScope(
       cwd,
-      cwd === vscode.workspace.workspaceFolders?.[0].uri.fsPath,
+      vscode.workspace.workspaceFolders?.[0].uri.fsPath ?? null,
     ),
   });
   activeContainers.set(cwd, childContainer);
