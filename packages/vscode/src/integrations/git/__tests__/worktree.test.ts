@@ -39,7 +39,7 @@ describe("WorktreeManager", () => {
       sinon.restore();
     });
 
-    it("should return 'main' for main worktree", () => {
+    it("should return 'workspace' for main worktree", () => {
       const mainWorktree: GitWorktree = {
         path: "/path/to/repo",
         commit: "abc123",
@@ -50,7 +50,7 @@ describe("WorktreeManager", () => {
       worktreeManager.worktrees.value = [mainWorktree];
 
       const result = worktreeManager.getWorktreeDisplayName("/path/to/repo");
-      assert.strictEqual(result, "main");
+      assert.strictEqual(result, "workspace");
     });
 
     it("should return worktree name from path for non-main worktree", () => {
@@ -89,7 +89,7 @@ describe("WorktreeManager", () => {
       worktreeManager.worktrees.value = [mainWorktree];
 
       const result = worktreeManager.getWorktreeDisplayName("/path/to/repo");
-      assert.strictEqual(result, "main");
+      assert.strictEqual(result, "workspace");
     });
 
     it("should handle multiple worktrees correctly", () => {
@@ -122,7 +122,7 @@ describe("WorktreeManager", () => {
 
       assert.strictEqual(
         worktreeManager.getWorktreeDisplayName("/path/to/repo"),
-        "main",
+        "workspace",
       );
       assert.strictEqual(
         worktreeManager.getWorktreeDisplayName("/path/to/worktrees/feature-1"),

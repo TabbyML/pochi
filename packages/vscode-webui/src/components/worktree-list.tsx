@@ -162,7 +162,7 @@ export function WorktreeList({
           isDeleted = false;
           isMain = wt.isMain;
           if (wt.isMain) {
-            name = "main";
+            name = "workspace";
           } else {
             name = getWorktreeNameFromWorktreePath(wt.path) || "unknown";
           }
