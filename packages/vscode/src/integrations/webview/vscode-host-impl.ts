@@ -587,6 +587,31 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     }
   };
 
+  writeToFile = async (filePath: string, content: string) => {
+    let resolvedPath = filePath;
+    if (filePath.startsWith("~/")) {
+      const homedir = os.homedir();
+      resolvedPath = filePath.replace(/^~/, homedir);
+    }
+    const fileUri = path.isAbsolute(resolvedPath)
+      ? vscode.Uri.file(resolvedPath)
+      : this.cwd
+        ? vscode.Uri.joinPath(vscode.Uri.parse(this.cwd), resolvedPath)
+        : vscode.Uri.file(resolvedPath);
+
+    try {
+      const directory = fileUri.with({ path: "../" });
+      await vscode.workspace.fs.createDirectory(directory);
+      await vscode.workspace.fs.writeFile(
+        fileUri,
+        new TextEncoder().encode(content),
+      );
+    } catch (error) {
+      logger.error("failed to save file", error);
+      // what else ?
+    }
+  };
+
   capture = async ({ event, properties }: CaptureEvent) => {
     this.posthog.capture(event, properties);
   };

@@ -38,6 +38,8 @@
   },
   "tokenUsage": {
     "compacting": "Compacting...",
+    "walkthroughGenerating": "Generating walkthrough",
+    "walkthroughTask": "Walkthrough Task",
     "ofTokens": "% of {{tokens}} tokens",
     "rules": "Rules",
     "contextWindow": "Context Window",

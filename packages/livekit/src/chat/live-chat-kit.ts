@@ -16,6 +16,7 @@ import {
   type PrepareRequestGetters,
 } from "./flexible-chat-transport";
 import { compactTask } from "./llm";
+import { walkthroughTask } from "./llm/walkthrough-task";
 import { createModel } from "./models";
 
 const logger = getLogger("LiveChatKit");
@@ -97,6 +98,7 @@ export class LiveChatKit<
     messages: Message[];
   }) => void;
   readonly compact: () => Promise<string>;
+  readonly walkthrough: () => Promise<string>;
   private lastStepStartTimestamp: number | undefined;
 
   constructor({
@@ -201,6 +203,20 @@ export class LiveChatKit<
         throw new Error("Failed to compact task");
       }
       return summary;
+    };
+    this.walkthrough = async () => {
+      const { messages } = this.chat;
+      const model = createModel({ llm: getters.getLLM() });
+      const walkthrough = await walkthroughTask({
+        store: this.store,
+        taskId: this.taskId,
+        model,
+        messages,
+      });
+      if (!walkthrough) {
+        throw new Error("Failed to walkthrough task");
+      }
+      return walkthrough;
     };
   }
 

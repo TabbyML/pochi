@@ -32,12 +32,18 @@ interface Props {
     newCompactTask: () => void;
     enabled: boolean;
   };
+  walkthrough?: {
+    walkthroughTaskPending: boolean;
+    walkthroughTask: () => void;
+    enabled: boolean;
+  };
 }
 
 export function TokenUsage({
   totalTokens,
   className,
   compact,
+  walkthrough,
   selectedModel,
 }: Props) {
   const { t } = useTranslation();
@@ -217,6 +223,29 @@ export function TokenUsage({
                       {compact?.inlineCompactTaskPending
                         ? t("tokenUsage.compacting")
                         : t("tokenUsage.compactTask")}
+                    </Button>
+                  </div>
+                </TooltipTrigger>
+                {minTokenTooltip}
+              </Tooltip>
+            </TooltipProvider>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="inline-block">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="text-xs"
+                      onClick={() => {
+                        walkthrough?.walkthroughTask();
+                        setIsOpen(false);
+                      }}
+                      disabled={!walkthrough?.enabled}
+                    >
+                      {walkthrough?.walkthroughTaskPending
+                        ? t("tokenUsage.walkthroughGenerating")
+                        : t("tokenUsage.walkthroughTask")}
                     </Button>
                   </div>
                 </TooltipTrigger>

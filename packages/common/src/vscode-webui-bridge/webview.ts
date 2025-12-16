@@ -163,6 +163,14 @@ export interface VSCodeHostApi {
     },
   ): void;
 
+  /**
+   * Write content to file at the specified file path.
+   *
+   * @param filePath - The path to the file to be opened.
+   * @param content - The content for file, maybe later supporting binary data.
+   */
+  writeToFile(filePath: string, content: string): void;
+
   readCurrentWorkspace(): Promise<{
     cwd: string | null;
     workspaceFolder: string | null;
