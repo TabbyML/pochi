@@ -33,7 +33,7 @@ const getWorktreeName = (worktree: GitWorktree | undefined) => {
     return;
   }
   if (worktree.isMain) {
-    return worktree.branch || "main";
+    return "workspace";
   }
   return getWorktreeNameFromWorktreePath(worktree.path);
 };
