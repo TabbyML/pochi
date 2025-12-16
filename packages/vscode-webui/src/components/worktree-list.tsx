@@ -306,11 +306,6 @@ function WorktreeSection({
   const remainingTaskCount = group.tasks.length - displayedTaskCount;
 
   const pullRequest = group.data?.github?.pullRequest;
-  const hasEdit = group.tasks.some(
-    (task) =>
-      task.lineChanges &&
-      (task.lineChanges?.added !== 0 || task.lineChanges?.removed !== 0),
-  );
 
   const handleLoadMore = () => {
     setDisplayedTaskCount((prev) => prev + LOAD_MORE_COUNT);
@@ -372,7 +367,7 @@ function WorktreeSection({
                 prUrl={prUrl}
                 prChecks={pullRequest.checks}
               />
-            ) : hasEdit && !group.isDeleted ? (
+            ) : !group.isDeleted ? (
               <CreatePrDropdown
                 worktreePath={group.path}
                 branch={group.branch}
