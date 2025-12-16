@@ -48,7 +48,7 @@ export class WorktreeManager implements vscode.Disposable {
     if (!worktree) {
       return getWorktreeNameFromWorktreePath(cwd);
     }
-    return worktree.isMain ? "main" : getWorktreeNameFromWorktreePath(cwd);
+    return worktree.isMain ? "workspace" : getWorktreeNameFromWorktreePath(cwd);
   }
 
   private async init() {
@@ -156,7 +156,7 @@ export class WorktreeManager implements vscode.Disposable {
     }
 
     if (worktree.isMain) {
-      vscode.window.showErrorMessage("Cannot delete the main worktree.");
+      vscode.window.showErrorMessage("Cannot delete the workspace.");
       return false;
     }
 

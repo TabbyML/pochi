@@ -140,7 +140,7 @@ export class PochiTaskEditorProvider
       .resolve(WorktreeManager)
       .getWorktreeDisplayName(params.cwd);
     const displayName = getTaskDisplayTitle({
-      worktreeName: worktreeName ?? "main",
+      worktreeName: worktreeName ?? "workspace",
       displayId: params.displayId,
       uid: params.uid,
     });

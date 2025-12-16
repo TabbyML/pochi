@@ -857,7 +857,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     }
     const { cwd, displayId, uid } = params;
     const taskTitle = getTaskDisplayTitle({
-      worktreeName: getWorktreeNameFromWorktreePath(cwd) ?? "main",
+      worktreeName: getWorktreeNameFromWorktreePath(cwd) ?? "workspace",
       displayId,
       uid,
     });
