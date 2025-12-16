@@ -14,11 +14,11 @@ const { WorktreeManager } = proxyquire("../worktree", {
 describe("WorktreeManager", () => {
   describe("getWorktreeDisplayName", () => {
     let worktreeManager: any;
-    let gitStateMonitorStub: any;
+    let gitStateStub: any;
 
     beforeEach(() => {
       // Create a stub for GitStateMonitor
-      gitStateMonitorStub = {
+      gitStateStub = {
         onDidRepositoryChange: sinon.stub().returns({ dispose: () => {} }),
         onDidChangeGitState: sinon.stub().returns({ dispose: () => {} }),
       };
@@ -31,7 +31,7 @@ describe("WorktreeManager", () => {
       } as any;
 
       // Create worktreeManager instance with stubbed dependencies
-      worktreeManager = new WorktreeManager(gitStateMonitorStub, worktreeDataStoreStub);
+      worktreeManager = new WorktreeManager(gitStateStub, worktreeDataStoreStub);
     });
 
     afterEach(() => {
@@ -137,10 +137,10 @@ describe("WorktreeManager", () => {
 
   describe("parseWorktreePorcelain", () => {
     let worktreeManager: any;
-    let gitStateMonitorStub: any;
+    let gitStateStub: any;
 
     beforeEach(() => {
-      gitStateMonitorStub = {
+      gitStateStub = {
         onDidRepositoryChange: sinon.stub().returns({ dispose: () => {} }),
         onDidChangeGitState: sinon.stub().returns({ dispose: () => {} }),
       };
@@ -152,7 +152,7 @@ describe("WorktreeManager", () => {
         delete: sinon.stub(),
       } as any;
 
-      worktreeManager = new WorktreeManager(gitStateMonitorStub, worktreeDataStoreStub);
+      worktreeManager = new WorktreeManager(gitStateStub, worktreeDataStoreStub);
     });
 
     afterEach(() => {
@@ -260,10 +260,10 @@ prunable gitdir file points to non-existent location
 
   describe("prepareBranchNameAndWorktreePath", () => {
     let worktreeManager: any;
-    let gitStateMonitorStub: any;
+    let gitStateStub: any;
 
     beforeEach(() => {
-      gitStateMonitorStub = {
+      gitStateStub = {
         onDidRepositoryChange: sinon.stub().returns({ dispose: () => {} }),
         onDidChangeGitState: sinon.stub().returns({ dispose: () => {} }),
       };
@@ -274,7 +274,7 @@ prunable gitdir file points to non-existent location
         delete: sinon.stub(),
       } as any;
 
-      worktreeManager = new WorktreeManager(gitStateMonitorStub, worktreeDataStoreStub);
+      worktreeManager = new WorktreeManager(gitStateStub, worktreeDataStoreStub);
 
       worktreeManager.git = {
         branch: sinon.stub().resolves({ all: ["main", "feature-1"] }),
