@@ -28,7 +28,7 @@ import { CommandManager } from "./integrations/command";
 import { DiffChangesContentProvider } from "./integrations/editor/diff-changes-content-provider";
 import { DiffOriginContentProvider } from "./integrations/editor/diff-origin-content-provider";
 import { WorktreeManager } from "./integrations/git/worktree";
-import { initPochiLayoutKeybindingContext } from "./integrations/layout";
+import { initPochiLayoutKeybindingContext } from "./integrations/layout-keybinding";
 import { createMcpHub } from "./integrations/mcp";
 import { StatusBarItem } from "./integrations/status-bar-item";
 import { TerminalLinkProvider } from "./integrations/terminal-link-provider";

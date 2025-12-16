@@ -513,13 +513,11 @@ export class CommandManager implements vscode.Disposable {
             taskUri = activeTab.input.uri;
           }
         }
-        // No task found
-        if (taskUri === undefined) {
-          vscode.window.createTerminal().show();
-          return;
-        }
+
         // Open terminal for task
-        const params = PochiTaskEditorProvider.parseTaskUri(taskUri);
+        const params = taskUri
+          ? PochiTaskEditorProvider.parseTaskUri(taskUri)
+          : undefined;
         const viewColumn = getViewColumnForTerminal();
         const location = viewColumn ? { viewColumn } : undefined;
         vscode.window.createTerminal({ cwd: params?.cwd, location }).show();
