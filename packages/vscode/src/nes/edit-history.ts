@@ -33,7 +33,7 @@ export class EditHistoryTracker implements vscode.Disposable {
       },
     });
 
-  constructor(private readonly gitStateMonitor: GitState) {
+  constructor(private readonly gitState: GitState) {
     for (const document of vscode.workspace.textDocuments) {
       this.track(document);
     }
@@ -48,7 +48,7 @@ export class EditHistoryTracker implements vscode.Disposable {
       vscode.workspace.onDidCloseTextDocument((document) => {
         this.untrack(document);
       }),
-      this.gitStateMonitor.onDidChangeBranch((e) => {
+      this.gitState.onDidChangeBranch((e) => {
         if (e.type === "branch-changed") {
           logger.debug("Git branch changed, pausing edit history tracking");
           for (const tracker of this.documents.values()) {

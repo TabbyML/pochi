@@ -30,7 +30,7 @@ export class GithubPullRequestState implements vscode.Disposable {
   constructor(
     private readonly worktreeManager: WorktreeManager,
     private readonly worktreeInfoProvider: GitWorktreeInfoProvider,
-    private readonly gitStateMonitor: GitState,
+    private readonly gitState: GitState,
   ) {
     this.init();
   }
@@ -38,7 +38,7 @@ export class GithubPullRequestState implements vscode.Disposable {
   async init() {
     this.queueCheck();
     this.disposables.push(
-      this.gitStateMonitor.onDidChangeBranch(async (e) => {
+      this.gitState.onDidChangeBranch(async (e) => {
         if (e.type === "branch-changed" && e.currentBranch !== undefined) {
           await this.worktreeInfoProvider.updateGithubPullRequest(
             e.repository,
@@ -50,7 +50,7 @@ export class GithubPullRequestState implements vscode.Disposable {
       }),
     );
     this.disposables.push(
-      this.gitStateMonitor.onDidChangeRepository(async (e) => {
+      this.gitState.onDidChangeRepository(async (e) => {
         if (e.type === "repository-changed" && e.change === "added") {
           await this.worktreeManager.updateWorktrees();
           this.queueCheck(e.repository);

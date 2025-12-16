@@ -34,7 +34,7 @@ export class WorktreeManager implements vscode.Disposable {
   private git: ReturnType<typeof simpleGit>;
 
   constructor(
-    private readonly gitStateMonitor: GitState,
+    private readonly gitState: GitState,
     private readonly worktreeInfoProvider: GitWorktreeInfoProvider,
   ) {
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
@@ -55,14 +55,14 @@ export class WorktreeManager implements vscode.Disposable {
     if (!(await this.isGitRepository())) {
       return;
     }
-    await this.gitStateMonitor.inited.promise;
+    await this.gitState.inited.promise;
     await this.updateWorktrees();
     const onWorktreeChanged = async () => {
       await new Promise((resolve) => setTimeout(resolve, 500));
       await this.updateWorktrees();
     };
     this.disposables.push(
-      this.gitStateMonitor.onDidChangeRepository(onWorktreeChanged),
+      this.gitState.onDidChangeRepository(onWorktreeChanged),
     );
     this.inited.resolve();
   }
@@ -197,7 +197,7 @@ export class WorktreeManager implements vscode.Disposable {
         });
       if (skipVSCodeFilter) return worktrees;
 
-      const vscodeRepos = this.gitStateMonitor.repositories.map(
+      const vscodeRepos = this.gitState.repositories.map(
         (uri) => vscode.Uri.parse(uri).fsPath,
       );
       logger.info(`VSCode Repositories: ${vscodeRepos}`);
@@ -355,7 +355,7 @@ export class WorktreeManager implements vscode.Disposable {
     commitish: string;
   }) {
     const { workspaceFolder, worktreePath, branchName, commitish } = params;
-    const repository = this.gitStateMonitor.getRepository(workspaceFolder);
+    const repository = this.gitState.getRepository(workspaceFolder);
 
     if (
       repository &&
