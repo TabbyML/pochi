@@ -3,12 +3,10 @@ import { tables } from "./default-schema";
 
 export const makeTasksQuery = (
   cwd: string,
-  page = 1,
-  pageSize = 10,
+  createdAtCursor = 0,
+  limit = 10,
   path = "",
 ) => {
-  const offset = (page - 1) * pageSize;
-
   let filterCondition = "";
   if (path) {
     filterCondition = `and (git->>'$.worktree.gitdir' = '${path}/.git')`;
@@ -19,9 +17,9 @@ export const makeTasksQuery = (
     WHERE parentId is null 
       and (cwd = '${cwd}' or git->>'$.worktree.gitdir' like '${cwd}/.git/worktrees%') 
       ${filterCondition}
-    ORDER BY createdAt desc 
-    LIMIT ${pageSize} 
-    OFFSET ${offset}
+      ${createdAtCursor ? `and (createdAt < ${createdAtCursor})` : ""}
+    ORDER BY createdAt desc
+    LIMIT ${limit} 
   `;
 
   return queryDb(
@@ -32,7 +30,7 @@ export const makeTasksQuery = (
     },
     {
       label: "tasks.cwd.paginated",
-      deps: [cwd, page, pageSize, path],
+      deps: [cwd, createdAtCursor, limit, path],
     },
   );
 };

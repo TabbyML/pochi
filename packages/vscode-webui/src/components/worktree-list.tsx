@@ -273,10 +273,10 @@ function WorktreeSection({
   const [isHovered, setIsHovered] = useState(false);
   const loading = useRef(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(true);
-  const [currentPage, setCurrentPage] = useState(1);
+  const [pageCursor, setPageCursor] = useState(0);
   // Fetch paginated tasks with filtering
   const tasks = store.useQuery(
-    taskCatalog.queries.makeTasksQuery(cwd, currentPage, pageSize, group.path),
+    taskCatalog.queries.makeTasksQuery(cwd, pageCursor, pageSize, group.path),
   );
 
   // Fetch total count
@@ -291,9 +291,11 @@ function WorktreeSection({
     [accumulatedTasks, countResult],
   );
   useEffect(() => {
-    setCurrentPage(1);
-    setAccumulatedTasks([]);
-  }, []);
+    if (countResult[0]?.total !== undefined) {
+      setPageCursor(0);
+      setAccumulatedTasks([]);
+    }
+  }, [countResult]);
   // Fetch more tasks when scrolling to the bottom
   useEffect(() => {
     setAccumulatedTasks((prev) => {
@@ -309,11 +311,18 @@ function WorktreeSection({
     });
     loading.current = false;
   }, [tasks]);
+
   const loadMore = useCallback(() => {
     if (loading.current) return;
     loading.current = true;
-    setCurrentPage((prev) => prev + 1);
-  }, []);
+    const tailCursor =
+      accumulatedTasks.length > 0
+        ? Math.floor(
+            accumulatedTasks[accumulatedTasks.length - 1].createdAt.getTime(),
+          )
+        : 0;
+    setPageCursor(tailCursor);
+  }, [accumulatedTasks]);
 
   const pochiTasks = usePochiTasks();
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -552,7 +561,7 @@ function WorktreeSection({
               ref={sentinelRef}
               className="flex items-center justify-center py-4"
             >
-              <Skeleton>
+              <Skeleton className="w-full p-2 text-center">
                 {t("tasksPage.loadingMore")}
               </Skeleton>
             </div>
