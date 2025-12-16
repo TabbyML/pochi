@@ -319,7 +319,7 @@ export interface VSCodeHostApi {
 
   readWorktrees(): Promise<{
     worktrees: ThreadSignalSerialization<GitWorktree[]>;
-    ghCli: ThreadSignalSerialization<{
+    gh: ThreadSignalSerialization<{
       installed: boolean;
       authorized: boolean;
     }>;
