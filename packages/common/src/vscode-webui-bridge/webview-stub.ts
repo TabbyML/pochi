@@ -109,7 +109,7 @@ const VSCodeHostStub = {
       >,
     );
   },
-  readPochiTasks: (): Promise<ThreadSignalSerialization<TaskStates>> => {
+  readPochiTabs: (): Promise<ThreadSignalSerialization<TaskStates>> => {
     return Promise.resolve({} as ThreadSignalSerialization<TaskStates>);
   },
   readActiveSelection: (): Promise<

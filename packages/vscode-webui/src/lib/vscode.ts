@@ -102,7 +102,7 @@ function createVSCodeHost(): VSCodeHostApi {
         "readWorktrees",
         "createWorktree",
         "deleteWorktree",
-        "readPochiTasks",
+        "readPochiTabs",
         "queryGithubIssues",
       ],
       exports: {
