@@ -9,4 +9,5 @@ export interface ToolProps<T extends ToolName> {
   isLoading: boolean;
   messages: Message[];
   changes?: ToolCallCheckpoint;
+  taskId?: string;
 }

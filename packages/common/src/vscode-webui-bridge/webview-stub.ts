@@ -172,6 +172,9 @@ const VSCodeHostStub = {
   openExternal: (_uri: string): Promise<void> => {
     return Promise.resolve();
   },
+  checkFileExists: async (_path: string): Promise<boolean> => {
+    return Promise.resolve(false);
+  },
   readMinionId: async () => {
     return Promise.resolve(null);
   },
@@ -283,6 +286,11 @@ const VSCodeHostStub = {
   deleteWorktree: async (): Promise<boolean> => false,
 
   queryGithubIssues: async (): Promise<GithubIssue[]> => [],
+
+  generateWalkthrough: async (
+    _taskId: string,
+    _messages: unknown[],
+  ): Promise<void> => {},
 
   getGlobalState: async (): Promise<unknown> => {
     return null;

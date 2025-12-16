@@ -4,6 +4,7 @@ import { createEnvironmentPrompt, injectEnvironment } from "./environment";
 import { generateTitle } from "./generate-title";
 import { injectBashOutputs } from "./inject-bash-outputs";
 import { createSystemPrompt } from "./system";
+import { getCreateWalkthroughPrompt } from "./walkthrough";
 import { createWorkflowPrompt } from "./workflow";
 
 export const prompts = {
@@ -18,6 +19,7 @@ export const prompts = {
   inlineCompact,
   parseInlineCompact,
   generateTitle,
+  generateWalkthrough,
   workflow: createWorkflowPrompt,
   customAgent: createCustomAgentPrompt,
   injectBashOutputs,
@@ -78,4 +80,15 @@ function createCustomAgentPrompt(id: string, path: string) {
     },
   );
   return `<custom-agent id="${id}" path="${path}">newTask:${processedAgentName}</custom-agent>`;
+}
+
+function generateWalkthrough({
+  taskId,
+  title: _title,
+}: {
+  taskId: string;
+  title: string | null;
+}) {
+  const walkthroughPath = `./.pochi/walkthroughs/${taskId}.md`;
+  return getCreateWalkthroughPrompt(taskId, walkthroughPath);
 }

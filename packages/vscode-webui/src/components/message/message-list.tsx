@@ -45,6 +45,7 @@ export const MessageList: React.FC<{
   showLoader?: boolean;
   forkTask?: (commitId: string, messageId?: string) => Promise<void>;
   hideCheckPoint?: boolean;
+  taskId?: string;
 }> = ({
   messages: renderMessages,
   isLoading,
@@ -56,6 +57,7 @@ export const MessageList: React.FC<{
   showLoader = true,
   forkTask,
   hideCheckPoint,
+  taskId,
 }) => {
   const [debouncedIsLoading, setDebouncedIsLoading] = useDebounceState(
     isLoading,
@@ -129,6 +131,7 @@ export const MessageList: React.FC<{
                     messages={renderMessages}
                     forkTask={forkTask}
                     hideCheckPoint={hideCheckPoint}
+                    taskId={taskId}
                   />
                 ))}
               </div>
@@ -186,6 +189,7 @@ function Part({
   messages,
   forkTask,
   hideCheckPoint,
+  taskId,
 }: {
   role: Message["role"];
   partIndex: number;
@@ -196,6 +200,7 @@ function Part({
   messages: Message[];
   forkTask?: (commitId: string) => Promise<void>;
   hideCheckPoint?: boolean;
+  taskId?: string;
 }) {
   const paddingClass = partIndex === 0 ? "" : "mt-2";
   if (part.type === "text") {
@@ -237,6 +242,7 @@ function Part({
         isLoading={isLoading}
         changes={getToolCallCheckpoint(part, messages)}
         messages={messages}
+        taskId={taskId}
       />
     );
   }

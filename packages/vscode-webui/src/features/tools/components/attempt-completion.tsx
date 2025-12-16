@@ -1,13 +1,14 @@
 import { MessageMarkdown } from "@/components/message";
 import { Button } from "@/components/ui/button";
+import { vscodeHost } from "@/lib/vscode";
 import { Check } from "lucide-react";
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { ToolProps } from "./types";
 
 export const AttemptCompletionTool: React.FC<
   ToolProps<"attemptCompletion">
-> = ({ tool: toolCall, isExecuting, isLoading, messages }) => {
+> = ({ tool: toolCall, isExecuting, isLoading, messages, taskId }) => {
   const { t } = useTranslation();
   const { result = "" } = toolCall.input || {};
   const latestAttemptCompletionId = useMemo(() => {
@@ -23,24 +24,80 @@ export const AttemptCompletionTool: React.FC<
 
     return undefined;
   }, [messages]);
-  const hasExistingWalkthrough = useMemo(() => {
-    const WALKTHROUGH_PATH_REGEX = /(?:^|\/)[.]?pochi\/walkthroughs\//;
+  const [hasExistingWalkthrough, setHasExistingWalkthrough] = useState(false);
 
-    return messages.some((message) =>
-      message.parts.some(
-        (part) =>
-          part.type === "tool-writeToFile" &&
-          typeof part.input?.path === "string" &&
-          WALKTHROUGH_PATH_REGEX.test(part.input.path),
-      ),
-    );
-  }, [messages]);
+  useEffect(() => {
+    const checkWalkthroughFile = async () => {
+      if (!taskId) {
+        setHasExistingWalkthrough(false);
+        return;
+      }
+
+      try {
+        // Check if walkthrough file exists in .pochi/walkthroughs directory
+        const walkthroughPath = `.pochi/walkthroughs/${taskId}.md`;
+        const fileExists = await vscodeHost.checkFileExists(walkthroughPath);
+        console.log(
+          `[Frontend] checkFileExists for ${walkthroughPath}: ${fileExists}`,
+        );
+        setHasExistingWalkthrough(fileExists);
+      } catch (error) {
+        console.error(
+          "[Frontend] Failed to check walkthrough file existence:",
+          error,
+        );
+        setHasExistingWalkthrough(false);
+      }
+    };
+
+    checkWalkthroughFile();
+  }, [taskId]);
   const isLatestAttemptCompletion =
     toolCall.toolCallId === latestAttemptCompletionId;
   const handleCreateWalkthrough = useCallback(() => {
-    // TODO: Wire walkthrough generation to save a markdown summary for this task.
-    console.warn("Walkthrough generation is not implemented yet.");
-  }, []);
+    console.log(
+      "[Frontend] Create walkthrough button clicked, taskId:",
+      taskId,
+    );
+    if (!taskId) {
+      console.warn("[Frontend] No taskId available for walkthrough generation");
+      return;
+    }
+    console.log(
+      "[Frontend] Calling vscodeHost.generateWalkthrough with taskId:",
+      taskId,
+      "messages count:",
+      messages.length,
+    );
+    console.log("[Frontend] First few messages:", messages.slice(0, 2));
+
+    vscodeHost
+      .generateWalkthrough(taskId, messages)
+      .then(() => {
+        console.log(
+          "[Frontend] vscodeHost.generateWalkthrough completed successfully",
+        );
+        // Re-check if walkthrough file exists now
+        const walkthroughPath = `.pochi/walkthroughs/${taskId}.md`;
+        vscodeHost
+          .checkFileExists(walkthroughPath)
+          .then((fileExists) => {
+            console.log(
+              `[Frontend] After generation, checkFileExists for ${walkthroughPath}: ${fileExists}`,
+            );
+            setHasExistingWalkthrough(fileExists);
+          })
+          .catch((error) => {
+            console.error(
+              "[Frontend] Failed to re-check walkthrough file existence:",
+              error,
+            );
+          });
+      })
+      .catch((error) => {
+        console.error("[Frontend] Failed to generate walkthrough:", error);
+      });
+  }, [taskId, messages]);
   const showWalkthrough =
     Boolean(result.trim()) &&
     !isExecuting &&

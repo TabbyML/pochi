@@ -1,6 +1,11 @@
 import * as os from "node:os";
 import path from "node:path";
 import { executeCommandWithNode } from "@/integrations/terminal/execute-command-with-node";
+
+declare global {
+  // biome-ignore lint/suspicious/noExplicitAny: global property
+  const POCHI_CLIENT: any;
+}
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { CustomAgentManager } from "@/lib/custom-agent";
 import {
@@ -35,6 +40,7 @@ import { searchFiles } from "@/tools/search-files";
 import { startBackgroundJob } from "@/tools/start-background-job";
 import { todoWrite } from "@/tools/todo-write";
 import { previewWriteToFile, writeToFile } from "@/tools/write-to-file";
+import { createVertexWithoutCredentials } from "@ai-sdk/google-vertex/edge";
 import type { Environment, GitStatus } from "@getpochi/common";
 import type { UserInfo } from "@getpochi/common/configuration";
 import { getWorktreeNameFromWorktreePath } from "@getpochi/common/git-utils";
@@ -84,6 +90,7 @@ import {
   ThreadSignal,
   type ThreadSignalSerialization,
 } from "@quilted/threads/signals";
+import { generateText } from "ai";
 import type { Tool } from "ai";
 import { keys } from "remeda";
 import * as runExclusive from "run-exclusive";
@@ -949,11 +956,344 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     return await this.worktreeManager.deleteWorktree(worktreePath);
   };
 
+  generateWalkthrough = async (
+    taskId: string,
+    messages: unknown[],
+  ): Promise<void> => {
+    logger.info(
+      `Walkthrough generation requested for task: ${taskId}, messages count: ${messages.length}`,
+    );
+    logger.debug(
+      `[DEBUG] generateWalkthrough called with taskId: ${taskId}, messages count: ${messages.length}`,
+    );
+
+    try {
+      // Show initial notification (non-blocking)
+      logger.debug(`[DEBUG] Showing initial notification for task ${taskId}`);
+      vscode.window.showInformationMessage(
+        `Generating walkthrough for task ${taskId}...`,
+      );
+
+      // Check if we have a workspace
+      if (!this.cwd) {
+        throw new Error(
+          "No workspace folder found. Please open a workspace first.",
+        );
+      }
+
+      // Create walkthrough directory
+      const walkthroughDir = path.join(this.cwd, ".pochi", "walkthroughs");
+      const walkthroughPath = path.join(walkthroughDir, `${taskId}.md`);
+
+      logger.debug(`[DEBUG] Creating walkthrough at: ${walkthroughPath}`);
+      logger.debug(`[DEBUG] Current workspace: ${this.cwd}`);
+
+      // Ensure directory exists
+      logger.debug(`[DEBUG] Creating directory: ${walkthroughDir}`);
+      await vscode.workspace.fs.createDirectory(
+        vscode.Uri.file(walkthroughDir),
+      );
+
+      // Check if file already exists
+      const fileUri = vscode.Uri.file(walkthroughPath);
+      const fileExists = await isFileExists(fileUri);
+      logger.debug(`[DEBUG] Walkthrough file exists: ${fileExists}`);
+
+      // Try to generate walkthrough using LLM
+      let newWalkthroughContent: string;
+      try {
+        newWalkthroughContent = await this.generateWalkthroughWithLLM(
+          taskId,
+          messages,
+        );
+        logger.debug(
+          `[DEBUG] LLM generated walkthrough content, length: ${newWalkthroughContent.length}`,
+        );
+      } catch (llmError) {
+        logger.warn(
+          "[DEBUG] Failed to generate walkthrough with LLM, using fallback:",
+          llmError,
+        );
+        // Fallback to basic content
+        newWalkthroughContent = `# Walkthrough for Task ${taskId}
+
+Generated on: ${new Date().toISOString()}
+
+## Summary
+Failed to generate walkthrough with LLM. Error: ${llmError instanceof Error ? llmError.message : String(llmError)}
+
+## Messages Count
+Total messages: ${messages.length}
+
+## Conversation Preview
+${this.getConversationPreview(messages)}
+`;
+      }
+
+      let finalContent: string;
+      if (fileExists) {
+        // Read existing content
+        const existingContentBytes =
+          await vscode.workspace.fs.readFile(fileUri);
+        const existingContent =
+          Buffer.from(existingContentBytes).toString("utf-8");
+
+        // Append new content with separator
+        finalContent = `${existingContent}
+
+---
+
+## Update on ${new Date().toISOString()}
+
+${newWalkthroughContent}`;
+
+        logger.debug("[DEBUG] Appending to existing walkthrough file");
+      } else {
+        // Create new file
+        finalContent = newWalkthroughContent;
+        logger.debug("[DEBUG] Creating new walkthrough file");
+      }
+
+      // Write walkthrough file
+      logger.debug(`[DEBUG] Writing walkthrough file: ${walkthroughPath}`);
+      await vscode.workspace.fs.writeFile(
+        fileUri,
+        Buffer.from(finalContent, "utf-8"),
+      );
+
+      logger.debug(
+        `[DEBUG] Walkthrough file created successfully: ${walkthroughPath}`,
+      );
+
+      // Show success notification
+      const action = fileExists ? "updated" : "generated";
+      logger.debug(
+        `[DEBUG] Showing success notification for task ${taskId} (${action})`,
+      );
+      const result = await vscode.window.showInformationMessage(
+        `Walkthrough ${action} for task ${taskId}. Open file?`,
+        { modal: false },
+        "Open",
+        "Cancel",
+      );
+
+      logger.debug(`[DEBUG] User selected: ${result}`);
+
+      if (result === "Open") {
+        // Open the walkthrough file
+        logger.debug(`[DEBUG] Opening walkthrough file: ${walkthroughPath}`);
+        await vscode.commands.executeCommand(
+          "vscode.open",
+          vscode.Uri.file(walkthroughPath),
+        );
+        logger.debug(`[DEBUG] Opened walkthrough file: ${walkthroughPath}`);
+      }
+
+      logger.debug(
+        `[DEBUG] Walkthrough generation completed for task ${taskId}`,
+      );
+    } catch (error) {
+      logger.error("[DEBUG] Failed to generate walkthrough:", error);
+      logger.error(`Failed to generate walkthrough: ${error}`);
+
+      // Show error notification
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      logger.debug(`[DEBUG] Showing error notification: ${errorMessage}`);
+      await vscode.window.showErrorMessage(
+        `Failed to generate walkthrough for task ${taskId}: ${errorMessage}`,
+        { modal: false },
+      );
+    }
+  };
+
+  private async generateWalkthroughWithLLM(
+    taskId: string,
+    messages: unknown[],
+  ): Promise<string> {
+    logger.debug(
+      `[DEBUG] Starting LLM walkthrough generation for task ${taskId}`,
+    );
+
+    // Get the model from vendor (simplified version)
+    // In a real implementation, we should get the user's configured model
+    const vendor = getVendor("pochi");
+    const credentials = (await vendor.getCredentials()) as PochiCredentials;
+
+    if (!credentials?.jwt) {
+      throw new Error("No authentication token available for LLM");
+    }
+
+    // Create a simple model instance (similar to generate-branch-name.ts)
+    // This is a simplified version - in production, use proper model selection
+    const model = this.createSimpleModel(credentials.jwt);
+
+    // Extract text from messages
+    const conversationText = this.extractConversationText(messages);
+
+    // Create prompt for walkthrough generation
+    const prompt = `Please create a detailed walkthrough summary for task ${taskId} based on the following conversation:
+
+${conversationText}
+
+The walkthrough should include:
+1. Summary of what was accomplished
+2. Key changes made (files modified, added, deleted)
+3. Commands executed
+4. Challenges encountered and how they were resolved
+5. Final outcome and next steps
+
+Format the walkthrough in markdown with clear sections.`;
+
+    logger.debug(`[DEBUG] Calling LLM with prompt length: ${prompt.length}`);
+
+    try {
+      const result = await generateText({
+        model,
+        prompt,
+        maxOutputTokens: 4096,
+        providerOptions: {
+          pochi: {
+            taskId,
+            version: globalThis.POCHI_CLIENT || "unknown",
+            useCase: "generate-walkthrough",
+          },
+        },
+        // Simplified download function - doesn't handle attachments
+        experimental_download: this.createSimpleDownloadFunction(),
+      });
+
+      logger.debug(
+        `[DEBUG] LLM response received, length: ${result.text.length}`,
+      );
+      return result.text;
+    } catch (error) {
+      logger.error("[DEBUG] LLM generation failed:", error);
+      throw new Error(
+        `LLM generation failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  }
+
+  private createSimpleModel(jwt: string) {
+    // Simplified model creation - similar to generate-branch-name.ts
+    // In production, use proper model selection based on user configuration
+    return createVertexWithoutCredentials({
+      project: "placeholder",
+      location: "placeholder",
+      baseURL:
+        "https://api-gateway.getpochi.com/https/us-central1-aiplatform.googleapis.com/v1/projects/gen-lang-client-0005535210/locations/us-central1/publishers/google",
+      fetch: async (
+        requestInfo: Request | URL | string,
+        requestInit?: RequestInit,
+      ) => {
+        const headers = new Headers(requestInit?.headers);
+        headers.append("Authorization", `Bearer ${jwt}`);
+
+        const patchedRequestInit = {
+          ...requestInit,
+          headers,
+        };
+
+        // Simple URL patching (from generate-branch-name.ts)
+        const patchString = (str: string) => {
+          return str.replace("/publishers/google/models", "/endpoints");
+        };
+
+        let finalUrl: URL;
+        if (requestInfo instanceof URL) {
+          finalUrl = new URL(requestInfo);
+          finalUrl.pathname = patchString(finalUrl.pathname);
+        } else if (requestInfo instanceof Request) {
+          const patchedUrl = patchString(requestInfo.url);
+          finalUrl = new URL(patchedUrl);
+        } else if (typeof requestInfo === "string") {
+          const patchedUrl = patchString(requestInfo);
+          finalUrl = new URL(patchedUrl);
+        } else {
+          throw new Error(`Unexpected requestInfo type: ${typeof requestInfo}`);
+        }
+
+        return fetch(finalUrl, patchedRequestInit);
+      },
+    })("654670113898758144"); // Using the same model ID as generate-branch-name.ts
+  }
+
+  private createSimpleDownloadFunction() {
+    // Simplified download function that doesn't handle store blobs
+    return async (
+      items: Array<{ url: URL; isUrlSupportedByModel: boolean }>,
+    ) => {
+      return items.map(() => null);
+    };
+  }
+
+  private extractConversationText(messages: unknown[]): string {
+    // Extract text content from messages
+    // This is a simplified version - in production, use proper message formatting
+    try {
+      return messages
+        .map((msg) => {
+          if (
+            msg &&
+            typeof msg === "object" &&
+            "role" in msg &&
+            "parts" in msg
+          ) {
+            const parts = msg.parts || [];
+            const textParts = parts
+              .filter(
+                (part) =>
+                  part &&
+                  typeof part === "object" &&
+                  (part as { type?: string }).type === "text",
+              )
+              .map((part) => (part as { text?: string }).text || "")
+              .join("\n");
+            return `${msg.role}: ${textParts}`;
+          }
+          return String(msg);
+        })
+        .join("\n\n");
+    } catch (error) {
+      logger.warn("[DEBUG] Failed to extract conversation text:", error);
+      return `Failed to parse messages: ${error}`;
+    }
+  }
+
+  private getConversationPreview(messages: unknown[]): string {
+    // Get a preview of the conversation for fallback content
+    const preview = this.extractConversationText(messages);
+    return preview.length > 1000 ? `${preview.substring(0, 1000)}...` : preview;
+  }
+
   queryGithubIssues = async (query?: string): Promise<GithubIssue[]> => {
     if (this.githubPullRequestState.gh.value.authorized === false) {
       return [];
     }
     return await this.githubIssueState.queryIssues(query);
+  };
+
+  checkFileExists = async (filePath: string): Promise<boolean> => {
+    try {
+      // Expand ~ to home directory if present
+      let resolvedPath = filePath;
+      if (filePath.startsWith("~/")) {
+        const homedir = os.homedir();
+        resolvedPath = filePath.replace(/^~/, homedir);
+      }
+
+      const fileUri = path.isAbsolute(resolvedPath)
+        ? vscode.Uri.file(resolvedPath)
+        : this.cwd
+          ? vscode.Uri.joinPath(vscode.Uri.parse(this.cwd), resolvedPath)
+          : vscode.Uri.file(resolvedPath);
+
+      return await isFileExists(fileUri);
+    } catch (error) {
+      logger.error(`Failed to check file existence: ${filePath}`, error);
+      return false;
+    }
   };
 
   dispose() {
