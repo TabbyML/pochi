@@ -51,8 +51,6 @@ export interface VSCodeHostApi {
 
   setGlobalState(key: string, value: unknown): Promise<void>;
 
-  setPochiLayoutKeybindingContext(enabled: boolean): Promise<void>;
-
   readEnvironment(options: {
     isSubTask?: boolean;
     webviewKind: "sidebar" | "pane";

@@ -20,33 +20,21 @@ export async function setPochiLayoutKeybindingContext(
 }
 
 /**
- * Initialize the Pochi layout keybinding context from persisted global state.
+ * Initialize the Pochi layout keybinding context from VSCode configuration.
  * This ensures the keybinding context is set correctly even before the webview loads.
  */
-export async function initPochiLayoutKeybindingContext(
-  context: vscode.ExtensionContext,
-): Promise<void> {
+export async function initPochiLayoutKeybindingContext(): Promise<void> {
   try {
-    const settingsStorageName = "ragdoll-settings-storage";
-    const settingsData = context.globalState.get<string>(settingsStorageName);
+    const enablePochiLayoutKeybinding =
+      vscode.workspace
+        .getConfiguration("pochi")
+        .get<boolean>("advanced.enablePochiLayoutKeybinding") ?? false;
 
-    if (settingsData) {
-      const parsed = JSON.parse(settingsData);
-      const enablePochiLayoutKeybinding =
-        parsed?.state?.enablePochiLayoutKeybinding ?? false;
+    await setPochiLayoutKeybindingContext(enablePochiLayoutKeybinding);
 
-      await setPochiLayoutKeybindingContext(enablePochiLayoutKeybinding);
-
-      logger.debug(
-        `Initialized pochi.enablePochiLayoutKeybinding context: ${enablePochiLayoutKeybinding}`,
-      );
-    } else {
-      // Default to false if no settings exist yet
-      await setPochiLayoutKeybindingContext(false);
-      logger.debug(
-        "Initialized pochi.enablePochiLayoutKeybinding context: false (default)",
-      );
-    }
+    logger.debug(
+      `Initialized pochi.enablePochiLayoutKeybinding context: ${enablePochiLayoutKeybinding}`,
+    );
   } catch (error) {
     logger.error(
       "Failed to initialize Pochi layout keybinding context:",

@@ -48,8 +48,8 @@ const logger = getLogger("Extension");
 export async function activate(context: vscode.ExtensionContext) {
   const cwd = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
 
-  // Initialize the Pochi layout keybinding context from global state
-  await initPochiLayoutKeybindingContext(context);
+  // Initialize the Pochi layout keybinding context from VSCode configuration
+  await initPochiLayoutKeybindingContext();
 
   // Container will dispose all the registered instances when itself is disposed
   context.subscriptions.push(container);

@@ -1,6 +1,5 @@
 import * as os from "node:os";
 import path from "node:path";
-import { setPochiLayoutKeybindingContext } from "@/integrations/layout";
 import { executeCommandWithNode } from "@/integrations/terminal/execute-command-with-node";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { CustomAgentManager } from "@/lib/custom-agent";
@@ -216,10 +215,6 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
 
   setGlobalState = async (key: string, value: unknown): Promise<void> => {
     await this.context.globalState.update(key, value);
-  };
-
-  setPochiLayoutKeybindingContext = async (enabled: boolean): Promise<void> => {
-    await setPochiLayoutKeybindingContext(enabled);
   };
 
   readEnvironment = async (options: {

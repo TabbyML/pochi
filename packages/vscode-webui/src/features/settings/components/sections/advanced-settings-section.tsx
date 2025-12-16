@@ -1,5 +1,4 @@
 import { Button } from "@/components/ui/button";
-import { vscodeHost } from "@/lib/vscode";
 import { useTranslation } from "react-i18next";
 import { useSettingsStore } from "../../store";
 import { AccordionSection } from "../ui/accordion-section";
@@ -13,9 +12,6 @@ export const AdvancedSettingsSection: React.FC = () => {
 
     enablePochiModels,
     updateEnablePochiModels,
-
-    enablePochiLayoutKeybinding,
-    updateEnablePochiLayoutKeybinding,
   } = useSettingsStore();
 
   return (
@@ -34,16 +30,6 @@ export const AdvancedSettingsSection: React.FC = () => {
             }}
           />
         )}
-        <SettingsCheckboxOption
-          id="enable-pochi-layout-keybinding"
-          label={t("settings.advanced.enablePochiLayoutKeybinding")}
-          checked={enablePochiLayoutKeybinding}
-          onCheckedChange={(checked) => {
-            const enabled = !!checked;
-            updateEnablePochiLayoutKeybinding(enabled);
-            vscodeHost.setPochiLayoutKeybindingContext(enabled);
-          }}
-        />
         {isDevMode && (
           <>
             <SettingsCheckboxOption
