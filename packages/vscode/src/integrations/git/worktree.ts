@@ -89,7 +89,7 @@ export class WorktreeManager implements vscode.Disposable {
     if ((await this.isGitRepository()) === false) {
       return null;
     }
-    const worktrees = await this.getWorktrees();
+    const worktrees = await this.getWorktrees(true);
 
     if (worktrees.length >= this.maxWorktrees) {
       vscode.window.showErrorMessage(
