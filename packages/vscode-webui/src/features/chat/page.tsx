@@ -168,7 +168,6 @@ function Chat({
           if (!autoApproved) {
             sendNotification("pending-tool", {
               uid: topTaskUid,
-              cwd,
               displayId: topDisplayId,
               isSubTask,
             });
@@ -191,7 +190,6 @@ function Chat({
         ) {
           sendNotification("pending-input", {
             uid: topTaskUid,
-            cwd,
             displayId: topDisplayId,
             isSubTask,
           });
@@ -201,7 +199,6 @@ function Chat({
       if (data.status === "completed") {
         sendNotification("completed", {
           uid: topTaskUid,
-          cwd,
           displayId: topDisplayId,
           isSubTask,
         });
@@ -230,7 +227,6 @@ function Chat({
       ) {
         sendNotification("failed", {
           uid: topTaskUid,
-          cwd,
           displayId: topDisplayId,
           isSubTask,
         });
