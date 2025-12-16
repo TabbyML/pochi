@@ -201,6 +201,7 @@ export function WorktreeList({
 
   return (
     <div className="flex flex-col gap-1">
+      <br />
       {activeGroups.map((group) => (
         <WorktreeSection
           isLoadingWorktrees={isLoadingWorktrees}
@@ -210,10 +211,6 @@ export function WorktreeList({
           gitOriginUrl={gitOriginUrl}
           gh={gh}
           cwd={cwd}
-<<<<<<< HEAD
-=======
-          branch={group.branch}
->>>>>>> b12edf8bc (fetch task list by git branch; reverse use-worktrees;add i18n-key for taskpage loadingMore)
         />
       ))}
       {deletedGroups.length > 0 && (
@@ -245,10 +242,6 @@ export function WorktreeList({
                 gh={gh}
                 gitOriginUrl={gitOriginUrl}
                 cwd={cwd}
-<<<<<<< HEAD
-=======
-                branch={group.branch}
->>>>>>> b12edf8bc (fetch task list by git branch; reverse use-worktrees;add i18n-key for taskpage loadingMore)
               />
             ))}
         </>
@@ -264,10 +257,6 @@ function WorktreeSection({
   onDeleteGroup,
   gh,
   gitOriginUrl,
-<<<<<<< HEAD
-=======
-  branch,
->>>>>>> b12edf8bc (fetch task list by git branch; reverse use-worktrees;add i18n-key for taskpage loadingMore)
 }: {
   cwd: string;
   group: WorktreeGroup;
@@ -275,10 +264,6 @@ function WorktreeSection({
   onDeleteGroup?: (worktreePath: string) => void;
   gh?: { installed: boolean; authorized: boolean };
   gitOriginUrl?: string | null;
-<<<<<<< HEAD
-=======
-  branch?: string;
->>>>>>> b12edf8bc (fetch task list by git branch; reverse use-worktrees;add i18n-key for taskpage loadingMore)
 }) {
   const { t } = useTranslation();
   const { store } = useStore();
@@ -288,64 +273,19 @@ function WorktreeSection({
   const [isHovered, setIsHovered] = useState(false);
   const loading = useRef(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(true);
-<<<<<<< HEAD
   const [pageLength, setPageLength] = useState(0);
   // Fetch paginated tasks with filtering
   const tasks = store.useQuery(
     taskCatalog.queries.makeTasksQuery(cwd, pageLength + pageSize, group.path),
-=======
-  const [currentPage, setCurrentPage] = useState(1);
-  const totalTaskCount = store.useQuery(
-    taskCatalog.queries.makeTasksCountQuery(cwd, branch),
-  );
-  // Fetch paginated tasks with filtering
-  const tasks = store.useQuery(
-    taskCatalog.queries.makeTasksQuery(cwd, currentPage, pageSize, branch),
->>>>>>> b12edf8bc (fetch task list by git branch; reverse use-worktrees;add i18n-key for taskpage loadingMore)
   );
 
   const countResult = store.useQuery(
-<<<<<<< HEAD
     taskCatalog.queries.makeTasksCountQuery(cwd, group.path),
   );
-=======
-    taskCatalog.queries.makeTasksCountQuery(cwd, branch),
-  );
-
-  const [accumulatedTasks, setAccumulatedTasks] = useState<typeof tasks>([]);
-
->>>>>>> b12edf8bc (fetch task list by git branch; reverse use-worktrees;add i18n-key for taskpage loadingMore)
   const hasMore = useMemo(
     () => countResult.length > 0 && countResult[0].total > tasks.length,
     [countResult, tasks],
   );
-<<<<<<< HEAD
-=======
-  useEffect(() => {
-    setCurrentPage(1);
-    setAccumulatedTasks([]);
-  }, [totalTaskCount[0].total]);
-  // Fetch more tasks when scrolling to the bottom
-  useEffect(() => {
-    setAccumulatedTasks((prev) => {
-      // merge the new tasks with the accumulated tasks
-      const taskIds = new Set(prev.map((t) => t.id));
-      const newTasks = (tasks || []).filter((t) => !taskIds.has(t.id));
-      const result = [...prev, ...newTasks];
-      result.sort(
-        (a, b) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-      );
-      return result;
-    });
-    loading.current = false;
-  }, [tasks]);
-  const loadMore = useCallback(() => {
-    if (loading.current) return;
-    loading.current = true;
-    setCurrentPage((prev) => prev + 1);
-  }, []);
->>>>>>> b12edf8bc (fetch task list by git branch; reverse use-worktrees;add i18n-key for taskpage loadingMore)
 
   useEffect(() => {
     if (tasks.length) {
@@ -595,15 +535,9 @@ function WorktreeSection({
               ref={sentinelRef}
               className="flex items-center justify-center py-4"
             >
-<<<<<<< HEAD
               <Skeleton className="w-full p-2 text-center">
                 {t("tasksPage.loadingMore")}
               </Skeleton>
-=======
-              <div className="text-muted-foreground text-xs">
-                {t("tasksPage.loadingMore")}
-              </div>
->>>>>>> b12edf8bc (fetch task list by git branch; reverse use-worktrees;add i18n-key for taskpage loadingMore)
             </div>
           )}
         </ScrollArea>
