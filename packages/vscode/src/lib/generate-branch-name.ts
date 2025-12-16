@@ -134,32 +134,29 @@ function createModel() {
 }
 
 const MinChars = 5;
+const MaxChars = 32;
 const NoResultTag = "no-branch-name-generated";
 
-const SystemPrompt = `You are an AI coding assistant that helps generate git branch names. Your goal is to create a concise, descriptive, and well-formatted branch name based on the user's request.
+const SystemPrompt = `You are an AI that generates concise git branch names. Create a short, descriptive branch name based on the user's request.
 
 ### Rules
-1.  **Analyze Intent**: Analyze the user message and any attachments to understand the core coding task.
-2.  **Follow Naming Convention**: Generate a branch name using the \`type/short-description\` format (e.g., \`feat/add-user-authentication\`).
-    *   **type**: Use one of the following: \`feat\`, \`fix\`, \`docs\`, \`style\`, \`refactor\`, \`test\`, \`chore\`.
-    *   **short-description**: A few words connected by hyphens.
-3.  **Length Requirement**: The generated branch name must be longer than ${MinChars} characters.
-4.  **Mimic Existing Style**: If a list of current branch names is provided, follow their naming style and conventions.
-5.  **Avoid Duplicates**: Do not generate a name that already exists in the provided list of branches.
-6.  **Handle Non-Tasks**: If the user message is a general question or has no clear coding task, respond with \`${NoResultTag}\`.
+1.  **Analyze Intent**: Understand the core coding task from the user message and attachments.
+2.  **Format**: Use \`type/description\` format.
+    *   **type**: Choose one: \`feat\`, \`fix\`, \`docs\`, \`style\`, \`refactor\`, \`test\`, \`chore\`.
+    *   **description**: 2-4 words max, connected by hyphens. Use abbreviations when needed.
+3.  **Length**: Must be ${MinChars}-${MaxChars} characters total. Keep it SHORT.
+4.  **Style**: If existing branches are provided, match their style.
+5.  **No Duplicates**: Don't use existing branch names from the provided list.
+6.  **Non-Tasks**: If the message isn't a coding task, respond with \`${NoResultTag}\`.
 
 ### Examples
+*   "Add user profile endpoint" → \`feat/user-profiles\`
+*   "Fix login crash on wrong password" → \`fix/login-crash\`
+*   "Update README documentation" → \`docs/readme\`
+*   "Refactor auth module" → \`refactor/auth\`
 
-**Example 1: User message is about adding a new feature**
-*   **User Message**: "Can you add a new endpoint to fetch user profiles?"
-*   **Generated Branch Name**: \`feat/get-user-profiles-endpoint\`
-
-**Example 2: User message is about fixing a bug**
-*   **User Message**: "The login page is crashing when I enter a wrong password."
-*   **Generated Branch Name**: \`fix/login-page-crash-on-wrong-password\`
-
-### Output Format
-Only respond with the git branch name in plaintext, without markdown formatting or any additional explanations.
+### Output
+Only output the branch name in plaintext, no markdown or explanations.
 `;
 
 const UserPrompt = {
