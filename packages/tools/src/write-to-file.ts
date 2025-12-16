@@ -14,7 +14,7 @@ ${EditFileResultPrompt}`.trim(),
     path: z
       .string()
       .describe(
-        "The path of the file to write to (relative to the current working directory, or an absolute path).",
+        "The path of the file to write to (relative to the current working directory, or an absolute path). Or a `pochi` scheme file like `pochi:///001/plan.md`.",
       ),
     content: z.string().describe("The content to write to the file."),
   }),

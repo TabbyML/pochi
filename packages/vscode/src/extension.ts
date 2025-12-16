@@ -29,6 +29,7 @@ import { DiffChangesContentProvider } from "./integrations/editor/diff-changes-c
 import { DiffOriginContentProvider } from "./integrations/editor/diff-origin-content-provider";
 import { WorktreeManager } from "./integrations/git/worktree";
 import { createMcpHub } from "./integrations/mcp";
+import { PochiFileSystemProvider } from "./integrations/pochi-file-system-provider";
 import { StatusBarItem } from "./integrations/status-bar-item";
 import { TerminalLinkProvider } from "./integrations/terminal-link-provider";
 import { PochiWebviewSidebar } from "./integrations/webview";
@@ -83,6 +84,7 @@ export async function activate(context: vscode.ExtensionContext) {
   container.resolve(TerminalLinkProvider);
   container.resolve(DiffChangesContentProvider);
   container.resolve(WorktreeManager);
+  container.resolve(PochiFileSystemProvider);
 }
 
 // This method is called when your extension is deactivated
