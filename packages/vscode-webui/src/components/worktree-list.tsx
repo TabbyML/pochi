@@ -58,6 +58,7 @@ import { useTranslation } from "react-i18next";
 import * as R from "remeda";
 import { TaskRow } from "./task-row";
 import { ScrollArea } from "./ui/scroll-area";
+import { Skeleton } from "./ui/skeleton";
 
 interface PrCheck {
   name: string;
@@ -551,9 +552,9 @@ function WorktreeSection({
               ref={sentinelRef}
               className="flex items-center justify-center py-4"
             >
-              <div className="text-muted-foreground text-xs">
+              <Skeleton>
                 {t("tasksPage.loadingMore")}
-              </div>
+              </Skeleton>
             </div>
           )}
         </ScrollArea>
