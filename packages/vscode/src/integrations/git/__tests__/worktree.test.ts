@@ -289,7 +289,7 @@ prunable gitdir file points to non-existent location
 
     it("should generate branch name and worktree path correctly", async () => {
       generateBranchNameStub.resolves("new-feature");
-      const workspaceFolder = "/path/to/repo";
+      const workspacePath = "/path/to/repo";
       const mainWorktree: GitWorktree = {
         path: "/path/to/repo",
         commit: "abc123",
@@ -305,7 +305,7 @@ prunable gitdir file points to non-existent location
       const worktrees = [mainWorktree, featureWorktree1];
 
       const result = await worktreeManager.prepareBranchNameAndWorktreePath({
-        workspaceFolder,
+        workspacePath,
         worktrees,
         prompt: "create new feature",
       });
@@ -319,7 +319,7 @@ prunable gitdir file points to non-existent location
 
     it("should append timestamp if branch name exists", async () => {
       generateBranchNameStub.resolves("feature-1"); // Exists in gitStub.branch
-      const workspaceFolder = "/path/to/repo";
+      const workspacePath = "/path/to/repo";
       const mainWorktree: GitWorktree = {
         path: "/path/to/repo",
         commit: "abc123",
@@ -335,7 +335,7 @@ prunable gitdir file points to non-existent location
       const worktrees = [mainWorktree, featureWorktree1];
 
       const result = await worktreeManager.prepareBranchNameAndWorktreePath({
-        workspaceFolder,
+        workspacePath,
         worktrees,
         prompt: "create feature 1",
       });
@@ -346,7 +346,7 @@ prunable gitdir file points to non-existent location
 
     it("should fallback to timestamp if generation returns undefined", async () => {
       generateBranchNameStub.resolves(undefined);
-      const workspaceFolder = "/path/to/repo";
+      const workspacePath = "/path/to/repo";
       const mainWorktree: GitWorktree = {
         path: "/path/to/repo",
         commit: "abc123",
@@ -362,7 +362,7 @@ prunable gitdir file points to non-existent location
       const worktrees = [mainWorktree, featureWorktree1];
 
       const result = await worktreeManager.prepareBranchNameAndWorktreePath({
-        workspaceFolder,
+        workspacePath,
         worktrees,
         prompt: "create feature",
       });
@@ -373,7 +373,7 @@ prunable gitdir file points to non-existent location
 
     it("should fallback to timestamp if generation fails", async () => {
       generateBranchNameStub.rejects(new Error("Failed"));
-      const workspaceFolder = "/path/to/repo";
+      const workspacePath = "/path/to/repo";
       const mainWorktree: GitWorktree = {
         path: "/path/to/repo",
         commit: "abc123",
@@ -389,7 +389,7 @@ prunable gitdir file points to non-existent location
       const worktrees = [mainWorktree, featureWorktree1];
 
       const result = await worktreeManager.prepareBranchNameAndWorktreePath({
-        workspaceFolder,
+        workspacePath,
         worktrees,
         prompt: "create feature",
       });
@@ -400,11 +400,11 @@ prunable gitdir file points to non-existent location
 
     it("should use workspace folder parent for worktree path if no worktrees", async () => {
       generateBranchNameStub.resolves("new-feature");
-      const workspaceFolder = "/path/to/repo";
+      const workspacePath = "/path/to/repo";
       const worktrees: GitWorktree[] = [];
 
       const result = await worktreeManager.prepareBranchNameAndWorktreePath({
-        workspaceFolder,
+        workspacePath,
         worktrees,
         prompt: "create new feature",
       });

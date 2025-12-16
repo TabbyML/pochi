@@ -68,7 +68,7 @@ export async function activate(context: vscode.ExtensionContext) {
   });
 
   container.register(WorkspaceScope, {
-    useValue: new WorkspaceScope(cwd ?? null, true),
+    useValue: new WorkspaceScope(cwd ?? null, cwd ?? null),
   });
   container.register<McpHub>(McpHub, {
     // McpHub is also a singleton
