@@ -279,6 +279,11 @@
         "command": "pochi.tabCompletion.reject",
         "key": "escape",
         "when": "editorTextFocus && pochiTabCompletionVisible"
+      },
+      {
+        "command": "pochi.openPochiLayoutOrTerminal",
+        "key": "ctrl+`",
+        "when": "pochi.enablePochiLayoutKeybinding"
       }
     ],
     "configuration": [
@@ -419,6 +424,11 @@
                 "type": "string",
                 "default": "",
                 "description": "Pochi webview UI log level"
+              },
+              "enablePochiLayoutKeybinding": {
+                "type": "boolean",
+                "default": false,
+                "description": "Enable Ctrl+` keybinding to toggle Pochi layout or open terminal."
               }
             }
           }
