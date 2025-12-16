@@ -137,7 +137,10 @@ export interface ToolCallLifeCycle {
    * @param args - Tool call arguments
    * @param options - Execution options including model selection
    */
-  execute(args: unknown, options?: { contentType?: string[] }): void;
+  execute(
+    args: unknown,
+    options?: { contentType?: string[]; taskId?: string },
+  ): void;
 
   /**
    * Abort the currently executing tool call.
@@ -309,7 +312,15 @@ export class ManagedToolCallLifeCycle
     }
   }
 
-  execute(args: unknown, options?: { contentType?: string[] }) {
+  execute(
+    args: unknown,
+    options?: { contentType?: string[]; taskId?: string },
+  ) {
+    const taskId = options?.taskId;
+    if (taskId) {
+      vscodeHost.onTaskRunning(taskId);
+    }
+
     const abortController = new AbortController();
     const abortSignal = AbortSignal.any([
       abortController.signal,
@@ -324,6 +335,7 @@ export class ManagedToolCallLifeCycle
         toolCallId: this.toolCallId,
         abortSignal: ThreadAbortSignal.serialize(abortSignal),
         contentType: options?.contentType,
+        taskId,
       });
     }
 

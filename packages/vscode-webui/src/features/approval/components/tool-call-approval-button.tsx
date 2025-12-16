@@ -114,11 +114,12 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
         }
         return;
       }
+      const uid = parentUid || taskId;
       lifecycle.execute(tools[i].input, {
         contentType: selectedModel?.contentType,
+        taskId: uid,
       });
 
-      const uid = parentUid || taskId;
       if (uid) {
         vscodeHost.onTaskRunning(uid);
       }

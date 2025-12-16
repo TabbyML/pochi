@@ -15,7 +15,7 @@ import { useTaskInputDraft } from "@/lib/hooks/use-task-input-draft";
 import { useWorktrees } from "@/lib/hooks/use-worktrees";
 import { vscodeHost } from "@/lib/vscode";
 import type { GitWorktree } from "@getpochi/common/vscode-webui-bridge";
-import { Loader2, PaperclipIcon } from "lucide-react";
+import { ClipboardList, Loader2, PaperclipIcon } from "lucide-react";
 import type React from "react";
 import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -108,11 +108,11 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
     useDebounceState(isCreatingTask, 300);
 
   const handleSubmitImpl = useCallback(
-    async (
-      e?: React.FormEvent<HTMLFormElement>,
-      shouldCreateWorktree?: boolean,
-    ) => {
-      e?.preventDefault();
+    async (options?: {
+      shouldCreateWorktree?: boolean;
+      shouldCreatePlan?: boolean;
+    }) => {
+      const { shouldCreateWorktree, shouldCreatePlan } = options || {};
 
       if (isCreatingTask) return;
 
@@ -122,10 +122,14 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
       // If no valid model is selected, submission is not allowed.
       if (!selectedModel) return;
 
-      const content = input.trim();
+      let content = input.trim();
 
       // Disallow empty submissions
       if (content.length === 0 && files.length === 0) return;
+
+      if (shouldCreatePlan) {
+        content = t("chat.createPlanPrompt", { prompt: content });
+      }
 
       // Set isCreatingTask state true
       // Show loading and freeze input
@@ -193,22 +197,29 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
       clearDraft,
       clearFiles,
       setDebouncedIsCreatingTask,
+      t,
     ],
   );
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent<HTMLFormElement>) => {
-      handleSubmitImpl(e, false);
+      e.preventDefault();
+      handleSubmitImpl();
     },
     [handleSubmitImpl],
   );
 
   const handleCtrlSubmit = useCallback(
     async (e: React.FormEvent<HTMLFormElement>) => {
-      handleSubmitImpl(e, true);
+      e.preventDefault();
+      handleSubmitImpl({ shouldCreateWorktree: true });
     },
     [handleSubmitImpl],
   );
+
+  const handleCreatePlan = useCallback(async () => {
+    handleSubmitImpl({ shouldCreatePlan: true });
+  }, [handleSubmitImpl]);
 
   return (
     <>
@@ -295,6 +306,30 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
               className="!w-auto max-w-sm bg-background px-3 py-1.5 text-xs"
             >
               {t("chat.attachmentTooltip")}
+            </HoverCardContent>
+          </HoverCard>
+          <HoverCard>
+            <HoverCardTrigger asChild>
+              <span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleCreatePlan}
+                  className="button-focus relative h-6 w-6 p-0"
+                >
+                  <span className="size-4">
+                    <ClipboardList className="size-4 translate-y-[1.5px] scale-105" />
+                  </span>
+                </Button>
+              </span>
+            </HoverCardTrigger>
+            <HoverCardContent
+              side="top"
+              align="start"
+              sideOffset={6}
+              className="!w-auto max-w-sm bg-background px-3 py-1.5 text-xs"
+            >
+              {t("chat.createPlanTooltip")}
             </HoverCardContent>
           </HoverCard>
           {!!debouncedIsCreatingTask && (

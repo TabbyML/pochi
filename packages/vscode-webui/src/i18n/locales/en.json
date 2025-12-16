@@ -23,6 +23,8 @@
   },
   "chat": {
     "attachmentTooltip": "Attach files to chat. You can also drag and drop files or paste them into the chat input box.",
+    "createPlanTooltip": "Create a plan for the task",
+    "createPlanPrompt": "Create a plan for {{prompt}}",
     "queuedMessages": "Queued Messages ({{count}})",
     "copyImage": "Copy Image",
     "openImage": "Open Image",

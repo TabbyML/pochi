@@ -123,6 +123,7 @@ export function useLiveSubTask(
             abortController.current.signal,
           ),
           contentType: customAgentModel?.contentType,
+          taskId: uid,
         },
       );
 
