@@ -15,7 +15,6 @@ import { useStore } from "@livestore/react";
 import { createFileRoute } from "@tanstack/react-router";
 import { TerminalIcon } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useTranslation } from "react-i18next";
 import { LiveStoreTaskProvider } from "../livestore-task-provider";
 
 export const Route = createFileRoute("/")({

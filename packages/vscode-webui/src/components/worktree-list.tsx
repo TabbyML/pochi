@@ -103,7 +103,11 @@ export function WorktreeList({
 
     const defaultWorktree: GitWorktree = {
       commit: "",
+<<<<<<< HEAD
       path: currentWorkspace?.workspacePath ?? "",
+=======
+      path: currentWorkspace?.cwd ?? cwd,
+>>>>>>> 5cf9c58c4 (fix (webui): husky pre-psuh)
       isMain: true,
     };
 
@@ -112,7 +116,6 @@ export function WorktreeList({
         ? [defaultWorktree]
         : worktrees;
 
-    const worktreeMap = new Map(allWorktrees.map((wt) => [wt.path, wt]));
     const worktreeIndexMap = new Map(
       allWorktrees.map((wt, index) => [wt.path, index]),
     );
@@ -181,6 +184,7 @@ export function WorktreeList({
         };
       }),
       R.sort((a, b) => {
+<<<<<<< HEAD
         // Sort: Existing first, then deleted
         if (a.isDeleted !== b.isDeleted) {
           return a.isDeleted ? 1 : -1;
@@ -195,6 +199,11 @@ export function WorktreeList({
         }
 
         return a.name.localeCompare(b.name);
+=======
+        const indexA = worktreeIndexMap.get(a.path) ?? Number.POSITIVE_INFINITY;
+        const indexB = worktreeIndexMap.get(b.path) ?? Number.POSITIVE_INFINITY;
+        return indexA - indexB;
+>>>>>>> 5cf9c58c4 (fix (webui): husky pre-psuh)
       }),
     );
   }, [
@@ -202,7 +211,8 @@ export function WorktreeList({
     worktrees,
     isLoadingWorktrees,
     isLoadingCurrentWorkspace,
-    currentWorkspace,
+    currentWorkspace?.cwd,
+    cwd,
   ]);
 
   // Apply optimistic deletion: filter out items being deleted
@@ -290,6 +300,13 @@ function WorktreeSection({
   const [isHovered, setIsHovered] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const pochiTasks = usePochiTabs();
+<<<<<<< HEAD
+=======
+  const { tasks, hasMore, isLoading, loadMore } = usePaginatedTasks({
+    cwd: group.path,
+    pageSize: 20,
+  });
+>>>>>>> 5cf9c58c4 (fix (webui): husky pre-psuh)
 
   // Pagination state: initially show 10 tasks
   const INITIAL_TASK_COUNT = 10;
