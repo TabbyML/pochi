@@ -258,7 +258,7 @@ const VSCodeHostStub = {
 
   readWorktrees: async (): Promise<{
     worktrees: ThreadSignalSerialization<GitWorktree[]>;
-    ghCli: ThreadSignalSerialization<{
+    gh: ThreadSignalSerialization<{
       installed: boolean;
       authorized: boolean;
     }>;
@@ -267,7 +267,7 @@ const VSCodeHostStub = {
     return Promise.resolve(
       {} as {
         worktrees: ThreadSignalSerialization<GitWorktree[]>;
-        ghCli: ThreadSignalSerialization<{
+        gh: ThreadSignalSerialization<{
           installed: boolean;
           authorized: boolean;
         }>;

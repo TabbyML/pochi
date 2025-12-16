@@ -923,7 +923,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
 
   readWorktrees = async (): Promise<{
     worktrees: ThreadSignalSerialization<GitWorktree[]>;
-    ghCli: ThreadSignalSerialization<{
+    gh: ThreadSignalSerialization<{
       installed: boolean;
       authorized: boolean;
     }>;
@@ -931,7 +931,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   }> => {
     return {
       worktrees: ThreadSignal.serialize(this.worktreeManager.worktrees),
-      ghCli: ThreadSignal.serialize(this.githubPullRequestState.gh),
+      gh: ThreadSignal.serialize(this.githubPullRequestState.gh),
       gitOriginUrl: await this.worktreeManager.getOriginUrl(),
     };
   };
