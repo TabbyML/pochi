@@ -292,11 +292,6 @@ function WorktreeSection({
   const pochiTasks = usePochiTabs();
 
   const pullRequest = group.data?.github?.pullRequest;
-  const hasEdit = group.tasks.some(
-    (task) =>
-      task.lineChanges &&
-      (task.lineChanges?.added !== 0 || task.lineChanges?.removed !== 0),
-  );
 
   const prUrl = useMemo(() => {
     if (!gitOriginUrl || !pullRequest?.id) return "#";
@@ -354,7 +349,7 @@ function WorktreeSection({
                 prUrl={prUrl}
                 prChecks={pullRequest.checks}
               />
-            ) : hasEdit && !group.isDeleted ? (
+            ) : !group.isDeleted ? (
               <CreatePrDropdown
                 worktreePath={group.path}
                 branch={group.branch}
