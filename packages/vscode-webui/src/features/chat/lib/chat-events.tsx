@@ -13,7 +13,6 @@ const emitter = new Emittery<{
 
 export function useSendMessage() {
   const sendMessage = useCallback((payload: SendMessagePayload) => {
-    console.log("[ChatEvents] useSendMessage called with payload:", payload);
     emitter.emit("sendMessage", payload);
   }, []);
 
@@ -24,19 +23,9 @@ export function useHandleChatEvents(
   sendMessage?: UseChatHelpers<Message>["sendMessage"],
 ) {
   useEffect(() => {
-    console.log(
-      "[ChatEvents] useHandleChatEvents called with sendMessage:",
-      !!sendMessage,
-    );
-    if (!sendMessage) {
-      console.log(
-        "[ChatEvents] sendMessage is undefined, not setting up listener",
-      );
-      return;
-    }
+    if (!sendMessage) return;
 
     const unsubscribe = emitter.on("sendMessage", async (payload) => {
-      console.log("[ChatEvents] Event received, sending to chat:", payload);
       sendMessage({
         text: payload.prompt,
       });
