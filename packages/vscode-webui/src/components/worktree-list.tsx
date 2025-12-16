@@ -249,7 +249,7 @@ export function WorktreeList({
     </div>
   );
 }
-const pageSize = 5;
+const pageSize = 10;
 
 function WorktreeSection({
   cwd,
