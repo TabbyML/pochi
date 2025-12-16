@@ -505,29 +505,11 @@ export class CommandManager implements vscode.Disposable {
         if (arg0 instanceof vscode.Uri) {
           taskUri = arg0;
         }
-        // Try find active group's active tab
+        // Try find active task tab
         if (taskUri === undefined) {
-          const activeTab = vscode.window.tabGroups.activeTabGroup.activeTab;
-          if (activeTab && isPochiTaskTab(activeTab)) {
+          const activeTab = findActivePochiTaskTab();
+          if (activeTab) {
             taskUri = activeTab.input.uri;
-          }
-        }
-        // Otherwise find active tab in other groups
-        if (taskUri === undefined) {
-          const group = getSortedCurrentTabGroups().find(
-            (group) => group.activeTab && isPochiTaskTab(group.activeTab),
-          );
-          if (group?.activeTab && isPochiTaskTab(group.activeTab)) {
-            taskUri = group.activeTab.input.uri;
-          }
-        }
-        // Otherwise find first task tab
-        if (taskUri === undefined) {
-          const tab = getSortedCurrentTabGroups()
-            .flatMap((group) => group.tabs)
-            .find((tab) => isPochiTaskTab(tab));
-          if (tab) {
-            taskUri = tab.input.uri;
           }
         }
         // No task found
@@ -585,6 +567,16 @@ export class CommandManager implements vscode.Disposable {
             const workspace = vscode.workspace.getWorkspaceFolder(arg0);
             if (workspace) {
               cwd = workspace.uri.fsPath;
+            }
+          }
+          // Try find active task tab
+          if (!cwd) {
+            const activeTab = findActivePochiTaskTab();
+            if (activeTab) {
+              const params = PochiTaskEditorProvider.parseTaskUri(
+                activeTab.input.uri,
+              );
+              cwd = params?.cwd;
             }
           }
           // Use workspace
@@ -669,4 +661,33 @@ export class CommandManager implements vscode.Disposable {
     }
     this.disposables = [];
   }
+}
+
+function findActivePochiTaskTab():
+  | (vscode.Tab & {
+      input: vscode.TabInputCustom & {
+        viewType: typeof PochiTaskEditorProvider.viewType;
+      };
+    })
+  | undefined {
+  // Try find active tab in active group
+  const activeTab = vscode.window.tabGroups.activeTabGroup.activeTab;
+  if (activeTab && isPochiTaskTab(activeTab)) {
+    return activeTab;
+  }
+  // Otherwise find active tab in other groups
+  const group = getSortedCurrentTabGroups().find(
+    (group) => group.activeTab && isPochiTaskTab(group.activeTab),
+  );
+  if (group?.activeTab && isPochiTaskTab(group.activeTab)) {
+    return group.activeTab;
+  }
+  // Otherwise find first task tab
+  const tab = getSortedCurrentTabGroups()
+    .flatMap((group) => group.tabs)
+    .find((tab) => isPochiTaskTab(tab));
+  if (tab) {
+    return tab;
+  }
+  return undefined;
 }
