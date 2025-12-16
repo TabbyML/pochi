@@ -68,6 +68,8 @@ export const executeCommand: ToolFunctionType<
       }),
   );
 
+  await new Promise((resolve) => setTimeout(resolve, 100));
+
   // biome-ignore lint/suspicious/noExplicitAny: pass thread signal
   return { output: ThreadSignal.serialize(output) as any };
 };
