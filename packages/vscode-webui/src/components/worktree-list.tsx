@@ -48,6 +48,7 @@ import {
   GitCompare,
   GitPullRequest,
   Loader2,
+  Plus,
   Terminal,
   Trash2,
   X,
@@ -391,6 +392,23 @@ function WorktreeSection({
           >
             {!group.isDeleted && (
               <>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0"
+                      asChild
+                    >
+                      <a
+                        href={`command:pochi.worktree.newTask?${encodeURIComponent(JSON.stringify([group.path]))}`}
+                      >
+                        <Plus className="size-4" />
+                      </a>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>{t("tasksPage.newTask")}</TooltipContent>
+                </Tooltip>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
