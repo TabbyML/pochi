@@ -49,6 +49,7 @@ import {
   GitCompare,
   GitPullRequest,
   Loader2,
+  Plus,
   Terminal,
   Trash2,
   X,
@@ -142,7 +143,7 @@ export function WorktreeList({
           isDeleted = false;
           isMain = wt.isMain;
           if (wt.isMain) {
-            name = "main";
+            name = "workspace";
           } else {
             name = getWorktreeNameFromWorktreePath(wt.path) || "unknown";
           }
@@ -201,7 +202,6 @@ export function WorktreeList({
 
   return (
     <div className="flex flex-col gap-1">
-      <br />
       {activeGroups.map((group) => (
         <WorktreeSection
           isLoadingWorktrees={isLoadingWorktrees}
@@ -249,7 +249,7 @@ export function WorktreeList({
     </div>
   );
 }
-const pageSize = 10;
+const pageSize = 5;
 
 function WorktreeSection({
   cwd,
@@ -329,11 +329,6 @@ function WorktreeSection({
   }, [hasMore, loadMore]);
 
   const pullRequest = group.data?.github?.pullRequest;
-  const hasEdit = tasks.some(
-    (task) =>
-      task.lineChanges &&
-      (task.lineChanges?.added !== 0 || task.lineChanges?.removed !== 0),
-  );
 
   const prUrl = useMemo(() => {
     if (!gitOriginUrl || !pullRequest?.id) return "#";
@@ -365,37 +360,33 @@ function WorktreeSection({
       >
         {/* worktree name & branch */}
         <div className="flex h-6 items-center gap-2">
-          <div className="flex items-center gap-2 overflow-x-hidden">
-            {group.isDeleted ? (
-              <CollapsibleTrigger asChild>
-                <div className="flex w-full flex-1 cursor-pointer select-none items-center gap-2 font-medium text-sm">
-                  {isExpanded ? (
-                    <ChevronDown className="size-4 shrink-0" />
-                  ) : (
-                    <ChevronRight className="size-4 shrink-0" />
-                  )}
-                  <span className="truncate">
-                    {prefixWorktreeName(group.name)}
-                  </span>
-                </div>
-              </CollapsibleTrigger>
-            ) : (
-              <div className="flex items-center font-bold">
+          {group.isDeleted ? (
+            <CollapsibleTrigger asChild>
+              <div className="flex w-full flex-1 cursor-pointer select-none items-center gap-2 font-medium text-sm">
+                {isExpanded ? (
+                  <ChevronDown className="size-4 shrink-0" />
+                ) : (
+                  <ChevronRight className="size-4 shrink-0" />
+                )}
                 <span className="truncate">
                   {prefixWorktreeName(group.name)}
                 </span>
               </div>
-            )}
-          </div>
+            </CollapsibleTrigger>
+          ) : (
+            <span className="items-center truncate font-bold">
+              {prefixWorktreeName(group.name)}
+            </span>
+          )}
 
-          <div className="mt-[1px] flex-1 overflow-x-hidden">
+          <div className="mt-[1px] flex-1">
             {pullRequest ? (
               <PrStatusDisplay
                 prNumber={pullRequest.id}
                 prUrl={prUrl}
                 prChecks={pullRequest.checks}
               />
-            ) : hasEdit && !group.isDeleted ? (
+            ) : !group.isDeleted ? (
               <CreatePrDropdown
                 worktreePath={group.path}
                 branch={group.branch}
@@ -415,6 +406,23 @@ function WorktreeSection({
           >
             {!group.isDeleted && (
               <>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0"
+                      asChild
+                    >
+                      <a
+                        href={`command:pochi.worktree.newTask?${encodeURIComponent(JSON.stringify([group.path]))}`}
+                      >
+                        <Plus className="size-4" />
+                      </a>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>{t("tasksPage.newTask")}</TooltipContent>
+                </Tooltip>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
@@ -461,13 +469,15 @@ function WorktreeSection({
                     <Tooltip>
                       <PopoverTrigger asChild>
                         <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0"
-                          >
-                            <Trash2 className="size-4" />
-                          </Button>
+                          <span>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0"
+                            >
+                              <Trash2 className="size-4" />
+                            </Button>
+                          </span>
                         </TooltipTrigger>
                       </PopoverTrigger>
                       <TooltipContent>
@@ -599,74 +609,70 @@ function CreatePrDropdown({
   }, [gitOriginUrl, branch]);
 
   return (
-    <div className="flex items-center">
-      <DropdownMenu>
+    <DropdownMenu>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 w-6 shrink-0 gap-1"
+            >
+              <GitPullRequest className="size-3.5" />
+            </Button>
+          </DropdownMenuTrigger>
+        </TooltipTrigger>
+        <TooltipContent>{t("worktree.createPr")}</TooltipContent>
+      </Tooltip>
+      <DropdownMenuContent
+        align="start"
+        className="bg-background text-xs"
+        side="right"
+        onCloseAutoFocus={(e) => e.preventDefault()}
+      >
         <Tooltip>
           <TooltipTrigger asChild>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-6 w-6 gap-1">
-                <GitPullRequest className="size-3.5" />
-              </Button>
-            </DropdownMenuTrigger>
-          </TooltipTrigger>
-          <TooltipContent>{t("worktree.createPr")}</TooltipContent>
-        </Tooltip>
-        <DropdownMenuContent
-          align="start"
-          className="bg-background text-xs"
-          side="right"
-          onCloseAutoFocus={(e) => e.preventDefault()}
-        >
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span>
-                <DropdownMenuItem
-                  onSelect={(e) => {
-                    if (!isGhCliReady) {
-                      e.preventDefault();
-                    } else {
-                      onCreatePr();
-                    }
-                  }}
-                  className={cn(
-                    !isGhCliReady && "cursor-not-allowed opacity-50",
-                  )}
-                >
-                  {t("worktree.createPr")}
-                </DropdownMenuItem>
-              </span>
-            </TooltipTrigger>
-            {!isGhCliReady && (
-              <TooltipContent>{ghTooltipMessage}</TooltipContent>
-            )}
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
+            <span>
               <DropdownMenuItem
                 onSelect={(e) => {
                   if (!isGhCliReady) {
                     e.preventDefault();
                   } else {
-                    onCreatePr(true);
+                    onCreatePr();
                   }
                 }}
                 className={cn(!isGhCliReady && "cursor-not-allowed opacity-50")}
               >
-                {t("worktree.createDraftPr")}
+                {t("worktree.createPr")}
               </DropdownMenuItem>
-            </TooltipTrigger>
-            {!isGhCliReady && (
-              <TooltipContent>{ghTooltipMessage}</TooltipContent>
-            )}
-          </Tooltip>
-          <DropdownMenuItem asChild disabled={!manualPrUrl}>
-            <a href={manualPrUrl} target="_blank" rel="noopener noreferrer">
-              {t("worktree.createPrManually")}
-            </a>
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </div>
+            </span>
+          </TooltipTrigger>
+          {!isGhCliReady && <TooltipContent>{ghTooltipMessage}</TooltipContent>}
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <DropdownMenuItem
+              onSelect={(e) => {
+                if (!isGhCliReady) {
+                  e.preventDefault();
+                } else {
+                  onCreatePr(true);
+                }
+              }}
+              className={cn(!isGhCliReady && "cursor-not-allowed opacity-50")}
+            >
+              {t("worktree.createDraftPr")}
+            </DropdownMenuItem>
+          </TooltipTrigger>
+          {!isGhCliReady && <TooltipContent>{ghTooltipMessage}</TooltipContent>}
+        </Tooltip>
+        <DropdownMenuItem asChild disabled={!manualPrUrl}>
+          <a href={manualPrUrl} target="_blank" rel="noopener noreferrer">
+            {t("worktree.createPrManually")}
+          </a>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
