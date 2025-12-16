@@ -9,7 +9,7 @@ import { GitWorktreeInfoProvider } from "../git/git-worktree-info-provider";
 import { WorktreeManager } from "../git/worktree";
 import { executeCommandWithNode } from "../terminal/execute-command-with-node";
 
-const logger = getLogger("GithubIssues");
+const logger = getLogger("GithubIssueState");
 
 const uf = new uFuzzy({
   unicode: true,
@@ -29,7 +29,7 @@ const QueryLimit = 50;
 
 @singleton()
 @injectable()
-export class GithubIssues implements vscode.Disposable {
+export class GithubIssueState implements vscode.Disposable {
   private readonly disposables: vscode.Disposable[] = [];
   private pollingTimeout?: NodeJS.Timeout;
 
@@ -43,7 +43,7 @@ export class GithubIssues implements vscode.Disposable {
   private async init() {
     // wait all worktree loaded so we can get main worktree to fetch issues
     await this.worktreeManager.inited.promise;
-    logger.debug("Initializing GithubIssues integration");
+    logger.debug("Initializing GithubIssueState integration");
 
     // Start initial check
     await this.checkForIssues();

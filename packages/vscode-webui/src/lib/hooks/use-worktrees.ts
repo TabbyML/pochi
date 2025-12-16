@@ -13,7 +13,7 @@ export const useWorktrees = () => {
 
   return {
     worktrees: data?.worktrees.value,
-    ghCli: data?.ghCli.value,
+    gh: data?.gh.value,
     gitOriginUrl: data?.gitOriginUrl,
     isLoading,
   };
@@ -23,7 +23,7 @@ async function fetchWorktrees() {
   const result = await vscodeHost.readWorktrees();
   return {
     worktrees: threadSignal(result.worktrees),
-    ghCli: threadSignal(result.ghCli),
+    gh: threadSignal(result.gh),
     gitOriginUrl: result.gitOriginUrl,
   };
 }

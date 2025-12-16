@@ -89,7 +89,7 @@ export function WorktreeList({
     useCurrentWorkspace();
   const {
     worktrees,
-    ghCli,
+    gh,
     gitOriginUrl,
     isLoading: isLoadingWorktrees,
   } = useWorktrees();
@@ -232,7 +232,7 @@ export function WorktreeList({
           group={group}
           onDeleteGroup={onDeleteWorktree}
           gitOriginUrl={gitOriginUrl}
-          ghCli={ghCli}
+          gh={gh}
         />
       ))}
       {deletedGroups.length > 0 && (
@@ -261,7 +261,7 @@ export function WorktreeList({
                 isLoadingWorktrees={isLoadingWorktrees}
                 key={group.path}
                 group={group}
-                ghCli={ghCli}
+                gh={gh}
                 gitOriginUrl={gitOriginUrl}
               />
             ))}
@@ -274,13 +274,13 @@ export function WorktreeList({
 function WorktreeSection({
   group,
   onDeleteGroup,
-  ghCli,
+  gh,
   gitOriginUrl,
 }: {
   group: WorktreeGroup;
   isLoadingWorktrees: boolean;
   onDeleteGroup?: (worktreePath: string) => void;
-  ghCli?: { installed: boolean; authorized: boolean };
+  gh?: { installed: boolean; authorized: boolean };
   gitOriginUrl?: string | null;
 }) {
   const { t } = useTranslation();
@@ -376,7 +376,7 @@ function WorktreeSection({
                 worktreePath={group.path}
                 branch={group.branch}
                 gitOriginUrl={gitOriginUrl}
-                ghCli={ghCli}
+                gh={gh}
               />
             ) : null}
           </div>
@@ -535,19 +535,19 @@ function CreatePrDropdown({
   worktreePath,
   branch,
   gitOriginUrl,
-  ghCli,
+  gh,
 }: {
   branch?: string;
   worktreePath: string;
   gitOriginUrl?: string | null;
-  ghCli?: { installed: boolean; authorized: boolean };
+  gh?: { installed: boolean; authorized: boolean };
 }) {
   const { t } = useTranslation();
   const { selectedModel } = useSelectedModels();
 
-  const isGhCliReady = ghCli?.installed && ghCli?.authorized;
+  const isGhCliReady = gh?.installed && gh?.authorized;
   const ghTooltipMessage = !isGhCliReady
-    ? !ghCli?.installed
+    ? !gh?.installed
       ? t("worktree.installGhCli")
       : t("worktree.authGhCli")
     : undefined;
