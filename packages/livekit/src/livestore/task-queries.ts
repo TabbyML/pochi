@@ -1,12 +1,7 @@
 import { Schema, queryDb, sql } from "@livestore/livestore";
 import { tables } from "./default-schema";
 
-export const makeTasksQuery = (
-  cwd: string,
-  createdAtCursor = 0,
-  limit = 10,
-  path = "",
-) => {
+export const makeTasksQuery = (cwd: string, limit = 10, path = "") => {
   let filterCondition = "";
   if (path) {
     filterCondition = `and (git->>'$.worktree.gitdir' = '${path}/.git')`;
@@ -17,7 +12,6 @@ export const makeTasksQuery = (
     WHERE parentId is null 
       and (cwd = '${cwd}' or git->>'$.worktree.gitdir' like '${cwd}/.git/worktrees%') 
       ${filterCondition}
-      ${createdAtCursor ? `and (createdAt < ${createdAtCursor})` : ""}
     ORDER BY createdAt desc
     LIMIT ${limit} 
   `;
@@ -30,7 +24,7 @@ export const makeTasksQuery = (
     },
     {
       label: "tasks.cwd.paginated",
-      deps: [cwd, createdAtCursor, limit, path],
+      deps: [cwd, limit, path],
     },
   );
 };

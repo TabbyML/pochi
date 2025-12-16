@@ -249,7 +249,7 @@ export function WorktreeList({
     </div>
   );
 }
-const pageSize = 10;
+const pageSize = 5;
 
 function WorktreeSection({
   cwd,
@@ -273,56 +273,31 @@ function WorktreeSection({
   const [isHovered, setIsHovered] = useState(false);
   const loading = useRef(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(true);
-  const [pageCursor, setPageCursor] = useState(0);
+  const [pageLength, setPageLength] = useState(0);
   // Fetch paginated tasks with filtering
   const tasks = store.useQuery(
-    taskCatalog.queries.makeTasksQuery(cwd, pageCursor, pageSize, group.path),
+    taskCatalog.queries.makeTasksQuery(cwd, pageLength + pageSize, group.path),
   );
 
-  // Fetch total count
   const countResult = store.useQuery(
     taskCatalog.queries.makeTasksCountQuery(cwd, group.path),
   );
-
-  const [accumulatedTasks, setAccumulatedTasks] = useState<typeof tasks>([]);
-
   const hasMore = useMemo(
-    () => accumulatedTasks.length < (countResult[0]?.total || 0),
-    [accumulatedTasks, countResult],
+    () => countResult.length > 0 && countResult[0].total > tasks.length,
+    [countResult, tasks],
   );
+
   useEffect(() => {
-    if (countResult[0]?.total !== undefined) {
-      setPageCursor(0);
-      setAccumulatedTasks([]);
+    if (tasks.length) {
+      loading.current = false;
     }
-  }, [countResult]);
-  // Fetch more tasks when scrolling to the bottom
-  useEffect(() => {
-    setAccumulatedTasks((prev) => {
-      // merge the new tasks with the accumulated tasks
-      const taskIds = new Set(prev.map((t) => t.id));
-      const newTasks = (tasks || []).filter((t) => !taskIds.has(t.id));
-      const result = [...prev, ...newTasks];
-      result.sort(
-        (a, b) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-      );
-      return result;
-    });
-    loading.current = false;
   }, [tasks]);
 
   const loadMore = useCallback(() => {
-    if (loading.current) return;
+    if (loading.current || !hasMore) return;
     loading.current = true;
-    const tailCursor =
-      accumulatedTasks.length > 0
-        ? Math.floor(
-            accumulatedTasks[accumulatedTasks.length - 1].createdAt.getTime(),
-          )
-        : 0;
-    setPageCursor(tailCursor);
-  }, [accumulatedTasks]);
+    setPageLength(tasks.length);
+  }, [tasks, hasMore]);
 
   const pochiTasks = usePochiTasks();
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -354,7 +329,7 @@ function WorktreeSection({
   }, [hasMore, loadMore]);
 
   const pullRequest = group.data?.github?.pullRequest;
-  const hasEdit = accumulatedTasks.some(
+  const hasEdit = tasks.some(
     (task) =>
       task.lineChanges &&
       (task.lineChanges?.added !== 0 || task.lineChanges?.removed !== 0),
@@ -540,11 +515,10 @@ function WorktreeSection({
           </div>
         </div>
       </div>
-
       <CollapsibleContent>
         <ScrollArea viewportClassname="max-h-[230px] px-1 py-1">
-          {accumulatedTasks.length > 0 ? (
-            accumulatedTasks.map((task) => {
+          {tasks.length > 0 ? (
+            tasks.map((task) => {
               return (
                 <div key={task.id} className="py-0.5">
                   <TaskRow task={task} state={pochiTasks[task.id]} />
