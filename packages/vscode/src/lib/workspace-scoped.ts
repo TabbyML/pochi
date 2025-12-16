@@ -13,7 +13,7 @@ export class WorkspaceScope {
   ) {}
 
   get isMainWorkspace() {
-    return this.cwd === this.workspacePath;
+    return this.cwd === this.workspacePath && this.cwd !== null;
   }
 }
 

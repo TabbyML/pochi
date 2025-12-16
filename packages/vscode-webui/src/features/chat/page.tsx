@@ -124,7 +124,7 @@ function Chat({
   const autoApproveGuard = useAutoApproveGuard();
   const { data: currentWorkspace, isFetching: isFetchingWorkspace } =
     useCurrentWorkspace();
-  const isWorkspaceActive = !!currentWorkspace?.workspacePath;
+  const isWorkspaceActive = !!currentWorkspace?.cwd;
   const getters = useLiveChatKitGetters({
     todos: todosRef,
     isSubTask,
