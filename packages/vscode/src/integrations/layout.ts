@@ -190,9 +190,9 @@ export async function applyPochiLayout(params: { cwd: string | undefined }) {
   await vscode.commands.executeCommand("workbench.action.unlockEditorGroup");
 
   // Move all terminals from panel into terminal groups, then lock
-  await focusEditorGroup(2);
-  await vscode.commands.executeCommand("workbench.action.unlockEditorGroup");
   for (let i = 0; i < vscode.window.terminals.length; i++) {
+    await focusEditorGroup(2);
+    await vscode.commands.executeCommand("workbench.action.unlockEditorGroup");
     await vscode.commands.executeCommand(
       "workbench.action.terminal.moveToEditor",
     );
