@@ -127,6 +127,7 @@ const VSCodeHostStub = {
     _filePath: string,
     _options?: { start?: number; end?: number; preserveFocus?: boolean },
   ): void => {},
+  writeToFile: (_filePath: string, _content: string): void => {},
   capture: (_e: CaptureEvent): Promise<void> => {
     return Promise.resolve();
   },

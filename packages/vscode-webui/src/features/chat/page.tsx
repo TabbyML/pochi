@@ -9,8 +9,8 @@ import { vscodeHost } from "@/lib/vscode";
 import { useChat } from "@ai-sdk/react";
 import { formatters } from "@getpochi/common";
 import type { UserInfo } from "@getpochi/common/configuration";
-import { type Task, catalog, taskCatalog } from "@getpochi/livekit";
 import type { Message } from "@getpochi/livekit";
+import { type Task, catalog, taskCatalog } from "@getpochi/livekit";
 import { useLiveChatKit } from "@getpochi/livekit/react";
 import type { Todo } from "@getpochi/tools";
 import { useStore } from "@livestore/react";
@@ -433,6 +433,7 @@ function Chat({
             task={task}
             todosRef={todosRef}
             compact={chatKit.compact}
+            walkthrough={chatKit.walkthrough}
             approvalAndRetry={approvalAndRetry}
             attachmentUpload={attachmentUpload}
             isSubTask={isSubTask}

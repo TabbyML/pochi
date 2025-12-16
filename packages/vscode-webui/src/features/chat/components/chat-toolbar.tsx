@@ -14,8 +14,7 @@ import {
 } from "@/components/ui/hover-card";
 import { ApprovalButton, type useApprovalAndRetry } from "@/features/approval";
 import { useAutoApproveGuard, useTaskChangedFiles } from "@/features/chat";
-import { useSelectedModels } from "@/features/settings";
-import { AutoApproveMenu } from "@/features/settings";
+import { AutoApproveMenu, useSelectedModels } from "@/features/settings";
 import { TodoList, useTodos } from "@/features/todo";
 import { useAddCompleteToolCalls } from "@/lib/hooks/use-add-complete-tool-calls";
 import type { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
@@ -33,6 +32,7 @@ import { useChatSubmit } from "../hooks/use-chat-submit";
 import { useInlineCompactTask } from "../hooks/use-inline-compact-task";
 import { useNewCompactTask } from "../hooks/use-new-compact-task";
 import type { SubtaskInfo } from "../hooks/use-subtask-info";
+import { useWalkthroughTask } from "../hooks/use-walkthrough-task";
 import { ChatInputForm } from "./chat-input-form";
 import { ErrorMessageView } from "./error-message-view";
 import { CompleteSubtaskButton } from "./subtask";
@@ -41,6 +41,7 @@ interface ChatToolbarProps {
   task?: Task;
   approvalAndRetry: ReturnType<typeof useApprovalAndRetry>;
   compact: () => Promise<string>;
+  walkthrough: () => Promise<string>;
   chat: UseChatHelpers<Message>;
   attachmentUpload: ReturnType<typeof useAttachmentUpload>;
   isSubTask: boolean;
@@ -54,6 +55,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   chat,
   approvalAndRetry: { pendingApproval, retry },
   compact,
+  walkthrough,
   attachmentUpload,
   isSubTask,
   subtask,
@@ -106,6 +108,10 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     compact,
   });
 
+  const { walkthroughTask, walkthroughTaskPending } = useWalkthroughTask({
+    task,
+    walkthrough,
+  });
   const {
     isExecuting,
     isBusyCore,
@@ -190,6 +196,11 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     inlineCompactTaskPending,
     newCompactTask,
     newCompactTaskPending,
+  };
+  const walkthroughOptions = {
+    enabled: !isLoading && !isExecuting && !walkthroughTaskPending,
+    walkthroughTaskPending,
+    walkthroughTask,
   };
 
   const messageContent = useMemo(
@@ -290,6 +301,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
               totalTokens={totalTokens}
               className="mr-5"
               compact={compactOptions}
+              walkthrough={walkthroughOptions}
               selectedModel={selectedModel}
             />
           )}
