@@ -3,7 +3,7 @@ import { LRUCache } from "lru-cache";
 import { injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
 // biome-ignore lint/style/useImportType: needed for dependency injection
-import { GitStateMonitor } from "../integrations/git/git-state";
+import { GitState } from "../integrations/git/git-state";
 import { DocumentSelector } from "./constants";
 import type { OffsetRange, TextEdit } from "./types";
 import {
@@ -33,7 +33,7 @@ export class EditHistoryTracker implements vscode.Disposable {
       },
     });
 
-  constructor(private readonly gitStateMonitor: GitStateMonitor) {
+  constructor(private readonly gitStateMonitor: GitState) {
     for (const document of vscode.workspace.textDocuments) {
       this.track(document);
     }
@@ -48,7 +48,7 @@ export class EditHistoryTracker implements vscode.Disposable {
       vscode.workspace.onDidCloseTextDocument((document) => {
         this.untrack(document);
       }),
-      this.gitStateMonitor.onDidChangeGitState((e) => {
+      this.gitStateMonitor.onDidChangeBranch((e) => {
         if (e.type === "branch-changed") {
           logger.debug("Git branch changed, pausing edit history tracking");
           for (const tracker of this.documents.values()) {

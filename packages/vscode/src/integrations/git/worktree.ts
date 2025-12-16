@@ -1,6 +1,6 @@
 import path from "node:path";
 // biome-ignore lint/style/useImportType: needed for dependency injection
-import { GitStateMonitor } from "@/integrations/git/git-state";
+import { GitState } from "@/integrations/git/git-state";
 import { Deferred } from "@/lib/defered";
 import { readFileContent } from "@/lib/fs";
 import { generateBranchName } from "@/lib/generate-branch-name";
@@ -34,7 +34,7 @@ export class WorktreeManager implements vscode.Disposable {
   private git: ReturnType<typeof simpleGit>;
 
   constructor(
-    private readonly gitStateMonitor: GitStateMonitor,
+    private readonly gitStateMonitor: GitState,
     private readonly worktreeInfoProvider: GitWorktreeInfoProvider,
   ) {
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
@@ -62,7 +62,7 @@ export class WorktreeManager implements vscode.Disposable {
       await this.updateWorktrees();
     };
     this.disposables.push(
-      this.gitStateMonitor.onDidRepositoryChange(onWorktreeChanged),
+      this.gitStateMonitor.onDidChangeRepository(onWorktreeChanged),
     );
     this.inited.resolve();
   }

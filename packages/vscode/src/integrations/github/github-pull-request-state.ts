@@ -8,7 +8,7 @@ import { funnel } from "remeda";
 import { injectable, singleton } from "tsyringe";
 import type * as vscode from "vscode";
 // biome-ignore lint/style/useImportType: needed for dependency injection
-import { GitStateMonitor } from "../git/git-state";
+import { GitState } from "../git/git-state";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { GitWorktreeInfoProvider } from "../git/git-worktree-info-provider";
 // biome-ignore lint/style/useImportType: needed for dependency injection
@@ -30,7 +30,7 @@ export class GithubPullRequestState implements vscode.Disposable {
   constructor(
     private readonly worktreeManager: WorktreeManager,
     private readonly worktreeInfoProvider: GitWorktreeInfoProvider,
-    private readonly gitStateMonitor: GitStateMonitor,
+    private readonly gitStateMonitor: GitState,
   ) {
     this.init();
   }
@@ -38,7 +38,7 @@ export class GithubPullRequestState implements vscode.Disposable {
   async init() {
     this.queueCheck();
     this.disposables.push(
-      this.gitStateMonitor.onDidChangeGitState(async (e) => {
+      this.gitStateMonitor.onDidChangeBranch(async (e) => {
         if (e.type === "branch-changed" && e.currentBranch !== undefined) {
           await this.worktreeInfoProvider.updateGithubPullRequest(
             e.repository,
@@ -50,7 +50,7 @@ export class GithubPullRequestState implements vscode.Disposable {
       }),
     );
     this.disposables.push(
-      this.gitStateMonitor.onDidRepositoryChange(async (e) => {
+      this.gitStateMonitor.onDidChangeRepository(async (e) => {
         if (e.type === "repository-changed" && e.change === "added") {
           await this.worktreeManager.updateWorktrees();
           this.queueCheck(e.repository);
