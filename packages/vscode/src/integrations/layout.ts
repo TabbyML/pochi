@@ -203,9 +203,10 @@ export async function applyPochiLayout(params: { cwd: string | undefined }) {
   if (getSortedCurrentTabGroups()[2].tabs.length === 0) {
     await vscode.commands.executeCommand(
       "pochi.openTerminal",
-      userFocusTab && isPochiTaskTab(userFocusTab)
-        ? userFocusTab.input.uri
-        : undefined,
+      params.cwd ??
+        (userFocusTab && isPochiTaskTab(userFocusTab)
+          ? userFocusTab.input.uri
+          : undefined),
     );
   }
 
