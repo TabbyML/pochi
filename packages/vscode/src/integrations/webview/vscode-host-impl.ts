@@ -827,8 +827,10 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
 
   sendTaskNotification = async (
     kind: "failed" | "completed" | "pending-tool" | "pending-input",
-    params: TaskPanelParams & { isSubTask?: boolean },
+    params: { uid: string; displayId?: number; isSubTask?: boolean },
   ) => {
+    if (!this.cwd) return;
+
     const taskStates = this.pochiTaskState.state.value;
     const targetTaskState = taskStates[params.uid];
     if (targetTaskState?.active) {
@@ -855,9 +857,13 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       default:
         break;
     }
-    const { cwd, displayId, uid } = params;
+    const { displayId, uid } = params;
+    const worktreeName = getWorktreeNameFromWorktreePath(this.cwd);
     const taskTitle = getTaskDisplayTitle({
-      worktreeName: getWorktreeNameFromWorktreePath(cwd) ?? "workspace",
+      worktreeName:
+        this.workspaceScope.isMain || !worktreeName
+          ? "workspace"
+          : worktreeName,
       displayId,
       uid,
     });
@@ -872,7 +878,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     if (result === buttonText) {
       this.openTaskInPanel({
         uid,
-        cwd,
+        cwd: this.cwd,
         displayId,
       });
     }
