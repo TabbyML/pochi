@@ -1,16 +1,15 @@
 import { TaskThread, type TaskThreadSource } from "@/components/task-thread";
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
-
 import {
   FixedStateChatContextProvider,
   ToolCallStatusRegistry,
 } from "@/features/chat";
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
+import { cn } from "@/lib/utils";
 import { isVSCodeEnvironment } from "@/lib/vscode";
 import { useStore } from "@livestore/react";
 import { Link } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { type RefObject, useEffect, useRef } from "react";
 import { useInlinedSubTask } from "../../hooks/use-inlined-sub-task";
 import { useLiveSubTask } from "../../hooks/use-live-sub-task";
 import { StatusIcon } from "../status-icon";
@@ -22,30 +21,54 @@ interface NewTaskToolProps extends ToolProps<"newTask"> {
   taskThreadSource?: TaskThreadSource;
 }
 
-export const newTaskTool: React.FC<NewTaskToolProps> = ({
-  tool,
-  isExecuting,
-  taskThreadSource,
-}) => {
+export const newTaskTool: React.FC<NewTaskToolProps> = (props) => {
+  const { tool, taskThreadSource } = props;
   const uid = tool.input?._meta?.uid;
-  const agent = tool.input?.agentType;
-  const description = tool.input?.description ?? "";
-  const { store } = useStore();
 
   let taskSource: (TaskThreadSource & { parentId?: string }) | undefined =
     taskThreadSource;
 
-  const subTaskToolCallStatusRegistry = useRef(new ToolCallStatusRegistry());
   const inlinedTaskSource = useInlinedSubTask(tool);
+
   if (inlinedTaskSource) {
     taskSource = inlinedTaskSource;
-  } else if (uid && isVSCodeEnvironment()) {
-    taskSource = useLiveSubTask(
-      { tool, isExecuting },
-      subTaskToolCallStatusRegistry.current,
-    );
   }
 
+  if (!inlinedTaskSource && uid && isVSCodeEnvironment()) {
+    return <LiveSubTaskToolView {...props} uid={uid} />;
+  }
+
+  return <NewTaskToolView {...props} taskSource={taskSource} uid={uid} />;
+};
+
+function LiveSubTaskToolView(props: NewTaskToolProps & { uid: string }) {
+  const { tool, isExecuting, uid } = props;
+  const subTaskToolCallStatusRegistry = useRef(new ToolCallStatusRegistry());
+
+  const taskSource = useLiveSubTask(
+    { tool, isExecuting },
+    subTaskToolCallStatusRegistry.current,
+  );
+
+  return <NewTaskToolView {...props} taskSource={taskSource} uid={uid} />;
+}
+
+interface NewTaskToolViewProps extends ToolProps<"newTask"> {
+  taskSource?: (TaskThreadSource & { parentId?: string }) | undefined;
+  uid: string | undefined;
+  toolCallStatusRegistryRef?: RefObject<ToolCallStatusRegistry>;
+}
+
+function NewTaskToolView({
+  tool,
+  isExecuting,
+  taskSource,
+  uid,
+  toolCallStatusRegistryRef,
+}: NewTaskToolViewProps) {
+  const { store } = useStore();
+  const agent = tool.input?.agentType;
+  const description = tool.input?.description ?? "";
   const agentType = tool.input?.agentType;
   const toolTitle = agentType ?? "Subtask";
   const completed =
@@ -99,7 +122,7 @@ export const newTaskTool: React.FC<NewTaskToolProps> = ({
       </ToolTitle>
       {taskSource && taskSource.messages.length > 1 && (
         <FixedStateChatContextProvider
-          toolCallStatusRegistry={subTaskToolCallStatusRegistry.current}
+          toolCallStatusRegistry={toolCallStatusRegistryRef?.current}
         >
           <TaskThread
             source={{ ...taskSource, isLoading: false }}
@@ -110,12 +133,10 @@ export const newTaskTool: React.FC<NewTaskToolProps> = ({
       )}
     </div>
   );
-};
+}
 
 function useShowMessageList(completed: boolean) {
-  if (isVSCodeEnvironment()) {
-    return useDebounceState(!completed, 1_500);
-  }
-  const [value, setValue] = useState(false);
-  return [value, setValue, setValue] as const;
+  return useDebounceState(!completed, 1_500, {
+    leading: !isVSCodeEnvironment(),
+  });
 }

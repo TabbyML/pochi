@@ -55,7 +55,6 @@ interface DevModeButtonProps {
 export function DevModeButton({ messages, todos }: DevModeButtonProps) {
   const { t } = useTranslation();
   const [isDevMode] = useIsDevMode();
-  if (!isDevMode) return null;
   const getMessagesContent = () => {
     const x = messages.map((x) => {
       return {
@@ -84,6 +83,8 @@ export function DevModeButton({ messages, todos }: DevModeButtonProps) {
     const workspaceFolder = await vscodeHost.readCurrentWorkspace();
     return `alias pgit="git --git-dir=\\"${checkpointPath}\\" --work-tree=\\"${workspaceFolder.cwd}\\""`;
   }, [t]);
+
+  if (!isDevMode) return null;
 
   return (
     <DropdownMenu>

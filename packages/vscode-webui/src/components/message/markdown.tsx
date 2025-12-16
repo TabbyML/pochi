@@ -8,7 +8,6 @@ import {
   type HTMLAttributes,
   type JSX,
   memo,
-  useCallback,
   useContext,
   useMemo,
 } from "react";
@@ -387,11 +386,11 @@ export function MessageMarkdown({
       },
       code: (props) => <MemoCode {...props} />,
       a({ href, children, ...props }) {
-        const openLink = useCallback(() => {
+        const openLink = () => {
           href && isVSCodeEnvironment()
             ? vscodeHost.openExternal(href)
             : window.open(href, "_blank");
-        }, [href]);
+        };
 
         if (previewImageLink && href && isImageLink(href)) {
           return (

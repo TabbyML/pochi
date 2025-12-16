@@ -125,9 +125,8 @@ export const useReplaceJobIdsInContent = () => {
 export const useBackgroundJobInfo = (
   backgroundJobId?: string,
 ): { command: string | undefined; displayId: string } | undefined => {
-  if (!backgroundJobId) return;
-
   const { getJobDisplayId, getJobCommand } = useBackgroundJobContext();
+  if (!backgroundJobId) return;
 
   return {
     command: getJobCommand(backgroundJobId),

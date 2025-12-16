@@ -53,7 +53,8 @@
         }
       },
       "correctness": {
-        "noUnusedImports": "error"
+        "noUnusedImports": "error",
+        "useHookAtTopLevel": "error"
       }
     }
   },
