@@ -30,6 +30,8 @@ export class WorktreeManager implements vscode.Disposable {
   worktrees = signal<GitWorktree[]>([]);
   inited = new Deferred<void>();
 
+  defaultBranch = "origin/main";
+
   private workspacePath: string | undefined;
   private git: ReturnType<typeof simpleGit>;
 
@@ -64,6 +66,7 @@ export class WorktreeManager implements vscode.Disposable {
     this.disposables.push(
       this.gitState.onDidChangeRepository(onWorktreeChanged),
     );
+    this.defaultBranch = await this.getDefaultBranch();
     this.inited.resolve();
   }
 
@@ -175,8 +178,7 @@ export class WorktreeManager implements vscode.Disposable {
   }
 
   async showWorktreeDiff(cwd: string) {
-    const baseBranch = await this.getDefaultBranch();
-    await showWorktreeDiff(cwd, baseBranch);
+    await showWorktreeDiff(cwd, this.defaultBranch);
   }
 
   async updateWorktrees() {

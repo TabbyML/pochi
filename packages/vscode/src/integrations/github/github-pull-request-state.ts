@@ -36,6 +36,7 @@ export class GithubPullRequestState implements vscode.Disposable {
   }
 
   async init() {
+    await this.worktreeManager.inited.promise;
     this.queueCheck();
     this.disposables.push(
       this.gitState.onDidChangeBranch(async (e) => {
@@ -143,6 +144,16 @@ export class GithubPullRequestState implements vscode.Disposable {
   }
 
   async fetchWorktreePrInfo(worktree: GitWorktree) {
+    logger.info(
+      `Fetching GitHub PR info for worktree at ${worktree.path} (branch: ${worktree.branch}), default branch: ${this.worktreeManager.defaultBranch}`,
+    );
+    if (
+      worktree.branch ===
+      this.worktreeManager.defaultBranch.split(/\/(.+)/, 2).pop()
+    ) {
+      return;
+    }
+
     if (!this.gh.value.authorized) {
       return;
     }
