@@ -310,12 +310,11 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
 
   readCurrentWorkspace = async (): Promise<{
     cwd: string | null;
-    workspaceFolder: string | null;
+    workspacePath: string | null;
   }> => {
     return {
       cwd: this.cwd,
-      workspaceFolder:
-        vscode.workspace.workspaceFolders?.[0].uri.fsPath ?? null,
+      workspacePath: this.workspaceScope.workspacePath,
     };
   };
 
@@ -861,7 +860,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     const worktreeName = getWorktreeNameFromWorktreePath(this.cwd);
     const taskTitle = getTaskDisplayTitle({
       worktreeName:
-        this.workspaceScope.isMain || !worktreeName
+        this.workspaceScope.isMainWorkspace || !worktreeName
           ? "workspace"
           : worktreeName,
       displayId,
