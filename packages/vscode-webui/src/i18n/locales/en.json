@@ -100,7 +100,6 @@
       "title": "Advanced Settings",
       "developerMode": "Developer Mode",
       "enablePochiModels": "Enable Pochi Models",
-      "enablePochiLayoutKeybinding": "Use Ctrl+` to toggle Pochi layout",
       "clearStorage": "Clear Storage",
       "language": "Language",
       "languageDescription": "Choose your preferred language",
