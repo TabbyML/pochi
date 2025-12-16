@@ -13,12 +13,13 @@ import {
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
 import { ApprovalButton, type useApprovalAndRetry } from "@/features/approval";
-import { useAutoApproveGuard, useTaskChangedFiles } from "@/features/chat";
+import { useAutoApproveGuard } from "@/features/chat";
 import { useSelectedModels } from "@/features/settings";
 import { AutoApproveMenu } from "@/features/settings";
 import { TodoList, useTodos } from "@/features/todo";
 import { useAddCompleteToolCalls } from "@/lib/hooks/use-add-complete-tool-calls";
 import type { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
+import { useTaskChangedFiles } from "@/lib/hooks/use-task-changed-files";
 import { cn } from "@/lib/utils";
 import type { UseChatHelpers } from "@ai-sdk/react";
 import { constants } from "@getpochi/common";
