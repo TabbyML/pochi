@@ -45,18 +45,8 @@ export function usePaginatedTasks({
     taskCatalog.queries.makeTasksCountQuery(cwd),
   );
   const totalCount = countResult[0]?.count ?? 0;
-
-  // Log query results for debugging
-  console.log('[usePaginatedTasks]', {
-    cwd,
-    limit,
-    tasksLoaded: tasks.length,
-    totalCount,
-    hasMore: tasks.length < totalCount,
-  });
-
   const hasMore = tasks.length < totalCount;
-  
+
   const loadMore = useCallback(() => {
     if (!hasMore || isLoadingMore) return;
 

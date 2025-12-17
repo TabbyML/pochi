@@ -104,7 +104,7 @@ export function WorktreeList({
 
     const defaultWorktree: GitWorktree = {
       commit: "",
-      path: currentWorkspace?.workspacePath ?? cwd,  
+      path: currentWorkspace?.workspacePath ?? "",
       isMain: true,
     };
 
@@ -152,8 +152,7 @@ export function WorktreeList({
     worktrees,
     isLoadingWorktrees,
     isLoadingCurrentWorkspace,
-    currentWorkspace?.cwd,
-    cwd,
+    currentWorkspace?.workspacePath,
   ]);
 
   // Apply optimistic deletion: filter out items being deleted
@@ -719,4 +718,3 @@ function PrStatusDisplay({
     </div>
   );
 }
-
