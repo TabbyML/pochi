@@ -1,6 +1,8 @@
 import { window } from "vscode";
 export { getLogger } from "@getpochi/common";
 import { attachTransport } from "@getpochi/common";
+import { container } from "tsyringe";
+import { FileLogger } from "./file-logger";
 
 const outputChannel = window.createOutputChannel("Pochi", { log: true });
 
@@ -9,6 +11,26 @@ attachTransport((args, meta) => {
   const remainArgs = args.slice(1);
   if (meta.name) {
     message = `[${meta.name}] ${message}`;
+  }
+
+  // Check if the second argument contains { toFile: true }
+  const shouldLogToFile =
+    typeof args[1] === "object" &&
+    args[1] !== null &&
+    "toFile" in args[1] &&
+    args[1].toFile === true;
+
+  if (shouldLogToFile) {
+    try {
+      const fileLogger = container.resolve(FileLogger);
+      fileLogger.handleLog(meta.name, meta.logLevelName, [
+        message,
+        ...remainArgs,
+      ]);
+    } catch {
+      // ignore
+    }
+    return;
   }
 
   switch (meta.logLevelName) {

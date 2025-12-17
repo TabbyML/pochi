@@ -179,6 +179,7 @@ const PochiAdvanceSettings = z.object({
     })
     .optional(),
   webviewLogLevel: z.string().optional(),
+  enabledFileLogger: z.boolean().optional(),
 });
 
 export type PochiAdvanceSettings = z.infer<typeof PochiAdvanceSettings>;
