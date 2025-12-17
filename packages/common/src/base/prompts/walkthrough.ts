@@ -2,7 +2,7 @@ export function getCreateWalkthroughPrompt(
   taskId: string,
   walkthroughPath: string,
 ) {
-  return `<compact>Create a walkthrough summary for task ${taskId}.
+  return `Create a walkthrough summary for task ${taskId}.
 
 Include:
 1. Task requirements overview
@@ -12,5 +12,5 @@ Include:
 5. Final outcome
 
 Save to: ${walkthroughPath}
-Use the writeToFile tool.</compact>`;
+Use the writeToFile tool.`;
 }

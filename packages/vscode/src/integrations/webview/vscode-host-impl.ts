@@ -4,7 +4,7 @@ import { executeCommandWithNode } from "@/integrations/terminal/execute-command-
 
 declare global {
   // biome-ignore lint/suspicious/noExplicitAny: global property
-  const POCHI_CLIENT: any;
+  var POCHI_CLIENT: any;
 }
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { CustomAgentManager } from "@/lib/custom-agent";
@@ -1240,17 +1240,17 @@ Format the walkthrough in markdown with clear sections.`;
             "role" in msg &&
             "parts" in msg
           ) {
-            const parts = msg.parts || [];
+            const parts = (msg as { parts?: unknown[] }).parts || [];
             const textParts = parts
               .filter(
-                (part) =>
+                (part: unknown) =>
                   part &&
                   typeof part === "object" &&
                   (part as { type?: string }).type === "text",
               )
-              .map((part) => (part as { text?: string }).text || "")
+              .map((part: unknown) => (part as { text?: string }).text || "")
               .join("\n");
-            return `${msg.role}: ${textParts}`;
+            return `${(msg as { role?: string }).role}: ${textParts}`;
           }
           return String(msg);
         })
