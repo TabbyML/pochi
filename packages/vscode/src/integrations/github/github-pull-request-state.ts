@@ -1,4 +1,8 @@
 import { getLogger, toErrorMessage } from "@getpochi/common";
+import {
+  type GitRepositoryInfo,
+  parseGitOriginUrl,
+} from "@getpochi/common/git-utils";
 import type {
   GitWorktree,
   GitWorktreeInfo,
@@ -27,6 +31,8 @@ export class GithubPullRequestState implements vscode.Disposable {
     authorized: false,
   });
 
+  repoInfo?: GitRepositoryInfo;
+
   constructor(
     private readonly worktreeManager: WorktreeManager,
     private readonly worktreeInfoProvider: GitWorktreeInfoProvider,
@@ -36,6 +42,7 @@ export class GithubPullRequestState implements vscode.Disposable {
   }
 
   async init() {
+    await this.worktreeManager.inited.promise;
     this.queueCheck();
     this.disposables.push(
       this.gitState.onDidChangeBranch(async (e) => {
@@ -102,6 +109,16 @@ export class GithubPullRequestState implements vscode.Disposable {
   }
 
   async checkWorktreesPrInfo(targetPaths?: Set<string>) {
+    const gitOriginUrl = await this.worktreeManager.getOriginUrl();
+    if (!gitOriginUrl) {
+      return;
+    }
+
+    this.repoInfo = parseGitOriginUrl(gitOriginUrl) ?? undefined;
+    if (this.repoInfo?.platform !== "github") {
+      return;
+    }
+
     this.gh.value = await checkGithubCli();
     if (!this.gh.value.authorized) {
       return;
@@ -150,7 +167,11 @@ export class GithubPullRequestState implements vscode.Disposable {
     if (!worktree.branch) {
       return;
     }
-    const prInfo = await getGithubPr(worktree.branch, worktree.path);
+    const prInfo = await getGithubPr(
+      worktree.branch,
+      worktree.path,
+      this.repoInfo,
+    );
     logger.trace(
       `Fetched PR info for worktree ${worktree.path} (branch: ${worktree.branch}): ${
         prInfo ? JSON.stringify(prInfo) : "no PR"
@@ -223,10 +244,11 @@ const checkGithubCli = async (
 const getGithubPr = async (
   branch: string,
   cwd: string = process.cwd(),
+  repoInfo?: GitRepositoryInfo,
 ): Promise<NonNullable<GitWorktreeInfo["github"]["pullRequest"]> | null> => {
   try {
     const fetchPr = async () => {
-      const command = `gh pr list --head "${branch}" --state open --limit 1 --json number,state,mergedAt,closedAt`;
+      const command = `gh pr list --head "${branch}" --state open --json number,state,mergedAt,closedAt,isCrossRepository,headRepositoryOwner,headRepository`;
       logger.trace(`Executing command to fetch PR: ${command}`);
       try {
         const result = await executeCommandWithNode({
@@ -235,8 +257,31 @@ const getGithubPr = async (
           timeout: 30,
           color: false,
         });
-        const prs = JSON.parse(result.output.trim());
-        return prs[0] || null;
+        const prs = JSON.parse(result.output.trim()) as {
+          number: number;
+          state: string;
+          mergedAt: string | null;
+          closedAt: string | null;
+          isCrossRepository: boolean;
+          headRepositoryOwner: { login: string };
+          headRepository: { name: string };
+        }[];
+        // Find PR that matches our current repository info
+        return (
+          prs.find((pr) => {
+            // If it's not a cross repo PR, it's definitely ours
+            if (!pr.isCrossRepository) return true;
+
+            // If it is cross repo, check if it matches our current repo
+            if (repoInfo) {
+              return (
+                pr.headRepositoryOwner.login === repoInfo.owner &&
+                pr.headRepository.name === repoInfo.repo
+              );
+            }
+            return false;
+          }) || null
+        );
       } catch (error: unknown) {
         logger.trace(
           `Error fetching PR with command "${command}": ${toErrorMessage(error)}`,
