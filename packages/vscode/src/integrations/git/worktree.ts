@@ -333,7 +333,7 @@ export class WorktreeManager implements vscode.Disposable {
     }
     if (!branchName) {
       // Fallback to timestamp
-      branchName = `branch/${getTimestampString()}`;
+      branchName = `worktree/${getTimestampString()}`;
     }
 
     const worktreeName = branchName.replace(/\//g, "-");

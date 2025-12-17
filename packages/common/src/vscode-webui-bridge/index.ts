@@ -51,6 +51,7 @@ export {
   prefixTaskDisplayId,
   prefixWorktreeName,
   getTaskDisplayTitle,
+  WorktreePrefix,
 } from "./task-utils";
 
 const isPochiDev = process.env.POCHI_LOCAL_SERVER === "true";
