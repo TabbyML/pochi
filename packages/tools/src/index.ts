@@ -28,8 +28,10 @@ import { editNotebook } from "./edit-notebook";
 import { killBackgroundJob } from "./kill-background-job";
 import { readBackgroundJobOutput } from "./read-background-job-output";
 import { createReadFileTool } from "./read-file";
+import { readPlan } from "./read-plan";
 import { startBackgroundJob } from "./start-background-job";
 import { writeToFile } from "./write-to-file";
+import { writeToPlan } from "./write-to-plan";
 
 export {
   CustomAgent,
@@ -78,6 +80,8 @@ export const ToolsByPermission = {
   ] as string[],
   write: [
     "writeToFile",
+    "writeToPlan",
+    "readPlan",
     "applyDiff",
     "editNotebook",
   ] satisfies ToolName[] as string[],
@@ -103,6 +107,8 @@ const createCliTools = (options?: CreateToolOptions) => ({
   searchFiles,
   todoWrite,
   writeToFile,
+  writeToPlan,
+  readPlan,
   editNotebook,
   newTask: createNewTaskTool(options?.customAgents),
 });

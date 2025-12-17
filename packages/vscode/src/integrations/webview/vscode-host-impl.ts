@@ -31,10 +31,12 @@ import { killBackgroundJob } from "@/tools/kill-background-job";
 import { listFiles as listFilesTool } from "@/tools/list-files";
 import { readBackgroundJobOutput } from "@/tools/read-background-job-output";
 import { readFile } from "@/tools/read-file";
+import { readPlan } from "@/tools/read-plan";
 import { searchFiles } from "@/tools/search-files";
 import { startBackgroundJob } from "@/tools/start-background-job";
 import { todoWrite } from "@/tools/todo-write";
 import { previewWriteToFile, writeToFile } from "@/tools/write-to-file";
+import { writeToPlan } from "@/tools/write-to-plan";
 import type { Environment, GitStatus } from "@getpochi/common";
 import type { UserInfo } from "@getpochi/common/configuration";
 import { getWorktreeNameFromWorktreePath } from "@getpochi/common/git-utils";
@@ -376,6 +378,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         toolCallId: string;
         abortSignal: ThreadAbortSignalSerialization;
         contentType?: string[];
+        taskId?: string;
       },
     ) => {
       let tool: ToolFunctionType<Tool> | undefined;
@@ -408,6 +411,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
           toolCallId: options.toolCallId,
           cwd: this.cwd,
           contentType: options.contentType,
+          taskId: options.taskId,
         }),
       );
 
@@ -989,6 +993,8 @@ const ToolMap: Record<
   applyDiff,
   todoWrite,
   editNotebook,
+  writeToPlan,
+  readPlan,
 };
 
 const ToolPreviewMap: Record<
