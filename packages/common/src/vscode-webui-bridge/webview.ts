@@ -165,7 +165,7 @@ export interface VSCodeHostApi {
 
   readCurrentWorkspace(): Promise<{
     cwd: string | null;
-    workspaceFolder: string | null;
+    workspacePath: string | null;
   }>;
 
   readCustomAgents(): Promise<ThreadSignalSerialization<CustomAgentFile[]>>;

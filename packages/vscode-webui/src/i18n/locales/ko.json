@@ -5,6 +5,10 @@
     "account": "계정",
     "help": "도움말"
   },
+  "error": {
+    "somethingWentWrong": "문제가 발생했습니다",
+    "reloadWindow": "창 새로고침"
+  },
   "placeholder": {
     "title": "무엇을 도와드릴까요?",
     "subtitle": "Pochi는 AI로 구동되므로 오류가 발생할 수 있습니다.",

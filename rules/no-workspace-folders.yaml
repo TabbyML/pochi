@@ -14,7 +14,6 @@ ignores:
   - "packages/vscode/src/lib/workspace-job.ts"
   - "packages/vscode/src/nes/contexts.ts"
   - "packages/vscode/src/integrations/git/worktree.ts"
-  - "packages/vscode/src/integrations/webview/vscode-host-impl.ts"
   - "packages/vscode/src/lib/workspace-scoped.ts"
 files:
   - "packages/vscode/src/**/*.ts"

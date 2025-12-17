@@ -5,6 +5,10 @@
     "account": "账户",
     "help": "帮助"
   },
+  "error": {
+    "somethingWentWrong": "出错了",
+    "reloadWindow": "重新加载窗口"
+  },
   "placeholder": {
     "title": "我能帮您实现什么？",
     "subtitle": "Pochi 由 AI 驱动，可能会出现错误。",

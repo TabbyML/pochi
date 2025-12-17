@@ -5,6 +5,10 @@
     "account": "Account",
     "help": "Help"
   },
+  "error": {
+    "somethingWentWrong": "Something went wrong",
+    "reloadWindow": "Reload Window"
+  },
   "placeholder": {
     "title": "What can I help you ship?",
     "subtitle": "Pochi is powered by AI, so errors may occur.",
