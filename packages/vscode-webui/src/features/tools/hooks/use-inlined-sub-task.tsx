@@ -14,7 +14,7 @@ export function useInlinedSubTask(
 
   const { todos } = useTodos({
     initialTodos: subtask?.todos as Readonly<Todo[]> | undefined,
-    messages: subtask?.messages as Message[],
+    messages: (subtask?.messages ?? []) as Message[],
     todosRef,
   });
 
