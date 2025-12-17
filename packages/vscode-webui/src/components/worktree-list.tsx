@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/tooltip";
 import { useSelectedModels } from "@/features/settings";
 import { useCurrentWorkspace } from "@/lib/hooks/use-current-workspace";
+import { usePaginatedTasks } from "@/lib/hooks/use-paginated-tasks";
 import { usePochiTabs } from "@/lib/hooks/use-pochi-tabs";
 import { useWorktrees } from "@/lib/hooks/use-worktrees";
 import { cn } from "@/lib/utils";
@@ -77,11 +78,11 @@ interface WorktreeGroup {
 }
 
 export function WorktreeList({
-  tasks,
+  cwd,
   onDeleteWorktree,
   deletingWorktreePaths,
 }: {
-  tasks: readonly Task[];
+  cwd: string;
   deletingWorktreePaths: Set<string>;
   onDeleteWorktree: (worktreePath: string) => void;
 }) {
@@ -103,7 +104,7 @@ export function WorktreeList({
 
     const defaultWorktree: GitWorktree = {
       commit: "",
-      path: currentWorkspace?.workspacePath ?? "",
+      path: currentWorkspace?.workspacePath ?? cwd,  
       isMain: true,
     };
 
@@ -112,97 +113,47 @@ export function WorktreeList({
         ? [defaultWorktree]
         : worktrees;
 
-    const worktreeMap = new Map(allWorktrees.map((wt) => [wt.path, wt]));
     const worktreeIndexMap = new Map(
       allWorktrees.map((wt, index) => [wt.path, index]),
     );
 
-    // 1. Group tasks by cwd (worktree path)
-    const taskGroups = R.pipe(
-      tasks,
-      R.filter((task) => !!task.cwd),
-      R.groupBy((task) => task.cwd as string),
-      R.mapValues((tasks, path) => {
-        const latestTask = R.pipe(
-          tasks,
-          R.sortBy([(task) => new Date(task.createdAt).getTime(), "desc"]),
-          R.first(),
-        );
-        return {
-          path,
-          tasks,
-          createdAt: latestTask ? new Date(latestTask.createdAt).getTime() : 0,
-        };
-      }),
-    );
-
-    // 2. Create groups for worktrees without tasks
-    const worktreeGroups = R.pipe(
-      allWorktrees,
-      R.filter((wt) => !taskGroups[wt.path]),
-      R.map((wt) => ({
-        path: wt.path,
-        tasks: [],
-        createdAt: 0,
-      })),
-      R.groupBy((g) => g.path),
-      R.mapValues((groups) => groups[0]),
-    );
-
-    // 3. Merge and resolve names/isDeleted
+    // Create groups for all worktrees (tasks will be fetched per-worktree)
     return R.pipe(
-      { ...taskGroups, ...worktreeGroups },
-      R.values(),
-      R.map((group): WorktreeGroup => {
-        const wt = worktreeMap.get(group.path);
+      allWorktrees,
+      R.map((wt): WorktreeGroup => {
         let name = "unknown";
-        let isDeleted = true;
-        let isMain = false;
+        const isDeleted = false;
+        const isMain = wt.isMain;
 
-        if (wt) {
-          isDeleted = false;
-          isMain = wt.isMain;
-          if (wt.isMain) {
-            name = "workspace";
-          } else {
-            name = getWorktreeNameFromWorktreePath(wt.path) || "unknown";
-          }
+        if (wt.isMain) {
+          name = "workspace";
         } else {
-          name = getWorktreeNameFromWorktreePath(group.path) || "unknown";
+          name = getWorktreeNameFromWorktreePath(wt.path) || "unknown";
         }
 
         return {
-          ...group,
+          path: wt.path,
+          tasks: [], // Tasks will be fetched by WorktreeSection
+          createdAt: 0,
           name,
           isDeleted,
           isMain,
-          branch: wt?.branch,
-          data: wt?.data,
+          branch: wt.branch,
+          data: wt.data,
         };
       }),
       R.sort((a, b) => {
-        // Sort: Existing first, then deleted
-        if (a.isDeleted !== b.isDeleted) {
-          return a.isDeleted ? 1 : -1;
-        }
-
-        if (!a.isDeleted) {
-          const indexA =
-            worktreeIndexMap.get(a.path) ?? Number.POSITIVE_INFINITY;
-          const indexB =
-            worktreeIndexMap.get(b.path) ?? Number.POSITIVE_INFINITY;
-          return indexA - indexB;
-        }
-
-        return a.name.localeCompare(b.name);
+        const indexA = worktreeIndexMap.get(a.path) ?? Number.POSITIVE_INFINITY;
+        const indexB = worktreeIndexMap.get(b.path) ?? Number.POSITIVE_INFINITY;
+        return indexA - indexB;
       }),
     );
   }, [
-    tasks,
     worktrees,
     isLoadingWorktrees,
     isLoadingCurrentWorkspace,
-    currentWorkspace,
+    currentWorkspace?.cwd,
+    cwd,
   ]);
 
   // Apply optimistic deletion: filter out items being deleted
@@ -290,8 +241,17 @@ function WorktreeSection({
   const [isHovered, setIsHovered] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const pochiTasks = usePochiTabs();
+  const { tasks, hasMore, loadMore } = usePaginatedTasks({
+    cwd: group.path,
+    pageSize: 10,
+  });
 
   const pullRequest = group.data?.github?.pullRequest;
+  const hasEdit = tasks.some(
+    (task) =>
+      task.lineChanges &&
+      (task.lineChanges?.added !== 0 || task.lineChanges?.removed !== 0),
+  );
 
   const prUrl = useMemo(() => {
     if (!gitOriginUrl || !pullRequest?.id) return "#";
@@ -349,7 +309,7 @@ function WorktreeSection({
                 prUrl={prUrl}
                 prChecks={pullRequest.checks}
               />
-            ) : !group.isDeleted ? (
+            ) : hasEdit && !group.isDeleted ? (
               <CreatePrDropdown
                 worktreePath={group.path}
                 branch={group.branch}
@@ -491,14 +451,28 @@ function WorktreeSection({
 
       <CollapsibleContent>
         <ScrollArea viewportClassname="max-h-[230px] px-1 py-1">
-          {group.tasks.length > 0 ? (
-            group.tasks.map((task) => {
-              return (
-                <div key={task.id} className="py-0.5">
-                  <TaskRow task={task} state={pochiTasks[task.id]} />
+          {tasks.length > 0 ? (
+            <>
+              {tasks.map((task) => {
+                return (
+                  <div key={task.id} className="py-0.5">
+                    <TaskRow task={task} state={pochiTasks[task.id]} />
+                  </div>
+                );
+              })}
+              {hasMore && (
+                <div className="py-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full text-muted-foreground text-xs hover:text-foreground"
+                    onClick={loadMore}
+                  >
+                    Load more
+                  </Button>
                 </div>
-              );
-            })
+              )}
+            </>
           ) : (
             <div className="py-0.5 text-muted-foreground text-xs">
               {t("tasksPage.emptyState.description")}
@@ -745,3 +719,4 @@ function PrStatusDisplay({
     </div>
   );
 }
+

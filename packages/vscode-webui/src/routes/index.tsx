@@ -10,12 +10,9 @@ import { useUserStorage } from "@/lib/hooks/use-user-storage";
 import { useOptimisticWorktreeDelete } from "@/lib/hooks/use-worktrees";
 import { setActiveStore } from "@/lib/vscode";
 import type { GitWorktree } from "@getpochi/common/vscode-webui-bridge";
-import { taskCatalog } from "@getpochi/livekit";
 import { useStore } from "@livestore/react";
 import { createFileRoute } from "@tanstack/react-router";
-import { TerminalIcon } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useTranslation } from "react-i18next";
 import { LiveStoreTaskProvider } from "../livestore-task-provider";
 
 export const Route = createFileRoute("/")({
@@ -62,8 +59,6 @@ function Tasks() {
   const { data: currentWorkspace } = useCurrentWorkspace();
   const cwd = currentWorkspace?.cwd || "default";
   const workspaceFolder = currentWorkspace?.workspacePath;
-  // Fetch all tasks
-  const tasks = store.useQuery(taskCatalog.queries.makeTasksQuery(cwd));
 
   useEffect(() => {
     setActiveStore(store);
@@ -100,37 +95,17 @@ function Tasks() {
           deletingWorktreePaths={deletingWorktreePaths}
         />
       </div>
-      {tasks.length === 0 ? (
-        <EmptyTaskPlaceholder />
-      ) : (
-        <div className="min-h-0 flex-1 pt-4">
-          <ScrollArea className="h-full">
-            <div className="flex flex-col gap-4 px-4 pb-6">
-              <WorktreeList
-                deletingWorktreePaths={deletingWorktreePaths}
-                tasks={tasks}
-                onDeleteWorktree={onDeleteWorktree}
-              />
-            </div>
-          </ScrollArea>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function EmptyTaskPlaceholder() {
-  const { t } = useTranslation();
-
-  return (
-    <div className="flex h-full select-none flex-col items-center justify-center p-5 text-center text-gray-500 dark:text-gray-300">
-      <h2 className="mb-2 flex items-center gap-3 font-semibold text-2xl text-gray-700 dark:text-gray-100">
-        <TerminalIcon />
-        {t("tasksPage.emptyState.title")}
-      </h2>
-      <p className="mb-4 leading-relaxed">
-        {t("tasksPage.emptyState.description")}
-      </p>
+      <div className="min-h-0 flex-1 pt-4">
+        <ScrollArea className="h-full">
+          <div className="flex flex-col gap-4 px-4 pb-6">
+            <WorktreeList
+              cwd={cwd}
+              deletingWorktreePaths={deletingWorktreePaths}
+              onDeleteWorktree={onDeleteWorktree}
+            />
+          </div>
+        </ScrollArea>
+      </div>
     </div>
   );
 }
