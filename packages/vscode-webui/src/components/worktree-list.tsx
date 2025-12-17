@@ -26,6 +26,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useSelectedModels } from "@/features/settings";
+import { asyncDebounce } from "@/lib/debounce";
 import { useCurrentWorkspace } from "@/lib/hooks/use-current-workspace";
 import { usePochiTabs } from "@/lib/hooks/use-pochi-tabs";
 import { useWorktrees } from "@/lib/hooks/use-worktrees";
@@ -60,7 +61,6 @@ import * as R from "remeda";
 import { TaskRow } from "./task-row";
 import { ScrollArea } from "./ui/scroll-area";
 import { Skeleton } from "./ui/skeleton";
-
 interface PrCheck {
   name: string;
   state: string;
@@ -249,7 +249,7 @@ export function WorktreeList({
     </div>
   );
 }
-const pageSize = 5;
+const pageSize = 10;
 
 function WorktreeSection({
   cwd,
@@ -271,7 +271,6 @@ function WorktreeSection({
   // Default expanded for existing worktrees, collapsed for deleted
   const [isExpanded, setIsExpanded] = useState(!group.isDeleted);
   const [isHovered, setIsHovered] = useState(false);
-  const loading = useRef(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(true);
   const [pageLength, setPageLength] = useState(0);
   // Fetch paginated tasks with filtering
@@ -287,17 +286,14 @@ function WorktreeSection({
     [countResult, tasks],
   );
 
-  useEffect(() => {
-    if (tasks.length) {
-      loading.current = false;
-    }
-  }, [tasks]);
-
-  const loadMore = useCallback(() => {
-    if (loading.current || !hasMore) return;
-    loading.current = true;
+  const loadMore = useCallback(async () => {
+    if (!hasMore) return;
     setPageLength(tasks.length);
   }, [tasks, hasMore]);
+  const debouncedLoadMore = useMemo(
+    () => asyncDebounce(loadMore, 500),
+    [loadMore],
+  );
 
   const pochiTasks = usePochiTabs();
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -309,7 +305,7 @@ function WorktreeSection({
       (entries) => {
         const [entry] = entries;
         if (entry.isIntersecting) {
-          loadMore();
+          debouncedLoadMore();
         }
       },
       {
@@ -326,7 +322,7 @@ function WorktreeSection({
         observer.unobserve(sentinelRef.current);
       }
     };
-  }, [hasMore, loadMore]);
+  }, [hasMore, debouncedLoadMore]);
 
   const pullRequest = group.data?.github?.pullRequest;
 
