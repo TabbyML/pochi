@@ -61,7 +61,7 @@
   },
   "worktreeSelect": {
     "selectWorktree": "Select Worktree",
-    "createWorktree": "Create Git worktree",
+    "createWorktree": "New worktree",
     "createWorktreeDescription": "Start task in a new Git worktree"
   },
   "worktree": {

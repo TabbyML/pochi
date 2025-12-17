@@ -367,8 +367,8 @@ prunable gitdir file points to non-existent location
         prompt: "create feature",
       });
 
-      assert.ok(result.branchName.startsWith("branch/"));
-      assert.ok(result.worktreePath.startsWith("/path/to/worktrees/branch-"));
+      assert.ok(result.branchName.startsWith("worktree/"));
+      assert.ok(result.worktreePath.startsWith("/path/to/worktrees/worktree-"));
     });
 
     it("should fallback to timestamp if generation fails", async () => {
@@ -394,8 +394,8 @@ prunable gitdir file points to non-existent location
         prompt: "create feature",
       });
 
-      assert.ok(result.branchName.startsWith("branch/"));
-      assert.ok(result.worktreePath.startsWith("/path/to/worktrees/branch-"));
+      assert.ok(result.branchName.startsWith("worktree/"));
+      assert.ok(result.worktreePath.startsWith("/path/to/worktrees/worktree-"));
     });
 
     it("should use workspace folder parent for worktree path if no worktrees", async () => {
