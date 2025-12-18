@@ -102,7 +102,6 @@ function Tasks() {
           deletingWorktreePaths={deletingWorktreePaths}
         />
       </div>
-      {}
       {allTaskCount[0]?.total === 0 ? (
         <EmptyTaskPlaceholder />
       ) : (
