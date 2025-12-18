@@ -490,15 +490,17 @@ function WorktreeSection({
       </div>
 
       <CollapsibleContent>
-        <ScrollArea viewportClassname="max-h-[230px] px-1 py-1">
+        <ScrollArea viewportClassname="max-h-[250px] px-1 py-1">
           {group.tasks.length > 0 ? (
-            group.tasks.map((task) => {
-              return (
-                <div key={task.id} className="py-0.5">
-                  <TaskRow task={task} state={pochiTasks[task.id]} />
-                </div>
-              );
-            })
+            <div className="space-y-2">
+              {group.tasks.map((task) => {
+                return (
+                  <div key={task.id}>
+                    <TaskRow task={task} state={pochiTasks[task.id]} />
+                  </div>
+                );
+              })}
+            </div>
           ) : (
             <div className="py-0.5 text-muted-foreground text-xs">
               {t("tasksPage.emptyState.description")}
