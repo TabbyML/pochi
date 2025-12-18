@@ -32,7 +32,7 @@ export const makeTasksQuery = (cwd: string, limit = 10, path = "") => {
 export const makeTasksCountQuery = (cwd: string, path = "") => {
   let filterCondition = "";
   if (path) {
-    filterCondition = `and (git->>'$.worktree.gitdir' = '${path}/.git')`;
+    filterCondition = `and (cwd = '${path}')`;
   }
 
   return queryDb(
