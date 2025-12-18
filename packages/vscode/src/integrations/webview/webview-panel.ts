@@ -179,7 +179,6 @@ export class PochiTaskEditorProvider
         params,
       };
       const uri = PochiTaskEditorProvider.createTaskUri(taskInfo);
-      logger.debug("setTaskInfo", taskInfo, new Error().stack);
       PochiTaskEditorProvider.taskInfo.set(uri.toString(), taskInfo);
       await openTaskInColumn(uri);
     } catch (error) {

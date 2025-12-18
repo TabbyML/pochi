@@ -35,40 +35,6 @@ export type PochiEditorInfo = {
   params: PochiEditorParams;
 };
 
-// export interface TaskIdParams {
-//   uid: string;
-//   storeId?: string;
-
-//   // for open task from website
-//   prompt?: string;
-//   files?: FileUIPart[];
-//   /**
-//    * JSON string representing an array of messages to init the task.
-//    */
-//   initMessages?: string;
-
-//   initTitle?: string;
-
-//   /**
-//    * Disable auto start for the task
-//    */
-//   disablePendingModelAutoStart?: boolean;
-// }
-
-// export interface TaskPanelParams extends TaskIdParams {
-//   cwd: string;
-//   displayId?: number;
-// }
-
-// export interface NewTaskParams {
-//   prompt?: string;
-//   files?: FileUIPart[];
-// }
-
-// export interface NewTaskPanelParams extends NewTaskParams {
-//   cwd: string;
-// }
-
 /**
  * only include fields that are used in the webview and node process
  */
