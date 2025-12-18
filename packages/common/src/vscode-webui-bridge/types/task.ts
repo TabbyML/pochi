@@ -4,7 +4,7 @@ export type FileUIPart = {
   url: string;
 };
 
-export type PochiEditorParams = { cwd: string } & (
+export type PochiTaskParams = { cwd: string } & (
   | {
       type: "new-task";
       uid?: string;
@@ -33,11 +33,11 @@ type DistributiveOmit<T, K extends PropertyKey> = T extends any
   ? Omit<T, K>
   : never;
 
-export type PochiEditorInfo = {
+export type PochiTaskInfo = {
   uid: string;
   displayId: number | null;
   cwd: string;
-  params: DistributiveOmit<PochiEditorParams, "uid" | "displayId" | "cwd">;
+  params: DistributiveOmit<PochiTaskParams, "uid" | "displayId" | "cwd">;
 };
 
 /**

@@ -22,15 +22,15 @@ export const Route = createFileRoute("/task")({
 
 function RouteComponent() {
   const searchParams = Route.useSearch();
-  let params: typeof window.POCHI_TASK_PARAMS;
-  if (window.POCHI_WEBVIEW_KIND === "pane" && window.POCHI_TASK_PARAMS) {
+  let params: typeof window.POCHI_TASK_INFO;
+  if (window.POCHI_WEBVIEW_KIND === "pane" && window.POCHI_TASK_INFO) {
     if (params?.uid !== searchParams.uid) {
-      params = window.POCHI_TASK_PARAMS;
+      params = window.POCHI_TASK_INFO;
     } else {
       params = {
         uid: searchParams.uid,
         displayId: null,
-        cwd: window.POCHI_TASK_PARAMS.cwd,
+        cwd: window.POCHI_TASK_INFO.cwd,
         params: {
           type: "open-task",
         },

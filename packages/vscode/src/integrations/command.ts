@@ -24,7 +24,7 @@ import {
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { McpHub } from "@getpochi/common/mcp-utils";
 import { getVendor } from "@getpochi/common/vendor";
-import type { PochiEditorParams } from "@getpochi/common/vscode-webui-bridge";
+import type { PochiTaskParams } from "@getpochi/common/vscode-webui-bridge";
 import { getServerBaseUrl } from "@getpochi/common/vscode-webui-bridge";
 import { inject, injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
@@ -69,7 +69,7 @@ export class CommandManager implements vscode.Disposable {
     progress: vscode.Progress<{ message?: string; increment?: number }>,
     workspaceUri: vscode.Uri,
     githubTemplateUrl: string | undefined,
-    openTaskParams: PochiEditorParams,
+    openTaskParams: PochiTaskParams,
     requestId?: string,
   ) {
     if (githubTemplateUrl) {

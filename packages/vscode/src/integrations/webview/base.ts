@@ -5,7 +5,7 @@ import { getUri } from "@/lib/get-uri";
 import { getLogger } from "@getpochi/common";
 import { getCorsProxyPort } from "@getpochi/common/cors-proxy";
 import type {
-  PochiEditorInfo,
+  PochiTaskInfo,
   ResourceURI,
   SessionState,
   VSCodeHostApi,
@@ -77,7 +77,7 @@ export abstract class WebviewBase implements vscode.Disposable {
   protected getHtmlForWebview(
     webview: vscode.Webview,
     kind: "sidebar" | "pane",
-    info?: PochiEditorInfo,
+    info?: PochiTaskInfo,
   ): string {
     const isProd =
       this.context.extensionMode === vscode.ExtensionMode.Production;
@@ -100,7 +100,7 @@ export abstract class WebviewBase implements vscode.Disposable {
       window.POCHI_CORS_PROXY_PORT = "${getCorsProxyPort()}";
       window.POCHI_LOG = "${this.pochiConfiguration.advancedSettings.value.webviewLogLevel || ""}";
       window.POCHI_WEBVIEW_KIND = "${kind}";
-      ${info ? `window.POCHI_TASK_PARAMS = ${JSON.stringify(info)};` : ""}
+      ${info ? `window.POCHI_TASK_INFO = ${JSON.stringify(info)};` : ""}
     </script>`;
 
     if (isProd) {

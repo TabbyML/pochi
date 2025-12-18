@@ -57,7 +57,7 @@ import {
   type GitWorktree,
   type GithubIssue,
   type PochiCredentials,
-  type PochiEditorParams,
+  type PochiTaskParams,
   type ResourceURI,
   type RuleFile,
   type SaveCheckpointOptions,
@@ -817,7 +817,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     return ThreadSignal.serialize(this.userStorage.users);
   };
 
-  openTaskInPanel = async (params: PochiEditorParams): Promise<void> => {
+  openTaskInPanel = async (params: PochiTaskParams): Promise<void> => {
     await PochiTaskEditorProvider.openTaskEditor(params);
   };
 

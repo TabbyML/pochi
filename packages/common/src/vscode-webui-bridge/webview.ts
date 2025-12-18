@@ -9,7 +9,7 @@ import type {
   FileDiff,
   GitWorktree,
   McpStatus,
-  PochiEditorParams,
+  PochiTaskParams,
   ResourceURI,
   RuleFile,
   SaveCheckpointOptions,
@@ -305,7 +305,7 @@ export interface VSCodeHostApi {
   /**
    * create or open a task in a new panel
    */
-  openTaskInPanel(params: PochiEditorParams): Promise<void>;
+  openTaskInPanel(params: PochiTaskParams): Promise<void>;
 
   sendTaskNotification(
     kind: "failed" | "completed" | "pending-tool" | "pending-input",

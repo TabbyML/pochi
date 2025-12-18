@@ -63,7 +63,7 @@ export function ChatPage(props: ChatProps) {
 interface ChatProps {
   uid: string;
   user?: UserInfo;
-  info: NonNullable<typeof window.POCHI_TASK_PARAMS>;
+  info: NonNullable<typeof window.POCHI_TASK_INFO>;
 }
 
 function Chat({ user, uid, info }: ChatProps) {
