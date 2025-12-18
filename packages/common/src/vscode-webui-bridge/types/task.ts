@@ -28,11 +28,16 @@ export type PochiEditorParams = { cwd: string } & (
     }
 );
 
+// biome-ignore lint/suspicious/noExplicitAny: type hint
+type DistributiveOmit<T, K extends PropertyKey> = T extends any
+  ? Omit<T, K>
+  : never;
+
 export type PochiEditorInfo = {
   uid: string;
   displayId: number | null;
   cwd: string;
-  params: PochiEditorParams;
+  params: DistributiveOmit<PochiEditorParams, "uid" | "displayId" | "cwd">;
 };
 
 /**

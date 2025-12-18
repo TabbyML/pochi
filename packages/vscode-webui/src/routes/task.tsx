@@ -30,12 +30,9 @@ function RouteComponent() {
       params = {
         uid: searchParams.uid,
         displayId: null,
-        cwd: window.POCHI_TASK_PARAMS.params.cwd,
+        cwd: window.POCHI_TASK_PARAMS.cwd,
         params: {
-          cwd: window.POCHI_TASK_PARAMS.params.cwd,
           type: "open-task",
-          uid: searchParams.uid,
-          displayId: null,
         },
       };
     }

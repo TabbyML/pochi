@@ -66,7 +66,7 @@ export class PochiWebviewPanel
       info,
     );
     this.setupAuthEventListeners();
-    this.setupFileWatcher(info.params.cwd);
+    this.setupFileWatcher(info.cwd);
 
     // Listen to panel events
     this.panel.onDidDispose(() => this.dispose(), null, this.disposables);
@@ -292,8 +292,7 @@ export class PochiTaskEditorProvider
     webviewPanel: vscode.WebviewPanel,
     info: PochiEditorInfo,
   ): Promise<PochiWebviewPanel> {
-    const cwd = info.params.cwd;
-    const uid = info.uid;
+    const { cwd, uid } = info;
     const workspaceContainer = workspaceScoped(cwd);
 
     const events = workspaceContainer.resolve(AuthEvents);
