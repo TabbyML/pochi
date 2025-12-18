@@ -144,7 +144,11 @@ export class PochiTaskEditorProvider
     return vscode.Uri.from({
       scheme: PochiTaskEditorProvider.scheme,
       path: `/pochi/task/${displayName}`,
-      query: JSON.stringify(params), // keep query string stable for identification
+      query: JSON.stringify({
+        uid: params.uid,
+        displayId: params.displayId,
+        cwd: params.cwd,
+      } satisfies TaskUri), // keep query string stable for identification
     });
   }
 
