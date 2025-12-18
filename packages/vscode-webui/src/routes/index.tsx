@@ -62,8 +62,13 @@ function Tasks() {
   const { data: currentWorkspace } = useCurrentWorkspace();
   const cwd = currentWorkspace?.cwd || "default";
   const workspacePath = currentWorkspace?.workspacePath;
-  // Fetch all tasks
-  const tasks = store.useQuery(taskCatalog.queries.makeTasksQuery(cwd));
+
+  const { deleteWorktree, deletingWorktreePaths } =
+    useOptimisticWorktreeDelete();
+
+  const allTaskCount = store.useQuery(
+    taskCatalog.queries.makeTasksCountQuery(cwd),
+  );
 
   useEffect(() => {
     setActiveStore(store);
@@ -76,9 +81,6 @@ function Tasks() {
 
   const [userSelectedWorktree, setUserSelectedWorktree] =
     useState<CreateWorktreeType>();
-
-  const { deleteWorktree, deletingWorktreePaths } =
-    useOptimisticWorktreeDelete();
 
   const onDeleteWorktree = (wt: string) => {
     deleteWorktree(wt);
@@ -102,15 +104,15 @@ function Tasks() {
           deletingWorktreePaths={deletingWorktreePaths}
         />
       </div>
-      {tasks.length === 0 ? (
+      {allTaskCount[0]?.total === 0 ? (
         <EmptyTaskPlaceholder />
       ) : (
         <div className="min-h-0 flex-1 pt-4">
           <ScrollArea className="h-full">
             <div className="flex flex-col gap-4 px-4 pb-6">
               <WorktreeList
+                cwd={cwd}
                 deletingWorktreePaths={deletingWorktreePaths}
-                tasks={tasks}
                 onDeleteWorktree={onDeleteWorktree}
               />
             </div>
