@@ -271,7 +271,7 @@ function WorktreeSection({
   // Default expanded for existing worktrees, collapsed for deleted
   const [isExpanded, setIsExpanded] = useState(!group.isDeleted);
   const [isHovered, setIsHovered] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(true);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [pageLength, setPageLength] = useState(0);
   // Fetch paginated tasks with filtering
   const tasks = store.useQuery(
