@@ -12,7 +12,11 @@ import {
   useMemo,
 } from "react";
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
-import { ControlsContext, Streamdown } from "streamdown";
+import {
+  Streamdown,
+  StreamdownContext,
+  defaultRehypePlugins,
+} from "streamdown";
 import { CodeBlock } from "./code-block";
 import { customStripTagsPlugin } from "./custom-strip-tags-plugin";
 import "./markdown.css";
@@ -131,8 +135,17 @@ interface BlockCodeComponentProps {
   language?: string;
 }
 
+// https://github.com/vercel/streamdown/blob/1d86d8c17411c5452e4e00d95a13149371a19598/packages/streamdown/lib/components.tsx#L78
 const shouldShowControls = (
-  config: boolean | { table?: boolean; code?: boolean; mermaid?: boolean },
+  config:
+    | boolean
+    | {
+        table?: boolean;
+        code?: boolean;
+        mermaid?:
+          | boolean
+          | { download?: boolean; copy?: boolean; fullscreen?: boolean };
+      },
   type: "table" | "code" | "mermaid",
 ) => {
   if (typeof config === "boolean") {
@@ -147,7 +160,7 @@ function BlockCodeComponent({
   children,
   language = "",
 }: BlockCodeComponentProps) {
-  const controlsConfig = useContext(ControlsContext);
+  const controlsConfig = useContext(StreamdownContext).controls;
   const { t } = useTranslation();
 
   let value = String(children).replace(/\n$/, "");
@@ -359,6 +372,41 @@ export function MessageMarkdown({
     return replaceJobIdsInContent(result);
   }, [children, replaceJobIdsInContent]);
 
+  const rehypePlugins = useMemo(() => {
+    return Object.values({
+      stripTags: isMinimalView
+        ? undefined
+        : [
+            customStripTagsPlugin,
+            {
+              tagNames: CustomHtmlTags,
+            },
+          ],
+
+      ...defaultRehypePlugins,
+      sanitize: isMinimalView
+        ? undefined
+        : [
+            rehypeSanitize,
+            {
+              ...defaultSchema,
+              tagNames: [
+                ...(defaultSchema.tagNames || []),
+                ...CustomHtmlTags,
+                ...mathSanitizeConfig.tagNames,
+              ],
+              attributes: {
+                ...defaultSchema.attributes,
+                workflow: ["path", "id"],
+                "custom-agent": ["path", "id"],
+                issue: ["id", "url", "title"],
+                ...mathSanitizeConfig.attributes,
+              },
+            },
+          ],
+    } as typeof defaultRehypePlugins).filter((item) => item !== undefined);
+  }, [isMinimalView]);
+
   const components: Options["components"] = useMemo(() => {
     return {
       file: (props: FileComponentProps) => {
@@ -436,43 +484,8 @@ export function MessageMarkdown({
       )}
     >
       <Streamdown
-        // @ts-ignore patch api, not typed yet
-        rehypePluginsBefore={
-          isMinimalView
-            ? undefined
-            : [
-                [
-                  customStripTagsPlugin,
-                  {
-                    tagNames: CustomHtmlTags,
-                  },
-                ],
-              ]
-        }
-        rehypePlugins={
-          isMinimalView
-            ? undefined
-            : [
-                [
-                  rehypeSanitize,
-                  {
-                    ...defaultSchema,
-                    tagNames: [
-                      ...(defaultSchema.tagNames || []),
-                      ...CustomHtmlTags,
-                      ...mathSanitizeConfig.tagNames,
-                    ],
-                    attributes: {
-                      ...defaultSchema.attributes,
-                      workflow: ["path", "id"],
-                      "custom-agent": ["path", "id"],
-                      issue: ["id", "url", "title"],
-                      ...mathSanitizeConfig.attributes,
-                    },
-                  },
-                ],
-              ]
-        }
+        rehypePlugins={rehypePlugins}
+        // streamdown is patched (package.json:101) so that it don't bundle the CodeBlock(shiki, mermaid) component, which we import separately
         components={components}
         controls={{ code: !isMinimalView, table: false }}
       >

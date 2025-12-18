@@ -9,3 +9,4 @@ tsconfig.test.json
 *.vsix
 turbo.json
 .turbo/**
+coverage/**
