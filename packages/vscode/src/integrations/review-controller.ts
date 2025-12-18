@@ -1,9 +1,11 @@
+// biome-ignore lint/style/useImportType: needed for dependency injection
+import { UserStorage } from "@/lib/user-storage";
 import type {
   Review,
   ReviewComment,
 } from "@getpochi/common/vscode-webui-bridge";
 import { signal } from "@preact/signals-core";
-import { injectable, singleton } from "tsyringe";
+import { inject, injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
 
 export type Comment = vscode.Comment & {
@@ -27,7 +29,11 @@ export class ReviewController implements vscode.Disposable {
 
   private editingBackup = new Map<string, string | vscode.MarkdownString>();
 
-  constructor() {
+  constructor(
+    @inject("vscode.ExtensionContext")
+    private readonly context: vscode.ExtensionContext,
+    private readonly userStorage: UserStorage,
+  ) {
     this.controller = vscode.comments.createCommentController(
       "pochi-comments",
       "Pochi Comments",
@@ -73,7 +79,7 @@ export class ReviewController implements vscode.Disposable {
         {
           id: crypto.randomUUID(),
           body: text,
-          author: mockUser,
+          author: this.getAuthor(),
           mode: vscode.CommentMode.Preview,
         },
       ];
@@ -85,7 +91,7 @@ export class ReviewController implements vscode.Disposable {
         {
           id: crypto.randomUUID(),
           body: text,
-          author: mockUser,
+          author: this.getAuthor(),
           mode: vscode.CommentMode.Preview,
         },
       ];
@@ -139,6 +145,17 @@ export class ReviewController implements vscode.Disposable {
     this.updateSignal();
   }
 
+  private getAuthor() {
+    const user = this.userStorage.users.value.pochi;
+    return {
+      name: user.name || "You",
+      iconPath: vscode.Uri.parse(
+        user.image ||
+          `https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(this.context.extension.id)}&scale=120`,
+      ),
+    };
+  }
+
   dispose() {
     for (const disposable of this.disposables) {
       disposable.dispose();
@@ -173,10 +190,3 @@ function toReviewComment(c: Comment): ReviewComment {
     },
   };
 }
-
-const mockUser = {
-  name: "User",
-  iconPath: vscode.Uri.parse(
-    "https://avatars.githubusercontent.com/u/10137?v=4", // github ghost
-  ),
-};
