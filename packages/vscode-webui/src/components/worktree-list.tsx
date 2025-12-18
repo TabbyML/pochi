@@ -490,7 +490,7 @@ function WorktreeSection({
       </div>
 
       <CollapsibleContent>
-        <ScrollArea viewportClassname="max-h-[250px] px-1 py-1 space-y-1">
+        <ScrollArea viewportClassname="max-h-[250px] px-1 py-1">
           {group.tasks.length > 0 ? (
             <div className="space-y-2">
               {group.tasks.map((task) => {
