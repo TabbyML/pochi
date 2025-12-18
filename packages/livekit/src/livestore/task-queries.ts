@@ -4,7 +4,7 @@ import { tables } from "./default-schema";
 export const makeTasksQuery = (cwd: string, limit = 10, path = "") => {
   let filterCondition = "";
   if (path) {
-    filterCondition = `and (git->>'$.worktree.gitdir' = '${path}/.git')`;
+    filterCondition = `and (cwd = '${path}')`;
   }
 
   const queryStr = `
