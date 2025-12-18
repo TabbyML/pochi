@@ -249,7 +249,7 @@ export function WorktreeList({
     </div>
   );
 }
-const pageSize = 10;
+const PageSize = 10;
 
 function WorktreeSection({
   cwd,
@@ -275,7 +275,7 @@ function WorktreeSection({
   const [pageLength, setPageLength] = useState(0);
   // Fetch paginated tasks with filtering
   const tasks = store.useQuery(
-    taskCatalog.queries.makeTasksQuery(cwd, pageLength + pageSize, group.path),
+    taskCatalog.queries.makeTasksQuery(cwd, pageLength + PageSize, group.path),
   );
 
   const countResult = store.useQuery(
