@@ -310,17 +310,23 @@ function Chat({ user, uid, info }: ChatProps) {
     if (chatKit.inited || isFetchingWorkspace) return;
     const cwd = currentWorkspace?.cwd ?? undefined;
     if (info.type === "new-task") {
-      const files = info.files?.map((file) => ({
-        type: "file" as const,
-        filename: file.name,
-        mediaType: file.contentType,
-        url: file.url,
-      }));
+      if (info.files?.length) {
+        const files = info.files?.map((file) => ({
+          type: "file" as const,
+          filename: file.name,
+          mediaType: file.contentType,
+          url: file.url,
+        }));
 
-      chatKit.init(cwd, {
-        prompt: info.prompt,
-        parts: prepareMessageParts(t, info.prompt || "", files || []),
-      });
+        chatKit.init(cwd, {
+          prompt: info.prompt,
+          parts: prepareMessageParts(t, info.prompt || "", files || []),
+        });
+      } else if (info.prompt) {
+        chatKit.init(cwd, {
+          prompt: info.prompt,
+        });
+      }
     } else if (info.type === "compact-task") {
       chatKit.init(cwd, {
         messages: JSON.parse(info.messages),

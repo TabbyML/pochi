@@ -22,12 +22,12 @@ export const Route = createFileRoute("/task")({
 
 function RouteComponent() {
   const searchParams = Route.useSearch();
-  let params: typeof window.POCHI_TASK_INFO;
+  let info: typeof window.POCHI_TASK_INFO;
   if (window.POCHI_WEBVIEW_KIND === "pane" && window.POCHI_TASK_INFO) {
-    if (params?.uid !== searchParams.uid) {
-      params = window.POCHI_TASK_INFO;
+    if (info?.uid !== searchParams.uid) {
+      info = window.POCHI_TASK_INFO;
     } else {
-      params = {
+      info = {
         uid: searchParams.uid,
         displayId: null,
         cwd: window.POCHI_TASK_INFO.cwd,
@@ -36,7 +36,7 @@ function RouteComponent() {
     }
   }
 
-  if (!params) {
+  if (!info) {
     throw new Error("task params not found");
   }
 
@@ -52,8 +52,8 @@ function RouteComponent() {
 
   const key = `task-${uid}`;
   let storeId = encodeStoreId(jwt, uid);
-  if (params?.type === "open-task" && params.storeId) {
-    storeId = params.storeId;
+  if (info?.type === "open-task" && info.storeId) {
+    storeId = info.storeId;
   } else if (searchParams.storeId) {
     storeId = searchParams.storeId;
   }
@@ -62,7 +62,7 @@ function RouteComponent() {
 
   return (
     <LiveStoreDefaultProvider jwt={jwt} storeId={storeId}>
-      <ChatPage key={key} user={users?.pochi} uid={uid} info={params} />
+      <ChatPage key={key} user={users?.pochi} uid={uid} info={info} />
     </LiveStoreDefaultProvider>
   );
 }
