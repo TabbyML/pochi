@@ -1039,7 +1039,11 @@ async function showDiff(displayFiles: GitDiff[], title: string, cwd: string) {
         content: file.before ?? "",
         cwd: cwd ?? "",
       }),
-      vscode.Uri.joinPath(vscode.Uri.parse(cwd ?? ""), file.filepath),
+      DiffChangesContentProvider.decode({
+        filepath: file.filepath,
+        content: file.after ?? "",
+        cwd: cwd ?? "",
+      }),
     ]),
   );
   return true;

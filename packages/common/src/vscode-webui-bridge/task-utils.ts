@@ -1,4 +1,4 @@
-const WorktreePrefix = "⎇";
+export const WorktreePrefix = "⎇";
 export const prefixWorktreeName = (name: string) => `${WorktreePrefix} ${name}`;
 export const prefixTaskDisplayId = (displayId: number) =>
   `${String(displayId).padStart(3, "0")}`;

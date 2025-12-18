@@ -2,6 +2,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { WelcomeScreen } from "@/components/welcome-screen";
 import { WorkspaceRequiredPlaceholder } from "@/components/workspace-required-placeholder";
 import { WorktreeList } from "@/components/worktree-list";
+import type { CreateWorktreeType } from "@/components/worktree-select";
 import { CreateTaskInput } from "@/features/chat";
 import { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
 import { useCurrentWorkspace } from "@/lib/hooks/use-current-workspace";
@@ -9,7 +10,6 @@ import { useModelList } from "@/lib/hooks/use-model-list";
 import { useUserStorage } from "@/lib/hooks/use-user-storage";
 import { useOptimisticWorktreeDelete } from "@/lib/hooks/use-worktrees";
 import { setActiveStore } from "@/lib/vscode";
-import type { GitWorktree } from "@getpochi/common/vscode-webui-bridge";
 import { taskCatalog } from "@getpochi/livekit";
 import { useStore } from "@livestore/react";
 import { createFileRoute } from "@tanstack/react-router";
@@ -79,13 +79,15 @@ function Tasks() {
 
   const attachmentUpload = useAttachmentUpload();
 
-  const [userSelectedWorktree, setUserSelectedWorktree] = useState<
-    GitWorktree | undefined
-  >();
+  const [userSelectedWorktree, setUserSelectedWorktree] =
+    useState<CreateWorktreeType>();
 
   const onDeleteWorktree = (wt: string) => {
     deleteWorktree(wt);
-    if (userSelectedWorktree?.path === wt) {
+    if (
+      typeof userSelectedWorktree !== "string" &&
+      userSelectedWorktree?.path === wt
+    ) {
       setUserSelectedWorktree(undefined);
     }
   };
@@ -95,7 +97,7 @@ function Tasks() {
       <div className="w-full px-4 pt-3">
         <CreateTaskInput
           cwd={cwd}
-          workspaceFolder={workspaceFolder}
+          workspacePath={workspacePath}
           attachmentUpload={attachmentUpload}
           userSelectedWorktree={userSelectedWorktree}
           setUserSelectedWorktree={setUserSelectedWorktree}

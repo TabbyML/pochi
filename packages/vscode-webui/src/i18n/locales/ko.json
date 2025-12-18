@@ -61,7 +61,7 @@
   },
   "worktreeSelect": {
     "selectWorktree": "워크트리 선택",
-    "createWorktree": "Git 워크트리 생성",
+    "createWorktree": "새 워크트리",
     "createWorktreeDescription": "새 Git 워크트리에서 작업 시작"
   },
   "worktree": {
