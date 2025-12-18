@@ -15,6 +15,6 @@ ignores:
   - "packages/vscode/src/nes/contexts.ts"
   - "packages/vscode/src/integrations/git/worktree.ts"
   - "packages/vscode/src/lib/workspace-scoped.ts"
-  - "packages/vscode/src/integrations/comment-controller.ts"
+  - "packages/vscode/src/integrations/review-controller.ts"
 files:
   - "packages/vscode/src/**/*.ts"

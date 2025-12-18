@@ -29,12 +29,6 @@ import { getServerBaseUrl } from "@getpochi/common/vscode-webui-bridge";
 import { inject, injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
 // biome-ignore lint/style/useImportType: needed for dependency injection
-import {
-  type Comment,
-  CommentController,
-  type Thread,
-} from "./comment-controller";
-// biome-ignore lint/style/useImportType: needed for dependency injection
 import { PochiConfiguration } from "./configuration";
 import { DiffChangesContentProvider } from "./editor/diff-changes-content-provider";
 // biome-ignore lint/style/useImportType: needed for dependency injection
@@ -48,6 +42,12 @@ import {
   isCurrentLayoutDerivedFromPochiLayout,
   isPochiTaskTab,
 } from "./layout";
+// biome-ignore lint/style/useImportType: needed for dependency injection
+import {
+  type Comment,
+  ReviewController,
+  type Thread,
+} from "./review-controller";
 import { PochiTaskEditorProvider } from "./webview/webview-panel";
 const logger = getLogger("CommandManager");
 
@@ -67,7 +67,7 @@ export class CommandManager implements vscode.Disposable {
     private readonly nesDecorationManager: NESDecorationManager,
     private readonly worktreeManager: WorktreeManager,
     private readonly worktreeInfoProvider: GitWorktreeInfoProvider,
-    private readonly commentController: CommentController,
+    private readonly reviewController: ReviewController,
   ) {
     this.registerCommands();
   }
@@ -608,7 +608,7 @@ export class CommandManager implements vscode.Disposable {
         "pochi.comments.deleteThread",
         async (thread?: Thread) => {
           if (thread) {
-            await this.commentController.deleteThread(thread);
+            await this.reviewController.deleteThread(thread);
           }
         },
       ),
@@ -617,7 +617,7 @@ export class CommandManager implements vscode.Disposable {
         "pochi.comments.addComment",
         async (commentReply?: vscode.CommentReply | undefined) => {
           if (commentReply) {
-            await this.commentController.addComment(commentReply);
+            await this.reviewController.addComment(commentReply);
           }
         },
       ),
@@ -626,7 +626,7 @@ export class CommandManager implements vscode.Disposable {
         "pochi.comments.deleteComment",
         async (comment?: Comment, thread?: Thread) => {
           if (comment && thread) {
-            await this.commentController.deleteComment(comment, thread);
+            await this.reviewController.deleteComment(comment, thread);
           }
         },
       ),
@@ -634,21 +634,21 @@ export class CommandManager implements vscode.Disposable {
       vscode.commands.registerCommand(
         "pochi.comments.startEditComment",
         async (comment: Comment, thread: Thread) => {
-          await this.commentController.startEditComment(comment, thread);
+          await this.reviewController.startEditComment(comment, thread);
         },
       ),
 
       vscode.commands.registerCommand(
         "pochi.comments.saveEditComment",
         async (comment: Comment) => {
-          await this.commentController.saveEditComment(comment);
+          await this.reviewController.saveEditComment(comment);
         },
       ),
 
       vscode.commands.registerCommand(
         "pochi.comments.cancelEditComment",
         async (comment: Comment) => {
-          await this.commentController.cancelEditComment(comment);
+          await this.reviewController.cancelEditComment(comment);
         },
       ),
 

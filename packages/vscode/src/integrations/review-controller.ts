@@ -17,7 +17,7 @@ export type Thread = Omit<vscode.CommentThread, "comments"> & {
 
 @injectable()
 @singleton()
-export class CommentController implements vscode.Disposable {
+export class ReviewController implements vscode.Disposable {
   reviews = signal<Review[]>([]);
 
   private disposables: vscode.Disposable[] = [];
