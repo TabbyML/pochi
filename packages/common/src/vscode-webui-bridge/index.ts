@@ -54,8 +54,11 @@ export {
   WorktreePrefix,
 } from "./task-utils";
 
-const isPochiDev = process.env.POCHI_LOCAL_SERVER === "true";
-const isSyncDev = process.env.POCHI_LOCAL_SYNC_SERVER === "true";
+const isPochiDev =
+  typeof process !== "undefined" && process.env.POCHI_LOCAL_SERVER === "true";
+const isSyncDev =
+  typeof process !== "undefined" &&
+  process.env.POCHI_LOCAL_SYNC_SERVER === "true";
 export const isDev = isPochiDev || isSyncDev;
 
 export function getServerBaseUrl() {
