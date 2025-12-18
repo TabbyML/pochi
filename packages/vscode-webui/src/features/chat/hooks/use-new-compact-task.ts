@@ -40,8 +40,9 @@ export const useNewCompactTask = ({
 
       // open new task
       vscodeHost.openTaskInPanel({
+        type: "compact-task",
         cwd,
-        initMessages: JSON.stringify(initMessages),
+        messages: JSON.stringify(initMessages),
       });
     },
   });

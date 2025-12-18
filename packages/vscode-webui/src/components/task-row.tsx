@@ -88,9 +88,10 @@ export function TaskRow({
   const openTaskInPanel = useCallback(async () => {
     if (task.cwd) {
       vscodeHost.openTaskInPanel({
+        type: "open-task",
         cwd: task.cwd,
         uid: task.id,
-        displayId: task.displayId ?? undefined,
+        displayId: task.displayId,
         storeId,
       });
 

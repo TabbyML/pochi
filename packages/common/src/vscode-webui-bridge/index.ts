@@ -15,10 +15,8 @@ export type {
 export type { ResourceURI } from "./types/common";
 export type { SessionState, WorkspaceState } from "./types/session";
 export type {
-  TaskIdParams,
-  NewTaskParams,
-  TaskPanelParams,
-  NewTaskPanelParams,
+  PochiEditorInfo,
+  PochiEditorParams,
   TaskData,
   TaskChangedFile,
   ChangedFileContent,

@@ -4,39 +4,70 @@ export type FileUIPart = {
   url: string;
 };
 
-export interface TaskIdParams {
+export type PochiEditorParams = { cwd: string } & (
+  | {
+      type: "new-task";
+      uid?: string;
+      prompt?: string;
+      files?: FileUIPart[];
+    }
+  | {
+      type: "fork-task";
+      messages: string;
+      title: string;
+    }
+  | {
+      type: "compact-task";
+      messages: string;
+    }
+  | {
+      type: "open-task";
+      uid: string;
+      displayId: number | null;
+      storeId?: string;
+    }
+);
+
+export type PochiEditorInfo = {
   uid: string;
-  storeId?: string;
-
-  // for open task from website
-  prompt?: string;
-  files?: FileUIPart[];
-  /**
-   * JSON string representing an array of messages to init the task.
-   */
-  initMessages?: string;
-
-  initTitle?: string;
-
-  /**
-   * Disable auto start for the task
-   */
-  disablePendingModelAutoStart?: boolean;
-}
-
-export interface TaskPanelParams extends TaskIdParams {
+  displayId: number | null;
   cwd: string;
-  displayId?: number;
-}
+  params: PochiEditorParams;
+};
 
-export interface NewTaskParams {
-  prompt?: string;
-  files?: FileUIPart[];
-}
+// export interface TaskIdParams {
+//   uid: string;
+//   storeId?: string;
 
-export interface NewTaskPanelParams extends NewTaskParams {
-  cwd: string;
-}
+//   // for open task from website
+//   prompt?: string;
+//   files?: FileUIPart[];
+//   /**
+//    * JSON string representing an array of messages to init the task.
+//    */
+//   initMessages?: string;
+
+//   initTitle?: string;
+
+//   /**
+//    * Disable auto start for the task
+//    */
+//   disablePendingModelAutoStart?: boolean;
+// }
+
+// export interface TaskPanelParams extends TaskIdParams {
+//   cwd: string;
+//   displayId?: number;
+// }
+
+// export interface NewTaskParams {
+//   prompt?: string;
+//   files?: FileUIPart[];
+// }
+
+// export interface NewTaskPanelParams extends NewTaskParams {
+//   cwd: string;
+// }
 
 /**
  * only include fields that are used in the webview and node process

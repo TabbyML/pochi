@@ -24,10 +24,7 @@ import {
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { McpHub } from "@getpochi/common/mcp-utils";
 import { getVendor } from "@getpochi/common/vendor";
-import type {
-  NewTaskParams,
-  TaskIdParams,
-} from "@getpochi/common/vscode-webui-bridge";
+import type { PochiEditorParams } from "@getpochi/common/vscode-webui-bridge";
 import { getServerBaseUrl } from "@getpochi/common/vscode-webui-bridge";
 import { inject, injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
@@ -72,14 +69,14 @@ export class CommandManager implements vscode.Disposable {
     progress: vscode.Progress<{ message?: string; increment?: number }>,
     workspaceUri: vscode.Uri,
     githubTemplateUrl: string | undefined,
-    openTaskParams: TaskIdParams | NewTaskParams,
+    openTaskParams: PochiEditorParams,
     requestId?: string,
   ) {
     if (githubTemplateUrl) {
       await prepareProject(workspaceUri, githubTemplateUrl, progress);
     }
 
-    this.openTaskOnWorkspaceFolder(openTaskParams);
+    PochiTaskEditorProvider.openTaskEditor(openTaskParams);
 
     if (requestId) {
       await this.newProjectRegistry.set(requestId, workspaceUri);
@@ -198,6 +195,8 @@ export class CommandManager implements vscode.Disposable {
                   vscode.Uri.parse(cwd),
                   params.githubTemplateUrl,
                   {
+                    cwd,
+                    type: "new-task",
                     uid: params.uid,
                     prompt: params.prompt,
                     files: params.attachments?.map((attachment) => ({
@@ -258,6 +257,8 @@ export class CommandManager implements vscode.Disposable {
       }),
 
       vscode.commands.registerCommand("pochi.openTask", async (uid: string) => {
+        const cwd = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
+        if (!cwd) return;
         vscode.window.withProgress(
           {
             location: vscode.ProgressLocation.Notification,
@@ -266,7 +267,12 @@ export class CommandManager implements vscode.Disposable {
           async (progress) => {
             progress.report({ message: "Pochi: Opening task..." });
             await vscode.commands.executeCommand("pochiSidebar.focus");
-            this.openTaskOnWorkspaceFolder({ uid });
+            PochiTaskEditorProvider.openTaskEditor({
+              type: "open-task",
+              uid,
+              cwd,
+              displayId: null,
+            });
           },
         );
       }),
@@ -480,6 +486,7 @@ export class CommandManager implements vscode.Disposable {
           }
 
           PochiTaskEditorProvider.openTaskEditor({
+            type: "new-task",
             cwd,
           });
         },
@@ -550,6 +557,7 @@ export class CommandManager implements vscode.Disposable {
         async (worktreePath: string) => {
           if (worktreePath) {
             PochiTaskEditorProvider.openTaskEditor({
+              type: "new-task",
               cwd: worktreePath,
             });
           }
@@ -602,20 +610,6 @@ export class CommandManager implements vscode.Disposable {
         },
       ),
     );
-  }
-
-  openTaskOnWorkspaceFolder(params?: TaskIdParams | NewTaskParams) {
-    const cwd = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
-    if (!cwd) {
-      vscode.window.showErrorMessage(
-        "Cannot create Pochi task without a workspace folder.",
-      );
-      return;
-    }
-    PochiTaskEditorProvider.openTaskEditor({
-      ...params,
-      cwd,
-    });
   }
 
   private async ensureDefaultCustomModelSettings() {

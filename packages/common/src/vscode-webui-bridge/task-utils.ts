@@ -6,7 +6,7 @@ export const prefixTaskDisplayId = (displayId: number) =>
 export const getTaskDisplayTitle = (params: {
   worktreeName: string;
   uid: string;
-  displayId?: number;
+  displayId: number | null;
 }) => {
   const { worktreeName, uid, displayId } = params;
   return `${prefixWorktreeName(worktreeName)}${displayId ? ` - ${prefixTaskDisplayId(displayId)}` : ` - ${uid.split("-")[0]} `}`;

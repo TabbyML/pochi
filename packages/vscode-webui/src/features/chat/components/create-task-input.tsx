@@ -153,8 +153,8 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
               })
             : selectedWorktree;
         vscodeHost.openTaskInPanel({
+          type: "new-task",
           cwd: worktree?.path || cwd,
-          storeId: undefined,
           prompt: content,
           files: uploadedFiles,
         });
@@ -172,8 +172,8 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
               })
             : selectedWorktree;
         vscodeHost.openTaskInPanel({
+          type: "new-task",
           cwd: worktree?.path || cwd,
-          storeId: undefined,
           prompt: content,
         });
       }
