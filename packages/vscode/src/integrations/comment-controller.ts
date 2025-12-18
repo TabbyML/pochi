@@ -1,10 +1,8 @@
+import { signal } from "@preact/signals-core";
 import { injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
-import { getLogger } from "../lib/logger";
 
-const logger = getLogger("CommentController");
-
-type StoredComment = {
+export type ReviewComment = {
   id: string;
   body: string;
   author: {
@@ -13,7 +11,7 @@ type StoredComment = {
   };
 };
 
-type StoredThread = {
+export type Review = {
   id: string;
   uri: string;
   range?:
@@ -24,7 +22,7 @@ type StoredThread = {
         endCharacter: number;
       }
     | undefined;
-  comments: StoredComment[];
+  comments: ReviewComment[];
 };
 
 export type Comment = vscode.Comment & {
@@ -36,62 +34,15 @@ export type Thread = Omit<vscode.CommentThread, "comments"> & {
   comments: readonly Comment[];
 };
 
-function toStoredThread(thread: Thread): StoredThread {
-  return {
-    id: thread.id,
-    uri: thread.uri.toString(),
-    range: thread.range
-      ? {
-          startLine: thread.range.start.line,
-          startCharacter: thread.range.start.character,
-          endLine: thread.range.end.line,
-          endCharacter: thread.range.end.character,
-        }
-      : undefined,
-    comments: thread.comments.map((c) => toStoredComment(c)),
-  };
-}
-
-function toUIComment(c: StoredComment): Comment {
-  return {
-    id: c.id,
-    body: c.body,
-    author: {
-      name: c.author.name,
-      iconPath: c.author.iconPath
-        ? vscode.Uri.parse(c.author.iconPath)
-        : undefined,
-    },
-    mode: vscode.CommentMode.Preview,
-  };
-}
-
-function toStoredComment(c: Comment): StoredComment {
-  return {
-    id: c.id,
-    body: c.body.toString(),
-    author: {
-      name: c.author.name,
-      iconPath: c.author.iconPath?.toString(),
-    },
-  };
-}
-
-const mockUser = {
-  name: "User",
-  iconPath: vscode.Uri.parse(
-    "https://avatars.githubusercontent.com/u/10137?v=4", // github ghost
-  ),
-};
-
 @injectable()
 @singleton()
 export class CommentController implements vscode.Disposable {
+  reviews = signal<Review[]>([]);
+
   private disposables: vscode.Disposable[] = [];
   private controller: vscode.CommentController;
 
   private threads = new Map<string, Thread>();
-  private storeFile: vscode.Uri | undefined;
 
   private editingBackup = new Map<string, string | vscode.MarkdownString>();
 
@@ -117,86 +68,19 @@ export class CommentController implements vscode.Disposable {
       },
     };
     this.disposables.push(this.controller);
-
-    const workspaceUri = vscode.workspace.workspaceFolders?.[0].uri;
-    if (workspaceUri) {
-      this.storeFile = vscode.Uri.joinPath(
-        workspaceUri,
-        ".pochi/comments.json",
-      );
-      this.loadThreadsFromFile();
-    }
   }
 
-  private async loadThreadsFromFile() {
-    if (!this.storeFile) {
-      return;
-    }
-
-    try {
-      const dataBuffer = await vscode.workspace.fs.readFile(this.storeFile);
-      const data = JSON.parse(dataBuffer.toString()) as StoredThread[];
-      logger.debug(`Loaded ${data.length} threads from file.`);
-
-      for (const thread of data) {
-        const exist = this.threads.get(thread.id);
-        if (exist) {
-          exist.comments = thread.comments.map((c) => toUIComment(c));
-        } else {
-          const created = this.controller.createCommentThread(
-            vscode.Uri.parse(thread.uri),
-            thread.range
-              ? new vscode.Range(
-                  thread.range.startLine,
-                  thread.range.startCharacter,
-                  thread.range.endLine,
-                  thread.range.endCharacter,
-                )
-              : new vscode.Range(0, 0, 0, 0),
-            thread.comments.map((c) => toUIComment(c)),
-          );
-          created.contextValue = "canDelete";
-          const newThread = created as Thread;
-          newThread.id = thread.id;
-          this.threads.set(thread.id, newThread);
-        }
-      }
-
-      for (const thread of this.threads.values()) {
-        if (!data.some((t) => t.id === thread.id)) {
-          this.threads.delete(thread.id);
-          thread.dispose();
-        }
-      }
-    } catch (error) {
-      logger.debug("Failed to load threads from file:", error);
-    }
-  }
-
-  private async saveThreadsToFile() {
-    if (!this.storeFile) {
-      return;
-    }
-
-    try {
-      const data = this.threads
-        .values()
-        .map((t) => toStoredThread(t))
-        .toArray();
-      await vscode.workspace.fs.writeFile(
-        this.storeFile,
-        Buffer.from(JSON.stringify(data, undefined, 2), "utf8"),
-      );
-      logger.debug(`Saved ${data.length} threads.`);
-    } catch (error) {
-      logger.debug("Failed to save threads to file:", error);
-    }
+  private updateSignal() {
+    this.reviews.value = this.threads
+      .values()
+      .map((t) => toReview(t))
+      .toArray();
   }
 
   async deleteThread(thread: Thread) {
     thread.dispose();
     this.threads.delete(thread.id);
-    await this.saveThreadsToFile();
+    this.updateSignal();
   }
 
   async addComment(commentReply: vscode.CommentReply) {
@@ -226,12 +110,12 @@ export class CommentController implements vscode.Disposable {
       ];
       newThread.contextValue = "canDelete";
     }
-    await this.saveThreadsToFile();
+    this.updateSignal();
   }
 
   async deleteComment(comment: Comment, thread: Thread) {
     thread.comments = thread.comments.filter((c) => c.id !== comment.id);
-    await this.saveThreadsToFile();
+    this.updateSignal();
   }
 
   async startEditComment(comment: Comment, thread: Thread) {
@@ -253,7 +137,7 @@ export class CommentController implements vscode.Disposable {
     thread.comments = thread.comments.map((c) =>
       c.id === comment.id ? { ...c, mode: vscode.CommentMode.Preview } : c,
     );
-    await this.saveThreadsToFile();
+    this.updateSignal();
   }
 
   async cancelEditComment(comment: Comment) {
@@ -271,6 +155,7 @@ export class CommentController implements vscode.Disposable {
         ? { ...c, body, mode: vscode.CommentMode.Preview }
         : c,
     );
+    this.updateSignal();
   }
 
   dispose() {
@@ -280,3 +165,37 @@ export class CommentController implements vscode.Disposable {
     this.disposables = [];
   }
 }
+
+function toReview(thread: Thread): Review {
+  return {
+    id: thread.id,
+    uri: thread.uri.toString(),
+    range: thread.range
+      ? {
+          startLine: thread.range.start.line,
+          startCharacter: thread.range.start.character,
+          endLine: thread.range.end.line,
+          endCharacter: thread.range.end.character,
+        }
+      : undefined,
+    comments: thread.comments.map((c) => toReviewComment(c)),
+  };
+}
+
+function toReviewComment(c: Comment): ReviewComment {
+  return {
+    id: c.id,
+    body: c.body.toString(),
+    author: {
+      name: c.author.name,
+      iconPath: c.author.iconPath?.toString(),
+    },
+  };
+}
+
+const mockUser = {
+  name: "User",
+  iconPath: vscode.Uri.parse(
+    "https://avatars.githubusercontent.com/u/10137?v=4", // github ghost
+  ),
+};
