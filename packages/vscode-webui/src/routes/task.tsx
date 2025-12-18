@@ -31,9 +31,7 @@ function RouteComponent() {
         uid: searchParams.uid,
         displayId: null,
         cwd: window.POCHI_TASK_INFO.cwd,
-        params: {
-          type: "open-task",
-        },
+        type: "open-task",
       };
     }
   }
@@ -54,8 +52,8 @@ function RouteComponent() {
 
   const key = `task-${uid}`;
   let storeId = encodeStoreId(jwt, uid);
-  if (params?.params.type === "open-task" && params.params.storeId) {
-    storeId = params.params.storeId;
+  if (params?.type === "open-task" && params.storeId) {
+    storeId = params.storeId;
   } else if (searchParams.storeId) {
     storeId = searchParams.storeId;
   }

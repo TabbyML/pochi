@@ -88,9 +88,7 @@ function Chat({ user, uid, info }: ChatProps) {
   const isSubTask = !!subtask;
 
   const isTaskWithoutContent =
-    info.params.type === "new-task" &&
-    !info.params.prompt &&
-    !info.params.files?.length;
+    info.type === "new-task" && !info.prompt && !info.files?.length;
 
   // inherit autoApproveSettings from parent task
   useEffect(() => {
@@ -310,10 +308,9 @@ function Chat({ user, uid, info }: ChatProps) {
 
   useEffect(() => {
     if (chatKit.inited || isFetchingWorkspace) return;
-    const params = info.params;
     const cwd = currentWorkspace?.cwd ?? undefined;
-    if (params.type === "new-task") {
-      const files = params.files?.map((file) => ({
+    if (info.type === "new-task") {
+      const files = info.files?.map((file) => ({
         type: "file" as const,
         filename: file.name,
         mediaType: file.contentType,
@@ -321,23 +318,23 @@ function Chat({ user, uid, info }: ChatProps) {
       }));
 
       chatKit.init(cwd, {
-        prompt: params.prompt,
-        parts: prepareMessageParts(t, params.prompt || "", files || []),
+        prompt: info.prompt,
+        parts: prepareMessageParts(t, info.prompt || "", files || []),
       });
-    } else if (params.type === "compact-task") {
+    } else if (info.type === "compact-task") {
       chatKit.init(cwd, {
-        messages: JSON.parse(params.messages),
+        messages: JSON.parse(info.messages),
       });
-    } else if (params.type === "fork-task") {
+    } else if (info.type === "fork-task") {
       chatKit.init(cwd, {
-        initTitle: params.title,
+        initTitle: info.title,
         displayId: info.displayId ?? undefined,
-        messages: JSON.parse(params.messages),
+        messages: JSON.parse(info.messages),
       });
-    } else if (params.type === "open-task") {
+    } else if (info.type === "open-task") {
       // Do nothing
     } else {
-      assertUnreachable(params);
+      assertUnreachable(info);
     }
   }, [currentWorkspace, isFetchingWorkspace, chatKit, t, info]);
 
@@ -349,7 +346,7 @@ function Chat({ user, uid, info }: ChatProps) {
       messages.length === 1 &&
       !isModelsLoading &&
       !!selectedModel &&
-      info.params.type !== "fork-task",
+      info.type !== "fork-task",
     task,
     retry,
   });

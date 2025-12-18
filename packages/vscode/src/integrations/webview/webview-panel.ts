@@ -8,7 +8,6 @@ import {
   type VSCodeHostApi,
   getTaskDisplayTitle,
 } from "@getpochi/common/vscode-webui-bridge";
-import { omitBy } from "remeda";
 import { container } from "tsyringe";
 import * as vscode from "vscode";
 import { PochiConfiguration } from "../configuration";
@@ -173,7 +172,11 @@ export class PochiTaskEditorProvider
         params.type === "open-task"
           ? params.displayId
           : await getNextDisplayId(params.cwd);
-      const taskInfo = toPochiTaskInfo(uid, displayId, params);
+      const taskInfo: PochiTaskInfo = {
+        ...params,
+        uid,
+        displayId,
+      };
       const uri = PochiTaskEditorProvider.createTaskUri(taskInfo);
       PochiTaskEditorProvider.taskInfo.set(uri.toString(), taskInfo);
       await openTaskInColumn(uri);
@@ -392,21 +395,4 @@ function autoCleanTabGroupLock() {
       vscode.commands.executeCommand("workbench.action.unlockEditorGroup");
     }
   });
-}
-
-function toPochiTaskInfo(
-  uid: string,
-  displayId: number | null,
-  params: PochiTaskParams,
-): PochiTaskInfo {
-  const cleanedParams = omitBy(
-    params,
-    (key) => key === "uid" || key === "displayId" || key === "cwd",
-  );
-  return {
-    uid,
-    displayId,
-    cwd: params.cwd,
-    params: cleanedParams as PochiTaskInfo["params"],
-  };
 }

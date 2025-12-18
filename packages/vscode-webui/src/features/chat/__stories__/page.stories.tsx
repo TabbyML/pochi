@@ -40,9 +40,7 @@ export const Default: Story = {
       uid: "default",
       cwd: "/foo/bar",
       displayId: null,
-      params: {
-        type: "open-task",
-      },
+      type: "open-task",
     },
   },
 };
