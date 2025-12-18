@@ -61,7 +61,7 @@ function Tasks() {
   const { store } = useStore();
   const { data: currentWorkspace } = useCurrentWorkspace();
   const cwd = currentWorkspace?.cwd || "default";
-  const workspaceFolder = currentWorkspace?.workspacePath;
+  const workspacePath = currentWorkspace?.workspacePath;
 
   const { deleteWorktree, deletingWorktreePaths } =
     useOptimisticWorktreeDelete();
