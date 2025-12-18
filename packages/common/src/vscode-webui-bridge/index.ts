@@ -51,6 +51,7 @@ export {
   getTaskDisplayTitle,
   WorktreePrefix,
 } from "./task-utils";
+export type { Review, ReviewComment } from "./types/review";
 
 const isPochiDev = process.env.POCHI_LOCAL_SERVER === "true";
 const isSyncDev = process.env.POCHI_LOCAL_SYNC_SERVER === "true";

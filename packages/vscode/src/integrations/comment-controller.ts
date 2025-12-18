@@ -1,29 +1,10 @@
+import type {
+  Review,
+  ReviewComment,
+} from "@getpochi/common/vscode-webui-bridge";
 import { signal } from "@preact/signals-core";
 import { injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
-
-export type ReviewComment = {
-  id: string;
-  body: string;
-  author: {
-    name: string;
-    iconPath?: string | undefined;
-  };
-};
-
-export type Review = {
-  id: string;
-  uri: string;
-  range?:
-    | {
-        startLine: number;
-        startCharacter: number;
-        endLine: number;
-        endCharacter: number;
-      }
-    | undefined;
-  comments: ReviewComment[];
-};
 
 export type Comment = vscode.Comment & {
   id: string;
