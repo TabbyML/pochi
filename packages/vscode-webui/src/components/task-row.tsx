@@ -33,7 +33,7 @@ export function TaskRow({
   const content = (
     <div
       className={cn(
-        "group cursor-pointer rounded-lg border border-border/50 bg-card/60 transition-all duration-200 hover:bg-card hover:shadow-md",
+        "group cursor-pointer rounded-lg border border-border/50 bg-card/60 transition-all duration-200 hover:border-border hover:bg-card hover:shadow-md",
       )}
     >
       <div className="px-2 py-1">
