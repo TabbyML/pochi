@@ -15,7 +15,9 @@ export function RouterErrorBoundary({ error }: RouterErrorBoundaryProps) {
           <span className="font-semibold text-2xl">
             {t("error.somethingWentWrong")}
           </span>
-          <span className="mt-2 italic">{error.message || String(error)}</span>
+          <span className="mt-2 line-clamp-4 break-all text-muted-foreground text-sm italic">
+            {error.message || String(error)}
+          </span>
         </h1>
         <a
           href="command:workbench.action.reloadWindow"
