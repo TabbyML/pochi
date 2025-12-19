@@ -61,7 +61,7 @@
   },
   "worktreeSelect": {
     "selectWorktree": "ワークツリーを選択",
-    "createWorktree": "新しいワークツリー",
+    "createWorktree": "ワークツリー自動作成",
     "createWorktreeDescription": "新しい Git ワークツリーでタスクを開始"
   },
   "worktree": {

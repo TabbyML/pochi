@@ -61,7 +61,7 @@
   },
   "worktreeSelect": {
     "selectWorktree": "选择工作树",
-    "createWorktree": "新工作树",
+    "createWorktree": "自动创建工作树",
     "createWorktreeDescription": "在新的 Git 工作树中启动任务"
   },
   "worktree": {
