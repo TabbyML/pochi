@@ -1,4 +1,5 @@
 import { Events, Schema, State, makeSchema } from "@livestore/livestore";
+import type { Message } from "../types";
 import {
   DBMessage,
   DBUIPart,
@@ -45,6 +46,9 @@ export const tables = {
       lastStepDuration: State.SQLite.integer({
         nullable: true,
         schema: Schema.DurationFromMillis,
+      }),
+      lastCheckpointHash: State.SQLite.text({
+        nullable: true,
       }),
       error: State.SQLite.json({ schema: TaskError, nullable: true }),
       createdAt: State.SQLite.integer({ schema: Schema.DateFromNumber }),
@@ -275,6 +279,7 @@ const materializers = State.SQLite.materializers(events, {
         updatedAt,
         modelId,
         displayId,
+        lastCheckpointHash: getLastCheckpointHash(data as Message),
       })
       .where({ id }),
     tables.messages
@@ -359,3 +364,12 @@ const materializers = State.SQLite.materializers(events, {
 const state = State.SQLite.makeState({ tables, materializers });
 
 export const schema = makeSchema({ events, state });
+
+function getLastCheckpointHash(data: Message): string | undefined {
+  for (let i = data.parts.length - 1; i >= 0; i--) {
+    const part = data.parts[i];
+    if (part.type === "data-checkpoint") {
+      return part.data.commit;
+    }
+  }
+}

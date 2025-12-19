@@ -297,6 +297,7 @@ function Chat({ user, uid, info }: ChatProps) {
             pendingToolCalls,
             lineChanges: task.lineChanges || undefined,
             lastStepDuration: task.lastStepDuration || undefined,
+            lastCheckpointHash: task.lastCheckpointHash || undefined,
           }).args,
         ),
       );

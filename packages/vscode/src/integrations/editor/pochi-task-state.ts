@@ -44,8 +44,9 @@ export class PochiTaskState implements vscode.Disposable {
 
     for (const group of tabGroups) {
       for (const tab of group.tabs) {
-        const uid = getTaskUid(tab);
-        if (!uid) continue;
+        const taskUri = getTaskUri(tab);
+        if (!taskUri) continue;
+        const { uid, cwd } = taskUri;
         if (this.state.value[uid]) {
           newState[uid] = {
             ...this.state.value[uid],
@@ -53,12 +54,14 @@ export class PochiTaskState implements vscode.Disposable {
             focused: false,
           };
         } else {
-          newState[uid] = {};
+          newState[uid] = {
+            cwd,
+          };
         }
       }
 
       const activeUid = group.activeTab
-        ? getTaskUid(group.activeTab)
+        ? getTaskUri(group.activeTab)?.uid
         : undefined;
 
       if (activeUid) {
@@ -138,13 +141,13 @@ export class PochiTaskState implements vscode.Disposable {
   }
 }
 
-function getTaskUid(tab: vscode.Tab): string | undefined {
+function getTaskUri(tab: vscode.Tab) {
   if (
     tab.input instanceof vscode.TabInputCustom &&
     tab.input.uri.scheme === PochiTaskEditorProvider.scheme
   ) {
     const params = PochiTaskEditorProvider.parseTaskUri(tab.input.uri);
-    return params?.uid;
+    return params;
   }
   return undefined;
 }
@@ -160,7 +163,7 @@ function createTaskStates(): TaskStates {
       ) {
         const params = PochiTaskEditorProvider.parseTaskUri(tab.input.uri);
         if (params) {
-          state[params.uid] = {};
+          state[params.uid] = { cwd: params.cwd };
         }
       }
     }
