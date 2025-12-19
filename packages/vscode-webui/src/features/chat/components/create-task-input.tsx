@@ -7,7 +7,10 @@ import {
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
 
-import { WorktreeSelect } from "@/components/worktree-select";
+import {
+  type CreateWorktreeType,
+  WorktreeSelect,
+} from "@/components/worktree-select";
 import { useSelectedModels, useSettingsStore } from "@/features/settings";
 import type { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
@@ -23,10 +26,10 @@ import { ChatInputForm } from "./chat-input-form";
 
 interface CreateTaskInputProps {
   cwd: string;
-  workspaceFolder: string | null | undefined;
+  workspacePath: string | null | undefined;
   attachmentUpload: ReturnType<typeof useAttachmentUpload>;
-  userSelectedWorktree: GitWorktree | undefined;
-  setUserSelectedWorktree: (v: GitWorktree | undefined) => void;
+  userSelectedWorktree: CreateWorktreeType;
+  setUserSelectedWorktree: (v: CreateWorktreeType) => void;
   deletingWorktreePaths: Set<string>;
 }
 
@@ -34,7 +37,7 @@ const noop = () => {};
 
 export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
   cwd,
-  workspaceFolder,
+  workspacePath,
   attachmentUpload,
   userSelectedWorktree,
   setUserSelectedWorktree,
@@ -71,7 +74,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
     );
   }, [worktreesData, deletingWorktreePaths]);
 
-  const isOpenCurrentWorkspace = !!workspaceFolder && cwd === workspaceFolder;
+  const isOpenCurrentWorkspace = !!workspacePath && cwd === workspacePath;
   const isOpenMainWorktree =
     isOpenCurrentWorkspace &&
     worktrees?.find((x: GitWorktree) => x.isMain)?.path === cwd;
@@ -94,9 +97,9 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
       return worktrees ?? [];
     }
     return (
-      worktrees?.filter((x: GitWorktree) => x.path === workspaceFolder) ?? []
+      worktrees?.filter((x: GitWorktree) => x.path === workspacePath) ?? []
     );
-  }, [isOpenMainWorktree, worktrees, workspaceFolder]);
+  }, [isOpenMainWorktree, worktrees, workspacePath]);
 
   const onFocus = () => {
     useSettingsStore.persist.rehydrate();
@@ -140,45 +143,52 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
           url: x.url,
         }));
 
-        const worktree = shouldCreateWorktree
-          ? await vscodeHost.createWorktree({
-              generateBranchName: {
-                prompt: content,
-                files: uploadedFiles,
-              },
-            })
-          : selectedWorktree;
-        vscodeHost.openTaskInPanel({
-          cwd: worktree?.path || cwd,
-          storeId: undefined,
-          prompt: content,
-          files: uploadedFiles,
-        });
-
-        clearFiles();
+        const worktree =
+          shouldCreateWorktree === true || selectedWorktree === "new-worktree"
+            ? await vscodeHost.createWorktree({
+                generateBranchName: {
+                  prompt: content,
+                  files: uploadedFiles,
+                },
+              })
+            : selectedWorktree;
+        if (worktree) {
+          vscodeHost.openTaskInPanel({
+            type: "new-task",
+            cwd: worktree?.path || cwd,
+            prompt: content,
+            files: uploadedFiles,
+          });
+          clearFiles();
+          // Clear input content after unfreeze
+          setTimeout(clearDraft, 50);
+        }
       } else if (content.length > 0) {
         clearUploadError();
 
-        const worktree = shouldCreateWorktree
-          ? await vscodeHost.createWorktree({
-              generateBranchName: {
-                prompt: content,
-              },
-            })
-          : selectedWorktree;
-        vscodeHost.openTaskInPanel({
-          cwd: worktree?.path || cwd,
-          storeId: undefined,
-          prompt: content,
-        });
+        const worktree =
+          shouldCreateWorktree || selectedWorktree === "new-worktree"
+            ? await vscodeHost.createWorktree({
+                generateBranchName: {
+                  prompt: content,
+                },
+              })
+            : selectedWorktree;
+        if (worktree) {
+          vscodeHost.openTaskInPanel({
+            type: "new-task",
+            cwd: worktree?.path || cwd,
+            prompt: content,
+          });
+          // Clear input content after unfreeze
+          setTimeout(clearDraft, 50);
+        }
       }
 
       // Set isCreatingTask state false
       // Hide loading and unfreeze input
       setIsCreatingTask(false);
       setDebouncedIsCreatingTask(false);
-      // Clear input content after unfreeze
-      setTimeout(clearDraft, 50);
     },
     [
       cwd,
@@ -198,7 +208,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent<HTMLFormElement>) => {
-      handleSubmitImpl(e, false);
+      handleSubmitImpl(e);
     },
     [handleSubmitImpl],
   );

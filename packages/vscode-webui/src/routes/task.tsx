@@ -6,30 +6,13 @@ import { useModelList } from "@/lib/hooks/use-model-list";
 import { usePochiCredentials } from "@/lib/hooks/use-pochi-credentials";
 import { useUserStorage } from "@/lib/hooks/use-user-storage";
 import { encodeStoreId } from "@getpochi/common/store-id-utils";
-import type { Message } from "@getpochi/livekit";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { LiveStoreDefaultProvider } from "../livestore-default-provider";
 
-// Corresponds to the FileUIPart type in the ai/react library
-const fileUIPartSchema = z.object({
-  name: z.string(),
-  contentType: z.string(),
-  url: z.string(),
-});
-
 const searchSchema = z.object({
-  uid: z.string().catch(() => crypto.randomUUID()),
+  uid: z.string(),
   storeId: z.string().optional(),
-  prompt: z.string().optional(),
-  files: z.array(fileUIPartSchema).optional(),
-  displayId: z.number().optional(),
-  initMessages: z
-    .string()
-    .optional()
-    .describe("JSON string containing an array of messages"),
-  initTitle: z.string().optional(),
-  disablePendingModelAutoStart: z.boolean().optional(),
 });
 
 export const Route = createFileRoute("/task")({
@@ -39,42 +22,25 @@ export const Route = createFileRoute("/task")({
 
 function RouteComponent() {
   const searchParams = Route.useSearch();
-
-  let globalParams: typeof window.POCHI_TASK_PARAMS | undefined = undefined;
-  if (
-    window.POCHI_WEBVIEW_KIND === "pane" &&
-    window.POCHI_TASK_PARAMS &&
-    window.POCHI_TASK_PARAMS.uid === searchParams.uid
-  ) {
-    globalParams = window.POCHI_TASK_PARAMS;
-  }
-
-  const {
-    uid,
-    prompt,
-    files,
-    storeId,
-    displayId,
-    initMessages,
-    initTitle,
-    disablePendingModelAutoStart,
-  } = globalParams ?? searchParams;
-
-  const uiFiles = files?.map((file) => ({
-    type: "file" as const,
-    filename: file.name,
-    mediaType: file.contentType,
-    url: file.url,
-  }));
-
-  let parsedInitMessages: Message[] | undefined = undefined;
-  if (initMessages) {
-    try {
-      parsedInitMessages = JSON.parse(initMessages) as Message[];
-    } catch (e) {
-      // ignore json error
+  let info: typeof window.POCHI_TASK_INFO;
+  if (window.POCHI_WEBVIEW_KIND === "pane" && window.POCHI_TASK_INFO) {
+    if (info?.uid !== searchParams.uid) {
+      info = window.POCHI_TASK_INFO;
+    } else {
+      info = {
+        uid: searchParams.uid,
+        displayId: null,
+        cwd: window.POCHI_TASK_INFO.cwd,
+        type: "open-task",
+      };
     }
   }
+
+  if (!info) {
+    throw new Error("task params not found");
+  }
+
+  const { uid } = searchParams;
 
   const { users } = useUserStorage();
   const { modelList = [] } = useModelList(true);
@@ -85,23 +51,18 @@ function RouteComponent() {
   }
 
   const key = `task-${uid}`;
-  const computedStoreId = storeId || encodeStoreId(jwt, uid);
+  let storeId = encodeStoreId(jwt, uid);
+  if (info?.type === "open-task" && info.storeId) {
+    storeId = info.storeId;
+  } else if (searchParams.storeId) {
+    storeId = searchParams.storeId;
+  }
 
   if (isPending) return null;
 
   return (
-    <LiveStoreDefaultProvider jwt={jwt} storeId={computedStoreId}>
-      <ChatPage
-        key={key}
-        user={users?.pochi}
-        uid={uid}
-        prompt={prompt}
-        files={uiFiles}
-        displayId={displayId}
-        initMessages={parsedInitMessages}
-        initTitle={initTitle}
-        disablePendingModelAutoStart={disablePendingModelAutoStart}
-      />
+    <LiveStoreDefaultProvider jwt={jwt} storeId={storeId}>
+      <ChatPage key={key} user={users?.pochi} uid={uid} info={info} />
     </LiveStoreDefaultProvider>
   );
 }

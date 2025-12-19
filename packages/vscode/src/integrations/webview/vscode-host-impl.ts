@@ -56,14 +56,13 @@ import {
   type DisplayModel,
   type GitWorktree,
   type GithubIssue,
-  type NewTaskPanelParams,
   type PochiCredentials,
+  type PochiTaskParams,
   type ResourceURI,
   type RuleFile,
   type SaveCheckpointOptions,
   type SessionState,
   type TaskChangedFile,
-  type TaskPanelParams,
   type TaskStates,
   type VSCodeHostApi,
   type WorkspaceState,
@@ -818,15 +817,13 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     return ThreadSignal.serialize(this.userStorage.users);
   };
 
-  openTaskInPanel = async (
-    params: TaskPanelParams | NewTaskPanelParams,
-  ): Promise<void> => {
+  openTaskInPanel = async (params: PochiTaskParams): Promise<void> => {
     await PochiTaskEditorProvider.openTaskEditor(params);
   };
 
   sendTaskNotification = async (
     kind: "failed" | "completed" | "pending-tool" | "pending-input",
-    params: { uid: string; displayId?: number; isSubTask?: boolean },
+    params: { uid: string; displayId: number | null; isSubTask?: boolean },
   ) => {
     if (!this.cwd) return;
 
@@ -876,6 +873,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     );
     if (result === buttonText) {
       this.openTaskInPanel({
+        type: "open-task",
         uid,
         cwd: this.cwd,
         displayId,

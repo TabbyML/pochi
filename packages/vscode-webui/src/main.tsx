@@ -65,12 +65,12 @@ declare module "@tanstack/react-router" {
 // In the "pane" webview, navigate to the task page on load.
 // Avoid setting window.location.hash globally because other scripts may modify it.
 if (window.POCHI_WEBVIEW_KIND === "pane") {
-  const params = window.POCHI_TASK_PARAMS;
-  if (params) {
+  const info = window.POCHI_TASK_INFO;
+  if (info) {
     router.navigate({
       to: "/task",
       // Pass uid only, other params will be parsed after route
-      search: { uid: params.uid },
+      search: { uid: info.uid },
     });
   }
 }

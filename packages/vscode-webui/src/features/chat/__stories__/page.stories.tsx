@@ -36,5 +36,11 @@ export const Default: Story = {
   args: {
     user: auth.user,
     uid: "default",
+    info: {
+      uid: "default",
+      cwd: "/foo/bar",
+      displayId: null,
+      type: "open-task",
+    },
   },
 };

@@ -81,6 +81,7 @@ function overrideMaxOutputToken(body: string): string | undefined {
     // Apply the transformation safely
     if (parsed.max_tokens) {
       parsed.max_completion_tokens = parsed.max_tokens;
+      parsed.max_tokens = undefined;
     }
 
     return JSON.stringify(parsed);

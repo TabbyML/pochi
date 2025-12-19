@@ -7,7 +7,11 @@ export function useSendTaskNotification() {
   const sendNotification = useCallback(
     async (
       kind: "failed" | "completed" | "pending-tool" | "pending-input",
-      openTaskParams: { uid: string; displayId?: number; isSubTask?: boolean },
+      openTaskParams: {
+        uid: string;
+        displayId: number | null;
+        isSubTask?: boolean;
+      },
     ) => {
       clearTimeout(timer.current);
 

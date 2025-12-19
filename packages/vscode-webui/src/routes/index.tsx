@@ -2,6 +2,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { WelcomeScreen } from "@/components/welcome-screen";
 import { WorkspaceRequiredPlaceholder } from "@/components/workspace-required-placeholder";
 import { WorktreeList } from "@/components/worktree-list";
+import type { CreateWorktreeType } from "@/components/worktree-select";
 import { CreateTaskInput } from "@/features/chat";
 import { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
 import { useCurrentWorkspace } from "@/lib/hooks/use-current-workspace";
@@ -58,7 +59,7 @@ function Tasks() {
   const { store } = useStore();
   const { data: currentWorkspace } = useCurrentWorkspace();
   const cwd = currentWorkspace?.cwd || "default";
-  const workspaceFolder = currentWorkspace?.workspacePath;
+  const workspacePath = currentWorkspace?.workspacePath;
 
   useEffect(() => {
     setActiveStore(store);
@@ -69,16 +70,18 @@ function Tasks() {
 
   const attachmentUpload = useAttachmentUpload();
 
-  const [userSelectedWorktree, setUserSelectedWorktree] = useState<
-    GitWorktree | undefined
-  >();
+  const [userSelectedWorktree, setUserSelectedWorktree] =
+    useState<CreateWorktreeType>();
 
   const { deleteWorktree, deletingWorktreePaths } =
     useOptimisticWorktreeDelete();
 
   const onDeleteWorktree = (wt: string) => {
     deleteWorktree(wt);
-    if (userSelectedWorktree?.path === wt) {
+    if (
+      typeof userSelectedWorktree !== "string" &&
+      userSelectedWorktree?.path === wt
+    ) {
       setUserSelectedWorktree(undefined);
     }
   };
@@ -88,7 +91,7 @@ function Tasks() {
       <div className="w-full px-4 pt-3">
         <CreateTaskInput
           cwd={cwd}
-          workspaceFolder={workspaceFolder}
+          workspacePath={workspacePath}
           attachmentUpload={attachmentUpload}
           userSelectedWorktree={userSelectedWorktree}
           setUserSelectedWorktree={setUserSelectedWorktree}

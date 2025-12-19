@@ -9,13 +9,12 @@ import type {
   FileDiff,
   GitWorktree,
   McpStatus,
-  NewTaskPanelParams,
+  PochiTaskParams,
   ResourceURI,
   RuleFile,
   SaveCheckpointOptions,
   SessionState,
   TaskChangedFile,
-  TaskPanelParams,
   TaskStates,
   WorkspaceState,
 } from "./index";
@@ -306,11 +305,11 @@ export interface VSCodeHostApi {
   /**
    * create or open a task in a new panel
    */
-  openTaskInPanel(params: TaskPanelParams | NewTaskPanelParams): Promise<void>;
+  openTaskInPanel(params: PochiTaskParams): Promise<void>;
 
   sendTaskNotification(
     kind: "failed" | "completed" | "pending-tool" | "pending-input",
-    params: { uid: string; displayId?: number; isSubTask?: boolean },
+    params: { uid: string; displayId: number | null; isSubTask?: boolean },
   ): Promise<void>;
 
   onTaskUpdated(taskData: unknown): Promise<void>;

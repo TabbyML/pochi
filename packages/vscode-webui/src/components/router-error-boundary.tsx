@@ -1,6 +1,5 @@
-import { AlertCircle, RefreshCw } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 
 interface RouterErrorBoundaryProps {
   error: Error;
@@ -12,26 +11,17 @@ export function RouterErrorBoundary({ error }: RouterErrorBoundaryProps) {
   return (
     <div className="flex h-screen w-screen flex-col items-center justify-center gap-4 bg-background p-4">
       <div className="flex max-w-md flex-col items-center text-center">
-        <h1 className="mb-8 flex items-center gap-2 font-semibold text-2xl tracking-tight">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <AlertCircle
-                className="size-5 shrink-0 cursor-help text-yellow-500"
-                strokeWidth={2}
-              />
-            </TooltipTrigger>
-            <TooltipContent
-              side="top"
-              className="max-w-md whitespace-pre-wrap break-words"
-            >
-              {error.message || String(error)}
-            </TooltipContent>
-          </Tooltip>
-          <span>{t("error.somethingWentWrong")}</span>
+        <h1 className="flex flex-col items-center gap-2 tracking-tight">
+          <span className="font-semibold text-2xl">
+            {t("error.somethingWentWrong")}
+          </span>
+          <span className="mt-2 line-clamp-4 break-all text-muted-foreground text-sm italic">
+            {error.message || String(error)}
+          </span>
         </h1>
         <a
           href="command:workbench.action.reloadWindow"
-          className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-2 font-medium text-primary-foreground shadow-lg transition-all hover:scale-105 hover:bg-primary/90 hover:shadow-xl"
+          className="mt-4 inline-flex items-center gap-2 rounded-md bg-primary px-3 py-2 font-medium text-primary-foreground shadow-lg transition-all hover:scale-105 hover:bg-primary/90 hover:shadow-xl"
         >
           <RefreshCw className="size-4" />
           {t("error.reloadWindow")}

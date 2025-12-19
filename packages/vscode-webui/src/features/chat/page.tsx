@@ -15,10 +15,7 @@ import { useLiveChatKit } from "@getpochi/livekit/react";
 import type { Todo } from "@getpochi/tools";
 import { useStore } from "@livestore/react";
 import { useRouter } from "@tanstack/react-router";
-import {
-  type FileUIPart,
-  lastAssistantMessageIsCompleteWithToolCalls,
-} from "ai";
+import { lastAssistantMessageIsCompleteWithToolCalls } from "ai";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -66,24 +63,10 @@ export function ChatPage(props: ChatProps) {
 interface ChatProps {
   uid: string;
   user?: UserInfo;
-  prompt?: string;
-  files?: FileUIPart[];
-  displayId?: number;
-  initMessages?: Message[];
-  initTitle?: string;
-  disablePendingModelAutoStart?: boolean;
+  info: NonNullable<typeof window.POCHI_TASK_INFO>;
 }
 
-function Chat({
-  user,
-  uid,
-  prompt,
-  files,
-  displayId,
-  initMessages,
-  initTitle,
-  disablePendingModelAutoStart,
-}: ChatProps) {
+function Chat({ user, uid, info }: ChatProps) {
   const { t } = useTranslation();
   const { store } = useStore();
   const todosRef = useRef<Todo[] | undefined>(undefined);
@@ -100,11 +83,12 @@ function Chat({
   const subtask = useSubtaskInfo(uid, task?.parentId);
   const topDisplayId =
     store.useQuery(catalog.queries.makeTaskQuery(task?.parentId ?? ""))
-      ?.displayId ?? displayId;
+      ?.displayId ?? info.displayId;
 
   const isSubTask = !!subtask;
 
-  const isNewTaskWithContent = !!prompt || !!files?.length;
+  const isTaskWithoutContent =
+    info.type === "new-task" && !info.prompt && !info.files?.length;
 
   // inherit autoApproveSettings from parent task
   useEffect(() => {
@@ -235,7 +219,7 @@ function Chat({
 
   const chatKit = useLiveChatKit({
     taskId: uid,
-    displayId,
+    displayId: info.displayId ?? undefined,
     getters,
     isSubTask,
     customAgent,
@@ -323,35 +307,42 @@ function Chat({
   }, [pendingApproval, task]);
 
   useEffect(() => {
-    if (
-      (initMessages || prompt || !!files?.length) &&
-      !chatKit.inited &&
-      !isFetchingWorkspace
-    ) {
-      const cwd = currentWorkspace?.cwd ?? undefined;
-      if (initMessages) {
-        chatKit.init(cwd, { initTitle, displayId, messages: initMessages });
-      } else if (files?.length) {
+    if (chatKit.inited || isFetchingWorkspace) return;
+    const cwd = currentWorkspace?.cwd ?? undefined;
+    if (info.type === "new-task") {
+      if (info.files?.length) {
+        const files = info.files?.map((file) => ({
+          type: "file" as const,
+          filename: file.name,
+          mediaType: file.contentType,
+          url: file.url,
+        }));
+
         chatKit.init(cwd, {
-          initTitle,
-          displayId,
-          parts: prepareMessageParts(t, prompt || "", files),
+          prompt: info.prompt,
+          parts: prepareMessageParts(t, info.prompt || "", files || []),
         });
-      } else {
-        chatKit.init(cwd, { initTitle, displayId, prompt: prompt || "" });
+      } else if (info.prompt) {
+        chatKit.init(cwd, {
+          prompt: info.prompt,
+        });
       }
+    } else if (info.type === "compact-task") {
+      chatKit.init(cwd, {
+        messages: JSON.parse(info.messages),
+      });
+    } else if (info.type === "fork-task") {
+      chatKit.init(cwd, {
+        initTitle: info.title,
+        displayId: info.displayId ?? undefined,
+        messages: JSON.parse(info.messages),
+      });
+    } else if (info.type === "open-task") {
+      // Do nothing
+    } else {
+      assertUnreachable(info);
     }
-  }, [
-    currentWorkspace,
-    isFetchingWorkspace,
-    prompt,
-    chatKit,
-    files,
-    t,
-    initMessages,
-    initTitle,
-    displayId,
-  ]);
+  }, [currentWorkspace, isFetchingWorkspace, chatKit, t, info]);
 
   useSetSubtaskModel({ isSubTask, customAgent });
 
@@ -361,7 +352,7 @@ function Chat({
       messages.length === 1 &&
       !isModelsLoading &&
       !!selectedModel &&
-      !disablePendingModelAutoStart,
+      info.type !== "fork-task",
     task,
     retry,
   });
@@ -417,7 +408,7 @@ function Chat({
           // Leave more space for errors as errors / approval button are absolutely positioned
           "pb-14": !!displayError,
         })}
-        hideEmptyPlaceholder={isNewTaskWithContent}
+        hideEmptyPlaceholder={!isTaskWithoutContent}
         forkTask={task?.cwd ? forkTask : undefined}
         hideCheckPoint={isSubTask}
       />
@@ -511,9 +502,13 @@ async function forkTaskFromCheckPoint(
   await vscodeHost.restoreCheckpoint(commitId);
   // Create new task
   await vscodeHost.openTaskInPanel({
+    type: "fork-task",
     cwd,
-    initTitle: t("forkTask.forkedTaskTitle", { taskTitle: title }),
-    initMessages: JSON.stringify(initMessages),
-    disablePendingModelAutoStart: true,
+    title: t("forkTask.forkedTaskTitle", { taskTitle: title }),
+    messages: JSON.stringify(initMessages),
   });
+}
+
+function assertUnreachable(x: never): never {
+  throw new Error(`Didn't expect to get here: ${JSON.stringify(x)}`);
 }

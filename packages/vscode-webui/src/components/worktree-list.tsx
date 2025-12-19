@@ -508,8 +508,8 @@ function CreatePrDropdown({
     }
     const prompt = prompts.createPr(isDraft);
     vscodeHost.openTaskInPanel({
+      type: "new-task",
       cwd: worktreePath,
-      storeId: undefined,
       prompt,
     });
   };

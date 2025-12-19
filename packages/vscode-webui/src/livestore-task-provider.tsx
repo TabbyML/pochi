@@ -1,3 +1,4 @@
+import { getLogger } from "@getpochi/common";
 import { isDev } from "@getpochi/common/vscode-webui-bridge";
 import { taskCatalog } from "@getpochi/livekit";
 import { makePersistedAdapter } from "@livestore/adapter-web";
@@ -5,6 +6,8 @@ import LiveStoreSharedWorker from "@livestore/adapter-web/shared-worker?sharedwo
 import { LiveStoreProvider } from "@livestore/react";
 import { unstable_batchedUpdates as batchUpdates } from "react-dom";
 import LiveStoreWorker from "./livestore.task.worker.ts?worker&inline";
+
+const logger = getLogger("LiveStoreTaskProvider");
 
 const adapter = makePersistedAdapter({
   storage: { type: "opfs" },
@@ -16,8 +19,11 @@ export function LiveStoreTaskProvider({
   // cwd,
   children,
 }: { children: React.ReactNode; cwd: string }) {
-  const { origin } = location;
-  const storeName = origin.startsWith("http://") ? `${origin}-tasks` : "tasks";
+  const baseURI = document.baseURI;
+  const storeName = baseURI.startsWith("http://")
+    ? `${baseURI}-tasks`
+    : "tasks";
+  logger.debug("Using LiveStore task store:", storeName);
   const storeId = sanitizeStoreId(isDev ? `dev-${storeName}` : storeName);
   return (
     <LiveStoreProvider
