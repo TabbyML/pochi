@@ -18,9 +18,12 @@ export const todoWriteTool: React.FC<ToolProps<"todoWrite">> = ({
     return [];
   }, [tool]);
 
+  // Check if all todos are completed
+  const allCompleted = todos.length > 0 && todos.every((t) => t.status === "completed");
+
   const title = (
     <>
-      <StatusIcon isExecuting={isExecuting} tool={tool} />
+      <StatusIcon isExecuting={isExecuting && !allCompleted} tool={tool} />
       <span className="ml-2" />
       {t("toolInvocation.updatingToDos")}
     </>
