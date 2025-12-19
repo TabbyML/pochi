@@ -1,7 +1,7 @@
 import { taskCatalog } from "@getpochi/livekit";
 import type { Task } from "@getpochi/livekit";
 import { useStore } from "@livestore/react";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 interface UsePaginatedTasksOptions {
   cwd: string;
@@ -35,15 +35,17 @@ export function usePaginatedTasks({
   const [limit, setLimit] = useState(pageSize);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
 
-  // Query with current limit - livestore will reactively update all items
-  const tasks = store.useQuery(
-    taskCatalog.queries.makeTasksWithLimitQuery(cwd, limit),
-  );
+  const tasksQuery = useMemo(() => {
+  return taskCatalog.queries.makeTasksWithLimitQuery(cwd, limit);
+  }, [cwd, limit]);
+  const countQuery = useMemo(() => {
+  return taskCatalog.queries.makeTasksCountQuery(cwd);
+  }, [cwd]);
 
-  // Query to get total count of tasks
-  const countResult = store.useQuery(
-    taskCatalog.queries.makeTasksCountQuery(cwd),
-  );
+  const tasks = store.useQuery(tasksQuery);
+
+  // Query to get total count of tasks (cached by cwd)
+  const countResult = store.useQuery(countQuery)?? [];
   const totalCount = countResult[0]?.count ?? 0;
   const hasMore = tasks.length < totalCount;
 

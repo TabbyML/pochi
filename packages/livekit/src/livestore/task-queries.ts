@@ -21,7 +21,7 @@ export const makeTasksQuery = (cwd: string) =>
 export const makeTasksWithLimitQuery = (cwd: string, limit: number) => {
   return queryDb(
     {
-      query: sql`select * from tasks where parentId is null and (cwd = '${cwd}' or git->>'$.worktree.gitdir' like '${cwd}/.git/worktrees%') order by updatedAt desc limit ${limit}`,
+      query: sql`select * from tasks where parentId is null and cwd = '${cwd}' order by updatedAt desc limit ${limit}`,
       schema: Schema.Array(tables.tasks.rowSchema),
     },
     {
@@ -38,7 +38,7 @@ export const makeTasksWithLimitQuery = (cwd: string, limit: number) => {
 export const makeTasksCountQuery = (cwd: string) => {
   return queryDb(
     {
-      query: sql`select COUNT(*) as count from tasks where parentId is null and (cwd = '${cwd}' or git->>'$.worktree.gitdir' like '${cwd}/.git/worktrees%')`,
+      query: sql`select COUNT(*) as count from tasks where parentId is null and cwd = '${cwd}'`,
       schema: Schema.Array(Schema.Struct({ count: Schema.Number })),
     },
     {

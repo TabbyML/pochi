@@ -104,7 +104,7 @@ export function WorktreeList({
 
     const defaultWorktree: GitWorktree = {
       commit: "",
-      path: currentWorkspace?.workspacePath ?? "",
+      path: currentWorkspace?.workspacePath ?? cwd,
       isMain: true,
     };
 
@@ -152,7 +152,8 @@ export function WorktreeList({
     worktrees,
     isLoadingWorktrees,
     isLoadingCurrentWorkspace,
-    currentWorkspace?.workspacePath,
+    currentWorkspace,
+    cwd,
   ]);
 
   // Apply optimistic deletion: filter out items being deleted
@@ -173,7 +174,7 @@ export function WorktreeList({
 
   const activeGroups = optimisticGroups.filter((g) => !g.isDeleted);
   const deletedGroups = optimisticGroups.filter((g) => g.isDeleted);
-
+  
   return (
     <div className="flex flex-col gap-1">
       {activeGroups.map((group) => (
@@ -246,11 +247,6 @@ function WorktreeSection({
   });
 
   const pullRequest = group.data?.github?.pullRequest;
-  const hasEdit = tasks.some(
-    (task) =>
-      task.lineChanges &&
-      (task.lineChanges?.added !== 0 || task.lineChanges?.removed !== 0),
-  );
 
   const prUrl = useMemo(() => {
     if (!gitOriginUrl || !pullRequest?.id) return "#";
@@ -308,7 +304,7 @@ function WorktreeSection({
                 prUrl={prUrl}
                 prChecks={pullRequest.checks}
               />
-            ) : hasEdit && !group.isDeleted ? (
+            ) : !group.isDeleted ? (
               <CreatePrDropdown
                 worktreePath={group.path}
                 branch={group.branch}
