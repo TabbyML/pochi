@@ -152,14 +152,17 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
                 },
               })
             : selectedWorktree;
-        vscodeHost.openTaskInPanel({
-          type: "new-task",
-          cwd: worktree?.path || cwd,
-          prompt: content,
-          files: uploadedFiles,
-        });
-
-        clearFiles();
+        if (worktree) {
+          vscodeHost.openTaskInPanel({
+            type: "new-task",
+            cwd: worktree?.path || cwd,
+            prompt: content,
+            files: uploadedFiles,
+          });
+          clearFiles();
+          // Clear input content after unfreeze
+          setTimeout(clearDraft, 50);
+        }
       } else if (content.length > 0) {
         clearUploadError();
 
@@ -171,19 +174,21 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
                 },
               })
             : selectedWorktree;
-        vscodeHost.openTaskInPanel({
-          type: "new-task",
-          cwd: worktree?.path || cwd,
-          prompt: content,
-        });
+        if (worktree) {
+          vscodeHost.openTaskInPanel({
+            type: "new-task",
+            cwd: worktree?.path || cwd,
+            prompt: content,
+          });
+          // Clear input content after unfreeze
+          setTimeout(clearDraft, 50);
+        }
       }
 
       // Set isCreatingTask state false
       // Hide loading and unfreeze input
       setIsCreatingTask(false);
       setDebouncedIsCreatingTask(false);
-      // Clear input content after unfreeze
-      setTimeout(clearDraft, 50);
     },
     [
       cwd,
