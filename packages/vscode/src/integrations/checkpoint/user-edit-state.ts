@@ -50,7 +50,7 @@ export class UserEditState implements vscode.Disposable {
       dispose: this.pochiTaskState.state.subscribe((tasks) => {
         const newEdits = { ...this.edits.value };
         for (const uid of this.trackingTasks.keys()) {
-          if (!tasks[uid]) {
+          if (!tasks[uid] || !tasks[uid].active) {
             this.trackingTasks.delete(uid);
             delete newEdits[uid];
           }
@@ -61,8 +61,8 @@ export class UserEditState implements vscode.Disposable {
 
         let isDirty = false;
         for (const [uid, task] of Object.entries(tasks)) {
-          const { cwd, lastCheckpointHash: hash } = task;
-          if (cwd === this.cwd && hash) {
+          const { cwd, lastCheckpointHash: hash, active } = task;
+          if (active && cwd === this.cwd && hash) {
             if (this.trackingTasks.get(uid) !== hash) {
               this.trackingTasks.set(uid, hash);
               isDirty = true;
