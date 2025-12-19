@@ -1,8 +1,6 @@
-import { WorkspaceRequiredPlaceholder } from "@/components/workspace-required-placeholder";
 import { ChatContextProvider, useHandleChatEvents } from "@/features/chat";
 import { isRetryableError, usePendingModelAutoStart } from "@/features/retry";
 import { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
-import { useCurrentWorkspace } from "@/lib/hooks/use-current-workspace";
 import { useCustomAgent } from "@/lib/hooks/use-custom-agents";
 import { prepareMessageParts } from "@/lib/message-utils";
 import { vscodeHost } from "@/lib/vscode";
@@ -106,9 +104,6 @@ function Chat({ user, uid, info }: ChatProps) {
   });
   const { customAgent } = useCustomAgent(subtask?.agent);
   const autoApproveGuard = useAutoApproveGuard();
-  const { data: currentWorkspace, isFetching: isFetchingWorkspace } =
-    useCurrentWorkspace();
-  const isWorkspaceActive = !!currentWorkspace?.cwd;
   const getters = useLiveChatKitGetters({
     todos: todosRef,
     isSubTask,
@@ -219,7 +214,6 @@ function Chat({ user, uid, info }: ChatProps) {
 
   const chatKit = useLiveChatKit({
     taskId: uid,
-    displayId: info.displayId ?? undefined,
     getters,
     isSubTask,
     customAgent,
@@ -307,8 +301,9 @@ function Chat({ user, uid, info }: ChatProps) {
   }, [pendingApproval, task]);
 
   useEffect(() => {
-    if (chatKit.inited || isFetchingWorkspace) return;
-    const cwd = currentWorkspace?.cwd ?? undefined;
+    if (chatKit.inited) return;
+    const cwd = info.cwd;
+    const displayId = info.displayId ?? undefined;
     if (info.type === "new-task") {
       if (info.files?.length) {
         const files = info.files?.map((file) => ({
@@ -319,22 +314,25 @@ function Chat({ user, uid, info }: ChatProps) {
         }));
 
         chatKit.init(cwd, {
+          displayId,
           prompt: info.prompt,
           parts: prepareMessageParts(t, info.prompt || "", files || []),
         });
       } else if (info.prompt) {
         chatKit.init(cwd, {
+          displayId,
           prompt: info.prompt,
         });
       }
     } else if (info.type === "compact-task") {
       chatKit.init(cwd, {
+        displayId,
         messages: JSON.parse(info.messages),
       });
     } else if (info.type === "fork-task") {
       chatKit.init(cwd, {
         initTitle: info.title,
-        displayId: info.displayId ?? undefined,
+        displayId,
         messages: JSON.parse(info.messages),
       });
     } else if (info.type === "open-task") {
@@ -342,7 +340,7 @@ function Chat({ user, uid, info }: ChatProps) {
     } else {
       assertUnreachable(info);
     }
-  }, [currentWorkspace, isFetchingWorkspace, chatKit, t, info]);
+  }, [chatKit, t, info]);
 
   useSetSubtaskModel({ isSubTask, customAgent });
 
@@ -413,25 +411,18 @@ function Chat({ user, uid, info }: ChatProps) {
         hideCheckPoint={isSubTask}
       />
       <div className="relative flex flex-col px-4">
-        {!isWorkspaceActive ? (
-          <WorkspaceRequiredPlaceholder
-            isFetching={isFetchingWorkspace}
-            className="mb-12"
-          />
-        ) : (
-          <ChatToolbar
-            chat={chat}
-            task={task}
-            todosRef={todosRef}
-            compact={chatKit.compact}
-            approvalAndRetry={approvalAndRetry}
-            attachmentUpload={attachmentUpload}
-            isSubTask={isSubTask}
-            subtask={subtask}
-            displayError={displayError}
-            onUpdateIsPublicShared={chatKit.updateIsPublicShared}
-          />
-        )}
+        <ChatToolbar
+          chat={chat}
+          task={task}
+          todosRef={todosRef}
+          compact={chatKit.compact}
+          approvalAndRetry={approvalAndRetry}
+          attachmentUpload={attachmentUpload}
+          isSubTask={isSubTask}
+          subtask={subtask}
+          displayError={displayError}
+          onUpdateIsPublicShared={chatKit.updateIsPublicShared}
+        />
       </div>
     </div>
   );

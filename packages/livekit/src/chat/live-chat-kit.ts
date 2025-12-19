@@ -22,7 +22,6 @@ const logger = getLogger("LiveChatKit");
 
 export type LiveChatKitOptions<T> = {
   taskId: string;
-  displayId?: number;
 
   abortSignal?: AbortSignal;
 
@@ -101,7 +100,6 @@ export class LiveChatKit<
 
   constructor({
     taskId,
-    displayId,
     abortSignal,
     store,
     chatClass,
@@ -117,7 +115,6 @@ export class LiveChatKit<
     ...chatInit
   }: LiveChatKitOptions<T>) {
     this.taskId = taskId;
-    this.displayId = displayId;
     this.store = store;
     this.onStreamStart = onStreamStart;
     this.onStreamFinish = onStreamFinish;
@@ -320,7 +317,6 @@ export class LiveChatKit<
           git: toTaskGitInfo(environment?.workspace.gitStatus),
           updatedAt: new Date(),
           modelId: llm.id,
-          displayId: this.displayId,
         }),
       );
 

@@ -131,6 +131,7 @@ export const events = {
       git: Schema.optional(Git),
       updatedAt: Schema.Date,
       modelId: Schema.optional(Schema.String),
+      // @deprecated, use displayId in init instead.
       displayId: Schema.optional(Schema.Number),
     }),
   }),
