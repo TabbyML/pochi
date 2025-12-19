@@ -400,10 +400,6 @@ export class NESDecorationManager implements vscode.Disposable {
         );
       }
     });
-    logger.info("Accepted edit suggestion", {
-      toFile: true,
-      solution,
-    });
     this.hide();
 
     // Move cursor to the end of the edited range
@@ -427,10 +423,7 @@ export class NESDecorationManager implements vscode.Disposable {
   }
 
   reject() {
-    logger.info("Rejecting the current edit suggestion", {
-      toFile: true,
-      solution: this.current?.solution,
-    });
+    logger.trace("Rejecting the current edit suggestion");
     this.hide();
   }
 
