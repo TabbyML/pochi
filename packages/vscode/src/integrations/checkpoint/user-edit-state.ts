@@ -89,22 +89,16 @@ export class UserEditState implements vscode.Disposable {
       return;
     }
 
-    const promises = this.trackingTasks.entries().map(async ([uid, hash]) => {
-      try {
-        const diffs = await this.checkpointService.getCheckpointFileEdits(hash);
-        return { uid, diffs };
-      } catch (error) {
-        logger.error(`Failed to update user edits for hash ${hash}`, error);
-        return null;
-      }
-    });
-
-    const results = await Promise.all(promises);
     const nextEdits = { ...this.edits.value };
 
-    for (const result of results) {
-      if (result?.diffs && this.trackingTasks.has(result.uid)) {
-        nextEdits[result.uid] = result.diffs;
+    for (const [uid, hash] of this.trackingTasks.entries()) {
+      try {
+        const diffs = await this.checkpointService.getCheckpointFileEdits(hash);
+        if (this.trackingTasks.has(uid) && diffs) {
+          nextEdits[uid] = diffs;
+        }
+      } catch (error) {
+        logger.error(`Failed to update user edits for hash ${hash}`, error);
       }
     }
 

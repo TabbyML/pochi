@@ -71,7 +71,7 @@ export class PochiTaskState implements vscode.Disposable {
     }
 
     const selectedTab = vscode.window.tabGroups.activeTabGroup?.activeTab;
-    const selectedUid = selectedTab ? getTaskUid(selectedTab) : undefined;
+    const selectedUid = selectedTab ? getTaskUri(selectedTab)?.uid : undefined;
     if (selectedUid && newState[selectedUid]) {
       newState[selectedUid].focused = true;
     }
