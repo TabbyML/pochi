@@ -6,9 +6,8 @@ import { vscodeHost } from "@/lib/vscode";
 import { catalog, createModel, generateWalkthrough } from "@getpochi/livekit";
 import { useStore } from "@livestore/react";
 import { ThreadAbortSignal } from "@quilted/threads";
-import { useRouter } from "@tanstack/react-router";
 import { BookOpen, Check } from "lucide-react";
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useLiveChatKitGetters } from "../../chat/lib/use-live-chat-kit-getters";
 import type { ToolProps } from "./types";
@@ -22,9 +21,56 @@ export const AttemptCompletionTool: React.FC<
   const { result = "" } = toolCall.input || {};
   const { data: currentWorkspace } = useCurrentWorkspace();
   const { store } = useStore();
-  const router = useRouter();
-  const searchParams = router.state.location.search as { uid?: string };
-  const taskId = searchParams?.uid || toolCall.toolCallId;
+
+  // Get taskId from store by finding which task contains the messages
+  // Note: toolCallId and taskId are different - toolCallId identifies a tool call,
+  // while taskId identifies the task that contains the messages
+  const taskId = useMemo(() => {
+    if (messages.length === 0) {
+      return undefined;
+    }
+
+    // Get the first message's id
+    const firstMessageId = messages[0]?.id;
+    if (!firstMessageId) {
+      return undefined;
+    }
+
+    // Query all tasks and find which one contains this message
+    // Since messages belong to a task, we can find the task by checking
+    // which task's messages include this message id
+    const allTasks = store.query(catalog.queries.tasks$);
+    
+    for (const task of allTasks) {
+      const taskMessages = store.query(
+        catalog.queries.makeMessagesQuery(task.id),
+      );
+      const hasMessage = taskMessages.some((m) => m.id === firstMessageId);
+      if (hasMessage) {
+        return task.id;
+      }
+    }
+
+    // Also check subtasks
+    for (const task of allTasks) {
+      const subtasks = store.query(
+        catalog.queries.makeSubTaskQuery(task.id),
+      );
+      for (const subtask of subtasks) {
+        const subtaskMessages = store.query(
+          catalog.queries.makeMessagesQuery(subtask.id),
+        );
+        const hasMessage = subtaskMessages.some((m) => m.id === firstMessageId);
+        if (hasMessage) {
+          return subtask.id;
+        }
+      }
+    }
+
+    // If we can't find the task, return undefined instead of falling back to toolCallId
+    // because toolCallId and taskId are different concepts
+    return undefined;
+  }, [messages, store]);
 
   // Get task info to determine if it's a subtask
   const task = taskId
@@ -82,6 +128,16 @@ export const AttemptCompletionTool: React.FC<
         return;
       }
 
+      // Check if taskId is available (it's required for generateWalkthrough)
+      if (!taskId) {
+        await vscodeHost.showInformationMessage(
+          "Unable to determine task ID. Cannot generate walkthrough.",
+          {},
+        );
+        setIsCreatingWalkthrough(false);
+        return;
+      }
+
       // Extract getModel from LLMRequestData
       // For vendor type, use the getModel function directly
       // For other types, use createModel to create the model
@@ -112,7 +168,7 @@ export const AttemptCompletionTool: React.FC<
 
       try {
         // Use writeToFile tool to write the file (it automatically creates directories)
-        const result = await vscodeHost.executeToolCall(
+        const result = (await vscodeHost.executeToolCall(
           "writeToFile",
           {
             path: relativePath,
@@ -120,9 +176,11 @@ export const AttemptCompletionTool: React.FC<
           },
           {
             toolCallId: `walkthrough-${toolCall.toolCallId}`,
-            abortSignal: ThreadAbortSignal.serialize(new AbortController().signal),
+            abortSignal: ThreadAbortSignal.serialize(
+              new AbortController().signal,
+            ),
           },
-        ) as { success: boolean; error?: string };
+        )) as { success: boolean; error?: string };
 
         if (result.success) {
           console.log("Walkthrough created successfully");
