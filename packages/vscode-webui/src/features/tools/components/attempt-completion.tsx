@@ -106,58 +106,64 @@ export const AttemptCompletionTool: React.FC<
         return;
       }
 
-      // Create directory and write file using bash command
-      const command = `mkdir -p "${cwd}/pochi/walkthroughs" && cat > "${cwd}/pochi/walkthroughs/${toolCall.toolCallId}.md" << 'WALKTHROUGH_EOF'
-${walkthroughMarkdown}
-WALKTHROUGH_EOF`;
-
-      // Create an abort signal (can be empty for this use case)
-      const abortController = new AbortController();
-      const { output, error } = await vscodeHost.executeBashCommand(
-        command,
-        ThreadAbortSignal.serialize(abortController.signal),
-      );
-
-      const filePath = `${cwd}/pochi/walkthroughs/${toolCall.toolCallId}.md`;
+      // Write file using writeToFile tool
       const relativePath = `pochi/walkthroughs/${toolCall.toolCallId}.md`;
+      const filePath = `${cwd}/${relativePath}`;
 
-      if (error) {
-        console.error("Failed to create walkthrough:", error);
-        await vscodeHost.showInformationMessage(
-          `Failed to create walkthrough: ${error}`,
-          {},
-        );
-      } else {
-        console.log("Walkthrough created successfully:", output);
-        console.log(`📄 Walkthrough file saved to: ${filePath}`);
-        console.log(`📄 Full path: ${filePath}`);
-        console.log(`📄 Relative to workspace: ${relativePath}`);
+      try {
+        // Use writeToFile tool to write the file (it automatically creates directories)
+        const result = await vscodeHost.executeToolCall(
+          "writeToFile",
+          {
+            path: relativePath,
+            content: walkthroughMarkdown,
+          },
+          {
+            toolCallId: `walkthrough-${toolCall.toolCallId}`,
+            abortSignal: ThreadAbortSignal.serialize(new AbortController().signal),
+          },
+        ) as { success: boolean; error?: string };
 
-        // Open the file in VSCode
-        try {
-          await vscodeHost.openFile(relativePath, {
-            webviewKind: globalThis.POCHI_WEBVIEW_KIND,
-          });
-        } catch (openError) {
-          console.warn("Failed to open file:", openError);
-          // Try with absolute path if relative path fails
+        if (result.success) {
+          console.log("Walkthrough created successfully");
+          console.log(`📄 Walkthrough file saved to: ${filePath}`);
+          console.log(`📄 Full path: ${filePath}`);
+          console.log(`📄 Relative to workspace: ${relativePath}`);
+
+          // Open the file in VSCode
           try {
-            await vscodeHost.openFile(filePath, {
+            await vscodeHost.openFile(relativePath, {
               webviewKind: globalThis.POCHI_WEBVIEW_KIND,
             });
-          } catch (absError) {
-            console.warn("Failed to open file with absolute path:", absError);
+          } catch (openError) {
+            console.warn("Failed to open file:", openError);
+            // Try with absolute path if relative path fails
+            try {
+              await vscodeHost.openFile(filePath, {
+                webviewKind: globalThis.POCHI_WEBVIEW_KIND,
+              });
+            } catch (absError) {
+              console.warn("Failed to open file with absolute path:", absError);
+            }
           }
-        }
 
-        const message = `✅ Walkthrough saved successfully!
+          const message = `✅ Walkthrough saved successfully!
 
 📁 File location: ${relativePath}
 📁 Full path: ${filePath}
 
 The file should open automatically in the editor. If not, you can find it in your workspace under the "pochi/walkthroughs" folder.`;
 
-        await vscodeHost.showInformationMessage(message, {});
+          await vscodeHost.showInformationMessage(message, {});
+        } else {
+          throw new Error(result.error || "Failed to write file");
+        }
+      } catch (fileError) {
+        console.error("Failed to create walkthrough:", fileError);
+        await vscodeHost.showInformationMessage(
+          `Failed to create walkthrough: ${fileError instanceof Error ? fileError.message : String(fileError)}`,
+          {},
+        );
       }
     } catch (error) {
       console.error("Error creating walkthrough:", error);
