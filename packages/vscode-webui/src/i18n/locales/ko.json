@@ -220,7 +220,8 @@
       "errorPrefix": "오류:",
       "fallbackError": "오류 발생",
       "finished": "{{duration}} 만에 완료"
-    }
+    },
+    "loadMore": "더 보기"
   },
   "toolInvocation": {
     "taskCompleted": "작업 완료",

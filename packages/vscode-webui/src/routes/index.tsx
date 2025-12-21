@@ -10,7 +10,6 @@ import { useModelList } from "@/lib/hooks/use-model-list";
 import { useUserStorage } from "@/lib/hooks/use-user-storage";
 import { useOptimisticWorktreeDelete } from "@/lib/hooks/use-worktrees";
 import { setActiveStore } from "@/lib/vscode";
-import type { GitWorktree } from "@getpochi/common/vscode-webui-bridge";
 import { useStore } from "@livestore/react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";

@@ -222,7 +222,8 @@
       "errorPrefix": "Error:",
       "fallbackError": "Error encountered",
       "finished": "Finished in {{duration}}"
-    }
+    },
+    "loadMore": "Load more"
   },
   "toolInvocation": {
     "taskCompleted": "Task Completed",

@@ -1,9 +1,5 @@
 import { Button } from "@/components/ui/button";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -41,11 +37,8 @@ import {
   type GitWorktree,
   prefixWorktreeName,
 } from "@getpochi/common/vscode-webui-bridge";
-import type { Task } from "@getpochi/livekit";
 import {
   Check,
-  ChevronDown,
-  ChevronRight,
   GitCompare,
   GitPullRequest,
   Loader2,
@@ -69,8 +62,6 @@ interface PrCheck {
 interface WorktreeGroup {
   name: string;
   path: string;
-  tasks: Task[];
-  isDeleted: boolean;
   isMain: boolean;
   createdAt?: number;
   branch?: string;
@@ -86,7 +77,6 @@ export function WorktreeList({
   deletingWorktreePaths: Set<string>;
   onDeleteWorktree: (worktreePath: string) => void;
 }) {
-  const { t } = useTranslation();
   const { data: currentWorkspace, isLoading: isLoadingCurrentWorkspace } =
     useCurrentWorkspace();
   const {
@@ -95,7 +85,6 @@ export function WorktreeList({
     gitOriginUrl,
     isLoading: isLoadingWorktrees,
   } = useWorktrees();
-  const [showDeleted, setShowDeleted] = useState(false);
 
   const groups = useMemo(() => {
     if (isLoadingWorktrees || isLoadingCurrentWorkspace) {
@@ -117,12 +106,11 @@ export function WorktreeList({
       allWorktrees.map((wt, index) => [wt.path, index]),
     );
 
-    // Create groups for all worktrees (tasks will be fetched per-worktree)
+    // Create groups for all worktrees
     return R.pipe(
       allWorktrees,
       R.map((wt): WorktreeGroup => {
         let name = "unknown";
-        const isDeleted = false;
         const isMain = wt.isMain;
 
         if (wt.isMain) {
@@ -133,10 +121,8 @@ export function WorktreeList({
 
         return {
           path: wt.path,
-          tasks: [], // Tasks will be fetched by WorktreeSection
           createdAt: 0,
           name,
-          isDeleted,
           isMain,
           branch: wt.branch,
           data: wt.data,
@@ -158,26 +144,12 @@ export function WorktreeList({
 
   // Apply optimistic deletion: filter out items being deleted
   const optimisticGroups = useMemo(() => {
-    return groups
-      .map((g) => {
-        if (deletingWorktreePaths.has(g.path)) {
-          // If has tasks, mark as deleted; otherwise filter out
-          if (g.tasks.length > 0) {
-            return { ...g, isDeleted: true };
-          }
-          return null;
-        }
-        return g;
-      })
-      .filter((x): x is WorktreeGroup => x !== null);
+    return groups.filter((x) => !deletingWorktreePaths.has(x.path));
   }, [groups, deletingWorktreePaths]);
 
-  const activeGroups = optimisticGroups.filter((g) => !g.isDeleted);
-  const deletedGroups = optimisticGroups.filter((g) => g.isDeleted);
-  
   return (
     <div className="flex flex-col gap-1">
-      {activeGroups.map((group) => (
+      {optimisticGroups.map((group) => (
         <WorktreeSection
           isLoadingWorktrees={isLoadingWorktrees}
           key={group.path}
@@ -187,38 +159,6 @@ export function WorktreeList({
           gh={gh}
         />
       ))}
-      {deletedGroups.length > 0 && (
-        <>
-          <div className="group flex items-center py-2">
-            <div className="h-px flex-1 bg-border" />
-            <Button
-              variant="ghost"
-              size="sm"
-              className="mx-2 h-auto gap-2 py-0 text-muted-foreground text-xs hover:bg-transparent"
-              onClick={() => setShowDeleted(!showDeleted)}
-            >
-              <Trash2 className="size-3" />
-              <span className="w-0 overflow-hidden whitespace-nowrap transition-all group-hover:w-auto">
-                {showDeleted
-                  ? t("tasksPage.hideDeletedWorktrees")
-                  : t("tasksPage.showDeletedWorktrees")}
-              </span>
-            </Button>
-            <div className="h-px flex-1 bg-border" />
-          </div>
-
-          {showDeleted &&
-            deletedGroups.map((group) => (
-              <WorktreeSection
-                isLoadingWorktrees={isLoadingWorktrees}
-                key={group.path}
-                group={group}
-                gh={gh}
-                gitOriginUrl={gitOriginUrl}
-              />
-            ))}
-        </>
-      )}
     </div>
   );
 }
@@ -237,7 +177,7 @@ function WorktreeSection({
 }) {
   const { t } = useTranslation();
   // Default expanded for existing worktrees, collapsed for deleted
-  const [isExpanded, setIsExpanded] = useState(!group.isDeleted);
+  const [isExpanded, setIsExpanded] = useState(true);
   const [isHovered, setIsHovered] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const pochiTasks = usePochiTabs();
@@ -278,24 +218,9 @@ function WorktreeSection({
       >
         {/* worktree name & branch */}
         <div className="flex h-6 items-center gap-2">
-          {group.isDeleted ? (
-            <CollapsibleTrigger asChild>
-              <div className="flex w-full flex-1 cursor-pointer select-none items-center gap-2 font-medium text-sm">
-                {isExpanded ? (
-                  <ChevronDown className="size-4 shrink-0" />
-                ) : (
-                  <ChevronRight className="size-4 shrink-0" />
-                )}
-                <span className="truncate">
-                  {prefixWorktreeName(group.name)}
-                </span>
-              </div>
-            </CollapsibleTrigger>
-          ) : (
-            <span className="items-center truncate font-bold">
-              {prefixWorktreeName(group.name)}
-            </span>
-          )}
+          <span className="items-center truncate font-bold">
+            {prefixWorktreeName(group.name)}
+          </span>
 
           <div className="mt-[1px] flex-1">
             {pullRequest ? (
@@ -304,14 +229,14 @@ function WorktreeSection({
                 prUrl={prUrl}
                 prChecks={pullRequest.checks}
               />
-            ) : !group.isDeleted ? (
+            ) : (
               <CreatePrDropdown
                 worktreePath={group.path}
                 branch={group.branch}
                 gitOriginUrl={gitOriginUrl}
                 gh={gh}
               />
-            ) : null}
+            )}
           </div>
 
           <div
@@ -322,124 +247,122 @@ function WorktreeSection({
                 : "opacity-100",
             )}
           >
-            {!group.isDeleted && (
-              <>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 w-6 p-0"
-                      asChild
-                    >
-                      <a
-                        href={`command:pochi.worktree.newTask?${encodeURIComponent(JSON.stringify([group.path]))}`}
-                      >
-                        <Plus className="size-4" />
-                      </a>
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>{t("tasksPage.newTask")}</TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 w-6 p-0"
-                      asChild
-                    >
-                      <a
-                        href={`command:pochi.worktree.openDiff?${encodeURIComponent(JSON.stringify([group.path]))}`}
-                      >
-                        <GitCompare className="size-4" />
-                      </a>
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    {t("tasksPage.openWorktreeDiff")}
-                  </TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 w-6 p-0"
-                      asChild
-                    >
-                      <a
-                        href={`command:pochi.worktree.openTerminal?${encodeURIComponent(JSON.stringify([group.path]))}`}
-                      >
-                        <Terminal className="size-4" />
-                      </a>
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    {t("tasksPage.openWorktreeInTerminal")}
-                  </TooltipContent>
-                </Tooltip>
-                {!group.isMain && (
-                  <Popover
-                    open={showDeleteConfirm}
-                    onOpenChange={setShowDeleteConfirm}
+            <>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 w-6 p-0"
+                    asChild
                   >
-                    <Tooltip>
-                      <PopoverTrigger asChild>
-                        <TooltipTrigger asChild>
-                          <span>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-6 w-6 p-0"
-                            >
-                              <Trash2 className="size-4" />
-                            </Button>
-                          </span>
-                        </TooltipTrigger>
-                      </PopoverTrigger>
-                      <TooltipContent>
-                        {t("tasksPage.deleteWorktree")}
-                      </TooltipContent>
-                    </Tooltip>
-                    <PopoverContent className="w-80" sideOffset={0}>
-                      <div className="flex flex-col gap-3">
-                        <div className="space-y-2">
-                          <h4 className="font-medium leading-none">
-                            {t("tasksPage.deleteWorktreeTitle")}
-                          </h4>
-                          <p className="text-muted-foreground text-sm">
-                            {t("tasksPage.deleteWorktreeConfirm", {
-                              name: group.name,
-                            })}
-                          </p>
-                        </div>
-                        <div className="flex justify-end gap-2">
+                    <a
+                      href={`command:pochi.worktree.newTask?${encodeURIComponent(JSON.stringify([group.path]))}`}
+                    >
+                      <Plus className="size-4" />
+                    </a>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>{t("tasksPage.newTask")}</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 w-6 p-0"
+                    asChild
+                  >
+                    <a
+                      href={`command:pochi.worktree.openDiff?${encodeURIComponent(JSON.stringify([group.path]))}`}
+                    >
+                      <GitCompare className="size-4" />
+                    </a>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {t("tasksPage.openWorktreeDiff")}
+                </TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 w-6 p-0"
+                    asChild
+                  >
+                    <a
+                      href={`command:pochi.worktree.openTerminal?${encodeURIComponent(JSON.stringify([group.path]))}`}
+                    >
+                      <Terminal className="size-4" />
+                    </a>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {t("tasksPage.openWorktreeInTerminal")}
+                </TooltipContent>
+              </Tooltip>
+              {!group.isMain && (
+                <Popover
+                  open={showDeleteConfirm}
+                  onOpenChange={setShowDeleteConfirm}
+                >
+                  <Tooltip>
+                    <PopoverTrigger asChild>
+                      <TooltipTrigger asChild>
+                        <span>
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => setShowDeleteConfirm(false)}
+                            className="h-6 w-6 p-0"
                           >
-                            {t("tasksPage.cancel")}
+                            <Trash2 className="size-4" />
                           </Button>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            type="button"
-                            onClick={() => {
-                              setShowDeleteConfirm(false);
-                              onDeleteGroup?.(group.path);
-                            }}
-                          >
-                            {t("tasksPage.delete")}
-                          </Button>
-                        </div>
+                        </span>
+                      </TooltipTrigger>
+                    </PopoverTrigger>
+                    <TooltipContent>
+                      {t("tasksPage.deleteWorktree")}
+                    </TooltipContent>
+                  </Tooltip>
+                  <PopoverContent className="w-80" sideOffset={0}>
+                    <div className="flex flex-col gap-3">
+                      <div className="space-y-2">
+                        <h4 className="font-medium leading-none">
+                          {t("tasksPage.deleteWorktreeTitle")}
+                        </h4>
+                        <p className="text-muted-foreground text-sm">
+                          {t("tasksPage.deleteWorktreeConfirm", {
+                            name: group.name,
+                          })}
+                        </p>
                       </div>
-                    </PopoverContent>
-                  </Popover>
-                )}
-              </>
-            )}
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setShowDeleteConfirm(false)}
+                        >
+                          {t("tasksPage.cancel")}
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          type="button"
+                          onClick={() => {
+                            setShowDeleteConfirm(false);
+                            onDeleteGroup?.(group.path);
+                          }}
+                        >
+                          {t("tasksPage.delete")}
+                        </Button>
+                      </div>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              )}
+            </>
           </div>
         </div>
       </div>
@@ -463,10 +386,10 @@ function WorktreeSection({
                     className="w-full text-muted-foreground text-xs hover:text-foreground"
                     onClick={loadMore}
                   >
-                    Load more
+                    {t("tasksPage.loadMore")}
                   </Button>
                 </div>
-              )}
+              )}{" "}
             </>
           ) : (
             <div className="py-0.5 text-muted-foreground text-xs">

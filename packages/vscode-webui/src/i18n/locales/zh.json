@@ -219,7 +219,8 @@
       "errorPrefix": "错误：",
       "fallbackError": "遇到错误",
       "finished": "已完成，耗时 {{duration}}"
-    }
+    },
+    "loadMore": "加载更多"
   },
   "toolInvocation": {
     "taskCompleted": "任务完成",

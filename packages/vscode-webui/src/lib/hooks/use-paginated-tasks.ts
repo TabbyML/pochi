@@ -36,16 +36,16 @@ export function usePaginatedTasks({
   const [isLoadingMore, setIsLoadingMore] = useState(false);
 
   const tasksQuery = useMemo(() => {
-  return taskCatalog.queries.makeTasksWithLimitQuery(cwd, limit);
+    return taskCatalog.queries.makeTasksWithLimitQuery(cwd, limit);
   }, [cwd, limit]);
   const countQuery = useMemo(() => {
-  return taskCatalog.queries.makeTasksCountQuery(cwd);
+    return taskCatalog.queries.makeTasksCountQuery(cwd);
   }, [cwd]);
 
   const tasks = store.useQuery(tasksQuery);
 
   // Query to get total count of tasks (cached by cwd)
-  const countResult = store.useQuery(countQuery)?? [];
+  const countResult = store.useQuery(countQuery) ?? [];
   const totalCount = countResult[0]?.count ?? 0;
   const hasMore = tasks.length < totalCount;
 
