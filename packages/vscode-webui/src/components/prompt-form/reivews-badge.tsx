@@ -1,13 +1,12 @@
-import { FileBadge } from "@/features/tools";
-import { useReviews } from "@/lib/hooks/use-reviews";
-import { cn } from "@/lib/utils";
-import type { Review } from "@getpochi/common/vscode-webui-bridge";
-import { MessageSquare } from "lucide-react";
+import type { Review } from "@getpochi/livekit";
 import { useMemo } from "react";
+import { ReviewBadge } from "../message/review-badge";
 
-export const ReviewBadges: React.FC = () => {
-  const reviews = useReviews();
+interface Props {
+  reviews: Review[];
+}
 
+export const ReviewBadges: React.FC<Props> = ({ reviews }) => {
   const groupedReviews = useMemo(() => {
     const groupMap = new Map<string, Review[]>();
 
@@ -31,39 +30,10 @@ export const ReviewBadges: React.FC = () => {
   return (
     <>
       {groupedReviews.map((x) => {
-        const reviewsLen = x.reviews.length;
         return (
-          <div
-            key={x.uri}
-            className={cn(
-              "inline-flex h-[1.7rem] max-w-full items-center gap-1 overflow-hidden truncate rounded-sm",
-            )}
-          >
-            <FileBadge
-              className="hover:!bg-transparent !py-0 m-0 cursor-default truncate rounded-sm border border-[var(--vscode-chat-requestBorder)] pr-1"
-              labelClassName="whitespace-nowrap"
-              label={getBadgeLabel(x.uri)}
-              path={x.uri}
-            >
-              <span className="ml-1 space-x-0.5">
-                <MessageSquare className="inline size-3" />
-                {reviewsLen > 1 && (
-                  <span className="text-muted-foreground text-xs">
-                    {reviewsLen}
-                  </span>
-                )}
-              </span>
-            </FileBadge>
-          </div>
+          <ReviewBadge key={x.uri} uri={x.uri} reviewCount={x.reviews.length} />
         );
       })}
     </>
   );
 };
-
-// Build label for the badge
-function getBadgeLabel(reviewUri: string) {
-  const filename = reviewUri.split("/").pop();
-
-  return filename;
-}

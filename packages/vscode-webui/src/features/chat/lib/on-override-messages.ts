@@ -6,6 +6,7 @@ import type { TaskChangedFile } from "@getpochi/common/vscode-webui-bridge";
 import { type Message, catalog } from "@getpochi/livekit";
 import type { Store } from "@livestore/livestore";
 import { ThreadAbortSignal } from "@quilted/threads";
+import { threadSignal } from "@quilted/threads/signals";
 import { unique } from "remeda";
 
 /**
@@ -29,6 +30,7 @@ export async function onOverrideMessages({
   const lastMessage = messages.at(-1);
   if (lastMessage) {
     const ckpt = await appendCheckpoint(lastMessage);
+    await appendReviews(lastMessage);
     await appendWorkflowBashOutputs(lastMessage, abortSignal);
 
     const firstCheckpoint = checkpoints.at(0);
@@ -76,6 +78,34 @@ async function appendCheckpoint(message: Message) {
     },
   });
   return ckpt;
+}
+
+async function appendReviews(message: Message) {
+  if (message.role !== "user") return;
+
+  const lastStepStartIndex =
+    message.parts.reduce((lastIndex, part, index) => {
+      return part.type === "step-start" ? index : lastIndex;
+    }, -1) ?? -1;
+
+  if (
+    message.parts
+      .slice(lastStepStartIndex + 1)
+      .some((x) => x.type === "data-reviews")
+  ) {
+    return;
+  }
+
+  const reviews = threadSignal(await vscodeHost.readReviews());
+  if (!reviews.value.length) return;
+
+  message.parts.push({
+    type: "data-reviews",
+    data: {
+      reviews: [...reviews.value],
+    },
+  });
+  vscodeHost.clearReviews();
 }
 
 /**

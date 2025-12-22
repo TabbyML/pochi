@@ -1,3 +1,4 @@
+import type { Review } from "@getpochi/livekit";
 import type { ThreadAbortSignalSerialization } from "@quilted/threads";
 import type { ThreadSignalSerialization } from "@quilted/threads/signals";
 import type { Environment } from "../base";
@@ -12,7 +13,6 @@ import type {
   McpStatus,
   PochiCredentials,
   ResourceURI,
-  Review,
   RuleFile,
   SessionState,
   TaskChangedFile,
@@ -290,6 +290,8 @@ const VSCodeHostStub = {
   readReviews: (): Promise<ThreadSignalSerialization<Review[]>> => {
     return Promise.resolve({} as ThreadSignalSerialization<Review[]>);
   },
+
+  clearReviews: async (): Promise<void> => {},
 
   getGlobalState: async (): Promise<unknown> => {
     return null;

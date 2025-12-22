@@ -59,7 +59,6 @@ import {
   type PochiCredentials,
   type PochiTaskParams,
   type ResourceURI,
-  type Review,
   type RuleFile,
   type SaveCheckpointOptions,
   type SessionState,
@@ -69,6 +68,7 @@ import {
   type WorkspaceState,
   getTaskDisplayTitle,
 } from "@getpochi/common/vscode-webui-bridge";
+import type { Review } from "@getpochi/livekit";
 import type {
   PreviewReturnType,
   PreviewToolFunctionType,
@@ -970,6 +970,10 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
 
   readReviews = async (): Promise<ThreadSignalSerialization<Review[]>> => {
     return ThreadSignal.serialize(this.reviewController.reviews);
+  };
+
+  clearReviews = async (): Promise<void> => {
+    return this.reviewController.clearThreads();
   };
 
   dispose() {

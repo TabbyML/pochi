@@ -67,6 +67,14 @@ export class ReviewController implements vscode.Disposable {
     this.updateSignal();
   }
 
+  async clearThreads() {
+    for (const thread of this.threads.values()) {
+      thread.dispose();
+    }
+    this.threads.clear();
+    this.updateSignal();
+  }
+
   async addComment(commentReply: vscode.CommentReply) {
     const { thread, text } = commentReply;
     if (thread.comments.length > 0) {

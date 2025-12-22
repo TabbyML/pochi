@@ -9,6 +9,7 @@ import type { UseChatHelpers } from "@ai-sdk/react";
 import type { Message } from "@getpochi/livekit";
 
 import { ReviewBadges } from "@/components/prompt-form/reivews-badge";
+import { useReviews } from "@/lib/hooks/use-reviews";
 import type { ReactNode } from "@tanstack/react-router";
 import { QueuedMessages } from "./queued-messages";
 
@@ -50,6 +51,7 @@ export function ChatInputForm({
   children,
 }: ChatInputFormProps) {
   const editorRef = useRef<Editor | null>(null);
+  const reviews = useReviews();
 
   return (
     <FormEditor
@@ -73,7 +75,7 @@ export function ChatInputForm({
             editorRef.current?.commands.insertContent(" @");
           }}
         />
-        <ReviewBadges />
+        <ReviewBadges reviews={reviews} />
       </div>
       <DevRetryCountdown pendingApproval={pendingApproval} status={status} />
       {queuedMessages.length > 0 && (
