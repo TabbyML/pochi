@@ -3,6 +3,7 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
+import { vscodeHost } from "@/lib/vscode";
 import type {
   Review,
   ReviewComment,
@@ -61,11 +62,23 @@ interface ReviewBadgeWithHoverProps {
 function ReviewBadgeWithHover({ uri, reviews }: ReviewBadgeWithHoverProps) {
   const filePath = getFilePath(uri);
 
+  const onBadgeClick = (review: Review) => {
+    if (!review) return;
+    // FIXME
+    vscodeHost.openFile(review.uri.replace("file://", ""), {
+      start: review.range?.start?.line,
+    });
+  };
+
   return (
     <HoverCard openDelay={300} closeDelay={200}>
       <HoverCardTrigger asChild>
         <span>
-          <ReviewBadge uri={uri} reviewCount={reviews.length} />
+          <ReviewBadge
+            onClick={() => onBadgeClick(reviews[0])}
+            uri={uri}
+            reviewCount={reviews.length}
+          />
         </span>
       </HoverCardTrigger>
       <HoverCardContent

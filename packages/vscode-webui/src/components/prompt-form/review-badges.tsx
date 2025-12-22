@@ -1,3 +1,4 @@
+import { vscodeHost } from "@/lib/vscode";
 import type { Review } from "@getpochi/common/vscode-webui-bridge";
 import { useMemo } from "react";
 import { ReviewBadge } from "../message/review-badge";
@@ -27,11 +28,24 @@ export const ReviewBadges: React.FC<Props> = ({ reviews }) => {
     return result;
   }, [reviews]);
 
+  const onBadgeClick = (review: Review) => {
+    if (!review) return;
+    // FIXME
+    vscodeHost.openFile(review.uri.replace("file://", ""), {
+      start: review.range?.start?.line,
+    });
+  };
+
   return (
     <>
       {groupedReviews.map((x) => {
         return (
-          <ReviewBadge key={x.uri} uri={x.uri} reviewCount={x.reviews.length} />
+          <ReviewBadge
+            onClick={() => onBadgeClick(x.reviews[0])}
+            key={x.uri}
+            uri={x.uri}
+            reviewCount={x.reviews.length}
+          />
         );
       })}
     </>

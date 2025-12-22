@@ -15,6 +15,7 @@ export const ReviewBadge: React.FC<ReviewBadgeProps> = ({
   reviewCount,
   className,
   showIcon = true,
+  onClick,
 }) => {
   return (
     <div
@@ -23,27 +24,30 @@ export const ReviewBadge: React.FC<ReviewBadgeProps> = ({
         className,
       )}
     >
-      <a
-        href="command:workbench.action.focusCommentsPanel"
+      {/* <a
+        href="command:pochi.comments.focusCommentsPanel"
         target="_blank"
         rel="noopener noreferrer"
+      > */}
+      <FileBadge
+        className="hover:!bg-transparent !py-0 m-0 cursor-default truncate rounded-sm border border-[var(--vscode-chat-requestBorder)] pr-1"
+        labelClassName="whitespace-nowrap"
+        label={getBadgeLabel(uri)}
+        path={uri}
+        onClick={() => {
+          onClick?.();
+        }}
       >
-        <FileBadge
-          className="hover:!bg-transparent !py-0 m-0 cursor-default truncate rounded-sm border border-[var(--vscode-chat-requestBorder)] pr-1"
-          labelClassName="whitespace-nowrap"
-          label={getBadgeLabel(uri)}
-          path={uri}
-        >
-          {showIcon && (
-            <span className="ml-1 space-x-0.5 text-muted-foreground">
-              {/* eslint-disable-next-line i18next/no-literal-string */}
-              <span>·</span>
-              <MessageSquare className="inline size-3" />
-              <span className="text-xs">{reviewCount}</span>
-            </span>
-          )}
-        </FileBadge>
-      </a>
+        {showIcon && (
+          <span className="ml-1 space-x-0.5 text-muted-foreground">
+            {/* eslint-disable-next-line i18next/no-literal-string */}
+            <span>·</span>
+            <MessageSquare className="inline size-3" />
+            <span className="text-xs">{reviewCount}</span>
+          </span>
+        )}
+      </FileBadge>
+      {/* </a> */}
     </div>
   );
 };
