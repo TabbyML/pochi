@@ -69,6 +69,7 @@ import {
   getTaskDisplayTitle,
 } from "@getpochi/common/vscode-webui-bridge";
 import type {
+  CustomAgent,
   PreviewReturnType,
   PreviewToolFunctionType,
   ToolFunctionType,
@@ -219,9 +220,11 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   readEnvironment = async (options: {
     isSubTask?: boolean;
     webviewKind: "sidebar" | "pane";
+    taskId?: string;
   }): Promise<Environment> => {
     const isSubTask = options.isSubTask ?? false;
     const webviewKind = options.webviewKind;
+    const taskId = options.taskId;
     const { files, isTruncated } = this.cwd
       ? await listWorkspaceFiles({
           cwd: this.cwd,
@@ -269,6 +272,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       info: {
         ...systemInfo,
         customRules,
+        taskId,
       },
     };
 
@@ -911,7 +915,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   };
 
   readCustomAgents = async (): Promise<
-    ThreadSignalSerialization<CustomAgentFile[]>
+    ThreadSignalSerialization<(CustomAgent | CustomAgentFile)[]>
   > => {
     return ThreadSignal.serialize(this.customAgentManager.agents);
   };

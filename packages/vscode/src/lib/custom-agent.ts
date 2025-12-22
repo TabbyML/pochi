@@ -1,6 +1,6 @@
 import * as os from "node:os";
 import * as path from "node:path";
-import { getLogger } from "@getpochi/common";
+import { getLogger, builtInCustomAgents } from "@getpochi/common";
 import { parseAgentFile } from "@getpochi/common/tool-utils";
 import type { CustomAgentFile } from "@getpochi/common/vscode-webui-bridge";
 import { signal } from "@preact/signals-core";
@@ -9,6 +9,7 @@ import { Lifecycle, injectable, scoped } from "tsyringe";
 import * as vscode from "vscode";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { WorkspaceScope } from "./workspace-scoped";
+import type { CustomAgent } from "@getpochi/tools";
 
 const logger = getLogger("CustomAgentManager");
 
@@ -44,7 +45,7 @@ async function readAgentsFromDir(dir: string): Promise<CustomAgentFile[]> {
 export class CustomAgentManager implements vscode.Disposable {
   private disposables: vscode.Disposable[] = [];
 
-  readonly agents = signal<CustomAgentFile[]>([]);
+  readonly agents = signal<(CustomAgent | CustomAgentFile)[]>([]);
 
   constructor(private readonly workspaceScope: WorkspaceScope) {
     this.initWatchers();
@@ -97,7 +98,9 @@ export class CustomAgentManager implements vscode.Disposable {
 
   private async loadAgents() {
     try {
-      const allAgents: CustomAgentFile[] = [];
+      const allAgents: (CustomAgent | CustomAgentFile)[] = [
+        ...builtInCustomAgents,
+      ];
       if (this.cwd) {
         const projectAgentsDir = path.join(this.cwd, ".pochi", "agents");
         const cwd = this.cwd;

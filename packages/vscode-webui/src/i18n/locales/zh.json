@@ -27,6 +27,7 @@
   },
   "chat": {
     "attachmentTooltip": "附加文件到对话。您也可以拖放文件或将其粘贴到聊天输入框中。",
+    "createPlanTooltip": "为任务创建计划",
     "queuedMessages": "排队中的消息 ({{count}})",
     "copyImage": "复制图片",
     "openImage": "打开图片",

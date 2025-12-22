@@ -44,7 +44,7 @@ export type {
   DiffCheckpointOptions,
   CreateWorktreeOptions,
 } from "./types/git";
-export { isValidCustomAgentFile } from "./types/custom-agent";
+export { isValidCustomAgent } from "./types/custom-agent";
 export {
   prefixTaskDisplayId,
   prefixWorktreeName,

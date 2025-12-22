@@ -25,10 +25,12 @@ export function useLiveChatKitGetters({
   todos,
   isSubTask,
   modelOverride,
+  taskId,
 }: {
   todos: React.RefObject<Todo[] | undefined>;
   isSubTask: boolean;
   modelOverride?: DisplayModel;
+  taskId: string;
 }) {
   const { toolset, instructions } = useMcp();
   const mcpInfo = useLatest({ toolset, instructions });
@@ -42,6 +44,7 @@ export function useLiveChatKitGetters({
       const environment = await vscodeHost.readEnvironment({
         isSubTask,
         webviewKind: globalThis.POCHI_WEBVIEW_KIND,
+        taskId,
       });
 
       let userEdits: FileDiff[] | undefined;

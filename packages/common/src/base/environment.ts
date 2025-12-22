@@ -129,6 +129,12 @@ export const Environment = z.object({
         .string()
         .optional()
         .describe("Custom rules provided by the user."),
+      taskId: z
+        .string()
+        .optional()
+        .describe(
+          "The task id of the current task. It is useful for tools that require task id.",
+        ),
     })
     .describe("General information about the environment."),
   todos: z.array(Todo).optional().describe("Todos in current task"),

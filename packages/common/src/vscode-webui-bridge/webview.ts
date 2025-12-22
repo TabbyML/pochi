@@ -1,4 +1,4 @@
-import type { PreviewReturnType } from "@getpochi/tools";
+import type { CustomAgent, PreviewReturnType } from "@getpochi/tools";
 import type { ThreadAbortSignalSerialization } from "@quilted/threads";
 import type { ThreadSignalSerialization } from "@quilted/threads/signals";
 import type { Environment } from "../base";
@@ -53,6 +53,7 @@ export interface VSCodeHostApi {
   readEnvironment(options: {
     isSubTask?: boolean;
     webviewKind: "sidebar" | "pane";
+    taskId?: string;
   }): Promise<Environment>;
 
   previewToolCall(
@@ -167,7 +168,7 @@ export interface VSCodeHostApi {
     workspacePath: string | null;
   }>;
 
-  readCustomAgents(): Promise<ThreadSignalSerialization<CustomAgentFile[]>>;
+  readCustomAgents(): Promise<ThreadSignalSerialization<(CustomAgent | CustomAgentFile)[]>>;
 
   executeBashCommand: (
     command: string,

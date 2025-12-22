@@ -19,6 +19,7 @@ import type {
   VSCodeHostApi,
   WorkspaceState,
 } from "./index";
+import type { CustomAgent } from "@getpochi/tools";
 
 const VSCodeHostStub = {
   readCurrentWorkspace: async () => {
@@ -243,9 +244,9 @@ const VSCodeHostStub = {
     );
   },
   readCustomAgents: async (): Promise<
-    ThreadSignalSerialization<CustomAgentFile[]>
+    ThreadSignalSerialization<(CustomAgent | CustomAgentFile)[]>
   > => {
-    return Promise.resolve({} as ThreadSignalSerialization<CustomAgentFile[]>);
+    return Promise.resolve({} as ThreadSignalSerialization<(CustomAgent | CustomAgentFile)[]>);
   },
 
   openTaskInPanel: async (): Promise<void> => {},
