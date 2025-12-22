@@ -229,11 +229,14 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
   };
 }
 
-function prepareMessages<T extends import("ai").UIMessage>(
-  inputMessages: T[],
+function prepareMessages(
+  inputMessages: Message[],
   environment: Environment | undefined,
-): T[] {
-  return prompts.injectEnvironment(inputMessages, environment) as T[];
+): Message[] {
+  return prompts.injectEnvironment(
+    convertDataReviewsToText(inputMessages),
+    environment,
+  ) as Message[];
 }
 
 function isWellKnownReasoningModel(model?: string): boolean {
@@ -308,5 +311,33 @@ function handleReadFileOutput(store: Store, readFile: ClientTools["readFile"]) {
         value: output,
       };
     },
+  });
+}
+
+function convertDataReviewsToText(messages: Message[]): Message[] {
+  return messages.map((message) => {
+    const newParts = message.parts.flatMap((part) => {
+      if (part.type === "data-reviews") {
+        const { reviews } = part.data;
+        const reviewTexts = reviews.map((review) => {
+          const rangeText = review.range
+            ? ` (${review.range.start.line}:${review.range.start.character} to ${review.range.end.line}:${review.range.end.character})`
+            : "";
+          const commentsText = review.comments
+            .map((comment) => `    + ${comment.body}`)
+            .join("\n");
+          return `  - File: ${review.uri}${rangeText}\n${commentsText}`;
+        });
+        return {
+          type: "text" as const,
+          text: `I have the following code review comments that need to be addressed:\n\n${reviewTexts.join("\n\n")}`,
+        };
+      }
+      return part;
+    });
+    return {
+      ...message,
+      parts: newParts,
+    };
   });
 }
