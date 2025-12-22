@@ -62,7 +62,11 @@
   "worktreeSelect": {
     "selectWorktree": "ワークツリーを選択",
     "createWorktree": "ワークツリー自動作成",
-    "createWorktreeDescription": "新しい Git ワークツリーでタスクを開始"
+    "createWorktreeDescription": "新しい Git ワークツリーでタスクを開始",
+    "switchBaseBranch": "ベースブランチを切り替え",
+    "searchBranch": "ブランチを検索...",
+    "noBranchFound": "ブランチが見つかりません",
+    "branches": "ブランチ"
   },
   "worktree": {
     "createPr": "PR を作成",

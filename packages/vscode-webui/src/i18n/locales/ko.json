@@ -62,7 +62,11 @@
   "worktreeSelect": {
     "selectWorktree": "워크트리 선택",
     "createWorktree": "워크트리 자동 생성",
-    "createWorktreeDescription": "새 Git 워크트리에서 작업 시작"
+    "createWorktreeDescription": "새 Git 워크트리에서 작업 시작",
+    "switchBaseBranch": "기본 브랜치 전환",
+    "searchBranch": "브랜치 검색...",
+    "noBranchFound": "브랜치를 찾을 수 없습니다",
+    "branches": "브랜치"
   },
   "worktree": {
     "createPr": "PR 생성",
