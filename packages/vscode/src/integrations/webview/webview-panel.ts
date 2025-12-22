@@ -168,7 +168,7 @@ export class PochiTaskEditorProvider
           params.uid) ||
         crypto.randomUUID();
       const displayId =
-        params.type === "open-task"
+        params.type === "open-task" && params.displayId
           ? params.displayId
           : await getNextDisplayId(params.cwd);
       const taskInfo: PochiTaskInfo = {
