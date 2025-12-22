@@ -14,7 +14,6 @@ export { getSystemInfo } from "./system-info";
 export {
   GitStatusReader,
   type GitStatusReaderOptions,
-  parseWorktreeGitdir,
 } from "./git-status";
 export {
   collectCustomRules,

@@ -119,7 +119,7 @@ export class WorktreeManager implements vscode.Disposable {
         worktreePath,
         branchName,
         workspacePath,
-        commitish: "HEAD",
+        commitish: options?.baseBranch ?? "HEAD",
       });
     } else {
       // User interactive

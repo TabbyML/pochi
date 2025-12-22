@@ -110,6 +110,8 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
   const [debouncedIsCreatingTask, setDebouncedIsCreatingTask] =
     useDebounceState(isCreatingTask, 300);
 
+  const [baseBranch, setBaseBranch] = useState<string>("");
+
   const handleSubmitImpl = useCallback(
     async (
       e?: React.FormEvent<HTMLFormElement>,
@@ -146,6 +148,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
         const worktree =
           shouldCreateWorktree === true || selectedWorktree === "new-worktree"
             ? await vscodeHost.createWorktree({
+                baseBranch: baseBranch || undefined,
                 generateBranchName: {
                   prompt: content,
                   files: uploadedFiles,
@@ -169,6 +172,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
         const worktree =
           shouldCreateWorktree || selectedWorktree === "new-worktree"
             ? await vscodeHost.createWorktree({
+                baseBranch: baseBranch || undefined,
                 generateBranchName: {
                   prompt: content,
                 },
@@ -203,6 +207,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
       clearDraft,
       clearFiles,
       setDebouncedIsCreatingTask,
+      baseBranch,
     ],
   );
 
@@ -281,6 +286,8 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
               onChange={(v) => {
                 setUserSelectedWorktree(v);
               }}
+              baseBranch={baseBranch}
+              onBaseBranchChange={setBaseBranch}
             />
           )}
           <HoverCard>

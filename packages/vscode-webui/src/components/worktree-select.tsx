@@ -9,6 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Tooltip,
@@ -16,6 +17,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { vscodeHost } from "@/lib/vscode";
 import { cn } from "@/lib/utils";
 import { getWorktreeNameFromWorktreePath } from "@getpochi/common/git-utils";
 import {
@@ -23,7 +25,9 @@ import {
   WorktreePrefix,
 } from "@getpochi/common/vscode-webui-bridge";
 import { DropdownMenuPortal } from "@radix-ui/react-dropdown-menu";
-import { CheckIcon, CirclePlus, PlusIcon } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { CheckIcon, CirclePlus, GitBranch, PlusIcon } from "lucide-react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 export type CreateWorktreeType = GitWorktree | "new-worktree" | undefined;
@@ -36,6 +40,8 @@ interface WorktreeSelectProps {
   onChange: (v: CreateWorktreeType) => void;
   isLoading?: boolean;
   triggerClassName?: string;
+  baseBranch?: string;
+  onBaseBranchChange?: (branch: string) => void;
 }
 
 const getWorktreeName = (worktree: GitWorktree | undefined) => {
@@ -48,6 +54,127 @@ const getWorktreeName = (worktree: GitWorktree | undefined) => {
   return getWorktreeNameFromWorktreePath(worktree.path);
 };
 
+function BaseBranchSelector({
+  value,
+  onChange,
+}: {
+  value?: string;
+  onChange: (v: string) => void;
+}) {
+  const { data: branches } = useQuery({
+    queryKey: ["git-branches"],
+    queryFn: () => vscodeHost.readGitBranches(),
+  });
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const { t } = useTranslation();
+
+  const filteredBranches = branches?.filter((branch) =>
+    branch.toLowerCase().includes(search.toLowerCase()),
+  );
+
+  const [selectedIndex, setSelectedIndex] = useState(0);
+
+  return (
+    <DropdownMenu
+      open={open}
+      onOpenChange={(v) => {
+        setOpen(v);
+        if (!v) {
+          setSearch("");
+        }
+      }}
+    >
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                className={cn("mr-1 h-6 p-0", value ? "w-auto px-1" : "w-6")}
+              >
+                <GitBranch className="h-4 w-4 shrink-0" />
+                {value && (
+                  <span className="ml-1 max-w-[8rem] truncate text-xs">
+                    {value}
+                  </span>
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>{t("worktreeSelect.switchBaseBranch")}</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+      <DropdownMenuContent
+        className="max-h-[300px] w-[200px] overflow-y-auto border bg-background p-0 text-popover-foreground shadow"
+        align="start"
+      >
+        <div className="sticky top-0 z-10 bg-background p-1">
+          <Input
+            placeholder={t("worktreeSelect.searchBranch")}
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setSelectedIndex(0);
+            }}
+            className="h-8 text-xs focus-visible:ring-1"
+            onKeyDown={(e) => {
+              e.stopPropagation();
+              if (e.key === "ArrowDown") {
+                e.preventDefault();
+                setSelectedIndex((prev) =>
+                  Math.min(prev + 1, (filteredBranches?.length ?? 0) - 1),
+                );
+              } else if (e.key === "ArrowUp") {
+                e.preventDefault();
+                setSelectedIndex((prev) => Math.max(prev - 1, 0));
+              } else if (e.key === "Enter") {
+                e.preventDefault();
+                if (filteredBranches?.[selectedIndex]) {
+                  onChange(filteredBranches[selectedIndex]);
+                  setOpen(false);
+                }
+              }
+            }}
+          />
+        </div>
+        <div className="p-1">
+          {filteredBranches?.length === 0 && (
+            <div className="py-2 text-center text-muted-foreground text-xs">
+              {t("worktreeSelect.noBranchFound")}
+            </div>
+          )}
+          {filteredBranches?.map((branch, index) => (
+            <DropdownMenuItem
+              key={branch}
+              onSelect={() => {
+                onChange(branch === value ? "" : branch);
+                setOpen(false);
+                setSearch("");
+              }}
+              className={cn(
+                "cursor-pointer",
+                selectedIndex === index && "bg-accent text-accent-foreground",
+              )}
+              onMouseEnter={() => setSelectedIndex(index)}
+            >
+              <CheckIcon
+                className={cn(
+                  "mr-2 h-4 w-4 shrink-0",
+                  value === branch ? "opacity-100" : "opacity-0",
+                )}
+              />
+              <span className="truncate">{branch}</span>
+            </DropdownMenuItem>
+          ))}
+        </div>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 export function WorktreeSelect({
   cwd,
   worktrees,
@@ -56,6 +183,8 @@ export function WorktreeSelect({
   isLoading,
   showCreateWorktree,
   triggerClassName,
+  baseBranch,
+  onBaseBranchChange,
 }: WorktreeSelectProps) {
   const { t } = useTranslation();
   const onCreateWorkTree = async () => {
@@ -72,7 +201,13 @@ export function WorktreeSelect({
         </div>
       }
     >
-      <div className="h-6 select-none overflow-visible">
+      <div className="flex h-6 select-none items-center overflow-visible">
+        {isNewWorktree && onBaseBranchChange && (
+          <BaseBranchSelector
+            value={baseBranch}
+            onChange={onBaseBranchChange}
+          />
+        )}
         <DropdownMenu>
           <TooltipProvider>
             <Tooltip>

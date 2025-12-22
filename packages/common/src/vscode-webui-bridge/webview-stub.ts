@@ -284,6 +284,8 @@ const VSCodeHostStub = {
 
   queryGithubIssues: async (): Promise<GithubIssue[]> => [],
 
+  readGitBranches: async (): Promise<string[]> => [],
+
   getGlobalState: async (): Promise<unknown> => {
     return null;
   },

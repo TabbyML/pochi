@@ -51,6 +51,7 @@ export interface GitWorktree {
 export type GithubIssue = z.infer<typeof GithubIssue>;
 
 export interface CreateWorktreeOptions {
+  baseBranch?: string;
   generateBranchName?: {
     prompt: string;
     files?: {

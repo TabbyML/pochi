@@ -62,7 +62,11 @@
   "worktreeSelect": {
     "selectWorktree": "Select Worktree",
     "createWorktree": "Auto create worktree",
-    "createWorktreeDescription": "Start task in a new Git worktree"
+    "createWorktreeDescription": "Start task in a new Git worktree",
+    "switchBaseBranch": "Switch base branch",
+    "searchBranch": "Search branch...",
+    "noBranchFound": "No branch found",
+    "branches": "Branches"
   },
   "worktree": {
     "createPr": "Create PR",

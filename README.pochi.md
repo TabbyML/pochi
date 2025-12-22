@@ -26,3 +26,9 @@ When encountering issues like `TypeError: Descriptor for property readFile is no
 5. For global variable in typescript, prefer using PascalCase, e.g `GlobalVariableName`, instead of `GLOBAL_VARIABLE_NAME`.
 6. For biome related warning / errors, prefer using `bun fix` in the root directory to fix the issues.
 7. `packages/db/src/schema.d.ts` is auto generated with script 'db:genschema'. Do not modify it directly.
+8. To add new vscode host method, we need register the method in 4 files
+    - packages/common/src/vscode-webui-bridge/webview.ts
+    - packages/common/src/vscode-webui-bridge/webview-stub.ts
+    - packages/vscode/src/integrations/webview/vscode-host-impl.ts
+    - packages/vscode-webui/src/lib/vscode.ts
+9. Reuse UI componnent in packages/vscode-webui/src/components

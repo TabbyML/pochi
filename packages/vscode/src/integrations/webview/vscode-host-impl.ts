@@ -113,6 +113,8 @@ import {
 } from "../terminal-link-provider/url-utils";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { TerminalState } from "../terminal/terminal-state";
+// biome-ignore lint/style/useImportType: needed for dependency injections
+import { GitState } from "../git/git-state";
 import { PochiTaskEditorProvider } from "./webview-panel";
 
 const logger = getLogger("VSCodeHostImpl");
@@ -142,6 +144,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     private readonly pochiTaskState: PochiTaskState,
     private readonly githubPullRequestState: GithubPullRequestState,
     private readonly githubIssueState: GithubIssueState,
+    private readonly gitState: GitState,
   ) {}
 
   private get cwd() {
@@ -952,6 +955,13 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       return [];
     }
     return await this.githubIssueState.queryIssues(query);
+  };
+
+  readGitBranches = async (): Promise<string[]> => {
+    if (!this.cwd) {
+      return [];
+    }
+    return await this.gitState.getBranches(this.cwd);
   };
 
   dispose() {

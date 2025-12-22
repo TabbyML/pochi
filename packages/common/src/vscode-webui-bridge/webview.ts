@@ -330,6 +330,8 @@ export interface VSCodeHostApi {
   deleteWorktree(worktreePath: string): Promise<boolean>;
 
   queryGithubIssues(query?: string): Promise<GithubIssue[]>;
+
+  readGitBranches(): Promise<string[]>;
 }
 
 export interface WebviewHostApi {
