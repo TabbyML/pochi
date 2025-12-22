@@ -3,7 +3,10 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
-import type { Review, ReviewComment } from "@getpochi/livekit";
+import type {
+  Review,
+  ReviewComment,
+} from "@getpochi/common/vscode-webui-bridge";
 import { MessageSquare } from "lucide-react";
 import { useMemo } from "react";
 import { ReviewBadge } from "./review-badge";

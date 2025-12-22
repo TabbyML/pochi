@@ -15,7 +15,6 @@ export const ReviewBadge: React.FC<ReviewBadgeProps> = ({
   reviewCount,
   className,
   showIcon = true,
-  onClick,
 }) => {
   return (
     <div

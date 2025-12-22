@@ -59,6 +59,7 @@ import {
   type PochiCredentials,
   type PochiTaskParams,
   type ResourceURI,
+  type Review,
   type RuleFile,
   type SaveCheckpointOptions,
   type SessionState,
@@ -68,7 +69,6 @@ import {
   type WorkspaceState,
   getTaskDisplayTitle,
 } from "@getpochi/common/vscode-webui-bridge";
-import type { Review } from "@getpochi/livekit";
 import type {
   PreviewReturnType,
   PreviewToolFunctionType,

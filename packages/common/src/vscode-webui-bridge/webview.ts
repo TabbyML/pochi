@@ -1,4 +1,3 @@
-import type { Review } from "@getpochi/livekit";
 import type { PreviewReturnType } from "@getpochi/tools";
 import type { ThreadAbortSignalSerialization } from "@quilted/threads";
 import type { ThreadSignalSerialization } from "@quilted/threads/signals";
@@ -12,6 +11,7 @@ import type {
   McpStatus,
   PochiTaskParams,
   ResourceURI,
+  Review,
   RuleFile,
   SaveCheckpointOptions,
   SessionState,

@@ -597,7 +597,6 @@
   "devDependencies": {
     "@ai-sdk/provider": "catalog:",
     "@getpochi/tools": "workspace:*",
-    "@getpochi/livekit": "workspace:*",
     "@types/diff": "^7.0.2",
     "@types/object-hash": "^3.0.6",
     "@types/project-name-generator": "^2.1.3",

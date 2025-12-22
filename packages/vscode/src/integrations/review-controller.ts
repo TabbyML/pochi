@@ -1,6 +1,9 @@
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { UserStorage } from "@/lib/user-storage";
-import type { Review, ReviewComment } from "@getpochi/livekit";
+import type {
+  Review,
+  ReviewComment,
+} from "@getpochi/common/vscode-webui-bridge";
 import { signal } from "@preact/signals-core";
 import { inject, injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";

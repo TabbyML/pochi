@@ -44,6 +44,10 @@ export type {
   DiffCheckpointOptions,
   CreateWorktreeOptions,
 } from "./types/git";
+export type {
+  Review,
+  ReviewComment,
+} from "./types/review";
 export { isValidCustomAgentFile } from "./types/custom-agent";
 export {
   prefixTaskDisplayId,

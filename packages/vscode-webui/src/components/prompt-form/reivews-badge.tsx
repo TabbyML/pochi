@@ -1,4 +1,4 @@
-import type { Review } from "@getpochi/livekit";
+import type { Review } from "@getpochi/common/vscode-webui-bridge";
 import { useMemo } from "react";
 import { ReviewBadge } from "../message/review-badge";
 
