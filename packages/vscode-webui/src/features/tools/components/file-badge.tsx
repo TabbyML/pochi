@@ -2,6 +2,7 @@ import type { ToolCallCheckpoint } from "@/components/message/message-list";
 import { cn } from "@/lib/utils";
 import { addLineBreak } from "@/lib/utils/file";
 import { vscodeHost } from "@/lib/vscode";
+import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { EditSummary } from "./edit-summary";
 import { FileIcon } from "./file-icon";
@@ -21,6 +22,7 @@ interface FileBadgeProps {
   };
   changes?: ToolCallCheckpoint;
   fallbackGlobPattern?: string;
+  children?: ReactNode;
 }
 
 export const FileBadge: React.FC<FileBadgeProps> = ({
@@ -35,6 +37,7 @@ export const FileBadge: React.FC<FileBadgeProps> = ({
   editSummary,
   changes,
   fallbackGlobPattern,
+  children,
 }) => {
   const { t } = useTranslation();
 
@@ -91,6 +94,7 @@ export const FileBadge: React.FC<FileBadgeProps> = ({
         <span className="text-zinc-500 dark:text-zinc-400">{lineRange}</span>
       </span>
       {editSummary && <EditSummary editSummary={editSummary} />}
+      {children}
     </span>
   );
 };

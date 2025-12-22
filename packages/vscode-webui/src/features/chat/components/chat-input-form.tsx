@@ -8,6 +8,7 @@ import type { useApprovalAndRetry } from "@/features/approval";
 import type { UseChatHelpers } from "@ai-sdk/react";
 import type { Message } from "@getpochi/livekit";
 
+import { ReviewBadges } from "@/components/prompt-form/reivews-badge";
 import type { ReactNode } from "@tanstack/react-router";
 import { QueuedMessages } from "./queued-messages";
 
@@ -66,11 +67,14 @@ export function ChatInputForm({
       isSubTask={isSubTask}
       onFocus={onFocus}
     >
-      <ActiveSelectionBadge
-        onClick={() => {
-          editorRef.current?.commands.insertContent(" @");
-        }}
-      />
+      <div className="mt-1 flex select-none flex-wrap items-center gap-1.5 pl-2">
+        <ActiveSelectionBadge
+          onClick={() => {
+            editorRef.current?.commands.insertContent(" @");
+          }}
+        />
+        <ReviewBadges />
+      </div>
       <DevRetryCountdown pendingApproval={pendingApproval} status={status} />
       {queuedMessages.length > 0 && (
         <QueuedMessages

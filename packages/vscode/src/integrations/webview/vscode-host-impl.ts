@@ -59,6 +59,7 @@ import {
   type PochiCredentials,
   type PochiTaskParams,
   type ResourceURI,
+  type Review,
   type RuleFile,
   type SaveCheckpointOptions,
   type SessionState,
@@ -108,6 +109,8 @@ import { GithubIssueState } from "../github/github-issue-state";
 import { GithubPullRequestState } from "../github/github-pull-request-state";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { ThirdMcpImporter } from "../mcp/third-party-mcp";
+// biome-ignore lint/style/useImportType: needed for dependency injection
+import { ReviewController } from "../review-controller";
 import {
   convertUrl,
   isLocalUrl,
@@ -145,6 +148,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     private readonly githubPullRequestState: GithubPullRequestState,
     private readonly githubIssueState: GithubIssueState,
     private readonly gitState: GitState,
+    private readonly reviewController: ReviewController,
   ) {}
 
   private get cwd() {
@@ -962,6 +966,10 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       return [];
     }
     return await this.gitState.getBranches(this.cwd);
+  };
+
+  readReviews = async (): Promise<ThreadSignalSerialization<Review[]>> => {
+    return ThreadSignal.serialize(this.reviewController.reviews);
   };
 
   dispose() {

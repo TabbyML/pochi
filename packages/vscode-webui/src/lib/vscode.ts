@@ -105,6 +105,7 @@ function createVSCodeHost(): VSCodeHostApi {
         "readPochiTabs",
         "queryGithubIssues",
         "readGitBranches",
+        "readReviews",
       ],
       exports: {
         openTaskList() {
