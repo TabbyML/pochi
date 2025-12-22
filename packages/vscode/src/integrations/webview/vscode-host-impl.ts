@@ -98,6 +98,8 @@ import { DiffChangesContentProvider } from "../editor/diff-changes-content-provi
 import { PochiTaskState } from "../editor/pochi-task-state";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { type FileSelection, TabState } from "../editor/tab-state";
+// biome-ignore lint/style/useImportType: needed for dependency injections
+import { GitState } from "../git/git-state";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { WorktreeManager } from "../git/worktree";
 // biome-ignore lint/style/useImportType: needed for dependency injection
@@ -113,8 +115,6 @@ import {
 } from "../terminal-link-provider/url-utils";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { TerminalState } from "../terminal/terminal-state";
-// biome-ignore lint/style/useImportType: needed for dependency injections
-import { GitState } from "../git/git-state";
 import { PochiTaskEditorProvider } from "./webview-panel";
 
 const logger = getLogger("VSCodeHostImpl");

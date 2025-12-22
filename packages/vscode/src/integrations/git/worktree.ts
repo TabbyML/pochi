@@ -64,6 +64,18 @@ export class WorktreeManager implements vscode.Disposable {
     this.disposables.push(
       this.gitState.onDidChangeRepository(onWorktreeChanged),
     );
+    this.disposables.push(
+      this.gitState.onDidChangeBranch((e) => {
+        if (e.type === "branch-changed") {
+          this.worktrees.value = this.worktrees.value.map((wt) => {
+            if (wt.path === e.repository) {
+              return { ...wt, branch: e.currentBranch };
+            }
+            return wt;
+          });
+        }
+      }),
+    );
     this.inited.resolve();
   }
 

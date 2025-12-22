@@ -20,7 +20,7 @@ import { vscodeHost } from "@/lib/vscode";
 import type { GitWorktree } from "@getpochi/common/vscode-webui-bridge";
 import { Loader2, PaperclipIcon } from "lucide-react";
 import type React from "react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ChatInputForm } from "./chat-input-form";
 
@@ -110,7 +110,18 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
   const [debouncedIsCreatingTask, setDebouncedIsCreatingTask] =
     useDebounceState(isCreatingTask, 300);
 
-  const [baseBranch, setBaseBranch] = useState<string>("");
+  const [baseBranch, setBaseBranch] = useState<string | undefined>(undefined);
+
+  useEffect(() => {
+    if (baseBranch) {
+      return;
+    }
+    if (!isOpenMainWorktree) {
+      setBaseBranch(undefined);
+    } else {
+      setBaseBranch(worktreesData.worktrees?.find((x) => x.isMain)?.branch);
+    }
+  }, [baseBranch, isOpenMainWorktree, worktreesData.worktrees]);
 
   const handleSubmitImpl = useCallback(
     async (
@@ -193,6 +204,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
       // Hide loading and unfreeze input
       setIsCreatingTask(false);
       setDebouncedIsCreatingTask(false);
+      setBaseBranch(undefined);
     },
     [
       cwd,
