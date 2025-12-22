@@ -104,6 +104,6 @@ But now that brings us to the next stage of the process: How should these edits 
 
 NES suggestions aren’t always a single line near the cursor. Sometimes the relevant edit is several lines or even several files away. Presenting enough information for a quick action without breaking the developer’s flow is a surprisingly deep design and engineering challenge.
 
-This is where **_Canvas Kit_** comes in. By rendering suggestions on a canvas layer instead of relying on the editor’s DOM, we can achieve lower latency, richer visuals, and more precise previews, opening the door to a new UX pattern for code edits.
+This is especially tricky inside a code editor like VS Code, where rendering options are limited. In such cases, how do we preview multi-line edits precisely? How do we make them feel lightweight, immediate, and skimmable, without being modal or disruptive?
 
-That work deserves its own deep dive. We’ll cover it in detail in Part 4.
+In Part 4, we’ll dive into how we approached these constraints and built a rendering system that enables richer previews and lower-latency interactions for code edits.
