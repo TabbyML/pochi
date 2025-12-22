@@ -330,7 +330,7 @@ function convertDataReviewsToText(messages: Message[]): Message[] {
         });
         return {
           type: "text" as const,
-          text: `I have the following code review comments that need to be addressed:\n\n${reviewTexts.join("\n\n")}`,
+          text: `I have the following code review comments, please address them:\n\n${reviewTexts.join("\n\n")}`,
         };
       }
       return part;
