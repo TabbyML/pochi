@@ -130,7 +130,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
       // Disallow empty submissions
       if (content.length === 0 && files.length === 0) return;
 
-      if(shouldCreatePlan) {
+      if (shouldCreatePlan) {
         // Use the planner custom agent to create a plan
         content = `<custom-agent id="planner" path="">newTask:planner</custom-agent> ${content}`;
       }
@@ -208,7 +208,6 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
       clearDraft,
       clearFiles,
       setDebouncedIsCreatingTask,
-      t,
     ],
   );
 

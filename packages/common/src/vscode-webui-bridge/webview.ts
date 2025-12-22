@@ -168,7 +168,9 @@ export interface VSCodeHostApi {
     workspacePath: string | null;
   }>;
 
-  readCustomAgents(): Promise<ThreadSignalSerialization<(CustomAgent | CustomAgentFile)[]>>;
+  readCustomAgents(): Promise<
+    ThreadSignalSerialization<(CustomAgent | CustomAgentFile)[]>
+  >;
 
   executeBashCommand: (
     command: string,

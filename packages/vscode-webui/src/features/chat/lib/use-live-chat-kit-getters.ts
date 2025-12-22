@@ -63,7 +63,7 @@ export function useLiveChatKitGetters({
         userEdits,
       } satisfies Environment;
     },
-    [todos, isSubTask],
+    [todos, isSubTask, taskId],
   );
 
   return {

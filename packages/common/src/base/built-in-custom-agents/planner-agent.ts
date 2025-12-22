@@ -73,6 +73,8 @@ In your final response via \`attemptCompletion\`, provide:
 - **Key Files**: List of primary files to be modified.
 - **Immediate Next Steps**: What the developer should do first.
 - **Confirmation**: Confirm that the full plan has been saved to \`.pochi/plans/{taskId}.md\`.
+- **Plan UI**: **MUST** include exactly this line at the end: \`<plan-card task-id="{taskId}"></plan-card>\`
+- **Instruction to Main Agent**: **CRITICAL**: Explicitly state: "The plan has been created. STOP execution now and ask the user to review the plan at .pochi/plans/{taskId}.md before proceeding."
 
 ## Important Reminders
 
@@ -80,5 +82,5 @@ In your final response via \`attemptCompletion\`, provide:
 - Respect the project's existing style, libraries, and architectural patterns.
 - Ensure the plan is actionable for a developer who may not have full context.
 - Always include the correct file paths and line number references where applicable.
-`.trim()
+`.trim(),
 };

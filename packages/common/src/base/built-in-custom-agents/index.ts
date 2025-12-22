@@ -1,5 +1,3 @@
-import {plannerAgent} from './planner-agent';
+import { plannerAgent } from "./planner-agent";
 
-export const builtInCustomAgents = [
-  plannerAgent
-]
+export const builtInCustomAgents = [plannerAgent];

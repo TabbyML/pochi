@@ -28,6 +28,13 @@
   "chat": {
     "attachmentTooltip": "채팅에 파일을 첨부합니다. 파일을 드래그 앤 드롭하거나 채팅 입력란에 붙여넣을 수도 있습니다.",
     "createPlanTooltip": "작업 계획 생성",
+    "planCard": {
+      "title": "구현 계획",
+      "status": "검토 준비 완료",
+      "reviewButton": "검토 및 댓글",
+      "executeButton": "계획 실행",
+      "executePrompt": "{{path}}에 명시된 계획을 구현해 주세요."
+    },
     "queuedMessages": "대기 중인 메시지 ({{count}})",
     "copyImage": "이미지 복사",
     "openImage": "이미지 열기",

@@ -1,15 +1,15 @@
 import * as os from "node:os";
 import * as path from "node:path";
-import { getLogger, builtInCustomAgents } from "@getpochi/common";
+import { builtInCustomAgents, getLogger } from "@getpochi/common";
 import { parseAgentFile } from "@getpochi/common/tool-utils";
 import type { CustomAgentFile } from "@getpochi/common/vscode-webui-bridge";
+import type { CustomAgent } from "@getpochi/tools";
 import { signal } from "@preact/signals-core";
 import { uniqueBy } from "remeda";
 import { Lifecycle, injectable, scoped } from "tsyringe";
 import * as vscode from "vscode";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { WorkspaceScope } from "./workspace-scoped";
-import type { CustomAgent } from "@getpochi/tools";
 
 const logger = getLogger("CustomAgentManager");
 

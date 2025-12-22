@@ -26,8 +26,15 @@
     "required": "Pochi を使用するには、フォルダーまたはワークスペースを開いてください。"
   },
   "chat": {
-    "attachmentTooltip": "ファイルをチャットに添付します。ファイルをドラッグ＆ドロップするか、チャット入力欄に貼り付けることもできます。",
+    "attachmentTooltip": "ファイルをチャットに添付します。ファイ ルをドラッグ＆ドロップするか、チャット入力欄に貼り付けることもできます。",
     "createPlanTooltip": "タスクの計画を作成",
+    "planCard": {
+      "title": "実装計画",
+      "status": "レビュー待ち",
+      "reviewButton": "レビュー＆コメント",
+      "executeButton": "計画を実行",
+      "executePrompt": "{{path}} に指定された計画を実装してください。"
+    },
     "queuedMessages": "キュー内のメッセージ ({{count}})",
     "copyImage": "画像をコピー",
     "openImage": "画像を開く",
