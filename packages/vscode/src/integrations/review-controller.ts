@@ -170,10 +170,14 @@ function toReview(thread: Thread): Review {
     uri: thread.uri.toString(),
     range: thread.range
       ? {
-          startLine: thread.range.start.line,
-          startCharacter: thread.range.start.character,
-          endLine: thread.range.end.line,
-          endCharacter: thread.range.end.character,
+          start: {
+            line: thread.range.start.line,
+            character: thread.range.start.character,
+          },
+          end: {
+            line: thread.range.end.line,
+            character: thread.range.end.character,
+          },
         }
       : undefined,
     comments: thread.comments.map((c) => toReviewComment(c)),
@@ -184,9 +188,5 @@ function toReviewComment(c: Comment): ReviewComment {
   return {
     id: c.id,
     body: c.body.toString(),
-    author: {
-      name: c.author.name,
-      iconPath: c.author.iconPath?.toString(),
-    },
   };
 }
