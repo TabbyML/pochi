@@ -303,6 +303,12 @@ const VSCodeHostStub = {
     _options?: { focusCommentsPanel?: boolean; revealRange?: boolean },
   ) => {},
 
+  readUserEdits: async (
+    _checkpointHash: string | null,
+  ): Promise<ThreadSignalSerialization<FileDiff[]>> => {
+    return Promise.resolve({} as ThreadSignalSerialization<FileDiff[]>);
+  },
+
   getGlobalState: async (): Promise<unknown> => {
     return null;
   },

@@ -54,6 +54,7 @@ import {
   type CustomAgentFile,
   type DiffCheckpointOptions,
   type DisplayModel,
+  type FileDiff,
   type GitWorktree,
   type GithubIssue,
   type PochiCredentials,
@@ -92,6 +93,8 @@ import * as vscode from "vscode";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { CheckpointService } from "../checkpoint/checkpoint-service";
 import type { GitDiff } from "../checkpoint/types";
+// biome-ignore lint/style/useImportType: needed for dependency injection
+import { UserEditState } from "../checkpoint/user-edit-state";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { PochiConfiguration } from "../configuration";
 import { DiffChangesContentProvider } from "../editor/diff-changes-content-provider";
@@ -149,6 +152,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     private readonly githubIssueState: GithubIssueState,
     private readonly gitState: GitState,
     private readonly reviewController: ReviewController,
+    private readonly userEditState: UserEditState,
   ) {}
 
   private get cwd() {
@@ -1005,6 +1009,17 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     });
 
     this.reviewController.expandThread(review.id);
+  };
+
+  readUserEdits = async (
+    checkpointHash: string | null,
+  ): Promise<ThreadSignalSerialization<FileDiff[]>> => {
+    return ThreadSignal.serialize(
+      computed(() => {
+        if (!checkpointHash) return [];
+        return this.userEditState.edits.value[checkpointHash] ?? [];
+      }),
+    );
   };
 
   dispose() {
