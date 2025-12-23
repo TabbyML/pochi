@@ -1028,6 +1028,21 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     );
   };
 
+  checkFileExists = async (filePath: string): Promise<boolean> => {
+    try {
+      const fileUri = path.isAbsolute(filePath)
+        ? vscode.Uri.file(filePath)
+        : this.cwd
+          ? vscode.Uri.joinPath(vscode.Uri.parse(this.cwd), filePath)
+          : vscode.Uri.file(filePath);
+
+      return await isFileExists(fileUri);
+    } catch (error) {
+      logger.error(`Failed to check file existence: ${filePath}`, error);
+      return false;
+    }
+  };
+
   dispose() {
     for (const disposable of this.disposables) {
       disposable.dispose();

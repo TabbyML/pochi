@@ -413,6 +413,7 @@ function Chat({ user, uid, info }: ChatProps) {
         hideEmptyPlaceholder={!isTaskWithoutContent}
         forkTask={task?.cwd ? forkTask : undefined}
         hideCheckPoint={isSubTask}
+        taskId={uid}
       />
       <div className={ChatToolbarContainerClassName}>
         <ChatToolbar
