@@ -7,10 +7,10 @@ import { vscodeHost } from "../vscode";
  * Uses ThreadSignal for real-time updates
  */
 /** @useSignals */
-export const useUserEdits = (checkpointHash: string | null) => {
+export const useUserEdits = (checkpointHash: string | undefined | null) => {
   const { data: userEditsSignal } = useQuery({
     queryKey: ["userEdits", checkpointHash],
-    queryFn: () => fetchUserEdits(checkpointHash),
+    queryFn: () => fetchUserEdits(checkpointHash ?? null),
     staleTime: Number.POSITIVE_INFINITY,
   });
 

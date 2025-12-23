@@ -38,6 +38,7 @@ import type { SubtaskInfo } from "../hooks/use-subtask-info";
 import { ChatInputForm } from "./chat-input-form";
 import { ErrorMessageView } from "./error-message-view";
 import { CompleteSubtaskButton } from "./subtask";
+import { useUserEdits } from "@/lib/hooks/use-user-edits";
 
 interface ChatToolbarProps {
   task?: Task;
@@ -132,6 +133,12 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     isExecuting ||
     totalTokens < constants.CompactTaskMinTokens
   );
+
+  const userEdits = useUserEdits(task?.lastCheckpointHash);
+
+  console.log("userEditsuserEdits===");
+  console.log(task?.lastCheckpointHash);
+  console.log(userEdits);
 
   const { handleSubmit, handleStop } = useChatSubmit({
     chat,
