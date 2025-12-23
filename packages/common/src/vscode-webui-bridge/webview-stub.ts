@@ -1,3 +1,4 @@
+import type { CustomAgent } from "@getpochi/tools";
 import type { ThreadAbortSignalSerialization } from "@quilted/threads";
 import type { ThreadSignalSerialization } from "@quilted/threads/signals";
 import type { Environment } from "../base";
@@ -243,9 +244,11 @@ const VSCodeHostStub = {
     );
   },
   readCustomAgents: async (): Promise<
-    ThreadSignalSerialization<CustomAgentFile[]>
+    ThreadSignalSerialization<(CustomAgent | CustomAgentFile)[]>
   > => {
-    return Promise.resolve({} as ThreadSignalSerialization<CustomAgentFile[]>);
+    return Promise.resolve(
+      {} as ThreadSignalSerialization<(CustomAgent | CustomAgentFile)[]>,
+    );
   },
 
   openTaskInPanel: async (): Promise<void> => {},

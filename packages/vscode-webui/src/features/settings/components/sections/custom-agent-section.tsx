@@ -9,7 +9,7 @@ import type {
   CustomAgentFile,
   InvalidCustomAgentFile,
 } from "@getpochi/common/vscode-webui-bridge";
-import { isValidCustomAgentFile } from "@getpochi/common/vscode-webui-bridge";
+import { isValidCustomAgent } from "@getpochi/common/vscode-webui-bridge";
 import { AlertTriangle, Bot, Edit } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { AccordionSection } from "../ui/accordion-section";
@@ -56,7 +56,7 @@ export const CustomAgentSection: React.FC = () => {
     return (
       <div className="space-y-2">
         {customAgents.map((agent) => {
-          const isValid = isValidCustomAgentFile(agent);
+          const isValid = isValidCustomAgent(agent);
           const subtitle = !isValid ? (
             <Tooltip>
               <TooltipTrigger asChild>

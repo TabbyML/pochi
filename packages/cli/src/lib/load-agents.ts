@@ -7,7 +7,7 @@ import type {
   CustomAgentFile,
   ValidCustomAgentFile,
 } from "@getpochi/common/vscode-webui-bridge";
-import { isValidCustomAgentFile } from "@getpochi/common/vscode-webui-bridge";
+import { isValidCustomAgent } from "@getpochi/common/vscode-webui-bridge";
 import type { CustomAgent } from "@getpochi/tools";
 import { uniqueBy } from "remeda";
 
@@ -74,7 +74,7 @@ export async function loadAgents(
     // Filter out invalid agents for CLI usage
     const validAgents = uniqueBy(allAgents, (agent) => agent.name).filter(
       (agent): agent is ValidCustomAgentFile => {
-        if (isValidCustomAgentFile(agent)) {
+        if (isValidCustomAgent(agent)) {
           return true;
         }
         logger.warn(

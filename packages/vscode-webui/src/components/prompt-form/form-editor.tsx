@@ -38,7 +38,7 @@ import { useSelectedModels } from "@/features/settings";
 import { useLatest } from "@/lib/hooks/use-latest";
 import { cn } from "@/lib/utils";
 import { resolveModelFromId } from "@/lib/utils/resolve-model-from-id";
-import { isValidCustomAgentFile } from "@getpochi/common/vscode-webui-bridge";
+import { isValidCustomAgent } from "@getpochi/common/vscode-webui-bridge";
 import { threadSignal } from "@quilted/threads/signals";
 import {
   type SuggestionMatch,
@@ -820,7 +820,7 @@ export const debouncedListSlashCommand = debounceWithCachedValue(
     ]);
     const options: SlashCandidate[] = [
       ...customAgents.value
-        .filter((x) => isValidCustomAgentFile(x))
+        .filter((x) => isValidCustomAgent(x))
         .map((x) => ({
           type: "custom-agent" as const,
           id: x.name,

@@ -46,7 +46,8 @@ Operating System: ${info.os}
 Default Shell: ${info.shell}
 Home Directory: ${info.homedir}
 Current Working Directory: ${info.cwd}
-Current Time: ${currentTime}`;
+Current Time: ${currentTime}
+Current Task ID: ${info.taskId ?? "N/A"}`;
   return prompt;
 }
 
