@@ -985,22 +985,16 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     }
 
     const uri = vscode.Uri.parse(review.uri);
-    if (uri.scheme === "file") {
-      this.openFile(uri.fsPath, {
-        start: review.range?.start.line,
-      });
-    } else {
-      vscode.commands.executeCommand("vscode.open", uri, {
-        selection: review.range
-          ? new vscode.Selection(
-              review.range.start.line,
-              review.range.start.character,
-              review.range.start.line,
-              review.range.start.character,
-            )
-          : undefined,
-      });
-    }
+    vscode.commands.executeCommand("vscode.open", uri, {
+      selection: review.range
+        ? new vscode.Selection(
+            review.range.start.line,
+            review.range.start.character,
+            review.range.start.line,
+            review.range.start.character,
+          )
+        : undefined,
+    });
 
     this.reviewController.expandThread(review.id);
   };
