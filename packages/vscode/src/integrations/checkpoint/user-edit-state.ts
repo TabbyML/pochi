@@ -1,4 +1,5 @@
-import type { WorkspaceScope } from "@/lib/workspace-scoped";
+// biome-ignore lint/style/useImportType: needed for dependency injection
+import { WorkspaceScope } from "@/lib/workspace-scoped";
 import { getLogger } from "@getpochi/common";
 import type { FileDiff } from "@getpochi/common/vscode-webui-bridge";
 import { signal } from "@preact/signals-core";
@@ -6,7 +7,8 @@ import { funnel } from "remeda";
 import * as runExclusive from "run-exclusive";
 import { Lifecycle, injectable, scoped } from "tsyringe";
 import * as vscode from "vscode";
-import type { PochiTaskState } from "../editor/pochi-task-state";
+// biome-ignore lint/style/useImportType: needed for dependency injection
+import { PochiTaskState } from "../editor/pochi-task-state";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { CheckpointService } from "./checkpoint-service";
 
