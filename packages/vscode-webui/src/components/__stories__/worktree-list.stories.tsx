@@ -1,12 +1,12 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import type { GitWorktree } from "@getpochi/common/vscode-webui-bridge";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { usePaginatedTasks } from "@/lib/hooks/use-paginated-tasks";
+import { usePaginatedTasks } from "@/lib/hooks/use-paginated-tasks.mock";
 import { WorktreeList } from "../worktree-list";
 import type { Task } from "@getpochi/livekit";
-import { fn, mocked } from "@storybook/test";
+import { fn } from "@storybook/test";
 
-const mockCwd = "/Users/me/project/pochi";
+const mockCwd = "/Users/TabbyML/project/pochi";
 const mockOnDeleteWorktree = (worktreePath: string) => {
   console.log("deleting:", worktreePath);
 };
@@ -27,17 +27,17 @@ const mockWorktrees = [
             {
               name: "CI/CD Pipeline",
               state: "success",
-              url: "https://github.com/swellee/pochi/actions/122",
+              url: "https://github.com/TabbyML/pochi/actions/122",
             },
             {
               name: "CodeQL Analysis",
               state: "success",
-              url: "https://github.com/swellee/pochi/security/122",
+              url: "https://github.com/TabbyML/pochi/security/122",
             },
             {
               name: "Test Coverage",
               state: "pending",
-              url: "https://github.com/swellee/pochi/tests/122",
+              url: "https://github.com/TabbyML/pochi/tests/122",
             },
           ],
         },
@@ -59,17 +59,17 @@ const mockWorktrees = [
             {
               name: "CI/CD Pipeline",
               state: "success",
-              url: "https://github.com/swellee/pochi/actions/123",
+              url: "https://github.com/TabbyML/pochi/actions/123",
             },
             {
               name: "CodeCov Analysis",
               state: "success",
-              url: "https://github.com/swellee/pochi/security/123",
+              url: "https://github.com/TabbyML/pochi/security/123",
             },
             {
               name: "Test Coverage",
               state: "failure",
-              url: "https://github.com/swellee/pochi/tests/123",
+              url: "https://github.com/TabbyML/pochi/tests/123",
             },
           ],
         },
@@ -143,14 +143,6 @@ const mockGh = {
   installed: true,
   authorized: true,
 };
-const mockOriginUrl = "https://github.com/swellee/pochi.git";
-mocked(usePaginatedTasks)?.mockReturnValue({
-  tasks: mockTasks,
-  hasMore: false,
-  loadMore: fn(),
-  reset: fn(),
-  isLoading: false,
-});
 // Create a wrapper component that provides mocked data through React Query
 function MockedWorktreeList({
   children,
@@ -160,7 +152,6 @@ function MockedWorktreeList({
   mockData: {
     worktrees?: GitWorktree[];
     isLoading?: boolean;
-    tasks?: Task[];
     gh?: typeof mockGh;
     gitOriginUrl?: string | null;
     workspacePath?: string;
@@ -170,7 +161,7 @@ function MockedWorktreeList({
     defaultOptions: {
       queries: {
         retry: false,
-        staleTime: Number.POSITIVE_INFINITY,
+        // staleTime: Number.POSITIVE_INFINITY,
       },
     },
   });
@@ -184,15 +175,16 @@ function MockedWorktreeList({
     worktrees: {
       value: mockData.isLoading ? undefined : mockData.worktrees,
     },
+    isLoading: mockData.isLoading,
     gh: { value: mockData.gh || mockGh },
-    gitOriginUrl: mockData.gitOriginUrl || mockOriginUrl,
+    gitOriginUrl: mockData.gitOriginUrl,
   });
 
   queryClient.setQueryData(["pochiTabs"], {
     value: {
-      "task-4": { status: "completed" },
-      "task-5": { status: "in_progress" },
-      "task-6": { status: "pending" },
+      "task-1": {},
+      "task-2": { unread: true },
+      "task-3": { running: true },
     },
   });
 
@@ -222,17 +214,37 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
+  async beforeEach() {
+    usePaginatedTasks.mockReturnValue({
+      tasks: mockTasks,
+      hasMore: false,
+      loadMore: fn(),
+      reset: fn(),
+      isLoading: false,
+    });
+  },
   args: {
     cwd: mockCwd,
     onDeleteWorktree: mockOnDeleteWorktree,
     deletingWorktreePaths: mockDeletingWorktreePaths,
   },
   parameters: {
-    mockData: {},
+    mockData: {
+      gitOriginUrl: "git@github.com:TabbyML/pochi.git",
+    },
   },
 };
 
 export const LoadingState: Story = {
+  async beforeEach() {
+    usePaginatedTasks.mockReturnValue({
+      tasks: mockTasks,
+      hasMore: false,
+      loadMore: fn(),
+      reset: fn(),
+      isLoading: true,
+    });
+  },
   args: {
     ...Default.args,
   },
@@ -244,32 +256,39 @@ export const LoadingState: Story = {
 };
 
 export const EmptyState: Story = {
+  ...Default,
   args: {
     ...Default.args,
   },
   parameters: {
     mockData: {
       worktrees: [],
-      tasks: [],
     },
   },
 };
 
 export const MultipleWorktrees: Story = {
+  ...Default,
   args: {
     ...Default.args,
   },
   parameters: {
-    mockData: {},
+    mockData: {
+      worktrees: mockWorktrees,
+    },
   },
 };
 
 export const WithDeletingWorktree: Story = {
+  ...Default,
   args: {
     ...Default.args,
+    deletingWorktreePaths: new Set([mockWorktrees[1].path]),
   },
   parameters: {
-    mockData: {},
+    mockData: {
+      worktrees: mockWorktrees,
+    },
   },
 };
 
@@ -303,6 +322,7 @@ export const UnauthorizedGithub: Story = {
 };
 
 export const NoGitOrigin: Story = {
+  ...Default,
   args: {
     ...Default.args,
   },
@@ -315,10 +335,10 @@ export const NoGitOrigin: Story = {
 };
 
 export const MainWorkspaceOnly: Story = {
+  ...Default,
   args: {
     ...Default.args,
   },
-
   parameters: {
     mockData: {
       worktrees: [mockWorktrees[0]], // Only the main workspace
@@ -327,6 +347,7 @@ export const MainWorkspaceOnly: Story = {
 };
 
 export const WorktreeWithNoPR: Story = {
+  ...Default,
   args: {
     ...Default.args,
   },
@@ -349,6 +370,7 @@ export const WorktreeWithNoPR: Story = {
 };
 
 export const WorktreeWithFailedChecks: Story = {
+  ...Default,
   args: {
     ...Default.args,
   },
@@ -371,12 +393,12 @@ export const WorktreeWithFailedChecks: Story = {
                   {
                     name: "CI/CD Pipeline",
                     state: "failure",
-                    url: "https://github.com/swellee/pochi/actions/127",
+                    url: "https://github.com/TabbyML/pochi/actions/127",
                   },
                   {
-                    name: "CodeQL Analysis",
+                    name: "CodeCov Analysis",
                     state: "error",
-                    url: "https://github.com/swellee/pochi/security/127",
+                    url: "https://github.com/TabbyML/pochi/security/127",
                   },
                 ],
               },
