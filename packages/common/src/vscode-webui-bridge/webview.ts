@@ -344,6 +344,10 @@ export interface VSCodeHostApi {
     review: Review,
     options?: { focusCommentsPanel?: boolean; revealRange?: boolean },
   ): Promise<void>;
+
+  readUserEdits(
+    checkpointHash: string | null,
+  ): Promise<ThreadSignalSerialization<FileDiff[]>>;
 }
 
 export interface WebviewHostApi {

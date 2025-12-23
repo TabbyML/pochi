@@ -110,6 +110,7 @@ function Chat({ user, uid, info }: ChatProps) {
   const getters = useLiveChatKitGetters({
     todos: todosRef,
     isSubTask,
+    lastCheckpointHash: task?.lastCheckpointHash || null,
   });
 
   useRestoreTaskModel(task, isModelsLoading, updateSelectedModelId);

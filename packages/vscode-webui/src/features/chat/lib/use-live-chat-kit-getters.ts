@@ -10,13 +10,11 @@ import { useSelectedModels } from "@/features/settings";
 import { useCustomAgents } from "@/lib/hooks/use-custom-agents";
 import { useLatest } from "@/lib/hooks/use-latest";
 import { useMcp } from "@/lib/hooks/use-mcp";
+import { useUserEdits } from "@/lib/hooks/use-user-edits";
 import { vscodeHost } from "@/lib/vscode";
 import { constants, type Environment } from "@getpochi/common";
 import { createModel } from "@getpochi/common/vendor/edge";
-import type {
-  DisplayModel,
-  FileDiff,
-} from "@getpochi/common/vscode-webui-bridge";
+import type { DisplayModel } from "@getpochi/common/vscode-webui-bridge";
 import type { LLMRequestData, Message } from "@getpochi/livekit";
 import type { Todo } from "@getpochi/tools";
 import { useCallback } from "react";
@@ -25,10 +23,12 @@ export function useLiveChatKitGetters({
   todos,
   isSubTask,
   modelOverride,
+  lastCheckpointHash,
 }: {
   todos: React.RefObject<Todo[] | undefined>;
   isSubTask: boolean;
   modelOverride?: DisplayModel;
+  lastCheckpointHash: string | null;
 }) {
   const { toolset, instructions } = useMcp();
   const mcpInfo = useLatest({ toolset, instructions });
@@ -37,31 +37,20 @@ export function useLiveChatKitGetters({
   const { customAgents } = useCustomAgents(true);
   const customAgentsRef = useLatest(customAgents);
 
-  const getEnvironment = useCallback(
-    async ({ messages }: { messages: readonly Message[] }) => {
-      const environment = await vscodeHost.readEnvironment({
-        isSubTask,
-        webviewKind: globalThis.POCHI_WEBVIEW_KIND,
-      });
+  const userEdits = useUserEdits(lastCheckpointHash);
 
-      let userEdits: FileDiff[] | undefined;
-      const lastCheckpointHash = findSecondLastCheckpointFromMessages(messages);
-      if (lastCheckpointHash) {
-        userEdits =
-          (await vscodeHost.diffWithCheckpoint(lastCheckpointHash, undefined, {
-            maxSizeLimit: 8 * 1024,
-            inlineDiff: true,
-          })) ?? undefined;
-      }
+  const getEnvironment = useCallback(async () => {
+    const environment = await vscodeHost.readEnvironment({
+      isSubTask,
+      webviewKind: globalThis.POCHI_WEBVIEW_KIND,
+    });
 
-      return {
-        todos: todos.current,
-        ...environment,
-        userEdits,
-      } satisfies Environment;
-    },
-    [todos, isSubTask],
-  );
+    return {
+      todos: todos.current,
+      ...environment,
+      userEdits,
+    } satisfies Environment;
+  }, [todos, isSubTask, userEdits]);
 
   return {
     // biome-ignore lint/correctness/useExhaustiveDependencies(llm.current): llm is ref.
