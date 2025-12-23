@@ -1,11 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { useSendMessage } from "@/features/chat";
 import { vscodeHost } from "@/lib/vscode";
-import {
-  FileText,
-  Play,
-  SquareArrowOutUpRight,
-} from "lucide-react";
+import { FileText, Play, SquareArrowOutUpRight } from "lucide-react";
 import type React from "react";
 import { useTranslation } from "react-i18next";
 
@@ -71,4 +67,3 @@ export const PlanCard: React.FC<PlanCardProps> = ({ taskId }) => {
     </div>
   );
 };
-
