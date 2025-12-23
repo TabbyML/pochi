@@ -11,21 +11,25 @@ export function prepareMessageParts(
   reviews: Review[],
 ) {
   const parts: Message["parts"] = [];
-  if (files.length) {
-    for (const x of files) {
-      parts.push({
-        type: "text",
-        text: prompts.createSystemReminder(`Attached file: ${x.filename}`),
-      });
-      parts.push(x);
+  for (const x of files) {
+    parts.push({
+      type: "text",
+      text: prompts.createSystemReminder(`Attached file: ${x.filename}`),
+    });
+    parts.push(x);
+  }
+
+  const getFallbackPrompt = () => {
+    let fallbackPrompt = "";
+    if (files.length) {
+      fallbackPrompt = t("chat.pleaseCheckFiles");
+    } else if (reviews.length) {
+      fallbackPrompt = t("chat.pleaseCheckReviews");
     }
-    parts.push({ type: "text", text: prompt || t("chat.pleaseCheckFiles") });
-  }
+    return fallbackPrompt;
+  };
 
-  if (reviews.length && !parts.length) {
-    parts.push({ type: "text", text: prompt || t("chat.pleaseCheckReviews") });
-  }
-
+  parts.push({ type: "text", text: prompt || getFallbackPrompt() });
   return parts;
 }
 
