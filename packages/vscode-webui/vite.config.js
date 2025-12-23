@@ -147,12 +147,4 @@ export default defineConfig({
       protocol: "ws",
     },
   },
-  resolve: {
-    alias: {
-      "#use-paginated-tasks": resolve(
-        __dirname,
-        "./src/lib/hooks/use-paginated-tasks",
-      ),
-    },
-  },
 });
