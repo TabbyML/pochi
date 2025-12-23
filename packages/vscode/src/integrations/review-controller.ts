@@ -153,6 +153,13 @@ export class ReviewController implements vscode.Disposable {
     this.updateSignal();
   }
 
+  async expandThread(threadId: string) {
+    const thread = this.threads.get(threadId);
+    if (thread) {
+      thread.collapsibleState = vscode.CommentThreadCollapsibleState.Expanded;
+    }
+  }
+
   private getAuthor() {
     const user = this.userStorage.users.value.pochi;
     return {

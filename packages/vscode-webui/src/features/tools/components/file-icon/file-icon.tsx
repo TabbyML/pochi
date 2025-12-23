@@ -3,8 +3,8 @@ import { Folder } from "lucide-react";
 import iconTheme from "./vs-seti-icon-theme.json";
 import "./seti-icons.css";
 import { type Theme, useTheme } from "@/components/theme-provider";
+import { GitCompare } from "lucide-react";
 import { useTranslation } from "react-i18next";
-
 interface IconData {
   file: string;
   fileExtensions: Record<string, string>;
@@ -75,6 +75,16 @@ const File: React.FC<{
 }> = ({ className, path, theme, defaultIconClassName }) => {
   const { t } = useTranslation();
   const iconId = getIconForFile(path, theme);
+
+  if (path.startsWith("pochi-diff-changes:")) {
+    return (
+      <span
+        className={cn("inline-flex size-4 translate-y-0.5 p-0.5", className)}
+      >
+        <GitCompare className={cn("size-3")} />
+      </span>
+    );
+  }
 
   return (
     <span
