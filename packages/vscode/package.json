@@ -169,6 +169,42 @@
         "command": "pochi.clearGithubInfo",
         "title": "Clear GitHub Info",
         "category": "Pochi"
+      },
+      {
+        "command": "pochi.comments.deleteThread",
+        "title": "Delete Thread",
+        "icon": "$(trash)",
+        "category": "Pochi"
+      },
+      {
+        "command": "pochi.comments.addComment",
+        "title": "Add Comment",
+        "icon": "$(comment-add)",
+        "category": "Pochi"
+      },
+      {
+        "command": "pochi.comments.deleteComment",
+        "title": "Delete Comment",
+        "icon": "$(trash)",
+        "category": "Pochi"
+      },
+      {
+        "command": "pochi.comments.startEditComment",
+        "title": "Edit Comment",
+        "icon": "$(edit)",
+        "category": "Pochi"
+      },
+      {
+        "command": "pochi.comments.saveEditComment",
+        "title": "Save",
+        "icon": "$(save)",
+        "category": "Pochi"
+      },
+      {
+        "command": "pochi.comments.cancelEditComment",
+        "title": "Cancel",
+        "icon": "$(close)",
+        "category": "Pochi"
       }
     ],
     "menus": {
@@ -249,6 +285,30 @@
         {
           "command": "pochi.clearGithubInfo",
           "title": "Pochi: Clear GitHub Info"
+        },
+        {
+          "command": "pochi.comments.deleteThread",
+          "when": "false"
+        },
+        {
+          "command": "pochi.comments.addComment",
+          "when": "false"
+        },
+        {
+          "command": "pochi.comments.deleteComment",
+          "when": "false"
+        },
+        {
+          "command": "pochi.comments.startEditComment",
+          "when": "false"
+        },
+        {
+          "command": "pochi.comments.saveEditComment",
+          "when": "false"
+        },
+        {
+          "command": "pochi.comments.cancelEditComment",
+          "when": "false"
         }
       ],
       "view/title": [
@@ -261,6 +321,42 @@
           "command": "pochi.webui.navigate.settings",
           "when": "view == pochiSidebar",
           "group": "navigation@2"
+        }
+      ],
+      "comments/commentThread/context": [
+        {
+          "command": "pochi.comments.addComment",
+          "when": "commentController == 'pochi-comments'"
+        }
+      ],
+      "comments/commentThread/title": [
+        {
+          "command": "pochi.comments.deleteThread",
+          "when": "commentController == 'pochi-comments' && commentThread =~ /canDelete/"
+        }
+      ],
+      "comments/comment/title": [
+        {
+          "command": "pochi.comments.deleteComment",
+          "group": "inline@0",
+          "when": "commentController == 'pochi-comments'"
+        },
+        {
+          "command": "pochi.comments.startEditComment",
+          "group": "inline@1",
+          "when": "commentController == 'pochi-comments'"
+        }
+      ],
+      "comments/comment/context": [
+        {
+          "command": "pochi.comments.saveEditComment",
+          "group": "inline@0",
+          "when": "commentController == 'pochi-comments'"
+        },
+        {
+          "command": "pochi.comments.cancelEditComment",
+          "group": "inline@1",
+          "when": "commentController == 'pochi-comments'"
         }
       ]
     },

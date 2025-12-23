@@ -25,6 +25,7 @@ import * as vscode from "vscode";
 import { CompletionProvider } from "./code-completion";
 import { PochiAuthenticationProvider } from "./integrations/auth-provider";
 import { CommandManager } from "./integrations/command";
+import { CommentController } from "./integrations/comment-controller";
 import { DiffChangesContentProvider } from "./integrations/editor/diff-changes-content-provider";
 import { DiffOriginContentProvider } from "./integrations/editor/diff-origin-content-provider";
 import { WorktreeManager } from "./integrations/git/worktree";
@@ -87,6 +88,7 @@ export async function activate(context: vscode.ExtensionContext) {
   container.resolve(TerminalLinkProvider);
   container.resolve(DiffChangesContentProvider);
   container.resolve(WorktreeManager);
+  container.resolve(CommentController);
 }
 
 // This method is called when your extension is deactivated
