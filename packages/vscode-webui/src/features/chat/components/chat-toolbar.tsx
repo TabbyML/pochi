@@ -198,11 +198,10 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     [messages],
   );
 
-  const diffSummaryActionEnabled = !isLoading && !isExecuting;
   const useTaskChangedFilesHelpers = useTaskChangedFiles(
     task?.id as string,
     messages,
-    diffSummaryActionEnabled,
+    isExecuting,
   );
 
   return (
@@ -231,7 +230,6 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
           )}
           <DiffSummary
             {...useTaskChangedFilesHelpers}
-            actionEnabled={diffSummaryActionEnabled}
             className={cn({
               "rounded-t-none border-border border-t": todos.length > 0,
             })}

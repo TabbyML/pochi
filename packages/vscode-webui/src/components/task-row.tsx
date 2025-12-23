@@ -1,10 +1,7 @@
 import { EditSummary } from "@/features/tools";
 import { ToolCallLite } from "@/features/tools";
 import { usePochiCredentials } from "@/lib/hooks/use-pochi-credentials";
-import {
-  getTaskChangedFileStore,
-  waitForTaskStoreReady,
-} from "@/lib/hooks/use-task-changed-files";
+import { useTaskChangedFiles } from "@/lib/hooks/use-task-changed-files";
 import { cn } from "@/lib/utils";
 import { vscodeHost } from "@/lib/vscode";
 import { parseTitle } from "@getpochi/common/message-utils";
@@ -27,6 +24,8 @@ export function TaskRow({
   state?: TaskState;
 }) {
   const { jwt } = usePochiCredentials();
+
+  const { showFileChanges } = useTaskChangedFiles(task.id, []);
 
   const title = useMemo(() => parseTitle(task.title), [task.title]);
 
@@ -93,19 +92,9 @@ export function TaskRow({
         storeId,
       });
 
-      // Wait for migration from localStorage and hydration from VS Code global state
-      await waitForTaskStoreReady(task.id);
-
-      const store = getTaskChangedFileStore(task.id);
-      const changedFiles = store
-        .getState()
-        .changedFiles.filter((f) => f.state === "pending");
-
-      if (changedFiles.length > 0) {
-        vscodeHost.showChangedFiles(changedFiles, "Changed Files");
-      }
+      showFileChanges();
     }
-  }, [task.cwd, task.id, task.displayId, storeId]);
+  }, [task.cwd, task.id, task.displayId, storeId, showFileChanges]);
 
   return <div onClick={openTaskInPanel}>{content}</div>;
 }

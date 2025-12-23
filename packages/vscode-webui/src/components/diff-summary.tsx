@@ -29,7 +29,6 @@ const collapsibleSectionVariants = {
 
 export interface DiffSummaryProps
   extends ReturnType<typeof useTaskChangedFiles> {
-  actionEnabled: boolean;
   className?: string;
 }
 
@@ -38,7 +37,6 @@ export function DiffSummary({
   showFileChanges,
   revertFileChanges,
   acceptChangedFile,
-  actionEnabled,
   className,
 }: DiffSummaryProps) {
   const { t } = useTranslation();
@@ -89,7 +87,6 @@ export function DiffSummary({
           onClick={(e) => e.stopPropagation()}
         >
           <Button
-            disabled={actionEnabled === false}
             variant="default"
             size="xs"
             onClick={() => acceptChangedFile()}
@@ -98,7 +95,6 @@ export function DiffSummary({
             {t("diffSummary.keep")}
           </Button>
           <Button
-            disabled={actionEnabled === false}
             variant="outline"
             size="xs"
             onClick={() => revertFileChanges()}
@@ -174,7 +170,6 @@ export function DiffSummary({
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <Button
-                              disabled={actionEnabled === false}
                               variant="ghost"
                               size="icon"
                               onClick={(e) => {
@@ -193,7 +188,6 @@ export function DiffSummary({
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <Button
-                              disabled={actionEnabled === false}
                               variant="ghost"
                               size="icon"
                               onClick={(e) => {

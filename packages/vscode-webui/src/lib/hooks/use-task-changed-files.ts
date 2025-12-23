@@ -2,7 +2,7 @@ import { fileChangeEvent, vscodeHost } from "@/lib/vscode";
 import { getLogger } from "@getpochi/common";
 import type { TaskChangedFile } from "@getpochi/common/vscode-webui-bridge";
 import type { Message } from "@getpochi/livekit";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { create, useStore } from "zustand";
 import {
   type StateStorage,
@@ -105,25 +105,49 @@ export type ChangedFileContent =
 
 interface ChangedFileStore {
   changedFiles: TaskChangedFile[];
-  setChangedFile: (changedFiles: TaskChangedFile[]) => void;
+  updateChangedFiles: (files: string[], checkpoint: string) => Promise<void>;
   // when file is undefined, accept all changed files
   acceptChangedFile: (file: {
     filepath?: string;
     content: ChangedFileContent;
   }) => void;
   // when filepath is undefined, revert all changed files
-  revertChangedFile: (filepath?: string) => void;
+  revertChangedFile: (filepath?: string) => Promise<void>;
   updateChangedFileContent: (filepath: string, content: string) => void;
 }
 
 const createChangedFileStore = (taskId: string) =>
   create(
     persist<ChangedFileStore>(
-      (set) => {
+      (set, get) => {
         return {
           changedFiles: [],
-          setChangedFile: (changedFiles: TaskChangedFile[]) => {
-            set(() => ({ changedFiles }));
+
+          updateChangedFiles: async (files: string[], checkpoint: string) => {
+            const changedFiles = get().changedFiles;
+            const updatedChangedFiles = [...changedFiles];
+
+            for (const filePath of files) {
+              const currentFile = changedFiles.find(
+                (f) => f.filepath === filePath,
+              );
+
+              // first time seeing this file change
+              if (!currentFile) {
+                updatedChangedFiles.push({
+                  filepath: filePath,
+                  added: 0,
+                  removed: 0,
+                  content: { type: "checkpoint", commit: checkpoint },
+                  deleted: false,
+                  state: "pending",
+                });
+              }
+
+              const diffResult =
+                await vscodeHost.diffChangedFiles(updatedChangedFiles);
+              set({ changedFiles: diffResult });
+            }
           },
 
           acceptChangedFile: (file: {
@@ -145,14 +169,25 @@ const createChangedFileStore = (taskId: string) =>
             }));
           },
 
-          revertChangedFile: (filepath?: string) => {
-            set((state) => ({
-              changedFiles: filepath
-                ? state.changedFiles.map((f) =>
-                    f.filepath === filepath ? { ...f, state: "reverted" } : f,
-                  )
-                : state.changedFiles.map((f) => ({ ...f, state: "reverted" })),
-            }));
+          revertChangedFile: async (filepath?: string) => {
+            const changedFiles = get().changedFiles;
+            const targetFiles = filepath
+              ? changedFiles.filter((f) => f.filepath === filepath)
+              : changedFiles;
+
+            await vscodeHost.restoreChangedFiles(targetFiles);
+            set((state) => {
+              return {
+                changedFiles: filepath
+                  ? state.changedFiles.map((f) =>
+                      f.filepath === filepath ? { ...f, state: "reverted" } : f,
+                    )
+                  : state.changedFiles.map((f) => ({
+                      ...f,
+                      state: "reverted",
+                    })),
+              };
+            });
           },
 
           updateChangedFileContent: (filepath: string, content: string) => {
@@ -219,7 +254,7 @@ export const waitForTaskStoreReady = async (taskId: string): Promise<void> => {
 export const useTaskChangedFiles = (
   taskId: string,
   messages: Message[],
-  actionEnabled: boolean,
+  isExecuting?: boolean,
 ) => {
   const {
     changedFiles,
@@ -227,27 +262,27 @@ export const useTaskChangedFiles = (
     revertChangedFile,
     updateChangedFileContent,
   } = useStore(getTaskChangedFileStore(taskId));
-  const [checkpoints, setCheckpoints] = useState<string[]>([]);
 
   const visibleChangedFiles = useMemo(
     () => changedFiles.filter((f) => f.state === "pending"),
     [changedFiles],
   );
 
-  useEffect(() => {
-    const checkpoints = messages
+  const latestCheckpoint = useMemo(() => {
+    return messages
       .flatMap((m) => m.parts.filter((p) => p.type === "data-checkpoint"))
-      .map((p) => p.data.commit);
-    setCheckpoints(checkpoints);
+      .map((p) => p.data.commit)
+      .at(-1);
   }, [messages]);
 
   useEffect(() => {
     const unsubscribe = fileChangeEvent.on(
       "fileChanged",
       ({ filepath, content }) => {
+        // exclude updates during task execution
         if (
-          changedFiles.some((cf) => cf.filepath === filepath) &&
-          actionEnabled
+          isExecuting === false &&
+          changedFiles.some((cf) => cf.filepath === filepath)
         ) {
           updateChangedFileContent(filepath, content);
         }
@@ -255,13 +290,14 @@ export const useTaskChangedFiles = (
     );
 
     return () => unsubscribe();
-  }, [changedFiles, updateChangedFileContent, actionEnabled]);
+  }, [changedFiles, updateChangedFileContent, isExecuting]);
 
   const showFileChanges = useCallback(
     async (filePath?: string) => {
-      if (checkpoints.length < 2) {
+      if (visibleChangedFiles.length === 0) {
         return;
       }
+      await waitForTaskStoreReady(taskId);
       await vscodeHost.showChangedFiles(
         filePath
           ? visibleChangedFiles.filter((f) => f.filepath === filePath)
@@ -269,27 +305,19 @@ export const useTaskChangedFiles = (
         filePath ? `Changes in ${filePath}` : "Changed Files",
       );
     },
-    [checkpoints, visibleChangedFiles],
+    [visibleChangedFiles, taskId],
   );
 
   const revertFileChanges = useCallback(
     async (file?: string) => {
-      if (checkpoints.length < 1) {
-        return;
-      }
-      const targetFiles = file
-        ? changedFiles.filter((f) => f.filepath === file)
-        : changedFiles;
-
-      await vscodeHost.restoreChangedFiles(targetFiles);
-      revertChangedFile(file);
+      await waitForTaskStoreReady(taskId);
+      await revertChangedFile(file);
     },
-    [checkpoints, changedFiles, revertChangedFile],
+    [taskId, revertChangedFile],
   );
 
   const acceptChangedFile = useCallback(
     (filepath?: string) => {
-      const latestCheckpoint = checkpoints.at(-1);
       if (!latestCheckpoint) {
         return;
       }
@@ -298,7 +326,7 @@ export const useTaskChangedFiles = (
         content: { type: "checkpoint", commit: latestCheckpoint },
       });
     },
-    [checkpoints, acceptChangedFileInternal],
+    [latestCheckpoint, acceptChangedFileInternal],
   );
 
   return {
