@@ -49,7 +49,7 @@ export const Reviews: React.FC<Props> = ({ reviews }) => {
     <Collapsible
       open={isOpen}
       onOpenChange={setIsOpen}
-      className="mt-2 rounded-md border"
+      className="my-2 rounded-md border"
     >
       <CollapsibleTrigger asChild>
         <div className="flex cursor-pointer items-center gap-1 border-border px-3 py-1.5 hover:bg-border/30">
