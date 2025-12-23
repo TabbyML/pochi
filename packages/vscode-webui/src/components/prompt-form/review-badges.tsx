@@ -30,7 +30,7 @@ export const ReviewBadges: React.FC<Props> = ({ reviews }) => {
 
   const onBadgeClick = (review: Review) => {
     if (!review) return;
-    vscodeHost.openReview(review);
+    vscodeHost.openReview(review, { focusCommentsPanel: true });
   };
 
   return (

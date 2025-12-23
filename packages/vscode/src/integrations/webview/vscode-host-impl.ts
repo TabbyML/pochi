@@ -980,6 +980,10 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     review: Review,
     options?: { focusCommentsPanel?: boolean },
   ): Promise<void> => {
+    if (options?.focusCommentsPanel) {
+      vscode.commands.executeCommand("workbench.action.focusCommentsPanel");
+    }
+
     const uri = vscode.Uri.parse(review.uri);
     if (uri.scheme === "file") {
       this.openFile(uri.fsPath, {
@@ -999,10 +1003,6 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     }
 
     this.reviewController.expandThread(review.id);
-
-    if (options?.focusCommentsPanel) {
-      vscode.commands.executeCommand("workbench.action.focusCommentsPanel");
-    }
   };
 
   dispose() {

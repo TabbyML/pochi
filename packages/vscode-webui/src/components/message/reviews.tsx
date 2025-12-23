@@ -1,23 +1,27 @@
 import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-} from "@/components/ui/hover-card";
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { FileIcon } from "@/features/tools";
+import { cn } from "@/lib/utils";
 import { vscodeHost } from "@/lib/vscode";
 import type {
   Review,
   ReviewComment,
 } from "@getpochi/common/vscode-webui-bridge";
-import { MessageSquare } from "lucide-react";
-import { useMemo } from "react";
+import { ChevronRight, ListCheck, MessageSquare } from "lucide-react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ReviewBadge } from "./review-badge";
 
 interface Props {
   reviews: Review[];
 }
 
 export const Reviews: React.FC<Props> = ({ reviews }) => {
+  const { t } = useTranslation();
+  const [isOpen, setIsOpen] = useState(false);
+
   const groupedReviews = useMemo(() => {
     const groupMap = new Map<string, Review[]>();
 
@@ -41,66 +45,88 @@ export const Reviews: React.FC<Props> = ({ reviews }) => {
   if (reviews.length === 0) return null;
 
   return (
-    <div className="my-2 flex flex-wrap gap-2">
-      {groupedReviews.map((group) => {
-        return (
-          <ReviewBadgeWithHover
-            key={group.uri}
-            uri={group.uri}
-            reviews={group.reviews}
+    <Collapsible
+      open={isOpen}
+      onOpenChange={setIsOpen}
+      className="mt-2 rounded-md border"
+    >
+      <CollapsibleTrigger asChild>
+        <div className="flex cursor-pointer items-center gap-1 border-border px-3 py-1.5 hover:bg-border/30">
+          <ChevronRight
+            className={cn(
+              "size-4 shrink-0 text-muted-foreground transition-transform duration-200",
+              isOpen && "rotate-90",
+            )}
           />
-        );
-      })}
-    </div>
+          <ListCheck className="size-4 shrink-0" />
+          <div className="font-semibold text-sm">{t("reviewUI.reviews")}</div>
+        </div>
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <div className="flex flex-col gap-1">
+          {groupedReviews.map((group) => (
+            <ReviewFileGroup
+              key={group.uri}
+              uri={group.uri}
+              reviews={group.reviews}
+            />
+          ))}
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
   );
 };
 
-interface ReviewBadgeWithHoverProps {
+interface ReviewFileGroupProps {
   uri: string;
   reviews: Review[];
 }
 
-function ReviewBadgeWithHover({ uri, reviews }: ReviewBadgeWithHoverProps) {
-  const { t } = useTranslation();
-  const onBadgeClick = (review: Review) => {
-    if (!review) return;
-    vscodeHost.openReview(review, { focusCommentsPanel: true });
+function ReviewFileGroup({ uri, reviews }: ReviewFileGroupProps) {
+  const [isOpen, setIsOpen] = useState(true);
+
+  const onFileClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!reviews.length) return;
+    vscodeHost.openReview(reviews[0], { focusCommentsPanel: false });
   };
 
-  return (
-    <HoverCard openDelay={300} closeDelay={200}>
-      <HoverCardTrigger asChild>
-        <span>
-          <ReviewBadge
-            onClick={() => onBadgeClick(reviews[0])}
-            uri={uri}
-            reviewCount={reviews.length}
-          />
-        </span>
-      </HoverCardTrigger>
-      <HoverCardContent
-        className="w-auto min-w-[200px] max-w-[80vw] p-3 sm:min-w-[300px] sm:max-w-[800px]"
-        align="start"
-        side="bottom"
-      >
-        <div className="flex flex-col gap-3">
-          <div className="mb-1 font-semibold text-lg">
-            {t("reviewUI.reviews")}
-          </div>
-          <div className="flex flex-col gap-1 border-[var(--vscode-editorWidget-border)] border-b pb-2 sm:flex-row sm:items-center sm:gap-2">
-            <span className="truncate font-medium text-sm">
-              {getBadgeLabel(uri)}
-            </span>
-          </div>
+  if (!reviews.length) return null;
 
-          <div className="flex max-h-[400px] flex-col gap-4 overflow-y-auto">
-            {reviews.map((review) => (
-              <ReviewItem key={review.id} review={review} />
-            ))}
-          </div>
+  return (
+    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+      <div
+        className="flex cursor-pointer items-center justify-between rounded py-1 transition-colors hover:bg-border/30"
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <div className="flex min-w-0 items-center gap-1.5 px-3">
+          <ChevronRight
+            className={cn(
+              "size-3.5 shrink-0 text-muted-foreground transition-transform duration-200",
+              isOpen && "rotate-90",
+            )}
+          />
+          <span
+            className="truncate font-medium text-sm hover:underline"
+            onClick={onFileClick}
+          >
+            <FileIcon path={uri} />
+            {getBadgeLabel(uri)}
+          </span>
         </div>
-      </HoverCardContent>{" "}
-    </HoverCard>
+      </div>
+      <CollapsibleContent>
+        <div
+          className={cn("ml-6 flex flex-col gap-2 px-3 py-1", {
+            "mb-1": isOpen,
+          })}
+        >
+          {reviews.map((review) => (
+            <ReviewItem key={review.id} review={review} />
+          ))}
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
   );
 }
 
@@ -113,10 +139,10 @@ function ReviewItem({ review }: ReviewItemProps) {
   const replies = review.comments.slice(1);
 
   return (
-    <div className="flex justify-between gap-3 text-sm">
-      <div className="flex min-w-0 flex-1 gap-3">
-        <MessageSquare className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
-        <div className="flex min-w-0 flex-1 flex-col gap-2">
+    <div className="flex justify-between gap-2 text-sm">
+      <div className="flex min-w-0 flex-1 gap-1.5">
+        <MessageSquare className="mt-0.5 size-3 shrink-0 text-muted-foreground" />
+        <div className="flex min-w-0 flex-1 flex-col gap-1">
           {/* Main comment */}
           {mainComment && (
             <ReviewCommentView comment={mainComment} isMain={true} />
@@ -124,7 +150,7 @@ function ReviewItem({ review }: ReviewItemProps) {
 
           {/* Replies with indentation */}
           {replies.length > 0 && (
-            <div className="ml-4 flex flex-col gap-2 border-[var(--vscode-editorWidget-border)] border-l-2 pl-3">
+            <div className="ml-2 flex flex-col gap-1 border-[var(--vscode-editorWidget-border)] border-l-2 pl-2">
               {replies.map((reply) => (
                 <ReviewCommentView
                   key={reply.id}
@@ -149,6 +175,7 @@ function ReviewItem({ review }: ReviewItemProps) {
     </div>
   );
 }
+
 interface ReviewCommentViewProps {
   comment: ReviewComment;
   isMain: boolean;
@@ -170,7 +197,10 @@ function ReviewCommentView({ comment, isMain }: ReviewCommentViewProps) {
 
 // Build label for the badge
 function getBadgeLabel(reviewUri: string) {
-  const filename = reviewUri.split("/").pop();
+  const filename = reviewUri
+    .replace(/^pochi-diff-changes:/, "")
+    .split("/")
+    .pop();
   // Remove query parameters if present
   return filename?.split("?")[0];
 }
