@@ -14,6 +14,7 @@ import {
 import { useSelectedModels, useSettingsStore } from "@/features/settings";
 import type { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
+import { useReviews } from "@/lib/hooks/use-reviews";
 import { useTaskInputDraft } from "@/lib/hooks/use-task-input-draft";
 import { useWorktrees } from "@/lib/hooks/use-worktrees";
 import { vscodeHost } from "@/lib/vscode";
@@ -66,6 +67,8 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
     handleFileDrop,
     clearError: clearUploadError,
   } = attachmentUpload;
+
+  const reviews = useReviews();
 
   const worktreesData = useWorktrees();
   const worktrees = useMemo(() => {
@@ -141,7 +144,8 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
       const content = input.trim();
 
       // Disallow empty submissions
-      if (content.length === 0 && files.length === 0) return;
+      if (content.length === 0 && files.length === 0 && reviews.length === 0)
+        return;
 
       // Set isCreatingTask state true
       // Show loading and freeze input
@@ -172,12 +176,13 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
             cwd: worktree?.path || cwd,
             prompt: content,
             files: uploadedFiles,
+            reviews,
           });
           clearFiles();
           // Clear input content after unfreeze
           setTimeout(clearDraft, 50);
         }
-      } else if (content.length > 0) {
+      } else if (content.length > 0 || reviews.length > 0) {
         clearUploadError();
 
         const worktree =
@@ -194,6 +199,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
             type: "new-task",
             cwd: worktree?.path || cwd,
             prompt: content,
+            reviews,
           });
           // Clear input content after unfreeze
           setTimeout(clearDraft, 50);
@@ -220,6 +226,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
       clearFiles,
       setDebouncedIsCreatingTask,
       baseBranch,
+      reviews,
     ],
   );
 
@@ -254,6 +261,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
         isSubTask={false}
         onRemoveQueuedMessage={noop}
         onFocus={onFocus}
+        reviews={reviews}
       >
         {files.length > 0 && (
           <div className="px-3">

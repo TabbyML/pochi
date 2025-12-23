@@ -31,6 +31,7 @@
     "copyImage": "画像をコピー",
     "openImage": "画像を開く",
     "pleaseCheckFiles": "これらの添付ファイルを確認してください。",
+    "pleaseCheckReviews": "これらのレビューを確認してください。",
     "chatToolbar": {
       "diffWorktreeWith": "ワークツリーを {{branch}} と比較",
       "openInTerminal": "統合ターミナルで開く"
@@ -285,6 +286,9 @@
     "compare": "比較",
     "fork": "フォーク",
     "forking": "フォーク中..."
+  },
+  "reviewUI": {
+    "reviews": "レビュー"
   },
   "welcomeScreen": {
     "title": "はじめに",

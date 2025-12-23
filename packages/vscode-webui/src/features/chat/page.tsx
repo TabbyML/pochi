@@ -86,7 +86,10 @@ function Chat({ user, uid, info }: ChatProps) {
   const isSubTask = !!subtask;
 
   const isTaskWithoutContent =
-    info.type === "new-task" && !info.prompt && !info.files?.length;
+    info.type === "new-task" &&
+    !info.prompt &&
+    !info.files?.length &&
+    !info.reviews?.length;
 
   // inherit autoApproveSettings from parent task
   useEffect(() => {
@@ -305,18 +308,24 @@ function Chat({ user, uid, info }: ChatProps) {
     const cwd = info.cwd;
     const displayId = info.displayId ?? undefined;
     if (info.type === "new-task") {
-      if (info.files?.length) {
+      if (info.files?.length || info.reviews?.length) {
         const files = info.files?.map((file) => ({
           type: "file" as const,
           filename: file.name,
           mediaType: file.contentType,
           url: file.url,
         }));
+        const reviews = info.reviews;
 
         chatKit.init(cwd, {
           displayId,
           prompt: info.prompt,
-          parts: prepareMessageParts(t, info.prompt || "", files || []),
+          parts: prepareMessageParts(
+            t,
+            info.prompt || "",
+            files || [],
+            reviews || [],
+          ),
         });
       } else if (info.prompt) {
         chatKit.init(cwd, {

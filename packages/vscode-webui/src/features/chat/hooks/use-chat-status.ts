@@ -6,6 +6,7 @@ interface UseChatStatusProps {
   isLoading: boolean;
   isInputEmpty: boolean;
   isFilesEmpty: boolean;
+  isReviewsEmpty: boolean;
   isUploadingAttachments: boolean;
   newCompactTaskPending: boolean;
 }
@@ -16,6 +17,7 @@ export function useChatStatus({
   isLoading,
   isInputEmpty,
   isFilesEmpty,
+  isReviewsEmpty,
   isUploadingAttachments,
   newCompactTaskPending,
 }: UseChatStatusProps) {
@@ -32,6 +34,7 @@ export function useChatStatus({
     (!isLoading &&
       isInputEmpty &&
       isFilesEmpty &&
+      isReviewsEmpty &&
       !isExecuting &&
       !isPreviewing);
 

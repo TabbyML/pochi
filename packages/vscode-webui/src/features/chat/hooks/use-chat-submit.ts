@@ -5,6 +5,7 @@ import type { UseChatHelpers } from "@ai-sdk/react";
 import { getLogger } from "@getpochi/common";
 import type { Message } from "@getpochi/livekit";
 
+import type { Review } from "@getpochi/common/vscode-webui-bridge";
 import type React from "react";
 import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
@@ -27,6 +28,7 @@ interface UseChatSubmitProps {
   pendingApproval: PendingApproval | undefined;
   queuedMessages: string[];
   setQueuedMessages: React.Dispatch<React.SetStateAction<string[]>>;
+  reviews: Review[];
 }
 
 export function useChatSubmit({
@@ -40,6 +42,7 @@ export function useChatSubmit({
   pendingApproval,
   queuedMessages,
   setQueuedMessages,
+  reviews,
 }: UseChatSubmitProps) {
   const autoApproveGuard = useAutoApproveGuard();
   const { executingToolCalls, previewingToolCalls, isExecuting, isPreviewing } =
@@ -119,7 +122,8 @@ export function useChatSubmit({
       const text = allMessages.join("\n\n").trim();
 
       // Disallow empty submissions
-      if (text.length === 0 && files.length === 0) return;
+      if (text.length === 0 && files.length === 0 && reviews.length === 0)
+        return;
 
       const stopIsLoading = handleStop();
       if (stopIsLoading || isSubmitDisabled) {
@@ -134,7 +138,12 @@ export function useChatSubmit({
         try {
           logger.debug("Uploading files...");
           const uploadedAttachments = await upload();
-          const parts = prepareMessageParts(t, text, uploadedAttachments);
+          const parts = prepareMessageParts(
+            t,
+            text,
+            uploadedAttachments,
+            reviews,
+          );
           logger.debug("Sending message with files");
 
           clearFiles();
@@ -146,9 +155,9 @@ export function useChatSubmit({
           // Error is already handled by the hook
           return;
         }
-      } else if (allMessages.length > 0) {
+      } else if (allMessages.length > 0 || reviews.length > 0) {
         clearUploadError();
-        const parts = prepareMessageParts(t, text, []);
+        const parts = prepareMessageParts(t, text, [], reviews);
 
         autoApproveGuard.current = "auto";
         await sendMessage({
@@ -172,6 +181,7 @@ export function useChatSubmit({
       isUploading,
       t,
       clearFiles,
+      reviews,
     ],
   );
 

@@ -20,7 +20,7 @@ export const ReviewBadge: React.FC<ReviewBadgeProps> = ({
   return (
     <div
       className={cn(
-        "inline-flex h-[1.7rem] max-w-full items-center gap-1 overflow-hidden truncate rounded-sm",
+        "inline-flex h-[1.7rem] max-w-full cursor-pointer items-center gap-1 overflow-hidden truncate rounded-sm",
         className,
       )}
     >
@@ -48,7 +48,10 @@ export const ReviewBadge: React.FC<ReviewBadgeProps> = ({
 
 // Build label for the badge
 function getBadgeLabel(reviewUri: string) {
-  const filename = reviewUri.split("/").pop();
+  const filename = reviewUri
+    .replace(/^pochi-diff-changes:/, "")
+    .split("/")
+    .pop();
   // Remove query parameters if present
   return filename?.split("?")[0];
 }

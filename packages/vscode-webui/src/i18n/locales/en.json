@@ -31,6 +31,7 @@
     "copyImage": "Copy Image",
     "openImage": "Open Image",
     "pleaseCheckFiles": "Please check these attachments.",
+    "pleaseCheckReviews": "Please check these reviews.",
     "chatToolbar": {
       "diffWorktreeWith": "Diff worktree with {{branch}}",
       "openInTerminal": "Open in integrated terminal"
@@ -288,6 +289,9 @@
     "compare": "Compare",
     "fork": "Fork",
     "forking": "Forking"
+  },
+  "reviewUI": {
+    "reviews": "Reviews"
   },
   "welcomeScreen": {
     "title": "Get Started",

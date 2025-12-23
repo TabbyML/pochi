@@ -10,6 +10,7 @@ import type {
 } from "@getpochi/common/vscode-webui-bridge";
 import { MessageSquare } from "lucide-react";
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { ReviewBadge } from "./review-badge";
 
 interface Props {
@@ -60,8 +61,7 @@ interface ReviewBadgeWithHoverProps {
 }
 
 function ReviewBadgeWithHover({ uri, reviews }: ReviewBadgeWithHoverProps) {
-  const filePath = getFilePath(uri);
-
+  const { t } = useTranslation();
   const onBadgeClick = (review: Review) => {
     if (!review) return;
     vscodeHost.openReview(review, { focusCommentsPanel: true });
@@ -79,17 +79,17 @@ function ReviewBadgeWithHover({ uri, reviews }: ReviewBadgeWithHoverProps) {
         </span>
       </HoverCardTrigger>
       <HoverCardContent
-        className="w-auto max-w-[80vw] p-3 sm:w-[800px]"
+        className="w-auto min-w-[200px] max-w-[80vw] p-3 sm:min-w-[300px] sm:max-w-[800px]"
         align="start"
         side="bottom"
       >
         <div className="flex flex-col gap-3">
+          <div className="mb-1 font-semibold text-lg">
+            {t("reviewUI.reviews")}
+          </div>
           <div className="flex flex-col gap-1 border-[var(--vscode-editorWidget-border)] border-b pb-2 sm:flex-row sm:items-center sm:gap-2">
-            <span className="truncate font-medium text-base">
+            <span className="truncate font-medium text-sm">
               {getBadgeLabel(uri)}
-            </span>
-            <span className="truncate text-muted-foreground text-sm">
-              {filePath}
             </span>
           </div>
 
@@ -173,11 +173,4 @@ function getBadgeLabel(reviewUri: string) {
   const filename = reviewUri.split("/").pop();
   // Remove query parameters if present
   return filename?.split("?")[0];
-}
-
-// Get file path without filename
-function getFilePath(reviewUri: string) {
-  const parts = reviewUri.split("/");
-  parts.pop(); // Remove filename
-  return parts.join("/");
 }

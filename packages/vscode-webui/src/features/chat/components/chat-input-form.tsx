@@ -9,7 +9,7 @@ import type { UseChatHelpers } from "@ai-sdk/react";
 import type { Message } from "@getpochi/livekit";
 
 import { ReviewBadges } from "@/components/prompt-form/review-badges";
-import { useReviews } from "@/lib/hooks/use-reviews";
+import type { Review } from "@getpochi/common/vscode-webui-bridge";
 import type { ReactNode } from "@tanstack/react-router";
 import { QueuedMessages } from "./queued-messages";
 
@@ -30,6 +30,7 @@ interface ChatInputFormProps {
   onRemoveQueuedMessage: (index: number) => void;
   isSubTask: boolean;
   children?: ReactNode;
+  reviews: Review[];
 }
 
 export function ChatInputForm({
@@ -48,10 +49,10 @@ export function ChatInputForm({
   queuedMessages,
   onRemoveQueuedMessage,
   isSubTask,
+  reviews,
   children,
 }: ChatInputFormProps) {
   const editorRef = useRef<Editor | null>(null);
-  const reviews = useReviews();
 
   return (
     <FormEditor

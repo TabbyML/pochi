@@ -19,6 +19,7 @@ import { AutoApproveMenu } from "@/features/settings";
 import { TodoList, useTodos } from "@/features/todo";
 import { useAddCompleteToolCalls } from "@/lib/hooks/use-add-complete-tool-calls";
 import type { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
+import { useReviews } from "@/lib/hooks/use-reviews";
 import { useTaskChangedFiles } from "@/lib/hooks/use-task-changed-files";
 import { cn } from "@/lib/utils";
 import type { UseChatHelpers } from "@ai-sdk/react";
@@ -97,6 +98,8 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     handleFileDrop,
   } = attachmentUpload;
 
+  const reviews = useReviews();
+
   const { inlineCompactTask, inlineCompactTaskPending } = useInlineCompactTask({
     sendMessage,
   });
@@ -118,6 +121,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     isLoading,
     isInputEmpty: !input.trim() && queuedMessages.length === 0,
     isFilesEmpty: files.length === 0,
+    isReviewsEmpty: reviews.length === 0,
     isUploadingAttachments,
     newCompactTaskPending,
   });
@@ -139,6 +143,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     newCompactTaskPending,
     queuedMessages,
     setQueuedMessages,
+    reviews,
   });
 
   const handleQueueMessage = useCallback(
@@ -261,6 +266,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
           setQueuedMessages((prev) => prev.filter((_, i) => i !== index))
         }
         isSubTask={isSubTask}
+        reviews={reviews}
       />
 
       {/* Hidden file input for image uploads */}

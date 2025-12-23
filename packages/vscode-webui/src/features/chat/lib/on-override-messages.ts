@@ -29,8 +29,8 @@ export async function onOverrideMessages({
     .map((p) => p.data.commit);
   const lastMessage = messages.at(-1);
   if (lastMessage) {
-    const ckpt = await appendCheckpoint(lastMessage);
     await appendReviews(lastMessage);
+    const ckpt = await appendCheckpoint(lastMessage);
     await appendWorkflowBashOutputs(lastMessage, abortSignal);
 
     const firstCheckpoint = checkpoints.at(0);

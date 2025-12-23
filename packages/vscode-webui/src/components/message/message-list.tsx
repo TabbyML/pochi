@@ -231,11 +231,7 @@ function Part({
   }
 
   if (part.type === "data-reviews") {
-    return (
-      <div className="mt-2">
-        <Reviews reviews={part.data.reviews} />
-      </div>
-    );
+    return <Reviews reviews={part.data.reviews} />;
   }
 
   if (isToolUIPart(part)) {

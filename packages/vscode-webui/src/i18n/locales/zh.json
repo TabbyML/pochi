@@ -31,6 +31,7 @@
     "copyImage": "复制图片",
     "openImage": "打开图片",
     "pleaseCheckFiles": "请检查这些附件。",
+    "pleaseCheckReviews": "请检查这些评审。",
     "chatToolbar": {
       "diffWorktreeWith": "将工作树与 {{branch}} 进行比较",
       "openInTerminal": "在集成终端中打开"
@@ -284,6 +285,9 @@
     "compare": "比较",
     "fork": "新建分支任务",
     "forking": "创建中..."
+  },
+  "reviewUI": {
+    "reviews": "评审"
   },
   "welcomeScreen": {
     "title": "开始使用",
