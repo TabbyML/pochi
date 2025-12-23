@@ -26,13 +26,7 @@ import {
 } from "@getpochi/common/vscode-webui-bridge";
 import { DropdownMenuPortal } from "@radix-ui/react-dropdown-menu";
 import { useQuery } from "@tanstack/react-query";
-import {
-  CheckIcon,
-  CirclePlus,
-  GitBranch,
-  GitBranchIcon,
-  PlusIcon,
-} from "lucide-react";
+import { CheckIcon, CirclePlus, GitBranchIcon, PlusIcon } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -95,7 +89,6 @@ function BaseBranchSelector({
           <TooltipTrigger asChild>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="h-6 w-auto gap-0 px-0">
-                <GitBranch className="h-4 w-4 shrink-0" />
                 {value && (
                   <span className="ml-1 max-w-[8rem] truncate text-sm">
                     {value}
@@ -211,7 +204,7 @@ export function WorktreeSelect({
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="ghost"
-                    className="!px-1 button-focus h-6 max-w-[40vw] items-center gap-0 overflow-visible py-0 font-normal"
+                    className="button-focus h-6 max-w-[40vw] items-center gap-0 overflow-visible py-0 pr-1 pl-0 font-normal has-[>svg]:px-1"
                   >
                     <span
                       className={cn(
