@@ -13,6 +13,7 @@ import type {
 import { ChevronRight, ListCheck, MessageSquare } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { convertReviewThreadUri, getReviewBadgeLabel } from "./review-badge";
 
 interface Props {
   reviews: Review[];
@@ -91,6 +92,8 @@ function ReviewFileGroup({ uri, reviews }: ReviewFileGroupProps) {
     vscodeHost.openReview(reviews[0], { focusCommentsPanel: false });
   };
 
+  const displayUri = convertReviewThreadUri(uri);
+
   if (!reviews.length) return null;
 
   return (
@@ -110,8 +113,8 @@ function ReviewFileGroup({ uri, reviews }: ReviewFileGroupProps) {
             className="truncate font-medium text-sm hover:underline"
             onClick={onFileClick}
           >
-            <FileIcon path={uri} />
-            {getBadgeLabel(uri)}
+            <FileIcon path={displayUri} />
+            {getReviewBadgeLabel(displayUri)}
           </span>
         </div>
       </div>
@@ -193,14 +196,4 @@ function ReviewCommentView({ comment, isMain }: ReviewCommentViewProps) {
       {comment.body}
     </p>
   );
-}
-
-// Build label for the badge
-function getBadgeLabel(reviewUri: string) {
-  const filename = reviewUri
-    .replace(/^pochi-diff-changes:/, "")
-    .split("/")
-    .pop();
-  // Remove query parameters if present
-  return filename?.split("?")[0];
 }

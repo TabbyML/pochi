@@ -17,6 +17,8 @@ export const ReviewBadge: React.FC<ReviewBadgeProps> = ({
   showIcon = true,
   onClick,
 }) => {
+  const displayUri = convertReviewThreadUri(uri);
+
   return (
     <div
       className={cn(
@@ -27,8 +29,8 @@ export const ReviewBadge: React.FC<ReviewBadgeProps> = ({
       <FileBadge
         className="hover:!bg-transparent !py-0 m-0 cursor-default truncate rounded-sm border border-[var(--vscode-chat-requestBorder)] pr-1"
         labelClassName="whitespace-nowrap"
-        label={getBadgeLabel(uri)}
-        path={uri}
+        label={getReviewBadgeLabel(displayUri)}
+        path={displayUri}
         onClick={() => {
           onClick?.();
         }}
@@ -47,11 +49,13 @@ export const ReviewBadge: React.FC<ReviewBadgeProps> = ({
 };
 
 // Build label for the badge
-function getBadgeLabel(reviewUri: string) {
-  const filename = reviewUri
-    .replace(/^pochi-diff-changes:/, "")
-    .split("/")
-    .pop();
+export function getReviewBadgeLabel(reviewUri: string) {
+  const filename = reviewUri.split("/").pop();
+  return filename;
+}
+
+// Convert review thread uri to text document uri
+export function convertReviewThreadUri(uri: string) {
   // Remove query parameters if present
-  return filename?.split("?")[0];
+  return uri.replace(/^pochi-diff-changes:/, "").split("?")[0];
 }
