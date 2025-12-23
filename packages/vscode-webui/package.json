@@ -131,5 +131,11 @@
     "vite-plugin-environment": "^1.1.3",
     "vite-tsconfig-paths": "^5.1.4",
     "web-vitals": "^4.2.4"
+  },
+  "imports": {
+    "#use-paginated-tasks": {
+      "storybook": "./src/lib/hooks/use-paginated-tasks.mock",
+      "default": "./src/lib/hooks/use-paginated-tasks"
+    }
   }
 }

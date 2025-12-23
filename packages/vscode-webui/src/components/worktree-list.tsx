@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/tooltip";
 import { useSelectedModels } from "@/features/settings";
 import { useCurrentWorkspace } from "@/lib/hooks/use-current-workspace";
-import { usePaginatedTasks } from "@/lib/hooks/use-paginated-tasks";
+import { usePaginatedTasks } from "#use-paginated-tasks";
 import { usePochiTabs } from "@/lib/hooks/use-pochi-tabs";
 import { useWorktrees } from "@/lib/hooks/use-worktrees";
 import { cn } from "@/lib/utils";
