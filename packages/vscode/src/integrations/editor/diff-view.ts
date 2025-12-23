@@ -1,8 +1,8 @@
 import * as path from "node:path";
 import { setTimeout as setTimeoutPromise } from "node:timers/promises";
 import {
+  compareDiagnostics,
   diagnosticsToProblemsString,
-  getNewDiagnostics,
 } from "@/lib/diagnostic";
 import { ensureFileDirectoryExists, isFileExists } from "@/lib/fs";
 import { createPrettyPatch } from "@/lib/fs";
@@ -263,13 +263,22 @@ export class DiffView implements vscode.Disposable {
 
     await this.waitForDiagnostic();
     const postDiagnostics = vscode.languages.getDiagnostics();
+    const {
+      newProblems: newProblemsList,
+      resolvedProblems: resolvedProblemsList,
+    } = compareDiagnostics(this.preDiagnostics, postDiagnostics);
     const newProblems = diagnosticsToProblemsString(
-      getNewDiagnostics(this.preDiagnostics, postDiagnostics),
+      newProblemsList,
       [
         vscode.DiagnosticSeverity.Error, // only including errors since warnings can be distracting (if user wants to fix warnings they can use the @problems mention)
       ],
       this.cwd,
     ); // will be empty string if no errors
+    const resolvedProblems = diagnosticsToProblemsString(
+      resolvedProblemsList,
+      [vscode.DiagnosticSeverity.Error],
+      this.cwd,
+    );
 
     const newContentEOL = newContent.includes("\r\n") ? "\r\n" : "\n";
     const normalizedPreSaveContent =
@@ -306,6 +315,7 @@ export class DiffView implements vscode.Disposable {
       autoFormattingEdits,
       newProblems,
       _meta: { editSummary },
+      _transient: resolvedProblems ? { resolvedProblems } : undefined,
     };
   }
 

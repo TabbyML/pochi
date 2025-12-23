@@ -43,4 +43,13 @@ export const EditFileOutputSchema = z.object({
     .describe(
       "Metadata that would be removed before sending to the LLM (e.g. UI specific data).",
     ),
+
+  _transient: z
+    .object({
+      resolvedProblems: z
+        .string()
+        .optional()
+        .describe("The problems resolved after writing the file, if any."),
+    })
+    .optional(),
 });
