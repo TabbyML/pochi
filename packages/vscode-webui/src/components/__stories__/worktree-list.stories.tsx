@@ -1,10 +1,10 @@
-import type { Meta, StoryObj } from "@storybook/react";
 import type { GitWorktree } from "@getpochi/common/vscode-webui-bridge";
+import type { Task } from "@getpochi/livekit";
+import type { Meta, StoryObj } from "@storybook/react";
+import { fn } from "@storybook/test";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { usePaginatedTasks } from "#use-paginated-tasks";
 import { WorktreeList } from "../worktree-list";
-import type { Task } from "@getpochi/livekit";
-import { fn } from "@storybook/test";
 
 const mockCwd = "/Users/TabbyML/project/pochi";
 const mockOnDeleteWorktree = (worktreePath: string) => {

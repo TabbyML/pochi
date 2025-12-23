@@ -23,7 +23,6 @@ import {
 } from "@/components/ui/tooltip";
 import { useSelectedModels } from "@/features/settings";
 import { useCurrentWorkspace } from "@/lib/hooks/use-current-workspace";
-import { usePaginatedTasks } from "#use-paginated-tasks";
 import { usePochiTabs } from "@/lib/hooks/use-pochi-tabs";
 import { useWorktrees } from "@/lib/hooks/use-worktrees";
 import { cn } from "@/lib/utils";
@@ -50,6 +49,7 @@ import {
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as R from "remeda";
+import { usePaginatedTasks } from "#use-paginated-tasks";
 import { TaskRow } from "./task-row";
 import { ScrollArea } from "./ui/scroll-area";
 
