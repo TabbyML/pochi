@@ -231,6 +231,8 @@
   },
   "toolInvocation": {
     "taskCompleted": "任务完成",
+    "createWalkthrough": "创建任务回顾",
+    "updateWalkthrough": "更新任务回顾",
     "reading": "正在读取 ",
     "writing": "正在写入 ",
     "continue": "继续",
@@ -414,6 +416,16 @@
     "previous": "上一页",
     "next": "下一页",
     "morePages": "更多页面"
+  },
+  "walkthrough": {
+    "open": "打开任务回顾",
+    "timeout": "任务回顾生成超时，请重试。",
+    "title": "任务回顾",
+    "status": {
+      "ready": "已就绪",
+      "generating": "生成中…",
+      "pending": "等待中"
+    }
   },
   "diffSummary": {
     "filesChanged_one": "{{count}} 个文件已更改",

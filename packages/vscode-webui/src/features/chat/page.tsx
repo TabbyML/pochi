@@ -408,6 +408,7 @@ function Chat({ user, uid, info }: ChatProps) {
         hideCheckPoint={isSubTask}
         repairMermaid={repairMermaid}
         repairingChart={repairingChart}
+        taskId={uid}
       />
       <div className={ChatToolbarContainerClassName}>
         <ChatToolbar

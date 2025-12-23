@@ -64,6 +64,10 @@ export const inputSchema = z.object({
     .string()
     .optional()
     .describe("The type of the specialized agent to use for the task."),
+  inheritParentMessages: z
+    .boolean()
+    .optional()
+    .describe("Whether to inherit the parent task's messages."),
   _meta: z
     .object({
       uid: z.string().describe("A unique identifier for the task."),

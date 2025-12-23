@@ -5,8 +5,9 @@ import { parseAgentFile } from "@getpochi/common/tool-utils";
 import type { CustomAgentFile } from "@getpochi/common/vscode-webui-bridge";
 import { signal } from "@preact/signals-core";
 import { uniqueBy } from "remeda";
-import { Lifecycle, injectable, scoped } from "tsyringe";
+import { Lifecycle, inject, injectable, scoped } from "tsyringe";
 import * as vscode from "vscode";
+
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { WorkspaceScope } from "./workspace-scoped";
 
@@ -46,13 +47,21 @@ export class CustomAgentManager implements vscode.Disposable {
 
   readonly agents = signal<CustomAgentFile[]>([]);
 
-  constructor(private readonly workspaceScope: WorkspaceScope) {
+  constructor(
+    private readonly workspaceScope: WorkspaceScope,
+    @inject("vscode.ExtensionContext")
+    private readonly context: vscode.ExtensionContext,
+  ) {
     this.initWatchers();
     this.loadAgents();
   }
 
   private get cwd() {
     return this.workspaceScope.cwd;
+  }
+
+  private get extensionAgentsDir() {
+    return path.join(this.context.extensionPath, ".pochi", "agents");
   }
 
   private initWatchers() {
@@ -119,7 +128,17 @@ export class CustomAgentManager implements vscode.Disposable {
         })),
       );
 
+      const extensionAgentsDir = this.extensionAgentsDir;
+      const extensionAgents = await readAgentsFromDir(extensionAgentsDir);
+      allAgents.push(
+        ...extensionAgents.map((x) => ({
+          ...x,
+          filePath: x.filePath,
+        })),
+      );
+
       this.agents.value = uniqueBy(allAgents, (agent) => agent.name);
+
       logger.debug(`Loaded ${allAgents.length} custom agents`);
     } catch (error) {
       logger.error("Failed to load custom agents", error);

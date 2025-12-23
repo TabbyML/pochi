@@ -234,6 +234,8 @@
   },
   "toolInvocation": {
     "taskCompleted": "Task Completed",
+    "createWalkthrough": "Create Walkthrough",
+    "updateWalkthrough": "Update Walkthrough",
     "reading": "Reading ",
     "writing": "Writing ",
     "continue": "Continue",
@@ -413,6 +415,16 @@
     "previous": "Previous",
     "next": "Next",
     "morePages": "More pages"
+  },
+  "walkthrough": {
+    "open": "Open walkthrough",
+    "timeout": "Walkthrough generation timed out. Please try again.",
+    "title": "Walkthrough",
+    "status": {
+      "ready": "Ready",
+      "generating": "Generating…",
+      "pending": "Pending"
+    }
   },
   "diffSummary": {
     "filesChanged_one": "{{count}} file changed",

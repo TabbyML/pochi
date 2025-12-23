@@ -125,7 +125,12 @@ const VSCodeHostStub = {
   },
   openFile: (
     _filePath: string,
-    _options?: { start?: number; end?: number; preserveFocus?: boolean },
+    _options?: {
+      start?: number;
+      end?: number;
+      preserveFocus?: boolean;
+      webviewKind?: string;
+    },
   ): void => {},
   capture: (_e: CaptureEvent): Promise<void> => {
     return Promise.resolve();
@@ -171,6 +176,9 @@ const VSCodeHostStub = {
   },
   openExternal: (_uri: string): Promise<void> => {
     return Promise.resolve();
+  },
+  checkFileExists: async (_path: string): Promise<boolean> => {
+    return Promise.resolve(false);
   },
   readMinionId: async () => {
     return Promise.resolve(null);

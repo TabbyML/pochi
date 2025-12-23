@@ -1,8 +1,5 @@
 assets/webview-ui/
 *.vsix
 
-.pochi/
 .vscode-test/
 out/
-
-.wdio-vscode-service

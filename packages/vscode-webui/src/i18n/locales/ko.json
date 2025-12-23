@@ -232,6 +232,8 @@
   },
   "toolInvocation": {
     "taskCompleted": "작업 완료",
+    "createWalkthrough": "워크스루 생성",
+    "updateWalkthrough": "워크스루 업데이트",
     "reading": "읽는 중 ",
     "writing": "쓰는 중 ",
     "continue": "계속",
@@ -410,6 +412,16 @@
     "previous": "이전",
     "next": "다음",
     "morePages": "더 많은 페이지"
+  },
+  "walkthrough": {
+    "open": "워크스루 열기",
+    "timeout": "워크스루 생성이 시간 초과되었습니다. 다시 시도해주세요.",
+    "title": "워크스루",
+    "status": {
+      "ready": "준비됨",
+      "generating": "생성 중…",
+      "pending": "대기 중"
+    }
   },
   "diffSummary": {
     "filesChanged_one": "{{count}}개 파일 변경됨",

@@ -39,8 +39,16 @@ export function DefauleStoreOptionsProvider(props: {
   );
 }
 
+export function useDefaultStoreOptions() {
+  return useContext(DefaultStoreOptionsContext);
+}
+
+export function useHasDefaultStoreOptions() {
+  return useDefaultStoreOptions() !== null;
+}
+
 export function useDefaultStore(): Store<typeof catalog.schema> & ReactApi {
-  const storeOptions = useContext(DefaultStoreOptionsContext);
+  const storeOptions = useDefaultStoreOptions();
   if (!storeOptions) {
     throw new Error(
       "useDefaultStore must be used within a ChatContextProvider with storeOptions or with storeId and jwt arguments",

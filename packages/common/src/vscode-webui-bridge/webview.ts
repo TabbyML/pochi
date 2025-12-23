@@ -159,6 +159,7 @@ export interface VSCodeHostApi {
       base64Data?: string;
       fallbackGlobPattern?: string;
       cellId?: string;
+      webviewKind?: string;
     },
   ): void;
 
@@ -222,6 +223,13 @@ export interface VSCodeHostApi {
    * @param uri - The URI to open in an external application.
    */
   openExternal(uri: string): Promise<void>;
+
+  /**
+   * Checks if a file exists at the given path.
+   * @param path - The file path to check.
+   * @returns A promise that resolves to true if the file exists, false otherwise.
+   */
+  checkFileExists(path: string): Promise<boolean>;
 
   /**
    * Saves a checkpoint with the given message.

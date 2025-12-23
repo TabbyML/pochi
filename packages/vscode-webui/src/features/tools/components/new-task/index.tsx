@@ -9,12 +9,17 @@ import { useDefaultStore } from "@/lib/use-default-store";
 import { cn } from "@/lib/utils";
 import { isVSCodeEnvironment } from "@/lib/vscode";
 import { Link } from "@tanstack/react-router";
-import { type RefObject, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { useInlinedSubTask } from "../../hooks/use-inlined-sub-task";
 import { useLiveSubTask } from "../../hooks/use-live-sub-task";
 import { StatusIcon } from "../status-icon";
 import { ExpandIcon, ToolTitle } from "../tool-container";
 import type { ToolProps } from "../types";
+import {
+  type SubAgentRenderProps,
+  renderSubAgentView,
+} from "./subagent-renderers";
 
 interface NewTaskToolProps extends ToolProps<"newTask"> {
   // For storybook visualization
@@ -53,19 +58,12 @@ function LiveSubTaskToolView(props: NewTaskToolProps & { uid: string }) {
   return <NewTaskToolView {...props} taskSource={taskSource} uid={uid} />;
 }
 
-interface NewTaskToolViewProps extends ToolProps<"newTask"> {
-  taskSource?: (TaskThreadSource & { parentId?: string }) | undefined;
-  uid: string | undefined;
-  toolCallStatusRegistryRef?: RefObject<ToolCallStatusRegistry>;
-}
+type NewTaskToolViewProps = SubAgentRenderProps;
 
-function NewTaskToolView({
-  tool,
-  isExecuting,
-  taskSource,
-  uid,
-  toolCallStatusRegistryRef,
-}: NewTaskToolViewProps) {
+function NewTaskToolView(props: NewTaskToolViewProps) {
+  const { t } = useTranslation();
+  const { tool, isExecuting, taskSource, uid, toolCallStatusRegistryRef } =
+    props;
   const store = useDefaultStore();
   const agent = tool.input?.agentType;
   const description = tool.input?.description ?? "";
@@ -86,6 +84,10 @@ function NewTaskToolView({
       setShowMessageList(false);
     }
   }, [isExecuting, completed, setShowMessageList]);
+  const customView = renderSubAgentView(props, t);
+  if (customView) {
+    return customView;
+  }
   return (
     <div>
       <ToolTitle>

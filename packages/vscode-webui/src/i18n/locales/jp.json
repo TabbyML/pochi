@@ -232,6 +232,8 @@
   },
   "toolInvocation": {
     "taskCompleted": "タスク完了",
+    "createWalkthrough": "ウォークスルーを作成",
+    "updateWalkthrough": "ウォークスルーを更新",
     "reading": "読み込み中 ",
     "writing": "書き込み中 ",
     "continue": "続行",
@@ -415,6 +417,16 @@
     "previous": "前へ",
     "next": "次へ",
     "morePages": "その他のページ"
+  },
+  "walkthrough": {
+    "open": "Walkthrough を開く",
+    "timeout": "ウォークスルーの生成がタイムアウトしました。もう一度お試しください。",
+    "title": "Walkthrough",
+    "status": {
+      "ready": "準備完了",
+      "generating": "生成中…",
+      "pending": "待機中"
+    }
   },
   "diffSummary": {
     "filesChanged_one": "{{count}} ファイル変更",

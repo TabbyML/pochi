@@ -10,6 +10,11 @@ export { prompts } from "./prompts";
 
 export { SocialLinks } from "./social";
 export * as constants from "./constants";
+export {
+  WALKTHROUGH_AGENT_NAME,
+  EXPLORE_AGENT_NAME,
+  DEBUGGER_AGENT_NAME,
+} from "./constants";
 
 export {
   Environment,
