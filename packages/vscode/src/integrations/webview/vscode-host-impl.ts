@@ -976,6 +976,27 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     return this.reviewController.clearThreads();
   };
 
+  openReview = async (
+    review: Review,
+    options?: { focusCommentsPanel?: boolean },
+  ): Promise<void> => {
+    const uri = vscode.Uri.parse(review.uri);
+    if (
+      uri.scheme === "file" ||
+      uri.scheme === DiffChangesContentProvider.scheme
+    ) {
+      this.openFile(uri.fsPath, {
+        start: review.range?.start.line,
+      });
+    } else {
+      vscode.commands.executeCommand("vscode.open", uri);
+    }
+
+    if (options?.focusCommentsPanel) {
+      vscode.commands.executeCommand("workbench.action.focusCommentsPanel");
+    }
+  };
+
   dispose() {
     for (const disposable of this.disposables) {
       disposable.dispose();

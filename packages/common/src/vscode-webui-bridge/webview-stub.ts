@@ -293,6 +293,11 @@ const VSCodeHostStub = {
 
   clearReviews: async (): Promise<void> => {},
 
+  openReview: async (
+    _review: Review,
+    _options?: { focusCommentsPanel?: boolean },
+  ) => {},
+
   getGlobalState: async (): Promise<unknown> => {
     return null;
   },

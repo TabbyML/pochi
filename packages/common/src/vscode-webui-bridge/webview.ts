@@ -337,6 +337,11 @@ export interface VSCodeHostApi {
   readReviews(): Promise<ThreadSignalSerialization<Review[]>>;
 
   clearReviews(): Promise<void>;
+
+  openReview(
+    review: Review,
+    options?: { focusCommentsPanel?: boolean },
+  ): Promise<void>;
 }
 
 export interface WebviewHostApi {

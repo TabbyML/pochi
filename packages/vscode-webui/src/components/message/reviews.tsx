@@ -64,10 +64,7 @@ function ReviewBadgeWithHover({ uri, reviews }: ReviewBadgeWithHoverProps) {
 
   const onBadgeClick = (review: Review) => {
     if (!review) return;
-    // FIXME
-    vscodeHost.openFile(review.uri.replace("file://", ""), {
-      start: review.range?.start?.line,
-    });
+    vscodeHost.openReview(review, { focusCommentsPanel: true });
   };
 
   return (

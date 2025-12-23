@@ -30,10 +30,7 @@ export const ReviewBadges: React.FC<Props> = ({ reviews }) => {
 
   const onBadgeClick = (review: Review) => {
     if (!review) return;
-    // FIXME
-    vscodeHost.openFile(review.uri.replace("file://", ""), {
-      start: review.range?.start?.line,
-    });
+    vscodeHost.openReview(review);
   };
 
   return (

@@ -24,11 +24,6 @@ export const ReviewBadge: React.FC<ReviewBadgeProps> = ({
         className,
       )}
     >
-      {/* <a
-        href="command:pochi.comments.focusCommentsPanel"
-        target="_blank"
-        rel="noopener noreferrer"
-      > */}
       <FileBadge
         className="hover:!bg-transparent !py-0 m-0 cursor-default truncate rounded-sm border border-[var(--vscode-chat-requestBorder)] pr-1"
         labelClassName="whitespace-nowrap"
@@ -47,7 +42,6 @@ export const ReviewBadge: React.FC<ReviewBadgeProps> = ({
           </span>
         )}
       </FileBadge>
-      {/* </a> */}
     </div>
   );
 };
