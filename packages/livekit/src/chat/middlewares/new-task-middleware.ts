@@ -3,8 +3,10 @@ import type {
   LanguageModelV2StreamPart,
 } from "@ai-sdk/provider";
 import { safeParseJSON } from "@ai-sdk/provider-utils";
+import { WALKTHROUGH_AGENT_NAME } from "@getpochi/common";
 import { type CustomAgent, newTaskInputSchema } from "@getpochi/tools";
 import { InvalidToolInputError } from "ai";
+import { makeMessagesQuery } from "../../livestore/default-queries";
 import { events } from "../../livestore/default-schema";
 import type { LiveKitStore } from "../../types";
 
@@ -14,6 +16,17 @@ export function createNewTaskMiddleware(
   parentTaskId: string,
   customAgents?: CustomAgent[],
 ): LanguageModelV2Middleware {
+  const builtinAgentDefaults: Record<
+    string,
+    {
+      inheritParentMessages?: boolean;
+    }
+  > = {
+    [WALKTHROUGH_AGENT_NAME]: {
+      inheritParentMessages: true,
+    },
+  };
+
   return {
     middlewareVersion: "v2",
     transformParams: async ({ params }) => {
@@ -95,6 +108,17 @@ export function createNewTaskMiddleware(
               args._meta = {
                 uid,
               };
+              const agentType = args.agentType ?? "";
+              const shouldInheritParentMessages =
+                args.inheritParentMessages ??
+                builtinAgentDefaults[agentType]?.inheritParentMessages ??
+                false;
+              const parentMessages = shouldInheritParentMessages
+                ? store.query(makeMessagesQuery(parentTaskId)).map((x) => ({
+                    ...x.data,
+                    id: crypto.randomUUID(),
+                  }))
+                : [];
               store.commit(
                 events.taskInited({
                   id: uid,
@@ -102,6 +126,7 @@ export function createNewTaskMiddleware(
                   parentId: parentTaskId,
                   createdAt: new Date(),
                   initMessages: [
+                    ...parentMessages,
                     {
                       id: crypto.randomUUID(),
                       role: "user",

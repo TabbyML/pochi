@@ -1,6 +1,5 @@
 assets/webview-ui/
 *.vsix
 
-.pochi/
 .vscode-test/
 out/
