@@ -93,6 +93,7 @@ export class UserEditState implements vscode.Disposable {
   });
 
   private updateEdits = runExclusive.build(async () => {
+    logger.info("updateEdits", this.trackingTasks.size);
     if (this.trackingTasks.size === 0) {
       return;
     }
