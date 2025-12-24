@@ -120,6 +120,10 @@ export class ReviewController implements vscode.Disposable {
 
   async deleteComment(comment: Comment, thread: Thread) {
     thread.comments = thread.comments.filter((c) => c.id !== comment.id);
+    if (thread.comments.length === 0) {
+      thread.dispose();
+      this.threads.delete(thread.id);
+    }
     this.updateSignal();
   }
 
@@ -173,9 +177,9 @@ export class ReviewController implements vscode.Disposable {
   private getAuthor() {
     const user = this.userStorage.users.value.pochi;
     return {
-      name: user.name || "You",
+      name: user?.name || "You",
       iconPath: vscode.Uri.parse(
-        user.image ||
+        user?.image ||
           `https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(this.context.extension.id)}&scale=120`,
       ),
     };
