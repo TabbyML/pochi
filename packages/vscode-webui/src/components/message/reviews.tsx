@@ -89,7 +89,11 @@ function ReviewFileGroup({ uri, reviews }: ReviewFileGroupProps) {
   const onFileClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!reviews.length) return;
-    vscodeHost.openReview(reviews[0], { focusCommentsPanel: false });
+    vscodeHost.openReview(reviews[0]);
+  };
+
+  const onReviewClick = (review: Review) => {
+    vscodeHost.openReview(review, { revealRange: true });
   };
 
   const displayUri = convertReviewThreadUri(uri);
@@ -120,12 +124,16 @@ function ReviewFileGroup({ uri, reviews }: ReviewFileGroupProps) {
       </div>
       <CollapsibleContent>
         <div
-          className={cn("ml-6 flex flex-col gap-2 px-3 py-1", {
+          className={cn("flex flex-col gap-2", {
             "mb-1": isOpen,
           })}
         >
           {reviews.map((review) => (
-            <ReviewItem key={review.id} review={review} />
+            <ReviewItem
+              onClick={() => onReviewClick(review)}
+              key={review.id}
+              review={review}
+            />
           ))}
         </div>
       </CollapsibleContent>
@@ -135,14 +143,18 @@ function ReviewFileGroup({ uri, reviews }: ReviewFileGroupProps) {
 
 interface ReviewItemProps {
   review: Review;
+  onClick: () => void;
 }
 
-function ReviewItem({ review }: ReviewItemProps) {
+function ReviewItem({ review, onClick }: ReviewItemProps) {
   const mainComment = review.comments[0];
   const replies = review.comments.slice(1);
 
   return (
-    <div className="flex justify-between gap-2 text-sm">
+    <div
+      className="flex cursor-pointer justify-between gap-2 py-1 pr-3 pl-9 text-sm hover:bg-border/30"
+      onClick={onClick}
+    >
       <div className="flex min-w-0 flex-1 gap-1.5">
         <MessageSquare className="mt-0.5 size-3 shrink-0 text-muted-foreground" />
         <div className="flex min-w-0 flex-1 flex-col gap-1">

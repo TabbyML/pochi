@@ -340,7 +340,7 @@ export interface VSCodeHostApi {
 
   openReview(
     review: Review,
-    options?: { focusCommentsPanel?: boolean },
+    options?: { focusCommentsPanel?: boolean; revealRange?: boolean },
   ): Promise<void>;
 }
 

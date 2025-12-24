@@ -295,7 +295,7 @@ const VSCodeHostStub = {
 
   openReview: async (
     _review: Review,
-    _options?: { focusCommentsPanel?: boolean },
+    _options?: { focusCommentsPanel?: boolean; revealRange?: boolean },
   ) => {},
 
   getGlobalState: async (): Promise<unknown> => {

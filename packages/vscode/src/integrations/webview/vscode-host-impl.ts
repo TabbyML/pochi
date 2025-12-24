@@ -978,7 +978,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
 
   openReview = async (
     review: Review,
-    options?: { focusCommentsPanel?: boolean },
+    options?: { focusCommentsPanel?: boolean; revealRange?: boolean },
   ): Promise<void> => {
     if (options?.focusCommentsPanel) {
       vscode.commands.executeCommand("workbench.action.focusCommentsPanel");
@@ -986,14 +986,15 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
 
     const uri = vscode.Uri.parse(review.uri);
     vscode.commands.executeCommand("vscode.open", uri, {
-      selection: review.range
-        ? new vscode.Selection(
-            review.range.start.line,
-            review.range.start.character,
-            review.range.start.line,
-            review.range.start.character,
-          )
-        : undefined,
+      selection:
+        review.range && options?.revealRange
+          ? new vscode.Selection(
+              review.range.start.line - 1,
+              0,
+              review.range.start.line - 1,
+              0,
+            )
+          : undefined,
     });
 
     this.reviewController.expandThread(review.id);
