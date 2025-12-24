@@ -38,7 +38,6 @@ import type { SubtaskInfo } from "../hooks/use-subtask-info";
 import { ChatInputForm } from "./chat-input-form";
 import { ErrorMessageView } from "./error-message-view";
 import { CompleteSubtaskButton } from "./subtask";
-import { useUserEdits } from "@/lib/hooks/use-user-edits";
 
 interface ChatToolbarProps {
   task?: Task;
@@ -51,6 +50,7 @@ interface ChatToolbarProps {
   displayError: Error | undefined;
   todosRef: React.RefObject<Todo[] | undefined>;
   onUpdateIsPublicShared?: (isPublicShared: boolean) => void;
+  taskId: string | undefined;
 }
 
 export const ChatToolbar: React.FC<ChatToolbarProps> = ({
@@ -64,6 +64,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   displayError,
   todosRef,
   onUpdateIsPublicShared,
+  taskId,
 }) => {
   const { t } = useTranslation();
 
@@ -133,12 +134,6 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     isExecuting ||
     totalTokens < constants.CompactTaskMinTokens
   );
-
-  const userEdits = useUserEdits(task?.id);
-
-  console.log("userEditsuserEdits===");
-  console.log(task?.id);
-  console.log(userEdits);
 
   const { handleSubmit, handleStop } = useChatSubmit({
     chat,
@@ -273,6 +268,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
         }
         isSubTask={isSubTask}
         reviews={reviews}
+        taskId={taskId}
       />
 
       {/* Hidden file input for image uploads */}

@@ -265,6 +265,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
         onRemoveQueuedMessage={noop}
         onFocus={onFocus}
         reviews={reviews}
+        taskId={undefined}
       >
         {files.length > 0 && (
           <div className="px-3">

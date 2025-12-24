@@ -433,6 +433,7 @@ function Chat({ user, uid, info }: ChatProps) {
           subtask={subtask}
           displayError={displayError}
           onUpdateIsPublicShared={chatKit.updateIsPublicShared}
+          taskId={task?.id}
         />
       </div>
     </div>

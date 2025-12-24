@@ -417,6 +417,11 @@
     "viewChanges": "View changes",
     "openFile": "Open file"
   },
+  "userEdits": {
+    "filesEdited_one": "{{count}} file edited",
+    "filesEdited_other": "{{count}} files edited",
+    "tooltip": "Your edits are tracked and will be included in the context"
+  },
   "forkTask": {
     "forkedTaskTitle": "Forked from {{taskTitle}}"
   }

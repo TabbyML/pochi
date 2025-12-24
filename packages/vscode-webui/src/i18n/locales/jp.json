@@ -419,6 +419,11 @@
     "viewChanges": "変更を表示",
     "openFile": "ファイルを開く"
   },
+  "userEdits": {
+    "filesEdited_one": "{{count}} ファイルを編集",
+    "filesEdited_other": "{{count}} ファイルを編集",
+    "tooltip": "編集内容が追跡され、コンテキストに含まれます"
+  },
   "forkTask": {
     "forkedTaskTitle": "フォーク 元: {{taskTitle}}"
   }
