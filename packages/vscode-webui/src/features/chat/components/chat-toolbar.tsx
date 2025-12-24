@@ -134,10 +134,10 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     totalTokens < constants.CompactTaskMinTokens
   );
 
-  const userEdits = useUserEdits(task?.lastCheckpointHash);
+  const userEdits = useUserEdits(task?.id);
 
   console.log("userEditsuserEdits===");
-  console.log(task?.lastCheckpointHash);
+  console.log(task?.id);
   console.log(userEdits);
 
   const { handleSubmit, handleStop } = useChatSubmit({

@@ -304,7 +304,7 @@ const VSCodeHostStub = {
   ) => {},
 
   readUserEdits: async (
-    _checkpointHash: string | null,
+    _uid: string | null,
   ): Promise<ThreadSignalSerialization<FileDiff[]>> => {
     return Promise.resolve({} as ThreadSignalSerialization<FileDiff[]>);
   },

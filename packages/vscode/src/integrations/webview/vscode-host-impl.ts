@@ -1012,15 +1012,15 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   };
 
   readUserEdits = async (
-    checkpointHash: string | null,
+    uid: string | null,
   ): Promise<ThreadSignalSerialization<FileDiff[]>> => {
     return ThreadSignal.serialize(
       computed(() => {
         logger.trace(
           `user Edit state len, ${Object.keys(this.userEditState.edits.value).join(",")}`,
         );
-        if (!checkpointHash) return [];
-        return this.userEditState.edits.value[checkpointHash] ?? [];
+        if (!uid) return [];
+        return this.userEditState.edits.value[uid] ?? [];
       }),
     );
   };

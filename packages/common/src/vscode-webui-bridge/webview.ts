@@ -346,7 +346,7 @@ export interface VSCodeHostApi {
   ): Promise<void>;
 
   readUserEdits(
-    checkpointHash: string | null,
+    uid: string | null,
   ): Promise<ThreadSignalSerialization<FileDiff[]>>;
 }
 

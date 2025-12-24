@@ -15,7 +15,7 @@ import { vscodeHost } from "@/lib/vscode";
 import { constants, type Environment } from "@getpochi/common";
 import { createModel } from "@getpochi/common/vendor/edge";
 import type { DisplayModel } from "@getpochi/common/vscode-webui-bridge";
-import type { LLMRequestData, Message } from "@getpochi/livekit";
+import type { LLMRequestData } from "@getpochi/livekit";
 import type { Todo } from "@getpochi/tools";
 import { useCallback } from "react";
 
@@ -23,12 +23,12 @@ export function useLiveChatKitGetters({
   todos,
   isSubTask,
   modelOverride,
-  lastCheckpointHash,
+  taskId,
 }: {
   todos: React.RefObject<Todo[] | undefined>;
   isSubTask: boolean;
   modelOverride?: DisplayModel;
-  lastCheckpointHash: string | null;
+  taskId: string | undefined;
 }) {
   const { toolset, instructions } = useMcp();
   const mcpInfo = useLatest({ toolset, instructions });
@@ -37,7 +37,7 @@ export function useLiveChatKitGetters({
   const { customAgents } = useCustomAgents(true);
   const customAgentsRef = useLatest(customAgents);
 
-  const userEdits = useUserEdits(lastCheckpointHash);
+  const userEdits = useUserEdits(taskId);
 
   const getEnvironment = useCallback(async () => {
     const environment = await vscodeHost.readEnvironment({
@@ -64,25 +64,6 @@ export function useLiveChatKitGetters({
     // biome-ignore lint/correctness/useExhaustiveDependencies(customAgentsRef.current): customAgentsRef is ref.
     getCustomAgents: useCallback(() => customAgentsRef.current, []),
   };
-}
-
-function findSecondLastCheckpointFromMessages(
-  messages: readonly Message[],
-): string | undefined {
-  let foundCount = 0;
-  for (let i = messages.length - 1; i >= 0; i--) {
-    const message = messages[i];
-    for (let j = message.parts.length - 1; j >= 0; j--) {
-      const part = message.parts[j];
-      if (part.type === "data-checkpoint" && part.data?.commit) {
-        foundCount++;
-        if (foundCount === 2) {
-          return part.data.commit;
-        }
-      }
-    }
-  }
-  return undefined;
 }
 
 function useLLM({
