@@ -9,8 +9,8 @@ import type { UseChatHelpers } from "@ai-sdk/react";
 import type { Message } from "@getpochi/livekit";
 
 import { ReviewBadges } from "@/components/prompt-form/review-badges";
-import type { Review } from "@getpochi/common/vscode-webui-bridge";
 import { UserEdits } from "@/components/prompt-form/user-edits";
+import type { Review } from "@getpochi/common/vscode-webui-bridge";
 import type { ReactNode } from "@tanstack/react-router";
 import { QueuedMessages } from "./queued-messages";
 

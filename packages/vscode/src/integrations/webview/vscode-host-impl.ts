@@ -1012,14 +1012,13 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   };
 
   readUserEdits = async (
-    uid: string | null,
+    uid: string,
   ): Promise<ThreadSignalSerialization<FileDiff[]>> => {
     return ThreadSignal.serialize(
       computed(() => {
         logger.trace(
           `user Edit state len, ${Object.keys(this.userEditState.edits.value).join(",")}`,
         );
-        if (!uid) return [];
         return this.userEditState.edits.value[uid] ?? [];
       }),
     );

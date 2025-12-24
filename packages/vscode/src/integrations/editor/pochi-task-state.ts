@@ -84,6 +84,8 @@ export class PochiTaskState implements vscode.Disposable {
       id: string;
       parentId?: string;
       status?: string;
+      cwd: string;
+      lastCheckpointHash?: string;
     };
     const uid = taskData.id;
     const rootTaskId = taskData.parentId || taskData.id;
@@ -107,6 +109,12 @@ export class PochiTaskState implements vscode.Disposable {
       current.unread = !current.active;
     }
 
+    if (taskData.cwd) {
+      current.cwd = taskData.cwd;
+    }
+    if (taskData.lastCheckpointHash) {
+      current.lastCheckpointHash = taskData.lastCheckpointHash;
+    }
     newState[rootTaskId] = current;
     this.saveState(newState);
   };

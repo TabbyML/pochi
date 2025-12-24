@@ -10,7 +10,7 @@ import { vscodeHost } from "../vscode";
 export const useUserEdits = (uid: string | undefined | null) => {
   const { data: userEditsSignal } = useQuery({
     queryKey: ["userEdits", uid],
-    queryFn: () => fetchUserEdits(uid ?? null),
+    queryFn: () => fetchUserEdits(uid),
     staleTime: Number.POSITIVE_INFINITY,
   });
 
@@ -24,6 +24,8 @@ export const useUserEdits = (uid: string | undefined | null) => {
 /**
  * Fetch user edits from workspace API
  */
-async function fetchUserEdits(uid: string | null) {
+async function fetchUserEdits(uid: string | null | undefined) {
+  if (!uid) return;
+
   return threadSignal(await vscodeHost.readUserEdits(uid));
 }

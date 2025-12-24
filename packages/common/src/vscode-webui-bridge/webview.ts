@@ -345,9 +345,7 @@ export interface VSCodeHostApi {
     options?: { focusCommentsPanel?: boolean; revealRange?: boolean },
   ): Promise<void>;
 
-  readUserEdits(
-    uid: string | null,
-  ): Promise<ThreadSignalSerialization<FileDiff[]>>;
+  readUserEdits(uid: string): Promise<ThreadSignalSerialization<FileDiff[]>>;
 }
 
 export interface WebviewHostApi {
