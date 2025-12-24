@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { NoOtherToolsReminderPrompt } from "./constants";
 import { defineClientTool } from "./types";
 
 const toolDef = {
@@ -10,6 +11,8 @@ Use this tool in the following scenarios:
 1. The user's request is ambiguous or unclear and requires clarification.
 2. You need more details to proceed effectively.
 3. You have made several unsuccessful attempts to solve the issue and need user guidance to move forward.
+
+${NoOtherToolsReminderPrompt}
 `.trim(),
   inputSchema: z.object({
     question: z.string().describe("The question to ask the user."),

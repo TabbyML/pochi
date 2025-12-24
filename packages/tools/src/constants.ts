@@ -53,3 +53,6 @@ export const EditFileOutputSchema = z.object({
     })
     .optional(),
 });
+
+export const NoOtherToolsReminderPrompt =
+  "IMPORTANT: This tool CANNOT be used in combination with other tools (except todoWrite) in a single step. If you need to use other tools, you must do so in a separate step before calling this tool.";
