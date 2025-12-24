@@ -32,7 +32,10 @@ export function TaskRow({
   const content = (
     <div
       className={cn(
-        "group cursor-pointer rounded-lg border border-border/50 bg-card/60 transition-all duration-200 hover:border-border hover:bg-card hover:shadow-md",
+        "group cursor-pointer rounded-lg border border-border/50 bg-card/60 transition-all duration-200 hover:bg-card hover:shadow-md",
+        {
+          "border-primary/85": state?.focused,
+        },
       )}
     >
       <div className="px-2 py-1">
@@ -44,7 +47,7 @@ export function TaskRow({
                   {prefixTaskDisplayId(task.displayId)}
                 </span>
               )}
-              <div className="line-clamp-2 flex flex-1 items-center font-medium text-foreground leading-relaxed transition-colors duration-200">
+              <div className="line-clamp-2 flex flex-1 items-center font-medium text-foreground leading-relaxed">
                 <div className="truncate">{title}</div>
                 {state?.unread && (
                   <div className="ml-2 h-2 w-2 shrink-0 rounded-full bg-primary" />
