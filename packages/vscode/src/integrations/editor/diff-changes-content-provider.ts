@@ -5,6 +5,7 @@ interface DiffChangesData {
   filepath: string;
   content: string;
   cwd: string;
+  type: "base" | "updated";
 }
 
 @injectable()
@@ -14,7 +15,7 @@ export class DiffChangesContentProvider
 {
   static readonly scheme = "pochi-diff-changes";
 
-  static decode(data: DiffChangesData): vscode.Uri {
+  static encode(data: DiffChangesData): vscode.Uri {
     const query = Buffer.from(JSON.stringify(data)).toString("base64");
     return vscode.Uri.parse(
       `${DiffChangesContentProvider.scheme}:${data.filepath}`,
@@ -23,13 +24,13 @@ export class DiffChangesContentProvider
     });
   }
 
-  static parse(uri: vscode.Uri): DiffChangesData {
+  static decode(uri: vscode.Uri): DiffChangesData {
     const data = Buffer.from(uri.query, "base64").toString("utf-8");
     return JSON.parse(data) as DiffChangesData;
   }
 
   provideTextDocumentContent(uri: vscode.Uri) {
-    return DiffChangesContentProvider.parse(uri).content;
+    return DiffChangesContentProvider.decode(uri).content;
   }
 
   private registeration = vscode.workspace.registerTextDocumentContentProvider(

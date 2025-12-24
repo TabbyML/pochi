@@ -7,6 +7,7 @@ import type {
 import { signal } from "@preact/signals-core";
 import { inject, injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
+import { DiffChangesContentProvider } from "./editor/diff-changes-content-provider";
 
 export type Comment = vscode.Comment & {
   id: string;
@@ -48,6 +49,15 @@ export class ReviewController implements vscode.Disposable {
         _token: vscode.CancellationToken,
       ) {
         if (document.uri.scheme === "output") {
+          return [];
+        }
+
+        if (document.uri.scheme !== DiffChangesContentProvider.scheme) {
+          return [];
+        }
+
+        const changesData = DiffChangesContentProvider.decode(document.uri);
+        if (changesData.type !== "updated") {
           return [];
         }
 

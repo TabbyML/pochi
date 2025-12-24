@@ -1053,15 +1053,17 @@ async function showDiff(displayFiles: GitDiff[], title: string, cwd: string) {
 
     await vscode.commands.executeCommand(
       "vscode.diff",
-      DiffChangesContentProvider.decode({
+      DiffChangesContentProvider.encode({
         filepath: changedFile.filepath,
         content: changedFile.before ?? "",
         cwd: cwd,
+        type: "base",
       }),
-      DiffChangesContentProvider.decode({
+      DiffChangesContentProvider.encode({
         filepath: changedFile.filepath,
         content: changedFile.after ?? "",
         cwd: cwd,
+        type: "updated",
       }),
       title,
       {
@@ -1077,15 +1079,17 @@ async function showDiff(displayFiles: GitDiff[], title: string, cwd: string) {
     title,
     displayFiles.map((file) => [
       vscode.Uri.joinPath(vscode.Uri.parse(cwd ?? ""), file.filepath),
-      DiffChangesContentProvider.decode({
+      DiffChangesContentProvider.encode({
         filepath: file.filepath,
         content: file.before ?? "",
         cwd: cwd ?? "",
+        type: "base",
       }),
-      DiffChangesContentProvider.decode({
+      DiffChangesContentProvider.encode({
         filepath: file.filepath,
         content: file.after ?? "",
         cwd: cwd ?? "",
+        type: "updated",
       }),
     ]),
   );
