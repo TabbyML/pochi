@@ -25,6 +25,7 @@ export const CheckpointUI: React.FC<{
   hideBorderOnHover?: boolean;
   forkTask?: (commitId: string, messageId?: string) => Promise<void>;
   restoreMessageId?: string;
+  isRestored?: boolean;
 }> = ({
   checkpoint,
   isLoading,
@@ -32,7 +33,13 @@ export const CheckpointUI: React.FC<{
   hideBorderOnHover = true,
   forkTask,
   restoreMessageId,
+  isRestored,
 }) => {
+  console.log(
+    "Rendering CheckpointUI with isRestored:",
+    isRestored,
+    checkpoint.commit,
+  );
   const { t } = useTranslation();
   const [isDevMode] = useIsDevMode();
   const [currentAction, setCurrentAction] = useState<ActionType>();
@@ -107,6 +114,9 @@ export const CheckpointUI: React.FC<{
     }
     if (showActionSuccessIcon && currentAction === "restore") {
       return t("checkpointUI.success");
+    }
+    if (isRestored) {
+      return t("checkpointUI.restored");
     }
     return t("checkpointUI.restore");
   };
@@ -194,6 +204,7 @@ export const CheckpointUI: React.FC<{
         <Border
           hide={isPending || showActionSuccessIcon}
           hideOnHover={hideBorderOnHover}
+          isRestored={isRestored}
         />
         <span
           className={cn(
@@ -213,11 +224,18 @@ export const CheckpointUI: React.FC<{
             {getCompareText()}
           </Button>
 
-          <span className="hidden group-hover:flex">{getRestoreIcon()}</span>
+          <span
+            className={cn(
+              "hidden group-hover:flex",
+              isRestored && "text-current/40",
+            )}
+          >
+            {getRestoreIcon()}
+          </span>
           <Button
             size="sm"
             variant="ghost"
-            disabled={isPending}
+            disabled={isPending || isRestored}
             onClick={() => handleCheckpointAction("restore")}
             className="hidden h-5 items-center gap-1 rounded-md px-1 py-0.5 text-xs hover:bg-transparent group-hover:flex dark:hover:bg-transparent"
           >
@@ -239,11 +257,19 @@ export const CheckpointUI: React.FC<{
             </div>
           )}
 
-          <span className="group-hover:hidden">{getIcon()}</span>
+          <span
+            className={cn(
+              "group-hover:hidden",
+              isRestored && "text-primary/60",
+            )}
+          >
+            {getIcon()}
+          </span>
         </span>
         <Border
           hide={isPending || showActionSuccessIcon}
           hideOnHover={hideBorderOnHover}
+          isRestored={isRestored}
         />
       </div>
     </div>
@@ -253,13 +279,19 @@ export const CheckpointUI: React.FC<{
 function Border({
   hide,
   hideOnHover,
-}: { hide: boolean; hideOnHover?: boolean }) {
+  isRestored,
+}: {
+  hide: boolean;
+  hideOnHover?: boolean;
+  isRestored?: boolean;
+}) {
   return (
     <div
       className={cn(
         "flex-1 border-border border-t",
         hideOnHover && "group-hover:opacity-0",
         hideOnHover && hide && "opacity-0",
+        isRestored && "border-primary/60",
       )}
     />
   );

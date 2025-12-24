@@ -11,6 +11,7 @@ import type {
   SaveCheckpointOptions,
   TaskChangedFile,
 } from "@getpochi/common/vscode-webui-bridge";
+import { signal } from "@preact/signals-core";
 import { Lifecycle, inject, injectable, scoped } from "tsyringe";
 import type * as vscode from "vscode";
 import { ShadowGitRepo } from "./shadow-git-repo";
@@ -25,6 +26,8 @@ export class CheckpointService implements vscode.Disposable {
   private shadowGit: ShadowGitRepo | undefined;
   private readyDefer = new Deferred<void>();
   private initialized = false;
+
+  latestCheckpoint = signal<string | null>(null);
 
   constructor(
     private readonly workspaceScope: WorkspaceScope,
@@ -43,7 +46,7 @@ export class CheckpointService implements vscode.Disposable {
    * Lazy initializes the checkpoint service.
    * @returns A promise that resolves when the checkpoint service is initialized.
    */
-  private async ensureInitialized() {
+  async ensureInitialized() {
     if (!this.initialized) {
       this.initialized = true;
       await this.init();
@@ -56,6 +59,7 @@ export class CheckpointService implements vscode.Disposable {
       const gitPath = await this.getShadowGitPath();
       this.shadowGit = await ShadowGitRepo.getOrCreate(gitPath, this.cwd);
       logger.trace("Shadow Git repository initialized at", gitPath);
+      this.latestCheckpoint.value = await this.shadowGit.getLatestCommitHash();
       this.readyDefer.resolve();
     } catch (error) {
       const errorMessage = toErrorMessage(error);
@@ -94,6 +98,7 @@ export class CheckpointService implements vscode.Disposable {
       logger.trace(
         `Successfully saved checkpoint with message: ${message}, commit hash: ${commitHash}`,
       );
+      this.latestCheckpoint.value = commitHash;
       return commitHash;
     } catch (error) {
       const errorMessage = toErrorMessage(error);
@@ -121,6 +126,7 @@ export class CheckpointService implements vscode.Disposable {
 
     try {
       await this.shadowGit.reset(commitHash, files);
+      this.latestCheckpoint.value = commitHash;
     } catch (error) {
       const errorMessage = toErrorMessage(error);
       logger.error(
@@ -173,6 +179,14 @@ export class CheckpointService implements vscode.Disposable {
     const checkpointDir = path.join(storagePath, "checkpoint");
     await mkdir(checkpointDir, { recursive: true });
     return checkpointDir;
+  }
+
+  async getLatestCommitHash() {
+    await this.ensureInitialized();
+    if (!this.shadowGit) {
+      throw new Error("Shadow Git repository not initialized");
+    }
+    return this.shadowGit.getLatestCommitHash();
   }
 
   getCheckpointChanges = async (
@@ -324,7 +338,7 @@ export class CheckpointService implements vscode.Disposable {
     return changes;
   };
 
-  checkFileExistsInCheckpoint = async (
+  private checkFileExistsInCheckpoint = async (
     commitHash: string,
     filepath: string,
   ): Promise<boolean> => {

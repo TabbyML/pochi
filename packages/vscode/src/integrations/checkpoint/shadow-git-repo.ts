@@ -119,6 +119,24 @@ export class ShadowGitRepo implements vscode.Disposable {
     }
   }
 
+  // Get the latest commit hash in short form
+  async getLatestCommitHash(): Promise<string | null> {
+    try {
+      const hash = await this.git.raw(["log", "-1", "--format=%h"]);
+      const trimmedHash = hash.trim();
+      logger.debug(`Latest commit hash: ${trimmedHash}`);
+      return trimmedHash || null;
+    } catch (error) {
+      const errorMessage = toErrorMessage(error);
+      logger.error(
+        `Failed to get the latest commit hash for the repository at ${this.gitPath}: ${errorMessage}`,
+      );
+      throw new Error(
+        `Failed to get the latest commit hash for the repository at ${this.gitPath}: ${errorMessage}`,
+      );
+    }
+  }
+
   async status() {
     try {
       if (!this.git) {

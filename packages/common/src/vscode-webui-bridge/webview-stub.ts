@@ -187,6 +187,11 @@ const VSCodeHostStub = {
   restoreChangedFiles: async (_files: TaskChangedFile[]): Promise<void> => {
     return Promise.resolve();
   },
+  readLatestCheckpoint: async (): Promise<
+    ThreadSignalSerialization<string | null>
+  > => {
+    return Promise.resolve({} as ThreadSignalSerialization<string | null>);
+  },
   readCheckpointPath: async (): Promise<string | undefined> => {
     return Promise.resolve(undefined);
   },
