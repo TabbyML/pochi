@@ -1057,13 +1057,13 @@ async function showDiff(displayFiles: GitDiff[], title: string, cwd: string) {
         filepath: changedFile.filepath,
         content: changedFile.before ?? "",
         cwd: cwd,
-        type: "base",
+        type: "original",
       }),
       DiffChangesContentProvider.encode({
         filepath: changedFile.filepath,
         content: changedFile.after ?? "",
         cwd: cwd,
-        type: "updated",
+        type: "modified",
       }),
       title,
       {
@@ -1083,13 +1083,13 @@ async function showDiff(displayFiles: GitDiff[], title: string, cwd: string) {
         filepath: file.filepath,
         content: file.before ?? "",
         cwd: cwd ?? "",
-        type: "base",
+        type: "original",
       }),
       DiffChangesContentProvider.encode({
         filepath: file.filepath,
         content: file.after ?? "",
         cwd: cwd ?? "",
-        type: "updated",
+        type: "modified",
       }),
     ]),
   );

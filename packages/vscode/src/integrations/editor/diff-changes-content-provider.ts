@@ -5,7 +5,7 @@ interface DiffChangesData {
   filepath: string;
   content: string;
   cwd: string;
-  type: "base" | "updated";
+  type: "original" | "modified";
 }
 
 @injectable()

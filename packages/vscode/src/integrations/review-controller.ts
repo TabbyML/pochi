@@ -57,7 +57,7 @@ export class ReviewController implements vscode.Disposable {
         }
 
         const changesData = DiffChangesContentProvider.decode(document.uri);
-        if (changesData.type !== "updated") {
+        if (changesData.type !== "modified") {
           return [];
         }
 

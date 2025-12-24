@@ -546,13 +546,13 @@ async function showWorktreeDiff(
           filepath: file.filepath,
           content: file.before,
           cwd,
-          type: "base",
+          type: "original",
         }),
         DiffChangesContentProvider.encode({
           filepath: file.filepath,
           content: file.after,
           cwd,
-          type: "updated",
+          type: "modified",
         }),
       ]),
     );
