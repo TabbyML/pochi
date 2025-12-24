@@ -71,6 +71,7 @@ export interface TaskState {
   unread?: boolean;
   active?: boolean;
   running?: boolean;
+  focused?: boolean;
 }
 
 export type TaskStates = Record<string, TaskState>;
