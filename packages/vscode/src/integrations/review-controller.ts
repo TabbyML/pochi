@@ -90,6 +90,16 @@ export class ReviewController implements vscode.Disposable {
 
   async addComment(commentReply: vscode.CommentReply) {
     const { thread, text } = commentReply;
+    if (text.trim().length === 0) {
+      vscode.window.showWarningMessage(
+        "Cannot submit an empty commentcommentcomment.",
+        {
+          modal: true,
+        },
+      );
+      return;
+    }
+
     if (thread.comments.length > 0) {
       const existThread = thread as Thread;
       existThread.comments = [
@@ -120,6 +130,10 @@ export class ReviewController implements vscode.Disposable {
 
   async deleteComment(comment: Comment, thread: Thread) {
     thread.comments = thread.comments.filter((c) => c.id !== comment.id);
+    if (thread.comments.length === 0) {
+      thread.dispose();
+      this.threads.delete(thread.id);
+    }
     this.updateSignal();
   }
 
