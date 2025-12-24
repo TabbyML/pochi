@@ -171,6 +171,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
               })
             : selectedWorktree;
         if (worktree) {
+          setUserSelectedWorktree(worktree);
           vscodeHost.openTaskInPanel({
             type: "new-task",
             cwd: worktree?.path || cwd,
@@ -195,6 +196,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
               })
             : selectedWorktree;
         if (worktree) {
+          setUserSelectedWorktree(worktree);
           vscodeHost.openTaskInPanel({
             type: "new-task",
             cwd: worktree?.path || cwd,
@@ -227,6 +229,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
       setDebouncedIsCreatingTask,
       baseBranch,
       reviews,
+      setUserSelectedWorktree,
     ],
   );
 
