@@ -418,6 +418,11 @@
     "viewChanges": "查看更改",
     "openFile": "打开文件"
   },
+  "userEdits": {
+    "filesEdited_one": "已编辑 {{count}} 个文件",
+    "filesEdited_other": "已编辑 {{count}} 个文件",
+    "tooltip": "您的编辑已被跟踪，并将包含在上下文中"
+  },
   "forkTask": {
     "forkedTaskTitle": "任务分支自：{{taskTitle}}"
   }

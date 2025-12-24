@@ -10,6 +10,7 @@ import type { Message } from "@getpochi/livekit";
 
 import { ReviewBadges } from "@/components/prompt-form/review-badges";
 import type { Review } from "@getpochi/common/vscode-webui-bridge";
+import { UserEdits } from "@/components/prompt-form/user-edits";
 import type { ReactNode } from "@tanstack/react-router";
 import { QueuedMessages } from "./queued-messages";
 
@@ -31,6 +32,7 @@ interface ChatInputFormProps {
   isSubTask: boolean;
   children?: ReactNode;
   reviews: Review[];
+  taskId: string | undefined;
 }
 
 export function ChatInputForm({
@@ -50,6 +52,7 @@ export function ChatInputForm({
   onRemoveQueuedMessage,
   isSubTask,
   reviews,
+  taskId,
   children,
 }: ChatInputFormProps) {
   const editorRef = useRef<Editor | null>(null);
@@ -76,6 +79,7 @@ export function ChatInputForm({
             editorRef.current?.commands.insertContent(" @");
           }}
         />
+        <UserEdits taskId={taskId} />
         <ReviewBadges reviews={reviews} />
       </div>
       <DevRetryCountdown pendingApproval={pendingApproval} status={status} />
