@@ -419,5 +419,9 @@
   },
   "forkTask": {
     "forkedTaskTitle": "任务分支自：{{taskTitle}}"
+  },
+  "mermaid": {
+    "failedToRender": "渲染 Mermaid 图表失败：",
+    "fixError": "使用 Pochi 修复错误"
   }
 }

@@ -415,5 +415,9 @@
   },
   "forkTask": {
     "forkedTaskTitle": "포크됨 원본: {{taskTitle}}"
+  },
+  "mermaid": {
+    "failedToRender": "Mermaid 차트 렌더링 실패:",
+    "fixError": "Pochi로 오류 수정"
   }
 }
