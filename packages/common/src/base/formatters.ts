@@ -72,7 +72,12 @@ function removeSystemReminder(messages: UIMessage[]): UIMessage[] {
       return !prompts.isSystemReminder(part.text);
     });
     message.parts = parts;
-    if (parts.some((x) => x.type === "text" || isToolUIPart(x))) {
+    if (
+      parts.some(
+        (x) =>
+          x.type === "text" || x.type === "data-reviews" || isToolUIPart(x),
+      )
+    ) {
       return true;
     }
     return false;

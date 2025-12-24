@@ -31,7 +31,6 @@
     "copyImage": "이미지 복사",
     "openImage": "이미지 열기",
     "pleaseCheckFiles": "이 첨부 파일들을 확인해 주세요.",
-    "pleaseCheckReviews": "이 리뷰들을 확인해 주세요.",
     "chatToolbar": {
       "diffWorktreeWith": "{{branch}}와(과) 워크트리 비교",
       "openInTerminal": "통합 터미널에서 열기"

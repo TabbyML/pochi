@@ -31,7 +31,6 @@
     "copyImage": "复制图片",
     "openImage": "打开图片",
     "pleaseCheckFiles": "请检查这些附件。",
-    "pleaseCheckReviews": "请检查这些评审。",
     "chatToolbar": {
       "diffWorktreeWith": "将工作树与 {{branch}} 进行比较",
       "openInTerminal": "在集成终端中打开"

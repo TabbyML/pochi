@@ -78,6 +78,7 @@ function Chat({ user, uid, info }: ChatProps) {
   useAbortBeforeNavigation(chatAbortController.current);
 
   const task = store.useQuery(catalog.queries.makeTaskQuery(uid));
+  console.log(task, "task");
   const subtask = useSubtaskInfo(uid, task?.parentId);
   const topDisplayId =
     store.useQuery(catalog.queries.makeTaskQuery(task?.parentId ?? ""))
@@ -259,6 +260,7 @@ function Chat({ user, uid, info }: ChatProps) {
 
   const { messages, sendMessage, status } = chat;
   const renderMessages = useMemo(() => formatters.ui(messages), [messages]);
+  console.log(messages, renderMessages);
   const isLoading = status === "streaming" || status === "submitted";
 
   const approvalAndRetry = useApprovalAndRetry({
