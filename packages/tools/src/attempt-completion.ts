@@ -15,6 +15,8 @@ const toolDef = {
 
 You MUST NOT generate any text before this tool call. All conclusion text must be included within the result parameter of the attemptCompletion tool.
 Never use this tool with a question or request to engage in further conversation! Formulate the end of your result in a way that is final and does not require further input from the user.
+
+IMPORTANT: This tool CANNOT be used in combination with other tools (except todoWrite) in a single step. If you need to use other tools, you must do so in a separate step before calling this tool.
 `.trim(),
   inputSchema: attemptCompletionSchema,
   outputSchema: z.object({

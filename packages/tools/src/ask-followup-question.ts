@@ -10,6 +10,8 @@ Use this tool in the following scenarios:
 1. The user's request is ambiguous or unclear and requires clarification.
 2. You need more details to proceed effectively.
 3. You have made several unsuccessful attempts to solve the issue and need user guidance to move forward.
+
+IMPORTANT: This tool CANNOT be used in combination with other tools (except todoWrite) in a single step. If you need to use other tools, you must do so in a separate step before calling this tool.
 `.trim(),
   inputSchema: z.object({
     question: z.string().describe("The question to ask the user."),

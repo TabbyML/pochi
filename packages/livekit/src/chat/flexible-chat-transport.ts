@@ -30,6 +30,7 @@ import type { Message, Metadata, RequestData } from "../types";
 import { makeRepairToolCall } from "./llm";
 import { parseMcpToolSet } from "./mcp-utils";
 import {
+  createFilterCompletionToolsMiddleware,
   createNewTaskMiddleware,
   createReasoningMiddleware,
   createToolCallMiddleware,
@@ -112,6 +113,8 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
 
     const model = createModel({ llm });
     const middlewares = [];
+
+    middlewares.push(createFilterCompletionToolsMiddleware());
 
     if (!this.isSubTask) {
       middlewares.push(
