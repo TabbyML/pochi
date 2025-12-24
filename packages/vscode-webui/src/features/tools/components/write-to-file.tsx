@@ -1,6 +1,6 @@
 import { useToolCallLifeCycle } from "@/features/chat";
 import { getToolName } from "ai";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ModelEdits } from "./code-edits";
 import { FileBadge } from "./file-badge";
@@ -15,6 +15,7 @@ export const writeToFileTool: React.FC<ToolProps<"writeToFile">> = ({
   changes,
 }) => {
   const { t } = useTranslation();
+  const [isExpanded, setIsExpanded] = useState(false);
   const lifecycle = useToolCallLifeCycle().getToolCallLifeCycle({
     toolName: getToolName(tool),
     toolCallId: tool.toolCallId,
@@ -29,8 +30,12 @@ export const writeToFileTool: React.FC<ToolProps<"writeToFile">> = ({
   }, [tool.state, lifecycle.status]);
 
   const handleClick = useCallback(() => {
-    lifecycle.preview(tool.input, tool.state);
-  }, [tool.input, tool.state, lifecycle.preview]);
+    if (shouldPreview) {
+      lifecycle.preview(tool.input, tool.state);
+    } else {
+      setIsExpanded((prev) => !prev);
+    }
+  }, [shouldPreview, tool.input, tool.state, lifecycle.preview]);
 
   const { path } = tool.input || {};
 
@@ -55,7 +60,7 @@ export const writeToFileTool: React.FC<ToolProps<"writeToFile">> = ({
         <FileBadge
           className="ml-1"
           path={path}
-          onClick={shouldPreview ? handleClick : undefined}
+          onClick={handleClick}
           editSummary={result?._meta?.editSummary ?? previewInfo?.editSummary}
           changes={result?.success ? changes : undefined}
         />
@@ -87,6 +92,8 @@ export const writeToFileTool: React.FC<ToolProps<"writeToFile">> = ({
       expandableDetail={expandableDetail}
       expandableDetailIcon={result?.newProblems && <NewProblemsIcon />}
       detail={detail}
+      isExpanded={isExpanded}
+      onToggle={setIsExpanded}
     />
   );
 };
