@@ -105,13 +105,13 @@ export const isToolAutoApproved = ({
     // Check if it's an MCP tool
     if (Object.keys(toolset).some((name) => name === toolName)) {
       // First check if global MCP approval is enabled
-      if (!autoApproveSettings.mcp.enabled) {
+      if (!autoApproveSettings.mcp) {
         return false;
       }
 
       // Check if any server has this tool approved
       for (const [, serverConfig] of Object.entries(
-        autoApproveSettings.mcp.servers,
+        autoApproveSettings.mcpServers ?? {},
       )) {
         if (serverConfig.tools.includes(toolName)) {
           return true;

@@ -119,7 +119,7 @@ export function AutoApproveMenu({ isSubTask }: { isSubTask: boolean }) {
     ...coreActionSettings
       .filter((setting) => getCoreActionCheckedState(setting.id))
       .map((setting) => setting.summary),
-    ...(autoApproveSettings.mcp.enabled ? [t("settings.autoApprove.mcp")] : []),
+    ...(autoApproveSettings.mcp ? [t("settings.autoApprove.mcp")] : []),
     ...(autoApproveSettings.retry ? [t("settings.autoApprove.retry")] : []),
   ];
 

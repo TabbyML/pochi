@@ -203,13 +203,13 @@ export function McpAutoApproveSection({
     Record<string, boolean>
   >({});
   const [isOpen, setIsOpen] = useState(false);
-  const isMcpSelected = autoApproveSettings.mcp.enabled;
+  const isMcpSelected = autoApproveSettings.mcp;
 
   const handleSelectApproveMcp = (enabled: boolean) => {
     if (enabled) {
       // Only select all servers and tools by default if no servers are currently configured
       const selectedServers =
-        Object.keys(autoApproveSettings.mcp.servers).length === 0
+        Object.keys(autoApproveSettings.mcpServers ?? {}).length === 0
           ? Object.entries(connections).reduce(
               (acc, [serverName, server]) => {
                 // Get all non-disabled tools for this server
@@ -219,23 +219,17 @@ export function McpAutoApproveSection({
               },
               {} as Record<string, { tools: string[] }>,
             )
-          : autoApproveSettings.mcp.servers;
+          : autoApproveSettings.mcpServers;
 
       onUpdateSettings({
-        mcp: {
-          ...autoApproveSettings.mcp,
-          enabled: true,
-          servers: selectedServers,
-        },
+        mcp: true,
+        mcpServers: selectedServers,
       });
       setIsOpen(true);
     } else {
       onUpdateSettings({
-        mcp: {
-          ...autoApproveSettings.mcp,
-          enabled: false,
-          servers: {},
-        },
+        mcp: false,
+        mcpServers: {},
       });
     }
   };
@@ -244,7 +238,7 @@ export function McpAutoApproveSection({
     serverName: string,
     enabled: boolean,
   ) => {
-    const selectedServers = { ...autoApproveSettings.mcp.servers };
+    const selectedServers = { ...autoApproveSettings.mcpServers };
 
     const availableTools = getAvailableToolNames(connections[serverName]);
 
@@ -262,10 +256,7 @@ export function McpAutoApproveSection({
     }));
 
     onUpdateSettings({
-      mcp: {
-        ...autoApproveSettings.mcp,
-        servers: selectedServers,
-      },
+      mcpServers: selectedServers,
     });
   };
 
@@ -274,7 +265,7 @@ export function McpAutoApproveSection({
     toolName: string,
     enabled: boolean,
   ) => {
-    const selectedServers = { ...autoApproveSettings.mcp.servers };
+    const selectedServers = { ...autoApproveSettings.mcpServers };
     if (!selectedServers[serverName]) {
       selectedServers[serverName] = { tools: [] };
     }
@@ -293,45 +284,36 @@ export function McpAutoApproveSection({
     selectedServers[serverName] = { ...selectedServers[serverName], tools };
 
     onUpdateSettings({
-      mcp: {
-        ...autoApproveSettings.mcp,
-        servers: selectedServers,
-      },
+      mcpServers: selectedServers,
     });
   };
 
   const handleSelectAllTools = (serverName: string) => {
     const server = connections[serverName];
     const toolNames = getAvailableToolNames(server);
-    const selectedServers = { ...autoApproveSettings.mcp.servers };
+    const selectedServers = { ...autoApproveSettings.mcpServers };
     selectedServers[serverName] = {
       ...selectedServers[serverName],
       tools: [...toolNames],
     };
     onUpdateSettings({
-      mcp: {
-        ...autoApproveSettings.mcp,
-        servers: selectedServers,
-      },
+      mcpServers: selectedServers,
     });
   };
 
   const handleClearAllTools = (serverName: string) => {
-    const selectedServers = { ...autoApproveSettings.mcp.servers };
+    const selectedServers = { ...autoApproveSettings.mcpServers };
     selectedServers[serverName] = {
       ...selectedServers[serverName],
       tools: [],
     };
     onUpdateSettings({
-      mcp: {
-        ...autoApproveSettings.mcp,
-        servers: selectedServers,
-      },
+      mcpServers: selectedServers,
     });
   };
 
   const isMcpServerSelected = (serverName: string) => {
-    return serverName in autoApproveSettings.mcp.servers;
+    return serverName in (autoApproveSettings.mcpServers ?? {});
   };
 
   const handleToggleExpanded = (serverName: string) => {
@@ -393,7 +375,7 @@ export function McpAutoApproveSection({
           },
         )}
       >
-        {autoApproveSettings.mcp.enabled && (
+        {autoApproveSettings.mcp && (
           <div className="max-h-[200px] space-y-2 overflow-y-auto">
             {isMcpLoading ? (
               <div className="text-foreground/60 text-sm">
@@ -412,7 +394,7 @@ export function McpAutoApproveSection({
                   isServerSelected={isMcpServerSelected(serverName)}
                   isExpanded={expandedMcpServers[serverName] || false}
                   selectedTools={
-                    autoApproveSettings.mcp.servers[serverName]?.tools || []
+                    autoApproveSettings.mcpServers?.[serverName]?.tools || []
                   }
                   onSelectServer={handleSelectApproveMcpServer}
                   onSelectTool={handleSelectApproveMcpTool}
