@@ -91,10 +91,9 @@ import { Lifecycle, inject, injectable, scoped } from "tsyringe";
 import * as vscode from "vscode";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { CheckpointService } from "../checkpoint/checkpoint-service";
-import type { GitDiff } from "../checkpoint/types";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { PochiConfiguration } from "../configuration";
-import { DiffChangesContentProvider } from "../editor/diff-changes-content-provider";
+import { showDiffChanges } from "../editor/diff-changes-editor";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { PochiTaskState } from "../editor/pochi-task-state";
 // biome-ignore lint/style/useImportType: needed for dependency injection
@@ -767,7 +766,12 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
           )
         : changedFiles;
 
-      return await showDiff(displayFiles, title, this.cwd);
+      return await showDiffChanges(
+        displayFiles,
+        title,
+        this.cwd,
+        checkpoint.modified === undefined,
+      );
     },
   );
 
@@ -786,7 +790,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       if (!this.cwd) {
         return false;
       }
-      return await showDiff(changes, title, this.cwd);
+      return await showDiffChanges(changes, title, this.cwd, true);
     },
   );
 
@@ -1042,56 +1046,3 @@ const ToolPreviewMap: Record<
   writeToFile: previewWriteToFile,
   applyDiff: previewApplyDiff,
 };
-
-async function showDiff(displayFiles: GitDiff[], title: string, cwd: string) {
-  if (displayFiles.length === 0) {
-    return false;
-  }
-
-  if (displayFiles.length === 1) {
-    const changedFile = displayFiles[0];
-
-    await vscode.commands.executeCommand(
-      "vscode.diff",
-      DiffChangesContentProvider.encode({
-        filepath: changedFile.filepath,
-        content: changedFile.before ?? "",
-        cwd: cwd,
-        type: "original",
-      }),
-      DiffChangesContentProvider.encode({
-        filepath: changedFile.filepath,
-        content: changedFile.after ?? "",
-        cwd: cwd,
-        type: "modified",
-      }),
-      title,
-      {
-        preview: true,
-        preserveFocus: true,
-      },
-    );
-    return true;
-  }
-
-  await vscode.commands.executeCommand(
-    "vscode.changes",
-    title,
-    displayFiles.map((file) => [
-      vscode.Uri.joinPath(vscode.Uri.parse(cwd ?? ""), file.filepath),
-      DiffChangesContentProvider.encode({
-        filepath: file.filepath,
-        content: file.before ?? "",
-        cwd: cwd ?? "",
-        type: "original",
-      }),
-      DiffChangesContentProvider.encode({
-        filepath: file.filepath,
-        content: file.after ?? "",
-        cwd: cwd ?? "",
-        type: "modified",
-      }),
-    ]),
-  );
-  return true;
-}

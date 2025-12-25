@@ -4,8 +4,8 @@ import { getLogger, toErrorMessage } from "@getpochi/common";
 import { isFileExists } from "@getpochi/common/tool-utils";
 import simpleGit, { type SimpleGit } from "simple-git";
 import type * as vscode from "vscode";
+import type { FileChange } from "../editor/diff-changes-editor";
 import { writeExcludesFile } from "./shadow-git-excludes";
-import type { GitDiff } from "./types";
 
 const logger = getLogger("ShadowGitRepo");
 
@@ -304,7 +304,7 @@ export class ShadowGitRepo implements vscode.Disposable {
     from: string,
     to?: string,
     files?: string[],
-  ): Promise<GitDiff[]> {
+  ): Promise<FileChange[]> {
     const diffRange = to ? `${from}..${to}` : from;
     // For bare repository with worktree, use --work-tree flag like in reset method
     let command = [
@@ -320,7 +320,7 @@ export class ShadowGitRepo implements vscode.Disposable {
     const diffSummaryOutput = await this.git.raw(command);
 
     const parsedDiffs = this.parseDiffOutput(diffSummaryOutput);
-    const result: GitDiff[] = [];
+    const result: FileChange[] = [];
 
     for (const diffEntry of parsedDiffs) {
       const { status, filepath, oldFilepath } = diffEntry;
@@ -387,7 +387,6 @@ export class ShadowGitRepo implements vscode.Disposable {
         filepath,
         before: beforeContent,
         after: afterContent,
-        status,
       });
     }
     return result;

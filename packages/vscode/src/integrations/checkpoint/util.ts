@@ -4,7 +4,7 @@ import type {
 } from "@getpochi/common/vscode-webui-bridge";
 import { diffLines } from "diff";
 import { isNonNullish } from "remeda";
-import type { GitDiff } from "./types";
+import type { FileChange } from "../editor/diff-changes-editor";
 
 interface DiffResult {
   content: string;
@@ -74,7 +74,7 @@ export function generateDiffContent(
  * @returns Array of FileDiff objects, or null if no valid changes
  */
 export function processGitChangesToFileEdits(
-  changes: GitDiff[],
+  changes: FileChange[],
   options?: DiffCheckpointOptions,
 ): Array<FileDiff> | null {
   // Filter out binary files and files that exceed size limits
@@ -115,12 +115,12 @@ export function processGitChangesToFileEdits(
  *
  * @param changes - Array of git diff changes
  * @param maxSizeLimit - Maximum allowed size for file content in bytes (default 8KB)
- * @returns Filtered array of GitDiff changes
+ * @returns Filtered array of FileChange changes
  */
 export function filterGitChanges(
-  changes: GitDiff[],
+  changes: FileChange[],
   maxSizeLimit?: number,
-): GitDiff[] {
+): FileChange[] {
   const nullbyte = "\u0000";
 
   return changes.filter((change) => {

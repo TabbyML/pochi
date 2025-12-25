@@ -13,8 +13,8 @@ import type {
 } from "@getpochi/common/vscode-webui-bridge";
 import { Lifecycle, inject, injectable, scoped } from "tsyringe";
 import type * as vscode from "vscode";
+import type { FileChange } from "../editor/diff-changes-editor";
 import { ShadowGitRepo } from "./shadow-git-repo";
-import type { GitDiff } from "./types";
 import { filterGitChanges, processGitChangesToFileEdits } from "./util";
 
 const logger = getLogger("CheckpointService");
@@ -178,7 +178,7 @@ export class CheckpointService implements vscode.Disposable {
   getCheckpointChanges = async (
     from: string,
     to?: string,
-  ): Promise<GitDiff[]> => {
+  ): Promise<FileChange[]> => {
     await this.ensureInitialized();
     if (!this.shadowGit) {
       throw new Error("Shadow Git repository not initialized");
@@ -233,7 +233,7 @@ export class CheckpointService implements vscode.Disposable {
 
     const result: TaskChangedFile[] = [];
     for (const file of changedFiles) {
-      let changes: GitDiff[] = [];
+      let changes: FileChange[] = [];
       if (file.content?.type === "checkpoint") {
         changes = await this.shadowGit.getDiff(file.content.commit, undefined, [
           file.filepath,
@@ -287,13 +287,13 @@ export class CheckpointService implements vscode.Disposable {
 
   getChangedFilesChanges = async (
     changedFiles: TaskChangedFile[],
-  ): Promise<GitDiff[]> => {
+  ): Promise<FileChange[]> => {
     await this.ensureInitialized();
     if (!this.shadowGit) {
       throw new Error("Shadow Git repository not initialized");
     }
 
-    const changes: GitDiff[] = [];
+    const changes: FileChange[] = [];
     for (const file of changedFiles) {
       if (file.content?.type === "checkpoint") {
         const diffResult = await this.shadowGit.getDiff(

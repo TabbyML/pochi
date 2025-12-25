@@ -16,7 +16,10 @@ import { signal } from "@preact/signals-core";
 import simpleGit from "simple-git";
 import { injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
-import { DiffChangesContentProvider } from "../editor/diff-changes-content-provider";
+import {
+  type FileChange,
+  showDiffChanges,
+} from "../editor/diff-changes-editor";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { GitWorktreeInfoProvider } from "./git-worktree-info-provider";
 
@@ -466,7 +469,7 @@ async function showWorktreeDiff(
   }
 
   const git = simpleGit(cwd);
-  const result: { filepath: string; before: string; after: string }[] = [];
+  const result: FileChange[] = [];
   try {
     const output = await git.raw(["diff", "--name-status", base]);
     if (output.trim().length === 0) {
@@ -536,27 +539,7 @@ async function showWorktreeDiff(
     // show changes
     const worktreeName = path.basename(cwd);
     const title = `Changes: ${base} ↔ ${worktreeName}`;
-
-    await vscode.commands.executeCommand(
-      "vscode.changes",
-      title,
-      result.map((file) => [
-        vscode.Uri.joinPath(vscode.Uri.file(cwd), file.filepath),
-        DiffChangesContentProvider.encode({
-          filepath: file.filepath,
-          content: file.before,
-          cwd,
-          type: "original",
-        }),
-        DiffChangesContentProvider.encode({
-          filepath: file.filepath,
-          content: file.after,
-          cwd,
-          type: "modified",
-        }),
-      ]),
-    );
-    return true;
+    return await showDiffChanges(result, title, cwd, true);
   } catch (e: unknown) {
     vscode.window.showErrorMessage(`Failed to get diff: ${toErrorMessage(e)}`);
     return false;
