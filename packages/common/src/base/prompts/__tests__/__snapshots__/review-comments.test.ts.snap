@@ -1,0 +1,101 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`multiple reviews with different files 1`] = `
+"The user has received code review comments from their team or review system that need to be addressed. These comments highlight issues, suggestions, or questions about specific parts of the code. Your task is to help resolve these comments by making the necessary code changes, explanations, or improvements.
+
+IMPORTANT: If you need more context to understand a review comment, read the file being reviewed using the readFile tool. Understanding the surrounding code will help you provide better solutions.
+
+Review comments (format: filepath(line:char-line:char):):
+
+src/components/button.tsx (15:2-15:45):
+Should this use the theme color instead of hardcoded values?
+
+src/api/users.ts (42:0-50:1):
+1. Missing error handling for failed API requests.
+2. Consider adding retry logic.
+
+tests/integration/auth.test.ts:
+Add tests for invalid token scenarios."
+`;
+
+exports[`review at start of file 1`] = `
+"The user has received code review comments from their team or review system that need to be addressed. These comments highlight issues, suggestions, or questions about specific parts of the code. Your task is to help resolve these comments by making the necessary code changes, explanations, or improvements.
+
+IMPORTANT: If you need more context to understand a review comment, read the file being reviewed using the readFile tool. Understanding the surrounding code will help you provide better solutions.
+
+Review comments (format: filepath(line:char-line:char):):
+
+src/index.ts (1:0-1:30):
+Missing copyright header."
+`;
+
+exports[`review with large line numbers 1`] = `
+"The user has received code review comments from their team or review system that need to be addressed. These comments highlight issues, suggestions, or questions about specific parts of the code. Your task is to help resolve these comments by making the necessary code changes, explanations, or improvements.
+
+IMPORTANT: If you need more context to understand a review comment, read the file being reviewed using the readFile tool. Understanding the surrounding code will help you provide better solutions.
+
+Review comments (format: filepath(line:char-line:char):):
+
+src/legacy-code.js (1523:15-1650:3):
+This entire section should be refactored into smaller functions."
+`;
+
+exports[`review with multiline comment 1`] = `
+"The user has received code review comments from their team or review system that need to be addressed. These comments highlight issues, suggestions, or questions about specific parts of the code. Your task is to help resolve these comments by making the necessary code changes, explanations, or improvements.
+
+IMPORTANT: If you need more context to understand a review comment, read the file being reviewed using the readFile tool. Understanding the surrounding code will help you provide better solutions.
+
+Review comments (format: filepath(line:char-line:char):):
+
+src/database/connection.ts (5:0-8:2):
+This connection logic has several issues:
+1. No connection pooling
+2. Missing timeout configuration
+3. Should handle connection errors gracefully"
+`;
+
+exports[`review with special characters in comment 1`] = `
+"The user has received code review comments from their team or review system that need to be addressed. These comments highlight issues, suggestions, or questions about specific parts of the code. Your task is to help resolve these comments by making the necessary code changes, explanations, or improvements.
+
+IMPORTANT: If you need more context to understand a review comment, read the file being reviewed using the readFile tool. Understanding the surrounding code will help you provide better solutions.
+
+Review comments (format: filepath(line:char-line:char):):
+
+src/parser.ts (100:10-105:5):
+The regex pattern \`/^[a-z]+$/i\` should be \`\\w+\` for better matching."
+`;
+
+exports[`single review with multiple comments 1`] = `
+"The user has received code review comments from their team or review system that need to be addressed. These comments highlight issues, suggestions, or questions about specific parts of the code. Your task is to help resolve these comments by making the necessary code changes, explanations, or improvements.
+
+IMPORTANT: If you need more context to understand a review comment, read the file being reviewed using the readFile tool. Understanding the surrounding code will help you provide better solutions.
+
+Review comments (format: filepath(line:char-line:char):):
+
+src/utils/validation.ts (25:0-30:1):
+1. Consider adding input validation here.
+2. This could throw an error if the input is undefined.
+3. Maybe use a try-catch block?"
+`;
+
+exports[`single review with single comment and range 1`] = `
+"The user has received code review comments from their team or review system that need to be addressed. These comments highlight issues, suggestions, or questions about specific parts of the code. Your task is to help resolve these comments by making the necessary code changes, explanations, or improvements.
+
+IMPORTANT: If you need more context to understand a review comment, read the file being reviewed using the readFile tool. Understanding the surrounding code will help you provide better solutions.
+
+Review comments (format: filepath(line:char-line:char):):
+
+src/app.ts (10:5-12:20):
+This function should handle edge cases for null values."
+`;
+
+exports[`single review without range 1`] = `
+"The user has received code review comments from their team or review system that need to be addressed. These comments highlight issues, suggestions, or questions about specific parts of the code. Your task is to help resolve these comments by making the necessary code changes, explanations, or improvements.
+
+IMPORTANT: If you need more context to understand a review comment, read the file being reviewed using the readFile tool. Understanding the surrounding code will help you provide better solutions.
+
+Review comments (format: filepath(line:char-line:char):):
+
+README.md:
+Please update the documentation to include setup instructions."
+`;
