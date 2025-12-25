@@ -52,16 +52,38 @@ export class ReviewController implements vscode.Disposable {
           return [];
         }
 
-        if (document.uri.scheme !== DiffChangesContentProvider.scheme) {
-          return [];
+        // Allow comments if it's a modified changes from content provider.
+        if (document.uri.scheme === DiffChangesContentProvider.scheme) {
+          const changesData = DiffChangesContentProvider.decode(document.uri);
+          if (changesData.type !== "modified") {
+            return [];
+          }
+          return [new vscode.Range(0, 0, document.lineCount, 0)];
         }
 
-        const changesData = DiffChangesContentProvider.decode(document.uri);
-        if (changesData.type !== "modified") {
-          return [];
+        // Otherwise, allow comments if it's there exists original changes from content provider.
+        const hasMatchingDiffDoc = vscode.workspace.textDocuments.some(
+          (doc) => {
+            if (doc.uri.scheme !== DiffChangesContentProvider.scheme) {
+              return false;
+            }
+            if (doc.uri.fsPath !== document.uri.fsPath) {
+              return false;
+            }
+            try {
+              const changesData = DiffChangesContentProvider.decode(doc.uri);
+              return changesData.type === "original";
+            } catch {
+              return false;
+            }
+          },
+        );
+
+        if (hasMatchingDiffDoc) {
+          return [new vscode.Range(0, 0, document.lineCount, 0)];
         }
 
-        return [new vscode.Range(0, 0, document.lineCount, 0)];
+        return [];
       },
     };
     this.disposables.push(this.controller);
