@@ -87,7 +87,6 @@ export function Mermaid({ chart }: { chart: string }): ReactElement {
         );
         setSvg(svg);
       } catch (error) {
-        console.error("Error while rendering mermaid", error);
         setError(error instanceof Error ? error.message : String(error));
       }
     }
@@ -104,7 +103,6 @@ export function Mermaid({ chart }: { chart: string }): ReactElement {
           variant="outline"
           size="sm"
           onClick={() => {
-            console.log("fixing mermaid error", { chart, error });
             setDraft(prompts.fixMermaidError(chart, error));
           }}
         >
