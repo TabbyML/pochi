@@ -315,29 +315,16 @@ function handleReadFileOutput(store: Store, readFile: ClientTools["readFile"]) {
 }
 
 function convertDataReviewsToText(messages: Message[]): Message[] {
-  return messages.map((message) => {
-    const newParts = message.parts.flatMap((part) => {
+  return messages.map((message) => ({
+    ...message,
+    parts: message.parts.flatMap((part) => {
       if (part.type === "data-reviews") {
-        const { reviews } = part.data;
-        const reviewTexts = reviews.map((review) => {
-          const rangeText = review.range
-            ? ` (${review.range.start.line}:${review.range.start.character} to ${review.range.end.line}:${review.range.end.character})`
-            : "";
-          const commentsText = review.comments
-            .map((comment) => `    + ${comment.body}`)
-            .join("\n");
-          return `  - File: ${review.uri}${rangeText}\n${commentsText}`;
-        });
         return {
           type: "text" as const,
-          text: `I have the following code review comments, please address them:\n\n${reviewTexts.join("\n\n")}`,
+          text: prompts.renderReviewComments(part.data.reviews),
         };
       }
       return part;
-    });
-    return {
-      ...message,
-      parts: newParts,
-    };
-  });
+    }),
+  }));
 }
