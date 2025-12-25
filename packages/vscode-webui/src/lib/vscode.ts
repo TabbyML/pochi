@@ -82,6 +82,7 @@ function createVSCodeHost(): VSCodeHostApi {
         "readMinionId",
         "saveCheckpoint",
         "restoreCheckpoint",
+        "readLatestCheckpoint",
         "readCheckpointPath",
         "showCheckpointDiff",
         "readExtensionVersion",

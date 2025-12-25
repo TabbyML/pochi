@@ -243,6 +243,8 @@ export interface VSCodeHostApi {
 
   restoreChangedFiles(files: TaskChangedFile[]): Promise<void>;
 
+  readLatestCheckpoint(): Promise<ThreadSignalSerialization<string | null>>;
+
   readCheckpointPath(): Promise<string | undefined>;
 
   /**
@@ -340,7 +342,7 @@ export interface VSCodeHostApi {
 
   openReview(
     review: Review,
-    options?: { focusCommentsPanel?: boolean },
+    options?: { focusCommentsPanel?: boolean; revealRange?: boolean },
   ): Promise<void>;
 }
 

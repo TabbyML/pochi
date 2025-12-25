@@ -703,6 +703,13 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     },
   );
 
+  readLatestCheckpoint = async (): Promise<
+    ThreadSignalSerialization<string | null>
+  > => {
+    await this.checkpointService.ensureInitialized();
+    return ThreadSignal.serialize(this.checkpointService.latestCheckpoint);
+  };
+
   readCheckpointPath = async (): Promise<string | undefined> => {
     return this.checkpointService.getShadowGitPath();
   };
@@ -978,7 +985,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
 
   openReview = async (
     review: Review,
-    options?: { focusCommentsPanel?: boolean },
+    options?: { focusCommentsPanel?: boolean; revealRange?: boolean },
   ): Promise<void> => {
     if (options?.focusCommentsPanel) {
       vscode.commands.executeCommand("workbench.action.focusCommentsPanel");
@@ -986,14 +993,15 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
 
     const uri = vscode.Uri.parse(review.uri);
     vscode.commands.executeCommand("vscode.open", uri, {
-      selection: review.range
-        ? new vscode.Selection(
-            review.range.start.line,
-            review.range.start.character,
-            review.range.start.line,
-            review.range.start.character,
-          )
-        : undefined,
+      selection:
+        review.range && options?.revealRange
+          ? new vscode.Selection(
+              review.range.start.line - 1,
+              0,
+              review.range.start.line - 1,
+              0,
+            )
+          : undefined,
     });
 
     this.reviewController.expandThread(review.id);
@@ -1053,15 +1061,17 @@ async function showDiff(displayFiles: GitDiff[], title: string, cwd: string) {
 
     await vscode.commands.executeCommand(
       "vscode.diff",
-      DiffChangesContentProvider.decode({
+      DiffChangesContentProvider.encode({
         filepath: changedFile.filepath,
         content: changedFile.before ?? "",
         cwd: cwd,
+        type: "original",
       }),
-      DiffChangesContentProvider.decode({
+      DiffChangesContentProvider.encode({
         filepath: changedFile.filepath,
         content: changedFile.after ?? "",
         cwd: cwd,
+        type: "modified",
       }),
       title,
       {
@@ -1077,15 +1087,17 @@ async function showDiff(displayFiles: GitDiff[], title: string, cwd: string) {
     title,
     displayFiles.map((file) => [
       vscode.Uri.joinPath(vscode.Uri.parse(cwd ?? ""), file.filepath),
-      DiffChangesContentProvider.decode({
+      DiffChangesContentProvider.encode({
         filepath: file.filepath,
         content: file.before ?? "",
         cwd: cwd ?? "",
+        type: "original",
       }),
-      DiffChangesContentProvider.decode({
+      DiffChangesContentProvider.encode({
         filepath: file.filepath,
         content: file.after ?? "",
         cwd: cwd ?? "",
+        type: "modified",
       }),
     ]),
   );

@@ -188,6 +188,11 @@ const VSCodeHostStub = {
   restoreChangedFiles: async (_files: TaskChangedFile[]): Promise<void> => {
     return Promise.resolve();
   },
+  readLatestCheckpoint: async (): Promise<
+    ThreadSignalSerialization<string | null>
+  > => {
+    return Promise.resolve({} as ThreadSignalSerialization<string | null>);
+  },
   readCheckpointPath: async (): Promise<string | undefined> => {
     return Promise.resolve(undefined);
   },
@@ -295,7 +300,7 @@ const VSCodeHostStub = {
 
   openReview: async (
     _review: Review,
-    _options?: { focusCommentsPanel?: boolean },
+    _options?: { focusCommentsPanel?: boolean; revealRange?: boolean },
   ) => {},
 
   getGlobalState: async (): Promise<unknown> => {

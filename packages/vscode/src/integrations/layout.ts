@@ -33,11 +33,7 @@ export async function applyPochiLayout(params: { cwd: string | undefined }) {
   const userFocusTab = vscode.window.tabGroups.activeTabGroup.activeTab;
   const userActiveTerminal = vscode.window.activeTerminal;
 
-  // Reset pochiSidebar location to primary sidebar, move all bottom panels to secondary sidebar
-  await vscode.commands.executeCommand("pochiSidebar.resetViewLocation");
-  await vscode.commands.executeCommand(
-    "workbench.view.extension.pochi.resetViewContainerLocation",
-  );
+  // Move all bottom panels to secondary sidebar
   await vscode.commands.executeCommand("workbench.action.movePanelToSidePanel");
 
   // Make all groups horizontal, so we can move them left/right, then join groups if needed

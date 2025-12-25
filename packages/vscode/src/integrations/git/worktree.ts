@@ -542,15 +542,17 @@ async function showWorktreeDiff(
       title,
       result.map((file) => [
         vscode.Uri.joinPath(vscode.Uri.file(cwd), file.filepath),
-        DiffChangesContentProvider.decode({
+        DiffChangesContentProvider.encode({
           filepath: file.filepath,
           content: file.before,
           cwd,
+          type: "original",
         }),
-        DiffChangesContentProvider.decode({
+        DiffChangesContentProvider.encode({
           filepath: file.filepath,
           content: file.after,
           cwd,
+          type: "modified",
         }),
       ]),
     );

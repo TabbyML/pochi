@@ -12,6 +12,7 @@ import {
 } from "@/features/chat";
 import { ToolInvocationPart } from "@/features/tools";
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
+import { useLatestCheckpoint } from "@/lib/hooks/use-latest-checkpoint";
 import { cn } from "@/lib/utils";
 import { isVSCodeEnvironment, vscodeHost } from "@/lib/vscode";
 import { prompts } from "@getpochi/common";
@@ -22,7 +23,7 @@ import {
   type ToolUIPart,
   isToolUIPart,
 } from "ai";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { CheckpointUI } from "../checkpoint-ui";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import { MessageAttachments } from "./attachments";
@@ -70,6 +71,12 @@ export const MessageList: React.FC<{
   const { executingToolCalls } = useToolCallLifeCycle();
   const isExecuting = executingToolCalls.length > 0;
   const assistantName = assistant?.name ?? "Pochi";
+  const latestCheckpoint = useLatestCheckpoint();
+  const lastCheckpointInMessage = useMemo(() => {
+    return renderMessages
+      .flatMap((msg) => msg.parts)
+      .findLast((part) => part.type === "data-checkpoint")?.data.commit;
+  }, [renderMessages]);
 
   return (
     <BackgroundJobContextProvider messages={renderMessages}>
@@ -130,6 +137,8 @@ export const MessageList: React.FC<{
                     messages={renderMessages}
                     forkTask={forkTask}
                     hideCheckPoint={hideCheckPoint}
+                    latestCheckpoint={latestCheckpoint}
+                    lastCheckpointInMessage={lastCheckpointInMessage}
                   />
                 ))}
               </div>
@@ -144,6 +153,8 @@ export const MessageList: React.FC<{
                 isLoading={isLoading || isExecuting}
                 forkTask={forkTask}
                 hideCheckPoint={hideCheckPoint}
+                latestCheckpoint={latestCheckpoint}
+                lastCheckpointInMessage={lastCheckpointInMessage}
               />
             )}
           </div>
@@ -187,6 +198,8 @@ function Part({
   messages,
   forkTask,
   hideCheckPoint,
+  latestCheckpoint,
+  lastCheckpointInMessage,
 }: {
   role: Message["role"];
   partIndex: number;
@@ -197,6 +210,8 @@ function Part({
   messages: Message[];
   forkTask?: (commitId: string) => Promise<void>;
   hideCheckPoint?: boolean;
+  latestCheckpoint: string | null;
+  lastCheckpointInMessage: string | undefined;
 }) {
   const paddingClass = partIndex === 0 ? "" : "mt-2";
   if (part.type === "text") {
@@ -224,6 +239,10 @@ function Part({
           checkpoint={part.data}
           isLoading={isLoading || isExecuting}
           forkTask={forkTask}
+          isRestored={
+            lastCheckpointInMessage !== part.data.commit &&
+            latestCheckpoint === part.data.commit
+          }
         />
       );
     }
@@ -271,6 +290,8 @@ const SeparatorWithCheckpoint: React.FC<{
   isLoading: boolean;
   forkTask?: (commitId: string, messageId?: string) => Promise<void>;
   hideCheckPoint?: boolean;
+  latestCheckpoint: string | null;
+  lastCheckpointInMessage: string | undefined;
 }> = ({
   messageIndex,
   message,
@@ -278,6 +299,8 @@ const SeparatorWithCheckpoint: React.FC<{
   isLoading,
   forkTask,
   hideCheckPoint,
+  latestCheckpoint,
+  lastCheckpointInMessage,
 }) => {
   const sep = <Separator className="mt-1 mb-2" />;
   if (hideCheckPoint) return sep;
@@ -309,6 +332,10 @@ const SeparatorWithCheckpoint: React.FC<{
           className="max-w-full"
           forkTask={forkTask}
           restoreMessageId={restoreMessageId}
+          isRestored={
+            lastCheckpointInMessage !== part.data.commit &&
+            latestCheckpoint === part.data.commit
+          }
         />
       </div>
     );

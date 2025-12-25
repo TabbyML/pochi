@@ -50,14 +50,28 @@ export const ExpandableToolContainer: React.FC<{
   expandableDetail?: React.ReactNode;
   expandableDetailIcon?: React.ReactNode;
   detail?: React.ReactNode;
+  isExpanded?: boolean;
   onToggle?: (expand: boolean) => void;
-}> = ({ title, expandableDetail, expandableDetailIcon, detail, onToggle }) => {
-  const [showDetails, setShowDetails] = useState(false);
+}> = ({
+  title,
+  expandableDetail,
+  expandableDetailIcon,
+  detail,
+  isExpanded: controlledExpanded,
+  onToggle,
+}) => {
+  const [internalExpanded, setInternalExpanded] = useState(false);
+
+  const isExpanded =
+    controlledExpanded !== undefined ? controlledExpanded : internalExpanded;
 
   const handleToggle = () => {
-    setShowDetails(!showDetails);
+    const newExpanded = !isExpanded;
+    if (controlledExpanded === undefined) {
+      setInternalExpanded(newExpanded);
+    }
     if (onToggle) {
-      onToggle(!showDetails);
+      onToggle(newExpanded);
     }
   };
 
@@ -72,13 +86,13 @@ export const ExpandableToolContainer: React.FC<{
         )}
         {expandableDetail && (
           <ExpandIcon
-            isExpanded={showDetails}
+            isExpanded={isExpanded}
             onClick={handleToggle}
             className="cursor-pointer"
           />
         )}
       </ToolTitle>
-      {showDetails && expandableDetail}
+      {isExpanded && expandableDetail}
       {detail}
     </ToolContainer>
   );

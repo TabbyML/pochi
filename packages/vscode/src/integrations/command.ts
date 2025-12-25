@@ -447,7 +447,7 @@ export class CommandManager implements vscode.Disposable {
           activeTab.input instanceof vscode.TabInputTextDiff &&
           activeTab.input.original.scheme === DiffChangesContentProvider.scheme
         ) {
-          const data = DiffChangesContentProvider.parse(
+          const data = DiffChangesContentProvider.decode(
             activeTab.input.original,
           );
           await vscode.window.showTextDocument(
