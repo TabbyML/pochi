@@ -8,13 +8,18 @@ import {
   persist,
 } from "zustand/middleware";
 
+export interface MCPApproveSettings {
+  enabled: boolean;
+  servers: Record<string, { tools: string[] }>;
+}
+
 export type AutoApprove = Record<
   Exclude<keyof typeof ToolsByPermission, "default">,
   boolean
 > & {
   retry: boolean;
   maxRetryLimit: number;
-  mcp: boolean;
+  mcp: MCPApproveSettings;
 };
 
 export type SelectedModelInStore = Pick<DisplayModel, "id" | "name">;
@@ -114,7 +119,10 @@ export const useSettingsStore = create<SettingsState>()(
         execute: true,
         retry: true,
         maxRetryLimit: 3,
-        mcp: false,
+        mcp: {
+          enabled: false,
+          servers: {},
+        },
         autoRunSubtask: true,
       },
 
@@ -126,7 +134,10 @@ export const useSettingsStore = create<SettingsState>()(
         execute: false,
         retry: true,
         maxRetryLimit: 3,
-        mcp: false,
+        mcp: {
+          enabled: false,
+          servers: {},
+        },
         autoRunSubtask: false,
       },
 
@@ -194,7 +205,7 @@ export const useSettingsStore = create<SettingsState>()(
           autoApproveActive: true,
         };
       },
-      version: 1,
+      version: 2,
       migrate: (persistedState: unknown) => {
         if (
           persistedState &&
@@ -205,6 +216,7 @@ export const useSettingsStore = create<SettingsState>()(
             autoApproveSettings?: {
               retry?: number | boolean;
               maxRetryLimit?: number;
+              mcp?: boolean | MCPApproveSettings;
               [key: string]: unknown;
             };
             [key: string]: unknown;
@@ -227,6 +239,18 @@ export const useSettingsStore = create<SettingsState>()(
             state.autoApproveSettings.maxRetryLimit === undefined
           ) {
             state.autoApproveSettings.maxRetryLimit = 3;
+          }
+
+          // Migration: convert old mcp (boolean) to new mcp (MCPApproveSettings)
+          if (
+            state.autoApproveSettings &&
+            (state.autoApproveSettings.mcp === undefined ||
+              typeof state.autoApproveSettings.mcp !== "object")
+          ) {
+            state.autoApproveSettings.mcp = {
+              enabled: false,
+              servers: {},
+            };
           }
         }
 

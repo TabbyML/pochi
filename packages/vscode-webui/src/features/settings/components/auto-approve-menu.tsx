@@ -10,7 +10,6 @@ import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import {
-  Blocks,
   CheckIcon,
   Eye,
   FileEdit,
@@ -67,12 +66,6 @@ export function AutoApproveMenu({ isSubTask }: { isSubTask: boolean }) {
       summary: t("settings.autoApprove.execute"),
       label: t("settings.autoApprove.executeCommands"),
       iconClass: Terminal,
-    },
-    {
-      id: "mcp",
-      summary: t("settings.autoApprove.mcp"),
-      label: t("settings.autoApprove.useMcpServers"),
-      iconClass: Blocks,
     },
   ];
 
