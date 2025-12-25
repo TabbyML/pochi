@@ -1,13 +1,17 @@
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { UserStorage } from "@/lib/user-storage";
+import { getLogger } from "@getpochi/common";
 import type {
   Review,
+  ReviewCodeSnippet,
   ReviewComment,
 } from "@getpochi/common/vscode-webui-bridge";
 import { signal } from "@preact/signals-core";
 import { inject, injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
 import { DiffChangesContentProvider } from "./editor/diff-changes-content-provider";
+
+const logger = getLogger("ReviewController");
 
 export type Comment = vscode.Comment & {
   id: string;
@@ -89,11 +93,10 @@ export class ReviewController implements vscode.Disposable {
     this.disposables.push(this.controller);
   }
 
-  private updateSignal() {
-    this.reviews.value = this.threads
-      .values()
-      .map((t) => toReview(t))
-      .toArray();
+  private async updateSignal() {
+    const threadArray = this.threads.values().toArray();
+    const reviews = await Promise.all(threadArray.map((t) => toReview(t)));
+    this.reviews.value = reviews;
   }
 
   async deleteThread(thread: Thread) {
@@ -215,10 +218,14 @@ export class ReviewController implements vscode.Disposable {
   }
 }
 
-function toReview(thread: Thread): Review {
+async function toReview(thread: Thread): Promise<Review> {
+  // Read the code snippet from the range with surrounding context
+  const codeSnippet = await readCodeSnippet(thread.uri, thread.range);
+
   return {
     id: thread.id,
     uri: thread.uri.toString(),
+    codeSnippet,
     range: thread.range
       ? {
           start: {
@@ -233,6 +240,75 @@ function toReview(thread: Thread): Review {
       : undefined,
     comments: thread.comments.map((c) => toReviewComment(c)),
   };
+}
+
+async function readCodeSnippet(
+  uri: vscode.Uri,
+  range?: vscode.Range,
+): Promise<ReviewCodeSnippet | undefined> {
+  if (!range) {
+    return undefined;
+  }
+
+  try {
+    const document = await vscode.workspace.openTextDocument(uri);
+
+    // Get the start and end lines from the range
+    const startLine = range.start.line;
+    const endLine = range.end.line;
+
+    // Calculate surrounding lines to maintain a total of 10 surrounding lines
+    const totalSurrounding = 10;
+    const halfSurrounding = Math.floor(totalSurrounding / 2);
+
+    // Initial calculation with equal distribution
+    let beforeLines = halfSurrounding;
+    let afterLines = halfSurrounding;
+
+    // Adjust if we hit document boundaries
+    const availableBeforeLines = startLine;
+    const availableAfterLines = document.lineCount - 1 - endLine;
+
+    // If we can't get enough lines before, add more after
+    if (availableBeforeLines < beforeLines) {
+      const deficit = beforeLines - availableBeforeLines;
+      beforeLines = availableBeforeLines;
+      afterLines = Math.min(afterLines + deficit, availableAfterLines);
+    }
+
+    // If we can't get enough lines after, add more before
+    if (availableAfterLines < afterLines) {
+      const deficit = afterLines - availableAfterLines;
+      afterLines = availableAfterLines;
+      beforeLines = Math.min(beforeLines + deficit, availableBeforeLines);
+    }
+
+    const expandedStartLine = Math.max(0, startLine - beforeLines);
+    const expandedEndLine = Math.min(
+      document.lineCount - 1,
+      endLine + afterLines,
+    );
+
+    // Create the expanded range
+    const expandedRange = new vscode.Range(
+      expandedStartLine,
+      0,
+      expandedEndLine,
+      document.lineAt(expandedEndLine).text.length,
+    );
+
+    const content = document.getText(expandedRange);
+
+    const snippet: ReviewCodeSnippet = {
+      content,
+      startLine: expandedStartLine,
+      endLine: expandedEndLine,
+    };
+
+    return snippet;
+  } catch (error) {
+    logger.error("Failed to read document for thread:", error);
+  }
 }
 
 function toReviewComment(c: Comment): ReviewComment {

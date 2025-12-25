@@ -47,6 +47,7 @@ export type {
 export type {
   Review,
   ReviewComment,
+  ReviewCodeSnippet,
 } from "./types/review";
 export { isValidCustomAgentFile } from "./types/custom-agent";
 export {

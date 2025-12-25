@@ -22,6 +22,11 @@ test("single review with single comment and range", () => {
           body: "This function should handle edge cases for null values.",
         },
       ],
+      codeSnippet: {
+        content: `  return data.map(item => item.value);\n}\n\nfunction processData(data) {\n  if (!data) {\n    return [];\n  }\n  return transform(data);\n}\n\nfunction transform(data) {`,
+        startLine: 5,
+        endLine: 17,
+      },
     },
   ];
   expect(renderReviewComments(reviews)).toMatchSnapshot();
@@ -50,6 +55,11 @@ test("single review with multiple comments", () => {
           body: "Maybe use a try-catch block?",
         },
       ],
+      codeSnippet: {
+        content: `export function validateEmail(email: string): boolean {\n  return /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email);\n}\n\nexport function sanitizeInput(input: string): string {\n  const trimmed = input.trim();\n  const sanitized = trimmed.replace(/<script>/gi, '');\n  return sanitized;\n}\n\nexport function parseJSON(json: string) {`,
+        startLine: 20,
+        endLine: 35,
+      },
     },
   ];
   expect(renderReviewComments(reviews)).toMatchSnapshot();
@@ -86,6 +96,11 @@ test("multiple reviews with different files", () => {
           body: "Should this use the theme color instead of hardcoded values?",
         },
       ],
+      codeSnippet: {
+        content: `  const [isHovered, setIsHovered] = useState(false);\n\n  return (\n    <button\n      className={className}\n      style={{ backgroundColor: '#3b82f6' }}\n      onMouseEnter={() => setIsHovered(true)}\n      onMouseLeave={() => setIsHovered(false)}\n      onClick={onClick}\n    >\n      {children}`,
+        startLine: 10,
+        endLine: 20,
+      },
     },
     {
       id: "review-2",
@@ -104,6 +119,11 @@ test("multiple reviews with different files", () => {
           body: "Consider adding retry logic.",
         },
       ],
+      codeSnippet: {
+        content: `  return users.filter(u => u.active);\n}\n\nexport async function fetchUserById(id: string) {\n  const response = await fetch(\`/api/users/\${id}\`);\n  const data = await response.json();\n  return data;\n}\n\nexport async function updateUser(id: string, updates: UserUpdate) {\n  const response = await fetch(\`/api/users/\${id}\`, {`,
+        startLine: 37,
+        endLine: 55,
+      },
     },
     {
       id: "review-3",
@@ -197,6 +217,31 @@ test("review with large line numbers", () => {
           body: "This entire section should be refactored into smaller functions.",
         },
       ],
+    },
+  ];
+  expect(renderReviewComments(reviews)).toMatchSnapshot();
+});
+
+test("review with code snippet containing special formatting", () => {
+  const reviews: Review[] = [
+    {
+      id: "review-1",
+      uri: "src/formatter.ts",
+      range: {
+        start: { line: 20, character: 0 },
+        end: { line: 25, character: 1 },
+      },
+      comments: [
+        {
+          id: "comment-1",
+          body: "The string template formatting could be improved.",
+        },
+      ],
+      codeSnippet: {
+        content: `function formatMessage(user: string, count: number): string {\n  // TODO: Add i18n support\n  const template = \`User \${user} has \${count} item(s)\`;\n  return template;\n}\n\nexport function logMessage(msg: string) {\n  console.log(\`[\${new Date().toISOString()}] \${msg}\`);\n}\n\n// Helper function`,
+        startLine: 15,
+        endLine: 30,
+      },
     },
   ];
   expect(renderReviewComments(reviews)).toMatchSnapshot();

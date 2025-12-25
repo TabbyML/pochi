@@ -3,16 +3,48 @@
 exports[`multiple reviews with different files 1`] = `
 "The user has received code review comments from their team or review system that need to be addressed. These comments highlight issues, suggestions, or questions about specific parts of the code. Your task is to help resolve these comments by making the necessary code changes, explanations, or improvements.
 
-IMPORTANT: If you need more context to understand a review comment, read the file being reviewed using the readFile tool. Understanding the surrounding code will help you provide better solutions.
+The code snippets provided below include surrounding context to help you understand the broader context of each comment.
+
+IMPORTANT: If you need additional context beyond the provided code snippets, use the readFile tool.
 
 Review comments (format: filepath(line:char-line:char):):
 
 src/components/button.tsx (15:2-15:45):
 Should this use the theme color instead of hardcoded values?
 
+Code context (src/components/button.tsx:10-20):
+\`\`\`
+  const [isHovered, setIsHovered] = useState(false);
+
+  return (
+    <button
+      className={className}
+      style={{ backgroundColor: '#3b82f6' }}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      onClick={onClick}
+    >
+      {children}
+\`\`\`
+
 src/api/users.ts (42:0-50:1):
 1. Missing error handling for failed API requests.
 2. Consider adding retry logic.
+
+Code context (src/api/users.ts:37-55):
+\`\`\`
+  return users.filter(u => u.active);
+}
+
+export async function fetchUserById(id: string) {
+  const response = await fetch(\`/api/users/\${id}\`);
+  const data = await response.json();
+  return data;
+}
+
+export async function updateUser(id: string, updates: UserUpdate) {
+  const response = await fetch(\`/api/users/\${id}\`, {
+\`\`\`
 
 tests/integration/auth.test.ts:
 Add tests for invalid token scenarios."
@@ -21,7 +53,9 @@ Add tests for invalid token scenarios."
 exports[`review at start of file 1`] = `
 "The user has received code review comments from their team or review system that need to be addressed. These comments highlight issues, suggestions, or questions about specific parts of the code. Your task is to help resolve these comments by making the necessary code changes, explanations, or improvements.
 
-IMPORTANT: If you need more context to understand a review comment, read the file being reviewed using the readFile tool. Understanding the surrounding code will help you provide better solutions.
+The code snippets provided below include surrounding context to help you understand the broader context of each comment.
+
+IMPORTANT: If you need additional context beyond the provided code snippets, use the readFile tool.
 
 Review comments (format: filepath(line:char-line:char):):
 
@@ -29,10 +63,40 @@ src/index.ts (1:0-1:30):
 Missing copyright header."
 `;
 
+exports[`review with code snippet containing special formatting 1`] = `
+"The user has received code review comments from their team or review system that need to be addressed. These comments highlight issues, suggestions, or questions about specific parts of the code. Your task is to help resolve these comments by making the necessary code changes, explanations, or improvements.
+
+The code snippets provided below include surrounding context to help you understand the broader context of each comment.
+
+IMPORTANT: If you need additional context beyond the provided code snippets, use the readFile tool.
+
+Review comments (format: filepath(line:char-line:char):):
+
+src/formatter.ts (20:0-25:1):
+The string template formatting could be improved.
+
+Code context (src/formatter.ts:15-30):
+\`\`\`
+function formatMessage(user: string, count: number): string {
+  // TODO: Add i18n support
+  const template = \`User \${user} has \${count} item(s)\`;
+  return template;
+}
+
+export function logMessage(msg: string) {
+  console.log(\`[\${new Date().toISOString()}] \${msg}\`);
+}
+
+// Helper function
+\`\`\`"
+`;
+
 exports[`review with large line numbers 1`] = `
 "The user has received code review comments from their team or review system that need to be addressed. These comments highlight issues, suggestions, or questions about specific parts of the code. Your task is to help resolve these comments by making the necessary code changes, explanations, or improvements.
 
-IMPORTANT: If you need more context to understand a review comment, read the file being reviewed using the readFile tool. Understanding the surrounding code will help you provide better solutions.
+The code snippets provided below include surrounding context to help you understand the broader context of each comment.
+
+IMPORTANT: If you need additional context beyond the provided code snippets, use the readFile tool.
 
 Review comments (format: filepath(line:char-line:char):):
 
@@ -43,7 +107,9 @@ This entire section should be refactored into smaller functions."
 exports[`review with multiline comment 1`] = `
 "The user has received code review comments from their team or review system that need to be addressed. These comments highlight issues, suggestions, or questions about specific parts of the code. Your task is to help resolve these comments by making the necessary code changes, explanations, or improvements.
 
-IMPORTANT: If you need more context to understand a review comment, read the file being reviewed using the readFile tool. Understanding the surrounding code will help you provide better solutions.
+The code snippets provided below include surrounding context to help you understand the broader context of each comment.
+
+IMPORTANT: If you need additional context beyond the provided code snippets, use the readFile tool.
 
 Review comments (format: filepath(line:char-line:char):):
 
@@ -57,7 +123,9 @@ This connection logic has several issues:
 exports[`review with special characters in comment 1`] = `
 "The user has received code review comments from their team or review system that need to be addressed. These comments highlight issues, suggestions, or questions about specific parts of the code. Your task is to help resolve these comments by making the necessary code changes, explanations, or improvements.
 
-IMPORTANT: If you need more context to understand a review comment, read the file being reviewed using the readFile tool. Understanding the surrounding code will help you provide better solutions.
+The code snippets provided below include surrounding context to help you understand the broader context of each comment.
+
+IMPORTANT: If you need additional context beyond the provided code snippets, use the readFile tool.
 
 Review comments (format: filepath(line:char-line:char):):
 
@@ -68,31 +136,67 @@ The regex pattern \`/^[a-z]+$/i\` should be \`\\w+\` for better matching."
 exports[`single review with multiple comments 1`] = `
 "The user has received code review comments from their team or review system that need to be addressed. These comments highlight issues, suggestions, or questions about specific parts of the code. Your task is to help resolve these comments by making the necessary code changes, explanations, or improvements.
 
-IMPORTANT: If you need more context to understand a review comment, read the file being reviewed using the readFile tool. Understanding the surrounding code will help you provide better solutions.
+The code snippets provided below include surrounding context to help you understand the broader context of each comment.
+
+IMPORTANT: If you need additional context beyond the provided code snippets, use the readFile tool.
 
 Review comments (format: filepath(line:char-line:char):):
 
 src/utils/validation.ts (25:0-30:1):
 1. Consider adding input validation here.
 2. This could throw an error if the input is undefined.
-3. Maybe use a try-catch block?"
+3. Maybe use a try-catch block?
+
+Code context (src/utils/validation.ts:20-35):
+\`\`\`
+export function validateEmail(email: string): boolean {
+  return /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email);
+}
+
+export function sanitizeInput(input: string): string {
+  const trimmed = input.trim();
+  const sanitized = trimmed.replace(/<script>/gi, '');
+  return sanitized;
+}
+
+export function parseJSON(json: string) {
+\`\`\`"
 `;
 
 exports[`single review with single comment and range 1`] = `
 "The user has received code review comments from their team or review system that need to be addressed. These comments highlight issues, suggestions, or questions about specific parts of the code. Your task is to help resolve these comments by making the necessary code changes, explanations, or improvements.
 
-IMPORTANT: If you need more context to understand a review comment, read the file being reviewed using the readFile tool. Understanding the surrounding code will help you provide better solutions.
+The code snippets provided below include surrounding context to help you understand the broader context of each comment.
+
+IMPORTANT: If you need additional context beyond the provided code snippets, use the readFile tool.
 
 Review comments (format: filepath(line:char-line:char):):
 
 src/app.ts (10:5-12:20):
-This function should handle edge cases for null values."
+This function should handle edge cases for null values.
+
+Code context (src/app.ts:5-17):
+\`\`\`
+  return data.map(item => item.value);
+}
+
+function processData(data) {
+  if (!data) {
+    return [];
+  }
+  return transform(data);
+}
+
+function transform(data) {
+\`\`\`"
 `;
 
 exports[`single review without range 1`] = `
 "The user has received code review comments from their team or review system that need to be addressed. These comments highlight issues, suggestions, or questions about specific parts of the code. Your task is to help resolve these comments by making the necessary code changes, explanations, or improvements.
 
-IMPORTANT: If you need more context to understand a review comment, read the file being reviewed using the readFile tool. Understanding the surrounding code will help you provide better solutions.
+The code snippets provided below include surrounding context to help you understand the broader context of each comment.
+
+IMPORTANT: If you need additional context beyond the provided code snippets, use the readFile tool.
 
 Review comments (format: filepath(line:char-line:char):):
 
