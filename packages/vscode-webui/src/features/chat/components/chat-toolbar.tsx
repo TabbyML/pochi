@@ -30,6 +30,10 @@ import { PaperclipIcon, SendHorizonal, StopCircleIcon } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import {
+  type BlockingOperation,
+  useBlockingOperations,
+} from "../hooks/use-blocking-operations";
 import { useChatStatus } from "../hooks/use-chat-status";
 import { useChatSubmit } from "../hooks/use-chat-submit";
 import { useInlineCompactTask } from "../hooks/use-inline-compact-task";
@@ -110,6 +114,16 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     compact,
   });
 
+  const blockingOperations: BlockingOperation[] = [
+    {
+      id: "new-compact-task",
+      isBusy: newCompactTaskPending,
+      label: t("tokenUsage.compacting"),
+    },
+  ];
+
+  const blockingState = useBlockingOperations(blockingOperations);
+
   const {
     isExecuting,
     isBusyCore,
@@ -124,7 +138,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     isFilesEmpty: files.length === 0,
     isReviewsEmpty: reviews.length === 0,
     isUploadingAttachments,
-    newCompactTaskPending,
+    blockingState,
   });
 
   const compactEnabled = !(
@@ -141,7 +155,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     isSubmitDisabled,
     isLoading,
     pendingApproval,
-    newCompactTaskPending,
+    blockingState,
     queuedMessages,
     setQueuedMessages,
     reviews,
@@ -182,7 +196,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   ]);
 
   // Only allow adding tool results when not loading
-  const allowAddToolResult = !(isLoading || newCompactTaskPending);
+  const allowAddToolResult = !(isLoading || blockingState.isBusy);
   useAddCompleteToolCalls({
     messages,
     enable: allowAddToolResult,
