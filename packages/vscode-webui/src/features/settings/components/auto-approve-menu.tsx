@@ -23,6 +23,7 @@ import { useTranslation } from "react-i18next";
 import { useAutoApprove } from "../hooks/use-auto-approve";
 import { useSubtaskOffhand } from "../hooks/use-subtask-offhand";
 import { type AutoApprove, GlobalStateStorage } from "../store";
+import { McpAutoApproveSection } from "./mcp-auto-approve-section";
 
 interface CoreActionSetting {
   id: keyof Omit<AutoApprove, "default">;
@@ -118,6 +119,7 @@ export function AutoApproveMenu({ isSubTask }: { isSubTask: boolean }) {
     ...coreActionSettings
       .filter((setting) => getCoreActionCheckedState(setting.id))
       .map((setting) => setting.summary),
+    ...(autoApproveSettings.mcp.enabled ? [t("settings.autoApprove.mcp")] : []),
     ...(autoApproveSettings.retry ? [t("settings.autoApprove.retry")] : []),
   ];
 
@@ -229,6 +231,12 @@ export function AutoApproveMenu({ isSubTask }: { isSubTask: boolean }) {
             </div>
           ))}
         </div>
+        <Separator className="my-3" />
+        {/* MCP Section */}
+        <McpAutoApproveSection
+          autoApproveSettings={autoApproveSettings}
+          onUpdateSettings={updateAutoApproveSettings}
+        />
         <Separator className="my-3" />
         {/* Max Attempts Section */}
         <div className="flex h-7 items-center pl-1">

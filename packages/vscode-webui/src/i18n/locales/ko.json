@@ -141,7 +141,12 @@
       "retry": "재시도",
       "subtaskOffhand": "하위 작업 - 자동",
       "subtaskManual": "하위 작업 - 수동",
-      "applyChangesToGlobal": "변경 사항 저장"
+      "applyChangesToGlobal": "변경 사항 저장",
+      "noMcpServers": "사용 가능한 MCP 서버가 없습니다",
+      "noToolsAvailable": "사용 가능한 도구가 없습니다",
+      "selectAll": "모두 선택",
+      "clearAll": "모두 지우기",
+      "toolsSelectedCount": "({{selected}}/{{total}} 선택됨)"
     },
     "customAgents": {
       "title": "에이전트",
@@ -166,7 +171,8 @@
       "viewOnGitHub": "GitHub에서 보기",
       "add": "추가",
       "requires": "필요: {{requirement}}",
-      "noToolsAvailable": "이 MCP 서버에서 사용할 수 있는 도구가 없습니다"
+      "noToolsAvailable": "이 MCP 서버에서 사용할 수 있는 도구가 없습니다",
+      "loading": "MCP 서버를 로딩 중..."
     }
   },
   "share": {

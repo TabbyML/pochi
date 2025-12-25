@@ -141,7 +141,12 @@
       "retry": "重试",
       "subtaskOffhand": "子任务 - 自动",
       "subtaskManual": "子任务 - 手动",
-      "applyChangesToGlobal": "保存更改"
+      "applyChangesToGlobal": "保存更改",
+      "noMcpServers": "没有可用的 MCP 服务器",
+      "noToolsAvailable": "没有可用的工具",
+      "selectAll": "全选",
+      "clearAll": "清除全部",
+      "toolsSelectedCount": "({{selected}}/{{total}} 已选择)"
     },
     "customAgents": {
       "title": "代理",
@@ -165,7 +170,8 @@
       "viewOnGitHub": "在 GitHub 上查看",
       "add": "添加",
       "requires": "需要：{{requirement}}",
-      "noToolsAvailable": "此 MCP 服务器没有可用的工具"
+      "noToolsAvailable": "此 MCP 服务器没有可用的工具",
+      "loading": "正在加载 MCP 服务器..."
     }
   },
   "share": {
