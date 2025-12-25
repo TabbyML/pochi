@@ -19,8 +19,8 @@ interface McpServerItemProps {
   isServerSelected: boolean;
   isExpanded: boolean;
   selectedTools: string[];
-  onToggleServer: (serverName: string, enabled: boolean) => void;
-  onToggleTool: (
+  onSelectServer: (serverName: string, enabled: boolean) => void;
+  onSelectTool: (
     serverName: string,
     toolName: string,
     enabled: boolean,
@@ -36,8 +36,8 @@ function McpServerSelectionItem({
   isServerSelected,
   isExpanded,
   selectedTools,
-  onToggleServer,
-  onToggleTool,
+  onSelectServer,
+  onSelectTool,
   onSelectAllTools,
   onClearAllTools,
   onToggleExpanded,
@@ -55,26 +55,27 @@ function McpServerSelectionItem({
     return tool && !tool.disabled;
   }).length;
 
+  const onClickServerHeader = () => {
+    if (isServerSelected) {
+      onToggleExpanded(serverName);
+    } else {
+      onSelectServer(serverName, true);
+    }
+  };
+
   return (
     <div className="rounded-md border px-2">
-      <div className="flex h-10 w-full items-center justify-between">
+      <div className="flex h-10 w-full select-none items-center justify-between">
         <div className="flex items-center gap-2 pl-2">
           <Checkbox
             id={`mcp-server-${serverName}`}
             checked={isServerSelected}
-            onCheckedChange={(checked) => onToggleServer(serverName, !!checked)}
+            onCheckedChange={(checked) => onSelectServer(serverName, !!checked)}
           />
         </div>
         <div
-          className={cn(
-            "flex flex-1 items-center overflow-x-hidden",
-            isServerSelected && "cursor-pointer",
-          )}
-          onClick={() => {
-            if (isServerSelected) {
-              onToggleExpanded(serverName);
-            }
-          }}
+          className="flex flex-1 cursor-pointer items-center overflow-x-hidden"
+          onClick={onClickServerHeader}
         >
           <Dot
             className={cn("size-6 shrink-0", {
@@ -153,7 +154,7 @@ function McpServerSelectionItem({
                       }
                       disabled={tool.disabled}
                       onCheckedChange={(checked) =>
-                        onToggleTool(serverName, tool.toolName, !!checked)
+                        onSelectTool(serverName, tool.toolName, !!checked)
                       }
                     />
                     <span
@@ -204,7 +205,7 @@ export function McpAutoApproveSection({
   const [isOpen, setIsOpen] = useState(false);
   const isMcpSelected = autoApproveSettings.mcp.enabled;
 
-  const handleApproveMcpToggle = (enabled: boolean) => {
+  const handleSelectApproveMcp = (enabled: boolean) => {
     if (enabled) {
       // Only select all servers and tools by default if no servers are currently configured
       const selectedServers =
@@ -239,7 +240,7 @@ export function McpAutoApproveSection({
     }
   };
 
-  const handleApproveMcpServerToggle = (
+  const handleSelectApproveMcpServer = (
     serverName: string,
     enabled: boolean,
   ) => {
@@ -268,7 +269,7 @@ export function McpAutoApproveSection({
     });
   };
 
-  const handleApproveMcpToolToggle = (
+  const handleSelectApproveMcpTool = (
     serverName: string,
     toolName: string,
     enabled: boolean,
@@ -359,7 +360,7 @@ export function McpAutoApproveSection({
           <Checkbox
             id="mcp-toggle"
             checked={isMcpSelected}
-            onCheckedChange={handleApproveMcpToggle}
+            onCheckedChange={handleSelectApproveMcp}
             onClick={(e) => e.stopPropagation()}
           />
           <label
@@ -413,8 +414,8 @@ export function McpAutoApproveSection({
                   selectedTools={
                     autoApproveSettings.mcp.servers[serverName]?.tools || []
                   }
-                  onToggleServer={handleApproveMcpServerToggle}
-                  onToggleTool={handleApproveMcpToolToggle}
+                  onSelectServer={handleSelectApproveMcpServer}
+                  onSelectTool={handleSelectApproveMcpTool}
                   onSelectAllTools={handleSelectAllTools}
                   onClearAllTools={handleClearAllTools}
                   onToggleExpanded={handleToggleExpanded}
