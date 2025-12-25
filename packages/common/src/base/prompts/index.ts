@@ -1,7 +1,6 @@
 import { createCompactPrompt } from "./compact";
 import { createPr } from "./create-pr";
 import { createEnvironmentPrompt, injectEnvironment } from "./environment";
-import { fixMermaidError } from "./fix-mermaid-error";
 import { generateTitle } from "./generate-title";
 import { injectBashOutputs } from "./inject-bash-outputs";
 import { createSystemPrompt } from "./system";
@@ -23,7 +22,6 @@ export const prompts = {
   customAgent: createCustomAgentPrompt,
   injectBashOutputs,
   createPr,
-  fixMermaidError,
 };
 
 function createSystemReminder(content: string) {

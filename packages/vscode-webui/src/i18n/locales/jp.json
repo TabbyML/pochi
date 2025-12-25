@@ -421,9 +421,5 @@
   },
   "forkTask": {
     "forkedTaskTitle": "フォーク 元: {{taskTitle}}"
-  },
-  "mermaid": {
-    "failedToRender": "Mermaid チャートのレンダリングに失敗しました：",
-    "fixError": "Pochi でエラーを修正"
   }
 }

@@ -21,7 +21,6 @@ import { useAddCompleteToolCalls } from "@/lib/hooks/use-add-complete-tool-calls
 import type { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
 import { useReviews } from "@/lib/hooks/use-reviews";
 import { useTaskChangedFiles } from "@/lib/hooks/use-task-changed-files";
-import { useTaskInputDraft } from "@/lib/hooks/use-task-input-draft";
 import { cn } from "@/lib/utils";
 import type { UseChatHelpers } from "@ai-sdk/react";
 import { constants } from "@getpochi/common";
@@ -71,7 +70,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   const isLoading = status === "streaming" || status === "submitted";
   const totalTokens = task?.totalTokens || 0;
 
-  const { draft: input, setDraft: setInput } = useTaskInputDraft();
+  const [input, setInput] = useState("");
   const [queuedMessages, setQueuedMessages] = useState<string[]>([]);
 
   // Initialize task with prompt if provided and task doesn't exist yet
@@ -158,7 +157,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
         setInput("");
       }
     },
-    [input, setInput],
+    [input],
   );
 
   useEffect(() => {
