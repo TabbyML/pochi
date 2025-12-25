@@ -212,7 +212,6 @@ function Part({
   latestCheckpoint: string | null;
   lastCheckpointInMessage: string | undefined;
 }) {
-  console.log("latestCheckpoint", latestCheckpoint);
   const paddingClass = partIndex === 0 ? "" : "mt-2";
   if (part.type === "text") {
     return <TextPartUI className={paddingClass} part={part} />;

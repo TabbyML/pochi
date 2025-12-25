@@ -35,11 +35,6 @@ export const CheckpointUI: React.FC<{
   restoreMessageId,
   isRestored,
 }) => {
-  console.log(
-    "Rendering CheckpointUI with isRestored:",
-    isRestored,
-    checkpoint.commit,
-  );
   const { t } = useTranslation();
   const [isDevMode] = useIsDevMode();
   const [currentAction, setCurrentAction] = useState<ActionType>();
