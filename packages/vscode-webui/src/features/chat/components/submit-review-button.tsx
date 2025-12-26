@@ -1,13 +1,21 @@
 import { Button } from "@/components/ui/button";
+import { useDebounceState } from "@/lib/hooks/use-debounce-state";
+import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 
 export const SubmitReviewsButton: React.FC<{
-  visible: boolean;
+  showSubmitReviewButton: boolean;
   onSubmit: () => Promise<void>;
-}> = ({ visible, onSubmit }) => {
+}> = ({ showSubmitReviewButton: shouldShowButton, onSubmit }) => {
   const { t } = useTranslation();
 
-  if (!visible) {
+  const [showButton, setShowButton] = useDebounceState(false, 550);
+
+  useEffect(() => {
+    setShowButton(shouldShowButton);
+  }, [setShowButton, shouldShowButton]);
+
+  if (!shouldShowButton || !showButton) {
     return null;
   }
 
