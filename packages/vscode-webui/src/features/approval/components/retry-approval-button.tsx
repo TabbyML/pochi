@@ -4,6 +4,7 @@ import { useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useAutoApproveGuard } from "@/features/chat";
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
+import { useReviews } from "@/lib/hooks/use-reviews";
 import { useTranslation } from "react-i18next";
 import type { PendingRetryApproval } from "../hooks/use-pending-retry-approval";
 
@@ -17,6 +18,7 @@ export const RetryApprovalButton: React.FC<RetryApprovalButtonProps> = ({
   retry,
 }) => {
   const { t } = useTranslation();
+  const reviews = useReviews();
 
   useEffect(() => {
     if (pendingApproval.countdown === 0) {
@@ -40,13 +42,18 @@ export const RetryApprovalButton: React.FC<RetryApprovalButtonProps> = ({
     setShowRetry(true);
   }, [setShowRetry]);
 
+  const isCountingDown = isRetryApprovalCountingDown(pendingApproval);
+  const isReviewEmpty = reviews.length === 0;
+
   if (!showRetry) return null;
+
+  // If reviews exist, hide the "Continue" button to allow the "Submit Review" button to be shown instead.
+  if (!isCountingDown && !isReviewEmpty) return null;
 
   return (
     <>
       <Button onClick={onAccept}>
-        {pendingApproval.attempts !== undefined &&
-        pendingApproval.countdown !== undefined
+        {isCountingDown
           ? t("toolInvocation.continueInSeconds", {
               seconds: pendingApproval.countdown,
             })
@@ -60,3 +67,12 @@ export const RetryApprovalButton: React.FC<RetryApprovalButtonProps> = ({
     </>
   );
 };
+
+export function isRetryApprovalCountingDown(
+  pendingApproval: PendingRetryApproval,
+) {
+  return (
+    pendingApproval.attempts !== undefined &&
+    pendingApproval.countdown !== undefined
+  );
+}

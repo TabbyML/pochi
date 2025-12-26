@@ -44,7 +44,7 @@ export const useShowCompleteSubtaskButton = (
     }
   }, [messages]);
 
-  return isSubtaskCompleted && !isSubtaskToolCallCompleted;
+  return !!isSubtaskCompleted && !isSubtaskToolCallCompleted;
 };
 
 // Complete subtask by adding tool result (in parent task)

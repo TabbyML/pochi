@@ -1,11 +1,9 @@
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import type { Message } from "@getpochi/livekit";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { ChevronLeft } from "lucide-react";
 import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { useShowCompleteSubtaskButton } from "../hooks/use-subtask-completed";
 import type { SubtaskInfo } from "../hooks/use-subtask-info";
 
 export const SubtaskHeader: React.FC<{
@@ -30,12 +28,10 @@ export const SubtaskHeader: React.FC<{
 
 export const CompleteSubtaskButton: React.FC<{
   subtask: SubtaskInfo | undefined;
-  messages: Message[];
-}> = ({ subtask, messages }) => {
+  showCompleteButton: boolean;
+}> = ({ subtask, showCompleteButton }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-
-  const showCompleteButton = useShowCompleteSubtaskButton(subtask, messages);
 
   const onCompleteSubtask = useCallback(() => {
     if (!subtask || !showCompleteButton) {

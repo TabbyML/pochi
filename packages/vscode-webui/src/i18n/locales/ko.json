@@ -288,7 +288,8 @@
     "forking": "포크 중..."
   },
   "reviewUI": {
-    "reviews": "리뷰"
+    "reviews": "리뷰",
+    "submitReviews": "리뷰 제출"
   },
   "welcomeScreen": {
     "title": "시작하기",

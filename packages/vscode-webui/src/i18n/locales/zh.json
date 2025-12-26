@@ -287,7 +287,8 @@
     "forking": "创建中..."
   },
   "reviewUI": {
-    "reviews": "评审"
+    "reviews": "评审",
+    "submitReviews": "提交评审"
   },
   "welcomeScreen": {
     "title": "开始使用",

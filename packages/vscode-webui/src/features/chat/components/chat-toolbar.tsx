@@ -12,7 +12,11 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
-import { ApprovalButton, type useApprovalAndRetry } from "@/features/approval";
+import {
+  ApprovalButton,
+  isRetryApprovalCountingDown,
+  type useApprovalAndRetry,
+} from "@/features/approval";
 import { useAutoApproveGuard } from "@/features/chat";
 import { useSelectedModels } from "@/features/settings";
 import { AutoApproveMenu } from "@/features/settings";
@@ -38,9 +42,11 @@ import { useChatStatus } from "../hooks/use-chat-status";
 import { useChatSubmit } from "../hooks/use-chat-submit";
 import { useInlineCompactTask } from "../hooks/use-inline-compact-task";
 import { useNewCompactTask } from "../hooks/use-new-compact-task";
+import { useShowCompleteSubtaskButton } from "../hooks/use-subtask-completed";
 import type { SubtaskInfo } from "../hooks/use-subtask-info";
 import { ChatInputForm } from "./chat-input-form";
 import { ErrorMessageView } from "./error-message-view";
+import { SubmitReviewsButton } from "./submit-review-button";
 import { CompleteSubtaskButton } from "./subtask";
 
 interface ChatToolbarProps {
@@ -228,18 +234,40 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     isExecuting,
   );
 
+  const showCompleteSubtaskButton = useShowCompleteSubtaskButton(
+    subtask,
+    messages,
+  );
+
+  const showSubmitReviewButton =
+    !isSubmitDisabled &&
+    !!reviews.length &&
+    !!messages.length &&
+    !isLoading &&
+    (!isSubTask || !showCompleteSubtaskButton) &&
+    (!pendingApproval ||
+      (pendingApproval.name === "retry" &&
+        !isRetryApprovalCountingDown(pendingApproval)));
+
   return (
     <>
       <div className="-translate-y-full -top-2 absolute left-0 w-full px-4 pt-1">
         <div className="flex w-full flex-col bg-background">
           <ErrorMessageView error={displayError} />
-          <CompleteSubtaskButton subtask={subtask} messages={messages} />
+          <CompleteSubtaskButton
+            showCompleteButton={showCompleteSubtaskButton}
+            subtask={subtask}
+          />
           <ApprovalButton
             pendingApproval={pendingApproval}
             retry={retry}
             allowAddToolResult={allowAddToolResult}
             isSubTask={isSubTask}
             task={task}
+          />
+          <SubmitReviewsButton
+            showSubmitReviewButton={showSubmitReviewButton}
+            onSubmit={handleSubmit}
           />
         </div>
       </div>

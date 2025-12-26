@@ -291,7 +291,8 @@
     "forking": "Forking"
   },
   "reviewUI": {
-    "reviews": "Reviews"
+    "reviews": "Reviews",
+    "submitReviews": "Submit reviews"
   },
   "welcomeScreen": {
     "title": "Get Started",
