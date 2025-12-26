@@ -148,9 +148,12 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
           },
         });
 
-        if (worktree) {
-          setUserSelectedWorktree(worktree);
+        // If worktree creation was requested but failed, do not proceed
+        if (!worktree) {
+          return;
         }
+
+        setUserSelectedWorktree(worktree);
       }
 
       vscodeHost.openTaskInPanel({
