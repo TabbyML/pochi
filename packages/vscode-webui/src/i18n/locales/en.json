@@ -142,7 +142,12 @@
       "retry": "Retry",
       "subtaskOffhand": "Subtask - Offhand",
       "subtaskManual": "Subtask - Manual",
-      "applyChangesToGlobal": "Save changes"
+      "applyChangesToGlobal": "Save changes",
+      "noMcpServers": "No MCP servers available",
+      "noToolsAvailable": "No tools available",
+      "selectAll": "Select All",
+      "clearAll": "Clear All",
+      "toolsSelectedCount": "({{selected}}/{{total}} selected)"
     },
     "customAgents": {
       "title": "Agents",
@@ -167,7 +172,8 @@
       "viewOnGitHub": "View on GitHub",
       "add": "Add",
       "requires": "Requires: {{requirement}}",
-      "noToolsAvailable": "No tools available from this MCP server"
+      "noToolsAvailable": "No tools available from this MCP server",
+      "loading": "Loading MCP servers..."
     }
   },
   "share": {

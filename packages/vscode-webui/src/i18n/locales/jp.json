@@ -141,7 +141,12 @@
       "retry": "再試行",
       "subtaskOffhand": "サブタスク - 自動",
       "subtaskManual": "サブタスク - 手動",
-      "applyChangesToGlobal": "変更を保存"
+      "applyChangesToGlobal": "変更を保存",
+      "noMcpServers": "利用可能な MCP サーバーがありません",
+      "noToolsAvailable": "利用可能なツールがありません",
+      "selectAll": "すべて選択",
+      "clearAll": "すべてクリア",
+      "toolsSelectedCount": "({{selected}}/{{total}} 選択済み)"
     },
     "customAgents": {
       "title": "エージェント",
@@ -166,7 +171,8 @@
       "viewOnGitHub": "GitHub で表示",
       "add": "追加",
       "requires": "必要: {{requirement}}",
-      "noToolsAvailable": "この MCP サーバーから利用できるツールはありません"
+      "noToolsAvailable": "この MCP サーバーから利用できるツールはありません",
+      "loading": "MCP サーバーを読み込み中..."
     }
   },
   "share": {
