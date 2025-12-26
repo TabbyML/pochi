@@ -396,7 +396,6 @@ function CompactPartToolTip({
           onClick={() =>
             vscodeHost.openFile(`/task-summary-${message.id}.md`, {
               base64Data: btoa(unescape(encodeURIComponent(parsed.summary))),
-              webviewKind: globalThis.POCHI_WEBVIEW_KIND,
             })
           }
         />

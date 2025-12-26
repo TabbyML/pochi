@@ -6,6 +6,7 @@ import {
 import { EditSummary } from "@/features/tools";
 import { useUserEdits } from "@/lib/hooks/use-user-edits";
 import { cn } from "@/lib/utils";
+import { vscodeHost } from "@/lib/vscode";
 import { useTranslation } from "react-i18next";
 import { VscDiffMultiple } from "react-icons/vsc";
 interface UserEditsProps {
@@ -19,7 +20,23 @@ export const UserEdits: React.FC<UserEditsProps> = ({ taskId, className }) => {
   const { t } = useTranslation();
 
   const showFileChanges = () => {
-    // todo show diff view
+    // biome-ignore lint/style/noUnusedTemplateLiteral: <explanation>
+    vscodeHost.openFile(`/userEdits.md`, {
+      base64Data: btoa(
+        unescape(
+          encodeURIComponent(
+            userEdits
+              .map((edit) => {
+                return `**${edit.filepath}** (modified)
+\`\`\`diff
+${edit.diff}
+\`\`\``;
+              })
+              .join("\n\n"),
+          ),
+        ),
+      ),
+    });
   };
 
   const totalAdditions = userEdits.reduce((sum, file) => sum + file.added, 0);

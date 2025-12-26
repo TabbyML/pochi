@@ -496,7 +496,6 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       base64Data?: string;
       fallbackGlobPattern?: string;
       cellId?: string;
-      webviewKind?: "sidebar" | "pane";
     },
   ) => {
     // Expand ~ to home directory if present

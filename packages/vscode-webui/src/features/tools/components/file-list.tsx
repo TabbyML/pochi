@@ -35,7 +35,6 @@ export const FileList: React.FC<{
             vscodeHost.openFile(match.file, {
               start: match.line,
               preserveFocus: true,
-              webviewKind: globalThis.POCHI_WEBVIEW_KIND,
             });
           }}
           // biome-ignore lint/a11y/noNoninteractiveTabindex: <explanation>
