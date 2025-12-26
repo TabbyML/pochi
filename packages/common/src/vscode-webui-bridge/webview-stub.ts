@@ -173,6 +173,9 @@ const VSCodeHostStub = {
   openExternal: (_uri: string): Promise<void> => {
     return Promise.resolve();
   },
+  checkFileExists: async (_path: string): Promise<boolean> => {
+    return Promise.resolve(false);
+  },
   readMinionId: async () => {
     return Promise.resolve(null);
   },

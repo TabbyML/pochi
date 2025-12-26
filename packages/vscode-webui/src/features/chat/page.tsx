@@ -418,6 +418,7 @@ function Chat({ user, uid, info }: ChatProps) {
         hideEmptyPlaceholder={!isTaskWithoutContent}
         forkTask={task?.cwd ? forkTask : undefined}
         hideCheckPoint={isSubTask}
+        taskId={uid}
       />
       <div className="relative flex flex-col px-4">
         <ChatToolbar

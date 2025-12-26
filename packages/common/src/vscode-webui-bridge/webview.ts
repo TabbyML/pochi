@@ -225,6 +225,13 @@ export interface VSCodeHostApi {
   openExternal(uri: string): Promise<void>;
 
   /**
+   * Checks if a file exists at the given path.
+   * @param path - The file path to check.
+   * @returns A promise that resolves to true if the file exists, false otherwise.
+   */
+  checkFileExists(path: string): Promise<boolean>;
+
+  /**
    * Saves a checkpoint with the given message.
    * @param message - The message to save as a checkpoint.
    * @returns A promise that resolves to a commit hash representing the saved checkpoint. If the repository is clean, it returns undefined.
