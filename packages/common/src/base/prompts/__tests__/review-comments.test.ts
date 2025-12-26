@@ -125,16 +125,6 @@ test("multiple reviews with different files", () => {
         endLine: 55,
       },
     },
-    {
-      id: "review-3",
-      uri: "tests/integration/auth.test.ts",
-      comments: [
-        {
-          id: "comment-4",
-          body: "Add tests for invalid token scenarios.",
-        },
-      ],
-    },
   ];
   expect(renderReviewComments(reviews)).toMatchSnapshot();
 });

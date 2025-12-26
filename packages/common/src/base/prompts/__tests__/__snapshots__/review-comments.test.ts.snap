@@ -6,13 +6,8 @@ exports[`multiple reviews with different files 1`] = `
 The code snippets provided below include surrounding context to help you understand the broader context of each comment.
 
 IMPORTANT: If you need additional context beyond the provided code snippets, use the readFile tool.
-
-Review comments (format: filepath(line:char-line:char):):
-
-src/components/button.tsx (15:2-15:45):
-Should this use the theme color instead of hardcoded values?
-
-Code context (src/components/button.tsx:10-20):
+<review>
+src/components/button.tsx:10-20:
 \`\`\`
   const [isHovered, setIsHovered] = useState(false);
 
@@ -26,12 +21,13 @@ Code context (src/components/button.tsx:10-20):
     >
       {children}
 \`\`\`
+<comment location="15:2-15:45">
+Should this use the theme color instead of hardcoded values?
+</comment>
+</review>
 
-src/api/users.ts (42:0-50:1):
-1. Missing error handling for failed API requests.
-2. Consider adding retry logic.
-
-Code context (src/api/users.ts:37-55):
+<review>
+src/api/users.ts:37-55:
 \`\`\`
   return users.filter(u => u.active);
 }
@@ -45,9 +41,17 @@ export async function fetchUserById(id: string) {
 export async function updateUser(id: string, updates: UserUpdate) {
   const response = await fetch(\`/api/users/\${id}\`, {
 \`\`\`
+<comment location="42:0-50:1">
+1. Missing error handling for failed API requests.
+2. Consider adding retry logic.
+</comment>
+</review>
 
-tests/integration/auth.test.ts:
-Add tests for invalid token scenarios."
+<review>
+<comment location="">
+Add tests for invalid token scenarios.
+</comment>
+</review>"
 `;
 
 exports[`review at start of file 1`] = `
@@ -56,11 +60,11 @@ exports[`review at start of file 1`] = `
 The code snippets provided below include surrounding context to help you understand the broader context of each comment.
 
 IMPORTANT: If you need additional context beyond the provided code snippets, use the readFile tool.
-
-Review comments (format: filepath(line:char-line:char):):
-
-src/index.ts (1:0-1:30):
-Missing copyright header."
+<review>
+<comment location="1:0-1:30">
+Missing copyright header.
+</comment>
+</review>"
 `;
 
 exports[`review with code snippet containing special formatting 1`] = `
@@ -69,13 +73,8 @@ exports[`review with code snippet containing special formatting 1`] = `
 The code snippets provided below include surrounding context to help you understand the broader context of each comment.
 
 IMPORTANT: If you need additional context beyond the provided code snippets, use the readFile tool.
-
-Review comments (format: filepath(line:char-line:char):):
-
-src/formatter.ts (20:0-25:1):
-The string template formatting could be improved.
-
-Code context (src/formatter.ts:15-30):
+<review>
+src/formatter.ts:15-30:
 \`\`\`
 function formatMessage(user: string, count: number): string {
   // TODO: Add i18n support
@@ -88,7 +87,11 @@ export function logMessage(msg: string) {
 }
 
 // Helper function
-\`\`\`"
+\`\`\`
+<comment location="20:0-25:1">
+The string template formatting could be improved.
+</comment>
+</review>"
 `;
 
 exports[`review with large line numbers 1`] = `
@@ -97,11 +100,11 @@ exports[`review with large line numbers 1`] = `
 The code snippets provided below include surrounding context to help you understand the broader context of each comment.
 
 IMPORTANT: If you need additional context beyond the provided code snippets, use the readFile tool.
-
-Review comments (format: filepath(line:char-line:char):):
-
-src/legacy-code.js (1523:15-1650:3):
-This entire section should be refactored into smaller functions."
+<review>
+<comment location="1523:15-1650:3">
+This entire section should be refactored into smaller functions.
+</comment>
+</review>"
 `;
 
 exports[`review with multiline comment 1`] = `
@@ -110,14 +113,14 @@ exports[`review with multiline comment 1`] = `
 The code snippets provided below include surrounding context to help you understand the broader context of each comment.
 
 IMPORTANT: If you need additional context beyond the provided code snippets, use the readFile tool.
-
-Review comments (format: filepath(line:char-line:char):):
-
-src/database/connection.ts (5:0-8:2):
+<review>
+<comment location="5:0-8:2">
 This connection logic has several issues:
 1. No connection pooling
 2. Missing timeout configuration
-3. Should handle connection errors gracefully"
+3. Should handle connection errors gracefully
+</comment>
+</review>"
 `;
 
 exports[`review with special characters in comment 1`] = `
@@ -126,11 +129,11 @@ exports[`review with special characters in comment 1`] = `
 The code snippets provided below include surrounding context to help you understand the broader context of each comment.
 
 IMPORTANT: If you need additional context beyond the provided code snippets, use the readFile tool.
-
-Review comments (format: filepath(line:char-line:char):):
-
-src/parser.ts (100:10-105:5):
-The regex pattern \`/^[a-z]+$/i\` should be \`\\w+\` for better matching."
+<review>
+<comment location="100:10-105:5">
+The regex pattern \`/^[a-z]+$/i\` should be \`\\w+\` for better matching.
+</comment>
+</review>"
 `;
 
 exports[`single review with multiple comments 1`] = `
@@ -139,15 +142,8 @@ exports[`single review with multiple comments 1`] = `
 The code snippets provided below include surrounding context to help you understand the broader context of each comment.
 
 IMPORTANT: If you need additional context beyond the provided code snippets, use the readFile tool.
-
-Review comments (format: filepath(line:char-line:char):):
-
-src/utils/validation.ts (25:0-30:1):
-1. Consider adding input validation here.
-2. This could throw an error if the input is undefined.
-3. Maybe use a try-catch block?
-
-Code context (src/utils/validation.ts:20-35):
+<review>
+src/utils/validation.ts:20-35:
 \`\`\`
 export function validateEmail(email: string): boolean {
   return /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email);
@@ -160,7 +156,13 @@ export function sanitizeInput(input: string): string {
 }
 
 export function parseJSON(json: string) {
-\`\`\`"
+\`\`\`
+<comment location="25:0-30:1">
+1. Consider adding input validation here.
+2. This could throw an error if the input is undefined.
+3. Maybe use a try-catch block?
+</comment>
+</review>"
 `;
 
 exports[`single review with single comment and range 1`] = `
@@ -169,13 +171,8 @@ exports[`single review with single comment and range 1`] = `
 The code snippets provided below include surrounding context to help you understand the broader context of each comment.
 
 IMPORTANT: If you need additional context beyond the provided code snippets, use the readFile tool.
-
-Review comments (format: filepath(line:char-line:char):):
-
-src/app.ts (10:5-12:20):
-This function should handle edge cases for null values.
-
-Code context (src/app.ts:5-17):
+<review>
+src/app.ts:5-17:
 \`\`\`
   return data.map(item => item.value);
 }
@@ -188,7 +185,11 @@ function processData(data) {
 }
 
 function transform(data) {
-\`\`\`"
+\`\`\`
+<comment location="10:5-12:20">
+This function should handle edge cases for null values.
+</comment>
+</review>"
 `;
 
 exports[`single review without range 1`] = `
@@ -197,9 +198,9 @@ exports[`single review without range 1`] = `
 The code snippets provided below include surrounding context to help you understand the broader context of each comment.
 
 IMPORTANT: If you need additional context beyond the provided code snippets, use the readFile tool.
-
-Review comments (format: filepath(line:char-line:char):):
-
-README.md:
-Please update the documentation to include setup instructions."
+<review>
+<comment location="">
+Please update the documentation to include setup instructions.
+</comment>
+</review>"
 `;
