@@ -16,6 +16,5 @@ ignores:
   - "packages/vscode/src/integrations/git/worktree.ts"
   - "packages/vscode/src/lib/workspace-scoped.ts"
   - "packages/vscode/src/integrations/review-controller.ts"
-  - "packages/vscode/src/integrations/webview/webview-panel.ts"
 files:
   - "packages/vscode/src/**/*.ts"
