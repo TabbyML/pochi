@@ -11,3 +11,5 @@ export type {
 
 export const StoreBlobProtocol = "store-blob:";
 export { processContentOutput, fileToUri } from "./store-blob";
+export { generateWalkthrough } from "./chat/llm/generate-walkthrough";
+export { createModel } from "./chat/models";
