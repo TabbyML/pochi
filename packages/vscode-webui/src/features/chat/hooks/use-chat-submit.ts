@@ -29,6 +29,7 @@ interface UseChatSubmitProps {
   queuedMessages: string[];
   setQueuedMessages: React.Dispatch<React.SetStateAction<string[]>>;
   reviews: Review[];
+  saveLatestUserEdits: () => void;
 }
 
 export function useChatSubmit({
@@ -43,6 +44,7 @@ export function useChatSubmit({
   queuedMessages,
   setQueuedMessages,
   reviews,
+  saveLatestUserEdits,
 }: UseChatSubmitProps) {
   const autoApproveGuard = useAutoApproveGuard();
   const { executingToolCalls, previewingToolCalls, isExecuting, isPreviewing } =
@@ -125,6 +127,8 @@ export function useChatSubmit({
       if (text.length === 0 && files.length === 0 && reviews.length === 0)
         return;
 
+      saveLatestUserEdits();
+
       const stopIsLoading = handleStop();
       if (stopIsLoading || isSubmitDisabled) {
         autoApproveGuard.current = "stop";
@@ -182,6 +186,7 @@ export function useChatSubmit({
       t,
       clearFiles,
       reviews,
+      saveLatestUserEdits,
     ],
   );
 

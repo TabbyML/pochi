@@ -10,11 +10,13 @@ import { useSelectedModels } from "@/features/settings";
 import { useCustomAgents } from "@/lib/hooks/use-custom-agents";
 import { useLatest } from "@/lib/hooks/use-latest";
 import { useMcp } from "@/lib/hooks/use-mcp";
-import { useUserEdits } from "@/lib/hooks/use-user-edits";
 import { vscodeHost } from "@/lib/vscode";
 import { constants, type Environment } from "@getpochi/common";
 import { createModel } from "@getpochi/common/vendor/edge";
-import type { DisplayModel } from "@getpochi/common/vscode-webui-bridge";
+import type {
+  DisplayModel,
+  FileDiff,
+} from "@getpochi/common/vscode-webui-bridge";
 import type { LLMRequestData } from "@getpochi/livekit";
 import type { Todo } from "@getpochi/tools";
 import { useCallback } from "react";
@@ -23,12 +25,12 @@ export function useLiveChatKitGetters({
   todos,
   isSubTask,
   modelOverride,
-  taskId,
+  userEdits,
 }: {
   todos: React.RefObject<Todo[] | undefined>;
   isSubTask: boolean;
   modelOverride?: DisplayModel;
-  taskId: string | undefined;
+  userEdits?: FileDiff[];
 }) {
   const { toolset, instructions } = useMcp();
   const mcpInfo = useLatest({ toolset, instructions });
@@ -36,9 +38,9 @@ export function useLiveChatKitGetters({
 
   const { customAgents } = useCustomAgents(true);
   const customAgentsRef = useLatest(customAgents);
+  const userEditsRef = useLatest(userEdits);
 
-  const userEdits = useUserEdits(taskId);
-
+  // biome-ignore lint/correctness/useExhaustiveDependencies(userEditsRef.current): userEditsRef.current is ref.
   const getEnvironment = useCallback(async () => {
     const environment = await vscodeHost.readEnvironment({
       isSubTask,
@@ -48,9 +50,9 @@ export function useLiveChatKitGetters({
     return {
       todos: todos.current,
       ...environment,
-      userEdits,
+      userEdits: userEditsRef.current,
     } satisfies Environment;
-  }, [todos, isSubTask, userEdits]);
+  }, [todos, isSubTask]);
 
   return {
     // biome-ignore lint/correctness/useExhaustiveDependencies(llm.current): llm is ref.
