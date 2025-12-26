@@ -211,31 +211,31 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
       setIsCreatingTask(true);
       setDebouncedIsCreatingTask(true);
 
+      // Upload files if present
+      let uploadedFiles: Array<{
+        contentType: string;
+        name: string;
+        url: string;
+      }> = [];
+
       if (files.length > 0) {
         const uploadedAttachments = await upload();
-        const uploadedFiles = uploadedAttachments.map((x) => ({
+        uploadedFiles = uploadedAttachments.map((x) => ({
           contentType: x.mediaType,
           name: x.filename ?? "attachment",
           url: x.url,
         }));
-
-        await createWorktreeAndOpenTask({
-          content,
-          shouldCreateWorktree:
-            shouldCreateWorktree === true ||
-            selectedWorktree === "new-worktree",
-          uploadedFiles,
-        });
-      } else if (content.length > 0 || reviews.length > 0) {
+      } else {
         clearUploadError();
-
-        await createWorktreeAndOpenTask({
-          content,
-          shouldCreateWorktree:
-            shouldCreateWorktree === true ||
-            selectedWorktree === "new-worktree",
-        });
       }
+
+      // Create worktree and open task
+      await createWorktreeAndOpenTask({
+        content,
+        shouldCreateWorktree:
+          shouldCreateWorktree === true || selectedWorktree === "new-worktree",
+        uploadedFiles: uploadedFiles.length > 0 ? uploadedFiles : undefined,
+      });
 
       // Set isCreatingTask state false
       // Hide loading and unfreeze input
