@@ -45,19 +45,19 @@ export class UserEditState implements vscode.Disposable {
     this.disposables.push(watcher);
     this.disposables.push(
       watcher.onDidCreate((e) => {
-        logger.info(`File created, triggering update, ${e.fsPath}`);
+        logger.trace(`File created, triggering update, ${e.fsPath}`);
         this.triggerUpdate.call();
       }),
     );
     this.disposables.push(
       watcher.onDidDelete((e) => {
-        logger.info(`File deleted, triggering update, ${e.fsPath}`);
+        logger.trace(`File deleted, triggering update, ${e.fsPath}`);
         this.triggerUpdate.call();
       }),
     );
     this.disposables.push(
       watcher.onDidChange((e) => {
-        logger.info(`File changed, triggering update, ${e.fsPath}`);
+        logger.trace(`File changed, triggering update, ${e.fsPath}`);
         this.triggerUpdate.call();
       }),
     );
@@ -65,7 +65,7 @@ export class UserEditState implements vscode.Disposable {
     // Watch active pochi tasks to maintain tracking tasks state.
     this.disposables.push({
       dispose: this.pochiTaskState.state.subscribe((tasks) => {
-        logger.debug("Received tasks update", {
+        logger.trace("Received tasks update", {
           tasksCount: Object.keys(tasks).length,
           currentCwd: this.cwd,
         });
@@ -73,10 +73,6 @@ export class UserEditState implements vscode.Disposable {
         const newEdits = { ...this.edits.value };
         for (const uid of this.trackingTasks.keys()) {
           if (!tasks[uid] || !tasks[uid].active) {
-            logger.debug(`Removing tracking task ${uid}`, {
-              exists: !!tasks[uid],
-              active: tasks[uid]?.active,
-            });
             this.trackingTasks.delete(uid);
             delete newEdits[uid];
           }
@@ -87,18 +83,10 @@ export class UserEditState implements vscode.Disposable {
 
         let isDirty = false;
         for (const [uid, task] of Object.entries(tasks)) {
-          const { cwd, lastCheckpointHash: hash, active, running } = task;
-          logger.debug(`Checking task ${uid}`, {
-            active,
-            cwd,
-            running,
-            hash: hash ? "present" : "missing",
-            cwdMatch: cwd === this.cwd,
-          });
-
+          const { cwd, lastCheckpointHash: hash, active } = task;
           if (active && cwd === this.cwd && hash) {
             if (this.trackingTasks.get(uid) !== hash) {
-              logger.info(`Adding/updating tracking task ${uid}`, { hash });
+              logger.trace(`Adding/updating tracking task ${uid}`, { hash });
               this.trackingTasks.set(uid, hash);
               isDirty = true;
             }
@@ -126,7 +114,6 @@ export class UserEditState implements vscode.Disposable {
   });
 
   private updateEdits = runExclusive.build(async () => {
-    logger.info("call updateEdits", this.trackingTasks.size);
     if (this.trackingTasks.size === 0) {
       return;
     }
@@ -134,8 +121,6 @@ export class UserEditState implements vscode.Disposable {
     const nextEdits = { ...this.edits.value };
 
     for (const [uid, hash] of this.trackingTasks.entries()) {
-      logger.info("get diff from trackingTasks", uid, hash);
-
       try {
         if (hash !== this.checkpointService.latestCheckpoint.value) {
           // If the checkpoint hash is not the latest, we cannot guarantee
@@ -150,16 +135,9 @@ export class UserEditState implements vscode.Disposable {
               inlineDiff: true,
             },
           );
-          logger.info(
-            "diffs result: ",
-            diffs?.map((x) => ({
-              filepath: x.filepath,
-              added: x.added,
-              removed: x.removed,
-            })),
-          );
+
           if (this.trackingTasks.has(uid)) {
-            logger.info("set diffs for task", uid, hash);
+            logger.trace("set diffs for task", uid, hash);
             nextEdits[uid] = diffs ?? [];
           }
         }
@@ -175,7 +153,7 @@ export class UserEditState implements vscode.Disposable {
       }
     }
 
-    logger.info(
+    logger.trace(
       "do update userEdits",
       Object.keys(nextEdits).length,
       nextEdits[Object.keys(nextEdits)[0]].map((x) => ({
