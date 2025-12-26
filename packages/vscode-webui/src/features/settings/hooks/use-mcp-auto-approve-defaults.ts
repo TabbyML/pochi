@@ -17,6 +17,15 @@ export function getAvailableToolNames(server?: McpServerConnection): string[] {
     .map(([toolName, _]) => toolName);
 }
 
+export function getDisabledToolNames(server?: McpServerConnection): string[] {
+  if (!server) {
+    return [];
+  }
+  return Object.entries(server.tools)
+    .filter(([_, tool]) => !!tool.disabled)
+    .map(([toolName, _]) => toolName);
+}
+
 /**
  * Hook that automatically sets up default MCP auto-approve settings
  * by enabling all MCP servers and their tools when mcp is true

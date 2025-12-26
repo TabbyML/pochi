@@ -7,7 +7,10 @@ import { Blocks, ChevronLeft, ChevronsUpDown, Dot } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { AutoApprove } from "../store";
-import { getAvailableToolNames } from "../hooks/use-mcp-auto-approve-defaults";
+import {
+  getAvailableToolNames,
+  getDisabledToolNames,
+} from "../hooks/use-mcp-auto-approve-defaults";
 
 interface McpAutoApproveSectionProps {
   autoApproveSettings: AutoApprove;
@@ -50,11 +53,13 @@ function McpServerSelectionItem({
     disabled: tool.disabled || false,
   }));
 
-  const totalToolsCount = tools.filter((t) => !t.disabled).length;
-  const selectedToolsCount = selectedTools.filter((toolName) => {
-    const tool = tools.find((t) => t.toolName === toolName);
-    return tool && !tool.disabled;
-  }).length;
+  const totalToolsCount = tools.length;
+  const allToolNames = new Set(Object.keys(server.tools ?? {}));
+  const selectedToolsCount = selectedTools.filter((toolName) =>
+    allToolNames.has(toolName),
+  ).length;
+
+  const isServerDisabled = server.status !== "ready";
 
   const onClickServerHeader = () => {
     if (isServerSelected) {
@@ -71,6 +76,7 @@ function McpServerSelectionItem({
           <Checkbox
             id={`mcp-server-${serverName}`}
             checked={isServerSelected}
+            disabled={isServerDisabled}
             onCheckedChange={(checked) => onSelectServer(serverName, !!checked)}
           />
         </div>
@@ -110,7 +116,7 @@ function McpServerSelectionItem({
       </div>
       <div
         className={cn(
-          "origin-top overflow-hidden pl-2 transition-all duration-100 ease-in-out",
+          "origin-top select-none overflow-hidden pl-2 transition-all duration-100 ease-in-out",
           isExpanded ? "max-h-[1000px] opacity-100" : "max-h-0 opacity-0",
         )}
       >
@@ -124,6 +130,7 @@ function McpServerSelectionItem({
                   variant="ghost"
                   size="sm"
                   className="h-6 px-2 text-sm"
+                  disabled={isServerDisabled}
                   onClick={() => onSelectAllTools(serverName)}
                 >
                   {t("settings.autoApprove.selectAll")}
@@ -133,6 +140,7 @@ function McpServerSelectionItem({
                   variant="ghost"
                   size="sm"
                   className="h-6 px-2 text-sm"
+                  disabled={isServerDisabled}
                   onClick={() => onClearAllTools(serverName)}
                 >
                   {t("settings.autoApprove.clearAll")}
@@ -150,10 +158,8 @@ function McpServerSelectionItem({
                   >
                     <Checkbox
                       id={`mcp-tool-${serverName}-${tool.toolName}`}
-                      checked={
-                        !tool.disabled && selectedTools.includes(tool.toolName)
-                      }
-                      disabled={tool.disabled}
+                      checked={selectedTools.includes(tool.toolName)}
+                      disabled={tool.disabled || isServerDisabled}
                       onCheckedChange={(checked) =>
                         onSelectTool(serverName, tool.toolName, !!checked)
                       }
@@ -303,11 +309,19 @@ export function McpAutoApproveSection({
 
   const handleSelectAllTools = (serverName: string) => {
     const server = connections[serverName];
-    const toolNames = getAvailableToolNames(server);
+    const disabledTools = new Set(getDisabledToolNames(server));
     const selectedServers = { ...autoApproveSettings.mcpServers };
+
+    // Get currently selected disabled tools to preserve them
+    const currentTools = selectedServers[serverName]?.tools || [];
+    const selectedDisabledTools = currentTools.filter((toolName) => {
+      return disabledTools.has(toolName);
+    });
+
+    // Combine available tools with selected disabled tools
     selectedServers[serverName] = {
       ...selectedServers[serverName],
-      tools: [...toolNames],
+      tools: [...getAvailableToolNames(server), ...selectedDisabledTools],
     };
     onUpdateSettings({
       mcpServers: selectedServers,
@@ -315,10 +329,20 @@ export function McpAutoApproveSection({
   };
 
   const handleClearAllTools = (serverName: string) => {
+    const server = connections[serverName];
+    const availableTools = new Set(getAvailableToolNames(server));
     const selectedServers = { ...autoApproveSettings.mcpServers };
+
+    // Get currently selected disabled tools to preserve them
+    const currentTools = selectedServers[serverName]?.tools || [];
+    const selectedDisabledTools = currentTools.filter((toolName) => {
+      return !availableTools.has(toolName);
+    });
+
+    // Keep only disabled tools
     selectedServers[serverName] = {
       ...selectedServers[serverName],
-      tools: [],
+      tools: selectedDisabledTools,
     };
     onUpdateSettings({
       mcpServers: selectedServers,
