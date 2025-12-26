@@ -76,6 +76,11 @@ test("single review without range", () => {
           body: "Please update the documentation to include setup instructions.",
         },
       ],
+      codeSnippet: {
+        content: "// No code snippet available",
+        startLine: 0,
+        endLine: 0,
+      },
     },
   ];
   expect(renderReviewComments(reviews)).toMatchSnapshot();
@@ -144,6 +149,11 @@ test("review with special characters in comment", () => {
           body: 'The regex pattern `/^[a-z]+$/i` should be `\\w+` for better matching.',
         },
       ],
+      codeSnippet: {
+        content: "function parseInput(input: string): string[] {\n  const pattern = /^[a-z]+$/i;\n  if (pattern.test(input)) {\n    return input.split('');\n  }\n  return [];\n}\n\nfunction validatePattern(str: string) {\n  // Validation logic here\n  return str.length > 0;",
+        startLine: 95,
+        endLine: 110,
+      },
     },
   ];
   expect(renderReviewComments(reviews)).toMatchSnapshot();
@@ -167,6 +177,11 @@ test("review with multiline comment", () => {
 3. Should handle connection errors gracefully`,
         },
       ],
+      codeSnippet: {
+        content: "import { createConnection } from 'mysql2';\n\nconst config = {\n  host: 'localhost',\n  user: 'admin',\n  password: 'secret'\n};\n\nexport function connect() {\n  return createConnection(config);\n}\n\nfunction closeConnection(conn) {",
+        startLine: 0,
+        endLine: 13,
+      },
     },
   ];
   expect(renderReviewComments(reviews)).toMatchSnapshot();
@@ -187,6 +202,11 @@ test("review at start of file", () => {
           body: "Missing copyright header.",
         },
       ],
+      codeSnippet: {
+        content: "import express from 'express';\nimport cors from 'cors';\n\nconst app = express();\nconst port = 3000;\n\napp.use(cors());\napp.use(express.json());\n\napp.get('/', (req, res) => {\n  res.send('Hello World!');",
+        startLine: 0,
+        endLine: 10,
+      },
     },
   ];
   expect(renderReviewComments(reviews)).toMatchSnapshot();
@@ -207,6 +227,11 @@ test("review with large line numbers", () => {
           body: "This entire section should be refactored into smaller functions.",
         },
       ],
+      codeSnippet: {
+        content: "  // Large legacy function starts here\n  function processLegacyData(input) {\n    // ... hundreds of lines of complex logic\n    let result = {};\n    for (let i = 0; i < input.length; i++) {\n      // ... more processing\n      result[i] = transformData(input[i]);\n    }\n    // ... even more lines\n    return result;\n  }",
+        startLine: 1518,
+        endLine: 1655,
+      },
     },
   ];
   expect(renderReviewComments(reviews)).toMatchSnapshot();

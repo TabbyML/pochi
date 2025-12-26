@@ -45,12 +45,6 @@ export async function updateUser(id: string, updates: UserUpdate) {
 1. Missing error handling for failed API requests.
 2. Consider adding retry logic.
 </comment>
-</review>
-
-<review>
-<comment location="">
-Add tests for invalid token scenarios.
-</comment>
 </review>"
 `;
 
@@ -61,6 +55,20 @@ The code snippets provided below include surrounding context to help you underst
 
 IMPORTANT: If you need additional context beyond the provided code snippets, use the readFile tool.
 <review>
+src/index.ts:0-10:
+\`\`\`
+import express from 'express';
+import cors from 'cors';
+
+const app = express();
+const port = 3000;
+
+app.use(cors());
+app.use(express.json());
+
+app.get('/', (req, res) => {
+  res.send('Hello World!');
+\`\`\`
 <comment location="1:0-1:30">
 Missing copyright header.
 </comment>
@@ -101,6 +109,20 @@ The code snippets provided below include surrounding context to help you underst
 
 IMPORTANT: If you need additional context beyond the provided code snippets, use the readFile tool.
 <review>
+src/legacy-code.js:1518-1655:
+\`\`\`
+  // Large legacy function starts here
+  function processLegacyData(input) {
+    // ... hundreds of lines of complex logic
+    let result = {};
+    for (let i = 0; i < input.length; i++) {
+      // ... more processing
+      result[i] = transformData(input[i]);
+    }
+    // ... even more lines
+    return result;
+  }
+\`\`\`
 <comment location="1523:15-1650:3">
 This entire section should be refactored into smaller functions.
 </comment>
@@ -114,6 +136,22 @@ The code snippets provided below include surrounding context to help you underst
 
 IMPORTANT: If you need additional context beyond the provided code snippets, use the readFile tool.
 <review>
+src/database/connection.ts:0-13:
+\`\`\`
+import { createConnection } from 'mysql2';
+
+const config = {
+  host: 'localhost',
+  user: 'admin',
+  password: 'secret'
+};
+
+export function connect() {
+  return createConnection(config);
+}
+
+function closeConnection(conn) {
+\`\`\`
 <comment location="5:0-8:2">
 This connection logic has several issues:
 1. No connection pooling
@@ -130,6 +168,20 @@ The code snippets provided below include surrounding context to help you underst
 
 IMPORTANT: If you need additional context beyond the provided code snippets, use the readFile tool.
 <review>
+src/parser.ts:95-110:
+\`\`\`
+function parseInput(input: string): string[] {
+  const pattern = /^[a-z]+$/i;
+  if (pattern.test(input)) {
+    return input.split('');
+  }
+  return [];
+}
+
+function validatePattern(str: string) {
+  // Validation logic here
+  return str.length > 0;
+\`\`\`
 <comment location="100:10-105:5">
 The regex pattern \`/^[a-z]+$/i\` should be \`\\w+\` for better matching.
 </comment>
@@ -199,6 +251,10 @@ The code snippets provided below include surrounding context to help you underst
 
 IMPORTANT: If you need additional context beyond the provided code snippets, use the readFile tool.
 <review>
+README.md:0-0:
+\`\`\`
+// No code snippet available
+\`\`\`
 <comment location="">
 Please update the documentation to include setup instructions.
 </comment>
