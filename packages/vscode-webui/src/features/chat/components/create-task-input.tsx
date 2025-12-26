@@ -135,7 +135,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
         name: string;
         url: string;
       }>;
-    }) => {
+    }): Promise<boolean> => {
       const { content, shouldCreateWorktree, uploadedFiles } = params;
 
       let worktree: typeof selectedWorktree | null = selectedWorktree;
@@ -150,7 +150,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
 
         // If worktree creation was requested but failed, do not proceed
         if (!worktree) {
-          return;
+          return false;
         }
 
         setUserSelectedWorktree(worktree);
@@ -163,8 +163,26 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
         files: uploadedFiles,
         reviews,
       });
+
+      // Clear files if they were uploaded
+      if (uploadedFiles && uploadedFiles.length > 0) {
+        clearFiles();
+      }
+
+      // Clear input content after unfreeze
+      setTimeout(clearDraft, 50);
+
+      return true;
     },
-    [cwd, selectedWorktree, baseBranch, reviews, setUserSelectedWorktree],
+    [
+      cwd,
+      selectedWorktree,
+      baseBranch,
+      reviews,
+      setUserSelectedWorktree,
+      clearFiles,
+      clearDraft,
+    ],
   );
 
   const handleSubmitImpl = useCallback(
@@ -208,10 +226,6 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
             selectedWorktree === "new-worktree",
           uploadedFiles,
         });
-
-        clearFiles();
-        // Clear input content after unfreeze
-        setTimeout(clearDraft, 50);
       } else if (content.length > 0 || reviews.length > 0) {
         clearUploadError();
 
@@ -221,9 +235,6 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
             shouldCreateWorktree === true ||
             selectedWorktree === "new-worktree",
         });
-
-        // Clear input content after unfreeze
-        setTimeout(clearDraft, 50);
       }
 
       // Set isCreatingTask state false
@@ -241,8 +252,6 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
       isCreatingTask,
       isUploadingAttachments,
       clearUploadError,
-      clearDraft,
-      clearFiles,
       setDebouncedIsCreatingTask,
       createWorktreeAndOpenTask,
       reviews,
