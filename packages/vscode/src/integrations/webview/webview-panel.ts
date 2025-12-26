@@ -1,5 +1,5 @@
 import { AuthEvents } from "@/lib/auth-events";
-import { workspaceScoped } from "@/lib/workspace-scoped";
+import { WorkspaceScope, workspaceScoped } from "@/lib/workspace-scoped";
 import { getLogger, toErrorMessage } from "@getpochi/common";
 import {
   type PochiTaskInfo,
@@ -276,10 +276,12 @@ export class PochiTaskEditorProvider
     info: PochiTaskInfo,
   ): Promise<PochiWebviewPanel> {
     const { cwd, uid } = info;
-    const isWorkspace =
-      cwd === vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+    const mainWorkspaceScope = container.resolve(WorkspaceScope);
+    const isMainWorkspace = cwd === mainWorkspaceScope.cwd;
     // reuse container for workspace root as siderbar has create VSCodeHostImpl for workspace root
-    const workspaceContainer = isWorkspace ? container : workspaceScoped(cwd);
+    const workspaceContainer = isMainWorkspace
+      ? container
+      : workspaceScoped(cwd);
 
     const events = workspaceContainer.resolve(AuthEvents);
     const pochiConfiguration = workspaceContainer.resolve(PochiConfiguration);
