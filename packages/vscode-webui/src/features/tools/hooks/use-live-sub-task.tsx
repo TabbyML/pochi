@@ -72,7 +72,6 @@ export function useLiveSubTask(
     todos: todosRef,
     isSubTask: true,
     modelOverride: customAgentModel,
-    taskId: uid,
   });
 
   // FIXME: handle auto retry for output without task.
