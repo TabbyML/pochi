@@ -50,7 +50,7 @@ interface ChatToolbarProps {
   displayError: Error | undefined;
   todosRef: React.RefObject<Todo[] | undefined>;
   onUpdateIsPublicShared?: (isPublicShared: boolean) => void;
-  taskId: string | undefined;
+  taskId: string;
   saveLatestUserEdits: () => void;
 }
 
