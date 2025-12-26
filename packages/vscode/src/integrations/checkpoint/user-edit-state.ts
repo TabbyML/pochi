@@ -158,9 +158,9 @@ export class UserEditState implements vscode.Disposable {
               removed: x.removed,
             })),
           );
-          if (this.trackingTasks.has(uid) && diffs) {
+          if (this.trackingTasks.has(uid)) {
             logger.info("set diffs for task", uid, hash);
-            nextEdits[uid] = diffs;
+            nextEdits[uid] = diffs ?? [];
           }
         }
       } catch (error) {
