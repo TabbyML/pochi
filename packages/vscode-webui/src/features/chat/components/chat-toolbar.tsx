@@ -41,6 +41,7 @@ import { useNewCompactTask } from "../hooks/use-new-compact-task";
 import type { SubtaskInfo } from "../hooks/use-subtask-info";
 import { ChatInputForm } from "./chat-input-form";
 import { ErrorMessageView } from "./error-message-view";
+import { SubmitReviewsButton } from "./submit-review-button";
 import { CompleteSubtaskButton } from "./subtask";
 
 interface ChatToolbarProps {
@@ -228,12 +229,23 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     isExecuting,
   );
 
+  const showSubmitReviewButton =
+    !!reviews.length &&
+    !isLoading &&
+    !isSubmitDisabled &&
+    !pendingApproval &&
+    !isSubTask;
+
   return (
     <>
       <div className="-translate-y-full -top-2 absolute left-0 w-full px-4 pt-1">
         <div className="flex w-full flex-col bg-background">
           <ErrorMessageView error={displayError} />
           <CompleteSubtaskButton subtask={subtask} messages={messages} />
+          <SubmitReviewsButton
+            onSubmit={handleSubmit}
+            visible={showSubmitReviewButton}
+          />
           <ApprovalButton
             pendingApproval={pendingApproval}
             retry={retry}

@@ -288,7 +288,8 @@
     "forking": "フォーク中..."
   },
   "reviewUI": {
-    "reviews": "レビュー"
+    "reviews": "レビュー",
+    "submitReviews": "レビューを送信"
   },
   "welcomeScreen": {
     "title": "はじめに",
