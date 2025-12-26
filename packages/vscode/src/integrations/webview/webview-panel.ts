@@ -276,7 +276,10 @@ export class PochiTaskEditorProvider
     info: PochiTaskInfo,
   ): Promise<PochiWebviewPanel> {
     const { cwd, uid } = info;
-    const workspaceContainer = workspaceScoped(cwd);
+    const isWorkspace =
+      cwd === vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+    // reuse container for workspace root as siderbar has create VSCodeHostImpl for workspace root
+    const workspaceContainer = isWorkspace ? container : workspaceScoped(cwd);
 
     const events = workspaceContainer.resolve(AuthEvents);
     const pochiConfiguration = workspaceContainer.resolve(PochiConfiguration);
