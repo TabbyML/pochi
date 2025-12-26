@@ -7,6 +7,7 @@ import { Blocks, ChevronLeft, ChevronsUpDown, Dot } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { AutoApprove } from "../store";
+import { getAvailableToolNames } from "../hooks/use-mcp-auto-approve-defaults";
 
 interface McpAutoApproveSectionProps {
   autoApproveSettings: AutoApprove;
@@ -182,15 +183,6 @@ function McpServerSelectionItem({
       </div>
     </div>
   );
-}
-
-export function getAvailableToolNames(server?: McpServerConnection): string[] {
-  if (!server) {
-    return [];
-  }
-  return Object.entries(server.tools)
-    .filter(([_, tool]) => !tool.disabled)
-    .map(([toolName, _]) => toolName);
 }
 
 export function McpAutoApproveSection({

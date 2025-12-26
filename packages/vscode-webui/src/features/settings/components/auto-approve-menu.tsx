@@ -21,6 +21,7 @@ import {
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAutoApprove } from "../hooks/use-auto-approve";
+import { useMcpAutoApproveDefaults } from "../hooks/use-mcp-auto-approve-defaults";
 import { useSubtaskOffhand } from "../hooks/use-subtask-offhand";
 import { type AutoApprove, GlobalStateStorage } from "../store";
 import { McpAutoApproveSection } from "./mcp-auto-approve-section";
@@ -40,6 +41,12 @@ export function AutoApproveMenu({ isSubTask }: { isSubTask: boolean }) {
     autoApproveSettings,
     updateAutoApproveSettings,
   } = useAutoApprove({ isSubTask });
+
+  // Migrate: Automatically enable all MCP servers when mcp is true but mcpServers is undefined (not configured yet)
+  useMcpAutoApproveDefaults({
+    autoApproveSettings,
+    updateAutoApproveSettings,
+  });
 
   const [currentMaxRetry, setCurrentMaxRetry] = useState(
     autoApproveSettings.maxRetryLimit.toString(),

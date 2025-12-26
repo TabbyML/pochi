@@ -116,7 +116,7 @@ export const useSettingsStore = create<SettingsState>()(
         retry: true,
         maxRetryLimit: 3,
         mcp: false,
-        mcpServers: {},
+        mcpServers: undefined,
         autoRunSubtask: true,
       },
 
@@ -129,7 +129,7 @@ export const useSettingsStore = create<SettingsState>()(
         retry: true,
         maxRetryLimit: 3,
         mcp: false,
-        mcpServers: {},
+        mcpServers: undefined,
         autoRunSubtask: false,
       },
 
@@ -197,7 +197,7 @@ export const useSettingsStore = create<SettingsState>()(
           autoApproveActive: true,
         };
       },
-      version: 2,
+      version: 1,
       migrate: (persistedState: unknown) => {
         if (
           persistedState &&
@@ -230,14 +230,6 @@ export const useSettingsStore = create<SettingsState>()(
             state.autoApproveSettings.maxRetryLimit === undefined
           ) {
             state.autoApproveSettings.maxRetryLimit = 3;
-          }
-
-          // Migration: mcpServers exists (required for type safety)
-          if (
-            state.autoApproveSettings &&
-            state.autoApproveSettings.mcpServers === undefined
-          ) {
-            state.autoApproveSettings.mcpServers = {};
           }
         }
 
