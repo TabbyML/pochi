@@ -8,7 +8,6 @@ import { useUserEdits } from "@/lib/hooks/use-user-edits";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
 import { VscDiffMultiple } from "react-icons/vsc";
-
 interface UserEditsProps {
   onClick?: () => void;
   className?: string;
@@ -33,8 +32,7 @@ export const UserEdits: React.FC<UserEditsProps> = ({ taskId, className }) => {
       <HoverCardTrigger asChild>
         <div
           className={cn(
-            // FIXME mt
-            "mt-1 inline-flex h-[1.7rem] max-w-full cursor-pointer items-center gap-1 overflow-hidden truncate rounded-sm border border-[var(--vscode-chat-requestBorder)] px-1 hover:bg-accent/40",
+            "inline-flex h-[1.7rem] max-w-full cursor-pointer items-center gap-1 overflow-hidden truncate rounded-sm border border-[var(--vscode-chat-requestBorder)] px-1 hover:bg-accent/40",
             className,
           )}
           onClick={showFileChanges}
