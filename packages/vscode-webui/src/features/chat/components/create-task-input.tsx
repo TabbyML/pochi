@@ -126,6 +126,44 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
     }
   }, [baseBranch, isOpenMainWorktree, worktreesData.worktrees]);
 
+  const createWorktreeAndOpenTask = useCallback(
+    async (params: {
+      content: string;
+      shouldCreateWorktree: boolean;
+      uploadedFiles?: Array<{
+        contentType: string;
+        name: string;
+        url: string;
+      }>;
+    }) => {
+      const { content, shouldCreateWorktree, uploadedFiles } = params;
+
+      let worktree: typeof selectedWorktree | null = selectedWorktree;
+      if (shouldCreateWorktree) {
+        worktree = await vscodeHost.createWorktree({
+          baseBranch: baseBranch || undefined,
+          generateBranchName: {
+            prompt: content,
+            files: uploadedFiles,
+          },
+        });
+
+        if (worktree) {
+          setUserSelectedWorktree(worktree);
+        }
+      }
+
+      vscodeHost.openTaskInPanel({
+        type: "new-task",
+        cwd: worktree && typeof worktree === "object" ? worktree.path : cwd,
+        prompt: content,
+        files: uploadedFiles,
+        reviews,
+      });
+    },
+    [cwd, selectedWorktree, baseBranch, reviews, setUserSelectedWorktree],
+  );
+
   const handleSubmitImpl = useCallback(
     async (
       e?: React.FormEvent<HTMLFormElement>,
@@ -160,52 +198,29 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
           url: x.url,
         }));
 
-        const worktree =
-          shouldCreateWorktree === true || selectedWorktree === "new-worktree"
-            ? await vscodeHost.createWorktree({
-                baseBranch: baseBranch || undefined,
-                generateBranchName: {
-                  prompt: content,
-                  files: uploadedFiles,
-                },
-              })
-            : selectedWorktree;
-        if (worktree) {
-          setUserSelectedWorktree(worktree);
-          vscodeHost.openTaskInPanel({
-            type: "new-task",
-            cwd: worktree?.path || cwd,
-            prompt: content,
-            files: uploadedFiles,
-            reviews,
-          });
-          clearFiles();
-          // Clear input content after unfreeze
-          setTimeout(clearDraft, 50);
-        }
+        await createWorktreeAndOpenTask({
+          content,
+          shouldCreateWorktree:
+            shouldCreateWorktree === true ||
+            selectedWorktree === "new-worktree",
+          uploadedFiles,
+        });
+
+        clearFiles();
+        // Clear input content after unfreeze
+        setTimeout(clearDraft, 50);
       } else if (content.length > 0 || reviews.length > 0) {
         clearUploadError();
 
-        const worktree =
-          shouldCreateWorktree || selectedWorktree === "new-worktree"
-            ? await vscodeHost.createWorktree({
-                baseBranch: baseBranch || undefined,
-                generateBranchName: {
-                  prompt: content,
-                },
-              })
-            : selectedWorktree;
-        if (worktree) {
-          setUserSelectedWorktree(worktree);
-          vscodeHost.openTaskInPanel({
-            type: "new-task",
-            cwd: worktree?.path || cwd,
-            prompt: content,
-            reviews,
-          });
-          // Clear input content after unfreeze
-          setTimeout(clearDraft, 50);
-        }
+        await createWorktreeAndOpenTask({
+          content,
+          shouldCreateWorktree:
+            shouldCreateWorktree === true ||
+            selectedWorktree === "new-worktree",
+        });
+
+        // Clear input content after unfreeze
+        setTimeout(clearDraft, 50);
       }
 
       // Set isCreatingTask state false
@@ -215,7 +230,6 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
       setBaseBranch(undefined);
     },
     [
-      cwd,
       input,
       files,
       upload,
@@ -227,9 +241,8 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
       clearDraft,
       clearFiles,
       setDebouncedIsCreatingTask,
-      baseBranch,
+      createWorktreeAndOpenTask,
       reviews,
-      setUserSelectedWorktree,
     ],
   );
 
