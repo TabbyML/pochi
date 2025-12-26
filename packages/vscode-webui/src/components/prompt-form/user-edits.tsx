@@ -9,10 +9,10 @@ import { cn } from "@/lib/utils";
 import { vscodeHost } from "@/lib/vscode";
 import { useTranslation } from "react-i18next";
 import { VscDiffMultiple } from "react-icons/vsc";
+
 interface UserEditsProps {
-  onClick?: () => void;
   className?: string;
-  taskId: string | undefined;
+  taskId: string;
 }
 
 export const UserEdits: React.FC<UserEditsProps> = ({ taskId, className }) => {

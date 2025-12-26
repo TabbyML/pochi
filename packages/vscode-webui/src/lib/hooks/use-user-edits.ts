@@ -7,7 +7,7 @@ import { vscodeHost } from "../vscode";
  * Uses ThreadSignal for real-time updates
  */
 /** @useSignals */
-export const useUserEdits = (uid: string | undefined | null) => {
+export const useUserEdits = (uid: string) => {
   const { data: userEditsSignal } = useQuery({
     queryKey: ["userEdits", uid],
     queryFn: () => fetchUserEdits(uid),
@@ -24,8 +24,6 @@ export const useUserEdits = (uid: string | undefined | null) => {
 /**
  * Fetch user edits from workspace API
  */
-async function fetchUserEdits(uid: string | null | undefined) {
-  if (!uid) return;
-
+async function fetchUserEdits(uid: string) {
   return threadSignal(await vscodeHost.readUserEdits(uid));
 }

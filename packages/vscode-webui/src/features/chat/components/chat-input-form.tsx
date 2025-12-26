@@ -32,7 +32,7 @@ interface ChatInputFormProps {
   isSubTask: boolean;
   children?: ReactNode;
   reviews: Review[];
-  taskId: string | undefined;
+  taskId?: string;
 }
 
 export function ChatInputForm({
@@ -79,7 +79,7 @@ export function ChatInputForm({
             editorRef.current?.commands.insertContent(" @");
           }}
         />
-        <UserEdits taskId={taskId} />
+        {taskId && <UserEdits taskId={taskId} />}
         <ReviewBadges reviews={reviews} />
       </div>
       <DevRetryCountdown pendingApproval={pendingApproval} status={status} />
