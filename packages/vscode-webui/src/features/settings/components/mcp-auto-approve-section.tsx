@@ -10,7 +10,7 @@ import type { AutoApprove } from "../store";
 
 interface McpAutoApproveSectionProps {
   autoApproveSettings: AutoApprove;
-  onUpdateSettings: (data: Partial<AutoApprove>) => void;
+  updateAutoApproveSettings: (data: Partial<AutoApprove>) => void;
 }
 
 interface McpServerItemProps {
@@ -195,7 +195,7 @@ export function getAvailableToolNames(server?: McpServerConnection): string[] {
 
 export function McpAutoApproveSection({
   autoApproveSettings,
-  onUpdateSettings,
+  updateAutoApproveSettings,
 }: McpAutoApproveSectionProps) {
   const { t } = useTranslation();
   const { connections, isLoading: isMcpLoading } = useMcp();
@@ -204,6 +204,27 @@ export function McpAutoApproveSection({
   >({});
   const [isOpen, setIsOpen] = useState(false);
   const isMcpSelected = autoApproveSettings.mcp;
+
+  // Sort mcpServers and tools to maintain consistent order and prevent false dirty state
+  // when servers/tools are repeatedly added and removed
+  const onUpdateSettings = (data: Partial<AutoApprove>) => {
+    if (data.mcpServers) {
+      const sortedServers: Record<string, { tools: string[] }> = {};
+      const serverNames = Object.keys(data.mcpServers).sort();
+
+      for (const serverName of serverNames) {
+        const server = data.mcpServers[serverName];
+        sortedServers[serverName] = {
+          ...server,
+          tools: [...server.tools].sort(),
+        };
+      }
+
+      updateAutoApproveSettings({ ...data, mcpServers: sortedServers });
+    } else {
+      updateAutoApproveSettings(data);
+    }
+  };
 
   const handleSelectApproveMcp = (enabled: boolean) => {
     if (enabled) {

@@ -235,7 +235,7 @@ export function AutoApproveMenu({ isSubTask }: { isSubTask: boolean }) {
         {/* MCP Section */}
         <McpAutoApproveSection
           autoApproveSettings={autoApproveSettings}
-          onUpdateSettings={updateAutoApproveSettings}
+          updateAutoApproveSettings={updateAutoApproveSettings}
         />
         <Separator className="my-3" />
         {/* Max Attempts Section */}
