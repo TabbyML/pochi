@@ -6,11 +6,11 @@ import type { McpServerConnection } from "@getpochi/common/mcp-utils";
 import { Blocks, ChevronLeft, ChevronsUpDown, Dot } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { AutoApprove } from "../store";
 import {
   getAvailableToolNames,
   getDisabledToolNames,
 } from "../hooks/use-mcp-auto-approve-defaults";
+import type { AutoApprove } from "../store";
 
 interface McpAutoApproveSectionProps {
   autoApproveSettings: AutoApprove;

@@ -1,11 +1,12 @@
 import { useMcp } from "@/lib/hooks/use-mcp";
+import type { McpServerConnection } from "@getpochi/common/mcp-utils";
 import { useEffect, useRef } from "react";
 import type { AutoApprove } from "../store";
-import type { McpServerConnection } from "@getpochi/common/mcp-utils";
 
 interface UseMcpAutoApproveDefaultsProps {
   autoApproveSettings: AutoApprove;
   updateAutoApproveSettings: (data: Partial<AutoApprove>) => void;
+  handlePersistSettings: () => void;
 }
 
 export function getAvailableToolNames(server?: McpServerConnection): string[] {
@@ -34,9 +35,11 @@ export function getDisabledToolNames(server?: McpServerConnection): string[] {
 export function useMcpAutoApproveDefaults({
   autoApproveSettings,
   updateAutoApproveSettings,
+  handlePersistSettings,
 }: UseMcpAutoApproveDefaultsProps) {
   const { connections, isLoading } = useMcp();
   const hasInitialized = useRef(false);
+  const hasPersisted = useRef(false);
 
   useEffect(() => {
     // Only run once when:
@@ -77,4 +80,20 @@ export function useMcpAutoApproveDefaults({
     isLoading,
     updateAutoApproveSettings,
   ]);
+
+  // Separate effect to persist settings after mcpServers has been updated
+  useEffect(() => {
+    // Only persist if:
+    // 1. We have initialized (mcpServers was set by us)
+    // 2. mcpServers is now defined (state update completed)
+    // 3. We haven't persisted yet
+    if (
+      hasInitialized.current &&
+      autoApproveSettings.mcpServers !== undefined &&
+      !hasPersisted.current
+    ) {
+      hasPersisted.current = true;
+      handlePersistSettings();
+    }
+  }, [autoApproveSettings.mcpServers, handlePersistSettings]);
 }

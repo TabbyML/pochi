@@ -42,12 +42,6 @@ export function AutoApproveMenu({ isSubTask }: { isSubTask: boolean }) {
     updateAutoApproveSettings,
   } = useAutoApprove({ isSubTask });
 
-  // Migrate: Automatically enable all MCP servers when mcp is true but mcpServers is undefined (not configured yet)
-  useMcpAutoApproveDefaults({
-    autoApproveSettings,
-    updateAutoApproveSettings,
-  });
-
   const [currentMaxRetry, setCurrentMaxRetry] = useState(
     autoApproveSettings.maxRetryLimit.toString(),
   );
@@ -166,6 +160,13 @@ export function AutoApproveMenu({ isSubTask }: { isSubTask: boolean }) {
       JSON.stringify(currentSnapshot) !== JSON.stringify(initialSettings);
     setIsDirty(hasChanges);
   }, [autoApproveSettings, subtaskOffhand, initialSettings, isSubTask]);
+
+  // Migration: Automatically enable all MCP servers when mcp is true but mcpServers is undefined (not configured yet)
+  useMcpAutoApproveDefaults({
+    autoApproveSettings,
+    updateAutoApproveSettings,
+    handlePersistSettings,
+  });
 
   return (
     <Popover onOpenChange={onOpenChange}>
