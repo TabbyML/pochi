@@ -77,6 +77,12 @@ export class UserEditState implements vscode.Disposable {
         }
       }),
     });
+
+    this.disposables.push({
+      dispose: this.checkpointService.latestCheckpoint.subscribe(() => {
+        this.triggerUpdate.call();
+      }),
+    });
   }
 
   private triggerUpdate = funnel(() => this.updateEdits(), {
@@ -93,9 +99,16 @@ export class UserEditState implements vscode.Disposable {
 
     for (const [uid, hash] of this.trackingTasks.entries()) {
       try {
-        const diffs = await this.checkpointService.getCheckpointFileEdits(hash);
-        if (this.trackingTasks.has(uid) && diffs) {
-          nextEdits[uid] = diffs;
+        if (hash !== this.checkpointService.latestCheckpoint.value) {
+          // If the checkpoint hash is not the latest, we cannot guarantee
+          // the diffs are accurate, so we clear them.
+          nextEdits[uid] = [];
+        } else {
+          const diffs =
+            await this.checkpointService.getCheckpointFileEdits(hash);
+          if (this.trackingTasks.has(uid) && diffs) {
+            nextEdits[uid] = diffs;
+          }
         }
       } catch (error) {
         logger.error(`Failed to update user edits for hash ${hash}`, error);

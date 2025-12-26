@@ -27,6 +27,7 @@ export class CheckpointService implements vscode.Disposable {
   private readyDefer = new Deferred<void>();
   private initialized = false;
 
+  // TODO(quan): track latestCheckpoint per-worktree
   latestCheckpoint = signal<string | null>(null);
 
   constructor(
