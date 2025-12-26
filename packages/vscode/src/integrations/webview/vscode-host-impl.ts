@@ -996,9 +996,9 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       selection:
         review.range && options?.revealRange
           ? new vscode.Selection(
-              review.range.start.line - 1,
+              review.range.start.line,
               0,
-              review.range.start.line - 1,
+              review.range.start.line,
               0,
             )
           : undefined,

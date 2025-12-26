@@ -245,9 +245,14 @@ async function toReview(thread: Thread): Promise<Review> {
 async function readCodeSnippet(
   uri: vscode.Uri,
   range?: vscode.Range,
-): Promise<ReviewCodeSnippet | undefined> {
+): Promise<ReviewCodeSnippet> {
+  // Fallback snippet when range is not available
   if (!range) {
-    return undefined;
+    return {
+      content: "// No code snippet available",
+      startLine: 0,
+      endLine: 0,
+    };
   }
 
   try {
@@ -308,6 +313,12 @@ async function readCodeSnippet(
     return snippet;
   } catch (error) {
     logger.error("Failed to read document for thread:", error);
+    // Fallback snippet when document cannot be read
+    return {
+      content: "// Error reading document",
+      startLine: range?.start.line ?? 0,
+      endLine: range?.end.line ?? 0,
+    };
   }
 }
 

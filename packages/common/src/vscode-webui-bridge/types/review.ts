@@ -17,7 +17,7 @@ export type Review = {
     end: Position;
   };
   comments: ReviewComment[];
-  codeSnippet?: ReviewCodeSnippet;
+  codeSnippet: ReviewCodeSnippet;
 };
 
 type Position = {
