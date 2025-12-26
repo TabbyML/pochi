@@ -19,7 +19,7 @@ import type {
 } from "@getpochi/common/vscode-webui-bridge";
 import type { LLMRequestData } from "@getpochi/livekit";
 import type { Todo } from "@getpochi/tools";
-import { useCallback } from "react";
+import { type RefObject, useCallback } from "react";
 
 export function useLiveChatKitGetters({
   todos,
@@ -30,7 +30,7 @@ export function useLiveChatKitGetters({
   todos: React.RefObject<Todo[] | undefined>;
   isSubTask: boolean;
   modelOverride?: DisplayModel;
-  userEdits?: FileDiff[];
+  userEdits?: RefObject<FileDiff[] | undefined>;
 }) {
   const { toolset, instructions } = useMcp();
   const mcpInfo = useLatest({ toolset, instructions });
@@ -38,9 +38,8 @@ export function useLiveChatKitGetters({
 
   const { customAgents } = useCustomAgents(true);
   const customAgentsRef = useLatest(customAgents);
-  const userEditsRef = useLatest(userEdits);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies(userEditsRef.current): userEditsRef.current is ref.
+  // biome-ignore lint/correctness/useExhaustiveDependencies(userEdits?.current): userEdits is ref.
   const getEnvironment = useCallback(async () => {
     const environment = await vscodeHost.readEnvironment({
       isSubTask,
@@ -50,7 +49,7 @@ export function useLiveChatKitGetters({
     return {
       todos: todos.current,
       ...environment,
-      userEdits: userEditsRef.current,
+      userEdits: userEdits?.current,
     } satisfies Environment;
   }, [todos, isSubTask]);
 
