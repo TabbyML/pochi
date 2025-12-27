@@ -14,11 +14,10 @@ import {
 import { useSelectedModels, useSettingsStore } from "@/features/settings";
 import type { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
-import { useReviews } from "@/lib/hooks/use-reviews";
 import { useTaskInputDraft } from "@/lib/hooks/use-task-input-draft";
 import { useWorktrees } from "@/lib/hooks/use-worktrees";
 import { vscodeHost } from "@/lib/vscode";
-import type { GitWorktree } from "@getpochi/common/vscode-webui-bridge";
+import type { GitWorktree, Review } from "@getpochi/common/vscode-webui-bridge";
 import { Loader2, PaperclipIcon } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -35,6 +34,7 @@ interface CreateTaskInputProps {
 }
 
 const noop = () => {};
+const emptyArray: unknown[] = [];
 
 export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
   cwd,
@@ -67,8 +67,6 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
     handleFileDrop,
     clearError: clearUploadError,
   } = attachmentUpload;
-
-  const reviews = useReviews();
 
   const worktreesData = useWorktrees();
   const worktrees = useMemo(() => {
@@ -161,7 +159,6 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
         cwd: worktree && typeof worktree === "object" ? worktree.path : cwd,
         prompt: content,
         files: uploadedFiles,
-        reviews,
       });
 
       // Clear files if they were uploaded
@@ -178,7 +175,6 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
       cwd,
       selectedWorktree,
       baseBranch,
-      reviews,
       setUserSelectedWorktree,
       clearFiles,
       clearDraft,
@@ -203,8 +199,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
       const content = input.trim();
 
       // Disallow empty submissions
-      if (content.length === 0 && files.length === 0 && reviews.length === 0)
-        return;
+      if (content.length === 0 && files.length === 0) return;
 
       // Set isCreatingTask state true
       // Show loading and freeze input
@@ -254,7 +249,6 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
       clearUploadError,
       setDebouncedIsCreatingTask,
       createWorktreeAndOpenTask,
-      reviews,
     ],
   );
 
@@ -289,7 +283,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
         isSubTask={false}
         onRemoveQueuedMessage={noop}
         onFocus={onFocus}
-        reviews={reviews}
+        reviews={emptyArray as Review[]}
       >
         {files.length > 0 && (
           <div className="px-3">
