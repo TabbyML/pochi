@@ -34,7 +34,7 @@ interface CreateTaskInputProps {
 }
 
 const noop = () => {};
-const emptyArray: unknown[] = [];
+const emptyReviews: Review[] = [];
 
 export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
   cwd,
@@ -283,7 +283,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
         isSubTask={false}
         onRemoveQueuedMessage={noop}
         onFocus={onFocus}
-        reviews={emptyArray as Review[]}
+        reviews={emptyReviews}
       >
         {files.length > 0 && (
           <div className="px-3">
