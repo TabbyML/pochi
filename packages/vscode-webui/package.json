@@ -133,7 +133,7 @@
     "web-vitals": "^4.2.4"
   },
   "imports": {
-    "#use-paginated-tasks": {
+    "#lib/hooks/use-paginated-tasks": {
       "storybook": "./src/lib/hooks/use-paginated-tasks.mock",
       "default": "./src/lib/hooks/use-paginated-tasks"
     }

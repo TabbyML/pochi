@@ -3,7 +3,7 @@ import type { Task } from "@getpochi/livekit";
 import type { Meta, StoryObj } from "@storybook/react";
 import { fn } from "@storybook/test";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { usePaginatedTasks } from "#use-paginated-tasks";
+import { usePaginatedTasks } from "#lib/hooks/use-paginated-tasks";
 import { WorktreeList } from "../worktree-list";
 
 const mockCwd = "/Users/TabbyML/project/pochi";
@@ -97,6 +97,7 @@ const mockTasks = [
     updatedAt: new Date("2025-12-15T10:00:00Z"),
     modelId: null,
     displayId: 1,
+    lastCheckpointHash: null,
   },
   {
     id: "task-2",
@@ -117,6 +118,7 @@ const mockTasks = [
     updatedAt: new Date("2025-12-15T10:02:00Z"),
     modelId: null,
     displayId: 2,
+    lastCheckpointHash: null,
   },
   {
     id: "task-3",
@@ -137,6 +139,7 @@ const mockTasks = [
     updatedAt: new Date("2025-12-15T10:05:00Z"),
     modelId: null,
     displayId: 3,
+    lastCheckpointHash: null,
   },
 ] satisfies Task[];
 const mockGh = {
