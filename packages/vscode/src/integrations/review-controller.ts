@@ -56,15 +56,6 @@ export class ReviewController implements vscode.Disposable {
           return [];
         }
 
-        // Allow comments if it's a modified changes from content provider.
-        if (document.uri.scheme === DiffChangesContentProvider.scheme) {
-          const changesData = DiffChangesContentProvider.decode(document.uri);
-          if (changesData.type !== "modified") {
-            return [];
-          }
-          return [new vscode.Range(0, 0, document.lineCount, 0)];
-        }
-
         // Otherwise, allow comments if it's there exists original changes from content provider.
         const hasMatchingDiffDoc = vscode.workspace.textDocuments.some(
           (doc) => {
@@ -84,6 +75,9 @@ export class ReviewController implements vscode.Disposable {
         );
 
         if (hasMatchingDiffDoc) {
+          logger.debug(
+            `Allow comment for ${document.uri.toString()} as it has a corresponding active original doc`,
+          );
           return [new vscode.Range(0, 0, document.lineCount, 0)];
         }
 
