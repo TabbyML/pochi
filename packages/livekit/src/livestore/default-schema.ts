@@ -1,5 +1,4 @@
 import { Events, Schema, State, makeSchema } from "@livestore/livestore";
-import type { Message } from "../types";
 import {
   DBMessage,
   DBUIPart,
@@ -148,6 +147,7 @@ export const events = {
       status: TaskStatus,
       updatedAt: Schema.Date,
       duration: Schema.optional(Schema.DurationFromMillis),
+      lastCheckpointHash: Schema.optional(Schema.String),
     }),
   }),
   chatStreamFailed: Events.synced({
@@ -279,7 +279,7 @@ const materializers = State.SQLite.materializers(events, {
         updatedAt,
         modelId,
         displayId,
-        lastCheckpointHash: getLastCheckpointHash(data as Message),
+        lastCheckpointHash: null, // clear lastCheckpointHash on stream start to hide changes made by Pochi, set back in ChatStreamFinished
       })
       .where({ id }),
     tables.messages
@@ -297,6 +297,7 @@ const materializers = State.SQLite.materializers(events, {
     status,
     updatedAt,
     duration,
+    lastCheckpointHash,
   }) => [
     tables.tasks
       .update({
@@ -306,6 +307,7 @@ const materializers = State.SQLite.materializers(events, {
         // Clear error if the stream is finished
         error: null,
         lastStepDuration: duration ?? undefined,
+        lastCheckpointHash: lastCheckpointHash,
       })
       .where({ id }),
     tables.messages
@@ -364,12 +366,3 @@ const materializers = State.SQLite.materializers(events, {
 const state = State.SQLite.makeState({ tables, materializers });
 
 export const schema = makeSchema({ events, state });
-
-function getLastCheckpointHash(data: Message): string | undefined {
-  for (let i = data.parts.length - 1; i >= 0; i--) {
-    const part = data.parts[i];
-    if (part.type === "data-checkpoint") {
-      return part.data.commit;
-    }
-  }
-}

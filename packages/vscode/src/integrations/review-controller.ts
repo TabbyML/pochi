@@ -109,6 +109,9 @@ export class ReviewController implements vscode.Disposable {
 
   async addComment(commentReply: vscode.CommentReply) {
     const { thread, text } = commentReply;
+
+    if (text.trim().length === 0) return;
+
     if (thread.comments.length > 0) {
       const existThread = thread as Thread;
       existThread.comments = [
@@ -154,6 +157,12 @@ export class ReviewController implements vscode.Disposable {
   }
 
   async saveEditComment(comment: Comment) {
+    const bodyText =
+      typeof comment.body === "string" ? comment.body : comment.body.value;
+    if (bodyText.trim().length === 0) {
+      return;
+    }
+
     const thread = this.threads
       .values()
       .toArray()

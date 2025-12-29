@@ -227,6 +227,14 @@ export async function applyPochiLayout(params: { cwd: string | undefined }) {
     vscode.window.showTextDocument(defaultTextDocument, vscode.ViewColumn.Two);
   }
 
+  // If no tabs in task group, open a new task
+  if (getSortedCurrentTabGroups()[0].tabs.length === 0 && params.cwd) {
+    await PochiTaskEditorProvider.openTaskEditor({
+      type: "new-task",
+      cwd: params.cwd,
+    });
+  }
+
   // Re-focus the user focus tab
   if (!userFocusTab) {
     await focusEditorGroup(0);

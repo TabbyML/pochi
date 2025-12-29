@@ -20,7 +20,7 @@ export class UserEditState implements vscode.Disposable {
   edits = signal<Record<string, FileDiff[]>>({});
 
   // Mapping from task uid to hash.
-  private trackingTasks = new Map<string, string>();
+  private trackingTasks = new Map<string, string | undefined>();
   private disposables: vscode.Disposable[] = [];
 
   constructor(
@@ -28,17 +28,18 @@ export class UserEditState implements vscode.Disposable {
     private readonly checkpointService: CheckpointService,
     private readonly pochiTaskState: PochiTaskState,
   ) {
-    this.setupEventListeners();
+    // this.setupEventListeners();
   }
 
   private get cwd() {
-    if (!this.workspaceScope.cwd) {
-      throw new Error("No workspace folder found. Please open a workspace.");
-    }
     return this.workspaceScope.cwd;
   }
 
+  // @ts-ignore
   private setupEventListeners() {
+    if (!this.cwd) {
+      return;
+    }
     const watcher = vscode.workspace.createFileSystemWatcher(
       new vscode.RelativePattern(this.cwd, "**/*"),
     );
@@ -84,7 +85,10 @@ export class UserEditState implements vscode.Disposable {
         let isDirty = false;
         for (const [uid, task] of Object.entries(tasks)) {
           const { cwd, lastCheckpointHash: hash, active } = task;
-          if (active && cwd === this.cwd && hash) {
+          if (active && cwd === this.cwd) {
+            logger.trace(
+              `Updating edits for task ${uid} with hash ${hash}, original: ${this.trackingTasks.get(uid)}`,
+            );
             if (this.trackingTasks.get(uid) !== hash) {
               logger.trace(`Adding/updating tracking task ${uid}`, { hash });
               this.trackingTasks.set(uid, hash);
@@ -122,9 +126,13 @@ export class UserEditState implements vscode.Disposable {
 
     for (const [uid, hash] of this.trackingTasks.entries()) {
       try {
-        if (hash !== this.checkpointService.latestCheckpoint.value) {
-          // If the checkpoint hash is not the latest, we cannot guarantee
-          // the diffs are accurate, so we clear them.
+        const latestCheckpoint = this.checkpointService.latestCheckpoint.value;
+        logger.trace(
+          `Updating edits for task ${uid} with hash ${hash}, latest ${latestCheckpoint}`,
+        );
+        // If the checkpoint hash is not the latest, we cannot guarantee
+        // the diffs are accurate, so we clear them.
+        if (hash !== latestCheckpoint) {
           nextEdits[uid] = [];
         } else {
           const diffs = await this.checkpointService.getCheckpointFileEdits(
