@@ -603,7 +603,9 @@ Once you’re done adding comments, submit them just like you would a review.
 
 Click `Submit Reviews` to Pochi to send all line-level comments as a batch.
 
-This works the same way as submitting a review with empty messages — the comments themselves are the request.
+![Pochi Models](../assets/images/submit-review-inline-comments.png)
+
+This works the same way as submitting a review with empty messages, where the comments themselves are the request.
 
 ![Pochi Models](../assets/images/submit-review-inline-comment.png)
 
