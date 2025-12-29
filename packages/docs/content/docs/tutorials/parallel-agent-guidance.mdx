@@ -1,20 +1,19 @@
 ---
-title: 'Practical Guide to Parallel Agent Development'
+title: 'Practical Guide to Building Parallel Agents Workflow'
 description: "A practical guide to using Pochi's Parallel Agents for concurrent development - learn best practices through a hands-on project."
-image: "/og-image/parallel-agents-tutorial-og-image.png"
 ---
 
-# Practical Guide to Parallel Agent Development
+# Practical Guide to Building Parallel Agents Workflow
 
 ## Why Use Parallel Agents?
 
 When working with AI agents, you'll hit a bottleneck: **sequential execution is slow**.
 
-A single AI agent completes task A → waits → then task B → waits → then task C. Three 15-minute tasks take 45 minutes of waiting. In software development, for example, one agent builds the backend API → then the frontend → then writes tests.
+A single AI agent completes task A → waits → then task B → waits → then task C. Three 15-minute tasks executed sequentially would take 45 minutes in total. In software development, for example, one agent builds the backend API → then the frontend → then writes tests.
 
-**Real teams don't work this way.** Different specialists work in parallel, coordinating through shared specifications.
+**In practice, teams often work in parallel.** Different specialists work in parallel, coordinating through shared specifications.
 
-**That's what Pochi's Parallel Agents solve.** Run multiple agents concurrently—each in its own isolated workspace, all coordinating through a shared design document. Complete multiple tasks simultaneously.
+**That's what Pochi's Parallel Agents solve.** Run multiple agents concurrently—each in its own isolated workspace, all working with shared context and background. Complete multiple tasks simultaneously.
 
 ## What You Will Learn
 
@@ -26,7 +25,7 @@ We'll build a weather demo application to show these concepts in practice.
 
 ## Prerequisites
 
-- Pochi installed and running in your Visual Studio Code
+- **[Install Pochi](../index.mdx#installation)** and ensure it is running in Visual Studio Code.
 - Node.js (version 18+) and npm installed
 - Git installed and configured on your system
 
@@ -40,9 +39,13 @@ Learn more in the [Parallel Agents documentation](../parallel-agents.mdx).
 
 In this hands-on tutorial, we'll build a complete weather application using Pochi's Parallel Agents feature. You'll see how to coordinate multiple agents working in parallel on frontend, backend, and testing tasks - demonstrating the power of concurrent development.
 
+The development workflow for this project looks like this:
+
+![Parallel Agents Development Flow](./images/parallel-agents-develop-flow.png)
+
 ### Step 1: Set Up the Environment and Initialize the Project
 
-First, we'll create a new project directory and initialize it as a Git repository. This repository will serve as the foundation for our parallel development workflow.
+First, we'll create a new [Next.js](https://nextjs.org/) project using `create-next-app`, which will automatically set up the project structure and initialize a Git repository for our parallel development workflow.
 
 #### Create the Project Directory
 
@@ -192,7 +195,7 @@ Now we'll create three separate worktrees, each with its own branch, for the thr
 
 #### Method 1: Using Pochi Sidebar
 
-You can create worktrees from the Pochi sidebar in New Workspace mode:
+You can create worktrees from the Pochi sidebar using **"New Workspace"** mode. Simply start chatting with a prompt, and Pochi will automatically create a new worktree and launch the agent task:
 
 ![Create Worktree from Pochi Sidebar](./images/pochi-sidebar-creating-worktree.png)
 
@@ -214,7 +217,7 @@ git worktree add -b backend ../backend
 # Create frontend worktree
 git worktree add -b frontend ../frontend
 
-# Create tests worktree
+# Create test worktree
 git worktree add -b test ../test
 ```
 
@@ -327,7 +330,7 @@ npm test
 npm test -- --coverage
 ```
 
-All tests should pass successfully, demonstrating that the agents coordinated their work effectively.
+All tests should pass, showing that the agents coordinated their work effectively.
 
 #### Verify Integration
 
