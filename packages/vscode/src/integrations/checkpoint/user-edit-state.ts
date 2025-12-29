@@ -28,13 +28,14 @@ export class UserEditState implements vscode.Disposable {
     private readonly checkpointService: CheckpointService,
     private readonly pochiTaskState: PochiTaskState,
   ) {
-    this.setupEventListeners();
+    // this.setupEventListeners();
   }
 
   private get cwd() {
     return this.workspaceScope.cwd;
   }
 
+  // @ts-ignore
   private setupEventListeners() {
     if (!this.cwd) {
       return;
