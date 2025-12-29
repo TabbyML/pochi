@@ -39,7 +39,7 @@ import {
   applyPochiLayout,
   getSortedCurrentTabGroups,
   getViewColumnForTerminal,
-  isCurrentLayoutDerivedFromPochiLayout,
+  isPochiLayout,
   isPochiTaskTab,
 } from "./layout";
 // biome-ignore lint/style/useImportType: needed for dependency injection
@@ -657,7 +657,7 @@ export class CommandManager implements vscode.Disposable {
         async (...args) => {
           logger.debug("openPochiLayoutOrTerminal", { args });
           // Check if Pochi layout is already applied
-          if (isCurrentLayoutDerivedFromPochiLayout()) {
+          if (await isPochiLayout()) {
             vscode.commands.executeCommand("pochi.openTerminal", ...args);
           } else {
             vscode.commands.executeCommand("pochi.applyPochiLayout", ...args);
