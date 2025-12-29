@@ -157,6 +157,12 @@ export class ReviewController implements vscode.Disposable {
   }
 
   async saveEditComment(comment: Comment) {
+    const bodyText =
+      typeof comment.body === "string" ? comment.body : comment.body.value;
+    if (bodyText.trim().length === 0) {
+      return;
+    }
+
     const thread = this.threads
       .values()
       .toArray()
