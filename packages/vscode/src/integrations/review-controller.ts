@@ -109,6 +109,9 @@ export class ReviewController implements vscode.Disposable {
 
   async addComment(commentReply: vscode.CommentReply) {
     const { thread, text } = commentReply;
+
+    if (text.trim().length === 0) return;
+
     if (thread.comments.length > 0) {
       const existThread = thread as Thread;
       existThread.comments = [
