@@ -182,9 +182,9 @@ function ReviewItem({ review, onClick }: ReviewItemProps) {
       {review.range && (
         // eslint-disable-next-line i18next/no-literal-string
         <div className="shrink-0 text-muted-foreground text-xs">
-          Ln {review.range.start.line}
+          Ln {review.range.start.line + 1}
           {review.range.start.line !== review.range.end.line &&
-            `-${review.range.end.line}`}
+            `-${review.range.end.line + 1}`}
         </div>
       )}
     </div>

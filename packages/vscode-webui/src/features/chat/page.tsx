@@ -36,6 +36,7 @@ import {
 import { ChatArea } from "./components/chat-area";
 import { ChatToolbar } from "./components/chat-toolbar";
 import { SubtaskHeader } from "./components/subtask";
+import { useLatestUserEdits } from "./hooks/use-latest-user-edits";
 import { useRestoreTaskModel } from "./hooks/use-restore-task-model";
 import { useScrollToBottom } from "./hooks/use-scroll-to-bottom";
 import { useSetSubtaskModel } from "./hooks/use-set-subtask-model";
@@ -86,10 +87,7 @@ function Chat({ user, uid, info }: ChatProps) {
   const isSubTask = !!subtask;
 
   const isTaskWithoutContent =
-    info.type === "new-task" &&
-    !info.prompt &&
-    !info.files?.length &&
-    !info.reviews?.length;
+    info.type === "new-task" && !info.prompt && !info.files?.length;
 
   // inherit autoApproveSettings from parent task
   useEffect(() => {
@@ -97,6 +95,8 @@ function Chat({ user, uid, info }: ChatProps) {
       initSubtaskAutoApproveSettings();
     }
   }, [isSubTask, initSubtaskAutoApproveSettings]);
+
+  const { saveLatestUserEdits, latestUserEdits } = useLatestUserEdits(uid);
 
   const {
     isLoading: isModelsLoading,
@@ -110,6 +110,7 @@ function Chat({ user, uid, info }: ChatProps) {
   const getters = useLiveChatKitGetters({
     todos: todosRef,
     isSubTask,
+    userEdits: latestUserEdits,
   });
 
   useRestoreTaskModel(task, isModelsLoading, updateSelectedModelId);
@@ -297,6 +298,7 @@ function Chat({ user, uid, info }: ChatProps) {
             pendingToolCalls,
             lineChanges: task.lineChanges || undefined,
             lastStepDuration: task.lastStepDuration || undefined,
+            lastCheckpointHash: task.lastCheckpointHash || undefined,
           }).args,
         ),
       );
@@ -308,24 +310,18 @@ function Chat({ user, uid, info }: ChatProps) {
     const cwd = info.cwd;
     const displayId = info.displayId ?? undefined;
     if (info.type === "new-task") {
-      if (info.files?.length || info.reviews?.length) {
+      if (info.files?.length) {
         const files = info.files?.map((file) => ({
           type: "file" as const,
           filename: file.name,
           mediaType: file.contentType,
           url: file.url,
         }));
-        const reviews = info.reviews;
 
         chatKit.init(cwd, {
           displayId,
           prompt: info.prompt,
-          parts: prepareMessageParts(
-            t,
-            info.prompt || "",
-            files || [],
-            reviews || [],
-          ),
+          parts: prepareMessageParts(t, info.prompt || "", files || [], []),
         });
       } else if (info.prompt) {
         chatKit.init(cwd, {
@@ -431,6 +427,8 @@ function Chat({ user, uid, info }: ChatProps) {
           subtask={subtask}
           displayError={displayError}
           onUpdateIsPublicShared={chatKit.updateIsPublicShared}
+          taskId={uid}
+          saveLatestUserEdits={saveLatestUserEdits}
         />
       </div>
     </div>

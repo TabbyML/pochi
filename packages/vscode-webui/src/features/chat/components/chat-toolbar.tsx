@@ -12,7 +12,11 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
-import { ApprovalButton, type useApprovalAndRetry } from "@/features/approval";
+import {
+  ApprovalButton,
+  isRetryApprovalCountingDown,
+  type useApprovalAndRetry,
+} from "@/features/approval";
 import { useAutoApproveGuard } from "@/features/chat";
 import { useSelectedModels } from "@/features/settings";
 import { AutoApproveMenu } from "@/features/settings";
@@ -30,13 +34,19 @@ import { PaperclipIcon, SendHorizonal, StopCircleIcon } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import {
+  type BlockingOperation,
+  useBlockingOperations,
+} from "../hooks/use-blocking-operations";
 import { useChatStatus } from "../hooks/use-chat-status";
 import { useChatSubmit } from "../hooks/use-chat-submit";
 import { useInlineCompactTask } from "../hooks/use-inline-compact-task";
 import { useNewCompactTask } from "../hooks/use-new-compact-task";
+import { useShowCompleteSubtaskButton } from "../hooks/use-subtask-completed";
 import type { SubtaskInfo } from "../hooks/use-subtask-info";
 import { ChatInputForm } from "./chat-input-form";
 import { ErrorMessageView } from "./error-message-view";
+import { SubmitReviewsButton } from "./submit-review-button";
 import { CompleteSubtaskButton } from "./subtask";
 
 interface ChatToolbarProps {
@@ -50,6 +60,8 @@ interface ChatToolbarProps {
   displayError: Error | undefined;
   todosRef: React.RefObject<Todo[] | undefined>;
   onUpdateIsPublicShared?: (isPublicShared: boolean) => void;
+  taskId: string;
+  saveLatestUserEdits: () => void;
 }
 
 export const ChatToolbar: React.FC<ChatToolbarProps> = ({
@@ -63,6 +75,8 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   displayError,
   todosRef,
   onUpdateIsPublicShared,
+  taskId,
+  saveLatestUserEdits,
 }) => {
   const { t } = useTranslation();
 
@@ -110,6 +124,16 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     compact,
   });
 
+  const blockingOperations: BlockingOperation[] = [
+    {
+      id: "new-compact-task",
+      isBusy: newCompactTaskPending,
+      label: t("tokenUsage.compacting"),
+    },
+  ];
+
+  const blockingState = useBlockingOperations(blockingOperations);
+
   const {
     isExecuting,
     isBusyCore,
@@ -124,7 +148,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     isFilesEmpty: files.length === 0,
     isReviewsEmpty: reviews.length === 0,
     isUploadingAttachments,
-    newCompactTaskPending,
+    blockingState,
   });
 
   const compactEnabled = !(
@@ -141,10 +165,11 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     isSubmitDisabled,
     isLoading,
     pendingApproval,
-    newCompactTaskPending,
+    blockingState,
     queuedMessages,
     setQueuedMessages,
     reviews,
+    saveLatestUserEdits,
   });
 
   const handleQueueMessage = useCallback(
@@ -182,7 +207,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   ]);
 
   // Only allow adding tool results when not loading
-  const allowAddToolResult = !(isLoading || newCompactTaskPending);
+  const allowAddToolResult = !(isLoading || blockingState.isBusy);
   useAddCompleteToolCalls({
     messages,
     enable: allowAddToolResult,
@@ -209,18 +234,40 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     isExecuting,
   );
 
+  const showCompleteSubtaskButton = useShowCompleteSubtaskButton(
+    subtask,
+    messages,
+  );
+
+  const showSubmitReviewButton =
+    !isSubmitDisabled &&
+    !!reviews.length &&
+    !!messages.length &&
+    !isLoading &&
+    (!isSubTask || !showCompleteSubtaskButton) &&
+    (!pendingApproval ||
+      (pendingApproval.name === "retry" &&
+        !isRetryApprovalCountingDown(pendingApproval)));
+
   return (
     <>
       <div className="-translate-y-full -top-2 absolute left-0 w-full px-4 pt-1">
         <div className="flex w-full flex-col bg-background">
           <ErrorMessageView error={displayError} />
-          <CompleteSubtaskButton subtask={subtask} messages={messages} />
+          <CompleteSubtaskButton
+            showCompleteButton={showCompleteSubtaskButton}
+            subtask={subtask}
+          />
           <ApprovalButton
             pendingApproval={pendingApproval}
             retry={retry}
             allowAddToolResult={allowAddToolResult}
             isSubTask={isSubTask}
             task={task}
+          />
+          <SubmitReviewsButton
+            showSubmitReviewButton={showSubmitReviewButton}
+            onSubmit={handleSubmit}
           />
         </div>
       </div>
@@ -266,6 +313,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
         }
         isSubTask={isSubTask}
         reviews={reviews}
+        taskId={taskId}
       />
 
       {/* Hidden file input for image uploads */}

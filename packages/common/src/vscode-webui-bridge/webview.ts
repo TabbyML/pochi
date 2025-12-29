@@ -159,7 +159,6 @@ export interface VSCodeHostApi {
       base64Data?: string;
       fallbackGlobPattern?: string;
       cellId?: string;
-      webviewKind?: "sidebar" | "pane";
     },
   ): void;
 
@@ -344,6 +343,8 @@ export interface VSCodeHostApi {
     review: Review,
     options?: { focusCommentsPanel?: boolean; revealRange?: boolean },
   ): Promise<void>;
+
+  readUserEdits(uid: string): Promise<ThreadSignalSerialization<FileDiff[]>>;
 }
 
 export interface WebviewHostApi {

@@ -3,6 +3,12 @@ export type ReviewComment = {
   body: string;
 };
 
+export type ReviewCodeSnippet = {
+  content: string;
+  startLine: number;
+  endLine: number;
+};
+
 export type Review = {
   id: string;
   uri: string;
@@ -11,6 +17,7 @@ export type Review = {
     end: Position;
   };
   comments: ReviewComment[];
+  codeSnippet: ReviewCodeSnippet;
 };
 
 type Position = {

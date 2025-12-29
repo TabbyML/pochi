@@ -1,5 +1,3 @@
-import type { Review } from "./review";
-
 export type FileUIPart = {
   name: string;
   contentType: string;
@@ -12,7 +10,6 @@ export type PochiTaskParams = { cwd: string } & (
       uid?: string;
       prompt?: string;
       files?: FileUIPart[];
-      reviews?: Review[];
     }
   | {
       type: "fork-task";
@@ -71,6 +68,9 @@ export interface TaskState {
   unread?: boolean;
   active?: boolean;
   running?: boolean;
+
+  cwd: string;
+  lastCheckpointHash?: string;
   focused?: boolean;
 }
 

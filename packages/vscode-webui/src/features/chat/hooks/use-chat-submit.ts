@@ -10,6 +10,7 @@ import type React from "react";
 import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { useAutoApproveGuard, useToolCallLifeCycle } from "../lib/chat-state";
+import type { BlockingState } from "./use-blocking-operations";
 
 const logger = getLogger("UseChatSubmit");
 
@@ -24,11 +25,12 @@ interface UseChatSubmitProps {
   attachmentUpload: UseAttachmentUploadReturn;
   isSubmitDisabled: boolean;
   isLoading: boolean;
-  newCompactTaskPending: boolean;
+  blockingState: BlockingState;
   pendingApproval: PendingApproval | undefined;
   queuedMessages: string[];
   setQueuedMessages: React.Dispatch<React.SetStateAction<string[]>>;
   reviews: Review[];
+  saveLatestUserEdits: () => void;
 }
 
 export function useChatSubmit({
@@ -38,11 +40,12 @@ export function useChatSubmit({
   attachmentUpload,
   isSubmitDisabled,
   isLoading,
-  newCompactTaskPending,
+  blockingState,
   pendingApproval,
   queuedMessages,
   setQueuedMessages,
   reviews,
+  saveLatestUserEdits,
 }: UseChatSubmitProps) {
   const autoApproveGuard = useAutoApproveGuard();
   const { executingToolCalls, previewingToolCalls, isExecuting, isPreviewing } =
@@ -72,7 +75,7 @@ export function useChatSubmit({
 
   const handleStop = useCallback(() => {
     // Compacting is not allowed to be stopped.
-    if (newCompactTaskPending) return;
+    if (blockingState.isBusy) return;
 
     if (isPreviewing) {
       abortPreviewingToolCalls();
@@ -87,7 +90,7 @@ export function useChatSubmit({
       pendingApproval.stopCountdown();
     }
   }, [
-    newCompactTaskPending,
+    blockingState.isBusy,
     isExecuting,
     isPreviewing,
     isLoading,
@@ -108,7 +111,7 @@ export function useChatSubmit({
       logger.debug("handleSubmit");
 
       // Uploading / Compacting is not allowed to be stopped.
-      if (newCompactTaskPending || isUploading) return;
+      if (blockingState.isBusy || isUploading) return;
 
       const allMessages = [...queuedMessages];
       // Clear queued messages after adding them to allMessages
@@ -124,6 +127,8 @@ export function useChatSubmit({
       // Disallow empty submissions
       if (text.length === 0 && files.length === 0 && reviews.length === 0)
         return;
+
+      saveLatestUserEdits();
 
       const stopIsLoading = handleStop();
       if (stopIsLoading || isSubmitDisabled) {
@@ -175,13 +180,14 @@ export function useChatSubmit({
       sendMessage,
       setInput,
       clearUploadError,
-      newCompactTaskPending,
+      blockingState.isBusy,
       queuedMessages,
       setQueuedMessages,
       isUploading,
       t,
       clearFiles,
       reviews,
+      saveLatestUserEdits,
     ],
   );
 

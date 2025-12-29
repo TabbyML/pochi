@@ -13,5 +13,6 @@ model: google/gemini-3-pro
     ```bash
     gh issue edit <issue-number> --add-project "Pochi Tasks"
     ```
+7. If `gh issue edit` failed to add project, should ask user to refresh their gh token to authorize it with the project scope (`gh auth refresh -s project`).
 
 IMPORTANT: You only need to create the issue, DO NOT attempt to fix the issue or implement the feature.

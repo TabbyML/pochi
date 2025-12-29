@@ -288,7 +288,8 @@
     "forking": "포크 중..."
   },
   "reviewUI": {
-    "reviews": "리뷰"
+    "reviews": "리뷰",
+    "submitReviews": "리뷰 제출"
   },
   "welcomeScreen": {
     "title": "시작하기",
@@ -413,6 +414,11 @@
     "undo": "실행 취소",
     "viewChanges": "변경 사항 보기",
     "openFile": "파일 열기"
+  },
+  "userEdits": {
+    "filesEdited_one": "{{count}}개 파일 편집됨",
+    "filesEdited_other": "{{count}}개 파일 편집됨",
+    "tooltip": "편집 내용이 추적되어 컨텍스트에 포함됩니다"
   },
   "forkTask": {
     "forkedTaskTitle": "포크됨 원본: {{taskTitle}}"
