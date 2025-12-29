@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/tooltip";
 import { useSelectedModels } from "@/features/settings";
 import { useCurrentWorkspace } from "@/lib/hooks/use-current-workspace";
+import { useDeletedWorktrees } from "@/lib/hooks/use-deleted-worktrees";
 import { usePaginatedTasks } from "@/lib/hooks/use-paginated-tasks";
 import { usePochiTabs } from "@/lib/hooks/use-pochi-tabs";
 import { useWorktrees } from "@/lib/hooks/use-worktrees";
@@ -65,7 +66,7 @@ interface WorktreeGroup {
   isMain: boolean;
   createdAt?: number;
   branch?: string;
-  data: GitWorktree["data"];
+  data?: GitWorktree["data"];
 }
 
 export function WorktreeList({
@@ -77,6 +78,7 @@ export function WorktreeList({
   deletingWorktreePaths: Set<string>;
   onDeleteWorktree: (worktreePath: string) => void;
 }) {
+  const { t } = useTranslation();
   const { data: currentWorkspace, isLoading: isLoadingCurrentWorkspace } =
     useCurrentWorkspace();
   const {
@@ -85,6 +87,7 @@ export function WorktreeList({
     gitOriginUrl,
     isLoading: isLoadingWorktrees,
   } = useWorktrees();
+  const [showDeleted, setShowDeleted] = useState(false);
 
   const groups = useMemo(() => {
     if (isLoadingWorktrees || isLoadingCurrentWorkspace) {
@@ -147,11 +150,31 @@ export function WorktreeList({
     return groups.filter((x) => !deletingWorktreePaths.has(x.path));
   }, [groups, deletingWorktreePaths]);
 
+  const { deletedWorktrees } = useDeletedWorktrees({
+    cwd,
+    origin: gitOriginUrl,
+    activeWorktrees: worktrees,
+  });
+  const deletedGroups = useMemo(() => {
+    return R.pipe(
+      deletedWorktrees,
+      R.map((wt): WorktreeGroup => {
+        const name = getWorktreeNameFromWorktreePath(wt.path) || "unknown";
+
+        return {
+          path: wt.path,
+          createdAt: 0,
+          name,
+          isMain: false,
+          branch: wt.branch,
+        };
+      }),
+    );
+  }, [deletedWorktrees]);
   return (
     <div className="flex flex-col gap-1">
       {optimisticGroups.map((group) => (
         <WorktreeSection
-          isLoadingWorktrees={isLoadingWorktrees}
           key={group.path}
           group={group}
           onDeleteGroup={onDeleteWorktree}
@@ -159,6 +182,38 @@ export function WorktreeList({
           gh={gh}
         />
       ))}
+      {deletedGroups.length > 0 && (
+        <>
+          <div className="group flex items-center py-2">
+            <div className="h-px flex-1 bg-border" />
+            <Button
+              variant="ghost"
+              size="sm"
+              className="mx-2 h-auto gap-2 py-0 text-muted-foreground text-xs hover:bg-transparent"
+              onClick={() => setShowDeleted(!showDeleted)}
+            >
+              <Trash2 className="size-3" />
+              <span className="w-0 overflow-hidden whitespace-nowrap transition-all group-hover:w-auto">
+                {showDeleted
+                  ? t("tasksPage.hideDeletedWorktrees")
+                  : t("tasksPage.showDeletedWorktrees")}
+              </span>
+            </Button>
+            <div className="h-px flex-1 bg-border" />
+          </div>
+
+          {showDeleted &&
+            deletedGroups.map((group) => (
+              <WorktreeSection
+                key={group.path}
+                group={group}
+                gh={gh}
+                isDeleted={true}
+                gitOriginUrl={gitOriginUrl}
+              />
+            ))}
+        </>
+      )}
     </div>
   );
 }
@@ -168,9 +223,10 @@ function WorktreeSection({
   onDeleteGroup,
   gh,
   gitOriginUrl,
+  isDeleted,
 }: {
   group: WorktreeGroup;
-  isLoadingWorktrees: boolean;
+  isDeleted?: boolean;
   onDeleteGroup?: (worktreePath: string) => void;
   gh?: { installed: boolean; authorized: boolean };
   gitOriginUrl?: string | null;
@@ -222,7 +278,7 @@ function WorktreeSection({
             {prefixWorktreeName(group.name)}
           </span>
 
-          <div className="mt-[1px] flex-1">
+          <div className={cn("mt-[1px] flex-1", isDeleted ? "hidden" : "")}>
             {pullRequest ? (
               <PrStatusDisplay
                 prNumber={pullRequest.id}
@@ -245,6 +301,7 @@ function WorktreeSection({
               !isHovered && !showDeleteConfirm
                 ? "pointer-events-none opacity-0"
                 : "opacity-100",
+              isDeleted ? "hidden" : "",
             )}
           >
             <>
