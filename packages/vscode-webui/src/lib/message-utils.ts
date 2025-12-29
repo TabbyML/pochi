@@ -1,12 +1,15 @@
 import { prompts } from "@getpochi/common";
+import type { Review } from "@getpochi/common/vscode-webui-bridge";
 import type { Message } from "@getpochi/livekit";
 import type { FileUIPart } from "ai";
 import type { useTranslation } from "react-i18next";
+import { vscodeHost } from "./vscode";
 
 export function prepareMessageParts(
   t: ReturnType<typeof useTranslation>["t"],
   prompt: string,
   files: FileUIPart[],
+  reviews: Review[],
 ) {
   const parts: Message["parts"] = [];
   for (const x of files) {
@@ -16,7 +19,27 @@ export function prepareMessageParts(
     });
     parts.push(x);
   }
-  parts.push({ type: "text", text: prompt || t("chat.pleaseCheckFiles") });
+
+  if (reviews.length) {
+    parts.push({
+      type: "data-reviews",
+      data: {
+        reviews: [...reviews],
+      },
+    });
+    vscodeHost.clearReviews();
+  }
+
+  let fallbackPrompt = "";
+  if (files.length) {
+    fallbackPrompt = t("chat.pleaseCheckFiles");
+  }
+
+  const finalPrompt = prompt || fallbackPrompt;
+  if (finalPrompt) {
+    parts.push({ type: "text", text: finalPrompt });
+  }
+
   return parts;
 }
 

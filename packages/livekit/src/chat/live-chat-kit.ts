@@ -10,6 +10,7 @@ import { toTaskError, toTaskGitInfo, toTaskStatus } from "../task";
 
 import type { Message, Task } from "../types";
 import { scheduleGenerateTitleJob } from "./background-job";
+import { filterCompletionTools } from "./filter-completion-tools";
 import {
   FlexibleChatTransport,
   type OnStartCallback,
@@ -327,7 +328,7 @@ export class LiveChatKit<
   };
 
   private readonly onFinish: ChatOnFinishCallback<Message> = ({
-    message,
+    message: originalMessage,
     isAbort,
     isError,
   }) => {
@@ -339,6 +340,9 @@ export class LiveChatKit<
     }
 
     if (isError) return; // handled in onError already.
+
+    const message = filterCompletionTools(originalMessage);
+    this.chat.messages = [...this.chat.messages.slice(0, -1), message];
 
     const { store } = this;
     if (message.metadata?.kind !== "assistant") {

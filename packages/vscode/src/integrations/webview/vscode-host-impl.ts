@@ -54,11 +54,13 @@ import {
   type CustomAgentFile,
   type DiffCheckpointOptions,
   type DisplayModel,
+  type FileDiff,
   type GitWorktree,
   type GithubIssue,
   type PochiCredentials,
   type PochiTaskParams,
   type ResourceURI,
+  type Review,
   type RuleFile,
   type SaveCheckpointOptions,
   type SessionState,
@@ -90,10 +92,11 @@ import { Lifecycle, inject, injectable, scoped } from "tsyringe";
 import * as vscode from "vscode";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { CheckpointService } from "../checkpoint/checkpoint-service";
-import type { GitDiff } from "../checkpoint/types";
+// biome-ignore lint/style/useImportType: needed for dependency injection
+import { UserEditState } from "../checkpoint/user-edit-state";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { PochiConfiguration } from "../configuration";
-import { DiffChangesContentProvider } from "../editor/diff-changes-content-provider";
+import { showDiffChanges } from "../editor/diff-changes-editor";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { PochiTaskState } from "../editor/pochi-task-state";
 // biome-ignore lint/style/useImportType: needed for dependency injection
@@ -108,6 +111,8 @@ import { GithubIssueState } from "../github/github-issue-state";
 import { GithubPullRequestState } from "../github/github-pull-request-state";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { ThirdMcpImporter } from "../mcp/third-party-mcp";
+// biome-ignore lint/style/useImportType: needed for dependency injection
+import { ReviewController } from "../review-controller";
 import {
   convertUrl,
   isLocalUrl,
@@ -145,6 +150,8 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     private readonly githubPullRequestState: GithubPullRequestState,
     private readonly githubIssueState: GithubIssueState,
     private readonly gitState: GitState,
+    private readonly reviewController: ReviewController,
+    private readonly userEditState: UserEditState,
   ) {}
 
   private get cwd() {
@@ -488,7 +495,6 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       base64Data?: string;
       fallbackGlobPattern?: string;
       cellId?: string;
-      webviewKind?: "sidebar" | "pane";
     },
   ) => {
     // Expand ~ to home directory if present
@@ -699,6 +705,13 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     },
   );
 
+  readLatestCheckpoint = async (): Promise<
+    ThreadSignalSerialization<string | null>
+  > => {
+    await this.checkpointService.ensureInitialized();
+    return ThreadSignal.serialize(this.checkpointService.latestCheckpoint);
+  };
+
   readCheckpointPath = async (): Promise<string | undefined> => {
     return this.checkpointService.getShadowGitPath();
   };
@@ -763,7 +776,12 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
           )
         : changedFiles;
 
-      return await showDiff(displayFiles, title, this.cwd);
+      return await showDiffChanges(
+        displayFiles,
+        title,
+        this.cwd,
+        checkpoint.modified === undefined,
+      );
     },
   );
 
@@ -782,7 +800,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       if (!this.cwd) {
         return false;
       }
-      return await showDiff(changes, title, this.cwd);
+      return await showDiffChanges(changes, title, this.cwd, true);
     },
   );
 
@@ -964,6 +982,46 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     return await this.gitState.getBranches(this.cwd);
   };
 
+  readReviews = async (): Promise<ThreadSignalSerialization<Review[]>> => {
+    return ThreadSignal.serialize(this.reviewController.reviews);
+  };
+
+  clearReviews = async (): Promise<void> => {
+    return this.reviewController.clearThreads();
+  };
+
+  openReview = async (
+    review: Review,
+    options?: { focusCommentsPanel?: boolean; revealRange?: boolean },
+  ): Promise<void> => {
+    if (options?.focusCommentsPanel) {
+      vscode.commands.executeCommand("workbench.action.focusCommentsPanel");
+    }
+
+    const uri = vscode.Uri.parse(review.uri);
+    vscode.commands.executeCommand("vscode.open", uri, {
+      selection:
+        review.range && options?.revealRange
+          ? new vscode.Selection(
+              review.range.start.line,
+              0,
+              review.range.start.line,
+              0,
+            )
+          : undefined,
+    });
+
+    this.reviewController.expandThread(review.id);
+  };
+
+  readUserEdits = async (
+    uid: string,
+  ): Promise<ThreadSignalSerialization<FileDiff[]>> => {
+    return ThreadSignal.serialize(
+      computed(() => this.userEditState.edits.value[uid] ?? []),
+    );
+  };
+
   dispose() {
     for (const disposable of this.disposables) {
       disposable.dispose();
@@ -1007,52 +1065,3 @@ const ToolPreviewMap: Record<
   writeToFile: previewWriteToFile,
   applyDiff: previewApplyDiff,
 };
-
-async function showDiff(displayFiles: GitDiff[], title: string, cwd: string) {
-  if (displayFiles.length === 0) {
-    return false;
-  }
-
-  if (displayFiles.length === 1) {
-    const changedFile = displayFiles[0];
-
-    await vscode.commands.executeCommand(
-      "vscode.diff",
-      DiffChangesContentProvider.decode({
-        filepath: changedFile.filepath,
-        content: changedFile.before ?? "",
-        cwd: cwd,
-      }),
-      DiffChangesContentProvider.decode({
-        filepath: changedFile.filepath,
-        content: changedFile.after ?? "",
-        cwd: cwd,
-      }),
-      title,
-      {
-        preview: true,
-        preserveFocus: true,
-      },
-    );
-    return true;
-  }
-
-  await vscode.commands.executeCommand(
-    "vscode.changes",
-    title,
-    displayFiles.map((file) => [
-      vscode.Uri.joinPath(vscode.Uri.parse(cwd ?? ""), file.filepath),
-      DiffChangesContentProvider.decode({
-        filepath: file.filepath,
-        content: file.before ?? "",
-        cwd: cwd ?? "",
-      }),
-      DiffChangesContentProvider.decode({
-        filepath: file.filepath,
-        content: file.after ?? "",
-        cwd: cwd ?? "",
-      }),
-    ]),
-  );
-  return true;
-}

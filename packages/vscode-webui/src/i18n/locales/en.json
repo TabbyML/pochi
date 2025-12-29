@@ -283,11 +283,16 @@
     "restoring": "Restoring...",
     "success": "Success",
     "restore": "Restore",
+    "restored": "Restored",
     "opening": "Opening...",
     "noChangesDetected": "No changes detected",
     "compare": "Compare",
     "fork": "Fork",
     "forking": "Forking"
+  },
+  "reviewUI": {
+    "reviews": "Reviews",
+    "submitReviews": "Submit reviews"
   },
   "welcomeScreen": {
     "title": "Get Started",
@@ -412,6 +417,11 @@
     "undo": "Undo",
     "viewChanges": "View changes",
     "openFile": "Open file"
+  },
+  "userEdits": {
+    "filesEdited_one": "{{count}} file edited",
+    "filesEdited_other": "{{count}} files edited",
+    "tooltip": "Your edits are tracked and will be included in the context"
   },
   "forkTask": {
     "forkedTaskTitle": "Forked from {{taskTitle}}"

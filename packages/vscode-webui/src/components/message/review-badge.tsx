@@ -1,0 +1,61 @@
+import { FileBadge } from "@/features/tools";
+import { cn } from "@/lib/utils";
+import { MessageSquare } from "lucide-react";
+
+interface ReviewBadgeProps {
+  uri: string;
+  reviewCount: number;
+  className?: string;
+  showIcon?: boolean;
+  onClick?: () => void;
+}
+
+export const ReviewBadge: React.FC<ReviewBadgeProps> = ({
+  uri,
+  reviewCount,
+  className,
+  showIcon = true,
+  onClick,
+}) => {
+  const displayUri = convertReviewThreadUri(uri);
+
+  return (
+    <div
+      className={cn(
+        "inline-flex h-[1.7rem] max-w-full cursor-pointer items-center gap-1 overflow-hidden truncate rounded-sm",
+        className,
+      )}
+    >
+      <FileBadge
+        className="hover:!bg-transparent !py-0 m-0 cursor-default truncate rounded-sm border border-[var(--vscode-chat-requestBorder)] pr-1"
+        labelClassName="whitespace-nowrap"
+        label={getReviewBadgeLabel(displayUri)}
+        path={displayUri}
+        onClick={() => {
+          onClick?.();
+        }}
+      >
+        {showIcon && (
+          <span className="ml-1 space-x-0.5 text-muted-foreground">
+            {/* eslint-disable-next-line i18next/no-literal-string */}
+            <span>·</span>
+            <MessageSquare className="inline size-3" />
+            <span className="text-xs">{reviewCount}</span>
+          </span>
+        )}
+      </FileBadge>
+    </div>
+  );
+};
+
+// Build label for the badge
+export function getReviewBadgeLabel(reviewUri: string) {
+  const filename = reviewUri.split("/").pop();
+  return filename;
+}
+
+// Convert review thread uri to text document uri
+export function convertReviewThreadUri(uri: string) {
+  // Remove query parameters if present
+  return uri.replace(/^pochi-diff-changes:/, "").split("?")[0];
+}

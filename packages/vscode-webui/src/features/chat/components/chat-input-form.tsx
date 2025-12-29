@@ -8,6 +8,9 @@ import type { useApprovalAndRetry } from "@/features/approval";
 import type { UseChatHelpers } from "@ai-sdk/react";
 import type { Message } from "@getpochi/livekit";
 
+import { ReviewBadges } from "@/components/prompt-form/review-badges";
+import { UserEdits } from "@/components/prompt-form/user-edits";
+import type { Review } from "@getpochi/common/vscode-webui-bridge";
 import type { ReactNode } from "@tanstack/react-router";
 import { QueuedMessages } from "./queued-messages";
 
@@ -28,6 +31,8 @@ interface ChatInputFormProps {
   onRemoveQueuedMessage: (index: number) => void;
   isSubTask: boolean;
   children?: ReactNode;
+  reviews: Review[];
+  taskId?: string;
 }
 
 export function ChatInputForm({
@@ -46,6 +51,8 @@ export function ChatInputForm({
   queuedMessages,
   onRemoveQueuedMessage,
   isSubTask,
+  reviews,
+  taskId,
   children,
 }: ChatInputFormProps) {
   const editorRef = useRef<Editor | null>(null);
@@ -66,11 +73,15 @@ export function ChatInputForm({
       isSubTask={isSubTask}
       onFocus={onFocus}
     >
-      <ActiveSelectionBadge
-        onClick={() => {
-          editorRef.current?.commands.insertContent(" @");
-        }}
-      />
+      <div className="mt-1 flex select-none flex-wrap items-center gap-1.5 pl-2">
+        <ActiveSelectionBadge
+          onClick={() => {
+            editorRef.current?.commands.insertContent(" @");
+          }}
+        />
+        {taskId && <UserEdits taskId={taskId} />}
+        <ReviewBadges reviews={reviews} />
+      </div>
       <DevRetryCountdown pendingApproval={pendingApproval} status={status} />
       {queuedMessages.length > 0 && (
         <QueuedMessages

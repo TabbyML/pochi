@@ -279,11 +279,16 @@
     "restoring": "恢复中...",
     "success": "成功",
     "restore": "恢复",
+    "restored": "已恢复",
     "opening": "打开中...",
     "noChangesDetected": "未检测到更改",
     "compare": "比较",
     "fork": "新建分支任务",
     "forking": "创建中..."
+  },
+  "reviewUI": {
+    "reviews": "评审",
+    "submitReviews": "提交评审"
   },
   "welcomeScreen": {
     "title": "开始使用",
@@ -413,6 +418,11 @@
     "undo": "撤销",
     "viewChanges": "查看更改",
     "openFile": "打开文件"
+  },
+  "userEdits": {
+    "filesEdited_one": "已编辑 {{count}} 个文件",
+    "filesEdited_other": "已编辑 {{count}} 个文件",
+    "tooltip": "您的编辑已被跟踪，并将包含在上下文中"
   },
   "forkTask": {
     "forkedTaskTitle": "任务分支自：{{taskTitle}}"

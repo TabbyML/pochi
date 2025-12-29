@@ -2,12 +2,18 @@ import * as path from "node:path";
 import deepEqual from "fast-deep-equal";
 import * as vscode from "vscode";
 
-export function getNewDiagnostics(
+export function compareDiagnostics(
   oldDiagnostics: [vscode.Uri, vscode.Diagnostic[]][],
   newDiagnostics: [vscode.Uri, vscode.Diagnostic[]][],
-): [vscode.Uri, vscode.Diagnostic[]][] {
+): {
+  newProblems: [vscode.Uri, vscode.Diagnostic[]][];
+  resolvedProblems: [vscode.Uri, vscode.Diagnostic[]][];
+} {
   const newProblems: [vscode.Uri, vscode.Diagnostic[]][] = [];
+  const resolvedProblems: [vscode.Uri, vscode.Diagnostic[]][] = [];
+
   const oldMap = new Map(oldDiagnostics);
+  const newMap = new Map(newDiagnostics);
 
   for (const [uri, newDiags] of newDiagnostics) {
     const oldDiags = oldMap.get(uri) || [];
@@ -20,7 +26,18 @@ export function getNewDiagnostics(
     }
   }
 
-  return newProblems;
+  for (const [uri, oldDiags] of oldDiagnostics) {
+    const newDiags = newMap.get(uri) || [];
+    const resolvedProblemsForUri = oldDiags.filter(
+      (oldDiag) => !newDiags.some((newDiag) => deepEqual(newDiag, oldDiag)),
+    );
+
+    if (resolvedProblemsForUri.length > 0) {
+      resolvedProblems.push([uri, resolvedProblemsForUri]);
+    }
+  }
+
+  return { newProblems, resolvedProblems };
 }
 
 // will return empty string if no problems with the given severity are found

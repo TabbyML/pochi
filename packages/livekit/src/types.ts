@@ -4,6 +4,7 @@ import type {
 } from "@ai-sdk/provider";
 import { Environment } from "@getpochi/common";
 import { GoogleVertexModel } from "@getpochi/common/configuration";
+import type { Review } from "@getpochi/common/vscode-webui-bridge";
 import { type ClientTools, McpTool } from "@getpochi/tools";
 import type { InferUITools, UIMessage } from "ai";
 import z from "zod/v4";
@@ -27,26 +28,6 @@ export type DataParts = {
   reviews: {
     reviews: Review[];
   };
-};
-
-export type ReviewComment = {
-  id: string;
-  body: string;
-};
-
-export type Review = {
-  id: string;
-  uri: string;
-  range?: {
-    start: Position;
-    end: Position;
-  };
-  comments: ReviewComment[];
-};
-
-type Position = {
-  line: number;
-  character: number;
 };
 
 export type UITools = InferUITools<ClientTools>;

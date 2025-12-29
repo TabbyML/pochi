@@ -150,4 +150,166 @@ describe('formatters', () => {
         expect(toolPart.input).not.toHaveProperty('_transient');
     });
   });
+
+  describe('formatters.llm.refineDetectedNewPromblems', () => {
+    it('should refine detected new problems across tool calls within a step', () => {
+      const messages: UIMessage[] = [
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          parts: [
+            { type: 'step-start', title: 'Step 1' },
+            createToolPart(
+              'writeToFile',
+              'output-available',
+              {},
+              { newProblems: 'problem1\nproblem2' },
+            ),
+            { type: 'text', text: 'some text' },
+            createToolPart(
+              'applyDiff',
+              'output-available',
+              {},
+              {
+                _transient: {
+                  resolvedProblems: 'problem1',
+                },
+              },
+            ),
+          ],
+        },
+      ];
+
+      const formatted = formatters.llm(clone(messages));
+      const toolPart = formatted[0].parts[1] as any;
+      expect(toolPart.output.newProblems).toBe('problem2');
+    });
+
+    it('should not do anything if there are no resolved problems', () => {
+      const originalMessages: UIMessage[] = [
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          parts: [
+            { type: 'step-start', title: 'Step 1' },
+            createToolPart(
+              'writeToFile',
+              'output-available',
+              {},
+              { newProblems: 'problem1\nproblem2' },
+            ),
+            createToolPart(
+              'applyDiff',
+              'output-available',
+              {},
+              {
+                _transient: {},
+              },
+            ),
+          ],
+        },
+      ];
+
+      const formatted = formatters.llm(clone(originalMessages));
+      const toolPart = formatted[0].parts[1] as any;
+      expect(toolPart.output.newProblems).toEqual("problem1\nproblem2");
+    });
+
+    it('should handle multiple resolved problems', () => {
+      const messages: UIMessage[] = [
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          parts: [
+            { type: 'step-start', title: 'Step 1' },
+            createToolPart(
+              'writeToFile',
+              'output-available',
+              {},
+              { newProblems: 'problem1\nproblem2\nproblem3' },
+            ),
+            createToolPart(
+              'applyDiff',
+              'output-available',
+              {},
+              {
+                _transient: {
+                  resolvedProblems: 'problem1\nproblem3',
+                },
+              },
+            ),
+          ],
+        },
+      ];
+
+      const formatted = formatters.llm(clone(messages));
+      const toolPart = formatted[0].parts[1] as any;
+      expect(toolPart.output.newProblems).toBe('problem2');
+    });
+
+    it('should not remove problems that are not in the resolved list', () => {
+      const messages: UIMessage[] = [
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          parts: [
+            { type: 'step-start', title: 'Step 1' },
+            createToolPart(
+              'writeToFile',
+              'output-available',
+              {},
+              { newProblems: 'problem1\nproblem2' },
+            ),
+            createToolPart(
+              'applyDiff',
+              'output-available',
+              {},
+              {
+                _transient: {
+                  resolvedProblems: 'problem3',
+                },
+              },
+            ),
+          ],
+        },
+      ];
+
+      const formatted = formatters.llm(clone(messages));
+      const toolPart = formatted[0].parts[1] as any;
+      expect(toolPart.output.newProblems).toBe('problem1\nproblem2');
+    });
+
+    it('should not cross step boundaries', () => {
+      const messages: UIMessage[] = [
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          parts: [
+            { type: 'step-start', title: 'Step 1' },
+            createToolPart(
+              'writeToFile',
+              'output-available',
+              {},
+              { newProblems: 'problem1\nproblem2' },
+            ),
+            { type: 'step-start', title: 'Step 2' },
+            createToolPart(
+              'applyDiff',
+              'output-available',
+              {},
+              {
+                _transient: {
+                  resolvedProblems: 'problem1',
+                },
+              },
+            ),
+          ],
+        },
+      ];
+
+      const formatted = formatters.llm(clone(messages));
+      const toolPart = formatted[0].parts[1] as any;
+      expect(toolPart.output.newProblems).toBe('problem1\nproblem2');
+    });
+  });
 });

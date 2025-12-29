@@ -11,6 +11,7 @@ import type {
   McpStatus,
   PochiTaskParams,
   ResourceURI,
+  Review,
   RuleFile,
   SaveCheckpointOptions,
   SessionState,
@@ -158,7 +159,6 @@ export interface VSCodeHostApi {
       base64Data?: string;
       fallbackGlobPattern?: string;
       cellId?: string;
-      webviewKind?: "sidebar" | "pane";
     },
   ): void;
 
@@ -241,6 +241,8 @@ export interface VSCodeHostApi {
   restoreCheckpoint(commitHash: string, files?: string[]): Promise<void>;
 
   restoreChangedFiles(files: TaskChangedFile[]): Promise<void>;
+
+  readLatestCheckpoint(): Promise<ThreadSignalSerialization<string | null>>;
 
   readCheckpointPath(): Promise<string | undefined>;
 
@@ -332,6 +334,17 @@ export interface VSCodeHostApi {
   queryGithubIssues(query?: string): Promise<GithubIssue[]>;
 
   readGitBranches(): Promise<string[]>;
+
+  readReviews(): Promise<ThreadSignalSerialization<Review[]>>;
+
+  clearReviews(): Promise<void>;
+
+  openReview(
+    review: Review,
+    options?: { focusCommentsPanel?: boolean; revealRange?: boolean },
+  ): Promise<void>;
+
+  readUserEdits(uid: string): Promise<ThreadSignalSerialization<FileDiff[]>>;
 }
 
 export interface WebviewHostApi {

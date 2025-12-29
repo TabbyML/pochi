@@ -147,7 +147,7 @@ describe("DiffView with real file system", () => {
 
     diagnosticStubs = {
       diagnosticsToProblemsString: sinon.stub().returns(""),
-      getNewDiagnostics: sinon.stub().returns([]),
+      compareDiagnostics: sinon.stub().returns({ newProblems: [], resolvedProblems: [] }),
     };
     
     // A basic constructor stub for TabInputTextDiff for `instanceof` checks

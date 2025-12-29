@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { NoOtherToolsReminderPrompt } from "./constants";
 import { defineClientTool } from "./types";
 
 export const attemptCompletionSchema = z.object({
@@ -15,6 +16,8 @@ const toolDef = {
 
 You MUST NOT generate any text before this tool call. All conclusion text must be included within the result parameter of the attemptCompletion tool.
 Never use this tool with a question or request to engage in further conversation! Formulate the end of your result in a way that is final and does not require further input from the user.
+
+${NoOtherToolsReminderPrompt}
 `.trim(),
   inputSchema: attemptCompletionSchema,
   outputSchema: z.object({

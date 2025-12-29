@@ -82,6 +82,7 @@ function createVSCodeHost(): VSCodeHostApi {
         "readMinionId",
         "saveCheckpoint",
         "restoreCheckpoint",
+        "readLatestCheckpoint",
         "readCheckpointPath",
         "showCheckpointDiff",
         "readExtensionVersion",
@@ -105,6 +106,10 @@ function createVSCodeHost(): VSCodeHostApi {
         "readPochiTabs",
         "queryGithubIssues",
         "readGitBranches",
+        "readReviews",
+        "clearReviews",
+        "openReview",
+        "readUserEdits",
       ],
       exports: {
         openTaskList() {

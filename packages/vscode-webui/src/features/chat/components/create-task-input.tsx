@@ -17,7 +17,7 @@ import { useDebounceState } from "@/lib/hooks/use-debounce-state";
 import { useTaskInputDraft } from "@/lib/hooks/use-task-input-draft";
 import { useWorktrees } from "@/lib/hooks/use-worktrees";
 import { vscodeHost } from "@/lib/vscode";
-import type { GitWorktree } from "@getpochi/common/vscode-webui-bridge";
+import type { GitWorktree, Review } from "@getpochi/common/vscode-webui-bridge";
 import { Loader2, PaperclipIcon } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -34,6 +34,7 @@ interface CreateTaskInputProps {
 }
 
 const noop = () => {};
+const emptyReviews: Review[] = [];
 
 export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
   cwd,
@@ -123,6 +124,63 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
     }
   }, [baseBranch, isOpenMainWorktree, worktreesData.worktrees]);
 
+  const createWorktreeAndOpenTask = useCallback(
+    async (params: {
+      content: string;
+      shouldCreateWorktree: boolean;
+      uploadedFiles?: Array<{
+        contentType: string;
+        name: string;
+        url: string;
+      }>;
+    }): Promise<boolean> => {
+      const { content, shouldCreateWorktree, uploadedFiles } = params;
+
+      let worktree: typeof selectedWorktree | null = selectedWorktree;
+      if (shouldCreateWorktree) {
+        worktree = await vscodeHost.createWorktree({
+          baseBranch: baseBranch || undefined,
+          generateBranchName: {
+            prompt: content,
+            files: uploadedFiles,
+          },
+        });
+
+        // If worktree creation was requested but failed, do not proceed
+        if (!worktree) {
+          return false;
+        }
+
+        setUserSelectedWorktree(worktree);
+      }
+
+      vscodeHost.openTaskInPanel({
+        type: "new-task",
+        cwd: worktree && typeof worktree === "object" ? worktree.path : cwd,
+        prompt: content,
+        files: uploadedFiles,
+      });
+
+      // Clear files if they were uploaded
+      if (uploadedFiles && uploadedFiles.length > 0) {
+        clearFiles();
+      }
+
+      // Clear input content after unfreeze
+      setTimeout(clearDraft, 50);
+
+      return true;
+    },
+    [
+      cwd,
+      selectedWorktree,
+      baseBranch,
+      setUserSelectedWorktree,
+      clearFiles,
+      clearDraft,
+    ],
+  );
+
   const handleSubmitImpl = useCallback(
     async (
       e?: React.FormEvent<HTMLFormElement>,
@@ -148,57 +206,31 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
       setIsCreatingTask(true);
       setDebouncedIsCreatingTask(true);
 
+      // Upload files if present
+      let uploadedFiles: Array<{
+        contentType: string;
+        name: string;
+        url: string;
+      }> = [];
+
       if (files.length > 0) {
         const uploadedAttachments = await upload();
-        const uploadedFiles = uploadedAttachments.map((x) => ({
+        uploadedFiles = uploadedAttachments.map((x) => ({
           contentType: x.mediaType,
           name: x.filename ?? "attachment",
           url: x.url,
         }));
-
-        const worktree =
-          shouldCreateWorktree === true || selectedWorktree === "new-worktree"
-            ? await vscodeHost.createWorktree({
-                baseBranch: baseBranch || undefined,
-                generateBranchName: {
-                  prompt: content,
-                  files: uploadedFiles,
-                },
-              })
-            : selectedWorktree;
-        if (worktree) {
-          vscodeHost.openTaskInPanel({
-            type: "new-task",
-            cwd: worktree?.path || cwd,
-            prompt: content,
-            files: uploadedFiles,
-          });
-          clearFiles();
-          // Clear input content after unfreeze
-          setTimeout(clearDraft, 50);
-        }
-      } else if (content.length > 0) {
+      } else {
         clearUploadError();
-
-        const worktree =
-          shouldCreateWorktree || selectedWorktree === "new-worktree"
-            ? await vscodeHost.createWorktree({
-                baseBranch: baseBranch || undefined,
-                generateBranchName: {
-                  prompt: content,
-                },
-              })
-            : selectedWorktree;
-        if (worktree) {
-          vscodeHost.openTaskInPanel({
-            type: "new-task",
-            cwd: worktree?.path || cwd,
-            prompt: content,
-          });
-          // Clear input content after unfreeze
-          setTimeout(clearDraft, 50);
-        }
       }
+
+      // Create worktree and open task
+      await createWorktreeAndOpenTask({
+        content,
+        shouldCreateWorktree:
+          shouldCreateWorktree === true || selectedWorktree === "new-worktree",
+        uploadedFiles: uploadedFiles.length > 0 ? uploadedFiles : undefined,
+      });
 
       // Set isCreatingTask state false
       // Hide loading and unfreeze input
@@ -207,7 +239,6 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
       setBaseBranch(undefined);
     },
     [
-      cwd,
       input,
       files,
       upload,
@@ -216,10 +247,8 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
       isCreatingTask,
       isUploadingAttachments,
       clearUploadError,
-      clearDraft,
-      clearFiles,
       setDebouncedIsCreatingTask,
-      baseBranch,
+      createWorktreeAndOpenTask,
     ],
   );
 
@@ -254,6 +283,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
         isSubTask={false}
         onRemoveQueuedMessage={noop}
         onFocus={onFocus}
+        reviews={emptyReviews}
       >
         {files.length > 0 && (
           <div className="px-3">

@@ -1,5 +1,5 @@
 import { isAutoSuccessToolPart } from "@getpochi/tools";
-import { type UIMessage, getToolName, isToolUIPart } from "ai";
+import { type ToolUIPart, type UIMessage, getToolName, isToolUIPart } from "ai";
 import { clone } from "remeda";
 import { KnownTags } from "./constants";
 import { prompts } from "./prompts";
@@ -72,7 +72,12 @@ function removeSystemReminder(messages: UIMessage[]): UIMessage[] {
       return !prompts.isSystemReminder(part.text);
     });
     message.parts = parts;
-    if (parts.some((x) => x.type === "text" || isToolUIPart(x))) {
+    if (
+      parts.some(
+        (x) =>
+          x.type === "text" || x.type === "data-reviews" || isToolUIPart(x),
+      )
+    ) {
       return true;
     }
     return false;
@@ -167,6 +172,25 @@ function removeToolCallResultMetadata(messages: UIMessage[]): UIMessage[] {
   });
 }
 
+function removeToolCallResultTransientData(messages: UIMessage[]): UIMessage[] {
+  return messages.map((message) => {
+    message.parts = message.parts.map((part) => {
+      if (
+        isToolUIPart(part) &&
+        part.state === "output-available" &&
+        typeof part.output === "object" &&
+        part.output &&
+        "_transient" in part.output
+      ) {
+        // biome-ignore lint/performance/noDelete: need delete to make zod happy
+        delete part.output._transient;
+      }
+      return part;
+    });
+    return message;
+  });
+}
+
 function removeInvalidCharForStorage(messages: UIMessage[]): UIMessage[] {
   return messages.map((message) => {
     message.parts = message.parts.map((part) => {
@@ -216,21 +240,115 @@ function removeEmptyTextParts(messages: UIMessage[]) {
   });
 }
 
+function refineDetectedNewPromblems(messages: UIMessage[]) {
+  const isWriteFileResultToolPart = (
+    part: UIMessage["parts"][number],
+  ): part is ToolUIPart<
+    Record<
+      string,
+      {
+        input: unknown;
+        output: {
+          newProblems?: string;
+          _transient?: {
+            resolvedProblems?: string;
+          };
+        };
+      }
+    >
+  > & { state: "output-available" } => {
+    return (
+      isToolUIPart(part) &&
+      (getToolName(part) === "writeToFile" ||
+        getToolName(part) === "applyDiff") &&
+      part.state === "output-available" &&
+      typeof part.output === "object" &&
+      part.output !== null
+    );
+  };
+
+  const splitProblems = (input: string | undefined) => {
+    if (!input) {
+      return [];
+    }
+    return input
+      .split("\n")
+      .map((p) => p.trim())
+      .filter(Boolean);
+  };
+
+  const findLastStepStartIndex = (
+    parts: UIMessage["parts"],
+    currentIndex: number,
+  ) => {
+    return parts
+      .slice(0, currentIndex)
+      .findLastIndex((p) => p.type === "step-start");
+  };
+
+  for (const message of messages) {
+    for (let i = 0; i < message.parts.length; i++) {
+      const part = message.parts[i];
+      if (!isWriteFileResultToolPart(part)) {
+        continue;
+      }
+
+      const resolvedProblems = splitProblems(
+        part.output._transient?.resolvedProblems,
+      );
+      if (resolvedProblems.length === 0) {
+        continue;
+      }
+
+      const lastStepStartIndex = findLastStepStartIndex(message.parts, i);
+
+      for (const resolvedProblem of resolvedProblems) {
+        for (let j = i - 1; j > lastStepStartIndex; j--) {
+          const prevPart = message.parts[j];
+          if (!isWriteFileResultToolPart(prevPart)) {
+            continue;
+          }
+
+          const prevNewProblems = splitProblems(prevPart.output.newProblems);
+          if (prevNewProblems.includes(resolvedProblem)) {
+            const newProblems = prevNewProblems
+              .filter((p) => p !== resolvedProblem)
+              .join("\n")
+              .trim();
+            if (!newProblems) {
+              // biome-ignore lint/performance/noDelete: remove newProblems
+              delete prevPart.output.newProblems;
+            } else {
+              prevPart.output.newProblems = newProblems;
+            }
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  return messages;
+}
+
 type FormatOp = (messages: UIMessage[]) => UIMessage[];
 const LLMFormatOps: FormatOp[] = [
   removeEmptyTextParts,
   removeEmptyMessages,
+  refineDetectedNewPromblems,
   extractCompactMessages,
   removeMessagesWithoutTextOrToolCall,
   resolvePendingToolCalls,
   stripKnownXMLTags,
   removeToolCallResultMetadata,
+  removeToolCallResultTransientData,
   removeToolCallArgumentMetadata,
   removeToolCallArgumentTransientData,
 ];
 const UIFormatOps = [
   removeEmptyTextParts,
   removeEmptyMessages,
+  refineDetectedNewPromblems,
   resolvePendingToolCalls,
   removeSystemReminder,
   combineConsecutiveAssistantMessages,
@@ -238,8 +356,10 @@ const UIFormatOps = [
 const StorageFormatOps = [
   removeEmptyTextParts,
   removeEmptyMessages,
+  refineDetectedNewPromblems,
   removeInvalidCharForStorage,
   removeToolCallArgumentTransientData,
+  removeToolCallResultTransientData,
 ];
 
 function formatMessages(messages: UIMessage[], ops: FormatOp[]): UIMessage[] {

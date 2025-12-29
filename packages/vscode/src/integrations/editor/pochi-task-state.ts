@@ -29,6 +29,10 @@ export class PochiTaskState implements vscode.Disposable {
       vscode.window.tabGroups.onDidChangeTabs(this.onTabChanged),
     );
 
+    this.disposables.push(
+      vscode.window.tabGroups.onDidChangeTabGroups(this.onTabChanged),
+    );
+
     // Set up task update detection
     this.disposables.push(taskUpdated.event(this.onTaskUpdated));
     this.disposables.push(taskRunning.event(this.onTaskRunning));
@@ -40,22 +44,36 @@ export class PochiTaskState implements vscode.Disposable {
 
     for (const group of tabGroups) {
       for (const tab of group.tabs) {
-        const uid = getTaskUid(tab);
-        if (!uid) continue;
+        const taskUri = getTaskUri(tab);
+        if (!taskUri) continue;
+        const { uid, cwd } = taskUri;
         if (this.state.value[uid]) {
-          newState[uid] = { ...this.state.value[uid], active: false };
+          newState[uid] = {
+            ...this.state.value[uid],
+            active: false,
+            focused: false,
+          };
         } else {
-          newState[uid] = {};
+          newState[uid] = {
+            cwd,
+          };
         }
       }
 
       const activeUid = group.activeTab
-        ? getTaskUid(group.activeTab)
+        ? getTaskUri(group.activeTab)?.uid
         : undefined;
+
       if (activeUid) {
         newState[activeUid].active = true;
         newState[activeUid].unread = false;
       }
+    }
+
+    const selectedTab = vscode.window.tabGroups.activeTabGroup?.activeTab;
+    const selectedUid = selectedTab ? getTaskUri(selectedTab)?.uid : undefined;
+    if (selectedUid && newState[selectedUid]) {
+      newState[selectedUid].focused = true;
     }
 
     this.saveState(newState);
@@ -66,6 +84,8 @@ export class PochiTaskState implements vscode.Disposable {
       id: string;
       parentId?: string;
       status?: string;
+      cwd: string;
+      lastCheckpointHash?: string;
     };
     const uid = taskData.id;
     const rootTaskId = taskData.parentId || taskData.id;
@@ -89,6 +109,12 @@ export class PochiTaskState implements vscode.Disposable {
       current.unread = !current.active;
     }
 
+    if (taskData.cwd) {
+      current.cwd = taskData.cwd;
+    }
+    if (taskData.lastCheckpointHash) {
+      current.lastCheckpointHash = taskData.lastCheckpointHash;
+    }
     newState[rootTaskId] = current;
     this.saveState(newState);
   };
@@ -123,13 +149,13 @@ export class PochiTaskState implements vscode.Disposable {
   }
 }
 
-function getTaskUid(tab: vscode.Tab): string | undefined {
+function getTaskUri(tab: vscode.Tab) {
   if (
     tab.input instanceof vscode.TabInputCustom &&
     tab.input.uri.scheme === PochiTaskEditorProvider.scheme
   ) {
     const params = PochiTaskEditorProvider.parseTaskUri(tab.input.uri);
-    return params?.uid;
+    return params;
   }
   return undefined;
 }
@@ -145,7 +171,7 @@ function createTaskStates(): TaskStates {
       ) {
         const params = PochiTaskEditorProvider.parseTaskUri(tab.input.uri);
         if (params) {
-          state[params.uid] = {};
+          state[params.uid] = { cwd: params.cwd };
         }
       }
     }

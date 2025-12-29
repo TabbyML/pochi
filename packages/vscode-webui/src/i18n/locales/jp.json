@@ -280,11 +280,16 @@
     "restoring": "復元中...",
     "success": "成功",
     "restore": "復元",
+    "restored": "復元済み",
     "opening": "開いています...",
     "noChangesDetected": "変更が検出されませんでした",
     "compare": "比較",
     "fork": "フォーク",
     "forking": "フォーク中..."
+  },
+  "reviewUI": {
+    "reviews": "レビュー",
+    "submitReviews": "レビューを送信"
   },
   "welcomeScreen": {
     "title": "はじめに",
@@ -414,6 +419,11 @@
     "undo": "元に戻す",
     "viewChanges": "変更を表示",
     "openFile": "ファイルを開く"
+  },
+  "userEdits": {
+    "filesEdited_one": "{{count}} ファイルを編集",
+    "filesEdited_other": "{{count}} ファイルを編集",
+    "tooltip": "編集内容が追跡され、コンテキストに含まれます"
   },
   "forkTask": {
     "forkedTaskTitle": "フォーク 元: {{taskTitle}}"

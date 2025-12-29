@@ -2,7 +2,7 @@ import { getLogger } from "@getpochi/common";
 import { resolvePath } from "@getpochi/common/tool-utils";
 import * as diff from "diff";
 import * as vscode from "vscode";
-import { diagnosticsToProblemsString, getNewDiagnostics } from "./diagnostic";
+import { compareDiagnostics, diagnosticsToProblemsString } from "./diagnostic";
 import {
   createPrettyPatch,
   ensureFileDirectoryExists,
@@ -62,11 +62,20 @@ export async function writeTextDocument(
     );
   }
 
+  const {
+    newProblems: newProblemsList,
+    resolvedProblems: resolvedProblemsList,
+  } = compareDiagnostics(preEditDiagnostics, postSaveDiagnostics);
+
+  // only including errors since warnings can be distracting (if user wants to fix warnings they can use the @problems mention)
   const newProblems = diagnosticsToProblemsString(
-    getNewDiagnostics(preEditDiagnostics, postSaveDiagnostics),
-    [
-      vscode.DiagnosticSeverity.Error, // only including errors since warnings can be distracting (if user wants to fix warnings they can use the @problems mention)
-    ],
+    newProblemsList,
+    [vscode.DiagnosticSeverity.Error],
+    cwd,
+  );
+  const resolvedProblems = diagnosticsToProblemsString(
+    resolvedProblemsList,
+    [vscode.DiagnosticSeverity.Error],
     cwd,
   );
 
@@ -80,6 +89,7 @@ export async function writeTextDocument(
     autoFormattingEdits,
     newProblems,
     _meta: { edit: editDiff, editSummary },
+    _transient: resolvedProblems ? { resolvedProblems } : undefined,
   };
 }
 

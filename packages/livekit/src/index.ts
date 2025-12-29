@@ -7,8 +7,6 @@ export type {
   Task,
   UITools,
   DataParts,
-  Review,
-  ReviewComment,
 } from "./types";
 
 export const StoreBlobProtocol = "store-blob:";

@@ -2,20 +2,23 @@ import { listWorkspaceFiles } from "@getpochi/common/tool-utils";
 import * as vscode from "vscode";
 import { PochiTaskEditorProvider } from "./webview/webview-panel";
 
+const PochiLayoutSizeLeft = 0.35;
+const PochiLayoutSizeRightTop = 0.7;
+
 const PochiLayout = {
   orientation: 0, // Left-right
   groups: [
     {
-      size: 0.35, // Left: pochiTaskGroup
+      size: PochiLayoutSizeLeft, // Left: pochiTaskGroup
     },
     {
-      size: 0.65, // Right
+      size: 1 - PochiLayoutSizeLeft, // Right
       groups: [
         {
-          size: 0.7, // Right Top: editorsGroup
+          size: PochiLayoutSizeRightTop, // Right Top: editorsGroup
         },
         {
-          size: 0.3, // Right Bottom: terminalGroup
+          size: 1 - PochiLayoutSizeRightTop, // Right Bottom: terminalGroup
         },
       ],
     },
@@ -33,11 +36,7 @@ export async function applyPochiLayout(params: { cwd: string | undefined }) {
   const userFocusTab = vscode.window.tabGroups.activeTabGroup.activeTab;
   const userActiveTerminal = vscode.window.activeTerminal;
 
-  // Reset pochiSidebar location to primary sidebar, move all bottom panels to secondary sidebar
-  await vscode.commands.executeCommand("pochiSidebar.resetViewLocation");
-  await vscode.commands.executeCommand(
-    "workbench.view.extension.pochi.resetViewContainerLocation",
-  );
+  // Move all bottom panels to secondary sidebar
   await vscode.commands.executeCommand("workbench.action.movePanelToSidePanel");
 
   // Make all groups horizontal, so we can move them left/right, then join groups if needed
@@ -251,6 +250,74 @@ export async function applyPochiLayout(params: { cwd: string | undefined }) {
       );
     }
   }
+}
+
+export async function isPochiLayout(): Promise<boolean> {
+  const current = getSortedCurrentTabGroups();
+  if (current.length !== 3) {
+    return false;
+  }
+
+  const firstGroupType = getTabGroupType(current[0].tabs);
+  const secondGroupType = getTabGroupType(current[1].tabs);
+  const lastGroupType = getTabGroupType(current[2].tabs);
+  if (
+    (firstGroupType !== "empty" && firstGroupType !== "pochi-task") ||
+    (secondGroupType !== "empty" && secondGroupType !== "editor") ||
+    (lastGroupType !== "empty" && lastGroupType !== "terminal")
+  ) {
+    return false;
+  }
+
+  const editorLayout = await vscode.commands.executeCommand(
+    "vscode.getEditorLayout",
+  );
+  if (
+    !editorLayout ||
+    typeof editorLayout !== "object" ||
+    !("orientation" in editorLayout) ||
+    !("groups" in editorLayout)
+  ) {
+    return false;
+  }
+  if (editorLayout.orientation !== PochiLayout.orientation) {
+    return false;
+  }
+  const getSize = (input: unknown): number | undefined => {
+    if (
+      !input ||
+      typeof input !== "object" ||
+      !("size" in input) ||
+      typeof input.size !== "number"
+    ) {
+      return undefined;
+    }
+    return input.size;
+  };
+  if (!Array.isArray(editorLayout.groups) || editorLayout.groups.length !== 2) {
+    return false;
+  }
+  const sizeL = getSize(editorLayout.groups[0]);
+  const sizeR = getSize(editorLayout.groups[1]);
+  if (sizeL === undefined || sizeR === undefined) {
+    return false;
+  }
+  if (Math.abs(sizeL / (sizeL + sizeR) - PochiLayoutSizeLeft) > 0.1) {
+    return false;
+  }
+  const groupR = editorLayout.groups[1].groups;
+  if (!Array.isArray(groupR) || groupR.length !== 2) {
+    return false;
+  }
+  const sizeRT = getSize(groupR[0]);
+  const sizeRB = getSize(groupR[1]);
+  if (sizeRT === undefined || sizeRB === undefined) {
+    return false;
+  }
+  if (Math.abs(sizeRT / (sizeRT + sizeRB) - PochiLayoutSizeRightTop) > 0.1) {
+    return false;
+  }
+  return true;
 }
 
 export function isCurrentLayoutDerivedFromPochiLayout(): boolean {

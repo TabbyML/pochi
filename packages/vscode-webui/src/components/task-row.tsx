@@ -1,10 +1,7 @@
 import { EditSummary } from "@/features/tools";
 import { ToolCallLite } from "@/features/tools";
 import { usePochiCredentials } from "@/lib/hooks/use-pochi-credentials";
-import {
-  getTaskChangedFileStore,
-  waitForTaskStoreReady,
-} from "@/lib/hooks/use-task-changed-files";
+import { useTaskChangedFiles } from "@/lib/hooks/use-task-changed-files";
 import { cn } from "@/lib/utils";
 import { vscodeHost } from "@/lib/vscode";
 import { parseTitle } from "@getpochi/common/message-utils";
@@ -28,12 +25,17 @@ export function TaskRow({
 }) {
   const { jwt } = usePochiCredentials();
 
+  const { showFileChanges } = useTaskChangedFiles(task.id, []);
+
   const title = useMemo(() => parseTitle(task.title), [task.title]);
 
   const content = (
     <div
       className={cn(
-        "group cursor-pointer rounded-lg border border-border/50 bg-card/60 transition-all duration-200 hover:border-border hover:bg-card hover:shadow-md",
+        "group cursor-pointer rounded-lg border border-border/50 bg-card/60 transition-all duration-200 hover:bg-card hover:shadow-md",
+        {
+          "border-primary/85": state?.focused,
+        },
       )}
     >
       <div className="px-2 py-1">
@@ -45,7 +47,7 @@ export function TaskRow({
                   {prefixTaskDisplayId(task.displayId)}
                 </span>
               )}
-              <div className="line-clamp-2 flex flex-1 items-center font-medium text-foreground leading-relaxed transition-colors duration-200">
+              <div className="line-clamp-2 flex flex-1 items-center font-medium text-foreground leading-relaxed">
                 <div className="truncate">{title}</div>
                 {state?.unread && (
                   <div className="ml-2 h-2 w-2 shrink-0 rounded-full bg-primary" />
@@ -93,19 +95,9 @@ export function TaskRow({
         storeId,
       });
 
-      // Wait for migration from localStorage and hydration from VS Code global state
-      await waitForTaskStoreReady(task.id);
-
-      const store = getTaskChangedFileStore(task.id);
-      const changedFiles = store
-        .getState()
-        .changedFiles.filter((f) => f.state === "pending");
-
-      if (changedFiles.length > 0) {
-        vscodeHost.showChangedFiles(changedFiles, "Changed Files");
-      }
+      showFileChanges();
     }
-  }, [task.cwd, task.id, task.displayId, storeId]);
+  }, [task.cwd, task.id, task.displayId, storeId, showFileChanges]);
 
   return <div onClick={openTaskInPanel}>{content}</div>;
 }

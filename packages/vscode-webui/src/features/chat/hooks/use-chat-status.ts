@@ -1,4 +1,5 @@
 import { useToolCallLifeCycle } from "../lib/chat-state";
+import type { BlockingState } from "./use-blocking-operations";
 
 interface UseChatStatusProps {
   isModelsLoading: boolean;
@@ -6,8 +7,9 @@ interface UseChatStatusProps {
   isLoading: boolean;
   isInputEmpty: boolean;
   isFilesEmpty: boolean;
+  isReviewsEmpty: boolean;
   isUploadingAttachments: boolean;
-  newCompactTaskPending: boolean;
+  blockingState: BlockingState;
 }
 
 export function useChatStatus({
@@ -16,12 +18,13 @@ export function useChatStatus({
   isLoading,
   isInputEmpty,
   isFilesEmpty,
+  isReviewsEmpty,
   isUploadingAttachments,
-  newCompactTaskPending,
+  blockingState,
 }: UseChatStatusProps) {
   const { isExecuting, isPreviewing } = useToolCallLifeCycle();
 
-  const isBusyCore = isModelsLoading || newCompactTaskPending;
+  const isBusyCore = isModelsLoading || blockingState.isBusy;
 
   const showEditTodos = !isBusyCore;
 
@@ -32,6 +35,7 @@ export function useChatStatus({
     (!isLoading &&
       isInputEmpty &&
       isFilesEmpty &&
+      isReviewsEmpty &&
       !isExecuting &&
       !isPreviewing);
 
