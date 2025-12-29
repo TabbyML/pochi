@@ -32,13 +32,13 @@ export class UserEditState implements vscode.Disposable {
   }
 
   private get cwd() {
-    if (!this.workspaceScope.cwd) {
-      throw new Error("No workspace folder found. Please open a workspace.");
-    }
     return this.workspaceScope.cwd;
   }
 
   private setupEventListeners() {
+    if (!this.cwd) {
+      return;
+    }
     const watcher = vscode.workspace.createFileSystemWatcher(
       new vscode.RelativePattern(this.cwd, "**/*"),
     );
