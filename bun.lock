@@ -255,7 +255,7 @@
     },
     "packages/vscode": {
       "name": "pochi",
-      "version": "0.21.3",
+      "version": "0.21.4",
       "dependencies": {
         "@ai-sdk/google-vertex": "catalog:",
         "@getpochi/common": "workspace:*",
