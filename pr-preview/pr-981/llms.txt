@@ -574,7 +574,7 @@ This feature is not your regular PR review system. It’s actual conversations w
 Generate code or request changes like normal.
 
 ```bash
-/pochi please use Mermaid Chart instead of Vega Lite
+Please use Mermaid Chart instead of Vega Lite
 ```
 
 ### 2. Open the Diff
@@ -599,17 +599,29 @@ Leave comments across the file as needed. Each comment is automatically linked t
 
 ### 5. Send Comments as a Batch
 
-Once ready:
+Once you’re done adding comments, submit them just like you would a review.
 
-* Click `Submit Reviews` to Pochi
-* Or run the command:
-  ```bash
-  /pochi please review the comments
-  ```
+Click `Submit Reviews` to Pochi to send all line-level comments as a batch.
 
-Pochi will revise all requested changes in one pass.
+This works the same way as submitting a review with empty messages — the comments themselves are the request.
 
 ![Pochi Models](../assets/images/submit-review-inline-comment.png)
+
+If you want to add extra instructions or context, you can type an additional message in the chat box before submitting.
+
+For example:
+
+```bash
+Please review my inline comments
+```
+
+or with extra guidance:
+
+```bash
+Apply these comments and also rename the handler for consistency
+```
+
+Pochi will process every line comment with context and update the code accordingly.
 
 
 # MCP
