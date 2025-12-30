@@ -201,6 +201,14 @@ export const events = {
       updatedAt: Schema.Date,
     }),
   }),
+  updateLastCheckpointHash: Events.synced({
+    name: "v1.updateLastCheckpointHash",
+    schema: Schema.Struct({
+      id: Schema.String,
+      lastCheckpointHash: Schema.NullOr(Schema.String),
+      updatedAt: Schema.Date,
+    }),
+  }),
 };
 
 const materializers = State.SQLite.materializers(events, {
@@ -279,7 +287,6 @@ const materializers = State.SQLite.materializers(events, {
         updatedAt,
         modelId,
         displayId,
-        lastCheckpointHash: null, // clear lastCheckpointHash on stream start to hide changes made by Pochi, set back in ChatStreamFinished
       })
       .where({ id }),
     tables.messages
@@ -361,6 +368,8 @@ const materializers = State.SQLite.materializers(events, {
         updatedAt,
       })
       .where({ id }),
+  "v1.updateLastCheckpointHash": ({ id, lastCheckpointHash, updatedAt }) =>
+    tables.tasks.update({ lastCheckpointHash, updatedAt }).where({ id }),
 });
 
 const state = State.SQLite.makeState({ tables, materializers });

@@ -28,14 +28,13 @@ export class UserEditState implements vscode.Disposable {
     private readonly checkpointService: CheckpointService,
     private readonly pochiTaskState: PochiTaskState,
   ) {
-    // this.setupEventListeners();
+    this.setupEventListeners();
   }
 
   private get cwd() {
     return this.workspaceScope.cwd;
   }
 
-  // @ts-ignore
   private setupEventListeners() {
     if (!this.cwd) {
       return;
@@ -44,20 +43,26 @@ export class UserEditState implements vscode.Disposable {
       new vscode.RelativePattern(this.cwd, "**/*"),
     );
     this.disposables.push(watcher);
+
+    const shouldIgnore = (uri: vscode.Uri) => uri.path.includes("/.git/");
+
     this.disposables.push(
       watcher.onDidCreate((e) => {
+        if (shouldIgnore(e)) return;
         logger.trace(`File created, triggering update, ${e.fsPath}`);
         this.triggerUpdate.call();
       }),
     );
     this.disposables.push(
       watcher.onDidDelete((e) => {
+        if (shouldIgnore(e)) return;
         logger.trace(`File deleted, triggering update, ${e.fsPath}`);
         this.triggerUpdate.call();
       }),
     );
     this.disposables.push(
       watcher.onDidChange((e) => {
+        if (shouldIgnore(e)) return;
         logger.trace(`File changed, triggering update, ${e.fsPath}`);
         this.triggerUpdate.call();
       }),

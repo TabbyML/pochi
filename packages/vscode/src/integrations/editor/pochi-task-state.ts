@@ -112,9 +112,7 @@ export class PochiTaskState implements vscode.Disposable {
     if (taskData.cwd) {
       current.cwd = taskData.cwd;
     }
-    if (taskData.lastCheckpointHash) {
-      current.lastCheckpointHash = taskData.lastCheckpointHash;
-    }
+    current.lastCheckpointHash = taskData.lastCheckpointHash;
     newState[rootTaskId] = current;
     this.saveState(newState);
   };

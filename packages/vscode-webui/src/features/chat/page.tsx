@@ -19,6 +19,7 @@ import { useTranslation } from "react-i18next";
 
 import { useLatest } from "@/lib/hooks/use-latest";
 import { useMcp } from "@/lib/hooks/use-mcp";
+import { useUpdateLastCheckpoint } from "@/lib/hooks/use-update-last-checkpoint";
 import { cn } from "@/lib/utils";
 import { Schema } from "@livestore/utils/effect";
 import type { TFunction } from "i18next";
@@ -377,6 +378,8 @@ function Chat({ user, uid, info }: ChatProps) {
   useHandleChatEvents(
     isLoading || isModelsLoading || !selectedModel ? undefined : sendMessage,
   );
+
+  useUpdateLastCheckpoint(uid, messages);
 
   const forkTask = useCallback(
     async (commitId: string, messageId?: string) => {

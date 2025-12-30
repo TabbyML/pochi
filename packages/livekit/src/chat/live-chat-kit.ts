@@ -360,9 +360,6 @@ export class LiveChatKit<
         duration: this.lastStepStartTimestamp
           ? Duration.millis(Date.now() - this.lastStepStartTimestamp)
           : undefined,
-        lastCheckpointHash: this.messages
-          .flatMap((m) => m.parts)
-          .findLast((p) => p.type === "data-checkpoint")?.data.commit,
       }),
     );
 
