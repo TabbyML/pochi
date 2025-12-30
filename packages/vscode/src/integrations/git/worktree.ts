@@ -16,6 +16,8 @@ import { signal } from "@preact/signals-core";
 import simpleGit from "simple-git";
 import { injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
+// biome-ignore lint/style/useImportType: needed for dependency injection
+import { PochiConfiguration } from "../configuration";
 import {
   type FileChange,
   showDiffChanges,
@@ -24,11 +26,9 @@ import {
 import { GitWorktreeInfoProvider } from "./git-worktree-info-provider";
 
 const logger = getLogger("WorktreeManager");
-
 @singleton()
 @injectable()
 export class WorktreeManager implements vscode.Disposable {
-  private maxWorktrees = 10;
   private readonly disposables: vscode.Disposable[] = [];
   worktrees = signal<GitWorktree[]>([]);
   inited = new Deferred<void>();
@@ -36,13 +36,17 @@ export class WorktreeManager implements vscode.Disposable {
   private workspacePath: string | undefined;
   private git: ReturnType<typeof simpleGit>;
 
+  get maxWorktrees() {
+    return this.pochiConfiguration.detectWorktreesLimit.value;
+  }
+
   constructor(
     private readonly gitState: GitState,
     private readonly worktreeInfoProvider: GitWorktreeInfoProvider,
+    private readonly pochiConfiguration: PochiConfiguration,
   ) {
-    const workspacePath = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
-    this.workspacePath = workspacePath;
-    this.git = simpleGit(workspacePath);
+    this.workspacePath = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
+    this.git = simpleGit(this.workspacePath);
     this.init();
   }
 
@@ -54,19 +58,68 @@ export class WorktreeManager implements vscode.Disposable {
     return worktree.isMain ? "workspace" : getWorktreeNameFromWorktreePath(cwd);
   }
 
+  private async setupWatcher() {
+    if (!this.workspacePath) {
+      return;
+    }
+    try {
+      const commonGitDir = (
+        await this.git.revparse(["--git-common-dir"])
+      ).trim();
+      const absoluteCommonGitDir = path.isAbsolute(commonGitDir)
+        ? commonGitDir
+        : path.resolve(this.workspacePath, commonGitDir);
+
+      const watcher = vscode.workspace.createFileSystemWatcher(
+        new vscode.RelativePattern(
+          vscode.Uri.file(absoluteCommonGitDir),
+          "worktrees/**",
+        ),
+      );
+
+      this.disposables.push(watcher);
+
+      this.disposables.push(
+        watcher.onDidCreate(async (uri) => {
+          if (path.basename(uri.fsPath) === "gitdir") {
+            try {
+              const content = await readFileContent(uri.fsPath);
+              if (content) {
+                const worktreePath = path.dirname(content.trim());
+                logger.debug(`worktree added: ${worktreePath}`);
+                this.updateWorktrees(worktreePath);
+              }
+            } catch (e) {
+              logger.error(`Failed to handle worktree creation: ${e}`);
+            }
+          }
+        }),
+      );
+
+      this.disposables.push(
+        watcher.onDidDelete((uri) => {
+          const relativePath = path.relative(absoluteCommonGitDir, uri.fsPath);
+          const parts = relativePath.split(path.sep);
+          if (parts.length === 2 && parts[0] === "worktrees") {
+            logger.debug(`worktree deleted: ${uri.fsPath}`);
+            this.updateWorktrees();
+          }
+        }),
+      );
+    } catch (e) {
+      logger.error(`Failed to setup worktree watcher: ${toErrorMessage(e)}`);
+    }
+  }
+
   private async init() {
     if (!(await this.isGitRepository())) {
       return;
     }
-    await this.gitState.inited.promise;
+    logger.info("init worktree manager");
     await this.updateWorktrees();
-    const onWorktreeChanged = async () => {
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      await this.updateWorktrees();
-    };
-    this.disposables.push(
-      this.gitState.onDidChangeRepository(onWorktreeChanged),
-    );
+    await this.setupWatcher();
+    await this.gitState.inited.promise;
+
     this.disposables.push(
       this.gitState.onDidChangeBranch((e) => {
         if (e.type === "branch-changed") {
@@ -104,7 +157,7 @@ export class WorktreeManager implements vscode.Disposable {
     if ((await this.isGitRepository()) === false) {
       return null;
     }
-    const worktrees = await this.getWorktrees(true);
+    const worktrees = [...this.worktrees.value];
 
     if (worktrees.length >= this.maxWorktrees) {
       vscode.window.showErrorMessage(
@@ -142,7 +195,7 @@ export class WorktreeManager implements vscode.Disposable {
     }
 
     // Get worktrees again to find the new one
-    const updatedWorktrees = await this.getWorktrees(true);
+    const updatedWorktrees = await this.getWorktrees();
     // Find the new worktree by comparing with previous worktrees
     const newWorktree: GitWorktree | undefined = updatedWorktrees.findLast(
       (updated) =>
@@ -150,7 +203,7 @@ export class WorktreeManager implements vscode.Disposable {
     );
     if (newWorktree) {
       logger.debug(`New worktree created at: ${newWorktree.path}`);
-      this.updateWorktrees();
+      this.updateWorktrees(newWorktree.path);
       setupWorktree(newWorktree.path);
       return newWorktree;
     }
@@ -194,14 +247,54 @@ export class WorktreeManager implements vscode.Disposable {
     await showWorktreeDiff(cwd, baseBranch);
   }
 
-  async updateWorktrees() {
-    this.worktrees.value = await this.getWorktrees();
+  private async updateWorktrees(added?: string) {
+    const originalPaths = this.worktrees.value.map((wt) => wt.path);
+    let worktrees = await this.getWorktrees();
+
+    // if added new worktree, make sure it is placed at the end
+    if (
+      added &&
+      !this.worktrees.value.some((wt) => wt.path === added) &&
+      this.worktrees.value.length < this.maxWorktrees
+    ) {
+      const addedWorktree = worktrees.find((wt) => wt.path === added);
+      const otherWorktrees = worktrees.filter((wt) => wt.path !== added);
+      worktrees = addedWorktree
+        ? [...otherWorktrees, addedWorktree]
+        : otherWorktrees;
+    }
+
+    // keep worktree order same as before update
+    worktrees.sort((a, b) => {
+      // Keep the added one at the end if it was just added
+      if (added) {
+        if (a.path === added) return 1;
+        if (b.path === added) return -1;
+      }
+
+      const indexA = originalPaths.indexOf(a.path);
+      const indexB = originalPaths.indexOf(b.path);
+
+      if (indexA !== -1 && indexB !== -1) {
+        return indexA - indexB;
+      }
+      if (indexA !== -1) {
+        return -1;
+      }
+      if (indexB !== -1) {
+        return 1;
+      }
+      return 0;
+    });
+
+    this.worktrees.value = worktrees;
+
     logger.debug(
       `Updating worktrees to ${this.worktrees.value.length} worktrees`,
     );
   }
 
-  async getWorktrees(skipVSCodeFilter?: boolean): Promise<GitWorktree[]> {
+  private async getWorktrees(): Promise<GitWorktree[]> {
     try {
       const result = await this.git.raw(["worktree", "list", "--porcelain"]);
       const worktrees = this.parseWorktreePorcelain(result)
@@ -209,17 +302,9 @@ export class WorktreeManager implements vscode.Disposable {
         .map<GitWorktree>((wt) => {
           const storedData = this.worktreeInfoProvider.get(wt.path);
           return { ...wt, data: storedData };
-        });
-      if (skipVSCodeFilter) return worktrees;
-
-      const vscodeRepos = this.gitState.repositories.map(
-        (uri) => vscode.Uri.parse(uri).fsPath,
-      );
-      logger.info(`VSCode Repositories: ${vscodeRepos}`);
-      // keep the worktree order and number same as vscode
-      return vscodeRepos
-        .map((repoPath) => worktrees.find((wt) => wt.path === repoPath))
-        .filter((wt): wt is GitWorktree => wt !== undefined);
+        })
+        .slice(0, this.maxWorktrees);
+      return worktrees;
     } catch (error) {
       logger.error(`Failed to get worktrees: ${toErrorMessage(error)}`);
       return [];
@@ -320,7 +405,6 @@ export class WorktreeManager implements vscode.Disposable {
   }) {
     const { workspacePath, worktrees, prompt, files } = params;
     const existingBranches = await this.getBranches();
-
     let branchName: string | undefined = undefined;
     try {
       // Generate branch name
