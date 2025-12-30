@@ -59,13 +59,13 @@ export function ChatPage(props: ChatProps) {
   );
 }
 
-interface ChatProps {
+export interface ChatProps {
   uid: string;
   user?: UserInfo;
   info: NonNullable<typeof window.POCHI_TASK_INFO>;
 }
 
-function Chat({ user, uid, info }: ChatProps) {
+export function Chat({ user, uid, info }: ChatProps) {
   const { t } = useTranslation();
   const { store } = useStore();
   const todosRef = useRef<Todo[] | undefined>(undefined);

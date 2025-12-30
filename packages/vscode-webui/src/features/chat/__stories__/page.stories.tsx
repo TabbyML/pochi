@@ -1,14 +1,14 @@
 import type { Meta, StoryObj } from "@storybook/react";
 
-import { ChatPage } from "../page";
+import { Chat } from "../page";
 
 const meta = {
   title: "Chat/Page",
-  component: ChatPage,
+  component: Chat,
   parameters: {
     layout: "fullscreen",
   },
-} satisfies Meta<typeof ChatPage>;
+} satisfies Meta<typeof Chat>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
