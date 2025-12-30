@@ -191,7 +191,7 @@ function WorktreeSection({
   const pochiTasks = usePochiTabs();
   const { tasks, hasMore, loadMore } = usePaginatedTasks({
     cwd: group.path,
-    pageSize: 10,
+    pageSize: 15,
   });
 
   const pullRequest = group.data?.github?.pullRequest;
