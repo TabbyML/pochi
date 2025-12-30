@@ -28,6 +28,7 @@ export class PochiConfiguration implements vscode.Disposable {
   readonly githubCopilotCodeCompletionEnabled = signal(
     getGithubCopilotCodeCompletionEnabled(),
   );
+  readonly detectWorktreesLimit = signal(getDetectWorktreesLimit());
 
   constructor() {
     this.disposables.push(
@@ -47,6 +48,10 @@ export class PochiConfiguration implements vscode.Disposable {
         if (e.affectsConfiguration("github.copilot")) {
           this.githubCopilotCodeCompletionEnabled.value =
             getGithubCopilotCodeCompletionEnabled();
+        }
+
+        if (e.affectsConfiguration("git.detectWorktreesLimit")) {
+          this.detectWorktreesLimit.value = getDetectWorktreesLimit();
         }
       }),
     );
@@ -211,6 +216,12 @@ function getAutoSaveDisabled() {
     .get<string>("autoSave", "off");
 
   return autoSave === "off";
+}
+
+function getDetectWorktreesLimit() {
+  return vscode.workspace
+    .getConfiguration("git")
+    .get<number>("detectWorktreesLimit", 50);
 }
 
 function getGithubCopilotCodeCompletionEnabled() {

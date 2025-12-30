@@ -51,7 +51,7 @@ export class GithubPullRequestState implements vscode.Disposable {
             e.repository,
             undefined,
           );
-          await this.worktreeManager.updateWorktrees();
+          this.updateWorktreeSignal(e.repository);
           this.queueCheck(e.repository);
         }
       }),
@@ -59,7 +59,6 @@ export class GithubPullRequestState implements vscode.Disposable {
     this.disposables.push(
       this.gitState.onDidChangeRepository(async (e) => {
         if (e.type === "repository-changed" && e.change === "added") {
-          await this.worktreeManager.updateWorktrees();
           this.queueCheck(e.repository);
         }
       }),

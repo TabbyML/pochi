@@ -5,10 +5,17 @@ import type { GitWorktree } from "@getpochi/common/vscode-webui-bridge";
 import proxyquire from "proxyquire";
 import path from "node:path";
 import type { GitWorktreeInfoProvider } from "../git-worktree-info-provider";
+import * as vscode from "vscode";
 
 const generateBranchNameStub = sinon.stub();
+const simpleGitStub = sinon.stub().returns({
+  revparse: sinon.stub().resolves("gitdir"),
+  checkIsRepo: sinon.stub().resolves(true),
+  raw: sinon.stub().resolves(""),
+});
 const { WorktreeManager } = proxyquire("../worktree", {
   "@/lib/generate-branch-name": { generateBranchName: generateBranchNameStub },
+  "simple-git": simpleGitStub,
 });
 
 describe("WorktreeManager", () => {
@@ -30,8 +37,16 @@ describe("WorktreeManager", () => {
         delete: sinon.stub(),
       } as any;
 
+      const pochiConfigurationStub = {
+        detectWorktreesLimit: { value: 10 },
+      };
+
       // Create worktreeManager instance with stubbed dependencies
-      worktreeManager = new WorktreeManager(gitStateStub, worktreeDataStoreStub);
+      worktreeManager = new WorktreeManager(
+        gitStateStub,
+        worktreeDataStoreStub,
+        pochiConfigurationStub,
+      );
     });
 
     afterEach(() => {
@@ -152,7 +167,15 @@ describe("WorktreeManager", () => {
         delete: sinon.stub(),
       } as any;
 
-      worktreeManager = new WorktreeManager(gitStateStub, worktreeDataStoreStub);
+      const pochiConfigurationStub = {
+        detectWorktreesLimit: { value: 10 },
+      };
+
+      worktreeManager = new WorktreeManager(
+        gitStateStub,
+        worktreeDataStoreStub,
+        pochiConfigurationStub,
+      );
     });
 
     afterEach(() => {
@@ -274,7 +297,15 @@ prunable gitdir file points to non-existent location
         delete: sinon.stub(),
       } as any;
 
-      worktreeManager = new WorktreeManager(gitStateStub, worktreeDataStoreStub);
+      const pochiConfigurationStub = {
+        detectWorktreesLimit: { value: 10 },
+      };
+
+      worktreeManager = new WorktreeManager(
+        gitStateStub,
+        worktreeDataStoreStub,
+        pochiConfigurationStub,
+      );
 
       worktreeManager.git = {
         branch: sinon.stub().resolves({ all: ["main", "feature-1"] }),
@@ -413,6 +444,99 @@ prunable gitdir file points to non-existent location
       const expectedPath = path.join(expectedParent, "new-feature");
       
       assert.strictEqual(result.worktreePath, expectedPath);
+    });
+  });
+
+  describe("createWorktree", () => {
+    let worktreeManager: any;
+    let gitStateStub: any;
+    let originalFs: any;
+
+    beforeEach(() => {
+      gitStateStub = {
+        onDidRepositoryChange: sinon.stub().returns({ dispose: () => {} }),
+        onDidChangeGitState: sinon.stub().returns({ dispose: () => {} }),
+        inited: { promise: Promise.resolve() },
+        getRepository: sinon.stub().returns(undefined),
+      };
+
+      const worktreeDataStoreStub: GitWorktreeInfoProvider = {
+        initialize: sinon.stub(),
+        get: sinon.stub().returns(undefined),
+        delete: sinon.stub(),
+      } as any;
+
+      // Mock vscode.workspace.workspaceFolders
+      sinon.stub(vscode.workspace, "workspaceFolders").value([{ uri: { fsPath: "/path/to/repo" } }]);
+      
+      // Mock vscode.workspace.fs
+      originalFs = vscode.workspace.fs;
+      // @ts-ignore
+      vscode.workspace.fs = {
+        stat: sinon.stub().rejects(new Error("File not found")),
+      };
+
+      const pochiConfigurationStub = {
+        detectWorktreesLimit: { value: 10 },
+      };
+
+      worktreeManager = new WorktreeManager(
+        gitStateStub,
+        worktreeDataStoreStub,
+        pochiConfigurationStub,
+      );
+      worktreeManager.workspacePath = "/path/to/repo";
+    });
+
+    afterEach(() => {
+      worktreeManager.dispose();
+      // @ts-ignore
+      vscode.workspace.fs = originalFs;
+      sinon.restore();
+    });
+
+    it("should properly handle worktrees array in createWorktree", async () => {
+      // Setup initial worktrees
+      const mainWorktree: GitWorktree = {
+        path: "/path/to/repo",
+        commit: "abc123",
+        branch: "master",
+        isMain: true,
+      };
+      worktreeManager.worktrees.value = [mainWorktree];
+
+      // Mock generateBranchName to return a name
+      generateBranchNameStub.resolves("new-feature");
+
+      // Mock git
+      const gitStub = {
+        checkIsRepo: sinon.stub().resolves(true),
+        raw: sinon.stub(),
+        branch: sinon.stub().resolves({ all: ["main"] }),
+        revparse: sinon.stub().resolves("gitdir"),
+      };
+      worktreeManager.git = gitStub;
+
+      // Mock getWorktrees to return the new worktree after creation
+      gitStub.raw.withArgs(["worktree", "list", "--porcelain"])
+        .resolves(`worktree /path/to/repo\nHEAD abc123\nbranch refs/heads/master\n\nworktree /path/to/repo.worktree/new-feature\nHEAD abc123\nbranch refs/heads/new-feature\n\n`);
+
+      // Mock createWorktreeImpl to succeed
+      worktreeManager.createWorktreeImpl = sinon.stub().resolves();
+
+      // Call createWorktree with options that trigger the code path
+      const result = await worktreeManager.createWorktree({
+        baseBranch: "main",
+        generateBranchName: {
+          prompt: "create new feature"
+        }
+      });
+
+      // Verify createWorktreeImpl was called
+      assert.ok(worktreeManager.createWorktreeImpl.called);
+      
+      // Verify the result is returned (meaning no crash happened)
+      assert.ok(result);
     });
   });
 });
