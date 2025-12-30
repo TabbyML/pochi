@@ -17,8 +17,8 @@
 
 **[Pochi](https://www.tabbyml.com/agent)** is an AI agent designed for software development. It operates within your IDE, using a toolkit of commands to execute complex tasks, from code generation to project-wide refactoring.
 
-<img width="4320" height="2694" alt="readme-pochi" src="https://github.com/user-attachments/assets/d67f52ea-b9fd-40a6-b04b-2619ce1aa102" />
 
+<img width="4392" height="2694" alt="pochi-github-readme" src="https://github.com/user-attachments/assets/23cb0660-1595-4a87-a6a8-95503af3e4a7" />
 
 ## How it works?
 
