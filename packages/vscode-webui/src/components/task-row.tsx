@@ -48,7 +48,13 @@ export function TaskRow({
                 </span>
               )}
               <div className="line-clamp-2 flex flex-1 items-center font-medium text-foreground leading-relaxed">
-                <div className="truncate">{title}</div>
+                <div
+                  className={cn("truncate", {
+                    "text-muted-foreground italic": !title,
+                  })}
+                >
+                  {title || "(empty)"}
+                </div>
                 {state?.unread && (
                   <div className="ml-2 h-2 w-2 shrink-0 rounded-full bg-primary" />
                 )}

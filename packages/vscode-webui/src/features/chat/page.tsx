@@ -281,7 +281,7 @@ function Chat({ user, uid, info }: ChatProps) {
         : pendingToolApproval.tools
       : undefined;
 
-    if (task?.title) {
+    if (task) {
       vscodeHost.onTaskUpdated(
         Schema.encodeSync(taskCatalog.events.tastUpdated.schema)(
           taskCatalog.events.tastUpdated({
@@ -323,10 +323,10 @@ function Chat({ user, uid, info }: ChatProps) {
           prompt: info.prompt,
           parts: prepareMessageParts(t, info.prompt || "", files || [], []),
         });
-      } else if (info.prompt) {
+      } else {
         chatKit.init(cwd, {
           displayId,
-          prompt: info.prompt,
+          prompt: info.prompt ?? undefined,
         });
       }
     } else if (info.type === "compact-task") {
