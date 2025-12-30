@@ -149,7 +149,7 @@ export function WorktreeList({
 
   // Check if there is only one group and it is the main group
   // If so, we don't need to set a max-height for the section
-  const isSingleMainGroup =
+  const containsOnlyMainGroup =
     optimisticGroups.length === 1 && optimisticGroups[0]?.isMain;
 
   return (
@@ -162,7 +162,7 @@ export function WorktreeList({
           onDeleteGroup={onDeleteWorktree}
           gitOriginUrl={gitOriginUrl}
           gh={gh}
-          isSingleMainGroup={isSingleMainGroup}
+          containsOnlyMainGroup={containsOnlyMainGroup}
         />
       ))}
     </div>
@@ -174,14 +174,14 @@ function WorktreeSection({
   onDeleteGroup,
   gh,
   gitOriginUrl,
-  isSingleMainGroup,
+  containsOnlyMainGroup,
 }: {
   group: WorktreeGroup;
   isLoadingWorktrees: boolean;
   onDeleteGroup?: (worktreePath: string) => void;
   gh?: { installed: boolean; authorized: boolean };
   gitOriginUrl?: string | null;
-  isSingleMainGroup?: boolean;
+  containsOnlyMainGroup?: boolean;
 }) {
   const { t } = useTranslation();
   // Default expanded for existing worktrees, collapsed for deleted
@@ -378,8 +378,8 @@ function WorktreeSection({
       <CollapsibleContent>
         <ScrollArea
           viewportClassname={cn("px-1 py-1", {
-            "max-h-[180px]": !group.isMain && !isSingleMainGroup,
-            "max-h-[60cqh]": group.isMain && !isSingleMainGroup,
+            "max-h-[180px]": !group.isMain && !containsOnlyMainGroup,
+            "max-h-[60cqh]": group.isMain && !containsOnlyMainGroup,
             // When there is only one main group, we let it grow naturally without max-height constraint
           })}
         >
