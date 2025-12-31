@@ -158,6 +158,7 @@ export const events = {
       data: Schema.NullOr(DBMessage),
       updatedAt: Schema.Date,
       duration: Schema.optional(Schema.DurationFromMillis),
+      lastCheckpointHash: Schema.optional(Schema.String),
     }),
   }),
   updateShareId: Events.synced({
@@ -198,14 +199,6 @@ export const events = {
     schema: Schema.Struct({
       id: Schema.String,
       lineChanges: LineChanges,
-      updatedAt: Schema.Date,
-    }),
-  }),
-  updateLastCheckpointHash: Events.synced({
-    name: "v1.updateLastCheckpointHash",
-    schema: Schema.Struct({
-      id: Schema.String,
-      lastCheckpointHash: Schema.NullOr(Schema.String),
       updatedAt: Schema.Date,
     }),
   }),
@@ -287,6 +280,7 @@ const materializers = State.SQLite.materializers(events, {
         updatedAt,
         modelId,
         displayId,
+        lastCheckpointHash: null, // set as null to disable user edit when streaming
       })
       .where({ id }),
     tables.messages
@@ -325,13 +319,21 @@ const materializers = State.SQLite.materializers(events, {
       })
       .onConflict("id", "replace"),
   ],
-  "v1.ChatStreamFailed": ({ id, error, updatedAt, data, duration }) => [
+  "v1.ChatStreamFailed": ({
+    id,
+    error,
+    updatedAt,
+    data,
+    duration,
+    lastCheckpointHash,
+  }) => [
     tables.tasks
       .update({
         status: "failed",
         error,
         updatedAt,
         lastStepDuration: duration ?? undefined,
+        lastCheckpointHash,
       })
       .where({ id }),
     ...(data
@@ -368,8 +370,6 @@ const materializers = State.SQLite.materializers(events, {
         updatedAt,
       })
       .where({ id }),
-  "v1.updateLastCheckpointHash": ({ id, lastCheckpointHash, updatedAt }) =>
-    tables.tasks.update({ lastCheckpointHash, updatedAt }).where({ id }),
 });
 
 const state = State.SQLite.makeState({ tables, materializers });

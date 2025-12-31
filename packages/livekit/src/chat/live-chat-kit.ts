@@ -1,5 +1,5 @@
 import { getLogger } from "@getpochi/common";
-import type { CustomAgent } from "@getpochi/tools";
+import { type CustomAgent, ToolsByPermission } from "@getpochi/tools";
 import type { Store } from "@livestore/livestore";
 import { Duration } from "@livestore/utils/effect";
 import type { ChatInit, ChatOnErrorCallback, ChatOnFinishCallback } from "ai";
@@ -360,6 +360,7 @@ export class LiveChatKit<
         duration: this.lastStepStartTimestamp
           ? Duration.millis(Date.now() - this.lastStepStartTimestamp)
           : undefined,
+        lastCheckpointHash: getCleanCheckpoint(this.chat.messages),
       }),
     );
 
@@ -390,6 +391,7 @@ export class LiveChatKit<
         duration: this.lastStepStartTimestamp
           ? Duration.millis(Date.now() - this.lastStepStartTimestamp)
           : undefined,
+        lastCheckpointHash: getCleanCheckpoint(this.chat.messages),
       }),
     );
 
@@ -402,3 +404,20 @@ export class LiveChatKit<
     });
   };
 }
+
+// clean checkpoint means after this checkpoint there are no write or execute toolcalls that may cause file edits
+const getCleanCheckpoint = (messages: Message[]) => {
+  const lastPart = messages
+    .flatMap((m) => m.parts)
+    .filter(
+      (p) =>
+        p.type === "data-checkpoint" ||
+        ToolsByPermission.write.some((tool) => p.type === `tool-${tool}`) ||
+        ToolsByPermission.execute.some((tool) => p.type === `tool-${tool}`),
+    )
+    .at(-1);
+
+  if (lastPart?.type === "data-checkpoint") {
+    return lastPart.data.commit;
+  }
+};

@@ -2,7 +2,10 @@ import { ChatContextProvider, useHandleChatEvents } from "@/features/chat";
 import { isRetryableError, usePendingModelAutoStart } from "@/features/retry";
 import { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
 import { useCustomAgent } from "@/lib/hooks/use-custom-agents";
+import { useLatest } from "@/lib/hooks/use-latest";
+import { useMcp } from "@/lib/hooks/use-mcp";
 import { prepareMessageParts } from "@/lib/message-utils";
+import { cn } from "@/lib/utils";
 import { vscodeHost } from "@/lib/vscode";
 import { useChat } from "@ai-sdk/react";
 import { formatters } from "@getpochi/common";
@@ -12,17 +15,12 @@ import type { Message } from "@getpochi/livekit";
 import { useLiveChatKit } from "@getpochi/livekit/react";
 import type { Todo } from "@getpochi/tools";
 import { useStore } from "@livestore/react";
+import { Schema } from "@livestore/utils/effect";
 import { useRouter } from "@tanstack/react-router";
 import { lastAssistantMessageIsCompleteWithToolCalls } from "ai";
+import type { TFunction } from "i18next";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
-
-import { useLatest } from "@/lib/hooks/use-latest";
-import { useMcp } from "@/lib/hooks/use-mcp";
-import { useUpdateLastCheckpoint } from "@/lib/hooks/use-update-last-checkpoint";
-import { cn } from "@/lib/utils";
-import { Schema } from "@livestore/utils/effect";
-import type { TFunction } from "i18next";
 import { useApprovalAndRetry } from "../approval";
 import { getReadyForRetryError } from "../retry/hooks/use-ready-for-retry-error";
 import {
@@ -378,8 +376,6 @@ function Chat({ user, uid, info }: ChatProps) {
   useHandleChatEvents(
     isLoading || isModelsLoading || !selectedModel ? undefined : sendMessage,
   );
-
-  useUpdateLastCheckpoint(uid, messages);
 
   const forkTask = useCallback(
     async (commitId: string, messageId?: string) => {
