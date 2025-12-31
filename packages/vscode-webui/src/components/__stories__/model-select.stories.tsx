@@ -102,7 +102,7 @@ export const Default: Story = {
     onChange: (v) => console.log("Selected model:", v),
     isLoading: false,
     isValid: true,
-    refreshModels: async () => console.log("Refreshing models..."),
+    reloadModels: async () => console.log("Refreshing models..."),
   },
 };
 
@@ -113,7 +113,7 @@ export const LoadingState: Story = {
     onChange: (v) => console.log("Selected model:", v),
     isLoading: true,
     isValid: false,
-    refreshModels: async () => console.log("Refreshing models..."),
+    reloadModels: async () => console.log("Refreshing models..."),
   },
 };
 
@@ -125,7 +125,7 @@ export const NoModels: Story = {
     isLoading: false,
     isFetching: false,
     isValid: false,
-    refreshModels: async () => console.log("Refreshing models..."),
+    reloadModels: async () => console.log("Refreshing models..."),
   },
 };
 
@@ -137,7 +137,7 @@ export const Refreshing: Story = {
     isLoading: false,
     isFetching: true,
     isValid: false,
-    refreshModels: async () => console.log("Refreshing models..."),
+    reloadModels: async () => console.log("Refreshing models..."),
   },
 };
 
@@ -149,6 +149,6 @@ export const Invalid: Story = {
     isLoading: false,
     isFetching: false,
     isValid: false,
-    refreshModels: async () => console.log("Refreshing models..."),
+    reloadModels: async () => console.log("Refreshing models..."),
   },
 };

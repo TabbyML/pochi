@@ -103,6 +103,7 @@ export function useSelectedModels(options?: UseSelectedModelsOptions) {
   return {
     isLoading,
     isFetching,
+    reload,
     models,
     groupedModels,
     // model with full information
@@ -110,6 +111,5 @@ export function useSelectedModels(options?: UseSelectedModelsOptions) {
     updateSelectedModelId,
     // model for fallback display
     selectedModelFromStore,
-    refreshModels: reload,
   };
 }

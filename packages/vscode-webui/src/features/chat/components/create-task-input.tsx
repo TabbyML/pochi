@@ -52,8 +52,8 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
     selectedModelFromStore, // for fallback display
     isLoading: isModelsLoading,
     isFetching: isFetchingModels,
+    reload: reloadModels,
     updateSelectedModelId,
-    refreshModels,
   } = useSelectedModels({ isSubTask: false });
 
   // Use the unified attachment upload hook
@@ -317,7 +317,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
             isFetching={isFetchingModels}
             isValid={!!selectedModel}
             onChange={updateSelectedModelId}
-            refreshModels={refreshModels}
+            reloadModels={reloadModels}
           />
         </div>
 

@@ -100,8 +100,8 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     selectedModelFromStore, // for fallback display
     isLoading: isModelsLoading,
     isFetching: isFetchingModels,
+    reload: reloadModels,
     updateSelectedModelId,
-    refreshModels,
   } = useSelectedModels({ isSubTask });
 
   // Use the unified attachment upload hook
@@ -337,7 +337,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
             isFetching={isFetchingModels}
             isValid={!!selectedModel}
             onChange={updateSelectedModelId}
-            refreshModels={refreshModels}
+            reloadModels={reloadModels}
           />
         </div>
 

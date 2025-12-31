@@ -39,7 +39,7 @@ interface ModelSelectProps {
   isFetching?: boolean;
   isValid?: boolean;
   triggerClassName?: string;
-  refreshModels?: () => Promise<void>;
+  reloadModels?: () => Promise<void>;
 }
 
 export function ModelSelect({
@@ -50,7 +50,7 @@ export function ModelSelect({
   isFetching,
   isValid,
   triggerClassName,
-  refreshModels,
+  reloadModels,
 }: ModelSelectProps) {
   const { t } = useTranslation();
 
@@ -211,7 +211,7 @@ export function ModelSelect({
                       if (isFetching) {
                         return;
                       }
-                      refreshModels?.();
+                      reloadModels?.();
                     }}
                     className="flex cursor-pointer items-center gap-1 px-3 py-2.5 text-[var(--vscode-textLink-foreground)] text-xs hover:underline"
                   >
