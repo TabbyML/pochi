@@ -26,6 +26,10 @@ export class ModelList implements vscode.Disposable {
     });
   }
 
+  async refresh(): Promise<void> {
+    this.modelList.value = await this.fetchModelList();
+  }
+
   private async fetchModelList(): Promise<DisplayModel[]> {
     const modelList: DisplayModel[] = [];
 
@@ -34,6 +38,7 @@ export class ModelList implements vscode.Disposable {
     for (const [vendorId, vendor] of Object.entries(vendors)) {
       if (vendor.authenticated) {
         try {
+          logger.trace("fetch models", vendorId);
           const models = await vendor.fetchModels();
           for (const [modelId, options] of Object.entries(models)) {
             modelList.push({

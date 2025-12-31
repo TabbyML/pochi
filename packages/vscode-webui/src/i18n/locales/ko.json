@@ -57,7 +57,8 @@
     "modelUnavailable": "모델을 사용할 수 없거나 로드 중입니다.",
     "custom": "사용자 정의",
     "super": "가강",
-    "swift": "극속"
+    "swift": "극속",
+    "reload": "새로고침"
   },
   "worktreeSelect": {
     "selectWorktree": "워크트리 선택",

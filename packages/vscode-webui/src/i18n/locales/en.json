@@ -57,7 +57,8 @@
     "modelUnavailable": "Model is unavailable or still loading",
     "custom": "Custom",
     "super": "Super",
-    "swift": "Swift"
+    "swift": "Swift",
+    "reload": "Reload"
   },
   "worktreeSelect": {
     "selectWorktree": "Select Worktree",

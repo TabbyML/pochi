@@ -3,7 +3,7 @@ import { vscodeHost } from "@/lib/vscode";
 import type { DisplayModel } from "@getpochi/common/vscode-webui-bridge";
 import { threadSignal } from "@quilted/threads/signals";
 import { useQuery } from "@tanstack/react-query";
-import { useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 /** @useSignals this comment is needed to enable signals in this hook */
 export const useModelList = (filterPochiModels: boolean) => {
@@ -12,6 +12,8 @@ export const useModelList = (filterPochiModels: boolean) => {
     queryFn: fetchModelList,
     staleTime: Number.POSITIVE_INFINITY,
   });
+
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const enablePochiModels = useEnablePochiModels();
 
@@ -26,7 +28,17 @@ export const useModelList = (filterPochiModels: boolean) => {
       : modelListSignal?.value;
   }, [filterPochiModels, modelListSignal?.value, enablePochiModels]);
 
-  return { modelList, isLoading };
+  const refresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      await vscodeHost.refreshModelList();
+      // The signal will automatically update, so we don't need to call refetch
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, []);
+
+  return { modelList, isLoading, isRefreshing, refresh };
 };
 
 async function fetchModelList() {

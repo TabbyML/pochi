@@ -832,6 +832,10 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     return ThreadSignal.serialize(this.modelList.modelList);
   };
 
+  refreshModelList = async (): Promise<void> => {
+    await this.modelList.refresh();
+  };
+
   readUserStorage = async (): Promise<
     ThreadSignalSerialization<Record<string, UserInfo>>
   > => {

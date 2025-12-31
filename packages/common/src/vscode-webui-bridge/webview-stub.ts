@@ -243,6 +243,9 @@ const VSCodeHostStub = {
   readModelList: async () => {
     return Promise.resolve({} as ThreadSignalSerialization<DisplayModel[]>);
   },
+  refreshModelList: async () => {
+    return Promise.resolve();
+  },
   readUserStorage: async () => {
     return Promise.resolve(
       {} as ThreadSignalSerialization<Record<string, UserInfo>>,

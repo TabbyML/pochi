@@ -57,7 +57,8 @@
     "modelUnavailable": "模型不可用或仍在加载中。",
     "custom": "自定义",
     "super": "加强",
-    "swift": "极速"
+    "swift": "极速",
+    "reload": "重新加载"
   },
   "worktreeSelect": {
     "selectWorktree": "选择工作树",

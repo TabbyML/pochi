@@ -300,6 +300,11 @@ export interface VSCodeHostApi {
 
   readModelList(): Promise<ThreadSignalSerialization<DisplayModel[]>>;
 
+  /**
+   * Manually refresh the model list from vendors and providers
+   */
+  refreshModelList(): Promise<void>;
+
   readUserStorage(): Promise<
     ThreadSignalSerialization<Record<string, UserInfo>>
   >;

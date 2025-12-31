@@ -17,11 +17,17 @@ import {
 } from "@/components/ui/hover-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import { CheckIcon, ChevronDownIcon, TriangleAlertIcon } from "lucide-react";
+import {
+  CheckIcon,
+  ChevronDownIcon,
+  RefreshCwIcon,
+  TriangleAlertIcon,
+} from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import LoadingWrapper from "@/components/loading-wrapper";
 import type { ModelGroups } from "@/features/settings";
+import { useUserStorage } from "@/lib/hooks/use-user-storage";
 import type { DisplayModel } from "@getpochi/common/vscode-webui-bridge";
 import { DropdownMenuPortal } from "@radix-ui/react-dropdown-menu";
 
@@ -32,8 +38,10 @@ interface ModelSelectProps {
   value: ModelSelectValue | undefined;
   onChange: (v: string) => void;
   isLoading?: boolean;
+  isRefreshing?: boolean;
   isValid?: boolean;
   triggerClassName?: string;
+  refreshModels: () => void;
 }
 
 export function ModelSelect({
@@ -41,13 +49,25 @@ export function ModelSelect({
   value,
   onChange,
   isLoading,
+  isRefreshing,
   isValid,
   triggerClassName,
+  refreshModels,
 }: ModelSelectProps) {
   const { t } = useTranslation();
+  const {
+    users: { pochi: user } = {},
+  } = useUserStorage();
 
   const hostedModels = models?.filter((x) => !x.isCustom);
   const customModels = models?.filter((x) => x.isCustom);
+
+  const shouldShowReloadButton =
+    !hostedModels ||
+    ((hostedModels.find((g) => g.title === "Super")?.models.length ?? 0) ===
+      0 &&
+      (hostedModels.find((g) => g.title === "Swift")?.models.length ?? 0) ===
+        0);
 
   const onSelectModel = (v: DisplayModel) => {
     onChange(v.id);
@@ -113,6 +133,22 @@ export function ModelSelect({
               alignOffset={6}
               className="dropdown-menu max-h-[32vh] min-w-[18rem] animate-in overflow-y-auto overflow-x-hidden rounded-md border bg-background p-2 text-popover-foreground shadow"
             >
+              {!!user && !isLoading && shouldShowReloadButton && (
+                <div className="flex justify-center py-4">
+                  <Button
+                    onClick={() => refreshModels()}
+                    variant="outline"
+                    size="sm"
+                    className="gap-2"
+                    disabled={isRefreshing}
+                  >
+                    <RefreshCwIcon
+                      className={cn("size-4", isRefreshing && "animate-spin")}
+                    />
+                    {t("modelSelect.reload")}
+                  </Button>
+                </div>
+              )}
               <DropdownMenuRadioGroup>
                 {hostedModels
                   ?.filter((group) => group.models.length > 0)
