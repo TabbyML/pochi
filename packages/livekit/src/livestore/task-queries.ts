@@ -1,10 +1,11 @@
+import { parseGitOriginUrl } from "@getpochi/common/git-utils";
 import { Schema, queryDb, sql } from "@livestore/livestore";
 import { tables } from "./default-schema";
 
 export const makeTasksQuery = (cwd: string) =>
   queryDb(
     {
-      query: sql`select * from tasks where parentId is null and (cwd = '${cwd}' or git->>'$.worktree.gitdir' like '${cwd}/.git/worktrees%') order by updatedAt desc`,
+      query: sql`select * from tasks where parentId is null and (cwd = '${cwd}' or git->>'$.worktree.gitdir' = '${cwd}') order by updatedAt desc`,
       schema: Schema.Array(tables.tasks.rowSchema),
     },
     {
@@ -21,7 +22,7 @@ export const makeTasksQuery = (cwd: string) =>
 export const makeTasksWithLimitQuery = (cwd: string, limit: number) => {
   return queryDb(
     {
-      query: sql`select * from tasks where parentId is null and cwd = '${cwd}' order by updatedAt desc limit ${limit}`,
+      query: sql`select * from tasks where parentId is null and (cwd = '${cwd}' or git->>'$.worktree.gitdir' = '${cwd}') order by updatedAt desc limit ${limit}`,
       schema: Schema.Array(tables.tasks.rowSchema),
     },
     {
@@ -38,12 +39,35 @@ export const makeTasksWithLimitQuery = (cwd: string, limit: number) => {
 export const makeTasksCountQuery = (cwd: string) => {
   return queryDb(
     {
-      query: sql`select COUNT(*) as count from tasks where parentId is null and cwd = '${cwd}'`,
+      query: sql`select COUNT(*) as count from tasks where parentId is null and (cwd = '${cwd}' or git->>'$.worktree.gitdir' = '${cwd}')`,
       schema: Schema.Array(Schema.Struct({ count: Schema.Number })),
     },
     {
       label: "tasks.cwd.count",
       deps: [cwd],
+    },
+  );
+};
+
+export const makeNonCwdWorktreesQuery = (cwd: string, origin?: string) => {
+  const originFilter = origin
+    ? `and git->>'$.origin' = '${parseGitOriginUrl(origin)?.webUrl}'`
+    : "";
+
+  return queryDb(
+    {
+      query: sql`select distinct git->>'$.worktree.gitdir' as path, git->>'$.branch' as branch, cwd from tasks where parentId is null and cwd != '${cwd}' ${originFilter} and git->>'$.worktree.gitdir' is not null`,
+      schema: Schema.Array(
+        Schema.Struct({
+          path: Schema.String,
+          branch: Schema.String,
+          cwd: Schema.String,
+        }),
+      ),
+    },
+    {
+      label: "tasks.cwd.worktrees",
+      deps: [cwd, origin],
     },
   );
 };
