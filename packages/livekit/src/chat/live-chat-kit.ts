@@ -44,13 +44,11 @@ export type LiveChatKitOptions<T> = {
   }) => void | Promise<void>;
   onStreamStart?: () => void;
   onStreamFinish?: (
-    data: Pick<Task, "id" | "cwd" | "status"> & { messages: Message[] },
+    data: Pick<Task, "id" | "cwd" | "status"> & {
+      messages: Message[];
+      error?: Error;
+    },
   ) => void;
-  onStreamFailed?: (data: {
-    error: Error;
-    messages: Message[];
-    cwd: string | null;
-  }) => void;
 
   customAgent?: CustomAgent;
   outputSchema?: z.ZodAny;
@@ -89,13 +87,9 @@ export class LiveChatKit<
   onStreamFinish?: (
     data: Pick<Task, "id" | "cwd" | "status"> & {
       messages: Message[];
+      error?: Error;
     },
   ) => void;
-  onStreamFailed?: (data: {
-    cwd: string | null;
-    error: Error;
-    messages: Message[];
-  }) => void;
   readonly compact: () => Promise<string>;
   private lastStepStartTimestamp: number | undefined;
 
@@ -112,14 +106,12 @@ export class LiveChatKit<
     outputSchema,
     onStreamStart,
     onStreamFinish,
-    onStreamFailed,
     ...chatInit
   }: LiveChatKitOptions<T>) {
     this.taskId = taskId;
     this.store = store;
     this.onStreamStart = onStreamStart;
     this.onStreamFinish = onStreamFinish;
-    this.onStreamFailed = onStreamFailed;
     this.transport = new FlexibleChatTransport({
       store,
       onStart: this.onStart,
@@ -398,10 +390,12 @@ export class LiveChatKit<
 
     this.clearLastStepTimestamp();
 
-    this.onStreamFailed?.({
+    this.onStreamFinish?.({
+      id: this.taskId,
       cwd: this.task?.cwd ?? null,
-      error,
+      status: "failed",
       messages: [...this.chat.messages],
+      error,
     });
   };
 }

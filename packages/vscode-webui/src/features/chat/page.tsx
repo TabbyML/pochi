@@ -130,12 +130,39 @@ export function Chat({ user, uid, info }: ChatProps) {
     (
       data: Pick<Task, "id" | "cwd" | "status"> & {
         messages: Message[];
+        error?: Error;
       },
     ) => {
-      const lastMessage = data.messages.at(-1);
       const topTaskUid = isSubTask ? task?.parentId : uid;
       const cwd = data.cwd;
-      if (!topTaskUid || !lastMessage || !cwd) return;
+      if (!topTaskUid || !cwd) return;
+
+      if (data.status === "failed" && data.error) {
+        let autoApprove = autoApproveGuard.current === "auto";
+        if (data.error && !isRetryableError(data.error)) {
+          autoApprove = false;
+        }
+
+        const retryLimit =
+          autoApproveActive && autoApproveSettings.retry && autoApprove
+            ? autoApproveSettings.maxRetryLimit
+            : 0;
+
+        if (
+          retryLimit === 0 ||
+          (retryCount?.count !== undefined && retryCount.count >= retryLimit)
+        ) {
+          sendNotification("failed", {
+            uid: topTaskUid,
+            displayId: topDisplayId,
+            isSubTask,
+          });
+        }
+        return;
+      }
+
+      const lastMessage = data.messages.at(-1);
+      if (!lastMessage) return;
 
       if (data.status === "pending-tool") {
         const pendingToolCallApproval = getPendingToolcallApproval(lastMessage);
@@ -188,34 +215,6 @@ export function Chat({ user, uid, info }: ChatProps) {
     },
   );
 
-  const onStreamFailed = useLatest(
-    ({ error, cwd }: { error: Error; cwd: string | null }) => {
-      const topTaskUid = isSubTask ? task?.parentId : uid;
-      if (!topTaskUid || !cwd) return;
-
-      let autoApprove = autoApproveGuard.current === "auto";
-      if (error && !isRetryableError(error)) {
-        autoApprove = false;
-      }
-
-      const retryLimit =
-        autoApproveActive && autoApproveSettings.retry && autoApprove
-          ? autoApproveSettings.maxRetryLimit
-          : 0;
-
-      if (
-        retryLimit === 0 ||
-        (retryCount?.count !== undefined && retryCount.count >= retryLimit)
-      ) {
-        sendNotification("failed", {
-          uid: topTaskUid,
-          displayId: topDisplayId,
-          isSubTask,
-        });
-      }
-    },
-  );
-
   const chatKit = useLiveChatKit({
     taskId: uid,
     getters,
@@ -244,9 +243,6 @@ export function Chat({ user, uid, info }: ChatProps) {
     },
     onStreamFinish(data) {
       onStreamFinish.current(data);
-    },
-    onStreamFailed(data) {
-      onStreamFailed.current(data);
     },
   });
 
