@@ -321,6 +321,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
         isSubTask={isSubTask}
         reviews={reviews}
         taskId={taskId}
+        lastCheckpointHash={task?.lastCheckpointHash ?? undefined}
       />
 
       {/* Hidden file input for image uploads */}

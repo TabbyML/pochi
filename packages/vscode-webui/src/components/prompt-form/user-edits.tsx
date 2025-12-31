@@ -7,36 +7,56 @@ import { EditSummary } from "@/features/tools";
 import { useUserEdits } from "@/lib/hooks/use-user-edits";
 import { cn } from "@/lib/utils";
 import { vscodeHost } from "@/lib/vscode";
+import type { FileDiff } from "@getpochi/common/vscode-webui-bridge";
 import { useTranslation } from "react-i18next";
 import { VscDiffMultiple } from "react-icons/vsc";
 
-interface UserEditsProps {
+interface UserEditsBadgeProps {
   className?: string;
   taskId: string;
+  lastCheckpoint: string;
 }
 
-export const UserEdits: React.FC<UserEditsProps> = ({ taskId, className }) => {
+interface UserEditsProps {
+  userEdits: FileDiff[];
+  originCheckpoint: string;
+  modifiedCheckpoint?: string;
+  className?: string;
+}
+
+export const UserEditsBadge: React.FC<UserEditsBadgeProps> = ({
+  taskId,
+  className,
+  lastCheckpoint,
+}) => {
   const userEdits = useUserEdits(taskId);
+
+  return (
+    <UserEdits
+      userEdits={userEdits}
+      className={className}
+      originCheckpoint={lastCheckpoint}
+    />
+  );
+};
+
+export const UserEdits: React.FC<UserEditsProps> = ({
+  userEdits,
+  className,
+  originCheckpoint,
+  modifiedCheckpoint,
+}) => {
   const { t } = useTranslation();
 
   const showFileChanges = () => {
-    // biome-ignore lint/style/noUnusedTemplateLiteral: <explanation>
-    vscodeHost.openFile(`/userEdits.md`, {
-      base64Data: btoa(
-        unescape(
-          encodeURIComponent(
-            userEdits
-              .map((edit) => {
-                return `**${edit.filepath}** (modified)
-\`\`\`diff
-${edit.diff}
-\`\`\``;
-              })
-              .join("\n\n"),
-          ),
-        ),
-      ),
-    });
+    vscodeHost.showCheckpointDiff(
+      "Your edits",
+      {
+        origin: originCheckpoint,
+        modified: modifiedCheckpoint,
+      },
+      userEdits.map((userEdit) => userEdit.filepath),
+    );
   };
 
   const totalAdditions = userEdits.reduce((sum, file) => sum + file.added, 0);

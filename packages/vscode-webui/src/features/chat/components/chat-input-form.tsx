@@ -9,7 +9,7 @@ import type { UseChatHelpers } from "@ai-sdk/react";
 import type { Message } from "@getpochi/livekit";
 
 import { ReviewBadges } from "@/components/prompt-form/review-badges";
-import { UserEdits } from "@/components/prompt-form/user-edits";
+import { UserEditsBadge } from "@/components/prompt-form/user-edits";
 import type { Review } from "@getpochi/common/vscode-webui-bridge";
 import type { ReactNode } from "@tanstack/react-router";
 import { QueuedMessages } from "./queued-messages";
@@ -33,6 +33,7 @@ interface ChatInputFormProps {
   children?: ReactNode;
   reviews: Review[];
   taskId?: string;
+  lastCheckpointHash?: string;
 }
 
 export function ChatInputForm({
@@ -53,6 +54,7 @@ export function ChatInputForm({
   isSubTask,
   reviews,
   taskId,
+  lastCheckpointHash,
   children,
 }: ChatInputFormProps) {
   const editorRef = useRef<Editor | null>(null);
@@ -79,7 +81,9 @@ export function ChatInputForm({
             editorRef.current?.commands.insertContent(" @");
           }}
         />
-        {taskId && <UserEdits taskId={taskId} />}
+        {taskId && lastCheckpointHash && (
+          <UserEditsBadge taskId={taskId} lastCheckpoint={lastCheckpointHash} />
+        )}
         <ReviewBadges reviews={reviews} />
       </div>
       <DevRetryCountdown pendingApproval={pendingApproval} status={status} />
