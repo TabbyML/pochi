@@ -8,7 +8,7 @@ interface ChatAreaProps {
   messages: Message[];
   isLoading: boolean;
   user?: { name: string; image?: string | null };
-  messagesContainerRef: React.RefObject<HTMLDivElement | null>;
+  messagesContainerRef?: React.RefObject<HTMLDivElement | null>;
   className?: string;
   hideEmptyPlaceholder?: boolean;
   forkTask?: (commitId: string, messageId?: string) => Promise<void>;

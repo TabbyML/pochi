@@ -1,7 +1,7 @@
 import "@/components/prompt-form/prompt-form.css";
 
 import { WelcomeScreen } from "@/components/welcome-screen";
-import { ChatPage } from "@/features/chat";
+import { ChatPage, ChatSkeleton } from "@/features/chat";
 import { useModelList } from "@/lib/hooks/use-model-list";
 import { usePochiCredentials } from "@/lib/hooks/use-pochi-credentials";
 import { useUserStorage } from "@/lib/hooks/use-user-storage";
@@ -61,8 +61,16 @@ function RouteComponent() {
   if (isPending) return null;
 
   return (
-    <LiveStoreDefaultProvider jwt={jwt} storeId={storeId}>
+    <LiveStoreDefaultProvider
+      jwt={jwt}
+      storeId={storeId}
+      renderLoading={renderLoading}
+    >
       <ChatPage key={key} user={users?.pochi} uid={uid} info={info} />
     </LiveStoreDefaultProvider>
   );
+}
+
+function renderLoading() {
+  return <ChatSkeleton />;
 }

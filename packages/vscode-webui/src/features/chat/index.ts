@@ -19,6 +19,6 @@ export {
 // Export new tool call state management hooks
 export type { ToolCallLifeCycle } from "./lib/tool-call-life-cycle";
 
-export { ChatPage } from "./page";
+export { ChatPage, ChatSkeleton } from "./page";
 
 export { CreateTaskInput } from "./components/create-task-input";

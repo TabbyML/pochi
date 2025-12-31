@@ -33,7 +33,7 @@ import {
   isToolAutoApproved,
 } from "../settings/hooks/use-tool-auto-approval";
 import { ChatArea } from "./components/chat-area";
-import { ChatToolbar } from "./components/chat-toolbar";
+import { ChatToolBarSkeleton, ChatToolbar } from "./components/chat-toolbar";
 import { SubtaskHeader } from "./components/subtask";
 import { useLatestUserEdits } from "./hooks/use-latest-user-edits";
 import { useRestoreTaskModel } from "./hooks/use-restore-task-model";
@@ -42,10 +42,14 @@ import { useSetSubtaskModel } from "./hooks/use-set-subtask-model";
 import { useAddSubtaskResult } from "./hooks/use-subtask-completed";
 import { useSubtaskInfo } from "./hooks/use-subtask-info";
 import {
+  ChatContextProviderStub,
   useAutoApproveGuard,
   useChatAbortController,
   useRetryCount,
 } from "./lib/chat-state";
+
+const ChatContainerClassName = "mx-auto flex h-screen max-w-6xl flex-col";
+const ChatToolbarContainerClassName = "relative flex flex-col px-4";
 import { onOverrideMessages } from "./lib/on-override-messages";
 import { useLiveChatKitGetters } from "./lib/use-live-chat-kit-getters";
 import { useSendTaskNotification } from "./lib/use-send-task-notification";
@@ -394,7 +398,7 @@ function Chat({ user, uid, info }: ChatProps) {
   );
 
   return (
-    <div className="mx-auto flex h-screen max-w-6xl flex-col">
+    <div className={ChatContainerClassName}>
       {subtask && (
         <SubtaskHeader
           subtask={subtask}
@@ -414,7 +418,7 @@ function Chat({ user, uid, info }: ChatProps) {
         forkTask={task?.cwd ? forkTask : undefined}
         hideCheckPoint={isSubTask}
       />
-      <div className="relative flex flex-col px-4">
+      <div className={ChatToolbarContainerClassName}>
         <ChatToolbar
           chat={chat}
           task={task}
@@ -431,6 +435,19 @@ function Chat({ user, uid, info }: ChatProps) {
         />
       </div>
     </div>
+  );
+}
+
+export function ChatSkeleton() {
+  return (
+    <ChatContextProviderStub>
+      <div className={ChatContainerClassName}>
+        <ChatArea messages={[]} isLoading={true} />
+        <div className={ChatToolbarContainerClassName}>
+          <ChatToolBarSkeleton />
+        </div>
+      </div>
+    </ChatContextProviderStub>
   );
 }
 
