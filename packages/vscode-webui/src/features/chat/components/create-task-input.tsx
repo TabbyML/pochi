@@ -51,7 +51,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
     selectedModel,
     selectedModelFromStore, // for fallback display
     isLoading: isModelsLoading,
-    isRefreshing: isRefreshingModels,
+    isFetching: isFetchingModels,
     updateSelectedModelId,
     refreshModels,
   } = useSelectedModels({ isSubTask: false });
@@ -314,7 +314,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
             value={selectedModel || selectedModelFromStore}
             models={groupedModels}
             isLoading={isModelsLoading}
-            isRefreshing={isRefreshingModels}
+            isFetching={isFetchingModels}
             isValid={!!selectedModel}
             onChange={updateSelectedModelId}
             refreshModels={refreshModels}

@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuSeparator,
@@ -27,7 +26,6 @@ import { useTranslation } from "react-i18next";
 
 import LoadingWrapper from "@/components/loading-wrapper";
 import type { ModelGroups } from "@/features/settings";
-import { useUserStorage } from "@/lib/hooks/use-user-storage";
 import type { DisplayModel } from "@getpochi/common/vscode-webui-bridge";
 import { DropdownMenuPortal } from "@radix-ui/react-dropdown-menu";
 
@@ -38,10 +36,10 @@ interface ModelSelectProps {
   value: ModelSelectValue | undefined;
   onChange: (v: string) => void;
   isLoading?: boolean;
-  isRefreshing?: boolean;
+  isFetching?: boolean;
   isValid?: boolean;
   triggerClassName?: string;
-  refreshModels: () => void;
+  refreshModels?: () => Promise<void>;
 }
 
 export function ModelSelect({
@@ -49,25 +47,15 @@ export function ModelSelect({
   value,
   onChange,
   isLoading,
-  isRefreshing,
+  isFetching,
   isValid,
   triggerClassName,
   refreshModels,
 }: ModelSelectProps) {
   const { t } = useTranslation();
-  const {
-    users: { pochi: user } = {},
-  } = useUserStorage();
 
   const hostedModels = models?.filter((x) => !x.isCustom);
   const customModels = models?.filter((x) => x.isCustom);
-
-  const shouldShowReloadButton =
-    !hostedModels ||
-    ((hostedModels.find((g) => g.title === "Super")?.models.length ?? 0) ===
-      0 &&
-      (hostedModels.find((g) => g.title === "Swift")?.models.length ?? 0) ===
-        0);
 
   const onSelectModel = (v: DisplayModel) => {
     onChange(v.id);
@@ -133,22 +121,6 @@ export function ModelSelect({
               alignOffset={6}
               className="dropdown-menu max-h-[32vh] min-w-[18rem] animate-in overflow-y-auto overflow-x-hidden rounded-md border bg-background p-2 text-popover-foreground shadow"
             >
-              {!!user && !isLoading && shouldShowReloadButton && (
-                <div className="flex justify-center py-4">
-                  <Button
-                    onClick={() => refreshModels()}
-                    variant="outline"
-                    size="sm"
-                    className="gap-2"
-                    disabled={isRefreshing}
-                  >
-                    <RefreshCwIcon
-                      className={cn("size-4", isRefreshing && "animate-spin")}
-                    />
-                    {t("modelSelect.reload")}
-                  </Button>
-                </div>
-              )}
               <DropdownMenuRadioGroup>
                 {hostedModels
                   ?.filter((group) => group.models.length > 0)
@@ -223,18 +195,34 @@ export function ModelSelect({
                 ))}
 
                 {!!customModels?.flat().length && <DropdownMenuSeparator />}
-                <DropdownMenuItem asChild>
+                <div className="flex items-center justify-between px-2">
                   <a
                     href="command:pochi.openCustomModelSettings"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex cursor-pointer items-center gap-2 px-3 py-1"
+                    className="group cursor-pointer px-3 py-2.5"
                   >
-                    <span className="text-[var(--vscode-textLink-foreground)] text-xs">
+                    <span className="text-[var(--vscode-textLink-foreground)] text-xs group-hover:underline ">
                       {t("modelSelect.manageCustomModels")}
                     </span>
                   </a>
-                </DropdownMenuItem>
+                  <span
+                    onClick={() => {
+                      if (isFetching) {
+                        return;
+                      }
+                      refreshModels?.();
+                    }}
+                    className="flex cursor-pointer items-center gap-1 px-3 py-2.5 text-[var(--vscode-textLink-foreground)] text-xs hover:underline"
+                  >
+                    <RefreshCwIcon
+                      className={cn("size-3 opacity-0", {
+                        "animate-spin opacity-100": isFetching,
+                      })}
+                    />
+                    {t("modelSelect.reload")}
+                  </span>
+                </div>
               </DropdownMenuRadioGroup>
             </DropdownMenuContent>
           </DropdownMenuPortal>

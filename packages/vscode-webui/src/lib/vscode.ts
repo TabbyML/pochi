@@ -94,7 +94,6 @@ function createVSCodeHost(): VSCodeHostApi {
         "showInformationMessage",
         "readVisibleTerminals",
         "readModelList",
-        "refreshModelList",
         "readUserStorage",
         "readCustomAgents",
         "openTaskInPanel",

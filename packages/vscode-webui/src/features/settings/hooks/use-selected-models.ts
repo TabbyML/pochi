@@ -38,8 +38,8 @@ export function useSelectedModels(options?: UseSelectedModelsOptions) {
   const {
     modelList: models,
     isLoading,
-    isRefreshing,
-    refresh,
+    isFetching,
+    reload,
   } = useModelList(true);
   const { selectedModel: selectedModelFromStore } = useSettingsStore();
   const { updateSelectedModel, selectedModel: storedSelectedModel } =
@@ -102,7 +102,7 @@ export function useSelectedModels(options?: UseSelectedModelsOptions) {
 
   return {
     isLoading,
-    isRefreshing,
+    isFetching,
     models,
     groupedModels,
     // model with full information
@@ -110,6 +110,6 @@ export function useSelectedModels(options?: UseSelectedModelsOptions) {
     updateSelectedModelId,
     // model for fallback display
     selectedModelFromStore,
-    refreshModels: refresh,
+    refreshModels: reload,
   };
 }
