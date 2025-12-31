@@ -15,7 +15,9 @@ export function prepareMessageParts(
   for (const x of files) {
     parts.push({
       type: "text",
-      text: prompts.createSystemReminder(`Attached file: ${x.filename}`),
+      text: prompts.createSystemReminder(
+        `Attached file: ${x.filename} (${x.url})`,
+      ),
     });
     parts.push(x);
   }
