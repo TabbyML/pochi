@@ -5,7 +5,7 @@ import { useCustomAgent } from "@/lib/hooks/use-custom-agents";
 import { useLatest } from "@/lib/hooks/use-latest";
 import { useMcp } from "@/lib/hooks/use-mcp";
 import { prepareMessageParts } from "@/lib/message-utils";
-import { cn } from "@/lib/utils";
+import { cn, tw } from "@/lib/utils";
 import { vscodeHost } from "@/lib/vscode";
 import { useChat } from "@ai-sdk/react";
 import { formatters } from "@getpochi/common";
@@ -48,8 +48,8 @@ import {
   useRetryCount,
 } from "./lib/chat-state";
 
-const ChatContainerClassName = "mx-auto flex h-screen max-w-6xl flex-col";
-const ChatToolbarContainerClassName = "relative flex flex-col px-4";
+const ChatContainerClassName = tw`mx-auto flex h-screen max-w-6xl flex-col`;
+const ChatToolbarContainerClassName = tw`relative flex flex-col px-4`;
 import { onOverrideMessages } from "./lib/on-override-messages";
 import { useLiveChatKitGetters } from "./lib/use-live-chat-kit-getters";
 import { useSendTaskNotification } from "./lib/use-send-task-notification";
@@ -88,9 +88,6 @@ function Chat({ user, uid, info }: ChatProps) {
       ?.displayId ?? info.displayId;
 
   const isSubTask = !!subtask;
-
-  const isTaskWithoutContent =
-    info.type === "new-task" && !info.prompt && !info.files?.length;
 
   // inherit autoApproveSettings from parent task
   useEffect(() => {
@@ -264,6 +261,9 @@ function Chat({ user, uid, info }: ChatProps) {
   const { messages, sendMessage, status } = chat;
   const renderMessages = useMemo(() => formatters.ui(messages), [messages]);
   const isLoading = status === "streaming" || status === "submitted";
+  const isTaskWithoutContent =
+    (info.type === "new-task" && !info.prompt && !info.files?.length) ||
+    (info.type === "open-task" && messages.length === 0);
 
   const approvalAndRetry = useApprovalAndRetry({
     ...chat,

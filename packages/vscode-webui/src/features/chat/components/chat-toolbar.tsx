@@ -26,7 +26,7 @@ import { useAddCompleteToolCalls } from "@/lib/hooks/use-add-complete-tool-calls
 import type { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
 import { useReviews } from "@/lib/hooks/use-reviews";
 import { useTaskChangedFiles } from "@/lib/hooks/use-task-changed-files";
-import { cn } from "@/lib/utils";
+import { cn, tw } from "@/lib/utils";
 import type { UseChatHelpers } from "@ai-sdk/react";
 import { constants } from "@getpochi/common";
 import type { Message, Task } from "@getpochi/livekit";
@@ -50,14 +50,11 @@ import { ErrorMessageView } from "./error-message-view";
 import { SubmitReviewsButton } from "./submit-review-button";
 import { CompleteSubtaskButton } from "./subtask";
 
-const PopupContainerClassName =
-  "-translate-y-full -top-2 absolute left-0 w-full px-4 pt-1";
-const PopupContentClassName = "flex w-full flex-col bg-background";
-const FooterContainerClassName =
-  "my-2 flex shrink-0 justify-between gap-5 overflow-x-hidden";
-const FooterLeftClassName =
-  "flex items-center gap-2 overflow-x-hidden truncate";
-const FooterRightClassName = "flex shrink-0 items-center gap-1";
+const PopupContainerClassName = tw`-translate-y-full -top-2 absolute left-0 w-full px-4 pt-1`;
+const PopupContentClassName = tw`flex w-full flex-col bg-background`;
+const FooterContainerClassName = tw`my-2 flex shrink-0 justify-between gap-5 overflow-x-hidden`;
+const FooterLeftClassName = tw`flex items-center gap-2 overflow-x-hidden truncate`;
+const FooterRightClassName = tw`flex shrink-0 items-center gap-1`;
 
 interface ChatToolbarProps {
   task?: Task;
