@@ -195,7 +195,7 @@ export function ModelSelect({
                 ))}
 
                 {!!customModels?.flat().length && <DropdownMenuSeparator />}
-                <div className="flex items-center justify-between px-2">
+                <div className="flex items-center justify-between gap-2 px-2">
                   <a
                     href="command:pochi.openCustomModelSettings"
                     target="_blank"
