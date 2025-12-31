@@ -81,12 +81,11 @@ export class GitState implements vscode.Disposable {
     if (!repo) {
       return [];
     }
-    return (await repo.getBranches({ remote: false, sort: "committerdate" }))
+    return (await repo.getBranches({ remote: true, sort: "committerdate" }))
       .filter((ref) => ref.type === 0 || ref.type === 1) // Head or RemoteHead
       .map((ref) => ref.name)
       .filter((name): name is string => !!name);
   }
-
   /**
    * Initialize the Git state monitor
    */

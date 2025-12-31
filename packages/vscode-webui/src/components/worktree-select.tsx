@@ -26,7 +26,13 @@ import {
 } from "@getpochi/common/vscode-webui-bridge";
 import { DropdownMenuPortal } from "@radix-ui/react-dropdown-menu";
 import { useQuery } from "@tanstack/react-query";
-import { CheckIcon, CirclePlus, GitBranchIcon, PlusIcon } from "lucide-react";
+import {
+  CheckIcon,
+  CirclePlus,
+  CloudIcon,
+  GitBranchIcon,
+  PlusIcon,
+} from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -68,9 +74,13 @@ function BaseBranchSelector({
   const [search, setSearch] = useState("");
   const { t } = useTranslation();
 
-  const filteredBranches = branches?.filter((branch) =>
-    branch.toLowerCase().includes(search.toLowerCase()),
-  );
+  const filteredBranches = branches?.filter((branch) => {
+    const branchName = branch.replace(/^origin\//, "");
+    return (
+      branchName.toLowerCase().includes(search.toLowerCase()) ||
+      branch.toLowerCase().includes(search.toLowerCase())
+    );
+  });
 
   const [selectedIndex, setSelectedIndex] = useState(0);
 
@@ -142,26 +152,36 @@ function BaseBranchSelector({
               {t("worktreeSelect.noBranchFound")}
             </div>
           )}
-          {filteredBranches?.map((branch, index) => (
-            <DropdownMenuItem
-              key={branch}
-              onSelect={() => {
-                onChange(branch === value ? "" : branch);
-                setOpen(false);
-                setSearch("");
-              }}
-              className={cn(
-                "cursor-pointer",
-                selectedIndex === index &&
-                  "bg-accent/60 text-accent-foreground",
-                value === branch && "bg-accent text-accent-foreground",
-              )}
-              onMouseEnter={() => setSelectedIndex(index)}
-            >
-              <GitBranchIcon className={cn(" h-4 w-4 shrink-0")} />
-              <span className="truncate">{branch}</span>
-            </DropdownMenuItem>
-          ))}
+          {filteredBranches?.map((branch, index) => {
+            const isRemote = branch.startsWith("origin/");
+            const displayName = isRemote
+              ? branch
+              : branch.replace(/^heads\//, "");
+            return (
+              <DropdownMenuItem
+                key={branch}
+                onSelect={() => {
+                  onChange(branch === value ? "" : branch);
+                  setOpen(false);
+                  setSearch("");
+                }}
+                className={cn(
+                  "cursor-pointer",
+                  selectedIndex === index &&
+                    "bg-accent/60 text-accent-foreground",
+                  value === branch && "bg-accent text-accent-foreground",
+                )}
+                onMouseEnter={() => setSelectedIndex(index)}
+              >
+                {isRemote ? (
+                  <CloudIcon className={cn(" h-4 w-4 shrink-0")} />
+                ) : (
+                  <GitBranchIcon className={cn(" h-4 w-4 shrink-0")} />
+                )}
+                <span className="truncate">{displayName}</span>
+              </DropdownMenuItem>
+            );
+          })}
         </div>
       </DropdownMenuContent>
     </DropdownMenu>
