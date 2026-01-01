@@ -21,7 +21,7 @@ export async function showDiffChanges(
   }
 
   const getFileUri = (filepath: string) =>
-    vscode.Uri.joinPath(vscode.Uri.parse(cwd ?? ""), filepath);
+    vscode.Uri.joinPath(vscode.Uri.file(cwd ?? ""), filepath);
 
   if (changedFiles.length === 1) {
     const changedFile = changedFiles[0];

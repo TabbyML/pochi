@@ -507,7 +507,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     const fileUri = path.isAbsolute(resolvedPath)
       ? vscode.Uri.file(resolvedPath)
       : this.cwd
-        ? vscode.Uri.joinPath(vscode.Uri.parse(this.cwd), resolvedPath)
+        ? vscode.Uri.joinPath(vscode.Uri.file(this.cwd), resolvedPath)
         : vscode.Uri.file(resolvedPath);
 
     try {
