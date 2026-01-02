@@ -14,20 +14,35 @@ import { EditSummary, FileIcon } from "@/features/tools";
 import { cn } from "@/lib/utils";
 import { vscodeHost } from "@/lib/vscode";
 import type { UserEdits } from "@getpochi/common/vscode-webui-bridge";
-import { ChevronRight, FilePenLine } from "lucide-react";
+import { ChevronRight, FileDiff, FilePenLine } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { VscGoToFile } from "react-icons/vsc";
+import { VscDiffMultiple, VscGoToFile } from "react-icons/vsc";
 
 interface Props {
   userEdits: UserEdits;
+  checkpoints?: {
+    origin: string | undefined;
+    modified: string | undefined;
+  };
 }
 
-export const UserEditsPart: React.FC<Props> = ({ userEdits }) => {
+export const UserEditsPart: React.FC<Props> = ({ userEdits, checkpoints }) => {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
 
   if (!userEdits || userEdits.length === 0) return null;
+
+  const onShowDiff = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (checkpoints?.origin) {
+      await vscodeHost.showCheckpointDiff(
+        t("userEdits.diffTitle", { defaultValue: "User Edits" }),
+        { origin: checkpoints.origin, modified: checkpoints.modified },
+        userEdits.map((e) => e.filepath),
+      );
+    }
+  };
 
   const totalAdded = userEdits.reduce(
     (sum, edit) => sum + (edit.diff.match(/^\+/gm) || []).length,
@@ -45,7 +60,7 @@ export const UserEditsPart: React.FC<Props> = ({ userEdits }) => {
       className="mt-1 mb-2 rounded-md border"
     >
       <CollapsibleTrigger asChild>
-        <div className="flex cursor-pointer select-none items-center justify-between border-border px-3 py-1.5 hover:bg-border/30">
+        <div className="group flex cursor-pointer select-none items-center justify-between border-border px-3 py-1.5 hover:bg-border/30">
           <div className="flex min-h-5 items-center gap-1">
             <ChevronRight
               className={cn(
@@ -68,12 +83,38 @@ export const UserEditsPart: React.FC<Props> = ({ userEdits }) => {
               className="ml-2 text-xs"
             />
           </div>
+          {checkpoints?.origin && (
+            <div
+              className="hidden items-center group-hover:flex"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-5 w-5"
+                    onClick={onShowDiff}
+                  >
+                    <VscDiffMultiple className="size-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {t("userEdits.showDiff", { defaultValue: "Show Diff" })}
+                </TooltipContent>
+              </Tooltip>
+            </div>
+          )}
         </div>
       </CollapsibleTrigger>
       <CollapsibleContent>
         <div className="flex flex-col gap-1">
           {userEdits.map((edit) => (
-            <UserEditItem key={edit.filepath} edit={edit} />
+            <UserEditItem
+              key={edit.filepath}
+              edit={edit}
+              checkpoints={checkpoints}
+            />
           ))}
         </div>
       </CollapsibleContent>
@@ -83,15 +124,30 @@ export const UserEditsPart: React.FC<Props> = ({ userEdits }) => {
 
 interface UserEditItemProps {
   edit: NonNullable<UserEdits>[number];
+  checkpoints?: {
+    origin: string | undefined;
+    modified: string | undefined;
+  };
 }
 
-function UserEditItem({ edit }: UserEditItemProps) {
+function UserEditItem({ edit, checkpoints }: UserEditItemProps) {
   const [isOpen, setIsOpen] = useState(false);
   const { t } = useTranslation();
 
   const onOpenFile = async (e: React.MouseEvent) => {
     e.stopPropagation();
     vscodeHost.openFile(edit.filepath);
+  };
+
+  const onShowDiff = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (checkpoints?.origin) {
+      await vscodeHost.showCheckpointDiff(
+        t("userEdits.diffTitle", { defaultValue: "User Edits" }),
+        { origin: checkpoints.origin, modified: checkpoints.modified },
+        [edit.filepath],
+      );
+    }
   };
 
   // Calculate simple stats from diff string if possible (lines added/removed)
@@ -111,7 +167,10 @@ function UserEditItem({ edit }: UserEditItemProps) {
               isOpen && "rotate-90",
             )}
           />
-          <span className="truncate font-medium text-sm">
+          <span
+            className="flex items-center truncate font-medium text-sm hover:underline"
+            onClick={onOpenFile}
+          >
             <FileIcon path={edit.filepath} />
             <span className="ml-1.5">{edit.filepath}</span>
           </span>
@@ -119,6 +178,23 @@ function UserEditItem({ edit }: UserEditItemProps) {
         <div className="flex items-center gap-2 px-3 text-xs">
           <EditSummary editSummary={{ added, removed }} className="text-xs" />
           <div className="hidden items-center gap-1 group-hover:flex">
+            {checkpoints?.origin && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={onShowDiff}
+                    className="h-5 w-5"
+                  >
+                    <FileDiff className="size-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {t("userEdits.showDiff", { defaultValue: "Show Diff" })}
+                </TooltipContent>
+              </Tooltip>
+            )}
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
