@@ -16,6 +16,7 @@ import { useLatestCheckpoint } from "@/lib/hooks/use-latest-checkpoint";
 import { cn } from "@/lib/utils";
 import { isVSCodeEnvironment, vscodeHost } from "@/lib/vscode";
 import { prompts } from "@getpochi/common";
+import type { ActiveSelection } from "@getpochi/common/vscode-webui-bridge";
 import type { Message, UITools } from "@getpochi/livekit";
 import {
   type FileUIPart,
@@ -150,6 +151,7 @@ export const MessageList: React.FC<{
               </div>
               {/* Display attachments at the bottom of the message */}
               <UserAttachments message={m} />
+              <UserActiveSelections message={m} />
             </div>
             {messageIndex < renderMessages.length - 1 && (
               <SeparatorWithCheckpoint
@@ -189,6 +191,28 @@ function UserAttachments({ message }: { message: Message }) {
     return (
       <div className="mt-3">
         <MessageAttachments attachments={fileParts} />
+      </div>
+    );
+  }
+}
+
+function UserActiveSelections({ message }: { message: Message }) {
+  const selectionParts = message.parts.filter(
+    (part) => part.type === "data-active-selection",
+  ) as {
+    type: "data-active-selection";
+    data: { activeSelection: ActiveSelection };
+  }[];
+
+  if (message.role === "user" && selectionParts.length) {
+    return (
+      <div className="mt-2 flex flex-wrap gap-2">
+        {selectionParts.map((part, index) => (
+          <ActiveSelectionPart
+            key={index}
+            activeSelection={part.data.activeSelection}
+          />
+        ))}
       </div>
     );
   }
@@ -274,7 +298,7 @@ function Part({
   }
 
   if (part.type === "data-active-selection") {
-    return <ActiveSelectionPart activeSelection={part.data.activeSelection} />;
+    return null;
   }
 
   if (isToolUIPart(part)) {
