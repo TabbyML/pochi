@@ -1,0 +1,59 @@
+---
+title: Weekly Update #15
+---
+
+# Weekly Update #15
+
+### TL;DR
+
+This release we focused on improving how you review, refine, and iterate on agent-generated code inside VS Code, along with bug fixes that increase correctness and stability during multi-step agent runs.
+
+Let’s start!
+
+
+### 🚀 Features
+
+- **Reviews (Inline Comments) in VS Code:** You can now review and refine agent-generated code directly inside the editor using Reviews.
+
+    Reviews let you leave inline comments on the diff, tied to exact files and line numbers. Instead of re-explaining issues in chat, you can mark multiple problems across the code and submit them together as a single review. Pochi uses this line-level context to apply fixes in one focused revision pass.
+
+    This is not a PR review system. Reviews are private, pre-PR discussions with the LLM, attached directly to code while you’re still iterating. **[#922](https://github.com/TabbyML/pochi/issues/922)**
+  
+  <video
+        controls
+        style={{
+        width: "100%",
+        borderRadius: "8px",
+        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+        }}
+    >
+        <source src="https://assets.docs.getpochi.com/inline-comments.mp4" type="video/mp4" />
+        Your browser does not support the video tag.
+    </video>
+
+
+- **Select Base Branch When Creating a Git Worktree:** You can now choose a base branch when creating a new Git worktree in VS Code.
+    
+    Previously, worktrees were always based on the current branch (`HEAD`), which could lead to accidental branch-on-branch workflows. Now you can start clean from `main` (default) or any other branch. **[#864](https://github.com/TabbyML/pochi/issues/864)**
+   
+   <video
+        controls
+        style={{
+        width: "100%",
+        borderRadius: "8px",
+        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+        }}
+    >
+        <source src="https://assets.docs.getpochi.com/change-base-branch-022.mp4" type="video/mp4" />
+        Your browser does not support the video tag.
+    </video>
+
+  ### 🐛 Bug Fixes
+
+- **Improved Problem Detection in File Writing Tool Calls:** Fixed an issue where problems introduced and resolved across multiple file edits were not reported correctly to the agent. Diagnostics are now compared before the first edit and after the final edit, ensuring resolved issues don’t confuse subsequent agent reasoning. **[#915](https://github.com/TabbyML/pochi/issues/915)**
+
+- **Fix Missing Tool Call Checkpoints:** We also fixed an issue where tool call checkpoints could be missed due to checkpoint generation happening before streaming completed. Checkpoints are now generated after the stream finishes, ensuring all tool calls, including the final one, gets properly recorded. **[#911](https://github.com/TabbyML/pochi/issues/911)**
+
+### 🔥 Preview
+
+- We’re working on previewing tracked user edits directly in the input chat before prompting, and a guided auto-layout intro that explains which editor settings Pochi modifies (layout keybindings, panel behavior, auto-save, conflicting extensions), with the ability to opt into only what you want.
