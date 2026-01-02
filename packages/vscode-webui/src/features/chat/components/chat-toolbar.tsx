@@ -68,7 +68,6 @@ interface ChatToolbarProps {
   todosRef: React.RefObject<Todo[] | undefined>;
   onUpdateIsPublicShared?: (isPublicShared: boolean) => void;
   taskId: string;
-  saveLatestUserEdits: () => void;
 }
 
 export const ChatToolbar: React.FC<ChatToolbarProps> = ({
@@ -83,7 +82,6 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   todosRef,
   onUpdateIsPublicShared,
   taskId,
-  saveLatestUserEdits,
 }) => {
   const { t } = useTranslation();
 
@@ -178,7 +176,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     queuedMessages,
     setQueuedMessages,
     reviews,
-    saveLatestUserEdits,
+    taskId: taskId,
   });
 
   const handleQueueMessage = useCallback(

@@ -5,6 +5,8 @@ import type { UseChatHelpers } from "@ai-sdk/react";
 import { getLogger } from "@getpochi/common";
 import type { Message } from "@getpochi/livekit";
 
+import { useActiveSelection } from "@/lib/hooks/use-active-selection";
+import { useUserEdits } from "@/lib/hooks/use-user-edits";
 import type { Review } from "@getpochi/common/vscode-webui-bridge";
 import type React from "react";
 import { useCallback } from "react";
@@ -30,7 +32,7 @@ interface UseChatSubmitProps {
   queuedMessages: string[];
   setQueuedMessages: React.Dispatch<React.SetStateAction<string[]>>;
   reviews: Review[];
-  saveLatestUserEdits: () => void;
+  taskId: string;
 }
 
 export function useChatSubmit({
@@ -45,7 +47,7 @@ export function useChatSubmit({
   queuedMessages,
   setQueuedMessages,
   reviews,
-  saveLatestUserEdits,
+  taskId,
 }: UseChatSubmitProps) {
   const autoApproveGuard = useAutoApproveGuard();
   const { executingToolCalls, previewingToolCalls, isExecuting, isPreviewing } =
@@ -63,6 +65,9 @@ export function useChatSubmit({
       toolCall.abort();
     }
   }, [previewingToolCalls]);
+
+  const userEdits = useUserEdits(taskId);
+  const activeSelection = useActiveSelection();
 
   const { sendMessage, stop: stopChat } = chat;
   const {
@@ -128,8 +133,6 @@ export function useChatSubmit({
       if (text.length === 0 && files.length === 0 && reviews.length === 0)
         return;
 
-      saveLatestUserEdits();
-
       const stopIsLoading = handleStop();
       if (stopIsLoading || isSubmitDisabled) {
         autoApproveGuard.current = "stop";
@@ -148,6 +151,8 @@ export function useChatSubmit({
             text,
             uploadedAttachments,
             reviews,
+            userEdits,
+            activeSelection,
           );
           logger.debug("Sending message with files");
 
@@ -162,7 +167,14 @@ export function useChatSubmit({
         }
       } else if (allMessages.length > 0 || reviews.length > 0) {
         clearUploadError();
-        const parts = prepareMessageParts(t, text, [], reviews);
+        const parts = prepareMessageParts(
+          t,
+          text,
+          [],
+          reviews,
+          userEdits,
+          activeSelection,
+        );
 
         autoApproveGuard.current = "auto";
         await sendMessage({
@@ -187,7 +199,8 @@ export function useChatSubmit({
       t,
       clearFiles,
       reviews,
-      saveLatestUserEdits,
+      userEdits,
+      activeSelection,
     ],
   );
 

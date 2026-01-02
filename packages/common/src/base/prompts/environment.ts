@@ -14,9 +14,7 @@ export function createEnvironmentPrompt(
     getWorkspaceFiles(environment.workspace, environment.info),
     getCurrentOpenedFiles(environment.workspace),
     getVisibleTerminals(environment.workspace),
-    getCurrentWorkingFile(environment.workspace),
     getGitStatus(environment.workspace.gitStatus),
-    getUserEdits(environment.userEdits),
     getTodos(environment.todos),
   ]
     .filter(Boolean)
@@ -28,9 +26,7 @@ export function createLiteEnvironmentPrompt(environment: Environment) {
   const sections = [
     getCurrentOpenedFiles(environment.workspace),
     getVisibleTerminals(environment.workspace),
-    getCurrentWorkingFile(environment.workspace),
     getGitStatus(environment.workspace.gitStatus),
-    getUserEdits(environment.userEdits),
     getTodos(environment.todos),
   ]
     .filter(Boolean)
@@ -110,23 +106,6 @@ function getVisibleTerminals(workspace: Environment["workspace"]) {
         `${t.isActive ? "* " : "  "}${t.name}${t.isActive ? " (selected)" : ""}${t.backgroundJobId ? ` (background job: ${t.backgroundJobId})` : ""}`,
     )
     .join("\n")}`;
-}
-
-function getCurrentWorkingFile(workspace: Environment["workspace"]) {
-  const selection = workspace.activeSelection;
-  if (!selection) {
-    return "";
-  }
-  const { filepath, range, content, notebookCell } = selection;
-  if (!content || content.trim() === "") {
-    return "";
-  }
-
-  const location = notebookCell
-    ? `${filepath} (Cell ID: ${notebookCell.cellId})`
-    : `${filepath}:${range.start.line + 1}-${range.end.line + 1}`;
-
-  return `# Active Selection (${location})\n\n\`\`\`\n${content}\n\`\`\`\n`;
 }
 
 function getGitStatus(gitStatus: GitStatus | undefined) {
@@ -209,25 +188,4 @@ Here's todo list for current task. If a task is marked as cancelled or completed
 Otherwise, please follow the todo list to complete the task.
 
 ${JSON.stringify(todos, null, 2)}`;
-}
-
-function getUserEdits(userEdits: Environment["userEdits"]) {
-  if (!userEdits || userEdits.length === 0) {
-    return "";
-  }
-
-  // Format structured user edits data
-  const formattedFiles = userEdits
-    .map((edit) => {
-      return `**${edit.filepath}** (modified)
-\`\`\`diff
-${edit.diff}
-\`\`\``;
-    })
-    .join("\n\n");
-
-  return `# User Edits
-The user has made the following edits to the workspace. Please take these changes into account when proceeding with the task.
-
-${formattedFiles}`;
 }

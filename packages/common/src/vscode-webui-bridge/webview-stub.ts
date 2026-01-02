@@ -20,6 +20,7 @@ import type {
   VSCodeHostApi,
   WorkspaceState,
 } from "./index";
+import type { ActiveSelection } from "./types/message";
 
 const VSCodeHostStub = {
   readCurrentWorkspace: async () => {
@@ -114,14 +115,10 @@ const VSCodeHostStub = {
     return Promise.resolve({} as ThreadSignalSerialization<TaskStates>);
   },
   readActiveSelection: (): Promise<
-    ThreadSignalSerialization<
-      Environment["workspace"]["activeSelection"] | undefined
-    >
+    ThreadSignalSerialization<ActiveSelection | undefined>
   > => {
     return Promise.resolve(
-      {} as ThreadSignalSerialization<
-        Environment["workspace"]["activeSelection"] | undefined
-      >,
+      {} as ThreadSignalSerialization<ActiveSelection | undefined>,
     );
   },
   openFile: (

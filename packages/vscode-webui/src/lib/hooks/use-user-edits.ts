@@ -7,10 +7,10 @@ import { vscodeHost } from "../vscode";
  * Uses ThreadSignal for real-time updates
  */
 /** @useSignals */
-export const useUserEdits = (uid: string) => {
+export const useUserEdits = (taskId: string) => {
   const { data: userEditsSignal } = useQuery({
-    queryKey: ["userEdits", uid],
-    queryFn: () => fetchUserEdits(uid),
+    queryKey: ["userEdits", taskId],
+    queryFn: () => fetchUserEdits(taskId),
     staleTime: Number.POSITIVE_INFINITY,
   });
 

@@ -56,6 +56,7 @@ export {
   getTaskDisplayTitle,
   WorktreePrefix,
 } from "./task-utils";
+export { ActiveSelection, UserEdits } from "./types/message";
 
 const isPochiDev = process.env.POCHI_LOCAL_SERVER === "true";
 const isSyncDev = process.env.POCHI_LOCAL_SYNC_SERVER === "true";

@@ -4,7 +4,11 @@ import type {
 } from "@ai-sdk/provider";
 import { Environment } from "@getpochi/common";
 import { GoogleVertexModel } from "@getpochi/common/configuration";
-import type { Review } from "@getpochi/common/vscode-webui-bridge";
+import type {
+  ActiveSelection,
+  Review,
+  UserEdits,
+} from "@getpochi/common/vscode-webui-bridge";
 import { type ClientTools, McpTool } from "@getpochi/tools";
 import type { InferUITools, UIMessage } from "ai";
 import z from "zod/v4";
@@ -27,6 +31,12 @@ export type DataParts = {
   };
   reviews: {
     reviews: Review[];
+  };
+  "user-edits": {
+    userEdits: UserEdits;
+  };
+  "active-selection": {
+    activeSelection: ActiveSelection;
   };
 };
 
