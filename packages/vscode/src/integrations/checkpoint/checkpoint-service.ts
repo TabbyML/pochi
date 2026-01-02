@@ -1,3 +1,4 @@
+import * as crypto from "node:crypto";
 import { mkdir } from "node:fs/promises";
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
@@ -15,12 +16,22 @@ import { signal } from "@preact/signals-core";
 import { Lifecycle, inject, injectable, scoped } from "tsyringe";
 import type * as vscode from "vscode";
 import type { FileChange } from "../editor/diff-changes-editor";
+// biome-ignore lint/style/useImportType: needed for dependency injection
+import { WorktreeManager } from "../git/worktree";
 import { ShadowGitRepo } from "./shadow-git-repo";
 import { filterGitChanges, processGitChangesToFileEdits } from "./util";
 
 const logger = getLogger("CheckpointService");
 
 const checkpointCommitPrefix = (cwd: string) => `checkpoint-${cwd}-msg-`;
+
+const getPathId = (filePath: string) => {
+  return crypto
+    .createHash("sha256")
+    .update(path.normalize(filePath))
+    .digest("hex")
+    .substring(0, 32); // First 32 chars of SHA-256
+};
 
 @scoped(Lifecycle.ContainerScoped)
 @injectable()
@@ -29,13 +40,13 @@ export class CheckpointService implements vscode.Disposable {
   private readyDefer = new Deferred<void>();
   private initialized = false;
 
-  // TODO(quan): track latestCheckpoint per-worktree
   latestCheckpoint = signal<string | null>(null);
 
   constructor(
     private readonly workspaceScope: WorkspaceScope,
     @inject("vscode.ExtensionContext")
     private readonly context: vscode.ExtensionContext,
+    private readonly worktreeManager: WorktreeManager,
   ) {}
 
   private get cwd() {
@@ -177,11 +188,24 @@ export class CheckpointService implements vscode.Disposable {
   };
 
   async getShadowGitPath() {
-    if (!this.context.storageUri) {
-      throw new Error("Extension storage URI is not available");
+    if (!this.context.globalStorageUri) {
+      throw new Error("Extension global storage URI is not available");
     }
-    const storagePath = this.context.storageUri.fsPath;
-    const checkpointDir = path.join(storagePath, "checkpoint");
+    await this.worktreeManager.inited.promise;
+    const workspacePath =
+      this.worktreeManager.getMainWorktree()?.path ?? this.workspaceScope.cwd;
+    if (!workspacePath) {
+      throw new Error("Cannot get workspace path");
+    }
+    const storagePath = this.context.globalStorageUri.fsPath;
+    const checkpointDir = path.join(
+      storagePath,
+      "checkpoint",
+      getPathId(workspacePath),
+    );
+    logger.info(
+      `Checkpoint directory for workspace: ${this.workspaceScope.cwd} is: ${checkpointDir}`,
+    );
     await mkdir(checkpointDir, { recursive: true });
     return checkpointDir;
   }
