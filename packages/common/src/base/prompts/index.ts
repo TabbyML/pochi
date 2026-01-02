@@ -2,6 +2,7 @@ import { createCompactPrompt } from "./compact";
 import { createPr } from "./create-pr";
 import { createEnvironmentPrompt, injectEnvironment } from "./environment";
 import { generateTitle } from "./generate-title";
+import { generateWalkthrough } from "./generate-walkthrough";
 import { injectBashOutputs } from "./inject-bash-outputs";
 import { renderReviewComments } from "./review-comments";
 import { createSystemPrompt } from "./system";
@@ -19,6 +20,7 @@ export const prompts = {
   inlineCompact,
   parseInlineCompact,
   generateTitle,
+  generateWalkthrough,
   workflow: createWorkflowPrompt,
   customAgent: createCustomAgentPrompt,
   injectBashOutputs,
