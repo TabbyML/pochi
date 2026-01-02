@@ -1,15 +1,15 @@
+import { CodeBlock } from "@/components/message";
+import { Button } from "@/components/ui/button";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { Button } from "@/components/ui/button";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { CodeBlock } from "@/components/message";
 import { EditSummary, FileIcon } from "@/features/tools";
 import { cn } from "@/lib/utils";
 import { vscodeHost } from "@/lib/vscode";
@@ -23,7 +23,7 @@ interface Props {
   userEdits: UserEdits;
 }
 
-export const UserEditsUI: React.FC<Props> = ({ userEdits }) => {
+export const UserEditsPart: React.FC<Props> = ({ userEdits }) => {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
 
@@ -46,7 +46,7 @@ export const UserEditsUI: React.FC<Props> = ({ userEdits }) => {
     >
       <CollapsibleTrigger asChild>
         <div className="flex cursor-pointer select-none items-center justify-between border-border px-3 py-1.5 hover:bg-border/30">
-          <div className="flex items-center gap-1">
+          <div className="flex min-h-5 items-center gap-1">
             <ChevronRight
               className={cn(
                 "size-4 shrink-0 text-muted-foreground transition-transform duration-200",
@@ -55,16 +55,19 @@ export const UserEditsUI: React.FC<Props> = ({ userEdits }) => {
             />
             <FilePenLine className="size-3.5 shrink-0" />
             <div className="font-semibold text-sm">
-              {t("userEdits.filesEdited", {
-                count: userEdits.length,
-                defaultValue: "{{count}} file edited",
-              })}
+              {t("userEdits.title", { defaultValue: "Edits" })}
+              <span className="ml-2 text-muted-foreground text-sm">
+                {t("userEdits.filesEdited", {
+                  count: userEdits.length,
+                  defaultValue: "{{count}} file edited",
+                })}
+              </span>
             </div>
+            <EditSummary
+              editSummary={{ added: totalAdded, removed: totalRemoved }}
+              className="ml-2 text-xs"
+            />
           </div>
-          <EditSummary
-            editSummary={{ added: totalAdded, removed: totalRemoved }}
-            className="text-xs"
-          />
         </div>
       </CollapsibleTrigger>
       <CollapsibleContent>
@@ -133,7 +136,7 @@ function UserEditItem({ edit }: UserEditItemProps) {
         </div>
       </div>
       <CollapsibleContent>
-        <div className="pl-9 pr-3 pb-2">
+        <div className="pr-3 pb-2 pl-9">
           <CodeBlock
             className=""
             language="diff"

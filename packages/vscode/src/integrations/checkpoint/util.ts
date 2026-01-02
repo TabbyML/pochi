@@ -1,3 +1,4 @@
+import { createPrettyPatch } from "@/lib/fs";
 import type {
   DiffCheckpointOptions,
   FileDiff,
@@ -6,30 +7,14 @@ import { diffLines } from "diff";
 import { isNonNullish } from "remeda";
 import type { FileChange } from "../editor/diff-changes-editor";
 
-interface DiffResult {
-  content: string;
-  added: number;
-  removed: number;
-}
-
-/**
- * Generates diff content based on original file with diff blocks
- *
- * This creates a unified view showing the complete file content with inline
- * diff markers (+ for additions, - for deletions, unchanged lines as-is).
- * The result represents how the file looks with changes applied inline.
- *
- * @param before - Original file content
- * @param after - Modified file content
- * @returns Formatted diff string with inline markers
- */
-export function generateDiffContent(
+export function diffFile(
   before: string,
   after: string,
-  inlineDiff?: boolean,
-): DiffResult {
+): {
+  added: number;
+  removed: number;
+} {
   const diffResult = diffLines(before, after);
-  const inlineContent = [];
   let added = 0;
   let removed = 0;
 
@@ -40,27 +25,18 @@ export function generateDiffContent(
       lines.pop();
     }
 
-    for (const line of lines) {
+    for (const _line of lines) {
       if (part.added) {
         added++;
-        if (inlineDiff) {
-          inlineContent.push(`+ ${line}`);
-        }
       } else if (part.removed) {
         removed++;
-        if (inlineDiff) {
-          inlineContent.push(`- ${line}`);
-        }
       } else {
-        if (inlineDiff) {
-          // Unchanged line
-          inlineContent.push(line);
-        }
+        // unchanged
       }
     }
   }
 
-  return { content: inlineContent.join("\n"), added, removed };
+  return { added, removed };
 }
 
 /**
@@ -91,14 +67,16 @@ export function processGitChangesToFileEdits(
         return undefined;
       }
 
-      const diff = generateDiffContent(
-        change.before ?? "",
-        change.after ?? "",
-        options?.inlineDiff,
-      );
+      const diff = diffFile(change.before ?? "", change.after ?? "");
       return {
         filepath: change.filepath,
-        diff: diff.content,
+        diff: options?.inlineDiff
+          ? createPrettyPatch(
+              change.filepath,
+              change.before ?? undefined,
+              change.after ?? undefined,
+            )
+          : "",
         added: diff.added,
         removed: diff.removed,
         created: change.before === null,

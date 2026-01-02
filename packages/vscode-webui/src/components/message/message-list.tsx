@@ -26,10 +26,11 @@ import {
 import { useEffect, useMemo } from "react";
 import { CheckpointUI } from "../checkpoint-ui";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
+import { ActiveSelectionPart } from "./active-selection";
 import { MessageAttachments } from "./attachments";
 import { MessageMarkdown } from "./markdown";
 import { Reviews } from "./reviews";
-import { UserEditsUI } from "./user-edits";
+import { UserEditsPart } from "./user-edits";
 
 export const MessageList: React.FC<{
   messages: Message[];
@@ -255,7 +256,11 @@ function Part({
   }
 
   if (part.type === "data-user-edits") {
-    return <UserEditsUI userEdits={part.data.userEdits} />;
+    return <UserEditsPart userEdits={part.data.userEdits} />;
+  }
+
+  if (part.type === "data-active-selection") {
+    return <ActiveSelectionPart activeSelection={part.data.activeSelection} />;
   }
 
   if (isToolUIPart(part)) {
