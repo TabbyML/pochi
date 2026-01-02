@@ -47,6 +47,5 @@ describe("readEnvironment", () => {
 
     // Task runner should not have active tabs or selection like VSCode
     expect(environment.workspace.activeTabs).toBeUndefined();
-    expect(environment.workspace.activeSelection).toBeUndefined();
   });
 });

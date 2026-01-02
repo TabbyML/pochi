@@ -16,6 +16,7 @@ import { useLatestCheckpoint } from "@/lib/hooks/use-latest-checkpoint";
 import { cn } from "@/lib/utils";
 import { isVSCodeEnvironment, vscodeHost } from "@/lib/vscode";
 import { prompts } from "@getpochi/common";
+import type { ActiveSelection } from "@getpochi/common/vscode-webui-bridge";
 import type { Message, UITools } from "@getpochi/livekit";
 import {
   type FileUIPart,
@@ -26,9 +27,11 @@ import {
 import { useEffect, useMemo } from "react";
 import { CheckpointUI } from "../checkpoint-ui";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
+import { ActiveSelectionPart } from "./active-selection";
 import { MessageAttachments } from "./attachments";
 import { MessageMarkdown } from "./markdown";
 import { Reviews } from "./reviews";
+import { UserEditsPart } from "./user-edits";
 
 export const MessageList: React.FC<{
   messages: Message[];
@@ -139,11 +142,16 @@ export const MessageList: React.FC<{
                     hideCheckPoint={hideCheckPoint}
                     latestCheckpoint={latestCheckpoint}
                     lastCheckpointInMessage={lastCheckpointInMessage}
+                    userEditsCheckpoint={getUserEditsCheckpoint(
+                      renderMessages,
+                      messageIndex,
+                    )}
                   />
                 ))}
               </div>
               {/* Display attachments at the bottom of the message */}
               <UserAttachments message={m} />
+              <UserActiveSelections message={m} />
             </div>
             {messageIndex < renderMessages.length - 1 && (
               <SeparatorWithCheckpoint
@@ -188,6 +196,28 @@ function UserAttachments({ message }: { message: Message }) {
   }
 }
 
+function UserActiveSelections({ message }: { message: Message }) {
+  const selectionParts = message.parts.filter(
+    (part) => part.type === "data-active-selection",
+  ) as {
+    type: "data-active-selection";
+    data: { activeSelection: ActiveSelection };
+  }[];
+
+  if (message.role === "user" && selectionParts.length) {
+    return (
+      <div className="mt-2 flex flex-wrap gap-2">
+        {selectionParts.map((part, index) => (
+          <ActiveSelectionPart
+            key={index}
+            activeSelection={part.data.activeSelection}
+          />
+        ))}
+      </div>
+    );
+  }
+}
+
 function Part({
   role,
   part,
@@ -200,6 +230,7 @@ function Part({
   hideCheckPoint,
   latestCheckpoint,
   lastCheckpointInMessage,
+  userEditsCheckpoint,
 }: {
   role: Message["role"];
   partIndex: number;
@@ -212,6 +243,10 @@ function Part({
   hideCheckPoint?: boolean;
   latestCheckpoint: string | null;
   lastCheckpointInMessage: string | undefined;
+  userEditsCheckpoint?: {
+    origin: string | undefined;
+    modified: string | undefined;
+  };
 }) {
   const paddingClass = partIndex === 0 ? "" : "mt-2";
   if (part.type === "text") {
@@ -251,6 +286,19 @@ function Part({
 
   if (part.type === "data-reviews") {
     return <Reviews reviews={part.data.reviews} />;
+  }
+
+  if (part.type === "data-user-edits") {
+    return (
+      <UserEditsPart
+        userEdits={part.data.userEdits}
+        checkpoints={userEditsCheckpoint}
+      />
+    );
+  }
+
+  if (part.type === "data-active-selection") {
+    return null;
   }
 
   if (isToolUIPart(part)) {
@@ -407,4 +455,29 @@ function CompactPartToolTip({
       </TooltipContent>
     </Tooltip>
   );
+}
+
+function getUserEditsCheckpoint(messages: Message[], index: number) {
+  const message = messages[index];
+  if (message.role !== "user") {
+    return;
+  }
+
+  if (!message.parts.some((p) => p.type === "data-user-edits")) {
+    return;
+  }
+
+  const parts = messages
+    .filter((_m, i) => i <= index)
+    .flatMap((m) => m.parts)
+    .filter((p) => p.type === "data-checkpoint");
+
+  if (parts.length < 2) {
+    return;
+  }
+
+  return {
+    origin: parts.at(-2)?.data.commit,
+    modified: parts.at(-1)?.data.commit,
+  };
 }

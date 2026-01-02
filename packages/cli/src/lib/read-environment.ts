@@ -37,7 +37,6 @@ export const readEnvironment = async (
       gitStatus,
       // Task runner doesn't have active tabs or selection like VSCode
       activeTabs: undefined,
-      activeSelection: undefined,
     },
     info: {
       ...systemInfo,

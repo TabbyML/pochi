@@ -8,8 +8,8 @@ import { useUserEdits } from "@/lib/hooks/use-user-edits";
 import { cn } from "@/lib/utils";
 import { vscodeHost } from "@/lib/vscode";
 import type { FileDiff } from "@getpochi/common/vscode-webui-bridge";
+import { FilePenLine } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { VscDiffMultiple } from "react-icons/vsc";
 
 interface UserEditsBadgeProps {
   className?: string;
@@ -74,7 +74,7 @@ export const UserEdits: React.FC<UserEditsProps> = ({
           )}
           onClick={showFileChanges}
         >
-          <VscDiffMultiple className="size-3.5" />
+          <FilePenLine className="size-3.5" />
           <span className="text-sm">
             {t("userEdits.filesEdited", {
               count: userEdits.length,

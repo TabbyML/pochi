@@ -1,6 +1,7 @@
 import { FileBadge } from "@/features/tools";
 import { useActiveSelection } from "@/lib/hooks/use-active-selection";
 import { cn } from "@/lib/utils";
+import { getActiveSelectionLabel } from "@/lib/utils/active-selection";
 import { Plus } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "../ui/button";
@@ -17,20 +18,6 @@ export const ActiveSelectionBadge: React.FC<ActiveSelectionBadgeProps> = ({
   const activeSelection = useActiveSelection();
   const { t } = useTranslation();
 
-  // Build label for the badge
-  const getBadgeLabel = () => {
-    if (!activeSelection) return "";
-
-    const filename = activeSelection.filepath.split("/").pop();
-
-    if (activeSelection.notebookCell) {
-      const cellIndex = activeSelection.notebookCell.cellIndex + 1;
-      return `${filename} • ${t("activeSelectionBadge.cell")} ${cellIndex}`;
-    }
-
-    return filename;
-  };
-
   return (
     <div
       className={cn(
@@ -42,7 +29,7 @@ export const ActiveSelectionBadge: React.FC<ActiveSelectionBadgeProps> = ({
         <FileBadge
           className="hover:!bg-transparent !py-0 m-0 cursor-default truncate rounded-sm border border-[var(--vscode-chat-requestBorder)] pr-1"
           labelClassName="whitespace-nowrap"
-          label={getBadgeLabel()}
+          label={getActiveSelectionLabel(activeSelection, t)}
           path={activeSelection.filepath}
           startLine={
             // display as 1-based, but not for notebook cells (show cell index instead)

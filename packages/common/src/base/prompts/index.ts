@@ -1,3 +1,4 @@
+import { renderActiveSelection } from "./active-selection";
 import { createCompactPrompt } from "./compact";
 import { createPr } from "./create-pr";
 import { createEnvironmentPrompt, injectEnvironment } from "./environment";
@@ -5,6 +6,7 @@ import { generateTitle } from "./generate-title";
 import { injectBashOutputs } from "./inject-bash-outputs";
 import { renderReviewComments } from "./review-comments";
 import { createSystemPrompt } from "./system";
+import { renderUserEdits } from "./user-edits";
 import { createWorkflowPrompt } from "./workflow";
 
 export const prompts = {
@@ -24,6 +26,8 @@ export const prompts = {
   injectBashOutputs,
   createPr,
   renderReviewComments,
+  renderActiveSelection,
+  renderUserEdits,
 };
 
 function createSystemReminder(content: string) {
