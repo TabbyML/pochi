@@ -39,7 +39,6 @@ import {
   applyPochiLayout,
   getSortedCurrentTabGroups,
   getViewColumnForTerminal,
-  isPochiLayout,
   isPochiTaskTab,
 } from "./layout";
 // biome-ignore lint/style/useImportType: needed for dependency injection
@@ -574,33 +573,14 @@ export class CommandManager implements vscode.Disposable {
       vscode.commands.registerCommand(
         "pochi.applyPochiLayout",
         async (...args) => {
-          let cwd: string | undefined = undefined;
-          // Parse args
-          const arg0 = args.shift();
-          if (arg0 instanceof vscode.Uri) {
-            const workspace = vscode.workspace.getWorkspaceFolder(arg0);
-            if (workspace) {
-              cwd = workspace.uri.fsPath;
-            }
-          }
-          // Try find active task tab
-          if (!cwd) {
-            const activeTab = findActivePochiTaskTab();
-            if (activeTab) {
-              const params = PochiTaskEditorProvider.parseTaskUri(
-                activeTab.input.uri,
-              );
-              cwd = params?.cwd;
-            }
-          }
-          // Use workspace
-          if (!cwd) {
-            const workspaceFolders = vscode.workspace.workspaceFolders;
-            if (workspaceFolders && workspaceFolders.length > 0) {
-              cwd = workspaceFolders[0].uri.fsPath;
-            }
-          }
-          await applyPochiLayout({ cwd });
+          await this.applyPochiLayoutWithCommandArgs(false, ...args);
+        },
+      ),
+
+      vscode.commands.registerCommand(
+        "pochi.applyPochiLayoutWithCycleFocus",
+        async (...args) => {
+          await this.applyPochiLayoutWithCommandArgs(true, ...args);
         },
       ),
 
@@ -649,19 +629,6 @@ export class CommandManager implements vscode.Disposable {
         "pochi.comments.cancelEditComment",
         async (comment: Comment) => {
           await this.reviewController.cancelEditComment(comment);
-        },
-      ),
-
-      vscode.commands.registerCommand(
-        "pochi.openPochiLayoutOrTerminal",
-        async (...args) => {
-          logger.debug("openPochiLayoutOrTerminal", { args });
-          // Check if Pochi layout is already applied
-          if (await isPochiLayout()) {
-            vscode.commands.executeCommand("pochi.openTerminal", ...args);
-          } else {
-            vscode.commands.executeCommand("pochi.applyPochiLayout", ...args);
-          }
         },
       ),
     );
@@ -713,6 +680,44 @@ export class CommandManager implements vscode.Disposable {
 
     await this.pochiConfiguration.updateMcpServers(defaulMcpServer);
     await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+
+  private async applyPochiLayoutWithCommandArgs(
+    cycleFocus: boolean,
+    ...args: unknown[]
+  ) {
+    let cwd: string | undefined = undefined;
+    // Parse args
+    const arg0 = args.shift();
+    if (arg0 instanceof vscode.Uri) {
+      const workspace = vscode.workspace.getWorkspaceFolder(arg0);
+      if (workspace) {
+        cwd = workspace.uri.fsPath;
+      }
+    }
+    // Try find active task tab
+    if (!cwd) {
+      const activeTab = findActivePochiTaskTab();
+      if (activeTab) {
+        const params = PochiTaskEditorProvider.parseTaskUri(
+          activeTab.input.uri,
+        );
+        cwd = params?.cwd;
+      }
+    }
+    // Use workspace
+    if (!cwd) {
+      const workspaceFolders = vscode.workspace.workspaceFolders;
+      if (workspaceFolders && workspaceFolders.length > 0) {
+        cwd = workspaceFolders[0].uri.fsPath;
+      }
+    }
+    await applyPochiLayout({
+      cwd,
+      cycleFocus,
+      mergeSplitWindowEditors: true,
+      moveBottomPanelViews: true,
+    });
   }
 
   dispose() {
