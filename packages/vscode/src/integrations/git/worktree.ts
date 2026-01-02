@@ -53,6 +53,9 @@ export class WorktreeManager implements vscode.Disposable {
   public getWorktreeDisplayName(cwd: string): string | undefined {
     const worktree = this.worktrees.value.find((wt) => wt.path === cwd);
     if (!worktree) {
+      if (this.workspacePath && cwd === this.workspacePath) {
+        return "workspace";
+      }
       return getWorktreeNameFromWorktreePath(cwd);
     }
     return worktree.isMain ? "workspace" : getWorktreeNameFromWorktreePath(cwd);
