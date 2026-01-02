@@ -377,7 +377,7 @@
         "when": "editorTextFocus && pochiTabCompletionVisible"
       },
       {
-        "command": "pochi.openPochiLayoutOrTerminal",
+        "command": "pochi.applyPochiLayoutWithCycleFocus",
         "key": "ctrl+`",
         "when": "pochi.enablePochiLayoutKeybinding"
       }
