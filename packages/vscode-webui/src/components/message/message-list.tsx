@@ -141,6 +141,10 @@ export const MessageList: React.FC<{
                     hideCheckPoint={hideCheckPoint}
                     latestCheckpoint={latestCheckpoint}
                     lastCheckpointInMessage={lastCheckpointInMessage}
+                    userEditsCheckpoint={getUserEditsCheckpoint(
+                      renderMessages,
+                      messageIndex,
+                    )}
                   />
                 ))}
               </div>
@@ -202,6 +206,7 @@ function Part({
   hideCheckPoint,
   latestCheckpoint,
   lastCheckpointInMessage,
+  userEditsCheckpoint,
 }: {
   role: Message["role"];
   partIndex: number;
@@ -214,6 +219,10 @@ function Part({
   hideCheckPoint?: boolean;
   latestCheckpoint: string | null;
   lastCheckpointInMessage: string | undefined;
+  userEditsCheckpoint?: {
+    origin: string | undefined;
+    modified: string | undefined;
+  };
 }) {
   const paddingClass = partIndex === 0 ? "" : "mt-2";
   if (part.type === "text") {
@@ -256,7 +265,12 @@ function Part({
   }
 
   if (part.type === "data-user-edits") {
-    return <UserEditsPart userEdits={part.data.userEdits} />;
+    return (
+      <UserEditsPart
+        userEdits={part.data.userEdits}
+        checkpoints={userEditsCheckpoint}
+      />
+    );
   }
 
   if (part.type === "data-active-selection") {
@@ -417,4 +431,29 @@ function CompactPartToolTip({
       </TooltipContent>
     </Tooltip>
   );
+}
+
+function getUserEditsCheckpoint(messages: Message[], index: number) {
+  const message = messages[index];
+  if (message.role !== "user") {
+    return;
+  }
+
+  if (!message.parts.some((p) => p.type === "data-user-edits")) {
+    return;
+  }
+
+  const parts = messages
+    .filter((_m, i) => i <= index)
+    .flatMap((m) => m.parts)
+    .filter((p) => p.type === "data-checkpoint");
+
+  if (parts.length < 2) {
+    return;
+  }
+
+  return {
+    origin: parts.at(-2)?.data.commit,
+    modified: parts.at(-1)?.data.commit,
+  };
 }
