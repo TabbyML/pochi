@@ -11,3 +11,4 @@ export type {
 
 export const StoreBlobProtocol = "store-blob:";
 export { processContentOutput, fileToUri } from "./store-blob";
+export { getWalkthroughPath } from "./chat/walkthrough";
