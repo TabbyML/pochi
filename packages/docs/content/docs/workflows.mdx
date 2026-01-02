@@ -33,6 +33,16 @@ Please help create a PR for the current staging changes, following these guideli
 When creating PR with markdown description, pay attention to escape backticks, otherwise it will be executed as command substitution in the shell.
 ```
 
+### Embedding Bash Commands
+
+You can use a single line prefixed with `!` to execute a command. The output of the command will be embedded into the prompt sent to the model.
+
+```markdown
+!\`git diff --cached\`
+
+Please review the staged changes and suggest improvements.
+```
+
 ### Usage
 
 Once your workflows are set up, using them is straightforward:

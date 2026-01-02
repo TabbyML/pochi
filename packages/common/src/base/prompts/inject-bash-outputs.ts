@@ -23,12 +23,12 @@ export function injectBashOutputs(
   const reminderPart = {
     type: "text",
     text: prompts.createSystemReminder(
-      `Bash command outputs:\n${bashCommandOutputs.join("\n\n")}`,
+      `Bash command output referred from workflow:\n${bashCommandOutputs.join("\n\n")}`,
     ),
   } satisfies TextUIPart;
 
   const workflowPartIndex = message.parts.findIndex(isWorkflowTextPart);
-  const indexToInsert = workflowPartIndex === -1 ? 0 : workflowPartIndex;
+  const indexToInsert = workflowPartIndex === -1 ? 0 : workflowPartIndex + 1;
   message.parts = [
     ...message.parts.slice(0, indexToInsert),
     reminderPart,
