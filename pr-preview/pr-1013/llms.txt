@@ -2761,9 +2761,11 @@ URL: /developer-updates/2026-01-02-weekly-update-17
 
 ### TL;DR
 
-This release we focused on improving how you review, refine, and iterate on agent-generated code inside VS Code, along with bug fixes that increase correctness and stability during multi-step agent runs.
+This release we focused on improving how you review, refine, and iterate on agent-generated code inside VS Code.
 
-Let’s start!
+We also targeted some bug fixes that increased correctness and stability during multi-step agent runs.
+
+Let’s dive in!
 
 ### 🚀 Features
 
@@ -3060,9 +3062,11 @@ Here you will find highlights on features, enhancements, and bug fixes, plus ins
 
 ### TL;DR
 
-This release we focused on improving how you review, refine, and iterate on agent-generated code inside VS Code, along with bug fixes that increase correctness and stability during multi-step agent runs.
+This release we focused on improving how you review, refine, and iterate on agent-generated code inside VS Code.
 
-Let’s start!
+We also targeted some bug fixes that increased correctness and stability during multi-step agent runs.
+
+Let’s dive in!
 
 ### 🚀 Features
 
