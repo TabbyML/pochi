@@ -265,15 +265,6 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
           isActive:
             tab.filepath === this.tabState.activeSelection.value?.filepath,
         })),
-        activeSelection: this.tabState.activeSelection.value
-          ? {
-              ...this.tabState.activeSelection.value,
-              filepath: asRelativePath(
-                this.tabState.activeSelection.value.filepath,
-                this.cwd ?? "",
-              ),
-            }
-          : undefined,
         terminals: this.terminalState.visibleTerminals.value,
       },
       info: {

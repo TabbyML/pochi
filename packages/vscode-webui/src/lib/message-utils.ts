@@ -1,5 +1,9 @@
 import { prompts } from "@getpochi/common";
-import type { Review } from "@getpochi/common/vscode-webui-bridge";
+import type {
+  ActiveSelection,
+  Review,
+  UserEdits,
+} from "@getpochi/common/vscode-webui-bridge";
 import type { Message } from "@getpochi/livekit";
 import type { FileUIPart } from "ai";
 import type { useTranslation } from "react-i18next";
@@ -10,6 +14,8 @@ export function prepareMessageParts(
   prompt: string,
   files: FileUIPart[],
   reviews: Review[],
+  userEdits?: UserEdits,
+  activeSelection?: ActiveSelection,
 ) {
   const parts: Message["parts"] = [];
   for (const x of files) {
@@ -30,6 +36,20 @@ export function prepareMessageParts(
       },
     });
     vscodeHost.clearReviews();
+  }
+
+  if (userEdits) {
+    parts.push({
+      type: "data-user-edits",
+      data: { userEdits },
+    });
+  }
+
+  if (activeSelection) {
+    parts.push({
+      type: "data-active-selection",
+      data: { activeSelection },
+    });
   }
 
   let fallbackPrompt = "";

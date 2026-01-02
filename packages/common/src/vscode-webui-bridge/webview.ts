@@ -24,6 +24,7 @@ import type {
   DiffCheckpointOptions,
   GithubIssue,
 } from "./types/git";
+import type { ActiveSelection } from "./types/message";
 import type { DisplayModel } from "./types/model";
 import type { PochiCredentials } from "./types/pochi";
 
@@ -128,9 +129,7 @@ export interface VSCodeHostApi {
   readPochiTabs(): Promise<ThreadSignalSerialization<TaskStates>>;
 
   readActiveSelection(): Promise<
-    ThreadSignalSerialization<
-      Environment["workspace"]["activeSelection"] | undefined
-    >
+    ThreadSignalSerialization<ActiveSelection | undefined>
   >;
 
   readVisibleTerminals(): Promise<{

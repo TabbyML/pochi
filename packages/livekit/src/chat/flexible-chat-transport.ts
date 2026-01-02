@@ -324,6 +324,18 @@ function convertDataReviewsToText(messages: Message[]): Message[] {
           text: prompts.renderReviewComments(part.data.reviews),
         };
       }
+      if (part.type === "data-user-edits") {
+        return {
+          type: "text" as const,
+          text: prompts.renderUserEdits(part.data.userEdits),
+        };
+      }
+      if (part.type === "data-active-selection") {
+        return {
+          type: "text" as const,
+          text: prompts.renderActiveSelection(part.data.activeSelection),
+        };
+      }
       return part;
     }),
   }));
