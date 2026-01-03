@@ -14,6 +14,8 @@ import { NewProjectRegistry, prepareProject } from "@/lib/new-project";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { PostHog } from "@/lib/posthog";
 // biome-ignore lint/style/useImportType: needed for dependency injection
+import { WorkspaceScope } from "@/lib/workspace-scoped";
+// biome-ignore lint/style/useImportType: needed for dependency injection
 import { NESDecorationManager } from "@/nes/decoration-manager";
 import type { WebsiteTaskCreateEvent } from "@getpochi/common";
 import {
@@ -48,6 +50,7 @@ import {
   type Thread,
 } from "./review-controller";
 import { PochiTaskEditorProvider } from "./webview/webview-panel";
+
 const logger = getLogger("CommandManager");
 
 @injectable()
@@ -56,6 +59,7 @@ export class CommandManager implements vscode.Disposable {
   private disposables: vscode.Disposable[] = [];
 
   constructor(
+    private readonly workspaceScope: WorkspaceScope,
     private readonly pochiWebviewSidebar: PochiWebviewSidebar,
     private readonly newProjectRegistry: NewProjectRegistry,
     @inject("AuthClient") private readonly authClient: AuthClient,
@@ -263,7 +267,7 @@ export class CommandManager implements vscode.Disposable {
       }),
 
       vscode.commands.registerCommand("pochi.openTask", async (uid: string) => {
-        const cwd = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
+        const cwd = this.workspaceScope.workspacePath;
         if (!cwd) return;
         vscode.window.withProgress(
           {
@@ -707,9 +711,9 @@ export class CommandManager implements vscode.Disposable {
     }
     // Use workspace
     if (!cwd) {
-      const workspaceFolders = vscode.workspace.workspaceFolders;
-      if (workspaceFolders && workspaceFolders.length > 0) {
-        cwd = workspaceFolders[0].uri.fsPath;
+      const workspaceFolder = this.workspaceScope.workspacePath;
+      if (workspaceFolder) {
+        cwd = workspaceFolder;
       }
     }
     await applyPochiLayout({

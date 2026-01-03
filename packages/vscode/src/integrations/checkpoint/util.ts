@@ -1,9 +1,13 @@
+import * as crypto from "node:crypto";
+import * as fs from "node:fs/promises";
+import * as path from "node:path";
 import type {
   DiffCheckpointOptions,
   FileDiff,
 } from "@getpochi/common/vscode-webui-bridge";
 import { diffLines } from "diff";
 import { isNonNullish } from "remeda";
+import type * as vscode from "vscode";
 import type { FileChange } from "../editor/diff-changes-editor";
 
 interface DiffResult {
@@ -136,4 +140,84 @@ export function filterGitChanges(
     }
     return !isBinary && !isTooLarge;
   });
+}
+
+// https://github.com/microsoft/vscode/blob/main/src/vs/platform/workspaces/node/workspaces.ts
+async function getSingleFolderWorkspaceIdentifier(
+  workspaceUri: vscode.Uri,
+): Promise<string | undefined> {
+  // Remote: produce a hash from the entire URI
+  if (workspaceUri.scheme !== "file") {
+    return crypto
+      .createHash("md5")
+      .update(workspaceUri.toString())
+      .digest("hex"); // Remote workspaces use a hash of the URI string
+  }
+
+  const fsPath = workspaceUri.fsPath;
+  let ctime: number | undefined;
+
+  try {
+    const stat = await fs.stat(fsPath);
+
+    // Platform-specific salt logic
+    if (process.platform === "linux") {
+      ctime = stat.ino; // Linux uses inode
+    } else if (process.platform === "darwin") {
+      ctime = stat.birthtime.getTime(); // macOS uses birthtime
+    } else if (process.platform === "win32") {
+      if (typeof stat.birthtimeMs === "number") {
+        ctime = Math.floor(stat.birthtimeMs); // Windows: fix precision issue in node.js 8.x to get 7.x results (see https://github.com/nodejs/node/issues/19897)
+      } else {
+        ctime = stat.birthtime.getTime();
+      }
+    }
+  } catch (e) {
+    // workspace not exist, fallback to the global storage
+    return undefined;
+  }
+
+  return crypto
+    .createHash("md5")
+    .update(fsPath)
+    .update(ctime ? String(ctime) : "")
+    .digest("hex");
+}
+
+function getWorkspaceStorageHome(context: vscode.ExtensionContext): string {
+  // Go up two levels from globalStorageUri:
+  // 1. .../User/globalStorage
+  // 2. .../User
+  const userDir = path.dirname(path.dirname(context.globalStorageUri.fsPath));
+  return path.join(userDir, "workspaceStorage");
+}
+
+function getGlobalStoragePath(
+  workspace: string,
+  context: vscode.ExtensionContext,
+): string {
+  return path.join(
+    context.globalStorageUri.fsPath,
+    crypto.createHash("md5").update(workspace).digest("hex"),
+  );
+}
+
+export async function getWorkspaceStorageDir(
+  workspaceUri: vscode.Uri,
+  context: vscode.ExtensionContext,
+): Promise<string> {
+  const workspaceId = await getSingleFolderWorkspaceIdentifier(workspaceUri);
+  if (!workspaceId) {
+    return getGlobalStoragePath(workspaceUri.fsPath, context);
+  }
+  const storageHome = getWorkspaceStorageHome(context);
+  const extensionId = context.extension.id;
+
+  const calculatedStoragePath = path.join(
+    storageHome,
+    workspaceId,
+    extensionId,
+  );
+
+  return calculatedStoragePath;
 }

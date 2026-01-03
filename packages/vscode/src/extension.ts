@@ -47,7 +47,8 @@ const logger = getLogger("Extension");
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
 export async function activate(context: vscode.ExtensionContext) {
-  const cwd = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
+  const workspaceUri = vscode.workspace.workspaceFolders?.[0].uri;
+  const cwd = workspaceUri?.fsPath;
 
   // Initialize the Pochi layout keybinding context from VSCode configuration
   await initPochiLayoutKeybindingContext();
@@ -69,7 +70,7 @@ export async function activate(context: vscode.ExtensionContext) {
   });
 
   container.register(WorkspaceScope, {
-    useValue: new WorkspaceScope(cwd ?? null, cwd ?? null),
+    useValue: new WorkspaceScope(cwd ?? null, workspaceUri ?? null),
   });
   container.register<McpHub>(McpHub, {
     // McpHub is also a singleton

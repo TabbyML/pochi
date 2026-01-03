@@ -1,4 +1,3 @@
-import * as crypto from "node:crypto";
 import { mkdir } from "node:fs/promises";
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
@@ -19,19 +18,14 @@ import type { FileChange } from "../editor/diff-changes-editor";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { WorktreeManager } from "../git/worktree";
 import { ShadowGitRepo } from "./shadow-git-repo";
-import { filterGitChanges, processGitChangesToFileEdits } from "./util";
+import {
+  filterGitChanges,
+  getWorkspaceStorageDir,
+  processGitChangesToFileEdits,
+} from "./util";
 
 const logger = getLogger("CheckpointService");
-
 const checkpointCommitPrefix = (cwd: string) => `checkpoint-${cwd}-msg-`;
-
-const getPathId = (filePath: string) => {
-  return crypto
-    .createHash("sha256")
-    .update(path.normalize(filePath))
-    .digest("hex")
-    .substring(0, 32); // First 32 chars of SHA-256
-};
 
 @scoped(Lifecycle.ContainerScoped)
 @injectable()
@@ -197,17 +191,26 @@ export class CheckpointService implements vscode.Disposable {
     if (!workspacePath) {
       throw new Error("Cannot get workspace path");
     }
-    const storagePath = this.context.globalStorageUri.fsPath;
-    const checkpointDir = path.join(
-      storagePath,
-      "checkpoint",
-      getPathId(workspacePath),
-    );
+    const storagePath = await this.getWorkspaceStoragePath(workspacePath);
+    const checkpointDir = path.join(storagePath, "checkpoint");
     logger.info(
-      `Checkpoint directory for workspace: ${this.workspaceScope.cwd} is: ${checkpointDir}`,
+      `Checkpoint directory for workspace: ${workspacePath} is: ${checkpointDir}`,
     );
     await mkdir(checkpointDir, { recursive: true });
     return checkpointDir;
+  }
+
+  private async getWorkspaceStoragePath(workspace: string): Promise<string> {
+    // keep scheme
+    const workspaceUri = this.workspaceScope.workspaceUri?.with({
+      path: workspace,
+    });
+    if (!workspaceUri) {
+      return (
+        this.context.storageUri?.fsPath ?? this.context.globalStorageUri.fsPath
+      );
+    }
+    return await getWorkspaceStorageDir(workspaceUri, this.context);
   }
 
   getCheckpointChanges = async (

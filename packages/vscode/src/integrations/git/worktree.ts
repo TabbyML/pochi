@@ -5,6 +5,8 @@ import { Deferred } from "@/lib/defered";
 import { readFileContent } from "@/lib/fs";
 import { generateBranchName } from "@/lib/generate-branch-name";
 import { getLogger } from "@/lib/logger";
+// biome-ignore lint/style/useImportType: needed for dependency injection
+import { WorkspaceScope } from "@/lib/workspace-scoped";
 import { toErrorMessage } from "@getpochi/common";
 import { getWorktreeNameFromWorktreePath } from "@getpochi/common/git-utils";
 import { isPlainText } from "@getpochi/common/tool-utils";
@@ -26,6 +28,7 @@ import {
 import { GitWorktreeInfoProvider } from "./git-worktree-info-provider";
 
 const logger = getLogger("WorktreeManager");
+
 @singleton()
 @injectable()
 export class WorktreeManager implements vscode.Disposable {
@@ -41,11 +44,12 @@ export class WorktreeManager implements vscode.Disposable {
   }
 
   constructor(
+    private readonly workspaceScope: WorkspaceScope,
     private readonly gitState: GitState,
     private readonly worktreeInfoProvider: GitWorktreeInfoProvider,
     private readonly pochiConfiguration: PochiConfiguration,
   ) {
-    this.workspacePath = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
+    this.workspacePath = this.workspaceScope.workspacePath;
     this.git = simpleGit(this.workspacePath);
     this.init();
   }
