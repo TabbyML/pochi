@@ -15,15 +15,12 @@ export function useDeletedWorktrees({
   const { store } = useStore();
 
   const worktreeQuery = useMemo(() => {
-    return taskCatalog.queries.makeNonCwdWorktreesQuery(cwd, origin ?? "");
-  }, [cwd, origin]);
-  const worktrees = store.useQuery(worktreeQuery);
-  const deletedWorktrees = useMemo(
-    () =>
-      worktrees.filter(
-        (wt) => !activeWorktrees?.some((active) => active.path === wt.path),
-      ),
-    [worktrees, activeWorktrees],
-  );
+    return taskCatalog.queries.makeNonCwdWorktreesQuery(
+      cwd,
+      activeWorktrees,
+      origin ?? "",
+    );
+  }, [cwd, activeWorktrees, origin]);
+  const deletedWorktrees = store.useQuery(worktreeQuery);
   return { deletedWorktrees };
 }

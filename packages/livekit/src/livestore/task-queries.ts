@@ -49,25 +49,34 @@ export const makeTasksCountQuery = (cwd: string) => {
   );
 };
 
-export const makeNonCwdWorktreesQuery = (cwd: string, origin?: string) => {
+export const makeNonCwdWorktreesQuery = (
+  cwd: string,
+  activeWorktrees?: { path: string }[],
+  origin?: string,
+) => {
+  const activePathsStr = activeWorktrees?.length
+    ? activeWorktrees.map((p) => `'${p.path}'`).join(", ")
+    : "";
+  const worktreeFilter = activePathsStr
+    ? `and cwd not in (${activePathsStr})`
+    : "";
   const originFilter = origin
     ? `and git->>'$.origin' = '${parseGitOriginUrl(origin)?.webUrl}'`
     : "";
 
   return queryDb(
     {
-      query: sql`select distinct git->>'$.worktree.gitdir' as path, git->>'$.branch' as branch, cwd from tasks where parentId is null and cwd != '${cwd}' ${originFilter} and git->>'$.worktree.gitdir' is not null`,
+      query: sql`select distinct git->>'$.worktree.gitdir' as path, git->>'$.branch' as branch from tasks where parentId is null and cwd != '${cwd}' ${worktreeFilter} ${originFilter} and git->>'$.worktree.gitdir' is not null`,
       schema: Schema.Array(
         Schema.Struct({
           path: Schema.String,
           branch: Schema.String,
-          cwd: Schema.String,
         }),
       ),
     },
     {
-      label: "tasks.cwd.worktrees",
-      deps: [cwd, origin],
+      label: "tasks.activePaths.worktrees",
+      deps: [origin, activePathsStr],
     },
   );
 };
