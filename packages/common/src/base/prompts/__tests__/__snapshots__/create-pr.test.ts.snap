@@ -1,0 +1,15 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`createPr 1`] = `
+"<workflow id="create-pr" path="create-pr">## Context
+- Current git diff (staged and unstaged changes): !\`git diff HEAD\`
+## Your task
+Please use gh cli to create a  pull request</workflow>"
+`;
+
+exports[`createPr draft 1`] = `
+"<workflow id="create-pr" path="create-pr">## Context
+- Current git diff (staged and unstaged changes): !\`git diff HEAD\`
+## Your task
+Please use gh cli to create a draft pull request</workflow>"
+`;

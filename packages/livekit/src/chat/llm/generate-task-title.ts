@@ -78,8 +78,11 @@ async function generateTaskTitleImpl({
 function getTitleFromMessages(messages: Message[]) {
   const firstMessage = messages.at(0);
   if (!firstMessage) return;
-  const lastTextPart = firstMessage.parts.findLast((x) => x.type === "text");
-  if (lastTextPart) {
+  const lastTextPart = firstMessage.parts.findLast(
+    (x) => x.type === "text" && !prompts.isSystemReminder(x.text),
+  );
+
+  if (lastTextPart && lastTextPart.type === "text") {
     return lastTextPart.text.split("\n")[0].trim();
   }
 }
