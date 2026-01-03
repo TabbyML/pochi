@@ -9,12 +9,7 @@ severity: error
 ignores:
   - "**/__test__/**"
   - "packages/vscode/src/extension.ts"
-  - "packages/vscode/src/integrations/command.ts"
-  - "packages/vscode/src/integrations/uri-handler.ts"
-  - "packages/vscode/src/lib/workspace-job.ts"
   - "packages/vscode/src/nes/contexts.ts"
-  - "packages/vscode/src/integrations/git/worktree.ts"
   - "packages/vscode/src/lib/workspace-scoped.ts"
-  - "packages/vscode/src/integrations/review-controller.ts"
 files:
   - "packages/vscode/src/**/*.ts"

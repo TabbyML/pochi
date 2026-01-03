@@ -28,6 +28,7 @@ describe("WorktreeManager", () => {
       gitStateStub = {
         onDidRepositoryChange: sinon.stub().returns({ dispose: () => {} }),
         onDidChangeGitState: sinon.stub().returns({ dispose: () => {} }),
+        inited: { promise: Promise.resolve() },
       };
 
       // Create a stub for GitWorktreeInfoProvider
@@ -41,8 +42,13 @@ describe("WorktreeManager", () => {
         detectWorktreesLimit: { value: 10 },
       };
 
+      const workspaceScopeStub = {
+        workspacePath: "/path/to/repo",
+      };
+
       // Create worktreeManager instance with stubbed dependencies
       worktreeManager = new WorktreeManager(
+        workspaceScopeStub,
         gitStateStub,
         worktreeDataStoreStub,
         pochiConfigurationStub,
@@ -158,6 +164,7 @@ describe("WorktreeManager", () => {
       gitStateStub = {
         onDidRepositoryChange: sinon.stub().returns({ dispose: () => {} }),
         onDidChangeGitState: sinon.stub().returns({ dispose: () => {} }),
+        inited: { promise: Promise.resolve() },
       };
 
       // Create a stub for GitWorktreeInfoProvider
@@ -171,7 +178,12 @@ describe("WorktreeManager", () => {
         detectWorktreesLimit: { value: 10 },
       };
 
+      const workspaceScopeStub = {
+        workspacePath: "/path/to/repo",
+      };
+
       worktreeManager = new WorktreeManager(
+        workspaceScopeStub,
         gitStateStub,
         worktreeDataStoreStub,
         pochiConfigurationStub,
@@ -289,6 +301,7 @@ prunable gitdir file points to non-existent location
       gitStateStub = {
         onDidRepositoryChange: sinon.stub().returns({ dispose: () => {} }),
         onDidChangeGitState: sinon.stub().returns({ dispose: () => {} }),
+        inited: { promise: Promise.resolve() },
       };
 
       const worktreeDataStoreStub: GitWorktreeInfoProvider = {
@@ -301,7 +314,12 @@ prunable gitdir file points to non-existent location
         detectWorktreesLimit: { value: 10 },
       };
 
+      const workspaceScopeStub = {
+        workspacePath: "/path/to/repo",
+      };
+
       worktreeManager = new WorktreeManager(
+        workspaceScopeStub,
         gitStateStub,
         worktreeDataStoreStub,
         pochiConfigurationStub,
@@ -480,7 +498,12 @@ prunable gitdir file points to non-existent location
         detectWorktreesLimit: { value: 10 },
       };
 
+      const workspaceScopeStub = {
+        workspacePath: "/path/to/repo",
+      };
+
       worktreeManager = new WorktreeManager(
+        workspaceScopeStub,
         gitStateStub,
         worktreeDataStoreStub,
         pochiConfigurationStub,

@@ -323,7 +323,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   }> => {
     return {
       cwd: this.cwd,
-      workspacePath: this.workspaceScope.workspacePath,
+      workspacePath: this.workspaceScope.workspacePath ?? null,
     };
   };
 

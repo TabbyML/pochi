@@ -24,6 +24,7 @@ describe("WorktreeManager Repro #989", () => {
       gitStateStub = {
         onDidRepositoryChange: sinon.stub().returns({ dispose: () => {} }),
         onDidChangeGitState: sinon.stub().returns({ dispose: () => {} }),
+        inited: { promise: Promise.resolve() },
       };
 
       const worktreeDataStoreStub = {
@@ -36,11 +37,16 @@ describe("WorktreeManager Repro #989", () => {
         detectWorktreesLimit: { value: 10 },
       };
 
+      const workspaceScopeStub = {
+        workspacePath: "/path/to/repo",
+      };
+
       // Mock vscode.workspace.workspaceFolders
       // Using sinon to stub the property getter
       sinon.stub(vscode.workspace, "workspaceFolders").value([{ uri: { fsPath: "/path/to/repo" } }]);
 
       worktreeManager = new WorktreeManager(
+        workspaceScopeStub,
         gitStateStub,
         worktreeDataStoreStub,
         pochiConfigurationStub,
