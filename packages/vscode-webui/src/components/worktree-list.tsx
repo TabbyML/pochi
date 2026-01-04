@@ -149,8 +149,9 @@ export function WorktreeList({
 
   // Check if there is only one group and it is the main group
   // If so, we don't need to set a max-height for the section
-  const containsOnlyMainGroup =
-    optimisticGroups.length === 1 && optimisticGroups[0]?.isMain;
+  const containsOnlyWorkspaceGroup =
+    optimisticGroups.length === 1 &&
+    optimisticGroups[0]?.path === (currentWorkspace?.workspacePath || cwd);
 
   return (
     <div className="flex flex-col gap-1">
@@ -162,7 +163,7 @@ export function WorktreeList({
           onDeleteGroup={onDeleteWorktree}
           gitOriginUrl={gitOriginUrl}
           gh={gh}
-          containsOnlyMainGroup={containsOnlyMainGroup}
+          containsOnlyWorkspaceGroup={containsOnlyWorkspaceGroup}
         />
       ))}
     </div>
@@ -174,14 +175,14 @@ function WorktreeSection({
   onDeleteGroup,
   gh,
   gitOriginUrl,
-  containsOnlyMainGroup,
+  containsOnlyWorkspaceGroup,
 }: {
   group: WorktreeGroup;
   isLoadingWorktrees: boolean;
   onDeleteGroup?: (worktreePath: string) => void;
   gh?: { installed: boolean; authorized: boolean };
   gitOriginUrl?: string | null;
-  containsOnlyMainGroup?: boolean;
+  containsOnlyWorkspaceGroup?: boolean;
 }) {
   const { t } = useTranslation();
   // Default expanded for existing worktrees, collapsed for deleted
@@ -378,9 +379,9 @@ function WorktreeSection({
       <CollapsibleContent>
         <ScrollArea
           viewportClassname={cn("px-1 py-1", {
-            "max-h-[180px]": !group.isMain && !containsOnlyMainGroup,
-            "max-h-[60cqh]": group.isMain && !containsOnlyMainGroup,
-            // When there is only one main group, we let it grow naturally without max-height constraint
+            "max-h-[180px]": !group.isMain && !containsOnlyWorkspaceGroup,
+            "max-h-[60cqh]": group.isMain && !containsOnlyWorkspaceGroup,
+            // When there is only one workspace group, we let it grow naturally without max-height constraint
           })}
         >
           {tasks.length > 0 ? (
