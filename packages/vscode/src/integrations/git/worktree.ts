@@ -311,6 +311,15 @@ export class WorktreeManager implements vscode.Disposable {
           return { ...wt, data: storedData };
         })
         .slice(0, this.maxWorktrees);
+
+      const workspaceWorktree = worktrees.find(
+        (x) => x.path === this.workspacePath,
+      );
+      if (workspaceWorktree && !workspaceWorktree.isMain) {
+        // If the current workspace is a non-main worktree, only return the current worktree
+        return [workspaceWorktree];
+      }
+
       return worktrees;
     } catch (error) {
       logger.error(`Failed to get worktrees: ${toErrorMessage(error)}`);
