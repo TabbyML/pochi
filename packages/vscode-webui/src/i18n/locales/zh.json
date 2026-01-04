@@ -421,9 +421,12 @@
     "openFile": "打开文件"
   },
   "userEdits": {
+    "title": "编辑",
     "filesEdited_one": "已编辑 {{count}} 个文件",
     "filesEdited_other": "已编辑 {{count}} 个文件",
-    "tooltip": "您的编辑已被跟踪，并将包含在上下文中"
+    "tooltip": "您的编辑已被跟踪，并将包含在上下文中",
+    "showDiff": "显示差异",
+    "diffTitle": "用户编辑"
   },
   "forkTask": {
     "forkedTaskTitle": "任务分支自：{{taskTitle}}"

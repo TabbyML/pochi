@@ -422,9 +422,12 @@
     "openFile": "ファイルを開く"
   },
   "userEdits": {
+    "title": "編集",
     "filesEdited_one": "{{count}} ファイルを編集",
     "filesEdited_other": "{{count}} ファイルを編集",
-    "tooltip": "編集内容が追跡され、コンテキストに含まれます"
+    "tooltip": "編集内容が追跡され、コンテキストに含まれます",
+    "showDiff": "差分を表示",
+    "diffTitle": "ユーザー編集"
   },
   "forkTask": {
     "forkedTaskTitle": "フォーク 元: {{taskTitle}}"

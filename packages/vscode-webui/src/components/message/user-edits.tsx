@@ -71,40 +71,42 @@ export const UserEditsPart: React.FC<Props> = ({ userEdits, checkpoints }) => {
             <FilePenLine className="size-3.5 shrink-0" />
             <div className="font-semibold text-sm">
               {t("userEdits.title", { defaultValue: "Edits" })}
-              <span className="ml-2 text-muted-foreground text-sm">
-                {t("userEdits.filesEdited", {
-                  count: userEdits.length,
-                  defaultValue: "{{count}} file edited",
-                })}
-              </span>
             </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-muted-foreground text-xs">
+              {t("userEdits.filesEdited", {
+                count: userEdits.length,
+                defaultValue: "{{count}} file edited",
+              })}
+            </span>
             <EditSummary
               editSummary={{ added: totalAdded, removed: totalRemoved }}
-              className="ml-2 text-xs"
+              className="text-xs"
             />
+            {checkpoints?.origin && (
+              <div
+                className="hidden items-center group-hover:flex"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-5 w-5"
+                      onClick={onShowDiff}
+                    >
+                      <VscDiffMultiple className="size-3.5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {t("userEdits.showDiff", { defaultValue: "Show Diff" })}
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+            )}
           </div>
-          {checkpoints?.origin && (
-            <div
-              className="hidden items-center group-hover:flex"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-5 w-5"
-                    onClick={onShowDiff}
-                  >
-                    <VscDiffMultiple className="size-3.5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {t("userEdits.showDiff", { defaultValue: "Show Diff" })}
-                </TooltipContent>
-              </Tooltip>
-            </div>
-          )}
         </div>
       </CollapsibleTrigger>
       <CollapsibleContent>
@@ -167,10 +169,7 @@ function UserEditItem({ edit, checkpoints }: UserEditItemProps) {
               isOpen && "rotate-90",
             )}
           />
-          <span
-            className="flex items-center truncate font-medium text-sm hover:underline"
-            onClick={onOpenFile}
-          >
+          <span className="flex items-center truncate font-medium text-sm">
             <FileIcon path={edit.filepath} />
             <span className="ml-1.5">{edit.filepath}</span>
           </span>
