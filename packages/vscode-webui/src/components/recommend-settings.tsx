@@ -1,13 +1,12 @@
 import { useVSCodeSettings } from "@/lib/hooks/use-vscode-settings";
 import { vscodeHost } from "@/lib/vscode";
 import type { VSCodeSettings } from "@getpochi/common/vscode-webui-bridge";
-import { SettingsIcon } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "./ui/button";
 import { Checkbox } from "./ui/checkbox";
 import { Label } from "./ui/label";
-import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
+import { Tooltip } from "./ui/tooltip";
 
 type Options =
   | "enablePochiLayoutKeybinding"
@@ -59,7 +58,6 @@ export function RecommendSettings() {
     if (vscodeSettings.githubCopilotCodeCompletionEnabled) {
       list.push("disableGithubCopilotCodeCompletion");
     }
-    console.log("list", list);
     return list;
   }, [vscodeSettings]);
 
@@ -110,8 +108,7 @@ export function RecommendSettings() {
     <div className="mt-6 max-w-md rounded-lg border bg-muted p-4 text-left">
       <div className="flex flex-col gap-4">
         <div className="flex items-center gap-2">
-          <h3 className="flex items-center font-medium text-base">
-            <SettingsIcon className="mr-2 size-5" />
+          <h3 className="flex items-end font-medium text-base">
             {t("recommendSettings.title")}
           </h3>
         </div>
