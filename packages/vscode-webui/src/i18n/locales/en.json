@@ -112,7 +112,8 @@
       "clearStorage": "Clear Storage",
       "language": "Language",
       "languageDescription": "Choose your preferred language",
-      "openInTab": "Allows to open the task in a new tab"
+      "openInTab": "Allows to open the task in a new tab",
+      "resetRecommendSettingsConfirmed": "Reset Recommended Settings Confirmed"
     },
     "workflows": {
       "title": "Workflows",
@@ -429,5 +430,16 @@
   },
   "forkTask": {
     "forkedTaskTitle": "Forked from {{taskTitle}}"
+  },
+  "recommendSettings": {
+    "title": "Pochi will modify the following settings",
+    "ok": "OK",
+    "options": {
+      "enablePochiLayoutKeybinding": "Enable Pochi Layout keybinding",
+      "pochiLayoutMoveBottomPanelViews": "Move bottom panels to sidebar in Pochi Layout",
+      "disableAutoSave": "Disable auto-save",
+      "disableCommentsOpenView": "Disable auto open comments panel",
+      "disableGithubCopilotCodeCompletion": "Disable GitHub Copilot code completion"
+    }
   }
 }

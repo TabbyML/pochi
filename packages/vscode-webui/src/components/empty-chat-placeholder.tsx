@@ -1,11 +1,12 @@
-import { useAutoSaveDisabled } from "@/lib/hooks/use-auto-save";
+import { useVSCodeSettings } from "@/lib/hooks/use-vscode-settings";
 import { AlertTriangleIcon, PaperclipIcon, TerminalIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { RecommendSettings } from "./recommend-settings";
 import { Button } from "./ui/button";
 
 export function EmptyChatPlaceholder() {
-  const autoSaveDisabled = useAutoSaveDisabled();
+  const { recommendSettingsConfirmed, autoSaveDisabled } = useVSCodeSettings();
   const { t } = useTranslation();
   const [placeholder, setPlaceholder] = useState<{
     title: string;
@@ -42,7 +43,8 @@ export function EmptyChatPlaceholder() {
           {t("placeholder.tips.workflow")}
         </li>
       </ul>
-      {!autoSaveDisabled && (
+      {!recommendSettingsConfirmed && <RecommendSettings />}
+      {recommendSettingsConfirmed && !autoSaveDisabled && (
         <div className="mt-6 max-w-md rounded-lg border bg-muted p-4 text-center">
           <div className="flex flex-col items-center gap-3">
             <div className="flex items-center gap-2">

@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { vscodeHost } from "@/lib/vscode";
 import { useTranslation } from "react-i18next";
 import { useSettingsStore } from "../../store";
 import { AccordionSection } from "../ui/accordion-section";
@@ -54,6 +55,17 @@ export const AdvancedSettingsSection: React.FC = () => {
                 }}
               >
                 {t("settings.advanced.clearStorage")}
+              </Button>
+            </div>
+            <div>
+              <Button
+                onClick={async () => {
+                  await vscodeHost.updateVSCodeSettings({
+                    recommendSettingsConfirmed: false,
+                  });
+                }}
+              >
+                {t("settings.advanced.resetRecommendSettingsConfirmed")}
               </Button>
             </div>
           </>

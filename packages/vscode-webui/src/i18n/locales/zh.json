@@ -111,7 +111,8 @@
       "enablePochiModels": "启用 Pochi 模型",
       "clearStorage": "清除存储",
       "language": "语言",
-      "languageDescription": "选择您的首选语言"
+      "languageDescription": "选择您的首选语言",
+      "resetRecommendSettingsConfirmed": "Reset Recommended Settings Confirmed"
     },
     "workflows": {
       "title": "工作流",
@@ -430,5 +431,16 @@
   },
   "forkTask": {
     "forkedTaskTitle": "任务分支自：{{taskTitle}}"
+  },
+  "recommendSettings": {
+    "title": "Pochi 将修改以下设置",
+    "ok": "确定",
+    "options": {
+      "enablePochiLayoutKeybinding": "启用 Pochi 布局快捷键",
+      "pochiLayoutMoveBottomPanelViews": "在 Pochi 布局中将底部面板视图移动到侧边栏",
+      "disableAutoSave": "禁用自动保存",
+      "disableCommentsOpenView": "禁用自动打开评论面板",
+      "disableGithubCopilotCodeCompletion": "禁用 GitHub Copilot 代码补全"
+    }
   }
 }

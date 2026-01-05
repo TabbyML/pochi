@@ -27,6 +27,7 @@ import type {
 import type { ActiveSelection } from "./types/message";
 import type { DisplayModel } from "./types/model";
 import type { PochiCredentials } from "./types/pochi";
+import type { VSCodeSettings } from "./types/vscode-settings";
 
 export interface VSCodeHostApi {
   readResourceURI(): Promise<ResourceURI>;
@@ -280,7 +281,9 @@ export interface VSCodeHostApi {
 
   readExtensionVersion(): Promise<string>;
 
-  readAutoSaveDisabled(): Promise<ThreadSignalSerialization<boolean>>;
+  readVSCodeSettings(): Promise<ThreadSignalSerialization<VSCodeSettings>>;
+
+  updateVSCodeSettings(params: Partial<VSCodeSettings>): Promise<void>;
 
   /**
    * Show an information message to users. Optionally provide an array of items which will be presented as

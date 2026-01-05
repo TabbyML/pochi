@@ -57,6 +57,7 @@ export {
   WorktreePrefix,
 } from "./task-utils";
 export { ActiveSelection, UserEdits } from "./types/message";
+export type { VSCodeSettings } from "./types/vscode-settings";
 
 const isPochiDev = process.env.POCHI_LOCAL_SERVER === "true";
 const isSyncDev = process.env.POCHI_LOCAL_SYNC_SERVER === "true";

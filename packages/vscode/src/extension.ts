@@ -25,10 +25,10 @@ import * as vscode from "vscode";
 import { CompletionProvider } from "./code-completion";
 import { PochiAuthenticationProvider } from "./integrations/auth-provider";
 import { CommandManager } from "./integrations/command";
+import { ContextVariables } from "./integrations/context-variables";
 import { DiffChangesContentProvider } from "./integrations/editor/diff-changes-content-provider";
 import { DiffOriginContentProvider } from "./integrations/editor/diff-origin-content-provider";
 import { WorktreeManager } from "./integrations/git/worktree";
-import { initPochiLayoutKeybindingContext } from "./integrations/layout-keybinding";
 import { createMcpHub } from "./integrations/mcp";
 import { ReviewController } from "./integrations/review-controller";
 import { StatusBarItem } from "./integrations/status-bar-item";
@@ -49,9 +49,6 @@ const logger = getLogger("Extension");
 export async function activate(context: vscode.ExtensionContext) {
   const workspaceUri = vscode.workspace.workspaceFolders?.[0].uri;
   const cwd = workspaceUri?.fsPath;
-
-  // Initialize the Pochi layout keybinding context from VSCode configuration
-  await initPochiLayoutKeybindingContext();
 
   // Container will dispose all the registered instances when itself is disposed
   context.subscriptions.push(container);
@@ -90,6 +87,7 @@ export async function activate(context: vscode.ExtensionContext) {
   container.resolve(DiffChangesContentProvider);
   container.resolve(WorktreeManager);
   container.resolve(ReviewController);
+  container.resolve(ContextVariables);
 }
 
 // This method is called when your extension is deactivated
