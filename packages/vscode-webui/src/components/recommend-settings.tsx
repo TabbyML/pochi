@@ -59,6 +59,7 @@ export function RecommendSettings() {
     if (vscodeSettings.githubCopilotCodeCompletionEnabled) {
       list.push("disableGithubCopilotCodeCompletion");
     }
+    console.log("list", list);
     return list;
   }, [vscodeSettings]);
 

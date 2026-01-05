@@ -2,7 +2,7 @@ import { signal } from "@preact/signals-core";
 import { inject, injectable, singleton } from "tsyringe";
 import type * as vscode from "vscode";
 
-const RecommendSettingsConfirmedKey = "recommend-settings-confirmed";
+const RecommendSettingsConfirmedKey = "dev-recommend-settings-confirmed";
 
 @injectable()
 @singleton()
