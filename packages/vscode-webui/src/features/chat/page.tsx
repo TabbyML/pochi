@@ -49,10 +49,11 @@ import {
 
 const ChatContainerClassName = tw`mx-auto flex h-screen max-w-6xl flex-col`;
 const ChatToolbarContainerClassName = tw`relative flex flex-col px-4`;
-import { Loader2 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { onOverrideMessages } from "./lib/on-override-messages";
 import { useLiveChatKitGetters } from "./lib/use-live-chat-kit-getters";
 import { useSendTaskNotification } from "./lib/use-send-task-notification";
+import { Separator } from "@/components/ui/separator";
 
 export function ChatPage(props: ChatProps) {
   return (
@@ -431,11 +432,33 @@ function Chat({ user, uid, info }: ChatProps) {
 }
 
 export function ChatSkeleton() {
+  const skeletonClass = "bg-foreground/10";
   return (
     <ChatContextProviderStub>
       <div className={ChatContainerClassName}>
-        <div className="mb-2 flex flex-1 items-center justify-center">
-          <Loader2 className="animate-spin" />
+        <div className="mb-2 flex flex-1 flex-col gap-6 px-4 pt-4">
+          <div className="flex flex-col">
+            <div className="flex items-center gap-2 pb-2">
+              <Skeleton className={cn("size-7 rounded-full", skeletonClass)} />
+              <Skeleton className={cn("h-4 w-12", skeletonClass)} />
+            </div>
+            <div className="ml-1 flex flex-col gap-2">
+              <Skeleton className={cn("h-4 w-3/4", skeletonClass)} />
+              <Skeleton className={cn("h-4 w-1/2", skeletonClass)} />
+            </div>
+          </div>
+          <Separator className="mt-1 mb-2" />
+          <div className="flex flex-col">
+            <div className="flex items-center gap-2 pb-2">
+              <Skeleton className={cn("size-7 rounded-full", skeletonClass)} />
+              <Skeleton className={cn("h-4 w-12", skeletonClass)} />
+            </div>
+            <div className="ml-1 flex flex-col gap-2">
+              <Skeleton className={cn("h-4 w-full", skeletonClass)} />
+              <Skeleton className={cn("h-4 w-[90%]", skeletonClass)} />
+              <Skeleton className={cn("h-4 w-[80%]", skeletonClass)} />
+            </div>
+          </div>
         </div>
         <div className={ChatToolbarContainerClassName}>
           <ChatToolBarSkeleton />
