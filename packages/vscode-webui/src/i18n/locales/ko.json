@@ -438,5 +438,9 @@
       "disableCommentsOpenView": "주석 패널 자동 열기 비활성화",
       "disableGithubCopilotCodeCompletion": "GitHub Copilot 코드 완성 비활성화"
     }
+  },
+  "mermaid": {
+    "failedToRender": "Mermaid 차트 렌더링 실패:",
+    "fixError": "Pochi로 오류 수정"
   }
 }

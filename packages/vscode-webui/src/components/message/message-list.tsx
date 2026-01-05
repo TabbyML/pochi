@@ -30,6 +30,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import { ActiveSelectionPart } from "./active-selection";
 import { MessageAttachments } from "./attachments";
 import { MessageMarkdown } from "./markdown";
+import type { MermaidContext } from "./mermaid-context";
+import { MermaidContextProvider } from "./mermaid-context";
 import { Reviews } from "./reviews";
 import { UserEditsPart } from "./user-edits";
 
@@ -50,6 +52,8 @@ export const MessageList: React.FC<{
   showLoader?: boolean;
   forkTask?: (commitId: string, messageId?: string) => Promise<void>;
   hideCheckPoint?: boolean;
+  repairMermaid?: MermaidContext["repairMermaid"];
+  repairingChart?: string | null;
 }> = ({
   messages: renderMessages,
   isLoading,
@@ -61,6 +65,8 @@ export const MessageList: React.FC<{
   showLoader = true,
   forkTask,
   hideCheckPoint,
+  repairMermaid,
+  repairingChart,
 }) => {
   const [debouncedIsLoading, setDebouncedIsLoading] = useDebounceState(
     isLoading,
@@ -81,103 +87,117 @@ export const MessageList: React.FC<{
       .findLast((part) => part.type === "data-checkpoint")?.data.commit;
   }, [renderMessages]);
 
+  const mermaidContextValue = useMemo(
+    () =>
+      repairMermaid
+        ? {
+            repairMermaid,
+            repairingChart:
+              isLoading || isExecuting ? null : (repairingChart ?? null),
+          }
+        : null,
+    [repairMermaid, repairingChart, isLoading, isExecuting],
+  );
+
   return (
     <BackgroundJobContextProvider messages={renderMessages}>
-      <ScrollArea
-        className={cn("mb-2 flex-1 overflow-y-auto px-4", className)}
-        ref={containerRef}
-      >
-        {renderMessages.map((m, messageIndex) => (
-          <div key={m.id} className="flex flex-col">
-            <div className={cn(showUserAvatar && "pt-4 pb-2")}>
-              {showUserAvatar && (
-                <div className="flex items-center gap-2">
-                  {m.role === "user" ? (
-                    <Avatar className="size-7 select-none">
-                      <AvatarImage src={user?.image ?? undefined} />
-                      <AvatarFallback
-                        className={cn(
-                          "bg-[var(--vscode-chat-avatarBackground)] text-[var(--vscode-chat-avatarForeground)] text-xs uppercase",
-                        )}
-                      >
-                        {user?.name.slice(0, 2) || (
-                          <UserIcon className={cn("size-[50%]")} />
-                        )}
-                      </AvatarFallback>
-                    </Avatar>
-                  ) : (
-                    <Avatar className="size-7 select-none">
-                      <AvatarImage
-                        src={assistant?.image ?? undefined}
-                        className="scale-110"
-                      />
-                      <AvatarFallback className="bg-[var(--vscode-chat-avatarBackground)] text-[var(--vscode-chat-avatarForeground)]" />
-                    </Avatar>
-                  )}
-                  <strong>
-                    {m.role === "user" ? user?.name : assistantName}
-                  </strong>
-                  {findCompactPart(m) && (
-                    <CompactPartToolTip className="ml-1" message={m} />
-                  )}
-                </div>
-              )}
-              <div
-                className={cn("ml-1 flex flex-col", showUserAvatar && "mt-3")}
-              >
-                {m.parts.map((part, index) => (
-                  <Part
-                    role={m.role}
-                    key={index}
-                    isLastPartInMessages={
-                      index === m.parts.length - 1 &&
-                      messageIndex === renderMessages.length - 1
-                    }
-                    partIndex={index}
-                    part={part}
-                    isLoading={isLoading}
-                    isExecuting={isExecuting}
-                    messages={renderMessages}
-                    forkTask={forkTask}
-                    hideCheckPoint={hideCheckPoint}
-                    latestCheckpoint={latestCheckpoint}
-                    lastCheckpointInMessage={lastCheckpointInMessage}
-                    userEditsCheckpoint={getUserEditsCheckpoint(
-                      renderMessages,
-                      messageIndex,
+      <MermaidContextProvider value={mermaidContextValue}>
+        <ScrollArea
+          className={cn("mb-2 flex-1 overflow-y-auto px-4", className)}
+          ref={containerRef}
+        >
+          {renderMessages.map((m, messageIndex) => (
+            <div key={m.id} className="flex flex-col">
+              <div className={cn(showUserAvatar && "pt-4 pb-2")}>
+                {showUserAvatar && (
+                  <div className="flex items-center gap-2">
+                    {m.role === "user" ? (
+                      <Avatar className="size-7 select-none">
+                        <AvatarImage src={user?.image ?? undefined} />
+                        <AvatarFallback
+                          className={cn(
+                            "bg-[var(--vscode-chat-avatarBackground)] text-[var(--vscode-chat-avatarForeground)] text-xs uppercase",
+                          )}
+                        >
+                          {user?.name.slice(0, 2) || (
+                            <UserIcon className={cn("size-[50%]")} />
+                          )}
+                        </AvatarFallback>
+                      </Avatar>
+                    ) : (
+                      <Avatar className="size-7 select-none">
+                        <AvatarImage
+                          src={assistant?.image ?? undefined}
+                          className="scale-110"
+                        />
+                        <AvatarFallback className="bg-[var(--vscode-chat-avatarBackground)] text-[var(--vscode-chat-avatarForeground)]" />
+                      </Avatar>
                     )}
-                  />
-                ))}
+                    <strong>
+                      {m.role === "user" ? user?.name : assistantName}
+                    </strong>
+                    {findCompactPart(m) && (
+                      <CompactPartToolTip className="ml-1" message={m} />
+                    )}
+                  </div>
+                )}
+                <div
+                  className={cn("ml-1 flex flex-col", showUserAvatar && "mt-3")}
+                >
+                  {m.parts.map((part, index) => (
+                    <Part
+                      role={m.role}
+                      key={index}
+                      isLastPartInMessages={
+                        index === m.parts.length - 1 &&
+                        messageIndex === renderMessages.length - 1
+                      }
+                      partIndex={index}
+                      part={part}
+                      isLoading={isLoading}
+                      isExecuting={isExecuting}
+                      messages={renderMessages}
+                      forkTask={forkTask}
+                      hideCheckPoint={hideCheckPoint}
+                      latestCheckpoint={latestCheckpoint}
+                      lastCheckpointInMessage={lastCheckpointInMessage}
+                      userEditsCheckpoint={getUserEditsCheckpoint(
+                        renderMessages,
+                        messageIndex,
+                      )}
+                    />
+                  ))}
+                </div>
+                {/* Display attachments at the bottom of the message */}
+                <UserAttachments message={m} />
+                <UserActiveSelections message={m} />
               </div>
-              {/* Display attachments at the bottom of the message */}
-              <UserAttachments message={m} />
-              <UserActiveSelections message={m} />
-            </div>
-            {messageIndex < renderMessages.length - 1 && (
-              <SeparatorWithCheckpoint
-                messageIndex={messageIndex}
-                message={m}
-                nextMessage={renderMessages[messageIndex + 1]}
-                isLoading={isLoading || isExecuting}
-                forkTask={forkTask}
-                hideCheckPoint={hideCheckPoint}
-                latestCheckpoint={latestCheckpoint}
-                lastCheckpointInMessage={lastCheckpointInMessage}
-              />
-            )}
-          </div>
-        ))}
-        {showLoader && (
-          <div className="py-2">
-            <Loader2
-              className={cn(
-                "mx-auto size-6",
-                debouncedIsLoading ? "animate-spin" : "invisible",
+              {messageIndex < renderMessages.length - 1 && (
+                <SeparatorWithCheckpoint
+                  messageIndex={messageIndex}
+                  message={m}
+                  nextMessage={renderMessages[messageIndex + 1]}
+                  isLoading={isLoading || isExecuting}
+                  forkTask={forkTask}
+                  hideCheckPoint={hideCheckPoint}
+                  latestCheckpoint={latestCheckpoint}
+                  lastCheckpointInMessage={lastCheckpointInMessage}
+                />
               )}
-            />
-          </div>
-        )}
-      </ScrollArea>
+            </div>
+          ))}
+          {showLoader && (
+            <div className="py-2">
+              <Loader2
+                className={cn(
+                  "mx-auto size-6",
+                  debouncedIsLoading ? "animate-spin" : "invisible",
+                )}
+              />
+            </div>
+          )}
+        </ScrollArea>
+      </MermaidContextProvider>
     </BackgroundJobContextProvider>
   );
 };

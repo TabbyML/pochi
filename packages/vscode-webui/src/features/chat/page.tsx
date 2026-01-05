@@ -35,6 +35,7 @@ import {
 import { ChatArea } from "./components/chat-area";
 import { ChatToolBarSkeleton, ChatToolbar } from "./components/chat-toolbar";
 import { SubtaskHeader } from "./components/subtask";
+import { useRepairMermaid } from "./hooks/use-repair-mermaid";
 import { useRestoreTaskModel } from "./hooks/use-restore-task-model";
 import { useScrollToBottom } from "./hooks/use-scroll-to-bottom";
 import { useSetSubtaskModel } from "./hooks/use-set-subtask-model";
@@ -267,6 +268,10 @@ function Chat({ user, uid, info }: ChatProps) {
 
   const { pendingApproval, retry } = approvalAndRetry;
 
+  const { repairMermaid, repairingChart } = useRepairMermaid({
+    repairMermaid: chatKit.repairMermaid,
+  });
+
   useEffect(() => {
     const pendingToolApproval =
       pendingApproval && pendingApproval.name !== "retry"
@@ -411,6 +416,8 @@ function Chat({ user, uid, info }: ChatProps) {
         hideEmptyPlaceholder={!isTaskWithoutContent}
         forkTask={task?.cwd ? forkTask : undefined}
         hideCheckPoint={isSubTask}
+        repairMermaid={repairMermaid}
+        repairingChart={repairingChart}
       />
       <div className={ChatToolbarContainerClassName}>
         <ChatToolbar
@@ -425,6 +432,7 @@ function Chat({ user, uid, info }: ChatProps) {
           displayError={displayError}
           onUpdateIsPublicShared={chatKit.updateIsPublicShared}
           taskId={uid}
+          isRepairingMermaid={!!repairingChart}
         />
       </div>
     </div>

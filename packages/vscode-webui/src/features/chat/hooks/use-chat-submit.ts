@@ -23,7 +23,7 @@ type UseAttachmentUploadReturn = ReturnType<typeof useAttachmentUpload>;
 interface UseChatSubmitProps {
   chat: UseChatReturn;
   input: string;
-  setInput: React.Dispatch<React.SetStateAction<string>>;
+  setInput: (input: string) => void;
   attachmentUpload: UseAttachmentUploadReturn;
   isSubmitDisabled: boolean;
   isLoading: boolean;

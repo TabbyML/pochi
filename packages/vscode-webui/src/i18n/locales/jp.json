@@ -443,5 +443,9 @@
       "disableCommentsOpenView": "コメントパネルの自動表示を無効にする",
       "disableGithubCopilotCodeCompletion": "GitHub Copilot のコード補完を無効にする"
     }
+  },
+  "mermaid": {
+    "failedToRender": "Mermaid チャートのレンダリングに失敗しました：",
+    "fixError": "Pochi でエラーを修正"
   }
 }

@@ -68,6 +68,7 @@ interface ChatToolbarProps {
   todosRef: React.RefObject<Todo[] | undefined>;
   onUpdateIsPublicShared?: (isPublicShared: boolean) => void;
   taskId: string;
+  isRepairingMermaid?: boolean;
 }
 
 export const ChatToolbar: React.FC<ChatToolbarProps> = ({
@@ -82,6 +83,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   todosRef,
   onUpdateIsPublicShared,
   taskId,
+  isRepairingMermaid = false,
 }) => {
   const { t } = useTranslation();
 
@@ -136,6 +138,11 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
       id: "new-compact-task",
       isBusy: newCompactTaskPending,
       label: t("tokenUsage.compacting"),
+    },
+    {
+      id: "repair-mermaid",
+      isBusy: isRepairingMermaid,
+      label: t("mermaid.fixError"),
     },
   ];
 

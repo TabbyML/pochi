@@ -442,5 +442,9 @@
       "disableCommentsOpenView": "禁用自动打开评论面板",
       "disableGithubCopilotCodeCompletion": "禁用 GitHub Copilot 代码补全"
     }
+  },
+  "mermaid": {
+    "failedToRender": "渲染 Mermaid 图表失败：",
+    "fixError": "使用 Pochi 修复错误"
   }
 }

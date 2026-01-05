@@ -202,6 +202,12 @@ export const events = {
       updatedAt: Schema.Date,
     }),
   }),
+  updateMessage: Events.synced({
+    name: "v1.UpdateMessage",
+    schema: Schema.Struct({
+      message: DBMessage,
+    }),
+  }),
 };
 
 const materializers = State.SQLite.materializers(events, {
@@ -370,6 +376,12 @@ const materializers = State.SQLite.materializers(events, {
         updatedAt,
       })
       .where({ id }),
+  "v1.UpdateMessage": ({ message }) =>
+    tables.messages
+      .update({
+        data: message,
+      })
+      .where({ id: message.id }),
 });
 
 const state = State.SQLite.makeState({ tables, materializers });

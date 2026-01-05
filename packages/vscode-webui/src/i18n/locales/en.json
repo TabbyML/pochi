@@ -441,5 +441,9 @@
       "disableCommentsOpenView": "Disable auto-opening of the comments panel",
       "disableGithubCopilotCodeCompletion": "Disable GitHub Copilot code completion"
     }
+  },
+  "mermaid": {
+    "failedToRender": "Failed to render Mermaid chart:",
+    "fixError": "Fix error with Pochi"
   }
 }

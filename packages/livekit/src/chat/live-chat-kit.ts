@@ -16,7 +16,7 @@ import {
   type OnStartCallback,
   type PrepareRequestGetters,
 } from "./flexible-chat-transport";
-import { compactTask } from "./llm";
+import { compactTask, repairMermaid } from "./llm";
 import { createModel } from "./models";
 
 const logger = getLogger("LiveChatKit");
@@ -91,6 +91,7 @@ export class LiveChatKit<
     },
   ) => void;
   readonly compact: () => Promise<string>;
+  readonly repairMermaid: (chart: string, error: string) => Promise<void>;
   private lastStepStartTimestamp: number | undefined;
 
   constructor({
@@ -191,6 +192,20 @@ export class LiveChatKit<
         throw new Error("Failed to compact task");
       }
       return summary;
+    };
+
+    this.repairMermaid = async (chart: string, error: string) => {
+      const model = createModel({ llm: getters.getLLM() });
+      await repairMermaid({
+        store,
+        taskId: this.taskId,
+        model,
+        messages: this.chat.messages,
+        chart,
+        error,
+      });
+
+      this.chat.messages = this.messages;
     };
   }
 

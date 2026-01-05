@@ -2,6 +2,7 @@ import { renderActiveSelection } from "./active-selection";
 import { createCompactPrompt } from "./compact";
 import { createPr } from "./create-pr";
 import { createEnvironmentPrompt, injectEnvironment } from "./environment";
+import { fixMermaidError } from "./fix-mermaid-error";
 import { generateTitle } from "./generate-title";
 import { injectBashOutputs } from "./inject-bash-outputs";
 import { renderReviewComments } from "./review-comments";
@@ -28,6 +29,7 @@ export const prompts = {
   renderReviewComments,
   renderActiveSelection,
   renderUserEdits,
+  fixMermaidError,
 };
 
 function createSystemReminder(content: string) {
