@@ -432,7 +432,7 @@ function Chat({ user, uid, info }: ChatProps) {
 }
 
 export function ChatSkeleton() {
-  const skeletonClass = "bg-foreground/10";
+  const skeletonClass = "bg-[var(--vscode-inputOption-hoverBackground)]";
   return (
     <ChatContextProviderStub>
       <div className={ChatContainerClassName}>
