@@ -49,6 +49,7 @@ import {
 
 const ChatContainerClassName = tw`mx-auto flex h-screen max-w-6xl flex-col`;
 const ChatToolbarContainerClassName = tw`relative flex flex-col px-4`;
+import { Loader2 } from "lucide-react";
 import { onOverrideMessages } from "./lib/on-override-messages";
 import { useLiveChatKitGetters } from "./lib/use-live-chat-kit-getters";
 import { useSendTaskNotification } from "./lib/use-send-task-notification";
@@ -433,7 +434,9 @@ export function ChatSkeleton() {
   return (
     <ChatContextProviderStub>
       <div className={ChatContainerClassName}>
-        <ChatArea messages={[]} isLoading={true} />
+        <div className="mb-2 flex flex-1 items-center justify-center">
+          <Loader2 className="animate-spin" />
+        </div>
         <div className={ChatToolbarContainerClassName}>
           <ChatToolBarSkeleton />
         </div>
