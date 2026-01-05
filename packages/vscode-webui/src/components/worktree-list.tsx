@@ -156,16 +156,9 @@ export function WorktreeList({
     return groups.filter((x) => !deletingWorktreePaths.has(x.path));
   }, [groups, deletingWorktreePaths]);
 
-  const workspacePath = currentWorkspace?.workspacePath;
-  const isOpenCurrentWorkspace = !!workspacePath && cwd === workspacePath;
-  const isOpenMainWorktree =
-    isOpenCurrentWorkspace &&
-    worktrees?.find((x: GitWorktree) => x.isMain)?.path === cwd;
-
-  const { deletedWorktrees } = useDeletedWorktrees({
+  const deletedWorktrees = useDeletedWorktrees({
     cwd,
-    excludeWorktrees:
-      isLoadingWorktrees || !isOpenMainWorktree ? [] : optimisticGroups,
+    excludeWorktrees: optimisticGroups,
   });
 
   const deletedGroups = useMemo(() => {
@@ -189,7 +182,7 @@ export function WorktreeList({
   // If so, we don't need to set a max-height for the section
   const containsOnlyWorkspaceGroup =
     optimisticGroups.length === 1 &&
-    optimisticGroups[0]?.path === (currentWorkspace?.workspacePath || cwd) &&
+    optimisticGroups[0].path === (currentWorkspace?.workspacePath || cwd) &&
     !deletedGroups.length;
 
   return (

@@ -18,5 +18,5 @@ export function useDeletedWorktrees({ cwd, excludeWorktrees }: Options) {
     taskCatalog.queries.makeDeletedWorktreesQuery(cwd, excludeWorktreePaths),
   );
 
-  return { deletedWorktrees };
+  return deletedWorktrees;
 }
