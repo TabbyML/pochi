@@ -47,10 +47,16 @@
         "cli-table3": "^0.6.5",
         "commander": "^14.0.0",
         "listr2": "^9.0.3",
+        "mdast": "^3.0.0",
+        "mdast-util-gfm": "^3.1.0",
+        "mdast-util-to-markdown": "^2.1.2",
         "ora": "^8.2.0",
+        "remark": "^15.0.1",
+        "remark-gfm": "^4.0.1",
         "remeda": "catalog:",
         "semver": "^7.6.3",
         "tabtab": "^3.0.2",
+        "unist-util-visit": "^5.0.0",
         "zod": "catalog:",
       },
     },
@@ -2820,6 +2826,8 @@
     "marked": ["marked@15.0.12", "", { "bin": { "marked": "bin/marked.js" } }, "sha512-8dD6FusOQSrpv9Z1rdNMdlSgQOIP880DHqnohobOmYLElGEqAL/JvxvuxZO16r4HtjTlfPRDC1hbvxC9dPN2nA=="],
 
     "math-intrinsics": ["math-intrinsics@1.1.0", "", {}, "sha512-/IXtbwEk5HTPyEwyKX6hGkYXxM9nbj64B+ilVJnC/R6B0pH5G4V3b0pVbL7DBj4tkhBAppbQUlf6F6Xl9LHu1g=="],
+
+    "mdast": ["mdast@3.0.0", "", {}, "sha512-xySmf8g4fPKMeC07jXGz971EkLbWAJ83s4US2Tj9lEdnZ142UP5grN73H1Xd3HzrdbU5o9GYYP/y8F9ZSwLE9g=="],
 
     "mdast-util-find-and-replace": ["mdast-util-find-and-replace@3.0.2", "", { "dependencies": { "@types/mdast": "^4.0.0", "escape-string-regexp": "^5.0.0", "unist-util-is": "^6.0.0", "unist-util-visit-parents": "^6.0.0" } }, "sha512-Tmd1Vg/m3Xz43afeNxDIhWRtFZgM2VLyaf4vSTYwudTyeuTneoL3qtWMA5jeLyz/O1vDJmmV4QuScFCA2tBPwg=="],
 
