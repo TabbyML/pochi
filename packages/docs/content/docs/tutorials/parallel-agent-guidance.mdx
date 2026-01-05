@@ -83,19 +83,20 @@ You are building a **Weather Demo** tool that provides:
 
 ```ts
 interface WeatherResponse {
-  location: string;       
-  current: Weather;       
-  hourly: Weather[];      
-  daily: Weather[];       
+  location: string;
+  timezone: string;
+  current: Weather;
+  hourly: Weather[];
+  daily: Weather[];
 }
 
 interface Weather {
-  time: string;           
-  temperature: number;    
+  time: string;
+  temperature: number;
   temperature_min: number;
   temperature_max: number;
-  condition: string;      
-  uv_index: number;       
+  condition: string;
+  uv_index: number;
 }
 ```
 
@@ -106,28 +107,14 @@ interface Weather {
 - **Endpoint:** `GET /api/weather`
 
 - **Query Parameters:**
-  - `location?: string`  
-    Example: `/api/weather?location=Seattle`
+  - `location` (required) - City name (e.g., "San Francisco", "London", "Tokyo")
 
 - **Responsibilities:**
-  - Generate **random weather data** according to the `Weather` interface.
-  - Returned data must contain:
-    - `current`: current random weather
-    - `hourly`: **24** randomly generated weather entries (one per hour for today)
-    - `daily`: **7** randomly generated weather entries starting from today forward
-  - If `location` is not provided, default to a placeholder (e.g., `"Unknown"` or `"San Francisco"`).
-
-- **Random Data Requirements:**
-  - `temperature`: reasonable range (e.g., -10°C ~ 40°C)
-  - `temperature_min` / `temperature_max` must be consistent
-  - `condition`: pick randomly from a preset list (e.g., `"Sunny"`, `"Cloudy"`, `"Rain"`, `"Snow"`)
-  - `uv_index`: 0–11
-  - `time`:
-    - `current`: current timestamp
-    - `hourly`: each entry = current day, hour increasing
-    - `daily`: each entry = day increasing
-
----
+  - Use [**Open-Meteo Geocoding API**](https://open-meteo.com/en/docs/geocoding-api) to convert city name to latitude and longitude coordinates.
+  - Query weather data from [**Open-Meteo Weather API**](https://open-meteo.com/en/docs) using the obtained coordinates.
+  - Use `timezone=auto` parameter to automatically get the location's timezone from Open-Meteo.
+  - Convert the Open-Meteo response into the `WeatherResponse` format as defined above.
+  - Return 404 error if the city name is not found.
 
 ### Frontend Agent - Frontend Rendering
 
@@ -136,31 +123,35 @@ interface Weather {
     ```
     /weather?location=CityName
     ```
+  - If no `location` parameter is provided, default to **San Francisco**.
   - The frontend should **read `location` from the query string** and pass it to `/api/weather`.
 
 - **Responsibilities:**
-  - Build a **Next.js page** that fetches weather data from `/api/weather?location=CityName`.
-  - Render the following sections:
+  - Read the `location` query parameter from the URL.
+  - If no location parameter exists, use "San Francisco" as the default.
+  - Fetch weather data from the backend using the location parameter.
+  - Use the timezone information from the API response to display times correctly in the location's local time.
+  - Render current weather, hourly forecast, and 7-day forecast sections.
 
 - **UI / UX Requirements**
-    - Layout should be **clean, modern, and visually appealing**
-    - The page has three sections:
-        - Current Weather  
-            - Show: city, current temp, min/max temp, condition, UV index
-        - Hourly Forecast  
-            - Horizontal list
-            - Each item: time, condition, temperature
-        - 7-Day Forecast  
-            - Vertical list
-            - Each item: date, condition, temperature range
-            - Show the range with a bar
+  - Layout should be **clean, modern, and visually appealing**
+  - The page has three sections:
+      - Current Weather  
+          - Show: city, current temp, min/max temp, condition, UV index
+      - Hourly Forecast  
+          - Horizontal list
+          - Each item: time, condition, temperature
+      - 7-Day Forecast  
+          - Vertical list
+          - Each item: date, condition, temperature range
+          - Show the range with a bar
 
-    - Suggested styling goals:
-        - Clear section titles
-        - Cards or panels to group information
-        - Consistent spacing & alignment
-        - Responsive layout (desktop & mobile look good)
-        - You may use Tailwind
+  - Suggested styling goals:
+      - Clear section titles
+      - Cards or panels to group information
+      - Consistent spacing & alignment
+      - Responsive layout (desktop & mobile look good)
+      - You may use Tailwind
 
 ### Test Agent - Testing
 
@@ -169,10 +160,7 @@ interface Weather {
     - Structure matches `WeatherResponse`
     - All required fields are present
     - Types are correct
-  - Test **random generation logic**:
-    - Hourly count === 24
-    - Daily count === 7
-  - Test **frontend rendering** using mocked data:
+  - Test **frontend rendering**:
     - Current weather section renders correctly
     - Hourly list renders 24 rows
     - Daily list renders 7 items
@@ -186,7 +174,7 @@ git add docs/design.md
 git commit -m "docs: add design document for weather application"
 ```
 
-This design document provides clear specifications that each parallel agent can reference when working on their respective tasks.
+This design document provides clear specifications that each parallel agent can reference when working on their respective tasks. It defines a weather application that fetches real data from **[Open-Meteo API](https://open-meteo.com/)** (including geocoding and weather forecasts), specifying data structures, API contracts, and UI requirements for independent parallel implementation.
 
 ### Step 3: Create Git Worktrees for Parallel Tasks
 
