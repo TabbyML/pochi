@@ -71,7 +71,7 @@ export const makeDeletedWorktreesQuery = (
       schema: resultSchema,
     },
     {
-      label: "tasks.cwd.worktrees",
+      label: "worktrees.deleted",
       deps: [cwd, JSON.stringify(excludeWorktreePaths)],
     },
   );
