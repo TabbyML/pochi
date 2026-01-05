@@ -129,20 +129,15 @@ export function RecommendSettings() {
                 className="cursor-pointer whitespace-nowrap font-normal text-base transition-colors"
               >
                 <Tooltip>
-                  <TooltipTrigger asChild>
-                    <a
-                      href={openSettingsLink(option)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      <span className="hover:text-primary">
-                        {t(`recommendSettings.options.${option}`)}
-                      </span>
-                    </a>
-                  </TooltipTrigger>
-                  <TooltipContent side="top">
-                    {OptionsToSettingsKey[option]}
-                  </TooltipContent>
+                  <a
+                    href={openSettingsLink(option)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <span className="hover:text-primary">
+                      {t(`recommendSettings.options.${option}`)}
+                    </span>
+                  </a>
                 </Tooltip>
                 {option === "enablePochiLayoutKeybinding" && (
                   <a
