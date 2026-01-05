@@ -55,7 +55,6 @@ export const makeDeletedWorktreesQuery = (
   const resultSchema = Schema.Array(
     Schema.Struct({
       path: Schema.String,
-      branch: Schema.String,
     }),
   );
 
@@ -68,7 +67,7 @@ export const makeDeletedWorktreesQuery = (
 
   return queryDb(
     {
-      query: sql`select distinct cwd as path, git->>'$.branch' as branch from tasks where parentId is null and ${cwdFilter} ${pathExclusionFilter}`,
+      query: sql`select cwd as path from tasks where parentId is null and ${cwdFilter} ${pathExclusionFilter} group by cwd order by min(createdAt) asc`,
       schema: resultSchema,
     },
     {

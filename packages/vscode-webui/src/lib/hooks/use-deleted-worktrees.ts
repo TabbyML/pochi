@@ -5,8 +5,13 @@ import { useMemo } from "react";
 interface Options {
   cwd: string;
   excludeWorktrees: { path: string }[];
+  isLoading: boolean;
 }
-export function useDeletedWorktrees({ cwd, excludeWorktrees }: Options) {
+export function useDeletedWorktrees({
+  cwd,
+  excludeWorktrees,
+  isLoading,
+}: Options) {
   const { store } = useStore();
 
   const excludeWorktreePaths = useMemo(
@@ -17,6 +22,10 @@ export function useDeletedWorktrees({ cwd, excludeWorktrees }: Options) {
   const deletedWorktrees = store.useQuery(
     taskCatalog.queries.makeDeletedWorktreesQuery(cwd, excludeWorktreePaths),
   );
+
+  if (isLoading) {
+    return [];
+  }
 
   return deletedWorktrees;
 }

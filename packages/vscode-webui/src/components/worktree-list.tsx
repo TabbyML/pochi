@@ -159,6 +159,7 @@ export function WorktreeList({
   const deletedWorktrees = useDeletedWorktrees({
     cwd,
     excludeWorktrees: optimisticGroups,
+    isLoading: isLoadingWorktrees || isLoadingCurrentWorkspace,
   });
 
   const deletedGroups = useMemo(() => {
@@ -169,10 +170,8 @@ export function WorktreeList({
 
         return {
           path: wt.path,
-          createdAt: 0,
           name,
           isMain: false,
-          branch: wt.branch,
         };
       }),
     );
