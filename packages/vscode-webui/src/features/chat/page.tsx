@@ -436,7 +436,7 @@ export function ChatSkeleton() {
   return (
     <ChatContextProviderStub>
       <div className={ChatContainerClassName}>
-        <div className="mb-2 flex flex-1 flex-col gap-6 px-4 pt-4">
+        <div className="mb-2 flex flex-1 flex-col gap-6 px-4 pt-8">
           <div className="flex flex-col">
             <div className="flex items-center gap-2 pb-2">
               <Skeleton className={cn("size-7 rounded-full", skeletonClass)} />
