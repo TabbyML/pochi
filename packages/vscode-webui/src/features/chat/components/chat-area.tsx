@@ -1,4 +1,5 @@
 import { EmptyChatPlaceholder } from "@/components/empty-chat-placeholder";
+import type { MermaidContext } from "@/components/message/mermaid-context";
 import { MessageList } from "@/components/message/message-list";
 import { useResourceURI } from "@/lib/hooks/use-resource-uri";
 import type { Message } from "@getpochi/livekit";
@@ -13,6 +14,8 @@ interface ChatAreaProps {
   hideEmptyPlaceholder?: boolean;
   forkTask?: (commitId: string, messageId?: string) => Promise<void>;
   hideCheckPoint?: boolean;
+  repairMermaid?: MermaidContext["repairMermaid"];
+  repairingChart?: string | null;
 }
 
 export function ChatArea({
@@ -24,6 +27,8 @@ export function ChatArea({
   hideEmptyPlaceholder,
   forkTask,
   hideCheckPoint,
+  repairMermaid,
+  repairingChart,
 }: ChatAreaProps) {
   const resourceUri = useResourceURI();
   return (
@@ -44,6 +49,8 @@ export function ChatArea({
         className={className}
         forkTask={forkTask}
         hideCheckPoint={hideCheckPoint}
+        repairMermaid={repairMermaid}
+        repairingChart={repairingChart}
       />
     </>
   );

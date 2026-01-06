@@ -18,8 +18,10 @@ import type {
   TaskChangedFile,
   TaskStates,
   VSCodeHostApi,
+  VSCodeSettings,
   WorkspaceState,
 } from "./index";
+import type { ActiveSelection } from "./types/message";
 
 const VSCodeHostStub = {
   readCurrentWorkspace: async () => {
@@ -114,14 +116,10 @@ const VSCodeHostStub = {
     return Promise.resolve({} as ThreadSignalSerialization<TaskStates>);
   },
   readActiveSelection: (): Promise<
-    ThreadSignalSerialization<
-      Environment["workspace"]["activeSelection"] | undefined
-    >
+    ThreadSignalSerialization<ActiveSelection | undefined>
   > => {
     return Promise.resolve(
-      {} as ThreadSignalSerialization<
-        Environment["workspace"]["activeSelection"] | undefined
-      >,
+      {} as ThreadSignalSerialization<ActiveSelection | undefined>,
     );
   },
   openFile: (
@@ -217,8 +215,11 @@ const VSCodeHostStub = {
   readExtensionVersion: () => {
     return Promise.resolve("");
   },
-  readAutoSaveDisabled: () => {
-    return Promise.resolve({} as ThreadSignalSerialization<boolean>);
+  readVSCodeSettings: () => {
+    return Promise.resolve({} as ThreadSignalSerialization<VSCodeSettings>);
+  },
+  updateVSCodeSettings: (_params: Partial<VSCodeSettings>) => {
+    return Promise.resolve();
   },
   showInformationMessage: async (): Promise<undefined> => {
     return Promise.resolve(undefined);

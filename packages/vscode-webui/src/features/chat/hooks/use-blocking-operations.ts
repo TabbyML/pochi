@@ -1,7 +1,7 @@
 export interface BlockingOperation {
-  id: "new-compact-task";
+  id: "new-compact-task" | "repair-mermaid";
   isBusy: boolean;
-  label?: string; // e.g., "Compacting...", "Indexing..."
+  label?: string; // e.g., "Compacting...", "Indexing...", "Repairing diagram..."
 }
 
 export interface BlockingState {

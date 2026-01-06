@@ -350,7 +350,7 @@ async function openTaskInColumn(uri: vscode.Uri) {
     "vscode.openWith",
     uri,
     PochiTaskEditorProvider.viewType,
-    { preview: false, viewColumn },
+    { preview: true, viewColumn },
   );
 }
 

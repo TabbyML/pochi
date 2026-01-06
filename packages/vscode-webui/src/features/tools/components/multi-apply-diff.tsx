@@ -1,7 +1,5 @@
 import { useToolCallLifeCycle } from "@/features/chat";
-
 import { getToolName } from "ai";
-import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ModelEdits } from "./code-edits";
 import { FileBadge } from "./file-badge";
@@ -13,32 +11,14 @@ import type { ToolProps } from "./types";
 export const multiApplyDiffTool: React.FC<ToolProps<"multiApplyDiff">> = ({
   tool,
   isExecuting,
-  changes,
 }) => {
   const { t } = useTranslation();
-  const [isExpanded, setIsExpanded] = useState(false);
   const { path } = tool.input || {};
 
   const lifecycle = useToolCallLifeCycle().getToolCallLifeCycle({
     toolName: getToolName(tool),
     toolCallId: tool.toolCallId,
   });
-  const shouldPreview = useMemo(() => {
-    return (
-      tool.state !== "output-available" &&
-      (lifecycle.status === "init" ||
-        lifecycle.status === "pending" ||
-        lifecycle.status === "ready")
-    );
-  }, [tool.state, lifecycle.status]);
-
-  const handleClick = useCallback(() => {
-    if (shouldPreview) {
-      lifecycle.preview(tool.input, tool.state);
-    } else {
-      setIsExpanded((prev) => !prev);
-    }
-  }, [shouldPreview, tool.input, tool.state, lifecycle.preview]);
 
   const result =
     tool.state === "output-available" &&
@@ -63,9 +43,7 @@ export const multiApplyDiffTool: React.FC<ToolProps<"multiApplyDiff">> = ({
         <FileBadge
           className="ml-1"
           path={path}
-          onClick={handleClick}
           editSummary={result?._meta?.editSummary ?? previewInfo?.editSummary}
-          changes={result?.success ? changes : undefined}
         />
       )}
     </>
@@ -95,8 +73,6 @@ export const multiApplyDiffTool: React.FC<ToolProps<"multiApplyDiff">> = ({
       expandableDetail={expandableDetail}
       expandableDetailIcon={result?.newProblems && <NewProblemsIcon />}
       detail={detail}
-      isExpanded={isExpanded}
-      onToggle={setIsExpanded}
     />
   );
 };

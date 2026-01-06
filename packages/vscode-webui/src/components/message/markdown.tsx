@@ -304,7 +304,10 @@ const MemoCode = memo<
     ExtraProps & { isMinimalView?: boolean }
 >(
   CodeComponent,
-  (p, n) => p.className === n.className && sameNodePosition(p.node, n.node),
+  (p, n) =>
+    p.className === n.className &&
+    sameNodePosition(p.node, n.node) &&
+    p.children === n.children,
 );
 MemoCode.displayName = "MarkdownCode";
 

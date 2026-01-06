@@ -14,7 +14,6 @@ import * as JSONC from "jsonc-parser/esm";
 import { injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
 import z from "zod";
-import { setPochiLayoutKeybindingContext } from "./layout-keybinding";
 
 const logger = getLogger("PochiConfiguration");
 
@@ -25,6 +24,7 @@ export class PochiConfiguration implements vscode.Disposable {
 
   readonly advancedSettings = signal(getPochiAdvanceSettings());
   readonly autoSaveDisabled = signal(getAutoSaveDisabled());
+  readonly commentsOpenViewDisabled = signal(getCommentsOpenViewDisabled());
   readonly githubCopilotCodeCompletionEnabled = signal(
     getGithubCopilotCodeCompletionEnabled(),
   );
@@ -36,13 +36,14 @@ export class PochiConfiguration implements vscode.Disposable {
         if (e.affectsConfiguration("pochi.advanced")) {
           const settings = getPochiAdvanceSettings();
           this.advancedSettings.value = settings;
-
-          const enabled = settings.enablePochiLayoutKeybinding ?? false;
-          setPochiLayoutKeybindingContext(enabled);
         }
 
         if (e.affectsConfiguration("files.autoSave")) {
           this.autoSaveDisabled.value = getAutoSaveDisabled();
+        }
+
+        if (e.affectsConfiguration("comments.openView")) {
+          this.commentsOpenViewDisabled.value = getCommentsOpenViewDisabled();
         }
 
         if (e.affectsConfiguration("github.copilot")) {
@@ -61,6 +62,22 @@ export class PochiConfiguration implements vscode.Disposable {
         dispose: this.advancedSettings.subscribe((value) => {
           if (!deepEqual(value, getPochiAdvanceSettings())) {
             updatePochiAdvanceSettings(value);
+          }
+        }),
+      },
+      {
+        dispose: this.autoSaveDisabled.subscribe((value) => {
+          // Only support to update autosave to disabled
+          if (value && value !== getAutoSaveDisabled()) {
+            updateAutoSaveDisabled();
+          }
+        }),
+      },
+      {
+        dispose: this.commentsOpenViewDisabled.subscribe((value) => {
+          // Only support to update comments.openView to disabled
+          if (value && value !== getCommentsOpenViewDisabled()) {
+            updateCommentsOpenViewDisabled();
           }
         }),
       },
@@ -188,7 +205,12 @@ const PochiAdvanceSettings = z.object({
     })
     .optional(),
   webviewLogLevel: z.string().optional(),
-  enablePochiLayoutKeybinding: z.boolean().optional(),
+  pochiLayout: z
+    .object({
+      keybindingEnabled: z.boolean().optional(),
+      moveBottomPanelViews: z.boolean().optional(),
+    })
+    .optional(),
 });
 
 export type PochiAdvanceSettings = z.infer<typeof PochiAdvanceSettings>;
@@ -216,6 +238,26 @@ function getAutoSaveDisabled() {
     .get<string>("autoSave", "off");
 
   return autoSave === "off";
+}
+
+function updateAutoSaveDisabled() {
+  return vscode.workspace
+    .getConfiguration("files")
+    .update("autoSave", "off", true);
+}
+
+function getCommentsOpenViewDisabled() {
+  const openView = vscode.workspace
+    .getConfiguration("comments")
+    .get<string>("openView", "firstFile");
+
+  return openView === "never";
+}
+
+function updateCommentsOpenViewDisabled() {
+  return vscode.workspace
+    .getConfiguration("comments")
+    .update("openView", "never", true);
 }
 
 function getDetectWorktreesLimit() {

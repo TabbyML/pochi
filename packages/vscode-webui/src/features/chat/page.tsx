@@ -35,7 +35,7 @@ import {
 import { ChatArea } from "./components/chat-area";
 import { ChatToolBarSkeleton, ChatToolbar } from "./components/chat-toolbar";
 import { SubtaskHeader } from "./components/subtask";
-import { useLatestUserEdits } from "./hooks/use-latest-user-edits";
+import { useRepairMermaid } from "./hooks/use-repair-mermaid";
 import { useRestoreTaskModel } from "./hooks/use-restore-task-model";
 import { useScrollToBottom } from "./hooks/use-scroll-to-bottom";
 import { useSetSubtaskModel } from "./hooks/use-set-subtask-model";
@@ -50,6 +50,8 @@ import {
 
 const ChatContainerClassName = tw`mx-auto flex h-screen max-w-6xl flex-col`;
 const ChatToolbarContainerClassName = tw`relative flex flex-col px-4`;
+import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 import { onOverrideMessages } from "./lib/on-override-messages";
 import { useLiveChatKitGetters } from "./lib/use-live-chat-kit-getters";
 import { useSendTaskNotification } from "./lib/use-send-task-notification";
@@ -96,8 +98,6 @@ function Chat({ user, uid, info }: ChatProps) {
     }
   }, [isSubTask, initSubtaskAutoApproveSettings]);
 
-  const { saveLatestUserEdits, latestUserEdits } = useLatestUserEdits(uid);
-
   const {
     isLoading: isModelsLoading,
     selectedModel,
@@ -110,7 +110,6 @@ function Chat({ user, uid, info }: ChatProps) {
   const getters = useLiveChatKitGetters({
     todos: todosRef,
     isSubTask,
-    userEdits: latestUserEdits,
   });
 
   useRestoreTaskModel(task, isModelsLoading, updateSelectedModelId);
@@ -269,6 +268,10 @@ function Chat({ user, uid, info }: ChatProps) {
 
   const { pendingApproval, retry } = approvalAndRetry;
 
+  const { repairMermaid, repairingChart } = useRepairMermaid({
+    repairMermaid: chatKit.repairMermaid,
+  });
+
   useEffect(() => {
     const pendingToolApproval =
       pendingApproval && pendingApproval.name !== "retry"
@@ -413,6 +416,8 @@ function Chat({ user, uid, info }: ChatProps) {
         hideEmptyPlaceholder={!isTaskWithoutContent}
         forkTask={task?.cwd ? forkTask : undefined}
         hideCheckPoint={isSubTask}
+        repairMermaid={repairMermaid}
+        repairingChart={repairingChart}
       />
       <div className={ChatToolbarContainerClassName}>
         <ChatToolbar
@@ -427,7 +432,7 @@ function Chat({ user, uid, info }: ChatProps) {
           displayError={displayError}
           onUpdateIsPublicShared={chatKit.updateIsPublicShared}
           taskId={uid}
-          saveLatestUserEdits={saveLatestUserEdits}
+          isRepairingMermaid={!!repairingChart}
         />
       </div>
     </div>
@@ -435,10 +440,34 @@ function Chat({ user, uid, info }: ChatProps) {
 }
 
 export function ChatSkeleton() {
+  const skeletonClass = "bg-[var(--vscode-inputOption-hoverBackground)]";
   return (
     <ChatContextProviderStub>
       <div className={ChatContainerClassName}>
-        <ChatArea messages={[]} isLoading={true} />
+        <div className="mb-2 flex flex-1 flex-col gap-6 px-4 pt-8">
+          <div className="flex flex-col">
+            <div className="flex items-center gap-2 pb-2">
+              <Skeleton className={cn("size-7 rounded-full", skeletonClass)} />
+              <Skeleton className={cn("h-4 w-12", skeletonClass)} />
+            </div>
+            <div className="ml-1 flex flex-col gap-2">
+              <Skeleton className={cn("h-4 w-3/4", skeletonClass)} />
+              <Skeleton className={cn("h-4 w-1/2", skeletonClass)} />
+            </div>
+          </div>
+          <Separator className="mt-1 mb-2" />
+          <div className="flex flex-col">
+            <div className="flex items-center gap-2 pb-2">
+              <Skeleton className={cn("size-7 rounded-full", skeletonClass)} />
+              <Skeleton className={cn("h-4 w-12", skeletonClass)} />
+            </div>
+            <div className="ml-1 flex flex-col gap-2">
+              <Skeleton className={cn("h-4 w-full", skeletonClass)} />
+              <Skeleton className={cn("h-4 w-[90%]", skeletonClass)} />
+              <Skeleton className={cn("h-4 w-[80%]", skeletonClass)} />
+            </div>
+          </div>
+        </div>
         <div className={ChatToolbarContainerClassName}>
           <ChatToolBarSkeleton />
         </div>

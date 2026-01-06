@@ -67,6 +67,7 @@ import {
   type TaskChangedFile,
   type TaskStates,
   type VSCodeHostApi,
+  type VSCodeSettings,
   type WorkspaceState,
   getTaskDisplayTitle,
 } from "@getpochi/common/vscode-webui-bridge";
@@ -110,6 +111,8 @@ import { GithubIssueState } from "../github/github-issue-state";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { GithubPullRequestState } from "../github/github-pull-request-state";
 // biome-ignore lint/style/useImportType: needed for dependency injection
+import { GlobalStateSignals } from "../global-state";
+// biome-ignore lint/style/useImportType: needed for dependency injection
 import { ThirdMcpImporter } from "../mcp/third-party-mcp";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { ReviewController } from "../review-controller";
@@ -152,6 +155,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     private readonly gitState: GitState,
     private readonly reviewController: ReviewController,
     private readonly userEditState: UserEditState,
+    private readonly globalStateSignals: GlobalStateSignals,
   ) {}
 
   private get cwd() {
@@ -265,15 +269,6 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
           isActive:
             tab.filepath === this.tabState.activeSelection.value?.filepath,
         })),
-        activeSelection: this.tabState.activeSelection.value
-          ? {
-              ...this.tabState.activeSelection.value,
-              filepath: asRelativePath(
-                this.tabState.activeSelection.value.filepath,
-                this.cwd ?? "",
-              ),
-            }
-          : undefined,
         terminals: this.terminalState.visibleTerminals.value,
       },
       info: {
@@ -323,7 +318,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   }> => {
     return {
       cwd: this.cwd,
-      workspacePath: this.workspaceScope.workspacePath,
+      workspacePath: this.workspaceScope.workspacePath ?? null,
     };
   };
 
@@ -808,10 +803,48 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     return this.context.extension.packageJSON.version;
   };
 
-  readAutoSaveDisabled = async (): Promise<
-    ThreadSignalSerialization<boolean>
+  readVSCodeSettings = async (): Promise<
+    ThreadSignalSerialization<VSCodeSettings>
   > => {
-    return ThreadSignal.serialize(this.pochiConfiguration.autoSaveDisabled);
+    return ThreadSignal.serialize(
+      computed(() => {
+        return {
+          recommendSettingsConfirmed:
+            this.globalStateSignals.recommendSettingsConfirmed.value,
+          pochiLayout:
+            this.pochiConfiguration.advancedSettings.value.pochiLayout,
+          autoSaveDisabled: this.pochiConfiguration.autoSaveDisabled.value,
+          commentsOpenViewDisabled:
+            this.pochiConfiguration.commentsOpenViewDisabled.value,
+          githubCopilotCodeCompletionEnabled:
+            this.pochiConfiguration.githubCopilotCodeCompletionEnabled.value,
+        };
+      }),
+    );
+  };
+
+  updateVSCodeSettings = async (params: Partial<VSCodeSettings>) => {
+    if (params.recommendSettingsConfirmed !== undefined) {
+      this.globalStateSignals.recommendSettingsConfirmed.value =
+        params.recommendSettingsConfirmed;
+    }
+    if (params.pochiLayout !== undefined) {
+      this.pochiConfiguration.advancedSettings.value = {
+        ...this.pochiConfiguration.advancedSettings.value,
+        pochiLayout: params.pochiLayout,
+      };
+    }
+    if (params.autoSaveDisabled !== undefined) {
+      this.pochiConfiguration.autoSaveDisabled.value = params.autoSaveDisabled;
+    }
+    if (params.commentsOpenViewDisabled !== undefined) {
+      this.pochiConfiguration.commentsOpenViewDisabled.value =
+        params.commentsOpenViewDisabled;
+    }
+    if (params.githubCopilotCodeCompletionEnabled !== undefined) {
+      this.pochiConfiguration.githubCopilotCodeCompletionEnabled.value =
+        params.githubCopilotCodeCompletionEnabled;
+    }
   };
 
   showInformationMessage = async <T extends string>(

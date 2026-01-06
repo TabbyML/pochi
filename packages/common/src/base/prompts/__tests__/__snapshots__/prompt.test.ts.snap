@@ -30,15 +30,6 @@ package.json
   Terminal 2
   Terminal 3 (background job: job-id-1)
 
-# Active Selection (README.md:3-5)
-
-\`\`\`
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
-
-Currently, two official plugins are available:
-\`\`\`
-
-
 # GIT STATUS
 Origin: https://github.com/username/repo.git
 Current branch: add-environment-to-chat-request-body
@@ -55,15 +46,6 @@ M packages/vscode-webui/src/routes/chat.tsx
 Recent commits:
 02b50f727 feat(chat): add environment property to prepareRequestBody
 962185adb feat(webui): add new task link and pending component
-
-# User Edits
-The user has made the following edits to the workspace. Please take these changes into account when proceeding with the task.
-
-**path/to/file** (modified)
-\`\`\`diff
--hello
-+world
-\`\`\`
 
 # TODOs
 Here's todo list for current task. If a task is marked as cancelled or completed, it no longer needs your attention, NEVER ATTEMPT TO COMPLETE IT AGAIN, this is SUPER IMPORTANT!!!.

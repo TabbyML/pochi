@@ -1,35 +1,24 @@
+import * as crypto from "node:crypto";
+import * as fs from "node:fs/promises";
+import * as path from "node:path";
+import { createPrettyPatch } from "@/lib/fs";
 import type {
   DiffCheckpointOptions,
   FileDiff,
 } from "@getpochi/common/vscode-webui-bridge";
 import { diffLines } from "diff";
 import { isNonNullish } from "remeda";
+import type * as vscode from "vscode";
 import type { FileChange } from "../editor/diff-changes-editor";
 
-interface DiffResult {
-  content: string;
-  added: number;
-  removed: number;
-}
-
-/**
- * Generates diff content based on original file with diff blocks
- *
- * This creates a unified view showing the complete file content with inline
- * diff markers (+ for additions, - for deletions, unchanged lines as-is).
- * The result represents how the file looks with changes applied inline.
- *
- * @param before - Original file content
- * @param after - Modified file content
- * @returns Formatted diff string with inline markers
- */
-export function generateDiffContent(
+export function diffFile(
   before: string,
   after: string,
-  inlineDiff?: boolean,
-): DiffResult {
+): {
+  added: number;
+  removed: number;
+} {
   const diffResult = diffLines(before, after);
-  const inlineContent = [];
   let added = 0;
   let removed = 0;
 
@@ -40,27 +29,18 @@ export function generateDiffContent(
       lines.pop();
     }
 
-    for (const line of lines) {
+    for (const _line of lines) {
       if (part.added) {
         added++;
-        if (inlineDiff) {
-          inlineContent.push(`+ ${line}`);
-        }
       } else if (part.removed) {
         removed++;
-        if (inlineDiff) {
-          inlineContent.push(`- ${line}`);
-        }
       } else {
-        if (inlineDiff) {
-          // Unchanged line
-          inlineContent.push(line);
-        }
+        // unchanged
       }
     }
   }
 
-  return { content: inlineContent.join("\n"), added, removed };
+  return { added, removed };
 }
 
 /**
@@ -91,14 +71,16 @@ export function processGitChangesToFileEdits(
         return undefined;
       }
 
-      const diff = generateDiffContent(
-        change.before ?? "",
-        change.after ?? "",
-        options?.inlineDiff,
-      );
+      const diff = diffFile(change.before ?? "", change.after ?? "");
       return {
         filepath: change.filepath,
-        diff: diff.content,
+        diff: options?.inlineDiff
+          ? createPrettyPatch(
+              change.filepath,
+              change.before ?? undefined,
+              change.after ?? undefined,
+            )
+          : "",
         added: diff.added,
         removed: diff.removed,
         created: change.before === null,
@@ -136,4 +118,84 @@ export function filterGitChanges(
     }
     return !isBinary && !isTooLarge;
   });
+}
+
+// https://github.com/microsoft/vscode/blob/main/src/vs/platform/workspaces/node/workspaces.ts
+async function getSingleFolderWorkspaceIdentifier(
+  workspaceUri: vscode.Uri,
+): Promise<string | undefined> {
+  // Remote: produce a hash from the entire URI
+  if (workspaceUri.scheme !== "file") {
+    return crypto
+      .createHash("md5")
+      .update(workspaceUri.toString())
+      .digest("hex"); // Remote workspaces use a hash of the URI string
+  }
+
+  const fsPath = workspaceUri.fsPath;
+  let ctime: number | undefined;
+
+  try {
+    const stat = await fs.stat(fsPath);
+
+    // Platform-specific salt logic
+    if (process.platform === "linux") {
+      ctime = stat.ino; // Linux uses inode
+    } else if (process.platform === "darwin") {
+      ctime = stat.birthtime.getTime(); // macOS uses birthtime
+    } else if (process.platform === "win32") {
+      if (typeof stat.birthtimeMs === "number") {
+        ctime = Math.floor(stat.birthtimeMs); // Windows: fix precision issue in node.js 8.x to get 7.x results (see https://github.com/nodejs/node/issues/19897)
+      } else {
+        ctime = stat.birthtime.getTime();
+      }
+    }
+  } catch (e) {
+    // workspace not exist, fallback to the global storage
+    return undefined;
+  }
+
+  return crypto
+    .createHash("md5")
+    .update(fsPath)
+    .update(ctime ? String(ctime) : "")
+    .digest("hex");
+}
+
+function getWorkspaceStorageHome(context: vscode.ExtensionContext): string {
+  // Go up two levels from globalStorageUri:
+  // 1. .../User/globalStorage
+  // 2. .../User
+  const userDir = path.dirname(path.dirname(context.globalStorageUri.fsPath));
+  return path.join(userDir, "workspaceStorage");
+}
+
+function getGlobalStoragePath(
+  workspace: string,
+  context: vscode.ExtensionContext,
+): string {
+  return path.join(
+    context.globalStorageUri.fsPath,
+    crypto.createHash("md5").update(workspace).digest("hex"),
+  );
+}
+
+export async function getWorkspaceStorageDir(
+  workspaceUri: vscode.Uri,
+  context: vscode.ExtensionContext,
+): Promise<string> {
+  const workspaceId = await getSingleFolderWorkspaceIdentifier(workspaceUri);
+  if (!workspaceId) {
+    return getGlobalStoragePath(workspaceUri.fsPath, context);
+  }
+  const storageHome = getWorkspaceStorageHome(context);
+  const extensionId = context.extension.id;
+
+  const calculatedStoragePath = path.join(
+    storageHome,
+    workspaceId,
+    extensionId,
+  );
+
+  return calculatedStoragePath;
 }

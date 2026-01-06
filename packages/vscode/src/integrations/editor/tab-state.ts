@@ -88,9 +88,7 @@ export class TabState implements vscode.Disposable {
 
   private onSelectionChanged = () => {
     const newSelection = getActiveSelection();
-    if (newSelection !== undefined) {
-      this.activeSelection.value = newSelection;
-    }
+    this.activeSelection.value = newSelection;
   };
 
   /**
@@ -108,6 +106,10 @@ function getActiveSelection(): FileSelection | undefined {
   const activeEditor = vscode.window.activeTextEditor;
   if (activeEditor?.document && activeEditor.document.uri.scheme === "file") {
     const selection = activeEditor.selection;
+    const selectionContent = activeEditor.document.getText(selection);
+    if (selectionContent.length === 0) {
+      return;
+    }
     return {
       filepath: activeEditor.document.uri.fsPath,
       range: {
@@ -120,7 +122,7 @@ function getActiveSelection(): FileSelection | undefined {
           character: selection.end.character,
         },
       },
-      content: activeEditor.document.getText(selection),
+      content: selectionContent,
     };
   }
 
@@ -146,6 +148,10 @@ function getActiveSelection(): FileSelection | undefined {
         const content = cellTextEditor
           ? cellDocument.getText(selection)
           : cellDocument.getText();
+
+        if (content.length === 0) {
+          return;
+        }
 
         return {
           filepath: notebook.uri.fsPath,

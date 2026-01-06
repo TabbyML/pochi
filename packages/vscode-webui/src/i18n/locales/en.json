@@ -112,7 +112,8 @@
       "clearStorage": "Clear Storage",
       "language": "Language",
       "languageDescription": "Choose your preferred language",
-      "openInTab": "Allows to open the task in a new tab"
+      "openInTab": "Allows to open the task in a new tab",
+      "resetRecommendSettingsConfirmed": "Reset Recommended Settings Confirmed"
     },
     "workflows": {
       "title": "Workflows",
@@ -420,11 +421,29 @@
     "openFile": "Open file"
   },
   "userEdits": {
+    "title": "Edits",
     "filesEdited_one": "{{count}} file edited",
     "filesEdited_other": "{{count}} files edited",
-    "tooltip": "Your edits are tracked and will be included in the context"
+    "tooltip": "Your edits are tracked and will be included in the context",
+    "showDiff": "Show Diff",
+    "diffTitle": "User Edits"
   },
   "forkTask": {
     "forkedTaskTitle": "Forked from {{taskTitle}}"
+  },
+  "recommendSettings": {
+    "title": "Pochi recommends the following settings",
+    "ok": "Apply",
+    "options": {
+      "enablePochiLayoutKeybinding": "Enable Pochi Layout shortcut",
+      "pochiLayoutMoveBottomPanelViews": "Move bottom panels to the sidebar in Pochi Layout",
+      "disableAutoSave": "Disable auto-save",
+      "disableCommentsOpenView": "Disable auto-opening of the comments panel",
+      "disableGithubCopilotCodeCompletion": "Disable GitHub Copilot code completion"
+    }
+  },
+  "mermaid": {
+    "failedToRender": "Failed to render Mermaid chart:",
+    "fixError": "Fix error with Pochi"
   }
 }

@@ -22,3 +22,8 @@ export type { ToolCallLifeCycle } from "./lib/tool-call-life-cycle";
 export { ChatPage, ChatSkeleton } from "./page";
 
 export { CreateTaskInput } from "./components/create-task-input";
+
+export {
+  useRepairMermaid,
+  type RepairMermaidOptions,
+} from "./hooks/use-repair-mermaid";

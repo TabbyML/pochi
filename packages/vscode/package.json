@@ -521,10 +521,21 @@
                 "default": "",
                 "description": "Pochi webview UI log level"
               },
-              "enablePochiLayoutKeybinding": {
-                "type": "boolean",
-                "default": false,
-                "description": "Enable Ctrl+` keybinding to toggle Pochi layout or open terminal."
+              "pochiLayout": {
+                "type": "object",
+                "default": {},
+                "additionalProperties": false,
+                "properties": {
+                  "keybindingEnabled": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Enable Ctrl+` keybinding to toggle Pochi layout or open terminal."
+                  },
+                  "moveBottomPanelViews": {
+                    "type": "boolean",
+                    "default": false
+                  }
+                }
               }
             }
           }

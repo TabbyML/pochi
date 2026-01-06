@@ -1,5 +1,9 @@
 import { Button } from "@/components/ui/button";
-import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,6 +27,7 @@ import {
 } from "@/components/ui/tooltip";
 import { useSelectedModels } from "@/features/settings";
 import { useCurrentWorkspace } from "@/lib/hooks/use-current-workspace";
+import { useDeletedWorktrees } from "@/lib/hooks/use-deleted-worktrees";
 import { usePochiTabs } from "@/lib/hooks/use-pochi-tabs";
 import { useWorktrees } from "@/lib/hooks/use-worktrees";
 import { cn } from "@/lib/utils";
@@ -38,6 +43,8 @@ import {
 } from "@getpochi/common/vscode-webui-bridge";
 import {
   Check,
+  ChevronDown,
+  ChevronRight,
   GitCompare,
   GitPullRequest,
   Loader2,
@@ -65,7 +72,7 @@ interface WorktreeGroup {
   isMain: boolean;
   createdAt?: number;
   branch?: string;
-  data: GitWorktree["data"];
+  data?: GitWorktree["data"];
 }
 
 export function WorktreeList({
@@ -77,6 +84,8 @@ export function WorktreeList({
   deletingWorktreePaths: Set<string>;
   onDeleteWorktree: (worktreePath: string) => void;
 }) {
+  const { t } = useTranslation();
+  const [showDeleted, setShowDeleted] = useState(false);
   const { data: currentWorkspace, isLoading: isLoadingCurrentWorkspace } =
     useCurrentWorkspace();
   const {
@@ -147,10 +156,33 @@ export function WorktreeList({
     return groups.filter((x) => !deletingWorktreePaths.has(x.path));
   }, [groups, deletingWorktreePaths]);
 
+  const deletedWorktrees = useDeletedWorktrees({
+    cwd,
+    excludeWorktrees: optimisticGroups,
+    isLoading: isLoadingWorktrees || isLoadingCurrentWorkspace,
+  });
+
+  const deletedGroups = useMemo(() => {
+    return R.pipe(
+      deletedWorktrees,
+      R.map((wt): WorktreeGroup => {
+        const name = getWorktreeNameFromWorktreePath(wt.path) || "unknown";
+
+        return {
+          path: wt.path,
+          name,
+          isMain: false,
+        };
+      }),
+    );
+  }, [deletedWorktrees]);
+
   // Check if there is only one group and it is the main group
   // If so, we don't need to set a max-height for the section
-  const containsOnlyMainGroup =
-    optimisticGroups.length === 1 && optimisticGroups[0]?.isMain;
+  const containsOnlyWorkspaceGroup =
+    optimisticGroups.length === 1 &&
+    optimisticGroups[0].path === (currentWorkspace?.workspacePath || cwd) &&
+    !deletedGroups.length;
 
   return (
     <div className="flex flex-col gap-1">
@@ -162,9 +194,42 @@ export function WorktreeList({
           onDeleteGroup={onDeleteWorktree}
           gitOriginUrl={gitOriginUrl}
           gh={gh}
-          containsOnlyMainGroup={containsOnlyMainGroup}
+          containsOnlyWorkspaceGroup={containsOnlyWorkspaceGroup}
         />
       ))}
+      {deletedGroups.length > 0 && (
+        <>
+          <div className="group flex items-center py-2">
+            <div className="h-px flex-1 bg-border" />
+            <Button
+              variant="ghost"
+              size="sm"
+              className="mx-2 h-auto gap-2 py-0 text-muted-foreground text-xs hover:bg-transparent"
+              onClick={() => setShowDeleted(!showDeleted)}
+            >
+              <Trash2 className="size-3" />
+              <span className="w-0 overflow-hidden whitespace-nowrap transition-all group-hover:w-auto">
+                {showDeleted
+                  ? t("tasksPage.hideDeletedWorktrees")
+                  : t("tasksPage.showDeletedWorktrees")}
+              </span>
+            </Button>
+            <div className="h-px flex-1 bg-border" />
+          </div>
+
+          {showDeleted &&
+            deletedGroups.map((group) => (
+              <WorktreeSection
+                isLoadingWorktrees={isLoadingWorktrees}
+                key={group.path}
+                group={group}
+                gh={gh}
+                isDeleted
+                gitOriginUrl={gitOriginUrl}
+              />
+            ))}
+        </>
+      )}
     </div>
   );
 }
@@ -174,18 +239,20 @@ function WorktreeSection({
   onDeleteGroup,
   gh,
   gitOriginUrl,
-  containsOnlyMainGroup,
+  containsOnlyWorkspaceGroup,
+  isDeleted,
 }: {
   group: WorktreeGroup;
   isLoadingWorktrees: boolean;
   onDeleteGroup?: (worktreePath: string) => void;
   gh?: { installed: boolean; authorized: boolean };
   gitOriginUrl?: string | null;
-  containsOnlyMainGroup?: boolean;
+  containsOnlyWorkspaceGroup?: boolean;
+  isDeleted?: boolean;
 }) {
   const { t } = useTranslation();
   // Default expanded for existing worktrees, collapsed for deleted
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(!isDeleted);
   const [isHovered, setIsHovered] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const pochiTasks = usePochiTabs();
@@ -226,11 +293,30 @@ function WorktreeSection({
       >
         {/* worktree name & branch */}
         <div className="flex h-6 items-center gap-2">
-          <span className="items-center truncate font-bold">
-            {prefixWorktreeName(group.name)}
-          </span>
+          {isDeleted ? (
+            <CollapsibleTrigger asChild>
+              <div className="flex w-full flex-1 cursor-pointer select-none items-center gap-2 font-medium text-sm">
+                {isExpanded ? (
+                  <ChevronDown className="size-4 shrink-0" />
+                ) : (
+                  <ChevronRight className="size-4 shrink-0" />
+                )}
+                <span className="items-center truncate font-bold">
+                  {prefixWorktreeName(group.name)}
+                </span>
+              </div>
+            </CollapsibleTrigger>
+          ) : (
+            <span className="items-center truncate font-bold">
+              {prefixWorktreeName(group.name)}
+            </span>
+          )}
 
-          <div className="mt-[1px] flex-1">
+          <div
+            className={cn("mt-[1px] flex-1", {
+              hidden: isDeleted,
+            })}
+          >
             {pullRequest ? (
               <PrStatusDisplay
                 prNumber={pullRequest.id}
@@ -253,6 +339,9 @@ function WorktreeSection({
               !isHovered && !showDeleteConfirm
                 ? "pointer-events-none opacity-0"
                 : "opacity-100",
+              {
+                hidden: isDeleted,
+              },
             )}
           >
             <>
@@ -378,9 +467,9 @@ function WorktreeSection({
       <CollapsibleContent>
         <ScrollArea
           viewportClassname={cn("px-1 py-1", {
-            "max-h-[180px]": !group.isMain && !containsOnlyMainGroup,
-            "max-h-[60cqh]": group.isMain && !containsOnlyMainGroup,
-            // When there is only one main group, we let it grow naturally without max-height constraint
+            "max-h-[180px]": !group.isMain && !containsOnlyWorkspaceGroup,
+            "max-h-[60cqh]": group.isMain && !containsOnlyWorkspaceGroup,
+            // When there is only one workspace group, we let it grow naturally without max-height constraint
           })}
         >
           {tasks.length > 0 ? (

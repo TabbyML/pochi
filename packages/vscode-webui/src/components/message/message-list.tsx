@@ -16,6 +16,7 @@ import { useLatestCheckpoint } from "@/lib/hooks/use-latest-checkpoint";
 import { cn } from "@/lib/utils";
 import { isVSCodeEnvironment, vscodeHost } from "@/lib/vscode";
 import { prompts } from "@getpochi/common";
+import type { ActiveSelection } from "@getpochi/common/vscode-webui-bridge";
 import type { Message, UITools } from "@getpochi/livekit";
 import {
   type FileUIPart,
@@ -26,9 +27,13 @@ import {
 import { useEffect, useMemo } from "react";
 import { CheckpointUI } from "../checkpoint-ui";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
+import { ActiveSelectionPart } from "./active-selection";
 import { MessageAttachments } from "./attachments";
 import { MessageMarkdown } from "./markdown";
+import type { MermaidContext } from "./mermaid-context";
+import { MermaidContextProvider } from "./mermaid-context";
 import { Reviews } from "./reviews";
+import { UserEditsPart } from "./user-edits";
 
 export const MessageList: React.FC<{
   messages: Message[];
@@ -47,6 +52,8 @@ export const MessageList: React.FC<{
   showLoader?: boolean;
   forkTask?: (commitId: string, messageId?: string) => Promise<void>;
   hideCheckPoint?: boolean;
+  repairMermaid?: MermaidContext["repairMermaid"];
+  repairingChart?: string | null;
 }> = ({
   messages: renderMessages,
   isLoading,
@@ -58,6 +65,8 @@ export const MessageList: React.FC<{
   showLoader = true,
   forkTask,
   hideCheckPoint,
+  repairMermaid,
+  repairingChart,
 }) => {
   const [debouncedIsLoading, setDebouncedIsLoading] = useDebounceState(
     isLoading,
@@ -78,98 +87,117 @@ export const MessageList: React.FC<{
       .findLast((part) => part.type === "data-checkpoint")?.data.commit;
   }, [renderMessages]);
 
+  const mermaidContextValue = useMemo(
+    () =>
+      repairMermaid
+        ? {
+            repairMermaid,
+            repairingChart:
+              isLoading || isExecuting ? null : (repairingChart ?? null),
+          }
+        : null,
+    [repairMermaid, repairingChart, isLoading, isExecuting],
+  );
+
   return (
     <BackgroundJobContextProvider messages={renderMessages}>
-      <ScrollArea
-        className={cn("mb-2 flex-1 overflow-y-auto px-4", className)}
-        ref={containerRef}
-      >
-        {renderMessages.map((m, messageIndex) => (
-          <div key={m.id} className="flex flex-col">
-            <div className={cn(showUserAvatar && "pt-4 pb-2")}>
-              {showUserAvatar && (
-                <div className="flex items-center gap-2">
-                  {m.role === "user" ? (
-                    <Avatar className="size-7 select-none">
-                      <AvatarImage src={user?.image ?? undefined} />
-                      <AvatarFallback
-                        className={cn(
-                          "bg-[var(--vscode-chat-avatarBackground)] text-[var(--vscode-chat-avatarForeground)] text-xs uppercase",
-                        )}
-                      >
-                        {user?.name.slice(0, 2) || (
-                          <UserIcon className={cn("size-[50%]")} />
-                        )}
-                      </AvatarFallback>
-                    </Avatar>
-                  ) : (
-                    <Avatar className="size-7 select-none">
-                      <AvatarImage
-                        src={assistant?.image ?? undefined}
-                        className="scale-110"
-                      />
-                      <AvatarFallback className="bg-[var(--vscode-chat-avatarBackground)] text-[var(--vscode-chat-avatarForeground)]" />
-                    </Avatar>
-                  )}
-                  <strong>
-                    {m.role === "user" ? user?.name : assistantName}
-                  </strong>
-                  {findCompactPart(m) && (
-                    <CompactPartToolTip className="ml-1" message={m} />
-                  )}
+      <MermaidContextProvider value={mermaidContextValue}>
+        <ScrollArea
+          className={cn("mb-2 flex-1 overflow-y-auto px-4", className)}
+          ref={containerRef}
+        >
+          {renderMessages.map((m, messageIndex) => (
+            <div key={m.id} className="flex flex-col">
+              <div className={cn(showUserAvatar && "pt-4 pb-2")}>
+                {showUserAvatar && (
+                  <div className="flex items-center gap-2">
+                    {m.role === "user" ? (
+                      <Avatar className="size-7 select-none">
+                        <AvatarImage src={user?.image ?? undefined} />
+                        <AvatarFallback
+                          className={cn(
+                            "bg-[var(--vscode-chat-avatarBackground)] text-[var(--vscode-chat-avatarForeground)] text-xs uppercase",
+                          )}
+                        >
+                          {user?.name.slice(0, 2) || (
+                            <UserIcon className={cn("size-[50%]")} />
+                          )}
+                        </AvatarFallback>
+                      </Avatar>
+                    ) : (
+                      <Avatar className="size-7 select-none">
+                        <AvatarImage
+                          src={assistant?.image ?? undefined}
+                          className="scale-110"
+                        />
+                        <AvatarFallback className="bg-[var(--vscode-chat-avatarBackground)] text-[var(--vscode-chat-avatarForeground)]" />
+                      </Avatar>
+                    )}
+                    <strong>
+                      {m.role === "user" ? user?.name : assistantName}
+                    </strong>
+                    {findCompactPart(m) && (
+                      <CompactPartToolTip className="ml-1" message={m} />
+                    )}
+                  </div>
+                )}
+                <div
+                  className={cn("ml-1 flex flex-col", showUserAvatar && "mt-3")}
+                >
+                  {m.parts.map((part, index) => (
+                    <Part
+                      role={m.role}
+                      key={index}
+                      isLastPartInMessages={
+                        index === m.parts.length - 1 &&
+                        messageIndex === renderMessages.length - 1
+                      }
+                      partIndex={index}
+                      part={part}
+                      isLoading={isLoading}
+                      isExecuting={isExecuting}
+                      messages={renderMessages}
+                      forkTask={forkTask}
+                      hideCheckPoint={hideCheckPoint}
+                      latestCheckpoint={latestCheckpoint}
+                      lastCheckpointInMessage={lastCheckpointInMessage}
+                      userEditsCheckpoint={getUserEditsCheckpoint(
+                        renderMessages,
+                        messageIndex,
+                      )}
+                    />
+                  ))}
                 </div>
-              )}
-              <div
-                className={cn("ml-1 flex flex-col", showUserAvatar && "mt-3")}
-              >
-                {m.parts.map((part, index) => (
-                  <Part
-                    role={m.role}
-                    key={index}
-                    isLastPartInMessages={
-                      index === m.parts.length - 1 &&
-                      messageIndex === renderMessages.length - 1
-                    }
-                    partIndex={index}
-                    part={part}
-                    isLoading={isLoading}
-                    isExecuting={isExecuting}
-                    messages={renderMessages}
-                    forkTask={forkTask}
-                    hideCheckPoint={hideCheckPoint}
-                    latestCheckpoint={latestCheckpoint}
-                    lastCheckpointInMessage={lastCheckpointInMessage}
-                  />
-                ))}
+                {/* Display attachments at the bottom of the message */}
+                <UserAttachments message={m} />
+                <UserActiveSelections message={m} />
               </div>
-              {/* Display attachments at the bottom of the message */}
-              <UserAttachments message={m} />
-            </div>
-            {messageIndex < renderMessages.length - 1 && (
-              <SeparatorWithCheckpoint
-                messageIndex={messageIndex}
-                message={m}
-                nextMessage={renderMessages[messageIndex + 1]}
-                isLoading={isLoading || isExecuting}
-                forkTask={forkTask}
-                hideCheckPoint={hideCheckPoint}
-                latestCheckpoint={latestCheckpoint}
-                lastCheckpointInMessage={lastCheckpointInMessage}
-              />
-            )}
-          </div>
-        ))}
-        {showLoader && (
-          <div className="py-2">
-            <Loader2
-              className={cn(
-                "mx-auto size-6",
-                debouncedIsLoading ? "animate-spin" : "invisible",
+              {messageIndex < renderMessages.length - 1 && (
+                <SeparatorWithCheckpoint
+                  messageIndex={messageIndex}
+                  message={m}
+                  nextMessage={renderMessages[messageIndex + 1]}
+                  isLoading={isLoading || isExecuting}
+                  forkTask={forkTask}
+                  hideCheckPoint={hideCheckPoint}
+                  latestCheckpoint={latestCheckpoint}
+                  lastCheckpointInMessage={lastCheckpointInMessage}
+                />
               )}
-            />
-          </div>
-        )}
-      </ScrollArea>
+            </div>
+          ))}
+          {showLoader && (
+            <div className="py-2">
+              <Loader2
+                className={cn(
+                  "mx-auto size-6",
+                  debouncedIsLoading ? "animate-spin" : "invisible",
+                )}
+              />
+            </div>
+          )}
+        </ScrollArea>
+      </MermaidContextProvider>
     </BackgroundJobContextProvider>
   );
 };
@@ -188,6 +216,28 @@ function UserAttachments({ message }: { message: Message }) {
   }
 }
 
+function UserActiveSelections({ message }: { message: Message }) {
+  const selectionParts = message.parts.filter(
+    (part) => part.type === "data-active-selection",
+  ) as {
+    type: "data-active-selection";
+    data: { activeSelection: ActiveSelection };
+  }[];
+
+  if (message.role === "user" && selectionParts.length) {
+    return (
+      <div className="mt-2 flex flex-wrap gap-2">
+        {selectionParts.map((part, index) => (
+          <ActiveSelectionPart
+            key={index}
+            activeSelection={part.data.activeSelection}
+          />
+        ))}
+      </div>
+    );
+  }
+}
+
 function Part({
   role,
   part,
@@ -200,6 +250,7 @@ function Part({
   hideCheckPoint,
   latestCheckpoint,
   lastCheckpointInMessage,
+  userEditsCheckpoint,
 }: {
   role: Message["role"];
   partIndex: number;
@@ -212,6 +263,10 @@ function Part({
   hideCheckPoint?: boolean;
   latestCheckpoint: string | null;
   lastCheckpointInMessage: string | undefined;
+  userEditsCheckpoint?: {
+    origin: string | undefined;
+    modified: string | undefined;
+  };
 }) {
   const paddingClass = partIndex === 0 ? "" : "mt-2";
   if (part.type === "text") {
@@ -251,6 +306,19 @@ function Part({
 
   if (part.type === "data-reviews") {
     return <Reviews reviews={part.data.reviews} />;
+  }
+
+  if (part.type === "data-user-edits") {
+    return (
+      <UserEditsPart
+        userEdits={part.data.userEdits}
+        checkpoints={userEditsCheckpoint}
+      />
+    );
+  }
+
+  if (part.type === "data-active-selection") {
+    return null;
   }
 
   if (isToolUIPart(part)) {
@@ -407,4 +475,29 @@ function CompactPartToolTip({
       </TooltipContent>
     </Tooltip>
   );
+}
+
+function getUserEditsCheckpoint(messages: Message[], index: number) {
+  const message = messages[index];
+  if (message.role !== "user") {
+    return;
+  }
+
+  if (!message.parts.some((p) => p.type === "data-user-edits")) {
+    return;
+  }
+
+  const parts = messages
+    .filter((_m, i) => i <= index)
+    .flatMap((m) => m.parts)
+    .filter((p) => p.type === "data-checkpoint");
+
+  if (parts.length < 2) {
+    return;
+  }
+
+  return {
+    origin: parts.at(-2)?.data.commit,
+    modified: parts.at(-1)?.data.commit,
+  };
 }

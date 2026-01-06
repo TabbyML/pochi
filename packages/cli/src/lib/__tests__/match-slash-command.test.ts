@@ -25,6 +25,26 @@ describe("match-slash-command", () => {
       expect(containsSlashCommandReference("This is a prompt")).toBe(false);
       expect(containsSlashCommandReference("")).toBe(false);
     });
+
+    it("should not match markdown links and images", () => {
+      expect(containsSlashCommandReference("[link text](https://example.com/path)")).toBe(false);
+      expect(containsSlashCommandReference("![alt text](https://example.com/image.png)")).toBe(false);
+    });
+
+    it("should not match code blocks or inline code", () => {
+      expect(containsSlashCommandReference("`/some/path`")).toBe(false);
+      expect(containsSlashCommandReference("```\n/path/to/file\n```")).toBe(false);
+    });
+
+    it("should not match HTML closing tags", () => {
+      expect(containsSlashCommandReference("</div>")).toBe(false);
+      expect(containsSlashCommandReference("</workflow>")).toBe(false);
+    });
+
+    it("should match slash commands even with URLs present", () => {
+      expect(containsSlashCommandReference("Use /create-pr and visit https://workflow-a.com")).toBe(true);
+      expect(containsSlashCommandReference("/test-workflow check https://example.com/path")).toBe(true);
+    });
   });
 
   describe("extractSlashCommandNames", () => {
@@ -45,7 +65,11 @@ describe("match-slash-command", () => {
       expect(extractSlashCommandNames("Create a PR")).toEqual([]);
       expect(extractSlashCommandNames("")).toEqual([]);
     });
-  });
+
+    it("should not extract markdown links and images", () => {
+      expect(extractSlashCommandNames("[link](https://example.com/path)")).toEqual([]);
+      expect(extractSlashCommandNames("![image](https://example.com/image.png)")).toEqual([]);
+    });  });
 
   describe("getModelFromSlashCommand", () => {
     const workflows: Workflow[] = [

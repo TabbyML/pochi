@@ -68,7 +68,7 @@ interface ChatToolbarProps {
   todosRef: React.RefObject<Todo[] | undefined>;
   onUpdateIsPublicShared?: (isPublicShared: boolean) => void;
   taskId: string;
-  saveLatestUserEdits: () => void;
+  isRepairingMermaid?: boolean;
 }
 
 export const ChatToolbar: React.FC<ChatToolbarProps> = ({
@@ -83,7 +83,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   todosRef,
   onUpdateIsPublicShared,
   taskId,
-  saveLatestUserEdits,
+  isRepairingMermaid = false,
 }) => {
   const { t } = useTranslation();
 
@@ -139,6 +139,11 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
       isBusy: newCompactTaskPending,
       label: t("tokenUsage.compacting"),
     },
+    {
+      id: "repair-mermaid",
+      isBusy: isRepairingMermaid,
+      label: t("mermaid.fixError"),
+    },
   ];
 
   const blockingState = useBlockingOperations(blockingOperations);
@@ -178,7 +183,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     queuedMessages,
     setQueuedMessages,
     reviews,
-    saveLatestUserEdits,
+    taskId: taskId,
   });
 
   const handleQueueMessage = useCallback(

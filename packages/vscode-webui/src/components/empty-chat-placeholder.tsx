@@ -1,11 +1,22 @@
-import { useAutoSaveDisabled } from "@/lib/hooks/use-auto-save";
+import { useVSCodeSettings } from "@/lib/hooks/use-vscode-settings";
 import { AlertTriangleIcon, PaperclipIcon, TerminalIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { RecommendSettings } from "./recommend-settings";
 import { Button } from "./ui/button";
 
 export function EmptyChatPlaceholder() {
-  const autoSaveDisabled = useAutoSaveDisabled();
+  const { recommendSettingsConfirmed } = useVSCodeSettings();
+
+  return (
+    <div className="flex h-[75vh] select-none flex-col items-center justify-center p-5 text-center text-gray-500 dark:text-gray-300">
+      <div className="mb-4">{/* Adjusted icon color for visibility */}</div>
+      {recommendSettingsConfirmed ? <FunContent /> : <Settings />}
+    </div>
+  );
+}
+
+function FunContent() {
   const { t } = useTranslation();
   const [placeholder, setPlaceholder] = useState<{
     title: string;
@@ -17,10 +28,8 @@ export function EmptyChatPlaceholder() {
       funPlaceholders[Math.floor(Math.random() * funPlaceholders.length)],
     );
   }, []);
-
   return (
-    <div className="flex h-[75vh] select-none flex-col items-center justify-center p-5 text-center text-gray-500 dark:text-gray-300">
-      <div className="mb-4">{/* Adjusted icon color for visibility */}</div>
+    <>
       <h2 className="mb-2 items-center gap-3 font-semibold text-2xl text-gray-700 dark:text-gray-100">
         <TerminalIcon className="mr-1.5 mb-1.5 inline-block animate-[spin_6s_linear_infinite]" />
         {placeholder?.title ?? t("placeholder.title")}
@@ -42,7 +51,17 @@ export function EmptyChatPlaceholder() {
           {t("placeholder.tips.workflow")}
         </li>
       </ul>
-      {!autoSaveDisabled && (
+    </>
+  );
+}
+
+function Settings() {
+  const { recommendSettingsConfirmed, autoSaveDisabled } = useVSCodeSettings();
+  const { t } = useTranslation();
+  return (
+    <>
+      <RecommendSettings />
+      {recommendSettingsConfirmed && !autoSaveDisabled && (
         <div className="mt-6 max-w-md rounded-lg border bg-muted p-4 text-center">
           <div className="flex flex-col items-center gap-3">
             <div className="flex items-center gap-2">
@@ -70,7 +89,7 @@ export function EmptyChatPlaceholder() {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
 

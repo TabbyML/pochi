@@ -111,7 +111,8 @@
       "enablePochiModels": "Pochi モデルを有効化",
       "clearStorage": "ストレージをクリア",
       "language": "言語",
-      "languageDescription": "希望の言語を選択してください"
+      "languageDescription": "希望の言語を選択してください",
+      "resetRecommendSettingsConfirmed": "Reset Recommended Settings Confirmed"
     },
     "workflows": {
       "title": "ワークフロー",
@@ -422,11 +423,29 @@
     "openFile": "ファイルを開く"
   },
   "userEdits": {
+    "title": "編集",
     "filesEdited_one": "{{count}} ファイルを編集",
     "filesEdited_other": "{{count}} ファイルを編集",
-    "tooltip": "編集内容が追跡され、コンテキストに含まれます"
+    "tooltip": "編集内容が追跡され、コンテキストに含まれます",
+    "showDiff": "差分を表示",
+    "diffTitle": "ユーザー編集"
   },
   "forkTask": {
     "forkedTaskTitle": "フォーク 元: {{taskTitle}}"
+  },
+  "recommendSettings": {
+    "title": "Pochi は以下の設定を変更します",
+    "ok": "OK",
+    "options": {
+      "enablePochiLayoutKeybinding": "Pochi レイアウトのキーバインドを有効にする",
+      "pochiLayoutMoveBottomPanelViews": "Pochi レイアウトで下部パネルビューをサイドバーに移動する",
+      "disableAutoSave": "自動保存を無効にする",
+      "disableCommentsOpenView": "コメントパネルの自動表示を無効にする",
+      "disableGithubCopilotCodeCompletion": "GitHub Copilot のコード補完を無効にする"
+    }
+  },
+  "mermaid": {
+    "failedToRender": "Mermaid チャートのレンダリングに失敗しました：",
+    "fixError": "Pochi でエラーを修正"
   }
 }

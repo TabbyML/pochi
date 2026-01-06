@@ -47,3 +47,32 @@ export const makeTasksCountQuery = (cwd: string) => {
     },
   );
 };
+
+export const makeDeletedWorktreesQuery = (
+  cwd: string,
+  excludeWorktreePaths: string[],
+) => {
+  const resultSchema = Schema.Array(
+    Schema.Struct({
+      path: Schema.String,
+    }),
+  );
+
+  const cwdFilter = `git->>'$.worktree.gitdir' like '${cwd}/.git/worktrees%'`;
+
+  const pathExclusionFilter =
+    excludeWorktreePaths.length > 0
+      ? `and cwd NOT IN (${excludeWorktreePaths.map((path) => `'${path}'`).join(", ")})`
+      : "";
+
+  return queryDb(
+    {
+      query: sql`select cwd as path from tasks where parentId is null and ${cwdFilter} ${pathExclusionFilter} group by cwd order by min(createdAt) asc`,
+      schema: resultSchema,
+    },
+    {
+      label: "worktrees.deleted",
+      deps: [cwd, JSON.stringify(excludeWorktreePaths)],
+    },
+  );
+};
