@@ -1014,11 +1014,11 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     return await this.githubIssueState.queryIssues(query);
   };
 
-  readGitBranches = async (): Promise<string[]> => {
+  readGitBranches = async (limit?: number): Promise<string[]> => {
     if (!this.cwd) {
       return [];
     }
-    return await this.gitState.getBranches(this.cwd);
+    return await this.gitState.getBranches(this.cwd, limit);
   };
 
   readReviews = async (): Promise<ThreadSignalSerialization<Review[]>> => {

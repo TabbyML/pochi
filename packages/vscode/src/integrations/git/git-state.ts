@@ -76,15 +76,36 @@ export class GitState implements vscode.Disposable {
     return this.git?.repositories.find((repo) => repo.rootUri.fsPath === path);
   }
 
-  async getBranches(path: string) {
+  async getBranches(path: string, limit?: number) {
     const repo = this.getRepository(path);
     if (!repo) {
       return [];
     }
-    return (await repo.getBranches({ remote: true, sort: "committerdate" }))
+    const branches = (
+      await repo.getBranches({ remote: true, sort: "committerdate" })
+    )
       .filter((ref) => ref.type === 0 || ref.type === 1) // Head or RemoteHead
       .map((ref) => ref.name)
       .filter((name): name is string => !!name);
+
+    const sorted = branches.sort((a, b) => {
+      const isAMain = a === "main" || a === "master";
+      const isBMain = b === "main" || b === "master";
+      if (isAMain && !isBMain) return -1;
+      if (!isAMain && isBMain) return 1;
+
+      const isALocal = !a.startsWith("origin/");
+      const isBLocal = !b.startsWith("origin/");
+      if (isALocal && !isBLocal) return -1;
+      if (!isALocal && isBLocal) return 1;
+
+      return 0;
+    });
+
+    if (limit) {
+      return sorted.slice(0, limit);
+    }
+    return sorted;
   }
   /**
    * Initialize the Git state monitor
