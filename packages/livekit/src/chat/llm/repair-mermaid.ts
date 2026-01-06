@@ -58,6 +58,9 @@ export async function repairMermaid({
       error,
     );
 
+    // Collect all updated messages
+    const updatedMessages: Message[] = [];
+
     // Update all messages containing the chart
     for (const messageWithMermaid of messagesWithMermaid) {
       // Find and update the part with mermaid code, creating new objects to trigger updates
@@ -125,13 +128,20 @@ export async function repairMermaid({
         continue;
       }
 
-      // Create a new messages array with the updated message
       const updatedMessage: Message = {
         ...messageWithMermaid,
         parts: updatedParts,
       };
 
-      store.commit(events.updateMessage({ message: updatedMessage }));
+      updatedMessages.push(updatedMessage);
+    }
+
+    // Commit all updated messages to the database in a single transaction
+    if (updatedMessages.length > 0) {
+      store.commit(events.updateMessages({ messages: updatedMessages }));
+      logger.debug(
+        `Committed ${updatedMessages.length} updated message(s) to database`,
+      );
     }
   } catch (err) {
     logger.warn("Failed to repair mermaid", err);
