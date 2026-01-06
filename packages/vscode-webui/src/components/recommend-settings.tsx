@@ -29,7 +29,7 @@ function openSettingsLink(option: Options) {
   );
 }
 
-const OpenKeybindingLink = "(Ctrl/Cmd+`)";
+const OpenKeybindingLink = "(Ctrl/Cmd+L)";
 
 function openKeybindingLink() {
   const commandId = "pochi.applyPochiLayoutWithCycleFocus";
