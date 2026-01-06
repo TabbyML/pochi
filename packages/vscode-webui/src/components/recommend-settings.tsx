@@ -1,7 +1,7 @@
 import { useVSCodeSettings } from "@/lib/hooks/use-vscode-settings";
 import { vscodeHost } from "@/lib/vscode";
 import type { VSCodeSettings } from "@getpochi/common/vscode-webui-bridge";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "./ui/button";
 import { Checkbox } from "./ui/checkbox";
@@ -60,6 +60,12 @@ export function RecommendSettings() {
     }
     return list;
   }, [vscodeSettings]);
+
+  useEffect(() => {
+    if (!vscodeSettings.recommendSettingsConfirmed && options.length === 0) {
+      vscodeHost.updateVSCodeSettings({ recommendSettingsConfirmed: true });
+    }
+  }, [vscodeSettings.recommendSettingsConfirmed, options]);
 
   const [selected, setSelected] = useState<Options[]>(options);
 
