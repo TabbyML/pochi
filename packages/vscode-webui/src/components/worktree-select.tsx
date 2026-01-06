@@ -74,13 +74,28 @@ function BaseBranchSelector({
   const [search, setSearch] = useState("");
   const { t } = useTranslation();
 
-  const filteredBranches = branches?.filter((branch) => {
-    const branchName = branch.replace(/^origin\//, "");
-    return (
-      branchName.toLowerCase().includes(search.toLowerCase()) ||
-      branch.toLowerCase().includes(search.toLowerCase())
-    );
-  });
+  const filteredBranches = branches
+    ?.filter((branch) => {
+      const branchName = branch.replace(/^origin\//, "");
+      return (
+        branchName.toLowerCase().includes(search.toLowerCase()) ||
+        branch.toLowerCase().includes(search.toLowerCase())
+      );
+    })
+    .sort((a, b) => {
+      const isAMain = a === "main" || a === "master";
+      const isBMain = b === "main" || b === "master";
+      if (isAMain && !isBMain) return -1;
+      if (!isAMain && isBMain) return 1;
+
+      const isALocal = !a.startsWith("origin/");
+      const isBLocal = !b.startsWith("origin/");
+      if (isALocal && !isBLocal) return -1;
+      if (!isALocal && isBLocal) return 1;
+
+      return 0;
+    })
+    .slice(0, 50);
 
   const [selectedIndex, setSelectedIndex] = useState(0);
 
