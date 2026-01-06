@@ -877,8 +877,11 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     return ThreadSignal.serialize(this.userStorage.users);
   };
 
-  openTaskInPanel = async (params: PochiTaskParams): Promise<void> => {
-    await PochiTaskEditorProvider.openTaskEditor(params);
+  openTaskInPanel = async (
+    params: PochiTaskParams,
+    options?: { keepEditor?: boolean },
+  ): Promise<void> => {
+    await PochiTaskEditorProvider.openTaskEditor(params, options);
   };
 
   sendTaskNotification = async (
@@ -1014,11 +1017,11 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     return await this.githubIssueState.queryIssues(query);
   };
 
-  readGitBranches = async (): Promise<string[]> => {
+  readGitBranches = async (limit?: number): Promise<string[]> => {
     if (!this.cwd) {
       return [];
     }
-    return await this.gitState.getBranches(this.cwd);
+    return await this.gitState.getBranches(this.cwd, limit);
   };
 
   readReviews = async (): Promise<ThreadSignalSerialization<Review[]>> => {

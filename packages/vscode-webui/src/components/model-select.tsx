@@ -200,7 +200,7 @@ export function ModelSelect({
                     href="command:pochi.openCustomModelSettings"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="group cursor-pointer px-3 py-2.5"
+                    className="group flex cursor-pointer items-center px-3 py-2.5"
                   >
                     <span className="text-[var(--vscode-textLink-foreground)] text-xs group-hover:underline ">
                       {t("modelSelect.manageCustomModels")}

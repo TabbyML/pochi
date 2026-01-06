@@ -11,6 +11,7 @@ import type {
   GithubIssue,
   McpStatus,
   PochiCredentials,
+  PochiTaskParams,
   ResourceURI,
   Review,
   RuleFile,
@@ -261,7 +262,10 @@ const VSCodeHostStub = {
     return Promise.resolve({} as ThreadSignalSerialization<CustomAgentFile[]>);
   },
 
-  openTaskInPanel: async (): Promise<void> => {},
+  openTaskInPanel: async (
+    _params: PochiTaskParams,
+    _options?: { keepEditor?: boolean },
+  ): Promise<void> => {},
 
   sendTaskNotification: async (): Promise<void> => {},
 
@@ -297,7 +301,7 @@ const VSCodeHostStub = {
 
   queryGithubIssues: async (): Promise<GithubIssue[]> => [],
 
-  readGitBranches: async (): Promise<string[]> => [],
+  readGitBranches: async (_limit?: number): Promise<string[]> => [],
 
   readReviews: (): Promise<ThreadSignalSerialization<Review[]>> => {
     return Promise.resolve({} as ThreadSignalSerialization<Review[]>);

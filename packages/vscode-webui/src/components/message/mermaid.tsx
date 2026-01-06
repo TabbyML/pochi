@@ -99,7 +99,7 @@ export function Mermaid({ chart }: { chart: string }): ReactElement {
         <pre className="!p-2 max-h-32 w-full overflow-y-auto whitespace-pre-wrap rounded-md bg-[var(--vscode-textCodeBlock-background)] font-mono text-[var(--vscode-editor-foreground)]">
           {error}
         </pre>
-        {mermaidContext && (
+        {mermaidContext && chart.trim() !== "" && chart !== "undefined" && (
           <Button
             variant="outline"
             size="sm"

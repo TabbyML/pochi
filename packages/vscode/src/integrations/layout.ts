@@ -330,9 +330,120 @@ export async function applyPochiLayout(params: {
   }
   logger.trace("End merge tabs in split window.");
 
+  // Move all terminals from panel into terminal groups, then lock
+  for (
+    let i = 0;
+    i <
+    vscode.window.terminals.length - getSortedCurrentTabGroups()[2].tabs.length;
+    i++
+  ) {
+    await focusEditorGroup(2);
+    await executeVSCodeCommand("workbench.action.unlockEditorGroup");
+    await executeVSCodeCommand("workbench.action.terminal.moveToEditor");
+    await executeVSCodeCommand("workbench.action.lockEditorGroup");
+  }
+
   // Re-active the user active terminal
   if (userActiveTerminal) {
     userActiveTerminal.show();
+  }
+
+  // Calculate focus group index
+  const currentTabGroupsShape = getTabGroupsShape(getSortedCurrentTabGroups());
+  const shouldCycleFocus =
+    !shouldSetPochiLayout &&
+    isSameTabGroupsShape(
+      mainWindowTabGroupsShape,
+      currentTabGroupsShape.slice(0, 3),
+    );
+  logger.trace("- shouldCycleFocus: ", shouldCycleFocus);
+  const currentFocusGroupIndex =
+    vscode.window.tabGroups.activeTabGroup.viewColumn - 1;
+  const targetFocusGroupIndex = (() => {
+    // Only terminals tab moved, focus to terminal group
+    if (
+      isSameTabGroupsShape(
+        mainWindowTabGroupsShape.slice(0, -1),
+        currentTabGroupsShape.slice(0, 2),
+      ) &&
+      !isSameTabGroupsShape(
+        mainWindowTabGroupsShape.slice(-1),
+        currentTabGroupsShape.slice(2, 3),
+      )
+    ) {
+      return 2;
+    }
+    // No userFocusTab fallback to 0
+    if (!userFocusTab) {
+      return 0;
+    }
+    // Target group index
+    let target = 0;
+    if (isPochiTaskTab(userFocusTab)) {
+      target = 0;
+    } else if (isTerminalTab(userFocusTab)) {
+      target = 2;
+    } else {
+      target = 1;
+    }
+    // Handle focus cycling
+    if (params.cycleFocus && shouldCycleFocus) {
+      target = (target + 1) % 3;
+    }
+    return target;
+  })();
+  logger.trace("- targetFocusGroupIndex: ", targetFocusGroupIndex);
+
+  // Focus and lock actions to perform
+  const focusAndLockTaskGroup = async () => {
+    await focusEditorGroup(0);
+    await executeVSCodeCommand("workbench.action.lockEditorGroup");
+  };
+  const focusAndUnlockEditorGroup = async () => {
+    await focusEditorGroup(1);
+    await executeVSCodeCommand("workbench.action.unlockEditorGroup");
+  };
+  const focusAndLockTerminalGroup = async () => {
+    await focusEditorGroup(2);
+    await executeVSCodeCommand("workbench.action.lockEditorGroup");
+  };
+  const focusActions = [
+    focusAndLockTaskGroup,
+    focusAndUnlockEditorGroup,
+    focusAndLockTerminalGroup,
+  ];
+  // Sort actions
+  const sortedFocusActionsIndex = [0, 1, 2];
+  sortedFocusActionsIndex.splice(
+    sortedFocusActionsIndex.indexOf(targetFocusGroupIndex),
+    1,
+  );
+  sortedFocusActionsIndex.push(targetFocusGroupIndex);
+  if (currentFocusGroupIndex !== targetFocusGroupIndex) {
+    sortedFocusActionsIndex.splice(
+      sortedFocusActionsIndex.indexOf(currentFocusGroupIndex),
+      1,
+    );
+    sortedFocusActionsIndex.unshift(currentFocusGroupIndex);
+  }
+  logger.trace("- sortedFocusActionsIndex: ", sortedFocusActionsIndex);
+
+  // Move focus to target
+  for (const i of sortedFocusActionsIndex) {
+    await focusActions[i]();
+  }
+
+  // Focus back to userFocusTab
+  if (userFocusTab && !shouldCycleFocus) {
+    const tabIndex = getSortedCurrentTabGroups()[
+      targetFocusGroupIndex
+    ].tabs.findIndex((tab) => isSameTabInput(tab.input, userFocusTab.input));
+    if (tabIndex >= 0) {
+      await executeVSCodeCommand(
+        "workbench.action.openEditorAtIndex",
+        tabIndex,
+      );
+    }
   }
 
   // If no tabs in task group, open a new task
@@ -364,60 +475,6 @@ export async function applyPochiLayout(params: {
           ? userFocusTab.input.uri
           : undefined),
     );
-  }
-
-  // Lock task group
-  await focusEditorGroup(0);
-  await executeVSCodeCommand("workbench.action.lockEditorGroup");
-
-  // Unlock editor group
-  await focusEditorGroup(1);
-  await executeVSCodeCommand("workbench.action.unlockEditorGroup");
-
-  // Move all terminals from panel into terminal groups, then lock
-  for (let i = 0; i < vscode.window.terminals.length; i++) {
-    await focusEditorGroup(2);
-    await executeVSCodeCommand("workbench.action.unlockEditorGroup");
-    await executeVSCodeCommand("workbench.action.terminal.moveToEditor");
-  }
-  await executeVSCodeCommand("workbench.action.lockEditorGroup");
-
-  // Re-focus the user focus tab
-  if (!userFocusTab) {
-    await focusEditorGroup(0);
-  } else {
-    let groupIndex = 0;
-    if (isPochiTaskTab(userFocusTab)) {
-      groupIndex = 0;
-    } else if (isTerminalTab(userFocusTab)) {
-      groupIndex = 2;
-    } else {
-      groupIndex = 1;
-    }
-    await focusEditorGroup(groupIndex);
-    const tabIndex = getSortedCurrentTabGroups()[groupIndex].tabs.findIndex(
-      (tab) => isSameTabInput(tab.input, userFocusTab.input),
-    );
-    if (tabIndex >= 0) {
-      await executeVSCodeCommand(
-        "workbench.action.openEditorAtIndex",
-        tabIndex,
-      );
-    }
-
-    // Cycle focus
-    if (params.cycleFocus) {
-      const shouldCycleFocus =
-        !shouldSetPochiLayout &&
-        isSameTabGroupsShape(
-          mainWindowTabGroupsShape,
-          getTabGroupsShape(getSortedCurrentTabGroups().slice(0, 3)),
-        );
-      logger.trace("- shouldCycleFocus: ", shouldCycleFocus);
-      if (shouldCycleFocus) {
-        await executeVSCodeCommand("workbench.action.focusNextGroup");
-      }
-    }
   }
 }
 
@@ -567,7 +624,26 @@ async function focusEditorGroup(groupIndex: number) {
 function isSameTabInput(
   a: vscode.Tab["input"],
   b: vscode.Tab["input"],
+  fallback = false,
 ): boolean {
+  const isComparable = (input: unknown): boolean =>
+    input instanceof vscode.TabInputText ||
+    input instanceof vscode.TabInputTextDiff ||
+    input instanceof vscode.TabInputCustom ||
+    input instanceof vscode.TabInputWebview ||
+    input instanceof vscode.TabInputNotebook ||
+    input instanceof vscode.TabInputNotebookDiff;
+  const aComparable = isComparable(a);
+  const bComparable = isComparable(b);
+
+  if (!aComparable && !bComparable) {
+    return fallback;
+  }
+
+  if (!aComparable || !bComparable) {
+    return false;
+  }
+
   return (
     (a instanceof vscode.TabInputText &&
       b instanceof vscode.TabInputText &&
@@ -601,7 +677,7 @@ type TabGroupShape = {
 
 function getTabGroupsShape(groups: vscode.TabGroup[]): TabGroupShape {
   return groups.map((group) => {
-    return { tabs: group.tabs };
+    return { tabs: [...group.tabs] };
   });
 }
 
@@ -616,10 +692,7 @@ function isSameTabGroupsShape(a: TabGroupShape, b: TabGroupShape) {
       return false;
     }
     for (let j = 0; j < tabsA.length; j++) {
-      if (isTerminalTab(tabsA[j]) && isTerminalTab(tabsB[j])) {
-        continue;
-      }
-      if (!isSameTabInput(tabsA[j].input, tabsB[j].input)) {
+      if (!isSameTabInput(tabsA[j].input, tabsB[j].input, true)) {
         return false;
       }
     }

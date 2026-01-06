@@ -363,8 +363,8 @@
     "keybindings": [
       {
         "command": "pochi.toggleFocus",
-        "key": "ctrl+l",
-        "mac": "cmd+l"
+        "key": "ctrl+alt+l",
+        "mac": "cmd+alt+l"
       },
       {
         "command": "pochi.tabCompletion.accept",
@@ -378,7 +378,8 @@
       },
       {
         "command": "pochi.applyPochiLayoutWithCycleFocus",
-        "key": "ctrl+`",
+        "key": "ctrl+l",
+        "mac": "cmd+l",
         "when": "pochi.enablePochiLayoutKeybinding"
       }
     ],
