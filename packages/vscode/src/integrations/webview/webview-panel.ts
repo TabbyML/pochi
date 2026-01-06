@@ -161,7 +161,10 @@ export class PochiTaskEditorProvider
     }
   }
 
-  public static async openTaskEditor(params: PochiTaskParams) {
+  public static async openTaskEditor(
+    params: PochiTaskParams,
+    options?: { keepEditor?: boolean },
+  ) {
     try {
       const uid =
         ((params.type === "new-task" || params.type === "open-task") &&
@@ -178,7 +181,7 @@ export class PochiTaskEditorProvider
       };
       const uri = PochiTaskEditorProvider.createTaskUri(taskInfo);
       PochiTaskEditorProvider.taskInfo.set(uri.toString(), taskInfo);
-      await openTaskInColumn(uri);
+      await openTaskInColumn(uri, options);
     } catch (error) {
       const errorMessage = toErrorMessage(error);
       vscode.window.showErrorMessage(
@@ -340,12 +343,23 @@ function setAutoLockGroupsConfig() {
   );
 }
 
-async function openTaskInColumn(uri: vscode.Uri) {
+async function openTaskInColumn(
+  uri: vscode.Uri,
+  options?: { keepEditor?: boolean },
+) {
   const params = PochiTaskEditorProvider.parseTaskUri(uri);
   if (!params) {
     throw new Error(`Failed to parse task URI: ${uri.toString()}`);
   }
   const viewColumn = await getViewColumnForTask(params);
+
+  if (options?.keepEditor === true) {
+    vscode.commands.executeCommand("workbench.action.keepEditor", uri, {
+      preserveFocus: true,
+    });
+    return;
+  }
+
   await vscode.commands.executeCommand(
     "vscode.openWith",
     uri,

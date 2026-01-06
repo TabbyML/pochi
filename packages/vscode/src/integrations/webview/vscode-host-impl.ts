@@ -877,8 +877,11 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     return ThreadSignal.serialize(this.userStorage.users);
   };
 
-  openTaskInPanel = async (params: PochiTaskParams): Promise<void> => {
-    await PochiTaskEditorProvider.openTaskEditor(params);
+  openTaskInPanel = async (
+    params: PochiTaskParams,
+    options?: { keepEditor?: boolean },
+  ): Promise<void> => {
+    await PochiTaskEditorProvider.openTaskEditor(params, options);
   };
 
   sendTaskNotification = async (

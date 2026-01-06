@@ -313,7 +313,10 @@ export interface VSCodeHostApi {
   /**
    * create or open a task in a new panel
    */
-  openTaskInPanel(params: PochiTaskParams): Promise<void>;
+  openTaskInPanel(
+    params: PochiTaskParams,
+    options?: { keepEditor?: boolean },
+  ): Promise<void>;
 
   sendTaskNotification(
     kind: "failed" | "completed" | "pending-tool" | "pending-input",
