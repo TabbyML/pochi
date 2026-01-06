@@ -567,7 +567,26 @@ async function focusEditorGroup(groupIndex: number) {
 function isSameTabInput(
   a: vscode.Tab["input"],
   b: vscode.Tab["input"],
+  fallback = false,
 ): boolean {
+  const isComparable = (input: unknown): boolean =>
+    input instanceof vscode.TabInputText ||
+    input instanceof vscode.TabInputTextDiff ||
+    input instanceof vscode.TabInputCustom ||
+    input instanceof vscode.TabInputWebview ||
+    input instanceof vscode.TabInputNotebook ||
+    input instanceof vscode.TabInputNotebookDiff;
+  const aComparable = isComparable(a);
+  const bComparable = isComparable(b);
+
+  if (!aComparable && !bComparable) {
+    return fallback;
+  }
+
+  if (!aComparable || !bComparable) {
+    return false;
+  }
+
   return (
     (a instanceof vscode.TabInputText &&
       b instanceof vscode.TabInputText &&
@@ -616,10 +635,7 @@ function isSameTabGroupsShape(a: TabGroupShape, b: TabGroupShape) {
       return false;
     }
     for (let j = 0; j < tabsA.length; j++) {
-      if (isTerminalTab(tabsA[j]) && isTerminalTab(tabsB[j])) {
-        continue;
-      }
-      if (!isSameTabInput(tabsA[j].input, tabsB[j].input)) {
+      if (!isSameTabInput(tabsA[j].input, tabsB[j].input, true)) {
         return false;
       }
     }
