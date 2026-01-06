@@ -98,7 +98,10 @@ function BaseBranchSelector({
         <Tooltip>
           <TooltipTrigger asChild>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-6 w-auto gap-0 px-0">
+              <Button
+                variant="ghost"
+                className="h-6 w-auto gap-0 px-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+              >
                 {value && (
                   <span className="ml-1 max-w-[8rem] truncate text-sm">
                     {value}
@@ -113,8 +116,9 @@ function BaseBranchSelector({
         </Tooltip>
       </TooltipProvider>
       <DropdownMenuContent
-        className="max-h-[300px] w-[200px] overflow-y-auto border bg-background p-0 text-popover-foreground shadow"
+        className="max-h-[300px] min-w-[160px] max-w-[80vw] overflow-y-auto border bg-background p-0 text-popover-foreground shadow sm:max-w-[600px]"
         align="start"
+        onCloseAutoFocus={(e) => e.preventDefault()}
       >
         <div className="sticky top-0 z-10 bg-background p-1">
           <Input
@@ -172,6 +176,7 @@ function BaseBranchSelector({
                   value === branch && "bg-accent text-accent-foreground",
                 )}
                 onMouseEnter={() => setSelectedIndex(index)}
+                title={branch}
               >
                 {isRemote ? (
                   <CloudIcon className={cn(" h-4 w-4 shrink-0")} />
