@@ -152,8 +152,6 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
         if (!worktree) {
           return false;
         }
-
-        setUserSelectedWorktree(worktree);
       }
 
       vscodeHost.openTaskInPanel({
@@ -173,14 +171,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
 
       return true;
     },
-    [
-      cwd,
-      selectedWorktree,
-      baseBranch,
-      setUserSelectedWorktree,
-      clearFiles,
-      clearDraft,
-    ],
+    [cwd, selectedWorktree, baseBranch, clearFiles, clearDraft],
   );
 
   const handleSubmitImpl = useCallback(
@@ -238,7 +229,6 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
       // Hide loading and unfreeze input
       setIsCreatingTask(false);
       setDebouncedIsCreatingTask(false);
-      setBaseBranch(undefined);
     },
     [
       input,
