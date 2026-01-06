@@ -9,7 +9,7 @@ image: "/og-image/cover-nes-part-3-og-image.png"
 
 In [Part 1](https://docs.getpochi.com/developer-updates/how-we-created-nes-model/), we talked about how we trained our NES model to predict the next meaningful edit you’re likely to make in your code.
 
-In [Part 2](https://docs.getpochi.com/developer-updates/#nes-series-part-2-real-time-context-management-in-your-code-editor), we then covered what the model takes as context to make this edit. This included deep dives into editable regions, user’s edit history, and using the overall project context. 
+In [Part 2](https://docs.getpochi.com/developer-updates/context-management-in-your-editor/), we then covered what the model takes as context to make this edit. This included deep dives into editable regions, user’s edit history, and using the overall project context. 
 
 Together, these two pieces (model + context) form the core intelligence foundation of the NES system. But incorporating them into an end-to-end real-time engineering system requires more thinking about real developer coding behaviour.
 
@@ -106,4 +106,4 @@ NES suggestions aren’t always a single line near the cursor. Sometimes the rel
 
 This is especially tricky inside a code editor like VS Code, where rendering options are limited. In such cases, how do we preview multi-line edits precisely? How do we make them feel lightweight, immediate, and skimmable, without being modal or disruptive?
 
-In Part 4, we’ll dive into how we approached these constraints and built a rendering system that enables richer previews and lower-latency interactions for code edits.
+In [Part 4](https://docs.getpochi.com/developer-updates/dynamic-rendering-stratergies-for-ai-edits/), we’ll dive into how we approached these constraints and built a rendering system that enables richer previews and lower-latency interactions for code edits.

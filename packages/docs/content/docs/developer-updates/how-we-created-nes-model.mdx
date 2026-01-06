@@ -6,6 +6,21 @@ image: "/og-image/nes-part-1-og-image.png"
 
 # NES Series (Part 1): The Edit Model Behind Tab Completion
 
+<Callout title="Note">
+   This is a four-part series on how we trained and built our NES model at Pochi, covering everything from the edit model behind tab completion to real-time context management, request lifecycles, and dynamic rendering for AI code edits.
+
+   Read the full series:
+
+   – [Part 1: The Edit Model Behind Tab Completion](https://docs.getpochi.com/developer-updates/how-we-created-nes-model/)
+
+   – [Part 2: Real-Time Context Management in Your Code Editor](https://docs.getpochi.com/developer-updates/context-management-in-your-editor/)
+
+   – [Part 3: The Request Management Lifecycle Under Continuous Typing](https://docs.getpochi.com/developer-updates/request-management-in-nes/)
+
+   – [Part 4: Dynamic Rendering Strategies for AI Code Edits](https://docs.getpochi.com/developer-updates/dynamic-rendering-stratergies-for-ai-edits/)
+
+</Callout>
+
 In this post, we’re introducing our internal edit model, the foundation behind Next Edit Suggestion (NES). It’s an upgrade to Tab completion, designed to predict the next change your code needs, wherever it lives.
 
 Technically this is much harder to achieve, since NES considers the entire file plus your recent edit history and predicts how your code is likely to evolve: where the next change should happen, and what that change should be. 
@@ -84,4 +99,4 @@ Here’s a small example image showing the full inference-time context with the 
 
 NES combines these inputs to infer the user’s intent from earlier edits and predict the next edit inside the editable region only.
 
-In this post, we’ve focused on how the model is trained and evaluated. In the next post, we’ll go deeper into how these dynamic contexts are constructed, ranked, and streamed into the model to drive real-time, context-aware edit predictions.
+In this post, we’ve focused on how the model is trained and evaluated. In the **[next post](https://docs.getpochi.com/developer-updates/context-management-in-your-editor/)**, we’ll go deeper into how these dynamic contexts are constructed, ranked, and streamed into the model to drive real-time, context-aware edit predictions.
