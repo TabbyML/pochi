@@ -1,8 +1,12 @@
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { cn } from "@/lib/utils";
+import { ChevronRight, TerminalSquare } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ChevronRight, TerminalSquare } from "lucide-react";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { cn } from "@/lib/utils";
 
 interface Props {
   outputs: string[];
@@ -37,7 +41,7 @@ export const BashOutputsPart: React.FC<Props> = ({ outputs }) => {
         </div>
       </CollapsibleTrigger>
       <CollapsibleContent>
-        <div className="flex flex-col gap-2 px-3 pb-3 pt-1">
+        <div className="flex flex-col gap-2 px-3 pt-1 pb-3">
           {outputs.map((output, index) => (
             <pre
               key={index}
@@ -51,4 +55,3 @@ export const BashOutputsPart: React.FC<Props> = ({ outputs }) => {
     </Collapsible>
   );
 };
-
