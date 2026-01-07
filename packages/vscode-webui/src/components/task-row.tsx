@@ -19,9 +19,11 @@ import { useTranslation } from "react-i18next";
 export function TaskRow({
   task,
   state,
+  isDeleted,
 }: {
   task: Task;
   state?: TaskState;
+  isDeleted?: boolean;
 }) {
   const { jwt } = usePochiCredentials();
 
@@ -32,9 +34,11 @@ export function TaskRow({
   const content = (
     <div
       className={cn(
-        "group cursor-pointer rounded-lg border border-border/50 bg-card/60 transition-all duration-200 hover:bg-card hover:shadow-md",
+        "group rounded-lg border border-border/50 bg-card/60 transition-all duration-200 hover:bg-card hover:shadow-md",
         {
           "border-primary/85": state?.focused,
+          "cursor-pointer": !isDeleted,
+          "opacity-60": isDeleted,
         },
       )}
     >
@@ -105,7 +109,9 @@ export function TaskRow({
     }
   }, [task.cwd, task.id, task.displayId, storeId, showFileChanges]);
 
-  return <div onClick={openTaskInPanel}>{content}</div>;
+  return (
+    <div onClick={!isDeleted ? openTaskInPanel : undefined}>{content}</div>
+  );
 }
 
 function GitBadge({

@@ -20,9 +20,7 @@ export function LiveStoreTaskProvider({
   children,
 }: { children: React.ReactNode; cwd: string }) {
   const baseURI = document.baseURI;
-  const storeName = baseURI.startsWith("http://")
-    ? `${baseURI}-tasks`
-    : "tasks";
+  const storeName = baseURI.startsWith("http://") ? "local-tasks" : "tasks";
   logger.debug("Using LiveStore task store:", storeName);
   const storeId = sanitizeStoreId(isDev ? `dev-${storeName}` : storeName);
   return (
