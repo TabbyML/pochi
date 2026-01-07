@@ -29,6 +29,7 @@
   "dependencies": {
     "@ai-sdk/google-vertex": "catalog:",
     "@ai-sdk/provider": "catalog:",
+    "@getpochi/livekit": "workspace:*",
     "@getpochi/tools": "workspace:*",
     "@hono/node-server": "^1.19.4",
     "@modelcontextprotocol/sdk": "^1.0.2",
