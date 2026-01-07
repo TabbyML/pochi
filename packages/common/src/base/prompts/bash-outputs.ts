@@ -1,7 +1,4 @@
-type BashOutputs = {
-  outputs: string[];
-};
-
+import type { BashOutputs } from "../../vscode-webui-bridge/types/message";
 /**
  * Render bash outputs captured from workflows into a prompt-friendly format.
  */

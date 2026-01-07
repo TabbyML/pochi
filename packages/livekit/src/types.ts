@@ -6,6 +6,7 @@ import { Environment } from "@getpochi/common";
 import { GoogleVertexModel } from "@getpochi/common/configuration";
 import type {
   ActiveSelection,
+  BashOutputs,
   Review,
   UserEdits,
 } from "@getpochi/common/vscode-webui-bridge";
@@ -46,13 +47,6 @@ export type DataParts = {
 export type UITools = InferUITools<ClientTools>;
 
 export type Message = UIMessage<Metadata, DataParts, UITools>;
-
-const BashOutputs = z.object({
-  outputs: z.array(z.string()).describe("Bash outputs"),
-});
-
-export type BashOutputs = z.infer<typeof BashOutputs>;
-
 
 const RequestData = z.object({
   environment: Environment.optional(),

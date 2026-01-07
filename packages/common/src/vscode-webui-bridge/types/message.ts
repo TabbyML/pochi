@@ -60,3 +60,9 @@ export const UserEdits = z
   .describe("User edits since last checkpoint in the current workspace.");
 
 export type UserEdits = z.infer<typeof UserEdits>;
+
+export const BashOutputs = z.object({
+  outputs: z.array(z.string()).describe("Bash outputs"),
+});
+
+export type BashOutputs = z.infer<typeof BashOutputs>;

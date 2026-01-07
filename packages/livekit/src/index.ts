@@ -7,7 +7,6 @@ export type {
   Task,
   UITools,
   DataParts,
-  BashOutputs,
 } from "./types";
 
 export const StoreBlobProtocol = "store-blob:";

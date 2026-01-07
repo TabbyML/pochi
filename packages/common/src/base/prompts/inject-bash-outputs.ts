@@ -1,5 +1,9 @@
 import type { UIMessage } from "ai";
-import type { DataParts } from "@getpochi/livekit";
+
+type BashOutputsPart = {
+  type: "data-bash-outputs";
+  data: { bashOutputs: { outputs: string[] } };
+};
 
 export function injectBashOutputs(
   message: UIMessage,
@@ -25,7 +29,7 @@ export function injectBashOutputs(
     data: {
       bashOutputs: { outputs: bashCommandOutputs },
     },
-  } satisfies { type: "data-bash-outputs"; data: DataParts["bash-outputs"] };
+  } satisfies BashOutputsPart;
 
   const workflowPartIndex = message.parts.findIndex(isWorkflowTextPart);
   const indexToInsert = workflowPartIndex === -1 ? 0 : workflowPartIndex + 1;
