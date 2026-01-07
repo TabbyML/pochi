@@ -50,7 +50,7 @@ export function TaskRow({
               <div className="line-clamp-2 flex flex-1 items-center font-medium text-foreground leading-relaxed">
                 <div
                   className={cn("truncate", {
-                    "text-muted-foreground italic": title === "(empty)",
+                    "text-muted-foreground italic": title === "(Untitled)",
                   })}
                 >
                   {title}

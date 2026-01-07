@@ -15,8 +15,8 @@ function escapeUnknownXMLTags(message: string): string {
 }
 
 export function parseTitle(title: string | null) {
-  if (!title?.trim()) return "(empty)";
-  return parseMarkdown(title).slice(0, 256) || "(empty)";
+  if (!title?.trim()) return "(Untitled)";
+  return parseMarkdown(title).slice(0, 256) || "(Untitled)";
 }
 
 export function parseMarkdown(content: string) {
