@@ -535,7 +535,9 @@ export class CommandManager implements vscode.Disposable {
         const params = taskUri
           ? PochiTaskEditorProvider.parseTaskUri(taskUri)
           : undefined;
-        const viewColumn = getViewColumnForTerminal();
+        const viewColumn = await getViewColumnForTerminal({
+          cwd: params?.cwd,
+        });
         const location = viewColumn ? { viewColumn } : undefined;
         vscode.window.createTerminal({ cwd: params?.cwd, location }).show();
       }),
@@ -553,7 +555,9 @@ export class CommandManager implements vscode.Disposable {
         "pochi.worktree.openTerminal",
         async (worktreePath: string) => {
           if (worktreePath) {
-            const viewColumn = getViewColumnForTerminal();
+            const viewColumn = await getViewColumnForTerminal({
+              cwd: worktreePath,
+            });
             const location = viewColumn ? { viewColumn } : undefined;
             vscode.window
               .createTerminal({ cwd: worktreePath, location })
