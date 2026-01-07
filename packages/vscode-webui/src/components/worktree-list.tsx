@@ -492,7 +492,11 @@ function WorktreeSection({
               {tasks.map((task) => {
                 return (
                   <div key={task.id} className="py-0.5">
-                    <TaskRow task={task} state={pochiTasks[task.id]} />
+                    <TaskRow
+                      task={task}
+                      state={pochiTasks[task.id]}
+                      isDeleted={isDeleted}
+                    />
                   </div>
                 );
               })}
