@@ -141,7 +141,7 @@ function BaseBranchSelector({
         </Tooltip>
       </TooltipProvider>
       <DropdownMenuContent
-        className="max-h-[300px] min-w-[160px] max-w-[80vw] overflow-y-auto border bg-background p-0 text-popover-foreground shadow sm:max-w-[600px]"
+        className="max-h-[300px] w-[80vw] min-w-[160px] overflow-y-auto border bg-background p-0 text-popover-foreground shadow sm:w-[500px]"
         align="start"
         onCloseAutoFocus={(e) => e.preventDefault()}
       >
