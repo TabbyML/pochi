@@ -700,12 +700,13 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     },
   );
 
-  readLatestCheckpoint = async (): Promise<
-    ThreadSignalSerialization<string | null>
-  > => {
-    await this.checkpointService.ensureInitialized();
-    return ThreadSignal.serialize(this.checkpointService.latestCheckpoint);
-  };
+  readLatestCheckpoint = runExclusive.build(
+    this.checkpointGroup,
+    async (): Promise<ThreadSignalSerialization<string | null>> => {
+      await this.checkpointService.ensureInitialized();
+      return ThreadSignal.serialize(this.checkpointService.latestCheckpoint);
+    },
+  );
 
   readCheckpointPath = async (): Promise<string | undefined> => {
     return this.checkpointService.getShadowGitPath();
@@ -1017,11 +1018,11 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     return await this.githubIssueState.queryIssues(query);
   };
 
-  readGitBranches = async (limit?: number): Promise<string[]> => {
+  readGitBranches = async (): Promise<string[]> => {
     if (!this.cwd) {
       return [];
     }
-    return await this.gitState.getBranches(this.cwd, limit);
+    return await this.gitState.getBranches(this.cwd);
   };
 
   readReviews = async (): Promise<ThreadSignalSerialization<Review[]>> => {

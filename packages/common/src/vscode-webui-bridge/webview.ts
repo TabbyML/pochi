@@ -342,7 +342,7 @@ export interface VSCodeHostApi {
 
   queryGithubIssues(query?: string): Promise<GithubIssue[]>;
 
-  readGitBranches(limit?: number): Promise<string[]>;
+  readGitBranches(): Promise<string[]>;
 
   readReviews(): Promise<ThreadSignalSerialization<Review[]>>;
 

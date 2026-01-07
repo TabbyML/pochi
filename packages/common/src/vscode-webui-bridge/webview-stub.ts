@@ -301,7 +301,7 @@ const VSCodeHostStub = {
 
   queryGithubIssues: async (): Promise<GithubIssue[]> => [],
 
-  readGitBranches: async (_limit?: number): Promise<string[]> => [],
+  readGitBranches: async (): Promise<string[]> => [],
 
   readReviews: (): Promise<ThreadSignalSerialization<Review[]>> => {
     return Promise.resolve({} as ThreadSignalSerialization<Review[]>);

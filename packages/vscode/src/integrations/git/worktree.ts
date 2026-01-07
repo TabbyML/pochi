@@ -120,6 +120,7 @@ export class WorktreeManager implements vscode.Disposable {
 
   private async init() {
     if (!(await this.isGitRepository())) {
+      this.inited.resolve();
       return;
     }
     logger.info("init worktree manager");

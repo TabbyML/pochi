@@ -33,7 +33,7 @@ import {
   GitBranchIcon,
   PlusIcon,
 } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 export type CreateWorktreeType = GitWorktree | "new-worktree" | undefined;
@@ -68,19 +68,44 @@ function BaseBranchSelector({
 }) {
   const { data: branches } = useQuery({
     queryKey: ["git-branches"],
-    queryFn: () => vscodeHost.readGitBranches(50),
+    queryFn: () => vscodeHost.readGitBranches(),
   });
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const { t } = useTranslation();
 
-  const filteredBranches = branches?.filter((branch) => {
-    const branchName = branch.replace(/^origin\//, "");
-    return (
-      branchName.toLowerCase().includes(search.toLowerCase()) ||
-      branch.toLowerCase().includes(search.toLowerCase())
-    );
-  });
+  // Step 1: Sort all branches first
+  const sortedBranches = useMemo(() => {
+    return branches?.slice().sort((a, b) => {
+      const isAMain = a === "main" || a === "master";
+      const isBMain = b === "main" || b === "master";
+      if (isAMain && !isBMain) return -1;
+      if (!isAMain && isBMain) return 1;
+
+      const isALocal = !a.startsWith("origin/");
+      const isBLocal = !b.startsWith("origin/");
+      if (isALocal && !isBLocal) return -1;
+      if (!isALocal && isBLocal) return 1;
+
+      return 0;
+    });
+  }, [branches]);
+
+  // Step 2: Filter by search query
+  const filteredBranches = useMemo(() => {
+    return sortedBranches?.filter((branch) => {
+      const branchName = branch.replace(/^origin\//, "");
+      return (
+        branchName.toLowerCase().includes(search.toLowerCase()) ||
+        branch.toLowerCase().includes(search.toLowerCase())
+      );
+    });
+  }, [sortedBranches, search]);
+
+  // Step 3: Slice for display (show first 50 results)
+  const displayBranches = useMemo(() => {
+    return filteredBranches?.slice(0, 50);
+  }, [filteredBranches]);
 
   const [selectedIndex, setSelectedIndex] = useState(0);
 
@@ -116,7 +141,7 @@ function BaseBranchSelector({
         </Tooltip>
       </TooltipProvider>
       <DropdownMenuContent
-        className="max-h-[300px] min-w-[160px] max-w-[80vw] overflow-y-auto border bg-background p-0 text-popover-foreground shadow sm:max-w-[600px]"
+        className="max-h-[300px] w-[80vw] min-w-[160px] overflow-y-auto border bg-background p-0 text-popover-foreground shadow sm:w-[500px]"
         align="start"
         onCloseAutoFocus={(e) => e.preventDefault()}
       >
@@ -134,15 +159,15 @@ function BaseBranchSelector({
               if (e.key === "ArrowDown") {
                 e.preventDefault();
                 setSelectedIndex((prev) =>
-                  Math.min(prev + 1, (filteredBranches?.length ?? 0) - 1),
+                  Math.min(prev + 1, (displayBranches?.length ?? 0) - 1),
                 );
               } else if (e.key === "ArrowUp") {
                 e.preventDefault();
                 setSelectedIndex((prev) => Math.max(prev - 1, 0));
               } else if (e.key === "Enter") {
                 e.preventDefault();
-                if (filteredBranches?.[selectedIndex]) {
-                  onChange(filteredBranches[selectedIndex]);
+                if (displayBranches?.[selectedIndex]) {
+                  onChange(displayBranches[selectedIndex]);
                   setOpen(false);
                   setSearch("");
                 }
@@ -151,12 +176,12 @@ function BaseBranchSelector({
           />
         </div>
         <div className="p-1">
-          {filteredBranches?.length === 0 && (
+          {displayBranches?.length === 0 && (
             <div className="py-2 text-center text-muted-foreground text-xs">
               {t("worktreeSelect.noBranchFound")}
             </div>
           )}
-          {filteredBranches?.map((branch, index) => {
+          {displayBranches?.map((branch, index) => {
             const isRemote = branch.startsWith("origin/");
             const displayName = isRemote
               ? branch

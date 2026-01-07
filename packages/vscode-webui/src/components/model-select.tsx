@@ -119,7 +119,7 @@ export function ModelSelect({
               side="bottom"
               align="start"
               alignOffset={6}
-              className="dropdown-menu max-h-[32vh] min-w-[18rem] animate-in overflow-y-auto overflow-x-hidden rounded-md border bg-background p-2 text-popover-foreground shadow"
+              className="dropdown-menu max-h-[90vh] min-w-[18rem] animate-in overflow-y-auto overflow-x-hidden rounded-md border bg-background p-2 text-popover-foreground shadow"
             >
               <DropdownMenuRadioGroup>
                 {hostedModels
