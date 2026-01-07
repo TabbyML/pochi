@@ -9,13 +9,13 @@ import { Label } from "./ui/label";
 import { Tooltip } from "./ui/tooltip";
 
 type Options =
-  | "pochiLayoutMoveBottomPanelViews"
+  | "enablePochiLayout"
   | "disableAutoSave"
   | "disableCommentsOpenView"
   | "disableGithubCopilotCodeCompletion";
 
 const OptionsToSettingsKey = {
-  pochiLayoutMoveBottomPanelViews: "pochi.advanced",
+  enablePochiLayout: "pochi.advanced",
   disableAutoSave: "files.autoSave",
   disableCommentsOpenView: "comments.openView",
   disableGithubCopilotCodeCompletion: "github.copilot.enable",
@@ -32,8 +32,8 @@ export function RecommendSettings() {
   const vscodeSettings = useVSCodeSettings();
   const options = useMemo(() => {
     const list = [] as Options[];
-    if (!vscodeSettings.pochiLayout?.moveBottomPanelViews) {
-      list.push("pochiLayoutMoveBottomPanelViews");
+    if (!vscodeSettings.pochiLayout?.enabled) {
+      list.push("enablePochiLayout");
     }
     if (!vscodeSettings.autoSaveDisabled) {
       list.push("disableAutoSave");
@@ -68,10 +68,10 @@ export function RecommendSettings() {
     const params: Partial<VSCodeSettings> = {
       recommendSettingsConfirmed: true,
     };
-    if (selected.includes("pochiLayoutMoveBottomPanelViews")) {
+    if (selected.includes("enablePochiLayout")) {
       params.pochiLayout = {
         ...params.pochiLayout,
-        moveBottomPanelViews: true,
+        enabled: true,
       };
     }
     if (selected.includes("disableAutoSave")) {

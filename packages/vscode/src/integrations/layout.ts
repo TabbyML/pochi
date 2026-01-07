@@ -92,7 +92,7 @@ export function getSortedCurrentTabGroups() {
 export async function applyPochiLayout(params: {
   cwd?: string | undefined;
   mergeSplitWindowEditors?: boolean;
-  moveBottomPanelViews?: boolean;
+  enabled?: boolean;
   cycleFocus?: boolean;
 }) {
   logger.trace("Begin applyPochiLayout.");
@@ -102,7 +102,7 @@ export async function applyPochiLayout(params: {
   const userActiveTerminal = vscode.window.activeTerminal;
 
   // Move bottom panel views to secondary sidebar
-  if (params.moveBottomPanelViews) {
+  if (params.enabled) {
     await executeVSCodeCommand("workbench.action.movePanelToSidePanel");
   }
 

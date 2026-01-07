@@ -207,7 +207,7 @@ const PochiAdvanceSettings = z.object({
   webviewLogLevel: z.string().optional(),
   pochiLayout: z
     .object({
-      moveBottomPanelViews: z.boolean().optional(),
+      enabled: z.boolean().optional(),
     })
     .optional(),
 });

@@ -720,9 +720,8 @@ export class CommandManager implements vscode.Disposable {
       cwd,
       cycleFocus,
       mergeSplitWindowEditors: true,
-      moveBottomPanelViews:
-        this.pochiConfiguration.advancedSettings.value.pochiLayout
-          ?.moveBottomPanelViews,
+      enabled:
+        this.pochiConfiguration.advancedSettings.value.pochiLayout?.enabled,
     });
   }
 

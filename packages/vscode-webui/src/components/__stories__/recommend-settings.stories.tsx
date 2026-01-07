@@ -9,7 +9,7 @@ const defaultSettings: VSCodeSettings = {
   commentsOpenViewDisabled: false,
   githubCopilotCodeCompletionEnabled: true,
   pochiLayout: {
-    moveBottomPanelViews: false,
+    enabled: false,
   },
 };
 
@@ -70,7 +70,7 @@ export const AllConfigured: Story = {
       commentsOpenViewDisabled: true,
       githubCopilotCodeCompletionEnabled: false,
       pochiLayout: {
-        moveBottomPanelViews: true,
+        enabled: true,
       },
     },
   },

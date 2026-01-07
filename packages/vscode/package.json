@@ -534,9 +534,10 @@
                 "default": {},
                 "additionalProperties": false,
                 "properties": {
-                  "moveBottomPanelViews": {
+                  "enabled": {
                     "type": "boolean",
-                    "default": false
+                    "default": false,
+                    "description": "Enable Pochi Layout."
                   }
                 }
               }

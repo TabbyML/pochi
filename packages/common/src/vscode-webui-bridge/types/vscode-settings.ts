@@ -2,7 +2,7 @@ export interface VSCodeSettings {
   recommendSettingsConfirmed: boolean;
   pochiLayout?:
     | {
-        moveBottomPanelViews?: boolean | undefined;
+        enabled?: boolean | undefined;
       }
     | undefined;
   autoSaveDisabled: boolean;

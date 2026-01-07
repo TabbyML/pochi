@@ -437,7 +437,7 @@
     "title": "Pochi は以下の設定を変更します",
     "ok": "OK",
     "options": {
-      "pochiLayoutMoveBottomPanelViews": "Pochi レイアウトで下部パネルビューをサイドバーに移動する",
+      "enablePochiLayout": "Pochi レイアウトを有効にする",
       "disableAutoSave": "自動保存を無効にする",
       "disableCommentsOpenView": "コメントパネルの自動表示を無効にする",
       "disableGithubCopilotCodeCompletion": "GitHub Copilot のコード補完を無効にする"
