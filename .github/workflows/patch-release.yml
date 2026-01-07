@@ -6,7 +6,7 @@ on:
 
 jobs:
   patch-release:
-    if: github.event.issue.pull_request && github.event.issue.state == 'closed' && startsWith(github.event.comment.body, '/release ')
+    if: github.event.issue.pull_request && github.event.issue.state == 'closed' && startsWith(github.event.comment.body, '/release ') && (github.event.comment.author_association == 'OWNER' || github.event.comment.author_association == 'MEMBER' || github.event.comment.author_association == 'COLLABORATOR')
     runs-on: ubuntu-latest
     permissions:
       contents: write
