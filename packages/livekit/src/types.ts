@@ -38,11 +38,21 @@ export type DataParts = {
   "active-selection": {
     activeSelection: ActiveSelection;
   };
+  "bash-outputs": {
+    bashOutputs: BashOutputs;
+  };
 };
 
 export type UITools = InferUITools<ClientTools>;
 
 export type Message = UIMessage<Metadata, DataParts, UITools>;
+
+const BashOutputs = z.object({
+  outputs: z.array(z.string()).describe("Bash outputs"),
+});
+
+export type BashOutputs = z.infer<typeof BashOutputs>;
+
 
 const RequestData = z.object({
   environment: Environment.optional(),

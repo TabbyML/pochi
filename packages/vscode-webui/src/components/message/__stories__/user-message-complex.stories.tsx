@@ -91,6 +91,18 @@ const complexUserMessage: Message = {
         ],
       },
     },
+    // Bash outputs (sample)
+    {
+      type: "data-bash-outputs",
+      data: {
+        bashOutputs: {
+          outputs: [
+            "$ ls -a\n. .. src package.json",
+            "$ cat hello_world.txt\nHello World!",
+          ],
+        },
+      },
+    },
     // Attachments (Files)
     {
       type: "file",

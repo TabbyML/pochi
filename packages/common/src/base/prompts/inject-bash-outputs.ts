@@ -1,5 +1,5 @@
-import type { TextUIPart, UIMessage } from "ai";
-import { prompts } from "./index";
+import type { UIMessage } from "ai";
+import type { DataParts } from "@getpochi/livekit";
 
 export function injectBashOutputs(
   message: UIMessage,
@@ -20,18 +20,18 @@ export function injectBashOutputs(
     return result;
   });
 
-  const reminderPart = {
-    type: "text",
-    text: prompts.createSystemReminder(
-      `Bash command output referred from workflow:\n${bashCommandOutputs.join("\n\n")}`,
-    ),
-  } satisfies TextUIPart;
+  const bashOutputsPart = {
+    type: "data-bash-outputs" as const,
+    data: {
+      bashOutputs: { outputs: bashCommandOutputs },
+    },
+  } satisfies { type: "data-bash-outputs"; data: DataParts["bash-outputs"] };
 
   const workflowPartIndex = message.parts.findIndex(isWorkflowTextPart);
   const indexToInsert = workflowPartIndex === -1 ? 0 : workflowPartIndex + 1;
   message.parts = [
     ...message.parts.slice(0, indexToInsert),
-    reminderPart,
+    bashOutputsPart,
     ...message.parts.slice(indexToInsert),
   ];
 }
