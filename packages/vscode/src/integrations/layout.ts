@@ -96,6 +96,7 @@ export async function applyPochiLayout(params: {
   mergeSplitWindowEditors?: boolean;
   enabled?: boolean;
   cycleFocus?: boolean;
+  disableOpenTaskByDefault?: boolean;
   disableOpenTerminalByDefault?: boolean;
 }) {
   logger.trace("Begin applyPochiLayout.");
@@ -450,7 +451,11 @@ export async function applyPochiLayout(params: {
   }
 
   // If no tabs in task group, open a new task
-  if (getSortedCurrentTabGroups()[0].tabs.length === 0 && params.cwd) {
+  if (
+    !params.disableOpenTaskByDefault &&
+    getSortedCurrentTabGroups()[0].tabs.length === 0 &&
+    params.cwd
+  ) {
     logger.trace("Open new task tab.");
     await PochiTaskEditorProvider.openTaskEditor({
       type: "new-task",
@@ -557,7 +562,7 @@ export async function getViewColumnForTask(params: {
   }
 
   if (autoApplyPochiLayout) {
-    await applyPochiLayout({ cwd: params.cwd });
+    await applyPochiLayout({ cwd: params.cwd, disableOpenTaskByDefault: true });
     return vscode.ViewColumn.One;
   }
 
