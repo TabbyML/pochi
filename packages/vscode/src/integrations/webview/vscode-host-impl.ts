@@ -700,12 +700,13 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     },
   );
 
-  readLatestCheckpoint = async (): Promise<
-    ThreadSignalSerialization<string | null>
-  > => {
-    await this.checkpointService.ensureInitialized();
-    return ThreadSignal.serialize(this.checkpointService.latestCheckpoint);
-  };
+  readLatestCheckpoint = runExclusive.build(
+    this.checkpointGroup,
+    async (): Promise<ThreadSignalSerialization<string | null>> => {
+      await this.checkpointService.ensureInitialized();
+      return ThreadSignal.serialize(this.checkpointService.latestCheckpoint);
+    },
+  );
 
   readCheckpointPath = async (): Promise<string | undefined> => {
     return this.checkpointService.getShadowGitPath();
