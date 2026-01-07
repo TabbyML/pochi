@@ -2947,7 +2947,114 @@ We all understand real coding experience involves a lot of short, focused typing
 
 One of the reasons NES feels fast is because everything that isn’t the latest user intent is thrown away immediately. This cancellation of stale predictions is one of the biggest reasons Pochi’s NES feels so smooth and accurate. <br />
 
-More on this in our upcoming Part 3 post.  Stay tuned!
+More on this in our Part 3 post. **[Read more](https://docs.getpochi.com/developer-updates/request-management-in-nes/)**.
+
+
+# NES Series (Part 4): Dynamic Rendering Strategies for AI Code Edits
+URL: /developer-updates/dynamic-rendering-stratergies-for-ai-edits
+How Pochi renders a NES suggestion in VS Code without disrupting the developer's flow
+***
+
+title: 'NES Series (Part 4): Dynamic Rendering Strategies for AI Code Edits'
+description: "How Pochi renders a NES suggestion in VS Code without disrupting the developer's flow"
+image: "/og-image/cover-nes-part-4-og-image"
+--------------------------------------------
+
+# NES Series (Part 4): Dynamic Rendering Strategies for AI Code Edits
+
+![NES Cover Image Part 4](./images/cover-nes-part-4-blog.png)
+
+So far in this series, you’ve seen **[how we trained our NES model](https://docs.getpochi.com/developer-updates/how-we-created-nes-model/)**, what that **[model takes as context](https://docs.getpochi.com/developer-updates/context-management-in-your-editor/)** to make a prediction, and how these model **[requests are managed with correct timing](https://docs.getpochi.com/developer-updates/request-management-in-nes/)** under continuous typing.
+
+With this, we’ve reached a point where NES can predict what edit should happen and when it should appear in the editor.
+
+In Part 4, we'll talk about how there is still one critical decision to make. **Once a suggestion arrives, how should that change be presented inside a live editor?**
+
+Pochi’s NES is built as a VS Code-native feature, not a standalone IDE or a custom fork. This means previews must integrate with VS Code’s public APIs, performance model, and established interaction patterns.
+
+This introduces a core design challenge - to surface enough context for a suggestion to be actionable, **without disrupting the developer's flow.**
+
+Designing a system that honors this is more than a matter of visual polish; it is a complex systems + UX problem. We’ll explore why this balance is so difficult for a native AI agent and the specific rendering strategies NES uses to achieve it.
+
+## The Display Problem
+
+Unlike conventional editor features, NES does not control where the user’s cursor is when a suggestion arrives. The editor is a continuously changing environment and does not function like a static canvas. Sometimes the user's cursor might be exactly where the edit belongs, or it can be twenty lines away, or the suggestion itself can be a huge change spanning multiple lines.
+
+Showing such suggestions naïvely introduces new failure modes that are easy to trigger and hard to ignore. One experiences jumps in cursor position, abrupt viewport scrolls, or rendering large changes directly in the editing flow. In practice, these behaviors are often more disruptive than not showing a suggestion at all.
+
+This brings us to the most fundamental design question: **How do we show an edit without stealing the developer’s attention?**
+
+Answering that question requires understanding the VS Code interaction model.
+
+VS Code does not provide a built-in API for previewing LLM-generated edits. Instead, the editor offers different primitives for different kinds of locations and edits. These primitives are optimized for various interaction patterns, each with their own affordances and limitations. Some work well for cursor-local edits, while others are better suited for changes elsewhere in the file.
+
+Understanding this difference is key. Pochi's NES does not render suggestions in a single, fixed way. Instead, NES relies on these primitives to create a balance between visibility and disruption.
+
+## Dynamic Rendering Strategy
+
+Rather than forcing all suggestions into a single representation, we designed a Dynamic Rendering Strategy offering the optimal visual experiences in different editing scenarios:
+
+* Suggestions that target **the current cursor position** are rendered inline, flowing naturally into the user's typing behavior.
+* Suggestions that apply **off-cursor** are previewed via an inline diff decoration, avoiding jumps in the viewport.
+* For **large, multi-line block inserts**, a floating preview is used to provide sufficient context without disrupting the user's current focus.
+
+This way, each path is deliberately scoped to the situations where it performs best, aligning it with the least disruptive representation for a given edit.
+
+Let’s take a walk-through of these rendering strategies in detail and examine when each one is used, starting with the least disruptive case.
+
+### Inline Completion
+
+When an edit is positioned right at the cursor, the least disruptive option is to stay out of the way. In such cases, we render the edit inline, making it blend directly into the user's typing flow.
+
+To achieve this, we use VS Code's inline completion API. This approach works especially well for small, localized changes like autoclosing brackets, replacing a few characters, or edits that are directly made under the cursor.
+
+![NES Cover Image Part 4](./images/nes-inline-completion-blog.gif)
+
+### Inline Diff Preview
+
+Because NES predicts the next meaningful edit across the file (not just at the cursor), many suggestions naturally apply outside the user’s current editing position. For example, while you are typing inside a function, NES may suggest updating a related import, adjusting a type definition, or fixing a reference several lines away.
+
+In these cases, the cost of getting the presentation wrong is high. The user is forced to jump across the file, break context and interrupt their flow.
+
+To avoid that, we render the suggestion as an inline diff decoration. The text to be replaced is highlighted in red, while the new content is shown in green at the insertion point. This way, the user gets a clear preview of the change without moving the cursor.
+
+![NES Cover Image Part 4](./images/inline-diff-completion-nes-part-4-blog.gif)
+
+This works particularly well for changes involving single-line updates or even multiple lines where each line is being changed independently.
+
+### Floating Diff Image
+
+Because NES has the ability to propose structural edits, such as inserting a new helper function, refactoring a block of logic, or adding a multi-line configuration, it frequently produces multi-line suggestions that cannot be represented as simple, inline changes.
+
+In these cases, the suggestion is no longer tied to the cursor’s immediate context, and the standard inline rendering stratergies do not suffice.
+
+At this point, the decision falls under either pulling the user away from where they’re working or bringing the preview to them. Since preserving developer flow is a core design principle for NES, we consistently choose the latter.
+
+In order to make the suggestion appear near the edit target without moving the cursor, we generate a floating diff preview and render it as an image. The color schema of the suggestion will also stay consistent with the other solutions we discussed previously - red for deleted text, and green for inserted ones.
+
+VS Code allows extensions to attach image-based decorations. With careful layout and positioning, these decorations can be floated near the edit target and used as a diff preview. However, the editor does not render code into images, which means the preview has to be generated by the extension itself.
+
+This required a small rendering pipeline:
+
+* **Theme matching:** Every VS Code theme is an extension with a standard JSON format. We parse the active theme, extract its token colour map, and match it to the user’s active settings so the preview matches the theme in the editor.
+
+* **Syntax highlighting:** VSCode includes a bundled `TextMate` runtime. We load the grammar for the current filetype, generate syntax scopes, and apply the same colouring rules that VS Code uses. This ensures that the rendered code maintains the same appearance as the code in the editor.
+
+* **Image rendering:** Here we use `canvaskit-wasm` to render the tokenized code into an image. To draw the code properly, we took the editor’s current `fontSize` and `lineHeight`, drew each tokenized segment at the correct coordinates, then applied diff highlights (additions in green and removals in red). The final image is then surfaced using the decoration API.
+
+![NES Cover Image Part 4](./images/floating-preview-nes-part-4-blog.gif)
+
+This approach allows multi-line edit suggestions to appear near their target location while preserving cursor position and avoiding viewport jumps.
+
+## Conclusion
+
+Different kinds of edit suggestions need different presentation strategies, with the editor API playing a decisive role in shaping the final experience.
+
+Rendering an NES suggestion ended up being less about displaying text and more about maintaining the reader’s attention. Because no matter what, once attention is broken, even the best suggestion gets ignored.
+
+Each rendering path is designed to stay as close as possible to the developer’s flow while working within the editor’s interaction model.
+
+At this point in our journey, NES can decide what to suggest (the model), when to surface it (request management), and how to show it without disruption (rendering paths). Combined, these layers define how AI-generated edit results become truly helpful in a real IDE.
 
 
 # NES Series (Part 1): The Edit Model Behind Tab Completion
@@ -2961,6 +3068,20 @@ image: "/og-image/nes-part-1-og-image.png"
 ------------------------------------------
 
 # NES Series (Part 1): The Edit Model Behind Tab Completion
+
+<Callout title="Note">
+  This is a four-part series on how we trained and built our NES model at Pochi, covering everything from the edit model behind tab completion to real-time context management, request lifecycles, and dynamic rendering for AI code edits.
+
+  Read the full series:
+
+  – [Part 1: The Edit Model Behind Tab Completion](https://docs.getpochi.com/developer-updates/how-we-created-nes-model/)
+
+  – [Part 2: Real-Time Context Management in Your Code Editor](https://docs.getpochi.com/developer-updates/context-management-in-your-editor/)
+
+  – [Part 3: The Request Management Lifecycle Under Continuous Typing](https://docs.getpochi.com/developer-updates/request-management-in-nes/)
+
+  – [Part 4: Dynamic Rendering Strategies for AI Code Edits](https://docs.getpochi.com/developer-updates/dynamic-rendering-stratergies-for-ai-edits/)
+</Callout>
 
 In this post, we’re introducing our internal edit model, the foundation behind Next Edit Suggestion (NES). It’s an upgrade to Tab completion, designed to predict the next change your code needs, wherever it lives.
 
@@ -3039,7 +3160,7 @@ Here’s a small example image showing the full inference-time context with the 
 
 NES combines these inputs to infer the user’s intent from earlier edits and predict the next edit inside the editable region only.
 
-In this post, we’ve focused on how the model is trained and evaluated. In the next post, we’ll go deeper into how these dynamic contexts are constructed, ranked, and streamed into the model to drive real-time, context-aware edit predictions.
+In this post, we’ve focused on how the model is trained and evaluated. In the **[next post](https://docs.getpochi.com/developer-updates/context-management-in-your-editor/)**, we’ll go deeper into how these dynamic contexts are constructed, ranked, and streamed into the model to drive real-time, context-aware edit predictions.
 
 
 # Developer Updates
@@ -3063,6 +3184,108 @@ Here you will find highlights on features, enhancements, and bug fixes, plus ins
   ### Sep 22, 2025
 
   --- */}
+
+## [NES Series (Part 4): Dynamic Rendering Strategies for AI Code Edits](./dynamic-rendering-stratergies-for-ai-edits)
+
+#### Jan 06, 2026
+
+# NES Series (Part 4): Dynamic Rendering Strategies for AI Code Edits
+
+![NES Cover Image Part 4](./images/cover-nes-part-4-blog.png)
+
+So far in this series, you’ve seen **[how we trained our NES model](https://docs.getpochi.com/developer-updates/how-we-created-nes-model/)**, what that **[model takes as context](https://docs.getpochi.com/developer-updates/context-management-in-your-editor/)** to make a prediction, and how these model **[requests are managed with correct timing](https://docs.getpochi.com/developer-updates/request-management-in-nes/)** under continuous typing.
+
+With this, we’ve reached a point where NES can predict what edit should happen and when it should appear in the editor.
+
+In Part 4, we'll talk about how there is still one critical decision to make. **Once a suggestion arrives, how should that change be presented inside a live editor?**
+
+Pochi’s NES is built as a VS Code-native feature, not a standalone IDE or a custom fork. This means previews must integrate with VS Code’s public APIs, performance model, and established interaction patterns.
+
+This introduces a core design challenge - to surface enough context for a suggestion to be actionable, **without disrupting the developer's flow.**
+
+Designing a system that honors this is more than a matter of visual polish; it is a complex systems + UX problem. We’ll explore why this balance is so difficult for a native AI agent and the specific rendering strategies NES uses to achieve it.
+
+## The Display Problem
+
+Unlike conventional editor features, NES does not control where the user’s cursor is when a suggestion arrives. The editor is a continuously changing environment and does not function like a static canvas. Sometimes the user's cursor might be exactly where the edit belongs, or it can be twenty lines away, or the suggestion itself can be a huge change spanning multiple lines.
+
+Showing such suggestions naïvely introduces new failure modes that are easy to trigger and hard to ignore. One experiences jumps in cursor position, abrupt viewport scrolls, or rendering large changes directly in the editing flow. In practice, these behaviors are often more disruptive than not showing a suggestion at all.
+
+This brings us to the most fundamental design question: **How do we show an edit without stealing the developer’s attention?**
+
+Answering that question requires understanding the VS Code interaction model.
+
+VS Code does not provide a built-in API for previewing LLM-generated edits. Instead, the editor offers different primitives for different kinds of locations and edits. These primitives are optimized for various interaction patterns, each with their own affordances and limitations. Some work well for cursor-local edits, while others are better suited for changes elsewhere in the file.
+
+Understanding this difference is key. Pochi's NES does not render suggestions in a single, fixed way. Instead, NES relies on these primitives to create a balance between visibility and disruption.
+
+## Dynamic Rendering Strategy
+
+Rather than forcing all suggestions into a single representation, we designed a Dynamic Rendering Strategy offering the optimal visual experiences in different editing scenarios:
+
+* Suggestions that target **the current cursor position** are rendered inline, flowing naturally into the user's typing behavior.
+* Suggestions that apply **off-cursor** are previewed via an inline diff decoration, avoiding jumps in the viewport.
+* For **large, multi-line block inserts**, a floating preview is used to provide sufficient context without disrupting the user's current focus.
+
+This way, each path is deliberately scoped to the situations where it performs best, aligning it with the least disruptive representation for a given edit.
+
+Let’s take a walk-through of these rendering strategies in detail and examine when each one is used, starting with the least disruptive case.
+
+### Inline Completion
+
+When an edit is positioned right at the cursor, the least disruptive option is to stay out of the way. In such cases, we render the edit inline, making it blend directly into the user's typing flow.
+
+To achieve this, we use VS Code's inline completion API. This approach works especially well for small, localized changes like autoclosing brackets, replacing a few characters, or edits that are directly made under the cursor.
+
+![NES Cover Image Part 4](./images/nes-inline-completion-blog.gif)
+
+### Inline Diff Preview
+
+Because NES predicts the next meaningful edit across the file (not just at the cursor), many suggestions naturally apply outside the user’s current editing position. For example, while you are typing inside a function, NES may suggest updating a related import, adjusting a type definition, or fixing a reference several lines away.
+
+In these cases, the cost of getting the presentation wrong is high. The user is forced to jump across the file, break context and interrupt their flow.
+
+To avoid that, we render the suggestion as an inline diff decoration. The text to be replaced is highlighted in red, while the new content is shown in green at the insertion point. This way, the user gets a clear preview of the change without moving the cursor.
+
+![NES Cover Image Part 4](./images/inline-diff-completion-nes-part-4-blog.gif)
+
+This works particularly well for changes involving single-line updates or even multiple lines where each line is being changed independently.
+
+### Floating Diff Image
+
+Because NES has the ability to propose structural edits, such as inserting a new helper function, refactoring a block of logic, or adding a multi-line configuration, it frequently produces multi-line suggestions that cannot be represented as simple, inline changes.
+
+In these cases, the suggestion is no longer tied to the cursor’s immediate context, and the standard inline rendering stratergies do not suffice.
+
+At this point, the decision falls under either pulling the user away from where they’re working or bringing the preview to them. Since preserving developer flow is a core design principle for NES, we consistently choose the latter.
+
+In order to make the suggestion appear near the edit target without moving the cursor, we generate a floating diff preview and render it as an image. The color schema of the suggestion will also stay consistent with the other solutions we discussed previously - red for deleted text, and green for inserted ones.
+
+VS Code allows extensions to attach image-based decorations. With careful layout and positioning, these decorations can be floated near the edit target and used as a diff preview. However, the editor does not render code into images, which means the preview has to be generated by the extension itself.
+
+This required a small rendering pipeline:
+
+* **Theme matching:** Every VS Code theme is an extension with a standard JSON format. We parse the active theme, extract its token colour map, and match it to the user’s active settings so the preview matches the theme in the editor.
+
+* **Syntax highlighting:** VSCode includes a bundled `TextMate` runtime. We load the grammar for the current filetype, generate syntax scopes, and apply the same colouring rules that VS Code uses. This ensures that the rendered code maintains the same appearance as the code in the editor.
+
+* **Image rendering:** Here we use `canvaskit-wasm` to render the tokenized code into an image. To draw the code properly, we took the editor’s current `fontSize` and `lineHeight`, drew each tokenized segment at the correct coordinates, then applied diff highlights (additions in green and removals in red). The final image is then surfaced using the decoration API.
+
+![NES Cover Image Part 4](./images/floating-preview-nes-part-4-blog.gif)
+
+This approach allows multi-line edit suggestions to appear near their target location while preserving cursor position and avoiding viewport jumps.
+
+## Conclusion
+
+Different kinds of edit suggestions need different presentation strategies, with the editor API playing a decisive role in shaping the final experience.
+
+Rendering an NES suggestion ended up being less about displaying text and more about maintaining the reader’s attention. Because no matter what, once attention is broken, even the best suggestion gets ignored.
+
+Each rendering path is designed to stay as close as possible to the developer’s flow while working within the editor’s interaction model.
+
+At this point in our journey, NES can decide what to suggest (the model), when to surface it (request management), and how to show it without disruption (rendering paths). Combined, these layers define how AI-generated edit results become truly helpful in a real IDE.
+
+***
 
 ## [Weekly Update #17](./2026-01-02-weekly-update-17)
 
@@ -3196,7 +3419,7 @@ Also, starting this week, along with weekly updates, we’ll now include key deb
 
 In [Part 1](https://docs.getpochi.com/developer-updates/how-we-created-nes-model/), we talked about how we trained our NES model to predict the next meaningful edit you’re likely to make in your code.
 
-In [Part 2](https://docs.getpochi.com/developer-updates/#nes-series-part-2-real-time-context-management-in-your-code-editor), we then covered what the model takes as context to make this edit. This included deep dives into editable regions, user’s edit history, and using the overall project context.
+In [Part 2](https://docs.getpochi.com/developer-updates/context-management-in-your-editor/), we then covered what the model takes as context to make this edit. This included deep dives into editable regions, user’s edit history, and using the overall project context.
 
 Together, these two pieces (model + context) form the core intelligence foundation of the NES system. But incorporating them into an end-to-end real-time engineering system requires more thinking about real developer coding behaviour.
 
@@ -3298,7 +3521,7 @@ NES suggestions aren’t always a single line near the cursor. Sometimes the rel
 
 This is especially tricky inside a code editor like VS Code, where rendering options are limited. In such cases, how do we preview multi-line edits precisely? How do we make them feel lightweight, immediate, and skimmable, without being modal or disruptive?
 
-In Part 4, we’ll dive into how we approached these constraints and built a rendering system that enables richer previews and lower-latency interactions for code edits.
+In [Part 4](https://docs.getpochi.com/developer-updates/dynamic-rendering-stratergies-for-ai-edits/), we’ll dive into how we approached these constraints and built a rendering system that enables richer previews and lower-latency interactions for code edits.
 
 ***
 
@@ -3602,7 +3825,7 @@ We all understand real coding experience involves a lot of short, focused typing
 
 One of the reasons NES feels fast is because everything that isn’t the latest user intent is thrown away immediately. This cancellation of stale predictions is one of the biggest reasons Pochi’s NES feels so smooth and accurate. <br />
 
-More on this in our upcoming Part 3 post.  Stay tuned!
+More on this in our Part 3 post. **[Read more](https://docs.getpochi.com/developer-updates/request-management-in-nes/)**.
 
 ***
 
@@ -3948,6 +4171,20 @@ We shipped Next Edit Suggestions (one of our biggest upgrades so far), along wit
 
 # NES Series (Part 1): The Edit Model Behind Tab Completion
 
+<Callout title="Note">
+  This is a four-part series on how we trained and built our NES model at Pochi, covering everything from the edit model behind tab completion to real-time context management, request lifecycles, and dynamic rendering for AI code edits.
+
+  Read the full series:
+
+  – [Part 1: The Edit Model Behind Tab Completion](https://docs.getpochi.com/developer-updates/how-we-created-nes-model/)
+
+  – [Part 2: Real-Time Context Management in Your Code Editor](https://docs.getpochi.com/developer-updates/context-management-in-your-editor/)
+
+  – [Part 3: The Request Management Lifecycle Under Continuous Typing](https://docs.getpochi.com/developer-updates/request-management-in-nes/)
+
+  – [Part 4: Dynamic Rendering Strategies for AI Code Edits](https://docs.getpochi.com/developer-updates/dynamic-rendering-stratergies-for-ai-edits/)
+</Callout>
+
 In this post, we’re introducing our internal edit model, the foundation behind Next Edit Suggestion (NES). It’s an upgrade to Tab completion, designed to predict the next change your code needs, wherever it lives.
 
 Technically this is much harder to achieve, since NES considers the entire file plus your recent edit history and predicts how your code is likely to evolve: where the next change should happen, and what that change should be.
@@ -4025,7 +4262,7 @@ Here’s a small example image showing the full inference-time context with the 
 
 NES combines these inputs to infer the user’s intent from earlier edits and predict the next edit inside the editable region only.
 
-In this post, we’ve focused on how the model is trained and evaluated. In the next post, we’ll go deeper into how these dynamic contexts are constructed, ranked, and streamed into the model to drive real-time, context-aware edit predictions.
+In this post, we’ve focused on how the model is trained and evaluated. In the **[next post](https://docs.getpochi.com/developer-updates/context-management-in-your-editor/)**, we’ll go deeper into how these dynamic contexts are constructed, ranked, and streamed into the model to drive real-time, context-aware edit predictions.
 
 ***
 
@@ -4771,7 +5008,7 @@ image: "/og-image/cover-nes-part-3-og-image.png"
 
 In [Part 1](https://docs.getpochi.com/developer-updates/how-we-created-nes-model/), we talked about how we trained our NES model to predict the next meaningful edit you’re likely to make in your code.
 
-In [Part 2](https://docs.getpochi.com/developer-updates/#nes-series-part-2-real-time-context-management-in-your-code-editor), we then covered what the model takes as context to make this edit. This included deep dives into editable regions, user’s edit history, and using the overall project context.
+In [Part 2](https://docs.getpochi.com/developer-updates/context-management-in-your-editor/), we then covered what the model takes as context to make this edit. This included deep dives into editable regions, user’s edit history, and using the overall project context.
 
 Together, these two pieces (model + context) form the core intelligence foundation of the NES system. But incorporating them into an end-to-end real-time engineering system requires more thinking about real developer coding behaviour.
 
@@ -4873,7 +5110,7 @@ NES suggestions aren’t always a single line near the cursor. Sometimes the rel
 
 This is especially tricky inside a code editor like VS Code, where rendering options are limited. In such cases, how do we preview multi-line edits precisely? How do we make them feel lightweight, immediate, and skimmable, without being modal or disruptive?
 
-In Part 4, we’ll dive into how we approached these constraints and built a rendering system that enables richer previews and lower-latency interactions for code edits.
+In [Part 4](https://docs.getpochi.com/developer-updates/dynamic-rendering-stratergies-for-ai-edits/), we’ll dive into how we approached these constraints and built a rendering system that enables richer previews and lower-latency interactions for code edits.
 
 
 # Connect to Tabby Server for Enhanced Enterprise Experience
