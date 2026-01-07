@@ -4,7 +4,7 @@ import { clone } from "remeda";
 import { KnownTags } from "./constants";
 import { prompts } from "./prompts";
 
-function resolvePendingToolCalls(
+export function resolvePendingToolCalls(
   messages: UIMessage[],
   resolveLastMessage = false,
 ): UIMessage[] {
