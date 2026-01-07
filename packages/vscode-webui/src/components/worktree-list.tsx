@@ -95,6 +95,13 @@ export function WorktreeList({
     isLoading: isLoadingWorktrees,
   } = useWorktrees();
 
+  const workspacePath = currentWorkspace?.workspacePath;
+  const isOpenCurrentWorkspace = !!workspacePath && cwd === workspacePath;
+  const isOpenMainWorktree =
+    isOpenCurrentWorkspace &&
+    worktrees?.find((x: GitWorktree) => x.isMain)?.path === cwd;
+  const isGitWorkspace = !!worktrees?.length;
+
   const groups = useMemo(() => {
     if (isLoadingWorktrees || isLoadingCurrentWorkspace) {
       return [];
@@ -181,7 +188,7 @@ export function WorktreeList({
   // If so, we don't need to set a max-height for the section
   const containsOnlyWorkspaceGroup =
     optimisticGroups.length === 1 &&
-    optimisticGroups[0].path === (currentWorkspace?.workspacePath || cwd) &&
+    optimisticGroups[0].path === (workspacePath || cwd) &&
     !deletedGroups.length;
 
   return (
@@ -195,6 +202,8 @@ export function WorktreeList({
           gitOriginUrl={gitOriginUrl}
           gh={gh}
           containsOnlyWorkspaceGroup={containsOnlyWorkspaceGroup}
+          isOpenMainWorktree={isOpenMainWorktree}
+          isGitWorkspace={isGitWorkspace}
         />
       ))}
       {deletedGroups.length > 0 && (
@@ -241,6 +250,8 @@ function WorktreeSection({
   gitOriginUrl,
   containsOnlyWorkspaceGroup,
   isDeleted,
+  isOpenMainWorktree,
+  isGitWorkspace,
 }: {
   group: WorktreeGroup;
   isLoadingWorktrees: boolean;
@@ -248,7 +259,9 @@ function WorktreeSection({
   gh?: { installed: boolean; authorized: boolean };
   gitOriginUrl?: string | null;
   containsOnlyWorkspaceGroup?: boolean;
+  isOpenMainWorktree?: boolean;
   isDeleted?: boolean;
+  isGitWorkspace?: boolean;
 }) {
   const { t } = useTranslation();
   // Default expanded for existing worktrees, collapsed for deleted
@@ -362,25 +375,27 @@ function WorktreeSection({
                 </TooltipTrigger>
                 <TooltipContent>{t("tasksPage.newTask")}</TooltipContent>
               </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 w-6 p-0"
-                    asChild
-                  >
-                    <a
-                      href={`command:pochi.worktree.openDiff?${encodeURIComponent(JSON.stringify([group.path]))}`}
+              {isGitWorkspace && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0"
+                      asChild
                     >
-                      <GitCompare className="size-4" />
-                    </a>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {t("tasksPage.openWorktreeDiff")}
-                </TooltipContent>
-              </Tooltip>
+                      <a
+                        href={`command:pochi.worktree.openDiff?${encodeURIComponent(JSON.stringify([group.path]))}`}
+                      >
+                        <GitCompare className="size-4" />
+                      </a>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {t("tasksPage.openWorktreeDiff")}
+                  </TooltipContent>
+                </Tooltip>
+              )}
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
@@ -400,7 +415,7 @@ function WorktreeSection({
                   {t("tasksPage.openWorktreeInTerminal")}
                 </TooltipContent>
               </Tooltip>
-              {!group.isMain && (
+              {!group.isMain && isOpenMainWorktree && (
                 <Popover
                   open={showDeleteConfirm}
                   onOpenChange={setShowDeleteConfirm}
