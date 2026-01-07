@@ -432,7 +432,6 @@
     "title": "Pochi가 다음 설정을 수정합니다",
     "ok": "확인",
     "options": {
-      "enablePochiLayoutKeybinding": "Pochi 레이아웃 단축키 활성화",
       "pochiLayoutMoveBottomPanelViews": "Pochi 레이아웃에서 하단 패널 뷰를 사이드바로 이동",
       "disableAutoSave": "자동 저장 비활성화",
       "disableCommentsOpenView": "주석 패널 자동 열기 비활성화",

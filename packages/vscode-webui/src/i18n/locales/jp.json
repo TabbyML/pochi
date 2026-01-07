@@ -437,7 +437,6 @@
     "title": "Pochi は以下の設定を変更します",
     "ok": "OK",
     "options": {
-      "enablePochiLayoutKeybinding": "Pochi レイアウトのキーバインドを有効にする",
       "pochiLayoutMoveBottomPanelViews": "Pochi レイアウトで下部パネルビューをサイドバーに移動する",
       "disableAutoSave": "自動保存を無効にする",
       "disableCommentsOpenView": "コメントパネルの自動表示を無効にする",

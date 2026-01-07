@@ -435,7 +435,6 @@
     "title": "Pochi recommends the following settings",
     "ok": "Apply",
     "options": {
-      "enablePochiLayoutKeybinding": "Enable Pochi Layout shortcut",
       "pochiLayoutMoveBottomPanelViews": "Move bottom panels to the sidebar in Pochi Layout",
       "disableAutoSave": "Disable auto-save",
       "disableCommentsOpenView": "Disable auto-opening of the comments panel",
