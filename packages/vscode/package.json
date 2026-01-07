@@ -379,8 +379,7 @@
       {
         "command": "pochi.applyPochiLayoutWithCycleFocus",
         "key": "ctrl+l",
-        "mac": "cmd+l",
-        "when": "pochi.enablePochiLayoutKeybinding"
+        "mac": "cmd+l"
       }
     ],
     "configuration": [
@@ -527,14 +526,10 @@
                 "default": {},
                 "additionalProperties": false,
                 "properties": {
-                  "keybindingEnabled": {
+                  "enabled": {
                     "type": "boolean",
                     "default": false,
-                    "description": "Enable Ctrl+` keybinding to toggle Pochi layout or open terminal."
-                  },
-                  "moveBottomPanelViews": {
-                    "type": "boolean",
-                    "default": false
+                    "description": "Enable Pochi Layout."
                   }
                 }
               }

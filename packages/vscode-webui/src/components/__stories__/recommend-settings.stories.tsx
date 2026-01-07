@@ -9,8 +9,7 @@ const defaultSettings: VSCodeSettings = {
   commentsOpenViewDisabled: false,
   githubCopilotCodeCompletionEnabled: true,
   pochiLayout: {
-    keybindingEnabled: false,
-    moveBottomPanelViews: false,
+    enabled: false,
   },
 };
 
@@ -63,21 +62,6 @@ export const Default: Story = {
   },
 };
 
-export const OnlyKeybindingsNeeded: Story = {
-  parameters: {
-    settings: {
-      ...defaultSettings,
-      autoSaveDisabled: true,
-      commentsOpenViewDisabled: true,
-      githubCopilotCodeCompletionEnabled: false,
-      pochiLayout: {
-        keybindingEnabled: false,
-        moveBottomPanelViews: true,
-      },
-    },
-  },
-};
-
 export const AllConfigured: Story = {
   parameters: {
     settings: {
@@ -86,8 +70,7 @@ export const AllConfigured: Story = {
       commentsOpenViewDisabled: true,
       githubCopilotCodeCompletionEnabled: false,
       pochiLayout: {
-        keybindingEnabled: true,
-        moveBottomPanelViews: true,
+        enabled: true,
       },
     },
   },

@@ -9,15 +9,13 @@ import { Label } from "./ui/label";
 import { Tooltip } from "./ui/tooltip";
 
 type Options =
-  | "enablePochiLayoutKeybinding"
-  | "pochiLayoutMoveBottomPanelViews"
+  | "enablePochiLayout"
   | "disableAutoSave"
   | "disableCommentsOpenView"
   | "disableGithubCopilotCodeCompletion";
 
 const OptionsToSettingsKey = {
-  enablePochiLayoutKeybinding: "pochi.advanced",
-  pochiLayoutMoveBottomPanelViews: "pochi.advanced",
+  enablePochiLayout: "pochi.advanced",
   disableAutoSave: "files.autoSave",
   disableCommentsOpenView: "comments.openView",
   disableGithubCopilotCodeCompletion: "github.copilot.enable",
@@ -29,25 +27,13 @@ function openSettingsLink(option: Options) {
   );
 }
 
-const OpenKeybindingLink = "(Ctrl/Cmd+L)";
-
-function openKeybindingLink() {
-  const commandId = "pochi.applyPochiLayoutWithCycleFocus";
-  return encodeURI(
-    `command:workbench.action.openGlobalKeybindings?["${commandId}"]`,
-  );
-}
-
 export function RecommendSettings() {
   const { t } = useTranslation();
   const vscodeSettings = useVSCodeSettings();
   const options = useMemo(() => {
     const list = [] as Options[];
-    if (!vscodeSettings.pochiLayout?.keybindingEnabled) {
-      list.push("enablePochiLayoutKeybinding");
-    }
-    if (!vscodeSettings.pochiLayout?.moveBottomPanelViews) {
-      list.push("pochiLayoutMoveBottomPanelViews");
+    if (!vscodeSettings.pochiLayout?.enabled) {
+      list.push("enablePochiLayout");
     }
     if (!vscodeSettings.autoSaveDisabled) {
       list.push("disableAutoSave");
@@ -82,16 +68,10 @@ export function RecommendSettings() {
     const params: Partial<VSCodeSettings> = {
       recommendSettingsConfirmed: true,
     };
-    if (selected.includes("enablePochiLayoutKeybinding")) {
+    if (selected.includes("enablePochiLayout")) {
       params.pochiLayout = {
         ...params.pochiLayout,
-        keybindingEnabled: true,
-      };
-    }
-    if (selected.includes("pochiLayoutMoveBottomPanelViews")) {
-      params.pochiLayout = {
-        ...params.pochiLayout,
-        moveBottomPanelViews: true,
+        enabled: true,
       };
     }
     if (selected.includes("disableAutoSave")) {
@@ -143,17 +123,6 @@ export function RecommendSettings() {
                     </span>
                   </a>
                 </Tooltip>
-                {option === "enablePochiLayoutKeybinding" && (
-                  <a
-                    href={openKeybindingLink()}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <span className="hover:text-primary">
-                      {OpenKeybindingLink}
-                    </span>
-                  </a>
-                )}
               </Label>
             </div>
           ))}

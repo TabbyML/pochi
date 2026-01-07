@@ -1,6 +1,8 @@
 import { listWorkspaceFiles } from "@getpochi/common/tool-utils";
+import { container } from "tsyringe";
 import * as vscode from "vscode";
 import { getLogger } from "../lib/logger";
+import { PochiConfiguration } from "./configuration";
 import { PochiTaskEditorProvider } from "./webview/webview-panel";
 
 const logger = getLogger("Layout");
@@ -92,8 +94,9 @@ export function getSortedCurrentTabGroups() {
 export async function applyPochiLayout(params: {
   cwd?: string | undefined;
   mergeSplitWindowEditors?: boolean;
-  moveBottomPanelViews?: boolean;
+  enabled?: boolean;
   cycleFocus?: boolean;
+  disableOpenTerminalByDefault?: boolean;
 }) {
   logger.trace("Begin applyPochiLayout.");
 
@@ -102,7 +105,7 @@ export async function applyPochiLayout(params: {
   const userActiveTerminal = vscode.window.activeTerminal;
 
   // Move bottom panel views to secondary sidebar
-  if (params.moveBottomPanelViews) {
+  if (params.enabled) {
     await executeVSCodeCommand("workbench.action.movePanelToSidePanel");
   }
 
@@ -466,7 +469,10 @@ export async function applyPochiLayout(params: {
   }
 
   // If no terminals in terminal group, open one
-  if (getSortedCurrentTabGroups()[2].tabs.length === 0) {
+  if (
+    !params.disableOpenTerminalByDefault &&
+    getSortedCurrentTabGroups()[2].tabs.length === 0
+  ) {
     logger.trace("Open new terminal tab.");
     await executeVSCodeCommand(
       "pochi.openTerminal",
@@ -539,10 +545,19 @@ function getTabGroupType(tabs: readonly vscode.Tab[]) {
   return "editor";
 }
 
-export async function getViewColumnForTask(task: {
+export async function getViewColumnForTask(params: {
   cwd: string;
 }): Promise<vscode.ViewColumn> {
+  const autoApplyPochiLayout =
+    container.resolve(PochiConfiguration).advancedSettings.value.pochiLayout
+      ?.enabled;
+
   if (isCurrentLayoutDerivedFromPochiLayout()) {
+    return vscode.ViewColumn.One;
+  }
+
+  if (autoApplyPochiLayout) {
+    await applyPochiLayout({ cwd: params.cwd });
     return vscode.ViewColumn.One;
   }
 
@@ -559,7 +574,7 @@ export async function getViewColumnForTask(task: {
     group.tabs.some(
       (tab) =>
         isPochiTaskTab(tab) &&
-        PochiTaskEditorProvider.parseTaskUri(tab.input.uri)?.cwd === task.cwd,
+        PochiTaskEditorProvider.parseTaskUri(tab.input.uri)?.cwd === params.cwd,
     ),
   )?.viewColumn;
   if (sameCwdColumn) {
@@ -582,9 +597,21 @@ export async function getViewColumnForTask(task: {
   return vscode.ViewColumn.One;
 }
 
-export function getViewColumnForTerminal(): vscode.ViewColumn | undefined {
+export async function getViewColumnForTerminal(params: {
+  cwd?: string;
+}): Promise<vscode.ViewColumn | undefined> {
+  const autoApplyPochiLayout =
+    container.resolve(PochiConfiguration).advancedSettings.value.pochiLayout
+      ?.enabled;
   if (isCurrentLayoutDerivedFromPochiLayout()) {
+    return vscode.window.tabGroups.all.length as vscode.ViewColumn;
     // last view column is the terminal group
+  }
+  if (autoApplyPochiLayout) {
+    await applyPochiLayout({
+      disableOpenTerminalByDefault: true,
+      cwd: params.cwd,
+    });
     return vscode.window.tabGroups.all.length as vscode.ViewColumn;
   }
   return undefined;
