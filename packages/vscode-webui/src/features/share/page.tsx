@@ -75,7 +75,8 @@ export function SharePage() {
   const todosRef = useRef<Todo[]>((shareData?.todos ?? []) as Todo[]);
 
   const { todos } = useTodos({
-    messages: renderMessages,
+    initialTodos: shareData?.todos,
+    messages: messages as Message[],
     todosRef,
   });
 
