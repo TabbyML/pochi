@@ -1,6 +1,5 @@
 import { getLogger } from "@getpochi/common";
 import { type CustomAgent, ToolsByPermission } from "@getpochi/tools";
-import type { Store } from "@livestore/livestore";
 import { Duration } from "@livestore/utils/effect";
 import type { ChatInit, ChatOnErrorCallback, ChatOnFinishCallback } from "ai";
 import type z from "zod/v4";
@@ -37,8 +36,7 @@ export type LiveChatKitOptions<T> = {
   chatClass: new (options: ChatInit<Message>) => T;
 
   onOverrideMessages?: (options: {
-    // biome-ignore lint/suspicious/noExplicitAny: generic store
-    store: Store<any>;
+    store: LiveKitStore;
     taskId: string;
     messages: Message[];
     abortSignal: AbortSignal;
