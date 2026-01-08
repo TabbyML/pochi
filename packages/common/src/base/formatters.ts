@@ -363,14 +363,7 @@ const UIFormatOps = [
   removeSystemReminder,
   combineConsecutiveAssistantMessages,
 ];
-const ShareUIFormatOps = [
-  removeEmptyTextParts,
-  removeEmptyMessages,
-  refineDetectedNewPromblems,
-  resolvePendingToolCallsForShareUI,
-  removeSystemReminder,
-  combineConsecutiveAssistantMessages,
-];
+const ShareUIFormatOps = [...UIFormatOps, resolvePendingToolCallsForShareUI];
 const StorageFormatOps = [
   removeEmptyTextParts,
   removeEmptyMessages,
