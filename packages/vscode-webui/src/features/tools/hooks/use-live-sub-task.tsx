@@ -75,7 +75,7 @@ export function useLiveSubTask(
 
   // FIXME: handle auto retry for output without task.
   const chatKit = useLiveChatKit({
-    store: store,
+    store,
     taskId: uid,
     abortSignal: abortController.current.signal,
     getters,
