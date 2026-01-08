@@ -10,8 +10,7 @@ export function setBlobUrl(key: string, data: Blob) {
 import { useDefaultStore } from "./use-default-store";
 
 export function useStoreBlobUrl(inputUrl: string): string | null {
-  // biome-ignore lint/suspicious/noExplicitAny: generic store
-  const store = useDefaultStore() as any;
+  const store = useDefaultStore();
   // Do not handle data uri
   if (inputUrl.startsWith("data:")) {
     return inputUrl;

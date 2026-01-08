@@ -79,8 +79,7 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
   const abortText =
     ToolAbortText[pendingApproval.name] || t("toolInvocation.stop");
 
-  // biome-ignore lint/suspicious/noExplicitAny: generic store
-  const store = useDefaultStore() as any;
+  const store = useDefaultStore();
 
   const manualRunSubtask = useCallback(
     (subtaskUid: string) => {

@@ -64,8 +64,7 @@ export function useLiveSubTask(
 
   // biome-ignore lint/style/noNonNullAssertion: uid must have been set.
   const uid = tool.input?._meta?.uid!;
-  // biome-ignore lint/suspicious/noExplicitAny: generic store
-  const store = useDefaultStore() as any;
+  const store = useDefaultStore();
   const task = store.useQuery(catalog.queries.makeTaskQuery(uid));
   const todosRef = useRef<Todo[] | undefined>(undefined);
   const getters = useLiveChatKitGetters({
@@ -76,8 +75,7 @@ export function useLiveSubTask(
 
   // FIXME: handle auto retry for output without task.
   const chatKit = useLiveChatKit({
-    // biome-ignore lint/suspicious/noExplicitAny: generic store
-    store: store as any,
+    store: store,
     taskId: uid,
     abortSignal: abortController.current.signal,
     getters,

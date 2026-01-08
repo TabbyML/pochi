@@ -7,8 +7,7 @@ import { useDefaultStore } from "@/lib/use-default-store";
 
 // Hook to manage tool call states
 export function useToolCallLifeCycles(abortSignal: AbortSignal) {
-  // biome-ignore lint/suspicious/noExplicitAny: generic store
-  const store = useDefaultStore() as any;
+  const store = useDefaultStore();
 
   const [toolCallLifeCycles, setToolCallLifeCycles] = useState<
     Map<string, ManagedToolCallLifeCycle>

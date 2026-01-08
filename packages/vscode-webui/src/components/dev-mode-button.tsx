@@ -129,8 +129,7 @@ export function DevModeButton({ messages, todos }: DevModeButtonProps) {
 
 function OpenDevStore() {
   const { t } = useTranslation();
-  // biome-ignore lint/suspicious/noExplicitAny: generic store
-  const store = useDefaultStore() as any;
+  const store = useDefaultStore();
   const { jwt } = usePochiCredentials();
   const onClick = useCallback(() => {
     vscodeHost.openExternal(

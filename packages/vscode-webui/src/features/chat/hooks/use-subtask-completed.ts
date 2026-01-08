@@ -52,8 +52,7 @@ export const useAddSubtaskResult = ({
   messages,
 }: Pick<UseChatHelpers<Message>, "messages">) => {
   const autoApproveGuard = useAutoApproveGuard();
-  // biome-ignore lint/suspicious/noExplicitAny: generic store
-  const store = useDefaultStore() as any;
+  const store = useDefaultStore();
   const { getToolCallLifeCycle, previewingToolCalls } = useToolCallLifeCycle();
 
   // biome-ignore lint/correctness/useExhaustiveDependencies(previewingToolCalls): watch for previewingToolCalls

@@ -66,8 +66,7 @@ function NewTaskToolView({
   uid,
   toolCallStatusRegistryRef,
 }: NewTaskToolViewProps) {
-  // biome-ignore lint/suspicious/noExplicitAny: generic store
-  const store = useDefaultStore() as any;
+  const store = useDefaultStore();
   const agent = tool.input?.agentType;
   const description = tool.input?.description ?? "";
   const agentType = tool.input?.agentType;
