@@ -10,7 +10,6 @@ import {
   overrideCustomAgentTools,
   selectClientTools,
 } from "@getpochi/tools";
-import type { Store } from "@livestore/livestore";
 import {
   APICallError,
   type ChatRequestOptions,
@@ -26,7 +25,7 @@ import {
 import { pickBy } from "remeda";
 import type z from "zod/v4";
 import { findBlob, makeDownloadFunction } from "../store-blob";
-import type { Message, Metadata, RequestData } from "../types";
+import type { LiveKitStore, Message, Metadata, RequestData } from "../types";
 import { makeRepairToolCall } from "./llm";
 import { parseMcpToolSet } from "./mcp-utils";
 import {
@@ -61,7 +60,7 @@ export type ChatTransportOptions = {
   getters: PrepareRequestGetters;
   isSubTask?: boolean;
   isCli?: boolean;
-  store: Store;
+  store: LiveKitStore;
   customAgent?: CustomAgent;
   outputSchema?: z.ZodAny;
 };
@@ -71,7 +70,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
   private readonly getters: PrepareRequestGetters;
   private readonly isSubTask?: boolean;
   private readonly isCli?: boolean;
-  private readonly store: Store;
+  private readonly store: LiveKitStore;
   private readonly customAgent?: CustomAgent;
   private readonly outputSchema?: z.ZodAny;
 
@@ -286,7 +285,10 @@ async function resolvePromise(o: unknown): Promise<unknown> {
   return resolved;
 }
 
-function handleReadFileOutput(store: Store, readFile: ClientTools["readFile"]) {
+function handleReadFileOutput(
+  store: LiveKitStore,
+  readFile: ClientTools["readFile"],
+) {
   return tool({
     ...readFile,
     toModelOutput: (output) => {

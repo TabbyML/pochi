@@ -1,12 +1,12 @@
 import { MediaOutput } from "@getpochi/tools";
-import type { Store } from "@livestore/livestore";
 import z from "zod";
 import { StoreBlobProtocol } from ".";
 import { catalog } from ".";
 import { makeBlobQuery } from "./livestore/default-queries";
+import type { LiveKitStore } from "./types";
 
 export async function processContentOutput(
-  store: Store,
+  store: LiveKitStore,
   output: unknown,
   signal?: AbortSignal,
 ) {
@@ -75,7 +75,7 @@ function toBase64(bytes: Uint8Array) {
 }
 
 export function findBlob(
-  store: Store,
+  store: LiveKitStore,
   url: URL,
   mediaType: string,
 ): { data: string; mediaType: string } | undefined {
@@ -100,11 +100,11 @@ export function findBlob(
 }
 
 export async function fileToUri(
-  store: Store,
+  store: LiveKitStore | null,
   file: File,
   signal?: AbortSignal,
 ) {
-  if ("POCHI_CORS_PROXY_PORT" in globalThis) {
+  if (!store) {
     // isBrowser
     return fileToRemoteUri(file, signal);
   }
@@ -129,7 +129,7 @@ export async function fileToUri(
 }
 
 async function findBlobUrl(
-  store: Store,
+  store: LiveKitStore,
   mimeType: string,
   base64: string,
   signal?: AbortSignal,
@@ -171,7 +171,7 @@ async function fileToRemoteUri(file: File, signal?: AbortSignal) {
   return data.url;
 }
 
-export function makeDownloadFunction(store: Store) {
+export function makeDownloadFunction(store: LiveKitStore) {
   const downloadFn = async (
     items: Array<{ url: URL; isUrlSupportedByModel: boolean }>,
   ): Promise<

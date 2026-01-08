@@ -2,8 +2,7 @@ import { getTaskChangedFileStore } from "@/lib/hooks/use-task-changed-files";
 import { vscodeHost } from "@/lib/vscode";
 import { prompts } from "@getpochi/common";
 import { extractWorkflowBashCommands } from "@getpochi/common/message-utils";
-import { type Message, catalog } from "@getpochi/livekit";
-import type { Store } from "@livestore/livestore";
+import { type LiveKitStore, type Message, catalog } from "@getpochi/livekit";
 import { ThreadAbortSignal } from "@quilted/threads";
 import { unique } from "remeda";
 
@@ -17,7 +16,7 @@ export async function onOverrideMessages({
   messages,
   abortSignal,
 }: {
-  store: Store;
+  store: LiveKitStore;
   taskId: string;
   messages: Message[];
   abortSignal: AbortSignal;
@@ -121,7 +120,7 @@ async function appendWorkflowBashOutputs(
 }
 
 async function updateTaskLineChanges(
-  store: Store,
+  store: LiveKitStore,
   taskId: string,
   firstCheckpoint: string,
 ) {

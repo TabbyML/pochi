@@ -1,23 +1,16 @@
 import { type Message, type Task, catalog } from "@getpochi/livekit";
-import { makePersistedAdapter } from "@livestore/adapter-web";
-import LiveStoreSharedWorker from "@livestore/adapter-web/shared-worker?sharedworker";
 import { liveStoreVersion } from "@livestore/livestore";
-import { LiveStoreProvider, useStore } from "@livestore/react";
-import { type FormEvent, useState } from "react";
+import { StoreRegistry, StoreRegistryProvider } from "@livestore/react";
+import { type FormEvent, Suspense, useState } from "react";
 import { unstable_batchedUpdates as batchUpdates } from "react-dom";
 import ReactDOM from "react-dom/client";
 import { useTranslation } from "react-i18next";
-import LiveStoreWorker from "./livestore.default.worker.ts?worker";
-
-const adapter = makePersistedAdapter({
-  storage: { type: "opfs" },
-  worker: LiveStoreWorker,
-  sharedWorker: LiveStoreSharedWorker,
-});
+import {
+  DefauleStoreOptionsProvider,
+  useDefaultStore,
+} from "./lib/use-default-store";
 
 function App() {
-  const { t } = useTranslation();
-
   if (typeof window === "undefined") {
     return null;
   }
@@ -30,23 +23,25 @@ function App() {
   }
 
   return (
-    <LiveStoreProvider
-      schema={catalog.schema}
-      adapter={adapter}
-      renderLoading={() => {
-        return <>{t("dev.loading")}</>;
-      }}
-      batchUpdates={batchUpdates}
-      syncPayload={{ jwt }}
-      storeId={storeId}
+    <StoreRegistryProvider
+      storeRegistry={new StoreRegistry({ defaultOptions: { batchUpdates } })}
     >
-      <Content />
-    </LiveStoreProvider>
+      <Suspense fallback={<Loading />}>
+        <DefauleStoreOptionsProvider storeId={storeId} jwt={jwt}>
+          <Content />
+        </DefauleStoreOptionsProvider>
+      </Suspense>
+    </StoreRegistryProvider>
   );
 }
 
+function Loading() {
+  const { t } = useTranslation();
+  return <>{t("dev.loading")}</>;
+}
+
 function Content() {
-  const { store } = useStore();
+  const store = useDefaultStore();
   const { t } = useTranslation();
   const tasks = store.useQuery(catalog.queries.tasks$);
   const devtoolsLink = `/_livestore/web/${store.storeId}/${store.clientId}/${store.sessionId}/default`;
@@ -69,8 +64,12 @@ function Content() {
   );
 }
 
-function RenderTask({ task }: { task: Task }) {
-  const { store } = useStore();
+function RenderTask({
+  task,
+}: {
+  task: Task;
+}) {
+  const store = useDefaultStore();
   const { t } = useTranslation();
   const messages = store.useQuery(catalog.queries.makeMessagesQuery(task.id));
   return (

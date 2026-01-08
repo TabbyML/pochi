@@ -5,10 +5,11 @@ import { ChatPage, ChatSkeleton } from "@/features/chat";
 import { useModelList } from "@/lib/hooks/use-model-list";
 import { usePochiCredentials } from "@/lib/hooks/use-pochi-credentials";
 import { useUserStorage } from "@/lib/hooks/use-user-storage";
+import { DefauleStoreOptionsProvider } from "@/lib/use-default-store";
 import { encodeStoreId } from "@getpochi/common/store-id-utils";
 import { createFileRoute } from "@tanstack/react-router";
+import { Suspense } from "react";
 import { z } from "zod";
-import { LiveStoreDefaultProvider } from "../livestore-default-provider";
 
 const searchSchema = z.object({
   uid: z.string(),
@@ -61,16 +62,10 @@ function RouteComponent() {
   if (isPending) return null;
 
   return (
-    <LiveStoreDefaultProvider
-      jwt={jwt}
-      storeId={storeId}
-      renderLoading={renderLoading}
-    >
-      <ChatPage key={key} user={users?.pochi} uid={uid} info={info} />
-    </LiveStoreDefaultProvider>
+    <Suspense fallback={<ChatSkeleton />}>
+      <DefauleStoreOptionsProvider storeId={storeId} jwt={jwt}>
+        <ChatPage key={key} user={users?.pochi} uid={uid} info={info} />
+      </DefauleStoreOptionsProvider>
+    </Suspense>
   );
-}
-
-function renderLoading() {
-  return <ChatSkeleton />;
 }

@@ -1,6 +1,5 @@
 import { taskCatalog } from "@getpochi/livekit";
 import type { Task } from "@getpochi/livekit";
-import { useStore } from "@livestore/react";
 import { useCallback, useMemo, useState } from "react";
 
 interface UsePaginatedTasksOptions {
@@ -26,11 +25,13 @@ interface PaginatedTasksResult {
  * - Simpler state management than cursor-based pagination
  * - Ensures reactive updates for task status changes (e.g., "Planning next move")
  */
+import { useTaskStore } from "../use-task-store";
+
 export function usePaginatedTasks({
   cwd,
   pageSize = 10,
 }: UsePaginatedTasksOptions): PaginatedTasksResult {
-  const { store } = useStore();
+  const store = useTaskStore();
 
   const [limit, setLimit] = useState(pageSize);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
