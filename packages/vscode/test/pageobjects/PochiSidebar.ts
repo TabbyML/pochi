@@ -1,4 +1,4 @@
-import { browser, $ } from "@wdio/globals";
+import { $, browser } from "@wdio/globals";
 
 export class PochiSidebar {
   get input() {

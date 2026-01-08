@@ -1,7 +1,7 @@
-import * as fs from "node:fs";
-import * as path from "node:path";
-import * as os from "node:os";
 import { execSync } from "node:child_process";
+import * as fs from "node:fs";
+import * as os from "node:os";
+import * as path from "node:path";
 import { browser } from "@wdio/globals";
 import type { Workbench } from "wdio-vscode-service";
 import { runCommonTests } from "./common";

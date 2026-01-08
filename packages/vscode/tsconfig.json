@@ -6,7 +6,12 @@
     "paths": {
       "@/*": ["./src/*"]
     },
-    "types": ["node", "@wdio/globals/types", "@wdio/mocha-framework", "wdio-vscode-service"]
+    "types": [
+      "node",
+      "@wdio/globals/types",
+      "@wdio/mocha-framework",
+      "wdio-vscode-service"
+    ]
   },
   "exclude": ["assets", "dist"]
 }

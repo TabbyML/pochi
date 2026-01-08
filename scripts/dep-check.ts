@@ -229,6 +229,10 @@ const PackageIgnoreList: Record<string, string[]> = {
     // Testing
     "mocha",
     "@vscode/test-electron",
+    "@testing-library/webdriverio",
+    "@wdio/local-runner",
+    "@wdio/spec-reporter",
+    "wdio-wait-for",
 
     // Releasing
     "ovsx",

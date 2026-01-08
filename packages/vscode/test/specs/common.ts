@@ -1,6 +1,6 @@
 import { browser, expect } from "@wdio/globals";
-import { PochiSidebar } from "../pageobjects/PochiSidebar";
 import type { Workbench } from "wdio-vscode-service";
+import { PochiSidebar } from "../pageobjects/PochiSidebar";
 
 export function runCommonTests(
   getWorkbench: () => Promise<Workbench>,
