@@ -6,10 +6,7 @@ type BashOutputsPart = {
   data: { bashOutputs: BashOutputs };
 };
 
-export function injectBashOutputs(
-  message: UIMessage,
-  outputs: BashOutputs,
-) {
+export function injectBashOutputs(message: UIMessage, outputs: BashOutputs) {
   const bashOutputsPart = {
     type: "data-bash-outputs" as const,
     data: {

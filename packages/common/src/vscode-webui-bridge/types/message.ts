@@ -70,4 +70,3 @@ export const BashOutputs = z.array(
 );
 
 export type BashOutputs = z.infer<typeof BashOutputs>;
-

@@ -4,12 +4,12 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
-import { CommandExecutionPanel } from "../../features/tools/components/command-execution-panel";
-import { ExpandableToolContainer } from "../../features/tools/components/tool-container";
+import type { BashOutputs } from "@getpochi/common/vscode-webui-bridge";
 import { ChevronRight, TerminalSquare } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { BashOutputs } from "@getpochi/common/vscode-webui-bridge";
+import { CommandExecutionPanel } from "../../features/tools/components/command-execution-panel";
+import { ExpandableToolContainer } from "../../features/tools/components/tool-container";
 
 interface Props {
   outputs: BashOutputs;
@@ -54,7 +54,10 @@ export const BashOutputsPart: React.FC<Props> = ({ outputs }) => {
               detail={
                 <CommandExecutionPanel
                   command={entry.command}
-                  output={[entry.output, entry.error ? `${red}ERROR: ${entry.error}${reset}` : ""]
+                  output={[
+                    entry.output,
+                    entry.error ? `${red}ERROR: ${entry.error}${reset}` : "",
+                  ]
                     .filter(Boolean)
                     .join("\n")}
                   onStop={() => {}}
