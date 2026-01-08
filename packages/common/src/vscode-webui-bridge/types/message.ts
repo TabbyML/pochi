@@ -61,8 +61,13 @@ export const UserEdits = z
 
 export type UserEdits = z.infer<typeof UserEdits>;
 
-export const BashOutputs = z.object({
-  outputs: z.array(z.string()).describe("Bash outputs"),
-});
+export const BashOutputs = z.array(
+  z.object({
+    command: z.string().describe("The command that was executed."),
+    output: z.string().describe("The output of the command."),
+    error: z.string().describe("The error of the command.").optional(),
+  }),
+);
 
 export type BashOutputs = z.infer<typeof BashOutputs>;
+

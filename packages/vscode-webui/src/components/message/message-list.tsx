@@ -323,7 +323,7 @@ function Part({
   }
 
   if (part.type === "data-bash-outputs") {
-    return <BashOutputsPart outputs={part.data.bashOutputs.outputs} />;
+    return <BashOutputsPart outputs={part.data.bashOutputs} />;
   }
 
   if (isToolUIPart(part)) {

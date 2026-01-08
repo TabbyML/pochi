@@ -1,33 +1,19 @@
 import type { UIMessage } from "ai";
+import type { BashOutputs } from "../../vscode-webui-bridge/types/message";
 
 type BashOutputsPart = {
   type: "data-bash-outputs";
-  data: { bashOutputs: { outputs: string[] } };
+  data: { bashOutputs: BashOutputs };
 };
 
 export function injectBashOutputs(
   message: UIMessage,
-  outputs: {
-    command: string;
-    output: string;
-    error?: string | undefined;
-  }[],
+  outputs: BashOutputs,
 ) {
-  const bashCommandOutputs = outputs.map(({ command, output, error }) => {
-    let result = `$ ${command}`;
-    if (output) {
-      result += `\n${output}`;
-    }
-    if (error) {
-      result += `\nERROR: ${error}`;
-    }
-    return result;
-  });
-
   const bashOutputsPart = {
     type: "data-bash-outputs" as const,
     data: {
-      bashOutputs: { outputs: bashCommandOutputs },
+      bashOutputs: outputs,
     },
   } satisfies BashOutputsPart;
 
