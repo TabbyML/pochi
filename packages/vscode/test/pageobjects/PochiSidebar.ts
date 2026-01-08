@@ -12,14 +12,16 @@ export class PochiSidebar {
     await pochiView?.openView();
 
     // Wait for view to load
-    await browser.pause(2000);
-
-    const found = await this.findAndSwitchToPochiFrame();
-    if (!found) {
-      throw new Error(
-        "Could not find Pochi webview iframe containing .ProseMirror",
-      );
-    }
+    await browser.waitUntil(
+      async () => {
+        return await this.findAndSwitchToPochiFrame();
+      },
+      {
+        timeout: 1000 * 10,
+        timeoutMsg:
+          "Could not find Pochi webview iframe containing .ProseMirror",
+      },
+    );
   }
 
   async close() {
@@ -63,7 +65,7 @@ export class PochiSidebar {
   }
 
   async sendMessage(text: string) {
-    await this.input.waitForDisplayed({ timeout: 10000 });
+    await this.input.waitForDisplayed({ timeout: 1000 * 10 });
     await this.input.click();
     await browser.keys(text);
     await browser.keys(["Enter"]);

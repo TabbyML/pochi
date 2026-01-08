@@ -1,5 +1,3 @@
-import path from "node:path";
-
 export const config: WebdriverIO.Config = {
   //
   // ====================
@@ -67,7 +65,7 @@ export const config: WebdriverIO.Config = {
         userSettings: {
           "editor.fontSize": 14,
         },
-        workspacePath: path.join(__dirname, "test/test-workspace"),
+        // workspacePath: path.join(__dirname, "test/test-workspace"),
       },
     },
   ],
