@@ -1,10 +1,10 @@
-import { isAutoSuccessToolPart } from "@getpochi/tools";
+import { isAutoSuccessToolPart, isUserInputToolPart } from "@getpochi/tools";
 import { type ToolUIPart, type UIMessage, getToolName, isToolUIPart } from "ai";
 import { clone } from "remeda";
 import { KnownTags } from "./constants";
 import { prompts } from "./prompts";
 
-export function resolvePendingToolCalls(
+function resolvePendingToolCalls(
   messages: UIMessage[],
   resolveLastMessage = false,
 ): UIMessage[] {
@@ -331,6 +331,16 @@ function refineDetectedNewPromblems(messages: UIMessage[]) {
   return messages;
 }
 
+function resolvePendingToolCallsForShareUI(messages: UIMessage[]) {
+  const lastMessage = messages[messages.length - 1];
+  const resolveLastMessage =
+    lastMessage &&
+    lastMessage.role === "assistant" &&
+    lastMessage.parts.some((x) => isUserInputToolPart(x));
+
+  return resolvePendingToolCalls(messages, resolveLastMessage);
+}
+
 type FormatOp = (messages: UIMessage[]) => UIMessage[];
 const LLMFormatOps: FormatOp[] = [
   removeEmptyTextParts,
@@ -350,6 +360,14 @@ const UIFormatOps = [
   removeEmptyMessages,
   refineDetectedNewPromblems,
   resolvePendingToolCalls,
+  removeSystemReminder,
+  combineConsecutiveAssistantMessages,
+];
+const ShareUIFormatOps = [
+  removeEmptyTextParts,
+  removeEmptyMessages,
+  refineDetectedNewPromblems,
+  resolvePendingToolCallsForShareUI,
   removeSystemReminder,
   combineConsecutiveAssistantMessages,
 ];
@@ -375,6 +393,9 @@ export const formatters = {
   // Format messages for the Front-end UI rendering.
   ui: <T extends UIMessage>(messages: T[]) =>
     formatMessages(messages, UIFormatOps) as T[],
+
+  shareUI: <T extends UIMessage>(messages: T[]) =>
+    formatMessages(messages, ShareUIFormatOps) as T[],
 
   // Format messages before sending them to the LLM.
   llm: <T extends UIMessage>(messages: T[], options?: LLMFormatterOptions) => {

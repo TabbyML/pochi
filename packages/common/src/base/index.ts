@@ -4,7 +4,6 @@ export { attachTransport, getLogger } from "./logger";
 
 export {
   formatters,
-  resolvePendingToolCalls,
   type LLMFormatterOptions,
 } from "./formatters";
 export { prompts } from "./prompts";

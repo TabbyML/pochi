@@ -2,10 +2,10 @@ import { MessageList } from "@/components/message/message-list";
 import { VSCodeWebProvider } from "@/components/vscode-web-provider";
 import { ChatContextProvider } from "@/features/chat";
 import { cn } from "@/lib/utils";
-import { formatters, resolvePendingToolCalls } from "@getpochi/common";
+import { formatters } from "@getpochi/common";
 import { type ResizeEvent, ShareEvent } from "@getpochi/common/share-utils";
 import type { Message } from "@getpochi/livekit";
-import { type Todo, isUserInputToolPart } from "@getpochi/tools";
+import type { Todo } from "@getpochi/tools";
 import { createChannel } from "bidc";
 import { Loader2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -67,20 +67,10 @@ export function SharePage() {
     error,
   } = shareData || {};
 
-  const renderMessages = useMemo(() => {
-    const formattedMessages = formatters.ui(messages as Message[]);
-    const lastMessage = formattedMessages[formattedMessages.length - 1];
-
-    if (
-      lastMessage &&
-      lastMessage.role === "assistant" &&
-      lastMessage.parts.some((x) => isUserInputToolPart(x))
-    ) {
-      return resolvePendingToolCalls(formattedMessages, true) as Message[];
-    }
-
-    return formattedMessages;
-  }, [messages]);
+  const renderMessages = useMemo(
+    () => formatters.shareUI(messages as Message[]),
+    [messages],
+  );
 
   const todosRef = useRef<Todo[]>((shareData?.todos ?? []) as Todo[]);
 
