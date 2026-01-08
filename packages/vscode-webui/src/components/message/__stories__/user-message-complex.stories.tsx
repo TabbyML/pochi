@@ -95,12 +95,21 @@ const complexUserMessage: Message = {
     {
       type: "data-bash-outputs",
       data: {
-        bashOutputs: {
-          outputs: [
-            "$ ls -a\n. .. src package.json",
-            "$ cat hello_world.txt\nHello World!",
-          ],
-        },
+        bashOutputs: [
+          {
+            command: "ls -a",
+            output: ".\n..\nsrc\npackage.json",
+          },
+          {
+            command: "cat hello_world.txt",
+            output: "Hello World!",
+          },
+          {
+            command: "false",
+            output: "",
+            error: "Command exited with code 1",
+          },
+        ],
       },
     },
     // Attachments (Files)
