@@ -15,6 +15,7 @@ We use mocha framework, when creating test, do not use mocks for filesystem, jus
 (assuming cwd is packages/vscode)
 test command: `bun run test`
 coverage test command: `bun run test:coverage`
+e2e test command: `bun run e2e`, always run it with background job
 
 When encountering issues like `TypeError: Descriptor for property readFile is non-configurable and non-writable`, please use `proxyquire` to mock the module.
 
