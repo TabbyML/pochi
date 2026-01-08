@@ -98,7 +98,7 @@ const complexUserMessage: Message = {
         bashOutputs: [
           {
             command: "ls -a",
-            output: ".\n..\nsrc\npackage.json",
+            output: ".\r\n..\r\nsrc\r\npackage.json\r\n",
           },
           {
             command: "cat hello_world.txt",
