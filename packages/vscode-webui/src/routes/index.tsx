@@ -9,11 +9,10 @@ import { useCurrentWorkspace } from "@/lib/hooks/use-current-workspace";
 import { useModelList } from "@/lib/hooks/use-model-list";
 import { useUserStorage } from "@/lib/hooks/use-user-storage";
 import { useOptimisticWorktreeDelete } from "@/lib/hooks/use-worktrees";
+import { useTaskStore } from "@/lib/use-task-store";
 import { setActiveStore } from "@/lib/vscode";
-import { useStore } from "@livestore/react";
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { LiveStoreTaskProvider } from "../livestore-task-provider";
+import { Suspense, useEffect, useState } from "react";
 
 export const Route = createFileRoute("/")({
   validateSearch: (search: Record<string, unknown>): { page?: number } => {
@@ -48,14 +47,14 @@ function App() {
   }
 
   return (
-    <LiveStoreTaskProvider cwd={currentWorkspace.cwd}>
+    <Suspense fallback={null}>
       <Tasks />
-    </LiveStoreTaskProvider>
+    </Suspense>
   );
 }
 
 function Tasks() {
-  const { store } = useStore();
+  const store = useTaskStore();
   const { data: currentWorkspace } = useCurrentWorkspace();
   const cwd = currentWorkspace?.cwd || "default";
   const workspacePath = currentWorkspace?.workspacePath;

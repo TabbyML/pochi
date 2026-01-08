@@ -1,9 +1,8 @@
 import type { LanguageModelV2 } from "@ai-sdk/provider";
 import { formatters, getLogger, prompts } from "@getpochi/common";
-import type { Store } from "@livestore/livestore";
 import { convertToModelMessages, generateText } from "ai";
 import { events } from "../../livestore/default-schema";
-import type { Message } from "../../types";
+import type { LiveKitStore, Message } from "../../types";
 
 const logger = getLogger("repairMermaid");
 
@@ -16,7 +15,7 @@ export async function repairMermaid({
   error,
   abortSignal,
 }: {
-  store: Store;
+  store: LiveKitStore;
   taskId: string;
   model: LanguageModelV2;
   messages: Message[];

@@ -23,7 +23,6 @@
     "@getpochi/common": "workspace:*",
     "@getpochi/tools": "workspace:*",
     "@livestore/livestore": "catalog:",
-    "@livestore/react": "catalog:",
     "@livestore/utils": "catalog:",
     "ai": "catalog:",
     "react": "catalog:",

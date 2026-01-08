@@ -5,7 +5,6 @@ import { decodeStoreId } from "@getpochi/common/store-id-utils";
 import { type Message, catalog } from "@getpochi/livekit";
 import type { ClientTools, SubTask } from "@getpochi/tools";
 import type { Store } from "@livestore/livestore";
-import { Effect } from "@livestore/utils/effect";
 import type { UIMessage } from "ai";
 import type { InferToolInput } from "ai";
 import { Hono } from "hono";
@@ -34,21 +33,6 @@ const store = new Hono<{ Bindings: Env; Variables: RequestVariables }>().use(
 );
 
 store
-  .get("/_debug/sync-state", async (c) => {
-    const isOwner = c.get("isOwner");
-    if (!isOwner) {
-      throw new HTTPException(401, { message: "Unauthorized" });
-    }
-    const store = await c.env.getStore();
-    const syncState = await Effect.runPromise(
-      store.syncProcessor.syncState.get,
-    );
-    return c.json({
-      clientId: store.clientId,
-      sessionId: store.sessionId,
-      syncState,
-    });
-  })
   .post("/_debug/force-update-tasks", async (c) => {
     const isOwner = c.get("isOwner");
     if (!isOwner) {

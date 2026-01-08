@@ -1,6 +1,5 @@
 import { useSubtaskOffhand } from "@/features/settings";
 import { type Message, type UITools, catalog } from "@getpochi/livekit";
-import { useStore } from "@livestore/react";
 import type { ToolUIPart } from "ai";
 
 export interface SubtaskInfo {
@@ -16,11 +15,13 @@ export type NewTaskTool = Extract<
   { type: "tool-newTask" }
 >;
 
+import { useDefaultStore } from "@/lib/use-default-store";
+
 export function useSubtaskInfo(
   uid: string,
   parentUid?: string | null,
 ): SubtaskInfo | undefined {
-  const { store } = useStore();
+  const store = useDefaultStore();
   const parentTaskMessages = store.useQuery(
     catalog.queries.makeMessagesQuery(parentUid ?? ""),
   );

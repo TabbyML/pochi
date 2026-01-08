@@ -42,8 +42,10 @@ export function isVSCodeEnvironment() {
   return !!vscodeApi?.getState;
 }
 
-let store: Store | null = null;
-export function setActiveStore(newStore: Store | null): void {
+let store: Store<typeof taskCatalog.schema> | null = null;
+export function setActiveStore(
+  newStore: Store<typeof taskCatalog.schema> | null,
+): void {
   store = newStore;
 }
 

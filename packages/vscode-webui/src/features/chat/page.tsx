@@ -14,7 +14,6 @@ import { type Task, catalog, taskCatalog } from "@getpochi/livekit";
 import type { Message } from "@getpochi/livekit";
 import { useLiveChatKit } from "@getpochi/livekit/react";
 import type { Todo } from "@getpochi/tools";
-import { useStore } from "@livestore/react";
 import { Schema } from "@livestore/utils/effect";
 import { useRouter } from "@tanstack/react-router";
 import { lastAssistantMessageIsCompleteWithToolCalls } from "ai";
@@ -52,6 +51,7 @@ const ChatContainerClassName = tw`mx-auto flex h-screen max-w-6xl flex-col`;
 const ChatToolbarContainerClassName = tw`relative flex flex-col px-4`;
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useDefaultStore } from "@/lib/use-default-store";
 import { useKeepTaskEditor } from "./hooks/use-keep-task-editor";
 import { onOverrideMessages } from "./lib/on-override-messages";
 import { useLiveChatKitGetters } from "./lib/use-live-chat-kit-getters";
@@ -72,8 +72,9 @@ interface ChatProps {
 }
 
 function Chat({ user, uid, info }: ChatProps) {
+  const store = useDefaultStore();
+
   const { t } = useTranslation();
-  const { store } = useStore();
   const todosRef = useRef<Todo[] | undefined>(undefined);
   const { initSubtaskAutoApproveSettings } = useSettingsStore();
   const defaultUser = {
@@ -217,6 +218,7 @@ function Chat({ user, uid, info }: ChatProps) {
   );
 
   const chatKit = useLiveChatKit({
+    store,
     taskId: uid,
     getters,
     isSubTask,

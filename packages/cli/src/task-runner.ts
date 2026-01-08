@@ -11,13 +11,13 @@ import { findTodos, mergeTodos } from "@getpochi/common/message-utils";
 
 import {
   type LLMRequestData,
+  type LiveKitStore,
   type Message,
   processContentOutput,
 } from "@getpochi/livekit";
 import { LiveChatKit } from "@getpochi/livekit/node";
 import { type Todo, isUserInputToolPart } from "@getpochi/tools";
 import type { CustomAgent } from "@getpochi/tools";
-import type { Store } from "@livestore/livestore";
 import {
   getToolName,
   isToolUIPart,
@@ -39,7 +39,7 @@ export interface RunnerOptions {
 
   llm: LLMRequestData;
 
-  store: Store;
+  store: LiveKitStore;
 
   // The parts to use for creating the task
   parts?: Message["parts"];
@@ -102,7 +102,7 @@ export interface RunnerOptions {
 const logger = getLogger("TaskRunner");
 
 export class TaskRunner {
-  private store: Store;
+  private store: LiveKitStore;
   private cwd: string;
   private llm: LLMRequestData;
   private toolCallOptions: ToolCallOptions;

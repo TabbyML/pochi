@@ -1,6 +1,6 @@
+import { useDefaultStore } from "@/lib/use-default-store";
 import type { UseChatHelpers } from "@ai-sdk/react";
 import { type Message, catalog } from "@getpochi/livekit";
-import { useStore } from "@livestore/react";
 import { getToolName } from "ai";
 import { useEffect, useMemo } from "react";
 import { useAutoApproveGuard, useToolCallLifeCycle } from "../lib/chat-state";
@@ -12,7 +12,7 @@ export const useShowCompleteSubtaskButton = (
   subtaskInfo: SubtaskInfo | undefined,
   messages: Message[],
 ) => {
-  const { store } = useStore();
+  const store = useDefaultStore();
   const parentMessages = store
     .useQuery(catalog.queries.makeMessagesQuery(subtaskInfo?.parentUid ?? ""))
     .map((x) => x.data as Message);
@@ -52,7 +52,7 @@ export const useAddSubtaskResult = ({
   messages,
 }: Pick<UseChatHelpers<Message>, "messages">) => {
   const autoApproveGuard = useAutoApproveGuard();
-  const { store } = useStore();
+  const store = useDefaultStore();
   const { getToolCallLifeCycle, previewingToolCalls } = useToolCallLifeCycle();
 
   // biome-ignore lint/correctness/useExhaustiveDependencies(previewingToolCalls): watch for previewingToolCalls

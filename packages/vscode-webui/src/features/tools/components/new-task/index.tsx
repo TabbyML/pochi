@@ -5,9 +5,9 @@ import {
   ToolCallStatusRegistry,
 } from "@/features/chat";
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
+import { useDefaultStore } from "@/lib/use-default-store";
 import { cn } from "@/lib/utils";
 import { isVSCodeEnvironment } from "@/lib/vscode";
-import { useStore } from "@livestore/react";
 import { Link } from "@tanstack/react-router";
 import { type RefObject, useEffect, useRef } from "react";
 import { useInlinedSubTask } from "../../hooks/use-inlined-sub-task";
@@ -66,7 +66,7 @@ function NewTaskToolView({
   uid,
   toolCallStatusRegistryRef,
 }: NewTaskToolViewProps) {
-  const { store } = useStore();
+  const store = useDefaultStore();
   const agent = tool.input?.agentType;
   const description = tool.input?.description ?? "";
   const agentType = tool.input?.agentType;

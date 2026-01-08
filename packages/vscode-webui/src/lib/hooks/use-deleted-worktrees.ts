@@ -1,5 +1,4 @@
 import { taskCatalog } from "@getpochi/livekit";
-import { useStore } from "@livestore/react";
 import { useMemo } from "react";
 
 interface Options {
@@ -7,12 +6,14 @@ interface Options {
   excludeWorktrees: { path: string }[];
   isLoading: boolean;
 }
+import { useTaskStore } from "../use-task-store";
+
 export function useDeletedWorktrees({
   cwd,
   excludeWorktrees,
   isLoading,
 }: Options) {
-  const { store } = useStore();
+  const store = useTaskStore();
 
   const excludeWorktreePaths = useMemo(
     () => excludeWorktrees?.map((wt) => wt.path) ?? [],
