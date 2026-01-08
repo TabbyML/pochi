@@ -1,5 +1,4 @@
 import { StoreBlobProtocol, catalog } from "@getpochi/livekit";
-import { useStore } from "@livestore/react";
 import { isVSCodeEnvironment } from "./vscode";
 
 const blobs = new Map<string, string>();
@@ -8,8 +7,11 @@ export function setBlobUrl(key: string, data: Blob) {
   blobs.set(key, URL.createObjectURL(data));
 }
 
+import { useDefaultStore } from "./use-default-store";
+
 export function useStoreBlobUrl(inputUrl: string): string | null {
-  const { store } = useStore();
+  // biome-ignore lint/suspicious/noExplicitAny: generic store
+  const store = useDefaultStore() as any;
   // Do not handle data uri
   if (inputUrl.startsWith("data:")) {
     return inputUrl;

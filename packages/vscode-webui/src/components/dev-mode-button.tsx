@@ -9,10 +9,10 @@ import {
 import { useIsDevMode } from "@/features/settings";
 import { useCopyToClipboard } from "@/lib/hooks/use-copy-to-clipboard";
 import { usePochiCredentials } from "@/lib/hooks/use-pochi-credentials";
+import { useDefaultStore } from "@/lib/use-default-store";
 import { vscodeHost } from "@/lib/vscode";
 import type { Message } from "@getpochi/livekit";
 import type { Todo } from "@getpochi/tools";
-import { useStore } from "@livestore/react";
 import { convertToModelMessages } from "ai";
 
 import { CheckIcon, CopyIcon, Gavel, StoreIcon } from "lucide-react"; // Removed FilesIcon
@@ -129,7 +129,8 @@ export function DevModeButton({ messages, todos }: DevModeButtonProps) {
 
 function OpenDevStore() {
   const { t } = useTranslation();
-  const { store } = useStore();
+  // biome-ignore lint/suspicious/noExplicitAny: generic store
+  const store = useDefaultStore() as any;
   const { jwt } = usePochiCredentials();
   const onClick = useCallback(() => {
     vscodeHost.openExternal(

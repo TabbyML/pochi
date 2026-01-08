@@ -1,4 +1,4 @@
-import type { Store } from "@livestore/livestore";
+import type { LiveKitStore } from "@getpochi/livekit";
 
 /**
  * Creates an AbortController with graceful shutdown handlers for SIGINT and SIGTERM.
@@ -31,7 +31,7 @@ export function createAbortControllerWithGracefulShutdown(): AbortController {
   return abortController;
 }
 
-export async function shutdownStoreAndExit(store: Store, exitCode = 0) {
+export async function shutdownStoreAndExit(store: LiveKitStore, exitCode = 0) {
   await store.shutdownPromise();
 
   // FIXME: this is a hack to make sure the process exits

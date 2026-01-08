@@ -4,12 +4,12 @@ import type {
 } from "@ai-sdk/provider";
 import { safeParseJSON } from "@ai-sdk/provider-utils";
 import { type CustomAgent, newTaskInputSchema } from "@getpochi/tools";
-import type { Store } from "@livestore/livestore";
 import { InvalidToolInputError } from "ai";
 import { events } from "../../livestore/default-schema";
+import type { LiveKitStore } from "../../types";
 
 export function createNewTaskMiddleware(
-  store: Store,
+  store: LiveKitStore,
   cwd: string | undefined,
   parentTaskId: string,
   customAgents?: CustomAgent[],

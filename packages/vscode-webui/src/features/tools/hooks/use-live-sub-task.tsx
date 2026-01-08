@@ -13,13 +13,13 @@ import {
 import { useTodos } from "@/features/todo";
 import { useCustomAgent } from "@/lib/hooks/use-custom-agents";
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
+import { useDefaultStore } from "@/lib/use-default-store";
 import { vscodeHost } from "@/lib/vscode";
 import { useChat } from "@ai-sdk/react";
 import type { ExecuteCommandResult } from "@getpochi/common/vscode-webui-bridge";
 import { catalog } from "@getpochi/livekit";
 import { useLiveChatKit } from "@getpochi/livekit/react";
 import type { Todo } from "@getpochi/tools";
-import { useStore } from "@livestore/react";
 import { ThreadAbortSignal } from "@quilted/threads";
 import {
   type ThreadSignalSerialization,
@@ -64,10 +64,10 @@ export function useLiveSubTask(
 
   // biome-ignore lint/style/noNonNullAssertion: uid must have been set.
   const uid = tool.input?._meta?.uid!;
-  const { store } = useStore();
+  // biome-ignore lint/suspicious/noExplicitAny: generic store
+  const store = useDefaultStore() as any;
   const task = store.useQuery(catalog.queries.makeTaskQuery(uid));
   const todosRef = useRef<Todo[] | undefined>(undefined);
-
   const getters = useLiveChatKitGetters({
     todos: todosRef,
     isSubTask: true,
@@ -76,6 +76,8 @@ export function useLiveSubTask(
 
   // FIXME: handle auto retry for output without task.
   const chatKit = useLiveChatKit({
+    // biome-ignore lint/suspicious/noExplicitAny: generic store
+    store: store as any,
     taskId: uid,
     abortSignal: abortController.current.signal,
     getters,

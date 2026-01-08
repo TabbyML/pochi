@@ -8,7 +8,7 @@ import { makeMessagesQuery, makeTaskQuery } from "../livestore/default-queries";
 import { events, tables } from "../livestore/default-schema";
 import { toTaskError, toTaskGitInfo, toTaskStatus } from "../task";
 
-import type { Message, Task } from "../types";
+import type { LiveKitStore, Message, Task } from "../types";
 import { scheduleGenerateTitleJob } from "./background-job";
 import { filterCompletionTools } from "./filter-completion-tools";
 import {
@@ -32,12 +32,13 @@ export type LiveChatKitOptions<T> = {
   isSubTask?: boolean;
   isCli?: boolean;
 
-  store: Store;
+  store: LiveKitStore;
 
   chatClass: new (options: ChatInit<Message>) => T;
 
   onOverrideMessages?: (options: {
-    store: Store;
+    // biome-ignore lint/suspicious/noExplicitAny: generic store
+    store: Store<any>;
     taskId: string;
     messages: Message[];
     abortSignal: AbortSignal;
@@ -80,7 +81,7 @@ export class LiveChatKit<
 > {
   protected readonly taskId: string;
   protected readonly displayId?: number;
-  protected readonly store: Store;
+  protected readonly store: LiveKitStore;
   readonly chat: T;
   private readonly transport: FlexibleChatTransport;
   onStreamStart?: () => void;

@@ -1,9 +1,8 @@
 import type { LanguageModelV2 } from "@ai-sdk/provider";
 import { formatters, getLogger, prompts } from "@getpochi/common";
-import type { Store } from "@livestore/livestore";
 import { convertToModelMessages, generateText } from "ai";
 import { makeDownloadFunction } from "../../store-blob";
-import type { Message } from "../../types";
+import type { LiveKitStore, Message } from "../../types";
 
 const logger = getLogger("compactTask");
 
@@ -15,7 +14,7 @@ export async function compactTask({
   abortSignal,
   inline,
 }: {
-  store: Store;
+  store: LiveKitStore;
   taskId: string;
   model: LanguageModelV2;
   messages: Message[];
@@ -52,7 +51,7 @@ export async function compactTask({
 }
 
 async function createSummary(
-  store: Store,
+  store: LiveKitStore,
   taskId: string,
   model: LanguageModelV2,
   abortSignal: AbortSignal | undefined,
