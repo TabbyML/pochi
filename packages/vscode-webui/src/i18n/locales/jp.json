@@ -58,7 +58,8 @@
     "custom": "カスタム",
     "super": "加強",
     "swift": "極速",
-    "reload": "再読み込み"
+    "reload": "再読み込み",
+    "subscriptionRequired": "サブスクリプション必要"
   },
   "worktreeSelect": {
     "selectWorktree": "ワークツリーを選択",
@@ -355,7 +356,8 @@
     "requirePayment": "未払いの請求書があります。",
     "makePayment": "支払いを行う",
     "toContinueUsingPochi": "Pochiを引き続き使用するために",
-    "requireOrgPayment": "チームに未払いの請求書があります。"
+    "requireOrgPayment": "チームに未払いの請求書があります。",
+    "requireSubscriptionForSuperModels": "加強モデルを使用するには、Pochiにサブスクライブしてください。"
   },
   "chatPage": {
     "defaultUserName": "あなた"
