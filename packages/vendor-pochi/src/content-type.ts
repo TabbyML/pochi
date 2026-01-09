@@ -42,7 +42,7 @@ const ContentType = {
   ],
   gpt: [
     // https://platform.openai.com/docs/guides/images-vision#image-input-requirements
-    // https://platform.openai.com/docs/models/gpt-5-codex
+    // https://platform.openai.com/docs/models/gpt-5.1-codex
     "image/png",
     "image/jpeg",
     "image/gif",
