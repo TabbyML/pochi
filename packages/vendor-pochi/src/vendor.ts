@@ -93,7 +93,6 @@ export class Pochi extends VendorBase {
           x.id,
           {
             contextWindow: x.contextWindow,
-            useToolCallMiddleware: x.id.includes("google"),
             label: x.costType === "basic" ? "swift" : "super",
             contentType: getContentTypesForModel(x.id),
           } satisfies ModelOptions,
