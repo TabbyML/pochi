@@ -75,7 +75,10 @@ function removeSystemReminder(messages: UIMessage[]): UIMessage[] {
     if (
       parts.some(
         (x) =>
-          x.type === "text" || x.type === "data-reviews" || isToolUIPart(x),
+          x.type === "text" ||
+          x.type === "data-reviews" ||
+          x.type === "data-bash-outputs" ||
+          isToolUIPart(x),
       )
     ) {
       return true;

@@ -1,4 +1,5 @@
 import { renderActiveSelection } from "./active-selection";
+import { renderBashOutputs } from "./bash-outputs";
 import { createCompactPrompt } from "./compact";
 import { createPr } from "./create-pr";
 import { createEnvironmentPrompt, injectEnvironment } from "./environment";
@@ -29,6 +30,7 @@ export const prompts = {
   renderReviewComments,
   renderActiveSelection,
   renderUserEdits,
+  renderBashOutputs,
   fixMermaidError,
 };
 

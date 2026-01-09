@@ -91,6 +91,27 @@ const complexUserMessage: Message = {
         ],
       },
     },
+    // Bash outputs (sample)
+    {
+      type: "data-bash-outputs",
+      data: {
+        bashOutputs: [
+          {
+            command: "ls -a",
+            output: ".\r\n..\r\nsrc\r\npackage.json\r\n",
+          },
+          {
+            command: "cat hello_world.txt",
+            output: "Hello World!",
+          },
+          {
+            command: "false",
+            output: "",
+            error: "Command exited with code 1",
+          },
+        ],
+      },
+    },
     // Attachments (Files)
     {
       type: "file",

@@ -338,6 +338,12 @@ function convertDataReviewsToText(messages: Message[]): Message[] {
           text: prompts.renderActiveSelection(part.data.activeSelection),
         };
       }
+      if (part.type === "data-bash-outputs") {
+        return {
+          type: "text" as const,
+          text: prompts.renderBashOutputs(part.data.bashOutputs),
+        };
+      }
       return part;
     }),
   }));

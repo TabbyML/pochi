@@ -29,6 +29,7 @@ import { CheckpointUI } from "../checkpoint-ui";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import { ActiveSelectionPart } from "./active-selection";
 import { MessageAttachments } from "./attachments";
+import { BashOutputsPart } from "./bash-outputs";
 import { MessageMarkdown } from "./markdown";
 import type { MermaidContext } from "./mermaid-context";
 import { MermaidContextProvider } from "./mermaid-context";
@@ -319,6 +320,10 @@ function Part({
 
   if (part.type === "data-active-selection") {
     return null;
+  }
+
+  if (part.type === "data-bash-outputs") {
+    return <BashOutputsPart outputs={part.data.bashOutputs} />;
   }
 
   if (isToolUIPart(part)) {

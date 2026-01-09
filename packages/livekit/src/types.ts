@@ -6,6 +6,7 @@ import { Environment } from "@getpochi/common";
 import { GoogleVertexModel } from "@getpochi/common/configuration";
 import type {
   ActiveSelection,
+  BashOutputs,
   Review,
   UserEdits,
 } from "@getpochi/common/vscode-webui-bridge";
@@ -39,6 +40,9 @@ export type DataParts = {
   };
   "active-selection": {
     activeSelection: ActiveSelection;
+  };
+  "bash-outputs": {
+    bashOutputs: BashOutputs;
   };
 };
 

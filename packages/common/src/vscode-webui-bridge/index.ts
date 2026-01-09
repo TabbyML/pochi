@@ -56,7 +56,7 @@ export {
   getTaskDisplayTitle,
   WorktreePrefix,
 } from "./task-utils";
-export { ActiveSelection, UserEdits } from "./types/message";
+export { ActiveSelection, BashOutputs, UserEdits } from "./types/message";
 export type { VSCodeSettings } from "./types/vscode-settings";
 
 const isPochiDev = process.env.POCHI_LOCAL_SERVER === "true";
