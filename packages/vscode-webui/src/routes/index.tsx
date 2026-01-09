@@ -9,10 +9,8 @@ import { useCurrentWorkspace } from "@/lib/hooks/use-current-workspace";
 import { useModelList } from "@/lib/hooks/use-model-list";
 import { useUserStorage } from "@/lib/hooks/use-user-storage";
 import { useOptimisticWorktreeDelete } from "@/lib/hooks/use-worktrees";
-import { useTaskStore } from "@/lib/use-task-store";
-import { setActiveStore } from "@/lib/vscode";
 import { createFileRoute } from "@tanstack/react-router";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useState } from "react";
 
 export const Route = createFileRoute("/")({
   validateSearch: (search: Record<string, unknown>): { page?: number } => {
@@ -54,17 +52,9 @@ function App() {
 }
 
 function Tasks() {
-  const store = useTaskStore();
   const { data: currentWorkspace } = useCurrentWorkspace();
   const cwd = currentWorkspace?.cwd || "default";
   const workspacePath = currentWorkspace?.workspacePath;
-
-  useEffect(() => {
-    setActiveStore(store);
-    return () => {
-      setActiveStore(null);
-    };
-  }, [store]);
 
   const attachmentUpload = useAttachmentUpload();
 

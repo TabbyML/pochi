@@ -1,6 +1,5 @@
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { AuthEvents } from "@/lib/auth-events";
-import { taskUpdated } from "@/lib/task-events";
 import type {
   ResourceURI,
   VSCodeHostApi,
@@ -100,16 +99,10 @@ export class PochiWebviewSidebar
     );
     this.setupAuthEventListeners();
 
-    this.createWebviewThread(webviewView.webview).then((thread) => {
+    this.createWebviewThread(webviewView.webview).then(() => {
       if (this.webviewHost) {
         this.webviewHostReady.fire(this.webviewHost);
       }
-
-      const { commitTaskUpdated } = thread.imports;
-
-      this.disposables.push(
-        taskUpdated.event(({ event }) => commitTaskUpdated(event)),
-      );
     });
   }
 

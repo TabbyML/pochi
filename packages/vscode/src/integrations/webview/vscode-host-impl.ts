@@ -20,6 +20,8 @@ import { ModelList } from "@/lib/model-list";
 import { PostHog } from "@/lib/posthog";
 import { taskRunning, taskUpdated } from "@/lib/task-events";
 // biome-ignore lint/style/useImportType: needed for dependency injection
+import { TaskStore } from "@/lib/task-store";
+// biome-ignore lint/style/useImportType: needed for dependency injection
 import { UserStorage } from "@/lib/user-storage";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { WorkspaceScope } from "@/lib/workspace-scoped";
@@ -156,6 +158,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     private readonly reviewController: ReviewController,
     private readonly userEditState: UserEditState,
     private readonly globalStateSignals: GlobalStateSignals,
+    private readonly taskStore: TaskStore,
   ) {}
 
   private get cwd() {
@@ -228,6 +231,10 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
 
   setGlobalState = async (key: string, value: unknown): Promise<void> => {
     await this.context.globalState.update(key, value);
+  };
+
+  readTasks = async () => {
+    return ThreadSignal.serialize(this.taskStore.tasks);
   };
 
   readEnvironment = async (options: {

@@ -354,6 +354,8 @@ export interface VSCodeHostApi {
   ): Promise<void>;
 
   readUserEdits(uid: string): Promise<ThreadSignalSerialization<FileDiff[]>>;
+
+  readTasks(): Promise<ThreadSignalSerialization<Record<string, unknown>>>;
 }
 
 export interface WebviewHostApi {
@@ -364,8 +366,6 @@ export interface WebviewHostApi {
   onAuthChanged(): void;
 
   isFocused(): Promise<boolean>;
-
-  commitTaskUpdated(event: unknown): Promise<void>;
 
   onFileChanged(filePath: string, content: string): void;
 }

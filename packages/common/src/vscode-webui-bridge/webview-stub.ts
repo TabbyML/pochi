@@ -325,6 +325,8 @@ const VSCodeHostStub = {
   },
 
   setGlobalState: async (): Promise<void> => {},
+  readTasks: (): Promise<ThreadSignalSerialization<Record<string, unknown>>> =>
+    Promise.resolve({} as ThreadSignalSerialization<Record<string, unknown>>),
 } satisfies VSCodeHostApi;
 
 export function createVscodeHostStub(overrides?: Partial<VSCodeHostApi>) {

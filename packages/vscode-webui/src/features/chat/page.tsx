@@ -10,11 +10,10 @@ import { vscodeHost } from "@/lib/vscode";
 import { useChat } from "@ai-sdk/react";
 import { formatters } from "@getpochi/common";
 import type { UserInfo } from "@getpochi/common/configuration";
-import { type Task, catalog, taskCatalog } from "@getpochi/livekit";
+import { type Task, catalog } from "@getpochi/livekit";
 import type { Message } from "@getpochi/livekit";
 import { useLiveChatKit } from "@getpochi/livekit/react";
 import type { Todo } from "@getpochi/tools";
-import { Schema } from "@livestore/utils/effect";
 import { useRouter } from "@tanstack/react-router";
 import { lastAssistantMessageIsCompleteWithToolCalls } from "ai";
 import type { TFunction } from "i18next";
@@ -52,6 +51,7 @@ const ChatToolbarContainerClassName = tw`relative flex flex-col px-4`;
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useDefaultStore } from "@/lib/use-default-store";
+import { Schema } from "@livestore/utils/effect";
 import { useKeepTaskEditor } from "./hooks/use-keep-task-editor";
 import { onOverrideMessages } from "./lib/on-override-messages";
 import { useLiveChatKitGetters } from "./lib/use-live-chat-kit-getters";
@@ -285,28 +285,14 @@ function Chat({ user, uid, info }: ChatProps) {
       ? "tool" in pendingToolApproval
         ? [pendingToolApproval.tool]
         : pendingToolApproval.tools
-      : undefined;
+      : null;
 
     if (task) {
       vscodeHost.onTaskUpdated(
-        Schema.encodeSync(taskCatalog.events.tastUpdated.schema)(
-          taskCatalog.events.tastUpdated({
-            ...task,
-            displayId: task.displayId || undefined,
-            title: task.title || undefined,
-            parentId: task.parentId || undefined,
-            cwd: task.cwd || undefined,
-            modelId: task.modelId || undefined,
-            error: task.error || undefined,
-            git: task.git || undefined,
-            shareId: task.shareId || undefined,
-            totalTokens: task.totalTokens || undefined,
-            pendingToolCalls,
-            lineChanges: task.lineChanges || undefined,
-            lastStepDuration: task.lastStepDuration || undefined,
-            lastCheckpointHash: task.lastCheckpointHash || undefined,
-          }).args,
-        ),
+        Schema.encodeSync(catalog.tables.tasks.rowSchema)({
+          ...task,
+          pendingToolCalls,
+        }),
       );
     }
   }, [pendingApproval, task]);

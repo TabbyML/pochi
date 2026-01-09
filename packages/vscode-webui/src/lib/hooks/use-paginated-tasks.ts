@@ -1,6 +1,5 @@
-import { taskCatalog } from "@getpochi/livekit";
 import type { Task } from "@getpochi/livekit";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 
 interface UsePaginatedTasksOptions {
   cwd: string;
@@ -25,30 +24,26 @@ interface PaginatedTasksResult {
  * - Simpler state management than cursor-based pagination
  * - Ensures reactive updates for task status changes (e.g., "Planning next move")
  */
-import { useTaskStore } from "../use-task-store";
+import { useTasks } from "../use-tasks";
 
 export function usePaginatedTasks({
   cwd,
   pageSize = 10,
 }: UsePaginatedTasksOptions): PaginatedTasksResult {
-  const store = useTaskStore();
-
   const [limit, setLimit] = useState(pageSize);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
 
-  const tasksQuery = useMemo(() => {
-    return taskCatalog.queries.makeTasksWithLimitQuery(cwd, limit);
-  }, [cwd, limit]);
-  const countQuery = useMemo(() => {
-    return taskCatalog.queries.makeTasksCountQuery(cwd);
-  }, [cwd]);
+  const tasks = useTasks()
+    .filter(
+      (t) =>
+        t.parentId === null &&
+        (t.cwd === cwd ||
+          t.git?.worktree?.gitdir.startsWith(`${cwd}/.git/worktrees`)),
+    )
+    .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
 
-  const tasks = store.useQuery(tasksQuery);
-
-  // Query to get total count of tasks (cached by cwd)
-  const countResult = store.useQuery(countQuery) ?? [];
-  const totalCount = countResult[0]?.count ?? 0;
-  const hasMore = tasks.length < totalCount;
+  const paginatedTasks = tasks.slice(0, limit);
+  const hasMore = paginatedTasks.length < tasks.length;
 
   const loadMore = useCallback(() => {
     if (!hasMore || isLoadingMore) return;
@@ -66,7 +61,7 @@ export function usePaginatedTasks({
   }, [pageSize]);
 
   return {
-    tasks,
+    tasks: paginatedTasks,
     hasMore,
     isLoading: isLoadingMore,
     loadMore,

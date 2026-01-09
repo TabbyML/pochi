@@ -1,4 +1,5 @@
 import { useSubtaskOffhand } from "@/features/settings";
+import { useDefaultStore } from "@/lib/use-default-store";
 import { type Message, type UITools, catalog } from "@getpochi/livekit";
 import type { ToolUIPart } from "ai";
 
@@ -14,8 +15,6 @@ export type NewTaskTool = Extract<
   ToolUIPart<UITools>,
   { type: "tool-newTask" }
 >;
-
-import { useDefaultStore } from "@/lib/use-default-store";
 
 export function useSubtaskInfo(
   uid: string,
