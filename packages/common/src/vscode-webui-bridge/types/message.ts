@@ -60,3 +60,13 @@ export const UserEdits = z
   .describe("User edits since last checkpoint in the current workspace.");
 
 export type UserEdits = z.infer<typeof UserEdits>;
+
+export const BashOutputs = z.array(
+  z.object({
+    command: z.string().describe("The command that was executed."),
+    output: z.string().describe("The output of the command."),
+    error: z.string().describe("The error of the command.").optional(),
+  }),
+);
+
+export type BashOutputs = z.infer<typeof BashOutputs>;
