@@ -7,6 +7,9 @@ export const config: WebdriverIO.Config = {
   runner: "local",
   tsConfigPath: "./test/tsconfig.json",
 
+  autoXvfb: true,
+  xvfbAutoInstall: true,
+
   runnerEnv: {
     POCHI_TEST: "true",
   },
