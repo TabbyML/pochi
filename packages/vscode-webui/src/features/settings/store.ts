@@ -15,6 +15,7 @@ export type AutoApprove = Record<
   retry: boolean;
   maxRetryLimit: number;
   mcp: boolean;
+  mcpServers?: Record<string, { tools: string[] }>;
 };
 
 export type SelectedModelInStore = Pick<DisplayModel, "id" | "name">;
@@ -115,6 +116,7 @@ export const useSettingsStore = create<SettingsState>()(
         retry: true,
         maxRetryLimit: 3,
         mcp: false,
+        mcpServers: undefined,
         autoRunSubtask: true,
       },
 
@@ -127,6 +129,7 @@ export const useSettingsStore = create<SettingsState>()(
         retry: true,
         maxRetryLimit: 3,
         mcp: false,
+        mcpServers: undefined,
         autoRunSubtask: false,
       },
 

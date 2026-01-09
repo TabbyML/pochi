@@ -10,7 +10,6 @@ import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import {
-  Blocks,
   CheckIcon,
   Eye,
   FileEdit,
@@ -22,8 +21,10 @@ import {
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAutoApprove } from "../hooks/use-auto-approve";
+import { useMcpAutoApproveDefaults } from "../hooks/use-mcp-auto-approve-defaults";
 import { useSubtaskOffhand } from "../hooks/use-subtask-offhand";
 import { type AutoApprove, GlobalStateStorage } from "../store";
+import { McpAutoApproveSection } from "./mcp-auto-approve-section";
 
 interface CoreActionSetting {
   id: keyof Omit<AutoApprove, "default">;
@@ -67,12 +68,6 @@ export function AutoApproveMenu({ isSubTask }: { isSubTask: boolean }) {
       summary: t("settings.autoApprove.execute"),
       label: t("settings.autoApprove.executeCommands"),
       iconClass: Terminal,
-    },
-    {
-      id: "mcp",
-      summary: t("settings.autoApprove.mcp"),
-      label: t("settings.autoApprove.useMcpServers"),
-      iconClass: Blocks,
     },
   ];
 
@@ -125,6 +120,7 @@ export function AutoApproveMenu({ isSubTask }: { isSubTask: boolean }) {
     ...coreActionSettings
       .filter((setting) => getCoreActionCheckedState(setting.id))
       .map((setting) => setting.summary),
+    ...(autoApproveSettings.mcp ? [t("settings.autoApprove.mcp")] : []),
     ...(autoApproveSettings.retry ? [t("settings.autoApprove.retry")] : []),
   ];
 
@@ -164,6 +160,13 @@ export function AutoApproveMenu({ isSubTask }: { isSubTask: boolean }) {
       JSON.stringify(currentSnapshot) !== JSON.stringify(initialSettings);
     setIsDirty(hasChanges);
   }, [autoApproveSettings, subtaskOffhand, initialSettings, isSubTask]);
+
+  // Migration: Automatically enable all MCP servers when mcp is true but mcpServers is undefined (not configured yet)
+  useMcpAutoApproveDefaults({
+    autoApproveSettings,
+    updateAutoApproveSettings,
+    handlePersistSettings,
+  });
 
   return (
     <Popover onOpenChange={onOpenChange}>
@@ -236,6 +239,12 @@ export function AutoApproveMenu({ isSubTask }: { isSubTask: boolean }) {
             </div>
           ))}
         </div>
+        <Separator className="my-3" />
+        {/* MCP Section */}
+        <McpAutoApproveSection
+          autoApproveSettings={autoApproveSettings}
+          updateAutoApproveSettings={updateAutoApproveSettings}
+        />
         <Separator className="my-3" />
         {/* Max Attempts Section */}
         <div className="flex h-7 items-center pl-1">
