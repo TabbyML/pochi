@@ -68,4 +68,5 @@ export const PochiApiErrors = {
   RequirePayment: "REQUIRE_PAYMENT",
   RequireOrgPayment: "REQUIRE_ORG_PAYMENT",
   RequireGithubIntegration: "REQUIRE_GITHUB_INTEGRATION",
+  RequireSubscriptionForSuperModels: "REQUIRE_SUBSCRIPTION_FOR_SUPER_MODELS",
 };
