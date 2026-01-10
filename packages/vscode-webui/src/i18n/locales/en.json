@@ -58,7 +58,8 @@
     "custom": "Custom",
     "super": "Super",
     "swift": "Swift",
-    "reload": "Reload"
+    "reload": "Reload",
+    "subscriptionRequired": "Subscription Required"
   },
   "worktreeSelect": {
     "selectWorktree": "Select Worktree",
@@ -358,7 +359,8 @@
     "requirePayment": "You have unpaid invoices. Please",
     "makePayment": "make a payment",
     "toContinueUsingPochi": "to continue using Pochi",
-    "requireOrgPayment": "Your team have unpaid invoices. Please"
+    "requireOrgPayment": "Your team have unpaid invoices. Please",
+    "requireSubscriptionForSuperModels": "To use Super models, please subscribe to Pochi."
   },
   "chatPage": {
     "defaultUserName": "You"

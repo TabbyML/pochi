@@ -58,7 +58,8 @@
     "custom": "自定义",
     "super": "加强",
     "swift": "极速",
-    "reload": "重新加载"
+    "reload": "重新加载",
+    "subscriptionRequired": "需要订阅"
   },
   "worktreeSelect": {
     "selectWorktree": "选择工作树",
@@ -354,7 +355,8 @@
     "requirePayment": "您有未付款的发票。请",
     "makePayment": "付款",
     "toContinueUsingPochi": "以继续使用 Pochi",
-    "requireOrgPayment": "您的团队有未付款的发票。请"
+    "requireOrgPayment": "您的团队有未付款的发票。请",
+    "requireSubscriptionForSuperModels": "要使用加强模型，请订阅 Pochi。"
   },
   "chatPage": {
     "defaultUserName": "您"
