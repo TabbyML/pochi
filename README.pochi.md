@@ -15,8 +15,17 @@ We use mocha framework, when creating test, do not use mocks for filesystem, jus
 (assuming cwd is packages/vscode)
 test command: `bun run test`
 coverage test command: `bun run test:coverage`
+e2e test command: `bun run e2e`, always run it with background job
 
 When encountering issues like `TypeError: Descriptor for property readFile is non-configurable and non-writable`, please use `proxyquire` to mock the module.
+
+### E2E Testing Guidelines
+1. **Architecture**: Follow Page Object Model. Page objects are in `packages/vscode/test/pageobjects`.
+2. **WebViews**: Pochi runs in a WebView. Always handle frame switching (enter/exit) when interacting with Pochi UI.
+3. **Session Safety**: Do NOT use `vscode.openFolder` with `forceNewWindow: false` inside `browser.executeWorkbench`. This reloads the window and invalidates the WebDriver session. Use `forceNewWindow: true`, wait for the new window handle, and switch to it.
+4. **Internal API**: Use `browser.executeWorkbench` for setup/teardown (e.g. commands, file creation) instead of UI interactions where possible.
+5. **Debugging**: Add verbose logging with `[Test Debug]` prefix to help trace issues in CI/headless modes.
+
 
 # Misc
 1. use `bun check` to format / linting the code, use `bun fix` to automatically apply the fix.
