@@ -16,6 +16,7 @@ interface ChatAreaProps {
   hideCheckPoint?: boolean;
   repairMermaid?: MermaidContext["repairMermaid"];
   repairingChart?: string | null;
+  taskId?: string;
 }
 
 export function ChatArea({
@@ -29,6 +30,7 @@ export function ChatArea({
   hideCheckPoint,
   repairMermaid,
   repairingChart,
+  taskId,
 }: ChatAreaProps) {
   const resourceUri = useResourceURI();
   return (
@@ -51,6 +53,7 @@ export function ChatArea({
         hideCheckPoint={hideCheckPoint}
         repairMermaid={repairMermaid}
         repairingChart={repairingChart}
+        taskId={taskId}
       />
     </>
   );

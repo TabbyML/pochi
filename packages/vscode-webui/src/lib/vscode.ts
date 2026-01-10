@@ -103,6 +103,7 @@ function createVSCodeHost(): VSCodeHostApi {
         "openReview",
         "readUserEdits",
         "readTasks",
+        "checkFileExists",
       ],
       exports: {
         openTaskList() {

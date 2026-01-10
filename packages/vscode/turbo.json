@@ -8,7 +8,7 @@
   "tasks": {
     "build": {
       "dependsOn": ["@getpochi/vscode-webui#build"],
-      "outputs": ["assets/webview-ui/**", "dist/**"]
+      "outputs": ["assets/webview-ui/**", "dist/**", ".pochi/**"]
     },
     "test:coverage": {
       "outputs": ["coverage/**"]

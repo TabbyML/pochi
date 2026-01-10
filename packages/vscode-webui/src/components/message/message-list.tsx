@@ -55,6 +55,7 @@ export const MessageList: React.FC<{
   hideCheckPoint?: boolean;
   repairMermaid?: MermaidContext["repairMermaid"];
   repairingChart?: string | null;
+  taskId?: string;
 }> = ({
   messages: renderMessages,
   isLoading,
@@ -68,6 +69,7 @@ export const MessageList: React.FC<{
   hideCheckPoint,
   repairMermaid,
   repairingChart,
+  taskId,
 }) => {
   const [debouncedIsLoading, setDebouncedIsLoading] = useDebounceState(
     isLoading,
@@ -166,6 +168,7 @@ export const MessageList: React.FC<{
                         renderMessages,
                         messageIndex,
                       )}
+                      taskId={taskId}
                     />
                   ))}
                 </div>
@@ -252,6 +255,7 @@ function Part({
   latestCheckpoint,
   lastCheckpointInMessage,
   userEditsCheckpoint,
+  taskId,
 }: {
   role: Message["role"];
   partIndex: number;
@@ -268,6 +272,7 @@ function Part({
     origin: string | undefined;
     modified: string | undefined;
   };
+  taskId?: string;
 }) {
   const paddingClass = partIndex === 0 ? "" : "mt-2";
   if (part.type === "text") {
@@ -334,6 +339,7 @@ function Part({
         isLoading={isLoading}
         changes={getToolCallCheckpoint(part, messages)}
         messages={messages}
+        taskId={taskId}
       />
     );
   }
