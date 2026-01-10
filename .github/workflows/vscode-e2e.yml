@@ -34,6 +34,8 @@ jobs:
           bun run vscode:prepublish
 
       - name: Run e2e tests
+        env:
+          POCHI_API_KEY: ${{ secrets.POCHI_API_KEY }}
         run: |
           cd packages/vscode
           bun run e2e
