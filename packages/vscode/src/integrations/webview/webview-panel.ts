@@ -379,6 +379,7 @@ function autoCleanTabGroupLock() {
 
     // if the tab group still have pochi tab, do nothing
     if (
+      vscode.window.tabGroups.all.length > 0 &&
       vscode.window.tabGroups.all[0].tabs.filter(
         (tab) =>
           tab.input instanceof vscode.TabInputCustom &&
