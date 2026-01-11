@@ -22,7 +22,6 @@ import { startCorsProxy } from "@getpochi/common/cors-proxy";
 import { McpHub } from "@getpochi/common/mcp-utils";
 import { container, instanceCachingFactory } from "tsyringe";
 import * as vscode from "vscode";
-import { CompletionProvider } from "./code-completion";
 import { PochiAuthenticationProvider } from "./integrations/auth-provider";
 import { CommandManager } from "./integrations/command";
 import { DiffChangesContentProvider } from "./integrations/editor/diff-changes-content-provider";
@@ -39,7 +38,7 @@ import { FileLogger } from "./lib/file-logger";
 import { getLogger } from "./lib/logger";
 import { PostInstallActions } from "./lib/post-install-actions";
 import { WorkspaceScope } from "./lib/workspace-scoped";
-import { NESProvider } from "./nes";
+import { TabCompletionManager } from "./tab-completion";
 
 const logger = getLogger("Extension");
 
@@ -73,8 +72,6 @@ export async function activate(context: vscode.ExtensionContext) {
     useFactory: instanceCachingFactory(createMcpHub),
   });
   container.resolve(PochiWebviewSidebar);
-  container.resolve(CompletionProvider);
-  container.resolve(NESProvider);
   container.resolve(StatusBarItem);
   container.resolve(PochiAuthenticationProvider);
   container.resolve(RagdollUriHandler);
@@ -86,6 +83,7 @@ export async function activate(context: vscode.ExtensionContext) {
   container.resolve(DiffChangesContentProvider);
   container.resolve(WorktreeManager);
   container.resolve(ReviewController);
+  container.resolve(TabCompletionManager);
 }
 
 // This method is called when your extension is deactivated

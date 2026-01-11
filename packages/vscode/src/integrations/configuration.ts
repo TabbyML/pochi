@@ -159,48 +159,49 @@ export class PochiConfiguration implements vscode.Disposable {
   }
 }
 
+const TabCompletionFIMProviderSettings = z.discriminatedUnion("type", [
+  z.object({
+    type: z.literal("FIM:pochi"),
+  }),
+  z.object({
+    type: z.literal("FIM:openai"),
+    baseURL: z.string(),
+    apiKey: z.string().optional(),
+    model: z.string().optional(),
+    promptTemplate: z.string().optional(),
+  }),
+  z.object({
+    type: z.literal("FIM:google-vertex-tuning"),
+    vertex: z.custom<GoogleVertexModel>(),
+    model: z.string(),
+    systemPrompt: z.string().optional(),
+    promptTemplate: z.string().optional(),
+  }),
+]);
+
+const TabCompletionNESProviderSettings = z.discriminatedUnion("type", [
+  z.object({
+    type: z.literal("NES:pochi"),
+  }),
+  z.object({
+    type: z.literal("NES:google-vertex-tuning"),
+    vertex: z.custom<GoogleVertexModel>(),
+    model: z.string(),
+  }),
+]);
+
 const PochiAdvanceSettings = z.object({
-  inlineCompletion: z
-    .object({
-      disabled: z.boolean().optional(),
-      disabledLanguages: z.array(z.string()).optional(),
-      provider: z
-        .discriminatedUnion("type", [
-          z.object({
-            type: z.literal("pochi"),
-          }),
-          z.object({
-            type: z.literal("openai"),
-            baseURL: z.string(),
-            apiKey: z.string().optional(),
-            model: z.string().optional(),
-            promptTemplate: z.string().optional(),
-          }),
-          z.object({
-            type: z.literal("google-vertex-tuning"),
-            vertex: z.custom<GoogleVertexModel>(),
-            model: z.string(),
-            systemPrompt: z.string().optional(),
-            promptTemplate: z.string().optional(),
-          }),
-        ])
-        .optional(),
-    })
-    .optional(),
   tabCompletion: z
     .object({
       disabled: z.boolean().optional(),
-      provider: z
-        .discriminatedUnion("type", [
-          z.object({
-            type: z.literal("pochi"),
-          }),
-          z.object({
-            type: z.literal("google-vertex-tuning"),
-            vertex: z.custom<GoogleVertexModel>(),
-            model: z.string(),
-          }),
-        ])
+      disabledLanguages: z.array(z.string()).optional(),
+      providers: z
+        .array(
+          z.discriminatedUnion("type", [
+            ...TabCompletionFIMProviderSettings.options,
+            ...TabCompletionNESProviderSettings.options,
+          ]),
+        )
         .optional(),
     })
     .optional(),
@@ -213,6 +214,12 @@ const PochiAdvanceSettings = z.object({
 });
 
 export type PochiAdvanceSettings = z.infer<typeof PochiAdvanceSettings>;
+export type TabCompletionFIMProviderSettings = z.infer<
+  typeof TabCompletionFIMProviderSettings
+>;
+export type TabCompletionNESProviderSettings = z.infer<
+  typeof TabCompletionNESProviderSettings
+>;
 
 function getPochiAdvanceSettings() {
   const config = vscode.workspace.getConfiguration("pochi").get("advanced", {});

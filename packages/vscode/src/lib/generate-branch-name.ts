@@ -1,4 +1,3 @@
-import { formatPlaceholders } from "@/code-completion/utils/strings";
 import { createVertexWithoutCredentials } from "@ai-sdk/google-vertex/edge";
 import { getVendor } from "@getpochi/common/vendor";
 import type { PochiCredentials } from "@getpochi/common/vscode-webui-bridge";
@@ -88,6 +87,20 @@ export async function generateBranchName(params: {
     return undefined;
   }
   return result.text;
+}
+
+function formatPlaceholders(
+  template: string,
+  replacements: Record<string, string>,
+): string {
+  const patterns = Object.keys(replacements)
+    .map((key) => `{{${key}}}`)
+    .join("|");
+  const regexp = new RegExp(patterns, "g");
+  return template.replace(regexp, (pattern: string) => {
+    const key = pattern.slice(2, -2);
+    return replacements[key] ?? "";
+  });
 }
 
 const patchString = (str: string) => {
