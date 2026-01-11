@@ -26,7 +26,7 @@ import { useTranslation } from "react-i18next";
 
 import LoadingWrapper from "@/components/loading-wrapper";
 import type { ModelGroups } from "@/features/settings";
-import { UsePayingPlan } from "@/lib/hooks/use-paying-plan";
+import { usePayingPlan } from "@/lib/hooks/use-paying-plan";
 import type { DisplayModel } from "@getpochi/common/vscode-webui-bridge";
 import { DropdownMenuPortal } from "@radix-ui/react-dropdown-menu";
 
@@ -62,7 +62,7 @@ export function ModelSelect({
     onChange(v.id);
   };
 
-  const payingUser = UsePayingPlan();
+  const payingUser = usePayingPlan();
   const isSuperModelsDisabled = payingUser === "freebie";
 
   return (

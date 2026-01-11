@@ -3,7 +3,7 @@ import { usePochiCredentials } from "./use-pochi-credentials";
 
 type PayingPlan = "freebie" | "paid";
 
-export function UsePayingPlan() {
+export function usePayingPlan() {
   const { jwt } = usePochiCredentials();
   return getPayingPlan(jwt);
 }

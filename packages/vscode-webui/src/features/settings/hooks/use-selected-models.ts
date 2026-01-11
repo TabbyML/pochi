@@ -1,5 +1,5 @@
 import { useModelList } from "@/lib/hooks/use-model-list";
-import { UsePayingPlan } from "@/lib/hooks/use-paying-plan";
+import { usePayingPlan } from "@/lib/hooks/use-paying-plan";
 import type { DisplayModel } from "@getpochi/common/vscode-webui-bridge";
 import { useCallback, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
@@ -94,7 +94,7 @@ export function useSelectedModels(options?: UseSelectedModelsOptions) {
     [models, updateSelectedModel],
   );
 
-  const payingUser = UsePayingPlan();
+  const payingUser = usePayingPlan();
 
   // Effect to set an initial model if none is selected and models are loaded.
   useEffect(() => {
