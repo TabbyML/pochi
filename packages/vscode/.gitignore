@@ -3,3 +3,5 @@ assets/webview-ui/
 
 .vscode-test/
 out/
+
+.wdio-vscode-service

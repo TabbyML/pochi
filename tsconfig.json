@@ -1,5 +1,11 @@
 {
-  "exclude": ["node_modules", "dist", ".turbo"],
+  "exclude": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/.turbo/**",
+    "**/.vscode-test/**",
+    "**/.wdio-vscode-service/**"
+  ],
   "compilerOptions": {
     // Enable latest features
     "lib": ["ESNext"],
