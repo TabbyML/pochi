@@ -45,6 +45,7 @@ import { useInlineCompactTask } from "../hooks/use-inline-compact-task";
 import { useNewCompactTask } from "../hooks/use-new-compact-task";
 import { useShowCompleteSubtaskButton } from "../hooks/use-subtask-completed";
 import type { SubtaskInfo } from "../hooks/use-subtask-info";
+import { usePreservedTaskInput } from "../lib/task-input-state";
 import { ChatInputForm } from "./chat-input-form";
 import { ErrorMessageView } from "./error-message-view";
 import { SubmitReviewsButton } from "./submit-review-button";
@@ -91,7 +92,9 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   const isLoading = status === "streaming" || status === "submitted";
   const totalTokens = task?.totalTokens || 0;
 
-  const [input, setInput] = useState("");
+  // Retrieve preserved input from Suspense period, then use regular useState
+  const { getAndClear } = usePreservedTaskInput();
+  const [input, setInput] = useState(() => getAndClear());
   const [queuedMessages, setQueuedMessages] = useState<string[]>([]);
 
   // Initialize task with prompt if provided and task doesn't exist yet
@@ -452,7 +455,7 @@ const SubmitStopButton: React.FC<SubmitStopButtonProps> = ({
 };
 
 export function ChatToolBarSkeleton() {
-  const [input, setInput] = useState("");
+  const { input, setInput } = usePreservedTaskInput();
   return (
     <>
       <div className={PopupContainerClassName}>
