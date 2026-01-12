@@ -26,6 +26,7 @@ import { CommandManager } from "./integrations/command";
 import { DiffChangesContentProvider } from "./integrations/editor/diff-changes-content-provider";
 import { DiffOriginContentProvider } from "./integrations/editor/diff-origin-content-provider";
 import { WorktreeManager } from "./integrations/git/worktree";
+import { LayoutManager } from "./integrations/layout";
 import { createMcpHub } from "./integrations/mcp";
 import { ReviewController } from "./integrations/review-controller";
 import { StatusBarItem } from "./integrations/status-bar-item";
@@ -83,6 +84,7 @@ export async function activate(context: vscode.ExtensionContext) {
   container.resolve(WorktreeManager);
   container.resolve(ReviewController);
   container.resolve(TabCompletionManager);
+  container.resolve(LayoutManager);
 }
 
 // This method is called when your extension is deactivated

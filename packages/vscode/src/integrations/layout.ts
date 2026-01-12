@@ -1,5 +1,5 @@
 import { listWorkspaceFiles } from "@getpochi/common/tool-utils";
-import { container } from "tsyringe";
+import { container, injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
 import { getLogger } from "../lib/logger";
 import { PochiConfiguration } from "./configuration";
@@ -39,6 +39,46 @@ const PochiLayout: EditorLayout = {
     },
   ],
 };
+
+@injectable()
+@singleton()
+export class LayoutManager implements vscode.Disposable {
+  private disposables: vscode.Disposable[] = [];
+
+  constructor(configuration: PochiConfiguration) {
+    this.disposables.push(
+      vscode.window.onDidOpenTerminal(async (terminal: vscode.Terminal) => {
+        // Do not apply layout if the terminal is created by user to avoid the case of:
+        // User wants to open the sidebar/bottom-panel and the terminal panel is the active view,
+        // then a default terminal will be created. But auto apply Pochi layout can directly move
+        // the terminal to the editor group and close the sidebar/bottom-panel.
+
+        // Determine if the terminal was created by the user directly
+        // We have no api to detect it, checking the creationOptions is the best effort
+        const isCreateByUser = Object.entries(terminal.creationOptions).every(
+          ([_, value]) => value === undefined,
+        );
+
+        const autoApplyPochiLayout =
+          configuration.advancedSettings.value.pochiLayout?.enabled;
+
+        if (autoApplyPochiLayout && !isCreateByUser) {
+          await applyPochiLayout({
+            enabled: autoApplyPochiLayout,
+            disableOpenTerminalByDefault: true,
+          });
+        }
+      }),
+    );
+  }
+
+  dispose() {
+    for (const disposable of this.disposables) {
+      disposable.dispose();
+    }
+    this.disposables = [];
+  }
+}
 
 async function executeVSCodeCommand(command: string, ...args: unknown[]) {
   logger.trace(command, ...args);
@@ -93,7 +133,6 @@ export function getSortedCurrentTabGroups() {
 
 export async function applyPochiLayout(params: {
   cwd?: string | undefined;
-  mergeSplitWindowEditors?: boolean;
   enabled?: boolean;
   cycleFocus?: boolean;
   disableOpenTaskByDefault?: boolean;
@@ -294,42 +333,40 @@ export async function applyPochiLayout(params: {
 
   // Merge split window editors
   logger.trace("Begin merge tabs in split window.");
-  if (params.mergeSplitWindowEditors) {
-    while (getSortedCurrentTabGroups().length > 3) {
-      const groups = getSortedCurrentTabGroups();
-      const lastGroup = groups[groups.length - 1];
-      await executeVSCodeCommand("workbench.action.focusLastEditorGroup");
-      if (lastGroup.tabs.length < 1) {
-        await executeVSCodeCommand("workbench.action.closeEditorsAndGroup");
-        // Delay to ensure window state is changed
-        await new Promise((resolve) => setTimeout(resolve, 100));
-        continue;
-      }
-      const tab = lastGroup.tabs[0];
-      await executeVSCodeCommand("workbench.action.openEditorAtIndex", 0);
-      const movingLastEditor = lastGroup.tabs.length === 1;
-      if (isPochiTaskTab(tab)) {
-        await executeVSCodeCommand("moveActiveEditor", {
-          to: "first",
-          by: "group",
-        });
-      } else if (isTerminalTab(tab)) {
-        await executeVSCodeCommand("moveActiveEditor", {
-          to: "position",
-          by: "group",
-          value: 3,
-        });
-      } else {
-        await executeVSCodeCommand("moveActiveEditor", {
-          to: "position",
-          by: "group",
-          value: 2,
-        });
-      }
-      if (movingLastEditor) {
-        // Delay to ensure window state is changed
-        await new Promise((resolve) => setTimeout(resolve, 100));
-      }
+  while (getSortedCurrentTabGroups().length > 3) {
+    const groups = getSortedCurrentTabGroups();
+    const lastGroup = groups[groups.length - 1];
+    await executeVSCodeCommand("workbench.action.focusLastEditorGroup");
+    if (lastGroup.tabs.length < 1) {
+      await executeVSCodeCommand("workbench.action.closeEditorsAndGroup");
+      // Delay to ensure window state is changed
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      continue;
+    }
+    const tab = lastGroup.tabs[0];
+    await executeVSCodeCommand("workbench.action.openEditorAtIndex", 0);
+    const movingLastEditor = lastGroup.tabs.length === 1;
+    if (isPochiTaskTab(tab)) {
+      await executeVSCodeCommand("moveActiveEditor", {
+        to: "first",
+        by: "group",
+      });
+    } else if (isTerminalTab(tab)) {
+      await executeVSCodeCommand("moveActiveEditor", {
+        to: "position",
+        by: "group",
+        value: 3,
+      });
+    } else {
+      await executeVSCodeCommand("moveActiveEditor", {
+        to: "position",
+        by: "group",
+        value: 2,
+      });
+    }
+    if (movingLastEditor) {
+      // Delay to ensure window state is changed
+      await new Promise((resolve) => setTimeout(resolve, 100));
     }
   }
   logger.trace("End merge tabs in split window.");
@@ -562,7 +599,11 @@ export async function getViewColumnForTask(params: {
   }
 
   if (autoApplyPochiLayout) {
-    await applyPochiLayout({ cwd: params.cwd, disableOpenTaskByDefault: true });
+    await applyPochiLayout({
+      cwd: params.cwd,
+      enabled: autoApplyPochiLayout,
+      disableOpenTaskByDefault: true,
+    });
     return vscode.ViewColumn.One;
   }
 
@@ -614,8 +655,9 @@ export async function getViewColumnForTerminal(params: {
   }
   if (autoApplyPochiLayout) {
     await applyPochiLayout({
-      disableOpenTerminalByDefault: true,
       cwd: params.cwd,
+      enabled: autoApplyPochiLayout,
+      disableOpenTerminalByDefault: true,
     });
     return vscode.window.tabGroups.all.length as vscode.ViewColumn;
   }

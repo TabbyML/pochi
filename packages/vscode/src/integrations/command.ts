@@ -758,7 +758,6 @@ export class CommandManager implements vscode.Disposable {
     await applyPochiLayout({
       cwd,
       cycleFocus,
-      mergeSplitWindowEditors: true,
       enabled:
         this.pochiConfiguration.advancedSettings.value.pochiLayout?.enabled,
     });
