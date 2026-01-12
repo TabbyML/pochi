@@ -2,7 +2,7 @@ name: Pochi VSCode E2E test
 
 on:
   push:
-    branches: ["main"]
+    branches: ["main", "release-vscode*"]
   pull_request:
     branches: ["main"]
   workflow_dispatch:
