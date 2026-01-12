@@ -103,6 +103,14 @@ export class TabCompletionManager implements vscode.Disposable {
           this.current = undefined;
         }
       }),
+      vscode.window.onDidChangeTextEditorSelection(
+        (e: vscode.TextEditorSelectionChangeEvent) => {
+          if (e.textEditor === vscode.window.activeTextEditor && this.current) {
+            this.current.dispose();
+            this.current = undefined;
+          }
+        },
+      ),
     );
   }
 
@@ -283,6 +291,7 @@ export class TabCompletionManager implements vscode.Disposable {
 
     logger.trace("Preparing new requests.");
     for (const provider of this.providers) {
+      logger.trace(`Create new request for provider ${provider.id}.`);
       const request = provider.createRequest(context);
       if (!request) {
         continue;
@@ -346,7 +355,9 @@ export class TabCompletionManager implements vscode.Disposable {
         },
         delay,
         token,
-      );
+      ).catch(() => {
+        logger.trace(`Request for provider ${provider.id} canceled.`);
+      });
       providerRequests.push({ request, tokenSource, disposables });
     }
     this.updateIsFetching();
