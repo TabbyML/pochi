@@ -27,6 +27,7 @@
   },
   "chat": {
     "attachmentTooltip": "ファイルをチャットに添付します。ファイルをドラッグ＆ドロップするか、チャット入力欄に貼り付けることもできます。",
+    "createPlanTooltip": "タスクの計画を作成",
     "queuedMessages": "キュー内のメッセージ ({{count}})",
     "copyImage": "画像をコピー",
     "openImage": "画像を開く",

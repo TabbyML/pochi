@@ -113,6 +113,7 @@ function Chat({ user, uid, info }: ChatProps) {
   const getters = useLiveChatKitGetters({
     todos: todosRef,
     isSubTask,
+    taskId: uid,
   });
 
   useRestoreTaskModel(task, isModelsLoading, updateSelectedModelId);

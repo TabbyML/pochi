@@ -2,7 +2,7 @@ import { useSelectedModels } from "@/features/settings";
 import {
   type CustomAgentFile,
   type ValidCustomAgentFile,
-  isValidCustomAgentFile,
+  isValidCustomAgent,
 } from "@getpochi/common/vscode-webui-bridge";
 import { threadSignal } from "@quilted/threads/signals";
 import { useQuery } from "@tanstack/react-query";
@@ -42,7 +42,7 @@ export function useCustomAgents(filterValidFiles = false) {
 
   return {
     customAgents: filterValidFiles
-      ? customAgentsSignal.value.filter(isValidCustomAgentFile)
+      ? customAgentsSignal.value.filter(isValidCustomAgent)
       : customAgentsSignal.value,
     isLoading: false,
   };

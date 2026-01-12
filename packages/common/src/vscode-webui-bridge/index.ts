@@ -49,7 +49,7 @@ export type {
   ReviewComment,
   ReviewCodeSnippet,
 } from "./types/review";
-export { isValidCustomAgentFile } from "./types/custom-agent";
+export { isValidCustomAgent } from "./types/custom-agent";
 export {
   prefixTaskDisplayId,
   prefixWorktreeName,

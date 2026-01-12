@@ -20,6 +20,8 @@ export { WebsiteTaskCreateEvent } from "./event";
 
 export { toErrorMessage } from "./error";
 
+export { builtInCustomAgents } from "./agents";
+
 export const PochiProviderOptions = z.object({
   taskId: z.string(),
   client: z.string(),
