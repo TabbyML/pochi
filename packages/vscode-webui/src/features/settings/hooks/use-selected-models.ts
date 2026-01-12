@@ -1,4 +1,5 @@
 import { useModelList } from "@/lib/hooks/use-model-list";
+import { usePayingPlan } from "@/lib/hooks/use-paying-plan";
 import type { DisplayModel } from "@getpochi/common/vscode-webui-bridge";
 import { useCallback, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
@@ -9,6 +10,7 @@ export type ModelGroup = {
   title: string;
   models: DisplayModel[];
   isCustom?: boolean;
+  label?: string;
 };
 export type ModelGroups = ModelGroup[];
 
@@ -92,13 +94,25 @@ export function useSelectedModels(options?: UseSelectedModelsOptions) {
     [models, updateSelectedModel],
   );
 
+  const payingUser = usePayingPlan();
+
   // Effect to set an initial model if none is selected and models are loaded.
   useEffect(() => {
     if (!isLoading && !selectedModelFromStore && models?.length) {
-      const initialModel = models[0];
+      let initialModel = models[0];
+      if (payingUser === "freebie") {
+        initialModel =
+          models.find((x) => x.options.label !== "super") || models[0];
+      }
       updateSelectedModel(pick(initialModel, ["id", "name"]));
     }
-  }, [isLoading, models, selectedModelFromStore, updateSelectedModel]);
+  }, [
+    isLoading,
+    models,
+    selectedModelFromStore,
+    updateSelectedModel,
+    payingUser,
+  ]);
 
   return {
     isLoading,

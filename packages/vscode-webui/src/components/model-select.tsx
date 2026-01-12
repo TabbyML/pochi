@@ -26,6 +26,7 @@ import { useTranslation } from "react-i18next";
 
 import LoadingWrapper from "@/components/loading-wrapper";
 import type { ModelGroups } from "@/features/settings";
+import { usePayingPlan } from "@/lib/hooks/use-paying-plan";
 import type { DisplayModel } from "@getpochi/common/vscode-webui-bridge";
 import { DropdownMenuPortal } from "@radix-ui/react-dropdown-menu";
 
@@ -60,6 +61,9 @@ export function ModelSelect({
   const onSelectModel = (v: DisplayModel) => {
     onChange(v.id);
   };
+
+  const payingUser = usePayingPlan();
+  const isSuperModelsDisabled = payingUser === "freebie";
 
   return (
     <LoadingWrapper
@@ -124,41 +128,53 @@ export function ModelSelect({
               <DropdownMenuRadioGroup>
                 {hostedModels
                   ?.filter((group) => group.models.length > 0)
-                  .map((group) => (
-                    <div key={group.title}>
-                      <div className="px-2 py-1.5 font-semibold text-muted-foreground text-sm">
-                        {group.title}
-                      </div>
-                      {group.models.map((model: DisplayModel) => {
-                        const isSelected = model.id === value?.id;
-                        return (
-                          <DropdownMenuRadioItem
-                            onClick={(e) => {
-                              onSelectModel(model);
-                              e.stopPropagation();
-                            }}
-                            value={model.id}
-                            key={model.id}
-                            className="cursor-pointer py-2 pl-2"
-                          >
-                            <CheckIcon
-                              className={cn(
-                                "mr-1 shrink-0",
-                                isSelected ? "opacity-100" : "opacity-0",
-                              )}
-                            />
-                            <span
-                              className={cn({
-                                "font-semibold": isSelected,
-                              })}
-                            >
-                              {model.name}
+                  .map((group) => {
+                    const isSuperModelGroup =
+                      group.models[0].options.label === "super";
+                    return (
+                      <div key={group.title}>
+                        <div className="px-2 py-1.5 font-semibold text-muted-foreground text-sm">
+                          {group.title}
+                          {isSuperModelGroup && isSuperModelsDisabled && (
+                            <span className="ml-2 font-normal text-xs italic">
+                              ({t("modelSelect.subscriptionRequired")})
                             </span>
-                          </DropdownMenuRadioItem>
-                        );
-                      })}
-                    </div>
-                  ))}
+                          )}
+                        </div>
+                        {group.models.map((model: DisplayModel) => {
+                          const isSelected = model.id === value?.id;
+                          return (
+                            <DropdownMenuRadioItem
+                              onClick={(e) => {
+                                onSelectModel(model);
+                                e.stopPropagation();
+                              }}
+                              value={model.id}
+                              key={model.id}
+                              className="cursor-pointer py-2 pl-2"
+                              disabled={
+                                isSuperModelsDisabled && isSuperModelGroup
+                              }
+                            >
+                              <CheckIcon
+                                className={cn(
+                                  "mr-1 shrink-0",
+                                  isSelected ? "opacity-100" : "opacity-0",
+                                )}
+                              />
+                              <span
+                                className={cn({
+                                  "font-semibold": isSelected,
+                                })}
+                              >
+                                {model.name}
+                              </span>
+                            </DropdownMenuRadioItem>
+                          );
+                        })}
+                      </div>
+                    );
+                  })}
                 {!!hostedModels?.filter((group) => group.models.length > 0)
                   .length && <DropdownMenuSeparator />}
                 {customModels?.map((group) => (

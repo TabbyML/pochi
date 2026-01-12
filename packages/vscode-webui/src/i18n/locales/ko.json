@@ -58,7 +58,8 @@
     "custom": "사용자 정의",
     "super": "가강",
     "swift": "극속",
-    "reload": "새로고침"
+    "reload": "새로고침",
+    "subscriptionRequired": "구독 필요"
   },
   "worktreeSelect": {
     "selectWorktree": "워크트리 선택",
@@ -355,7 +356,8 @@
     "requirePayment": "미지불 청구서가 있습니다.",
     "makePayment": "결제하기",
     "toContinueUsingPochi": "Pochi를 계속 사용하려면",
-    "requireOrgPayment": "팀에 미지불 청구서가 있습니다."
+    "requireOrgPayment": "팀에 미지불 청구서가 있습니다.",
+    "requireSubscriptionForSuperModels": "가강 모델을 사용하려면 Pochi를 구독하세요."
   },
   "chatPage": {
     "defaultUserName": "당신"

@@ -84,3 +84,12 @@ export const RequireOrgPayment: Story = {
     ),
   },
 };
+
+export const RequireSubscriptionForSuperModels: Story = {
+  args: {
+    error: new TaskError(
+      "RequireSubscriptionForSuperModels",
+      PochiApiErrors.RequireSubscriptionForSuperModels,
+    ),
+  },
+};
