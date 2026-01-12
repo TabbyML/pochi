@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { useVSCodeSettings } from "@/lib/hooks/use-vscode-settings";
 import { vscodeHost } from "@/lib/vscode";
 import { useTranslation } from "react-i18next";
 import { useSettingsStore } from "../../store";
@@ -14,6 +15,7 @@ export const AdvancedSettingsSection: React.FC = () => {
     enablePochiModels,
     updateEnablePochiModels,
   } = useSettingsStore();
+  const { hideRecommendSettings } = useVSCodeSettings();
 
   return (
     <AccordionSection
@@ -41,6 +43,16 @@ export const AdvancedSettingsSection: React.FC = () => {
                 updateEnablePochiModels(!!checked);
               }}
             />
+            <SettingsCheckboxOption
+              id="hide-recommend-settings"
+              label={t("settings.advanced.hideRecommendSettings")}
+              checked={hideRecommendSettings}
+              onCheckedChange={async (checked) => {
+                await vscodeHost.updateVSCodeSettings({
+                  hideRecommendSettings: !!checked,
+                });
+              }}
+            />
             <div>
               <Button
                 variant="destructive"
@@ -55,17 +67,6 @@ export const AdvancedSettingsSection: React.FC = () => {
                 }}
               >
                 {t("settings.advanced.clearStorage")}
-              </Button>
-            </div>
-            <div>
-              <Button
-                onClick={async () => {
-                  await vscodeHost.updateVSCodeSettings({
-                    recommendSettingsConfirmed: false,
-                  });
-                }}
-              >
-                {t("settings.advanced.resetRecommendSettingsConfirmed")}
               </Button>
             </div>
           </>

@@ -67,17 +67,15 @@ export class PochiConfiguration implements vscode.Disposable {
       },
       {
         dispose: this.autoSaveDisabled.subscribe((value) => {
-          // Only support to update autosave to disabled
-          if (value && value !== getAutoSaveDisabled()) {
-            updateAutoSaveDisabled();
+          if (value !== getAutoSaveDisabled()) {
+            updateAutoSaveDisabled(value);
           }
         }),
       },
       {
         dispose: this.commentsOpenViewDisabled.subscribe((value) => {
-          // Only support to update comments.openView to disabled
-          if (value && value !== getCommentsOpenViewDisabled()) {
-            updateCommentsOpenViewDisabled();
+          if (value !== getCommentsOpenViewDisabled()) {
+            updateCommentsOpenViewDisabled(value);
           }
         }),
       },
@@ -239,10 +237,11 @@ function getAutoSaveDisabled() {
   return autoSave === "off";
 }
 
-function updateAutoSaveDisabled() {
+function updateAutoSaveDisabled(value: boolean) {
+  const target = value ? "off" : "afterDelay";
   return vscode.workspace
     .getConfiguration("files")
-    .update("autoSave", "off", true);
+    .update("autoSave", target, true);
 }
 
 function getCommentsOpenViewDisabled() {
@@ -253,10 +252,11 @@ function getCommentsOpenViewDisabled() {
   return openView === "never";
 }
 
-function updateCommentsOpenViewDisabled() {
+function updateCommentsOpenViewDisabled(value: boolean) {
+  const target = value ? "never" : "firstFile";
   return vscode.workspace
     .getConfiguration("comments")
-    .update("openView", "never", true);
+    .update("openView", target, true);
 }
 
 function getDetectWorktreesLimit() {

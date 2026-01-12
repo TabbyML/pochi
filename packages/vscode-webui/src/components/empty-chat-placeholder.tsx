@@ -6,12 +6,18 @@ import { RecommendSettings } from "./recommend-settings";
 import { Button } from "./ui/button";
 
 export function EmptyChatPlaceholder() {
-  const { recommendSettingsConfirmed } = useVSCodeSettings();
+  const { hideRecommendSettings, autoSaveDisabled } = useVSCodeSettings();
 
   return (
     <div className="flex h-[75vh] select-none flex-col items-center justify-center p-5 text-center text-gray-500 dark:text-gray-300">
       <div className="mb-4">{/* Adjusted icon color for visibility */}</div>
-      {recommendSettingsConfirmed ? <FunContent /> : <Settings />}
+      {!hideRecommendSettings ? (
+        <RecommendSettings />
+      ) : !autoSaveDisabled ? (
+        <AutoSaveSettingsReminder />
+      ) : (
+        <FunContent />
+      )}
     </div>
   );
 }
@@ -55,40 +61,36 @@ function FunContent() {
   );
 }
 
-function Settings() {
-  const { recommendSettingsConfirmed, autoSaveDisabled } = useVSCodeSettings();
+function AutoSaveSettingsReminder() {
   const { t } = useTranslation();
   return (
     <>
-      <RecommendSettings />
-      {recommendSettingsConfirmed && !autoSaveDisabled && (
-        <div className="mt-6 max-w-md rounded-lg border bg-muted p-4 text-center">
-          <div className="flex flex-col items-center gap-3">
-            <div className="flex items-center gap-2">
-              <h3 className="items-center font-medium text-sm ">
-                <AlertTriangleIcon className="mr-1 mb-[1px] inline size-4" />
-                {t("placeholder.autoSave.title")}
-              </h3>
-            </div>
-            <div>
-              <p className="text-muted-foreground text-sm">
-                {t("placeholder.autoSave.description")}
-              </p>
-              <div className="mt-3">
-                <a
-                  href="command:workbench.action.toggleAutoSave"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <Button size="sm" variant="default">
-                    {t("common.disable")}
-                  </Button>
-                </a>
-              </div>
+      <div className="mt-6 max-w-md rounded-lg border bg-muted p-4 text-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="flex items-center gap-2">
+            <h3 className="items-center font-medium text-sm ">
+              <AlertTriangleIcon className="mr-1 mb-[1px] inline size-4" />
+              {t("placeholder.autoSave.title")}
+            </h3>
+          </div>
+          <div>
+            <p className="text-muted-foreground text-sm">
+              {t("placeholder.autoSave.description")}
+            </p>
+            <div className="mt-3">
+              <a
+                href="command:workbench.action.toggleAutoSave"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Button size="sm" variant="default">
+                  {t("common.disable")}
+                </Button>
+              </a>
             </div>
           </div>
         </div>
-      )}
+      </div>
     </>
   );
 }

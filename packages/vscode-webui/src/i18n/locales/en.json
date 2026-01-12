@@ -114,7 +114,7 @@
       "language": "Language",
       "languageDescription": "Choose your preferred language",
       "openInTab": "Allows to open the task in a new tab",
-      "resetRecommendSettingsConfirmed": "Reset Recommended Settings Confirmed"
+      "hideRecommendSettings": "Hide Recommended Settings"
     },
     "workflows": {
       "title": "Workflows",
@@ -435,7 +435,7 @@
   },
   "recommendSettings": {
     "title": "Pochi recommends the following settings",
-    "ok": "Apply",
+    "hide": "Hide",
     "options": {
       "enablePochiLayout": "Enable Pochi Layout",
       "disableAutoSave": "Disable auto-save",

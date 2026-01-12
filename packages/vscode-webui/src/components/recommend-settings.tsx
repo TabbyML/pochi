@@ -1,7 +1,7 @@
 import { useVSCodeSettings } from "@/lib/hooks/use-vscode-settings";
 import { vscodeHost } from "@/lib/vscode";
 import type { VSCodeSettings } from "@getpochi/common/vscode-webui-bridge";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "./ui/button";
 import { Checkbox } from "./ui/checkbox";
@@ -30,107 +30,103 @@ function openSettingsLink(option: Options) {
 export function RecommendSettings() {
   const { t } = useTranslation();
   const vscodeSettings = useVSCodeSettings();
-  const options = useMemo(() => {
-    const list = [] as Options[];
-    if (!vscodeSettings.pochiLayout?.enabled) {
-      list.push("enablePochiLayout");
-    }
-    if (!vscodeSettings.autoSaveDisabled) {
-      list.push("disableAutoSave");
-    }
-    if (!vscodeSettings.commentsOpenViewDisabled) {
-      list.push("disableCommentsOpenView");
-    }
-    if (vscodeSettings.githubCopilotCodeCompletionEnabled) {
-      list.push("disableGithubCopilotCodeCompletion");
-    }
-    return list;
+
+  const options: { id: Options; checked: boolean }[] = useMemo(() => {
+    return [
+      {
+        id: "enablePochiLayout",
+        checked: !!vscodeSettings.pochiLayout?.enabled,
+      },
+      {
+        id: "disableAutoSave",
+        checked: !!vscodeSettings.autoSaveDisabled,
+      },
+      {
+        id: "disableCommentsOpenView",
+        checked: !!vscodeSettings.commentsOpenViewDisabled,
+      },
+      {
+        id: "disableGithubCopilotCodeCompletion",
+        checked: !vscodeSettings.githubCopilotCodeCompletionEnabled,
+      },
+    ];
   }, [vscodeSettings]);
 
-  useEffect(() => {
-    if (!vscodeSettings.recommendSettingsConfirmed && options.length === 0) {
-      vscodeHost.updateVSCodeSettings({ recommendSettingsConfirmed: true });
-    }
-  }, [vscodeSettings.recommendSettingsConfirmed, options]);
-
-  const [selected, setSelected] = useState<Options[]>(options);
-
-  const onCheckedChange = useCallback((id: Options, checked: boolean) => {
-    setSelected((prev) => {
-      if (checked) {
-        return [...prev, id];
+  const onCheckedChange = useCallback(
+    async (id: Options, checked: boolean) => {
+      const params: Partial<VSCodeSettings> = {};
+      switch (id) {
+        case "enablePochiLayout":
+          params.pochiLayout = {
+            ...vscodeSettings.pochiLayout,
+            enabled: checked,
+          };
+          break;
+        case "disableAutoSave":
+          params.autoSaveDisabled = checked;
+          break;
+        case "disableCommentsOpenView":
+          params.commentsOpenViewDisabled = checked;
+          break;
+        case "disableGithubCopilotCodeCompletion":
+          params.githubCopilotCodeCompletionEnabled = !checked;
+          break;
       }
-      return prev.filter((item) => item !== id);
-    });
-  }, []);
+      await vscodeHost.updateVSCodeSettings(params);
+    },
+    [vscodeSettings],
+  );
 
   const onConfirm = useCallback(async () => {
-    const params: Partial<VSCodeSettings> = {
-      recommendSettingsConfirmed: true,
-    };
-    if (selected.includes("enablePochiLayout")) {
-      params.pochiLayout = {
-        ...params.pochiLayout,
-        enabled: true,
-      };
-    }
-    if (selected.includes("disableAutoSave")) {
-      params.autoSaveDisabled = true;
-    }
-    if (selected.includes("disableCommentsOpenView")) {
-      params.commentsOpenViewDisabled = true;
-    }
-    if (selected.includes("disableGithubCopilotCodeCompletion")) {
-      params.githubCopilotCodeCompletionEnabled = false;
-    }
-    await vscodeHost.updateVSCodeSettings(params);
-  }, [selected]);
-
-  if (options.length === 0) {
-    return null;
-  }
+    await vscodeHost.updateVSCodeSettings({
+      hideRecommendSettings: true,
+    });
+  }, []);
 
   return (
     <div className="mt-6 max-w-md rounded-lg border bg-muted p-4 text-left">
       <div className="flex flex-col gap-4">
-        <div className="flex items-center gap-2">
-          <h3 className="flex items-end font-medium text-base">
+        <div className="flex items-start justify-between gap-2">
+          <h3 className="truncate font-medium text-base">
             {t("recommendSettings.title")}
           </h3>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={onConfirm}
+            className="-mt-1 -mr-2"
+          >
+            {t("recommendSettings.hide")}
+          </Button>
         </div>
         <div className="flex flex-col gap-3">
           {options.map((option) => (
-            <div key={option} className="flex items-center space-x-2">
+            <div key={option.id} className="flex items-center space-x-2">
               <Checkbox
-                id={option}
-                checked={selected.includes(option)}
+                id={option.id}
+                checked={option.checked}
                 onCheckedChange={(checked) =>
-                  onCheckedChange(option, !!checked)
+                  onCheckedChange(option.id, !!checked)
                 }
               />
               <Label
-                htmlFor={option}
+                htmlFor={option.id}
                 className="cursor-pointer whitespace-nowrap font-normal text-base transition-colors"
               >
                 <Tooltip>
                   <a
-                    href={openSettingsLink(option)}
+                    href={openSettingsLink(option.id)}
                     target="_blank"
                     rel="noopener noreferrer"
                   >
                     <span className="hover:text-primary">
-                      {t(`recommendSettings.options.${option}`)}
+                      {t(`recommendSettings.options.${option.id}`)}
                     </span>
                   </a>
                 </Tooltip>
               </Label>
             </div>
           ))}
-        </div>
-        <div className="mt-1 flex justify-center">
-          <Button size="sm" variant="default" onClick={onConfirm}>
-            {t("recommendSettings.ok")}
-          </Button>
         </div>
       </div>
     </div>

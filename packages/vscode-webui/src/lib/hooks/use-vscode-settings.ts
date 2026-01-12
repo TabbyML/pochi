@@ -14,7 +14,7 @@ export const useVSCodeSettings = () => {
   return (
     vscodeSettingsSignal?.value ??
     ({
-      recommendSettingsConfirmed: true,
+      hideRecommendSettings: true,
       autoSaveDisabled: true,
       commentsOpenViewDisabled: true,
       githubCopilotCodeCompletionEnabled: false,
