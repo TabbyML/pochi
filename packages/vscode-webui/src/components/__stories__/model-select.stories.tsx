@@ -4,7 +4,7 @@ import type { ModelGroups } from "@/features/settings";
 import { ModelSelect } from "../model-select";
 
 const meta = {
-  title: "Chat/ModelSelect",
+  title: "Components/ModelSelect",
   component: ModelSelect,
   parameters: {
     layout: "centered",

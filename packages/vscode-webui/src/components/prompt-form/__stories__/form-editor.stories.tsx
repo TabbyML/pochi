@@ -3,7 +3,7 @@ import { fn } from "@storybook/test";
 import { FormEditor } from "../form-editor";
 
 const meta = {
-  title: "Chat/FormEditor",
+  title: "PromptForm/FormEditor",
   component: FormEditor,
   parameters: {
     layout: "padded",

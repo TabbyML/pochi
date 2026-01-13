@@ -39,7 +39,7 @@ function MockedRecommendSettings({
 }
 
 const meta = {
-  title: "Pochi/RecommendSettings",
+  title: "Components/RecommendSettings",
   component: RecommendSettings,
   parameters: {
     layout: "centered",

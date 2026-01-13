@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { RouterErrorBoundary } from "../router-error-boundary";
 
 const meta: Meta<typeof RouterErrorBoundary> = {
-  title: "Pochi/RouterErrorBoundary",
+  title: "Components/RouterErrorBoundary",
   component: RouterErrorBoundary,
   parameters: {
     layout: "fullscreen",

@@ -3,7 +3,7 @@ import type { Todo } from "@getpochi/tools";
 import type { Meta, StoryObj } from "@storybook/react";
 
 const meta: Meta<typeof TodoList> = {
-  title: "Chat/TODO",
+  title: "Features/Todo/TodoList",
   component: Page,
 };
 

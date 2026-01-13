@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { MessageList } from "../message-list";
 
 const meta: Meta<typeof MessageList> = {
-  title: "Pochi/Messages",
+  title: "Message/MessageList",
   component: MessageList,
 };
 
