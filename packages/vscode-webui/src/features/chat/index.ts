@@ -28,4 +28,4 @@ export {
   type RepairMermaidOptions,
 } from "./hooks/use-repair-mermaid";
 
-export { useChatUiStore } from "./store";
+export { useChatUiStore, type EditorContent } from "./store";
