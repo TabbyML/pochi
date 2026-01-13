@@ -34,7 +34,7 @@ import {
 } from "./issue-mention/extension";
 
 import "./prompt-form.css";
-import type { EditorContent as EditorContentType } from "@/features/chat";
+import type { ChatInput } from "@/features/chat";
 import { useSelectedModels } from "@/features/settings";
 import { useLatest } from "@/lib/hooks/use-latest";
 import { cn } from "@/lib/utils";
@@ -103,8 +103,8 @@ function CustomEnterKeyHandler(
 }
 
 interface FormEditorProps {
-  input: EditorContentType;
-  setInput: (input: EditorContentType) => void;
+  input: ChatInput;
+  setInput: (input: ChatInput) => void;
   onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
   onCtrlSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
   isLoading: boolean;

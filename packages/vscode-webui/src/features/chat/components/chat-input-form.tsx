@@ -12,12 +12,12 @@ import { ReviewBadges } from "@/components/prompt-form/review-badges";
 import { UserEditsBadge } from "@/components/prompt-form/user-edits";
 import type { Review } from "@getpochi/common/vscode-webui-bridge";
 import type { ReactNode } from "@tanstack/react-router";
-import type { EditorContent } from "../hooks/use-chat-input-state";
+import type { ChatInput } from "../hooks/use-chat-input-state";
 import { QueuedMessages } from "./queued-messages";
 
 interface ChatInputFormProps {
-  input: EditorContent;
-  setInput: (input: EditorContent) => void;
+  input: ChatInput;
+  setInput: (input: ChatInput) => void;
   onSubmit: (e: React.FormEvent<HTMLFormElement>) => Promise<void>;
   onCtrlSubmit: (e: React.FormEvent<HTMLFormElement>) => Promise<void>;
   isLoading: boolean;

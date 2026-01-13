@@ -30,5 +30,5 @@ export {
 
 export {
   useChatInputState,
-  type EditorContent,
+  type ChatInput,
 } from "./hooks/use-chat-input-state";

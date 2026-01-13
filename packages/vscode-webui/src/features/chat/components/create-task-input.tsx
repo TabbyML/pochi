@@ -22,7 +22,6 @@ import { Loader2, PaperclipIcon } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-
 import { ChatInputForm } from "./chat-input-form";
 
 interface CreateTaskInputProps {
@@ -56,6 +55,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
     reload: reloadModels,
     updateSelectedModelId,
   } = useSelectedModels({ isSubTask: false });
+
   // Use the unified attachment upload hook
   const {
     files,
@@ -167,9 +167,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
       }
 
       // Clear input content after unfreeze
-      setTimeout(() => {
-        clearDraft();
-      }, 50);
+      setTimeout(clearDraft, 50);
 
       return true;
     },
@@ -259,12 +257,6 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
     },
     [handleSubmitImpl],
   );
-
-  // useEffect(() => {
-  //   if (input !== editorContent.text) {
-  //     setInput(editorContent.text);
-  //   }
-  // }, [input, setInput]);
 
   return (
     <>

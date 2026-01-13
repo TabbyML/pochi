@@ -1,4 +1,4 @@
-import type { EditorContent } from "@/features/chat";
+import type { ChatInput } from "@/features/chat";
 import { getLogger } from "@getpochi/common";
 import { useEffect, useState } from "react";
 import type { WebviewApi } from "vscode-webview";
@@ -7,7 +7,7 @@ import { getVSCodeApi } from "../vscode";
 const logger = getLogger("use-task-input-draft");
 
 interface TaskInputDraft {
-  content: EditorContent;
+  content: ChatInput;
   timestamp: number;
 }
 
@@ -22,7 +22,7 @@ interface VscodeState {
 export function useTaskInputDraft() {
   const vscodeApi = getVSCodeApi() as WebviewApi<VscodeState> | null;
 
-  const [draft, setDraft] = useState<EditorContent>(() => {
+  const [draft, setDraft] = useState<ChatInput>(() => {
     if (typeof window === "undefined")
       return {
         json: null,

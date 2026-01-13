@@ -13,7 +13,7 @@ import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { useAutoApproveGuard, useToolCallLifeCycle } from "../lib/chat-state";
 import type { BlockingState } from "./use-blocking-operations";
-import type { EditorContent } from "./use-chat-input-state";
+import type { ChatInput } from "./use-chat-input-state";
 
 const logger = getLogger("UseChatSubmit");
 
@@ -23,7 +23,7 @@ type UseAttachmentUploadReturn = ReturnType<typeof useAttachmentUpload>;
 
 interface UseChatSubmitProps {
   chat: UseChatReturn;
-  input: EditorContent;
+  input: ChatInput;
   clearInput: () => void;
   attachmentUpload: UseAttachmentUploadReturn;
   isSubmitDisabled: boolean;
