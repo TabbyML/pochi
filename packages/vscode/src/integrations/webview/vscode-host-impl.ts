@@ -1,6 +1,6 @@
 import * as os from "node:os";
 import path from "node:path";
-import { executeCommandWithNode } from "@/integrations/terminal/execute-command-with-node";
+import { executeCommandWithPty } from "@/integrations/terminal/execute-command-with-pty";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { CustomAgentManager } from "@/lib/custom-agent";
 import {
@@ -963,7 +963,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
 
     let capturedOutput = "";
     try {
-      const { output } = await executeCommandWithNode({
+      const { output } = await executeCommandWithPty({
         command,
         cwd: this.cwd,
         abortSignal: signal as AbortSignal,
