@@ -4,7 +4,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { browser } from "@wdio/globals";
 import type { Workbench } from "wdio-vscode-service";
-import { runCommonTests } from "./common";
+import { runTests } from "../lib/run-tests";
 
 const TEMP_DIR = path.join(os.tmpdir(), "pochi-test-workspaces");
 
@@ -125,27 +125,27 @@ describe("Workspace Configurations", () => {
       // Wait for initial load
       await browser.pause(5000);
     });
-    runCommonTests(() => browser.getWorkbench(), { skipTaskCreation: true });
+    runTests(() => browser.getWorkbench(), { skipTaskCreation: true });
   });
 
   describe("plain folder (no git)", () => {
     before(async () => {
       await openWorkspace(workspaces.plainDir);
     });
-    runCommonTests(() => browser.getWorkbench());
+    runTests(() => browser.getWorkbench());
   });
 
   describe("git repo (main worktree)", () => {
     before(async () => {
       await openWorkspace(workspaces.gitRepoDir);
     });
-    runCommonTests(() => browser.getWorkbench());
+    runTests(() => browser.getWorkbench());
   });
 
   describe("git repo having worktrees", () => {
     before(async () => {
       await openWorkspace(workspaces.gitMainWithWtDir);
     });
-    runCommonTests(() => browser.getWorkbench());
+    runTests(() => browser.getWorkbench());
   });
 });

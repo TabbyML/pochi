@@ -1,4 +1,4 @@
-name: Pochi VSCode E2E test
+name: Pochi VSCode Integration test
 
 on:
   push:
@@ -33,12 +33,12 @@ jobs:
           cd packages/vscode
           bun run vscode:prepublish
 
-      - name: Run e2e tests
+      - name: Run integration tests
         env:
           POCHI_API_KEY: ${{ secrets.POCHI_API_KEY }}
         run: |
           cd packages/vscode
-          bun run e2e
+          bun run test:integration
 
       - name: 📦 Upload Logs
         uses: actions/upload-artifact@v4

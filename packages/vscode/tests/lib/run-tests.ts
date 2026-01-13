@@ -1,8 +1,8 @@
 import { browser, expect } from "@wdio/globals";
 import type { Workbench } from "wdio-vscode-service";
-import { PochiSidebar } from "../pageobjects/PochiSidebar";
+import { PochiSidebar } from "../pageobjects/pochi-sidebar";
 
-export function runCommonTests(
+export function runTests(
   getWorkbench: () => Promise<Workbench>,
   options: { skipTaskCreation?: boolean } = {},
 ) {
