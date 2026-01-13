@@ -1,5 +1,6 @@
 {
   "lockfileVersion": 1,
+  "configVersion": 0,
   "workspaces": {
     "": {
       "name": "ragdoll",
@@ -27,7 +28,6 @@
         "@getpochi/common": "workspace:*",
         "@getpochi/livekit": "workspace:*",
         "@getpochi/tools": "workspace:*",
-        "@getpochi/vendor-claude-code": "workspace:*",
         "@getpochi/vendor-codex": "workspace:*",
         "@getpochi/vendor-gemini-cli": "workspace:*",
         "@getpochi/vendor-github-copilot": "workspace:*",
@@ -190,16 +190,6 @@
         "zod": "catalog:",
       },
     },
-    "packages/vendor-claude-code": {
-      "name": "@getpochi/vendor-claude-code",
-      "version": "0.1.0",
-      "dependencies": {
-        "@ai-sdk/anthropic": "^2.0.15",
-        "@ai-sdk/provider": "catalog:",
-        "@getpochi/common": "workspace:*",
-        "ai": "catalog:",
-      },
-    },
     "packages/vendor-codex": {
       "name": "@getpochi/vendor-codex",
       "version": "0.1.0",
@@ -263,7 +253,6 @@
       "dependencies": {
         "@ai-sdk/google-vertex": "catalog:",
         "@getpochi/common": "workspace:*",
-        "@getpochi/vendor-claude-code": "workspace:*",
         "@getpochi/vendor-codex": "workspace:*",
         "@getpochi/vendor-gemini-cli": "workspace:*",
         "@getpochi/vendor-github-copilot": "workspace:*",
@@ -334,7 +323,6 @@
         "@ai-sdk/react": "catalog:",
         "@getpochi/common": "workspace:*",
         "@getpochi/livekit": "workspace:*",
-        "@getpochi/vendor-claude-code": "workspace:*",
         "@getpochi/vendor-codex": "workspace:*",
         "@getpochi/vendor-gemini-cli": "workspace:*",
         "@getpochi/vendor-github-copilot": "workspace:*",
@@ -850,8 +838,6 @@
     "@getpochi/livekit-cf": ["@getpochi/livekit-cf@workspace:packages/livekit-cf"],
 
     "@getpochi/tools": ["@getpochi/tools@workspace:packages/tools"],
-
-    "@getpochi/vendor-claude-code": ["@getpochi/vendor-claude-code@workspace:packages/vendor-claude-code"],
 
     "@getpochi/vendor-codex": ["@getpochi/vendor-codex@workspace:packages/vendor-codex"],
 

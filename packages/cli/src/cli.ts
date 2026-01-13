@@ -5,7 +5,6 @@ import "@livestore/wa-sqlite/dist/wa-sqlite.node.wasm" with { type: "file" };
 // Register the vendor
 import "@getpochi/vendor-pochi";
 import "@getpochi/vendor-gemini-cli";
-import "@getpochi/vendor-claude-code";
 import "@getpochi/vendor-codex";
 import "@getpochi/vendor-github-copilot";
 import "@getpochi/vendor-qwen-code";
@@ -13,7 +12,6 @@ import "@getpochi/vendor-qwen-code";
 // Register the models
 import "@getpochi/vendor-pochi/edge";
 import "@getpochi/vendor-gemini-cli/edge";
-import "@getpochi/vendor-claude-code/edge";
 import "@getpochi/vendor-codex/edge";
 import "@getpochi/vendor-github-copilot/edge";
 import "@getpochi/vendor-qwen-code/edge";

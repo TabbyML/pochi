@@ -5,7 +5,11 @@
   "bin": {
     "pochi": "src/cli.ts"
   },
-  "files": ["dist/**", "README.md", "../../LICENSE"],
+  "files": [
+    "dist/**",
+    "README.md",
+    "../../LICENSE"
+  ],
   "scripts": {
     "start": "bun run src/cli.ts",
     "tsc": "tsc",
@@ -21,7 +25,6 @@
     "@getpochi/common": "workspace:*",
     "@getpochi/livekit": "workspace:*",
     "@getpochi/tools": "workspace:*",
-    "@getpochi/vendor-claude-code": "workspace:*",
     "@getpochi/vendor-codex": "workspace:*",
     "@getpochi/vendor-gemini-cli": "workspace:*",
     "@getpochi/vendor-github-copilot": "workspace:*",
