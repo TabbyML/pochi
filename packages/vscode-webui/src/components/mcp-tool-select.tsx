@@ -1,0 +1,328 @@
+import LoadingWrapper from "@/components/loading-wrapper";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { useMcp } from "@/lib/hooks/use-mcp";
+import { cn } from "@/lib/utils";
+import type { McpServerConnection } from "@getpochi/common/mcp-utils";
+import { DropdownMenuPortal } from "@radix-ui/react-dropdown-menu";
+import {
+  CheckIcon,
+  ChevronsDownUp,
+  ChevronsUpDown,
+  Dot,
+  Settings2Icon,
+  WrenchIcon,
+} from "lucide-react";
+import { useCallback, useState } from "react";
+import { useTranslation } from "react-i18next";
+
+// Helper to trigger VS Code command links programmatically
+function triggerCommandLink(href: string) {
+  const link = document.createElement("a");
+  link.href = href;
+  link.style.display = "none";
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+interface McpToolSelectProps {
+  triggerClassName?: string;
+}
+
+export function McpToolSelect({ triggerClassName }: McpToolSelectProps) {
+  const { t } = useTranslation();
+  const { connections, isLoading } = useMcp();
+
+  // Filter out vendor/pochi connections - only show user-configured MCP servers
+  const userConnections = Object.fromEntries(
+    Object.entries(connections).filter(
+      ([_, connection]) => connection.kind === undefined,
+    ),
+  );
+
+  const serverNames = Object.keys(userConnections);
+  const hasServers = serverNames.length > 0;
+
+  // Count enabled servers (not stopped)
+  const enabledCount = Object.values(userConnections).filter(
+    (conn) => conn.status !== "stopped",
+  ).length;
+
+  // Count total tools across all servers
+  const totalToolsCount = Object.values(userConnections).reduce(
+    (sum, conn) => sum + Object.keys(conn.tools).length,
+    0,
+  );
+
+  // Count enabled tools
+  const enabledToolsCount = Object.values(userConnections).reduce(
+    (sum, conn) =>
+      sum + Object.values(conn.tools).filter((tool) => !tool.disabled).length,
+    0,
+  );
+
+  return (
+    <LoadingWrapper
+      loading={isLoading}
+      fallback={
+        <div className="p-1">
+          <Skeleton className="h-4 w-20 bg-[var(--vscode-inputOption-hoverBackground)]" />
+        </div>
+      }
+    >
+      <div className="h-6 select-none overflow-hidden">
+        <DropdownMenu>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    className={cn(
+                      "!gap-0.5 !px-1 button-focus h-6 items-center py-0 font-normal",
+                      triggerClassName,
+                    )}
+                  >
+                    <WrenchIcon
+                      className={cn(
+                        "size-4 transition-colors duration-200",
+                        !hasServers && "text-muted-foreground",
+                      )}
+                    />
+                  </Button>
+                </DropdownMenuTrigger>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>
+                  {hasServers
+                    ? `MCP: ${enabledCount}/${serverNames.length} ${t("mcpSelect.servers")}${
+                        totalToolsCount > 0
+                          ? `, ${enabledToolsCount}/${totalToolsCount} ${t("mcpSelect.tools")}`
+                          : ""
+                      }`
+                    : t("mcpSelect.noServersConfigured")}
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          <DropdownMenuPortal>
+            <DropdownMenuContent
+              onCloseAutoFocus={(e) => e.preventDefault()}
+              side="bottom"
+              align="start"
+              alignOffset={6}
+              className="dropdown-menu max-h-[60vh] min-w-[16rem] max-w-[80vw] animate-in overflow-y-auto overflow-x-hidden rounded-md border bg-background p-2 text-popover-foreground shadow"
+            >
+              {hasServers ? (
+                <>
+                  <div className="mb-2 px-2 py-1 font-medium text-muted-foreground text-xs">
+                    {t("mcpSelect.serversEnabled", {
+                      enabled: enabledCount,
+                      total: serverNames.length,
+                    })}
+                    {totalToolsCount > 0 && (
+                      <span className="ml-1">
+                        ({enabledToolsCount}/{totalToolsCount}{" "}
+                        {t("mcpSelect.tools")})
+                      </span>
+                    )}
+                  </div>
+                  {serverNames.map((name) => (
+                    <McpServerItem
+                      key={name}
+                      name={name}
+                      connection={userConnections[name]}
+                    />
+                  ))}
+                </>
+              ) : (
+                <div className="px-2 py-4 text-center text-muted-foreground text-sm">
+                  {t("mcpSelect.noServersConfigured")}
+                </div>
+              )}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <a
+                  href="command:pochi.mcp.openServerSettings"
+                  className="flex cursor-pointer items-center gap-2 text-[var(--vscode-textLink-foreground)] text-xs"
+                >
+                  <Settings2Icon className="size-3.5" />
+                  {t("mcpSelect.manageServers")}
+                </a>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenuPortal>
+        </DropdownMenu>
+      </div>
+    </LoadingWrapper>
+  );
+}
+
+function McpServerItem({
+  name,
+  connection,
+}: {
+  name: string;
+  connection: McpServerConnection;
+}) {
+  const { status, error, tools } = connection;
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  const hasTools = tools && Object.keys(tools).length > 0;
+  const isEnabled = status !== "stopped";
+  const toolsArray = Object.entries(tools).map(([id, tool]) => ({
+    id,
+    ...tool,
+  }));
+  const enabledToolsCount = toolsArray.filter((t) => !t.disabled).length;
+
+  const handleToggleServer = useCallback(() => {
+    const action = isEnabled ? "stop" : "start";
+    const href = `command:pochi.mcp.serverControl?${encodeURIComponent(
+      JSON.stringify([action, name]),
+    )}`;
+    triggerCommandLink(href);
+  }, [isEnabled, name]);
+
+  return (
+    <div className="rounded-md hover:bg-muted/50">
+      <div className="group flex items-center justify-between px-2 py-1.5">
+        <div
+          className="flex flex-1 cursor-pointer items-center gap-1.5 overflow-hidden"
+          onClick={() => hasTools && setIsExpanded(!isExpanded)}
+        >
+          <Dot
+            strokeWidth={6}
+            className={cn("size-3 shrink-0", {
+              "text-muted-foreground": status === "stopped",
+              "animate-pulse text-success": status === "starting",
+              "text-success": status === "ready",
+              "text-error": status === "error",
+            })}
+          />
+          <span className="truncate font-medium text-sm">{name}</span>
+          {hasTools && (
+            <>
+              <span className="text-muted-foreground text-xs">
+                ({enabledToolsCount}/{toolsArray.length})
+              </span>
+              {isExpanded ? (
+                <ChevronsDownUp className="size-3.5 shrink-0 text-muted-foreground transition-transform duration-200" />
+              ) : (
+                <ChevronsUpDown className="size-3.5 shrink-0 text-muted-foreground transition-transform duration-200" />
+              )}
+            </>
+          )}
+        </div>
+        <Switch
+          checked={isEnabled}
+          disabled={status === "starting"}
+          className="scale-75"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleToggleServer();
+          }}
+        />
+      </div>
+
+      {status === "error" && error && (
+        <div className="px-2 pb-1.5 text-error text-xs">
+          <span className="line-clamp-2">{error}</span>
+        </div>
+      )}
+
+      {isExpanded && hasTools && (
+        <div className="fade-in slide-in-from-top-1 mb-1 ml-2.5 animate-in pl-2 duration-200">
+          {toolsArray.map((tool) => (
+            <McpToolItem
+              key={tool.id}
+              serverName={name}
+              toolName={tool.id}
+              description={tool.description}
+              disabled={tool.disabled}
+              serverStatus={status}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function McpToolItem({
+  serverName,
+  toolName,
+  description,
+  disabled,
+  serverStatus,
+}: {
+  serverName: string;
+  toolName: string;
+  description: string | undefined;
+  disabled: boolean;
+  serverStatus: McpServerConnection["status"];
+}) {
+  const isNotAvailable = disabled || serverStatus !== "ready";
+
+  const handleToggleTool = useCallback(() => {
+    if (serverStatus !== "ready") return;
+    const href = `command:pochi.mcp.toggleToolEnabled?${encodeURIComponent(
+      JSON.stringify([serverName, toolName]),
+    )}`;
+    triggerCommandLink(href);
+  }, [serverName, toolName, serverStatus]);
+
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div
+            className={cn(
+              "group flex items-center justify-between rounded-sm px-2 py-1 hover:bg-accent hover:text-accent-foreground",
+              isNotAvailable && "opacity-50",
+              serverStatus === "ready" && "cursor-pointer",
+            )}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleToggleTool();
+            }}
+          >
+            <span className="truncate text-xs">{toolName}</span>
+            <CheckIcon
+              className={cn(
+                "size-3.5",
+                disabled ? "opacity-0" : "text-success opacity-100",
+              )}
+            />
+          </div>
+        </TooltipTrigger>
+        {description && (
+          <TooltipContent
+            side="top"
+            align="start"
+            sideOffset={-2}
+            collisionPadding={16}
+            className="z-[100] max-w-80"
+          >
+            <p className="max-h-40 overflow-auto text-xs">{description}</p>
+          </TooltipContent>
+        )}
+      </Tooltip>
+    </TooltipProvider>
+  );
+}

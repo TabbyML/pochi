@@ -70,6 +70,15 @@
     "noBranchFound": "No branch found",
     "branches": "Branches"
   },
+  "mcpSelect": {
+    "tooltip": "MCP servers and tools",
+    "noServers": "No MCP",
+    "serversEnabled": "{{enabled}}/{{total}} servers",
+    "servers": "servers",
+    "tools": "tools",
+    "noServersConfigured": "No MCP servers configured",
+    "manageServers": "Manage MCP Servers..."
+  },
   "worktree": {
     "createPr": "Create PR",
     "createDraftPr": "Create draft PR",

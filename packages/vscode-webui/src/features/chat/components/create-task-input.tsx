@@ -1,4 +1,5 @@
 import { AttachmentPreviewList } from "@/components/attachment-preview-list";
+import { McpToolSelect } from "@/components/mcp-tool-select";
 import { ModelSelect } from "@/components/model-select";
 import { Button } from "@/components/ui/button";
 import {
@@ -326,6 +327,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
               onBaseBranchChange={setBaseBranch}
             />
           )}
+          <McpToolSelect />
           <HoverCard>
             <HoverCardTrigger asChild>
               <span>
