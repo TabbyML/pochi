@@ -9,7 +9,6 @@ export function useInlinedSubTask(
   tool: ToolProps<"newTask">["tool"],
 ): TaskThreadSource | undefined {
   const todosRef = useRef<Todo[] | undefined>(undefined);
-
   const subtask = tool.input?._transient?.task;
 
   const { todos } = useTodos({
@@ -17,6 +16,10 @@ export function useInlinedSubTask(
     messages: (subtask?.messages ?? []) as Message[],
     todosRef,
   });
+
+  if (tool.input?.background) {
+    return undefined;
+  }
 
   if (tool.state === "input-streaming") {
     return undefined;

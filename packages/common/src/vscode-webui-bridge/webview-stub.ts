@@ -272,6 +272,13 @@ const VSCodeHostStub = {
 
   onTaskUpdated: async (): Promise<void> => {},
 
+  onBackgroundTaskCreated: async (_params: {
+    uid: string;
+    cwd: string;
+    parentId?: string;
+    storeId?: string;
+  }): Promise<void> => {},
+
   onTaskRunning: async (_taskId: string): Promise<void> => {},
 
   readWorktrees: async (): Promise<{

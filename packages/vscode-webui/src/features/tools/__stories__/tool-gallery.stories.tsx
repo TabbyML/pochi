@@ -293,6 +293,7 @@ const newTaskProps: NewTaskProp["tool"] = {
   },
   output: {
     result: "This is a great day",
+    uid: "new-task-output-1",
   },
 };
 

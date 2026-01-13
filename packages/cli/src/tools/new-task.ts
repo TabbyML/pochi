@@ -11,7 +11,7 @@ import type { ToolCallOptions } from "../types";
  */
 export const newTask =
   (options: ToolCallOptions): ToolFunctionType<ClientTools["newTask"]> =>
-  async ({ _meta, agentType }) => {
+  async ({ _meta, agentType, background }) => {
     const taskId = _meta?.uid || crypto.randomUUID();
 
     if (!options.createSubTaskRunner) {
@@ -35,7 +35,19 @@ export const newTask =
 
     const subTaskRunner = options.createSubTaskRunner(taskId, customAgent);
 
-    // Execute the sub-task
+    // Check if this is a background task
+    if (background) {
+      // Start the subtask but don't wait for completion
+      void Promise.resolve(subTaskRunner.run()).catch(() => {
+        // Ignore errors for background tasks
+      });
+      return {
+        uid: taskId,
+        result: "Background task started",
+      };
+    }
+
+    // Execute the sub-task (synchronous)
     await subTaskRunner.run();
 
     // Get the final state and extract result
@@ -55,6 +67,7 @@ export const newTask =
     }
 
     return {
+      uid: taskId,
       result:
         typeof result === "string" ? result : "Sub-task completed successfully",
     };
