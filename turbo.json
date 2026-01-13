@@ -5,6 +5,9 @@
       "dependsOn": ["^tsc"]
     },
     "test": {},
+    "test:integration": {
+      "dependsOn": ["build"]
+    },
     "build": {
       "dependsOn": ["tsc"],
       "outputs": ["dist/**"]
