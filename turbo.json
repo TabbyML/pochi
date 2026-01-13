@@ -13,7 +13,7 @@
       "outputs": ["dist/**"]
     }
   },
-  "globalPassThroughEnv": ["NODE_ENV"],
+  "globalPassThroughEnv": ["NODE_ENV", "POCHI_API_KEY"],
   "boundaries": {
     "implicitDependencies": ["vitest"],
     "tags": {
