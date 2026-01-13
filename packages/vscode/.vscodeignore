@@ -10,3 +10,7 @@ tsconfig.test.json
 turbo.json
 .turbo/**
 coverage/**
+.env
+test/**
+wdio.conf.ts
+.wdio-vscode-service/**
