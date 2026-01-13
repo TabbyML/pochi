@@ -11,6 +11,6 @@ turbo.json
 .turbo/**
 coverage/**
 .env
-test/**
+tests/**
 wdio.conf.ts
 .wdio-vscode-service/**
