@@ -28,4 +28,7 @@ export {
   type RepairMermaidOptions,
 } from "./hooks/use-repair-mermaid";
 
-export { useChatUiStore, type EditorContent } from "./store";
+export {
+  useChatInputState,
+  type EditorContent,
+} from "./hooks/use-chat-input-state";

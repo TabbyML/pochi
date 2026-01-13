@@ -39,13 +39,13 @@ import {
   type BlockingOperation,
   useBlockingOperations,
 } from "../hooks/use-blocking-operations";
+import { useChatInputState } from "../hooks/use-chat-input-state";
 import { useChatStatus } from "../hooks/use-chat-status";
 import { useChatSubmit } from "../hooks/use-chat-submit";
 import { useInlineCompactTask } from "../hooks/use-inline-compact-task";
 import { useNewCompactTask } from "../hooks/use-new-compact-task";
 import { useShowCompleteSubtaskButton } from "../hooks/use-subtask-completed";
 import type { SubtaskInfo } from "../hooks/use-subtask-info";
-import { useChatUiStore } from "../store";
 import { ChatInputForm } from "./chat-input-form";
 import { ErrorMessageView } from "./error-message-view";
 import { SubmitReviewsButton } from "./submit-review-button";
@@ -92,9 +92,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   const isLoading = status === "streaming" || status === "submitted";
   const totalTokens = task?.totalTokens || 0;
 
-  const { editorContent, updateEditorContent, clearEditorContent } =
-    useChatUiStore();
-  const input = editorContent.text;
+  const { input, setInput, clearInput } = useChatInputState();
 
   const [queuedMessages, setQueuedMessages] = useState<string[]>([]);
 
@@ -162,7 +160,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     isModelsLoading,
     isModelValid: !!selectedModel,
     isLoading,
-    isInputEmpty: !input.trim() && queuedMessages.length === 0,
+    isInputEmpty: !input.text.trim() && queuedMessages.length === 0,
     isFilesEmpty: files.length === 0,
     isReviewsEmpty: reviews.length === 0,
     isUploadingAttachments,
@@ -178,7 +176,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   const { handleSubmit, handleStop } = useChatSubmit({
     chat,
     input,
-    clearInput: clearEditorContent,
+    clearInput,
     attachmentUpload,
     isSubmitDisabled,
     isLoading,
@@ -194,14 +192,13 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     async (e?: React.FormEvent<HTMLFormElement>) => {
       e?.preventDefault();
 
-      const message = input;
+      const message = input.text;
       if (message.trim()) {
         setQueuedMessages((prev) => [...prev, message]);
-        // setInput("");
-        updateEditorContent({ json: null, text: "" });
+        clearInput();
       }
     },
-    [input, updateEditorContent],
+    [input, clearInput],
   );
 
   useEffect(() => {
@@ -316,6 +313,8 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
         />
       )}
       <ChatInputForm
+        input={input}
+        setInput={setInput}
         onSubmit={handleSubmit}
         onCtrlSubmit={handleQueueMessage}
         isLoading={isLoading || isExecuting}
@@ -455,6 +454,7 @@ const SubmitStopButton: React.FC<SubmitStopButtonProps> = ({
 };
 
 export function ChatToolBarSkeleton() {
+  const { input, setInput } = useChatInputState();
   return (
     <>
       <div className={PopupContainerClassName}>
@@ -479,6 +479,8 @@ export function ChatToolBarSkeleton() {
 
       <AutoApproveMenu isSubTask={false} />
       <ChatInputForm
+        input={input}
+        setInput={setInput}
         onSubmit={async () => {}}
         onCtrlSubmit={async () => {}}
         isLoading={true}

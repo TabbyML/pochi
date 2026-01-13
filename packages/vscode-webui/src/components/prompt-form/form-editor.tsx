@@ -34,7 +34,7 @@ import {
 } from "./issue-mention/extension";
 
 import "./prompt-form.css";
-import { useChatUiStore } from "@/features/chat";
+import type { EditorContent as EditorContentType } from "@/features/chat";
 import { useSelectedModels } from "@/features/settings";
 import { useLatest } from "@/lib/hooks/use-latest";
 import { cn } from "@/lib/utils";
@@ -103,6 +103,8 @@ function CustomEnterKeyHandler(
 }
 
 interface FormEditorProps {
+  input: EditorContentType;
+  setInput: (input: EditorContentType) => void;
   onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
   onCtrlSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
   isLoading: boolean;
@@ -121,6 +123,8 @@ interface FormEditorProps {
 }
 
 export function FormEditor({
+  input,
+  setInput,
   onSubmit,
   onCtrlSubmit,
   isLoading,
@@ -155,8 +159,6 @@ export function FormEditor({
   // State for drag overlay UI
   const [isDragOver, setIsDragOver] = useState(false);
 
-  const { editorContent, updateEditorContent } = useChatUiStore();
-
   const onSelectSlashCandidate = useLatest((data: SlashCandidate) => {
     let model: string | undefined;
     if (data.type === "workflow") {
@@ -172,7 +174,6 @@ export function FormEditor({
 
   const editor = useEditor(
     {
-      // content: editorJsonContent,
       extensions: [
         Document,
         Paragraph,
@@ -573,7 +574,7 @@ export function FormEditor({
         const text = props.editor.getText({
           blockSeparator: newLineCharacter,
         });
-        updateEditorContent({ json, text });
+        setInput({ json, text });
 
         // Update current draft if we have submit history enabled
         if (
@@ -634,14 +635,14 @@ export function FormEditor({
   useEffect(() => {
     if (
       editor &&
-      editorContent.text !==
+      input.text !==
         editor.getText({
           blockSeparator: newLineCharacter,
         })
     ) {
-      editor?.commands.setContent(editorContent.json);
+      editor.commands.setContent(input.json);
     }
-  }, [editor, editorContent]);
+  }, [editor, input]);
 
   // For saving the editor content to the session state
   const saveEdtiorState = useCallback(async () => {

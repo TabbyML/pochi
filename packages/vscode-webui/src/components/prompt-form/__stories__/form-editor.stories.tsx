@@ -14,6 +14,8 @@ const meta = {
     isSubTask: { control: "boolean" },
   },
   args: {
+    input: { text: "", json: {} },
+    setInput: fn(),
     onSubmit: fn(),
     onCtrlSubmit: fn(),
     onError: fn(),
@@ -26,6 +28,23 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   args: {
+    input: {
+      text: "Hello world",
+      json: {
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            content: [
+              {
+                type: "text",
+                text: "Hello world",
+              },
+            ],
+          },
+        ],
+      },
+    },
     isLoading: false,
     autoFocus: true,
     isSubTask: false,

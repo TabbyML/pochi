@@ -1,8 +1,8 @@
+import type { EditorContent } from "@/features/chat";
 import { getLogger } from "@getpochi/common";
 import { useEffect, useState } from "react";
 import type { WebviewApi } from "vscode-webview";
 import { getVSCodeApi } from "../vscode";
-import type { EditorContent } from "@/features/chat";
 
 const logger = getLogger("use-task-input-draft");
 
@@ -33,7 +33,7 @@ export function useTaskInputDraft() {
       if (vscodeApi) {
         const state = vscodeApi.getState() as VscodeState | undefined;
         const stored = state?.taskInputDraft;
-        if (stored) {
+        if (stored?.content?.text) {
           return stored.content;
         }
       }
