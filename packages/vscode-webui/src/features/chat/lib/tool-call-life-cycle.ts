@@ -1,6 +1,5 @@
 import { blobStore } from "@/lib/remote-blob-store";
-import { vscodeHost } from "@/lib/vscode";
-
+import { isVSCodeEnvironment, vscodeHost } from "@/lib/vscode";
 import { getLogger } from "@getpochi/common";
 
 import type { ExecuteCommandResult } from "@getpochi/common/vscode-webui-bridge";
@@ -163,6 +162,7 @@ export class ManagedToolCallLifeCycle
   implements ToolCallLifeCycle
 {
   private state: ToolCallState;
+  private newTaskArgs?: NewTaskParameterType;
   readonly toolName: string;
   readonly toolCallId: string;
 
@@ -322,7 +322,8 @@ export class ManagedToolCallLifeCycle
     let executePromise: Promise<unknown>;
 
     if (this.toolName === "newTask") {
-      executePromise = this.runNewTask(args as NewTaskParameterType);
+      this.newTaskArgs = args as NewTaskParameterType;
+      executePromise = this.runNewTask(this.newTaskArgs);
     } else {
       executePromise = vscodeHost.executeToolCall(this.toolName, args, {
         toolCallId: this.toolCallId,
@@ -353,6 +354,18 @@ export class ManagedToolCallLifeCycle
     const uid = args._meta?.uid;
     if (!uid) {
       throw new Error("Missing uid in newTask arguments");
+    }
+
+    if (args.background && isVSCodeEnvironment()) {
+      const cwd = window.POCHI_TASK_INFO?.cwd;
+      if (cwd) {
+        void vscodeHost.onBackgroundTaskCreated({
+          uid,
+          cwd,
+          parentId: window.POCHI_TASK_INFO?.uid,
+          storeId: this.store.storeId,
+        });
+      }
     }
 
     return Promise.resolve({ uid });
@@ -461,6 +474,18 @@ export class ManagedToolCallLifeCycle
   }
 
   private onExecuteNewTask({ uid }: NewTaskReturnType) {
+    if (this.newTaskArgs?.background) {
+      this.transitTo("execute", {
+        type: "complete",
+        result: {
+          uid,
+          result: "Background task started",
+        },
+        reason: "execute-finish",
+      });
+      return;
+    }
+
     const cleanupFns: (() => void)[] = [];
     const cleanup = () => {
       for (const fn of cleanupFns) {
@@ -517,6 +542,7 @@ export class ManagedToolCallLifeCycle
         this.state.type === "execute:streaming"
       ) {
         const result = {
+          uid,
           result: extractTaskResult(this.store, uid),
         };
         this.transitTo("execute:streaming", {

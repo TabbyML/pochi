@@ -32,13 +32,20 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ToolProps } from "../components/types";
 
 export function useLiveSubTask(
-  { tool, isExecuting }: Pick<ToolProps<"newTask">, "tool" | "isExecuting">,
+  {
+    tool,
+    isExecuting,
+    forceStart = false,
+  }: Pick<ToolProps<"newTask">, "tool" | "isExecuting"> & {
+    forceStart?: boolean;
+  },
   toolCallStatusRegistry: ToolCallStatusRegistry,
 ): (TaskThreadSource & { parentId: string }) | undefined {
   const lifecycle = useToolCallLifeCycle().getToolCallLifeCycle({
     toolName: getToolName(tool),
     toolCallId: tool.toolCallId,
   });
+  const shouldExecute = isExecuting || forceStart;
 
   const { customAgent, customAgentModel } = useCustomAgent(
     tool.state !== "input-streaming" ? tool.input?.agentType : undefined,
@@ -46,11 +53,30 @@ export function useLiveSubTask(
 
   const abortController = useRef(new AbortController());
 
-  useEffect(() => {
+  const localStreamingResultRef = useRef<
+    Extract<ToolCallLifeCycle["streamingResult"], { toolName: "newTask" }>
+  >({
+    toolName: "newTask",
+    abortSignal: abortController.current.signal,
+    throws: () => {},
+  });
+
+  const getStreamingResult = useCallback(() => {
     const streamingResult = ensureNewTaskStreamingResult(
       lifecycle.streamingResult,
     );
-    if (!isExecuting || !streamingResult) {
+    if (streamingResult) {
+      return streamingResult;
+    }
+    if (forceStart) {
+      return localStreamingResultRef.current;
+    }
+    return undefined;
+  }, [forceStart, lifecycle.streamingResult]);
+
+  useEffect(() => {
+    const streamingResult = getStreamingResult();
+    if (!shouldExecute || !streamingResult) {
       return;
     }
 
@@ -62,7 +88,7 @@ export function useLiveSubTask(
     return () => {
       abortSignal.removeEventListener("abort", onAbort);
     };
-  }, [isExecuting, lifecycle.streamingResult]);
+  }, [shouldExecute, getStreamingResult]);
 
   // biome-ignore lint/style/noNonNullAssertion: uid must have been set.
   const uid = tool.input?._meta?.uid!;
@@ -86,9 +112,7 @@ export function useLiveSubTask(
     isSubTask: true,
     customAgent,
     sendAutomaticallyWhen: (x) => {
-      const streamingResult = ensureNewTaskStreamingResult(
-        lifecycle.streamingResult,
-      );
+      const streamingResult = getStreamingResult();
       if (!streamingResult || abortController.current.signal.aborted) {
         return false;
       }
@@ -99,9 +123,7 @@ export function useLiveSubTask(
       return lastAssistantMessageIsCompleteWithToolCalls(x);
     },
     onToolCall: async ({ toolCall }) => {
-      const streamingResult = ensureNewTaskStreamingResult(
-        lifecycle.streamingResult,
-      );
+      const streamingResult = getStreamingResult();
       if (!streamingResult) {
         throw new Error("Unexpected parent toolCall state");
       }
@@ -208,18 +230,16 @@ export function useLiveSubTask(
   });
   const retry = useCallback(
     (error?: Error) => {
-      if (isExecuting && (status === "ready" || status === "error")) {
+      if (shouldExecute && (status === "ready" || status === "error")) {
         retryImpl(error ?? new ReadyForRetryError());
       }
     },
-    [retryImpl, status, isExecuting],
+    [retryImpl, status, shouldExecute],
   );
   const retryWithCount = useCallback(
     (error?: Error) => {
-      const streamingResult = ensureNewTaskStreamingResult(
-        lifecycle.streamingResult,
-      );
-      if (!isExecuting || !streamingResult) {
+      const streamingResult = getStreamingResult();
+      if (!shouldExecute || !streamingResult) {
         return;
       }
       setRetryCount((count) => count + 1);
@@ -231,7 +251,7 @@ export function useLiveSubTask(
       }
       retry(error);
     },
-    [retry, retryCount, lifecycle.streamingResult, isExecuting],
+    [retry, retryCount, getStreamingResult, shouldExecute],
   );
 
   const errorForRetry = useMixinReadyForRetryError(messages, error);
@@ -242,18 +262,16 @@ export function useLiveSubTask(
   ] = useDebounceState<Error | undefined>(undefined, 1000);
   useEffect(() => {
     if (
-      isExecuting &&
+      shouldExecute &&
       errorForRetry &&
       (status === "ready" || status === "error")
     ) {
       setPendingErrorForRetry(errorForRetry);
     }
-  }, [errorForRetry, setPendingErrorForRetry, status, isExecuting]);
+  }, [errorForRetry, setPendingErrorForRetry, status, shouldExecute]);
   useEffect(() => {
-    const streamingResult = ensureNewTaskStreamingResult(
-      lifecycle.streamingResult,
-    );
-    if (!isExecuting || !streamingResult) {
+    const streamingResult = getStreamingResult();
+    if (!shouldExecute || !streamingResult) {
       return;
     }
     if (pendingErrorForRetry) {
@@ -264,16 +282,16 @@ export function useLiveSubTask(
     retryWithCount,
     pendingErrorForRetry,
     setDebouncedPendingErrorForRetry,
-    lifecycle.streamingResult,
-    isExecuting,
+    getStreamingResult,
+    shouldExecute,
   ]);
 
   useEffect(() => {
-    if (isExecuting && status === "ready" && errorForRetry === undefined) {
+    if (shouldExecute && status === "ready" && errorForRetry === undefined) {
       // Reset retry count when status is ok and no error
       setRetryCount(0);
     }
-  }, [isExecuting, status, errorForRetry]);
+  }, [shouldExecute, status, errorForRetry]);
 
   const stepCount = useMemo(() => {
     return messages
@@ -282,16 +300,14 @@ export function useLiveSubTask(
   }, [messages]);
   const [currentStepCount, setCurrentStepCount] = useState(0);
   useEffect(() => {
-    if (isExecuting && stepCount > currentStepCount) {
+    if (shouldExecute && stepCount > currentStepCount) {
       setCurrentStepCount(stepCount);
     }
-  }, [stepCount, currentStepCount, isExecuting]);
+  }, [stepCount, currentStepCount, shouldExecute]);
 
   useEffect(() => {
-    const streamingResult = ensureNewTaskStreamingResult(
-      lifecycle.streamingResult,
-    );
-    if (!isExecuting || !streamingResult) {
+    const streamingResult = getStreamingResult();
+    if (!shouldExecute || !streamingResult) {
       return;
     }
     if (currentStepCount > SubtaskMaxStep) {
@@ -299,13 +315,13 @@ export function useLiveSubTask(
         "The sub-task failed to complete, max step count reached.",
       );
     }
-  }, [currentStepCount, lifecycle.streamingResult, isExecuting]);
+  }, [currentStepCount, getStreamingResult, shouldExecute]);
 
   useInitAutoStart({
     start: retry,
     enabled:
-      tool.state === "input-available" &&
-      isExecuting &&
+      (tool.state === "input-available" || forceStart) &&
+      shouldExecute &&
       currentStepCount <= SubtaskMaxStep &&
       !abortController.current.signal.aborted &&
       // task is not completed or aborted
@@ -327,7 +343,7 @@ export function useLiveSubTask(
     const updateIsLoading = () => {
       setIsLoading(
         !!(
-          ensureNewTaskStreamingResult(lifecycle.streamingResult) &&
+          getStreamingResult() &&
           !abortController.current.signal.aborted &&
           (status === "submitted" || status === "streaming") &&
           [...toolCallStatusRegistry.entries()].every(
@@ -340,7 +356,7 @@ export function useLiveSubTask(
 
     const unsubscribe = toolCallStatusRegistry.on("updated", updateIsLoading);
     return () => unsubscribe();
-  }, [toolCallStatusRegistry, lifecycle.streamingResult, status]);
+  }, [toolCallStatusRegistry, getStreamingResult, status]);
 
   if (!task) {
     // The task is not found in store, useLiveSubTask is not available

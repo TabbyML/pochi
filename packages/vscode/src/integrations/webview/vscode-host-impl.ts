@@ -1040,6 +1040,36 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     taskUpdated.fire({ event: taskData });
   };
 
+  onBackgroundTaskCreated = async ({
+    uid,
+    cwd,
+    storeId,
+  }: {
+    uid: string;
+    cwd: string;
+    parentId?: string;
+    storeId?: string;
+  }): Promise<void> => {
+    const autoOpen =
+      this.pochiConfiguration.advancedSettings.value.backgroundTasks
+        ?.autoOpen ?? true;
+    if (!autoOpen) {
+      return;
+    }
+
+    if (this.pochiTaskState.state.value[uid]) {
+      return;
+    }
+
+    await this.openTaskInPanel({
+      type: "open-task",
+      uid,
+      displayId: null,
+      cwd,
+      storeId,
+    });
+  };
+
   onTaskRunning = async (taskId: string): Promise<void> => {
     taskRunning.fire({ taskId });
   };

@@ -326,6 +326,13 @@ export interface VSCodeHostApi {
 
   onTaskUpdated(taskData: unknown): Promise<void>;
 
+  onBackgroundTaskCreated(params: {
+    uid: string;
+    cwd: string;
+    parentId?: string;
+    storeId?: string;
+  }): Promise<void>;
+
   onTaskRunning(taskId: string): Promise<void>;
 
   readWorktrees(): Promise<{
