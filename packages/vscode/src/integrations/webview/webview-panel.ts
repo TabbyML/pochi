@@ -351,9 +351,6 @@ async function openTaskInColumn(
   if (!params) {
     throw new Error(`Failed to parse task URI: ${uri.toString()}`);
   }
-  const viewColumn = await getViewColumnForTask({
-    cwd: params.cwd,
-  });
 
   if (options?.keepEditor === true) {
     vscode.commands.executeCommand("workbench.action.keepEditor", uri, {
@@ -361,6 +358,10 @@ async function openTaskInColumn(
     });
     return;
   }
+
+  const viewColumn = await getViewColumnForTask({
+    cwd: params.cwd,
+  });
 
   await vscode.commands.executeCommand(
     "vscode.openWith",
