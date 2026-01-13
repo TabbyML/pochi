@@ -9,12 +9,11 @@ const meta = {
     layout: "padded",
   },
   argTypes: {
-    input: { control: "text" },
     isLoading: { control: "boolean" },
     autoFocus: { control: "boolean" },
+    isSubTask: { control: "boolean" },
   },
   args: {
-    setInput: fn(),
     onSubmit: fn(),
     onCtrlSubmit: fn(),
     onError: fn(),
@@ -27,7 +26,6 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   args: {
-    input: "Hello, world!",
     isLoading: false,
     autoFocus: true,
     isSubTask: false,
@@ -36,7 +34,6 @@ export const Default: Story = {
 
 export const Loading: Story = {
   args: {
-    input: "This is a loading state",
     isLoading: true,
     autoFocus: false,
     isSubTask: false,
