@@ -4,4 +4,10 @@ import { VendorId } from "./types";
 
 registerModel(VendorId, createPochiModel);
 
-export { PochiApiErrors, WebhookEventPayload } from "./pochi-api";
+// ragdoll would use ModelGatewayRequest and ListModelsResponse
+export {
+  PochiApiErrors,
+  WebhookEventPayload,
+  ModelGatewayRequest,
+  ListModelsResponse,
+} from "./pochi-api";
