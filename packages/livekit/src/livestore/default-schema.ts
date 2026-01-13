@@ -109,7 +109,11 @@ export const events = {
       ...taskInitFields,
       initMessages: Schema.optional(Schema.Array(DBMessage)),
       initTitle: Schema.optional(Schema.String),
-      displayId: Schema.optional(Schema.Number),
+      displayId: Schema.optional(Schema.Number).pipe(
+        deprecated("Concept of displayId is removed"),
+      ),
+      // @deprecated
+      // use initMessages instead
       initMessage: Schema.optional(
         Schema.Struct({
           id: Schema.String,
@@ -139,7 +143,7 @@ export const events = {
       updatedAt: Schema.Date,
       modelId: Schema.optional(Schema.String),
       displayId: Schema.optional(Schema.Number).pipe(
-        deprecated("use displayId in init instead"),
+        deprecated("Concept of displayId is removed"),
       ),
     }),
   }),

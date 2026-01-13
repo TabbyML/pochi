@@ -321,7 +321,7 @@ export interface VSCodeHostApi {
 
   sendTaskNotification(
     kind: "failed" | "completed" | "pending-tool" | "pending-input",
-    params: { uid: string; displayId: number | null; isSubTask?: boolean },
+    params: { uid: string; isSubTask?: boolean },
   ): Promise<void>;
 
   onTaskUpdated(taskData: unknown): Promise<void>;

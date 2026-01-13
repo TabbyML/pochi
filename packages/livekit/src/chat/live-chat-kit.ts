@@ -58,7 +58,6 @@ export type LiveChatKitOptions<T> = {
 
 type InitOptions = {
   initTitle?: string;
-  displayId?: number;
 } & (
   | {
       prompt?: string;
@@ -78,7 +77,6 @@ export class LiveChatKit<
   },
 > {
   protected readonly taskId: string;
-  protected readonly displayId?: number;
   protected readonly store: LiveKitStore;
   readonly chat: T;
   private readonly transport: FlexibleChatTransport;
@@ -238,7 +236,6 @@ export class LiveChatKit<
         cwd,
         createdAt: new Date(),
         initTitle: options?.initTitle,
-        displayId: options?.displayId,
         initMessages,
       }),
     );

@@ -1,4 +1,4 @@
-import { Schema } from "@livestore/livestore";
+import { Schema, deprecated } from "@livestore/livestore";
 
 export const DBTextUIPart = Schema.Struct({
   type: Schema.Literal("text"),
@@ -98,5 +98,7 @@ export const taskFullFields = {
   lastCheckpointHash: Schema.optional(Schema.String),
   error: Schema.optional(TaskError),
   updatedAt: Schema.Date,
-  displayId: Schema.optional(Schema.Number),
+  displayId: Schema.optional(Schema.Number).pipe(
+    deprecated("Concept of displayId is removed"),
+  ),
 };

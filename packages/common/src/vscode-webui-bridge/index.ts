@@ -52,7 +52,6 @@ export type {
 } from "./types/review";
 export { isValidCustomAgentFile } from "./types/custom-agent";
 export {
-  prefixTaskDisplayId,
   prefixWorktreeName,
   getTaskDisplayTitle,
   WorktreePrefix,

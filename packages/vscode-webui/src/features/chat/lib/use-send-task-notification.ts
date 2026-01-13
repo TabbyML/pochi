@@ -9,7 +9,6 @@ export function useSendTaskNotification() {
       kind: "failed" | "completed" | "pending-tool" | "pending-input",
       openTaskParams: {
         uid: string;
-        displayId: number | null;
         isSubTask?: boolean;
       },
     ) => {

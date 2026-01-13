@@ -280,7 +280,6 @@ export class CommandManager implements vscode.Disposable {
               type: "open-task",
               uid,
               cwd,
-              displayId: null,
             });
           },
         );

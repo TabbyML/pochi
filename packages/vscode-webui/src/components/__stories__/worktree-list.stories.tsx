@@ -18,7 +18,6 @@ const mockWorktrees = [
     isMain: true,
     branch: "main",
     data: {
-      nextDisplayId: 1,
       github: {
         pullRequest: {
           id: 122,
@@ -50,7 +49,6 @@ const mockWorktrees = [
     isMain: false,
     branch: "feature/auth",
     data: {
-      nextDisplayId: 2,
       github: {
         pullRequest: {
           id: 123,
@@ -96,7 +94,7 @@ const mockTasks = [
     createdAt: new Date("2025-12-15T10:00:00Z"),
     updatedAt: new Date("2025-12-15T10:00:00Z"),
     modelId: null,
-    displayId: 1,
+    displayId: null,
     lastCheckpointHash: null,
   },
   {
@@ -117,7 +115,7 @@ const mockTasks = [
     createdAt: new Date("2025-12-15T10:02:00Z"),
     updatedAt: new Date("2025-12-15T10:02:00Z"),
     modelId: null,
-    displayId: 2,
+    displayId: null,
     lastCheckpointHash: null,
   },
   {
@@ -138,7 +136,7 @@ const mockTasks = [
     createdAt: new Date("2025-12-15T10:05:00Z"),
     updatedAt: new Date("2025-12-15T10:05:00Z"),
     modelId: null,
-    displayId: 3,
+    displayId: null,
     lastCheckpointHash: null,
   },
 ] satisfies Task[];
@@ -363,9 +361,7 @@ export const WorktreeWithNoPR: Story = {
           path: "/Users/will/work/pochi-no-pr",
           isMain: false,
           branch: "feature/no-pr",
-          data: {
-            nextDisplayId: 5,
-          },
+          data: {},
         },
       ],
     },
@@ -387,7 +383,6 @@ export const WorktreeWithFailedChecks: Story = {
           isMain: false,
           branch: "fix/failed-checks",
           data: {
-            nextDisplayId: 6,
             github: {
               pullRequest: {
                 id: 127,

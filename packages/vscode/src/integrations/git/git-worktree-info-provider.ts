@@ -16,9 +16,6 @@ export class GitWorktreeInfoProvider {
     @inject("vscode.ExtensionContext")
     private readonly context: vscode.ExtensionContext,
   ) {
-    this.getNextDisplayId = runExclusive
-      .buildMethod(this.getNextDisplayId)
-      .bind(this);
     this.updateGithubPullRequest = runExclusive
       .buildMethod(this.updateGithubPullRequest)
       .bind(this);
@@ -85,22 +82,10 @@ export class GitWorktreeInfoProvider {
     const existing = await this.get(worktreePath);
     if (!existing) {
       return await this.set(worktreePath, {
-        nextDisplayId: 1,
         github: {},
       });
     }
     return existing;
-  }
-
-  async getNextDisplayId(worktreePath: string): Promise<number> {
-    let data = await this.get(worktreePath);
-    if (!data) {
-      data = await this.initialize(worktreePath);
-    }
-    const id = data.nextDisplayId;
-    data.nextDisplayId += 1;
-    await this.set(worktreePath, data);
-    return id;
   }
 
   async updateGithubPullRequest(

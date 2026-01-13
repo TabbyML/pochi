@@ -39,7 +39,6 @@ export const Default: Story = {
     info: {
       uid: "default",
       cwd: "/foo/bar",
-      displayId: null,
       type: "open-task",
     },
   },

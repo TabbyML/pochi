@@ -6,10 +6,7 @@ import { cn } from "@/lib/utils";
 import { vscodeHost } from "@/lib/vscode";
 import { parseTitle } from "@getpochi/common/message-utils";
 import { encodeStoreId } from "@getpochi/common/store-id-utils";
-import {
-  type TaskState,
-  prefixTaskDisplayId,
-} from "@getpochi/common/vscode-webui-bridge";
+import type { TaskState } from "@getpochi/common/vscode-webui-bridge";
 import type { Task, UITools } from "@getpochi/livekit";
 import type { ToolUIPart } from "ai";
 import { GitBranch, Loader2 } from "lucide-react";
@@ -46,11 +43,6 @@ export function TaskRow({
         <div className="flex items-start gap-3">
           <div className="flex-1 space-y-1 overflow-hidden">
             <div className="flex items-center gap-1.5">
-              {task.displayId && (
-                <span className="flex shrink-0 items-center justify-center text-foreground/80">
-                  {prefixTaskDisplayId(task.displayId)}
-                </span>
-              )}
               <div className="line-clamp-2 flex flex-1 items-center font-medium text-foreground leading-relaxed">
                 <div
                   className={cn("truncate", {
@@ -101,13 +93,12 @@ export function TaskRow({
         type: "open-task",
         cwd: task.cwd,
         uid: task.id,
-        displayId: task.displayId,
         storeId,
       });
 
       showFileChanges();
     }
-  }, [task.cwd, task.id, task.displayId, storeId, showFileChanges]);
+  }, [task.cwd, task.id, storeId, showFileChanges]);
 
   return (
     <div onClick={!isDeleted ? openTaskInPanel : undefined}>{content}</div>

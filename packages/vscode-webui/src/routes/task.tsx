@@ -30,7 +30,6 @@ function RouteComponent() {
     } else {
       info = {
         uid: searchParams.uid,
-        displayId: null,
         cwd: window.POCHI_TASK_INFO.cwd,
         type: "open-task",
       };
