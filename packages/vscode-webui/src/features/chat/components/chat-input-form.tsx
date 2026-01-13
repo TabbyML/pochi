@@ -15,8 +15,6 @@ import type { ReactNode } from "@tanstack/react-router";
 import { QueuedMessages } from "./queued-messages";
 
 interface ChatInputFormProps {
-  input: string;
-  setInput: (input: string) => void;
   onSubmit: (e: React.FormEvent<HTMLFormElement>) => Promise<void>;
   onCtrlSubmit: (e: React.FormEvent<HTMLFormElement>) => Promise<void>;
   isLoading: boolean;
@@ -37,8 +35,6 @@ interface ChatInputFormProps {
 }
 
 export function ChatInputForm({
-  input,
-  setInput,
   onSubmit,
   onCtrlSubmit,
   isLoading,
@@ -61,8 +57,6 @@ export function ChatInputForm({
 
   return (
     <FormEditor
-      input={input}
-      setInput={setInput}
       onSubmit={onSubmit}
       onCtrlSubmit={onCtrlSubmit}
       isLoading={isLoading}

@@ -22,6 +22,7 @@ import { Loader2, PaperclipIcon } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useChatUiStore } from "../store";
 import { ChatInputForm } from "./chat-input-form";
 
 interface CreateTaskInputProps {
@@ -45,6 +46,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
   deletingWorktreePaths,
 }) => {
   const { t } = useTranslation();
+  // FIXME(jueliang): should store the jsoncontent as draft
   const { draft: input, setDraft: setInput, clearDraft } = useTaskInputDraft();
   const {
     groupedModels,
@@ -55,7 +57,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
     reload: reloadModels,
     updateSelectedModelId,
   } = useSelectedModels({ isSubTask: false });
-
+  const { editorContent, clearEditorContent } = useChatUiStore();
   // Use the unified attachment upload hook
   const {
     files,
@@ -167,11 +169,21 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
       }
 
       // Clear input content after unfreeze
-      setTimeout(clearDraft, 50);
+      setTimeout(() => {
+        clearDraft();
+        clearEditorContent();
+      }, 50);
 
       return true;
     },
-    [cwd, selectedWorktree, baseBranch, clearFiles, clearDraft],
+    [
+      cwd,
+      selectedWorktree,
+      baseBranch,
+      clearFiles,
+      clearDraft,
+      clearEditorContent,
+    ],
   );
 
   const handleSubmitImpl = useCallback(
@@ -189,7 +201,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
       // If no valid model is selected, submission is not allowed.
       if (!selectedModel) return;
 
-      const content = input.trim();
+      const content = editorContent.text.trim();
 
       // Disallow empty submissions
       if (content.length === 0 && files.length === 0) return;
@@ -231,7 +243,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
       setDebouncedIsCreatingTask(false);
     },
     [
-      input,
+      editorContent.text,
       files,
       upload,
       selectedModel,
@@ -258,11 +270,16 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
     [handleSubmitImpl],
   );
 
+  // FIXME
+  useEffect(() => {
+    if (input !== editorContent.text) {
+      setInput(editorContent.text);
+    }
+  }, [editorContent.text, input, setInput]);
+
   return (
     <>
       <ChatInputForm
-        input={input}
-        setInput={setInput}
         onSubmit={handleSubmit}
         onCtrlSubmit={handleCtrlSubmit}
         isLoading={isCreatingTask}

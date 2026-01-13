@@ -47,6 +47,7 @@ import {
 } from "@tiptap/suggestion";
 import { ArrowRightToLine } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { useChatUiStore } from "src/features/chat/store";
 import { ScrollArea } from "../ui/scroll-area";
 import { AutoCompleteExtension } from "./auto-completion/extension";
 import {
@@ -102,8 +103,6 @@ function CustomEnterKeyHandler(
 }
 
 interface FormEditorProps {
-  input: string;
-  setInput: (text: string) => void;
   onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
   onCtrlSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
   isLoading: boolean;
@@ -122,8 +121,6 @@ interface FormEditorProps {
 }
 
 export function FormEditor({
-  input,
-  setInput,
   onSubmit,
   onCtrlSubmit,
   isLoading,
@@ -158,6 +155,8 @@ export function FormEditor({
   // State for drag overlay UI
   const [isDragOver, setIsDragOver] = useState(false);
 
+  const { editorContent, updateEditorContent } = useChatUiStore();
+
   const onSelectSlashCandidate = useLatest((data: SlashCandidate) => {
     let model: string | undefined;
     if (data.type === "workflow") {
@@ -173,6 +172,7 @@ export function FormEditor({
 
   const editor = useEditor(
     {
+      // content: editorJsonContent,
       extensions: [
         Document,
         Paragraph,
@@ -569,12 +569,11 @@ export function FormEditor({
         },
       },
       onUpdate(props) {
+        const json = props.editor.getJSON();
         const text = props.editor.getText({
           blockSeparator: newLineCharacter,
         });
-        if (text !== input) {
-          setInput(text);
-        }
+        updateEditorContent({ json, text });
 
         // Update current draft if we have submit history enabled
         if (
@@ -632,6 +631,18 @@ export function FormEditor({
     }
   }, [editor, editorRef]);
 
+  useEffect(() => {
+    if (
+      editor &&
+      editorContent.text !==
+        editor.getText({
+          blockSeparator: newLineCharacter,
+        })
+    ) {
+      editor?.commands.setContent(editorContent.json);
+    }
+  }, [editor, editorContent]);
+
   // For saving the editor content to the session state
   const saveEdtiorState = useCallback(async () => {
     if (editor && !editor.isDestroyed) {
@@ -671,16 +682,6 @@ export function FormEditor({
     };
     loadSessionState();
   }, [editor]);
-
-  // Update editor content when input changes
-  useEffect(() => {
-    if (
-      editor &&
-      input !== editor.getText({ blockSeparator: newLineCharacter })
-    ) {
-      editor.commands.setContent(input, true);
-    }
-  }, [editor, input]);
 
   // Auto focus the editor when the component is mounted
   useEffect(() => {

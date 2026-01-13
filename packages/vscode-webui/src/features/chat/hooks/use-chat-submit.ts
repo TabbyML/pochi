@@ -23,7 +23,7 @@ type UseAttachmentUploadReturn = ReturnType<typeof useAttachmentUpload>;
 interface UseChatSubmitProps {
   chat: UseChatReturn;
   input: string;
-  setInput: (input: string) => void;
+  clearInput: () => void;
   attachmentUpload: UseAttachmentUploadReturn;
   isSubmitDisabled: boolean;
   isLoading: boolean;
@@ -38,7 +38,7 @@ interface UseChatSubmitProps {
 export function useChatSubmit({
   chat,
   input,
-  setInput,
+  clearInput,
   attachmentUpload,
   isSubmitDisabled,
   isLoading,
@@ -125,7 +125,7 @@ export function useChatSubmit({
       const content = input.trim();
       if (content) {
         allMessages.push(content);
-        setInput("");
+        clearInput();
       }
       const text = allMessages.join("\n\n").trim();
 
@@ -190,7 +190,7 @@ export function useChatSubmit({
       autoApproveGuard,
       upload,
       sendMessage,
-      setInput,
+      clearInput,
       clearUploadError,
       blockingState.isBusy,
       queuedMessages,
