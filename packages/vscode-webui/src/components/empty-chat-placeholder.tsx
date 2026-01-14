@@ -7,12 +7,24 @@ import { Button } from "./ui/button";
 
 export function EmptyChatPlaceholder() {
   const vscodeSettings = useVSCodeSettings();
+  const [queryTimeout, setQueryTimeout] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setQueryTimeout(true);
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, []);
 
   return (
     <div className="flex h-[75vh] select-none flex-col items-center justify-center p-5 text-center text-gray-500 dark:text-gray-300">
       <div className="mb-4">{/* Adjusted icon color for visibility */}</div>
       {!vscodeSettings ? (
-        <></>
+        queryTimeout ? (
+          <FunContent />
+        ) : (
+          <></>
+        )
       ) : !vscodeSettings.hideRecommendSettings ? (
         <RecommendSettings />
       ) : !vscodeSettings.autoSaveDisabled ? (
