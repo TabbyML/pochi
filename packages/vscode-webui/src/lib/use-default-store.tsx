@@ -1,5 +1,8 @@
 import { catalog } from "@getpochi/livekit";
-import { makePersistedAdapter } from "@livestore/adapter-web";
+import {
+  makeInMemoryAdapter,
+  makePersistedAdapter,
+} from "@livestore/adapter-web";
 import LiveStoreSharedWorker from "@livestore/adapter-web/shared-worker?sharedworker&inline";
 import type { Store } from "@livestore/livestore";
 import { type ReactApi, storeOptions, useStore } from "@livestore/react";
@@ -12,7 +15,15 @@ const adapter = makePersistedAdapter({
   sharedWorker: LiveStoreSharedWorker,
 });
 
-function defaultStoreOptions(storeId: string, jwt: string | null) {
+const inMemoryAdapter = makeInMemoryAdapter();
+
+function defaultStoreOptions(
+  storeId: "share-page" | string,
+  jwt: string | null,
+) {
+  if (storeId === "share-page") {
+  }
+
   return storeOptions({
     storeId,
     schema: catalog.schema,
@@ -26,12 +37,38 @@ const DefaultStoreOptionsContext = createContext<ReturnType<
   typeof defaultStoreOptions
 > | null>(null);
 
-export function DefauleStoreOptionsProvider(props: {
-  storeId: string;
-  jwt: string | null;
-  children: React.ReactNode;
-}) {
-  const options = defaultStoreOptions(props.storeId, props.jwt);
+export function DefaultStoreOptionsProvider(
+  props: {
+    children: React.ReactNode;
+  } & (
+    | {
+        type: "share-page";
+      }
+    | {
+        type?: "vscode";
+        storeId: string;
+        jwt: string | null;
+      }
+  ),
+) {
+  const options = (() => {
+    if (props.type === "share-page") {
+      return storeOptions({
+        storeId: "share-page",
+        schema: catalog.schema,
+        adapter: inMemoryAdapter,
+        disableDevtools: true,
+      });
+    }
+    return storeOptions({
+      storeId: props.storeId,
+      schema: catalog.schema,
+      adapter,
+      syncPayload: { jwt: props.jwt },
+      disableDevtools: true,
+    });
+  })();
+
   return (
     <DefaultStoreOptionsContext.Provider value={options}>
       {props.children}

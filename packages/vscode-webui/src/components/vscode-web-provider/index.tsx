@@ -3,17 +3,10 @@ import "./style.css";
 import "./vscode-default.css";
 import "./vscode-dark.css";
 import "./vscode-light.css";
-import { catalog } from "@getpochi/livekit";
-import { makeInMemoryAdapter } from "@livestore/adapter-web";
-import {
-  StoreRegistry,
-  StoreRegistryProvider,
-  useStore,
-} from "@livestore/react";
+import { DefaultStoreOptionsProvider } from "@/lib/use-default-store";
+import { StoreRegistry, StoreRegistryProvider } from "@livestore/react";
 import { Suspense, useState } from "react";
 import { unstable_batchedUpdates as batchUpdates } from "react-dom";
-
-const inMemoryAdapter = makeInMemoryAdapter();
 
 export function VSCodeWebProvider({ children }: { children: React.ReactNode }) {
   const [storeRegistry] = useState(
@@ -29,10 +22,9 @@ export function VSCodeWebProvider({ children }: { children: React.ReactNode }) {
 }
 
 function VSCodeWebProviderContent({ children }: { children: React.ReactNode }) {
-  useStore({
-    storeId: "in-memory",
-    schema: catalog.schema,
-    adapter: inMemoryAdapter,
-  });
-  return <>{children}</>;
+  return (
+    <DefaultStoreOptionsProvider type="share-page">
+      {children}
+    </DefaultStoreOptionsProvider>
+  );
 }
