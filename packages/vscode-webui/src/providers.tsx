@@ -2,7 +2,6 @@ import { persister, queryClient } from "@/lib/query-client";
 import { StoreRegistry, StoreRegistryProvider } from "@livestore/react";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
-import type React from "react";
 import { useState } from "react";
 import { unstable_batchedUpdates as batchUpdates } from "react-dom";
 import { ThemeProvider } from "./components/theme-provider";
@@ -13,6 +12,7 @@ export const Providers: React.FC<{ children: React.ReactNode }> = ({
   const [storeRegistry] = useState(
     () => new StoreRegistry({ defaultOptions: { batchUpdates } }),
   );
+
   return (
     <StoreRegistryProvider storeRegistry={storeRegistry}>
       <ThemeProvider>
