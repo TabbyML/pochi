@@ -127,7 +127,7 @@ const program = new Command()
   .option(
     "-m, --model <model>",
     "Specify the model to be used for the task.",
-    "google/gemini-2.5-flash",
+    "google/gemini-3-flash",
   )
   .optionsGroup("MCP:")
   .option(

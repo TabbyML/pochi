@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { RecommendSettings } from "../recommend-settings";
 
 const defaultSettings: VSCodeSettings = {
-  recommendSettingsConfirmed: false,
+  hideRecommendSettings: false,
   autoSaveDisabled: false,
   commentsOpenViewDisabled: false,
   githubCopilotCodeCompletionEnabled: true,

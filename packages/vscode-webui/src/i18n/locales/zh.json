@@ -113,7 +113,7 @@
       "clearStorage": "清除存储",
       "language": "语言",
       "languageDescription": "选择您的首选语言",
-      "resetRecommendSettingsConfirmed": "Reset Recommended Settings Confirmed"
+      "hideRecommendSettings": "隐藏推荐设置"
     },
     "workflows": {
       "title": "工作流",
@@ -436,7 +436,7 @@
   },
   "recommendSettings": {
     "title": "Pochi 将修改以下设置",
-    "ok": "确定",
+    "hide": "隐藏",
     "options": {
       "enablePochiLayout": "启用 Pochi 布局",
       "disableAutoSave": "禁用自动保存",

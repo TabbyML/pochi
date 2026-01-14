@@ -113,7 +113,7 @@
       "clearStorage": "ストレージをクリア",
       "language": "言語",
       "languageDescription": "希望の言語を選択してください",
-      "resetRecommendSettingsConfirmed": "Reset Recommended Settings Confirmed"
+      "hideRecommendSettings": "推奨設定を非表示にする"
     },
     "workflows": {
       "title": "ワークフロー",
@@ -437,7 +437,7 @@
   },
   "recommendSettings": {
     "title": "Pochi は以下の設定を変更します",
-    "ok": "OK",
+    "hide": "非表示",
     "options": {
       "enablePochiLayout": "Pochi レイアウトを有効にする",
       "disableAutoSave": "自動保存を無効にする",
