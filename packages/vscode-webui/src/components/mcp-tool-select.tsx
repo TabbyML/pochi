@@ -7,6 +7,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -126,45 +127,49 @@ export function McpToolSelect({ triggerClassName }: McpToolSelectProps) {
               side="bottom"
               align="start"
               alignOffset={6}
-              className="dropdown-menu max-h-[60vh] min-w-[16rem] max-w-[80vw] animate-in overflow-y-auto overflow-x-hidden rounded-md border bg-background p-2 text-popover-foreground shadow"
+              className="dropdown-menu w-[20rem] animate-in overflow-hidden rounded-md border bg-background p-0 text-popover-foreground shadow"
             >
-              {hasServers ? (
-                <>
-                  <div className="mb-2 px-2 py-1 font-medium text-muted-foreground text-xs">
-                    {t("mcpSelect.serversEnabled", {
-                      enabled: enabledCount,
-                      total: serverNames.length,
-                    })}
-                    {totalToolsCount > 0 && (
-                      <span className="ml-1">
-                        ({enabledToolsCount}/{totalToolsCount}{" "}
-                        {t("mcpSelect.tools")})
-                      </span>
-                    )}
-                  </div>
-                  {serverNames.map((name) => (
-                    <McpServerItem
-                      key={name}
-                      name={name}
-                      connection={userConnections[name]}
-                    />
-                  ))}
-                </>
-              ) : (
-                <div className="px-2 py-4 text-center text-muted-foreground text-sm">
-                  {t("mcpSelect.noServersConfigured")}
+              <ScrollArea viewportClassname="max-h-[60vh]">
+                <div className="p-2">
+                  {hasServers ? (
+                    <>
+                      <div className="mb-2 px-2 py-1 font-medium text-muted-foreground text-xs">
+                        {t("mcpSelect.serversEnabled", {
+                          enabled: enabledCount,
+                          total: serverNames.length,
+                        })}
+                        {totalToolsCount > 0 && (
+                          <span className="ml-1">
+                            ({enabledToolsCount}/{totalToolsCount}{" "}
+                            {t("mcpSelect.tools")})
+                          </span>
+                        )}
+                      </div>
+                      {serverNames.map((name) => (
+                        <McpServerItem
+                          key={name}
+                          name={name}
+                          connection={userConnections[name]}
+                        />
+                      ))}
+                    </>
+                  ) : (
+                    <div className="px-2 py-4 text-center text-muted-foreground text-sm">
+                      {t("mcpSelect.noServersConfigured")}
+                    </div>
+                  )}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <a
+                      href="command:pochi.mcp.openServerSettings"
+                      className="flex cursor-pointer items-center gap-2 text-[var(--vscode-textLink-foreground)] text-xs"
+                    >
+                      <Settings2Icon className="size-3.5" />
+                      {t("mcpSelect.manageServers")}
+                    </a>
+                  </DropdownMenuItem>
                 </div>
-              )}
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <a
-                  href="command:pochi.mcp.openServerSettings"
-                  className="flex cursor-pointer items-center gap-2 text-[var(--vscode-textLink-foreground)] text-xs"
-                >
-                  <Settings2Icon className="size-3.5" />
-                  {t("mcpSelect.manageServers")}
-                </a>
-              </DropdownMenuItem>
+              </ScrollArea>
             </DropdownMenuContent>
           </DropdownMenuPortal>
         </DropdownMenu>
@@ -201,32 +206,32 @@ function McpServerItem({
 
   return (
     <div className="rounded-md hover:bg-muted/50">
-      <div className="group flex items-center justify-between px-2 py-1.5">
-        <div
-          className="flex flex-1 cursor-pointer items-center gap-1.5 overflow-hidden"
-          onClick={() => hasTools && setIsExpanded(!isExpanded)}
-        >
+      <div
+        className={cn(
+          "group flex items-center justify-between px-2 py-1.5",
+          hasTools && "cursor-pointer",
+        )}
+        onClick={() => hasTools && setIsExpanded(!isExpanded)}
+      >
+        <div className="flex flex-1 items-center gap-1.5 overflow-hidden">
           <Dot
             strokeWidth={6}
-            className={cn("size-3 shrink-0", {
+            className={cn("size-3 shrink-0 cursor-pointer", {
               "text-muted-foreground": status === "stopped",
               "animate-pulse text-success": status === "starting",
               "text-success": status === "ready",
               "text-error": status === "error",
             })}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleToggleServer();
+            }}
           />
           <span className="truncate font-medium text-sm">{name}</span>
           {hasTools && (
-            <>
-              <span className="text-muted-foreground text-xs">
-                ({enabledToolsCount}/{toolsArray.length})
-              </span>
-              {isExpanded ? (
-                <ChevronsDownUp className="size-3.5 shrink-0 text-muted-foreground transition-transform duration-200" />
-              ) : (
-                <ChevronsUpDown className="size-3.5 shrink-0 text-muted-foreground transition-transform duration-200" />
-              )}
-            </>
+            <span className="text-muted-foreground text-xs">
+              ({enabledToolsCount}/{toolsArray.length})
+            </span>
           )}
         </div>
         <Switch
@@ -238,6 +243,15 @@ function McpServerItem({
             handleToggleServer();
           }}
         />
+        {hasTools && (
+          <div className="ml-1 p-0.5">
+            {isExpanded ? (
+              <ChevronsDownUp className="size-3.5 shrink-0 text-muted-foreground" />
+            ) : (
+              <ChevronsUpDown className="size-3.5 shrink-0 text-muted-foreground" />
+            )}
+          </div>
+        )}
       </div>
 
       {status === "error" && error && (
@@ -303,12 +317,18 @@ function McpToolItem({
             }}
           >
             <span className="truncate text-xs">{toolName}</span>
-            <CheckIcon
+            <div
               className={cn(
-                "size-3.5",
-                disabled ? "opacity-0" : "text-success opacity-100",
+                "mr-7 flex size-3.5 shrink-0 items-center justify-center rounded-sm border",
+                disabled
+                  ? "border-muted-foreground/50 bg-transparent"
+                  : "border-primary bg-primary",
               )}
-            />
+            >
+              {!disabled && (
+                <CheckIcon className="size-3 text-primary-foreground" />
+              )}
+            </div>
           </div>
         </TooltipTrigger>
         {description && (
