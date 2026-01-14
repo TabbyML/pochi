@@ -6,14 +6,16 @@ import { RecommendSettings } from "./recommend-settings";
 import { Button } from "./ui/button";
 
 export function EmptyChatPlaceholder() {
-  const { hideRecommendSettings, autoSaveDisabled } = useVSCodeSettings();
+  const vscodeSettings = useVSCodeSettings();
 
   return (
     <div className="flex h-[75vh] select-none flex-col items-center justify-center p-5 text-center text-gray-500 dark:text-gray-300">
       <div className="mb-4">{/* Adjusted icon color for visibility */}</div>
-      {!hideRecommendSettings ? (
+      {!vscodeSettings ? (
+        <></>
+      ) : !vscodeSettings.hideRecommendSettings ? (
         <RecommendSettings />
-      ) : !autoSaveDisabled ? (
+      ) : !vscodeSettings.autoSaveDisabled ? (
         <AutoSaveSettingsReminder />
       ) : (
         <FunContent />

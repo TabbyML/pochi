@@ -15,7 +15,7 @@ export const AdvancedSettingsSection: React.FC = () => {
     enablePochiModels,
     updateEnablePochiModels,
   } = useSettingsStore();
-  const { hideRecommendSettings } = useVSCodeSettings();
+  const vscodeSettings = useVSCodeSettings();
 
   return (
     <AccordionSection
@@ -43,16 +43,18 @@ export const AdvancedSettingsSection: React.FC = () => {
                 updateEnablePochiModels(!!checked);
               }}
             />
-            <SettingsCheckboxOption
-              id="hide-recommend-settings"
-              label={t("settings.advanced.hideRecommendSettings")}
-              checked={hideRecommendSettings}
-              onCheckedChange={async (checked) => {
-                await vscodeHost.updateVSCodeSettings({
-                  hideRecommendSettings: !!checked,
-                });
-              }}
-            />
+            {vscodeSettings && (
+              <SettingsCheckboxOption
+                id="hide-recommend-settings"
+                label={t("settings.advanced.hideRecommendSettings")}
+                checked={vscodeSettings.hideRecommendSettings}
+                onCheckedChange={async (checked) => {
+                  await vscodeHost.updateVSCodeSettings({
+                    hideRecommendSettings: !!checked,
+                  });
+                }}
+              />
+            )}
             <div>
               <Button
                 variant="destructive"

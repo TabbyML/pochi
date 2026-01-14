@@ -29,7 +29,12 @@ function openSettingsLink(option: Options) {
 
 export function RecommendSettings() {
   const { t } = useTranslation();
-  const vscodeSettings = useVSCodeSettings();
+  const vscodeSettings = useVSCodeSettings() ?? {
+    hideRecommendSettings: true,
+    autoSaveDisabled: true,
+    commentsOpenViewDisabled: true,
+    githubCopilotCodeCompletionEnabled: false,
+  };
 
   const options: { id: Options; checked: boolean }[] = useMemo(() => {
     return [

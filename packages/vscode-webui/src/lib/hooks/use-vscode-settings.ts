@@ -4,22 +4,14 @@ import { useQuery } from "@tanstack/react-query";
 import { vscodeHost } from "../vscode";
 
 /** @useSignals this comment is needed to enable signals in this hook */
-export const useVSCodeSettings = () => {
+export const useVSCodeSettings = (): VSCodeSettings | undefined => {
   const { data: vscodeSettingsSignal } = useQuery({
     queryKey: ["vscodeSettings"],
     queryFn: fetchVSCodeSettings,
     staleTime: Number.POSITIVE_INFINITY,
   });
 
-  return (
-    vscodeSettingsSignal?.value ??
-    ({
-      hideRecommendSettings: true,
-      autoSaveDisabled: true,
-      commentsOpenViewDisabled: true,
-      githubCopilotCodeCompletionEnabled: false,
-    } as VSCodeSettings)
-  );
+  return vscodeSettingsSignal?.value;
 };
 
 async function fetchVSCodeSettings() {
