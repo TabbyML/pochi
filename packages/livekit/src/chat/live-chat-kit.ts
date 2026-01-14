@@ -7,6 +7,7 @@ import { makeMessagesQuery, makeTaskQuery } from "../livestore/default-queries";
 import { events, tables } from "../livestore/default-schema";
 import { toTaskError, toTaskGitInfo, toTaskStatus } from "../task";
 
+import type { TaskMcpTools } from "@getpochi/common/vscode-webui-bridge";
 import type { LiveKitStore, Message, Task } from "../types";
 import { scheduleGenerateTitleJob } from "./background-job";
 import { filterCompletionTools } from "./filter-completion-tools";
@@ -59,6 +60,7 @@ export type LiveChatKitOptions<T> = {
 type InitOptions = {
   initTitle?: string;
   displayId?: number;
+  mcpTools?: TaskMcpTools;
 } & (
   | {
       prompt?: string;
@@ -240,6 +242,7 @@ export class LiveChatKit<
         initTitle: options?.initTitle,
         displayId: options?.displayId,
         initMessages,
+        mcpTools: options?.mcpTools,
       }),
     );
 

@@ -16,6 +16,7 @@ import { useSelectedModels, useSettingsStore } from "@/features/settings";
 import type { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
 import { useTaskInputDraft } from "@/lib/hooks/use-task-input-draft";
+import { useTaskMcpTools } from "@/lib/hooks/use-task-mcp-tools";
 import { useWorktrees } from "@/lib/hooks/use-worktrees";
 import { vscodeHost } from "@/lib/vscode";
 import type { GitWorktree, Review } from "@getpochi/common/vscode-webui-bridge";
@@ -47,6 +48,12 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
 }) => {
   const { t } = useTranslation();
   const { draft: input, setDraft: setInput, clearDraft } = useTaskInputDraft();
+  const {
+    mcpTools,
+    toggleServer,
+    toggleTool,
+    reset: resetMcpTools,
+  } = useTaskMcpTools();
   const {
     groupedModels,
     selectedModel,
@@ -160,6 +167,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
         cwd: worktree && typeof worktree === "object" ? worktree.path : cwd,
         prompt: content,
         files: uploadedFiles,
+        mcpTools: Object.keys(mcpTools).length > 0 ? mcpTools : undefined,
       });
 
       // Clear files if they were uploaded
@@ -167,12 +175,21 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
         clearFiles();
       }
 
+      resetMcpTools();
       // Clear input content after unfreeze
       setTimeout(clearDraft, 50);
 
       return true;
     },
-    [cwd, selectedWorktree, baseBranch, clearFiles, clearDraft],
+    [
+      cwd,
+      selectedWorktree,
+      baseBranch,
+      clearFiles,
+      clearDraft,
+      mcpTools,
+      resetMcpTools,
+    ],
   );
 
   const handleSubmitImpl = useCallback(
@@ -327,7 +344,12 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
               onBaseBranchChange={setBaseBranch}
             />
           )}
-          <McpToolSelect />
+          <McpToolSelect
+            taskMcpTools={mcpTools}
+            onToggleServer={toggleServer}
+            onToggleTool={toggleTool}
+            resetMcpTools={resetMcpTools}
+          />
           <HoverCard>
             <HoverCardTrigger asChild>
               <span>

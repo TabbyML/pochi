@@ -7,6 +7,10 @@ import {
   inspectPochiConfig,
   updatePochiConfig,
 } from "../configuration/index.js";
+import {
+  buildInstructionsFromConnections,
+  buildToolsetFromConnections,
+} from "../vscode-webui-bridge/mcp-util.js";
 import { McpConnection } from "./mcp-connection";
 import type {
   McpServerConnection,
@@ -248,37 +252,13 @@ export class McpHub implements Disposable {
       };
     }
 
-    const toolset: Record<string, McpTool & McpToolExecutable> = R.mergeAll(
-      R.values(
-        R.pickBy(
-          connections,
-          (connection) => connection.status === "ready" && !!connection.tools,
-        ),
-      )
-        .map((connection) =>
-          R.pickBy(connection.tools, (tool) => !tool.disabled),
-        )
-        .map((tool) => R.mapValues(tool, (tool) => R.omit(tool, ["disabled"]))),
-    );
-
-    const instructions = Object.entries(connections)
-      .filter(([, conn]) => !!conn.instructions)
-      .map(
-        ([name, conn]) =>
-          `# Instructions from ${name} mcp server\n${conn.instructions}`,
-      )
-      .join("\n\n");
+    const resultConnections = buildConnections(connections);
 
     return {
-      connections: R.mapValues(connections, (connection) => ({
-        ...connection,
-        tools: R.mapValues(connection.tools, (tool) =>
-          R.omit(tool, ["execute"]),
-        ),
-      })),
-      toolset: R.mapValues(toolset, (tool) => R.omit(tool, ["execute"])),
-      instructions,
-      executeFns: R.mapValues(toolset, (tool) => tool.execute),
+      connections: resultConnections,
+      toolset: buildToolsetFromConnections(resultConnections),
+      instructions: buildInstructionsFromConnections(connections),
+      executeFns: buildExecuteFnsFromConnections(connections),
     };
   }
 
@@ -334,3 +314,27 @@ export class McpHub implements Disposable {
     this.connections.value = {};
   }
 }
+
+const buildConnections = (
+  connections: Record<string, McpServerConnectionExecutable>,
+): Record<string, McpServerConnection> => {
+  return R.mapValues(connections, (connection) => ({
+    ...connection,
+    tools: R.mapValues(connection.tools, (tool) => R.omit(tool, ["execute"])),
+  }));
+};
+
+const buildExecuteFnsFromConnections = (
+  connections: Record<string, McpServerConnectionExecutable>,
+): Record<string, McpToolExecutable["execute"]> => {
+  return R.mergeAll(
+    R.values(
+      R.pickBy(
+        connections,
+        (connection) => connection.status === "ready" && !!connection.tools,
+      ),
+    )
+      .map((connection) => R.pickBy(connection.tools, (tool) => !tool.disabled))
+      .map((tools) => R.mapValues(tools, (tool) => tool.execute)),
+  );
+};

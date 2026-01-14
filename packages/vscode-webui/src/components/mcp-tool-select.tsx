@@ -19,6 +19,7 @@ import {
 import { useMcp } from "@/lib/hooks/use-mcp";
 import { cn } from "@/lib/utils";
 import type { McpServerConnection } from "@getpochi/common/mcp-utils";
+import type { TaskMcpTools } from "@getpochi/common/vscode-webui-bridge";
 import { DropdownMenuPortal } from "@radix-ui/react-dropdown-menu";
 import {
   CheckIcon,
@@ -43,37 +44,46 @@ function triggerCommandLink(href: string) {
 
 interface McpToolSelectProps {
   triggerClassName?: string;
+  taskMcpTools: TaskMcpTools;
+  onToggleServer: (serverName: string) => void;
+  onToggleTool: (serverName: string, toolName: string) => void;
+  resetMcpTools: () => void;
 }
 
-export function McpToolSelect({ triggerClassName }: McpToolSelectProps) {
+export function McpToolSelect({
+  triggerClassName,
+  taskMcpTools,
+  onToggleServer,
+  onToggleTool,
+  resetMcpTools,
+}: McpToolSelectProps) {
   const { t } = useTranslation();
   const { connections, isLoading } = useMcp();
 
-  // Filter out vendor/pochi connections - only show user-configured MCP servers
   const userConnections = Object.fromEntries(
     Object.entries(connections).filter(
-      ([_, connection]) => connection.kind === undefined,
+      ([_, connection]) =>
+        connection.kind === undefined &&
+        connection.status === "ready" &&
+        !!connection.tools,
     ),
   );
 
   const serverNames = Object.keys(userConnections);
   const hasServers = serverNames.length > 0;
 
-  // Count enabled servers (not stopped)
-  const enabledCount = Object.values(userConnections).filter(
-    (conn) => conn.status !== "stopped",
-  ).length;
+  const enabledCount = Object.keys(taskMcpTools).length;
 
-  // Count total tools across all servers
   const totalToolsCount = Object.values(userConnections).reduce(
     (sum, conn) => sum + Object.keys(conn.tools).length,
     0,
   );
 
-  // Count enabled tools
-  const enabledToolsCount = Object.values(userConnections).reduce(
-    (sum, conn) =>
-      sum + Object.values(conn.tools).filter((tool) => !tool.disabled).length,
+  const enabledToolsCount = Object.entries(taskMcpTools).reduce(
+    (sum, [serverName, config]) =>
+      sum +
+      Object.keys(userConnections[serverName]?.tools ?? {}).length -
+      config.disabledTools.length,
     0,
   );
 
@@ -87,7 +97,7 @@ export function McpToolSelect({ triggerClassName }: McpToolSelectProps) {
       }
     >
       <div className="h-6 select-none overflow-hidden">
-        <DropdownMenu>
+        <DropdownMenu onOpenChange={(isOpen) => isOpen && resetMcpTools()}>
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -150,6 +160,14 @@ export function McpToolSelect({ triggerClassName }: McpToolSelectProps) {
                           key={name}
                           name={name}
                           connection={userConnections[name]}
+                          isServerEnabledForTask={name in taskMcpTools}
+                          disabledToolsForTask={
+                            taskMcpTools?.[name]?.disabledTools
+                          }
+                          onToggleServer={() => onToggleServer(name)}
+                          onToggleTool={(toolName: string) =>
+                            onToggleTool(name, toolName)
+                          }
                         />
                       ))}
                     </>
@@ -181,28 +199,47 @@ export function McpToolSelect({ triggerClassName }: McpToolSelectProps) {
 function McpServerItem({
   name,
   connection,
+  isServerEnabledForTask,
+  disabledToolsForTask,
+  onToggleServer,
+  onToggleTool,
 }: {
   name: string;
   connection: McpServerConnection;
+  isServerEnabledForTask?: boolean;
+  disabledToolsForTask?: readonly string[];
+  onToggleServer: () => void;
+  onToggleTool: (toolName: string) => void;
 }) {
   const { status, error, tools } = connection;
   const [isExpanded, setIsExpanded] = useState(false);
 
   const hasTools = tools && Object.keys(tools).length > 0;
-  const isEnabled = status !== "stopped";
+
+  // Use task-level enabled state if provided, otherwise fall back to global running state
+  const isEnabled =
+    isServerEnabledForTask !== undefined
+      ? isServerEnabledForTask
+      : status !== "stopped";
+
   const toolsArray = Object.entries(tools).map(([id, tool]) => ({
     id,
     ...tool,
   }));
-  const enabledToolsCount = toolsArray.filter((t) => !t.disabled).length;
 
-  const handleToggleServer = useCallback(() => {
-    const action = isEnabled ? "stop" : "start";
+  // Count enabled tools based on task-level or global state
+  const enabledToolsCount = disabledToolsForTask
+    ? toolsArray.filter((t) => !disabledToolsForTask.includes(t.id)).length
+    : toolsArray.filter((t) => !t.disabled).length;
+
+  // Global toggle for Dot (start/stop server)
+  const handleGlobalToggleServer = useCallback(() => {
+    const action = status !== "stopped" ? "stop" : "start";
     const href = `command:pochi.mcp.serverControl?${encodeURIComponent(
       JSON.stringify([action, name]),
     )}`;
     triggerCommandLink(href);
-  }, [isEnabled, name]);
+  }, [status, name]);
 
   return (
     <div className="rounded-md hover:bg-muted/50">
@@ -224,7 +261,7 @@ function McpServerItem({
             })}
             onClick={(e) => {
               e.stopPropagation();
-              handleToggleServer();
+              handleGlobalToggleServer();
             }}
           />
           <span className="truncate font-medium text-sm">{name}</span>
@@ -240,7 +277,7 @@ function McpServerItem({
           className="scale-75"
           onClick={(e) => {
             e.stopPropagation();
-            handleToggleServer();
+            onToggleServer();
           }}
         />
         {hasTools && (
@@ -265,11 +302,17 @@ function McpServerItem({
           {toolsArray.map((tool) => (
             <McpToolItem
               key={tool.id}
-              serverName={name}
               toolName={tool.id}
               description={tool.description}
-              disabled={tool.disabled}
+              disabled={
+                isServerEnabledForTask === false
+                  ? true
+                  : disabledToolsForTask
+                    ? disabledToolsForTask.includes(tool.id)
+                    : tool.disabled
+              }
               serverStatus={status}
+              onToggle={onToggleTool}
             />
           ))}
         </div>
@@ -279,27 +322,25 @@ function McpServerItem({
 }
 
 function McpToolItem({
-  serverName,
   toolName,
   description,
   disabled,
   serverStatus,
+  onToggle,
 }: {
-  serverName: string;
   toolName: string;
   description: string | undefined;
   disabled: boolean;
   serverStatus: McpServerConnection["status"];
+  onToggle: (toolName: string) => void;
 }) {
   const isNotAvailable = disabled || serverStatus !== "ready";
 
-  const handleToggleTool = useCallback(() => {
+  // Handle click - use task-level toggle if provided, otherwise global
+  const handleClick = useCallback(() => {
     if (serverStatus !== "ready") return;
-    const href = `command:pochi.mcp.toggleToolEnabled?${encodeURIComponent(
-      JSON.stringify([serverName, toolName]),
-    )}`;
-    triggerCommandLink(href);
-  }, [serverName, toolName, serverStatus]);
+    onToggle(toolName);
+  }, [serverStatus, onToggle, toolName]);
 
   return (
     <TooltipProvider>
@@ -313,7 +354,7 @@ function McpToolItem({
             )}
             onClick={(e) => {
               e.stopPropagation();
-              handleToggleTool();
+              handleClick();
             }}
           >
             <span className="truncate text-xs">{toolName}</span>

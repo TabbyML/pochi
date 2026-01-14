@@ -4,17 +4,29 @@ export type FileUIPart = {
   url: string;
 };
 
+/**
+ * Per-task MCP tool configuration.
+ * Key = server name, presence indicates server is enabled for this task.
+ */
+export type TaskMcpTools = {
+  [serverName: string]: {
+    disabledTools: readonly string[];
+  };
+};
+
 export type PochiTaskParams = { cwd: string } & (
   | {
       type: "new-task";
       uid?: string;
       prompt?: string;
       files?: FileUIPart[];
+      mcpTools?: TaskMcpTools;
     }
   | {
       type: "fork-task";
       messages: string;
       title: string;
+      mcpTools?: TaskMcpTools;
     }
   | {
       type: "compact-task";

@@ -22,6 +22,7 @@ export type {
   ChangedFileContent,
   TaskState,
   TaskStates,
+  TaskMcpTools,
 } from "./types/task";
 export type {
   VSCodeLmModel,
@@ -58,6 +59,10 @@ export {
 } from "./task-utils";
 export { ActiveSelection, BashOutputs, UserEdits } from "./types/message";
 export type { VSCodeSettings } from "./types/vscode-settings";
+export {
+  buildInstructionsFromConnections,
+  buildToolsetFromConnections,
+} from "./mcp-util";
 
 const isPochiDev = process.env.POCHI_LOCAL_SERVER === "true";
 const isSyncDev = process.env.POCHI_LOCAL_SYNC_SERVER === "true";

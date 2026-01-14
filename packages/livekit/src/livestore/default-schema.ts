@@ -11,6 +11,7 @@ import {
   Git,
   LineChanges,
   TaskError,
+  TaskMcpTools,
   TaskStatus,
   Todos,
   ToolCalls,
@@ -60,6 +61,10 @@ export const tables = {
       updatedAt: State.SQLite.integer({ schema: Schema.DateFromNumber }),
       modelId: State.SQLite.text({ nullable: true }),
       displayId: State.SQLite.integer({ nullable: true }),
+      mcpTools: State.SQLite.json({
+        nullable: true,
+        schema: TaskMcpTools,
+      }),
     },
     indexes: [
       {
@@ -225,6 +230,7 @@ const materializers = State.SQLite.materializers(events, {
     initMessages,
     initTitle,
     displayId,
+    mcpTools,
   }) => [
     tables.tasks.insert({
       id,
@@ -240,6 +246,7 @@ const materializers = State.SQLite.materializers(events, {
       cwd,
       title: initTitle,
       displayId,
+      mcpTools,
       updatedAt: createdAt,
     }),
     ...(initMessages?.map((message) => {

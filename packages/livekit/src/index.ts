@@ -9,6 +9,7 @@ export type {
   DataParts,
   LiveKitStore,
 } from "./types";
+export type { TaskMcpTools, TaskMcpToolsServerConfig } from "./livestore/types";
 
 export const StoreBlobProtocol = "store-blob:";
 export { processContentOutput, fileToUri } from "./store-blob";

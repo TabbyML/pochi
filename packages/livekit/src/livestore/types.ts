@@ -75,12 +75,31 @@ export const Git = Schema.Struct({
   branch: Schema.String,
 });
 
+/**
+ * Per-task MCP tool configuration.
+ * Key = server name, presence indicates server is enabled for this task.
+ * disabledTools = list of tool names to exclude from that server.
+ */
+export const TaskMcpToolsServerConfig = Schema.Struct({
+  disabledTools: Schema.Array(Schema.String),
+});
+
+export const TaskMcpTools = Schema.Record({
+  key: Schema.String,
+  value: TaskMcpToolsServerConfig,
+});
+
+// TypeScript types derived from Schema
+export type TaskMcpToolsServerConfig = typeof TaskMcpToolsServerConfig.Type;
+export type TaskMcpTools = typeof TaskMcpTools.Type;
+
 export const taskInitFields = {
   id: Schema.String,
   parentId: Schema.optional(Schema.String),
   cwd: Schema.optional(Schema.String),
   createdAt: Schema.Date,
   modelId: Schema.optional(Schema.String),
+  mcpTools: Schema.optional(TaskMcpTools),
 };
 
 export const taskFullFields = {

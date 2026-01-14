@@ -13,13 +13,13 @@ export interface McpServerConnection {
   tools: {
     [toolName: string]: McpToolStatus;
   };
+  instructions?: string;
 }
 
 export interface McpServerConnectionExecutable extends McpServerConnection {
   tools: {
     [toolName: string]: McpToolStatus & McpToolExecutable;
   };
-  instructions?: string;
 }
 
 export interface McpToolStatus extends McpTool {

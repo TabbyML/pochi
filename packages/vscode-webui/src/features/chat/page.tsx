@@ -113,6 +113,7 @@ function Chat({ user, uid, info }: ChatProps) {
   const getters = useLiveChatKitGetters({
     todos: todosRef,
     isSubTask,
+    mcpTools: task?.mcpTools,
   });
 
   useRestoreTaskModel(task, isModelsLoading, updateSelectedModelId);
@@ -314,11 +315,13 @@ function Chat({ user, uid, info }: ChatProps) {
           displayId,
           prompt: info.prompt,
           parts: prepareMessageParts(t, info.prompt || "", files || [], []),
+          mcpTools: info.mcpTools,
         });
       } else {
         chatKit.init(cwd, {
           displayId,
           prompt: info.prompt ?? undefined,
+          mcpTools: info.mcpTools,
         });
       }
     } else if (info.type === "compact-task") {
@@ -331,13 +334,14 @@ function Chat({ user, uid, info }: ChatProps) {
         initTitle: info.title,
         displayId,
         messages: JSON.parse(info.messages),
+        mcpTools: task?.mcpTools ?? undefined,
       });
     } else if (info.type === "open-task") {
       // Do nothing
     } else {
       assertUnreachable(info);
     }
-  }, [chatKit, t, info]);
+  }, [chatKit, t, info, task?.mcpTools]);
 
   useSetSubtaskModel({ isSubTask, customAgent });
 
