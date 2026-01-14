@@ -359,12 +359,16 @@ export class ManagedToolCallLifeCycle
     if (args.background && isVSCodeEnvironment()) {
       const cwd = window.POCHI_TASK_INFO?.cwd;
       if (cwd) {
-        void vscodeHost.onBackgroundTaskCreated({
-          uid,
-          cwd,
-          parentId: window.POCHI_TASK_INFO?.uid,
-          storeId: this.store.storeId,
-        });
+        void vscodeHost.openTaskInPanel(
+          {
+            type: "open-task",
+            uid,
+            displayId: null,
+            cwd,
+            storeId: this.store.storeId,
+          },
+          { preserveFocus: true, autoOpen: true },
+        );
       }
     }
 

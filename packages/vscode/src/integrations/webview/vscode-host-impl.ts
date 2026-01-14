@@ -933,10 +933,27 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
 
   openTaskInPanel = async (
     params: PochiTaskParams,
-    options?: { keepEditor?: boolean; skipIfOpen?: boolean },
+    options?: {
+      keepEditor?: boolean;
+      preserveFocus?: boolean;
+      autoOpen?: boolean;
+    },
   ): Promise<void> => {
+    // autoOpen: false = never open; autoOpen: true = gated by config; undefined = manual open
+    if (options?.autoOpen === false) {
+      return;
+    }
+    if (options?.autoOpen) {
+      const autoOpen =
+        this.pochiConfiguration.advancedSettings.value.backgroundTasks
+          ?.autoOpen ?? true;
+      if (!autoOpen) {
+        return;
+      }
+    }
+
     if (
-      options?.skipIfOpen &&
+      options?.preserveFocus &&
       (params.type === "open-task" || params.type === "new-task") &&
       params.uid &&
       this.pochiTaskState.state.value[params.uid]
@@ -1046,35 +1063,6 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
 
   onTaskUpdated = async (taskData: unknown): Promise<void> => {
     taskUpdated.fire({ event: taskData });
-  };
-
-  onBackgroundTaskCreated = async ({
-    uid,
-    cwd,
-    storeId,
-  }: {
-    uid: string;
-    cwd: string;
-    parentId?: string;
-    storeId?: string;
-  }): Promise<void> => {
-    const autoOpen =
-      this.pochiConfiguration.advancedSettings.value.backgroundTasks
-        ?.autoOpen ?? true;
-    if (!autoOpen) {
-      return;
-    }
-
-    await this.openTaskInPanel(
-      {
-        type: "open-task",
-        uid,
-        displayId: null,
-        cwd,
-        storeId,
-      },
-      { skipIfOpen: true },
-    );
   };
 
   onTaskRunning = async (taskId: string): Promise<void> => {
