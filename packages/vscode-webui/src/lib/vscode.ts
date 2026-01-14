@@ -100,7 +100,6 @@ function createVSCodeHost(): VSCodeHostApi {
         "openTaskInPanel",
         "sendTaskNotification",
         "onTaskUpdated",
-        "onBackgroundTaskCreated",
         "onTaskRunning",
         "readWorktrees",
         "createWorktree",

@@ -318,7 +318,11 @@ export interface VSCodeHostApi {
    */
   openTaskInPanel(
     params: PochiTaskParams,
-    options?: { keepEditor?: boolean; skipIfOpen?: boolean },
+    options?: {
+      keepEditor?: boolean;
+      preserveFocus?: boolean;
+      autoOpen?: boolean;
+    },
   ): Promise<void>;
 
   sendTaskNotification(
@@ -327,13 +331,6 @@ export interface VSCodeHostApi {
   ): Promise<void>;
 
   onTaskUpdated(taskData: unknown): Promise<void>;
-
-  onBackgroundTaskCreated(params: {
-    uid: string;
-    cwd: string;
-    parentId?: string;
-    storeId?: string;
-  }): Promise<void>;
 
   onTaskRunning(taskId: string): Promise<void>;
 
