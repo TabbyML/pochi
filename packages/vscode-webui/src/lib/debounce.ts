@@ -66,3 +66,41 @@ export function debounceWithCachedValue<F extends (...args: any) => any>(
     },
   );
 }
+
+// biome-ignore lint/suspicious/noExplicitAny: match functions
+export function asyncDebounce<F extends (...args: any[]) => Promise<any>>(
+  func: F,
+  wait: number,
+) {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  let resolveList: {
+    resolve: (value: Awaited<ReturnType<F>>) => void;
+    // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+    reject: (reason?: any) => void;
+  }[] = [];
+
+  return (...args: Parameters<F>): Promise<Awaited<ReturnType<F>>> => {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+
+    return new Promise((resolve, reject) => {
+      resolveList.push({ resolve, reject });
+      timeoutId = setTimeout(async () => {
+        try {
+          const result = await func(...args);
+          for (const { resolve } of resolveList) {
+            resolve(result);
+          }
+        } catch (error) {
+          for (const { reject } of resolveList) {
+            reject(error);
+          }
+        } finally {
+          resolveList = [];
+          timeoutId = undefined;
+        }
+      }, wait);
+    });
+  };
+}

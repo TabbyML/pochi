@@ -12,30 +12,50 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
-import { ApprovalButton, type useApprovalAndRetry } from "@/features/approval";
-import { useAutoApproveGuard, useTaskChangedFiles } from "@/features/chat";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  ApprovalButton,
+  isRetryApprovalCountingDown,
+  type useApprovalAndRetry,
+} from "@/features/approval";
+import { useAutoApproveGuard } from "@/features/chat";
 import { useSelectedModels } from "@/features/settings";
 import { AutoApproveMenu } from "@/features/settings";
 import { TodoList, useTodos } from "@/features/todo";
 import { useAddCompleteToolCalls } from "@/lib/hooks/use-add-complete-tool-calls";
 import type { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
-import { cn } from "@/lib/utils";
+import { useReviews } from "@/lib/hooks/use-reviews";
+import { useTaskChangedFiles } from "@/lib/hooks/use-task-changed-files";
+import { cn, tw } from "@/lib/utils";
 import type { UseChatHelpers } from "@ai-sdk/react";
 import { constants } from "@getpochi/common";
 import type { Message, Task } from "@getpochi/livekit";
 import type { Todo } from "@getpochi/tools";
 import { PaperclipIcon, SendHorizonal, StopCircleIcon } from "lucide-react";
 import type React from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import {
+  type BlockingOperation,
+  useBlockingOperations,
+} from "../hooks/use-blocking-operations";
+import { useChatInputState } from "../hooks/use-chat-input-state";
 import { useChatStatus } from "../hooks/use-chat-status";
 import { useChatSubmit } from "../hooks/use-chat-submit";
 import { useInlineCompactTask } from "../hooks/use-inline-compact-task";
 import { useNewCompactTask } from "../hooks/use-new-compact-task";
+import { useShowCompleteSubtaskButton } from "../hooks/use-subtask-completed";
 import type { SubtaskInfo } from "../hooks/use-subtask-info";
 import { ChatInputForm } from "./chat-input-form";
 import { ErrorMessageView } from "./error-message-view";
+import { SubmitReviewsButton } from "./submit-review-button";
 import { CompleteSubtaskButton } from "./subtask";
+
+const PopupContainerClassName = tw`-translate-y-full -top-2 absolute left-0 w-full px-4 pt-1`;
+const PopupContentClassName = tw`flex w-full flex-col bg-background`;
+const FooterContainerClassName = tw`my-2 flex shrink-0 justify-between gap-5 overflow-x-hidden`;
+const FooterLeftClassName = tw`flex items-center gap-2 overflow-x-hidden truncate`;
+const FooterRightClassName = tw`flex shrink-0 items-center gap-1`;
 
 interface ChatToolbarProps {
   task?: Task;
@@ -48,6 +68,8 @@ interface ChatToolbarProps {
   displayError: Error | undefined;
   todosRef: React.RefObject<Todo[] | undefined>;
   onUpdateIsPublicShared?: (isPublicShared: boolean) => void;
+  taskId: string;
+  isRepairingMermaid?: boolean;
 }
 
 export const ChatToolbar: React.FC<ChatToolbarProps> = ({
@@ -61,6 +83,8 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   displayError,
   todosRef,
   onUpdateIsPublicShared,
+  taskId,
+  isRepairingMermaid = false,
 }) => {
   const { t } = useTranslation();
 
@@ -68,7 +92,8 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   const isLoading = status === "streaming" || status === "submitted";
   const totalTokens = task?.totalTokens || 0;
 
-  const [input, setInput] = useState("");
+  const { input, setInput, clearInput } = useChatInputState();
+
   const [queuedMessages, setQueuedMessages] = useState<string[]>([]);
 
   // Initialize task with prompt if provided and task doesn't exist yet
@@ -83,6 +108,8 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     selectedModel,
     selectedModelFromStore, // for fallback display
     isLoading: isModelsLoading,
+    isFetching: isFetchingModels,
+    reload: reloadModels,
     updateSelectedModelId,
   } = useSelectedModels({ isSubTask });
 
@@ -97,6 +124,8 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     handleFileDrop,
   } = attachmentUpload;
 
+  const reviews = useReviews();
+
   const { inlineCompactTask, inlineCompactTaskPending } = useInlineCompactTask({
     sendMessage,
   });
@@ -105,6 +134,21 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     task,
     compact,
   });
+
+  const blockingOperations: BlockingOperation[] = [
+    {
+      id: "new-compact-task",
+      isBusy: newCompactTaskPending,
+      label: t("tokenUsage.compacting"),
+    },
+    {
+      id: "repair-mermaid",
+      isBusy: isRepairingMermaid,
+      label: t("mermaid.fixError"),
+    },
+  ];
+
+  const blockingState = useBlockingOperations(blockingOperations);
 
   const {
     isExecuting,
@@ -116,10 +160,11 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     isModelsLoading,
     isModelValid: !!selectedModel,
     isLoading,
-    isInputEmpty: !input.trim() && queuedMessages.length === 0,
+    isInputEmpty: !input.text.trim() && queuedMessages.length === 0,
     isFilesEmpty: files.length === 0,
+    isReviewsEmpty: reviews.length === 0,
     isUploadingAttachments,
-    newCompactTaskPending,
+    blockingState,
   });
 
   const compactEnabled = !(
@@ -131,22 +176,30 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   const { handleSubmit, handleStop } = useChatSubmit({
     chat,
     input,
-    setInput,
+    clearInput,
     attachmentUpload,
     isSubmitDisabled,
     isLoading,
     pendingApproval,
-    newCompactTaskPending,
+    blockingState,
     queuedMessages,
     setQueuedMessages,
+    reviews,
+    taskId: taskId,
   });
 
-  const handleQueueMessage = (message: string) => {
-    if (message.trim()) {
-      setQueuedMessages((prev) => [...prev, message]);
-      setInput("");
-    }
-  };
+  const handleQueueMessage = useCallback(
+    async (e?: React.FormEvent<HTMLFormElement>) => {
+      e?.preventDefault();
+
+      const message = input.text;
+      if (message.trim()) {
+        setQueuedMessages((prev) => [...prev, message]);
+        clearInput();
+      }
+    },
+    [input, clearInput],
+  );
 
   useEffect(() => {
     const isReady =
@@ -170,7 +223,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   ]);
 
   // Only allow adding tool results when not loading
-  const allowAddToolResult = !(isLoading || newCompactTaskPending);
+  const allowAddToolResult = !(isLoading || blockingState.isBusy);
   useAddCompleteToolCalls({
     messages,
     enable: allowAddToolResult,
@@ -191,19 +244,36 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     [messages],
   );
 
-  const diffSummaryActionEnabled = !isLoading && !isExecuting;
   const useTaskChangedFilesHelpers = useTaskChangedFiles(
     task?.id as string,
     messages,
-    diffSummaryActionEnabled,
+    isExecuting,
   );
+
+  const showCompleteSubtaskButton = useShowCompleteSubtaskButton(
+    subtask,
+    messages,
+  );
+
+  const showSubmitReviewButton =
+    !isSubmitDisabled &&
+    !!reviews.length &&
+    !!messages.length &&
+    !isLoading &&
+    (!isSubTask || !showCompleteSubtaskButton) &&
+    (!pendingApproval ||
+      (pendingApproval.name === "retry" &&
+        !isRetryApprovalCountingDown(pendingApproval)));
 
   return (
     <>
-      <div className="-translate-y-full -top-2 absolute left-0 w-full px-4 pt-1">
-        <div className="flex w-full flex-col bg-background">
+      <div className={PopupContainerClassName}>
+        <div className={PopupContentClassName}>
           <ErrorMessageView error={displayError} />
-          <CompleteSubtaskButton subtask={subtask} messages={messages} />
+          <CompleteSubtaskButton
+            showCompleteButton={showCompleteSubtaskButton}
+            subtask={subtask}
+          />
           <ApprovalButton
             pendingApproval={pendingApproval}
             retry={retry}
@@ -211,10 +281,14 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
             isSubTask={isSubTask}
             task={task}
           />
+          <SubmitReviewsButton
+            showSubmitReviewButton={showSubmitReviewButton}
+            onSubmit={handleSubmit}
+          />
         </div>
       </div>
       {(todos.length > 0 ||
-        useTaskChangedFilesHelpers.changedFiles.length > 0) && (
+        useTaskChangedFilesHelpers.visibleChangedFiles.length > 0) && (
         <div className={cn("mt-1.5 rounded-sm border border-border")}>
           {todos.length > 0 && (
             <TodoList todos={todos}>
@@ -224,7 +298,6 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
           )}
           <DiffSummary
             {...useTaskChangedFilesHelpers}
-            actionEnabled={diffSummaryActionEnabled}
             className={cn({
               "rounded-t-none border-border border-t": todos.length > 0,
             })}
@@ -243,7 +316,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
         input={input}
         setInput={setInput}
         onSubmit={handleSubmit}
-        onQueueMessage={handleQueueMessage}
+        onCtrlSubmit={handleQueueMessage}
         isLoading={isLoading || isExecuting}
         onPaste={handlePasteAttachment}
         pendingApproval={pendingApproval}
@@ -255,6 +328,9 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
           setQueuedMessages((prev) => prev.filter((_, i) => i !== index))
         }
         isSubTask={isSubTask}
+        reviews={reviews}
+        taskId={taskId}
+        lastCheckpointHash={task?.lastCheckpointHash ?? undefined}
       />
 
       {/* Hidden file input for image uploads */}
@@ -267,18 +343,20 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
         className="hidden"
       />
 
-      <div className="my-2 flex shrink-0 justify-between gap-5 overflow-x-hidden">
-        <div className="flex items-center gap-2 overflow-x-hidden truncate">
+      <div className={FooterContainerClassName}>
+        <div className={FooterLeftClassName}>
           <ModelSelect
             value={selectedModel || selectedModelFromStore}
             models={groupedModels}
             isLoading={isModelsLoading}
+            isFetching={isFetchingModels}
             isValid={!!selectedModel}
             onChange={updateSelectedModelId}
+            reloadModels={reloadModels}
           />
         </div>
 
-        <div className="flex shrink-0 items-center gap-1">
+        <div className={FooterRightClassName}>
           {!!selectedModel && (
             <TokenUsage
               totalTokens={totalTokens}
@@ -374,3 +452,62 @@ const SubmitStopButton: React.FC<SubmitStopButtonProps> = ({
     </Button>
   );
 };
+
+export function ChatToolBarSkeleton() {
+  const { input, setInput } = useChatInputState();
+  return (
+    <>
+      <div className={PopupContainerClassName}>
+        <div className={PopupContentClassName}>
+          <ErrorMessageView error={undefined} />
+          <CompleteSubtaskButton
+            showCompleteButton={false}
+            subtask={undefined}
+          />
+          <ApprovalButton
+            pendingApproval={undefined}
+            retry={() => {}}
+            allowAddToolResult={false}
+            isSubTask={false}
+          />
+          <SubmitReviewsButton
+            showSubmitReviewButton={false}
+            onSubmit={async () => {}}
+          />
+        </div>
+      </div>
+
+      <AutoApproveMenu isSubTask={false} />
+      <ChatInputForm
+        input={input}
+        setInput={setInput}
+        onSubmit={async () => {}}
+        onCtrlSubmit={async () => {}}
+        isLoading={true}
+        onPaste={() => {}}
+        onRemoveQueuedMessage={() => {}}
+        status="streaming"
+        queuedMessages={[]}
+        isSubTask={false}
+        pendingApproval={undefined}
+        reviews={[]}
+      />
+
+      <div className={FooterContainerClassName}>
+        <div className={FooterLeftClassName}>
+          <ModelSelect
+            isLoading={true}
+            value={undefined}
+            onChange={() => {}}
+            models={undefined}
+          />
+        </div>
+        <div className={FooterRightClassName}>
+          <div className="py-[4px]">
+            <Skeleton className="h-4 w-48 bg-[var(--vscode-inputOption-hoverBackground)]" />
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}

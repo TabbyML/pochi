@@ -1,6 +1,7 @@
 import { EditSummary } from "@/features/tools";
 import { ToolCallLite } from "@/features/tools";
 import { usePochiCredentials } from "@/lib/hooks/use-pochi-credentials";
+import { useTaskChangedFiles } from "@/lib/hooks/use-task-changed-files";
 import { cn } from "@/lib/utils";
 import { vscodeHost } from "@/lib/vscode";
 import { parseTitle } from "@getpochi/common/message-utils";
@@ -18,20 +19,27 @@ import { useTranslation } from "react-i18next";
 export function TaskRow({
   task,
   state,
+  isDeleted,
 }: {
   task: Task;
   state?: TaskState;
+  isDeleted?: boolean;
 }) {
   const { jwt } = usePochiCredentials();
+
+  const { showFileChanges } = useTaskChangedFiles(task.id, []);
 
   const title = useMemo(() => parseTitle(task.title), [task.title]);
 
   const content = (
     <div
       className={cn(
-        "group cursor-pointer rounded-lg border border-border/50 bg-card transition-all duration-200 hover:border-border hover:bg-card/90 hover:shadow-md",
-        "border-l-2",
-        getStatusBorderColor(task.status),
+        "group rounded-lg border border-border/50 bg-card/60 transition-all duration-200 hover:bg-card hover:shadow-md",
+        {
+          "border-primary/85": state?.focused,
+          "cursor-pointer": !isDeleted,
+          "opacity-60": isDeleted,
+        },
       )}
     >
       <div className="px-2 py-1">
@@ -39,12 +47,18 @@ export function TaskRow({
           <div className="flex-1 space-y-1 overflow-hidden">
             <div className="flex items-center gap-1.5">
               {task.displayId && (
-                <span className="flex shrink-0 items-center justify-center text-foreground/80 group-hover:text-foreground/60">
+                <span className="flex shrink-0 items-center justify-center text-foreground/80">
                   {prefixTaskDisplayId(task.displayId)}
                 </span>
               )}
-              <div className="line-clamp-2 flex flex-1 items-center font-medium text-foreground leading-relaxed transition-colors duration-200 group-hover:text-foreground/80">
-                <div className="truncate">{title}</div>
+              <div className="line-clamp-2 flex flex-1 items-center font-medium text-foreground leading-relaxed">
+                <div
+                  className={cn("truncate", {
+                    "text-muted-foreground italic": title === "(Untitled)",
+                  })}
+                >
+                  {title}
+                </div>
                 {state?.unread && (
                   <div className="ml-2 h-2 w-2 shrink-0 rounded-full bg-primary" />
                 )}
@@ -81,35 +95,24 @@ export function TaskRow({
 
   const storeId = encodeStoreId(jwt, task.parentId || task.id);
 
-  const openTaskInPanel = useCallback(() => {
+  const openTaskInPanel = useCallback(async () => {
     if (task.cwd) {
       vscodeHost.openTaskInPanel({
+        type: "open-task",
         cwd: task.cwd,
         uid: task.id,
-        displayId: task.displayId ?? undefined,
+        displayId: task.displayId,
         storeId,
       });
+
+      showFileChanges();
     }
-  }, [task.cwd, task.id, task.displayId, storeId]);
+  }, [task.cwd, task.id, task.displayId, storeId, showFileChanges]);
 
-  return <div onClick={openTaskInPanel}>{content}</div>;
+  return (
+    <div onClick={!isDeleted ? openTaskInPanel : undefined}>{content}</div>
+  );
 }
-
-const getStatusBorderColor = (status: string): string => {
-  switch (status) {
-    case "streaming":
-    case "pending-model":
-    case "pending-tool":
-    case "pending-input":
-      return "border-l-muted-foreground/60";
-    case "completed":
-      return "border-l-muted-foreground/30";
-    case "failed":
-      return "border-l-muted-foreground/80";
-    default:
-      return "border-l-muted-foreground/50";
-  }
-};
 
 function GitBadge({
   git,

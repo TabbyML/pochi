@@ -21,7 +21,6 @@
     "@getpochi/common": "workspace:*",
     "@getpochi/livekit": "workspace:*",
     "@getpochi/tools": "workspace:*",
-    "@getpochi/vendor-claude-code": "workspace:*",
     "@getpochi/vendor-codex": "workspace:*",
     "@getpochi/vendor-gemini-cli": "workspace:*",
     "@getpochi/vendor-github-copilot": "workspace:*",
@@ -31,7 +30,6 @@
     "@livestore/adapter-node": "catalog:",
     "@livestore/livestore": "catalog:",
     "@livestore/sync-cf": "catalog:",
-    "@livestore/utils": "catalog:",
     "@livestore/wa-sqlite": "catalog:",
     "@preact/signals-core": "^1.6.2",
     "@types/semver": "^7.5.8",
@@ -41,10 +39,16 @@
     "cli-table3": "^0.6.5",
     "commander": "^14.0.0",
     "listr2": "^9.0.3",
+    "mdast": "^3.0.0",
+    "mdast-util-gfm": "^3.1.0",
+    "mdast-util-to-markdown": "^2.1.2",
     "ora": "^8.2.0",
+    "remark": "^15.0.1",
+    "remark-gfm": "^4.0.1",
     "remeda": "catalog:",
     "semver": "^7.6.3",
     "tabtab": "^3.0.2",
+    "unist-util-visit": "^5.0.0",
     "zod": "catalog:"
   }
 }

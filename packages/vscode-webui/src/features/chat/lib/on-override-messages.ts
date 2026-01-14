@@ -1,12 +1,10 @@
+import { getTaskChangedFileStore } from "@/lib/hooks/use-task-changed-files";
 import { vscodeHost } from "@/lib/vscode";
 import { prompts } from "@getpochi/common";
 import { extractWorkflowBashCommands } from "@getpochi/common/message-utils";
-import type { TaskChangedFile } from "@getpochi/common/vscode-webui-bridge";
-import { type Message, catalog } from "@getpochi/livekit";
-import type { Store } from "@livestore/livestore";
+import { type LiveKitStore, type Message, catalog } from "@getpochi/livekit";
 import { ThreadAbortSignal } from "@quilted/threads";
 import { unique } from "remeda";
-import { getTaskChangedFileStore } from "./use-task-changed-files";
 
 /**
  * Handles the onOverrideMessages event by appending a checkpoint to the last message.
@@ -18,7 +16,7 @@ export async function onOverrideMessages({
   messages,
   abortSignal,
 }: {
-  store: Store;
+  store: LiveKitStore;
   taskId: string;
   messages: Message[];
   abortSignal: AbortSignal;
@@ -122,7 +120,7 @@ async function appendWorkflowBashOutputs(
 }
 
 async function updateTaskLineChanges(
-  store: Store,
+  store: LiveKitStore,
   taskId: string,
   firstCheckpoint: string,
 ) {
@@ -174,24 +172,5 @@ async function updateChangedFiles(
   );
 
   const store = getTaskChangedFileStore(taskId);
-  const { changedFiles, setChangedFile } = store.getState();
-
-  const updatedChangedFiles: TaskChangedFile[] = [...changedFiles];
-  for (const filePath of recentChangedFiles) {
-    const currentFile = changedFiles.find((f) => f.filepath === filePath);
-
-    // first time seeing this file change
-    if (!currentFile) {
-      updatedChangedFiles.push({
-        filepath: filePath,
-        added: 0,
-        removed: 0,
-        content: { type: "checkpoint", commit: lastCheckpoint },
-        deleted: false,
-        state: "pending",
-      });
-    }
-  }
-  const diffResult = await vscodeHost.diffChangedFiles(updatedChangedFiles);
-  setChangedFile(diffResult);
+  await store.getState().updateChangedFiles(recentChangedFiles, lastCheckpoint);
 }

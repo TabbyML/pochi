@@ -73,7 +73,7 @@ export class Pochi extends VendorBase {
   }
 
   override async fetchModels(): Promise<Record<string, ModelOptions>> {
-    if (!this.cachedModels) {
+    if (!this.cachedModels || Object.keys(this.cachedModels).length === 0) {
       const apiClient: PochiApiClient = hc<PochiApi>(getServerBaseUrl());
       const data = await withRetry(
         async () => {
@@ -93,7 +93,6 @@ export class Pochi extends VendorBase {
           x.id,
           {
             contextWindow: x.contextWindow,
-            useToolCallMiddleware: x.id.includes("google"),
             label: x.costType === "basic" ? "swift" : "super",
             contentType: getContentTypesForModel(x.id),
           } satisfies ModelOptions,

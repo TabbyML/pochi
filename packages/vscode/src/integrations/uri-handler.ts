@@ -6,6 +6,8 @@ import { getLogger } from "@/lib/logger";
 import { NewProjectRegistry, createNewWorkspace } from "@/lib/new-project";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { WorkspaceJobQueue } from "@/lib/workspace-job";
+// biome-ignore lint/style/useImportType: needed for dependency injection
+import { WorkspaceScope } from "@/lib/workspace-scoped";
 import { WebsiteTaskCreateEvent } from "@getpochi/common";
 import { inject, injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
@@ -16,6 +18,7 @@ const logger = getLogger("UriHandler");
 @singleton()
 class RagdollUriHandler implements vscode.UriHandler, vscode.Disposable {
   constructor(
+    private readonly workspaceScope: WorkspaceScope,
     @inject("AuthClient")
     private readonly authClient: AuthClient,
     private readonly workspaceJobQueue: WorkspaceJobQueue,
@@ -81,8 +84,8 @@ class RagdollUriHandler implements vscode.UriHandler, vscode.Disposable {
     }
   }
 
-  get currentWorkspaceUri(): vscode.Uri | undefined {
-    return vscode.workspace.workspaceFolders?.[0]?.uri;
+  get currentWorkspaceUri(): vscode.Uri | null {
+    return this.workspaceScope.workspaceUri;
   }
 
   /**

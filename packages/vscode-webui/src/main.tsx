@@ -15,6 +15,7 @@ import { routeTree } from "./routeTree.gen";
 
 import "./styles.css";
 import { Loader2 } from "lucide-react";
+import { RouterErrorBoundary } from "./components/router-error-boundary";
 import { useUserStorage } from "./lib/hooks/use-user-storage.ts";
 import { isVSCodeEnvironment, vscodeHost } from "./lib/vscode";
 import { Providers } from "./providers.tsx";
@@ -31,6 +32,7 @@ const router = createRouter({
   defaultStructuralSharing: true,
   defaultPreloadStaleTime: 0,
   history: hashHistory,
+  defaultErrorComponent: ({ error }) => <RouterErrorBoundary error={error} />,
 });
 
 declare global {
@@ -63,12 +65,12 @@ declare module "@tanstack/react-router" {
 // In the "pane" webview, navigate to the task page on load.
 // Avoid setting window.location.hash globally because other scripts may modify it.
 if (window.POCHI_WEBVIEW_KIND === "pane") {
-  const params = window.POCHI_TASK_PARAMS;
-  if (params) {
+  const info = window.POCHI_TASK_INFO;
+  if (info) {
     router.navigate({
       to: "/task",
       // Pass uid only, other params will be parsed after route
-      search: { uid: params.uid },
+      search: { uid: info.uid },
     });
   }
 }

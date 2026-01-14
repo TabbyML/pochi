@@ -1,4 +1,10 @@
-import { Events, Schema, State, makeSchema } from "@livestore/livestore";
+import {
+  Events,
+  Schema,
+  State,
+  deprecated,
+  makeSchema,
+} from "@livestore/livestore";
 import {
   DBMessage,
   DBUIPart,
@@ -45,6 +51,9 @@ export const tables = {
       lastStepDuration: State.SQLite.integer({
         nullable: true,
         schema: Schema.DurationFromMillis,
+      }),
+      lastCheckpointHash: State.SQLite.text({
+        nullable: true,
       }),
       error: State.SQLite.json({ schema: TaskError, nullable: true }),
       createdAt: State.SQLite.integer({ schema: Schema.DateFromNumber }),
@@ -99,14 +108,14 @@ export const events = {
     schema: Schema.Struct({
       ...taskInitFields,
       initMessages: Schema.optional(Schema.Array(DBMessage)),
-      // @deprecated
-      // use initMessages instead
+      initTitle: Schema.optional(Schema.String),
+      displayId: Schema.optional(Schema.Number),
       initMessage: Schema.optional(
         Schema.Struct({
           id: Schema.String,
           parts: Schema.Array(DBUIPart),
         }),
-      ),
+      ).pipe(deprecated("use initMessages instead")),
     }),
   }),
   taskFailed: Events.synced({
@@ -123,13 +132,15 @@ export const events = {
       id: Schema.String,
       data: DBMessage,
       todos: Todos,
-      // @deprecated
-      // use updateTitle instead
-      title: Schema.optional(Schema.String),
+      title: Schema.optional(Schema.String).pipe(
+        deprecated("use updateTitle instead"),
+      ),
       git: Schema.optional(Git),
       updatedAt: Schema.Date,
       modelId: Schema.optional(Schema.String),
-      displayId: Schema.optional(Schema.Number),
+      displayId: Schema.optional(Schema.Number).pipe(
+        deprecated("use displayId in init instead"),
+      ),
     }),
   }),
   chatStreamFinished: Events.synced({
@@ -141,6 +152,7 @@ export const events = {
       status: TaskStatus,
       updatedAt: Schema.Date,
       duration: Schema.optional(Schema.DurationFromMillis),
+      lastCheckpointHash: Schema.optional(Schema.String),
     }),
   }),
   chatStreamFailed: Events.synced({
@@ -151,6 +163,7 @@ export const events = {
       data: Schema.NullOr(DBMessage),
       updatedAt: Schema.Date,
       duration: Schema.optional(Schema.DurationFromMillis),
+      lastCheckpointHash: Schema.optional(Schema.String),
     }),
   }),
   updateShareId: Events.synced({
@@ -194,6 +207,12 @@ export const events = {
       updatedAt: Schema.Date,
     }),
   }),
+  updateMessages: Events.synced({
+    name: "v1.UpdateMessages",
+    schema: Schema.Struct({
+      messages: Schema.Array(DBMessage),
+    }),
+  }),
 };
 
 const materializers = State.SQLite.materializers(events, {
@@ -204,6 +223,8 @@ const materializers = State.SQLite.materializers(events, {
     cwd,
     initMessage,
     initMessages,
+    initTitle,
+    displayId,
   }) => [
     tables.tasks.insert({
       id,
@@ -217,6 +238,8 @@ const materializers = State.SQLite.materializers(events, {
       parentId,
       createdAt,
       cwd,
+      title: initTitle,
+      displayId,
       updatedAt: createdAt,
     }),
     ...(initMessages?.map((message) => {
@@ -268,6 +291,7 @@ const materializers = State.SQLite.materializers(events, {
         updatedAt,
         modelId,
         displayId,
+        lastCheckpointHash: null, // set as null to disable user edit when streaming
       })
       .where({ id }),
     tables.messages
@@ -285,6 +309,7 @@ const materializers = State.SQLite.materializers(events, {
     status,
     updatedAt,
     duration,
+    lastCheckpointHash,
   }) => [
     tables.tasks
       .update({
@@ -294,6 +319,7 @@ const materializers = State.SQLite.materializers(events, {
         // Clear error if the stream is finished
         error: null,
         lastStepDuration: duration ?? undefined,
+        lastCheckpointHash: lastCheckpointHash,
       })
       .where({ id }),
     tables.messages
@@ -304,13 +330,21 @@ const materializers = State.SQLite.materializers(events, {
       })
       .onConflict("id", "replace"),
   ],
-  "v1.ChatStreamFailed": ({ id, error, updatedAt, data, duration }) => [
+  "v1.ChatStreamFailed": ({
+    id,
+    error,
+    updatedAt,
+    data,
+    duration,
+    lastCheckpointHash,
+  }) => [
     tables.tasks
       .update({
         status: "failed",
         error,
         updatedAt,
         lastStepDuration: duration ?? undefined,
+        lastCheckpointHash,
       })
       .where({ id }),
     ...(data
@@ -347,6 +381,14 @@ const materializers = State.SQLite.materializers(events, {
         updatedAt,
       })
       .where({ id }),
+  "v1.UpdateMessages": ({ messages }) =>
+    messages.map((message) =>
+      tables.messages
+        .update({
+          data: message,
+        })
+        .where({ id: message.id }),
+    ),
 });
 
 const state = State.SQLite.makeState({ tables, materializers });

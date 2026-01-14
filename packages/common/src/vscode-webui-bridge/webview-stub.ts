@@ -8,20 +8,25 @@ import type {
   DisplayModel,
   FileDiff,
   GitWorktree,
+  GithubIssue,
   McpStatus,
   PochiCredentials,
+  PochiTaskParams,
   ResourceURI,
+  Review,
   RuleFile,
   SessionState,
   TaskChangedFile,
   TaskStates,
   VSCodeHostApi,
+  VSCodeSettings,
   WorkspaceState,
 } from "./index";
+import type { ActiveSelection } from "./types/message";
 
 const VSCodeHostStub = {
   readCurrentWorkspace: async () => {
-    return Promise.resolve({ cwd: null, workspaceFolder: null });
+    return Promise.resolve({ cwd: null, workspacePath: null });
   },
   readResourceURI: (): Promise<ResourceURI> => {
     return Promise.resolve({} as ResourceURI);
@@ -108,18 +113,14 @@ const VSCodeHostStub = {
       >,
     );
   },
-  readPochiTasks: (): Promise<ThreadSignalSerialization<TaskStates>> => {
+  readPochiTabs: (): Promise<ThreadSignalSerialization<TaskStates>> => {
     return Promise.resolve({} as ThreadSignalSerialization<TaskStates>);
   },
   readActiveSelection: (): Promise<
-    ThreadSignalSerialization<
-      Environment["workspace"]["activeSelection"] | undefined
-    >
+    ThreadSignalSerialization<ActiveSelection | undefined>
   > => {
     return Promise.resolve(
-      {} as ThreadSignalSerialization<
-        Environment["workspace"]["activeSelection"] | undefined
-      >,
+      {} as ThreadSignalSerialization<ActiveSelection | undefined>,
     );
   },
   openFile: (
@@ -186,6 +187,11 @@ const VSCodeHostStub = {
   restoreChangedFiles: async (_files: TaskChangedFile[]): Promise<void> => {
     return Promise.resolve();
   },
+  readLatestCheckpoint: async (): Promise<
+    ThreadSignalSerialization<string | null>
+  > => {
+    return Promise.resolve({} as ThreadSignalSerialization<string | null>);
+  },
   readCheckpointPath: async (): Promise<string | undefined> => {
     return Promise.resolve(undefined);
   },
@@ -210,8 +216,11 @@ const VSCodeHostStub = {
   readExtensionVersion: () => {
     return Promise.resolve("");
   },
-  readAutoSaveDisabled: () => {
-    return Promise.resolve({} as ThreadSignalSerialization<boolean>);
+  readVSCodeSettings: () => {
+    return Promise.resolve({} as ThreadSignalSerialization<VSCodeSettings>);
+  },
+  updateVSCodeSettings: (_params: Partial<VSCodeSettings>) => {
+    return Promise.resolve();
   },
   showInformationMessage: async (): Promise<undefined> => {
     return Promise.resolve(undefined);
@@ -234,7 +243,13 @@ const VSCodeHostStub = {
     });
   },
   readModelList: async () => {
-    return Promise.resolve({} as ThreadSignalSerialization<DisplayModel[]>);
+    return Promise.resolve(
+      {} as {
+        modelList: ThreadSignalSerialization<DisplayModel[]>;
+        isLoading: ThreadSignalSerialization<boolean>;
+        reload: () => Promise<void>;
+      },
+    );
   },
   readUserStorage: async () => {
     return Promise.resolve(
@@ -247,7 +262,10 @@ const VSCodeHostStub = {
     return Promise.resolve({} as ThreadSignalSerialization<CustomAgentFile[]>);
   },
 
-  openTaskInPanel: async (): Promise<void> => {},
+  openTaskInPanel: async (
+    _params: PochiTaskParams,
+    _options?: { keepEditor?: boolean },
+  ): Promise<void> => {},
 
   sendTaskNotification: async (): Promise<void> => {},
 
@@ -257,7 +275,7 @@ const VSCodeHostStub = {
 
   readWorktrees: async (): Promise<{
     worktrees: ThreadSignalSerialization<GitWorktree[]>;
-    ghCli: ThreadSignalSerialization<{
+    gh: ThreadSignalSerialization<{
       installed: boolean;
       authorized: boolean;
     }>;
@@ -266,7 +284,7 @@ const VSCodeHostStub = {
     return Promise.resolve(
       {} as {
         worktrees: ThreadSignalSerialization<GitWorktree[]>;
-        ghCli: ThreadSignalSerialization<{
+        gh: ThreadSignalSerialization<{
           installed: boolean;
           authorized: boolean;
         }>;
@@ -281,11 +299,34 @@ const VSCodeHostStub = {
 
   deleteWorktree: async (): Promise<boolean> => false,
 
+  queryGithubIssues: async (): Promise<GithubIssue[]> => [],
+
+  readGitBranches: async (): Promise<string[]> => [],
+
+  readReviews: (): Promise<ThreadSignalSerialization<Review[]>> => {
+    return Promise.resolve({} as ThreadSignalSerialization<Review[]>);
+  },
+
+  clearReviews: async (): Promise<void> => {},
+
+  openReview: async (
+    _review: Review,
+    _options?: { focusCommentsPanel?: boolean; revealRange?: boolean },
+  ) => {},
+
+  readUserEdits: async (
+    _uid: string,
+  ): Promise<ThreadSignalSerialization<FileDiff[]>> => {
+    return Promise.resolve({} as ThreadSignalSerialization<FileDiff[]>);
+  },
+
   getGlobalState: async (): Promise<unknown> => {
     return null;
   },
 
   setGlobalState: async (): Promise<void> => {},
+  readTasks: (): Promise<ThreadSignalSerialization<Record<string, unknown>>> =>
+    Promise.resolve({} as ThreadSignalSerialization<Record<string, unknown>>),
 } satisfies VSCodeHostApi;
 
 export function createVscodeHostStub(overrides?: Partial<VSCodeHostApi>) {

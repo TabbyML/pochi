@@ -199,9 +199,7 @@ export class GitStatusReader {
   }
 }
 
-export async function parseWorktreeGitdir(
-  cwd: string,
-): Promise<string | undefined> {
+async function parseWorktreeGitdir(cwd: string): Promise<string | undefined> {
   try {
     /**
      * for main worktree, gitdir is .git directory

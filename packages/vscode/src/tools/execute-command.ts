@@ -68,6 +68,10 @@ export const executeCommand: ToolFunctionType<
       }),
   );
 
+  // Though stated in prompt that agent must run commands sequentially if needed (e.g git add . && git commit -m), in many cases model still generate two command in parallel.
+  // Add a small delay here to reduce the occurances of .git/index.lock conflicts.
+  await new Promise((resolve) => setTimeout(resolve, 100));
+
   // biome-ignore lint/suspicious/noExplicitAny: pass thread signal
   return { output: ThreadSignal.serialize(output) as any };
 };

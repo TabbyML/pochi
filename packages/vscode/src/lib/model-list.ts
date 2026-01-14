@@ -17,6 +17,7 @@ const logger = getLogger("ModelList");
 export class ModelList implements vscode.Disposable {
   dispose: () => void;
   readonly modelList: Signal<DisplayModel[]> = signal([]);
+  readonly isLoading: Signal<boolean> = signal(false);
 
   constructor() {
     this.dispose = watchPochiConfigKeys(["providers", "vendors"], () => {
@@ -26,7 +27,13 @@ export class ModelList implements vscode.Disposable {
     });
   }
 
+  reload = async (): Promise<void> => {
+    this.modelList.value = await this.fetchModelList();
+  };
+
   private async fetchModelList(): Promise<DisplayModel[]> {
+    this.isLoading.value = true;
+
     const modelList: DisplayModel[] = [];
 
     const vendors = getVendors();
@@ -34,6 +41,7 @@ export class ModelList implements vscode.Disposable {
     for (const [vendorId, vendor] of Object.entries(vendors)) {
       if (vendor.authenticated) {
         try {
+          logger.trace("fetch models", vendorId);
           const models = await vendor.fetchModels();
           for (const [modelId, options] of Object.entries(models)) {
             modelList.push({
@@ -81,6 +89,8 @@ export class ModelList implements vscode.Disposable {
         }
       }
     }
+
+    this.isLoading.value = false;
 
     return modelList;
   }

@@ -5,15 +5,16 @@ import { getUri } from "@/lib/get-uri";
 import { getLogger } from "@getpochi/common";
 import { getCorsProxyPort } from "@getpochi/common/cors-proxy";
 import type {
+  PochiTaskInfo,
   ResourceURI,
   SessionState,
-  TaskPanelParams,
   VSCodeHostApi,
   WebviewHostApi,
 } from "@getpochi/common/vscode-webui-bridge";
 import {
   getServerBaseUrl,
   getSyncBaseUrl,
+  isTest,
 } from "@getpochi/common/vscode-webui-bridge";
 import { Thread } from "@quilted/threads";
 import * as vscode from "vscode";
@@ -77,10 +78,10 @@ export abstract class WebviewBase implements vscode.Disposable {
   protected getHtmlForWebview(
     webview: vscode.Webview,
     kind: "sidebar" | "pane",
-    taskParams?: TaskPanelParams,
+    info?: PochiTaskInfo,
   ): string {
     const isProd =
-      this.context.extensionMode === vscode.ExtensionMode.Production;
+      this.context.extensionMode === vscode.ExtensionMode.Production || isTest;
 
     const setiFontUri = getUri(webview, this.context.extensionUri, [
       "assets",
@@ -100,7 +101,7 @@ export abstract class WebviewBase implements vscode.Disposable {
       window.POCHI_CORS_PROXY_PORT = "${getCorsProxyPort()}";
       window.POCHI_LOG = "${this.pochiConfiguration.advancedSettings.value.webviewLogLevel || ""}";
       window.POCHI_WEBVIEW_KIND = "${kind}";
-      ${taskParams ? `window.POCHI_TASK_PARAMS = ${JSON.stringify(taskParams)};` : ""}
+      ${info ? `window.POCHI_TASK_INFO = ${JSON.stringify(info)};` : ""}
     </script>`;
 
     if (isProd) {
@@ -326,7 +327,6 @@ export abstract class WebviewBase implements vscode.Disposable {
           "openSettings",
           "onAuthChanged",
           "isFocused",
-          "commitTaskUpdated",
           "onFileChanged",
         ],
       },

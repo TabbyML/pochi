@@ -1,6 +1,6 @@
 import { useSubtaskOffhand } from "@/features/settings";
+import { useDefaultStore } from "@/lib/use-default-store";
 import { type Message, type UITools, catalog } from "@getpochi/livekit";
-import { useStore } from "@livestore/react";
 import type { ToolUIPart } from "ai";
 
 export interface SubtaskInfo {
@@ -20,21 +20,22 @@ export function useSubtaskInfo(
   uid: string,
   parentUid?: string | null,
 ): SubtaskInfo | undefined {
-  const { store } = useStore();
-  if (!parentUid) return undefined;
+  const store = useDefaultStore();
   const parentTaskMessages = store.useQuery(
-    catalog.queries.makeMessagesQuery(parentUid),
+    catalog.queries.makeMessagesQuery(parentUid ?? ""),
   );
   const newtaskTool = parentTaskMessages
     .flatMap((m) => (m.data as Message).parts)
     .find((p) => p.type === "tool-newTask" && p.input?._meta?.uid === uid) as
     | NewTaskTool
     | undefined;
-  if (!newtaskTool) return undefined;
-  const agent = newtaskTool.input?.agentType;
-  const description = newtaskTool.input?.description;
+  const agent = newtaskTool?.input?.agentType;
+  const description = newtaskTool?.input?.description;
   const isSubTask = !!parentUid;
   const { subtaskOffhand } = useSubtaskOffhand();
+
+  if (!parentUid) return undefined;
+  if (!newtaskTool) return undefined;
 
   return {
     uid,

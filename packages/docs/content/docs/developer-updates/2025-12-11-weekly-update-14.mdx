@@ -1,0 +1,48 @@
+---
+title: Weekly Update #14
+---
+
+# Weekly Update #14
+
+### TL;DR
+
+This release introduces pair of upgrades aimed at making Pochi feel even more native to your development flow: GitHub Issue integration embedded right into task input, and a new `Cmd`/`Ctrl` + `Enter` shortcut to spin up worktrees easily.
+
+
+### 🚀 Features
+
+- **GitHub Issue Integration in Task Input:** You can now connect tasks directly to GitHub Issues. Typing `@#` opens an inline issue selector where you can search by issue ID, keyword, or scroll the dropdown list.<br/>
+
+    All newly created issues are accessible within a minute. Once selected, issues appear as markdown badges and are sent as enriched context to the model. 
+    
+    **Note:** This feature requires GitHub CLI to be installed and authenticated. **[#833](https://github.com/TabbyML/pochi/issues/823)**
+
+    <video
+        controls
+        style={{
+        width: "100%",
+        borderRadius: "8px",
+        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+        }}
+    >
+        <source src="https://assets.docs.getpochi.com/connect-to-github-issue.mp4" type="video/mp4" />
+        Your browser does not support the video tag.
+    </video>
+
+
+- **Create a New Worktree + Task with `Cmd`/`Ctrl` + `Enter`:** You can now start a brand-new worktree and task instantly using `Cmd`+`Enter` (macOS) or `Ctrl`+`Enter` (Windows/Linux). When you submit a prompt with this shortcut, Pochi automatically creates a new worktree with an auto-generated branch name (based on the task description, falling back to a timestamp when needed) and launches a new task inside it. <br/>
+
+    The shortcut also works when submitting messages with file or image attachments. In existing tasks, `Cmd`/`Ctrl`+`Enter` continues to queue messages as before. **[#822](https://github.com/TabbyML/pochi/issues/822)** <br/>
+
+  <video
+    controls
+    style={{
+      width: "100%",
+      borderRadius: "8px",
+      boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+    }}
+  >
+    <source src="https://assets.docs.getpochi.com/create-worktree-with-command-click.mp4" type="video/mp4" />
+    Your browser does not support the video tag.
+  </video>
+  

@@ -1,10 +1,9 @@
 import type { LanguageModelV2 } from "@ai-sdk/provider";
 import { getLogger } from "@getpochi/common";
-import type { Store } from "@livestore/livestore";
 import { makeTaskQuery } from "../../livestore/default-queries";
 import { events } from "../../livestore/default-schema";
 
-import type { Message } from "../../types";
+import type { LiveKitStore, Message } from "../../types";
 import { generateTaskTitle } from "../llm/generate-task-title";
 import { backgroundJobManager } from "./manager";
 
@@ -12,7 +11,7 @@ const logger = getLogger("GenerateTitleManager");
 
 interface GenerateTitleJob {
   taskId: string;
-  store: Store;
+  store: LiveKitStore;
   messages: Message[];
   getModel: () => LanguageModelV2;
   waitUntil?: (promise: Promise<unknown>) => void;

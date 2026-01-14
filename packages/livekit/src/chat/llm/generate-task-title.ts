@@ -1,14 +1,13 @@
 import type { LanguageModelV2 } from "@ai-sdk/provider";
 import { formatters, getLogger, prompts } from "@getpochi/common";
-import type { Store } from "@livestore/livestore";
 import { convertToModelMessages, generateText } from "ai";
 import { makeDownloadFunction } from "../../store-blob";
-import type { Message } from "../../types";
+import type { LiveKitStore, Message } from "../../types";
 
 const logger = getLogger("generateTaskTitle");
 
 interface GenerateTaskTitleOptions {
-  store: Store;
+  store: LiveKitStore;
   taskId: string;
   title: string | null;
   messages: Message[];
@@ -78,8 +77,11 @@ async function generateTaskTitleImpl({
 function getTitleFromMessages(messages: Message[]) {
   const firstMessage = messages.at(0);
   if (!firstMessage) return;
-  const lastTextPart = firstMessage.parts.findLast((x) => x.type === "text");
-  if (lastTextPart) {
+  const lastTextPart = firstMessage.parts.findLast(
+    (x) => x.type === "text" && !prompts.isSystemReminder(x.text),
+  );
+
+  if (lastTextPart && lastTextPart.type === "text") {
     return lastTextPart.text.split("\n")[0].trim();
   }
 }
@@ -92,7 +94,7 @@ function isTitleGeneratedByLlm(
 }
 
 async function generateTitle(
-  store: Store,
+  store: LiveKitStore,
   taskId: string,
   model: LanguageModelV2,
   inputMessages: Message[],

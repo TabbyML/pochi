@@ -2,13 +2,13 @@ import { vscodeHost } from "@/lib/vscode";
 import { getLogger } from "@getpochi/common";
 import type { ExecuteCommandResult } from "@getpochi/common/vscode-webui-bridge";
 import {
+  type LiveKitStore,
   type Message,
   type Task,
   catalog,
   processContentOutput,
 } from "@getpochi/livekit";
 import type { ClientTools, PreviewReturnType } from "@getpochi/tools";
-import type { Store } from "@livestore/livestore";
 import { ThreadAbortSignal } from "@quilted/threads";
 import {
   type ThreadSignalSerialization,
@@ -163,7 +163,7 @@ export class ManagedToolCallLifeCycle
   readonly toolCallId: string;
 
   constructor(
-    private readonly store: Store,
+    private readonly store: LiveKitStore,
     key: ToolCallLifeCycleKey,
     private readonly outerAbortSignal: AbortSignal,
   ) {
@@ -526,11 +526,7 @@ export class ManagedToolCallLifeCycle
 
     const unsubscribe = this.store.subscribe(
       catalog.queries.makeTaskQuery(uid),
-      {
-        onSubscribe: (query) =>
-          setTimeout(() => onTaskUpdate(this.store.query(query)), 1), // setTimeout to ensure we call onTaskUpdate after the subscription is established
-        onUpdate: (task) => onTaskUpdate(task),
-      },
+      (task) => onTaskUpdate(task),
     );
     cleanupFns.push(unsubscribe);
   }
@@ -583,7 +579,7 @@ function convertState(state: ToolUIPart["state"]) {
   return "result";
 }
 
-export function extractTaskResult(store: Store, uid: string) {
+export function extractTaskResult(store: LiveKitStore, uid: string) {
   const lastMessage = store
     .query(catalog.queries.makeMessagesQuery(uid))
     .map((x) => x.data as Message)

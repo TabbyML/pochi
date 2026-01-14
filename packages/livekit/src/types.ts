@@ -4,9 +4,17 @@ import type {
 } from "@ai-sdk/provider";
 import { Environment } from "@getpochi/common";
 import { GoogleVertexModel } from "@getpochi/common/configuration";
+import type {
+  ActiveSelection,
+  BashOutputs,
+  Review,
+  UserEdits,
+} from "@getpochi/common/vscode-webui-bridge";
 import { type ClientTools, McpTool } from "@getpochi/tools";
+import type { Store } from "@livestore/livestore";
 import type { InferUITools, UIMessage } from "ai";
 import z from "zod/v4";
+import type { defaultCatalog } from "./livestore";
 import type { tables } from "./livestore/default-schema";
 
 export type Metadata =
@@ -23,6 +31,18 @@ export type Metadata =
 export type DataParts = {
   checkpoint: {
     commit: string;
+  };
+  reviews: {
+    reviews: Review[];
+  };
+  "user-edits": {
+    userEdits: UserEdits;
+  };
+  "active-selection": {
+    activeSelection: ActiveSelection;
+  };
+  "bash-outputs": {
+    bashOutputs: BashOutputs;
   };
 };
 
@@ -142,3 +162,5 @@ const RequestData = z.object({
 export type RequestData = z.infer<typeof RequestData>;
 
 export type Task = typeof tables.tasks.Type;
+
+export type LiveKitStore = Store<typeof defaultCatalog.schema>;

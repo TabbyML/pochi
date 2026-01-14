@@ -5,6 +5,10 @@
     "account": "账户",
     "help": "帮助"
   },
+  "error": {
+    "somethingWentWrong": "出错了",
+    "reloadWindow": "重新加载窗口"
+  },
   "placeholder": {
     "title": "我能帮您实现什么？",
     "subtitle": "Pochi 由 AI 驱动，可能会出现错误。",
@@ -53,12 +57,18 @@
     "modelUnavailable": "模型不可用或仍在加载中。",
     "custom": "自定义",
     "super": "加强",
-    "swift": "极速"
+    "swift": "极速",
+    "reload": "重新加载",
+    "subscriptionRequired": "需要订阅"
   },
   "worktreeSelect": {
     "selectWorktree": "选择工作树",
-    "createWorktree": "创建 Git 工作树",
-    "createWorktreeDescription": "在新的 Git 工作树中启动任务"
+    "createWorktree": "自动创建工作树",
+    "createWorktreeDescription": "在新的 Git 工作树中启动任务",
+    "switchBaseBranch": "切换基础分支",
+    "searchBranch": "搜索分支...",
+    "noBranchFound": "未找到分支",
+    "branches": "分支"
   },
   "worktree": {
     "createPr": "创建 PR",
@@ -102,7 +112,8 @@
       "enablePochiModels": "启用 Pochi 模型",
       "clearStorage": "清除存储",
       "language": "语言",
-      "languageDescription": "选择您的首选语言"
+      "languageDescription": "选择您的首选语言",
+      "resetRecommendSettingsConfirmed": "Reset Recommended Settings Confirmed"
     },
     "workflows": {
       "title": "工作流",
@@ -215,7 +226,8 @@
       "errorPrefix": "错误：",
       "fallbackError": "遇到错误",
       "finished": "已完成，耗时 {{duration}}"
-    }
+    },
+    "loadMore": "加载更多"
   },
   "toolInvocation": {
     "taskCompleted": "任务完成",
@@ -270,11 +282,16 @@
     "restoring": "恢复中...",
     "success": "成功",
     "restore": "恢复",
+    "restored": "已恢复",
     "opening": "打开中...",
     "noChangesDetected": "未检测到更改",
     "compare": "比较",
     "fork": "新建分支任务",
     "forking": "创建中..."
+  },
+  "reviewUI": {
+    "reviews": "评审",
+    "submitReviews": "提交评审"
   },
   "welcomeScreen": {
     "title": "开始使用",
@@ -321,7 +338,8 @@
     "noResultsFound": "未找到结果",
     "typeToSearch": "输入以搜索...",
     "workflow": "工作流",
-    "agent": "代理"
+    "agent": "代理",
+    "useHashForIssues": "使用 # 搜索 Github issue"
   },
   "subtask": {
     "back": "返回",
@@ -337,7 +355,8 @@
     "requirePayment": "您有未付款的发票。请",
     "makePayment": "付款",
     "toContinueUsingPochi": "以继续使用 Pochi",
-    "requireOrgPayment": "您的团队有未付款的发票。请"
+    "requireOrgPayment": "您的团队有未付款的发票。请",
+    "requireSubscriptionForSuperModels": "要使用加强模型，请订阅 Pochi。"
   },
   "chatPage": {
     "defaultUserName": "您"
@@ -403,5 +422,30 @@
     "undo": "撤销",
     "viewChanges": "查看更改",
     "openFile": "打开文件"
+  },
+  "userEdits": {
+    "title": "编辑",
+    "filesEdited_one": "已编辑 {{count}} 个文件",
+    "filesEdited_other": "已编辑 {{count}} 个文件",
+    "tooltip": "您的编辑已被跟踪，并将包含在上下文中",
+    "showDiff": "显示差异",
+    "diffTitle": "用户编辑"
+  },
+  "forkTask": {
+    "forkedTaskTitle": "任务分支自：{{taskTitle}}"
+  },
+  "recommendSettings": {
+    "title": "Pochi 将修改以下设置",
+    "ok": "确定",
+    "options": {
+      "enablePochiLayout": "启用 Pochi 布局",
+      "disableAutoSave": "禁用自动保存",
+      "disableCommentsOpenView": "禁用自动打开评论面板",
+      "disableGithubCopilotCodeCompletion": "禁用 GitHub Copilot 代码补全"
+    }
+  },
+  "mermaid": {
+    "failedToRender": "渲染 Mermaid 图表失败：",
+    "fixError": "使用 Pochi 修复错误"
   }
 }

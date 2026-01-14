@@ -1,6 +1,6 @@
 import * as assert from "assert";
 import * as vscode from "vscode";
-import { getNewDiagnostics, diagnosticsToProblemsString } from "../diagnostic";
+import { compareDiagnostics, diagnosticsToProblemsString } from "../diagnostic";
 import { describe, it } from "mocha";
 import * as path from "node:path";
 
@@ -64,18 +64,19 @@ describe("Diagnostic Utils", () => {
     "custom",
   );
 
-  describe("getNewDiagnostics", () => {
+  describe("compareDiagnostics", () => {
     it("should return all new diagnostics when old diagnostics are empty", () => {
       const oldDiagnostics: [vscode.Uri, vscode.Diagnostic[]][] = [];
       const newDiagnostics: [vscode.Uri, vscode.Diagnostic[]][] = [
         [uri1, [diag1Error, diag1Warning]],
         [uri2, [diag2Error]],
       ];
-      const result = getNewDiagnostics(oldDiagnostics, newDiagnostics);
-      assert.deepStrictEqual(result, newDiagnostics);
+      const result = compareDiagnostics(oldDiagnostics, newDiagnostics);
+      assert.deepStrictEqual(result.newProblems, newDiagnostics);
+      assert.deepStrictEqual(result.resolvedProblems, []);
     });
 
-    it("should return empty array when new diagnostics are the same as old", () => {
+    it("should return empty arrays when new diagnostics are the same as old", () => {
       const oldDiagnostics: [vscode.Uri, vscode.Diagnostic[]][] = [
         [uri1, [diag1Error, diag1Warning]],
         [uri2, [diag2Error]],
@@ -84,8 +85,9 @@ describe("Diagnostic Utils", () => {
         [uri1, [diag1Error, diag1Warning]],
         [uri2, [diag2Error]],
       ];
-      const result = getNewDiagnostics(oldDiagnostics, newDiagnostics);
-      assert.deepStrictEqual(result, []);
+      const result = compareDiagnostics(oldDiagnostics, newDiagnostics);
+      assert.deepStrictEqual(result.newProblems, []);
+      assert.deepStrictEqual(result.resolvedProblems, []);
     });
 
     it("should return only the truly new diagnostics", () => {
@@ -97,12 +99,31 @@ describe("Diagnostic Utils", () => {
         [uri1, [diag1Error, diag1Warning]], // diag1Warning is new
         [uri2, [diag2Error]], // diag2Error is new
       ];
-      const expected: [vscode.Uri, vscode.Diagnostic[]][] = [
+      const expectedNew: [vscode.Uri, vscode.Diagnostic[]][] = [
         [uri1, [diag1Warning]],
         [uri2, [diag2Error]],
       ];
-      const result = getNewDiagnostics(oldDiagnostics, newDiagnostics);
-      assert.deepStrictEqual(result, expected);
+      const result = compareDiagnostics(oldDiagnostics, newDiagnostics);
+      assert.deepStrictEqual(result.newProblems, expectedNew);
+      assert.deepStrictEqual(result.resolvedProblems, []);
+    });
+
+    it("should return resolved diagnostics when they are missing in new", () => {
+      const oldDiagnostics: [vscode.Uri, vscode.Diagnostic[]][] = [
+        [uri1, [diag1Error, diag1Warning]],
+        [uri2, [diag2Error]],
+      ];
+      const newDiagnostics: [vscode.Uri, vscode.Diagnostic[]][] = [
+        [uri1, [diag1Error]], // diag1Warning is resolved
+        // uri2's diag2Error is resolved
+      ];
+      const expectedResolved: [vscode.Uri, vscode.Diagnostic[]][] = [
+        [uri1, [diag1Warning]],
+        [uri2, [diag2Error]],
+      ];
+      const result = compareDiagnostics(oldDiagnostics, newDiagnostics);
+      assert.deepStrictEqual(result.newProblems, []);
+      assert.deepStrictEqual(result.resolvedProblems, expectedResolved);
     });
 
     it("should return new diagnostics when a file is added", () => {
@@ -113,14 +134,15 @@ describe("Diagnostic Utils", () => {
         [uri1, [diag1Error]],
         [uri2, [diag2Error]], // uri2 is new
       ];
-      const expected: [vscode.Uri, vscode.Diagnostic[]][] = [
+      const expectedNew: [vscode.Uri, vscode.Diagnostic[]][] = [
         [uri2, [diag2Error]],
       ];
-      const result = getNewDiagnostics(oldDiagnostics, newDiagnostics);
-      assert.deepStrictEqual(result, expected);
+      const result = compareDiagnostics(oldDiagnostics, newDiagnostics);
+      assert.deepStrictEqual(result.newProblems, expectedNew);
+      assert.deepStrictEqual(result.resolvedProblems, []);
     });
 
-    it("should handle diagnostics with slightly different properties as new", () => {
+    it("should handle diagnostics with slightly different properties as new and resolved", () => {
       const diag1ErrorModified = createDiagnostic(
         0,
         0,
@@ -135,11 +157,9 @@ describe("Diagnostic Utils", () => {
       const newDiagnostics: [vscode.Uri, vscode.Diagnostic[]][] = [
         [uri1, [diag1ErrorModified]],
       ];
-      const expected: [vscode.Uri, vscode.Diagnostic[]][] = [
-        [uri1, [diag1ErrorModified]],
-      ];
-      const result = getNewDiagnostics(oldDiagnostics, newDiagnostics);
-      assert.deepStrictEqual(result, expected);
+      const result = compareDiagnostics(oldDiagnostics, newDiagnostics);
+      assert.deepStrictEqual(result.newProblems, [[uri1, [diag1ErrorModified]]]);
+      assert.deepStrictEqual(result.resolvedProblems, [[uri1, [diag1Error]]]);
     });
   });
 

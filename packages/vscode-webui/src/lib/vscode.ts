@@ -3,13 +3,9 @@ import type {
   VSCodeHostApi,
   WebviewHostApi,
 } from "@getpochi/common/vscode-webui-bridge";
-import { taskCatalog } from "@getpochi/livekit";
-import type { Store } from "@livestore/livestore";
-import { Schema } from "@livestore/utils/effect";
 import { ThreadNestedWindow } from "@quilted/threads";
 import Emittery from "emittery";
 import type { WebviewApi } from "vscode-webview";
-
 import { queryClient } from "./query-client";
 
 const logger = getLogger("vscode");
@@ -40,11 +36,6 @@ export function getVSCodeApi() {
 export function isVSCodeEnvironment() {
   const vscodeApi = getVSCodeApi();
   return !!vscodeApi?.getState;
-}
-
-let store: Store | null = null;
-export function setActiveStore(newStore: Store | null): void {
-  store = newStore;
 }
 
 function createVSCodeHost(): VSCodeHostApi {
@@ -82,10 +73,12 @@ function createVSCodeHost(): VSCodeHostApi {
         "readMinionId",
         "saveCheckpoint",
         "restoreCheckpoint",
+        "readLatestCheckpoint",
         "readCheckpointPath",
         "showCheckpointDiff",
         "readExtensionVersion",
-        "readAutoSaveDisabled",
+        "readVSCodeSettings",
+        "updateVSCodeSettings",
         "diffWithCheckpoint",
         "diffChangedFiles",
         "showChangedFiles",
@@ -102,7 +95,14 @@ function createVSCodeHost(): VSCodeHostApi {
         "readWorktrees",
         "createWorktree",
         "deleteWorktree",
-        "readPochiTasks",
+        "readPochiTabs",
+        "queryGithubIssues",
+        "readGitBranches",
+        "readReviews",
+        "clearReviews",
+        "openReview",
+        "readUserEdits",
+        "readTasks",
       ],
       exports: {
         openTaskList() {
@@ -125,14 +125,6 @@ function createVSCodeHost(): VSCodeHostApi {
 
         async isFocused() {
           return window.document.hasFocus();
-        },
-
-        async commitTaskUpdated(inputArgs: unknown) {
-          if (globalThis.POCHI_WEBVIEW_KIND === "pane") return;
-          const args = Schema.decodeUnknownSync(
-            taskCatalog.events.tastUpdated.schema,
-          )(inputArgs);
-          store?.commit(taskCatalog.events.tastUpdated(args));
         },
 
         onFileChanged(filePath: string, content: string) {

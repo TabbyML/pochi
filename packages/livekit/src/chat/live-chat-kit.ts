@@ -1,6 +1,5 @@
 import { getLogger } from "@getpochi/common";
-import type { CustomAgent } from "@getpochi/tools";
-import type { Store } from "@livestore/livestore";
+import { type CustomAgent, ToolsByPermission } from "@getpochi/tools";
 import { Duration } from "@livestore/utils/effect";
 import type { ChatInit, ChatOnErrorCallback, ChatOnFinishCallback } from "ai";
 import type z from "zod/v4";
@@ -8,21 +7,21 @@ import { makeMessagesQuery, makeTaskQuery } from "../livestore/default-queries";
 import { events, tables } from "../livestore/default-schema";
 import { toTaskError, toTaskGitInfo, toTaskStatus } from "../task";
 
-import type { Message, Task } from "../types";
+import type { LiveKitStore, Message, Task } from "../types";
 import { scheduleGenerateTitleJob } from "./background-job";
+import { filterCompletionTools } from "./filter-completion-tools";
 import {
   FlexibleChatTransport,
   type OnStartCallback,
   type PrepareRequestGetters,
 } from "./flexible-chat-transport";
-import { compactTask } from "./llm";
+import { compactTask, repairMermaid } from "./llm";
 import { createModel } from "./models";
 
 const logger = getLogger("LiveChatKit");
 
 export type LiveChatKitOptions<T> = {
   taskId: string;
-  displayId?: number;
 
   abortSignal?: AbortSignal;
 
@@ -32,25 +31,23 @@ export type LiveChatKitOptions<T> = {
   isSubTask?: boolean;
   isCli?: boolean;
 
-  store: Store;
+  store: LiveKitStore;
 
   chatClass: new (options: ChatInit<Message>) => T;
 
   onOverrideMessages?: (options: {
-    store: Store;
+    store: LiveKitStore;
     taskId: string;
     messages: Message[];
     abortSignal: AbortSignal;
   }) => void | Promise<void>;
   onStreamStart?: () => void;
   onStreamFinish?: (
-    data: Pick<Task, "id" | "cwd" | "status"> & { messages: Message[] },
+    data: Pick<Task, "id" | "cwd" | "status"> & {
+      messages: Message[];
+      error?: Error;
+    },
   ) => void;
-  onStreamFailed?: (data: {
-    error: Error;
-    messages: Message[];
-    cwd: string | null;
-  }) => void;
 
   customAgent?: CustomAgent;
   outputSchema?: z.ZodAny;
@@ -59,7 +56,10 @@ export type LiveChatKitOptions<T> = {
   "id" | "messages" | "generateId" | "onFinish" | "onError" | "transport"
 >;
 
-type InitOptions =
+type InitOptions = {
+  initTitle?: string;
+  displayId?: number;
+} & (
   | {
       prompt?: string;
     }
@@ -68,7 +68,8 @@ type InitOptions =
     }
   | {
       messages?: Message[];
-    };
+    }
+);
 
 export class LiveChatKit<
   T extends {
@@ -78,26 +79,22 @@ export class LiveChatKit<
 > {
   protected readonly taskId: string;
   protected readonly displayId?: number;
-  protected readonly store: Store;
+  protected readonly store: LiveKitStore;
   readonly chat: T;
   private readonly transport: FlexibleChatTransport;
   onStreamStart?: () => void;
   onStreamFinish?: (
     data: Pick<Task, "id" | "cwd" | "status"> & {
       messages: Message[];
+      error?: Error;
     },
   ) => void;
-  onStreamFailed?: (data: {
-    cwd: string | null;
-    error: Error;
-    messages: Message[];
-  }) => void;
   readonly compact: () => Promise<string>;
+  readonly repairMermaid: (chart: string, error: string) => Promise<void>;
   private lastStepStartTimestamp: number | undefined;
 
   constructor({
     taskId,
-    displayId,
     abortSignal,
     store,
     chatClass,
@@ -109,15 +106,12 @@ export class LiveChatKit<
     outputSchema,
     onStreamStart,
     onStreamFinish,
-    onStreamFailed,
     ...chatInit
   }: LiveChatKitOptions<T>) {
     this.taskId = taskId;
-    this.displayId = displayId;
     this.store = store;
     this.onStreamStart = onStreamStart;
     this.onStreamFinish = onStreamFinish;
-    this.onStreamFailed = onStreamFailed;
     this.transport = new FlexibleChatTransport({
       store,
       onStart: this.onStart,
@@ -198,6 +192,20 @@ export class LiveChatKit<
       }
       return summary;
     };
+
+    this.repairMermaid = async (chart: string, error: string) => {
+      const model = createModel({ llm: getters.getLLM() });
+      await repairMermaid({
+        store,
+        taskId: this.taskId,
+        model,
+        messages: this.chat.messages,
+        chart,
+        error,
+      });
+
+      this.chat.messages = this.messages;
+    };
   }
 
   init(cwd: string | undefined, options?: InitOptions | undefined) {
@@ -229,6 +237,8 @@ export class LiveChatKit<
         id: this.taskId,
         cwd,
         createdAt: new Date(),
+        initTitle: options?.initTitle,
+        displayId: options?.displayId,
         initMessages,
       }),
     );
@@ -314,7 +324,6 @@ export class LiveChatKit<
           git: toTaskGitInfo(environment?.workspace.gitStatus),
           updatedAt: new Date(),
           modelId: llm.id,
-          displayId: this.displayId,
         }),
       );
 
@@ -325,7 +334,7 @@ export class LiveChatKit<
   };
 
   private readonly onFinish: ChatOnFinishCallback<Message> = ({
-    message,
+    message: originalMessage,
     isAbort,
     isError,
   }) => {
@@ -337,6 +346,9 @@ export class LiveChatKit<
     }
 
     if (isError) return; // handled in onError already.
+
+    const message = filterCompletionTools(originalMessage);
+    this.chat.messages = [...this.chat.messages.slice(0, -1), message];
 
     const { store } = this;
     if (message.metadata?.kind !== "assistant") {
@@ -354,6 +366,7 @@ export class LiveChatKit<
         duration: this.lastStepStartTimestamp
           ? Duration.millis(Date.now() - this.lastStepStartTimestamp)
           : undefined,
+        lastCheckpointHash: getCleanCheckpoint(this.chat.messages),
       }),
     );
 
@@ -384,15 +397,35 @@ export class LiveChatKit<
         duration: this.lastStepStartTimestamp
           ? Duration.millis(Date.now() - this.lastStepStartTimestamp)
           : undefined,
+        lastCheckpointHash: getCleanCheckpoint(this.chat.messages),
       }),
     );
 
     this.clearLastStepTimestamp();
 
-    this.onStreamFailed?.({
+    this.onStreamFinish?.({
+      id: this.taskId,
       cwd: this.task?.cwd ?? null,
-      error,
+      status: "failed",
       messages: [...this.chat.messages],
+      error,
     });
   };
 }
+
+// clean checkpoint means after this checkpoint there are no write or execute toolcalls that may cause file edits
+const getCleanCheckpoint = (messages: Message[]) => {
+  const lastPart = messages
+    .flatMap((m) => m.parts)
+    .filter(
+      (p) =>
+        p.type === "data-checkpoint" ||
+        ToolsByPermission.write.some((tool) => p.type === `tool-${tool}`) ||
+        ToolsByPermission.execute.some((tool) => p.type === `tool-${tool}`),
+    )
+    .at(-1);
+
+  if (lastPart?.type === "data-checkpoint") {
+    return lastPart.data.commit;
+  }
+};

@@ -9,20 +9,22 @@ export function useInlinedSubTask(
   tool: ToolProps<"newTask">["tool"],
 ): TaskThreadSource | undefined {
   const todosRef = useRef<Todo[] | undefined>(undefined);
+
+  const subtask = tool.input?._transient?.task;
+
+  const { todos } = useTodos({
+    initialTodos: subtask?.todos as Readonly<Todo[]> | undefined,
+    messages: (subtask?.messages ?? []) as Message[],
+    todosRef,
+  });
+
   if (tool.state === "input-streaming") {
     return undefined;
   }
 
-  const subtask = tool.input?._transient?.task;
   if (!subtask) {
     return undefined;
   }
-
-  const { todos } = useTodos({
-    initialTodos: subtask.todos,
-    messages: subtask.messages as Message[],
-    todosRef,
-  });
 
   return {
     messages: (subtask?.messages as Message[]) ?? [],

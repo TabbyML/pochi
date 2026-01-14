@@ -1,6 +1,6 @@
 import * as os from "node:os";
 import path from "node:path";
-import { executeCommandWithNode } from "@/integrations/terminal/execute-command-with-node";
+import { executeCommandWithPty } from "@/integrations/terminal/execute-command-with-pty";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { CustomAgentManager } from "@/lib/custom-agent";
 import {
@@ -19,6 +19,8 @@ import { ModelList } from "@/lib/model-list";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { PostHog } from "@/lib/posthog";
 import { taskRunning, taskUpdated } from "@/lib/task-events";
+// biome-ignore lint/style/useImportType: needed for dependency injection
+import { TaskStore } from "@/lib/task-store";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { UserStorage } from "@/lib/user-storage";
 // biome-ignore lint/style/useImportType: needed for dependency injection
@@ -50,20 +52,24 @@ import {
 import { getVendor } from "@getpochi/common/vendor";
 import {
   type CaptureEvent,
+  type CreateWorktreeOptions,
   type CustomAgentFile,
   type DiffCheckpointOptions,
   type DisplayModel,
+  type FileDiff,
   type GitWorktree,
-  type NewTaskPanelParams,
+  type GithubIssue,
   type PochiCredentials,
+  type PochiTaskParams,
   type ResourceURI,
+  type Review,
   type RuleFile,
   type SaveCheckpointOptions,
   type SessionState,
   type TaskChangedFile,
-  type TaskPanelParams,
   type TaskStates,
   type VSCodeHostApi,
+  type VSCodeSettings,
   type WorkspaceState,
   getTaskDisplayTitle,
 } from "@getpochi/common/vscode-webui-bridge";
@@ -89,20 +95,29 @@ import { Lifecycle, inject, injectable, scoped } from "tsyringe";
 import * as vscode from "vscode";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { CheckpointService } from "../checkpoint/checkpoint-service";
-import type { GitDiff } from "../checkpoint/types";
+// biome-ignore lint/style/useImportType: needed for dependency injection
+import { UserEditState } from "../checkpoint/user-edit-state";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { PochiConfiguration } from "../configuration";
-import { DiffChangesContentProvider } from "../editor/diff-changes-content-provider";
+import { showDiffChanges } from "../editor/diff-changes-editor";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { PochiTaskState } from "../editor/pochi-task-state";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { type FileSelection, TabState } from "../editor/tab-state";
+// biome-ignore lint/style/useImportType: needed for dependency injections
+import { GitState } from "../git/git-state";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { WorktreeManager } from "../git/worktree";
 // biome-ignore lint/style/useImportType: needed for dependency injection
-import { GithubPullRequestMonitor } from "../github/pull-request-monitor";
+import { GithubIssueState } from "../github/github-issue-state";
+// biome-ignore lint/style/useImportType: needed for dependency injection
+import { GithubPullRequestState } from "../github/github-pull-request-state";
+// biome-ignore lint/style/useImportType: needed for dependency injection
+import { GlobalStateSignals } from "../global-state";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { ThirdMcpImporter } from "../mcp/third-party-mcp";
+// biome-ignore lint/style/useImportType: needed for dependency injection
+import { ReviewController } from "../review-controller";
 import {
   convertUrl,
   isLocalUrl,
@@ -137,7 +152,13 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     private readonly customAgentManager: CustomAgentManager,
     private readonly worktreeManager: WorktreeManager,
     private readonly pochiTaskState: PochiTaskState,
-    private readonly githubPullRequestMonitor: GithubPullRequestMonitor,
+    private readonly githubPullRequestState: GithubPullRequestState,
+    private readonly githubIssueState: GithubIssueState,
+    private readonly gitState: GitState,
+    private readonly reviewController: ReviewController,
+    private readonly userEditState: UserEditState,
+    private readonly globalStateSignals: GlobalStateSignals,
+    private readonly taskStore: TaskStore,
   ) {}
 
   private get cwd() {
@@ -209,7 +230,11 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   };
 
   setGlobalState = async (key: string, value: unknown): Promise<void> => {
-    this.context.globalState.update(key, value);
+    await this.context.globalState.update(key, value);
+  };
+
+  readTasks = async () => {
+    return ThreadSignal.serialize(this.taskStore.tasks);
   };
 
   readEnvironment = async (options: {
@@ -251,15 +276,6 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
           isActive:
             tab.filepath === this.tabState.activeSelection.value?.filepath,
         })),
-        activeSelection: this.tabState.activeSelection.value
-          ? {
-              ...this.tabState.activeSelection.value,
-              filepath: asRelativePath(
-                this.tabState.activeSelection.value.filepath,
-                this.cwd ?? "",
-              ),
-            }
-          : undefined,
         terminals: this.terminalState.visibleTerminals.value,
       },
       info: {
@@ -284,7 +300,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     );
   };
 
-  readPochiTasks = async (): Promise<ThreadSignalSerialization<TaskStates>> => {
+  readPochiTabs = async (): Promise<ThreadSignalSerialization<TaskStates>> => {
     return ThreadSignal.serialize(this.pochiTaskState.state);
   };
 
@@ -305,12 +321,11 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
 
   readCurrentWorkspace = async (): Promise<{
     cwd: string | null;
-    workspaceFolder: string | null;
+    workspacePath: string | null;
   }> => {
     return {
       cwd: this.cwd,
-      workspaceFolder:
-        vscode.workspace.workspaceFolders?.[0].uri.fsPath ?? null,
+      workspacePath: this.workspaceScope.workspacePath ?? null,
     };
   };
 
@@ -482,7 +497,6 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       base64Data?: string;
       fallbackGlobPattern?: string;
       cellId?: string;
-      webviewKind?: "sidebar" | "pane";
     },
   ) => {
     // Expand ~ to home directory if present
@@ -495,7 +509,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     const fileUri = path.isAbsolute(resolvedPath)
       ? vscode.Uri.file(resolvedPath)
       : this.cwd
-        ? vscode.Uri.joinPath(vscode.Uri.parse(this.cwd), resolvedPath)
+        ? vscode.Uri.joinPath(vscode.Uri.file(this.cwd), resolvedPath)
         : vscode.Uri.file(resolvedPath);
 
     try {
@@ -693,6 +707,14 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     },
   );
 
+  readLatestCheckpoint = runExclusive.build(
+    this.checkpointGroup,
+    async (): Promise<ThreadSignalSerialization<string | null>> => {
+      await this.checkpointService.ensureInitialized();
+      return ThreadSignal.serialize(this.checkpointService.latestCheckpoint);
+    },
+  );
+
   readCheckpointPath = async (): Promise<string | undefined> => {
     return this.checkpointService.getShadowGitPath();
   };
@@ -757,7 +779,12 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
           )
         : changedFiles;
 
-      return await showDiff(displayFiles, title, this.cwd);
+      return await showDiffChanges(
+        displayFiles,
+        title,
+        this.cwd,
+        checkpoint.modified === undefined,
+      );
     },
   );
 
@@ -776,7 +803,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       if (!this.cwd) {
         return false;
       }
-      return await showDiff(changes, title, this.cwd);
+      return await showDiffChanges(changes, title, this.cwd, true);
     },
   );
 
@@ -784,10 +811,48 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     return this.context.extension.packageJSON.version;
   };
 
-  readAutoSaveDisabled = async (): Promise<
-    ThreadSignalSerialization<boolean>
+  readVSCodeSettings = async (): Promise<
+    ThreadSignalSerialization<VSCodeSettings>
   > => {
-    return ThreadSignal.serialize(this.pochiConfiguration.autoSaveDisabled);
+    return ThreadSignal.serialize(
+      computed(() => {
+        return {
+          recommendSettingsConfirmed:
+            this.globalStateSignals.recommendSettingsConfirmed.value,
+          pochiLayout:
+            this.pochiConfiguration.advancedSettings.value.pochiLayout,
+          autoSaveDisabled: this.pochiConfiguration.autoSaveDisabled.value,
+          commentsOpenViewDisabled:
+            this.pochiConfiguration.commentsOpenViewDisabled.value,
+          githubCopilotCodeCompletionEnabled:
+            this.pochiConfiguration.githubCopilotCodeCompletionEnabled.value,
+        };
+      }),
+    );
+  };
+
+  updateVSCodeSettings = async (params: Partial<VSCodeSettings>) => {
+    if (params.recommendSettingsConfirmed !== undefined) {
+      this.globalStateSignals.recommendSettingsConfirmed.value =
+        params.recommendSettingsConfirmed;
+    }
+    if (params.pochiLayout !== undefined) {
+      this.pochiConfiguration.advancedSettings.value = {
+        ...this.pochiConfiguration.advancedSettings.value,
+        pochiLayout: params.pochiLayout,
+      };
+    }
+    if (params.autoSaveDisabled !== undefined) {
+      this.pochiConfiguration.autoSaveDisabled.value = params.autoSaveDisabled;
+    }
+    if (params.commentsOpenViewDisabled !== undefined) {
+      this.pochiConfiguration.commentsOpenViewDisabled.value =
+        params.commentsOpenViewDisabled;
+    }
+    if (params.githubCopilotCodeCompletionEnabled !== undefined) {
+      this.pochiConfiguration.githubCopilotCodeCompletionEnabled.value =
+        params.githubCopilotCodeCompletionEnabled;
+    }
   };
 
   showInformationMessage = async <T extends string>(
@@ -802,10 +867,16 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     );
   };
 
-  readModelList = async (): Promise<
-    ThreadSignalSerialization<DisplayModel[]>
-  > => {
-    return ThreadSignal.serialize(this.modelList.modelList);
+  readModelList = async (): Promise<{
+    modelList: ThreadSignalSerialization<DisplayModel[]>;
+    isLoading: ThreadSignalSerialization<boolean>;
+    reload: () => Promise<void>;
+  }> => {
+    return {
+      modelList: ThreadSignal.serialize(this.modelList.modelList),
+      isLoading: ThreadSignal.serialize(this.modelList.isLoading),
+      reload: this.modelList.reload,
+    };
   };
 
   readUserStorage = async (): Promise<
@@ -815,15 +886,18 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   };
 
   openTaskInPanel = async (
-    params: TaskPanelParams | NewTaskPanelParams,
+    params: PochiTaskParams,
+    options?: { keepEditor?: boolean },
   ): Promise<void> => {
-    await PochiTaskEditorProvider.openTaskEditor(params);
+    await PochiTaskEditorProvider.openTaskEditor(params, options);
   };
 
   sendTaskNotification = async (
     kind: "failed" | "completed" | "pending-tool" | "pending-input",
-    params: TaskPanelParams & { isSubTask?: boolean },
+    params: { uid: string; displayId: number | null; isSubTask?: boolean },
   ) => {
+    if (!this.cwd) return;
+
     const taskStates = this.pochiTaskState.state.value;
     const targetTaskState = taskStates[params.uid];
     if (targetTaskState?.active) {
@@ -850,9 +924,13 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       default:
         break;
     }
-    const { cwd, displayId, uid } = params;
+    const { displayId, uid } = params;
+    const worktreeName = getWorktreeNameFromWorktreePath(this.cwd);
     const taskTitle = getTaskDisplayTitle({
-      worktreeName: getWorktreeNameFromWorktreePath(cwd) ?? "main",
+      worktreeName:
+        this.workspaceScope.isMainWorkspace || !worktreeName
+          ? "workspace"
+          : worktreeName,
       displayId,
       uid,
     });
@@ -866,8 +944,9 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     );
     if (result === buttonText) {
       this.openTaskInPanel({
+        type: "open-task",
         uid,
-        cwd,
+        cwd: this.cwd,
         displayId,
       });
     }
@@ -884,7 +963,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
 
     let capturedOutput = "";
     try {
-      const { output } = await executeCommandWithNode({
+      const { output } = await executeCommandWithPty({
         command,
         cwd: this.cwd,
         abortSignal: signal as AbortSignal,
@@ -918,7 +997,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
 
   readWorktrees = async (): Promise<{
     worktrees: ThreadSignalSerialization<GitWorktree[]>;
-    ghCli: ThreadSignalSerialization<{
+    gh: ThreadSignalSerialization<{
       installed: boolean;
       authorized: boolean;
     }>;
@@ -926,17 +1005,71 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   }> => {
     return {
       worktrees: ThreadSignal.serialize(this.worktreeManager.worktrees),
-      ghCli: ThreadSignal.serialize(this.githubPullRequestMonitor.ghCliCheck),
+      gh: ThreadSignal.serialize(this.githubPullRequestState.gh),
       gitOriginUrl: await this.worktreeManager.getOriginUrl(),
     };
   };
 
-  createWorktree = async () => {
-    return await this.worktreeManager.createWorktree();
+  createWorktree = async (options: CreateWorktreeOptions) => {
+    return await this.worktreeManager.createWorktree(options);
   };
 
   deleteWorktree = async (worktreePath: string): Promise<boolean> => {
     return await this.worktreeManager.deleteWorktree(worktreePath);
+  };
+
+  queryGithubIssues = async (query?: string): Promise<GithubIssue[]> => {
+    if (this.githubPullRequestState.gh.value.authorized === false) {
+      return [];
+    }
+    return await this.githubIssueState.queryIssues(query);
+  };
+
+  readGitBranches = async (): Promise<string[]> => {
+    if (!this.cwd) {
+      return [];
+    }
+    return await this.gitState.getBranches(this.cwd);
+  };
+
+  readReviews = async (): Promise<ThreadSignalSerialization<Review[]>> => {
+    return ThreadSignal.serialize(this.reviewController.reviews);
+  };
+
+  clearReviews = async (): Promise<void> => {
+    return this.reviewController.clearThreads();
+  };
+
+  openReview = async (
+    review: Review,
+    options?: { focusCommentsPanel?: boolean; revealRange?: boolean },
+  ): Promise<void> => {
+    if (options?.focusCommentsPanel) {
+      vscode.commands.executeCommand("workbench.action.focusCommentsPanel");
+    }
+
+    const uri = vscode.Uri.parse(review.uri);
+    vscode.commands.executeCommand("vscode.open", uri, {
+      selection:
+        review.range && options?.revealRange
+          ? new vscode.Selection(
+              review.range.start.line,
+              0,
+              review.range.start.line,
+              0,
+            )
+          : undefined,
+    });
+
+    this.reviewController.expandThread(review.id);
+  };
+
+  readUserEdits = async (
+    uid: string,
+  ): Promise<ThreadSignalSerialization<FileDiff[]>> => {
+    return ThreadSignal.serialize(
+      computed(() => this.userEditState.edits.value[uid] ?? []),
+    );
   };
 
   dispose() {
@@ -982,48 +1115,3 @@ const ToolPreviewMap: Record<
   writeToFile: previewWriteToFile,
   applyDiff: previewApplyDiff,
 };
-
-async function showDiff(displayFiles: GitDiff[], title: string, cwd: string) {
-  if (displayFiles.length === 0) {
-    return false;
-  }
-
-  if (displayFiles.length === 1) {
-    const changedFile = displayFiles[0];
-
-    await vscode.commands.executeCommand(
-      "vscode.diff",
-      DiffChangesContentProvider.decode({
-        filepath: changedFile.filepath,
-        content: changedFile.before ?? "",
-        cwd: cwd,
-      }),
-      DiffChangesContentProvider.decode({
-        filepath: changedFile.filepath,
-        content: changedFile.after ?? "",
-        cwd: cwd,
-      }),
-      title,
-      {
-        preview: true,
-        preserveFocus: true,
-      },
-    );
-    return true;
-  }
-
-  await vscode.commands.executeCommand(
-    "vscode.changes",
-    title,
-    displayFiles.map((file) => [
-      vscode.Uri.joinPath(vscode.Uri.parse(cwd ?? ""), file.filepath),
-      DiffChangesContentProvider.decode({
-        filepath: file.filepath,
-        content: file.before ?? "",
-        cwd: cwd ?? "",
-      }),
-      vscode.Uri.joinPath(vscode.Uri.parse(cwd ?? ""), file.filepath),
-    ]),
-  );
-  return true;
-}

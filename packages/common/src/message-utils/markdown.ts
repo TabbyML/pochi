@@ -15,8 +15,8 @@ function escapeUnknownXMLTags(message: string): string {
 }
 
 export function parseTitle(title: string | null) {
-  if (!title?.trim()) return "(empty)";
-  return parseMarkdown(title).slice(0, 256) || "(empty)";
+  if (!title?.trim()) return "(Untitled)";
+  return parseMarkdown(title).slice(0, 256) || "(Untitled)";
 }
 
 export function parseMarkdown(content: string) {
@@ -33,7 +33,10 @@ export function parseMarkdown(content: string) {
             _child.value = `/${child.properties.id}`;
             child.children = [];
           }
-          if (child.type === "element" && child.tagName === "file") {
+          if (
+            child.type === "element" &&
+            (child.tagName === "file" || child.tagName === "issue")
+          ) {
             child.tagName = "span";
           }
         }

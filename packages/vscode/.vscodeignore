@@ -9,3 +9,8 @@ tsconfig.test.json
 *.vsix
 turbo.json
 .turbo/**
+coverage/**
+.env
+tests/**
+wdio.conf.ts
+.wdio-vscode-service/**

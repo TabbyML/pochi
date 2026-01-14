@@ -1,6 +1,8 @@
 import { getLogger } from "@/lib/logger";
 import { inject, injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
+// biome-ignore lint/style/useImportType: needed for dependency injection
+import { WorkspaceScope } from "./workspace-scoped";
 
 export interface WorkspaceJob {
   // should get from vscode.Uri.fsPath
@@ -28,6 +30,7 @@ export class WorkspaceJobQueue implements vscode.Disposable {
   }, 1000);
 
   constructor(
+    private readonly workspaceScope: WorkspaceScope,
     @inject("vscode.ExtensionContext")
     private readonly context: vscode.ExtensionContext,
   ) {}
@@ -46,7 +49,7 @@ export class WorkspaceJobQueue implements vscode.Disposable {
   }
 
   get currentWorkspaceUri() {
-    return vscode.workspace.workspaceFolders?.[0]?.uri;
+    return this.workspaceScope.workspaceUri;
   }
 
   private async run() {

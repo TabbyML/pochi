@@ -1,3 +1,4 @@
+import { MessageMarkdown } from "@/components/message";
 import { useReplaceJobIdsInContent, useSendMessage } from "@/features/chat";
 import { cn } from "@/lib/utils";
 import type { ToolProps } from "./types";
@@ -11,7 +12,9 @@ export const AskFollowupQuestionTool: React.FC<
 
   return (
     <div className="flex flex-col gap-2">
-      <p className="items-center font-medium italic">{question}</p>
+      <MessageMarkdown className="font-medium italic">
+        {question || ""}
+      </MessageMarkdown>
       {followUp &&
         Array.isArray(followUp) &&
         followUp.length > 0 && ( // Check if followUp exists and has items

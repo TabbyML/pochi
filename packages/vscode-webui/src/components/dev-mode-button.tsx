@@ -9,10 +9,10 @@ import {
 import { useIsDevMode } from "@/features/settings";
 import { useCopyToClipboard } from "@/lib/hooks/use-copy-to-clipboard";
 import { usePochiCredentials } from "@/lib/hooks/use-pochi-credentials";
+import { useDefaultStore } from "@/lib/use-default-store";
 import { vscodeHost } from "@/lib/vscode";
 import type { Message } from "@getpochi/livekit";
 import type { Todo } from "@getpochi/tools";
-import { useStore } from "@livestore/react";
 import { convertToModelMessages } from "ai";
 
 import { CheckIcon, CopyIcon, Gavel, StoreIcon } from "lucide-react"; // Removed FilesIcon
@@ -55,7 +55,6 @@ interface DevModeButtonProps {
 export function DevModeButton({ messages, todos }: DevModeButtonProps) {
   const { t } = useTranslation();
   const [isDevMode] = useIsDevMode();
-  if (!isDevMode) return null;
   const getMessagesContent = () => {
     const x = messages.map((x) => {
       return {
@@ -81,9 +80,11 @@ export function DevModeButton({ messages, todos }: DevModeButtonProps) {
     if (!checkpointPath) {
       return t("devModeButton.noCheckpointAvailable");
     }
-    const workspaceFolder = await vscodeHost.readCurrentWorkspace();
-    return `alias pgit="git --git-dir=\\"${checkpointPath}\\" --work-tree=\\"${workspaceFolder.cwd}\\""`;
+    const workspaceInfo = await vscodeHost.readCurrentWorkspace();
+    return `alias pgit="git --git-dir=\\"${checkpointPath}\\" --work-tree=\\"${workspaceInfo.cwd}\\""`;
   }, [t]);
+
+  if (!isDevMode) return null;
 
   return (
     <DropdownMenu>
@@ -128,7 +129,7 @@ export function DevModeButton({ messages, todos }: DevModeButtonProps) {
 
 function OpenDevStore() {
   const { t } = useTranslation();
-  const { store } = useStore();
+  const store = useDefaultStore();
   const { jwt } = usePochiCredentials();
   const onClick = useCallback(() => {
     vscodeHost.openExternal(

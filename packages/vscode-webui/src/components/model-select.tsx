@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuSeparator,
@@ -17,11 +16,17 @@ import {
 } from "@/components/ui/hover-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import { CheckIcon, ChevronDownIcon, TriangleAlertIcon } from "lucide-react";
+import {
+  CheckIcon,
+  ChevronDownIcon,
+  RefreshCwIcon,
+  TriangleAlertIcon,
+} from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import LoadingWrapper from "@/components/loading-wrapper";
 import type { ModelGroups } from "@/features/settings";
+import { usePayingPlan } from "@/lib/hooks/use-paying-plan";
 import type { DisplayModel } from "@getpochi/common/vscode-webui-bridge";
 import { DropdownMenuPortal } from "@radix-ui/react-dropdown-menu";
 
@@ -32,8 +37,10 @@ interface ModelSelectProps {
   value: ModelSelectValue | undefined;
   onChange: (v: string) => void;
   isLoading?: boolean;
+  isFetching?: boolean;
   isValid?: boolean;
   triggerClassName?: string;
+  reloadModels?: () => Promise<void>;
 }
 
 export function ModelSelect({
@@ -41,8 +48,10 @@ export function ModelSelect({
   value,
   onChange,
   isLoading,
+  isFetching,
   isValid,
   triggerClassName,
+  reloadModels,
 }: ModelSelectProps) {
   const { t } = useTranslation();
 
@@ -52,6 +61,9 @@ export function ModelSelect({
   const onSelectModel = (v: DisplayModel) => {
     onChange(v.id);
   };
+
+  const payingUser = usePayingPlan();
+  const isSuperModelsDisabled = payingUser === "freebie";
 
   return (
     <LoadingWrapper
@@ -111,46 +123,58 @@ export function ModelSelect({
               side="bottom"
               align="start"
               alignOffset={6}
-              className="dropdown-menu max-h-[32vh] min-w-[18rem] animate-in overflow-y-auto overflow-x-hidden rounded-md border bg-background p-2 text-popover-foreground shadow"
+              className="dropdown-menu max-h-[90vh] min-w-[18rem] animate-in overflow-y-auto overflow-x-hidden rounded-md border bg-background p-2 text-popover-foreground shadow"
             >
               <DropdownMenuRadioGroup>
                 {hostedModels
                   ?.filter((group) => group.models.length > 0)
-                  .map((group) => (
-                    <div key={group.title}>
-                      <div className="px-2 py-1.5 font-semibold text-muted-foreground text-sm">
-                        {group.title}
-                      </div>
-                      {group.models.map((model: DisplayModel) => {
-                        const isSelected = model.id === value?.id;
-                        return (
-                          <DropdownMenuRadioItem
-                            onClick={(e) => {
-                              onSelectModel(model);
-                              e.stopPropagation();
-                            }}
-                            value={model.id}
-                            key={model.id}
-                            className="cursor-pointer py-2 pl-2"
-                          >
-                            <CheckIcon
-                              className={cn(
-                                "mr-1 shrink-0",
-                                isSelected ? "opacity-100" : "opacity-0",
-                              )}
-                            />
-                            <span
-                              className={cn({
-                                "font-semibold": isSelected,
-                              })}
-                            >
-                              {model.name}
+                  .map((group) => {
+                    const isSuperModelGroup =
+                      group.models[0].options.label === "super";
+                    return (
+                      <div key={group.title}>
+                        <div className="px-2 py-1.5 font-semibold text-muted-foreground text-sm">
+                          {group.title}
+                          {isSuperModelGroup && isSuperModelsDisabled && (
+                            <span className="ml-2 font-normal text-xs italic">
+                              ({t("modelSelect.subscriptionRequired")})
                             </span>
-                          </DropdownMenuRadioItem>
-                        );
-                      })}
-                    </div>
-                  ))}
+                          )}
+                        </div>
+                        {group.models.map((model: DisplayModel) => {
+                          const isSelected = model.id === value?.id;
+                          return (
+                            <DropdownMenuRadioItem
+                              onClick={(e) => {
+                                onSelectModel(model);
+                                e.stopPropagation();
+                              }}
+                              value={model.id}
+                              key={model.id}
+                              className="cursor-pointer py-2 pl-2"
+                              disabled={
+                                isSuperModelsDisabled && isSuperModelGroup
+                              }
+                            >
+                              <CheckIcon
+                                className={cn(
+                                  "mr-1 shrink-0",
+                                  isSelected ? "opacity-100" : "opacity-0",
+                                )}
+                              />
+                              <span
+                                className={cn({
+                                  "font-semibold": isSelected,
+                                })}
+                              >
+                                {model.name}
+                              </span>
+                            </DropdownMenuRadioItem>
+                          );
+                        })}
+                      </div>
+                    );
+                  })}
                 {!!hostedModels?.filter((group) => group.models.length > 0)
                   .length && <DropdownMenuSeparator />}
                 {customModels?.map((group) => (
@@ -187,18 +211,34 @@ export function ModelSelect({
                 ))}
 
                 {!!customModels?.flat().length && <DropdownMenuSeparator />}
-                <DropdownMenuItem asChild>
+                <div className="flex items-center justify-between gap-2 px-2">
                   <a
                     href="command:pochi.openCustomModelSettings"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex cursor-pointer items-center gap-2 px-3 py-1"
+                    className="group flex cursor-pointer items-center px-3 py-2.5"
                   >
-                    <span className="text-[var(--vscode-textLink-foreground)] text-xs">
+                    <span className="text-[var(--vscode-textLink-foreground)] text-xs group-hover:underline ">
                       {t("modelSelect.manageCustomModels")}
                     </span>
                   </a>
-                </DropdownMenuItem>
+                  <span
+                    onClick={() => {
+                      if (isFetching) {
+                        return;
+                      }
+                      reloadModels?.();
+                    }}
+                    className="flex cursor-pointer items-center gap-1 px-3 py-2.5 text-[var(--vscode-textLink-foreground)] text-xs hover:underline"
+                  >
+                    <RefreshCwIcon
+                      className={cn("size-3 opacity-0", {
+                        "animate-spin opacity-100": isFetching,
+                      })}
+                    />
+                    {t("modelSelect.reload")}
+                  </span>
+                </div>
               </DropdownMenuRadioGroup>
             </DropdownMenuContent>
           </DropdownMenuPortal>

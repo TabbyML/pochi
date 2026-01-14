@@ -8,7 +8,7 @@ import {
 } from "@getpochi/common/vscode-webui-bridge";
 import { catalog } from "@getpochi/livekit";
 import { makeAdapter } from "@livestore/adapter-node";
-import { type LiveStoreSchema, createStorePromise } from "@livestore/livestore";
+import { createStorePromise } from "@livestore/livestore";
 import { makeWsSync } from "@livestore/sync-cf/client";
 
 export async function createStore(taskId: string) {
@@ -37,7 +37,7 @@ export async function createStore(taskId: string) {
         : undefined,
   });
 
-  const store = await createStorePromise<LiveStoreSchema>({
+  const store = await createStorePromise({
     adapter,
     schema: catalog.schema,
     storeId: storeId,

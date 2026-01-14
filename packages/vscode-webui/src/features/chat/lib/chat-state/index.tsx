@@ -46,7 +46,7 @@ export function useRetryCount() {
   };
 }
 
-export { ChatContextProvider } from "./chat";
+export { ChatContextProvider, ChatContextProviderStub } from "./chat";
 export {
   ToolCallStatusRegistry,
   FixedStateChatContextProvider,

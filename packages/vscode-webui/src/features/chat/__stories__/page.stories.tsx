@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { ChatPage } from "../page";
 
 const meta = {
-  title: "Chat/Page",
+  title: "Features/Chat/Page",
   component: ChatPage,
   parameters: {
     layout: "fullscreen",
@@ -36,5 +36,11 @@ export const Default: Story = {
   args: {
     user: auth.user,
     uid: "default",
+    info: {
+      uid: "default",
+      cwd: "/foo/bar",
+      displayId: null,
+      type: "open-task",
+    },
   },
 };

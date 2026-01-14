@@ -14,7 +14,24 @@
         "kind": "none",
         "isDefault": true
       },
-      "isBackground": true
+      "isBackground": true,
+      "problemMatcher": [
+        {
+          "pattern": [
+            {
+              "regexp": ".",
+              "file": 1,
+              "location": 2,
+              "message": 3
+            }
+          ],
+          "background": {
+            "activeOnStart": true,
+            "beginsPattern": "npm-run-all",
+            "endsPattern": "to show help"
+          }
+        }
+      ]
     },
     {
       "type": "shell",

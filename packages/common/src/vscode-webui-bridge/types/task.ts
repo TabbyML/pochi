@@ -4,36 +4,34 @@ export type FileUIPart = {
   url: string;
 };
 
-export interface TaskIdParams {
+export type PochiTaskParams = { cwd: string } & (
+  | {
+      type: "new-task";
+      uid?: string;
+      prompt?: string;
+      files?: FileUIPart[];
+    }
+  | {
+      type: "fork-task";
+      messages: string;
+      title: string;
+    }
+  | {
+      type: "compact-task";
+      messages: string;
+    }
+  | {
+      type: "open-task";
+      uid: string;
+      displayId: number | null;
+      storeId?: string;
+    }
+);
+
+export type PochiTaskInfo = PochiTaskParams & {
   uid: string;
-  storeId?: string;
-
-  // for open task from website
-  prompt?: string;
-  files?: FileUIPart[];
-  /**
-   * JSON string representing an array of messages to init the task.
-   */
-  initMessages?: string;
-  /**
-   * Disable auto start for the task
-   */
-  disablePendingModelAutoStart?: boolean;
-}
-
-export interface TaskPanelParams extends TaskIdParams {
-  cwd: string;
-  displayId?: number;
-}
-
-export interface NewTaskParams {
-  prompt?: string;
-  files?: FileUIPart[];
-}
-
-export interface NewTaskPanelParams extends NewTaskParams {
-  cwd: string;
-}
+  displayId: number | null;
+};
 
 /**
  * only include fields that are used in the webview and node process
@@ -70,6 +68,10 @@ export interface TaskState {
   unread?: boolean;
   active?: boolean;
   running?: boolean;
+
+  cwd: string;
+  lastCheckpointHash?: string;
+  focused?: boolean;
 }
 
 export type TaskStates = Record<string, TaskState>;

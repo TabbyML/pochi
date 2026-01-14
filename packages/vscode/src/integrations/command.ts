@@ -1,7 +1,3 @@
-import {
-  applyQuickFixes,
-  calcEditedRangeAfterAccept,
-} from "@/code-completion/auto-code-actions";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { PochiWebviewSidebar } from "@/integrations/webview";
 import type { AuthClient } from "@/lib/auth-client";
@@ -14,7 +10,9 @@ import { NewProjectRegistry, prepareProject } from "@/lib/new-project";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { PostHog } from "@/lib/posthog";
 // biome-ignore lint/style/useImportType: needed for dependency injection
-import { NESDecorationManager } from "@/nes/decoration-manager";
+import { WorkspaceScope } from "@/lib/workspace-scoped";
+// biome-ignore lint/style/useImportType: needed for dependency injection
+import { TabCompletionManager, applyQuickFixes } from "@/tab-completion";
 import type { WebsiteTaskCreateEvent } from "@getpochi/common";
 import {
   type CustomModelSetting,
@@ -24,16 +22,15 @@ import {
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { McpHub } from "@getpochi/common/mcp-utils";
 import { getVendor } from "@getpochi/common/vendor";
-import type {
-  NewTaskParams,
-  TaskIdParams,
-} from "@getpochi/common/vscode-webui-bridge";
+import type { PochiTaskParams } from "@getpochi/common/vscode-webui-bridge";
 import { getServerBaseUrl } from "@getpochi/common/vscode-webui-bridge";
 import { inject, injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
 // biome-ignore lint/style/useImportType: needed for dependency injection
-import { PochiConfiguration } from "./configuration";
+import { type PochiAdvanceSettings, PochiConfiguration } from "./configuration";
 import { DiffChangesContentProvider } from "./editor/diff-changes-content-provider";
+// biome-ignore lint/style/useImportType: needed for dependency injection
+import { GitWorktreeInfoProvider } from "./git/git-worktree-info-provider";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { WorktreeManager } from "./git/worktree";
 import {
@@ -42,7 +39,14 @@ import {
   getViewColumnForTerminal,
   isPochiTaskTab,
 } from "./layout";
+// biome-ignore lint/style/useImportType: needed for dependency injection
+import {
+  type Comment,
+  ReviewController,
+  type Thread,
+} from "./review-controller";
 import { PochiTaskEditorProvider } from "./webview/webview-panel";
+
 const logger = getLogger("CommandManager");
 
 @injectable()
@@ -51,6 +55,7 @@ export class CommandManager implements vscode.Disposable {
   private disposables: vscode.Disposable[] = [];
 
   constructor(
+    private readonly workspaceScope: WorkspaceScope,
     private readonly pochiWebviewSidebar: PochiWebviewSidebar,
     private readonly newProjectRegistry: NewProjectRegistry,
     @inject("AuthClient") private readonly authClient: AuthClient,
@@ -58,8 +63,10 @@ export class CommandManager implements vscode.Disposable {
     private readonly mcpHub: McpHub,
     private readonly pochiConfiguration: PochiConfiguration,
     private readonly posthog: PostHog,
-    private readonly nesDecorationManager: NESDecorationManager,
+    private readonly tabCompletionManager: TabCompletionManager,
     private readonly worktreeManager: WorktreeManager,
+    private readonly worktreeInfoProvider: GitWorktreeInfoProvider,
+    private readonly reviewController: ReviewController,
   ) {
     this.registerCommands();
   }
@@ -68,14 +75,14 @@ export class CommandManager implements vscode.Disposable {
     progress: vscode.Progress<{ message?: string; increment?: number }>,
     workspaceUri: vscode.Uri,
     githubTemplateUrl: string | undefined,
-    openTaskParams: TaskIdParams | NewTaskParams,
+    openTaskParams: PochiTaskParams,
     requestId?: string,
   ) {
     if (githubTemplateUrl) {
       await prepareProject(workspaceUri, githubTemplateUrl, progress);
     }
 
-    this.openTaskOnWorkspaceFolder(openTaskParams);
+    PochiTaskEditorProvider.openTaskEditor(openTaskParams);
 
     if (requestId) {
       await this.newProjectRegistry.set(requestId, workspaceUri);
@@ -194,6 +201,8 @@ export class CommandManager implements vscode.Disposable {
                   vscode.Uri.parse(cwd),
                   params.githubTemplateUrl,
                   {
+                    cwd,
+                    type: "new-task",
                     uid: params.uid,
                     prompt: params.prompt,
                     files: params.attachments?.map((attachment) => ({
@@ -216,7 +225,46 @@ export class CommandManager implements vscode.Disposable {
         },
       ),
 
+      vscode.commands.registerCommand("pochi.clearGithubInfo", async () => {
+        try {
+          const mainWorktree = this.worktreeManager.getMainWorktree();
+
+          if (!mainWorktree) {
+            return;
+          }
+
+          // Clear the GitHub data for the main worktree
+          await this.worktreeInfoProvider.updateGithubIssues(
+            mainWorktree.path,
+            {
+              data: [],
+              updatedAt: undefined,
+              processedAt: undefined,
+              pageOffset: undefined,
+            },
+          );
+
+          // Also clear pull request data if it exists
+          await this.worktreeInfoProvider.updateGithubPullRequest(
+            mainWorktree.path,
+            undefined,
+          );
+
+          logger.info(
+            `Cleared GitHub info for main worktree: ${mainWorktree.path}`,
+          );
+          vscode.window.showInformationMessage(
+            "GitHub info cleared successfully",
+          );
+        } catch (error) {
+          logger.error(`Failed to clear GitHub info: ${error}`);
+          vscode.window.showErrorMessage("Failed to clear GitHub info");
+        }
+      }),
+
       vscode.commands.registerCommand("pochi.openTask", async (uid: string) => {
+        const cwd = this.workspaceScope.workspacePath;
+        if (!cwd) return;
         vscode.window.withProgress(
           {
             location: vscode.ProgressLocation.Notification,
@@ -225,7 +273,12 @@ export class CommandManager implements vscode.Disposable {
           async (progress) => {
             progress.report({ message: "Pochi: Opening task..." });
             await vscode.commands.executeCommand("pochiSidebar.focus");
-            this.openTaskOnWorkspaceFolder({ uid });
+            PochiTaskEditorProvider.openTaskEditor({
+              type: "open-task",
+              uid,
+              cwd,
+              displayId: null,
+            });
           },
         );
       }),
@@ -326,19 +379,19 @@ export class CommandManager implements vscode.Disposable {
       }),
 
       vscode.commands.registerCommand(
-        "pochi.inlineCompletion.onDidAccept",
-        async (item: vscode.InlineCompletionItem) => {
+        "pochi.tabCompletion.onDidAccept",
+        async (params: {
+          insertedText: string;
+          rangeBefore: vscode.Range;
+          rangeAfter: vscode.Range;
+        }) => {
           this.posthog.capture("acceptCodeCompletion");
 
           // Apply auto-import quick fixes after code completion is accepted
           const editor = vscode.window.activeTextEditor;
           if (editor) {
-            const editedRange = calcEditedRangeAfterAccept(item);
-            await vscode.commands.executeCommand(
-              "editor.action.inlineSuggest.commit",
-            );
-            if (editedRange) {
-              applyQuickFixes(editor.document.uri, editedRange);
+            if (params.rangeAfter) {
+              applyQuickFixes(editor.document.uri, params.rangeAfter);
             }
           }
         },
@@ -385,6 +438,45 @@ export class CommandManager implements vscode.Disposable {
         },
       ),
 
+      vscode.commands.registerCommand(
+        "pochi.tabCompletion.toggleLanguageEnabled",
+        async (language?: string | undefined) => {
+          const languageId =
+            language ?? vscode.window.activeTextEditor?.document.languageId;
+
+          if (!languageId) {
+            return;
+          }
+
+          const current = this.pochiConfiguration.advancedSettings.value;
+          let newSettings: PochiAdvanceSettings;
+          if (current.tabCompletion?.disabledLanguages?.includes(languageId)) {
+            newSettings = {
+              ...current,
+              tabCompletion: {
+                ...current.tabCompletion,
+                disabledLanguages:
+                  current.tabCompletion.disabledLanguages.filter(
+                    (lang) => lang !== languageId,
+                  ),
+              },
+            };
+          } else {
+            newSettings = {
+              ...current,
+              tabCompletion: {
+                ...current.tabCompletion,
+                disabledLanguages: [
+                  ...(current.tabCompletion?.disabledLanguages ?? []),
+                  languageId,
+                ],
+              },
+            };
+          }
+          this.pochiConfiguration.advancedSettings.value = newSettings;
+        },
+      ),
+
       vscode.commands.registerCommand("pochi.openFileFromDiff", async () => {
         const activeTab = vscode.window.tabGroups.activeTabGroup.activeTab;
         logger.debug("openFileFromDiff", { activeTab });
@@ -393,7 +485,7 @@ export class CommandManager implements vscode.Disposable {
           activeTab.input instanceof vscode.TabInputTextDiff &&
           activeTab.input.original.scheme === DiffChangesContentProvider.scheme
         ) {
-          const data = DiffChangesContentProvider.parse(
+          const data = DiffChangesContentProvider.decode(
             activeTab.input.original,
           );
           await vscode.window.showTextDocument(
@@ -439,6 +531,7 @@ export class CommandManager implements vscode.Disposable {
           }
 
           PochiTaskEditorProvider.openTaskEditor({
+            type: "new-task",
             cwd,
           });
         },
@@ -447,14 +540,14 @@ export class CommandManager implements vscode.Disposable {
       vscode.commands.registerCommand(
         "pochi.tabCompletion.accept",
         async () => {
-          this.nesDecorationManager.accept();
+          this.tabCompletionManager.accept();
         },
       ),
 
       vscode.commands.registerCommand(
         "pochi.tabCompletion.reject",
         async () => {
-          this.nesDecorationManager.reject();
+          this.tabCompletionManager.reject();
         },
       ),
 
@@ -465,39 +558,21 @@ export class CommandManager implements vscode.Disposable {
         if (arg0 instanceof vscode.Uri) {
           taskUri = arg0;
         }
-        // Try find active group's active tab
+        // Try find active task tab
         if (taskUri === undefined) {
-          const activeTab = vscode.window.tabGroups.activeTabGroup.activeTab;
-          if (activeTab && isPochiTaskTab(activeTab)) {
+          const activeTab = findActivePochiTaskTab();
+          if (activeTab) {
             taskUri = activeTab.input.uri;
           }
         }
-        // Otherwise find active tab in other groups
-        if (taskUri === undefined) {
-          const group = getSortedCurrentTabGroups().find(
-            (group) => group.activeTab && isPochiTaskTab(group.activeTab),
-          );
-          if (group?.activeTab && isPochiTaskTab(group.activeTab)) {
-            taskUri = group.activeTab.input.uri;
-          }
-        }
-        // Otherwise find first task tab
-        if (taskUri === undefined) {
-          const tab = getSortedCurrentTabGroups()
-            .flatMap((group) => group.tabs)
-            .find((tab) => isPochiTaskTab(tab));
-          if (tab) {
-            taskUri = tab.input.uri;
-          }
-        }
-        // No task found
-        if (taskUri === undefined) {
-          vscode.window.createTerminal().show();
-          return;
-        }
+
         // Open terminal for task
-        const params = PochiTaskEditorProvider.parseTaskUri(taskUri);
-        const viewColumn = getViewColumnForTerminal();
+        const params = taskUri
+          ? PochiTaskEditorProvider.parseTaskUri(taskUri)
+          : undefined;
+        const viewColumn = await getViewColumnForTerminal({
+          cwd: params?.cwd,
+        });
         const location = viewColumn ? { viewColumn } : undefined;
         vscode.window.createTerminal({ cwd: params?.cwd, location }).show();
       }),
@@ -515,7 +590,9 @@ export class CommandManager implements vscode.Disposable {
         "pochi.worktree.openTerminal",
         async (worktreePath: string) => {
           if (worktreePath) {
-            const viewColumn = getViewColumnForTerminal();
+            const viewColumn = await getViewColumnForTerminal({
+              cwd: worktreePath,
+            });
             const location = viewColumn ? { viewColumn } : undefined;
             vscode.window
               .createTerminal({ cwd: worktreePath, location })
@@ -529,6 +606,7 @@ export class CommandManager implements vscode.Disposable {
         async (worktreePath: string) => {
           if (worktreePath) {
             PochiTaskEditorProvider.openTaskEditor({
+              type: "new-task",
               cwd: worktreePath,
             });
           }
@@ -538,40 +616,65 @@ export class CommandManager implements vscode.Disposable {
       vscode.commands.registerCommand(
         "pochi.applyPochiLayout",
         async (...args) => {
-          let cwd: string | undefined = undefined;
-          // Parse args
-          const arg0 = args.shift();
-          if (arg0 instanceof vscode.Uri) {
-            const workspace = vscode.workspace.getWorkspaceFolder(arg0);
-            if (workspace) {
-              cwd = workspace.uri.fsPath;
-            }
+          await this.applyPochiLayoutWithCommandArgs(false, ...args);
+        },
+      ),
+
+      vscode.commands.registerCommand(
+        "pochi.applyPochiLayoutWithCycleFocus",
+        async (...args) => {
+          await this.applyPochiLayoutWithCommandArgs(true, ...args);
+        },
+      ),
+
+      vscode.commands.registerCommand(
+        "pochi.comments.deleteThread",
+        async (thread?: Thread) => {
+          if (thread) {
+            await this.reviewController.deleteThread(thread);
           }
-          // Use workspace
-          if (!cwd) {
-            const workspaceFolders = vscode.workspace.workspaceFolders;
-            if (workspaceFolders && workspaceFolders.length > 0) {
-              cwd = workspaceFolders[0].uri.fsPath;
-            }
+        },
+      ),
+
+      vscode.commands.registerCommand(
+        "pochi.comments.addComment",
+        async (commentReply?: vscode.CommentReply | undefined) => {
+          if (commentReply) {
+            await this.reviewController.addComment(commentReply);
           }
-          await applyPochiLayout({ cwd });
+        },
+      ),
+
+      vscode.commands.registerCommand(
+        "pochi.comments.deleteComment",
+        async (comment?: Comment, thread?: Thread) => {
+          if (comment && thread) {
+            await this.reviewController.deleteComment(comment, thread);
+          }
+        },
+      ),
+
+      vscode.commands.registerCommand(
+        "pochi.comments.startEditComment",
+        async (comment: Comment, thread: Thread) => {
+          await this.reviewController.startEditComment(comment, thread);
+        },
+      ),
+
+      vscode.commands.registerCommand(
+        "pochi.comments.saveEditComment",
+        async (comment: Comment) => {
+          await this.reviewController.saveEditComment(comment);
+        },
+      ),
+
+      vscode.commands.registerCommand(
+        "pochi.comments.cancelEditComment",
+        async (comment: Comment) => {
+          await this.reviewController.cancelEditComment(comment);
         },
       ),
     );
-  }
-
-  openTaskOnWorkspaceFolder(params?: TaskIdParams | NewTaskParams) {
-    const cwd = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
-    if (!cwd) {
-      vscode.window.showErrorMessage(
-        "Cannot create Pochi task without a workspace folder.",
-      );
-      return;
-    }
-    PochiTaskEditorProvider.openTaskEditor({
-      ...params,
-      cwd,
-    });
   }
 
   private async ensureDefaultCustomModelSettings() {
@@ -622,6 +725,44 @@ export class CommandManager implements vscode.Disposable {
     await new Promise((resolve) => setTimeout(resolve, 500));
   }
 
+  private async applyPochiLayoutWithCommandArgs(
+    cycleFocus: boolean,
+    ...args: unknown[]
+  ) {
+    let cwd: string | undefined = undefined;
+    // Parse args
+    const arg0 = args.shift();
+    if (arg0 instanceof vscode.Uri) {
+      const workspace = vscode.workspace.getWorkspaceFolder(arg0);
+      if (workspace) {
+        cwd = workspace.uri.fsPath;
+      }
+    }
+    // Try find active task tab
+    if (!cwd) {
+      const activeTab = findActivePochiTaskTab();
+      if (activeTab) {
+        const params = PochiTaskEditorProvider.parseTaskUri(
+          activeTab.input.uri,
+        );
+        cwd = params?.cwd;
+      }
+    }
+    // Use workspace
+    if (!cwd) {
+      const workspaceFolder = this.workspaceScope.workspacePath;
+      if (workspaceFolder) {
+        cwd = workspaceFolder;
+      }
+    }
+    await applyPochiLayout({
+      cwd,
+      cycleFocus,
+      enabled:
+        this.pochiConfiguration.advancedSettings.value.pochiLayout?.enabled,
+    });
+  }
+
   dispose() {
     // Dispose all commands
     for (const disposable of this.disposables) {
@@ -629,4 +770,33 @@ export class CommandManager implements vscode.Disposable {
     }
     this.disposables = [];
   }
+}
+
+function findActivePochiTaskTab():
+  | (vscode.Tab & {
+      input: vscode.TabInputCustom & {
+        viewType: typeof PochiTaskEditorProvider.viewType;
+      };
+    })
+  | undefined {
+  // Try find active tab in active group
+  const activeTab = vscode.window.tabGroups.activeTabGroup.activeTab;
+  if (activeTab && isPochiTaskTab(activeTab)) {
+    return activeTab;
+  }
+  // Otherwise find active tab in other groups
+  const group = getSortedCurrentTabGroups().find(
+    (group) => group.activeTab && isPochiTaskTab(group.activeTab),
+  );
+  if (group?.activeTab && isPochiTaskTab(group.activeTab)) {
+    return group.activeTab;
+  }
+  // Otherwise find first task tab
+  const tab = getSortedCurrentTabGroups()
+    .flatMap((group) => group.tabs)
+    .find((tab) => isPochiTaskTab(tab));
+  if (tab) {
+    return tab;
+  }
+  return undefined;
 }

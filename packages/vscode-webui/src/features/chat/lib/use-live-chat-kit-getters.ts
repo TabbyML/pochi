@@ -1,7 +1,6 @@
 // Register the models
 import "@getpochi/vendor-pochi/edge";
 import "@getpochi/vendor-gemini-cli/edge";
-import "@getpochi/vendor-claude-code/edge";
 import "@getpochi/vendor-codex/edge";
 import "@getpochi/vendor-github-copilot/edge";
 import "@getpochi/vendor-qwen-code/edge";
@@ -13,11 +12,8 @@ import { useMcp } from "@/lib/hooks/use-mcp";
 import { vscodeHost } from "@/lib/vscode";
 import { constants, type Environment } from "@getpochi/common";
 import { createModel } from "@getpochi/common/vendor/edge";
-import type {
-  DisplayModel,
-  FileDiff,
-} from "@getpochi/common/vscode-webui-bridge";
-import type { LLMRequestData, Message } from "@getpochi/livekit";
+import type { DisplayModel } from "@getpochi/common/vscode-webui-bridge";
+import type { LLMRequestData } from "@getpochi/livekit";
 import type { Todo } from "@getpochi/tools";
 import { useCallback } from "react";
 
@@ -37,31 +33,17 @@ export function useLiveChatKitGetters({
   const { customAgents } = useCustomAgents(true);
   const customAgentsRef = useLatest(customAgents);
 
-  const getEnvironment = useCallback(
-    async ({ messages }: { messages: readonly Message[] }) => {
-      const environment = await vscodeHost.readEnvironment({
-        isSubTask,
-        webviewKind: globalThis.POCHI_WEBVIEW_KIND,
-      });
+  const getEnvironment = useCallback(async () => {
+    const environment = await vscodeHost.readEnvironment({
+      isSubTask,
+      webviewKind: globalThis.POCHI_WEBVIEW_KIND,
+    });
 
-      let userEdits: FileDiff[] | undefined;
-      const lastCheckpointHash = findSecondLastCheckpointFromMessages(messages);
-      if (lastCheckpointHash) {
-        userEdits =
-          (await vscodeHost.diffWithCheckpoint(lastCheckpointHash, undefined, {
-            maxSizeLimit: 8 * 1024,
-            inlineDiff: true,
-          })) ?? undefined;
-      }
-
-      return {
-        todos: todos.current,
-        ...environment,
-        userEdits,
-      } satisfies Environment;
-    },
-    [todos, isSubTask],
-  );
+    return {
+      todos: todos.current,
+      ...environment,
+    } satisfies Environment;
+  }, [todos, isSubTask]);
 
   return {
     // biome-ignore lint/correctness/useExhaustiveDependencies(llm.current): llm is ref.
@@ -75,25 +57,6 @@ export function useLiveChatKitGetters({
     // biome-ignore lint/correctness/useExhaustiveDependencies(customAgentsRef.current): customAgentsRef is ref.
     getCustomAgents: useCallback(() => customAgentsRef.current, []),
   };
-}
-
-function findSecondLastCheckpointFromMessages(
-  messages: readonly Message[],
-): string | undefined {
-  let foundCount = 0;
-  for (let i = messages.length - 1; i >= 0; i--) {
-    const message = messages[i];
-    for (let j = message.parts.length - 1; j >= 0; j--) {
-      const part = message.parts[j];
-      if (part.type === "data-checkpoint" && part.data?.commit) {
-        foundCount++;
-        if (foundCount === 2) {
-          return part.data.commit;
-        }
-      }
-    }
-  }
-  return undefined;
 }
 
 function useLLM({

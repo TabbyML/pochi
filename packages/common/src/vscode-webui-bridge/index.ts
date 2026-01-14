@@ -15,10 +15,8 @@ export type {
 export type { ResourceURI } from "./types/common";
 export type { SessionState, WorkspaceState } from "./types/session";
 export type {
-  TaskIdParams,
-  NewTaskParams,
-  TaskPanelParams,
-  NewTaskPanelParams,
+  PochiTaskInfo,
+  PochiTaskParams,
   TaskData,
   TaskChangedFile,
   ChangedFileContent,
@@ -40,17 +38,32 @@ export type {
   ValidCustomAgentFile,
 } from "./types/custom-agent";
 export { GitWorktreeInfo } from "./types/git";
-export type { GitWorktree, DiffCheckpointOptions } from "./types/git";
+export type {
+  GitWorktree,
+  GithubIssue,
+  DiffCheckpointOptions,
+  CreateWorktreeOptions,
+} from "./types/git";
+export type {
+  Review,
+  ReviewComment,
+  ReviewCodeSnippet,
+} from "./types/review";
 export { isValidCustomAgentFile } from "./types/custom-agent";
 export {
   prefixTaskDisplayId,
   prefixWorktreeName,
   getTaskDisplayTitle,
+  WorktreePrefix,
 } from "./task-utils";
+export { ActiveSelection, BashOutputs, UserEdits } from "./types/message";
+export type { VSCodeSettings } from "./types/vscode-settings";
 
 const isPochiDev = process.env.POCHI_LOCAL_SERVER === "true";
 const isSyncDev = process.env.POCHI_LOCAL_SYNC_SERVER === "true";
 export const isDev = isPochiDev || isSyncDev;
+
+export const isTest = process.env.POCHI_TEST === "true";
 
 export function getServerBaseUrl() {
   return isPochiDev ? "http://localhost:4113" : "https://app.getpochi.com";

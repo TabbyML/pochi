@@ -5,6 +5,10 @@
     "account": "Account",
     "help": "Help"
   },
+  "error": {
+    "somethingWentWrong": "Something went wrong",
+    "reloadWindow": "Reload Window"
+  },
   "placeholder": {
     "title": "What can I help you ship?",
     "subtitle": "Pochi is powered by AI, so errors may occur.",
@@ -53,12 +57,18 @@
     "modelUnavailable": "Model is unavailable or still loading",
     "custom": "Custom",
     "super": "Super",
-    "swift": "Swift"
+    "swift": "Swift",
+    "reload": "Reload",
+    "subscriptionRequired": "Subscription Required"
   },
   "worktreeSelect": {
     "selectWorktree": "Select Worktree",
-    "createWorktree": "Create Git worktree",
-    "createWorktreeDescription": "Start task in a new Git worktree"
+    "createWorktree": "Auto create worktree",
+    "createWorktreeDescription": "Start task in a new Git worktree",
+    "switchBaseBranch": "Switch base branch",
+    "searchBranch": "Search branch...",
+    "noBranchFound": "No branch found",
+    "branches": "Branches"
   },
   "worktree": {
     "createPr": "Create PR",
@@ -103,7 +113,8 @@
       "clearStorage": "Clear Storage",
       "language": "Language",
       "languageDescription": "Choose your preferred language",
-      "openInTab": "Allows to open the task in a new tab"
+      "openInTab": "Allows to open the task in a new tab",
+      "resetRecommendSettingsConfirmed": "Reset Recommended Settings Confirmed"
     },
     "workflows": {
       "title": "Workflows",
@@ -218,7 +229,8 @@
       "errorPrefix": "Error:",
       "fallbackError": "Error encountered",
       "finished": "Finished in {{duration}}"
-    }
+    },
+    "loadMore": "Load more"
   },
   "toolInvocation": {
     "taskCompleted": "Task Completed",
@@ -274,11 +286,16 @@
     "restoring": "Restoring...",
     "success": "Success",
     "restore": "Restore",
+    "restored": "Restored",
     "opening": "Opening...",
     "noChangesDetected": "No changes detected",
     "compare": "Compare",
     "fork": "Fork",
     "forking": "Forking"
+  },
+  "reviewUI": {
+    "reviews": "Reviews",
+    "submitReviews": "Submit reviews"
   },
   "welcomeScreen": {
     "title": "Get Started",
@@ -325,7 +342,8 @@
     "noResultsFound": "No results found",
     "typeToSearch": "Type to search...",
     "workflow": "workflow",
-    "agent": "agent"
+    "agent": "agent",
+    "useHashForIssues": "use # to search for github issues"
   },
   "subtask": {
     "back": "Back",
@@ -341,7 +359,8 @@
     "requirePayment": "You have unpaid invoices. Please",
     "makePayment": "make a payment",
     "toContinueUsingPochi": "to continue using Pochi",
-    "requireOrgPayment": "Your team have unpaid invoices. Please"
+    "requireOrgPayment": "Your team have unpaid invoices. Please",
+    "requireSubscriptionForSuperModels": "To use Super models, please subscribe to Pochi."
   },
   "chatPage": {
     "defaultUserName": "You"
@@ -402,5 +421,30 @@
     "undo": "Undo",
     "viewChanges": "View changes",
     "openFile": "Open file"
+  },
+  "userEdits": {
+    "title": "Edits",
+    "filesEdited_one": "{{count}} file edited",
+    "filesEdited_other": "{{count}} files edited",
+    "tooltip": "Your edits are tracked and will be included in the context",
+    "showDiff": "Show Diff",
+    "diffTitle": "User Edits"
+  },
+  "forkTask": {
+    "forkedTaskTitle": "Forked from {{taskTitle}}"
+  },
+  "recommendSettings": {
+    "title": "Pochi recommends the following settings",
+    "ok": "Apply",
+    "options": {
+      "enablePochiLayout": "Enable Pochi Layout",
+      "disableAutoSave": "Disable auto-save",
+      "disableCommentsOpenView": "Disable auto-opening of the comments panel",
+      "disableGithubCopilotCodeCompletion": "Disable GitHub Copilot code completion"
+    }
+  },
+  "mermaid": {
+    "failedToRender": "Failed to render Mermaid chart:",
+    "fixError": "Fix error with Pochi"
   }
 }

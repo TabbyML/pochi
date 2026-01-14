@@ -5,7 +5,6 @@ import "@livestore/wa-sqlite/dist/wa-sqlite.node.wasm" with { type: "file" };
 // Register the vendor
 import "@getpochi/vendor-pochi";
 import "@getpochi/vendor-gemini-cli";
-import "@getpochi/vendor-claude-code";
 import "@getpochi/vendor-codex";
 import "@getpochi/vendor-github-copilot";
 import "@getpochi/vendor-qwen-code";
@@ -13,7 +12,6 @@ import "@getpochi/vendor-qwen-code";
 // Register the models
 import "@getpochi/vendor-pochi/edge";
 import "@getpochi/vendor-gemini-cli/edge";
-import "@getpochi/vendor-claude-code/edge";
 import "@getpochi/vendor-codex/edge";
 import "@getpochi/vendor-github-copilot/edge";
 import "@getpochi/vendor-qwen-code/edge";
@@ -33,14 +31,11 @@ import {
   type Message,
   fileToUri,
 } from "@getpochi/livekit";
-import { type Duration, Effect, Stream } from "@livestore/utils/effect";
 import chalk from "chalk";
 import * as commander from "commander";
 import z from "zod/v4";
 import packageJson from "../package.json";
 import { registerAuthCommand } from "./auth";
-
-import type { Store } from "@livestore/livestore";
 import { handleShellCompletion } from "./completion";
 import { findRipgrep } from "./lib/find-ripgrep";
 import { loadAgents } from "./lib/load-agents";
@@ -259,7 +254,6 @@ const program = new Command()
     if (jsonRenderer) {
       jsonRenderer.shutdown();
     }
-    await waitForSync(store, "2 second").catch(console.error);
     await shutdownStoreAndExit(store);
   });
 
@@ -493,31 +487,6 @@ async function createLLMConfigWithProviders(
   }
 
   assertUnreachable(modelProvider.kind);
-}
-
-async function waitForSync(
-  store: Store,
-  timeoutDuration: Duration.DurationInput = "1 second",
-) {
-  if (!process.env.POCHI_LIVEKIT_SYNC_ON) {
-    return;
-  }
-
-  await Effect.gen(function* (_) {
-    while (true) {
-      const nextChange = store.syncProcessor.syncState.changes.pipe(
-        Stream.take(1),
-        Stream.runCollect,
-        Effect.as(false),
-      );
-
-      const timeout = Effect.sleep(timeoutDuration).pipe(Effect.as(true));
-
-      if (yield* Effect.raceFirst(nextChange, timeout)) {
-        break;
-      }
-    }
-  }).pipe(Effect.runPromise);
 }
 
 function assertUnreachable(_x: never): never {

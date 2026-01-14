@@ -1,5 +1,4 @@
 import { vscodeHost } from "@/lib/vscode";
-import type { TaskPanelParams } from "@getpochi/common/vscode-webui-bridge";
 import { useCallback, useEffect, useRef } from "react";
 
 export function useSendTaskNotification() {
@@ -8,7 +7,11 @@ export function useSendTaskNotification() {
   const sendNotification = useCallback(
     async (
       kind: "failed" | "completed" | "pending-tool" | "pending-input",
-      openTaskParams: TaskPanelParams & { isSubTask: boolean },
+      openTaskParams: {
+        uid: string;
+        displayId: number | null;
+        isSubTask?: boolean;
+      },
     ) => {
       clearTimeout(timer.current);
 

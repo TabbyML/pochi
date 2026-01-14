@@ -1,5 +1,9 @@
-import { type Message, StoreBlobProtocol, catalog } from "@getpochi/livekit";
-import type { Store } from "@livestore/livestore";
+import {
+  type LiveKitStore,
+  type Message,
+  StoreBlobProtocol,
+  catalog,
+} from "@getpochi/livekit";
 import { isToolUIPart } from "ai";
 import * as R from "remeda";
 import type { NodeChatState } from "./livekit/chat.node";
@@ -15,7 +19,7 @@ export class JsonRenderer {
   private mode: "full" | "result-only";
 
   constructor(
-    private readonly store: Store,
+    private readonly store: LiveKitStore,
     private readonly state: NodeChatState,
     options: JsonRendererOptions = { mode: "full" },
   ) {
@@ -66,7 +70,7 @@ export class JsonRenderer {
   }
 }
 
-function mapStoreBlob(store: Store, o: unknown): unknown {
+function mapStoreBlob(store: LiveKitStore, o: unknown): unknown {
   if (R.isString(o) && o.startsWith(StoreBlobProtocol)) {
     const url = new URL(o);
     const blob = store.query(catalog.queries.makeBlobQuery(url.pathname));

@@ -23,7 +23,7 @@ const ToolsGallery: React.FC<{
 };
 
 const meta: Meta<typeof ToolsGallery> = {
-  title: "Part-UI/Tools",
+  title: "Features/Tools/Gallery",
   component: ToolsGallery,
 };
 
@@ -244,6 +244,29 @@ const askFollowupQuestionProps2: AskFollowupQuestionProp["tool"] = {
   },
 };
 
+const askFollowupQuestionProps3: AskFollowupQuestionProp["tool"] = {
+  state: "output-available",
+
+  toolCallId: "tool_ask_followup_3",
+  type: "tool-askFollowupQuestion",
+  input: {
+    question: `I noticed that the file \`src/components/Button.tsx\` has some accessibility issues.
+Specifically:
+- Missing \`aria-label\` on the button.
+- Contrast ratio is too low for the disabled state.
+
+Would you like me to fix these issues while I'm editing the file?`,
+    followUp: [
+      "Yes, fix both issues",
+      "Only fix the aria-label",
+      "No, leave it as is",
+    ],
+  },
+  output: {
+    success: true,
+  },
+};
+
 const attemptCompletionProps: AttemptCompletionProp["tool"] = {
   state: "output-available",
 
@@ -366,6 +389,7 @@ export const Tools: Story = {
       writeToFileProps4,
       askFollowupQuestionProps,
       askFollowupQuestionProps2,
+      askFollowupQuestionProps3,
       attemptCompletionProps,
       startBackgroundJobProps,
       readBackgroundJobOutputProps,

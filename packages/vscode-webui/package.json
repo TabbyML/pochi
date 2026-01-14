@@ -19,13 +19,12 @@
     "@ai-sdk/react": "catalog:",
     "@getpochi/common": "workspace:*",
     "@getpochi/livekit": "workspace:*",
-    "@getpochi/vendor-claude-code": "workspace:*",
     "@getpochi/vendor-codex": "workspace:*",
     "@getpochi/vendor-gemini-cli": "workspace:*",
     "@getpochi/vendor-github-copilot": "workspace:*",
     "@getpochi/vendor-pochi": "workspace:*",
     "@getpochi/vendor-qwen-code": "workspace:*",
-    "@leeoniya/ufuzzy": "^1.0.18",
+    "@leeoniya/ufuzzy": "catalog:",
     "@livestore/adapter-web": "catalog:",
     "@livestore/common": "catalog:",
     "@livestore/livestore": "catalog:",
@@ -94,14 +93,15 @@
     "rehype-sanitize": "^6.0.0",
     "remeda": "catalog:",
     "shiki": "^3.13.0",
-    "streamdown": "^1.3.0",
+    "streamdown": "^1.6.0",
     "tailwind-merge": "^3.0.2",
     "tailwindcss": "catalog:",
     "tailwindcss-animate": "catalog:",
     "tippy.js": "^6.3.7",
     "unist-util-visit": "^5.0.0",
     "zod": "catalog:",
-    "zustand": "^5.0.3"
+    "zustand": "^5.0.3",
+    "jose": "catalog:"
   },
   "devDependencies": {
     "@getpochi/tools": "workspace:*",
@@ -131,5 +131,11 @@
     "vite-plugin-environment": "^1.1.3",
     "vite-tsconfig-paths": "^5.1.4",
     "web-vitals": "^4.2.4"
+  },
+  "imports": {
+    "#lib/hooks/use-paginated-tasks": {
+      "storybook": "./src/lib/hooks/use-paginated-tasks.mock",
+      "default": "./src/lib/hooks/use-paginated-tasks"
+    }
   }
 }

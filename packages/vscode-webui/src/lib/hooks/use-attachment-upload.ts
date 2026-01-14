@@ -1,7 +1,6 @@
 import { MaxAttachments } from "@/lib/constants";
 import { createFileName, validateFile } from "@/lib/utils/attachment";
 import { fileToUri } from "@getpochi/livekit";
-import { useStore } from "@livestore/react";
 import type { FileUIPart } from "ai";
 import { useRef, useState } from "react";
 
@@ -10,7 +9,6 @@ interface UseAttachmentUploadOptions {
 }
 
 export function useAttachmentUpload(options?: UseAttachmentUploadOptions) {
-  const { store } = useStore();
   const maxAttachments = options?.maxAttachments ?? MaxAttachments;
   const [files, setFiles] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
@@ -143,16 +141,13 @@ export function useAttachmentUpload(options?: UseAttachmentUploadOptions) {
           type: "file",
           filename: file.name || "unnamed-file",
           mediaType: file.type,
-          url: await fileToUri(store, file, abortController.current?.signal),
+          url: await fileToUri(null, file, abortController.current?.signal),
           // url: await fileToRemoteUri(file, abortController.current?.signal),
           // url: await fileToDataUri(file),
         } satisfies FileUIPart;
       });
 
       const uploadedAttachments = await Promise.all(uploadPromises);
-
-      // Clear files after successful upload
-      clearFiles();
 
       return uploadedAttachments;
     } catch (error) {

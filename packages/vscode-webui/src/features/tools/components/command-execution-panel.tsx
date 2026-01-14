@@ -302,9 +302,7 @@ export const CommandExecutionPanel: FC<ExecutionPanelProps> = ({
 };
 
 function useExpanded(completed: boolean) {
-  if (isVSCodeEnvironment()) {
-    return useDebounceState(!completed, 1_500);
-  }
-  const [value, setValue] = useState(false);
-  return [value, setValue, setValue] as const;
+  return useDebounceState(!completed, 1_500, {
+    leading: !isVSCodeEnvironment(),
+  });
 }

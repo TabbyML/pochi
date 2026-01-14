@@ -1,6 +1,7 @@
 import { mkdir } from "node:fs/promises";
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
+import { Deferred } from "@/lib/defered";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { WorkspaceScope } from "@/lib/workspace-scoped";
 import { getLogger, toErrorMessage } from "@getpochi/common";
@@ -10,17 +11,21 @@ import type {
   SaveCheckpointOptions,
   TaskChangedFile,
 } from "@getpochi/common/vscode-webui-bridge";
+import { signal } from "@preact/signals-core";
 import { Lifecycle, inject, injectable, scoped } from "tsyringe";
 import type * as vscode from "vscode";
+import type { FileChange } from "../editor/diff-changes-editor";
+// biome-ignore lint/style/useImportType: needed for dependency injection
+import { WorktreeManager } from "../git/worktree";
 import { ShadowGitRepo } from "./shadow-git-repo";
-import type { GitDiff } from "./types";
 import {
-  Deferred,
   filterGitChanges,
+  getWorkspaceStorageDir,
   processGitChangesToFileEdits,
 } from "./util";
 
 const logger = getLogger("CheckpointService");
+const checkpointCommitPrefix = (cwd: string) => `checkpoint-${cwd}-msg-`;
 
 @scoped(Lifecycle.ContainerScoped)
 @injectable()
@@ -29,10 +34,13 @@ export class CheckpointService implements vscode.Disposable {
   private readyDefer = new Deferred<void>();
   private initialized = false;
 
+  latestCheckpoint = signal<string | null>(null);
+
   constructor(
     private readonly workspaceScope: WorkspaceScope,
     @inject("vscode.ExtensionContext")
     private readonly context: vscode.ExtensionContext,
+    private readonly worktreeManager: WorktreeManager,
   ) {}
 
   private get cwd() {
@@ -46,7 +54,7 @@ export class CheckpointService implements vscode.Disposable {
    * Lazy initializes the checkpoint service.
    * @returns A promise that resolves when the checkpoint service is initialized.
    */
-  private async ensureInitialized() {
+  async ensureInitialized() {
     if (!this.initialized) {
       this.initialized = true;
       await this.init();
@@ -59,6 +67,9 @@ export class CheckpointService implements vscode.Disposable {
       const gitPath = await this.getShadowGitPath();
       this.shadowGit = await ShadowGitRepo.getOrCreate(gitPath, this.cwd);
       logger.trace("Shadow Git repository initialized at", gitPath);
+      this.latestCheckpoint.value = await this.shadowGit.getLatestCommitHash(
+        checkpointCommitPrefix(this.cwd),
+      );
       this.readyDefer.resolve();
     } catch (error) {
       const errorMessage = toErrorMessage(error);
@@ -92,11 +103,12 @@ export class CheckpointService implements vscode.Disposable {
         return null;
       }
       await this.shadowGit.stageAll();
-      const commitMessage = `checkpoint-${message}`;
+      const commitMessage = `${checkpointCommitPrefix(this.cwd)}${message}`;
       const commitHash = await this.shadowGit.commit(commitMessage);
       logger.trace(
         `Successfully saved checkpoint with message: ${message}, commit hash: ${commitHash}`,
       );
+      this.latestCheckpoint.value = commitHash;
       return commitHash;
     } catch (error) {
       const errorMessage = toErrorMessage(error);
@@ -124,6 +136,7 @@ export class CheckpointService implements vscode.Disposable {
 
     try {
       await this.shadowGit.reset(commitHash, files);
+      this.latestCheckpoint.value = commitHash;
     } catch (error) {
       const errorMessage = toErrorMessage(error);
       logger.error(
@@ -169,19 +182,41 @@ export class CheckpointService implements vscode.Disposable {
   };
 
   async getShadowGitPath() {
-    if (!this.context.storageUri) {
-      throw new Error("Extension storage URI is not available");
+    if (!this.context.globalStorageUri) {
+      throw new Error("Extension global storage URI is not available");
     }
-    const storagePath = this.context.storageUri.fsPath;
+    await this.worktreeManager.inited.promise;
+    const workspacePath =
+      this.worktreeManager.getMainWorktree()?.path ?? this.workspaceScope.cwd;
+    if (!workspacePath) {
+      throw new Error("Cannot get workspace path");
+    }
+    const storagePath = await this.getWorkspaceStoragePath(workspacePath);
     const checkpointDir = path.join(storagePath, "checkpoint");
+    logger.info(
+      `Checkpoint directory for workspace: ${workspacePath} is: ${checkpointDir}`,
+    );
     await mkdir(checkpointDir, { recursive: true });
     return checkpointDir;
+  }
+
+  private async getWorkspaceStoragePath(workspace: string): Promise<string> {
+    // keep scheme
+    const workspaceUri = this.workspaceScope.workspaceUri?.with({
+      path: workspace,
+    });
+    if (!workspaceUri) {
+      return (
+        this.context.storageUri?.fsPath ?? this.context.globalStorageUri.fsPath
+      );
+    }
+    return await getWorkspaceStorageDir(workspaceUri, this.context);
   }
 
   getCheckpointChanges = async (
     from: string,
     to?: string,
-  ): Promise<GitDiff[]> => {
+  ): Promise<FileChange[]> => {
     await this.ensureInitialized();
     if (!this.shadowGit) {
       throw new Error("Shadow Git repository not initialized");
@@ -236,7 +271,7 @@ export class CheckpointService implements vscode.Disposable {
 
     const result: TaskChangedFile[] = [];
     for (const file of changedFiles) {
-      let changes: GitDiff[] = [];
+      let changes: FileChange[] = [];
       if (file.content?.type === "checkpoint") {
         changes = await this.shadowGit.getDiff(file.content.commit, undefined, [
           file.filepath,
@@ -290,13 +325,13 @@ export class CheckpointService implements vscode.Disposable {
 
   getChangedFilesChanges = async (
     changedFiles: TaskChangedFile[],
-  ): Promise<GitDiff[]> => {
+  ): Promise<FileChange[]> => {
     await this.ensureInitialized();
     if (!this.shadowGit) {
       throw new Error("Shadow Git repository not initialized");
     }
 
-    const changes: GitDiff[] = [];
+    const changes: FileChange[] = [];
     for (const file of changedFiles) {
       if (file.content?.type === "checkpoint") {
         const diffResult = await this.shadowGit.getDiff(
@@ -327,7 +362,7 @@ export class CheckpointService implements vscode.Disposable {
     return changes;
   };
 
-  checkFileExistsInCheckpoint = async (
+  private checkFileExistsInCheckpoint = async (
     commitHash: string,
     filepath: string,
   ): Promise<boolean> => {

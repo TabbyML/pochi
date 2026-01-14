@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { WorkspaceRequiredPlaceholder } from "../workspace-required-placeholder";
 
 const meta: Meta<typeof WorkspaceRequiredPlaceholder> = {
-  title: "Pochi/WorkspaceRequiredPlaceholder",
+  title: "Components/WorkspaceRequiredPlaceholder",
   component: WorkspaceRequiredPlaceholder,
   parameters: {
     layout: "centered",

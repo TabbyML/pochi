@@ -1,12 +1,13 @@
 import { isAutoSuccessToolName } from "@getpochi/tools";
-import { useStore } from "@livestore/react";
 import { useCallback, useMemo, useRef, useState } from "react";
 import type { ToolCallLifeCycleKey } from "./chat-state/types";
 import { ManagedToolCallLifeCycle } from "./tool-call-life-cycle";
 
+import { useDefaultStore } from "@/lib/use-default-store";
+
 // Hook to manage tool call states
 export function useToolCallLifeCycles(abortSignal: AbortSignal) {
-  const { store } = useStore();
+  const store = useDefaultStore();
 
   const [toolCallLifeCycles, setToolCallLifeCycles] = useState<
     Map<string, ManagedToolCallLifeCycle>

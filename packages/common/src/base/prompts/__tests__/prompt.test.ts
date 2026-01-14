@@ -26,21 +26,7 @@ test("environment", () => {
           files: ["index.ts", "package.json", "tsconfig.json", "README.md"],
           isTruncated: false,
           activeTabs: ["README.md", "tsconfig.json", "package.json"],
-          activeSelection: {
-            filepath: "README.md",
-            range: {
-              start: {
-                line: 2,
-                character: 0,
-              },
-              end: {
-                line: 4,
-                character: 46,
-              },
-            },
-            content:
-              "This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.\n\nCurrently, two official plugins are available:",
-          },
+
           gitStatus: {
             origin: 'https://github.com/username/repo.git',
             currentBranch: 'add-environment-to-chat-request-body',
@@ -82,9 +68,6 @@ test("environment", () => {
           homedir: "/home/user",
           shell: "bash",
         },
-        userEdits: [{
-          filepath: "path/to/file",
-          diff: "-hello\n+world"
-        }]}, {name: "Pochi", email: "noreply@getpochi.com"}),
+        }, {name: "Pochi", email: "noreply@getpochi.com"}),
   ).toMatchSnapshot();
 });

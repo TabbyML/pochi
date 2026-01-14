@@ -4,7 +4,7 @@ import type { ModelGroups } from "@/features/settings";
 import { ModelSelect } from "../model-select";
 
 const meta = {
-  title: "Chat/ModelSelect",
+  title: "Components/ModelSelect",
   component: ModelSelect,
   parameters: {
     layout: "centered",
@@ -102,6 +102,7 @@ export const Default: Story = {
     onChange: (v) => console.log("Selected model:", v),
     isLoading: false,
     isValid: true,
+    reloadModels: async () => console.log("Refreshing models..."),
   },
 };
 
@@ -112,6 +113,7 @@ export const LoadingState: Story = {
     onChange: (v) => console.log("Selected model:", v),
     isLoading: true,
     isValid: false,
+    reloadModels: async () => console.log("Refreshing models..."),
   },
 };
 
@@ -121,7 +123,21 @@ export const NoModels: Story = {
     value: undefined,
     onChange: (v) => console.log("Selected model:", v),
     isLoading: false,
+    isFetching: false,
     isValid: false,
+    reloadModels: async () => console.log("Refreshing models..."),
+  },
+};
+
+export const Refreshing: Story = {
+  args: {
+    models: [],
+    value: undefined,
+    onChange: (v) => console.log("Selected model:", v),
+    isLoading: false,
+    isFetching: true,
+    isValid: false,
+    reloadModels: async () => console.log("Refreshing models..."),
   },
 };
 
@@ -131,6 +147,8 @@ export const Invalid: Story = {
     value: mockModels[0].models[0],
     onChange: (v) => console.log("Selected model:", v),
     isLoading: false,
+    isFetching: false,
     isValid: false,
+    reloadModels: async () => console.log("Refreshing models..."),
   },
 };

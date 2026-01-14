@@ -9,7 +9,6 @@
     "@livestore/livestore": "catalog:",
     "@livestore/peer-deps": "catalog:",
     "@livestore/sync-cf": "catalog:",
-    "@livestore/utils": "catalog:",
     "@getpochi/livekit": "workspace:*",
     "@getpochi/common": "workspace:*",
     "@getpochi/tools": "workspace:*",

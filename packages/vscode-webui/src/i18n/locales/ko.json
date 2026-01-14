@@ -5,6 +5,10 @@
     "account": "계정",
     "help": "도움말"
   },
+  "error": {
+    "somethingWentWrong": "문제가 발생했습니다",
+    "reloadWindow": "창 새로고침"
+  },
   "placeholder": {
     "title": "무엇을 도와드릴까요?",
     "subtitle": "Pochi는 AI로 구동되므로 오류가 발생할 수 있습니다.",
@@ -53,12 +57,18 @@
     "modelUnavailable": "모델을 사용할 수 없거나 로드 중입니다.",
     "custom": "사용자 정의",
     "super": "가강",
-    "swift": "극속"
+    "swift": "극속",
+    "reload": "새로고침",
+    "subscriptionRequired": "구독 필요"
   },
   "worktreeSelect": {
     "selectWorktree": "워크트리 선택",
-    "createWorktree": "Git 워크트리 생성",
-    "createWorktreeDescription": "새 Git 워크트리에서 작업 시작"
+    "createWorktree": "워크트리 자동 생성",
+    "createWorktreeDescription": "새 Git 워크트리에서 작업 시작",
+    "switchBaseBranch": "기본 브랜치 전환",
+    "searchBranch": "브랜치 검색...",
+    "noBranchFound": "브랜치를 찾을 수 없습니다",
+    "branches": "브랜치"
   },
   "worktree": {
     "createPr": "PR 생성",
@@ -102,7 +112,8 @@
       "enablePochiModels": "Pochi 모델 활성화",
       "clearStorage": "저장소 지우기",
       "language": "언어",
-      "languageDescription": "선호하는 언어를 선택하세요"
+      "languageDescription": "선호하는 언어를 선택하세요",
+      "resetRecommendSettingsConfirmed": "Reset Recommended Settings Confirmed"
     },
     "workflows": {
       "title": "워크플로우",
@@ -216,7 +227,8 @@
       "errorPrefix": "오류:",
       "fallbackError": "오류 발생",
       "finished": "{{duration}} 만에 완료"
-    }
+    },
+    "loadMore": "더 보기"
   },
   "toolInvocation": {
     "taskCompleted": "작업 완료",
@@ -271,11 +283,16 @@
     "restoring": "복원 중...",
     "success": "성공",
     "restore": "복원",
+    "restored": "복원됨",
     "opening": "열고 있습니다...",
     "noChangesDetected": "변경 사항이 감지되지 않았습니다",
     "compare": "비교",
     "fork": "포크하기",
     "forking": "포크 중..."
+  },
+  "reviewUI": {
+    "reviews": "리뷰",
+    "submitReviews": "리뷰 제출"
   },
   "welcomeScreen": {
     "title": "시작하기",
@@ -322,7 +339,8 @@
     "noResultsFound": "결과를 찾을 수 없습니다",
     "typeToSearch": "입력하여 검색...",
     "workflow": "워크플로",
-    "agent": "에이전트"
+    "agent": "에이전트",
+    "useHashForIssues": "Github 이슈를 검색하려면 #을 사용하세요"
   },
   "subtask": {
     "back": "뒤로",
@@ -338,7 +356,8 @@
     "requirePayment": "미지불 청구서가 있습니다.",
     "makePayment": "결제하기",
     "toContinueUsingPochi": "Pochi를 계속 사용하려면",
-    "requireOrgPayment": "팀에 미지불 청구서가 있습니다."
+    "requireOrgPayment": "팀에 미지불 청구서가 있습니다.",
+    "requireSubscriptionForSuperModels": "가강 모델을 사용하려면 Pochi를 구독하세요."
   },
   "chatPage": {
     "defaultUserName": "당신"
@@ -399,5 +418,30 @@
     "undo": "실행 취소",
     "viewChanges": "변경 사항 보기",
     "openFile": "파일 열기"
+  },
+  "userEdits": {
+    "title": "편집",
+    "filesEdited_one": "{{count}}개 파일 편집됨",
+    "filesEdited_other": "{{count}}개 파일 편집됨",
+    "tooltip": "편집 내용이 추적되어 컨텍스트에 포함됩니다",
+    "showDiff": "차이 보기",
+    "diffTitle": "사용자 편집"
+  },
+  "forkTask": {
+    "forkedTaskTitle": "포크됨 원본: {{taskTitle}}"
+  },
+  "recommendSettings": {
+    "title": "Pochi가 다음 설정을 수정합니다",
+    "ok": "확인",
+    "options": {
+      "enablePochiLayout": "Pochi 레이아웃 활성화",
+      "disableAutoSave": "자동 저장 비활성화",
+      "disableCommentsOpenView": "주석 패널 자동 열기 비활성화",
+      "disableGithubCopilotCodeCompletion": "GitHub Copilot 코드 완성 비활성화"
+    }
+  },
+  "mermaid": {
+    "failedToRender": "Mermaid 차트 렌더링 실패:",
+    "fixError": "Pochi로 오류 수정"
   }
 }

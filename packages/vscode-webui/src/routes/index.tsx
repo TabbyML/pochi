@@ -2,21 +2,15 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { WelcomeScreen } from "@/components/welcome-screen";
 import { WorkspaceRequiredPlaceholder } from "@/components/workspace-required-placeholder";
 import { WorktreeList } from "@/components/worktree-list";
+import type { CreateWorktreeType } from "@/components/worktree-select";
 import { CreateTaskInput } from "@/features/chat";
 import { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
 import { useCurrentWorkspace } from "@/lib/hooks/use-current-workspace";
 import { useModelList } from "@/lib/hooks/use-model-list";
 import { useUserStorage } from "@/lib/hooks/use-user-storage";
 import { useOptimisticWorktreeDelete } from "@/lib/hooks/use-worktrees";
-import { setActiveStore } from "@/lib/vscode";
-import type { GitWorktree } from "@getpochi/common/vscode-webui-bridge";
-import { taskCatalog } from "@getpochi/livekit";
-import { useStore } from "@livestore/react";
 import { createFileRoute } from "@tanstack/react-router";
-import { TerminalIcon } from "lucide-react";
-import { useEffect, useState } from "react";
-import { useTranslation } from "react-i18next";
-import { LiveStoreTaskProvider } from "../livestore-task-provider";
+import { Suspense, useState } from "react";
 
 export const Route = createFileRoute("/")({
   validateSearch: (search: Record<string, unknown>): { page?: number } => {
@@ -51,39 +45,31 @@ function App() {
   }
 
   return (
-    <LiveStoreTaskProvider cwd={currentWorkspace.cwd}>
+    <Suspense fallback={null}>
       <Tasks />
-    </LiveStoreTaskProvider>
+    </Suspense>
   );
 }
 
 function Tasks() {
-  const { store } = useStore();
   const { data: currentWorkspace } = useCurrentWorkspace();
   const cwd = currentWorkspace?.cwd || "default";
-  const workspaceFolder = currentWorkspace?.workspaceFolder;
-  // Fetch all tasks
-  const tasks = store.useQuery(taskCatalog.queries.makeTasksQuery(cwd));
-
-  useEffect(() => {
-    setActiveStore(store);
-    return () => {
-      setActiveStore(null);
-    };
-  }, [store]);
+  const workspacePath = currentWorkspace?.workspacePath;
 
   const attachmentUpload = useAttachmentUpload();
 
-  const [userSelectedWorktree, setUserSelectedWorktree] = useState<
-    GitWorktree | undefined
-  >();
+  const [userSelectedWorktree, setUserSelectedWorktree] =
+    useState<CreateWorktreeType>();
 
   const { deleteWorktree, deletingWorktreePaths } =
     useOptimisticWorktreeDelete();
 
   const onDeleteWorktree = (wt: string) => {
     deleteWorktree(wt);
-    if (userSelectedWorktree?.path === wt) {
+    if (
+      typeof userSelectedWorktree !== "string" &&
+      userSelectedWorktree?.path === wt
+    ) {
       setUserSelectedWorktree(undefined);
     }
   };
@@ -93,44 +79,24 @@ function Tasks() {
       <div className="w-full px-4 pt-3">
         <CreateTaskInput
           cwd={cwd}
-          workspaceFolder={workspaceFolder}
+          workspacePath={workspacePath}
           attachmentUpload={attachmentUpload}
           userSelectedWorktree={userSelectedWorktree}
           setUserSelectedWorktree={setUserSelectedWorktree}
           deletingWorktreePaths={deletingWorktreePaths}
         />
       </div>
-      {tasks.length === 0 ? (
-        <EmptyTaskPlaceholder />
-      ) : (
-        <div className="min-h-0 flex-1 pt-4">
-          <ScrollArea className="h-full">
-            <div className="flex flex-col gap-4 px-4 pb-6">
-              <WorktreeList
-                deletingWorktreePaths={deletingWorktreePaths}
-                tasks={tasks}
-                onDeleteWorktree={onDeleteWorktree}
-              />
-            </div>
-          </ScrollArea>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function EmptyTaskPlaceholder() {
-  const { t } = useTranslation();
-
-  return (
-    <div className="flex h-full select-none flex-col items-center justify-center p-5 text-center text-gray-500 dark:text-gray-300">
-      <h2 className="mb-2 flex items-center gap-3 font-semibold text-2xl text-gray-700 dark:text-gray-100">
-        <TerminalIcon />
-        {t("tasksPage.emptyState.title")}
-      </h2>
-      <p className="mb-4 leading-relaxed">
-        {t("tasksPage.emptyState.description")}
-      </p>
+      <div className="min-h-0 flex-1 pt-4 [container-type:size]">
+        <ScrollArea className="h-full">
+          <div className="flex flex-col gap-4 px-4 pb-6">
+            <WorktreeList
+              cwd={cwd}
+              deletingWorktreePaths={deletingWorktreePaths}
+              onDeleteWorktree={onDeleteWorktree}
+            />
+          </div>
+        </ScrollArea>
+      </div>
     </div>
   );
 }

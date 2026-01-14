@@ -9,19 +9,25 @@ import type {
   FileDiff,
   GitWorktree,
   McpStatus,
-  NewTaskPanelParams,
+  PochiTaskParams,
   ResourceURI,
+  Review,
   RuleFile,
   SaveCheckpointOptions,
   SessionState,
   TaskChangedFile,
-  TaskPanelParams,
   TaskStates,
   WorkspaceState,
 } from "./index";
-import type { DiffCheckpointOptions } from "./types/git";
+import type {
+  CreateWorktreeOptions,
+  DiffCheckpointOptions,
+  GithubIssue,
+} from "./types/git";
+import type { ActiveSelection } from "./types/message";
 import type { DisplayModel } from "./types/model";
 import type { PochiCredentials } from "./types/pochi";
+import type { VSCodeSettings } from "./types/vscode-settings";
 
 export interface VSCodeHostApi {
   readResourceURI(): Promise<ResourceURI>;
@@ -121,12 +127,10 @@ export interface VSCodeHostApi {
     ThreadSignalSerialization<Array<{ filepath: string; isDir: boolean }>>
   >;
 
-  readPochiTasks(): Promise<ThreadSignalSerialization<TaskStates>>;
+  readPochiTabs(): Promise<ThreadSignalSerialization<TaskStates>>;
 
   readActiveSelection(): Promise<
-    ThreadSignalSerialization<
-      Environment["workspace"]["activeSelection"] | undefined
-    >
+    ThreadSignalSerialization<ActiveSelection | undefined>
   >;
 
   readVisibleTerminals(): Promise<{
@@ -155,13 +159,12 @@ export interface VSCodeHostApi {
       base64Data?: string;
       fallbackGlobPattern?: string;
       cellId?: string;
-      webviewKind?: "sidebar" | "pane";
     },
   ): void;
 
   readCurrentWorkspace(): Promise<{
     cwd: string | null;
-    workspaceFolder: string | null;
+    workspacePath: string | null;
   }>;
 
   readCustomAgents(): Promise<ThreadSignalSerialization<CustomAgentFile[]>>;
@@ -239,6 +242,8 @@ export interface VSCodeHostApi {
 
   restoreChangedFiles(files: TaskChangedFile[]): Promise<void>;
 
+  readLatestCheckpoint(): Promise<ThreadSignalSerialization<string | null>>;
+
   readCheckpointPath(): Promise<string | undefined>;
 
   /**
@@ -276,7 +281,9 @@ export interface VSCodeHostApi {
 
   readExtensionVersion(): Promise<string>;
 
-  readAutoSaveDisabled(): Promise<ThreadSignalSerialization<boolean>>;
+  readVSCodeSettings(): Promise<ThreadSignalSerialization<VSCodeSettings>>;
+
+  updateVSCodeSettings(params: Partial<VSCodeSettings>): Promise<void>;
 
   /**
    * Show an information message to users. Optionally provide an array of items which will be presented as
@@ -293,7 +300,11 @@ export interface VSCodeHostApi {
     ...items: T[]
   ): Promise<T | undefined>;
 
-  readModelList(): Promise<ThreadSignalSerialization<DisplayModel[]>>;
+  readModelList(): Promise<{
+    modelList: ThreadSignalSerialization<DisplayModel[]>;
+    isLoading: ThreadSignalSerialization<boolean>;
+    reload: () => Promise<void>;
+  }>;
 
   readUserStorage(): Promise<
     ThreadSignalSerialization<Record<string, UserInfo>>
@@ -302,11 +313,14 @@ export interface VSCodeHostApi {
   /**
    * create or open a task in a new panel
    */
-  openTaskInPanel(params: TaskPanelParams | NewTaskPanelParams): Promise<void>;
+  openTaskInPanel(
+    params: PochiTaskParams,
+    options?: { keepEditor?: boolean },
+  ): Promise<void>;
 
   sendTaskNotification(
     kind: "failed" | "completed" | "pending-tool" | "pending-input",
-    params: TaskPanelParams & { isSubTask?: boolean },
+    params: { uid: string; displayId: number | null; isSubTask?: boolean },
   ): Promise<void>;
 
   onTaskUpdated(taskData: unknown): Promise<void>;
@@ -315,16 +329,33 @@ export interface VSCodeHostApi {
 
   readWorktrees(): Promise<{
     worktrees: ThreadSignalSerialization<GitWorktree[]>;
-    ghCli: ThreadSignalSerialization<{
+    gh: ThreadSignalSerialization<{
       installed: boolean;
       authorized: boolean;
     }>;
     gitOriginUrl: string | null;
   }>;
 
-  createWorktree(): Promise<GitWorktree | null>;
+  createWorktree(options?: CreateWorktreeOptions): Promise<GitWorktree | null>;
 
   deleteWorktree(worktreePath: string): Promise<boolean>;
+
+  queryGithubIssues(query?: string): Promise<GithubIssue[]>;
+
+  readGitBranches(): Promise<string[]>;
+
+  readReviews(): Promise<ThreadSignalSerialization<Review[]>>;
+
+  clearReviews(): Promise<void>;
+
+  openReview(
+    review: Review,
+    options?: { focusCommentsPanel?: boolean; revealRange?: boolean },
+  ): Promise<void>;
+
+  readUserEdits(uid: string): Promise<ThreadSignalSerialization<FileDiff[]>>;
+
+  readTasks(): Promise<ThreadSignalSerialization<Record<string, unknown>>>;
 }
 
 export interface WebviewHostApi {
@@ -335,8 +366,6 @@ export interface WebviewHostApi {
   onAuthChanged(): void;
 
   isFocused(): Promise<boolean>;
-
-  commitTaskUpdated(event: unknown): Promise<void>;
 
   onFileChanged(filePath: string, content: string): void;
 }

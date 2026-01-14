@@ -20,6 +20,7 @@
       "private/packages/server/scripts/migrate-db-schema.ts",
       "packages/vscode/.vscode-test",
       "packages/vscode/out",
+      "packages/vscode/.wdio-vscode-service",
       "packages/vscode/src/integrations/git/git.d.ts",
       "packages/docs/**",
       "**/.wrangler",
@@ -53,7 +54,8 @@
         }
       },
       "correctness": {
-        "noUnusedImports": "error"
+        "noUnusedImports": "error",
+        "useHookAtTopLevel": "error"
       }
     }
   },

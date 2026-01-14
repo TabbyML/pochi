@@ -8,8 +8,15 @@ import { VSCodeWebProvider } from "../src/components/vscode-web-provider";
 import { ChatContextProvider } from "../src/features/chat";
 import { Providers } from "../src/providers";
 import "../src/styles.css";
+import {
+  RouterProvider,
+  createMemoryHistory,
+  createRootRoute,
+  createRouter,
+} from "@tanstack/react-router";
 import { useEffect } from "react";
 import { useTheme } from "../src/components/theme-provider";
+import { DefauleStoreOptionsProvider } from "../src/lib/use-default-store";
 
 const vscodeViewports = {
   vscodeSmall: {
@@ -34,6 +41,27 @@ const vscodeViewports = {
     },
   },
 };
+
+// Create a minimal router for Storybook
+let storybookStoryComponent: React.ComponentType | null = null;
+
+const rootRoute = createRootRoute({
+  component: () => {
+    const Component = storybookStoryComponent;
+    return (
+      <DefauleStoreOptionsProvider storeId="storybook-store" jwt={null}>
+        <ChatContextProvider>
+          <StoryWrapper>{Component ? <Component /> : null}</StoryWrapper>
+        </ChatContextProvider>
+      </DefauleStoreOptionsProvider>
+    );
+  },
+});
+
+const storybookRouter = createRouter({
+  routeTree: rootRoute,
+  history: createMemoryHistory({ initialEntries: ["/task"] }),
+});
 
 const preview: Preview = {
   parameters: {
@@ -60,13 +88,13 @@ export const decorators = [
     },
     defaultTheme: "dark",
   }),
-  (Story) => {
+  (Story: React.ComponentType) => {
+    // Update the story component for the router to render
+    storybookStoryComponent = Story;
     return (
       <Providers>
         <VSCodeWebProvider>
-          <ChatContextProvider>
-            <StoryWrapper>{Story()}</StoryWrapper>
-          </ChatContextProvider>
+          <RouterProvider router={storybookRouter} context={{}} />
         </VSCodeWebProvider>
       </Providers>
     );

@@ -12,5 +12,7 @@ tsConfigPaths.register({
 
 require("reflect-metadata");
 
+require("extensionless/register");
+
 const { register } = require("esbuild-register/dist/node");
 const { unregister } = register({});

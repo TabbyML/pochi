@@ -1,10 +1,11 @@
-import { debounceWithCachedValue } from "@/lib/debounce";
+import { asyncDebounce, debounceWithCachedValue } from "@/lib/debounce";
 import {
   fuzzySearchFiles,
   fuzzySearchSlashCandidates,
 } from "@/lib/fuzzy-search";
 import { useActiveTabs } from "@/lib/hooks/use-active-tabs";
 import { vscodeHost } from "@/lib/vscode";
+import type { GithubIssue } from "@getpochi/common/vscode-webui-bridge";
 import Document from "@tiptap/extension-document";
 import History from "@tiptap/extension-history";
 import Paragraph from "@tiptap/extension-paragraph";
@@ -27,7 +28,13 @@ import {
   MentionList,
   type MentionListProps,
 } from "./context-mention/mention-list";
+import {
+  PromptFormIssueMentionExtension,
+  issueMentionPluginKey,
+} from "./issue-mention/extension";
+
 import "./prompt-form.css";
+import type { ChatInput } from "@/features/chat";
 import { useSelectedModels } from "@/features/settings";
 import { useLatest } from "@/lib/hooks/use-latest";
 import { cn } from "@/lib/utils";
@@ -43,6 +50,10 @@ import { ArrowRightToLine } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { ScrollArea } from "../ui/scroll-area";
 import { AutoCompleteExtension } from "./auto-completion/extension";
+import {
+  IssueMentionList,
+  type IssueMentionListProps,
+} from "./issue-mention/mention-list";
 import type { MentionListActions } from "./shared";
 import {
   PromptFormSlashExtension,
@@ -60,7 +71,6 @@ const newLineCharacter = "\n";
 // Custom keyboard shortcuts extension that handles Enter key behavior
 function CustomEnterKeyHandler(
   formRef: React.RefObject<HTMLFormElement | null>,
-  onQueueSubmit?: (message: string) => void,
 ) {
   return Extension.create({
     addKeyboardShortcuts() {
@@ -74,17 +84,15 @@ function CustomEnterKeyHandler(
           ]);
         },
         "Mod-Enter": () => {
-          if (onQueueSubmit) {
-            const message = this.editor.getText();
-            if (message.trim()) {
-              onQueueSubmit(message);
-              return true;
-            }
+          if (formRef.current) {
+            formRef.current.setAttribute("submitAction", "ctrlEnter");
+            formRef.current.requestSubmit();
           }
-          return false;
+          return true;
         },
         Enter: () => {
           if (formRef.current) {
+            formRef.current.setAttribute("submitAction", "enter");
             formRef.current.requestSubmit();
           }
           return true;
@@ -95,11 +103,12 @@ function CustomEnterKeyHandler(
 }
 
 interface FormEditorProps {
-  input: string;
-  setInput: (text: string) => void;
+  input: ChatInput;
+  setInput: (input: ChatInput) => void;
   onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
-  onQueueSubmit?: (message: string) => void;
+  onCtrlSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
   isLoading: boolean;
+  editable?: boolean;
   formRef?: React.RefObject<HTMLFormElement>;
   editorRef?: React.MutableRefObject<Editor | null>;
   autoFocus?: boolean;
@@ -117,8 +126,9 @@ export function FormEditor({
   input,
   setInput,
   onSubmit,
-  onQueueSubmit,
+  onCtrlSubmit,
   isLoading,
+  editable,
   children,
   formRef: externalFormRef,
   editorRef,
@@ -144,6 +154,7 @@ export function FormEditor({
   }, [activeTabs]);
   const isFileMentionComposingRef = useRef(false);
   const isCommandMentionComposingRef = useRef(false);
+  const isIssueMentionComposingRef = useRef(false);
 
   // State for drag overlay UI
   const [isDragOver, setIsDragOver] = useState(false);
@@ -170,7 +181,7 @@ export function FormEditor({
         Placeholder.configure({
           placeholder: t("formEditor.placeholder"),
         }),
-        CustomEnterKeyHandler(formRef, onQueueSubmit),
+        CustomEnterKeyHandler(formRef),
         PromptFormMentionExtension.configure({
           suggestion: {
             char: "@",
@@ -202,6 +213,11 @@ export function FormEditor({
                 });
               };
 
+              const checkHasIssues = async () => {
+                const issues = await debouncedQueryGithubIssues();
+                return !!(issues && issues.length > 0);
+              };
+
               const updateIsComposingRef = (v: boolean) => {
                 isFileMentionComposingRef.current = v;
               };
@@ -221,6 +237,119 @@ export function FormEditor({
                   };
 
                   component = new ReactRenderer(MentionList, {
+                    props: {
+                      ...props,
+                      fetchItems,
+                      checkHasIssues,
+                    },
+                    editor: props.editor,
+                  });
+
+                  if (!tiptapProps.clientRect) {
+                    return;
+                  }
+
+                  // @ts-ignore - accessing extensionManager and methods
+                  const customExtension =
+                    props.editor.extensionManager?.extensions.find(
+                      // @ts-ignore - extension type
+                      (extension) =>
+                        extension.name === "custom-enter-key-handler",
+                    );
+
+                  popup = tippy("body", {
+                    getReferenceClientRect: tiptapProps.clientRect,
+                    appendTo: () => document.body,
+                    content: component.element,
+                    showOnCreate: true,
+                    interactive: true,
+                    trigger: "manual",
+                    placement: "top-start",
+                    offset: [0, 6],
+                    maxWidth: "none",
+                  });
+                },
+                onUpdate: (props) => {
+                  updateIsComposingRef(props.editor.view.composing);
+                  component.updateProps(props);
+                },
+                onExit: () => {
+                  destroyMention();
+                },
+                onKeyDown: (props) => {
+                  if (props.event.key === "Escape") {
+                    destroyMention();
+                    return true;
+                  }
+
+                  return component.ref?.onKeyDown(props) ?? false;
+                },
+              };
+            },
+            findSuggestionMatch: (config: Trigger): SuggestionMatch => {
+              const match = findSuggestionMatch({
+                ...config,
+                allowSpaces: isFileMentionComposingRef.current,
+              });
+              if (match?.query.startsWith("#")) {
+                return null;
+              }
+              return match;
+            },
+          },
+        }),
+        // Use the already configured PromptFormIssueMentionExtension for issue mentions
+        PromptFormIssueMentionExtension.configure({
+          suggestion: {
+            char: "@#",
+            allowSpaces: true,
+            pluginKey: issueMentionPluginKey,
+            items: async ({ query }: { query?: string }) => {
+              const issues = await debouncedQueryGithubIssues(query);
+              if (!issues) return [];
+              return issues.map((issue) => ({
+                id: issue.id.toString(),
+                title: issue.title,
+                url: issue.url,
+              }));
+            },
+            render: () => {
+              let component: ReactRenderer<
+                MentionListActions,
+                IssueMentionListProps
+              >;
+              let popup: Array<{ destroy: () => void; hide: () => void }>;
+
+              // Fetch items function for MentionList
+              const fetchItems = async (query?: string) => {
+                const issues = await debouncedQueryGithubIssues(query);
+                if (!issues) return [];
+                return issues.map((issue) => ({
+                  id: issue.id.toString(),
+                  title: issue.title,
+                  url: issue.url,
+                }));
+              };
+
+              const updateIsComposingRef = (v: boolean) => {
+                isIssueMentionComposingRef.current = v;
+              };
+
+              const destroyMention = () => {
+                popup[0].destroy();
+                component.destroy();
+                updateIsComposingRef(false);
+              };
+
+              return {
+                onStart: (props) => {
+                  updateIsComposingRef(props.editor.view.composing);
+                  const tiptapProps = props as {
+                    editor: unknown;
+                    clientRect?: () => DOMRect;
+                  };
+
+                  component = new ReactRenderer(IssueMentionList, {
                     props: {
                       ...props,
                       fetchItems,
@@ -272,7 +401,7 @@ export function FormEditor({
             findSuggestionMatch: (config: Trigger): SuggestionMatch => {
               return findSuggestionMatch({
                 ...config,
-                allowSpaces: isFileMentionComposingRef.current,
+                allowSpaces: isIssueMentionComposingRef.current,
               });
             },
           },
@@ -441,12 +570,11 @@ export function FormEditor({
         },
       },
       onUpdate(props) {
+        const json = props.editor.getJSON();
         const text = props.editor.getText({
           blockSeparator: newLineCharacter,
         });
-        if (text !== input) {
-          setInput(text);
-        }
+        setInput({ json, text });
 
         // Update current draft if we have submit history enabled
         if (
@@ -493,10 +621,28 @@ export function FormEditor({
   );
 
   useEffect(() => {
+    if (editable !== undefined) {
+      editor?.setEditable(editable);
+    }
+  }, [editor, editable]);
+
+  useEffect(() => {
     if (editorRef) {
       editorRef.current = editor;
     }
   }, [editor, editorRef]);
+
+  useEffect(() => {
+    if (
+      editor &&
+      input.text !==
+        editor.getText({
+          blockSeparator: newLineCharacter,
+        })
+    ) {
+      editor.commands.setContent(input.json);
+    }
+  }, [editor, input]);
 
   // For saving the editor content to the session state
   const saveEdtiorState = useCallback(async () => {
@@ -538,16 +684,6 @@ export function FormEditor({
     loadSessionState();
   }, [editor]);
 
-  // Update editor content when input changes
-  useEffect(() => {
-    if (
-      editor &&
-      input !== editor.getText({ blockSeparator: newLineCharacter })
-    ) {
-      editor.commands.setContent(input, true);
-    }
-  }, [editor, input]);
-
   // Auto focus the editor when the component is mounted
   useEffect(() => {
     if (autoFocus && editor) {
@@ -563,9 +699,24 @@ export function FormEditor({
 
   // Auto focus when document is focused.
   useEffect(() => {
-    window.addEventListener("focus", focusEditor);
+    const handleFocus = () => {
+      setTimeout(() => {
+        const activeElement = document.activeElement;
+        if (
+          activeElement &&
+          (activeElement.tagName === "BUTTON" ||
+            activeElement.tagName === "A" ||
+            activeElement.closest('[data-slot="tooltip-trigger"]') ||
+            activeElement.closest('[data-slot="popover-trigger"]'))
+        ) {
+          return;
+        }
+        focusEditor();
+      }, 0);
+    };
+    window.addEventListener("focus", handleFocus);
     return () => {
-      window.removeEventListener("focus", focusEditor);
+      window.removeEventListener("focus", handleFocus);
     };
   }, [focusEditor]);
 
@@ -575,9 +726,14 @@ export function FormEditor({
       if (enableSubmitHistory && editor && !editor.isDestroyed) {
         editor.commands.addToSubmitHistory(JSON.stringify(editor.getJSON()));
       }
-      onSubmit(e);
+      const submitAction = e.currentTarget.getAttribute("submitAction");
+      if (submitAction === "ctrlEnter") {
+        onCtrlSubmit(e);
+      } else {
+        onSubmit(e);
+      }
     },
-    [enableSubmitHistory, editor, onSubmit],
+    [enableSubmitHistory, editor, onSubmit, onCtrlSubmit],
   );
 
   return (
@@ -613,9 +769,9 @@ export function FormEditor({
         })}
       >
         {isAutoCompleteHintVisible && (
-          <div className="flex items-center text-muted-foreground text-xs">
+          <div className="flex flex-nowrap items-center truncate whitespace-nowrap text-muted-foreground text-xs">
             {t("formEditor.autoCompleteHintPrefix")}{" "}
-            <ArrowRightToLine className="mr-1.5 ml-0.5 size-4" />{" "}
+            <ArrowRightToLine className="mr-1.5 ml-0.5 size-4 shrink-0" />{" "}
             {t("formEditor.autoCompleteHintSuffix")}
           </div>
         )}
@@ -647,6 +803,16 @@ const debouncedListFiles = debounceWithCachedValue(
     leading: true,
   },
 );
+
+const debouncedQueryGithubIssues = asyncDebounce(async (query?: string) => {
+  try {
+    const issues = await vscodeHost.queryGithubIssues(query);
+    return issues;
+  } catch (error) {
+    console.error("Failed to query github issues", error);
+    return [] as GithubIssue[];
+  }
+}, 500);
 
 export const debouncedListSlashCommand = debounceWithCachedValue(
   async () => {

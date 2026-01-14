@@ -1,0 +1,262 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`multiple reviews with different files 1`] = `
+"The user has received code review comments from their team or review system that need to be addressed. These comments highlight issues, suggestions, or questions about specific parts of the code. Your task is to help resolve these comments by making the necessary code changes, explanations, or improvements.
+
+The code snippets provided below include surrounding context to help you understand the broader context of each comment.
+
+IMPORTANT: If you need additional context beyond the provided code snippets, use the readFile tool.
+<review>
+src/components/button.tsx:10-20:
+\`\`\`
+  const [isHovered, setIsHovered] = useState(false);
+
+  return (
+    <button
+      className={className}
+      style={{ backgroundColor: '#3b82f6' }}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      onClick={onClick}
+    >
+      {children}
+\`\`\`
+<comment location="15:2-15:45">
+Should this use the theme color instead of hardcoded values?
+</comment>
+</review>
+
+<review>
+src/api/users.ts:37-55:
+\`\`\`
+  return users.filter(u => u.active);
+}
+
+export async function fetchUserById(id: string) {
+  const response = await fetch(\`/api/users/\${id}\`);
+  const data = await response.json();
+  return data;
+}
+
+export async function updateUser(id: string, updates: UserUpdate) {
+  const response = await fetch(\`/api/users/\${id}\`, {
+\`\`\`
+<comment location="42:0-50:1">
+1. Missing error handling for failed API requests.
+2. Consider adding retry logic.
+</comment>
+</review>"
+`;
+
+exports[`review at start of file 1`] = `
+"The user has received code review comments from their team or review system that need to be addressed. These comments highlight issues, suggestions, or questions about specific parts of the code. Your task is to help resolve these comments by making the necessary code changes, explanations, or improvements.
+
+The code snippets provided below include surrounding context to help you understand the broader context of each comment.
+
+IMPORTANT: If you need additional context beyond the provided code snippets, use the readFile tool.
+<review>
+src/index.ts:0-10:
+\`\`\`
+import express from 'express';
+import cors from 'cors';
+
+const app = express();
+const port = 3000;
+
+app.use(cors());
+app.use(express.json());
+
+app.get('/', (req, res) => {
+  res.send('Hello World!');
+\`\`\`
+<comment location="1:0-1:30">
+Missing copyright header.
+</comment>
+</review>"
+`;
+
+exports[`review with code snippet containing special formatting 1`] = `
+"The user has received code review comments from their team or review system that need to be addressed. These comments highlight issues, suggestions, or questions about specific parts of the code. Your task is to help resolve these comments by making the necessary code changes, explanations, or improvements.
+
+The code snippets provided below include surrounding context to help you understand the broader context of each comment.
+
+IMPORTANT: If you need additional context beyond the provided code snippets, use the readFile tool.
+<review>
+src/formatter.ts:15-30:
+\`\`\`
+function formatMessage(user: string, count: number): string {
+  // TODO: Add i18n support
+  const template = \`User \${user} has \${count} item(s)\`;
+  return template;
+}
+
+export function logMessage(msg: string) {
+  console.log(\`[\${new Date().toISOString()}] \${msg}\`);
+}
+
+// Helper function
+\`\`\`
+<comment location="20:0-25:1">
+The string template formatting could be improved.
+</comment>
+</review>"
+`;
+
+exports[`review with large line numbers 1`] = `
+"The user has received code review comments from their team or review system that need to be addressed. These comments highlight issues, suggestions, or questions about specific parts of the code. Your task is to help resolve these comments by making the necessary code changes, explanations, or improvements.
+
+The code snippets provided below include surrounding context to help you understand the broader context of each comment.
+
+IMPORTANT: If you need additional context beyond the provided code snippets, use the readFile tool.
+<review>
+src/legacy-code.js:1518-1655:
+\`\`\`
+  // Large legacy function starts here
+  function processLegacyData(input) {
+    // ... hundreds of lines of complex logic
+    let result = {};
+    for (let i = 0; i < input.length; i++) {
+      // ... more processing
+      result[i] = transformData(input[i]);
+    }
+    // ... even more lines
+    return result;
+  }
+\`\`\`
+<comment location="1523:15-1650:3">
+This entire section should be refactored into smaller functions.
+</comment>
+</review>"
+`;
+
+exports[`review with multiline comment 1`] = `
+"The user has received code review comments from their team or review system that need to be addressed. These comments highlight issues, suggestions, or questions about specific parts of the code. Your task is to help resolve these comments by making the necessary code changes, explanations, or improvements.
+
+The code snippets provided below include surrounding context to help you understand the broader context of each comment.
+
+IMPORTANT: If you need additional context beyond the provided code snippets, use the readFile tool.
+<review>
+src/database/connection.ts:0-13:
+\`\`\`
+import { createConnection } from 'mysql2';
+
+const config = {
+  host: 'localhost',
+  user: 'admin',
+  password: 'secret'
+};
+
+export function connect() {
+  return createConnection(config);
+}
+
+function closeConnection(conn) {
+\`\`\`
+<comment location="5:0-8:2">
+This connection logic has several issues:
+1. No connection pooling
+2. Missing timeout configuration
+3. Should handle connection errors gracefully
+</comment>
+</review>"
+`;
+
+exports[`review with special characters in comment 1`] = `
+"The user has received code review comments from their team or review system that need to be addressed. These comments highlight issues, suggestions, or questions about specific parts of the code. Your task is to help resolve these comments by making the necessary code changes, explanations, or improvements.
+
+The code snippets provided below include surrounding context to help you understand the broader context of each comment.
+
+IMPORTANT: If you need additional context beyond the provided code snippets, use the readFile tool.
+<review>
+src/parser.ts:95-110:
+\`\`\`
+function parseInput(input: string): string[] {
+  const pattern = /^[a-z]+$/i;
+  if (pattern.test(input)) {
+    return input.split('');
+  }
+  return [];
+}
+
+function validatePattern(str: string) {
+  // Validation logic here
+  return str.length > 0;
+\`\`\`
+<comment location="100:10-105:5">
+The regex pattern \`/^[a-z]+$/i\` should be \`\\w+\` for better matching.
+</comment>
+</review>"
+`;
+
+exports[`single review with multiple comments 1`] = `
+"The user has received code review comments from their team or review system that need to be addressed. These comments highlight issues, suggestions, or questions about specific parts of the code. Your task is to help resolve these comments by making the necessary code changes, explanations, or improvements.
+
+The code snippets provided below include surrounding context to help you understand the broader context of each comment.
+
+IMPORTANT: If you need additional context beyond the provided code snippets, use the readFile tool.
+<review>
+src/utils/validation.ts:20-35:
+\`\`\`
+export function validateEmail(email: string): boolean {
+  return /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email);
+}
+
+export function sanitizeInput(input: string): string {
+  const trimmed = input.trim();
+  const sanitized = trimmed.replace(/<script>/gi, '');
+  return sanitized;
+}
+
+export function parseJSON(json: string) {
+\`\`\`
+<comment location="25:0-30:1">
+1. Consider adding input validation here.
+2. This could throw an error if the input is undefined.
+3. Maybe use a try-catch block?
+</comment>
+</review>"
+`;
+
+exports[`single review with single comment and range 1`] = `
+"The user has received code review comments from their team or review system that need to be addressed. These comments highlight issues, suggestions, or questions about specific parts of the code. Your task is to help resolve these comments by making the necessary code changes, explanations, or improvements.
+
+The code snippets provided below include surrounding context to help you understand the broader context of each comment.
+
+IMPORTANT: If you need additional context beyond the provided code snippets, use the readFile tool.
+<review>
+src/app.ts:5-17:
+\`\`\`
+  return data.map(item => item.value);
+}
+
+function processData(data) {
+  if (!data) {
+    return [];
+  }
+  return transform(data);
+}
+
+function transform(data) {
+\`\`\`
+<comment location="10:5-12:20">
+This function should handle edge cases for null values.
+</comment>
+</review>"
+`;
+
+exports[`single review without range 1`] = `
+"The user has received code review comments from their team or review system that need to be addressed. These comments highlight issues, suggestions, or questions about specific parts of the code. Your task is to help resolve these comments by making the necessary code changes, explanations, or improvements.
+
+The code snippets provided below include surrounding context to help you understand the broader context of each comment.
+
+IMPORTANT: If you need additional context beyond the provided code snippets, use the readFile tool.
+<review>
+README.md:0-0:
+\`\`\`
+// No code snippet available
+\`\`\`
+<comment location="">
+Please update the documentation to include setup instructions.
+</comment>
+</review>"
+`;

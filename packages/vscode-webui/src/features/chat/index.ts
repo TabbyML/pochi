@@ -19,8 +19,16 @@ export {
 // Export new tool call state management hooks
 export type { ToolCallLifeCycle } from "./lib/tool-call-life-cycle";
 
-export { ChatPage } from "./page";
+export { ChatPage, ChatSkeleton } from "./page";
 
 export { CreateTaskInput } from "./components/create-task-input";
 
-export { useTaskChangedFiles } from "./lib/use-task-changed-files";
+export {
+  useRepairMermaid,
+  type RepairMermaidOptions,
+} from "./hooks/use-repair-mermaid";
+
+export {
+  useChatInputState,
+  type ChatInput,
+} from "./hooks/use-chat-input-state";

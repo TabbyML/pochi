@@ -16,14 +16,21 @@ let JWKS: jose.JWTVerifyGetKey | null = null;
 export async function getJWKS() {
   const serverUrl = getServerBaseUrl(env.ENVIRONMENT);
   const key = `jwks:${serverUrl}`;
-  let jwks = await env.CACHE.get(key);
+  let jwks: string | null = null;
+  if (env.ENVIRONMENT !== "dev") {
+    jwks = await env.CACHE.get(key);
+  }
+
   if (!jwks) {
     const res = await fetch(new URL(`${serverUrl}/api/auth/jwks`));
     jwks = await res.text();
   }
-  await env.CACHE.put(key, jwks, {
-    expirationTtl: 60 * 60 * 24,
-  });
+
+  if (env.ENVIRONMENT !== "dev") {
+    await env.CACHE.put(key, jwks, {
+      expirationTtl: 60 * 60 * 24,
+    });
+  }
 
   return jose.createLocalJWKSet(JSON.parse(jwks));
 }

@@ -10,7 +10,7 @@ import {
 } from "@preact/signals-core";
 import { isDeepEqual, merge, mergeDeep, pick } from "remeda";
 import { getLogger } from "../base";
-import { isDev } from "../vscode-webui-bridge";
+import { isDev, isTest } from "../vscode-webui-bridge";
 import { PochiConfigFile } from "./config-file";
 import type { PochiConfig } from "./types";
 import type { VendorConfig } from "./vendor";
@@ -31,7 +31,7 @@ function prop(data: unknown, ...keys: ReadonlyArray<PropertyKey>): unknown {
 // current only allow workspace to override mcp setting
 const AllowedWorkspaceConfigKeys = ["mcp", "providers"] as const;
 
-const configFileName = isDev ? "dev-config.jsonc" : "config.jsonc";
+const configFileName = isTest || isDev ? "dev-config.jsonc" : "config.jsonc";
 
 const pochiConfigRelativePath = path.join(".pochi", configFileName);
 

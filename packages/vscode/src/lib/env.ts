@@ -98,9 +98,20 @@ export async function collectWorkflows(
   const systemInfo = getSystemInfo(cwd);
   const workspaceWorkflowsDir = getWorkflowsDirectoryUri(cwd);
 
-  const directories: { uri: vscode.Uri; isGlobal: boolean }[] = [
-    { uri: workspaceWorkflowsDir, isGlobal: false },
-  ];
+  const directories: { uri: vscode.Uri; isGlobal: boolean }[] = [];
+
+  // Check and add workspace workflows directory
+  try {
+    const stat = await vscode.workspace.fs.stat(workspaceWorkflowsDir);
+    if (stat.type === vscode.FileType.Directory) {
+      directories.push({ uri: workspaceWorkflowsDir, isGlobal: false });
+    }
+  } catch {
+    // Directory doesn't exist, skip adding it
+    logger.trace(
+      `Workspace workflows directory does not exist: ${workspaceWorkflowsDir.fsPath}`,
+    );
+  }
 
   // Add global workflow directory from home directory if enabled
   if (includeGlobalWorkflow) {
@@ -108,7 +119,17 @@ export async function collectWorkflows(
       vscode.Uri.file(systemInfo.homedir),
       ...WorkflowsDirPath,
     );
-    directories.push({ uri: globalWorkflowsDir, isGlobal: true });
+    try {
+      const stat = await vscode.workspace.fs.stat(globalWorkflowsDir);
+      if (stat.type === vscode.FileType.Directory) {
+        directories.push({ uri: globalWorkflowsDir, isGlobal: true });
+      }
+    } catch {
+      // Directory doesn't exist, skip adding it
+      logger.trace(
+        `Global workflows directory does not exist: ${globalWorkflowsDir.fsPath}`,
+      );
+    }
   }
 
   const isMarkdownFile = (name: string, type: vscode.FileType) =>

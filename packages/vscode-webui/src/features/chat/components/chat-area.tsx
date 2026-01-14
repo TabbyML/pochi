@@ -1,4 +1,5 @@
 import { EmptyChatPlaceholder } from "@/components/empty-chat-placeholder";
+import type { MermaidContext } from "@/components/message/mermaid-context";
 import { MessageList } from "@/components/message/message-list";
 import { useResourceURI } from "@/lib/hooks/use-resource-uri";
 import type { Message } from "@getpochi/livekit";
@@ -8,10 +9,13 @@ interface ChatAreaProps {
   messages: Message[];
   isLoading: boolean;
   user?: { name: string; image?: string | null };
-  messagesContainerRef: React.RefObject<HTMLDivElement | null>;
+  messagesContainerRef?: React.RefObject<HTMLDivElement | null>;
   className?: string;
   hideEmptyPlaceholder?: boolean;
   forkTask?: (commitId: string, messageId?: string) => Promise<void>;
+  hideCheckPoint?: boolean;
+  repairMermaid?: MermaidContext["repairMermaid"];
+  repairingChart?: string | null;
 }
 
 export function ChatArea({
@@ -22,6 +26,9 @@ export function ChatArea({
   className,
   hideEmptyPlaceholder,
   forkTask,
+  hideCheckPoint,
+  repairMermaid,
+  repairingChart,
 }: ChatAreaProps) {
   const resourceUri = useResourceURI();
   return (
@@ -41,6 +48,9 @@ export function ChatArea({
         containerRef={messagesContainerRef}
         className={className}
         forkTask={forkTask}
+        hideCheckPoint={hideCheckPoint}
+        repairMermaid={repairMermaid}
+        repairingChart={repairingChart}
       />
     </>
   );

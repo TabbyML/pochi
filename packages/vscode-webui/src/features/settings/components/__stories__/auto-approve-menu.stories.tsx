@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { AutoApproveMenu } from "../auto-approve-menu";
 
 const meta: Meta<typeof AutoApproveMenu> = {
-  title: "Chat/AutoApproveMenu",
+  title: "Features/Settings/AutoApproveMenu",
   component: AutoApproveMenu,
   parameters: {
     layout: "centered",
