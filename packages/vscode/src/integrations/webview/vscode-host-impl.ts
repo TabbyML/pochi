@@ -930,8 +930,16 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
 
   openTaskInPanel = async (
     params: PochiTaskParams,
-    options?: { keepEditor?: boolean },
+    options?: { keepEditor?: boolean; skipIfOpen?: boolean },
   ): Promise<void> => {
+    if (
+      options?.skipIfOpen &&
+      (params.type === "open-task" || params.type === "new-task") &&
+      params.uid &&
+      this.pochiTaskState.state.value[params.uid]
+    ) {
+      return;
+    }
     await PochiTaskEditorProvider.openTaskEditor(params, options);
   };
 
@@ -1049,17 +1057,16 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       return;
     }
 
-    if (this.pochiTaskState.state.value[uid]) {
-      return;
-    }
-
-    await this.openTaskInPanel({
-      type: "open-task",
-      uid,
-      displayId: null,
-      cwd,
-      storeId,
-    });
+    await this.openTaskInPanel(
+      {
+        type: "open-task",
+        uid,
+        displayId: null,
+        cwd,
+        storeId,
+      },
+      { skipIfOpen: true },
+    );
   };
 
   onTaskRunning = async (taskId: string): Promise<void> => {
