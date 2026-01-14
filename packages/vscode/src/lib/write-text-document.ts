@@ -18,8 +18,13 @@ export async function writeTextDocument(
   abortSignal?: AbortSignal,
 ) {
   logger.debug(`Will write to ${path}, content length: ${content.length}`);
-  const resolvedPath = resolvePath(path, cwd);
-  const fileUri = vscode.Uri.file(resolvedPath);
+  let fileUri: vscode.Uri;
+  if (path.startsWith("pochi://")) {
+    fileUri = vscode.Uri.parse(path);
+  } else {
+    const resolvedPath = resolvePath(path, cwd);
+    fileUri = vscode.Uri.file(resolvedPath);
+  }
   const fileExists = await isFileExists(fileUri);
   if (!fileExists) {
     await ensureFileDirectoryExists(fileUri);

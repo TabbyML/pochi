@@ -12,8 +12,16 @@ export const readFile: ToolFunctionType<ClientTools["readFile"]> = async (
   { path, startLine, endLine },
   { cwd, contentType },
 ) => {
-  const resolvedPath = resolvePath(path, cwd);
-  const fileUri = vscode.Uri.file(resolvedPath);
+  let resolvedPath: string;
+  let fileUri: vscode.Uri;
+
+  if (path.startsWith("pochi://")) {
+    resolvedPath = path;
+    fileUri = vscode.Uri.parse(path);
+  } else {
+    resolvedPath = resolvePath(path, cwd);
+    fileUri = vscode.Uri.file(resolvedPath);
+  }
 
   const fileBuffer = await vscode.workspace.fs.readFile(fileUri);
 
