@@ -106,6 +106,7 @@ export const tables = {
       {
         name: "idx-taskId-filePath",
         columns: ["taskId", "filePath"],
+        isUnique: true,
       },
     ],
   }),

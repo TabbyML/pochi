@@ -372,7 +372,11 @@ export interface WebviewHostApi {
 
   onFileChanged(filePath: string, content: string): void;
 
-  writeTaskFile(taskId: string, filePath: string, content: string): void;
+  writeTaskFile(
+    taskId: string,
+    filePath: string,
+    content: string,
+  ): Promise<void>;
 
-  readTaskFile(taskId: string, filePath: string): string | null;
+  readTaskFile(taskId: string, filePath: string): Promise<string | null>;
 }

@@ -140,7 +140,7 @@ function createVSCodeHost(): VSCodeHostApi {
           fileChangeEvent.emit("fileChanged", { filepath: filePath, content });
         },
 
-        writeTaskFile(taskId: string, filePath: string, content: string) {
+        async writeTaskFile(taskId: string, filePath: string, content: string) {
           if (!globalStore) {
             logger.warn("Global store not set, cannot update file");
             return;
@@ -155,7 +155,7 @@ function createVSCodeHost(): VSCodeHostApi {
           );
         },
 
-        readTaskFile(taskId: string, filePath: string) {
+        async readTaskFile(taskId: string, filePath: string) {
           if (!globalStore) {
             logger.warn("Global store not set, cannot read file");
             return null;

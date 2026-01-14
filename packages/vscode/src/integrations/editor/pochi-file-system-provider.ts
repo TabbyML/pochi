@@ -46,7 +46,7 @@ export class PochiFileSystemProvider
       throw vscode.FileSystemError.FileNotFound(uri);
     }
 
-    const content = panel.webviewHost.readTaskFile(taskId, filePath);
+    const content = await panel.webviewHost.readTaskFile(taskId, filePath);
     if (content === null) {
       throw vscode.FileSystemError.FileNotFound(uri);
     }
@@ -75,7 +75,7 @@ export class PochiFileSystemProvider
       throw vscode.FileSystemError.FileNotFound(uri);
     }
 
-    const content = panel.webviewHost.readTaskFile(taskId, filePath);
+    const content = await panel.webviewHost.readTaskFile(taskId, filePath);
     if (content === null) {
       throw vscode.FileSystemError.FileNotFound(uri);
     }
@@ -94,7 +94,7 @@ export class PochiFileSystemProvider
       return;
     }
 
-    panel.webviewHost.writeTaskFile(taskId, filePath, strContent);
+    await panel.webviewHost.writeTaskFile(taskId, filePath, strContent);
   }
 
   delete(): void {}
