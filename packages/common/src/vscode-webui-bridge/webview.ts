@@ -371,4 +371,8 @@ export interface WebviewHostApi {
   isFocused(): Promise<boolean>;
 
   onFileChanged(filePath: string, content: string): void;
+
+  writeTaskFile(taskId: string, filePath: string, content: string): void;
+
+  readTaskFile(taskId: string, filePath: string): string | null;
 }

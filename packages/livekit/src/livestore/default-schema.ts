@@ -94,6 +94,21 @@ export const tables = {
       createdAt: State.SQLite.integer({ schema: Schema.DateFromNumber }),
     },
   }),
+  files: State.SQLite.table({
+    name: "files",
+    columns: {
+      taskId: State.SQLite.text(),
+      filePath: State.SQLite.text(),
+      content: State.SQLite.text(),
+    },
+    primaryKey: ["taskId", "filePath"],
+    indexes: [
+      {
+        name: "idx-taskId-filePath",
+        columns: ["taskId", "filePath"],
+      },
+    ],
+  }),
 };
 
 export const events = {
@@ -200,6 +215,14 @@ export const events = {
       id: Schema.String,
       lineChanges: LineChanges,
       updatedAt: Schema.Date,
+    }),
+  }),
+  writeTaskFile: Events.synced({
+    name: "v1.WriteTaskFile",
+    schema: Schema.Struct({
+      taskId: Schema.String,
+      filePath: Schema.String,
+      content: Schema.String,
     }),
   }),
   updateMessages: Events.synced({
@@ -360,6 +383,14 @@ const materializers = State.SQLite.materializers(events, {
     tables.tasks.update({ title, updatedAt }).where({ id }),
   "v1.UpdateIsPublicShared": ({ id, isPublicShared, updatedAt }) =>
     tables.tasks.update({ isPublicShared, updatedAt }).where({ id }),
+  "v1.WriteTaskFile": ({ taskId, filePath, content }) =>
+    tables.files
+      .insert({
+        taskId,
+        filePath,
+        content,
+      })
+      .onConflict(["taskId", "filePath"], "replace"),
   "v1.BlobInserted": ({ checksum, mimeType, data, createdAt }) =>
     tables.blobs
       .insert({

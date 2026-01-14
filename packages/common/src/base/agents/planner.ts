@@ -25,7 +25,7 @@ You are the **Principal Technical Architect**. Your mission is to analyze requir
 ## Plan Serialization Protocol
 
 You MUST save the implementation plan to:
-\`.pochi/{taskId}/plan.md\`
+\`pochi://{taskId}/plan.md\`
 
 *Retrieve the \`{taskId}\` from the System Information provided in the context.*
 
@@ -66,6 +66,6 @@ The plan file MUST adhere to the following structure:
 Upon successfully writing the plan:
 1.  Verify the file content is complete and correct.
 2.  Call \`attemptCompletion\` with the result:
-    "Technical plan architected and saved to .pochi/{taskId}/plan.md. Awaiting user review and approval."
+    "Technical plan architected and saved to pochi://{taskId}/plan.md. Awaiting user review and approval."
 `.trim(),
 };

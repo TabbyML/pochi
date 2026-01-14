@@ -3,12 +3,21 @@ import type {
   VSCodeHostApi,
   WebviewHostApi,
 } from "@getpochi/common/vscode-webui-bridge";
+import { catalog } from "@getpochi/livekit";
 import { ThreadNestedWindow } from "@quilted/threads";
 import Emittery from "emittery";
 import type { WebviewApi } from "vscode-webview";
 import { queryClient } from "./query-client";
+import type { useDefaultStore } from "./use-default-store";
 
 const logger = getLogger("vscode");
+
+let globalStore: ReturnType<typeof useDefaultStore> | null = null;
+export function setGlobalStore(
+  store: ReturnType<typeof useDefaultStore> | null,
+) {
+  globalStore = store;
+}
 
 let vscodeApi: WebviewApi<unknown> | undefined | null = undefined;
 
@@ -129,6 +138,33 @@ function createVSCodeHost(): VSCodeHostApi {
 
         onFileChanged(filePath: string, content: string) {
           fileChangeEvent.emit("fileChanged", { filepath: filePath, content });
+        },
+
+        writeTaskFile(taskId: string, filePath: string, content: string) {
+          if (!globalStore) {
+            logger.warn("Global store not set, cannot update file");
+            return;
+          }
+
+          globalStore.commit(
+            catalog.events.writeTaskFile({
+              taskId,
+              filePath,
+              content,
+            }),
+          );
+        },
+
+        readTaskFile(taskId: string, filePath: string) {
+          if (!globalStore) {
+            logger.warn("Global store not set, cannot read file");
+            return null;
+          }
+
+          const file = globalStore.query(
+            catalog.queries.makeFileQuery(taskId, filePath),
+          );
+          return file?.content ?? null;
         },
       },
     },

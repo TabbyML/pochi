@@ -68,6 +68,7 @@ export function useLiveSubTask(
   const task = store.useQuery(catalog.queries.makeTaskQuery(uid));
   const todosRef = useRef<Todo[] | undefined>(undefined);
   const getters = useLiveChatKitGetters({
+    taskId: uid,
     todos: todosRef,
     isSubTask: true,
     modelOverride: customAgentModel,
