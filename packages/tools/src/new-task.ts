@@ -64,7 +64,7 @@ export const inputSchema = z.object({
     .string()
     .optional()
     .describe("The type of the specialized agent to use for the task."),
-  background: z
+  runAsync: z
     .boolean()
     .optional()
     .describe(
@@ -91,7 +91,7 @@ ${makeCustomAgentToolDescription(customAgents)}
 Always include a reminder in your prompt to ensure the result will be submitted through the \`attemptCompletion\` tool.
 If the task stops without submitting the result, it will return an error message.
 
-To launch a background (asynchronous) subtask, set \`background: true\` in the tool input. The parent agent will keep streaming while the child runs elsewhere; monitor its progress via \`readBackgroundJobOutput\` with the returned task ID (the tool output's \`uid\`) or through the UI notifications. Leave the flag unset to keep the legacy inline behavior.
+To launch a background (asynchronous) subtask, set \`runAsync: true\` in the tool input. The parent agent will keep streaming while the child runs elsewhere; monitor its progress via \`readBackgroundJobOutput\` with the returned task ID (the tool output's \`uid\`) or through the UI notifications. Leave the flag unset to keep the legacy inline behavior.
 
 The tool output always includes the spawned task's \`uid\`. Inline tasks return the final \`result\` when the subtask completes, while background tasks return an immediate placeholder \`result\` indicating the task has started.
 

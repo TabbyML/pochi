@@ -5,7 +5,6 @@ import {
   FixedStateChatContextProvider,
   ToolCallStatusRegistry,
 } from "@/features/chat";
-import { useBackgroundTasks } from "@/lib/hooks/use-background-tasks";
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
 import { useDefaultStore } from "@/lib/use-default-store";
 import { cn } from "@/lib/utils";
@@ -28,14 +27,14 @@ interface NewTaskToolProps extends ToolProps<"newTask"> {
 export const newTaskTool: React.FC<NewTaskToolProps> = (props) => {
   const { tool, taskThreadSource } = props;
   const uid = tool.input?._meta?.uid;
-  const isBackground = tool.input?.background;
+  const isRunAsync = tool.input?.runAsync;
 
   let taskSource: (TaskThreadSource & { parentId?: string }) | undefined =
     taskThreadSource;
 
   const inlinedTaskSource = useInlinedSubTask(tool);
 
-  if (isBackground) {
+  if (isRunAsync) {
     return <BackgroundTaskToolView {...props} uid={uid} />;
   }
 
@@ -55,28 +54,12 @@ function BackgroundTaskToolView(
 ) {
   const { tool, isExecuting, uid } = props;
   const { t } = useTranslation();
-  const { addTask } = useBackgroundTasks();
   const store = useDefaultStore();
-  const createdAtRef = useRef<number | null>(null);
   const agentType = tool.input?.agentType;
   const toolTitle = agentType ?? "Subtask";
   const description = tool.input?.description ?? "";
   const cwd = window.POCHI_TASK_INFO?.cwd;
-  const parentId = window.POCHI_TASK_INFO?.uid;
   const storeId = store.storeId;
-
-  useEffect(() => {
-    if (!uid || !cwd) return;
-    if (!createdAtRef.current) {
-      createdAtRef.current = Date.now();
-    }
-    addTask({
-      uid,
-      cwd,
-      parentId,
-      createdAt: createdAtRef.current,
-    });
-  }, [addTask, uid, cwd, parentId]);
 
   const canOpen = isVSCodeEnvironment() && !!uid && !!cwd;
   const openInTab = () => {

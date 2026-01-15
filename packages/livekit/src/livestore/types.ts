@@ -78,6 +78,7 @@ export const Git = Schema.Struct({
 export const taskInitFields = {
   id: Schema.String,
   parentId: Schema.optional(Schema.String),
+  runAsync: Schema.optional(Schema.Boolean),
   cwd: Schema.optional(Schema.String),
   createdAt: Schema.Date,
   modelId: Schema.optional(Schema.String),
@@ -85,6 +86,7 @@ export const taskInitFields = {
 
 export const taskFullFields = {
   ...taskInitFields,
+  runAsync: Schema.Boolean,
   git: Schema.optional(Git),
   shareId: Schema.optional(Schema.String),
   isPublicShared: Schema.Boolean,

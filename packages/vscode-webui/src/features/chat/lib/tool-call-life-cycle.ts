@@ -356,7 +356,7 @@ export class ManagedToolCallLifeCycle
       throw new Error("Missing uid in newTask arguments");
     }
 
-    if (args.background && isVSCodeEnvironment()) {
+    if (args.runAsync && isVSCodeEnvironment()) {
       const cwd = window.POCHI_TASK_INFO?.cwd;
       if (cwd) {
         void vscodeHost.openTaskInPanel(
@@ -478,7 +478,7 @@ export class ManagedToolCallLifeCycle
   }
 
   private onExecuteNewTask({ uid }: NewTaskReturnType) {
-    if (this.newTaskArgs?.background) {
+    if (this.newTaskArgs?.runAsync) {
       this.transitTo("execute", {
         type: "complete",
         result: {

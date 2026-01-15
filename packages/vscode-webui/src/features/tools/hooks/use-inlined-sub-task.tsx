@@ -17,7 +17,7 @@ export function useInlinedSubTask(
     todosRef,
   });
 
-  if (tool.input?.background) {
+  if (tool.input?.runAsync) {
     return undefined;
   }
 

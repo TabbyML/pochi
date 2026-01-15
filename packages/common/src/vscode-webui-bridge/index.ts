@@ -14,7 +14,6 @@ export type {
 } from "./types/execution";
 export type { ResourceURI } from "./types/common";
 export type {
-  BackgroundTaskEntry,
   SessionState,
   WorkspaceState,
 } from "./types/session";
