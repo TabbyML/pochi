@@ -64,7 +64,7 @@ function RouteComponent() {
 
   return (
     <Suspense fallback={<ChatSkeleton />}>
-      <DefauleStoreOptionsProvider storeId={storeId} jwt={jwt}>
+      <DefaultStoreOptionsProvider storeId={storeId} jwt={jwt}>
         <GlobalStoreInitializer />
         <ChatPage key={key} user={users?.pochi} uid={uid} info={info} />
       </DefaultStoreOptionsProvider>
