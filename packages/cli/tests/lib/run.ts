@@ -23,9 +23,13 @@ export function run(
     },
   });
 
+  if (result.error) {
+    throw result.error;
+  }
+
   return {
     exitCode: result.status,
-    stdout: result.stdout,
-    stderr: result.stderr,
+    stdout: result.stdout || Buffer.alloc(0),
+    stderr: result.stderr || Buffer.alloc(0),
   };
 }
