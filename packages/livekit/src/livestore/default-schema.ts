@@ -27,6 +27,7 @@ export const tables = {
       isPublicShared: State.SQLite.boolean({ default: false }),
       title: State.SQLite.text({ nullable: true }),
       parentId: State.SQLite.text({ nullable: true }),
+      runAsync: State.SQLite.boolean({ default: false }),
       status: State.SQLite.text({
         default: "pending-input",
         schema: TaskStatus,
@@ -247,6 +248,7 @@ const materializers = State.SQLite.materializers(events, {
   "v1.TaskInited": ({
     id,
     parentId,
+    runAsync,
     createdAt,
     cwd,
     initMessage,
@@ -264,6 +266,7 @@ const materializers = State.SQLite.materializers(events, {
           ? "pending-model"
           : "pending-input",
       parentId,
+      runAsync: runAsync ?? false,
       createdAt,
       cwd,
       title: initTitle,
