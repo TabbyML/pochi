@@ -257,7 +257,7 @@ async function applyPochiLayoutImpl(params: {
   const editorGroups = mainWindowTabGroups.filter(
     (group) => getTabGroupType(group.tabs) === "editor",
   );
-  const remainGroupsCount =
+  let remainGroupsCount =
     mainWindowTabGroups.length - taskGroups.length - editorGroups.length;
   logger.trace("- mainWindowTabGroups.length:", mainWindowTabGroups.length);
   logger.trace("- taskGroups.length:", taskGroups.length);
@@ -295,6 +295,7 @@ async function applyPochiLayoutImpl(params: {
       await executeVSCodeCommand("workbench.action.newGroupLeft");
     } else if (getTabGroupType(groups[0].tabs) === "empty") {
       // If 0-th group is empty, just use it
+      remainGroupsCount -= 1;
     } else {
       // Otherwise, create new empty group left
       await focusEditorGroup(0);
@@ -337,6 +338,7 @@ async function applyPochiLayoutImpl(params: {
       await executeVSCodeCommand("workbench.action.newGroupRight");
     } else if (getTabGroupType(groups[1].tabs) === "empty") {
       // If offset-th group is empty, just use it
+      remainGroupsCount -= 1;
     } else {
       // Otherwise, create new empty group right
       await focusEditorGroup(0);
