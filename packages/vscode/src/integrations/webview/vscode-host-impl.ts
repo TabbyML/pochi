@@ -12,7 +12,7 @@ import {
   getSystemInfo,
   getWorkspaceRulesFileUri,
 } from "@/lib/env";
-import { asRelativePath, isFileExists } from "@/lib/fs";
+import { asRelativePath, isFileExists, resolveFileUri } from "@/lib/fs";
 import { getLogger } from "@/lib/logger";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { ModelList } from "@/lib/model-list";
@@ -67,6 +67,7 @@ import {
   type SaveCheckpointOptions,
   type SessionState,
   type TaskChangedFile,
+  type TaskContext,
   type TaskStates,
   type VSCodeHostApi,
   type VSCodeSettings,
@@ -241,11 +242,9 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   readEnvironment = async (options: {
     isSubTask?: boolean;
     webviewKind: "sidebar" | "pane";
-    taskId?: string;
   }): Promise<Environment> => {
     const isSubTask = options.isSubTask ?? false;
     const webviewKind = options.webviewKind;
-    const taskId = options.taskId;
     const { files, isTruncated } = this.cwd
       ? await listWorkspaceFiles({
           cwd: this.cwd,
@@ -284,7 +283,6 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       info: {
         ...systemInfo,
         customRules,
-        taskId,
       },
     };
 
@@ -391,6 +389,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         toolCallId: string;
         abortSignal: ThreadAbortSignalSerialization;
         contentType?: string[];
+        taskContext?: TaskContext;
       },
     ) => {
       let tool: ToolFunctionType<Tool> | undefined;
@@ -423,6 +422,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
           toolCallId: options.toolCallId,
           cwd: this.cwd,
           contentType: options.contentType,
+          taskContext: options.taskContext,
         }),
       );
 
@@ -460,6 +460,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         toolCallId: string;
         state: "partial-call" | "call" | "result";
         abortSignal?: ThreadAbortSignalSerialization;
+        taskContext?: TaskContext;
       },
     ) => {
       const tool = ToolPreviewMap[toolName];
@@ -487,6 +488,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
           ...options,
           abortSignal,
           cwd: this.cwd,
+          taskContext: options.taskContext,
         }),
       );
     },
@@ -501,10 +503,13 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       base64Data?: string;
       fallbackGlobPattern?: string;
       cellId?: string;
+      taskContext?: TaskContext;
     },
   ) => {
     if (filePath.startsWith("pochi://")) {
-      const fileUri = vscode.Uri.parse(filePath);
+      const fileUri = resolveFileUri(filePath, {
+        taskContext: options?.taskContext,
+      });
       await vscode.commands.executeCommand("vscode.open", fileUri);
       return;
     }

@@ -16,6 +16,7 @@ import type {
   SaveCheckpointOptions,
   SessionState,
   TaskChangedFile,
+  TaskContext,
   TaskStates,
   WorkspaceState,
 } from "./index";
@@ -56,7 +57,6 @@ export interface VSCodeHostApi {
   readEnvironment(options: {
     isSubTask?: boolean;
     webviewKind: "sidebar" | "pane";
-    taskId?: string;
   }): Promise<Environment>;
 
   previewToolCall(
@@ -66,6 +66,7 @@ export interface VSCodeHostApi {
       toolCallId: string;
       state: "partial-call" | "call" | "result";
       abortSignal?: ThreadAbortSignalSerialization;
+      taskContext?: TaskContext;
     },
   ): Promise<PreviewReturnType>;
 
@@ -85,6 +86,7 @@ export interface VSCodeHostApi {
       toolCallId: string;
       abortSignal: ThreadAbortSignalSerialization;
       contentType?: string[];
+      taskContext?: TaskContext;
     },
   ): Promise<unknown>;
 
@@ -160,6 +162,7 @@ export interface VSCodeHostApi {
       base64Data?: string;
       fallbackGlobPattern?: string;
       cellId?: string;
+      taskContext?: TaskContext;
     },
   ): void;
 

@@ -1,4 +1,5 @@
 export { tool as defineClientTool } from "ai";
+import type { TaskContext } from "@getpochi/common/vscode-webui-bridge";
 import type {
   InferToolInput,
   InferToolOutput,
@@ -13,6 +14,7 @@ export type ToolFunctionType<T extends Tool> = (
   options: ToolCallOptions & {
     cwd: string;
     contentType?: string[];
+    taskContext?: TaskContext;
   },
 ) => PromiseLike<InferToolOutput<T>> | InferToolOutput<T>;
 
@@ -28,5 +30,6 @@ export type PreviewToolFunctionType<T extends Tool> = (
     state: "partial-call" | "call" | "result";
     abortSignal?: AbortSignal;
     cwd: string;
+    taskContext?: TaskContext;
   },
 ) => Promise<PreviewReturnType>;

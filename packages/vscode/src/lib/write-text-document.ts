@@ -1,5 +1,5 @@
 import { getLogger } from "@getpochi/common";
-import { resolvePath } from "@getpochi/common/tool-utils";
+import type { TaskContext } from "@getpochi/common/vscode-webui-bridge";
 import * as diff from "diff";
 import * as vscode from "vscode";
 import { compareDiagnostics, diagnosticsToProblemsString } from "./diagnostic";
@@ -7,6 +7,7 @@ import {
   createPrettyPatch,
   ensureFileDirectoryExists,
   isFileExists,
+  resolveFileUri,
 } from "./fs";
 
 const logger = getLogger("WriteTextDocument");
@@ -16,15 +17,10 @@ export async function writeTextDocument(
   content: string,
   cwd: string,
   abortSignal?: AbortSignal,
+  taskContext?: TaskContext,
 ) {
   logger.debug(`Will write to ${path}, content length: ${content.length}`);
-  let fileUri: vscode.Uri;
-  if (path.startsWith("pochi://")) {
-    fileUri = vscode.Uri.parse(path);
-  } else {
-    const resolvedPath = resolvePath(path, cwd);
-    fileUri = vscode.Uri.file(resolvedPath);
-  }
+  const fileUri = resolveFileUri(path, { cwd, taskContext });
   const fileExists = await isFileExists(fileUri);
   if (!fileExists) {
     await ensureFileDirectoryExists(fileUri);

@@ -59,8 +59,19 @@ import { useLiveChatKitGetters } from "./lib/use-live-chat-kit-getters";
 import { useSendTaskNotification } from "./lib/use-send-task-notification";
 
 export function ChatPage(props: ChatProps) {
+  const store = useDefaultStore();
+  const task = store.useQuery(catalog.queries.makeTaskQuery(props.uid));
+
+  const taskContext = useMemo(
+    () => ({
+      taskId: props.uid,
+      parentTaskId: task?.parentId ?? undefined,
+    }),
+    [props.uid, task?.parentId],
+  );
+
   return (
-    <ChatContextProvider>
+    <ChatContextProvider taskContext={taskContext}>
       <Chat {...props} />
     </ChatContextProvider>
   );
@@ -114,7 +125,6 @@ function Chat({ user, uid, info }: ChatProps) {
   const getters = useLiveChatKitGetters({
     todos: todosRef,
     isSubTask,
-    taskId: uid,
   });
 
   useRestoreTaskModel(task, isModelsLoading, updateSelectedModelId);
