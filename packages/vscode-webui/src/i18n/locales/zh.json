@@ -448,5 +448,13 @@
   "mermaid": {
     "failedToRender": "渲染 Mermaid 图表失败：",
     "fixError": "使用 Pochi 修复错误"
+  },
+  "planner": {
+    "noPlanYet": "尚未生成计划。",
+    "askToGenerate": "请让规划器生成计划。",
+    "editPlan": "编辑计划",
+    "executePlan": "执行计划",
+    "executePrompt": "请执行计划。",
+    "plan": "计划"
   }
 }

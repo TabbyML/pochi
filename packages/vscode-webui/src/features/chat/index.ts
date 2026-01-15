@@ -32,3 +32,7 @@ export {
   useChatInputState,
   type ChatInput,
 } from "./hooks/use-chat-input-state";
+
+export { ChatArea } from "./components/chat-area";
+export { ChatToolbar } from "./components/chat-toolbar";
+export type { SubtaskInfo } from "./hooks/use-subtask-info";
