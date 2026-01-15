@@ -76,18 +76,18 @@ export const Git = Schema.Struct({
 });
 
 /**
- * Per-task MCP tool configuration.
+ * Per-task MCP configuration override.
  * Key = server name, presence indicates server is enabled for this task.
  * disabledTools = list of tool names to exclude from that server.
  */
-export const TaskMcpTools = Schema.Record({
+export const McpConfigOverride = Schema.Record({
   key: Schema.String,
   value: Schema.Struct({
     disabledTools: Schema.Array(Schema.String),
   }),
 });
 
-export type TaskMcpTools = typeof TaskMcpTools.Type;
+export type McpConfigOverride = typeof McpConfigOverride.Type;
 
 export const taskInitFields = {
   id: Schema.String,
@@ -95,7 +95,6 @@ export const taskInitFields = {
   cwd: Schema.optional(Schema.String),
   createdAt: Schema.Date,
   modelId: Schema.optional(Schema.String),
-  mcpTools: Schema.optional(TaskMcpTools),
 };
 
 export const taskFullFields = {

@@ -10,7 +10,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
-import type { TaskMcpTools } from "@getpochi/common/vscode-webui-bridge";
+import type { McpConfigOverride } from "@getpochi/common/vscode-webui-bridge";
 import {
   Blocks,
   CheckIcon,
@@ -36,12 +36,12 @@ interface CoreActionSetting {
 
 interface AutoApproveMenuProps {
   isSubTask: boolean;
-  taskMcpTools?: TaskMcpTools;
+  mcpConfigOverride?: McpConfigOverride;
 }
 
 export function AutoApproveMenu({
   isSubTask,
-  taskMcpTools,
+  mcpConfigOverride,
 }: AutoApproveMenuProps) {
   const { t } = useTranslation();
   const {
@@ -269,8 +269,11 @@ export function AutoApproveMenu({
                   {setting.label}
                 </span>
               </label>
-              {taskMcpTools && (
-                <McpServerList taskMcpTools={taskMcpTools} className="ml-8" />
+              {mcpConfigOverride && (
+                <McpServerList
+                  mcpConfigOverride={mcpConfigOverride}
+                  className="ml-8"
+                />
               )}
             </div>
           ))}

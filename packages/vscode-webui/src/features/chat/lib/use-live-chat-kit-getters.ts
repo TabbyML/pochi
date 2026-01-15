@@ -17,7 +17,7 @@ import {
   buildInstructionsFromConnections,
   buildToolsetFromConnections,
 } from "@getpochi/common/vscode-webui-bridge";
-import type { TaskMcpTools } from "@getpochi/common/vscode-webui-bridge";
+import type { McpConfigOverride } from "@getpochi/common/vscode-webui-bridge";
 import type { LLMRequestData } from "@getpochi/livekit";
 import type { Todo } from "@getpochi/tools";
 import { useCallback } from "react";
@@ -26,20 +26,20 @@ export function useLiveChatKitGetters({
   todos,
   isSubTask,
   modelOverride,
-  mcpTools,
+  mcpConfigOverride,
 }: {
   todos: React.RefObject<Todo[] | undefined>;
   isSubTask: boolean;
   modelOverride?: DisplayModel;
   /** Per-task MCP tool configuration. If provided, filters the global toolset. */
-  mcpTools?: TaskMcpTools | null;
+  mcpConfigOverride?: McpConfigOverride | null;
 }) {
   const { toolset, instructions, connections } = useMcp();
   const mcpInfo = useLatest({
     toolset,
     instructions,
     connections,
-    mcpTools,
+    mcpConfigOverride,
   });
   const llm = useLLM({ isSubTask, modelOverride });
 
@@ -66,21 +66,22 @@ export function useLiveChatKitGetters({
 
     // biome-ignore lint/correctness/useExhaustiveDependencies(mcpInfo.current): mcpInfo is ref.
     getMcpInfo: useCallback(() => {
-      const { toolset, instructions, connections, mcpTools } = mcpInfo.current;
+      const { toolset, instructions, connections, mcpConfigOverride } =
+        mcpInfo.current;
 
-      // If no per-task mcpTools, return global state
-      if (!mcpTools) {
+      // If no per-task mcpConfigOverride, return global state
+      if (!mcpConfigOverride) {
         return { toolset, instructions };
       }
 
       const filteredConnections: typeof connections = {};
 
       for (const [serverName, connection] of Object.entries(connections)) {
-        if (!mcpTools[serverName]) {
+        if (!mcpConfigOverride[serverName]) {
           continue;
         }
 
-        const serverConfig = mcpTools[serverName];
+        const serverConfig = mcpConfigOverride[serverName];
         const serverTools = connection.tools;
 
         const newConn = { ...connection };

@@ -22,7 +22,7 @@ export type {
   ChangedFileContent,
   TaskState,
   TaskStates,
-  TaskMcpTools,
+  McpConfigOverride,
 } from "./types/task";
 export type {
   VSCodeLmModel,

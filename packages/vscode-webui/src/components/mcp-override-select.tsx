@@ -19,24 +19,21 @@ import {
 import { useMcp } from "@/lib/hooks/use-mcp";
 import { cn } from "@/lib/utils";
 import type { McpServerConnection } from "@getpochi/common/mcp-utils";
-import type { TaskMcpTools } from "@getpochi/common/vscode-webui-bridge";
+import type { McpConfigOverride } from "@getpochi/common/vscode-webui-bridge";
 import { DropdownMenuPortal } from "@radix-ui/react-dropdown-menu";
 import { Settings2Icon, WrenchIcon } from "lucide-react";
-
 import { useTranslation } from "react-i18next";
-
-
 
 interface McpToolSelectProps {
   triggerClassName?: string;
-  taskMcpTools: TaskMcpTools;
+  mcpConfigOverride: McpConfigOverride;
   onToggleServer: (serverName: string) => void;
   resetMcpTools: () => void;
 }
 
 export function McpToolSelect({
   triggerClassName,
-  taskMcpTools,
+  mcpConfigOverride,
   onToggleServer,
   resetMcpTools,
 }: McpToolSelectProps) {
@@ -55,8 +52,6 @@ export function McpToolSelect({
   const serverNames = Object.keys(userConnections);
   const hasServers = serverNames.length > 0;
 
-
-
   return (
     <LoadingWrapper
       loading={isLoading}
@@ -67,7 +62,13 @@ export function McpToolSelect({
       }
     >
       <div className="h-6 select-none overflow-hidden">
-        <DropdownMenu onOpenChange={(isOpen) => isOpen && resetMcpTools()}>
+        <DropdownMenu
+          onOpenChange={(isOpen) =>
+            isOpen &&
+            Object.keys(mcpConfigOverride).length === 0 &&
+            resetMcpTools()
+          }
+        >
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -93,7 +94,6 @@ export function McpToolSelect({
                   {hasServers
                     ? t("mcpSelect.servers")
                     : t("mcpSelect.noServersConfigured")}
-
                 </p>
               </TooltipContent>
             </Tooltip>
@@ -110,13 +110,12 @@ export function McpToolSelect({
                 <div className="p-2">
                   {hasServers ? (
                     <>
-
                       {serverNames.map((name) => (
                         <McpServerItem
                           key={name}
                           name={name}
                           connection={userConnections[name]}
-                          isServerEnabledForTask={name in taskMcpTools}
+                          isServerEnabledForTask={name in mcpConfigOverride}
                           onToggleServer={() => onToggleServer(name)}
                         />
                       ))}

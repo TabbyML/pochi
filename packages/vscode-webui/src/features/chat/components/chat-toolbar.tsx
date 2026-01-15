@@ -29,7 +29,7 @@ import { useTaskChangedFiles } from "@/lib/hooks/use-task-changed-files";
 import { cn, tw } from "@/lib/utils";
 import type { UseChatHelpers } from "@ai-sdk/react";
 import { constants } from "@getpochi/common";
-import type { Message, Task } from "@getpochi/livekit";
+import type { McpConfigOverride, Message, Task } from "@getpochi/livekit";
 import type { Todo } from "@getpochi/tools";
 import { PaperclipIcon, SendHorizonal, StopCircleIcon } from "lucide-react";
 import type React from "react";
@@ -70,6 +70,7 @@ interface ChatToolbarProps {
   onUpdateIsPublicShared?: (isPublicShared: boolean) => void;
   taskId: string;
   isRepairingMermaid?: boolean;
+  mcpConfigOverride?: McpConfigOverride;
 }
 
 export const ChatToolbar: React.FC<ChatToolbarProps> = ({
@@ -85,6 +86,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   onUpdateIsPublicShared,
   taskId,
   isRepairingMermaid = false,
+  mcpConfigOverride,
 }) => {
   const { t } = useTranslation();
 
@@ -306,7 +308,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
       )}
       <AutoApproveMenu
         isSubTask={isSubTask}
-        taskMcpTools={task?.mcpTools ?? undefined}
+        mcpConfigOverride={mcpConfigOverride}
       />
       {files.length > 0 && (
         <AttachmentPreviewList

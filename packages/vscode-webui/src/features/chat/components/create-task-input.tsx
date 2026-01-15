@@ -1,5 +1,5 @@
 import { AttachmentPreviewList } from "@/components/attachment-preview-list";
-import { McpToolSelect } from "@/components/mcp-tool-select";
+import { McpToolSelect } from "@/components/mcp-override-select";
 import { ModelSelect } from "@/components/model-select";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,8 +15,8 @@ import {
 import { useSelectedModels, useSettingsStore } from "@/features/settings";
 import type { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
+import { useMcpConfigOverride } from "@/lib/hooks/use-mcp-config-override";
 import { useTaskInputDraft } from "@/lib/hooks/use-task-input-draft";
-import { useTaskMcpTools } from "@/lib/hooks/use-task-mcp-tools";
 import { useWorktrees } from "@/lib/hooks/use-worktrees";
 import { vscodeHost } from "@/lib/vscode";
 import type { GitWorktree, Review } from "@getpochi/common/vscode-webui-bridge";
@@ -49,11 +49,11 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
   const { t } = useTranslation();
   const { draft: input, setDraft: setInput, clearDraft } = useTaskInputDraft();
   const {
-    globalMcpTools,
-    mcpTools,
+    globalMcpConfig,
+    mcpConfigOverride,
     toggleServer,
     reset: resetMcpTools,
-  } = useTaskMcpTools();
+  } = useMcpConfigOverride();
   const {
     groupedModels,
     selectedModel,
@@ -167,7 +167,10 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
         cwd: worktree && typeof worktree === "object" ? worktree.path : cwd,
         prompt: content,
         files: uploadedFiles,
-        mcpTools: Object.keys(mcpTools).length > 0 ? mcpTools : globalMcpTools,
+        mcpConfigOverride:
+          Object.keys(mcpConfigOverride).length > 0
+            ? mcpConfigOverride
+            : globalMcpConfig,
       });
 
       // Clear files if they were uploaded
@@ -187,9 +190,9 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
       baseBranch,
       clearFiles,
       clearDraft,
-      mcpTools,
+      mcpConfigOverride,
       resetMcpTools,
-      globalMcpTools,
+      globalMcpConfig,
     ],
   );
 
@@ -346,7 +349,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
             />
           )}
           <McpToolSelect
-            taskMcpTools={mcpTools}
+            mcpConfigOverride={mcpConfigOverride}
             onToggleServer={toggleServer}
             resetMcpTools={resetMcpTools}
           />

@@ -1,13 +1,16 @@
 import { cn } from "@/lib/utils";
-import type { TaskMcpTools } from "@getpochi/common/vscode-webui-bridge";
+import type { McpConfigOverride } from "@getpochi/common/vscode-webui-bridge";
 
 interface McpServerListProps {
-  taskMcpTools: TaskMcpTools;
+  mcpConfigOverride: McpConfigOverride;
   className?: string;
 }
 
-export function McpServerList({ taskMcpTools, className }: McpServerListProps) {
-  const serverNames = Object.keys(taskMcpTools);
+export function McpServerList({
+  mcpConfigOverride,
+  className,
+}: McpServerListProps) {
+  const serverNames = Object.keys(mcpConfigOverride);
 
   if (serverNames.length === 0) {
     return null;

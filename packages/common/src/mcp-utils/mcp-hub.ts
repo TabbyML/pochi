@@ -3,10 +3,7 @@ import { type Signal, batch, computed, signal } from "@preact/signals-core";
 import * as R from "remeda";
 import { getLogger } from "../base";
 import type { McpServerConfig } from "../configuration";
-import {
-  inspectPochiConfig,
-  updatePochiConfig,
-} from "../configuration";
+import { inspectPochiConfig, updatePochiConfig } from "../configuration";
 import {
   buildInstructionsFromConnections,
   buildToolsetFromConnections,

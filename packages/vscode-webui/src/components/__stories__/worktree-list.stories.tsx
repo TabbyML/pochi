@@ -98,7 +98,6 @@ const mockTasks = [
     modelId: null,
     displayId: 1,
     lastCheckpointHash: null,
-    mcpTools: null,
   },
   {
     id: "task-2",
@@ -120,7 +119,6 @@ const mockTasks = [
     modelId: null,
     displayId: 2,
     lastCheckpointHash: null,
-    mcpTools: null,
   },
   {
     id: "task-3",
@@ -142,7 +140,6 @@ const mockTasks = [
     modelId: null,
     displayId: 3,
     lastCheckpointHash: null,
-    mcpTools: null,
   },
 ] satisfies Task[];
 const mockGh = {

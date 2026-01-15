@@ -1,12 +1,12 @@
 import type { McpServerConnection } from "@getpochi/common/mcp-utils";
-import type { TaskMcpTools } from "@getpochi/common/vscode-webui-bridge";
+import type { McpConfigOverride } from "@getpochi/common/vscode-webui-bridge";
 import { useCallback, useMemo, useState } from "react";
 import { useMcp } from "./use-mcp";
 
-const buildToolsFromConnections = (
+const buildConfigFromConnections = (
   connections: Record<string, McpServerConnection>,
 ) => {
-  const initial: TaskMcpTools = {};
+  const initial: McpConfigOverride = {};
   for (const [serverName, connection] of Object.entries(connections)) {
     if (
       connection.kind === undefined &&
@@ -23,17 +23,19 @@ const buildToolsFromConnections = (
   return initial;
 };
 
-export function useTaskMcpTools() {
-  const [mcpTools, setMcpTools] = useState<TaskMcpTools>({});
+export function useMcpConfigOverride() {
+  const [mcpConfigOverride, setMcpConfigOverride] = useState<McpConfigOverride>(
+    {},
+  );
 
   const { connections } = useMcp();
 
-  const globalMcpTools = useMemo(() => {
-    return buildToolsFromConnections(connections);
+  const globalMcpConfig = useMemo(() => {
+    return buildConfigFromConnections(connections);
   }, [connections]);
 
   const toggleServer = useCallback((serverName: string) => {
-    setMcpTools((prev) => {
+    setMcpConfigOverride((prev) => {
       const next = { ...prev };
       if (serverName in next) {
         delete next[serverName];
@@ -45,7 +47,7 @@ export function useTaskMcpTools() {
   }, []);
 
   const toggleTool = useCallback((serverName: string, toolName: string) => {
-    setMcpTools((prev) => {
+    setMcpConfigOverride((prev) => {
       const serverConfig = prev[serverName];
       if (!serverConfig) {
         return prev;
@@ -66,12 +68,12 @@ export function useTaskMcpTools() {
   }, []);
 
   const reset = useCallback(() => {
-    setMcpTools(globalMcpTools);
-  }, [globalMcpTools]);
+    setMcpConfigOverride(globalMcpConfig);
+  }, [globalMcpConfig]);
 
   return {
-    globalMcpTools,
-    mcpTools,
+    globalMcpConfig,
+    mcpConfigOverride,
     toggleServer,
     toggleTool,
     reset,

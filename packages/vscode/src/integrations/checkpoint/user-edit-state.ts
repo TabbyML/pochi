@@ -8,7 +8,7 @@ import * as runExclusive from "run-exclusive";
 import { Lifecycle, injectable, scoped } from "tsyringe";
 import * as vscode from "vscode";
 // biome-ignore lint/style/useImportType: needed for dependency injection
-import { PochiTaskState } from "../editor/pochi-task-state";
+import { PochiTaskTabState } from "../editor/pochi-task-state";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { CheckpointService } from "./checkpoint-service";
 
@@ -26,7 +26,7 @@ export class UserEditState implements vscode.Disposable {
   constructor(
     private readonly workspaceScope: WorkspaceScope,
     private readonly checkpointService: CheckpointService,
-    private readonly pochiTaskState: PochiTaskState,
+    private readonly pochiTaskState: PochiTaskTabState,
   ) {
     this.setupEventListeners();
   }

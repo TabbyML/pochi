@@ -5,10 +5,10 @@ export type FileUIPart = {
 };
 
 /**
- * Per-task MCP tool configuration.
+ * Per-task MCP configuration override.
  * Key = server name, presence indicates server is enabled for this task.
  */
-export type TaskMcpTools = {
+export type McpConfigOverride = {
   [serverName: string]: {
     disabledTools: readonly string[];
   };
@@ -20,13 +20,13 @@ export type PochiTaskParams = { cwd: string } & (
       uid?: string;
       prompt?: string;
       files?: FileUIPart[];
-      mcpTools?: TaskMcpTools;
+      mcpConfigOverride?: McpConfigOverride;
     }
   | {
       type: "fork-task";
       messages: string;
       title: string;
-      mcpTools?: TaskMcpTools;
+      mcpConfigOverride?: McpConfigOverride;
     }
   | {
       type: "compact-task";
