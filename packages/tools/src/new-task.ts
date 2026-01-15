@@ -91,9 +91,9 @@ ${makeCustomAgentToolDescription(customAgents)}
 Always include a reminder in your prompt to ensure the result will be submitted through the \`attemptCompletion\` tool.
 If the task stops without submitting the result, it will return an error message.
 
-To launch a background (asynchronous) subtask, set \`runAsync: true\` in the tool input. The parent agent will keep streaming while the child runs elsewhere; monitor its progress via \`readBackgroundJobOutput\` with the returned task ID (the tool output's \`uid\`) or through the UI notifications. Leave the flag unset to keep the legacy inline behavior.
+To launch a background (asynchronous) subtask, set \`runAsync: true\` in the tool input. The parent agent will keep streaming while the child runs elsewhere; monitor its progress via \`readBackgroundJobOutput\` with the returned task ID (the tool output's \`result\`) or through the UI notifications. Leave the flag unset to keep the legacy inline behavior.
 
-The tool output always includes the spawned task's \`uid\`. Inline tasks return the final \`result\` when the subtask completes, while background tasks return an immediate placeholder \`result\` indicating the task has started.
+The tool output is a single \`result\` string. Inline tasks return the final \`result\` when the subtask completes. Background tasks return an immediate \`result\` containing the spawned task's \`uid\`.
 
 When NOT to use the newTask tool:
 - If you want to read a specific file path, use the readFile or globFiles tool instead of the newTask tool, to find the match more quickly
@@ -112,15 +112,10 @@ Usage notes:
       `.trim(),
     inputSchema,
     outputSchema: z.object({
-      uid: z
-        .string()
-        .describe(
-          "The unique identifier of the spawned subtask. Use this with readBackgroundJobOutput.",
-        ),
       result: z
         .string()
         .describe(
-          "The result of the task, submitted through the `attemptCompletion` tool.",
+          "The task result. For async tasks, this contains the spawned task uid; otherwise it is the completion result.",
         ),
     }),
   });

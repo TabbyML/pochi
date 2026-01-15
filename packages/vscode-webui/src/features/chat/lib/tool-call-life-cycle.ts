@@ -27,7 +27,7 @@ type ExecuteCommandReturnType = {
 };
 type NewTaskParameterType = InferToolInput<ClientTools["newTask"]>;
 type NewTaskReturnType = {
-  uid: string;
+  result: string;
 };
 type ExecuteReturnType = ExecuteCommandReturnType | NewTaskReturnType | unknown;
 
@@ -372,7 +372,7 @@ export class ManagedToolCallLifeCycle
       }
     }
 
-    return Promise.resolve({ uid });
+    return Promise.resolve({ result: uid });
   }
 
   addResult(result: unknown): void {
@@ -477,13 +477,17 @@ export class ManagedToolCallLifeCycle
     });
   }
 
-  private onExecuteNewTask({ uid }: NewTaskReturnType) {
+  private onExecuteNewTask({ result }: NewTaskReturnType) {
+    const uid = this.newTaskArgs?._meta?.uid ?? result;
+    if (!uid) {
+      throw new Error("Missing uid in newTask result");
+    }
+
     if (this.newTaskArgs?.runAsync) {
       this.transitTo("execute", {
         type: "complete",
         result: {
-          uid,
-          result: "Background task started",
+          result: uid,
         },
         reason: "execute-finish",
       });
@@ -546,7 +550,6 @@ export class ManagedToolCallLifeCycle
         this.state.type === "execute:streaming"
       ) {
         const result = {
-          uid,
           result: extractTaskResult(this.store, uid),
         };
         this.transitTo("execute:streaming", {
