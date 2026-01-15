@@ -9,7 +9,6 @@ export type {
   DataParts,
   LiveKitStore,
 } from "./types";
-export type { McpConfigOverride } from "./livestore/types";
 
 export const StoreBlobProtocol = "store-blob:";
 export { processContentOutput, fileToUri } from "./store-blob";
