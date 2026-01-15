@@ -240,6 +240,8 @@
   },
   "toolInvocation": {
     "taskCompleted": "タスク完了",
+    "backgroundTaskStarted": "バックグラウンドタスクを開始しました",
+    "openTask": "開く",
     "reading": "読み込み中 ",
     "writing": "書き込み中 ",
     "continue": "続行",

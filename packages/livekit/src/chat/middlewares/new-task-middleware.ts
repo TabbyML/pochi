@@ -100,6 +100,7 @@ export function createNewTaskMiddleware(
                   id: uid,
                   cwd,
                   parentId: parentTaskId,
+                  runAsync: args.runAsync ?? false,
                   createdAt: new Date(),
                   initMessages: [
                     {

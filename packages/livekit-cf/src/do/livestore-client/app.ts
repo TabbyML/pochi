@@ -134,6 +134,9 @@ function inlineSubTasks(
     const partsWithSubtasks = uiMessage.parts.map((part) => {
       if (part.type === "tool-newTask" && part.state !== "input-streaming") {
         const input = part.input as InferToolInput<ClientTools["newTask"]>;
+        if (input.runAsync) {
+          return part;
+        }
         const subtask = subtasks.find(
           (t) => t.clientTaskId === input._meta?.uid,
         );

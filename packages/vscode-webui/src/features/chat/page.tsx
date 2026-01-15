@@ -301,6 +301,7 @@ function Chat({ user, uid, info }: ChatProps) {
       vscodeHost.onTaskUpdated(
         Schema.encodeSync(catalog.tables.tasks.rowSchema)({
           ...task,
+          runAsync: task.runAsync ?? false,
           pendingToolCalls,
         }),
       );

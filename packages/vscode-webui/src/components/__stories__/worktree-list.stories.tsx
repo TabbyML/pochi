@@ -97,6 +97,7 @@ const mockTasks = [
     updatedAt: new Date("2025-12-15T10:00:00Z"),
     modelId: null,
     displayId: 1,
+    runAsync: null,
     lastCheckpointHash: null,
   },
   {
@@ -118,6 +119,7 @@ const mockTasks = [
     updatedAt: new Date("2025-12-15T10:02:00Z"),
     modelId: null,
     displayId: 2,
+    runAsync: null,
     lastCheckpointHash: null,
   },
   {
@@ -139,6 +141,7 @@ const mockTasks = [
     updatedAt: new Date("2025-12-15T10:05:00Z"),
     modelId: null,
     displayId: 3,
+    runAsync: null,
     lastCheckpointHash: null,
   },
 ] satisfies Task[];
