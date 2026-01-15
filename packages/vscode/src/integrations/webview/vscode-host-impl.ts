@@ -936,22 +936,8 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     options?: {
       keepEditor?: boolean;
       preserveFocus?: boolean;
-      autoOpen?: boolean;
     },
   ): Promise<void> => {
-    // autoOpen: false = never open; autoOpen: true = gated by config; undefined = manual open
-    if (options?.autoOpen === false) {
-      return;
-    }
-    if (options?.autoOpen) {
-      const autoOpen =
-        this.pochiConfiguration.advancedSettings.value.backgroundTasks
-          ?.autoOpen ?? true;
-      if (!autoOpen) {
-        return;
-      }
-    }
-
     if (
       options?.preserveFocus &&
       (params.type === "open-task" || params.type === "new-task") &&
