@@ -32,20 +32,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ToolProps } from "../components/types";
 
 export function useLiveSubTask(
-  {
-    tool,
-    isExecuting,
-    forceStart = false,
-  }: Pick<ToolProps<"newTask">, "tool" | "isExecuting"> & {
-    forceStart?: boolean;
-  },
+  { tool, isExecuting }: Pick<ToolProps<"newTask">, "tool" | "isExecuting">,
   toolCallStatusRegistry: ToolCallStatusRegistry,
 ): (TaskThreadSource & { parentId: string }) | undefined {
   const lifecycle = useToolCallLifeCycle().getToolCallLifeCycle({
     toolName: getToolName(tool),
     toolCallId: tool.toolCallId,
   });
-  const shouldExecute = isExecuting || forceStart;
+  const shouldExecute = isExecuting;
 
   const { customAgent, customAgentModel } = useCustomAgent(
     tool.state !== "input-streaming" ? tool.input?.agentType : undefined,
@@ -53,26 +47,9 @@ export function useLiveSubTask(
 
   const abortController = useRef(new AbortController());
 
-  const localStreamingResultRef = useRef<
-    Extract<ToolCallLifeCycle["streamingResult"], { toolName: "newTask" }>
-  >({
-    toolName: "newTask",
-    abortSignal: abortController.current.signal,
-    throws: () => {},
-  });
-
   const getStreamingResult = useCallback(() => {
-    const streamingResult = ensureNewTaskStreamingResult(
-      lifecycle.streamingResult,
-    );
-    if (streamingResult) {
-      return streamingResult;
-    }
-    if (forceStart) {
-      return localStreamingResultRef.current;
-    }
-    return undefined;
-  }, [forceStart, lifecycle.streamingResult]);
+    return ensureNewTaskStreamingResult(lifecycle.streamingResult);
+  }, [lifecycle.streamingResult]);
 
   useEffect(() => {
     const streamingResult = getStreamingResult();
@@ -320,7 +297,7 @@ export function useLiveSubTask(
   useInitAutoStart({
     start: retry,
     enabled:
-      (tool.state === "input-available" || forceStart) &&
+      tool.state === "input-available" &&
       shouldExecute &&
       currentStepCount <= SubtaskMaxStep &&
       !abortController.current.signal.aborted &&

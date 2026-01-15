@@ -28,6 +28,7 @@ type ExecuteCommandReturnType = {
 type NewTaskParameterType = InferToolInput<ClientTools["newTask"]>;
 type NewTaskReturnType = {
   result: string;
+  runAsync: boolean;
 };
 type ExecuteReturnType = ExecuteCommandReturnType | NewTaskReturnType | unknown;
 
@@ -162,7 +163,6 @@ export class ManagedToolCallLifeCycle
   implements ToolCallLifeCycle
 {
   private state: ToolCallState;
-  private newTaskArgs?: NewTaskParameterType;
   readonly toolName: string;
   readonly toolCallId: string;
 
@@ -322,8 +322,7 @@ export class ManagedToolCallLifeCycle
     let executePromise: Promise<unknown>;
 
     if (this.toolName === "newTask") {
-      this.newTaskArgs = args as NewTaskParameterType;
-      executePromise = this.runNewTask(this.newTaskArgs);
+      executePromise = this.runNewTask(args as NewTaskParameterType);
     } else {
       executePromise = vscodeHost.executeToolCall(this.toolName, args, {
         toolCallId: this.toolCallId,
@@ -356,7 +355,8 @@ export class ManagedToolCallLifeCycle
       throw new Error("Missing uid in newTask arguments");
     }
 
-    if (args.runAsync && isVSCodeEnvironment()) {
+    const runAsync = !!args.runAsync;
+    if (runAsync && isVSCodeEnvironment()) {
       const cwd = window.POCHI_TASK_INFO?.cwd;
       if (cwd) {
         void vscodeHost.openTaskInPanel(
@@ -372,7 +372,7 @@ export class ManagedToolCallLifeCycle
       }
     }
 
-    return Promise.resolve({ result: uid });
+    return Promise.resolve({ result: uid, runAsync });
   }
 
   addResult(result: unknown): void {
@@ -477,13 +477,13 @@ export class ManagedToolCallLifeCycle
     });
   }
 
-  private onExecuteNewTask({ result }: NewTaskReturnType) {
-    const uid = this.newTaskArgs?._meta?.uid ?? result;
+  private onExecuteNewTask({ result, runAsync }: NewTaskReturnType) {
+    const uid = result;
     if (!uid) {
       throw new Error("Missing uid in newTask result");
     }
 
-    if (this.newTaskArgs?.runAsync) {
+    if (runAsync) {
       this.transitTo("execute", {
         type: "complete",
         result: {
