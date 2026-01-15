@@ -3,7 +3,7 @@ import type { TaskMcpTools } from "@getpochi/common/vscode-webui-bridge";
 import { useCallback, useState } from "react";
 import { useMcp } from "./use-mcp";
 
-export const buildToolsFromConnections = (
+const buildToolsFromConnections = (
   connections: Record<string, McpServerConnection>,
 ) => {
   const initial: TaskMcpTools = {};
@@ -64,7 +64,6 @@ export function useTaskMcpTools() {
 
   return {
     mcpTools,
-    setMcpTools,
     toggleServer,
     toggleTool,
     reset,

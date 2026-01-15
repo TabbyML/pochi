@@ -80,17 +80,13 @@ export const Git = Schema.Struct({
  * Key = server name, presence indicates server is enabled for this task.
  * disabledTools = list of tool names to exclude from that server.
  */
-export const TaskMcpToolsServerConfig = Schema.Struct({
-  disabledTools: Schema.Array(Schema.String),
-});
-
 export const TaskMcpTools = Schema.Record({
   key: Schema.String,
-  value: TaskMcpToolsServerConfig,
+  value: Schema.Struct({
+    disabledTools: Schema.Array(Schema.String),
+  }),
 });
 
-// TypeScript types derived from Schema
-export type TaskMcpToolsServerConfig = typeof TaskMcpToolsServerConfig.Type;
 export type TaskMcpTools = typeof TaskMcpTools.Type;
 
 export const taskInitFields = {
