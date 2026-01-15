@@ -336,7 +336,6 @@ function McpToolItem({
 }) {
   const isNotAvailable = disabled || serverStatus !== "ready";
 
-  // Handle click - use task-level toggle if provided, otherwise global
   const handleClick = useCallback(() => {
     if (serverStatus !== "ready") return;
     onToggle(toolName);
