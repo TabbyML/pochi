@@ -164,7 +164,6 @@ const newTaskProps1: NewTaskProp["tool"] = {
   },
   output: {
     result: "This is a great day",
-    uid: "new-task-output-1",
   },
 };
 
@@ -185,7 +184,6 @@ const newTaskProps2: NewTaskProp["tool"] = {
   },
   output: {
     result: "This is a great day",
-    uid: "new-task-output-2",
   },
 };
 
@@ -206,7 +204,6 @@ const newTaskProps3: NewTaskProp["tool"] = {
   },
   output: {
     result: "This is a great day",
-    uid: "new-task-output-3",
   },
 };
 

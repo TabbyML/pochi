@@ -13,10 +13,7 @@ export type {
   SaveCheckpointOptions,
 } from "./types/execution";
 export type { ResourceURI } from "./types/common";
-export type {
-  SessionState,
-  WorkspaceState,
-} from "./types/session";
+export type { SessionState, WorkspaceState } from "./types/session";
 export type {
   PochiTaskInfo,
   PochiTaskParams,

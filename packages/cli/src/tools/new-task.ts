@@ -42,8 +42,7 @@ export const newTask =
         // Ignore errors for Async tasks
       });
       return {
-        uid: taskId,
-        result: "Async task started",
+        result: taskId,
       };
     }
 
@@ -67,7 +66,6 @@ export const newTask =
     }
 
     return {
-      uid: taskId,
       result:
         typeof result === "string" ? result : "Sub-task completed successfully",
     };
