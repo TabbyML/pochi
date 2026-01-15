@@ -691,18 +691,6 @@
                     "description": "Enable Pochi Layout."
                   }
                 }
-              },
-              "backgroundTasks": {
-                "type": "object",
-                "default": {},
-                "additionalProperties": false,
-                "properties": {
-                  "autoOpen": {
-                    "type": "boolean",
-                    "default": true,
-                    "description": "Automatically open background subtasks in a new tab."
-                  }
-                }
               }
             }
           }

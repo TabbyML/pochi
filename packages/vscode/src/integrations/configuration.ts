@@ -209,11 +209,6 @@ const PochiAdvanceSettings = z.object({
       enabled: z.boolean().optional(),
     })
     .optional(),
-  backgroundTasks: z
-    .object({
-      autoOpen: z.boolean().optional(),
-    })
-    .optional(),
 });
 
 export type PochiAdvanceSettings = z.infer<typeof PochiAdvanceSettings>;
