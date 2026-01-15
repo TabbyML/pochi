@@ -1,4 +1,7 @@
+// biome-ignore lint/style/useImportType: needed for dependency injection
+import { WorkspaceScope } from "@/lib/workspace-scoped";
 import { listWorkspaceFiles } from "@getpochi/common/tool-utils";
+import * as runExclusive from "run-exclusive";
 import { container, injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
 import { getLogger } from "../lib/logger";
@@ -44,39 +47,105 @@ const PochiLayout: EditorLayout = {
 @singleton()
 export class LayoutManager implements vscode.Disposable {
   private disposables: vscode.Disposable[] = [];
+  private exclusiveGroup = runExclusive.createGroupRef();
 
-  constructor(configuration: PochiConfiguration) {
+  // Saves the terminals that are newly opened
+  private newOpenTerminal = new TimedList<vscode.Terminal>();
+
+  constructor(
+    configuration: PochiConfiguration,
+    workspaceScope: WorkspaceScope,
+  ) {
     this.disposables.push(
-      vscode.window.onDidOpenTerminal(async (terminal: vscode.Terminal) => {
-        // Do not apply layout if the terminal is created by user to avoid the case of:
-        // User wants to open the sidebar/bottom-panel and the terminal panel is the active view,
-        // then a default terminal will be created. But auto apply Pochi layout can directly move
-        // the terminal to the editor group and close the sidebar/bottom-panel.
-
-        // Determine if the terminal was created by the user directly
-        // We have no api to detect it, checking the creationOptions is the best effort
-        const isCreateByUser = Object.entries(terminal.creationOptions).every(
-          ([_, value]) => value === undefined,
-        );
-
-        const autoApplyPochiLayout =
-          configuration.advancedSettings.value.pochiLayout?.enabled;
-
-        if (autoApplyPochiLayout && !isCreateByUser) {
-          await applyPochiLayout({
-            enabled: autoApplyPochiLayout,
-            disableOpenTerminalByDefault: true,
-          });
-        }
+      vscode.window.onDidOpenTerminal((terminal: vscode.Terminal) => {
+        this.newOpenTerminal.add(terminal);
       }),
+      vscode.window.onDidChangeActiveTerminal(
+        async (terminal: vscode.Terminal | undefined) => {
+          if (terminal && this.newOpenTerminal.getItems().includes(terminal)) {
+            this.newOpenTerminal.remove(terminal);
+
+            // Do not apply layout if the terminal is created by user to avoid the case of:
+            // User wants to open the sidebar/bottom-panel and the terminal panel is the active view,
+            // then a default terminal will be created. But auto apply Pochi layout can directly move
+            // the terminal to the editor group and close the sidebar/bottom-panel.
+
+            // Determine if the terminal was created by the user directly
+            // We have no api to detect it, checking the creationOptions is the best effort
+            const isCreateByUser = Object.entries(
+              terminal.creationOptions,
+            ).every(([_, value]) => value === undefined);
+
+            const autoApplyPochiLayout =
+              configuration.advancedSettings.value.pochiLayout?.enabled;
+
+            const cwd =
+              ("cwd" in terminal.creationOptions
+                ? terminal.creationOptions.cwd?.toString()
+                : undefined) ??
+              workspaceScope.cwd ??
+              undefined;
+
+            if (autoApplyPochiLayout && !isCreateByUser) {
+              await this.applyPochiLayout({
+                cwd,
+                movePanelToSidePanel: autoApplyPochiLayout,
+                disableOpenTerminalByDefault: true,
+              });
+            }
+          }
+        },
+      ),
     );
   }
+
+  applyPochiLayout = runExclusive.build(
+    this.exclusiveGroup,
+    applyPochiLayoutImpl,
+  );
 
   dispose() {
     for (const disposable of this.disposables) {
       disposable.dispose();
     }
     this.disposables = [];
+  }
+}
+
+class TimedList<T> {
+  private items: T[] = [];
+  private timers: Map<T, ReturnType<typeof setTimeout>> = new Map();
+
+  add(item: T, duration = 1000) {
+    if (this.timers.has(item)) {
+      clearTimeout(this.timers.get(item));
+    }
+    if (!this.items.includes(item)) {
+      this.items.push(item);
+    }
+
+    // Set a timer to remove the item after the specified duration.
+    const timer = setTimeout(() => {
+      this.remove(item);
+    }, duration);
+
+    this.timers.set(item, timer);
+  }
+
+  remove(item: T) {
+    const index = this.items.indexOf(item);
+    if (index > -1) {
+      this.items.splice(index, 1);
+    }
+
+    if (this.timers.has(item)) {
+      clearTimeout(this.timers.get(item));
+      this.timers.delete(item);
+    }
+  }
+
+  getItems(): readonly T[] {
+    return this.items;
   }
 }
 
@@ -131,9 +200,9 @@ export function getSortedCurrentTabGroups() {
   );
 }
 
-export async function applyPochiLayout(params: {
+async function applyPochiLayoutImpl(params: {
   cwd?: string | undefined;
-  enabled?: boolean;
+  movePanelToSidePanel?: boolean;
   cycleFocus?: boolean;
   disableOpenTaskByDefault?: boolean;
   disableOpenTerminalByDefault?: boolean;
@@ -145,7 +214,7 @@ export async function applyPochiLayout(params: {
   const userActiveTerminal = vscode.window.activeTerminal;
 
   // Move bottom panel views to secondary sidebar
-  if (params.enabled) {
+  if (params.movePanelToSidePanel) {
     await executeVSCodeCommand("workbench.action.movePanelToSidePanel");
   }
 
@@ -337,6 +406,8 @@ export async function applyPochiLayout(params: {
     const groups = getSortedCurrentTabGroups();
     const lastGroup = groups[groups.length - 1];
     await executeVSCodeCommand("workbench.action.focusLastEditorGroup");
+    // Delay to ensure window state is changed
+    await new Promise((resolve) => setTimeout(resolve, 100));
     if (lastGroup.tabs.length < 1) {
       await executeVSCodeCommand("workbench.action.closeEditorsAndGroup");
       // Delay to ensure window state is changed
@@ -516,14 +587,16 @@ export async function applyPochiLayout(params: {
     getSortedCurrentTabGroups()[2].tabs.length === 0
   ) {
     logger.trace("Open new terminal tab.");
-    await executeVSCodeCommand(
-      "pochi.openTerminal",
+    const cwd =
       params.cwd ??
-        (userFocusTab && isPochiTaskTab(userFocusTab)
-          ? userFocusTab.input.uri
-          : undefined),
-    );
+      (userFocusTab && isPochiTaskTab(userFocusTab)
+        ? userFocusTab.input.uri
+        : undefined);
+    const location = { viewColumn: vscode.ViewColumn.Three };
+    vscode.window.createTerminal({ cwd, location }).show();
   }
+
+  logger.trace("End applyPochiLayout.");
 }
 
 export function isCurrentLayoutDerivedFromPochiLayout(): boolean {
@@ -590,18 +663,18 @@ function getTabGroupType(tabs: readonly vscode.Tab[]) {
 export async function getViewColumnForTask(params: {
   cwd: string;
 }): Promise<vscode.ViewColumn> {
-  const autoApplyPochiLayout =
-    container.resolve(PochiConfiguration).advancedSettings.value.pochiLayout
-      ?.enabled;
-
   if (isCurrentLayoutDerivedFromPochiLayout()) {
     return vscode.ViewColumn.One;
   }
 
+  const layoutManager = container.resolve(LayoutManager);
+  const autoApplyPochiLayout =
+    container.resolve(PochiConfiguration).advancedSettings.value.pochiLayout
+      ?.enabled;
   if (autoApplyPochiLayout) {
-    await applyPochiLayout({
+    await layoutManager.applyPochiLayout({
       cwd: params.cwd,
-      enabled: autoApplyPochiLayout,
+      movePanelToSidePanel: autoApplyPochiLayout,
       disableOpenTaskByDefault: true,
     });
     return vscode.ViewColumn.One;
@@ -646,17 +719,19 @@ export async function getViewColumnForTask(params: {
 export async function getViewColumnForTerminal(params: {
   cwd?: string;
 }): Promise<vscode.ViewColumn | undefined> {
-  const autoApplyPochiLayout =
-    container.resolve(PochiConfiguration).advancedSettings.value.pochiLayout
-      ?.enabled;
   if (isCurrentLayoutDerivedFromPochiLayout()) {
     return vscode.window.tabGroups.all.length as vscode.ViewColumn;
     // last view column is the terminal group
   }
+
+  const layoutManager = container.resolve(LayoutManager);
+  const autoApplyPochiLayout =
+    container.resolve(PochiConfiguration).advancedSettings.value.pochiLayout
+      ?.enabled;
   if (autoApplyPochiLayout) {
-    await applyPochiLayout({
+    await layoutManager.applyPochiLayout({
       cwd: params.cwd,
-      enabled: autoApplyPochiLayout,
+      movePanelToSidePanel: autoApplyPochiLayout,
       disableOpenTerminalByDefault: true,
     });
     return vscode.window.tabGroups.all.length as vscode.ViewColumn;

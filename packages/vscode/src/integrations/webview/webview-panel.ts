@@ -163,7 +163,7 @@ export class PochiTaskEditorProvider
 
   public static async openTaskEditor(
     params: PochiTaskParams,
-    options?: { keepEditor?: boolean },
+    options?: { keepEditor?: boolean; viewColumn?: vscode.ViewColumn },
   ) {
     try {
       const uid =
@@ -345,7 +345,7 @@ function setAutoLockGroupsConfig() {
 
 async function openTaskInColumn(
   uri: vscode.Uri,
-  options?: { keepEditor?: boolean },
+  options?: { keepEditor?: boolean; viewColumn?: vscode.ViewColumn },
 ) {
   const params = PochiTaskEditorProvider.parseTaskUri(uri);
   if (!params) {
@@ -359,9 +359,11 @@ async function openTaskInColumn(
     return;
   }
 
-  const viewColumn = await getViewColumnForTask({
-    cwd: params.cwd,
-  });
+  const viewColumn =
+    options?.viewColumn ??
+    (await getViewColumnForTask({
+      cwd: params.cwd,
+    }));
 
   await vscode.commands.executeCommand(
     "vscode.openWith",

@@ -33,8 +33,9 @@ import { DiffChangesContentProvider } from "./editor/diff-changes-content-provid
 import { GitWorktreeInfoProvider } from "./git/git-worktree-info-provider";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { WorktreeManager } from "./git/worktree";
+// biome-ignore lint/style/useImportType: needed for dependency injection
 import {
-  applyPochiLayout,
+  LayoutManager,
   getSortedCurrentTabGroups,
   getViewColumnForTerminal,
   isPochiTaskTab,
@@ -67,6 +68,7 @@ export class CommandManager implements vscode.Disposable {
     private readonly worktreeManager: WorktreeManager,
     private readonly worktreeInfoProvider: GitWorktreeInfoProvider,
     private readonly reviewController: ReviewController,
+    private readonly layoutManager: LayoutManager,
   ) {
     this.registerCommands();
   }
@@ -755,10 +757,10 @@ export class CommandManager implements vscode.Disposable {
         cwd = workspaceFolder;
       }
     }
-    await applyPochiLayout({
+    await this.layoutManager.applyPochiLayout({
       cwd,
       cycleFocus,
-      enabled:
+      movePanelToSidePanel:
         this.pochiConfiguration.advancedSettings.value.pochiLayout?.enabled,
     });
   }
