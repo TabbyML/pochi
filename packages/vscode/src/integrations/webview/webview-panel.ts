@@ -39,7 +39,7 @@ export class PochiWebviewPanel
   extends WebviewBase
   implements vscode.Disposable
 {
-  static panels = new Map<string, PochiWebviewPanel>();
+  static panels: PochiWebviewPanel[] = [];
 
   private readonly panel: vscode.WebviewPanel;
 
@@ -55,8 +55,8 @@ export class PochiWebviewPanel
     super(sessionId, context, events, pochiConfiguration, vscodeHost);
     this.panel = panel;
 
-    // Set to static map
-    PochiWebviewPanel.panels.set(info.uid, this);
+    // Push to static array
+    PochiWebviewPanel.panels.push(this);
 
     // Set webview options
     this.panel.webview.options = {
@@ -90,12 +90,10 @@ export class PochiWebviewPanel
   dispose(): void {
     super.dispose();
     this.panel.dispose();
-    // Remove from static map when disposed
-    for (const [uid, panel] of PochiWebviewPanel.panels.entries()) {
-      if (panel === this) {
-        PochiWebviewPanel.panels.delete(uid);
-        break;
-      }
+    // Remove from static array when disposed
+    const index = PochiWebviewPanel.panels.indexOf(this);
+    if (index !== -1) {
+      PochiWebviewPanel.panels.splice(index, 1);
     }
   }
 }

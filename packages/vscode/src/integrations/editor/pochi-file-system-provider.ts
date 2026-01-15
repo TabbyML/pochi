@@ -40,7 +40,7 @@ export class PochiFileSystemProvider
     const taskId = uri.authority;
     const filePath = uri.path;
 
-    const panel = PochiWebviewPanel.panels.get(taskId);
+    const panel = PochiWebviewPanel.panels[0];
     if (!panel?.webviewHost) {
       logger.error(`Webview host not found for task ${taskId}`);
       throw vscode.FileSystemError.FileNotFound(uri);
@@ -69,7 +69,7 @@ export class PochiFileSystemProvider
     const taskId = uri.authority;
     const filePath = uri.path;
 
-    const panel = PochiWebviewPanel.panels.get(taskId);
+    const panel = PochiWebviewPanel.panels[0];
     if (!panel?.webviewHost) {
       logger.error(`Webview host not found for task ${taskId}`);
       throw vscode.FileSystemError.FileNotFound(uri);
@@ -88,7 +88,7 @@ export class PochiFileSystemProvider
     const filePath = uri.path;
     const strContent = new TextDecoder().decode(content);
 
-    const panel = PochiWebviewPanel.panels.get(taskId);
+    const panel = PochiWebviewPanel.panels[0];
     if (!panel?.webviewHost) {
       logger.error(`Webview host not found for task ${taskId}`);
       return;
