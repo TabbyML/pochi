@@ -23,7 +23,7 @@ const ToolsGallery: React.FC<{
 };
 
 const meta: Meta<typeof ToolsGallery> = {
-  title: "Part-UI/Tools",
+  title: "Features/Tools/Gallery",
   component: ToolsGallery,
 };
 

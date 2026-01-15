@@ -12,7 +12,12 @@ import { useMcp } from "@/lib/hooks/use-mcp";
 import { vscodeHost } from "@/lib/vscode";
 import { constants, type Environment } from "@getpochi/common";
 import { createModel } from "@getpochi/common/vendor/edge";
-import type { DisplayModel } from "@getpochi/common/vscode-webui-bridge";
+import {
+  type DisplayModel,
+  buildInstructionsFromConnections,
+  buildToolsetFromConnections,
+} from "@getpochi/common/vscode-webui-bridge";
+import type { McpConfigOverride } from "@getpochi/common/vscode-webui-bridge";
 import type { LLMRequestData } from "@getpochi/livekit";
 import type { Todo } from "@getpochi/tools";
 import { useCallback } from "react";
@@ -21,13 +26,21 @@ export function useLiveChatKitGetters({
   todos,
   isSubTask,
   modelOverride,
+  mcpConfigOverride,
 }: {
   todos: React.RefObject<Todo[] | undefined>;
   isSubTask: boolean;
   modelOverride?: DisplayModel;
+  /** Per-task MCP tool configuration. If provided, filters the global toolset. */
+  mcpConfigOverride?: McpConfigOverride | null;
 }) {
-  const { toolset, instructions } = useMcp();
-  const mcpInfo = useLatest({ toolset, instructions });
+  const { toolset, instructions, connections } = useMcp();
+  const mcpInfo = useLatest({
+    toolset,
+    instructions,
+    connections,
+    mcpConfigOverride,
+  });
   const llm = useLLM({ isSubTask, modelOverride });
 
   const { customAgents } = useCustomAgents(true);
@@ -52,7 +65,41 @@ export function useLiveChatKitGetters({
     getEnvironment,
 
     // biome-ignore lint/correctness/useExhaustiveDependencies(mcpInfo.current): mcpInfo is ref.
-    getMcpInfo: useCallback(() => mcpInfo.current, []),
+    getMcpInfo: useCallback(() => {
+      const { toolset, instructions, connections, mcpConfigOverride } =
+        mcpInfo.current;
+
+      // If no per-task mcpConfigOverride, return global state
+      if (!mcpConfigOverride) {
+        return { toolset, instructions };
+      }
+
+      const filteredConnections: typeof connections = {};
+
+      for (const [serverName, connection] of Object.entries(connections)) {
+        if (!mcpConfigOverride[serverName]) {
+          continue;
+        }
+
+        const serverConfig = mcpConfigOverride[serverName];
+        const serverTools = connection.tools;
+
+        const newConn = { ...connection };
+        const newTools: typeof newConn.tools = {};
+        for (const [toolName, tool] of Object.entries(serverTools)) {
+          if (!serverConfig.disabledTools.includes(toolName)) {
+            newTools[toolName] = tool;
+          }
+        }
+        newConn.tools = newTools;
+        filteredConnections[serverName] = newConn;
+      }
+
+      return {
+        toolset: buildToolsetFromConnections(filteredConnections),
+        instructions: buildInstructionsFromConnections(filteredConnections),
+      };
+    }, []),
 
     // biome-ignore lint/correctness/useExhaustiveDependencies(customAgentsRef.current): customAgentsRef is ref.
     getCustomAgents: useCallback(() => customAgentsRef.current, []),

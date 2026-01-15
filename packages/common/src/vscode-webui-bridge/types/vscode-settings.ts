@@ -1,5 +1,5 @@
 export interface VSCodeSettings {
-  recommendSettingsConfirmed: boolean;
+  hideRecommendSettings: boolean;
   pochiLayout?:
     | {
         enabled?: boolean | undefined;

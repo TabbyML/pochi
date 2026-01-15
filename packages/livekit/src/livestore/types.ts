@@ -75,6 +75,20 @@ export const Git = Schema.Struct({
   branch: Schema.String,
 });
 
+/**
+ * Per-task MCP configuration override.
+ * Key = server name, presence indicates server is enabled for this task.
+ * disabledTools = list of tool names to exclude from that server.
+ */
+export const McpConfigOverride = Schema.Record({
+  key: Schema.String,
+  value: Schema.Struct({
+    disabledTools: Schema.Array(Schema.String),
+  }),
+});
+
+export type McpConfigOverride = typeof McpConfigOverride.Type;
+
 export const taskInitFields = {
   id: Schema.String,
   parentId: Schema.optional(Schema.String),

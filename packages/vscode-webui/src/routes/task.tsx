@@ -5,7 +5,7 @@ import { ChatPage, ChatSkeleton } from "@/features/chat";
 import { useModelList } from "@/lib/hooks/use-model-list";
 import { usePochiCredentials } from "@/lib/hooks/use-pochi-credentials";
 import { useUserStorage } from "@/lib/hooks/use-user-storage";
-import { DefauleStoreOptionsProvider } from "@/lib/use-default-store";
+import { DefaultStoreOptionsProvider } from "@/lib/use-default-store";
 import { encodeStoreId } from "@getpochi/common/store-id-utils";
 import { createFileRoute } from "@tanstack/react-router";
 import { Suspense } from "react";
@@ -63,9 +63,9 @@ function RouteComponent() {
 
   return (
     <Suspense fallback={<ChatSkeleton />}>
-      <DefauleStoreOptionsProvider storeId={storeId} jwt={jwt}>
+      <DefaultStoreOptionsProvider storeId={storeId} jwt={jwt}>
         <ChatPage key={key} user={users?.pochi} uid={uid} info={info} />
-      </DefauleStoreOptionsProvider>
+      </DefaultStoreOptionsProvider>
     </Suspense>
   );
 }

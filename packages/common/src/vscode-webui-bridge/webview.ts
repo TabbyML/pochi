@@ -8,6 +8,7 @@ import type {
   CustomAgentFile,
   FileDiff,
   GitWorktree,
+  McpConfigOverride,
   McpStatus,
   PochiTaskParams,
   ResourceURI,
@@ -356,6 +357,15 @@ export interface VSCodeHostApi {
   readUserEdits(uid: string): Promise<ThreadSignalSerialization<FileDiff[]>>;
 
   readTasks(): Promise<ThreadSignalSerialization<Record<string, unknown>>>;
+
+  /**
+   * Read mcpConfigOverride for a task.
+   * Returns a serialized signal for the value and a setter function.
+   */
+  readMcpConfigOverride(taskId: string): Promise<{
+    value: ThreadSignalSerialization<McpConfigOverride | undefined>;
+    set: (mcpConfigOverride: McpConfigOverride) => Promise<McpConfigOverride>;
+  }>;
 }
 
 export interface WebviewHostApi {

@@ -6,7 +6,7 @@ import { unstable_batchedUpdates as batchUpdates } from "react-dom";
 import ReactDOM from "react-dom/client";
 import { useTranslation } from "react-i18next";
 import {
-  DefauleStoreOptionsProvider,
+  DefaultStoreOptionsProvider,
   useDefaultStore,
 } from "./lib/use-default-store";
 
@@ -27,9 +27,9 @@ function App() {
       storeRegistry={new StoreRegistry({ defaultOptions: { batchUpdates } })}
     >
       <Suspense fallback={<Loading />}>
-        <DefauleStoreOptionsProvider storeId={storeId} jwt={jwt}>
+        <DefaultStoreOptionsProvider storeId={storeId} jwt={jwt}>
           <Content />
-        </DefauleStoreOptionsProvider>
+        </DefaultStoreOptionsProvider>
       </Suspense>
     </StoreRegistryProvider>
   );

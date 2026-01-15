@@ -4,7 +4,7 @@ import { McpToolCall } from "@/features/tools";
 
 const meta: Meta<typeof McpToolCall> = {
   component: McpToolCall,
-  title: "Pochi/McpToolCall",
+  title: "Components/McpToolCall",
 } satisfies Meta<typeof McpToolCall>;
 
 export default meta;

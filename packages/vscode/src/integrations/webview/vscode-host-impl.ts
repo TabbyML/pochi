@@ -1,6 +1,6 @@
 import * as os from "node:os";
 import path from "node:path";
-import { executeCommandWithNode } from "@/integrations/terminal/execute-command-with-node";
+import { executeCommandWithPty } from "@/integrations/terminal/execute-command-with-pty";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { CustomAgentManager } from "@/lib/custom-agent";
 import {
@@ -19,6 +19,8 @@ import { ModelList } from "@/lib/model-list";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { PostHog } from "@/lib/posthog";
 import { taskRunning, taskUpdated } from "@/lib/task-events";
+// biome-ignore lint/style/useImportType: needed for dependency injection
+import { TaskState } from "@/lib/task-state";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { TaskStore } from "@/lib/task-store";
 // biome-ignore lint/style/useImportType: needed for dependency injection
@@ -59,6 +61,7 @@ import {
   type FileDiff,
   type GitWorktree,
   type GithubIssue,
+  type McpConfigOverride,
   type PochiCredentials,
   type PochiTaskParams,
   type ResourceURI,
@@ -101,7 +104,7 @@ import { UserEditState } from "../checkpoint/user-edit-state";
 import { PochiConfiguration } from "../configuration";
 import { showDiffChanges } from "../editor/diff-changes-editor";
 // biome-ignore lint/style/useImportType: needed for dependency injection
-import { PochiTaskState } from "../editor/pochi-task-state";
+import { PochiTaskTabState } from "../editor/pochi-task-state";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { type FileSelection, TabState } from "../editor/tab-state";
 // biome-ignore lint/style/useImportType: needed for dependency injections
@@ -151,7 +154,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     private readonly checkpointService: CheckpointService,
     private readonly customAgentManager: CustomAgentManager,
     private readonly worktreeManager: WorktreeManager,
-    private readonly pochiTaskState: PochiTaskState,
+    private readonly pochiTaskState: PochiTaskTabState,
     private readonly githubPullRequestState: GithubPullRequestState,
     private readonly githubIssueState: GithubIssueState,
     private readonly gitState: GitState,
@@ -159,6 +162,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     private readonly userEditState: UserEditState,
     private readonly globalStateSignals: GlobalStateSignals,
     private readonly taskStore: TaskStore,
+    private readonly taskStateStore: TaskState,
   ) {}
 
   private get cwd() {
@@ -817,8 +821,8 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     return ThreadSignal.serialize(
       computed(() => {
         return {
-          recommendSettingsConfirmed:
-            this.globalStateSignals.recommendSettingsConfirmed.value,
+          hideRecommendSettings:
+            this.globalStateSignals.hideRecommendSettings.value,
           pochiLayout:
             this.pochiConfiguration.advancedSettings.value.pochiLayout,
           autoSaveDisabled: this.pochiConfiguration.autoSaveDisabled.value,
@@ -832,9 +836,9 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   };
 
   updateVSCodeSettings = async (params: Partial<VSCodeSettings>) => {
-    if (params.recommendSettingsConfirmed !== undefined) {
-      this.globalStateSignals.recommendSettingsConfirmed.value =
-        params.recommendSettingsConfirmed;
+    if (params.hideRecommendSettings !== undefined) {
+      this.globalStateSignals.hideRecommendSettings.value =
+        params.hideRecommendSettings;
     }
     if (params.pochiLayout !== undefined) {
       this.pochiConfiguration.advancedSettings.value = {
@@ -963,7 +967,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
 
     let capturedOutput = "";
     try {
-      const { output } = await executeCommandWithNode({
+      const { output } = await executeCommandWithPty({
         command,
         cwd: this.cwd,
         abortSignal: signal as AbortSignal,
@@ -1070,6 +1074,21 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     return ThreadSignal.serialize(
       computed(() => this.userEditState.edits.value[uid] ?? []),
     );
+  };
+
+  readMcpConfigOverride = async (
+    taskId: string,
+  ): Promise<{
+    value: ThreadSignalSerialization<McpConfigOverride | undefined>;
+    set: (mcpConfigOverride: McpConfigOverride) => Promise<McpConfigOverride>;
+  }> => {
+    return {
+      value: ThreadSignal.serialize(
+        this.taskStateStore.getMcpConfigOverrideSignal(taskId),
+      ),
+      set: (mcpConfigOverride: McpConfigOverride) =>
+        this.taskStateStore.setMcpConfigOverride(taskId, mcpConfigOverride),
+    };
   };
 
   dispose() {

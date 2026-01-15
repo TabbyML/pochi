@@ -70,6 +70,14 @@
     "noBranchFound": "未找到分支",
     "branches": "分支"
   },
+  "mcpSelect": {
+    "tooltip": "MCP 服务器和工具",
+    "noServers": "无 MCP",
+    "servers": "MCP 服务器",
+    "tools": "工具",
+    "noServersConfigured": "未配置 MCP 服务器",
+    "manageServers": "管理 MCP 服务器..."
+  },
   "worktree": {
     "createPr": "创建 PR",
     "createDraftPr": "创建草稿 PR",
@@ -113,7 +121,7 @@
       "clearStorage": "清除存储",
       "language": "语言",
       "languageDescription": "选择您的首选语言",
-      "resetRecommendSettingsConfirmed": "Reset Recommended Settings Confirmed"
+      "hideRecommendSettings": "隐藏推荐设置"
     },
     "workflows": {
       "title": "工作流",
@@ -436,7 +444,7 @@
   },
   "recommendSettings": {
     "title": "Pochi 将修改以下设置",
-    "ok": "确定",
+    "hide": "隐藏",
     "options": {
       "enablePochiLayout": "启用 Pochi 布局",
       "disableAutoSave": "禁用自动保存",

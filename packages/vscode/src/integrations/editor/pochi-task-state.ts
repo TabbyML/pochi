@@ -11,7 +11,7 @@ const logger = getLogger("PochiTaskState");
 
 @injectable()
 @singleton()
-export class PochiTaskState implements vscode.Disposable {
+export class PochiTaskTabState implements vscode.Disposable {
   private disposables: vscode.Disposable[] = [];
   state = signal<TaskStates>({});
 

@@ -70,6 +70,14 @@
     "noBranchFound": "브랜치를 찾을 수 없습니다",
     "branches": "브랜치"
   },
+  "mcpSelect": {
+    "tooltip": "MCP 서버 및 도구",
+    "noServers": "MCP 없음",
+    "servers": "MCP 서버",
+    "tools": "도구",
+    "noServersConfigured": "MCP 서버가 구성되지 않았습니다",
+    "manageServers": "MCP 서버 관리..."
+  },
   "worktree": {
     "createPr": "PR 생성",
     "createDraftPr": "초안 PR 생성",
@@ -113,7 +121,7 @@
       "clearStorage": "저장소 지우기",
       "language": "언어",
       "languageDescription": "선호하는 언어를 선택하세요",
-      "resetRecommendSettingsConfirmed": "Reset Recommended Settings Confirmed"
+      "hideRecommendSettings": "추천 설정 숨기기"
     },
     "workflows": {
       "title": "워크플로우",
@@ -432,7 +440,7 @@
   },
   "recommendSettings": {
     "title": "Pochi가 다음 설정을 수정합니다",
-    "ok": "확인",
+    "hide": "숨기기",
     "options": {
       "enablePochiLayout": "Pochi 레이아웃 활성화",
       "disableAutoSave": "자동 저장 비활성화",

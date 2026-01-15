@@ -13,6 +13,7 @@ import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { useAutoApproveGuard, useToolCallLifeCycle } from "../lib/chat-state";
 import type { BlockingState } from "./use-blocking-operations";
+import type { ChatInput } from "./use-chat-input-state";
 
 const logger = getLogger("UseChatSubmit");
 
@@ -22,8 +23,8 @@ type UseAttachmentUploadReturn = ReturnType<typeof useAttachmentUpload>;
 
 interface UseChatSubmitProps {
   chat: UseChatReturn;
-  input: string;
-  setInput: (input: string) => void;
+  input: ChatInput;
+  clearInput: () => void;
   attachmentUpload: UseAttachmentUploadReturn;
   isSubmitDisabled: boolean;
   isLoading: boolean;
@@ -38,7 +39,7 @@ interface UseChatSubmitProps {
 export function useChatSubmit({
   chat,
   input,
-  setInput,
+  clearInput,
   attachmentUpload,
   isSubmitDisabled,
   isLoading,
@@ -122,10 +123,10 @@ export function useChatSubmit({
       // Clear queued messages after adding them to allMessages
       setQueuedMessages([]);
 
-      const content = input.trim();
+      const content = input.text.trim();
       if (content) {
         allMessages.push(content);
-        setInput("");
+        clearInput();
       }
       const text = allMessages.join("\n\n").trim();
 
@@ -190,7 +191,7 @@ export function useChatSubmit({
       autoApproveGuard,
       upload,
       sendMessage,
-      setInput,
+      clearInput,
       clearUploadError,
       blockingState.isBusy,
       queuedMessages,

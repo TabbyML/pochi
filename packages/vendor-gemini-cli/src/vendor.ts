@@ -27,13 +27,11 @@ export class GeminiCli extends VendorBase {
 
   override async fetchModels(): Promise<Record<string, ModelOptions>> {
     return {
-      "gemini-2.5-pro": {
+      "gemini-3-pro-preview": {
         contextWindow: 1_000_000,
-        useToolCallMiddleware: true,
       },
-      "gemini-2.5-flash": {
+      "gemini-3-flash-preview": {
         contextWindow: 1_000_000,
-        useToolCallMiddleware: true,
       },
     };
   }

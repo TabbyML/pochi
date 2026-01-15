@@ -34,6 +34,7 @@ import {
 } from "./issue-mention/extension";
 
 import "./prompt-form.css";
+import type { ChatInput } from "@/features/chat";
 import { useSelectedModels } from "@/features/settings";
 import { useLatest } from "@/lib/hooks/use-latest";
 import { cn } from "@/lib/utils";
@@ -102,8 +103,8 @@ function CustomEnterKeyHandler(
 }
 
 interface FormEditorProps {
-  input: string;
-  setInput: (text: string) => void;
+  input: ChatInput;
+  setInput: (input: ChatInput) => void;
   onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
   onCtrlSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
   isLoading: boolean;
@@ -569,12 +570,11 @@ export function FormEditor({
         },
       },
       onUpdate(props) {
+        const json = props.editor.getJSON();
         const text = props.editor.getText({
           blockSeparator: newLineCharacter,
         });
-        if (text !== input) {
-          setInput(text);
-        }
+        setInput({ json, text });
 
         // Update current draft if we have submit history enabled
         if (
@@ -632,6 +632,18 @@ export function FormEditor({
     }
   }, [editor, editorRef]);
 
+  useEffect(() => {
+    if (
+      editor &&
+      input.text !==
+        editor.getText({
+          blockSeparator: newLineCharacter,
+        })
+    ) {
+      editor.commands.setContent(input.json);
+    }
+  }, [editor, input]);
+
   // For saving the editor content to the session state
   const saveEdtiorState = useCallback(async () => {
     if (editor && !editor.isDestroyed) {
@@ -671,16 +683,6 @@ export function FormEditor({
     };
     loadSessionState();
   }, [editor]);
-
-  // Update editor content when input changes
-  useEffect(() => {
-    if (
-      editor &&
-      input !== editor.getText({ blockSeparator: newLineCharacter })
-    ) {
-      editor.commands.setContent(input, true);
-    }
-  }, [editor, input]);
 
   // Auto focus the editor when the component is mounted
   useEffect(() => {
