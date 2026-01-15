@@ -236,7 +236,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
       setDebouncedIsCreatingTask(false);
     },
     [
-      input,
+      input.text,
       files,
       upload,
       selectedModel,

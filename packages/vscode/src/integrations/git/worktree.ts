@@ -24,6 +24,7 @@ import {
   type FileChange,
   showDiffChanges,
 } from "../editor/diff-changes-editor";
+import { getViewColumnForTerminal } from "../layout";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { GitWorktreeInfoProvider } from "./git-worktree-info-provider";
 
@@ -537,9 +538,14 @@ export async function setupWorktree(worktree: string): Promise<boolean> {
   }
 
   try {
+    const viewColumn = await getViewColumnForTerminal({
+      cwd: worktree,
+    });
+    const location = viewColumn ? { viewColumn } : undefined;
     const terminal = vscode.window.createTerminal({
       name: "Setup Pochi Worktree",
       cwd: worktree,
+      location,
     });
 
     // Use proper shell execution

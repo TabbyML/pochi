@@ -27,3 +27,8 @@ export {
   useRepairMermaid,
   type RepairMermaidOptions,
 } from "./hooks/use-repair-mermaid";
+
+export {
+  useChatInputState,
+  type ChatInput,
+} from "./hooks/use-chat-input-state";

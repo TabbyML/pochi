@@ -2,26 +2,26 @@ import { signal } from "@preact/signals-core";
 import { inject, injectable, singleton } from "tsyringe";
 import type * as vscode from "vscode";
 
-const RecommendSettingsConfirmedKey = "dev-recommend-settings-confirmed";
+const HideRecommendSettingsKey = "dev-hide-recommend-settings";
 
 @injectable()
 @singleton()
 export class GlobalStateSignals implements vscode.Disposable {
   private disposables: vscode.Disposable[] = [];
 
-  readonly recommendSettingsConfirmed = signal(false);
+  readonly hideRecommendSettings = signal(false);
 
   constructor(
     @inject("vscode.ExtensionContext")
     private readonly context: vscode.ExtensionContext,
   ) {
-    this.recommendSettingsConfirmed.value = this.getState(
-      RecommendSettingsConfirmedKey,
+    this.hideRecommendSettings.value = this.getState(
+      HideRecommendSettingsKey,
       false,
     );
     this.disposables.push({
-      dispose: this.recommendSettingsConfirmed.subscribe((value) => {
-        this.setState(RecommendSettingsConfirmedKey, value);
+      dispose: this.hideRecommendSettings.subscribe((value) => {
+        this.setState(HideRecommendSettingsKey, value);
       }),
     });
   }

@@ -17,6 +17,8 @@ export interface TerminalJobConfig {
   command: string;
   /** Working directory for the terminal */
   cwd: string;
+  /** Location for the terminal */
+  location?: vscode.TerminalEditorLocationOptions | undefined;
   /** AbortSignal to cancel the terminal job */
   abortSignal?: AbortSignal;
 }
@@ -59,6 +61,7 @@ export class TerminalJob implements vscode.Disposable {
     this.terminal = vscode.window.createTerminal({
       name: config.name,
       cwd: config.cwd,
+      location: config.location,
       shellPath: getShellPath(),
       env: {
         PAGER: "cat",

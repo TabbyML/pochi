@@ -1,7 +1,3 @@
-import {
-  applyQuickFixes,
-  calcEditedRangeAfterAccept,
-} from "@/code-completion/auto-code-actions";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { PochiWebviewSidebar } from "@/integrations/webview";
 import type { AuthClient } from "@/lib/auth-client";
@@ -16,7 +12,7 @@ import { PostHog } from "@/lib/posthog";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { WorkspaceScope } from "@/lib/workspace-scoped";
 // biome-ignore lint/style/useImportType: needed for dependency injection
-import { NESDecorationManager } from "@/nes/decoration-manager";
+import { TabCompletionManager, applyQuickFixes } from "@/tab-completion";
 import type { WebsiteTaskCreateEvent } from "@getpochi/common";
 import {
   type CustomModelSetting,
@@ -31,7 +27,7 @@ import { getServerBaseUrl } from "@getpochi/common/vscode-webui-bridge";
 import { inject, injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
 // biome-ignore lint/style/useImportType: needed for dependency injection
-import { PochiConfiguration } from "./configuration";
+import { type PochiAdvanceSettings, PochiConfiguration } from "./configuration";
 import { DiffChangesContentProvider } from "./editor/diff-changes-content-provider";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { GitWorktreeInfoProvider } from "./git/git-worktree-info-provider";
@@ -67,7 +63,7 @@ export class CommandManager implements vscode.Disposable {
     private readonly mcpHub: McpHub,
     private readonly pochiConfiguration: PochiConfiguration,
     private readonly posthog: PostHog,
-    private readonly nesDecorationManager: NESDecorationManager,
+    private readonly tabCompletionManager: TabCompletionManager,
     private readonly worktreeManager: WorktreeManager,
     private readonly worktreeInfoProvider: GitWorktreeInfoProvider,
     private readonly reviewController: ReviewController,
@@ -383,19 +379,19 @@ export class CommandManager implements vscode.Disposable {
       }),
 
       vscode.commands.registerCommand(
-        "pochi.inlineCompletion.onDidAccept",
-        async (item: vscode.InlineCompletionItem) => {
+        "pochi.tabCompletion.onDidAccept",
+        async (params: {
+          insertedText: string;
+          rangeBefore: vscode.Range;
+          rangeAfter: vscode.Range;
+        }) => {
           this.posthog.capture("acceptCodeCompletion");
 
           // Apply auto-import quick fixes after code completion is accepted
           const editor = vscode.window.activeTextEditor;
           if (editor) {
-            const editedRange = calcEditedRangeAfterAccept(item);
-            await vscode.commands.executeCommand(
-              "editor.action.inlineSuggest.commit",
-            );
-            if (editedRange) {
-              applyQuickFixes(editor.document.uri, editedRange);
+            if (params.rangeAfter) {
+              applyQuickFixes(editor.document.uri, params.rangeAfter);
             }
           }
         },
@@ -438,6 +434,45 @@ export class CommandManager implements vscode.Disposable {
               disabled,
             },
           };
+          this.pochiConfiguration.advancedSettings.value = newSettings;
+        },
+      ),
+
+      vscode.commands.registerCommand(
+        "pochi.tabCompletion.toggleLanguageEnabled",
+        async (language?: string | undefined) => {
+          const languageId =
+            language ?? vscode.window.activeTextEditor?.document.languageId;
+
+          if (!languageId) {
+            return;
+          }
+
+          const current = this.pochiConfiguration.advancedSettings.value;
+          let newSettings: PochiAdvanceSettings;
+          if (current.tabCompletion?.disabledLanguages?.includes(languageId)) {
+            newSettings = {
+              ...current,
+              tabCompletion: {
+                ...current.tabCompletion,
+                disabledLanguages:
+                  current.tabCompletion.disabledLanguages.filter(
+                    (lang) => lang !== languageId,
+                  ),
+              },
+            };
+          } else {
+            newSettings = {
+              ...current,
+              tabCompletion: {
+                ...current.tabCompletion,
+                disabledLanguages: [
+                  ...(current.tabCompletion?.disabledLanguages ?? []),
+                  languageId,
+                ],
+              },
+            };
+          }
           this.pochiConfiguration.advancedSettings.value = newSettings;
         },
       ),
@@ -505,14 +540,14 @@ export class CommandManager implements vscode.Disposable {
       vscode.commands.registerCommand(
         "pochi.tabCompletion.accept",
         async () => {
-          this.nesDecorationManager.accept();
+          this.tabCompletionManager.accept();
         },
       ),
 
       vscode.commands.registerCommand(
         "pochi.tabCompletion.reject",
         async () => {
-          this.nesDecorationManager.reject();
+          this.tabCompletionManager.reject();
         },
       ),
 
@@ -723,7 +758,6 @@ export class CommandManager implements vscode.Disposable {
     await applyPochiLayout({
       cwd,
       cycleFocus,
-      mergeSplitWindowEditors: true,
       enabled:
         this.pochiConfiguration.advancedSettings.value.pochiLayout?.enabled,
     });

@@ -1,4 +1,10 @@
-import { Events, Schema, State, makeSchema } from "@livestore/livestore";
+import {
+  Events,
+  Schema,
+  State,
+  deprecated,
+  makeSchema,
+} from "@livestore/livestore";
 import {
   DBMessage,
   DBUIPart,
@@ -120,14 +126,12 @@ export const events = {
       initMessages: Schema.optional(Schema.Array(DBMessage)),
       initTitle: Schema.optional(Schema.String),
       displayId: Schema.optional(Schema.Number),
-      // @deprecated
-      // use initMessages instead
       initMessage: Schema.optional(
         Schema.Struct({
           id: Schema.String,
           parts: Schema.Array(DBUIPart),
         }),
-      ),
+      ).pipe(deprecated("use initMessages instead")),
     }),
   }),
   taskFailed: Events.synced({
@@ -144,14 +148,15 @@ export const events = {
       id: Schema.String,
       data: DBMessage,
       todos: Todos,
-      // @deprecated
-      // use updateTitle instead
-      title: Schema.optional(Schema.String),
+      title: Schema.optional(Schema.String).pipe(
+        deprecated("use updateTitle instead"),
+      ),
       git: Schema.optional(Git),
       updatedAt: Schema.Date,
       modelId: Schema.optional(Schema.String),
-      // @deprecated, use displayId in init instead.
-      displayId: Schema.optional(Schema.Number),
+      displayId: Schema.optional(Schema.Number).pipe(
+        deprecated("use displayId in init instead"),
+      ),
     }),
   }),
   chatStreamFinished: Events.synced({

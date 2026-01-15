@@ -1,6 +1,6 @@
 import * as os from "node:os";
 import path from "node:path";
-import { executeCommandWithNode } from "@/integrations/terminal/execute-command-with-node";
+import { executeCommandWithPty } from "@/integrations/terminal/execute-command-with-pty";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { CustomAgentManager } from "@/lib/custom-agent";
 import {
@@ -827,8 +827,8 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     return ThreadSignal.serialize(
       computed(() => {
         return {
-          recommendSettingsConfirmed:
-            this.globalStateSignals.recommendSettingsConfirmed.value,
+          hideRecommendSettings:
+            this.globalStateSignals.hideRecommendSettings.value,
           pochiLayout:
             this.pochiConfiguration.advancedSettings.value.pochiLayout,
           autoSaveDisabled: this.pochiConfiguration.autoSaveDisabled.value,
@@ -842,9 +842,9 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   };
 
   updateVSCodeSettings = async (params: Partial<VSCodeSettings>) => {
-    if (params.recommendSettingsConfirmed !== undefined) {
-      this.globalStateSignals.recommendSettingsConfirmed.value =
-        params.recommendSettingsConfirmed;
+    if (params.hideRecommendSettings !== undefined) {
+      this.globalStateSignals.hideRecommendSettings.value =
+        params.hideRecommendSettings;
     }
     if (params.pochiLayout !== undefined) {
       this.pochiConfiguration.advancedSettings.value = {
@@ -973,7 +973,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
 
     let capturedOutput = "";
     try {
-      const { output } = await executeCommandWithNode({
+      const { output } = await executeCommandWithPty({
         command,
         cwd: this.cwd,
         abortSignal: signal as AbortSignal,

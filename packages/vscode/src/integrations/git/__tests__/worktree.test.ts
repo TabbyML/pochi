@@ -13,8 +13,11 @@ const simpleGitStub = sinon.stub().returns({
   checkIsRepo: sinon.stub().resolves(true),
   raw: sinon.stub().resolves(""),
 });
+const getViewColumnForTerminalStub = sinon.stub().returns(undefined);
+
 const { WorktreeManager } = proxyquire.noCallThru()("../worktree", {
   "@/lib/generate-branch-name": { generateBranchName: generateBranchNameStub },
+  "../layout": { getViewColumnForTerminal: getViewColumnForTerminalStub },
   "simple-git": simpleGitStub,
 });
 

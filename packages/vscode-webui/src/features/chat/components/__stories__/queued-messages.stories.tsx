@@ -4,7 +4,7 @@ import { fn } from "@storybook/test";
 import { QueuedMessages } from "../queued-messages";
 
 const meta = {
-  title: "Chat/QueuedMessages",
+  title: "Features/Chat/QueuedMessages",
   component: QueuedMessages,
   args: {
     onRemove: fn(),

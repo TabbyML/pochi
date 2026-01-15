@@ -82,6 +82,6 @@ const Tools: Record<string, React.FC<ToolProps<any>>> = {
   globFiles: globFilesTool,
   todoWrite: todoWriteTool,
   editNotebook: editNotebookTool,
-  // @ts-ignore
+  // @ts-expect-error
   newTask: newTaskTool,
 };

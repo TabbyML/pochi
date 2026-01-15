@@ -1,9 +1,7 @@
 // biome-ignore lint/style/useImportType: needed for initialization
-import { CompletionProvider } from "@/code-completion";
-// biome-ignore lint/style/useImportType: needed for initialization
 import { AuthEvents } from "@/lib/auth-events";
 // biome-ignore lint/style/useImportType: needed for initialization
-import { NESProvider } from "@/nes";
+import { TabCompletionManager } from "@/tab-completion";
 import { signal } from "@preact/signals-core";
 import { injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
@@ -23,6 +21,7 @@ export class StatusBarItem implements vscode.Disposable {
     | "initializing"
     | "logged-out"
     | "disabled"
+    | "disabled-language"
     | "conflict-detected"
     | "ready"
     | "loading"
@@ -31,8 +30,7 @@ export class StatusBarItem implements vscode.Disposable {
   constructor(
     private readonly pochiConfiguration: PochiConfiguration,
     private readonly authEvents: AuthEvents,
-    private readonly inlineCompletionProvider: CompletionProvider,
-    private readonly nesProvider: NESProvider,
+    private readonly tabCompletionManager: TabCompletionManager,
   ) {
     this.initialize();
   }
@@ -62,12 +60,7 @@ export class StatusBarItem implements vscode.Disposable {
         }),
       },
       {
-        dispose: this.inlineCompletionProvider.isFetching.subscribe(() => {
-          this.update();
-        }),
-      },
-      {
-        dispose: this.nesProvider.fetching.subscribe(() => {
+        dispose: this.tabCompletionManager.isFetching.subscribe(() => {
           this.update();
         }),
       },
@@ -102,11 +95,20 @@ export class StatusBarItem implements vscode.Disposable {
       return "disabled";
     }
 
+    if (
+      vscode.window.activeTextEditor &&
+      this.pochiConfiguration.advancedSettings.value.tabCompletion?.disabledLanguages?.includes(
+        vscode.window.activeTextEditor.document.languageId,
+      )
+    ) {
+      return "disabled-language";
+    }
+
     if (this.pochiConfiguration.githubCopilotCodeCompletionEnabled.value) {
       return "conflict-detected";
     }
 
-    if (this.nesProvider.fetching.value) {
+    if (this.tabCompletionManager.isFetching.value) {
       return "loading";
     }
 
@@ -144,6 +146,14 @@ export class StatusBarItem implements vscode.Disposable {
         this.statusBarItem.tooltip = "Tab Completion is disabled.";
         this.statusBarItem.backgroundColor = undefined;
         this.statusBarItem.command = "pochi.tabCompletion.toggleEnabled";
+        break;
+
+      case "disabled-language":
+        this.statusBarItem.text = "$(dash) Pochi";
+        this.statusBarItem.tooltip = `Tab completion is disabled for ${vscode.window.activeTextEditor?.document.languageId ?? "current language"}.`;
+        this.statusBarItem.backgroundColor = undefined;
+        this.statusBarItem.command =
+          "pochi.tabCompletion.toggleLanguageEnabled";
         break;
 
       case "conflict-detected":

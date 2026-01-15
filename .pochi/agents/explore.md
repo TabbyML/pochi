@@ -7,7 +7,7 @@ description: |
   - "where is the authentication logic implemented"
   - "find all usages of the config parser"
   - "how does the ignore-walk module work"
-model: google/gemini-2.5-flash
+model: google/gemini-3-flash
 tools: readFile, globFiles, listFiles, searchFiles
 ---
 

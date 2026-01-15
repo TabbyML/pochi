@@ -13,7 +13,7 @@ class TaskError extends Error {
 
 const meta: Meta<typeof ErrorMessageView> = {
   component: ErrorMessageView,
-  title: "Chat/ErrorMessageView",
+  title: "Features/Chat/ErrorMessageView",
   argTypes: {
     error: {
       control: {

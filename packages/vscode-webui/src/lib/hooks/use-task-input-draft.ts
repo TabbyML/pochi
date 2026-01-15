@@ -1,3 +1,4 @@
+import type { ChatInput } from "@/features/chat";
 import { getLogger } from "@getpochi/common";
 import { useEffect, useState } from "react";
 import type { WebviewApi } from "vscode-webview";
@@ -6,7 +7,7 @@ import { getVSCodeApi } from "../vscode";
 const logger = getLogger("use-task-input-draft");
 
 interface TaskInputDraft {
-  content: string;
+  content: ChatInput;
   timestamp: number;
 }
 
@@ -21,14 +22,18 @@ interface VscodeState {
 export function useTaskInputDraft() {
   const vscodeApi = getVSCodeApi() as WebviewApi<VscodeState> | null;
 
-  const [draft, setDraft] = useState<string>(() => {
-    if (typeof window === "undefined") return "";
+  const [draft, setDraft] = useState<ChatInput>(() => {
+    if (typeof window === "undefined")
+      return {
+        json: null,
+        text: "",
+      };
 
     try {
       if (vscodeApi) {
         const state = vscodeApi.getState() as VscodeState | undefined;
         const stored = state?.taskInputDraft;
-        if (stored) {
+        if (stored?.content?.text) {
           return stored.content;
         }
       }
@@ -36,7 +41,10 @@ export function useTaskInputDraft() {
       logger.error("Failed to load draft:", error);
     }
 
-    return "";
+    return {
+      json: null,
+      text: "",
+    };
   });
 
   // Save draft whenever it changes
@@ -44,7 +52,8 @@ export function useTaskInputDraft() {
     if (typeof window === "undefined" || !vscodeApi) return;
 
     try {
-      if (draft.trim()) {
+      const draftText = draft.text;
+      if (draftText.trim()) {
         const data: TaskInputDraft = {
           content: draft,
           timestamp: Date.now(),
@@ -68,7 +77,10 @@ export function useTaskInputDraft() {
   }, [draft, vscodeApi]);
 
   const clearDraft = () => {
-    setDraft("");
+    setDraft({
+      json: null,
+      text: "",
+    });
     if (typeof window === "undefined" || !vscodeApi) return;
 
     try {

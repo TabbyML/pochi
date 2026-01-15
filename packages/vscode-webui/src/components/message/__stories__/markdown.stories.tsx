@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { MessageMarkdown } from "../markdown";
 
 const meta: Meta<typeof MessageMarkdown> = {
-  title: "Pochi/Markdown",
+  title: "Message/Markdown",
   component: MessageMarkdown,
   parameters: {
     layout: "padded",

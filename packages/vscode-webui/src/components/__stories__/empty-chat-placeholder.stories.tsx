@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { EmptyChatPlaceholder } from "../empty-chat-placeholder";
 
 const meta: Meta<typeof EmptyChatPlaceholder> = {
-  title: "Pochi/EmptyChatPlaceholder",
+  title: "Components/EmptyChatPlaceholder",
   component: EmptyChatPlaceholder,
   parameters: {
     layout: "fullscreen",

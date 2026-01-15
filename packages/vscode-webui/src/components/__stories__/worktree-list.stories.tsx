@@ -197,7 +197,7 @@ function MockedWorktreeList({
 }
 
 const meta = {
-  title: "Chat/WorktreeList",
+  title: "Components/WorktreeList",
   component: WorktreeList,
   parameters: {
     layout: "centered",

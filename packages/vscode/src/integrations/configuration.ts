@@ -67,17 +67,15 @@ export class PochiConfiguration implements vscode.Disposable {
       },
       {
         dispose: this.autoSaveDisabled.subscribe((value) => {
-          // Only support to update autosave to disabled
-          if (value && value !== getAutoSaveDisabled()) {
-            updateAutoSaveDisabled();
+          if (value !== getAutoSaveDisabled()) {
+            updateAutoSaveDisabled(value);
           }
         }),
       },
       {
         dispose: this.commentsOpenViewDisabled.subscribe((value) => {
-          // Only support to update comments.openView to disabled
-          if (value && value !== getCommentsOpenViewDisabled()) {
-            updateCommentsOpenViewDisabled();
+          if (value !== getCommentsOpenViewDisabled()) {
+            updateCommentsOpenViewDisabled(value);
           }
         }),
       },
@@ -159,48 +157,49 @@ export class PochiConfiguration implements vscode.Disposable {
   }
 }
 
+const TabCompletionFIMProviderSettings = z.discriminatedUnion("type", [
+  z.object({
+    type: z.literal("FIM:pochi"),
+  }),
+  z.object({
+    type: z.literal("FIM:openai"),
+    baseURL: z.string(),
+    apiKey: z.string().optional(),
+    model: z.string().optional(),
+    promptTemplate: z.string().optional(),
+  }),
+  z.object({
+    type: z.literal("FIM:google-vertex-tuning"),
+    vertex: z.custom<GoogleVertexModel>(),
+    model: z.string(),
+    systemPrompt: z.string().optional(),
+    promptTemplate: z.string().optional(),
+  }),
+]);
+
+const TabCompletionNESProviderSettings = z.discriminatedUnion("type", [
+  z.object({
+    type: z.literal("NES:pochi"),
+  }),
+  z.object({
+    type: z.literal("NES:google-vertex-tuning"),
+    vertex: z.custom<GoogleVertexModel>(),
+    model: z.string(),
+  }),
+]);
+
 const PochiAdvanceSettings = z.object({
-  inlineCompletion: z
-    .object({
-      disabled: z.boolean().optional(),
-      disabledLanguages: z.array(z.string()).optional(),
-      provider: z
-        .discriminatedUnion("type", [
-          z.object({
-            type: z.literal("pochi"),
-          }),
-          z.object({
-            type: z.literal("openai"),
-            baseURL: z.string(),
-            apiKey: z.string().optional(),
-            model: z.string().optional(),
-            promptTemplate: z.string().optional(),
-          }),
-          z.object({
-            type: z.literal("google-vertex-tuning"),
-            vertex: z.custom<GoogleVertexModel>(),
-            model: z.string(),
-            systemPrompt: z.string().optional(),
-            promptTemplate: z.string().optional(),
-          }),
-        ])
-        .optional(),
-    })
-    .optional(),
   tabCompletion: z
     .object({
       disabled: z.boolean().optional(),
-      provider: z
-        .discriminatedUnion("type", [
-          z.object({
-            type: z.literal("pochi"),
-          }),
-          z.object({
-            type: z.literal("google-vertex-tuning"),
-            vertex: z.custom<GoogleVertexModel>(),
-            model: z.string(),
-          }),
-        ])
+      disabledLanguages: z.array(z.string()).optional(),
+      providers: z
+        .array(
+          z.discriminatedUnion("type", [
+            ...TabCompletionFIMProviderSettings.options,
+            ...TabCompletionNESProviderSettings.options,
+          ]),
+        )
         .optional(),
     })
     .optional(),
@@ -213,6 +212,12 @@ const PochiAdvanceSettings = z.object({
 });
 
 export type PochiAdvanceSettings = z.infer<typeof PochiAdvanceSettings>;
+export type TabCompletionFIMProviderSettings = z.infer<
+  typeof TabCompletionFIMProviderSettings
+>;
+export type TabCompletionNESProviderSettings = z.infer<
+  typeof TabCompletionNESProviderSettings
+>;
 
 function getPochiAdvanceSettings() {
   const config = vscode.workspace.getConfiguration("pochi").get("advanced", {});
@@ -239,10 +244,11 @@ function getAutoSaveDisabled() {
   return autoSave === "off";
 }
 
-function updateAutoSaveDisabled() {
+function updateAutoSaveDisabled(value: boolean) {
+  const target = value ? "off" : "afterDelay";
   return vscode.workspace
     .getConfiguration("files")
-    .update("autoSave", "off", true);
+    .update("autoSave", target, true);
 }
 
 function getCommentsOpenViewDisabled() {
@@ -253,10 +259,11 @@ function getCommentsOpenViewDisabled() {
   return openView === "never";
 }
 
-function updateCommentsOpenViewDisabled() {
+function updateCommentsOpenViewDisabled(value: boolean) {
+  const target = value ? "never" : "firstFile";
   return vscode.workspace
     .getConfiguration("comments")
-    .update("openView", "never", true);
+    .update("openView", target, true);
 }
 
 function getDetectWorktreesLimit() {

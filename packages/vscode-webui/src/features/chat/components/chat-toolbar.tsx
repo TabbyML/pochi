@@ -39,6 +39,7 @@ import {
   type BlockingOperation,
   useBlockingOperations,
 } from "../hooks/use-blocking-operations";
+import { useChatInputState } from "../hooks/use-chat-input-state";
 import { useChatStatus } from "../hooks/use-chat-status";
 import { useChatSubmit } from "../hooks/use-chat-submit";
 import { useInlineCompactTask } from "../hooks/use-inline-compact-task";
@@ -91,7 +92,8 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   const isLoading = status === "streaming" || status === "submitted";
   const totalTokens = task?.totalTokens || 0;
 
-  const [input, setInput] = useState("");
+  const { input, setInput, clearInput } = useChatInputState();
+
   const [queuedMessages, setQueuedMessages] = useState<string[]>([]);
 
   // Initialize task with prompt if provided and task doesn't exist yet
@@ -158,7 +160,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     isModelsLoading,
     isModelValid: !!selectedModel,
     isLoading,
-    isInputEmpty: !input.trim() && queuedMessages.length === 0,
+    isInputEmpty: !input.text.trim() && queuedMessages.length === 0,
     isFilesEmpty: files.length === 0,
     isReviewsEmpty: reviews.length === 0,
     isUploadingAttachments,
@@ -174,7 +176,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   const { handleSubmit, handleStop } = useChatSubmit({
     chat,
     input,
-    setInput,
+    clearInput,
     attachmentUpload,
     isSubmitDisabled,
     isLoading,
@@ -190,13 +192,13 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     async (e?: React.FormEvent<HTMLFormElement>) => {
       e?.preventDefault();
 
-      const message = input;
+      const message = input.text;
       if (message.trim()) {
         setQueuedMessages((prev) => [...prev, message]);
-        setInput("");
+        clearInput();
       }
     },
-    [input],
+    [input, clearInput],
   );
 
   useEffect(() => {
@@ -452,7 +454,7 @@ const SubmitStopButton: React.FC<SubmitStopButtonProps> = ({
 };
 
 export function ChatToolBarSkeleton() {
-  const [input, setInput] = useState("");
+  const { input, setInput } = useChatInputState();
   return (
     <>
       <div className={PopupContainerClassName}>
