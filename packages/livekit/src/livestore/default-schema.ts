@@ -27,7 +27,7 @@ export const tables = {
       isPublicShared: State.SQLite.boolean({ default: false }),
       title: State.SQLite.text({ nullable: true }),
       parentId: State.SQLite.text({ nullable: true }),
-      runAsync: State.SQLite.boolean({ default: false }),
+  runAsync: State.SQLite.boolean({ nullable: true }),
       status: State.SQLite.text({
         default: "pending-input",
         schema: TaskStatus,
