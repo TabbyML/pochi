@@ -1,4 +1,5 @@
 import { AttachmentPreviewList } from "@/components/attachment-preview-list";
+import { McpToolSelect } from "@/components/mcp-override-select";
 import { ModelSelect } from "@/components/model-select";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,6 +15,7 @@ import {
 import { useSelectedModels, useSettingsStore } from "@/features/settings";
 import type { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
+import { useMcpConfigOverride } from "@/lib/hooks/use-mcp-config-override";
 import { useTaskInputDraft } from "@/lib/hooks/use-task-input-draft";
 import { useWorktrees } from "@/lib/hooks/use-worktrees";
 import { vscodeHost } from "@/lib/vscode";
@@ -46,6 +48,12 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
 }) => {
   const { t } = useTranslation();
   const { draft: input, setDraft: setInput, clearDraft } = useTaskInputDraft();
+  const {
+    globalMcpConfig,
+    mcpConfigOverride,
+    toggleServer,
+    reset: resetMcpTools,
+  } = useMcpConfigOverride();
   const {
     groupedModels,
     selectedModel,
@@ -159,6 +167,10 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
         cwd: worktree && typeof worktree === "object" ? worktree.path : cwd,
         prompt: content,
         files: uploadedFiles,
+        mcpConfigOverride:
+          Object.keys(mcpConfigOverride).length > 0
+            ? mcpConfigOverride
+            : globalMcpConfig,
       });
 
       // Clear files if they were uploaded
@@ -166,12 +178,22 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
         clearFiles();
       }
 
+      resetMcpTools();
       // Clear input content after unfreeze
       setTimeout(clearDraft, 50);
 
       return true;
     },
-    [cwd, selectedWorktree, baseBranch, clearFiles, clearDraft],
+    [
+      cwd,
+      selectedWorktree,
+      baseBranch,
+      clearFiles,
+      clearDraft,
+      mcpConfigOverride,
+      resetMcpTools,
+      globalMcpConfig,
+    ],
   );
 
   const handleSubmitImpl = useCallback(
@@ -326,6 +348,11 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
               onBaseBranchChange={setBaseBranch}
             />
           )}
+          <McpToolSelect
+            mcpConfigOverride={mcpConfigOverride}
+            onToggleServer={toggleServer}
+            resetMcpTools={resetMcpTools}
+          />
           <HoverCard>
             <HoverCardTrigger asChild>
               <span>

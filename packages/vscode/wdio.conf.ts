@@ -1,3 +1,7 @@
+interface GlobalThis {
+  __workspacePath?: string;
+}
+
 export const config: WebdriverIO.Config = {
   //
   // ====================
@@ -59,7 +63,7 @@ export const config: WebdriverIO.Config = {
   capabilities: [
     {
       browserName: "vscode",
-      browserVersion: "stable", // also possible: "insiders" or a specific version e.g. "1.80.0"
+      browserVersion: "1.108.0", // also possible: "insiders" or a specific version e.g. "1.80.0"
       "wdio:enforceWebDriverClassic": true, // this is important for using WebdriverIO v9!
       "wdio:vscodeOptions": {
         // points to directory where extension package.json is located
@@ -217,8 +221,24 @@ export const config: WebdriverIO.Config = {
    * Hook that gets executed before the suite starts
    * @param {object} suite suite details
    */
-  // beforeSuite: function (suite) {
-  // },
+  beforeSuite: async (suite) => {
+    // Import workspace setup functions
+    const { detectWorkspaceType, setupAndOpenWorkspace } = await import(
+      "./tests/lib/workspace-registry.js"
+    );
+
+    // Detect workspace type from the spec file path
+    const specPath = suite.file;
+    const workspaceType = detectWorkspaceType(specPath);
+
+    // Setup and open workspace if needed
+    if (workspaceType !== "none") {
+      const workspacePath = await setupAndOpenWorkspace(workspaceType);
+
+      // Store active workspace path for cleanup
+      (globalThis as GlobalThis).__workspacePath = workspacePath;
+    }
+  },
   /**
    * Function to be executed before a test (in Mocha/Jasmine) starts.
    */
@@ -253,8 +273,19 @@ export const config: WebdriverIO.Config = {
    * Hook that gets executed after the suite has ended
    * @param {object} suite suite details
    */
-  // afterSuite: function (suite) {
-  // },
+  afterSuite: async (_suite) => {
+    // Import cleanup function
+    const { cleanupWorkspace } = await import("./tests/lib/workspace-setup.js");
+    const fs = await import("node:fs");
+
+    // Clean up the workspace if one was created
+    const workspacePath = (globalThis as GlobalThis).__workspacePath;
+    if (workspacePath && fs.existsSync(workspacePath)) {
+      await cleanupWorkspace(workspacePath);
+      // Clear the stored path
+      (globalThis as GlobalThis).__workspacePath = undefined;
+    }
+  },
   /**
    * Runs after a WebdriverIO command gets executed
    * @param {string} commandName hook command name

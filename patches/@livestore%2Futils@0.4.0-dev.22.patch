@@ -1,0 +1,26 @@
+diff --git a/dist/node/mod.js b/dist/node/mod.js
+index 41ac137e58a31a6e72a29fa5e1b0c0f2df3ef02a..bcdc9568ae865f6553cbbc0f9746f22eb873cc0e 100644
+--- a/dist/node/mod.js
++++ b/dist/node/mod.js
+@@ -1,5 +1,4 @@
+ import * as http from 'node:http';
+-import { layer as ParcelWatcherLayer } from '@effect/platform-node/NodeFileSystem/ParcelWatcher';
+ import { Effect, Layer } from 'effect';
+ import { OtelTracer, UnknownError } from "../effect/mod.js";
+ import { makeNoopTracer } from "../NoopTracer.js";
+@@ -59,7 +58,6 @@ export const OtelLiveDummy = Layer.suspend(() => {
+  *
+  * @see https://github.com/Effect-TS/effect/issues/5913
+  */
+-export const NodeRecursiveWatchLayer = ParcelWatcherLayer;
+ /**
+  * Pre-composed layer providing FileSystem with recursive file watching via @parcel/watcher.
+  * This is the recommended way to get a FileSystem that supports recursive watching.
+@@ -70,5 +68,5 @@ export const NodeRecursiveWatchLayer = ParcelWatcherLayer;
+  */
+ export { NodeFileSystem } from '@effect/platform-node';
+ import { NodeFileSystem } from '@effect/platform-node';
+-export const NodeFileSystemWithWatch = NodeFileSystem.layer.pipe(Layer.provideMerge(ParcelWatcherLayer));
++export const NodeFileSystemWithWatch = NodeFileSystem.layer.pipe();
+ //# sourceMappingURL=mod.js.map
+\ No newline at end of file

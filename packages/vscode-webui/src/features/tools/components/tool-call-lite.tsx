@@ -85,16 +85,16 @@ export function ToolCallLite({ tools }: Props) {
 function getLabelFromTool(
   type: ToolUIPart<UITools>["type"],
   t: ReturnType<typeof useTranslation>["t"],
-) {
+): string {
   switch (type) {
     case "tool-readFile":
-      return t("toolInvocation.reading");
+      return t("toolInvocation.reading") as string;
     case "tool-writeToFile":
-      return t("toolInvocation.writing");
+      return t("toolInvocation.writing") as string;
     case "tool-applyDiff":
-      return t("toolInvocation.applyingDiffTo");
+      return t("toolInvocation.applyingDiffTo") as string;
     case "tool-multiApplyDiff":
-      return t("toolInvocation.applyingDiffsTo");
+      return t("toolInvocation.applyingDiffsTo") as string;
     default:
       return "";
   }

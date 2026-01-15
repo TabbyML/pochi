@@ -4,6 +4,7 @@ import { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
 import { useCustomAgent } from "@/lib/hooks/use-custom-agents";
 import { useLatest } from "@/lib/hooks/use-latest";
 import { useMcp } from "@/lib/hooks/use-mcp";
+import { useTaskMcpConfigOverride } from "@/lib/hooks/use-task-mcp-config-override";
 import { prepareMessageParts } from "@/lib/message-utils";
 import { cn, tw } from "@/lib/utils";
 import { vscodeHost } from "@/lib/vscode";
@@ -110,9 +111,18 @@ function Chat({ user, uid, info }: ChatProps) {
   });
   const { customAgent } = useCustomAgent(subtask?.agent);
   const autoApproveGuard = useAutoApproveGuard();
+
+  // Get mcpConfigOverride from TaskStateStore
+  const {
+    mcpConfigOverride,
+    setMcpConfigOverride,
+    isLoading: isMcpConfigLoading,
+  } = useTaskMcpConfigOverride(uid);
+
   const getters = useLiveChatKitGetters({
     todos: todosRef,
     isSubTask,
+    mcpConfigOverride,
   });
 
   useRestoreTaskModel(task, isModelsLoading, updateSelectedModelId);
@@ -298,10 +308,14 @@ function Chat({ user, uid, info }: ChatProps) {
   }, [pendingApproval, task]);
 
   useEffect(() => {
-    if (chatKit.inited) return;
+    if (chatKit.inited || isMcpConfigLoading) return;
     const cwd = info.cwd;
     const displayId = info.displayId ?? undefined;
     if (info.type === "new-task") {
+      if (info.mcpConfigOverride && setMcpConfigOverride) {
+        setMcpConfigOverride(info.mcpConfigOverride);
+      }
+
       if (info.files?.length) {
         const files = info.files?.map((file) => ({
           type: "file" as const,
@@ -327,17 +341,22 @@ function Chat({ user, uid, info }: ChatProps) {
         messages: JSON.parse(info.messages),
       });
     } else if (info.type === "fork-task") {
+      // Persist mcpConfigOverride to TaskStateStore for forked tasks
+      if (info.mcpConfigOverride && setMcpConfigOverride) {
+        setMcpConfigOverride(info.mcpConfigOverride);
+      }
+
       chatKit.init(cwd, {
         initTitle: info.title,
         displayId,
         messages: JSON.parse(info.messages),
       });
     } else if (info.type === "open-task") {
-      // Do nothing
+      // Do nothing - mcpConfigOverride is loaded from TaskStateStore
     } else {
       assertUnreachable(info);
     }
-  }, [chatKit, t, info]);
+  }, [chatKit, t, info, setMcpConfigOverride, isMcpConfigLoading]);
 
   useSetSubtaskModel({ isSubTask, customAgent });
 
@@ -423,6 +442,7 @@ function Chat({ user, uid, info }: ChatProps) {
           onUpdateIsPublicShared={chatKit.updateIsPublicShared}
           taskId={uid}
           isRepairingMermaid={!!repairingChart}
+          mcpConfigOverride={mcpConfigOverride}
         />
       </div>
     </div>
