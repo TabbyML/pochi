@@ -86,7 +86,7 @@ export const taskInitFields = {
 
 export const taskFullFields = {
   ...taskInitFields,
-  runAsync: Schema.Boolean,
+  runAsync: Schema.optional(Schema.Boolean),
   git: Schema.optional(Git),
   shareId: Schema.optional(Schema.String),
   isPublicShared: Schema.Boolean,
