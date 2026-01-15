@@ -73,8 +73,7 @@
   "mcpSelect": {
     "tooltip": "MCP servers and tools",
     "noServers": "No MCP",
-    "serversEnabled": "{{enabled}}/{{total}} servers",
-    "servers": "servers",
+    "servers": "MCP Servers",
     "tools": "tools",
     "noServersConfigured": "No MCP servers configured",
     "manageServers": "Manage MCP Servers..."

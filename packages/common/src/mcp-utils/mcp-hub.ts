@@ -2,15 +2,15 @@ import type { McpTool } from "@getpochi/tools";
 import { type Signal, batch, computed, signal } from "@preact/signals-core";
 import * as R from "remeda";
 import { getLogger } from "../base";
-import type { McpServerConfig } from "../configuration/index.js";
+import type { McpServerConfig } from "../configuration";
 import {
   inspectPochiConfig,
   updatePochiConfig,
-} from "../configuration/index.js";
+} from "../configuration";
 import {
   buildInstructionsFromConnections,
   buildToolsetFromConnections,
-} from "../vscode-webui-bridge/mcp-util.js";
+} from "../vscode-webui-bridge/mcp-util";
 import { McpConnection } from "./mcp-connection";
 import type {
   McpServerConnection,

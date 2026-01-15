@@ -73,8 +73,7 @@
   "mcpSelect": {
     "tooltip": "MCP サーバーとツール",
     "noServers": "MCP なし",
-    "serversEnabled": "{{enabled}}/{{total}} サーバー",
-    "servers": "サーバー",
+    "servers": "MCP サーバー",
     "tools": "ツール",
     "noServersConfigured": "MCP サーバーが設定されていません",
     "manageServers": "MCP サーバーを管理..."

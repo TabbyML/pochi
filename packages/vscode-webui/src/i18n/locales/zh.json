@@ -73,8 +73,7 @@
   "mcpSelect": {
     "tooltip": "MCP 服务器和工具",
     "noServers": "无 MCP",
-    "serversEnabled": "{{enabled}}/{{total}} 个服务器",
-    "servers": "个服务器",
+    "servers": "MCP 服务器",
     "tools": "工具",
     "noServersConfigured": "未配置 MCP 服务器",
     "manageServers": "管理 MCP 服务器..."

@@ -73,8 +73,7 @@
   "mcpSelect": {
     "tooltip": "MCP 서버 및 도구",
     "noServers": "MCP 없음",
-    "serversEnabled": "{{enabled}}/{{total}} 서버",
-    "servers": "서버",
+    "servers": "MCP 서버",
     "tools": "도구",
     "noServersConfigured": "MCP 서버가 구성되지 않았습니다",
     "manageServers": "MCP 서버 관리..."
