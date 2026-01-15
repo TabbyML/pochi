@@ -14,11 +14,11 @@ export function McpServerList({ taskMcpTools, className }: McpServerListProps) {
   }
 
   return (
-    <div className={cn("flex flex-wrap gap-1.5", className)}>
+    <div className={cn("flex flex-wrap gap-1", className)}>
       {serverNames.map((name) => (
         <div
           key={name}
-          className="flex items-center rounded-md bg-muted/50 px-2 py-1 text-muted-foreground text-xs"
+          className="flex items-center rounded-md bg-muted/50 px-1 py-0.5 text-muted-foreground text-xs"
         >
           <span className="truncate">{name}</span>
         </div>
