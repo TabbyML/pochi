@@ -49,9 +49,9 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
   const { t } = useTranslation();
   const { draft: input, setDraft: setInput, clearDraft } = useTaskInputDraft();
   const {
+    globalMcpTools,
     mcpTools,
     toggleServer,
-    toggleTool,
     reset: resetMcpTools,
   } = useTaskMcpTools();
   const {
@@ -167,7 +167,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
         cwd: worktree && typeof worktree === "object" ? worktree.path : cwd,
         prompt: content,
         files: uploadedFiles,
-        mcpTools: Object.keys(mcpTools).length > 0 ? mcpTools : undefined,
+        mcpTools: Object.keys(mcpTools).length > 0 ? mcpTools : globalMcpTools,
       });
 
       // Clear files if they were uploaded
@@ -189,6 +189,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
       clearDraft,
       mcpTools,
       resetMcpTools,
+      globalMcpTools,
     ],
   );
 
@@ -347,7 +348,6 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
           <McpToolSelect
             taskMcpTools={mcpTools}
             onToggleServer={toggleServer}
-            onToggleTool={toggleTool}
             resetMcpTools={resetMcpTools}
           />
           <HoverCard>

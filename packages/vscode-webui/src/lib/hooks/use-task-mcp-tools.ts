@@ -1,6 +1,6 @@
 import type { McpServerConnection } from "@getpochi/common/mcp-utils";
 import type { TaskMcpTools } from "@getpochi/common/vscode-webui-bridge";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useMcp } from "./use-mcp";
 
 const buildToolsFromConnections = (
@@ -13,16 +13,24 @@ const buildToolsFromConnections = (
       connection.status === "ready" &&
       !!connection.tools
     ) {
-      initial[serverName] = { disabledTools: [] };
+      initial[serverName] = {
+        disabledTools: Object.keys(connection.tools)
+          .map((t) => (connection.tools[t].disabled === true ? t : undefined))
+          .filter((t) => t !== undefined),
+      };
     }
   }
   return initial;
 };
 
 export function useTaskMcpTools() {
+  const [mcpTools, setMcpTools] = useState<TaskMcpTools>({});
+
   const { connections } = useMcp();
 
-  const [mcpTools, setMcpTools] = useState<TaskMcpTools>({});
+  const globalMcpTools = useMemo(() => {
+    return buildToolsFromConnections(connections);
+  }, [connections]);
 
   const toggleServer = useCallback((serverName: string) => {
     setMcpTools((prev) => {
@@ -58,11 +66,11 @@ export function useTaskMcpTools() {
   }, []);
 
   const reset = useCallback(() => {
-    const initial = buildToolsFromConnections(connections);
-    setMcpTools(initial);
-  }, [connections]);
+    setMcpTools(globalMcpTools);
+  }, [globalMcpTools]);
 
   return {
+    globalMcpTools,
     mcpTools,
     toggleServer,
     toggleTool,

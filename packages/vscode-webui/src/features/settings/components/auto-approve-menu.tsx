@@ -1,3 +1,4 @@
+import { McpServerList } from "@/components/mcp-server-list";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -9,6 +10,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
+import type { TaskMcpTools } from "@getpochi/common/vscode-webui-bridge";
 import {
   Blocks,
   CheckIcon,
@@ -32,7 +34,15 @@ interface CoreActionSetting {
   summary: string;
 }
 
-export function AutoApproveMenu({ isSubTask }: { isSubTask: boolean }) {
+interface AutoApproveMenuProps {
+  isSubTask: boolean;
+  taskMcpTools?: TaskMcpTools;
+}
+
+export function AutoApproveMenu({
+  isSubTask,
+  taskMcpTools,
+}: AutoApproveMenuProps) {
   const { t } = useTranslation();
   const {
     autoApproveActive,
@@ -213,13 +223,39 @@ export function AutoApproveMenu({ isSubTask }: { isSubTask: boolean }) {
         side="top"
       >
         <div className="grid grid-cols-1 gap-2.5 [@media(min-width:400px)]:grid-cols-2">
-          {coreActionSettings.map((setting) => (
-            <div key={setting.id} className="flex items-center">
+          {coreActionSettings
+            .filter((s) => s.id !== "mcp")
+            .map((setting) => (
+              <div key={setting.id} className="flex items-center">
+                <label
+                  htmlFor={`core-action-dialog-${setting.id}`}
+                  className={
+                    "flex flex-1 cursor-pointer select-none items-center pl-1 text-foreground text-sm"
+                  }
+                >
+                  <Checkbox
+                    id={`core-action-dialog-${setting.id}`}
+                    checked={getCoreActionCheckedState(setting.id)}
+                    onCheckedChange={(checked) =>
+                      handleCoreActionToggle(setting.id, !!checked)
+                    }
+                  />
+                  <span className="ml-4 flex items-center gap-2 font-semibold">
+                    <setting.iconClass className="size-4 shrink-0" />
+                    {setting.label}
+                  </span>
+                </label>
+              </div>
+            ))}
+        </div>
+        <Separator className="my-3" />
+        {coreActionSettings
+          .filter((s) => s.id === "mcp")
+          .map((setting) => (
+            <div key={setting.id} className="mt-3 flex flex-col gap-2">
               <label
                 htmlFor={`core-action-dialog-${setting.id}`}
-                className={
-                  "flex flex-1 cursor-pointer select-none items-center pl-1 text-foreground text-sm"
-                }
+                className="flex cursor-pointer select-none items-center pl-1 text-foreground text-sm"
               >
                 <Checkbox
                   id={`core-action-dialog-${setting.id}`}
@@ -233,9 +269,11 @@ export function AutoApproveMenu({ isSubTask }: { isSubTask: boolean }) {
                   {setting.label}
                 </span>
               </label>
+              {taskMcpTools && (
+                <McpServerList taskMcpTools={taskMcpTools} className="ml-8" />
+              )}
             </div>
           ))}
-        </div>
         <Separator className="my-3" />
         {/* Max Attempts Section */}
         <div className="flex h-7 items-center pl-1">

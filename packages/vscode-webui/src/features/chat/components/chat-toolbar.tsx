@@ -304,7 +304,10 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
           />
         </div>
       )}
-      <AutoApproveMenu isSubTask={isSubTask} />
+      <AutoApproveMenu
+        isSubTask={isSubTask}
+        taskMcpTools={task?.mcpTools ?? undefined}
+      />
       {files.length > 0 && (
         <AttachmentPreviewList
           files={files}
