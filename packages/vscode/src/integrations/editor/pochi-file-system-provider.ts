@@ -1,10 +1,7 @@
 import { TextDecoder, TextEncoder } from "node:util";
 import { PochiWebviewPanel } from "@/integrations/webview/webview-panel";
-import { getLogger } from "@getpochi/common";
 import { inject, injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
-
-const logger = getLogger("PochiFileSystemProvider");
 
 @injectable()
 @singleton()
@@ -40,13 +37,7 @@ export class PochiFileSystemProvider
     const taskId = uri.authority;
     const filePath = uri.path;
 
-    const panel = PochiWebviewPanel.panels[0];
-    if (!panel?.webviewHost) {
-      logger.error(`Webview host not found for task ${taskId}`);
-      throw vscode.FileSystemError.FileNotFound(uri);
-    }
-
-    const content = await panel.webviewHost.readTaskFile(taskId, filePath);
+    const content = await PochiWebviewPanel.readTaskFile(taskId, filePath);
     if (content === null) {
       throw vscode.FileSystemError.FileNotFound(uri);
     }
@@ -69,13 +60,7 @@ export class PochiFileSystemProvider
     const taskId = uri.authority;
     const filePath = uri.path;
 
-    const panel = PochiWebviewPanel.panels[0];
-    if (!panel?.webviewHost) {
-      logger.error(`Webview host not found for task ${taskId}`);
-      throw vscode.FileSystemError.FileNotFound(uri);
-    }
-
-    const content = await panel.webviewHost.readTaskFile(taskId, filePath);
+    const content = await PochiWebviewPanel.readTaskFile(taskId, filePath);
     if (content === null) {
       throw vscode.FileSystemError.FileNotFound(uri);
     }
@@ -88,13 +73,7 @@ export class PochiFileSystemProvider
     const filePath = uri.path;
     const strContent = new TextDecoder().decode(content);
 
-    const panel = PochiWebviewPanel.panels[0];
-    if (!panel?.webviewHost) {
-      logger.error(`Webview host not found for task ${taskId}`);
-      return;
-    }
-
-    await panel.webviewHost.writeTaskFile(taskId, filePath, strContent);
+    await PochiWebviewPanel.writeTaskFile(taskId, filePath, strContent);
   }
 
   delete(): void {}

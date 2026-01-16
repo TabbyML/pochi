@@ -39,8 +39,7 @@ export class PochiWebviewPanel
   extends WebviewBase
   implements vscode.Disposable
 {
-  static panels: PochiWebviewPanel[] = [];
-
+  private static panels: PochiWebviewPanel[] = [];
   private readonly panel: vscode.WebviewPanel;
 
   constructor(
@@ -85,6 +84,21 @@ export class PochiWebviewPanel
     return async (): Promise<ResourceURI> => {
       return this.buildResourceURI(this.panel.webview);
     };
+  }
+
+  static readTaskFile(taskId: string, filePath: string) {
+    return PochiWebviewPanel.panels[0]?.webviewHost?.readTaskFile(
+      taskId,
+      filePath,
+    );
+  }
+
+  static writeTaskFile(taskId: string, filePath: string, content: string) {
+    return PochiWebviewPanel.panels[0]?.webviewHost?.writeTaskFile(
+      taskId,
+      filePath,
+      content,
+    );
   }
 
   dispose(): void {
