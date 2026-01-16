@@ -18,7 +18,7 @@ export const SubtaskHeader: React.FC<{
   const parentTask = store.useQuery(
     catalog.queries.makeTaskQuery(subtask.parentUid),
   );
-  const parentCwd = parentTask?.cwd ?? window.POCHI_TASK_INFO?.cwd;
+  const parentCwd = parentTask?.cwd;
   const parentDisplayId = parentTask?.displayId ?? null;
   const isPane = globalThis.POCHI_WEBVIEW_KIND === "pane";
   const handleBack = useCallback(
