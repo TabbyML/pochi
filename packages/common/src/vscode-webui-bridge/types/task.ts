@@ -47,7 +47,7 @@ export type PochiTaskInfo = PochiTaskParams & {
 
 export type TaskContext = {
   taskId: string;
-  parentTaskId?: string;
+  parentTaskId?: string | null;
 };
 
 /**

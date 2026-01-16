@@ -143,6 +143,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   private toolCallGroup = runExclusive.createGroupRef();
   private checkpointGroup = runExclusive.createGroupRef();
   private disposables: vscode.Disposable[] = [];
+  private currentTaskId: string | null = null;
 
   constructor(
     @inject("vscode.ExtensionContext")
@@ -166,12 +167,24 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     private readonly reviewController: ReviewController,
     private readonly userEditState: UserEditState,
     private readonly globalStateSignals: GlobalStateSignals,
-    private readonly taskStore: TaskHistoryStore,
+    private readonly taskHistoryStore: TaskHistoryStore,
     private readonly taskStateStore: TaskDataStore,
   ) {}
 
   private get cwd() {
     return this.workspaceScope.cwd;
+  }
+
+  set taskId(taskId: string | null) {
+    this.currentTaskId = taskId;
+  }
+
+  private get task() {
+    if (!this.currentTaskId) {
+      return null;
+    }
+    const taskInfo = this.taskHistoryStore.tasks.value[this.currentTaskId];
+    return taskInfo ?? null;
   }
 
   listRuleFiles = async (): Promise<RuleFile[]> => {
@@ -243,7 +256,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   };
 
   readTasks = async () => {
-    return ThreadSignal.serialize(this.taskStore.tasks);
+    return ThreadSignal.serialize(this.taskHistoryStore.tasks);
   };
 
   readEnvironment = async (options: {
@@ -511,12 +524,15 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       base64Data?: string;
       fallbackGlobPattern?: string;
       cellId?: string;
-      taskContext?: TaskContext;
     },
   ) => {
+    logger.info('CurrentTask', this.task)
     if (filePath.startsWith("pochi://")) {
       const fileUri = resolveFileUri(filePath, {
-        taskContext: options?.taskContext,
+        taskContext: this.task ? {
+          taskId: this.task?.id,
+          parentTaskId: this.task?.parentId
+        } : undefined,
       });
       await vscode.commands.executeCommand("vscode.open", fileUri);
       return;

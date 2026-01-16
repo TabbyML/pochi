@@ -8,6 +8,7 @@ import * as vscode from "vscode";
 
 type EncodedTask = {
   id: string;
+  parentId: string | null;
   // unix timestamp in milliseconds
   updatedAt: number;
 };

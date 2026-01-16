@@ -163,7 +163,6 @@ export interface VSCodeHostApi {
       base64Data?: string;
       fallbackGlobPattern?: string;
       cellId?: string;
-      taskContext?: TaskContext;
     },
   ): void;
 
