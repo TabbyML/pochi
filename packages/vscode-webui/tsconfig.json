@@ -32,7 +32,6 @@
       "@/features/todo": ["./src/features/todo"],
       "@/features/retry": ["./src/features/retry"],
       "@/features/tools": ["./src/features/tools"],
-      "@/features/planner": ["./src/features/planner"],
       "#lib/hooks/use-paginated-tasks": [
         "./src/lib/hooks/use-paginated-tasks.mock"
       ]

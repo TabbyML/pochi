@@ -1,5 +1,4 @@
 import { ChatContextProvider, useHandleChatEvents } from "@/features/chat";
-import { PlannerLayout } from "@/features/planner";
 import { isRetryableError, usePendingModelAutoStart } from "@/features/retry";
 import { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
 import { useCustomAgent } from "@/lib/hooks/use-custom-agents";
@@ -406,47 +405,6 @@ function Chat({ user, uid, info }: ChatProps) {
     [messages, task, t],
   );
 
-  const chatAreaProps = {
-    messages: renderMessages,
-    isLoading,
-    user: user || defaultUser,
-    messagesContainerRef,
-    className: cn({
-      // Leave more space for errors as errors / approval button are absolutely positioned
-      "pb-14": !!displayError,
-    }),
-    hideEmptyPlaceholder: !isTaskWithoutContent,
-    forkTask: task?.cwd ? forkTask : undefined,
-    hideCheckPoint: isSubTask,
-    repairMermaid,
-    repairingChart,
-  };
-
-  const chatToolbarProps = {
-    chat,
-    task,
-    todosRef,
-    compact: chatKit.compact,
-    approvalAndRetry,
-    attachmentUpload,
-    isSubTask,
-    subtask,
-    displayError,
-    onUpdateIsPublicShared: chatKit.updateIsPublicShared,
-    taskId: uid,
-    isRepairingMermaid: !!repairingChart,
-    mcpConfigOverride,
-  };
-
-  if (isSubTask && subtask?.agent === "planner") {
-    return (
-      <PlannerLayout
-        chatAreaProps={chatAreaProps}
-        chatToolbarProps={chatToolbarProps}
-      />
-    );
-  }
-
   return (
     <div className={ChatContainerClassName}>
       {subtask && (
@@ -455,9 +413,37 @@ function Chat({ user, uid, info }: ChatProps) {
           className="absolute top-1 right-2 z-10"
         />
       )}
-      <ChatArea {...chatAreaProps} />
+      <ChatArea
+        messages={renderMessages}
+        isLoading={isLoading}
+        user={user || defaultUser}
+        messagesContainerRef={messagesContainerRef}
+        className={cn({
+          // Leave more space for errors as errors / approval button are absolutely positioned
+          "pb-14": !!displayError,
+        })}
+        hideEmptyPlaceholder={!isTaskWithoutContent}
+        forkTask={task?.cwd ? forkTask : undefined}
+        hideCheckPoint={isSubTask}
+        repairMermaid={repairMermaid}
+        repairingChart={repairingChart}
+      />
       <div className={ChatToolbarContainerClassName}>
-        <ChatToolbar {...chatToolbarProps} />
+        <ChatToolbar
+          chat={chat}
+          task={task}
+          todosRef={todosRef}
+          compact={chatKit.compact}
+          approvalAndRetry={approvalAndRetry}
+          attachmentUpload={attachmentUpload}
+          isSubTask={isSubTask}
+          subtask={subtask}
+          displayError={displayError}
+          onUpdateIsPublicShared={chatKit.updateIsPublicShared}
+          taskId={uid}
+          isRepairingMermaid={!!repairingChart}
+          mcpConfigOverride={mcpConfigOverride}
+        />
       </div>
     </div>
   );
