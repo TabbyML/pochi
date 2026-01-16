@@ -115,7 +115,8 @@ export class CommandManager implements vscode.Disposable {
           "Logout",
         );
         if (selection === "Logout") {
-          await this.authClient.signOut();
+          this.authClient.signOut();
+
           await getVendor("pochi").logout();
           this.authEvents.logoutEvent.fire();
         }
