@@ -341,6 +341,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
             isValid={!!selectedModel}
             onChange={updateSelectedModelId}
             reloadModels={reloadModels}
+            triggerClassName="sidebar-model-select"
           />
         </div>
 
