@@ -1,3 +1,4 @@
+import * as path from "node:path";
 import { AuthEvents } from "@/lib/auth-events";
 import { WorkspaceScope, workspaceScoped } from "@/lib/workspace-scoped";
 import { getLogger, toErrorMessage } from "@getpochi/common";
@@ -136,7 +137,7 @@ export class PochiTaskEditorProvider
       .resolve(WorktreeManager)
       .getWorktreeDisplayName(params.cwd);
     const displayName = getTaskDisplayTitle({
-      worktreeName: worktreeName ?? "workspace",
+      worktreeName: worktreeName ?? path.basename(params.cwd),
       uid: params.uid,
     });
     return vscode.Uri.from({

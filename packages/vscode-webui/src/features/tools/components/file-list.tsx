@@ -1,6 +1,6 @@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
-import { getFileName, isFolder } from "@/lib/utils/file";
+import { getBaseName, isFolder } from "@/lib/utils/file";
 import { vscodeHost } from "@/lib/vscode";
 import { useState } from "react";
 import { FileIcon } from "./file-icon";
@@ -51,7 +51,7 @@ export const FileList: React.FC<{
             />
             {showBaseName && (
               <>
-                {getFileName(match.file)}
+                {getBaseName(match.file)}
                 {match.line && (
                   <span
                     className={`truncate ${activeIndex === index ? "text-secondary-foreground/70" : "text-foreground/70"}`}

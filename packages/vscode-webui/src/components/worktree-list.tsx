@@ -57,6 +57,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as R from "remeda";
 
+import { getBaseName } from "@/lib/utils/file";
 import { usePaginatedTasks } from "#lib/hooks/use-paginated-tasks";
 import { TaskRow } from "./task-row";
 import { ScrollArea } from "./ui/scroll-area";
@@ -131,7 +132,7 @@ export function WorktreeList({
         const isMain = wt.isMain;
 
         if (wt.isMain) {
-          name = "workspace";
+          name = getBaseName(wt.path);
         } else {
           name = getWorktreeNameFromWorktreePath(wt.path) || "unknown";
         }

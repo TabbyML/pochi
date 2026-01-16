@@ -1,4 +1,4 @@
-export const getFileName = (filePath: string) => {
+export const getBaseName = (filePath: string) => {
   // Normalize path separators (handle both / and \)
   const normalizedPath = filePath.replace(/\\/g, "/");
   const parts = normalizedPath.split("/");

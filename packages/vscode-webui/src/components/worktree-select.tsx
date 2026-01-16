@@ -18,6 +18,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { getBaseName } from "@/lib/utils/file";
 import { vscodeHost } from "@/lib/vscode";
 import { getWorktreeNameFromWorktreePath } from "@getpochi/common/git-utils";
 import {
@@ -54,7 +55,7 @@ const getWorktreeName = (worktree: GitWorktree | undefined) => {
     return;
   }
   if (worktree.isMain) {
-    return "workspace";
+    return getBaseName(worktree.path);
   }
   return getWorktreeNameFromWorktreePath(worktree.path);
 };
