@@ -1,11 +1,11 @@
 import path, { join } from "node:path";
+import { getLogger } from "@getpochi/common";
 import { resolvePath } from "@getpochi/common/tool-utils";
 import type { TaskContext } from "@getpochi/common/vscode-webui-bridge";
 import * as diff from "diff";
 import * as vscode from "vscode";
-import { getLogger } from "@getpochi/common";
 
-const logger = getLogger('Xusheng');
+const logger = getLogger("Xusheng");
 
 /**
  * Ensure a directory exists by creating it if needed
@@ -79,7 +79,7 @@ export const resolveFileUri = (
 
   if (path.startsWith("pochi://")) {
     let resolvedPath = path;
-    logger.info('taskContext', taskContext);
+    logger.info("taskContext", taskContext);
     if (taskContext) {
       resolvedPath = resolvedPath.replace(
         "pochi://self/",
@@ -90,7 +90,7 @@ export const resolveFileUri = (
         `pochi://${taskContext.parentTaskId || taskContext.taskId}/`,
       );
     }
-    logger.info('resolvedPath', resolvedPath)
+    logger.info("resolvedPath", resolvedPath);
     return vscode.Uri.parse(resolvedPath);
   }
   const resolvedPath = resolvePath(path, cwd);
