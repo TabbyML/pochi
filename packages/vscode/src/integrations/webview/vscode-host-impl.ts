@@ -942,7 +942,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       options?.preserveFocus &&
       (params.type === "open-task" || params.type === "new-task") &&
       params.uid &&
-      this.pochiTaskState.state.value[params.uid]
+      this.taskActivityTracker.state.value[params.uid]
     ) {
       return;
     }
