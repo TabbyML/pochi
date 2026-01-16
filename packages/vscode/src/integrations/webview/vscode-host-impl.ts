@@ -22,7 +22,7 @@ import { PostHog } from "@/lib/posthog";
 import { TaskDataStore } from "@/lib/task-data-store";
 import { taskRunning, taskUpdated } from "@/lib/task-events";
 // biome-ignore lint/style/useImportType: needed for dependency injection
-import { type EncodedTask, TaskHistoryStore } from "@/lib/task-history-store";
+import { TaskHistoryStore } from "@/lib/task-history-store";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { UserStorage } from "@/lib/user-storage";
 // biome-ignore lint/style/useImportType: needed for dependency injection
@@ -1129,16 +1129,22 @@ function safeCall<T>(x: Promise<T>) {
   });
 }
 
-const resolvePochiSchemaUriPath = (path: string, task: EncodedTask | null) => {
+const resolvePochiSchemaUriPath = (
+  path: string,
+  task: { id: string; parentId: string | null } | null,
+) => {
+  if (!task) {
+    return path;
+  }
   const uri = vscode.Uri.parse(path);
   if (uri.scheme !== "pochi") {
     return path;
   }
   if (uri.authority === "self") {
-    return path.replace("self", task?.id || "");
+    return path.replace("self", task.id);
   }
   if (uri.authority === "parent") {
-    return path.replace("parent", task?.parentId || task?.id || "");
+    return path.replace("parent", task.parentId || task.id);
   }
   return path;
 };
@@ -1147,8 +1153,11 @@ const resolveToolCallPochiSchemaUriPath = (
   toolName: string,
   // biome-ignore lint/suspicious/noExplicitAny: external call without type information
   args: any,
-  task: EncodedTask | null,
+  task: { id: string; parentId: string | null } | null,
 ) => {
+  if (!task) {
+    return;
+  }
   if (!["writeToFile", "readFile"].includes(toolName)) {
     return;
   }

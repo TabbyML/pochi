@@ -1,6 +1,6 @@
 import * as os from "node:os";
 import * as path from "node:path";
-import { builtInCustomAgents, getLogger } from "@getpochi/common";
+import { builtInAgents, getLogger } from "@getpochi/common";
 import { parseAgentFile } from "@getpochi/common/tool-utils";
 import type { CustomAgentFile } from "@getpochi/common/vscode-webui-bridge";
 import type { CustomAgent } from "@getpochi/tools";
@@ -98,9 +98,7 @@ export class CustomAgentManager implements vscode.Disposable {
 
   private async loadAgents() {
     try {
-      const allAgents: (CustomAgent | CustomAgentFile)[] = [
-        ...builtInCustomAgents,
-      ];
+      const allAgents: (CustomAgent | CustomAgentFile)[] = [...builtInAgents];
       if (this.cwd) {
         const projectAgentsDir = path.join(this.cwd, ".pochi", "agents");
         const cwd = this.cwd;
