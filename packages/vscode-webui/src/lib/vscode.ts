@@ -112,6 +112,7 @@ function createVSCodeHost(): VSCodeHostApi {
         "openReview",
         "readUserEdits",
         "readTasks",
+        "readMcpConfigOverride",
       ],
       exports: {
         openTaskList() {

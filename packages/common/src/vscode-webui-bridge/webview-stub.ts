@@ -9,6 +9,7 @@ import type {
   FileDiff,
   GitWorktree,
   GithubIssue,
+  McpConfigOverride,
   McpStatus,
   PochiCredentials,
   PochiTaskParams,
@@ -327,6 +328,18 @@ const VSCodeHostStub = {
   setGlobalState: async (): Promise<void> => {},
   readTasks: (): Promise<ThreadSignalSerialization<Record<string, unknown>>> =>
     Promise.resolve({} as ThreadSignalSerialization<Record<string, unknown>>),
+  readMcpConfigOverride: async (
+    _taskId: string,
+  ): Promise<{
+    value: ThreadSignalSerialization<McpConfigOverride | undefined>;
+    set: (mcpConfigOverride: McpConfigOverride) => Promise<McpConfigOverride>;
+  }> => {
+    return {
+      value: {} as ThreadSignalSerialization<McpConfigOverride | undefined>,
+      set: (mcpConfigOverride: McpConfigOverride) =>
+        Promise.resolve(mcpConfigOverride),
+    };
+  },
 } satisfies VSCodeHostApi;
 
 export function createVscodeHostStub(overrides?: Partial<VSCodeHostApi>) {

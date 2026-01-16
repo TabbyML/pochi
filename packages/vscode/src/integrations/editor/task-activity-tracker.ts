@@ -7,11 +7,11 @@ import { injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
 import { PochiTaskEditorProvider } from "../webview/webview-panel";
 
-const logger = getLogger("PochiTaskState");
+const logger = getLogger("TaskActivityTracker");
 
 @injectable()
 @singleton()
-export class PochiTaskState implements vscode.Disposable {
+export class TaskActivityTracker implements vscode.Disposable {
   private disposables: vscode.Disposable[] = [];
   state = signal<TaskStates>({});
 

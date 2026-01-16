@@ -130,7 +130,7 @@ export class GithubPullRequestState implements vscode.Disposable {
 
     await Promise.all(
       worktreesToCheck.map(async (worktree) => {
-        const currentInfo = this.worktreeInfoProvider.get(worktree.path);
+        const currentInfo = await this.worktreeInfoProvider.get(worktree.path);
         if (
           !currentInfo ||
           !currentInfo.github.pullRequest ||
@@ -138,21 +138,21 @@ export class GithubPullRequestState implements vscode.Disposable {
         ) {
           const updated = await this.fetchWorktreePrInfo(worktree);
           if (updated) {
-            this.updateWorktreeSignal(worktree.path);
+            await this.updateWorktreeSignal(worktree.path);
           }
         }
       }),
     );
   }
 
-  private updateWorktreeSignal(path: string) {
+  private async updateWorktreeSignal(path: string) {
     const currentWorktrees = this.worktreeManager.worktrees.value;
     const index = currentWorktrees.findIndex((w) => w.path === path);
     if (index !== -1) {
       const newWorktrees = [...currentWorktrees];
       newWorktrees[index] = {
         ...newWorktrees[index],
-        data: this.worktreeInfoProvider.get(path),
+        data: await this.worktreeInfoProvider.get(path),
       };
       this.worktreeManager.worktrees.value = newWorktrees;
     }
@@ -177,7 +177,7 @@ export class GithubPullRequestState implements vscode.Disposable {
       }`,
     );
 
-    const currentInfo = this.worktreeInfoProvider.get(worktree.path);
+    const currentInfo = await this.worktreeInfoProvider.get(worktree.path);
     const currentPrInfo = currentInfo?.github?.pullRequest;
     const newPrInfo = prInfo ?? undefined;
 

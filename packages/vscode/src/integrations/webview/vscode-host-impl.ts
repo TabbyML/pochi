@@ -18,9 +18,11 @@ import { getLogger } from "@/lib/logger";
 import { ModelList } from "@/lib/model-list";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { PostHog } from "@/lib/posthog";
+// biome-ignore lint/style/useImportType: needed for dependency injection
+import { TaskDataStore } from "@/lib/task-data-store";
 import { taskRunning, taskUpdated } from "@/lib/task-events";
 // biome-ignore lint/style/useImportType: needed for dependency injection
-import { TaskStore } from "@/lib/task-store";
+import { TaskHistoryStore } from "@/lib/task-history-store";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { UserStorage } from "@/lib/user-storage";
 // biome-ignore lint/style/useImportType: needed for dependency injection
@@ -59,6 +61,7 @@ import {
   type FileDiff,
   type GitWorktree,
   type GithubIssue,
+  type McpConfigOverride,
   type PochiCredentials,
   type PochiTaskParams,
   type ResourceURI,
@@ -103,9 +106,12 @@ import { UserEditState } from "../checkpoint/user-edit-state";
 import { PochiConfiguration } from "../configuration";
 import { showDiffChanges } from "../editor/diff-changes-editor";
 // biome-ignore lint/style/useImportType: needed for dependency injection
-import { PochiTaskState } from "../editor/pochi-task-state";
+import {
+  EditorContextState,
+  type FileSelection,
+} from "../editor/editor-context-state";
 // biome-ignore lint/style/useImportType: needed for dependency injection
-import { type FileSelection, TabState } from "../editor/tab-state";
+import { TaskActivityTracker } from "../editor/task-activity-tracker";
 // biome-ignore lint/style/useImportType: needed for dependency injections
 import { GitState } from "../git/git-state";
 // biome-ignore lint/style/useImportType: needed for dependency injection
@@ -141,7 +147,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   constructor(
     @inject("vscode.ExtensionContext")
     private readonly context: vscode.ExtensionContext,
-    private readonly tabState: TabState,
+    private readonly editorContextState: EditorContextState,
     private readonly terminalState: TerminalState,
     private readonly posthog: PostHog,
     private readonly mcpHub: McpHub,
@@ -153,14 +159,15 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     private readonly checkpointService: CheckpointService,
     private readonly customAgentManager: CustomAgentManager,
     private readonly worktreeManager: WorktreeManager,
-    private readonly pochiTaskState: PochiTaskState,
+    private readonly taskActivityTracker: TaskActivityTracker,
     private readonly githubPullRequestState: GithubPullRequestState,
     private readonly githubIssueState: GithubIssueState,
     private readonly gitState: GitState,
     private readonly reviewController: ReviewController,
     private readonly userEditState: UserEditState,
     private readonly globalStateSignals: GlobalStateSignals,
-    private readonly taskStore: TaskStore,
+    private readonly taskStore: TaskHistoryStore,
+    private readonly taskStateStore: TaskDataStore,
   ) {}
 
   private get cwd() {
@@ -273,10 +280,11 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         files,
         isTruncated,
         gitStatus,
-        activeTabs: this.tabState.activeTabs.value.map((tab) => ({
+        activeTabs: this.editorContextState.activeTabs.value.map((tab) => ({
           filepath: asRelativePath(tab.filepath, this.cwd ?? ""),
           isActive:
-            tab.filepath === this.tabState.activeSelection.value?.filepath,
+            tab.filepath ===
+            this.editorContextState.activeSelection.value?.filepath,
         })),
         terminals: this.terminalState.visibleTerminals.value,
       },
@@ -294,7 +302,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   > => {
     return ThreadSignal.serialize(
       computed(() =>
-        this.tabState.activeTabs.value.map((tab) => ({
+        this.editorContextState.activeTabs.value.map((tab) => ({
           filepath: asRelativePath(tab.filepath, this.cwd ?? ""),
           isDir: tab.isDir,
         })),
@@ -303,13 +311,13 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   };
 
   readPochiTabs = async (): Promise<ThreadSignalSerialization<TaskStates>> => {
-    return ThreadSignal.serialize(this.pochiTaskState.state);
+    return ThreadSignal.serialize(this.taskActivityTracker.state);
   };
 
   readActiveSelection = async (): Promise<
     ThreadSignalSerialization<FileSelection | undefined>
   > => {
-    return ThreadSignal.serialize(this.tabState.activeSelection);
+    return ThreadSignal.serialize(this.editorContextState.activeSelection);
   };
 
   readVisibleTerminals = async () => {
@@ -913,7 +921,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   ) => {
     if (!this.cwd) return;
 
-    const taskStates = this.pochiTaskState.state.value;
+    const taskStates = this.taskActivityTracker.state.value;
     const targetTaskState = taskStates[params.uid];
     if (targetTaskState?.active) {
       return;
@@ -1085,6 +1093,21 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     return ThreadSignal.serialize(
       computed(() => this.userEditState.edits.value[uid] ?? []),
     );
+  };
+
+  readMcpConfigOverride = async (
+    taskId: string,
+  ): Promise<{
+    value: ThreadSignalSerialization<McpConfigOverride | undefined>;
+    set: (mcpConfigOverride: McpConfigOverride) => Promise<McpConfigOverride>;
+  }> => {
+    return {
+      value: ThreadSignal.serialize(
+        this.taskStateStore.getMcpConfigOverrideSignal(taskId),
+      ),
+      set: (mcpConfigOverride: McpConfigOverride) =>
+        this.taskStateStore.setMcpConfigOverride(taskId, mcpConfigOverride),
+    };
   };
 
   dispose() {

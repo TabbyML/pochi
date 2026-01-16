@@ -71,6 +71,14 @@
     "noBranchFound": "브랜치를 찾을 수 없습니다",
     "branches": "브랜치"
   },
+  "mcpSelect": {
+    "tooltip": "MCP 서버 및 도구",
+    "noServers": "MCP 없음",
+    "servers": "MCP 서버",
+    "tools": "도구",
+    "noServersConfigured": "MCP 서버가 구성되지 않았습니다",
+    "manageServers": "MCP 서버 관리..."
+  },
   "worktree": {
     "createPr": "PR 생성",
     "createDraftPr": "초안 PR 생성",

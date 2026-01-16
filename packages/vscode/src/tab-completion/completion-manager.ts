@@ -290,6 +290,16 @@ export class TabCompletionManager implements vscode.Disposable {
     }
 
     logger.trace("Preparing new requests.");
+    const offset = context.documentSnapshot.offsetAt(context.selection.active);
+    const triggerCharacter = context.documentSnapshot.getText(
+      toPositionRange(
+        {
+          start: Math.max(0, offset - 1),
+          end: offset,
+        },
+        context.documentSnapshot,
+      ),
+    );
     for (const provider of this.providers) {
       logger.trace(`Create new request for provider ${provider.id}.`);
       const request = provider.createRequest(context);
@@ -326,13 +336,13 @@ export class TabCompletionManager implements vscode.Disposable {
       });
 
       const tokenSource = new vscode.CancellationTokenSource();
+      const estimatedResponseTime =
+        request.status.value.type === "init"
+          ? request.status.value.estimatedResponseTime
+          : 0;
       const delay = debounce.getDelay({
-        triggerCharacter: context.documentSnapshot.getText(
-          new vscode.Range(
-            context.selection.active.translate(0, -1),
-            context.selection.active,
-          ),
-        ),
+        triggerCharacter:
+          triggerCharacter.length === 1 ? triggerCharacter : undefined,
         isLineEnd: isLineEndPosition(
           context.selection.active,
           context.documentSnapshot,
@@ -346,6 +356,7 @@ export class TabCompletionManager implements vscode.Disposable {
           )
           .match(/^\W*$/),
         isManually: context.isManually,
+        estimatedResponseTime,
       });
 
       const token = tokenSource.token;
