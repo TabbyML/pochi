@@ -17,7 +17,6 @@ export type { SessionState, WorkspaceState } from "./types/session";
 export type {
   PochiTaskInfo,
   PochiTaskParams,
-  TaskContext,
   TaskData,
   TaskChangedFile,
   ChangedFileContent,

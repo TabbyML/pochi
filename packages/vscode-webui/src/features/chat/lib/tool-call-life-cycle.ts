@@ -1,9 +1,6 @@
 import { vscodeHost } from "@/lib/vscode";
 import { getLogger } from "@getpochi/common";
-import type {
-  ExecuteCommandResult,
-  TaskContext,
-} from "@getpochi/common/vscode-webui-bridge";
+import type { ExecuteCommandResult } from "@getpochi/common/vscode-webui-bridge";
 import {
   type LiveKitStore,
   type Message,
@@ -164,18 +161,15 @@ export class ManagedToolCallLifeCycle
   private state: ToolCallState;
   readonly toolName: string;
   readonly toolCallId: string;
-  readonly taskContext?: TaskContext;
 
   constructor(
     private readonly store: LiveKitStore,
     key: ToolCallLifeCycleKey,
     private readonly outerAbortSignal: AbortSignal,
-    taskContext?: TaskContext,
   ) {
     super();
     this.toolName = key.toolName;
     this.toolCallId = key.toolCallId;
-    this.taskContext = taskContext;
     this.state = { type: "pre-init" };
   }
 
@@ -330,7 +324,6 @@ export class ManagedToolCallLifeCycle
         toolCallId: this.toolCallId,
         abortSignal: ThreadAbortSignal.serialize(abortSignal),
         contentType: options?.contentType,
-        taskContext: this.taskContext,
       });
     }
 

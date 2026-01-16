@@ -1,17 +1,12 @@
-import type { TaskContext } from "@getpochi/common/vscode-webui-bridge";
 import { type ReactNode, useRef, useState } from "react";
 import { useToolCallLifeCycles } from "../use-tool-call-life-cycles";
 import { ChatContext, type ChatState, type RetryCount } from "./types";
 
 interface ChatContextProviderProps {
   children: ReactNode;
-  taskContext?: TaskContext;
 }
 
-export function ChatContextProvider({
-  children,
-  taskContext,
-}: ChatContextProviderProps) {
+export function ChatContextProvider({ children }: ChatContextProviderProps) {
   const autoApproveGuard = useRef<"auto" | "manual" | "stop">("stop");
   const abortController = useRef(new AbortController());
   const [retryCount, setRetryCount] = useState<RetryCount | undefined>(
@@ -22,7 +17,7 @@ export function ChatContextProvider({
     previewingToolCalls,
     getToolCallLifeCycle,
     completeToolCalls,
-  } = useToolCallLifeCycles(abortController.current.signal, taskContext);
+  } = useToolCallLifeCycles(abortController.current.signal);
 
   const value: ChatState = {
     abortController,

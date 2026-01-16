@@ -6,7 +6,7 @@ import { funnel } from "remeda";
 import { inject, injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
 
-type EncodedTask = {
+export type EncodedTask = {
   id: string;
   parentId: string | null;
   // unix timestamp in milliseconds

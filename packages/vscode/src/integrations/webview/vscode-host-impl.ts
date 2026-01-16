@@ -70,7 +70,6 @@ import {
   type SaveCheckpointOptions,
   type SessionState,
   type TaskChangedFile,
-  type TaskContext,
   type TaskStates,
   type VSCodeHostApi,
   type VSCodeSettings,
@@ -183,8 +182,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     if (!this.currentTaskId) {
       return null;
     }
-    const taskInfo = this.taskHistoryStore.tasks.value[this.currentTaskId];
-    return taskInfo ?? null;
+    return this.taskHistoryStore.tasks.value[this.currentTaskId];
   }
 
   listRuleFiles = async (): Promise<RuleFile[]> => {
@@ -410,7 +408,6 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         toolCallId: string;
         abortSignal: ThreadAbortSignalSerialization;
         contentType?: string[];
-        taskContext?: TaskContext;
       },
     ) => {
       let tool: ToolFunctionType<Tool> | undefined;
@@ -443,7 +440,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
           toolCallId: options.toolCallId,
           cwd: this.cwd,
           contentType: options.contentType,
-          taskContext: options.taskContext,
+          task: this.task,
         }),
       );
 
@@ -481,7 +478,6 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         toolCallId: string;
         state: "partial-call" | "call" | "result";
         abortSignal?: ThreadAbortSignalSerialization;
-        taskContext?: TaskContext;
       },
     ) => {
       const tool = ToolPreviewMap[toolName];
@@ -509,7 +505,6 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
           ...options,
           abortSignal,
           cwd: this.cwd,
-          taskContext: options.taskContext,
         }),
       );
     },
@@ -526,15 +521,9 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       cellId?: string;
     },
   ) => {
-    logger.info("CurrentTask", this.task);
     if (filePath.startsWith("pochi://")) {
       const fileUri = resolveFileUri(filePath, {
-        taskContext: this.task
-          ? {
-              taskId: this.task?.id,
-              parentTaskId: this.task?.parentId,
-            }
-          : undefined,
+        task: this.task,
       });
       await vscode.commands.executeCommand("vscode.open", fileUri);
       return;

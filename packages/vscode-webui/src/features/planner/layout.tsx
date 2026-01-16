@@ -1,11 +1,6 @@
 import { MessageMarkdown as Markdown } from "@/components/message/markdown";
 import { Button } from "@/components/ui/button";
-import {
-  ChatArea,
-  ChatToolbar,
-  type SubtaskInfo,
-  useSendMessage,
-} from "@/features/chat";
+import { ChatArea, ChatToolbar, useSendMessage } from "@/features/chat";
 import { useDefaultStore } from "@/lib/use-default-store";
 
 import { cn } from "@/lib/utils";
@@ -19,21 +14,19 @@ import { useTranslation } from "react-i18next";
 export interface PlannerLayoutProps {
   chatAreaProps: React.ComponentProps<typeof ChatArea>;
   chatToolbarProps: React.ComponentProps<typeof ChatToolbar>;
-  subtask?: SubtaskInfo;
-  uid: string;
 }
 
 export function PlannerLayout({
   chatAreaProps,
   chatToolbarProps,
-  uid,
 }: PlannerLayoutProps) {
   const { t } = useTranslation();
   const store = useDefaultStore();
   const sendMessage = useSendMessage();
 
+  const task = chatToolbarProps.task;
   const planFile = store.useQuery(
-    catalog.queries.makeFileQuery(uid, "/plan.md"),
+    catalog.queries.makeFileQuery(task?.parentId || "", "/plan.md"),
   );
 
   // Resizing logic
@@ -75,7 +68,7 @@ export function PlannerLayout({
   }, [resize, stopResizing]);
 
   const handleEditPlan = () => {
-    vscodeHost.openFile(`pochi://${uid}/plan.md`);
+    vscodeHost.openFile("pochi://parent/plan.md");
   };
 
   const handleExecutePlan = () => {

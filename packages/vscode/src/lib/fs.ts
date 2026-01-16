@@ -1,11 +1,8 @@
 import path, { join } from "node:path";
-import { getLogger } from "@getpochi/common";
 import { resolvePath } from "@getpochi/common/tool-utils";
-import type { TaskContext } from "@getpochi/common/vscode-webui-bridge";
 import * as diff from "diff";
 import * as vscode from "vscode";
-
-const logger = getLogger("Xusheng");
+import type { EncodedTask } from "./task-history-store";
 
 /**
  * Ensure a directory exists by creating it if needed
@@ -73,26 +70,24 @@ export const asRelativePath = (
 
 export const resolveFileUri = (
   path: string,
-  options: { cwd?: string; taskContext?: TaskContext },
+  options: { cwd?: string; task?: EncodedTask | null },
 ): vscode.Uri => {
-  const { cwd = "", taskContext } = options;
+  const { cwd, task } = options;
 
   if (path.startsWith("pochi://")) {
     let resolvedPath = path;
-    logger.info("taskContext", taskContext);
-    if (taskContext) {
+    if (task) {
       resolvedPath = resolvedPath.replace(
         "pochi://self/",
-        `pochi://${taskContext.taskId}/`,
+        `pochi://${task.id}/`,
       );
       resolvedPath = resolvedPath.replace(
         "pochi://parent/",
-        `pochi://${taskContext.parentTaskId || taskContext.taskId}/`,
+        `pochi://${task.parentId || task.id}/`,
       );
     }
-    logger.info("resolvedPath", resolvedPath);
     return vscode.Uri.parse(resolvedPath);
   }
-  const resolvedPath = resolvePath(path, cwd);
+  const resolvedPath = resolvePath(path, cwd ?? "");
   return vscode.Uri.file(resolvedPath);
 };

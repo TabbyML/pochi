@@ -13,14 +13,14 @@ const logger = getLogger("writeToFileTool");
 
 export const previewWriteToFile: PreviewToolFunctionType<
   ClientTools["writeToFile"]
-> = async (args, { cwd, taskContext }) => {
+> = async (args, { cwd, task }) => {
   const { path, content } = args || {};
   if (path === undefined || content === undefined)
     return { error: "Invalid arguments for previewing writeToFile tool." };
 
   const processedContent = fixCodeGenerationOutput(content);
 
-  const fileUri = resolveFileUri(path, { cwd, taskContext });
+  const fileUri = resolveFileUri(path, { cwd, task });
 
   const fileExists = await isFileExists(fileUri);
   const fileContent = fileExists
@@ -37,18 +37,15 @@ export const previewWriteToFile: PreviewToolFunctionType<
  */
 export const writeToFile: ToolFunctionType<ClientTools["writeToFile"]> = async (
   { path, content },
-  { abortSignal, cwd, taskContext },
+  { abortSignal, cwd, task },
 ) => {
-  logger.info(
-    `Writing to file ${path} with taskContext: ${JSON.stringify(taskContext)}`,
-  );
   const processedContent = fixCodeGenerationOutput(content);
   const edits = await writeTextDocument(
     path,
     processedContent,
     cwd,
     abortSignal,
-    taskContext,
+    task,
   );
   logger.debug(`Successfully wrote content to ${path}`);
   return { success: true, ...edits };

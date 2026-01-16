@@ -45,11 +45,6 @@ export type PochiTaskInfo = PochiTaskParams & {
   displayId: number | null;
 };
 
-export type TaskContext = {
-  taskId: string;
-  parentTaskId?: string | null;
-};
-
 /**
  * only include fields that are used in the webview and node process
  */

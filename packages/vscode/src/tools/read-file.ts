@@ -9,9 +9,9 @@ import { resolveFileUri } from "../lib/fs";
 
 export const readFile: ToolFunctionType<ClientTools["readFile"]> = async (
   { path, startLine, endLine },
-  { cwd, contentType, taskContext },
+  { cwd, contentType, task },
 ) => {
-  const fileUri = resolveFileUri(path, { cwd, taskContext });
+  const fileUri = resolveFileUri(path, { cwd, task });
   const resolvedPath = fileUri.fsPath;
 
   const fileBuffer = await vscode.workspace.fs.readFile(fileUri);

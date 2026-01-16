@@ -1,4 +1,3 @@
-import type { TaskContext } from "@getpochi/common/vscode-webui-bridge";
 import { isAutoSuccessToolName } from "@getpochi/tools";
 import { useCallback, useMemo, useRef, useState } from "react";
 import type { ToolCallLifeCycleKey } from "./chat-state/types";
@@ -7,10 +6,7 @@ import { ManagedToolCallLifeCycle } from "./tool-call-life-cycle";
 import { useDefaultStore } from "@/lib/use-default-store";
 
 // Hook to manage tool call states
-export function useToolCallLifeCycles(
-  abortSignal: AbortSignal,
-  taskContext?: TaskContext,
-) {
+export function useToolCallLifeCycles(abortSignal: AbortSignal) {
   const store = useDefaultStore();
 
   const [toolCallLifeCycles, setToolCallLifeCycles] = useState<
@@ -68,12 +64,7 @@ export function useToolCallLifeCycles(
   const getToolCallLifeCycle = useCallback(
     (key: ToolCallLifeCycleKey) => {
       if (!toolCallLifeCyclesRef.current.has(key.toolCallId)) {
-        const lifecycle = new ManagedToolCallLifeCycle(
-          store,
-          key,
-          abortSignal,
-          taskContext,
-        );
+        const lifecycle = new ManagedToolCallLifeCycle(store, key, abortSignal);
         toolCallLifeCyclesRef.current.set(key.toolCallId, lifecycle);
         const unsubscribe = lifecycle.onAny((name) => {
           reloadToolCallLifeCycles();
@@ -90,7 +81,7 @@ export function useToolCallLifeCycles(
         // Guaranteed to exist because we just set it above
       ) as ManagedToolCallLifeCycle;
     },
-    [store, abortSignal, reloadToolCallLifeCycles, taskContext],
+    [store, abortSignal, reloadToolCallLifeCycles],
   );
 
   return {
