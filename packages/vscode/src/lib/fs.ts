@@ -1,8 +1,6 @@
 import path, { join } from "node:path";
-import { resolvePath } from "@getpochi/common/tool-utils";
 import * as diff from "diff";
 import * as vscode from "vscode";
-import type { EncodedTask } from "./task-history-store";
 
 /**
  * Ensure a directory exists by creating it if needed
@@ -66,28 +64,4 @@ export const asRelativePath = (
     return path.relative(cwd, uri);
   }
   return path.relative(cwd, uri.fsPath);
-};
-
-export const resolveFileUri = (
-  path: string,
-  options: { cwd?: string; task?: EncodedTask | null },
-): vscode.Uri => {
-  const { cwd, task } = options;
-
-  if (path.startsWith("pochi://")) {
-    let resolvedPath = path;
-    if (task) {
-      resolvedPath = resolvedPath.replace(
-        "pochi://self/",
-        `pochi://${task.id}/`,
-      );
-      resolvedPath = resolvedPath.replace(
-        "pochi://parent/",
-        `pochi://${task.parentId || task.id}/`,
-      );
-    }
-    return vscode.Uri.parse(resolvedPath);
-  }
-  const resolvedPath = resolvePath(path, cwd ?? "");
-  return vscode.Uri.file(resolvedPath);
 };

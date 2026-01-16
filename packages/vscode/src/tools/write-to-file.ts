@@ -1,7 +1,8 @@
-import { createPrettyPatch, isFileExists, resolveFileUri } from "@/lib/fs";
+import { createPrettyPatch, isFileExists } from "@/lib/fs";
 import { getLogger } from "@/lib/logger";
 import { getEditSummary, writeTextDocument } from "@/lib/write-text-document";
 import { fixCodeGenerationOutput } from "@getpochi/common/message-utils";
+import { resolvePath } from "@getpochi/common/tool-utils";
 import type {
   ClientTools,
   PreviewToolFunctionType,
@@ -13,14 +14,15 @@ const logger = getLogger("writeToFileTool");
 
 export const previewWriteToFile: PreviewToolFunctionType<
   ClientTools["writeToFile"]
-> = async (args, { cwd, task }) => {
+> = async (args, { cwd }) => {
   const { path, content } = args || {};
   if (path === undefined || content === undefined)
     return { error: "Invalid arguments for previewing writeToFile tool." };
 
   const processedContent = fixCodeGenerationOutput(content);
 
-  const fileUri = resolveFileUri(path, { cwd, task });
+  const resolvedPath = resolvePath(path, cwd);
+  const fileUri = vscode.Uri.file(resolvedPath);
 
   const fileExists = await isFileExists(fileUri);
   const fileContent = fileExists
@@ -37,15 +39,15 @@ export const previewWriteToFile: PreviewToolFunctionType<
  */
 export const writeToFile: ToolFunctionType<ClientTools["writeToFile"]> = async (
   { path, content },
-  { abortSignal, cwd, task },
+  { abortSignal, cwd },
 ) => {
   const processedContent = fixCodeGenerationOutput(content);
+
   const edits = await writeTextDocument(
     path,
     processedContent,
     cwd,
     abortSignal,
-    task,
   );
   logger.debug(`Successfully wrote content to ${path}`);
   return { success: true, ...edits };

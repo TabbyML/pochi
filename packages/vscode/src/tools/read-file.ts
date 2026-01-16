@@ -1,18 +1,19 @@
 import {
   isPlainText,
   readMediaFile,
+  resolvePath,
   selectFileContent,
 } from "@getpochi/common/tool-utils";
+
 import type { ClientTools, ToolFunctionType } from "@getpochi/tools";
 import * as vscode from "vscode";
-import { resolveFileUri } from "../lib/fs";
 
 export const readFile: ToolFunctionType<ClientTools["readFile"]> = async (
   { path, startLine, endLine },
-  { cwd, contentType, task },
+  { cwd, contentType },
 ) => {
-  const fileUri = resolveFileUri(path, { cwd, task });
-  const resolvedPath = fileUri.fsPath;
+  const resolvedPath = resolvePath(path, cwd);
+  const fileUri = vscode.Uri.file(resolvedPath);
 
   const fileBuffer = await vscode.workspace.fs.readFile(fileUri);
 

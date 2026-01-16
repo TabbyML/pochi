@@ -1,4 +1,5 @@
 import { getLogger } from "@getpochi/common";
+import { resolvePath } from "@getpochi/common/tool-utils";
 import * as diff from "diff";
 import * as vscode from "vscode";
 import { compareDiagnostics, diagnosticsToProblemsString } from "./diagnostic";
@@ -6,9 +7,7 @@ import {
   createPrettyPatch,
   ensureFileDirectoryExists,
   isFileExists,
-  resolveFileUri,
 } from "./fs";
-import type { EncodedTask } from "./task-history-store";
 
 const logger = getLogger("WriteTextDocument");
 
@@ -17,10 +16,10 @@ export async function writeTextDocument(
   content: string,
   cwd: string,
   abortSignal?: AbortSignal,
-  task?: EncodedTask | null,
 ) {
   logger.debug(`Will write to ${path}, content length: ${content.length}`);
-  const fileUri = resolveFileUri(path, { cwd, task });
+  const resolvedPath = resolvePath(path, cwd);
+  const fileUri = vscode.Uri.file(resolvedPath);
   const fileExists = await isFileExists(fileUri);
   if (!fileExists) {
     await ensureFileDirectoryExists(fileUri);

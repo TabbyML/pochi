@@ -12,7 +12,7 @@ import {
   getSystemInfo,
   getWorkspaceRulesFileUri,
 } from "@/lib/env";
-import { asRelativePath, isFileExists, resolveFileUri } from "@/lib/fs";
+import { asRelativePath, isFileExists } from "@/lib/fs";
 import { getLogger } from "@/lib/logger";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { ModelList } from "@/lib/model-list";
@@ -22,7 +22,7 @@ import { PostHog } from "@/lib/posthog";
 import { TaskDataStore } from "@/lib/task-data-store";
 import { taskRunning, taskUpdated } from "@/lib/task-events";
 // biome-ignore lint/style/useImportType: needed for dependency injection
-import { TaskHistoryStore } from "@/lib/task-history-store";
+import { type EncodedTask, TaskHistoryStore } from "@/lib/task-history-store";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { UserStorage } from "@/lib/user-storage";
 // biome-ignore lint/style/useImportType: needed for dependency injection
@@ -431,6 +431,8 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         };
       }
 
+      resolveToolCallPochiSchemaUriPath(toolName, args, this.task);
+
       const abortSignal = new ThreadAbortSignal(options.abortSignal);
       const toolCallStart = Date.now();
       const result = await safeCall(
@@ -440,7 +442,6 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
           toolCallId: options.toolCallId,
           cwd: this.cwd,
           contentType: options.contentType,
-          task: this.task,
         }),
       );
 
@@ -495,6 +496,8 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         );
       }
 
+      resolveToolCallPochiSchemaUriPath(toolName, args, this.task);
+
       const abortSignal = options.abortSignal
         ? new ThreadAbortSignal(options.abortSignal)
         : undefined;
@@ -521,19 +524,12 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       cellId?: string;
     },
   ) => {
-    if (filePath.startsWith("pochi://")) {
-      const fileUri = resolveFileUri(filePath, {
-        task: this.task,
-      });
-      await vscode.commands.executeCommand("vscode.open", fileUri);
-      return;
-    }
+    let resolvedPath = resolvePochiSchemaUriPath(filePath, this.task);
 
     // Expand ~ to home directory if present
-    let resolvedPath = filePath;
-    if (filePath.startsWith("~/")) {
+    if (resolvedPath.startsWith("~/")) {
       const homedir = os.homedir();
-      resolvedPath = filePath.replace(/^~/, homedir);
+      resolvedPath = resolvedPath.replace(/^~/, homedir);
     }
 
     const fileUri = path.isAbsolute(resolvedPath)
@@ -1132,6 +1128,32 @@ function safeCall<T>(x: Promise<T>) {
     };
   });
 }
+
+const resolvePochiSchemaUriPath = (path: string, task: EncodedTask | null) => {
+  const uri = vscode.Uri.parse(path);
+  if (uri.scheme !== "pochi") {
+    return path;
+  }
+  if (uri.authority === "self") {
+    return path.replace("self", task?.id || "");
+  }
+  if (uri.authority === "parent") {
+    return path.replace("parent", task?.parentId || task?.id || "");
+  }
+  return path;
+};
+
+const resolveToolCallPochiSchemaUriPath = (
+  toolName: string,
+  // biome-ignore lint/suspicious/noExplicitAny: external call without type information
+  args: any,
+  task: EncodedTask | null,
+) => {
+  if (!["writeToFile", "readFile"].includes(toolName)) {
+    return;
+  }
+  args.path = resolvePochiSchemaUriPath(args.path, task);
+};
 
 const ToolMap: Record<
   string,

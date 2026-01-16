@@ -8,19 +8,11 @@ import type {
 import type { z } from "zod";
 import type { EditFileOutputSchema } from "./constants";
 
-export type EncodedTask = {
-  id: string;
-  parentId: string | null;
-  // unix timestamp in milliseconds
-  updatedAt: number;
-};
-
 export type ToolFunctionType<T extends Tool> = (
   input: InferToolInput<T>,
   options: ToolCallOptions & {
     cwd: string;
     contentType?: string[];
-    task?: EncodedTask | null;
   },
 ) => PromiseLike<InferToolOutput<T>> | InferToolOutput<T>;
 
@@ -36,6 +28,5 @@ export type PreviewToolFunctionType<T extends Tool> = (
     state: "partial-call" | "call" | "result";
     abortSignal?: AbortSignal;
     cwd: string;
-    task?: EncodedTask | null;
   },
 ) => Promise<PreviewReturnType>;
