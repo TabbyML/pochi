@@ -526,13 +526,15 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       cellId?: string;
     },
   ) => {
-    logger.info('CurrentTask', this.task)
+    logger.info("CurrentTask", this.task);
     if (filePath.startsWith("pochi://")) {
       const fileUri = resolveFileUri(filePath, {
-        taskContext: this.task ? {
-          taskId: this.task?.id,
-          parentTaskId: this.task?.parentId
-        } : undefined,
+        taskContext: this.task
+          ? {
+              taskId: this.task?.id,
+              parentTaskId: this.task?.parentId,
+            }
+          : undefined,
       });
       await vscode.commands.executeCommand("vscode.open", fileUri);
       return;
