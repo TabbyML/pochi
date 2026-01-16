@@ -455,13 +455,5 @@
   "mermaid": {
     "failedToRender": "Failed to render Mermaid chart:",
     "fixError": "Fix error with Pochi"
-  },
-  "planner": {
-    "noPlanYet": "No plan generated yet.",
-    "askToGenerate": "Ask the planner to create a plan.",
-    "editPlan": "Edit Plan",
-    "executePlan": "Execute Plan",
-    "executePrompt": "Please execute the plan.",
-    "plan": "Plan"
   }
 }
