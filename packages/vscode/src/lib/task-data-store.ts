@@ -8,11 +8,11 @@ type TaskStateData = {
   mcpConfigOverride?: McpConfigOverride;
 };
 
-const logger = getLogger("TaskState");
+const logger = getLogger("TaskDataStore");
 
 @injectable()
 @singleton()
-export class TaskState {
+export class TaskDataStore {
   private readonly storageKeyPrefix = "taskState.";
 
   state = signal<Record<string, TaskStateData>>({});

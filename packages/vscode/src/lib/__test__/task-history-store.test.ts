@@ -1,14 +1,14 @@
 import assert from "assert";
-import { TaskStore } from "../task-store";
+import { TaskHistoryStore } from "../task-history-store";
 import * as vscode from "vscode";
 import sinon from "sinon";
 import "reflect-metadata";
 import { TextEncoder } from "util";
 
-describe("TaskStore", () => {
+describe("TaskHistoryStore", () => {
   let context: vscode.ExtensionContext;
   let globalState: any;
-  let taskStore: TaskStore;
+  let taskStore: TaskHistoryStore;
   let clock: sinon.SinonFakeTimers;
   let tempStorageUri: vscode.Uri;
 
@@ -58,7 +58,7 @@ describe("TaskStore", () => {
   });
 
   it("should start with empty tasks if file does not exist", async () => {
-    taskStore = new TaskStore(context);
+    taskStore = new TaskHistoryStore(context);
     await taskStore.ready;
 
     const currentTasks = taskStore.tasks.value;
@@ -80,7 +80,7 @@ describe("TaskStore", () => {
         new TextEncoder().encode(JSON.stringify(tasks))
     );
 
-    taskStore = new TaskStore(context);
+    taskStore = new TaskHistoryStore(context);
     await taskStore.ready;
 
     const currentTasks = taskStore.tasks.value;
@@ -106,7 +106,7 @@ describe("TaskStore", () => {
         new TextEncoder().encode(JSON.stringify(tasks))
     );
 
-    taskStore = new TaskStore(context);
+    taskStore = new TaskHistoryStore(context);
     await taskStore.ready;
 
     // Verify only recent task remains
