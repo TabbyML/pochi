@@ -18,23 +18,26 @@ export const SubtaskHeader: React.FC<{
   const parentTask = store.useQuery(
     catalog.queries.makeTaskQuery(subtask.parentUid),
   );
+  const subtaskTask = store.useQuery(
+    catalog.queries.makeTaskQuery(subtask.uid),
+  );
+  const runAsync = subtaskTask?.runAsync;
   const parentCwd = parentTask?.cwd;
-  const parentDisplayId = parentTask?.displayId ?? null;
-  const isPane = globalThis.POCHI_WEBVIEW_KIND === "pane";
   const handleBack = useCallback(
     (event: MouseEvent) => {
-      if (!isPane) return;
-      event.preventDefault();
-      if (!parentCwd) return;
-      vscodeHost.openTaskInPanel({
-        type: "open-task",
-        uid: subtask.parentUid,
-        displayId: parentDisplayId,
-        cwd: parentCwd,
-        storeId: store.storeId,
-      });
+      // Async tasks (runAsync=true) need VS Code API to switch panes, sync tasks use React Router
+      if (runAsync && parentCwd) {
+        event.preventDefault();
+        vscodeHost.openTaskInPanel({
+          type: "open-task",
+          uid: subtask.parentUid,
+          cwd: parentCwd,
+          storeId: store.storeId,
+        });
+      }
+      // Sync tasks (runAsync=false/undefined) or missing parentCwd use React Router navigation
     },
-    [isPane, parentCwd, parentDisplayId, store.storeId, subtask.parentUid],
+    [parentCwd, store.storeId, subtask.parentUid, runAsync],
   );
 
   return (

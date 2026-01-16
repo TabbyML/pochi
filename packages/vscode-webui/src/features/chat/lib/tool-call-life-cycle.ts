@@ -363,7 +363,6 @@ export class ManagedToolCallLifeCycle
           {
             type: "open-task",
             uid,
-            displayId: null,
             cwd,
             storeId: this.store.storeId,
           },
