@@ -66,7 +66,6 @@ function BackgroundTaskToolView(
     vscodeHost.openTaskInPanel({
       type: "open-task",
       uid,
-      displayId: null,
       cwd,
       storeId,
     });

@@ -110,6 +110,19 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
             : undefined;
         const subtaskUid = newTaskInput?._meta?.uid;
         if (subtaskUid) {
+          // For async tasks (runAsync: true), we should execute the lifecycle
+          // which will open the panel in runNewTask method
+          if (newTaskInput?.runAsync) {
+            lifecycle.execute(tools[i].input, {
+              contentType: selectedModel?.contentType,
+            });
+            const uid = parentUid || taskId;
+            if (uid) {
+              vscodeHost.onTaskRunning(uid);
+            }
+            return;
+          }
+          // For non-async tasks, use manual navigation
           manualRunSubtask(subtaskUid);
         }
         return;
