@@ -25,8 +25,7 @@ Another batch of updates is out. Here’s what we’ve shipped since the last re
         Your browser does not support the video tag.
     </video>
 
- - **Improved visibility of bash command outputs:** Command outputs from workflows are now passed as structured data instead of hidden system messages, allowing the UI to display them properly.[#1010](https://github.com/TabbyML/pochi/issues/1010)
-
+ - **Embedded bash outputs are now visible in the UI:** When workflows embed command outputs into the model context (for example git diff in the create-pr workflow), those outputs are now displayed in chat instead of being hidden as system messages, making it easier to inspect and debug what the agent is responding to.
    <video
         controls
         style={{
@@ -35,7 +34,7 @@ Another batch of updates is out. Here’s what we’ve shipped since the last re
         boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
         }}
     >
-        <source src="https://assets.docs.getpochi.com/bash-commands-024.mp4" type="video/mp4" />
+        <source src="https://assets.docs.getpochi.com/embedding-bash-commands-024.mp4" type="video/mp4" />
         Your browser does not support the video tag.
     </video>
 
