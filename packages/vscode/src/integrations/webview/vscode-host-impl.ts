@@ -93,6 +93,7 @@ import {
   type ThreadSignalSerialization,
 } from "@quilted/threads/signals";
 import type { Tool } from "ai";
+import * as R from "remeda";
 import { keys } from "remeda";
 import * as runExclusive from "run-exclusive";
 import { Lifecycle, inject, injectable, scoped } from "tsyringe";
@@ -431,12 +432,16 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         };
       }
 
-      resolveToolCallPochiSchemaUriPath(toolName, args, this.task);
+      if (!this.task) {
+        return {
+          error: "No task found.",
+        };
+      }
 
       const abortSignal = new ThreadAbortSignal(options.abortSignal);
       const toolCallStart = Date.now();
       const result = await safeCall(
-        tool(args, {
+        tool(resolveToolCallArgs(args, this.task), {
           abortSignal,
           messages: [],
           toolCallId: options.toolCallId,
@@ -490,21 +495,22 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         return;
       }
 
+      if (!this.task) {
+        return;
+      }
+
       if (options.state === "call") {
         logger.debug(
           `previewToolCall(call): ${toolName}(${options.toolCallId})`,
         );
       }
 
-      resolveToolCallPochiSchemaUriPath(toolName, args, this.task);
-
       const abortSignal = options.abortSignal
         ? new ThreadAbortSignal(options.abortSignal)
         : undefined;
 
       return await safeCall<PreviewReturnType>(
-        // biome-ignore lint/suspicious/noExplicitAny: external call without type information
-        tool(args as any, {
+        tool(resolveToolCallArgs(args, this.task) as Partial<unknown> | null, {
           ...options,
           abortSignal,
           cwd: this.cwd,
@@ -528,8 +534,8 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     let resolvedPath = filePath;
 
     // Open file directly if it's a pochi scheme
-    if (fileUri.scheme === "pochi") {
-      resolvedPath = resolvePochiSchemaUriPath(filePath, this.task);
+    if (fileUri.scheme === "pochi" && this.task) {
+      resolvedPath = resolvePochiUri(filePath, this.task);
       vscode.commands.executeCommand(
         "vscode.open",
         vscode.Uri.parse(resolvedPath),
@@ -1140,13 +1146,10 @@ function safeCall<T>(x: Promise<T>) {
   });
 }
 
-const resolvePochiSchemaUriPath = (
+const resolvePochiUri = (
   path: string,
-  task: { id: string; parentId: string | null } | null,
+  task: { id: string; parentId: string | null },
 ) => {
-  if (!task) {
-    return path;
-  }
   const uri = vscode.Uri.parse(path);
   if (uri.scheme !== "pochi") {
     return path;
@@ -1160,19 +1163,23 @@ const resolvePochiSchemaUriPath = (
   return path;
 };
 
-const resolveToolCallPochiSchemaUriPath = (
-  toolName: string,
-  // biome-ignore lint/suspicious/noExplicitAny: external call without type information
-  args: any,
-  task: { id: string; parentId: string | null } | null,
+const resolveToolCallArgs = (
+  args: unknown,
+  task: { id: string; parentId: string | null },
 ) => {
-  if (!task) {
-    return;
+  if (!R.isObjectType(args)) {
+    return args;
   }
-  if (!["writeToFile", "readFile"].includes(toolName)) {
-    return;
-  }
-  args.path = resolvePochiSchemaUriPath(args.path, task);
+
+  return R.mapValues(args, (v) => {
+    if (typeof v === "string") {
+      try {
+        return resolvePochiUri(v, task);
+      } catch (err) {
+        return v;
+      }
+    }
+  });
 };
 
 const ToolMap: Record<
