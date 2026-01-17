@@ -930,8 +930,19 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
 
   openTaskInPanel = async (
     params: PochiTaskParams,
-    options?: { keepEditor?: boolean },
+    options?: {
+      keepEditor?: boolean;
+      preserveFocus?: boolean;
+    },
   ): Promise<void> => {
+    if (
+      options?.preserveFocus &&
+      (params.type === "open-task" || params.type === "new-task") &&
+      params.uid &&
+      this.taskActivityTracker.state.value[params.uid]
+    ) {
+      return;
+    }
     await PochiTaskEditorProvider.openTaskEditor(params, options);
   };
 

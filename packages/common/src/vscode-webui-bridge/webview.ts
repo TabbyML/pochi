@@ -318,7 +318,10 @@ export interface VSCodeHostApi {
    */
   openTaskInPanel(
     params: PochiTaskParams,
-    options?: { keepEditor?: boolean },
+    options?: {
+      keepEditor?: boolean;
+      preserveFocus?: boolean;
+    },
   ): Promise<void>;
 
   sendTaskNotification(
