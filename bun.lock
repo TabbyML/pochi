@@ -1,5 +1,6 @@
 {
   "lockfileVersion": 1,
+  "configVersion": 0,
   "workspaces": {
     "": {
       "name": "ragdoll",
@@ -248,7 +249,7 @@
     },
     "packages/vscode": {
       "name": "pochi",
-      "version": "0.25.0",
+      "version": "0.25.1",
       "dependencies": {
         "@ai-sdk/google-vertex": "catalog:",
         "@getpochi/common": "workspace:*",
