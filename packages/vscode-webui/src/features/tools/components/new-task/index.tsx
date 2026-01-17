@@ -15,6 +15,7 @@ import { useLiveSubTask } from "../../hooks/use-live-sub-task";
 import { StatusIcon } from "../status-icon";
 import { ExpandIcon, ToolTitle } from "../tool-container";
 import type { ToolProps } from "../types";
+import { PlanCard } from "./plan-card";
 
 interface NewTaskToolProps extends ToolProps<"newTask"> {
   // For storybook visualization
@@ -130,6 +131,9 @@ function NewTaskToolView({
             assistant={{ name: agent ?? "Pochi" }}
           />
         </FixedStateChatContextProvider>
+      )}
+      {agentType === "planner" && completed && taskSource?.parentId && (
+        <PlanCard parentId={taskSource.parentId} />
       )}
     </div>
   );

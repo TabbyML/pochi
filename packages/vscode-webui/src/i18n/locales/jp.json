@@ -460,5 +460,11 @@
   "mermaid": {
     "failedToRender": "Mermaid チャートのレンダリングに失敗しました：",
     "fixError": "Pochi でエラーを修正"
+  },
+  "planCard": {
+    "title": "計画",
+    "editPlan": "計画を編集",
+    "executePlan": "計画を実行",
+    "executePrompt": "計画を実行してください"
   }
 }
