@@ -458,5 +458,11 @@
   "mermaid": {
     "failedToRender": "Failed to render Mermaid chart:",
     "fixError": "Fix error with Pochi"
+  },
+  "planCard": {
+    "title": "Plan",
+    "editPlan": "Edit Plan",
+    "executePlan": "Execute Plan",
+    "executePrompt": "Execute the plan"
   }
 }

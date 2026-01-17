@@ -459,5 +459,11 @@
   "mermaid": {
     "failedToRender": "渲染 Mermaid 图表失败：",
     "fixError": "使用 Pochi 修复错误"
+  },
+  "planCard": {
+    "title": "计划",
+    "editPlan": "编辑计划",
+    "executePlan": "执行计划",
+    "executePrompt": "执行计划"
   }
 }
