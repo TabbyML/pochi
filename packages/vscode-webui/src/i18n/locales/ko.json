@@ -455,5 +455,11 @@
   "mermaid": {
     "failedToRender": "Mermaid 차트 렌더링 실패:",
     "fixError": "Pochi로 오류 수정"
+  },
+  "planCard": {
+    "title": "계획",
+    "editPlan": "계획 편집",
+    "executePlan": "계획 실행",
+    "executePrompt": "계획 실행"
   }
 }
