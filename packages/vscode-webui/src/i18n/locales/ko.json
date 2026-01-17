@@ -27,7 +27,9 @@
   },
   "chat": {
     "attachmentTooltip": "채팅에 파일을 첨부합니다. 파일을 드래그 앤 드롭하거나 채팅 입력란에 붙여넣을 수도 있습니다.",
-    "createPlanTooltip": "작업 계획 생성",
+    "submitTooltip": "제출",
+    "createPlan": "계획 생성",
+    "createPlanTooltip": "이 작업에 대한 구현 계획 생성",
     "queuedMessages": "대기 중인 메시지 ({{count}})",
     "copyImage": "이미지 복사",
     "openImage": "이미지 열기",
@@ -73,8 +75,9 @@
   },
   "mcpSelect": {
     "tooltip": "MCP 서버 및 도구",
+    "serversTooltip": "이 작업에 사용할 MCP 서버 구성",
     "noServers": "MCP 없음",
-    "servers": "MCP 서버",
+    "servers": "MCP",
     "tools": "도구",
     "noServersConfigured": "MCP 서버가 구성되지 않았습니다",
     "manageServers": "MCP 서버 관리..."

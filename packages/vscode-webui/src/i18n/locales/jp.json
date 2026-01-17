@@ -27,7 +27,9 @@
   },
   "chat": {
     "attachmentTooltip": "ファイルをチャットに添付します。ファイルをドラッグ＆ドロップするか、チャット入力欄に貼り付けることもできます。",
-    "createPlanTooltip": "タスクの計画を作成",
+    "submitTooltip": "送信",
+    "createPlan": "計画作成",
+    "createPlanTooltip": "このタスクの実装計画を作成",
     "queuedMessages": "キュー内のメッセージ ({{count}})",
     "copyImage": "画像をコピー",
     "openImage": "画像を開く",
@@ -73,8 +75,9 @@
   },
   "mcpSelect": {
     "tooltip": "MCP サーバーとツール",
+    "serversTooltip": "このタスクで使用する MCP サーバーを設定します",
     "noServers": "MCP なし",
-    "servers": "MCP サーバー",
+    "servers": "MCP",
     "tools": "ツール",
     "noServersConfigured": "MCP サーバーが設定されていません",
     "manageServers": "MCP サーバーを管理..."
