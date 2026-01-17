@@ -28,7 +28,7 @@
   "chat": {
     "attachmentTooltip": "채팅에 파일을 첨부합니다. 파일을 드래그 앤 드롭하거나 채팅 입력란에 붙여넣을 수도 있습니다.",
     "submitTooltip": "제출",
-    "createPlan": "계획 생성",
+    "createPlan": "계획",
     "createPlanTooltip": "이 작업에 대한 구현 계획 생성",
     "queuedMessages": "대기 중인 메시지 ({{count}})",
     "copyImage": "이미지 복사",
