@@ -6,8 +6,11 @@ import { funnel } from "remeda";
 import { inject, injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
 
+// Encoded catalog.tables.task.rowSchema, certain fields can be explicitly declared to be used in vscode.
 type EncodedTask = {
   id: string;
+  parentId: string | null;
+
   // unix timestamp in milliseconds
   updatedAt: number;
 };
