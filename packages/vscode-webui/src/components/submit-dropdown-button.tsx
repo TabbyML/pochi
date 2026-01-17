@@ -109,7 +109,7 @@ export function SubmitDropdownButton({
             align="end"
             alignOffset={0}
             sideOffset={6}
-            className="dropdown-menu w-[6rem] animate-in overflow-hidden rounded-md border bg-background p-0 text-popover-foreground shadow"
+            className="dropdown-menu w-auto animate-in overflow-hidden rounded-md border bg-background p-0 text-popover-foreground shadow"
           >
             <div className="p-1">
               <TooltipProvider>
