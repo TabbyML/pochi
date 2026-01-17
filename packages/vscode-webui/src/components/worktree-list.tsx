@@ -53,9 +53,11 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as R from "remeda";
+
+import { getBaseName } from "@/lib/utils/file";
 import { usePaginatedTasks } from "#lib/hooks/use-paginated-tasks";
 import { TaskRow } from "./task-row";
 import { ScrollArea } from "./ui/scroll-area";
@@ -130,7 +132,7 @@ export function WorktreeList({
         const isMain = wt.isMain;
 
         if (wt.isMain) {
-          name = "workspace";
+          name = getBaseName(wt.path);
         } else {
           name = getWorktreeNameFromWorktreePath(wt.path) || "unknown";
         }
@@ -273,6 +275,25 @@ function WorktreeSection({
     cwd: group.path,
     pageSize: 15,
   });
+
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore) {
+          loadMore();
+        }
+      },
+      { threshold: 0.1 },
+    );
+
+    if (loadMoreRef.current) {
+      observer.observe(loadMoreRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, [hasMore, loadMore]);
 
   const pullRequest = group.data?.github?.pullRequest;
 
@@ -501,15 +522,8 @@ function WorktreeSection({
                 );
               })}
               {hasMore && (
-                <div className="py-1">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="w-full text-muted-foreground text-xs hover:text-foreground"
-                    onClick={loadMore}
-                  >
-                    {t("tasksPage.loadMore")}
-                  </Button>
+                <div ref={loadMoreRef} className="flex justify-center py-2">
+                  <Loader2 className="size-4 animate-spin text-muted-foreground" />
                 </div>
               )}{" "}
             </>

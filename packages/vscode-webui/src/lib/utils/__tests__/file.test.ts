@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isFolder, getFileName, addLineBreak } from "../file";
+import { isFolder, getBaseName, addLineBreak } from "../file";
 
 describe("isFolder", () => {
   describe("should return true for folders", () => {
@@ -139,16 +139,16 @@ describe("isFolder", () => {
   });
 });
 
-describe("getFileName", () => {
+describe("getBaseName", () => {
   it("should extract filename from path", () => {
-    expect(getFileName("path/to/file.txt")).toBe("file.txt");
-    expect(getFileName("file.txt")).toBe("file.txt");
-    expect(getFileName("folder/")).toBe("");
-    expect(getFileName("")).toBe("");
+    expect(getBaseName("path/to/file.txt")).toBe("file.txt");
+    expect(getBaseName("file.txt")).toBe("file.txt");
+    expect(getBaseName("folder/")).toBe("");
+    expect(getBaseName("")).toBe("");
   });
 
   it("should handle Windows paths", () => {
-    expect(getFileName("C:\\path\\to\\file.txt")).toBe("file.txt");
+    expect(getBaseName("C:\\path\\to\\file.txt")).toBe("file.txt");
   });
 });
 

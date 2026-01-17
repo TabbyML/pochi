@@ -18,7 +18,7 @@ export type FileSelection = {
 
 @injectable()
 @singleton()
-export class TabState implements vscode.Disposable {
+export class EditorContextState implements vscode.Disposable {
   // Signal containing the current active tabs
   activeTabs = signal([] as { filepath: string; isDir: boolean }[]);
 

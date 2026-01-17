@@ -59,11 +59,13 @@ export class WorktreeManager implements vscode.Disposable {
     const worktree = this.worktrees.value.find((wt) => wt.path === cwd);
     if (!worktree) {
       if (this.workspacePath && cwd === this.workspacePath) {
-        return "workspace";
+        return path.basename(cwd);
       }
       return getWorktreeNameFromWorktreePath(cwd);
     }
-    return worktree.isMain ? "workspace" : getWorktreeNameFromWorktreePath(cwd);
+    return worktree.isMain
+      ? path.basename(cwd)
+      : getWorktreeNameFromWorktreePath(cwd);
   }
 
   private async setupWatcher() {
@@ -306,13 +308,16 @@ export class WorktreeManager implements vscode.Disposable {
   private async getWorktrees(): Promise<GitWorktree[]> {
     try {
       const result = await this.git.raw(["worktree", "list", "--porcelain"]);
-      const worktrees = this.parseWorktreePorcelain(result)
+      const parsedWorktrees = this.parseWorktreePorcelain(result)
         .filter((wt) => wt.prunable === undefined)
-        .map<GitWorktree>((wt) => {
-          const storedData = this.worktreeInfoProvider.get(wt.path);
-          return { ...wt, data: storedData };
-        })
         .slice(0, this.maxWorktrees);
+
+      const worktrees = await Promise.all(
+        parsedWorktrees.map<Promise<GitWorktree>>(async (wt) => {
+          const storedData = await this.worktreeInfoProvider.get(wt.path);
+          return { ...wt, data: storedData };
+        }),
+      );
 
       const workspaceWorktree = worktrees.find(
         (x) => x.path === this.workspacePath,

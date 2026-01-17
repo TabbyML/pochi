@@ -59,7 +59,7 @@ export class GithubIssueState implements vscode.Disposable {
 
       const mainWorktreePath = mainWorktree.path;
       const currentIssuesData =
-        this.worktreeInfoProvider.getGithubIssues(mainWorktreePath);
+        await this.worktreeInfoProvider.getGithubIssues(mainWorktreePath);
 
       const updatedAt = currentIssuesData?.updatedAt;
       const isInitialCheck = !updatedAt;
@@ -124,7 +124,7 @@ export class GithubIssueState implements vscode.Disposable {
         page++;
 
         const currentIssuesData =
-          this.worktreeInfoProvider.getGithubIssues(worktreePath);
+          await this.worktreeInfoProvider.getGithubIssues(worktreePath);
         // Process the updated issues: remove closed issues from current list and add new open issues
         const currentIssues = currentIssuesData?.data ?? [];
         const updatedIssues = this.processUpdatedIssues(
@@ -301,7 +301,7 @@ export class GithubIssueState implements vscode.Disposable {
         return [];
       }
 
-      const issuesData = this.worktreeInfoProvider.getGithubIssues(
+      const issuesData = await this.worktreeInfoProvider.getGithubIssues(
         mainWorktree.path,
       );
       if (!issuesData?.data) {

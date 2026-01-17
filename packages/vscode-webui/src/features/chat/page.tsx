@@ -89,9 +89,6 @@ function Chat({ user, uid, info }: ChatProps) {
   const task = store.useQuery(catalog.queries.makeTaskQuery(uid));
   useKeepTaskEditor(task);
   const subtask = useSubtaskInfo(uid, task?.parentId);
-  const topDisplayId =
-    store.useQuery(catalog.queries.makeTaskQuery(task?.parentId ?? ""))
-      ?.displayId ?? info.displayId;
 
   const isSubTask = !!subtask;
 
@@ -166,7 +163,6 @@ function Chat({ user, uid, info }: ChatProps) {
         ) {
           sendNotification("failed", {
             uid: topTaskUid,
-            displayId: topDisplayId,
             isSubTask,
           });
         }
@@ -189,7 +185,6 @@ function Chat({ user, uid, info }: ChatProps) {
           if (!autoApproved) {
             sendNotification("pending-tool", {
               uid: topTaskUid,
-              displayId: topDisplayId,
               isSubTask,
             });
           }
@@ -211,7 +206,6 @@ function Chat({ user, uid, info }: ChatProps) {
         ) {
           sendNotification("pending-input", {
             uid: topTaskUid,
-            displayId: topDisplayId,
             isSubTask,
           });
         }
@@ -220,7 +214,6 @@ function Chat({ user, uid, info }: ChatProps) {
       if (data.status === "completed") {
         sendNotification("completed", {
           uid: topTaskUid,
-          displayId: topDisplayId,
           isSubTask,
         });
       }
@@ -310,7 +303,6 @@ function Chat({ user, uid, info }: ChatProps) {
   useEffect(() => {
     if (chatKit.inited || isMcpConfigLoading) return;
     const cwd = info.cwd;
-    const displayId = info.displayId ?? undefined;
     if (info.type === "new-task") {
       if (info.mcpConfigOverride && setMcpConfigOverride) {
         setMcpConfigOverride(info.mcpConfigOverride);
@@ -325,19 +317,16 @@ function Chat({ user, uid, info }: ChatProps) {
         }));
 
         chatKit.init(cwd, {
-          displayId,
           prompt: info.prompt,
           parts: prepareMessageParts(t, info.prompt || "", files || [], []),
         });
       } else {
         chatKit.init(cwd, {
-          displayId,
           prompt: info.prompt ?? undefined,
         });
       }
     } else if (info.type === "compact-task") {
       chatKit.init(cwd, {
-        displayId,
         messages: JSON.parse(info.messages),
       });
     } else if (info.type === "fork-task") {
@@ -348,7 +337,6 @@ function Chat({ user, uid, info }: ChatProps) {
 
       chatKit.init(cwd, {
         initTitle: info.title,
-        displayId,
         messages: JSON.parse(info.messages),
       });
     } else if (info.type === "open-task") {

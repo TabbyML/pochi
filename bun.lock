@@ -1,6 +1,5 @@
 {
   "lockfileVersion": 1,
-  "configVersion": 0,
   "workspaces": {
     "": {
       "name": "ragdoll",
@@ -448,6 +447,7 @@
     "silver-fleece@1.2.1": "patches/silver-fleece@1.2.1.patch",
     "streamdown@1.6.10": "patches/streamdown@1.6.10.patch",
     "jsonc-parser@3.3.1": "patches/jsonc-parser@3.3.1.patch",
+    "@livestore/utils@0.4.0-dev.22": "patches/@livestore%2Futils@0.4.0-dev.22.patch",
     "tslog@4.9.3": "patches/tslog@4.9.3.patch",
   },
   "catalog": {

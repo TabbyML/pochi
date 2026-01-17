@@ -1,6 +1,6 @@
 import type { ActiveSelection } from "@getpochi/common/vscode-webui-bridge";
 import type { TFunction } from "i18next";
-import { getFileName } from "./file";
+import { getBaseName } from "./file";
 
 export const getActiveSelectionLabel = (
   activeSelection: ActiveSelection,
@@ -8,7 +8,7 @@ export const getActiveSelectionLabel = (
 ) => {
   if (!activeSelection) return "";
 
-  const filename = getFileName(activeSelection.filepath);
+  const filename = getBaseName(activeSelection.filepath);
 
   if (activeSelection.notebookCell) {
     const cellIndex = activeSelection.notebookCell.cellIndex + 1;

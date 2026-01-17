@@ -74,7 +74,7 @@ describe("WorktreeManager", () => {
       worktreeManager.worktrees.value = [mainWorktree];
 
       const result = worktreeManager.getWorktreeDisplayName("/path/to/repo");
-      assert.strictEqual(result, "workspace");
+      assert.strictEqual(result, "repo");
     });
 
     it("should return worktree name from path for non-main worktree", () => {
@@ -113,7 +113,7 @@ describe("WorktreeManager", () => {
       worktreeManager.worktrees.value = [mainWorktree];
 
       const result = worktreeManager.getWorktreeDisplayName("/path/to/repo");
-      assert.strictEqual(result, "workspace");
+      assert.strictEqual(result, "repo");
     });
 
     it("should handle multiple worktrees correctly", () => {
@@ -146,7 +146,7 @@ describe("WorktreeManager", () => {
 
       assert.strictEqual(
         worktreeManager.getWorktreeDisplayName("/path/to/repo"),
-        "workspace",
+        "repo",
       );
       assert.strictEqual(
         worktreeManager.getWorktreeDisplayName("/path/to/worktrees/feature-1"),

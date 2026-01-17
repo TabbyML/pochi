@@ -1,4 +1,4 @@
-import type { PreviewReturnType } from "@getpochi/tools";
+import type { CustomAgent, PreviewReturnType } from "@getpochi/tools";
 import type { ThreadAbortSignalSerialization } from "@quilted/threads";
 import type { ThreadSignalSerialization } from "@quilted/threads/signals";
 import type { Environment } from "../base";
@@ -168,7 +168,9 @@ export interface VSCodeHostApi {
     workspacePath: string | null;
   }>;
 
-  readCustomAgents(): Promise<ThreadSignalSerialization<CustomAgentFile[]>>;
+  readCustomAgents(): Promise<
+    ThreadSignalSerialization<(CustomAgent | CustomAgentFile)[]>
+  >;
 
   executeBashCommand: (
     command: string,
@@ -321,7 +323,7 @@ export interface VSCodeHostApi {
 
   sendTaskNotification(
     kind: "failed" | "completed" | "pending-tool" | "pending-input",
-    params: { uid: string; displayId: number | null; isSubTask?: boolean },
+    params: { uid: string; isSubTask?: boolean },
   ): Promise<void>;
 
   onTaskUpdated(taskData: unknown): Promise<void>;
@@ -378,4 +380,12 @@ export interface WebviewHostApi {
   isFocused(): Promise<boolean>;
 
   onFileChanged(filePath: string, content: string): void;
+
+  writeTaskFile(
+    taskId: string,
+    filePath: string,
+    content: string,
+  ): Promise<void>;
+
+  readTaskFile(taskId: string, filePath: string): Promise<string | null>;
 }

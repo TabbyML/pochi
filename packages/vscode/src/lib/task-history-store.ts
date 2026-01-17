@@ -8,15 +8,16 @@ import * as vscode from "vscode";
 
 type EncodedTask = {
   id: string;
+  parentId: string | null;
   // unix timestamp in milliseconds
   updatedAt: number;
 };
 
-const logger = getLogger("TaskStore");
+const logger = getLogger("TaskHistoryStore");
 
 @injectable()
 @singleton()
-export class TaskStore implements vscode.Disposable {
+export class TaskHistoryStore implements vscode.Disposable {
   private disposables: vscode.Disposable[] = [];
   private storageKey: string;
   tasks = signal<Record<string, EncodedTask>>({});

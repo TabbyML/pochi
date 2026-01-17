@@ -25,6 +25,7 @@ import { PochiAuthenticationProvider } from "./integrations/auth-provider";
 import { CommandManager } from "./integrations/command";
 import { DiffChangesContentProvider } from "./integrations/editor/diff-changes-content-provider";
 import { DiffOriginContentProvider } from "./integrations/editor/diff-origin-content-provider";
+import { PochiFileSystemProvider } from "./integrations/editor/pochi-file-system-provider";
 import { WorktreeManager } from "./integrations/git/worktree";
 import { LayoutManager } from "./integrations/layout";
 import { createMcpHub } from "./integrations/mcp";
@@ -83,6 +84,7 @@ export async function activate(context: vscode.ExtensionContext) {
   container.resolve(DiffChangesContentProvider);
   container.resolve(WorktreeManager);
   container.resolve(ReviewController);
+  container.resolve(PochiFileSystemProvider);
   container.resolve(TabCompletionManager);
   container.resolve(LayoutManager);
 }

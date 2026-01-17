@@ -1,5 +1,6 @@
 import "@/components/prompt-form/prompt-form.css";
 
+import { GlobalStoreInitializer } from "@/components/global-store-initializer";
 import { WelcomeScreen } from "@/components/welcome-screen";
 import { ChatPage, ChatSkeleton } from "@/features/chat";
 import { useModelList } from "@/lib/hooks/use-model-list";
@@ -30,7 +31,6 @@ function RouteComponent() {
     } else {
       info = {
         uid: searchParams.uid,
-        displayId: null,
         cwd: window.POCHI_TASK_INFO.cwd,
         type: "open-task",
       };
@@ -64,6 +64,7 @@ function RouteComponent() {
   return (
     <Suspense fallback={<ChatSkeleton />}>
       <DefaultStoreOptionsProvider storeId={storeId} jwt={jwt}>
+        <GlobalStoreInitializer />
         <ChatPage key={key} user={users?.pochi} uid={uid} info={info} />
       </DefaultStoreOptionsProvider>
     </Suspense>

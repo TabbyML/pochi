@@ -1,4 +1,4 @@
-import { Schema } from "@livestore/livestore";
+import { Schema, deprecated } from "@livestore/livestore";
 
 export const DBTextUIPart = Schema.Struct({
   type: Schema.Literal("text"),
@@ -75,20 +75,6 @@ export const Git = Schema.Struct({
   branch: Schema.String,
 });
 
-/**
- * Per-task MCP configuration override.
- * Key = server name, presence indicates server is enabled for this task.
- * disabledTools = list of tool names to exclude from that server.
- */
-export const McpConfigOverride = Schema.Record({
-  key: Schema.String,
-  value: Schema.Struct({
-    disabledTools: Schema.Array(Schema.String),
-  }),
-});
-
-export type McpConfigOverride = typeof McpConfigOverride.Type;
-
 export const taskInitFields = {
   id: Schema.String,
   parentId: Schema.optional(Schema.String),
@@ -112,5 +98,7 @@ export const taskFullFields = {
   lastCheckpointHash: Schema.optional(Schema.String),
   error: Schema.optional(TaskError),
   updatedAt: Schema.Date,
-  displayId: Schema.optional(Schema.Number),
+  displayId: Schema.optional(Schema.Number).pipe(
+    deprecated("Concept of displayId is removed"),
+  ),
 };
