@@ -39,7 +39,8 @@ export class PochiWebviewPanel
   extends WebviewBase
   implements vscode.Disposable
 {
-  private static panels: PochiWebviewPanel[] = [];
+  // Map of active panels, key is the task UID
+  private static panels = new Map<string, PochiWebviewPanel>();
   private readonly panel: vscode.WebviewPanel;
 
   constructor(
@@ -54,8 +55,8 @@ export class PochiWebviewPanel
     super(sessionId, context, events, pochiConfiguration, vscodeHost);
     this.panel = panel;
 
-    // Push to static array
-    PochiWebviewPanel.panels.push(this);
+    // Push to static map
+    PochiWebviewPanel.panels.set(info.uid, this);
 
     // Set webview options
     this.panel.webview.options = {
@@ -87,27 +88,26 @@ export class PochiWebviewPanel
   }
 
   static readTaskFile(taskId: string, filePath: string) {
-    return PochiWebviewPanel.panels[0]?.webviewHost?.readTaskFile(
-      taskId,
-      filePath,
-    );
+    return PochiWebviewPanel.panels
+      .get(taskId)
+      ?.webviewHost?.readTaskFile(taskId, filePath);
   }
 
   static writeTaskFile(taskId: string, filePath: string, content: string) {
-    return PochiWebviewPanel.panels[0]?.webviewHost?.writeTaskFile(
-      taskId,
-      filePath,
-      content,
-    );
+    return PochiWebviewPanel.panels
+      .get(taskId)
+      ?.webviewHost?.writeTaskFile(taskId, filePath, content);
   }
 
   dispose(): void {
     super.dispose();
     this.panel.dispose();
-    // Remove from static array when disposed
-    const index = PochiWebviewPanel.panels.indexOf(this);
-    if (index !== -1) {
-      PochiWebviewPanel.panels.splice(index, 1);
+    // Remove from static map when disposed
+    for (const [uid, panel] of PochiWebviewPanel.panels) {
+      if (panel === this) {
+        PochiWebviewPanel.panels.delete(uid);
+        break;
+      }
     }
   }
 }

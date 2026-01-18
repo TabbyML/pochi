@@ -38,15 +38,12 @@ export class PochiFileSystemProvider
     const filePath = uri.path;
 
     const content = await PochiWebviewPanel.readTaskFile(taskId, filePath);
-    if (content === null) {
-      throw vscode.FileSystemError.FileNotFound(uri);
-    }
 
     return {
       type: vscode.FileType.File,
       ctime: Date.now(),
       mtime: Date.now(),
-      size: new TextEncoder().encode(content).length,
+      size: new TextEncoder().encode(content || "").length,
     };
   }
 
@@ -61,16 +58,14 @@ export class PochiFileSystemProvider
     const filePath = uri.path;
 
     const content = await PochiWebviewPanel.readTaskFile(taskId, filePath);
-    if (content === null) {
-      throw vscode.FileSystemError.FileNotFound(uri);
-    }
 
-    return new TextEncoder().encode(content);
+    return new TextEncoder().encode(content || "");
   }
 
   async writeFile(uri: vscode.Uri, content: Uint8Array): Promise<void> {
     const taskId = uri.authority;
     const filePath = uri.path;
+
     const strContent = new TextDecoder().decode(content);
 
     await PochiWebviewPanel.writeTaskFile(taskId, filePath, strContent);
