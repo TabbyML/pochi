@@ -32,6 +32,7 @@ import {
   Settings2Icon,
   WrenchIcon,
 } from "lucide-react";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 interface SubmitDropdownButtonProps {
@@ -54,6 +55,9 @@ export function SubmitDropdownButton({
   resetMcpTools,
 }: SubmitDropdownButtonProps) {
   const { t } = useTranslation();
+  const [isOpen, setIsOpen] = useState(false);
+  const closeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isHoveringRef = useRef(false);
 
   if (isLoading) {
     return (
@@ -62,6 +66,41 @@ export function SubmitDropdownButton({
       </span>
     );
   }
+
+  const handleOpenChange = (open: boolean) => {
+    // Don't close if user is still hovering
+    if (!open && isHoveringRef.current) {
+      return;
+    }
+    setIsOpen(open);
+    if (open && Object.keys(mcpConfigOverride).length === 0) {
+      resetMcpTools();
+    }
+  };
+
+  const handleMouseEnter = () => {
+    if (disabled) return;
+    isHoveringRef.current = true;
+    if (closeTimeoutRef.current) {
+      clearTimeout(closeTimeoutRef.current);
+      closeTimeoutRef.current = null;
+    }
+    if (!isOpen) {
+      setIsOpen(true);
+      if (Object.keys(mcpConfigOverride).length === 0) {
+        resetMcpTools();
+      }
+    }
+  };
+
+  const handleMouseLeave = () => {
+    isHoveringRef.current = false;
+    closeTimeoutRef.current = setTimeout(() => {
+      if (!isHoveringRef.current) {
+        setIsOpen(false);
+      }
+    }, 150);
+  };
 
   return (
     <div className="flex items-center">
@@ -84,50 +123,42 @@ export function SubmitDropdownButton({
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
-      <DropdownMenu
-        onOpenChange={(isOpen) =>
-          isOpen &&
-          Object.keys(mcpConfigOverride).length === 0 &&
-          resetMcpTools()
-        }
-      >
-        <DropdownMenuTrigger asChild>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            disabled={disabled}
-            className="button-focus h-6 w-4 rounded-l-none border-border border-l p-0"
-          >
-            <ChevronDownIcon className="size-3" />
-          </Button>
-        </DropdownMenuTrigger>
+      <DropdownMenu open={isOpen} onOpenChange={handleOpenChange} modal={false}>
+        <div onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
+          <DropdownMenuTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              disabled={disabled}
+              className={cn(
+                "button-focus h-6 w-4 rounded-l-none border-border border-l p-0",
+                isOpen && "bg-accent",
+              )}
+            >
+              <ChevronDownIcon className="size-3" />
+            </Button>
+          </DropdownMenuTrigger>
+        </div>
         <DropdownMenuPortal>
           <DropdownMenuContent
             onCloseAutoFocus={(e) => e.preventDefault()}
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
             side="bottom"
             align="end"
             alignOffset={0}
-            sideOffset={6}
+            sideOffset={2}
             className="dropdown-menu w-auto animate-in overflow-hidden rounded-md border bg-background p-0 text-popover-foreground shadow"
           >
             <div className="p-1">
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <DropdownMenuItem
-                      className="flex cursor-pointer items-center gap-2 px-2 py-1.5"
-                      onClick={onSubmitPlan}
-                    >
-                      <ClipboardList className="size-4" />
-                      <span>{t("chat.createPlan")}</span>
-                    </DropdownMenuItem>
-                  </TooltipTrigger>
-                  <TooltipContent side="top" sideOffset={8}>
-                    <p className="max-w-xs">{t("chat.createPlanTooltip")}</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+              <DropdownMenuItem
+                className="flex cursor-pointer items-center gap-2 px-2 py-1.5"
+                onClick={onSubmitPlan}
+              >
+                <ClipboardList className="size-4" />
+                <span>{t("chat.createPlan")}</span>
+              </DropdownMenuItem>
 
               <DropdownMenuSeparator />
 
@@ -174,28 +205,19 @@ function McpSubMenu({ mcpConfigOverride, onToggleServer }: McpSubMenuProps) {
       }
     >
       <DropdownMenuSub>
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <DropdownMenuSubTrigger className="flex cursor-pointer items-center gap-2 px-2 py-1.5">
-                <WrenchIcon
-                  className={cn(
-                    "size-4 transition-colors duration-200",
-                    !hasServers && "text-muted-foreground",
-                  )}
-                />
-                <span>
-                  {hasServers
-                    ? t("mcpSelect.servers")
-                    : t("mcpSelect.noServersConfigured")}
-                </span>
-              </DropdownMenuSubTrigger>
-            </TooltipTrigger>
-            <TooltipContent side="top" sideOffset={8}>
-              <p className="max-w-xs">{t("mcpSelect.serversTooltip")}</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+        <DropdownMenuSubTrigger className="flex cursor-pointer items-center gap-2 px-2 py-1.5">
+          <WrenchIcon
+            className={cn(
+              "size-4 transition-colors duration-200",
+              !hasServers && "text-muted-foreground",
+            )}
+          />
+          <span>
+            {hasServers
+              ? t("mcpSelect.servers")
+              : t("mcpSelect.noServersConfigured")}
+          </span>
+        </DropdownMenuSubTrigger>
         <DropdownMenuPortal>
           <DropdownMenuSubContent
             className="dropdown-menu w-[12rem] animate-in overflow-hidden rounded-md border bg-background p-0 text-popover-foreground shadow"
