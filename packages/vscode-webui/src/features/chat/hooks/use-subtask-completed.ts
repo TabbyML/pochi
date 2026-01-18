@@ -74,7 +74,11 @@ export const useAddSubtaskResult = ({
     if (lifecycle.status === "ready") {
       const result = extractTaskResult(store, subtaskUid);
       if (result) {
-        autoApproveGuard.current = "auto";
+        if (toolPart.input?.agentType === "planner") {
+          autoApproveGuard.current = "stop";
+        } else {
+          autoApproveGuard.current = "auto";
+        }
         lifecycle.addResult({ result });
       }
     }

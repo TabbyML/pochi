@@ -47,7 +47,7 @@ export const makeFileQuery = (taskId: string, filePath: string) =>
         .where("filePath", "=", filePath)
         .first(undefined),
     {
-      label: "files",
+      label: "file",
       deps: [taskId, filePath],
     },
   );

@@ -1,7 +1,7 @@
 import { MessageMarkdown } from "@/components/message";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useSendMessage } from "@/features/chat";
+import { useAutoApproveGuard, useSendMessage } from "@/features/chat";
 import { useDefaultStore } from "@/lib/use-default-store";
 import { vscodeHost } from "@/lib/vscode";
 import { catalog } from "@getpochi/livekit";
@@ -16,6 +16,7 @@ export function PlanCard({
   const { t } = useTranslation();
   const store = useDefaultStore();
   const file = store.query(catalog.queries.makeFileQuery(parentId, "/plan.md"));
+  const autoApproveGuard = useAutoApproveGuard();
   const sendMessage = useSendMessage();
 
   const handleEditPlan = () => {
@@ -23,6 +24,7 @@ export function PlanCard({
   };
 
   const handleExecutePlan = () => {
+    autoApproveGuard.current = "auto";
     sendMessage({
       prompt: t("planCard.executePrompt"),
     });
