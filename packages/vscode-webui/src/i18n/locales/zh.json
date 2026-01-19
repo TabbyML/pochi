@@ -168,6 +168,16 @@
         "validationError": "代理定义缺少必需的属性"
       }
     },
+    "skills": {
+      "title": "技能",
+      "loading": "加载技能中...",
+      "empty": "未找到技能。在工作区的 .pochi/skills/ 目录中创建技能文件",
+      "errors": {
+        "readError": "读取技能定义失败",
+        "parseError": "解析技能定义失败",
+        "validationError": "技能定义缺少必需的属性"
+      }
+    },
     "mcp": {
       "title": "MCP",
       "tooltip": "全局配置 Pochi 的 MCP。",

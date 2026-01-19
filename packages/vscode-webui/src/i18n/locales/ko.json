@@ -168,6 +168,16 @@
         "validationError": "에이전트 정의에 필수 속성이 없습니다"
       }
     },
+    "skills": {
+      "title": "스킬",
+      "loading": "스킬 로딩 중...",
+      "empty": "스킬을 찾을 수 없습니다. 워크스페이스의 .pochi/skills/ 디렉터리에 스킬 파일을 생성하세요",
+      "errors": {
+        "readError": "스킬 정의를 읽지 못했습니다",
+        "parseError": "스킬 정의를 파싱하지 못했습니다",
+        "validationError": "스킬 정의에 필수 속성이 없습니다"
+      }
+    },
     "mcp": {
       "title": "MCP",
       "tooltip": "Pochi 전역 MCP 구성.",

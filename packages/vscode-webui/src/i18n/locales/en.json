@@ -169,6 +169,16 @@
         "validationError": "Missing required properties in agent definition"
       }
     },
+    "skills": {
+      "title": "Skills",
+      "loading": "Loading skills...",
+      "empty": "No skills found. Create skill files in .pochi/skills/ in your workspace",
+      "errors": {
+        "readError": "Failed to read skill definition",
+        "parseError": "Failed to parse skill definition",
+        "validationError": "Missing required properties in skill definition"
+      }
+    },
     "mcp": {
       "title": "MCP",
       "tooltip": "Configuration MCP for Pochi globally.",

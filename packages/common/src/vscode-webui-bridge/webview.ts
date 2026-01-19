@@ -16,6 +16,7 @@ import type {
   RuleFile,
   SaveCheckpointOptions,
   SessionState,
+  SkillFile,
   TaskChangedFile,
   TaskStates,
   WorkspaceState,
@@ -171,6 +172,8 @@ export interface VSCodeHostApi {
   readCustomAgents(): Promise<
     ThreadSignalSerialization<(CustomAgent | CustomAgentFile)[]>
   >;
+
+  readSkills(): Promise<ThreadSignalSerialization<SkillFile[]>>;
 
   executeBashCommand: (
     command: string,

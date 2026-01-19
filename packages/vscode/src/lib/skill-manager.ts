@@ -28,9 +28,13 @@ async function readSkillsFromDir(dir: string): Promise<SkillFile[]> {
 
         try {
           // Check if SKILL.md exists in this subdirectory
-          const stat = await vscode.workspace.fs.stat(vscode.Uri.file(skillFilePath));
+          const stat = await vscode.workspace.fs.stat(
+            vscode.Uri.file(skillFilePath),
+          );
           if (stat.type === vscode.FileType.File) {
-            const readFileContent = async (filePath: string): Promise<string> => {
+            const readFileContent = async (
+              filePath: string,
+            ): Promise<string> => {
               const fileContent = await vscode.workspace.fs.readFile(
                 vscode.Uri.file(filePath),
               );

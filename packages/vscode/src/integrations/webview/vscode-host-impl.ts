@@ -3,6 +3,8 @@ import path from "node:path";
 import { executeCommandWithPty } from "@/integrations/terminal/execute-command-with-pty";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { CustomAgentManager } from "@/lib/custom-agent";
+// biome-ignore lint/style/useImportType: needed for dependency injection
+import { SkillManager } from "@/lib/skill-manager";
 import {
   collectCustomRules,
   collectRuleFiles,
@@ -38,6 +40,7 @@ import { readFile } from "@/tools/read-file";
 import { searchFiles } from "@/tools/search-files";
 import { startBackgroundJob } from "@/tools/start-background-job";
 import { todoWrite } from "@/tools/todo-write";
+import { skill } from "@/tools/skill";
 import { previewWriteToFile, writeToFile } from "@/tools/write-to-file";
 import type { Environment, GitStatus } from "@getpochi/common";
 import type { UserInfo } from "@getpochi/common/configuration";
@@ -69,6 +72,7 @@ import {
   type RuleFile,
   type SaveCheckpointOptions,
   type SessionState,
+  type SkillFile,
   type TaskChangedFile,
   type TaskStates,
   type VSCodeHostApi,
@@ -159,6 +163,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     private readonly workspaceScope: WorkspaceScope,
     private readonly checkpointService: CheckpointService,
     private readonly customAgentManager: CustomAgentManager,
+    private readonly skillManager: SkillManager,
     private readonly worktreeManager: WorktreeManager,
     private readonly taskActivityTracker: TaskActivityTracker,
     private readonly githubPullRequestState: GithubPullRequestState,
@@ -1028,6 +1033,10 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     return ThreadSignal.serialize(this.customAgentManager.agents);
   };
 
+  readSkills = async (): Promise<ThreadSignalSerialization<SkillFile[]>> => {
+    return ThreadSignal.serialize(this.skillManager.skills);
+  };
+
   onTaskUpdated = async (taskData: unknown): Promise<void> => {
     taskUpdated.fire({ event: taskData });
   };
@@ -1197,6 +1206,7 @@ const ToolMap: Record<
   applyDiff,
   todoWrite,
   editNotebook,
+  skill,
 };
 
 const ToolPreviewMap: Record<

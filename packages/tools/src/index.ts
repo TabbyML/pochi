@@ -29,7 +29,7 @@ import { killBackgroundJob } from "./kill-background-job";
 import { readBackgroundJobOutput } from "./read-background-job-output";
 import { createReadFileTool } from "./read-file";
 import { startBackgroundJob } from "./start-background-job";
-import { type Skill, createUseSkillTool } from "./use-skill";
+import { type Skill, createSkillTool } from "./skill";
 import { writeToFile } from "./write-to-file";
 
 export {
@@ -38,7 +38,7 @@ export {
   type SubTask,
   inputSchema as newTaskInputSchema,
 } from "./new-task";
-export { Skill } from "./use-skill";
+export { Skill } from "./skill";
 export { attemptCompletionSchema } from "./attempt-completion";
 
 export function isUserInputToolName(name: string): boolean {
@@ -88,7 +88,7 @@ export const ToolsByPermission = {
     "startBackgroundJob",
     "killBackgroundJob",
     "newTask",
-    "useSkill",
+    "skill",
   ] satisfies ToolName[] as string[],
   default: ["todoWrite"] satisfies ToolName[] as string[],
 };
@@ -103,7 +103,7 @@ const createCliTools = (options?: CreateToolOptions) => ({
   globFiles,
   listFiles,
   readFile: createReadFileTool(options?.contentType),
-  useSkill: createUseSkillTool(options?.skills),
+  skill: createSkillTool(options?.skills),
   searchFiles,
   todoWrite,
   writeToFile,
