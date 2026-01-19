@@ -202,7 +202,9 @@ export class TabCompletionManager implements vscode.Disposable {
       }),
     );
     current.dispose();
-    this.current = undefined;
+    if (this.current === current) {
+      this.current = undefined;
+    }
   }
 
   reject() {
@@ -251,12 +253,6 @@ export class TabCompletionManager implements vscode.Disposable {
         requestId: params.requestId,
       }),
     );
-
-    if (!this.current) {
-      return;
-    }
-    this.current.dispose();
-    this.current = undefined;
   }
 
   private async handleTriggerEvent(

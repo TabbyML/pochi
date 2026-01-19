@@ -266,7 +266,7 @@ export class NESChatModelClient
           },
         };
         logger.trace("Result:", logToFileObject(result));
-        return;
+        return result;
       }
     } catch (error) {
       if (isCanceledError(error)) {
