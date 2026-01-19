@@ -8,37 +8,39 @@ import type * as vscode from "vscode";
 
 @injectable()
 @singleton()
-export class FileLogger {
-  private rootLogger;
+export class FileLogger implements vscode.Disposable {
+  private disposables: vscode.Disposable[] = [];
+  private readonly rootLogger;
 
   constructor(
     @inject("vscode.ExtensionContext")
     context: vscode.ExtensionContext,
-    private readonly pochiConfiguration: PochiConfiguration,
+    pochiConfiguration: PochiConfiguration,
   ) {
     const logFilePath = path.join(os.homedir(), ".pochi", "logs");
     this.rootLogger = getExtensionLogger({
       extName: context.extension.id,
-      level: "info",
+      level:
+        pochiConfiguration.advancedSettings.value.logToFile?.level ?? "off",
       logPath: logFilePath,
       sourceLocationTracking: false,
       logOutputChannel: undefined, // no log to output channel
       logConsole: false, // no log to console
     });
+
+    this.disposables.push({
+      dispose: pochiConfiguration.advancedSettings.subscribe((value) => {
+        const level = value.logToFile?.level ?? "off";
+        this.rootLogger.changeLevel(level);
+      }),
+    });
   }
 
-  getLogger(tag: string) {
-    return this.rootLogger.getChildLogger({ label: tag });
-  }
-
-  handleLog(name: string | undefined, level: string, args: unknown[]) {
-    const enabledFileLogger =
-      !!this.pochiConfiguration.advancedSettings.value.enabledFileLogger;
-    if (!enabledFileLogger) {
-      return;
-    }
-
-    const logger = this.getLogger(name || "FileLog");
+  log(name: string | undefined, level: string, args: unknown[]) {
+    const logger =
+      name === undefined
+        ? this.rootLogger
+        : this.rootLogger.getChildLogger({ label: name });
     const message =
       typeof args[0] === "string" ? args[0] : JSON.stringify(args[0]);
     const remainArgs = args.slice(1);
@@ -66,5 +68,12 @@ export class FileLogger {
         logger.info(message, ...remainArgs);
         break;
     }
+  }
+
+  public dispose() {
+    for (const disposable of this.disposables) {
+      disposable.dispose();
+    }
+    this.disposables = [];
   }
 }

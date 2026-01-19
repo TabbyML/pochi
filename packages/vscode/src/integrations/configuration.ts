@@ -209,7 +209,13 @@ const PochiAdvanceSettings = z.object({
       enabled: z.boolean().optional(),
     })
     .optional(),
-  enabledFileLogger: z.boolean().optional(),
+  logToFile: z
+    .object({
+      level: z
+        .enum(["off", "fatal", "error", "warn", "info", "debug", "trace"])
+        .optional(),
+    })
+    .optional(),
 });
 
 export type PochiAdvanceSettings = z.infer<typeof PochiAdvanceSettings>;

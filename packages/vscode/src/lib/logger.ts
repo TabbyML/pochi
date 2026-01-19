@@ -13,19 +13,22 @@ attachTransport((args, meta) => {
     message = `[${meta.name}] ${message}`;
   }
 
-  // Check if the second argument contains { toFile: true }
-  const shouldLogToFile =
-    typeof args[1] === "object" &&
-    args[1] !== null &&
-    "toFile" in args[1] &&
-    args[1].toFile === true;
-
-  if (shouldLogToFile) {
+  // Check if the second argument contains { logToFile: true }
+  const arg1 = args.length > 1 ? args[1] : undefined;
+  if (
+    arg1 &&
+    typeof arg1 === "object" &&
+    "logToFile" in arg1 &&
+    !!arg1.logToFile
+  ) {
     try {
       const fileLogger = container.resolve(FileLogger);
-      fileLogger.handleLog(meta.name, meta.logLevelName, [
+      // biome-ignore lint/performance/noDelete:
+      delete arg1.logToFile;
+      fileLogger.log(meta.name, meta.logLevelName, [
         message,
-        ...remainArgs,
+        arg1,
+        ...remainArgs.slice(1),
       ]);
     } catch {
       // ignore
