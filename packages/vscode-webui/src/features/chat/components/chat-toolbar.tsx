@@ -253,20 +253,18 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     isExecuting,
   );
 
-  const showCompleteSubtaskButton = useShowCompleteSubtaskButton(
-    subtask,
-    messages,
-  );
-
   const showSubmitReviewButton =
     !isSubmitDisabled &&
     !!reviews.length &&
     !!messages.length &&
     !isLoading &&
-    (!isSubTask || !showCompleteSubtaskButton) &&
     (!pendingApproval ||
       (pendingApproval.name === "retry" &&
         !isRetryApprovalCountingDown(pendingApproval)));
+
+  // If there are pending reviews, we prioritize submitting them over completing the subtask.
+  const showCompleteSubtaskButton =
+    useShowCompleteSubtaskButton(subtask, messages) && !showSubmitReviewButton;
 
   return (
     <>
