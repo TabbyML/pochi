@@ -1,7 +1,7 @@
 import { useSkills } from "@/lib/hooks/use-skills";
 import { vscodeHost } from "@/lib/vscode";
 import type { SkillFile } from "@getpochi/common/vscode-webui-bridge";
-import { Zap, Edit } from "lucide-react";
+import { Edit, Zap } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { AccordionSection } from "../ui/accordion-section";
 import { EmptySectionPlaceholder, SectionItem } from "../ui/section";

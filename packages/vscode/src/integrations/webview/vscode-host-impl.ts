@@ -3,8 +3,6 @@ import path from "node:path";
 import { executeCommandWithPty } from "@/integrations/terminal/execute-command-with-pty";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { CustomAgentManager } from "@/lib/custom-agent";
-// biome-ignore lint/style/useImportType: needed for dependency injection
-import { SkillManager } from "@/lib/skill-manager";
 import {
   collectCustomRules,
   collectRuleFiles,
@@ -20,6 +18,8 @@ import { getLogger } from "@/lib/logger";
 import { ModelList } from "@/lib/model-list";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { PostHog } from "@/lib/posthog";
+// biome-ignore lint/style/useImportType: needed for dependency injection
+import { SkillManager } from "@/lib/skill-manager";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { TaskDataStore } from "@/lib/task-data-store";
 import { taskRunning, taskUpdated } from "@/lib/task-events";
@@ -38,9 +38,9 @@ import { listFiles as listFilesTool } from "@/tools/list-files";
 import { readBackgroundJobOutput } from "@/tools/read-background-job-output";
 import { readFile } from "@/tools/read-file";
 import { searchFiles } from "@/tools/search-files";
+import { skill } from "@/tools/skill";
 import { startBackgroundJob } from "@/tools/start-background-job";
 import { todoWrite } from "@/tools/todo-write";
-import { skill } from "@/tools/skill";
 import { previewWriteToFile, writeToFile } from "@/tools/write-to-file";
 import type { Environment, GitStatus } from "@getpochi/common";
 import type { UserInfo } from "@getpochi/common/configuration";

@@ -3,10 +3,10 @@ import { AccountSection } from "./sections/account-section";
 import { AdvancedSettingsSection } from "./sections/advanced-settings-section";
 import { CustomAgentSection } from "./sections/custom-agent-section";
 import { ModelSection } from "./sections/model-section";
+import { SkillSection } from "./sections/skill-section";
 import { ToolsSection } from "./sections/tools-section";
 import { WorkflowsSection } from "./sections/workflows-section";
 import { WorkspaceRulesSection } from "./sections/workspace-rules-section";
-import { SkillSection } from "./sections/skill-section";
 
 export function SettingsPage() {
   return (

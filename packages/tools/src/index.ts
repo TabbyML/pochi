@@ -28,8 +28,8 @@ import { editNotebook } from "./edit-notebook";
 import { killBackgroundJob } from "./kill-background-job";
 import { readBackgroundJobOutput } from "./read-background-job-output";
 import { createReadFileTool } from "./read-file";
-import { startBackgroundJob } from "./start-background-job";
 import { type Skill, createSkillTool } from "./skill";
+import { startBackgroundJob } from "./start-background-job";
 import { writeToFile } from "./write-to-file";
 
 export {
