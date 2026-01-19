@@ -30,6 +30,7 @@ import { Chat } from "./livekit";
 import { createOnOverrideMessages } from "./on-override-messages";
 import { executeToolCall } from "./tools";
 import type { ToolCallOptions } from "./types";
+import type { ValidSkillFile } from "@getpochi/common/vscode-webui-bridge";
 
 export interface RunnerOptions {
   /**
@@ -84,6 +85,11 @@ export interface RunnerOptions {
    */
   customAgents?: CustomAgent[];
 
+  /**
+   * Available skills for skill tool
+   */
+  skills?: ValidSkillFile[];
+
   onSubTaskCreated?: (runner: TaskRunner) => void;
 
   /**
@@ -127,6 +133,7 @@ export class TaskRunner {
     this.toolCallOptions = {
       rg: options.rg,
       customAgents: options.customAgents,
+      skills: options.skills,
       mcpHub: options.mcpHub,
       createSubTaskRunner: (taskId: string, customAgent?: CustomAgent) => {
         // create sub task
@@ -161,6 +168,7 @@ export class TaskRunner {
           todos: this.todos,
         }),
         getCustomAgents: () => this.toolCallOptions.customAgents || [],
+        getSkills: () => this.toolCallOptions.skills || [],
         ...(options.mcpHub
           ? {
               getMcpInfo: () => {

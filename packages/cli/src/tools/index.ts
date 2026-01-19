@@ -11,6 +11,7 @@ import { listFiles } from "./list-files";
 import { newTask } from "./new-task";
 import { readFile } from "./read-file";
 import { searchFiles } from "./search-files";
+import { skill } from "./skill";
 import { todoWrite } from "./todo-write";
 import { writeToFile } from "./write-to-file";
 
@@ -29,6 +30,7 @@ const ToolMap: Record<
   writeToFile,
   searchFiles,
   executeCommand,
+  skill,
 };
 
 export async function executeToolCall(
