@@ -25,7 +25,6 @@ import { cn } from "@/lib/utils";
 import type { McpServerConnection } from "@getpochi/common/mcp-utils";
 import type { McpConfigOverride } from "@getpochi/common/vscode-webui-bridge";
 import {
-  ChevronDownIcon,
   ClipboardList,
   Loader2,
   SendHorizonal,
@@ -104,41 +103,36 @@ export function SubmitDropdownButton({
 
   return (
     <div className="flex items-center">
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              disabled={disabled}
-              className="button-focus h-6 w-6 rounded-r-none p-0"
-              onClick={onSubmit}
-            >
-              <SendHorizonal className="size-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>{t("chat.submitTooltip")}</p>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
       <DropdownMenu open={isOpen} onOpenChange={handleOpenChange} modal={false}>
-        <div onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
-          <DropdownMenuTrigger asChild>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              disabled={disabled}
-              className={cn(
-                "button-focus h-6 w-4 rounded-l-none border-border border-l p-0",
-                isOpen && "bg-accent",
-              )}
-            >
-              <ChevronDownIcon className="size-3" />
-            </Button>
-          </DropdownMenuTrigger>
+        <div
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
+          className="flex items-center"
+        >
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    disabled={disabled}
+                    className={cn(
+                      "button-focus h-6 w-6 p-0",
+                      isOpen && "bg-accent",
+                    )}
+                    onClick={onSubmit}
+                  >
+                    <SendHorizonal className="size-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{t("chat.submitTooltip")}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
         <DropdownMenuPortal>
           <DropdownMenuContent
@@ -149,14 +143,14 @@ export function SubmitDropdownButton({
             align="end"
             alignOffset={0}
             sideOffset={2}
-            className="dropdown-menu w-auto animate-in overflow-hidden rounded-md border bg-background p-0 text-popover-foreground shadow"
+            className="dropdown-menu w-auto min-w-0 animate-in overflow-hidden rounded-md border bg-background p-0 text-popover-foreground shadow"
           >
             <div className="p-1">
               <DropdownMenuItem
-                className="flex cursor-pointer items-center gap-2 px-2 py-1.5"
+                className="flex cursor-pointer items-center gap-2 px-2 py-1"
                 onClick={onSubmitPlan}
               >
-                <ClipboardList className="size-4" />
+                <ClipboardList className="size-3.5 transition-colors duration-200" />
                 <span>{t("chat.createPlan")}</span>
               </DropdownMenuItem>
 
@@ -205,10 +199,10 @@ function McpSubMenu({ mcpConfigOverride, onToggleServer }: McpSubMenuProps) {
       }
     >
       <DropdownMenuSub>
-        <DropdownMenuSubTrigger className="flex cursor-pointer items-center gap-2 px-2 py-1.5">
+        <DropdownMenuSubTrigger className="flex cursor-pointer items-center gap-2 px-2 py-1">
           <WrenchIcon
             className={cn(
-              "size-4 transition-colors duration-200",
+              "size-3.5 transition-colors duration-200",
               !hasServers && "text-muted-foreground",
             )}
           />
@@ -220,7 +214,7 @@ function McpSubMenu({ mcpConfigOverride, onToggleServer }: McpSubMenuProps) {
         </DropdownMenuSubTrigger>
         <DropdownMenuPortal>
           <DropdownMenuSubContent
-            className="dropdown-menu w-[12rem] animate-in overflow-hidden rounded-md border bg-background p-0 text-popover-foreground shadow"
+            className="dropdown-menu w-50 animate-in overflow-hidden rounded-md border bg-background p-0 text-popover-foreground shadow"
             sideOffset={8}
           >
             <ScrollArea viewportClassname="max-h-[60vh]">
