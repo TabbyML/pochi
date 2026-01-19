@@ -1,3 +1,5 @@
+import { logToFileObject } from "@/lib/file-logger";
+import { getLogger } from "@/lib/logger";
 import { type Signal, signal } from "@preact/signals-core";
 import * as vscode from "vscode";
 import type { TabCompletionContext } from "../context";
@@ -6,6 +8,8 @@ import type {
   TabCompletionProviderClient,
   TabCompletionProviderResponseItem,
 } from "./types";
+
+const logger = getLogger("TabCompletion.Providers.Request");
 
 export type TabCompletionProviderRequestStatus =
   | TabCompletionProviderRequestStatusInit
@@ -45,17 +49,32 @@ export class TabCompletionProviderRequest implements vscode.Disposable {
     | undefined;
 
   constructor(
+    public readonly id: string,
     public readonly context: TabCompletionContext,
     private readonly client: TabCompletionProviderClient<object, object>,
     private readonly latencyTracker: LatencyTracker,
   ) {
     const estimatedResponseTime =
       latencyTracker.calculateLatencyStatistics().metrics.averageResponseTime;
-    this.status = signal({
+    const status: TabCompletionProviderRequestStatus = {
       type: "init",
       estimatedResponseTime,
-    });
+    };
+    this.status = signal(status);
+    logger.trace(
+      "Request status inited:",
+      logToFileObject({ requestId: this.id, status }),
+    );
+
     this.collectSegments();
+  }
+
+  private updateStatus(status: TabCompletionProviderRequestStatus) {
+    logger.trace(
+      "Updating request status:",
+      logToFileObject({ requestId: this.id, status }),
+    );
+    this.status.value = status;
   }
 
   private async collectSegments() {
@@ -93,18 +112,18 @@ export class TabCompletionProviderRequest implements vscode.Disposable {
     }
 
     if (token?.isCancellationRequested) {
-      this.status.value = {
+      this.updateStatus({
         type: "error",
         error: new AbortError(),
-      };
+      });
       return;
     }
 
     if (!this.baseSegments) {
-      this.status.value = {
+      this.updateStatus({
         type: "finished",
         response: undefined,
-      };
+      });
       return;
     }
 
@@ -118,12 +137,13 @@ export class TabCompletionProviderRequest implements vscode.Disposable {
     }
     this.fetchingCancellationTokenSource = tokenSource;
 
-    this.status.value = {
+    this.updateStatus({
       type: "processing",
-    };
+    });
     const requestStartedAt = performance.now();
     try {
       const response = await this.client.fetchCompletion(
+        this.id,
         this.context,
         this.baseSegments,
         this.extraSegments,
@@ -132,18 +152,18 @@ export class TabCompletionProviderRequest implements vscode.Disposable {
       const latency = performance.now() - requestStartedAt;
       this.latencyTracker.add(latency);
 
-      this.status.value = {
+      this.updateStatus({
         type: "finished",
         response,
-      };
+      });
     } catch (error) {
       if (isTimeoutError(error)) {
         this.latencyTracker.add(Number.NaN);
       }
-      this.status.value = {
+      this.updateStatus({
         type: "error",
         error: error instanceof Error ? error : new Error(String(error)),
-      };
+      });
     } finally {
       tokenSource.dispose();
       if (this.fetchingCancellationTokenSource === tokenSource) {

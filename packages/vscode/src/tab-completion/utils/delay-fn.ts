@@ -2,7 +2,7 @@ import type * as vscode from "vscode";
 import { AbortError } from "./errors";
 
 export async function delayFn<T>(
-  fn: () => Promise<T>,
+  fn: () => T,
   delay: number,
   token?: vscode.CancellationToken | undefined,
 ): Promise<T> {

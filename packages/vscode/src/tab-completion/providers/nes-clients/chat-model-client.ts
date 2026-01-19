@@ -1,3 +1,4 @@
+import { logToFileObject } from "@/lib/file-logger";
 import { getLogger } from "@/lib/logger";
 import type { LanguageModelV2 } from "@ai-sdk/provider";
 import { type CallSettings, type Prompt, generateText } from "ai";
@@ -53,8 +54,6 @@ interface ExtraSegments {
 export class NESChatModelClient
   implements TabCompletionProviderClient<BaseSegments, ExtraSegments>
 {
-  private requestId = 0;
-
   constructor(
     public readonly id: string,
     private readonly model: LanguageModelV2,
@@ -189,14 +188,12 @@ export class NESChatModelClient
   }
 
   async fetchCompletion(
+    requestId: string,
     _context: TabCompletionContext,
     baseSegments: BaseSegments,
     extraSegments?: ExtraSegments | undefined,
     token?: vscode.CancellationToken | undefined,
   ): Promise<TabCompletionProviderResponseItem | undefined> {
-    this.requestId++;
-    const requestId = `client: ${this.id}, request: ${this.requestId}`;
-
     const request: CallSettings & Prompt = {
       system: buildSystemPromptTemplate(baseSegments, extraSegments),
       prompt: formatPlaceholders(UserPromptTemplate, {
@@ -222,21 +219,40 @@ export class NESChatModelClient
     const combinedSignal = AbortSignal.any(signals);
 
     try {
-      logger.trace(`[${requestId}] Request:`, request);
+      logger.trace(
+        "Request:",
+        logToFileObject({
+          requestId,
+          request,
+        }),
+      );
+
       const result = await generateText({
         ...request,
         model: this.model,
         abortSignal: combinedSignal,
       });
-      logger.trace(`[${requestId}] Response:`, result.response.body);
+
+      logger.trace(
+        "Response:",
+        logToFileObject({
+          requestId,
+          response: result.response.body,
+        }),
+      );
 
       if (result.finishReason !== "stop") {
+        logger.trace(
+          "Unexpected finish reason:",
+          logToFileObject({ requestId, finishReason: result.finishReason }),
+        );
         return undefined;
       }
 
       const extractedResult = extractResult(result.text, baseSegments);
       if (extractedResult) {
-        return {
+        const result = {
+          requestId,
           edit: {
             changes: [
               {
@@ -249,16 +265,19 @@ export class NESChatModelClient
             ],
           },
         };
+        logger.trace("Result:", logToFileObject(result));
+        return;
       }
     } catch (error) {
       if (isCanceledError(error)) {
-        logger.debug(`[${requestId}] Request canceled.`);
+        logger.trace("Request canceled.", logToFileObject({ requestId }));
       } else {
-        logger.debug(`[${requestId}] Request failed.`, error);
+        logger.debug("Request failed.", logToFileObject({ requestId, error }));
       }
       throw error; // rethrow error
     }
 
+    logger.trace("No result.", logToFileObject({ requestId }));
     return undefined;
   }
 }
