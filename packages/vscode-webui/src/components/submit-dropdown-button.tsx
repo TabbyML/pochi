@@ -206,11 +206,7 @@ function McpSubMenu({ mcpConfigOverride, onToggleServer }: McpSubMenuProps) {
               !hasServers && "text-muted-foreground",
             )}
           />
-          <span>
-            {hasServers
-              ? t("mcpSelect.servers")
-              : t("mcpSelect.noServersConfigured")}
-          </span>
+          <span>{t("mcpSelect.servers")}</span>
         </DropdownMenuSubTrigger>
         <DropdownMenuPortal>
           <DropdownMenuSubContent

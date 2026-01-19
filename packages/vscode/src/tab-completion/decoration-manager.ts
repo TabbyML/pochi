@@ -4,7 +4,7 @@ import * as vscode from "vscode";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { CanvasRenderer, TextmateThemer } from "./code-image-renderer";
 import type { TabCompletionSolutionItem } from "./solution/item";
-import { type CodeDiff, type LineNumberRange, getLines } from "./utils";
+import type { CodeDiff, LineNumberRange } from "./utils";
 
 const logger = getLogger("TabCompletion.DecorationManager");
 
@@ -147,36 +147,6 @@ export class TabCompletionDecorationManager implements vscode.Disposable {
       // If there are adding-line changes, show a image decoration to preview all changes.
       const editorRenderOptions = getEditorRenderOptions(editor);
 
-      const linesToRender: string[] = [];
-      const linesToRenderOffsetMap: number[][] = [];
-
-      // Convert tabs to spaces
-      for (const line of getLines(target)) {
-        const tabSize = editorRenderOptions.tabSize;
-        linesToRender.push(line.replace(/\t/g, " ".repeat(tabSize)));
-        const offsetMap: number[] = [];
-        let offset = 0;
-        for (let i = 0; i <= line.length; i++) {
-          offsetMap[i] = offset;
-          if (i < line.length) {
-            if (line[i] === "\t") {
-              offset += tabSize;
-            } else {
-              offset += 1;
-            }
-          }
-        }
-        linesToRenderOffsetMap.push(offsetMap);
-      }
-
-      const themedDocument = await this.textmateThemer.theme(
-        linesToRender,
-        editor.document.languageId,
-      );
-      if (token.isCancellationRequested) {
-        return;
-      }
-
       const lineRangeToRender = diff.changes.reduce<
         LineNumberRange | undefined
       >((acc, curr) => {
@@ -197,10 +167,14 @@ export class TabCompletionDecorationManager implements vscode.Disposable {
         return;
       }
 
-      const tokenLines = themedDocument.tokenLines.slice(
-        lineRangeToRender.start,
-        lineRangeToRender.end,
+      const themedDocument = await this.textmateThemer.theme(
+        target,
+        lineRangeToRender,
+        token,
       );
+      if (token.isCancellationRequested) {
+        return;
+      }
 
       const editedDocumentRanges = diff.changes.flatMap((lineChange) => {
         return lineChange.innerChanges.map((change) => {
@@ -218,8 +192,8 @@ export class TabCompletionDecorationManager implements vscode.Disposable {
               : target.lineAt(line).range.end.character;
           const charRange = {
             line: line - lineRangeToRender.start,
-            start: linesToRenderOffsetMap[line][start],
-            end: linesToRenderOffsetMap[line][end],
+            start: start,
+            end: end,
           };
           ranges.push(charRange);
           line++;
@@ -235,11 +209,12 @@ export class TabCompletionDecorationManager implements vscode.Disposable {
         padding: 5,
         fontSize: editorRenderOptions.fontSize,
         lineHeight: editorRenderOptions.lineHeight,
+        tabSize: editorRenderOptions.tabSize,
 
         colorMap: themedDocument.colorMap,
         foreground: themedDocument.foreground,
         background: 0, // use transparent
-        tokenLines,
+        tokenLines: themedDocument.tokenLines,
 
         lineDecorations: [],
         charDecorations: charDecorationRanges.map((range) => {

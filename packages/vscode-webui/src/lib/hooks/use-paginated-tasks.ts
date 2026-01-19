@@ -34,12 +34,7 @@ export function usePaginatedTasks({
   const [isLoadingMore, setIsLoadingMore] = useState(false);
 
   const tasks = useTasks()
-    .filter(
-      (t) =>
-        t.parentId === null &&
-        (t.cwd === cwd ||
-          t.git?.worktree?.gitdir.startsWith(`${cwd}/.git/worktrees`)),
-    )
+    .filter((t) => t.parentId === null && t.cwd === cwd)
     .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
 
   const paginatedTasks = tasks.slice(0, limit);
