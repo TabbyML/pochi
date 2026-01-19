@@ -443,7 +443,7 @@ export class TabCompletionManager implements vscode.Disposable {
         token,
       ).catch(() => {
         logger.trace(
-          `Request for provider ${provider.client.id} canceled before starting.`,
+          `Request ${request.id} canceled before starting.`,
           logToFileObject({ hash: context.hash }),
         );
       });
