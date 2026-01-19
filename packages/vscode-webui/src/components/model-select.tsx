@@ -79,6 +79,7 @@ export function ModelSelect({
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
+              aria-label="model-select"
               className={cn(
                 "!gap-0.5 !px-1 button-focus h-6 max-w-full items-center py-0 font-normal",
                 triggerClassName,
@@ -119,11 +120,12 @@ export function ModelSelect({
           </DropdownMenuTrigger>
           <DropdownMenuPortal>
             <DropdownMenuContent
+              aria-label="model-select-menu"
               onCloseAutoFocus={(e) => e.preventDefault()}
               side="bottom"
               align="start"
               alignOffset={6}
-              className="dropdown-menu max-h-[90vh] min-w-[18rem] animate-in overflow-y-auto overflow-x-hidden rounded-md border bg-background p-2 text-popover-foreground shadow"
+              className="model-select-menu dropdown-menu max-h-[90vh] min-w-[18rem] animate-in overflow-y-auto overflow-x-hidden rounded-md border bg-background p-2 text-popover-foreground shadow"
             >
               <DropdownMenuRadioGroup>
                 {hostedModels
@@ -133,8 +135,11 @@ export function ModelSelect({
                       group.models[0].options.label === "super";
                     return (
                       <div key={group.title}>
-                        <div className="px-2 py-1.5 font-semibold text-muted-foreground text-sm">
-                          {group.title}
+                        <div
+                          className="model-group-title px-2 py-1.5 font-semibold text-muted-foreground text-sm"
+                          aria-label="model-group-title"
+                        >
+                          {group.title}{" "}
                           {isSuperModelGroup && isSuperModelsDisabled && (
                             <span className="ml-2 font-normal text-xs italic">
                               ({t("modelSelect.subscriptionRequired")})

@@ -1,6 +1,6 @@
 import { AttachmentPreviewList } from "@/components/attachment-preview-list";
-import { McpToolSelect } from "@/components/mcp-override-select";
 import { ModelSelect } from "@/components/model-select";
+import { SubmitDropdownButton } from "@/components/submit-dropdown-button";
 import { Button } from "@/components/ui/button";
 import {
   HoverCard,
@@ -20,7 +20,7 @@ import { useTaskInputDraft } from "@/lib/hooks/use-task-input-draft";
 import { useWorktrees } from "@/lib/hooks/use-worktrees";
 import { vscodeHost } from "@/lib/vscode";
 import type { GitWorktree, Review } from "@getpochi/common/vscode-webui-bridge";
-import { ClipboardList, Loader2, PaperclipIcon } from "lucide-react";
+import { PaperclipIcon } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -341,10 +341,11 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
             isValid={!!selectedModel}
             onChange={updateSelectedModelId}
             reloadModels={reloadModels}
+            triggerClassName="sidebar-model-select"
           />
         </div>
 
-        <div className="mr-1 flex shrink-0 items-center gap-1">
+        <div className="mr-1 flex shrink-0 items-center gap-0.5">
           {worktreeOptions.length > 0 && (
             <WorktreeSelect
               cwd={cwd}
@@ -359,25 +360,18 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
               onBaseBranchChange={setBaseBranch}
             />
           )}
-          <McpToolSelect
-            mcpConfigOverride={mcpConfigOverride}
-            onToggleServer={toggleServer}
-            resetMcpTools={resetMcpTools}
-          />
           <HoverCard>
             <HoverCardTrigger asChild>
-              <span>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="button-focus relative h-6 w-6 p-0"
-                >
-                  <span className="size-4">
-                    <PaperclipIcon className="size-4 translate-y-[1.5px] scale-105" />
-                  </span>
-                </Button>
-              </span>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => fileInputRef.current?.click()}
+                className="button-focus relative h-6 w-6 p-0"
+              >
+                <span className="size-4">
+                  <PaperclipIcon className="size-4" />
+                </span>
+              </Button>
             </HoverCardTrigger>
             <HoverCardContent
               side="top"
@@ -388,35 +382,15 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
               {t("chat.attachmentTooltip")}
             </HoverCardContent>
           </HoverCard>
-          <HoverCard>
-            <HoverCardTrigger asChild>
-              <span>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={handleCreatePlan}
-                  className="button-focus relative h-6 w-6 p-0"
-                >
-                  <span className="size-4">
-                    <ClipboardList className="size-4 translate-y-[1.5px] scale-105" />
-                  </span>
-                </Button>
-              </span>
-            </HoverCardTrigger>
-            <HoverCardContent
-              side="top"
-              align="start"
-              sideOffset={6}
-              className="!w-auto max-w-sm bg-background px-3 py-1.5 text-xs"
-            >
-              {t("chat.createPlanTooltip")}
-            </HoverCardContent>
-          </HoverCard>
-          {!!debouncedIsCreatingTask && (
-            <span className="p-1">
-              <Loader2 className="size-4 animate-spin" />
-            </span>
-          )}
+          <SubmitDropdownButton
+            isLoading={debouncedIsCreatingTask}
+            disabled={!selectedModel || isUploadingAttachments}
+            onSubmit={() => handleSubmitImpl()}
+            onSubmitPlan={handleCreatePlan}
+            mcpConfigOverride={mcpConfigOverride}
+            onToggleServer={toggleServer}
+            resetMcpTools={resetMcpTools}
+          />
         </div>
       </div>
     </>

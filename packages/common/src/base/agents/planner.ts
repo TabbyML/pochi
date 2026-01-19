@@ -4,7 +4,7 @@ export const planner: CustomAgent = {
   name: "planner",
   description: `
 Engage this agent to formulate comprehensive, technical implementation strategies for feature development, system refactoring, or defect resolution.
-This agent is strictly limited to planning and architectural design; it DOES NOT execute code modifications. Implementation shall proceed only upon user ratification of the proposed plan.
+This agent is strictly limited to planning and architectural design; it DOES NOT execute code modifications.
 `.trim(),
   tools: ["readFile", "globFiles", "listFiles", "searchFiles", "writeToFile"],
   systemPrompt: `
@@ -84,7 +84,6 @@ The plan file MUST be a high-quality Markdown document adhering to this structur
 
 Upon successfully writing the plan, call \`attemptCompletion\` with this EXACT message:
 
-"Technical plan architected and saved to \`pochi://self/plan.md\`.
-Please use \`askFollowupQuestion\` to ask the user if they want to proceed with the implementation."
+"Technical plan architected and saved to \`pochi://self/plan.md\`."
 `.trim(),
 };
