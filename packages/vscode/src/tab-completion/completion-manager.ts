@@ -230,7 +230,7 @@ export class TabCompletionManager implements vscode.Disposable {
     this.current = undefined;
   }
 
-  async handelDidAcceptInlineCompletion(
+  async handleDidAcceptInlineCompletion(
     params: OnDidAcceptInlineCompletionItemParams,
   ) {
     // Apply auto-import quick fixes after code completion is accepted

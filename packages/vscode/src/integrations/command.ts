@@ -387,7 +387,7 @@ export class CommandManager implements vscode.Disposable {
         "pochi.tabCompletion.onDidAccept",
         async (params: OnDidAcceptInlineCompletionItemParams) => {
           this.posthog.capture("acceptCodeCompletion");
-          this.tabCompletionManager.handelDidAcceptInlineCompletion(params);
+          this.tabCompletionManager.handleDidAcceptInlineCompletion(params);
         },
       ),
 

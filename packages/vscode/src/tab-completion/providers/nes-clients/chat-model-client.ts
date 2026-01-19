@@ -63,7 +63,7 @@ export class NESChatModelClient
     const filepath = getRelativePath(context.document.uri);
 
     if (context.selectedCompletionInfo) {
-      // mark request invalid as there is selected compeltion
+      // mark request invalid as there is selected completion
       return undefined;
     }
 
