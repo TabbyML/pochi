@@ -9,6 +9,7 @@ import {
 } from "@getpochi/common/message-utils";
 import { findTodos, mergeTodos } from "@getpochi/common/message-utils";
 
+import type { ValidSkillFile } from "@getpochi/common/vscode-webui-bridge";
 import {
   type LLMRequestData,
   type LiveKitStore,
@@ -30,7 +31,6 @@ import { Chat } from "./livekit";
 import { createOnOverrideMessages } from "./on-override-messages";
 import { executeToolCall } from "./tools";
 import type { ToolCallOptions } from "./types";
-import type { ValidSkillFile } from "@getpochi/common/vscode-webui-bridge";
 
 export interface RunnerOptions {
   /**

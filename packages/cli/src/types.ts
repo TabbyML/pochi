@@ -1,7 +1,7 @@
 import type { McpHub } from "@getpochi/common/mcp-utils";
+import type { ValidSkillFile } from "@getpochi/common/vscode-webui-bridge";
 import type { CustomAgent } from "@getpochi/tools";
 import type { TaskRunner } from "./task-runner";
-import type { ValidSkillFile } from "@getpochi/common/vscode-webui-bridge";
 
 export interface ToolCallOptions {
   /**
