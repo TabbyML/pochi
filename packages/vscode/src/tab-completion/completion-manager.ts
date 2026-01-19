@@ -27,7 +27,11 @@ import {
   InlineCompletionProviderTrigger,
   type InlineCompletionProviderTriggerEvent,
 } from "./triggers";
-import { delayFn, isLineEndPosition, toPositionRange } from "./utils";
+import {
+  delayFn,
+  isLineEndPosition,
+  offsetRangeToPositionRange,
+} from "./utils";
 
 const logger = getLogger("TabCompletion.TabCompletionManager");
 
@@ -158,7 +162,7 @@ export class TabCompletionManager implements vscode.Disposable {
     await editor.edit((editBuilder) => {
       for (const change of solutionItem.textEdit.changes) {
         editBuilder.replace(
-          toPositionRange(change.range, editor.document),
+          offsetRangeToPositionRange(change.range, editor.document),
           change.text,
         );
       }
@@ -292,7 +296,7 @@ export class TabCompletionManager implements vscode.Disposable {
     logger.trace("Preparing new requests.");
     const offset = context.documentSnapshot.offsetAt(context.selection.active);
     const triggerCharacter = context.documentSnapshot.getText(
-      toPositionRange(
+      offsetRangeToPositionRange(
         {
           start: Math.max(0, offset - 1),
           end: offset,

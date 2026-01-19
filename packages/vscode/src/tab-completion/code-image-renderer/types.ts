@@ -21,6 +21,7 @@ export interface RenderImageInput {
   padding: number;
   fontSize: number;
   lineHeight: number;
+  tabSize: number;
 
   colorMap: ColorMap;
   foreground: number; // color map index

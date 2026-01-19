@@ -22,7 +22,7 @@ export function toOffsetRange(
   };
 }
 
-export function toPositionRange(
+export function offsetRangeToPositionRange(
   range: OffsetRange,
   document: vscode.TextDocument,
 ): vscode.Range {
