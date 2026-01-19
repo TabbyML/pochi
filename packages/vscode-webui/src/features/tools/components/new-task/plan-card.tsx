@@ -5,12 +5,15 @@ import { useAutoApproveGuard, useSendMessage } from "@/features/chat";
 import { useDefaultStore } from "@/lib/use-default-store";
 import { vscodeHost } from "@/lib/vscode";
 import { catalog } from "@getpochi/livekit";
-import { ClipboardList, Pencil, Play } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
+import { ClipboardList, FilePenLine, Play } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 export function PlanCard({
+  uid,
   parentId,
 }: {
+  uid: string;
   parentId: string;
 }) {
   const { t } = useTranslation();
@@ -18,8 +21,16 @@ export function PlanCard({
   const file = store.query(catalog.queries.makeFileQuery(parentId, "/plan.md"));
   const autoApproveGuard = useAutoApproveGuard();
   const sendMessage = useSendMessage();
+  const navigate = useNavigate();
 
-  const handleEditPlan = () => {
+  const handleReviewPlan = () => {
+    navigate({
+      to: "/task",
+      search: {
+        uid,
+        storeId: store.storeId,
+      },
+    });
     vscodeHost.openFile("pochi://self/plan.md");
   };
 
@@ -46,13 +57,13 @@ export function PlanCard({
           variant="outline"
           size="xs"
           className="h-7 px-2"
-          onClick={handleEditPlan}
+          onClick={handleReviewPlan}
         >
-          <Pencil className="mr-1.5 size-3.5" />
-          {t("planCard.editPlan")}
+          <FilePenLine className="mr-0.5 size-3.5" />
+          {t("planCard.reviewPlan")}
         </Button>
         <Button size="xs" className="h-7 px-2" onClick={handleExecutePlan}>
-          <Play className="mr-1.5 size-3.5" />
+          <Play className="mr-0.5 size-3.5" />
           {t("planCard.executePlan")}
         </Button>
       </div>

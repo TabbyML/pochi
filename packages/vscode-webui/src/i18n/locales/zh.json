@@ -462,7 +462,7 @@
   },
   "planCard": {
     "title": "计划",
-    "editPlan": "编辑计划",
+    "reviewPlan": "评审",
     "executePlan": "执行计划",
     "executePrompt": "执行计划"
   }

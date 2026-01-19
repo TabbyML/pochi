@@ -461,7 +461,7 @@
   },
   "planCard": {
     "title": "Plan",
-    "editPlan": "Edit Plan",
+    "reviewPlan": "Review",
     "executePlan": "Execute Plan",
     "executePrompt": "Execute the plan"
   }

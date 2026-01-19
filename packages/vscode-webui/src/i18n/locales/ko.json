@@ -458,7 +458,7 @@
   },
   "planCard": {
     "title": "계획",
-    "editPlan": "계획 편집",
+    "reviewPlan": "검토",
     "executePlan": "계획 실행",
     "executePrompt": "계획 실행"
   }

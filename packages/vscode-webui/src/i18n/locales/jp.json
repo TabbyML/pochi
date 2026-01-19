@@ -463,7 +463,7 @@
   },
   "planCard": {
     "title": "計画",
-    "editPlan": "計画を編集",
+    "reviewPlan": "確認",
     "executePlan": "計画を実行",
     "executePrompt": "計画を実行してください"
   }

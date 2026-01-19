@@ -132,8 +132,8 @@ function NewTaskToolView({
           />
         </FixedStateChatContextProvider>
       )}
-      {agentType === "planner" && completed && taskSource?.parentId && (
-        <PlanCard parentId={taskSource.parentId} />
+      {agentType === "planner" && completed && uid && taskSource?.parentId && (
+        <PlanCard uid={uid} parentId={taskSource.parentId} />
       )}
     </div>
   );
