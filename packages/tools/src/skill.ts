@@ -64,9 +64,6 @@ ${makeSkillToolDescription(skills)}
 `.trim(),
     inputSchema,
     outputSchema: z.object({
-      filePath: z
-        .string()
-        .describe("The file path related to the skill instructions."),
       result: z
         .string()
         .describe("The result of getting the skill instructions."),

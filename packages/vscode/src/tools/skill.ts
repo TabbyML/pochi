@@ -1,3 +1,5 @@
+import * as os from "node:os";
+import * as path from "node:path";
 import { getLogger } from "@getpochi/common";
 import { isValidSkill } from "@getpochi/common/vscode-webui-bridge";
 import type { ClientTools, ToolFunctionType } from "@getpochi/tools";
@@ -10,7 +12,10 @@ const logger = getLogger("useSkill");
  * Implements the useSkill tool for VSCode extension.
  * Returns skill instructions when a skill is activated by the model.
  */
-export const skill: ToolFunctionType<ClientTools["skill"]> = async (args) => {
+export const skill: ToolFunctionType<ClientTools["skill"]> = async (
+  args,
+  { cwd },
+) => {
   try {
     const skillManager = container.resolve(SkillManager);
     const skills = skillManager.skills.value;
@@ -38,11 +43,20 @@ export const skill: ToolFunctionType<ClientTools["skill"]> = async (args) => {
       };
     }
 
+    // Resolve the file path
+    let resolvedFilePath: string;
+    if (path.isAbsolute(skill.filePath)) {
+      resolvedFilePath = skill.filePath;
+    } else if (skill.filePath.startsWith("~")) {
+      resolvedFilePath = skill.filePath.replace("~", os.homedir());
+    } else {
+      resolvedFilePath = path.resolve(cwd, skill.filePath);
+    }
+
     logger.debug(`Activating skill: ${skill.name}`);
 
     return {
-      filePath: skill.filePath,
-      result: skill.instructions,
+      result: `${skill.instructions.trim()}\nSkill file path: ${resolvedFilePath}`,
     };
   } catch (error) {
     logger.error("Error in useSkill tool:", error);

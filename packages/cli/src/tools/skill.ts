@@ -41,8 +41,7 @@ export const skill =
 
       // Return the skill instructions with file path information
       return {
-        filePath: resolvedFilePath,
-        result: skill.instructions,
+        result: `${skill.instructions.trim()}\nSkill file path: ${resolvedFilePath}`,
       };
     } catch (error) {
       throw new Error(
