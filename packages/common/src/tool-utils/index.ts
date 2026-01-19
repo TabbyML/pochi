@@ -28,6 +28,7 @@ export {
   buildShellCommand,
 } from "./shell";
 export { parseAgentFile } from "./agent-parser";
+export { parseSkillFile } from "./skill-parser";
 export { parseWorkflow } from "./workflow-parser";
 export {
   type NotebookCell,
