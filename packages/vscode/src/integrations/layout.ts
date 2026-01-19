@@ -567,10 +567,15 @@ async function applyPochiLayoutImpl(params: {
     params.cwd
   ) {
     logger.trace("Open new task tab.");
-    await PochiTaskEditorProvider.openTaskEditor({
-      type: "new-task",
-      cwd: params.cwd,
-    });
+    await PochiTaskEditorProvider.openTaskEditor(
+      {
+        type: "new-task",
+        cwd: params.cwd,
+      },
+      {
+        viewColumn: vscode.ViewColumn.One,
+      },
+    );
   }
 
   // If no editors in editor group, open a default text file
