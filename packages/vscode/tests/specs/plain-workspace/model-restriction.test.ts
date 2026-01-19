@@ -42,8 +42,9 @@ describe("Model Restriction Tests", () => {
 
     // Verify Super models are disabled for freebie user
     // 1. Find the "Super" group header
-    const groupHeaders = await menu.$$(".model-group-title");
+    const groupHeaders = await menu.$$('[aria-label="model-group-title"]');
     let superHeader: WebdriverIO.Element | undefined;
+
 
     for (const header of groupHeaders) {
       const text = await header.getText();

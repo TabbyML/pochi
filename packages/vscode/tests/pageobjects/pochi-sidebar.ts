@@ -6,11 +6,11 @@ export class PochiSidebar {
   }
 
   get modelSelect() {
-    return $(".sidebar-model-select");
+    return $('[aria-label="model-select"]');
   }
 
   get modelSelectMenu() {
-    return $(".model-select-menu");
+    return $('[aria-label="model-select-menu"]');
   }
 
   async open() {
