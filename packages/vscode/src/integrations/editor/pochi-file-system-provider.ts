@@ -18,12 +18,34 @@ export class PochiFileSystemProvider
     @inject("vscode.ExtensionContext")
     context: vscode.ExtensionContext,
   ) {
+    // Pochi tabs opened before PochiFileSystemProvider initialization will error, so they need to be closed.
+    PochiFileSystemProvider.closePochiTabs();
     context.subscriptions.push(
       vscode.workspace.registerFileSystemProvider("pochi", this, {
         isCaseSensitive: true,
         isReadonly: false,
       }),
     );
+  }
+
+  static closePochiTabs(uid?: string) {
+    const tabsToClose: vscode.Tab[] = [];
+    for (const group of vscode.window.tabGroups.all) {
+      for (const tab of group.tabs) {
+        if (tab.input instanceof vscode.TabInputText) {
+          if (
+            tab.input.uri.scheme === "pochi" &&
+            (uid === undefined || tab.input.uri.authority === uid)
+          ) {
+            tabsToClose.push(tab);
+          }
+        }
+      }
+    }
+
+    if (tabsToClose.length > 0) {
+      vscode.window.tabGroups.close(tabsToClose);
+    }
   }
 
   watch(

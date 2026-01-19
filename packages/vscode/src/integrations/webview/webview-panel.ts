@@ -1,4 +1,5 @@
 import * as path from "node:path";
+import { PochiFileSystemProvider } from "@/integrations/editor/pochi-file-system-provider";
 import { AuthEvents } from "@/lib/auth-events";
 import { WorkspaceScope, workspaceScoped } from "@/lib/workspace-scoped";
 import { getLogger, toErrorMessage } from "@getpochi/common";
@@ -106,6 +107,9 @@ export class PochiWebviewPanel
     for (const [uid, panel] of PochiWebviewPanel.panels) {
       if (panel === this) {
         PochiWebviewPanel.panels.delete(uid);
+        // When the webview panel is disposed (e.g. task is closed),
+        // we must also close any open editor tabs (pochi:// scheme) associated with this task.
+        PochiFileSystemProvider.closePochiTabs(uid);
         break;
       }
     }
