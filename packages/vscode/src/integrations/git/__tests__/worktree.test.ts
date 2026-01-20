@@ -5,7 +5,6 @@ import type { GitWorktree } from "@getpochi/common/vscode-webui-bridge";
 import proxyquire from "proxyquire";
 import path from "node:path";
 import type { GitWorktreeInfoProvider } from "../git-worktree-info-provider";
-import * as vscode from "vscode";
 
 const generateBranchNameStub = sinon.stub();
 const simpleGitStub = sinon.stub().returns({
