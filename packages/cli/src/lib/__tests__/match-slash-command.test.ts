@@ -7,7 +7,10 @@ import {
   replaceSlashCommandReferences,
 } from "../match-slash-command";
 import type { CustomAgent } from "@getpochi/tools";
-import type { ValidCustomAgentFile } from "@getpochi/common/vscode-webui-bridge";
+import type {
+  ValidCustomAgentFile,
+  ValidSkillFile,
+} from "@getpochi/common/vscode-webui-bridge";
 
 describe("match-slash-command", () => {
   describe("containsSlashCommandReference", () => {
@@ -145,11 +148,21 @@ describe("match-slash-command", () => {
       },
     ];
 
+    const skills: ValidSkillFile[] = [
+      {
+        name: "test-skill",
+        description: "A test skill for testing slash command functionality",
+        instructions: "This is a test skill",
+        filePath: ".pochi/skills/test-skill/SKILL.md",
+      },
+    ];
+
     it("should replace workflow references with content", async () => {
       const prompt = "Please use /test-workflow for this task";
       const { prompt: result } = await replaceSlashCommandReferences(prompt, {
         workflows,
         customAgents,
+        skills,
       });
       expect(result).toBe(
         'Please use <workflow id="test-workflow" path=".pochi/workflows/test-workflow.md">This is a test workflow</workflow> for this task',
@@ -161,20 +174,34 @@ describe("match-slash-command", () => {
       const { prompt: result } = await replaceSlashCommandReferences(prompt, {
         workflows,
         customAgents,
+        skills,
       });
       expect(result).toBe(
         'Please use <custom-agent id="test-agent" path=".pochi/agents/test-agent.md">newTask:test-agent</custom-agent> for this task'
       );
     });
 
-    it("should handle multiple slash command references", async () => {
-      const prompt = "Use /test-workflow and then /test-agent";
+    it("should replace skill references with content", async () => {
+      const prompt = "Please use /test-skill for this task";
       const { prompt: result } = await replaceSlashCommandReferences(prompt, {
         workflows,
         customAgents,
+        skills,
       });
       expect(result).toBe(
-        'Use <workflow id="test-workflow" path=".pochi/workflows/test-workflow.md">This is a test workflow</workflow> and then <custom-agent id="test-agent" path=".pochi/agents/test-agent.md">newTask:test-agent</custom-agent>',
+        'Please use <skill id="test-skill" path=".pochi/skills/test-skill/SKILL.md">test-skill</skill> for this task',
+      );
+    });
+
+    it("should handle multiple slash command references", async () => {
+      const prompt = "Use /test-workflow and then /test-agent and finally /test-skill";
+      const { prompt: result } = await replaceSlashCommandReferences(prompt, {
+        workflows,
+        customAgents,
+        skills,
+      });
+      expect(result).toBe(
+        'Use <workflow id="test-workflow" path=".pochi/workflows/test-workflow.md">This is a test workflow</workflow> and then <custom-agent id="test-agent" path=".pochi/agents/test-agent.md">newTask:test-agent</custom-agent> and finally <skill id="test-skill" path=".pochi/skills/test-skill/SKILL.md">test-skill</skill>',
       );
     });
   });
