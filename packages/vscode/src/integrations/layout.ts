@@ -52,6 +52,8 @@ export class LayoutManager implements vscode.Disposable {
   // Saves the terminals that are newly opened
   private newOpenTerminal = new TimedList<vscode.Terminal>();
 
+  private otherTabsCount = countOtherTabs();
+
   constructor(
     configuration: PochiConfiguration,
     workspaceScope: WorkspaceScope,
@@ -89,8 +91,33 @@ export class LayoutManager implements vscode.Disposable {
             if (autoApplyPochiLayout && !isCreateByUser) {
               await this.applyPochiLayout({
                 cwd,
-                movePanelToSidePanel: autoApplyPochiLayout,
+                movePanelToSidePanel: true,
                 disableOpenTerminalByDefault: true,
+              });
+            }
+          }
+        },
+      ),
+      vscode.window.tabGroups.onDidChangeTabs(
+        async (_event: vscode.TabChangeEvent) => {
+          const prevOtherTabsCount = this.otherTabsCount;
+          this.otherTabsCount = countOtherTabs();
+
+          const autoApplyPochiLayout =
+            configuration.advancedSettings.value.pochiLayout?.enabled;
+          if (
+            autoApplyPochiLayout &&
+            prevOtherTabsCount === 0 &&
+            this.otherTabsCount > 0
+          ) {
+            const pochiTaskTab = findActivePochiTaskTab();
+            if (pochiTaskTab) {
+              const cwd = PochiTaskEditorProvider.parseTaskUri(
+                pochiTaskTab.input.uri,
+              )?.cwd;
+              await this.applyPochiLayout({
+                cwd,
+                movePanelToSidePanel: true,
               });
             }
           }
@@ -194,9 +221,20 @@ function isPochiLayout(layout: EditorLayout): boolean {
   return true;
 }
 
-export function getSortedCurrentTabGroups() {
+function getSortedCurrentTabGroups() {
   return vscode.window.tabGroups.all.toSorted(
     (a, b) => a.viewColumn - b.viewColumn,
+  );
+}
+
+// Count for non-pochi-task and non-terminal tabs
+function countOtherTabs() {
+  return getSortedCurrentTabGroups().reduce(
+    (acc, group) =>
+      acc +
+      group.tabs.filter((tab) => !isPochiTaskTab(tab) && !isTerminalTab(tab))
+        .length,
+    0,
   );
 }
 
@@ -606,7 +644,7 @@ async function applyPochiLayoutImpl(params: {
   logger.trace("End applyPochiLayout.");
 }
 
-export function isCurrentLayoutDerivedFromPochiLayout(): boolean {
+function isCurrentLayoutDerivedFromPochiLayout(): boolean {
   const current = getSortedCurrentTabGroups();
   if (current.length < 3) {
     return false;
@@ -637,7 +675,7 @@ export function isCurrentLayoutDerivedFromPochiLayout(): boolean {
   );
 }
 
-export function isPochiTaskTab(tab: vscode.Tab): tab is vscode.Tab & {
+function isPochiTaskTab(tab: vscode.Tab): tab is vscode.Tab & {
   input: vscode.TabInputCustom & {
     viewType: typeof PochiTaskEditorProvider.viewType;
   };
@@ -648,7 +686,7 @@ export function isPochiTaskTab(tab: vscode.Tab): tab is vscode.Tab & {
   );
 }
 
-export function isTerminalTab(tab: vscode.Tab): tab is vscode.Tab & {
+function isTerminalTab(tab: vscode.Tab): tab is vscode.Tab & {
   input: vscode.TabInputTerminal;
 } {
   return tab.input instanceof vscode.TabInputTerminal;
@@ -665,6 +703,35 @@ function getTabGroupType(tabs: readonly vscode.Tab[]) {
     return "terminal";
   }
   return "editor";
+}
+
+export function findActivePochiTaskTab():
+  | (vscode.Tab & {
+      input: vscode.TabInputCustom & {
+        viewType: typeof PochiTaskEditorProvider.viewType;
+      };
+    })
+  | undefined {
+  // Try find active tab in active group
+  const activeTab = vscode.window.tabGroups.activeTabGroup.activeTab;
+  if (activeTab && isPochiTaskTab(activeTab)) {
+    return activeTab;
+  }
+  // Otherwise find active tab in other groups
+  const group = getSortedCurrentTabGroups().find(
+    (group) => group.activeTab && isPochiTaskTab(group.activeTab),
+  );
+  if (group?.activeTab && isPochiTaskTab(group.activeTab)) {
+    return group.activeTab;
+  }
+  // Otherwise find first task tab
+  const tab = getSortedCurrentTabGroups()
+    .flatMap((group) => group.tabs)
+    .find((tab) => isPochiTaskTab(tab));
+  if (tab) {
+    return tab;
+  }
+  return undefined;
 }
 
 export async function getViewColumnForTask(params: {
