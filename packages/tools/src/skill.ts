@@ -36,7 +36,7 @@ function makeSkillToolDescription(skills?: Skill[]) {
 ${skills
   .map(
     (skill) =>
-      `- **${skill.name}**: ${skill.description.trim()} [Source: ${skill.filePath}]`,
+      `- **${skill.name}**: ${skill.description.trim()} [Location: ${skill.filePath}]`,
   )
   .join("\n")}`;
 }
@@ -51,6 +51,10 @@ export const createSkillTool = (skills?: Skill[]) => {
 
 When users ask you to perform tasks, check if any of the available skills below can help complete the task more effectively. Skills provide specialized capabilities and domain knowledge.
 
+When users ask about a SPECIFIC skill (e.g., "How does the pdf skill work?", "What does the commit skill do?"), you must call this tool to get detailed information about that skill.
+
+When users ask general questions like "What skills are available?" or "List all skills", simply refer to the "Available skills" section below - do NOT call this tool.
+
 This tool returns the skill's detailed instructions which you must then follow to complete the task. The instructions contain step-by-step guidance on how to perform the specific task or workflow.
 
 How to invoke:
@@ -60,11 +64,13 @@ How to invoke:
 - Follow the returned instructions carefully to complete the task
 
 Important:
-- When a skill is relevant, you must invoke this tool IMMEDIATELY as your first action
-- NEVER just announce or mention a skill in your text response without actually calling this tool
-- This is a BLOCKING REQUIREMENT: invoke the relevant Skill tool BEFORE generating any other response about the task
+- When a skill is relevant for a task OR when users ask about a SPECIFIC skill, you must invoke this tool IMMEDIATELY as your first action
+- For general questions about available skills, simply refer to the "Available skills" list below without calling this tool
+- NEVER just announce or mention a skill in your text response without actually calling this tool (except for general skill listing requests)
+- This is a BLOCKING REQUIREMENT: invoke the relevant Skill tool BEFORE generating any other response about a specific skill or task
 - Only use skills listed in "Available skills" below
 - After calling this tool, follow the returned instructions step by step
+- The skill file location is shown in the [Location: filepath] section of each skill listing below - use this information to understand where the skill is defined
 - Use the directory containing the skill's source file as the base directory for resolving any resource files mentioned in the instructions
 - Proactively explore the skill base directory for additional resources (scripts, references, assets) that can help complete the task
 

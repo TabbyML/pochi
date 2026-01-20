@@ -72,6 +72,7 @@ export const ToolsByPermission = {
       "globFiles",
       "searchFiles",
       "readBackgroundJobOutput",
+      "skill",
     ] satisfies ToolName[]),
 
     // Pochi offered-tools
@@ -88,7 +89,6 @@ export const ToolsByPermission = {
     "startBackgroundJob",
     "killBackgroundJob",
     "newTask",
-    "skill",
   ] satisfies ToolName[] as string[],
   default: ["todoWrite"] satisfies ToolName[] as string[],
 };
