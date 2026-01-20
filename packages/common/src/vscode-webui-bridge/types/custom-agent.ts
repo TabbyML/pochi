@@ -29,10 +29,12 @@ export interface InvalidCustomAgentFile extends Partial<CustomAgent> {
   message: string;
 }
 
+export const BuiltInAgentPath = "<builtIn>";
+
 export type CustomAgentFile = ValidCustomAgentFile | InvalidCustomAgentFile;
 
-export const isValidCustomAgent = (
-  agent: CustomAgent | CustomAgentFile,
+export const isValidCustomAgentFile = (
+  agent: CustomAgentFile,
 ): agent is ValidCustomAgentFile => {
   return (
     (agent as ValidCustomAgentFile).name !== undefined &&

@@ -1,4 +1,4 @@
-import type { CustomAgent, PreviewReturnType } from "@getpochi/tools";
+import type { PreviewReturnType } from "@getpochi/tools";
 import type { ThreadAbortSignalSerialization } from "@quilted/threads";
 import type { ThreadSignalSerialization } from "@quilted/threads/signals";
 import type { Environment } from "../base";
@@ -168,9 +168,7 @@ export interface VSCodeHostApi {
     workspacePath: string | null;
   }>;
 
-  readCustomAgents(): Promise<
-    ThreadSignalSerialization<(CustomAgent | CustomAgentFile)[]>
-  >;
+  readCustomAgents(): Promise<ThreadSignalSerialization<CustomAgentFile[]>>;
 
   executeBashCommand: (
     command: string,
