@@ -243,6 +243,7 @@
     "loadMore": "さらに読み込む"
   },
   "toolInvocation": {
+    "pendingApproval": "承認待ち",
     "taskCompleted": "タスク完了",
     "reading": "読み込み中 ",
     "writing": "書き込み中 ",

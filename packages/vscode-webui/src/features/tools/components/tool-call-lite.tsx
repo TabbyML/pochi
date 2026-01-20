@@ -70,6 +70,12 @@ export function ToolCallLite({ tools, isPendingApproval }: Props) {
       break;
   }
 
+  if (isPendingApproval) {
+    detail = (
+      <span className="ml-2">{t("tasksPage.taskStatus.pendingApproval")}</span>
+    );
+  }
+
   return detail ? (
     <div className="flex flex-nowrap items-center overflow-x-hidden whitespace-nowrap">
       {isPendingApproval ? (
@@ -78,7 +84,7 @@ export function ToolCallLite({ tools, isPendingApproval }: Props) {
         <Loader2 className="size-3.5 shrink-0 animate-spin" />
       )}
       <div className="flex flex-nowrap items-center truncate">{detail}</div>
-      {tools.length > 1 && (
+      {!isPendingApproval && tools.length > 1 && (
         <span>
           {t("toolInvocation.moreTools", { count: tools.length - 1 })}
         </span>

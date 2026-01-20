@@ -243,6 +243,7 @@
     "loadMore": "더 보기"
   },
   "toolInvocation": {
+    "pendingApproval": "승인 대기 중",
     "taskCompleted": "작업 완료",
     "reading": "읽는 중 ",
     "writing": "쓰는 중 ",

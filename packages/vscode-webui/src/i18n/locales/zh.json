@@ -242,6 +242,7 @@
     "loadMore": "加载更多"
   },
   "toolInvocation": {
+    "pendingApproval": "等待批准",
     "taskCompleted": "任务完成",
     "reading": "正在读取 ",
     "writing": "正在写入 ",

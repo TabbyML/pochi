@@ -240,11 +240,13 @@
       "paused": "Task is paused",
       "errorPrefix": "Error:",
       "fallbackError": "Error encountered",
-      "finished": "Finished in {{duration}}"
+      "finished": "Finished in {{duration}}",
+      "pendingApproval": "Pending approval"
     },
     "loadMore": "Load more"
   },
   "toolInvocation": {
+    "pendingApproval": "Pending approval",
     "taskCompleted": "Task Completed",
     "reading": "Reading ",
     "writing": "Writing ",
