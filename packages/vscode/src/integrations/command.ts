@@ -33,11 +33,11 @@ import { DiffChangesContentProvider } from "./editor/diff-changes-content-provid
 import { GitWorktreeInfoProvider } from "./git/git-worktree-info-provider";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { WorktreeManager } from "./git/worktree";
+// biome-ignore lint/style/useImportType: needed for dependency injection
 import {
-  applyPochiLayout,
-  getSortedCurrentTabGroups,
+  LayoutManager,
+  findActivePochiTaskTab,
   getViewColumnForTerminal,
-  isPochiTaskTab,
 } from "./layout";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import {
@@ -67,6 +67,7 @@ export class CommandManager implements vscode.Disposable {
     private readonly worktreeManager: WorktreeManager,
     private readonly worktreeInfoProvider: GitWorktreeInfoProvider,
     private readonly reviewController: ReviewController,
+    private readonly layoutManager: LayoutManager,
   ) {
     this.registerCommands();
   }
@@ -113,7 +114,8 @@ export class CommandManager implements vscode.Disposable {
           "Logout",
         );
         if (selection === "Logout") {
-          await this.authClient.signOut();
+          this.authClient.signOut();
+
           await getVendor("pochi").logout();
           this.authEvents.logoutEvent.fire();
         }
@@ -277,7 +279,6 @@ export class CommandManager implements vscode.Disposable {
               type: "open-task",
               uid,
               cwd,
-              displayId: null,
             });
           },
         );
@@ -755,10 +756,10 @@ export class CommandManager implements vscode.Disposable {
         cwd = workspaceFolder;
       }
     }
-    await applyPochiLayout({
+    await this.layoutManager.applyPochiLayout({
       cwd,
       cycleFocus,
-      enabled:
+      movePanelToSidePanel:
         this.pochiConfiguration.advancedSettings.value.pochiLayout?.enabled,
     });
   }
@@ -770,33 +771,4 @@ export class CommandManager implements vscode.Disposable {
     }
     this.disposables = [];
   }
-}
-
-function findActivePochiTaskTab():
-  | (vscode.Tab & {
-      input: vscode.TabInputCustom & {
-        viewType: typeof PochiTaskEditorProvider.viewType;
-      };
-    })
-  | undefined {
-  // Try find active tab in active group
-  const activeTab = vscode.window.tabGroups.activeTabGroup.activeTab;
-  if (activeTab && isPochiTaskTab(activeTab)) {
-    return activeTab;
-  }
-  // Otherwise find active tab in other groups
-  const group = getSortedCurrentTabGroups().find(
-    (group) => group.activeTab && isPochiTaskTab(group.activeTab),
-  );
-  if (group?.activeTab && isPochiTaskTab(group.activeTab)) {
-    return group.activeTab;
-  }
-  // Otherwise find first task tab
-  const tab = getSortedCurrentTabGroups()
-    .flatMap((group) => group.tabs)
-    .find((tab) => isPochiTaskTab(tab));
-  if (tab) {
-    return tab;
-  }
-  return undefined;
 }

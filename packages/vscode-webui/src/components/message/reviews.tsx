@@ -1,8 +1,5 @@
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
+import { CollapsibleSection } from "@/components/ui/collapsible-section";
 import { FileIcon } from "@/features/tools";
 import { cn } from "@/lib/utils";
 import { vscodeHost } from "@/lib/vscode";
@@ -21,7 +18,6 @@ interface Props {
 
 export const Reviews: React.FC<Props> = ({ reviews }) => {
   const { t } = useTranslation();
-  const [isOpen, setIsOpen] = useState(false);
 
   const groupedReviews = useMemo(() => {
     const groupMap = new Map<string, Review[]>();
@@ -46,35 +42,22 @@ export const Reviews: React.FC<Props> = ({ reviews }) => {
   if (reviews.length === 0) return null;
 
   return (
-    <Collapsible
-      open={isOpen}
-      onOpenChange={setIsOpen}
-      className="mt-1 mb-2 rounded-md border"
-    >
-      <CollapsibleTrigger asChild>
-        <div className="flex cursor-pointer select-none items-center gap-1 border-border px-3 py-1.5 hover:bg-border/30">
-          <ChevronRight
-            className={cn(
-              "size-4 shrink-0 text-muted-foreground transition-transform duration-200",
-              isOpen && "rotate-90",
-            )}
-          />
+    <CollapsibleSection
+      title={
+        <>
           <ListCheck className="size-4 shrink-0" />
-          <div className="font-semibold text-sm">{t("reviewUI.reviews")}</div>
-        </div>
-      </CollapsibleTrigger>
-      <CollapsibleContent>
-        <div className="flex flex-col gap-1">
-          {groupedReviews.map((group) => (
-            <ReviewFileGroup
-              key={group.uri}
-              uri={group.uri}
-              reviews={group.reviews}
-            />
-          ))}
-        </div>
-      </CollapsibleContent>
-    </Collapsible>
+          {t("reviewUI.reviews")}
+        </>
+      }
+    >
+      {groupedReviews.map((group) => (
+        <ReviewFileGroup
+          key={group.uri}
+          uri={group.uri}
+          reviews={group.reviews}
+        />
+      ))}
+    </CollapsibleSection>
   );
 };
 

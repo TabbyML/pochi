@@ -14,7 +14,7 @@ import {
   useThirdPartyMcp,
 } from "@/lib/hooks/use-third-party-mcp";
 import { cn } from "@/lib/utils";
-import { getFileName } from "@/lib/utils/file";
+import { getBaseName } from "@/lib/utils/file";
 import type { McpServerConnection } from "@getpochi/common/mcp-utils";
 import {
   ChevronsUpDown,
@@ -106,7 +106,7 @@ const McpConfigList: React.FC<{
   return (
     <div className="flex max-h-[100px] flex-col gap-1 overflow-y-auto rounded border p-1">
       {configs.map((config, index) => {
-        const fileName = getFileName(config.path);
+        const fileName = getBaseName(config.path);
         return (
           <div
             key={config.path + index}

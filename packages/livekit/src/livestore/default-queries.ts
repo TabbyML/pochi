@@ -38,3 +38,16 @@ export const makeBlobQuery = (checksum: string) =>
       deps: [checksum],
     },
   );
+
+export const makeFileQuery = (taskId: string, filePath: string) =>
+  queryDb(
+    () =>
+      tables.files
+        .where("taskId", "=", taskId)
+        .where("filePath", "=", filePath)
+        .first(undefined),
+    {
+      label: "file",
+      deps: [taskId, filePath],
+    },
+  );

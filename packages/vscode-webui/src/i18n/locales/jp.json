@@ -27,6 +27,9 @@
   },
   "chat": {
     "attachmentTooltip": "ファイルをチャットに添付します。ファイルをドラッグ＆ドロップするか、チャット入力欄に貼り付けることもできます。",
+    "submitTooltip": "送信",
+    "createPlan": "計画",
+    "createPlanTooltip": "このタスクの実装計画を作成",
     "queuedMessages": "キュー内のメッセージ ({{count}})",
     "copyImage": "画像をコピー",
     "openImage": "画像を開く",
@@ -72,8 +75,9 @@
   },
   "mcpSelect": {
     "tooltip": "MCP サーバーとツール",
+    "serversTooltip": "このタスクで使用する MCP サーバーを設定します",
     "noServers": "MCP なし",
-    "servers": "MCP サーバー",
+    "servers": "MCP",
     "tools": "ツール",
     "noServersConfigured": "MCP サーバーが設定されていません",
     "manageServers": "MCP サーバーを管理..."
@@ -444,7 +448,7 @@
     "forkedTaskTitle": "フォーク 元: {{taskTitle}}"
   },
   "recommendSettings": {
-    "title": "Pochi は以下の設定を変更します",
+    "title": "Pochiは以下の設定を推奨します",
     "hide": "非表示",
     "options": {
       "enablePochiLayout": "Pochi レイアウトを有効にする",
@@ -456,5 +460,11 @@
   "mermaid": {
     "failedToRender": "Mermaid チャートのレンダリングに失敗しました：",
     "fixError": "Pochi でエラーを修正"
+  },
+  "planCard": {
+    "title": "計画",
+    "reviewPlan": "確認",
+    "executePlan": "計画を実行",
+    "executePrompt": "計画を実行してください"
   }
 }

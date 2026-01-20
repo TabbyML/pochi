@@ -35,14 +35,12 @@ export type PochiTaskParams = { cwd: string } & (
   | {
       type: "open-task";
       uid: string;
-      displayId: number | null;
       storeId?: string;
     }
 );
 
 export type PochiTaskInfo = PochiTaskParams & {
   uid: string;
-  displayId: number | null;
 };
 
 /**

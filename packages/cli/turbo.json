@@ -5,6 +5,9 @@
     "implicitDependencies": ["bun"]
   },
   "tasks": {
+    "test": {
+      "dependsOn": ["build"]
+    },
     "test:coverage": {
       "outputs": ["coverage/**"]
     }

@@ -1,3 +1,5 @@
+import * as path from "node:path";
+import { PochiFileSystemProvider } from "@/integrations/editor/pochi-file-system-provider";
 import { AuthEvents } from "@/lib/auth-events";
 import { WorkspaceScope, workspaceScoped } from "@/lib/workspace-scoped";
 import { getLogger, toErrorMessage } from "@getpochi/common";
@@ -12,7 +14,6 @@ import { container } from "tsyringe";
 import * as vscode from "vscode";
 import { z } from "zod/v4";
 import { PochiConfiguration } from "../configuration";
-import { GitWorktreeInfoProvider } from "../git/git-worktree-info-provider";
 import { WorktreeManager } from "../git/worktree";
 import { getViewColumnForTask } from "../layout";
 import { WebviewBase } from "./base";
@@ -39,6 +40,8 @@ export class PochiWebviewPanel
   extends WebviewBase
   implements vscode.Disposable
 {
+  // Map of active panels, key is the task UID
+  private static panels = new Map<string, PochiWebviewPanel>();
   private readonly panel: vscode.WebviewPanel;
 
   constructor(
@@ -52,6 +55,9 @@ export class PochiWebviewPanel
   ) {
     super(sessionId, context, events, pochiConfiguration, vscodeHost);
     this.panel = panel;
+
+    // Push to static map
+    PochiWebviewPanel.panels.set(info.uid, this);
 
     // Set webview options
     this.panel.webview.options = {
@@ -82,9 +88,31 @@ export class PochiWebviewPanel
     };
   }
 
+  static readTaskFile(taskId: string, filePath: string) {
+    return PochiWebviewPanel.panels
+      .get(taskId)
+      ?.webviewHost?.readTaskFile(taskId, filePath);
+  }
+
+  static writeTaskFile(taskId: string, filePath: string, content: string) {
+    return PochiWebviewPanel.panels
+      .get(taskId)
+      ?.webviewHost?.writeTaskFile(taskId, filePath, content);
+  }
+
   dispose(): void {
     super.dispose();
     this.panel.dispose();
+    // Remove from static map when disposed
+    for (const [uid, panel] of PochiWebviewPanel.panels) {
+      if (panel === this) {
+        PochiWebviewPanel.panels.delete(uid);
+        // When the webview panel is disposed (e.g. task is closed),
+        // we must also close any open editor tabs (pochi:// scheme) associated with this task.
+        PochiFileSystemProvider.closePochiTabs(uid);
+        break;
+      }
+    }
   }
 }
 
@@ -137,8 +165,7 @@ export class PochiTaskEditorProvider
       .resolve(WorktreeManager)
       .getWorktreeDisplayName(params.cwd);
     const displayName = getTaskDisplayTitle({
-      worktreeName: worktreeName ?? "workspace",
-      displayId: params.displayId,
+      worktreeName: worktreeName ?? path.basename(params.cwd),
       uid: params.uid,
     });
     return vscode.Uri.from({
@@ -146,7 +173,6 @@ export class PochiTaskEditorProvider
       path: `/pochi/task/${displayName}`,
       query: JSON.stringify({
         uid: params.uid,
-        displayId: params.displayId,
         cwd: params.cwd,
       } satisfies TaskUri), // keep query string stable for identification
     });
@@ -163,21 +189,16 @@ export class PochiTaskEditorProvider
 
   public static async openTaskEditor(
     params: PochiTaskParams,
-    options?: { keepEditor?: boolean },
+    options?: { keepEditor?: boolean; viewColumn?: vscode.ViewColumn },
   ) {
     try {
       const uid =
         ((params.type === "new-task" || params.type === "open-task") &&
           params.uid) ||
         crypto.randomUUID();
-      const displayId =
-        params.type === "open-task"
-          ? params.displayId
-          : await getNextDisplayId(params.cwd);
       const taskInfo: PochiTaskInfo = {
         ...params,
         uid,
-        displayId,
       };
       const uri = PochiTaskEditorProvider.createTaskUri(taskInfo);
       PochiTaskEditorProvider.taskInfo.set(uri.toString(), taskInfo);
@@ -289,6 +310,7 @@ export class PochiTaskEditorProvider
     const events = workspaceContainer.resolve(AuthEvents);
     const pochiConfiguration = workspaceContainer.resolve(PochiConfiguration);
     const vscodeHost = workspaceContainer.resolve(VSCodeHostImpl);
+    vscodeHost.taskId = uid;
 
     webviewPanel.webview.options = {
       enableScripts: true,
@@ -317,15 +339,6 @@ export class PochiTaskEditorProvider
   }
 }
 
-async function getNextDisplayId(cwd: string) {
-  const worktreeManager = container.resolve(WorktreeManager);
-  const mainWorktreeCwd = worktreeManager.worktrees.value.find(
-    (wt) => wt.isMain,
-  )?.path;
-  const worktreeInfoProvider = container.resolve(GitWorktreeInfoProvider);
-  return await worktreeInfoProvider.getNextDisplayId(mainWorktreeCwd ?? cwd);
-}
-
 function setAutoLockGroupsConfig() {
   const autoLockGroupsConfig =
     vscode.workspace.getConfiguration("workbench.editor");
@@ -345,7 +358,7 @@ function setAutoLockGroupsConfig() {
 
 async function openTaskInColumn(
   uri: vscode.Uri,
-  options?: { keepEditor?: boolean },
+  options?: { keepEditor?: boolean; viewColumn?: vscode.ViewColumn },
 ) {
   const params = PochiTaskEditorProvider.parseTaskUri(uri);
   if (!params) {
@@ -359,9 +372,11 @@ async function openTaskInColumn(
     return;
   }
 
-  const viewColumn = await getViewColumnForTask({
-    cwd: params.cwd,
-  });
+  const viewColumn =
+    options?.viewColumn ??
+    (await getViewColumnForTask({
+      cwd: params.cwd,
+    }));
 
   await vscode.commands.executeCommand(
     "vscode.openWith",
@@ -407,7 +422,6 @@ function autoCleanTabGroupLock() {
 const TaskUri = z.object({
   cwd: z.string(),
   uid: z.string(),
-  displayId: z.number().nullable(),
 });
 
 type TaskUri = z.infer<typeof TaskUri>;

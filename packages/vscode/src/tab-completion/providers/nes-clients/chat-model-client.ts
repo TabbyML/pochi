@@ -13,7 +13,7 @@ import {
   formatPlaceholders,
   getRelativePath,
   isCanceledError,
-  toPositionRange,
+  offsetRangeToPositionRange,
 } from "../../utils";
 import type { TabCompletionProviderResponseItem } from "../types";
 import type { TabCompletionProviderClient } from "../types";
@@ -149,7 +149,7 @@ export class NESChatModelClient
       const declarations = await declarationSnippetsProvider.collect(
         {
           uri: context.document.uri,
-          range: toPositionRange(
+          range: offsetRangeToPositionRange(
             {
               start: baseSegments.prefixStartOffset,
               end: baseSegments.suffixEndOffset,

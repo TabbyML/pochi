@@ -27,6 +27,9 @@
   },
   "chat": {
     "attachmentTooltip": "Attach files to chat. You can also drag and drop files or paste them into the chat input box.",
+    "submitTooltip": "Submit",
+    "createPlan": "Plan",
+    "createPlanTooltip": "Create an implementation plan for this task",
     "queuedMessages": "Queued Messages ({{count}})",
     "copyImage": "Copy Image",
     "openImage": "Open Image",
@@ -72,8 +75,9 @@
   },
   "mcpSelect": {
     "tooltip": "MCP servers and tools",
+    "serversTooltip": "Configure which MCP servers to use for this task",
     "noServers": "No MCP",
-    "servers": "MCP Servers",
+    "servers": "MCP",
     "tools": "tools",
     "noServersConfigured": "No MCP servers configured",
     "manageServers": "Manage MCP Servers..."
@@ -454,5 +458,11 @@
   "mermaid": {
     "failedToRender": "Failed to render Mermaid chart:",
     "fixError": "Fix error with Pochi"
+  },
+  "planCard": {
+    "title": "Plan",
+    "reviewPlan": "Review",
+    "executePlan": "Execute Plan",
+    "executePrompt": "Execute the plan"
   }
 }

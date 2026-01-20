@@ -9,7 +9,6 @@ export const GithubIssue = z.object({
 
 // Persisted in global storage by worktree.
 export const GitWorktreeInfo = z.object({
-  nextDisplayId: z.number().min(1),
   github: z.object({
     pullRequest: z
       .object({

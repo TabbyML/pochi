@@ -5,6 +5,14 @@ export class PochiSidebar {
     return $(".ProseMirror");
   }
 
+  get modelSelect() {
+    return $('[aria-label="model-select"]');
+  }
+
+  get modelSelectMenu() {
+    return $('[aria-label="model-select-menu"]');
+  }
+
   async open() {
     const workbench = await browser.getWorkbench();
     const activityBar = workbench.getActivityBar();

@@ -18,6 +18,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { getBaseName } from "@/lib/utils/file";
 import { vscodeHost } from "@/lib/vscode";
 import { getWorktreeNameFromWorktreePath } from "@getpochi/common/git-utils";
 import {
@@ -25,6 +26,7 @@ import {
   WorktreePrefix,
 } from "@getpochi/common/vscode-webui-bridge";
 import { DropdownMenuPortal } from "@radix-ui/react-dropdown-menu";
+
 import { useQuery } from "@tanstack/react-query";
 import {
   CheckIcon,
@@ -54,7 +56,7 @@ const getWorktreeName = (worktree: GitWorktree | undefined) => {
     return;
   }
   if (worktree.isMain) {
-    return "workspace";
+    return getBaseName(worktree.path);
   }
   return getWorktreeNameFromWorktreePath(worktree.path);
 };
@@ -231,6 +233,8 @@ export function WorktreeSelect({
   const { t } = useTranslation();
 
   const isNewWorktree = value === "new-worktree";
+  const showText = !(value === "new-worktree" || value?.path === cwd);
+
   return (
     <LoadingWrapper
       loading={isLoading}
@@ -254,19 +258,24 @@ export function WorktreeSelect({
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="ghost"
-                    className="button-focus h-6 max-w-[40vw] items-center gap-0 overflow-visible py-0 pr-1 pl-0 font-normal has-[>svg]:px-1"
+                    className={cn(
+                      "button-focus h-6 items-center gap-0 overflow-visible py-0 font-normal",
+                      showText
+                        ? "max-w-[40vw] pr-1 pl-0"
+                        : "w-6 justify-center px-0",
+                    )}
                   >
-                    <span
-                      className={cn(
-                        "truncate whitespace-nowrap transition-colors duration-200",
-                        !value && "text-muted-foreground",
-                      )}
-                    >
-                      {value === "new-worktree" || value?.path === cwd
-                        ? "\b"
-                        : (getWorktreeName(value) ??
-                          t("worktreeSelect.selectWorktree"))}
-                    </span>
+                    {showText && (
+                      <span
+                        className={cn(
+                          "truncate whitespace-nowrap transition-colors duration-200",
+                          !value && "text-muted-foreground",
+                        )}
+                      >
+                        {getWorktreeName(value) ??
+                          t("worktreeSelect.selectWorktree")}
+                      </span>
+                    )}
                     <div
                       className={cn("relative inline-flex items-center", {
                         "pr-2": isNewWorktree,
@@ -292,6 +301,7 @@ export function WorktreeSelect({
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
+
           <DropdownMenuPortal>
             <DropdownMenuContent
               onCloseAutoFocus={(e) => e.preventDefault()}

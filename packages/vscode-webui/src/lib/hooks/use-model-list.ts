@@ -3,6 +3,7 @@ import { vscodeHost } from "@/lib/vscode";
 import { threadSignal } from "@quilted/threads/signals";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
+import { useUserStorage } from "./use-user-storage";
 
 /** @useSignals this comment is needed to enable signals in this hook */
 export const useModelList = (filterPochiModels: boolean) => {
@@ -13,17 +14,26 @@ export const useModelList = (filterPochiModels: boolean) => {
   });
 
   const enablePochiModels = useEnablePochiModels();
+  const { users } = useUserStorage();
 
   const modelList = useMemo(() => {
     return filterPochiModels
       ? data?.modelList?.value?.filter((model) => {
           if (model.type === "vendor" && model.vendorId === "pochi") {
-            return !model.modelId.startsWith("pochi/") || enablePochiModels;
+            return (
+              !!users?.pochi &&
+              (!model.modelId.startsWith("pochi/") || enablePochiModels)
+            );
           }
           return true;
         })
       : data?.modelList?.value;
-  }, [filterPochiModels, data?.modelList?.value, enablePochiModels]);
+  }, [
+    filterPochiModels,
+    data?.modelList?.value,
+    enablePochiModels,
+    users?.pochi,
+  ]);
 
   return {
     modelList,

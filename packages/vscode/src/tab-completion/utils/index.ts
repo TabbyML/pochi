@@ -7,6 +7,7 @@ export * from "./document-selector";
 export * from "./errors";
 export * from "./latency-tracker";
 export * from "./range";
+export * from "./semantic-tokens";
 export * from "./string";
 export * from "./text-document-edit-step";
 export * from "./text-document-snapshot";

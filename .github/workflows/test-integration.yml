@@ -1,11 +1,12 @@
-name: Pochi VSCode Integration test
+name: Pochi Integration test
 
 on:
   push:
-    branches: ["main", "release-vscode*"]
+    branches: ["main", "release-*"]
   pull_request:
     branches: ["main"]
   workflow_dispatch:
+  merge_group:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}

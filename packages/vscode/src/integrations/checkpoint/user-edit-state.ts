@@ -8,7 +8,7 @@ import * as runExclusive from "run-exclusive";
 import { Lifecycle, injectable, scoped } from "tsyringe";
 import * as vscode from "vscode";
 // biome-ignore lint/style/useImportType: needed for dependency injection
-import { PochiTaskTabState } from "../editor/pochi-task-state";
+import { TaskActivityTracker } from "../editor/task-activity-tracker";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { CheckpointService } from "./checkpoint-service";
 
@@ -26,7 +26,7 @@ export class UserEditState implements vscode.Disposable {
   constructor(
     private readonly workspaceScope: WorkspaceScope,
     private readonly checkpointService: CheckpointService,
-    private readonly pochiTaskState: PochiTaskTabState,
+    private readonly taskActivityTracker: TaskActivityTracker,
   ) {
     this.setupEventListeners();
   }
@@ -70,7 +70,7 @@ export class UserEditState implements vscode.Disposable {
 
     // Watch active pochi tasks to maintain tracking tasks state.
     this.disposables.push({
-      dispose: this.pochiTaskState.state.subscribe((tasks) => {
+      dispose: this.taskActivityTracker.state.subscribe((tasks) => {
         logger.trace("Received tasks update", {
           tasksCount: Object.keys(tasks).length,
           currentCwd: this.cwd,

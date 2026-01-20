@@ -515,6 +515,14 @@ function getMimeType(filePath: string): string {
       return "image/webp";
     case ".svg":
       return "image/svg+xml";
+    case ".mp4":
+      return "video/mp4";
+    case ".webm":
+      return "video/webm";
+    case ".mov":
+      return "video/quicktime";
+    case ".avi":
+      return "video/x-msvideo";
     default:
       return "application/octet-stream";
   }

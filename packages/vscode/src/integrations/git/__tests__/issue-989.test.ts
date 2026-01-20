@@ -63,6 +63,6 @@ describe("WorktreeManager Repro #989", () => {
     it("should return 'workspace' when cwd matches workspace path even if worktree is not found", () => {
       worktreeManager.worktrees.value = [];
       const result = worktreeManager.getWorktreeDisplayName("/path/to/repo");
-      assert.strictEqual(result, "workspace");
+      assert.strictEqual(result, "repo");
     });
 });

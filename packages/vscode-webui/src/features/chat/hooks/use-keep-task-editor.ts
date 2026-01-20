@@ -9,7 +9,6 @@ export const useKeepTaskEditor = (task?: Task) => {
   const status = useRef<string | null>(null);
   const taskStatus = task?.status;
   const taskCwd = task?.cwd;
-  const taskDisplayId = task?.displayId;
   useEffect(() => {
     if (taskCwd && taskStatus !== status.current && status.current !== null) {
       vscodeHost.openTaskInPanel(
@@ -17,11 +16,10 @@ export const useKeepTaskEditor = (task?: Task) => {
           type: "open-task",
           uid: task.id,
           cwd: taskCwd,
-          displayId: taskDisplayId ?? null,
         },
         { keepEditor: true },
       );
     }
     status.current = taskStatus ?? null;
-  }, [taskStatus, taskCwd, taskDisplayId, task?.id]);
+  }, [taskStatus, taskCwd, task?.id]);
 };

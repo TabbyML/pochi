@@ -27,6 +27,9 @@
   },
   "chat": {
     "attachmentTooltip": "附加文件到对话。您也可以拖放文件或将其粘贴到聊天输入框中。",
+    "submitTooltip": "提交",
+    "createPlan": "计划",
+    "createPlanTooltip": "为此任务创建实施计划",
     "queuedMessages": "排队中的消息 ({{count}})",
     "copyImage": "复制图片",
     "openImage": "打开图片",
@@ -72,8 +75,9 @@
   },
   "mcpSelect": {
     "tooltip": "MCP 服务器和工具",
+    "serversTooltip": "配置此任务使用的 MCP 服务器",
     "noServers": "无 MCP",
-    "servers": "MCP 服务器",
+    "servers": "MCP",
     "tools": "工具",
     "noServersConfigured": "未配置 MCP 服务器",
     "manageServers": "管理 MCP 服务器..."
@@ -443,7 +447,7 @@
     "forkedTaskTitle": "任务分支自：{{taskTitle}}"
   },
   "recommendSettings": {
-    "title": "Pochi 将修改以下设置",
+    "title": "Pochi 推荐以下设置",
     "hide": "隐藏",
     "options": {
       "enablePochiLayout": "启用 Pochi 布局",
@@ -455,5 +459,11 @@
   "mermaid": {
     "failedToRender": "渲染 Mermaid 图表失败：",
     "fixError": "使用 Pochi 修复错误"
+  },
+  "planCard": {
+    "title": "计划",
+    "reviewPlan": "评审",
+    "executePlan": "执行计划",
+    "executePrompt": "执行计划"
   }
 }

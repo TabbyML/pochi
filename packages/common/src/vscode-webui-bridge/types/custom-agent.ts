@@ -31,8 +31,8 @@ export interface InvalidCustomAgentFile extends Partial<CustomAgent> {
 
 export type CustomAgentFile = ValidCustomAgentFile | InvalidCustomAgentFile;
 
-export const isValidCustomAgentFile = (
-  agent: CustomAgentFile,
+export const isValidCustomAgent = (
+  agent: CustomAgent | CustomAgentFile,
 ): agent is ValidCustomAgentFile => {
   return (
     (agent as ValidCustomAgentFile).name !== undefined &&
