@@ -466,7 +466,4 @@ prunable gitdir file points to non-existent location
       assert.strictEqual(result.worktreePath, expectedPath);
     });
   });
-
-  // The createWorktree test has been removed as it was testing complex integration
-  // behavior that is better suited for E2E tests rather than unit tests
 });
