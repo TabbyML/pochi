@@ -1,14 +1,6 @@
 import type { Skill } from "@getpochi/tools";
 
-/**
- * Valid skill with file path information
- */
-export interface ValidSkillFile extends Skill {
-  /**
-   * The file system path where this skill is defined
-   */
-  filePath: string;
-}
+export type ValidSkillFile = Skill;
 
 export interface InvalidSkillFile extends Partial<Skill> {
   /**

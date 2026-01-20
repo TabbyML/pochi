@@ -6,6 +6,9 @@ export const Skill = z.object({
   description: z
     .string()
     .describe("Description of what the skill does and when to use it"),
+  filePath: z
+    .string()
+    .describe("The file system path where this skill is defined"),
   license: z
     .string()
     .optional()
@@ -31,7 +34,10 @@ function makeSkillToolDescription(skills?: Skill[]) {
   return `Available skills:
 
 ${skills
-  .map((skill) => `- **${skill.name}**: ${skill.description.trim()}`)
+  .map(
+    (skill) =>
+      `- **${skill.name}**: ${skill.description.trim()} [Source: ${skill.filePath}]`,
+  )
   .join("\n")}`;
 }
 
@@ -59,6 +65,8 @@ Important:
 - This is a BLOCKING REQUIREMENT: invoke the relevant Skill tool BEFORE generating any other response about the task
 - Only use skills listed in "Available skills" below
 - After calling this tool, follow the returned instructions step by step
+- Use the directory containing the skill's source file as the base directory for resolving any resource files mentioned in the instructions
+- Proactively explore the skill base directory for additional resources (scripts, references, assets) that can help complete the task
 
 ${makeSkillToolDescription(skills)}
 `.trim(),

@@ -39,9 +39,9 @@ export const skill =
       // Verify the file still exists
       await fs.access(resolvedFilePath);
 
-      // Return the skill instructions with file path information
+      // Return the skill instructions
       return {
-        result: `${skill.instructions.trim()}\nSkill file path: ${resolvedFilePath}`,
+        result: skill.instructions.trim(),
       };
     } catch (error) {
       throw new Error(

@@ -1,5 +1,3 @@
-import * as os from "node:os";
-import * as path from "node:path";
 import { getLogger } from "@getpochi/common";
 import { isValidSkill } from "@getpochi/common/vscode-webui-bridge";
 import type { ClientTools, ToolFunctionType } from "@getpochi/tools";
@@ -12,10 +10,7 @@ const logger = getLogger("useSkill");
  * Implements the useSkill tool for VSCode extension.
  * Returns skill instructions when a skill is activated by the model.
  */
-export const skill: ToolFunctionType<ClientTools["skill"]> = async (
-  args,
-  { cwd },
-) => {
+export const skill: ToolFunctionType<ClientTools["skill"]> = async (args) => {
   try {
     const skillManager = container.resolve(SkillManager);
     const skills = skillManager.skills.value;
@@ -25,7 +20,6 @@ export const skill: ToolFunctionType<ClientTools["skill"]> = async (
 
     if (!skill) {
       return {
-        filePath: "",
         result: `Skill "${args.skill}" not found. Available skills: ${skills
           .map((s) => s.name)
           .join(", ")}`,
@@ -36,32 +30,20 @@ export const skill: ToolFunctionType<ClientTools["skill"]> = async (
     if (!isValidSkill(skill)) {
       const invalidSkill = skill as { message?: string };
       return {
-        filePath: skill.filePath,
         result: `Skill "${args.skill}" is invalid: ${
           invalidSkill.message || "Unknown error"
         }`,
       };
     }
 
-    // Resolve the file path
-    let resolvedFilePath: string;
-    if (path.isAbsolute(skill.filePath)) {
-      resolvedFilePath = skill.filePath;
-    } else if (skill.filePath.startsWith("~")) {
-      resolvedFilePath = skill.filePath.replace("~", os.homedir());
-    } else {
-      resolvedFilePath = path.resolve(cwd, skill.filePath);
-    }
-
     logger.debug(`Activating skill: ${skill.name}`);
 
     return {
-      result: `${skill.instructions.trim()}\nSkill file path: ${resolvedFilePath}`,
+      result: skill.instructions.trim(),
     };
   } catch (error) {
     logger.error("Error in useSkill tool:", error);
     return {
-      filePath: "",
       result: `Failed to activate skill: ${
         error instanceof Error ? error.message : String(error)
       }`,

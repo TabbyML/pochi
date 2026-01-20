@@ -132,7 +132,6 @@ export class SkillManager implements vscode.Disposable {
       allSkills.push(
         ...systemSkills.map((x) => ({
           ...x,
-          filePath: x.filePath.replace(os.homedir(), "~"),
         })),
       );
 
