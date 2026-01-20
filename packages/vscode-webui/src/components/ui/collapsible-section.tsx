@@ -4,7 +4,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
-import { ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useState } from "react";
 
 interface CollapsibleSectionProps {
@@ -38,10 +38,10 @@ export const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
             {title}
           </div>
           {actions && <div className="flex items-center gap-2">{actions}</div>}
-          <ChevronRight
+          <ChevronLeft
             className={cn(
               "size-4 shrink-0 text-muted-foreground transition-transform duration-200",
-              isOpen && "rotate-90",
+              isOpen && "-rotate-90",
             )}
           />
         </div>
