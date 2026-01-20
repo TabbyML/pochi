@@ -1,5 +1,8 @@
 import { prompts } from "@getpochi/common";
-import type { CustomAgentFile } from "@getpochi/common/vscode-webui-bridge";
+import type {
+  CustomAgentFile,
+  SkillFile,
+} from "@getpochi/common/vscode-webui-bridge";
 import type { CustomAgent } from "@getpochi/tools";
 import type { Parent, Text } from "mdast";
 import { gfmToMarkdown } from "mdast-util-gfm";
@@ -109,6 +112,7 @@ export async function replaceSlashCommandReferences(
   slashCommandContext: {
     workflows: Workflow[];
     customAgents: CustomAgentFile[];
+    skills: SkillFile[];
   },
 ): Promise<{ prompt: string }> {
   // Quick check - if no slash at all, return early
@@ -147,6 +151,9 @@ export async function replaceSlashCommandReferences(
             const agent = slashCommandContext.customAgents.find(
               (x) => x.name === commandName,
             );
+            const skill = slashCommandContext.skills.find(
+              (x) => x.name === commandName,
+            );
 
             if (workflow?.content) {
               newNodes.push({
@@ -163,6 +170,13 @@ export async function replaceSlashCommandReferences(
               newNodes.push({
                 type: "html",
                 value: prompts.customAgent(commandName, agent.filePath),
+              });
+              continue;
+            }
+            if (skill?.name) {
+              newNodes.push({
+                type: "html",
+                value: prompts.skill(commandName, skill.filePath),
               });
               continue;
             }

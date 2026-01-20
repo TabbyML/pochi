@@ -45,6 +45,9 @@ export const PromptFormSlashExtension = Mention.extend({
     if (type === "custom-agent") {
       return prompts.customAgent(id, path);
     }
+    if (type === "skill") {
+      return prompts.skill(id, path);
+    }
     return "";
   },
 

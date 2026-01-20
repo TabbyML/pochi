@@ -365,6 +365,7 @@
     "typeToSearch": "Type to search...",
     "workflow": "workflow",
     "agent": "agent",
+    "skill": "skill",
     "useHashForIssues": "use # to search for github issues"
   },
   "subtask": {

@@ -1,5 +1,6 @@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { vscodeHost } from "@/lib/vscode";
+import type { ValidSkillFile } from "@getpochi/common/vscode-webui-bridge";
 import type { CustomAgent } from "@getpochi/tools";
 import { FileIcon } from "lucide-react";
 import {
@@ -40,6 +41,13 @@ export type SlashCandidate =
       label: string;
       path: string;
       rawData: CustomAgent;
+    }
+  | {
+      type: "skill";
+      id: string;
+      label: string;
+      path: string;
+      rawData: ValidSkillFile;
     };
 
 export interface SlashMentionListProps {
@@ -84,6 +92,14 @@ export const SlashMentionList = forwardRef<
           event: "selectCustomAgent",
           properties: {
             customAgentName: item.rawData.name,
+          },
+        });
+      }
+      if (item.type === "skill") {
+        vscodeHost.capture({
+          event: "selectSkill",
+          properties: {
+            skillName: item.rawData.name,
           },
         });
       }
@@ -137,7 +153,7 @@ interface CandidateItemViewProps {
 }
 
 /**
- * Candidate item view for displaying workflow / custom-agent files
+ * Candidate item view for displaying workflow / custom-agent / skill files
  */
 const CandidateItemView = memo(function SlashCandidateItemView({
   isSelected,
@@ -146,6 +162,22 @@ const CandidateItemView = memo(function SlashCandidateItemView({
 }: CandidateItemViewProps) {
   const { t } = useTranslation();
   const ref = useScrollIntoView(isSelected);
+
+  const getTypeLabel = (
+    type: SlashCandidate["type"],
+    t: ReturnType<typeof useTranslation>["t"],
+  ) => {
+    switch (type) {
+      case "workflow":
+        return t("mentionList.workflow");
+      case "custom-agent":
+        return t("mentionList.agent");
+      case "skill":
+        return t("mentionList.skill");
+      default:
+        return "";
+    }
+  };
 
   return (
     <div
@@ -162,9 +194,7 @@ const CandidateItemView = memo(function SlashCandidateItemView({
         </span>
       </div>
       <span className="text-muted-foreground text-xs">
-        {data.type === "workflow"
-          ? t("mentionList.workflow")
-          : t("mentionList.agent")}
+        {getTypeLabel(data.type, t)}
       </span>
     </div>
   );
@@ -176,6 +206,9 @@ function getOptionKey(option: SlashCandidate, idx: number) {
   }
   if (option.type === "workflow") {
     return `workflow_${option.id}`;
+  }
+  if (option.type === "skill") {
+    return `skill_${option.id}`;
   }
 
   return idx;

@@ -361,6 +361,7 @@
     "typeToSearch": "输入以搜索...",
     "workflow": "工作流",
     "agent": "代理",
+    "skill": "技能",
     "useHashForIssues": "使用 # 搜索 Github issue"
   },
   "subtask": {

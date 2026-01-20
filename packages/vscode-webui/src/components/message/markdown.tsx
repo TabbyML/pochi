@@ -4,7 +4,7 @@ import { CustomHtmlTags } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { isKnownProgrammingLanguage } from "@/lib/utils/languages";
 import { isVSCodeEnvironment, vscodeHost } from "@/lib/vscode";
-import { Bot } from "lucide-react";
+import { Bot, Zap } from "lucide-react";
 import {
   type DetailedHTMLProps,
   type HTMLAttributes,
@@ -241,6 +241,12 @@ interface CustomAgentComponentProps {
   children?: string;
 }
 
+interface SkillComponentProps {
+  id: string;
+  path?: string;
+  children?: string;
+}
+
 interface IssueComponentProps {
   id: string;
   url: string;
@@ -409,6 +415,7 @@ export function MessageMarkdown({
                 ...defaultSchema.attributes,
                 workflow: ["path", "id"],
                 "custom-agent": ["path", "id"],
+                skill: ["path", "id"],
                 issue: ["id", "url", "title"],
                 ...mathSanitizeConfig.attributes,
               },
@@ -437,6 +444,19 @@ export function MessageMarkdown({
           return (
             <span className="mx-px inline-flex items-center gap-1 rounded-sm border border-border bg-muted px-1.5 py-0.5 align-baseline font-medium text-muted-foreground text-sm/4">
               <Bot className="size-3" />
+              {cleanId}
+            </span>
+          );
+        }
+        return <FileBadge label={cleanId} path={path} />;
+      },
+      skill: (props: SkillComponentProps) => {
+        const { id, path } = props;
+        const cleanId = id.replaceAll("user-content-", "/");
+        if (!path) {
+          return (
+            <span className="mx-px inline-flex items-center gap-1 rounded-sm border border-border bg-muted px-1.5 py-0.5 align-baseline font-medium text-muted-foreground text-sm/4">
+              <Zap className="size-3" />
               {cleanId}
             </span>
           );

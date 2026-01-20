@@ -45,6 +45,7 @@ import { type Workflow, loadWorkflows } from "./lib/workflow-loader";
 import type {
   CustomAgentFile,
   ValidCustomAgentFile,
+  ValidSkillFile,
 } from "@getpochi/common/vscode-webui-bridge";
 import type { FileUIPart } from "ai";
 import { JsonRenderer } from "./json-renderer";
@@ -147,6 +148,7 @@ const program = new Command()
       {
         customAgents: customAgents,
         workflows,
+        skills,
       },
     );
 
@@ -306,6 +308,7 @@ async function parseTaskInput(
   slashCommandContext: {
     workflows: Workflow[];
     customAgents: CustomAgentFile[];
+    skills: ValidSkillFile[];
   },
 ) {
   const uid = process.env.POCHI_TASK_ID || crypto.randomUUID();

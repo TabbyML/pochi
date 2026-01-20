@@ -39,7 +39,10 @@ import { useSelectedModels } from "@/features/settings";
 import { useLatest } from "@/lib/hooks/use-latest";
 import { cn } from "@/lib/utils";
 import { resolveModelFromId } from "@/lib/utils/resolve-model-from-id";
-import { isValidCustomAgent } from "@getpochi/common/vscode-webui-bridge";
+import {
+  isValidCustomAgent,
+  isValidSkill,
+} from "@getpochi/common/vscode-webui-bridge";
 import { threadSignal } from "@quilted/threads/signals";
 import {
   type SuggestionMatch,
@@ -816,15 +819,25 @@ const debouncedQueryGithubIssues = asyncDebounce(async (query?: string) => {
 
 export const debouncedListSlashCommand = debounceWithCachedValue(
   async () => {
-    const [workflows, customAgents] = await Promise.all([
+    const [workflows, customAgents, skills] = await Promise.all([
       vscodeHost.listWorkflows(),
       threadSignal(await vscodeHost.readCustomAgents()),
+      threadSignal(await vscodeHost.readSkills()),
     ]);
     const options: SlashCandidate[] = [
       ...customAgents.value
         .filter((x) => isValidCustomAgent(x))
         .map((x) => ({
           type: "custom-agent" as const,
+          id: x.name,
+          label: x.name,
+          path: x.filePath,
+          rawData: x,
+        })),
+      ...skills.value
+        .filter((x) => isValidSkill(x))
+        .map((x) => ({
+          type: "skill" as const,
           id: x.name,
           label: x.name,
           path: x.filePath,

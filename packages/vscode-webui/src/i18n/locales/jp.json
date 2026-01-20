@@ -362,6 +362,7 @@
     "typeToSearch": "入力して検索...",
     "workflow": "ワークフロー",
     "agent": "エージェント",
+    "skill": "スキル",
     "useHashForIssues": "# を使用して GitHub の Issue を検索"
   },
   "subtask": {

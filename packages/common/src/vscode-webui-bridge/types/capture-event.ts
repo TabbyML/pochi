@@ -32,4 +32,10 @@ export type CaptureEvent =
       properties: {
         customAgentName: string;
       };
+    }
+  | {
+      event: "selectSkill";
+      properties: {
+        skillName: string;
+      };
     };
