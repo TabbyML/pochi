@@ -1,6 +1,5 @@
 import { exec } from "node:child_process";
 import * as fs from "node:fs/promises";
-import * as os from "node:os";
 import * as path from "node:path";
 import { promisify } from "node:util";
 
@@ -27,7 +26,7 @@ function getSessionTempDir(): string {
       "POCHI_TEST_SESSION_ID environment variable is not set. This should be set in wdio.conf.ts onPrepare.",
     );
   }
-  return path.join(os.tmpdir(), `pochi-test-${sessionId}`);
+  return path.resolve(".wdio-vscode-service", `pochi-test-${sessionId}`);
 }
 
 /**

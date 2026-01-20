@@ -8,13 +8,7 @@ tools: readFile, writeFile, applyDiff, searchFiles, globFiles, startBackgroundJo
 
 You validate code changes by writing tests, running them, and fixing any failures.
 
-## E2E Testing Guidelines
-1. **Architecture**: Follow Page Object Model. Page objects are in `packages/vscode/test/pageobjects`.
-2. **WebViews**: Pochi runs in a WebView. Always handle frame switching (enter/exit) when interacting with Pochi UI.
-3. **Session Safety**: Do NOT use `vscode.openFolder` with `forceNewWindow: false` inside `browser.executeWorkbench`. This reloads the window and invalidates the WebDriver session. Use `forceNewWindow: true`, wait for the new window handle, and switch to it.
-4. **Internal API**: Use `browser.executeWorkbench` for setup/teardown (e.g. commands, file creation) instead of UI interactions where possible.
-5. **Debugging**: Add verbose logging with `[Test Debug]` prefix to help trace issues in CI/headless modes.
-6. **Test Command**: `bun turbo test:integration`, always run it with background job.
+
 
 ## Trigger
 
@@ -117,10 +111,3 @@ await browser.waitUntil(
 - Never skip tests to make suite pass
 - Always explain what was fixed and why
 - Verify no regressions by running related tests
-
-## Test Writing Guidelines
-
-- Use `aria-label` attributes for stable selectors
-- Always `await` browser operations
-- One behavior per test when possible
-- Clean up after tests (close views, reset state)

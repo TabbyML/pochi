@@ -1,4 +1,4 @@
-import { $, browser } from "@wdio/globals";
+import { $, $$, browser } from "@wdio/globals";
 
 export class PochiSidebar {
   get input() {
@@ -36,7 +36,7 @@ export class PochiSidebar {
     await browser.switchFrame(null);
   }
 
-  private async findAndSwitchToPochiFrame(): Promise<boolean> {
+  async findAndSwitchToPochiFrame(): Promise<boolean> {
     // Ensure we start from top
     await browser.switchFrame(null);
 
@@ -72,10 +72,56 @@ export class PochiSidebar {
     return false;
   }
 
-  async sendMessage(text: string) {
+  async sendMessage(text: string, waitMs = 1000) {
     await this.input.waitForDisplayed({ timeout: 1000 * 10 });
     await this.input.click();
     await browser.keys(text);
+    await browser.pause(waitMs);
     await browser.keys(["Enter"]);
+  }
+
+  async getTaskListItems() {
+    // Wait for task list to load
+    await browser.pause(1000);
+
+    // Find all task row elements using stable aria-label selector
+    const taskElements = $$('[aria-label="task-row"]');
+    return taskElements;
+  }
+  async getTaskTitles() {
+    const taskElements = await this.getTaskListItems();
+    const titles: string[] = [];
+
+    for (const element of taskElements) {
+      const text = await element.getText();
+      if (text?.trim()) {
+        titles.push(text.trim());
+      }
+    }
+
+    return titles;
+  }
+
+  async waitForTaskToAppear(timeout = 30000) {
+    await browser.waitUntil(
+      async () => {
+        // Ensure we're in the correct frame before checking
+        const inFrame = await this.findAndSwitchToPochiFrame();
+        if (!inFrame) {
+          console.log("[Test Debug] Could not switch to Pochi frame");
+          return false;
+        }
+
+        const tasks = await this.getTaskListItems();
+        const count = await tasks.length;
+        console.log(`[Test Debug] Current task count: ${count}`);
+        return count > 0;
+      },
+      {
+        timeout,
+        timeoutMsg: "No tasks appeared in the sidebar task list",
+        interval: 500, // Check every 500ms
+      },
+    );
   }
 }
