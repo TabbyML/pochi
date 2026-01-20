@@ -1,3 +1,5 @@
+import path from "node:path";
+
 interface GlobalThis {
   __workspacePath?: string;
 }
@@ -68,6 +70,7 @@ export const config: WebdriverIO.Config = {
       "wdio:vscodeOptions": {
         // points to directory where extension package.json is located
         extensionPath: __dirname,
+        storagePath: path.join(__dirname, ".wdio-vscode-service"),
         // optional VS Code settings
         userSettings: {
           "editor.fontSize": 14,
@@ -84,7 +87,7 @@ export const config: WebdriverIO.Config = {
   // Define all options that are relevant for the WebdriverIO instance here
   //
   // Level of logging verbosity: trace | debug | info | warn | error | silent
-  logLevel: "info",
+  logLevel: "warn",
   //
   // Set specific log levels per logger
   // loggers:
