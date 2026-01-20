@@ -2,15 +2,16 @@ import { cn } from "@/lib/utils";
 import type { UITools } from "@getpochi/livekit";
 import type { ToolName } from "@getpochi/tools";
 import { type ToolUIPart, getToolName } from "ai";
-import { Loader2 } from "lucide-react";
+import { Loader2, Pause } from "lucide-react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 interface Props {
   tools: Array<ToolUIPart<UITools>> | undefined;
+  isPendingApproval?: boolean;
 }
 
-export function ToolCallLite({ tools }: Props) {
+export function ToolCallLite({ tools, isPendingApproval }: Props) {
   const { t } = useTranslation();
 
   if (!tools?.length) return null;
@@ -71,7 +72,11 @@ export function ToolCallLite({ tools }: Props) {
 
   return detail ? (
     <div className="flex flex-nowrap items-center overflow-x-hidden whitespace-nowrap">
-      <Loader2 className="size-3.5 shrink-0 animate-spin" />
+      {isPendingApproval ? (
+        <Pause className="size-3.5 shrink-0" />
+      ) : (
+        <Loader2 className="size-3.5 shrink-0 animate-spin" />
+      )}
       <div className="flex flex-nowrap items-center truncate">{detail}</div>
       {tools.length > 1 && (
         <span>

@@ -1,4 +1,8 @@
-import { taskRunning, taskUpdated } from "@/lib/task-events";
+import {
+  taskPendingApproval,
+  taskRunning,
+  taskUpdated,
+} from "@/lib/task-events";
 import { getLogger } from "@getpochi/common";
 import type { TaskStates } from "@getpochi/common/vscode-webui-bridge";
 import { signal } from "@preact/signals-core";
@@ -36,6 +40,9 @@ export class TaskActivityTracker implements vscode.Disposable {
     // Set up task update detection
     this.disposables.push(taskUpdated.event(this.onTaskUpdated));
     this.disposables.push(taskRunning.event(this.onTaskRunning));
+    this.disposables.push(
+      taskPendingApproval.event(this.onTaskPendingApproval),
+    );
   }
 
   private onTabChanged = () => {
@@ -122,6 +129,16 @@ export class TaskActivityTracker implements vscode.Disposable {
     const current = newState[taskId] || {};
     logger.trace(`Task ${taskId} is now running`);
     current.running = true;
+    current.pendingApproval = false;
+    newState[taskId] = current;
+    this.saveState(newState);
+  };
+
+  private onTaskPendingApproval = ({ taskId }: { taskId: string }) => {
+    const newState = R.clone(this.state.value);
+    const current = newState[taskId] || {};
+    logger.trace(`Task ${taskId} is waiting for tool call approval`);
+    current.pendingApproval = true;
     newState[taskId] = current;
     this.saveState(newState);
   };
