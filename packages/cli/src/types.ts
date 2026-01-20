@@ -1,6 +1,5 @@
 import type { McpHub } from "@getpochi/common/mcp-utils";
-import type { ValidSkillFile } from "@getpochi/common/vscode-webui-bridge";
-import type { CustomAgent } from "@getpochi/tools";
+import type { CustomAgent, Skill } from "@getpochi/tools";
 import type { TaskRunner } from "./task-runner";
 
 export interface ToolCallOptions {
@@ -18,7 +17,7 @@ export interface ToolCallOptions {
   /**
    * Available skills for tools that support them (e.g., skill)
    */
-  skills?: ValidSkillFile[];
+  skills?: Skill[];
 
   /**
    * Function to create a sub-task runner (optional, used by newTask tool)

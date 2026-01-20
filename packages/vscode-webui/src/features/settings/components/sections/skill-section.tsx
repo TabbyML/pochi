@@ -1,10 +1,30 @@
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useSkills } from "@/lib/hooks/use-skills";
 import { vscodeHost } from "@/lib/vscode";
-import type { SkillFile } from "@getpochi/common/vscode-webui-bridge";
-import { Edit, Zap } from "lucide-react";
+import type {
+  InvalidSkillFile,
+  SkillFile,
+} from "@getpochi/common/vscode-webui-bridge";
+import { isValidSkill } from "@getpochi/common/vscode-webui-bridge";
+import { AlertTriangle, Edit, Zap } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { AccordionSection } from "../ui/accordion-section";
 import { EmptySectionPlaceholder, SectionItem } from "../ui/section";
+
+const SkillParseErrorMap: Record<
+  InvalidSkillFile["error"],
+  | "settings.skills.errors.readError"
+  | "settings.skills.errors.parseError"
+  | "settings.skills.errors.validationError"
+> = {
+  readError: "settings.skills.errors.readError",
+  parseError: "settings.skills.errors.parseError",
+  validationError: "settings.skills.errors.validationError",
+};
 
 export const SkillSection: React.FC = () => {
   const { t } = useTranslation();
@@ -34,10 +54,26 @@ export const SkillSection: React.FC = () => {
     return (
       <div className="space-y-2">
         {skills.map((skill) => {
+          const isValid = isValidSkill(skill);
+          const subtitle = !isValid ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span>
+                  <AlertTriangle className="mr-1.5 inline-block size-3 text-yellow-700 dark:text-yellow-500" />
+                  {t(SkillParseErrorMap[skill.error])}
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-[calc(60vw)]">
+                <span className="text-wrap break-words">{skill.message}</span>
+              </TooltipContent>
+            </Tooltip>
+          ) : null;
+
           return (
             <SectionItem
               key={`${skill.name}-${skill.filePath}`}
               title={skill.name}
+              subtitle={subtitle}
               icon={<Zap className="size-4" />}
               onClick={() => handleEditSkill(skill)}
               actions={[

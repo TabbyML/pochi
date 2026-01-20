@@ -8,8 +8,6 @@ import {
   prepareLastMessageForRetry,
 } from "@getpochi/common/message-utils";
 import { findTodos, mergeTodos } from "@getpochi/common/message-utils";
-
-import type { ValidSkillFile } from "@getpochi/common/vscode-webui-bridge";
 import {
   type LLMRequestData,
   type LiveKitStore,
@@ -18,7 +16,7 @@ import {
 } from "@getpochi/livekit";
 import { LiveChatKit } from "@getpochi/livekit/node";
 import { type Todo, isUserInputToolPart } from "@getpochi/tools";
-import type { CustomAgent } from "@getpochi/tools";
+import type { CustomAgent, Skill } from "@getpochi/tools";
 import {
   getToolName,
   isToolUIPart,
@@ -88,7 +86,7 @@ export interface RunnerOptions {
   /**
    * Available skills for skill tool
    */
-  skills?: ValidSkillFile[];
+  skills?: Skill[];
 
   onSubTaskCreated?: (runner: TaskRunner) => void;
 

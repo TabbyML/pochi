@@ -1,6 +1,6 @@
 import type { Skill } from "@getpochi/tools";
 
-export type ValidSkillFile = Skill;
+export interface ValidSkillFile extends Skill {}
 
 export interface InvalidSkillFile extends Partial<Skill> {
   /**
