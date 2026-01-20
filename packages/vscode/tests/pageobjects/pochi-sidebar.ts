@@ -33,19 +33,19 @@ export class PochiSidebar {
   }
 
   async close() {
-    await browser.switchToFrame(null);
+    await browser.switchFrame(null);
   }
 
   private async findAndSwitchToPochiFrame(): Promise<boolean> {
     // Ensure we start from top
-    await browser.switchToFrame(null);
+    await browser.switchFrame(null);
 
     // Try to find the iframe directly first (common case)
     const iframes = await browser.$$("iframe");
 
     for (const iframe of iframes) {
       try {
-        await browser.switchToFrame(iframe);
+        await browser.switchFrame(iframe);
         if (await $(".ProseMirror").isExisting()) {
           return true;
         }
@@ -53,7 +53,7 @@ export class PochiSidebar {
         // Check nested iframes (one level deep)
         const nestedIframes = await browser.$$("iframe");
         for (const nested of nestedIframes) {
-          await browser.switchToFrame(nested);
+          await browser.switchFrame(nested);
           if (await $(".ProseMirror").isExisting()) {
             return true;
           }
@@ -64,7 +64,7 @@ export class PochiSidebar {
       } catch (e) {
         // Ignore errors when switching/checking frames
         try {
-          await browser.switchToFrame(null);
+          await browser.switchFrame(null);
         } catch {}
       }
     }
