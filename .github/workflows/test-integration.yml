@@ -6,6 +6,7 @@ on:
   pull_request:
     branches: ["main"]
   workflow_dispatch:
+  merge_group:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
