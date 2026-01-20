@@ -17,6 +17,7 @@ import type {
   SaveCheckpointOptions,
   SessionState,
   TaskChangedFile,
+  TaskOutputResult,
   TaskStates,
   WorkspaceState,
 } from "./index";
@@ -389,4 +390,6 @@ export interface WebviewHostApi {
   ): Promise<void>;
 
   readTaskFile(taskId: string, filePath: string): Promise<string | null>;
+
+  queryTaskOutput(taskId: string): Promise<TaskOutputResult>;
 }

@@ -67,9 +67,7 @@ export const inputSchema = z.object({
   runAsync: z
     .boolean()
     .optional()
-    .describe(
-      "Set to true to run the subtask asynchronously in the background. Defaults to inline (synchronous) execution.",
-    ),
+    .describe("Set to true to run this agent in the background."),
   _meta: z
     .object({
       uid: z.string().describe("A unique identifier for the task."),
@@ -91,9 +89,7 @@ ${makeCustomAgentToolDescription(customAgents)}
 Always include a reminder in your prompt to ensure the result will be submitted through the \`attemptCompletion\` tool.
 If the task stops without submitting the result, it will return an error message.
 
-To launch a background (asynchronous) subtask, set \`runAsync: true\` in the tool input. The parent agent will keep streaming while the child runs elsewhere; monitor its progress via \`readBackgroundJobOutput\` with the returned task ID (the tool output's \`result\`) or through the UI notifications. Leave the flag unset to keep the legacy inline behavior.
-
-The tool output is a single \`result\` string. Inline tasks return the final \`result\` when the subtask completes. Background tasks return an immediate \`result\` containing the spawned task's \`uid\`.
+You can optionally run agents in the background using the runAsync parameter. You can continue working while background agents run.
 
 When NOT to use the newTask tool:
 - If you want to read a specific file path, use the readFile or globFiles tool instead of the newTask tool, to find the match more quickly

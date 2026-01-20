@@ -100,6 +100,15 @@ export class PochiWebviewPanel
       ?.webviewHost?.writeTaskFile(taskId, filePath, content);
   }
 
+  static queryTaskOutput(taskId: string) {
+    const directPanel = PochiWebviewPanel.panels.get(taskId);
+    const fallbackPanel = directPanel
+      ? undefined
+      : PochiWebviewPanel.panels.values().next().value;
+    const panel = directPanel ?? fallbackPanel;
+    return panel?.webviewHost?.queryTaskOutput(taskId);
+  }
+
   dispose(): void {
     super.dispose();
     this.panel.dispose();
