@@ -2,7 +2,7 @@ import type React from "react";
 import { useCallback, useEffect } from "react";
 
 import { Button } from "@/components/ui/button";
-import { useAutoApproveGuard } from "@/features/chat";
+import { useAutoApproveGuard, useHandleChatEvents } from "@/features/chat";
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
 import { useReviews } from "@/lib/hooks/use-reviews";
 import { useTranslation } from "react-i18next";
@@ -36,6 +36,10 @@ export const RetryApprovalButton: React.FC<RetryApprovalButtonProps> = ({
     autoApproveGuard.current = "auto";
     doRetry();
   }, [autoApproveGuard, doRetry]);
+
+  useHandleChatEvents({
+    sendRetry: onAccept,
+  });
 
   const [showRetry, setShowRetry] = useDebounceState(false, 1_000);
   useEffect(() => {

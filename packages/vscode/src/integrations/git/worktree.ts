@@ -15,7 +15,7 @@ import type {
   GitWorktree,
 } from "@getpochi/common/vscode-webui-bridge";
 import { signal } from "@preact/signals-core";
-import simpleGit from "simple-git";
+import simpleGit, { CheckRepoActions } from "simple-git";
 import { injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
 // biome-ignore lint/style/useImportType: needed for dependency injection
@@ -152,7 +152,7 @@ export class WorktreeManager implements vscode.Disposable {
 
   async isGitRepository(): Promise<boolean> {
     try {
-      const isRepo = await this.git.checkIsRepo();
+      const isRepo = await this.git.checkIsRepo(CheckRepoActions.IS_REPO_ROOT);
       return isRepo;
     } catch (error) {
       logger.error(

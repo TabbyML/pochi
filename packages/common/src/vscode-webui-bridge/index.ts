@@ -33,10 +33,11 @@ export type {
 export type { DisplayModel } from "./types/model";
 export type { RuleFile } from "./types/rules";
 export type { CaptureEvent } from "./types/capture-event";
-export type {
-  CustomAgentFile,
-  InvalidCustomAgentFile,
-  ValidCustomAgentFile,
+export {
+  type CustomAgentFile,
+  type InvalidCustomAgentFile,
+  type ValidCustomAgentFile,
+  BuiltInAgentPath,
 } from "./types/custom-agent";
 export { GitWorktreeInfo } from "./types/git";
 export type {
@@ -50,7 +51,7 @@ export type {
   ReviewComment,
   ReviewCodeSnippet,
 } from "./types/review";
-export { isValidCustomAgent } from "./types/custom-agent";
+export { isValidCustomAgentFile } from "./types/custom-agent";
 export {
   prefixWorktreeName,
   getTaskDisplayTitle,

@@ -77,7 +77,6 @@ import {
   getTaskDisplayTitle,
 } from "@getpochi/common/vscode-webui-bridge";
 import type {
-  CustomAgent,
   PreviewReturnType,
   PreviewToolFunctionType,
   ToolFunctionType,
@@ -1023,7 +1022,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   };
 
   readCustomAgents = async (): Promise<
-    ThreadSignalSerialization<(CustomAgent | CustomAgentFile)[]>
+    ThreadSignalSerialization<CustomAgentFile[]>
   > => {
     return ThreadSignal.serialize(this.customAgentManager.agents);
   };

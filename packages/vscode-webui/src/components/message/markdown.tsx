@@ -4,7 +4,6 @@ import { CustomHtmlTags } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { isKnownProgrammingLanguage } from "@/lib/utils/languages";
 import { isVSCodeEnvironment, vscodeHost } from "@/lib/vscode";
-import { Bot } from "lucide-react";
 import {
   type DetailedHTMLProps,
   type HTMLAttributes,
@@ -22,6 +21,7 @@ import {
 import { CodeBlock } from "./code-block";
 import { customStripTagsPlugin } from "./custom-strip-tags-plugin";
 import "./markdown.css";
+import { BuiltInAgentPath } from "@getpochi/common/vscode-webui-bridge";
 import { useTranslation } from "react-i18next";
 import type { ExtraProps, Options } from "react-markdown";
 
@@ -235,12 +235,6 @@ interface WorkflowComponentProps {
   children: string;
 }
 
-interface CustomAgentComponentProps {
-  id: string;
-  path?: string;
-  children?: string;
-}
-
 interface IssueComponentProps {
   id: string;
   url: string;
@@ -430,13 +424,13 @@ export function MessageMarkdown({
           <FileBadge label={id.replaceAll("user-content-", "/")} path={path} />
         );
       },
-      "custom-agent": (props: CustomAgentComponentProps) => {
+      "custom-agent": (props: WorkflowComponentProps) => {
         const { id, path } = props;
         const cleanId = id.replaceAll("user-content-", "/");
-        if (!path) {
+        // Handle legacy empty path
+        if (!path || path === BuiltInAgentPath) {
           return (
             <span className="mx-px inline-flex items-center gap-1 rounded-sm border border-border bg-muted px-1.5 py-0.5 align-baseline font-medium text-muted-foreground text-sm/4">
-              <Bot className="size-3" />
               {cleanId}
             </span>
           );

@@ -9,8 +9,12 @@ import type {
   CustomAgentFile,
   InvalidCustomAgentFile,
 } from "@getpochi/common/vscode-webui-bridge";
-import { isValidCustomAgent } from "@getpochi/common/vscode-webui-bridge";
+import {
+  BuiltInAgentPath,
+  isValidCustomAgentFile,
+} from "@getpochi/common/vscode-webui-bridge";
 import { AlertTriangle, Bot, Edit } from "lucide-react";
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { AccordionSection } from "../ui/accordion-section";
 import { EmptySectionPlaceholder, SectionItem } from "../ui/section";
@@ -30,6 +34,11 @@ export const CustomAgentSection: React.FC = () => {
   const { t } = useTranslation();
   const { customAgents = [], isLoading } = useCustomAgents();
 
+  // Filter out built-in agent
+  const customAgentsWithoutBuiltIn = useMemo(() => {
+    return customAgents.filter((agent) => agent.filePath !== BuiltInAgentPath);
+  }, [customAgents]);
+
   const handleEditAgent = (agent: CustomAgentFile) => {
     vscodeHost.openFile(agent.filePath);
   };
@@ -41,7 +50,7 @@ export const CustomAgentSection: React.FC = () => {
       );
     }
 
-    if (!customAgents || customAgents.length === 0) {
+    if (customAgentsWithoutBuiltIn.length === 0) {
       return (
         <EmptySectionPlaceholder
           content={
@@ -55,8 +64,8 @@ export const CustomAgentSection: React.FC = () => {
 
     return (
       <div className="space-y-2">
-        {customAgents.map((agent) => {
-          const isValid = isValidCustomAgent(agent);
+        {customAgentsWithoutBuiltIn.map((agent) => {
+          const isValid = isValidCustomAgentFile(agent);
           const subtitle = !isValid ? (
             <Tooltip>
               <TooltipTrigger asChild>

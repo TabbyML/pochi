@@ -20,7 +20,7 @@ import { lastAssistantMessageIsCompleteWithToolCalls } from "ai";
 import type { TFunction } from "i18next";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { useApprovalAndRetry } from "../approval";
+import { shouldStopAutoApprove, useApprovalAndRetry } from "../approval";
 import { getReadyForRetryError } from "../retry/hooks/use-ready-for-retry-error";
 import {
   useAutoApprove,
@@ -232,6 +232,10 @@ function Chat({ user, uid, info }: ChatProps) {
         return false;
       }
 
+      if (shouldStopAutoApprove(x)) {
+        autoApproveGuard.current = "stop";
+      }
+
       if (autoApproveGuard.current === "stop") {
         return false;
       }
@@ -373,9 +377,10 @@ function Chat({ user, uid, info }: ChatProps) {
       fromTaskError(task) ||
       (pendingApproval?.name === "retry" ? pendingApproval.error : undefined);
 
-  useHandleChatEvents(
-    isLoading || isModelsLoading || !selectedModel ? undefined : sendMessage,
-  );
+  useHandleChatEvents({
+    sendMessage:
+      isLoading || isModelsLoading || !selectedModel ? undefined : sendMessage,
+  });
 
   const forkTask = useCallback(
     async (commitId: string, messageId?: string) => {

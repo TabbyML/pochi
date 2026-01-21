@@ -5,7 +5,6 @@ export {
   isAssistantMessageWithPartialToolCalls,
   prepareLastMessageForRetry,
   fixCodeGenerationOutput,
-  isAssistantMessageWithOutputError,
 } from "./assistant-message";
 export { mergeTodos, findTodos } from "./todo";
 export { extractWorkflowBashCommands } from "./workflow";
