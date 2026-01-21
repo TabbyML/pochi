@@ -131,17 +131,6 @@ export const selectClientTools = (
     isCli: boolean;
   } & CreateToolOptions,
 ) => {
-  const cliTools = createCliTools(options);
-  if (options.isCli) {
-    if (options.isSubTask) {
-      const { newTask, ...rest } = cliTools;
-      return rest;
-    }
-
-    // CLI support new task
-    return cliTools;
-  }
-
   const clientTools = createClientTools(options);
 
   if (options?.isSubTask) {
