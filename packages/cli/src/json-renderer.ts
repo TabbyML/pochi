@@ -1,5 +1,5 @@
 import type { BlobStore } from "@getpochi/livekit";
-import type { LiveKitStore, Message } from "@getpochi/livekit";
+import type { Message } from "@getpochi/livekit";
 
 import { isToolUIPart } from "ai";
 
@@ -17,8 +17,7 @@ export class JsonRenderer {
   private mode: "full" | "result-only";
 
   constructor(
-    private readonly store: LiveKitStore,
-    private readonly blobStore: BlobStore,
+    private readonly store: BlobStore,
     private readonly state: NodeChatState,
     options: JsonRendererOptions = { mode: "full" },
   ) {
@@ -62,9 +61,7 @@ export class JsonRenderer {
   private async outputMessages(messages: Message[]) {
     for (const message of messages) {
       if (!this.outputMessageIds.has(message.id)) {
-        console.log(
-          JSON.stringify(await mapStoreBlob(this.blobStore, message)),
-        );
+        console.log(JSON.stringify(await mapStoreBlob(this.store, message)));
         this.outputMessageIds.add(message.id);
       }
     }
