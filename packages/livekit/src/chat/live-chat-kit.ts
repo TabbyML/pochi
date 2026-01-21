@@ -3,6 +3,7 @@ import { type CustomAgent, ToolsByPermission } from "@getpochi/tools";
 import { Duration } from "@livestore/utils/effect";
 import type { ChatInit, ChatOnErrorCallback, ChatOnFinishCallback } from "ai";
 import type z from "zod/v4";
+import type { BlobStore } from "../blob-store";
 import { makeMessagesQuery, makeTaskQuery } from "../livestore/default-queries";
 import { events, tables } from "../livestore/default-schema";
 import { toTaskError, toTaskGitInfo, toTaskStatus } from "../task";
@@ -32,6 +33,7 @@ export type LiveChatKitOptions<T> = {
   isCli?: boolean;
 
   store: LiveKitStore;
+  blobStore?: BlobStore;
 
   chatClass: new (options: ChatInit<Message>) => T;
 
@@ -78,6 +80,7 @@ export class LiveChatKit<
 > {
   protected readonly taskId: string;
   protected readonly store: LiveKitStore;
+  protected readonly blobStore: BlobStore | null;
   readonly chat: T;
   private readonly transport: FlexibleChatTransport;
   onStreamStart?: () => void;
@@ -95,6 +98,7 @@ export class LiveChatKit<
     taskId,
     abortSignal,
     store,
+    blobStore,
     chatClass,
     onOverrideMessages,
     getters,
@@ -108,10 +112,12 @@ export class LiveChatKit<
   }: LiveChatKitOptions<T>) {
     this.taskId = taskId;
     this.store = store;
+    this.blobStore = blobStore || null;
     this.onStreamStart = onStreamStart;
     this.onStreamFinish = onStreamFinish;
     this.transport = new FlexibleChatTransport({
       store,
+      blobStore,
       onStart: this.onStart,
       getters,
       isSubTask,
@@ -154,7 +160,7 @@ export class LiveChatKit<
         try {
           const model = createModel({ llm: getters.getLLM() });
           await compactTask({
-            store: this.store,
+            blobStore: this.blobStore,
             taskId: this.taskId,
             model,
             messages,
@@ -180,11 +186,12 @@ export class LiveChatKit<
       const { messages } = this.chat;
       const model = createModel({ llm: getters.getLLM() });
       const summary = await compactTask({
-        store: this.store,
+        blobStore: this.blobStore,
         taskId: this.taskId,
         model,
         messages,
       });
+
       if (!summary) {
         throw new Error("Failed to compact task");
       }
@@ -309,6 +316,7 @@ export class LiveChatKit<
       scheduleGenerateTitleJob({
         taskId: this.taskId,
         store,
+        blobStore: this.blobStore,
         messages,
         getModel,
       });

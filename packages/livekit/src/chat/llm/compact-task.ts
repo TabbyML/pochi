@@ -1,20 +1,21 @@
 import type { LanguageModelV2 } from "@ai-sdk/provider";
 import { formatters, getLogger, prompts } from "@getpochi/common";
 import { convertToModelMessages, generateText } from "ai";
+import type { BlobStore } from "../../blob-store";
 import { makeDownloadFunction } from "../../store-blob";
-import type { LiveKitStore, Message } from "../../types";
+import type { Message } from "../../types";
 
 const logger = getLogger("compactTask");
 
 export async function compactTask({
-  store,
+  blobStore,
   taskId,
   model,
   messages,
   abortSignal,
   inline,
 }: {
-  store: LiveKitStore;
+  blobStore?: BlobStore | null;
   taskId: string;
   model: LanguageModelV2;
   messages: Message[];
@@ -29,7 +30,7 @@ export async function compactTask({
   try {
     const text = prompts.inlineCompact(
       await createSummary(
-        store,
+        blobStore || null,
         taskId,
         model,
         abortSignal,
@@ -51,7 +52,7 @@ export async function compactTask({
 }
 
 async function createSummary(
-  store: LiveKitStore,
+  blobStore: BlobStore | null,
   taskId: string,
   model: LanguageModelV2,
   abortSignal: AbortSignal | undefined,
@@ -85,7 +86,7 @@ async function createSummary(
         removeSystemReminder: true,
       }),
     ),
-    experimental_download: makeDownloadFunction(store),
+    experimental_download: makeDownloadFunction(blobStore),
     abortSignal,
     maxOutputTokens: 3_000,
     maxRetries: 0,

@@ -1,5 +1,6 @@
 import type { LanguageModelV2 } from "@ai-sdk/provider";
 import { getLogger } from "@getpochi/common";
+import type { BlobStore } from "../../blob-store";
 import { makeTaskQuery } from "../../livestore/default-queries";
 import { events } from "../../livestore/default-schema";
 
@@ -12,6 +13,7 @@ const logger = getLogger("GenerateTitleManager");
 interface GenerateTitleJob {
   taskId: string;
   store: LiveKitStore;
+  blobStore?: BlobStore | null;
   messages: Message[];
   getModel: () => LanguageModelV2;
   waitUntil?: (promise: Promise<unknown>) => void;
@@ -27,6 +29,7 @@ export function scheduleGenerateTitleJob(job: GenerateTitleJob) {
 
 async function process({
   store,
+  blobStore,
   taskId,
   messages,
   getModel,
@@ -39,6 +42,7 @@ async function process({
 
   const newTitle = await generateTaskTitle({
     store,
+    blobStore,
     taskId,
     title: task.title,
     messages,

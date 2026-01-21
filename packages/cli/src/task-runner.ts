@@ -9,6 +9,7 @@ import {
 import { findTodos, mergeTodos } from "@getpochi/common/message-utils";
 
 import {
+  type BlobStore,
   type LLMRequestData,
   type LiveKitStore,
   type Message,
@@ -25,6 +26,7 @@ import {
 import type z from "zod/v4";
 import { readEnvironment } from "./lib/read-environment";
 import { StepCount } from "./lib/step-count";
+
 import { Chat } from "./livekit";
 import { createOnOverrideMessages } from "./on-override-messages";
 import { executeToolCall } from "./tools";
@@ -39,6 +41,8 @@ export interface RunnerOptions {
   llm: LLMRequestData;
 
   store: LiveKitStore;
+
+  blobStore: BlobStore;
 
   // The parts to use for creating the task
   parts?: Message["parts"];
@@ -101,7 +105,7 @@ export interface RunnerOptions {
 const logger = getLogger("TaskRunner");
 
 export class TaskRunner {
-  private store: LiveKitStore;
+  private blobStore: BlobStore;
   private cwd: string;
   private llm: LLMRequestData;
   private toolCallOptions: ToolCallOptions;
@@ -123,14 +127,17 @@ export class TaskRunner {
   constructor(options: RunnerOptions) {
     this.cwd = options.cwd;
     this.llm = options.llm;
+    this.blobStore = options.blobStore;
     this.toolCallOptions = {
       rg: options.rg,
+
       customAgents: options.customAgents,
       mcpHub: options.mcpHub,
       createSubTaskRunner: (taskId: string, customAgent?: CustomAgent) => {
         // create sub task
         const runner = new TaskRunner({
           ...options,
+          blobStore: this.blobStore,
           parts: undefined, // should not use parts from parent
           uid: taskId,
           isSubTask: true,
@@ -142,15 +149,15 @@ export class TaskRunner {
       },
     };
     this.stepCount = new StepCount(options.maxSteps, options.maxRetries);
-    this.store = options.store;
     this.chatKit = new LiveChatKit<Chat>({
       taskId: options.uid,
       store: options.store,
+      blobStore: this.blobStore,
       chatClass: Chat,
-      isCli: true,
       isSubTask: options.isSubTask,
       customAgent: options.customAgent,
       outputSchema: options.outputSchema,
+
       abortSignal: options.abortSignal,
       onOverrideMessages: createOnOverrideMessages(this.cwd),
       getters: {
@@ -344,7 +351,7 @@ export class TaskRunner {
       );
 
       const toolResult = await processContentOutput(
-        this.store,
+        this.blobStore,
         await executeToolCall(
           toolCall,
           this.toolCallOptions,

@@ -36,6 +36,7 @@ import * as commander from "commander";
 import z from "zod/v4";
 import packageJson from "../package.json";
 import { registerAuthCommand } from "./auth";
+import { NodeBlobStore } from "./blob-store";
 import { handleShellCompletion } from "./completion";
 import { findRipgrep } from "./lib/find-ripgrep";
 import { loadAgents } from "./lib/load-agents";
@@ -149,6 +150,7 @@ const program = new Command()
     );
 
     const store = await createStore(uid);
+    const blobStore = new NodeBlobStore();
 
     const parts: Message["parts"] = [];
     if (attachments && attachments.length > 0) {
@@ -158,7 +160,7 @@ const program = new Command()
           const buffer = await fs.readFile(absolutePath);
           const mimeType = getMimeType(attachmentPath);
           const dataUrl = await fileToUri(
-            store,
+            blobStore,
             new File([buffer], attachmentPath, {
               type: mimeType,
             }),
@@ -219,6 +221,7 @@ const program = new Command()
     const runner = new TaskRunner({
       uid,
       store,
+      blobStore,
       llm,
       parts,
       cwd: process.cwd(),
