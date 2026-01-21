@@ -101,7 +101,6 @@ function createVSCodeHost(): VSCodeHostApi {
         "sendTaskNotification",
         "onTaskUpdated",
         "onTaskRunning",
-        "onTaskPendingApproval",
         "readWorktrees",
         "createWorktree",
         "deleteWorktree",

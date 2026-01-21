@@ -187,7 +187,6 @@ function Chat({ user, uid, info }: ChatProps) {
               uid: topTaskUid,
               isSubTask,
             });
-            vscodeHost.onTaskPendingApproval(topTaskUid);
           }
         }
       }

@@ -943,6 +943,11 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     kind: "failed" | "completed" | "pending-tool" | "pending-input",
     params: { uid: string; isSubTask?: boolean },
   ) => {
+    if (kind === "pending-tool") {
+      taskPendingApproval.fire({ taskId: params.uid });
+    }
+
+    // show task notification
     if (!this.cwd) return;
 
     const taskStates = this.taskActivityTracker.state.value;
@@ -1038,10 +1043,6 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
 
   onTaskRunning = async (taskId: string): Promise<void> => {
     taskRunning.fire({ taskId });
-  };
-
-  onTaskPendingApproval = async (taskId: string): Promise<void> => {
-    taskPendingApproval.fire({ taskId });
   };
 
   readWorktrees = async (): Promise<{
