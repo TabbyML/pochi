@@ -154,6 +154,7 @@ export class TaskRunner {
       store: options.store,
       blobStore: this.blobStore,
       chatClass: Chat,
+      isCli: true,
       isSubTask: options.isSubTask,
       customAgent: options.customAgent,
       outputSchema: options.outputSchema,
