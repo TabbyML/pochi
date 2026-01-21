@@ -241,12 +241,12 @@
       "errorPrefix": "Error:",
       "fallbackError": "Error encountered",
       "finished": "Finished in {{duration}}",
-      "pendingApproval": "Pending approval"
+      "requiresApproval": "Requires approval"
     },
     "loadMore": "Load more"
   },
   "toolInvocation": {
-    "pendingApproval": "Pending approval",
+    "requiresApproval": "Requires approval",
     "taskCompleted": "Task Completed",
     "reading": "Reading ",
     "writing": "Writing ",

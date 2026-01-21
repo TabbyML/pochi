@@ -73,7 +73,7 @@ export function TaskRow({
                 {state?.running && task.pendingToolCalls?.length ? (
                   <ToolCallLite
                     tools={task.pendingToolCalls as Array<ToolUIPart<UITools>>}
-                    isPendingApproval={state.pendingApproval}
+                    requiresApproval={state.requiresApproval}
                   />
                 ) : (
                   <TaskStatusView task={task} state={state} />

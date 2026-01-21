@@ -129,7 +129,7 @@ export class TaskActivityTracker implements vscode.Disposable {
     const current = newState[taskId] || {};
     logger.trace(`Task ${taskId} is now running`);
     current.running = true;
-    current.pendingApproval = false;
+    current.requiresApproval = false;
     newState[taskId] = current;
     this.saveState(newState);
   };
@@ -138,7 +138,7 @@ export class TaskActivityTracker implements vscode.Disposable {
     const newState = R.clone(this.state.value);
     const current = newState[taskId] || {};
     logger.trace(`Task ${taskId} is waiting for tool call approval`);
-    current.pendingApproval = true;
+    current.requiresApproval = true;
     newState[taskId] = current;
     this.saveState(newState);
   };

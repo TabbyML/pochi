@@ -8,10 +8,10 @@ import { useTranslation } from "react-i18next";
 
 interface Props {
   tools: Array<ToolUIPart<UITools>> | undefined;
-  isPendingApproval?: boolean;
+  requiresApproval?: boolean;
 }
 
-export function ToolCallLite({ tools, isPendingApproval }: Props) {
+export function ToolCallLite({ tools, requiresApproval }: Props) {
   const { t } = useTranslation();
 
   if (!tools?.length) return null;
@@ -70,21 +70,21 @@ export function ToolCallLite({ tools, isPendingApproval }: Props) {
       break;
   }
 
-  if (isPendingApproval) {
+  if (requiresApproval) {
     detail = (
-      <span className="ml-2">{t("tasksPage.taskStatus.pendingApproval")}</span>
+      <span className="ml-2">{t("tasksPage.taskStatus.requiresApproval")}</span>
     );
   }
 
   return detail ? (
     <div className="flex flex-nowrap items-center overflow-x-hidden whitespace-nowrap">
-      {isPendingApproval ? (
+      {requiresApproval ? (
         <Pause className="size-3.5 shrink-0" />
       ) : (
         <Loader2 className="size-3.5 shrink-0 animate-spin" />
       )}
       <div className="flex flex-nowrap items-center truncate">{detail}</div>
-      {!isPendingApproval && tools.length > 1 && (
+      {!requiresApproval && tools.length > 1 && (
         <span>
           {t("toolInvocation.moreTools", { count: tools.length - 1 })}
         </span>
