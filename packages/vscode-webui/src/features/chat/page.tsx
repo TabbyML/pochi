@@ -373,9 +373,10 @@ function Chat({ user, uid, info }: ChatProps) {
       fromTaskError(task) ||
       (pendingApproval?.name === "retry" ? pendingApproval.error : undefined);
 
-  useHandleChatEvents(
-    isLoading || isModelsLoading || !selectedModel ? undefined : sendMessage,
-  );
+  useHandleChatEvents({
+    sendMessage:
+      isLoading || isModelsLoading || !selectedModel ? undefined : sendMessage,
+  });
 
   const forkTask = useCallback(
     async (commitId: string, messageId?: string) => {
