@@ -20,7 +20,7 @@ import { lastAssistantMessageIsCompleteWithToolCalls } from "ai";
 import type { TFunction } from "i18next";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { useApprovalAndRetry } from "../approval";
+import { shouldStopAutoApprove, useApprovalAndRetry } from "../approval";
 import { getReadyForRetryError } from "../retry/hooks/use-ready-for-retry-error";
 import {
   useAutoApprove,
@@ -230,6 +230,10 @@ function Chat({ user, uid, info }: ChatProps) {
     sendAutomaticallyWhen: (x) => {
       if (chatAbortController.current.signal.aborted) {
         return false;
+      }
+
+      if(shouldStopAutoApprove(x)) {
+        autoApproveGuard.current = 'stop';
       }
 
       if (autoApproveGuard.current === "stop") {
