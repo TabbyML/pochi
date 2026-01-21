@@ -15,7 +15,7 @@ export async function compactTask({
   abortSignal,
   inline,
 }: {
-  blobStore?: BlobStore;
+  blobStore: BlobStore;
   taskId: string;
   model: LanguageModelV2;
   messages: Message[];
@@ -52,7 +52,7 @@ export async function compactTask({
 }
 
 async function createSummary(
-  blobStore: BlobStore | undefined,
+  blobStore: BlobStore,
   taskId: string,
   model: LanguageModelV2,
   abortSignal: AbortSignal | undefined,

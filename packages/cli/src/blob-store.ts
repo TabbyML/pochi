@@ -10,7 +10,11 @@ export class NodeBlobStore implements BlobStore {
     this.dir = path.join(os.tmpdir(), "pochi", "blobs");
   }
 
-  async put(data: Uint8Array, mimeType: string): Promise<string> {
+  async put(
+    data: Uint8Array,
+    mimeType: string,
+    _signal?: AbortSignal,
+  ): Promise<string> {
     await fs.mkdir(this.dir, { recursive: true });
     const checksum = await this.digest(data);
     const filePath = path.join(this.dir, checksum);

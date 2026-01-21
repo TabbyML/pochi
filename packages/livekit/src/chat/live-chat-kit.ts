@@ -34,7 +34,7 @@ export type LiveChatKitOptions<T> = {
 
   store: LiveKitStore;
 
-  blobStore?: BlobStore;
+  blobStore: BlobStore;
 
   chatClass: new (options: ChatInit<Message>) => T;
 
@@ -81,9 +81,10 @@ export class LiveChatKit<
 > {
   protected readonly taskId: string;
   protected readonly store: LiveKitStore;
-  protected readonly blobStore: BlobStore | undefined;
+  protected readonly blobStore: BlobStore;
   readonly chat: T;
   private readonly transport: FlexibleChatTransport;
+
   onStreamStart?: () => void;
   onStreamFinish?: (
     data: Pick<Task, "id" | "cwd" | "status"> & {

@@ -4,18 +4,16 @@ import { LiveChatKit, type LiveChatKitOptions } from "./chat/live-chat-kit";
 import type { Message } from "./types";
 
 export function useLiveChatKit(
-  props: Omit<
-    LiveChatKitOptions<Chat<Message>>,
-    "chatClass" | "isCli" | "blobStore"
-  >,
+  props: Omit<LiveChatKitOptions<Chat<Message>>, "chatClass" | "isCli">,
 ) {
-  const { store, ...rest } = props;
+  const { store, blobStore, ...rest } = props;
   // biome-ignore lint/correctness/useExhaustiveDependencies: create new kit on taskId change.
   return useMemo(
     () =>
       new LiveChatKit({
         ...rest,
         store,
+        blobStore,
         isCli: false,
         chatClass: Chat,
       }),

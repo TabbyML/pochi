@@ -4,7 +4,7 @@ import { StoreBlobProtocol } from ".";
 import type { BlobStore } from "./blob-store";
 
 export async function processContentOutput(
-  blobStore: BlobStore | undefined,
+  blobStore: BlobStore,
   output: unknown,
   signal?: AbortSignal,
 ) {
@@ -78,16 +78,13 @@ function toBase64(bytes: Uint8Array) {
 }
 
 export function findBlob(
-  blobStore: BlobStore | undefined,
+  blobStore: BlobStore,
   url: URL,
   mediaType: string,
 ): { data: string; mediaType: string } | undefined {
   let dataPromise: Promise<string>;
 
   if (url.protocol === StoreBlobProtocol) {
-    if (!blobStore) {
-      return undefined;
-    }
     // We return a promise that resolves to the blob data
     dataPromise = blobStore.get(url.toString()).then((blob) => {
       if (!blob) {
@@ -110,20 +107,16 @@ export function findBlob(
 }
 
 export async function fileToUri(
-  blobStore: BlobStore | undefined,
+  blobStore: BlobStore,
   file: File,
   signal?: AbortSignal,
 ) {
-  if (!blobStore) {
-    // isBrowser
-    return fileToRemoteUri(file, signal);
-  }
   const data = new Uint8Array(await file.arrayBuffer());
-  return blobStore.put(data, file.type);
+  return blobStore.put(data, file.type, signal);
 }
 
 async function findBlobUrl(
-  blobStore: BlobStore | undefined,
+  blobStore: BlobStore,
   mimeType: string,
   base64: string,
   signal?: AbortSignal,
@@ -137,29 +130,7 @@ async function findBlobUrl(
 const fromBase64 = (base64: string) =>
   Uint8Array.from(atob(base64), (v) => v.charCodeAt(0));
 
-async function fileToRemoteUri(file: File, signal?: AbortSignal) {
-  const formData = new FormData();
-  formData.append("file", file);
-
-  const response = await fetch("https://app.getpochi.com/api/upload", {
-    method: "POST",
-    body: formData,
-    signal,
-  });
-
-  if (!response.ok) {
-    throw new Error(`Upload failed: ${response.statusText}`);
-  }
-
-  const data = (await response.json()) as { url?: string };
-
-  if (!data.url) {
-    throw new Error("Failed to upload attachment");
-  }
-  return data.url;
-}
-
-export function makeDownloadFunction(blobStore?: BlobStore) {
+export function makeDownloadFunction(blobStore: BlobStore) {
   const downloadFn = async (
     items: Array<{ url: URL; isUrlSupportedByModel: boolean }>,
   ): Promise<
@@ -175,9 +146,6 @@ export function makeDownloadFunction(blobStore?: BlobStore) {
       } | null> => {
         if (isUrlSupportedByModel) return null;
         if (url.protocol === StoreBlobProtocol) {
-          if (!blobStore) {
-            throw new Error(`BlobStore not available for ${url}`);
-          }
           const blob = await blobStore.get(url.toString());
           if (!blob)
             throw new Error(`Blob with checksum ${url.pathname} not found`);

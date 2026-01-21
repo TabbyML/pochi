@@ -51,7 +51,9 @@ const ChatContainerClassName = tw`mx-auto flex h-screen max-w-6xl flex-col`;
 const ChatToolbarContainerClassName = tw`relative flex flex-col px-4`;
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { blobStore } from "@/lib/remote-blob-store";
 import { useDefaultStore } from "@/lib/use-default-store";
+
 import { Schema } from "@livestore/utils/effect";
 import { useKeepTaskEditor } from "./hooks/use-keep-task-editor";
 import { onOverrideMessages } from "./lib/on-override-messages";
@@ -222,7 +224,9 @@ function Chat({ user, uid, info }: ChatProps) {
 
   const chatKit = useLiveChatKit({
     store,
+    blobStore,
     taskId: uid,
+
     getters,
     isSubTask,
     customAgent,
