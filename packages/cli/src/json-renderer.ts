@@ -4,6 +4,7 @@ import type { Message } from "@getpochi/livekit";
 import { isToolUIPart } from "ai";
 
 import * as R from "remeda";
+import * as runExclusive from "run-exclusive";
 import type { NodeChatState } from "./livekit/chat.node";
 import type { TaskRunner } from "./task-runner";
 
@@ -23,12 +24,14 @@ export class JsonRenderer {
   ) {
     this.mode = options.mode;
     if (this.mode === "full") {
-      this.state.signal.messages.subscribe(async (messages) => {
-        if (messages.length > this.lastMessageCount) {
-          await this.outputMessages(messages.slice(0, -1));
-          this.lastMessageCount = messages.length;
-        }
-      });
+      this.state.signal.messages.subscribe(
+        runExclusive.build(async (messages) => {
+          if (messages.length > this.lastMessageCount) {
+            await this.outputMessages(messages.slice(0, -1));
+            this.lastMessageCount = messages.length;
+          }
+        }),
+      );
     }
   }
   async shutdown() {
@@ -68,12 +71,9 @@ export class JsonRenderer {
   }
 }
 
-async function mapStoreBlob(
-  blobStore: BlobStore,
-  o: unknown,
-): Promise<unknown> {
-  if (R.isString(o) && o.startsWith(blobStore.protocol)) {
-    const blob = await blobStore.get(o);
+async function mapStoreBlob(store: BlobStore, o: unknown): Promise<unknown> {
+  if (R.isString(o) && o.startsWith(store.protocol)) {
+    const blob = await store.get(o);
     if (!blob) throw new Error(`Store blob not found at "${o}"`);
 
     const base64 = Buffer.from(blob.data).toString("base64");
@@ -81,11 +81,19 @@ async function mapStoreBlob(
   }
 
   if (R.isArray(o)) {
-    return Promise.all(o.map((el) => mapStoreBlob(blobStore, el)));
+    return Promise.all(o.map((el) => mapStoreBlob(store, el)));
   }
 
   if (R.isObjectType(o)) {
-    return R.mapValues(o, (v) => mapStoreBlob(blobStore, v));
+    const entires = await Promise.all(
+      R.entries(o as Record<string, unknown>).map(
+        async ([k, v]): Promise<[string, unknown]> => [
+          k,
+          await mapStoreBlob(store, v),
+        ],
+      ),
+    );
+    return R.fromEntries(entires);
   }
 
   return o;

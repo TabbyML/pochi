@@ -255,7 +255,7 @@ const program = new Command()
       mcpHub.dispose();
     }
     if (jsonRenderer) {
-      jsonRenderer.shutdown();
+      await jsonRenderer.shutdown();
     }
     await shutdownStoreAndExit(store);
   });

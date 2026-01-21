@@ -53,6 +53,7 @@
         "remark": "^15.0.1",
         "remark-gfm": "^4.0.1",
         "remeda": "catalog:",
+        "run-exclusive": "catalog:",
         "semver": "^7.6.3",
         "tabtab": "^3.0.2",
         "unist-util-visit": "^5.0.0",
