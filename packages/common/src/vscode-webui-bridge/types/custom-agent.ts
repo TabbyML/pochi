@@ -29,7 +29,7 @@ export interface InvalidCustomAgentFile extends Partial<CustomAgent> {
   message: string;
 }
 
-export const BuiltInAgentPath = "<builtIn>";
+export const BuiltInAgentPath = "_builtIn_";
 
 export type CustomAgentFile = ValidCustomAgentFile | InvalidCustomAgentFile;
 
