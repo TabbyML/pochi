@@ -240,9 +240,11 @@ const program = new Command()
     const renderer = new OutputRenderer(runner.state);
     let jsonRenderer: JsonRenderer | undefined;
     if (options.streamJson) {
-      jsonRenderer = new JsonRenderer(store, runner.state, { mode: "full" });
+      jsonRenderer = new JsonRenderer(blobStore, runner.state, {
+        mode: "full",
+      });
     } else if (options.outputResult) {
-      jsonRenderer = new JsonRenderer(store, runner.state, {
+      jsonRenderer = new JsonRenderer(blobStore, runner.state, {
         mode: "result-only",
       });
     }
