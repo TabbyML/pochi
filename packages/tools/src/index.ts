@@ -128,7 +128,6 @@ export type ClientTools = ReturnType<typeof createClientTools> & {
 export const selectClientTools = (
   options: {
     isSubTask: boolean;
-    isCli: boolean;
   } & CreateToolOptions,
 ) => {
   const clientTools = createClientTools(options);

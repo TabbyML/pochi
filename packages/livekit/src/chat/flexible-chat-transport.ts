@@ -60,7 +60,6 @@ export type ChatTransportOptions = {
   onStart?: OnStartCallback;
   getters: PrepareRequestGetters;
   isSubTask?: boolean;
-  isCli?: boolean;
   store: LiveKitStore;
   blobStore: BlobStore;
   customAgent?: CustomAgent;
@@ -71,7 +70,6 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
   private readonly onStart?: OnStartCallback;
   private readonly getters: PrepareRequestGetters;
   private readonly isSubTask?: boolean;
-  private readonly isCli?: boolean;
   private readonly store: LiveKitStore;
   private readonly blobStore: BlobStore;
   private readonly customAgent?: CustomAgent;
@@ -81,7 +79,6 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
     this.onStart = options.onStart;
     this.getters = options.getters;
     this.isSubTask = options.isSubTask;
-    this.isCli = options.isCli;
     this.store = options.store;
     this.blobStore = options.blobStore;
     this.customAgent = overrideCustomAgentTools(options.customAgent);
@@ -150,12 +147,12 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
       {
         ...selectClientTools({
           isSubTask: !!this.isSubTask,
-          isCli: !!this.isCli,
           customAgents,
           contentType: llm.contentType,
         }),
         ...(mcpTools || {}),
       },
+
       (_val, key) => {
         if (this.customAgent?.tools) {
           return this.customAgent.tools.includes(key);
