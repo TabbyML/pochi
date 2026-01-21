@@ -37,18 +37,22 @@ export function useHandleChatEvents({
 }) {
   useEffect(() => {
     const unsubscribes: UnsubscribeFunction[] = [];
-    
-    if(sendMessage) {
-      unsubscribes.push(emitter.on("sendMessage", async (payload) => {
-        sendMessage({
-          text: payload.prompt,
-        });
-      }))
+
+    if (sendMessage) {
+      unsubscribes.push(
+        emitter.on("sendMessage", async (payload) => {
+          sendMessage({
+            text: payload.prompt,
+          });
+        }),
+      );
     }
-    if(sendRetry) {
-      unsubscribes.push(emitter.on("sendRetry", async () => {
-        sendRetry();
-      }))
+    if (sendRetry) {
+      unsubscribes.push(
+        emitter.on("sendRetry", async () => {
+          sendRetry();
+        }),
+      );
     }
 
     return () => {
