@@ -27,8 +27,8 @@ export type PochiTaskParams = { cwd: string } & (
     }
   | {
       type: "fork-task";
-      messages: string;
-      title: string;
+      uid: string;
+      storeId: string;
       mcpConfigOverride?: McpConfigOverride;
     }
   | {

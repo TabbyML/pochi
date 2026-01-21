@@ -42,3 +42,20 @@ export const makeFileQuery = (taskId: string, filePath: string) =>
       deps: [taskId, filePath],
     },
   );
+
+export const makeAllDataQuery = () => {
+  return {
+    tasks: queryDb(() => tables.tasks.select(), {
+      label: "allTasks",
+    }),
+    messages: queryDb(() => tables.messages.select(), {
+      label: "allMessages",
+    }),
+    blobs: queryDb(() => tables.blobs.select(), {
+      label: "allBlobs",
+    }),
+    files: queryDb(() => tables.files.select(), {
+      label: "allFiles",
+    }),
+  };
+};

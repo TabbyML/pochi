@@ -233,6 +233,45 @@ export const events = {
       messages: Schema.Array(DBMessage),
     }),
   }),
+  forkTaskInited: Events.synced({
+    name: "v1.ForkTaskInited",
+    schema: Schema.Struct({
+      tasks: Schema.Array(
+        Schema.Struct({
+          id: Schema.String,
+          cwd: Schema.optional(Schema.String),
+          title: Schema.optional(Schema.String),
+          parentId: Schema.optional(Schema.String),
+          modelId: Schema.optional(Schema.String),
+          status: TaskStatus,
+          git: Schema.optional(Git),
+          createdAt: Schema.Date,
+        }),
+      ),
+      messages: Schema.Array(
+        Schema.Struct({
+          id: Schema.String,
+          taskId: Schema.String,
+          data: DBMessage,
+        }),
+      ),
+      blobs: Schema.Array(
+        Schema.Struct({
+          checksum: Schema.String,
+          createdAt: Schema.Date,
+          mimeType: Schema.String,
+          data: Schema.Uint8Array,
+        }),
+      ),
+      files: Schema.Array(
+        Schema.Struct({
+          taskId: Schema.String,
+          filePath: Schema.String,
+          content: Schema.String,
+        }),
+      ),
+    }),
+  }),
 };
 
 const materializers = State.SQLite.materializers(events, {
@@ -413,6 +452,16 @@ const materializers = State.SQLite.materializers(events, {
         })
         .where({ id: message.id }),
     ),
+  "v1.ForkTaskInited": ({ tasks, messages, blobs, files }) => [
+    ...tasks.map((task) =>
+      tables.tasks.insert({ ...task, updatedAt: task.createdAt }),
+    ),
+    ...messages.map((message) => tables.messages.insert(message)),
+    ...blobs.map((blob) =>
+      tables.blobs.insert({ ...blob, data: new Uint8Array(blob.data) }),
+    ),
+    ...files.map((file) => tables.files.insert(file)),
+  ],
 });
 
 const state = State.SQLite.makeState({ tables, materializers });

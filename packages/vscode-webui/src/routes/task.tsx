@@ -53,7 +53,10 @@ function RouteComponent() {
 
   const key = `task-${uid}`;
   let storeId = encodeStoreId(jwt, uid);
-  if (info?.type === "open-task" && info.storeId) {
+  if (
+    (info?.type === "open-task" || info?.type === "fork-task") &&
+    info.storeId
+  ) {
     storeId = info.storeId;
   } else if (searchParams.storeId) {
     storeId = searchParams.storeId;

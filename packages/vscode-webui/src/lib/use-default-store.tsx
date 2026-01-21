@@ -10,7 +10,7 @@ import type React from "react";
 import { createContext, useContext } from "react";
 import LiveStoreWorker from "../livestore.default.worker.ts?worker&inline";
 
-const adapter = makePersistedAdapter({
+export const adapter = makePersistedAdapter({
   storage: { type: "opfs" },
   worker: LiveStoreWorker,
   sharedWorker: LiveStoreSharedWorker,

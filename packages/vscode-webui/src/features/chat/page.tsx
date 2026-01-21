@@ -6,23 +6,24 @@ import { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
 import { useCustomAgent } from "@/lib/hooks/use-custom-agents";
 import { useLatest } from "@/lib/hooks/use-latest";
 import { useMcp } from "@/lib/hooks/use-mcp";
+import { usePochiCredentials } from "@/lib/hooks/use-pochi-credentials";
 import { useTaskMcpConfigOverride } from "@/lib/hooks/use-task-mcp-config-override";
 import { prepareMessageParts } from "@/lib/message-utils";
 import { blobStore } from "@/lib/remote-blob-store";
-import { useDefaultStore } from "@/lib/use-default-store";
+import { adapter, useDefaultStore } from "@/lib/use-default-store";
 import { cn, tw } from "@/lib/utils";
 import { vscodeHost } from "@/lib/vscode";
 import { useChat } from "@ai-sdk/react";
 import { formatters } from "@getpochi/common";
 import type { UserInfo } from "@getpochi/common/configuration";
+import { encodeStoreId } from "@getpochi/common/store-id-utils";
 import { type Task, catalog } from "@getpochi/livekit";
 import type { Message } from "@getpochi/livekit";
 import { useLiveChatKit } from "@getpochi/livekit/react";
 import type { Todo } from "@getpochi/tools";
-import { Schema } from "@livestore/utils/effect";
+import { useStoreRegistry } from "@livestore/react";
 import { useRouter } from "@tanstack/react-router";
 import { lastAssistantMessageIsCompleteWithToolCalls } from "ai";
-import type { TFunction } from "i18next";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useApprovalAndRetry, useShouldStopAutoApprove } from "../approval";
@@ -39,7 +40,6 @@ import {
 import { ChatArea } from "./components/chat-area";
 import { ChatToolBarSkeleton, ChatToolbar } from "./components/chat-toolbar";
 import { SubtaskHeader } from "./components/subtask";
-import { useKeepTaskEditor } from "./hooks/use-keep-task-editor";
 import { useRepairMermaid } from "./hooks/use-repair-mermaid";
 import { useRestoreTaskModel } from "./hooks/use-restore-task-model";
 import { useScrollToBottom } from "./hooks/use-scroll-to-bottom";
@@ -52,6 +52,9 @@ import {
   useChatAbortController,
   useRetryCount,
 } from "./lib/chat-state";
+
+import { Schema } from "@livestore/utils/effect";
+import { useKeepTaskEditor } from "./hooks/use-keep-task-editor";
 import { onOverrideMessages } from "./lib/on-override-messages";
 import { useLiveChatKitGetters } from "./lib/use-live-chat-kit-getters";
 import { useSendTaskNotification } from "./lib/use-send-task-notification";
@@ -352,11 +355,6 @@ function Chat({ user, uid, info }: ChatProps) {
       if (info.mcpConfigOverride && setMcpConfigOverride) {
         setMcpConfigOverride(info.mcpConfigOverride);
       }
-
-      chatKit.init(cwd, {
-        initTitle: info.title,
-        messages: JSON.parse(info.messages),
-      });
     } else if (info.type === "open-task") {
       // Do nothing - mcpConfigOverride is loaded from TaskStateStore
     } else {
@@ -396,20 +394,26 @@ function Chat({ user, uid, info }: ChatProps) {
       isLoading || isModelsLoading || !selectedModel ? undefined : sendMessage,
   });
 
+  const { jwt } = usePochiCredentials();
+  const storeRegistry = useStoreRegistry();
+
   const forkTask = useCallback(
     async (commitId: string, messageId?: string) => {
-      if (task?.cwd && task.title) {
+      if (task?.cwd) {
         await forkTaskFromCheckPoint(
-          messages,
-          t,
-          commitId,
+          chatKit.fork,
+          storeRegistry,
+          jwt,
+          task.title
+            ? t("forkTask.forkedTaskTitle", { taskTitle: task.title })
+            : undefined,
           task.cwd,
-          task.title,
+          commitId,
           messageId,
         );
       }
     },
-    [messages, task, t],
+    [chatKit.fork, storeRegistry, task, jwt, t],
   );
 
   return (
@@ -515,44 +519,33 @@ function fromTaskError(task?: Task) {
 }
 
 async function forkTaskFromCheckPoint(
-  messages: Message[],
-  t: TFunction<"translation", undefined>,
-  commitId: string,
+  fork: ReturnType<typeof useLiveChatKit>["fork"],
+  storeRegistry: ReturnType<typeof useStoreRegistry>,
+  jwt: string | null,
+  title: string | undefined,
   cwd: string,
-  title: string,
+  commitId: string,
   messageId?: string,
 ) {
-  const initMessages: Message[] = [];
-  if (!messageId) {
-    const messageIndex = messages.findIndex((message) =>
-      message.parts.find(
-        (part) =>
-          part.type === "data-checkpoint" && part.data.commit === commitId,
-      ),
-    );
-    if (messageIndex < 0) {
-      throw new Error(
-        `Failed to fork task due to missing checkpoint for commitId ${commitId}`,
-      );
-    }
+  const newTaskId = crypto.randomUUID();
+  const storeId = encodeStoreId(jwt, newTaskId);
 
-    initMessages.push(...messages.slice(0, messageIndex));
+  // Create store
+  const targetStore = await storeRegistry.getOrLoadPromise({
+    storeId,
+    schema: catalog.schema,
+    adapter,
+    syncPayload: { jwt },
+    disableDevtools: true,
+  });
 
-    const message = messages[messageIndex];
-    const partIndex = message.parts.findIndex(
-      (part) =>
-        part.type === "data-checkpoint" && part.data.commit === commitId,
-    );
-    initMessages.push({
-      ...message,
-      parts: message.parts.slice(0, partIndex),
-    });
-  } else {
-    const messageIndex = messages.findIndex(
-      (message) => message.id === messageId,
-    );
-    initMessages.push(...messages.slice(0, messageIndex + 1));
-  }
+  // Copy data to new store
+  fork(targetStore, {
+    taskId: newTaskId,
+    title,
+    commitId,
+    messageId,
+  });
 
   // Restore checkpoint
   await vscodeHost.restoreCheckpoint(commitId);
@@ -560,8 +553,8 @@ async function forkTaskFromCheckPoint(
   await vscodeHost.openTaskInPanel({
     type: "fork-task",
     cwd,
-    title: t("forkTask.forkedTaskTitle", { taskTitle: title }),
-    messages: JSON.stringify(initMessages),
+    uid: newTaskId,
+    storeId,
   });
 }
 
