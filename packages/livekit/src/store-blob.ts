@@ -4,7 +4,7 @@ import { StoreBlobProtocol } from ".";
 import type { BlobStore } from "./blob-store";
 
 export async function processContentOutput(
-  blobStore: BlobStore | null,
+  blobStore: BlobStore | undefined,
   output: unknown,
   signal?: AbortSignal,
 ) {
@@ -78,7 +78,7 @@ function toBase64(bytes: Uint8Array) {
 }
 
 export function findBlob(
-  blobStore: BlobStore | null,
+  blobStore: BlobStore | undefined,
   url: URL,
   mediaType: string,
 ): { data: string; mediaType: string } | undefined {
@@ -109,7 +109,7 @@ export function findBlob(
 }
 
 export async function fileToUri(
-  blobStore: BlobStore | null,
+  blobStore: BlobStore | undefined,
   file: File,
   signal?: AbortSignal,
 ) {
@@ -122,7 +122,7 @@ export async function fileToUri(
 }
 
 async function findBlobUrl(
-  blobStore: BlobStore | null,
+  blobStore: BlobStore | undefined,
   mimeType: string,
   base64: string,
   signal?: AbortSignal,
@@ -158,7 +158,7 @@ async function fileToRemoteUri(file: File, signal?: AbortSignal) {
   return data.url;
 }
 
-export function makeDownloadFunction(blobStore: BlobStore | null) {
+export function makeDownloadFunction(blobStore?: BlobStore) {
   const downloadFn = async (
     items: Array<{ url: URL; isUrlSupportedByModel: boolean }>,
   ): Promise<

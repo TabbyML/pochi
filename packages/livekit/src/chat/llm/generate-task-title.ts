@@ -9,7 +9,7 @@ const logger = getLogger("generateTaskTitle");
 
 interface GenerateTaskTitleOptions {
   store: LiveKitStore;
-  blobStore?: BlobStore | null;
+  blobStore?: BlobStore;
   taskId: string;
   title: string | null;
   messages: Message[];
@@ -55,7 +55,7 @@ async function generateTaskTitleImpl({
     try {
       const model = getModel();
       const title = await generateTitle(
-        blobStore || null,
+        blobStore,
         taskId,
         model,
         messages,
@@ -96,7 +96,7 @@ function isTitleGeneratedByLlm(
 }
 
 async function generateTitle(
-  blobStore: BlobStore | null,
+  blobStore: BlobStore | undefined,
   taskId: string,
   model: LanguageModelV2,
   inputMessages: Message[],

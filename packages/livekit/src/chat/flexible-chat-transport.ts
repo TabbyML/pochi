@@ -73,7 +73,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
   private readonly isSubTask?: boolean;
   private readonly isCli?: boolean;
   private readonly store: LiveKitStore;
-  private readonly blobStore: BlobStore | null;
+  private readonly blobStore: BlobStore | undefined;
   private readonly customAgent?: CustomAgent;
   private readonly outputSchema?: z.ZodAny;
 
@@ -83,7 +83,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
     this.isSubTask = options.isSubTask;
     this.isCli = options.isCli;
     this.store = options.store;
-    this.blobStore = options.blobStore || null;
+    this.blobStore = options.blobStore;
     this.customAgent = overrideCustomAgentTools(options.customAgent);
     this.outputSchema = options.outputSchema;
   }
@@ -291,7 +291,7 @@ async function resolvePromise(o: unknown): Promise<unknown> {
 }
 
 function handleReadFileOutput(
-  blobStore: BlobStore | null,
+  blobStore: BlobStore | undefined,
   readFile: ClientTools["readFile"],
 ) {
   return tool({

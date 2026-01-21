@@ -141,7 +141,12 @@ export function useAttachmentUpload(options?: UseAttachmentUploadOptions) {
           type: "file",
           filename: file.name || "unnamed-file",
           mediaType: file.type,
-          url: await fileToUri(null, file, abortController.current?.signal),
+          url: await fileToUri(
+            undefined,
+            file,
+            abortController.current?.signal,
+          ),
+
           // url: await fileToRemoteUri(file, abortController.current?.signal),
           // url: await fileToDataUri(file),
         } satisfies FileUIPart;

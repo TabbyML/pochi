@@ -33,6 +33,7 @@ export type LiveChatKitOptions<T> = {
   isCli?: boolean;
 
   store: LiveKitStore;
+
   blobStore?: BlobStore;
 
   chatClass: new (options: ChatInit<Message>) => T;
@@ -80,7 +81,7 @@ export class LiveChatKit<
 > {
   protected readonly taskId: string;
   protected readonly store: LiveKitStore;
-  protected readonly blobStore: BlobStore | null;
+  protected readonly blobStore: BlobStore | undefined;
   readonly chat: T;
   private readonly transport: FlexibleChatTransport;
   onStreamStart?: () => void;
@@ -112,7 +113,7 @@ export class LiveChatKit<
   }: LiveChatKitOptions<T>) {
     this.taskId = taskId;
     this.store = store;
-    this.blobStore = blobStore || null;
+    this.blobStore = blobStore;
     this.onStreamStart = onStreamStart;
     this.onStreamFinish = onStreamFinish;
     this.transport = new FlexibleChatTransport({

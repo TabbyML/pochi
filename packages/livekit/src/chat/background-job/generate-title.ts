@@ -13,7 +13,7 @@ const logger = getLogger("GenerateTitleManager");
 interface GenerateTitleJob {
   taskId: string;
   store: LiveKitStore;
-  blobStore?: BlobStore | null;
+  blobStore?: BlobStore;
   messages: Message[];
   getModel: () => LanguageModelV2;
   waitUntil?: (promise: Promise<unknown>) => void;

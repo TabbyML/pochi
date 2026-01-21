@@ -331,7 +331,7 @@ export class ManagedToolCallLifeCycle
       .catch((err) => ({
         error: `Failed to execute tool: ${err.message}`,
       }))
-      .then((result) => processContentOutput(null, result, abortSignal))
+      .then((result) => processContentOutput(undefined, result, abortSignal))
 
       .then((result) => {
         this.onExecuteDone(result);

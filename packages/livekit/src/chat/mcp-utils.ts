@@ -7,7 +7,7 @@ import type { BlobStore } from "../blob-store";
 import { findBlob } from "../store-blob";
 
 export function parseMcpToolSet(
-  blobStore: BlobStore | null,
+  blobStore: BlobStore | undefined,
   mcpToolSet: Record<string, McpTool> | undefined,
 ): Record<string, Tool> | undefined {
   return mcpToolSet
@@ -42,7 +42,7 @@ const ContentOutput = z.union([
 ]);
 
 function parseMcpTool(
-  blobStore: BlobStore | null,
+  blobStore: BlobStore | undefined,
   _name: string,
   mcpTool: McpTool,
 ): Tool {
