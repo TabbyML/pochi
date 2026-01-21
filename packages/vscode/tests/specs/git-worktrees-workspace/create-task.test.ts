@@ -15,6 +15,14 @@ describe("Create Task Tests", () => {
     await pochi.open();
     await pochi.sendMessage("Hello Pochi test task");
 
+    // Wait for the task to appear in the sidebar task list
+    await pochi.waitForTaskToAppear();
+    
+    // Verify the task appears in the sidebar list
+    const taskTitles = await pochi.getTaskTitles();
+    console.log("[Test Debug] Task titles in sidebar:", taskTitles);
+    expect(taskTitles.length).toBeGreaterThan(0);
+
     // Switch back to main content
     await pochi.close();
 

@@ -1,6 +1,8 @@
 import { MaxAttachments } from "@/lib/constants";
+import { blobStore } from "@/lib/remote-blob-store";
 import { createFileName, validateFile } from "@/lib/utils/attachment";
 import { fileToUri } from "@getpochi/livekit";
+
 import type { FileUIPart } from "ai";
 import { useRef, useState } from "react";
 
@@ -141,9 +143,11 @@ export function useAttachmentUpload(options?: UseAttachmentUploadOptions) {
           type: "file",
           filename: file.name || "unnamed-file",
           mediaType: file.type,
-          url: await fileToUri(null, file, abortController.current?.signal),
-          // url: await fileToRemoteUri(file, abortController.current?.signal),
-          // url: await fileToDataUri(file),
+          url: await fileToUri(
+            blobStore,
+            file,
+            abortController.current?.signal,
+          ),
         } satisfies FileUIPart;
       });
 
@@ -191,34 +195,3 @@ export function useAttachmentUpload(options?: UseAttachmentUploadOptions) {
     handleFileDrop,
   };
 }
-
-// function fileToDataUri(file: File) {
-//   return new Promise<string>((resolve, reject) => {
-//     const reader = new FileReader();
-//     reader.onload = () => resolve(reader.result as string);
-//     reader.onerror = (error) => reject(error);
-//     reader.readAsDataURL(file);
-//   });
-// }
-
-// async function fileToRemoteUri(file: File, signal?: AbortSignal) {
-//   const formData = new FormData();
-//   formData.append("file", file);
-
-//   const response = await fetch(`${getServerBaseUrl()}/api/upload`, {
-//     method: "POST",
-//     body: formData,
-//     signal,
-//   });
-
-//   if (!response.ok) {
-//     throw new Error(`Upload failed: ${response.statusText}`);
-//   }
-
-//   const data = await response.json();
-
-//   if (!data.url) {
-//     throw new Error("Failed to upload attachment");
-//   }
-//   return data.url;
-// }

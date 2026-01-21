@@ -1,3 +1,4 @@
+import { BuiltInAgentPath } from "../../vscode-webui-bridge/types/custom-agent";
 import { renderActiveSelection } from "./active-selection";
 import { renderBashOutputs } from "./bash-outputs";
 import { createCompactPrompt } from "./compact";
@@ -76,7 +77,7 @@ function parseInlineCompact(text: string) {
   };
 }
 
-function createCustomAgentPrompt(id: string, path: string) {
+function createCustomAgentPrompt(id: string, path?: string) {
   // Remove extra newlines from the id
   let processedAgentName = id.replace(/\n+/g, "\n");
   // Escape '<' to avoid </custom-agent> being interpreted as a closing tag
@@ -87,5 +88,5 @@ function createCustomAgentPrompt(id: string, path: string) {
       return match.replace("<", "&lt;");
     },
   );
-  return `<custom-agent id="${id}" path="${path}">newTask:${processedAgentName}</custom-agent>`;
+  return `<custom-agent id="${id}" path="${path || BuiltInAgentPath}">newTask:${processedAgentName}</custom-agent>`;
 }

@@ -1,5 +1,8 @@
+import { blobStore } from "@/lib/remote-blob-store";
 import { vscodeHost } from "@/lib/vscode";
+
 import { getLogger } from "@getpochi/common";
+
 import type { ExecuteCommandResult } from "@getpochi/common/vscode-webui-bridge";
 import {
   type LiveKitStore,
@@ -8,6 +11,7 @@ import {
   catalog,
   processContentOutput,
 } from "@getpochi/livekit";
+
 import type { ClientTools, PreviewReturnType } from "@getpochi/tools";
 import { ThreadAbortSignal } from "@quilted/threads";
 import {
@@ -331,7 +335,8 @@ export class ManagedToolCallLifeCycle
       .catch((err) => ({
         error: `Failed to execute tool: ${err.message}`,
       }))
-      .then((result) => processContentOutput(this.store, result, abortSignal))
+      .then((result) => processContentOutput(blobStore, result, abortSignal))
+
       .then((result) => {
         this.onExecuteDone(result);
       });

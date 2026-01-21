@@ -1,6 +1,6 @@
 import type { UseChatHelpers } from "@ai-sdk/react";
 import type { Message } from "@getpochi/livekit";
-import Emittery from "emittery";
+import Emittery, { type UnsubscribeFunction } from "emittery";
 import { useCallback, useEffect } from "react";
 
 interface SendMessagePayload {
@@ -9,6 +9,7 @@ interface SendMessagePayload {
 
 const emitter = new Emittery<{
   sendMessage: SendMessagePayload;
+  sendRetry: null;
 }>();
 
 export function useSendMessage() {
@@ -19,18 +20,45 @@ export function useSendMessage() {
   return sendMessage;
 }
 
-export function useHandleChatEvents(
-  sendMessage?: UseChatHelpers<Message>["sendMessage"],
-) {
+export function useSendRetry() {
+  const sendRetry = useCallback(() => {
+    emitter.emit("sendRetry", null);
+  }, []);
+
+  return sendRetry;
+}
+
+export function useHandleChatEvents({
+  sendMessage,
+  sendRetry,
+}: {
+  sendMessage?: UseChatHelpers<Message>["sendMessage"];
+  sendRetry?: () => void;
+}) {
   useEffect(() => {
-    if (!sendMessage) return;
+    const unsubscribes: UnsubscribeFunction[] = [];
 
-    const unsubscribe = emitter.on("sendMessage", async (payload) => {
-      sendMessage({
-        text: payload.prompt,
-      });
-    });
+    if (sendMessage) {
+      unsubscribes.push(
+        emitter.on("sendMessage", async (payload) => {
+          sendMessage({
+            text: payload.prompt,
+          });
+        }),
+      );
+    }
+    if (sendRetry) {
+      unsubscribes.push(
+        emitter.on("sendRetry", async () => {
+          sendRetry();
+        }),
+      );
+    }
 
-    return unsubscribe;
-  }, [sendMessage]);
+    return () => {
+      for (const unsubscribe of unsubscribes) {
+        unsubscribe();
+      }
+    };
+  }, [sendMessage, sendRetry]);
 }

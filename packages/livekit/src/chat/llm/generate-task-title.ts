@@ -1,6 +1,7 @@
 import type { LanguageModelV2 } from "@ai-sdk/provider";
 import { formatters, getLogger, prompts } from "@getpochi/common";
 import { convertToModelMessages, generateText } from "ai";
+import type { BlobStore } from "../../blob-store";
 import { makeDownloadFunction } from "../../store-blob";
 import type { LiveKitStore, Message } from "../../types";
 
@@ -8,6 +9,7 @@ const logger = getLogger("generateTaskTitle");
 
 interface GenerateTaskTitleOptions {
   store: LiveKitStore;
+  blobStore: BlobStore;
   taskId: string;
   title: string | null;
   messages: Message[];
@@ -25,7 +27,7 @@ export async function generateTaskTitle(options: GenerateTaskTitleOptions) {
 }
 
 async function generateTaskTitleImpl({
-  store,
+  blobStore,
   taskId,
   title,
   messages,
@@ -53,7 +55,7 @@ async function generateTaskTitleImpl({
     try {
       const model = getModel();
       const title = await generateTitle(
-        store,
+        blobStore,
         taskId,
         model,
         messages,
@@ -94,7 +96,7 @@ function isTitleGeneratedByLlm(
 }
 
 async function generateTitle(
-  store: LiveKitStore,
+  blobStore: BlobStore,
   taskId: string,
   model: LanguageModelV2,
   inputMessages: Message[],
@@ -126,7 +128,7 @@ async function generateTitle(
     prompt: convertToModelMessages(
       formatters.llm(messages, { removeSystemReminder: true }),
     ),
-    experimental_download: makeDownloadFunction(store),
+    experimental_download: makeDownloadFunction(blobStore),
     abortSignal,
     maxOutputTokens: 2048,
     maxRetries: 0,

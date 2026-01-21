@@ -1,11 +1,10 @@
-import {
-  type LiveKitStore,
-  type Message,
-  StoreBlobProtocol,
-  catalog,
-} from "@getpochi/livekit";
+import type { BlobStore } from "@getpochi/livekit";
+import type { Message } from "@getpochi/livekit";
+
 import { isToolUIPart } from "ai";
+
 import * as R from "remeda";
+import * as runExclusive from "run-exclusive";
 import type { NodeChatState } from "./livekit/chat.node";
 import type { TaskRunner } from "./task-runner";
 
@@ -19,25 +18,27 @@ export class JsonRenderer {
   private mode: "full" | "result-only";
 
   constructor(
-    private readonly store: LiveKitStore,
+    private readonly store: BlobStore,
     private readonly state: NodeChatState,
     options: JsonRendererOptions = { mode: "full" },
   ) {
     this.mode = options.mode;
     if (this.mode === "full") {
-      this.state.signal.messages.subscribe((messages) => {
-        if (messages.length > this.lastMessageCount) {
-          this.outputMessages(messages.slice(0, -1));
-          this.lastMessageCount = messages.length;
-        }
-      });
+      this.state.signal.messages.subscribe(
+        runExclusive.build(async (messages) => {
+          if (messages.length > this.lastMessageCount) {
+            await this.outputMessages(messages.slice(0, -1));
+            this.lastMessageCount = messages.length;
+          }
+        }),
+      );
     }
   }
-  shutdown() {
+  async shutdown() {
     if (this.mode === "result-only") {
       this.outputResult();
     } else {
-      this.outputMessages(this.state.signal.messages.value);
+      await this.outputMessages(this.state.signal.messages.value);
     }
   }
 
@@ -60,31 +61,39 @@ export class JsonRenderer {
     }
   }
 
-  private outputMessages(messages: Message[]) {
+  private async outputMessages(messages: Message[]) {
     for (const message of messages) {
       if (!this.outputMessageIds.has(message.id)) {
-        console.log(JSON.stringify(mapStoreBlob(this.store, message)));
+        console.log(JSON.stringify(await mapStoreBlob(this.store, message)));
         this.outputMessageIds.add(message.id);
       }
     }
   }
 }
 
-function mapStoreBlob(store: LiveKitStore, o: unknown): unknown {
-  if (R.isString(o) && o.startsWith(StoreBlobProtocol)) {
-    const url = new URL(o);
-    const blob = store.query(catalog.queries.makeBlobQuery(url.pathname));
-    if (!blob) throw new Error(`Store blob not found at "${url.pathname}"`);
+async function mapStoreBlob(store: BlobStore, o: unknown): Promise<unknown> {
+  if (R.isString(o) && o.startsWith(store.protocol)) {
+    const blob = await store.get(o);
+    if (!blob) throw new Error(`Store blob not found at "${o}"`);
+
     const base64 = Buffer.from(blob.data).toString("base64");
     return `data:${blob.mimeType};base64,${base64}`;
   }
 
   if (R.isArray(o)) {
-    return o.map((el) => mapStoreBlob(store, el));
+    return Promise.all(o.map((el) => mapStoreBlob(store, el)));
   }
 
   if (R.isObjectType(o)) {
-    return R.mapValues(o, (v) => mapStoreBlob(store, v));
+    const entires = await Promise.all(
+      R.entries(o as Record<string, unknown>).map(
+        async ([k, v]): Promise<[string, unknown]> => [
+          k,
+          await mapStoreBlob(store, v),
+        ],
+      ),
+    );
+    return R.fromEntries(entires);
   }
 
   return o;

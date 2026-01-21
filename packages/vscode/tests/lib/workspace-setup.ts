@@ -1,18 +1,54 @@
-import { execSync } from "node:child_process";
-import * as fs from "node:fs";
-import * as os from "node:os";
+import { exec } from "node:child_process";
+import * as fs from "node:fs/promises";
 import * as path from "node:path";
-import { browser } from "@wdio/globals";
+import { promisify } from "node:util";
 
-const TEMP_DIR = path.join(os.tmpdir(), "pochi-test-workspaces");
+const execAsync = promisify(exec);
+
+/**
+ * Workspace types supported by the test system
+ */
+export enum WorkspaceType {
+  PLAIN = "plain",
+  GIT_REPO = "git-repo",
+  GIT_WORKTREES = "git-worktrees",
+  NONE = "none",
+}
+
+/**
+ * Get the session-based temp directory for test workspaces
+ * Uses POCHI_TEST_SESSION_ID from environment for deterministic paths
+ */
+function getSessionTempDir(): string {
+  const sessionId = process.env.POCHI_TEST_SESSION_ID;
+  if (!sessionId) {
+    throw new Error(
+      "POCHI_TEST_SESSION_ID environment variable is not set. This should be set in wdio.conf.ts onPrepare.",
+    );
+  }
+  return path.resolve(".wdio-vscode-service", `pochi-test-${sessionId}`);
+}
+
+/**
+ * Get the deterministic workspace path for a given workspace type
+ * @param type - The workspace type
+ * @returns The absolute path to the workspace directory
+ */
+export function getWorkspacePath(type: WorkspaceType): string {
+  if (type === WorkspaceType.NONE) {
+    return "";
+  }
+  return path.join(getSessionTempDir(), type);
+}
 
 /**
  * Create a plain workspace folder without git initialization
  */
 export async function createPlainWorkspace(): Promise<string> {
-  const workspaceDir = path.join(TEMP_DIR, `plain-${Date.now()}`);
-  fs.mkdirSync(workspaceDir, { recursive: true });
-  fs.writeFileSync(path.join(workspaceDir, "README.md"), "# Plain Folder");
+  const workspaceDir = getWorkspacePath(WorkspaceType.PLAIN);
+  await fs.mkdir(workspaceDir, { recursive: true });
+  await fs.writeFile(path.join(workspaceDir, "README.md"), "# Plain Folder");
+  console.log(`[Workspace Setup] Created plain workspace at: ${workspaceDir}`);
   return workspaceDir;
 }
 
@@ -20,16 +56,21 @@ export async function createPlainWorkspace(): Promise<string> {
  * Create a git repository workspace with initial commit
  */
 export async function createGitRepoWorkspace(): Promise<string> {
-  const workspaceDir = path.join(TEMP_DIR, `git-repo-${Date.now()}`);
-  fs.mkdirSync(workspaceDir, { recursive: true });
+  const workspaceDir = getWorkspacePath(WorkspaceType.GIT_REPO);
+  await fs.mkdir(workspaceDir, { recursive: true });
 
-  execSync("git init", { cwd: workspaceDir });
-  execSync('git config user.email "test@example.com"', { cwd: workspaceDir });
-  execSync('git config user.name "Test User"', { cwd: workspaceDir });
-  fs.writeFileSync(path.join(workspaceDir, "README.md"), "# Git Repo");
-  execSync("git add .", { cwd: workspaceDir });
-  execSync('git commit -m "Initial commit"', { cwd: workspaceDir });
+  await execAsync("git init", { cwd: workspaceDir });
+  await execAsync('git config user.email "test@example.com"', {
+    cwd: workspaceDir,
+  });
+  await execAsync('git config user.name "Test User"', { cwd: workspaceDir });
+  await fs.writeFile(path.join(workspaceDir, "README.md"), "# Git Repo");
+  await execAsync("git add .", { cwd: workspaceDir });
+  await execAsync('git commit -m "Initial commit"', { cwd: workspaceDir });
 
+  console.log(
+    `[Workspace Setup] Created git-repo workspace at: ${workspaceDir}`,
+  );
   return workspaceDir;
 }
 
@@ -38,97 +79,71 @@ export async function createGitRepoWorkspace(): Promise<string> {
  * Returns the path to the main worktree
  */
 export async function createGitWorktreesWorkspace(): Promise<string> {
-  const mainDir = path.join(TEMP_DIR, `git-main-with-wt-${Date.now()}`);
-  fs.mkdirSync(mainDir, { recursive: true });
+  const mainDir = getWorkspacePath(WorkspaceType.GIT_WORKTREES);
+  await fs.mkdir(mainDir, { recursive: true });
 
   // Initialize main repo
-  execSync("git init", { cwd: mainDir });
-  execSync('git config user.email "test@example.com"', { cwd: mainDir });
-  execSync('git config user.name "Test User"', { cwd: mainDir });
-  fs.writeFileSync(path.join(mainDir, "README.md"), "# Main Repo");
-  execSync("git add .", { cwd: mainDir });
-  execSync('git commit -m "Initial commit"', { cwd: mainDir });
+  await execAsync("git init", { cwd: mainDir });
+  await execAsync('git config user.email "test@example.com"', { cwd: mainDir });
+  await execAsync('git config user.name "Test User"', { cwd: mainDir });
+  await fs.writeFile(path.join(mainDir, "README.md"), "# Main Repo");
+  await execAsync("git add .", { cwd: mainDir });
+  await execAsync('git commit -m "Initial commit"', { cwd: mainDir });
 
-  // Create a worktree
-  const wtDir = path.join(TEMP_DIR, `git-wt-linked-${Date.now()}`);
-  execSync(`git worktree add ${wtDir}`, { cwd: mainDir });
+  // Create a worktree in a sibling directory with a new branch
+  const wtDir = path.join(getSessionTempDir(), "git-worktree-linked");
+  await execAsync(`git worktree add ${wtDir} -b worktree-branch`, {
+    cwd: mainDir,
+  });
 
+  console.log(
+    `[Workspace Setup] Created git-worktrees workspace at: ${mainDir}`,
+  );
   return mainDir;
 }
 
 /**
- * Open a workspace folder in VSCode
- * Handles window switching and waits for workspace to load
+ * Create all workspaces needed for tests
+ * Called from wdio.conf.ts onPrepare hook
  */
-export async function openWorkspace(folderPath: string): Promise<void> {
-  console.log(`[Workspace Setup] Opening workspace: ${folderPath}`);
+export async function createAllWorkspaces(): Promise<void> {
+  console.log("[Workspace Setup] Creating all workspaces...");
 
-  const initialHandles = await browser.getWindowHandles();
+  await Promise.all([
+    createPlainWorkspace(),
+    createGitRepoWorkspace(),
+    createGitWorktreesWorkspace(),
+  ]);
 
-  // Open the folder in a new window
-  await browser.executeWorkbench(async (vscode, folderPath) => {
-    const uri = vscode.Uri.file(folderPath);
-    await vscode.commands.executeCommand("vscode.openFolder", uri, {
-      forceNewWindow: true,
-    });
-  }, folderPath);
-
-  // Wait for new window to open
-  await browser.waitUntil(
-    async () => {
-      const handles = await browser.getWindowHandles();
-      return handles.length > initialHandles.length;
-    },
-    { timeout: 10000, timeoutMsg: "New window did not open" },
-  );
-
-  // Switch to the new window
-  const handles = await browser.getWindowHandles();
-  const newWindowHandle = handles.find((h) => !initialHandles.includes(h));
-  if (newWindowHandle) {
-    await browser.switchToWindow(newWindowHandle);
-  }
-
-  // Wait for VSCode to start reloading
-  await browser.pause(2000);
-
-  // Wait for workspace to load and title to contain folder name
-  const folderName = path.basename(folderPath);
-  console.log(
-    `[Workspace Setup] Waiting for workspace ${folderName} to load...`,
-  );
-
-  await browser.waitUntil(
-    async () => {
-      try {
-        const title = await browser.getTitle();
-        return title.includes(folderName);
-      } catch (e) {
-        return false;
-      }
-    },
-    { timeout: 20000, timeoutMsg: `Workspace ${folderName} did not load` },
-  );
-
-  console.log("[Workspace Setup] Workspace loaded successfully.");
+  console.log("[Workspace Setup] All workspaces created successfully.");
 }
 
 /**
  * Clean up a workspace directory
  */
 export async function cleanupWorkspace(workspacePath: string): Promise<void> {
-  if (fs.existsSync(workspacePath)) {
+  try {
+    await fs.access(workspacePath);
     console.log(`[Workspace Setup] Cleaning up workspace: ${workspacePath}`);
-    fs.rmSync(workspacePath, { recursive: true, force: true });
+    await fs.rm(workspacePath, { recursive: true, force: true });
+  } catch {
+    // Directory doesn't exist, nothing to clean up
   }
 }
 
 /**
- * Clean up all test workspaces
+ * Clean up all test workspaces for the current session
+ * Called from wdio.conf.ts onComplete hook
  */
 export async function cleanupAllWorkspaces(): Promise<void> {
-  if (fs.existsSync(TEMP_DIR)) {
-    console.log(`[Workspace Setup] Cleaning up all workspaces in: ${TEMP_DIR}`);
-    fs.rmSync(TEMP_DIR, { recursive: true, force: true });
+  const sessionDir = getSessionTempDir();
+  try {
+    await fs.access(sessionDir);
+    console.log(
+      `[Workspace Setup] Cleaning up all workspaces in: ${sessionDir}`,
+    );
+    await fs.rm(sessionDir, { recursive: true, force: true });
+  } catch {
+    // Directory doesn't exist, nothing to clean up
   }
 }
