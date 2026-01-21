@@ -232,8 +232,8 @@ function Chat({ user, uid, info }: ChatProps) {
         return false;
       }
 
-      if(shouldStopAutoApprove(x)) {
-        autoApproveGuard.current = 'stop';
+      if (shouldStopAutoApprove(x)) {
+        autoApproveGuard.current = "stop";
       }
 
       if (autoApproveGuard.current === "stop") {
