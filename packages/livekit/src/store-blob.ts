@@ -82,28 +82,29 @@ export function findBlob(
   url: URL,
   mediaType: string,
 ): { data: string; mediaType: string } | undefined {
+  let dataPromise: Promise<string>;
+
   if (url.protocol === StoreBlobProtocol) {
     if (!blobStore) {
       return undefined;
     }
     // We return a promise that resolves to the blob data
-    return {
-      // @ts-ignore: promise is resolved in flexible-chat-transport. we keep the string type to make toModelOutput type happy.
-      data: blobStore.get(url.toString()).then((blob) => {
-        if (!blob) {
-          throw new Error(`Blob ${url} not found`);
-        }
-        return toBase64(blob.data);
-      }),
-      mediaType,
-    };
-  }
-  return {
-    // @ts-ignore: promise is resolved in flexible-chat-transport. we keep the string type to make toModelOutput type happy.
-    data: fetch(url)
+    dataPromise = blobStore.get(url.toString()).then((blob) => {
+      if (!blob) {
+        throw new Error(`Blob ${url} not found`);
+      }
+      return toBase64(blob.data);
+    });
+  } else {
+    dataPromise = fetch(url)
       .then((x) => x.blob())
       .then((blob) => blob.arrayBuffer())
-      .then((data) => toBase64(new Uint8Array(data))),
+      .then((data) => toBase64(new Uint8Array(data)));
+  }
+
+  return {
+    // @ts-ignore: promise is resolved in flexible-chat-transport. we keep the string type to make toModelOutput type happy.
+    data: dataPromise,
     mediaType,
   };
 }
