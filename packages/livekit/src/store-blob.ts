@@ -1,6 +1,5 @@
 import { MediaOutput } from "@getpochi/tools";
 import z from "zod";
-import { StoreBlobProtocol } from ".";
 import type { BlobStore } from "./blob-store";
 
 export async function processContentOutput(
@@ -84,7 +83,7 @@ export function findBlob(
 ): { data: string; mediaType: string } | undefined {
   let dataPromise: Promise<string>;
 
-  if (url.protocol === StoreBlobProtocol) {
+  if (url.protocol === blobStore.protocol) {
     // We return a promise that resolves to the blob data
     dataPromise = blobStore.get(url.toString()).then((blob) => {
       if (!blob) {
@@ -144,11 +143,14 @@ export function makeDownloadFunction(blobStore: BlobStore) {
         data: Uint8Array;
         mediaType: string | undefined;
       } | null> => {
-        if (isUrlSupportedByModel) return null;
-        if (url.protocol === StoreBlobProtocol) {
+        if (isUrlSupportedByModel && url.protocol.startsWith("http")) {
+          return null;
+        }
+        if (url.protocol === blobStore.protocol) {
           const blob = await blobStore.get(url.toString());
-          if (!blob)
+          if (!blob) {
             throw new Error(`Blob with checksum ${url.pathname} not found`);
+          }
           return {
             data: blob.data,
             mediaType: blob.mimeType,

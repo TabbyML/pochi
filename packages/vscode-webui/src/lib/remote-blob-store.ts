@@ -2,6 +2,7 @@ import { getServerBaseUrl } from "@getpochi/common/vscode-webui-bridge";
 import type { BlobStore } from "@getpochi/livekit";
 
 class RemoteBlobStore implements BlobStore {
+  readonly protocol = "https:";
   async put(
     data: Uint8Array,
     mimeType: string,

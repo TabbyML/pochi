@@ -4,6 +4,7 @@ import path from "node:path";
 import type { BlobStore } from "@getpochi/livekit";
 
 export class NodeBlobStore implements BlobStore {
+  readonly protocol = "store-blob:";
   private readonly dir: string;
 
   constructor() {

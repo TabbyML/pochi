@@ -1,4 +1,5 @@
 export interface BlobStore {
+  readonly protocol: string;
   put(
     data: Uint8Array,
     mimeType: string,

@@ -11,6 +11,4 @@ export type {
 } from "./types";
 export type { BlobStore } from "./blob-store";
 
-export const StoreBlobProtocol = "store-blob:";
-
-export { processContentOutput, fileToUri } from "./store-blob";
+export { processContentOutput, fileToUri, findBlob } from "./store-blob";
