@@ -7,7 +7,7 @@ import type {
   SkillFile,
   ValidSkillFile,
 } from "@getpochi/common/vscode-webui-bridge";
-import { isValidSkill } from "@getpochi/common/vscode-webui-bridge";
+import { isValidSkillFile } from "@getpochi/common/vscode-webui-bridge";
 import { uniqueBy } from "remeda";
 
 const logger = getLogger("loadSkills");
@@ -86,7 +86,7 @@ export async function loadSkills(
     // Filter out invalid skills for CLI usage
     const validSkills = uniqueBy(allSkills, (skill) => skill.name).filter(
       (skill): skill is ValidSkillFile => {
-        if (isValidSkill(skill)) {
+        if (isValidSkillFile(skill)) {
           return true;
         }
         logger.warn(

@@ -16,7 +16,7 @@ import {
 } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { useTheme } from "../src/components/theme-provider";
-import { DefauleStoreOptionsProvider } from "../src/lib/use-default-store";
+import { DefaultStoreOptionsProvider } from "../src/lib/use-default-store";
 
 const vscodeViewports = {
   vscodeSmall: {
@@ -49,11 +49,11 @@ const rootRoute = createRootRoute({
   component: () => {
     const Component = storybookStoryComponent;
     return (
-      <DefauleStoreOptionsProvider storeId="storybook-store" jwt={null}>
+      <DefaultStoreOptionsProvider storeId="storybook-store" jwt={null}>
         <ChatContextProvider>
           <StoryWrapper>{Component ? <Component /> : null}</StoryWrapper>
         </ChatContextProvider>
-      </DefauleStoreOptionsProvider>
+      </DefaultStoreOptionsProvider>
     );
   },
 });

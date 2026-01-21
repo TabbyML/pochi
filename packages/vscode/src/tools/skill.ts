@@ -1,5 +1,5 @@
 import { getLogger } from "@getpochi/common";
-import { isValidSkill } from "@getpochi/common/vscode-webui-bridge";
+import { isValidSkillFile } from "@getpochi/common/vscode-webui-bridge";
 import type { ClientTools, ToolFunctionType } from "@getpochi/tools";
 import { container } from "tsyringe";
 import { SkillManager } from "../lib/skill-manager";
@@ -27,7 +27,7 @@ export const skill: ToolFunctionType<ClientTools["skill"]> = async (args) => {
     }
 
     // Check if skill is valid
-    if (!isValidSkill(skill)) {
+    if (!isValidSkillFile(skill)) {
       const invalidSkill = skill as { message?: string };
       return {
         result: `Skill "${args.skill}" is invalid: ${

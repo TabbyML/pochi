@@ -1,5 +1,46 @@
-interface GlobalThis {
-  __workspacePath?: string;
+import path from "node:path";
+import {
+  WorkspaceType,
+  cleanupAllWorkspaces,
+  createAllWorkspaces,
+  getWorkspacePath,
+} from "./tests/lib/workspace-setup.js";
+
+// Generate session ID for deterministic workspace paths
+const sessionId = Date.now().toString(36);
+process.env.POCHI_TEST_SESSION_ID = sessionId;
+
+/**
+ * Capability with specs - extends WebdriverIO.Capabilities with specs property
+ * which is allowed per-capability according to WebdriverIO docs
+ */
+interface CapabilityWithSpecs extends WebdriverIO.Capabilities {
+  specs?: string[];
+}
+
+/**
+ * Create a capability configuration for a specific workspace type
+ */
+function createCapability(
+  workspaceType: WorkspaceType,
+  specPattern: string,
+): CapabilityWithSpecs {
+  const workspacePath = getWorkspacePath(workspaceType);
+
+  return {
+    browserName: "vscode",
+    browserVersion: "1.108.0",
+    "wdio:enforceWebDriverClassic": true,
+    "wdio:vscodeOptions": {
+      extensionPath: __dirname,
+      storagePath: path.join(__dirname, ".wdio-vscode-service"),
+      userSettings: {
+        "editor.fontSize": 14,
+      },
+      ...(workspacePath ? { workspacePath } : {}),
+    },
+    specs: [specPattern],
+  };
 }
 
 export const config: WebdriverIO.Config = {
@@ -16,24 +57,16 @@ export const config: WebdriverIO.Config = {
 
   runnerEnv: {
     POCHI_TEST: "true",
+    POCHI_TEST_SESSION_ID: sessionId,
   },
 
   //
   // ==================
   // Specify Test Files
   // ==================
-  // Define which test specs should run. The pattern is relative to the directory
-  // of the configuration file being run.
+  // Each capability defines its own specs array, so we don't need a global one.
+  // The pattern is relative to the directory of the configuration file being run.
   //
-  // The specs are defined as an array of spec files (optionally using wildcards
-  // that will be expanded). The test for each spec file will be run in a separate
-  // worker process. In order to have a group of spec files run in the same worker
-  // process simply enclose them in an array within the specs array.
-  //
-  // The path of the spec files will be resolved relative from the directory of
-  // of the config file unless it's absolute.
-  //
-  specs: ["./tests/specs/**/*.ts"],
   // Patterns to exclude.
   exclude: [
     // 'path/to/excluded/files'
@@ -61,20 +94,19 @@ export const config: WebdriverIO.Config = {
   // https://saucelabs.com/platform/platform-configurator
   //
   capabilities: [
-    {
-      browserName: "vscode",
-      browserVersion: "1.108.0", // also possible: "insiders" or a specific version e.g. "1.80.0"
-      "wdio:enforceWebDriverClassic": true, // this is important for using WebdriverIO v9!
-      "wdio:vscodeOptions": {
-        // points to directory where extension package.json is located
-        extensionPath: __dirname,
-        // optional VS Code settings
-        userSettings: {
-          "editor.fontSize": 14,
-        },
-        // workspacePath: path.join(__dirname, "test/test-workspace"),
-      },
-    },
+    createCapability(
+      WorkspaceType.GIT_REPO,
+      "./tests/specs/git-workspace/**/*.ts",
+    ),
+    createCapability(
+      WorkspaceType.PLAIN,
+      "./tests/specs/plain-workspace/**/*.ts",
+    ),
+    createCapability(
+      WorkspaceType.GIT_WORKTREES,
+      "./tests/specs/git-worktrees-workspace/**/*.ts",
+    ),
+    createCapability(WorkspaceType.NONE, "./tests/specs/no-workspace/**/*.ts"),
   ],
 
   //
@@ -84,7 +116,7 @@ export const config: WebdriverIO.Config = {
   // Define all options that are relevant for the WebdriverIO instance here
   //
   // Level of logging verbosity: trace | debug | info | warn | error | silent
-  logLevel: "info",
+  logLevel: "warn",
   //
   // Set specific log levels per logger
   // loggers:
@@ -169,8 +201,10 @@ export const config: WebdriverIO.Config = {
    * @param {object} config wdio configuration object
    * @param {Array.<Object>} capabilities list of capabilities details
    */
-  // onPrepare: function (config, capabilities) {
-  // },
+  onPrepare: async (_config, _capabilities) => {
+    console.log(`[WDIO] Session ID: ${sessionId}`);
+    await createAllWorkspaces();
+  },
   /**
    * Gets executed before a worker process is spawned and can be used to initialize specific service
    * for that worker as well as modify runtime environments in an async fashion.
@@ -221,24 +255,8 @@ export const config: WebdriverIO.Config = {
    * Hook that gets executed before the suite starts
    * @param {object} suite suite details
    */
-  beforeSuite: async (suite) => {
-    // Import workspace setup functions
-    const { detectWorkspaceType, setupAndOpenWorkspace } = await import(
-      "./tests/lib/workspace-registry.js"
-    );
-
-    // Detect workspace type from the spec file path
-    const specPath = suite.file;
-    const workspaceType = detectWorkspaceType(specPath);
-
-    // Setup and open workspace if needed
-    if (workspaceType !== "none") {
-      const workspacePath = await setupAndOpenWorkspace(workspaceType);
-
-      // Store active workspace path for cleanup
-      (globalThis as GlobalThis).__workspacePath = workspacePath;
-    }
-  },
+  // beforeSuite: async (suite) => {
+  // },
   /**
    * Function to be executed before a test (in Mocha/Jasmine) starts.
    */
@@ -273,19 +291,8 @@ export const config: WebdriverIO.Config = {
    * Hook that gets executed after the suite has ended
    * @param {object} suite suite details
    */
-  afterSuite: async (_suite) => {
-    // Import cleanup function
-    const { cleanupWorkspace } = await import("./tests/lib/workspace-setup.js");
-    const fs = await import("node:fs");
-
-    // Clean up the workspace if one was created
-    const workspacePath = (globalThis as GlobalThis).__workspacePath;
-    if (workspacePath && fs.existsSync(workspacePath)) {
-      await cleanupWorkspace(workspacePath);
-      // Clear the stored path
-      (globalThis as GlobalThis).__workspacePath = undefined;
-    }
-  },
+  // afterSuite: async (_suite) => {
+  // },
   /**
    * Runs after a WebdriverIO command gets executed
    * @param {string} commandName hook command name
@@ -318,10 +325,11 @@ export const config: WebdriverIO.Config = {
    * @param {object} exitCode 0 - success, 1 - fail
    * @param {object} config wdio configuration object
    * @param {Array.<Object>} capabilities list of capabilities details
-   * @param {<Object>} results object containing test results
+   * {<Object>} results object containing test results
    */
-  // onComplete: function(exitCode, config, capabilities, results) {
-  // },
+  onComplete: async (_exitCode, _config, _capabilities, _results) => {
+    await cleanupAllWorkspaces();
+  },
   /**
    * Gets executed when a refresh happens.
    * @param {string} oldSessionId session ID of the old session

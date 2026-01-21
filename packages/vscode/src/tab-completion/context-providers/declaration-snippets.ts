@@ -1,6 +1,7 @@
 import { getLogger } from "@/lib/logger";
 import { injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
+import { extractSemanticTokenRanges } from "../utils";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import {
   type TextDocumentRangeContext,
@@ -25,10 +26,7 @@ export class DeclarationSnippetsProvider {
     }
 
     logger.trace("Collecting snippets for:", { location });
-    const extractedSymbols = await extractSemanticTokenPositions(
-      location,
-      token,
-    );
+    const extractedSymbols = await extractSemanticTokenRanges(location, token);
     if (!extractedSymbols) {
       return undefined;
     }
@@ -62,7 +60,7 @@ export class DeclarationSnippetsProvider {
         // Stop collecting snippets if the max number of snippets is reached
         break;
       }
-      const sourcePosition = symbols[symbolIndex]?.position;
+      const sourcePosition = symbols[symbolIndex]?.range.start;
       if (!sourcePosition) {
         continue;
       }
@@ -123,81 +121,4 @@ export class DeclarationSnippetsProvider {
     logger.trace("Collected snippets:", snippets);
     return snippets;
   }
-}
-
-async function extractSemanticTokenPositions(
-  location: vscode.Location,
-  token?: vscode.CancellationToken | undefined,
-): Promise<
-  | {
-      position: vscode.Position;
-      type: string | undefined;
-    }[]
-  | undefined
-> {
-  if (token?.isCancellationRequested) {
-    return undefined;
-  }
-
-  const legend: vscode.SemanticTokensLegend | undefined =
-    await vscode.commands.executeCommand(
-      "vscode.provideDocumentRangeSemanticTokensLegend",
-      location.uri,
-      location.range,
-    );
-  if (!legend || !legend.tokenTypes) {
-    return undefined;
-  }
-  if (token?.isCancellationRequested) {
-    return undefined;
-  }
-
-  const tokens: vscode.SemanticTokens | undefined =
-    await vscode.commands.executeCommand(
-      "vscode.provideDocumentRangeSemanticTokens",
-      location.uri,
-      location.range,
-    );
-  if (!tokens || !tokens.data) {
-    return undefined;
-  }
-  if (token?.isCancellationRequested) {
-    return undefined;
-  }
-
-  const data: number[] = Array.isArray(tokens.data)
-    ? tokens.data
-    : Object.values(tokens.data);
-  const semanticSymbols: {
-    position: vscode.Position;
-    type: string | undefined;
-  }[] = [];
-  let line = 0;
-  let character = 0;
-  for (let i = 0; i + 4 < data.length; i += 5) {
-    const deltaLine = data[i];
-    const deltaChar = data[i + 1];
-    // i + 2 is token length, not used here
-    const typeIndex = data[i + 3];
-    // i + 4 is type modifiers, not used here
-    if (
-      deltaLine === undefined ||
-      deltaChar === undefined ||
-      typeIndex === undefined
-    ) {
-      break;
-    }
-
-    line += deltaLine;
-    if (deltaLine > 0) {
-      character = deltaChar;
-    } else {
-      character += deltaChar;
-    }
-    semanticSymbols.push({
-      position: new vscode.Position(line, character),
-      type: legend.tokenTypes[typeIndex],
-    });
-  }
-  return semanticSymbols;
 }

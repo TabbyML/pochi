@@ -23,7 +23,7 @@ export interface InvalidSkillFile extends Partial<Skill> {
 
 export type SkillFile = ValidSkillFile | InvalidSkillFile;
 
-export const isValidSkill = (
+export const isValidSkillFile = (
   skill: Skill | SkillFile,
 ): skill is ValidSkillFile => {
   return (

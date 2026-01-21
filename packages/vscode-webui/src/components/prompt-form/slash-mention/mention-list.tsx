@@ -1,7 +1,6 @@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { vscodeHost } from "@/lib/vscode";
-import type { ValidSkillFile } from "@getpochi/common/vscode-webui-bridge";
-import type { CustomAgent } from "@getpochi/tools";
+import type { CustomAgent, Skill } from "@getpochi/tools";
 import { FileIcon } from "lucide-react";
 import {
   forwardRef,
@@ -47,7 +46,7 @@ export type SlashCandidate =
       id: string;
       label: string;
       path: string;
-      rawData: ValidSkillFile;
+      rawData: Skill;
     };
 
 export interface SlashMentionListProps {
@@ -162,22 +161,7 @@ const CandidateItemView = memo(function SlashCandidateItemView({
 }: CandidateItemViewProps) {
   const { t } = useTranslation();
   const ref = useScrollIntoView(isSelected);
-
-  const getTypeLabel = (
-    type: SlashCandidate["type"],
-    t: ReturnType<typeof useTranslation>["t"],
-  ) => {
-    switch (type) {
-      case "workflow":
-        return t("mentionList.workflow");
-      case "custom-agent":
-        return t("mentionList.agent");
-      case "skill":
-        return t("mentionList.skill");
-      default:
-        return "";
-    }
-  };
+  const label = getTypeLabel(data);
 
   return (
     <div
@@ -194,11 +178,24 @@ const CandidateItemView = memo(function SlashCandidateItemView({
         </span>
       </div>
       <span className="text-muted-foreground text-xs">
-        {getTypeLabel(data.type, t)}
+        {label ? t(label) : ""}
       </span>
     </div>
   );
 });
+
+function getTypeLabel(option: SlashCandidate) {
+  switch (option.type) {
+    case "workflow":
+      return "mentionList.workflow";
+    case "custom-agent":
+      return "mentionList.agent";
+    case "skill":
+      return "mentionList.skill";
+    default:
+      return "";
+  }
+}
 
 function getOptionKey(option: SlashCandidate, idx: number) {
   if (option.type === "custom-agent") {

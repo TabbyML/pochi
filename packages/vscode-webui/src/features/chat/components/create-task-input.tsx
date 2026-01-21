@@ -19,6 +19,7 @@ import { useMcpConfigOverride } from "@/lib/hooks/use-mcp-config-override";
 import { useTaskInputDraft } from "@/lib/hooks/use-task-input-draft";
 import { useWorktrees } from "@/lib/hooks/use-worktrees";
 import { vscodeHost } from "@/lib/vscode";
+import { prompts } from "@getpochi/common";
 import type { GitWorktree, Review } from "@getpochi/common/vscode-webui-bridge";
 import { PaperclipIcon } from "lucide-react";
 import type React from "react";
@@ -217,8 +218,8 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
       if (content.length === 0 && files.length === 0) return;
 
       if (shouldCreatePlan) {
-        // Use the built-in planner custom agent to create a plan
-        content = `<custom-agent id="planner">newTask:planner</custom-agent> ${content}`;
+        // Use built-in planner agent
+        content = `${prompts.customAgent("planner")} ${content}`;
       }
 
       // Set isCreatingTask state true

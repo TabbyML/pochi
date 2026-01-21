@@ -9,7 +9,7 @@ import type {
   InvalidSkillFile,
   SkillFile,
 } from "@getpochi/common/vscode-webui-bridge";
-import { isValidSkill } from "@getpochi/common/vscode-webui-bridge";
+import { isValidSkillFile } from "@getpochi/common/vscode-webui-bridge";
 import { AlertTriangle, Edit, Zap } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { AccordionSection } from "../ui/accordion-section";
@@ -54,7 +54,7 @@ export const SkillSection: React.FC = () => {
     return (
       <div className="space-y-2">
         {skills.map((skill) => {
-          const isValid = isValidSkill(skill);
+          const isValid = isValidSkillFile(skill);
           const subtitle = !isValid ? (
             <Tooltip>
               <TooltipTrigger asChild>

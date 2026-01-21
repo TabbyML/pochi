@@ -13,7 +13,7 @@ import hashObject from "object-hash";
 import { inject, injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
 import { isBold, isItalic, isStrikethrough, isUnderline } from "./font";
-import type { RenderImageInput, RenderImageOutput } from "./types";
+import type { RenderImageInput, RenderImageOutput, ThemedToken } from "./types";
 
 const logger = getLogger("TabCompletion.CanvasRenderer");
 
@@ -52,8 +52,36 @@ export class CanvasRenderer implements vscode.Disposable {
       return this.cache.get(inputHash);
     }
 
-    if (input.tokenLines.length < 1) {
+    if (input.tokenLines.length === 0) {
       return undefined;
+    }
+
+    // Convert tabs to spaces
+    const tokenLines: ThemedToken[][] = [];
+    const offsetMap: number[][] = [];
+    for (const line of input.tokenLines) {
+      const tokenLine: ThemedToken[] = [];
+      const offsetMapLine: number[] = [];
+      offsetMapLine[0] = 0;
+      let offset = 0;
+      let updatedOffset = 0;
+      for (const token of line) {
+        tokenLine.push({
+          ...token,
+          text: token.text.replace(/\t/g, " ".repeat(input.tabSize)),
+        });
+        for (let i = 0; i < token.text.length; i++) {
+          offset++;
+          if (token.text[i] === "\t") {
+            updatedOffset += input.tabSize;
+          } else {
+            updatedOffset++;
+          }
+          offsetMapLine[offset] = updatedOffset;
+        }
+      }
+      tokenLines.push(tokenLine);
+      offsetMap.push(offsetMapLine);
     }
 
     const maxWidth = 2000;
@@ -64,7 +92,7 @@ export class CanvasRenderer implements vscode.Disposable {
     const backgroundColor = tokenColorMap[input.background];
 
     const paragraphs: Paragraph[] = [];
-    for (const tokenLine of input.tokenLines) {
+    for (const tokenLine of tokenLines) {
       const pb = canvasKit.ParagraphBuilder.MakeFromFontProvider(
         new canvasKit.ParagraphStyle({
           textStyle: {
@@ -156,9 +184,11 @@ export class CanvasRenderer implements vscode.Disposable {
       if (!paragraph) {
         continue;
       }
+      const startOffset = offsetMap[decoration.line][decoration.start];
+      const endOffset = offsetMap[decoration.line][decoration.end];
       const rectDirs = paragraph.getRectsForRange(
-        decoration.start,
-        decoration.end,
+        startOffset,
+        endOffset,
         canvasKit.RectHeightStyle.Tight,
         canvasKit.RectWidthStyle.Tight,
       );

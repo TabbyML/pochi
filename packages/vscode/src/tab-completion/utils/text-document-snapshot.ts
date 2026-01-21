@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import type { LineNumberRange } from "./range";
 import { type TextEdit, applyEdit } from "./text-edit";
 
 enum CharCode {
@@ -268,9 +269,14 @@ export class TextDocumentSnapshot implements vscode.TextDocument {
   }
 }
 
-export function getLines(textDocument: vscode.TextDocument): string[] {
+export function getLines(
+  textDocument: vscode.TextDocument,
+  lineRange?: LineNumberRange,
+): string[] {
   const lines: string[] = [];
-  for (let i = 0; i < textDocument.lineCount; i++) {
+  const startLine = lineRange ? lineRange.start : 0;
+  const endLine = lineRange ? lineRange.end : textDocument.lineCount;
+  for (let i = startLine; i < endLine; i++) {
     lines.push(textDocument.lineAt(i).text);
   }
   return lines;

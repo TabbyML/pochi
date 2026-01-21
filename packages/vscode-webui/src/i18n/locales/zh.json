@@ -458,7 +458,7 @@
     "forkedTaskTitle": "任务分支自：{{taskTitle}}"
   },
   "recommendSettings": {
-    "title": "Pochi 将修改以下设置",
+    "title": "Pochi 推荐以下设置",
     "hide": "隐藏",
     "options": {
       "enablePochiLayout": "启用 Pochi 布局",

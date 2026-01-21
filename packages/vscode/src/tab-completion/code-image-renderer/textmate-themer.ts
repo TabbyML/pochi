@@ -1,10 +1,11 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { getLogger } from "@/lib/logger";
-import { mergeAll } from "remeda";
+import { deepmerge } from "deepmerge-ts";
 import { injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
 import type * as VSCodeTextmate from "vscode-textmate";
+import { type LineNumberRange, getLines } from "../utils";
 import type { ColorMap, ThemedDocument, ThemedToken } from "./types";
 
 const logger = getLogger("TabCompletion.TextmateThemer");
@@ -37,6 +38,7 @@ interface ThemeColors {
   background: string;
   foreground: string;
   tokenColors: VSCodeTextmate.IRawTheme["settings"];
+  semanticTokenColors: Record<string, string>; // Not used for now
 }
 
 const DefaultBackground = "#1E1E1E";
@@ -87,23 +89,45 @@ export class TextmateThemer implements vscode.Disposable {
     this.themeColors = themeColors;
   }
 
-  async theme(lines: string[], languageId: string): Promise<ThemedDocument> {
+  async theme(
+    document: vscode.TextDocument,
+    range: LineNumberRange,
+    cancellationToken?: vscode.CancellationToken | undefined,
+  ): Promise<ThemedDocument> {
+    const tokenLines = await this.runTextMate(
+      document,
+      range,
+      cancellationToken,
+    );
+    if (tokenLines) {
+      return tokenLines;
+    }
+
     const defaultResult: ThemedDocument = {
       background: 1,
       foreground: 2,
-      tokenLines: lines.map((line) => [{ text: line }]),
+      tokenLines: getLines(document, range).map((line) => [{ text: line }]),
       colorMap: [null, DefaultBackground, DefaultForeground] as ColorMap,
     };
+    return defaultResult;
+  }
+
+  private async runTextMate(
+    document: vscode.TextDocument,
+    range: LineNumberRange,
+    cancellationToken?: vscode.CancellationToken | undefined,
+  ) {
+    const languageId = document.languageId;
 
     if (!this.textmate || !this.registry || !this.themeColors) {
       logger.debug("Not initiated.");
-      return defaultResult;
+      return undefined;
     }
 
     const scopeName = findGrammarScopeName(languageId);
     if (!scopeName) {
       logger.debug(`Grammar for languageId "${languageId}" not found.`);
-      return defaultResult;
+      return undefined;
     }
 
     const grammar = await this.registry.loadGrammar(scopeName);
@@ -111,55 +135,65 @@ export class TextmateThemer implements vscode.Disposable {
       logger.debug(
         `Failed to load grammar for scope "${scopeName}" (languageId:  "${languageId}").`,
       );
-      return defaultResult;
+      return undefined;
+    }
+    if (cancellationToken?.isCancellationRequested) {
+      return undefined;
     }
 
     const result: ThemedToken[][] = [];
     let ruleStack: VSCodeTextmate.StateStack | null = this.textmate.INITIAL;
-    for (const line of lines) {
+    for (let lineNumber = 0; lineNumber < range.end; lineNumber++) {
+      const line = document.lineAt(lineNumber).text;
       const lineResult: ThemedToken[] = [];
-      const tokens = grammar.tokenizeLine2(line, ruleStack);
-      const tokensLength = tokens.tokens.length / 2;
-      for (let i = 0; i < tokensLength; i++) {
-        const startIndex = tokens.tokens[2 * i];
-        const nextStartIndex =
-          i + 1 < tokensLength ? tokens.tokens[2 * i + 2] : line.length;
-        const token = line.substring(startIndex, nextStartIndex);
-        if (token === "") {
-          continue;
-        }
-        const metadata = tokens.tokens[2 * i + 1];
-        const foreground = getForeground(metadata);
-        const background = getBackground(metadata);
-        const fontStyle = getFontStyle(metadata);
+      const tokenizedLine = grammar.tokenizeLine2(line, ruleStack);
 
-        lineResult.push({
-          text: token,
-          foreground,
-          background,
-          fontStyle,
-        });
+      if (lineNumber >= range.start) {
+        const tokensLength = tokenizedLine.tokens.length / 2;
+        for (let i = 0; i < tokensLength; i++) {
+          const startIndex = tokenizedLine.tokens[2 * i];
+          const nextStartIndex =
+            i + 1 < tokensLength
+              ? tokenizedLine.tokens[2 * i + 2]
+              : line.length;
+          const token = line.substring(startIndex, nextStartIndex);
+          if (token === "") {
+            continue;
+          }
+          const metadata = tokenizedLine.tokens[2 * i + 1];
+          const foreground = getForeground(metadata);
+          const background = getBackground(metadata);
+          const fontStyle = getFontStyle(metadata);
+
+          lineResult.push({
+            text: token,
+            foreground,
+            background,
+            fontStyle,
+          });
+        }
+        result.push(lineResult);
       }
-      result.push(lineResult);
 
       if (ruleStack) {
         const diff = this.textmate.diffStateStacksRefEq(
           ruleStack,
-          tokens.ruleStack,
+          tokenizedLine.ruleStack,
         );
         ruleStack = this.textmate.applyStateStackDiff(ruleStack, diff);
       } else {
-        ruleStack = tokens.ruleStack;
+        ruleStack = tokenizedLine.ruleStack;
       }
     }
 
     const colorMap = this.registry.getColorMap();
-    return {
+    const output = {
       colorMap,
       foreground: colorMap.indexOf(this.themeColors.foreground),
       background: colorMap.indexOf(this.themeColors.background),
       tokenLines: result,
     };
+    return output;
   }
 
   dispose() {
@@ -209,6 +243,7 @@ async function loadActiveTheme(): Promise<ThemeColors> {
     background: DefaultBackground,
     foreground: DefaultForeground,
     tokenColors: [],
+    semanticTokenColors: {},
   };
   const themeName = getActiveThemeName() ?? "Default Dark Modern";
   const themeFile = await findThemeFile(themeName);
@@ -247,11 +282,20 @@ async function loadActiveTheme(): Promise<ThemeColors> {
     Array.isArray(themeConfig.tokenColors)
       ? themeConfig.tokenColors
       : [];
+  const semanticTokenColors = (
+    typeof themeConfig === "object" &&
+    "semanticTokenColors" in themeConfig &&
+    typeof themeConfig.semanticTokenColors === "object" &&
+    themeConfig.semanticTokenColors !== null
+      ? themeConfig.semanticTokenColors
+      : {}
+  ) as Record<string, string>;
 
   return {
     foreground,
     background,
     tokenColors,
+    semanticTokenColors,
   };
 }
 
@@ -308,14 +352,8 @@ async function findThemeFile(themeName: string): Promise<string | undefined> {
 
 async function loadThemeFile(
   themePath: string,
-  visitedPaths: Set<string> = new Set(),
+  visitedPaths: readonly string[] = [],
 ): Promise<unknown | undefined> {
-  const normalizedPath = path.normalize(themePath);
-  if (visitedPaths.has(normalizedPath)) {
-    return undefined;
-  }
-  visitedPaths.add(normalizedPath);
-
   const themeJson = JSON.parse(
     await fs.readFile(themePath, { encoding: "utf8" }),
   );
@@ -335,19 +373,23 @@ async function loadThemeFile(
 
   const includes = Array.isArray(include) ? include : [include];
   for (const includeFile of includes) {
-    if (typeof includeFile === "string") {
-      const includePath = path.resolve(currentDir, includeFile);
-      const includedTheme = await loadThemeFile(
-        includePath,
-        new Set(visitedPaths),
-      );
-      if (includedTheme) {
-        includedThemes.push(includedTheme);
-      }
+    if (typeof includeFile !== "string") {
+      continue;
+    }
+    const includePath = path.resolve(currentDir, includeFile);
+    if (visitedPaths.includes(includePath)) {
+      continue;
+    }
+    const includedTheme = await loadThemeFile(includePath, [
+      ...visitedPaths,
+      includePath,
+    ]);
+    if (includedTheme) {
+      includedThemes.push(includedTheme);
     }
   }
 
-  return mergeAll([...includedThemes, themeConfig]);
+  return deepmerge(...includedThemes, themeConfig);
 }
 
 // https://github.com/microsoft/vscode-textmate/blob/76ab07aecfbd7e959ee4b55de3976f7a3ee95f38/src/encodedTokenAttributes.ts

@@ -36,9 +36,8 @@ import { WorktreeManager } from "./git/worktree";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import {
   LayoutManager,
-  getSortedCurrentTabGroups,
+  findActivePochiTaskTab,
   getViewColumnForTerminal,
-  isPochiTaskTab,
 } from "./layout";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import {
@@ -772,33 +771,4 @@ export class CommandManager implements vscode.Disposable {
     }
     this.disposables = [];
   }
-}
-
-function findActivePochiTaskTab():
-  | (vscode.Tab & {
-      input: vscode.TabInputCustom & {
-        viewType: typeof PochiTaskEditorProvider.viewType;
-      };
-    })
-  | undefined {
-  // Try find active tab in active group
-  const activeTab = vscode.window.tabGroups.activeTabGroup.activeTab;
-  if (activeTab && isPochiTaskTab(activeTab)) {
-    return activeTab;
-  }
-  // Otherwise find active tab in other groups
-  const group = getSortedCurrentTabGroups().find(
-    (group) => group.activeTab && isPochiTaskTab(group.activeTab),
-  );
-  if (group?.activeTab && isPochiTaskTab(group.activeTab)) {
-    return group.activeTab;
-  }
-  // Otherwise find first task tab
-  const tab = getSortedCurrentTabGroups()
-    .flatMap((group) => group.tabs)
-    .find((tab) => isPochiTaskTab(tab));
-  if (tab) {
-    return tab;
-  }
-  return undefined;
 }

@@ -311,6 +311,10 @@ function WorktreeSection({
     return `${info.webUrl}/pull/${pullRequest.id}`;
   }, [gitOriginUrl, pullRequest?.id]);
 
+  const visibleTasks = useMemo(() => {
+    return tasks.filter((task) => !!task.title?.trim());
+  }, [tasks]);
+
   return (
     <Collapsible
       open={isExpanded}
@@ -508,9 +512,9 @@ function WorktreeSection({
             // When there is only one workspace group, we let it grow naturally without max-height constraint
           })}
         >
-          {tasks.length > 0 ? (
+          {visibleTasks.length > 0 || hasMore ? (
             <>
-              {tasks.map((task) => {
+              {visibleTasks.map((task) => {
                 return (
                   <div key={task.id} className="py-0.5">
                     <TaskRow

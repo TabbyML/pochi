@@ -1,7 +1,7 @@
 import {
   type SkillFile,
   type ValidSkillFile,
-  isValidSkill,
+  isValidSkillFile,
 } from "@getpochi/common/vscode-webui-bridge";
 import { threadSignal } from "@quilted/threads/signals";
 import { useQuery } from "@tanstack/react-query";
@@ -39,7 +39,7 @@ export function useSkills(filterValidFiles = false) {
 
   return {
     skills: filterValidFiles
-      ? skillsSignal.value.filter(isValidSkill)
+      ? skillsSignal.value.filter(isValidSkillFile)
       : skillsSignal.value,
     isLoading: false,
   };

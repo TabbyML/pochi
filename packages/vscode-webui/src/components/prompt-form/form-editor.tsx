@@ -40,8 +40,9 @@ import { useLatest } from "@/lib/hooks/use-latest";
 import { cn } from "@/lib/utils";
 import { resolveModelFromId } from "@/lib/utils/resolve-model-from-id";
 import {
-  isValidCustomAgent,
-  isValidSkill,
+  BuiltInAgentPath,
+  isValidCustomAgentFile,
+  isValidSkillFile,
 } from "@getpochi/common/vscode-webui-bridge";
 import { threadSignal } from "@quilted/threads/signals";
 import {
@@ -826,7 +827,9 @@ export const debouncedListSlashCommand = debounceWithCachedValue(
     ]);
     const options: SlashCandidate[] = [
       ...customAgents.value
-        .filter((x) => isValidCustomAgent(x))
+        // Filter out built-in agent
+        .filter((x) => x.filePath !== BuiltInAgentPath)
+        .filter((x) => isValidCustomAgentFile(x))
         .map((x) => ({
           type: "custom-agent" as const,
           id: x.name,
@@ -835,7 +838,7 @@ export const debouncedListSlashCommand = debounceWithCachedValue(
           rawData: x,
         })),
       ...skills.value
-        .filter((x) => isValidSkill(x))
+        .filter((x) => isValidSkillFile(x))
         .map((x) => ({
           type: "skill" as const,
           id: x.name,

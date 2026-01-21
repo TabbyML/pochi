@@ -1,10 +1,7 @@
 import { CodeBlock } from "@/components/message";
 import { Button } from "@/components/ui/button";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
+import { CollapsibleSection } from "@/components/ui/collapsible-section";
 import {
   Tooltip,
   TooltipContent,
@@ -29,7 +26,6 @@ interface Props {
 
 export const UserEditsPart: React.FC<Props> = ({ userEdits, checkpoints }) => {
   const { t } = useTranslation();
-  const [isOpen, setIsOpen] = useState(false);
 
   if (!userEdits || userEdits.length === 0) return null;
 
@@ -54,73 +50,59 @@ export const UserEditsPart: React.FC<Props> = ({ userEdits, checkpoints }) => {
   );
 
   return (
-    <Collapsible
-      open={isOpen}
-      onOpenChange={setIsOpen}
-      className="mt-1 mb-2 rounded-md border"
-    >
-      <CollapsibleTrigger asChild>
-        <div className="group flex cursor-pointer select-none items-center justify-between border-border px-3 py-1.5 hover:bg-border/30">
-          <div className="flex min-h-5 items-center gap-1">
-            <ChevronRight
-              className={cn(
-                "size-4 shrink-0 text-muted-foreground transition-transform duration-200",
-                isOpen && "rotate-90",
-              )}
-            />
-            <FilePenLine className="size-3.5 shrink-0" />
-            <div className="font-semibold text-sm">
-              {t("userEdits.title", { defaultValue: "Edits" })}
+    <CollapsibleSection
+      title={
+        <>
+          <FilePenLine className="size-3.5 shrink-0" />
+          {t("userEdits.title", { defaultValue: "Edits" })}
+        </>
+      }
+      actions={
+        <>
+          <span className="text-muted-foreground text-xs">
+            {t("userEdits.filesEdited", {
+              count: userEdits.length,
+              defaultValue: "{{count}} file edited",
+            })}
+          </span>
+          <EditSummary
+            editSummary={{ added: totalAdded, removed: totalRemoved }}
+            className="text-xs"
+          />
+          {checkpoints?.origin && (
+            <div
+              className="hidden items-center group-hover:flex"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-5 w-5"
+                    onClick={onShowDiff}
+                  >
+                    <VscDiffMultiple className="size-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {t("userEdits.showDiff", { defaultValue: "Show Diff" })}
+                </TooltipContent>
+              </Tooltip>
             </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-muted-foreground text-xs">
-              {t("userEdits.filesEdited", {
-                count: userEdits.length,
-                defaultValue: "{{count}} file edited",
-              })}
-            </span>
-            <EditSummary
-              editSummary={{ added: totalAdded, removed: totalRemoved }}
-              className="text-xs"
-            />
-            {checkpoints?.origin && (
-              <div
-                className="hidden items-center group-hover:flex"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-5 w-5"
-                      onClick={onShowDiff}
-                    >
-                      <VscDiffMultiple className="size-3.5" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    {t("userEdits.showDiff", { defaultValue: "Show Diff" })}
-                  </TooltipContent>
-                </Tooltip>
-              </div>
-            )}
-          </div>
-        </div>
-      </CollapsibleTrigger>
-      <CollapsibleContent>
-        <div className="flex flex-col gap-1">
-          {userEdits.map((edit) => (
-            <UserEditItem
-              key={edit.filepath}
-              edit={edit}
-              checkpoints={checkpoints}
-            />
-          ))}
-        </div>
-      </CollapsibleContent>
-    </Collapsible>
+          )}
+        </>
+      }
+      contentClassName="gap-1"
+    >
+      {userEdits.map((edit) => (
+        <UserEditItem
+          key={edit.filepath}
+          edit={edit}
+          checkpoints={checkpoints}
+        />
+      ))}
+    </CollapsibleSection>
   );
 };
 

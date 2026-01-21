@@ -459,7 +459,7 @@
     "forkedTaskTitle": "フォーク 元: {{taskTitle}}"
   },
   "recommendSettings": {
-    "title": "Pochi は以下の設定を変更します",
+    "title": "Pochiは以下の設定を推奨します",
     "hide": "非表示",
     "options": {
       "enablePochiLayout": "Pochi レイアウトを有効にする",

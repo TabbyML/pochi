@@ -28,6 +28,6 @@ describe("Git Worktrees Workspace Tests", () => {
 
   it("workspace should have git repository with worktrees", async () => {
     const title = await workbench.getTitleBar().getTitle();
-    expect(title).toContain("git-main-with-wt");
+    expect(title).toContain("git-worktrees");
   });
 });
