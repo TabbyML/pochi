@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { NodeBlobStore } from "../blob-store";
-
+import { blobStore } from "../node-blob-store";
+import type { BlobStore } from "@getpochi/livekit";
 describe("NodeBlobStore", () => {
-  let store: NodeBlobStore;
+  let store: BlobStore;
 
   beforeEach(() => {
-    store = new NodeBlobStore();
+    store = blobStore
   });
 
   it("should put and get a blob", async () => {

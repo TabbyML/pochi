@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import type { BlobStore } from "@getpochi/livekit";
 
-export class NodeBlobStore implements BlobStore {
+class NodeBlobStore implements BlobStore {
   readonly protocol = "store-blob:";
   private readonly dir: string;
 
@@ -36,16 +36,16 @@ export class NodeBlobStore implements BlobStore {
     await fs.writeFile(filePath, data);
     await fs.writeFile(`${filePath}.meta`, mimeType, "utf-8");
 
-    return `store-blob:${checksum}`;
+    return `${this.protocol}:${checksum}`;
   }
 
   async get(
     url: string,
   ): Promise<{ data: Uint8Array; mimeType: string } | null> {
-    if (!url.startsWith("store-blob:")) {
+    if (!url.startsWith(this.protocol)) {
       return null;
     }
-    const checksum = url.slice("store-blob:".length);
+    const checksum = url.slice(this.protocol.length);
     const filePath = path.join(this.dir, checksum);
 
     try {
@@ -63,3 +63,5 @@ export class NodeBlobStore implements BlobStore {
     return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
   }
 }
+
+export const blobStore = new NodeBlobStore();
