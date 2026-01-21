@@ -1,7 +1,7 @@
 import { Button, buttonVariants } from "@/components/ui/button";
 import { useDefaultStore } from "@/lib/use-default-store";
 import { cn } from "@/lib/utils";
-import { vscodeHost } from "@/lib/vscode";
+import { isVSCodeEnvironment, vscodeHost } from "@/lib/vscode";
 import { catalog } from "@getpochi/livekit";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { ChevronLeft } from "lucide-react";
@@ -26,7 +26,7 @@ export const SubtaskHeader: React.FC<{
   const handleBack = useCallback(
     (event: MouseEvent) => {
       // Async tasks (runAsync=true) need VS Code API to switch panes, sync tasks use React Router
-      if (runAsync && parentCwd) {
+      if (runAsync && parentCwd && isVSCodeEnvironment()) {
         event.preventDefault();
         vscodeHost.openTaskInPanel({
           type: "open-task",

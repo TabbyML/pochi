@@ -189,13 +189,21 @@ function createVSCodeHost(): VSCodeHostApi {
             };
           }
 
-          const output = extractTaskResult(globalStore, taskId);
+          let output: string | undefined;
+          let outputError: string | undefined;
+          try {
+            output = extractTaskResult(globalStore, taskId);
+          } catch (error) {
+            logger.warn("Failed to extract task result", error);
+            outputError = "Task completed but output is not available yet.";
+          }
           const error =
             task.status === "failed"
               ? (getTaskErrorMessage(task.error) ?? "Task failed.")
               : output
                 ? undefined
-                : "Task completed but no attemptCompletion output found.";
+                : (outputError ??
+                  "Task completed but no attemptCompletion output found.");
 
           return {
             output: output ?? "",

@@ -11,7 +11,7 @@ import {
 } from "@/features/settings";
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
 import { useDefaultStore } from "@/lib/use-default-store";
-import { vscodeHost } from "@/lib/vscode";
+import { isVSCodeEnvironment, vscodeHost } from "@/lib/vscode";
 import { useNavigate } from "@tanstack/react-router";
 import { getToolName } from "ai";
 import type { PendingToolCallApproval } from "../hooks/use-pending-tool-call-approval";
@@ -110,9 +110,9 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
             : undefined;
         const subtaskUid = newTaskInput?._meta?.uid;
         if (subtaskUid) {
-          // For async tasks (runAsync: true), we should execute the lifecycle
-          // which will open the panel in runNewTask method
-          if (newTaskInput?.runAsync) {
+          // For async tasks (runAsync: true), use VS Code to open a panel.
+          // In web UI, fall back to manual navigation so the task actually starts.
+          if (newTaskInput?.runAsync && isVSCodeEnvironment()) {
             lifecycle.execute(tools[i].input, {
               contentType: selectedModel?.contentType,
             });
