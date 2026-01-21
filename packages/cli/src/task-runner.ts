@@ -3,7 +3,6 @@ import type { McpHub } from "@getpochi/common/mcp-utils";
 import {
   isAssistantMessageWithEmptyParts,
   isAssistantMessageWithNoToolCalls,
-  isAssistantMessageWithOutputError,
   isAssistantMessageWithPartialToolCalls,
   prepareLastMessageForRetry,
 } from "@getpochi/common/message-utils";
@@ -303,7 +302,6 @@ export class TaskRunner {
     if (
       isAssistantMessageWithEmptyParts(message) ||
       isAssistantMessageWithPartialToolCalls(message) ||
-      isAssistantMessageWithOutputError(message) ||
       lastAssistantMessageIsCompleteWithToolCalls({
         messages: this.chat.messages,
       })

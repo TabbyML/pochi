@@ -1,7 +1,6 @@
 import {
   isAssistantMessageWithEmptyParts,
   isAssistantMessageWithNoToolCalls,
-  isAssistantMessageWithOutputError,
   isAssistantMessageWithPartialToolCalls,
 } from "@getpochi/common/message-utils";
 import type { Message } from "@getpochi/livekit";
@@ -38,10 +37,7 @@ export function getReadyForRetryError(messages: Message[]) {
     return new ReadyForRetryError();
   }
 
-  if (
-    isAssistantMessageWithPartialToolCalls(lastMessage) ||
-    isAssistantMessageWithOutputError(lastMessage)
-  ) {
+  if (isAssistantMessageWithPartialToolCalls(lastMessage)) {
     return new ReadyForRetryError();
   }
 
