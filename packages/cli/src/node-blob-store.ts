@@ -36,7 +36,7 @@ class NodeBlobStore implements BlobStore {
     await fs.writeFile(filePath, data);
     await fs.writeFile(`${filePath}.meta`, mimeType, "utf-8");
 
-    return `${this.protocol}:${checksum}`;
+    return `${this.protocol}${checksum}`;
   }
 
   async get(
