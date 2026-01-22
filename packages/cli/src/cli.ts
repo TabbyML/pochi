@@ -36,7 +36,9 @@ import * as commander from "commander";
 import z from "zod/v4";
 import packageJson from "../package.json";
 import { registerAuthCommand } from "./auth";
+
 import { handleShellCompletion } from "./completion";
+
 import { findRipgrep } from "./lib/find-ripgrep";
 import { loadAgents } from "./lib/load-agents";
 import { type Workflow, loadWorkflows } from "./lib/workflow-loader";
@@ -124,7 +126,20 @@ const program = new Command()
       "Specify a JSON schema for the output of the task. The task will be validated against this schema.",
     ).hideHelp(),
   )
+  .addOption(
+    new Option(
+      "--attempt-completion-schema <schema>",
+      "Specify a JSON schema that attempt-completion will enforce.",
+    ).hideHelp(),
+  )
+  .addOption(
+    new Option(
+      "--attempt-completion-execute <command>",
+      "Specify a command that attempt-completion will run",
+    ).hideHelp(),
+  )
   .optionsGroup("Model:")
+
   .option(
     "-m, --model <model>",
     "Specify the model to be used for the task.",
@@ -233,19 +248,29 @@ const program = new Command()
       outputSchema: options.experimentalOutputSchema
         ? parseOutputSchema(options.experimentalOutputSchema)
         : undefined,
+      attemptCompletionSchema: options.attemptCompletionSchema
+        ? parseOutputSchema(options.attemptCompletionSchema)
+        : undefined,
+      attemptCompletionExecute: options.attemptCompletionExecute,
     });
 
-    const renderer = new OutputRenderer(runner.state);
+    const renderer = new OutputRenderer(runner.state, {
+      hasCustomAttemptCompletionSchema: !!options.attemptCompletionSchema,
+    });
+
     let jsonRenderer: JsonRenderer | undefined;
     if (options.streamJson) {
       jsonRenderer = new JsonRenderer(blobStore, runner.state, {
         mode: "full",
+        hasCustomAttemptCompletionSchema: !!options.attemptCompletionSchema,
       });
     } else if (options.outputResult) {
       jsonRenderer = new JsonRenderer(blobStore, runner.state, {
         mode: "result-only",
+        hasCustomAttemptCompletionSchema: !!options.attemptCompletionSchema,
       });
     }
+
 
     await runner.run();
 

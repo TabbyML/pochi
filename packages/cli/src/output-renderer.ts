@@ -13,11 +13,15 @@ const console = new Console(process.stderr);
 
 export class OutputRenderer {
   private renderingSubTask = false;
-  constructor(private readonly state: NodeChatState) {
+  constructor(
+    private readonly state: NodeChatState,
+    private readonly options: { hasCustomAttemptCompletionSchema?: boolean } = {},
+  ) {
     this.state.signal.messages.subscribe((messages) => {
       this.renderLastMessage(messages);
     });
   }
+
 
   private pendingMessageId = "";
   private pendingPartIndex = -1;
@@ -72,8 +76,12 @@ export class OutputRenderer {
         this.spinner.prefixText = parseMarkdown(part.text.trim());
       } else {
         // Regular processing for other tools
-        const { text, stop, error } = renderToolPart(part);
+        const { text, stop, error } = renderToolPart(
+          part,
+          this.options.hasCustomAttemptCompletionSchema,
+        );
         this.spinner.prefixText = text;
+
         if (
           (isAutoSuccessToolPart(part) && part.state === "input-available") ||
           part.state === "output-available" ||
@@ -135,11 +143,15 @@ export class OutputRenderer {
   }
 }
 
-function renderToolPart(part: ToolUIPart<UITools>): {
+function renderToolPart(
+  part: ToolUIPart<UITools>,
+  hasCustomAttemptCompletionSchema = false,
+): {
   text: string;
   stop: "succeed" | "stopAndPersist" | "fail";
   error?: string;
 } {
+
   const errorText =
     part.state === "output-error"
       ? part.errorText
@@ -248,8 +260,18 @@ function renderToolPart(part: ToolUIPart<UITools>): {
   }
 
   if (part.type === "tool-attemptCompletion") {
-    const { result = "" } = part.input || {};
-    const text = `${chalk.bold(chalk.green("🎉 Task Completed"))}\n${result}`;
+    const input = part.input || {};
+    let content = "";
+    if (
+      !hasCustomAttemptCompletionSchema &&
+      "result" in input &&
+      typeof input.result === "string"
+    ) {
+      content = input.result;
+    } else {
+      content = JSON.stringify(input, null, 2);
+    }
+    const text = `${chalk.bold(chalk.green("🎉 Task Completed"))}\n${content}`;
 
     return {
       text,
@@ -257,6 +279,7 @@ function renderToolPart(part: ToolUIPart<UITools>): {
       error: errorText,
     };
   }
+
   return {
     text: `🛠️ Tool ${getToolName(part)}`,
     stop: hasError ? "fail" : "succeed",

@@ -1,6 +1,8 @@
-import { z } from "zod";
+import { z } from "zod/v4";
 import { NoOtherToolsReminderPrompt } from "./constants";
 import { defineClientTool } from "./types";
+
+
 
 export const attemptCompletionSchema = z.object({
   result: z
@@ -28,3 +30,10 @@ ${NoOtherToolsReminderPrompt}
 };
 
 export const attemptCompletion = defineClientTool(toolDef);
+
+export const createAttemptCompletionTool = (schema?: z.ZodAny) =>
+  defineClientTool({
+    ...toolDef,
+    // If a schema is provided, use it; otherwise, use the default
+    inputSchema: schema || attemptCompletionSchema,
+  });

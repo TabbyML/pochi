@@ -54,8 +54,10 @@ export type LiveChatKitOptions<T> = {
 
   customAgent?: CustomAgent;
   outputSchema?: z.ZodAny;
+  attemptCompletionSchema?: z.ZodAny;
 } & Omit<
   ChatInit<Message>,
+
   "id" | "messages" | "generateId" | "onFinish" | "onError" | "transport"
 >;
 
@@ -108,10 +110,12 @@ export class LiveChatKit<
     isCli,
     customAgent,
     outputSchema,
+    attemptCompletionSchema,
     onStreamStart,
     onStreamFinish,
     ...chatInit
   }: LiveChatKitOptions<T>) {
+
     this.taskId = taskId;
     this.store = store;
     this.blobStore = blobStore;
@@ -126,9 +130,11 @@ export class LiveChatKit<
       isCli,
       customAgent,
       outputSchema,
+      attemptCompletionSchema,
     });
 
     this.chat = new chatClass({
+
       ...chatInit,
       id: taskId,
       messages: this.messages,

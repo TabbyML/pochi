@@ -10,12 +10,14 @@ import type { TaskRunner } from "./task-runner";
 
 export interface JsonRendererOptions {
   mode: "full" | "result-only";
+  hasCustomAttemptCompletionSchema?: boolean;
 }
 
 export class JsonRenderer {
   private outputMessageIds = new Set<string>();
   private lastMessageCount = 0;
   private mode: "full" | "result-only";
+  private hasCustomAttemptCompletionSchema: boolean;
 
   constructor(
     private readonly store: BlobStore,
@@ -23,7 +25,10 @@ export class JsonRenderer {
     options: JsonRendererOptions = { mode: "full" },
   ) {
     this.mode = options.mode;
+    this.hasCustomAttemptCompletionSchema =
+      !!options.hasCustomAttemptCompletionSchema;
     if (this.mode === "full") {
+
       this.state.signal.messages.subscribe(
         runExclusive.build(async (messages) => {
           if (messages.length > this.lastMessageCount) {
@@ -52,14 +57,23 @@ export class JsonRenderer {
       for (const part of lastMessage.parts || []) {
         if (isToolUIPart(part) && part.type === "tool-attemptCompletion") {
           if (part.input) {
-            const result = (part.input as { result?: string }).result || "";
-            console.log(result);
+            const input = part.input as Record<string, unknown>;
+            if (
+              !this.hasCustomAttemptCompletionSchema &&
+              "result" in input &&
+              typeof input.result === "string"
+            ) {
+              console.log(input.result);
+            } else {
+              console.log(JSON.stringify(input, null, 2));
+            }
           }
           return;
         }
       }
     }
   }
+
 
   private async outputMessages(messages: Message[]) {
     for (const message of messages) {

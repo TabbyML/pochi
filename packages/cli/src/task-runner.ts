@@ -23,16 +23,22 @@ import {
   isToolUIPart,
   lastAssistantMessageIsCompleteWithToolCalls,
 } from "ai";
+import { spawn } from "node:child_process";
 import type z from "zod/v4";
 import { readEnvironment } from "./lib/read-environment";
+
+
+
 import { StepCount } from "./lib/step-count";
 
 import { Chat } from "./livekit";
 import { createOnOverrideMessages } from "./on-override-messages";
 import { executeToolCall } from "./tools";
+import { executeCommand } from "./tools/execute-command";
 import type { ToolCallOptions } from "./types";
 
 export interface RunnerOptions {
+
   /**
    * The uid of the task to run.
    */
@@ -100,11 +106,16 @@ export interface RunnerOptions {
   abortSignal?: AbortSignal;
 
   outputSchema?: z.ZodAny;
+
+  attemptCompletionSchema?: z.ZodAny;
+
+  attemptCompletionExecute?: string;
 }
 
 const logger = getLogger("TaskRunner");
 
 export class TaskRunner {
+
   private blobStore: BlobStore;
   private cwd: string;
   private llm: LLMRequestData;
@@ -114,9 +125,15 @@ export class TaskRunner {
   private todos: Todo[] = [];
   private chatKit: LiveChatKit<Chat>;
 
+  private attemptCompletionExecute?: string;
+
   readonly taskId: string;
 
+  readonly hasCustomAttemptCompletionSchema: boolean;
+
   private get chat() {
+
+
     return this.chatKit.chat;
   }
 
@@ -143,9 +160,11 @@ export class TaskRunner {
           isSubTask: true,
           customAgent,
         });
+        this.attemptCompletionExecute = options.attemptCompletionExecute;
 
         options.onSubTaskCreated?.(runner);
         return runner;
+
       },
     };
     this.stepCount = new StepCount(options.maxSteps, options.maxRetries);
@@ -158,8 +177,10 @@ export class TaskRunner {
       isSubTask: options.isSubTask,
       customAgent: options.customAgent,
       outputSchema: options.outputSchema,
+      attemptCompletionSchema: options.attemptCompletionSchema,
 
       abortSignal: options.abortSignal,
+
       onOverrideMessages: createOnOverrideMessages(this.cwd),
       getters: {
         getLLM: () => options.llm,
@@ -194,9 +215,13 @@ export class TaskRunner {
     }
 
     this.taskId = options.uid;
+    this.attemptCompletionExecute = options.attemptCompletionExecute;
+    this.hasCustomAttemptCompletionSchema = !!options.attemptCompletionSchema;
   }
 
   get shareId() {
+
+
     return this.chatKit.task?.shareId;
   }
 
@@ -240,9 +265,29 @@ export class TaskRunner {
 
     const result = await this.process(lastMessage);
     if (result === "finished") {
+      if (this.attemptCompletionExecute && isResultMessage(lastMessage)) {
+        const attemptCompletionPart = lastMessage.parts?.find(
+          (p) => isToolUIPart(p) && getToolName(p) === "attemptCompletion",
+        );
+
+        if (attemptCompletionPart) {
+          logger.debug(
+            `Executing verification command: ${this.attemptCompletionExecute}`,
+          );
+          try {
+            await this.runVerificationCommand(
+              this.attemptCompletionExecute,
+              (attemptCompletionPart as any).input,
+            );
+          } catch (e) {
+            logger.error(`Verification command failed: ${e}`);
+          }
+        }
+      }
       return "finished";
     }
     if (result === "next") {
+
       this.stepCount.throwIfReachedMaxSteps();
     }
     if (result === "retry") {
@@ -376,9 +421,42 @@ export class TaskRunner {
 
     return "next" as const;
   }
+
+  // Helper method to run the command
+  private runVerificationCommand(command: string, input: any): Promise<void> {
+    return new Promise((resolve, reject) => {
+      // Split command into executable and args if simple (e.g. "bun run verify.ts")
+      // For more complex shell commands, you might use { shell: true } option
+      const [cmd, ...args] = command.split(" ");
+
+      const child = spawn(cmd, args, {
+        cwd: this.cwd,
+        stdio: ["pipe", "inherit", "inherit"], // Pipe stdin, inherit stdout/stderr
+        shell: true, // Use shell to support complex commands
+      });
+
+      child.on("error", (err) => {
+        reject(err);
+      });
+
+      child.on("close", (code) => {
+        if (code === 0) {
+          resolve();
+        } else {
+          reject(new Error(`Command exited with code ${code}`));
+        }
+      });
+
+      // Write the JSON input to stdin
+      const jsonInput = JSON.stringify(input, null, 2);
+      child.stdin.write(jsonInput);
+      child.stdin.end();
+    });
+  }
 }
 
 function createUserMessage(prompt: string): Message {
+
   return {
     id: crypto.randomUUID(),
     role: "user",
