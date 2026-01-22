@@ -15,13 +15,14 @@ export class OutputRenderer {
   private renderingSubTask = false;
   constructor(
     private readonly state: NodeChatState,
-    private readonly options: { hasCustomAttemptCompletionSchema?: boolean } = {},
+    private readonly options: {
+      hasCustomAttemptCompletionSchema?: boolean;
+    } = {},
   ) {
     this.state.signal.messages.subscribe((messages) => {
       this.renderLastMessage(messages);
     });
   }
-
 
   private pendingMessageId = "";
   private pendingPartIndex = -1;
@@ -151,7 +152,6 @@ function renderToolPart(
   stop: "succeed" | "stopAndPersist" | "fail";
   error?: string;
 } {
-
   const errorText =
     part.state === "output-error"
       ? part.errorText

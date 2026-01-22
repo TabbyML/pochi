@@ -57,7 +57,6 @@ export type LiveChatKitOptions<T> = {
   attemptCompletionSchema?: z.ZodAny;
 } & Omit<
   ChatInit<Message>,
-
   "id" | "messages" | "generateId" | "onFinish" | "onError" | "transport"
 >;
 
@@ -115,7 +114,6 @@ export class LiveChatKit<
     onStreamFinish,
     ...chatInit
   }: LiveChatKitOptions<T>) {
-
     this.taskId = taskId;
     this.store = store;
     this.blobStore = blobStore;
@@ -134,7 +132,6 @@ export class LiveChatKit<
     });
 
     this.chat = new chatClass({
-
       ...chatInit,
       id: taskId,
       messages: this.messages,

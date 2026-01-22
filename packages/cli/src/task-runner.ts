@@ -8,6 +8,7 @@ import {
 } from "@getpochi/common/message-utils";
 import { findTodos, mergeTodos } from "@getpochi/common/message-utils";
 
+import { spawn } from "node:child_process";
 import {
   type BlobStore,
   type LLMRequestData,
@@ -23,22 +24,17 @@ import {
   isToolUIPart,
   lastAssistantMessageIsCompleteWithToolCalls,
 } from "ai";
-import { spawn } from "node:child_process";
 import type z from "zod/v4";
 import { readEnvironment } from "./lib/read-environment";
-
-
 
 import { StepCount } from "./lib/step-count";
 
 import { Chat } from "./livekit";
 import { createOnOverrideMessages } from "./on-override-messages";
 import { executeToolCall } from "./tools";
-import { executeCommand } from "./tools/execute-command";
 import type { ToolCallOptions } from "./types";
 
 export interface RunnerOptions {
-
   /**
    * The uid of the task to run.
    */
@@ -115,7 +111,6 @@ export interface RunnerOptions {
 const logger = getLogger("TaskRunner");
 
 export class TaskRunner {
-
   private blobStore: BlobStore;
   private cwd: string;
   private llm: LLMRequestData;
@@ -132,8 +127,6 @@ export class TaskRunner {
   readonly hasCustomAttemptCompletionSchema: boolean;
 
   private get chat() {
-
-
     return this.chatKit.chat;
   }
 
@@ -164,7 +157,6 @@ export class TaskRunner {
 
         options.onSubTaskCreated?.(runner);
         return runner;
-
       },
     };
     this.stepCount = new StepCount(options.maxSteps, options.maxRetries);
@@ -220,8 +212,6 @@ export class TaskRunner {
   }
 
   get shareId() {
-
-
     return this.chatKit.task?.shareId;
   }
 
@@ -292,7 +282,6 @@ export class TaskRunner {
     }
 
     if (result === "next") {
-
       this.stepCount.throwIfReachedMaxSteps();
     }
     if (result === "retry") {
@@ -449,7 +438,6 @@ export class TaskRunner {
         process.stderr.write(data);
       });
 
-
       child.on("error", (err) => {
         reject({ message: err.message, stdout, stderr });
       });
@@ -474,9 +462,7 @@ export class TaskRunner {
   }
 }
 
-
 function createUserMessage(prompt: string): Message {
-
   return {
     id: crypto.randomUUID(),
     role: "user",

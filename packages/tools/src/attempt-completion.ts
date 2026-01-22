@@ -2,8 +2,6 @@ import { z } from "zod/v4";
 import { NoOtherToolsReminderPrompt } from "./constants";
 import { defineClientTool } from "./types";
 
-
-
 export const attemptCompletionSchema = z.object({
   result: z
     .string()

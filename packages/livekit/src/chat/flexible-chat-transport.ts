@@ -69,7 +69,6 @@ export type ChatTransportOptions = {
 };
 
 export class FlexibleChatTransport implements ChatTransport<Message> {
-
   private readonly onStart?: OnStartCallback;
   private readonly getters: PrepareRequestGetters;
   private readonly isSubTask?: boolean;
@@ -94,7 +93,6 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
   }
 
   sendMessages: (
-
     options: {
       trigger: "submit-message" | "regenerate-message";
       chatId: string;

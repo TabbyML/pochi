@@ -28,7 +28,6 @@ export class JsonRenderer {
     this.hasCustomAttemptCompletionSchema =
       !!options.hasCustomAttemptCompletionSchema;
     if (this.mode === "full") {
-
       this.state.signal.messages.subscribe(
         runExclusive.build(async (messages) => {
           if (messages.length > this.lastMessageCount) {
@@ -73,7 +72,6 @@ export class JsonRenderer {
       }
     }
   }
-
 
   private async outputMessages(messages: Message[]) {
     for (const message of messages) {

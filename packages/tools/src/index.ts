@@ -7,7 +7,7 @@ import {
   getToolName,
   isToolUIPart,
 } from "ai";
-import { z } from "zod/v4";
+import type { z } from "zod/v4";
 
 import { applyDiff } from "./apply-diff";
 import { askFollowupQuestion } from "./ask-followup-question";
@@ -121,7 +121,6 @@ export interface CreateToolOptions {
 }
 
 export const createClientTools = (options?: CreateToolOptions) => {
-
   return {
     ...createCliTools(options),
     startBackgroundJob,

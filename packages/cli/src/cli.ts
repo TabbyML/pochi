@@ -271,7 +271,6 @@ const program = new Command()
       });
     }
 
-
     await runner.run();
 
     // Cleanup resources after task completion
