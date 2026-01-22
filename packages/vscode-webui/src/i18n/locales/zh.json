@@ -237,11 +237,13 @@
       "planning": "正在规划下一步操作",
       "errorPrefix": "错误：",
       "fallbackError": "遇到错误",
-      "finished": "已完成，耗时 {{duration}}"
+      "finished": "已完成，耗时 {{duration}}",
+      "requiresApproval": "需要批准"
     },
     "loadMore": "加载更多"
   },
   "toolInvocation": {
+    "requiresApproval": "需要批准",
     "taskCompleted": "任务完成",
     "reading": "正在读取 ",
     "writing": "正在写入 ",
