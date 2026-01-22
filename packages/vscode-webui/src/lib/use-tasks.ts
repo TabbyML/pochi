@@ -29,11 +29,9 @@ async function readTasks() {
 
 function normalizeTaskRow(value: unknown) {
   if (!value || typeof value !== "object") return value;
+  // Back-compat: older task rows may lack runAsync; default to 0 for schema decode.
   const record = value as Record<string, unknown>;
   const runAsync = record.runAsync;
-  if (typeof runAsync === "boolean") {
-    return { ...record, runAsync: runAsync ? 1 : 0 };
-  }
   if (runAsync === undefined) {
     return { ...record, runAsync: 0 };
   }
