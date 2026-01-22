@@ -577,13 +577,13 @@ class TabCompletionManagerContext implements vscode.Disposable {
       this.triggerEvent.resolve(undefined);
     }
     for (const providerRequest of this.providerRequests) {
-      for (const disposable of providerRequest.disposables) {
-        disposable.dispose();
-      }
       if (providerRequest.tokenSource) {
         providerRequest.tokenSource.cancel();
       }
       providerRequest.request.dispose();
+      for (const disposable of providerRequest.disposables) {
+        disposable.dispose();
+      }
     }
     if (this.decorationTokenSource) {
       this.decorationTokenSource.cancel();
