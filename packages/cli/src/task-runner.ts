@@ -281,7 +281,6 @@ export class TaskRunner {
             this.chat.appendOrReplaceMessage(message);
             return "next";
           }
-
         }
       }
       return "finished";
@@ -429,7 +428,6 @@ export class TaskRunner {
   ): Promise<void> {
     return new Promise((resolve, reject) => {
       const child = spawn(command, {
-
         cwd: this.cwd,
         stdio: ["pipe", "pipe", "pipe"], // Pipe stdin, stdout, stderr
         shell: true, // Use shell to support complex commands
