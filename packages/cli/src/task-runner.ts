@@ -279,13 +279,18 @@ export class TaskRunner {
               this.attemptCompletionExecute,
               (attemptCompletionPart as any).input,
             );
-          } catch (e) {
-            logger.error(`Verification command failed: ${e}`);
+          } catch (e: any) {
+            logger.error(`Verification command failed: ${e.message}`);
+            const errorMsg = `Verification failed:\n${e.message}\n\nStdout:\n${e.stdout}\n\nStderr:\n${e.stderr}`;
+            const message = createUserMessage(errorMsg);
+            this.chat.appendOrReplaceMessage(message);
+            return "next";
           }
         }
       }
       return "finished";
     }
+
     if (result === "next") {
 
       this.stepCount.throwIfReachedMaxSteps();
@@ -425,35 +430,50 @@ export class TaskRunner {
   // Helper method to run the command
   private runVerificationCommand(command: string, input: any): Promise<void> {
     return new Promise((resolve, reject) => {
-      // Split command into executable and args if simple (e.g. "bun run verify.ts")
-      // For more complex shell commands, you might use { shell: true } option
-      const [cmd, ...args] = command.split(" ");
-
-      const child = spawn(cmd, args, {
+      const child = spawn(command, {
         cwd: this.cwd,
-        stdio: ["pipe", "inherit", "inherit"], // Pipe stdin, inherit stdout/stderr
+        stdio: ["pipe", "pipe", "pipe"], // Pipe stdin, stdout, stderr
         shell: true, // Use shell to support complex commands
       });
 
+      let stdout = "";
+      let stderr = "";
+
+      child.stdout?.on("data", (data) => {
+        stdout += data.toString();
+        process.stdout.write(data);
+      });
+
+      child.stderr?.on("data", (data) => {
+        stderr += data.toString();
+        process.stderr.write(data);
+      });
+
+
       child.on("error", (err) => {
-        reject(err);
+        reject({ message: err.message, stdout, stderr });
       });
 
       child.on("close", (code) => {
         if (code === 0) {
           resolve();
         } else {
-          reject(new Error(`Command exited with code ${code}`));
+          reject({
+            message: `Command exited with code ${code}`,
+            stdout,
+            stderr,
+          });
         }
       });
 
       // Write the JSON input to stdin
       const jsonInput = JSON.stringify(input, null, 2);
-      child.stdin.write(jsonInput);
-      child.stdin.end();
+      child.stdin?.write(jsonInput);
+      child.stdin?.end();
     });
   }
 }
+
 
 function createUserMessage(prompt: string): Message {
 
