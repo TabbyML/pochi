@@ -96,6 +96,7 @@ export function TaskRow({
                   className={cn("truncate", {
                     "text-muted-foreground italic": title === "(Untitled)",
                   })}
+                  data-testid="task-title"
                 >
                   {title}
                 </div>
@@ -112,6 +113,7 @@ export function TaskRow({
                         size="sm"
                         className="h-6 w-6 p-0 hover:bg-transparent"
                         onClick={handleArchiveClick}
+                        aria-label="archive-task-button"
                       >
                         <Archive className="size-3.5" />
                       </Button>

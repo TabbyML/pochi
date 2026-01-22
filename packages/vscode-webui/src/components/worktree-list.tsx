@@ -329,6 +329,7 @@ function WorktreeSection({
           setIsHovered(false);
           setShowDeleteConfirm(false);
         }}
+        data-testid="worktree-group-header"
       >
         {/* worktree name & branch */}
         <div className="flex h-6 items-center gap-2">
@@ -504,7 +505,12 @@ function WorktreeSection({
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-6 p-0"
+                        aria-label="more-options-button"
+                      >
                         <MoreVertical className="size-4" />
                       </Button>
                     </DropdownMenuTrigger>
@@ -514,6 +520,7 @@ function WorktreeSection({
                 <DropdownMenuContent align="end" className="bg-background">
                   <DropdownMenuItem
                     onClick={() => setShowArchived(!showArchived)}
+                    data-testid="toggle-archived-tasks"
                   >
                     <Archive className="mr-2 size-4" />
                     {showArchived
@@ -524,6 +531,7 @@ function WorktreeSection({
                     onClick={() =>
                       setTaskArchived?.({ type: "batch", cwd: group.path })
                     }
+                    data-testid="archive-old-tasks"
                   >
                     <Archive className="mr-2 size-4" />
                     {t("tasksPage.archiveOldTasks")}
