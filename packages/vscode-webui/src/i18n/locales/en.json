@@ -473,7 +473,6 @@
   "planCard": {
     "title": "Plan",
     "reviewPlan": "Review",
-    "executePlan": "Execute Plan",
-    "executePrompt": "Execute the plan"
+    "executePlan": "Execute Plan"
   }
 }

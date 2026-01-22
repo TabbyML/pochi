@@ -13,7 +13,9 @@ import {
 import { useTodos } from "@/features/todo";
 import { useCustomAgent } from "@/lib/hooks/use-custom-agents";
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
+import { blobStore } from "@/lib/remote-blob-store";
 import { useDefaultStore } from "@/lib/use-default-store";
+
 import { vscodeHost } from "@/lib/vscode";
 import { useChat } from "@ai-sdk/react";
 import type { ExecuteCommandResult } from "@getpochi/common/vscode-webui-bridge";
@@ -76,8 +78,10 @@ export function useLiveSubTask(
   // FIXME: handle auto retry for output without task.
   const chatKit = useLiveChatKit({
     store,
+    blobStore,
     taskId: uid,
     abortSignal: abortController.current.signal,
+
     getters,
     isSubTask: true,
     customAgent,

@@ -13,40 +13,28 @@ const logger = getLogger("TaskDataStore");
 @injectable()
 @singleton()
 export class TaskDataStore {
-  private readonly storageKeyPrefix = "taskState.";
+  private readonly storageKey = "task-state";
 
   state = signal<Record<string, TaskStateData>>({});
 
   constructor(
     @inject("vscode.ExtensionContext")
     private readonly context: vscode.ExtensionContext,
-  ) {}
-
-  private getStorageKey(taskId: string): string {
-    return `${this.storageKeyPrefix}${taskId}`;
+  ) {
+    this.state.value = this.context.globalState.get(this.storageKey, {});
   }
 
   private getTaskState(taskId: string): TaskStateData | undefined {
-    // Try cache first
-    if (this.state.value[taskId]) {
-      return this.state.value[taskId];
-    }
-    // Load from globalState
-    const data = this.context.globalState.get<TaskStateData>(
-      this.getStorageKey(taskId),
-    );
-    if (data) {
-      this.state.value = { ...this.state.value, [taskId]: data };
-    }
-    return data;
+    return this.state.value[taskId];
   }
 
   private async saveTaskState(
     taskId: string,
     data: TaskStateData,
   ): Promise<void> {
-    await this.context.globalState.update(this.getStorageKey(taskId), data);
-    this.state.value = { ...this.state.value, [taskId]: data };
+    const newState = { ...this.state.value, [taskId]: data };
+    await this.context.globalState.update(this.storageKey, newState);
+    this.state.value = newState;
   }
 
   getMcpConfigOverride(taskId: string): McpConfigOverride | undefined {

@@ -25,6 +25,7 @@ import {
 } from "ai";
 import { pickBy } from "remeda";
 import type z from "zod/v4";
+import type { BlobStore } from "../blob-store";
 import { findBlob, makeDownloadFunction } from "../store-blob";
 import type { LiveKitStore, Message, Metadata, RequestData } from "../types";
 import { makeRepairToolCall } from "./llm";
@@ -63,6 +64,7 @@ export type ChatTransportOptions = {
   isSubTask?: boolean;
   isCli?: boolean;
   store: LiveKitStore;
+  blobStore: BlobStore;
   customAgent?: CustomAgent;
   outputSchema?: z.ZodAny;
 };
@@ -73,6 +75,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
   private readonly isSubTask?: boolean;
   private readonly isCli?: boolean;
   private readonly store: LiveKitStore;
+  private readonly blobStore: BlobStore;
   private readonly customAgent?: CustomAgent;
   private readonly outputSchema?: z.ZodAny;
 
@@ -82,6 +85,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
     this.isSubTask = options.isSubTask;
     this.isCli = options.isCli;
     this.store = options.store;
+    this.blobStore = options.blobStore;
     this.customAgent = overrideCustomAgentTools(options.customAgent);
     this.outputSchema = options.outputSchema;
   }
@@ -143,7 +147,8 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
     }
 
     const mcpTools =
-      mcpInfo?.toolset && parseMcpToolSet(this.store, mcpInfo.toolset);
+      mcpInfo?.toolset && parseMcpToolSet(this.blobStore, mcpInfo.toolset);
+
     const tools = pickBy(
       {
         ...selectClientTools({
@@ -163,7 +168,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
       },
     );
     if (tools.readFile) {
-      tools.readFile = handleReadFileOutput(this.store, tools.readFile);
+      tools.readFile = handleReadFileOutput(this.blobStore, tools.readFile);
     }
 
     const preparedMessages = await prepareMessages(messages, environment);
@@ -198,7 +203,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
       // error log is handled in live chat kit.
       onError: () => {},
       experimental_repairToolCall: makeRepairToolCall(chatId, model),
-      experimental_download: makeDownloadFunction(this.store),
+      experimental_download: makeDownloadFunction(this.blobStore),
     });
     return stream.toUIMessageStream({
       onError: (error) => {
@@ -290,14 +295,14 @@ async function resolvePromise(o: unknown): Promise<unknown> {
 }
 
 function handleReadFileOutput(
-  store: LiveKitStore,
+  blobStore: BlobStore,
   readFile: ClientTools["readFile"],
 ) {
   return tool({
     ...readFile,
     toModelOutput: (output) => {
       if (output.type === "media") {
-        const blob = findBlob(store, new URL(output.data), output.mimeType);
+        const blob = findBlob(blobStore, new URL(output.data), output.mimeType);
         if (!blob) {
           return { type: "text", value: "Failed to load media." };
         }

@@ -8,7 +8,11 @@ export {
   useRetryCount,
 } from "./lib/chat-state";
 
-export { useSendMessage, useHandleChatEvents } from "./lib/chat-events";
+export {
+  useSendMessage,
+  useSendRetry,
+  useHandleChatEvents,
+} from "./lib/chat-events";
 export { useLiveChatKitGetters } from "./lib/use-live-chat-kit-getters";
 export {
   useBackgroundJobInfo,

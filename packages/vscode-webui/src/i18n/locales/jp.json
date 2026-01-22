@@ -475,7 +475,6 @@
   "planCard": {
     "title": "計画",
     "reviewPlan": "確認",
-    "executePlan": "計画を実行",
-    "executePrompt": "計画を実行してください"
+    "executePlan": "計画を実行"
   }
 }

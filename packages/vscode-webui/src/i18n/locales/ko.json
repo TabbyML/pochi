@@ -470,7 +470,6 @@
   "planCard": {
     "title": "계획",
     "reviewPlan": "검토",
-    "executePlan": "계획 실행",
-    "executePrompt": "계획 실행"
+    "executePlan": "계획 실행"
   }
 }

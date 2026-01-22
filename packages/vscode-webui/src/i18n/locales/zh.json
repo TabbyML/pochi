@@ -474,7 +474,6 @@
   "planCard": {
     "title": "计划",
     "reviewPlan": "评审",
-    "executePlan": "执行计划",
-    "executePrompt": "执行计划"
+    "executePlan": "执行计划"
   }
 }

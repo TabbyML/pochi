@@ -61,6 +61,7 @@ import {
 import { createStore } from "./livekit/store";
 import { initializeMcp, registerMcpCommand } from "./mcp";
 import { registerModelCommand } from "./model";
+import { blobStore } from "./node-blob-store";
 import { OutputRenderer } from "./output-renderer";
 import { TaskRunner } from "./task-runner";
 import { checkForUpdates, registerUpgradeCommand } from "./upgrade";
@@ -153,7 +154,6 @@ const program = new Command()
     );
 
     const store = await createStore(uid);
-
     const parts: Message["parts"] = [];
     if (attachments && attachments.length > 0) {
       for (const attachmentPath of attachments) {
@@ -162,7 +162,7 @@ const program = new Command()
           const buffer = await fs.readFile(absolutePath);
           const mimeType = getMimeType(attachmentPath);
           const dataUrl = await fileToUri(
-            store,
+            blobStore,
             new File([buffer], attachmentPath, {
               type: mimeType,
             }),
@@ -223,6 +223,7 @@ const program = new Command()
     const runner = new TaskRunner({
       uid,
       store,
+      blobStore,
       llm,
       parts,
       cwd: process.cwd(),
@@ -242,9 +243,11 @@ const program = new Command()
     const renderer = new OutputRenderer(runner.state);
     let jsonRenderer: JsonRenderer | undefined;
     if (options.streamJson) {
-      jsonRenderer = new JsonRenderer(store, runner.state, { mode: "full" });
+      jsonRenderer = new JsonRenderer(blobStore, runner.state, {
+        mode: "full",
+      });
     } else if (options.outputResult) {
-      jsonRenderer = new JsonRenderer(store, runner.state, {
+      jsonRenderer = new JsonRenderer(blobStore, runner.state, {
         mode: "result-only",
       });
     }
@@ -257,7 +260,7 @@ const program = new Command()
       mcpHub.dispose();
     }
     if (jsonRenderer) {
-      jsonRenderer.shutdown();
+      await jsonRenderer.shutdown();
     }
     await shutdownStoreAndExit(store);
   });
