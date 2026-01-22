@@ -374,7 +374,7 @@
       {
         "command": "pochi.tabCompletion.reject",
         "key": "escape",
-        "when": "editorTextFocus && pochiTabCompletionVisible"
+        "when": "editorTextFocus && pochiTabCompletionVisible || inlineSuggestionVisible"
       },
       {
         "command": "pochi.applyPochiLayoutWithCycleFocus",
@@ -689,6 +689,27 @@
                     "type": "boolean",
                     "default": false,
                     "description": "Enable Pochi Layout."
+                  }
+                }
+              },
+              "logToFile": {
+                "type": "object",
+                "default": {},
+                "additionalProperties": false,
+                "properties": {
+                  "level": {
+                    "type": "string",
+                    "enum": [
+                      "off",
+                      "fatal",
+                      "error",
+                      "warn",
+                      "info",
+                      "debug",
+                      "trace"
+                    ],
+                    "default": "off",
+                    "description": "Set the log level for file logging."
                   }
                 }
               }
