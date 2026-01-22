@@ -359,7 +359,8 @@
   },
   "subtask": {
     "back": "Back",
-    "complete": "Complete"
+    "complete": "Complete",
+    "startImplementation": "Start Implementation"
   },
   "errorMessageView": {
     "reachedCreditLimit": "You have reached the spending limit.",

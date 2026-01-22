@@ -356,7 +356,8 @@
   },
   "subtask": {
     "back": "戻る",
-    "complete": "完了"
+    "complete": "完了",
+    "startImplementation": "実装を開始"
   },
   "errorMessageView": {
     "reachedCreditLimit": "支出限度額に達しました。",
