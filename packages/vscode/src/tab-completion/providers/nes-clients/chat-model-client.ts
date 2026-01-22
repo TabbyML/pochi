@@ -251,7 +251,7 @@ export class NESChatModelClient
 
       const extractedResult = extractResult(result.text, baseSegments);
       if (extractedResult) {
-        const result = {
+        const output = {
           requestId,
           edit: {
             changes: [
@@ -265,8 +265,8 @@ export class NESChatModelClient
             ],
           },
         };
-        logger.trace("Result:", logToFileObject(result));
-        return result;
+        logger.trace("Result:", logToFileObject(output));
+        return output;
       }
     } catch (error) {
       if (isCanceledError(error)) {

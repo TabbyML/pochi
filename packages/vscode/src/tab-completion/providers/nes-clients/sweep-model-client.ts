@@ -216,6 +216,9 @@ export class NESSweepModelClient
       return undefined;
     }
 
+    // Remove trailing new line
+    const text = result.text.replace(/\n$/, "");
+
     const output = {
       requestId,
       edit: {
@@ -225,7 +228,7 @@ export class NESSweepModelClient
               start: baseSegments.startOffset,
               end: baseSegments.endOffset,
             },
-            text: result.text,
+            text,
           },
         ],
       },
