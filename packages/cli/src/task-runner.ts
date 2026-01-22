@@ -105,7 +105,7 @@ export interface RunnerOptions {
 
   attemptCompletionSchema?: z.ZodAny;
 
-  attemptCompletionExecute?: string;
+  attemptCompletionHook?: string;
 }
 
 const logger = getLogger("TaskRunner");
@@ -120,7 +120,7 @@ export class TaskRunner {
   private todos: Todo[] = [];
   private chatKit: LiveChatKit<Chat>;
 
-  private attemptCompletionExecute?: string;
+  private attemptCompletionHook?: string;
 
   readonly taskId: string;
 
@@ -153,7 +153,7 @@ export class TaskRunner {
           isSubTask: true,
           customAgent,
         });
-        this.attemptCompletionExecute = options.attemptCompletionExecute;
+        this.attemptCompletionHook = options.attemptCompletionHook;
 
         options.onSubTaskCreated?.(runner);
         return runner;
@@ -207,7 +207,7 @@ export class TaskRunner {
     }
 
     this.taskId = options.uid;
-    this.attemptCompletionExecute = options.attemptCompletionExecute;
+    this.attemptCompletionHook = options.attemptCompletionHook;
     this.hasCustomAttemptCompletionSchema = !!options.attemptCompletionSchema;
   }
 
@@ -255,18 +255,18 @@ export class TaskRunner {
 
     const result = await this.process(lastMessage);
     if (result === "finished") {
-      if (this.attemptCompletionExecute && isResultMessage(lastMessage)) {
+      if (this.attemptCompletionHook && isResultMessage(lastMessage)) {
         const attemptCompletionPart = lastMessage.parts?.find(
           (p) => isToolUIPart(p) && getToolName(p) === "attemptCompletion",
         );
 
         if (attemptCompletionPart) {
           logger.debug(
-            `Executing verification command: ${this.attemptCompletionExecute}`,
+            `Executing verification command: ${this.attemptCompletionHook}`,
           );
           try {
             await this.runVerificationCommand(
-              this.attemptCompletionExecute,
+              this.attemptCompletionHook,
               (attemptCompletionPart as unknown as { input: unknown }).input,
             );
           } catch (e) {

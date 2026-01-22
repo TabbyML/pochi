@@ -134,7 +134,7 @@ const program = new Command()
   )
   .addOption(
     new Option(
-      "--attempt-completion-execute <command>",
+      "--attempt-completion-hook <command>",
       "Specify a command that attempt-completion will run",
     ).hideHelp(),
   )
@@ -251,7 +251,7 @@ const program = new Command()
       attemptCompletionSchema: options.attemptCompletionSchema
         ? parseOutputSchema(options.attemptCompletionSchema)
         : undefined,
-      attemptCompletionExecute: options.attemptCompletionExecute,
+      attemptCompletionHook: options.attemptCompletionHook,
     });
 
     const renderer = new OutputRenderer(runner.state, {
