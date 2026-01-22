@@ -80,7 +80,8 @@
     "servers": "MCP",
     "tools": "tools",
     "noServersConfigured": "No MCP servers configured",
-    "manageServers": "Manage MCP Servers..."
+    "manageServers": "Manage MCP Servers...",
+    "taskScopeHint": "Override MCP servers for this task"
   },
   "worktree": {
     "createPr": "Create PR",
