@@ -122,28 +122,35 @@ export class WorktreeManager implements vscode.Disposable {
   }
 
   private async init() {
-    if (!(await this.isGitRepository())) {
-      this.inited.resolve();
-      return;
-    }
-    logger.info("init worktree manager");
-    await this.updateWorktrees();
-    await this.setupWatcher();
-    await this.gitState.inited.promise;
+    try {
+      if (!(await this.isGitRepository())) {
+        this.inited.resolve();
+        return;
+      }
+      logger.info("init worktree manager");
+      await this.updateWorktrees();
+      await this.setupWatcher();
+      await this.gitState.inited.promise;
 
-    this.disposables.push(
-      this.gitState.onDidChangeBranch((e) => {
-        if (e.type === "branch-changed") {
-          this.worktrees.value = this.worktrees.value.map((wt) => {
-            if (wt.path === e.repository) {
-              return { ...wt, branch: e.currentBranch };
-            }
-            return wt;
-          });
-        }
-      }),
-    );
-    this.inited.resolve();
+      this.disposables.push(
+        this.gitState.onDidChangeBranch((e) => {
+          if (e.type === "branch-changed") {
+            this.worktrees.value = this.worktrees.value.map((wt) => {
+              if (wt.path === e.repository) {
+                return { ...wt, branch: e.currentBranch };
+              }
+              return wt;
+            });
+          }
+        }),
+      );
+      this.inited.resolve();
+    } catch (error) {
+      logger.error(
+        `Failed to initialize worktree manager: ${toErrorMessage(error)}`,
+      );
+      this.inited.resolve();
+    }
   }
 
   getMainWorktree() {

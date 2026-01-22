@@ -135,9 +135,9 @@ export class UserEditState implements vscode.Disposable {
         logger.trace(
           `Updating edits for task ${uid} with hash ${hash}, latest ${latestCheckpoint}`,
         );
-        // If the checkpoint hash is not the latest, we cannot guarantee
-        // the diffs are accurate, so we clear them.
-        if (hash !== latestCheckpoint) {
+        // If the checkpoint hash is not the latest, or if there's no checkpoint yet,
+        // we cannot guarantee the diffs are accurate, so we clear them.
+        if (!hash || hash !== latestCheckpoint) {
           nextEdits[uid] = [];
         } else {
           const diffs = await this.checkpointService.getCheckpointFileEdits(

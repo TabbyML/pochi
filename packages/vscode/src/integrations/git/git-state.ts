@@ -100,6 +100,7 @@ export class GitState implements vscode.Disposable {
 
       if (!git) {
         logger.debug("VS Code Git extension not found");
+        this.inited.resolve();
         return;
       }
 
@@ -111,6 +112,7 @@ export class GitState implements vscode.Disposable {
 
       if (!this.gitExtension) {
         logger.debug("Failed to get Git extension exports");
+        this.inited.resolve();
         return;
       }
 
@@ -119,6 +121,7 @@ export class GitState implements vscode.Disposable {
 
       if (!this.git) {
         logger.debug("Failed to get Git API");
+        this.inited.resolve();
         return;
       }
       await this.gitApiReady();
@@ -149,6 +152,7 @@ export class GitState implements vscode.Disposable {
       logger.debug("Git state monitor initialized successfully");
     } catch (error) {
       logger.debug("Failed to initialize Git state monitor:", error);
+      this.inited.resolve();
     }
   }
 
