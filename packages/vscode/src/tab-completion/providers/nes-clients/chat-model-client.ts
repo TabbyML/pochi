@@ -18,15 +18,15 @@ import {
 } from "../../utils";
 import type { TabCompletionProviderResponseItem } from "../types";
 import type { TabCompletionProviderClient } from "../types";
-import {
-  DocumentPrefixLine,
-  DocumentSuffixLine,
-  EditableRegionPrefixLine,
-  EditableRegionSuffixLine,
-  MaxCodeSnippets,
-  MaxOutputTokens,
-  RequestTimeOut,
-} from "./config";
+
+const EditableRegionPrefixLine = 5;
+const EditableRegionSuffixLine = 5;
+const DocumentPrefixLine = 15;
+const DocumentSuffixLine = 15;
+const MaxCodeSnippets = 5;
+const MaxCharsPerCodeSnippet = 2000;
+const MaxOutputTokens = 2048;
+const RequestTimeOut = 60 * 1000;
 
 const logger = getLogger("TabCompletion.Providers.NES.ChatModelClient");
 
@@ -180,7 +180,7 @@ export class NESChatModelClient
     codeSnippets = deduplicateSnippets(codeSnippets);
     codeSnippets = codeSnippets.map((snippet) => ({
       ...snippet,
-      text: cropTextToMaxChars(snippet.text, 2000),
+      text: cropTextToMaxChars(snippet.text, MaxCharsPerCodeSnippet),
     }));
     return {
       codeSnippets,

@@ -8,6 +8,7 @@ export * from "./errors";
 export * from "./latency-tracker";
 export * from "./range";
 export * from "./semantic-tokens";
+export * from "./simple-diff";
 export * from "./string";
 export * from "./text-document-edit-step";
 export * from "./text-document-snapshot";

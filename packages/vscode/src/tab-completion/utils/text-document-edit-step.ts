@@ -3,12 +3,13 @@ import {
   type TextDocumentSnapshot,
   createTextDocumentSnapshotWithNewText,
 } from "./text-document-snapshot";
-import { type TextEdit, applyEdit } from "./text-edit";
+import { type OffsetMap, type TextEdit, applyEdit } from "./text-edit";
 
 // A TextDocumentEditStep represents a group of TextEdit that are continuing edit actions.
 export class TextDocumentEditStep {
   private readonly before: TextDocumentSnapshot;
   private readonly edits: TextEdit[] = [];
+  private readonly offsetMaps: OffsetMap[] = [];
 
   private after: TextDocumentSnapshot;
   private lastEditedRanges: OffsetRange[] | undefined = undefined;
@@ -29,6 +30,22 @@ export class TextDocumentEditStep {
 
   getEdits(): readonly TextEdit[] {
     return [...this.edits];
+  }
+
+  getOffsetBefore(offsetAfter: number): number {
+    let result = offsetAfter;
+    for (let i = this.offsetMaps.length - 1; i >= 0; i--) {
+      result = this.offsetMaps[i].getOffsetBefore(result);
+    }
+    return result;
+  }
+
+  getOffsetAfter(offsetBefore: number): number {
+    let result = offsetBefore;
+    for (let i = 0; i < this.offsetMaps.length; i++) {
+      result = this.offsetMaps[i].getOffsetAfter(result);
+    }
+    return result;
   }
 
   // return true if appended as continuing edit.

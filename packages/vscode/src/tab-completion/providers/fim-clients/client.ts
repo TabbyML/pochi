@@ -23,6 +23,7 @@ import {
 import type { TabCompletionProviderResponseItem } from "../types";
 import type { TabCompletionProviderClient } from "../types";
 import {
+  MaxCharsPerCodeSnippet,
   MaxCodeSnippets,
   MaxDeclarationCodeSnippets,
   MaxRecentChangedCodeSnippets,
@@ -293,7 +294,7 @@ export class FIMClient
     codeSnippets = codeSnippets
       .map((snippet) => ({
         ...snippet,
-        text: cropTextToMaxChars(snippet.text, 2000),
+        text: cropTextToMaxChars(snippet.text, MaxCharsPerCodeSnippet),
       }))
       .sort((a, b) => b.score - a.score)
       .slice(0, MaxCodeSnippets);
