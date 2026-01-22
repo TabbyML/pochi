@@ -1,6 +1,13 @@
+import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { EditSummary } from "@/features/tools";
 import { ToolCallLite } from "@/features/tools";
 import { usePochiCredentials } from "@/lib/hooks/use-pochi-credentials";
+import { useTaskArchived } from "@/lib/hooks/use-task-archived";
 import { useTaskChangedFiles } from "@/lib/hooks/use-task-changed-files";
 import { cn } from "@/lib/utils";
 import { vscodeHost } from "@/lib/vscode";
@@ -9,8 +16,8 @@ import { encodeStoreId } from "@getpochi/common/store-id-utils";
 import type { TaskState } from "@getpochi/common/vscode-webui-bridge";
 import type { Task, UITools } from "@getpochi/livekit";
 import type { ToolUIPart } from "ai";
-import { GitBranch, Loader2 } from "lucide-react";
-import { useCallback, useMemo } from "react";
+import { Archive, GitBranch, Loader2 } from "lucide-react";
+import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 export function TaskRow({
@@ -23,22 +30,62 @@ export function TaskRow({
   isDeleted?: boolean;
 }) {
   const { jwt } = usePochiCredentials();
+  const { t } = useTranslation();
+  const [isHovered, setIsHovered] = useState(false);
 
   const { showFileChanges } = useTaskChangedFiles(task.id, []);
 
+  const { isTaskArchived, setTaskArchived } = useTaskArchived();
+
+  const archived = useMemo(
+    () => isTaskArchived(task.id),
+    [isTaskArchived, task.id],
+  );
+
   const title = useMemo(() => parseTitle(task.title), [task.title]);
 
-  const content = (
+  const storeId = encodeStoreId(jwt, task.parentId || task.id);
+
+  const openTaskInPanel = useCallback(async () => {
+    if (task.cwd) {
+      vscodeHost.openTaskInPanel({
+        type: "open-task",
+        cwd: task.cwd,
+        uid: task.id,
+        storeId,
+      });
+
+      showFileChanges();
+    }
+  }, [task.cwd, task.id, storeId, showFileChanges]);
+
+  const handleArchiveClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      setTaskArchived?.({
+        type: "single",
+        taskId: task.id,
+        archived: !archived,
+      });
+    },
+    [setTaskArchived, task.id, archived],
+  );
+
+  return (
     <div
       aria-label="task-row"
       className={cn(
-        "group rounded-lg border border-border/50 bg-card/60 transition-all duration-200 hover:bg-card hover:shadow-md",
+        "group relative rounded-lg border border-border/50 bg-card/60 transition-all duration-200 hover:bg-card hover:shadow-md",
         {
           "border-primary/85": state?.focused,
           "cursor-pointer": !isDeleted,
           "opacity-60": isDeleted,
+          "border-dashed opacity-60": archived && !isDeleted,
         },
       )}
+      onClick={!isDeleted ? openTaskInPanel : undefined}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
     >
       <div className="px-2 py-1">
         <div className="flex items-start gap-3">
@@ -57,7 +104,27 @@ export function TaskRow({
                 )}
               </div>
               <div className="flex shrink-0 items-center gap-2">
-                <div className="text-sm">{formatTimeAgo(task.createdAt)}</div>
+                {!isDeleted && isHovered ? (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-6 p-0 hover:bg-transparent"
+                        onClick={handleArchiveClick}
+                      >
+                        <Archive className="size-3.5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      {archived
+                        ? t("tasksPage.unarchiveTask")
+                        : t("tasksPage.archiveTask")}
+                    </TooltipContent>
+                  </Tooltip>
+                ) : (
+                  <div className="text-sm">{formatTimeAgo(task.createdAt)}</div>
+                )}
               </div>
             </div>
             <div className="h-6 text-muted-foreground text-sm">
@@ -84,25 +151,6 @@ export function TaskRow({
         </div>
       </div>
     </div>
-  );
-
-  const storeId = encodeStoreId(jwt, task.parentId || task.id);
-
-  const openTaskInPanel = useCallback(async () => {
-    if (task.cwd) {
-      vscodeHost.openTaskInPanel({
-        type: "open-task",
-        cwd: task.cwd,
-        uid: task.id,
-        storeId,
-      });
-
-      showFileChanges();
-    }
-  }, [task.cwd, task.id, storeId, showFileChanges]);
-
-  return (
-    <div onClick={!isDeleted ? openTaskInPanel : undefined}>{content}</div>
   );
 }
 

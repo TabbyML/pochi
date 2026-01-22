@@ -69,6 +69,7 @@ import {
   type RuleFile,
   type SaveCheckpointOptions,
   type SessionState,
+  type TaskArchivedParams,
   type TaskChangedFile,
   type TaskStates,
   type VSCodeHostApi,
@@ -1117,14 +1118,46 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     taskId: string,
   ): Promise<{
     value: ThreadSignalSerialization<McpConfigOverride | undefined>;
-    set: (mcpConfigOverride: McpConfigOverride) => Promise<McpConfigOverride>;
+    setMcpConfigOverride: (
+      mcpConfigOverride: McpConfigOverride,
+    ) => Promise<McpConfigOverride>;
   }> => {
     return {
       value: ThreadSignal.serialize(
         this.taskStateStore.getMcpConfigOverrideSignal(taskId),
       ),
-      set: (mcpConfigOverride: McpConfigOverride) =>
+      setMcpConfigOverride: (mcpConfigOverride: McpConfigOverride) =>
         this.taskStateStore.setMcpConfigOverride(taskId, mcpConfigOverride),
+    };
+  };
+
+  readTaskArchived = async () => {
+    return {
+      value: ThreadSignal.serialize(this.taskStateStore.getArchivedSignal()),
+      setTaskArchived: async (params: TaskArchivedParams) => {
+        if (params.type === "single") {
+          await this.taskStateStore.setArchived({
+            [params.taskId]: params.archived,
+          });
+        } else if (params.type === "batch") {
+          const oneWeekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+          const tasks = this.taskHistoryStore.tasks.value;
+          const updates: Record<string, boolean> = {};
+
+          for (const [taskId, task] of Object.entries(tasks)) {
+            if (
+              task.updatedAt < oneWeekAgo &&
+              (!params.cwd || task.cwd === params.cwd)
+            ) {
+              updates[taskId] = true;
+            }
+          }
+
+          if (Object.keys(updates).length > 0) {
+            await this.taskStateStore.setArchived(updates);
+          }
+        }
+      },
     };
   };
 

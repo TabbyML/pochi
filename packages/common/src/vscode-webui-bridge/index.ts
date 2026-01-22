@@ -23,6 +23,7 @@ export type {
   TaskState,
   TaskStates,
   McpConfigOverride,
+  TaskArchivedParams,
 } from "./types/task";
 export type {
   VSCodeLmModel,

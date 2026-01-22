@@ -6,6 +6,7 @@ import type * as vscode from "vscode";
 
 type TaskStateData = {
   mcpConfigOverride?: McpConfigOverride;
+  archived?: boolean;
 };
 
 const logger = getLogger("TaskDataStore");
@@ -13,40 +14,28 @@ const logger = getLogger("TaskDataStore");
 @injectable()
 @singleton()
 export class TaskDataStore {
-  private readonly storageKeyPrefix = "taskState.";
+  private readonly storageKey = "task-state";
 
   state = signal<Record<string, TaskStateData>>({});
 
   constructor(
     @inject("vscode.ExtensionContext")
     private readonly context: vscode.ExtensionContext,
-  ) {}
-
-  private getStorageKey(taskId: string): string {
-    return `${this.storageKeyPrefix}${taskId}`;
+  ) {
+    this.state.value = this.context.globalState.get(this.storageKey, {});
   }
 
   private getTaskState(taskId: string): TaskStateData | undefined {
-    // Try cache first
-    if (this.state.value[taskId]) {
-      return this.state.value[taskId];
-    }
-    // Load from globalState
-    const data = this.context.globalState.get<TaskStateData>(
-      this.getStorageKey(taskId),
-    );
-    if (data) {
-      this.state.value = { ...this.state.value, [taskId]: data };
-    }
-    return data;
+    return this.state.value[taskId];
   }
 
   private async saveTaskState(
     taskId: string,
     data: TaskStateData,
   ): Promise<void> {
-    await this.context.globalState.update(this.getStorageKey(taskId), data);
-    this.state.value = { ...this.state.value, [taskId]: data };
+    const newState = { ...this.state.value, [taskId]: data };
+    await this.context.globalState.update(this.storageKey, newState);
+    this.state.value = newState;
   }
 
   getMcpConfigOverride(taskId: string): McpConfigOverride | undefined {
@@ -73,5 +62,33 @@ export class TaskDataStore {
     // Ensure task is loaded
     this.getTaskState(taskId);
     return computed(() => this.state.value[taskId]?.mcpConfigOverride);
+  }
+
+  async setArchived(updates: Record<string, boolean>): Promise<void> {
+    const newState = { ...this.state.value };
+    for (const [taskId, archived] of Object.entries(updates)) {
+      const existing = newState[taskId] || {};
+      newState[taskId] = { ...existing, archived };
+    }
+    await this.context.globalState.update(this.storageKey, newState);
+    this.state.value = newState;
+  }
+
+  /**
+   * Get a computed signal for all tasks' archived states.
+
+   * Returns a Record<taskId, archived> for all tasks.
+   * Used for ThreadSignal serialization.
+   */
+  getArchivedSignal() {
+    return computed(() => {
+      const result: Record<string, boolean> = {};
+      for (const [taskId, taskData] of Object.entries(this.state.value)) {
+        if (taskData.archived !== undefined) {
+          result[taskId] = taskData.archived;
+        }
+      }
+      return result;
+    });
   }
 }

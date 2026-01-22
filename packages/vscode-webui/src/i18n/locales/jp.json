@@ -240,7 +240,13 @@
       "fallbackError": "エラーが発生しました",
       "finished": "{{duration}} で完了"
     },
-    "loadMore": "さらに読み込む"
+    "loadMore": "さらに読み込む",
+    "showArchivedTasks": "アーカイブされたタスクを表示",
+    "hideArchivedTasks": "アーカイブされたタスクを非表示",
+    "archiveTask": "タスクをアーカイブ",
+    "unarchiveTask": "タスクをアーカイブ解除",
+    "archiveOldTasks": "1週間以上前のタスクをアーカイブ",
+    "moreOptions": "その他のオプション"
   },
   "toolInvocation": {
     "taskCompleted": "タスク完了",
