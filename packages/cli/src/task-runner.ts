@@ -267,15 +267,21 @@ export class TaskRunner {
           try {
             await this.runVerificationCommand(
               this.attemptCompletionExecute,
-              (attemptCompletionPart as any).input,
+              (attemptCompletionPart as unknown as { input: unknown }).input,
             );
-          } catch (e: any) {
-            logger.error(`Verification command failed: ${e.message}`);
-            const errorMsg = `Verification failed:\n${e.message}\n\nStdout:\n${e.stdout}\n\nStderr:\n${e.stderr}`;
+          } catch (e) {
+            const error = e as {
+              message: string;
+              stdout: string;
+              stderr: string;
+            };
+            logger.error(`Verification command failed: ${error.message}`);
+            const errorMsg = `Verification failed:\n${error.message}\n\nStdout:\n${error.stdout}\n\nStderr:\n${error.stderr}`;
             const message = createUserMessage(errorMsg);
             this.chat.appendOrReplaceMessage(message);
             return "next";
           }
+
         }
       }
       return "finished";
@@ -417,9 +423,13 @@ export class TaskRunner {
   }
 
   // Helper method to run the command
-  private runVerificationCommand(command: string, input: any): Promise<void> {
+  private runVerificationCommand(
+    command: string,
+    input: unknown,
+  ): Promise<void> {
     return new Promise((resolve, reject) => {
       const child = spawn(command, {
+
         cwd: this.cwd,
         stdio: ["pipe", "pipe", "pipe"], // Pipe stdin, stdout, stderr
         shell: true, // Use shell to support complex commands
