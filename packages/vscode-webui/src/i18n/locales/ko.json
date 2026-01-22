@@ -80,7 +80,8 @@
     "servers": "MCP",
     "tools": "도구",
     "noServersConfigured": "MCP 서버가 구성되지 않았습니다",
-    "manageServers": "MCP 서버 관리..."
+    "manageServers": "MCP 서버 관리...",
+    "taskScopeHint": "이 작업에 대한 MCP 서버 재정의"
   },
   "worktree": {
     "createPr": "PR 생성",

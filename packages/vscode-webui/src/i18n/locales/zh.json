@@ -80,7 +80,8 @@
     "servers": "MCP",
     "tools": "工具",
     "noServersConfigured": "未配置 MCP 服务器",
-    "manageServers": "管理 MCP 服务器..."
+    "manageServers": "管理 MCP 服务器...",
+    "taskScopeHint": "覆盖此任务的 MCP 服务器"
   },
   "worktree": {
     "createPr": "创建 PR",
