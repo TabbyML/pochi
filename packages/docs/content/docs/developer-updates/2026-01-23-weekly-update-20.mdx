@@ -16,9 +16,10 @@ This release introduces new workflows for planning before execution and for rest
 - **Create Plan Mode:** You can now create a task in Plan Mode to generate and refine an implementation plan before any code is changed. To use, click on the `Plan` option when creating a new task from the sidebar. 
 
    1. Plan tasks   generates a structured implementation plan instead of immediately executing edits.
-   2. The plan is stored as a workspace artifact (i.e. `plan.md`) and opened in the editor.
-   3. You can use existing workflows: inline comments, review edits, and follow-up prompts to refine the plan.
-   4. After review, you can explicitly start execution from the approved plan.
+   2. The plan is stored as a workspace artifact (i.e. `plan.md`) in Pochi’s virtual filesystem and does not modify your project directory.
+   3. You can create a separate plan for each task without polluting your repo.
+   4. You can use existing workflows: inline comments, review edits, and follow-up prompts to refine the plan.
+   5. After review, you can explicitly start execution from the approved plan.
 
    This makes planning a first-class step in the agent workflow and lets you align on scope, approach, and risks before applying multi-file changes.**[#819]( https://github.com/TabbyML/pochi/issues/819)**
 
@@ -50,7 +51,7 @@ This release introduces new workflows for planning before execution and for rest
         boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
         }}
     >
-        <source src="https://assets.docs.getpochi.com/mcp-granular-controls-026.mp4" type="video/mp4" />
+        <source src="https://assets.docs.getpochi.com/mcp-granular-control-026.mp4" type="video/mp4" />
         Your browser does not support the video tag.
     </video>
 
