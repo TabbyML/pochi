@@ -180,6 +180,7 @@ const TabCompletionFIMProviderSettings = z.discriminatedUnion("type", [
 const TabCompletionNESProviderSettings = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("NES:pochi"),
+    model: z.enum(["sweep-next-edit", "default"]).optional(),
   }),
   z.object({
     type: z.literal("NES:openai"),

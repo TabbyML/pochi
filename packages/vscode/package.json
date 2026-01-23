@@ -569,6 +569,11 @@
                             "type": {
                               "type": "string",
                               "const": "NES:pochi"
+                            },
+                            "model": {
+                              "type": "string",
+                              "enum": ["default", "sweep-next-edit"],
+                              "default": "sweep-next-edit"
                             }
                           },
                           "required": ["type"]
