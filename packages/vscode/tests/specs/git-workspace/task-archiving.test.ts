@@ -10,19 +10,21 @@ describe("Task Archiving Tests", () => {
     const pochi = new PochiSidebar();
 
     await pochi.open();
-    const taskTitle = `Task to archive ${Date.now()}`;
-    await pochi.sendMessage(taskTitle);
+    const timestamp = Date.now();
+    const userMessage = `Archive task ${timestamp}`;
+    await pochi.sendMessage(userMessage);
 
     // Wait for the task to appear in the sidebar task list
     await pochi.waitForTaskToAppear();
     
-    // 1. Verify the task appears
+    // 1. Verify the task appears (AI may rephrase, so check for timestamp in title)
     let taskTitles = await pochi.getTaskTitles();
-    expect(taskTitles).toContain(taskTitle);
+    expect(taskTitles.length).toBeGreaterThan(0);
     
-    // Find the index of our task
-    let taskIndex = taskTitles.findIndex(t => t === taskTitle);
+    // Find the index of our task by looking for the timestamp in the title
+    let taskIndex = taskTitles.findIndex(t => t.includes(String(timestamp)));
     expect(taskIndex).toBeGreaterThanOrEqual(0);
+    const actualTaskTitle = taskTitles[taskIndex];
 
     // 2. Archive the task
     await pochi.archiveTask(taskIndex);
@@ -31,7 +33,7 @@ describe("Task Archiving Tests", () => {
     // We need to wait a bit for the UI to update
     await browser.pause(1000);
     taskTitles = await pochi.getTaskTitles();
-    expect(taskTitles).not.toContain(taskTitle);
+    expect(taskTitles).not.toContain(actualTaskTitle);
 
     // 4. Show archived tasks
     await pochi.toggleArchivedTasksVisibility();
@@ -39,10 +41,10 @@ describe("Task Archiving Tests", () => {
     // 5. Verify it reappears
     await browser.pause(1000);
     taskTitles = await pochi.getTaskTitles();
-    expect(taskTitles).toContain(taskTitle);
+    expect(taskTitles).toContain(actualTaskTitle);
 
     // 6. Verify it has archived style
-    taskIndex = taskTitles.findIndex(t => t === taskTitle);
+    taskIndex = taskTitles.findIndex(t => t === actualTaskTitle);
     const isArchived = await pochi.isTaskArchived(taskIndex);
     expect(isArchived).toBe(true);
 
@@ -60,6 +62,6 @@ describe("Task Archiving Tests", () => {
     // 10. Verify it is still visible (since it's unarchived)
     await browser.pause(1000);
     taskTitles = await pochi.getTaskTitles();
-    expect(taskTitles).toContain(taskTitle);
+    expect(taskTitles).toContain(actualTaskTitle);
   });
 });
