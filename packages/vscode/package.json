@@ -574,6 +574,27 @@
                           "required": ["type"]
                         },
                         {
+                          "title": "OpenAI NES Provider",
+                          "type": "object",
+                          "additionalProperties": false,
+                          "properties": {
+                            "type": {
+                              "type": "string",
+                              "const": "NES:openai"
+                            },
+                            "baseURL": {
+                              "type": "string"
+                            },
+                            "apiKey": {
+                              "type": "string"
+                            },
+                            "model": {
+                              "type": "string"
+                            }
+                          },
+                          "required": ["type", "baseURL", "model"]
+                        },
+                        {
                           "title": "Google Vertex NES Provider",
                           "type": "object",
                           "additionalProperties": false,

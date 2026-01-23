@@ -104,20 +104,25 @@ export class TabCompletionManager implements vscode.Disposable {
       vscode.window.onDidChangeWindowState(() => {
         if (this.current) {
           this.current.dispose();
-          this.current = undefined;
+          this.removeCurrent();
         }
       }),
       vscode.window.onDidChangeActiveTextEditor(() => {
         if (this.current) {
           this.current.dispose();
-          this.current = undefined;
+          this.removeCurrent();
         }
       }),
       vscode.window.onDidChangeTextEditorSelection(
         (e: vscode.TextEditorSelectionChangeEvent) => {
-          if (e.textEditor === vscode.window.activeTextEditor && this.current) {
+          if (
+            e.textEditor === vscode.window.activeTextEditor &&
+            this.current &&
+            e.selections.length > 0 &&
+            !e.selections[0].isEqual(this.current.triggerEvent.selection)
+          ) {
             this.current.dispose();
-            this.current = undefined;
+            this.removeCurrent();
           }
         },
       ),
@@ -207,7 +212,7 @@ export class TabCompletionManager implements vscode.Disposable {
     );
     current.dispose();
     if (this.current === current) {
-      this.current = undefined;
+      this.removeCurrent();
     }
   }
 
@@ -233,7 +238,9 @@ export class TabCompletionManager implements vscode.Disposable {
       }),
     );
     current.dispose();
-    this.current = undefined;
+    if (this.current === current) {
+      this.removeCurrent();
+    }
   }
 
   async handleDidAcceptInlineCompletion(
@@ -526,6 +533,11 @@ export class TabCompletionManager implements vscode.Disposable {
     }
   }
 
+  private removeCurrent() {
+    this.current = undefined;
+    this.updateIsFetching();
+  }
+
   private updateIsFetching() {
     this.isFetching.value =
       this.current?.providerRequests.some(
@@ -577,13 +589,13 @@ class TabCompletionManagerContext implements vscode.Disposable {
       this.triggerEvent.resolve(undefined);
     }
     for (const providerRequest of this.providerRequests) {
-      for (const disposable of providerRequest.disposables) {
-        disposable.dispose();
-      }
       if (providerRequest.tokenSource) {
         providerRequest.tokenSource.cancel();
       }
       providerRequest.request.dispose();
+      for (const disposable of providerRequest.disposables) {
+        disposable.dispose();
+      }
     }
     if (this.decorationTokenSource) {
       this.decorationTokenSource.cancel();
