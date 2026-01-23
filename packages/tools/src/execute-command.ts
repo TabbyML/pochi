@@ -119,7 +119,7 @@ EOF
 Important:
 - NEVER update the git config
 - Return the PR URL when you're done, so the user can see it
-- Replace <Share URL> with the Share URL from system information if available. If not available, omit the " | [View Task](...)" part.
+- Replace <Share URL> with the Share URL from system information if available. If not available, omit the " | [Task](...)" part.
 
 # Other common operations
 1. View comments on a Github PR, you should run following commands
