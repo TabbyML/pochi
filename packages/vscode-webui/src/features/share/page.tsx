@@ -106,6 +106,7 @@ export function SharePage() {
                   assistant={assistant}
                   messages={renderMessages}
                   isLoading={isLoading}
+                  hideUserEditsActions
                 />
                 <ErrorMessageView error={error ?? undefined} />
               </div>

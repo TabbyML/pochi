@@ -22,9 +22,14 @@ interface Props {
     origin: string | undefined;
     modified: string | undefined;
   };
+  hideActions?: boolean;
 }
 
-export const UserEditsPart: React.FC<Props> = ({ userEdits, checkpoints }) => {
+export const UserEditsPart: React.FC<Props> = ({
+  userEdits,
+  checkpoints,
+  hideActions,
+}) => {
   const { t } = useTranslation();
 
   if (!userEdits || userEdits.length === 0) return null;
@@ -69,7 +74,7 @@ export const UserEditsPart: React.FC<Props> = ({ userEdits, checkpoints }) => {
             editSummary={{ added: totalAdded, removed: totalRemoved }}
             className="text-xs"
           />
-          {checkpoints?.origin && (
+          {!hideActions && checkpoints?.origin && (
             <div
               className="hidden items-center group-hover:flex"
               onClick={(e) => e.stopPropagation()}
@@ -100,6 +105,7 @@ export const UserEditsPart: React.FC<Props> = ({ userEdits, checkpoints }) => {
           key={edit.filepath}
           edit={edit}
           checkpoints={checkpoints}
+          hideActions={hideActions}
         />
       ))}
     </CollapsibleSection>
@@ -112,9 +118,10 @@ interface UserEditItemProps {
     origin: string | undefined;
     modified: string | undefined;
   };
+  hideActions?: boolean;
 }
 
-function UserEditItem({ edit, checkpoints }: UserEditItemProps) {
+function UserEditItem({ edit, checkpoints, hideActions }: UserEditItemProps) {
   const [isOpen, setIsOpen] = useState(false);
   const { t } = useTranslation();
 
@@ -158,38 +165,40 @@ function UserEditItem({ edit, checkpoints }: UserEditItemProps) {
         </div>
         <div className="flex items-center gap-2 px-3 text-xs">
           <EditSummary editSummary={{ added, removed }} className="text-xs" />
-          <div className="hidden items-center gap-1 group-hover:flex">
-            {checkpoints?.origin && (
+          {!hideActions && (
+            <div className="hidden items-center gap-1 group-hover:flex">
+              {checkpoints?.origin && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={onShowDiff}
+                      className="h-5 w-5"
+                    >
+                      <FileDiff className="size-3.5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {t("userEdits.showDiff", { defaultValue: "Show Diff" })}
+                  </TooltipContent>
+                </Tooltip>
+              )}
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={onShowDiff}
+                    onClick={onOpenFile}
                     className="h-5 w-5"
                   >
-                    <FileDiff className="size-3.5" />
+                    <VscGoToFile className="size-3.5" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>
-                  {t("userEdits.showDiff", { defaultValue: "Show Diff" })}
-                </TooltipContent>
+                <TooltipContent>{t("diffSummary.openFile")}</TooltipContent>
               </Tooltip>
-            )}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={onOpenFile}
-                  className="h-5 w-5"
-                >
-                  <VscGoToFile className="size-3.5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>{t("diffSummary.openFile")}</TooltipContent>
-            </Tooltip>
-          </div>
+            </div>
+          )}
         </div>
       </div>
       <CollapsibleContent>
