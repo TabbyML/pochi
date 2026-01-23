@@ -355,7 +355,7 @@ export function useLiveSubTask(
   };
 }
 
-const SubtaskMaxStep = 24;
+const SubtaskMaxStep = 100;
 const SubtaskMaxRetry = 2;
 
 const useInitAutoStart = ({
