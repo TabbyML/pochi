@@ -8,20 +8,26 @@ const logger = getLogger("TabCompletion.Providers.Base.OpenAIFetcher");
 
 export class OpenAIFetcher implements Fetcher {
   private readonly baseUrl: string;
-  private readonly apiKey: string | undefined;
+  private readonly authToken:
+    | (() => Promise<string | undefined> | string | undefined)
+    | string
+    | undefined;
   private readonly model: string | undefined;
 
   constructor(config: {
     baseURL: string;
-    apiKey?: string | undefined;
+    authToken?:
+      | (() => Promise<string | undefined> | string | undefined)
+      | string
+      | undefined;
     model?: string | undefined;
   }) {
     this.baseUrl = config.baseURL.trim();
     if (!this.baseUrl) {
       logger.error("OpenAI baseURL is not configured.");
     }
-    this.apiKey =
-      config.apiKey?.trim() || process.env.POCHI_CODE_COMPLETION_OPENAI_API_KEY;
+    this.authToken =
+      config.authToken ?? process.env.POCHI_CODE_COMPLETION_OPENAI_API_KEY;
     this.model = config.model?.trim();
   }
 
@@ -60,11 +66,15 @@ export class OpenAIFetcher implements Fetcher {
         }),
       );
 
+      const authToken =
+        typeof this.authToken === "function"
+          ? await this.authToken()
+          : this.authToken;
       const response = await fetch(`${this.baseUrl}/completions`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${this.apiKey || ""}`,
+          Authorization: `Bearer ${authToken || ""}`,
         },
         body: JSON.stringify(request),
         signal: combinedSignal,
