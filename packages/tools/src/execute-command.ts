@@ -60,9 +60,12 @@ Git Safety Protocol:
 3. You can call multiple tools in a single response. When multiple independent pieces of information are requested and all commands are likely to succeed, run multiple tool calls in parallel for optimal performance. run the following commands:
    - Add relevant untracked files to the staging area.
    - Create the commit with a message ending with:
-   🤖 Generated with [Pochi](https://getpochi.com)
+   🤖 Generated with [Pochi](https://getpochi.com) | [Task](<Share URL>)
 
    Co-Authored-By: Pochi <noreply@getpochi.com>
+
+   Note: Replace <Share URL> with the Share URL from system information if available. If not available, omit the " | [Task](...)" part.
+
    - Run git status after the commit completes to verify success.
    Note: git status depends on the commit completing, so run it sequentially after the commit.
 4. If the commit fails due to pre-commit hook changes, retry the commit ONCE to include these automated changes. If it fails again, it usually means a pre-commit hook is preventing the commit. If the commit succeeds but you notice that files were modified by the pre-commit hook, you MUST amend your commit to include them.
@@ -78,7 +81,7 @@ Important notes:
 git commit -m "$(cat <<'EOF'
 Commit message here.
 
-🤖 Generated with [Pochi](https://getpochi.com)
+🤖 Generated with [Pochi](https://getpochi.com) | [Task](<Share URL>)
 
 Co-Authored-By: Pochi <noreply@getpochi.com>
 EOF
@@ -108,7 +111,7 @@ gh pr create --title "the pr title" --body "$(cat <<'EOF'
 ## Test plan
 [Checklist of TODOs for testing the pull request...]
 
-🤖 Generated with [Pochi](https://getpochi.com)
+🤖 Generated with [Pochi](https://getpochi.com) | [Task](<Share URL>)
 EOF
 )"
 </example>
@@ -116,6 +119,7 @@ EOF
 Important:
 - NEVER update the git config
 - Return the PR URL when you're done, so the user can see it
+- Replace <Share URL> with the Share URL from system information if available. If not available, omit the " | [View Task](...)" part.
 
 # Other common operations
 1. View comments on a Github PR, you should run following commands

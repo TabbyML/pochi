@@ -247,6 +247,7 @@ const materializers = State.SQLite.materializers(events, {
   }) => [
     tables.tasks.insert({
       id,
+      shareId: parentId ? undefined : `p-${id.replaceAll("-", "")}`,
       status: initMessages
         ? initMessages.length > 0
           ? "pending-model"
@@ -260,6 +261,7 @@ const materializers = State.SQLite.materializers(events, {
       title: initTitle,
       displayId,
       updatedAt: createdAt,
+      isPublicShared: true,
     }),
     ...(initMessages?.map((message) => {
       return tables.messages.insert({

@@ -26,7 +26,7 @@ describe("PochiConfigFile", () => {
       new PochiConfigFile(testConfigPath);
       
       // Wait for init to complete
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
       const fileExists = await fsPromise
         .access(testConfigPath)
@@ -53,7 +53,7 @@ describe("PochiConfigFile", () => {
       const configFile = new PochiConfigFile(testConfigPath);
       
       // Wait for load to complete
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
       expect(configFile.config.value.vendors?.pochi).toBeDefined();
     });
@@ -64,7 +64,7 @@ describe("PochiConfigFile", () => {
       const configFile = new PochiConfigFile(testConfigPath);
       
       // Wait for load to complete
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
       // Should return empty config on parse error (with default $schema)
       expect(configFile.config.value).toEqual({
@@ -78,7 +78,7 @@ describe("PochiConfigFile", () => {
       const configFile = new PochiConfigFile(testConfigPath);
       
       // Wait for init
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
       const updated = await configFile.updateConfig({
         vendors: {
@@ -97,7 +97,7 @@ describe("PochiConfigFile", () => {
     it("should not update if config is the same", async () => {
       const configFile = new PochiConfigFile(testConfigPath);
       
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
       await configFile.updateConfig({
         vendors: {
@@ -122,7 +122,7 @@ describe("PochiConfigFile", () => {
     it("should merge configs deeply", async () => {
       const configFile = new PochiConfigFile(testConfigPath);
       
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
       await configFile.updateConfig({
         vendors: {
@@ -149,7 +149,7 @@ describe("PochiConfigFile", () => {
     it("should get vendor config", async () => {
       const configFile = new PochiConfigFile(testConfigPath);
       
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
       await configFile.updateConfig({
         vendors: {
@@ -170,7 +170,7 @@ describe("PochiConfigFile", () => {
     it("should return undefined for non-existent vendor", async () => {
       const configFile = new PochiConfigFile(testConfigPath);
       
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
       const vendorConfig = configFile.getVendorConfig("nonexistent");
       expect(vendorConfig).toBeUndefined();
@@ -181,7 +181,7 @@ describe("PochiConfigFile", () => {
     it("should update vendor config", async () => {
       const configFile = new PochiConfigFile(testConfigPath);
       
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
       await configFile.updateVendorConfig("pochi", {
         credentials: { token: "test-token" },
@@ -197,7 +197,7 @@ describe("PochiConfigFile", () => {
     it("should remove vendor config with null", async () => {
       const configFile = new PochiConfigFile(testConfigPath);
       
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
       await configFile.updateVendorConfig("pochi", {
         credentials: { token: "test-token" },

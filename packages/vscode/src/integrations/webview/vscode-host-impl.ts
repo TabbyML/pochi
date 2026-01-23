@@ -308,6 +308,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         ...systemInfo,
         customRules,
       },
+      shareId: this.task?.shareId ?? undefined,
     };
 
     return environment;

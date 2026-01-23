@@ -129,8 +129,7 @@ export class LiveStoreClientDO
     const oneMinuteAgo = moment().subtract(1, "minute");
 
     const updatedTasks = tasks.filter(
-      (task) =>
-        force || !task.shareId || moment(task.updatedAt).isAfter(oneMinuteAgo),
+      (task) => force || moment(task.updatedAt).isAfter(oneMinuteAgo),
     );
 
     if (!updatedTasks.length) return;
@@ -141,15 +140,6 @@ export class LiveStoreClientDO
         updatedTasks.map((task) => {
           // Ensure shareId is set
           const shareId = task.shareId || `p-${task.id.replaceAll("-", "")}`;
-          if (!task.shareId) {
-            store.commit(
-              catalog.events.updateShareId({
-                id: task.id,
-                shareId,
-                updatedAt: new Date(),
-              }),
-            );
-          }
 
           let completion: string | undefined = undefined;
           let followup = undefined;
