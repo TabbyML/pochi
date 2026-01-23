@@ -1,5 +1,6 @@
 import { TaskThread, type TaskThreadSource } from "@/components/task-thread";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   FixedStateChatContextProvider,
   ToolCallStatusRegistry,
@@ -7,9 +8,10 @@ import {
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
 import { useDefaultStore } from "@/lib/use-default-store";
 import { cn } from "@/lib/utils";
-import { isVSCodeEnvironment } from "@/lib/vscode";
+import { isVSCodeEnvironment, vscodeHost } from "@/lib/vscode";
 import { Link } from "@tanstack/react-router";
 import { type RefObject, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { useInlinedSubTask } from "../../hooks/use-inlined-sub-task";
 import { useLiveSubTask } from "../../hooks/use-live-sub-task";
 import { StatusIcon } from "../status-icon";
@@ -25,11 +27,16 @@ interface NewTaskToolProps extends ToolProps<"newTask"> {
 export const newTaskTool: React.FC<NewTaskToolProps> = (props) => {
   const { tool, taskThreadSource } = props;
   const uid = tool.input?._meta?.uid;
+  const isRunAsync = tool.input?.runAsync;
 
   let taskSource: (TaskThreadSource & { parentId?: string }) | undefined =
     taskThreadSource;
 
   const inlinedTaskSource = useInlinedSubTask(tool);
+
+  if (isRunAsync) {
+    return <BackgroundTaskToolView {...props} uid={uid} />;
+  }
 
   if (inlinedTaskSource) {
     taskSource = inlinedTaskSource;
@@ -41,6 +48,60 @@ export const newTaskTool: React.FC<NewTaskToolProps> = (props) => {
 
   return <NewTaskToolView {...props} taskSource={taskSource} uid={uid} />;
 };
+
+function BackgroundTaskToolView(
+  props: NewTaskToolProps & { uid: string | undefined },
+) {
+  const { tool, isExecuting, uid } = props;
+  const { t } = useTranslation();
+  const store = useDefaultStore();
+  const agentType = tool.input?.agentType;
+  const toolTitle = agentType ?? "Subtask";
+  const description = tool.input?.description ?? "";
+  const cwd = window.POCHI_TASK_INFO?.cwd;
+  const storeId = store.storeId;
+
+  const canOpen = isVSCodeEnvironment() && !!uid && !!cwd;
+  const openInTab = () => {
+    if (!uid || !cwd) return;
+    vscodeHost.openTaskInPanel({
+      type: "open-task",
+      uid,
+      cwd,
+      storeId,
+    });
+  };
+
+  return (
+    <div>
+      <ToolTitle className="justify-between">
+        <span className={cn("flex items-center gap-2")}>
+          <StatusIcon tool={tool} isExecuting={isExecuting} />
+          <Badge variant="secondary" className={cn("my-0.5 mr-1 ml-2 py-0")}>
+            {toolTitle}
+          </Badge>
+        </span>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-6 px-2 text-xs"
+          onClick={openInTab}
+          disabled={!canOpen}
+        >
+          {t("toolInvocation.openTask")}
+        </Button>
+      </ToolTitle>
+      <div className="mt-1 ml-7 flex flex-col gap-1">
+        <div className="rounded border border-border/60 bg-muted/40 px-2 py-1 text-muted-foreground text-xs">
+          {t("toolInvocation.backgroundTaskStarted")}
+        </div>
+        {description && (
+          <div className="text-muted-foreground text-xs">{description}</div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 function LiveSubTaskToolView(props: NewTaskToolProps & { uid: string }) {
   const { tool, isExecuting, uid } = props;

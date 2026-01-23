@@ -252,6 +252,8 @@
   "toolInvocation": {
     "requiresApproval": "需要批准",
     "taskCompleted": "任务完成",
+    "backgroundTaskStarted": "后台任务已开始",
+    "openTask": "打开",
     "reading": "正在读取 ",
     "writing": "正在写入 ",
     "continue": "继续",

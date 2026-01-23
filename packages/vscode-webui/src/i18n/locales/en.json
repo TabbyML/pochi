@@ -255,6 +255,8 @@
   "toolInvocation": {
     "requiresApproval": "Requires approval",
     "taskCompleted": "Task Completed",
+    "backgroundTaskStarted": "Background task started",
+    "openTask": "Open",
     "reading": "Reading ",
     "writing": "Writing ",
     "continue": "Continue",

@@ -253,6 +253,8 @@
   "toolInvocation": {
     "requiresApproval": "승인 대기 중",
     "taskCompleted": "작업 완료",
+    "backgroundTaskStarted": "백그라운드 작업 시작됨",
+    "openTask": "열기",
     "reading": "읽는 중 ",
     "writing": "쓰는 중 ",
     "continue": "계속",

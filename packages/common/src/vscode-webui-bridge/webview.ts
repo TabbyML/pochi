@@ -18,6 +18,7 @@ import type {
   SessionState,
   TaskArchivedParams,
   TaskChangedFile,
+  TaskOutputResult,
   TaskStates,
   WorkspaceState,
 } from "./index";
@@ -317,7 +318,10 @@ export interface VSCodeHostApi {
    */
   openTaskInPanel(
     params: PochiTaskParams,
-    options?: { keepEditor?: boolean },
+    options?: {
+      keepEditor?: boolean;
+      preserveFocus?: boolean;
+    },
   ): Promise<void>;
 
   sendTaskNotification(
@@ -398,4 +402,6 @@ export interface WebviewHostApi {
   ): Promise<void>;
 
   readTaskFile(taskId: string, filePath: string): Promise<string | null>;
+
+  queryTaskOutput(taskId: string): Promise<TaskOutputResult>;
 }

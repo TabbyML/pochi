@@ -11,7 +11,7 @@ import type { ToolCallOptions } from "../types";
  */
 export const newTask =
   (options: ToolCallOptions): ToolFunctionType<ClientTools["newTask"]> =>
-  async ({ _meta, agentType }) => {
+  async ({ _meta, agentType, runAsync }) => {
     const taskId = _meta?.uid || crypto.randomUUID();
 
     if (!options.createSubTaskRunner) {
@@ -35,7 +35,18 @@ export const newTask =
 
     const subTaskRunner = options.createSubTaskRunner(taskId, customAgent);
 
-    // Execute the sub-task
+    // Check if this is an async task
+    if (runAsync) {
+      // Start the subtask but don't wait for completion
+      void Promise.resolve(subTaskRunner.run()).catch(() => {
+        // Ignore errors for Async tasks
+      });
+      return {
+        result: taskId,
+      };
+    }
+
+    // Execute the sub-task (synchronous)
     await subTaskRunner.run();
 
     // Get the final state and extract result
