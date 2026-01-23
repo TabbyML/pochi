@@ -29,7 +29,7 @@ new Thread<WebviewHostApi, VSCodeHostApi>(
   {
     exports: createVscodeHostStub({
       async readCurrentWorkspace() {
-        return { cwd: "/", workspaceFolder: "/" };
+        return { cwd: "/", workspaceFolder: "/", workspacePath: "/" };
       },
     }),
   },

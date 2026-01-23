@@ -357,20 +357,22 @@ function WorktreeSection({
               hidden: isDeleted,
             })}
           >
-            {pullRequest ? (
-              <PrStatusDisplay
-                prNumber={pullRequest.id}
-                prUrl={prUrl}
-                prChecks={pullRequest.checks}
-              />
-            ) : gitOriginUrl ? (
+            {
+              pullRequest ? (
+                <PrStatusDisplay
+                  prNumber={pullRequest.id}
+                  prUrl={prUrl}
+                  prChecks={pullRequest.checks}
+                />
+              ) : null /*gitOriginUrl ? (
               <CreatePrDropdown
                 worktreePath={group.path}
                 branch={group.branch}
                 gitOriginUrl={gitOriginUrl}
                 gh={gh}
               />
-            ) : null}
+            ) : null*/
+            }
           </div>
 
           <div
