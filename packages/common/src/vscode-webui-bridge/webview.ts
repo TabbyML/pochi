@@ -17,6 +17,7 @@ import type {
   SaveCheckpointOptions,
   SessionState,
   SkillFile,
+  TaskArchivedParams,
   TaskChangedFile,
   TaskStates,
   WorkspaceState,
@@ -367,7 +368,18 @@ export interface VSCodeHostApi {
    */
   readMcpConfigOverride(taskId: string): Promise<{
     value: ThreadSignalSerialization<McpConfigOverride | undefined>;
-    set: (mcpConfigOverride: McpConfigOverride) => Promise<McpConfigOverride>;
+    setMcpConfigOverride: (
+      mcpConfigOverride: McpConfigOverride,
+    ) => Promise<McpConfigOverride>;
+  }>;
+
+  /**
+   * Read and manage archived state for a task.
+   * Returns a serialized signal for the archived value and a setter function.
+   */
+  readTaskArchived(): Promise<{
+    value: ThreadSignalSerialization<Record<string, boolean>>;
+    setTaskArchived: (params: TaskArchivedParams) => Promise<void>;
   }>;
 }
 

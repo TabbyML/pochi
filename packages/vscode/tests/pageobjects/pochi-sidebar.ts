@@ -93,9 +93,12 @@ export class PochiSidebar {
     const titles: string[] = [];
 
     for (const element of taskElements) {
-      const text = await element.getText();
-      if (text?.trim()) {
-        titles.push(text.trim());
+      const titleElement = await element.$('[data-testid="task-title"]');
+      if (await titleElement.isExisting()) {
+        const text = await titleElement.getText();
+        if (text?.trim()) {
+          titles.push(text.trim());
+        }
       }
     }
 
@@ -123,5 +126,64 @@ export class PochiSidebar {
         interval: 500, // Check every 500ms
       },
     );
+  }
+
+  async archiveTask(index: number) {
+    const tasks = await this.getTaskListItems();
+    if (index >= (await tasks.length)) {
+      throw new Error(`Task at index ${index} not found`);
+    }
+    const task = tasks[index];
+
+    // Hover to show the archive button
+    await task.moveTo();
+
+    // Click the archive button
+    const archiveButton = await task.$('[aria-label="archive-task-button"]');
+    await archiveButton.waitForDisplayed();
+    await archiveButton.click();
+  }
+
+  async isTaskArchived(index: number): Promise<boolean> {
+    const tasks = await this.getTaskListItems();
+    if (index >= (await tasks.length)) {
+      return false;
+    }
+    const task = tasks[index];
+    const className = await task.getAttribute("class");
+    return (
+      className.includes("border-dashed") && className.includes("opacity-60")
+    );
+  }
+
+  async toggleArchivedTasksVisibility() {
+    const worktreeHeader = $('[data-testid="worktree-group-header"]');
+    await worktreeHeader.moveTo();
+
+    const moreOptionsButton = $('[aria-label="more-options-button"]');
+    await moreOptionsButton.waitForClickable();
+    await moreOptionsButton.click();
+
+    const toggleItem = $('[data-testid="toggle-archived-tasks"]');
+    await toggleItem.waitForDisplayed();
+    await toggleItem.click();
+
+    // Wait for menu to close/update
+    await browser.pause(500);
+  }
+
+  async archiveOldTasks() {
+    const worktreeHeader = $('[data-testid="worktree-group-header"]');
+    await worktreeHeader.moveTo();
+
+    const moreOptionsButton = $('[aria-label="more-options-button"]');
+    await moreOptionsButton.waitForClickable();
+    await moreOptionsButton.click();
+
+    const archiveOldItem = $('[data-testid="archive-old-tasks"]');
+    await archiveOldItem.waitForDisplayed();
+    await archiveOldItem.click();
+
+    await browser.pause(500);
   }
 }

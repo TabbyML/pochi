@@ -47,9 +47,7 @@ export type OnStartCallback = (options: {
 
 export type PrepareRequestGetters = {
   getLLM: () => RequestData["llm"];
-  getEnvironment?: (options: {
-    readonly messages: Message[];
-  }) => Promise<Environment>;
+  getEnvironment?: () => Promise<Environment>;
   getMcpInfo?: () => {
     toolset: Record<string, McpTool>;
     instructions: string;
@@ -101,7 +99,8 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
     abortSignal,
   }) => {
     const llm = await this.getters.getLLM();
-    const environment = await this.getters.getEnvironment?.({ messages });
+    const environment = await this.getters.getEnvironment?.();
+    messages = prompts.injectEnvironment(messages, environment) as Message[];
     const mcpInfo = this.getters.getMcpInfo?.();
     const customAgents = this.getters.getCustomAgents?.();
     const skills = this.getters.getSkills?.();
@@ -168,7 +167,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
       tools.readFile = handleReadFileOutput(this.blobStore, tools.readFile);
     }
 
-    const preparedMessages = await prepareMessages(messages, environment);
+    const preparedMessages = await prepareMessages(messages);
     const modelMessages = (await resolvePromise(
       convertToModelMessages(
         formatters.llm(preparedMessages),
@@ -234,14 +233,8 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
   };
 }
 
-function prepareMessages(
-  inputMessages: Message[],
-  environment: Environment | undefined,
-): Message[] {
-  return prompts.injectEnvironment(
-    convertDataReviewsToText(inputMessages),
-    environment,
-  ) as Message[];
+function prepareMessages(inputMessages: Message[]): Message[] {
+  return convertDataReviewsToText(inputMessages);
 }
 
 function isWellKnownReasoningModel(model?: string): boolean {

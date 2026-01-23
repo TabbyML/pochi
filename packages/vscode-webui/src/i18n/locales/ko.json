@@ -80,7 +80,8 @@
     "servers": "MCP",
     "tools": "도구",
     "noServersConfigured": "MCP 서버가 구성되지 않았습니다",
-    "manageServers": "MCP 서버 관리..."
+    "manageServers": "MCP 서버 관리...",
+    "taskScopeHint": "이 작업에 대한 MCP 서버 재정의"
   },
   "worktree": {
     "createPr": "PR 생성",
@@ -251,7 +252,13 @@
       "finished": "{{duration}} 만에 완료",
       "requiresApproval": "승인 대기 중"
     },
-    "loadMore": "더 보기"
+    "loadMore": "더 보기",
+    "showArchivedTasks": "보관된 작업 표시",
+    "hideArchivedTasks": "보관된 작업 숨기기",
+    "archiveTask": "작업 보관",
+    "unarchiveTask": "작업 보관 취소",
+    "archiveOldTasks": "1주일 이상 된 작업 보관",
+    "moreOptions": "더 많은 옵션"
   },
   "toolInvocation": {
     "requiresApproval": "승인 대기 중",
@@ -369,7 +376,8 @@
   },
   "subtask": {
     "back": "뒤로",
-    "complete": "완료"
+    "complete": "완료",
+    "startImplementation": "구현 시작"
   },
   "errorMessageView": {
     "reachedCreditLimit": "지출 한도에 도달했습니다.",

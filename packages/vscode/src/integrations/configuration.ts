@@ -182,6 +182,12 @@ const TabCompletionNESProviderSettings = z.discriminatedUnion("type", [
     type: z.literal("NES:pochi"),
   }),
   z.object({
+    type: z.literal("NES:openai"),
+    baseURL: z.string(),
+    apiKey: z.string().optional(),
+    model: z.string(),
+  }),
+  z.object({
     type: z.literal("NES:google-vertex-tuning"),
     vertex: z.custom<GoogleVertexModel>(),
     model: z.string(),

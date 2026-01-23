@@ -18,15 +18,15 @@ import {
 } from "../../utils";
 import type { TabCompletionProviderResponseItem } from "../types";
 import type { TabCompletionProviderClient } from "../types";
-import {
-  DocumentPrefixLine,
-  DocumentSuffixLine,
-  EditableRegionPrefixLine,
-  EditableRegionSuffixLine,
-  MaxCodeSnippets,
-  MaxOutputTokens,
-  RequestTimeOut,
-} from "./config";
+
+const EditableRegionPrefixLine = 5;
+const EditableRegionSuffixLine = 5;
+const DocumentPrefixLine = 15;
+const DocumentSuffixLine = 15;
+const MaxCodeSnippets = 5;
+const MaxCharsPerCodeSnippet = 2000;
+const MaxOutputTokens = 2048;
+const RequestTimeOut = 60 * 1000;
 
 const logger = getLogger("TabCompletion.Providers.NES.ChatModelClient");
 
@@ -60,8 +60,6 @@ export class NESChatModelClient
   ) {}
 
   collectBaseSegments(context: TabCompletionContext): BaseSegments | undefined {
-    const filepath = getRelativePath(context.document.uri);
-
     if (context.selectedCompletionInfo) {
       // mark request invalid as there is selected completion
       return undefined;
@@ -72,6 +70,8 @@ export class NESChatModelClient
       return undefined;
     }
 
+    const document = context.documentSnapshot;
+    const filepath = getRelativePath(document.uri);
     const edits = context.editHistory.map((step) => {
       const before = step.getBefore().getText();
       const after = step.getAfter().getText();
@@ -92,7 +92,7 @@ export class NESChatModelClient
     );
     const editableRegionEnd = new vscode.Position(
       Math.min(
-        context.document.lineCount,
+        document.lineCount,
         cursorPosition.line + 1 + EditableRegionSuffixLine,
       ),
       0,
@@ -102,29 +102,26 @@ export class NESChatModelClient
       0,
     );
     const documentSuffixEnd = new vscode.Position(
-      Math.min(
-        context.document.lineCount,
-        editableRegionEnd.line + DocumentSuffixLine,
-      ),
+      Math.min(document.lineCount, editableRegionEnd.line + DocumentSuffixLine),
       0,
     );
 
     return {
       filepath,
 
-      offset: context.document.offsetAt(cursorPosition),
-      prefixStartOffset: context.document.offsetAt(documentPrefixStart),
-      editableRegionStartOffset: context.document.offsetAt(editableRegionStart),
-      editableRegionEndOffset: context.document.offsetAt(editableRegionEnd),
-      suffixEndOffset: context.document.offsetAt(documentSuffixEnd),
+      offset: document.offsetAt(cursorPosition),
+      prefixStartOffset: document.offsetAt(documentPrefixStart),
+      editableRegionStartOffset: document.offsetAt(editableRegionStart),
+      editableRegionEndOffset: document.offsetAt(editableRegionEnd),
+      suffixEndOffset: document.offsetAt(documentSuffixEnd),
 
-      prefix: context.document.getText(
+      prefix: document.getText(
         new vscode.Range(documentPrefixStart, editableRegionStart),
       ),
-      editableRegionPrefix: context.document.getText(
+      editableRegionPrefix: document.getText(
         new vscode.Range(editableRegionStart, cursorPosition),
       ),
-      editableRegionSuffix: context.document.getText(
+      editableRegionSuffix: document.getText(
         new vscode.Range(cursorPosition, editableRegionEnd),
       ),
       suffix: context.document.getText(
@@ -180,7 +177,7 @@ export class NESChatModelClient
     codeSnippets = deduplicateSnippets(codeSnippets);
     codeSnippets = codeSnippets.map((snippet) => ({
       ...snippet,
-      text: cropTextToMaxChars(snippet.text, 2000),
+      text: cropTextToMaxChars(snippet.text, MaxCharsPerCodeSnippet),
     }));
     return {
       codeSnippets,
@@ -251,7 +248,7 @@ export class NESChatModelClient
 
       const extractedResult = extractResult(result.text, baseSegments);
       if (extractedResult) {
-        const result = {
+        const output = {
           requestId,
           edit: {
             changes: [
@@ -265,8 +262,8 @@ export class NESChatModelClient
             ],
           },
         };
-        logger.trace("Result:", logToFileObject(result));
-        return result;
+        logger.trace("Result:", logToFileObject(output));
+        return output;
       }
     } catch (error) {
       if (isCanceledError(error)) {

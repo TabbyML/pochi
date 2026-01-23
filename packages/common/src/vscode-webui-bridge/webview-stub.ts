@@ -18,6 +18,7 @@ import type {
   RuleFile,
   SessionState,
   SkillFile,
+  TaskArchivedParams,
   TaskChangedFile,
   TaskStates,
   VSCodeHostApi,
@@ -337,13 +338,24 @@ const VSCodeHostStub = {
     _taskId: string,
   ): Promise<{
     value: ThreadSignalSerialization<McpConfigOverride | undefined>;
-    set: (mcpConfigOverride: McpConfigOverride) => Promise<McpConfigOverride>;
+    setMcpConfigOverride: (
+      mcpConfigOverride: McpConfigOverride,
+    ) => Promise<McpConfigOverride>;
   }> => {
     return {
       value: {} as ThreadSignalSerialization<McpConfigOverride | undefined>,
-      set: (mcpConfigOverride: McpConfigOverride) =>
+      setMcpConfigOverride: (mcpConfigOverride: McpConfigOverride) =>
         Promise.resolve(mcpConfigOverride),
     };
+  },
+  readTaskArchived(): Promise<{
+    value: ThreadSignalSerialization<Record<string, boolean>>;
+    setTaskArchived: (params: TaskArchivedParams) => Promise<void>;
+  }> {
+    return Promise.resolve({
+      value: {} as ThreadSignalSerialization<Record<string, boolean>>,
+      setTaskArchived: (_params: TaskArchivedParams) => Promise.resolve(),
+    });
   },
 } satisfies VSCodeHostApi;
 

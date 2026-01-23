@@ -86,3 +86,7 @@ export interface TaskState {
 }
 
 export type TaskStates = Record<string, TaskState>;
+
+export type TaskArchivedParams =
+  | { type: "single"; taskId: string; archived: boolean }
+  | { type: "batch"; cwd?: string };

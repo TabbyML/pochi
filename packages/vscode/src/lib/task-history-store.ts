@@ -11,6 +11,7 @@ type EncodedTask = {
   parentId: string | null;
   // unix timestamp in milliseconds
   updatedAt: number;
+  cwd?: string | null;
 };
 
 const logger = getLogger("TaskHistoryStore");
