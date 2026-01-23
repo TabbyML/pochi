@@ -378,6 +378,11 @@ export interface VSCodeHostApi {
     value: ThreadSignalSerialization<Record<string, boolean>>;
     setTaskArchived: (params: TaskArchivedParams) => Promise<void>;
   }>;
+
+  readLang(): Promise<{
+    value: ThreadSignalSerialization<string>;
+    updateLang: (lang: string) => Promise<void>;
+  }>;
 }
 
 export interface WebviewHostApi {

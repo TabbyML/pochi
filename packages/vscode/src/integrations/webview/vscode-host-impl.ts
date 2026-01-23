@@ -13,6 +13,8 @@ import {
   getWorkspaceRulesFileUri,
 } from "@/lib/env";
 import { asRelativePath, isFileExists } from "@/lib/fs";
+// biome-ignore lint/style/useImportType: needed for dependency injection
+import { Lang } from "@/lib/lang";
 import { getLogger } from "@/lib/logger";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { ModelList } from "@/lib/model-list";
@@ -173,6 +175,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     private readonly globalStateSignals: GlobalStateSignals,
     private readonly taskHistoryStore: TaskHistoryStore,
     private readonly taskStateStore: TaskDataStore,
+    private readonly lang: Lang,
   ) {}
 
   private get cwd() {
@@ -1168,6 +1171,11 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       },
     };
   };
+
+  readLang = async () => ({
+    value: ThreadSignal.serialize(this.lang.currentLang),
+    updateLang: this.lang.updateLang,
+  });
 
   dispose() {
     for (const disposable of this.disposables) {
