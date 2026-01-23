@@ -30,15 +30,6 @@ export const makeSubTaskQuery = (taskId: string) =>
     deps: [taskId],
   });
 
-export const makeBlobQuery = (checksum: string) =>
-  queryDb(
-    () => tables.blobs.where("checksum", "=", checksum).first(undefined),
-    {
-      label: "blobs",
-      deps: [checksum],
-    },
-  );
-
 export const makeFileQuery = (taskId: string, filePath: string) =>
   queryDb(
     () =>

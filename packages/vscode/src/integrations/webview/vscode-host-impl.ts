@@ -22,7 +22,11 @@ import { PostHog } from "@/lib/posthog";
 import { SkillManager } from "@/lib/skill-manager";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { TaskDataStore } from "@/lib/task-data-store";
-import { taskRunning, taskUpdated } from "@/lib/task-events";
+import {
+  taskPendingApproval,
+  taskRunning,
+  taskUpdated,
+} from "@/lib/task-events";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { TaskHistoryStore } from "@/lib/task-history-store";
 // biome-ignore lint/style/useImportType: needed for dependency injection
@@ -943,6 +947,11 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     kind: "failed" | "completed" | "pending-tool" | "pending-input",
     params: { uid: string; isSubTask?: boolean },
   ) => {
+    if (kind === "pending-tool") {
+      taskPendingApproval.fire({ taskId: params.uid });
+    }
+
+    // show task notification
     if (!this.cwd) return;
 
     const taskStates = this.taskActivityTracker.state.value;

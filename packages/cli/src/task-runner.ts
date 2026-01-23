@@ -26,8 +26,10 @@ import type z from "zod/v4";
 import { readEnvironment } from "./lib/read-environment";
 import { StepCount } from "./lib/step-count";
 
+import { BackgroundJobManager } from "./lib/background-job-manager";
 import { Chat } from "./livekit";
 import { createOnOverrideMessages } from "./on-override-messages";
+
 import { executeToolCall } from "./tools";
 import type { ToolCallOptions } from "./types";
 
@@ -117,6 +119,7 @@ export class TaskRunner {
 
   private todos: Todo[] = [];
   private chatKit: LiveChatKit<Chat>;
+  private backgroundJobManager: BackgroundJobManager;
 
   readonly taskId: string;
 
@@ -132,14 +135,17 @@ export class TaskRunner {
     this.cwd = options.cwd;
     this.llm = options.llm;
     this.blobStore = options.blobStore;
+    this.backgroundJobManager = new BackgroundJobManager();
     this.toolCallOptions = {
       rg: options.rg,
 
       customAgents: options.customAgents,
       skills: options.skills,
       mcpHub: options.mcpHub,
+      backgroundJobManager: this.backgroundJobManager,
       createSubTaskRunner: (taskId: string, customAgent?: CustomAgent) => {
         // create sub task
+
         const runner = new TaskRunner({
           ...options,
           blobStore: this.blobStore,
@@ -159,9 +165,9 @@ export class TaskRunner {
       store: options.store,
       blobStore: this.blobStore,
       chatClass: Chat,
-      isCli: true,
       isSubTask: options.isSubTask,
       customAgent: options.customAgent,
+
       outputSchema: options.outputSchema,
 
       abortSignal: options.abortSignal,
@@ -227,6 +233,8 @@ export class TaskRunner {
       const error = toError(e);
       logger.trace("Failed:", error);
       this.chatKit.markAsFailed(error);
+    } finally {
+      this.backgroundJobManager.killAll();
     }
   }
 

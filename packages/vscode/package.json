@@ -1,6 +1,6 @@
 {
   "name": "pochi",
-  "version": "0.25.0-dev",
+  "version": "0.27.0-dev",
   "description": "Pochi is your AI powered team mate. Now available in research preview.",
   "displayName": "Pochi (Research Preview)",
   "publisher": "TabbyML",
@@ -374,7 +374,7 @@
       {
         "command": "pochi.tabCompletion.reject",
         "key": "escape",
-        "when": "editorTextFocus && pochiTabCompletionVisible"
+        "when": "editorTextFocus && pochiTabCompletionVisible || inlineSuggestionVisible"
       },
       {
         "command": "pochi.applyPochiLayoutWithCycleFocus",
@@ -689,6 +689,27 @@
                     "type": "boolean",
                     "default": false,
                     "description": "Enable Pochi Layout."
+                  }
+                }
+              },
+              "logToFile": {
+                "type": "object",
+                "default": {},
+                "additionalProperties": false,
+                "properties": {
+                  "level": {
+                    "type": "string",
+                    "enum": [
+                      "off",
+                      "fatal",
+                      "error",
+                      "warn",
+                      "info",
+                      "debug",
+                      "trace"
+                    ],
+                    "default": "off",
+                    "description": "Set the log level for file logging."
                   }
                 }
               }

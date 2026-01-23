@@ -5,11 +5,9 @@ import type { TabCompletionProviderClient } from "./types";
 
 export class TabCompletionProvider {
   private latencyTracker = new LatencyTracker();
+  private nextRequestId = 0;
 
-  constructor(
-    readonly id: string,
-    readonly client: TabCompletionProviderClient<object, object>,
-  ) {}
+  constructor(readonly client: TabCompletionProviderClient<object, object>) {}
 
   createRequest(
     context: TabCompletionContext,
@@ -17,7 +15,12 @@ export class TabCompletionProvider {
     if (!this.client) {
       return undefined;
     }
+
+    this.nextRequestId++;
+    const requestId = `${this.client.id}-${this.nextRequestId}`;
+
     return new TabCompletionProviderRequest(
+      requestId,
       context,
       this.client,
       this.latencyTracker,

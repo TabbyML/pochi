@@ -29,6 +29,7 @@ export interface ExtraSegments {
 
 export interface FIMCompletionModel {
   fetchCompletion(
+    requestId: string,
     baseSegments: BaseSegments,
     extraSegments?: ExtraSegments | undefined,
     token?: vscode.CancellationToken | undefined,

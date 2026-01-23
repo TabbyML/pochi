@@ -3,12 +3,14 @@ import {
   type PochiAdvanceSettings,
   PochiConfiguration,
 } from "@/integrations/configuration";
+import { logToFileObject } from "@/lib/file-logger";
 import { getLogger } from "@/lib/logger";
 import { signal } from "@preact/signals-core";
 import deepEqual from "fast-deep-equal";
 import { LRUCache } from "lru-cache";
 import { container, injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
+import { applyQuickFixes } from "./auto-code-actions";
 import { TabCompletionContext } from "./context";
 import { EditHistoryTracker, initContextProviders } from "./context-providers";
 import { TabCompletionDebounce } from "./debounce";
@@ -20,7 +22,11 @@ import type {
   TabCompletionProviderRequest,
 } from "./providers";
 import { TabCompletionProviderFactory } from "./providers/provider-factory";
-import { TabCompletionSolution, mergeSolution } from "./solution";
+import {
+  type OnDidAcceptInlineCompletionItemParams,
+  TabCompletionSolution,
+  mergeSolution,
+} from "./solution";
 import {
   EditorSelectionTrigger,
   type EditorSelectionTriggerEvent,
@@ -168,7 +174,6 @@ export class TabCompletionManager implements vscode.Disposable {
       }
     });
 
-    // Move cursor to the end of the edited range
     const reducedEditedRange = solutionItem.diff.changes.reduce<
       vscode.Range | undefined
     >((acc, curr) => {
@@ -181,29 +186,77 @@ export class TabCompletionManager implements vscode.Disposable {
       return acc ? (editedRange ? acc.union(editedRange) : acc) : editedRange;
     }, undefined);
     if (reducedEditedRange) {
+      await applyQuickFixes(editor.document.uri, reducedEditedRange, {
+        hash: solution.context.hash,
+        requestId: solutionItem.responseItem.requestId,
+      });
+
+      // Move cursor to the end of the edited range
       editor.selection = new vscode.Selection(
         reducedEditedRange.end,
         reducedEditedRange.end,
       );
     }
 
-    logger.trace("Solution accepted.");
+    logger.debug(
+      "Solution accepted.",
+      logToFileObject({
+        hash: solution.context.hash,
+        requestId: solutionItem.responseItem.requestId,
+      }),
+    );
     current.dispose();
-    this.current = undefined;
+    if (this.current === current) {
+      this.current = undefined;
+    }
   }
 
   reject() {
     logger.trace("Reject invoked.");
+    vscode.commands.executeCommand("editor.action.inlineSuggest.hide");
+
     if (!this.current) {
       logger.trace("Failed to reject: no current completion.");
       return;
     }
     const current = this.current;
+    const { solution, decorationItemIndex } = current;
+    const solutionItem = solution.items[decorationItemIndex ?? 0];
+
     this.cache.delete(current.solution.context.hash);
 
-    logger.trace("Solution rejected.");
+    logger.debug(
+      "Solution rejected.",
+      logToFileObject({
+        hash: solution.context.hash,
+        requestId: solutionItem.responseItem.requestId,
+      }),
+    );
     current.dispose();
     this.current = undefined;
+  }
+
+  async handleDidAcceptInlineCompletion(
+    params: OnDidAcceptInlineCompletionItemParams,
+  ) {
+    // Apply auto-import quick fixes after code completion is accepted
+    const editor = vscode.window.activeTextEditor;
+    if (editor) {
+      if (params.rangeAfter) {
+        await applyQuickFixes(editor.document.uri, params.rangeAfter, {
+          hash: params.hash,
+          requestId: params.requestId,
+        });
+      }
+    }
+
+    logger.debug(
+      "Solution accepted via inline completion.",
+      logToFileObject({
+        hash: params.hash,
+        requestId: params.requestId,
+      }),
+    );
   }
 
   private async handleTriggerEvent(
@@ -264,12 +317,25 @@ export class TabCompletionManager implements vscode.Disposable {
       event.kind === "inline-completion" ? event.isManually : false,
     );
 
+    logger.debug(
+      "TabCompletion triggered.",
+      logToFileObject({ hash: context.hash }),
+    );
+
     let solution: TabCompletionSolution;
     if (this.cache.has(context.hash)) {
       solution = this.cache.get(context.hash) as TabCompletionSolution;
+      logger.trace(
+        "Using cache.",
+        logToFileObject({
+          hash: context.hash,
+          solutionItemsLength: solution.items.length,
+        }),
+      );
     } else {
       solution = new TabCompletionSolution(context);
       this.cache.set(context.hash, solution);
+      logger.trace("Create solution.", logToFileObject({ hash: context.hash }));
     }
 
     // create requests
@@ -288,12 +354,14 @@ export class TabCompletionManager implements vscode.Disposable {
     this.current = current;
 
     if (!context.isManually && solution.items.length > 0) {
-      logger.trace("Using cached solution, no new requests will be sent.");
+      logger.trace(
+        "No new requests will be sent.",
+        logToFileObject({ hash: context.hash }),
+      );
       this.handleDidUpdateSolution();
       return;
     }
 
-    logger.trace("Preparing new requests.");
     const offset = context.documentSnapshot.offsetAt(context.selection.active);
     const triggerCharacter = context.documentSnapshot.getText(
       offsetRangeToPositionRange(
@@ -305,7 +373,10 @@ export class TabCompletionManager implements vscode.Disposable {
       ),
     );
     for (const provider of this.providers) {
-      logger.trace(`Create new request for provider ${provider.id}.`);
+      logger.trace(
+        `Create new request for provider ${provider.client.id}.`,
+        logToFileObject({ hash: context.hash }),
+      );
       const request = provider.createRequest(context);
       if (!request) {
         continue;
@@ -326,6 +397,10 @@ export class TabCompletionManager implements vscode.Disposable {
               solution.items.length - 1,
             );
             for (const item of forward) {
+              logger.trace(
+                "Generated forward cache: ",
+                logToFileObject({ hash: item.context.hash }),
+              );
               if (this.cache.has(item.context.hash)) {
                 const prev = this.cache.get(
                   item.context.hash,
@@ -365,13 +440,16 @@ export class TabCompletionManager implements vscode.Disposable {
 
       const token = tokenSource.token;
       delayFn(
-        async () => {
-          await request.start(token);
+        () => {
+          request.start(token);
         },
         delay,
         token,
       ).catch(() => {
-        logger.trace(`Request for provider ${provider.id} canceled.`);
+        logger.trace(
+          `Request ${request.id} canceled before starting.`,
+          logToFileObject({ hash: context.hash }),
+        );
       });
       providerRequests.push({ request, tokenSource, disposables });
     }
@@ -401,9 +479,21 @@ export class TabCompletionManager implements vscode.Disposable {
       solution.items.length === 1 &&
       solution.items[0].inlineCompletionItem
     ) {
-      const item = solution.items[0].inlineCompletionItem;
-      logger.trace("Return the first item as inline completion.", item);
-      triggerEvent.resolve(new vscode.InlineCompletionList([item]));
+      const inlineCompletionItem = solution.items[0].inlineCompletionItem;
+      const { command, ...inlineCompletionItemLogObject } =
+        inlineCompletionItem;
+      this.current.logFullContext();
+      logger.debug(
+        "Show item as inline completion.",
+        logToFileObject({
+          inlineCompletionItem: inlineCompletionItemLogObject,
+          hash: solution.context.hash,
+          requestId: solution.items[0].responseItem.requestId,
+        }),
+      );
+      triggerEvent.resolve(
+        new vscode.InlineCompletionList([inlineCompletionItem]),
+      );
       return;
     }
 
@@ -415,19 +505,24 @@ export class TabCompletionManager implements vscode.Disposable {
     }
 
     if (this.current.decorationItemIndex === undefined) {
-      logger.trace("Show item as decoration.");
-
       const index = solution.items.length - 1;
       const tokenSource = new vscode.CancellationTokenSource();
       this.current.decorationItemIndex = index;
       this.current.decorationTokenSource = tokenSource;
+      const item = solution.items[index];
 
       vscode.commands.executeCommand("editor.action.inlineSuggest.hide");
-      this.decorationManager.show(
-        editor,
-        solution.items[index],
-        tokenSource.token,
+
+      this.current.logFullContext();
+      logger.debug(
+        "Show item as decoration.",
+        logToFileObject({
+          item: item.textEdit,
+          hash: solution.context.hash,
+          requestId: item.responseItem.requestId,
+        }),
       );
+      this.decorationManager.show(editor, item, tokenSource.token);
     }
   }
 
@@ -455,6 +550,8 @@ class TabCompletionManagerContext implements vscode.Disposable {
   decorationItemIndex: number | undefined;
   decorationTokenSource: vscode.CancellationTokenSource | undefined;
 
+  private shouldLogContext = true;
+
   constructor(
     readonly triggerEvent:
       | EditorSelectionTriggerEvent
@@ -466,6 +563,14 @@ class TabCompletionManagerContext implements vscode.Disposable {
       disposables: readonly vscode.Disposable[];
     }[],
   ) {}
+
+  logFullContext() {
+    if (!this.shouldLogContext) {
+      return;
+    }
+    this.shouldLogContext = false;
+    this.solution.context.logFullContext();
+  }
 
   dispose() {
     if ("resolve" in this.triggerEvent) {

@@ -1,4 +1,5 @@
 import type { TabCompletionFIMProviderSettings } from "@/integrations/configuration";
+import { logToFileObject } from "@/lib/file-logger";
 import { getLogger } from "@/lib/logger";
 import type * as vscode from "vscode";
 import { HttpError, isCanceledError } from "../../../utils";
@@ -23,12 +24,7 @@ export class FIMOpenAIModel implements FIMCompletionModel {
   private readonly model: string | undefined;
   private readonly promptTemplate: string;
 
-  private requestId = 0;
-
-  constructor(
-    readonly clientId: string,
-    config: OpenAIProviderConfig,
-  ) {
+  constructor(config: OpenAIProviderConfig) {
     this.baseUrl = config.baseURL.trim();
     if (!this.baseUrl) {
       logger.error(
@@ -43,6 +39,7 @@ export class FIMOpenAIModel implements FIMCompletionModel {
   }
 
   async fetchCompletion(
+    requestId: string,
     baseSegments: BaseSegments,
     extraSegments?: ExtraSegments | undefined,
     token?: vscode.CancellationToken | undefined,
@@ -50,9 +47,6 @@ export class FIMOpenAIModel implements FIMCompletionModel {
     if (!this.baseUrl) {
       return undefined;
     }
-
-    this.requestId++;
-    const requestId = `client: ${this.clientId}, request: ${this.requestId}`;
 
     const request = {
       prompt: formatPrompt(this.promptTemplate, baseSegments, extraSegments),
@@ -76,7 +70,14 @@ export class FIMOpenAIModel implements FIMCompletionModel {
     const combinedSignal = AbortSignal.any(signals);
 
     try {
-      logger.trace(`[${requestId}] Completion request:`, request);
+      logger.trace(
+        "Request:",
+        logToFileObject({
+          requestId,
+          request,
+        }),
+      );
+
       const response = await fetch(`${this.baseUrl}/completions`, {
         method: "POST",
         headers: {
@@ -86,8 +87,13 @@ export class FIMOpenAIModel implements FIMCompletionModel {
         body: JSON.stringify(request),
         signal: combinedSignal,
       });
+
       logger.trace(
-        `[${requestId}] Completion response status: ${response.status}.`,
+        "Response status:",
+        logToFileObject({
+          requestId,
+          response: response.status,
+        }),
       );
 
       if (!response.ok) {
@@ -98,14 +104,21 @@ export class FIMOpenAIModel implements FIMCompletionModel {
         });
       }
       const data = await response.json();
-      logger.trace(`[${requestId}] Completion response data:`, data);
+
+      logger.trace(
+        "Response:",
+        logToFileObject({
+          requestId,
+          response: data,
+        }),
+      );
 
       return getResultFromResponse(data);
     } catch (error) {
       if (isCanceledError(error)) {
-        logger.debug(`[${requestId}] Completion request canceled.`);
+        logger.trace("Request canceled.", logToFileObject({ requestId }));
       } else {
-        logger.debug(`[${requestId}] Completion request failed.`, error);
+        logger.debug("Request failed.", logToFileObject({ requestId, error }));
       }
       throw error; // rethrow error
     }

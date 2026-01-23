@@ -78,6 +78,7 @@ export interface TaskState {
   unread?: boolean;
   active?: boolean;
   running?: boolean;
+  requiresApproval?: boolean;
 
   cwd: string;
   lastCheckpointHash?: string;

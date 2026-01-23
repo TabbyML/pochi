@@ -1,3 +1,4 @@
+import { logToFileObject } from "@/lib/file-logger";
 import { getLogger } from "@/lib/logger";
 import { container } from "tsyringe";
 import * as vscode from "vscode";
@@ -302,17 +303,20 @@ export class FIMClient
   }
 
   async fetchCompletion(
+    requestId: string,
     context: TabCompletionContext,
     baseSegments: BaseSegments,
     extraSegments?: ExtraSegments | undefined,
     token?: vscode.CancellationToken | undefined,
   ): Promise<TabCompletionProviderResponseItem | undefined> {
     let text = await this.model.fetchCompletion(
+      requestId,
       baseSegments,
       extraSegments,
       token,
     );
     if (!text) {
+      logger.trace("No result.", logToFileObject({ requestId }));
       return undefined;
     }
 
@@ -321,6 +325,10 @@ export class FIMClient
       throw new AbortError();
     }
     if (!text) {
+      logger.trace(
+        "No result after postprocessing.",
+        logToFileObject({ requestId }),
+      );
       return undefined;
     }
 
@@ -335,10 +343,14 @@ export class FIMClient
       text: baseSegments.selectedCompletionInsertion + text,
     };
 
-    return {
+    const result = {
+      requestId,
       edit: {
         changes: [change],
       },
     };
+
+    logger.trace("Result:", logToFileObject(result));
+    return result;
   }
 }

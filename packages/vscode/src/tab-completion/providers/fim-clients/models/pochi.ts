@@ -1,3 +1,4 @@
+import { logToFileObject } from "@/lib/file-logger";
 import { getLogger } from "@/lib/logger";
 import { getVendor } from "@getpochi/common/vendor";
 import type { PochiCredentials } from "@getpochi/common/vscode-webui-bridge";
@@ -33,18 +34,12 @@ type CodeCompletionResponse = {
 };
 
 export class FIMPochiModel implements FIMCompletionModel {
-  private requestId = 0;
-
-  constructor(readonly clientId: string) {}
-
   async fetchCompletion(
+    requestId: string,
     baseSegments: BaseSegments,
     extraSegments?: ExtraSegments | undefined,
     token?: vscode.CancellationToken | undefined,
   ): Promise<string | undefined> {
-    this.requestId++;
-    const requestId = `client: ${this.clientId}, request: ${this.requestId}`;
-
     const prompt = buildPrompt(baseSegments, extraSegments);
     const request: CodeCompletionRequest = {
       model: "codestral-latest",
@@ -69,7 +64,14 @@ export class FIMPochiModel implements FIMCompletionModel {
     const combinedSignal = AbortSignal.any(signals);
 
     try {
-      logger.trace(`[${requestId}] Completion request:`, request);
+      logger.trace(
+        "Request:",
+        logToFileObject({
+          requestId,
+          request,
+        }),
+      );
+
       const pochiVendor = getVendor("pochi");
       const { jwt } = (await pochiVendor.getCredentials()) as PochiCredentials;
       const response = await fetch(
@@ -84,8 +86,13 @@ export class FIMPochiModel implements FIMCompletionModel {
           signal: combinedSignal,
         },
       );
+
       logger.trace(
-        `[${requestId}] Completion response status: ${response.status}.`,
+        "Response status:",
+        logToFileObject({
+          requestId,
+          response: response.status,
+        }),
       );
 
       if (!response.ok) {
@@ -96,14 +103,21 @@ export class FIMPochiModel implements FIMCompletionModel {
         });
       }
       const data = (await response.json()) as CodeCompletionResponse;
-      logger.trace(`[${requestId}] Completion response data:`, data);
+
+      logger.trace(
+        "Response:",
+        logToFileObject({
+          requestId,
+          response: data,
+        }),
+      );
 
       return getResultFromResponse(data);
     } catch (error) {
       if (isCanceledError(error)) {
-        logger.debug(`[${requestId}] Completion request canceled.`);
+        logger.trace("Request canceled.", logToFileObject({ requestId }));
       } else {
-        logger.debug(`[${requestId}] Completion request failed.`, error);
+        logger.debug("Request failed.", logToFileObject({ requestId, error }));
       }
       throw error; // rethrow error
     }

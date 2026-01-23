@@ -12,7 +12,10 @@ import { PostHog } from "@/lib/posthog";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { WorkspaceScope } from "@/lib/workspace-scoped";
 // biome-ignore lint/style/useImportType: needed for dependency injection
-import { TabCompletionManager, applyQuickFixes } from "@/tab-completion";
+import {
+  type OnDidAcceptInlineCompletionItemParams,
+  TabCompletionManager,
+} from "@/tab-completion";
 import type { WebsiteTaskCreateEvent } from "@getpochi/common";
 import {
   type CustomModelSetting,
@@ -381,20 +384,9 @@ export class CommandManager implements vscode.Disposable {
 
       vscode.commands.registerCommand(
         "pochi.tabCompletion.onDidAccept",
-        async (params: {
-          insertedText: string;
-          rangeBefore: vscode.Range;
-          rangeAfter: vscode.Range;
-        }) => {
+        async (params: OnDidAcceptInlineCompletionItemParams) => {
           this.posthog.capture("acceptCodeCompletion");
-
-          // Apply auto-import quick fixes after code completion is accepted
-          const editor = vscode.window.activeTextEditor;
-          if (editor) {
-            if (params.rangeAfter) {
-              applyQuickFixes(editor.document.uri, params.rangeAfter);
-            }
-          }
+          this.tabCompletionManager.handleDidAcceptInlineCompletion(params);
         },
       ),
 

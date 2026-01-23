@@ -101,7 +101,7 @@ jobs:
         if: steps.parse_version.outputs.parse_failed == 'false'
         uses: oven-sh/setup-bun@v2
 
-      - name: Cherry-pick and Release (Pre Branch)
+      - name: Cherry-pick and Push (Pre Branch)
         if: steps.parse_version.outputs.parse_failed == 'false' && steps.parse_version.outputs.is_pre == 'true'
         run: |
           git config --global user.name "github-actions[bot]"
@@ -118,7 +118,52 @@ jobs:
 
           bun install --frozen-lockfile
 
-          # Run release in packages/vscode
+          git push origin ${{ steps.parse_version.outputs.pre_branch }}
+
+      - name: Wait for Workflows (Pre Branch)
+        if: steps.parse_version.outputs.parse_failed == 'false' && steps.parse_version.outputs.is_pre == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BRANCH="${{ steps.parse_version.outputs.pre_branch }}"
+          SHA=$(git rev-parse HEAD)
+          echo "Waiting for workflows on $BRANCH ($SHA) to complete..."
+
+          # Give GitHub a moment to trigger workflows
+          sleep 10
+
+          while true; do
+            OUTPUT=$(gh run list --branch "$BRANCH" --commit "$SHA" --json status,conclusion,name)
+
+            COUNT=$(echo "$OUTPUT" | jq 'length')
+            if [[ "$COUNT" -eq 0 ]]; then
+               echo "No workflows found yet. Waiting..."
+               sleep 10
+               continue
+            fi
+
+            FAILED_COUNT=$(echo "$OUTPUT" | jq '[.[] | select(.conclusion == "failure" or .conclusion == "timed_out")] | length')
+            if [[ "$FAILED_COUNT" -gt 0 ]]; then
+              echo "❌ Some workflows failed:"
+              echo "$OUTPUT" | jq '.[] | select(.conclusion == "failure" or .conclusion == "timed_out") | .name + ": " + .conclusion'
+              exit 1
+            fi
+
+            PENDING_COUNT=$(echo "$OUTPUT" | jq '[.[] | select(.status != "completed")] | length')
+
+            if [[ "$PENDING_COUNT" -eq 0 ]]; then
+              echo "✅ All workflows passed."
+              break
+            fi
+
+            echo "⏳ $PENDING_COUNT workflows still running..."
+            sleep 30
+          done
+
+      - name: Release (Pre Branch)
+        if: steps.parse_version.outputs.parse_failed == 'false' && steps.parse_version.outputs.is_pre == 'true'
+        run: |
+          git checkout ${{ steps.parse_version.outputs.pre_branch }}
           cd packages/vscode
           bun run release --release patch --quiet --yes
 
@@ -140,7 +185,7 @@ jobs:
           exclude-workflow-initiator-as-approver: false
           fail-on-denial: true
 
-      - name: Cherry-pick and Release (Main Branch)
+      - name: Cherry-pick and Push (Main Branch)
         if: steps.parse_version.outputs.parse_failed == 'false'
         run: |
           git config --global user.name "github-actions[bot]"
@@ -157,7 +202,52 @@ jobs:
 
           bun install --frozen-lockfile
 
-          # Run release in packages/vscode
+          git push origin ${{ steps.parse_version.outputs.main_branch }}
+
+      - name: Wait for Workflows (Main Branch)
+        if: steps.parse_version.outputs.parse_failed == 'false'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BRANCH="${{ steps.parse_version.outputs.main_branch }}"
+          SHA=$(git rev-parse HEAD)
+          echo "Waiting for workflows on $BRANCH ($SHA) to complete..."
+
+          # Give GitHub a moment to trigger workflows
+          sleep 10
+
+          while true; do
+            OUTPUT=$(gh run list --branch "$BRANCH" --commit "$SHA" --json status,conclusion,name)
+
+            COUNT=$(echo "$OUTPUT" | jq 'length')
+            if [[ "$COUNT" -eq 0 ]]; then
+               echo "No workflows found yet. Waiting..."
+               sleep 10
+               continue
+            fi
+
+            FAILED_COUNT=$(echo "$OUTPUT" | jq '[.[] | select(.conclusion == "failure" or .conclusion == "timed_out")] | length')
+            if [[ "$FAILED_COUNT" -gt 0 ]]; then
+              echo "❌ Some workflows failed:"
+              echo "$OUTPUT" | jq '.[] | select(.conclusion == "failure" or .conclusion == "timed_out") | .name + ": " + .conclusion'
+              exit 1
+            fi
+
+            PENDING_COUNT=$(echo "$OUTPUT" | jq '[.[] | select(.status != "completed")] | length')
+
+            if [[ "$PENDING_COUNT" -eq 0 ]]; then
+              echo "✅ All workflows passed."
+              break
+            fi
+
+            echo "⏳ $PENDING_COUNT workflows still running..."
+            sleep 30
+          done
+
+      - name: Release (Main Branch)
+        if: steps.parse_version.outputs.parse_failed == 'false'
+        run: |
+          git checkout ${{ steps.parse_version.outputs.main_branch }}
           cd packages/vscode
           bun run release --release patch --quiet --yes
 

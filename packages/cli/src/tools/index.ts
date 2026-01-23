@@ -7,12 +7,17 @@ import { applyDiff } from "./apply-diff";
 import { editNotebook } from "./edit-notebook";
 import { executeCommand } from "./execute-command";
 import { globFiles } from "./glob-files";
+import { killBackgroundJob } from "./kill-background-job";
 import { listFiles } from "./list-files";
+
 import { newTask } from "./new-task";
+import { readBackgroundJobOutput } from "./read-background-job-output";
 import { readFile } from "./read-file";
 import { searchFiles } from "./search-files";
 import { skill } from "./skill";
+import { startBackgroundJob } from "./start-background-job";
 import { todoWrite } from "./todo-write";
+
 import { writeToFile } from "./write-to-file";
 
 const ToolMap: Record<
@@ -30,6 +35,9 @@ const ToolMap: Record<
   writeToFile,
   searchFiles,
   executeCommand,
+  startBackgroundJob,
+  readBackgroundJobOutput,
+  killBackgroundJob,
   skill,
 };
 
