@@ -14,7 +14,7 @@ import {
 } from "@/lib/env";
 import { asRelativePath, isFileExists } from "@/lib/fs";
 // biome-ignore lint/style/useImportType: needed for dependency injection
-import { Lang } from "@/lib/lang";
+import { PochiLanguage } from "@/lib/pochi-language";
 import { getLogger } from "@/lib/logger";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { ModelList } from "@/lib/model-list";
@@ -175,7 +175,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     private readonly globalStateSignals: GlobalStateSignals,
     private readonly taskHistoryStore: TaskHistoryStore,
     private readonly taskStateStore: TaskDataStore,
-    private readonly lang: Lang,
+    private readonly lang: PochiLanguage,
   ) {}
 
   private get cwd() {

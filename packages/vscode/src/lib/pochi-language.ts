@@ -3,11 +3,11 @@ import { signal } from "@preact/signals-core";
 import { inject, injectable, singleton } from "tsyringe";
 import type * as vscode from "vscode";
 
-const logger = getLogger("lang");
+const logger = getLogger("pochi-language");
 
 @injectable()
 @singleton()
-export class Lang {
+export class PochiLanguage {
   currentLang = signal<string>("en");
 
   private readonly storageKey = "pochi-lang";
