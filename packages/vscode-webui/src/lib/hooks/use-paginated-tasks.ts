@@ -1,9 +1,12 @@
 import type { Task } from "@getpochi/livekit";
 import { useCallback, useState } from "react";
+import { useTasks } from "../use-tasks";
+import { useTaskArchived } from "./use-task-archived";
 
 interface UsePaginatedTasksOptions {
   cwd: string;
   pageSize?: number;
+  showArchived?: boolean;
 }
 
 interface PaginatedTasksResult {
@@ -14,27 +17,23 @@ interface PaginatedTasksResult {
   reset: () => void;
 }
 
-/**
- * Hook for limit-based paginated task loading
- * Uses dynamic limit that increases as user scrolls (10, 20, 30, etc.)
- *
- * Design principles:
- * - Single reactive query with increasing limit
- * - Livestore automatically updates all loaded items
- * - Simpler state management than cursor-based pagination
- * - Ensures reactive updates for task status changes (e.g., "Planning next move")
- */
-import { useTasks } from "../use-tasks";
-
 export function usePaginatedTasks({
   cwd,
   pageSize = 10,
+  showArchived,
 }: UsePaginatedTasksOptions): PaginatedTasksResult {
   const [limit, setLimit] = useState(pageSize);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const { isTaskArchived } = useTaskArchived();
 
   const tasks = useTasks()
-    .filter((t) => t.parentId === null && t.cwd === cwd)
+    .filter(
+      (t) =>
+        t.parentId === null &&
+        t.cwd === cwd &&
+        !!t.title?.trim() &&
+        (showArchived || !isTaskArchived(t.id)),
+    )
     .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
 
   const paginatedTasks = tasks.slice(0, limit);

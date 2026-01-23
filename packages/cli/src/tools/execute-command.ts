@@ -11,6 +11,7 @@ import {
   getShellPath,
 } from "@getpochi/common/tool-utils";
 import type { ClientTools, ToolFunctionType } from "@getpochi/tools";
+import { getCommonProcessEnv } from "../lib/process-env";
 
 export const executeCommand =
   (): ToolFunctionType<ClientTools["executeCommand"]> =>
@@ -39,12 +40,7 @@ export const executeCommand =
         timeout: timeout * 1000, // Convert to milliseconds
         cwd: resolvedCwd,
         signal: abortSignal,
-        env: {
-          ...process.env,
-          PAGER: "cat",
-          GIT_COMMITTER_NAME: "Pochi",
-          GIT_COMMITTER_EMAIL: "noreply@getpochi.com",
-        },
+        env: getCommonProcessEnv(),
       });
 
       const { output, isTruncated } = processCommandOutput(

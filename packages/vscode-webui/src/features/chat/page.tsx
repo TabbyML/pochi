@@ -20,7 +20,7 @@ import { lastAssistantMessageIsCompleteWithToolCalls } from "ai";
 import type { TFunction } from "i18next";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { shouldStopAutoApprove, useApprovalAndRetry } from "../approval";
+import { useApprovalAndRetry, useShouldStopAutoApprove } from "../approval";
 import { getReadyForRetryError } from "../retry/hooks/use-ready-for-retry-error";
 import {
   useAutoApprove,
@@ -222,6 +222,7 @@ function Chat({ user, uid, info }: ChatProps) {
     },
   );
 
+  const shouldStopAutoApprove = useShouldStopAutoApprove();
   const chatKit = useLiveChatKit({
     store,
     blobStore,

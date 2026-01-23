@@ -35,7 +35,7 @@ import { TerminalLinkProvider } from "./integrations/terminal-link-provider";
 import { PochiWebviewSidebar } from "./integrations/webview";
 import { PochiTaskEditorProvider } from "./integrations/webview/webview-panel";
 import { type AuthClient, createAuthClient } from "./lib/auth-client";
-import { FileLogger } from "./lib/file-logger";
+import "./lib/file-logger";
 import { getLogger } from "./lib/logger";
 import { PostInstallActions } from "./lib/post-install-actions";
 import { WorkspaceScope } from "./lib/workspace-scoped";
@@ -79,7 +79,6 @@ export async function activate(context: vscode.ExtensionContext) {
   container.resolve(CommandManager);
   container.resolve(DiffOriginContentProvider);
   container.resolve(PostInstallActions);
-  container.resolve(FileLogger);
   container.resolve(TerminalLinkProvider);
   container.resolve(DiffChangesContentProvider);
   container.resolve(WorktreeManager);

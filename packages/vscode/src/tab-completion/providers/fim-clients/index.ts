@@ -10,17 +10,17 @@ export function createFIMProviderClient(
   config: TabCompletionFIMProviderSettings,
 ): TabCompletionProviderClient<object, object> | undefined {
   if (config.type === "FIM:google-vertex-tuning") {
-    const model = new FIMGoogleVertexTuningModel(id, config);
+    const model = new FIMGoogleVertexTuningModel(config);
     return new FIMClient(id, model);
   }
 
   if (config.type === "FIM:openai") {
-    const model = new FIMOpenAIModel(id, config);
+    const model = new FIMOpenAIModel(config);
     return new FIMClient(id, model);
   }
 
   if (config.type === "FIM:pochi") {
-    const model = new FIMPochiModel(id);
+    const model = new FIMPochiModel();
     return new FIMClient(id, model);
   }
 

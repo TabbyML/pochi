@@ -4,6 +4,8 @@ import type { TabCompletionProviderResponseItem } from "../providers/types";
 import { isRevertingRecentEdits } from "./filters";
 import { TabCompletionSolutionItem } from "./item";
 
+export type { OnDidAcceptInlineCompletionItemParams } from "./item";
+
 const logger = getLogger("TabCompletion.Solution");
 
 export class TabCompletionSolution {

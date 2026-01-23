@@ -80,7 +80,8 @@
     "servers": "MCP",
     "tools": "tools",
     "noServersConfigured": "No MCP servers configured",
-    "manageServers": "Manage MCP Servers..."
+    "manageServers": "Manage MCP Servers...",
+    "taskScopeHint": "Override MCP servers for this task"
   },
   "worktree": {
     "createPr": "Create PR",
@@ -240,11 +241,19 @@
       "paused": "Task is paused",
       "errorPrefix": "Error:",
       "fallbackError": "Error encountered",
-      "finished": "Finished in {{duration}}"
+      "finished": "Finished in {{duration}}",
+      "requiresApproval": "Requires approval"
     },
-    "loadMore": "Load more"
+    "loadMore": "Load more",
+    "showArchivedTasks": "Show archived tasks",
+    "hideArchivedTasks": "Hide archived tasks",
+    "archiveTask": "Archive task",
+    "unarchiveTask": "Unarchive task",
+    "archiveOldTasks": "Archive tasks older than one week",
+    "moreOptions": "More options"
   },
   "toolInvocation": {
+    "requiresApproval": "Requires approval",
     "taskCompleted": "Task Completed",
     "reading": "Reading ",
     "writing": "Writing ",
@@ -359,7 +368,8 @@
   },
   "subtask": {
     "back": "Back",
-    "complete": "Complete"
+    "complete": "Complete",
+    "startImplementation": "Start Implementation"
   },
   "errorMessageView": {
     "reachedCreditLimit": "You have reached the spending limit.",

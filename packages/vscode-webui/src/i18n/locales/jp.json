@@ -80,7 +80,8 @@
     "servers": "MCP",
     "tools": "ツール",
     "noServersConfigured": "MCP サーバーが設定されていません",
-    "manageServers": "MCP サーバーを管理..."
+    "manageServers": "MCP サーバーを管理...",
+    "taskScopeHint": "このタスクの MCP サーバーを上書きする"
   },
   "worktree": {
     "createPr": "PR を作成",
@@ -238,11 +239,19 @@
       "planning": "次の動作を計画中",
       "errorPrefix": "エラー：",
       "fallbackError": "エラーが発生しました",
-      "finished": "{{duration}} で完了"
+      "finished": "{{duration}} で完了",
+      "requiresApproval": "承認待ち"
     },
-    "loadMore": "さらに読み込む"
+    "loadMore": "さらに読み込む",
+    "showArchivedTasks": "アーカイブされたタスクを表示",
+    "hideArchivedTasks": "アーカイブされたタスクを非表示",
+    "archiveTask": "タスクをアーカイブ",
+    "unarchiveTask": "タスクをアーカイブ解除",
+    "archiveOldTasks": "1週間以上前のタスクをアーカイブ",
+    "moreOptions": "その他のオプション"
   },
   "toolInvocation": {
+    "requiresApproval": "承認待ち",
     "taskCompleted": "タスク完了",
     "reading": "読み込み中 ",
     "writing": "書き込み中 ",
@@ -356,7 +365,8 @@
   },
   "subtask": {
     "back": "戻る",
-    "complete": "完了"
+    "complete": "完了",
+    "startImplementation": "実装を開始"
   },
   "errorMessageView": {
     "reachedCreditLimit": "支出限度額に達しました。",
