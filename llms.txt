@@ -3389,6 +3389,39 @@ Here you will find highlights on features, enhancements, and bug fixes, plus ins
 
   --- */}
 
+## [Plan like you code](./plan-like-you-code)
+
+#### Jan 22, 2026
+
+# Plan like you code
+
+<video
+  controls
+  style={{
+      width: "100%",
+      borderRadius: "8px",
+      boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+      }}
+>
+  <source src="https://assets.docs.getpochi.com/create-plan.mp4" type="video/mp4" />
+
+  Your browser does not support the video tag.
+</video>
+
+We shipped **Plan Mode** in Pochi.
+
+Planning by itself isn’t new. What’s interesting is what happens when planning plugs into a workflow that already supports inline comments, review edits, and task-based execution.
+
+Create Plan is a feature we built, but its real value comes from how it composes with the rest of the system.
+
+Instead of treating the plan as something you just read and approve, you can iterate on it the same way you’d review a diff - leave inline comments, refine specific steps, and then execute directly from that agreed version.
+
+The plan lives as a real workspace artifact (i.e. `plan.md`) and opens in the editor, so planning becomes part of the same collaboration loop as code.
+
+**[Read the full docs](https://docs.getpochi.com/create-plan)**
+
+***
+
 ## [Weekly Update #19](./2026-01-16-weekly-update-19)
 
 #### Jan 16, 2026
@@ -5243,6 +5276,43 @@ This week we polished the VS Code extension with some **UX upgrades**, open-sour
 ### Bug Fixes 🐛
 
 * **File search now correctly surfaces matching files:** Queries that used to return empty results will now behave as expected. [#79](https://github.com/TabbyML/pochi/pull/79)
+
+
+# Plan like you code
+URL: /developer-updates/plan-like-you-code
+Plan, review, and align before executing code changes
+***
+
+title: 'Plan like you code'
+description: "Plan, review, and align before executing code changes"
+--------------------------------------------------------------------
+
+# Plan like you code
+
+<video
+  controls
+  style={{
+      width: "100%",
+      borderRadius: "8px",
+      boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+      }}
+>
+  <source src="https://assets.docs.getpochi.com/create-plan.mp4" type="video/mp4" />
+
+  Your browser does not support the video tag.
+</video>
+
+We shipped **Plan Mode** in Pochi.
+
+Planning by itself isn’t new. What’s interesting is what happens when planning plugs into a workflow that already supports inline comments, review edits, and task-based execution.
+
+Create Plan is a feature we built, but its real value comes from how it composes with the rest of the system.
+
+Instead of treating the plan as something you just read and approve, you can iterate on it the same way you’d review a diff - leave inline comments, refine specific steps, and then execute directly from that agreed version.
+
+The plan lives as a real workspace artifact (i.e. `plan.md`) and opens in the editor, so planning becomes part of the same collaboration loop as code.
+
+**[Read the full docs](https://docs.getpochi.com/create-plan)**
 
 
 # Closing the Loop: How Reinforcement Learning is Changing AI Coding
