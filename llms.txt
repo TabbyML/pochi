@@ -3030,6 +3030,76 @@ Another batch of updates is out. Here’s what we’ve shipped since the last re
   Stay tuned!
 
 
+# Weekly Update
+URL: /developer-updates/2026-01-23-weekly-update-20
+
+***
+
+## title: Weekly Update #20
+
+# Weekly Update #20
+
+### TL;DR
+
+As Pochi takes on larger and more complex tasks, it’s increasingly important to be explicit about intent and permissions.
+
+This release introduces new workflows for planning before execution and for restricting tool access per task, making agent behavior easier to reason about and safer by default.
+
+### 🚀 Features
+
+* **Create Plan Mode:** You can now create a task in Plan Mode to generate and refine an implementation plan before any code is changed. To use, click on the `Plan` option when creating a new task from the sidebar.
+
+  1. Plan tasks   generates a structured implementation plan instead of immediately executing edits.
+  2. The plan is stored as a workspace artifact (i.e. `plan.md`) in Pochi’s virtual filesystem and does not modify your project directory.
+  3. You can create a separate plan for each task without polluting your repo.
+  4. You can use existing workflows: inline comments, review edits, and follow-up prompts to refine the plan.
+  5. After review, you can explicitly start execution from the approved plan.
+
+  This makes planning a first-class step in the agent workflow and lets you align on scope, approach, and risks before applying multi-file changes.**[#819](https://github.com/TabbyML/pochi/issues/819)**
+
+  <video
+    controls
+    style={{
+      width: "100%",
+      borderRadius: "8px",
+      boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+      }}
+  >
+    <source src="https://assets.docs.getpochi.com/create-plan.mp4" type="video/mp4" />
+
+    Your browser does not support the video tag.
+  </video>
+
+### ✨ Enhancements
+
+* **Granular MCP Tool Control in Sidebar:** You can now control MCP access per task instead of auto-approving all tools globally. Follow-up messages are restricted to the MCP servers selected at task creation.
+
+  To try it out, look for the MCP server selector in the sidebar input. Servers disabled in global settings are not shown in the selector. This provides better security and more explicit control over which tools the agent can use. **[#939](https://github.com/TabbyML/pochi/issues/939)**
+
+  <video
+    controls
+    style={{
+      width: "100%",
+      borderRadius: "8px",
+      boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+      }}
+  >
+    <source src="https://assets.docs.getpochi.com/mcp-granular-control-026.mp4" type="video/mp4" />
+
+    Your browser does not support the video tag.
+  </video>
+
+### 🐛 Bug Fixes
+
+* **Fixed Token Coloring in NES Code Renderer:** Fixed an issue where certain token types (such as string literals) were not being theme-colored correctly in the NES code renderer. **[#731](https://github.com/TabbyML/pochi/issues/731)**
+
+### 🔥 Preview
+
+* Soon you’ll be able to archive tasks in the sidebar to keep active work focused, with filters and quick restore when you need to revisit something.
+
+* We’re also building a built-in browser subagent that can browse and interact with live web pages and stream its actions directly in the editor.
+
+
 # NES Series (Part 2): Real-Time Context Management in Your Code Editor
 URL: /developer-updates/context-management-in-your-editor
 Learn how Pochi's NES model manages, ranks, and streams real-time edit context
@@ -3419,6 +3489,74 @@ Instead of treating the plan as something you just read and approve, you can ite
 The plan lives as a real workspace artifact (i.e. `plan.md`) and opens in the editor, so planning becomes part of the same collaboration loop as code.
 
 **[Read the full docs](https://docs.getpochi.com/create-plan)**
+
+***
+
+## [Weekly Update #20](./2026-01-23-weekly-update-20)
+
+#### Jan 23, 2026
+
+# Weekly Update #20
+
+### TL;DR
+
+As Pochi takes on larger and more complex tasks, it’s increasingly important to be explicit about intent and permissions.
+
+This release introduces new workflows for planning before execution and for restricting tool access per task, making agent behavior easier to reason about and safer by default.
+
+### 🚀 Features
+
+* **Create Plan Mode:** You can now create a task in Plan Mode to generate and refine an implementation plan before any code is changed. To use, click on the `Plan` option when creating a new task from the sidebar.
+
+  1. Plan tasks   generates a structured implementation plan instead of immediately executing edits.
+  2. The plan is stored as a workspace artifact (i.e. `plan.md`) in Pochi’s virtual filesystem and does not modify your project directory.
+  3. You can create a separate plan for each task without polluting your repo.
+  4. You can use existing workflows: inline comments, review edits, and follow-up prompts to refine the plan.
+  5. After review, you can explicitly start execution from the approved plan.
+
+  This makes planning a first-class step in the agent workflow and lets you align on scope, approach, and risks before applying multi-file changes.**[#819](https://github.com/TabbyML/pochi/issues/819)**
+
+  <video
+    controls
+    style={{
+      width: "100%",
+      borderRadius: "8px",
+      boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+      }}
+  >
+    <source src="https://assets.docs.getpochi.com/create-plan.mp4" type="video/mp4" />
+
+    Your browser does not support the video tag.
+  </video>
+
+### ✨ Enhancements
+
+* **Granular MCP Tool Control in Sidebar:** You can now control MCP access per task instead of auto-approving all tools globally. Follow-up messages are restricted to the MCP servers selected at task creation.
+
+  To try it out, look for the MCP server selector in the sidebar input. Servers disabled in global settings are not shown in the selector. This provides better security and more explicit control over which tools the agent can use. **[#939](https://github.com/TabbyML/pochi/issues/939)**
+
+  <video
+    controls
+    style={{
+      width: "100%",
+      borderRadius: "8px",
+      boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+      }}
+  >
+    <source src="https://assets.docs.getpochi.com/mcp-granular-control-026.mp4" type="video/mp4" />
+
+    Your browser does not support the video tag.
+  </video>
+
+### 🐛 Bug Fixes
+
+* **Fixed Token Coloring in NES Code Renderer:** Fixed an issue where certain token types (such as string literals) were not being theme-colored correctly in the NES code renderer. **[#731](https://github.com/TabbyML/pochi/issues/731)**
+
+### 🔥 Preview
+
+* Soon you’ll be able to archive tasks in the sidebar to keep active work focused, with filters and quick restore when you need to revisit something.
+
+* We’re also building a built-in browser subagent that can browse and interact with live web pages and stream its actions directly in the editor.
 
 ***
 
