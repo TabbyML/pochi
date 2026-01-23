@@ -72,7 +72,7 @@ export const ToolsByPermission = {
       "globFiles",
       "searchFiles",
       "readBackgroundJobOutput",
-      "skill",
+      "useSkill",
     ] satisfies ToolName[]),
 
     // Pochi offered-tools
@@ -103,7 +103,7 @@ const createCliTools = (options?: CreateToolOptions) => ({
   globFiles,
   listFiles,
   readFile: createReadFileTool(options?.contentType),
-  skill: createSkillTool(options?.skills),
+  useSkill: createSkillTool(options?.skills),
   searchFiles,
   todoWrite,
   writeToFile,

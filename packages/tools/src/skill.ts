@@ -72,7 +72,11 @@ Important:
 - After calling this tool, follow the returned instructions step by step
 - The skill file location is shown in the [Location: filepath] section of each skill listing below - use this information to understand where the skill is defined
 - Use the directory containing the skill's source file as the base directory for resolving any resource files mentioned in the instructions
-- Proactively explore the skill base directory for additional resources (scripts, references, assets) that can help complete the task
+- Proactively explore the skill directory for optional resources that enhance task completion:
+  * scripts/ - executable code that agents can run (Python, Bash, JavaScript, etc.)
+  * references/ - on-demand documentation (REFERENCE.md, FORMS.md, domain-specific files)
+  * assets/ - static resources (templates, images, data files, schemas)
+  Use these resources when they exist and are relevant to the current task
 
 ${makeSkillToolDescription(skills)}
 `.trim(),

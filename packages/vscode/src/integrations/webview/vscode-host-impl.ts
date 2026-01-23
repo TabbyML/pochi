@@ -42,7 +42,7 @@ import { listFiles as listFilesTool } from "@/tools/list-files";
 import { readBackgroundJobOutput } from "@/tools/read-background-job-output";
 import { readFile } from "@/tools/read-file";
 import { searchFiles } from "@/tools/search-files";
-import { skill } from "@/tools/skill";
+import { useSkill } from "@/tools/skill";
 import { startBackgroundJob } from "@/tools/start-background-job";
 import { todoWrite } from "@/tools/todo-write";
 import { previewWriteToFile, writeToFile } from "@/tools/write-to-file";
@@ -1214,7 +1214,7 @@ const ToolMap: Record<
   applyDiff,
   todoWrite,
   editNotebook,
-  skill,
+  useSkill,
 };
 
 const ToolPreviewMap: Record<

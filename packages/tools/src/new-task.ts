@@ -33,7 +33,7 @@ export const overrideCustomAgentTools = (
     return { ...customAgent, tools: undefined };
   }
 
-  const toAddTools = ["todoWrite", "attemptCompletion"];
+  const toAddTools = ["todoWrite", "attemptCompletion", "useSkill"];
   const toDeleteTools = ["askFollowupQuestion", "newTask"];
 
   const updatedTools = customAgent.tools.filter(

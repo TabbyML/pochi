@@ -4,8 +4,8 @@ import * as path from "node:path";
 import type { ClientTools, ToolFunctionType } from "@getpochi/tools";
 import type { ToolCallOptions } from "../types";
 
-export const skill =
-  (options: ToolCallOptions): ToolFunctionType<ClientTools["skill"]> =>
+export const useSkill =
+  (options: ToolCallOptions): ToolFunctionType<ClientTools["useSkill"]> =>
   async ({ skill: skillName }, { cwd: workspaceDir }) => {
     if (!skillName) {
       throw new Error("Skill name is required.");

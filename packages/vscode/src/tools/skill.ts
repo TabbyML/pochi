@@ -10,7 +10,9 @@ const logger = getLogger("useSkill");
  * Implements the useSkill tool for VSCode extension.
  * Returns skill instructions when a skill is activated by the model.
  */
-export const skill: ToolFunctionType<ClientTools["skill"]> = async (args) => {
+export const useSkill: ToolFunctionType<ClientTools["useSkill"]> = async (
+  args,
+) => {
   try {
     const skillManager = container.resolve(SkillManager);
     const skills = skillManager.skills.value;
