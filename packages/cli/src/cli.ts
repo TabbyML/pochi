@@ -255,19 +255,19 @@ const program = new Command()
     });
 
     const renderer = new OutputRenderer(runner.state, {
-      hasCustomAttemptCompletionSchema: !!options.attemptCompletionSchema,
+      attemptCompletionSchemaOverride: !!options.attemptCompletionSchema,
     });
 
     let jsonRenderer: JsonRenderer | undefined;
     if (options.streamJson) {
       jsonRenderer = new JsonRenderer(blobStore, runner.state, {
         mode: "full",
-        hasCustomAttemptCompletionSchema: !!options.attemptCompletionSchema,
+        attemptCompletionSchemaOverride: !!options.attemptCompletionSchema,
       });
     } else if (options.outputResult) {
       jsonRenderer = new JsonRenderer(blobStore, runner.state, {
         mode: "result-only",
-        hasCustomAttemptCompletionSchema: !!options.attemptCompletionSchema,
+        attemptCompletionSchemaOverride: !!options.attemptCompletionSchema,
       });
     }
 

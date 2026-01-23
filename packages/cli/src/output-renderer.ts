@@ -16,7 +16,7 @@ export class OutputRenderer {
   constructor(
     private readonly state: NodeChatState,
     private readonly options: {
-      hasCustomAttemptCompletionSchema?: boolean;
+      attemptCompletionSchemaOverride?: boolean;
     } = {},
   ) {
     this.state.signal.messages.subscribe((messages) => {
@@ -79,7 +79,7 @@ export class OutputRenderer {
         // Regular processing for other tools
         const { text, stop, error } = renderToolPart(
           part,
-          this.options.hasCustomAttemptCompletionSchema,
+          this.options.attemptCompletionSchemaOverride,
         );
         this.spinner.prefixText = text;
 
@@ -146,7 +146,7 @@ export class OutputRenderer {
 
 function renderToolPart(
   part: ToolUIPart<UITools>,
-  hasCustomAttemptCompletionSchema = false,
+  attemptCompletionSchemaOverride = false,
 ): {
   text: string;
   stop: "succeed" | "stopAndPersist" | "fail";
@@ -263,7 +263,7 @@ function renderToolPart(
     const input = part.input || {};
     let content = "";
     if (
-      !hasCustomAttemptCompletionSchema &&
+      !attemptCompletionSchemaOverride &&
       "result" in input &&
       typeof input.result === "string"
     ) {

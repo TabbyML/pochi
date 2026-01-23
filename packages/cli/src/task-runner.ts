@@ -124,7 +124,7 @@ export class TaskRunner {
 
   readonly taskId: string;
 
-  readonly hasCustomAttemptCompletionSchema: boolean;
+  readonly attemptCompletionSchemaOverride: boolean;
 
   private get chat() {
     return this.chatKit.chat;
@@ -208,7 +208,7 @@ export class TaskRunner {
 
     this.taskId = options.uid;
     this.attemptCompletionHook = options.attemptCompletionHook;
-    this.hasCustomAttemptCompletionSchema = !!options.attemptCompletionSchema;
+    this.attemptCompletionSchemaOverride = !!options.attemptCompletionSchema;
   }
 
   get shareId() {
@@ -265,7 +265,7 @@ export class TaskRunner {
             `Executing verification command: ${this.attemptCompletionHook}`,
           );
           try {
-            await this.runVerificationCommand(
+            await this.runAttemptCompletionHook(
               this.attemptCompletionHook,
               (attemptCompletionPart as unknown as { input: unknown }).input,
             );
@@ -422,7 +422,7 @@ export class TaskRunner {
   }
 
   // Helper method to run the command
-  private runVerificationCommand(
+  private runAttemptCompletionHook(
     command: string,
     input: unknown,
   ): Promise<void> {

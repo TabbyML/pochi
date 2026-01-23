@@ -10,14 +10,14 @@ import type { TaskRunner } from "./task-runner";
 
 export interface JsonRendererOptions {
   mode: "full" | "result-only";
-  hasCustomAttemptCompletionSchema?: boolean;
+  attemptCompletionSchemaOverride?: boolean;
 }
 
 export class JsonRenderer {
   private outputMessageIds = new Set<string>();
   private lastMessageCount = 0;
   private mode: "full" | "result-only";
-  private hasCustomAttemptCompletionSchema: boolean;
+  private attemptCompletionSchemaOverride: boolean;
 
   constructor(
     private readonly store: BlobStore,
@@ -25,8 +25,8 @@ export class JsonRenderer {
     options: JsonRendererOptions = { mode: "full" },
   ) {
     this.mode = options.mode;
-    this.hasCustomAttemptCompletionSchema =
-      !!options.hasCustomAttemptCompletionSchema;
+    this.attemptCompletionSchemaOverride =
+      !!options.attemptCompletionSchemaOverride;
     if (this.mode === "full") {
       this.state.signal.messages.subscribe(
         runExclusive.build(async (messages) => {
@@ -58,7 +58,7 @@ export class JsonRenderer {
           if (part.input) {
             const input = part.input as Record<string, unknown>;
             if (
-              !this.hasCustomAttemptCompletionSchema &&
+              !this.attemptCompletionSchemaOverride &&
               "result" in input &&
               typeof input.result === "string"
             ) {
