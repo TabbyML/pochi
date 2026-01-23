@@ -1,3 +1,5 @@
+import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 import { ChatContextProvider, useHandleChatEvents } from "@/features/chat";
 import { isRetryableError, usePendingModelAutoStart } from "@/features/retry";
 import { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
@@ -6,6 +8,8 @@ import { useLatest } from "@/lib/hooks/use-latest";
 import { useMcp } from "@/lib/hooks/use-mcp";
 import { useTaskMcpConfigOverride } from "@/lib/hooks/use-task-mcp-config-override";
 import { prepareMessageParts } from "@/lib/message-utils";
+import { blobStore } from "@/lib/remote-blob-store";
+import { useDefaultStore } from "@/lib/use-default-store";
 import { cn, tw } from "@/lib/utils";
 import { vscodeHost } from "@/lib/vscode";
 import { useChat } from "@ai-sdk/react";
@@ -15,6 +19,7 @@ import { type Task, catalog } from "@getpochi/livekit";
 import type { Message } from "@getpochi/livekit";
 import { useLiveChatKit } from "@getpochi/livekit/react";
 import type { Todo } from "@getpochi/tools";
+import { Schema } from "@livestore/utils/effect";
 import { useRouter } from "@tanstack/react-router";
 import { lastAssistantMessageIsCompleteWithToolCalls } from "ai";
 import type { TFunction } from "i18next";
@@ -34,6 +39,7 @@ import {
 import { ChatArea } from "./components/chat-area";
 import { ChatToolBarSkeleton, ChatToolbar } from "./components/chat-toolbar";
 import { SubtaskHeader } from "./components/subtask";
+import { useKeepTaskEditor } from "./hooks/use-keep-task-editor";
 import { useRepairMermaid } from "./hooks/use-repair-mermaid";
 import { useRestoreTaskModel } from "./hooks/use-restore-task-model";
 import { useScrollToBottom } from "./hooks/use-scroll-to-bottom";
@@ -46,12 +52,6 @@ import {
   useChatAbortController,
   useRetryCount,
 } from "./lib/chat-state";
-import { Separator } from "@/components/ui/separator";
-import { Skeleton } from "@/components/ui/skeleton";
-import { blobStore } from "@/lib/remote-blob-store";
-import { useDefaultStore } from "@/lib/use-default-store";
-import { Schema } from "@livestore/utils/effect";
-import { useKeepTaskEditor } from "./hooks/use-keep-task-editor";
 import { onOverrideMessages } from "./lib/on-override-messages";
 import { useLiveChatKitGetters } from "./lib/use-live-chat-kit-getters";
 import { useSendTaskNotification } from "./lib/use-send-task-notification";

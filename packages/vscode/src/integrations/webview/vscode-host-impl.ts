@@ -13,11 +13,11 @@ import {
   getWorkspaceRulesFileUri,
 } from "@/lib/env";
 import { asRelativePath, isFileExists } from "@/lib/fs";
-// biome-ignore lint/style/useImportType: needed for dependency injection
-import { PochiLanguage } from "@/lib/pochi-language";
 import { getLogger } from "@/lib/logger";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { ModelList } from "@/lib/model-list";
+// biome-ignore lint/style/useImportType: needed for dependency injection
+import { PochiLanguage } from "@/lib/pochi-language";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { PostHog } from "@/lib/posthog";
 // biome-ignore lint/style/useImportType: needed for dependency injection
