@@ -242,7 +242,13 @@
       "finished": "{{duration}} 만에 완료",
       "requiresApproval": "승인 대기 중"
     },
-    "loadMore": "더 보기"
+    "loadMore": "더 보기",
+    "showArchivedTasks": "보관된 작업 표시",
+    "hideArchivedTasks": "보관된 작업 숨기기",
+    "archiveTask": "작업 보관",
+    "unarchiveTask": "작업 보관 취소",
+    "archiveOldTasks": "1주일 이상 된 작업 보관",
+    "moreOptions": "더 많은 옵션"
   },
   "toolInvocation": {
     "requiresApproval": "승인 대기 중",

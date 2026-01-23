@@ -244,7 +244,13 @@
       "finished": "Finished in {{duration}}",
       "requiresApproval": "Requires approval"
     },
-    "loadMore": "Load more"
+    "loadMore": "Load more",
+    "showArchivedTasks": "Show archived tasks",
+    "hideArchivedTasks": "Hide archived tasks",
+    "archiveTask": "Archive task",
+    "unarchiveTask": "Unarchive task",
+    "archiveOldTasks": "Archive tasks older than one week",
+    "moreOptions": "More options"
   },
   "toolInvocation": {
     "requiresApproval": "Requires approval",

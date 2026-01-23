@@ -6,6 +6,7 @@ import type * as vscode from "vscode";
 
 type TaskStateData = {
   mcpConfigOverride?: McpConfigOverride;
+  archived?: boolean;
 };
 
 const logger = getLogger("TaskDataStore");
@@ -61,5 +62,33 @@ export class TaskDataStore {
     // Ensure task is loaded
     this.getTaskState(taskId);
     return computed(() => this.state.value[taskId]?.mcpConfigOverride);
+  }
+
+  async setArchived(updates: Record<string, boolean>): Promise<void> {
+    const newState = { ...this.state.value };
+    for (const [taskId, archived] of Object.entries(updates)) {
+      const existing = newState[taskId] || {};
+      newState[taskId] = { ...existing, archived };
+    }
+    await this.context.globalState.update(this.storageKey, newState);
+    this.state.value = newState;
+  }
+
+  /**
+   * Get a computed signal for all tasks' archived states.
+
+   * Returns a Record<taskId, archived> for all tasks.
+   * Used for ThreadSignal serialization.
+   */
+  getArchivedSignal() {
+    return computed(() => {
+      const result: Record<string, boolean> = {};
+      for (const [taskId, taskData] of Object.entries(this.state.value)) {
+        if (taskData.archived !== undefined) {
+          result[taskId] = taskData.archived;
+        }
+      }
+      return result;
+    });
   }
 }

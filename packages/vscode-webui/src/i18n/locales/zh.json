@@ -241,7 +241,13 @@
       "finished": "已完成，耗时 {{duration}}",
       "requiresApproval": "需要批准"
     },
-    "loadMore": "加载更多"
+    "loadMore": "加载更多",
+    "showArchivedTasks": "显示已归档任务",
+    "hideArchivedTasks": "隐藏已归档任务",
+    "archiveTask": "归档任务",
+    "unarchiveTask": "取消归档任务",
+    "archiveOldTasks": "归档一周前的任务",
+    "moreOptions": "更多选项"
   },
   "toolInvocation": {
     "requiresApproval": "需要批准",
