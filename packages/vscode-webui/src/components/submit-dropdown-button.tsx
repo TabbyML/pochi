@@ -217,6 +217,10 @@ function McpSubMenu({ mcpConfigOverride, onToggleServer }: McpSubMenuProps) {
               <div className="p-2">
                 {hasServers ? (
                   <>
+                    <div className="px-2 py-1.5 text-muted-foreground text-xs">
+                      {t("mcpSelect.taskScopeHint")}
+                    </div>
+                    <DropdownMenuSeparator />
                     {serverNames.map((name) => (
                       <McpServerItem
                         key={name}

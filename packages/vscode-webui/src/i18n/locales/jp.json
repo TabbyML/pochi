@@ -80,7 +80,8 @@
     "servers": "MCP",
     "tools": "ツール",
     "noServersConfigured": "MCP サーバーが設定されていません",
-    "manageServers": "MCP サーバーを管理..."
+    "manageServers": "MCP サーバーを管理...",
+    "taskScopeHint": "このタスクの MCP サーバーを上書きする"
   },
   "worktree": {
     "createPr": "PR を作成",
