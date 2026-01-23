@@ -317,17 +317,26 @@ function Chat({ user, uid, info }: ChatProps) {
         setMcpConfigOverride(info.mcpConfigOverride);
       }
 
-      if (info.files?.length) {
-        const files = info.files?.map((file) => ({
-          type: "file" as const,
-          filename: file.name,
-          mediaType: file.contentType,
-          url: file.url,
-        }));
+      const activeSelection = info.activeSelection;
+      const files = info.files?.map((file) => ({
+        type: "file" as const,
+        filename: file.name,
+        mediaType: file.contentType,
+        url: file.url,
+      }));
+      const shouldUseParts = (files?.length ?? 0) > 0 || !!activeSelection;
 
+      if (shouldUseParts) {
         chatKit.init(cwd, {
           prompt: info.prompt,
-          parts: prepareMessageParts(t, info.prompt || "", files || [], []),
+          parts: prepareMessageParts(
+            t,
+            info.prompt || "",
+            files || [],
+            [],
+            undefined,
+            activeSelection,
+          ),
         });
       } else {
         chatKit.init(cwd, {

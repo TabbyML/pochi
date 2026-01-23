@@ -13,6 +13,7 @@ import {
   WorktreeSelect,
 } from "@/components/worktree-select";
 import { useSelectedModels, useSettingsStore } from "@/features/settings";
+import { useActiveSelection } from "@/lib/hooks/use-active-selection";
 import type { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
 import { useMcpConfigOverride } from "@/lib/hooks/use-mcp-config-override";
@@ -48,6 +49,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
   deletingWorktreePaths,
 }) => {
   const { t } = useTranslation();
+  const activeSelection = useActiveSelection();
   const { draft: input, setDraft: setInput, clearDraft } = useTaskInputDraft();
   const {
     globalMcpConfig,
@@ -168,6 +170,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
         cwd: worktree && typeof worktree === "object" ? worktree.path : cwd,
         prompt: content,
         files: uploadedFiles,
+        activeSelection: activeSelection ?? undefined,
         mcpConfigOverride:
           Object.keys(mcpConfigOverride).length > 0
             ? mcpConfigOverride
@@ -194,6 +197,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
       mcpConfigOverride,
       resetMcpTools,
       globalMcpConfig,
+      activeSelection,
     ],
   );
 
