@@ -210,7 +210,7 @@ function McpSubMenu({ mcpConfigOverride, onToggleServer }: McpSubMenuProps) {
         </DropdownMenuSubTrigger>
         <DropdownMenuPortal>
           <DropdownMenuSubContent
-            className="dropdown-menu w-64 animate-in overflow-hidden rounded-md border bg-background p-0 text-popover-foreground shadow"
+            className="dropdown-menu w-50 animate-in overflow-hidden rounded-md border bg-background p-0 text-popover-foreground shadow"
             sideOffset={8}
           >
             <ScrollArea viewportClassname="max-h-[60vh]">
@@ -237,7 +237,6 @@ function McpSubMenu({ mcpConfigOverride, onToggleServer }: McpSubMenuProps) {
                   </div>
                 )}
                 <DropdownMenuSeparator />
-
                 <DropdownMenuItem asChild>
                   <a
                     href="command:pochi.mcp.openServerSettings"
