@@ -250,7 +250,6 @@ export function WorktreeList({
 function WorktreeSection({
   group,
   onDeleteGroup,
-  gh,
   gitOriginUrl,
   containsOnlyWorkspaceGroup,
   isDeleted,
@@ -584,6 +583,7 @@ function WorktreeSection({
 }
 
 // Component A: Split button for creating PRs
+// @ts-expect-error
 function CreatePrDropdown({
   worktreePath,
   branch,
