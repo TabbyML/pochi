@@ -2,9 +2,11 @@ import z from "zod";
 import { defineClientTool } from "./types";
 
 const toolDef = {
-  description: `- Retrieves output from a running or completed background job
-- Takes a backgroundJobId parameter identifying the job
-- Always returns only new output since the last check
+  description:
+    `- Retrieves output from a running or completed background job or async task
+- Takes a backgroundJobId parameter identifying the job or task
+- For terminal jobs, returns only new output since the last check
+- For task IDs, returns the latest attemptCompletion result once completed
 - Returns stdout and stderr output along with job status
 - Supports optional regex filtering to show only lines matching a pattern
 - Use this tool when you need to monitor or check the output of a long-running background job`.trim(),

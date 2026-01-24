@@ -1,5 +1,6 @@
 import { getLogger } from "@getpochi/common";
 import type {
+  ExecuteCommandResult,
   VSCodeHostApi,
   WebviewHostApi,
 } from "@getpochi/common/vscode-webui-bridge";
@@ -7,6 +8,7 @@ import { catalog } from "@getpochi/livekit";
 import { ThreadNestedWindow } from "@quilted/threads";
 import Emittery from "emittery";
 import type { WebviewApi } from "vscode-webview";
+import { extractTaskResult } from "../features/chat/lib/tool-call-life-cycle";
 import { queryClient } from "./query-client";
 import type { useDefaultStore } from "./use-default-store";
 
@@ -159,6 +161,62 @@ function createVSCodeHost(): VSCodeHostApi {
           );
         },
 
+        async readTaskOutput(taskId: string): Promise<ExecuteCommandResult> {
+          if (!globalStore) {
+            logger.warn("Global store not set, cannot query task output");
+            return {
+              content: "",
+              status: "idle",
+              isTruncated: false,
+              error: "Webview store not ready",
+            };
+          }
+
+          const task = globalStore.query(catalog.queries.makeTaskQuery(taskId));
+          if (!task) {
+            return {
+              content: "",
+              status: "idle",
+              isTruncated: false,
+              error: `Task with ID "${taskId}" not found.`,
+            };
+          }
+
+          const status = mapTaskStatus(task.status);
+          if (status !== "completed") {
+            return {
+              content:
+                "The task is currently running. You can continue with other operations while it executes in the background. If you need to wait for the task to complete, you can use the `executeCommand` tool with `sleep`.",
+              status,
+              isTruncated: false,
+            };
+          }
+
+          let content: string | undefined;
+          let outputError: string | undefined;
+          try {
+            content = extractTaskResult(globalStore, taskId);
+          } catch (error) {
+            logger.warn("Failed to extract task result", error);
+            outputError =
+              "The task has completed, but the output is not yet available.";
+          }
+          const error =
+            task.status === "failed"
+              ? (getTaskErrorMessage(task.error) ?? "The task failed.")
+              : content
+                ? undefined
+                : (outputError ??
+                  "The task completed successfully, but no result was returned via the attemptCompletion tool.");
+
+          return {
+            content: content ?? "",
+            status,
+            isTruncated: false,
+            error,
+          };
+        },
+
         async readTaskFile(taskId: string, filePath: string) {
           if (!globalStore) {
             logger.warn("Global store not set, cannot read file");
@@ -182,3 +240,29 @@ export const vscodeHost = createVSCodeHost();
 export const fileChangeEvent = new Emittery<{
   fileChanged: { filepath: string; content: string };
 }>();
+
+function mapTaskStatus(
+  status:
+    | "completed"
+    | "pending-input"
+    | "failed"
+    | "pending-tool"
+    | "pending-model",
+): ExecuteCommandResult["status"] {
+  switch (status) {
+    case "pending-input":
+      return "idle";
+    case "pending-tool":
+    case "pending-model":
+      return "running";
+    case "completed":
+    case "failed":
+      return "completed";
+  }
+}
+
+function getTaskErrorMessage(error: unknown): string | undefined {
+  if (!error || typeof error !== "object") return undefined;
+  const record = error as { message?: unknown };
+  return typeof record.message === "string" ? record.message : undefined;
+}

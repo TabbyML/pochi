@@ -250,7 +250,6 @@ export function WorktreeList({
 function WorktreeSection({
   group,
   onDeleteGroup,
-  gh,
   gitOriginUrl,
   containsOnlyWorkspaceGroup,
   isDeleted,
@@ -357,20 +356,22 @@ function WorktreeSection({
               hidden: isDeleted,
             })}
           >
-            {pullRequest ? (
-              <PrStatusDisplay
-                prNumber={pullRequest.id}
-                prUrl={prUrl}
-                prChecks={pullRequest.checks}
-              />
-            ) : gitOriginUrl ? (
+            {
+              pullRequest ? (
+                <PrStatusDisplay
+                  prNumber={pullRequest.id}
+                  prUrl={prUrl}
+                  prChecks={pullRequest.checks}
+                />
+              ) : null /*gitOriginUrl ? (
               <CreatePrDropdown
                 worktreePath={group.path}
                 branch={group.branch}
                 gitOriginUrl={gitOriginUrl}
                 gh={gh}
               />
-            ) : null}
+            ) : null*/
+            }
           </div>
 
           <div
@@ -582,6 +583,7 @@ function WorktreeSection({
 }
 
 // Component A: Split button for creating PRs
+// @ts-expect-error
 function CreatePrDropdown({
   worktreePath,
   branch,

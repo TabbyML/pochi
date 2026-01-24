@@ -6,6 +6,7 @@ import type { UserInfo } from "../configuration";
 import type {
   CaptureEvent,
   CustomAgentFile,
+  ExecuteCommandResult,
   FileDiff,
   GitWorktree,
   McpConfigOverride,
@@ -320,7 +321,10 @@ export interface VSCodeHostApi {
    */
   openTaskInPanel(
     params: PochiTaskParams,
-    options?: { keepEditor?: boolean },
+    options?: {
+      keepEditor?: boolean;
+      preserveFocus?: boolean;
+    },
   ): Promise<void>;
 
   sendTaskNotification(
@@ -406,4 +410,6 @@ export interface WebviewHostApi {
   ): Promise<void>;
 
   readTaskFile(taskId: string, filePath: string): Promise<string | null>;
+
+  readTaskOutput(taskId: string): Promise<ExecuteCommandResult>;
 }

@@ -271,7 +271,10 @@ const VSCodeHostStub = {
 
   openTaskInPanel: async (
     _params: PochiTaskParams,
-    _options?: { keepEditor?: boolean },
+    _options?: {
+      keepEditor?: boolean;
+      preserveFocus?: boolean;
+    },
   ): Promise<void> => {},
 
   sendTaskNotification: async (): Promise<void> => {},
