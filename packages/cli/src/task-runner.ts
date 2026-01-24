@@ -7,6 +7,8 @@ import {
   prepareLastMessageForRetry,
 } from "@getpochi/common/message-utils";
 import { findTodos, mergeTodos } from "@getpochi/common/message-utils";
+
+import { spawn } from "node:child_process";
 import {
   type BlobStore,
   type LLMRequestData,
@@ -24,6 +26,7 @@ import {
 } from "ai";
 import type z from "zod/v4";
 import { readEnvironment } from "./lib/read-environment";
+
 import { StepCount } from "./lib/step-count";
 
 import { BackgroundJobManager } from "./lib/background-job-manager";
@@ -106,6 +109,10 @@ export interface RunnerOptions {
   abortSignal?: AbortSignal;
 
   outputSchema?: z.ZodAny;
+
+  attemptCompletionSchema?: z.ZodAny;
+
+  attemptCompletionHook?: string;
 }
 
 const logger = getLogger("TaskRunner");
@@ -121,7 +128,11 @@ export class TaskRunner {
   private chatKit: LiveChatKit<Chat>;
   private backgroundJobManager: BackgroundJobManager;
 
+  private attemptCompletionHook?: string;
+
   readonly taskId: string;
+
+  readonly attemptCompletionSchemaOverride: boolean;
 
   private get chat() {
     return this.chatKit.chat;
@@ -154,6 +165,7 @@ export class TaskRunner {
           isSubTask: true,
           customAgent,
         });
+        this.attemptCompletionHook = options.attemptCompletionHook;
 
         options.onSubTaskCreated?.(runner);
         return runner;
@@ -169,8 +181,10 @@ export class TaskRunner {
       customAgent: options.customAgent,
 
       outputSchema: options.outputSchema,
+      attemptCompletionSchema: options.attemptCompletionSchema,
 
       abortSignal: options.abortSignal,
+
       onOverrideMessages: createOnOverrideMessages(this.cwd),
       getters: {
         getLLM: () => options.llm,
@@ -206,6 +220,8 @@ export class TaskRunner {
     }
 
     this.taskId = options.uid;
+    this.attemptCompletionHook = options.attemptCompletionHook;
+    this.attemptCompletionSchemaOverride = !!options.attemptCompletionSchema;
   }
 
   get shareId() {
@@ -254,8 +270,37 @@ export class TaskRunner {
 
     const result = await this.process(lastMessage);
     if (result === "finished") {
+      if (this.attemptCompletionHook && isResultMessage(lastMessage)) {
+        const attemptCompletionPart = lastMessage.parts?.find(
+          (p) => isToolUIPart(p) && getToolName(p) === "attemptCompletion",
+        );
+
+        if (attemptCompletionPart) {
+          logger.debug(
+            `Executing verification command: ${this.attemptCompletionHook}`,
+          );
+          try {
+            await this.runAttemptCompletionHook(
+              this.attemptCompletionHook,
+              (attemptCompletionPart as unknown as { input: unknown }).input,
+            );
+          } catch (e) {
+            const error = e as {
+              message: string;
+              stdout: string;
+              stderr: string;
+            };
+            logger.error(`Verification command failed: ${error.message}`);
+            const errorMsg = `Verification failed:\n${error.message}\n\nStdout:\n${error.stdout}\n\nStderr:\n${error.stderr}`;
+            const message = createUserMessage(errorMsg);
+            this.chat.appendOrReplaceMessage(message);
+            return "next";
+          }
+        }
+      }
       return "finished";
     }
+
     if (result === "next") {
       this.stepCount.throwIfReachedMaxSteps();
     }
@@ -389,6 +434,54 @@ export class TaskRunner {
     logger.trace("All tool calls processed in the last message.");
 
     return "next" as const;
+  }
+
+  // Helper method to run the command
+  private runAttemptCompletionHook(
+    command: string,
+    input: unknown,
+  ): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const child = spawn(command, {
+        cwd: this.cwd,
+        stdio: ["pipe", "pipe", "pipe"], // Pipe stdin, stdout, stderr
+        shell: true, // Use shell to support complex commands
+      });
+
+      let stdout = "";
+      let stderr = "";
+
+      child.stdout?.on("data", (data) => {
+        stdout += data.toString();
+        process.stdout.write(data);
+      });
+
+      child.stderr?.on("data", (data) => {
+        stderr += data.toString();
+        process.stderr.write(data);
+      });
+
+      child.on("error", (err) => {
+        reject({ message: err.message, stdout, stderr });
+      });
+
+      child.on("close", (code) => {
+        if (code === 0) {
+          resolve();
+        } else {
+          reject({
+            message: `Command exited with code ${code}`,
+            stdout,
+            stderr,
+          });
+        }
+      });
+
+      // Write the JSON input to stdin
+      const jsonInput = JSON.stringify(input, null, 2);
+      child.stdin?.write(jsonInput);
+      child.stdin?.end();
+    });
   }
 }
 

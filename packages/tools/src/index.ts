@@ -7,10 +7,14 @@ import {
   getToolName,
   isToolUIPart,
 } from "ai";
+import type { z } from "zod/v4";
+
 import { applyDiff } from "./apply-diff";
 import { askFollowupQuestion } from "./ask-followup-question";
-import { attemptCompletion } from "./attempt-completion";
+
+import { createAttemptCompletionTool } from "./attempt-completion";
 import { executeCommand } from "./execute-command";
+
 import { globFiles } from "./glob-files";
 import { listFiles } from "./list-files";
 import type { multiApplyDiff } from "./multi-apply-diff";
@@ -98,9 +102,12 @@ export const ServerToolApproved = "<server-tool-approved>";
 const createCliTools = (options?: CreateToolOptions) => ({
   applyDiff,
   askFollowupQuestion,
-  attemptCompletion,
+  attemptCompletion: createAttemptCompletionTool(
+    options?.attemptCompletionSchema,
+  ),
   executeCommand,
   globFiles,
+
   listFiles,
   readFile: createReadFileTool(options?.contentType),
   useSkill: createSkillTool(options?.skills),
@@ -115,6 +122,7 @@ export interface CreateToolOptions {
   customAgents?: CustomAgent[];
   skills?: Skill[];
   contentType?: string[];
+  attemptCompletionSchema?: z.ZodAny;
 }
 
 export const createClientTools = (options?: CreateToolOptions) => {

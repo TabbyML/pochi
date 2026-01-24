@@ -163,6 +163,7 @@ jobs:
       - name: Release (Pre Branch)
         if: steps.parse_version.outputs.parse_failed == 'false' && steps.parse_version.outputs.is_pre == 'true'
         run: |
+          git checkout .
           git checkout ${{ steps.parse_version.outputs.pre_branch }}
           cd packages/vscode
           bun run release --release patch --quiet --yes
@@ -247,6 +248,7 @@ jobs:
       - name: Release (Main Branch)
         if: steps.parse_version.outputs.parse_failed == 'false'
         run: |
+          git checkout .
           git checkout ${{ steps.parse_version.outputs.main_branch }}
           cd packages/vscode
           bun run release --release patch --quiet --yes

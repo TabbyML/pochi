@@ -17,6 +17,8 @@ import { getLogger } from "@/lib/logger";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { ModelList } from "@/lib/model-list";
 // biome-ignore lint/style/useImportType: needed for dependency injection
+import { PochiLanguage } from "@/lib/pochi-language";
+// biome-ignore lint/style/useImportType: needed for dependency injection
 import { PostHog } from "@/lib/posthog";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { SkillManager } from "@/lib/skill-manager";
@@ -178,6 +180,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     private readonly globalStateSignals: GlobalStateSignals,
     private readonly taskHistoryStore: TaskHistoryStore,
     private readonly taskStateStore: TaskDataStore,
+    private readonly lang: PochiLanguage,
   ) {}
 
   private get cwd() {
@@ -1177,6 +1180,11 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       },
     };
   };
+
+  readLang = async () => ({
+    value: ThreadSignal.serialize(this.lang.currentLang),
+    updateLang: this.lang.updateLang,
+  });
 
   dispose() {
     for (const disposable of this.disposables) {

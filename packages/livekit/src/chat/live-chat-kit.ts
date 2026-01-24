@@ -53,6 +53,7 @@ export type LiveChatKitOptions<T> = {
 
   customAgent?: CustomAgent;
   outputSchema?: z.ZodAny;
+  attemptCompletionSchema?: z.ZodAny;
 } & Omit<
   ChatInit<Message>,
   "id" | "messages" | "generateId" | "onFinish" | "onError" | "transport"
@@ -106,6 +107,7 @@ export class LiveChatKit<
     isSubTask,
     customAgent,
     outputSchema,
+    attemptCompletionSchema,
     onStreamStart,
 
     onStreamFinish,
@@ -124,6 +126,7 @@ export class LiveChatKit<
       isSubTask,
       customAgent,
       outputSchema,
+      attemptCompletionSchema,
     });
 
     this.chat = new chatClass({

@@ -357,6 +357,16 @@ const VSCodeHostStub = {
       setTaskArchived: (_params: TaskArchivedParams) => Promise.resolve(),
     });
   },
+
+  readLang: async (): Promise<{
+    value: ThreadSignalSerialization<string>;
+    updateLang: (lang: string) => Promise<void>;
+  }> => {
+    return {
+      value: {} as ThreadSignalSerialization<string>,
+      updateLang: (_lang: string) => Promise.resolve(),
+    };
+  },
 } satisfies VSCodeHostApi;
 
 export function createVscodeHostStub(overrides?: Partial<VSCodeHostApi>) {
