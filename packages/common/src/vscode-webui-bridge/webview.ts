@@ -6,6 +6,7 @@ import type { UserInfo } from "../configuration";
 import type {
   CaptureEvent,
   CustomAgentFile,
+  ExecuteCommandResult,
   FileDiff,
   GitWorktree,
   McpConfigOverride,
@@ -17,7 +18,6 @@ import type {
   SaveCheckpointOptions,
   SessionState,
   TaskChangedFile,
-  TaskOutputResult,
   TaskStates,
   WorkspaceState,
 } from "./index";
@@ -391,5 +391,5 @@ export interface WebviewHostApi {
 
   readTaskFile(taskId: string, filePath: string): Promise<string | null>;
 
-  queryTaskOutput(taskId: string): Promise<TaskOutputResult>;
+  readTaskOutput(taskId: string): Promise<ExecuteCommandResult>;
 }

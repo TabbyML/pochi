@@ -1,6 +1,6 @@
 import { OutputManager } from "@/integrations/terminal/output";
 import { PochiWebviewPanel } from "@/integrations/webview/webview-panel";
-import type { TaskOutputResult } from "@getpochi/common/vscode-webui-bridge";
+import type { ExecuteCommandResult } from "@getpochi/common/vscode-webui-bridge";
 import type { ClientTools, ToolFunctionType } from "@getpochi/tools";
 
 export const readBackgroundJobOutput: ToolFunctionType<
@@ -24,24 +24,24 @@ export const readBackgroundJobOutput: ToolFunctionType<
     throw new Error(`Background job with ID "${backgroundJobId}" not found.`);
   }
 
-  const taskOutput = await queryTaskOutput(backgroundJobId);
+  const taskOutput = await readTaskOutput(backgroundJobId);
 
   return {
-    output: taskOutput.output,
+    output: taskOutput.content,
     isTruncated: taskOutput.isTruncated,
     status: taskOutput.status,
     error: taskOutput.error,
   };
 };
 
-async function queryTaskOutput(taskId: string): Promise<TaskOutputResult> {
-  const panelOutput = await PochiWebviewPanel.queryTaskOutput(taskId);
+async function readTaskOutput(taskId: string): Promise<ExecuteCommandResult> {
+  const panelOutput = await PochiWebviewPanel.readTaskOutput(taskId);
   if (panelOutput) {
     return panelOutput;
   }
 
   return {
-    output: "",
+    content: "",
     status: "idle",
     isTruncated: false,
     error: "Webview not ready. Open the task panel to load task data.",

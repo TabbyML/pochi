@@ -105,7 +105,7 @@ const useBackgroundJobContext = () => {
       "useBackgroundJobContext must be used within a BackgroundJobContextProvider",
     );
     return {
-      getJobDisplayId: (jobId: string) => jobId,
+      getJobDisplayId: () => "",
       replaceJobIdsInContent: (content: string) => content,
       getJobCommand: (jobId: string) => jobId,
     };

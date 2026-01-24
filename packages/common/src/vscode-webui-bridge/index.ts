@@ -10,7 +10,6 @@ export type { McpStatus } from "../mcp-utils";
 export type {
   FileDiff,
   ExecuteCommandResult,
-  TaskOutputResult,
   SaveCheckpointOptions,
 } from "./types/execution";
 export type { ResourceURI } from "./types/common";

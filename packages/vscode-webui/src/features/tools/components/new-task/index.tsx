@@ -11,8 +11,8 @@ import { cn } from "@/lib/utils";
 import { isVSCodeEnvironment, vscodeHost } from "@/lib/vscode";
 import { Link } from "@tanstack/react-router";
 import { type RefObject, useEffect, useRef } from "react";
-import { useTranslation } from "react-i18next";
 import { useInlinedSubTask } from "../../hooks/use-inlined-sub-task";
+
 import { useLiveSubTask } from "../../hooks/use-live-sub-task";
 import { StatusIcon } from "../status-icon";
 import { ExpandIcon, ToolTitle } from "../tool-container";
@@ -53,8 +53,8 @@ function BackgroundTaskToolView(
   props: NewTaskToolProps & { uid: string | undefined },
 ) {
   const { tool, isExecuting, uid } = props;
-  const { t } = useTranslation();
   const store = useDefaultStore();
+
   const agentType = tool.input?.agentType;
   const toolTitle = agentType ?? "Subtask";
   const description = tool.input?.description ?? "";
@@ -91,14 +91,9 @@ function BackgroundTaskToolView(
           onClick={openInTab}
           disabled={!canOpen}
         >
-          {t("toolInvocation.openTask")}
+          ASYNC
         </Button>
       </ToolTitle>
-      <div className="mt-1 flex flex-col gap-1 pl-6">
-        <div className="rounded border border-border/60 bg-muted/40 px-2 py-1 text-muted-foreground text-xs">
-          {t("toolInvocation.backgroundTaskStarted")}
-        </div>
-      </div>
     </div>
   );
 }

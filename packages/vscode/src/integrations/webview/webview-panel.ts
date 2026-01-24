@@ -100,10 +100,10 @@ export class PochiWebviewPanel
       ?.webviewHost?.writeTaskFile(taskId, filePath, content);
   }
 
-  static queryTaskOutput(taskId: string) {
+  static readTaskOutput(taskId: string) {
     return PochiWebviewPanel.panels
       .get(taskId)
-      ?.webviewHost?.queryTaskOutput(taskId);
+      ?.webviewHost?.readTaskOutput(taskId);
   }
 
   dispose(): void {

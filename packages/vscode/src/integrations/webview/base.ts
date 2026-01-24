@@ -330,7 +330,7 @@ export abstract class WebviewBase implements vscode.Disposable {
           "onFileChanged",
           "writeTaskFile",
           "readTaskFile",
-          "queryTaskOutput",
+          "readTaskOutput",
         ],
       },
     );

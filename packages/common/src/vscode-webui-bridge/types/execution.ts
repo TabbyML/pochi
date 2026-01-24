@@ -15,13 +15,6 @@ export type ExecuteCommandResult = {
   error?: string; // Optional error message if the execution aborted / failed
 };
 
-export type TaskOutputResult = {
-  output: string;
-  status: ExecuteCommandResult["status"];
-  isTruncated?: boolean;
-  error?: string;
-};
-
 export type SaveCheckpointOptions = {
   /**
    * By default, will only save checkpoint if there are changes, but if you want to force a save, set this to true
