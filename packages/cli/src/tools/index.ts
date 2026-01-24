@@ -14,9 +14,9 @@ import { newTask } from "./new-task";
 import { readBackgroundJobOutput } from "./read-background-job-output";
 import { readFile } from "./read-file";
 import { searchFiles } from "./search-files";
-import { useSkill } from "./skill";
 import { startBackgroundJob } from "./start-background-job";
 import { todoWrite } from "./todo-write";
+import { useSkill } from "./use-skill";
 
 import { writeToFile } from "./write-to-file";
 

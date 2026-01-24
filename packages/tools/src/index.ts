@@ -32,8 +32,8 @@ import { editNotebook } from "./edit-notebook";
 import { killBackgroundJob } from "./kill-background-job";
 import { readBackgroundJobOutput } from "./read-background-job-output";
 import { createReadFileTool } from "./read-file";
-import { type Skill, createSkillTool } from "./skill";
 import { startBackgroundJob } from "./start-background-job";
+import { type Skill, createSkillTool } from "./use-skill";
 import { writeToFile } from "./write-to-file";
 
 export {
@@ -42,7 +42,7 @@ export {
   type SubTask,
   inputSchema as newTaskInputSchema,
 } from "./new-task";
-export { Skill } from "./skill";
+export { Skill } from "./use-skill";
 export { attemptCompletionSchema } from "./attempt-completion";
 
 export function isUserInputToolName(name: string): boolean {
