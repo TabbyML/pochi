@@ -180,6 +180,13 @@ const TabCompletionFIMProviderSettings = z.discriminatedUnion("type", [
 const TabCompletionNESProviderSettings = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("NES:pochi"),
+    model: z.enum(["sweep-next-edit", "default"]).optional(),
+  }),
+  z.object({
+    type: z.literal("NES:openai"),
+    baseURL: z.string(),
+    apiKey: z.string().optional(),
+    model: z.string(),
   }),
   z.object({
     type: z.literal("NES:google-vertex-tuning"),
@@ -207,6 +214,13 @@ const PochiAdvanceSettings = z.object({
   pochiLayout: z
     .object({
       enabled: z.boolean().optional(),
+    })
+    .optional(),
+  logToFile: z
+    .object({
+      level: z
+        .enum(["off", "fatal", "error", "warn", "info", "debug", "trace"])
+        .optional(),
     })
     .optional(),
 });

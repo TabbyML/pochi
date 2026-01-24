@@ -15,7 +15,6 @@ describe("Create Task Tests", () => {
     await pochi.open();
     await pochi.sendMessage("Hello Pochi test task");
 
-    await browser.debug()
     // Wait for the task to appear in the sidebar task list
     await pochi.waitForTaskToAppear(60000);
     

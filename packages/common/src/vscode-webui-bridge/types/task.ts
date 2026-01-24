@@ -1,3 +1,5 @@
+import type { ActiveSelection } from "./message";
+
 export type FileUIPart = {
   name: string;
   contentType: string;
@@ -20,6 +22,7 @@ export type PochiTaskParams = { cwd: string } & (
       uid?: string;
       prompt?: string;
       files?: FileUIPart[];
+      activeSelection?: ActiveSelection;
       mcpConfigOverride?: McpConfigOverride;
     }
   | {
@@ -86,3 +89,7 @@ export interface TaskState {
 }
 
 export type TaskStates = Record<string, TaskState>;
+
+export type TaskArchivedParams =
+  | { type: "single"; taskId: string; archived: boolean }
+  | { type: "batch"; cwd?: string };

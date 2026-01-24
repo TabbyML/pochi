@@ -17,7 +17,8 @@ export class TabCompletionProviderFactory {
     config: TabCompletionNESProviderSettings | TabCompletionFIMProviderSettings,
   ): TabCompletionProvider | undefined {
     this.nextProviderId++;
-    const id = `${config.type}-${this.nextProviderId}`;
+    const shortId = Math.random().toString(36).substring(2, 8);
+    const id = `${config.type}-${this.nextProviderId}-${shortId}`;
 
     let client: TabCompletionProviderClient<object, object> | undefined =
       undefined;
@@ -40,6 +41,6 @@ export class TabCompletionProviderFactory {
       return undefined;
     }
 
-    return new TabCompletionProvider(id, client);
+    return new TabCompletionProvider(client);
   }
 }

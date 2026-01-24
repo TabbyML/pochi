@@ -82,7 +82,9 @@ export const CompleteSubtaskButton: React.FC<{
 
   return (
     <Button className="flex-1 rounded-sm" onClick={onCompleteSubtask}>
-      {t("subtask.complete")}
+      {subtask.agent === "planner"
+        ? t("subtask.startImplementation")
+        : t("subtask.complete")}
     </Button>
   );
 };

@@ -35,14 +35,17 @@ export function createLiteEnvironmentPrompt(environment: Environment) {
 }
 
 function getSystemInfo(environment: Environment) {
-  const { info, currentTime } = environment;
+  const { info, currentTime, shareId } = environment;
+  const shareUrl = shareId
+    ? `https://app.getpochi.com/share/${shareId}`
+    : undefined;
   const prompt = `# System Information
 
 Operating System: ${info.os}
 Default Shell: ${info.shell}
 Home Directory: ${info.homedir}
 Current Working Directory: ${info.cwd}
-Current Time: ${currentTime}`;
+Current Time: ${currentTime}${shareUrl ? `\nShare URL: ${shareUrl}` : ""}`;
   return prompt;
 }
 

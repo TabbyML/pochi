@@ -1,9 +1,14 @@
+import { logToFileObject } from "@/lib/file-logger";
 import { getLogger } from "@/lib/logger";
 import * as vscode from "vscode";
 
 const logger = getLogger("TabCompletion.AutoActions");
 
-export async function applyQuickFixes(uri: vscode.Uri, range: vscode.Range) {
+export async function applyQuickFixes(
+  uri: vscode.Uri,
+  range: vscode.Range,
+  meta?: { hash?: string; requestId?: string },
+) {
   const codeActions = await vscode.commands.executeCommand<vscode.CodeAction[]>(
     "vscode.executeCodeActionProvider",
     uri,
@@ -17,7 +22,10 @@ export async function applyQuickFixes(uri: vscode.Uri, range: vscode.Range) {
 
   if (quickFixActions.length === 1 && quickFixActions[0]) {
     const action = quickFixActions[0];
-    logger.debug("Auto apply quick fix action.");
+    logger.debug(
+      "Auto apply quick fix action.",
+      logToFileObject({ action, ...meta }),
+    );
     try {
       if (action.edit) {
         await vscode.workspace.applyEdit(action.edit);
@@ -32,7 +40,7 @@ export async function applyQuickFixes(uri: vscode.Uri, range: vscode.Range) {
       // ignore errors
     }
   } else {
-    logger.debug(
+    logger.trace(
       `Skip quick fix action: ${quickFixActions.length} quick fix actions available.`,
     );
   }

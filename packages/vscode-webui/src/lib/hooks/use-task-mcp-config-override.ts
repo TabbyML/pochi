@@ -1,5 +1,4 @@
 import { vscodeHost } from "@/lib/vscode";
-import type { McpConfigOverride } from "@getpochi/common/vscode-webui-bridge";
 import { threadSignal } from "@quilted/threads/signals";
 import { useQuery } from "@tanstack/react-query";
 
@@ -16,8 +15,8 @@ export const useTaskMcpConfigOverride = (taskId: string) => {
   });
 
   return {
-    mcpConfigOverride: data?.value.value as McpConfigOverride | undefined,
-    setMcpConfigOverride: data?.set,
+    mcpConfigOverride: data?.value.value,
+    setMcpConfigOverride: data?.setMcpConfigOverride,
     isLoading,
   };
 };
@@ -26,6 +25,6 @@ async function fetchMcpConfigOverride(taskId: string) {
   const result = await vscodeHost.readMcpConfigOverride(taskId);
   return {
     value: threadSignal(result.value),
-    set: result.set,
+    setMcpConfigOverride: result.setMcpConfigOverride,
   };
 }

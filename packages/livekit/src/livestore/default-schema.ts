@@ -92,15 +92,6 @@ export const tables = {
       },
     ],
   }),
-  blobs: State.SQLite.table({
-    name: "blobs",
-    columns: {
-      checksum: State.SQLite.text({ primaryKey: true }),
-      mimeType: State.SQLite.text(),
-      data: State.SQLite.blob(),
-      createdAt: State.SQLite.integer({ schema: Schema.DateFromNumber }),
-    },
-  }),
   files: State.SQLite.table({
     name: "files",
     columns: {
@@ -211,14 +202,14 @@ export const events = {
       updatedAt: Schema.Date,
     }),
   }),
-  blobInserted: Events.synced({
+  _blobInserted: Events.synced({
     name: "v1.BlobInserted",
     schema: Schema.Struct({
       checksum: Schema.String,
       createdAt: Schema.Date,
       mimeType: Schema.String,
       data: Schema.Uint8Array,
-    }),
+    }).pipe(deprecated("blob is deprecated")),
   }),
   updateLineChanges: Events.synced({
     name: "v1.updateLineChanges",
@@ -258,6 +249,7 @@ const materializers = State.SQLite.materializers(events, {
   }) => [
     tables.tasks.insert({
       id,
+      shareId: parentId ? undefined : `p-${id.replaceAll("-", "")}`,
       status: initMessages
         ? initMessages.length > 0
           ? "pending-model"
@@ -272,6 +264,7 @@ const materializers = State.SQLite.materializers(events, {
       title: initTitle,
       displayId,
       updatedAt: createdAt,
+      isPublicShared: true,
     }),
     ...(initMessages?.map((message) => {
       return tables.messages.insert({
@@ -404,15 +397,7 @@ const materializers = State.SQLite.materializers(events, {
         content,
       })
       .onConflict(["taskId", "filePath"], "replace"),
-  "v1.BlobInserted": ({ checksum, mimeType, data, createdAt }) =>
-    tables.blobs
-      .insert({
-        checksum,
-        mimeType,
-        data: new Uint8Array(data),
-        createdAt,
-      })
-      .onConflict("checksum", "ignore"),
+  "v1.BlobInserted": () => [],
   "v1.updateLineChanges": ({ id, lineChanges, updatedAt }) =>
     tables.tasks
       .update({

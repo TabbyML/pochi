@@ -1,4 +1,5 @@
 import type { TabCompletionFIMProviderSettings } from "@/integrations/configuration";
+import { logToFileObject } from "@/lib/file-logger";
 import { getLogger } from "@/lib/logger";
 import type { LanguageModelV2 } from "@ai-sdk/provider";
 import { createVertexModel } from "@getpochi/common/google-vertex-utils";
@@ -25,12 +26,7 @@ export class FIMGoogleVertexTuningModel implements FIMCompletionModel {
   private readonly systemPrompt: string;
   private readonly promptTemplate: string;
 
-  private requestId = 0;
-
-  constructor(
-    readonly clientId: string,
-    config: GoogleVertexTuningProviderConfig,
-  ) {
+  constructor(config: GoogleVertexTuningProviderConfig) {
     const modelConfig = config.model.trim();
     const vertex = config.vertex;
     if (modelConfig && vertex) {
@@ -50,6 +46,7 @@ export class FIMGoogleVertexTuningModel implements FIMCompletionModel {
   }
 
   async fetchCompletion(
+    requestId: string,
     baseSegments: BaseSegments,
     extraSegments?: ExtraSegments | undefined,
     token?: vscode.CancellationToken | undefined,
@@ -57,9 +54,6 @@ export class FIMGoogleVertexTuningModel implements FIMCompletionModel {
     if (!this.model) {
       return undefined;
     }
-
-    this.requestId++;
-    const requestId = `client: ${this.clientId}, request: ${this.requestId}`;
 
     const request: CallSettings & Prompt = {
       system: this.systemPrompt,
@@ -83,7 +77,13 @@ export class FIMGoogleVertexTuningModel implements FIMCompletionModel {
     const combinedSignal = AbortSignal.any(signals);
 
     try {
-      logger.trace(`[${requestId}] Completion request:`, request);
+      logger.trace(
+        "Request:",
+        logToFileObject({
+          requestId,
+          request,
+        }),
+      );
 
       const result = await generateText({
         ...request,
@@ -91,14 +91,28 @@ export class FIMGoogleVertexTuningModel implements FIMCompletionModel {
         abortSignal: combinedSignal,
       });
 
-      logger.trace(`[${requestId}] Completion response:`, result.response.body);
+      logger.trace(
+        "Response:",
+        logToFileObject({
+          requestId,
+          response: result.response.body,
+        }),
+      );
+
+      if (result.finishReason !== "stop") {
+        logger.trace(
+          "Unexpected finish reason:",
+          logToFileObject({ requestId, finishReason: result.finishReason }),
+        );
+        return undefined;
+      }
 
       return result.text;
     } catch (error) {
       if (isCanceledError(error)) {
-        logger.debug(`[${requestId}] Completion request canceled.`);
+        logger.trace("Request canceled.", logToFileObject({ requestId }));
       } else {
-        logger.debug(`[${requestId}] Completion request failed.`, error);
+        logger.debug("Request failed.", logToFileObject({ requestId, error }));
       }
       throw error; // rethrow error
     }

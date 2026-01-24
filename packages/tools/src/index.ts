@@ -7,10 +7,14 @@ import {
   getToolName,
   isToolUIPart,
 } from "ai";
+import type { z } from "zod/v4";
+
 import { applyDiff } from "./apply-diff";
 import { askFollowupQuestion } from "./ask-followup-question";
-import { attemptCompletion } from "./attempt-completion";
+
+import { createAttemptCompletionTool } from "./attempt-completion";
 import { executeCommand } from "./execute-command";
+
 import { globFiles } from "./glob-files";
 import { listFiles } from "./list-files";
 import type { multiApplyDiff } from "./multi-apply-diff";
@@ -95,9 +99,12 @@ export const ServerToolApproved = "<server-tool-approved>";
 const createCliTools = (options?: CreateToolOptions) => ({
   applyDiff,
   askFollowupQuestion,
-  attemptCompletion,
+  attemptCompletion: createAttemptCompletionTool(
+    options?.attemptCompletionSchema,
+  ),
   executeCommand,
   globFiles,
+
   listFiles,
   readFile: createReadFileTool(options?.contentType),
   searchFiles,
@@ -110,6 +117,7 @@ const createCliTools = (options?: CreateToolOptions) => ({
 export interface CreateToolOptions {
   customAgents?: CustomAgent[];
   contentType?: string[];
+  attemptCompletionSchema?: z.ZodAny;
 }
 
 export const createClientTools = (options?: CreateToolOptions) => {
@@ -128,20 +136,8 @@ export type ClientTools = ReturnType<typeof createClientTools> & {
 export const selectClientTools = (
   options: {
     isSubTask: boolean;
-    isCli: boolean;
   } & CreateToolOptions,
 ) => {
-  const cliTools = createCliTools(options);
-  if (options.isCli) {
-    if (options.isSubTask) {
-      const { newTask, ...rest } = cliTools;
-      return rest;
-    }
-
-    // CLI support new task
-    return cliTools;
-  }
-
   const clientTools = createClientTools(options);
 
   if (options?.isSubTask) {

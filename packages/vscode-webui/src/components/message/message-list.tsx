@@ -53,6 +53,7 @@ export const MessageList: React.FC<{
   showLoader?: boolean;
   forkTask?: (commitId: string, messageId?: string) => Promise<void>;
   hideCheckPoint?: boolean;
+  hideUserEditsActions?: boolean;
   repairMermaid?: MermaidContext["repairMermaid"];
   repairingChart?: string | null;
 }> = ({
@@ -66,6 +67,7 @@ export const MessageList: React.FC<{
   showLoader = true,
   forkTask,
   hideCheckPoint,
+  hideUserEditsActions,
   repairMermaid,
   repairingChart,
 }) => {
@@ -160,6 +162,7 @@ export const MessageList: React.FC<{
                       messages={renderMessages}
                       forkTask={forkTask}
                       hideCheckPoint={hideCheckPoint}
+                      hideUserEditsActions={hideUserEditsActions}
                       latestCheckpoint={latestCheckpoint}
                       lastCheckpointInMessage={lastCheckpointInMessage}
                       userEditsCheckpoint={getUserEditsCheckpoint(
@@ -251,6 +254,7 @@ function Part({
   hideCheckPoint,
   latestCheckpoint,
   lastCheckpointInMessage,
+  hideUserEditsActions,
   userEditsCheckpoint,
 }: {
   role: Message["role"];
@@ -262,6 +266,7 @@ function Part({
   messages: Message[];
   forkTask?: (commitId: string) => Promise<void>;
   hideCheckPoint?: boolean;
+  hideUserEditsActions?: boolean;
   latestCheckpoint: string | null;
   lastCheckpointInMessage: string | undefined;
   userEditsCheckpoint?: {
@@ -314,6 +319,7 @@ function Part({
       <UserEditsPart
         userEdits={part.data.userEdits}
         checkpoints={userEditsCheckpoint}
+        hideActions={hideUserEditsActions}
       />
     );
   }

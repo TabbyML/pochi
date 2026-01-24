@@ -28,9 +28,12 @@ import {
 import { useSelectedModels } from "@/features/settings";
 import { useCurrentWorkspace } from "@/lib/hooks/use-current-workspace";
 import { useDeletedWorktrees } from "@/lib/hooks/use-deleted-worktrees";
+import { usePaginatedTasks } from "@/lib/hooks/use-paginated-tasks";
 import { usePochiTabs } from "@/lib/hooks/use-pochi-tabs";
+import { useTaskArchived } from "@/lib/hooks/use-task-archived";
 import { useWorktrees } from "@/lib/hooks/use-worktrees";
 import { cn } from "@/lib/utils";
+import { getBaseName } from "@/lib/utils/file";
 import { vscodeHost } from "@/lib/vscode";
 import { prompts } from "@getpochi/common";
 import {
@@ -42,12 +45,14 @@ import {
   prefixWorktreeName,
 } from "@getpochi/common/vscode-webui-bridge";
 import {
+  Archive,
   Check,
   ChevronDown,
   ChevronRight,
   GitCompare,
   GitPullRequest,
   Loader2,
+  MoreVertical,
   Plus,
   Terminal,
   Trash2,
@@ -56,9 +61,6 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as R from "remeda";
-
-import { getBaseName } from "@/lib/utils/file";
-import { usePaginatedTasks } from "#lib/hooks/use-paginated-tasks";
 import { TaskRow } from "./task-row";
 import { ScrollArea } from "./ui/scroll-area";
 
@@ -248,7 +250,6 @@ export function WorktreeList({
 function WorktreeSection({
   group,
   onDeleteGroup,
-  gh,
   gitOriginUrl,
   containsOnlyWorkspaceGroup,
   isDeleted,
@@ -270,10 +271,13 @@ function WorktreeSection({
   const [isExpanded, setIsExpanded] = useState(!isDeleted);
   const [isHovered, setIsHovered] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
   const pochiTasks = usePochiTabs();
+  const { setTaskArchived } = useTaskArchived();
   const { tasks, hasMore, loadMore } = usePaginatedTasks({
     cwd: group.path,
     pageSize: 15,
+    showArchived: isDeleted || showArchived,
   });
 
   const loadMoreRef = useRef<HTMLDivElement>(null);
@@ -311,10 +315,6 @@ function WorktreeSection({
     return `${info.webUrl}/pull/${pullRequest.id}`;
   }, [gitOriginUrl, pullRequest?.id]);
 
-  const visibleTasks = useMemo(() => {
-    return tasks.filter((task) => !!task.title?.trim());
-  }, [tasks]);
-
   return (
     <Collapsible
       open={isExpanded}
@@ -328,6 +328,7 @@ function WorktreeSection({
           setIsHovered(false);
           setShowDeleteConfirm(false);
         }}
+        data-testid="worktree-group-header"
       >
         {/* worktree name & branch */}
         <div className="flex h-6 items-center gap-2">
@@ -355,20 +356,22 @@ function WorktreeSection({
               hidden: isDeleted,
             })}
           >
-            {pullRequest ? (
-              <PrStatusDisplay
-                prNumber={pullRequest.id}
-                prUrl={prUrl}
-                prChecks={pullRequest.checks}
-              />
-            ) : gitOriginUrl ? (
+            {
+              pullRequest ? (
+                <PrStatusDisplay
+                  prNumber={pullRequest.id}
+                  prUrl={prUrl}
+                  prChecks={pullRequest.checks}
+                />
+              ) : null /*gitOriginUrl ? (
               <CreatePrDropdown
                 worktreePath={group.path}
                 branch={group.branch}
                 gitOriginUrl={gitOriginUrl}
                 gh={gh}
               />
-            ) : null}
+            ) : null*/
+            }
           </div>
 
           <div
@@ -499,6 +502,43 @@ function WorktreeSection({
                   </PopoverContent>
                 </Popover>
               )}
+              <DropdownMenu>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-6 p-0"
+                        aria-label="more-options-button"
+                      >
+                        <MoreVertical className="size-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent>{t("tasksPage.moreOptions")}</TooltipContent>
+                </Tooltip>
+                <DropdownMenuContent align="end" className="bg-background">
+                  <DropdownMenuItem
+                    onClick={() => setShowArchived(!showArchived)}
+                    data-testid="toggle-archived-tasks"
+                  >
+                    <Archive className="mr-2 size-4" />
+                    {showArchived
+                      ? t("tasksPage.hideArchivedTasks")
+                      : t("tasksPage.showArchivedTasks")}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() =>
+                      setTaskArchived?.({ type: "batch", cwd: group.path })
+                    }
+                    data-testid="archive-old-tasks"
+                  >
+                    <Archive className="mr-2 size-4" />
+                    {t("tasksPage.archiveOldTasks")}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </>
           </div>
         </div>
@@ -512,9 +552,9 @@ function WorktreeSection({
             // When there is only one workspace group, we let it grow naturally without max-height constraint
           })}
         >
-          {visibleTasks.length > 0 || hasMore ? (
+          {tasks.length > 0 || hasMore ? (
             <>
-              {visibleTasks.map((task) => {
+              {tasks.map((task) => {
                 return (
                   <div key={task.id} className="py-0.5">
                     <TaskRow
@@ -529,7 +569,7 @@ function WorktreeSection({
                 <div ref={loadMoreRef} className="flex justify-center py-2">
                   <Loader2 className="size-4 animate-spin text-muted-foreground" />
                 </div>
-              )}{" "}
+              )}
             </>
           ) : (
             <div className="py-0.5 text-muted-foreground text-xs">
@@ -543,6 +583,7 @@ function WorktreeSection({
 }
 
 // Component A: Split button for creating PRs
+// @ts-expect-error
 function CreatePrDropdown({
   worktreePath,
   branch,

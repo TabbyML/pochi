@@ -19,6 +19,7 @@ export function generateForwardCache(
   const list: {
     append: string;
     newInsertText: string;
+    requestId: string;
   }[] = [];
   for (const item of items) {
     if (!item.inlineCompletionItem) {
@@ -33,6 +34,7 @@ export function generateForwardCache(
       list.push({
         append: currentLine.slice(0, chars),
         newInsertText: insertText.slice(chars),
+        requestId: item.responseItem.requestId,
       });
     }
   }
@@ -42,6 +44,7 @@ export function generateForwardCache(
     {
       append: string;
       newInsertText: string;
+      requestId: string;
     }[]
   >();
   for (const entry of list) {
@@ -61,6 +64,7 @@ export function generateForwardCache(
       const newSolution = new TabCompletionSolution(newContext);
       for (const entry of entries) {
         newSolution.addItem({
+          requestId: entry.requestId,
           edit: {
             changes: [
               {

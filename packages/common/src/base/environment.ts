@@ -82,6 +82,7 @@ export const Environment = z.object({
     })
     .describe("General information about the environment."),
   todos: z.array(Todo).optional().describe("Todos in current task"),
+  shareId: z.string().optional().describe("The share ID of the current task."),
 });
 
 export type Environment = z.infer<typeof Environment>;

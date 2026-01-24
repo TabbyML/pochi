@@ -30,7 +30,6 @@ export type LiveChatKitOptions<T> = {
   getters: PrepareRequestGetters;
 
   isSubTask?: boolean;
-  isCli?: boolean;
 
   store: LiveKitStore;
 
@@ -54,6 +53,7 @@ export type LiveChatKitOptions<T> = {
 
   customAgent?: CustomAgent;
   outputSchema?: z.ZodAny;
+  attemptCompletionSchema?: z.ZodAny;
 } & Omit<
   ChatInit<Message>,
   "id" | "messages" | "generateId" | "onFinish" | "onError" | "transport"
@@ -105,10 +105,11 @@ export class LiveChatKit<
     onOverrideMessages,
     getters,
     isSubTask,
-    isCli,
     customAgent,
     outputSchema,
+    attemptCompletionSchema,
     onStreamStart,
+
     onStreamFinish,
     ...chatInit
   }: LiveChatKitOptions<T>) {
@@ -123,9 +124,9 @@ export class LiveChatKit<
       onStart: this.onStart,
       getters,
       isSubTask,
-      isCli,
       customAgent,
       outputSchema,
+      attemptCompletionSchema,
     });
 
     this.chat = new chatClass({

@@ -9,8 +9,10 @@ import * as vscode from "vscode";
 type EncodedTask = {
   id: string;
   parentId: string | null;
+  shareId: string | null;
   // unix timestamp in milliseconds
   updatedAt: number;
+  cwd?: string | null;
 };
 
 const logger = getLogger("TaskHistoryStore");
