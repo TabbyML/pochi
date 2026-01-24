@@ -75,12 +75,15 @@ function BackgroundTaskToolView(
   return (
     <div>
       <ToolTitle className="justify-between">
-        <span className={cn("flex items-center gap-2")}>
+        <div className="flex min-w-0 items-center gap-2">
           <StatusIcon tool={tool} isExecuting={isExecuting} />
-          <Badge variant="secondary" className={cn("my-0.5 mr-1 ml-2 py-0")}>
+          <Badge variant="secondary" className={cn("my-0.5 py-0")}>
             {toolTitle}
           </Badge>
-        </span>
+          {description && (
+            <span className="min-w-0 text-muted-foreground">{description}</span>
+          )}
+        </div>
         <Button
           variant="ghost"
           size="sm"
@@ -91,13 +94,10 @@ function BackgroundTaskToolView(
           {t("toolInvocation.openTask")}
         </Button>
       </ToolTitle>
-      <div className="mt-1 ml-7 flex flex-col gap-1">
+      <div className="mt-1 flex flex-col gap-1 pl-6">
         <div className="rounded border border-border/60 bg-muted/40 px-2 py-1 text-muted-foreground text-xs">
           {t("toolInvocation.backgroundTaskStarted")}
         </div>
-        {description && (
-          <div className="text-muted-foreground text-xs">{description}</div>
-        )}
       </div>
     </div>
   );
@@ -151,29 +151,29 @@ function NewTaskToolView({
   return (
     <div>
       <ToolTitle>
-        <span className={cn("flex items-center gap-2")}>
-          <div>
-            <StatusIcon tool={tool} isExecuting={isExecuting} />
-            <Badge variant="secondary" className={cn("my-0.5 mr-1 ml-2 py-0")}>
-              {uid && taskSource?.parentId && isVSCodeEnvironment() ? (
-                <Link
-                  to="/task"
-                  search={{
-                    uid,
-                    storeId: store.storeId,
-                  }}
-                  replace={true}
-                  viewTransition
-                >
-                  {toolTitle}
-                </Link>
-              ) : (
-                <>{toolTitle}</>
-              )}
-            </Badge>
-            <span className="ml-2">{description}</span>
-          </div>
-        </span>
+        <div className="flex min-w-0 items-center gap-2">
+          <StatusIcon tool={tool} isExecuting={isExecuting} />
+          <Badge variant="secondary" className={cn("my-0.5 py-0")}>
+            {uid && taskSource?.parentId && isVSCodeEnvironment() ? (
+              <Link
+                to="/task"
+                search={{
+                  uid,
+                  storeId: store.storeId,
+                }}
+                replace={true}
+                viewTransition
+              >
+                {toolTitle}
+              </Link>
+            ) : (
+              <>{toolTitle}</>
+            )}
+          </Badge>
+          {description && (
+            <span className="min-w-0 text-muted-foreground">{description}</span>
+          )}
+        </div>
         {taskSource && taskSource.messages.length > 1 && (
           <ExpandIcon
             className="cursor-pointer"
@@ -183,18 +183,22 @@ function NewTaskToolView({
         )}
       </ToolTitle>
       {taskSource && taskSource.messages.length > 1 && (
-        <FixedStateChatContextProvider
-          toolCallStatusRegistry={toolCallStatusRegistryRef?.current}
-        >
-          <TaskThread
-            source={{ ...taskSource, isLoading: false }}
-            showMessageList={showMessageList}
-            assistant={{ name: agent ?? "Pochi" }}
-          />
-        </FixedStateChatContextProvider>
+        <div className="mt-1 pl-6">
+          <FixedStateChatContextProvider
+            toolCallStatusRegistry={toolCallStatusRegistryRef?.current}
+          >
+            <TaskThread
+              source={{ ...taskSource, isLoading: false }}
+              showMessageList={showMessageList}
+              assistant={{ name: agent ?? "Pochi" }}
+            />
+          </FixedStateChatContextProvider>
+        </div>
       )}
       {agentType === "planner" && completed && uid && taskSource?.parentId && (
-        <PlanCard uid={uid} parentId={taskSource.parentId} />
+        <div className="mt-1 pl-6">
+          <PlanCard uid={uid} parentId={taskSource.parentId} />
+        </div>
       )}
     </div>
   );
