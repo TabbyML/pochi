@@ -48,6 +48,24 @@ export const inputSchema = z.object({
   skill: z.string().describe("The name of the skill to use."),
 });
 
+/**
+ * Creates the result for useSkill tool that includes skill instructions and tool restrictions
+ */
+export function makeUseSkillResult(skill: Skill): string {
+  let prompt = skill.instructions.trim();
+
+  // If the skill has allowed tools, add tool restriction instructions
+  if (skill.allowedTools?.trim()) {
+    prompt = `IMPORTANT: This skill is restricted to use only the following tools: ${skill.allowedTools.trim()}
+
+You must ONLY use these approved tools when executing this skill. Do not use any other tools that are not explicitly listed above.
+
+${prompt}`;
+  }
+
+  return prompt;
+}
+
 export const createSkillTool = (skills?: Skill[]) => {
   return defineClientTool({
     description: `Execute a skill within the main conversation

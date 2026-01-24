@@ -1,6 +1,7 @@
 import { getLogger } from "@getpochi/common";
 import { isValidSkillFile } from "@getpochi/common/vscode-webui-bridge";
 import type { ClientTools, ToolFunctionType } from "@getpochi/tools";
+import { makeUseSkillResult } from "@getpochi/tools";
 import { container } from "tsyringe";
 import { SkillManager } from "../lib/skill-manager";
 
@@ -41,7 +42,7 @@ export const useSkill: ToolFunctionType<ClientTools["useSkill"]> = async (
     logger.debug(`Activating skill: ${skill.name}`);
 
     return {
-      result: skill.instructions.trim(),
+      result: makeUseSkillResult(skill),
     };
   } catch (error) {
     logger.error("Error in useSkill tool:", error);
