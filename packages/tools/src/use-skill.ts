@@ -34,10 +34,13 @@ function makeSkillToolDescription(skills?: Skill[]) {
   return `Available skills:
 
 ${skills
-  .map(
-    (skill) =>
-      `- **${skill.name}**: ${skill.description.trim()} [Location: ${skill.filePath}]`,
-  )
+  .map((skill) => {
+    const compatibilityInfo = skill.compatibility
+      ? ` [Compatibility: ${skill.compatibility}]`
+      : "";
+    const locationInfo = ` [Location: ${skill.filePath}]`;
+    return `- **${skill.name}**: ${skill.description.trim()}${compatibilityInfo}${locationInfo}`;
+  })
   .join("\n")}`;
 }
 
@@ -69,6 +72,7 @@ Important:
 - NEVER just announce or mention a skill in your text response without actually calling this tool (except for general skill listing requests)
 - This is a BLOCKING REQUIREMENT: invoke the relevant Skill tool BEFORE generating any other response about a specific skill or task
 - Only use skills listed in "Available skills" below
+- Check compatibility requirements before using a skill - ensure the skill is compatible with the current OS/environment
 - After calling this tool, follow the returned instructions step by step
 - The skill file location is shown in the [Location: filepath] section of each skill listing below - use this information to understand where the skill is defined
 - Use the directory containing the skill's source file as the base directory for resolving any resource files mentioned in the instructions
