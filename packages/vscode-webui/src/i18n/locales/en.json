@@ -474,5 +474,10 @@
     "title": "Plan",
     "reviewPlan": "Review",
     "executePlan": "Execute Plan"
+  },
+  "browserView": {
+    "connecting": "Connecting to browser...",
+    "noFrameAvailable": "No frame available",
+    "error": "Connection error"
   }
 }

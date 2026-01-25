@@ -476,5 +476,10 @@
     "title": "計画",
     "reviewPlan": "確認",
     "executePlan": "計画を実行"
+  },
+  "browserView": {
+    "connecting": "ブラウザに接続中...",
+    "noFrameAvailable": "フレームが利用できません",
+    "error": "接続エラー"
   }
 }

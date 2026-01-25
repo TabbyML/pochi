@@ -471,5 +471,10 @@
     "title": "계획",
     "reviewPlan": "검토",
     "executePlan": "계획 실행"
+  },
+  "browserView": {
+    "connecting": "브라우저에 연결 중...",
+    "noFrameAvailable": "프레임 없음",
+    "error": "연결 오류"
   }
 }

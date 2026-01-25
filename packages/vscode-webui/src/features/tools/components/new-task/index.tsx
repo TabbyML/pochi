@@ -6,6 +6,7 @@ import {
   ToolCallStatusRegistry,
 } from "@/features/chat";
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
+import { useBrowserSessions } from "@/lib/use-browser-sessions";
 import { useDefaultStore } from "@/lib/use-default-store";
 import { cn } from "@/lib/utils";
 import { isVSCodeEnvironment, vscodeHost } from "@/lib/vscode";
@@ -17,6 +18,7 @@ import { useLiveSubTask } from "../../hooks/use-live-sub-task";
 import { StatusIcon } from "../status-icon";
 import { ExpandIcon, ToolTitle } from "../tool-container";
 import type { ToolProps } from "../types";
+import { BrowserView } from "./browser-view";
 import { PlanCard } from "./plan-card";
 
 interface NewTaskToolProps extends ToolProps<"newTask"> {
@@ -143,6 +145,11 @@ function NewTaskToolView({
       setShowMessageList(false);
     }
   }, [isExecuting, completed, setShowMessageList]);
+
+  const browserSessions = useBrowserSessions();
+  const streamUrl =
+    browserSessions[taskSource?.parentId || uid || ""]?.streamUrl;
+
   return (
     <div>
       <ToolTitle>
@@ -195,6 +202,7 @@ function NewTaskToolView({
           <PlanCard uid={uid} parentId={taskSource.parentId} />
         </div>
       )}
+      {streamUrl && <BrowserView streamUrl={streamUrl} />}
     </div>
   );
 }
