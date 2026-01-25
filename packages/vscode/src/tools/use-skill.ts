@@ -1,5 +1,4 @@
 import { getLogger } from "@getpochi/common";
-import { isValidSkillFile } from "@getpochi/common/vscode-webui-bridge";
 import type { ClientTools, ToolFunctionType } from "@getpochi/tools";
 import { makeUseSkillResult } from "@getpochi/tools";
 import { container } from "tsyringe";
@@ -16,7 +15,7 @@ export const useSkill: ToolFunctionType<ClientTools["useSkill"]> = async (
 ) => {
   try {
     const skillManager = container.resolve(SkillManager);
-    const skills = skillManager.skills.value;
+    const skills = skillManager.validSkills.value;
 
     // Find the requested skill
     const skill = skills.find((s) => s.name === args.skill);
@@ -26,16 +25,6 @@ export const useSkill: ToolFunctionType<ClientTools["useSkill"]> = async (
         result: `Skill "${args.skill}" not found. Available skills: ${skills
           .map((s) => s.name)
           .join(", ")}`,
-      };
-    }
-
-    // Check if skill is valid
-    if (!isValidSkillFile(skill)) {
-      const invalidSkill = skill as { message?: string };
-      return {
-        result: `Skill "${args.skill}" is invalid: ${
-          invalidSkill.message || "Unknown error"
-        }`,
       };
     }
 
