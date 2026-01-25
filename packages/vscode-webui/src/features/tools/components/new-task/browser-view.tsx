@@ -1,6 +1,9 @@
 import { cn } from "@/lib/utils";
+import { getLogger } from "@getpochi/common";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+
+const logger = getLogger("BrowserView");
 
 interface BrowserViewProps {
   streamUrl: string;
@@ -17,35 +20,90 @@ export function BrowserView({ streamUrl }: BrowserViewProps) {
   useEffect(() => {
     if (!streamUrl) return;
 
-    // Ensure we close existing connection before creating new one
-    if (wsRef.current) {
-      wsRef.current.close();
-    }
+    let retryCount = 0;
+    const maxRetries = 5;
+    let retryTimeout: NodeJS.Timeout;
+    let isUnmounted = false;
 
-    try {
-      const ws = new WebSocket(streamUrl);
-      wsRef.current = ws;
-      ws.onopen = () => setStatus("streaming");
-      ws.onclose = () => setStatus("closed");
-      ws.onerror = () => setStatus("error");
-      ws.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          if (data.type === "frame") {
-            setFrame(data.data); // base64 image
+    const connect = () => {
+      if (isUnmounted) return;
+
+      logger.info(
+        `Connecting to browser stream: ${streamUrl} (Attempt ${retryCount + 1})`,
+      );
+
+      // Ensure we close existing connection before creating new one
+      if (wsRef.current) {
+        // Remove listeners to prevent stale events
+        wsRef.current.onopen = null;
+        wsRef.current.onclose = null;
+        wsRef.current.onerror = null;
+        wsRef.current.onmessage = null;
+        wsRef.current.close();
+        wsRef.current = null;
+      }
+
+      try {
+        const ws = new WebSocket(streamUrl);
+        wsRef.current = ws;
+        ws.onopen = () => {
+          if (isUnmounted) {
+            ws.close();
+            return;
           }
-        } catch (e) {
-          console.error("Failed to parse browser frame", e);
+          logger.info("Browser stream connected");
+          setStatus("streaming");
+          retryCount = 0; // Reset retry count on success
+        };
+        ws.onclose = (event) => {
+          if (isUnmounted) return;
+          logger.info(`Browser stream closed: ${event.code} ${event.reason}`);
+          setStatus("closed");
+
+          // Retry if not normal closure (1000) and we haven't exceeded max retries
+          if (event.code !== 1000 && retryCount < maxRetries) {
+            const delay = Math.min(1000 * 1.5 ** retryCount, 10000);
+            retryCount++;
+            logger.info(`Retrying connection in ${delay}ms...`);
+            retryTimeout = setTimeout(connect, delay);
+          }
+        };
+        ws.onerror = (event) => {
+          if (isUnmounted) return;
+          logger.error("Browser stream error", event);
+          setStatus("error");
+        };
+        ws.onmessage = (event) => {
+          if (isUnmounted) return;
+          try {
+            const data = JSON.parse(event.data);
+            if (data.type === "frame") {
+              setFrame(data.data); // base64 image
+            }
+          } catch (e) {
+            logger.error("Failed to parse browser frame", e);
+          }
+        };
+      } catch (e) {
+        logger.error("Failed to connect to browser stream", e);
+        setStatus("error");
+        if (retryCount < maxRetries) {
+          const delay = Math.min(1000 * 1.5 ** retryCount, 10000);
+          retryCount++;
+          retryTimeout = setTimeout(connect, delay);
         }
-      };
-    } catch (e) {
-      console.error("Failed to connect to browser stream", e);
-      setStatus("error");
-    }
+      }
+    };
+
+    connect();
 
     return () => {
-      wsRef.current?.close();
-      wsRef.current = null;
+      isUnmounted = true;
+      clearTimeout(retryTimeout);
+      if (wsRef.current) {
+        wsRef.current.close();
+        wsRef.current = null;
+      }
     };
   }, [streamUrl]);
 
