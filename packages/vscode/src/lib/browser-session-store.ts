@@ -1,10 +1,7 @@
-import { getLogger } from "@getpochi/common";
 import type { BrowserSession } from "@getpochi/common/vscode-webui-bridge";
 import { signal } from "@preact/signals-core";
 import { injectable, singleton } from "tsyringe";
 import { getAvailablePort } from "./get-available-port";
-
-const logger = getLogger("BrowserSessionStore");
 
 @injectable()
 @singleton()
@@ -12,7 +9,6 @@ export class BrowserSessionStore {
   browserSessions = signal<Record<string, BrowserSession>>({});
 
   async registerBrowserSession(taskId: string) {
-    logger.debug(`Register browser session for task ${taskId}`);
     const port = await getAvailablePort();
     this.browserSessions.value = {
       ...this.browserSessions.value,
@@ -24,7 +20,6 @@ export class BrowserSessionStore {
   }
 
   async unregisterBrowserSession(taskId: string) {
-    logger.debug(`Unregister browser session for task ${taskId}`);
     const { [taskId]: _, ...rest } = this.browserSessions.value;
     this.browserSessions.value = rest;
   }

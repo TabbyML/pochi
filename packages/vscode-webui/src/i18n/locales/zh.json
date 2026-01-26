@@ -478,7 +478,6 @@
   },
   "browserView": {
     "connecting": "正在连接浏览器...",
-    "noFrameAvailable": "无画面",
-    "error": "连接错误"
+    "noFrameAvailable": "无画面"
   }
 }

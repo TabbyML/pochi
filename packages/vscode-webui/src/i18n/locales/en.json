@@ -477,7 +477,6 @@
   },
   "browserView": {
     "connecting": "Connecting to browser...",
-    "noFrameAvailable": "No frame available",
-    "error": "Connection error"
+    "noFrameAvailable": "No frame available"
   }
 }

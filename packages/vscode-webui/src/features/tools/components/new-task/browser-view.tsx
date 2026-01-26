@@ -12,33 +12,15 @@ interface BrowserViewProps {
 export function BrowserView({ streamUrl }: BrowserViewProps) {
   const { t } = useTranslation();
   const [frame, setFrame] = useState<string | null>(null);
-  const [status, setStatus] = useState<
-    "connecting" | "streaming" | "closed" | "error"
-  >("connecting");
+  const [status, setStatus] = useState<"idle" | "streaming">("idle");
   const wsRef = useRef<WebSocket | null>(null);
 
   useEffect(() => {
-    if (!streamUrl) return;
-
-    let retryCount = 0;
-    const maxRetries = 5;
     let retryTimeout: NodeJS.Timeout;
-    let isUnmounted = false;
 
     const connect = () => {
-      if (isUnmounted) return;
-
-      logger.info(
-        `Connecting to browser stream: ${streamUrl} (Attempt ${retryCount + 1})`,
-      );
-
-      // Ensure we close existing connection before creating new one
       if (wsRef.current) {
-        // Remove listeners to prevent stale events
-        wsRef.current.onopen = null;
         wsRef.current.onclose = null;
-        wsRef.current.onerror = null;
-        wsRef.current.onmessage = null;
         wsRef.current.close();
         wsRef.current = null;
       }
@@ -46,35 +28,24 @@ export function BrowserView({ streamUrl }: BrowserViewProps) {
       try {
         const ws = new WebSocket(streamUrl);
         wsRef.current = ws;
-        ws.onopen = () => {
-          if (isUnmounted) {
-            ws.close();
-            return;
-          }
-          logger.info("Browser stream connected");
-          setStatus("streaming");
-          retryCount = 0; // Reset retry count on success
-        };
-        ws.onclose = (event) => {
-          if (isUnmounted) return;
-          logger.info(`Browser stream closed: ${event.code} ${event.reason}`);
-          setStatus("closed");
 
-          // Retry if not normal closure (1000) and we haven't exceeded max retries
-          if (event.code !== 1000 && retryCount < maxRetries) {
-            const delay = Math.min(1000 * 1.5 ** retryCount, 10000);
-            retryCount++;
-            logger.info(`Retrying connection in ${delay}ms...`);
-            retryTimeout = setTimeout(connect, delay);
-          }
+        ws.onopen = () => {
+          setStatus("streaming");
         };
+
+        ws.onclose = () => {
+          setStatus("idle");
+          // Always retry
+          retryTimeout = setTimeout(connect, 1000);
+        };
+
         ws.onerror = (event) => {
-          if (isUnmounted) return;
           logger.error("Browser stream error", event);
-          setStatus("error");
+          // Force close to trigger onclose and retry
+          ws.close();
         };
+
         ws.onmessage = (event) => {
-          if (isUnmounted) return;
           try {
             const data = JSON.parse(event.data);
             if (data.type === "frame") {
@@ -86,21 +57,20 @@ export function BrowserView({ streamUrl }: BrowserViewProps) {
         };
       } catch (e) {
         logger.error("Failed to connect to browser stream", e);
-        setStatus("error");
-        if (retryCount < maxRetries) {
-          const delay = Math.min(1000 * 1.5 ** retryCount, 10000);
-          retryCount++;
-          retryTimeout = setTimeout(connect, delay);
-        }
+        setStatus("idle");
+        retryTimeout = setTimeout(connect, 1000);
       }
     };
 
     connect();
 
     return () => {
-      isUnmounted = true;
       clearTimeout(retryTimeout);
       if (wsRef.current) {
+        wsRef.current.onopen = null;
+        wsRef.current.onclose = null;
+        wsRef.current.onerror = null;
+        wsRef.current.onmessage = null;
         wsRef.current.close();
         wsRef.current = null;
       }
@@ -126,11 +96,9 @@ export function BrowserView({ streamUrl }: BrowserViewProps) {
           />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center text-muted-foreground text-sm">
-            {status === "connecting"
+            {status === "idle"
               ? t("browserView.connecting")
-              : status === "error"
-                ? t("browserView.error")
-                : t("browserView.noFrameAvailable")}
+              : t("browserView.noFrameAvailable")}
           </div>
         )}
       </div>
@@ -138,12 +106,10 @@ export function BrowserView({ streamUrl }: BrowserViewProps) {
   );
 }
 
-function StatusIndicator({ status }: { status: string }) {
+function StatusIndicator({ status }: { status: "idle" | "streaming" }) {
   const colors: Record<string, string> = {
-    connecting: "bg-yellow-400 animate-pulse",
+    idle: "bg-yellow-400 animate-pulse",
     streaming: "bg-green-400",
-    closed: "bg-gray-400",
-    error: "bg-red-400",
   };
   return (
     <div className="flex items-center gap-1.5">

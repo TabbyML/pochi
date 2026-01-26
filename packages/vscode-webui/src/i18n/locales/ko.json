@@ -474,7 +474,6 @@
   },
   "browserView": {
     "connecting": "브라우저에 연결 중...",
-    "noFrameAvailable": "프레임 없음",
-    "error": "연결 오류"
+    "noFrameAvailable": "프레임 없음"
   }
 }

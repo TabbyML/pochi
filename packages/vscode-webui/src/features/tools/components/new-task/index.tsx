@@ -185,6 +185,9 @@ function NewTaskToolView({
           />
         )}
       </ToolTitle>
+      {agentType === "browser" && streamUrl && (
+        <BrowserView streamUrl={streamUrl} />
+      )}
       {taskSource && taskSource.messages.length > 1 && (
         <div className="mt-1 pl-6">
           <FixedStateChatContextProvider
@@ -203,7 +206,6 @@ function NewTaskToolView({
           <PlanCard uid={uid} parentId={taskSource.parentId} />
         </div>
       )}
-      {streamUrl && <BrowserView streamUrl={streamUrl} />}
     </div>
   );
 }

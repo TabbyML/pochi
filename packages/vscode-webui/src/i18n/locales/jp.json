@@ -479,7 +479,6 @@
   },
   "browserView": {
     "connecting": "ブラウザに接続中...",
-    "noFrameAvailable": "フレームが利用できません",
-    "error": "接続エラー"
+    "noFrameAvailable": "フレームが利用できません"
   }
 }
