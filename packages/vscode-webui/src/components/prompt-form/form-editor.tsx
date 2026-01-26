@@ -745,7 +745,6 @@ export const debouncedListSlashCommand = debounceWithCachedValue(
           rawData: x,
         })),
     ];
-
     return {
       options,
     };
