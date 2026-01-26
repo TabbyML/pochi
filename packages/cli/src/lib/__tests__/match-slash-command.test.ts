@@ -189,7 +189,7 @@ describe("match-slash-command", () => {
         skills,
       });
       expect(result).toBe(
-        'Please use <skill id="test-skill" path=".pochi/skills/test-skill/SKILL.md">test-skill</skill> for this task',
+        'Please use <skill id="test-skill" path=".pochi/skills/test-skill/SKILL.md">useSkill:test-skill</skill> for this task',
       );
     });
 
@@ -201,7 +201,7 @@ describe("match-slash-command", () => {
         skills,
       });
       expect(result).toBe(
-        'Use <workflow id="test-workflow" path=".pochi/workflows/test-workflow.md">This is a test workflow</workflow> and then <custom-agent id="test-agent" path=".pochi/agents/test-agent.md">newTask:test-agent</custom-agent> and finally <skill id="test-skill" path=".pochi/skills/test-skill/SKILL.md">test-skill</skill>',
+        'Use <workflow id="test-workflow" path=".pochi/workflows/test-workflow.md">This is a test workflow</workflow> and then <custom-agent id="test-agent" path=".pochi/agents/test-agent.md">newTask:test-agent</custom-agent> and finally <skill id="test-skill" path=".pochi/skills/test-skill/SKILL.md">useSkill:test-skill</skill>',
       );
     });
   });
