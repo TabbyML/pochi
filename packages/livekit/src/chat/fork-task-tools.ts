@@ -15,7 +15,6 @@ type DBMessageShape = {
 export const prepareForkTaskData = ({
   tasks,
   messages,
-  blobs,
   files,
   oldTaskId,
   commitId,
@@ -25,7 +24,6 @@ export const prepareForkTaskData = ({
 }: {
   tasks: typeof tables.tasks.ResultType;
   messages: typeof tables.messages.ResultType;
-  blobs: typeof tables.blobs.ResultType;
   files: typeof tables.files.ResultType;
   oldTaskId: string;
   commitId: string;
@@ -106,7 +104,6 @@ export const prepareForkTaskData = ({
   return {
     tasks: newTasks,
     messages: newMessages,
-    blobs: blobs,
     files: newFiles,
   };
 };
@@ -174,6 +171,21 @@ const replaceTaskIdInMessages = (
             },
           },
         };
+      }
+      if (
+        part.type === "tool-readBackgroundJobOutput" &&
+        part.input?.backgroundJobId
+      ) {
+        const newTaskId = getNewTaskId(part.input.backgroundJobId);
+        if (newTaskId) {
+          return {
+            ...part,
+            input: {
+              ...part.input,
+              backgroundJobId: newTaskId,
+            },
+          };
+        }
       }
       return part;
     }),

@@ -255,14 +255,6 @@ export const events = {
           data: DBMessage,
         }),
       ),
-      blobs: Schema.Array(
-        Schema.Struct({
-          checksum: Schema.String,
-          createdAt: Schema.Date,
-          mimeType: Schema.String,
-          data: Schema.Uint8Array,
-        }),
-      ),
       files: Schema.Array(
         Schema.Struct({
           taskId: Schema.String,
@@ -452,14 +444,11 @@ const materializers = State.SQLite.materializers(events, {
         })
         .where({ id: message.id }),
     ),
-  "v1.ForkTaskInited": ({ tasks, messages, blobs, files }) => [
+  "v1.ForkTaskInited": ({ tasks, messages, files }) => [
     ...tasks.map((task) =>
       tables.tasks.insert({ ...task, updatedAt: task.createdAt }),
     ),
     ...messages.map((message) => tables.messages.insert(message)),
-    ...blobs.map((blob) =>
-      tables.blobs.insert({ ...blob, data: new Uint8Array(blob.data) }),
-    ),
     ...files.map((file) => tables.files.insert(file)),
   ],
 });

@@ -51,9 +51,6 @@ export const makeAllDataQuery = () => {
     messages: queryDb(() => tables.messages.select(), {
       label: "allMessages",
     }),
-    blobs: queryDb(() => tables.blobs.select(), {
-      label: "allBlobs",
-    }),
     files: queryDb(() => tables.files.select(), {
       label: "allFiles",
     }),

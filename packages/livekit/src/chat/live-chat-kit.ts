@@ -308,18 +308,15 @@ export class LiveChatKit<
     const {
       tasks: tasksQuery,
       messages: messagesQuery,
-      blobs: blobsQuery,
       files: filesQuery,
     } = makeAllDataQuery();
     const tasks = this.store.query(tasksQuery);
     const messages = this.store.query(messagesQuery);
-    const blobs = this.store.query(blobsQuery);
     const files = this.store.query(filesQuery);
 
     const data = prepareForkTaskData({
       tasks,
       messages,
-      blobs,
       files,
       oldTaskId: this.taskId,
       commitId: forkTaskParams.commitId,
