@@ -9,6 +9,7 @@ import { useMcp } from "@/lib/hooks/use-mcp";
 import { useTaskMcpConfigOverride } from "@/lib/hooks/use-task-mcp-config-override";
 import { prepareMessageParts } from "@/lib/message-utils";
 import { blobStore } from "@/lib/remote-blob-store";
+import { useManageBrowserSessions } from "@/lib/use-browser-sessions";
 import { useDefaultStore } from "@/lib/use-default-store";
 import { cn, tw } from "@/lib/utils";
 import { vscodeHost } from "@/lib/vscode";
@@ -274,6 +275,11 @@ function Chat({ user, uid, info }: ChatProps) {
   const isTaskWithoutContent =
     (info.type === "new-task" && !info.prompt && !info.files?.length) ||
     (info.type === "open-task" && messages.length === 0);
+
+  useManageBrowserSessions({
+    uid: task?.parentId || uid,
+    messages,
+  });
 
   const approvalAndRetry = useApprovalAndRetry({
     ...chat,

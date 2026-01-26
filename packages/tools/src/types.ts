@@ -8,15 +8,13 @@ import type {
 import type { z } from "zod";
 import type { EditFileOutputSchema } from "./constants";
 
-export type ToolFunctionOptions = ToolCallOptions & {
-  cwd: string;
-  contentType?: string[];
-  envs?: Record<string, string>;
-};
-
 export type ToolFunctionType<T extends Tool> = (
   input: InferToolInput<T>,
-  options: ToolFunctionOptions,
+  options: ToolCallOptions & {
+    cwd: string;
+    contentType?: string[];
+    envs?: Record<string, string>;
+  },
 ) => PromiseLike<InferToolOutput<T>> | InferToolOutput<T>;
 
 export type PreviewReturnType =

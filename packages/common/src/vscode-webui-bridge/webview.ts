@@ -368,6 +368,10 @@ export interface VSCodeHostApi {
     ThreadSignalSerialization<Record<string, BrowserSession>>
   >;
 
+  registerBrowserSession(taskId: string): Promise<void>;
+
+  unregisterBrowserSession(taskId: string): Promise<void>;
+
   /**
    * Read mcpConfigOverride for a task.
    * Returns a serialized signal for the value and a setter function.

@@ -11,27 +11,29 @@ const logger = getLogger("BrowserSessionStore");
 export class BrowserSessionStore {
   browserSessions = signal<Record<string, BrowserSession>>({});
 
-  registerBrowserSession(taskId: string, browserSession: BrowserSession) {
-    logger.debug(`Registering browser session for task ${taskId}`);
+  async registerBrowserSession(taskId: string) {
+    logger.debug(`Register browser session for task ${taskId}`);
+    const port = await getAvailablePort();
     this.browserSessions.value = {
       ...this.browserSessions.value,
-      [taskId]: browserSession,
+      [taskId]: {
+        port,
+        streamUrl: `ws://localhost:${port}`,
+      },
     };
   }
 
-  closeBrowserSession(taskId: string) {
-    logger.debug(`Closing browser session for task ${taskId}`);
+  async unregisterBrowserSession(taskId: string) {
+    logger.debug(`Unregister browser session for task ${taskId}`);
     const { [taskId]: _, ...rest } = this.browserSessions.value;
     this.browserSessions.value = rest;
   }
 
-  async getAgentBrowserEnvs(taskId: string): Promise<Record<string, string>> {
+  getAgentBrowserEnvs(taskId: string): Record<string, string> {
     const browserSession = this.browserSessions.value[taskId];
     return {
       AGENT_BROWSER_SESSION: taskId,
-      AGENT_BROWSER_STREAM_PORT: String(
-        browserSession?.port || (await getAvailablePort()),
-      ),
+      AGENT_BROWSER_STREAM_PORT: String(browserSession?.port),
     };
   }
 }

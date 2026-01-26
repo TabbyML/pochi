@@ -25,7 +25,6 @@ export { Todo } from "./todo-write";
 export { MediaOutput } from "./read-file";
 export type {
   ToolFunctionType,
-  ToolFunctionOptions,
   PreviewToolFunctionType,
   PreviewReturnType,
 } from "./types";
