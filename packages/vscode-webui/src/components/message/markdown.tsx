@@ -235,6 +235,12 @@ interface CustomAgentComponentProps {
   children: string;
 }
 
+interface SkillComponentProps {
+  id: string;
+  path: string;
+  children: string;
+}
+
 interface IssueComponentProps {
   id: string;
   url: string;
@@ -431,9 +437,10 @@ export function MessageMarkdown({
         }
         return <FileBadge label={cleanId} path={path} />;
       },
-      skill: (props: WorkflowComponentProps) => {
+      skill: (props: SkillComponentProps) => {
         const { id, path } = props;
         const cleanId = id.replaceAll("user-content-", "/");
+
         if (!path) {
           return (
             <span className="mx-px inline-flex items-center gap-1 rounded-sm border border-border bg-muted px-1.5 py-0.5 align-baseline font-medium text-muted-foreground text-sm/4">
