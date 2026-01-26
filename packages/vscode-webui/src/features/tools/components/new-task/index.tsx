@@ -91,7 +91,7 @@ function BackgroundTaskToolView(
           onClick={openInTab}
           disabled={!canOpen}
         >
-          ASYNC
+          {"ASYNC"}
         </Button>
       </ToolTitle>
     </div>

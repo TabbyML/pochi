@@ -595,4 +595,280 @@ const z = 20;`);
       expect(error instanceof Error).toBe(true);
     });
   });
+
+  describe("multiple line editing with processMultipleDiffs", () => {
+    it("should not insert extra empty lines when applying multiple diffs", async () => {
+      const fileContent = `function example() {
+  const a = 1;
+  const b = 2;
+  const c = 3;
+}`;
+
+      const edits = [
+        {
+          searchContent: "const a = 1;",
+          replaceContent: "const a = 10;",
+        },
+        {
+          searchContent: "const b = 2;",
+          replaceContent: "const b = 20;",
+        },
+      ];
+
+      const result = await processMultipleDiffs(fileContent, edits);
+
+      // Should not have extra empty lines
+      expect(result).toBe(`function example() {
+  const a = 10;
+  const b = 20;
+  const c = 3;
+}`);
+    });
+
+    it("should not insert extra empty lines when using line-trimmed search", async () => {
+      const fileContent = `function test() {
+    const x = 1;
+    const y = 2;
+    return x + y;
+}`;
+
+      // Search content with different indentation (will use line-trimmed search)
+      const edits = [
+        {
+          searchContent: "const x = 1;",
+          replaceContent: "const x = 100;",
+        },
+        {
+          searchContent: "const y = 2;",
+          replaceContent: "const y = 200;",
+        },
+      ];
+
+      const result = await processMultipleDiffs(fileContent, edits);
+
+      // Count newlines - should be exactly 4 (same as original)
+      const originalNewlines = (fileContent.match(/\n/g) || []).length;
+      const resultNewlines = (result.match(/\n/g) || []).length;
+
+      expect(resultNewlines).toBe(originalNewlines);
+      expect(result).toContain("const x = 100;");
+      expect(result).toContain("const y = 200;");
+    });
+
+    it("should preserve exact structure when applying multiline search with line-trimmed matching", async () => {
+      const fileContent = `class MyClass {
+  method1() {
+    console.log("first");
+  }
+
+  method2() {
+    console.log("second");
+  }
+}`;
+
+      // Search with different indentation - should use line-trimmed search
+      const searchContent = `method1() {
+  console.log("first");
+}`;
+
+      const replaceContent = `method1() {
+  console.log("updated first");
+}`;
+
+      const result = await parseDiffAndApply(
+        fileContent,
+        searchContent,
+        replaceContent,
+      );
+
+      // Verify no extra empty lines are lost - the empty line between method1 and method2 should remain
+      const originalLines = fileContent.split("\n").length;
+      const resultLines = result.split("\n").length;
+
+      expect(resultLines).toBe(originalLines);
+      expect(result).toContain('console.log("updated first")');
+      expect(result).toContain('console.log("second")');
+      // Verify the empty line separator is preserved
+      expect(result).toContain("}\n\n  method2");
+    });
+
+    it("should not duplicate content when applying sequential diffs with line-trimmed matching", async () => {
+      const fileContent = `export function processData() {
+  const input = getData();
+  const output = transform(input);
+  return output;
+}`;
+
+      const edits = [
+        {
+          searchContent: "const input = getData();",
+          replaceContent: "const input = fetchData();",
+        },
+        {
+          searchContent: "const output = transform(input);",
+          replaceContent: "const output = process(input);",
+        },
+      ];
+
+      const result = await processMultipleDiffs(fileContent, edits);
+
+      expect(result).toBe(`export function processData() {
+  const input = fetchData();
+  const output = process(input);
+  return output;
+}`);
+    });
+
+    it("should preserve structure when using block anchor matching strategy", async () => {
+      // This test uses a block that will trigger block anchor matching (3+ lines with similar structure)
+      const fileContent = `class Handler {
+  handleRequest(req) {
+    const data = parseRequest(req);
+    const result = processData(data);
+    return formatResponse(result);
+  }
+
+  handleError(err) {
+    console.log(err);
+  }
+}`;
+
+      // Search with slightly different middle content - will use block anchor
+      const searchContent = `handleRequest(req) {
+    const info = parseRequest(req);
+    const output = processData(info);
+    return formatResponse(output);
+  }`;
+
+      const replaceContent = `handleRequest(req) {
+    const input = validateRequest(req);
+    const output = handleData(input);
+    return sendResponse(output);
+  }`;
+
+      const result = await parseDiffAndApply(
+        fileContent,
+        searchContent,
+        replaceContent,
+      );
+
+      // Verify the empty line separator between methods is preserved
+      const originalLines = fileContent.split("\n").length;
+      const resultLines = result.split("\n").length;
+
+      expect(resultLines).toBe(originalLines);
+      expect(result).toContain("validateRequest");
+      expect(result).toContain("handleData");
+      expect(result).toContain("sendResponse");
+      // The empty line between handleRequest and handleError should be preserved
+      expect(result).toContain("}\n\n  handleError");
+    });
+
+    it("should preserve trailing empty line when file ends with empty line", async () => {
+      // File content with trailing newline (empty line at end)
+      const fileContent = `function test() {
+  return 1;
+}
+`;
+
+      const searchContent = "return 1;";
+      const replaceContent = "return 2;";
+
+      const result = await parseDiffAndApply(
+        fileContent,
+        searchContent,
+        replaceContent,
+      );
+
+      // The trailing newline should be preserved
+      expect(result).toBe(`function test() {
+  return 2;
+}
+`);
+      expect(result.endsWith("\n")).toBe(true);
+    });
+
+    it("should preserve trailing empty line when using line-trimmed matching", async () => {
+      // File content with trailing newline
+      const fileContent = `class MyClass {
+    doSomething() {
+        console.log("hello");
+    }
+}
+`;
+
+      // Search with different indentation
+      const searchContent = `doSomething() {
+    console.log("hello");
+}`;
+
+      const replaceContent = `doSomething() {
+    console.log("world");
+}`;
+
+      const result = await parseDiffAndApply(
+        fileContent,
+        searchContent,
+        replaceContent,
+      );
+
+      // The trailing newline should be preserved
+      expect(result.endsWith("\n")).toBe(true);
+    });
+
+    it("should not delete trailing empty line when match is at end of file", async () => {
+      const fileContent = `const a = 1;
+const b = 2;
+`;
+
+      const searchContent = "const b = 2;";
+      const replaceContent = "const b = 3;";
+
+      const result = await parseDiffAndApply(
+        fileContent,
+        searchContent,
+        replaceContent,
+      );
+
+      expect(result).toBe(`const a = 1;
+const b = 3;
+`);
+    });
+
+    it("should preserve multiple trailing empty lines", async () => {
+      // File with multiple trailing newlines
+      const fileContent = "const x = 1;\nconst y = 2;\n\n\n";
+
+      const searchContent = "const x = 1;";
+      const replaceContent = "const x = 10;";
+
+      const result = await parseDiffAndApply(
+        fileContent,
+        searchContent,
+        replaceContent,
+      );
+
+      // Should preserve all 3 trailing newlines
+      expect(result).toBe("const x = 10;\nconst y = 2;\n\n\n");
+      expect(result.endsWith("\n\n\n")).toBe(true);
+    });
+
+    it("should preserve multiple trailing empty lines with CRLF", async () => {
+      // File with multiple trailing CRLF newlines
+      const fileContent = "const x = 1;\r\nconst y = 2;\r\n\r\n\r\n";
+
+      const searchContent = "const x = 1;";
+      const replaceContent = "const x = 10;";
+
+      const result = await parseDiffAndApply(
+        fileContent,
+        searchContent,
+        replaceContent,
+      );
+
+      // Should preserve all 3 trailing CRLF newlines
+      expect(result).toBe("const x = 10;\r\nconst y = 2;\r\n\r\n\r\n");
+      expect(result.endsWith("\r\n\r\n\r\n")).toBe(true);
+    });
+  });
 });

@@ -240,6 +240,7 @@ export function XTerm({
   ...props
 }: XTermProps) {
   const defaultTerminalOptions = {
+    convertEol: true,
     rows: minRow,
   };
 
