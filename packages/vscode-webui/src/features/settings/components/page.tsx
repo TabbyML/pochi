@@ -14,8 +14,8 @@ export function SettingsPage() {
         <div className="space-y-1">
           <AccountSection />
           <WorkspaceRulesSection />
-          <SkillSection />
           <CustomAgentSection />
+          <SkillSection />
           <ToolsSection />
           <ModelSection />
           <AdvancedSettingsSection />
