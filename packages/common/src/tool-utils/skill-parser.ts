@@ -1,6 +1,7 @@
 import * as path from "node:path";
 import { remark } from "remark";
 import remarkFrontmatter from "remark-frontmatter";
+import { remove } from "unist-util-remove";
 import { matter } from "vfile-matter";
 import z from "zod/v4";
 import { toErrorMessage } from "../base";
@@ -43,6 +44,9 @@ export async function parseSkillFile(
     vfile = await remark()
       .use(remarkFrontmatter, [{ type: "yaml", marker: "-" }])
       .use(() => (_tree, file) => matter(file))
+      .use(() => (tree) => {
+        remove(tree, "yaml");
+      })
       .process(content);
   } catch (error) {
     return {

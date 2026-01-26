@@ -39,6 +39,8 @@ Follow the instructions carefully.`;
     expect(validResult.instructions).toContain(
       "Follow the instructions carefully.",
     );
+    expect(validResult.instructions).not.toContain("name: test-skill");
+    expect(validResult.instructions).not.toContain("---");
   });
 
   it("should parse skill with minimal required fields", async () => {
