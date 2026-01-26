@@ -176,8 +176,8 @@ const replaceTaskIdInMessages = (
         part.type === "tool-readBackgroundJobOutput" &&
         part.input?.backgroundJobId
       ) {
-        const newTaskId = getNewTaskId(part.input.backgroundJobId);
-        if (newTaskId) {
+        try {
+          const newTaskId = getNewTaskId(part.input.backgroundJobId);
           return {
             ...part,
             input: {
@@ -185,6 +185,8 @@ const replaceTaskIdInMessages = (
               backgroundJobId: newTaskId,
             },
           };
+        } catch {
+          // ignore, getNewTaskId failed when backgroundJobId is not a taskId
         }
       }
       return part;

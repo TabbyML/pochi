@@ -282,6 +282,43 @@ describe("prepareForkTaskData", () => {
     expect(toolPart.input.backgroundJobId).not.toBe(subTaskId);
   });
 
+  it("should keep original backgroundJobId if it's not a taskId in tool-readBackgroundJobOutput", () => {
+    const invalidTaskId = "not-a-task-id";
+    const messageWithTool = {
+      id: "msg-tool-background-invalid",
+      taskId: oldTaskId,
+      data: {
+        id: "msg-tool-background-invalid",
+        role: "assistant",
+        parts: [
+          {
+            type: "tool-readBackgroundJobOutput",
+            input: {
+              backgroundJobId: invalidTaskId,
+            },
+          },
+        ],
+      },
+    } as any;
+
+    const result = prepareForkTaskData({
+      tasks: [mockTask],
+      messages: [messageWithTool],
+      files: [],
+      oldTaskId,
+      commitId: "none",
+      messageId: "msg-tool-background-invalid",
+      newTaskId,
+      newTaskTitle: "New Task",
+    });
+
+    const newMessage = result.messages[0];
+    const toolPart = newMessage.data.parts[0] as any;
+
+    // It should keep the original invalidTaskId
+    expect(toolPart.input.backgroundJobId).toBe(invalidTaskId);
+  });
+
   it("should throw error if messageId is not found", () => {
     expect(() => prepareForkTaskData({
       tasks: [mockTask],
