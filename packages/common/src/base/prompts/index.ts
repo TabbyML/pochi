@@ -2,11 +2,9 @@ import { BuiltInAgentPath } from "../../vscode-webui-bridge/types/custom-agent";
 import { renderActiveSelection } from "./active-selection";
 import { renderBashOutputs } from "./bash-outputs";
 import { createCompactPrompt } from "./compact";
-import { createPr } from "./create-pr";
 import { createEnvironmentPrompt, injectEnvironment } from "./environment";
 import { fixMermaidError } from "./fix-mermaid-error";
 import { generateTitle } from "./generate-title";
-import { injectBashOutputs } from "./inject-bash-outputs";
 import { renderReviewComments } from "./review-comments";
 import { createSkillPrompt, createUseSkillResult } from "./skill";
 import { createSystemPrompt } from "./system";
@@ -26,8 +24,7 @@ export const prompts = {
   generateTitle,
   customAgent: createCustomAgentPrompt,
   skill: createSkillPrompt,
-  injectBashOutputs,
-  createPr,
+
   renderReviewComments,
   renderActiveSelection,
   renderUserEdits,
