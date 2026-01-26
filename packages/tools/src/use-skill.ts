@@ -81,6 +81,7 @@ Important:
   * references/ - on-demand documentation (REFERENCE.md, FORMS.md, domain-specific files)
   * assets/ - static resources (templates, images, data files, schemas)
   Use these resources when they exist and are relevant to the current task
+- If the user's message contains "useSkill:<skill>", you must use the this tool with the specified skill.
 
 ${makeSkillToolDescription(skills)}
 `.trim(),
