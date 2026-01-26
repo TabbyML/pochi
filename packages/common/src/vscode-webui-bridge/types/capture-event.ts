@@ -3,7 +3,6 @@ export type CaptureEvent =
       event: "executeToolCall";
       properties: {
         toolName: string;
-
         durationMs: number;
         batched: boolean;
         status: "success" | "error" | "aborted";
