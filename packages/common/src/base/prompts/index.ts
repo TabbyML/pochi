@@ -24,7 +24,6 @@ export const prompts = {
   generateTitle,
   customAgent: createCustomAgentPrompt,
   skill: createSkillPrompt,
-
   renderReviewComments,
   renderActiveSelection,
   renderUserEdits,
