@@ -6,7 +6,6 @@ import { CustomAgentManager } from "@/lib/custom-agent";
 import {
   collectCustomRules,
   collectRuleFiles,
-  collectWorkflows,
   copyThirdPartyRules,
   detectThirdPartyRules,
   getSystemInfo,
@@ -200,17 +199,6 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
 
   listRuleFiles = async (): Promise<RuleFile[]> => {
     return this.cwd ? await collectRuleFiles(this.cwd) : [];
-  };
-
-  listWorkflows = (): Promise<
-    {
-      id: string;
-      path: string;
-      content: string;
-      frontmatter: { model?: string };
-    }[]
-  > => {
-    return this.cwd ? collectWorkflows(this.cwd) : Promise.resolve([]);
   };
 
   readResourceURI = (): Promise<ResourceURI> => {
