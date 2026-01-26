@@ -130,7 +130,6 @@ interface CandidateItemViewProps {
 
 /**
  * Candidate item view for displaying custom-agent / skill files
-
  */
 const CandidateItemView = memo(function SlashCandidateItemView({
   isSelected,
