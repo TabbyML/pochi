@@ -266,7 +266,6 @@
     "requiresApproval": "Requires approval",
     "taskCompleted": "Task Completed",
     "reading": "Reading ",
-
     "writing": "Writing ",
     "continue": "Continue",
     "cancel": "Cancel",
@@ -303,6 +302,7 @@
     "backgroundExecuting": "Executing command in background",
     "updatingToDos": "Updating todos",
     "editing": "Editing ",
+    "usingSkill": "Using skill",
     "moreTools_one": ", and {{count}} more tool",
     "moreTools_other": ", and {{count}} more tools"
   },

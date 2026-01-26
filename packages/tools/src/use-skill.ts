@@ -89,6 +89,10 @@ ${makeSkillToolDescription(skills)}
       result: z
         .string()
         .describe("The result of getting the skill instructions."),
+      filePath: z
+        .string()
+        .optional()
+        .describe("The file path of the resolved SKILL.md"),
     }),
   });
 };
