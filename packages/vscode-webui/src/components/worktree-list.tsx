@@ -91,7 +91,6 @@ export function WorktreeList({
 }) {
   const { t } = useTranslation();
   const [showAnyTasks, setShowAnyTasks] = useState(false);
-  const [isTasksHeaderHovered, setIsTasksHeaderHovered] = useState(false);
   const { setTaskArchived } = useTaskArchived();
 
   const { data: currentWorkspace, isLoading: isLoadingCurrentWorkspace } =
@@ -210,8 +209,6 @@ export function WorktreeList({
       <div
         className="group flex items-center gap-2 px-1 pt-2 pb-1"
         data-testid="tasks-header"
-        onMouseEnter={() => setIsTasksHeaderHovered(true)}
-        onMouseLeave={() => setIsTasksHeaderHovered(false)}
       >
         <span className="font-bold font-sans text-sm uppercase">
           {t("tasksPage.tasks")}
