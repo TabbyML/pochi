@@ -1,5 +1,6 @@
 import Mention from "@tiptap/extension-mention";
-import { PluginKey } from "@tiptap/pm/state";
+import { Plugin, PluginKey } from "@tiptap/pm/state";
+import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import {
   type NodeViewProps,
   NodeViewWrapper,
@@ -24,6 +25,9 @@ export const MentionComponent = (props: NodeViewProps) => {
 };
 
 export const fileMentionPluginKey = new PluginKey("fileMentionPluginKey");
+export const fileMentionPreviewPluginKey = new PluginKey(
+  "fileMentionPreviewPluginKey",
+);
 
 /**
  * A custom TipTap extension to handle mentions (like @name).
@@ -50,5 +54,61 @@ export const PromptFormMentionExtension = Mention.extend({
         default: "",
       },
     };
+  },
+
+  addProseMirrorPlugins() {
+    const parentPlugins = this.parent?.() || [];
+
+    return [
+      ...parentPlugins,
+      new Plugin({
+        key: fileMentionPreviewPluginKey,
+        state: {
+          init() {
+            return DecorationSet.empty;
+          },
+          apply(tr, set) {
+            // Get meta data from transaction
+            const metaData = tr.getMeta(fileMentionPreviewPluginKey);
+
+            // If there's meta data, process it
+            if (metaData !== undefined) {
+              // Clear decorations if the transaction has a meta flag to clear
+              if (metaData === "clear") {
+                return DecorationSet.empty;
+              }
+
+              // Get preview data from transaction meta
+              if (
+                typeof metaData === "object" &&
+                metaData.filepath &&
+                metaData.pos != null
+              ) {
+                // Create a widget decoration at the specified position
+                const widget = Decoration.widget(
+                  metaData.pos,
+                  () => {
+                    const span = document.createElement("span");
+                    span.className = "text-muted-foreground text-sm ml-2";
+                    span.textContent = metaData.filepath;
+                    return span;
+                  },
+                  { side: 1 },
+                );
+                return DecorationSet.create(tr.doc, [widget]);
+              }
+            }
+
+            // Map decorations through document changes only if no meta data
+            return set.map(tr.mapping, tr.doc);
+          },
+        },
+        props: {
+          decorations(state) {
+            return this.getState(state);
+          },
+        },
+      }),
+    ];
   },
 });
