@@ -49,10 +49,11 @@ import {
   Check,
   ChevronDown,
   ChevronRight,
+  Eye,
+  EyeOff,
   GitCompare,
   GitPullRequest,
   Loader2,
-  MoreVertical,
   Plus,
   Terminal,
   Trash2,
@@ -89,7 +90,9 @@ export function WorktreeList({
   onDeleteWorktree: (worktreePath: string) => void;
 }) {
   const { t } = useTranslation();
-  const [showDeleted, setShowDeleted] = useState(false);
+  const [showAll, setShowAll] = useState(false);
+  const [isTasksHeaderHovered, setIsTasksHeaderHovered] = useState(false);
+  const { setTaskArchived } = useTaskArchived();
   const { data: currentWorkspace, isLoading: isLoadingCurrentWorkspace } =
     useCurrentWorkspace();
   const {
@@ -195,8 +198,74 @@ export function WorktreeList({
     optimisticGroups[0].path === (workspacePath || cwd) &&
     !deletedGroups.length;
 
+  // Archive all tasks older than 7 days across all worktrees (no cwd = all worktrees)
+  const handleArchiveAllOldTasks = () => {
+    setTaskArchived?.({ type: "batch" });
+  };
+
   return (
     <div className="flex flex-col gap-1">
+      {/* Tasks Header */}
+      <div
+        className="group flex items-center justify-between px-1"
+        onMouseEnter={() => setIsTasksHeaderHovered(true)}
+        onMouseLeave={() => setIsTasksHeaderHovered(false)}
+      >
+        <span className="font-bold font-sans text-sm uppercase">
+          {t("tasksPage.tasks")}
+        </span>
+        <div
+          className={cn(
+            "flex items-center gap-1 transition-opacity duration-200",
+            !isTasksHeaderHovered
+              ? "pointer-events-none opacity-0"
+              : "opacity-100",
+          )}
+        >
+          {/* Toggle All/Active Tasks Button */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0"
+                aria-label="toggle-all-tasks-button"
+                onClick={() => setShowAll(!showAll)}
+                data-testid="toggle-all-tasks"
+              >
+                {showAll ? (
+                  <Eye className="size-4" />
+                ) : (
+                  <EyeOff className="size-4" />
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              {showAll
+                ? t("tasksPage.showingAllTasks")
+                : t("tasksPage.showingActiveTasks")}
+            </TooltipContent>
+          </Tooltip>
+
+          {/* Archive Old Tasks Button */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0"
+                aria-label="archive-old-tasks-button"
+                onClick={handleArchiveAllOldTasks}
+                data-testid="global-archive-old-tasks"
+              >
+                <Archive className="size-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{t("tasksPage.archiveOldTasks")}</TooltipContent>
+          </Tooltip>
+        </div>
+      </div>
+
       {optimisticGroups.map((group) => (
         <WorktreeSection
           isLoadingWorktrees={isLoadingWorktrees}
@@ -208,39 +277,28 @@ export function WorktreeList({
           containsOnlyWorkspaceGroup={containsOnlyWorkspaceGroup}
           isOpenMainWorktree={isOpenMainWorktree}
           isGitWorkspace={isGitWorkspace}
+          showArchived={showAll}
         />
       ))}
-      {deletedGroups.length > 0 && (
+      {showAll && deletedGroups.length > 0 && (
         <>
-          <div className="group flex items-center py-2">
+          <div className="flex items-center py-2">
             <div className="h-px flex-1 bg-border" />
-            <Button
-              variant="ghost"
-              size="sm"
-              className="mx-2 h-auto gap-2 py-0 text-muted-foreground text-xs hover:bg-transparent"
-              onClick={() => setShowDeleted(!showDeleted)}
-            >
-              <Trash2 className="size-3" />
-              <span className="w-0 overflow-hidden whitespace-nowrap transition-all group-hover:w-auto">
-                {showDeleted
-                  ? t("tasksPage.hideDeletedWorktrees")
-                  : t("tasksPage.showDeletedWorktrees")}
-              </span>
-            </Button>
+            <Trash2 className="mx-2 size-3 text-muted-foreground" />
             <div className="h-px flex-1 bg-border" />
           </div>
 
-          {showDeleted &&
-            deletedGroups.map((group) => (
-              <WorktreeSection
-                isLoadingWorktrees={isLoadingWorktrees}
-                key={group.path}
-                group={group}
-                gh={gh}
-                isDeleted
-                gitOriginUrl={gitOriginUrl}
-              />
-            ))}
+          {deletedGroups.map((group) => (
+            <WorktreeSection
+              isLoadingWorktrees={isLoadingWorktrees}
+              key={group.path}
+              group={group}
+              gh={gh}
+              isDeleted
+              gitOriginUrl={gitOriginUrl}
+              showArchived={showAll}
+            />
+          ))}
         </>
       )}
     </div>
@@ -255,6 +313,7 @@ function WorktreeSection({
   isDeleted,
   isOpenMainWorktree,
   isGitWorkspace,
+  showArchived,
 }: {
   group: WorktreeGroup;
   isLoadingWorktrees: boolean;
@@ -265,19 +324,19 @@ function WorktreeSection({
   isOpenMainWorktree?: boolean;
   isDeleted?: boolean;
   isGitWorkspace?: boolean;
+  showArchived?: boolean;
 }) {
   const { t } = useTranslation();
   // Default expanded for existing worktrees, collapsed for deleted
   const [isExpanded, setIsExpanded] = useState(!isDeleted);
   const [isHovered, setIsHovered] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [showArchived, setShowArchived] = useState(false);
   const pochiTasks = usePochiTabs();
-  const { setTaskArchived } = useTaskArchived();
+  const effectiveShowArchived = isDeleted || showArchived;
   const { tasks, hasMore, loadMore } = usePaginatedTasks({
     cwd: group.path,
     pageSize: 15,
-    showArchived: isDeleted || showArchived,
+    showArchived: effectiveShowArchived,
   });
 
   const loadMoreRef = useRef<HTMLDivElement>(null);
@@ -346,7 +405,7 @@ function WorktreeSection({
               </div>
             </CollapsibleTrigger>
           ) : (
-            <span className="items-center truncate font-bold">
+            <span className="items-center truncate font-bold text-secondary-foreground/70">
               {prefixWorktreeName(group.name)}
             </span>
           )}
@@ -502,43 +561,6 @@ function WorktreeSection({
                   </PopoverContent>
                 </Popover>
               )}
-              <DropdownMenu>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 w-6 p-0"
-                        aria-label="more-options-button"
-                      >
-                        <MoreVertical className="size-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                  </TooltipTrigger>
-                  <TooltipContent>{t("tasksPage.moreOptions")}</TooltipContent>
-                </Tooltip>
-                <DropdownMenuContent align="end" className="bg-background">
-                  <DropdownMenuItem
-                    onClick={() => setShowArchived(!showArchived)}
-                    data-testid="toggle-archived-tasks"
-                  >
-                    <Archive className="mr-2 size-4" />
-                    {showArchived
-                      ? t("tasksPage.hideArchivedTasks")
-                      : t("tasksPage.showArchivedTasks")}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() =>
-                      setTaskArchived?.({ type: "batch", cwd: group.path })
-                    }
-                    data-testid="archive-old-tasks"
-                  >
-                    <Archive className="mr-2 size-4" />
-                    {t("tasksPage.archiveOldTasks")}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
             </>
           </div>
         </div>

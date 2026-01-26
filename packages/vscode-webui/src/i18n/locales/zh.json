@@ -203,6 +203,10 @@
     "needHelp": "需要帮助？查看文档"
   },
   "tasksPage": {
+    "tasks": "任务",
+    "filter": "筛选",
+    "archivedTasks": "已归档任务",
+    "deletedWorktrees": "已删除的工作树",
     "emptyState": {
       "title": "未找到任务",
       "description": "无可用任务",
@@ -225,8 +229,6 @@
     "newTask": "新任务",
     "deleted": "已删除",
     "tasksCount": "{{count}} 个任务",
-    "showDeletedWorktrees": "显示已删除的工作树",
-    "hideDeletedWorktrees": "隐藏已删除的工作树",
     "openWorktreeDiff": "查看更改",
     "openWorktreeInTerminal": "在终端中打开工作树",
     "deleteWorktree": "删除工作树",
@@ -242,12 +244,11 @@
       "requiresApproval": "需要批准"
     },
     "loadMore": "加载更多",
-    "showArchivedTasks": "显示已归档任务",
-    "hideArchivedTasks": "隐藏已归档任务",
     "archiveTask": "归档任务",
     "unarchiveTask": "取消归档任务",
     "archiveOldTasks": "归档一周前的任务",
-    "moreOptions": "更多选项"
+    "showingAllTasks": "所有任务",
+    "showingActiveTasks": "活动任务"
   },
   "toolInvocation": {
     "requiresApproval": "需要批准",

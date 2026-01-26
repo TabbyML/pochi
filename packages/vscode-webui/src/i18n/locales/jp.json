@@ -204,6 +204,10 @@
     "needHelp": "ヘルプが必要ですか？ドキュメントを表示"
   },
   "tasksPage": {
+    "tasks": "タスク",
+    "filter": "フィルター",
+    "archivedTasks": "アーカイブされたタスク",
+    "deletedWorktrees": "削除されたワークツリー",
     "emptyState": {
       "title": "タスクが見つかりません",
       "description": "利用可能なタスクはありません",
@@ -226,8 +230,6 @@
     "newTask": "新しいタスク",
     "deleted": "削除済み",
     "tasksCount": "{{count}} 件のタスク",
-    "showDeletedWorktrees": "削除されたワークツリーを表示",
-    "hideDeletedWorktrees": "削除されたワークツリーを非表示",
     "openWorktreeDiff": "変更を確認",
     "openWorktreeInTerminal": "ターミナルでワークツリーを開く",
     "deleteWorktree": "ワークツリーを削除",
@@ -243,12 +245,11 @@
       "requiresApproval": "承認待ち"
     },
     "loadMore": "さらに読み込む",
-    "showArchivedTasks": "アーカイブされたタスクを表示",
-    "hideArchivedTasks": "アーカイブされたタスクを非表示",
     "archiveTask": "タスクをアーカイブ",
     "unarchiveTask": "タスクをアーカイブ解除",
     "archiveOldTasks": "1週間以上前のタスクをアーカイブ",
-    "moreOptions": "その他のオプション"
+    "showingAllTasks": "すべてのタスク",
+    "showingActiveTasks": "アクティブなタスク"
   },
   "toolInvocation": {
     "requiresApproval": "承認待ち",

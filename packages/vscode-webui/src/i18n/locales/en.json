@@ -205,6 +205,10 @@
     "needHelp": "Need help? View documentation"
   },
   "tasksPage": {
+    "tasks": "Tasks",
+    "filter": "Filter",
+    "archivedTasks": "Archived tasks",
+    "deletedWorktrees": "Deleted worktrees",
     "emptyState": {
       "title": "No tasks found",
       "description": "No tasks available",
@@ -227,8 +231,6 @@
     "newTask": "New Task",
     "deleted": "Deleted",
     "tasksCount": "{{count}} tasks",
-    "showDeletedWorktrees": "Show deleted worktrees",
-    "hideDeletedWorktrees": "Hide deleted worktrees",
     "openWorktreeDiff": "Review changes",
     "openWorktreeInTerminal": "Open worktree in terminal",
     "deleteWorktree": "Delete worktree",
@@ -245,12 +247,11 @@
       "requiresApproval": "Requires approval"
     },
     "loadMore": "Load more",
-    "showArchivedTasks": "Show archived tasks",
-    "hideArchivedTasks": "Hide archived tasks",
     "archiveTask": "Archive task",
     "unarchiveTask": "Unarchive task",
     "archiveOldTasks": "Archive tasks older than one week",
-    "moreOptions": "More options"
+    "showingAllTasks": "All tasks",
+    "showingActiveTasks": "Active tasks"
   },
   "toolInvocation": {
     "requiresApproval": "Requires approval",
