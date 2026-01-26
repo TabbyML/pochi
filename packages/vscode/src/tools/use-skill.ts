@@ -1,6 +1,5 @@
-import { getLogger } from "@getpochi/common";
+import { getLogger, prompts } from "@getpochi/common";
 import type { ClientTools, ToolFunctionType } from "@getpochi/tools";
-import { makeUseSkillResult } from "@getpochi/tools";
 import { container } from "tsyringe";
 import { SkillManager } from "../lib/skill-manager";
 
@@ -31,7 +30,7 @@ export const useSkill: ToolFunctionType<ClientTools["useSkill"]> = async (
     logger.debug(`Activating skill: ${skill.name}`);
 
     return {
-      result: makeUseSkillResult(skill),
+      result: prompts.createUseSkillResult(skill),
     };
   } catch (error) {
     logger.error("Error in useSkill tool:", error);

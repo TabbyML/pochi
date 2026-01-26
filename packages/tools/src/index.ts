@@ -42,7 +42,7 @@ export {
   type SubTask,
   inputSchema as newTaskInputSchema,
 } from "./new-task";
-export { Skill, makeUseSkillResult } from "./use-skill";
+export { Skill } from "./use-skill";
 export { attemptCompletionSchema } from "./attempt-completion";
 
 export function isUserInputToolName(name: string): boolean {

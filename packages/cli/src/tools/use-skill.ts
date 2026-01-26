@@ -1,8 +1,8 @@
 import * as fs from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
+import { prompts } from "@getpochi/common";
 import type { ClientTools, ToolFunctionType } from "@getpochi/tools";
-import { makeUseSkillResult } from "@getpochi/tools";
 import type { ToolCallOptions } from "../types";
 
 export const useSkill =
@@ -42,7 +42,7 @@ export const useSkill =
 
       // Return the skill instructions
       return {
-        result: makeUseSkillResult(skill),
+        result: prompts.createUseSkillResult(skill),
       };
     } catch (error) {
       throw new Error(

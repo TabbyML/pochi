@@ -8,6 +8,7 @@ import { fixMermaidError } from "./fix-mermaid-error";
 import { generateTitle } from "./generate-title";
 import { injectBashOutputs } from "./inject-bash-outputs";
 import { renderReviewComments } from "./review-comments";
+import { createSkillPrompt, createUseSkillResult } from "./skill";
 import { createSystemPrompt } from "./system";
 import { renderUserEdits } from "./user-edits";
 import { createWorkflowPrompt } from "./workflow";
@@ -34,6 +35,7 @@ export const prompts = {
   renderUserEdits,
   renderBashOutputs,
   fixMermaidError,
+  createUseSkillResult,
 };
 
 function createSystemReminder(content: string) {
@@ -90,15 +92,4 @@ function createCustomAgentPrompt(id: string, path?: string) {
     },
   );
   return `<custom-agent id="${id}" path="${path || BuiltInAgentPath}">newTask:${processedAgentName}</custom-agent>`;
-}
-
-function createSkillPrompt(id: string, path: string) {
-  // Remove extra newlines from the id
-  let processedSkillName = id.replace(/\n+/g, "\n");
-  // Escape '<' to avoid </skill> being interpreted as a closing tag
-  const skillTagRegex = /<\/?skill\b[^>]*>/g;
-  processedSkillName = processedSkillName.replace(skillTagRegex, (match) => {
-    return match.replace("<", "&lt;");
-  });
-  return `<skill id="${id}" path="${path}">${processedSkillName}</skill>`;
 }

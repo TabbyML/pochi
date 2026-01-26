@@ -4,10 +4,9 @@ import { getLogger } from "@getpochi/common";
 import { parseSkillFile } from "@getpochi/common/tool-utils";
 import {
   type SkillFile,
-  type ValidSkillFile,
   isValidSkillFile,
 } from "@getpochi/common/vscode-webui-bridge";
-import { signal } from "@preact/signals-core";
+import { computed, signal } from "@preact/signals-core";
 import { uniqueBy } from "remeda";
 import { Lifecycle, injectable, scoped } from "tsyringe";
 import * as vscode from "vscode";
@@ -66,7 +65,9 @@ export class SkillManager implements vscode.Disposable {
   private disposables: vscode.Disposable[] = [];
 
   readonly allSkills = signal<SkillFile[]>([]);
-  readonly validSkills = signal<ValidSkillFile[]>([]);
+  readonly validSkills = computed(() =>
+    this.allSkills.value.filter(isValidSkillFile),
+  );
 
   constructor(private readonly workspaceScope: WorkspaceScope) {
     this.initWatchers();
@@ -141,12 +142,10 @@ export class SkillManager implements vscode.Disposable {
       );
 
       this.allSkills.value = uniqueBy(allSkills, (skill) => skill.name);
-      this.validSkills.value = this.allSkills.value.filter(isValidSkillFile);
       logger.debug(`Loaded ${allSkills.length} skills`);
     } catch (error) {
       logger.error("Failed to load skills", error);
       this.allSkills.value = [];
-      this.validSkills.value = [];
     }
   }
 
