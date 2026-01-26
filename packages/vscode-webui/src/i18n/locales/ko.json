@@ -14,8 +14,7 @@
     "subtitle": "Pochi는 AI로 구동되므로 오류가 발생할 수 있습니다.",
     "tips": {
       "attachments": "파일 보내기",
-      "context": "컨텍스트 첨부",
-      "workflow": "워크플로우 실행"
+      "context": "컨텍스트 첨부"
     },
     "autoSave": {
       "title": "자동 저장이 활성화된 경우 Pochi는 제대로 작동하지 않습니다.",
@@ -127,10 +126,6 @@
       "language": "언어",
       "languageDescription": "선호하는 언어를 선택하세요",
       "hideRecommendSettings": "추천 설정 숨기기"
-    },
-    "workflows": {
-      "title": "워크플로우",
-      "noWorkflows": "워크스페이스에서 워크플로우를 찾을 수 없습니다."
     },
     "rules": {
       "title": "규칙",
@@ -371,7 +366,6 @@
   "mentionList": {
     "noResultsFound": "결과를 찾을 수 없습니다",
     "typeToSearch": "입력하여 검색...",
-    "workflow": "워크플로",
     "agent": "에이전트",
     "skill": "스킬",
     "useHashForIssues": "Github 이슈를 검색하려면 #을 사용하세요"

@@ -1,14 +1,12 @@
 export const KnownTags = [
   "file",
-  "workflow",
   "compact",
   "custom-agent",
   "skill",
   "issue",
 ] as const;
-export const CompactTaskMinTokens = 50_000;
 
-export const WorkspaceWorkflowPathSegments = [".pochi", "workflows"];
+export const CompactTaskMinTokens = 50_000;
 
 export const DefaultContextWindow = 100_000;
 export const DefaultMaxOutputTokens = 4096;

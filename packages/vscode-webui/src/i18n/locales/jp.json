@@ -14,9 +14,9 @@
     "subtitle": "Pochi は AI によって動作しているため、エラーが発生する可能性があります。",
     "tips": {
       "attachments": "ファイルを送信",
-      "context": "コンテキストを添付",
-      "workflow": "ワークフローをトリガー"
+      "context": "コンテキストを添付"
     },
+
     "autoSave": {
       "title": "自動保存が有効な場合、Pochi は正しく動作しません。",
       "description": "Pochi は保留中のファイル変更に依存して編集の差分を表示するため、自動保存を無効にする必要があります。"
@@ -127,10 +127,6 @@
       "language": "言語",
       "languageDescription": "希望の言語を選択してください",
       "hideRecommendSettings": "推奨設定を非表示にする"
-    },
-    "workflows": {
-      "title": "ワークフロー",
-      "noWorkflows": "ワークスペースでワークフローが見つかりません。"
     },
     "rules": {
       "title": "ルール",
@@ -371,7 +367,6 @@
   "mentionList": {
     "noResultsFound": "結果が見つかりません",
     "typeToSearch": "入力して検索...",
-    "workflow": "ワークフロー",
     "agent": "エージェント",
     "skill": "スキル",
     "useHashForIssues": "# を使用して GitHub の Issue を検索"

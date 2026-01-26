@@ -229,7 +229,7 @@ interface FileComponentProps {
   children: string;
 }
 
-interface WorkflowComponentProps {
+interface CustomAgentComponentProps {
   id: string;
   path: string;
   children: string;
@@ -401,7 +401,6 @@ export function MessageMarkdown({
               ],
               attributes: {
                 ...defaultSchema.attributes,
-                workflow: ["path", "id"],
                 "custom-agent": ["path", "id"],
                 skill: ["path", "id"],
                 issue: ["id", "url", "title"],
@@ -419,13 +418,7 @@ export function MessageMarkdown({
         const filepath = String(children);
         return <FileBadge path={filepath} />;
       },
-      workflow: (props: WorkflowComponentProps) => {
-        const { id, path } = props;
-        return (
-          <FileBadge label={id.replaceAll("user-content-", "/")} path={path} />
-        );
-      },
-      "custom-agent": (props: WorkflowComponentProps) => {
+      "custom-agent": (props: CustomAgentComponentProps) => {
         const { id, path } = props;
         const cleanId = id.replaceAll("user-content-", "/");
         // Handle legacy empty path

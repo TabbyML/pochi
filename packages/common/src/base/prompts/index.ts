@@ -11,7 +11,6 @@ import { renderReviewComments } from "./review-comments";
 import { createSkillPrompt, createUseSkillResult } from "./skill";
 import { createSystemPrompt } from "./system";
 import { renderUserEdits } from "./user-edits";
-import { createWorkflowPrompt } from "./workflow";
 
 export const prompts = {
   system: createSystemPrompt,
@@ -25,7 +24,6 @@ export const prompts = {
   inlineCompact,
   parseInlineCompact,
   generateTitle,
-  workflow: createWorkflowPrompt,
   customAgent: createCustomAgentPrompt,
   skill: createSkillPrompt,
   injectBashOutputs,

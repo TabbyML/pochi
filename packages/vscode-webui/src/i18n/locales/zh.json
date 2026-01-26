@@ -14,8 +14,7 @@
     "subtitle": "Pochi 由 AI 驱动，可能会出现错误。",
     "tips": {
       "attachments": "发送文件",
-      "context": "附加上下文",
-      "workflow": "触发工作流"
+      "context": "附加上下文"
     },
     "autoSave": {
       "title": "启用自动保存时 Pochi 无法正常工作。",
@@ -127,10 +126,6 @@
       "language": "语言",
       "languageDescription": "选择您的首选语言",
       "hideRecommendSettings": "隐藏推荐设置"
-    },
-    "workflows": {
-      "title": "工作流",
-      "noWorkflows": "工作区中未找到工作流。"
     },
     "rules": {
       "title": "规则",
@@ -370,7 +365,6 @@
   "mentionList": {
     "noResultsFound": "未找到结果",
     "typeToSearch": "输入以搜索...",
-    "workflow": "工作流",
     "agent": "代理",
     "skill": "技能",
     "useHashForIssues": "使用 # 搜索 Github issue"
