@@ -33,7 +33,6 @@ import { BackgroundJobManager } from "./lib/background-job-manager";
 import { Chat } from "./livekit";
 
 import { executeToolCall } from "./tools";
-
 import type { ToolCallOptions } from "./types";
 
 export interface RunnerOptions {
