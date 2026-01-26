@@ -158,9 +158,8 @@ export class PochiSidebar {
 
   async toggleArchivedTasksVisibility() {
     // Find the Tasks header and hover to reveal the toggle button
-    const tasksHeader = $(".font-bold.font-sans.text-sm.uppercase");
-    const headerContainer = await tasksHeader.parentElement();
-    await headerContainer.moveTo();
+    const tasksHeader = $('[data-testid="tasks-header"]');
+    await tasksHeader.moveTo();
 
     // Click the toggle all/active tasks button
     const toggleButton = $('[data-testid="toggle-all-tasks"]');
@@ -173,9 +172,8 @@ export class PochiSidebar {
 
   async archiveOldTasks() {
     // Find the Tasks header and hover to reveal the archive button
-    const tasksHeader = $(".font-bold.font-sans.text-sm.uppercase");
-    const headerContainer = await tasksHeader.parentElement();
-    await headerContainer.moveTo();
+    const tasksHeader = $('[data-testid="tasks-header"]');
+    await tasksHeader.moveTo();
 
     // Click the global archive old tasks button
     const archiveOldButton = $('[data-testid="global-archive-old-tasks"]');

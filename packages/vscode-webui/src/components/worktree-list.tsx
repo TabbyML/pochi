@@ -208,6 +208,7 @@ export function WorktreeList({
       {/* Tasks Header */}
       <div
         className="group flex items-center justify-between px-1"
+        data-testid="tasks-header"
         onMouseEnter={() => setIsTasksHeaderHovered(true)}
         onMouseLeave={() => setIsTasksHeaderHovered(false)}
       >
