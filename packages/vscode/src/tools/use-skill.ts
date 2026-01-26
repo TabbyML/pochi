@@ -12,33 +12,24 @@ const logger = getLogger("useSkill");
 export const useSkill: ToolFunctionType<ClientTools["useSkill"]> = async (
   args,
 ) => {
-  try {
-    const skillManager = container.resolve(SkillManager);
-    const skills = skillManager.validSkills.value;
+  const skillManager = container.resolve(SkillManager);
+  const skills = skillManager.validSkills.value;
 
-    // Find the requested skill
-    const skill = skills.find((s) => s.name === args.skill);
+  // Find the requested skill
+  const skill = skills.find((s) => s.name === args.skill);
 
-    if (!skill) {
-      return {
-        result: `Skill "${args.skill}" not found. Available skills: ${skills
-          .map((s) => s.name)
-          .join(", ")}`,
-      };
-    }
-
-    logger.debug(`Activating skill: ${skill.name}`);
-
-    return {
-      result: prompts.createUseSkillResult(skill),
-      filePath: skill.filePath,
-    };
-  } catch (error) {
-    logger.error("Error in useSkill tool:", error);
-    return {
-      result: `Failed to activate skill: ${
-        error instanceof Error ? error.message : String(error)
-      }`,
-    };
+  if (!skill) {
+    throw new Error(
+      `Skill "${args.skill}" not found. Available skills: ${skills
+        .map((s) => s.name)
+        .join(", ")}`,
+    );
   }
+
+  logger.debug(`Activating skill: ${skill.name}`);
+
+  return {
+    result: prompts.createUseSkillResult(skill),
+    filePath: skill.filePath,
+  };
 };

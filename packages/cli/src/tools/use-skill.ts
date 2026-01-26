@@ -36,18 +36,12 @@ export const useSkill =
       resolvedFilePath = path.resolve(workspaceDir, skill.filePath);
     }
 
-    try {
-      // Verify the file still exists
-      await fs.access(resolvedFilePath);
+    // Verify the file still exists
+    await fs.access(resolvedFilePath);
 
-      // Return the skill instructions
-      return {
-        result: prompts.createUseSkillResult(skill),
-        filePath: resolvedFilePath,
-      };
-    } catch (error) {
-      throw new Error(
-        `Failed to access skill file at ${resolvedFilePath}: ${error instanceof Error ? error.message : String(error)}`,
-      );
-    }
+    // Return the skill instructions
+    return {
+      result: prompts.createUseSkillResult(skill),
+      filePath: resolvedFilePath,
+    };
   };

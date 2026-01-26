@@ -62,6 +62,7 @@ export const WithoutFilePath: Story = {
     tool: {
       ...toolCall,
       output: {
+        filePath: "foo.md",
         result: "Operation completed successfully without file path.",
       },
     },
