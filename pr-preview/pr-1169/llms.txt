@@ -5828,7 +5828,7 @@ icon: BookOpenText
 Welcome to the Pochi tutorials section. Here you will find step-by-step guides to help you get the most out of Pochi.
 
 * [Build Your Own AI Teammate with Pochi in GitHub Actions](./pochi-github-actions)
-* [Vibe Coding a MacOS GitHub Client in Pochi](./vibe-coding-macos)
+* [Vibe Coding a macOS GitHub Client in Pochi](./vibe-coding-macos)
 * [Connect to Tabby Server for Enhanced Enterprise Experience](./connect-to-tabby-server)
 * [Build a Custom MCP Server to Query Supabase with Natural Language in Pochi](./supabase-mcp-server)
 * [Visual Communication with Mermaid Graphs](./mermaid-graph)
@@ -7861,17 +7861,17 @@ Now that you’ve seen what’s possible, here are a few ways to take your proje
 * **Contribute and share**: If you built something cool or want to see tutorials on related topics, such as CRUD operations or deployment best practices, please reach out by using `/create-issue command` within the Pochi VS Code extension or **[contribute to the project](https://github.com/TabbyML/pochi?tab=contributing-ov-file)**!
 
 
-# Vibe Coding a MacOS GitHub Client in Pochi
+# Vibe Coding a macOS GitHub Client in Pochi
 URL: /tutorials/vibe-coding-github-macos-app
-Using a Coding Agent to build a MacOS App in SwiftUI
+Using a Coding Agent to build a macOS App in SwiftUI
 ***
 
-title: 'Vibe Coding a MacOS GitHub Client in Pochi'
-description: "Using a Coding Agent to build a MacOS App in SwiftUI"
-image: "/og-image/mcp-server-supabase-og-image.png"
----------------------------------------------------
+title: 'Vibe Coding a macOS GitHub Client in Pochi'
+description: "Using a Coding Agent to build a macOS App in SwiftUI"
+image: "/og-image/vibe-coding-macos-app-cover-image.png"
+--------------------------------------------------------
 
-# Vibe Coding a MacOS GitHub Client in Pochi
+# Vibe Coding a macOS GitHub Client in Pochi
 
 I deal with a lot of GitHub notifications every day - issue activities, PR reviews, mentions/tags, and administrative notifications. Viewing this on GitHub leaves me with an interface that becomes messy real fast, with slow network requests any time I try to filter or group notifications.
 
