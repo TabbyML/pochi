@@ -247,8 +247,8 @@
     "archiveTask": "归档任务",
     "unarchiveTask": "取消归档任务",
     "archiveOldTasks": "归档一周前的任务",
-    "showingAllTasks": "所有任务",
-    "showingActiveTasks": "活动任务"
+    "showAnyTasks": "显示所有任务",
+    "showOpenTasks": "显示活动任务"
   },
   "toolInvocation": {
     "requiresApproval": "需要批准",

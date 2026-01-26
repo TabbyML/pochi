@@ -250,8 +250,8 @@
     "archiveTask": "Archive task",
     "unarchiveTask": "Unarchive task",
     "archiveOldTasks": "Archive tasks older than one week",
-    "showingAllTasks": "All tasks",
-    "showingActiveTasks": "Active tasks"
+    "showAnyTasks": "Show any tasks",
+    "showOpenTasks": "Show open tasks"
   },
   "toolInvocation": {
     "requiresApproval": "Requires approval",

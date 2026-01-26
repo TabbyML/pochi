@@ -248,8 +248,8 @@
     "archiveTask": "タスクをアーカイブ",
     "unarchiveTask": "タスクをアーカイブ解除",
     "archiveOldTasks": "1週間以上前のタスクをアーカイブ",
-    "showingAllTasks": "すべてのタスク",
-    "showingActiveTasks": "アクティブなタスク"
+    "showAnyTasks": "すべてのタスクを表示",
+    "showOpenTasks": "アクティブなタスクを表示"
   },
   "toolInvocation": {
     "requiresApproval": "承認待ち",

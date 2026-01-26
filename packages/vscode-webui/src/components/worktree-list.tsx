@@ -90,9 +90,10 @@ export function WorktreeList({
   onDeleteWorktree: (worktreePath: string) => void;
 }) {
   const { t } = useTranslation();
-  const [showAll, setShowAll] = useState(false);
+  const [showAnyTasks, setShowAnyTasks] = useState(false);
   const [isTasksHeaderHovered, setIsTasksHeaderHovered] = useState(false);
   const { setTaskArchived } = useTaskArchived();
+
   const { data: currentWorkspace, isLoading: isLoadingCurrentWorkspace } =
     useCurrentWorkspace();
   const {
@@ -207,7 +208,7 @@ export function WorktreeList({
     <div className="flex flex-col gap-1">
       {/* Tasks Header */}
       <div
-        className="group flex items-center justify-between px-1"
+        className="group flex items-center gap-2 px-1 pt-2 pb-1"
         data-testid="tasks-header"
         onMouseEnter={() => setIsTasksHeaderHovered(true)}
         onMouseLeave={() => setIsTasksHeaderHovered(false)}
@@ -218,9 +219,6 @@ export function WorktreeList({
         <div
           className={cn(
             "flex items-center gap-1 transition-opacity duration-200",
-            !isTasksHeaderHovered
-              ? "pointer-events-none opacity-0"
-              : "opacity-100",
           )}
         >
           {/* Toggle All/Active Tasks Button */}
@@ -231,10 +229,10 @@ export function WorktreeList({
                 size="sm"
                 className="h-6 w-6 p-0"
                 aria-label="toggle-all-tasks-button"
-                onClick={() => setShowAll(!showAll)}
+                onClick={() => setShowAnyTasks(!showAnyTasks)}
                 data-testid="toggle-all-tasks"
               >
-                {showAll ? (
+                {showAnyTasks ? (
                   <Eye className="size-4" />
                 ) : (
                   <EyeOff className="size-4" />
@@ -242,9 +240,9 @@ export function WorktreeList({
               </Button>
             </TooltipTrigger>
             <TooltipContent>
-              {showAll
-                ? t("tasksPage.showingAllTasks")
-                : t("tasksPage.showingActiveTasks")}
+              {showAnyTasks
+                ? t("tasksPage.showOpenTasks")
+                : t("tasksPage.showAnyTasks")}
             </TooltipContent>
           </Tooltip>
 
@@ -278,10 +276,10 @@ export function WorktreeList({
           containsOnlyWorkspaceGroup={containsOnlyWorkspaceGroup}
           isOpenMainWorktree={isOpenMainWorktree}
           isGitWorkspace={isGitWorkspace}
-          showArchived={showAll}
+          showArchived={showAnyTasks}
         />
       ))}
-      {showAll && deletedGroups.length > 0 && (
+      {showAnyTasks && deletedGroups.length > 0 && (
         <>
           <div className="flex items-center py-2">
             <div className="h-px flex-1 bg-border" />
@@ -297,7 +295,7 @@ export function WorktreeList({
               gh={gh}
               isDeleted
               gitOriginUrl={gitOriginUrl}
-              showArchived={showAll}
+              showArchived={showAnyTasks}
             />
           ))}
         </>
