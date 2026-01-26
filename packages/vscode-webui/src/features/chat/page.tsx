@@ -10,7 +10,7 @@ import { usePochiCredentials } from "@/lib/hooks/use-pochi-credentials";
 import { useTaskMcpConfigOverride } from "@/lib/hooks/use-task-mcp-config-override";
 import { prepareMessageParts } from "@/lib/message-utils";
 import { blobStore } from "@/lib/remote-blob-store";
-import { adapter, useDefaultStore } from "@/lib/use-default-store";
+import { getOrLoadTaskStore, useDefaultStore } from "@/lib/use-default-store";
 import { cn, tw } from "@/lib/utils";
 import { vscodeHost } from "@/lib/vscode";
 import { useChat } from "@ai-sdk/react";
@@ -21,7 +21,9 @@ import { type Task, catalog } from "@getpochi/livekit";
 import type { Message } from "@getpochi/livekit";
 import { useLiveChatKit } from "@getpochi/livekit/react";
 import type { Todo } from "@getpochi/tools";
+import type { StoreRegistry } from "@livestore/livestore";
 import { useStoreRegistry } from "@livestore/react";
+import { Schema } from "@livestore/utils/effect";
 import { useRouter } from "@tanstack/react-router";
 import { lastAssistantMessageIsCompleteWithToolCalls } from "ai";
 import { useCallback, useEffect, useMemo, useRef } from "react";
@@ -40,6 +42,7 @@ import {
 import { ChatArea } from "./components/chat-area";
 import { ChatToolBarSkeleton, ChatToolbar } from "./components/chat-toolbar";
 import { SubtaskHeader } from "./components/subtask";
+import { useKeepTaskEditor } from "./hooks/use-keep-task-editor";
 import { useRepairMermaid } from "./hooks/use-repair-mermaid";
 import { useRestoreTaskModel } from "./hooks/use-restore-task-model";
 import { useScrollToBottom } from "./hooks/use-scroll-to-bottom";
@@ -52,9 +55,6 @@ import {
   useChatAbortController,
   useRetryCount,
 } from "./lib/chat-state";
-
-import { Schema } from "@livestore/utils/effect";
-import { useKeepTaskEditor } from "./hooks/use-keep-task-editor";
 import { onOverrideMessages } from "./lib/on-override-messages";
 import { useLiveChatKitGetters } from "./lib/use-live-chat-kit-getters";
 import { useSendTaskNotification } from "./lib/use-send-task-notification";
@@ -520,7 +520,7 @@ function fromTaskError(task?: Task) {
 
 async function forkTaskFromCheckPoint(
   fork: ReturnType<typeof useLiveChatKit>["fork"],
-  storeRegistry: ReturnType<typeof useStoreRegistry>,
+  storeRegistry: StoreRegistry,
   jwt: string | null,
   title: string | undefined,
   cwd: string,
@@ -531,12 +531,10 @@ async function forkTaskFromCheckPoint(
   const storeId = encodeStoreId(jwt, newTaskId);
 
   // Create store
-  const targetStore = await storeRegistry.getOrLoadPromise({
+  const targetStore = await getOrLoadTaskStore({
+    storeRegistry,
     storeId,
-    schema: catalog.schema,
-    adapter,
-    syncPayload: { jwt },
-    disableDevtools: true,
+    jwt,
   });
 
   // Copy data to new store
