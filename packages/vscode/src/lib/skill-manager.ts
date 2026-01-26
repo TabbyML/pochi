@@ -64,9 +64,9 @@ async function readSkillsFromDir(dir: string): Promise<SkillFile[]> {
 export class SkillManager implements vscode.Disposable {
   private disposables: vscode.Disposable[] = [];
 
-  readonly allSkills = signal<SkillFile[]>([]);
+  readonly skills = signal<SkillFile[]>([]);
   readonly validSkills = computed(() =>
-    this.allSkills.value.filter(isValidSkillFile),
+    this.skills.value.filter(isValidSkillFile),
   );
 
   constructor(private readonly workspaceScope: WorkspaceScope) {
@@ -141,11 +141,11 @@ export class SkillManager implements vscode.Disposable {
         })),
       );
 
-      this.allSkills.value = uniqueBy(allSkills, (skill) => skill.name);
+      this.skills.value = uniqueBy(allSkills, (skill) => skill.name);
       logger.debug(`Loaded ${allSkills.length} skills`);
     } catch (error) {
       logger.error("Failed to load skills", error);
-      this.allSkills.value = [];
+      this.skills.value = [];
     }
   }
 

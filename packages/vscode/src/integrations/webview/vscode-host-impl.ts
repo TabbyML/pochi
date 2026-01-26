@@ -1058,7 +1058,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   };
 
   readSkills = async (): Promise<ThreadSignalSerialization<SkillFile[]>> => {
-    return ThreadSignal.serialize(this.skillManager.allSkills);
+    return ThreadSignal.serialize(this.skillManager.skills);
   };
 
   onTaskUpdated = async (taskData: unknown): Promise<void> => {
