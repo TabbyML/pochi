@@ -1,5 +1,3 @@
-import { type useAutoApproveGuard, useRetryCount } from "../lib/chat-state";
-import { useSendTaskNotification } from "../lib/use-send-task-notification";
 import { getReadyForRetryError, isRetryableError } from "@/features/retry";
 import {
   getPendingToolcallApproval,
@@ -10,6 +8,8 @@ import { useLatest } from "@/lib/hooks/use-latest";
 import { useMcp } from "@/lib/hooks/use-mcp";
 import type { Task } from "@getpochi/livekit";
 import type { Message } from "@getpochi/livekit";
+import { type useAutoApproveGuard, useRetryCount } from "../lib/chat-state";
+import { useSendTaskNotification } from "../lib/use-send-task-notification";
 
 interface UseChatNotificationsProps {
   uid: string;
