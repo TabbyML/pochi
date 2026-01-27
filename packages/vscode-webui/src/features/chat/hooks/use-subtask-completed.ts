@@ -1,10 +1,9 @@
 import { useDefaultStore } from "@/lib/use-default-store";
 import type { UseChatHelpers } from "@ai-sdk/react";
-import { type Message, catalog } from "@getpochi/livekit";
+import { type Message, catalog, extractTaskResult } from "@getpochi/livekit";
 import { getToolName } from "ai";
 import { useEffect, useMemo } from "react";
 import { useAutoApproveGuard, useToolCallLifeCycle } from "../lib/chat-state";
-import { extractTaskResult } from "../lib/tool-call-life-cycle";
 import type { SubtaskInfo } from "./use-subtask-info";
 
 // Detect if subtask is completed (in subtask)
