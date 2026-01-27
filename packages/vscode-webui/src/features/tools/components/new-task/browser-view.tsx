@@ -105,7 +105,7 @@ export function BrowserView(props: NewTaskToolViewProps) {
           <img
             src={`data:image/jpeg;base64,${frame}`}
             alt="Browser view"
-            className="h-full w-full object-contain aspect-video"
+            className="aspect-video h-full w-full object-contain"
           />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center text-muted-foreground text-sm">
@@ -118,7 +118,7 @@ export function BrowserView(props: NewTaskToolViewProps) {
       {taskSource && taskSource.messages.length > 1 && (
         <div className="flex flex-col border-t">
           <div
-            className="flex cursor-pointer justify-between items-center gap-2 bg-muted/50 px-3 py-2 hover:bg-muted"
+            className="flex cursor-pointer items-center justify-between gap-2 bg-muted/50 px-3 py-2 hover:bg-muted"
             onClick={() => setIsExpanded(!isExpanded)}
           >
             <span className="font-medium text-muted-foreground text-xs">
