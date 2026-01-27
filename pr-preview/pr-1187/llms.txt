@@ -1288,7 +1288,8 @@ Define reusable behavior via SKILL.md definitions
 
 title: Skills
 description: Define reusable behavior via SKILL.md definitions
---------------------------------------------------------------
+icon: "Zap"
+-----------
 
 Skills are reusable instruction sets that extend Pochi's capabilities. They allow you to standardize workflows, provide domain-specific knowledge, or integrate with external tools.
 
