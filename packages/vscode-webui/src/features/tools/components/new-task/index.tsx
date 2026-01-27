@@ -115,8 +115,6 @@ export interface NewTaskToolViewProps extends ToolProps<"newTask"> {
   taskSource?: (TaskThreadSource & { parentId?: string }) | undefined;
   uid: string | undefined;
   toolCallStatusRegistryRef?: RefObject<ToolCallStatusRegistry>;
-  // For storybook visualization
-  streamUrl?: string;
 }
 
 function NewTaskToolView(props: NewTaskToolViewProps) {

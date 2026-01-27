@@ -33,7 +33,10 @@ export const useManageBrowserSessions = () => {
         vscodeHost.registerBrowserSession(taskId);
       }
 
-      if (lastToolPart?.state === "output-available") {
+      if (
+        lastToolPart?.state === "output-available" ||
+        lastToolPart?.state === "output-error"
+      ) {
         vscodeHost.unregisterBrowserSession(taskId);
       }
     },

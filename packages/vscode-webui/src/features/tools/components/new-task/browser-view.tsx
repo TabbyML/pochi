@@ -21,7 +21,6 @@ export function BrowserView(props: NewTaskToolViewProps) {
   const browserSessions = useBrowserSessions();
 
   const streamUrl =
-    props.streamUrl ||
     browserSessions[taskSource?.parentId || uid || ""]?.streamUrl;
 
   useEffect(() => {
