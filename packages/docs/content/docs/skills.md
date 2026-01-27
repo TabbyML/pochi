@@ -1,6 +1,7 @@
 ---
 title: Skills
 description: Define reusable behavior via SKILL.md definitions
+icon: "Zap"
 ---
 
 Skills are reusable instruction sets that extend Pochi's capabilities. They allow you to standardize workflows, provide domain-specific knowledge, or integrate with external tools.
@@ -45,10 +46,10 @@ IMPORTANT: Only create the issue, do not attempt to fix it.
 
 Each skill must start with YAML frontmatter containing at least a `name` and `description`.
 
-| Field | Description |
-| --- | --- |
-| `name` | Unique identifier (lowercase, hyphens allowed). |
-| `description` | Brief explanation of what the skill does. |
+| Field         | Description                                     |
+| ------------- | ----------------------------------------------- |
+| `name`        | Unique identifier (lowercase, hyphens allowed). |
+| `description` | Brief explanation of what the skill does.       |
 
 ## Discovery
 
