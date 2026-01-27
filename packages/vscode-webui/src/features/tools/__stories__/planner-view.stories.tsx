@@ -1,7 +1,5 @@
-import { useDefaultStore } from "@/lib/use-default-store";
-import { catalog } from "@getpochi/livekit";
+import { queryClient } from "@/lib/query-client";
 import type { Meta, StoryObj } from "@storybook/react";
-import { useEffect } from "react";
 import type { NewTaskToolViewProps } from "../components/new-task";
 import { PlannerView } from "../components/new-task/planner-view";
 
@@ -164,17 +162,12 @@ export const Default: Story = {
   },
   decorators: [
     (Story) => {
-      const store = useDefaultStore();
-      useEffect(() => {
-        // Seed the store with a plan.md file
-        store.commit(
-          catalog.events.writeTaskFile({
-            taskId: "root",
-            filePath: "/plan.md",
-            content: planContent,
-          }),
-        );
-      }, [store]);
+      // Seed the store with a plan.md file
+      queryClient.setQueryData(["file"], {
+        taskId: "root",
+        filePath: "/plan.md",
+        content: planContent,
+      });
       return <Story />;
     },
   ],
