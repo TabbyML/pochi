@@ -9,7 +9,8 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "tsc": "tsc"
+    "tsc": "tsc",
+    "test": "bun vitest --run"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "catalog:",

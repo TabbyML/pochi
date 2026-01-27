@@ -20,6 +20,7 @@ import { searchFilesTool } from "./search-files";
 import { StartBackgroundJobTool } from "./start-background-job";
 import { todoWriteTool } from "./todo-write";
 import type { ToolProps } from "./types";
+import { UseSkillTool } from "./use-skill";
 import { writeToFileTool } from "./write-to-file";
 
 export function ToolInvocationPart({
@@ -82,6 +83,7 @@ const Tools: Record<string, React.FC<ToolProps<any>>> = {
   globFiles: globFilesTool,
   todoWrite: todoWriteTool,
   editNotebook: editNotebookTool,
+  useSkill: UseSkillTool,
   // @ts-expect-error
   newTask: newTaskTool,
 };

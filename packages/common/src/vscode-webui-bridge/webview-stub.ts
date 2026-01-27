@@ -18,6 +18,7 @@ import type {
   Review,
   RuleFile,
   SessionState,
+  SkillFile,
   TaskArchivedParams,
   TaskChangedFile,
   TaskStates,
@@ -95,16 +96,6 @@ const VSCodeHostStub = {
     return Promise.resolve([]);
   },
   listRuleFiles: (): Promise<RuleFile[]> => {
-    return Promise.resolve([]);
-  },
-  listWorkflows: (): Promise<
-    {
-      id: string;
-      path: string;
-      content: string;
-      frontmatter: { model?: string };
-    }[]
-  > => {
     return Promise.resolve([]);
   },
   readActiveTabs: (): Promise<
@@ -263,6 +254,10 @@ const VSCodeHostStub = {
     ThreadSignalSerialization<CustomAgentFile[]>
   > => {
     return Promise.resolve({} as ThreadSignalSerialization<CustomAgentFile[]>);
+  },
+
+  readSkills: async (): Promise<ThreadSignalSerialization<SkillFile[]>> => {
+    return Promise.resolve({} as ThreadSignalSerialization<SkillFile[]>);
   },
 
   openTaskInPanel: async (

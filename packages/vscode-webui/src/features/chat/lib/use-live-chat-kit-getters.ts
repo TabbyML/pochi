@@ -9,6 +9,7 @@ import { useSelectedModels } from "@/features/settings";
 import { useCustomAgents } from "@/lib/hooks/use-custom-agents";
 import { useLatest } from "@/lib/hooks/use-latest";
 import { useMcp } from "@/lib/hooks/use-mcp";
+import { useSkills } from "@/lib/hooks/use-skills";
 import { vscodeHost } from "@/lib/vscode";
 import { constants, type Environment } from "@getpochi/common";
 import { createModel } from "@getpochi/common/vendor/edge";
@@ -45,6 +46,9 @@ export function useLiveChatKitGetters({
 
   const { customAgents } = useCustomAgents(true);
   const customAgentsRef = useLatest(customAgents);
+
+  const { skills } = useSkills(true);
+  const skillsRef = useLatest(skills);
 
   const getEnvironment = useCallback(async () => {
     const environment = await vscodeHost.readEnvironment({
@@ -103,6 +107,9 @@ export function useLiveChatKitGetters({
 
     // biome-ignore lint/correctness/useExhaustiveDependencies(customAgentsRef.current): customAgentsRef is ref.
     getCustomAgents: useCallback(() => customAgentsRef.current, []),
+
+    // biome-ignore lint/correctness/useExhaustiveDependencies(skillsRef.current): skillsRef is ref.
+    getSkills: useCallback(() => skillsRef.current, []),
   };
 }
 

@@ -14,9 +14,9 @@
     "subtitle": "Pochi is powered by AI, so errors may occur.",
     "tips": {
       "attachments": "to chat with files",
-      "context": "to attach context",
-      "workflow": "to trigger workflow"
+      "context": "to attach context"
     },
+
     "autoSave": {
       "title": "Pochi doesn't work well with auto-save enabled.",
       "description": "Pochi relies on pending file changes to display diffs of its edits, which requires auto-save to be disabled."
@@ -129,10 +129,7 @@
       "openInTab": "Allows to open the task in a new tab",
       "hideRecommendSettings": "Hide Recommended Settings"
     },
-    "workflows": {
-      "title": "Workflows",
-      "noWorkflows": "No workflows found in workspace."
-    },
+
     "rules": {
       "title": "Rules",
       "noRules": "No rules found in workspace.",
@@ -170,6 +167,16 @@
         "validationError": "Missing required properties in agent definition"
       }
     },
+    "skills": {
+      "title": "Skills",
+      "loading": "Loading skills...",
+      "empty": "No skills found. Create skill files in .pochi/skills/ in your workspace",
+      "errors": {
+        "readError": "Failed to read skill definition",
+        "parseError": "Failed to parse skill definition",
+        "validationError": "Missing required properties in skill definition"
+      }
+    },
     "mcp": {
       "title": "MCP",
       "tooltip": "Configuration MCP for Pochi globally.",
@@ -205,6 +212,10 @@
     "needHelp": "Need help? View documentation"
   },
   "tasksPage": {
+    "tasks": "Tasks",
+    "filter": "Filter",
+    "archivedTasks": "Archived tasks",
+    "deletedWorktrees": "Deleted worktrees",
     "emptyState": {
       "title": "No tasks found",
       "description": "No tasks available",
@@ -227,8 +238,6 @@
     "newTask": "New Task",
     "deleted": "Deleted",
     "tasksCount": "{{count}} tasks",
-    "showDeletedWorktrees": "Show deleted worktrees",
-    "hideDeletedWorktrees": "Hide deleted worktrees",
     "openWorktreeDiff": "Review changes",
     "openWorktreeInTerminal": "Open worktree in terminal",
     "deleteWorktree": "Delete worktree",
@@ -245,18 +254,16 @@
       "requiresApproval": "Requires approval"
     },
     "loadMore": "Load more",
-    "showArchivedTasks": "Show archived tasks",
-    "hideArchivedTasks": "Hide archived tasks",
     "archiveTask": "Archive task",
     "unarchiveTask": "Unarchive task",
     "archiveOldTasks": "Archive tasks older than one week",
-    "moreOptions": "More options"
+    "showAnyTasks": "Show any tasks",
+    "showOpenTasks": "Show open tasks"
   },
   "toolInvocation": {
     "requiresApproval": "Requires approval",
     "taskCompleted": "Task Completed",
     "reading": "Reading ",
-
     "writing": "Writing ",
     "continue": "Continue",
     "cancel": "Cancel",
@@ -293,6 +300,7 @@
     "backgroundExecuting": "Executing command in background",
     "updatingToDos": "Updating todos",
     "editing": "Editing ",
+    "usingSkill": "Using skill",
     "moreTools_one": ", and {{count}} more tool",
     "moreTools_other": ", and {{count}} more tools"
   },
@@ -363,10 +371,11 @@
   "mentionList": {
     "noResultsFound": "No results found",
     "typeToSearch": "Type to search...",
-    "workflow": "workflow",
     "agent": "agent",
+    "skill": "skill",
     "useHashForIssues": "use # to search for github issues"
   },
+
   "subtask": {
     "back": "Back",
     "complete": "Complete",

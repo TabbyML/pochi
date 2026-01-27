@@ -199,7 +199,9 @@ export class PochiTaskEditorProvider
   ) {
     try {
       const uid =
-        ((params.type === "new-task" || params.type === "open-task") &&
+        ((params.type === "new-task" ||
+          params.type === "open-task" ||
+          params.type === "fork-task") &&
           params.uid) ||
         crypto.randomUUID();
       const taskInfo: PochiTaskInfo = {

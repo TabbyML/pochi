@@ -1,5 +1,5 @@
 import type { McpHub } from "@getpochi/common/mcp-utils";
-import type { CustomAgent } from "@getpochi/tools";
+import type { CustomAgent, Skill } from "@getpochi/tools";
 import type { BackgroundJobManager } from "./lib/background-job-manager";
 import type { TaskRunner } from "./task-runner";
 
@@ -14,6 +14,11 @@ export interface ToolCallOptions {
    * Available custom agents for tools that support them (e.g., newTask)
    */
   customAgents?: CustomAgent[];
+
+  /**
+   * Available skills for tools that support them (e.g., skill)
+   */
+  skills?: Skill[];
 
   /**
    * Function to create a sub-task runner (optional, used by newTask tool)

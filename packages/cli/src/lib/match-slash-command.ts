@@ -1,5 +1,8 @@
 import { prompts } from "@getpochi/common";
-import type { CustomAgentFile } from "@getpochi/common/vscode-webui-bridge";
+import type {
+  CustomAgentFile,
+  SkillFile,
+} from "@getpochi/common/vscode-webui-bridge";
 import type { CustomAgent } from "@getpochi/tools";
 import type { Parent, Text } from "mdast";
 import { gfmToMarkdown } from "mdast-util-gfm";
@@ -8,7 +11,6 @@ import { remark } from "remark";
 import remarkGfm from "remark-gfm";
 import { SKIP, visit } from "unist-util-visit";
 import { getModelFromCustomAgent } from "./load-agents";
-import { type Workflow, getModelFromWorkflow } from "./workflow-loader";
 
 const IGNORED_NODE_TYPES = [
   "code",
@@ -69,7 +71,6 @@ export function extractSlashCommandNames(prompt: string): string[] {
 export async function getModelFromSlashCommand(
   prompt: string | undefined,
   options: {
-    workflows: Workflow[];
     customAgents: CustomAgent[];
   },
 ): Promise<string | undefined> {
@@ -81,17 +82,7 @@ export async function getModelFromSlashCommand(
     }
 
     for (const commandName of commandNames) {
-      // 1. try to get model from workflow
-      const targetWorkflow = options.workflows.find(
-        (w) => w.id === commandName,
-      );
-
-      const workflowModel = getModelFromWorkflow(targetWorkflow);
-      if (workflowModel) {
-        return workflowModel;
-      }
-
-      // 2. try to get model from agent
+      // 1. try to get model from agent
       const targetAgent = options.customAgents.find(
         (x) => x.name === commandName,
       );
@@ -107,8 +98,8 @@ export async function getModelFromSlashCommand(
 export async function replaceSlashCommandReferences(
   prompt: string,
   slashCommandContext: {
-    workflows: Workflow[];
     customAgents: CustomAgentFile[];
+    skills: SkillFile[];
   },
 ): Promise<{ prompt: string }> {
   // Quick check - if no slash at all, return early
@@ -141,28 +132,24 @@ export async function replaceSlashCommandReferences(
 
           if (part.startsWith("/")) {
             const commandName = part.substring(1);
-            const workflow = slashCommandContext.workflows.find(
-              (x) => x.id === commandName,
-            );
             const agent = slashCommandContext.customAgents.find(
               (x) => x.name === commandName,
             );
+            const skill = slashCommandContext.skills.find(
+              (x) => x.name === commandName,
+            );
 
-            if (workflow?.content) {
-              newNodes.push({
-                type: "html",
-                value: prompts.workflow(
-                  commandName,
-                  workflow.pathName,
-                  workflow.content,
-                ),
-              });
-              continue;
-            }
             if (agent?.name) {
               newNodes.push({
                 type: "html",
                 value: prompts.customAgent(commandName, agent.filePath),
+              });
+              continue;
+            }
+            if (skill?.name) {
+              newNodes.push({
+                type: "html",
+                value: prompts.skill(commandName, skill.filePath),
               });
               continue;
             }

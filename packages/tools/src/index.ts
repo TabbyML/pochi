@@ -33,6 +33,7 @@ import { killBackgroundJob } from "./kill-background-job";
 import { readBackgroundJobOutput } from "./read-background-job-output";
 import { createReadFileTool } from "./read-file";
 import { startBackgroundJob } from "./start-background-job";
+import { type Skill, createSkillTool } from "./use-skill";
 import { writeToFile } from "./write-to-file";
 
 export {
@@ -41,6 +42,7 @@ export {
   type SubTask,
   inputSchema as newTaskInputSchema,
 } from "./new-task";
+export { Skill } from "./use-skill";
 export { attemptCompletionSchema } from "./attempt-completion";
 
 export function isUserInputToolName(name: string): boolean {
@@ -74,6 +76,7 @@ export const ToolsByPermission = {
       "globFiles",
       "searchFiles",
       "readBackgroundJobOutput",
+      "useSkill",
     ] satisfies ToolName[]),
 
     // Pochi offered-tools
@@ -107,6 +110,7 @@ const createCliTools = (options?: CreateToolOptions) => ({
 
   listFiles,
   readFile: createReadFileTool(options?.contentType),
+  useSkill: createSkillTool(options?.skills),
   searchFiles,
   todoWrite,
   writeToFile,
@@ -116,6 +120,7 @@ const createCliTools = (options?: CreateToolOptions) => ({
 
 export interface CreateToolOptions {
   customAgents?: CustomAgent[];
+  skills?: Skill[];
   contentType?: string[];
   attemptCompletionSchema?: z.ZodAny;
 }

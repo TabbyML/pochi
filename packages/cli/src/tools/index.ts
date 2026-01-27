@@ -16,6 +16,7 @@ import { readFile } from "./read-file";
 import { searchFiles } from "./search-files";
 import { startBackgroundJob } from "./start-background-job";
 import { todoWrite } from "./todo-write";
+import { useSkill } from "./use-skill";
 
 import { writeToFile } from "./write-to-file";
 
@@ -37,6 +38,7 @@ const ToolMap: Record<
   startBackgroundJob,
   readBackgroundJobOutput,
   killBackgroundJob,
+  useSkill,
 };
 
 export async function executeToolCall(

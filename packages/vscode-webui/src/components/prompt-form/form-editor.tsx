@@ -15,19 +15,12 @@ import {
   type Editor,
   EditorContent,
   Extension,
-  ReactRenderer,
   useEditor,
 } from "@tiptap/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import tippy from "tippy.js";
-import {
-  PromptFormMentionExtension,
-  fileMentionPluginKey,
-} from "./context-mention/extension";
-import {
-  MentionList,
-  type MentionListProps,
-} from "./context-mention/mention-list";
+import { PromptFormMentionExtension } from "./context-mention/extension";
+import { createFileMentionConfig } from "./context-mention/mention-config";
 import {
   PromptFormIssueMentionExtension,
   issueMentionPluginKey,
@@ -42,8 +35,10 @@ import { resolveModelFromId } from "@/lib/utils/resolve-model-from-id";
 import {
   BuiltInAgentPath,
   isValidCustomAgentFile,
+  isValidSkillFile,
 } from "@getpochi/common/vscode-webui-bridge";
 import { threadSignal } from "@quilted/threads/signals";
+import { ReactRenderer } from "@tiptap/react";
 import {
   type SuggestionMatch,
   type Trigger,
@@ -155,7 +150,6 @@ export function FormEditor({
   useEffect(() => {
     activeTabsRef.current = activeTabs;
   }, [activeTabs]);
-  const isFileMentionComposingRef = useRef(false);
   const isCommandMentionComposingRef = useRef(false);
   const isIssueMentionComposingRef = useRef(false);
 
@@ -164,9 +158,7 @@ export function FormEditor({
 
   const onSelectSlashCandidate = useLatest((data: SlashCandidate) => {
     let model: string | undefined;
-    if (data.type === "workflow") {
-      model = data.rawData.frontmatter.model;
-    } else if (data.type === "custom-agent") {
+    if (data.type === "custom-agent") {
       model = data.rawData.model;
     }
     const foundModel = resolveModelFromId(model, models);
@@ -174,6 +166,24 @@ export function FormEditor({
       updateSelectedModelId(foundModel.id);
     }
   });
+
+  const fetchFileMentionItems = useCallback(async (query = "") => {
+    const data = await debouncedListFiles();
+    if (!data) return [];
+
+    return fuzzySearchFiles(query, {
+      files: data.files,
+      activeTabs: getActiveTabsInCwd(activeTabsRef.current),
+    });
+  }, []);
+
+  // const fileMentionConfig = createFileMentionConfig({
+  //   fetchItems: fetchFileMentionItems,
+  //   checkHasIssues: async () => {
+  //     const issues = await debouncedQueryGithubIssues();
+  //     return !!(issues && issues.length > 0);
+  //   },
+  // });
 
   const editor = useEditor(
     {
@@ -185,122 +195,15 @@ export function FormEditor({
           placeholder: t("formEditor.placeholder"),
         }),
         CustomEnterKeyHandler(formRef),
-        PromptFormMentionExtension.configure({
-          suggestion: {
-            char: "@",
-            pluginKey: fileMentionPluginKey,
-            items: async ({ query }: { query: string }) => {
-              const data = await debouncedListFiles();
-              if (!data) return [];
-
-              return fuzzySearchFiles(query, {
-                files: data.files,
-                activeTabs: getActiveTabsInCwd(activeTabsRef.current),
-              });
+        PromptFormMentionExtension.configure(
+          createFileMentionConfig({
+            fetchItems: fetchFileMentionItems,
+            checkHasIssues: async () => {
+              const issues = await debouncedQueryGithubIssues();
+              return !!(issues && issues.length > 0);
             },
-            render: () => {
-              let component: ReactRenderer<
-                MentionListActions,
-                MentionListProps
-              >;
-              let popup: Array<{ destroy: () => void; hide: () => void }>;
-
-              // Fetch items function for MentionList
-              const fetchItems = async (query?: string) => {
-                const data = await debouncedListFiles();
-                if (!data) return [];
-
-                return fuzzySearchFiles(query, {
-                  files: data.files,
-                  activeTabs: getActiveTabsInCwd(activeTabsRef.current),
-                });
-              };
-
-              const checkHasIssues = async () => {
-                const issues = await debouncedQueryGithubIssues();
-                return !!(issues && issues.length > 0);
-              };
-
-              const updateIsComposingRef = (v: boolean) => {
-                isFileMentionComposingRef.current = v;
-              };
-
-              const destroyMention = () => {
-                popup[0].destroy();
-                component.destroy();
-                updateIsComposingRef(false);
-              };
-
-              return {
-                onStart: (props) => {
-                  updateIsComposingRef(props.editor.view.composing);
-                  const tiptapProps = props as {
-                    editor: unknown;
-                    clientRect?: () => DOMRect;
-                  };
-
-                  component = new ReactRenderer(MentionList, {
-                    props: {
-                      ...props,
-                      fetchItems,
-                      checkHasIssues,
-                    },
-                    editor: props.editor,
-                  });
-
-                  if (!tiptapProps.clientRect) {
-                    return;
-                  }
-
-                  // @ts-ignore - accessing extensionManager and methods
-                  const customExtension =
-                    props.editor.extensionManager?.extensions.find(
-                      // @ts-ignore - extension type
-                      (extension) =>
-                        extension.name === "custom-enter-key-handler",
-                    );
-
-                  popup = tippy("body", {
-                    getReferenceClientRect: tiptapProps.clientRect,
-                    appendTo: () => document.body,
-                    content: component.element,
-                    showOnCreate: true,
-                    interactive: true,
-                    trigger: "manual",
-                    placement: "top-start",
-                    offset: [0, 6],
-                    maxWidth: "none",
-                  });
-                },
-                onUpdate: (props) => {
-                  updateIsComposingRef(props.editor.view.composing);
-                  component.updateProps(props);
-                },
-                onExit: () => {
-                  destroyMention();
-                },
-                onKeyDown: (props) => {
-                  if (props.event.key === "Escape") {
-                    destroyMention();
-                    return true;
-                  }
-
-                  return component.ref?.onKeyDown(props) ?? false;
-                },
-              };
-            },
-            findSuggestionMatch: (config: Trigger): SuggestionMatch => {
-              const match = findSuggestionMatch({
-                ...config,
-                allowSpaces: isFileMentionComposingRef.current,
-              });
-              if (match?.query.startsWith("#")) {
-                return null;
-              }
-              return match;
-            },
-          },
-        }),
+          }),
+        ),
         // Use the already configured PromptFormIssueMentionExtension for issue mentions
         PromptFormIssueMentionExtension.configure({
           suggestion: {
@@ -429,15 +332,12 @@ export function FormEditor({
               >;
               let popup: Array<{ destroy: () => void; hide: () => void }>;
 
-              // Fetch items function for WorkflowList
+              // Fetch items function for SlashMentionList
               const fetchItems = async (query?: string) => {
                 const data = await debouncedListSlashCommand();
                 if (!data) return [];
-                const workflowResults = fuzzySearchSlashCandidates(
-                  query,
-                  data.options,
-                );
-                return workflowResults;
+                const results = fuzzySearchSlashCandidates(query, data.options);
+                return results;
               };
 
               const updateIsComposingRef = (v: boolean) => {
@@ -819,9 +719,9 @@ const debouncedQueryGithubIssues = asyncDebounce(async (query?: string) => {
 
 export const debouncedListSlashCommand = debounceWithCachedValue(
   async () => {
-    const [workflows, customAgents] = await Promise.all([
-      vscodeHost.listWorkflows(),
+    const [customAgents, skills] = await Promise.all([
       threadSignal(await vscodeHost.readCustomAgents()),
+      threadSignal(await vscodeHost.readSkills()),
     ]);
     const options: SlashCandidate[] = [
       ...customAgents.value
@@ -835,13 +735,15 @@ export const debouncedListSlashCommand = debounceWithCachedValue(
           path: x.filePath,
           rawData: x,
         })),
-      ...workflows.map((x) => ({
-        type: "workflow" as const,
-        id: x.id,
-        label: x.id,
-        path: x.path,
-        rawData: x,
-      })),
+      ...skills.value
+        .filter((x) => isValidSkillFile(x))
+        .map((x) => ({
+          type: "skill" as const,
+          id: x.name,
+          label: x.name,
+          path: x.filePath,
+          rawData: x,
+        })),
     ];
     return {
       options,

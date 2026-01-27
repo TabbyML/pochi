@@ -14,8 +14,7 @@
     "subtitle": "Pochi 由 AI 驱动，可能会出现错误。",
     "tips": {
       "attachments": "发送文件",
-      "context": "附加上下文",
-      "workflow": "触发工作流"
+      "context": "附加上下文"
     },
     "autoSave": {
       "title": "启用自动保存时 Pochi 无法正常工作。",
@@ -128,10 +127,6 @@
       "languageDescription": "选择您的首选语言",
       "hideRecommendSettings": "隐藏推荐设置"
     },
-    "workflows": {
-      "title": "工作流",
-      "noWorkflows": "工作区中未找到工作流。"
-    },
     "rules": {
       "title": "规则",
       "noRules": "工作区中未找到规则。",
@@ -169,6 +164,16 @@
         "validationError": "代理定义缺少必需的属性"
       }
     },
+    "skills": {
+      "title": "技能",
+      "loading": "加载技能中...",
+      "empty": "未找到技能。在工作区的 .pochi/skills/ 目录中创建技能文件",
+      "errors": {
+        "readError": "读取技能定义失败",
+        "parseError": "解析技能定义失败",
+        "validationError": "技能定义缺少必需的属性"
+      }
+    },
     "mcp": {
       "title": "MCP",
       "tooltip": "全局配置 Pochi 的 MCP。",
@@ -203,6 +208,10 @@
     "needHelp": "需要帮助？查看文档"
   },
   "tasksPage": {
+    "tasks": "任务",
+    "filter": "筛选",
+    "archivedTasks": "已归档任务",
+    "deletedWorktrees": "已删除的工作树",
     "emptyState": {
       "title": "未找到任务",
       "description": "无可用任务",
@@ -225,8 +234,6 @@
     "newTask": "新任务",
     "deleted": "已删除",
     "tasksCount": "{{count}} 个任务",
-    "showDeletedWorktrees": "显示已删除的工作树",
-    "hideDeletedWorktrees": "隐藏已删除的工作树",
     "openWorktreeDiff": "查看更改",
     "openWorktreeInTerminal": "在终端中打开工作树",
     "deleteWorktree": "删除工作树",
@@ -242,12 +249,11 @@
       "requiresApproval": "需要批准"
     },
     "loadMore": "加载更多",
-    "showArchivedTasks": "显示已归档任务",
-    "hideArchivedTasks": "隐藏已归档任务",
     "archiveTask": "归档任务",
     "unarchiveTask": "取消归档任务",
     "archiveOldTasks": "归档一周前的任务",
-    "moreOptions": "更多选项"
+    "showAnyTasks": "显示所有任务",
+    "showOpenTasks": "显示活动任务"
   },
   "toolInvocation": {
     "requiresApproval": "需要批准",
@@ -359,8 +365,8 @@
   "mentionList": {
     "noResultsFound": "未找到结果",
     "typeToSearch": "输入以搜索...",
-    "workflow": "工作流",
     "agent": "代理",
+    "skill": "技能",
     "useHashForIssues": "使用 # 搜索 Github issue"
   },
   "subtask": {

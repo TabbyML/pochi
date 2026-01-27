@@ -1,6 +1,6 @@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { vscodeHost } from "@/lib/vscode";
-import type { CustomAgent } from "@getpochi/tools";
+import type { CustomAgent, Skill } from "@getpochi/tools";
 import { FileIcon } from "lucide-react";
 import {
   forwardRef,
@@ -18,28 +18,20 @@ import {
   useScrollIntoView,
 } from "../shared";
 
-// Types for workflow items
-export interface WorkflowData {
-  id: string;
-  path: string;
-  content: string;
-  frontmatter: { model?: string };
-}
-
 export type SlashCandidate =
-  | {
-      type: "workflow";
-      id: string;
-      label: string;
-      path: string;
-      rawData: WorkflowData;
-    }
   | {
       type: "custom-agent";
       id: string;
       label: string;
       path: string;
       rawData: CustomAgent;
+    }
+  | {
+      type: "skill";
+      id: string;
+      label: string;
+      path: string;
+      rawData: Skill;
     };
 
 export interface SlashMentionListProps {
@@ -71,19 +63,19 @@ export const SlashMentionList = forwardRef<
 
   const handleSelect = useCallback(
     async (item: SlashCandidate) => {
-      if (item.type === "workflow") {
-        vscodeHost.capture({
-          event: "selectWorkflow",
-          properties: {
-            workflowId: item.rawData.id,
-          },
-        });
-      }
       if (item.type === "custom-agent") {
         vscodeHost.capture({
           event: "selectCustomAgent",
           properties: {
             customAgentName: item.rawData.name,
+          },
+        });
+      }
+      if (item.type === "skill") {
+        vscodeHost.capture({
+          event: "selectSkill",
+          properties: {
+            skillName: item.rawData.name,
           },
         });
       }
@@ -137,7 +129,7 @@ interface CandidateItemViewProps {
 }
 
 /**
- * Candidate item view for displaying workflow / custom-agent files
+ * Candidate item view for displaying custom-agent / skill files
  */
 const CandidateItemView = memo(function SlashCandidateItemView({
   isSelected,
@@ -146,6 +138,7 @@ const CandidateItemView = memo(function SlashCandidateItemView({
 }: CandidateItemViewProps) {
   const { t } = useTranslation();
   const ref = useScrollIntoView(isSelected);
+  const label = getTypeLabel(data);
 
   return (
     <div
@@ -162,20 +155,29 @@ const CandidateItemView = memo(function SlashCandidateItemView({
         </span>
       </div>
       <span className="text-muted-foreground text-xs">
-        {data.type === "workflow"
-          ? t("mentionList.workflow")
-          : t("mentionList.agent")}
+        {label ? t(label) : ""}
       </span>
     </div>
   );
 });
 
+function getTypeLabel(option: SlashCandidate) {
+  switch (option.type) {
+    case "custom-agent":
+      return "mentionList.agent";
+    case "skill":
+      return "mentionList.skill";
+    default:
+      return "";
+  }
+}
+
 function getOptionKey(option: SlashCandidate, idx: number) {
   if (option.type === "custom-agent") {
     return `agent_${option.id}`;
   }
-  if (option.type === "workflow") {
-    return `workflow_${option.id}`;
+  if (option.type === "skill") {
+    return `skill_${option.id}`;
   }
 
   return idx;

@@ -4,7 +4,11 @@ import { Duration } from "@livestore/utils/effect";
 import type { ChatInit, ChatOnErrorCallback, ChatOnFinishCallback } from "ai";
 import type z from "zod/v4";
 import type { BlobStore } from "../blob-store";
-import { makeMessagesQuery, makeTaskQuery } from "../livestore/default-queries";
+import {
+  makeAllDataQuery,
+  makeMessagesQuery,
+  makeTaskQuery,
+} from "../livestore/default-queries";
 import { events, tables } from "../livestore/default-schema";
 import { toTaskError, toTaskGitInfo, toTaskStatus } from "../task";
 
@@ -16,6 +20,7 @@ import {
   type OnStartCallback,
   type PrepareRequestGetters,
 } from "./flexible-chat-transport";
+import { prepareForkTaskData } from "./fork-task-tools";
 import { compactTask, repairMermaid } from "./llm";
 import { createModel } from "./models";
 
@@ -297,6 +302,38 @@ export class LiveChatKit<
         updatedAt: new Date(),
       }),
     );
+  };
+
+  fork = (
+    targetStore: LiveKitStore,
+    forkTaskParams: {
+      taskId: string;
+      title: string | undefined;
+      commitId: string;
+      messageId?: string;
+    },
+  ) => {
+    const {
+      tasks: tasksQuery,
+      messages: messagesQuery,
+      files: filesQuery,
+    } = makeAllDataQuery();
+    const tasks = this.store.query(tasksQuery);
+    const messages = this.store.query(messagesQuery);
+    const files = this.store.query(filesQuery);
+
+    const data = prepareForkTaskData({
+      tasks,
+      messages,
+      files,
+      oldTaskId: this.taskId,
+      commitId: forkTaskParams.commitId,
+      messageId: forkTaskParams.messageId,
+      newTaskId: forkTaskParams.taskId,
+      newTaskTitle: forkTaskParams.title,
+    });
+
+    targetStore.commit(events.forkTaskInited(data));
   };
 
   private readonly onStart: OnStartCallback = async ({

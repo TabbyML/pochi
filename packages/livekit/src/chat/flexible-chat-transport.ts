@@ -7,6 +7,7 @@ import {
   type ClientTools,
   type CustomAgent,
   type McpTool,
+  type Skill,
   overrideCustomAgentTools,
   selectClientTools,
 } from "@getpochi/tools";
@@ -52,6 +53,7 @@ export type PrepareRequestGetters = {
     instructions: string;
   };
   getCustomAgents?: () => CustomAgent[] | undefined;
+  getSkills?: () => Skill[] | undefined;
 };
 
 export type ChatTransportOptions = {
@@ -105,6 +107,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
     messages = prompts.injectEnvironment(messages, environment) as Message[];
     const mcpInfo = this.getters.getMcpInfo?.();
     const customAgents = this.getters.getCustomAgents?.();
+    const skills = this.getters.getSkills?.();
 
     await this.onStart?.({
       messages,
@@ -152,6 +155,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
           isSubTask: !!this.isSubTask,
           customAgents,
           contentType: llm.contentType,
+          skills,
           attemptCompletionSchema: this.attemptCompletionSchema,
         }),
         ...(mcpTools || {}),

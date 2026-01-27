@@ -157,32 +157,28 @@ export class PochiSidebar {
   }
 
   async toggleArchivedTasksVisibility() {
-    const worktreeHeader = $('[data-testid="worktree-group-header"]');
-    await worktreeHeader.moveTo();
+    // Find the Tasks header and hover to reveal the toggle button
+    const tasksHeader = $('[data-testid="tasks-header"]');
+    await tasksHeader.moveTo();
 
-    const moreOptionsButton = $('[aria-label="more-options-button"]');
-    await moreOptionsButton.waitForClickable();
-    await moreOptionsButton.click();
+    // Click the toggle all/active tasks button
+    const toggleButton = $('[data-testid="toggle-all-tasks"]');
+    await toggleButton.waitForClickable();
+    await toggleButton.click();
 
-    const toggleItem = $('[data-testid="toggle-archived-tasks"]');
-    await toggleItem.waitForDisplayed();
-    await toggleItem.click();
-
-    // Wait for menu to close/update
+    // Wait for UI to update
     await browser.pause(500);
   }
 
   async archiveOldTasks() {
-    const worktreeHeader = $('[data-testid="worktree-group-header"]');
-    await worktreeHeader.moveTo();
+    // Find the Tasks header and hover to reveal the archive button
+    const tasksHeader = $('[data-testid="tasks-header"]');
+    await tasksHeader.moveTo();
 
-    const moreOptionsButton = $('[aria-label="more-options-button"]');
-    await moreOptionsButton.waitForClickable();
-    await moreOptionsButton.click();
-
-    const archiveOldItem = $('[data-testid="archive-old-tasks"]');
-    await archiveOldItem.waitForDisplayed();
-    await archiveOldItem.click();
+    // Click the global archive old tasks button
+    const archiveOldButton = $('[data-testid="global-archive-old-tasks"]');
+    await archiveOldButton.waitForClickable();
+    await archiveOldButton.click();
 
     await browser.pause(500);
   }

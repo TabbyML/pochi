@@ -94,7 +94,7 @@ function BackgroundTaskToolView(
           disabled={!canOpen}
           // eslint-disable-next-line i18next/no-literal-string
         >
-          ASYNC
+          {"ASYNC"}
         </Button>
       </ToolTitle>
     </div>

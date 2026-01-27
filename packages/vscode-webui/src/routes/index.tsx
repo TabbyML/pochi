@@ -86,7 +86,7 @@ function Tasks() {
           deletingWorktreePaths={deletingWorktreePaths}
         />
       </div>
-      <div className="min-h-0 flex-1 pt-4 [container-type:size]">
+      <div className="min-h-0 flex-1 pt-2 [container-type:size]">
         <ScrollArea className="h-full">
           <div className="flex flex-col gap-4 px-4 pb-6">
             <WorktreeList
