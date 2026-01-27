@@ -49,13 +49,14 @@ Run these via executeCommand:
 
 ## Workflow (Recommended)
 
-1. **Navigate**: \`agent-browser open <url>\`
-2. **Inspect**: \`agent-browser snapshot -i\` (Get interactive elements with refs like @e1, @e2)
-3. **Interact**: Use refs to perform actions
+1. **Check Installation**: Run \`agent-browser --version\` to ensure it is installed. If not, install via \`npm install -g agent-browser\`.
+2. **Navigate**: \`agent-browser open <url>\`
+3. **Inspect**: \`agent-browser snapshot -i\` (Get interactive elements with refs like @e1, @e2)
+4. **Interact**: Use refs to perform actions
    - \`agent-browser click @e2\`
    - \`agent-browser fill @e3 "text"\`
-4. **Verify**: Take a new snapshot after interactions to verify state changes.
-5. **Close**: \`agent-browser close\` (Close the session when done)
+5. **Verify**: Take a new snapshot after interactions to verify state changes.
+6. **Close**: \`agent-browser close\` (Close the session when done)
 
 ## Example
 
@@ -93,5 +94,6 @@ executeCommand: agent-browser close
 - Use \`agent-browser wait\` if you expect a delay (e.g., network load).
 - If \`agent-browser\` is not found, install via \`npm install -g agent-browser\`.
 - **Always** close the browser session with \`agent-browser close\` when you are done with the task.
+- If \`agent-browser open\` fails, you must use \`agent-browser close\` to clean up the session.
 `.trim(),
 };

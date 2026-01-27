@@ -17,6 +17,7 @@ export function BrowserView({ streamUrl }: BrowserViewProps) {
 
   useEffect(() => {
     let retryTimeout: NodeJS.Timeout;
+    const retryInterval = 2500;
 
     const connect = () => {
       if (wsRef.current) {
@@ -36,7 +37,7 @@ export function BrowserView({ streamUrl }: BrowserViewProps) {
         ws.onclose = () => {
           setStatus("idle");
           // Always retry
-          retryTimeout = setTimeout(connect, 1000);
+          retryTimeout = setTimeout(connect, retryInterval);
         };
 
         ws.onerror = (event) => {
@@ -58,7 +59,7 @@ export function BrowserView({ streamUrl }: BrowserViewProps) {
       } catch (e) {
         logger.error("Failed to connect to browser stream", e);
         setStatus("idle");
-        retryTimeout = setTimeout(connect, 1000);
+        retryTimeout = setTimeout(connect, retryInterval);
       }
     };
 

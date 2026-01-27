@@ -663,7 +663,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   };
 
   readMcpStatus = async (): Promise<ThreadSignalSerialization<McpStatus>> => {
-    return ThreadSignal.serialize(computed(() => this.mcpHub.status.value));
+    return ThreadSignal.serialize(this.mcpHub.status);
   };
 
   fetchThirdPartyRules = async () => {
