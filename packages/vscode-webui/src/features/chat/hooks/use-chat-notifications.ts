@@ -1,8 +1,5 @@
-import {
-  type useAutoApproveGuard,
-  useRetryCount,
-  useSendTaskNotification,
-} from "@/features/chat";
+import { type useAutoApproveGuard, useRetryCount } from "../lib/chat-state";
+import { useSendTaskNotification } from "../lib/use-send-task-notification";
 import { getReadyForRetryError, isRetryableError } from "@/features/retry";
 import {
   getPendingToolcallApproval,
