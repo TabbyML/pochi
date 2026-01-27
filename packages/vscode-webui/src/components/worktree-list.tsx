@@ -90,7 +90,7 @@ export function WorktreeList({
 }) {
   const { t } = useTranslation();
   const [showAnyTasks, setShowAnyTasks] = useState(false);
-  const { setTaskArchived } = useTaskArchived();
+  const { setTaskArchived, hasArchivableTasks } = useTaskArchived();
 
   const { data: currentWorkspace, isLoading: isLoadingCurrentWorkspace } =
     useCurrentWorkspace();
@@ -243,21 +243,23 @@ export function WorktreeList({
           </Tooltip>
 
           {/* Archive Old Tasks Button */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 w-6 p-0"
-                aria-label="archive-old-tasks-button"
-                onClick={handleArchiveAllOldTasks}
-                data-testid="global-archive-old-tasks"
-              >
-                <Archive className="size-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>{t("tasksPage.archiveOldTasks")}</TooltipContent>
-          </Tooltip>
+          {hasArchivableTasks && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 w-6 p-0"
+                  aria-label="archive-old-tasks-button"
+                  onClick={handleArchiveAllOldTasks}
+                  data-testid="global-archive-old-tasks"
+                >
+                  <Archive className="size-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{t("tasksPage.archiveOldTasks")}</TooltipContent>
+            </Tooltip>
+          )}
         </div>
       </div>
 
