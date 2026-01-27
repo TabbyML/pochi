@@ -72,7 +72,7 @@ export class LayoutManager implements vscode.Disposable {
             // User wants to open the sidebar/bottom-panel and the terminal panel is the active view,
             // then a default terminal will be created. But auto apply Pochi layout can directly move
             // the terminal to the editor group and close the sidebar/bottom-panel.
-            const isCreateByDefault = isLikelyDefaultPanelTerminal(terminal);
+            const isCreatedByDefault = isTerminalCreatedByDefault(terminal);
 
             const autoApplyPochiLayout =
               configuration.advancedSettings.value.pochiLayout?.enabled;
@@ -84,7 +84,7 @@ export class LayoutManager implements vscode.Disposable {
               workspaceScope.cwd ??
               undefined;
 
-            if (autoApplyPochiLayout && !isCreateByDefault) {
+            if (autoApplyPochiLayout && !isCreatedByDefault) {
               await this.applyPochiLayout({
                 cwd,
                 movePanelToSidePanel: true,
@@ -1046,7 +1046,7 @@ async function findDefaultTextDocument(
   return await openNewUntitledFile();
 }
 
-function isLikelyDefaultPanelTerminal(terminal: vscode.Terminal): boolean {
+function isTerminalCreatedByDefault(terminal: vscode.Terminal): boolean {
   // Determine if the terminal was created by default when the terminal panel appears
   // We have no api to detect it, checking the creationOptions is the best effort
 
