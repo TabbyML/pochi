@@ -2,6 +2,7 @@ import type { BrowserSession } from "@getpochi/common/vscode-webui-bridge";
 import { signal } from "@preact/signals-core";
 import { injectable, singleton } from "tsyringe";
 import { getAvailablePort } from "./get-available-port";
+import { spawn } from "node:child_process";
 
 @injectable()
 @singleton()
@@ -22,6 +23,18 @@ export class BrowserSessionStore {
   async unregisterBrowserSession(taskId: string) {
     const { [taskId]: _, ...rest } = this.browserSessions.value;
     this.browserSessions.value = rest;
+
+    // Cleanup agent-browser process
+    const envs = this.getAgentBrowserEnvs(taskId);
+    const child = spawn("agent-browser", ["close"], {
+      env: {
+        ...process.env,
+        ...envs,
+      },
+      detached: true,
+      stdio: "ignore",
+    });
+    child.unref();
   }
 
   getAgentBrowserEnvs(taskId: string): Record<string, string> {

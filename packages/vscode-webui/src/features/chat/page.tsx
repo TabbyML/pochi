@@ -137,6 +137,28 @@ function Chat({ user, uid, info }: ChatProps) {
 
   const { retryCount } = useRetryCount();
 
+  const manageBrowserSessions = useManageBrowserSessions();
+
+  const onStreamStart = useLatest(
+    (
+      data: Pick<Task, "id" | "cwd"> & {
+        messages: Message[];
+      },
+    ) => {
+      const topTaskUid = isSubTask ? task?.parentId : uid;
+      const cwd = data.cwd;
+      if (!topTaskUid || !cwd) return;
+
+      manageBrowserSessions({
+        taskId: topTaskUid,
+        messages
+      })
+
+      clearNotification();
+      vscodeHost.onTaskRunning(topTaskUid);
+    },
+  );
+
   const onStreamFinish = useLatest(
     (
       data: Pick<Task, "id" | "cwd" | "status"> & {
@@ -147,6 +169,11 @@ function Chat({ user, uid, info }: ChatProps) {
       const topTaskUid = isSubTask ? task?.parentId : uid;
       const cwd = data.cwd;
       if (!topTaskUid || !cwd) return;
+
+      manageBrowserSessions({
+        taskId: topTaskUid,
+        messages
+      })
 
       if (data.status === "failed" && data.error) {
         let autoApprove = autoApproveGuard.current === "auto";
@@ -223,6 +250,7 @@ function Chat({ user, uid, info }: ChatProps) {
   );
 
   const shouldStopAutoApprove = useShouldStopAutoApprove();
+
   const chatKit = useLiveChatKit({
     store,
     blobStore,
@@ -252,9 +280,8 @@ function Chat({ user, uid, info }: ChatProps) {
       return lastAssistantMessageIsCompleteWithToolCalls(x);
     },
     onOverrideMessages,
-    onStreamStart() {
-      clearNotification();
-      vscodeHost.onTaskRunning(task?.parentId || uid);
+    onStreamStart(data) {
+      onStreamStart.current(data);
     },
     onStreamFinish(data) {
       onStreamFinish.current(data);
@@ -275,11 +302,6 @@ function Chat({ user, uid, info }: ChatProps) {
   const isTaskWithoutContent =
     (info.type === "new-task" && !info.prompt && !info.files?.length) ||
     (info.type === "open-task" && messages.length === 0);
-
-  useManageBrowserSessions({
-    uid: task?.parentId || uid,
-    messages,
-  });
 
   const approvalAndRetry = useApprovalAndRetry({
     ...chat,

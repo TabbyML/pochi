@@ -43,7 +43,11 @@ export type LiveChatKitOptions<T> = {
     messages: Message[];
     abortSignal: AbortSignal;
   }) => void | Promise<void>;
-  onStreamStart?: () => void;
+  onStreamStart?: (
+    data: Pick<Task, "id" | "cwd"> & {
+      messages: Message[];
+    },
+  ) => void;
   onStreamFinish?: (
     data: Pick<Task, "id" | "cwd" | "status"> & {
       messages: Message[];
@@ -85,7 +89,11 @@ export class LiveChatKit<
   readonly chat: T;
   private readonly transport: FlexibleChatTransport;
 
-  onStreamStart?: () => void;
+  onStreamStart?: (
+    data: Pick<Task, "id" | "cwd"> & {
+      messages: Message[];
+    },
+  ) => void;
   onStreamFinish?: (
     data: Pick<Task, "id" | "cwd" | "status"> & {
       messages: Message[];
@@ -337,7 +345,11 @@ export class LiveChatKit<
 
       this.lastStepStartTimestamp = Date.now();
 
-      this.onStreamStart?.();
+      this.onStreamStart?.({
+        id: this.taskId,
+        cwd: this.task?.cwd ?? null,
+        messages: [...messages],
+      });
     }
   };
 
