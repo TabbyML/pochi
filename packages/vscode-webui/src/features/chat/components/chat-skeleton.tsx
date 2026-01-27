@@ -8,19 +8,11 @@ import {
 } from "../styles";
 import { ChatToolBarSkeleton } from "./chat-toolbar";
 
-interface ChatSkeletonProps {
-  className?: string;
-  toolbarClassName?: string;
-}
-
-export function ChatSkeleton({
-  className,
-  toolbarClassName,
-}: ChatSkeletonProps) {
+export function ChatSkeleton() {
   const skeletonClass = "bg-[var(--vscode-inputOption-hoverBackground)]";
   return (
     <ChatContextProviderStub>
-      <div className={className ?? ChatContainerClassName}>
+      <div className={ChatContainerClassName}>
         <div className="mb-2 flex flex-1 flex-col gap-6 px-4 pt-8">
           <div className="flex flex-col">
             <div className="flex items-center gap-2 pb-2">
@@ -45,7 +37,7 @@ export function ChatSkeleton({
             </div>
           </div>
         </div>
-        <div className={toolbarClassName ?? ChatToolbarContainerClassName}>
+        <div className={ChatToolbarContainerClassName}>
           <ChatToolBarSkeleton />
         </div>
       </div>
