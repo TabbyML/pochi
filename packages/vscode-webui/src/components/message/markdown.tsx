@@ -431,7 +431,7 @@ export function MessageMarkdown({
         if (!path || path === BuiltInAgentPath) {
           return (
             <span className="mx-px inline-flex items-center gap-1 rounded-sm border border-border bg-muted px-1.5 py-0.5 align-baseline font-medium text-muted-foreground text-sm/4">
-              {cleanId}
+              {cleanId.replaceAll("/", "")}
             </span>
           );
         }

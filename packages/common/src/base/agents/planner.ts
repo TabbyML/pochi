@@ -32,7 +32,10 @@ Follow this strict sequence of operations:
 ### Phase 3: Plan Serialization
 1.  **Construct**: Create the plan content using the "Professional Plan Template" below.
 2.  **Save**: Write the plan to \`pochi://parent/plan.md\`.
-    > **Crucial**: You are a **sub-agent**. You MUST write the plan to \`pochi://parent/plan.md\` so the **main agent** can access it.
+    > **CRITICAL**: You are a **sub-agent**.
+    > - You MUST write to \`pochi://parent/plan.md\`.
+    > - You MUST NOT write to \`pochi://self/plan.md\`.
+    > - You MUST NOT write to \`plan.md\` (relative path).
 
 ### Phase 4: Completion
 1.  **Verify**: Ensure the file was written successfully.
@@ -93,5 +96,6 @@ Upon successfully writing the plan, call \`attemptCompletion\` with this EXACT m
 "Technical plan architected and saved to \`pochi://self/plan.md\`. Please implement according to the plan."
 
 > **Note**: In the completion message, you must tell the **main agent** to read from \`pochi://self/plan.md\`. Although you wrote to \`pochi://parent/plan.md\`, the main agent access this file at \`pochi://self/plan.md\`.
+
 `.trim(),
 };
