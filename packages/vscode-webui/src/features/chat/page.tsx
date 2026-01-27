@@ -435,7 +435,7 @@ function Chat({ user, uid, info }: ChatProps) {
         })}
         hideEmptyPlaceholder={!isTaskWithoutContent}
         forkTask={task?.cwd ? forkTask : undefined}
-        hideCheckPoint={isSubTask}
+        isSubTask={isSubTask}
         repairMermaid={repairMermaid}
         repairingChart={repairingChart}
       />

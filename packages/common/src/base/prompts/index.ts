@@ -85,5 +85,5 @@ function createCustomAgentPrompt(id: string, path?: string) {
       return match.replace("<", "&lt;");
     },
   );
-  return `<custom-agent id="${id}" path="${path || BuiltInAgentPath}">newTask:${processedAgentName}</custom-agent>`;
+  return `<custom-agent id="${id}" path="${path || BuiltInAgentPath}">Please use newTask tool with ${processedAgentName} agent to complete following request</custom-agent>`;
 }
