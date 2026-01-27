@@ -225,6 +225,8 @@ export class WorktreeManager implements vscode.Disposable {
       setupWorktree(newWorktree.path);
       return newWorktree;
     }
+
+    vscode.window.showErrorMessage("Failed to create worktree.");
     return null;
   }
 
