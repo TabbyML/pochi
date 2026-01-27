@@ -31,7 +31,6 @@ import { StepCount } from "./lib/step-count";
 
 import { BackgroundJobManager } from "./lib/background-job-manager";
 import { Chat } from "./livekit";
-import { createOnOverrideMessages } from "./on-override-messages";
 
 import { executeToolCall } from "./tools";
 import type { ToolCallOptions } from "./types";
@@ -185,7 +184,6 @@ export class TaskRunner {
 
       abortSignal: options.abortSignal,
 
-      onOverrideMessages: createOnOverrideMessages(this.cwd),
       getters: {
         getLLM: () => options.llm,
         getEnvironment: async () => ({

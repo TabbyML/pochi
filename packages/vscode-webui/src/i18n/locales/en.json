@@ -14,9 +14,9 @@
     "subtitle": "Pochi is powered by AI, so errors may occur.",
     "tips": {
       "attachments": "to chat with files",
-      "context": "to attach context",
-      "workflow": "to trigger workflow"
+      "context": "to attach context"
     },
+
     "autoSave": {
       "title": "Pochi doesn't work well with auto-save enabled.",
       "description": "Pochi relies on pending file changes to display diffs of its edits, which requires auto-save to be disabled."
@@ -129,10 +129,7 @@
       "openInTab": "Allows to open the task in a new tab",
       "hideRecommendSettings": "Hide Recommended Settings"
     },
-    "workflows": {
-      "title": "Workflows",
-      "noWorkflows": "No workflows found in workspace."
-    },
+
     "rules": {
       "title": "Rules",
       "noRules": "No rules found in workspace.",
@@ -374,11 +371,11 @@
   "mentionList": {
     "noResultsFound": "No results found",
     "typeToSearch": "Type to search...",
-    "workflow": "workflow",
     "agent": "agent",
     "skill": "skill",
     "useHashForIssues": "use # to search for github issues"
   },
+
   "subtask": {
     "back": "Back",
     "complete": "Complete",

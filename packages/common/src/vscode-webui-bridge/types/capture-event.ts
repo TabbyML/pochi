@@ -1,11 +1,5 @@
 export type CaptureEvent =
   | {
-      event: "selectWorkflow";
-      properties: {
-        workflowId: string;
-      };
-    }
-  | {
       event: "executeToolCall";
       properties: {
         toolName: string;

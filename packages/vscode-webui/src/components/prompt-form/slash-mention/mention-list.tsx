@@ -18,22 +18,7 @@ import {
   useScrollIntoView,
 } from "../shared";
 
-// Types for workflow items
-export interface WorkflowData {
-  id: string;
-  path: string;
-  content: string;
-  frontmatter: { model?: string };
-}
-
 export type SlashCandidate =
-  | {
-      type: "workflow";
-      id: string;
-      label: string;
-      path: string;
-      rawData: WorkflowData;
-    }
   | {
       type: "custom-agent";
       id: string;
@@ -78,14 +63,6 @@ export const SlashMentionList = forwardRef<
 
   const handleSelect = useCallback(
     async (item: SlashCandidate) => {
-      if (item.type === "workflow") {
-        vscodeHost.capture({
-          event: "selectWorkflow",
-          properties: {
-            workflowId: item.rawData.id,
-          },
-        });
-      }
       if (item.type === "custom-agent") {
         vscodeHost.capture({
           event: "selectCustomAgent",
@@ -152,7 +129,7 @@ interface CandidateItemViewProps {
 }
 
 /**
- * Candidate item view for displaying workflow / custom-agent / skill files
+ * Candidate item view for displaying custom-agent / skill files
  */
 const CandidateItemView = memo(function SlashCandidateItemView({
   isSelected,
@@ -186,8 +163,6 @@ const CandidateItemView = memo(function SlashCandidateItemView({
 
 function getTypeLabel(option: SlashCandidate) {
   switch (option.type) {
-    case "workflow":
-      return "mentionList.workflow";
     case "custom-agent":
       return "mentionList.agent";
     case "skill":
@@ -200,9 +175,6 @@ function getTypeLabel(option: SlashCandidate) {
 function getOptionKey(option: SlashCandidate, idx: number) {
   if (option.type === "custom-agent") {
     return `agent_${option.id}`;
-  }
-  if (option.type === "workflow") {
-    return `workflow_${option.id}`;
   }
   if (option.type === "skill") {
     return `skill_${option.id}`;

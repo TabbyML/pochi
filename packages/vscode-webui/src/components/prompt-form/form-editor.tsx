@@ -158,9 +158,7 @@ export function FormEditor({
 
   const onSelectSlashCandidate = useLatest((data: SlashCandidate) => {
     let model: string | undefined;
-    if (data.type === "workflow") {
-      model = data.rawData.frontmatter.model;
-    } else if (data.type === "custom-agent") {
+    if (data.type === "custom-agent") {
       model = data.rawData.model;
     }
     const foundModel = resolveModelFromId(model, models);
@@ -334,15 +332,12 @@ export function FormEditor({
               >;
               let popup: Array<{ destroy: () => void; hide: () => void }>;
 
-              // Fetch items function for WorkflowList
+              // Fetch items function for SlashMentionList
               const fetchItems = async (query?: string) => {
                 const data = await debouncedListSlashCommand();
                 if (!data) return [];
-                const workflowResults = fuzzySearchSlashCandidates(
-                  query,
-                  data.options,
-                );
-                return workflowResults;
+                const results = fuzzySearchSlashCandidates(query, data.options);
+                return results;
               };
 
               const updateIsComposingRef = (v: boolean) => {
@@ -724,8 +719,7 @@ const debouncedQueryGithubIssues = asyncDebounce(async (query?: string) => {
 
 export const debouncedListSlashCommand = debounceWithCachedValue(
   async () => {
-    const [workflows, customAgents, skills] = await Promise.all([
-      vscodeHost.listWorkflows(),
+    const [customAgents, skills] = await Promise.all([
       threadSignal(await vscodeHost.readCustomAgents()),
       threadSignal(await vscodeHost.readSkills()),
     ]);
@@ -750,13 +744,6 @@ export const debouncedListSlashCommand = debounceWithCachedValue(
           path: x.filePath,
           rawData: x,
         })),
-      ...workflows.map((x) => ({
-        type: "workflow" as const,
-        id: x.id,
-        label: x.id,
-        path: x.path,
-        rawData: x,
-      })),
     ];
     return {
       options,

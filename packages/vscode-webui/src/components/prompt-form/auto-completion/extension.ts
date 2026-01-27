@@ -340,8 +340,8 @@ export const AutoCompleteExtension = Extension.create<
 
 function isMentionExtensionActive(state: EditorState) {
   const fileMentionState = fileMentionPluginKey.getState(state);
-  const workflowMentionState = SlashMentionPluginKey.getState(state);
-  return fileMentionState?.active || workflowMentionState?.active;
+  const slashMentionState = SlashMentionPluginKey.getState(state);
+  return fileMentionState?.active || slashMentionState?.active;
 }
 
 const hintPluginKey = new PluginKey("hint");

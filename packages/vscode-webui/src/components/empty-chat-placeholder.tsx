@@ -66,10 +66,6 @@ function FunContent() {
           <span className="mr-2 text-base">@</span>{" "}
           {t("placeholder.tips.context")}
         </li>
-        <li className="mb-2 flex items-center">
-          <span className="mr-3 ml-1 text-base">/</span>{" "}
-          {t("placeholder.tips.workflow")}
-        </li>
       </ul>
     </>
   );

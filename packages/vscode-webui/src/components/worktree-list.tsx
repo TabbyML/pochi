@@ -35,7 +35,6 @@ import { useWorktrees } from "@/lib/hooks/use-worktrees";
 import { cn } from "@/lib/utils";
 import { getBaseName } from "@/lib/utils/file";
 import { vscodeHost } from "@/lib/vscode";
-import { prompts } from "@getpochi/common";
 import {
   getWorktreeNameFromWorktreePath,
   parseGitOriginUrl,
@@ -628,7 +627,7 @@ function CreatePrDropdown({
       // FIXME toast tips?
       return;
     }
-    const prompt = prompts.createPr(isDraft);
+    const prompt = `Please create ${isDraft ? "draft" : "PR"}`;
     vscodeHost.openTaskInPanel({
       type: "new-task",
       cwd: worktreePath,

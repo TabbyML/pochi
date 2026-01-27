@@ -5,7 +5,6 @@ import { CustomAgentSection } from "./sections/custom-agent-section";
 import { ModelSection } from "./sections/model-section";
 import { SkillSection } from "./sections/skill-section";
 import { ToolsSection } from "./sections/tools-section";
-import { WorkflowsSection } from "./sections/workflows-section";
 import { WorkspaceRulesSection } from "./sections/workspace-rules-section";
 
 export function SettingsPage() {
@@ -15,9 +14,8 @@ export function SettingsPage() {
         <div className="space-y-1">
           <AccountSection />
           <WorkspaceRulesSection />
-          <SkillSection />
           <CustomAgentSection />
-          <WorkflowsSection />
+          <SkillSection />
           <ToolsSection />
           <ModelSection />
           <AdvancedSettingsSection />

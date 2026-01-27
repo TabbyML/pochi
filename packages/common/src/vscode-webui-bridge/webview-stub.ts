@@ -97,16 +97,6 @@ const VSCodeHostStub = {
   listRuleFiles: (): Promise<RuleFile[]> => {
     return Promise.resolve([]);
   },
-  listWorkflows: (): Promise<
-    {
-      id: string;
-      path: string;
-      content: string;
-      frontmatter: { model?: string };
-    }[]
-  > => {
-    return Promise.resolve([]);
-  },
   readActiveTabs: (): Promise<
     ThreadSignalSerialization<Array<{ filepath: string; isDir: boolean }>>
   > => {

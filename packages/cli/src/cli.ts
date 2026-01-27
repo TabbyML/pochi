@@ -42,7 +42,6 @@ import { handleShellCompletion } from "./completion";
 import { findRipgrep } from "./lib/find-ripgrep";
 import { loadAgents } from "./lib/load-agents";
 import { loadSkills } from "./lib/load-skills";
-import { type Workflow, loadWorkflows } from "./lib/workflow-loader";
 
 import type {
   CustomAgentFile,
@@ -95,7 +94,7 @@ const program = new Command()
   .optionsGroup("Prompt:")
   .option(
     "-p, --prompt <prompt>",
-    "Create a new task with a given prompt. Input can also be piped. For example: `cat my-prompt.md | pochi`. Workflows can be triggered with `/workflow-name`, like `pochi -p /create-pr`.",
+    "Create a new task with a given prompt. Input can also be piped. For example: `cat my-prompt.md | pochi`.",
   )
   .option(
     "-a, --attach <path...>",
@@ -156,14 +155,12 @@ const program = new Command()
     // Load custom agents and skills
     const customAgents = await loadAgents(process.cwd());
     const skills = await loadSkills(process.cwd());
-    const workflows = await loadWorkflows(process.cwd());
 
     const { uid, prompt, attachments } = await parseTaskInput(
       options,
       program,
       {
         customAgents: customAgents,
-        workflows,
         skills,
       },
     );
@@ -231,7 +228,6 @@ const program = new Command()
     const abortController = createAbortControllerWithGracefulShutdown();
 
     const llm = await createLLMConfig(program, options, {
-      workflows,
       customAgents,
     });
 
@@ -333,7 +329,6 @@ async function parseTaskInput(
   options: ProgramOpts,
   program: Program,
   slashCommandContext: {
-    workflows: Workflow[];
     customAgents: CustomAgentFile[];
     skills: SkillFile[];
   },
@@ -375,7 +370,6 @@ async function createLLMConfig(
   program: Program,
   options: ProgramOpts,
   slashCommandContext: {
-    workflows: Workflow[];
     customAgents: ValidCustomAgentFile[];
   },
 ): Promise<LLMRequestData> {

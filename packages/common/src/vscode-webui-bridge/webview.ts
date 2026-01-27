@@ -106,19 +106,6 @@ export interface VSCodeHostApi {
   listRuleFiles(): Promise<RuleFile[]>;
 
   /**
-   * List all workflows from .pochirules/workflows directory
-   * Returns an array of objects containing the name and content of each workflow.
-   */
-  listWorkflows(): Promise<
-    {
-      id: string;
-      path: string;
-      content: string;
-      frontmatter: { model?: string };
-    }[]
-  >;
-
-  /**
    * Get active tabs with real-time updates via ThreadSignal
    * Each tab is represented by an object with:
    * - filepath: Path to the file

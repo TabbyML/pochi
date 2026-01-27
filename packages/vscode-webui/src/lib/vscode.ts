@@ -75,7 +75,6 @@ function createVSCodeHost(): VSCodeHostApi {
         "openFile",
         "readResourceURI",
         "listRuleFiles",
-        "listWorkflows",
         "capture",
         "readMcpStatus",
         "fetchThirdPartyRules",
