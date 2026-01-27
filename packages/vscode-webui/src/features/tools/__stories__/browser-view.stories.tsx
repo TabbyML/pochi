@@ -1,3 +1,4 @@
+import { queryClient } from "@/lib/query-client";
 import type { Meta, StoryObj } from "@storybook/react";
 import type { NewTaskToolViewProps } from "../components/new-task";
 import { BrowserView } from "../components/new-task/browser-view";
@@ -40,6 +41,15 @@ const meta: Meta<typeof BrowserView> = {
     (Story) => {
       // @ts-ignore
       window.WebSocket = MockWebSocket;
+      // Seed the query cache with mock browser sessions
+      queryClient.setQueryData(["browserSessions"], {
+        value: {
+          "task-123": {
+            taskId: "task-123",
+            streamUrl: "ws://mock-stream/success",
+          },
+        },
+      });
       return (
         <div className="w-[800px]">
           <Story />
@@ -81,7 +91,6 @@ const baseProps: NewTaskToolViewProps = {
   isLoading: false,
   messages: [],
   uid: "task-123",
-  streamUrl: "ws://mock-stream/success",
   taskSource: {
     isLoading: false,
     messages: [],
