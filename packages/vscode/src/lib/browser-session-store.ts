@@ -1,8 +1,8 @@
+import { spawn } from "node:child_process";
 import type { BrowserSession } from "@getpochi/common/vscode-webui-bridge";
 import { signal } from "@preact/signals-core";
 import { injectable, singleton } from "tsyringe";
 import { getAvailablePort } from "./get-available-port";
-import { spawn } from "node:child_process";
 
 @injectable()
 @singleton()

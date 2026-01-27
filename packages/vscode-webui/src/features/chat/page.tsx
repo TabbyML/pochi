@@ -154,8 +154,8 @@ function Chat({ user, uid, info }: ChatProps) {
 
       manageBrowserSessions({
         taskId: topTaskUid,
-        messages
-      })
+        messages,
+      });
 
       clearNotification();
       vscodeHost.onTaskRunning(topTaskUid);
@@ -175,8 +175,8 @@ function Chat({ user, uid, info }: ChatProps) {
 
       manageBrowserSessions({
         taskId: topTaskUid,
-        messages
-      })
+        messages,
+      });
 
       if (data.status === "failed" && data.error) {
         let autoApprove = autoApproveGuard.current === "auto";
