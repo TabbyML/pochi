@@ -30,7 +30,7 @@ const meta = {
   } as unknown as NewTaskToolViewProps,
   decorators: [
     (Story) => (
-      <div className="w-[400px] p-4">
+      <div className="p-4">
         <Story />
       </div>
     ),

@@ -25,7 +25,7 @@ export function PlannerView(props: NewTaskToolViewProps) {
   const sendRetry = useSendRetry();
   const navigate = useNavigate();
   const description = tool?.input?.description;
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   const handleReviewPlan = () => {
     navigate({
@@ -48,16 +48,44 @@ export function PlannerView(props: NewTaskToolViewProps) {
         <div className="flex items-center gap-2 border-b bg-muted px-3 py-2 font-medium text-muted-foreground text-xs">
           <ClipboardList className="size-3.5" />
           <span className="flex-1">{description}</span>
+        </div>
+        <ScrollArea viewportClassname="max-h-[300px]">
+          <div className="p-3 text-xs">
+            <MessageMarkdown>{file?.content || ""}</MessageMarkdown>
+          </div>
+        </ScrollArea>
+        <div className="flex items-center justify-between gap-2 border-t bg-muted p-2">
           {taskSource && taskSource.messages.length > 1 && (
             <ExpandIcon
-              className="cursor-pointer"
-              isExpanded={isExpanded}
-              onClick={() => setIsExpanded(!isExpanded)}
+              className="mt-1 rotate-270 cursor-pointer text-muted-foreground"
+              isExpanded={!isCollapsed}
+              onClick={() => setIsCollapsed(!isCollapsed)}
             />
           )}
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="xs"
+              className="h-7 px-2"
+              onClick={handleReviewPlan}
+              disabled={isExecuting}
+            >
+              <FilePenLine className="mr-0.5 size-3.5" />
+              {t("planCard.reviewPlan")}
+            </Button>
+            <Button
+              size="xs"
+              className="h-7 px-2"
+              onClick={handleExecutePlan}
+              disabled={isExecuting}
+            >
+              <Play className="mr-0.5 size-3.5" />
+              {t("planCard.executePlan")}
+            </Button>
+          </div>
         </div>
-        {isExpanded && taskSource && taskSource.messages.length > 1 && (
-          <ScrollArea className="border-b" viewportClassname="max-h-[300px]">
+        {isCollapsed && taskSource && taskSource.messages.length > 1 && (
+          <ScrollArea className="border-t" viewportClassname="max-h-[300px]">
             <div className="p-1">
               <FixedStateChatContextProvider
                 toolCallStatusRegistry={toolCallStatusRegistryRef?.current}
@@ -65,38 +93,14 @@ export function PlannerView(props: NewTaskToolViewProps) {
                 <TaskThread
                   source={{ ...taskSource, isLoading: false }}
                   showMessageList={true}
+                  showTodos={false}
+                  scrollAreaClassName="border-none"
                   assistant={{ name: "Planner" }}
                 />
               </FixedStateChatContextProvider>
             </div>
           </ScrollArea>
         )}
-        <ScrollArea viewportClassname="max-h-[300px]">
-          <div className="p-3 text-xs">
-            <MessageMarkdown>{file?.content || ""}</MessageMarkdown>
-          </div>
-        </ScrollArea>
-        <div className="flex items-center justify-end gap-2 border-t bg-muted p-2">
-          <Button
-            variant="outline"
-            size="xs"
-            className="h-7 px-2"
-            onClick={handleReviewPlan}
-            disabled={isExecuting}
-          >
-            <FilePenLine className="mr-0.5 size-3.5" />
-            {t("planCard.reviewPlan")}
-          </Button>
-          <Button
-            size="xs"
-            className="h-7 px-2"
-            onClick={handleExecutePlan}
-            disabled={isExecuting}
-          >
-            <Play className="mr-0.5 size-3.5" />
-            {t("planCard.executePlan")}
-          </Button>
-        </div>
       </div>
     </div>
   );
