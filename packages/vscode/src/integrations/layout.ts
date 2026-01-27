@@ -1,3 +1,4 @@
+import * as os from "node:os";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { WorkspaceScope } from "@/lib/workspace-scoped";
 import { listWorkspaceFiles } from "@getpochi/common/tool-utils";
@@ -67,16 +68,11 @@ export class LayoutManager implements vscode.Disposable {
           if (terminal && this.newOpenTerminal.getItems().includes(terminal)) {
             this.newOpenTerminal.remove(terminal);
 
-            // Do not apply layout if the terminal is created by user to avoid the case of:
+            // Do not apply layout if the terminal is created by default to avoid the case of:
             // User wants to open the sidebar/bottom-panel and the terminal panel is the active view,
             // then a default terminal will be created. But auto apply Pochi layout can directly move
             // the terminal to the editor group and close the sidebar/bottom-panel.
-
-            // Determine if the terminal was created by the user directly
-            // We have no api to detect it, checking the creationOptions is the best effort
-            const isCreateByUser = Object.entries(
-              terminal.creationOptions,
-            ).every(([_, value]) => value === undefined);
+            const isCreateByDefault = isLikelyDefaultPanelTerminal(terminal);
 
             const autoApplyPochiLayout =
               configuration.advancedSettings.value.pochiLayout?.enabled;
@@ -88,7 +84,7 @@ export class LayoutManager implements vscode.Disposable {
               workspaceScope.cwd ??
               undefined;
 
-            if (autoApplyPochiLayout && !isCreateByUser) {
+            if (autoApplyPochiLayout && !isCreateByDefault) {
               await this.applyPochiLayout({
                 cwd,
                 movePanelToSidePanel: true,
@@ -1048,4 +1044,76 @@ async function findDefaultTextDocument(
   }
 
   return await openNewUntitledFile();
+}
+
+function isLikelyDefaultPanelTerminal(terminal: vscode.Terminal): boolean {
+  // Determine if the terminal was created by default when the terminal panel appears
+  // We have no api to detect it, checking the creationOptions is the best effort
+
+  const creationOptions = terminal.creationOptions;
+
+  // If it's a PseudoTerminal or ExtensionTerminal, it's not a default terminal
+  if ("pty" in creationOptions) {
+    return false;
+  }
+
+  const termOptions = creationOptions as vscode.TerminalOptions;
+  if (termOptions.location) {
+    return false;
+  }
+
+  const config = vscode.workspace.getConfiguration("terminal.integrated");
+  const osPlatform = os.platform();
+  const platform =
+    osPlatform === "win32"
+      ? "windows"
+      : osPlatform === "darwin"
+        ? "osx"
+        : "linux";
+
+  const defaultProfileName = config.get<string>(`defaultProfile.${platform}`);
+  if (!defaultProfileName) {
+    return (
+      termOptions.name === undefined &&
+      termOptions.shellPath === undefined &&
+      termOptions.shellArgs === undefined
+    );
+  }
+
+  const profiles = config.get<{ [key: string]: object }>(
+    `profiles.${platform}`,
+    {},
+  );
+  if (defaultProfileName in profiles) {
+    const profile = profiles[defaultProfileName];
+    if (profile && "overrideName" in profile && profile.overrideName) {
+      return termOptions.name === defaultProfileName;
+    }
+  } else if (getContributedTerminalProfiles().includes(defaultProfileName)) {
+    return termOptions.name === defaultProfileName;
+  }
+
+  return termOptions.name === undefined;
+}
+
+function getContributedTerminalProfiles() {
+  const contributedProfiles: string[] = [];
+
+  const extensions = vscode.extensions.all;
+  for (const extension of extensions) {
+    const packageJSON = extension.packageJSON;
+    if (!packageJSON?.contributes?.terminal?.profiles) {
+      continue;
+    }
+    const profiles = packageJSON.contributes.terminal.profiles;
+    if (!Array.isArray(profiles)) {
+      continue;
+    }
+    for (const profile of profiles) {
+      if (profile.title) {
+        contributedProfiles.push(profile.title);
+      }
+    }
+  }
+  return contributedProfiles;
 }
