@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { getLogger } from "@/lib/logger";
+import { getTerminalEnv } from "@getpochi/common/env-utils";
 import { getShellPath } from "@getpochi/common/tool-utils";
 import * as vscode from "vscode";
 import { OutputManager } from "./output";
@@ -63,11 +64,7 @@ export class TerminalJob implements vscode.Disposable {
       cwd: config.cwd,
       location: config.location,
       shellPath: getShellPath(),
-      env: {
-        PAGER: "cat",
-        GIT_COMMITTER_NAME: "Pochi",
-        GIT_COMMITTER_EMAIL: "noreply@getpochi.com",
-      },
+      env: getTerminalEnv(),
       iconPath: new vscode.ThemeIcon("piano"),
       hideFromUser: false,
       isTransient: false,

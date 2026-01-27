@@ -343,10 +343,12 @@ const VSCodeHostStub = {
   },
   readTaskArchived(): Promise<{
     value: ThreadSignalSerialization<Record<string, boolean>>;
+    hasArchivableTasks: ThreadSignalSerialization<boolean>;
     setTaskArchived: (params: TaskArchivedParams) => Promise<void>;
   }> {
     return Promise.resolve({
       value: {} as ThreadSignalSerialization<Record<string, boolean>>,
+      hasArchivableTasks: {} as ThreadSignalSerialization<boolean>,
       setTaskArchived: (_params: TaskArchivedParams) => Promise.resolve(),
     });
   },

@@ -90,7 +90,7 @@ export function WorktreeList({
 }) {
   const { t } = useTranslation();
   const [showAnyTasks, setShowAnyTasks] = useState(false);
-  const { setTaskArchived } = useTaskArchived();
+  const { setTaskArchived, hasArchivableTasks } = useTaskArchived();
 
   const { data: currentWorkspace, isLoading: isLoadingCurrentWorkspace } =
     useCurrentWorkspace();
@@ -195,7 +195,7 @@ export function WorktreeList({
   const containsOnlyWorkspaceGroup =
     optimisticGroups.length === 1 &&
     optimisticGroups[0].path === (workspacePath || cwd) &&
-    !deletedGroups.length;
+    (!deletedGroups.length || !showAnyTasks);
 
   // Archive all tasks older than 7 days across all worktrees (no cwd = all worktrees)
   const handleArchiveAllOldTasks = () => {
@@ -243,21 +243,23 @@ export function WorktreeList({
           </Tooltip>
 
           {/* Archive Old Tasks Button */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 w-6 p-0"
-                aria-label="archive-old-tasks-button"
-                onClick={handleArchiveAllOldTasks}
-                data-testid="global-archive-old-tasks"
-              >
-                <Archive className="size-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>{t("tasksPage.archiveOldTasks")}</TooltipContent>
-          </Tooltip>
+          {hasArchivableTasks && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 w-6 p-0"
+                  aria-label="archive-old-tasks-button"
+                  onClick={handleArchiveAllOldTasks}
+                  data-testid="global-archive-old-tasks"
+                >
+                  <Archive className="size-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{t("tasksPage.archiveOldTasks")}</TooltipContent>
+            </Tooltip>
+          )}
         </div>
       </div>
 

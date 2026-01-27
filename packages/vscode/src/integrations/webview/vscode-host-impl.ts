@@ -1152,15 +1152,26 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   };
 
   readTaskArchived = async () => {
+    const oneWeekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
     return {
       value: ThreadSignal.serialize(this.taskStateStore.getArchivedSignal()),
+      hasArchivableTasks: ThreadSignal.serialize(
+        computed(() => {
+          const tasks = this.taskHistoryStore.tasks.value;
+          const archived = this.taskStateStore.getArchivedSignal().value;
+          return Object.values(tasks).some((task) => {
+            if (task.parentId !== null) return false;
+            if (archived[task.id]) return false;
+            return task.updatedAt < oneWeekAgo;
+          });
+        }),
+      ),
       setTaskArchived: async (params: TaskArchivedParams) => {
         if (params.type === "single") {
           await this.taskStateStore.setArchived({
             [params.taskId]: params.archived,
           });
         } else if (params.type === "batch") {
-          const oneWeekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
           const tasks = this.taskHistoryStore.tasks.value;
           const updates: Record<string, boolean> = {};
 
