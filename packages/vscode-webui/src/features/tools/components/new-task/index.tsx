@@ -6,7 +6,6 @@ import {
   ToolCallStatusRegistry,
 } from "@/features/chat";
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
-import { useBrowserSessions } from "@/lib/use-browser-sessions";
 import { useDefaultStore } from "@/lib/use-default-store";
 import { cn } from "@/lib/utils";
 import { isVSCodeEnvironment, vscodeHost } from "@/lib/vscode";
@@ -112,19 +111,17 @@ function LiveSubTaskToolView(props: NewTaskToolProps & { uid: string }) {
   return <NewTaskToolView {...props} taskSource={taskSource} uid={uid} />;
 }
 
-interface NewTaskToolViewProps extends ToolProps<"newTask"> {
+export interface NewTaskToolViewProps extends ToolProps<"newTask"> {
   taskSource?: (TaskThreadSource & { parentId?: string }) | undefined;
   uid: string | undefined;
   toolCallStatusRegistryRef?: RefObject<ToolCallStatusRegistry>;
+  // For storybook visualization
+  streamUrl?: string;
 }
 
-function NewTaskToolView({
-  tool,
-  isExecuting,
-  taskSource,
-  uid,
-  toolCallStatusRegistryRef,
-}: NewTaskToolViewProps) {
+function NewTaskToolView(props: NewTaskToolViewProps) {
+  const { tool, isExecuting, taskSource, uid, toolCallStatusRegistryRef } =
+    props;
   const store = useDefaultStore();
   const agent = tool.input?.agentType;
   const description = tool.input?.description ?? "";
@@ -146,9 +143,9 @@ function NewTaskToolView({
     }
   }, [isExecuting, completed, setShowMessageList]);
 
-  const browserSessions = useBrowserSessions();
-  const streamUrl =
-    browserSessions[taskSource?.parentId || uid || ""]?.streamUrl;
+  if (agentType === "browser") {
+    return <BrowserView {...props} />;
+  }
 
   return (
     <div>
@@ -184,9 +181,6 @@ function NewTaskToolView({
           />
         )}
       </ToolTitle>
-      {agentType === "browser" && streamUrl && (
-        <BrowserView streamUrl={streamUrl} />
-      )}
       {taskSource && taskSource.messages.length > 1 && (
         <div className="mt-1 pl-6">
           <FixedStateChatContextProvider
