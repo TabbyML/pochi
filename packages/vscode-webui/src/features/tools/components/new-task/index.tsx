@@ -92,7 +92,6 @@ function BackgroundTaskToolView(
           className="h-6 px-2 text-xs"
           onClick={openInTab}
           disabled={!canOpen}
-          // eslint-disable-next-line i18next/no-literal-string
         >
           {"ASYNC"}
         </Button>
