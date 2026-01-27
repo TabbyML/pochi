@@ -39,7 +39,7 @@ export class BrowserSessionStore {
 
   getAgentBrowserEnvs(taskId: string): Record<string, string> | undefined {
     const browserSession = this.browserSessions.value[taskId];
-    if(!browserSession) {
+    if (!browserSession) {
       return;
     }
     return {
