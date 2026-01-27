@@ -4,10 +4,14 @@ import type {
   VSCodeHostApi,
   WebviewHostApi,
 } from "@getpochi/common/vscode-webui-bridge";
-import { catalog } from "@getpochi/livekit";
+import {
+  catalog,
+  extractTaskResult,
+  getTaskErrorMessage,
+  mapTaskStatusToBackgroundStatus,
+} from "@getpochi/livekit";
 import { ThreadNestedWindow } from "@quilted/threads";
 import type { WebviewApi } from "vscode-webview";
-import { extractTaskResult } from "../features/chat/lib/tool-call-life-cycle";
 import { queryClient } from "./query-client";
 import type { useDefaultStore } from "./use-default-store";
 
@@ -186,7 +190,7 @@ function createVSCodeHost(): VSCodeHostApi {
             };
           }
 
-          const status = mapTaskStatus(task.status);
+          const status = mapTaskStatusToBackgroundStatus(task.status);
           if (status !== "completed") {
             return {
               content:
@@ -240,29 +244,3 @@ function createVSCodeHost(): VSCodeHostApi {
 }
 
 export const vscodeHost = createVSCodeHost();
-
-function mapTaskStatus(
-  status:
-    | "completed"
-    | "pending-input"
-    | "failed"
-    | "pending-tool"
-    | "pending-model",
-): ExecuteCommandResult["status"] {
-  switch (status) {
-    case "pending-input":
-      return "idle";
-    case "pending-tool":
-    case "pending-model":
-      return "running";
-    case "completed":
-    case "failed":
-      return "completed";
-  }
-}
-
-function getTaskErrorMessage(error: unknown): string | undefined {
-  if (!error || typeof error !== "object") return undefined;
-  const record = error as { message?: unknown };
-  return typeof record.message === "string" ? record.message : undefined;
-}
