@@ -1,17 +1,26 @@
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { cn, tw } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { ChatContextProviderStub } from "../lib/chat-state";
+import {
+  ChatContainerClassName,
+  ChatToolbarContainerClassName,
+} from "../styles";
 import { ChatToolBarSkeleton } from "./chat-toolbar";
 
-const ChatContainerClassName = tw`mx-auto flex h-screen max-w-6xl flex-col`;
-const ChatToolbarContainerClassName = tw`relative flex flex-col px-4`;
+interface ChatSkeletonProps {
+  className?: string;
+  toolbarClassName?: string;
+}
 
-export function ChatSkeleton() {
+export function ChatSkeleton({
+  className,
+  toolbarClassName,
+}: ChatSkeletonProps) {
   const skeletonClass = "bg-[var(--vscode-inputOption-hoverBackground)]";
   return (
     <ChatContextProviderStub>
-      <div className={ChatContainerClassName}>
+      <div className={className ?? ChatContainerClassName}>
         <div className="mb-2 flex flex-1 flex-col gap-6 px-4 pt-8">
           <div className="flex flex-col">
             <div className="flex items-center gap-2 pb-2">
@@ -36,7 +45,7 @@ export function ChatSkeleton() {
             </div>
           </div>
         </div>
-        <div className={ChatToolbarContainerClassName}>
+        <div className={toolbarClassName ?? ChatToolbarContainerClassName}>
           <ChatToolBarSkeleton />
         </div>
       </div>

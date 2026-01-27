@@ -6,7 +6,7 @@ import { usePochiCredentials } from "@/lib/hooks/use-pochi-credentials";
 import { useTaskMcpConfigOverride } from "@/lib/hooks/use-task-mcp-config-override";
 import { blobStore } from "@/lib/remote-blob-store";
 import { useDefaultStore } from "@/lib/use-default-store";
-import { cn, tw } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { vscodeHost } from "@/lib/vscode";
 import { useChat } from "@ai-sdk/react";
 import { formatters } from "@getpochi/common";
@@ -45,8 +45,10 @@ import { onOverrideMessages } from "./lib/on-override-messages";
 import { useLiveChatKitGetters } from "./lib/use-live-chat-kit-getters";
 import { useSendTaskNotification } from "./lib/use-send-task-notification";
 
-const ChatContainerClassName = tw`mx-auto flex h-screen max-w-6xl flex-col`;
-const ChatToolbarContainerClassName = tw`relative flex flex-col px-4`;
+import {
+  ChatContainerClassName,
+  ChatToolbarContainerClassName,
+} from "./styles";
 
 export function ChatPage(props: ChatProps) {
   return (
