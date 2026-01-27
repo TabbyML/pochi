@@ -37,11 +37,14 @@ export class BrowserSessionStore {
     child.unref();
   }
 
-  getAgentBrowserEnvs(taskId: string): Record<string, string> {
+  getAgentBrowserEnvs(taskId: string): Record<string, string> | undefined {
     const browserSession = this.browserSessions.value[taskId];
+    if(!browserSession) {
+      return;
+    }
     return {
       AGENT_BROWSER_SESSION: taskId,
-      AGENT_BROWSER_STREAM_PORT: String(browserSession?.port),
+      AGENT_BROWSER_STREAM_PORT: String(browserSession.port),
     };
   }
 }

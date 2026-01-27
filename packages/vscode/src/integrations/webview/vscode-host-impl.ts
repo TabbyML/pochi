@@ -454,7 +454,6 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
           error: "No task found.",
         };
       }
-
       const abortSignal = new ThreadAbortSignal(options.abortSignal);
       const envs = resolveToolCallEnvs(toolName, args, this.task);
       const toolCallStart = Date.now();
@@ -1262,7 +1261,7 @@ const resolveToolCallEnvs = (
   args: unknown,
   task: { id: string; parentId: string | null },
 ) => {
-  let envs: Record<string, string> = {};
+  let envs: Record<string, string> | undefined;
 
   if (toolName !== "executeCommand") {
     return envs;
