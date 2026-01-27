@@ -234,11 +234,7 @@ Pochi v0.5.5
 Prompt:
   -p, --prompt <prompt>   Create a new task with the given prompt. You can also
                           pipe input to use as a prompt, for example: `cat
-                          .pochi/workflows/create-pr.md | pochi`. To use a
-                          workflow, use /workflow-name, for example: `pochi -p
-                          /create-pr`. Workflows can be embedded in larger
-                          prompts, for example: `pochi -p "please /create-pr
-                          with feat semantic convention"`
+                          prompt.txt | pochi`.
 
 Options:
   --max-steps <number>    Maximum number of stepsto run the task. If the task
@@ -979,7 +975,7 @@ We could operate on the default worktree directly; however, since those two issu
 
 ### Creating Worktree
 
-There are two ways to create a new Worktree,
+There are multiple ways to create a new Worktree,
 
 1. Create from Pochi sidebar directly
 
@@ -1019,7 +1015,10 @@ There are two ways to create a new Worktree,
   ![Open Worktree in Pochi](../assets/images/worktree-pochi.png)
 </div>
 
-In both cases, Pochi will create and check out the branch at the specified disk path as a worktree. You can then perform any action as if it were a standard Git repository, as an independent dev environment in each worktree.
+3. Let Pochi create a worktree for a new coding task\
+   When you are submitting the message to create a new task, using `Cmd/Ctrl + Enter`, then Pochi will create a worktree for the new task. The worktree/branch name is generated according to the coding task.
+
+In all cases, Pochi will create and check out the branch at the specified disk path as a worktree. You can then perform any action as if it were a standard Git repository, as an independent dev environment in each worktree.
 
 ### Create Task in Pochi
 
@@ -1554,91 +1553,6 @@ Having issues? Here are a few things to check:
 * **Sign-in/Model Configuration:** Verify that you are either signed in to your Pochi account or have a valid API key configured in your `~/.pochi/config.jsonc`.
 
 For more help, check the full [Troubleshooting](/troubleshooting) page or join our community on [Discord](https://getpochi.com/discord).
-
-
-# Workflows
-URL: /workflows
-Automate common development sequences
-***
-
-title: Workflows
-description: Automate common development sequences
-icon: "Workflow"
-----------------
-
-# Workflows
-
-Workflows are step-by-step automation templates that guide Pochi through complex, multi-step processes. Think of them as detailed recipes that Pochi can follow to complete common development tasks consistently and efficiently.
-
-### Configure
-
-Workflows shall be put inside `.pochi/workflows/` directory in your workspace root. Each workflow is a markdown file with a specific name. You can also specify metadata, such as which model to use for the workflow, through YAML frontmatter.
-
-Pochi also supports global workflows, which will be loaded from `~/.pochi/workflows`. This allows you to define a set of common workflows that you use across all of your projects, without having to copy them into each project's workspace.
-
-`.pochi/workflows/create-pr.md` is an example we used in Pochi's own development.
-
-```markdown
----
-model: "anthropic/claude-4-sonnet"
----
-
-Please help create a PR for the current staging changes, following these guidelines:
-- If there are no staging changes but there are uncommitted changes, please stage them first.
-- Create a branch name based on the current git diff status.
-- Write a meaningful commit message/PR title.
-- Use the gh CLI to create a PR.
-- When running the push operation, it might be aborted due to a husky pre-push hook. For formatting issues, amend the files and try again. For other issues, try to resolve them as much as possible.
-- The base branch for the PR should always be `main`.
-- Always push the branch to the remote repository before creating the PR.
-
-When creating PR with markdown description, pay attention to escape backticks, otherwise it will be executed as command substitution in the shell.
-```
-
-### Embedding Bash Commands
-
-You can use a single line prefixed with `!` to execute a command. The output of the command will be embedded into the prompt sent to the model.
-
-```markdown
-!`git diff --cached`
-
-Please review the staged changes and suggest improvements.
-```
-
-### Usage
-
-Once your workflows are set up, using them is straightforward:
-
-1. **Type `/` in VS Code** to trigger the Pochi workflow selector
-2. **Select a workflow** from the dropdown menu and press `Enter`.
-3. You can attached additional context when running the workflow, e.g `/create-pr assign Meng for review after creation`.
-
-<div
-  style={{
-  position: "relative",
-  paddingBottom: "53.7%",
-  height: 0,
-  overflow: "hidden",
-  maxWidth: "100%",
-}}
->
-  <iframe
-    src="https://drive.google.com/file/d/1p9UeAfkLEOlXBABF4CGub_aqAlAnmbVe/preview"
-    style={{
-    position: "absolute",
-    top: 0,
-    left: 0,
-    width: "100%",
-    height: "100%",
-    border: "none",
-    borderRadius: "8px",
-  }}
-    allowFullScreen
-    title="Pochi Demo - Workflows"
-  />
-</div>
-
-*This video demonstrates how to use workflows in VS Code*
 
 
 # Weekly Update
@@ -7872,6 +7786,10 @@ image: "/og-image/vibe-coding-macos-app-cover-image.png"
 --------------------------------------------------------
 
 # Vibe Coding a macOS GitHub Client in Pochi
+
+<Callout title="TL;DR">
+  This app was built entirely through a single Pochi task. You can view the full prompt history and agent actions **[here](https://app.getpochi.com/share/p-3b6489af950746878703552dc5842561)**.
+</Callout>
 
 I deal with a lot of GitHub notifications every day - issue activities, PR reviews, mentions/tags, and administrative notifications. Viewing this on GitHub leaves me with an interface that becomes messy real fast, with slow network requests any time I try to filter or group notifications.
 
