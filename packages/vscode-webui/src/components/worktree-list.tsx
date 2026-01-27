@@ -195,7 +195,7 @@ export function WorktreeList({
   const containsOnlyWorkspaceGroup =
     optimisticGroups.length === 1 &&
     optimisticGroups[0].path === (workspacePath || cwd) &&
-    !deletedGroups.length;
+    (!deletedGroups.length || !showAnyTasks);
 
   // Archive all tasks older than 7 days across all worktrees (no cwd = all worktrees)
   const handleArchiveAllOldTasks = () => {
