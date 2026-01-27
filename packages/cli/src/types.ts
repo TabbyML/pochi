@@ -1,5 +1,6 @@
 import type { McpHub } from "@getpochi/common/mcp-utils";
 import type { CustomAgent, Skill } from "@getpochi/tools";
+import type { AsyncSubTaskManager } from "./lib/async-subtask-manager";
 import type { BackgroundJobManager } from "./lib/background-job-manager";
 import type { FileSystem } from "./lib/file-system";
 import type { TaskRunner } from "./task-runner";
@@ -43,4 +44,9 @@ export interface ToolCallOptions {
    * Manager for handling background jobs in the CLI
    */
   backgroundJobManager: BackgroundJobManager;
+
+  /**
+   * Manager for handling async sub-task results in the CLI
+   */
+  asyncSubTaskManager: AsyncSubTaskManager;
 }
