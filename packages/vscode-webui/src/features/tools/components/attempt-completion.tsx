@@ -21,7 +21,7 @@ export const AttemptCompletionTool: React.FC<
 
   const currentWorktree = useMemo(() => {
     if (!worktrees || !currentWorkspace) return null;
-    return worktrees.find((wt) => wt.path === currentWorkspace.workspacePath);
+    return worktrees.find((wt) => wt.path === currentWorkspace.cwd);
   }, [worktrees, currentWorkspace]);
 
   const hasPR = !!currentWorktree?.data?.github?.pullRequest;
