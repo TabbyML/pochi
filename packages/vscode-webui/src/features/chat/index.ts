@@ -14,6 +14,7 @@ export {
   useHandleChatEvents,
 } from "./lib/chat-events";
 export { useLiveChatKitGetters } from "./lib/use-live-chat-kit-getters";
+export { useSendTaskNotification } from "./lib/use-send-task-notification";
 export {
   useBackgroundJobInfo,
   useReplaceJobIdsInContent,
@@ -23,7 +24,8 @@ export {
 // Export new tool call state management hooks
 export type { ToolCallLifeCycle } from "./lib/tool-call-life-cycle";
 
-export { ChatPage, ChatSkeleton } from "./page";
+export { ChatPage } from "./page";
+export { ChatSkeleton } from "./components/chat-skeleton";
 
 export { CreateTaskInput } from "./components/create-task-input";
 
