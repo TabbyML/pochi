@@ -18,7 +18,6 @@ export function BrowserView(props: NewTaskToolViewProps) {
   const wsRef = useRef<WebSocket | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
   const description = tool.input?.description ?? "";
-
   const browserSessions = useBrowserSessions();
 
   const streamUrl =
