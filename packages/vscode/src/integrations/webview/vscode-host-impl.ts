@@ -541,7 +541,18 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     },
   ) => {
     if (!this.task) return;
-    let resolvedPath = resolvePochiUri(filePath, this.task.id);
+    let fileUri = vscode.Uri.parse(filePath);
+    let resolvedPath = filePath;
+
+    // Open file directly if it's a pochi scheme
+    if (fileUri.scheme === "pochi") {
+      resolvedPath = resolvePochiUri(filePath, this.task.id);
+      vscode.commands.executeCommand(
+        "vscode.open",
+        vscode.Uri.parse(resolvedPath),
+      );
+      return;
+    }
 
     // Expand ~ to home directory if present
     if (resolvedPath.startsWith("~/")) {
@@ -549,7 +560,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       resolvedPath = resolvedPath.replace(/^~/, homedir);
     }
 
-    const fileUri = path.isAbsolute(resolvedPath)
+    fileUri = path.isAbsolute(resolvedPath)
       ? vscode.Uri.file(resolvedPath)
       : this.cwd
         ? vscode.Uri.joinPath(vscode.Uri.file(this.cwd), resolvedPath)
