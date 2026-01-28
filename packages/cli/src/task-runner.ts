@@ -29,12 +29,7 @@ import {
 
 import { resolveToolCallArgs } from "@getpochi/common/tool-utils";
 import type z from "zod/v4";
-import {
-  CompoundFileSystem,
-  type FileSystem,
-  LocalFileSystem,
-  TaskFileSystem,
-} from "./lib/file-system";
+import type { FileSystem } from "./lib/file-system";
 import { readEnvironment } from "./lib/read-environment";
 
 import { StepCount } from "./lib/step-count";
@@ -122,6 +117,11 @@ export interface RunnerOptions {
   attemptCompletionSchema?: z.ZodAny;
 
   attemptCompletionHook?: string;
+
+  /**
+   * The file system to use for the task runner.
+   */
+  filesystem: FileSystem;
 }
 
 const logger = getLogger("TaskRunner");
@@ -158,9 +158,7 @@ export class TaskRunner {
     this.blobStore = options.blobStore;
     this.backgroundJobManager = new BackgroundJobManager();
 
-    const localFs = new LocalFileSystem(this.cwd);
-    const taskFs = new TaskFileSystem(options.store);
-    this.fileSystem = new CompoundFileSystem(localFs, taskFs);
+    this.fileSystem = options.filesystem;
 
     this.toolCallOptions = {
       rg: options.rg,
@@ -175,6 +173,7 @@ export class TaskRunner {
 
         const runner = new TaskRunner({
           ...options,
+          filesystem: this.fileSystem,
           blobStore: this.blobStore,
           parts: undefined, // should not use parts from parent
           uid: taskId,
