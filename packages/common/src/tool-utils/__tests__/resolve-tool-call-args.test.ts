@@ -37,25 +37,43 @@ describe("resolveToolCallArgs", () => {
     });
   });
 
-  it("should return non-object inputs as is", () => {
-    expect(resolveToolCallArgs("pochi://-/file.txt", taskId)).toBe("pochi://-/file.txt");
-    expect(resolveToolCallArgs(123, taskId)).toBe(123);
-    expect(resolveToolCallArgs(null, taskId)).toBe(null);
+  it("should resolve strings directly", () => {
+    expect(resolveToolCallArgs("pochi://-/file.txt", taskId)).toBe("pochi://task-123/file.txt");
   });
 
-  it("should handle objects with no pochi URIs", () => {
-    const input = { a: 1, b: "c" };
-    expect(resolveToolCallArgs(input, taskId)).toEqual(input);
+  it("should handle nested objects", () => {
+    const input = {
+      nested: {
+        path: "pochi://-/file.txt",
+      },
+      array: [
+        { path: "pochi://-/file2.txt" }
+      ]
+    };
+    const result = resolveToolCallArgs(input, taskId);
+    expect(result).toEqual({
+      nested: {
+        path: "pochi://task-123/file.txt",
+      },
+      array: [
+        { path: "pochi://task-123/file2.txt" }
+      ]
+    });
   });
 
   it("should handle arrays", () => {
     const input = ["pochi://-/file1.txt", "pochi://-/file2.txt"];
     const result = resolveToolCallArgs(input, taskId);
-    // If it's an array, we expect it to still be an array (or at least handle it correctly)
     expect(Array.isArray(result)).toBe(true);
     expect(result).toEqual([
       "pochi://task-123/file1.txt",
       "pochi://task-123/file2.txt",
     ]);
+  });
+
+  it("should return other types as is", () => {
+    expect(resolveToolCallArgs(123, taskId)).toBe(123);
+    expect(resolveToolCallArgs(null, taskId)).toBe(null);
+    expect(resolveToolCallArgs(true, taskId)).toBe(true);
   });
 });
