@@ -164,6 +164,7 @@ function createVSCodeHost(): VSCodeHostApi {
             logger.warn(
               `Ignoring writeTaskFile for unsupported path: ${filePath}`,
             );
+            throw new Error(`Filepath ${filePath} is not accessible`);
           }
         },
 
