@@ -596,6 +596,71 @@ const z = 20;`);
     });
   });
 
+  describe("extra empty line regression", () => {
+    it("should not introduce extra empty line when replacing import with type import", async () => {
+      // This test reproduces the bug where replacing a line that ends with \n
+      // with replace content that also ends with \n results in an extra empty line
+      const fileContent = `import { formatters } from "@getpochi/common";
+import { Message } from "@getpochi/livekit";
+import type { Todo } from "@getpochi/tools";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";`;
+
+      const searchContent = `import { formatters } from "@getpochi/common";
+import { Message } from "@getpochi/livekit";
+import type { Todo } from "@getpochi/tools";
+`;
+
+      const replaceContent = `import { formatters } from "@getpochi/common";
+import type { Message } from "@getpochi/livekit";
+import type { Todo } from "@getpochi/tools";
+`;
+
+      const result = await parseDiffAndApply(
+        fileContent,
+        searchContent,
+        replaceContent,
+      );
+
+      // Should NOT have an extra empty line between the imports
+      expect(result).toBe(`import { formatters } from "@getpochi/common";
+import type { Message } from "@getpochi/livekit";
+import type { Todo } from "@getpochi/tools";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";`);
+
+      // Verify no extra empty line
+      expect(result).not.toContain(
+        `import type { Todo } from "@getpochi/tools";\n\nimport`,
+      );
+    });
+
+    it("should not introduce extra empty line when search and replace end with newline", async () => {
+      const fileContent = `line1
+line2
+line3
+line4`;
+
+      const searchContent = `line1
+line2
+`;
+
+      const replaceContent = `lineA
+lineB
+`;
+
+      const result = await parseDiffAndApply(
+        fileContent,
+        searchContent,
+        replaceContent,
+      );
+
+      // Should NOT have an extra empty line
+      expect(result).toBe(`lineA
+lineB
+line3
+line4`);
+    });
+  });
+
   describe("multiple line editing with processMultipleDiffs", () => {
     it("should not insert extra empty lines when applying multiple diffs", async () => {
       const fileContent = `function example() {
