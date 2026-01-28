@@ -13,7 +13,7 @@ interface ChatAreaProps {
   className?: string;
   hideEmptyPlaceholder?: boolean;
   forkTask?: (commitId: string, messageId?: string) => Promise<void>;
-  hideCheckPoint?: boolean;
+  isSubTask?: boolean;
   repairMermaid?: MermaidContext["repairMermaid"];
   repairingChart?: string | null;
 }
@@ -26,7 +26,7 @@ export function ChatArea({
   className,
   hideEmptyPlaceholder,
   forkTask,
-  hideCheckPoint,
+  isSubTask,
   repairMermaid,
   repairingChart,
 }: ChatAreaProps) {
@@ -48,7 +48,7 @@ export function ChatArea({
         containerRef={messagesContainerRef}
         className={className}
         forkTask={forkTask}
-        hideCheckPoint={hideCheckPoint}
+        isSubTask={isSubTask}
         repairMermaid={repairMermaid}
         repairingChart={repairingChart}
       />

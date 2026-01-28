@@ -24,7 +24,16 @@ export const TaskThread: React.FC<{
     image?: string | null;
   };
   showMessageList?: boolean;
-}> = ({ source, user, assistant, showMessageList = true }) => {
+  showTodos?: boolean;
+  scrollAreaClassName?: string;
+}> = ({
+  source,
+  user,
+  assistant,
+  showMessageList = true,
+  showTodos = true,
+  scrollAreaClassName,
+}) => {
   const [isLoading, setIsLoading] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [todos, setTodos] = useState<Todo[]>([]);
@@ -78,7 +87,7 @@ export const TaskThread: React.FC<{
 
   return (
     <div className="flex flex-col">
-      {todos && todos.length > 0 && (
+      {showTodos && todos && todos.length > 0 && (
         <div className="my-1 flex flex-col px-2 py-1">
           {todos
             .filter((x) => x.status !== "cancelled")
@@ -96,7 +105,10 @@ export const TaskThread: React.FC<{
       )}
       {showMessageList && (
         <ScrollArea
-          viewportClassname="max-h-[300px] my-1 rounded-sm border"
+          viewportClassname={cn(
+            "max-h-[300px] my-1 rounded-sm border",
+            scrollAreaClassName,
+          )}
           ref={newTaskContainer}
         >
           <MessageList
@@ -110,7 +122,7 @@ export const TaskThread: React.FC<{
             isLoading={isLoading}
             containerRef={undefined}
             showLoader={false}
-            hideCheckPoint={true}
+            isSubTask={true}
           />
         </ScrollArea>
       )}

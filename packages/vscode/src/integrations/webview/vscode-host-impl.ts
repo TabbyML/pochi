@@ -442,7 +442,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       const abortSignal = new ThreadAbortSignal(options.abortSignal);
       const toolCallStart = Date.now();
       const result = await safeCall(
-        tool(resolveToolCallArgs(args, this.task), {
+        tool(resolveToolCallArgs(args, this.task.id), {
           abortSignal,
           messages: [],
           toolCallId: options.toolCallId,
@@ -511,11 +511,14 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         : undefined;
 
       return await safeCall<PreviewReturnType>(
-        tool(resolveToolCallArgs(args, this.task) as Partial<unknown> | null, {
-          ...options,
-          abortSignal,
-          cwd: this.cwd,
-        }),
+        tool(
+          resolveToolCallArgs(args, this.task.id) as Partial<unknown> | null,
+          {
+            ...options,
+            abortSignal,
+            cwd: this.cwd,
+          },
+        ),
       );
     },
   );
@@ -536,7 +539,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
 
     // Open file directly if it's a pochi scheme
     if (fileUri.scheme === "pochi" && this.task) {
-      resolvedPath = resolvePochiUri(filePath, this.task);
+      resolvedPath = resolvePochiUri(filePath, this.task.id);
       vscode.commands.executeCommand(
         "vscode.open",
         vscode.Uri.parse(resolvedPath),
@@ -1213,27 +1216,18 @@ function safeCall<T>(x: Promise<T>) {
   });
 }
 
-const resolvePochiUri = (
-  path: string,
-  task: { id: string; parentId: string | null },
-) => {
+const resolvePochiUri = (path: string, taskId: string) => {
   const uri = vscode.Uri.parse(path);
   if (uri.scheme !== "pochi") {
     return path;
   }
-  if (uri.authority === "self") {
-    return path.replace("self", task.id);
-  }
-  if (uri.authority === "parent") {
-    return path.replace("parent", task.parentId || task.id);
+  if (uri.authority === "-") {
+    return path.replace("-", taskId);
   }
   return path;
 };
 
-const resolveToolCallArgs = (
-  args: unknown,
-  task: { id: string; parentId: string | null },
-) => {
+const resolveToolCallArgs = (args: unknown, taskId: string) => {
   if (!R.isObjectType(args)) {
     return args;
   }
@@ -1241,7 +1235,7 @@ const resolveToolCallArgs = (
   return R.mapValues(args, (v) => {
     if (typeof v === "string") {
       try {
-        return resolvePochiUri(v, task);
+        return resolvePochiUri(v, taskId);
       } catch (err) {
         return v;
       }

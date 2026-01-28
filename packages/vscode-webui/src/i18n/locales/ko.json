@@ -474,8 +474,8 @@
     "fixError": "Pochi로 오류 수정"
   },
   "planCard": {
-    "title": "계획",
     "reviewPlan": "검토",
-    "executePlan": "계획 실행"
+    "executePlan": "계획 실행",
+    "creatingPlan": "코드를 분석하고 계획을 수립 중입니다..."
   }
 }

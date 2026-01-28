@@ -11,7 +11,7 @@ import type { ToolProps } from "./types";
 
 export const AttemptCompletionTool: React.FC<
   ToolProps<"attemptCompletion">
-> = ({ tool: toolCall, messages }) => {
+> = ({ tool: toolCall, messages, isSubTask }) => {
   const { t } = useTranslation();
   const { result = "" } = toolCall.input || {};
   const sendMessage = useSendMessage();
@@ -21,7 +21,7 @@ export const AttemptCompletionTool: React.FC<
 
   const currentWorktree = useMemo(() => {
     if (!worktrees || !currentWorkspace) return null;
-    return worktrees.find((wt) => wt.path === currentWorkspace.workspacePath);
+    return worktrees.find((wt) => wt.path === currentWorkspace.cwd);
   }, [worktrees, currentWorkspace]);
 
   const hasPR = !!currentWorktree?.data?.github?.pullRequest;
@@ -57,7 +57,7 @@ export const AttemptCompletionTool: React.FC<
           <Check className="size-4" />
           {t("toolInvocation.taskCompleted")}
         </span>
-        {isLastPart && !hasPR && (
+        {isLastPart && !hasPR && !isSubTask && (
           <Button
             variant="ghost"
             size="sm"

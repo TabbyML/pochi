@@ -478,8 +478,8 @@
     "fixError": "使用 Pochi 修复错误"
   },
   "planCard": {
-    "title": "计划",
     "reviewPlan": "评审",
-    "executePlan": "执行计划"
+    "executePlan": "执行计划",
+    "creatingPlan": "正在分析您的代码并制定计划..."
   }
 }
