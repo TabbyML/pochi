@@ -8,19 +8,22 @@ export const resolvePochiUri = (path: string, taskId: string) => {
   return path.replace("/-/", `/${taskId}/`);
 };
 
-export const resolveToolCallArgs = (args: unknown, taskId: string) => {
-  if (!R.isObjectType(args)) {
-    return args;
+export const resolveToolCallArgs = (args: unknown, taskId: string): unknown => {
+  if (typeof args === "string") {
+    try {
+      return resolvePochiUri(args, taskId);
+    } catch (err) {
+      return args;
+    }
   }
 
-  return R.mapValues(args, (v) => {
-    if (typeof v === "string") {
-      try {
-        return resolvePochiUri(v, taskId);
-      } catch (err) {
-        return v;
-      }
-    }
-    return v;
-  });
+  if (Array.isArray(args)) {
+    return args.map((item) => resolveToolCallArgs(item, taskId));
+  }
+
+  if (R.isObjectType(args)) {
+    return R.mapValues(args, (v) => resolveToolCallArgs(v, taskId));
+  }
+
+  return args;
 };
