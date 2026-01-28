@@ -35,7 +35,7 @@ export function PlannerView(props: NewTaskToolViewProps) {
         storeId: store.storeId,
       },
     });
-    vscodeHost.openFile("pochi://self/plan.md");
+    vscodeHost.openFile("pochi://-/plan.md");
   };
 
   const handleExecutePlan = () => {
