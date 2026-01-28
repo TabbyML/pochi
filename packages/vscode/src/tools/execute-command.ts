@@ -19,7 +19,7 @@ export const executeCommand: ToolFunctionType<
   ClientTools["executeCommand"]
 > = async (
   { command, cwd = ".", timeout },
-  { abortSignal, cwd: workspaceDir },
+  { abortSignal, cwd: workspaceDir, envs },
 ) => {
   const defaultTimeout = 120;
   if (!command) {
@@ -44,6 +44,7 @@ export const executeCommand: ToolFunctionType<
       cwd,
       timeout: timeout ?? defaultTimeout,
       abortSignal,
+      envs,
       onData: (data) => {
         output.value = {
           content: data.output,
@@ -81,6 +82,7 @@ async function executeCommandImpl({
   cwd,
   timeout,
   abortSignal,
+  envs,
   onData,
 }: ExecuteCommandOptions) {
   const shell = getShellPath();
@@ -92,6 +94,7 @@ async function executeCommandImpl({
         cwd,
         timeout,
         abortSignal,
+        envs,
         onData,
       });
     } catch (error) {
@@ -113,6 +116,7 @@ async function executeCommandImpl({
     cwd,
     timeout,
     abortSignal,
+    envs,
     onData,
   });
 }

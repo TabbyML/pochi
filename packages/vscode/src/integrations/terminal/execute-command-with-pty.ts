@@ -29,6 +29,7 @@ export const executeCommandWithPty = async ({
   timeout,
   abortSignal,
   onData,
+  envs,
 }: ExecuteCommandOptions) => {
   const shellCommand = buildShellCommand(command);
   if (!shellCommand) {
@@ -57,6 +58,7 @@ export const executeCommandWithPty = async ({
         cwd,
         env: {
           ...process.env,
+          ...envs,
           PAGER: "cat",
         },
       });

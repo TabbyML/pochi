@@ -1,6 +1,7 @@
 import * as os from "node:os";
 import path from "node:path";
 import { executeCommandWithPty } from "@/integrations/terminal/execute-command-with-pty";
+import { BrowserSessionStore } from "@/lib/browser-session-store";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { CustomAgentManager } from "@/lib/custom-agent";
 import {
@@ -105,7 +106,7 @@ import type { Tool } from "ai";
 import * as R from "remeda";
 import { keys } from "remeda";
 import * as runExclusive from "run-exclusive";
-import { Lifecycle, inject, injectable, scoped } from "tsyringe";
+import { Lifecycle, container, inject, injectable, scoped } from "tsyringe";
 import * as vscode from "vscode";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { CheckpointService } from "../checkpoint/checkpoint-service";
@@ -180,6 +181,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     private readonly taskHistoryStore: TaskHistoryStore,
     private readonly taskStateStore: TaskDataStore,
     private readonly lang: PochiLanguage,
+    private readonly browserSessionStore: BrowserSessionStore,
   ) {}
 
   private get cwd() {
@@ -256,6 +258,20 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
 
   readTasks = async () => {
     return ThreadSignal.serialize(this.taskHistoryStore.tasks);
+  };
+
+  readBrowserSessions = async () => {
+    return ThreadSignal.serialize(
+      computed(() => this.browserSessionStore.browserSessions.value),
+    );
+  };
+
+  registerBrowserSession = async (taskId: string) => {
+    return this.browserSessionStore.registerBrowserSession(taskId);
+  };
+
+  unregisterBrowserSession = async (taskId: string) => {
+    return this.browserSessionStore.unregisterBrowserSession(taskId);
   };
 
   readEnvironment = async (options: {
@@ -438,9 +454,10 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
           error: "No task found.",
         };
       }
-
       const abortSignal = new ThreadAbortSignal(options.abortSignal);
+      const envs = resolveToolCallEnvs(toolName, args, this.task);
       const toolCallStart = Date.now();
+
       const result = await safeCall(
         tool(resolveToolCallArgs(args, this.task.id), {
           abortSignal,
@@ -448,6 +465,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
           toolCallId: options.toolCallId,
           cwd: this.cwd,
           contentType: options.contentType,
+          envs,
         }),
       );
 
@@ -1241,6 +1259,26 @@ const resolveToolCallArgs = (args: unknown, taskId: string) => {
       }
     }
   });
+};
+
+const resolveToolCallEnvs = (
+  toolName: string,
+  args: unknown,
+  task: { id: string; parentId: string | null },
+) => {
+  let envs: Record<string, string> | undefined;
+
+  if (toolName !== "executeCommand") {
+    return envs;
+  }
+
+  const { command } = args as { command: string };
+  if (command?.startsWith("agent-browser")) {
+    const browserSessionStore = container.resolve(BrowserSessionStore);
+    envs = browserSessionStore.getAgentBrowserEnvs(task.parentId || task.id);
+  }
+
+  return envs;
 };
 
 const ToolMap: Record<

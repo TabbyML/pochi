@@ -13,6 +13,7 @@ export type ToolFunctionType<T extends Tool> = (
   options: ToolCallOptions & {
     cwd: string;
     contentType?: string[];
+    envs?: Record<string, string>;
   },
 ) => PromiseLike<InferToolOutput<T>> | InferToolOutput<T>;
 
