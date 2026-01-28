@@ -21,5 +21,6 @@ export const resolveToolCallArgs = (args: unknown, taskId: string) => {
         return v;
       }
     }
+    return v;
   });
 };
