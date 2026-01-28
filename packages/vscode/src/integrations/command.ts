@@ -34,6 +34,7 @@ import { type PochiAdvanceSettings, PochiConfiguration } from "./configuration";
 import { DiffChangesContentProvider } from "./editor/diff-changes-content-provider";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { GitWorktreeInfoProvider } from "./git/git-worktree-info-provider";
+import { getMainWorktreePath } from "./git/util";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { WorktreeManager } from "./git/worktree";
 // biome-ignore lint/style/useImportType: needed for dependency injection
@@ -232,31 +233,32 @@ export class CommandManager implements vscode.Disposable {
 
       vscode.commands.registerCommand("pochi.clearGithubInfo", async () => {
         try {
-          const mainWorktree = this.worktreeManager.getMainWorktree();
+          const cwd =
+            this.workspaceScope.cwd ??
+            this.workspaceScope.workspacePath ??
+            null;
+          const mainWorktreePath = cwd ? await getMainWorktreePath(cwd) : null;
 
-          if (!mainWorktree) {
+          if (!mainWorktreePath) {
             return;
           }
 
           // Clear the GitHub data for the main worktree
-          await this.worktreeInfoProvider.updateGithubIssues(
-            mainWorktree.path,
-            {
-              data: [],
-              updatedAt: undefined,
-              processedAt: undefined,
-              pageOffset: undefined,
-            },
-          );
+          await this.worktreeInfoProvider.updateGithubIssues(mainWorktreePath, {
+            data: [],
+            updatedAt: undefined,
+            processedAt: undefined,
+            pageOffset: undefined,
+          });
 
           // Also clear pull request data if it exists
           await this.worktreeInfoProvider.updateGithubPullRequest(
-            mainWorktree.path,
+            mainWorktreePath,
             undefined,
           );
 
           logger.info(
-            `Cleared GitHub info for main worktree: ${mainWorktree.path}`,
+            `Cleared GitHub info for main worktree: ${mainWorktreePath}`,
           );
           vscode.window.showInformationMessage(
             "GitHub info cleared successfully",
