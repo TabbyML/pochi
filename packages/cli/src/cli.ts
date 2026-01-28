@@ -39,7 +39,13 @@ import { registerAuthCommand } from "./auth";
 
 import { handleShellCompletion } from "./completion";
 
+import {
+  CompoundFileSystem,
+  LocalFileSystem,
+  TaskFileSystem,
+} from "./lib/file-system";
 import { findRipgrep } from "./lib/find-ripgrep";
+
 import { loadAgents } from "./lib/load-agents";
 import { loadSkills } from "./lib/load-skills";
 
@@ -231,6 +237,10 @@ const program = new Command()
       customAgents,
     });
 
+    const localFs = new LocalFileSystem(process.cwd());
+    const taskFs = new TaskFileSystem(store);
+    const filesystem = new CompoundFileSystem(localFs, taskFs);
+
     const runner = new TaskRunner({
       uid,
       store,
@@ -253,6 +263,7 @@ const program = new Command()
         ? parseOutputSchema(options.attemptCompletionSchema)
         : undefined,
       attemptCompletionHook: options.attemptCompletionHook,
+      filesystem,
     });
 
     const renderer = new OutputRenderer(runner.state, {
