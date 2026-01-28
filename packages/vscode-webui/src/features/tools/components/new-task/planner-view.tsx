@@ -91,21 +91,19 @@ export function PlannerView(props: NewTaskToolViewProps) {
           </div>
         </div>
         {isCollapsed && taskSource && taskSource.messages.length > 1 && (
-          <ScrollArea className="border-t" viewportClassname="max-h-[300px]">
-            <div className="p-1">
-              <FixedStateChatContextProvider
-                toolCallStatusRegistry={toolCallStatusRegistryRef?.current}
-              >
-                <TaskThread
-                  source={{ ...taskSource, isLoading: false }}
-                  showMessageList={true}
-                  showTodos={false}
-                  scrollAreaClassName="border-none"
-                  assistant={{ name: "Planner" }}
-                />
-              </FixedStateChatContextProvider>
-            </div>
-          </ScrollArea>
+          <div className="p-1">
+            <FixedStateChatContextProvider
+              toolCallStatusRegistry={toolCallStatusRegistryRef?.current}
+            >
+              <TaskThread
+                source={{ ...taskSource, isLoading: false }}
+                showMessageList={true}
+                showTodos={false}
+                scrollAreaClassName="border-none"
+                assistant={{ name: "Planner" }}
+              />
+            </FixedStateChatContextProvider>
+          </div>
         )}
       </div>
     </div>

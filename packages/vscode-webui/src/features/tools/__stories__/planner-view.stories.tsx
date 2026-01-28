@@ -136,6 +136,86 @@ const defaultTaskSource: NewTaskToolViewProps["taskSource"] = {
         },
       ],
     },
+    {
+      id: "4",
+      role: "assistant",
+      metadata: { kind: "assistant", totalTokens: 0, finishReason: "stop" },
+      parts: [
+        {
+          type: "text",
+          text: "I'll check the package.json dependencies.",
+          state: "done",
+        },
+        {
+          type: "tool-readFile",
+          toolCallId: "call_4",
+          state: "output-available",
+          input: { path: "package.json" },
+          output: {
+            content:
+              '{\n  "name": "project",\n  "version": "1.0.0",\n  "dependencies": {\n    "react": "^18.0.0"\n  }\n}',
+            isTruncated: false,
+          },
+        },
+      ],
+    },
+    {
+      id: "5",
+      role: "assistant",
+      metadata: { kind: "assistant", totalTokens: 0, finishReason: "stop" },
+      parts: [
+        {
+          type: "text",
+          text: "I'll search for existing components.",
+          state: "done",
+        },
+        {
+          type: "tool-globFiles",
+          toolCallId: "call_5",
+          state: "output-available",
+          input: { path: "src/components", globPattern: "*.tsx" },
+          output: {
+            files: ["Button.tsx", "Header.tsx", "Footer.tsx"],
+            isTruncated: false,
+          },
+        },
+      ],
+    },
+    {
+      id: "6",
+      role: "assistant",
+      metadata: { kind: "assistant", totalTokens: 0, finishReason: "stop" },
+      parts: [
+        {
+          type: "text",
+          text: "I'll check the Button component implementation.",
+          state: "done",
+        },
+        {
+          type: "tool-readFile",
+          toolCallId: "call_6",
+          state: "output-available",
+          input: { path: "src/components/Button.tsx" },
+          output: {
+            content:
+              "import React from 'react';\n\nexport const Button = () => <button>Click me</button>;",
+            isTruncated: false,
+          },
+        },
+      ],
+    },
+    {
+      id: "7",
+      role: "assistant",
+      metadata: { kind: "assistant", totalTokens: 0, finishReason: "stop" },
+      parts: [
+        {
+          type: "text",
+          text: "I have gathered enough information. I will now create the plan.",
+          state: "done",
+        },
+      ],
+    },
   ],
   todos: [
     {
