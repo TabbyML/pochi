@@ -223,7 +223,7 @@ export const events = {
     name: "v1.WriteTaskFile",
     schema: Schema.Struct({
       taskId: Schema.String,
-      filePath: Schema.String,
+      filePath: Schema.Literal("/plan.md"),
       content: Schema.String,
     }),
   }),
