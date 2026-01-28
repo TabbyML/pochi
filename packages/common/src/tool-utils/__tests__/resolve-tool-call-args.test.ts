@@ -47,4 +47,15 @@ describe("resolveToolCallArgs", () => {
     const input = { a: 1, b: "c" };
     expect(resolveToolCallArgs(input, taskId)).toEqual(input);
   });
+
+  it("should handle arrays", () => {
+    const input = ["pochi://-/file1.txt", "pochi://-/file2.txt"];
+    const result = resolveToolCallArgs(input, taskId);
+    // If it's an array, we expect it to still be an array (or at least handle it correctly)
+    expect(Array.isArray(result)).toBe(true);
+    expect(result).toEqual([
+      "pochi://task-123/file1.txt",
+      "pochi://task-123/file2.txt",
+    ]);
+  });
 });
