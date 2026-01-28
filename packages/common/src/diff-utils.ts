@@ -42,6 +42,25 @@ export async function parseDiffAndApply(
   const normalizedFileContent = normalizeForSearch(fileContent);
   const normalizedSearchContent = normalizeForSearch(searchContent);
 
+  // If the search content ends with a newline, trim the same trailing whitespace
+  // from replaceContent to avoid introducing extra empty lines
+  const searchContentNormalized = normalizeLineEndings(searchContent);
+  const searchTrailingWhitespace =
+    searchContentNormalized.length - searchContentNormalized.trimEnd().length;
+  let normalizedReplaceContent = normalizeLineEndings(replaceContent);
+  if (searchTrailingWhitespace > 0) {
+    const replaceTrailingWhitespace =
+      normalizedReplaceContent.length -
+      normalizedReplaceContent.trimEnd().length;
+    // Trim the same amount of trailing whitespace from replaceContent as searchContent
+    if (replaceTrailingWhitespace >= searchTrailingWhitespace) {
+      normalizedReplaceContent = normalizedReplaceContent.slice(
+        0,
+        normalizedReplaceContent.length - searchTrailingWhitespace,
+      );
+    }
+  }
+
   if (searchContent === replaceContent) {
     throw new DiffError(
       "Search content and replace content cannot be the same",
@@ -100,7 +119,11 @@ export async function parseDiffAndApply(
   }
 
   // Replace all occurrences
-  let result = replaceMatches(normalizedFileContent, matches, replaceContent);
+  let result = replaceMatches(
+    normalizedFileContent,
+    matches,
+    normalizedReplaceContent,
+  );
   logger.trace("Successfully applied diff");
 
   // Restore trailing whitespace (including multiple newlines) if the original file had any

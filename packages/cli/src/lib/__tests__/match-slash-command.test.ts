@@ -132,7 +132,7 @@ describe("match-slash-command", () => {
         skills,
       });
       expect(result).toBe(
-        'Please use <custom-agent id="test-agent" path=".pochi/agents/test-agent.md">newTask:test-agent</custom-agent> for this task'
+        'Please use <custom-agent id="test-agent" path=".pochi/agents/test-agent.md">Please use the newTask tool to run test-agent to complete the following request:\n</custom-agent> for this task'
       );
     });
 
@@ -143,7 +143,7 @@ describe("match-slash-command", () => {
         skills,
       });
       expect(result).toBe(
-        'Please use <skill id="test-skill" path=".pochi/skills/test-skill/SKILL.md">useSkill:test-skill</skill> for this task',
+        'Please use <skill id="test-skill" path=".pochi/skills/test-skill/SKILL.md">Please use the useSkill tool to run test-skill to complete the following request:\n</skill> for this task',
       );
     });
 
@@ -154,7 +154,7 @@ describe("match-slash-command", () => {
         skills,
       });
       expect(result).toBe(
-        'Use <custom-agent id="test-agent" path=".pochi/agents/test-agent.md">newTask:test-agent</custom-agent> and then <skill id="test-skill" path=".pochi/skills/test-skill/SKILL.md">useSkill:test-skill</skill>',
+        'Use <custom-agent id="test-agent" path=".pochi/agents/test-agent.md">Please use the newTask tool to run test-agent to complete the following request:\n</custom-agent> and then <skill id="test-skill" path=".pochi/skills/test-skill/SKILL.md">Please use the useSkill tool to run test-skill to complete the following request:\n</skill>',
       );
     });
   });

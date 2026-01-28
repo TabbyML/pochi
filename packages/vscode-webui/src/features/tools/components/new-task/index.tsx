@@ -17,7 +17,7 @@ import { useLiveSubTask } from "../../hooks/use-live-sub-task";
 import { StatusIcon } from "../status-icon";
 import { ExpandIcon, ToolTitle } from "../tool-container";
 import type { ToolProps } from "../types";
-import { PlanCard } from "./plan-card";
+import { PlannerView } from "./planner-view";
 
 interface NewTaskToolProps extends ToolProps<"newTask"> {
   // For storybook visualization
@@ -110,19 +110,15 @@ function LiveSubTaskToolView(props: NewTaskToolProps & { uid: string }) {
   return <NewTaskToolView {...props} taskSource={taskSource} uid={uid} />;
 }
 
-interface NewTaskToolViewProps extends ToolProps<"newTask"> {
+export interface NewTaskToolViewProps extends ToolProps<"newTask"> {
   taskSource?: (TaskThreadSource & { parentId?: string }) | undefined;
   uid: string | undefined;
   toolCallStatusRegistryRef?: RefObject<ToolCallStatusRegistry>;
 }
 
-function NewTaskToolView({
-  tool,
-  isExecuting,
-  taskSource,
-  uid,
-  toolCallStatusRegistryRef,
-}: NewTaskToolViewProps) {
+function NewTaskToolView(props: NewTaskToolViewProps) {
+  const { tool, isExecuting, taskSource, uid, toolCallStatusRegistryRef } =
+    props;
   const store = useDefaultStore();
   const agent = tool.input?.agentType;
   const description = tool.input?.description ?? "";
@@ -143,6 +139,11 @@ function NewTaskToolView({
       setShowMessageList(false);
     }
   }, [isExecuting, completed, setShowMessageList]);
+
+  if (agentType === "planner") {
+    return <PlannerView {...props} />;
+  }
+
   return (
     <div>
       <ToolTitle>
@@ -188,11 +189,6 @@ function NewTaskToolView({
               assistant={{ name: agent ?? "Pochi" }}
             />
           </FixedStateChatContextProvider>
-        </div>
-      )}
-      {agentType === "planner" && completed && uid && taskSource?.parentId && (
-        <div className="mt-1 pl-6">
-          <PlanCard uid={uid} parentId={taskSource.parentId} />
         </div>
       )}
     </div>

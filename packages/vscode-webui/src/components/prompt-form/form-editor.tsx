@@ -192,7 +192,7 @@ export function FormEditor({
         Paragraph,
         Text,
         Placeholder.configure({
-          placeholder: t("formEditor.placeholder"),
+          placeholder: () => t("formEditor.placeholder"),
         }),
         CustomEnterKeyHandler(formRef),
         PromptFormMentionExtension.configure(

@@ -8,7 +8,7 @@ export function createSkillPrompt(id: string, path: string) {
   processedSkillName = processedSkillName.replace(skillTagRegex, (match) => {
     return match.replace("<", "&lt;");
   });
-  return `<skill id="${id}" path="${path}">useSkill:${processedSkillName}</skill>`;
+  return `<skill id="${id}" path="${path}">Please use the useSkill tool to run ${processedSkillName} to complete the following request:\n</skill>`;
 }
 
 /**
