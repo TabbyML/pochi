@@ -8079,4 +8079,4 @@ If nothing else, building this app convinced me that evaluating coding agents on
 
 Feel free to check out the full repository **[here](https://github.com/zwpaper/Ghlass)**.
 
-You can also see the full trajectory of my interaction history with the agent **[here](https://app.getpochi.com/share/p-3b6489af950746878703552dc584256)**.
+You can also see the full trajectory of my interaction history with the agent **[here](https://app.getpochi.com/share/p-3b6489af950746878703552dc5842561)**.
