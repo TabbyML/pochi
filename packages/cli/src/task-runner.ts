@@ -37,6 +37,7 @@ import { StepCount } from "./lib/step-count";
 import { BackgroundJobManager } from "./lib/background-job-manager";
 import { Chat } from "./livekit";
 
+import { decodeStoreId } from "@getpochi/common/store-id-utils";
 import { executeToolCall } from "./tools";
 import type { ToolCallOptions } from "./types";
 
@@ -127,6 +128,7 @@ export interface RunnerOptions {
 const logger = getLogger("TaskRunner");
 
 export class TaskRunner {
+  private store: LiveKitStore;
   private blobStore: BlobStore;
   private cwd: string;
   private llm: LLMRequestData;
@@ -173,8 +175,6 @@ export class TaskRunner {
 
         const runner = new TaskRunner({
           ...options,
-          filesystem: this.fileSystem,
-          blobStore: this.blobStore,
           parts: undefined, // should not use parts from parent
           uid: taskId,
           isSubTask: true,
@@ -233,6 +233,7 @@ export class TaskRunner {
       }
     }
 
+    this.store = options.store;
     this.taskId = options.uid;
     this.attemptCompletionHook = options.attemptCompletionHook;
     this.attemptCompletionSchemaOverride = !!options.attemptCompletionSchema;
@@ -424,7 +425,8 @@ export class TaskRunner {
         )}`,
       );
 
-      const resolvedInput = resolveToolCallArgs(toolCall.input, this.taskId);
+      const { taskId } = decodeStoreId(this.store.storeId);
+      const resolvedInput = resolveToolCallArgs(toolCall.input, taskId);
 
       const toolResult = await processContentOutput(
         this.blobStore,
