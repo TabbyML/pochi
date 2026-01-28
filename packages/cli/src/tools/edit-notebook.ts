@@ -1,30 +1,36 @@
-import * as fs from "node:fs/promises";
 import {
   editNotebookCell,
   parseNotebook,
-  resolvePath,
   serializeNotebook,
   validateNotebookPath,
 } from "@getpochi/common/tool-utils";
 import type { ClientTools, ToolFunctionType } from "@getpochi/tools";
+import type { ToolCallOptions } from "../types";
 
 /**
  * Implements the editNotebook tool for CLI.
  * Edits a specific cell in a Jupyter notebook by its cell ID.
  */
 export const editNotebook =
-  (): ToolFunctionType<ClientTools["editNotebook"]> =>
-  async ({ path: filePath, cellId, content }, { cwd }) => {
+  ({
+    fileSystem,
+  }: ToolCallOptions): ToolFunctionType<ClientTools["editNotebook"]> =>
+  async ({ path: filePath, cellId, content }) => {
     try {
-      const absolutePath = resolvePath(filePath, cwd);
-      validateNotebookPath(absolutePath);
+      // validateNotebookPath checks extension .ipynb.
+      // It assumes path is string.
+      // If VFS, we might skip validation or validate on the URI.
+      // validateNotebookPath throws if not .ipynb
+      validateNotebookPath(filePath);
 
-      const fileContent = await fs.readFile(absolutePath, "utf-8");
+      const fileBuffer = await fileSystem.readFile(filePath);
+      const fileContent = new TextDecoder().decode(fileBuffer);
+
       const notebook = parseNotebook(fileContent);
       const updatedNotebook = editNotebookCell(notebook, cellId, content);
       const serialized = serializeNotebook(updatedNotebook);
 
-      await fs.writeFile(absolutePath, serialized, "utf-8");
+      await fileSystem.writeFile(filePath, serialized);
 
       return { success: true };
     } catch (error) {

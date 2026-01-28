@@ -1,18 +1,19 @@
-import * as fs from "node:fs/promises";
 import {
   isPlainText,
   readMediaFile,
-  resolvePath,
   selectFileContent,
 } from "@getpochi/common/tool-utils";
 
 import type { ClientTools, ToolFunctionType } from "@getpochi/tools";
+import type { ToolCallOptions } from "../types";
 
 export const readFile =
-  (): ToolFunctionType<ClientTools["readFile"]> =>
-  async ({ path, startLine, endLine }, { cwd, contentType }) => {
-    const resolvedPath = resolvePath(path, cwd);
-    const fileBuffer = await fs.readFile(resolvedPath);
+  ({
+    fileSystem,
+  }: ToolCallOptions): ToolFunctionType<ClientTools["readFile"]> =>
+  async ({ path, startLine, endLine }, { contentType }) => {
+    const fileBuffer = await fileSystem.readFile(path);
+    const resolvedPath = path;
 
     const isPlainTextFile = isPlainText(fileBuffer);
 

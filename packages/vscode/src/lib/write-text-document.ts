@@ -19,14 +19,8 @@ export async function writeTextDocument(
 ) {
   logger.debug(`Will write to ${path}, content length: ${content.length}`);
 
-  let fileUri = vscode.Uri.parse(path);
-  let resolvedPath = path;
-
-  // Resolve file path if it's not a pochi scheme
-  if (fileUri.scheme !== "pochi") {
-    resolvedPath = resolvePath(path, cwd);
-    fileUri = vscode.Uri.file(resolvedPath);
-  }
+  const resolvedPath = resolvePath(path, cwd);
+  const fileUri = vscode.Uri.file(resolvedPath);
 
   const fileExists = await isFileExists(fileUri);
   if (!fileExists) {

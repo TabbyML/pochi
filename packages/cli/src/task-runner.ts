@@ -9,6 +9,7 @@ import {
 import { findTodos, mergeTodos } from "@getpochi/common/message-utils";
 
 import { spawn } from "node:child_process";
+import type { UITools } from "@getpochi/livekit";
 import {
   type BlobStore,
   type LLMRequestData,
@@ -20,11 +21,20 @@ import { LiveChatKit } from "@getpochi/livekit/node";
 import { type Todo, isUserInputToolPart } from "@getpochi/tools";
 import type { CustomAgent, Skill } from "@getpochi/tools";
 import {
+  type ToolUIPart,
   getToolName,
   isToolUIPart,
   lastAssistantMessageIsCompleteWithToolCalls,
 } from "ai";
+
+import { resolveToolCallArgs } from "@getpochi/common/tool-utils";
 import type z from "zod/v4";
+import {
+  CompoundFileSystem,
+  type FileSystem,
+  LocalFileSystem,
+  TaskFileSystem,
+} from "./lib/file-system";
 import { readEnvironment } from "./lib/read-environment";
 
 import { StepCount } from "./lib/step-count";
@@ -126,6 +136,7 @@ export class TaskRunner {
   private todos: Todo[] = [];
   private chatKit: LiveChatKit<Chat>;
   private backgroundJobManager: BackgroundJobManager;
+  private fileSystem: FileSystem;
 
   private attemptCompletionHook?: string;
 
@@ -146,8 +157,14 @@ export class TaskRunner {
     this.llm = options.llm;
     this.blobStore = options.blobStore;
     this.backgroundJobManager = new BackgroundJobManager();
+
+    const localFs = new LocalFileSystem(this.cwd);
+    const taskFs = new TaskFileSystem(options.store);
+    this.fileSystem = new CompoundFileSystem(localFs, taskFs);
+
     this.toolCallOptions = {
       rg: options.rg,
+      fileSystem: this.fileSystem,
 
       customAgents: options.customAgents,
       skills: options.skills,
@@ -408,10 +425,12 @@ export class TaskRunner {
         )}`,
       );
 
+      const resolvedInput = resolveToolCallArgs(toolCall.input, this.taskId);
+
       const toolResult = await processContentOutput(
         this.blobStore,
         await executeToolCall(
-          toolCall,
+          { ...toolCall, input: resolvedInput } as ToolUIPart<UITools>,
           this.toolCallOptions,
           this.cwd,
           undefined,

@@ -60,6 +60,8 @@ import {
   ignoreWalk,
   isPlainTextFile,
   listWorkspaceFiles,
+  resolvePochiUri,
+  resolveToolCallArgs,
 } from "@getpochi/common/tool-utils";
 import { getVendor } from "@getpochi/common/vendor";
 import {
@@ -104,7 +106,6 @@ import {
   type ThreadSignalSerialization,
 } from "@quilted/threads/signals";
 import type { Tool } from "ai";
-import * as R from "remeda";
 import { keys } from "remeda";
 import * as runExclusive from "run-exclusive";
 import { Lifecycle, inject, injectable, scoped } from "tsyringe";
@@ -444,8 +445,9 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
 
       const abortSignal = new ThreadAbortSignal(options.abortSignal);
       const toolCallStart = Date.now();
+      const resolvedArgs = resolveToolCallArgs(args, this.task.id);
       const result = await safeCall(
-        tool(resolveToolCallArgs(args, this.task.id), {
+        tool(resolvedArgs, {
           abortSignal,
           messages: [],
           toolCallId: options.toolCallId,
@@ -513,15 +515,16 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         ? new ThreadAbortSignal(options.abortSignal)
         : undefined;
 
+      const resolvedArgs = resolveToolCallArgs(
+        args,
+        this.task.id,
+      ) as Partial<unknown> | null;
       return await safeCall<PreviewReturnType>(
-        tool(
-          resolveToolCallArgs(args, this.task.id) as Partial<unknown> | null,
-          {
-            ...options,
-            abortSignal,
-            cwd: this.cwd,
-          },
-        ),
+        tool(resolvedArgs, {
+          ...options,
+          abortSignal,
+          cwd: this.cwd,
+        }),
       );
     },
   );
@@ -537,18 +540,8 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       cellId?: string;
     },
   ) => {
-    let fileUri = vscode.Uri.parse(filePath);
-    let resolvedPath = filePath;
-
-    // Open file directly if it's a pochi scheme
-    if (fileUri.scheme === "pochi" && this.task) {
-      resolvedPath = resolvePochiUri(filePath, this.task.id);
-      vscode.commands.executeCommand(
-        "vscode.open",
-        vscode.Uri.parse(resolvedPath),
-      );
-      return;
-    }
+    if (!this.task) return;
+    let resolvedPath = resolvePochiUri(filePath, this.task.id);
 
     // Expand ~ to home directory if present
     if (resolvedPath.startsWith("~/")) {
@@ -556,7 +549,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       resolvedPath = resolvedPath.replace(/^~/, homedir);
     }
 
-    fileUri = path.isAbsolute(resolvedPath)
+    const fileUri = path.isAbsolute(resolvedPath)
       ? vscode.Uri.file(resolvedPath)
       : this.cwd
         ? vscode.Uri.joinPath(vscode.Uri.file(this.cwd), resolvedPath)
@@ -1225,33 +1218,6 @@ function safeCall<T>(x: Promise<T>) {
     };
   });
 }
-
-const resolvePochiUri = (path: string, taskId: string) => {
-  const uri = vscode.Uri.parse(path);
-  if (uri.scheme !== "pochi") {
-    return path;
-  }
-  if (uri.authority === "-") {
-    return path.replace("-", taskId);
-  }
-  return path;
-};
-
-const resolveToolCallArgs = (args: unknown, taskId: string) => {
-  if (!R.isObjectType(args)) {
-    return args;
-  }
-
-  return R.mapValues(args, (v) => {
-    if (typeof v === "string") {
-      try {
-        return resolvePochiUri(v, taskId);
-      } catch (err) {
-        return v;
-      }
-    }
-  });
-};
 
 const ToolMap: Record<
   string,
