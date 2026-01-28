@@ -11,6 +11,8 @@ import {
   getSystemInfo,
   getWorkspaceRulesFileUri,
 } from "@/lib/env";
+// biome-ignore lint/style/useImportType: needed for dependency injection
+import { ForkTaskStatus } from "@/lib/fork-task-status";
 import { asRelativePath, isFileExists } from "@/lib/fs";
 import { getLogger } from "@/lib/logger";
 // biome-ignore lint/style/useImportType: needed for dependency injection
@@ -180,6 +182,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     private readonly taskHistoryStore: TaskHistoryStore,
     private readonly taskStateStore: TaskDataStore,
     private readonly lang: PochiLanguage,
+    private readonly forkTaskStatus: ForkTaskStatus,
   ) {}
 
   private get cwd() {
@@ -1198,6 +1201,13 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   readLang = async () => ({
     value: ThreadSignal.serialize(this.lang.currentLang),
     updateLang: this.lang.updateLang,
+  });
+
+  readForkTaskStatus = async () => ({
+    status: ThreadSignal.serialize(this.forkTaskStatus.status),
+    setForkTaskStatus: async (uid: string, status: "inProgress" | "ready") => {
+      this.forkTaskStatus.setStatus(uid, status);
+    },
   });
 
   dispose() {
