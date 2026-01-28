@@ -480,8 +480,8 @@
     "fixError": "Fix error with Pochi"
   },
   "planCard": {
-    "title": "Plan",
     "reviewPlan": "Review",
-    "executePlan": "Execute Plan"
+    "executePlan": "Execute Plan",
+    "creatingPlan": "Analyzing your code and creating a plan..."
   }
 }

@@ -47,14 +47,20 @@ export function PlannerView(props: NewTaskToolViewProps) {
       <div className="mt-2 flex flex-col overflow-hidden rounded-md border shadow-sm">
         <div className="flex items-center gap-2 border-b bg-muted px-3 py-2 font-medium text-muted-foreground text-xs">
           <ClipboardList className="size-3.5" />
-          <span className="flex-1">{description}</span>
+          <span className="flex-1 truncate">{description}</span>
         </div>
         <ScrollArea viewportClassname="max-h-[300px]">
           <div className="p-3 text-xs">
-            <MessageMarkdown>{file?.content || ""}</MessageMarkdown>
+            {file?.content ? (
+              <MessageMarkdown>{file.content}</MessageMarkdown>
+            ) : (
+              <div className="flex h-[200px] flex-col items-center justify-center gap-2 p-4 text-center text-muted-foreground">
+                <span className="text-base">{t("planCard.creatingPlan")}</span>
+              </div>
+            )}
           </div>
         </ScrollArea>
-        <div className="flex items-center justify-between gap-2 border-t bg-muted p-2">
+        <div className="flex items-center gap-2 border-t bg-muted p-2">
           {taskSource && taskSource.messages.length > 1 && (
             <ExpandIcon
               className="mt-1 rotate-270 cursor-pointer text-muted-foreground"
@@ -62,7 +68,7 @@ export function PlannerView(props: NewTaskToolViewProps) {
               onClick={() => setIsCollapsed(!isCollapsed)}
             />
           )}
-          <div className="flex items-center gap-2">
+          <div className="ml-auto flex items-center gap-2">
             <Button
               variant="outline"
               size="xs"

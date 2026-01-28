@@ -1,5 +1,7 @@
-import { queryClient } from "@/lib/query-client";
+import { useDefaultStore } from "@/lib/use-default-store";
+import { catalog } from "@getpochi/livekit";
 import type { Meta, StoryObj } from "@storybook/react";
+import { useEffect } from "react";
 import type { NewTaskToolViewProps } from "../components/new-task";
 import { PlannerView } from "../components/new-task/planner-view";
 
@@ -79,96 +81,113 @@ This is a comprehensive plan for implementing the new feature.
 -   Unforeseen database migration issues.
 `;
 
+const defaultTaskSource: NewTaskToolViewProps["taskSource"] = {
+  parentId: "root",
+  messages: [
+    {
+      id: "1",
+      role: "user",
+      parts: [
+        {
+          type: "text",
+          text: "Please create a plan for the new feature.",
+          state: "done",
+        },
+      ],
+    },
+    {
+      id: "2",
+      role: "assistant",
+      metadata: { kind: "assistant", totalTokens: 0, finishReason: "stop" },
+      parts: [
+        {
+          type: "text",
+          text: "I'll start by exploring the codebase.",
+          state: "done",
+        },
+        {
+          type: "tool-listFiles",
+          toolCallId: "call_2",
+          state: "output-available",
+          input: { path: ".", recursive: true },
+          output: {
+            files: ["package.json", "src/index.ts", "README.md"],
+            isTruncated: false,
+          },
+        },
+      ],
+    },
+    {
+      id: "3",
+      role: "assistant",
+      metadata: { kind: "assistant", totalTokens: 0, finishReason: "stop" },
+      parts: [
+        {
+          type: "text",
+          text: "I see the structure. I'll read the README.",
+          state: "done",
+        },
+        {
+          type: "tool-readFile",
+          toolCallId: "call_3",
+          state: "output-available",
+          input: { path: "README.md" },
+          output: { content: "# Project\n...", isTruncated: false },
+        },
+      ],
+    },
+  ],
+  todos: [
+    {
+      id: "1",
+      content: "Analyze requirements",
+      status: "completed",
+      priority: "high",
+    },
+    {
+      id: "2",
+      content: "Design solution",
+      status: "in-progress",
+      priority: "high",
+    },
+    {
+      id: "3",
+      content: "Implement feature",
+      status: "pending",
+      priority: "medium",
+    },
+  ],
+  isLoading: false,
+};
+
 export const Default: Story = {
   args: {
-    taskSource: {
-      parentId: "root",
-      messages: [
-        {
-          id: "1",
-          role: "user",
-          parts: [
-            {
-              type: "text",
-              text: "Please create a plan for the new feature.",
-              state: "done",
-            },
-          ],
-        },
-        {
-          id: "2",
-          role: "assistant",
-          metadata: { kind: "assistant", totalTokens: 0, finishReason: "stop" },
-          parts: [
-            {
-              type: "text",
-              text: "I'll start by exploring the codebase.",
-              state: "done",
-            },
-            {
-              type: "tool-listFiles",
-              toolCallId: "call_2",
-              state: "output-available",
-              input: { path: ".", recursive: true },
-              output: {
-                files: ["package.json", "src/index.ts", "README.md"],
-                isTruncated: false,
-              },
-            },
-          ],
-        },
-        {
-          id: "3",
-          role: "assistant",
-          metadata: { kind: "assistant", totalTokens: 0, finishReason: "stop" },
-          parts: [
-            {
-              type: "text",
-              text: "I see the structure. I'll read the README.",
-              state: "done",
-            },
-            {
-              type: "tool-readFile",
-              toolCallId: "call_3",
-              state: "output-available",
-              input: { path: "README.md" },
-              output: { content: "# Project\n...", isTruncated: false },
-            },
-          ],
-        },
-      ],
-      todos: [
-        {
-          id: "1",
-          content: "Analyze requirements",
-          status: "completed",
-          priority: "high",
-        },
-        {
-          id: "2",
-          content: "Design solution",
-          status: "in-progress",
-          priority: "high",
-        },
-        {
-          id: "3",
-          content: "Implement feature",
-          status: "pending",
-          priority: "medium",
-        },
-      ],
-      isLoading: false,
-    },
+    taskSource: defaultTaskSource,
   },
   decorators: [
     (Story) => {
-      // Seed the store with a plan.md file
-      queryClient.setQueryData(["file"], {
-        taskId: "root",
-        filePath: "/plan.md",
-        content: planContent,
-      });
+      const store = useDefaultStore();
+      useEffect(() => {
+        // Seed the store with a plan.md file
+        store.commit(
+          catalog.events.writeTaskFile({
+            taskId: "root",
+            filePath: "/plan.md",
+            content: planContent,
+          }),
+        );
+      }, [store]);
       return <Story />;
     },
   ],
+};
+
+export const Executing: Story = {
+  args: {
+    isExecuting: true,
+    taskSource: {
+      ...defaultTaskSource,
+      parentId: "executing-task",
+    },
+  },
 };
