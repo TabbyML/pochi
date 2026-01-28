@@ -379,6 +379,7 @@ export interface VSCodeHostApi {
    */
   readTaskArchived(): Promise<{
     value: ThreadSignalSerialization<Record<string, boolean>>;
+    hasArchivableTasks: ThreadSignalSerialization<boolean>;
     setTaskArchived: (params: TaskArchivedParams) => Promise<void>;
   }>;
 

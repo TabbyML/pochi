@@ -18,7 +18,7 @@ import { StatusIcon } from "../status-icon";
 import { ExpandIcon, ToolTitle } from "../tool-container";
 import type { ToolProps } from "../types";
 import { BrowserView } from "./browser-view";
-import { PlanCard } from "./plan-card";
+import { PlannerView } from "./planner-view";
 
 interface NewTaskToolProps extends ToolProps<"newTask"> {
   // For storybook visualization
@@ -144,6 +144,10 @@ function NewTaskToolView(props: NewTaskToolViewProps) {
   if (agentType === "browser") {
     return <BrowserView {...props} />;
   }
+  
+  if (agentType === "planner") {
+    return <PlannerView {...props} />;
+  }
 
   return (
     <div>
@@ -190,11 +194,6 @@ function NewTaskToolView(props: NewTaskToolViewProps) {
               assistant={{ name: agent ?? "Pochi" }}
             />
           </FixedStateChatContextProvider>
-        </div>
-      )}
-      {agentType === "planner" && completed && uid && taskSource?.parentId && (
-        <div className="mt-1 pl-6">
-          <PlanCard uid={uid} parentId={taskSource.parentId} />
         </div>
       )}
     </div>

@@ -51,7 +51,7 @@ export const MessageList: React.FC<{
   className?: string;
   showLoader?: boolean;
   forkTask?: (commitId: string, messageId?: string) => Promise<void>;
-  hideCheckPoint?: boolean;
+  isSubTask?: boolean;
   hideUserEditsActions?: boolean;
   repairMermaid?: MermaidContext["repairMermaid"];
   repairingChart?: string | null;
@@ -65,7 +65,7 @@ export const MessageList: React.FC<{
   className,
   showLoader = true,
   forkTask,
-  hideCheckPoint,
+  isSubTask,
   hideUserEditsActions,
   repairMermaid,
   repairingChart,
@@ -160,7 +160,7 @@ export const MessageList: React.FC<{
                       isExecuting={isExecuting}
                       messages={renderMessages}
                       forkTask={forkTask}
-                      hideCheckPoint={hideCheckPoint}
+                      isSubTask={isSubTask}
                       hideUserEditsActions={hideUserEditsActions}
                       latestCheckpoint={latestCheckpoint}
                       lastCheckpointInMessage={lastCheckpointInMessage}
@@ -182,7 +182,7 @@ export const MessageList: React.FC<{
                   nextMessage={renderMessages[messageIndex + 1]}
                   isLoading={isLoading || isExecuting}
                   forkTask={forkTask}
-                  hideCheckPoint={hideCheckPoint}
+                  isSubTask={isSubTask}
                   latestCheckpoint={latestCheckpoint}
                   lastCheckpointInMessage={lastCheckpointInMessage}
                 />
@@ -250,7 +250,7 @@ function Part({
   isExecuting,
   messages,
   forkTask,
-  hideCheckPoint,
+  isSubTask,
   latestCheckpoint,
   lastCheckpointInMessage,
   hideUserEditsActions,
@@ -264,7 +264,7 @@ function Part({
   isExecuting: boolean;
   messages: Message[];
   forkTask?: (commitId: string) => Promise<void>;
-  hideCheckPoint?: boolean;
+  isSubTask?: boolean;
   hideUserEditsActions?: boolean;
   latestCheckpoint: string | null;
   lastCheckpointInMessage: string | undefined;
@@ -293,7 +293,7 @@ function Part({
   }
 
   if (part.type === "data-checkpoint") {
-    if (role === "assistant" && isVSCodeEnvironment() && !hideCheckPoint) {
+    if (role === "assistant" && isVSCodeEnvironment() && !isSubTask) {
       return (
         <CheckpointUI
           checkpoint={part.data}
@@ -335,6 +335,7 @@ function Part({
         isLoading={isLoading}
         changes={getToolCallCheckpoint(part, messages)}
         messages={messages}
+        isSubTask={isSubTask}
       />
     );
   }
@@ -363,7 +364,7 @@ const SeparatorWithCheckpoint: React.FC<{
   nextMessage: Message;
   isLoading: boolean;
   forkTask?: (commitId: string, messageId?: string) => Promise<void>;
-  hideCheckPoint?: boolean;
+  isSubTask?: boolean;
   latestCheckpoint: string | null;
   lastCheckpointInMessage: string | undefined;
 }> = ({
@@ -372,12 +373,12 @@ const SeparatorWithCheckpoint: React.FC<{
   nextMessage,
   isLoading,
   forkTask,
-  hideCheckPoint,
+  isSubTask,
   latestCheckpoint,
   lastCheckpointInMessage,
 }) => {
   const sep = <Separator className="mt-1 mb-2" />;
-  if (hideCheckPoint) return sep;
+  if (isSubTask) return sep;
 
   let checkpointMessage: Message | null = null;
   let restoreMessageId: string | undefined = undefined;

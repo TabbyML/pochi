@@ -13,6 +13,7 @@
     "./message-utils": "./src/message-utils/index.ts",
     "./git-utils": "./src/git-utils.ts",
     "./diff-utils": "./src/diff-utils.ts",
+    "./env-utils": "./src/env-utils.ts",
     "./tool-utils": "./src/tool-utils/index.ts",
     "./mcp-utils": "./src/mcp-utils/index.ts",
     "./vscode-webui-bridge": "./src/vscode-webui-bridge/index.ts",

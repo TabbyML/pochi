@@ -480,9 +480,9 @@
     "fixError": "Pochi でエラーを修正"
   },
   "planCard": {
-    "title": "計画",
     "reviewPlan": "確認",
-    "executePlan": "計画を実行"
+    "executePlan": "計画を実行",
+    "creatingPlan": "コードを分析し、計画を作成しています..."
   },
   "browserView": {
     "connecting": "ブラウザに接続中...",

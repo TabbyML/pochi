@@ -459,7 +459,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       const toolCallStart = Date.now();
 
       const result = await safeCall(
-        tool(resolveToolCallArgs(args, this.task), {
+        tool(resolveToolCallArgs(args, this.task.id), {
           abortSignal,
           messages: [],
           toolCallId: options.toolCallId,
@@ -529,11 +529,14 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         : undefined;
 
       return await safeCall<PreviewReturnType>(
-        tool(resolveToolCallArgs(args, this.task) as Partial<unknown> | null, {
-          ...options,
-          abortSignal,
-          cwd: this.cwd,
-        }),
+        tool(
+          resolveToolCallArgs(args, this.task.id) as Partial<unknown> | null,
+          {
+            ...options,
+            abortSignal,
+            cwd: this.cwd,
+          },
+        ),
       );
     },
   );
@@ -554,7 +557,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
 
     // Open file directly if it's a pochi scheme
     if (fileUri.scheme === "pochi" && this.task) {
-      resolvedPath = resolvePochiUri(filePath, this.task);
+      resolvedPath = resolvePochiUri(filePath, this.task.id);
       vscode.commands.executeCommand(
         "vscode.open",
         vscode.Uri.parse(resolvedPath),
@@ -1170,15 +1173,26 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   };
 
   readTaskArchived = async () => {
+    const oneWeekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
     return {
       value: ThreadSignal.serialize(this.taskStateStore.getArchivedSignal()),
+      hasArchivableTasks: ThreadSignal.serialize(
+        computed(() => {
+          const tasks = this.taskHistoryStore.tasks.value;
+          const archived = this.taskStateStore.getArchivedSignal().value;
+          return Object.values(tasks).some((task) => {
+            if (task.parentId !== null) return false;
+            if (archived[task.id]) return false;
+            return task.updatedAt < oneWeekAgo;
+          });
+        }),
+      ),
       setTaskArchived: async (params: TaskArchivedParams) => {
         if (params.type === "single") {
           await this.taskStateStore.setArchived({
             [params.taskId]: params.archived,
           });
         } else if (params.type === "batch") {
-          const oneWeekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
           const tasks = this.taskHistoryStore.tasks.value;
           const updates: Record<string, boolean> = {};
 
@@ -1220,27 +1234,18 @@ function safeCall<T>(x: Promise<T>) {
   });
 }
 
-const resolvePochiUri = (
-  path: string,
-  task: { id: string; parentId: string | null },
-) => {
+const resolvePochiUri = (path: string, taskId: string) => {
   const uri = vscode.Uri.parse(path);
   if (uri.scheme !== "pochi") {
     return path;
   }
-  if (uri.authority === "self") {
-    return path.replace("self", task.id);
-  }
-  if (uri.authority === "parent") {
-    return path.replace("parent", task.parentId || task.id);
+  if (uri.authority === "-") {
+    return path.replace("-", taskId);
   }
   return path;
 };
 
-const resolveToolCallArgs = (
-  args: unknown,
-  task: { id: string; parentId: string | null },
-) => {
+const resolveToolCallArgs = (args: unknown, taskId: string) => {
   if (!R.isObjectType(args)) {
     return args;
   }
@@ -1248,7 +1253,7 @@ const resolveToolCallArgs = (
   return R.mapValues(args, (v) => {
     if (typeof v === "string") {
       try {
-        return resolvePochiUri(v, task);
+        return resolvePochiUri(v, taskId);
       } catch (err) {
         return v;
       }
