@@ -1,3 +1,5 @@
+// biome-ignore lint/style/useImportType: needed for dependency injection
+import { WorkspaceScope } from "@/lib/workspace-scoped";
 import { getLogger, toErrorMessage } from "@getpochi/common";
 import type { GithubIssue } from "@getpochi/common/vscode-webui-bridge";
 import uFuzzy from "@leeoniya/ufuzzy";
@@ -5,8 +7,7 @@ import { injectable, singleton } from "tsyringe";
 import type * as vscode from "vscode";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { GitWorktreeInfoProvider } from "../git/git-worktree-info-provider";
-// biome-ignore lint/style/useImportType: needed for dependency injection
-import { WorktreeManager } from "../git/worktree";
+import { getMainWorktreePath } from "../git/util";
 import { executeCommandWithNode } from "../terminal/execute-command-with-node";
 
 const logger = getLogger("GithubIssueState");
@@ -35,29 +36,34 @@ export class GithubIssueState implements vscode.Disposable {
 
   constructor(
     private readonly worktreeInfoProvider: GitWorktreeInfoProvider,
-    private readonly worktreeManager: WorktreeManager,
+    private readonly workspaceScope: WorkspaceScope,
   ) {
     this.init();
   }
 
   private async init() {
-    // wait all worktree loaded so we can get main worktree to fetch issues
-    await this.worktreeManager.inited.promise;
     logger.debug("Initializing GithubIssueState integration");
 
     // Start initial check
     await this.checkForIssues();
   }
 
+  private async resolveMainWorktreePath(): Promise<string | null> {
+    const cwd = this.workspaceScope.cwd ?? this.workspaceScope.workspacePath;
+    if (!cwd) {
+      return null;
+    }
+    return (await getMainWorktreePath(cwd)) ?? null;
+  }
+
   private async checkForIssues() {
     try {
-      const mainWorktree = this.worktreeManager.getMainWorktree();
-      if (!mainWorktree) {
+      const mainWorktreePath = await this.resolveMainWorktreePath();
+      if (!mainWorktreePath) {
         logger.error("No main worktree found, skipping issue check");
         return;
       }
 
-      const mainWorktreePath = mainWorktree.path;
       const currentIssuesData =
         await this.worktreeInfoProvider.getGithubIssues(mainWorktreePath);
 
@@ -292,18 +298,15 @@ export class GithubIssueState implements vscode.Disposable {
 
   queryIssues = async (query?: string): Promise<GithubIssue[]> => {
     try {
-      // Find the main worktree for this cwd
-      const worktrees = this.worktreeManager.worktrees.value;
-      const mainWorktree = worktrees.find((wt) => wt.isMain);
+      const mainWorktreePath = await this.resolveMainWorktreePath();
 
-      if (!mainWorktree) {
+      if (!mainWorktreePath) {
         logger.trace("No main worktree found for queryIssues");
         return [];
       }
 
-      const issuesData = await this.worktreeInfoProvider.getGithubIssues(
-        mainWorktree.path,
-      );
+      const issuesData =
+        await this.worktreeInfoProvider.getGithubIssues(mainWorktreePath);
       if (!issuesData?.data) {
         return [];
       }
