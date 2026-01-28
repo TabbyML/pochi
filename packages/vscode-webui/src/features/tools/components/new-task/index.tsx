@@ -144,7 +144,7 @@ function NewTaskToolView(props: NewTaskToolViewProps) {
   if (agentType === "browser") {
     return <BrowserView {...props} />;
   }
-  
+
   if (agentType === "planner") {
     return <PlannerView {...props} />;
   }
