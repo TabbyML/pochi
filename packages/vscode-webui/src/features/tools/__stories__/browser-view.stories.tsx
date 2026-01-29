@@ -35,7 +35,7 @@ class MockWebSocket {
 const originalWebSocket = window.WebSocket;
 
 const meta: Meta<typeof BrowserView> = {
-  title: "Features/Tools/BrowserView",
+  title: "Features/Tools/NewTask/BrowserView",
   component: BrowserView,
   decorators: [
     (Story) => {
@@ -48,13 +48,13 @@ const meta: Meta<typeof BrowserView> = {
             taskId: "task-123",
             streamUrl: "ws://mock-stream/success",
           },
+          "task-no-frame": {
+            taskId: "task-no-frame",
+            streamUrl: "ws://mock-stream/no-frame",
+          },
         },
       });
-      return (
-        <div className="w-[800px]">
-          <Story />
-        </div>
-      );
+      return <Story />;
     },
   ],
   parameters: {
@@ -77,7 +77,8 @@ const baseTool: ToolProps<"newTask">["tool"] = {
   state: "output-available",
   input: {
     agentType: "browser",
-    description: "Automating browser task",
+    description:
+      "Automating browser task to search for information and verify the results on the page.",
     prompt: "Go to example.com",
   },
   output: {
@@ -190,7 +191,53 @@ export const Default: Story = {
             },
           ],
         },
+        {
+          id: "6",
+          role: "user",
+          parts: [
+            {
+              type: "text",
+              text: "Verify the page title contains 'Hello World'",
+              state: "done",
+            },
+          ],
+        },
+        {
+          id: "7",
+          role: "assistant",
+          metadata: { kind: "assistant", totalTokens: 0, finishReason: "stop" },
+          parts: [
+            {
+              type: "text",
+              text: "Checking page title...",
+              state: "done",
+            },
+            {
+              type: "tool-executeCommand",
+              toolCallId: "tool-3",
+              state: "output-available",
+              input: {
+                command: "echo 'checking title'",
+              },
+              output: {
+                output: "Title is 'Hello World - Search'",
+              },
+            },
+            {
+              type: "text",
+              text: "The page title matches.",
+              state: "done",
+            },
+          ],
+        },
       ],
     },
+  },
+};
+
+export const NoFrame: Story = {
+  args: {
+    ...baseProps,
+    uid: "task-no-frame",
   },
 };

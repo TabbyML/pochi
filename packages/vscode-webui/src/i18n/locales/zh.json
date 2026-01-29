@@ -483,7 +483,6 @@
     "creatingPlan": "正在分析您的代码并制定计划..."
   },
   "browserView": {
-    "connecting": "正在连接浏览器...",
     "noFrameAvailable": "无画面"
   }
 }

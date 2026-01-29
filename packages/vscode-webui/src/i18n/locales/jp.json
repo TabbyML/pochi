@@ -485,7 +485,6 @@
     "creatingPlan": "コードを分析し、計画を作成しています..."
   },
   "browserView": {
-    "connecting": "ブラウザに接続中...",
     "noFrameAvailable": "フレームが利用できません"
   }
 }
