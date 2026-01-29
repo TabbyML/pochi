@@ -55,5 +55,29 @@ Each skill must start with YAML frontmatter containing at least a `name` and `de
 
 Pochi automatically discovers skills in:
 
-*   **Project**: `.pochi/skills/` (shared with your team)
-*   **Global**: `~/.pochi/skills/` (available across all projects)
+- **Project**: `.pochi/skills/` (shared with your team)
+- **Global**: `~/.pochi/skills/` (available across all projects)
+
+## Using Skills
+
+### Viewing Available Skills
+
+You can view all available skills in your settings panel. This gives you an overview of all installed skills. You can also click the edit button on the right side of each skill to open and modify the corresponding skill file.
+
+![Skills Settings List](../assets/images/skill-setting-list.png)
+
+### Activating Skills
+
+There are two ways to activate skills in Pochi:
+
+#### Automatic Discovery
+
+Pochi can automatically discover and invoke relevant skills based on your prompt. When you describe what you want to do, Pochi will analyze your request and suggest appropriate skills to use.
+
+![Automatic Skill Discovery](../assets/images/skill-automatic-discovery.png)
+
+#### Slash Commands
+
+You can explicitly specify which skill to use by typing a slash command followed by the skill name. This gives you direct control over which skill gets activated.
+
+![Slash Command Usage](../assets/images/skill-slash-command.png)
