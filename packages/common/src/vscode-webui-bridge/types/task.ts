@@ -93,3 +93,11 @@ export type TaskStates = Record<string, TaskState>;
 export type TaskArchivedParams =
   | { type: "single"; taskId: string; archived: boolean }
   | { type: "batch"; cwd?: string };
+
+/**
+ * Get the global state key for the changed file store of a task.
+ * This is used by both the webview (zustand persist) and vscode extension (cleanup).
+ */
+export function getChangedFileStoreKey(taskId: string): string {
+  return `changed-file-store-${taskId}`;
+}

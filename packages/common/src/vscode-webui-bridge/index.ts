@@ -25,6 +25,7 @@ export type {
   McpConfigOverride,
   TaskArchivedParams,
 } from "./types/task";
+export { getChangedFileStoreKey } from "./types/task";
 export type {
   VSCodeLmModel,
   VSCodeLmRequestCallback,

@@ -1,6 +1,9 @@
 import { TextDecoder, TextEncoder } from "node:util";
+// biome-ignore lint/style/useImportType: needed for dependency injection
+import { TaskDataStore } from "@/lib/task-data-store";
 import { taskUpdated } from "@/lib/task-events";
 import { getLogger } from "@getpochi/common";
+import { getChangedFileStoreKey } from "@getpochi/common/vscode-webui-bridge";
 import { signal } from "@preact/signals-core";
 import { funnel } from "remeda";
 import { inject, injectable, singleton } from "tsyringe";
@@ -27,6 +30,7 @@ export class TaskHistoryStore implements vscode.Disposable {
   constructor(
     @inject("vscode.ExtensionContext")
     private readonly context: vscode.ExtensionContext,
+    private readonly taskDataStore: TaskDataStore,
   ) {
     this.storageKey =
       context.extensionMode === vscode.ExtensionMode.Development
@@ -71,7 +75,7 @@ export class TaskHistoryStore implements vscode.Disposable {
     const cutoff = now - threeMonthsInMs;
 
     const validTasks: Record<string, EncodedTask> = {};
-    let hasStaleTasks = false;
+    const staleTaskIds: string[] = [];
 
     for (const [id, task] of Object.entries(tasks)) {
       if (task.updatedAt > cutoff) {
@@ -80,14 +84,38 @@ export class TaskHistoryStore implements vscode.Disposable {
         logger.debug(
           `Removing stale task: ${id}, last updated at: ${new Date(task.updatedAt).toISOString()}`,
         );
-        hasStaleTasks = true;
+        staleTaskIds.push(id);
       }
     }
 
     this.tasks.value = validTasks;
 
-    if (hasStaleTasks) {
+    if (staleTaskIds.length > 0) {
       await this.writeTasksToDisk();
+      await this.cleanupStaleTaskData(staleTaskIds);
+    }
+  }
+
+  /**
+   * Clean up related data for stale tasks.
+   * This includes task data store and changed file store.
+   */
+  private async cleanupStaleTaskData(staleTaskIds: string[]): Promise<void> {
+    // Clean up task data store (mcpConfigOverride, archived state)
+    await this.taskDataStore.removeTaskData(staleTaskIds);
+
+    // Clean up changed file stores in global state
+    for (const taskId of staleTaskIds) {
+      const storeName = getChangedFileStoreKey(taskId);
+      try {
+        await this.context.globalState.update(storeName, undefined);
+        logger.debug(`Removed changed file store for stale task: ${taskId}`);
+      } catch (error) {
+        logger.error(
+          `Failed to remove changed file store for task ${taskId}:`,
+          error,
+        );
+      }
     }
   }
 

@@ -1,14 +1,17 @@
 import assert from "assert";
 import { TaskHistoryStore } from "../task-history-store";
+import { TaskDataStore } from "../task-data-store";
 import * as vscode from "vscode";
 import sinon from "sinon";
 import "reflect-metadata";
 import { TextEncoder } from "util";
+import { getChangedFileStoreKey } from "@getpochi/common/vscode-webui-bridge";
 
 describe("TaskHistoryStore", () => {
   let context: vscode.ExtensionContext;
   let globalState: any;
   let taskStore: TaskHistoryStore;
+  let taskDataStore: TaskDataStore;
   let clock: sinon.SinonFakeTimers;
   let tempStorageUri: vscode.Uri;
 
@@ -46,6 +49,11 @@ describe("TaskHistoryStore", () => {
       globalStoragePath: "",
     } as unknown as vscode.ExtensionContext;
 
+    // Create a mock TaskDataStore
+    taskDataStore = {
+      removeTaskData: sinon.stub().resolves(),
+    } as unknown as TaskDataStore;
+
     clock = sinon.useFakeTimers(new Date("2024-01-01T00:00:00Z").getTime());
   });
 
@@ -58,7 +66,7 @@ describe("TaskHistoryStore", () => {
   });
 
   it("should start with empty tasks if file does not exist", async () => {
-    taskStore = new TaskHistoryStore(context);
+    taskStore = new TaskHistoryStore(context, taskDataStore);
     await taskStore.ready;
 
     const currentTasks = taskStore.tasks.value;
@@ -80,7 +88,7 @@ describe("TaskHistoryStore", () => {
         new TextEncoder().encode(JSON.stringify(tasks))
     );
 
-    taskStore = new TaskHistoryStore(context);
+    taskStore = new TaskHistoryStore(context, taskDataStore);
     await taskStore.ready;
 
     const currentTasks = taskStore.tasks.value;
@@ -106,7 +114,7 @@ describe("TaskHistoryStore", () => {
         new TextEncoder().encode(JSON.stringify(tasks))
     );
 
-    taskStore = new TaskHistoryStore(context);
+    taskStore = new TaskHistoryStore(context, taskDataStore);
     await taskStore.ready;
 
     // Verify only recent task remains
@@ -120,5 +128,12 @@ describe("TaskHistoryStore", () => {
     const savedTasks = JSON.parse(content.toString());
     assert.strictEqual(Object.keys(savedTasks).length, 1);
     assert.ok(savedTasks["task-2"]);
+
+    // Verify stale task data was cleaned up
+    sinon.assert.calledOnce(taskDataStore.removeTaskData as sinon.SinonStub);
+    sinon.assert.calledWith(taskDataStore.removeTaskData as sinon.SinonStub, ["task-1"]);
+    
+    // Verify changed file store was cleaned up via globalState
+    sinon.assert.calledWith(globalState.update, getChangedFileStoreKey("task-1"), undefined);
   });
 });

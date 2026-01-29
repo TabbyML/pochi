@@ -91,4 +91,30 @@ export class TaskDataStore {
       return result;
     });
   }
+
+  /**
+   * Remove task data for the given task IDs.
+   * Used for cleaning up stale tasks.
+   */
+  async removeTaskData(taskIds: string[]): Promise<void> {
+    if (taskIds.length === 0) {
+      return;
+    }
+
+    const newState = { ...this.state.value };
+    let hasChanges = false;
+
+    for (const taskId of taskIds) {
+      if (taskId in newState) {
+        delete newState[taskId];
+        hasChanges = true;
+        logger.debug(`Removed task data for stale task: ${taskId}`);
+      }
+    }
+
+    if (hasChanges) {
+      await this.context.globalState.update(this.storageKey, newState);
+      this.state.value = newState;
+    }
+  }
 }
