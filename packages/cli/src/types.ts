@@ -32,6 +32,7 @@ export interface ToolCallOptions {
    */
   createSubTaskRunner?: (
     taskId: string,
+    runAsync: boolean,
     customAgent?: CustomAgent,
   ) => TaskRunner;
 

@@ -24,10 +24,8 @@ export class AsyncSubTaskManager {
 
   constructor(private readonly store: LiveKitStore) {}
 
-  registerTask(taskId: string, runAsync: boolean) {
-    if (runAsync) {
-      this.asyncTaskIds.add(taskId);
-    }
+  registerTask(taskId: string) {
+    this.asyncTaskIds.add(taskId);
   }
 
   /**
