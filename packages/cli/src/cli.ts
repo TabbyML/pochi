@@ -182,14 +182,20 @@ const program = new Command()
             //TODO: Follow up fix is needed to fix this issue.
             dataUrl = attachmentPath;
             filename = path.basename(new URL(attachmentPath).pathname);
-            
+
             // Special handling for YouTube URLs
-            if (attachmentPath.match(/^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+$/)) {
+            if (
+              attachmentPath.match(
+                /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+$/,
+              )
+            ) {
               mimeType = "video/mp4"; // Treat YouTube as video
             } else {
               // Try to get mime type from HEAD request
               try {
-                const response = await fetch(attachmentPath, { method: "HEAD" });
+                const response = await fetch(attachmentPath, {
+                  method: "HEAD",
+                });
                 const contentType = response.headers.get("content-type");
                 if (contentType) {
                   mimeType = contentType.split(";")[0].trim();
@@ -219,7 +225,9 @@ const program = new Command()
             type: "text",
             text: prompts.createSystemReminder(
               `Attached file: ${
-                isUrl ? attachmentPath : path.relative(process.cwd(), attachmentPath)
+                isUrl
+                  ? attachmentPath
+                  : path.relative(process.cwd(), attachmentPath)
               }`,
             ),
           });
