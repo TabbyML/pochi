@@ -170,25 +170,61 @@ const program = new Command()
     if (attachments && attachments.length > 0) {
       for (const attachmentPath of attachments) {
         try {
-          const absolutePath = path.resolve(process.cwd(), attachmentPath);
-          const buffer = await fs.readFile(absolutePath);
-          const mimeType = getMimeType(attachmentPath);
-          const dataUrl = await fileToUri(
-            blobStore,
-            new File([buffer], attachmentPath, {
-              type: mimeType,
-            }),
-          );
+          const isUrl =
+            attachmentPath.trim().startsWith("http://") ||
+            attachmentPath.trim().startsWith("https://");
+          let dataUrl: string;
+          let mimeType: string;
+          let filename: string;
+
+          if (isUrl) {
+            dataUrl = attachmentPath;
+            filename = path.basename(new URL(attachmentPath).pathname);
+            
+            // Special handling for YouTube URLs
+            if (attachmentPath.match(/^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+$/)) {
+              mimeType = "video/mp4"; // Treat YouTube as video
+            } else {
+              // Try to get mime type from HEAD request
+              try {
+                const response = await fetch(attachmentPath, { method: "HEAD" });
+                const contentType = response.headers.get("content-type");
+                if (contentType) {
+                  mimeType = contentType.split(";")[0].trim();
+                } else {
+                  // Fallback to extension if no content-type header
+                  mimeType = getMimeType(new URL(attachmentPath).pathname);
+                }
+              } catch (e) {
+                // Fallback to extension if fetch fails
+                mimeType = getMimeType(new URL(attachmentPath).pathname);
+              }
+            }
+          } else {
+            const absolutePath = path.resolve(process.cwd(), attachmentPath);
+            const buffer = await fs.readFile(absolutePath);
+            mimeType = getMimeType(attachmentPath);
+            filename = path.basename(absolutePath);
+            dataUrl = await fileToUri(
+              blobStore,
+              new File([buffer], attachmentPath, {
+                type: mimeType,
+              }),
+            );
+          }
+
           parts.push({
             type: "text",
             text: prompts.createSystemReminder(
-              `Attached file: ${path.relative(process.cwd(), absolutePath)}`,
+              `Attached file: ${
+                isUrl ? attachmentPath : path.relative(process.cwd(), attachmentPath)
+              }`,
             ),
           });
           parts.push({
             type: "file",
             mediaType: mimeType,
-            filename: path.basename(absolutePath),
+            filename,
             url: dataUrl,
           } satisfies FileUIPart);
         } catch (error) {
