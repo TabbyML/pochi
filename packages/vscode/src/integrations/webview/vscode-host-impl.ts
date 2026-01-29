@@ -12,6 +12,8 @@ import {
   getSystemInfo,
   getWorkspaceRulesFileUri,
 } from "@/lib/env";
+// biome-ignore lint/style/useImportType: needed for dependency injection
+import { ForkTaskStatus } from "@/lib/fork-task-status";
 import { asRelativePath, isFileExists } from "@/lib/fs";
 import { getLogger } from "@/lib/logger";
 // biome-ignore lint/style/useImportType: needed for dependency injection
@@ -59,6 +61,8 @@ import {
   ignoreWalk,
   isPlainTextFile,
   listWorkspaceFiles,
+  resolvePochiUri,
+  resolveToolCallArgs,
 } from "@getpochi/common/tool-utils";
 import { getVendor } from "@getpochi/common/vendor";
 import {
@@ -103,7 +107,6 @@ import {
   type ThreadSignalSerialization,
 } from "@quilted/threads/signals";
 import type { Tool } from "ai";
-import * as R from "remeda";
 import { keys } from "remeda";
 import * as runExclusive from "run-exclusive";
 import { Lifecycle, container, inject, injectable, scoped } from "tsyringe";
@@ -182,6 +185,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     private readonly taskStateStore: TaskDataStore,
     private readonly lang: PochiLanguage,
     private readonly browserSessionStore: BrowserSessionStore,
+    private readonly forkTaskStatus: ForkTaskStatus,
   ) {}
 
   private get cwd() {
@@ -464,9 +468,9 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         options.agentType,
       );
       const toolCallStart = Date.now();
-
+      const resolvedArgs = resolveToolCallArgs(args, this.task.id);
       const result = await safeCall(
-        tool(resolveToolCallArgs(args, this.task.id), {
+        tool(resolvedArgs, {
           abortSignal,
           messages: [],
           toolCallId: options.toolCallId,
@@ -535,15 +539,16 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         ? new ThreadAbortSignal(options.abortSignal)
         : undefined;
 
+      const resolvedArgs = resolveToolCallArgs(
+        args,
+        this.task.id,
+      ) as Partial<unknown> | null;
       return await safeCall<PreviewReturnType>(
-        tool(
-          resolveToolCallArgs(args, this.task.id) as Partial<unknown> | null,
-          {
-            ...options,
-            abortSignal,
-            cwd: this.cwd,
-          },
-        ),
+        tool(resolvedArgs, {
+          ...options,
+          abortSignal,
+          cwd: this.cwd,
+        }),
       );
     },
   );
@@ -559,11 +564,12 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       cellId?: string;
     },
   ) => {
+    if (!this.task) return;
     let fileUri = vscode.Uri.parse(filePath);
     let resolvedPath = filePath;
 
     // Open file directly if it's a pochi scheme
-    if (fileUri.scheme === "pochi" && this.task) {
+    if (fileUri.scheme === "pochi") {
       resolvedPath = resolvePochiUri(filePath, this.task.id);
       vscode.commands.executeCommand(
         "vscode.open",
@@ -1225,6 +1231,13 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     updateLang: this.lang.updateLang,
   });
 
+  readForkTaskStatus = async () => ({
+    status: ThreadSignal.serialize(this.forkTaskStatus.status),
+    setForkTaskStatus: async (uid: string, status: "inProgress" | "ready") => {
+      this.forkTaskStatus.setStatus(uid, status);
+    },
+  });
+
   dispose() {
     for (const disposable of this.disposables) {
       disposable.dispose();
@@ -1240,33 +1253,6 @@ function safeCall<T>(x: Promise<T>) {
     };
   });
 }
-
-const resolvePochiUri = (path: string, taskId: string) => {
-  const uri = vscode.Uri.parse(path);
-  if (uri.scheme !== "pochi") {
-    return path;
-  }
-  if (uri.authority === "-") {
-    return path.replace("-", taskId);
-  }
-  return path;
-};
-
-const resolveToolCallArgs = (args: unknown, taskId: string) => {
-  if (!R.isObjectType(args)) {
-    return args;
-  }
-
-  return R.mapValues(args, (v) => {
-    if (typeof v === "string") {
-      try {
-        return resolvePochiUri(v, taskId);
-      } catch (err) {
-        return v;
-      }
-    }
-  });
-};
 
 const resolveToolCallEnvs = (
   toolName: string,

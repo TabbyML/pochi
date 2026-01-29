@@ -9,7 +9,7 @@ import { useDebounceState } from "@/lib/hooks/use-debounce-state";
 import { useDefaultStore } from "@/lib/use-default-store";
 import { cn } from "@/lib/utils";
 import { isVSCodeEnvironment, vscodeHost } from "@/lib/vscode";
-import { Link } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import { type RefObject, useEffect, useRef } from "react";
 import { useInlinedSubTask } from "../../hooks/use-inlined-sub-task";
 
@@ -121,6 +121,7 @@ function NewTaskToolView(props: NewTaskToolViewProps) {
   const { tool, isExecuting, taskSource, uid, toolCallStatusRegistryRef } =
     props;
   const store = useDefaultStore();
+  const navigate = useNavigate();
   const agent = tool.input?.agentType;
   const description = tool.input?.description ?? "";
   const agentType = tool.input?.agentType;
@@ -156,17 +157,23 @@ function NewTaskToolView(props: NewTaskToolViewProps) {
           <StatusIcon tool={tool} isExecuting={isExecuting} />
           <Badge variant="secondary" className={cn("my-0.5 py-0")}>
             {uid && taskSource?.parentId && isVSCodeEnvironment() ? (
-              <Link
-                to="/task"
-                search={{
-                  uid,
-                  storeId: store.storeId,
+              <Button
+                variant="link"
+                className="h-auto p-0 font-inherit text-inherit underline-offset-2"
+                onClick={() => {
+                  navigate({
+                    to: "/task",
+                    search: {
+                      uid,
+                      storeId: store.storeId,
+                    },
+                    replace: true,
+                    viewTransition: true,
+                  });
                 }}
-                replace={true}
-                viewTransition
               >
                 {toolTitle}
-              </Link>
+              </Button>
             ) : (
               <>{toolTitle}</>
             )}

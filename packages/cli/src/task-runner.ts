@@ -9,6 +9,7 @@ import {
 import { findTodos, mergeTodos } from "@getpochi/common/message-utils";
 
 import { spawn } from "node:child_process";
+import type { UITools } from "@getpochi/livekit";
 import {
   type BlobStore,
   type LLMRequestData,
@@ -20,11 +21,15 @@ import { LiveChatKit } from "@getpochi/livekit/node";
 import { type Todo, isUserInputToolPart } from "@getpochi/tools";
 import type { CustomAgent, Skill } from "@getpochi/tools";
 import {
+  type ToolUIPart,
   getToolName,
   isToolUIPart,
   lastAssistantMessageIsCompleteWithToolCalls,
 } from "ai";
+
+import { resolveToolCallArgs } from "@getpochi/common/tool-utils";
 import type z from "zod/v4";
+import type { FileSystem } from "./lib/file-system";
 import { readEnvironment } from "./lib/read-environment";
 
 import { StepCount } from "./lib/step-count";
@@ -32,6 +37,7 @@ import { StepCount } from "./lib/step-count";
 import { BackgroundJobManager } from "./lib/background-job-manager";
 import { Chat } from "./livekit";
 
+import { decodeStoreId } from "@getpochi/common/store-id-utils";
 import { executeToolCall } from "./tools";
 import type { ToolCallOptions } from "./types";
 
@@ -112,11 +118,17 @@ export interface RunnerOptions {
   attemptCompletionSchema?: z.ZodAny;
 
   attemptCompletionHook?: string;
+
+  /**
+   * The file system to use for the task runner.
+   */
+  filesystem: FileSystem;
 }
 
 const logger = getLogger("TaskRunner");
 
 export class TaskRunner {
+  private store: LiveKitStore;
   private blobStore: BlobStore;
   private cwd: string;
   private llm: LLMRequestData;
@@ -126,6 +138,7 @@ export class TaskRunner {
   private todos: Todo[] = [];
   private chatKit: LiveChatKit<Chat>;
   private backgroundJobManager: BackgroundJobManager;
+  private fileSystem: FileSystem;
 
   private attemptCompletionHook?: string;
 
@@ -146,8 +159,12 @@ export class TaskRunner {
     this.llm = options.llm;
     this.blobStore = options.blobStore;
     this.backgroundJobManager = new BackgroundJobManager();
+
+    this.fileSystem = options.filesystem;
+
     this.toolCallOptions = {
       rg: options.rg,
+      fileSystem: this.fileSystem,
 
       customAgents: options.customAgents,
       skills: options.skills,
@@ -158,7 +175,6 @@ export class TaskRunner {
 
         const runner = new TaskRunner({
           ...options,
-          blobStore: this.blobStore,
           parts: undefined, // should not use parts from parent
           uid: taskId,
           isSubTask: true,
@@ -217,6 +233,7 @@ export class TaskRunner {
       }
     }
 
+    this.store = options.store;
     this.taskId = options.uid;
     this.attemptCompletionHook = options.attemptCompletionHook;
     this.attemptCompletionSchemaOverride = !!options.attemptCompletionSchema;
@@ -408,10 +425,13 @@ export class TaskRunner {
         )}`,
       );
 
+      const { taskId } = decodeStoreId(this.store.storeId);
+      const resolvedInput = resolveToolCallArgs(toolCall.input, taskId);
+
       const toolResult = await processContentOutput(
         this.blobStore,
         await executeToolCall(
-          toolCall,
+          { ...toolCall, input: resolvedInput } as ToolUIPart<UITools>,
           this.toolCallOptions,
           this.cwd,
           undefined,

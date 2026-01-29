@@ -373,6 +373,18 @@ const VSCodeHostStub = {
       updateLang: (_lang: string) => Promise.resolve(),
     };
   },
+
+  readForkTaskStatus: async (): Promise<{
+    status: ThreadSignalSerialization<Record<string, "inProgress" | "ready">>;
+    setForkTaskStatus: () => Promise<void>;
+  }> => {
+    return {
+      status: {} as ThreadSignalSerialization<
+        Record<string, "inProgress" | "ready">
+      >,
+      setForkTaskStatus: () => Promise.resolve(),
+    };
+  },
 } satisfies VSCodeHostApi;
 
 export function createVscodeHostStub(overrides?: Partial<VSCodeHostApi>) {

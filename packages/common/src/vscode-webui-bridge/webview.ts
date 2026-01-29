@@ -388,6 +388,14 @@ export interface VSCodeHostApi {
     value: ThreadSignalSerialization<string>;
     updateLang: (lang: string) => Promise<void>;
   }>;
+
+  readForkTaskStatus(): Promise<{
+    status: ThreadSignalSerialization<Record<string, "inProgress" | "ready">>;
+    setForkTaskStatus: (
+      uid: string,
+      status: "inProgress" | "ready",
+    ) => Promise<void>;
+  }>;
 }
 
 export interface WebviewHostApi {

@@ -1,19 +1,14 @@
-import * as fs from "node:fs/promises";
 import { parseDiffAndApply } from "@getpochi/common/diff-utils";
-import { resolvePath, validateTextFile } from "@getpochi/common/tool-utils";
+import { validateTextFile } from "@getpochi/common/tool-utils";
 import type { ClientTools, ToolFunctionType } from "@getpochi/tools";
-import { ensureFileDirectoryExists } from "../lib/fs";
+import type { ToolCallOptions } from "../types";
 
 export const applyDiff =
-  (): ToolFunctionType<ClientTools["applyDiff"]> =>
-  async (
-    { path, searchContent, replaceContent, expectedReplacements },
-    { cwd },
-  ) => {
-    const fileUri = resolvePath(path, cwd);
-    await ensureFileDirectoryExists(fileUri);
-
-    const fileBuffer = await fs.readFile(fileUri);
+  ({
+    fileSystem,
+  }: ToolCallOptions): ToolFunctionType<ClientTools["applyDiff"]> =>
+  async ({ path, searchContent, replaceContent, expectedReplacements }) => {
+    const fileBuffer = await fileSystem.readFile(path);
     validateTextFile(fileBuffer);
     const fileContent = fileBuffer.toString();
 
@@ -24,6 +19,6 @@ export const applyDiff =
       expectedReplacements,
     );
 
-    await fs.writeFile(fileUri, updatedContent);
+    await fileSystem.writeFile(path, updatedContent);
     return { success: true };
   };
