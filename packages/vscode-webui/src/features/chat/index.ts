@@ -36,3 +36,8 @@ export {
   useChatInputState,
   type ChatInput,
 } from "./hooks/use-chat-input-state";
+
+export {
+  useSubtaskInfo,
+  type SubtaskInfo,
+} from "./hooks/use-subtask-info";

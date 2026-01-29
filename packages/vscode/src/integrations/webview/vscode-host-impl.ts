@@ -426,6 +426,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         toolCallId: string;
         abortSignal: ThreadAbortSignalSerialization;
         contentType?: string[];
+        agentType?: string;
       },
     ) => {
       let tool: ToolFunctionType<Tool> | undefined;
@@ -454,8 +455,14 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
           error: "No task found.",
         };
       }
+
       const abortSignal = new ThreadAbortSignal(options.abortSignal);
-      const envs = resolveToolCallEnvs(toolName, args, this.task);
+      const envs = resolveToolCallEnvs(
+        toolName,
+        args,
+        this.task,
+        options.agentType,
+      );
       const toolCallStart = Date.now();
 
       const result = await safeCall(
@@ -1265,14 +1272,20 @@ const resolveToolCallEnvs = (
   toolName: string,
   args: unknown,
   task: { id: string; parentId: string | null },
+  agentType?: string,
 ) => {
   let envs: Record<string, string> | undefined;
+
+  if (agentType !== "browser") {
+    return envs;
+  }
 
   if (toolName !== "executeCommand") {
     return envs;
   }
 
   const { command } = args as { command: string };
+
   if (command?.startsWith("agent-browser")) {
     const browserSessionStore = container.resolve(BrowserSessionStore);
     envs = browserSessionStore.getAgentBrowserEnvs(task.parentId || task.id);

@@ -127,6 +127,7 @@ export function useLiveSubTask(
             abortController.current.signal,
           ),
           contentType: customAgentModel?.contentType,
+          agentType: tool.input?.agentType,
         },
       );
 

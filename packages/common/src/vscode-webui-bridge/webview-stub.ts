@@ -79,6 +79,7 @@ const VSCodeHostStub = {
     _options: {
       toolCallId: string;
       abortSignal: ThreadAbortSignalSerialization;
+      agentType?: string;
     },
   ): Promise<unknown> => {
     return Promise.resolve(undefined);

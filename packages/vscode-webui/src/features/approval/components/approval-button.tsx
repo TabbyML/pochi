@@ -1,6 +1,7 @@
 import type React from "react";
 
 import type { PendingApproval } from "@/features/approval";
+import type { SubtaskInfo } from "@/features/chat";
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
 import type { Task } from "@getpochi/livekit";
 import { useEffect } from "react";
@@ -13,6 +14,7 @@ interface ApprovalButtonProps {
   allowAddToolResult: boolean;
   isSubTask: boolean;
   task?: Task;
+  subtask?: SubtaskInfo;
 }
 
 export const ApprovalButton: React.FC<ApprovalButtonProps> = ({
@@ -21,6 +23,7 @@ export const ApprovalButton: React.FC<ApprovalButtonProps> = ({
   pendingApproval,
   retry,
   isSubTask,
+  subtask,
 }) => {
   const shouldShowApprovalButton = pendingApproval && allowAddToolResult;
 
@@ -47,6 +50,7 @@ export const ApprovalButton: React.FC<ApprovalButtonProps> = ({
           pendingApproval={pendingApproval}
           isSubTask={isSubTask}
           parentUid={task?.parentId ?? undefined}
+          subtask={subtask}
         />
       )}
     </div>

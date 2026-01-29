@@ -3,7 +3,11 @@ import { useCallback, useEffect, useMemo } from "react"; // useMemo is now in th
 import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
-import { useAutoApproveGuard, useToolCallLifeCycle } from "@/features/chat";
+import {
+  type SubtaskInfo,
+  useAutoApproveGuard,
+  useToolCallLifeCycle,
+} from "@/features/chat";
 import {
   useSelectedModels,
   useSubtaskOffhand,
@@ -21,6 +25,7 @@ interface ToolCallApprovalButtonProps {
   isSubTask: boolean;
   taskId?: string;
   parentUid?: string;
+  subtask?: SubtaskInfo;
 }
 
 // Component
@@ -29,6 +34,7 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
   pendingApproval,
   isSubTask,
   parentUid,
+  subtask,
 }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -80,6 +86,7 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
     ToolAbortText[pendingApproval.name] || t("toolInvocation.stop");
 
   const store = useDefaultStore();
+  const agentType = isSubTask ? subtask?.agent : undefined;
 
   const manualRunSubtask = useCallback(
     (subtaskUid: string) => {
@@ -115,6 +122,7 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
           if (newTaskInput?.runAsync && isVSCodeEnvironment()) {
             lifecycle.execute(tools[i].input, {
               contentType: selectedModel?.contentType,
+              agentType,
             });
             const uid = parentUid || taskId;
             if (uid) {
@@ -129,6 +137,7 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
       }
       lifecycle.execute(tools[i].input, {
         contentType: selectedModel?.contentType,
+        agentType,
       });
 
       const uid = parentUid || taskId;
@@ -146,6 +155,7 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
     selectedModel,
     taskId,
     parentUid,
+    agentType,
   ]);
 
   const onReject = useCallback(() => {
