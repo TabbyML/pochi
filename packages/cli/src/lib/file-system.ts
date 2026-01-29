@@ -50,6 +50,12 @@ export class TaskFileSystem implements FileSystem {
       throw new Error(`Invalid task URI: ${filePath}`);
     }
 
+    if (uri.filePath !== "/plan.md") {
+      throw new Error(
+        `Only /plan.md is supported for task file system, got: ${uri.filePath}`,
+      );
+    }
+
     await this.store.commit(
       catalog.events.writeTaskFile({
         taskId: uri.taskId,
