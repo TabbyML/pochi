@@ -2,16 +2,25 @@ import * as fs from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
 import { getLogger } from "@getpochi/common";
+import { builtInAgents } from "@getpochi/common";
 import { isFileExists, parseAgentFile } from "@getpochi/common/tool-utils";
-import type {
-  CustomAgentFile,
-  ValidCustomAgentFile,
+import {
+  BuiltInAgentPath,
+  type CustomAgentFile,
+  type ValidCustomAgentFile,
 } from "@getpochi/common/vscode-webui-bridge";
 import { isValidCustomAgentFile } from "@getpochi/common/vscode-webui-bridge";
 import type { CustomAgent } from "@getpochi/tools";
 import { uniqueBy } from "remeda";
 
 const logger = getLogger("loadAgents");
+
+export const builtInAgentFiles: ValidCustomAgentFile[] = builtInAgents.map(
+  (agent: CustomAgent) => ({
+    ...agent,
+    filePath: BuiltInAgentPath,
+  }),
+);
 
 /**
  * Read custom agents from a directory
@@ -45,7 +54,7 @@ export async function loadAgents(
   includeSystemAgents = true,
 ): Promise<ValidCustomAgentFile[]> {
   try {
-    const allAgents: CustomAgentFile[] = [];
+    const allAgents: CustomAgentFile[] = [...builtInAgentFiles];
 
     // Load project agents if working directory is provided
     if (workingDirectory) {

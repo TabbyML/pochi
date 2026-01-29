@@ -4,6 +4,7 @@ import z from "zod/v4";
 
 export const StoreId = z.object({
   sub: z.string(),
+  taskId: z.string(),
 });
 
 export type StoreId = z.infer<typeof StoreId>;
@@ -16,7 +17,7 @@ export function decodeStoreId(storeId: string): StoreId {
 export function encodeStoreId(jwt: string | null, taskId: string): string {
   const sub = (jwt ? jose.decodeJwt(jwt).sub : undefined) ?? "anonymous";
 
-  const storeId = {
+  const storeId: StoreId = {
     sub,
     taskId,
   };

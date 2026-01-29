@@ -29,9 +29,14 @@ describe("executeToolCall with background jobs", () => {
       {
         rg: "rg",
         backgroundJobManager: manager,
+        fileSystem: {
+          readFile: async () => new Uint8Array(),
+          writeFile: async () => {},
+        },
       },
       cwd
     )) as any;
+
     
     // If it failed with the specific error, result would contain error message
 
