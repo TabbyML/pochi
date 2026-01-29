@@ -16,7 +16,6 @@
       "attachments": "to chat with files",
       "context": "to attach context"
     },
-
     "autoSave": {
       "title": "Pochi doesn't work well with auto-save enabled.",
       "description": "Pochi relies on pending file changes to display diffs of its edits, which requires auto-save to be disabled."
@@ -62,7 +61,7 @@
     "super": "Super",
     "swift": "Swift",
     "reload": "Reload",
-    "subscriptionRequired": "Subscription Required"
+    "subscriptionRequired": "Subscribe to access Super models"
   },
   "worktreeSelect": {
     "selectWorktree": "Select Worktree",
@@ -129,7 +128,6 @@
       "openInTab": "Allows to open the task in a new tab",
       "hideRecommendSettings": "Hide Recommended Settings"
     },
-
     "rules": {
       "title": "Rules",
       "noRules": "No rules found in workspace.",
@@ -375,7 +373,6 @@
     "skill": "skill",
     "useHashForIssues": "use # to search for github issues"
   },
-
   "subtask": {
     "back": "Back",
     "complete": "Complete",
