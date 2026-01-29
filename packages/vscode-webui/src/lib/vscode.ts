@@ -114,7 +114,7 @@ function createVSCodeHost(): VSCodeHostApi {
         "openReview",
         "readUserEdits",
         "readTasks",
-        "readBrowserSessions",
+        "readBrowserSession",
         "registerBrowserSession",
         "unregisterBrowserSession",
         "readMcpConfigOverride",

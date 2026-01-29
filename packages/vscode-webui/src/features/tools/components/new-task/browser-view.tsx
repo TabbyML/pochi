@@ -1,6 +1,6 @@
 import { TaskThread } from "@/components/task-thread";
 import { FixedStateChatContextProvider } from "@/features/chat";
-import { useBrowserSessions } from "@/lib/use-browser-sessions";
+import { useBrowserSession } from "@/lib/use-browser-sessions";
 import { getLogger } from "@getpochi/common";
 import { Globe } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -16,10 +16,9 @@ export function BrowserView(props: NewTaskToolViewProps) {
   const [frame, setFrame] = useState<string | null>(null);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const description = tool.input?.description ?? "";
-  const browserSessions = useBrowserSessions();
+  const browserSession = useBrowserSession(taskSource?.parentId || uid || "");
 
-  const streamUrl =
-    browserSessions[taskSource?.parentId || uid || ""]?.streamUrl;
+  const streamUrl = browserSession?.streamUrl;
 
   useEffect(() => {
     if (!streamUrl) return;

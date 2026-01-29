@@ -5,16 +5,16 @@ import { useQuery } from "@tanstack/react-query";
 import { useCallback } from "react";
 
 /** @useSignals */
-export const useBrowserSessions = () => {
+export const useBrowserSession = (taskId: string) => {
   const { data } = useQuery({
-    queryKey: ["browserSessions"],
+    queryKey: ["browserSession", taskId],
     queryFn: async () => {
-      return threadSignal(await vscodeHost.readBrowserSessions());
+      return threadSignal(await vscodeHost.readBrowserSession(taskId));
     },
     staleTime: Number.POSITIVE_INFINITY,
   });
 
-  return data?.value || {};
+  return data?.value;
 };
 
 export const useManageBrowserSessions = () => {

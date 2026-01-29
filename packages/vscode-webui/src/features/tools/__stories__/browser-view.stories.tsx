@@ -42,16 +42,16 @@ const meta: Meta<typeof BrowserView> = {
       // @ts-ignore
       window.WebSocket = MockWebSocket;
       // Seed the query cache with mock browser sessions
-      queryClient.setQueryData(["browserSessions"], {
+      queryClient.setQueryData(["browserSession", "task-123"], {
         value: {
-          "task-123": {
-            taskId: "task-123",
-            streamUrl: "ws://mock-stream/success",
-          },
-          "task-no-frame": {
-            taskId: "task-no-frame",
-            streamUrl: "ws://mock-stream/no-frame",
-          },
+          taskId: "task-123",
+          streamUrl: "ws://mock-stream/success",
+        },
+      });
+      queryClient.setQueryData(["browserSession", "task-no-frame"], {
+        value: {
+          taskId: "task-no-frame",
+          streamUrl: "ws://mock-stream/no-frame",
         },
       });
       return <Story />;

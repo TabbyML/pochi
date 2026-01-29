@@ -264,9 +264,9 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     return ThreadSignal.serialize(this.taskHistoryStore.tasks);
   };
 
-  readBrowserSessions = async () => {
+  readBrowserSession = async (taskId: string) => {
     return ThreadSignal.serialize(
-      computed(() => this.browserSessionStore.browserSessions.value),
+      computed(() => this.browserSessionStore.browserSessions.value[taskId]),
     );
   };
 

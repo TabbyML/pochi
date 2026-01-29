@@ -329,11 +329,11 @@ const VSCodeHostStub = {
   setGlobalState: async (): Promise<void> => {},
   readTasks: (): Promise<ThreadSignalSerialization<Record<string, unknown>>> =>
     Promise.resolve({} as ThreadSignalSerialization<Record<string, unknown>>),
-  readBrowserSessions: (): Promise<
-    ThreadSignalSerialization<Record<string, BrowserSession>>
-  > =>
+  readBrowserSession: (
+    _taskId: string,
+  ): Promise<ThreadSignalSerialization<BrowserSession | undefined>> =>
     Promise.resolve(
-      {} as ThreadSignalSerialization<Record<string, BrowserSession>>,
+      {} as ThreadSignalSerialization<BrowserSession | undefined>,
     ),
   registerBrowserSession: (_taskId: string): Promise<void> => Promise.resolve(),
   unregisterBrowserSession: (_taskId: string): Promise<void> =>

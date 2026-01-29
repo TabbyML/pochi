@@ -355,9 +355,9 @@ export interface VSCodeHostApi {
 
   readTasks(): Promise<ThreadSignalSerialization<Record<string, unknown>>>;
 
-  readBrowserSessions(): Promise<
-    ThreadSignalSerialization<Record<string, BrowserSession>>
-  >;
+  readBrowserSession(
+    taskId: string,
+  ): Promise<ThreadSignalSerialization<BrowserSession | undefined>>;
 
   registerBrowserSession(taskId: string): Promise<void>;
 
