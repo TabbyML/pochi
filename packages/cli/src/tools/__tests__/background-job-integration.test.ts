@@ -117,7 +117,7 @@ describe("executeToolCall with background jobs", () => {
     );
 
     const manager = new AsyncSubTaskManager(store);
-    manager.registerTask(taskId, true);
+    manager.registerTask(taskId);
 
     const output = manager.readTaskOutput(taskId);
     expect(output?.status).toBe("completed");

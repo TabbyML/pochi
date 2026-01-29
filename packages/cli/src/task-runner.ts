@@ -15,7 +15,6 @@ import {
   type LLMRequestData,
   type LiveKitStore,
   type Message,
-  catalog,
   processContentOutput,
 } from "@getpochi/livekit";
 import { LiveChatKit } from "@getpochi/livekit/node";
@@ -175,11 +174,15 @@ export class TaskRunner {
       mcpHub: options.mcpHub,
       backgroundJobManager: this.backgroundJobManager,
       asyncSubTaskManager: this.asyncSubTaskManager,
-      createSubTaskRunner: (taskId: string, customAgent?: CustomAgent) => {
+      createSubTaskRunner: (
+        taskId: string,
+        runAsync: boolean,
+        customAgent?: CustomAgent,
+      ) => {
         // create sub task
-        const task = options.store.query(catalog.queries.makeTaskQuery(taskId));
-        const runAsync = !!task?.runAsync;
-        this.asyncSubTaskManager.registerTask(taskId, runAsync);
+        if (runAsync) {
+          this.asyncSubTaskManager.registerTask(taskId);
+        }
 
         const runner = new TaskRunner({
           ...options,
