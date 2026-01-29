@@ -11,7 +11,10 @@ Skills are reusable instruction sets that extend Pochi's capabilities. They allo
 You can discover and install skills from the community [skills.sh](https://skills.sh/) registry using the CLI:
 
 ```bash
-npx skills add <skill-name>
+npx skills add <skill-source> --agent pochi
+
+# Example: Install a specific skill from a collection
+npx skills add vercel-labs/agent-skills --skill pr-review --agent pochi
 ```
 
 This command automatically detects Pochi and installs the skill to `.pochi/skills` in your project.

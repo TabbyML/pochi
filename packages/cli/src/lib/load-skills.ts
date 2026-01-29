@@ -26,7 +26,7 @@ async function readSkillsFromDir(dir: string): Promise<SkillFile[]> {
     const files = await fs.readdir(dir, { withFileTypes: true });
     for (const file of files) {
       // Look for subdirectories (skill directories)
-      if (file.isDirectory()) {
+      if (file.isDirectory() || file.isSymbolicLink()) {
         const skillDir = path.join(dir, file.name);
         const skillFilePath = path.join(skillDir, "SKILL.md");
 
