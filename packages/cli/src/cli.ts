@@ -178,6 +178,8 @@ const program = new Command()
           let filename: string;
 
           if (isUrl) {
+            //TODO: Large video URLs now do not cause OOM, but will still not be completed by the assistant
+            //TODO: Follow up fix is needed to fix this issue.
             dataUrl = attachmentPath;
             filename = path.basename(new URL(attachmentPath).pathname);
             

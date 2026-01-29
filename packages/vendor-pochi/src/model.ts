@@ -26,7 +26,6 @@ export function createPochiModel({
     modelId: modelId || "<default>",
     // FIXME(meng): fill supported urls based on modelId.
     supportedUrls: {
-      "*": [/^https?:\/\//],
     },
     doGenerate: async ({
       abortSignal,
