@@ -61,7 +61,7 @@
     "super": "加强",
     "swift": "极速",
     "reload": "重新加载",
-    "subscriptionRequired": "需要订阅"
+    "subscriptionRequired": "订阅以使用 Super 模型"
   },
   "worktreeSelect": {
     "selectWorktree": "选择工作树",

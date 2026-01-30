@@ -133,16 +133,28 @@ export function ModelSelect({
                   .map((group) => {
                     const isSuperModelGroup =
                       group.models[0].options.label === "super";
+
+                    if (isSuperModelGroup && isSuperModelsDisabled) {
+                      return null;
+                    }
+
                     return (
                       <div key={group.title}>
                         <div
-                          className="model-group-title px-2 py-1.5 font-semibold text-muted-foreground text-sm"
+                          className="model-group-title flex items-center justify-between px-2 py-1.5 font-semibold text-muted-foreground text-sm"
                           aria-label="model-group-title"
                         >
-                          {group.title}{" "}
-                          {isSuperModelGroup && isSuperModelsDisabled && (
-                            <span className="ml-2 font-normal text-xs italic">
-                              ({t("modelSelect.subscriptionRequired")})
+                          <span>{group.title}</span>
+                          {!isSuperModelGroup && isSuperModelsDisabled && (
+                            <span className="ml-4 font-normal text-xs">
+                              <a
+                                href="https://app.getpochi.com/pricing"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-[var(--vscode-textLink-foreground)] hover:underline"
+                              >
+                                {t("modelSelect.subscriptionRequired")}
+                              </a>
                             </span>
                           )}
                         </div>
@@ -157,9 +169,6 @@ export function ModelSelect({
                               value={model.id}
                               key={model.id}
                               className="cursor-pointer py-2 pl-2"
-                              disabled={
-                                isSuperModelsDisabled && isSuperModelGroup
-                              }
                             >
                               <CheckIcon
                                 className={cn(
