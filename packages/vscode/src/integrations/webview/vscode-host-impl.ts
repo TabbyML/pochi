@@ -431,7 +431,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         toolCallId: string;
         abortSignal: ThreadAbortSignalSerialization;
         contentType?: string[];
-        subAgentInfo?: BuiltinSubAgentInfo;
+        builtinSubAgentInfo?: BuiltinSubAgentInfo;
       },
     ) => {
       let tool: ToolFunctionType<Tool> | undefined;
@@ -462,7 +462,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       }
 
       const abortSignal = new ThreadAbortSignal(options.abortSignal);
-      const envs = resolveToolCallEnvs(toolName, options.subAgentInfo);
+      const envs = resolveToolCallEnvs(toolName, options.builtinSubAgentInfo);
       const toolCallStart = Date.now();
       const resolvedArgs = resolveToolCallArgs(args, this.task.id);
       const result = await safeCall(
@@ -1252,11 +1252,11 @@ function safeCall<T>(x: Promise<T>) {
 
 const resolveToolCallEnvs = (
   toolName: string,
-  subAgentInfo?: BuiltinSubAgentInfo,
+  builtInSubAgentInfo?: BuiltinSubAgentInfo,
 ) => {
   let envs: Record<string, string> | undefined;
 
-  if (subAgentInfo?.type !== "browser") {
+  if (builtInSubAgentInfo?.type !== "browser") {
     return envs;
   }
 
@@ -1265,7 +1265,7 @@ const resolveToolCallEnvs = (
   }
 
   const browserSessionStore = container.resolve(BrowserSessionStore);
-  envs = browserSessionStore.getAgentBrowserEnvs(subAgentInfo.sessionId);
+  envs = browserSessionStore.getAgentBrowserEnvs(builtInSubAgentInfo.sessionId);
 
   return envs;
 };
