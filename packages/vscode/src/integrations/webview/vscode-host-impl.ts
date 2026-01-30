@@ -462,11 +462,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       }
 
       const abortSignal = new ThreadAbortSignal(options.abortSignal);
-      const envs = resolveToolCallEnvs(
-        toolName,
-        args,
-        options.subAgentInfo,
-      );
+      const envs = resolveToolCallEnvs(toolName, args, options.subAgentInfo);
       const toolCallStart = Date.now();
       const resolvedArgs = resolveToolCallArgs(args, this.task.id);
       const result = await safeCall(
