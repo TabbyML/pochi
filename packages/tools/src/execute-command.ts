@@ -28,7 +28,7 @@ Usage notes:
 - You can specify an optional timeout in seconds (up to 300s / 5 minutes). If not specified, commands will timeout after 60s (1 minute).
 - If the output exceeds 30000 characters, output will be truncated before being returned to you.
 - When issuing multiple commands:
-  - If the commands are independent and can run in parallel, make multiple tool calls in a single message. For example, if you need to run "git status" and "git diff", send a single message with two executeCommand tool calls in parallel.
+  - If the commands are independent and can run in parallel, make multiple executeCommand tool calls in a single message. For example, if you need to run "git status" and "git diff", send a single message with two executeCommand tool calls in parallel.
   - If the commands depend on each other and must run sequentially, use a single executeCommand call with '&&' to chain them together (e.g., \`git add . && git commit -m "message" && git push\`). For instance, if one operation must complete before another starts (like mkdir before cp, Write before executeCommand for git operations, or git add before git commit), run these operations sequentially instead.
   - Use ';' only when you need to run commands sequentially but don't care if earlier commands fail
   - DO NOT use newlines to separate commands (newlines are ok in quoted strings)
