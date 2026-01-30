@@ -24,8 +24,16 @@ export function createPochiModel({
     specificationVersion: "v2",
     provider: "pochi",
     modelId: modelId || "<default>",
-    // FIXME(meng): fill supported urls based on modelId.
-    supportedUrls: {},
+    supportedUrls: modelId.includes("google")
+      ? {
+          "*": [
+            // HTTP URLs:
+            /^https?:\/\/.*$/,
+            // Google Cloud Storage URLs:
+            /^gs:\/\/.*$/,
+          ],
+        }
+      : {},
     doGenerate: async ({
       abortSignal,
       prompt,
