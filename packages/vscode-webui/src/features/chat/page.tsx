@@ -5,6 +5,7 @@ import { useCustomAgent } from "@/lib/hooks/use-custom-agents";
 import { usePochiCredentials } from "@/lib/hooks/use-pochi-credentials";
 import { useTaskMcpConfigOverride } from "@/lib/hooks/use-task-mcp-config-override";
 import { blobStore } from "@/lib/remote-blob-store";
+import { useManageBrowserSession } from "@/lib/use-browser-session";
 import { useDefaultStore } from "@/lib/use-default-store";
 import { cn } from "@/lib/utils";
 import { vscodeHost } from "@/lib/vscode";
@@ -13,7 +14,6 @@ import { formatters } from "@getpochi/common";
 import type { UserInfo } from "@getpochi/common/configuration";
 import { type Task, catalog } from "@getpochi/livekit";
 import { useLiveChatKit } from "@getpochi/livekit/react";
-
 import type { Todo } from "@getpochi/tools";
 import { useStoreRegistry } from "@livestore/react";
 import { Schema } from "@livestore/utils/effect";
@@ -121,7 +121,10 @@ function Chat({ user, uid, info }: ChatProps) {
 
   const shouldStopAutoApprove = useShouldStopAutoApprove();
 
-  const { onStreamStart, onStreamFinish } = useChatNotifications({
+  const {
+    onStreamStart: onChartNotificationsStreamStart,
+    onStreamFinish: onChartNotificationsStreamFinish,
+  } = useChatNotifications({
     uid,
     task,
     isSubTask,
@@ -130,11 +133,19 @@ function Chat({ user, uid, info }: ChatProps) {
     autoApproveSettings,
   });
 
+  const {
+    onStreamStart: onManageBrowserSessionStreamStart,
+    onStreamFinish: onManageBrowserSessionStreamFinish,
+  } = useManageBrowserSession({
+    uid,
+    task,
+    isSubTask,
+  });
+
   const chatKit = useLiveChatKit({
     store,
     blobStore,
     taskId: uid,
-
     getters,
     isSubTask,
     customAgent,
@@ -160,10 +171,12 @@ function Chat({ user, uid, info }: ChatProps) {
     },
     onOverrideMessages,
     onStreamStart(data) {
-      onStreamStart.current(data);
+      onChartNotificationsStreamStart.current(data);
+      onManageBrowserSessionStreamStart.current(data);
     },
     onStreamFinish(data) {
-      onStreamFinish.current(data);
+      onChartNotificationsStreamFinish.current(data);
+      onManageBrowserSessionStreamFinish.current(data);
     },
   });
 

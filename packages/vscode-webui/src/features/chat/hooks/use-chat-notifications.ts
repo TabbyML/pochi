@@ -6,7 +6,6 @@ import {
 } from "@/features/settings";
 import { useLatest } from "@/lib/hooks/use-latest";
 import { useMcp } from "@/lib/hooks/use-mcp";
-import { useManageBrowserSessions } from "@/lib/use-browser-sessions";
 import { vscodeHost } from "@/lib/vscode";
 import type { Task } from "@getpochi/livekit";
 import type { Message } from "@getpochi/livekit";
@@ -31,7 +30,6 @@ export function useChatNotifications({
   autoApproveSettings,
 }: UseChatNotificationsProps) {
   const { sendNotification, clearNotification } = useSendTaskNotification();
-  const manageBrowserSessions = useManageBrowserSessions();
 
   const { toolset } = useMcp();
   const { retryCount } = useRetryCount();
@@ -45,11 +43,6 @@ export function useChatNotifications({
       const topTaskUid = isSubTask ? task?.parentId : uid;
       const cwd = data.cwd;
       if (!topTaskUid || !cwd) return;
-
-      manageBrowserSessions({
-        taskId: topTaskUid,
-        messages: data.messages,
-      });
 
       clearNotification();
       vscodeHost.onTaskRunning(topTaskUid);
@@ -66,11 +59,6 @@ export function useChatNotifications({
       const topTaskUid = isSubTask ? task?.parentId : uid;
       const cwd = data.cwd;
       if (!topTaskUid || !cwd) return;
-
-      manageBrowserSessions({
-        taskId: topTaskUid,
-        messages: data.messages,
-      });
 
       if (data.status === "failed" && data.error) {
         let autoApprove = autoApproveGuard.current === "auto";
