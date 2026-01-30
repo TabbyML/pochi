@@ -143,7 +143,7 @@ export function makeDownloadFunction(blobStore: BlobStore) {
         data: Uint8Array;
         mediaType: string | undefined;
       } | null> => {
-        if (isUrlSupportedByModel && url.protocol.startsWith("http")) {
+        if (isUrlSupportedByModel) {
           return null;
         }
         if (url.protocol === blobStore.protocol) {
