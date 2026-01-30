@@ -462,7 +462,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       }
 
       const abortSignal = new ThreadAbortSignal(options.abortSignal);
-      const envs = resolveToolCallEnvs(toolName, args, options.subAgentInfo);
+      const envs = resolveToolCallEnvs(toolName, options.subAgentInfo);
       const toolCallStart = Date.now();
       const resolvedArgs = resolveToolCallArgs(args, this.task.id);
       const result = await safeCall(
@@ -1250,11 +1250,7 @@ function safeCall<T>(x: Promise<T>) {
   });
 }
 
-const resolveToolCallEnvs = (
-  toolName: string,
-  args: unknown,
-  subAgentInfo?: SubAgentInfo,
-) => {
+const resolveToolCallEnvs = (toolName: string, subAgentInfo?: SubAgentInfo) => {
   let envs: Record<string, string> | undefined;
 
   if (subAgentInfo?.type !== "browser") {
@@ -1265,12 +1261,8 @@ const resolveToolCallEnvs = (
     return envs;
   }
 
-  const { command } = args as { command: string };
-
-  if (command?.startsWith("agent-browser")) {
-    const browserSessionStore = container.resolve(BrowserSessionStore);
-    envs = browserSessionStore.getAgentBrowserEnvs(subAgentInfo.sessionId);
-  }
+  const browserSessionStore = container.resolve(BrowserSessionStore);
+  envs = browserSessionStore.getAgentBrowserEnvs(subAgentInfo.sessionId);
 
   return envs;
 };
