@@ -6,6 +6,8 @@ import type * as vscode from "vscode";
 import type { CheckpointService } from "../integrations/checkpoint/checkpoint-service";
 import { showDiffChanges } from "../integrations/editor/diff-changes-editor";
 // biome-ignore lint/style/useImportType: needed for dependency injection
+import { TaskActivityTracker } from "../integrations/editor/task-activity-tracker";
+// biome-ignore lint/style/useImportType: needed for dependency injection
 import { TaskDataStore } from "./task-data-store";
 import { taskFileChanged } from "./task-events";
 
@@ -27,7 +29,10 @@ export type ChangedFileContent =
 export class TaskChangedFilesManager {
   private readonly disposables: vscode.Disposable[] = [];
 
-  constructor(private readonly taskDataStore: TaskDataStore) {
+  constructor(
+    private readonly taskDataStore: TaskDataStore,
+    private readonly taskActivityTracker: TaskActivityTracker,
+  ) {
     // Listen for file change events
     this.disposables.push(
       taskFileChanged.event(({ taskId, filepath, content }) => {
@@ -211,6 +216,15 @@ export class TaskChangedFilesManager {
     filepath: string,
     content: string,
   ): Promise<void> {
+    // Skip if task is currently executing
+    const taskState = this.taskActivityTracker.state.value[taskId];
+    if (taskState?.running) {
+      logger.trace(
+        `Skipping file change for ${filepath} - task ${taskId} is executing`,
+      );
+      return;
+    }
+
     const currentFiles = this.getChangedFiles(taskId);
     const isTracked = currentFiles.some((cf) => cf.filepath === filepath);
 
