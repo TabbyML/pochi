@@ -19,6 +19,7 @@ import type {
   RuleFile,
   SessionState,
   SkillFile,
+  SubAgentInfo,
   TaskArchivedParams,
   TaskChangedFile,
   TaskStates,
@@ -79,7 +80,7 @@ const VSCodeHostStub = {
     _options: {
       toolCallId: string;
       abortSignal: ThreadAbortSignalSerialization;
-      agentType?: string;
+      subAgentInfo?: SubAgentInfo;
     },
   ): Promise<unknown> => {
     return Promise.resolve(undefined);

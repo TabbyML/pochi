@@ -83,6 +83,7 @@ import {
   type SaveCheckpointOptions,
   type SessionState,
   type SkillFile,
+  type SubAgentInfo,
   type TaskArchivedParams,
   type TaskChangedFile,
   type TaskStates,
@@ -430,7 +431,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         toolCallId: string;
         abortSignal: ThreadAbortSignalSerialization;
         contentType?: string[];
-        agentType?: string;
+        subAgentInfo?: SubAgentInfo;
       },
     ) => {
       let tool: ToolFunctionType<Tool> | undefined;
@@ -464,8 +465,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       const envs = resolveToolCallEnvs(
         toolName,
         args,
-        this.task,
-        options.agentType,
+        options.subAgentInfo,
       );
       const toolCallStart = Date.now();
       const resolvedArgs = resolveToolCallArgs(args, this.task.id);
@@ -1257,12 +1257,11 @@ function safeCall<T>(x: Promise<T>) {
 const resolveToolCallEnvs = (
   toolName: string,
   args: unknown,
-  task: { id: string; parentId: string | null },
-  agentType?: string,
+  subAgentInfo?: SubAgentInfo,
 ) => {
   let envs: Record<string, string> | undefined;
 
-  if (agentType !== "browser") {
+  if (subAgentInfo?.type !== "browser") {
     return envs;
   }
 
@@ -1274,7 +1273,7 @@ const resolveToolCallEnvs = (
 
   if (command?.startsWith("agent-browser")) {
     const browserSessionStore = container.resolve(BrowserSessionStore);
-    envs = browserSessionStore.getAgentBrowserEnvs(task.parentId || task.id);
+    envs = browserSessionStore.getAgentBrowserEnvs(subAgentInfo.sessionId);
   }
 
   return envs;

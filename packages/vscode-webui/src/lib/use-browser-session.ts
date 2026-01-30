@@ -33,7 +33,6 @@ export const useManageBrowserSession = ({
       if (!topTaskUid || !cwd) return;
 
       manageBrowserSession({
-        taskId: topTaskUid,
         messages: data.messages,
       });
     },
@@ -51,7 +50,6 @@ export const useManageBrowserSession = ({
       if (!topTaskUid || !cwd) return;
 
       manageBrowserSession({
-        taskId: topTaskUid,
         messages: data.messages,
       });
     },
@@ -60,10 +58,7 @@ export const useManageBrowserSession = ({
   return { onStreamStart, onStreamFinish };
 };
 
-export const manageBrowserSession = ({
-  taskId,
-  messages,
-}: { taskId: string; messages: Message[] }) => {
+export const manageBrowserSession = ({ messages }: { messages: Message[] }) => {
   const lastToolPart = messages.at(-1)?.parts.at(-1);
 
   if (
@@ -73,14 +68,19 @@ export const manageBrowserSession = ({
     return;
   }
 
+  const uid = lastToolPart.input?._meta?.uid;
+  if (!uid) {
+    return;
+  }
+
   if (lastToolPart?.state === "input-available") {
-    vscodeHost.registerBrowserSession(taskId);
+    vscodeHost.registerBrowserSession(uid);
   }
 
   if (
     lastToolPart?.state === "output-available" ||
     lastToolPart?.state === "output-error"
   ) {
-    vscodeHost.unregisterBrowserSession(taskId);
+    vscodeHost.unregisterBrowserSession(uid);
   }
 };

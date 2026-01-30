@@ -2,7 +2,10 @@ import { blobStore } from "@/lib/remote-blob-store";
 import { isVSCodeEnvironment, vscodeHost } from "@/lib/vscode";
 import { getLogger } from "@getpochi/common";
 
-import type { ExecuteCommandResult } from "@getpochi/common/vscode-webui-bridge";
+import type {
+  ExecuteCommandResult,
+  SubAgentInfo,
+} from "@getpochi/common/vscode-webui-bridge";
 import {
   type LiveKitStore,
   type Message,
@@ -143,7 +146,10 @@ export interface ToolCallLifeCycle {
    */
   execute(
     args: unknown,
-    options?: { contentType?: string[]; agentType?: string },
+    options?: {
+      contentType?: string[];
+      subAgentInfo?: SubAgentInfo;
+    },
   ): void;
 
   /**
@@ -318,7 +324,10 @@ export class ManagedToolCallLifeCycle
 
   execute(
     args: unknown,
-    options?: { contentType?: string[]; agentType?: string },
+    options?: {
+      contentType?: string[];
+      subAgentInfo?: SubAgentInfo;
+    },
   ) {
     const abortController = new AbortController();
     const abortSignal = AbortSignal.any([
@@ -334,7 +343,7 @@ export class ManagedToolCallLifeCycle
         toolCallId: this.toolCallId,
         abortSignal: ThreadAbortSignal.serialize(abortSignal),
         contentType: options?.contentType,
-        agentType: options?.agentType,
+        subAgentInfo: options?.subAgentInfo,
       });
     }
 

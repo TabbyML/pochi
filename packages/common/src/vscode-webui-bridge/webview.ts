@@ -19,6 +19,7 @@ import type {
   SaveCheckpointOptions,
   SessionState,
   SkillFile,
+  SubAgentInfo,
   TaskArchivedParams,
   TaskChangedFile,
   TaskStates,
@@ -89,7 +90,7 @@ export interface VSCodeHostApi {
       toolCallId: string;
       abortSignal: ThreadAbortSignalSerialization;
       contentType?: string[];
-      agentType?: string;
+      subAgentInfo?: SubAgentInfo;
     },
   ): Promise<unknown>;
 

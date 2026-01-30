@@ -8,9 +8,8 @@ import { SubAgentView } from "./sub-agent-view";
 export function BrowserView(props: NewTaskToolViewProps) {
   const { taskSource, uid, tool, toolCallStatusRegistryRef } = props;
   const { t } = useTranslation();
-  const description = tool.input?.description ?? "";
-  const browserSession = useBrowserSession(taskSource?.parentId || uid || "");
-
+  const description = tool.input?.description;
+  const browserSession = useBrowserSession(uid || "");
   const streamUrl = browserSession?.streamUrl;
   const frame = useWebsocketFrame(streamUrl);
 
