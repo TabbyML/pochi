@@ -3170,6 +3170,43 @@ This release brings a few updates aimed at making Pochi easier to work with day-
 * We’re also working on automatic walkthroughs that recap the changes an agent made once a task is complete. More details coming soon.
 
 
+# Reusable skills. Stop repeating prompts.
+URL: /developer-updates/agent-skills
+Turn repeated instructions into reusable capabilities
+***
+
+title: 'Reusable skills. Stop repeating prompts.'
+description: "Turn repeated instructions into reusable capabilities"
+--------------------------------------------------------------------
+
+# Reusable skills. Stop repeating prompts.
+
+<video
+  controls
+  style={{
+      width: "100%",
+      borderRadius: "8px",
+      boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+      }}
+>
+  <source src="https://assets.docs.getpochi.com/skills-028.mp4" type="video/mp4" />
+
+  Your browser does not support the video tag.
+</video>
+
+We added **Skills** to Pochi.
+
+As tasks grow more complex, users often end up repeatedly explaining the same details to the agent, including output formatting, API usage, and internal conventions.
+
+Skills turn those repeated instructions into reusable capabilities.
+
+In Pochi, skills live alongside your code, are easy to inspect and edit, and plug directly into tasks. They can be automatically discovered, explicitly invoked, and combined with other features like Plan Mode, reviews, and scoped tool access.
+
+That means skills are here to shape how work actually gets done. You can standardize workflows, or integrate tools once, and then reuse that behavior consistently across tasks and projects.
+
+**[Read the full docs](https://docs.getpochi.com/skills/)**
+
+
 # NES Series (Part 2): Real-Time Context Management in Your Code Editor
 URL: /developer-updates/context-management-in-your-editor
 Learn how Pochi's NES model manages, ranks, and streams real-time edit context
@@ -3591,11 +3628,11 @@ This release brings a few updates aimed at making Pochi easier to work with day-
 
 ***
 
-## [Plan like you code](./plan-like-you-code)
+## [Reusable skills. Stop repeating prompts](./agent-skills)
 
-#### Jan 22, 2026
+#### Jan 29, 2026
 
-# Plan like you code
+# Reusable skills. Stop repeating prompts.
 
 <video
   controls
@@ -3605,22 +3642,22 @@ This release brings a few updates aimed at making Pochi easier to work with day-
       boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
       }}
 >
-  <source src="https://assets.docs.getpochi.com/create-plan.mp4" type="video/mp4" />
+  <source src="https://assets.docs.getpochi.com/skills-028.mp4" type="video/mp4" />
 
   Your browser does not support the video tag.
 </video>
 
-We shipped **Plan Mode** in Pochi.
+We added **Skills** to Pochi.
 
-Planning by itself isn’t new. What’s interesting is what happens when planning plugs into a workflow that already supports inline comments, review edits, and task-based execution.
+As tasks grow more complex, users often end up repeatedly explaining the same details to the agent, including output formatting, API usage, and internal conventions.
 
-Create Plan is a feature we built, but its real value comes from how it composes with the rest of the system.
+Skills turn those repeated instructions into reusable capabilities.
 
-Instead of treating the plan as something you just read and approve, you can iterate on it the same way you’d review a diff - leave inline comments, refine specific steps, and then execute directly from that agreed version.
+In Pochi, skills live alongside your code, are easy to inspect and edit, and plug directly into tasks. They can be automatically discovered, explicitly invoked, and combined with other features like Plan Mode, reviews, and scoped tool access.
 
-The plan lives as a real workspace artifact (i.e. `plan.md`) and opens in the editor, so planning becomes part of the same collaboration loop as code.
+That means skills are here to shape how work actually gets done. You can standardize workflows, or integrate tools once, and then reuse that behavior consistently across tasks and projects.
 
-**[Read the full docs](https://docs.getpochi.com/create-plan)**
+**[Read the full docs](https://docs.getpochi.com/skills/)**
 
 ***
 
@@ -3689,6 +3726,39 @@ This release introduces new workflows for planning before execution and for rest
 * Soon you’ll be able to archive tasks in the sidebar to keep active work focused, with filters and quick restore when you need to revisit something.
 
 * We’re also building a built-in browser subagent that can browse and interact with live web pages and stream its actions directly in the editor.
+
+***
+
+## [Plan like you code](./plan-like-you-code)
+
+#### Jan 22, 2026
+
+# Plan like you code
+
+<video
+  controls
+  style={{
+      width: "100%",
+      borderRadius: "8px",
+      boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+      }}
+>
+  <source src="https://assets.docs.getpochi.com/create-plan.mp4" type="video/mp4" />
+
+  Your browser does not support the video tag.
+</video>
+
+We shipped **Plan Mode** in Pochi.
+
+Planning by itself isn’t new. What’s interesting is what happens when planning plugs into a workflow that already supports inline comments, review edits, and task-based execution.
+
+Create Plan is a feature we built, but its real value comes from how it composes with the rest of the system.
+
+Instead of treating the plan as something you just read and approve, you can iterate on it the same way you’d review a diff - leave inline comments, refine specific steps, and then execute directly from that agreed version.
+
+The plan lives as a real workspace artifact (i.e. `plan.md`) and opens in the editor, so planning becomes part of the same collaboration loop as code.
+
+**[Read the full docs](https://docs.getpochi.com/create-plan)**
 
 ***
 
