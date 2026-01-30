@@ -66,6 +66,7 @@ import {
 } from "@getpochi/common/tool-utils";
 import { getVendor } from "@getpochi/common/vendor";
 import {
+  type BuiltinSubAgentInfo,
   type CaptureEvent,
   type CreateWorktreeOptions,
   type CustomAgentFile,
@@ -83,7 +84,6 @@ import {
   type SaveCheckpointOptions,
   type SessionState,
   type SkillFile,
-  type SubAgentInfo,
   type TaskArchivedParams,
   type TaskChangedFile,
   type TaskStates,
@@ -431,7 +431,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         toolCallId: string;
         abortSignal: ThreadAbortSignalSerialization;
         contentType?: string[];
-        subAgentInfo?: SubAgentInfo;
+        subAgentInfo?: BuiltinSubAgentInfo;
       },
     ) => {
       let tool: ToolFunctionType<Tool> | undefined;
@@ -1250,7 +1250,10 @@ function safeCall<T>(x: Promise<T>) {
   });
 }
 
-const resolveToolCallEnvs = (toolName: string, subAgentInfo?: SubAgentInfo) => {
+const resolveToolCallEnvs = (
+  toolName: string,
+  subAgentInfo?: BuiltinSubAgentInfo,
+) => {
   let envs: Record<string, string> | undefined;
 
   if (subAgentInfo?.type !== "browser") {

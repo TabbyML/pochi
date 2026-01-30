@@ -5,6 +5,7 @@ import type { Environment } from "../base";
 import type { UserInfo } from "../configuration";
 import type {
   BrowserSession,
+  BuiltinSubAgentInfo,
   CaptureEvent,
   CustomAgentFile,
   ExecuteCommandResult,
@@ -19,7 +20,6 @@ import type {
   SaveCheckpointOptions,
   SessionState,
   SkillFile,
-  SubAgentInfo,
   TaskArchivedParams,
   TaskChangedFile,
   TaskStates,
@@ -90,7 +90,7 @@ export interface VSCodeHostApi {
       toolCallId: string;
       abortSignal: ThreadAbortSignalSerialization;
       contentType?: string[];
-      subAgentInfo?: SubAgentInfo;
+      builtinSubAgentInfo?: BuiltinSubAgentInfo;
     },
   ): Promise<unknown>;
 

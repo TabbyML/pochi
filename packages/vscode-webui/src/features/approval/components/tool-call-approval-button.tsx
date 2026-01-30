@@ -16,7 +16,7 @@ import {
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
 import { useDefaultStore } from "@/lib/use-default-store";
 import { isVSCodeEnvironment, vscodeHost } from "@/lib/vscode";
-import type { SubAgentInfo } from "@getpochi/common/vscode-webui-bridge";
+import type { BuiltinSubAgentInfo } from "@getpochi/common/vscode-webui-bridge";
 import { useNavigate } from "@tanstack/react-router";
 import { getToolName } from "ai";
 import type { PendingToolCallApproval } from "../hooks/use-pending-tool-call-approval";
@@ -87,8 +87,8 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
     ToolAbortText[pendingApproval.name] || t("toolInvocation.stop");
 
   const store = useDefaultStore();
-  const subAgentInfo: SubAgentInfo | undefined =
-    isSubTask && subtask?.agent && taskId
+  const builtinSubAgentInfo: BuiltinSubAgentInfo | undefined =
+    isSubTask && subtask?.agent === "browser" && taskId
       ? { type: subtask.agent, sessionId: taskId }
       : undefined;
 
@@ -126,7 +126,7 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
           if (newTaskInput?.runAsync && isVSCodeEnvironment()) {
             lifecycle.execute(tools[i].input, {
               contentType: selectedModel?.contentType,
-              subAgentInfo,
+              builtinSubAgentInfo,
             });
             const uid = parentUid || taskId;
             if (uid) {
@@ -141,7 +141,7 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
       }
       lifecycle.execute(tools[i].input, {
         contentType: selectedModel?.contentType,
-        subAgentInfo,
+        builtinSubAgentInfo,
       });
 
       const uid = parentUid || taskId;
@@ -159,7 +159,7 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
     selectedModel,
     taskId,
     parentUid,
-    subAgentInfo,
+    builtinSubAgentInfo,
   ]);
 
   const onReject = useCallback(() => {

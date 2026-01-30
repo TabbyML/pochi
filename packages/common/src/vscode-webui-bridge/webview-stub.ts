@@ -4,6 +4,7 @@ import type { Environment } from "../base";
 import type { UserInfo } from "../configuration";
 import type {
   BrowserSession,
+  BuiltinSubAgentInfo,
   CaptureEvent,
   CustomAgentFile,
   DisplayModel,
@@ -19,7 +20,6 @@ import type {
   RuleFile,
   SessionState,
   SkillFile,
-  SubAgentInfo,
   TaskArchivedParams,
   TaskChangedFile,
   TaskStates,
@@ -80,7 +80,7 @@ const VSCodeHostStub = {
     _options: {
       toolCallId: string;
       abortSignal: ThreadAbortSignalSerialization;
-      subAgentInfo?: SubAgentInfo;
+      builtinSubAgentInfo?: BuiltinSubAgentInfo;
     },
   ): Promise<unknown> => {
     return Promise.resolve(undefined);

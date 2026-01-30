@@ -3,8 +3,8 @@ import { isVSCodeEnvironment, vscodeHost } from "@/lib/vscode";
 import { getLogger } from "@getpochi/common";
 
 import type {
+  BuiltinSubAgentInfo,
   ExecuteCommandResult,
-  SubAgentInfo,
 } from "@getpochi/common/vscode-webui-bridge";
 import {
   type LiveKitStore,
@@ -148,7 +148,7 @@ export interface ToolCallLifeCycle {
     args: unknown,
     options?: {
       contentType?: string[];
-      subAgentInfo?: SubAgentInfo;
+      builtinSubAgentInfo?: BuiltinSubAgentInfo;
     },
   ): void;
 
@@ -326,7 +326,7 @@ export class ManagedToolCallLifeCycle
     args: unknown,
     options?: {
       contentType?: string[];
-      subAgentInfo?: SubAgentInfo;
+      builtinSubAgentInfo?: BuiltinSubAgentInfo;
     },
   ) {
     const abortController = new AbortController();
@@ -343,7 +343,7 @@ export class ManagedToolCallLifeCycle
         toolCallId: this.toolCallId,
         abortSignal: ThreadAbortSignal.serialize(abortSignal),
         contentType: options?.contentType,
-        subAgentInfo: options?.subAgentInfo,
+        builtinSubAgentInfo: options?.builtinSubAgentInfo,
       });
     }
 
