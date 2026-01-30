@@ -30,6 +30,8 @@ export const useSkill: ToolFunctionType<ClientTools["useSkill"]> = async (
 
   return {
     result: prompts.createUseSkillResult(skill),
-    filePath: skill.filePath,
+    _meta: {
+      filePath: skill.filePath,
+    },
   };
 };
