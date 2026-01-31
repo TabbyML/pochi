@@ -1,5 +1,8 @@
 import { getLogger } from "@getpochi/common";
-import type { TaskChangedFile } from "@getpochi/common/vscode-webui-bridge";
+import type {
+  ChangedFileContent,
+  TaskChangedFile,
+} from "@getpochi/common/vscode-webui-bridge";
 import { type ReadonlySignal, computed } from "@preact/signals-core";
 import { injectable, singleton } from "tsyringe";
 import type * as vscode from "vscode";
@@ -12,17 +15,6 @@ import { TaskDataStore } from "./task-data-store";
 import { taskFileChanged } from "./task-events";
 
 const logger = getLogger("TaskChangedFilesManager");
-
-export type ChangedFileContent =
-  | {
-      type: "text";
-      text: string;
-    }
-  | {
-      type: "checkpoint";
-      commit: string;
-    }
-  | null;
 
 @injectable()
 @singleton()
