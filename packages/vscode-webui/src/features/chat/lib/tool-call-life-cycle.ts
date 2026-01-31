@@ -8,9 +8,9 @@ import type {
 } from "@getpochi/common/vscode-webui-bridge";
 import {
   type LiveKitStore,
-  type Message,
   type Task,
   catalog,
+  extractTaskResult,
   processContentOutput,
 } from "@getpochi/livekit";
 
@@ -630,34 +630,4 @@ function convertState(state: ToolUIPart["state"]) {
   }
 
   return "result";
-}
-
-export function extractTaskResult(store: LiveKitStore, uid: string) {
-  const lastMessage = store
-    .query(catalog.queries.makeMessagesQuery(uid))
-    .map((x) => x.data as Message)
-    .at(-1);
-  if (!lastMessage) {
-    throw new Error(`No message found for uid ${uid}`);
-  }
-
-  const lastStepStart = lastMessage.parts.findLastIndex(
-    (x) => x.type === "step-start",
-  );
-
-  for (const part of lastMessage.parts.slice(lastStepStart + 1)) {
-    if (
-      part.type === "tool-attemptCompletion" &&
-      (part.state === "input-available" || part.state === "output-available")
-    ) {
-      return part.input.result;
-    }
-
-    if (
-      part.type === "tool-askFollowupQuestion" &&
-      (part.state === "input-available" || part.state === "output-available")
-    ) {
-      return part.input.question;
-    }
-  }
 }

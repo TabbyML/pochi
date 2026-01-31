@@ -34,6 +34,7 @@ import { readEnvironment } from "./lib/read-environment";
 
 import { StepCount } from "./lib/step-count";
 
+import { AsyncSubTaskManager } from "./lib/async-subtask-manager";
 import { BackgroundJobManager } from "./lib/background-job-manager";
 import { Chat } from "./livekit";
 
@@ -138,6 +139,7 @@ export class TaskRunner {
   private todos: Todo[] = [];
   private chatKit: LiveChatKit<Chat>;
   private backgroundJobManager: BackgroundJobManager;
+  private asyncSubTaskManager: AsyncSubTaskManager;
   private fileSystem: FileSystem;
 
   private attemptCompletionHook?: string;
@@ -159,6 +161,7 @@ export class TaskRunner {
     this.llm = options.llm;
     this.blobStore = options.blobStore;
     this.backgroundJobManager = new BackgroundJobManager();
+    this.asyncSubTaskManager = new AsyncSubTaskManager(options.store);
 
     this.fileSystem = options.filesystem;
 
@@ -170,8 +173,16 @@ export class TaskRunner {
       skills: options.skills,
       mcpHub: options.mcpHub,
       backgroundJobManager: this.backgroundJobManager,
-      createSubTaskRunner: (taskId: string, customAgent?: CustomAgent) => {
+      asyncSubTaskManager: this.asyncSubTaskManager,
+      createSubTaskRunner: (
+        taskId: string,
+        runAsync: boolean,
+        customAgent?: CustomAgent,
+      ) => {
         // create sub task
+        if (runAsync) {
+          this.asyncSubTaskManager.registerTask(taskId);
+        }
 
         const runner = new TaskRunner({
           ...options,
@@ -182,7 +193,9 @@ export class TaskRunner {
         });
         this.attemptCompletionHook = options.attemptCompletionHook;
 
-        options.onSubTaskCreated?.(runner);
+        if (!runAsync) {
+          options.onSubTaskCreated?.(runner);
+        }
         return runner;
       },
     };
