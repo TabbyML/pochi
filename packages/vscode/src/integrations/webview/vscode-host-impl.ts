@@ -25,6 +25,8 @@ import { PostHog } from "@/lib/posthog";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { SkillManager } from "@/lib/skill-manager";
 // biome-ignore lint/style/useImportType: needed for dependency injection
+import { TaskChangedFilesManager } from "@/lib/task-changed-files-manager";
+// biome-ignore lint/style/useImportType: needed for dependency injection
 import { TaskDataStore } from "@/lib/task-data-store";
 import {
   taskPendingApproval,
@@ -68,6 +70,7 @@ import { getVendor } from "@getpochi/common/vendor";
 import {
   type BuiltinSubAgentInfo,
   type CaptureEvent,
+  type ChangedFileContent,
   type CreateWorktreeOptions,
   type CustomAgentFile,
   type DiffCheckpointOptions,
@@ -184,6 +187,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     private readonly globalStateSignals: GlobalStateSignals,
     private readonly taskHistoryStore: TaskHistoryStore,
     private readonly taskStateStore: TaskDataStore,
+    private readonly taskChangedFilesManager: TaskChangedFilesManager,
     private readonly lang: PochiLanguage,
     private readonly browserSessionStore: BrowserSessionStore,
     private readonly forkTaskStatus: ForkTaskStatus,
@@ -862,25 +866,6 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     },
   );
 
-  diffChangedFiles = runExclusive.build(
-    this.checkpointGroup,
-    async (files: TaskChangedFile[]) => {
-      return this.checkpointService.diffChangedFiles(files);
-    },
-  );
-
-  showChangedFiles = runExclusive.build(
-    this.checkpointGroup,
-    async (files: TaskChangedFile[], title: string) => {
-      const changes =
-        await this.checkpointService.getChangedFilesChanges(files);
-      if (!this.cwd) {
-        return false;
-      }
-      return await showDiffChanges(changes, title, this.cwd, true);
-    },
-  );
-
   readExtensionVersion = async () => {
     return this.context.extension.packageJSON.version;
   };
@@ -1233,6 +1218,56 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       this.forkTaskStatus.setStatus(uid, status);
     },
   });
+
+  readTaskChangedFiles = async (taskId: string) => {
+    // Migrate from global state if needed (async, handles its own errors)
+    await this.taskChangedFilesManager.migrateFromGlobalState(taskId);
+
+    return {
+      changedFiles: ThreadSignal.serialize(
+        this.taskChangedFilesManager.getChangedFilesSignal(taskId),
+      ),
+      visibleChangedFiles: ThreadSignal.serialize(
+        this.taskChangedFilesManager.getVisibleChangedFilesSignal(taskId),
+      ),
+      updateChangedFiles: async (files: string[], checkpoint: string) => {
+        await this.taskChangedFilesManager.updateChangedFiles(
+          taskId,
+          files,
+          checkpoint,
+          this.checkpointService,
+        );
+      },
+      acceptChangedFile: async (
+        content: ChangedFileContent,
+        filepath?: string,
+      ) => {
+        await this.taskChangedFilesManager.acceptChangedFile(
+          taskId,
+          content,
+          filepath,
+        );
+      },
+      revertChangedFile: async (filepath?: string) => {
+        await this.taskChangedFilesManager.revertChangedFile(
+          taskId,
+          filepath,
+          this.checkpointService,
+        );
+      },
+      showChangedFiles: async (filepath?: string) => {
+        if (!this.cwd) {
+          return false;
+        }
+        return await this.taskChangedFilesManager.showChangedFiles(
+          taskId,
+          this.cwd,
+          filepath,
+          this.checkpointService,
+        );
+      },
+    };
+  };
 
   dispose() {
     for (const disposable of this.disposables) {

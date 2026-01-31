@@ -2,6 +2,7 @@ import type { AuthEvents } from "@/lib/auth-events";
 import { asRelativePath } from "@/lib/fs";
 import { getNonce } from "@/lib/get-nonce";
 import { getUri } from "@/lib/get-uri";
+import { taskFileChanged } from "@/lib/task-events";
 import { getLogger } from "@getpochi/common";
 import { getCorsProxyPort } from "@getpochi/common/cors-proxy";
 import type {
@@ -261,14 +262,15 @@ export abstract class WebviewBase implements vscode.Disposable {
     );
   }
 
-  protected setupFileWatcher(cwd: string): void {
+  protected setupFileWatcher(cwd: string, taskId: string): void {
     this.disposables.push(
       vscode.workspace.onDidSaveTextDocument(async (event) => {
         if (event.uri.fsPath.startsWith(cwd)) {
-          this.webviewHost?.onFileChanged(
-            asRelativePath(event.uri, cwd),
-            event.getText(),
-          );
+          const relativePath = asRelativePath(event.uri, cwd);
+          const content = event.getText();
+
+          // Emit event for task changed files tracking
+          taskFileChanged.fire({ taskId, filepath: relativePath, content });
         }
       }),
     );
@@ -327,7 +329,6 @@ export abstract class WebviewBase implements vscode.Disposable {
           "openSettings",
           "onAuthChanged",
           "isFocused",
-          "onFileChanged",
           "writeTaskFile",
           "readTaskFile",
           "readTaskOutput",

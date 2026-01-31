@@ -1,4 +1,3 @@
-import { getTaskChangedFileStore } from "@/lib/hooks/use-task-changed-files";
 import { vscodeHost } from "@/lib/vscode";
 import { type LiveKitStore, type Message, catalog } from "@getpochi/livekit";
 import { unique } from "remeda";
@@ -123,6 +122,6 @@ async function updateChangedFiles(
       .map((p) => p.input.path),
   );
 
-  const store = getTaskChangedFileStore(taskId);
-  await store.getState().updateChangedFiles(recentChangedFiles, lastCheckpoint);
+  const taskChangedFiles = await vscodeHost.readTaskChangedFiles(taskId);
+  await taskChangedFiles.updateChangedFiles(recentChangedFiles, lastCheckpoint);
 }

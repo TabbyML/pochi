@@ -6,6 +6,7 @@ import type {
   BrowserSession,
   BuiltinSubAgentInfo,
   CaptureEvent,
+  ChangedFileContent,
   CustomAgentFile,
   DisplayModel,
   FileDiff,
@@ -199,16 +200,7 @@ const VSCodeHostStub = {
   showCheckpointDiff: async (): Promise<boolean> => {
     return Promise.resolve(true);
   },
-  diffChangedFiles: async (
-    _changedFiles: TaskChangedFile[],
-  ): Promise<TaskChangedFile[]> => {
-    return Promise.resolve([]);
-  },
-  showChangedFiles: async (
-    _changedFiles: TaskChangedFile[],
-  ): Promise<boolean> => {
-    return Promise.resolve(true);
-  },
+
   readExtensionVersion: () => {
     return Promise.resolve("");
   },
@@ -384,6 +376,31 @@ const VSCodeHostStub = {
         Record<string, "inProgress" | "ready">
       >,
       setForkTaskStatus: () => Promise.resolve(),
+    };
+  },
+
+  readTaskChangedFiles: async (
+    _taskId: string,
+  ): Promise<{
+    changedFiles: ThreadSignalSerialization<TaskChangedFile[]>;
+    visibleChangedFiles: ThreadSignalSerialization<TaskChangedFile[]>;
+    updateChangedFiles: (files: string[], checkpoint: string) => Promise<void>;
+    acceptChangedFile: (
+      content: ChangedFileContent,
+      filepath?: string,
+    ) => Promise<void>;
+    revertChangedFile: (filepath?: string) => Promise<void>;
+    showChangedFiles: (filepath?: string) => Promise<boolean>;
+  }> => {
+    return {
+      changedFiles: {} as ThreadSignalSerialization<TaskChangedFile[]>,
+      visibleChangedFiles: {} as ThreadSignalSerialization<TaskChangedFile[]>,
+      updateChangedFiles: (_files: string[], _checkpoint: string) =>
+        Promise.resolve(),
+      acceptChangedFile: (_content: ChangedFileContent, _filepath?: string) =>
+        Promise.resolve(),
+      revertChangedFile: (_filepath?: string) => Promise.resolve(),
+      showChangedFiles: (_filepath?: string) => Promise.resolve(true),
     };
   },
 } satisfies VSCodeHostApi;

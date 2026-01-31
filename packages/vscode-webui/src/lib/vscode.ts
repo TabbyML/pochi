@@ -6,7 +6,6 @@ import type {
 } from "@getpochi/common/vscode-webui-bridge";
 import { catalog } from "@getpochi/livekit";
 import { ThreadNestedWindow } from "@quilted/threads";
-import Emittery from "emittery";
 import type { WebviewApi } from "vscode-webview";
 import { extractTaskResult } from "../features/chat/lib/tool-call-life-cycle";
 import { queryClient } from "./query-client";
@@ -90,8 +89,6 @@ function createVSCodeHost(): VSCodeHostApi {
         "readVSCodeSettings",
         "updateVSCodeSettings",
         "diffWithCheckpoint",
-        "diffChangedFiles",
-        "showChangedFiles",
         "restoreChangedFiles",
         "showInformationMessage",
         "readVisibleTerminals",
@@ -121,6 +118,7 @@ function createVSCodeHost(): VSCodeHostApi {
         "readTaskArchived",
         "readLang",
         "readForkTaskStatus",
+        "readTaskChangedFiles",
       ],
       exports: {
         openTaskList() {
@@ -143,10 +141,6 @@ function createVSCodeHost(): VSCodeHostApi {
 
         async isFocused() {
           return window.document.hasFocus();
-        },
-
-        onFileChanged(filePath: string, content: string) {
-          fileChangeEvent.emit("fileChanged", { filepath: filePath, content });
         },
 
         async writeTaskFile(taskId: string, filePath: string, content: string) {
@@ -246,10 +240,6 @@ function createVSCodeHost(): VSCodeHostApi {
 }
 
 export const vscodeHost = createVSCodeHost();
-
-export const fileChangeEvent = new Emittery<{
-  fileChanged: { filepath: string; content: string };
-}>();
 
 function mapTaskStatus(
   status:
