@@ -7,6 +7,7 @@ import { ExpandIcon } from "../tool-container";
 interface SubAgentViewProps {
   icon: React.ReactNode;
   title?: string;
+  actions?: React.ReactNode;
   children: React.ReactNode;
   footerActions?: React.ReactNode;
   taskSource: NewTaskToolViewProps["taskSource"];
@@ -18,6 +19,7 @@ interface SubAgentViewProps {
 export function SubAgentView({
   icon,
   title,
+  actions,
   children,
   footerActions,
   taskSource,
@@ -34,6 +36,7 @@ export function SubAgentView({
       <div className="flex items-center gap-2 border-b bg-muted px-3 py-2 font-medium text-muted-foreground text-xs">
         {icon}
         <span className="flex-1 truncate">{title}</span>
+        {actions}
       </div>
 
       {children}

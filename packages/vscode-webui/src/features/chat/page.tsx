@@ -30,6 +30,7 @@ import { ChatArea } from "./components/chat-area";
 import { ChatToolbar } from "./components/chat-toolbar";
 import { SubtaskHeader } from "./components/subtask";
 import { useAbortBeforeNavigation } from "./hooks/use-abort-before-navigation";
+import { useAutoOpenPlanFile } from "./hooks/use-auto-open-plan-file";
 import { useChatInitialization } from "./hooks/use-chat-initialization";
 import { useChatNotifications } from "./hooks/use-chat-notifications";
 import { useForkTask } from "./hooks/use-fork-task";
@@ -251,6 +252,13 @@ function Chat({ user, uid, info }: ChatProps) {
   });
 
   useAddSubtaskResult({ ...chat });
+
+  useAutoOpenPlanFile({
+    uid,
+    isSubTask,
+    subtask,
+    messages,
+  });
 
   useScrollToBottom({
     messagesContainerRef,

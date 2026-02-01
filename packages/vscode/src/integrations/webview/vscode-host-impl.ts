@@ -127,6 +127,7 @@ import {
   EditorContextState,
   type FileSelection,
 } from "../editor/editor-context-state";
+import { PochiFileSystemProvider } from "../editor/pochi-file-system-provider";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { TaskActivityTracker } from "../editor/task-activity-tracker";
 // biome-ignore lint/style/useImportType: needed for dependency injections
@@ -350,6 +351,10 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
 
   readPochiTabs = async (): Promise<ThreadSignalSerialization<TaskStates>> => {
     return ThreadSignal.serialize(this.taskActivityTracker.state);
+  };
+
+  closePochiTabs = async (uid?: string): Promise<void> => {
+    PochiFileSystemProvider.closePochiTabs(uid);
   };
 
   readActiveSelection = async (): Promise<

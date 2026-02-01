@@ -124,6 +124,7 @@
       "developerMode": "開発者モード",
       "enablePochiModels": "Pochi モデルを有効化",
       "clearStorage": "ストレージをクリア",
+      "resetReviewPlanTutorialCounter": "レビュー計画チュートリアルカウンターをリセット",
       "language": "言語",
       "languageDescription": "希望の言語を選択してください",
       "hideRecommendSettings": "推奨設定を非表示にする"
@@ -481,6 +482,8 @@
   },
   "planCard": {
     "reviewPlan": "確認",
+    "reviewPlanTitle": "計画を確認",
+    "reviewPlanTooltip": "プランアーティファクトの行番号の前にある「+」をクリックしてコメントを残します",
     "executePlan": "計画を実行",
     "creatingPlan": "コードを分析し、計画を作成しています..."
   },

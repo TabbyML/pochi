@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { useReviewPlanTutorialCounter } from "@/lib/hooks/use-review-plan-tutorial-counter";
 import { useVSCodeSettings } from "@/lib/hooks/use-vscode-settings";
 import { vscodeHost } from "@/lib/vscode";
 import { useTranslation } from "react-i18next";
@@ -16,6 +17,7 @@ export const AdvancedSettingsSection: React.FC = () => {
     updateEnablePochiModels,
   } = useSettingsStore();
   const vscodeSettings = useVSCodeSettings();
+  const { resetCount } = useReviewPlanTutorialCounter();
 
   return (
     <AccordionSection
@@ -69,6 +71,11 @@ export const AdvancedSettingsSection: React.FC = () => {
                 }}
               >
                 {t("settings.advanced.clearStorage")}
+              </Button>
+            </div>
+            <div>
+              <Button variant="default" onClick={resetCount}>
+                {t("settings.advanced.resetReviewPlanTutorialCounter")}
               </Button>
             </div>
           </>

@@ -25,6 +25,7 @@
     "paths": {
       "@/components/*": ["./src/components/*"],
       "@/lib/*": ["./src/lib/*"],
+      "@/assets/*": ["./src/assets/*"],
       "@/features/approval": ["./src/features/approval"],
       "@/features/chat": ["./src/features/chat"],
       "@/features/settings": ["./src/features/settings"],

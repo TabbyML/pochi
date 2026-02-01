@@ -123,6 +123,7 @@
       "developerMode": "Developer Mode",
       "enablePochiModels": "Enable Pochi Models",
       "clearStorage": "Clear Storage",
+      "resetReviewPlanTutorialCounter": "Reset Review Plan Tutorial Counter",
       "language": "Language",
       "languageDescription": "Choose your preferred language",
       "openInTab": "Allows to open the task in a new tab",
@@ -478,7 +479,10 @@
   },
   "planCard": {
     "reviewPlan": "Review",
+    "reviewPlanTitle": "Review Plan",
+    "reviewPlanTooltip": "Click the '+' before the line number of the plan artifact to leave comments",
     "executePlan": "Execute Plan",
+    "openPlan": "Open",
     "creatingPlan": "Analyzing your code and creating a plan..."
   },
   "browserView": {

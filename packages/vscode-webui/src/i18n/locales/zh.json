@@ -123,6 +123,7 @@
       "developerMode": "开发者模式",
       "enablePochiModels": "启用 Pochi 模型",
       "clearStorage": "清除存储",
+      "resetReviewPlanTutorialCounter": "重置评审计划教程计数器",
       "language": "语言",
       "languageDescription": "选择您的首选语言",
       "hideRecommendSettings": "隐藏推荐设置"
@@ -479,6 +480,8 @@
   },
   "planCard": {
     "reviewPlan": "评审",
+    "reviewPlanTitle": "评审计划",
+    "reviewPlanTooltip": "点击plan artifact 的行号前的‘+’ 来 leave comments",
     "executePlan": "执行计划",
     "creatingPlan": "正在分析您的代码并制定计划..."
   },
