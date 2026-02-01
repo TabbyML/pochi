@@ -1,4 +1,5 @@
 import { TextDecoder, TextEncoder } from "node:util";
+import { isFileExists } from "@/lib/fs";
 import { taskUpdated } from "@/lib/task-events";
 import { getLogger } from "@getpochi/common";
 import { signal } from "@preact/signals-core";
@@ -68,20 +69,58 @@ export class TaskHistoryStore implements vscode.Disposable {
 
     const now = Date.now();
     const threeMonthsInMs = 90 * 24 * 60 * 60 * 1000;
-    const cutoff = now - threeMonthsInMs;
+    const threeMonthsCutoff = now - threeMonthsInMs;
+
+    const oneWeekInMs = 7 * 24 * 60 * 60 * 1000;
+    const oneWeekCutoff = now - oneWeekInMs;
+
+    // Collect unique cwd paths that need existence check (tasks older than 1 week with cwd)
+    const cwdPathsToCheck = new Set<string>();
+    for (const task of Object.values(tasks)) {
+      if (
+        task.updatedAt > threeMonthsCutoff &&
+        task.updatedAt <= oneWeekCutoff &&
+        task.cwd
+      ) {
+        cwdPathsToCheck.add(task.cwd);
+      }
+    }
+
+    // Check all paths in parallel and cache results
+    const cwdExistsMap = new Map<string, boolean>();
+    await Promise.all(
+      Array.from(cwdPathsToCheck).map(async (cwd) => {
+        const exists = await isFileExists(vscode.Uri.file(cwd));
+        cwdExistsMap.set(cwd, exists);
+      }),
+    );
 
     const validTasks: Record<string, EncodedTask> = {};
     let hasStaleTasks = false;
 
     for (const [id, task] of Object.entries(tasks)) {
-      if (task.updatedAt > cutoff) {
-        validTasks[id] = task;
-      } else {
+      // Remove tasks older than 3 months
+      if (task.updatedAt <= threeMonthsCutoff) {
         logger.debug(
           `Removing stale task: ${id}, last updated at: ${new Date(task.updatedAt).toISOString()}`,
         );
         hasStaleTasks = true;
+        continue;
       }
+
+      // Remove tasks older than 1 week if their worktree is deleted
+      if (task.updatedAt <= oneWeekCutoff && task.cwd) {
+        const worktreeExists = cwdExistsMap.get(task.cwd) ?? true;
+        if (!worktreeExists) {
+          logger.debug(
+            `Removing task with deleted worktree: ${id}, cwd: ${task.cwd}, last updated at: ${new Date(task.updatedAt).toISOString()}`,
+          );
+          hasStaleTasks = true;
+          continue;
+        }
+      }
+
+      validTasks[id] = task;
     }
 
     this.tasks.value = validTasks;
