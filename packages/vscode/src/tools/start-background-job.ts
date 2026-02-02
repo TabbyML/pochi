@@ -16,9 +16,7 @@ export const startBackgroundJob: ToolFunctionType<
     cwd = path.normalize(path.join(workspaceDir, cwd));
   }
 
-  const viewColumn = await getViewColumnForTerminal({
-    cwd,
-  });
+  const viewColumn = getViewColumnForTerminal();
   const location = viewColumn ? { viewColumn } : undefined;
 
   const job = TerminalJob.create({
