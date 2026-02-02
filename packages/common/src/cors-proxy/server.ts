@@ -34,7 +34,7 @@ app.use(cors()).all("*", async (c) => {
       body: c.req.raw.body,
       duplex: "half",
     });
-  } catch (err: unknown) {
+  } catch (err) {
     logger.error("Proxy request failed", err);
     return c.text("Proxy request failed", 500);
   }
