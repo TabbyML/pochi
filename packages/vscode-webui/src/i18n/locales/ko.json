@@ -84,6 +84,7 @@
   },
   "worktree": {
     "createPr": "PR 생성",
+    "createWalkthrough": "워크스루 생성",
     "createDraftPr": "초안 PR 생성",
     "createPrManually": "수동으로 PR 생성",
     "installGhCli": "PR을 생성하려면 GitHub CLI를 설치하세요",

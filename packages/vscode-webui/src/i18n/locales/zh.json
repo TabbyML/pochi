@@ -84,6 +84,7 @@
   },
   "worktree": {
     "createPr": "创建 PR",
+    "createWalkthrough": "创建 Walkthrough",
     "createDraftPr": "创建草稿 PR",
     "createPrManually": "手动创建 PR",
     "installGhCli": "请安装 GitHub CLI 以创建 PR",
