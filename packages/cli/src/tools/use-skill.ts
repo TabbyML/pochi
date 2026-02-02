@@ -42,6 +42,8 @@ export const useSkill =
     // Return the skill instructions
     return {
       result: prompts.createUseSkillResult(skill),
-      filePath: resolvedFilePath,
+      _meta: {
+        filePath: resolvedFilePath,
+      },
     };
   };

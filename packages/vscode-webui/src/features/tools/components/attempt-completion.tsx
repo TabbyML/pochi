@@ -57,7 +57,7 @@ export const AttemptCompletionTool: React.FC<
           <Check className="size-4" />
           {t("toolInvocation.taskCompleted")}
         </span>
-        {isLastPart && !hasPR && !isSubTask && (
+        {!!currentWorkspace && isLastPart && !hasPR && !isSubTask && (
           <Button
             variant="ghost"
             size="sm"

@@ -1,17 +1,15 @@
 import { MessageMarkdown } from "@/components/message";
-import { TaskThread } from "@/components/task-thread";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { FixedStateChatContextProvider, useSendRetry } from "@/features/chat";
+import { useSendRetry } from "@/features/chat";
 import { useDefaultStore } from "@/lib/use-default-store";
 import { vscodeHost } from "@/lib/vscode";
 import { catalog } from "@getpochi/livekit";
 import { useNavigate } from "@tanstack/react-router";
 import { ClipboardList, FilePenLine, Play } from "lucide-react";
-import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ExpandIcon } from "../tool-container";
 import type { NewTaskToolViewProps } from "./index";
+import { SubAgentView } from "./sub-agent-view";
 
 export function PlannerView(props: NewTaskToolViewProps) {
   const { tool, isExecuting, taskSource, uid, toolCallStatusRegistryRef } =
@@ -25,7 +23,6 @@ export function PlannerView(props: NewTaskToolViewProps) {
   const sendRetry = useSendRetry();
   const navigate = useNavigate();
   const description = tool?.input?.description;
-  const [isCollapsed, setIsCollapsed] = useState(false);
 
   const handleReviewPlan = () => {
     navigate({
@@ -43,69 +40,46 @@ export function PlannerView(props: NewTaskToolViewProps) {
   };
 
   return (
-    <div>
-      <div className="mt-2 flex flex-col overflow-hidden rounded-md border shadow-sm">
-        <div className="flex items-center gap-2 border-b bg-muted px-3 py-2 font-medium text-muted-foreground text-xs">
-          <ClipboardList className="size-3.5" />
-          <span className="flex-1 truncate">{description}</span>
-        </div>
-        <ScrollArea viewportClassname="max-h-[300px]">
-          <div className="p-3 text-xs">
-            {file?.content ? (
-              <MessageMarkdown>{file.content}</MessageMarkdown>
-            ) : (
-              <div className="flex h-[200px] flex-col items-center justify-center gap-2 p-4 text-center text-muted-foreground">
-                <span className="text-base">{t("planCard.creatingPlan")}</span>
-              </div>
-            )}
-          </div>
-        </ScrollArea>
-        <div className="flex items-center gap-2 border-t bg-muted p-2">
-          {taskSource && taskSource.messages.length > 1 && (
-            <ExpandIcon
-              className="mt-1 rotate-270 cursor-pointer text-muted-foreground"
-              isExpanded={!isCollapsed}
-              onClick={() => setIsCollapsed(!isCollapsed)}
-            />
+    <SubAgentView
+      icon={<ClipboardList className="size-3.5" />}
+      title={description}
+      taskSource={taskSource}
+      toolCallStatusRegistryRef={toolCallStatusRegistryRef}
+      footerActions={
+        <>
+          <Button
+            variant="outline"
+            size="xs"
+            className="h-7 px-2"
+            onClick={handleReviewPlan}
+            disabled={isExecuting}
+          >
+            <FilePenLine className="mr-0.5 size-3.5" />
+            {t("planCard.reviewPlan")}
+          </Button>
+          <Button
+            size="xs"
+            className="h-7 px-2"
+            onClick={handleExecutePlan}
+            disabled={isExecuting}
+          >
+            <Play className="mr-0.5 size-3.5" />
+            {t("planCard.executePlan")}
+          </Button>
+        </>
+      }
+    >
+      <ScrollArea viewportClassname="max-h-[20vh]">
+        <div className="p-3 text-xs">
+          {file?.content ? (
+            <MessageMarkdown>{file.content}</MessageMarkdown>
+          ) : (
+            <div className="flex h-[20vh] flex-col items-center justify-center gap-2 p-4 text-center text-muted-foreground">
+              <span className="text-base">{t("planCard.creatingPlan")}</span>
+            </div>
           )}
-          <div className="ml-auto flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="xs"
-              className="h-7 px-2"
-              onClick={handleReviewPlan}
-              disabled={isExecuting}
-            >
-              <FilePenLine className="mr-0.5 size-3.5" />
-              {t("planCard.reviewPlan")}
-            </Button>
-            <Button
-              size="xs"
-              className="h-7 px-2"
-              onClick={handleExecutePlan}
-              disabled={isExecuting}
-            >
-              <Play className="mr-0.5 size-3.5" />
-              {t("planCard.executePlan")}
-            </Button>
-          </div>
         </div>
-        {isCollapsed && taskSource && taskSource.messages.length > 1 && (
-          <div className="p-1">
-            <FixedStateChatContextProvider
-              toolCallStatusRegistry={toolCallStatusRegistryRef?.current}
-            >
-              <TaskThread
-                source={{ ...taskSource, isLoading: false }}
-                showMessageList={true}
-                showTodos={false}
-                scrollAreaClassName="border-none"
-                assistant={{ name: "Planner" }}
-              />
-            </FixedStateChatContextProvider>
-          </div>
-        )}
-      </div>
-    </div>
+      </ScrollArea>
+    </SubAgentView>
   );
 }

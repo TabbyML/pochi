@@ -5,4 +5,5 @@ export interface ExecuteCommandOptions {
   abortSignal?: AbortSignal;
   onData?: (data: { output: string; isTruncated: boolean }) => void;
   color?: boolean;
+  envs?: Record<string, string>;
 }

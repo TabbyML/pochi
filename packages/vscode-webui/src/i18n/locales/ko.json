@@ -61,7 +61,7 @@
     "super": "가강",
     "swift": "극속",
     "reload": "새로고침",
-    "subscriptionRequired": "구독 필요"
+    "subscriptionRequired": "Super 모델을 사용하려면 구독하세요"
   },
   "worktreeSelect": {
     "selectWorktree": "워크트리 선택",
@@ -477,5 +477,8 @@
     "reviewPlan": "검토",
     "executePlan": "계획 실행",
     "creatingPlan": "코드를 분석하고 계획을 수립 중입니다..."
+  },
+  "browserView": {
+    "noFrameAvailable": "프레임 없음"
   }
 }

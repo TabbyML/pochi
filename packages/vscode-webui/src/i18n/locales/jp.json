@@ -62,7 +62,7 @@
     "super": "加強",
     "swift": "極速",
     "reload": "再読み込み",
-    "subscriptionRequired": "サブスクリプション必要"
+    "subscriptionRequired": "Super モデルを使用するにはサブスクライブしてください"
   },
   "worktreeSelect": {
     "selectWorktree": "ワークツリーを選択",
@@ -483,5 +483,8 @@
     "reviewPlan": "確認",
     "executePlan": "計画を実行",
     "creatingPlan": "コードを分析し、計画を作成しています..."
+  },
+  "browserView": {
+    "noFrameAvailable": "フレームが利用できません"
   }
 }

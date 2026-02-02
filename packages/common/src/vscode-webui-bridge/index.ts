@@ -57,6 +57,8 @@ export type {
   ReviewComment,
   ReviewCodeSnippet,
 } from "./types/review";
+export type { BrowserSession } from "./types/browser";
+export type { BuiltinSubAgentInfo } from "./types/sub-agent";
 export { isValidCustomAgentFile } from "./types/custom-agent";
 export { isValidSkillFile } from "./types/skill";
 export {

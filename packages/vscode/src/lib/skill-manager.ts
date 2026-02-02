@@ -25,7 +25,10 @@ async function readSkillsFromDir(dir: string): Promise<SkillFile[]> {
     const files = await vscode.workspace.fs.readDirectory(vscode.Uri.file(dir));
     for (const [fileName, fileType] of files) {
       // Look for subdirectories (skill directories)
-      if (fileType === vscode.FileType.Directory) {
+      if (
+        fileType & vscode.FileType.Directory ||
+        fileType & vscode.FileType.SymbolicLink
+      ) {
         const skillDir = path.join(dir, fileName);
         const skillFilePath = path.join(skillDir, "SKILL.md");
 

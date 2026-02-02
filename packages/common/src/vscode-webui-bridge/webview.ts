@@ -4,7 +4,10 @@ import type { ThreadSignalSerialization } from "@quilted/threads/signals";
 import type { Environment } from "../base";
 import type { UserInfo } from "../configuration";
 import type {
+  BrowserSession,
+  BuiltinSubAgentInfo,
   CaptureEvent,
+  ChangedFileContent,
   CustomAgentFile,
   ExecuteCommandResult,
   FileDiff,
@@ -88,6 +91,7 @@ export interface VSCodeHostApi {
       toolCallId: string;
       abortSignal: ThreadAbortSignalSerialization;
       contentType?: string[];
+      builtinSubAgentInfo?: BuiltinSubAgentInfo;
     },
   ): Promise<unknown>;
 
@@ -268,10 +272,6 @@ export interface VSCodeHostApi {
     displayPaths?: string[],
   ): Promise<boolean>;
 
-  diffChangedFiles(changedFiles: TaskChangedFile[]): Promise<TaskChangedFile[]>;
-
-  showChangedFiles(files: TaskChangedFile[], title: string): Promise<boolean>;
-
   readExtensionVersion(): Promise<string>;
 
   readVSCodeSettings(): Promise<ThreadSignalSerialization<VSCodeSettings>>;
@@ -353,6 +353,14 @@ export interface VSCodeHostApi {
 
   readTasks(): Promise<ThreadSignalSerialization<Record<string, unknown>>>;
 
+  readBrowserSession(
+    taskId: string,
+  ): Promise<ThreadSignalSerialization<BrowserSession | undefined>>;
+
+  registerBrowserSession(taskId: string): Promise<void>;
+
+  unregisterBrowserSession(taskId: string): Promise<void>;
+
   /**
    * Read mcpConfigOverride for a task.
    * Returns a serialized signal for the value and a setter function.
@@ -386,6 +394,30 @@ export interface VSCodeHostApi {
       status: "inProgress" | "ready",
     ) => Promise<void>;
   }>;
+
+  /**
+   * Read and manage changed files for a task.
+   * Returns serialized signals for changed files and visible changed files,
+   * plus action functions to manipulate them.
+   * Also performs migration from global state to task data store if needed.
+   */
+  readTaskChangedFiles(taskId: string): Promise<{
+    /** Signal for all changed files */
+    changedFiles: ThreadSignalSerialization<TaskChangedFile[]>;
+    /** Signal for visible (pending) changed files only */
+    visibleChangedFiles: ThreadSignalSerialization<TaskChangedFile[]>;
+    /** Update changed files with new file paths from a tool call */
+    updateChangedFiles: (files: string[], checkpoint: string) => Promise<void>;
+    /** Accept changed files (mark as accepted) */
+    acceptChangedFile: (
+      content: ChangedFileContent,
+      filepath?: string,
+    ) => Promise<void>;
+    /** Revert changed files (restore from checkpoint and mark as reverted) */
+    revertChangedFile: (filepath?: string) => Promise<void>;
+    /** Show changed files in a diff view */
+    showChangedFiles: (filepath?: string) => Promise<boolean>;
+  }>;
 }
 
 export interface WebviewHostApi {
@@ -396,8 +428,6 @@ export interface WebviewHostApi {
   onAuthChanged(): void;
 
   isFocused(): Promise<boolean>;
-
-  onFileChanged(filePath: string, content: string): void;
 
   writeTaskFile(
     taskId: string,

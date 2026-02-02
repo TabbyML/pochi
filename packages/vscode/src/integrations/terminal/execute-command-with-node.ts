@@ -23,6 +23,7 @@ export const executeCommandWithNode = async ({
   abortSignal,
   onData,
   color = true,
+  envs,
 }: ExecuteCommandOptions) => {
   const shellCommand = buildShellCommand(command);
   const options = {
@@ -37,6 +38,7 @@ export const executeCommandWithNode = async ({
             CLICOLOR_FORCE: "1",
           }
         : {}),
+      ...envs,
     },
   };
 

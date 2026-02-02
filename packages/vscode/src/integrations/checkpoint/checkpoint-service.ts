@@ -37,13 +37,20 @@ async function withTimeout<T>(
   timeoutMs: number,
   operationName: string,
 ): Promise<T | null> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
   const timeoutPromise = new Promise<null>((resolve) => {
-    setTimeout(() => {
+    timeoutId = setTimeout(() => {
       logger.warn(`${operationName} timed out after ${timeoutMs}ms`);
       resolve(null);
     }, timeoutMs);
   });
-  return Promise.race([promise, timeoutPromise]);
+  try {
+    return await Promise.race([promise, timeoutPromise]);
+  } finally {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+  }
 }
 
 @scoped(Lifecycle.ContainerScoped)
@@ -118,6 +125,7 @@ export class CheckpointService implements vscode.Disposable {
     message: string,
     options: SaveCheckpointOptions = {},
   ): Promise<string | null> => {
+    const startTime = performance.now();
     logger.trace(`Saving checkpoint with message: ${message}`);
 
     await this.ensureInitialized();
@@ -129,19 +137,25 @@ export class CheckpointService implements vscode.Disposable {
     try {
       const status = await this.shadowGit.status();
       if (status.isClean && !options.force) {
+        const duration = performance.now() - startTime;
+        logger.trace(
+          `Skipped checkpoint (no changes) with message: ${message}, duration: ${duration.toFixed(0)}ms`,
+        );
         return null;
       }
       await this.shadowGit.stageAll();
       const commitMessage = `${checkpointCommitPrefix(this.cwd)}${message}`;
       const commitHash = await this.shadowGit.commit(commitMessage);
+      const duration = performance.now() - startTime;
       logger.trace(
-        `Successfully saved checkpoint with message: ${message}, commit hash: ${commitHash}`,
+        `Successfully saved checkpoint with message: ${message}, commit hash: ${commitHash}, duration: ${duration.toFixed(0)}ms`,
       );
       this.latestCheckpoint.value = commitHash;
       return commitHash;
     } catch (error) {
+      const duration = performance.now() - startTime;
       const errorMessage = toErrorMessage(error);
-      const fullErrorMessage = `Failed to save checkpoint with message: ${message}: ${errorMessage}`;
+      const fullErrorMessage = `Failed to save checkpoint with message: ${message}: ${errorMessage}, duration: ${duration.toFixed(0)}ms`;
       logger.error(fullErrorMessage, { error });
       throw new Error(fullErrorMessage);
     }

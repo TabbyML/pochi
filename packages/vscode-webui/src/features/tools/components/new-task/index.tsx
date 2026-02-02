@@ -17,6 +17,7 @@ import { useLiveSubTask } from "../../hooks/use-live-sub-task";
 import { StatusIcon } from "../status-icon";
 import { ExpandIcon, ToolTitle } from "../tool-container";
 import type { ToolProps } from "../types";
+import { BrowserView } from "./browser-view";
 import { PlannerView } from "./planner-view";
 
 interface NewTaskToolProps extends ToolProps<"newTask"> {
@@ -140,6 +141,10 @@ function NewTaskToolView(props: NewTaskToolViewProps) {
       setShowMessageList(false);
     }
   }, [isExecuting, completed, setShowMessageList]);
+
+  if (agentType === "browser") {
+    return <BrowserView {...props} />;
+  }
 
   if (agentType === "planner") {
     return <PlannerView {...props} />;

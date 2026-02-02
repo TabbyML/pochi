@@ -3,7 +3,10 @@ import type { ThreadSignalSerialization } from "@quilted/threads/signals";
 import type { Environment } from "../base";
 import type { UserInfo } from "../configuration";
 import type {
+  BrowserSession,
+  BuiltinSubAgentInfo,
   CaptureEvent,
+  ChangedFileContent,
   CustomAgentFile,
   DisplayModel,
   FileDiff,
@@ -78,6 +81,7 @@ const VSCodeHostStub = {
     _options: {
       toolCallId: string;
       abortSignal: ThreadAbortSignalSerialization;
+      builtinSubAgentInfo?: BuiltinSubAgentInfo;
     },
   ): Promise<unknown> => {
     return Promise.resolve(undefined);
@@ -196,16 +200,7 @@ const VSCodeHostStub = {
   showCheckpointDiff: async (): Promise<boolean> => {
     return Promise.resolve(true);
   },
-  diffChangedFiles: async (
-    _changedFiles: TaskChangedFile[],
-  ): Promise<TaskChangedFile[]> => {
-    return Promise.resolve([]);
-  },
-  showChangedFiles: async (
-    _changedFiles: TaskChangedFile[],
-  ): Promise<boolean> => {
-    return Promise.resolve(true);
-  },
+
   readExtensionVersion: () => {
     return Promise.resolve("");
   },
@@ -327,6 +322,15 @@ const VSCodeHostStub = {
   setGlobalState: async (): Promise<void> => {},
   readTasks: (): Promise<ThreadSignalSerialization<Record<string, unknown>>> =>
     Promise.resolve({} as ThreadSignalSerialization<Record<string, unknown>>),
+  readBrowserSession: (
+    _taskId: string,
+  ): Promise<ThreadSignalSerialization<BrowserSession | undefined>> =>
+    Promise.resolve(
+      {} as ThreadSignalSerialization<BrowserSession | undefined>,
+    ),
+  registerBrowserSession: (_taskId: string): Promise<void> => Promise.resolve(),
+  unregisterBrowserSession: (_taskId: string): Promise<void> =>
+    Promise.resolve(),
   readMcpConfigOverride: async (
     _taskId: string,
   ): Promise<{
@@ -372,6 +376,31 @@ const VSCodeHostStub = {
         Record<string, "inProgress" | "ready">
       >,
       setForkTaskStatus: () => Promise.resolve(),
+    };
+  },
+
+  readTaskChangedFiles: async (
+    _taskId: string,
+  ): Promise<{
+    changedFiles: ThreadSignalSerialization<TaskChangedFile[]>;
+    visibleChangedFiles: ThreadSignalSerialization<TaskChangedFile[]>;
+    updateChangedFiles: (files: string[], checkpoint: string) => Promise<void>;
+    acceptChangedFile: (
+      content: ChangedFileContent,
+      filepath?: string,
+    ) => Promise<void>;
+    revertChangedFile: (filepath?: string) => Promise<void>;
+    showChangedFiles: (filepath?: string) => Promise<boolean>;
+  }> => {
+    return {
+      changedFiles: {} as ThreadSignalSerialization<TaskChangedFile[]>,
+      visibleChangedFiles: {} as ThreadSignalSerialization<TaskChangedFile[]>,
+      updateChangedFiles: (_files: string[], _checkpoint: string) =>
+        Promise.resolve(),
+      acceptChangedFile: (_content: ChangedFileContent, _filepath?: string) =>
+        Promise.resolve(),
+      revertChangedFile: (_filepath?: string) => Promise.resolve(),
+      showChangedFiles: (_filepath?: string) => Promise.resolve(true),
     };
   },
 } satisfies VSCodeHostApi;

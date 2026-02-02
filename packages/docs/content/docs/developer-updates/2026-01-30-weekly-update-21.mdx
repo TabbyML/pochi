@@ -1,0 +1,62 @@
+---
+title: Weekly Update #21
+---
+
+# Weekly Update #21
+
+### TL;DR
+
+As projects get more complex, small workflow improvements start to matter a lot. 
+
+This release brings a few updates aimed at making Pochi easier to work with day-to-day, including reusable skills, better task organization through archiving, and support for running long-running subtasks in the background.
+
+
+### 🚀 Features
+
+- **Agent Skills:** You can now define and use Skills in Pochi to reuse agent instructions across tasks and projects. Skills are reusable instruction sets that influence how the agent approaches a task, making it easier to standardize workflows, encode domain-specific knowledge, or integrate external tools. 
+
+  1. Skills are defined as folders containing a `SKILL.md` file with metadata and instructions. 
+  2. Pochi automatically discovers skills from project (`.pochi/skills/`) and user (`~/.pochi/skills/`) locations. 
+  3. Skills can be installed from the community registry using the CLI:  (`npx skills add <skill-source> --agent pochi`). 
+  4. Skills can be activated automatically based on task context or explicitly via slash commands. You can also combine multiple skills within a single task. 
+  5. Skills do not modify your project files unless explicitly used during execution. **[#1050](https://github.com/TabbyML/pochi/issues/1050)** 
+
+
+  <video
+        controls
+        style={{
+        width: "100%",
+        borderRadius: "8px",
+        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+        }}
+    >
+        <source src="https://assets.docs.getpochi.com/skills-028.mp4" type="video/mp4" />
+        Your browser does not support the video tag.
+    </video>
+
+
+
+### ✨ Enhancements
+
+- **Task Archiving:** You can now archive and unarchive Pochi tasks from the sidebar on a per-worktree basis. Archived tasks can be hidden or shown using a toggle, and you can optionally archive tasks older than 7 days to keep the task list clean. **[#1106](https://github.com/TabbyML/pochi/issues/1106)**
+
+   <video
+        controls
+        style={{
+        width: "100%",
+        borderRadius: "8px",
+        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+        }}
+    >
+        <source src="https://assets.docs.getpochi.com/archive-tasks-028.mp4" type="video/mp4" />
+        Your browser does not support the video tag.
+    </video>
+
+- **Background Subtasks:** `newTask` can now be run asynchronously as a background child task. These subtasks preserve the parent–child relationship but do not block the parent task, allowing agents to delegate long-running work while continuing execution.**[#1022](https://github.com/TabbyML/pochi/issues/1022)**
+
+
+### 🔥 Preview
+
+- The browser subagent is currently under active development. When it lands, you’ll be able to watch the agent’s browsing actions stream directly in the editor and incorporate those observations into plans, reviews, and execution. 
+
+- We’re also working on automatic walkthroughs that recap the changes an agent made once a task is complete. More details coming soon.

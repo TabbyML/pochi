@@ -13,13 +13,13 @@ export const UseSkillTool: React.FC<ToolProps<"useSkill">> = ({
 }) => {
   const { t } = useTranslation();
   const { skill } = tool.input || {};
-  const { result, filePath } = tool.output || {};
+  const { result, _meta } = tool.output || {};
 
   const onClick = useCallback(() => {
-    if (filePath) {
-      vscodeHost.openFile(filePath);
+    if (_meta?.filePath) {
+      vscodeHost.openFile(_meta.filePath);
     }
-  }, [filePath]);
+  }, [_meta?.filePath]);
 
   return (
     <ExpandableToolContainer
