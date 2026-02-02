@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import { getCorsProxyPort } from "@getpochi/common/cors-proxy";
 import type { BrowserSession } from "@getpochi/common/vscode-webui-bridge";
 import { signal } from "@preact/signals-core";
 import { injectable, singleton } from "tsyringe";
@@ -11,11 +12,12 @@ export class BrowserSessionStore {
 
   async registerBrowserSession(taskId: string) {
     const port = await getAvailablePort();
+    const proxyPort = getCorsProxyPort();
     this.browserSessions.value = {
       ...this.browserSessions.value,
       [taskId]: {
         port,
-        streamUrl: `ws://localhost:${port}`,
+        streamUrl: `ws://localhost:${proxyPort}?target=${encodeURI(`ws://localhost:${port}`)}`,
       },
     };
   }
