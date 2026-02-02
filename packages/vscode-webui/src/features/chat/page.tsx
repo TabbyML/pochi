@@ -254,10 +254,8 @@ function Chat({ user, uid, info }: ChatProps) {
   useAddSubtaskResult({ ...chat });
 
   useAutoOpenPlanFile({
-    uid,
     isSubTask,
     subtask,
-    messages,
   });
 
   useScrollToBottom({

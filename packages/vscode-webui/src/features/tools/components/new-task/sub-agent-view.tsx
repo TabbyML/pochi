@@ -14,6 +14,7 @@ interface SubAgentViewProps {
   toolCallStatusRegistryRef: NewTaskToolViewProps["toolCallStatusRegistryRef"];
   assistantName?: string;
   defaultCollapsed?: boolean;
+  expandable?: boolean;
 }
 
 export function SubAgentView({
@@ -26,9 +27,11 @@ export function SubAgentView({
   toolCallStatusRegistryRef,
   assistantName = "Planner",
   defaultCollapsed = false,
+  expandable = true,
 }: SubAgentViewProps) {
   const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed);
-  const showExpandIcon = taskSource && taskSource.messages.length > 1;
+  const showExpandIcon =
+    expandable && taskSource && taskSource.messages.length > 1;
   const showFooter = showExpandIcon || footerActions;
 
   return (

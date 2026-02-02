@@ -1,5 +1,5 @@
-import reviewPlanGif from "@/assets/review-plan.gif";
 import { MessageMarkdown } from "@/components/message";
+import { TaskThread } from "@/components/task-thread";
 import { Button } from "@/components/ui/button";
 import {
   HoverCard,
@@ -7,7 +7,7 @@ import {
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useSendRetry } from "@/features/chat";
+import { FixedStateChatContextProvider, useSendRetry } from "@/features/chat";
 import { useReviewPlanTutorialCounter } from "@/lib/hooks/use-review-plan-tutorial-counter";
 import { useDefaultStore } from "@/lib/use-default-store";
 import { vscodeHost } from "@/lib/vscode";
@@ -19,9 +19,13 @@ import {
   Play,
   SquareArrowOutUpRight,
 } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { NewTaskToolViewProps } from "./index";
 import { SubAgentView } from "./sub-agent-view";
+
+const reviewTutorialImage =
+  "https://app.getpochi.com/images/review-plan-tutorial.gif";
 
 export function PlannerView(props: NewTaskToolViewProps) {
   const { tool, isExecuting, taskSource, uid, toolCallStatusRegistryRef } =
@@ -36,6 +40,15 @@ export function PlannerView(props: NewTaskToolViewProps) {
   const navigate = useNavigate();
   const description = tool?.input?.description;
   const { count, incrementCount } = useReviewPlanTutorialCounter();
+  const [isImageLoaded, setIsImageLoaded] = useState(false);
+
+  useEffect(() => {
+    const img = new Image();
+    img.src = reviewTutorialImage;
+    img.onload = () => {
+      setIsImageLoaded(true);
+    };
+  }, []);
 
   const handleReviewPlan = () => {
     navigate({
@@ -59,13 +72,14 @@ export function PlannerView(props: NewTaskToolViewProps) {
     <SubAgentView
       icon={<ClipboardList className="size-3.5" />}
       title={description}
+      expandable={!!file}
       actions={
         <Button
           size="icon"
           variant="ghost"
           disabled={isExecuting}
           onClick={handleOpenPlan}
-          className="h-auto py-0"
+          className="size-auto px-2 py-1"
         >
           <SquareArrowOutUpRight className="size-3.5" />
         </Button>
@@ -77,7 +91,7 @@ export function PlannerView(props: NewTaskToolViewProps) {
           <HoverCard
             openDelay={0}
             onOpenChange={(open) => {
-              if (open && count <= 2) {
+              if (open && count <= 2 && isImageLoaded) {
                 incrementCount();
               }
             }}
@@ -95,12 +109,12 @@ export function PlannerView(props: NewTaskToolViewProps) {
               </Button>
             </HoverCardTrigger>
             <HoverCardContent
-              hidden={count > 2}
+              hidden={count > 2 || !isImageLoaded}
               className="w-[80vw] max-w-[480px]"
             >
               <div className="flex flex-col gap-2">
                 <img
-                  src={reviewPlanGif}
+                  src={reviewTutorialImage}
                   alt="Review Plan"
                   className="rounded-md"
                 />
@@ -129,8 +143,20 @@ export function PlannerView(props: NewTaskToolViewProps) {
         <div className="p-3 text-xs">
           {file?.content ? (
             <MessageMarkdown>{file.content}</MessageMarkdown>
+          ) : taskSource && taskSource.messages.length > 1 ? (
+            <FixedStateChatContextProvider
+              toolCallStatusRegistry={toolCallStatusRegistryRef?.current}
+            >
+              <TaskThread
+                source={taskSource}
+                showMessageList={true}
+                showTodos={false}
+                scrollAreaClassName="border-none min-h-[10vh] my-0"
+                assistant={{ name: "Planner" }}
+              />
+            </FixedStateChatContextProvider>
           ) : (
-            <div className="flex h-[20vh] flex-col items-center justify-center gap-2 p-4 text-center text-muted-foreground">
+            <div className="flex h-[10vh] flex-col items-center justify-center gap-2 p-3 text-center text-muted-foreground">
               <span className="text-base">{t("planCard.creatingPlan")}</span>
             </div>
           )}
