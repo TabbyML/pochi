@@ -178,7 +178,8 @@ const program = new Command()
         try {
           const isUrl =
             attachmentPath.trim().startsWith("http://") ||
-            attachmentPath.trim().startsWith("https://");
+            attachmentPath.trim().startsWith("https://") ||
+            attachmentPath.trim().startsWith("gs://);
           let dataUrl: string;
           let mimeType: string;
           let filename: string;
