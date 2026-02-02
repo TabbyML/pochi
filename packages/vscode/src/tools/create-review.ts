@@ -14,7 +14,6 @@ export const createReview: ToolFunctionType<
   // Convert to 0-indexed lines for VSCode
   const startLineIdx = startLine - 1;
   const endLineIdx = (endLine ?? startLine) - 1;
-
   const range = new vscode.Range(startLineIdx, 0, endLineIdx, 0);
 
   const thread = await reviewController.createThread(uri, range, comment);

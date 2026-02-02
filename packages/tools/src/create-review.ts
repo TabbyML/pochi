@@ -1,15 +1,29 @@
 import { z } from "zod";
 import { defineClientTool } from "./types";
 
-export const inputSchema = z.object({
-  path: z.string().describe("The file path to add the review comment to"),
-  startLine: z.number().describe("The start line number (1-indexed)"),
-  endLine: z
-    .number()
-    .optional()
-    .describe("The end line number (1-indexed). Defaults to startLine."),
-  comment: z.string().describe("The review comment text"),
-});
+export const inputSchema = z
+  .object({
+    path: z.string().describe("The file path to add the review comment to"),
+    startLine: z
+      .number()
+      .int()
+      .min(1)
+      .describe("The start line number (1-indexed)"),
+    endLine: z
+      .number()
+      .int()
+      .min(1)
+      .optional()
+      .describe("The end line number (1-indexed). Defaults to startLine."),
+    comment: z.string().describe("The review comment text"),
+  })
+  .refine(
+    (data) => data.endLine === undefined || data.endLine >= data.startLine,
+    {
+      message: "endLine must be greater than or equal to startLine",
+      path: ["endLine"],
+    },
+  );
 
 export const createReview = defineClientTool({
   description: `Create a review comment on a specific location in a file.
