@@ -278,6 +278,7 @@
     "imgAlt": "MCP tool response snapshot",
     "applyingDiffTo": "Applying diff to ",
     "applyingDiffsTo": "Applying diffs to ",
+    "addingReviewComment": "Reviewing ",
     "in": "in",
     "executeCommand": "I will execute the following command",
     "executingCommand": "Executing command",

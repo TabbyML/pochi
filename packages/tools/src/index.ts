@@ -8,13 +8,11 @@ import {
   isToolUIPart,
 } from "ai";
 import type { z } from "zod/v4";
-
 import { applyDiff } from "./apply-diff";
 import { askFollowupQuestion } from "./ask-followup-question";
-
 import { createAttemptCompletionTool } from "./attempt-completion";
+import { createReview } from "./create-review";
 import { executeCommand } from "./execute-command";
-
 import { globFiles } from "./glob-files";
 import { listFiles } from "./list-files";
 import type { multiApplyDiff } from "./multi-apply-diff";
@@ -94,7 +92,7 @@ export const ToolsByPermission = {
     "killBackgroundJob",
     "newTask",
   ] satisfies ToolName[] as string[],
-  default: ["todoWrite"] satisfies ToolName[] as string[],
+  default: ["todoWrite", "createReview"] satisfies ToolName[] as string[],
 };
 
 export const ServerToolApproved = "<server-tool-approved>";
@@ -107,7 +105,6 @@ const createCliTools = (options?: CreateToolOptions) => ({
   ),
   executeCommand,
   globFiles,
-
   listFiles,
   readFile: createReadFileTool(options?.contentType),
   useSkill: createSkillTool(options?.skills),
@@ -116,6 +113,7 @@ const createCliTools = (options?: CreateToolOptions) => ({
   writeToFile,
   editNotebook,
   newTask: createNewTaskTool(options?.customAgents),
+  createReview,
 });
 
 export interface CreateToolOptions {
@@ -150,5 +148,7 @@ export const selectClientTools = (
     return rest;
   }
 
-  return clientTools;
+  // For main agent, exclude createReview (only available in reviewer subagent)
+  const { createReview: _, ...rest } = clientTools;
+  return rest;
 };

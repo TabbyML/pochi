@@ -40,6 +40,7 @@ import { UserStorage } from "@/lib/user-storage";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { WorkspaceScope } from "@/lib/workspace-scoped";
 import { applyDiff, previewApplyDiff } from "@/tools/apply-diff";
+import { createReview } from "@/tools/create-review";
 import { editNotebook } from "@/tools/edit-notebook";
 import { executeCommand } from "@/tools/execute-command";
 import { globFiles } from "@/tools/glob-files";
@@ -1323,6 +1324,7 @@ const ToolMap: Record<
   todoWrite,
   editNotebook,
   useSkill,
+  createReview,
 };
 
 const ToolPreviewMap: Record<
