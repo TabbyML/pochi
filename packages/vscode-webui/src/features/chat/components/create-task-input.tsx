@@ -294,11 +294,15 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
     [handleSubmitImpl],
   );
 
-  const handleCreatePlan = useCallback(async () => {
-    // Add to submit history before submitting
-    chatInputFormRef.current?.addToSubmitHistory();
-    handleSubmitImpl({ shouldCreatePlan: true });
-  }, [handleSubmitImpl]);
+  const handleClickSubmit = useCallback(
+    async (shouldCreatePlan?: boolean) => {
+      chatInputFormRef.current?.addToSubmitHistory();
+      handleSubmitImpl({
+        shouldCreatePlan: !!shouldCreatePlan,
+      });
+    },
+    [handleSubmitImpl],
+  );
 
   return (
     <>
@@ -395,8 +399,8 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
           <SubmitDropdownButton
             isLoading={debouncedIsCreatingTask}
             disabled={!selectedModel || isUploadingAttachments}
-            onSubmit={() => handleSubmitImpl()}
-            onSubmitPlan={handleCreatePlan}
+            onSubmit={() => handleClickSubmit(false)}
+            onSubmitPlan={() => handleClickSubmit(true)}
             mcpConfigOverride={mcpConfigOverride}
             onToggleServer={toggleServer}
             resetMcpTools={resetMcpTools}

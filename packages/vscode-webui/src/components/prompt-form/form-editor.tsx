@@ -177,14 +177,6 @@ export function FormEditor({
     });
   }, []);
 
-  // const fileMentionConfig = createFileMentionConfig({
-  //   fetchItems: fetchFileMentionItems,
-  //   checkHasIssues: async () => {
-  //     const issues = await debouncedQueryGithubIssues();
-  //     return !!(issues && issues.length > 0);
-  //   },
-  // });
-
   const editor = useEditor(
     {
       extensions: [
