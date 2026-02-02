@@ -99,6 +99,7 @@
     "tailwindcss-animate": "catalog:",
     "tippy.js": "^6.3.7",
     "unist-util-visit": "^5.0.0",
+    "webm-muxer": "^5.1.4",
     "zod": "catalog:",
     "zustand": "^5.0.3",
     "jose": "catalog:"
