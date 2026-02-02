@@ -24,9 +24,9 @@ import { prompts } from "@getpochi/common";
 import type { GitWorktree, Review } from "@getpochi/common/vscode-webui-bridge";
 import { PaperclipIcon } from "lucide-react";
 import type React from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ChatInputForm } from "./chat-input-form";
+import { ChatInputForm, type ChatInputFormHandle } from "./chat-input-form";
 
 interface CreateTaskInputProps {
   cwd: string;
@@ -114,6 +114,8 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
       worktrees?.filter((x: GitWorktree) => x.path === workspacePath) ?? []
     );
   }, [isOpenMainWorktree, worktrees, workspacePath]);
+
+  const chatInputFormRef = useRef<ChatInputFormHandle>(null);
 
   const onFocus = () => {
     useSettingsStore.persist.rehydrate();
@@ -293,12 +295,15 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
   );
 
   const handleCreatePlan = useCallback(async () => {
+    // Add to submit history before submitting
+    chatInputFormRef.current?.addToSubmitHistory();
     handleSubmitImpl({ shouldCreatePlan: true });
   }, [handleSubmitImpl]);
 
   return (
     <>
       <ChatInputForm
+        ref={chatInputFormRef}
         input={input}
         setInput={setInput}
         onSubmit={handleSubmit}
