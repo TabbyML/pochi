@@ -16,6 +16,7 @@ import {
   findActivePochiTaskTab,
   getTabGroupType,
   getTabGroupsShape,
+  isPochiOutputTab,
   isPochiTaskTab,
   isSameTabGroupsShape,
   isSameTabInput,
@@ -641,6 +642,19 @@ export class LayoutManager implements vscode.Disposable {
     }
     logger.trace("End merge tabs in split window.");
 
+    // Open Pochi output log in dev mode
+    if (
+      this.configuration.advancedSettings.value.pochiLayout?.developerMode &&
+      !this.allTabGroups[2].tabs.some((tab) => isPochiOutputTab(tab))
+    ) {
+      await focusEditorGroup(2);
+      await executeVSCodeCommand("workbench.action.unlockEditorGroup");
+      await executeVSCodeCommand("pochi.outputPanel.focus");
+      await executeVSCodeCommand("workbench.action.openActiveLogOutputFile");
+      await executeVSCodeCommand("workbench.action.lockEditorGroup");
+      await executeVSCodeCommand("workbench.action.closeAuxiliaryBar");
+    }
+
     // Move all terminals from panel into terminal groups, then lock
     await this.moveTerminalsImpl();
 
@@ -819,7 +833,9 @@ export class LayoutManager implements vscode.Disposable {
   private async moveTerminalsImpl() {
     for (
       let i = 0;
-      i < vscode.window.terminals.length - countTerminalTabs(this.allTabGroups);
+      i <
+      vscode.window.terminals.length -
+        countTerminalTabs(this.allTabGroups, true);
       i++
     ) {
       await focusEditorGroup(2);

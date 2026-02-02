@@ -12,10 +12,26 @@ export function isPochiTaskTab(tab: vscode.Tab): tab is vscode.Tab & {
   );
 }
 
-export function isTerminalTab(tab: vscode.Tab): tab is vscode.Tab & {
+export function isTerminalTab(
+  tab: vscode.Tab,
+  excludeOutput = false,
+): tab is vscode.Tab & {
   input: vscode.TabInputTerminal;
 } {
-  return tab.input instanceof vscode.TabInputTerminal;
+  return (
+    tab.input instanceof vscode.TabInputTerminal ||
+    (!excludeOutput &&
+      tab.input instanceof vscode.TabInputText &&
+      tab.input.uri.scheme === "output")
+  );
+}
+
+export function isPochiOutputTab(tab: vscode.Tab) {
+  return (
+    tab.input instanceof vscode.TabInputText &&
+    tab.input.uri.scheme === "output" &&
+    tab.input.uri.path === "TabbyML.pochi.Pochi.log"
+  );
 }
 
 export function getTabGroupType(tabs: readonly vscode.Tab[]) {
@@ -151,9 +167,14 @@ export function countPochiTaskTabs(tabGroups: TabGroupShape) {
   );
 }
 
-export function countTerminalTabs(tabGroups: TabGroupShape) {
+export function countTerminalTabs(
+  tabGroups: TabGroupShape,
+  excludeOutput = false,
+) {
   return tabGroups.reduce(
-    (acc, group) => acc + group.tabs.filter((tab) => isTerminalTab(tab)).length,
+    (acc, group) =>
+      acc +
+      group.tabs.filter((tab) => isTerminalTab(tab, excludeOutput)).length,
     0,
   );
 }
