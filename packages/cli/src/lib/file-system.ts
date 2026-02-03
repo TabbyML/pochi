@@ -53,7 +53,7 @@ export class TaskFileSystem implements FileSystem {
     if (uri.filePath !== "/plan.md" && uri.filePath !== "/walkthrough.md") {
       throw new Error(`Filepath ${uri.filePath} is not accessible`);
     }
-    
+
     await this.store.commit(
       catalog.events.writeTaskFile({
         taskId: uri.taskId,
