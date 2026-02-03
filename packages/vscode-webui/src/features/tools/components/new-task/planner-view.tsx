@@ -140,7 +140,7 @@ export function PlannerView(props: NewTaskToolViewProps) {
       }
     >
       {file?.content ? (
-        <ScrollArea viewportClassname="max-h-[20vh]">
+        <ScrollArea viewportClassname="h-[20vh]">
           <div className="p-3 text-xs">
             <MessageMarkdown>{file.content}</MessageMarkdown>
           </div>
