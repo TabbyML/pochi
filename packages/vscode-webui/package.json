@@ -80,9 +80,11 @@
     "hast": "^1.0.0",
     "i18next": "^25.4.2",
     "i18next-browser-languagedetector": "^8.2.0",
+    "jose": "catalog:",
     "lucide-react": "catalog:",
     "mermaid": "^11.11.0",
     "motion": "^12.12.1",
+    "mp4-muxer": "^5.2.2",
     "react": "catalog:",
     "react-day-picker": "^9.10.0",
     "react-dom": "^19.1.0",
@@ -99,10 +101,8 @@
     "tailwindcss-animate": "catalog:",
     "tippy.js": "^6.3.7",
     "unist-util-visit": "^5.0.0",
-    "webm-muxer": "^5.1.4",
     "zod": "catalog:",
-    "zustand": "^5.0.3",
-    "jose": "catalog:"
+    "zustand": "^5.0.3"
   },
   "devDependencies": {
     "@getpochi/tools": "workspace:*",

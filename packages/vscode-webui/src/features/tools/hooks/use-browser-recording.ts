@@ -1,9 +1,9 @@
 import { useDefaultStore } from "@/lib/use-default-store";
+import { blobStore } from "@/lib/remote-blob-store";
 import { getLogger } from "@getpochi/common";
 import { catalog } from "@getpochi/livekit";
+import { ArrayBufferTarget, Muxer } from "mp4-muxer";
 import { useEffect, useRef } from "react";
-import { ArrayBufferTarget, Muxer } from "webm-muxer";
-import { blobStore } from "@/lib/remote-blob-store";
 
 const logger = getLogger("useBrowserRecording");
 
@@ -39,17 +39,18 @@ export function useBrowserRecording(
             const muxer = new Muxer({
               target: new ArrayBufferTarget(),
               video: {
-                codec: "V_VP8",
+                codec: "avc",
                 width,
                 height,
               },
+              fastStart: "in-memory",
             });
             const encoder = new VideoEncoder({
               output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
               error: (e) => logger.error("VideoEncoder error", e),
             });
             encoder.configure({
-              codec: "vp8",
+              codec: "avc1.4d001f",
               width,
               height,
               bitrate: 500_000,
@@ -88,12 +89,12 @@ export function useBrowserRecording(
         const { buffer } = muxerRef.current.target;
         if (buffer.byteLength > 0) {
           const uint8Array = new Uint8Array(buffer);
-          const url = await blobStore.put(uint8Array, "video/webm");
+          const url = await blobStore.put(uint8Array, "video/mp4");
 
           store.commit(
             catalog.events.writeTaskFile({
               taskId,
-              filePath: `/browser-recording/${taskId}.webm`,
+              filePath: `/browser-recording/${taskId}.mp4`,
               content: url,
             }),
           );

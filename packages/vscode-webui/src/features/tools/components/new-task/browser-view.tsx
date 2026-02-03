@@ -20,7 +20,7 @@ export function BrowserView(props: NewTaskToolViewProps) {
 
   const store = useDefaultStore();
   const file = store.useQuery(
-    catalog.queries.makeFileQuery(uid || "", `/browser-recording/${uid || ""}.webm`)
+    catalog.queries.makeFileQuery(uid || "", `/browser-recording/${uid || ""}.mp4`)
   )
   const videoUrl = file?.content
 
@@ -35,12 +35,12 @@ export function BrowserView(props: NewTaskToolViewProps) {
         <div className="relative aspect-video max-h-[20vh] w-full">
           {videoUrl ? (
             <video
+              key={videoUrl}
               src={videoUrl}
               controls
+              playsInline
               className="h-full w-full object-contain"
-            >
-              <track kind="captions" />
-            </video>
+            />
           ) : frame ? (
             <img
               src={`data:image/jpeg;base64,${frame}`}
