@@ -209,7 +209,7 @@
   },
   "tasksPage": {
     "tasks": "任务",
-    "filter": "筛选",
+    "filter": "筛选任务",
     "archivedTasks": "已归档任务",
     "deletedWorktrees": "已删除的工作树",
     "emptyState": {
@@ -251,7 +251,8 @@
     "loadMore": "加载更多",
     "archiveTask": "归档任务",
     "unarchiveTask": "取消归档任务",
-    "archiveOldTasks": "归档一周前的任务",
+    "archiveOldTasks": "归档旧任务",
+    "archiveOldTasksTooltip": "归档一周前的任务",
     "showAnyTasks": "显示所有任务",
     "showOpenTasks": "显示活动任务"
   },

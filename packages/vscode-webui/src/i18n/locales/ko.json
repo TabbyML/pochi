@@ -210,7 +210,7 @@
   },
   "tasksPage": {
     "tasks": "작업",
-    "filter": "필터",
+    "filter": "작업 필터",
     "archivedTasks": "보관된 작업",
     "deletedWorktrees": "삭제된 워크트리",
     "emptyState": {
@@ -252,7 +252,8 @@
     "loadMore": "더 보기",
     "archiveTask": "작업 보관",
     "unarchiveTask": "작업 보관 취소",
-    "archiveOldTasks": "1주일 이상 된 작업 보관",
+    "archiveOldTasks": "오래된 작업 보관",
+    "archiveOldTasksTooltip": "1주일 이상 된 작업 보관",
     "showAnyTasks": "모든 작업 표시",
     "showOpenTasks": "활성 작업 표시"
   },

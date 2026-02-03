@@ -6,8 +6,10 @@ import {
 } from "@/components/ui/collapsible";
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -48,8 +50,7 @@ import {
   Check,
   ChevronDown,
   ChevronRight,
-  Eye,
-  EyeOff,
+  Filter,
   GitCompare,
   GitPullRequest,
   Loader2,
@@ -89,8 +90,14 @@ export function WorktreeList({
   onDeleteWorktree: (worktreePath: string) => void;
 }) {
   const { t } = useTranslation();
-  const [showAnyTasks, setShowAnyTasks] = useState(false);
+  const [showArchivedTasks, setShowArchivedTasks] = useState(false);
+  const [showDeletedWorktrees, setShowDeletedWorktrees] = useState(false);
   const { setTaskArchived, hasArchivableTasks } = useTaskArchived();
+
+  // Archive all tasks older than 7 days across all worktrees (no cwd = all worktrees)
+  const handleArchiveAllOldTasks = () => {
+    setTaskArchived?.({ type: "batch" });
+  };
 
   const { data: currentWorkspace, isLoading: isLoadingCurrentWorkspace } =
     useCurrentWorkspace();
@@ -195,12 +202,9 @@ export function WorktreeList({
   const containsOnlyWorkspaceGroup =
     optimisticGroups.length === 1 &&
     optimisticGroups[0].path === (workspacePath || cwd) &&
-    (!deletedGroups.length || !showAnyTasks);
+    (!deletedGroups.length || !showDeletedWorktrees);
 
-  // Archive all tasks older than 7 days across all worktrees (no cwd = all worktrees)
-  const handleArchiveAllOldTasks = () => {
-    setTaskArchived?.({ type: "batch" });
-  };
+  const hasActiveFilters = showArchivedTasks || showDeletedWorktrees;
 
   return (
     <div className="flex flex-col gap-1">
@@ -217,49 +221,68 @@ export function WorktreeList({
             "flex items-center gap-1 transition-opacity duration-200",
           )}
         >
-          {/* Toggle All/Active Tasks Button */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 w-6 p-0"
-                aria-label="toggle-all-tasks-button"
-                onClick={() => setShowAnyTasks(!showAnyTasks)}
-                data-testid="toggle-all-tasks"
-              >
-                {showAnyTasks ? (
-                  <Eye className="size-4" />
-                ) : (
-                  <EyeOff className="size-4" />
-                )}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              {showAnyTasks
-                ? t("tasksPage.showOpenTasks")
-                : t("tasksPage.showAnyTasks")}
-            </TooltipContent>
-          </Tooltip>
-
-          {/* Archive Old Tasks Button */}
-          {hasArchivableTasks && (
+          {/* Filter Dropdown */}
+          <DropdownMenu>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 w-6 p-0"
-                  aria-label="archive-old-tasks-button"
-                  onClick={handleArchiveAllOldTasks}
-                  data-testid="global-archive-old-tasks"
-                >
-                  <Archive className="size-4" />
-                </Button>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className={cn(
+                      "h-6 w-6 p-0",
+                      hasActiveFilters &&
+                        "text-primary hover:bg-primary/10 hover:text-primary",
+                    )}
+                    aria-label="filter-tasks-button"
+                    data-testid="filter-tasks-dropdown"
+                  >
+                    <Filter className="size-4" />
+                  </Button>
+                </DropdownMenuTrigger>
               </TooltipTrigger>
-              <TooltipContent>{t("tasksPage.archiveOldTasks")}</TooltipContent>
+              <TooltipContent>{t("tasksPage.filter")}</TooltipContent>
             </Tooltip>
-          )}
+            <DropdownMenuContent
+              align="start"
+              className="w-auto bg-background"
+              onCloseAutoFocus={(e) => e.preventDefault()}
+            >
+              <DropdownMenuCheckboxItem
+                checked={showArchivedTasks}
+                onCheckedChange={setShowArchivedTasks}
+                data-testid="filter-archived-tasks"
+              >
+                {t("tasksPage.archivedTasks")}
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem
+                checked={showDeletedWorktrees}
+                onCheckedChange={setShowDeletedWorktrees}
+                data-testid="filter-deleted-worktrees"
+              >
+                {t("tasksPage.deletedWorktrees")}
+              </DropdownMenuCheckboxItem>
+              {hasArchivableTasks && (
+                <>
+                  <DropdownMenuSeparator />
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <DropdownMenuItem
+                        onSelect={handleArchiveAllOldTasks}
+                        data-testid="global-archive-old-tasks"
+                      >
+                        <Archive className="size-4" />
+                        {t("tasksPage.archiveOldTasks")}
+                      </DropdownMenuItem>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">
+                      {t("tasksPage.archiveOldTasksTooltip")}
+                    </TooltipContent>
+                  </Tooltip>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
@@ -274,10 +297,10 @@ export function WorktreeList({
           containsOnlyWorkspaceGroup={containsOnlyWorkspaceGroup}
           isOpenMainWorktree={isOpenMainWorktree}
           isGitWorkspace={isGitWorkspace}
-          showArchived={showAnyTasks}
+          showArchived={showArchivedTasks}
         />
       ))}
-      {showAnyTasks && deletedGroups.length > 0 && (
+      {showDeletedWorktrees && deletedGroups.length > 0 && (
         <>
           <div className="flex items-center py-2">
             <div className="h-px flex-1 bg-border" />
@@ -293,7 +316,7 @@ export function WorktreeList({
               gh={gh}
               isDeleted
               gitOriginUrl={gitOriginUrl}
-              showArchived={showAnyTasks}
+              showArchived={showArchivedTasks}
             />
           ))}
         </>

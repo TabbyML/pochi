@@ -211,7 +211,7 @@
   },
   "tasksPage": {
     "tasks": "Tasks",
-    "filter": "Filter",
+    "filter": "Filter tasks",
     "archivedTasks": "Archived tasks",
     "deletedWorktrees": "Deleted worktrees",
     "emptyState": {
@@ -254,7 +254,8 @@
     "loadMore": "Load more",
     "archiveTask": "Archive task",
     "unarchiveTask": "Unarchive task",
-    "archiveOldTasks": "Archive tasks older than one week",
+    "archiveOldTasks": "Archive old tasks",
+    "archiveOldTasksTooltip": "Archive tasks older than one week",
     "showAnyTasks": "Show any tasks",
     "showOpenTasks": "Show open tasks"
   },
