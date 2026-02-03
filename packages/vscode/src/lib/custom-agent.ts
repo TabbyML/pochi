@@ -11,6 +11,8 @@ import { uniqueBy } from "remeda";
 import { Lifecycle, injectable, scoped } from "tsyringe";
 import * as vscode from "vscode";
 // biome-ignore lint/style/useImportType: needed for dependency injection
+import { PochiConfiguration } from "../integrations/configuration";
+// biome-ignore lint/style/useImportType: needed for dependency injection
 import { WorkspaceScope } from "./workspace-scoped";
 
 const logger = getLogger("CustomAgentManager");
@@ -49,9 +51,19 @@ export class CustomAgentManager implements vscode.Disposable {
 
   readonly agents = signal<CustomAgentFile[]>([]);
 
-  constructor(private readonly workspaceScope: WorkspaceScope) {
+  constructor(
+    private readonly workspaceScope: WorkspaceScope,
+    private readonly configuration: PochiConfiguration,
+  ) {
     this.initWatchers();
     this.loadAgents();
+
+    // Re-load agents when configuration changes
+    this.disposables.push({
+      dispose: this.configuration.advancedSettings.subscribe(() => {
+        this.loadAgents();
+      }),
+    });
   }
 
   private get cwd() {
@@ -100,8 +112,21 @@ export class CustomAgentManager implements vscode.Disposable {
 
   private async loadAgents() {
     try {
+      const reviewAgentEnabled =
+        this.configuration.advancedSettings.value.reviewAgent ?? false;
+
+      const filteredBuiltInAgents = builtInAgents.filter((agent) => {
+        if (agent.name === "reviewer" && !reviewAgentEnabled) {
+          return false;
+        }
+        return true;
+      });
+
       const allAgents: CustomAgentFile[] = [
-        ...builtInAgents.map((x) => ({ ...x, filePath: BuiltInAgentPath })),
+        ...filteredBuiltInAgents.map((x) => ({
+          ...x,
+          filePath: BuiltInAgentPath,
+        })),
       ];
 
       if (this.cwd) {

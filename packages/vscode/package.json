@@ -738,6 +738,11 @@
                     "description": "Set the log level for file logging."
                   }
                 }
+              },
+              "reviewAgent": {
+                "type": "boolean",
+                "default": false,
+                "description": "Enable the review agent for code reviews."
               }
             }
           }

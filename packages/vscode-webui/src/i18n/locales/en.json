@@ -414,7 +414,8 @@
     "copyCheckpointCommand": "Copy Checkpoint Command",
     "copyTodos": "Copy TODOs",
     "noCheckpointAvailable": "No checkpoint available",
-    "openStore": "Open Store"
+    "openStore": "Open Store",
+    "reviewChanges": "Review Changes"
   },
   "devRetryCountdown": {
     "attempts": "Attempts:",

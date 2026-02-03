@@ -92,7 +92,7 @@ export const ToolsByPermission = {
     "killBackgroundJob",
     "newTask",
   ] satisfies ToolName[] as string[],
-  default: ["todoWrite", "createReview"] satisfies ToolName[] as string[],
+  default: ["todoWrite"] satisfies ToolName[] as string[],
 };
 
 export const ServerToolApproved = "<server-tool-approved>";
@@ -113,7 +113,6 @@ const createCliTools = (options?: CreateToolOptions) => ({
   writeToFile,
   editNotebook,
   newTask: createNewTaskTool(options?.customAgents),
-  createReview,
 });
 
 export interface CreateToolOptions {
@@ -121,6 +120,7 @@ export interface CreateToolOptions {
   skills?: Skill[];
   contentType?: string[];
   attemptCompletionSchema?: z.ZodAny;
+  agent?: CustomAgent;
 }
 
 export const createClientTools = (options?: CreateToolOptions) => {
@@ -134,6 +134,7 @@ export const createClientTools = (options?: CreateToolOptions) => {
 
 export type ClientTools = ReturnType<typeof createClientTools> & {
   multiApplyDiff: multiApplyDiff;
+  createReview: createReview;
 };
 
 export const selectClientTools = (
@@ -145,10 +146,14 @@ export const selectClientTools = (
 
   if (options?.isSubTask) {
     const { newTask, ...rest } = clientTools;
+    if (options.agent?.builtin === true && options.agent.name === "reviewer") {
+      return {
+        ...rest,
+        createReview,
+      };
+    }
     return rest;
   }
 
-  // For main agent, exclude createReview (only available in reviewer subagent)
-  const { createReview: _, ...rest } = clientTools;
-  return rest;
+  return clientTools;
 };

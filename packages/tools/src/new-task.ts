@@ -21,6 +21,7 @@ export const CustomAgent = z.object({
     .string()
     .optional()
     .describe("The model to use for the custom agent."),
+  builtin: z.boolean().optional(),
 });
 
 export type CustomAgent = z.infer<typeof CustomAgent>;

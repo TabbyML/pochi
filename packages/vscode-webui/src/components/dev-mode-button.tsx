@@ -8,14 +8,14 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useIsDevMode } from "@/features/settings";
 import { useCopyToClipboard } from "@/lib/hooks/use-copy-to-clipboard";
+import { useCurrentWorkspace } from "@/lib/hooks/use-current-workspace";
 import { usePochiCredentials } from "@/lib/hooks/use-pochi-credentials";
 import { useDefaultStore } from "@/lib/use-default-store";
 import { vscodeHost } from "@/lib/vscode";
 import type { Message } from "@getpochi/livekit";
 import type { Todo } from "@getpochi/tools";
 import { convertToModelMessages } from "ai";
-
-import { CheckIcon, CopyIcon, Gavel, StoreIcon } from "lucide-react"; // Removed FilesIcon
+import { CheckIcon, CopyIcon, FileDiff, Gavel, StoreIcon } from "lucide-react";
 import type React from "react";
 import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
@@ -121,6 +121,7 @@ export function DevModeButton({ messages, todos }: DevModeButtonProps) {
             text={t("devModeButton.copyTodos")}
           />
           <OpenDevStore />
+          <ReviewChangesMenuItem />
         </DropdownMenuContent>
       </DropdownMenuPortal>
     </DropdownMenu>
@@ -144,4 +145,27 @@ function OpenDevStore() {
       </DropdownMenuItem>
     );
   }
+}
+
+function ReviewChangesMenuItem() {
+  const { t } = useTranslation();
+  const { data: currentWorkspace } = useCurrentWorkspace();
+
+  const onClick = useCallback(() => {
+    const cwd = currentWorkspace?.cwd;
+    if (!cwd) return;
+
+    vscodeHost.openTaskInPanel({
+      type: "new-task",
+      cwd,
+      prompt: "review the current changes",
+    });
+  }, [currentWorkspace?.cwd]);
+
+  return (
+    <DropdownMenuItem onClick={onClick}>
+      <FileDiff className="inline" />
+      <span className="ml-2">{t("devModeButton.reviewChanges")}</span>
+    </DropdownMenuItem>
+  );
 }

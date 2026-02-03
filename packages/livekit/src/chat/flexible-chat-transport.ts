@@ -157,6 +157,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
           contentType: llm.contentType,
           skills,
           attemptCompletionSchema: this.attemptCompletionSchema,
+          agent: this.customAgent,
         }),
         ...(mcpTools || {}),
       },

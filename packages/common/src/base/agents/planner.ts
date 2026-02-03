@@ -2,6 +2,7 @@ import type { CustomAgent } from "@getpochi/tools";
 
 export const planner: CustomAgent = {
   name: "planner",
+  builtin: true,
   description: `
 Engage this agent to formulate comprehensive, technical implementation strategies for feature development, system refactoring, or defect resolution.
 This agent is strictly limited to planning and architectural design; it DOES NOT execute code modifications.

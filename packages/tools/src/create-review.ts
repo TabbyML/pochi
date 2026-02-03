@@ -38,3 +38,5 @@ The comment will be attached to the specified line range in the file.`.trim(),
     reviewId: z.string().optional(),
   }),
 });
+
+export type createReview = typeof createReview;
