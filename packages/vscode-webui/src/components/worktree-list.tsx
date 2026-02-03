@@ -9,7 +9,6 @@ import {
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -262,27 +261,28 @@ export function WorktreeList({
               >
                 {t("tasksPage.deletedWorktrees")}
               </DropdownMenuCheckboxItem>
-              {hasArchivableTasks && (
-                <>
-                  <DropdownMenuSeparator />
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <DropdownMenuItem
-                        onSelect={handleArchiveAllOldTasks}
-                        data-testid="global-archive-old-tasks"
-                      >
-                        <Archive className="size-4" />
-                        {t("tasksPage.archiveOldTasks")}
-                      </DropdownMenuItem>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom">
-                      {t("tasksPage.archiveOldTasksTooltip")}
-                    </TooltipContent>
-                  </Tooltip>
-                </>
-              )}
             </DropdownMenuContent>
           </DropdownMenu>
+
+          {/* Archive Old Tasks Button */}
+          {hasArchivableTasks && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 w-6 p-0"
+                  onClick={handleArchiveAllOldTasks}
+                  data-testid="global-archive-old-tasks"
+                >
+                  <Archive className="size-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                {t("tasksPage.archiveOldTasksTooltip")}
+              </TooltipContent>
+            </Tooltip>
+          )}
         </div>
       </div>
 
