@@ -20,9 +20,12 @@ export function BrowserView(props: NewTaskToolViewProps) {
 
   const store = useDefaultStore();
   const file = store.useQuery(
-    catalog.queries.makeFileQuery(uid || "", `/browser-recording/${uid || ""}.mp4`)
-  )
-  const videoUrl = file?.content
+    catalog.queries.makeFileQuery(
+      uid || "",
+      `/browser-recording/${uid || ""}.mp4`,
+    ),
+  );
+  const videoUrl = file?.content;
 
   return (
     <SubAgentView
