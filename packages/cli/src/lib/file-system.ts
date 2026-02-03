@@ -50,18 +50,14 @@ export class TaskFileSystem implements FileSystem {
       throw new Error(`Invalid task URI: ${filePath}`);
     }
 
-    const allowedPaths = ["/plan.md", "/walkthrough.md"];
-
-    if (!allowedPaths.includes(uri.filePath)) {
-      throw new Error(
-        `Only ${allowedPaths.join(",")} is supported for task file system, got: ${uri.filePath}`,
-      );
+    if (uri.filePath !== "/plan.md" && uri.filePath !== "/walkthrough.md") {
+      throw new Error(`Filepath ${uri.filePath} is not accessible`);
     }
-
+    
     await this.store.commit(
       catalog.events.writeTaskFile({
         taskId: uri.taskId,
-        filePath: uri.filePath as "/plan.md" | "/walkthrough.md",
+        filePath: uri.filePath,
         content,
       }),
     );

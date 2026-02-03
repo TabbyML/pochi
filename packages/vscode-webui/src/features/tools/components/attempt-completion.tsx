@@ -58,37 +58,37 @@ export const AttemptCompletionTool: React.FC<
   };
 
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between gap-2">
         <span className="flex items-center gap-2 font-bold text-emerald-700 text-sm dark:text-emerald-300">
           <Check className="size-4" />
           {t("toolInvocation.taskCompleted")}
         </span>
-        {!!currentWorkspace && isLastPart && !isSubTask && (
-          <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-6 gap-1 px-2 text-muted-foreground text-xs"
-              onClick={onClickCreateWalkthrough}
-            >
-              <Footprints className="size-3.5" />
-              {t("worktree.createWalkthrough")}
-            </Button>
-            {!hasPR && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 gap-1 px-2 text-muted-foreground text-xs"
-                onClick={onClickCreatePR}
-              >
-                <GitPullRequest className="size-3.5" />
-                {t("worktree.createPr")}
-              </Button>
-            )}
-          </div>
-        )}
       </div>
+      {!!currentWorkspace && isLastPart && !isSubTask && (
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 gap-1.5 px-3 text-xs font-normal"
+            onClick={onClickCreateWalkthrough}
+          >
+            <Footprints className="size-3.5" />
+            {t("worktree.createWalkthrough")}
+          </Button>
+          {!hasPR && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 gap-1.5 px-3 text-xs font-normal"
+              onClick={onClickCreatePR}
+            >
+              <GitPullRequest className="size-3.5" />
+              {t("worktree.createPr")}
+            </Button>
+          )}
+        </div>
+      )}
       <MessageMarkdown>{result}</MessageMarkdown>
     </div>
   );

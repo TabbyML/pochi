@@ -149,7 +149,7 @@ function createVSCodeHost(): VSCodeHostApi {
             return;
           }
 
-          if (filePath === "/plan.md") {
+          if (filePath === "/plan.md" || filePath === '/walkthrough.md') {
             globalStore.commit(
               catalog.events.writeTaskFile({
                 taskId,
